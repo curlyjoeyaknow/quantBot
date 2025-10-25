@@ -1,11 +1,20 @@
 /**
  * @file helius-monitor.test.ts
  * @description
- * Unit tests for the HeliusMonitor class including WebSocket management,
- * CA tracking, price monitoring, and alert system.
+ * Unit tests for the HeliusMonitor class. Verifies all core behaviors:
+ * - WebSocket setup, event handling, connection/reconnection logic
+ * - CA (Conditional Alert) tracking lifecycle and additions
+ * - Price update ingesting, target/stop-loss alerts
+ * - Ichimoku indicator analysis, signals, and alerting
+ * - Alert throttling/prevention of duplicates
+ * - Fallback polling logic for network failures
+ * - Graceful resource cleanup
+ * - Robust error handling for all internal and external dependencies
+ *
+ * All dependencies are fully mocked to ensure isolated unit testing of class functionality.
  */
 
-// Mock all dependencies before importing
+// --- Dependency mocking: Ensures no real network/db requests run during tests ---
 jest.mock('ws');
 jest.mock('axios');
 jest.mock('../../src/utils/database');
@@ -19,7 +28,7 @@ import * as db from '../../src/utils/database';
 import { simulateStrategy } from '../../src/simulation/engine';
 import { calculateIchimoku, detectIchimokuSignals, formatIchimokuData } from '../../src/simulation/ichimoku';
 
-// Mock implementations
+// Typed aliases for mocks, for strong TypeScript/IDE hints
 const MockWebSocket = WebSocket as unknown as jest.MockedClass<typeof WebSocket>;
 const mockAxios = axios as unknown as jest.Mocked<typeof axios>;
 const mockDb = db as unknown as jest.Mocked<typeof db>;
@@ -28,7 +37,7 @@ const mockCalculateIchimoku = calculateIchimoku as unknown as jest.MockedFunctio
 const mockDetectIchimokuSignals = detectIchimokuSignals as unknown as jest.MockedFunction<typeof detectIchimokuSignals>;
 const mockFormatIchimokuData = formatIchimokuData as unknown as jest.MockedFunction<typeof formatIchimokuData>;
 
-// Fix for global timers if needed for fallback polling intervals
+// Setup Jest fake timers for all tests, since class may use setInterval/setTimeout internally
 beforeAll(() => {
   jest.useFakeTimers({ legacyFakeTimers: true });
 });
@@ -45,14 +54,14 @@ describe('HeliusMonitor', () => {
   beforeEach(() => {
     jest.clearAllMocks();
 
-    // Mock bot
+    // Fake Telegram Bot implementation (captures alert sends)
     mockBot = {
       telegram: {
         sendMessage: jest.fn()
       }
     };
 
-    // Mock WebSocket
+    // Stand-in mock for WebSocket: controls event triggers, readyState, and enables expectations on send/close/on
     mockWebSocket = {
       readyState: WebSocket.OPEN,
       send: jest.fn(),
@@ -60,15 +69,16 @@ describe('HeliusMonitor', () => {
       on: jest.fn(),
     } as any;
 
+    // Patch WebSocket constructor to always produce the above mock
     (MockWebSocket as any).mockImplementation(() => mockWebSocket);
 
-    // Mock database functions
+    // Reset database and simulation mocks to predictable values before every test for isolation
     mockDb.getActiveCATracking.mockResolvedValue([]);
     mockDb.savePriceUpdate.mockResolvedValue(undefined);
     mockDb.saveAlertSent.mockResolvedValue(undefined);
     mockDb.getRecentCAPerformance.mockResolvedValue([]);
 
-    // Mock simulation functions
+    // Standardized fake simulation results for deterministic tests:
     mockSimulateStrategy.mockReturnValue({
       finalPnl: 100,
       events: [],
@@ -85,7 +95,7 @@ describe('HeliusMonitor', () => {
         entryDelay: 0,
       },
     });
-
+    // Standard Ichimoku indicator snapshot
     mockCalculateIchimoku.mockReturnValue({
       tenkan: 1.1,
       kijun: 1.0,
@@ -103,13 +113,18 @@ describe('HeliusMonitor', () => {
     mockDetectIchimokuSignals.mockReturnValue([]);
     mockFormatIchimokuData.mockReturnValue('Ichimoku Analysis: Bullish');
 
-    // Set up environment
+    // Insert fake keys for dependency injection
     process.env.HELIUS_API_KEY = 'test-api-key';
     process.env.BOT_TOKEN = 'test-bot-token';
 
+    // New monitor instance for every test
     monitor = new HeliusMonitor(mockBot);
   });
 
+  /**
+   * Constructor and Initial State Tests
+   * Ensure new class instance is properly initialized with defensive state.
+   */
   describe('Constructor and Initialization', () => {
     it('should create HeliusMonitor instance', () => {
       expect(monitor).toBeDefined();
@@ -128,10 +143,14 @@ describe('HeliusMonitor', () => {
     });
   });
 
+  /**
+   * WebSocket lifecycle: Covers all details of establishing a connection,
+   * event handler registration, error propagation/authentication flow, etc.
+   */
   describe('WebSocket Connection', () => {
     it('should connect to WebSocket', async () => {
       await monitor.start();
-
+      // Ensure created with correct endpoint
       expect(MockWebSocket).toHaveBeenCalledWith(
         expect.stringContaining('wss://atlas-mainnet.helius-rpc.com')
       );
@@ -156,7 +175,6 @@ describe('HeliusMonitor', () => {
       });
 
       await monitor.start();
-
       expect(monitor['hasAuthError']).toBe(true);
     });
 
@@ -170,6 +188,9 @@ describe('HeliusMonitor', () => {
     });
   });
 
+  /**
+   * Tests covering all aspects of CA tracking addition (w/ and w/o historical data) and WebSocket subscription.
+   */
   describe('CA Tracking Management', () => {
     it('should add CA tracking', async () => {
       const caData = {
@@ -234,6 +255,10 @@ describe('HeliusMonitor', () => {
     });
   });
 
+  /**
+   * Price update message handling: ensures price changes are processed,
+   * triggers proper persistence, target/stop-loss checking, and downstream alerts.
+   */
   describe('Price Update Handling', () => {
     beforeEach(async () => {
       const caData = {
@@ -258,7 +283,7 @@ describe('HeliusMonitor', () => {
         }
       };
 
-      // Mock the handleMessage method
+      // Directly invoke message handling (bypassing ws event trigger mechanism)
       const handleMessage = (monitor as any)['handleMessage'].bind(monitor);
       await handleMessage(priceUpdateMessage);
 
@@ -314,6 +339,9 @@ describe('HeliusMonitor', () => {
     });
   });
 
+  /**
+   * Full coverage of Ichimoku indicator use, from calculation to signal/alert generation and thresholds.
+   */
   describe('Ichimoku Analysis', () => {
     beforeEach(async () => {
       const caData = {
@@ -396,6 +424,10 @@ describe('HeliusMonitor', () => {
     });
   });
 
+  /**
+   * Alert dispatch and prevention - verify user does not get duplicate alerts,
+   * ensure both normal and Ichimoku-specific alert mechanisms work.
+   */
   describe('Alert Management', () => {
     beforeEach(async () => {
       const caData = {
@@ -469,6 +501,9 @@ describe('HeliusMonitor', () => {
     });
   });
 
+  /**
+   * Covers connection error and retry logic, including halting on max attempts or auth errors
+   */
   describe('Reconnection Handling', () => {
     it('should handle reconnection attempts', () => {
       monitor['reconnectAttempts'] = 3;
@@ -500,6 +535,10 @@ describe('HeliusMonitor', () => {
     });
   });
 
+  /**
+   * Verifies fallback polling mode activates/deactivates, and
+   * Ichimoku alert polling uses the mocked API.
+   */
   describe('Fallback Polling', () => {
     it('should start fallback polling', () => {
       const startFallback = (monitor as any)['startFallbackPolling'].bind(monitor);
@@ -540,6 +579,9 @@ describe('HeliusMonitor', () => {
     });
   });
 
+  /**
+   * Tests for cleanup and shutdown procedures (ensures no intervals/sockets left open).
+   */
   describe('Cleanup and Shutdown', () => {
     it('should stop monitoring', () => {
       monitor['ws'] = mockWebSocket;
@@ -559,6 +601,10 @@ describe('HeliusMonitor', () => {
     });
   });
 
+  /**
+   * Defensive error handling: confirm all expected error scenarios
+   * (network, database, external API, etc) do not cause unhandled exceptions.
+   */
   describe('Error Handling', () => {
     it('should handle WebSocket errors gracefully', async () => {
       const error = new Error('WebSocket error');

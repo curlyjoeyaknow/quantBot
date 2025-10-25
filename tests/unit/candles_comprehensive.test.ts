@@ -3,9 +3,13 @@
  * @description
  * Unit tests for candle data handling, caching, and API integration.
  * Tests cover Birdeye API fetching, local caching, and data validation.
+ *
+ * Each describe/it block is self-explanatory, but key areas of
+ * logic where exceptions or mocking might not be perfectly obvious
+ * receive additional comments as needed.
  */
 
-// Mock axios and fs before importing the module
+// Mock axios and fs before importing the module - this ensures all fs/axios calls are intercepted
 jest.mock('axios');
 jest.mock('fs');
 
@@ -18,13 +22,14 @@ const mockedAxios = axios as jest.Mocked<typeof axios>;
 const mockedFs = fs as jest.Mocked<typeof fs>;
 
 describe('Candle Data Handling', () => {
+  // Common mock data used for tests
   const mockTokenAddress = 'So11111111111111111111111111111111111111112';
   const mockStartTime = DateTime.fromISO('2024-01-01T00:00:00Z');
   const mockEndTime = DateTime.fromISO('2024-01-02T00:00:00Z');
 
   beforeEach(() => {
     jest.clearAllMocks();
-    // Reset axios mock to default behavior
+    // Reset axios mock to default behavior (important to prevent test bleed)
     if (mockedAxios.get) {
       mockedAxios.get.mockReset();
     }
@@ -106,6 +111,7 @@ describe('Candle Data Handling', () => {
 
       expect(result).toBeDefined();
       expect(result.length).toBe(1);
+      // Ensure the request is sent with correct x-chain in headers
       expect(mockedAxios.get).toHaveBeenCalledWith(
         expect.stringContaining('birdeye.so'),
         expect.objectContaining({
@@ -170,6 +176,7 @@ describe('Candle Data Handling', () => {
 
         await fetchHybridCandles(mockTokenAddress, mockStartTime, mockEndTime, chain);
 
+        // Assert headers sent per chain type
         expect(mockedAxios.get).toHaveBeenCalledWith(
           expect.stringContaining('birdeye.so'),
           expect.objectContaining({
@@ -182,6 +189,7 @@ describe('Candle Data Handling', () => {
     });
 
     it('should handle malformed candle data', async () => {
+      // Provide a candle where "o" is not a number
       const mockResponse = {
         data: {
           success: true,
@@ -206,10 +214,12 @@ describe('Candle Data Handling', () => {
 
       expect(result).toBeDefined();
       expect(result.length).toBe(1);
+      // open parsing should be NaN
       expect(result[0].open).toBeNaN();
     });
 
     it('should handle missing candle properties', async () => {
+      // The candle object is missing several properties
       const mockResponse = {
         data: {
           success: true,
@@ -238,6 +248,7 @@ describe('Candle Data Handling', () => {
     });
 
     it('should use cached data when available', async () => {
+      // Simulate cache file present and readable
       const cacheFilename = 'cache_test.csv';
       const cachedData = 'timestamp,open,high,low,close,volume\n1704067200,1.0,1.1,0.9,1.05,1000';
       
@@ -289,6 +300,7 @@ describe('Candle Data Handling', () => {
 
       await fetchHybridCandles(mockTokenAddress, mockStartTime, mockEndTime, 'solana');
 
+      // Confirm that writeFileSync was called to write cache
       expect(mockedFs.writeFileSync).toHaveBeenCalled();
     });
   });
@@ -372,7 +384,7 @@ describe('Candle Data Handling', () => {
       // existsSync returns true (cache dir exists)
       mockedFs.existsSync.mockReturnValue(true);
 
-      // Create a proper Dirent mock that matches fs.Dirent interface
+      // Create a Dirent mock that covers all required methods for compatibility with fs.Dirent
       const direntMock = {
         name: 'test.csv',
         isFile: () => true,
@@ -425,6 +437,7 @@ describe('Candle Data Handling', () => {
 
         await fetchHybridCandles(mockTokenAddress, mockStartTime, mockEndTime, chain);
 
+        // Verify that the API URL and headers are set correctly for each chain
         const lastCall = mockedAxios.get.mock.calls[mockedAxios.get.mock.calls.length - 1];
         expect(lastCall[0]).toContain('birdeye.so');
         expect(lastCall[0]).toContain(mockTokenAddress);

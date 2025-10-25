@@ -104,29 +104,29 @@ describe('Bot Command Handlers', () => {
       });
     });
 
-    describe('/cancel command', () => {
-      it('should clear session and reply on /cancel', async () => {
-        // Set up existing session
-        (mockContext as any).session = {
-          step: 'waiting_for_token',
-          command: 'backtest'
-        };
+  describe('/cancel command', () => {
+    it('should clear session and reply on /cancel', async () => {
+      // Set up existing session
+      (mockContext as any).session = {
+        step: 'waiting_for_token',
+        command: 'backtest'
+      };
+      
+      require('../../src/bot');
+      
+      const cancelHandler = mockBot.command.mock.calls.find(call => call[0] === 'cancel')?.[1];
+      expect(cancelHandler).toBeDefined();
         
-        require('../../src/bot');
-        
-        const cancelHandler = mockBot.command.mock.calls.find(call => call[0] === 'cancel')?.[1];
-        expect(cancelHandler).toBeDefined();
-          
-        if (cancelHandler) {
-          if (typeof cancelHandler === 'function') {
-            await cancelHandler(mockContext as any, async () => {});
-          }
-
-          expect((mockContext as any).session).toEqual({});
-          expect(mockContext.reply).toHaveBeenCalledWith('Operation cancelled. You can start a new command.');
+      if (cancelHandler) {
+        if (typeof cancelHandler === 'function') {
+          await cancelHandler(mockContext as any, async () => {});
         }
-      });
+
+        expect((mockContext as any).session).toEqual({});
+        expect(mockContext.reply).toHaveBeenCalledWith('Operation cancelled. You can start a new command.');
+      }
     });
+  });
 
   describe('/strategy command', () => {
     it('should list user strategies when no arguments provided', async () => {
