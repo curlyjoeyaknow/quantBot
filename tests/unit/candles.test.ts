@@ -1,7 +1,19 @@
+/**
+ * @file candles.test.ts
+ * @description
+ * Unit tests for the hybrid candle-fetching logic, including fetching, error handling,
+ * data validation, and compatibility with multiple blockchains.
+ * 
+ * This file mocks axios and fs to isolate candle-fetching network behavior,
+ * and validates that candle fields are handled robustly.
+ */
+
 import { fetchHybridCandles, Candle } from '../../src/simulation/candles';
 import { DateTime } from 'luxon';
 
-// Mock axios and fs before importing the module
+/**
+ * Mocks for axios and filesystem modules to prevent real HTTP requests and file writes during tests.
+ */
 jest.mock('axios', () => ({
   get: jest.fn()
 }));
@@ -17,10 +29,14 @@ import axios from 'axios';
 const mockedAxios = axios as jest.Mocked<typeof axios>;
 
 describe('Candle Data Handling', () => {
+  // Standard fixtures for tests
   const mockTokenAddress = 'So11111111111111111111111111111111111111112';
   const mockStartTime = DateTime.fromISO('2024-01-01T00:00:00Z');
   const mockEndTime = DateTime.fromISO('2024-01-02T00:00:00Z');
 
+  /**
+   * Resets mocks before each test to ensure test isolation.
+   */
   beforeEach(() => {
     jest.clearAllMocks();
     // Reset axios mock to default behavior
@@ -28,6 +44,10 @@ describe('Candle Data Handling', () => {
   });
 
   describe('fetchHybridCandles', () => {
+    /**
+     * Should fetch and parse candles as expected from the Birdeye API for Solana.
+     * Verifies: numeric conversion, prop presence, and correct number of items.
+     */
     it('should fetch candles successfully for Solana', async () => {
       const mockResponse = {
         data: {
@@ -71,6 +91,9 @@ describe('Candle Data Handling', () => {
       });
     });
 
+    /**
+     * Should fetch candles for Ethereum and verify correct API call headers.
+     */
     it('should fetch candles successfully for Ethereum', async () => {
       const mockResponse = {
         data: {
@@ -106,6 +129,10 @@ describe('Candle Data Handling', () => {
       );
     });
 
+    /**
+     * Simulates an API error (e.g., network or server failure).
+     * The promise should reject with the "API Error".
+     */
     it('should handle API errors gracefully', async () => {
       mockedAxios.get.mockRejectedValueOnce(new Error('API Error'));
 
@@ -113,6 +140,9 @@ describe('Candle Data Handling', () => {
         .rejects.toThrow('API Error');
     });
 
+    /**
+     * Should handle cases where the API response contains no candle data (empty items array).
+     */
     it('should handle empty response data', async () => {
       const mockResponse = {
         data: {
@@ -130,6 +160,10 @@ describe('Candle Data Handling', () => {
       expect(result).toEqual([]);
     });
 
+    /**
+     * Should handle cases where API signals failure (success: false),
+     * for example when the token is not found.
+     */
     it('should handle unsuccessful API response', async () => {
       const mockResponse = {
         data: {
@@ -145,6 +179,10 @@ describe('Candle Data Handling', () => {
       expect(result).toEqual([]);
     });
 
+    /**
+     * Should correctly set the x-chain header for all supported chains.
+     * Ensures we test each chain variant supported in our hybrid fetcher.
+     */
     it('should handle different chain types', async () => {
       const chains = ['solana', 'ethereum', 'bsc', 'base'];
       
@@ -171,6 +209,10 @@ describe('Candle Data Handling', () => {
       }
     });
 
+    /**
+     * Ensures the function does not crash on malformed numeric candle properties,
+     * such as a string that can't be parsed to a number.
+     */
     it('should handle malformed candle data', async () => {
       const mockResponse = {
         data: {
@@ -199,6 +241,10 @@ describe('Candle Data Handling', () => {
       expect(result[0].open).toBeNaN();
     });
 
+    /**
+     * Handles the case where some required candle props are missing from the API.
+     * Should parse missing numerics as NaN, but not crash.
+     */
     it('should handle missing candle properties', async () => {
       const mockResponse = {
         data: {
@@ -229,6 +275,9 @@ describe('Candle Data Handling', () => {
   });
 
   describe('Candle data validation', () => {
+    /**
+     * Checks that the timestamp on a candle object is present and valid.
+     */
     it('should validate candle timestamp', () => {
       const candle: Candle = {
         timestamp: 1704067200,
@@ -243,6 +292,10 @@ describe('Candle Data Handling', () => {
       expect(typeof candle.timestamp).toBe('number');
     });
 
+    /**
+     * Checks that all candle price fields meet general requirements:
+     * positive values, correct bounds relationships between o/h/l/c.
+     */
     it('should validate candle price data', () => {
       const candle: Candle = {
         timestamp: 1704067200,
@@ -261,6 +314,9 @@ describe('Candle Data Handling', () => {
       expect(candle.close).toBeGreaterThan(0);
     });
 
+    /**
+     * Validates that volume is a non-negative number.
+     */
     it('should validate candle volume', () => {
       const candle: Candle = {
         timestamp: 1704067200,
@@ -271,8 +327,8 @@ describe('Candle Data Handling', () => {
         volume: 1000
       };
 
-      expect(candle.volume).toBeGreaterThanOrEqual(0);
       expect(typeof candle.volume).toBe('number');
+      expect(candle.volume).toBeGreaterThanOrEqual(0);
     });
   });
 });
