@@ -11,16 +11,19 @@ import { BacktestCommandHandler } from './BacktestCommandHandler';
 import { StrategyCommandHandler } from './StrategyCommandHandler';
 import { CancelCommandHandler } from './CancelCommandHandler';
 import { RepeatCommandHandler } from './RepeatCommandHandler';
-import { SessionService, StrategyService, SimulationService } from '../services';
+import { ExtractCommandHandler } from './ExtractCommandHandler';
+import { AnalysisCommandHandler } from './AnalysisCommandHandler';
+import { HistoryCommandHandler } from './HistoryCommandHandler';
+import { BacktestCallCommandHandler } from './BacktestCallCommandHandler';
+import { IchimokuCommandHandler } from './IchimokuCommandHandler';
+import { AlertCommandHandler } from './AlertCommandHandler';
+import { AlertsCommandHandler } from './AlertsCommandHandler';
+import { ServiceContainer } from '../services/ServiceContainer';
 
 export class CommandRegistry {
   private handlers: Map<string, CommandHandler> = new Map();
   
-  constructor(
-    private sessionService: SessionService,
-    private strategyService: StrategyService,
-    private simulationService: SimulationService
-  ) {
+  constructor(private serviceContainer: ServiceContainer) {
     this.registerDefaultHandlers();
   }
   
@@ -28,10 +31,23 @@ export class CommandRegistry {
    * Register default command handlers
    */
   private registerDefaultHandlers(): void {
-    this.register(new BacktestCommandHandler(this.sessionService));
-    this.register(new StrategyCommandHandler(this.strategyService));
-    this.register(new CancelCommandHandler(this.sessionService));
-    this.register(new RepeatCommandHandler(this.simulationService, this.sessionService));
+    const sessionService = this.serviceContainer.getSessionService();
+    const strategyService = this.serviceContainer.getStrategyService();
+    const simulationService = this.serviceContainer.getSimulationService();
+    const caService = this.serviceContainer.getCAService();
+    const ichimokuService = this.serviceContainer.getIchimokuService();
+    
+    this.register(new BacktestCommandHandler(sessionService));
+    this.register(new StrategyCommandHandler(strategyService));
+    this.register(new CancelCommandHandler(sessionService));
+    this.register(new RepeatCommandHandler(simulationService, sessionService));
+    this.register(new ExtractCommandHandler());
+    this.register(new AnalysisCommandHandler());
+    this.register(new HistoryCommandHandler(simulationService));
+    this.register(new BacktestCallCommandHandler(simulationService));
+    this.register(new IchimokuCommandHandler(ichimokuService));
+    this.register(new AlertCommandHandler(caService));
+    this.register(new AlertsCommandHandler(caService));
   }
   
   /**
@@ -52,7 +68,8 @@ export class CommandRegistry {
     }
     
     const userId = ctx.from?.id;
-    const session = userId ? this.sessionService.getSession(userId) : undefined;
+    const sessionService = this.serviceContainer.getSessionService();
+    const session = userId ? sessionService.getSession(userId) : undefined;
     
     await handler.execute(ctx, session);
   }

@@ -8,6 +8,7 @@
 import { Context } from 'telegraf';
 import { BaseCommandHandler, Session } from './interfaces/CommandHandler';
 import { StrategyService } from '../services/StrategyService';
+import { eventBus, EventFactory } from '../events';
 
 export class StrategyCommandHandler extends BaseCommandHandler {
   readonly command = 'strategy';
@@ -57,8 +58,26 @@ export class StrategyCommandHandler extends BaseCommandHandler {
           '`/strategy save MyStrategy "Conservative approach" 50@2x,30@5x,20@10x initial:-20%,trailing:30%`'
         );
       }
+      
+      // Emit command executed event
+      await eventBus.publish(EventFactory.createUserEvent(
+        'user.command.executed',
+        { command: 'strategy', success: true },
+        'StrategyCommandHandler',
+        userId
+      ));
+      
     } catch (error) {
       console.error('Strategy command error:', error);
+      
+      // Emit command failed event
+      await eventBus.publish(EventFactory.createUserEvent(
+        'user.command.failed',
+        { command: 'strategy', success: false, error: error instanceof Error ? error.message : String(error) },
+        'StrategyCommandHandler',
+        userId
+      ));
+      
       await this.sendError(ctx, 'Failed to process strategy command. Please try again.');
     }
   }
@@ -82,7 +101,7 @@ export class StrategyCommandHandler extends BaseCommandHandler {
       message += `${index + 1}. **${strategy.name}**\n`;
       message += `   Description: ${strategy.description || 'No description'}\n`;
       message += `   Strategy: ${strategy.strategy}\n`;
-      message += `   Stop Loss: ${strategy.stop_loss_config}\n\n`;
+      message += `   Stop Loss: ${strategy.stopLossConfig}\n\n`;
     });
     
     message += '💡 Use `/strategy use <name>` to activate a strategy.';
@@ -120,11 +139,19 @@ export class StrategyCommandHandler extends BaseCommandHandler {
     const strategyData = {
       name,
       description,
-      strategy: JSON.stringify(strategy),
-      stopLossConfig: JSON.stringify(stopLossConfig)
+      strategy: strategy,
+      stopLossConfig: stopLossConfig
     };
     
     await this.strategyService.saveStrategy(userId, strategyData);
+    
+    // Emit strategy saved event
+    await eventBus.publish(EventFactory.createUserEvent(
+      'user.strategy.saved',
+      { strategyName: name, strategyData },
+      'StrategyCommandHandler',
+      userId
+    ));
     
     await this.sendSuccess(ctx, 
       `Strategy "${name}" saved successfully!\n\n` +
@@ -145,11 +172,19 @@ export class StrategyCommandHandler extends BaseCommandHandler {
     // In a real implementation, this would set the active strategy in the session
     // For now, we'll just confirm the strategy was found
     
+    // Emit strategy used event
+    await eventBus.publish(EventFactory.createUserEvent(
+      'user.strategy.used',
+      { strategyName, strategyData: strategy },
+      'StrategyCommandHandler',
+      userId
+    ));
+    
     await this.sendSuccess(ctx, 
       `Strategy "${strategyName}" is now active!\n\n` +
       `**Description:** ${strategy.description || 'No description'}\n` +
       `**Strategy:** ${strategy.strategy}\n` +
-      `**Stop Loss:** ${strategy.stop_loss_config}\n\n` +
+      `**Stop Loss:** ${strategy.stopLossConfig}\n\n` +
       `This strategy will be used for future simulations.`
     );
   }
@@ -163,6 +198,14 @@ export class StrategyCommandHandler extends BaseCommandHandler {
     }
     
     await this.strategyService.deleteStrategy(userId, strategyName);
+    
+    // Emit strategy deleted event
+    await eventBus.publish(EventFactory.createUserEvent(
+      'user.strategy.deleted',
+      { strategyName, strategyData: strategy },
+      'StrategyCommandHandler',
+      userId
+    ));
     
     await this.sendSuccess(ctx, `Strategy "${strategyName}" deleted successfully.`);
   }

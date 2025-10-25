@@ -9,6 +9,7 @@ import { Context } from 'telegraf';
 import { BaseCommandHandler, Session } from './interfaces/CommandHandler';
 import { SimulationService } from '../services/SimulationService';
 import { SessionService } from '../services/SessionService';
+import { eventBus, EventFactory } from '../events';
 
 export class RepeatCommandHandler extends BaseCommandHandler {
   readonly command = 'repeat';

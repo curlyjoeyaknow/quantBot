@@ -7,6 +7,7 @@
 
 import { DateTime } from 'luxon';
 import { Strategy, StopLossConfig, EntryConfig, ReEntryConfig } from '../simulate';
+import { eventBus, EventFactory } from '../events';
 
 /**
  * Session data structure for maintaining user state
@@ -65,6 +66,14 @@ export class SessionService {
    */
   setSession(userId: number, session: Session): void {
     this.sessions[userId] = session;
+    
+    // Emit session updated event
+    eventBus.publish(EventFactory.createUserEvent(
+      'user.session.updated',
+      { sessionData: session },
+      'SessionService',
+      userId
+    ));
   }
 
   /**

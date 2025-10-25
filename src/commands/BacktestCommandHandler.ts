@@ -8,6 +8,7 @@
 import { Context } from 'telegraf';
 import { BaseCommandHandler, Session } from './interfaces/CommandHandler';
 import { SessionService } from '../services/SessionService';
+import { eventBus, EventFactory } from '../events';
 
 export class BacktestCommandHandler extends BaseCommandHandler {
   readonly command = 'backtest';
@@ -34,6 +35,22 @@ export class BacktestCommandHandler extends BaseCommandHandler {
       // Store session using SessionService
       this.sessionService.setSession(userId, newSession);
       
+      // Emit user session started event
+      await eventBus.publish(EventFactory.createUserEvent(
+        'user.session.started',
+        { sessionData: newSession },
+        'BacktestCommandHandler',
+        userId
+      ));
+      
+      // Emit command executed event
+      await eventBus.publish(EventFactory.createUserEvent(
+        'user.command.executed',
+        { command: 'backtest', success: true },
+        'BacktestCommandHandler',
+        userId
+      ));
+      
       await ctx.reply(
         '🤖 **QuantBot Ready!**\n\n' +
         'Please provide the token address (Solana or EVM) to start the simulation.\n\n' +
@@ -48,6 +65,15 @@ export class BacktestCommandHandler extends BaseCommandHandler {
       
     } catch (error) {
       console.error('Backtest command error:', error);
+      
+      // Emit command failed event
+      await eventBus.publish(EventFactory.createUserEvent(
+        'user.command.failed',
+        { command: 'backtest', success: false, error: error instanceof Error ? error.message : String(error) },
+        'BacktestCommandHandler',
+        userId
+      ));
+      
       await this.sendError(ctx, 'Failed to initialize backtest session. Please try again.');
     }
   }

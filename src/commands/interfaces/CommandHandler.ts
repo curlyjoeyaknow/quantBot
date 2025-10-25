@@ -32,6 +32,9 @@ export interface Session {
   };
   waitingForRunSelection?: boolean;
   recentRuns?: any[];
+  userId?: number;
+  strategyName?: string;
+  [key: string]: any; // Allow additional properties
 }
 
 /**

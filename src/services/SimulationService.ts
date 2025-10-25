@@ -10,6 +10,7 @@ import { Strategy, StopLossConfig, SimulationResult as SimResult } from '../simu
 import { simulateStrategy } from '../simulate';
 import { fetchHybridCandles } from '../simulation/candles';
 import * as db from '../utils/database';
+import { eventBus, EventFactory } from '../events';
 
 export interface SimulationRun {
   id: number;
@@ -44,20 +45,48 @@ export class SimulationService {
    * Run a simulation with the given parameters
    */
   async runSimulation(params: SimulationParams): Promise<SimResult> {
-    const { mint, chain, startTime, endTime, strategy, stopLossConfig } = params;
+    const { mint, chain, startTime, endTime, strategy, stopLossConfig, userId } = params;
     
-    // Fetch candles for the simulation period
-    const endDateTime = endTime || DateTime.utc();
-    const candles = await fetchHybridCandles(mint, startTime, endDateTime, chain);
+    // Emit simulation started event
+    await eventBus.publish(EventFactory.createUserEvent(
+      'simulation.started',
+      { mint, chain, strategy },
+      'SimulationService',
+      userId
+    ));
     
-    if (candles.length === 0) {
-      throw new Error('No candle data available for simulation period');
+    try {
+      // Fetch candles for the simulation period
+      const endDateTime = endTime || DateTime.utc();
+      const candles = await fetchHybridCandles(mint, startTime, endDateTime, chain);
+      
+      if (candles.length === 0) {
+        throw new Error('No candle data available for simulation period');
+      }
+      
+      // Run the simulation
+      const result = simulateStrategy(candles, strategy, stopLossConfig);
+      
+      // Emit simulation completed event
+      await eventBus.publish(EventFactory.createUserEvent(
+        'simulation.completed',
+        { mint, chain, strategy, result },
+        'SimulationService',
+        userId
+      ));
+      
+      return result;
+    } catch (error) {
+      // Emit simulation failed event
+      await eventBus.publish(EventFactory.createUserEvent(
+        'simulation.failed',
+        { mint, chain, strategy, error: error instanceof Error ? error.message : String(error) },
+        'SimulationService',
+        userId
+      ));
+      
+      throw error;
     }
-    
-    // Run the simulation
-    const result = simulateStrategy(candles, strategy, stopLossConfig);
-    
-    return result;
   }
 
   /**

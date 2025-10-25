@@ -7,6 +7,7 @@
 
 import WebSocket from 'ws';
 import { EventEmitter } from 'events';
+import { eventBus, EventFactory } from '../events';
 
 export interface WebSocketConfig {
   url: string;
@@ -162,6 +163,14 @@ export class WebSocketConnectionManager extends EventEmitter {
     this.ws.on('open', () => {
       console.log('WebSocket connection opened');
       this.reconnectAttempts = 0;
+      
+      // Emit WebSocket connected event
+      eventBus.publish(EventFactory.createSystemEvent(
+        'websocket.connected',
+        { url: this.config.url },
+        'WebSocketConnectionManager'
+      ));
+      
       this.emit('open');
     });
 
@@ -177,6 +186,14 @@ export class WebSocketConnectionManager extends EventEmitter {
 
     this.ws.on('close', (code: number, reason: string) => {
       console.log(`WebSocket connection closed: ${code} - ${reason}`);
+      
+      // Emit WebSocket disconnected event
+      eventBus.publish(EventFactory.createSystemEvent(
+        'websocket.disconnected',
+        { url: this.config.url },
+        'WebSocketConnectionManager'
+      ));
+      
       this.emit('close', code, reason);
       
       if (!this.isDestroyed) {
@@ -186,6 +203,14 @@ export class WebSocketConnectionManager extends EventEmitter {
 
     this.ws.on('error', (error: Error) => {
       console.error('WebSocket error:', error);
+      
+      // Emit WebSocket error event
+      eventBus.publish(EventFactory.createSystemEvent(
+        'websocket.error',
+        { url: this.config.url, error: error.message },
+        'WebSocketConnectionManager'
+      ));
+      
       this.emit('error', error);
     });
   }

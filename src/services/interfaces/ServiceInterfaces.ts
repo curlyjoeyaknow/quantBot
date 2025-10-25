@@ -5,7 +5,7 @@
  * and improve testability.
  */
 
-import { Session } from './CommandHandler';
+import { Session } from '../../commands/interfaces/CommandHandler';
 
 /**
  * Service for managing user sessions

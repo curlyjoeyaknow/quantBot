@@ -20,6 +20,7 @@ import {
   detectIchimokuSignals, 
   formatIchimokuData 
 } from '../simulation/ichimoku';
+import { eventBus, EventFactory } from '../events';
 
 export interface CAMonitor {
   id: number;
@@ -105,6 +106,20 @@ export class CAMonitoringService extends EventEmitter {
     const key = `${ca.chain}:${ca.mint}`;
     this.activeCAs.set(key, ca);
     console.log(`Added CA monitor: ${ca.tokenName} (${ca.tokenSymbol})`);
+    
+    // Emit CA monitor added event
+    eventBus.publish(EventFactory.createSystemEvent(
+      'ca.monitor.added',
+      { 
+        caId: ca.id,
+        mint: ca.mint,
+        chain: ca.chain,
+        tokenName: ca.tokenName,
+        tokenSymbol: ca.tokenSymbol
+      },
+      'CAMonitoringService'
+    ));
+    
     this.emit('caAdded', ca);
   }
 
