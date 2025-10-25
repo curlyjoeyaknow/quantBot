@@ -7,7 +7,7 @@
 
 import { Context } from 'telegraf';
 import { BaseCommandHandler, Session } from './interfaces/CommandHandler';
-import { StrategyService } from '../services/interfaces/ServiceInterfaces';
+import { StrategyService } from '../services/StrategyService';
 
 export class StrategyCommandHandler extends BaseCommandHandler {
   readonly command = 'strategy';

@@ -7,12 +7,12 @@
 
 import { Context } from 'telegraf';
 import { BaseCommandHandler, Session } from './interfaces/CommandHandler';
-import { SimulationService } from '../services/interfaces/ServiceInterfaces';
+import { SessionService } from '../services/SessionService';
 
 export class BacktestCommandHandler extends BaseCommandHandler {
   readonly command = 'backtest';
   
-  constructor(private simulationService: SimulationService) {
+  constructor(private sessionService: SessionService) {
     super();
   }
   
@@ -31,8 +31,8 @@ export class BacktestCommandHandler extends BaseCommandHandler {
         data: {}
       };
       
-      // Store session (this would be injected via SessionService in real implementation)
-      // For now, we'll handle this in the main bot file
+      // Store session using SessionService
+      this.sessionService.setSession(userId, newSession);
       
       await ctx.reply(
         '🤖 **QuantBot Ready!**\n\n' +
