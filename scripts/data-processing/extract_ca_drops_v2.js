@@ -1,35 +1,35 @@
 const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
-const sqlite3 = require('sqlite3').verbose();
+const sqlite3 = require('sqlite3').verbose(); // SQLite library in verbose mode for better debug/info
 
 // Configuration
-const MESSAGES_DIR = './messages'; // Process all message files
-const BIRDEYE_API_KEY = process.env.BIRDEYE_API_KEY || '';
-const EXCLUDED_USERS = ['rick', 'phanes', 'pirb']; // Exclude these users as requested
+const MESSAGES_DIR = './messages'; // Directory containing all message HTML files
+const BIRDEYE_API_KEY = process.env.BIRDEYE_API_KEY || ''; // API key for Birdeye (from env or empty string)
+const EXCLUDED_USERS = ['rick', 'phanes', 'pirb']; // Usernames to exclude from processing
 
-// Parse timestamp from HTML format
+// Parse timestamp from HTML format (handles multiple quirks in formats)
 function parseTimestamp(timestampStr) {
   try {
-    // Handle formats like "22.10.2025 11:38:15 UTC+10:00"
-    // Convert DD.MM.YYYY to MM/DD/YYYY format for JavaScript Date parsing
+    // Typical input: "22.10.2025 11:38:15 UTC+10:00"
+    // Split into [date, time, timezone] parts
     const parts = timestampStr.split(' ');
     if (parts.length >= 2) {
-      const datePart = parts[0]; // "22.10.2025"
-      const timePart = parts[1]; // "11:38:15"
-      const timezonePart = parts[2]; // "UTC+10:00"
+      const datePart = parts[0]; // e.g. "22.10.2025"
+      const timePart = parts[1]; // e.g. "11:38:15"
+      const timezonePart = parts[2]; // e.g. "UTC+10:00"
       
-      // Parse DD.MM.YYYY format
+      // Break date up into day/month/year components
       const dateComponents = datePart.split('.');
       if (dateComponents.length === 3) {
         const day = dateComponents[0];
         const month = dateComponents[1];
         const year = dateComponents[2];
         
-        // Create ISO string format
+        // Build ISO string suitable for JS Date parsing
         const isoString = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${timePart}`;
-        
-        // Handle timezone
+
+        // Convert Telegram's "UTC+XX:YY" to "+XX:YY"
         let timezoneOffset = '';
         if (timezonePart) {
           if (timezonePart.includes('UTC+')) {
@@ -38,17 +38,15 @@ function parseTimestamp(timestampStr) {
             timezoneOffset = timezonePart.replace('UTC-', '-');
           }
         }
-        
         const fullTimestamp = isoString + timezoneOffset;
         const date = new Date(fullTimestamp);
-        
         if (!isNaN(date.getTime())) {
           return date.toISOString();
         }
       }
     }
     
-    // Fallback: try original parsing
+    // Fallback: regex replace to "+/-", then parse
     let cleanTimestamp = timestampStr;
     cleanTimestamp = cleanTimestamp.replace(/UTC\+(\d{2}):(\d{2})/g, '+$1:$2');
     cleanTimestamp = cleanTimestamp.replace(/UTC\-(\d{2}):(\d{2})/g, '-$1:$2');
@@ -58,69 +56,76 @@ function parseTimestamp(timestampStr) {
       return date.toISOString();
     }
     
+    // If parsing failed, warn and return current time
     console.warn(`Could not parse timestamp: ${timestampStr}`);
-    return new Date().toISOString(); // Fallback to current time
+    return new Date().toISOString();
     
   } catch (error) {
+    // Catch-all in case of totally unhandled format or other error
     console.warn(`Error parsing timestamp ${timestampStr}:`, error.message);
-    return new Date().toISOString(); // Fallback to current time
+    return new Date().toISOString();
   }
 }
 
 // Save extracted CA drops to database
 async function saveToDatabase(results) {
+  // Promisified flow for database operations
   return new Promise((resolve, reject) => {
     const db = new sqlite3.Database('./simulations.db', (err) => {
       if (err) {
+        // Could not connect to DB
         console.error('Error connecting to database:', err);
         reject(err);
         return;
       }
     });
 
-    // Prepare insert statement
+    // Prepare upsert statement; ignores duplicates by unique constraint
     const insertStmt = db.prepare(`
       INSERT OR IGNORE INTO ca_calls 
       (mint, chain, token_name, token_symbol, call_price, call_marketcap, call_timestamp, caller, source_chat_id)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
-    let savedCount = 0;
-    let skippedCount = 0;
+    let savedCount = 0;    // Counter for saved rows
+    let skippedCount = 0;  // Counter for skipped rows (existing)
 
     db.serialize(() => {
-      db.run('BEGIN TRANSACTION;');
+      db.run('BEGIN TRANSACTION;'); // Use transaction for efficiency
       
       results.forEach(drop => {
-        const userId = 1; // Default user ID for extracted data
-        const chatId = 1; // Default chat ID for extracted data
-        const callTimestamp = Math.floor(new Date(drop.timestamp).getTime() / 1000);
+        const userId = 1; // Not used, placeholder for possible future use
+        const chatId = 1; // All come from the same chat, set statically
+        const callTimestamp = Math.floor(new Date(drop.timestamp).getTime() / 1000); // UNIX seconds
         const defaultStrategy = JSON.stringify([
           { percent: 0.5, target: 2 },
           { percent: 0.3, target: 5 },
           { percent: 0.2, target: 10 }
         ]);
-        const defaultStopLoss = JSON.stringify({ initial: -0.5, trailing: 0.5 });
+        const defaultStopLoss = JSON.stringify({ initial: -0.5, trailing: 0.5 }); // For future
 
+        // Save data. Changes > 0: new row. 0: duplicate/skip.
         insertStmt.run(
-          drop.address,
-          drop.chain,
-          drop.metadata.name,
-          drop.metadata.symbol,
-          drop.priceData?.price || 0,
-          drop.priceData?.marketCap || 0,
-          callTimestamp,
-          drop.caller,
-          chatId,
+          drop.address,                // Token CA
+          drop.chain,                  // Blockchain chain
+          drop.metadata.name,          // Token name
+          drop.metadata.symbol,        // Token symbol
+          drop.priceData?.price || 0,  // Extracted price at call time
+          drop.priceData?.marketCap || 0, // Extracted marketcap at call time
+          callTimestamp,               // UNIX timestamp of the call
+          drop.caller,                 // Username of the caller
+          chatId,                      // Telegram chat ID (static here)
           function(err) {
             if (err) {
+              // Error inserting this record
               console.error('Error inserting CA drop:', err);
               skippedCount++;
             } else {
+              // Only increments if this is a new row due to "INSERT OR IGNORE"
               if (this.changes > 0) {
                 savedCount++;
               } else {
-                skippedCount++; // Already exists
+                skippedCount++; // Was already present in table
               }
             }
           }
@@ -129,9 +134,11 @@ async function saveToDatabase(results) {
 
       db.run('COMMIT;', (err) => {
         if (err) {
+          // Database commit failure
           console.error('Error committing transaction:', err);
           reject(err);
         } else {
+          // The transaction and insertions are done
           console.log(`📊 Database save complete: ${savedCount} new, ${skippedCount} skipped (already exists)`);
           insertStmt.finalize();
           db.close();
@@ -142,22 +149,23 @@ async function saveToDatabase(results) {
   });
 }
 
-// Simple extraction function
+// Extract possible CA drops from Telegram-exported HTML
 function extractCADrops() {
   const caDrops = [];
+  // List/scan all relevant files in the message directory
   const files = fs.readdirSync(MESSAGES_DIR)
-    .filter(file => file.startsWith('messages') && file.endsWith('.html'))
+    .filter(file => file.startsWith('messages') && file.endsWith('.html')) // Only Telegram HTMLs
     .sort((a, b) => {
+      // Sort descending by number in filename, so most recent first
       const numA = parseInt(a.match(/messages(\d+)\.html/)?.[1] || '0');
       const numB = parseInt(b.match(/messages(\d+)\.html/)?.[1] || '0');
-      return numB - numA; // Most recent first
+      return numB - numA;
     });
 
   console.log(`Found ${files.length} message files`);
 
-  // Process all brook files
-  // Process files one at a time to avoid overwhelming the system
-  const filesToProcess = files.slice(2, 3); // Process the NEXT file (messages15.html)
+  // Limit: only process a single slice for this run (slice(2,3))
+  const filesToProcess = files.slice(2, 3); // Only process specific file(s) as an example
   console.log(`Processing ${filesToProcess.length} file(s) for CA extraction...`);
   
   for (const file of filesToProcess) {
@@ -165,64 +173,58 @@ function extractCADrops() {
     const filePath = path.join(MESSAGES_DIR, file);
     const content = fs.readFileSync(filePath, 'utf-8');
     
-    // Find all message blocks using regex
+    // Regex to extract each individual message block (by div)
     const messageRegex = /<div class="message default clearfix[^"]*" id="message(\d+)">([\s\S]*?)(?=<div class="message|$)/g;
     let match;
     let processedCount = 0;
-    const maxPerFile = 50; // Limit to 50 CA drops per file
+    const maxPerFile = 50; // Don't process more than this many drops per file to be safe
     
     while ((match = messageRegex.exec(content)) !== null && processedCount < maxPerFile) {
-      const messageId = match[1];
-      const messageContent = match[2];
-      
-      // Extract timestamp
+      const messageId = match[1];      // Telegram message numerical ID
+      const messageContent = match[2]; // HTML for single message
+
+      // Extract message timestamp from title attribute
       const timestampMatch = messageContent.match(/title="([^"]+)"/);
       if (!timestampMatch) continue;
-      
       const timestamp = timestampMatch[1];
       
-      // Extract username
+      // Extract username (from_name block)
       const usernameMatch = messageContent.match(/<div class="from_name">\s*([^<]+)\s*<\/div>/);
       if (!usernameMatch) continue;
-      
       const username = usernameMatch[1].toLowerCase().trim();
       
-      // Skip excluded users
+      // Skip any excluded usernames (case insensitive substring match)
       if (EXCLUDED_USERS.some(excluded => username.includes(excluded))) {
         continue;
       }
       
-      // Extract message text
+      // Get the body text. Telegram often wraps plain chat in <div class="text">
       const textMatch = messageContent.match(/<div class="text">([\s\S]*?)<\/div>/);
       if (!textMatch) continue;
-      
       const messageText = textMatch[1];
       
-      // Look for token addresses
-      const solanaAddressRegex = /[1-9A-HJ-NP-Za-km-z]{32,44}/g;
-      const evmAddressRegex = /0x[a-fA-F0-9]{40}/g;
-      
+      // Search for token addresses in Solana and EVM formats
+      const solanaAddressRegex = /[1-9A-HJ-NP-Za-km-z]{32,44}/g; // Base58, 32-44 chars (no 0IOl)
+      const evmAddressRegex = /0x[a-fA-F0-9]{40}/g;             // 0x-prefixed 40-hex (EVM chains)
       const solanaMatches = messageText.match(solanaAddressRegex) || [];
       const evmMatches = messageText.match(evmAddressRegex) || [];
       
-      // If we found addresses, it could be a CA drop
+      // If either Solana or EVM address found, add all as CA drops
       if (solanaMatches.length > 0 || evmMatches.length > 0) {
         const addresses = [...solanaMatches, ...evmMatches];
-        
         for (const address of addresses) {
-          // Determine chain based on address format
+          // Mark probable chain type
           let chain = 'solana';
           if (address.startsWith('0x')) {
-            chain = 'unknown_evm';
+            chain = 'unknown_evm'; // We'll probe for specific EVM below
           }
-          
           caDrops.push({
             messageId,
             username,
             timestamp,
             address,
             chain,
-            messageText: messageText.replace(/<[^>]*>/g, ''), // Strip HTML tags
+            messageText: messageText.replace(/<[^>]*>/g, ''), // Remove any HTML tags from text
             file
           });
         }
@@ -233,20 +235,20 @@ function extractCADrops() {
   return caDrops;
 }
 
-// Fetch token metadata from Birdeye
+// Request token metadata (name, symbol, decimals) from Birdeye for a given chain/address
 async function fetchTokenMetadata(address, chain) {
   try {
     const response = await axios.get('https://public-api.birdeye.so/defi/v3/token/meta-data/single', {
       headers: {
-        'X-API-KEY': BIRDEYE_API_KEY,
-        'x-chain': chain,
+        'X-API-KEY': BIRDEYE_API_KEY,           // Auth for Birdeye
+        'x-chain': chain,                       // Chain: solana/bsc/ethereum/etc
         'accept': 'application/json'
       },
       params: {
-        address: address
+        address: address                        // Token CA
       }
     });
-    
+    // Check Birdeye response for result
     if (response.data.success && response.data.data) {
       return {
         name: response.data.data.name,
@@ -255,16 +257,17 @@ async function fetchTokenMetadata(address, chain) {
       };
     }
   } catch (error) {
+    // Print error from API or http
     console.log(`Failed to fetch metadata for ${address} on ${chain}: ${error.response?.data?.message || error.message}`);
   }
-  
+  // Nothing found or request failed
   return null;
 }
 
-// Fetch candles and determine price from candle data
+// Query Birdeye candle endpoint, find price/MC for the call timestamp
 async function fetchPriceFromCandles(mint, chain, timestamp) {
   try {
-    // Ensure timestamp is a valid number
+    // Normalize timestamp to UNIX seconds (accepts Date/number/ISO)
     let unixTimestamp;
     if (typeof timestamp === 'number') {
       unixTimestamp = timestamp;
@@ -274,9 +277,9 @@ async function fetchPriceFromCandles(mint, chain, timestamp) {
       unixTimestamp = Math.floor(new Date(timestamp).getTime() / 1000);
     }
     
-    // Calculate time range: 1 hour before and after the call timestamp
-    const startTime = unixTimestamp - 3600; // 1 hour before
-    const endTime = unixTimestamp + 3600;   // 1 hour after
+    // Request 1 hour before/after the call time for context
+    const startTime = unixTimestamp - 3600; // 1 hour earlier
+    const endTime = unixTimestamp + 3600;   // 1 hour later
     
     console.log(`Fetching candles for ${mint} from ${startTime} to ${endTime}`);
     
@@ -288,7 +291,7 @@ async function fetchPriceFromCandles(mint, chain, timestamp) {
       },
       params: {
         address: mint,
-        type: '5m',
+        type: '5m',                 // 5-minute OHLCV intervals
         currency: 'usd',
         ui_amount_mode: 'raw',
         time_from: startTime,
@@ -299,13 +302,12 @@ async function fetchPriceFromCandles(mint, chain, timestamp) {
       }
     });
 
+    // Check response, locate closest candle, return its values
     if (response.data.success && response.data.data?.items?.length > 0) {
       const candles = response.data.data.items;
-      
-      // Find the candle closest to the call timestamp
+      // Find candle closest in time to unixTimestamp
       let closestCandle = candles[0];
       let minTimeDiff = Math.abs(closestCandle.unix_time - unixTimestamp);
-      
       for (const candle of candles) {
         const timeDiff = Math.abs(candle.unix_time - unixTimestamp);
         if (timeDiff < minTimeDiff) {
@@ -313,29 +315,29 @@ async function fetchPriceFromCandles(mint, chain, timestamp) {
           closestCandle = candle;
         }
       }
-      
-      // Use the open price of the closest candle as the call price
+      // Use the opening price of that candle as our "call" price
       return {
         price: closestCandle.o,
-        marketCap: closestCandle.v * closestCandle.c, // volume * close price approximation
+        marketCap: closestCandle.v * closestCandle.c, // Approx MC: volume * close price
         candleTime: closestCandle.unix_time
       };
     }
   } catch (error) {
+    // Print out HTTP/API error
     console.log(`Failed to fetch candles for ${mint} on ${chain}: ${error.response?.data?.message || error.message}`);
   }
-  
+  // Nothing found
   return null;
 }
 
-// Main function
+// Main function: orchestrates extraction, metadata, price, and DB save
 async function main() {
   console.log('🔍 Extracting CA drops from chat history...');
   
-  const caDrops = extractCADrops();
+  const caDrops = extractCADrops(); // Step 1: Find all possible CAs in exports
   console.log(`Found ${caDrops.length} potential CA drops`);
   
-  // Group by address to avoid duplicates
+  // Group and deduplicate drops by address+username. Only latest call kept.
   const uniqueDrops = new Map();
   caDrops.forEach(drop => {
     const key = `${drop.address}_${drop.username}`;
@@ -347,21 +349,20 @@ async function main() {
   const uniqueCAArray = Array.from(uniqueDrops.values());
   console.log(`Unique CA drops: ${uniqueCAArray.length}`);
   
-  // Show first few examples
+  // Print sample results as a spot-check
   console.log('\n📋 Sample CA drops found:');
   uniqueCAArray.slice(0, 5).forEach((drop, index) => {
     console.log(`${index + 1}. ${drop.username}: ${drop.address} (${drop.timestamp})`);
   });
   
-  // Fetch metadata for each unique CA drop
+  // For each drop: fill in metadata/price, then add to results
   const results = [];
   for (const drop of uniqueCAArray) {
     console.log(`\n📊 Processing: ${drop.address} by ${drop.username}`);
-    
     let metadata = null;
     let finalChain = drop.chain;
-    
-    // For EVM addresses, try different chains
+
+    // If EVM, try each chain in turn until we get metadata
     if (drop.chain === 'unknown_evm') {
       const evmChains = ['bsc', 'ethereum', 'base'];
       for (const chain of evmChains) {
@@ -372,14 +373,17 @@ async function main() {
         }
       }
     } else {
-      // For Solana addresses
+      // Otherwise, assume Solana
       metadata = await fetchTokenMetadata(drop.address, 'solana');
     }
     
     if (metadata) {
-      // Now fetch price from candles
-      const priceData = await fetchPriceFromCandles(drop.address, finalChain, parseTimestamp(drop.timestamp));
-      
+      // Now that we have metadata, get historical price/MC from Birdeye
+      const priceData = await fetchPriceFromCandles(
+        drop.address,
+        finalChain,
+        parseTimestamp(drop.timestamp)
+      );
       results.push({
         ...drop,
         chain: finalChain,
@@ -387,25 +391,26 @@ async function main() {
         priceData,
         timestamp: parseTimestamp(drop.timestamp)
       });
-      
       console.log(`✅ Found: ${metadata.name} (${metadata.symbol}) on ${finalChain}`);
       if (priceData) {
-        console.log(`   Price: $${priceData.price?.toFixed(8) || 'N/A'}, MarketCap: $${priceData.marketCap?.toFixed(2) || 'N/A'}`);
+        console.log(
+          `   Price: $${priceData.price?.toFixed(8) || 'N/A'}, MarketCap: $${priceData.marketCap?.toFixed(2) || 'N/A'}`
+        );
       } else {
         console.log(`   Price: N/A, MarketCap: N/A`);
       }
     } else {
+      // Could not get metadata: not on any chain checked, or request failed
       console.log(`❌ No metadata found for ${drop.address}`);
     }
-    
-    // Small delay to avoid rate limiting
+    // Rate limiting: sleep 100ms between API batches
     await new Promise(resolve => setTimeout(resolve, 100));
   }
   
-  // Save results to database
+  // Save all outputs to DB and to disk
   await saveToDatabase(results);
   
-  // Save results to JSON file
+  // Also persist to JSON (for backup/inspection)
   const outputFile = './extracted_ca_drops.json';
   fs.writeFileSync(outputFile, JSON.stringify(results, null, 2));
   
@@ -413,7 +418,7 @@ async function main() {
   console.log(`📁 Results saved to: ${outputFile}`);
   console.log(`💾 Results saved to database`);
   
-  // Display summary
+  // Print distribution of tokens by chain as a summary
   const chainStats = {};
   results.forEach(drop => {
     chainStats[drop.chain] = (chainStats[drop.chain] || 0) + 1;
@@ -425,7 +430,7 @@ async function main() {
   });
 }
 
-// Run the extraction
+// Run if called as script, not if required as module
 if (require.main === module) {
   main().catch(console.error);
 }

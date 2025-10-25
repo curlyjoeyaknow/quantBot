@@ -37,6 +37,7 @@ describe('Database Utilities', () => {
    */
   beforeEach(() => {
     jest.clearAllMocks();
+    
     const mockStatement = {
       bind: jest.fn(),
       reset: jest.fn(),
@@ -69,16 +70,16 @@ describe('Database Utilities', () => {
         finalize: jest.fn(),
       };
       
-      mockDb.exec.mockImplementation((sql, callback) => {
+      mockDb.exec.mockImplementation(function (this: any, sql, callback) {
         if (typeof callback === 'function') {
-          callback.call(mockStatement as any, null);
+          callback.call(this, null);
         }
-        return mockDb;
+        return this;
       });
 
       await expect(db.initDatabase()).resolves.toBeUndefined();
       expect(mockDb.exec).toHaveBeenCalled();
-    });
+    }, 5000);
 
     /**
      * Test: Simulates a failure during initialization and checks
@@ -100,7 +101,7 @@ describe('Database Utilities', () => {
       });
 
       await expect(db.initDatabase()).rejects.toThrow('Database initialization failed');
-    });
+    }, 5000);
   });
 
   // --------------------[ Test Group: Simulation Run Persistence ]----------------------

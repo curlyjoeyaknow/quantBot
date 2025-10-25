@@ -15,7 +15,7 @@
  * ============================================================================
  */
 
-import * as WebSocket from 'ws';
+import WebSocket from 'ws';
 import axios from 'axios';
 import { DateTime } from 'luxon';
 import { 
@@ -144,7 +144,7 @@ class HeliusMonitor {
       this.ws = new WebSocket(HELIUS_WS_URL);
 
     // On WebSocket open: subscribe to all tracked assets
-    this.ws.on('open', () => {
+    this.ws!.on('open', () => {
       console.log('Connected to Helius WebSocket.');
       this.reconnectAttempts = 0;
       this.hasAuthError = false;
@@ -152,7 +152,7 @@ class HeliusMonitor {
     });
 
     // Parse and dispatch WebSocket messages
-    this.ws.on('message', (data: WebSocket.RawData) => {
+    this.ws!.on('message', (data: WebSocket.RawData) => {
       try {
         const message = JSON.parse(data.toString());
         this.handleMessage(message);
@@ -162,13 +162,13 @@ class HeliusMonitor {
     });
 
     // Auto-reconnect on connection loss
-    this.ws.on('close', () => {
+    this.ws!.on('close', () => {
       console.warn('Helius WebSocket connection closed.');
       this.handleReconnect();
     });
 
     // Non-fatal protocol errors
-    this.ws.on('error', (error) => {
+    this.ws!.on('error', (error) => {
       console.error('Helius WebSocket error:', error);
       // Don't crash the bot on WebSocket errors
       if (error.message && error.message.includes('401')) {
