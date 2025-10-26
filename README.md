@@ -7,11 +7,12 @@ A sophisticated Telegram bot that provides PNL simulation for trading strategies
 ### 📊 **PNL Simulation**
 
 - Multi-chain support: Solana, Ethereum, BSC, Base
-- Hybrid candle fetching (5m recent + 1h historical)
+- **InfluxDB time-series database** for high-performance OHLCV storage
+- Multi-API-key Birdeye integration with retry logic and caching
 - Customizable take-profit strategies
 - Configurable stop-loss (initial + trailing)
 - Detailed simulation events and performance metrics
-- CSV caching for efficient data management
+- Intelligent caching layer for 10-50x faster queries
 
 ### 🎯 **Real-Time CA Monitoring**
 
@@ -35,8 +36,9 @@ A sophisticated Telegram bot that provides PNL simulation for trading strategies
 ### Prerequisites
 
 - Node.js 18+
+- Docker (for InfluxDB)
 - Telegram Bot Token
-- Birdeye API Key
+- Birdeye API Keys (6 keys recommended for rotation)
 - Helius API Key (for CA monitoring)
 
 ### Installation
@@ -52,14 +54,58 @@ npm install
 Create a `.env` file:
 
 ```env
-BOT_TOKEN=your_telegram_bot_token_here
-BIRDEYE_API_KEY=your_birdeye_api_key_here
-HELIUS_API_KEY=your_helius_api_key_here
-TELEGRAM_DEFAULT_CHAT=-1002523160967
+# Telegram Bot
+TELEGRAM_BOT_TOKEN=your_bot_token
+TELEGRAM_CHAT_ID=your_chat_id
+
+# InfluxDB Configuration
+INFLUX_URL=http://localhost:8086
+INFLUX_TOKEN=your-admin-token
+INFLUX_ORG=quantbot
+INFLUX_BUCKET=ohlcv_data
+INFLUX_USERNAME=admin
+INFLUX_PASSWORD=your-secure-password
+
+# Birdeye API Keys (6 keys for rotation)
+BIRDEYE_API_KEY_1=your_first_key
+BIRDEYE_API_KEY_2=your_second_key
+BIRDEYE_API_KEY_3=your_third_key
+BIRDEYE_API_KEY_4=your_fourth_key
+BIRDEYE_API_KEY_5=your_fifth_key
+BIRDEYE_API_KEY_6=your_sixth_key
+
+# Helius API
+HELIUS_API_KEY=your_helius_key
+HELIUS_WS_URL=wss://atlas-mainnet.helius-rpc.com/?api-key=your_helius_key
+
+# Database
+DATABASE_PATH=./quantbot.db
+SIMULATIONS_DB_PATH=./simulations.db
 ```
 
 ### Running the Bot
 
+#### 1. Start InfluxDB
+```bash
+npm run influxdb:start
+```
+
+#### 2. Initialize InfluxDB
+- Visit http://localhost:8086
+- Create admin user and organization
+- Copy the admin token to your `.env` file
+
+#### 3. Migrate Existing Data (Optional)
+```bash
+npm run influxdb:migrate
+```
+
+#### 4. Test Integration
+```bash
+npm run influxdb:test
+```
+
+#### 5. Start the Bot
 ```bash
 npm start
 ```

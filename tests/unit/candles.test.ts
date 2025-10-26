@@ -8,15 +8,17 @@
  * and validates that candle fields are handled robustly.
  */
 
-import { fetchHybridCandles, Candle } from '../../src/simulation/candles';
-import { DateTime } from 'luxon';
+// Mock axios using doMock to ensure it's applied before module loading
+const mockAxiosGet = jest.fn();
+jest.doMock('axios', () => ({
+  __esModule: true,
+  default: {
+    get: mockAxiosGet
+  },
+  get: mockAxiosGet
+}));
 
-/**
- * Mocks for axios and filesystem modules to prevent real HTTP requests and file writes during tests.
- */
-jest.mock('axios');
-
-jest.mock('fs', () => ({
+jest.doMock('fs', () => ({
   existsSync: jest.fn(() => false),
   readFileSync: jest.fn(),
   writeFileSync: jest.fn(),
@@ -34,8 +36,8 @@ jest.mock('fs', () => ({
   }
 }));
 
-import axios from 'axios';
-const mockedAxios = axios as jest.Mocked<typeof axios>;
+import { fetchHybridCandles, Candle } from '../../src/simulation/candles';
+import { DateTime } from 'luxon';
 
 describe('Candle Data Handling', () => {
   // Standard fixtures for tests
@@ -49,9 +51,12 @@ describe('Candle Data Handling', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     // Reset axios mock to default behavior
-    if (mockedAxios.get) {
-      mockedAxios.get.mockReset();
-    }
+    mockAxiosGet.mockReset();
+    // Reset fs mocks
+    require('fs').existsSync.mockReturnValue(false);
+    require('fs').readFileSync.mockReturnValue('');
+    require('fs').writeFileSync.mockClear();
+    require('fs').mkdirSync.mockClear();
   });
 
   describe('fetchHybridCandles', () => {
@@ -86,7 +91,7 @@ describe('Candle Data Handling', () => {
         }
       };
 
-      mockedAxios.get.mockResolvedValueOnce(mockResponse);
+      mockAxiosGet.mockResolvedValueOnce(mockResponse);
 
       const result = await fetchHybridCandles(mockTokenAddress, mockStartTime, mockEndTime, 'solana');
 
@@ -124,13 +129,13 @@ describe('Candle Data Handling', () => {
         }
       };
 
-      mockedAxios.get.mockResolvedValueOnce(mockResponse);
+      mockAxiosGet.mockResolvedValueOnce(mockResponse);
 
       const result = await fetchHybridCandles(mockTokenAddress, mockStartTime, mockEndTime, 'ethereum');
 
       expect(result).toBeDefined();
       expect(result.length).toBe(1);
-      expect(mockedAxios.get).toHaveBeenCalledWith(
+      expect(mockAxiosGet).toHaveBeenCalledWith(
         expect.stringContaining('birdeye.so'),
         expect.objectContaining({
           headers: expect.objectContaining({
@@ -145,7 +150,7 @@ describe('Candle Data Handling', () => {
      * The promise should reject with the "API Error".
      */
     it('should handle API errors gracefully', async () => {
-      mockedAxios.get.mockRejectedValueOnce(new Error('API Error'));
+      mockAxiosGet.mockRejectedValueOnce(new Error('API Error'));
 
       await expect(fetchHybridCandles(mockTokenAddress, mockStartTime, mockEndTime, 'solana'))
         .rejects.toThrow('API Error');
@@ -164,7 +169,7 @@ describe('Candle Data Handling', () => {
         }
       };
 
-      mockedAxios.get.mockResolvedValueOnce(mockResponse);
+      mockAxiosGet.mockResolvedValueOnce(mockResponse);
 
       const result = await fetchHybridCandles(mockTokenAddress, mockStartTime, mockEndTime, 'solana');
 
@@ -183,7 +188,7 @@ describe('Candle Data Handling', () => {
         }
       };
 
-      mockedAxios.get.mockResolvedValueOnce(mockResponse);
+      mockAxiosGet.mockResolvedValueOnce(mockResponse);
 
       const result = await fetchHybridCandles(mockTokenAddress, mockStartTime, mockEndTime, 'solana');
 
@@ -205,11 +210,11 @@ describe('Candle Data Handling', () => {
           }
         };
 
-        mockedAxios.get.mockResolvedValueOnce(mockResponse);
+        mockAxiosGet.mockResolvedValueOnce(mockResponse);
 
         await fetchHybridCandles(mockTokenAddress, mockStartTime, mockEndTime, chain);
 
-        expect(mockedAxios.get).toHaveBeenCalledWith(
+        expect(mockAxiosGet).toHaveBeenCalledWith(
           expect.stringContaining('birdeye.so'),
           expect.objectContaining({
             headers: expect.objectContaining({
@@ -243,7 +248,7 @@ describe('Candle Data Handling', () => {
         }
       };
 
-      mockedAxios.get.mockResolvedValueOnce(mockResponse);
+      mockAxiosGet.mockResolvedValueOnce(mockResponse);
 
       const result = await fetchHybridCandles(mockTokenAddress, mockStartTime, mockEndTime, 'solana');
 
@@ -272,7 +277,7 @@ describe('Candle Data Handling', () => {
         }
       };
 
-      mockedAxios.get.mockResolvedValueOnce(mockResponse);
+      mockAxiosGet.mockResolvedValueOnce(mockResponse);
 
       const result = await fetchHybridCandles(mockTokenAddress, mockStartTime, mockEndTime, 'solana');
 

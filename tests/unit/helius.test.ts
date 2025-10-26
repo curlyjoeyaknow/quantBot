@@ -14,19 +14,24 @@ jest.mock('../../src/simulation/ichimoku');
 
 import WebSocket from 'ws';
 import axios from 'axios';
-import { HeliusMonitor } from '../../src/api/helius';
+import { HeliusMonitor } from '../../src/helius-monitor';
 import * as db from '../../src/utils/database';
 import { simulateStrategy } from '../../src/simulation/engine';
 import { calculateIchimoku, detectIchimokuSignals, formatIchimokuData } from '../../src/simulation/ichimoku';
 
+// Patch for WebSocket.OPEN static value if running outside real ws
+if (typeof (WebSocket as any).OPEN === 'undefined') {
+  (WebSocket as any).OPEN = 1;
+}
+
 // Mock implementations
-const MockWebSocket = WebSocket as jest.MockedClass<typeof WebSocket>;
-const mockAxios = axios as jest.Mocked<typeof axios>;
-const mockDb = db as jest.Mocked<typeof db>;
-const mockSimulateStrategy = simulateStrategy as jest.MockedFunction<typeof simulateStrategy>;
-const mockCalculateIchimoku = calculateIchimoku as jest.MockedFunction<typeof calculateIchimoku>;
-const mockDetectIchimokuSignals = detectIchimokuSignals as jest.MockedFunction<typeof detectIchimokuSignals>;
-const mockFormatIchimokuData = formatIchimokuData as jest.MockedFunction<typeof formatIchimokuData>;
+const MockWebSocket = WebSocket as unknown as jest.MockedClass<typeof WebSocket>;
+const mockAxios = axios as unknown as jest.Mocked<typeof axios>;
+const mockDb = db as unknown as jest.Mocked<typeof db>;
+const mockSimulateStrategy = simulateStrategy as unknown as jest.MockedFunction<typeof simulateStrategy>;
+const mockCalculateIchimoku = calculateIchimoku as unknown as jest.MockedFunction<typeof calculateIchimoku>;
+const mockDetectIchimokuSignals = detectIchimokuSignals as unknown as jest.MockedFunction<typeof detectIchimokuSignals>;
+const mockFormatIchimokuData = formatIchimokuData as unknown as jest.MockedFunction<typeof formatIchimokuData>;
 
 describe('HeliusMonitor', () => {
   let monitor: HeliusMonitor;
@@ -35,28 +40,28 @@ describe('HeliusMonitor', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    
+
     // Mock bot
     mockBot = {
       telegram: {
-        sendMessage: jest.fn()
-      }
+        sendMessage: jest.fn().mockResolvedValue(undefined),
+      },
     };
 
     // Mock WebSocket
     mockWebSocket = {
-      readyState: WebSocket.OPEN,
+      get readyState() { return (WebSocket as any).OPEN; },
       send: jest.fn(),
       close: jest.fn(),
-      on: jest.fn(),
+      on: jest.fn().mockImplementation(() => mockWebSocket), // For chaining
     } as any;
 
-    MockWebSocket.mockImplementation(() => mockWebSocket);
+    (MockWebSocket as unknown as { mockImplementation: any }).mockImplementation(() => mockWebSocket);
 
     // Mock database functions
     mockDb.getActiveCATracking.mockResolvedValue([]);
-    mockDb.savePriceUpdate.mockResolvedValue();
-    mockDb.saveAlertSent.mockResolvedValue();
+    mockDb.savePriceUpdate.mockResolvedValue(undefined);
+    mockDb.saveAlertSent.mockResolvedValue(undefined);
     mockDb.getRecentCAPerformance.mockResolvedValue([]);
 
     // Mock simulation functions
@@ -85,7 +90,10 @@ describe('HeliusMonitor', () => {
       chikou: 1.2,
       cloudTop: 1.05,
       cloudBottom: 0.95,
-      pricePosition: 'above',
+      cloudThickness: 0.1,
+      isBullish: true,
+      isBearish: false,
+      inCloud: false,
     });
 
     mockDetectIchimokuSignals.mockReturnValue([]);
@@ -127,7 +135,7 @@ describe('HeliusMonitor', () => {
 
     it('should handle connection errors', async () => {
       const error = new Error('Connection failed');
-      MockWebSocket.mockImplementation(() => {
+      (MockWebSocket as any).mockImplementation(() => {
         throw error;
       });
 
@@ -136,10 +144,11 @@ describe('HeliusMonitor', () => {
 
     it('should handle authentication errors', async () => {
       const authError = new Error('401 Unauthorized');
-      mockWebSocket.on.mockImplementation((event, callback) => {
+      mockWebSocket.on.mockImplementation((event: string | symbol, callback: Function) => {
         if (event === 'error') {
-          callback(authError);
+          setTimeout(() => callback(authError), 0);
         }
+        return mockWebSocket;
       });
 
       await monitor.start();
@@ -164,8 +173,8 @@ describe('HeliusMonitor', () => {
         userId: 12345,
         chatId: 12345,
         strategy: [{ percent: 0.5, target: 2.0 }],
-        stopLoss: -0.2,
-        entryPrice: 1.0
+        stopLossConfig: -0.2,
+        callPrice: 1.0
       };
 
       await monitor.addCATracking(caData);
@@ -180,8 +189,8 @@ describe('HeliusMonitor', () => {
         userId: 12345,
         chatId: 12345,
         strategy: [{ percent: 0.5, target: 2.0 }],
-        stopLoss: -0.2,
-        entryPrice: 1.0,
+        stopLossConfig: -0.2,
+        callPrice: 1.0,
         historicalCandles: Array(60).fill(null).map((_, i) => ({
           timestamp: 1000 + i * 60,
           open: 1.0,
@@ -196,21 +205,20 @@ describe('HeliusMonitor', () => {
 
       expect(monitor['activeCAs'].size).toBe(1);
       const ca = monitor['activeCAs'].get('So11111111111111111111111111111111111111112');
-      expect(ca?.candles.length).toBe(60);
+      expect(Array.isArray(ca?.candles) ? ca?.candles.length : null).toBe(60);
       expect(ca?.lastIchimoku).toBeDefined();
     });
 
     it('should subscribe to CA when WebSocket is open', async () => {
       monitor['ws'] = mockWebSocket;
-      mockWebSocket.readyState = WebSocket.OPEN;
 
       const caData = {
         tokenAddress: 'So11111111111111111111111111111111111111112',
         userId: 12345,
         chatId: 12345,
         strategy: [{ percent: 0.5, target: 2.0 }],
-        stopLoss: -0.2,
-        entryPrice: 1.0
+        stopLossConfig: -0.2,
+        callPrice: 1.0
       };
 
       await monitor.addCATracking(caData);
@@ -228,8 +236,8 @@ describe('HeliusMonitor', () => {
         userId: 12345,
         chatId: 12345,
         strategy: [{ percent: 0.5, target: 2.0 }],
-        stopLoss: -0.2,
-        entryPrice: 1.0
+        stopLossConfig: -0.2,
+        callPrice: 1.0
       };
 
       await monitor.addCATracking(caData);
@@ -246,7 +254,7 @@ describe('HeliusMonitor', () => {
       };
 
       // Mock the handleMessage method
-      const handleMessage = monitor['handleMessage'].bind(monitor);
+      const handleMessage = (monitor as any)['handleMessage'].bind(monitor);
       await handleMessage(priceUpdateMessage);
 
       expect(mockDb.savePriceUpdate).toHaveBeenCalled();
@@ -258,7 +266,7 @@ describe('HeliusMonitor', () => {
 
       if (ca) {
         ca.strategy = [{ percent: 0.5, target: 2.0 }];
-        ca.entryPrice = 1.0;
+        ca.callPrice = 1.0;
 
         const priceUpdateMessage = {
           method: 'priceUpdate',
@@ -269,7 +277,7 @@ describe('HeliusMonitor', () => {
           }
         };
 
-        const handleMessage = monitor['handleMessage'].bind(monitor);
+        const handleMessage = (monitor as any)['handleMessage'].bind(monitor);
         await handleMessage(priceUpdateMessage);
 
         expect(mockBot.telegram.sendMessage).toHaveBeenCalled();
@@ -281,8 +289,8 @@ describe('HeliusMonitor', () => {
       expect(ca).toBeDefined();
 
       if (ca) {
-        ca.stopLoss = -0.2; // -20% stop loss
-        ca.entryPrice = 1.0;
+        ca.stopLossConfig = -0.2; // -20% stop loss
+        ca.callPrice = 1.0;
 
         const priceUpdateMessage = {
           method: 'priceUpdate',
@@ -293,7 +301,7 @@ describe('HeliusMonitor', () => {
           }
         };
 
-        const handleMessage = monitor['handleMessage'].bind(monitor);
+        const handleMessage = (monitor as any)['handleMessage'].bind(monitor);
         await handleMessage(priceUpdateMessage);
 
         expect(mockBot.telegram.sendMessage).toHaveBeenCalled();
@@ -308,8 +316,8 @@ describe('HeliusMonitor', () => {
         userId: 12345,
         chatId: 12345,
         strategy: [{ percent: 0.5, target: 2.0 }],
-        stopLoss: -0.2,
-        entryPrice: 1.0,
+        stopLossConfig: -0.2,
+        callPrice: 1.0,
         historicalCandles: Array(60).fill(null).map((_, i) => ({
           timestamp: 1000 + i * 60,
           open: 1.0,
@@ -331,14 +339,21 @@ describe('HeliusMonitor', () => {
 
     it('should detect Ichimoku signals', async () => {
       mockDetectIchimokuSignals.mockReturnValue([
-        { type: 'bullish_crossover', strength: 'strong' }
+        { 
+          type: 'tenkan_kijun_cross', 
+          direction: 'bullish',
+          price: 1.5,
+          timestamp: Date.now(),
+          description: 'Tenkan-Kijun crossover detected',
+          strength: 'strong' 
+        }
       ]);
 
       const ca = monitor['activeCAs'].get('So11111111111111111111111111111111111111112');
       expect(ca).toBeDefined();
 
       if (ca) {
-        const checkSignals = monitor['checkIchimokuSignals'].bind(monitor);
+        const checkSignals = (monitor as any)['checkIchimokuSignals'].bind(monitor);
         await checkSignals(ca, 1.5, Date.now());
 
         expect(mockBot.telegram.sendMessage).toHaveBeenCalled();
@@ -350,7 +365,7 @@ describe('HeliusMonitor', () => {
       expect(ca).toBeDefined();
 
       if (ca && ca.lastIchimoku) {
-        const isNear = monitor['isPriceNearIchimokuLines'](1.05, ca.lastIchimoku);
+        const isNear = (monitor as any)['isPriceNearIchimokuLines'](1.05, ca.lastIchimoku);
         expect(typeof isNear).toBe('boolean');
       }
     });
@@ -368,7 +383,7 @@ describe('HeliusMonitor', () => {
           cloudBottom: 0.95
         };
 
-        const checkCrosses = monitor['checkIchimokuLeadingSpanCrosses'].bind(monitor);
+        const checkCrosses = (monitor as any)['checkIchimokuLeadingSpanCrosses'].bind(monitor);
         await checkCrosses(ca, 1.1, Date.now());
 
         expect(mockBot.telegram.sendMessage).toHaveBeenCalled();
@@ -383,8 +398,8 @@ describe('HeliusMonitor', () => {
         userId: 12345,
         chatId: 12345,
         strategy: [{ percent: 0.5, target: 2.0 }],
-        stopLoss: -0.2,
-        entryPrice: 1.0
+        stopLossConfig: -0.2,
+        callPrice: 1.0
       };
 
       await monitor.addCATracking(caData);
@@ -395,7 +410,7 @@ describe('HeliusMonitor', () => {
       expect(ca).toBeDefined();
 
       if (ca) {
-        const sendAlert = monitor['sendAlert'].bind(monitor);
+        const sendAlert = (monitor as any)['sendAlert'].bind(monitor);
         await sendAlert(ca, 'Test alert message');
 
         expect(mockBot.telegram.sendMessage).toHaveBeenCalledWith(
@@ -419,10 +434,13 @@ describe('HeliusMonitor', () => {
           chikou: 1.2,
           cloudTop: 1.05,
           cloudBottom: 0.95,
-          pricePosition: 'above',
+          cloudThickness: 0.1,
+          isBullish: true,
+          isBearish: false,
+          inCloud: false,
         };
 
-        const sendIchimokuAlert = monitor['sendIchimokuAlert'].bind(monitor);
+        const sendIchimokuAlert = (monitor as any)['sendIchimokuAlert'].bind(monitor);
         await sendIchimokuAlert(ca, 'Bullish signal detected', 1.5);
 
         expect(mockBot.telegram.sendMessage).toHaveBeenCalled();
@@ -435,9 +453,12 @@ describe('HeliusMonitor', () => {
       expect(ca).toBeDefined();
 
       if (ca) {
+        if (!ca.alertsSent) {
+          ca.alertsSent = new Set();
+        }
         ca.alertsSent.add('test_alert');
 
-        const sendAlert = monitor['sendAlert'].bind(monitor);
+        const sendAlert = (monitor as any)['sendAlert'].bind(monitor);
         await sendAlert(ca, 'Test alert message');
 
         // Should not send duplicate alert
@@ -451,7 +472,7 @@ describe('HeliusMonitor', () => {
       monitor['reconnectAttempts'] = 3;
       monitor['maxReconnectAttempts'] = 5;
 
-      const handleReconnect = monitor['handleReconnect'].bind(monitor);
+      const handleReconnect = (monitor as any)['handleReconnect'].bind(monitor);
       handleReconnect();
 
       expect(monitor['reconnectAttempts']).toBe(4);
@@ -461,7 +482,7 @@ describe('HeliusMonitor', () => {
       monitor['reconnectAttempts'] = 5;
       monitor['maxReconnectAttempts'] = 5;
 
-      const handleReconnect = monitor['handleReconnect'].bind(monitor);
+      const handleReconnect = (monitor as any)['handleReconnect'].bind(monitor);
       handleReconnect();
 
       expect(monitor['hasAuthError']).toBe(true);
@@ -470,7 +491,7 @@ describe('HeliusMonitor', () => {
     it('should handle authentication errors', () => {
       monitor['hasAuthError'] = true;
 
-      const handleReconnect = monitor['handleReconnect'].bind(monitor);
+      const handleReconnect = (monitor as any)['handleReconnect'].bind(monitor);
       handleReconnect();
 
       expect(monitor['hasAuthError']).toBe(true);
@@ -479,7 +500,7 @@ describe('HeliusMonitor', () => {
 
   describe('Fallback Polling', () => {
     it('should start fallback polling', () => {
-      const startFallback = monitor['startFallbackPolling'].bind(monitor);
+      const startFallback = (monitor as any)['startFallbackPolling'].bind(monitor);
       startFallback();
 
       expect(monitor['fallbackPollingInterval']).toBeDefined();
@@ -488,7 +509,7 @@ describe('HeliusMonitor', () => {
     it('should stop fallback polling', () => {
       monitor['fallbackPollingInterval'] = setInterval(() => {}, 1000);
 
-      const stopFallback = monitor['stopFallbackPolling'].bind(monitor);
+      const stopFallback = (monitor as any)['stopFallbackPolling'].bind(monitor);
       stopFallback();
 
       expect(monitor['fallbackPollingInterval']).toBeNull();
@@ -500,8 +521,8 @@ describe('HeliusMonitor', () => {
         userId: 12345,
         chatId: 12345,
         strategy: [{ percent: 0.5, target: 2.0 }],
-        stopLoss: -0.2,
-        entryPrice: 1.0
+        stopLossConfig: -0.2,
+        callPrice: 1.0
       };
 
       await monitor.addCATracking(caData);
@@ -510,7 +531,7 @@ describe('HeliusMonitor', () => {
         data: [{ price: 1.5 }]
       });
 
-      const pollAlerts = monitor['pollIchimokuAlerts'].bind(monitor);
+      const pollAlerts = (monitor as any)['pollIchimokuAlerts'].bind(monitor);
       await pollAlerts();
 
       expect(mockAxios.get).toHaveBeenCalled();
@@ -539,16 +560,20 @@ describe('HeliusMonitor', () => {
   describe('Error Handling', () => {
     it('should handle WebSocket errors gracefully', async () => {
       const error = new Error('WebSocket error');
-      mockWebSocket.on.mockImplementation((event, callback) => {
+      mockWebSocket.on.mockImplementation((event: string | symbol, callback: Function) => {
         if (event === 'error') {
-          callback(error);
+          setTimeout(() => callback(error), 0);
         }
+        return mockWebSocket;
       });
 
       await monitor.start();
 
       // Should not crash
       expect(monitor).toBeDefined();
+      
+      // Restore base mock behavior
+      mockWebSocket.on.mockImplementation(() => mockWebSocket);
     });
 
     it('should handle database errors gracefully', async () => {
@@ -559,8 +584,8 @@ describe('HeliusMonitor', () => {
         userId: 12345,
         chatId: 12345,
         strategy: [{ percent: 0.5, target: 2.0 }],
-        stopLoss: -0.2,
-        entryPrice: 1.0
+        stopLossConfig: -0.2,
+        callPrice: 1.0
       };
 
       await monitor.addCATracking(caData);
@@ -574,8 +599,8 @@ describe('HeliusMonitor', () => {
         }
       };
 
-      const handleMessage = monitor['handleMessage'].bind(monitor);
-      
+      const handleMessage = (monitor as any)['handleMessage'].bind(monitor);
+
       // Should not throw
       await expect(handleMessage(priceUpdateMessage)).resolves.not.toThrow();
     });
@@ -583,8 +608,8 @@ describe('HeliusMonitor', () => {
     it('should handle API errors gracefully', async () => {
       mockAxios.get.mockRejectedValue(new Error('API error'));
 
-      const pollAlerts = monitor['pollIchimokuAlerts'].bind(monitor);
-      
+      const pollAlerts = (monitor as any)['pollIchimokuAlerts'].bind(monitor);
+
       // Should not throw
       await expect(pollAlerts()).resolves.not.toThrow();
     });

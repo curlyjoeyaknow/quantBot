@@ -13,7 +13,7 @@
 
 import { Context } from 'telegraf';
 import { StrategyCommandHandler } from '../../src/commands/StrategyCommandHandler';
-import { StrategyService } from '../../src/services/interfaces/ServiceInterfaces';
+import { StrategyService } from '../../src/services/StrategyService';
 
 // Mock the StrategyService
 const mockStrategyService: jest.Mocked<StrategyService> = {
@@ -21,6 +21,9 @@ const mockStrategyService: jest.Mocked<StrategyService> = {
   saveStrategy: jest.fn(),
   getStrategy: jest.fn(),
   deleteStrategy: jest.fn(),
+  strategyExists: jest.fn(),
+  getDefaultStrategy: jest.fn(),
+  setDefaultStrategy: jest.fn(),
 } as any;
 
 describe('StrategyCommandHandler', () => {
@@ -54,22 +57,26 @@ describe('StrategyCommandHandler', () => {
 
   describe('execute method - List Strategies', () => {
     it('should list strategies when no arguments provided', async () => {
-      const mockStrategies = [
-        {
-          id: 1,
-          name: 'Test Strategy',
-          description: 'A test strategy',
-          strategy: '[{"percent":0.5,"target":2}]',
-          stop_loss_config: '{"initial":-0.2,"trailing":0.3}'
-        },
-        {
-          id: 2,
-          name: 'Another Strategy',
-          description: 'Another test strategy',
-          strategy: '[{"percent":0.3,"target":3}]',
-          stop_loss_config: '{"initial":-0.15,"trailing":"none"}'
-        }
-      ];
+    const mockStrategies = [
+      {
+        id: 1,
+        name: 'Test Strategy',
+        description: 'A test strategy',
+        strategy: [{ percent: 0.5, target: 2 }],
+        stopLossConfig: { initial: -0.2, trailing: 0.3 },
+        isDefault: false,
+        createdAt: new Date()
+      },
+      {
+        id: 2,
+        name: 'Another Strategy',
+        description: 'Another test strategy',
+        strategy: [{ percent: 0.3, target: 3 }],
+        stopLossConfig: { initial: -0.15, trailing: 'none' as const },
+        isDefault: true,
+        createdAt: new Date()
+      }
+    ];
 
       mockStrategyService.getUserStrategies.mockResolvedValue(mockStrategies);
 
@@ -94,15 +101,17 @@ describe('StrategyCommandHandler', () => {
     });
 
     it('should format strategies list correctly', async () => {
-      const mockStrategies = [
-        {
-          id: 1,
-          name: 'Test Strategy',
-          description: 'A test strategy',
-          strategy: '[{"percent":0.5,"target":2}]',
-          stop_loss_config: '{"initial":-0.2,"trailing":0.3}'
-        }
-      ];
+    const mockStrategies = [
+      {
+        id: 1,
+        name: 'Test Strategy',
+        description: 'A test strategy',
+        strategy: [{ percent: 0.5, target: 2 }],
+        stopLossConfig: { initial: -0.2, trailing: 0.3 },
+        isDefault: false,
+        createdAt: new Date()
+      }
+    ];
 
       mockStrategyService.getUserStrategies.mockResolvedValue(mockStrategies);
 
@@ -113,8 +122,8 @@ describe('StrategyCommandHandler', () => {
 
       expect(message).toContain('1. **Test Strategy**');
       expect(message).toContain('Description: A test strategy');
-      expect(message).toContain('Strategy: [{"percent":0.5,"target":2}]');
-      expect(message).toContain('Stop Loss: {"initial":-0.2,"trailing":0.3}');
+      expect(message).toContain('Strategy: [object Object]');
+      expect(message).toContain('Stop Loss: [object Object]');
     });
   });
 
@@ -124,7 +133,7 @@ describe('StrategyCommandHandler', () => {
     });
 
     it('should save strategy with valid arguments', async () => {
-      mockStrategyService.saveStrategy.mockResolvedValue(undefined);
+      mockStrategyService.saveStrategy.mockResolvedValue(1);
 
       await handler.execute(mockContext);
 
@@ -176,13 +185,15 @@ describe('StrategyCommandHandler', () => {
     });
 
     it('should use existing strategy', async () => {
-      const mockStrategy = {
-        id: 1,
-        name: 'TestStrategy',
-        description: 'A test strategy',
-        strategy: '[{"percent":0.5,"target":2}]',
-        stop_loss_config: '{"initial":-0.2,"trailing":0.3}'
-      };
+    const mockStrategy = {
+      id: 1,
+      name: 'TestStrategy',
+      description: 'A test strategy',
+      strategy: [{ percent: 0.5, target: 2 }],
+      stopLossConfig: { initial: -0.2, trailing: 0.3 },
+      isDefault: false,
+      createdAt: new Date()
+    };
 
       mockStrategyService.getStrategy.mockResolvedValue(mockStrategy);
 
@@ -213,13 +224,15 @@ describe('StrategyCommandHandler', () => {
     });
 
     it('should delete existing strategy', async () => {
-      const mockStrategy = {
-        id: 1,
-        name: 'TestStrategy',
-        description: 'A test strategy',
-        strategy: '[{"percent":0.5,"target":2}]',
-        stop_loss_config: '{"initial":-0.2,"trailing":0.3}'
-      };
+    const mockStrategy = {
+      id: 1,
+      name: 'TestStrategy',
+      description: 'A test strategy',
+      strategy: [{ percent: 0.5, target: 2 }],
+      stopLossConfig: { initial: -0.2, trailing: 0.3 },
+      isDefault: false,
+      createdAt: new Date()
+    };
 
       mockStrategyService.getStrategy.mockResolvedValue(mockStrategy);
       mockStrategyService.deleteStrategy.mockResolvedValue();

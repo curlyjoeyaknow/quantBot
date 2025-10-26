@@ -12,13 +12,19 @@
 
 import { Context } from 'telegraf';
 import { BacktestCommandHandler } from '../../src/commands/BacktestCommandHandler';
-import { SimulationService } from '../../src/services/interfaces/ServiceInterfaces';
+import { SessionService } from '../../src/services/SessionService';
 
-// Mock the SimulationService
-const mockSimulationService: jest.Mocked<SimulationService> = {
-  runSimulation: jest.fn(),
-  getSimulationHistory: jest.fn(),
-  saveSimulation: jest.fn(),
+// Mock the SessionService
+const mockSessionService: jest.Mocked<SessionService> = {
+  getSession: jest.fn(),
+  setSession: jest.fn(),
+  updateSession: jest.fn(),
+  clearSession: jest.fn(),
+  hasSession: jest.fn(),
+  getOrCreateSession: jest.fn(),
+  getAllSessions: jest.fn(),
+  clearAllSessions: jest.fn(),
+  getActiveSessionCount: jest.fn(),
 } as any;
 
 describe('BacktestCommandHandler', () => {
@@ -28,7 +34,7 @@ describe('BacktestCommandHandler', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     
-    handler = new BacktestCommandHandler(mockSimulationService);
+    handler = new BacktestCommandHandler(mockSessionService);
     
     // Mock context with required properties
     mockContext = {
@@ -162,16 +168,16 @@ describe('BacktestCommandHandler', () => {
   });
 
   describe('Error Handling', () => {
-    it('should handle simulation service errors', async () => {
-      // Even though we don't use the simulation service in execute,
-      // we should ensure the handler is robust
-      mockSimulationService.runSimulation.mockRejectedValue(new Error('Service error'));
+    it('should handle session service errors', async () => {
+      mockSessionService.setSession.mockImplementation(() => {
+        throw new Error('Session service error');
+      });
 
       await handler.execute(mockContext);
 
-      // Should still execute successfully
+      // Should handle error gracefully
       expect(mockContext.reply).toHaveBeenCalledWith(
-        expect.stringContaining('🤖 **QuantBot Ready!**'),
+        expect.stringContaining('Failed to initialize backtest session'),
         { parse_mode: 'Markdown' }
       );
     });
@@ -184,6 +190,13 @@ describe('BacktestCommandHandler', () => {
   });
 
   describe('Message Formatting', () => {
+    beforeEach(() => {
+      // Reset mocks to ensure clean state
+      jest.clearAllMocks();
+      mockSessionService.setSession.mockClear();
+      mockSessionService.setSession.mockImplementation(() => {}); // Reset to normal behavior
+    });
+
     it('should use Markdown parse mode', async () => {
       await handler.execute(mockContext);
 

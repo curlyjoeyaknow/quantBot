@@ -50,7 +50,7 @@ import {
   deleteStrategy,
   saveCADrop,
 } from '../utils/database';
-import { HeliusMonitor } from '../api/helius';
+import { HeliusMonitor } from '../helius-monitor';
 
 // Load environment variables (API keys, bot token, etc.)
 dotenv.config();

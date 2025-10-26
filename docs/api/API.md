@@ -64,7 +64,7 @@ interface HeliusConfig {
 #### Helius Usage Example
 
 ```typescript
-import { HeliusMonitor } from '../api/helius';
+import { HeliusMonitor } from '../helius-monitor';
 
 const monitor = new HeliusMonitor({
   apiKey: process.env.HELIUS_API_KEY,

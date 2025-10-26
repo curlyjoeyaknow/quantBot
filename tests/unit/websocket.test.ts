@@ -15,13 +15,19 @@ jest.mock('ws', () => {
     public send = jest.fn();
     public close = jest.fn();
     
+    // WebSocket constants
+    static readonly CONNECTING = 0;
+    static readonly OPEN = 1;
+    static readonly CLOSING = 2;
+    static readonly CLOSED = 3;
+    
     constructor(url: string) {
       super();
-      // Simulate connection opening after a short delay
-      setTimeout(() => {
-        this.readyState = 1; // OPEN
+      // Simulate connection opening immediately
+      setImmediate(() => {
+        this.readyState = MockWebSocket.OPEN;
         this.emit('open');
-      }, 10);
+      });
     }
   }
   

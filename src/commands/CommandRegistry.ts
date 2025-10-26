@@ -5,25 +5,33 @@
  * Provides a centralized way to register and execute commands.
  */
 
-import { Context } from 'telegraf';
-import { CommandHandler } from './interfaces/CommandHandler';
+import { Context, Telegraf } from 'telegraf';
+import { CommandHandler, Session } from './interfaces/CommandHandler';
 import { BacktestCommandHandler } from './BacktestCommandHandler';
 import { StrategyCommandHandler } from './StrategyCommandHandler';
 import { CancelCommandHandler } from './CancelCommandHandler';
 import { RepeatCommandHandler } from './RepeatCommandHandler';
-import { ExtractCommandHandler } from './ExtractCommandHandler';
-import { AnalysisCommandHandler } from './AnalysisCommandHandler';
-import { HistoryCommandHandler } from './HistoryCommandHandler';
-import { BacktestCallCommandHandler } from './BacktestCallCommandHandler';
-import { IchimokuCommandHandler } from './IchimokuCommandHandler';
-import { AlertCommandHandler } from './AlertCommandHandler';
-import { AlertsCommandHandler } from './AlertsCommandHandler';
-import { ServiceContainer } from '../services/ServiceContainer';
+import { SessionService } from '../services/SessionService';
+import { StrategyService } from '../services/StrategyService';
+import { SimulationService } from '../services/SimulationService';
 
 export class CommandRegistry {
   private handlers: Map<string, CommandHandler> = new Map();
+  private bot: Telegraf;
+  private sessionService: SessionService;
+  private strategyService: StrategyService;
+  private simulationService: SimulationService;
   
-  constructor(private serviceContainer: ServiceContainer) {
+  constructor(
+    bot: Telegraf,
+    sessionService: SessionService,
+    strategyService: StrategyService,
+    simulationService: SimulationService
+  ) {
+    this.bot = bot;
+    this.sessionService = sessionService;
+    this.strategyService = strategyService;
+    this.simulationService = simulationService;
     this.registerDefaultHandlers();
   }
   
@@ -31,29 +39,28 @@ export class CommandRegistry {
    * Register default command handlers
    */
   private registerDefaultHandlers(): void {
-    const sessionService = this.serviceContainer.getSessionService();
-    const strategyService = this.serviceContainer.getStrategyService();
-    const simulationService = this.serviceContainer.getSimulationService();
-    const caService = this.serviceContainer.getCAService();
-    const ichimokuService = this.serviceContainer.getIchimokuService();
+    // Register core command handlers
+    this.register(new BacktestCommandHandler(this.sessionService));
+    this.register(new StrategyCommandHandler(this.strategyService));
+    this.register(new CancelCommandHandler(this.sessionService));
+    this.register(new RepeatCommandHandler(this.simulationService, this.sessionService));
     
-    this.register(new BacktestCommandHandler(sessionService));
-    this.register(new StrategyCommandHandler(strategyService));
-    this.register(new CancelCommandHandler(sessionService));
-    this.register(new RepeatCommandHandler(simulationService, sessionService));
-    this.register(new ExtractCommandHandler());
-    this.register(new AnalysisCommandHandler());
-    this.register(new HistoryCommandHandler(simulationService));
-    this.register(new BacktestCallCommandHandler(simulationService));
-    this.register(new IchimokuCommandHandler(ichimokuService));
-    this.register(new AlertCommandHandler(caService));
-    this.register(new AlertsCommandHandler(caService));
+    // Register handlers with the bot
+    this.handlers.forEach((handler, commandName) => {
+      this.bot.command(commandName, async (ctx) => {
+        const userId = ctx.from?.id;
+        const session = userId ? this.sessionService.getSession(userId) : undefined;
+        await handler.execute(ctx, session);
+      });
+    });
+    
+    console.log(`Registered ${this.handlers.size} command handlers.`);
   }
   
   /**
    * Register a command handler
    */
-  register(handler: CommandHandler): void {
+  private register(handler: CommandHandler): void {
     this.handlers.set(handler.command, handler);
   }
   
@@ -68,8 +75,7 @@ export class CommandRegistry {
     }
     
     const userId = ctx.from?.id;
-    const sessionService = this.serviceContainer.getSessionService();
-    const session = userId ? sessionService.getSession(userId) : undefined;
+    const session = userId ? this.sessionService.getSession(userId) : undefined;
     
     await handler.execute(ctx, session);
   }
@@ -86,5 +92,9 @@ export class CommandRegistry {
    */
   hasCommand(command: string): boolean {
     return this.handlers.has(command);
+  }
+  
+  public getHandler(commandName: string): CommandHandler | undefined {
+    return this.handlers.get(commandName);
   }
 }

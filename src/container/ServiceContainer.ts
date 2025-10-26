@@ -57,6 +57,7 @@ export class ServiceContainer {
       const simulationService = this.getService<SimulationService>('simulationService');
       
       return new CommandRegistry(
+        this.config.bot,
         sessionService,
         strategyService,
         simulationService

@@ -70,11 +70,11 @@ describe('Database Utilities', () => {
         finalize: jest.fn(),
       };
       
-      mockDb.exec.mockImplementation(function (this: any, sql, callback) {
+      mockDb.exec.mockImplementation((sql, callback) => {
         if (typeof callback === 'function') {
-          callback.call(this, null);
+          setImmediate(() => callback.call(mockStatement as any, null));
         }
-        return this;
+        return mockDb;
       });
 
       await expect(db.initDatabase()).resolves.toBeUndefined();
@@ -95,7 +95,7 @@ describe('Database Utilities', () => {
       
       mockDb.exec.mockImplementation((sql, callback) => {
         if (typeof callback === 'function') {
-          callback.call(mockStatement as any, error);
+          setImmediate(() => callback.call(mockStatement as any, error));
         }
         return mockDb;
       });
@@ -130,7 +130,9 @@ describe('Database Utilities', () => {
      */
     it('should save simulation run successfully', async () => {
       mockDb.run.mockImplementation((sql, params, callback) => {
-        if (callback) callback.call(mockDb, null);
+        if (typeof callback === 'function') {
+          setImmediate(() => callback(null));
+        }
         return mockDb;
       });
 
@@ -145,7 +147,7 @@ describe('Database Utilities', () => {
       const error = new Error('Save failed');
       mockDb.run.mockImplementation((sql, params, callback) => {
         if (typeof callback === 'function') {
-          callback.call(mockDb, error);
+          setImmediate(() => callback(error));
         }
         return mockDb;
       });
@@ -178,7 +180,7 @@ describe('Database Utilities', () => {
 
       mockDb.all.mockImplementation((sql, params, callback) => {
         if (typeof callback === 'function') {
-          callback.call(mockDb, null, mockRuns);
+          setImmediate(() => callback(null, mockRuns));
         }
         return mockDb;
       });
@@ -195,7 +197,7 @@ describe('Database Utilities', () => {
       const error = new Error('Retrieval failed');
       mockDb.all.mockImplementation((sql, params, callback) => {
         if (typeof callback === 'function') {
-          callback.call(mockDb, error, null);
+          setImmediate(() => callback(error));
         }
         return mockDb;
       });
@@ -223,7 +225,9 @@ describe('Database Utilities', () => {
      */
     it('should save strategy successfully', async () => {
       mockDb.run.mockImplementation((sql, params, callback) => {
-        if (callback) callback.call(mockDb, null);
+        if (typeof callback === 'function') {
+          setImmediate(() => callback(null));
+        }
         return mockDb;
       });
 
@@ -238,7 +242,7 @@ describe('Database Utilities', () => {
       const error = new Error('Strategy save failed');
       mockDb.run.mockImplementation((sql, params, callback) => {
         if (typeof callback === 'function') {
-          callback.call(mockDb, error);
+          setImmediate(() => callback(error));
         }
         return mockDb;
       });
@@ -283,7 +287,7 @@ describe('Database Utilities', () => {
       const error = new Error('Strategy retrieval failed');
       mockDb.all.mockImplementation((sql, params, callback) => {
         if (typeof callback === 'function') {
-          callback.call(mockDb, error, null);
+          setImmediate(() => callback(error));
         }
         return mockDb;
       });
@@ -309,7 +313,7 @@ describe('Database Utilities', () => {
 
       mockDb.get.mockImplementation((sql, params, callback) => {
         if (typeof callback === 'function') {
-          callback.call(mockDb, null, mockStrategy);
+          setImmediate(() => callback(null, mockStrategy));
         }
         return mockDb;
       });
@@ -324,7 +328,9 @@ describe('Database Utilities', () => {
      */
     it('should return null for non-existent strategy', async () => {
       mockDb.get.mockImplementation((sql, params, callback) => {
-        if (callback) callback.call(mockDb, null, null);
+        if (typeof callback === 'function') {
+          setImmediate(() => callback(null, null));
+        }
         return mockDb;
       });
 
@@ -339,7 +345,7 @@ describe('Database Utilities', () => {
       const error = new Error('Strategy retrieval failed');
       mockDb.get.mockImplementation((sql, params, callback) => {
         if (typeof callback === 'function') {
-          callback.call(mockDb, error, null);
+          setImmediate(() => callback(error));
         }
         return mockDb;
       });
@@ -354,7 +360,9 @@ describe('Database Utilities', () => {
      */
     it('should delete strategy successfully', async () => {
       mockDb.run.mockImplementation((sql, params, callback) => {
-        if (callback) callback.call(mockDb, null);
+        if (typeof callback === 'function') {
+          setImmediate(() => callback(null));
+        }
         return mockDb;
       });
 
@@ -369,7 +377,7 @@ describe('Database Utilities', () => {
       const error = new Error('Strategy deletion failed');
       mockDb.run.mockImplementation((sql, params, callback) => {
         if (typeof callback === 'function') {
-          callback.call(mockDb, error);
+          setImmediate(() => callback(error));
         }
         return mockDb;
       });

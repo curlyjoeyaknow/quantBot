@@ -19,7 +19,12 @@
     "analysis": "node scripts/analysis/historical_analysis.js",
     "extract": "node scripts/data-processing/extract_ca_drops.js",
     "simulate": "node scripts/simulation/simulate_accurate_final.js",
-    "dashboard": "node export_dashboard.js"
+    "simulate:influxdb": "node simulate_original_strategy_influxdb.js",
+    "dashboard": "node export_dashboard.js",
+    "influxdb:start": "docker-compose up -d influxdb",
+    "influxdb:stop": "docker-compose down",
+    "influxdb:migrate": "node scripts/migration/migrate-csv-to-influx.js",
+    "influxdb:test": "node scripts/test-influxdb-integration.js"
   },
   "keywords": [
     "telegram",
@@ -38,6 +43,8 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@influxdata/influxdb-client": "^1.33.2",
+    "@influxdata/influxdb-client-apis": "^1.33.2",
     "@types/sqlite3": "^3.1.11",
     "@types/ws": "^8.18.1",
     "axios": "^1.12.2",
@@ -47,6 +54,7 @@
     "csv-stringify": "^6.6.0",
     "csv-writer": "^1.6.0",
     "dotenv": "^17.2.3",
+    "lru-cache": "^10.0.0",
     "luxon": "^3.7.2",
     "sqlite3": "^5.1.7",
     "telegraf": "^4.16.3",
