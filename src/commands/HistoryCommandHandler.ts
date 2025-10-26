@@ -22,49 +22,42 @@ export class HistoryCommandHandler extends BaseCommandHandler {
     console.log(`[DEBUG] /history command triggered by user ${userId}`);
     
     try {
-      // Get all CA drops from database
-      const caDrops = await getAllCACalls(50);
-      
+      // Get all CA drops from database (limit to 10 for pagination)
+      const caDrops = await getAllCACalls(10);
+
       if (caDrops.length === 0) {
-        await ctx.reply('📊 **No CA History Found**\n\nNo CA drops have been tracked yet. Use `/extract` to extract CA drops from messages.');
+        await ctx.reply('📊 **No Historical CA Calls Found**\n\nCA calls will be automatically stored when detected in the channel.');
         return;
       }
-      
-      // Format the history message
-      let message = `📊 **CA Drop History** (${caDrops.length} total)\n\n`;
-      
-      // Show last 10 entries
-      const recentDrops = caDrops.slice(-10).reverse();
-      
-      recentDrops.forEach((drop, index) => {
-        const chainEmoji = drop.chain === 'ethereum' ? '⟠' : 
-                          drop.chain === 'bsc' ? '🟡' : 
-                          drop.chain === 'base' ? '🔵' : '◎';
+
+      let historyMessage = `📊 **Recent CA Calls (${caDrops.length} shown)**\n\n`;
+
+      // Show calls in chronological order (newest first)
+      for (const call of caDrops) {
+        const date = call.call_timestamp ? new Date(call.call_timestamp * 1000).toISOString().split('T')[0] : 'Unknown';
+        const time = call.call_timestamp ? new Date(call.call_timestamp * 1000).toTimeString().substring(0, 5) : 'Unknown';
+        const chainEmoji = call.chain === 'solana' ? '🟣' : call.chain === 'ethereum' ? '🔵' : call.chain === 'bsc' ? '🟡' : '⚪';
         
-        const timestamp = new Date(drop.callTimestamp * 1000).toLocaleString();
-        const price = drop.callPrice ? `$${drop.callPrice.toFixed(6)}` : 'N/A';
-        const marketcap = drop.callMarketcap ? `$${(drop.callMarketcap / 1000000).toFixed(2)}M` : 'N/A';
-        
-        message += `${index + 1}. ${chainEmoji} **${drop.tokenName || 'Unknown'}** (${drop.tokenSymbol || 'N/A'})\n`;
-        message += `   📍 ${drop.mint}\n`;
-        message += `   💰 Price: ${price} | Market Cap: ${marketcap}\n`;
-        message += `   📅 ${timestamp}\n\n`;
-      });
-      
-      if (caDrops.length > 10) {
-        message += `... and ${caDrops.length - 10} more entries\n\n`;
+        historyMessage += `${chainEmoji} ${date} ${time} | ${call.token_name || 'Unknown'} (${call.token_symbol || 'N/A'})\n`;
+        historyMessage += `   Caller: ${call.caller || 'Unknown'} | Price: $${call.call_price?.toFixed(8) || 'N/A'}\n`;
+        historyMessage += `   Mint: \`${call.mint.replace(/`/g, '\\`')}\`\n\n`;
       }
+
+      // Add summary and pagination info
+      const chains = [...new Set(caDrops.map((c: any) => c.chain))];
+      const callers = [...new Set(caDrops.map((c: any) => c.caller).filter(Boolean))];
       
-      message += 'Use `/backtest_call` to backtest any of these CA drops with strategies.';
-      
-      await ctx.reply(message, { parse_mode: 'Markdown' });
-      
+      historyMessage += `📈 **Summary:**\n`;
+      historyMessage += `• Chains: ${chains.join(', ')}\n`;
+      historyMessage += `• Callers: ${callers.length}\n`;
+      historyMessage += `• Showing: ${caDrops.length} recent calls\n\n`;
+      historyMessage += `💡 Use \`/backtest_call <mint>\` to run strategy on any call`;
+
+      await ctx.reply(historyMessage, { parse_mode: 'Markdown' });
+
     } catch (error) {
       console.error('History command error:', error);
-      await this.sendError(ctx, 
-        '❌ **History Retrieval Failed**\n\n' +
-        'An error occurred while fetching CA history. Please try again later.'
-      );
+      await ctx.reply('❌ Error retrieving historical data. Please try again later.');
     }
   }
 }
