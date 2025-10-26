@@ -53,13 +53,14 @@ export class BacktestCommandHandler extends BaseCommandHandler {
       
       await ctx.reply(
         '🤖 **QuantBot Ready!**\n\n' +
-        'Please provide the token address (Solana or EVM) to start the simulation.\n\n' +
-        '**Supported formats:**\n' +
-        '• Solana: `So11111111111111111111111111111111111111112`\n' +
-        '• Ethereum: `0x1234567890123456789012345678901234567890`\n' +
-        '• BSC: `0x1234567890123456789012345678901234567890`\n' +
-        '• Base: `0x1234567890123456789012345678901234567890`\n\n' +
-        'Type `/cancel` to abort.',
+        '📋 **Enhanced Backtest Mode:**\n\n' +
+        'Paste a token mint address to begin your simulation.\n\n' +
+        '✨ **New Feature:** If this token has been called before, I\'ll automatically use the original call timestamp!\n\n' +
+        '💡 **Commands:**\n' +
+        '• `/calls <mint>` - Show all calls for a token\n' +
+        '• `/callers` - Show top callers\n' +
+        '• `/recent` - Show recent calls\n\n' +
+        '📝 **Usage:** Type `/backtest` then paste your mint address in the next message.',
         { parse_mode: 'Markdown' }
       );
       

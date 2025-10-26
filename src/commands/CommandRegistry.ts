@@ -11,6 +11,9 @@ import { BacktestCommandHandler } from './BacktestCommandHandler';
 import { StrategyCommandHandler } from './StrategyCommandHandler';
 import { CancelCommandHandler } from './CancelCommandHandler';
 import { RepeatCommandHandler } from './RepeatCommandHandler';
+import { CallsCommandHandler } from './CallsCommandHandler';
+import { CallersCommandHandler } from './CallersCommandHandler';
+import { RecentCommandHandler } from './RecentCommandHandler';
 import { SessionService } from '../services/SessionService';
 import { StrategyService } from '../services/StrategyService';
 import { SimulationService } from '../services/SimulationService';
@@ -44,6 +47,11 @@ export class CommandRegistry {
     this.register(new StrategyCommandHandler(this.strategyService));
     this.register(new CancelCommandHandler(this.sessionService));
     this.register(new RepeatCommandHandler(this.simulationService, this.sessionService));
+    
+    // Register analysis command handlers
+    this.register(new CallsCommandHandler());
+    this.register(new CallersCommandHandler());
+    this.register(new RecentCommandHandler());
     
     // Register handlers with the bot
     this.handlers.forEach((handler, commandName) => {

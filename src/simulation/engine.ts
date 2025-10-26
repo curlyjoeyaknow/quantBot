@@ -27,10 +27,12 @@ export type StopLossConfig = {
 
 /**
  * Describes parameters for entry optimization.
+ * - initialEntry: Percentage drop from alert price before initial entry (e.g. -0.3 for 30% drop, 'none' to enter immediately)
  * - trailingEntry: Enables a "wait for rebound from low" entry (number or 'none')
  * - maxWaitTime: Minutes to wait maximum for the entry conditions
  */
 export type EntryConfig = {
+  initialEntry: number | 'none';
   trailingEntry: number | 'none';
   maxWaitTime: number;
 };
@@ -139,8 +141,8 @@ export function simulateStrategy(
   const caDropPrice = candles[0].open; // Default entry: Coin announcement drop
   const finalPrice = candles[candles.length - 1].close; // Price for forced exit at the end
 
-  // Apply entry config or default (no trailing entry, 60 mins wait)
-  const entryCfg: EntryConfig = entryConfig || { trailingEntry: 'none', maxWaitTime: 60 };
+  // Apply entry config or default
+  const entryCfg: EntryConfig = entryConfig || { initialEntry: 'none', trailingEntry: 'none', maxWaitTime: 60 };
 
   // Entry price optimization trackers
   let lowestPrice = caDropPrice;
@@ -150,6 +152,10 @@ export function simulateStrategy(
   let entryDelay = 0;                 // Time delayed for "optimized" entry, in mins
   let trailingEntryUsed = false;      // Did we use trailing entry wait?
   let hasEntered = false;             // Entry flag for trailing entry logic
+  let initialEntryTriggered = false; // Whether initial entry drop has been triggered
+
+  // Track alert price for initial entry optimization
+  const alertPrice = caDropPrice;
 
   // Chronological trade events timeline
   const events: SimulationEvent[] = [];
@@ -157,6 +163,60 @@ export function simulateStrategy(
   // --------------------------------------------------------------------------
   // 2. ENTRY OPTIMIZATION AND TRAILING ENTRY LOGIC
   // --------------------------------------------------------------------------
+  
+  // Check if initial entry optimization is enabled (wait for drop from alert price)
+  if (entryCfg.initialEntry !== 'none') {
+    const dropPercent = entryCfg.initialEntry as number; // e.g. -0.3 for 30% drop
+    const entryTriggerPrice = alertPrice * (1 + dropPercent); // Price to drop to before entry
+    
+    // Wait for price to drop to trigger level
+    for (const candle of candles) {
+      if (candle.low <= entryTriggerPrice) {
+        // Entry triggered after drop
+        actualEntryPrice = entryTriggerPrice;
+        entryDelay = (candle.timestamp - candles[0].timestamp) / 60;
+        initialEntryTriggered = true;
+        hasEntered = true;
+        
+        // Document initial entry event
+        events.push({
+          type: 'entry',
+          timestamp: candle.timestamp,
+          price: actualEntryPrice,
+          description: `Initial entry at $${actualEntryPrice.toFixed(8)} (${(Math.abs(dropPercent) * 100).toFixed(0)}% drop from alert)`,
+          remainingPosition: 1,
+          pnlSoFar: 0,
+        });
+        break;
+      }
+    }
+    
+    // If initial entry wasn't triggered, don't enter at all
+    if (!initialEntryTriggered) {
+      // Mark that we never entered
+      events.push({
+        type: 'entry',
+        timestamp: candles[0].timestamp,
+        price: alertPrice,
+        description: `Never entered - price did not drop ${(Math.abs(dropPercent) * 100).toFixed(0)}% from alert`,
+        remainingPosition: 0,
+        pnlSoFar: 0,
+      });
+      return { 
+        finalPnl: 0, 
+        totalCandles: candles.length, 
+        events, 
+        entryOptimization: { lowestPrice, lowestPriceTimestamp, lowestPricePercent: 0, lowestPriceTimeFromEntry, trailingEntryUsed: false, actualEntryPrice, entryDelay },
+        entryPrice: alertPrice,
+        finalPrice: candles[candles.length - 1].close
+      };
+    }
+  } else {
+    // Default immediate entry
+    hasEntered = true;
+  }
+  
+  // Trailing entry logic (for re-entries after exits)
   if (entryCfg.trailingEntry !== 'none') {
     // Trailing entry percent as decimal (e.g. 0.1 for 10%)
     const trailingEntryPercent = entryCfg.trailingEntry as number;

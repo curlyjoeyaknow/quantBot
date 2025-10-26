@@ -9,14 +9,15 @@ import { Context } from 'telegraf';
 import { BaseCommandHandler, Session } from './interfaces/CommandHandler';
 import { SimulationService } from '../services/SimulationService';
 import { SessionService } from '../services/SessionService';
-import { eventBus, EventFactory } from '../events';
+import { RepeatSimulationHelper } from '../utils/RepeatSimulationHelper';
 
 export class RepeatCommandHandler extends BaseCommandHandler {
   readonly command = 'repeat';
   
   constructor(
     private simulationService: SimulationService,
-    private sessionService: SessionService
+    private sessionService: SessionService,
+    private repeatHelper: RepeatSimulationHelper
   ) {
     super();
   }
@@ -51,49 +52,24 @@ export class RepeatCommandHandler extends BaseCommandHandler {
         await ctx.reply(message, { parse_mode: 'Markdown' });
         
         // Set session to wait for user selection
-        this.sessionService.updateSession(userId, {
-          waitingForRunSelection: true,
-          recentRuns: recentRuns
-        });
+        const newSession: Session = {
+          step: 'waiting_for_run_selection',
+          type: 'repeat',
+          data: {
+            waitingForRunSelection: true,
+            recentRuns: recentRuns
+          }
+        };
+        
+        this.sessionService.setSession(userId, newSession);
         return;
       }
 
       // Only one run: repeat directly
-      await this.repeatSimulation(ctx, recentRuns[0]);
+      await this.repeatHelper.repeatSimulation(ctx, recentRuns[0]);
     } catch (err) {
       console.error('Repeat command error:', err);
       await this.sendError(ctx, 'An error occurred while fetching previous simulations.');
     }
-  }
-  
-  private async repeatSimulation(ctx: any, run: any): Promise<void> {
-    const userId = ctx.from.id;
-    
-    const session: Session = {
-      mint: run.mint,
-      chain: run.chain,
-      datetime: run.startTime,
-      metadata: { name: run.tokenName, symbol: run.tokenSymbol },
-      strategy: undefined,
-      stopLossConfig: undefined,
-      lastSimulation: {
-        mint: run.mint,
-        chain: run.chain,
-        datetime: run.startTime,
-        metadata: { name: run.tokenName, symbol: run.tokenSymbol },
-        candles: [],
-      },
-    };
-    
-    this.sessionService.setSession(userId, session);
-
-    const chainEmoji = run.chain === 'ethereum' ? '⟠' : run.chain === 'bsc' ? '🟡' : run.chain === 'base' ? '🔵' : '◎';
-    await ctx.reply(
-      `🔄 **Repeating Simulation**\n\n` +
-        `${chainEmoji} Chain: ${run.chain.toUpperCase()}\n` +
-        `🪙 Token: ${run.tokenName} (${run.tokenSymbol})\n` +
-        `📅 Period: ${run.startTime.toFormat('yyyy-MM-dd HH:mm')} - ${run.endTime.toFormat('yyyy-MM-dd HH:mm')}\n\n` +
-        `**Take Profit Strategy:**\n• \`yes\` - Default: 50%@2x, 30%@5x, 20%@10x\n• \`50@2x,30@5x,20@10x\` - Custom\n• \`[{"percent":0.5,"target":2}]\` - JSON`
-    );
   }
 }

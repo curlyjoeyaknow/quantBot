@@ -30,8 +30,8 @@
 import { Telegraf } from 'telegraf';
 import axios from 'axios';
 import { DateTime } from 'luxon';
-import dotenv from 'dotenv';
-import { fetchHybridCandles } from '../simulation/candles';
+import * as dotenv from 'dotenv';
+import { fetchHybridCandles } from './simulation/candles';
 import {
   simulateStrategy,
   Strategy,
@@ -39,7 +39,7 @@ import {
   StopLossConfig,
   EntryConfig,
   ReEntryConfig,
-} from '../simulation/engine';
+} from './simulate';
 import {
   initDatabase,
   saveSimulationRun,
@@ -49,9 +49,13 @@ import {
   getStrategy,
   deleteStrategy,
   saveCADrop,
-} from '../utils/database';
-import { HeliusMonitor } from '../helius-monitor';
-import { findCallsForToken } from '../utils/caller-database';
+} from './utils/database';
+import {
+  findCallsForToken,
+  getRecentCalls,
+  getCallerStats,
+} from './utils/caller-database';
+import { HeliusMonitor } from './helius-monitor';
 
 // Load environment variables (API keys, bot token, etc.)
 dotenv.config();
@@ -116,11 +120,12 @@ const sessions: Record<number, Session> = {};
  * /backtest
  * Begin a new simulation workflow.
  * Prompts for mint address entry.
+ * Enhanced: Automatically looks up calls from database when mint is provided.
  */
 bot.command('backtest', ctx => {
   const userId = ctx.from.id;
   sessions[userId] = {};
-  ctx.reply('🤖 QuantBot Ready!\n\nPaste a token mint address to begin your simulation.');
+  ctx.reply('🤖 **QuantBot Ready!**\n\n📋 **Enhanced Backtest Mode:**\n\nPaste a token mint address to begin your simulation.\n\n✨ **New Feature:** If this token has been called before, I\'ll automatically use the original call timestamp!\n\n💡 **Commands:**\n• `/calls <mint>` - Show all calls for a token\n• `/callers` - Show top callers\n• `/recent` - Show recent calls');
 });
 
 /**
@@ -250,12 +255,12 @@ bot.command('analysis', async ctx => {
     // Split long messages if needed
     const maxLength = 4000;
     if (report.length > maxLength) {
-      const parts: string[] = [];
+      const parts = [] as string[];
       let currentPart = '';
       const lines = report.split('\n');
       
       for (const line of lines) {
-        if ((currentPart.length + line.length + 1) > maxLength) { // +1 for the newline char
+        if (currentPart.length + line.length > maxLength) {
           parts.push(currentPart);
           currentPart = line + '\n';
         } else {
@@ -273,14 +278,133 @@ bot.command('analysis', async ctx => {
     } else {
       await ctx.reply(report, { parse_mode: 'Markdown' });
     }
-  } catch (error: any) {
+    
+  } catch (error) {
     console.error('Analysis command error:', error);
-    let errorMessage = '❌ **Analysis Failed**\n\nAn error occurred during the historical analysis. Please try again later.';
-    // If the error has a message, append it for more transparency (but avoid leaking sensitive details)
-    if (typeof error?.message === 'string' && error.message.length < 300) {
-      errorMessage += `\n\n_Error details:_\n${error.message}`;
+    ctx.reply('❌ **Analysis Failed**\n\nAn error occurred during the historical analysis. Please try again later.');
+  }
+});
+
+/**
+ * /calls <mint>
+ * Show all calls for a specific token
+ */
+bot.command('calls', async ctx => {
+  const userId = ctx.from.id;
+  const message = ctx.message.text;
+  
+  // Extract mint address from command
+  const parts = message.split(' ');
+  if (parts.length < 2) {
+    ctx.reply('❌ **Usage:** `/calls <mint_address>`\n\nExample: `/calls So11111111111111111111111111111111111111112`');
+    return;
+  }
+  
+  const mint = parts[1];
+  
+  try {
+    ctx.reply('🔍 **Searching for calls...**');
+    
+    const calls = await findCallsForToken(mint);
+    
+    if (calls.length === 0) {
+      ctx.reply(`📊 **No Calls Found**\n\nNo calls found for token: \`${mint}\`\n\nThis token hasn't been called by any of our tracked callers.`);
+      return;
     }
-    ctx.reply(errorMessage, { parse_mode: 'Markdown' });
+    
+    let message = `📊 **Found ${calls.length} calls for this token:**\n\n`;
+    
+    calls.forEach((call: any, index: number) => {
+      const date = new Date(call.alert_timestamp).toISOString().split('T')[0];
+      const time = new Date(call.alert_timestamp).toTimeString().substring(0, 5);
+      const chainEmoji = call.chain === 'solana' ? '🟣' : call.chain === 'ethereum' ? '🔵' : call.chain === 'bsc' ? '🟡' : '⚪';
+      
+      message += `${index + 1}. ${chainEmoji} **${call.caller_name}** - ${date} ${time}\n`;
+      message += `   Token: ${call.token_symbol || 'N/A'} | Chain: ${call.chain}\n`;
+      message += `   Mint: \`${call.token_address}\`\n\n`;
+    });
+    
+    message += `💡 **Use \`/backtest\` and paste the mint to run simulation with original call time!**`;
+    
+    ctx.reply(message, { parse_mode: 'Markdown' });
+    
+  } catch (error) {
+    console.error('Calls command error:', error);
+    ctx.reply('❌ Error retrieving calls. Please try again later.');
+  }
+});
+
+/**
+ * /callers
+ * Show top callers statistics
+ */
+bot.command('callers', async ctx => {
+  try {
+    ctx.reply('📊 **Loading caller statistics...**');
+    
+    const { stats, topCallers } = await getCallerStats();
+    
+    if (!stats) {
+      ctx.reply('❌ Error loading caller statistics.');
+      return;
+    }
+    
+    let message = `📊 **Caller Database Statistics**\n\n`;
+    message += `🗄️ **Database Stats:**\n`;
+    message += `• Total alerts: ${stats.total_alerts}\n`;
+    message += `• Total callers: ${stats.total_callers}\n`;
+    message += `• Total tokens: ${stats.total_tokens}\n`;
+    message += `• Date range: ${stats.earliest_alert?.split('T')[0]} to ${stats.latest_alert?.split('T')[0]}\n\n`;
+    
+    message += `🏆 **Top 10 Callers:**\n`;
+    topCallers.forEach((caller: any, index: number) => {
+      message += `${index + 1}. **${caller.caller_name}** - ${caller.alert_count} alerts, ${caller.token_count} tokens\n`;
+    });
+    
+    message += `\n💡 **Use \`/calls <mint>\` to see calls for a specific token!**`;
+    
+    ctx.reply(message, { parse_mode: 'Markdown' });
+    
+  } catch (error) {
+    console.error('Callers command error:', error);
+    ctx.reply('❌ Error loading caller statistics. Please try again later.');
+  }
+});
+
+/**
+ * /recent
+ * Show recent calls
+ */
+bot.command('recent', async ctx => {
+  try {
+    ctx.reply('📊 **Loading recent calls...**');
+    
+    const calls = await getRecentCalls(15);
+    
+    if (calls.length === 0) {
+      ctx.reply('📊 **No Recent Calls Found**\n\nNo calls found in the database.');
+      return;
+    }
+    
+    let message = `📊 **Recent Calls (${calls.length} shown)**\n\n`;
+    
+    calls.forEach((call: any, index: number) => {
+      const date = new Date(call.alert_timestamp).toISOString().split('T')[0];
+      const time = new Date(call.alert_timestamp).toTimeString().substring(0, 5);
+      const chainEmoji = call.chain === 'solana' ? '🟣' : call.chain === 'ethereum' ? '🔵' : call.chain === 'bsc' ? '🟡' : '⚪';
+      
+      message += `${index + 1}. ${chainEmoji} **${call.caller_name}** - ${date} ${time}\n`;
+      message += `   Token: ${call.token_symbol || 'N/A'} | Chain: ${call.chain}\n`;
+      message += `   Mint: \`${call.token_address}\`\n\n`;
+    });
+    
+    message += `💡 **Use \`/backtest\` and paste any mint to run simulation!**`;
+    
+    ctx.reply(message, { parse_mode: 'Markdown' });
+    
+  } catch (error) {
+    console.error('Recent command error:', error);
+    ctx.reply('❌ Error retrieving recent calls. Please try again later.');
   }
 });
 
@@ -372,7 +496,7 @@ bot.command('backtest_call', async ctx => {
       datetime: DateTime.fromSeconds(call.call_timestamp),
       strategy: [{ percent: 0.5, target: 2 }, { percent: 0.3, target: 5 }, { percent: 0.2, target: 10 }],
       stopLossConfig: { initial: -0.3, trailing: 0.5 },
-      entryConfig: { initialEntry: 'none', trailingEntry: 'none', maxWaitTime: 60 },
+      entryConfig: { trailingEntry: 'none', maxWaitTime: 60 },
       reEntryConfig: { trailingReEntry: 'none', maxReEntries: 0 }
     };
 
@@ -957,7 +1081,7 @@ async function startIchimokuAnalysis(ctx: any, session: any): Promise<void> {
     const startTime = endTime.minus({ minutes: 260 }); // 52 * 5 minutes
 
                     // Fetch historical candles
-                    const { fetchHybridCandles } = await import('../simulation/candles');
+                    const { fetchHybridCandles } = await import('./simulation/candles');
                     let candles;
                     
                     try {
@@ -988,7 +1112,7 @@ async function startIchimokuAnalysis(ctx: any, session: any): Promise<void> {
                     }
 
     // Calculate current Ichimoku data
-    const { calculateIchimoku, formatIchimokuData } = await import('../simulation/ichimoku');
+    const { calculateIchimoku, formatIchimokuData } = await import('./simulation/ichimoku');
     const currentIndex = candles.length - 1;
     const ichimokuData = calculateIchimoku(candles, currentIndex);
 
@@ -1093,9 +1217,8 @@ bot.on('text', async ctx => {
     
     // Enhanced: Check if this token has been called before
     try {
-      console.log('[DEBUG] Checking database for token:', text);
+      ctx.reply('🔍 **Checking database for previous calls...**');
       const calls = await findCallsForToken(text);
-      console.log('[DEBUG] Found', calls.length, 'calls');
       
       if (calls.length > 0) {
         // Found calls! Use the most recent one
@@ -1254,31 +1377,14 @@ bot.on('text', async ctx => {
       }
     }
 
-    // Step 5: Re-entry config
+    // Step 5: Re-entry config (DISABLED FOR NOW - skip user input)
     if (!session.reEntryConfig) {
-      const input = text.toLowerCase();
-      
-      if (input === 'disable' || input === 'no') {
-        session.reEntryConfig = { trailingReEntry: 'none', maxReEntries: 0 };
-      } else if (input.startsWith('enable:')) {
-        const match = input.match(/enable:\s*(\d+)%/);
-        if (match) {
-          const retracePercent = parseFloat(match[1]) / 100;
-          session.reEntryConfig = { trailingReEntry: retracePercent, maxReEntries: 1 };
-        } else {
-          ctx.reply('❌ Invalid re-entry format.\n\n**Format:** \`enable: <percentage>\`\n**Examples:**\n• \`enable: 30%\`\n• \`enable: 50%\`\n• \`disable\`');
-          return;
-        }
-      } else {
-        ctx.reply('❌ Invalid re-entry option.\n\n**Options:**\n• \`enable: 30%\` - Allow re-entry after 30% retrace from peak\n• \`enable: 50%\` - Allow re-entry after 50% retrace from peak\n• \`disable\` - No re-entry after stop loss');
-        return;
-      }
-      
+      // Skip re-entry configuration and use default (disabled)
+      session.reEntryConfig = { trailingReEntry: 'none', maxReEntries: 0 };
       sessions[userId] = session;
-      
-      // All configurations set, continue to simulation
+      // Continue to simulation without asking user
     }
-    
+
     // All workflow input received: kick off simulation
     ctx.reply('✅ All configurations set!\n\nFetching token data and running simulation...');
     try {
@@ -1365,14 +1471,13 @@ bot.on('text', async ctx => {
       }
 
       // Optionally broadcast result to a group/channel for admin/analytics
-      // DISABLED to prevent duplicate messages
-      // if (DEFAULT_CHAT_ID) {
-      //   try {
-      //     await bot.telegram.sendMessage(DEFAULT_CHAT_ID, resultMessage, { parse_mode: 'Markdown' });
-      //   } catch (err) {
-      //     console.error('Failed to send to default chat:', err);
-      //   }
-      // }
+      if (DEFAULT_CHAT_ID) {
+        try {
+          await bot.telegram.sendMessage(DEFAULT_CHAT_ID, resultMessage, { parse_mode: 'Markdown' });
+        } catch (err) {
+          console.error('Failed to send to default chat:', err);
+        }
+      }
       // End session
       delete sessions[userId];
     } catch (e) {
@@ -1448,7 +1553,7 @@ async function processCADrop(ctx: any, address: string) {
 
   try {
     // Try fetching meta-data (EVM: try BSC, ETH, BASE)
-    let tokenData = null;
+    let tokenData: any = null;
     let finalChain = chain;
     if (address.startsWith('0x')) {
       const chainsToTry = ['bsc', 'ethereum', 'base'];
@@ -1464,16 +1569,13 @@ async function processCADrop(ctx: any, address: string) {
             params: { address }
           });
           if (meta.data.success && meta.data.data) {
-            tokenData = meta.data.data ?? undefined;
-            if (tokenData && typeof tokenData === 'object' && 'name' in tokenData) {
-              finalChain = tryChain;
-              // @ts-ignore: we're confident tokenData has 'name'
-              console.log(`Found token on ${tryChain}: ${tokenData.name}`);
-              break;
-            }
+            tokenData = meta.data.data;
+            finalChain = tryChain;
+            console.log(`Found token on ${tryChain}: ${tokenData?.name}`);
+            break;
           }
         } catch (err) {
-          // If error fetching on this chain, try next
+          console.log(`Failed to find token on ${tryChain}`);
           continue;
         }
       }
@@ -1495,8 +1597,40 @@ async function processCADrop(ctx: any, address: string) {
       return;
     }
 
-    const currentPrice = (tokenData as any)?.price || 0;
-    const marketcap = (tokenData as any)?.mc || 0;
+    // Fix for lint error: add type for tokenData so TypeScript knows its shape
+    interface TokenData {
+      price?: number;
+      mc?: number;
+      name?: string;
+      symbol?: string;
+      [key: string]: any;
+    }
+    const typedTokenData = tokenData as TokenData;
+
+    // Fetch current price and market cap using token overview endpoint
+    let currentPrice = 0;
+    let marketcap = 0;
+    
+    try {
+      const overviewResponse = await axios.get(`https://public-api.birdeye.so/defi/token_overview`, {
+        headers: {
+          'X-API-KEY': process.env.BIRDEYE_API_KEY!,
+          'accept': 'application/json',
+          'x-chain': finalChain
+        },
+        params: { address }
+      });
+      
+      if (overviewResponse.data.success && overviewResponse.data.data) {
+        currentPrice = overviewResponse.data.data.price || 0;
+        marketcap = overviewResponse.data.data.marketCap || 0;
+      }
+    } catch (error: any) {
+      console.log(`Failed to fetch token overview for ${address}:`, error.message);
+      // Fallback to token metadata if available
+      currentPrice = typedTokenData.price || 0;
+      marketcap = typedTokenData.mc || 0;
+    }
 
     // Always use default strategy/SL for auto CA monitoring
     const strategy = DEFAULT_STRATEGY;
@@ -1523,8 +1657,8 @@ async function processCADrop(ctx: any, address: string) {
         id: caId,
         mint: address,
         chain: finalChain,
-      tokenName: (tokenData as any).name,
-      tokenSymbol: (tokenData as any).symbol,
+        tokenName: (tokenData as any).name,
+        tokenSymbol: (tokenData as any).symbol,
         callPrice: currentPrice,
         callMarketcap: marketcap,
         callTimestamp: Math.floor(Date.now() / 1000),
@@ -1541,16 +1675,16 @@ async function processCADrop(ctx: any, address: string) {
 
     const message = `🎯 **CA Drop Detected & Tracking Started!**\n\n` +
       `${chainEmoji} Chain: ${finalChain.toUpperCase()}\n` +
-      `🪙 Token: ${(tokenData as any).name} (${(tokenData as any).symbol})\n` +
-      `💰 Price: $${currentPrice.toFixed(8)}\n` +
-      `📊 Market Cap: $${(marketcap / 1000000).toFixed(2)}M\n` +
+      `🪙 Token: ${tokenData?.name || 'Unknown'} (${tokenData?.symbol || 'N/A'})\n` +
+      `💰 Price: ${currentPrice > 0 ? `$${currentPrice.toFixed(8)}` : 'Loading...'}\n` +
+      `📊 Market Cap: ${marketcap > 0 ? `$${(marketcap / 1000000).toFixed(2)}M` : 'Loading...'}\n` +
       `📈 Strategy: 50%@2x, 30%@5x, 20%@10x\n` +
       `🛑 Stop Loss: -50% initial, 50% trailing\n\n` +
       `${monitoringStatus}`;
 
     await ctx.reply(message, { parse_mode: 'Markdown' });
 
-    console.log(`Started tracking CA: ${(tokenData as any).name} (${address}) on ${finalChain}`);
+    console.log(`Started tracking CA: ${tokenData.name} (${address}) on ${finalChain}`);
   } catch (error) {
     console.error('Error fetching token metadata for CA:', error);
     // On errors during CA detection, fail silently to avoid chat spam

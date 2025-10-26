@@ -27,9 +27,11 @@ A sophisticated Telegram bot that provides PNL simulation for trading strategies
 ### 💾 **Persistent Storage**
 
 - SQLite database for simulation history
+- **Caller tracking database** for individual caller alert history
 - Custom strategy management
 - CA tracking and performance data
 - Alert history and price updates
+- **InfluxDB time-series database** for OHLCV data
 
 ## 🔧 Setup
 
@@ -38,7 +40,7 @@ A sophisticated Telegram bot that provides PNL simulation for trading strategies
 - Node.js 18+
 - Docker (for InfluxDB)
 - Telegram Bot Token
-- Birdeye API Keys (6 keys recommended for rotation)
+- Birdeye API Keys (3.18M total credits across all keys)
 - Helius API Key (for CA monitoring)
 
 ### Installation
@@ -66,13 +68,11 @@ INFLUX_BUCKET=ohlcv_data
 INFLUX_USERNAME=admin
 INFLUX_PASSWORD=your-secure-password
 
-# Birdeye API Keys (6 keys for rotation)
+# Birdeye API Keys (3.18M total credits - add as many keys as you have)
 BIRDEYE_API_KEY_1=your_first_key
 BIRDEYE_API_KEY_2=your_second_key
 BIRDEYE_API_KEY_3=your_third_key
-BIRDEYE_API_KEY_4=your_fourth_key
-BIRDEYE_API_KEY_5=your_fifth_key
-BIRDEYE_API_KEY_6=your_sixth_key
+# Add more keys as needed...
 
 # Helius API
 HELIUS_API_KEY=your_helius_key
@@ -81,6 +81,7 @@ HELIUS_WS_URL=wss://atlas-mainnet.helius-rpc.com/?api-key=your_helius_key
 # Database
 DATABASE_PATH=./quantbot.db
 SIMULATIONS_DB_PATH=./simulations.db
+CALLER_DB_PATH=./caller_alerts.db
 ```
 
 ### Running the Bot
@@ -98,11 +99,13 @@ npm run influxdb:start
 #### 3. Migrate Existing Data (Optional)
 ```bash
 npm run influxdb:migrate
+npm run caller:migrate
 ```
 
 #### 4. Test Integration
 ```bash
 npm run influxdb:test
+npm run caller:stats
 ```
 
 #### 5. Start the Bot
@@ -160,6 +163,43 @@ Run comprehensive historical analysis on all CA drops:
 - Analyzes performance by time periods and chains
 - Generates strategy recommendations
 - Provides detailed performance insights
+
+## 🎯 Caller Tracking & Analysis
+
+### Caller Database Commands
+
+```bash
+# Migrate CA drops to caller database
+npm run caller:migrate
+
+# View caller statistics
+npm run caller:stats
+
+# Generate comprehensive caller analysis
+npm run analyze:callers
+
+# Compare specific callers
+npm run analyze:callers -- --compare "Brook" "Brook Calls" "BrookCalls"
+```
+
+### Individual Caller Simulations
+
+```bash
+# Simulate strategy for a specific caller
+npm run simulate:caller "Brook" 20
+
+# Simulate multiple callers
+npm run simulate:caller --multi "Brook,Brook Calls,BrookCalls" 15
+```
+
+### Caller Analysis Features
+
+- **Individual Caller History**: Track all alerts from each caller over time
+- **Performance Metrics**: Win rates, success rates, and profitability per caller
+- **Token Diversity**: Analyze which tokens each caller focuses on
+- **Activity Patterns**: Understand caller frequency and consistency
+- **Comparative Analysis**: Compare performance across different callers
+- **Strategy Testing**: Test trading strategies against individual caller histories
 
 ### `/ichimoku`
 

@@ -33,6 +33,23 @@ describe('Database Utilities', () => {
   let mockDb: jest.Mocked<Database>;
 
   /**
+   * Helper function to create a mock callback that simulates async behavior
+   */
+  const createAsyncCallback = (callback: Function, error?: any, result?: any) => {
+    return () => {
+      if (callback) {
+        setTimeout(() => {
+          if (error) {
+            callback.call(mockDb, error);
+          } else {
+            callback.call(mockDb, null, result);
+          }
+        }, 0);
+      }
+    };
+  };
+
+  /**
    * Resets mocks and re-injects a new mocked Database before each test for isolation.
    */
   beforeEach(() => {
@@ -48,140 +65,103 @@ describe('Database Utilities', () => {
       run: jest.fn(),
       get: jest.fn(),
       all: jest.fn(),
+      prepare: jest.fn().mockReturnValue(mockStatement),
       close: jest.fn(),
-      exec: jest.fn(),
-      prepare: jest.fn(),
     } as any;
-    
+
     MockedDatabase.mockImplementation(() => mockDb);
   });
 
-  // ----------------------[ Test Group: Database Initialization ]----------------------
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  // -------------------------[ Database Initialization Tests ]-------------------------
 
   describe('initDatabase', () => {
-    /**
-     * Test: Successful database initialization scenario. Ensures db.initDatabase()
-     * resolves and the internal run() is called as expected.
-     */
     it('should initialize database successfully', async () => {
-      const mockStatement = {
-        bind: jest.fn(),
-        reset: jest.fn(),
-        finalize: jest.fn(),
-      };
-      
-      mockDb.exec.mockImplementation((sql, callback) => {
-        if (typeof callback === 'function') {
-          setImmediate(() => callback.call(mockStatement as any, null));
-        }
+      mockDb.run.mockImplementation((sql, callback) => {
+        createAsyncCallback(callback)();
         return mockDb;
       });
 
       await expect(db.initDatabase()).resolves.toBeUndefined();
-      expect(mockDb.exec).toHaveBeenCalled();
-    }, 5000);
+      expect(mockDb.run).toHaveBeenCalled();
+    });
 
-    /**
-     * Test: Simulates a failure during initialization and checks
-     * error propagation.
-     */
     it('should handle database initialization errors', async () => {
       const error = new Error('Database initialization failed');
-      const mockStatement = {
-        bind: jest.fn(),
-        reset: jest.fn(),
-        finalize: jest.fn(),
-      };
-      
-      mockDb.exec.mockImplementation((sql, callback) => {
-        if (typeof callback === 'function') {
-          setImmediate(() => callback.call(mockStatement as any, error));
-        }
+      mockDb.run.mockImplementation((sql, callback) => {
+        createAsyncCallback(callback, error)();
         return mockDb;
       });
 
       await expect(db.initDatabase()).rejects.toThrow('Database initialization failed');
-    }, 5000);
+    });
   });
 
-  // --------------------[ Test Group: Simulation Run Persistence ]----------------------
+  // -------------------------[ Simulation Run Management Tests ]-------------------------
 
   describe('saveSimulationRun', () => {
-    /**
-     * A mock simulation run object to pass into the database layer.
-     */
-    const mockSimulationRun = {
+    const mockSimulationData = {
       userId: 12345,
-      mint: 'So11111111111111111111111111111111111111112',
+      mint: 'test-mint',
       chain: 'solana',
       tokenName: 'Test Token',
       tokenSymbol: 'TEST',
+      startTime: DateTime.utc(),
+      endTime: DateTime.utc(),
       strategy: [{ percent: 0.5, target: 2 }],
       stopLossConfig: { initial: -0.3, trailing: 0.5 },
-      startTime: DateTime.fromISO('2024-01-01T00:00:00Z'),
-      endTime: DateTime.fromISO('2024-01-02T00:00:00Z'),
       finalPnl: 1.5,
       totalCandles: 100,
       events: []
     };
 
-    /**
-     * Test: Checks persistence and callback invocation for simulation runs.
-     */
     it('should save simulation run successfully', async () => {
       mockDb.run.mockImplementation((sql, params, callback) => {
-        if (typeof callback === 'function') {
-          setImmediate(() => callback(null));
-        }
+        createAsyncCallback(callback, null, { lastID: 1 })();
         return mockDb;
       });
 
-      await expect(db.saveSimulationRun(mockSimulationRun)).resolves.toBeUndefined();
+      const result = await db.saveSimulationRun(mockSimulationData);
+      expect(result).toBe(1);
       expect(mockDb.run).toHaveBeenCalled();
     });
 
-    /**
-     * Test: Expects saveSimulationRun to properly propagate errors from run().
-     */
     it('should handle save errors', async () => {
       const error = new Error('Save failed');
       mockDb.run.mockImplementation((sql, params, callback) => {
-        if (typeof callback === 'function') {
-          setImmediate(() => callback(error));
-        }
+        createAsyncCallback(callback, error)();
         return mockDb;
       });
 
-      await expect(db.saveSimulationRun(mockSimulationRun)).rejects.toThrow('Save failed');
+      await expect(db.saveSimulationRun(mockSimulationData)).rejects.toThrow('Save failed');
     });
   });
 
-  // ---------------[ Test Group: Retrieve Simulation Runs for a User ]------------------
-
   describe('getUserSimulationRuns', () => {
-    /**
-     * Test: Simulates correct retrieval of user simulation runs.
-     */
     it('should retrieve user simulation runs', async () => {
       const mockRuns = [
         {
           id: 1,
           userId: 12345,
-          mint: 'So11111111111111111111111111111111111111112',
+          mint: 'test-mint',
           chain: 'solana',
           tokenName: 'Test Token',
           tokenSymbol: 'TEST',
+          startTime: DateTime.utc().toISO(),
+          endTime: DateTime.utc().toISO(),
+          strategy: JSON.stringify([{ percent: 0.5, target: 2 }]),
+          stopLossConfig: JSON.stringify({ initial: -0.3, trailing: 0.5 }),
           finalPnl: 1.5,
-          createdAt: new Date('2024-01-01T00:00:00Z'),
-          startTime: new Date('2024-01-01T00:00:00Z'),
-          endTime: new Date('2024-01-02T00:00:00Z')
+          totalCandles: 100,
+          createdAt: DateTime.utc().toISO()
         }
       ];
 
       mockDb.all.mockImplementation((sql, params, callback) => {
-        if (typeof callback === 'function') {
-          setImmediate(() => callback(null, mockRuns));
-        }
+        createAsyncCallback(callback, null, mockRuns)();
         return mockDb;
       });
 
@@ -190,15 +170,10 @@ describe('Database Utilities', () => {
       expect(mockDb.all).toHaveBeenCalled();
     });
 
-    /**
-     * Test: Simulates a retrieval error scenario.
-     */
     it('should handle retrieval errors', async () => {
       const error = new Error('Retrieval failed');
       mockDb.all.mockImplementation((sql, params, callback) => {
-        if (typeof callback === 'function') {
-          setImmediate(() => callback(error));
-        }
+        createAsyncCallback(callback, error)();
         return mockDb;
       });
 
@@ -206,72 +181,56 @@ describe('Database Utilities', () => {
     });
   });
 
-  // -------------------[ Test Group: User-Defined Strategies CRUD ]---------------------
+  // -------------------------[ Strategy Management Tests ]-------------------------
 
   describe('saveStrategy', () => {
-    /**
-     * Mock object representing a user-defined trading strategy.
-     */
-    const mockStrategy = {
+    const mockStrategyData = {
       userId: 12345,
-      name: 'Test Strategy',
-      description: 'A test strategy',
+      name: 'test-strategy',
+      description: 'Test strategy',
       strategy: [{ percent: 0.5, target: 2 }],
       stopLossConfig: { initial: -0.3, trailing: 0.5 }
     };
 
-    /**
-     * Test: Verifies successful strategy saving behavior.
-     */
     it('should save strategy successfully', async () => {
       mockDb.run.mockImplementation((sql, params, callback) => {
-        if (typeof callback === 'function') {
-          setImmediate(() => callback(null));
-        }
+        createAsyncCallback(callback, null, { lastID: 1 })();
         return mockDb;
       });
 
-      await expect(db.saveStrategy(mockStrategy)).resolves.toBeUndefined();
+      const result = await db.saveStrategy(mockStrategyData);
+      expect(result).toBe(1);
       expect(mockDb.run).toHaveBeenCalled();
     });
 
-    /**
-     * Test: Verifies error handling during strategy persistence.
-     */
     it('should handle strategy save errors', async () => {
       const error = new Error('Strategy save failed');
       mockDb.run.mockImplementation((sql, params, callback) => {
-        if (typeof callback === 'function') {
-          setImmediate(() => callback(error));
-        }
+        createAsyncCallback(callback, error)();
         return mockDb;
       });
 
-      await expect(db.saveStrategy(mockStrategy)).rejects.toThrow('Strategy save failed');
+      await expect(db.saveStrategy(mockStrategyData)).rejects.toThrow('Strategy save failed');
     });
   });
 
   describe('getUserStrategies', () => {
-    /**
-     * Test: Checks retrieval for all user strategies.
-     */
     it('should retrieve user strategies', async () => {
       const mockStrategies = [
         {
           id: 1,
           userId: 12345,
-          name: 'Test Strategy',
-          description: 'A test strategy',
-          strategy: [{ percent: 0.5, target: 2 }],
-          stopLossConfig: { initial: -0.3, trailing: 0.5 },
-          isDefault: false
+          name: 'test-strategy',
+          description: 'Test strategy',
+          strategy: JSON.stringify([{ percent: 0.5, target: 2 }]),
+          stopLossConfig: JSON.stringify({ initial: -0.3, trailing: 0.5 }),
+          isDefault: false,
+          createdAt: DateTime.utc().toISO()
         }
       ];
 
       mockDb.all.mockImplementation((sql, params, callback) => {
-        if (typeof callback === 'function') {
-          callback.call(mockDb, null, mockStrategies);
-        }
+        createAsyncCallback(callback, null, mockStrategies)();
         return mockDb;
       });
 
@@ -280,15 +239,10 @@ describe('Database Utilities', () => {
       expect(mockDb.all).toHaveBeenCalled();
     });
 
-    /**
-     * Test: Ensures getUserStrategies properly handles and forwards retrieval errors.
-     */
     it('should handle strategy retrieval errors', async () => {
       const error = new Error('Strategy retrieval failed');
       mockDb.all.mockImplementation((sql, params, callback) => {
-        if (typeof callback === 'function') {
-          setImmediate(() => callback(error));
-        }
+        createAsyncCallback(callback, error)();
         return mockDb;
       });
 
@@ -297,105 +251,78 @@ describe('Database Utilities', () => {
   });
 
   describe('getStrategy', () => {
-    /**
-     * Test: Retrieves a specific named strategy for a user.
-     */
     it('should retrieve specific strategy', async () => {
       const mockStrategy = {
         id: 1,
         userId: 12345,
-        name: 'Test Strategy',
-        description: 'A test strategy',
-        strategy: [{ percent: 0.5, target: 2 }],
-        stopLossConfig: { initial: -0.3, trailing: 0.5 },
-        isDefault: false
+        name: 'test-strategy',
+        description: 'Test strategy',
+        strategy: JSON.stringify([{ percent: 0.5, target: 2 }]),
+        stopLossConfig: JSON.stringify({ initial: -0.3, trailing: 0.5 }),
+        isDefault: false,
+        createdAt: DateTime.utc().toISO()
       };
 
       mockDb.get.mockImplementation((sql, params, callback) => {
-        if (typeof callback === 'function') {
-          setImmediate(() => callback(null, mockStrategy));
-        }
+        createAsyncCallback(callback, null, mockStrategy)();
         return mockDb;
       });
 
-      const result = await db.getStrategy(12345, 'Test Strategy');
+      const result = await db.getStrategy(12345, 'test-strategy');
       expect(result).toEqual(mockStrategy);
       expect(mockDb.get).toHaveBeenCalled();
     });
 
-    /**
-     * Test: Verifies behavior when requested strategy is not found; should return null.
-     */
     it('should return null for non-existent strategy', async () => {
       mockDb.get.mockImplementation((sql, params, callback) => {
-        if (typeof callback === 'function') {
-          setImmediate(() => callback(null, null));
-        }
+        createAsyncCallback(callback, null, null)();
         return mockDb;
       });
 
-      const result = await db.getStrategy(12345, 'Non-existent Strategy');
+      const result = await db.getStrategy(12345, 'non-existent');
       expect(result).toBeNull();
     });
 
-    /**
-     * Test: Ensures error propagation on underlying get() failure.
-     */
     it('should handle strategy retrieval errors', async () => {
       const error = new Error('Strategy retrieval failed');
       mockDb.get.mockImplementation((sql, params, callback) => {
-        if (typeof callback === 'function') {
-          setImmediate(() => callback(error));
-        }
+        createAsyncCallback(callback, error)();
         return mockDb;
       });
 
-      await expect(db.getStrategy(12345, 'Test Strategy')).rejects.toThrow('Strategy retrieval failed');
+      await expect(db.getStrategy(12345, 'test-strategy')).rejects.toThrow('Strategy retrieval failed');
     });
   });
 
   describe('deleteStrategy', () => {
-    /**
-     * Test: Confirms deletion of a named strategy by user.
-     */
     it('should delete strategy successfully', async () => {
       mockDb.run.mockImplementation((sql, params, callback) => {
-        if (typeof callback === 'function') {
-          setImmediate(() => callback(null));
-        }
+        createAsyncCallback(callback)();
         return mockDb;
       });
 
-      await expect(db.deleteStrategy(12345, 'Test Strategy')).resolves.toBeUndefined();
+      await expect(db.deleteStrategy(12345, 'test-strategy')).resolves.toBeUndefined();
       expect(mockDb.run).toHaveBeenCalled();
     });
 
-    /**
-     * Test: Checks error handling in the deleteStrategy scenario.
-     */
     it('should handle strategy deletion errors', async () => {
       const error = new Error('Strategy deletion failed');
       mockDb.run.mockImplementation((sql, params, callback) => {
-        if (typeof callback === 'function') {
-          setImmediate(() => callback(error));
-        }
+        createAsyncCallback(callback, error)();
         return mockDb;
       });
 
-      await expect(db.deleteStrategy(12345, 'Test Strategy')).rejects.toThrow('Strategy deletion failed');
+      await expect(db.deleteStrategy(12345, 'test-strategy')).rejects.toThrow('Strategy deletion failed');
     });
   });
 
-  // ------------------[ Test Group: CA Drop Record Persistence ]-----------------------
+  // -------------------------[ CA Drop Management Tests ]-------------------------
 
   describe('saveCADrop', () => {
-    /**
-     * A mock CA drop object representing a call-to-action event for a user.
-     */
     const mockCADrop = {
       userId: 12345,
-      chatId: 67890,
-      mint: 'So11111111111111111111111111111111111111112',
+      chatId: 12345,
+      mint: 'test-mint',
       chain: 'solana',
       tokenName: 'Test Token',
       tokenSymbol: 'TEST',
@@ -406,12 +333,9 @@ describe('Database Utilities', () => {
       stopLossConfig: { initial: -0.3, trailing: 0.5 }
     };
 
-    /**
-     * Test: Verifies correct assignment of last inserted ID on CA drop save.
-     */
     it('should save CA drop successfully', async () => {
       mockDb.run.mockImplementation((sql, params, callback) => {
-        if (callback) callback.call(mockDb, null, { lastID: 1 });
+        createAsyncCallback(callback, null, { lastID: 1 })();
         return mockDb;
       });
 
@@ -420,15 +344,10 @@ describe('Database Utilities', () => {
       expect(mockDb.run).toHaveBeenCalled();
     });
 
-    /**
-     * Test: Ensures errors on CA drop save propagate as expected.
-     */
     it('should handle CA drop save errors', async () => {
       const error = new Error('CA drop save failed');
       mockDb.run.mockImplementation((sql, params, callback) => {
-        if (typeof callback === 'function') {
-          callback.call(mockDb, error, null);
-        }
+        createAsyncCallback(callback, error)();
         return mockDb;
       });
 

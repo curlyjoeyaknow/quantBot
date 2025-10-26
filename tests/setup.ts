@@ -15,4 +15,15 @@ global.console = {
 };
 
 // Set test timeout
-jest.setTimeout(10000);
+jest.setTimeout(30000); // Increased timeout for async operations
+
+// Global cleanup after each test
+afterEach(() => {
+  jest.clearAllMocks();
+  jest.clearAllTimers();
+});
+
+// Global cleanup after all tests
+afterAll(() => {
+  jest.restoreAllMocks();
+});

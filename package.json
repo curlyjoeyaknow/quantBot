@@ -24,7 +24,16 @@
     "influxdb:start": "docker-compose up -d influxdb",
     "influxdb:stop": "docker-compose down",
     "influxdb:migrate": "node scripts/migration/migrate-csv-to-influx.js",
-    "influxdb:test": "node scripts/test-influxdb-integration.js"
+    "influxdb:test": "node scripts/test-influxdb-integration.js",
+    "monitor:credits": "node scripts/monitor-credits.js",
+    "caller:migrate": "node scripts/migration/migrate-ca-drops-to-caller-db-fixed.js",
+    "caller:stats": "node scripts/migration/migrate-ca-drops-to-caller-db-fixed.js --stats",
+    "simulate:caller": "node scripts/simulate-caller.js",
+    "analyze:callers": "node scripts/analyze-callers.js",
+    "extract:lsy": "node scripts/extract-lsy-calls.js",
+    "add:lsy": "node scripts/add-lsy-to-caller-db.js",
+    "cleanup:bots": "node scripts/cleanup-bot-responses.js",
+    "extract:all-brook": "node scripts/extract-all-brook-channels.js"
   },
   "keywords": [
     "telegram",

@@ -13,7 +13,8 @@ module.exports = {
     'src/**/*.ts',
     '!src/**/*.d.ts',
     '!src/**/index.ts',
-    '!src/bot/bot.ts' // Exclude duplicate bot file
+    '!src/bot/bot.ts', // Exclude duplicate bot file
+    '!src/helius-monitor-refactored.ts' // Exclude non-existent file
   ],
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],
