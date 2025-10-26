@@ -1,7 +1,8 @@
 /**
  * Recent Command Handler
  * ======================
- * Handles the /recent command for showing recent calls.
+ * Handles the /recent command for showing recent CA calls
+ * from the database.
  */
 
 import { Context } from 'telegraf';
@@ -27,7 +28,9 @@ export class RecentCommandHandler extends BaseCommandHandler {
       calls.forEach((call: any, index: number) => {
         const date = new Date(call.alert_timestamp).toISOString().split('T')[0];
         const time = new Date(call.alert_timestamp).toTimeString().substring(0, 5);
-        const chainEmoji = call.chain === 'solana' ? '🟣' : call.chain === 'ethereum' ? '🔵' : call.chain === 'bsc' ? '🟡' : '⚪';
+        const chainEmoji = call.chain === 'solana' ? '🟣' : 
+                          call.chain === 'ethereum' ? '🔵' : 
+                          call.chain === 'bsc' ? '🟡' : '⚪';
         
         message += `${index + 1}. ${chainEmoji} **${call.caller_name}** - ${date} ${time}\n`;
         message += `   Token: ${call.token_symbol || 'N/A'} | Chain: ${call.chain}\n`;
@@ -40,7 +43,7 @@ export class RecentCommandHandler extends BaseCommandHandler {
       
     } catch (error) {
       console.error('Recent command error:', error);
-      await this.sendError(ctx, 'Error retrieving recent calls. Please try again later.');
+      await this.sendError(ctx, '❌ Error retrieving recent calls. Please try again later.');
     }
   }
 }

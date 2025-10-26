@@ -1,7 +1,8 @@
 /**
  * Callers Command Handler
- * ======================
- * Handles the /callers command for showing top callers statistics.
+ * =======================
+ * Handles the /callers command for showing top callers statistics
+ * and database statistics.
  */
 
 import { Context } from 'telegraf';
@@ -18,7 +19,7 @@ export class CallersCommandHandler extends BaseCommandHandler {
       const { stats, topCallers } = await getCallerStats();
       
       if (!stats) {
-        await this.sendError(ctx, 'Error loading caller statistics.');
+        await ctx.reply('❌ Error loading caller statistics.');
         return;
       }
       
@@ -40,7 +41,7 @@ export class CallersCommandHandler extends BaseCommandHandler {
       
     } catch (error) {
       console.error('Callers command error:', error);
-      await this.sendError(ctx, 'Error loading caller statistics. Please try again later.');
+      await this.sendError(ctx, '❌ Error loading caller statistics. Please try again later.');
     }
   }
 }

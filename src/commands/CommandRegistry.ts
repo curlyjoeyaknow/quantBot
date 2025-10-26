@@ -14,9 +14,17 @@ import { RepeatCommandHandler } from './RepeatCommandHandler';
 import { CallsCommandHandler } from './CallsCommandHandler';
 import { CallersCommandHandler } from './CallersCommandHandler';
 import { RecentCommandHandler } from './RecentCommandHandler';
+import { ExtractCommandHandler } from './ExtractCommandHandler';
+import { AnalysisCommandHandler } from './AnalysisCommandHandler';
+import { HistoryCommandHandler } from './HistoryCommandHandler';
+import { BacktestCallCommandHandler } from './BacktestCallCommandHandler';
+import { IchimokuCommandHandler } from './IchimokuCommandHandler';
+import { AlertCommandHandler } from './AlertCommandHandler';
+import { AlertsCommandHandler } from './AlertsCommandHandler';
 import { SessionService } from '../services/SessionService';
 import { StrategyService } from '../services/StrategyService';
 import { SimulationService } from '../services/SimulationService';
+import { RepeatSimulationHelper } from '../utils/RepeatSimulationHelper';
 
 export class CommandRegistry {
   private handlers: Map<string, CommandHandler> = new Map();
@@ -46,12 +54,24 @@ export class CommandRegistry {
     this.register(new BacktestCommandHandler(this.sessionService));
     this.register(new StrategyCommandHandler(this.strategyService));
     this.register(new CancelCommandHandler(this.sessionService));
-    this.register(new RepeatCommandHandler(this.simulationService, this.sessionService));
+    
+    // Register repeat handler with RepeatSimulationHelper
+    const repeatHelper = new RepeatSimulationHelper(this.sessionService);
+    this.register(new RepeatCommandHandler(this.simulationService, this.sessionService, repeatHelper));
     
     // Register analysis command handlers
     this.register(new CallsCommandHandler());
     this.register(new CallersCommandHandler());
     this.register(new RecentCommandHandler());
+    
+    // Register data extraction and analysis handlers
+    this.register(new ExtractCommandHandler());
+    this.register(new AnalysisCommandHandler());
+    this.register(new HistoryCommandHandler());
+    this.register(new BacktestCallCommandHandler(this.sessionService, this.simulationService));
+    this.register(new IchimokuCommandHandler(this.sessionService));
+    this.register(new AlertCommandHandler());
+    this.register(new AlertsCommandHandler(this.sessionService));
     
     // Register handlers with the bot
     this.handlers.forEach((handler, commandName) => {
