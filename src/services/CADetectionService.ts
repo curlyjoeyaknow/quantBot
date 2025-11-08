@@ -47,8 +47,8 @@ export class CADetectionService {
     for (const address of addresses) {
       try {
         await this.processCADrop(ctx, address);
-      } catch (error) {
-        console.error('Error processing CA drop:', error);
+      } catch (error: unknown) {
+        console.error('Error processing CA drop:', error instanceof Error ? error.message : String(error));
       }
     }
     return true;
@@ -155,8 +155,8 @@ export class CADetectionService {
           currentPrice = overviewResponse.data.data.price || 0;
           marketcap = overviewResponse.data.data.marketCap || 0;
         }
-      } catch (error) {
-        console.log(`Failed to fetch token overview for ${address}:`, error.message);
+      } catch (error: unknown) {
+        console.log(`Failed to fetch token overview for ${address}:`, error instanceof Error ? error.message : String(error));
         // Fallback to token metadata if available
         currentPrice = typedTokenData.price || 0;
         marketcap = typedTokenData.mc || 0;
@@ -200,8 +200,8 @@ export class CADetectionService {
             userId
           });
         }
-      } catch (error) {
-        console.log('Helius monitor not available:', error.message);
+      } catch (error: unknown) {
+        console.log('Helius monitor not available:', error instanceof Error ? error.message : String(error));
       }
 
       // Compose confirmation message to user/chat
@@ -224,8 +224,8 @@ export class CADetectionService {
       await ctx.reply(message, { parse_mode: 'Markdown' });
 
       console.log(`Started tracking CA: ${tokenData.name} (${address}) on ${finalChain}`);
-    } catch (error) {
-      console.error('Error fetching token metadata for CA:', error);
+    } catch (error: unknown) {
+      console.error('Error fetching token metadata for CA:', error instanceof Error ? error.message : String(error));
       // On errors during CA detection, fail silently to avoid chat spam
     }
   }

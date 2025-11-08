@@ -5,6 +5,8 @@
  */
 
 export { CommandHandler, BaseCommandHandler, Session } from './interfaces/CommandHandler';
+export { BeginCommandHandler } from './BeginCommandHandler';
+export { OptionsCommandHandler } from './OptionsCommandHandler';
 export { BacktestCommandHandler } from './BacktestCommandHandler';
 export { StrategyCommandHandler } from './StrategyCommandHandler';
 export { CancelCommandHandler } from './CancelCommandHandler';

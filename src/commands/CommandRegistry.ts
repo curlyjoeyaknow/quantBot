@@ -21,6 +21,8 @@ import { BacktestCallCommandHandler } from './BacktestCallCommandHandler';
 import { IchimokuCommandHandler } from './IchimokuCommandHandler';
 import { AlertCommandHandler } from './AlertCommandHandler';
 import { AlertsCommandHandler } from './AlertsCommandHandler';
+import { BeginCommandHandler } from './BeginCommandHandler';
+import { OptionsCommandHandler } from './OptionsCommandHandler';
 import { SessionService } from '../services/SessionService';
 import { StrategyService } from '../services/StrategyService';
 import { SimulationService } from '../services/SimulationService';
@@ -50,6 +52,10 @@ export class CommandRegistry {
    * Register default command handlers
    */
   private registerDefaultHandlers(): void {
+    // Register utility commands first
+    this.register(new BeginCommandHandler());
+    this.register(new OptionsCommandHandler());
+    
     // Register core command handlers
     this.register(new BacktestCommandHandler(this.sessionService));
     this.register(new StrategyCommandHandler(this.strategyService));
@@ -83,6 +89,35 @@ export class CommandRegistry {
     });
     
     console.log(`Registered ${this.handlers.size} command handlers.`);
+  }
+  
+  /**
+   * Set up Telegram bot commands menu
+   * This registers all commands in the Telegram menu for easy access
+   */
+  async setupBotCommands(): Promise<void> {
+    const commands = [
+      { command: 'begin', description: 'Welcome message and bot introduction' },
+      { command: 'options', description: 'Show all available commands' },
+      { command: 'backtest', description: 'Start a new PNL simulation' },
+      { command: 'repeat', description: 'Repeat a previous simulation' },
+      { command: 'strategy', description: 'Manage custom trading strategies' },
+      { command: 'cancel', description: 'Cancel current simulation session' },
+      { command: 'ichimoku', description: 'Start Ichimoku Cloud analysis' },
+      { command: 'calls', description: 'Show historical calls for a token' },
+      { command: 'callers', description: 'Show top callers statistics' },
+      { command: 'recent', description: 'Show recent CA calls' },
+      { command: 'analysis', description: 'Run comprehensive historical analysis' },
+      { command: 'history', description: 'View simulation history' },
+      { command: 'alerts', description: 'View active alerts and monitoring' },
+    ];
+    
+    try {
+      await this.bot.telegram.setMyCommands(commands);
+      console.log(`✅ Registered ${commands.length} commands in Telegram menu`);
+    } catch (error) {
+      console.error('❌ Failed to set bot commands:', error);
+    }
   }
   
   /**

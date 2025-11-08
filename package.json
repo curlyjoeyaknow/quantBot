@@ -2,10 +2,10 @@
   "name": "quantbot",
   "version": "1.0.0",
   "description": "Advanced Telegram bot for trading simulation, CA monitoring, and PNL analysis using Birdeye API and Helius WebSockets",
-  "main": "src/bot/bot.ts",
+  "main": "src/bot.ts",
   "scripts": {
-    "start": "ts-node src/bot/bot.ts",
-    "dev": "ts-node --watch src/bot/bot.ts",
+    "start": "ts-node src/bot.ts",
+    "dev": "ts-node --watch src/bot.ts",
     "build": "tsc",
     "build:watch": "tsc --watch",
     "clean": "rm -rf dist/",
@@ -25,6 +25,10 @@
     "influxdb:stop": "docker-compose down",
     "influxdb:migrate": "node scripts/migration/migrate-csv-to-influx.js",
     "influxdb:test": "node scripts/test-influxdb-integration.js",
+    "clickhouse:start": "docker-compose up -d clickhouse",
+    "clickhouse:stop": "docker-compose stop clickhouse",
+    "clickhouse:setup": "ts-node scripts/setup-clickhouse.ts",
+    "clickhouse:migrate": "ts-node scripts/migrate-csv-to-clickhouse.ts",
     "monitor:credits": "node scripts/monitor-credits.js",
     "caller:migrate": "node scripts/migration/migrate-ca-drops-to-caller-db-fixed.js",
     "caller:stats": "node scripts/migration/migrate-ca-drops-to-caller-db-fixed.js --stats",
@@ -33,7 +37,12 @@
     "extract:lsy": "node scripts/extract-lsy-calls.js",
     "add:lsy": "node scripts/add-lsy-to-caller-db.js",
     "cleanup:bots": "node scripts/cleanup-bot-responses.js",
-    "extract:all-brook": "node scripts/extract-all-brook-channels.js"
+    "extract:all-brook": "node scripts/extract-all-brook-channels.js",
+    "analyze:lsy": "node scripts/analyze-lsy-ohlcv.js",
+    "optimize:strategies": "ts-node scripts/optimize-strategies.ts",
+    "optimize:ml": "ts-node scripts/ml-strategy-optimizer.ts",
+    "optimize:analyze": "ts-node scripts/analyze-strategy-results.ts",
+    "optimize:all": "npm run optimize:strategies && npm run optimize:ml && npm run optimize:analyze"
   },
   "keywords": [
     "telegram",
@@ -52,6 +61,7 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@clickhouse/client": "^1.12.1",
     "@influxdata/influxdb-client": "^1.33.2",
     "@influxdata/influxdb-client-apis": "^1.33.2",
     "@types/sqlite3": "^3.1.11",

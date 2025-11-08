@@ -9,6 +9,9 @@ import { Telegraf } from 'telegraf';
 import { SessionService } from '../services/SessionService';
 import { StrategyService } from '../services/StrategyService';
 import { SimulationService } from '../services/SimulationService';
+import { IchimokuWorkflowService } from '../services/IchimokuWorkflowService';
+import { CADetectionService } from '../services/CADetectionService';
+import { RepeatSimulationHelper } from '../utils/RepeatSimulationHelper';
 import { CommandRegistry } from '../commands/CommandRegistry';
 
 export interface ServiceContainerConfig {
@@ -49,6 +52,21 @@ export class ServiceContainer {
     this.registerService('sessionService', () => new SessionService());
     this.registerService('strategyService', () => new StrategyService());
     this.registerService('simulationService', () => new SimulationService());
+    
+    // Workflow services (depend on sessionService)
+    this.registerService('ichimokuWorkflowService', () => {
+      const sessionService = this.getService<SessionService>('sessionService');
+      return new IchimokuWorkflowService(sessionService);
+    });
+    
+    this.registerService('caDetectionService', () => {
+      return new CADetectionService();
+    });
+    
+    this.registerService('repeatSimulationHelper', () => {
+      const sessionService = this.getService<SessionService>('sessionService');
+      return new RepeatSimulationHelper(sessionService);
+    });
 
     // Command registry (depends on all services)
     this.registerService('commandRegistry', () => {

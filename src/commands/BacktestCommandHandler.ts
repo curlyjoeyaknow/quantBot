@@ -52,15 +52,22 @@ export class BacktestCommandHandler extends BaseCommandHandler {
       ));
       
       await ctx.reply(
-        '🤖 **QuantBot Ready!**\n\n' +
-        '📋 **Enhanced Backtest Mode:**\n\n' +
-        'Paste a token mint address to begin your simulation.\n\n' +
-        '✨ **New Feature:** If this token has been called before, I\'ll automatically use the original call timestamp!\n\n' +
-        '💡 **Commands:**\n' +
-        '• `/calls <mint>` - Show all calls for a token\n' +
-        '• `/callers` - Show top callers\n' +
-        '• `/recent` - Show recent calls\n\n' +
-        '📝 **Usage:** Type `/backtest` then paste your mint address in the next message.',
+        '🤖 **QuantBot - Backtest Mode**\n\n' +
+        'Paste a token address (Solana or EVM) to begin your simulation.\n\n' +
+        '**📋 What happens next:**\n' +
+        '1. I\'ll fetch historical price data for the token\n' +
+        '2. You\'ll configure your trading strategy\n' +
+        '3. I\'ll simulate the strategy and show results\n\n' +
+        '**✨ Smart Features:**\n' +
+        '• If this token has been called before, I\'ll use the original call timestamp\n' +
+        '• Multi-chain support: Solana, Ethereum, BSC, Base, Arbitrum\n' +
+        '• Customizable profit targets and stop-loss settings\n\n' +
+        '**💡 Related Commands:**\n' +
+        '• `/calls <token>` - Show all historical calls for a token\n' +
+        '• `/callers` - Show top callers statistics\n' +
+        '• `/recent` - Show recent CA calls\n' +
+        '• `/strategy` - Manage custom trading strategies\n\n' +
+        '**📝 Next Step:** Paste your token address in the next message.',
         { parse_mode: 'Markdown' }
       );
       

@@ -47,9 +47,26 @@ export class TextWorkflowHandler {
       return;
     }
     
-    // --- Step: No active session ‒ attempt CA detection, otherwise ignore other text ---
+    // --- Step: No active session ‒ attempt CA detection, otherwise show help ---
     if (!session) {
       if (await this.caDetectionService.detectCADrop(ctx, text)) return;
+      
+      // Provide helpful default message for unrecognized text
+      const defaultMessage = `🤖 **QuantBot**
+
+I didn't recognize that input. Here's what I can do:
+
+**🚀 Quick Start:**
+• Send a token address to start tracking it
+• Use \`/backtest\` to simulate a trading strategy
+• Use \`/options\` to see all available commands
+
+**💡 Tip:** Just paste a token address (Solana or EVM) and I'll automatically start tracking it!
+
+**📱 Commands:**
+Use \`/options\` to see the full command list.`;
+
+      await ctx.reply(defaultMessage, { parse_mode: 'Markdown' });
       return;
     }
     
@@ -343,7 +360,7 @@ export class TextWorkflowHandler {
 
       // Format and send results
       const strategyText = session.data.strategy
-        .map(s => `${(s.percent * 100).toFixed(0)}%@${s.target}x`)
+        .map((s: Strategy) => `${(s.percent * 100).toFixed(0)}%@${s.target}x`)
         .join(', ');
       const stopText = session.data.stopLossConfig.trailing === 0
         ? `${(session.data.stopLossConfig.initial * 100).toFixed(0)}% initial, none trailing`

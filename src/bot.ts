@@ -59,8 +59,8 @@ import {
 // Load environment variables
 dotenv.config();
 
-// Initialize bot
-const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN!);
+// Initialize bot (support both BOT_TOKEN and TELEGRAM_BOT_TOKEN for compatibility)
+const bot = new Telegraf(process.env.BOT_TOKEN || process.env.TELEGRAM_BOT_TOKEN!);
 
 // -----------------------------------------------------------------------------
 // 2. ServiceContainer Setup
@@ -107,9 +107,12 @@ bot.catch((err, ctx) => {
 });
 
 // Start bot
-bot.launch().then(() => {
+bot.launch().then(async () => {
   console.log('🤖 QuantBot started successfully!');
   console.log('📊 Services initialized:', serviceContainer.getHealthStatus());
+  
+  // Set up Telegram bot commands menu
+  await commandRegistry.setupBotCommands();
 }).catch((error) => {
   console.error('Failed to start bot:', error);
   process.exit(1);
