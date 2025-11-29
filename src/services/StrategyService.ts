@@ -5,7 +5,8 @@
  * Wraps database operations with a clean service interface.
  */
 
-import { Strategy, StopLossConfig } from '../simulate';
+import { Strategy } from '../simulation/engine';
+import { StopLossConfig } from '../simulation/config';
 import * as db from '../utils/database';
 
 export interface StrategyData {

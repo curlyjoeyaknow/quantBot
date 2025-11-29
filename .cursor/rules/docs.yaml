@@ -1,0 +1,114 @@
+---
+description: Documentation rules for docs/ directory
+globs: ["docs/**/*.md"]
+alwaysApply: true
+---
+
+# Documentation Rules (docs/)
+
+## Documentation Structure
+directory-organization:
+  api: "docs/api/"
+  guides: "docs/guides/"
+  migration: "docs/migration/"
+  reviews: "docs/reviews/"
+  roadmap: "docs/roadmap/"
+
+documentation-standards:
+  - "Use Markdown format for all documentation"
+  - "Follow consistent formatting"
+  - "Include table of contents for long documents"
+  - "Use proper heading hierarchy"
+  - "Keep documentation up-to-date"
+
+## Content Guidelines
+
+writing-style:
+  - "Write clearly and concisely."
+  - "Use active voice when possible."
+  - "Provide examples for complex concepts."
+  - "Include code examples when relevant."
+  - "Keep language professional but accessible."
+  - "Include working code examples"
+  - "Explain code examples clearly"
+  - "Use proper syntax highlighting"
+  - "Keep examples up-to-date with codebase"
+  - "Test examples before including"
+
+code-examples:
+  - "Start with overview/introduction"
+  - "Organize content logically"
+  - "Use consistent section structure"
+  - "Include cross-references when helpful"
+  - "End with summary or next steps"
+
+## API Documentation
+
+api-endpoints:
+  - "Document all API endpoints"
+  - "Include request/response examples"
+  - "Document error responses"
+  - "Include authentication requirements"
+  - "Keep API docs synchronized with code"
+
+user-guides:
+  - "Write for target audience"
+  - "Include step-by-step instructions"
+  - "Provide troubleshooting sections"
+  - "Include screenshots when helpful"
+  - "Keep guides current with features"
+
+developer-guides:
+- Document architecture decisions
+- Explain design patterns
+- Include code examples
+- Document best practices
+- Keep guides synchronized with code
+
+## Migration Documentation
+
+migration-guides:
+- Document migration steps clearly
+- Include before/after examples
+- Document breaking changes
+- Provide migration scripts when needed
+- Keep migration docs current
+
+migration-status:
+- Track migration progress
+- Document completed migrations
+- Note pending migrations
+- Include migration timelines
+- Update status regularly
+
+## Maintenance
+
+documentation-updates:
+- Update docs when code changes
+- Review docs during code reviews
+- Remove outdated information
+- Add new documentation as needed
+- Keep documentation current
+
+documentation-review:
+- Review docs for accuracy
+- Check for broken links
+- Verify code examples
+- Ensure consistency
+- Update as needed
+
+## Formatting
+
+markdown-standards:
+- Use proper Markdown syntax
+- Include proper heading hierarchy
+- Use code blocks for code
+- Format tables properly
+- Use lists appropriately
+
+file-naming:
+- Use kebab-case for file names
+- Use descriptive file names
+- Include dates in migration docs
+- Use consistent naming patterns
+- Organize files logically

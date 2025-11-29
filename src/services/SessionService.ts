@@ -6,36 +6,16 @@
  */
 
 import { DateTime } from 'luxon';
-import { Strategy, StopLossConfig, EntryConfig, ReEntryConfig } from '../simulate';
+import { Strategy } from '../simulation/engine';
+import { StopLossConfig, EntryConfig, ReEntryConfig } from '../simulation/config';
 import { eventBus, EventFactory } from '../events';
+import { Session as SessionType } from '../types/session';
 
 /**
  * Session data structure for maintaining user state
+ * Re-export from types/session.ts for consistency
  */
-export interface Session {
-  step?: string;
-  type?: string;
-  data?: any;
-  mint?: string;
-  chain?: string;
-  datetime?: DateTime;
-  metadata?: any;
-  strategy?: Strategy[];
-  stopLossConfig?: StopLossConfig;
-  entryConfig?: EntryConfig;
-  reEntryConfig?: ReEntryConfig;
-  lastSimulation?: {
-    mint: string;
-    chain: string;
-    datetime: DateTime;
-    metadata: any;
-    candles: any[];
-  };
-  waitingForRunSelection?: boolean;
-  recentRuns?: any[];
-  command?: string;
-  strategyName?: string;
-}
+export type Session = SessionType;
 
 /**
  * In-memory session storage implementation

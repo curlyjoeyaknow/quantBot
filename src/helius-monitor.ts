@@ -24,6 +24,7 @@ import {
   saveAlertSent,
   getRecentCAPerformance
 } from './utils/database';
+import { logger } from './utils/logger';
 import type { Candle } from './simulation/candles';
 import type { IchimokuData, IchimokuSignal } from './simulation/ichimoku';
 import { simulateStrategy } from './simulation/engine';
@@ -104,7 +105,7 @@ class HeliusMonitor {
    *   3. Begin sending scheduled hourly summaries.
    */
   public async start(): Promise<void> {
-    console.log('Starting Helius WebSocket monitoring...');
+    logger.info('Starting Helius WebSocket monitoring...');
     await this.loadActiveCAs();
     this.connect();
     this.scheduleHourlySummaries();
@@ -119,9 +120,9 @@ class HeliusMonitor {
     try {
       // Don't auto-load any tokens - only monitor explicitly flagged tokens
       this.activeCAs.clear();
-      console.log(`No auto-loaded CA tracking entries. Only manually flagged tokens will be monitored.`);
+      logger.info('No auto-loaded CA tracking entries. Only manually flagged tokens will be monitored.');
     } catch (error) {
-      console.error('Error loading active CAs:', error);
+      logger.error('Error loading active CAs', error as Error);
     }
   }
 
@@ -135,17 +136,17 @@ class HeliusMonitor {
    */
   private connect(): void {
     if (!HELIUS_API_KEY) {
-      console.error('HELIUS_API_KEY not set in environment.');
+      logger.error('HELIUS_API_KEY not set in environment.');
       return;
     }
 
     try {
-      console.log('Connecting to Helius WebSocket...');
+      logger.info('Connecting to Helius WebSocket...');
       this.ws = new WebSocket(HELIUS_WS_URL);
 
     // On WebSocket open: subscribe to all tracked assets
     this.ws!.on('open', () => {
-      console.log('Connected to Helius WebSocket.');
+      logger.info('Connected to Helius WebSocket.');
       this.reconnectAttempts = 0;
       this.hasAuthError = false;
       this.subscribeToAllTrackedCAs();
@@ -157,31 +158,31 @@ class HeliusMonitor {
         const message = JSON.parse(data.toString());
         this.handleMessage(message);
       } catch (error) {
-        console.error('Error parsing WebSocket message:', error);
+        logger.error('Error parsing WebSocket message', error as Error);
       }
     });
 
     // Auto-reconnect on connection loss
     this.ws!.on('close', () => {
-      console.warn('Helius WebSocket connection closed.');
+      logger.warn('Helius WebSocket connection closed.');
       this.handleReconnect();
     });
 
     // Non-fatal protocol errors
     this.ws!.on('error', (error) => {
-      console.error('Helius WebSocket error:', error);
+      logger.error('Helius WebSocket error', error as Error);
       // Don't crash the bot on WebSocket errors
       if (error.message && error.message.includes('401')) {
-        console.log('Helius API key invalid - disabling real-time monitoring');
-        console.log('Starting fallback polling for Ichimoku alerts...');
+        logger.warn('Helius API key invalid - disabling real-time monitoring');
+        logger.info('Starting fallback polling for Ichimoku alerts...');
         this.hasAuthError = true;
         this.startFallbackPolling();
         this.stop();
       }
     });
     } catch (error) {
-      console.error('Failed to create Helius WebSocket connection:', error);
-      console.log('Continuing without real-time CA monitoring...');
+      logger.error('Failed to create Helius WebSocket connection', error as Error);
+      logger.info('Continuing without real-time CA monitoring...');
     }
   }
 
@@ -209,7 +210,7 @@ class HeliusMonitor {
       this.ws!.send(JSON.stringify(sub));
     });
 
-    console.log(`Subscribed to price updates for ${subscriptions.length} assets.`);
+    logger.info('Subscribed to price updates', { assetCount: subscriptions.length });
   }
 
   /* ==========================================================================
@@ -255,7 +256,7 @@ class HeliusMonitor {
       await savePriceUpdate(ca.id, currentPrice, marketcap, timestamp);
       ca.lastPrice = currentPrice;
     } catch (error) {
-      console.error('Error saving price update:', error);
+      logger.error('Error saving price update', error as Error, { caId: ca.id });
     }
 
     // Check for Ichimoku leading span crosses (immediate price alerts)
@@ -337,9 +338,9 @@ class HeliusMonitor {
           currentPrice,
           Math.floor(Date.now() / 1000)
         );
-        console.log(`Sent ${alert.type} alert for ${ca.tokenName} (${ca.tokenSymbol}).`);
+        logger.info('Sent alert', { alertType: alert.type, tokenName: ca.tokenName, tokenSymbol: ca.tokenSymbol });
       } catch (error) {
-        console.error('Error sending alert:', error);
+        logger.error('Error sending alert', error as Error, { caId: ca.id, alertType: alert.type });
       }
     }
   }
@@ -443,10 +444,10 @@ class HeliusMonitor {
         
         // Log the update reason
         if (isNearIchimokuLine) {
-          console.log(`🔄 Fast candle update for ${ca.tokenName} (near Ichimoku lines)`);
+          logger.debug('Fast candle update', { tokenName: ca.tokenName, reason: 'near Ichimoku lines' });
         }
       } catch (error) {
-        console.error('Error updating candles from Birdeye:', error);
+        logger.error('Error updating candles from Birdeye', error as Error, { tokenName: ca.tokenName });
       }
     }
 
@@ -524,9 +525,9 @@ class HeliusMonitor {
         this.ws.send(JSON.stringify(subscription));
         ca.lastPriceRequest = now;
         
-        console.log(`📡 Requested frequent price updates for ${ca.tokenName}`);
+        logger.debug('Requested frequent price updates', { tokenName: ca.tokenName });
       } catch (error) {
-        console.error('Error requesting frequent price updates:', error);
+        logger.error('Error requesting frequent price updates', error as Error, { tokenName: ca.tokenName });
       }
     }
   }
@@ -541,7 +542,7 @@ class HeliusMonitor {
       if (this.ws && this.ws.readyState === WebSocket.OPEN && this.activeCAs.size > 0) {
         // Only log every 10th request to reduce spam
         if (Math.random() < 0.1) {
-          console.log(`🔄 Requesting updates for ${this.activeCAs.size} monitored tokens`);
+          logger.debug('Requesting updates for monitored tokens', { count: this.activeCAs.size });
         }
         
         for (const [key, ca] of this.activeCAs) {
@@ -562,7 +563,7 @@ class HeliusMonitor {
 
             this.ws.send(JSON.stringify(subscription));
           } catch (error) {
-            console.error(`Error requesting periodic updates for ${ca.tokenName}:`, error);
+            logger.error('Error requesting periodic updates', error as Error, { tokenName: ca.tokenName });
           }
         }
       }
@@ -600,11 +601,11 @@ class HeliusMonitor {
             cloudBottom: newIchimoku.cloudBottom
           };
           
-          console.log(`Updated ${ca.tokenName} candles: ${newCandles.length} candles, Ichimoku recalculated`);
+          logger.debug('Updated candles and recalculated Ichimoku', { tokenName: ca.tokenName, candleCount: newCandles.length });
         }
       }
     } catch (error) {
-      console.error(`Error updating candles for ${ca.tokenName}:`, error);
+      logger.error('Error updating candles', error as Error, { tokenName: ca.tokenName });
     }
   }
 
@@ -650,7 +651,7 @@ class HeliusMonitor {
       ca.lastIchimoku = currentIchimoku;
 
     } catch (error) {
-      console.error('Error in Ichimoku analysis:', error);
+      logger.error('Error in Ichimoku analysis', error as Error, { tokenName: ca.tokenName });
     }
   }
 
@@ -661,7 +662,7 @@ class HeliusMonitor {
     try {
       await this.bot.telegram.sendMessage(ca.chatId, message, { parse_mode: 'Markdown' });
     } catch (error) {
-      console.error('Error sending alert:', error);
+      logger.error('Error sending alert', error as Error, { tokenName: ca.tokenName });
     }
   }
 
@@ -696,9 +697,9 @@ class HeliusMonitor {
         Math.floor(Date.now() / 1000)
       );
       
-      console.log(`Sent Ichimoku ${signal.type} alert for ${ca.tokenName} (${ca.tokenSymbol}).`);
+      logger.info('Sent Ichimoku alert', { signalType: signal.type, tokenName: ca.tokenName, tokenSymbol: ca.tokenSymbol });
     } catch (error) {
-      console.error('Error sending Ichimoku alert:', error);
+      logger.error('Error sending Ichimoku alert', error as Error, { tokenName: ca.tokenName });
     }
   }
 
@@ -712,19 +713,19 @@ class HeliusMonitor {
    */
   private handleReconnect(): void {
     if (this.hasAuthError) {
-      console.log('Skipping reconnection due to authentication error');
+      logger.warn('Skipping reconnection due to authentication error');
       return;
     }
     
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.error('Max reconnection attempts reached. Giving up.');
+      logger.error('Max reconnection attempts reached. Giving up.');
       return;
     }
 
     this.reconnectAttempts++;
     const delayMs = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 30000);
 
-    console.warn(`Reconnecting to WebSocket in ${delayMs}ms (attempt ${this.reconnectAttempts})...`);
+    logger.warn('Reconnecting to WebSocket', { delayMs, attempt: this.reconnectAttempts });
 
     setTimeout(() => this.connect(), delayMs);
   }
@@ -740,7 +741,7 @@ class HeliusMonitor {
     this.stopFallbackPolling();
     this.activeCAs.clear();
     this.reconnectAttempts = 0;
-    console.log('Helius monitor stopped.');
+    logger.info('Helius monitor stopped.');
   }
 
   /* ==========================================================================
@@ -753,7 +754,7 @@ class HeliusMonitor {
   private scheduleHourlySummaries(): void {
     setInterval(() => {
       this.sendHourlySummary().catch(e =>
-        console.error('Error in hourly summary:', e)
+        logger.error('Error in hourly summary', e as Error)
       );
     }, 60 * 60 * 1000); // Every hour
   }
@@ -792,11 +793,11 @@ class HeliusMonitor {
         try {
           await this.bot.telegram.sendMessage(chatId, summary, { parse_mode: 'Markdown' });
         } catch (error) {
-          console.error(`Error sending hourly summary to chat ${chatId}:`, error);
+          logger.error('Error sending hourly summary to chat', error as Error, { chatId });
         }
       }
     } catch (error) {
-      console.error('Error generating hourly summary:', error);
+      logger.error('Error generating hourly summary', error as Error);
     }
   }
 
@@ -812,13 +813,13 @@ class HeliusMonitor {
   private startFallbackPolling(): void {
     if (this.fallbackPollingInterval) return;
 
-    console.log('🔄 Starting fallback polling for Ichimoku alerts...');
+    logger.info('Starting fallback polling for Ichimoku alerts...');
     
     this.fallbackPollingInterval = setInterval(async () => {
       try {
         await this.pollIchimokuAlerts();
       } catch (error) {
-        console.error('Error in fallback polling:', error);
+        logger.error('Error in fallback polling', error as Error);
       }
     }, 30000); // Poll every 30 seconds
   }
@@ -830,7 +831,7 @@ class HeliusMonitor {
     if (this.fallbackPollingInterval) {
       clearInterval(this.fallbackPollingInterval);
       this.fallbackPollingInterval = null;
-      console.log('🛑 Stopped fallback polling');
+      logger.info('Stopped fallback polling');
     }
   }
 
@@ -864,7 +865,7 @@ class HeliusMonitor {
           }
         }
       } catch (error) {
-        console.error(`Error polling price for ${ca.tokenName}:`, error);
+        logger.error('Error polling price', error as Error, { tokenName: ca.tokenName });
       }
     }
   }
@@ -946,7 +947,7 @@ class HeliusMonitor {
       this.ws.send(JSON.stringify(subscription));
     }
 
-    console.log(`Added CA tracking with ${caData.historicalCandles?.length || 0} historical candles for Ichimoku analysis`);
+    logger.info('Added CA tracking with historical candles', { candleCount: caData.historicalCandles?.length || 0, tokenName: caData.tokenName });
   }
 }
 

@@ -6,6 +6,7 @@
 
 import { EventMiddleware, BaseEvent } from './EventBus';
 import { EventPriority, EVENT_PRIORITIES } from './EventTypes';
+import { logger } from '../utils/logger';
 
 /**
  * Logging Middleware
@@ -15,7 +16,7 @@ export const loggingMiddleware: EventMiddleware = async (event, next) => {
   const priority = EVENT_PRIORITIES[event.type] || EventPriority.NORMAL;
   const logLevel = priority >= EventPriority.HIGH ? 'warn' : 'info';
   
-  console[logLevel](`[EVENT] ${event.type} from ${event.metadata.source}`, {
+  logger[logLevel](`[EVENT] ${event.type} from ${event.metadata.source}`, {
     timestamp: new Date(event.metadata.timestamp).toISOString(),
     correlationId: event.metadata.correlationId,
     userId: event.metadata.userId,
@@ -58,7 +59,7 @@ export class MetricsMiddleware {
   public getMetrics(): Record<string, { count: number; avgTime: number; errorRate: number }> {
     const result: Record<string, { count: number; avgTime: number; errorRate: number }> = {};
     
-    for (const [eventType, metrics] of this.metrics) {
+    for (const [eventType, metrics] of Array.from(this.metrics.entries())) {
       result[eventType] = {
         count: metrics.count,
         avgTime: metrics.count > 0 ? metrics.totalTime / metrics.count : 0,
@@ -82,7 +83,7 @@ export const errorHandlingMiddleware: EventMiddleware = async (event, next) => {
   try {
     await next();
   } catch (error) {
-    console.error(`[EVENT_ERROR] ${event.type} from ${event.metadata.source}:`, error);
+    logger.error(`[EVENT_ERROR] ${event.type} from ${event.metadata.source}`, error as Error);
     
     // Emit error event
     event.metadata.source = 'error-handler';
@@ -121,8 +122,10 @@ export class RateLimitingMiddleware {
         current.count++;
         
         if (current.count > this.maxEvents) {
-          console.warn(`[RATE_LIMIT] Event ${event.type} from ${event.metadata.source} rate limited`);
-          return; // Skip processing
+          logger.warn(`[RATE_LIMIT] Event ${event.type} from ${event.metadata.source} rate limited`);
+          const error: any = new Error('Rate limited');
+          error.blocked = true;
+          throw error; // Block processing
         }
       }
     } else {
@@ -203,7 +206,7 @@ export class PerformanceMiddleware {
     const duration = Date.now() - startTime;
     
     if (duration > this.slowEventThreshold) {
-      console.warn(`[SLOW_EVENT] ${event.type} took ${duration}ms to process`);
+      logger.warn(`[SLOW_EVENT] ${event.type} took ${duration}ms to process`, { eventType: event.type, duration });
     }
   };
 }

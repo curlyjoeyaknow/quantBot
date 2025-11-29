@@ -21,6 +21,7 @@ import {
   formatIchimokuData 
 } from '../simulation/ichimoku';
 import { eventBus, EventFactory } from '../events';
+import { logger } from '../utils/logger';
 
 export interface CAMonitor {
   id: number;
@@ -82,9 +83,9 @@ export class CAMonitoringService extends EventEmitter {
    * Initialize the monitoring service
    */
   public async initialize(): Promise<void> {
-    console.log('Initializing CA Monitoring Service...');
+    logger.info('Initializing CA Monitoring Service...');
     await this.loadActiveCAs();
-    console.log(`CA Monitoring Service initialized with ${this.activeCAs.size} active CAs`);
+    logger.info('CA Monitoring Service initialized', { activeCACount: this.activeCAs.size });
   }
 
   /**
@@ -93,9 +94,9 @@ export class CAMonitoringService extends EventEmitter {
   private async loadActiveCAs(): Promise<void> {
     try {
       this.activeCAs.clear();
-      console.log('No auto-loaded CA tracking entries. Only manually flagged tokens will be monitored.');
+      logger.info('No auto-loaded CA tracking entries. Only manually flagged tokens will be monitored.');
     } catch (error) {
-      console.error('Error loading active CAs:', error);
+      logger.error('Error loading active CAs', error as Error);
     }
   }
 
@@ -105,7 +106,7 @@ export class CAMonitoringService extends EventEmitter {
   public addCAMonitor(ca: CAMonitor): void {
     const key = `${ca.chain}:${ca.mint}`;
     this.activeCAs.set(key, ca);
-    console.log(`Added CA monitor: ${ca.tokenName} (${ca.tokenSymbol})`);
+    logger.info('Added CA monitor', { tokenName: ca.tokenName, tokenSymbol: ca.tokenSymbol, mint: ca.mint });
     
     // Emit CA monitor added event
     eventBus.publish(EventFactory.createSystemEvent(
@@ -131,7 +132,7 @@ export class CAMonitoringService extends EventEmitter {
     const ca = this.activeCAs.get(key);
     if (ca) {
       this.activeCAs.delete(key);
-      console.log(`Removed CA monitor: ${ca.tokenName} (${ca.tokenSymbol})`);
+      logger.info('Removed CA monitor', { tokenName: ca.tokenName, tokenSymbol: ca.tokenSymbol, mint: ca.mint });
       this.emit('caRemoved', ca);
     }
   }
@@ -173,7 +174,7 @@ export class CAMonitoringService extends EventEmitter {
       await savePriceUpdate(ca.id, currentPrice, marketcap, timestamp);
       ca.lastPrice = currentPrice;
     } catch (error) {
-      console.error('Error saving price update:', error);
+      logger.error('Error saving price update', error as Error, { mint: ca.mint });
     }
 
     // Check for Ichimoku leading span crosses (immediate price alerts)
@@ -316,7 +317,7 @@ export class CAMonitoringService extends EventEmitter {
 
       ca.lastIchimoku = ichimokuData;
     } catch (error) {
-      console.error('Error checking Ichimoku signals:', error);
+      logger.error('Error checking Ichimoku signals', error as Error, { mint: ca.mint });
     }
   }
 
@@ -328,7 +329,7 @@ export class CAMonitoringService extends EventEmitter {
       await this.bot.telegram.sendMessage(ca.chatId, message, { parse_mode: 'Markdown' });
       await saveAlertSent(ca.id, 'custom_alert', ca.lastPrice || 0, Date.now());
     } catch (error) {
-      console.error('Error sending alert:', error);
+      logger.error('Error sending alert', error as Error, { mint: ca.mint });
     }
   }
 

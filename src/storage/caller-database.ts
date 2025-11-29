@@ -1,6 +1,7 @@
 import { Database } from 'sqlite3';
 import { promisify } from 'util';
 import { config } from 'dotenv';
+import { logger } from '../utils/logger';
 
 config();
 
@@ -41,7 +42,7 @@ export class CallerDatabase {
    * Initialize database tables
    */
   private async initDatabase(): Promise<void> {
-    const run = promisify(this.db.run.bind(this.db));
+    const run = promisify(this.db.run.bind(this.db)) as (sql: string, params?: any[]) => Promise<any>;
 
     try {
       // Create caller_alerts table
@@ -81,9 +82,9 @@ export class CallerDatabase {
         )
       `);
 
-      console.log('✅ Caller database initialized successfully');
+      logger.info('Caller database initialized successfully');
     } catch (error) {
-      console.error('❌ Failed to initialize caller database:', error);
+      logger.error('Failed to initialize caller database', error as Error);
       throw error;
     }
   }
@@ -92,7 +93,7 @@ export class CallerDatabase {
    * Add a new caller alert
    */
   async addCallerAlert(alert: CallerAlert): Promise<number> {
-    const run = promisify(this.db.run.bind(this.db));
+    const run = promisify(this.db.run.bind(this.db)) as (sql: string, params?: any[]) => Promise<any>;
 
     try {
       const result = await run(`
@@ -112,7 +113,7 @@ export class CallerDatabase {
 
       return (result as any).lastID;
     } catch (error) {
-      console.error('❌ Failed to add caller alert:', error);
+      logger.error('Failed to add caller alert', error as Error, { callerName: alert.callerName, tokenAddress: alert.tokenAddress });
       throw error;
     }
   }
@@ -121,7 +122,7 @@ export class CallerDatabase {
    * Batch add multiple caller alerts
    */
   async addCallerAlertsBatch(alerts: CallerAlert[]): Promise<number> {
-    const run = promisify(this.db.run.bind(this.db));
+    const run = promisify(this.db.run.bind(this.db)) as (sql: string, params?: any[]) => Promise<any>;
 
     try {
       const stmt = this.db.prepare(`
@@ -151,19 +152,20 @@ export class CallerDatabase {
               }
             });
           });
-        } catch (error) {
+        } catch (error: unknown) {
           // Skip duplicates silently
-          if (!error.message.includes('UNIQUE constraint failed')) {
-            console.warn(`⚠️ Failed to add alert for ${alert.callerName}: ${error.message}`);
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          if (!errorMessage.includes('UNIQUE constraint failed')) {
+            logger.warn('Failed to add alert', { callerName: alert.callerName, error: errorMessage });
           }
         }
       }
 
       stmt.finalize();
-      console.log(`✅ Added ${addedCount}/${alerts.length} caller alerts`);
+      logger.info('Added caller alerts', { addedCount, totalCount: alerts.length });
       return addedCount;
     } catch (error) {
-      console.error('❌ Failed to batch add caller alerts:', error);
+      logger.error('Failed to batch add caller alerts', error as Error);
       throw error;
     }
   }
@@ -172,7 +174,7 @@ export class CallerDatabase {
    * Get all alerts for a specific caller
    */
   async getCallerAlerts(callerName: string, limit?: number): Promise<CallerAlert[]> {
-    const all = promisify(this.db.all.bind(this.db));
+    const all = promisify(this.db.all.bind(this.db)) as (sql: string, params?: any[]) => Promise<any[]>;
 
     try {
       const query = limit 
@@ -180,7 +182,7 @@ export class CallerDatabase {
         : `SELECT * FROM caller_alerts WHERE caller_name = ? ORDER BY alert_timestamp DESC`;
 
       const params = limit ? [callerName, limit] : [callerName];
-      const rows = await all(query, params);
+      const rows = await all(query, params) as any[];
 
       return rows.map((row: any) => ({
         id: row.id,
@@ -195,7 +197,7 @@ export class CallerDatabase {
         createdAt: new Date(row.created_at)
       }));
     } catch (error) {
-      console.error('❌ Failed to get caller alerts:', error);
+      logger.error('Failed to get caller alerts', error as Error, { callerName });
       throw error;
     }
   }
@@ -208,7 +210,7 @@ export class CallerDatabase {
     startTime: Date, 
     endTime: Date
   ): Promise<CallerAlert[]> {
-    const all = promisify(this.db.all.bind(this.db));
+    const all = promisify(this.db.all.bind(this.db)) as (sql: string, params?: any[]) => Promise<any[]>;
 
     try {
       const rows = await all(`
@@ -217,7 +219,7 @@ export class CallerDatabase {
         AND alert_timestamp >= ? 
         AND alert_timestamp <= ?
         ORDER BY alert_timestamp ASC
-      `, [callerName, startTime.toISOString(), endTime.toISOString()]);
+      `, [callerName, startTime.toISOString(), endTime.toISOString()]) as any[];
 
       return rows.map((row: any) => ({
         id: row.id,
@@ -232,7 +234,7 @@ export class CallerDatabase {
         createdAt: new Date(row.created_at)
       }));
     } catch (error) {
-      console.error('❌ Failed to get caller alerts in range:', error);
+      logger.error('Failed to get caller alerts in range', error as Error, { callerName, startTime: startTime?.toISOString(), endTime: endTime?.toISOString() });
       throw error;
     }
   }
@@ -241,13 +243,13 @@ export class CallerDatabase {
    * Get all unique callers
    */
   async getAllCallers(): Promise<string[]> {
-    const all = promisify(this.db.all.bind(this.db));
+    const all = promisify(this.db.all.bind(this.db)) as (sql: string, params?: any[]) => Promise<any[]>;
 
     try {
-      const rows = await all(`SELECT DISTINCT caller_name FROM caller_alerts ORDER BY caller_name`);
+      const rows = await all(`SELECT DISTINCT caller_name FROM caller_alerts ORDER BY caller_name`) as any[];
       return rows.map((row: any) => row.caller_name);
     } catch (error) {
-      console.error('❌ Failed to get all callers:', error);
+      logger.error('Failed to get all callers', error as Error);
       throw error;
     }
   }
@@ -256,7 +258,7 @@ export class CallerDatabase {
    * Get caller statistics
    */
   async getCallerStats(callerName: string): Promise<CallerStats | null> {
-    const all = promisify(this.db.all.bind(this.db));
+    const all = promisify(this.db.all.bind(this.db)) as (sql: string, params?: any[]) => Promise<any[]>;
 
     try {
       const rows = await all(`
@@ -284,7 +286,7 @@ export class CallerDatabase {
         avgAlertsPerDay: parseFloat(row.avg_alerts_per_day.toFixed(2))
       };
     } catch (error) {
-      console.error('❌ Failed to get caller stats:', error);
+      logger.error('Failed to get caller stats', error as Error, { callerName });
       throw error;
     }
   }
@@ -293,7 +295,7 @@ export class CallerDatabase {
    * Get all caller statistics
    */
   async getAllCallerStats(): Promise<CallerStats[]> {
-    const all = promisify(this.db.all.bind(this.db));
+    const all = promisify(this.db.all.bind(this.db)) as (sql: string, params?: any[]) => Promise<any[]>;
 
     try {
       const rows = await all(`
@@ -318,7 +320,7 @@ export class CallerDatabase {
         avgAlertsPerDay: parseFloat(row.avg_alerts_per_day.toFixed(2))
       }));
     } catch (error) {
-      console.error('❌ Failed to get all caller stats:', error);
+      logger.error('Failed to get all caller stats', error as Error);
       throw error;
     }
   }
@@ -327,7 +329,7 @@ export class CallerDatabase {
    * Get tokens called by a specific caller
    */
   async getCallerTokens(callerName: string): Promise<Array<{tokenAddress: string, tokenSymbol: string, chain: string, alertCount: number}>> {
-    const all = promisify(this.db.all.bind(this.db));
+    const all = promisify(this.db.all.bind(this.db)) as (sql: string, params?: any[]) => Promise<any[]>;
 
     try {
       const rows = await all(`
@@ -349,7 +351,7 @@ export class CallerDatabase {
         alertCount: row.alert_count
       }));
     } catch (error) {
-      console.error('❌ Failed to get caller tokens:', error);
+      logger.error('Failed to get caller tokens', error as Error, { callerName });
       throw error;
     }
   }
@@ -358,7 +360,7 @@ export class CallerDatabase {
    * Update caller success rate (called after simulations)
    */
   async updateCallerSuccessRate(callerName: string, successRate: number): Promise<void> {
-    const run = promisify(this.db.run.bind(this.db));
+    const run = promisify(this.db.run.bind(this.db)) as (sql: string, params?: any[]) => Promise<any>;
 
     try {
       await run(`
@@ -378,9 +380,9 @@ export class CallerDatabase {
         GROUP BY caller_name
       `, [successRate, callerName]);
 
-      console.log(`✅ Updated success rate for ${callerName}: ${successRate.toFixed(2)}%`);
+      logger.info('Updated caller success rate', { callerName, successRate: successRate.toFixed(2) });
     } catch (error) {
-      console.error('❌ Failed to update caller success rate:', error);
+      logger.error('Failed to update caller success rate', error as Error, { callerName });
       throw error;
     }
   }
@@ -394,7 +396,7 @@ export class CallerDatabase {
     totalTokens: number;
     dateRange: {start: Date, end: Date};
   }> {
-    const all = promisify(this.db.all.bind(this.db));
+    const all = promisify(this.db.all.bind(this.db)) as (sql: string, params?: any[]) => Promise<any[]>;
 
     try {
       const rows = await all(`
@@ -418,7 +420,7 @@ export class CallerDatabase {
         }
       };
     } catch (error) {
-      console.error('❌ Failed to get database stats:', error);
+      logger.error('Failed to get database stats', error as Error);
       throw error;
     }
   }
@@ -431,7 +433,7 @@ export class CallerDatabase {
       this.db.close((err) => {
         if (err) reject(err);
         else {
-          console.log('🔌 Caller database connection closed');
+          logger.info('Caller database connection closed');
           resolve();
         }
       });

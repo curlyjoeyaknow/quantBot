@@ -18,6 +18,7 @@ import {
   SystemEvent,
   ServiceEvent
 } from './EventTypes';
+import { logger } from '../utils/logger';
 
 /**
  * User Event Handlers
@@ -31,13 +32,13 @@ export class UserEventHandlers {
     
     switch (event.type) {
       case 'user.session.started':
-        console.log(`User ${userId} started new session`);
+        logger.info('User started new session', { userId });
         break;
       case 'user.session.updated':
-        console.log(`User ${userId} updated session`);
+        logger.info('User updated session', { userId });
         break;
       case 'user.session.cleared':
-        console.log(`User ${userId} cleared session`);
+        logger.info('User cleared session', { userId });
         break;
     }
   };
@@ -49,9 +50,9 @@ export class UserEventHandlers {
     const { userId, command, success, error } = event.data;
     
     if (success) {
-      console.log(`User ${userId} executed command ${command} successfully`);
+      logger.info('User executed command successfully', { userId, command });
     } else {
-      console.error(`User ${userId} failed to execute command ${command}: ${error}`);
+      logger.error('User failed to execute command', new Error(error || 'Unknown error'), { userId, command });
     }
   };
 
@@ -63,13 +64,13 @@ export class UserEventHandlers {
     
     switch (event.type) {
       case 'user.strategy.saved':
-        console.log(`User ${userId} saved strategy: ${strategyName}`);
+        logger.info('User saved strategy', { userId, strategyName });
         break;
       case 'user.strategy.deleted':
-        console.log(`User ${userId} deleted strategy: ${strategyName}`);
+        logger.info('User deleted strategy', { userId, strategyName });
         break;
       case 'user.strategy.used':
-        console.log(`User ${userId} activated strategy: ${strategyName}`);
+        logger.info('User activated strategy', { userId, strategyName });
         break;
     }
   };
@@ -87,13 +88,13 @@ export class SimulationEventHandlers {
     
     switch (event.type) {
       case 'simulation.started':
-        console.log(`Simulation started for user ${userId}, token ${mint} on ${chain}`);
+        logger.info('Simulation started', { userId, mint, chain });
         break;
       case 'simulation.completed':
-        console.log(`Simulation completed for user ${userId}, PNL: ${result?.finalPnl || 'N/A'}`);
+        logger.info('Simulation completed', { userId, mint, chain, pnl: result?.finalPnl || 'N/A' });
         break;
       case 'simulation.failed':
-        console.error(`Simulation failed for user ${userId}: ${error}`);
+        logger.error('Simulation failed', new Error(error || 'Unknown error'), { userId, mint, chain });
         break;
     }
   };
@@ -111,16 +112,16 @@ export class WebSocketEventHandlers {
     
     switch (event.type) {
       case 'websocket.connected':
-        console.log(`WebSocket connected to ${url}`);
+        logger.info('WebSocket connected', { url });
         break;
       case 'websocket.disconnected':
-        console.log(`WebSocket disconnected from ${url}`);
+        logger.info('WebSocket disconnected', { url });
         break;
       case 'websocket.error':
-        console.error(`WebSocket error on ${url}: ${error}`);
+        logger.error('WebSocket error', error as Error, { url });
         break;
       case 'websocket.reconnecting':
-        console.log(`WebSocket reconnecting to ${url} (attempt ${reconnectAttempts})`);
+        logger.info('WebSocket reconnecting', { url, attempt: reconnectAttempts });
         break;
     }
   };
@@ -136,7 +137,7 @@ export class MonitoringEventHandlers {
   public static handlePriceUpdateEvent: EventHandler<PriceUpdateEvent['data']> = async (event) => {
     const { mint, chain, price, priceChange } = event.data;
     
-    console.log(`Price update: ${mint} on ${chain} = $${price} (${(priceChange * 100).toFixed(2)}%)`);
+    logger.debug('Price update', { mint, chain, price, priceChange: (priceChange * 100).toFixed(2) });
   };
 
   /**
@@ -145,7 +146,7 @@ export class MonitoringEventHandlers {
   public static handleAlertEvent: EventHandler<AlertEvent['data']> = async (event) => {
     const { caId, tokenName, tokenSymbol, alertType, price, priceChange } = event.data;
     
-    console.log(`Alert sent: ${alertType} for ${tokenName} (${tokenSymbol}) at $${price} (${(priceChange * 100).toFixed(2)}%)`);
+    logger.info('Alert sent', { alertType, tokenName, tokenSymbol, price, priceChange: (priceChange * 100).toFixed(2) });
   };
 }
 
@@ -161,13 +162,13 @@ export class SystemEventHandlers {
     
     switch (event.type) {
       case 'system.startup':
-        console.log(`System startup: ${component} - ${message}`);
+        logger.info('System startup', { component, message });
         break;
       case 'system.shutdown':
-        console.log(`System shutdown: ${component} - ${message}`);
+        logger.info('System shutdown', { component, message });
         break;
       case 'system.error':
-        console.error(`System error in ${component}: ${message}`, error);
+        logger.error('System error', error as Error, { component, message });
         break;
     }
   };
@@ -180,16 +181,16 @@ export class SystemEventHandlers {
     
     switch (event.type) {
       case 'service.initialized':
-        console.log(`Service initialized: ${serviceName}`);
+        logger.info('Service initialized', { serviceName });
         break;
       case 'service.started':
-        console.log(`Service started: ${serviceName}`);
+        logger.info('Service started', { serviceName });
         break;
       case 'service.stopped':
-        console.log(`Service stopped: ${serviceName}`);
+        logger.info('Service stopped', { serviceName });
         break;
       case 'service.error':
-        console.error(`Service error in ${serviceName}: ${error}`);
+        logger.error('Service error', error as Error, { serviceName });
         break;
     }
   };
@@ -247,7 +248,7 @@ export class EventHandlerRegistry {
     this.eventBus.subscribe('service.stopped', SystemEventHandlers.handleServiceEvent);
     this.eventBus.subscribe('service.error', SystemEventHandlers.handleServiceEvent);
 
-    console.log('All event handlers registered');
+    logger.info('All event handlers registered');
   }
 
   /**
@@ -256,6 +257,6 @@ export class EventHandlerRegistry {
   public unregisterAll(): void {
     // This would require tracking all registered handlers
     // For now, we'll just log that unregistration was requested
-    console.log('Event handler unregistration requested');
+    logger.info('Event handler unregistration requested');
   }
 }

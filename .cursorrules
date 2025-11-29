@@ -1,0 +1,141 @@
+---
+description: QuantBot project global TypeScript and development best practices
+globs: ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx"]
+alwaysApply: true
+---
+
+# QuantBot Project - Global Cursor Rules
+
+## Project Overview
+QuantBot is a TypeScript-based trading simulation and analysis platform for Solana, featuring:
+- Telegram bot interface
+- Trading simulation engine
+- Real-time data monitoring (Birdeye API, Helius WebSockets)
+- Strategy optimization and backtesting
+- Next.js web dashboard
+
+## TypeScript Best Practices
+
+### Code Style
+- Use TypeScript strict mode (enabled in tsconfig.json)
+- Prefer explicit types over `any` - use `unknown` when type is truly unknown
+- Use `interface` for object shapes, `type` for unions/intersections
+- Always use `const` for immutable values, `let` only when reassignment is needed
+- Use `readonly` for immutable object properties
+- Prefer arrow functions for callbacks, regular functions for methods
+- Use async/await over Promise chains
+- Always handle errors with try/catch or proper error propagation
+
+### Naming Conventions
+- **Files**: kebab-case for files (`user-service.ts`, `trading-strategy.ts`)
+- **Classes**: PascalCase (`SimulationEngine`, `TradingStrategy`)
+- **Interfaces/Types**: PascalCase with descriptive names (`TradingConfig`, `SimulationResult`)
+- **Functions/Methods**: camelCase (`calculatePnL`, `fetchCandles`)
+- **Constants**: UPPER_SNAKE_CASE (`MAX_RETRIES`, `DEFAULT_TIMEOUT`)
+- **Private members**: prefix with underscore (`_internalState`, `_cache`)
+- **Enums**: PascalCase with PascalCase values (`OrderType.Buy`, `Chain.Solana`)
+
+### Type Safety
+- Never use `any` - use `unknown` and type guards instead
+- Use discriminated unions for state management
+- Prefer type inference where types are obvious
+- Use `as const` for literal types when needed
+- Define proper return types for all functions
+- Use generic types for reusable components
+
+### Error Handling
+- Use custom error classes extending `Error`
+- Always include context in error messages
+- Use `Result<T, E>` pattern for operations that can fail
+- Log errors with appropriate severity levels
+- Never swallow errors silently
+
+### Async/Await Patterns
+- Always use async/await, avoid Promise chains
+- Use `Promise.all()` for parallel operations
+- Use `Promise.allSettled()` when some failures are acceptable
+- Always handle promise rejections
+- Use proper timeout handling for async operations
+
+### Code Organization
+- One class/interface per file
+- Group related exports in `index.ts` files
+- Use barrel exports for public APIs
+- Keep functions focused and single-purpose
+- Maximum function length: 50 lines (extract helpers if longer)
+- Maximum file length: 300 lines (split into modules if longer)
+
+### Documentation
+- Use JSDoc comments for public APIs
+- Include parameter and return type descriptions
+- Document complex algorithms and business logic
+- Add examples for non-obvious usage
+- Keep comments up-to-date with code changes
+
+### Testing
+- Write unit tests for all business logic
+- Use descriptive test names: `should calculate PnL correctly when trade closes at profit`
+- Follow AAA pattern: Arrange, Act, Assert
+- Mock external dependencies
+- Test edge cases and error conditions
+
+### Performance
+- Avoid premature optimization
+- Use appropriate data structures (Map for lookups, Set for uniqueness)
+- Cache expensive computations
+- Use lazy evaluation where appropriate
+- Profile before optimizing
+
+### Security
+- Never commit secrets or API keys
+- Validate all user inputs
+- Sanitize data before database operations
+- Use parameterized queries
+- Implement rate limiting for APIs
+
+## Project-Specific Rules
+
+### Module Architecture
+- Follow the modular architecture defined in `docs/migration/module-architecture.md`
+- Keep modules independent and loosely coupled
+- Use dependency injection for testability
+- Prefer composition over inheritance
+
+### Data Access
+- Use the data loader pattern from `src/data/loaders/`
+- Always validate data before processing
+- Use transactions for multi-step database operations
+- Implement proper error handling for data operations
+
+### Simulation Engine
+- All simulation logic must be in `src/simulation/`
+- Use the `SimulationEngine` class for all simulations
+- Strategy definitions must use the builder pattern
+- Configuration must be validated using Zod schemas
+
+### API Integration
+- All external API calls must go through base clients in `src/api/`
+- Implement retry logic with exponential backoff
+- Use connection pooling where applicable
+- Cache API responses when appropriate
+- Handle rate limiting gracefully
+
+### Logging
+- Use the logger from `src/utils/logger.ts`
+- Use appropriate log levels: error, warn, info, debug
+- Include context in log messages
+- Never log sensitive information
+
+## File Organization
+
+### Import Order
+1. External dependencies (npm packages)
+2. Internal modules (from src/)
+3. Types and interfaces
+4. Constants
+5. Relative imports
+
+### Export Strategy
+- Use named exports for utilities and functions
+- Use default exports only for main class/component of a module
+- Re-export from `index.ts` for cleaner imports

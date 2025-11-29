@@ -7,35 +7,13 @@
  */
 
 import { Context } from 'telegraf';
+import { Session as SessionType } from '../../types/session';
 
 /**
  * Session data structure for maintaining user state
+ * Re-export from types/session.ts for backward compatibility
  */
-export interface Session {
-  step?: string;
-  type?: string;
-  data?: any;
-  mint?: string;
-  chain?: string;
-  datetime?: any; // DateTime from luxon
-  metadata?: any;
-  strategy?: any[];
-  stopLossConfig?: any;
-  entryConfig?: any;
-  reEntryConfig?: any;
-  lastSimulation?: {
-    mint: string;
-    chain: string;
-    datetime: any;
-    metadata: any;
-    candles: any[];
-  };
-  waitingForRunSelection?: boolean;
-  recentRuns?: any[];
-  userId?: number;
-  strategyName?: string;
-  [key: string]: any; // Allow additional properties
-}
+export type Session = SessionType;
 
 /**
  * Base interface for all command handlers

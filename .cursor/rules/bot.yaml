@@ -1,0 +1,143 @@
+---
+description: Telegram bot rules for src/bot/ and quantbot-bot/
+globs: ["src/bot/**/*.ts", "quantbot-bot/**/*.ts", "src/bot.ts"]
+alwaysApply: true
+---
+
+# Bot Rules (src/bot/, quantbot-bot/)
+
+## Bot Architecture
+
+### Core Principles
+- Use Telegraf framework for bot interactions
+- Implement command pattern for handlers
+- Use dependency injection for services
+- Keep bot logic separate from business logic
+- Handle errors gracefully with user-friendly messages
+
+### Bot Initialization
+- Initialize bot with proper configuration
+- Register all command handlers
+- Set up middleware for common operations
+- Configure error handling
+- Set up logging for bot operations
+
+## Command Handlers
+
+### Handler Structure
+- Each command should have its own handler class
+- Handlers must implement `CommandHandler` interface
+- Use dependency injection for service access
+- Validate all user inputs
+- Return structured responses
+
+### Command Registration
+- Register commands in `CommandRegistry`
+- Use consistent command naming
+- Document command usage
+- Provide help text for commands
+- Handle command aliases appropriately
+
+### Command Execution
+- Validate command arguments
+- Handle missing or invalid arguments
+- Provide helpful error messages
+- Log command executions
+- Handle command timeouts
+
+## Message Handling
+
+### Message Processing
+- Parse messages consistently
+- Extract command and arguments
+- Validate message format
+- Handle different message types
+- Process messages asynchronously
+
+### Response Formatting
+- Format responses consistently
+- Use markdown for formatting
+- Keep messages concise
+- Provide actionable information
+- Handle long responses appropriately
+
+## Error Handling
+
+### User-Facing Errors
+- Provide user-friendly error messages
+- Don't expose internal errors
+- Log detailed errors internally
+- Handle rate limiting gracefully
+- Provide recovery suggestions
+
+### Internal Errors
+- Log all errors with context
+- Use appropriate error types
+- Handle errors at appropriate levels
+- Don't crash bot on errors
+- Implement proper error recovery
+
+## State Management
+
+### Session Management
+- Use `SessionService` for session handling
+- Store session data appropriately
+- Handle session expiration
+- Clean up expired sessions
+- Validate session data
+
+### User State
+- Track user state when needed
+- Store state securely
+- Handle state transitions
+- Clean up state appropriately
+- Validate state data
+
+## Integration
+
+### Service Integration
+- Use service container for dependencies
+- Inject services into handlers
+- Use async/await for service calls
+- Handle service errors appropriately
+- Cache service responses when appropriate
+
+### API Integration
+- Use API clients for external calls
+- Handle API rate limiting
+- Implement retry logic
+- Cache API responses
+- Handle API errors gracefully
+
+## Testing
+
+### Unit Tests
+- Test command handlers independently
+- Mock external dependencies
+- Test error handling
+- Test input validation
+- Test response formatting
+
+### Integration Tests
+- Test full command flows
+- Test with real services
+- Test error scenarios
+- Test state management
+- Test message parsing
+
+## Documentation
+
+### Command Documentation
+- Document all commands
+- Provide usage examples
+- Document command arguments
+- Include error scenarios
+- Keep documentation up-to-date
+
+### Code Documentation
+- Document handler logic
+- Explain state management
+- Document error handling
+- Include examples
+- Keep comments current
+

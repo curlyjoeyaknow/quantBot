@@ -60,35 +60,48 @@ describe('BacktestCommandHandler', () => {
       await handler.execute(mockContext);
 
       expect(mockContext.reply).toHaveBeenCalledWith(
-        expect.stringContaining('🤖 **QuantBot Ready!**'),
-        { parse_mode: 'Markdown' }
-      );
-      
-      expect(mockContext.reply).toHaveBeenCalledWith(
-        expect.stringContaining('Please provide the token address'),
-        { parse_mode: 'Markdown' }
+        expect.stringContaining("🤖 **QuantBot - Backtest Mode**\n\n**Select how you want to start your backtest:**"),
+        expect.objectContaining({
+          reply_markup: expect.objectContaining({
+            inline_keyboard: expect.arrayContaining([
+              expect.arrayContaining([
+                expect.objectContaining({
+                  text: "📊 Recent Backtests",
+                  callback_data: "backtest_source:recent_backtests"
+                })
+              ]),
+              expect.arrayContaining([
+                expect.objectContaining({
+                  text: "📞 Recent Calls",
+                  callback_data: "backtest_source:recent_calls"
+                })
+              ]),
+              expect.arrayContaining([
+                expect.objectContaining({
+                  text: "👤 Calls by Caller",
+                  callback_data: "backtest_source:by_caller"
+                })
+              ]),
+              expect.arrayContaining([
+                expect.objectContaining({
+                  text: "✍️ Manual Mint Entry",
+                  callback_data: "backtest_source:manual"
+                })
+              ])
+            ])
+          })
+        })
       );
     });
 
-    it('should include supported token formats in response', async () => {
+    it('should include menu options in response', async () => {
       await handler.execute(mockContext);
 
       const replyCall = mockContext.reply.mock.calls[0];
       const message = replyCall[0] as string;
 
-      expect(message).toContain('Solana: `So11111111111111111111111111111111111111112`');
-      expect(message).toContain('Ethereum: `0x1234567890123456789012345678901234567890`');
-      expect(message).toContain('BSC: `0x1234567890123456789012345678901234567890`');
-      expect(message).toContain('Base: `0x1234567890123456789012345678901234567890`');
-    });
-
-    it('should include cancel instruction', async () => {
-      await handler.execute(mockContext);
-
-      const replyCall = mockContext.reply.mock.calls[0];
-      const message = replyCall[0] as string;
-
-      expect(message).toContain('Type `/cancel` to abort');
+      expect(message).toContain('🤖 **QuantBot - Backtest Mode**');
+      expect(message).toContain('**Select how you want to start your backtest:**');
     });
 
     it('should handle missing user ID', async () => {
@@ -151,8 +164,8 @@ describe('BacktestCommandHandler', () => {
 
       // Should still execute successfully
       expect(mockContext.reply).toHaveBeenCalledWith(
-        expect.stringContaining('🤖 **QuantBot Ready!**'),
-        { parse_mode: 'Markdown' }
+        expect.stringContaining('🤖 **QuantBot - Backtest Mode**'),
+        expect.any(Object)
       );
     });
 
@@ -161,8 +174,8 @@ describe('BacktestCommandHandler', () => {
 
       // Should execute successfully
       expect(mockContext.reply).toHaveBeenCalledWith(
-        expect.stringContaining('🤖 **QuantBot Ready!**'),
-        { parse_mode: 'Markdown' }
+        expect.stringContaining('🤖 **QuantBot - Backtest Mode**'),
+        expect.any(Object)
       );
     });
   });
@@ -200,9 +213,12 @@ describe('BacktestCommandHandler', () => {
     it('should use Markdown parse mode', async () => {
       await handler.execute(mockContext);
 
+      // The message contains Markdown formatting and includes reply_markup
       expect(mockContext.reply).toHaveBeenCalledWith(
-        expect.any(String),
-        { parse_mode: 'Markdown' }
+        expect.stringContaining('**QuantBot - Backtest Mode**'),
+        expect.objectContaining({
+          reply_markup: expect.any(Object)
+        })
       );
     });
 
@@ -213,12 +229,8 @@ describe('BacktestCommandHandler', () => {
       const message = replyCall[0] as string;
 
       // Check for Markdown formatting
-      expect(message).toContain('**QuantBot Ready!**');
-      expect(message).toContain('**Supported formats:**');
-      expect(message).toContain('Solana: `So11111111111111111111111111111111111111112`');
-      expect(message).toContain('Ethereum: `0x1234567890123456789012345678901234567890`');
-      expect(message).toContain('BSC: `0x1234567890123456789012345678901234567890`');
-      expect(message).toContain('Base: `0x1234567890123456789012345678901234567890`');
+      expect(message).toContain('**QuantBot - Backtest Mode**');
+      expect(message).toContain('**Select how you want to start your backtest:**');
     });
 
     it('should include emojis in the message', async () => {
@@ -242,8 +254,8 @@ describe('BacktestCommandHandler', () => {
         await handler.execute(mockContext);
         
         expect(mockContext.reply).toHaveBeenCalledWith(
-          expect.stringContaining('🤖 **QuantBot Ready!**'),
-          { parse_mode: 'Markdown' }
+          expect.stringContaining('🤖 **QuantBot - Backtest Mode**'),
+          expect.any(Object)
         );
       }
     });

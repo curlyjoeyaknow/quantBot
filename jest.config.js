@@ -27,5 +27,14 @@ module.exports = {
     }
   },
   setupFilesAfterEnv: ['<rootDir>/tests/setup.ts'],
-  testPathIgnorePatterns: ['/node_modules/', '/dist/']
+  testPathIgnorePatterns: ['/node_modules/', '/dist/'],
+  testEnvironment: 'node',
+  globals: {
+    'ts-jest': {
+      tsconfig: {
+        esModuleInterop: true,
+        allowSyntheticDefaultImports: true,
+      },
+    },
+  },
 };

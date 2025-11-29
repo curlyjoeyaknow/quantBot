@@ -14,6 +14,19 @@ A sophisticated Telegram bot that provides PNL simulation for trading strategies
 - Detailed simulation events and performance metrics
 - Intelligent caching layer for 10-50x faster queries
 
+### 🎛️ **Config-Driven Simulation Engine** (NEW)
+
+- **JSON-based configuration** - Define simulations declaratively
+- **Modular architecture** - Reusable components for strategies, data loading, analysis
+- **CLI interface** - Run simulations from config files
+- **Programmatic API** - Use simulation engine in your own code
+- **Multiple data sources** - CSV files, ClickHouse, caller databases
+- **Flexible outputs** - CSV, JSON, stdout, ClickHouse
+- **Strategy presets** - Pre-defined strategies ready to use
+- **Batch execution** - Run multiple scenarios in parallel
+
+See [Simulation Engine Guide](docs/guides/simulation-engine.md) for details.
+
 ### 🎯 **Real-Time CA Monitoring**
 
 - Automatic CA drop detection in chat messages
@@ -409,11 +422,38 @@ Examples:
 src/
 ├── bot.ts              # Main bot logic
 ├── candles.ts          # OHLCV data fetching
-├── simulate.ts         # PNL simulation engine
+├── simulate.ts         # PNL simulation engine (legacy API)
+├── simulation/         # NEW: Modular simulation engine
+│   ├── engine.ts       # SimulationEngine class
+│   ├── config.ts       # Configuration schemas
+│   ├── strategies/     # Strategy definitions and builders
+│   ├── optimization/   # Strategy optimization framework
+│   └── sinks.ts        # Output handlers
+├── data/               # NEW: Data access layer
+│   └── loaders/        # CSV, ClickHouse, caller loaders
+├── analysis/           # NEW: Analysis and metrics
+│   ├── metrics/        # PnL, risk, trade metrics
+│   └── aggregators/    # Result aggregation
+├── reporting/          # NEW: Report generation
+│   └── formats/        # CSV, JSON, HTML reporters
 ├── database.ts         # Database operations
-├── helius-monitor.ts   # Real-time monitoring
+├── helius-monitor.ts  # Real-time monitoring
 └── .env               # Environment variables
 ```
+
+### Running Config-Driven Simulations
+
+```bash
+# Run a simulation from a config file
+npm run simulate:config -- --config=configs/simulations/top-strategies.json
+
+# Or use ts-node directly
+ts-node scripts/simulation/run-engine.ts --config=configs/simulations/top-strategies.json
+```
+
+### Migration from Legacy Scripts
+
+The codebase has been refactored to use a modular, config-driven architecture. Legacy scripts have been archived to `scripts/legacy/`. See [Migration Guide](docs/migration/legacy-scripts.md) for details.
 
 ### Key Dependencies
 

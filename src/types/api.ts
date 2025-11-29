@@ -60,7 +60,7 @@ export interface BirdeyeOHLCV {
 
 export interface HeliusWebSocketMessage {
   type: string;
-  data: any;
+  data: unknown;
 }
 
 export interface PriceUpdate {

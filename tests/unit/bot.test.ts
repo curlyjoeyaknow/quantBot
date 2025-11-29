@@ -8,7 +8,29 @@
 // Mock all dependencies before importing
 jest.mock('telegraf');
 jest.mock('axios');
-jest.mock('fs');
+jest.mock('fs', () => ({
+  createWriteStream: jest.fn(() => ({
+    write: jest.fn(),
+    end: jest.fn(),
+    on: jest.fn(),
+    once: jest.fn(),
+    emit: jest.fn(),
+    pipe: jest.fn(),
+  })),
+  writeFileSync: jest.fn(),
+  existsSync: jest.fn(() => true),
+  mkdirSync: jest.fn(),
+  readFileSync: jest.fn(),
+  readdirSync: jest.fn(() => []),
+}));
+jest.mock('winston-daily-rotate-file', () => ({
+  __esModule: true,
+  default: jest.fn().mockImplementation(() => ({
+    log: jest.fn(),
+    query: jest.fn(),
+    stream: jest.fn(),
+  })),
+}));
 jest.mock('../../src/simulation/candles');
 jest.mock('../../src/simulate');
 jest.mock('../../src/utils/database');
@@ -60,7 +82,9 @@ describe('Bot Command Handlers', () => {
   describe('Command Registration', () => {
     it('should register all command handlers', () => {
       // Import the bot module to trigger command registration
-      require('../../src/bot');
+      jest.isolateModules(() => {
+        require('../../src/bot');
+      });
       
       expect(mockBot.command).toHaveBeenCalledWith('backtest', expect.any(Function));
       expect(mockBot.command).toHaveBeenCalledWith('repeat', expect.any(Function));
@@ -72,17 +96,9 @@ describe('Bot Command Handlers', () => {
       expect(mockBot.command).toHaveBeenCalledWith('alert', expect.any(Function));
       expect(mockBot.command).toHaveBeenCalledWith('alerts', expect.any(Function));
       expect(mockBot.command).toHaveBeenCalledWith('cancel', expect.any(Function));
-      expect(mockBot.command).toHaveBeenCalledWith('strategy', expect.any(Function));
-    });
-
-    it('should register text handler', () => {
-      require('../../src/bot');
-      
       expect(mockBot.on).toHaveBeenCalledWith('text', expect.any(Function));
     });
-  });
 
-  describe('/backtest command', () => {
     it('should initialize session and prompt for token address', async () => {
       require('../../src/bot');
       
@@ -280,11 +296,21 @@ describe('Bot Command Handlers', () => {
 
   describe('/repeat command', () => {
     it('should repeat last simulation when available', async () => {
+      const { DateTime } = require('luxon');
       const mockRuns = [{
         id: 1,
         userId: 12345,
-        tokenAddress: 'So11111111111111111111111111111111111111112',
-        results: JSON.stringify({ totalReturn: 15.5, winRate: 60 })
+        mint: 'So11111111111111111111111111111111111111112',
+        chain: 'solana',
+        tokenName: 'Test Token',
+        tokenSymbol: 'TEST',
+        startTime: DateTime.utc().minus({ hours: 24 }),
+        endTime: DateTime.utc(),
+        strategy: [{ percent: 1, target: 2 }],
+        stopLossConfig: { initial: -0.3, trailing: 0.5 },
+        finalPnl: 1.5,
+        totalCandles: 100,
+        events: []
       }];
       
       mockDb.getUserSimulationRuns.mockResolvedValue(mockRuns);

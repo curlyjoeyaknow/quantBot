@@ -13,9 +13,27 @@ import { IchimokuWorkflowService } from '../services/IchimokuWorkflowService';
 import { CADetectionService } from '../services/CADetectionService';
 import { RepeatSimulationHelper } from '../utils/RepeatSimulationHelper';
 import { CommandRegistry } from '../commands/CommandRegistry';
+import { logger } from '../utils/logger';
 
 export interface ServiceContainerConfig {
   bot: Telegraf;
+}
+
+export enum ServiceStatus {
+  INITIALIZING = 'initializing',
+  RUNNING = 'running',
+  STOPPING = 'stopping',
+  STOPPED = 'stopped',
+  ERROR = 'error',
+}
+
+export interface ServiceHealth {
+  name: string;
+  status: ServiceStatus;
+  healthy: boolean;
+  lastCheck?: Date;
+  error?: string;
+  metadata?: Record<string, any>;
 }
 
 /**
@@ -25,10 +43,13 @@ export class ServiceContainer {
   private static instance: ServiceContainer;
   private services: Map<string, any> = new Map();
   private config: ServiceContainerConfig;
+  private status: ServiceStatus = ServiceStatus.INITIALIZING;
+  private healthChecks: Map<string, () => Promise<ServiceHealth>> = new Map();
 
   private constructor(config: ServiceContainerConfig) {
     this.config = config;
     this.initializeServices();
+    this.status = ServiceStatus.RUNNING;
   }
 
   /**
@@ -82,7 +103,7 @@ export class ServiceContainer {
       );
     });
 
-    console.log('Service container initialized with all dependencies');
+    logger.info('Service container initialized with all dependencies');
   }
 
   /**
@@ -133,7 +154,7 @@ export class ServiceContainer {
   }
 
   /**
-   * Get service health status
+   * Get service health status (legacy method for compatibility)
    */
   public getHealthStatus(): Record<string, boolean> {
     const status: Record<string, boolean> = {};
@@ -148,6 +169,108 @@ export class ServiceContainer {
     }
     
     return status;
+  }
+
+  /**
+   * Register a health check function for a service
+   */
+  public registerHealthCheck(serviceName: string, checkFn: () => Promise<ServiceHealth>): void {
+    this.healthChecks.set(serviceName, checkFn);
+  }
+
+  /**
+   * Get comprehensive health status for all services
+   */
+  public async getHealthChecks(): Promise<ServiceHealth[]> {
+    const healthChecks: ServiceHealth[] = [];
+
+    // Check container status
+    healthChecks.push({
+      name: 'container',
+      status: this.status,
+      healthy: this.status === ServiceStatus.RUNNING,
+      lastCheck: new Date(),
+    });
+
+    // Check each service
+    for (const [name, serviceEntry] of this.services) {
+      try {
+        const instance = serviceEntry.instance || serviceEntry.factory();
+        const hasInstance = instance !== null && instance !== undefined;
+
+        // Run custom health check if available
+        if (this.healthChecks.has(name)) {
+          const customCheck = await this.healthChecks.get(name)!();
+          healthChecks.push(customCheck);
+        } else {
+          healthChecks.push({
+            name,
+            status: hasInstance ? ServiceStatus.RUNNING : ServiceStatus.ERROR,
+            healthy: hasInstance,
+            lastCheck: new Date(),
+          });
+        }
+      } catch (error) {
+        healthChecks.push({
+          name,
+          status: ServiceStatus.ERROR,
+          healthy: false,
+          lastCheck: new Date(),
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+
+    return healthChecks;
+  }
+
+  /**
+   * Get container status
+   */
+  public getStatus(): ServiceStatus {
+    return this.status;
+  }
+
+  /**
+   * Start all services (lifecycle management)
+   */
+  public async start(): Promise<void> {
+    if (this.status === ServiceStatus.RUNNING) {
+      return;
+    }
+
+    this.status = ServiceStatus.INITIALIZING;
+    try {
+      // Services are lazy-loaded, so initialization happens on first access
+      // This method can be extended to call start() methods on services that implement lifecycle
+      this.status = ServiceStatus.RUNNING;
+      logger.info('Service container started');
+    } catch (error) {
+      this.status = ServiceStatus.ERROR;
+      logger.error('Failed to start service container', error as Error);
+      throw error;
+    }
+  }
+
+  /**
+   * Stop all services (lifecycle management)
+   */
+  public async stop(): Promise<void> {
+    if (this.status === ServiceStatus.STOPPED) {
+      return;
+    }
+
+    this.status = ServiceStatus.STOPPING;
+    try {
+      // Services can implement cleanup in their own stop() methods
+      // This method can be extended to call stop() methods on services
+      this.status = ServiceStatus.STOPPED;
+      logger.info('Service container stopped');
+    } catch (error) {
+      this.status = ServiceStatus.ERROR;
+      logger.error('Failed to stop service container', error as Error);
+      throw error;
+    }
   }
 }
 

@@ -1,0 +1,95 @@
+---
+description: Strategy optimization rules for src/simulation/optimization/
+globs: ["src/simulation/optimization/**/*.ts", "scripts/optimization/**/*.ts"]
+alwaysApply: true
+---
+
+# Optimization Rules (src/simulation/optimization/)
+
+## Optimization Engine
+
+### Core Principles
+- All optimization must use `StrategyOptimizer` class
+- Optimizations must be reproducible and deterministic
+- Use proper parameter grid generation
+- Validate all optimization parameters
+- Log optimization progress for long-running operations
+
+### Parameter Grid
+- Use `ParameterGrid` class for grid generation
+- Define parameter ranges clearly
+- Use appropriate step sizes for continuous parameters
+- Document parameter constraints
+- Validate grid bounds before optimization
+
+### Optimization Types
+- Grid search for exhaustive parameter exploration
+- ML-based optimization for complex parameter spaces
+- Use appropriate optimization algorithms for the problem
+- Document optimization methodology
+- Compare optimization results across different methods
+
+## Performance
+
+### Efficiency
+- Use parallel processing for independent optimizations
+- Cache expensive computations
+- Implement proper batching
+- Monitor memory usage during optimization
+- Use appropriate timeout values
+
+### Scalability
+- Design optimizations to scale with parameter space
+- Use streaming for large result sets
+- Implement proper pagination
+- Clean up resources after optimization
+- Handle large datasets efficiently
+
+## Results
+
+### Result Structure
+- Structure results consistently
+- Include optimization metadata
+- Store parameter combinations with results
+- Include performance metrics
+- Export results in multiple formats
+
+### Analysis
+- Compare optimization results
+- Identify best parameter combinations
+- Analyze parameter sensitivity
+- Document optimization findings
+- Generate optimization reports
+
+## Testing
+
+### Unit Tests
+- Test parameter grid generation
+- Test optimization algorithms
+- Test result structures
+- Test error handling
+- Test edge cases
+
+### Integration Tests
+- Test full optimization runs
+- Test with real data
+- Test performance characteristics
+- Verify result formats
+- Test resource cleanup
+
+## Documentation
+
+### Code Documentation
+- Document optimization algorithms
+- Explain parameter constraints
+- Provide usage examples
+- Document performance characteristics
+- Include optimization notes
+
+### Result Documentation
+- Document optimization methodology
+- Explain parameter choices
+- Include performance metrics
+- Document findings
+- Provide recommendations
+

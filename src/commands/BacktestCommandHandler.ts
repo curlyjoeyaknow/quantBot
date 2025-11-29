@@ -5,10 +5,13 @@
  * Extracted from the monolithic bot.ts to improve modularity and testability.
  */
 
-import { Context } from 'telegraf';
+import { Context, Markup } from 'telegraf';
 import { BaseCommandHandler, Session } from './interfaces/CommandHandler';
 import { SessionService } from '../services/SessionService';
 import { eventBus, EventFactory } from '../events';
+import { getUserSimulationRuns } from '../utils/database';
+import { getRecentCalls, getCallerStats } from '../utils/caller-database';
+import { logger } from '../utils/logger';
 
 export class BacktestCommandHandler extends BaseCommandHandler {
   readonly command = 'backtest';
@@ -27,7 +30,7 @@ export class BacktestCommandHandler extends BaseCommandHandler {
     try {
       // Initialize session for backtest workflow
       const newSession: Session = {
-        step: 'waiting_for_token',
+        step: 'selecting_source',
         type: 'backtest',
         data: {}
       };
@@ -51,28 +54,20 @@ export class BacktestCommandHandler extends BaseCommandHandler {
         userId
       ));
       
+      // Show menu with 4 options
       await ctx.reply(
         '🤖 **QuantBot - Backtest Mode**\n\n' +
-        'Paste a token address (Solana or EVM) to begin your simulation.\n\n' +
-        '**📋 What happens next:**\n' +
-        '1. I\'ll fetch historical price data for the token\n' +
-        '2. You\'ll configure your trading strategy\n' +
-        '3. I\'ll simulate the strategy and show results\n\n' +
-        '**✨ Smart Features:**\n' +
-        '• If this token has been called before, I\'ll use the original call timestamp\n' +
-        '• Multi-chain support: Solana, Ethereum, BSC, Base, Arbitrum\n' +
-        '• Customizable profit targets and stop-loss settings\n\n' +
-        '**💡 Related Commands:**\n' +
-        '• `/calls <token>` - Show all historical calls for a token\n' +
-        '• `/callers` - Show top callers statistics\n' +
-        '• `/recent` - Show recent CA calls\n' +
-        '• `/strategy` - Manage custom trading strategies\n\n' +
-        '**📝 Next Step:** Paste your token address in the next message.',
-        { parse_mode: 'Markdown' }
+        '**Select how you want to start your backtest:**',
+        Markup.inlineKeyboard([
+          [Markup.button.callback('📊 Recent Backtests', 'backtest_source:recent_backtests')],
+          [Markup.button.callback('📞 Recent Calls', 'backtest_source:recent_calls')],
+          [Markup.button.callback('👤 Calls by Caller', 'backtest_source:by_caller')],
+          [Markup.button.callback('✍️ Manual Mint Entry', 'backtest_source:manual')]
+        ])
       );
       
     } catch (error) {
-      console.error('Backtest command error:', error);
+      logger.error('Backtest command error', error as Error, { userId });
       
       // Emit command failed event
       await eventBus.publish(EventFactory.createUserEvent(

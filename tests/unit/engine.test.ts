@@ -36,6 +36,7 @@ describe('Simulation Engine', () => {
   };
 
   const defaultEntry: EntryConfig = {
+    initialEntry: 'none',
     trailingEntry: 'none',
     maxWaitTime: 60
   };
@@ -239,6 +240,7 @@ describe('Simulation Engine', () => {
   describe('Entry Configurations', () => {
     it('should handle trailing entry when configured', () => {
       const trailingEntryConfig: EntryConfig = {
+        initialEntry: 'none',
         trailingEntry: 0.1, // 10% trailing entry
         maxWaitTime: 60
       };
@@ -257,6 +259,7 @@ describe('Simulation Engine', () => {
 
     it('should handle no trailing entry', () => {
       const noTrailingEntry: EntryConfig = {
+        initialEntry: 'none',
         trailingEntry: 'none',
         maxWaitTime: 60
       };

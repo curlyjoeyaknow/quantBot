@@ -1,0 +1,86 @@
+---
+description: Scripts and utilities rules for scripts/ directory
+globs: ["scripts/**/*.ts", "scripts/**/*.js"]
+alwaysApply: true
+---
+
+# Scripts Rules (scripts/)
+
+## Script Organization
+
+### Directory Structure
+- **Analysis scripts**: `scripts/analysis/` - Data analysis and reporting
+- **Data processing**: `scripts/data-processing/` - Data transformation and cleaning
+- **Test scripts**: `scripts/test/` - Testing and validation scripts
+- **Migration scripts**: `scripts/migration/` - Data migration utilities
+- **Legacy scripts**: `scripts/legacy/` - Deprecated scripts (preserved for reference)
+- **Tools**: `scripts/tools/` - Utility tools and helpers
+
+### Script Standards
+
+### TypeScript Scripts
+- Use TypeScript for new scripts
+- Enable strict mode in `tsconfig.scripts.json`
+- Use proper type definitions
+- Export main function for testability
+- Use async/await for async operations
+
+### JavaScript Scripts (Legacy)
+- Keep legacy scripts in `scripts/legacy/`
+- Document why script is in legacy
+- Prefer migrating to TypeScript when updating
+
+### Error Handling
+- Always handle errors with try/catch
+- Log errors with context
+- Exit with proper exit codes (0 for success, non-zero for errors)
+- Provide helpful error messages
+
+### CLI Scripts
+- Use proper argument parsing (consider using `commander` or `yargs`)
+- Validate all inputs
+- Provide help text with `--help` flag
+- Use proper exit codes
+- Log progress for long-running operations
+
+### Data Processing Scripts
+- Validate input data before processing
+- Use streaming for large files
+- Implement proper error recovery
+- Log processing progress
+- Save intermediate results for debugging
+
+### Analysis Scripts
+- Use proper statistical methods
+- Document assumptions and methodology
+- Generate readable reports
+- Export results in multiple formats (CSV, JSON)
+- Include metadata in output files
+
+### Migration Scripts
+- Implement idempotent operations
+- Use transactions for database operations
+- Create backups before destructive operations
+- Log all changes
+- Provide rollback mechanisms when possible
+
+### Testing Scripts
+- Test scripts should be deterministic
+- Use mock data for testing
+- Clean up test artifacts
+- Document test scenarios
+
+### Performance
+- Use streaming for large data processing
+- Implement proper batching for API calls
+- Cache expensive computations
+- Use parallel processing where appropriate
+- Monitor memory usage for large operations
+
+### Documentation
+- Include JSDoc comments for all functions
+- Document command-line arguments
+- Provide usage examples
+- Document expected input/output formats
+- Include error handling documentation
+

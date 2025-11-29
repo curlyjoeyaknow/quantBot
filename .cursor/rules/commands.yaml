@@ -1,0 +1,127 @@
+---
+description: Command handler rules for src/commands/ directory
+globs: ["src/commands/**/*.ts", "quantbot-bot/src/commands/**/*.ts"]
+alwaysApply: true
+---
+
+# Command Handler Rules (src/commands/)
+
+## Command Handler Architecture
+
+### Core Principles
+- All commands must implement `CommandHandler` interface
+- Commands should be self-contained and testable
+- Use dependency injection for services
+- Validate all inputs before processing
+- Return structured responses
+
+### Handler Structure
+- One handler class per command
+- Handlers should be stateless
+- Use services for business logic
+- Keep handlers focused on command execution
+- Handle errors gracefully
+
+## Command Implementation
+
+### Command Registration
+- Register commands in `CommandRegistry`
+- Use consistent command naming
+- Document command usage
+- Provide help text
+- Handle command aliases
+
+### Command Execution
+- Parse command arguments
+- Validate input parameters
+- Execute command logic
+- Format response appropriately
+- Handle errors with user-friendly messages
+
+### Command Responses
+- Return structured response objects
+- Use consistent response format
+- Include relevant data
+- Format messages for Telegram
+- Handle long responses appropriately
+
+## Input Validation
+
+### Parameter Validation
+- Validate all command parameters
+- Use Zod schemas for validation
+- Provide helpful error messages
+- Handle missing parameters
+- Validate parameter types
+
+### Data Validation
+- Validate input data formats
+- Check data ranges
+- Validate required fields
+- Handle invalid data gracefully
+- Provide validation feedback
+
+## Error Handling
+
+### User-Facing Errors
+- Provide clear error messages
+- Don't expose internal errors
+- Suggest corrective actions
+- Handle common errors gracefully
+- Log errors for debugging
+
+### Internal Errors
+- Log errors with context
+- Use appropriate error types
+- Handle errors at appropriate levels
+- Don't crash on errors
+- Implement error recovery
+
+## Service Integration
+
+### Service Usage
+- Inject services via constructor
+- Use async/await for service calls
+- Handle service errors appropriately
+- Cache service responses when needed
+- Monitor service performance
+
+### Dependency Injection
+- Use service container
+- Inject dependencies explicitly
+- Avoid global state
+- Make dependencies testable
+- Document dependencies
+
+## Testing
+
+### Unit Tests
+- Test handlers independently
+- Mock service dependencies
+- Test input validation
+- Test error handling
+- Test response formatting
+
+### Integration Tests
+- Test full command flows
+- Test with real services
+- Test error scenarios
+- Test state management
+- Test user interactions
+
+## Documentation
+
+### Command Documentation
+- Document all commands
+- Provide usage examples
+- Document parameters
+- Include error scenarios
+- Keep documentation current
+
+### Code Documentation
+- Document handler logic
+- Explain validation rules
+- Document error handling
+- Include examples
+- Keep comments updated
+

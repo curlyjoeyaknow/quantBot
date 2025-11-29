@@ -1,5 +1,6 @@
 import { callerDatabase, CallerAlert } from '../storage/caller-database';
 import { config } from 'dotenv';
+import { logger } from '../utils/logger';
 
 config();
 
@@ -22,11 +23,11 @@ export class CallerTrackingService {
    */
   async initialize(): Promise<void> {
     try {
-      console.log('🔧 Initializing Caller Tracking Service...');
+      logger.info('Initializing Caller Tracking Service...');
       // Database is auto-initialized in constructor
-      console.log('✅ Caller Tracking Service initialized');
+      logger.info('Caller Tracking Service initialized');
     } catch (error) {
-      console.error('❌ Failed to initialize Caller Tracking Service:', error);
+      logger.error('Failed to initialize Caller Tracking Service', error as Error);
       throw error;
     }
   }
@@ -36,7 +37,7 @@ export class CallerTrackingService {
    */
   async processCADrops(caDrops: ProcessedCADrop[]): Promise<number> {
     try {
-      console.log(`🔄 Processing ${caDrops.length} CA drops...`);
+      logger.info('Processing CA drops', { count: caDrops.length });
 
       const callerAlerts: CallerAlert[] = caDrops.map(drop => ({
         callerName: drop.sender,
@@ -52,10 +53,10 @@ export class CallerTrackingService {
 
       const addedCount = await this.callerDb.addCallerAlertsBatch(callerAlerts);
       
-      console.log(`✅ Processed ${addedCount}/${caDrops.length} CA drops`);
+      logger.info('Processed CA drops', { addedCount, totalCount: caDrops.length });
       return addedCount;
     } catch (error) {
-      console.error('❌ Failed to process CA drops:', error);
+      logger.error('Failed to process CA drops', error as Error);
       throw error;
     }
   }
@@ -67,7 +68,7 @@ export class CallerTrackingService {
     try {
       return await this.callerDb.getCallerAlerts(callerName, limit);
     } catch (error) {
-      console.error(`❌ Failed to get alerts for ${callerName}:`, error);
+      logger.error('Failed to get alerts for caller', error as Error, { callerName });
       throw error;
     }
   }
@@ -83,7 +84,7 @@ export class CallerTrackingService {
     try {
       return await this.callerDb.getCallerAlertsInRange(callerName, startTime, endTime);
     } catch (error) {
-      console.error(`❌ Failed to get alerts for ${callerName} in range:`, error);
+      logger.error('Failed to get alerts for caller in range', error as Error, { callerName, startTime, endTime });
       throw error;
     }
   }
@@ -91,7 +92,7 @@ export class CallerTrackingService {
   /**
    * Get all callers with their statistics
    */
-  async getAllCallersWithStats(): Promise<Array<CallerAlert & {stats: any}>> {
+  async getAllCallersWithStats(): Promise<Array<{callerName: string; stats: any}>> {
     try {
       const callers = await this.callerDb.getAllCallers();
       const callerStats = await this.callerDb.getAllCallerStats();
@@ -104,7 +105,7 @@ export class CallerTrackingService {
         };
       });
     } catch (error) {
-      console.error('❌ Failed to get callers with stats:', error);
+      logger.error('Failed to get callers with stats', error as Error);
       throw error;
     }
   }
@@ -121,7 +122,7 @@ export class CallerTrackingService {
         uniqueTokens: stat.uniqueTokens
       }));
     } catch (error) {
-      console.error('❌ Failed to get top callers:', error);
+      logger.error('Failed to get top callers', error as Error, { limit });
       throw error;
     }
   }
@@ -133,7 +134,7 @@ export class CallerTrackingService {
     try {
       return await this.callerDb.getCallerTokens(callerName);
     } catch (error) {
-      console.error(`❌ Failed to get tokens for ${callerName}:`, error);
+      logger.error('Failed to get tokens for caller', error as Error, { callerName });
       throw error;
     }
   }
@@ -145,7 +146,7 @@ export class CallerTrackingService {
     try {
       await this.callerDb.updateCallerSuccessRate(callerName, successRate);
     } catch (error) {
-      console.error(`❌ Failed to update success rate for ${callerName}:`, error);
+      logger.error('Failed to update success rate for caller', error as Error, { callerName, successRate });
       throw error;
     }
   }
@@ -162,7 +163,7 @@ export class CallerTrackingService {
     try {
       return await this.callerDb.getDatabaseStats();
     } catch (error) {
-      console.error('❌ Failed to get database stats:', error);
+      logger.error('Failed to get database stats', error as Error);
       throw error;
     }
   }
@@ -197,7 +198,7 @@ export class CallerTrackingService {
         return csvRows.join('\n');
       }
     } catch (error) {
-      console.error(`❌ Failed to export data for ${callerName}:`, error);
+      logger.error('Failed to export data for caller', error as Error, { callerName, format });
       throw error;
     }
   }
@@ -233,7 +234,7 @@ export class CallerTrackingService {
         priceAtAlert: alert.priceAtAlert
       }));
     } catch (error) {
-      console.error(`❌ Failed to get simulation data for ${callerName}:`, error);
+      logger.error('Failed to get simulation data for caller', error as Error, { callerName });
       throw error;
     }
   }
@@ -243,7 +244,7 @@ export class CallerTrackingService {
    */
   async close(): Promise<void> {
     await this.callerDb.close();
-    console.log('🔌 Caller Tracking Service closed');
+    logger.info('Caller Tracking Service closed');
   }
 }
 

@@ -13,6 +13,7 @@ import { getCACallByMint, saveSimulationRun } from '../utils/database';
 import { fetchHybridCandles } from '../simulation/candles';
 import { simulateStrategy } from '../simulate';
 import { DateTime } from 'luxon';
+import { logger } from '../utils/logger';
 
 export class BacktestCallCommandHandler extends BaseCommandHandler {
   readonly command = 'backtest_call';
@@ -73,8 +74,8 @@ export class BacktestCallCommandHandler extends BaseCommandHandler {
           datetime: DateTime.fromSeconds(call.call_timestamp),
           strategy: [{ percent: 0.5, target: 2 }, { percent: 0.3, target: 5 }, { percent: 0.2, target: 10 }],
           stopLossConfig: { initial: -0.3, trailing: 0.5 },
-          entryConfig: { trailingEntry: 'none', maxWaitTime: 60 },
-          reEntryConfig: { trailingReEntry: 'none', maxReEntries: 0 }
+          entryConfig: { initialEntry: 'none', trailingEntry: 'none', maxWaitTime: 60 },
+          reEntryConfig: { trailingReEntry: 'none', maxReEntries: 0, sizePercent: 0.5 }
         }
       };
       
@@ -93,11 +94,14 @@ export class BacktestCallCommandHandler extends BaseCommandHandler {
 
       // Run the simulation immediately
       try {
+        const alertTime = DateTime.fromSeconds(call.call_timestamp);
+        // Pass alertTime for 1m candles around alert time
         const candles = await fetchHybridCandles(
           call.mint,
-          DateTime.fromSeconds(call.call_timestamp),
+          alertTime,
           DateTime.utc(),
-          call.chain
+          call.chain,
+          alertTime
         );
 
         if (!candles.length) {
@@ -106,6 +110,12 @@ export class BacktestCallCommandHandler extends BaseCommandHandler {
           return;
         }
 
+        if (!newSession.data) {
+          await ctx.reply('❌ Session data is missing.');
+          this.sessionService.clearSession(userId);
+          return;
+        }
+        
         const result = simulateStrategy(
           candles, 
           newSession.data.strategy!, 
@@ -152,32 +162,34 @@ export class BacktestCallCommandHandler extends BaseCommandHandler {
         await ctx.reply(resultMessage, { parse_mode: 'Markdown' });
 
         // Save this backtest run
-        await saveSimulationRun({
-          userId: userId,
-          mint: call.mint,
-          chain: call.chain,
-          tokenName: call.token_name,
-          tokenSymbol: call.token_symbol,
-          startTime: DateTime.fromSeconds(call.call_timestamp),
-          endTime: DateTime.utc(),
-          strategy: newSession.data.strategy!,
-          stopLossConfig: newSession.data.stopLossConfig!,
-          finalPnl: result.finalPnl,
-          totalCandles: result.totalCandles,
-          events: result.events
-        });
+        if (newSession.data) {
+          await saveSimulationRun({
+            userId: userId,
+            mint: call.mint,
+            chain: call.chain,
+            tokenName: call.token_name,
+            tokenSymbol: call.token_symbol,
+            startTime: DateTime.fromSeconds(call.call_timestamp),
+            endTime: DateTime.utc(),
+            strategy: newSession.data.strategy!,
+            stopLossConfig: newSession.data.stopLossConfig!,
+            finalPnl: result.finalPnl,
+            totalCandles: result.totalCandles,
+            events: result.events
+          });
+        }
 
         // Clear the session
         this.sessionService.clearSession(userId);
 
       } catch (simError) {
-        console.error('Simulation error:', simError);
+        logger.error('Simulation error', simError as Error, { userId, mint });
         await this.sendError(ctx, '❌ Simulation failed. Please try again.');
         this.sessionService.clearSession(userId);
       }
       
     } catch (error) {
-      console.error('Backtest call command error:', error);
+      logger.error('Backtest call command error', error as Error, { userId, mint });
       await this.sendError(ctx, '❌ Failed to backtest historical call. Please try again.');
     }
   }

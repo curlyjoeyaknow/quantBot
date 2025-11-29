@@ -1,0 +1,92 @@
+---
+description: Testing rules for tests/ directory
+globs: ["tests/**/*.ts", "**/*.test.ts", "**/*.spec.ts"]
+alwaysApply: true
+---
+
+# Testing Rules (tests/)
+
+## Test Organization
+
+### Directory Structure
+- **Unit tests**: `tests/unit/` - Test individual functions and classes
+- **Integration tests**: `tests/integration/` - Test component interactions
+- **Mocks**: `tests/__mocks__/` - Mock implementations
+
+### Test File Naming
+- Unit tests: `*.test.ts` or `*.spec.ts`
+- Co-locate test files with source files when appropriate
+- Use descriptive test file names
+
+## Testing Best Practices
+
+### Test Structure
+- Use AAA pattern: Arrange, Act, Assert
+- One assertion per test when possible
+- Use descriptive test names: `should calculate PnL correctly when trade closes at profit`
+- Group related tests with `describe` blocks
+- Use `beforeEach` and `afterEach` for setup/teardown
+
+### Test Coverage
+- Aim for 80%+ code coverage
+- Focus on business logic coverage
+- Test edge cases and error conditions
+- Test both success and failure paths
+- Don't test implementation details
+
+### Mocking
+- Mock external dependencies (APIs, databases, file system)
+- Use Jest mocks for functions and modules
+- Create reusable mock factories
+- Reset mocks between tests
+- Verify mock calls when appropriate
+
+### Async Testing
+- Use async/await in tests
+- Wait for async operations to complete
+- Test error handling in async code
+- Use proper timeout values
+- Clean up async resources
+
+### Test Data
+- Use factories for test data creation
+- Keep test data minimal and focused
+- Use realistic but simplified data
+- Avoid hardcoded values when possible
+- Clean up test data after tests
+
+### Assertions
+- Use descriptive assertion messages
+- Test one thing per assertion
+- Use appropriate matchers
+- Test both positive and negative cases
+- Verify error messages when testing errors
+
+### Performance
+- Keep tests fast (< 100ms per test)
+- Use parallel test execution
+- Avoid unnecessary setup/teardown
+- Mock slow operations
+- Use test timeouts appropriately
+
+### Integration Tests
+- Test real component interactions
+- Use test databases when needed
+- Clean up after integration tests
+- Test error scenarios
+- Verify side effects
+
+### Test Utilities
+- Create reusable test utilities
+- Use test helpers for common patterns
+- Create custom matchers when needed
+- Share test fixtures across tests
+- Document test utilities
+
+### Documentation
+- Document complex test scenarios
+- Explain why tests exist
+- Document test data requirements
+- Include examples in test descriptions
+- Keep test code readable
+

@@ -1,5 +1,6 @@
 import { influxDBClient, OHLCVData, TokenInfo } from '../storage/influxdb-client';
 import { ohlcvCache } from '../cache/ohlcv-cache';
+import { logger } from '../utils/logger';
 
 export interface QueryOptions {
   useCache?: boolean;
@@ -28,13 +29,13 @@ export class OHLCVQueryService {
       if (useCache) {
         const cachedData = this.cache.get(tokenAddress, startTime, endTime, interval);
         if (cachedData) {
-          console.log(`🎯 Returning cached OHLCV data for ${tokenAddress}`);
+          logger.debug('Returning cached OHLCV data', { tokenAddress });
           return cachedData;
         }
       }
 
       // Query from InfluxDB
-      console.log(`🔍 Querying OHLCV data from InfluxDB for ${tokenAddress}`);
+      logger.debug('Querying OHLCV data from InfluxDB', { tokenAddress });
       const data = await this.influxClient.getOHLCVData(tokenAddress, startTime, endTime, interval);
 
       // Cache the data if enabled
@@ -45,7 +46,7 @@ export class OHLCVQueryService {
       return data;
 
     } catch (error: any) {
-      console.error(`❌ Failed to get OHLCV data for ${tokenAddress}:`, error.message);
+      logger.error('Failed to get OHLCV data', error as Error, { tokenAddress });
       return [];
     }
   }
@@ -57,7 +58,7 @@ export class OHLCVQueryService {
     try {
       return await this.influxClient.getLatestPrice(tokenAddress);
     } catch (error: any) {
-      console.error(`❌ Failed to get latest price for ${tokenAddress}:`, error.message);
+      logger.error('Failed to get latest price', error as Error, { tokenAddress });
       return 0;
     }
   }
@@ -69,7 +70,7 @@ export class OHLCVQueryService {
     try {
       return await this.influxClient.hasData(tokenAddress, startTime, endTime);
     } catch (error: any) {
-      console.error(`❌ Failed to check data existence for ${tokenAddress}:`, error.message);
+      logger.error('Failed to check data existence', error as Error, { tokenAddress });
       return false;
     }
   }
@@ -81,7 +82,7 @@ export class OHLCVQueryService {
     try {
       return await this.influxClient.getAvailableTokens();
     } catch (error: any) {
-      console.error('❌ Failed to get available tokens:', error.message);
+      logger.error('Failed to get available tokens', error as Error);
       return [];
     }
   }
@@ -100,14 +101,21 @@ export class OHLCVQueryService {
       // In a full implementation, this would use InfluxDB's aggregation functions
       const data = await this.getOHLCV(tokenAddress, startTime, endTime, '1m');
       
-      if (aggregation === 'none' || data.length === 0) {
+      if (data.length === 0) {
+        return data;
+      }
+      if (!aggregation) {
+        return data;
+      }
+      // TypeScript doesn't know 'none' is in the union, but it's checked at runtime
+      if ((aggregation as string) === 'none') {
         return data;
       }
 
       return this.aggregateData(data, aggregation);
 
     } catch (error: any) {
-      console.error(`❌ Failed to get aggregated OHLCV data for ${tokenAddress}:`, error.message);
+      logger.error('Failed to get aggregated OHLCV data', error as Error, { tokenAddress, aggregation });
       return [];
     }
   }
@@ -194,7 +202,7 @@ export class OHLCVQueryService {
     startTime: Date,
     endTime: Date
   ): Promise<Map<string, OHLCVData[]>> {
-    console.log(`🚀 Pre-fetching OHLCV data for simulation: ${tokens.length} tokens`);
+    logger.info('Pre-fetching OHLCV data for simulation', { tokenCount: tokens.length });
     
     const results = new Map<string, OHLCVData[]>();
     
@@ -215,7 +223,7 @@ export class OHLCVQueryService {
       results.set(token, data);
     }
 
-    console.log(`✅ Pre-fetch complete: ${results.size}/${tokens.length} tokens ready`);
+    logger.info('Pre-fetch complete', { readyCount: results.size, totalCount: tokens.length });
     return results;
   }
 
@@ -237,7 +245,7 @@ export class OHLCVQueryService {
    */
   clearCache(): void {
     this.cache.clear();
-    console.log('🧹 Query cache cleared');
+    logger.info('Query cache cleared');
   }
 
   /**

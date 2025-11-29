@@ -8,6 +8,7 @@
 import { Context } from 'telegraf';
 import { BaseCommandHandler, Session } from './interfaces/CommandHandler';
 import { getAllCACalls } from '../utils/database';
+import { logger } from '../utils/logger';
 
 export class HistoryCommandHandler extends BaseCommandHandler {
   readonly command = 'history';
@@ -19,7 +20,7 @@ export class HistoryCommandHandler extends BaseCommandHandler {
       return;
     }
     
-    console.log(`[DEBUG] /history command triggered by user ${userId}`);
+    logger.debug('/history command triggered', { userId });
     
     try {
       // Get all CA drops from database (limit to 10 for pagination)
@@ -56,7 +57,7 @@ export class HistoryCommandHandler extends BaseCommandHandler {
       await ctx.reply(historyMessage, { parse_mode: 'Markdown' });
 
     } catch (error) {
-      console.error('History command error:', error);
+      logger.error('History command error', error as Error, { userId });
       await ctx.reply('❌ Error retrieving historical data. Please try again later.');
     }
   }

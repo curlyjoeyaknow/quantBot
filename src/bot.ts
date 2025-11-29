@@ -37,6 +37,8 @@ import { IchimokuWorkflowService } from './services/IchimokuWorkflowService';
 import { CADetectionService } from './services/CADetectionService';
 import { RepeatSimulationHelper } from './utils/RepeatSimulationHelper';
 import { TextWorkflowHandler } from './services/TextWorkflowHandler';
+import { initDatabase } from './utils/database';
+import { logger } from './utils/logger';
 
 // Import all command handlers
 import {
@@ -93,7 +95,28 @@ const textWorkflowHandler = new TextWorkflowHandler(
 );
 
 bot.on('text', async (ctx) => {
-  await textWorkflowHandler.handleText(ctx);
+  try {
+    const userId = ctx.from?.id;
+    const messageText = (ctx.message as any)?.text?.substring(0, 50);
+    logger.debug('Received text message', { userId, messageText });
+    await textWorkflowHandler.handleText(ctx);
+  } catch (error) {
+    logger.error('Error handling text message', error as Error, { userId: ctx.from?.id });
+    await ctx.reply('❌ An error occurred processing your message. Please try again.');
+  }
+});
+
+// Handle callback queries (button presses)
+bot.on('callback_query', async (ctx) => {
+  try {
+    const userId = ctx.from?.id;
+    const callbackData = (ctx.callbackQuery as any)?.data;
+    logger.debug('Received callback query', { userId, callbackData });
+    await textWorkflowHandler.handleCallbackQuery(ctx);
+  } catch (error) {
+    logger.error('Error handling callback query', error as Error, { userId: ctx.from?.id });
+    await ctx.answerCbQuery('❌ An error occurred. Please try again.');
+  }
 });
 
 // -----------------------------------------------------------------------------
@@ -102,30 +125,42 @@ bot.on('text', async (ctx) => {
 
 // Error handling
 bot.catch((err, ctx) => {
-  console.error('Bot error:', err);
+  logger.error('Bot error', err, { userId: ctx.from?.id });
   ctx.reply('❌ An error occurred. Please try again.');
 });
 
 // Start bot
-bot.launch().then(async () => {
-  console.log('🤖 QuantBot started successfully!');
-  console.log('📊 Services initialized:', serviceContainer.getHealthStatus());
-  
-  // Set up Telegram bot commands menu
-  await commandRegistry.setupBotCommands();
-}).catch((error) => {
-  console.error('Failed to start bot:', error);
-  process.exit(1);
-});
+(async () => {
+  try {
+    // Initialize database before starting bot
+    logger.info('Initializing database...');
+    await initDatabase();
+    logger.info('Database initialized successfully');
+    
+    // Launch bot
+    logger.info('Launching bot...');
+    await bot.launch();
+    logger.info('QuantBot started successfully');
+    logger.info('Services initialized', { healthStatus: serviceContainer.getHealthStatus() });
+    
+    // Set up Telegram bot commands menu
+    logger.info('Setting up bot commands menu...');
+    await commandRegistry.setupBotCommands();
+    logger.info('Bot commands menu set up successfully');
+  } catch (error) {
+    logger.error('Failed to start bot', error as Error);
+    process.exit(1);
+  }
+})();
 
 // Graceful shutdown
 process.once('SIGINT', () => {
-  console.log('🛑 Shutting down QuantBot...');
+  logger.info('Shutting down QuantBot (SIGINT)...');
   bot.stop('SIGINT');
 });
 
 process.once('SIGTERM', () => {
-  console.log('🛑 Shutting down QuantBot...');
+  logger.info('Shutting down QuantBot (SIGTERM)...');
   bot.stop('SIGTERM');
 });
 

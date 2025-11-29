@@ -11,6 +11,7 @@ import { Session } from '../commands/interfaces/CommandHandler';
 import axios from 'axios';
 import { DateTime } from 'luxon';
 import { fetchHybridCandles } from '../simulation/candles';
+import { logger } from '../utils/logger';
 
 export class IchimokuWorkflowService {
   constructor(private sessionService: SessionService) {}
@@ -25,6 +26,11 @@ export class IchimokuWorkflowService {
       return;
     }
 
+    // Ensure session.data exists
+    if (!session.data) {
+      session.data = {};
+    }
+    
     // Step 1: Mint address (detect EVM vs. Solana chain)
     if (!session.data.mint) {
       session.data.mint = text;
@@ -83,6 +89,11 @@ export class IchimokuWorkflowService {
       let tokenName = 'Unknown';
       let tokenSymbol = 'N/A';
       
+      if (!session.data) {
+        await ctx.reply('❌ Session data is missing.');
+        return;
+      }
+      
       try {
         const meta = await axios.get(`https://public-api.birdeye.so/defi/v3/token/meta-data/single`, {
           headers: {
@@ -98,7 +109,7 @@ export class IchimokuWorkflowService {
         if (!meta.data.success) {
           await ctx.reply(
             `❌ **Invalid Token Address**\n\n` +
-            `The address \`${session.data.mint}\` is not recognized as a valid token on ${session.data.chain.toUpperCase()}.\n\n` +
+            `The address \`${session.data.mint}\` is not recognized as a valid token on ${(session.data.chain || 'solana').toUpperCase()}.\n\n` +
             `**Possible reasons:**\n` +
             `• Not a token mint address\n` +
             `• Program ID or account address\n` +
@@ -114,7 +125,7 @@ export class IchimokuWorkflowService {
         tokenName = meta.data.data.name;
         tokenSymbol = meta.data.data.symbol;
       } catch (e) {
-        console.log('Could not fetch metadata, using defaults');
+        logger.warn('Could not fetch metadata, using defaults', { mint: session.data.mint, chain: session.data.chain });
       }
 
       // Calculate time range: 52 candles * 5 minutes = 260 minutes = ~4.3 hours
@@ -125,9 +136,13 @@ export class IchimokuWorkflowService {
       let candles;
       
       try {
+        if (!session.data?.mint || !session.data?.chain) {
+          await ctx.reply('❌ Missing token address or chain.');
+          return;
+        }
         candles = await fetchHybridCandles(session.data.mint, startTime, endTime, session.data.chain);
       } catch (error: any) {
-        console.error('Candle fetching error:', error);
+        logger.error('Candle fetching error', error as Error, { mint: session.data?.mint, chain: session.data?.chain });
         await ctx.reply(
           `❌ **Failed to Fetch Historical Data**\n\n` +
           `Error: ${error.response?.data?.message || error.message}\n\n` +
@@ -176,6 +191,10 @@ export class IchimokuWorkflowService {
       const monitor = new heliusMonitor(ctx.telegram);
       
       // Add CA tracking with pre-loaded historical candles
+      if (!session.data?.mint || !session.data?.chain) {
+        await ctx.reply('❌ Missing token address or chain.');
+        return;
+      }
       await monitor.addCATrackingWithCandles({
         userId: userId,
         chatId: ctx.chat?.id || 0,
@@ -191,9 +210,10 @@ export class IchimokuWorkflowService {
       });
 
       // Send initial Ichimoku analysis
+      const chain = session.data?.chain || 'solana';
       const analysisMessage = `📈 **Ichimoku Analysis Started!**\n\n` +
         `🪙 **${tokenName}** (${tokenSymbol})\n` +
-        `🔗 **Chain**: ${session.data.chain.toUpperCase()}\n` +
+        `🔗 **Chain**: ${chain.toUpperCase()}\n` +
         `💰 **Current Price**: $${currentPrice.toFixed(8)}\n\n` +
         formatIchimokuData(ichimokuData, currentPrice) + `\n\n` +
         `✅ **Real-time monitoring active!**\n` +
@@ -205,7 +225,7 @@ export class IchimokuWorkflowService {
       this.sessionService.clearSession(userId);
 
     } catch (error) {
-      console.error('Ichimoku analysis error:', error);
+      logger.error('Ichimoku analysis error', error as Error, { userId, mint: session.data?.mint });
       await ctx.reply('❌ **Ichimoku Analysis Failed**\n\nAn error occurred while fetching historical data. Please try again later.');
       this.sessionService.clearSession(userId);
     }

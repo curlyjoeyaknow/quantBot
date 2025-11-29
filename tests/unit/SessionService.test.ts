@@ -163,7 +163,7 @@ describe('SessionService', () => {
           { percent: 0.2, target: 10 }
         ],
         stopLossConfig: { initial: -0.3, trailing: 0.5 },
-        entryConfig: { trailingEntry: 'none', maxWaitTime: 60 },
+        entryConfig: { initialEntry: 'none', trailingEntry: 'none', maxWaitTime: 60 },
         reEntryConfig: { trailingReEntry: 'none', maxReEntries: 0 }
       };
 
@@ -217,7 +217,7 @@ describe('SessionService', () => {
       const sessionWithNulls: Session = {
         step: undefined,
         type: 'backtest',
-        data: null,
+        data: undefined,
         metadata: undefined
       };
 
@@ -257,8 +257,9 @@ describe('SessionService', () => {
       const retrieved = sessionService.getSession(userId);
 
       expect(retrieved?.metadata?.name).toHaveLength(1000);
-      expect(retrieved?.metadata?.tags).toHaveLength(100);
-      expect(retrieved?.metadata?.extraData?.nested?.deep?.array).toHaveLength(50);
+      // Note: TokenMetadata doesn't have tags or extraData - these are test-specific extensions
+      expect((retrieved?.metadata as any)?.tags).toHaveLength(100);
+      expect((retrieved?.metadata as any)?.extraData?.nested?.deep?.array).toHaveLength(50);
     });
 
     it('should handle zero and negative user IDs', () => {
@@ -404,7 +405,7 @@ describe('SessionService', () => {
           mint: 'test-mint',
           chain: 'solana',
           datetime: now.minus({ hours: 1 }),
-          metadata: {},
+          metadata: { name: 'Test', symbol: 'TEST' },
           candles: []
         }
       };
@@ -461,9 +462,9 @@ describe('SessionService', () => {
       const retrieved = sessionService.getSession(userId);
 
       expect(retrieved?.data).toEqual(complexData);
-      expect(retrieved?.data?.level1?.level2?.level3?.value).toBe('deep value');
-      expect(retrieved?.data?.level1?.level2?.level3?.array).toEqual([1, 2, 3]);
-      expect(retrieved?.data?.level1?.level2?.level3?.nested?.final).toBe(true);
+      expect((retrieved?.data as any)?.level1?.level2?.level3?.value).toBe('deep value');
+      expect((retrieved?.data as any)?.level1?.level2?.level3?.array).toEqual([1, 2, 3]);
+      expect((retrieved?.data as any)?.level1?.level2?.level3?.nested?.final).toBe(true);
     });
   });
 

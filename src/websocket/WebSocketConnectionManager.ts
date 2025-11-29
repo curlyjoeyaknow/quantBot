@@ -8,6 +8,7 @@
 import WebSocket from 'ws';
 import { EventEmitter } from 'events';
 import { eventBus, EventFactory } from '../events';
+import { logger } from '../utils/logger';
 
 export interface WebSocketConfig {
   url: string;
@@ -63,7 +64,7 @@ export class WebSocketConnectionManager extends EventEmitter {
     this.isConnecting = true;
 
     try {
-      console.log(`Connecting to WebSocket: ${this.config.url}`);
+      logger.info('Connecting to WebSocket', { url: this.config.url });
       this.ws = new WebSocket(this.config.url);
 
       this.setupEventHandlers();
@@ -72,10 +73,10 @@ export class WebSocketConnectionManager extends EventEmitter {
       // Wait for connection to be established
       await this.waitForConnection();
       
-      console.log('WebSocket connected successfully');
+      logger.info('WebSocket connected successfully', { url: this.config.url });
       this.emit('connected');
     } catch (error) {
-      console.error('Failed to connect to WebSocket:', error);
+      logger.error('Failed to connect to WebSocket', error as Error, { url: this.config.url });
       this.emit('error', error);
       throw error;
     } finally {
@@ -161,7 +162,7 @@ export class WebSocketConnectionManager extends EventEmitter {
     if (!this.ws) return;
 
     this.ws.on('open', () => {
-      console.log('WebSocket connection opened');
+      logger.debug('WebSocket connection opened', { url: this.config.url });
       this.reconnectAttempts = 0;
       
       // Emit WebSocket connected event
@@ -179,13 +180,13 @@ export class WebSocketConnectionManager extends EventEmitter {
         const message = JSON.parse(data.toString());
         this.emit('message', message);
       } catch (error) {
-        console.error('Error parsing WebSocket message:', error);
+        logger.error('Error parsing WebSocket message', error as Error);
         this.emit('error', error);
       }
     });
 
     this.ws.on('close', (code: number, reason: string) => {
-      console.log(`WebSocket connection closed: ${code} - ${reason}`);
+      logger.info('WebSocket connection closed', { code, reason, url: this.config.url });
       
       // Emit WebSocket disconnected event
       eventBus.publish(EventFactory.createSystemEvent(
@@ -202,7 +203,7 @@ export class WebSocketConnectionManager extends EventEmitter {
     });
 
     this.ws.on('error', (error: Error) => {
-      console.error('WebSocket error:', error);
+      logger.error('WebSocket error', error as Error, { url: this.config.url });
       
       // Emit WebSocket error event
       eventBus.publish(EventFactory.createSystemEvent(
@@ -220,7 +221,7 @@ export class WebSocketConnectionManager extends EventEmitter {
    */
   private handleReconnect(): void {
     if (this.isDestroyed || this.reconnectAttempts >= this.config.maxReconnectAttempts!) {
-      console.error('Max reconnection attempts reached or connection destroyed');
+      logger.error('Max reconnection attempts reached or connection destroyed', { url: this.config.url, attempts: this.reconnectAttempts });
       this.emit('maxReconnectAttemptsReached');
       return;
     }
@@ -228,11 +229,11 @@ export class WebSocketConnectionManager extends EventEmitter {
     this.reconnectAttempts++;
     const delay = this.config.reconnectDelay! * Math.pow(2, this.reconnectAttempts - 1);
     
-    console.log(`Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts}/${this.config.maxReconnectAttempts})`);
+    logger.info('Reconnecting', { delayMs: delay, attempt: this.reconnectAttempts, maxAttempts: this.config.maxReconnectAttempts, url: this.config.url });
     
     this.reconnectTimer = setTimeout(() => {
       this.connect().catch(error => {
-        console.error('Reconnection failed:', error);
+        logger.error('Reconnection failed', error as Error, { url: this.config.url });
       });
     }, delay);
   }

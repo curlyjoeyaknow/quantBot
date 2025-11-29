@@ -18,6 +18,7 @@
 // ==============================
 
 import { Telegraf } from 'telegraf';
+import { DateTime } from 'luxon';
 import * as db from '../../src/utils/database';
 
 // Mock dependencies that interact with external services or DB
@@ -104,9 +105,13 @@ describe('Bot Integration Tests', () => {
           tokenName: 'Test Token',
           tokenSymbol: 'TEST',
           finalPnl: 1.5,
-          createdAt: new Date('2024-01-01T00:00:00Z'),
-          startTime: new Date('2024-01-01T00:00:00Z'),
-          endTime: new Date('2024-01-02T00:00:00Z')
+          createdAt: DateTime.fromJSDate(new Date('2024-01-01T00:00:00Z')),
+          startTime: DateTime.fromJSDate(new Date('2024-01-01T00:00:00Z')),
+          endTime: DateTime.fromJSDate(new Date('2024-01-02T00:00:00Z')),
+          strategy: [{ percent: 1, target: 2 }],
+          stopLossConfig: { initial: -0.3, trailing: 0.5 },
+          totalCandles: 100,
+          events: []
         }
       ];
 

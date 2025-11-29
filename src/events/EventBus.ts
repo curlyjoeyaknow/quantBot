@@ -6,6 +6,7 @@
  */
 
 import { EventEmitter } from 'events';
+import { logger } from '../utils/logger';
 
 export interface EventMetadata {
   timestamp: number;
@@ -37,6 +38,7 @@ export class EventBus extends EventEmitter {
   private middleware: EventMiddleware[] = [];
   private eventHistory: BaseEvent[] = [];
   private maxHistorySize: number = 1000;
+  private handlerMap: Map<EventHandler, (event: BaseEvent) => Promise<void>> = new Map();
 
   constructor() {
     super();
@@ -59,14 +61,15 @@ export class EventBus extends EventEmitter {
       this.addToHistory(event);
 
       // Run through middleware pipeline
-      await this.runMiddleware(event);
-
-      // Emit the event
-      this.emit(event.type, event);
+      const shouldEmit = await this.runMiddleware(event);
       
-      console.log(`Event published: ${event.type} from ${event.metadata.source}`);
+      // Only emit if middleware didn't block it
+      if (shouldEmit !== false) {
+        this.emit(event.type, event);
+        logger.debug('Event published', { eventType: event.type, source: event.metadata.source });
+      }
     } catch (error) {
-      console.error(`Error publishing event ${event.type}:`, error);
+      logger.error('Error publishing event', error as Error, { eventType: event.type, source: event.metadata.source });
       this.emit('error', { event, error });
     }
   }
@@ -75,21 +78,29 @@ export class EventBus extends EventEmitter {
    * Subscribe to an event type
    */
   public subscribe<T = any>(eventType: string, handler: EventHandler<T>): void {
-    this.on(eventType, async (event: BaseEvent & { data: T }) => {
+    const wrappedHandler = async (event: BaseEvent & { data: T }) => {
       try {
         await handler(event);
       } catch (error) {
-        console.error(`Error handling event ${eventType}:`, error);
+        logger.error('Error handling event', error as Error, { eventType });
         this.emit('error', { event, error });
       }
-    });
+    };
+    
+    // Store mapping for unsubscribe
+    this.handlerMap.set(handler, wrappedHandler);
+    this.on(eventType, wrappedHandler);
   }
 
   /**
    * Unsubscribe from an event type
    */
   public unsubscribe(eventType: string, handler: EventHandler): void {
-    this.off(eventType, handler);
+    const wrappedHandler = this.handlerMap.get(handler);
+    if (wrappedHandler) {
+      this.off(eventType, wrappedHandler);
+      this.handlerMap.delete(handler);
+    }
   }
 
   /**
@@ -141,8 +152,8 @@ export class EventBus extends EventEmitter {
     sources: string[];
     listeners: number;
   } {
-    const eventTypes = [...new Set(this.eventHistory.map(e => e.type))];
-    const sources = [...new Set(this.eventHistory.map(e => e.metadata.source))];
+    const eventTypes = Array.from(new Set(this.eventHistory.map(e => e.type)));
+    const sources = Array.from(new Set(this.eventHistory.map(e => e.metadata.source)));
     
     return {
       totalEvents: this.eventHistory.length,
@@ -154,9 +165,11 @@ export class EventBus extends EventEmitter {
 
   /**
    * Run event through middleware pipeline
+   * Returns false if middleware blocked the event, true otherwise
    */
-  private async runMiddleware(event: BaseEvent): Promise<void> {
+  private async runMiddleware(event: BaseEvent): Promise<boolean> {
     let index = 0;
+    let blocked = false;
 
     const next = async (): Promise<void> => {
       if (index < this.middleware.length) {
@@ -165,7 +178,18 @@ export class EventBus extends EventEmitter {
       }
     };
 
-    await next();
+    try {
+      await next();
+    } catch (error: any) {
+      // If middleware throws a specific "blocked" error or returns early, mark as blocked
+      if (error?.blocked === true) {
+        blocked = true;
+      } else {
+        throw error;
+      }
+    }
+
+    return !blocked;
   }
 
   /**

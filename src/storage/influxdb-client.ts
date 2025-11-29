@@ -1,6 +1,7 @@
 import { InfluxDB, Point, WriteApi, QueryApi } from '@influxdata/influxdb-client';
-import { InfluxDBClient } from '@influxdata/influxdb-client-apis';
+import { BucketsAPI } from '@influxdata/influxdb-client-apis';
 import { config } from 'dotenv';
+import { logger } from '../utils/logger';
 
 config();
 
@@ -27,7 +28,7 @@ export class InfluxDBOHLCVClient {
   private influxDB: InfluxDB;
   private writeApi: WriteApi;
   private queryApi: QueryApi;
-  private managementApi: InfluxDBClient;
+  private managementApi: BucketsAPI;
   private bucket: string;
   private org: string;
 
@@ -37,10 +38,10 @@ export class InfluxDBOHLCVClient {
     this.org = process.env.INFLUX_ORG || 'quantbot';
     this.bucket = process.env.INFLUX_BUCKET || 'ohlcv_data';
 
-    this.influxDB = new InfluxDB({ url, token });
+    this.influxDB = new InfluxDB({ url: url, token: token });
     this.writeApi = this.influxDB.getWriteApi(this.org, this.bucket);
     this.queryApi = this.influxDB.getQueryApi(this.org);
-    this.managementApi = new InfluxDBClient({ url, token });
+    this.managementApi = new BucketsAPI(this.influxDB);
 
     // Configure write options
     this.writeApi.useDefaultTags({
@@ -53,20 +54,19 @@ export class InfluxDBOHLCVClient {
    */
   async initialize(): Promise<void> {
     try {
-      console.log('🔧 Initializing InfluxDB...');
+      logger.info('Initializing InfluxDB...');
       
       // Check if bucket exists
-      const bucketsApi = this.managementApi.getBucketsApi();
-      const buckets = await bucketsApi.getBuckets({ org: this.org });
+      const buckets = await this.managementApi.getBuckets({ org: this.org });
       
-      const existingBucket = buckets.buckets?.find(b => b.name === this.bucket);
+      const existingBucket = buckets?.buckets?.find((b: any) => b.name === this.bucket);
       
       if (!existingBucket) {
-        console.log(`📦 Creating bucket: ${this.bucket}`);
-        await bucketsApi.postBuckets({
+        logger.info('Creating bucket', { bucket: this.bucket });
+        await this.managementApi.postBuckets({
           body: {
             name: this.bucket,
-            org: this.org,
+            orgID: this.org,
             retentionRules: [
               {
                 type: 'expire',
@@ -75,16 +75,16 @@ export class InfluxDBOHLCVClient {
             ]
           }
         });
-        console.log(`✅ Bucket ${this.bucket} created successfully`);
+        logger.info('Bucket created successfully', { bucket: this.bucket });
       } else {
-        console.log(`✅ Bucket ${this.bucket} already exists`);
+        logger.info('Bucket already exists', { bucket: this.bucket });
       }
 
       // Test write and read
       await this.testConnection();
       
     } catch (error) {
-      console.error('❌ Failed to initialize InfluxDB:', error);
+      logger.error('Failed to initialize InfluxDB', error as Error);
       throw error;
     }
   }
@@ -109,7 +109,7 @@ export class InfluxDBOHLCVClient {
     `;
 
     const result = await this.queryApi.collectRows(query);
-    console.log('✅ InfluxDB connection test successful');
+    logger.info('InfluxDB connection test successful');
   }
 
   /**
@@ -133,9 +133,9 @@ export class InfluxDBOHLCVClient {
       this.writeApi.writePoints(points);
       await this.writeApi.flush();
       
-      console.log(`📊 Written ${data.length} OHLCV records for ${tokenSymbol} (${tokenAddress})`);
+      logger.info('Written OHLCV records', { recordCount: data.length, tokenSymbol, tokenAddress });
     } catch (error) {
-      console.error(`❌ Failed to write OHLCV data for ${tokenAddress}:`, error);
+      logger.error('Failed to write OHLCV data', error as Error, { tokenAddress });
       throw error;
     }
   }
@@ -154,7 +154,7 @@ export class InfluxDBOHLCVClient {
           |> sort(columns: ["_time"])
       `;
 
-      const result = await this.queryApi.collectRows(query);
+      const result: any[] = await this.queryApi.collectRows(query);
       
       return result.map((row: any) => ({
         timestamp: new Date(row._time).getTime(),
@@ -166,7 +166,7 @@ export class InfluxDBOHLCVClient {
         volume: parseFloat(row.volume) || 0
       }));
     } catch (error) {
-      console.error(`❌ Failed to query OHLCV data for ${tokenAddress}:`, error);
+      logger.error('Failed to query OHLCV data', error as Error, { tokenAddress });
       throw error;
     }
   }
@@ -185,15 +185,15 @@ export class InfluxDBOHLCVClient {
           |> last()
       `;
 
-      const result = await this.queryApi.collectRows(query);
+      const result: any[] = await this.queryApi.collectRows(query);
       
       if (result.length > 0) {
-        return parseFloat(result[0]._value);
+        return parseFloat(result[0]._value as string);
       }
       
       return 0;
     } catch (error) {
-      console.error(`❌ Failed to get latest price for ${tokenAddress}:`, error);
+      logger.error('Failed to get latest price', error as Error, { tokenAddress });
       return 0;
     }
   }
@@ -211,10 +211,10 @@ export class InfluxDBOHLCVClient {
           |> limit(n: 1)
       `;
 
-      const result = await this.queryApi.collectRows(query);
+      const result: any[] = await this.queryApi.collectRows(query);
       return result.length > 0;
     } catch (error) {
-      console.error(`❌ Failed to check data existence for ${tokenAddress}:`, error);
+      logger.error('Failed to check data existence', error as Error, { tokenAddress });
       return false;
     }
   }
@@ -234,7 +234,7 @@ export class InfluxDBOHLCVClient {
           |> sort(columns: ["_value"], desc: true)
       `;
 
-      const result = await this.queryApi.collectRows(query);
+      const result: any[] = await this.queryApi.collectRows(query);
       
       return result.map((row: any) => ({
         address: row.token_address,
@@ -245,7 +245,7 @@ export class InfluxDBOHLCVClient {
         lastTimestamp: 0   // Would need separate query for this
       }));
     } catch (error) {
-      console.error('❌ Failed to get available tokens:', error);
+      logger.error('Failed to get available tokens', error as Error);
       return [];
     }
   }
@@ -263,15 +263,15 @@ export class InfluxDBOHLCVClient {
           |> count()
       `;
 
-      const result = await this.queryApi.collectRows(query);
+      const result: any[] = await this.queryApi.collectRows(query);
       
       if (result.length > 0) {
-        return parseInt(result[0]._value);
+        return parseInt(result[0]._value as string);
       }
       
       return 0;
     } catch (error) {
-      console.error(`❌ Failed to get record count for ${tokenAddress}:`, error);
+      logger.error('Failed to get record count', error as Error, { tokenAddress });
       return 0;
     }
   }
@@ -281,7 +281,7 @@ export class InfluxDBOHLCVClient {
    */
   async close(): Promise<void> {
     await this.writeApi.close();
-    console.log('🔌 InfluxDB connection closed');
+    logger.info('InfluxDB connection closed');
   }
 }
 

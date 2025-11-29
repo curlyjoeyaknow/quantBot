@@ -32,6 +32,7 @@ pids
 
 # Coverage directory used by tools like istanbul
 coverage/
+coverage-summary.json
 *.lcov
 
 # nyc test coverage
@@ -106,6 +107,11 @@ temp/
 *.swp
 *.swo
 *~
+
+# Cursor IDE - keep rules, ignore workspace settings
+.cursor/
+!.cursor/rules/
+!.cursorrules
 
 # OS generated files
 .DS_Store

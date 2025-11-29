@@ -9,6 +9,7 @@
 import { Context } from 'telegraf';
 import axios from 'axios';
 import { saveCADrop } from '../utils/database';
+import { logger } from '../utils/logger';
 
 export class CADetectionService {
   private readonly DEFAULT_STRATEGY = [
@@ -41,14 +42,14 @@ export class CADetectionService {
       return false;
     }
 
-    console.log(`Potential CA drop detected: ${addresses.join(', ')}`);
+    logger.debug('Potential CA drop detected', { addresses, hasKeywords: hasCAKeywords });
 
     // Process all CA(s) found in message
     for (const address of addresses) {
       try {
         await this.processCADrop(ctx, address);
       } catch (error: unknown) {
-        console.error('Error processing CA drop:', error instanceof Error ? error.message : String(error));
+        logger.error('Error processing CA drop', error instanceof Error ? error : new Error(String(error)), { address });
       }
     }
     return true;
@@ -63,7 +64,7 @@ export class CADetectionService {
     const chatId = ctx.chat?.id;
     
     if (!userId || !chatId) {
-      console.log('Invalid context for CA processing');
+      logger.warn('Invalid context for CA processing', { userId, chatId });
       return;
     }
 
@@ -71,7 +72,7 @@ export class CADetectionService {
     const solanaPattern = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
     const evmPattern = /^0x[a-fA-F0-9]{40}$/;
     if (!solanaPattern.test(address) && !evmPattern.test(address)) {
-      console.log(`Invalid address format: ${address}`);
+      logger.warn('Invalid address format', { address });
       return;
     }
 
@@ -89,7 +90,7 @@ export class CADetectionService {
         const chainsToTry = ['bsc', 'ethereum', 'base'];
         for (const tryChain of chainsToTry) {
           try {
-            console.log(`Trying ${tryChain} for address ${address}`);
+            logger.debug('Trying chain for address', { chain: tryChain, address });
             const meta = await axios.get(`https://public-api.birdeye.so/defi/v3/token/meta-data/single`, {
               headers: {
                 'X-API-KEY': process.env.BIRDEYE_API_KEY!,
@@ -101,11 +102,11 @@ export class CADetectionService {
             if (meta.data.success && meta.data.data) {
               tokenData = meta.data.data;
               finalChain = tryChain;
-              console.log(`Found token on ${tryChain}: ${tokenData?.name}`);
+              logger.debug('Found token on chain', { chain: tryChain, tokenName: tokenData?.name, address });
               break;
             }
           } catch (err) {
-            console.log(`Failed to find token on ${tryChain}`);
+            logger.debug('Failed to find token on chain', { chain: tryChain, address });
             continue;
           }
         }
@@ -123,7 +124,7 @@ export class CADetectionService {
         finalChain = chain;
       }
       if (!tokenData) {
-        console.log(`Token metadata not found for ${address} on any supported chain`);
+        logger.warn('Token metadata not found on any supported chain', { address });
         return;
       }
 
@@ -156,7 +157,7 @@ export class CADetectionService {
           marketcap = overviewResponse.data.data.marketCap || 0;
         }
       } catch (error: unknown) {
-        console.log(`Failed to fetch token overview for ${address}:`, error instanceof Error ? error.message : String(error));
+        logger.warn('Failed to fetch token overview', { address, error: error instanceof Error ? error.message : String(error) });
         // Fallback to token metadata if available
         currentPrice = typedTokenData.price || 0;
         marketcap = typedTokenData.mc || 0;
@@ -201,7 +202,7 @@ export class CADetectionService {
           });
         }
       } catch (error: unknown) {
-        console.log('Helius monitor not available:', error instanceof Error ? error.message : String(error));
+        logger.warn('Helius monitor not available', { error: error instanceof Error ? error.message : String(error) });
       }
 
       // Compose confirmation message to user/chat
@@ -223,9 +224,9 @@ export class CADetectionService {
 
       await ctx.reply(message, { parse_mode: 'Markdown' });
 
-      console.log(`Started tracking CA: ${tokenData.name} (${address}) on ${finalChain}`);
+      logger.info('Started tracking CA', { tokenName: tokenData.name, address, chain: finalChain });
     } catch (error: unknown) {
-      console.error('Error fetching token metadata for CA:', error instanceof Error ? error.message : String(error));
+      logger.error('Error fetching token metadata for CA', error instanceof Error ? error : new Error(String(error)), { address });
       // On errors during CA detection, fail silently to avoid chat spam
     }
   }

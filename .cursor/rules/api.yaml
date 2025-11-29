@@ -1,0 +1,145 @@
+---
+description: API client rules for src/api/ directory
+globs: ["src/api/**/*.ts", "quantbot-bot/src/api/**/*.ts"]
+alwaysApply: true
+---
+
+# API Client Rules (src/api/)
+
+## API Client Architecture
+
+### Core Principles
+api-client-architecture:
+  all-api-clients-must-extend-base-client:
+    - "All API clients must extend `BaseClient`"
+  implement-retry-logic-with-exponential-backoff: "Implement retry logic with exponential backoff"
+  handle-rate-limiting-gracefully: "Handle rate limiting gracefully"
+  cache-responses-when-appropriate: "Cache responses when appropriate"
+  never-expose-api-keys-in-logs-or-errors: "Never expose API keys in logs or errors"
+
+### Base Client
+base-client:
+  use-base-client-for-common-functionality: "Use `BaseClient` for common functionality"
+  implement-consistent-error-handling: "Implement consistent error handling"
+  use-proper-http-methods: "Use proper HTTP methods"
+  handle-response-parsing: "Handle response parsing"
+  implement-request-response-logging: "Implement request/response logging"  
+
+## Client Implementation  
+
+### Birdeye Client
+birdeye-client:
+  use-birdeye-client-for-birdeye-api-calls: "Use `BirdeyeClient` for Birdeye API calls"
+  handle-multi-chain-support: "Handle multi-chain support"
+  implement-proper-token-metadata-fetching: "Implement proper token metadata fetching"
+  cache-ohlcv-data-appropriately: "Cache OHLCV data appropriately"
+  handle-api-rate-limits: "Handle API rate limits"
+
+## Error Handling
+
+### API Errors
+api-errors:
+  map-api-errors-to-application-errors: "Map API errors to application errors"
+  include-context-in-error-messages: "Include context in error messages"
+  handle-different-error-types-appropriately: "Handle different error types appropriately"
+  implement-retry-logic-for-transient-errors: "Implement retry logic for transient errors"
+  log-errors-with-api-context: "Log errors with API context"
+
+### Network Errors
+network-errors:
+  handle-network-timeouts: "Handle network timeouts"
+  implement-connection-retry-logic: "Implement connection retry logic"
+  handle-connection-failures-gracefully: "Handle connection failures gracefully"
+  provide-helpful-error-messages: "Provide helpful error messages"
+  log-network-issues-appropriately: "Log network issues appropriately"
+
+## Rate Limiting
+
+### Rate Limit Handling
+rate-limit-handling:
+  respect-api-rate-limits: "Respect API rate limits"
+  implement-rate-limit-detection: "Implement rate limit detection"
+  queue-requests-when-rate-limited: "Queue requests when rate limited"
+  provide-rate-limit-status: "Provide rate limit status"
+  handle-rate-limit-errors-gracefully: "Handle rate limit errors gracefully"
+
+### Request Throttling
+request-throttling:
+  implement-request-throttling: "Implement request throttling"
+  use-appropriate-delay-strategies: "Use appropriate delay strategies"
+  monitor-request-rates: "Monitor request rates"
+  adjust-throttling-dynamically: "Adjust throttling dynamically"
+  log-throttling-events: "Log throttling events"
+
+## Caching
+
+### Response Caching
+response-caching:
+  cache-api-responses-when-appropriate: "Cache API responses when appropriate"
+  respect-cache-headers: "Respect cache headers"
+  implement-cache-invalidation: "Implement cache invalidation"
+  use-appropriate-cache-ttls: "Use appropriate cache TTLs"
+  monitor-cache-hit-rates: "Monitor cache hit rates"  
+
+### Cache Management
+cache-management:
+  store-cache-efficiently: "Store cache efficiently"
+  clean-up-expired-cache-entries: "Clean up expired cache entries"
+  handle-cache-errors-gracefully: "Handle cache errors gracefully"
+  provide-cache-statistics: "Provide cache statistics"
+  implement-cache-warming-when-needed: "Implement cache warming when needed"
+
+## Performance
+
+### Request Processing
+request-processing:
+  batch-requests-when-possible: "Batch requests when possible"
+  use-connection-pooling: "Use connection pooling"
+  minimize-request-overhead: "Minimize request overhead"
+  optimize-payload-sizes: "Optimize payload sizes"
+  monitor-request-performance: "Monitor request performance"
+
+### Response Processing 
+response-processing:
+  parse-responses-efficiently: "Parse responses efficiently"
+  stream-large-responses: "Stream large responses"
+  handle-response-errors: "Handle response errors"
+  validate-response-data: "Validate response data"
+  process-responses-asynchronously: "Process responses asynchronously"
+
+## Testing
+
+### Unit Tests
+unit-tests:
+  test-client-methods-independently: "Test client methods independently"
+  mock-http-requests: "Mock HTTP requests"
+  test-error-handling: "Test error handling"
+  test-retry-logic: "Test retry logic"
+  test-rate-limiting: "Test rate limiting"
+
+### Integration Tests
+integration-tests:
+  test-with-real-apis-when-safe: "Test with real APIs (when safe)"
+  test-error-scenarios: "Test error scenarios"
+  test-rate-limiting: "Test rate limiting"
+  test-caching-behavior: "Test caching behavior"
+  test-performance: "Test performance"
+
+## Documentation  
+
+### API Documentation
+api-documentation:
+  document-all-api-methods: "Document all API methods"
+  include-request-response-examples: "Include request/response examples"
+  document-error-scenarios: "Document error scenarios"
+  include-rate-limit-information: "Include rate limit information"
+  keep-documentation-current: "Keep documentation current"
+
+### Code Documentation
+code-documentation:
+  document-client-logic: "Document client logic"
+  explain-error-handling: "Explain error handling"
+  document-caching-strategies: "Document caching strategies"
+  include-usage-examples: "Include usage examples"  
+  keep-comments-updated: "Keep comments updated"  
+

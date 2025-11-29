@@ -1,0 +1,143 @@
+---
+description: Data access layer rules for src/data/ directory
+globs: ["src/data/**/*.ts"]
+alwaysApply: true
+---
+
+# Data Access Rules (src/data/)
+
+## Data Loader Architecture
+
+### Core Principles
+- Use data loader pattern for all data access
+- Support multiple data sources (CSV, ClickHouse, etc.)
+- Validate all loaded data
+- Implement proper error handling
+- Cache loaded data when appropriate
+
+### Loader Implementation
+- Each data source should have its own loader
+- Loaders must implement common interface
+- Use factory pattern for loader creation
+- Handle data source errors gracefully
+- Provide consistent data format
+
+## Data Sources
+
+### CSV Loader
+- Use `CSVLoader` for CSV file access
+- Validate CSV structure
+- Handle missing files gracefully
+- Parse CSV data correctly
+- Handle encoding issues
+
+### ClickHouse Loader
+- Use `ClickHouseLoader` for ClickHouse access
+- Implement proper query construction
+- Handle connection errors
+- Cache query results when appropriate
+- Monitor query performance
+
+### Caller Loader
+- Use `CallerLoader` for caller data
+- Validate caller data structure
+- Handle missing callers gracefully
+- Cache caller data appropriately
+- Update caller data when needed
+
+## Data Validation
+
+### Input Validation
+- Validate all input data
+- Use Zod schemas for validation
+- Check data types
+- Validate data ranges
+- Handle invalid data gracefully
+
+### Data Transformation
+- Transform data consistently
+- Handle missing fields
+- Normalize data formats
+- Clean data appropriately
+- Preserve data integrity
+
+## Caching
+
+### Cache Strategy
+- Cache expensive data loads
+- Use appropriate cache TTLs
+- Invalidate cache when needed
+- Monitor cache performance
+- Handle cache errors gracefully
+
+### Cache Management
+- Store cache efficiently
+- Clean up expired entries
+- Handle cache misses
+- Provide cache statistics
+- Implement cache warming
+
+## Error Handling
+
+### Data Errors
+- Handle missing data gracefully
+- Provide helpful error messages
+- Log data errors with context
+- Retry transient errors
+- Fail gracefully on permanent errors
+
+### Source Errors
+- Handle data source failures
+- Implement fallback strategies
+- Log source errors appropriately
+- Notify on critical failures
+- Recover from errors when possible
+
+## Performance
+
+### Loading Performance
+- Load data efficiently
+- Use streaming for large files
+- Implement proper batching
+- Monitor load performance
+- Optimize data access patterns
+
+### Query Optimization
+- Optimize database queries
+- Use appropriate indexes
+- Minimize data transfer
+- Cache query results
+- Monitor query performance
+
+## Testing
+
+### Unit Tests
+- Test loaders independently
+- Mock data sources
+- Test error handling
+- Test data validation
+- Test caching behavior
+
+### Integration Tests
+- Test with real data sources
+- Test error scenarios
+- Test performance
+- Test caching
+- Test data transformation
+
+## Documentation
+
+### Loader Documentation
+- Document all loaders
+- Include usage examples
+- Document data formats
+- Include error scenarios
+- Keep documentation current
+
+### Code Documentation
+- Document loader logic
+- Explain data transformations
+- Document caching strategies
+- Include examples
+- Keep comments updated
+

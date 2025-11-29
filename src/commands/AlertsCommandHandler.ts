@@ -9,6 +9,7 @@ import { Context } from 'telegraf';
 import { BaseCommandHandler, Session } from './interfaces/CommandHandler';
 import { SessionService } from '../services/SessionService';
 import { getActiveCATracking, getAllCACalls } from '../utils/database';
+import { logger } from '../utils/logger';
 
 export class AlertsCommandHandler extends BaseCommandHandler {
   readonly command = 'alerts';
@@ -24,7 +25,7 @@ export class AlertsCommandHandler extends BaseCommandHandler {
       return;
     }
     
-    console.log(`[DEBUG] /alerts command triggered by user ${userId}`);
+    logger.debug('/alerts command triggered', { userId });
     
     try {
       // Clear any existing session to prevent conflicts
@@ -128,7 +129,7 @@ export class AlertsCommandHandler extends BaseCommandHandler {
       await ctx.reply(alertsMessage, { parse_mode: 'Markdown' });
       
     } catch (error) {
-      console.error('Alerts command error:', error);
+      logger.error('Alerts command error', error as Error, { userId });
       await this.sendError(ctx, '❌ Error retrieving alerts data. Please try again later.');
     }
   }

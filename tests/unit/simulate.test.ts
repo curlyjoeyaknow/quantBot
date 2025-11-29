@@ -49,7 +49,7 @@ const defaultStrategy: Strategy[] = [
 const defaultStopLoss: StopLossConfig = { initial: -0.3, trailing: 0.5 };
 
 /** Default entry (no trailing entry) for basic simulations */
-const defaultEntry: EntryConfig = { trailingEntry: 'none', maxWaitTime: 60 };
+const defaultEntry: EntryConfig = { initialEntry: 'none', trailingEntry: 'none', maxWaitTime: 60 };
 
 /** Default re-entry configuration (no re-entries allowed for base paths) */
 const defaultReEntry: ReEntryConfig = { trailingReEntry: 'none', maxReEntries: 0 };
@@ -121,7 +121,7 @@ describe('Simulation Engine', () => {
      * validating additional output structure related to optimized entry.
      */
     it('should handle entry optimization', () => {
-      const entryConfig: EntryConfig = { trailingEntry: 0.1, maxWaitTime: 30 };
+      const entryConfig: EntryConfig = { initialEntry: 'none', trailingEntry: 0.1, maxWaitTime: 30 };
       const result = simulateStrategy(
         mockCandles,
         defaultStrategy,

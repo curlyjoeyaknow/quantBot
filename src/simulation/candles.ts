@@ -10,10 +10,14 @@
  * module readable, maintainable, and easily upgradable for future requirements.
  ******************************************************************************/
 
+import { config } from 'dotenv';
+// Override existing env vars to ensure .env file takes precedence
+config({ override: true });
 import axios from 'axios';
 import { DateTime } from 'luxon';
 import * as fs from 'fs';
 import * as path from 'path';
+import { logger } from '../utils/logger';
 
 /* ============================================================================
  * Candle Type Definition
@@ -38,12 +42,17 @@ export type Candle = {
  * ========================================================================== */
 
 // --- Birdeye API config (environment-driven for upgradeability) ---
-const BIRDEYE_API_KEY = process.env.BIRDEYE_API_KEY || '';
+// Read API key lazily to ensure dotenv is loaded
+// Try BIRDEYE_API_KEY_1 first (matches birdeye-client.ts), then fallback to BIRDEYE_API_KEY
+function getBirdeyeApiKey(): string {
+  return process.env.BIRDEYE_API_KEY_1 || process.env.BIRDEYE_API_KEY || '';
+}
 const BIRDEYE_ENDPOINT = 'https://public-api.birdeye.so/defi/v3/ohlcv';
 
 // --- Candle cache settings ---
 const CACHE_DIR = path.join(process.cwd(), 'cache');
-const CACHE_EXPIRY_HOURS = 24;
+// Extended cache expiry for simulations - use cached data when available
+const CACHE_EXPIRY_HOURS = process.env.USE_CACHE_ONLY === 'true' ? 999999 : 24;
 
 // --- Ensure cache directory exists (idempotent) ---
 if (!fs.existsSync(CACHE_DIR)) {
@@ -83,9 +92,9 @@ function saveCandlesToCache(candles: Candle[], filename: string): void {
     ].join('\n');
 
     fs.writeFileSync(path.join(CACHE_DIR, filename), csvContent);
-    console.log(`Cached ${candles.length} candles to ${filename}`);
+    logger.debug('Cached candles', { count: candles.length, filename });
   } catch (error) {
-    console.error(`Failed to save cache ${filename}:`, error);
+    logger.error('Failed to save cache', error as Error, { filename });
   }
 }
 
@@ -99,18 +108,20 @@ function loadCandlesFromCache(filename: string): Candle[] | null {
 
     if (!fs.existsSync(filePath)) return null;
 
-    // Check expiration
+    // Check expiration (skip if USE_CACHE_ONLY is set)
+    if (process.env.USE_CACHE_ONLY !== 'true') {
     const stats = fs.statSync(filePath);
     const ageHours =
       (Date.now() - stats.mtime.getTime()) / (1000 * 60 * 60);
     if (ageHours > CACHE_EXPIRY_HOURS) {
-      console.log(
+      logger.debug(
         `Cache expired (${ageHours.toFixed(
           1
         )}h old). Removing ${filename}...`
       );
       fs.unlinkSync(filePath);
       return null;
+      }
     }
 
     // Parse CSV
@@ -128,12 +139,12 @@ function loadCandlesFromCache(filename: string): Candle[] | null {
         volume: parseFloat(volume),
       });
     }
-    console.log(
+    logger.debug(
       `Loaded ${candles.length} candles from cache ${filename}`
     );
     return candles;
   } catch (error) {
-    console.error(`Failed to load cache ${filename}:`, error);
+    logger.error('Failed to load cache', error as Error, { filename });
     return null;
   }
 }
@@ -143,53 +154,67 @@ function loadCandlesFromCache(filename: string): Candle[] | null {
  * ========================================================================== */
 
 /**
- * Fetches hybrid candles using the following granularity:
- *   - 5m: For the first 6 hours (detail at entry time)
- *   - 1h: For remainder of the range
- * Each fetch type remains easily swappable for upgrades.
+ * Fetches candles using specified interval for the given period.
+ * This provides consistent granularity for technical indicators like Ichimoku.
+ * Note: For very long periods (>7 days), consider using 1h candles for efficiency.
  */
 async function fetchFreshCandles(
   mint: string,
   startTime: DateTime,
   endTime: DateTime,
-  chain: string = 'solana'
+  chain: string = 'solana',
+  interval: '1m' | '5m' | '1H' = '5m'
 ): Promise<Candle[]> {
-  // Choose split between 5m and 1h granularity for hybrid fetching
-  const splitPoint = startTime.plus({ hours: 6 });
+  const from = Math.floor(startTime.toSeconds());
+  const to = Math.floor(endTime.toSeconds());
 
-  const from5m = Math.floor(startTime.toSeconds());
-  const to5m = Math.floor(Math.min(splitPoint.toSeconds(), endTime.toSeconds()));
-  const from1h = Math.floor(splitPoint.toSeconds());
-  const to1h = Math.floor(endTime.toSeconds());
-
-  let candles: Candle[] = [];
-
-  // Fetch 5m (if any required)
-  if (to5m > from5m) {
-    const fiveMinCandles = await fetchBirdeyeCandles(
+  // Fetch candles with specified interval
+  const candles = await fetchBirdeyeCandles(
       mint,
-      '5m',
-      from5m,
-      to5m,
+      interval,
+    from,
+    to,
       chain
     );
-    candles = candles.concat(fiveMinCandles);
-  }
-
-  // Fetch 1h (if any required)
-  if (to1h > from1h) {
-    const oneHourCandles = await fetchBirdeyeCandles(
-      mint,
-      '1H',
-      from1h,
-      to1h,
-      chain
-    );
-    candles = candles.concat(oneHourCandles);
-  }
 
   // Ensure chronological order for all downstream consumers
   return candles.sort((a, b) => a.timestamp - b.timestamp);
+}
+
+/**
+ * Merges 5m and 1m candles, with 1m candles taking precedence in the alert window.
+ * 1m candles replace 5m candles that overlap in time.
+ */
+function mergeCandles(
+  candles5m: Candle[],
+  candles1m: Candle[],
+  alertTime: DateTime,
+  windowMinutes: number = 30
+): Candle[] {
+  if (candles1m.length === 0) {
+    return candles5m;
+  }
+
+  const alertStart = alertTime.minus({ minutes: windowMinutes });
+  const alertEnd = alertTime.plus({ minutes: windowMinutes });
+  const alertStartUnix = Math.floor(alertStart.toSeconds());
+  const alertEndUnix = Math.floor(alertEnd.toSeconds());
+
+  // Filter out 5m candles that overlap with the 1m window
+  const filtered5m = candles5m.filter(candle => {
+    const candleEnd = candle.timestamp + 300; // 5m = 300 seconds
+    // Remove 5m candle if it overlaps with 1m window
+    return !(candle.timestamp < alertEndUnix && candleEnd > alertStartUnix);
+  });
+
+  // Combine and sort
+  const merged = [...filtered5m, ...candles1m].sort((a, b) => a.timestamp - b.timestamp);
+  
+  logger.debug(
+    `Merged candles: ${candles5m.length} 5m + ${candles1m.length} 1m = ${merged.length} total (removed ${candles5m.length - filtered5m.length} overlapping 5m candles)`
+  );
+
+  return merged;
 }
 
 /**
@@ -197,47 +222,113 @@ async function fetchFreshCandles(
  * Throws on network/auth errors. Returns normalized array of Candle objects.
  * 
  * @param mint     Solana token mint address
- * @param interval Candle interval: '5m' or '1H'
+ * @param interval Candle interval: '1m', '5m', or '1H'
  * @param from     Start time (UNIX seconds)
  * @param to       End time (UNIX seconds)
  * @param chain    Blockchain name, e.g. 'solana'
  */
 async function fetchBirdeyeCandles(
   mint: string,
-  interval: '5m' | '1H',
+  interval: '1m' | '5m' | '1H',
   from: number,
   to: number,
   chain: string = 'solana'
 ): Promise<Candle[]> {
-  const response = await axios.get(BIRDEYE_ENDPOINT, {
-    headers: {
-      'X-API-KEY': BIRDEYE_API_KEY,
-      'x-chain': chain,
-      accept: 'application/json',
-    },
-    params: {
-      address: mint,
-      type: interval,
-      currency: 'usd',
-      ui_amount_mode: 'raw',
-      time_from: from,
-      time_to: to,
-      mode: 'range',
-      padding: true, // Always fill missing intervals with zeros
-      outlier: true, // Remove outliers (Birdeye-API specific)
-    },
-  });
+  try {
+    const apiKey = getBirdeyeApiKey();
+    if (!apiKey) {
+      throw new Error('BIRDEYE_API_KEY is not set in environment variables');
+    }
+    
+    // First try: fetch by date range
+    const response = await axios.get(BIRDEYE_ENDPOINT, {
+      headers: {
+        'X-API-KEY': apiKey,
+        'x-chain': chain,
+        accept: 'application/json',
+      },
+      params: {
+        address: mint,
+        type: interval,
+        currency: 'usd',
+        ui_amount_mode: 'raw',
+        time_from: from,
+        time_to: to,
+        mode: 'range',
+        padding: true, // Always fill missing intervals with zeros
+        outlier: true, // Remove outliers (Birdeye-API specific)
+      },
+      validateStatus: (status) => status < 500, // Don't throw on 4xx errors
+    });
 
-  // Defensive: Normalize to Candle type
-  const items: any[] = response.data?.data?.items ?? [];
-  return items.map(item => ({
-    timestamp: item.unix_time,
-    open: item.o,
-    high: item.h,
-    low: item.l,
-    close: item.c,
-    volume: item.v,
-  }));
+    // Handle API errors gracefully
+    if (response.status === 400 || response.status === 404) {
+      // Token not found or invalid - return empty array (not an error)
+      return [];
+    }
+
+    if (response.status !== 200) {
+      throw new Error(`Birdeye API returned status ${response.status}`);
+    }
+
+    // Defensive: Normalize to Candle type
+    let items: any[] = response.data?.data?.items ?? [];
+    
+    // If date range returned no items, try fetching by max candles instead
+    if (items.length === 0) {
+      logger.debug(`No candles found for date range, trying max candles approach for ${mint}`);
+      
+      // Calculate how many candles we need based on time range
+      const durationSeconds = to - from;
+      const intervalSeconds = interval === '1m' ? 60 : interval === '5m' ? 300 : 3600; // 1m = 60s, 5m = 300s, 1H = 3600s
+      const maxCandles = Math.ceil(durationSeconds / intervalSeconds);
+      
+      // Fetch latest N candles (up to what we need)
+      const limitResponse = await axios.get(BIRDEYE_ENDPOINT, {
+        headers: {
+          'X-API-KEY': apiKey,
+          'x-chain': chain,
+          accept: 'application/json',
+        },
+        params: {
+          address: mint,
+          type: interval,
+          currency: 'usd',
+          ui_amount_mode: 'raw',
+          limit: Math.min(maxCandles, 10000), // Cap at 10k candles
+        },
+        validateStatus: (status) => status < 500,
+      });
+
+      if (limitResponse.status === 200) {
+        items = limitResponse.data?.data?.items ?? [];
+        if (items.length > 0) {
+          logger.debug(`Fetched ${items.length} candles using max candles approach for ${mint}`);
+          // Filter to only include candles within the requested time range
+          items = items.filter((item: any) => {
+            const timestamp = item.unix_time;
+            return timestamp >= from && timestamp <= to;
+          });
+        }
+      }
+    }
+    
+    return items.map(item => ({
+      timestamp: item.unix_time,
+      open: parseFloat(item.o) || NaN,
+      high: parseFloat(item.h) || NaN,
+      low: parseFloat(item.l) || NaN,
+      close: parseFloat(item.c) || NaN,
+      volume: parseFloat(item.v) || NaN,
+    }));
+  } catch (error: any) {
+    // If it's a 400/404, that's expected for invalid tokens - return empty
+    if (error.response?.status === 400 || error.response?.status === 404) {
+      return [];
+    }
+    // Re-throw other errors (network, 500, etc.)
+    throw error;
+  }
 }
 
 /* ============================================================================
@@ -245,9 +336,9 @@ async function fetchBirdeyeCandles(
  * ========================================================================== */
 
 /**
- * Fetches OHLCV candles for a given token using a "hybrid" strategy:
- *   - 5m granularity for the first 6 hours (detailed simulation support)
- *   - 1h granularity for the remaining window (efficient for longer timeframes)
+ * Fetches OHLCV candles for a given token using 5m granularity for the entire period.
+ * If alertTime is provided, also fetches 1m candles for 30min before and after alertTime
+ * for precise entry pricing.
  * 
  * Checks and intelligently extends local CSV cache for quota/performance. 
  * Designed for robust upgradeability to any future time partitioning scheme.
@@ -256,21 +347,51 @@ async function fetchBirdeyeCandles(
  * @param startTime Range start time (Luxon DateTime, UTC)
  * @param endTime   Range end time   (Luxon DateTime, UTC)
  * @param chain     Blockchain name (defaults to 'solana')
- * @returns         Array of Candle objects, ascending by timestamp
+ * @param alertTime Optional alert time - if provided, fetches 1m candles for 30min before/after
+ * @returns         Array of Candle objects, ascending by timestamp (merged 5m + 1m if alertTime provided)
  */
 export async function fetchHybridCandles(
   mint: string,
   startTime: DateTime,
   endTime: DateTime,
-  chain: string = 'solana'
+  chain: string = 'solana',
+  alertTime?: DateTime
 ): Promise<Candle[]> {
-  // Check cache (exact match)
+  // Try ClickHouse first (if enabled) - ClickHouse is a cache, so check it even in cache-only mode
+  if (process.env.USE_CLICKHOUSE === 'true' || process.env.CLICKHOUSE_HOST) {
+    try {
+      const { queryCandles } = await import('../storage/clickhouse-client');
+      const clickhouseCandles = await queryCandles(mint, chain, startTime, endTime);
+      if (clickhouseCandles.length > 0) {
+        logger.debug(
+          `Using ClickHouse candles for ${mint} (${clickhouseCandles.length} candles)`
+        );
+        return clickhouseCandles;
+      }
+    } catch (error: any) {
+      logger.warn('ClickHouse query failed, falling back to CSV cache', { error: error.message, mint });
+    }
+  }
+  
+  // Check CSV cache (exact match)
   const cacheFilename = getCacheFilename(mint, startTime, endTime, chain);
   const cachedCandles = loadCandlesFromCache(cacheFilename);
   if (cachedCandles) {
-    console.log(
+    logger.debug(
       `Using cached candles for ${mint} (${cachedCandles.length} candles)`
     );
+    // Also ensure it's in ClickHouse (idempotent - won't duplicate)
+    // Skip sync if USE_CACHE_ONLY is set (to avoid database connection errors)
+    if (process.env.USE_CACHE_ONLY !== 'true' && (process.env.USE_CLICKHOUSE === 'true' || process.env.CLICKHOUSE_HOST)) {
+      try {
+        const { insertCandles } = await import('../storage/clickhouse-client');
+        const interval = cachedCandles.length > 1 && (cachedCandles[1].timestamp - cachedCandles[0].timestamp) <= 600 ? '5m' : '1h';
+        await insertCandles(mint, chain, cachedCandles, interval);
+        logger.debug(`✅ Synced ${cachedCandles.length} cached candles to ClickHouse for ${mint.substring(0, 20)}...`);
+      } catch (error: any) {
+        // Silently continue - ClickHouse may already have the data
+      }
+    }
     return cachedCandles;
   }
 
@@ -291,7 +412,7 @@ export async function fetchHybridCandles(
         cachedData[cachedData.length - 1].timestamp
       );
       if (endTime.diff(lastCachedTime, 'hours').hours < 1) {
-        console.log(
+        logger.debug(
           `Extending recent cache from ${lastCachedTime.toFormat(
             'yyyy-MM-dd HH:mm'
           )} to ${endTime.toFormat('yyyy-MM-dd HH:mm')}`
@@ -310,19 +431,92 @@ export async function fetchHybridCandles(
     }
   }
 
-  // Otherwise, fetch from API and cache
-  console.log(
+  // Otherwise, fetch from API and cache (unless USE_CACHE_ONLY is set)
+  if (process.env.USE_CACHE_ONLY === 'true') {
+    logger.debug(
+      `⚠️ No cached candles found for ${mint}: ${startTime.toISO()} — ${endTime.toISO()}`
+    );
+    logger.debug(`   USE_CACHE_ONLY=true, returning empty array (no API calls)`);
+    return [];
+  }
+  
+  logger.debug(
     `Fetching fresh candles for ${mint}: ${startTime.toISO()} — ${endTime.toISO()}`
   );
-  const sortedCandles = await fetchFreshCandles(
+  
+  // Always fetch 5m candles for the full period
+  const candles5m = await fetchFreshCandles(
     mint,
     startTime,
     endTime,
-    chain
+    chain,
+    '5m'
   );
-  if (sortedCandles.length > 0) {
-    saveCandlesToCache(sortedCandles, cacheFilename);
+  
+  let finalCandles = candles5m;
+  
+  // If alertTime is provided, also fetch 1m candles for 30min before and after
+  if (alertTime) {
+    const alertWindowStart = alertTime.minus({ minutes: 30 });
+    const alertWindowEnd = alertTime.plus({ minutes: 30 });
+    
+    // Clamp to the requested time range
+    const windowStart = alertWindowStart < startTime ? startTime : alertWindowStart;
+    const windowEnd = alertWindowEnd > endTime ? endTime : alertWindowEnd;
+    
+    logger.debug(
+      `Fetching 1m candles for alert window: ${windowStart.toISO()} — ${windowEnd.toISO()}`
+    );
+    
+    const candles1m = await fetchFreshCandles(
+      mint,
+      windowStart,
+      windowEnd,
+      chain,
+      '1m'
+    );
+    
+    // Merge 5m and 1m candles, with 1m taking precedence in the alert window
+    finalCandles = mergeCandles(candles5m, candles1m, alertTime, 30);
   }
-  return sortedCandles;
+  
+  if (finalCandles.length > 0) {
+    // Save to CSV cache (always)
+    saveCandlesToCache(finalCandles, cacheFilename);
+    
+    // Also save to ClickHouse if enabled
+    if (process.env.USE_CLICKHOUSE === 'true' || process.env.CLICKHOUSE_HOST) {
+      try {
+        const { insertCandles } = await import('../storage/clickhouse-client');
+        // Save both 5m and 1m candles separately to ClickHouse
+        if (candles5m.length > 0) {
+          await insertCandles(mint, chain, candles5m, '5m');
+        }
+        if (alertTime) {
+          const alertWindowStart = alertTime.minus({ minutes: 30 });
+          const alertWindowEnd = alertTime.plus({ minutes: 30 });
+          const windowStart = alertWindowStart < startTime ? startTime : alertWindowStart;
+          const windowEnd = alertWindowEnd > endTime ? endTime : alertWindowEnd;
+          const candles1m = finalCandles.filter(c => {
+            const candleTime = DateTime.fromSeconds(c.timestamp);
+            return candleTime >= windowStart && candleTime <= windowEnd;
+          });
+          if (candles1m.length > 0) {
+            await insertCandles(mint, chain, candles1m, '1m');
+          }
+        }
+        logger.debug(`✅ Saved candles to ClickHouse for ${mint.substring(0, 20)}...`);
+      } catch (error: any) {
+        logger.error('Failed to save to ClickHouse', error as Error, { mint: mint.substring(0, 20) });
+        // Don't throw - continue processing other tokens
+      }
+    }
+  } else {
+    // Log when no candles are returned (for debugging)
+    if (process.env.DEBUG_CANDLES === 'true') {
+      logger.debug(`⚠️ No candles returned for ${mint.substring(0, 20)}... (token may not exist or have no data)`);
+    }
+  }
+  return finalCandles;
 }
 

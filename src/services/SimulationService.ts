@@ -6,11 +6,13 @@
  */
 
 import { DateTime } from 'luxon';
-import { Strategy, StopLossConfig, SimulationResult as SimResult } from '../simulate';
-import { simulateStrategy } from '../simulate';
+import { Strategy } from '../simulation/engine';
+import { StopLossConfig } from '../simulation/config';
+import { simulateStrategy, SimulationResult as SimResult } from '../simulate';
 import { fetchHybridCandles } from '../simulation/candles';
 import * as db from '../utils/database';
 import { eventBus, EventFactory } from '../events';
+import { SimulationRunData } from '../types/session';
 
 export interface SimulationRun {
   id: number;
@@ -112,7 +114,7 @@ export class SimulationService {
   /**
    * Get simulation runs for a user
    */
-  async getUserSimulationRuns(userId: number, limit: number = 10): Promise<SimulationRun[]> {
+  async getUserSimulationRuns(userId: number, limit: number = 10): Promise<SimulationRunData[]> {
     return db.getUserSimulationRuns(userId, limit);
   }
 

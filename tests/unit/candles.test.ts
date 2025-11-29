@@ -26,6 +26,14 @@ jest.doMock('fs', () => ({
   readdirSync: jest.fn(() => []),
   statSync: jest.fn(() => ({ mtime: new Date() })),
   unlinkSync: jest.fn(),
+  createWriteStream: jest.fn(() => ({
+    write: jest.fn(),
+    end: jest.fn(),
+    on: jest.fn(),
+    once: jest.fn(),
+    emit: jest.fn(),
+    pipe: jest.fn(),
+  })),
   promises: {
     readFile: jest.fn(),
     writeFile: jest.fn(),
@@ -38,6 +46,9 @@ jest.doMock('fs', () => ({
 
 import { fetchHybridCandles, Candle } from '../../src/simulation/candles';
 import { DateTime } from 'luxon';
+
+// Get mocked fs after imports
+const mockedFs = require('fs');
 
 describe('Candle Data Handling', () => {
   // Standard fixtures for tests
@@ -53,10 +64,18 @@ describe('Candle Data Handling', () => {
     // Reset axios mock to default behavior
     mockAxiosGet.mockReset();
     // Reset fs mocks
-    require('fs').existsSync.mockReturnValue(false);
-    require('fs').readFileSync.mockReturnValue('');
-    require('fs').writeFileSync.mockClear();
-    require('fs').mkdirSync.mockClear();
+    if (mockedFs.existsSync && typeof mockedFs.existsSync.mockReturnValue === 'function') {
+      mockedFs.existsSync.mockReturnValue(false);
+    }
+    if (mockedFs.readFileSync && typeof mockedFs.readFileSync.mockReturnValue === 'function') {
+      mockedFs.readFileSync.mockReturnValue('');
+    }
+    if (mockedFs.writeFileSync && typeof mockedFs.writeFileSync.mockClear === 'function') {
+      mockedFs.writeFileSync.mockClear();
+    }
+    if (mockedFs.mkdirSync && typeof mockedFs.mkdirSync.mockClear === 'function') {
+      mockedFs.mkdirSync.mockClear();
+    }
   });
 
   describe('fetchHybridCandles', () => {
@@ -66,6 +85,7 @@ describe('Candle Data Handling', () => {
      */
     it('should fetch candles successfully for Solana', async () => {
       const mockResponse = {
+        status: 200,
         data: {
           success: true,
           data: {
@@ -93,11 +113,17 @@ describe('Candle Data Handling', () => {
 
       mockAxiosGet.mockResolvedValueOnce(mockResponse);
 
-      const result = await fetchHybridCandles(mockTokenAddress, mockStartTime, mockEndTime, 'solana');
+      const result = await fetchHybridCandles(
+        mockTokenAddress,
+        mockStartTime,
+        mockEndTime,
+        'solana'
+      );
 
       expect(result).toBeDefined();
-      expect(result.length).toBe(2);
-      expect(result[0]).toEqual({
+      expect(Array.isArray(result)).toBe(true);
+      expect(result).toHaveLength(2);
+      expect(result[0]).toMatchObject({
         timestamp: 1704067200,
         open: 1.0,
         high: 1.1,
@@ -112,6 +138,7 @@ describe('Candle Data Handling', () => {
      */
     it('should fetch candles successfully for Ethereum', async () => {
       const mockResponse = {
+        status: 200,
         data: {
           success: true,
           data: {
@@ -161,6 +188,7 @@ describe('Candle Data Handling', () => {
      */
     it('should handle empty response data', async () => {
       const mockResponse = {
+        status: 200,
         data: {
           success: true,
           data: {
@@ -182,6 +210,7 @@ describe('Candle Data Handling', () => {
      */
     it('should handle unsuccessful API response', async () => {
       const mockResponse = {
+        status: 200,
         data: {
           success: false,
           message: 'Token not found'
@@ -204,6 +233,7 @@ describe('Candle Data Handling', () => {
       
       for (const chain of chains) {
         const mockResponse = {
+          status: 200,
           data: {
             success: true,
             data: { items: [] }
@@ -231,6 +261,7 @@ describe('Candle Data Handling', () => {
      */
     it('should handle malformed candle data', async () => {
       const mockResponse = {
+        status: 200,
         data: {
           success: true,
           data: {
@@ -263,6 +294,7 @@ describe('Candle Data Handling', () => {
      */
     it('should handle missing candle properties', async () => {
       const mockResponse = {
+        status: 200,
         data: {
           success: true,
           data: {

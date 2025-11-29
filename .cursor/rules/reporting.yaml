@@ -1,0 +1,143 @@
+---
+description: Reporting module rules for src/reporting/ directory
+globs: ["src/reporting/**/*.ts"]
+alwaysApply: true
+---
+
+# Reporting Rules (src/reporting/)
+
+## Reporting Architecture
+
+### Core Principles
+- Use `ReportGenerator` for all report generation
+- Support multiple output formats (CSV, JSON, HTML)
+- Generate reports consistently
+- Validate report data
+- Handle report generation errors gracefully
+
+### Report Structure
+- Structure reports consistently
+- Include report metadata
+- Provide report summaries
+- Include detailed data when needed
+- Format reports appropriately
+
+## Report Generation
+
+### Report Generator
+- Use `ReportGenerator` for report creation
+- Validate report parameters
+- Generate reports asynchronously
+- Handle generation errors
+- Log report generation operations
+
+### Format Support
+- Support CSV format via `CSVReporter`
+- Support JSON format via `JSONReporter`
+- Support HTML format when needed
+- Export reports consistently
+- Validate output formats
+
+## Report Formats
+
+### CSV Reports
+- Generate CSV with proper headers
+- Handle special characters correctly
+- Format numeric values appropriately
+- Include metadata in CSV
+- Validate CSV structure
+
+### JSON Reports
+- Generate valid JSON
+- Structure JSON consistently
+- Include report metadata
+- Format dates appropriately
+- Validate JSON structure
+
+### HTML Reports
+- Generate readable HTML
+- Use proper HTML structure
+- Include styling appropriately
+- Format data tables correctly
+- Validate HTML output
+
+## Data Formatting
+
+### Data Presentation
+- Format data consistently
+- Handle missing data appropriately
+- Format numbers correctly
+- Format dates consistently
+- Format currencies appropriately
+
+### Report Sections
+- Organize reports into sections
+- Include summary sections
+- Include detailed sections
+- Provide navigation when needed
+- Format sections consistently
+
+## Error Handling
+
+### Generation Errors
+- Handle generation errors gracefully
+- Provide helpful error messages
+- Log errors with context
+- Retry transient errors
+- Fail gracefully on permanent errors
+
+### Format Errors
+- Handle format errors appropriately
+- Validate format data
+- Provide format error feedback
+- Log format errors
+- Recover from format errors when possible
+
+## Performance
+
+### Generation Performance
+- Generate reports efficiently
+- Use streaming for large reports
+- Cache report data when appropriate
+- Monitor generation performance
+- Optimize report generation
+
+### Memory Management
+- Manage memory efficiently
+- Stream large reports
+- Clean up resources properly
+- Monitor memory usage
+- Handle large datasets appropriately
+
+## Testing
+
+### Unit Tests
+- Test reporters independently
+- Test format generation
+- Test error handling
+- Test data formatting
+- Test report structure
+
+### Integration Tests
+- Test full report generation
+- Test with real data
+- Test all formats
+- Test performance
+- Test error scenarios
+
+## Documentation
+
+### Report Documentation
+- Document all report types
+- Include format examples
+- Document report structure
+- Include usage examples
+- Keep documentation current
+
+### Code Documentation
+- Document report generation logic
+- Explain format choices
+- Document data formatting
+- Include examples
+- Keep comments updated
+

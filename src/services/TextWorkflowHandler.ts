@@ -5,7 +5,7 @@
  * session management, CA detection, and workflow delegation.
  */
 
-import { Context } from 'telegraf';
+import { Context, Markup } from 'telegraf';
 import { DateTime } from 'luxon';
 import axios from 'axios';
 import { SessionService } from './SessionService';
@@ -16,7 +16,10 @@ import { CADetectionService } from './CADetectionService';
 import { RepeatSimulationHelper } from '../utils/RepeatSimulationHelper';
 import { Session } from '../commands/interfaces/CommandHandler';
 import { findCallsForToken } from '../utils/caller-database';
-import { Strategy, StopLossConfig } from '../simulate';
+import { Strategy } from '../simulation/engine';
+import { StopLossConfig, ReEntryConfig, EntryConfig } from '../simulation/config';
+import { SessionData } from '../types/session';
+import { logger } from '../utils/logger';
 
 export class TextWorkflowHandler {
   constructor(
@@ -27,10 +30,309 @@ export class TextWorkflowHandler {
     private caDetectionService: CADetectionService,
     private repeatHelper: RepeatSimulationHelper
   ) {}
+
+  /**
+   * Ensure session.data is initialized
+   */
+  private ensureSessionData(session: Session): SessionData {
+    if (!session.data) {
+      session.data = {};
+    }
+    return session.data;
+  }
   
+  async handleCallbackQuery(ctx: Context): Promise<void> {
+    try {
+      if (!('callback_query' in ctx)) return;
+      const callbackQuery = ctx.callbackQuery as any;
+      const userId = callbackQuery.from?.id;
+      if (!userId) {
+        logger.debug('No userId in callback query');
+        return;
+      }
+      
+      // Only respond to direct messages
+      if (callbackQuery.message && 'chat' in callbackQuery.message && callbackQuery.message.chat.type !== 'private') {
+        logger.debug('Ignoring non-private callback query', { userId });
+        return;
+      }
+      
+      await ctx.answerCbQuery();
+      
+      const data = callbackQuery.data;
+      if (!data) {
+        logger.debug('No data in callback query', { userId });
+        return;
+      }
+      
+      const session = this.sessionService.getSession(userId);
+      if (!session) {
+        logger.debug('No session found for user when handling callback', { userId, callbackData: data });
+        await ctx.reply('❌ No active session found. Please start a new backtest with /backtest');
+        return;
+      }
+      
+      logger.debug('Processing callback', { userId, callbackData: data, sessionType: session.type });
+    
+    // Handle backtest source selection
+    if (data.startsWith('backtest_source:')) {
+      const source = data.replace('backtest_source:', '');
+      logger.debug('Handling backtest source selection', { userId, source });
+      await this.handleBacktestSourceSelection(ctx, session, source);
+      return;
+    }
+    
+    // Handle backtest selection from lists
+    if (data.startsWith('backtest_select:')) {
+      await this.handleBacktestSelection(ctx, session, data.replace('backtest_select:', ''));
+      return;
+    }
+    
+    // Handle caller selection
+    if (data.startsWith('backtest_caller:')) {
+      await this.handleCallerSelection(ctx, session, data.replace('backtest_caller:', ''));
+      return;
+    }
+    
+    // Handle callback data format: "step:value" (e.g., "chain:ethereum", "strategy:default")
+    const [step, value] = data.split(':');
+    
+    // If it's "manual", set a flag and wait for text input
+    if (value === 'manual') {
+      const data = this.ensureSessionData(session);
+      data.waitingManualInput = step;
+      this.sessionService.setSession(userId, session);
+      await ctx.reply(`✍️ **Manual Entry Mode**\n\nPlease type your ${step} value manually.`);
+      return;
+    }
+    
+    // Process the callback value as if it were text input
+    const text = value || data;
+    await this.handleTextInput(ctx, session, text, step);
+    } catch (error) {
+      logger.error('Error in handleCallbackQuery', error as Error, { userId: ctx.from?.id });
+      await ctx.answerCbQuery('❌ An error occurred. Please try again.');
+      if ('reply' in ctx && typeof ctx.reply === 'function') {
+        await ctx.reply('❌ An error occurred processing your selection. Please try /backtest again.');
+      }
+    }
+  }
+  
+  private async handleTextInput(ctx: Context, session: Session, text: string, stepHint?: string): Promise<void> {
+    const userId = ctx.from?.id;
+    if (!userId) return;
+    
+    // Handle backtest workflow
+    if (session.type === 'backtest') {
+      await this.handleBacktestWorkflow(ctx, session, text, stepHint || '');
+    }
+  }
+  
+  private async handleBacktestSourceSelection(ctx: Context, session: Session, source: string): Promise<void> {
+    try {
+      const userId = ctx.from?.id;
+      if (!userId) {
+        logger.debug('No userId in handleBacktestSourceSelection');
+        return;
+      }
+      
+      logger.debug('handleBacktestSourceSelection', { userId, source });
+      
+      if (source === 'recent_backtests') {
+      // Get recent backtests
+      const { getUserSimulationRuns } = await import('../utils/database');
+      const recentRuns = await getUserSimulationRuns(userId, 10);
+      
+      if (recentRuns.length === 0) {
+        await ctx.reply('📊 **No Recent Backtests**\n\nYou haven\'t run any backtests yet. Please select another option.');
+        return;
+      }
+      
+      // Show list of recent backtests
+      const buttons = recentRuns.slice(0, 10).map((run: any, idx: number) => {
+        const label = `${idx + 1}. ${run.tokenSymbol || 'N/A'} (${run.chain}) - ${(run.finalPnl * 100).toFixed(1)}%`;
+        return [Markup.button.callback(label, `backtest_select:run:${run.id}`)];
+      });
+      
+      await ctx.reply(
+        '📊 **Select a Recent Backtest:**\n\nChoose one to rerun with new parameters:',
+        Markup.inlineKeyboard(buttons)
+      );
+      if (!session.data) session.data = {};
+      const data = this.ensureSessionData(session);
+      data.sourceType = 'recent_backtest';
+      this.sessionService.setSession(userId, session);
+      
+    } else if (source === 'recent_calls') {
+      // Get recent calls
+      const { getRecentCalls } = await import('../utils/caller-database');
+      const recentCalls = await getRecentCalls(15);
+      
+      if (recentCalls.length === 0) {
+        await ctx.reply('📞 **No Recent Calls**\n\nNo calls found in the database. Please select another option.');
+        return;
+      }
+      
+      // Show list of recent calls
+      const buttons = recentCalls.slice(0, 15).map((call: any, idx: number) => {
+        const date = new Date(call.alert_timestamp).toISOString().split('T')[0];
+        const label = `${idx + 1}. ${call.token_symbol || 'N/A'} - ${call.caller_name} (${date})`;
+        return [Markup.button.callback(label, `backtest_select:call:${call.token_address}:${call.chain}`)];
+      });
+      
+      await ctx.reply(
+        '📞 **Select a Recent Call:**\n\nChoose a call to backtest:',
+        Markup.inlineKeyboard(buttons)
+      );
+      const data = this.ensureSessionData(session);
+      data.sourceType = 'recent_call';
+      this.sessionService.setSession(userId, session);
+      
+    } else if (source === 'by_caller') {
+      // Get top callers
+      const { getCallerStats } = await import('../utils/caller-database');
+      const { topCallers } = await getCallerStats();
+      
+      if (topCallers.length === 0) {
+        await ctx.reply('👤 **No Callers Found**\n\nNo callers found in the database. Please select another option.');
+        return;
+      }
+      
+      // Show list of top callers
+      const buttons = topCallers.slice(0, 10).map((caller: any, idx: number) => {
+        const label = `${idx + 1}. ${caller.caller_name} (${caller.alert_count} calls)`;
+        return [Markup.button.callback(label, `backtest_caller:${caller.caller_name}`)];
+      });
+      
+      await ctx.reply(
+        '👤 **Select a Caller:**\n\nChoose a caller to see their calls:',
+        Markup.inlineKeyboard(buttons)
+      );
+      const data = this.ensureSessionData(session);
+      data.sourceType = 'by_caller';
+      this.sessionService.setSession(userId, session);
+      
+    } else if (source === 'manual') {
+      // Manual mint entry
+      await ctx.reply('✍️ **Manual Mint Entry**\n\nPlease paste the token address (Solana or EVM) to begin:');
+      const data = this.ensureSessionData(session);
+      data.sourceType = 'manual';
+      data.waitingManualInput = 'mint';
+      this.sessionService.setSession(userId, session);
+    }
+    } catch (error) {
+      logger.error('Error in handleBacktestSourceSelection', error as Error, { userId: ctx.from?.id });
+      await ctx.reply(`❌ Error: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+  
+  private async handleBacktestSelection(ctx: Context, session: Session, selection: string): Promise<void> {
+    const userId = ctx.from?.id;
+    if (!userId) return;
+    
+    const [type, ...rest] = selection.split(':');
+    
+    if (type === 'run') {
+      // Selected a recent backtest run
+      const runId = parseInt(rest[0]);
+      const { getSimulationRun } = await import('../utils/database');
+      const run = await getSimulationRun(runId);
+      
+      if (!run) {
+        await ctx.reply('❌ Backtest run not found.');
+        return;
+      }
+      
+      // Use the run's mint and chain
+      const data = this.ensureSessionData(session);
+      data.mint = run.mint;
+      data.chain = run.chain;
+      data.datetime = run.startTime.toISO();
+      data.metadata = {
+        name: run.tokenName,
+        symbol: run.tokenSymbol
+      };
+      session.step = 'waiting_for_strategy';
+      this.sessionService.setSession(userId, session);
+      
+      // Show strategy menu
+      await ctx.reply(
+        `✅ **Selected:** ${run.tokenSymbol || 'N/A'} (${run.chain})\n\n**📈 Select Take Profit Strategy:**`,
+        Markup.inlineKeyboard([
+          [Markup.button.callback('✅ Default (50%@2x, 30%@5x, 20%@10x)', 'strategy:default')],
+          [Markup.button.callback('📊 Aggressive (30%@3x, 40%@5x, 30%@10x)', 'strategy:aggressive')],
+          [Markup.button.callback('🛡️ Conservative (60%@2x, 30%@3x, 10%@5x)', 'strategy:conservative')],
+          [Markup.button.callback('🚀 Moonshot (10%@3x, 10%@5x, 80% ride)', 'strategy:moonshot')],
+          [Markup.button.callback('✍️ Manual Entry', 'strategy:manual')]
+        ])
+      );
+      
+    } else if (type === 'call') {
+      // Selected a recent call
+      const tokenAddress = rest[0];
+      const chain = rest[1];
+      
+      const data = this.ensureSessionData(session);
+      data.mint = tokenAddress;
+      data.chain = chain;
+      session.step = 'waiting_for_datetime';
+      this.sessionService.setSession(userId, session);
+      
+      // Show datetime menu
+      await ctx.reply(
+        `✅ **Selected:** ${tokenAddress.substring(0, 20)}... (${chain})\n\n**📅 Select Simulation Start Date/Time:**`,
+        Markup.inlineKeyboard([
+          [
+            Markup.button.callback('🕐 Now', 'datetime:now'),
+            Markup.button.callback('📅 Yesterday', 'datetime:yesterday')
+          ],
+          [
+            Markup.button.callback('📆 7 Days Ago', 'datetime:7days'),
+            Markup.button.callback('📆 30 Days Ago', 'datetime:30days')
+          ],
+          [Markup.button.callback('✍️ Manual Entry', 'datetime:manual')]
+        ])
+      );
+    }
+  }
+  
+  private async handleCallerSelection(ctx: Context, session: Session, callerName: string): Promise<void> {
+    const userId = ctx.from?.id;
+    if (!userId) return;
+    
+    // Get calls by this caller
+    const { getCACallsByCaller } = await import('../utils/database');
+    const calls = await getCACallsByCaller(callerName, 15);
+    
+    if (calls.length === 0) {
+      await ctx.reply(`❌ No calls found for caller: ${callerName}`);
+      return;
+    }
+    
+    // Show list of calls by this caller
+    const buttons = calls.slice(0, 15).map((call: any, idx: number) => {
+      const date = new Date(call.call_timestamp * 1000).toISOString().split('T')[0];
+      const label = `${idx + 1}. ${call.token_symbol || 'N/A'} (${date})`;
+      return [Markup.button.callback(label, `backtest_select:call:${call.mint}:${call.chain}`)];
+    });
+    
+    await ctx.reply(
+      `👤 **Calls by ${callerName}:**\n\nSelect a call to backtest:`,
+      Markup.inlineKeyboard(buttons)
+    );
+    const data = this.ensureSessionData(session);
+    data.selectedCaller = callerName;
+    this.sessionService.setSession(userId, session);
+  }
+
   async handleText(ctx: Context): Promise<void> {
     const userId = ctx.from?.id;
     if (!userId) {
+      return;
+    }
+    
+    // Only respond to direct messages (private chats), ignore group/channel messages
+    if (ctx.chat?.type !== 'private') {
       return;
     }
     
@@ -41,32 +343,26 @@ export class TextWorkflowHandler {
     
     const session = this.sessionService.getSession(userId);
     
+    // Check if we're waiting for manual input
+    if (session?.data?.waitingManualInput) {
+      const data = this.ensureSessionData(session);
+      const step = data.waitingManualInput;
+      delete data.waitingManualInput;
+      this.sessionService.setSession(userId, session);
+      await this.handleTextInput(ctx, session, text, step);
+      return;
+    }
+    
     // --- Step: Handle /repeat session, if waiting for user run selection ---
-    if (session?.data.waitingForRunSelection) {
+    if (session?.data?.waitingForRunSelection) {
       await this.handleRunSelection(ctx, session, text);
       return;
     }
     
-    // --- Step: No active session ‒ attempt CA detection, otherwise show help ---
+    // --- Step: No active session ‒ attempt CA detection, otherwise ignore ---
     if (!session) {
-      if (await this.caDetectionService.detectCADrop(ctx, text)) return;
-      
-      // Provide helpful default message for unrecognized text
-      const defaultMessage = `🤖 **QuantBot**
-
-I didn't recognize that input. Here's what I can do:
-
-**🚀 Quick Start:**
-• Send a token address to start tracking it
-• Use \`/backtest\` to simulate a trading strategy
-• Use \`/options\` to see all available commands
-
-**💡 Tip:** Just paste a token address (Solana or EVM) and I'll automatically start tracking it!
-
-**📱 Commands:**
-Use \`/options\` to see the full command list.`;
-
-      await ctx.reply(defaultMessage, { parse_mode: 'Markdown' });
+      // Only try CA detection, don't send default message for every text
+      await this.caDetectionService.detectCADrop(ctx, text);
       return;
     }
     
@@ -79,7 +375,7 @@ Use \`/options\` to see the full command list.`;
     }
     
     // Handle other workflow types (backtest, repeat, etc.)
-    console.log('[DEBUG] TextWorkflowHandler: session.type =', session.type, 'text =', text);
+    logger.debug('TextWorkflowHandler processing', { userId: ctx.from?.id, sessionType: session.type, text: text.substring(0, 50) });
     await this.handleSimulationWorkflow(ctx, session, text);
   }
   
@@ -91,11 +387,13 @@ Use \`/options\` to see the full command list.`;
     let selectedRun;
     
     if (selection === 'last') {
-      selectedRun = session.data.recentRuns?.[0];
+      const data = this.ensureSessionData(session);
+      selectedRun = data.recentRuns?.[0];
     } else {
       const runIdx = parseInt(selection) - 1;
-      if (runIdx >= 0 && runIdx < (session.data.recentRuns?.length || 0)) {
-        selectedRun = session.data.recentRuns?.[runIdx];
+      const data = this.ensureSessionData(session);
+      if (runIdx >= 0 && runIdx < (data.recentRuns?.length || 0)) {
+        selectedRun = data.recentRuns?.[runIdx];
       } else {
         await ctx.reply('❌ Invalid selection. Please choose a number from the list or "last".');
         return;
@@ -125,11 +423,11 @@ Use \`/options\` to see the full command list.`;
     const userId = ctx.from?.id;
     if (!userId) return;
 
-    console.log('[DEBUG] handleSimulationWorkflow: session.type =', session.type);
+    logger.debug('handleSimulationWorkflow', { sessionType: session.type });
     switch (session.type) {
       case 'backtest':
-        console.log('[DEBUG] Routing to handleBacktestWorkflow');
-        await this.handleBacktestWorkflow(ctx, session, text);
+        logger.debug('Routing to handleBacktestWorkflow');
+        await this.handleBacktestWorkflow(ctx, session, text, '');
         break;
       case 'repeat':
         await ctx.reply('🔄 Repeat workflow in progress...');
@@ -141,16 +439,25 @@ Use \`/options\` to see the full command list.`;
     }
   }
 
-  private async handleBacktestWorkflow(ctx: Context, session: Session, text: string): Promise<void> {
+  private async handleBacktestWorkflow(ctx: Context, session: Session, text: string, stepHint: string = ''): Promise<void> {
     const userId = ctx.from?.id;
     if (!userId) return;
 
-    console.log('[DEBUG] handleBacktestWorkflow called with mint:', session.data.mint, 'text:', text);
+    const data = this.ensureSessionData(session);
+    logger.debug('handleBacktestWorkflow called', { mint: data.mint, text });
 
     // Step 1: Mint address (detect EVM vs. Solana chain)
-    if (!session.data.mint) {
-      session.data.mint = text;
-      console.log('[DEBUG] Setting mint to:', text);
+    if (!data.mint) {
+      // Check if we're waiting for manual mint input
+      if (data.waitingManualInput === 'mint') {
+        delete data.waitingManualInput;
+        data.mint = text;
+        logger.debug('Setting mint to', { mint: text });
+      } else {
+        // If no manual input flag, treat as regular text input
+        data.mint = text;
+        logger.debug('Setting mint to', { mint: text });
+      }
       
       // Enhanced: Check if this token has been called before
       try {
@@ -160,9 +467,9 @@ Use \`/options\` to see the full command list.`;
         if (calls.length > 0) {
           // Found calls! Use the most recent one
           const latestCall = calls[0];
-          session.data.chain = latestCall.chain;
-          session.data.datetime = latestCall.alert_timestamp;
-          session.data.callerInfo = latestCall;
+          data.chain = latestCall.chain;
+          data.datetime = latestCall.alert_timestamp;
+          data.callerInfo = latestCall;
           
           const date = new Date(latestCall.alert_timestamp).toISOString().split('T')[0];
           const time = new Date(latestCall.alert_timestamp).toTimeString().substring(0, 5);
@@ -174,7 +481,7 @@ Use \`/options\` to see the full command list.`;
           return;
         }
       } catch (error: any) {
-        console.log('Error checking database for calls:', error.message);
+        logger.error('Error checking database for calls', error as Error, { mint: text });
       }
       
       // No calls found or error - proceed with manual datetime input
@@ -183,7 +490,7 @@ Use \`/options\` to see the full command list.`;
         this.sessionService.setSession(userId, session);
         return;
       } else {
-        session.data.chain = 'solana';
+        data.chain = 'solana';
         await ctx.reply('Got the mint. Please provide a simulation start datetime (ISO, e.g. 2025-10-17T03:00:00Z).');
         this.sessionService.setSession(userId, session);
         return;
@@ -191,14 +498,14 @@ Use \`/options\` to see the full command list.`;
     }
 
     // Step 1.5: For EVM, ask for the specific chain
-    if (session.data.mint && !session.data.chain) {
+    if (data.mint && !data.chain) {
       const input = text.toLowerCase();
       if (input === 'eth' || input === 'ethereum') {
-        session.data.chain = 'ethereum';
+        data.chain = 'ethereum';
       } else if (input === 'bsc' || input === 'binance') {
-        session.data.chain = 'bsc';
+        data.chain = 'bsc';
       } else if (input === 'base') {
-        session.data.chain = 'base';
+        data.chain = 'base';
       } else {
         await ctx.reply('❌ Invalid chain. Reply with: eth, bsc, or base');
         return;
@@ -209,37 +516,107 @@ Use \`/options\` to see the full command list.`;
     }
 
     // Step 2: Simulation entry date/time
-    if (!session.data.datetime) {
-      const dt = DateTime.fromISO(text, { zone: 'utc' });
-      if (!dt.isValid) {
-        await ctx.reply('Invalid datetime. Use ISO format like 2025-10-17T03:00:00Z.');
-        return;
+    if (!data.datetime) {
+      // Handle preset datetime options from callback
+      if (stepHint === 'datetime' || text.startsWith('datetime:')) {
+        const preset = text.replace('datetime:', '');
+        let dt: DateTime;
+        
+        if (preset === 'now') {
+          dt = DateTime.utc();
+        } else if (preset === 'yesterday') {
+          dt = DateTime.utc().minus({ days: 1 });
+        } else if (preset === '7days') {
+          dt = DateTime.utc().minus({ days: 7 });
+        } else if (preset === '30days') {
+          dt = DateTime.utc().minus({ days: 30 });
+        } else if (preset === 'manual') {
+          await ctx.reply('✍️ **Manual Entry**\n\nPlease provide datetime in ISO format (e.g., 2025-10-17T03:00:00Z)');
+          data.waitingManualInput = 'datetime';
+          this.sessionService.setSession(userId, session);
+          return;
+        } else {
+          // Try parsing as ISO
+          dt = DateTime.fromISO(preset, { zone: 'utc' });
+          if (!dt.isValid) {
+            dt = DateTime.fromISO(text, { zone: 'utc' });
+          }
+        }
+        
+        if (!dt.isValid) {
+          await ctx.reply('❌ Invalid datetime. Use ISO format like 2025-10-17T03:00:00Z.');
+          return;
+        }
+        data.datetime = dt.toISO() || undefined;
+      } else {
+        // Text input - try to parse
+        const dt = DateTime.fromISO(text, { zone: 'utc' });
+        if (!dt.isValid) {
+          // Show menu if invalid
+          const now = DateTime.utc();
+          await ctx.reply(
+            '📅 **Select Simulation Start Date/Time:**\n\nChoose a preset or enter manually:',
+            Markup.inlineKeyboard([
+              [
+                Markup.button.callback('🕐 Now', 'datetime:now'),
+                Markup.button.callback('📅 Yesterday', 'datetime:yesterday')
+              ],
+              [
+                Markup.button.callback('📆 7 Days Ago', 'datetime:7days'),
+                Markup.button.callback('📆 30 Days Ago', 'datetime:30days')
+              ],
+              [Markup.button.callback('✍️ Manual Entry', 'datetime:manual')]
+            ])
+          );
+          return;
+        }
+        data.datetime = dt.toISO();
       }
-      session.data.datetime = dt.toISO();
       this.sessionService.setSession(userId, session);
       
       try {
         // Fetch token metadata from Birdeye for info/lookup
-        console.log(`Fetching metadata for mint: ${session.data.mint}`);
+        logger.debug('Fetching metadata for mint', { mint: data.mint });
         const meta = await axios.get(`https://public-api.birdeye.so/defi/v3/token/meta-data/single`, {
           headers: {
             'X-API-KEY': process.env.BIRDEYE_API_KEY!,
             'accept': 'application/json',
-            'x-chain': session.data.chain || 'solana'
+            'x-chain': data.chain || 'solana'
           },
           params: {
-            address: session.data.mint
+            address: data.mint
           }
         });
 
-        console.log('Metadata response:', meta.data);
-        session.data.metadata = meta.data.data;
-        await ctx.reply(`🪙 Token: ${meta.data.data.name} (${meta.data.data.symbol})\n\n**Take Profit Strategy:**\n• \`yes\` - Default: 50%@2x, 30%@5x, 20%@10x\n• \`50@2x,30@5x,20@10x\` - Custom format\n• \`[{"percent":0.5,"target":2}]\` - JSON format`);
+        logger.debug('Metadata response', { mint: data.mint, hasData: !!meta.data });
+        data.metadata = meta.data.data;
+        
+        // Show strategy menu
+        await ctx.reply(
+          `🪙 **Token:** ${meta.data.data.name} (${meta.data.data.symbol})\n\n**📈 Select Take Profit Strategy:**`,
+          Markup.inlineKeyboard([
+            [Markup.button.callback('✅ Default (50%@2x, 30%@5x, 20%@10x)', 'strategy:default')],
+            [Markup.button.callback('📊 Aggressive (30%@3x, 40%@5x, 30%@10x)', 'strategy:aggressive')],
+            [Markup.button.callback('🛡️ Conservative (60%@2x, 30%@3x, 10%@5x)', 'strategy:conservative')],
+            [Markup.button.callback('🚀 Moonshot (10%@3x, 10%@5x, 80% ride)', 'strategy:moonshot')],
+            [Markup.button.callback('✍️ Manual Entry', 'strategy:manual')]
+          ])
+        );
       } catch (e: any) {
-        console.error('Token metadata error:', e.response?.status, e.response?.data);
-        if (e.response?.status === 404) {
-          await ctx.reply(`⚠️ Token not found on Birdeye: ${session.data.mint}\n\n**Take Profit Strategy:**\n• \`yes\` - Default: 50%@2x, 30%@5x, 20%@10x\n• \`50@2x,30@5x,20@10x\` - Custom format\n• \`[{"percent":0.5,"target":2}]\` - JSON format`);
-          session.data.metadata = { name: 'Unknown', symbol: 'N/A' };
+        const err = e as { response?: { status?: number } };
+        logger.error('Token metadata error', e as Error, { status: err.response?.status, mint: data.mint });
+        if (err.response?.status === 404) {
+          data.metadata = { name: 'Unknown', symbol: 'N/A' };
+          await ctx.reply(
+            `⚠️ **Token not found on Birdeye:** ${data.mint}\n\n**📈 Select Take Profit Strategy:**`,
+            Markup.inlineKeyboard([
+              [Markup.button.callback('✅ Default (50%@2x, 30%@5x, 20%@10x)', 'strategy:default')],
+              [Markup.button.callback('📊 Aggressive (30%@3x, 40%@5x, 30%@10x)', 'strategy:aggressive')],
+              [Markup.button.callback('🛡️ Conservative (60%@2x, 30%@3x, 10%@5x)', 'strategy:conservative')],
+              [Markup.button.callback('🚀 Moonshot (10%@3x, 10%@5x, 80% ride)', 'strategy:moonshot')],
+              [Markup.button.callback('✍️ Manual Entry', 'strategy:manual')]
+            ])
+          );
         } else {
           await ctx.reply('❌ Failed to fetch token metadata. Check mint address or try again later.');
           return;
@@ -250,15 +627,54 @@ Use \`/options\` to see the full command list.`;
     }
 
     // Step 3: Take profit strategy configuration
-    if (!session.data.strategy) {
+    if (!data.strategy) {
       const defaultStrategy: Strategy[] = [
         { percent: 0.5, target: 2 },
         { percent: 0.3, target: 5 },
         { percent: 0.2, target: 10 }
       ];
+      
+      const aggressiveStrategy: Strategy[] = [
+        { percent: 0.3, target: 3 },
+        { percent: 0.4, target: 5 },
+        { percent: 0.3, target: 10 }
+      ];
+      
+      const conservativeStrategy: Strategy[] = [
+        { percent: 0.6, target: 2 },
+        { percent: 0.3, target: 3 },
+        { percent: 0.1, target: 5 }
+      ];
+      
+      const moonshotStrategy: Strategy[] = [
+        { percent: 0.1, target: 3 },
+        { percent: 0.1, target: 5 }
+        // 80% rides with trailing stop
+      ];
 
-      if (text.toLowerCase() === 'yes') {
-        session.data.strategy = defaultStrategy;
+      // Handle strategy selection from callback or text
+      if (stepHint === 'strategy' || text.startsWith('strategy:')) {
+        const strategyType = text.replace('strategy:', '').toLowerCase();
+        
+        if (strategyType === 'default' || text.toLowerCase() === 'yes') {
+          data.strategy = defaultStrategy;
+        } else if (strategyType === 'aggressive') {
+          data.strategy = aggressiveStrategy;
+        } else if (strategyType === 'conservative') {
+          data.strategy = conservativeStrategy;
+        } else if (strategyType === 'moonshot') {
+          data.strategy = moonshotStrategy;
+        } else if (strategyType === 'manual') {
+          await ctx.reply('✍️ **Manual Entry**\n\nEnter strategy in format:\n• `50@2x,30@5x,20@10x` (simple)\n• `[{"percent":0.5,"target":2}]` (JSON)');
+          data.waitingManualInput = 'strategy';
+          this.sessionService.setSession(userId, session);
+          return;
+        } else {
+          // Try parsing as strategy format
+          // Fall through to parsing logic below
+        }
+      } else if (text.toLowerCase() === 'yes') {
+        data.strategy = defaultStrategy;
       } else {
         // Parse either the simple or JSON format
         try {
@@ -280,26 +696,73 @@ Use \`/options\` to see the full command list.`;
             await ctx.reply(`❌ Strategy percentages must add up to 100%. Current total: ${(totalPercent * 100).toFixed(1)}%\n\nTry: "50@2x,30@5x,20@10x" or "yes" for default`);
             return;
           }
-          session.data.strategy = custom;
+          data.strategy = custom;
         } catch {
           await ctx.reply('❌ Invalid strategy format.\n\n**Simple format:** `50@2x,30@5x,20@10x`\n**JSON format:** `[{"percent":0.5,"target":2}]`\n**Default:** `yes`');
           return;
         }
       }
       this.sessionService.setSession(userId, session);
-      await ctx.reply('✅ Take profit strategy set!\n\n**Stop Loss Configuration:**\nFormat: `initial: -30%, trailing: 50%`\n\nExamples:\n• `initial: -20%, trailing: 30%`\n• `initial: -50%, trailing: 100%`\n• `initial: -30%, trailing: none`\n• `default` - Use default (-50% initial, 50% trailing)\n\n*Next: Re-entry configuration*');
+      
+      // Show stop loss menu
+      await ctx.reply(
+        '✅ **Take profit strategy set!**\n\n**🛑 Select Stop Loss Configuration:**',
+        Markup.inlineKeyboard([
+          [Markup.button.callback('✅ Default (-50% initial, 50% trailing)', 'stoploss:default')],
+          [Markup.button.callback('🛡️ Tight (-20% initial, 30% trailing)', 'stoploss:tight')],
+          [Markup.button.callback('📊 Moderate (-30% initial, 50% trailing)', 'stoploss:moderate')],
+          [Markup.button.callback('🚀 Wide (-50% initial, 100% trailing)', 'stoploss:wide')],
+          [Markup.button.callback('✍️ Manual Entry', 'stoploss:manual')]
+        ])
+      );
       return;
     }
 
     // Step 4: Stop loss configuration
-    if (!session.data.stopLossConfig) {
+    if (!data.stopLossConfig) {
       const defaultStopLoss: StopLossConfig = {
         initial: -0.5,
         trailing: 0.5
       };
+      
+      const tightStopLoss: StopLossConfig = {
+        initial: -0.2,
+        trailing: 0.3
+      };
+      
+      const moderateStopLoss: StopLossConfig = {
+        initial: -0.3,
+        trailing: 0.5
+      };
+      
+      const wideStopLoss: StopLossConfig = {
+        initial: -0.5,
+        trailing: 1.0
+      };
 
-      if (text.toLowerCase() === 'default') {
-        session.data.stopLossConfig = defaultStopLoss;
+      // Handle stop loss selection from callback or text
+      if (stepHint === 'stoploss' || text.startsWith('stoploss:')) {
+        const stopLossType = text.replace('stoploss:', '').toLowerCase();
+        
+        if (stopLossType === 'default' || text.toLowerCase() === 'default') {
+          data.stopLossConfig = defaultStopLoss;
+        } else if (stopLossType === 'tight') {
+          data.stopLossConfig = tightStopLoss;
+        } else if (stopLossType === 'moderate') {
+          data.stopLossConfig = moderateStopLoss;
+        } else if (stopLossType === 'wide') {
+          data.stopLossConfig = wideStopLoss;
+        } else if (stopLossType === 'manual') {
+          await ctx.reply('✍️ **Manual Entry**\n\nEnter stop loss in format:\n`initial: -30%, trailing: 50%`\n\nExamples:\n• `initial: -20%, trailing: 30%`\n• `initial: -50%, trailing: none`');
+          data.waitingManualInput = 'stoploss';
+          this.sessionService.setSession(userId, session);
+          return;
+        } else {
+          // Try parsing as stop loss format
+          // Fall through to parsing logic below
+        }
+      } else if (text.toLowerCase() === 'default') {
+        data.stopLossConfig = defaultStopLoss;
       } else {
         try {
           const match = text.match(/initial:\s*(-?\d+(?:\.\d+)?)%?,\s*trailing:\s*(\d+(?:\.\d+)?)%?|none/i);
@@ -308,27 +771,53 @@ Use \`/options\` to see the full command list.`;
           const initial = parseFloat(match[1]) / 100;
           const trailing = match[2].toLowerCase() === 'none' ? 0 : parseFloat(match[2]) / 100;
           
-          session.data.stopLossConfig = { initial, trailing };
+          data.stopLossConfig = { initial, trailing };
         } catch {
           await ctx.reply('❌ Invalid stop loss format.\n\n**Format:** `initial: -30%, trailing: 50%`\n**Examples:**\n• `initial: -20%, trailing: 30%`\n• `initial: -50%, trailing: none`\n• `default`');
           return;
         }
       }
       this.sessionService.setSession(userId, session);
-      await ctx.reply('✅ Stop loss configured!\n\n**Re-entry Configuration:**\n• `yes` - Allow re-entry after stop loss\n• `no` - No re-entry after stop loss\n• `default` - Use default (no re-entry)');
+      
+      // Show re-entry menu
+      await ctx.reply(
+        '✅ **Stop loss configured!**\n\n**🔄 Select Re-entry Configuration:**',
+        Markup.inlineKeyboard([
+          [Markup.button.callback('❌ No Re-entry (Default)', 'reentry:no')],
+          [Markup.button.callback('✅ Allow Re-entry', 'reentry:yes')],
+          [Markup.button.callback('✍️ Manual Entry', 'reentry:manual')]
+        ])
+      );
       return;
     }
 
     // Step 5: Re-entry configuration
-    if (!session.data.reEntryConfig) {
-      const defaultReEntry = { enabled: false };
+    if (!data.reEntryConfig) {
+      const defaultReEntry: ReEntryConfig = { trailingReEntry: 'none' as const, maxReEntries: 0 };
       
-      if (text.toLowerCase() === 'yes') {
-        session.data.reEntryConfig = { enabled: true };
+      // Handle re-entry selection from callback or text
+      if (stepHint === 'reentry' || text.startsWith('reentry:')) {
+        const reEntryType = text.replace('reentry:', '').toLowerCase();
+        
+        if (reEntryType === 'yes' || text.toLowerCase() === 'yes') {
+          data.reEntryConfig = { trailingReEntry: 0.5, maxReEntries: 3 };
+        } else if (reEntryType === 'no' || text.toLowerCase() === 'no' || text.toLowerCase() === 'default') {
+          data.reEntryConfig = defaultReEntry;
+        } else if (reEntryType === 'manual') {
+          await ctx.reply('✍️ **Manual Entry**\n\nEnter re-entry option:\n• `yes` - Allow re-entry\n• `no` - No re-entry');
+          data.waitingManualInput = 'reentry';
+          this.sessionService.setSession(userId, session);
+          return;
+        } else {
+          await ctx.reply('❌ Invalid re-entry option.');
+          return;
+        }
+      } else if (text.toLowerCase() === 'yes') {
+        data.reEntryConfig = { trailingReEntry: 0.5, maxReEntries: 3 };
       } else if (text.toLowerCase() === 'no' || text.toLowerCase() === 'default') {
-        session.data.reEntryConfig = defaultReEntry;
+        data.reEntryConfig = defaultReEntry;
       } else {
-        await ctx.reply('❌ Invalid re-entry option.\n\n**Options:**\n• `yes` - Allow re-entry after stop loss\n• `no` - No re-entry after stop loss\n• `default` - Use default (no re-entry)');
+        await ctx.reply('❌ Invalid re-entry option.');
         return;
       }
       this.sessionService.setSession(userId, session);
@@ -345,30 +834,43 @@ Use \`/options\` to see the full command list.`;
     try {
       await ctx.reply('🚀 **Running simulation...**\n\nThis may take a moment while fetching candle data...');
 
-      const startTime = DateTime.fromISO(session.data.datetime);
+      const data = this.ensureSessionData(session);
+      if (!data.datetime || !data.mint || !data.chain || !data.strategy || !data.stopLossConfig) {
+        await ctx.reply('❌ **Missing required configuration.** Please start over.');
+        this.sessionService.clearSession(userId);
+        return;
+      }
+
+      const datetimeStr = typeof data.datetime === 'string' ? data.datetime : data.datetime?.toISO();
+      if (!datetimeStr) {
+        await ctx.reply('❌ **Missing datetime.** Please start over.');
+        this.sessionService.clearSession(userId);
+        return;
+      }
+      const startTime = DateTime.fromISO(datetimeStr);
       const endTime = DateTime.utc();
 
       const result = await this.simulationService.runSimulation({
-        mint: session.data.mint,
-        chain: session.data.chain,
+        mint: data.mint,
+        chain: data.chain,
         startTime,
         endTime,
-        strategy: session.data.strategy,
-        stopLossConfig: session.data.stopLossConfig,
+        strategy: data.strategy,
+        stopLossConfig: data.stopLossConfig,
         userId
       });
 
       // Format and send results
-      const strategyText = session.data.strategy
+      const strategyText = data.strategy
         .map((s: Strategy) => `${(s.percent * 100).toFixed(0)}%@${s.target}x`)
         .join(', ');
-      const stopText = session.data.stopLossConfig.trailing === 0
-        ? `${(session.data.stopLossConfig.initial * 100).toFixed(0)}% initial, none trailing`
-        : `${(session.data.stopLossConfig.initial * 100).toFixed(0)}% initial, ${(session.data.stopLossConfig.trailing * 100).toFixed(0)}% trailing`;
+      const stopText = data.stopLossConfig.trailing === 0 || data.stopLossConfig.trailing === 'none'
+        ? `${(data.stopLossConfig.initial * 100).toFixed(0)}% initial, none trailing`
+        : `${(data.stopLossConfig.initial * 100).toFixed(0)}% initial, ${(typeof data.stopLossConfig.trailing === 'number' ? data.stopLossConfig.trailing * 100 : 0).toFixed(0)}% trailing`;
 
       let resultMessage = `🎯 **Simulation Complete!**\n\n`;
-      resultMessage += `🪙 **Token:** ${session.data.metadata?.name || 'Unknown'} (${session.data.metadata?.symbol || 'N/A'})\n`;
-      resultMessage += `🔗 **Chain:** ${session.data.chain.toUpperCase()}\n`;
+      resultMessage += `🪙 **Token:** ${data.metadata?.name || 'Unknown'} (${data.metadata?.symbol || 'N/A'})\n`;
+      resultMessage += `🔗 **Chain:** ${data.chain.toUpperCase()}\n`;
       resultMessage += `📈 **Strategy:** ${strategyText}\n`;
       resultMessage += `🛑 **Stop Loss:** ${stopText}\n`;
       resultMessage += `⏰ **Period:** ${startTime.toFormat('yyyy-MM-dd HH:mm')} - ${endTime.toFormat('yyyy-MM-dd HH:mm')}\n\n`;
@@ -393,14 +895,14 @@ Use \`/options\` to see the full command list.`;
       // Save this backtest run
       await this.simulationService.saveSimulationRun({
         userId: userId,
-        mint: session.data.mint,
-        chain: session.data.chain,
-        tokenName: session.data.metadata?.name,
-        tokenSymbol: session.data.metadata?.symbol,
+        mint: data.mint,
+        chain: data.chain,
+        tokenName: data.metadata?.name,
+        tokenSymbol: data.metadata?.symbol,
         startTime,
         endTime,
-        strategy: session.data.strategy,
-        stopLossConfig: session.data.stopLossConfig,
+        strategy: data.strategy,
+        stopLossConfig: data.stopLossConfig,
         finalPnl: result.finalPnl,
         totalCandles: result.totalCandles,
         events: result.events
@@ -409,9 +911,11 @@ Use \`/options\` to see the full command list.`;
       // Clear session
       this.sessionService.clearSession(userId);
 
-    } catch (error: any) {
-      console.error('Backtest simulation error:', error);
-      await ctx.reply(`❌ **Simulation Failed**\n\nError: ${error.message}\n\nPlease try again with a different token or timeframe.`);
+    } catch (error: unknown) {
+      const err = error as { message?: string };
+      const data = this.ensureSessionData(session);
+      logger.error('Backtest simulation error', error as Error, { userId, mint: data.mint });
+      await ctx.reply(`❌ **Simulation Failed**\n\nError: ${err.message || 'Unknown error'}\n\nPlease try again with a different token or timeframe.`);
       this.sessionService.clearSession(userId);
     }
   }

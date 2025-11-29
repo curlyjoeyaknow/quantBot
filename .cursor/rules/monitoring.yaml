@@ -1,0 +1,143 @@
+---
+description: Monitoring service rules for src/monitoring/ directory
+globs: ["src/monitoring/**/*.ts"]
+alwaysApply: true
+---
+
+# Monitoring Rules (src/monitoring/)
+
+## Monitoring Architecture
+
+### Core Principles
+- Monitor real-time trading activities
+- Handle WebSocket connections properly
+- Process transactions efficiently
+- Alert on important events
+- Log monitoring operations
+
+### Service Structure
+- Use dedicated services for monitoring
+- Handle WebSocket connections properly
+- Process events asynchronously
+- Implement proper error recovery
+- Monitor service health
+
+## Monitoring Services
+
+### CA Monitoring Service
+- Use `CAMonitoringService` for CA monitoring
+- Handle WebSocket subscriptions
+- Process CA events efficiently
+- Alert on CA detections
+- Log monitoring activities
+
+### Live Trade Alert Service
+- Use `LiveTradeAlertService` for live trades
+- Process trade events in real-time
+- Validate trade data
+- Send alerts appropriately
+- Handle alert failures gracefully
+
+### Tenkan-Kijun Alert Service
+- Use `TenkanKijunAlertService` for technical alerts
+- Calculate indicators correctly
+- Detect signal changes
+- Send alerts on signals
+- Handle calculation errors
+
+## WebSocket Management
+
+### Connection Handling
+- Manage WebSocket connections properly
+- Implement reconnection logic
+- Handle connection errors
+- Monitor connection health
+- Clean up connections properly
+
+### Subscription Management
+- Subscribe to relevant events
+- Handle subscription errors
+- Unsubscribe when done
+- Manage subscription state
+- Monitor subscription health
+
+## Event Processing
+
+### Event Handling
+- Process events asynchronously
+- Validate event data
+- Handle event errors gracefully
+- Queue events when needed
+- Monitor event processing
+
+### Transaction Parsing
+- Parse transactions correctly
+- Validate transaction data
+- Handle parsing errors
+- Extract relevant information
+- Log parsing operations
+
+## Alert Management
+
+### Alert Generation
+- Generate alerts appropriately
+- Validate alert data
+- Format alerts consistently
+- Handle alert failures
+- Log alert operations
+
+### Alert Delivery
+- Deliver alerts reliably
+- Handle delivery failures
+- Retry failed deliveries
+- Monitor delivery status
+- Clean up alert state
+
+## Performance
+
+### Processing Performance
+- Process events efficiently
+- Use appropriate data structures
+- Minimize processing overhead
+- Monitor processing performance
+- Optimize hot paths
+
+### Resource Management
+- Manage resources efficiently
+- Clean up resources properly
+- Monitor resource usage
+- Handle resource errors
+- Implement proper timeouts
+
+## Testing
+
+### Unit Tests
+- Test monitoring services independently
+- Mock WebSocket connections
+- Test event processing
+- Test error handling
+- Test alert generation
+
+### Integration Tests
+- Test with real WebSocket connections
+- Test event processing flows
+- Test error scenarios
+- Test performance
+- Test resource cleanup
+
+## Documentation
+
+### Service Documentation
+- Document all monitoring services
+- Include usage examples
+- Document event formats
+- Include error scenarios
+- Keep documentation current
+
+### Code Documentation
+- Document monitoring logic
+- Explain event processing
+- Document alert rules
+- Include examples
+- Keep comments updated
+

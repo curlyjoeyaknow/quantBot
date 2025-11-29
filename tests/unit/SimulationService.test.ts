@@ -5,7 +5,8 @@
  * database integration, repeat logic, and error handling.
  */
 
-import { SimulationService, SimulationParams, SimulationRun } from '../../src/services/SimulationService';
+import { SimulationService, SimulationParams } from '../../src/services/SimulationService';
+import { SimulationRunData } from '../../src/types/session';
 import { DateTime } from 'luxon';
 import { fetchHybridCandles } from '../../src/simulation/candles';
 import { simulateStrategy } from '../../src/simulation/engine';
@@ -176,7 +177,7 @@ describe('SimulationService', () => {
     it('should retrieve user simulation runs', async () => {
       const userId = 12345;
       const limit = 10;
-      const mockRuns: SimulationRun[] = [
+      const mockRuns: SimulationRunData[] = [
         {
           id: 1,
           mint: 'mint1',
@@ -189,6 +190,7 @@ describe('SimulationService', () => {
           stopLossConfig: { initial: -0.3, trailing: 0.5 },
           finalPnl: 2.0,
           totalCandles: 100,
+          events: [],
           createdAt: DateTime.utc()
         }
       ];
@@ -212,7 +214,7 @@ describe('SimulationService', () => {
 
     it('should get specific simulation run by ID', async () => {
       const runId = 1;
-      const mockRun: SimulationRun = {
+      const mockRun: SimulationRunData = {
         id: runId,
         mint: 'mint1',
         chain: 'solana',
@@ -224,6 +226,7 @@ describe('SimulationService', () => {
         stopLossConfig: { initial: -0.3, trailing: 0.5 },
         finalPnl: 2.0,
         totalCandles: 100,
+        events: [],
         createdAt: DateTime.utc()
       };
 
@@ -296,7 +299,7 @@ describe('SimulationService', () => {
   });
 
   describe('Repeat Simulation Logic', () => {
-    const mockRun: SimulationRun = {
+    const mockRun: SimulationRunData = {
       id: 1,
       mint: 'So11111111111111111111111111111111111111112',
       chain: 'solana',
@@ -308,13 +311,14 @@ describe('SimulationService', () => {
       stopLossConfig: { initial: -0.3, trailing: 0.5 },
       finalPnl: 2.0,
       totalCandles: 100,
+      events: [],
       createdAt: DateTime.utc()
     };
 
     it('should repeat simulation by index (1-99)', async () => {
       const userId = 12345;
       const index = 1; // Second run (0-indexed)
-      const mockRuns = [mockRun, { ...mockRun, id: 2 }];
+      const mockRuns = [mockRun, { ...mockRun, id: 2, events: [] }];
 
       mockDb.getUserSimulationRuns.mockResolvedValue(mockRuns);
       mockFetchHybridCandles.mockResolvedValue([{ timestamp: 1000, open: 1.0, high: 1.1, low: 0.9, close: 1.05, volume: 1000 }]);
@@ -385,7 +389,7 @@ describe('SimulationService', () => {
     it('should handle non-existent run by index', async () => {
       const userId = 12345;
       const index = 5;
-      const mockRuns = [mockRun]; // Only 1 run available
+      const mockRuns: SimulationRunData[] = [mockRun]; // Only 1 run available
 
       mockDb.getUserSimulationRuns.mockResolvedValue(mockRuns);
 
@@ -406,7 +410,7 @@ describe('SimulationService', () => {
     it('should preserve original parameters when repeating', async () => {
       const userId = 12345;
       const index = 1;
-      const mockRuns = [mockRun];
+      const mockRuns: SimulationRunData[] = [mockRun];
 
       mockDb.getUserSimulationRuns.mockResolvedValue(mockRuns);
       mockFetchHybridCandles.mockResolvedValue([{ timestamp: 1000, open: 1.0, high: 1.1, low: 0.9, close: 1.05, volume: 1000 }]);

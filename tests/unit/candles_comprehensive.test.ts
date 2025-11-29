@@ -17,7 +17,7 @@ jest.mock('fs');
 import { fetchHybridCandles, Candle } from '../../src/simulation/candles';
 import { DateTime } from 'luxon';
 import axios from 'axios';
-import fs from 'fs';
+import * as fs from 'fs';
 const mockedAxios = axios as jest.Mocked<typeof axios>;
 const mockedFs = fs as jest.Mocked<typeof fs>;
 
@@ -258,7 +258,7 @@ describe('Candle Data Handling', () => {
           name: cacheFilename,
           isFile: () => true,
           isDirectory: () => false
-        } as unknown as import('fs').Dirent<Buffer>
+        } as any
       ]);
       mockedFs.readFileSync.mockReturnValue(cachedData);
 

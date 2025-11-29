@@ -15,6 +15,7 @@
 import * as sqlite3 from 'sqlite3';
 import { DateTime } from 'luxon';
 import * as path from 'path';
+import { logger } from './logger';
 
 // ---------------------------------------------------------------------
 // 1. Database Initialization & Lifecycle
@@ -127,6 +128,44 @@ export function initDatabase(): Promise<void> {
       timestamp INTEGER NOT NULL,
       FOREIGN KEY (ca_id) REFERENCES ca_tracking (id)
     );
+    -- Live trade entry alerts
+    CREATE TABLE IF NOT EXISTS live_trade_entry_alerts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      alert_id INTEGER NOT NULL,
+      token_address TEXT NOT NULL,
+      token_symbol TEXT,
+      chain TEXT NOT NULL,
+      caller_name TEXT NOT NULL,
+      alert_price REAL NOT NULL,
+      entry_price REAL NOT NULL,
+      entry_type TEXT NOT NULL,
+      signal TEXT NOT NULL,
+      price_change REAL NOT NULL,
+      timestamp INTEGER NOT NULL,
+      sent_to_groups TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+    -- Live trade price cache
+    CREATE TABLE IF NOT EXISTS live_trade_price_cache (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      token_address TEXT NOT NULL,
+      chain TEXT NOT NULL,
+      price REAL NOT NULL,
+      market_cap REAL,
+      timestamp INTEGER NOT NULL,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(token_address, chain, timestamp)
+    );
+    -- Live trade strategies configuration
+    CREATE TABLE IF NOT EXISTS live_trade_strategies (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      description TEXT,
+      category TEXT NOT NULL,
+      enabled INTEGER DEFAULT 1,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
     -- Indices for performance
     CREATE INDEX IF NOT EXISTS idx_user_id ON simulation_runs(user_id);
     CREATE INDEX IF NOT EXISTS idx_mint ON simulation_runs(mint);
@@ -138,17 +177,17 @@ export function initDatabase(): Promise<void> {
   return new Promise((resolve, reject) => {
     db = new sqlite3.Database(DB_PATH, (openErr) => {
       if (openErr) {
-        console.error('Error opening database:', openErr);
+        logger.error('Error opening database', openErr as Error);
         return reject(openErr);
       }
-      console.log('Connected to SQLite database.');
+      logger.info('Connected to SQLite database');
 
       db!.exec(TABLES_AND_INDICES_SQL, (tableErr) => {
         if (tableErr) {
-          console.error('Error creating tables:', tableErr);
+          logger.error('Error creating tables', tableErr as Error);
           return reject(tableErr);
         }
-        console.log('Database tables created and ready.');
+        logger.info('Database tables created and ready');
         resolve();
       });
     });
@@ -165,6 +204,10 @@ export function initDatabase(): Promise<void> {
  * @param data Simulation run data + array of events
  * @returns {Promise<number>} The inserted row's run ID
  */
+import { Strategy } from '../simulation/engine';
+import { StopLossConfig } from '../simulation/config';
+import { SimulationEvent } from '../types/session';
+
 export function saveSimulationRun(data: {
   userId: number;
   mint: string;
@@ -173,11 +216,11 @@ export function saveSimulationRun(data: {
   tokenSymbol?: string;
   startTime: DateTime;
   endTime: DateTime;
-  strategy: any[];
-  stopLossConfig: any;
+  strategy: Strategy[];
+  stopLossConfig: StopLossConfig;
   finalPnl: number;
   totalCandles: number;
-  events: any[];
+  events: SimulationEvent[];
 }): Promise<number> {
   return new Promise((resolve, reject) => {
     if (!db) return reject(new Error('Database not initialized'));
@@ -204,7 +247,7 @@ export function saveSimulationRun(data: {
 
     db.run(insertRun, runData, function (runErr) {
       if (runErr) {
-        console.error('Error saving simulation run:', runErr);
+        logger.error('Error saving simulation run', runErr as Error);
         return reject(runErr);
       }
       const runId = this.lastID;
@@ -230,10 +273,10 @@ export function saveSimulationRun(data: {
         }
         eventStmt.finalize((err) => {
           if (err) {
-            console.error('Error saving events:', err);
+            logger.error('Error saving events', err as Error, { runId });
             return reject(err);
           }
-          console.log(`Saved simulation run ${runId} with ${data.events.length} event(s)`);
+          logger.info('Saved simulation run', { runId, eventCount: data.events.length });
           resolve(runId);
         });
       } else {
@@ -250,7 +293,9 @@ export function saveSimulationRun(data: {
  * @param limit Maximum number of runs to retrieve (default: 10)
  * @returns {Promise<any[]>}
  */
-export function getUserSimulationRuns(userId: number, limit: number = 10): Promise<any[]> {
+import { SimulationRunData } from '../types/session';
+
+export function getUserSimulationRuns(userId: number, limit: number = 10): Promise<SimulationRunData[]> {
   return new Promise((resolve, reject) => {
     if (!db) return reject(new Error('Database not initialized'));
 
@@ -274,19 +319,47 @@ export function getUserSimulationRuns(userId: number, limit: number = 10): Promi
       LIMIT ?
     `;
 
-    db.all(query, [userId, limit], (err, rows) => {
+    interface DatabaseRow {
+      id: number;
+      mint: string;
+      chain: string;
+      token_name?: string;
+      token_symbol?: string;
+      start_time: string;
+      end_time: string;
+      strategy: string;
+      stop_loss_config: string;
+      final_pnl: number;
+      total_candles: number;
+      created_at: string;
+    }
+
+    db.all(query, [userId, limit], async (err, rows) => {
       if (err) {
-        console.error('Error fetching simulation runs:', err);
+        logger.error('Error fetching simulation runs', err as Error, { userId });
         return reject(err);
       }
-      const runs = (rows ?? []).map((row: any) => ({
-        ...row,
-        strategy: JSON.parse(row.strategy),
-        stopLossConfig: JSON.parse(row.stop_loss_config),
-        startTime: DateTime.fromISO(row.start_time),
-        endTime: DateTime.fromISO(row.end_time),
-        createdAt: DateTime.fromISO(row.created_at),
-      }));
+      
+      // Fetch events for each run and build complete SimulationRunData
+      const runs: SimulationRunData[] = await Promise.all(
+        (rows as DatabaseRow[]).map(async (row) => {
+          const events = await getSimulationEvents(row.id).catch(() => []);
+          return {
+            id: row.id,
+            mint: row.mint,
+            chain: row.chain,
+            tokenName: row.token_name,
+            tokenSymbol: row.token_symbol,
+            startTime: DateTime.fromISO(row.start_time),
+            endTime: DateTime.fromISO(row.end_time),
+            strategy: JSON.parse(row.strategy) as Strategy[],
+            stopLossConfig: JSON.parse(row.stop_loss_config) as StopLossConfig,
+            finalPnl: row.final_pnl,
+            totalCandles: row.total_candles,
+            events: events as SimulationEvent[],
+          };
+        })
+      );
 
       resolve(runs);
     });
@@ -324,7 +397,7 @@ export function getSimulationRun(runId: number): Promise<any | null> {
 
     db.get(query, [runId], (err, row: any) => {
       if (err) {
-        console.error('Error fetching simulation run:', err);
+        logger.error('Error fetching simulation run', err as Error, { runId });
         return reject(err);
       }
       if (!row) return resolve(null);
@@ -367,7 +440,7 @@ export function getSimulationEvents(runId: number): Promise<any[]> {
 
     db.all(query, [runId], (err, rows) => {
       if (err) {
-        console.error('Error fetching simulation events:', err);
+        logger.error('Error fetching simulation events', err as Error, { runId });
         return reject(err);
       }
       resolve(rows ?? []);
@@ -413,10 +486,10 @@ export function saveStrategy(data: {
 
     db.run(insertStrategy, strategyData, function (err) {
       if (err) {
-        console.error('Error saving strategy:', err);
+        logger.error('Error saving strategy', err as Error, { userId: data.userId, strategyName: data.name });
         return reject(err);
       }
-      console.log(`Saved strategy "${data.name}" for user ${data.userId}`);
+      logger.info('Saved strategy', { userId: data.userId, strategyName: data.name });
       resolve(this.lastID);
     });
   });
@@ -448,7 +521,7 @@ export function getUserStrategies(userId: number): Promise<any[]> {
 
     db.all(query, [userId], (err, rows) => {
       if (err) {
-        console.error('Error fetching strategies:', err);
+        logger.error('Error fetching strategies', err as Error, { userId });
         return reject(err);
       }
       const strategies = (rows ?? []).map((row: any) => ({
@@ -488,7 +561,7 @@ export function getStrategy(userId: number, name: string): Promise<any | null> {
 
     db.get(query, [userId, name], (err, row: any) => {
       if (err) {
-        console.error('Error fetching strategy:', err);
+        logger.error('Error fetching strategy', err as Error, { userId, strategyName: name });
         return reject(err);
       }
       if (!row) return resolve(null);
@@ -518,13 +591,13 @@ export function deleteStrategy(userId: number, name: string): Promise<void> {
 
     db.run(query, [userId, name], function (err) {
       if (err) {
-        console.error('Error deleting strategy:', err);
+        logger.error('Error deleting strategy', err as Error, { userId, strategyName: name });
         return reject(err);
       }
       if (this.changes === 0) {
         return reject(new Error('Strategy not found'));
       }
-      console.log(`Deleted strategy "${name}" for user ${userId}`);
+      logger.info('Deleted strategy', { userId, strategyName: name });
       resolve();
     });
   });
@@ -578,10 +651,10 @@ export function saveCADrop(data: {
 
     db.run(insertCA, caData, function (err) {
       if (err) {
-        console.error('Error saving CA drop:', err);
+        logger.error('Error saving CA drop', err as Error, { userId: data.userId, mint: data.mint });
         return reject(err);
       }
-      console.log(`Saved CA drop for ${data.mint} by user ${data.userId}`);
+      logger.info('Saved CA drop', { userId: data.userId, mint: data.mint });
       resolve(this.lastID);
     });
   });
@@ -618,7 +691,7 @@ export function getActiveCATracking(): Promise<any[]> {
 
     db.all(query, [], (err, rows) => {
       if (err) {
-        console.error('Error fetching active CA tracking:', err);
+        logger.error('Error fetching active CA tracking', err as Error);
         return reject(err);
       }
       const cases = (rows ?? []).map((row: any) => ({
@@ -656,7 +729,7 @@ export function savePriceUpdate(
     `;
     db.run(query, [caId, price, marketcap, timestamp], function (err) {
       if (err) {
-        console.error('Error saving price update:', err);
+        logger.error('Error saving price update', err as Error, { caId });
         return reject(err);
       }
       resolve();
@@ -688,7 +761,7 @@ export function saveAlertSent(
     `;
     db.run(query, [caId, alertType, price, timestamp], function (err) {
       if (err) {
-        console.error('Error saving alert:', err);
+        logger.error('Error saving alert', err as Error, { caId, alertType });
         return reject(err);
       }
       resolve();
@@ -728,7 +801,7 @@ export function getRecentCAPerformance(hours: number = 24): Promise<any[]> {
 
     db.all(query, [cutoffTime], (err, rows) => {
       if (err) {
-        console.error('Error fetching CA performance:', err);
+        logger.error('Error fetching CA performance', err as Error, { hours });
         return reject(err);
       }
       // Group by CA id, picking latest price for each
@@ -758,7 +831,9 @@ export function getRecentCAPerformance(hours: number = 24): Promise<any[]> {
  * @param limit Maximum number of calls to return
  * @returns Array of CA call objects
  */
-export async function getAllCACalls(limit: number = 50): Promise<any[]> {
+import { CACall } from '../types/session';
+
+export async function getAllCACalls(limit: number = 50): Promise<CACall[]> {
   return new Promise((resolve, reject) => {
     if (!db) {
       reject(new Error('Database not initialized'));
@@ -786,7 +861,7 @@ export async function getAllCACalls(limit: number = 50): Promise<any[]> {
         reject(err);
         return;
       }
-      resolve(rows || []);
+      resolve((rows || []) as CACall[]);
     });
   });
 }
@@ -972,9 +1047,9 @@ export function closeDatabase(): Promise<void> {
     if (db) {
       db.close((err) => {
         if (err) {
-          console.error('Error closing database:', err);
+          logger.error('Error closing database', err as Error);
         } else {
-          console.log('Database connection closed');
+          logger.info('Database connection closed');
         }
         resolve();
       });

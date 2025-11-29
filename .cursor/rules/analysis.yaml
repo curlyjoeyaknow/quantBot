@@ -1,0 +1,144 @@
+---
+description: Analysis module rules for src/analysis/ directory
+globs: ["src/analysis/**/*.ts"]
+alwaysApply: true
+---
+
+# Analysis Rules (src/analysis/)
+
+analysis-architecture:
+  core-principles:
+    - "Use `ResultAnalyzer` for all analysis operations"
+    - "Keep analysis logic pure and deterministic"
+    - "Validate analysis inputs"
+    - "Return structured analysis results"
+    - "Document analysis methodology"
+    
+analysis-structure:
+  separate-analysis-by-domain:
+    - "Separate analysis by domain (PnL, risk, trades)"
+  use-metric-calculators-for-specific-metrics:
+    - "Use metric calculators for specific metrics"
+    - "Aggregate results appropriately"
+  export-results-in-multiple-formats:
+    - "Export results in multiple formats"
+  cache-expensive-calculations:
+    - "Cache expensive calculations"
+
+metric-calculation:
+  use-pnl-metrics:
+    - "Use `PnLMetrics` for profit/loss calculations"
+  calculate-metrics-correctly:
+    - "Calculate metrics correctly"
+  handle-edge-cases-appropriately:
+    - "Handle edge cases appropriately"
+  validate-input-data:
+    - "Validate input data"
+  return-structured-metric-results:
+    - "Return structured metric results"
+
+risk-metrics:
+  use-risk-metrics:
+    - "Use `RiskMetrics` for risk calculations"
+
+trade-metrics:
+  use-trade-metrics:
+    - "Use `TradeMetrics` for trade analysis"
+  calculate-trade-statistics-correctly:
+    - "Calculate trade statistics correctly"
+  handle-trade-data-validation:
+    - "Handle trade data validation"
+  aggregate-trade-data-appropriately:
+    - "Aggregate trade data appropriately"
+  return-comprehensive-trade-metrics:
+    - "Return comprehensive trade metrics"
+
+## Result Analysis
+
+### Analysis Operations
+analysis-operations:
+  analyze-results-consistently: "Analyze results consistently"
+  use-appropriate-statistical-methods: "Use appropriate statistical methods"
+  handle-missing-data-appropriately: "Handle missing data appropriately"
+  validate-analysis-results: "Validate analysis results"
+  document-analysis-assumptions: "Document analysis assumptions"
+
+
+### Result Aggregation
+result-aggregation:
+  aggregate-results-correctly: "Aggregate results correctly"
+  handle-aggregation-edge-cases: "Handle aggregation edge cases"
+  validate-aggregated-data: "Validate aggregated data"
+  provide-aggregation-statistics: "Provide aggregation statistics"
+  export-aggregated-results: "Export aggregated results"
+
+## Data Validation
+
+### Input Validation
+input-validation:
+  validate-all-analysis-inputs: "Validate all analysis inputs"
+  use-zod-schemas-for-validation: "Use Zod schemas for validation"
+  check-data-completeness: "Check data completeness"
+  handle-invalid-data-gracefully: "Handle invalid data gracefully"
+  provide-validation-feedback: "Provide validation feedback"
+
+### Result Validation
+result-validation:
+  validate-analysis-results: "Validate analysis results"
+  check-result-consistency: "Check result consistency"
+  handle-calculation-errors: "Handle calculation errors"
+  verify-result-ranges: "Verify result ranges"
+  log-validation-issues: "Log validation issues"
+
+## Performance
+
+### Calculation Performance
+calculation-performance:
+  optimize-calculation-algorithms: "Optimize calculation algorithms"
+  cache-expensive-calculations: "Cache expensive calculations"
+  use-appropriate-data-structures: "Use appropriate data structures"
+  monitor-calculation-performance: "Monitor calculation performance"
+  profile-slow-calculations: "Profile slow calculations"
+
+### Memory Management
+memory-management:
+  manage-memory-efficiently: "Manage memory efficiently"
+  avoid-memory-leaks: "Avoid memory leaks"
+  clean-up-resources-properly: "Clean up resources properly"
+  monitor-memory-usage: "Monitor memory usage"
+  handle-large-datasets-appropriately: "Handle large datasets appropriately"
+
+## Testing  
+
+### Unit Tests unit-tests:
+unit-tests:
+  test-metric-calculators-independently: "Test metric calculators independently"
+  test-with-various-data-inputs: "Test with various data inputs"
+  test-edge-cases: "Test edge cases"
+  test-error-handling: "Test error handling"
+  test-calculation-accuracy: "Test calculation accuracy"
+
+### Integration Tests 
+integration-tests:
+  test-full-analysis-flows: "Test full analysis flows"
+  test-with-real-data: "Test with real data"
+  test-performance: "Test performance"
+  test-result-formats: "Test result formats"
+  test-error-scenarios: "Test error scenarios"  
+
+## Documentation
+
+### Analysis Documentation
+  document-all-analysis-methods: "Document all analysis methods"
+  include-usage-examples: "Include usage examples"
+  document-calculation-methodology: "Document calculation methodology"
+  include-statistical-notes: "Include statistical notes"
+  keep-documentation-current: "Keep documentation current"
+
+### Code Documentation  
+code-documentation:
+  document-analysis-logic: "Document analysis logic"
+  explain-calculation-methods: "Explain calculation methods"
+  document-assumptions: "Document assumptions"
+  include-examples: "Include examples"
+  keep-comments-updated: "Keep comments updated"

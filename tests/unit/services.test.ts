@@ -7,6 +7,7 @@
 import { SessionService } from '../../src/services/SessionService';
 import { StrategyService } from '../../src/services/StrategyService';
 import { SimulationService } from '../../src/services/SimulationService';
+import { initDatabase } from '../../src/utils/database';
 
 describe('Service Layer Tests', () => {
   describe('SessionService', () => {
@@ -53,7 +54,8 @@ describe('Service Layer Tests', () => {
   describe('StrategyService', () => {
     let strategyService: StrategyService;
 
-    beforeEach(() => {
+    beforeEach(async () => {
+      await initDatabase();
       strategyService = new StrategyService();
     });
 
