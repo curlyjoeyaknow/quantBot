@@ -51,8 +51,12 @@ import {
   saveCADrop,
   getAllCACalls,
   getCACallByMint,
+  getTrackedTokens,
 } from '../utils/database';
 import { HeliusMonitor } from '../helius-monitor';
+import { heliusStreamRecorder } from '../services/stream/helius-recorder';
+import { heliusBackfillService } from '../services/backfill/helius-backfill-service';
+import { pumpfunLifecycleTracker } from '../services/pumpfun/pumpfun-lifecycle-tracker';
 import { findCallsForToken } from '../utils/caller-database';
 import { logger } from '../utils/logger';
 import { Session, TokenMetadata, CallerInfo, LastSimulation, SimulationRunData, CACall, ActiveCA } from '../types/session';
@@ -1570,6 +1574,9 @@ async function startBot() {
     } else {
       logger.info('HELIUS_API_KEY not found or empty - CA monitoring disabled');
     }
+
+    await startRecorderServices();
+
     // Start receiving messages
     bot.launch();
     logger.info('Bot running...');
@@ -1580,3 +1587,52 @@ async function startBot() {
 }
 
 startBot();
+
+async function startRecorderServices(): Promise<void> {
+  if (!process.env.HELIUS_API_KEY || process.env.HELIUS_API_KEY.trim() === '') {
+    logger.info('Helius recorder disabled - missing API key');
+    return;
+  }
+
+  try {
+    await heliusStreamRecorder.start();
+    logger.info('Helius stream recorder started');
+  } catch (error) {
+    logger.error('Failed to start Helius stream recorder', error as Error);
+  }
+
+  try {
+    await scheduleInitialBackfillJobs();
+    heliusBackfillService.start();
+  } catch (error) {
+    logger.error('Failed to schedule backfill jobs', error as Error);
+  }
+
+  try {
+    await pumpfunLifecycleTracker.start();
+    logger.info('Pumpfun lifecycle tracker started');
+  } catch (error) {
+    logger.error('Failed to start Pumpfun lifecycle tracker', error as Error);
+  }
+}
+
+async function scheduleInitialBackfillJobs(): Promise<void> {
+  const tokens = await getTrackedTokens();
+  if (tokens.length === 0) {
+    logger.info('No tokens available for backfill scheduling');
+    return;
+  }
+
+  const now = DateTime.utc();
+  tokens.forEach((token) => {
+    heliusBackfillService.enqueue({
+      mint: token.mint,
+      chain: token.chain,
+      startTime: now.minus({ minutes: 15 }),
+      endTime: now,
+      priority: token.source === 'ca_tracking' ? 2 : 1,
+    });
+  });
+
+  logger.info('Scheduled initial Helius backfill jobs', { tokenCount: tokens.length });
+}

@@ -25,6 +25,8 @@ import { MonitorCommandHandler } from './MonitorCommandHandler';
 import { BeginCommandHandler } from './BeginCommandHandler';
 import { OptionsCommandHandler } from './OptionsCommandHandler';
 import { LiveTradeCommandHandler } from './LiveTradeCommandHandler';
+import { AddCurlyJoeCommandHandler } from './AddCurlyJoeCommandHandler';
+import { WatchlistCommandHandler } from './WatchlistCommandHandler';
 import { SessionService } from '../services/SessionService';
 import { StrategyService } from '../services/StrategyService';
 import { SimulationService } from '../services/SimulationService';
@@ -83,6 +85,8 @@ export class CommandRegistry {
     this.register(new AlertsCommandHandler(this.sessionService));
     this.register(new MonitorCommandHandler());
     this.register(new LiveTradeCommandHandler());
+    this.register(new AddCurlyJoeCommandHandler());
+    this.register(new WatchlistCommandHandler());
     
     // Register handlers with the bot
     this.handlers.forEach((handler, commandName) => {
@@ -120,6 +124,8 @@ export class CommandRegistry {
       { command: 'history', description: 'View simulation history' },
       { command: 'alerts', description: 'View active alerts and monitoring' },
       { command: 'livetrade', description: 'Manage live trade entry alerts' },
+      { command: 'addcurlyjoe', description: 'Add recent CurlyJoe calls to live monitoring' },
+      { command: 'watchlist', description: 'View and manage your watchlist of monitored tokens' },
     ];
     
     try {

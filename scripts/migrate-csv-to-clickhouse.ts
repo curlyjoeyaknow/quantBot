@@ -12,8 +12,8 @@ import 'dotenv/config';
 import * as fs from 'fs';
 import * as path from 'path';
 import { DateTime } from 'luxon';
-import { initClickHouse, insertCandles, closeClickHouse, hasCandles } from '../src/storage/clickhouse-client';
-import type { Candle } from '../src/simulation/candles';
+import { initClickHouse, insertCandles, closeClickHouse, hasCandles } from '@quantbot/storage';
+import type { Candle } from '@quantbot/simulation';
 
 const CACHE_DIR = path.join(process.cwd(), 'cache');
 

@@ -1,0 +1,3 @@
+TradeNumber,AlertTime,PnL,PositionSize,TradeReturn,PortfolioBefore,PortfolioAfter,MovingAvgPortfolio
+1,2025-10-08T19:07:48.000Z,1.014084,10.00,0.14,100.00,100.14,100.00
+2,2025-10-10T12:25:20.000Z,1.314749,10.01,3.15,100.14,103.29,100.07

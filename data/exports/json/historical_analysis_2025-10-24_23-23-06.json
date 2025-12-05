@@ -1,0 +1,693 @@
+{
+  "timestamp": "2025-10-24T23:23:06.645+11:00",
+  "summary": {
+    "stats": {
+      "total": 2,
+      "profitable": 2,
+      "loss": 0,
+      "majorLoss": 0,
+      "avgPnl": 2.861226462724283,
+      "medianPnl": 4.5,
+      "bestPerformer": {
+        "id": 1,
+        "mint": "0xf73f123Ff5fe61fd94fE0496b35f7bF4eBa84444",
+        "chain": "bsc",
+        "token_name": "比比",
+        "token_symbol": "比比",
+        "call_price": 0.00000123,
+        "call_marketcap": null,
+        "call_timestamp": 1729766400,
+        "caller": "TestCaller",
+        "source_chat_id": 123456789,
+        "created_at": "2025-10-24 09:40:12",
+        "strategy": [
+          {
+            "percent": 0.5,
+            "target": 2
+          },
+          {
+            "percent": 0.3,
+            "target": 5
+          },
+          {
+            "percent": 0.2,
+            "target": 10
+          }
+        ],
+        "stopLossConfig": {
+          "initial": -0.5,
+          "trailing": 0.5
+        },
+        "createdAt": null,
+        "currentPrice": 0,
+        "performance": {
+          "pnl": 4.5,
+          "pnlPercent": 350,
+          "status": "2x+",
+          "timeElapsed": 31542184.882999897,
+          "timeElapsedHours": 8761.718023055528,
+          "simulatedPnl": 4.5,
+          "targetsHit": [
+            {
+              "target": 2,
+              "percent": 0.5,
+              "price": 0.000012934015123102952,
+              "timestamp": 1760809500,
+              "pnlSoFar": 1
+            },
+            {
+              "target": 5,
+              "percent": 0.3,
+              "price": 0.00003233503780775738,
+              "timestamp": 1760815200,
+              "pnlSoFar": 2.5
+            },
+            {
+              "target": 10,
+              "percent": 0.2,
+              "price": 0.00006467007561551476,
+              "timestamp": 1760834700,
+              "pnlSoFar": 4.5
+            }
+          ],
+          "maxPrice": 0.0010785860446096342,
+          "maxPnl": 166.78286430685333,
+          "currentPrice": 0,
+          "actualCallPrice": 0.000006467007561551476
+        }
+      },
+      "worstPerformer": {
+        "id": 2,
+        "mint": "So11111111111111111111111111111111111111112",
+        "chain": "solana",
+        "token_name": "Wrapped SOL",
+        "token_symbol": "WSOL",
+        "call_price": 150.25,
+        "call_marketcap": null,
+        "call_timestamp": 1729766500,
+        "caller": "SolanaCaller",
+        "source_chat_id": 123456789,
+        "created_at": "2025-10-24 09:40:17",
+        "strategy": [
+          {
+            "percent": 0.5,
+            "target": 2
+          },
+          {
+            "percent": 0.3,
+            "target": 5
+          },
+          {
+            "percent": 0.2,
+            "target": 10
+          }
+        ],
+        "stopLossConfig": {
+          "initial": -0.5,
+          "trailing": 0.5
+        },
+        "createdAt": null,
+        "currentPrice": 0,
+        "performance": {
+          "pnl": 1.2224529254485668,
+          "pnlPercent": 22.245292544856675,
+          "status": "profitable",
+          "timeElapsed": 31542081.16899991,
+          "timeElapsedHours": 8761.689213611086,
+          "simulatedPnl": 1.2224529254485668,
+          "targetsHit": [],
+          "maxPrice": 215.32755967233885,
+          "maxPnl": 1.2491364696316052,
+          "currentPrice": 0,
+          "actualCallPrice": 172.3811328123685
+        }
+      },
+      "successRate": 100,
+      "avgTimeToProfit": 8761.703618333308,
+      "avgTimeToLoss": 0
+    },
+    "timePeriods": {
+      "last24h": [],
+      "last7d": [],
+      "last30d": [],
+      "older": [
+        {
+          "id": 1,
+          "mint": "0xf73f123Ff5fe61fd94fE0496b35f7bF4eBa84444",
+          "chain": "bsc",
+          "token_name": "比比",
+          "token_symbol": "比比",
+          "call_price": 0.00000123,
+          "call_marketcap": null,
+          "call_timestamp": 1729766400,
+          "caller": "TestCaller",
+          "source_chat_id": 123456789,
+          "created_at": "2025-10-24 09:40:12",
+          "strategy": [
+            {
+              "percent": 0.5,
+              "target": 2
+            },
+            {
+              "percent": 0.3,
+              "target": 5
+            },
+            {
+              "percent": 0.2,
+              "target": 10
+            }
+          ],
+          "stopLossConfig": {
+            "initial": -0.5,
+            "trailing": 0.5
+          },
+          "createdAt": null,
+          "currentPrice": 0,
+          "performance": {
+            "pnl": 4.5,
+            "pnlPercent": 350,
+            "status": "2x+",
+            "timeElapsed": 31542184.882999897,
+            "timeElapsedHours": 8761.718023055528,
+            "simulatedPnl": 4.5,
+            "targetsHit": [
+              {
+                "target": 2,
+                "percent": 0.5,
+                "price": 0.000012934015123102952,
+                "timestamp": 1760809500,
+                "pnlSoFar": 1
+              },
+              {
+                "target": 5,
+                "percent": 0.3,
+                "price": 0.00003233503780775738,
+                "timestamp": 1760815200,
+                "pnlSoFar": 2.5
+              },
+              {
+                "target": 10,
+                "percent": 0.2,
+                "price": 0.00006467007561551476,
+                "timestamp": 1760834700,
+                "pnlSoFar": 4.5
+              }
+            ],
+            "maxPrice": 0.0010785860446096342,
+            "maxPnl": 166.78286430685333,
+            "currentPrice": 0,
+            "actualCallPrice": 0.000006467007561551476
+          }
+        },
+        {
+          "id": 2,
+          "mint": "So11111111111111111111111111111111111111112",
+          "chain": "solana",
+          "token_name": "Wrapped SOL",
+          "token_symbol": "WSOL",
+          "call_price": 150.25,
+          "call_marketcap": null,
+          "call_timestamp": 1729766500,
+          "caller": "SolanaCaller",
+          "source_chat_id": 123456789,
+          "created_at": "2025-10-24 09:40:17",
+          "strategy": [
+            {
+              "percent": 0.5,
+              "target": 2
+            },
+            {
+              "percent": 0.3,
+              "target": 5
+            },
+            {
+              "percent": 0.2,
+              "target": 10
+            }
+          ],
+          "stopLossConfig": {
+            "initial": -0.5,
+            "trailing": 0.5
+          },
+          "createdAt": null,
+          "currentPrice": 0,
+          "performance": {
+            "pnl": 1.2224529254485668,
+            "pnlPercent": 22.245292544856675,
+            "status": "profitable",
+            "timeElapsed": 31542081.16899991,
+            "timeElapsedHours": 8761.689213611086,
+            "simulatedPnl": 1.2224529254485668,
+            "targetsHit": [],
+            "maxPrice": 215.32755967233885,
+            "maxPnl": 1.2491364696316052,
+            "currentPrice": 0,
+            "actualCallPrice": 172.3811328123685
+          }
+        }
+      ]
+    },
+    "chainAnalysis": {
+      "bsc": {
+        "total": 1,
+        "profitable": 1,
+        "loss": 0,
+        "majorLoss": 0,
+        "avgPnl": 4.5,
+        "bestPerformer": {
+          "id": 1,
+          "mint": "0xf73f123Ff5fe61fd94fE0496b35f7bF4eBa84444",
+          "chain": "bsc",
+          "token_name": "比比",
+          "token_symbol": "比比",
+          "call_price": 0.00000123,
+          "call_marketcap": null,
+          "call_timestamp": 1729766400,
+          "caller": "TestCaller",
+          "source_chat_id": 123456789,
+          "created_at": "2025-10-24 09:40:12",
+          "strategy": [
+            {
+              "percent": 0.5,
+              "target": 2
+            },
+            {
+              "percent": 0.3,
+              "target": 5
+            },
+            {
+              "percent": 0.2,
+              "target": 10
+            }
+          ],
+          "stopLossConfig": {
+            "initial": -0.5,
+            "trailing": 0.5
+          },
+          "createdAt": null,
+          "currentPrice": 0,
+          "performance": {
+            "pnl": 4.5,
+            "pnlPercent": 350,
+            "status": "2x+",
+            "timeElapsed": 31542184.882999897,
+            "timeElapsedHours": 8761.718023055528,
+            "simulatedPnl": 4.5,
+            "targetsHit": [
+              {
+                "target": 2,
+                "percent": 0.5,
+                "price": 0.000012934015123102952,
+                "timestamp": 1760809500,
+                "pnlSoFar": 1
+              },
+              {
+                "target": 5,
+                "percent": 0.3,
+                "price": 0.00003233503780775738,
+                "timestamp": 1760815200,
+                "pnlSoFar": 2.5
+              },
+              {
+                "target": 10,
+                "percent": 0.2,
+                "price": 0.00006467007561551476,
+                "timestamp": 1760834700,
+                "pnlSoFar": 4.5
+              }
+            ],
+            "maxPrice": 0.0010785860446096342,
+            "maxPnl": 166.78286430685333,
+            "currentPrice": 0,
+            "actualCallPrice": 0.000006467007561551476
+          }
+        },
+        "worstPerformer": {
+          "id": 1,
+          "mint": "0xf73f123Ff5fe61fd94fE0496b35f7bF4eBa84444",
+          "chain": "bsc",
+          "token_name": "比比",
+          "token_symbol": "比比",
+          "call_price": 0.00000123,
+          "call_marketcap": null,
+          "call_timestamp": 1729766400,
+          "caller": "TestCaller",
+          "source_chat_id": 123456789,
+          "created_at": "2025-10-24 09:40:12",
+          "strategy": [
+            {
+              "percent": 0.5,
+              "target": 2
+            },
+            {
+              "percent": 0.3,
+              "target": 5
+            },
+            {
+              "percent": 0.2,
+              "target": 10
+            }
+          ],
+          "stopLossConfig": {
+            "initial": -0.5,
+            "trailing": 0.5
+          },
+          "createdAt": null,
+          "currentPrice": 0,
+          "performance": {
+            "pnl": 4.5,
+            "pnlPercent": 350,
+            "status": "2x+",
+            "timeElapsed": 31542184.882999897,
+            "timeElapsedHours": 8761.718023055528,
+            "simulatedPnl": 4.5,
+            "targetsHit": [
+              {
+                "target": 2,
+                "percent": 0.5,
+                "price": 0.000012934015123102952,
+                "timestamp": 1760809500,
+                "pnlSoFar": 1
+              },
+              {
+                "target": 5,
+                "percent": 0.3,
+                "price": 0.00003233503780775738,
+                "timestamp": 1760815200,
+                "pnlSoFar": 2.5
+              },
+              {
+                "target": 10,
+                "percent": 0.2,
+                "price": 0.00006467007561551476,
+                "timestamp": 1760834700,
+                "pnlSoFar": 4.5
+              }
+            ],
+            "maxPrice": 0.0010785860446096342,
+            "maxPnl": 166.78286430685333,
+            "currentPrice": 0,
+            "actualCallPrice": 0.000006467007561551476
+          }
+        },
+        "successRate": 100
+      },
+      "solana": {
+        "total": 1,
+        "profitable": 1,
+        "loss": 0,
+        "majorLoss": 0,
+        "avgPnl": 1.2224529254485668,
+        "bestPerformer": {
+          "id": 2,
+          "mint": "So11111111111111111111111111111111111111112",
+          "chain": "solana",
+          "token_name": "Wrapped SOL",
+          "token_symbol": "WSOL",
+          "call_price": 150.25,
+          "call_marketcap": null,
+          "call_timestamp": 1729766500,
+          "caller": "SolanaCaller",
+          "source_chat_id": 123456789,
+          "created_at": "2025-10-24 09:40:17",
+          "strategy": [
+            {
+              "percent": 0.5,
+              "target": 2
+            },
+            {
+              "percent": 0.3,
+              "target": 5
+            },
+            {
+              "percent": 0.2,
+              "target": 10
+            }
+          ],
+          "stopLossConfig": {
+            "initial": -0.5,
+            "trailing": 0.5
+          },
+          "createdAt": null,
+          "currentPrice": 0,
+          "performance": {
+            "pnl": 1.2224529254485668,
+            "pnlPercent": 22.245292544856675,
+            "status": "profitable",
+            "timeElapsed": 31542081.16899991,
+            "timeElapsedHours": 8761.689213611086,
+            "simulatedPnl": 1.2224529254485668,
+            "targetsHit": [],
+            "maxPrice": 215.32755967233885,
+            "maxPnl": 1.2491364696316052,
+            "currentPrice": 0,
+            "actualCallPrice": 172.3811328123685
+          }
+        },
+        "worstPerformer": {
+          "id": 2,
+          "mint": "So11111111111111111111111111111111111111112",
+          "chain": "solana",
+          "token_name": "Wrapped SOL",
+          "token_symbol": "WSOL",
+          "call_price": 150.25,
+          "call_marketcap": null,
+          "call_timestamp": 1729766500,
+          "caller": "SolanaCaller",
+          "source_chat_id": 123456789,
+          "created_at": "2025-10-24 09:40:17",
+          "strategy": [
+            {
+              "percent": 0.5,
+              "target": 2
+            },
+            {
+              "percent": 0.3,
+              "target": 5
+            },
+            {
+              "percent": 0.2,
+              "target": 10
+            }
+          ],
+          "stopLossConfig": {
+            "initial": -0.5,
+            "trailing": 0.5
+          },
+          "createdAt": null,
+          "currentPrice": 0,
+          "performance": {
+            "pnl": 1.2224529254485668,
+            "pnlPercent": 22.245292544856675,
+            "status": "profitable",
+            "timeElapsed": 31542081.16899991,
+            "timeElapsedHours": 8761.689213611086,
+            "simulatedPnl": 1.2224529254485668,
+            "targetsHit": [],
+            "maxPrice": 215.32755967233885,
+            "maxPnl": 1.2491364696316052,
+            "currentPrice": 0,
+            "actualCallPrice": 172.3811328123685
+          }
+        },
+        "successRate": 100
+      }
+    },
+    "recommendations": [
+      {
+        "type": "success_rate",
+        "priority": "low",
+        "message": "Good success rate (100.0%). Current strategy appears effective.",
+        "suggestion": "Continue current approach but monitor for market changes."
+      },
+      {
+        "type": "timing",
+        "priority": "medium",
+        "message": "Average time to profit is 8761.7 hours. Consider longer-term strategies.",
+        "suggestion": "Implement trailing stops or longer profit targets to capture extended moves."
+      }
+    ],
+    "cas": [
+      {
+        "id": 1,
+        "mint": "0xf73f123Ff5fe61fd94fE0496b35f7bF4eBa84444",
+        "chain": "bsc",
+        "token_name": "比比",
+        "token_symbol": "比比",
+        "call_price": 0.00000123,
+        "call_marketcap": null,
+        "call_timestamp": 1729766400,
+        "caller": "TestCaller",
+        "source_chat_id": 123456789,
+        "created_at": "2025-10-24 09:40:12",
+        "strategy": [
+          {
+            "percent": 0.5,
+            "target": 2
+          },
+          {
+            "percent": 0.3,
+            "target": 5
+          },
+          {
+            "percent": 0.2,
+            "target": 10
+          }
+        ],
+        "stopLossConfig": {
+          "initial": -0.5,
+          "trailing": 0.5
+        },
+        "createdAt": null,
+        "currentPrice": 0,
+        "performance": {
+          "pnl": 4.5,
+          "pnlPercent": 350,
+          "status": "2x+",
+          "timeElapsed": 31542184.882999897,
+          "timeElapsedHours": 8761.718023055528,
+          "simulatedPnl": 4.5,
+          "targetsHit": [
+            {
+              "target": 2,
+              "percent": 0.5,
+              "price": 0.000012934015123102952,
+              "timestamp": 1760809500,
+              "pnlSoFar": 1
+            },
+            {
+              "target": 5,
+              "percent": 0.3,
+              "price": 0.00003233503780775738,
+              "timestamp": 1760815200,
+              "pnlSoFar": 2.5
+            },
+            {
+              "target": 10,
+              "percent": 0.2,
+              "price": 0.00006467007561551476,
+              "timestamp": 1760834700,
+              "pnlSoFar": 4.5
+            }
+          ],
+          "maxPrice": 0.0010785860446096342,
+          "maxPnl": 166.78286430685333,
+          "currentPrice": 0,
+          "actualCallPrice": 0.000006467007561551476
+        }
+      },
+      {
+        "id": 2,
+        "mint": "So11111111111111111111111111111111111111112",
+        "chain": "solana",
+        "token_name": "Wrapped SOL",
+        "token_symbol": "WSOL",
+        "call_price": 150.25,
+        "call_marketcap": null,
+        "call_timestamp": 1729766500,
+        "caller": "SolanaCaller",
+        "source_chat_id": 123456789,
+        "created_at": "2025-10-24 09:40:17",
+        "strategy": [
+          {
+            "percent": 0.5,
+            "target": 2
+          },
+          {
+            "percent": 0.3,
+            "target": 5
+          },
+          {
+            "percent": 0.2,
+            "target": 10
+          }
+        ],
+        "stopLossConfig": {
+          "initial": -0.5,
+          "trailing": 0.5
+        },
+        "createdAt": null,
+        "currentPrice": 0,
+        "performance": {
+          "pnl": 1.2224529254485668,
+          "pnlPercent": 22.245292544856675,
+          "status": "profitable",
+          "timeElapsed": 31542081.16899991,
+          "timeElapsedHours": 8761.689213611086,
+          "simulatedPnl": 1.2224529254485668,
+          "targetsHit": [],
+          "maxPrice": 215.32755967233885,
+          "maxPnl": 1.2491364696316052,
+          "currentPrice": 0,
+          "actualCallPrice": 172.3811328123685
+        }
+      }
+    ]
+  },
+  "detailedData": [
+    {
+      "id": 1,
+      "token": "比比 (比比)",
+      "chain": "bsc",
+      "callPrice": 0.00000123,
+      "currentPrice": 0,
+      "performance": {
+        "pnl": 4.5,
+        "pnlPercent": 350,
+        "status": "2x+",
+        "timeElapsed": 31542184.882999897,
+        "timeElapsedHours": 8761.718023055528,
+        "simulatedPnl": 4.5,
+        "targetsHit": [
+          {
+            "target": 2,
+            "percent": 0.5,
+            "price": 0.000012934015123102952,
+            "timestamp": 1760809500,
+            "pnlSoFar": 1
+          },
+          {
+            "target": 5,
+            "percent": 0.3,
+            "price": 0.00003233503780775738,
+            "timestamp": 1760815200,
+            "pnlSoFar": 2.5
+          },
+          {
+            "target": 10,
+            "percent": 0.2,
+            "price": 0.00006467007561551476,
+            "timestamp": 1760834700,
+            "pnlSoFar": 4.5
+          }
+        ],
+        "maxPrice": 0.0010785860446096342,
+        "maxPnl": 166.78286430685333,
+        "currentPrice": 0,
+        "actualCallPrice": 0.000006467007561551476
+      },
+      "callTime": "2024-10-24T21:40:00.000+11:00"
+    },
+    {
+      "id": 2,
+      "token": "Wrapped SOL (WSOL)",
+      "chain": "solana",
+      "callPrice": 150.25,
+      "currentPrice": 0,
+      "performance": {
+        "pnl": 1.2224529254485668,
+        "pnlPercent": 22.245292544856675,
+        "status": "profitable",
+        "timeElapsed": 31542081.16899991,
+        "timeElapsedHours": 8761.689213611086,
+        "simulatedPnl": 1.2224529254485668,
+        "targetsHit": [],
+        "maxPrice": 215.32755967233885,
+        "maxPnl": 1.2491364696316052,
+        "currentPrice": 0,
+        "actualCallPrice": 172.3811328123685
+      },
+      "callTime": "2024-10-24T21:41:40.000+11:00"
+    }
+  ]
+}

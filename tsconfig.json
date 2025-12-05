@@ -15,7 +15,16 @@
     "declarationMap": true,
     "sourceMap": true,
     "downlevelIteration": true,
-    "moduleResolution": "node"
+    "moduleResolution": "node",
+    "paths": {
+      "@jest/globals": ["tests/jest-globals.ts"],
+      "@quantbot/utils": ["./packages/utils/src"],
+      "@quantbot/storage": ["./packages/storage/src"],
+      "@quantbot/monitoring": ["./packages/monitoring/src"],
+      "@quantbot/simulation": ["./packages/simulation/src"],
+      "@quantbot/services": ["./packages/services/src"],
+      "@quantbot/bot": ["./packages/bot/src"]
+    }
   },
   "include": ["src/**/*", "scripts/**/*"],
   "exclude": ["node_modules", "dist", "web", "examples", "scripts/legacy/**/*"]

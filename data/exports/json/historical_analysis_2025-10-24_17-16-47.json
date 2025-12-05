@@ -1,0 +1,3562 @@
+{
+  "timestamp": "2025-10-24T17:16:47.772+11:00",
+  "summary": {
+    "stats": {
+      "total": 29,
+      "profitable": 15,
+      "loss": 14,
+      "majorLoss": 0,
+      "avgPnl": 0.9908858155156864,
+      "medianPnl": 1,
+      "bestPerformer": {
+        "id": 4,
+        "user_id": 1,
+        "chat_id": 1,
+        "mint": "0xd7099595c1de65D8e3E44643d951c8f59Bb34444",
+        "chain": "bsc",
+        "token_name": "Book of Binance",
+        "token_symbol": "ABC",
+        "call_price": 0,
+        "call_marketcap": 0,
+        "call_timestamp": 1761254045,
+        "strategy": [
+          {
+            "percent": 0.5,
+            "target": 2
+          },
+          {
+            "percent": 0.3,
+            "target": 5
+          },
+          {
+            "percent": 0.2,
+            "target": 10
+          }
+        ],
+        "stop_loss_config": "{\"initial\":-0.5,\"trailing\":0.5}",
+        "created_at": "2025-10-24 05:47:58",
+        "stopLossConfig": {
+          "initial": -0.5,
+          "trailing": 0.5
+        },
+        "createdAt": null,
+        "currentPrice": 0,
+        "performance": {
+          "pnl": 1.7275543590834732,
+          "pnlPercent": 72.75543590834732,
+          "status": "1.5x+",
+          "timeElapsed": 32553.736999988556,
+          "timeElapsedHours": 9.042704722219042,
+          "simulatedPnl": 1.7275543590834732,
+          "targetsHit": [
+            {
+              "target": 2,
+              "percent": 0.5,
+              "price": 0.00010852614062910534,
+              "timestamp": 1761274200,
+              "pnlSoFar": 1
+            }
+          ],
+          "maxPrice": 0.0001694867339003486,
+          "maxPnl": 3.123426907432004,
+          "currentPrice": 0,
+          "actualCallPrice": 0.00005426307031455267
+        }
+      },
+      "worstPerformer": {
+        "id": 16,
+        "user_id": 1,
+        "chat_id": 1,
+        "mint": "2NRSswjLuK9kJLdDozhRoiJm6gZHGeFH92Lc2tRQpump",
+        "chain": "solana",
+        "token_name": "Perieklu Exi.0ugoy",
+        "token_symbol": "Perieklu",
+        "call_price": 0,
+        "call_marketcap": 0,
+        "call_timestamp": 1761097095,
+        "strategy": [
+          {
+            "percent": 0.5,
+            "target": 2
+          },
+          {
+            "percent": 0.3,
+            "target": 5
+          },
+          {
+            "percent": 0.2,
+            "target": 10
+          }
+        ],
+        "stop_loss_config": "{\"initial\":-0.5,\"trailing\":0.5}",
+        "created_at": "2025-10-24 06:11:25",
+        "stopLossConfig": {
+          "initial": -0.5,
+          "trailing": 0.5
+        },
+        "createdAt": null,
+        "currentPrice": 0,
+        "performance": {
+          "pnl": 0.5,
+          "pnlPercent": -50,
+          "status": "loss",
+          "timeElapsed": 189511.30100011826,
+          "timeElapsedHours": 52.642028055588405,
+          "simulatedPnl": 0.5,
+          "targetsHit": [],
+          "maxPrice": 0.00004190818443881742,
+          "maxPnl": 1.051450894723009,
+          "currentPrice": 0,
+          "actualCallPrice": 0.00003985748136136932
+        }
+      },
+      "successRate": 51.724137931034484,
+      "avgTimeToProfit": 3.198502425935533,
+      "avgTimeToLoss": 16.191170654765198
+    },
+    "timePeriods": {
+      "last24h": [
+        {
+          "id": 4,
+          "user_id": 1,
+          "chat_id": 1,
+          "mint": "0xd7099595c1de65D8e3E44643d951c8f59Bb34444",
+          "chain": "bsc",
+          "token_name": "Book of Binance",
+          "token_symbol": "ABC",
+          "call_price": 0,
+          "call_marketcap": 0,
+          "call_timestamp": 1761254045,
+          "strategy": [
+            {
+              "percent": 0.5,
+              "target": 2
+            },
+            {
+              "percent": 0.3,
+              "target": 5
+            },
+            {
+              "percent": 0.2,
+              "target": 10
+            }
+          ],
+          "stop_loss_config": "{\"initial\":-0.5,\"trailing\":0.5}",
+          "created_at": "2025-10-24 05:47:58",
+          "stopLossConfig": {
+            "initial": -0.5,
+            "trailing": 0.5
+          },
+          "createdAt": null,
+          "currentPrice": 0,
+          "performance": {
+            "pnl": 1.7275543590834732,
+            "pnlPercent": 72.75543590834732,
+            "status": "1.5x+",
+            "timeElapsed": 32553.736999988556,
+            "timeElapsedHours": 9.042704722219042,
+            "simulatedPnl": 1.7275543590834732,
+            "targetsHit": [
+              {
+                "target": 2,
+                "percent": 0.5,
+                "price": 0.00010852614062910534,
+                "timestamp": 1761274200,
+                "pnlSoFar": 1
+              }
+            ],
+            "maxPrice": 0.0001694867339003486,
+            "maxPnl": 3.123426907432004,
+            "currentPrice": 0,
+            "actualCallPrice": 0.00005426307031455267
+          }
+        },
+        {
+          "id": 18,
+          "user_id": 1,
+          "chat_id": 1,
+          "mint": "0xd7099595c1de65D8e3E44643d951c8f59Bb34444",
+          "chain": "bsc",
+          "token_name": "Book of Binance",
+          "token_symbol": "ABC",
+          "call_price": 0,
+          "call_marketcap": 0,
+          "call_timestamp": 1761254045,
+          "strategy": [
+            {
+              "percent": 0.5,
+              "target": 2
+            },
+            {
+              "percent": 0.3,
+              "target": 5
+            },
+            {
+              "percent": 0.2,
+              "target": 10
+            }
+          ],
+          "stop_loss_config": "{\"initial\":-0.5,\"trailing\":0.5}",
+          "created_at": "2025-10-24 06:11:25",
+          "stopLossConfig": {
+            "initial": -0.5,
+            "trailing": 0.5
+          },
+          "createdAt": null,
+          "currentPrice": 0,
+          "performance": {
+            "pnl": 1.7275543590834732,
+            "pnlPercent": 72.75543590834732,
+            "status": "1.5x+",
+            "timeElapsed": 32554.884999990463,
+            "timeElapsedHours": 9.043023611108461,
+            "simulatedPnl": 1.7275543590834732,
+            "targetsHit": [
+              {
+                "target": 2,
+                "percent": 0.5,
+                "price": 0.00010852614062910534,
+                "timestamp": 1761274200,
+                "pnlSoFar": 1
+              }
+            ],
+            "maxPrice": 0.0001694867339003486,
+            "maxPnl": 3.123426907432004,
+            "currentPrice": 0,
+            "actualCallPrice": 0.00005426307031455267
+          }
+        },
+        {
+          "id": 26,
+          "user_id": 1,
+          "chat_id": 1,
+          "mint": "3wPQhXYqy861Nhoc4bahtpf7G3e89XCLfZ67ptEfZUSA",
+          "chain": "solana",
+          "token_name": "VALOR",
+          "token_symbol": "VALOR",
+          "call_price": 0,
+          "call_marketcap": 0,
+          "call_timestamp": 1761278421,
+          "strategy": [
+            {
+              "percent": 0.5,
+              "target": 2
+            },
+            {
+              "percent": 0.3,
+              "target": 5
+            },
+            {
+              "percent": 0.2,
+              "target": 10
+            }
+          ],
+          "stop_loss_config": "{\"initial\":-0.5,\"trailing\":0.5}",
+          "created_at": "2025-10-24 06:11:25",
+          "stopLossConfig": {
+            "initial": -0.5,
+            "trailing": 0.5
+          },
+          "createdAt": null,
+          "currentPrice": 0,
+          "performance": {
+            "pnl": 1.4789281666608816,
+            "pnlPercent": 47.89281666608816,
+            "status": "profitable",
+            "timeElapsed": 8163.7190001010895,
+            "timeElapsedHours": 2.2676997222503026,
+            "simulatedPnl": 1.4789281666608816,
+            "targetsHit": [],
+            "maxPrice": 0.01092627581429857,
+            "maxPnl": 1.7806326469036793,
+            "currentPrice": 0,
+            "actualCallPrice": 0.006136176281670529
+          }
+        },
+        {
+          "id": 12,
+          "user_id": 1,
+          "chat_id": 1,
+          "mint": "3wPQhXYqy861Nhoc4bahtpf7G3e89XCLfZ67ptEfZUSA",
+          "chain": "solana",
+          "token_name": "VALOR",
+          "token_symbol": "VALOR",
+          "call_price": 0,
+          "call_marketcap": 0,
+          "call_timestamp": 1761278421,
+          "strategy": [
+            {
+              "percent": 0.5,
+              "target": 2
+            },
+            {
+              "percent": 0.3,
+              "target": 5
+            },
+            {
+              "percent": 0.2,
+              "target": 10
+            }
+          ],
+          "stop_loss_config": "{\"initial\":-0.5,\"trailing\":0.5}",
+          "created_at": "2025-10-24 05:47:58",
+          "stopLossConfig": {
+            "initial": -0.5,
+            "trailing": 0.5
+          },
+          "createdAt": null,
+          "currentPrice": 0,
+          "performance": {
+            "pnl": 1.4721695431631148,
+            "pnlPercent": 47.21695431631148,
+            "status": "profitable",
+            "timeElapsed": 8162.8150000572205,
+            "timeElapsedHours": 2.267448611127006,
+            "simulatedPnl": 1.4721695431631148,
+            "targetsHit": [],
+            "maxPrice": 0.01092627581429857,
+            "maxPnl": 1.7806326469036793,
+            "currentPrice": 0,
+            "actualCallPrice": 0.006136176281670529
+          }
+        },
+        {
+          "id": 11,
+          "user_id": 1,
+          "chat_id": 1,
+          "mint": "8LeuS6PwwGa8cEg4ARA2sKnBiWSCQr8ztNXLH6nvpump",
+          "chain": "solana",
+          "token_name": "Morgan",
+          "token_symbol": "MORGAN",
+          "call_price": 0,
+          "call_marketcap": 0,
+          "call_timestamp": 1761278397,
+          "strategy": [
+            {
+              "percent": 0.5,
+              "target": 2
+            },
+            {
+              "percent": 0.3,
+              "target": 5
+            },
+            {
+              "percent": 0.2,
+              "target": 10
+            }
+          ],
+          "stop_loss_config": "{\"initial\":-0.5,\"trailing\":0.5}",
+          "created_at": "2025-10-24 05:47:58",
+          "stopLossConfig": {
+            "initial": -0.5,
+            "trailing": 0.5
+          },
+          "createdAt": null,
+          "currentPrice": 0,
+          "performance": {
+            "pnl": 1.439928157540919,
+            "pnlPercent": 43.99281575409191,
+            "status": "profitable",
+            "timeElapsed": 8189.015000104904,
+            "timeElapsedHours": 2.274726388918029,
+            "simulatedPnl": 1.439928157540919,
+            "targetsHit": [],
+            "maxPrice": 0.00002300979216914197,
+            "maxPnl": 1.4464845004166453,
+            "currentPrice": 0,
+            "actualCallPrice": 0.000015907389372312132
+          }
+        },
+        {
+          "id": 25,
+          "user_id": 1,
+          "chat_id": 1,
+          "mint": "8LeuS6PwwGa8cEg4ARA2sKnBiWSCQr8ztNXLH6nvpump",
+          "chain": "solana",
+          "token_name": "Morgan",
+          "token_symbol": "MORGAN",
+          "call_price": 0,
+          "call_marketcap": 0,
+          "call_timestamp": 1761278397,
+          "strategy": [
+            {
+              "percent": 0.5,
+              "target": 2
+            },
+            {
+              "percent": 0.3,
+              "target": 5
+            },
+            {
+              "percent": 0.2,
+              "target": 10
+            }
+          ],
+          "stop_loss_config": "{\"initial\":-0.5,\"trailing\":0.5}",
+          "created_at": "2025-10-24 06:11:25",
+          "stopLossConfig": {
+            "initial": -0.5,
+            "trailing": 0.5
+          },
+          "createdAt": null,
+          "currentPrice": 0,
+          "performance": {
+            "pnl": 1.439928157540919,
+            "pnlPercent": 43.99281575409191,
+            "status": "profitable",
+            "timeElapsed": 8189.943000078201,
+            "timeElapsedHours": 2.274984166688389,
+            "simulatedPnl": 1.439928157540919,
+            "targetsHit": [],
+            "maxPrice": 0.00002300979216914197,
+            "maxPnl": 1.4464845004166453,
+            "currentPrice": 0,
+            "actualCallPrice": 0.000015907389372312132
+          }
+        },
+        {
+          "id": 14,
+          "user_id": 1,
+          "chat_id": 1,
+          "mint": "0x948d7a6f18511df422184360d1cd5d56f5be4444",
+          "chain": "bsc",
+          "token_name": "Truth Farm",
+          "token_symbol": "TRUTH",
+          "call_price": 0,
+          "call_marketcap": 0,
+          "call_timestamp": 1761278478,
+          "strategy": [
+            {
+              "percent": 0.5,
+              "target": 2
+            },
+            {
+              "percent": 0.3,
+              "target": 5
+            },
+            {
+              "percent": 0.2,
+              "target": 10
+            }
+          ],
+          "stop_loss_config": "{\"initial\":-0.5,\"trailing\":0.5}",
+          "created_at": "2025-10-24 05:47:58",
+          "stopLossConfig": {
+            "initial": -0.5,
+            "trailing": 0.5
+          },
+          "createdAt": null,
+          "currentPrice": 0,
+          "performance": {
+            "pnl": 1.114786182933292,
+            "pnlPercent": 11.478618293329191,
+            "status": "profitable",
+            "timeElapsed": 8102.380000114441,
+            "timeElapsedHours": 2.2506611111429002,
+            "simulatedPnl": 1.114786182933292,
+            "targetsHit": [],
+            "maxPrice": 0.00008926645756771207,
+            "maxPnl": 1.2422577418287062,
+            "currentPrice": 0,
+            "actualCallPrice": 0.00007185824210385235
+          }
+        },
+        {
+          "id": 28,
+          "user_id": 1,
+          "chat_id": 1,
+          "mint": "0x948d7a6f18511df422184360d1cd5d56f5be4444",
+          "chain": "bsc",
+          "token_name": "Truth Farm",
+          "token_symbol": "TRUTH",
+          "call_price": 0,
+          "call_marketcap": 0,
+          "call_timestamp": 1761278478,
+          "strategy": [
+            {
+              "percent": 0.5,
+              "target": 2
+            },
+            {
+              "percent": 0.3,
+              "target": 5
+            },
+            {
+              "percent": 0.2,
+              "target": 10
+            }
+          ],
+          "stop_loss_config": "{\"initial\":-0.5,\"trailing\":0.5}",
+          "created_at": "2025-10-24 06:11:25",
+          "stopLossConfig": {
+            "initial": -0.5,
+            "trailing": 0.5
+          },
+          "createdAt": null,
+          "currentPrice": 0,
+          "performance": {
+            "pnl": 1.114786182933292,
+            "pnlPercent": 11.478618293329191,
+            "status": "profitable",
+            "timeElapsed": 8103.237999916077,
+            "timeElapsedHours": 2.2508994444211323,
+            "simulatedPnl": 1.114786182933292,
+            "targetsHit": [],
+            "maxPrice": 0.00008926645756771207,
+            "maxPnl": 1.2422577418287062,
+            "currentPrice": 0,
+            "actualCallPrice": 0.00007185824210385235
+          }
+        },
+        {
+          "id": 15,
+          "user_id": 1,
+          "chat_id": 1,
+          "mint": "GLytM23ENbqrRedr1LZQCGdxQSw76CM6Xwvbsc1Cpump",
+          "chain": "solana",
+          "token_name": "My Mom Is Kinda Homeless",
+          "token_symbol": "SPEED",
+          "call_price": 0,
+          "call_marketcap": 0,
+          "call_timestamp": 1761278589,
+          "strategy": [
+            {
+              "percent": 0.5,
+              "target": 2
+            },
+            {
+              "percent": 0.3,
+              "target": 5
+            },
+            {
+              "percent": 0.2,
+              "target": 10
+            }
+          ],
+          "stop_loss_config": "{\"initial\":-0.5,\"trailing\":0.5}",
+          "created_at": "2025-10-24 05:47:58",
+          "stopLossConfig": {
+            "initial": -0.5,
+            "trailing": 0.5
+          },
+          "createdAt": null,
+          "currentPrice": 0,
+          "performance": {
+            "pnl": 1.0441750366812481,
+            "pnlPercent": 4.417503668124811,
+            "status": "profitable",
+            "timeElapsed": 7989.121999979019,
+            "timeElapsedHours": 2.2192005555497274,
+            "simulatedPnl": 1.0441750366812481,
+            "targetsHit": [],
+            "maxPrice": 0.000499642768696616,
+            "maxPnl": 1.0553384329928264,
+            "currentPrice": 0,
+            "actualCallPrice": 0.00047344316579060123
+          }
+        },
+        {
+          "id": 29,
+          "user_id": 1,
+          "chat_id": 1,
+          "mint": "GLytM23ENbqrRedr1LZQCGdxQSw76CM6Xwvbsc1Cpump",
+          "chain": "solana",
+          "token_name": "My Mom Is Kinda Homeless",
+          "token_symbol": "SPEED",
+          "call_price": 0,
+          "call_marketcap": 0,
+          "call_timestamp": 1761278589,
+          "strategy": [
+            {
+              "percent": 0.5,
+              "target": 2
+            },
+            {
+              "percent": 0.3,
+              "target": 5
+            },
+            {
+              "percent": 0.2,
+              "target": 10
+            }
+          ],
+          "stop_loss_config": "{\"initial\":-0.5,\"trailing\":0.5}",
+          "created_at": "2025-10-24 06:11:25",
+          "stopLossConfig": {
+            "initial": -0.5,
+            "trailing": 0.5
+          },
+          "createdAt": null,
+          "currentPrice": 0,
+          "performance": {
+            "pnl": 1.0441750366812481,
+            "pnlPercent": 4.417503668124811,
+            "status": "profitable",
+            "timeElapsed": 7990.421000003815,
+            "timeElapsedHours": 2.2195613888899484,
+            "simulatedPnl": 1.0441750366812481,
+            "targetsHit": [],
+            "maxPrice": 0.000499642768696616,
+            "maxPnl": 1.0553384329928264,
+            "currentPrice": 0,
+            "actualCallPrice": 0.00047344316579060123
+          }
+        },
+        {
+          "id": 7,
+          "user_id": 1,
+          "chat_id": 1,
+          "mint": "0x49fb8ad7578148E17c3eF0C344CE23A66ed372C4",
+          "chain": "ethereum",
+          "token_name": "tao.bot",
+          "token_symbol": "TAOBOT",
+          "call_price": 0,
+          "call_marketcap": 0,
+          "call_timestamp": 1761278172,
+          "strategy": [
+            {
+              "percent": 0.5,
+              "target": 2
+            },
+            {
+              "percent": 0.3,
+              "target": 5
+            },
+            {
+              "percent": 0.2,
+              "target": 10
+            }
+          ],
+          "stop_loss_config": "{\"initial\":-0.5,\"trailing\":0.5}",
+          "created_at": "2025-10-24 05:47:58",
+          "stopLossConfig": {
+            "initial": -0.5,
+            "trailing": 0.5
+          },
+          "createdAt": null,
+          "currentPrice": 0,
+          "performance": {
+            "pnl": 1.0178773686021179,
+            "pnlPercent": 1.787736860211786,
+            "status": "profitable",
+            "timeElapsed": 8421.292000055313,
+            "timeElapsedHours": 2.3392477777931426,
+            "simulatedPnl": 1.0178773686021179,
+            "targetsHit": [],
+            "maxPrice": 0.2874445459172134,
+            "maxPnl": 1.0178773686021179,
+            "currentPrice": 0,
+            "actualCallPrice": 0.28239604768103826
+          }
+        },
+        {
+          "id": 21,
+          "user_id": 1,
+          "chat_id": 1,
+          "mint": "0x49fb8ad7578148E17c3eF0C344CE23A66ed372C4",
+          "chain": "ethereum",
+          "token_name": "tao.bot",
+          "token_symbol": "TAOBOT",
+          "call_price": 0,
+          "call_marketcap": 0,
+          "call_timestamp": 1761278172,
+          "strategy": [
+            {
+              "percent": 0.5,
+              "target": 2
+            },
+            {
+              "percent": 0.3,
+              "target": 5
+            },
+            {
+              "percent": 0.2,
+              "target": 10
+            }
+          ],
+          "stop_loss_config": "{\"initial\":-0.5,\"trailing\":0.5}",
+          "created_at": "2025-10-24 06:11:25",
+          "stopLossConfig": {
+            "initial": -0.5,
+            "trailing": 0.5
+          },
+          "createdAt": null,
+          "currentPrice": 0,
+          "performance": {
+            "pnl": 1.0178773686021179,
+            "pnlPercent": 1.787736860211786,
+            "status": "profitable",
+            "timeElapsed": 8422.147000074387,
+            "timeElapsedHours": 2.3394852777984405,
+            "simulatedPnl": 1.0178773686021179,
+            "targetsHit": [],
+            "maxPrice": 0.2874445459172134,
+            "maxPnl": 1.0178773686021179,
+            "currentPrice": 0,
+            "actualCallPrice": 0.28239604768103826
+          }
+        },
+        {
+          "id": 1,
+          "user_id": 5970380897,
+          "chat_id": -1002523160967,
+          "mint": "0xad120361bfb68a9baecaed665626d08e7f544444",
+          "chain": "bsc",
+          "token_name": "Wo Qui Non",
+          "token_symbol": "WO QUI NON",
+          "call_price": 0,
+          "call_marketcap": 0,
+          "call_timestamp": 1761279005,
+          "strategy": [
+            {
+              "percent": 0.5,
+              "target": 2
+            },
+            {
+              "percent": 0.3,
+              "target": 5
+            },
+            {
+              "percent": 0.2,
+              "target": 10
+            }
+          ],
+          "stop_loss_config": "{\"initial\":-0.5,\"trailing\":0.5}",
+          "created_at": "2025-10-24 04:10:05",
+          "stopLossConfig": {
+            "initial": -0.5,
+            "trailing": 0.5
+          },
+          "createdAt": null,
+          "currentPrice": 0,
+          "performance": {
+            "pnl": 1,
+            "pnlPercent": 0,
+            "status": "profitable",
+            "timeElapsed": 7571.447000026703,
+            "timeElapsedHours": 2.1031797222296396,
+            "simulatedPnl": 1,
+            "targetsHit": [],
+            "maxPrice": 0.000006465845599932858,
+            "maxPnl": 1,
+            "currentPrice": 0,
+            "actualCallPrice": 0.000006465845599932858
+          }
+        },
+        {
+          "id": 6,
+          "user_id": 1,
+          "chat_id": 1,
+          "mint": "CHittmVZ152MCUxSVEyzrfxX7D9EFuyAGJNMsgXfBAGS",
+          "chain": "solana",
+          "token_name": "Alpha Arena",
+          "token_symbol": "Arena",
+          "call_price": 0,
+          "call_marketcap": 0,
+          "call_timestamp": 1761277443,
+          "strategy": [
+            {
+              "percent": 0.5,
+              "target": 2
+            },
+            {
+              "percent": 0.3,
+              "target": 5
+            },
+            {
+              "percent": 0.2,
+              "target": 10
+            }
+          ],
+          "stop_loss_config": "{\"initial\":-0.5,\"trailing\":0.5}",
+          "created_at": "2025-10-24 05:47:58",
+          "stopLossConfig": {
+            "initial": -0.5,
+            "trailing": 0.5
+          },
+          "createdAt": null,
+          "currentPrice": 0,
+          "performance": {
+            "pnl": 1,
+            "pnlPercent": 0,
+            "status": "profitable",
+            "timeElapsed": 9152.016000032425,
+            "timeElapsedHours": 2.5422266666756737,
+            "simulatedPnl": 1,
+            "targetsHit": [],
+            "maxPrice": 0.00000517433831799118,
+            "maxPnl": 1,
+            "currentPrice": 0,
+            "actualCallPrice": 0.00000517433831799118
+          }
+        },
+        {
+          "id": 20,
+          "user_id": 1,
+          "chat_id": 1,
+          "mint": "CHittmVZ152MCUxSVEyzrfxX7D9EFuyAGJNMsgXfBAGS",
+          "chain": "solana",
+          "token_name": "Alpha Arena",
+          "token_symbol": "Arena",
+          "call_price": 0,
+          "call_marketcap": 0,
+          "call_timestamp": 1761277443,
+          "strategy": [
+            {
+              "percent": 0.5,
+              "target": 2
+            },
+            {
+              "percent": 0.3,
+              "target": 5
+            },
+            {
+              "percent": 0.2,
+              "target": 10
+            }
+          ],
+          "stop_loss_config": "{\"initial\":-0.5,\"trailing\":0.5}",
+          "created_at": "2025-10-24 06:11:25",
+          "stopLossConfig": {
+            "initial": -0.5,
+            "trailing": 0.5
+          },
+          "createdAt": null,
+          "currentPrice": 0,
+          "performance": {
+            "pnl": 1,
+            "pnlPercent": 0,
+            "status": "profitable",
+            "timeElapsed": 9152.953999996185,
+            "timeElapsedHours": 2.5424872222211627,
+            "simulatedPnl": 1,
+            "targetsHit": [],
+            "maxPrice": 0.00000517433831799118,
+            "maxPnl": 1,
+            "currentPrice": 0,
+            "actualCallPrice": 0.00000517433831799118
+          }
+        },
+        {
+          "id": 9,
+          "user_id": 1,
+          "chat_id": 1,
+          "mint": "4PumgvwXS6F1ScZxwtJxRf7M2N4RzGgVCHEo4pgJpump",
+          "chain": "solana",
+          "token_name": "r/antiwork",
+          "token_symbol": "antiwork",
+          "call_price": 0,
+          "call_marketcap": 0,
+          "call_timestamp": 1761278367,
+          "strategy": [
+            {
+              "percent": 0.5,
+              "target": 2
+            },
+            {
+              "percent": 0.3,
+              "target": 5
+            },
+            {
+              "percent": 0.2,
+              "target": 10
+            }
+          ],
+          "stop_loss_config": "{\"initial\":-0.5,\"trailing\":0.5}",
+          "created_at": "2025-10-24 05:47:58",
+          "stopLossConfig": {
+            "initial": -0.5,
+            "trailing": 0.5
+          },
+          "createdAt": null,
+          "currentPrice": 0,
+          "performance": {
+            "pnl": 0.9059791862825721,
+            "pnlPercent": -9.402081371742788,
+            "status": "loss",
+            "timeElapsed": 8222.615000009537,
+            "timeElapsedHours": 2.2840597222248715,
+            "simulatedPnl": 0.9059791862825721,
+            "targetsHit": [],
+            "maxPrice": 0.000007090509131523848,
+            "maxPnl": 1,
+            "currentPrice": 0,
+            "actualCallPrice": 0.000007090509131523848
+          }
+        },
+        {
+          "id": 23,
+          "user_id": 1,
+          "chat_id": 1,
+          "mint": "4PumgvwXS6F1ScZxwtJxRf7M2N4RzGgVCHEo4pgJpump",
+          "chain": "solana",
+          "token_name": "r/antiwork",
+          "token_symbol": "antiwork",
+          "call_price": 0,
+          "call_marketcap": 0,
+          "call_timestamp": 1761278367,
+          "strategy": [
+            {
+              "percent": 0.5,
+              "target": 2
+            },
+            {
+              "percent": 0.3,
+              "target": 5
+            },
+            {
+              "percent": 0.2,
+              "target": 10
+            }
+          ],
+          "stop_loss_config": "{\"initial\":-0.5,\"trailing\":0.5}",
+          "created_at": "2025-10-24 06:11:25",
+          "stopLossConfig": {
+            "initial": -0.5,
+            "trailing": 0.5
+          },
+          "createdAt": null,
+          "currentPrice": 0,
+          "performance": {
+            "pnl": 0.9059791862825721,
+            "pnlPercent": -9.402081371742788,
+            "status": "loss",
+            "timeElapsed": 8223.519000053406,
+            "timeElapsedHours": 2.2843108333481683,
+            "simulatedPnl": 0.9059791862825721,
+            "targetsHit": [],
+            "maxPrice": 0.000007090509131523848,
+            "maxPnl": 1,
+            "currentPrice": 0,
+            "actualCallPrice": 0.000007090509131523848
+          }
+        },
+        {
+          "id": 5,
+          "user_id": 1,
+          "chat_id": 1,
+          "mint": "GMvCfcZg8YvkkQmwDaAzCtHDrrEtgE74nQpQ7xNabonk",
+          "chain": "solana",
+          "token_name": "1 coin can change your life",
+          "token_symbol": "1",
+          "call_price": 0,
+          "call_marketcap": 0,
+          "call_timestamp": 1761274868,
+          "strategy": [
+            {
+              "percent": 0.5,
+              "target": 2
+            },
+            {
+              "percent": 0.3,
+              "target": 5
+            },
+            {
+              "percent": 0.2,
+              "target": 10
+            }
+          ],
+          "stop_loss_config": "{\"initial\":-0.5,\"trailing\":0.5}",
+          "created_at": "2025-10-24 05:47:58",
+          "stopLossConfig": {
+            "initial": -0.5,
+            "trailing": 0.5
+          },
+          "createdAt": null,
+          "currentPrice": 0,
+          "performance": {
+            "pnl": 0.8657761904755099,
+            "pnlPercent": -13.422380952449009,
+            "status": "loss",
+            "timeElapsed": 11728.865000009537,
+            "timeElapsedHours": 3.2580180555582046,
+            "simulatedPnl": 0.8657761904755099,
+            "targetsHit": [],
+            "maxPrice": 0.018218415863678256,
+            "maxPnl": 1.0311926702908318,
+            "currentPrice": 0,
+            "actualCallPrice": 0.01766732482547615
+          }
+        },
+        {
+          "id": 19,
+          "user_id": 1,
+          "chat_id": 1,
+          "mint": "GMvCfcZg8YvkkQmwDaAzCtHDrrEtgE74nQpQ7xNabonk",
+          "chain": "solana",
+          "token_name": "1 coin can change your life",
+          "token_symbol": "1",
+          "call_price": 0,
+          "call_marketcap": 0,
+          "call_timestamp": 1761274868,
+          "strategy": [
+            {
+              "percent": 0.5,
+              "target": 2
+            },
+            {
+              "percent": 0.3,
+              "target": 5
+            },
+            {
+              "percent": 0.2,
+              "target": 10
+            }
+          ],
+          "stop_loss_config": "{\"initial\":-0.5,\"trailing\":0.5}",
+          "created_at": "2025-10-24 06:11:25",
+          "stopLossConfig": {
+            "initial": -0.5,
+            "trailing": 0.5
+          },
+          "createdAt": null,
+          "currentPrice": 0,
+          "performance": {
+            "pnl": 0.8657761904755099,
+            "pnlPercent": -13.422380952449009,
+            "status": "loss",
+            "timeElapsed": 11729.766000032425,
+            "timeElapsedHours": 3.25826833334234,
+            "simulatedPnl": 0.8657761904755099,
+            "targetsHit": [],
+            "maxPrice": 0.018218415863678256,
+            "maxPnl": 1.0311926702908318,
+            "currentPrice": 0,
+            "actualCallPrice": 0.01766732482547615
+          }
+        },
+        {
+          "id": 8,
+          "user_id": 1,
+          "chat_id": 1,
+          "mint": "kNesN31SJqvyryfoUdUiwmPiPMwjB8ssarREpw1pump",
+          "chain": "solana",
+          "token_name": "spawner",
+          "token_symbol": "SPAWN",
+          "call_price": 0,
+          "call_marketcap": 0,
+          "call_timestamp": 1761278343,
+          "strategy": [
+            {
+              "percent": 0.5,
+              "target": 2
+            },
+            {
+              "percent": 0.3,
+              "target": 5
+            },
+            {
+              "percent": 0.2,
+              "target": 10
+            }
+          ],
+          "stop_loss_config": "{\"initial\":-0.5,\"trailing\":0.5}",
+          "created_at": "2025-10-24 05:47:58",
+          "stopLossConfig": {
+            "initial": -0.5,
+            "trailing": 0.5
+          },
+          "createdAt": null,
+          "currentPrice": 0,
+          "performance": {
+            "pnl": 0.8622286440197816,
+            "pnlPercent": -13.77713559802184,
+            "status": "loss",
+            "timeElapsed": 8248.444000005722,
+            "timeElapsedHours": 2.291234444446034,
+            "simulatedPnl": 0.8622286440197816,
+            "targetsHit": [],
+            "maxPrice": 0.0000051957373466026045,
+            "maxPnl": 1,
+            "currentPrice": 0,
+            "actualCallPrice": 0.0000051957373466026045
+          }
+        },
+        {
+          "id": 22,
+          "user_id": 1,
+          "chat_id": 1,
+          "mint": "kNesN31SJqvyryfoUdUiwmPiPMwjB8ssarREpw1pump",
+          "chain": "solana",
+          "token_name": "spawner",
+          "token_symbol": "SPAWN",
+          "call_price": 0,
+          "call_marketcap": 0,
+          "call_timestamp": 1761278343,
+          "strategy": [
+            {
+              "percent": 0.5,
+              "target": 2
+            },
+            {
+              "percent": 0.3,
+              "target": 5
+            },
+            {
+              "percent": 0.2,
+              "target": 10
+            }
+          ],
+          "stop_loss_config": "{\"initial\":-0.5,\"trailing\":0.5}",
+          "created_at": "2025-10-24 06:11:25",
+          "stopLossConfig": {
+            "initial": -0.5,
+            "trailing": 0.5
+          },
+          "createdAt": null,
+          "currentPrice": 0,
+          "performance": {
+            "pnl": 0.8622286440197816,
+            "pnlPercent": -13.77713559802184,
+            "status": "loss",
+            "timeElapsed": 8249.362999916077,
+            "timeElapsedHours": 2.2914897221989103,
+            "simulatedPnl": 0.8622286440197816,
+            "targetsHit": [],
+            "maxPrice": 0.0000051957373466026045,
+            "maxPnl": 1,
+            "currentPrice": 0,
+            "actualCallPrice": 0.0000051957373466026045
+          }
+        },
+        {
+          "id": 10,
+          "user_id": 1,
+          "chat_id": 1,
+          "mint": "0x055224a7Ba65eA0B40f306526b2c0ED01A5A4444",
+          "chain": "bsc",
+          "token_name": "TERMINAL OF 4",
+          "token_symbol": "FOUR",
+          "call_price": 0,
+          "call_marketcap": 0,
+          "call_timestamp": 1761278392,
+          "strategy": [
+            {
+              "percent": 0.5,
+              "target": 2
+            },
+            {
+              "percent": 0.3,
+              "target": 5
+            },
+            {
+              "percent": 0.2,
+              "target": 10
+            }
+          ],
+          "stop_loss_config": "{\"initial\":-0.5,\"trailing\":0.5}",
+          "created_at": "2025-10-24 05:47:58",
+          "stopLossConfig": {
+            "initial": -0.5,
+            "trailing": 0.5
+          },
+          "createdAt": null,
+          "currentPrice": 0,
+          "performance": {
+            "pnl": 0.7165186852940862,
+            "pnlPercent": -28.348131470591376,
+            "status": "loss",
+            "timeElapsed": 8195.892999887466,
+            "timeElapsedHours": 2.2766369444131853,
+            "simulatedPnl": 0.7165186852940862,
+            "targetsHit": [],
+            "maxPrice": 0.0003391213619011337,
+            "maxPnl": 1,
+            "currentPrice": 0,
+            "actualCallPrice": 0.0003391213619011337
+          }
+        },
+        {
+          "id": 24,
+          "user_id": 1,
+          "chat_id": 1,
+          "mint": "0x055224a7Ba65eA0B40f306526b2c0ED01A5A4444",
+          "chain": "bsc",
+          "token_name": "TERMINAL OF 4",
+          "token_symbol": "FOUR",
+          "call_price": 0,
+          "call_marketcap": 0,
+          "call_timestamp": 1761278392,
+          "strategy": [
+            {
+              "percent": 0.5,
+              "target": 2
+            },
+            {
+              "percent": 0.3,
+              "target": 5
+            },
+            {
+              "percent": 0.2,
+              "target": 10
+            }
+          ],
+          "stop_loss_config": "{\"initial\":-0.5,\"trailing\":0.5}",
+          "created_at": "2025-10-24 06:11:25",
+          "stopLossConfig": {
+            "initial": -0.5,
+            "trailing": 0.5
+          },
+          "createdAt": null,
+          "currentPrice": 0,
+          "performance": {
+            "pnl": 0.7165186852940862,
+            "pnlPercent": -28.348131470591376,
+            "status": "loss",
+            "timeElapsed": 8196.773000001907,
+            "timeElapsedHours": 2.276881388889419,
+            "simulatedPnl": 0.7165186852940862,
+            "targetsHit": [],
+            "maxPrice": 0.0003391213619011337,
+            "maxPnl": 1,
+            "currentPrice": 0,
+            "actualCallPrice": 0.0003391213619011337
+          }
+        },
+        {
+          "id": 13,
+          "user_id": 1,
+          "chat_id": 1,
+          "mint": "0x44448dc89a385101bf0ddfadba77532f98ba3bcd",
+          "chain": "bsc",
+          "token_name": "Bitcoin Vs Gold",
+          "token_symbol": "BVG",
+          "call_price": 0,
+          "call_marketcap": 0,
+          "call_timestamp": 1761278426,
+          "strategy": [
+            {
+              "percent": 0.5,
+              "target": 2
+            },
+            {
+              "percent": 0.3,
+              "target": 5
+            },
+            {
+              "percent": 0.2,
+              "target": 10
+            }
+          ],
+          "stop_loss_config": "{\"initial\":-0.5,\"trailing\":0.5}",
+          "created_at": "2025-10-24 05:47:58",
+          "stopLossConfig": {
+            "initial": -0.5,
+            "trailing": 0.5
+          },
+          "createdAt": null,
+          "currentPrice": 0,
+          "performance": {
+            "pnl": 0.697471659152449,
+            "pnlPercent": -30.252834084755097,
+            "status": "loss",
+            "timeElapsed": 8156.107000112534,
+            "timeElapsedHours": 2.2655852778090373,
+            "simulatedPnl": 0.697471659152449,
+            "targetsHit": [],
+            "maxPrice": 0.0001768957548100083,
+            "maxPnl": 1.2950703219313242,
+            "currentPrice": 0,
+            "actualCallPrice": 0.0001365916211763741
+          }
+        },
+        {
+          "id": 27,
+          "user_id": 1,
+          "chat_id": 1,
+          "mint": "0x44448dc89a385101bf0ddfadba77532f98ba3bcd",
+          "chain": "bsc",
+          "token_name": "Bitcoin Vs Gold",
+          "token_symbol": "BVG",
+          "call_price": 0,
+          "call_marketcap": 0,
+          "call_timestamp": 1761278426,
+          "strategy": [
+            {
+              "percent": 0.5,
+              "target": 2
+            },
+            {
+              "percent": 0.3,
+              "target": 5
+            },
+            {
+              "percent": 0.2,
+              "target": 10
+            }
+          ],
+          "stop_loss_config": "{\"initial\":-0.5,\"trailing\":0.5}",
+          "created_at": "2025-10-24 06:11:25",
+          "stopLossConfig": {
+            "initial": -0.5,
+            "trailing": 0.5
+          },
+          "createdAt": null,
+          "currentPrice": 0,
+          "performance": {
+            "pnl": 0.697471659152449,
+            "pnlPercent": -30.252834084755097,
+            "status": "loss",
+            "timeElapsed": 8156.9690001010895,
+            "timeElapsedHours": 2.2658247222503025,
+            "simulatedPnl": 0.697471659152449,
+            "targetsHit": [],
+            "maxPrice": 0.0001768957548100083,
+            "maxPnl": 1.2950703219313242,
+            "currentPrice": 0,
+            "actualCallPrice": 0.0001365916211763741
+          }
+        }
+      ],
+      "last7d": [
+        {
+          "id": 3,
+          "user_id": 1,
+          "chat_id": 1,
+          "mint": "7VoKsrSfdxp9Cz1MQvh6VfrAACbSrxhS73ySr5d4pump",
+          "chain": "solana",
+          "token_name": "CodeLABS",
+          "token_symbol": "CLABS",
+          "call_price": 0,
+          "call_marketcap": 0,
+          "call_timestamp": 1761112649,
+          "strategy": [
+            {
+              "percent": 0.5,
+              "target": 2
+            },
+            {
+              "percent": 0.3,
+              "target": 5
+            },
+            {
+              "percent": 0.2,
+              "target": 10
+            }
+          ],
+          "stop_loss_config": "{\"initial\":-0.5,\"trailing\":0.5}",
+          "created_at": "2025-10-24 05:47:58",
+          "stopLossConfig": {
+            "initial": -0.5,
+            "trailing": 0.5
+          },
+          "createdAt": null,
+          "currentPrice": 0,
+          "performance": {
+            "pnl": 0.5,
+            "pnlPercent": -50,
+            "status": "loss",
+            "timeElapsed": 173952.0309998989,
+            "timeElapsedHours": 48.32000861108303,
+            "simulatedPnl": 0.5,
+            "targetsHit": [],
+            "maxPrice": 0.00003927392929062048,
+            "maxPnl": 1.4356982151680275,
+            "currentPrice": 0,
+            "actualCallPrice": 0.00002735528182433802
+          }
+        },
+        {
+          "id": 17,
+          "user_id": 1,
+          "chat_id": 1,
+          "mint": "7VoKsrSfdxp9Cz1MQvh6VfrAACbSrxhS73ySr5d4pump",
+          "chain": "solana",
+          "token_name": "CodeLABS",
+          "token_symbol": "CLABS",
+          "call_price": 0,
+          "call_marketcap": 0,
+          "call_timestamp": 1761112649,
+          "strategy": [
+            {
+              "percent": 0.5,
+              "target": 2
+            },
+            {
+              "percent": 0.3,
+              "target": 5
+            },
+            {
+              "percent": 0.2,
+              "target": 10
+            }
+          ],
+          "stop_loss_config": "{\"initial\":-0.5,\"trailing\":0.5}",
+          "created_at": "2025-10-24 06:11:25",
+          "stopLossConfig": {
+            "initial": -0.5,
+            "trailing": 0.5
+          },
+          "createdAt": null,
+          "currentPrice": 0,
+          "performance": {
+            "pnl": 0.5,
+            "pnlPercent": -50,
+            "status": "loss",
+            "timeElapsed": 173953.80100011826,
+            "timeElapsedHours": 48.32050027781062,
+            "simulatedPnl": 0.5,
+            "targetsHit": [],
+            "maxPrice": 0.00003927392929062048,
+            "maxPnl": 1.4356982151680275,
+            "currentPrice": 0,
+            "actualCallPrice": 0.00002735528182433802
+          }
+        },
+        {
+          "id": 2,
+          "user_id": 1,
+          "chat_id": 1,
+          "mint": "2NRSswjLuK9kJLdDozhRoiJm6gZHGeFH92Lc2tRQpump",
+          "chain": "solana",
+          "token_name": "Perieklu Exi.0ugoy",
+          "token_symbol": "Perieklu",
+          "call_price": 0,
+          "call_marketcap": 0,
+          "call_timestamp": 1761097095,
+          "strategy": [
+            {
+              "percent": 0.5,
+              "target": 2
+            },
+            {
+              "percent": 0.3,
+              "target": 5
+            },
+            {
+              "percent": 0.2,
+              "target": 10
+            }
+          ],
+          "stop_loss_config": "{\"initial\":-0.5,\"trailing\":0.5}",
+          "created_at": "2025-10-24 05:47:58",
+          "stopLossConfig": {
+            "initial": -0.5,
+            "trailing": 0.5
+          },
+          "createdAt": null,
+          "currentPrice": 0,
+          "performance": {
+            "pnl": 0.5,
+            "pnlPercent": -50,
+            "status": "loss",
+            "timeElapsed": 189509.55399990082,
+            "timeElapsedHours": 52.641542777750225,
+            "simulatedPnl": 0.5,
+            "targetsHit": [],
+            "maxPrice": 0.00004190818443881742,
+            "maxPnl": 1.051450894723009,
+            "currentPrice": 0,
+            "actualCallPrice": 0.00003985748136136932
+          }
+        },
+        {
+          "id": 16,
+          "user_id": 1,
+          "chat_id": 1,
+          "mint": "2NRSswjLuK9kJLdDozhRoiJm6gZHGeFH92Lc2tRQpump",
+          "chain": "solana",
+          "token_name": "Perieklu Exi.0ugoy",
+          "token_symbol": "Perieklu",
+          "call_price": 0,
+          "call_marketcap": 0,
+          "call_timestamp": 1761097095,
+          "strategy": [
+            {
+              "percent": 0.5,
+              "target": 2
+            },
+            {
+              "percent": 0.3,
+              "target": 5
+            },
+            {
+              "percent": 0.2,
+              "target": 10
+            }
+          ],
+          "stop_loss_config": "{\"initial\":-0.5,\"trailing\":0.5}",
+          "created_at": "2025-10-24 06:11:25",
+          "stopLossConfig": {
+            "initial": -0.5,
+            "trailing": 0.5
+          },
+          "createdAt": null,
+          "currentPrice": 0,
+          "performance": {
+            "pnl": 0.5,
+            "pnlPercent": -50,
+            "status": "loss",
+            "timeElapsed": 189511.30100011826,
+            "timeElapsedHours": 52.642028055588405,
+            "simulatedPnl": 0.5,
+            "targetsHit": [],
+            "maxPrice": 0.00004190818443881742,
+            "maxPnl": 1.051450894723009,
+            "currentPrice": 0,
+            "actualCallPrice": 0.00003985748136136932
+          }
+        }
+      ],
+      "last30d": [],
+      "older": []
+    },
+    "chainAnalysis": {
+      "bsc": {
+        "total": 9,
+        "profitable": 0,
+        "loss": 0,
+        "majorLoss": 0,
+        "avgPnl": 0,
+        "bestPerformer": null,
+        "worstPerformer": null
+      },
+      "solana": {
+        "total": 18,
+        "profitable": 0,
+        "loss": 0,
+        "majorLoss": 0,
+        "avgPnl": 0,
+        "bestPerformer": null,
+        "worstPerformer": null
+      },
+      "ethereum": {
+        "total": 2,
+        "profitable": 0,
+        "loss": 0,
+        "majorLoss": 0,
+        "avgPnl": 0,
+        "bestPerformer": null,
+        "worstPerformer": null
+      }
+    },
+    "recommendations": [
+      {
+        "type": "chain_performance",
+        "priority": "medium",
+        "message": "Poor performance on BSC (0.0% success rate).",
+        "suggestion": "Consider reducing bsc allocations or implementing stricter filters for bsc tokens."
+      },
+      {
+        "type": "chain_performance",
+        "priority": "medium",
+        "message": "Poor performance on SOLANA (0.0% success rate).",
+        "suggestion": "Consider reducing solana allocations or implementing stricter filters for solana tokens."
+      },
+      {
+        "type": "chain_performance",
+        "priority": "medium",
+        "message": "Poor performance on ETHEREUM (0.0% success rate).",
+        "suggestion": "Consider reducing ethereum allocations or implementing stricter filters for ethereum tokens."
+      }
+    ],
+    "cas": [
+      {
+        "id": 4,
+        "user_id": 1,
+        "chat_id": 1,
+        "mint": "0xd7099595c1de65D8e3E44643d951c8f59Bb34444",
+        "chain": "bsc",
+        "token_name": "Book of Binance",
+        "token_symbol": "ABC",
+        "call_price": 0,
+        "call_marketcap": 0,
+        "call_timestamp": 1761254045,
+        "strategy": [
+          {
+            "percent": 0.5,
+            "target": 2
+          },
+          {
+            "percent": 0.3,
+            "target": 5
+          },
+          {
+            "percent": 0.2,
+            "target": 10
+          }
+        ],
+        "stop_loss_config": "{\"initial\":-0.5,\"trailing\":0.5}",
+        "created_at": "2025-10-24 05:47:58",
+        "stopLossConfig": {
+          "initial": -0.5,
+          "trailing": 0.5
+        },
+        "createdAt": null,
+        "currentPrice": 0,
+        "performance": {
+          "pnl": 1.7275543590834732,
+          "pnlPercent": 72.75543590834732,
+          "status": "1.5x+",
+          "timeElapsed": 32553.736999988556,
+          "timeElapsedHours": 9.042704722219042,
+          "simulatedPnl": 1.7275543590834732,
+          "targetsHit": [
+            {
+              "target": 2,
+              "percent": 0.5,
+              "price": 0.00010852614062910534,
+              "timestamp": 1761274200,
+              "pnlSoFar": 1
+            }
+          ],
+          "maxPrice": 0.0001694867339003486,
+          "maxPnl": 3.123426907432004,
+          "currentPrice": 0,
+          "actualCallPrice": 0.00005426307031455267
+        }
+      },
+      {
+        "id": 18,
+        "user_id": 1,
+        "chat_id": 1,
+        "mint": "0xd7099595c1de65D8e3E44643d951c8f59Bb34444",
+        "chain": "bsc",
+        "token_name": "Book of Binance",
+        "token_symbol": "ABC",
+        "call_price": 0,
+        "call_marketcap": 0,
+        "call_timestamp": 1761254045,
+        "strategy": [
+          {
+            "percent": 0.5,
+            "target": 2
+          },
+          {
+            "percent": 0.3,
+            "target": 5
+          },
+          {
+            "percent": 0.2,
+            "target": 10
+          }
+        ],
+        "stop_loss_config": "{\"initial\":-0.5,\"trailing\":0.5}",
+        "created_at": "2025-10-24 06:11:25",
+        "stopLossConfig": {
+          "initial": -0.5,
+          "trailing": 0.5
+        },
+        "createdAt": null,
+        "currentPrice": 0,
+        "performance": {
+          "pnl": 1.7275543590834732,
+          "pnlPercent": 72.75543590834732,
+          "status": "1.5x+",
+          "timeElapsed": 32554.884999990463,
+          "timeElapsedHours": 9.043023611108461,
+          "simulatedPnl": 1.7275543590834732,
+          "targetsHit": [
+            {
+              "target": 2,
+              "percent": 0.5,
+              "price": 0.00010852614062910534,
+              "timestamp": 1761274200,
+              "pnlSoFar": 1
+            }
+          ],
+          "maxPrice": 0.0001694867339003486,
+          "maxPnl": 3.123426907432004,
+          "currentPrice": 0,
+          "actualCallPrice": 0.00005426307031455267
+        }
+      },
+      {
+        "id": 26,
+        "user_id": 1,
+        "chat_id": 1,
+        "mint": "3wPQhXYqy861Nhoc4bahtpf7G3e89XCLfZ67ptEfZUSA",
+        "chain": "solana",
+        "token_name": "VALOR",
+        "token_symbol": "VALOR",
+        "call_price": 0,
+        "call_marketcap": 0,
+        "call_timestamp": 1761278421,
+        "strategy": [
+          {
+            "percent": 0.5,
+            "target": 2
+          },
+          {
+            "percent": 0.3,
+            "target": 5
+          },
+          {
+            "percent": 0.2,
+            "target": 10
+          }
+        ],
+        "stop_loss_config": "{\"initial\":-0.5,\"trailing\":0.5}",
+        "created_at": "2025-10-24 06:11:25",
+        "stopLossConfig": {
+          "initial": -0.5,
+          "trailing": 0.5
+        },
+        "createdAt": null,
+        "currentPrice": 0,
+        "performance": {
+          "pnl": 1.4789281666608816,
+          "pnlPercent": 47.89281666608816,
+          "status": "profitable",
+          "timeElapsed": 8163.7190001010895,
+          "timeElapsedHours": 2.2676997222503026,
+          "simulatedPnl": 1.4789281666608816,
+          "targetsHit": [],
+          "maxPrice": 0.01092627581429857,
+          "maxPnl": 1.7806326469036793,
+          "currentPrice": 0,
+          "actualCallPrice": 0.006136176281670529
+        }
+      },
+      {
+        "id": 12,
+        "user_id": 1,
+        "chat_id": 1,
+        "mint": "3wPQhXYqy861Nhoc4bahtpf7G3e89XCLfZ67ptEfZUSA",
+        "chain": "solana",
+        "token_name": "VALOR",
+        "token_symbol": "VALOR",
+        "call_price": 0,
+        "call_marketcap": 0,
+        "call_timestamp": 1761278421,
+        "strategy": [
+          {
+            "percent": 0.5,
+            "target": 2
+          },
+          {
+            "percent": 0.3,
+            "target": 5
+          },
+          {
+            "percent": 0.2,
+            "target": 10
+          }
+        ],
+        "stop_loss_config": "{\"initial\":-0.5,\"trailing\":0.5}",
+        "created_at": "2025-10-24 05:47:58",
+        "stopLossConfig": {
+          "initial": -0.5,
+          "trailing": 0.5
+        },
+        "createdAt": null,
+        "currentPrice": 0,
+        "performance": {
+          "pnl": 1.4721695431631148,
+          "pnlPercent": 47.21695431631148,
+          "status": "profitable",
+          "timeElapsed": 8162.8150000572205,
+          "timeElapsedHours": 2.267448611127006,
+          "simulatedPnl": 1.4721695431631148,
+          "targetsHit": [],
+          "maxPrice": 0.01092627581429857,
+          "maxPnl": 1.7806326469036793,
+          "currentPrice": 0,
+          "actualCallPrice": 0.006136176281670529
+        }
+      },
+      {
+        "id": 11,
+        "user_id": 1,
+        "chat_id": 1,
+        "mint": "8LeuS6PwwGa8cEg4ARA2sKnBiWSCQr8ztNXLH6nvpump",
+        "chain": "solana",
+        "token_name": "Morgan",
+        "token_symbol": "MORGAN",
+        "call_price": 0,
+        "call_marketcap": 0,
+        "call_timestamp": 1761278397,
+        "strategy": [
+          {
+            "percent": 0.5,
+            "target": 2
+          },
+          {
+            "percent": 0.3,
+            "target": 5
+          },
+          {
+            "percent": 0.2,
+            "target": 10
+          }
+        ],
+        "stop_loss_config": "{\"initial\":-0.5,\"trailing\":0.5}",
+        "created_at": "2025-10-24 05:47:58",
+        "stopLossConfig": {
+          "initial": -0.5,
+          "trailing": 0.5
+        },
+        "createdAt": null,
+        "currentPrice": 0,
+        "performance": {
+          "pnl": 1.439928157540919,
+          "pnlPercent": 43.99281575409191,
+          "status": "profitable",
+          "timeElapsed": 8189.015000104904,
+          "timeElapsedHours": 2.274726388918029,
+          "simulatedPnl": 1.439928157540919,
+          "targetsHit": [],
+          "maxPrice": 0.00002300979216914197,
+          "maxPnl": 1.4464845004166453,
+          "currentPrice": 0,
+          "actualCallPrice": 0.000015907389372312132
+        }
+      },
+      {
+        "id": 25,
+        "user_id": 1,
+        "chat_id": 1,
+        "mint": "8LeuS6PwwGa8cEg4ARA2sKnBiWSCQr8ztNXLH6nvpump",
+        "chain": "solana",
+        "token_name": "Morgan",
+        "token_symbol": "MORGAN",
+        "call_price": 0,
+        "call_marketcap": 0,
+        "call_timestamp": 1761278397,
+        "strategy": [
+          {
+            "percent": 0.5,
+            "target": 2
+          },
+          {
+            "percent": 0.3,
+            "target": 5
+          },
+          {
+            "percent": 0.2,
+            "target": 10
+          }
+        ],
+        "stop_loss_config": "{\"initial\":-0.5,\"trailing\":0.5}",
+        "created_at": "2025-10-24 06:11:25",
+        "stopLossConfig": {
+          "initial": -0.5,
+          "trailing": 0.5
+        },
+        "createdAt": null,
+        "currentPrice": 0,
+        "performance": {
+          "pnl": 1.439928157540919,
+          "pnlPercent": 43.99281575409191,
+          "status": "profitable",
+          "timeElapsed": 8189.943000078201,
+          "timeElapsedHours": 2.274984166688389,
+          "simulatedPnl": 1.439928157540919,
+          "targetsHit": [],
+          "maxPrice": 0.00002300979216914197,
+          "maxPnl": 1.4464845004166453,
+          "currentPrice": 0,
+          "actualCallPrice": 0.000015907389372312132
+        }
+      },
+      {
+        "id": 14,
+        "user_id": 1,
+        "chat_id": 1,
+        "mint": "0x948d7a6f18511df422184360d1cd5d56f5be4444",
+        "chain": "bsc",
+        "token_name": "Truth Farm",
+        "token_symbol": "TRUTH",
+        "call_price": 0,
+        "call_marketcap": 0,
+        "call_timestamp": 1761278478,
+        "strategy": [
+          {
+            "percent": 0.5,
+            "target": 2
+          },
+          {
+            "percent": 0.3,
+            "target": 5
+          },
+          {
+            "percent": 0.2,
+            "target": 10
+          }
+        ],
+        "stop_loss_config": "{\"initial\":-0.5,\"trailing\":0.5}",
+        "created_at": "2025-10-24 05:47:58",
+        "stopLossConfig": {
+          "initial": -0.5,
+          "trailing": 0.5
+        },
+        "createdAt": null,
+        "currentPrice": 0,
+        "performance": {
+          "pnl": 1.114786182933292,
+          "pnlPercent": 11.478618293329191,
+          "status": "profitable",
+          "timeElapsed": 8102.380000114441,
+          "timeElapsedHours": 2.2506611111429002,
+          "simulatedPnl": 1.114786182933292,
+          "targetsHit": [],
+          "maxPrice": 0.00008926645756771207,
+          "maxPnl": 1.2422577418287062,
+          "currentPrice": 0,
+          "actualCallPrice": 0.00007185824210385235
+        }
+      },
+      {
+        "id": 28,
+        "user_id": 1,
+        "chat_id": 1,
+        "mint": "0x948d7a6f18511df422184360d1cd5d56f5be4444",
+        "chain": "bsc",
+        "token_name": "Truth Farm",
+        "token_symbol": "TRUTH",
+        "call_price": 0,
+        "call_marketcap": 0,
+        "call_timestamp": 1761278478,
+        "strategy": [
+          {
+            "percent": 0.5,
+            "target": 2
+          },
+          {
+            "percent": 0.3,
+            "target": 5
+          },
+          {
+            "percent": 0.2,
+            "target": 10
+          }
+        ],
+        "stop_loss_config": "{\"initial\":-0.5,\"trailing\":0.5}",
+        "created_at": "2025-10-24 06:11:25",
+        "stopLossConfig": {
+          "initial": -0.5,
+          "trailing": 0.5
+        },
+        "createdAt": null,
+        "currentPrice": 0,
+        "performance": {
+          "pnl": 1.114786182933292,
+          "pnlPercent": 11.478618293329191,
+          "status": "profitable",
+          "timeElapsed": 8103.237999916077,
+          "timeElapsedHours": 2.2508994444211323,
+          "simulatedPnl": 1.114786182933292,
+          "targetsHit": [],
+          "maxPrice": 0.00008926645756771207,
+          "maxPnl": 1.2422577418287062,
+          "currentPrice": 0,
+          "actualCallPrice": 0.00007185824210385235
+        }
+      },
+      {
+        "id": 15,
+        "user_id": 1,
+        "chat_id": 1,
+        "mint": "GLytM23ENbqrRedr1LZQCGdxQSw76CM6Xwvbsc1Cpump",
+        "chain": "solana",
+        "token_name": "My Mom Is Kinda Homeless",
+        "token_symbol": "SPEED",
+        "call_price": 0,
+        "call_marketcap": 0,
+        "call_timestamp": 1761278589,
+        "strategy": [
+          {
+            "percent": 0.5,
+            "target": 2
+          },
+          {
+            "percent": 0.3,
+            "target": 5
+          },
+          {
+            "percent": 0.2,
+            "target": 10
+          }
+        ],
+        "stop_loss_config": "{\"initial\":-0.5,\"trailing\":0.5}",
+        "created_at": "2025-10-24 05:47:58",
+        "stopLossConfig": {
+          "initial": -0.5,
+          "trailing": 0.5
+        },
+        "createdAt": null,
+        "currentPrice": 0,
+        "performance": {
+          "pnl": 1.0441750366812481,
+          "pnlPercent": 4.417503668124811,
+          "status": "profitable",
+          "timeElapsed": 7989.121999979019,
+          "timeElapsedHours": 2.2192005555497274,
+          "simulatedPnl": 1.0441750366812481,
+          "targetsHit": [],
+          "maxPrice": 0.000499642768696616,
+          "maxPnl": 1.0553384329928264,
+          "currentPrice": 0,
+          "actualCallPrice": 0.00047344316579060123
+        }
+      },
+      {
+        "id": 29,
+        "user_id": 1,
+        "chat_id": 1,
+        "mint": "GLytM23ENbqrRedr1LZQCGdxQSw76CM6Xwvbsc1Cpump",
+        "chain": "solana",
+        "token_name": "My Mom Is Kinda Homeless",
+        "token_symbol": "SPEED",
+        "call_price": 0,
+        "call_marketcap": 0,
+        "call_timestamp": 1761278589,
+        "strategy": [
+          {
+            "percent": 0.5,
+            "target": 2
+          },
+          {
+            "percent": 0.3,
+            "target": 5
+          },
+          {
+            "percent": 0.2,
+            "target": 10
+          }
+        ],
+        "stop_loss_config": "{\"initial\":-0.5,\"trailing\":0.5}",
+        "created_at": "2025-10-24 06:11:25",
+        "stopLossConfig": {
+          "initial": -0.5,
+          "trailing": 0.5
+        },
+        "createdAt": null,
+        "currentPrice": 0,
+        "performance": {
+          "pnl": 1.0441750366812481,
+          "pnlPercent": 4.417503668124811,
+          "status": "profitable",
+          "timeElapsed": 7990.421000003815,
+          "timeElapsedHours": 2.2195613888899484,
+          "simulatedPnl": 1.0441750366812481,
+          "targetsHit": [],
+          "maxPrice": 0.000499642768696616,
+          "maxPnl": 1.0553384329928264,
+          "currentPrice": 0,
+          "actualCallPrice": 0.00047344316579060123
+        }
+      },
+      {
+        "id": 7,
+        "user_id": 1,
+        "chat_id": 1,
+        "mint": "0x49fb8ad7578148E17c3eF0C344CE23A66ed372C4",
+        "chain": "ethereum",
+        "token_name": "tao.bot",
+        "token_symbol": "TAOBOT",
+        "call_price": 0,
+        "call_marketcap": 0,
+        "call_timestamp": 1761278172,
+        "strategy": [
+          {
+            "percent": 0.5,
+            "target": 2
+          },
+          {
+            "percent": 0.3,
+            "target": 5
+          },
+          {
+            "percent": 0.2,
+            "target": 10
+          }
+        ],
+        "stop_loss_config": "{\"initial\":-0.5,\"trailing\":0.5}",
+        "created_at": "2025-10-24 05:47:58",
+        "stopLossConfig": {
+          "initial": -0.5,
+          "trailing": 0.5
+        },
+        "createdAt": null,
+        "currentPrice": 0,
+        "performance": {
+          "pnl": 1.0178773686021179,
+          "pnlPercent": 1.787736860211786,
+          "status": "profitable",
+          "timeElapsed": 8421.292000055313,
+          "timeElapsedHours": 2.3392477777931426,
+          "simulatedPnl": 1.0178773686021179,
+          "targetsHit": [],
+          "maxPrice": 0.2874445459172134,
+          "maxPnl": 1.0178773686021179,
+          "currentPrice": 0,
+          "actualCallPrice": 0.28239604768103826
+        }
+      },
+      {
+        "id": 21,
+        "user_id": 1,
+        "chat_id": 1,
+        "mint": "0x49fb8ad7578148E17c3eF0C344CE23A66ed372C4",
+        "chain": "ethereum",
+        "token_name": "tao.bot",
+        "token_symbol": "TAOBOT",
+        "call_price": 0,
+        "call_marketcap": 0,
+        "call_timestamp": 1761278172,
+        "strategy": [
+          {
+            "percent": 0.5,
+            "target": 2
+          },
+          {
+            "percent": 0.3,
+            "target": 5
+          },
+          {
+            "percent": 0.2,
+            "target": 10
+          }
+        ],
+        "stop_loss_config": "{\"initial\":-0.5,\"trailing\":0.5}",
+        "created_at": "2025-10-24 06:11:25",
+        "stopLossConfig": {
+          "initial": -0.5,
+          "trailing": 0.5
+        },
+        "createdAt": null,
+        "currentPrice": 0,
+        "performance": {
+          "pnl": 1.0178773686021179,
+          "pnlPercent": 1.787736860211786,
+          "status": "profitable",
+          "timeElapsed": 8422.147000074387,
+          "timeElapsedHours": 2.3394852777984405,
+          "simulatedPnl": 1.0178773686021179,
+          "targetsHit": [],
+          "maxPrice": 0.2874445459172134,
+          "maxPnl": 1.0178773686021179,
+          "currentPrice": 0,
+          "actualCallPrice": 0.28239604768103826
+        }
+      },
+      {
+        "id": 1,
+        "user_id": 5970380897,
+        "chat_id": -1002523160967,
+        "mint": "0xad120361bfb68a9baecaed665626d08e7f544444",
+        "chain": "bsc",
+        "token_name": "Wo Qui Non",
+        "token_symbol": "WO QUI NON",
+        "call_price": 0,
+        "call_marketcap": 0,
+        "call_timestamp": 1761279005,
+        "strategy": [
+          {
+            "percent": 0.5,
+            "target": 2
+          },
+          {
+            "percent": 0.3,
+            "target": 5
+          },
+          {
+            "percent": 0.2,
+            "target": 10
+          }
+        ],
+        "stop_loss_config": "{\"initial\":-0.5,\"trailing\":0.5}",
+        "created_at": "2025-10-24 04:10:05",
+        "stopLossConfig": {
+          "initial": -0.5,
+          "trailing": 0.5
+        },
+        "createdAt": null,
+        "currentPrice": 0,
+        "performance": {
+          "pnl": 1,
+          "pnlPercent": 0,
+          "status": "profitable",
+          "timeElapsed": 7571.447000026703,
+          "timeElapsedHours": 2.1031797222296396,
+          "simulatedPnl": 1,
+          "targetsHit": [],
+          "maxPrice": 0.000006465845599932858,
+          "maxPnl": 1,
+          "currentPrice": 0,
+          "actualCallPrice": 0.000006465845599932858
+        }
+      },
+      {
+        "id": 6,
+        "user_id": 1,
+        "chat_id": 1,
+        "mint": "CHittmVZ152MCUxSVEyzrfxX7D9EFuyAGJNMsgXfBAGS",
+        "chain": "solana",
+        "token_name": "Alpha Arena",
+        "token_symbol": "Arena",
+        "call_price": 0,
+        "call_marketcap": 0,
+        "call_timestamp": 1761277443,
+        "strategy": [
+          {
+            "percent": 0.5,
+            "target": 2
+          },
+          {
+            "percent": 0.3,
+            "target": 5
+          },
+          {
+            "percent": 0.2,
+            "target": 10
+          }
+        ],
+        "stop_loss_config": "{\"initial\":-0.5,\"trailing\":0.5}",
+        "created_at": "2025-10-24 05:47:58",
+        "stopLossConfig": {
+          "initial": -0.5,
+          "trailing": 0.5
+        },
+        "createdAt": null,
+        "currentPrice": 0,
+        "performance": {
+          "pnl": 1,
+          "pnlPercent": 0,
+          "status": "profitable",
+          "timeElapsed": 9152.016000032425,
+          "timeElapsedHours": 2.5422266666756737,
+          "simulatedPnl": 1,
+          "targetsHit": [],
+          "maxPrice": 0.00000517433831799118,
+          "maxPnl": 1,
+          "currentPrice": 0,
+          "actualCallPrice": 0.00000517433831799118
+        }
+      },
+      {
+        "id": 20,
+        "user_id": 1,
+        "chat_id": 1,
+        "mint": "CHittmVZ152MCUxSVEyzrfxX7D9EFuyAGJNMsgXfBAGS",
+        "chain": "solana",
+        "token_name": "Alpha Arena",
+        "token_symbol": "Arena",
+        "call_price": 0,
+        "call_marketcap": 0,
+        "call_timestamp": 1761277443,
+        "strategy": [
+          {
+            "percent": 0.5,
+            "target": 2
+          },
+          {
+            "percent": 0.3,
+            "target": 5
+          },
+          {
+            "percent": 0.2,
+            "target": 10
+          }
+        ],
+        "stop_loss_config": "{\"initial\":-0.5,\"trailing\":0.5}",
+        "created_at": "2025-10-24 06:11:25",
+        "stopLossConfig": {
+          "initial": -0.5,
+          "trailing": 0.5
+        },
+        "createdAt": null,
+        "currentPrice": 0,
+        "performance": {
+          "pnl": 1,
+          "pnlPercent": 0,
+          "status": "profitable",
+          "timeElapsed": 9152.953999996185,
+          "timeElapsedHours": 2.5424872222211627,
+          "simulatedPnl": 1,
+          "targetsHit": [],
+          "maxPrice": 0.00000517433831799118,
+          "maxPnl": 1,
+          "currentPrice": 0,
+          "actualCallPrice": 0.00000517433831799118
+        }
+      },
+      {
+        "id": 9,
+        "user_id": 1,
+        "chat_id": 1,
+        "mint": "4PumgvwXS6F1ScZxwtJxRf7M2N4RzGgVCHEo4pgJpump",
+        "chain": "solana",
+        "token_name": "r/antiwork",
+        "token_symbol": "antiwork",
+        "call_price": 0,
+        "call_marketcap": 0,
+        "call_timestamp": 1761278367,
+        "strategy": [
+          {
+            "percent": 0.5,
+            "target": 2
+          },
+          {
+            "percent": 0.3,
+            "target": 5
+          },
+          {
+            "percent": 0.2,
+            "target": 10
+          }
+        ],
+        "stop_loss_config": "{\"initial\":-0.5,\"trailing\":0.5}",
+        "created_at": "2025-10-24 05:47:58",
+        "stopLossConfig": {
+          "initial": -0.5,
+          "trailing": 0.5
+        },
+        "createdAt": null,
+        "currentPrice": 0,
+        "performance": {
+          "pnl": 0.9059791862825721,
+          "pnlPercent": -9.402081371742788,
+          "status": "loss",
+          "timeElapsed": 8222.615000009537,
+          "timeElapsedHours": 2.2840597222248715,
+          "simulatedPnl": 0.9059791862825721,
+          "targetsHit": [],
+          "maxPrice": 0.000007090509131523848,
+          "maxPnl": 1,
+          "currentPrice": 0,
+          "actualCallPrice": 0.000007090509131523848
+        }
+      },
+      {
+        "id": 23,
+        "user_id": 1,
+        "chat_id": 1,
+        "mint": "4PumgvwXS6F1ScZxwtJxRf7M2N4RzGgVCHEo4pgJpump",
+        "chain": "solana",
+        "token_name": "r/antiwork",
+        "token_symbol": "antiwork",
+        "call_price": 0,
+        "call_marketcap": 0,
+        "call_timestamp": 1761278367,
+        "strategy": [
+          {
+            "percent": 0.5,
+            "target": 2
+          },
+          {
+            "percent": 0.3,
+            "target": 5
+          },
+          {
+            "percent": 0.2,
+            "target": 10
+          }
+        ],
+        "stop_loss_config": "{\"initial\":-0.5,\"trailing\":0.5}",
+        "created_at": "2025-10-24 06:11:25",
+        "stopLossConfig": {
+          "initial": -0.5,
+          "trailing": 0.5
+        },
+        "createdAt": null,
+        "currentPrice": 0,
+        "performance": {
+          "pnl": 0.9059791862825721,
+          "pnlPercent": -9.402081371742788,
+          "status": "loss",
+          "timeElapsed": 8223.519000053406,
+          "timeElapsedHours": 2.2843108333481683,
+          "simulatedPnl": 0.9059791862825721,
+          "targetsHit": [],
+          "maxPrice": 0.000007090509131523848,
+          "maxPnl": 1,
+          "currentPrice": 0,
+          "actualCallPrice": 0.000007090509131523848
+        }
+      },
+      {
+        "id": 5,
+        "user_id": 1,
+        "chat_id": 1,
+        "mint": "GMvCfcZg8YvkkQmwDaAzCtHDrrEtgE74nQpQ7xNabonk",
+        "chain": "solana",
+        "token_name": "1 coin can change your life",
+        "token_symbol": "1",
+        "call_price": 0,
+        "call_marketcap": 0,
+        "call_timestamp": 1761274868,
+        "strategy": [
+          {
+            "percent": 0.5,
+            "target": 2
+          },
+          {
+            "percent": 0.3,
+            "target": 5
+          },
+          {
+            "percent": 0.2,
+            "target": 10
+          }
+        ],
+        "stop_loss_config": "{\"initial\":-0.5,\"trailing\":0.5}",
+        "created_at": "2025-10-24 05:47:58",
+        "stopLossConfig": {
+          "initial": -0.5,
+          "trailing": 0.5
+        },
+        "createdAt": null,
+        "currentPrice": 0,
+        "performance": {
+          "pnl": 0.8657761904755099,
+          "pnlPercent": -13.422380952449009,
+          "status": "loss",
+          "timeElapsed": 11728.865000009537,
+          "timeElapsedHours": 3.2580180555582046,
+          "simulatedPnl": 0.8657761904755099,
+          "targetsHit": [],
+          "maxPrice": 0.018218415863678256,
+          "maxPnl": 1.0311926702908318,
+          "currentPrice": 0,
+          "actualCallPrice": 0.01766732482547615
+        }
+      },
+      {
+        "id": 19,
+        "user_id": 1,
+        "chat_id": 1,
+        "mint": "GMvCfcZg8YvkkQmwDaAzCtHDrrEtgE74nQpQ7xNabonk",
+        "chain": "solana",
+        "token_name": "1 coin can change your life",
+        "token_symbol": "1",
+        "call_price": 0,
+        "call_marketcap": 0,
+        "call_timestamp": 1761274868,
+        "strategy": [
+          {
+            "percent": 0.5,
+            "target": 2
+          },
+          {
+            "percent": 0.3,
+            "target": 5
+          },
+          {
+            "percent": 0.2,
+            "target": 10
+          }
+        ],
+        "stop_loss_config": "{\"initial\":-0.5,\"trailing\":0.5}",
+        "created_at": "2025-10-24 06:11:25",
+        "stopLossConfig": {
+          "initial": -0.5,
+          "trailing": 0.5
+        },
+        "createdAt": null,
+        "currentPrice": 0,
+        "performance": {
+          "pnl": 0.8657761904755099,
+          "pnlPercent": -13.422380952449009,
+          "status": "loss",
+          "timeElapsed": 11729.766000032425,
+          "timeElapsedHours": 3.25826833334234,
+          "simulatedPnl": 0.8657761904755099,
+          "targetsHit": [],
+          "maxPrice": 0.018218415863678256,
+          "maxPnl": 1.0311926702908318,
+          "currentPrice": 0,
+          "actualCallPrice": 0.01766732482547615
+        }
+      },
+      {
+        "id": 8,
+        "user_id": 1,
+        "chat_id": 1,
+        "mint": "kNesN31SJqvyryfoUdUiwmPiPMwjB8ssarREpw1pump",
+        "chain": "solana",
+        "token_name": "spawner",
+        "token_symbol": "SPAWN",
+        "call_price": 0,
+        "call_marketcap": 0,
+        "call_timestamp": 1761278343,
+        "strategy": [
+          {
+            "percent": 0.5,
+            "target": 2
+          },
+          {
+            "percent": 0.3,
+            "target": 5
+          },
+          {
+            "percent": 0.2,
+            "target": 10
+          }
+        ],
+        "stop_loss_config": "{\"initial\":-0.5,\"trailing\":0.5}",
+        "created_at": "2025-10-24 05:47:58",
+        "stopLossConfig": {
+          "initial": -0.5,
+          "trailing": 0.5
+        },
+        "createdAt": null,
+        "currentPrice": 0,
+        "performance": {
+          "pnl": 0.8622286440197816,
+          "pnlPercent": -13.77713559802184,
+          "status": "loss",
+          "timeElapsed": 8248.444000005722,
+          "timeElapsedHours": 2.291234444446034,
+          "simulatedPnl": 0.8622286440197816,
+          "targetsHit": [],
+          "maxPrice": 0.0000051957373466026045,
+          "maxPnl": 1,
+          "currentPrice": 0,
+          "actualCallPrice": 0.0000051957373466026045
+        }
+      },
+      {
+        "id": 22,
+        "user_id": 1,
+        "chat_id": 1,
+        "mint": "kNesN31SJqvyryfoUdUiwmPiPMwjB8ssarREpw1pump",
+        "chain": "solana",
+        "token_name": "spawner",
+        "token_symbol": "SPAWN",
+        "call_price": 0,
+        "call_marketcap": 0,
+        "call_timestamp": 1761278343,
+        "strategy": [
+          {
+            "percent": 0.5,
+            "target": 2
+          },
+          {
+            "percent": 0.3,
+            "target": 5
+          },
+          {
+            "percent": 0.2,
+            "target": 10
+          }
+        ],
+        "stop_loss_config": "{\"initial\":-0.5,\"trailing\":0.5}",
+        "created_at": "2025-10-24 06:11:25",
+        "stopLossConfig": {
+          "initial": -0.5,
+          "trailing": 0.5
+        },
+        "createdAt": null,
+        "currentPrice": 0,
+        "performance": {
+          "pnl": 0.8622286440197816,
+          "pnlPercent": -13.77713559802184,
+          "status": "loss",
+          "timeElapsed": 8249.362999916077,
+          "timeElapsedHours": 2.2914897221989103,
+          "simulatedPnl": 0.8622286440197816,
+          "targetsHit": [],
+          "maxPrice": 0.0000051957373466026045,
+          "maxPnl": 1,
+          "currentPrice": 0,
+          "actualCallPrice": 0.0000051957373466026045
+        }
+      },
+      {
+        "id": 10,
+        "user_id": 1,
+        "chat_id": 1,
+        "mint": "0x055224a7Ba65eA0B40f306526b2c0ED01A5A4444",
+        "chain": "bsc",
+        "token_name": "TERMINAL OF 4",
+        "token_symbol": "FOUR",
+        "call_price": 0,
+        "call_marketcap": 0,
+        "call_timestamp": 1761278392,
+        "strategy": [
+          {
+            "percent": 0.5,
+            "target": 2
+          },
+          {
+            "percent": 0.3,
+            "target": 5
+          },
+          {
+            "percent": 0.2,
+            "target": 10
+          }
+        ],
+        "stop_loss_config": "{\"initial\":-0.5,\"trailing\":0.5}",
+        "created_at": "2025-10-24 05:47:58",
+        "stopLossConfig": {
+          "initial": -0.5,
+          "trailing": 0.5
+        },
+        "createdAt": null,
+        "currentPrice": 0,
+        "performance": {
+          "pnl": 0.7165186852940862,
+          "pnlPercent": -28.348131470591376,
+          "status": "loss",
+          "timeElapsed": 8195.892999887466,
+          "timeElapsedHours": 2.2766369444131853,
+          "simulatedPnl": 0.7165186852940862,
+          "targetsHit": [],
+          "maxPrice": 0.0003391213619011337,
+          "maxPnl": 1,
+          "currentPrice": 0,
+          "actualCallPrice": 0.0003391213619011337
+        }
+      },
+      {
+        "id": 24,
+        "user_id": 1,
+        "chat_id": 1,
+        "mint": "0x055224a7Ba65eA0B40f306526b2c0ED01A5A4444",
+        "chain": "bsc",
+        "token_name": "TERMINAL OF 4",
+        "token_symbol": "FOUR",
+        "call_price": 0,
+        "call_marketcap": 0,
+        "call_timestamp": 1761278392,
+        "strategy": [
+          {
+            "percent": 0.5,
+            "target": 2
+          },
+          {
+            "percent": 0.3,
+            "target": 5
+          },
+          {
+            "percent": 0.2,
+            "target": 10
+          }
+        ],
+        "stop_loss_config": "{\"initial\":-0.5,\"trailing\":0.5}",
+        "created_at": "2025-10-24 06:11:25",
+        "stopLossConfig": {
+          "initial": -0.5,
+          "trailing": 0.5
+        },
+        "createdAt": null,
+        "currentPrice": 0,
+        "performance": {
+          "pnl": 0.7165186852940862,
+          "pnlPercent": -28.348131470591376,
+          "status": "loss",
+          "timeElapsed": 8196.773000001907,
+          "timeElapsedHours": 2.276881388889419,
+          "simulatedPnl": 0.7165186852940862,
+          "targetsHit": [],
+          "maxPrice": 0.0003391213619011337,
+          "maxPnl": 1,
+          "currentPrice": 0,
+          "actualCallPrice": 0.0003391213619011337
+        }
+      },
+      {
+        "id": 13,
+        "user_id": 1,
+        "chat_id": 1,
+        "mint": "0x44448dc89a385101bf0ddfadba77532f98ba3bcd",
+        "chain": "bsc",
+        "token_name": "Bitcoin Vs Gold",
+        "token_symbol": "BVG",
+        "call_price": 0,
+        "call_marketcap": 0,
+        "call_timestamp": 1761278426,
+        "strategy": [
+          {
+            "percent": 0.5,
+            "target": 2
+          },
+          {
+            "percent": 0.3,
+            "target": 5
+          },
+          {
+            "percent": 0.2,
+            "target": 10
+          }
+        ],
+        "stop_loss_config": "{\"initial\":-0.5,\"trailing\":0.5}",
+        "created_at": "2025-10-24 05:47:58",
+        "stopLossConfig": {
+          "initial": -0.5,
+          "trailing": 0.5
+        },
+        "createdAt": null,
+        "currentPrice": 0,
+        "performance": {
+          "pnl": 0.697471659152449,
+          "pnlPercent": -30.252834084755097,
+          "status": "loss",
+          "timeElapsed": 8156.107000112534,
+          "timeElapsedHours": 2.2655852778090373,
+          "simulatedPnl": 0.697471659152449,
+          "targetsHit": [],
+          "maxPrice": 0.0001768957548100083,
+          "maxPnl": 1.2950703219313242,
+          "currentPrice": 0,
+          "actualCallPrice": 0.0001365916211763741
+        }
+      },
+      {
+        "id": 27,
+        "user_id": 1,
+        "chat_id": 1,
+        "mint": "0x44448dc89a385101bf0ddfadba77532f98ba3bcd",
+        "chain": "bsc",
+        "token_name": "Bitcoin Vs Gold",
+        "token_symbol": "BVG",
+        "call_price": 0,
+        "call_marketcap": 0,
+        "call_timestamp": 1761278426,
+        "strategy": [
+          {
+            "percent": 0.5,
+            "target": 2
+          },
+          {
+            "percent": 0.3,
+            "target": 5
+          },
+          {
+            "percent": 0.2,
+            "target": 10
+          }
+        ],
+        "stop_loss_config": "{\"initial\":-0.5,\"trailing\":0.5}",
+        "created_at": "2025-10-24 06:11:25",
+        "stopLossConfig": {
+          "initial": -0.5,
+          "trailing": 0.5
+        },
+        "createdAt": null,
+        "currentPrice": 0,
+        "performance": {
+          "pnl": 0.697471659152449,
+          "pnlPercent": -30.252834084755097,
+          "status": "loss",
+          "timeElapsed": 8156.9690001010895,
+          "timeElapsedHours": 2.2658247222503025,
+          "simulatedPnl": 0.697471659152449,
+          "targetsHit": [],
+          "maxPrice": 0.0001768957548100083,
+          "maxPnl": 1.2950703219313242,
+          "currentPrice": 0,
+          "actualCallPrice": 0.0001365916211763741
+        }
+      },
+      {
+        "id": 3,
+        "user_id": 1,
+        "chat_id": 1,
+        "mint": "7VoKsrSfdxp9Cz1MQvh6VfrAACbSrxhS73ySr5d4pump",
+        "chain": "solana",
+        "token_name": "CodeLABS",
+        "token_symbol": "CLABS",
+        "call_price": 0,
+        "call_marketcap": 0,
+        "call_timestamp": 1761112649,
+        "strategy": [
+          {
+            "percent": 0.5,
+            "target": 2
+          },
+          {
+            "percent": 0.3,
+            "target": 5
+          },
+          {
+            "percent": 0.2,
+            "target": 10
+          }
+        ],
+        "stop_loss_config": "{\"initial\":-0.5,\"trailing\":0.5}",
+        "created_at": "2025-10-24 05:47:58",
+        "stopLossConfig": {
+          "initial": -0.5,
+          "trailing": 0.5
+        },
+        "createdAt": null,
+        "currentPrice": 0,
+        "performance": {
+          "pnl": 0.5,
+          "pnlPercent": -50,
+          "status": "loss",
+          "timeElapsed": 173952.0309998989,
+          "timeElapsedHours": 48.32000861108303,
+          "simulatedPnl": 0.5,
+          "targetsHit": [],
+          "maxPrice": 0.00003927392929062048,
+          "maxPnl": 1.4356982151680275,
+          "currentPrice": 0,
+          "actualCallPrice": 0.00002735528182433802
+        }
+      },
+      {
+        "id": 17,
+        "user_id": 1,
+        "chat_id": 1,
+        "mint": "7VoKsrSfdxp9Cz1MQvh6VfrAACbSrxhS73ySr5d4pump",
+        "chain": "solana",
+        "token_name": "CodeLABS",
+        "token_symbol": "CLABS",
+        "call_price": 0,
+        "call_marketcap": 0,
+        "call_timestamp": 1761112649,
+        "strategy": [
+          {
+            "percent": 0.5,
+            "target": 2
+          },
+          {
+            "percent": 0.3,
+            "target": 5
+          },
+          {
+            "percent": 0.2,
+            "target": 10
+          }
+        ],
+        "stop_loss_config": "{\"initial\":-0.5,\"trailing\":0.5}",
+        "created_at": "2025-10-24 06:11:25",
+        "stopLossConfig": {
+          "initial": -0.5,
+          "trailing": 0.5
+        },
+        "createdAt": null,
+        "currentPrice": 0,
+        "performance": {
+          "pnl": 0.5,
+          "pnlPercent": -50,
+          "status": "loss",
+          "timeElapsed": 173953.80100011826,
+          "timeElapsedHours": 48.32050027781062,
+          "simulatedPnl": 0.5,
+          "targetsHit": [],
+          "maxPrice": 0.00003927392929062048,
+          "maxPnl": 1.4356982151680275,
+          "currentPrice": 0,
+          "actualCallPrice": 0.00002735528182433802
+        }
+      },
+      {
+        "id": 2,
+        "user_id": 1,
+        "chat_id": 1,
+        "mint": "2NRSswjLuK9kJLdDozhRoiJm6gZHGeFH92Lc2tRQpump",
+        "chain": "solana",
+        "token_name": "Perieklu Exi.0ugoy",
+        "token_symbol": "Perieklu",
+        "call_price": 0,
+        "call_marketcap": 0,
+        "call_timestamp": 1761097095,
+        "strategy": [
+          {
+            "percent": 0.5,
+            "target": 2
+          },
+          {
+            "percent": 0.3,
+            "target": 5
+          },
+          {
+            "percent": 0.2,
+            "target": 10
+          }
+        ],
+        "stop_loss_config": "{\"initial\":-0.5,\"trailing\":0.5}",
+        "created_at": "2025-10-24 05:47:58",
+        "stopLossConfig": {
+          "initial": -0.5,
+          "trailing": 0.5
+        },
+        "createdAt": null,
+        "currentPrice": 0,
+        "performance": {
+          "pnl": 0.5,
+          "pnlPercent": -50,
+          "status": "loss",
+          "timeElapsed": 189509.55399990082,
+          "timeElapsedHours": 52.641542777750225,
+          "simulatedPnl": 0.5,
+          "targetsHit": [],
+          "maxPrice": 0.00004190818443881742,
+          "maxPnl": 1.051450894723009,
+          "currentPrice": 0,
+          "actualCallPrice": 0.00003985748136136932
+        }
+      },
+      {
+        "id": 16,
+        "user_id": 1,
+        "chat_id": 1,
+        "mint": "2NRSswjLuK9kJLdDozhRoiJm6gZHGeFH92Lc2tRQpump",
+        "chain": "solana",
+        "token_name": "Perieklu Exi.0ugoy",
+        "token_symbol": "Perieklu",
+        "call_price": 0,
+        "call_marketcap": 0,
+        "call_timestamp": 1761097095,
+        "strategy": [
+          {
+            "percent": 0.5,
+            "target": 2
+          },
+          {
+            "percent": 0.3,
+            "target": 5
+          },
+          {
+            "percent": 0.2,
+            "target": 10
+          }
+        ],
+        "stop_loss_config": "{\"initial\":-0.5,\"trailing\":0.5}",
+        "created_at": "2025-10-24 06:11:25",
+        "stopLossConfig": {
+          "initial": -0.5,
+          "trailing": 0.5
+        },
+        "createdAt": null,
+        "currentPrice": 0,
+        "performance": {
+          "pnl": 0.5,
+          "pnlPercent": -50,
+          "status": "loss",
+          "timeElapsed": 189511.30100011826,
+          "timeElapsedHours": 52.642028055588405,
+          "simulatedPnl": 0.5,
+          "targetsHit": [],
+          "maxPrice": 0.00004190818443881742,
+          "maxPnl": 1.051450894723009,
+          "currentPrice": 0,
+          "actualCallPrice": 0.00003985748136136932
+        }
+      }
+    ]
+  },
+  "detailedData": [
+    {
+      "id": 4,
+      "token": "Book of Binance (ABC)",
+      "chain": "bsc",
+      "callPrice": 0,
+      "currentPrice": 0,
+      "performance": {
+        "pnl": 1.7275543590834732,
+        "pnlPercent": 72.75543590834732,
+        "status": "1.5x+",
+        "timeElapsed": 32553.736999988556,
+        "timeElapsedHours": 9.042704722219042,
+        "simulatedPnl": 1.7275543590834732,
+        "targetsHit": [
+          {
+            "target": 2,
+            "percent": 0.5,
+            "price": 0.00010852614062910534,
+            "timestamp": 1761274200,
+            "pnlSoFar": 1
+          }
+        ],
+        "maxPrice": 0.0001694867339003486,
+        "maxPnl": 3.123426907432004,
+        "currentPrice": 0,
+        "actualCallPrice": 0.00005426307031455267
+      },
+      "callTime": "2025-10-24T08:14:05.000+11:00"
+    },
+    {
+      "id": 18,
+      "token": "Book of Binance (ABC)",
+      "chain": "bsc",
+      "callPrice": 0,
+      "currentPrice": 0,
+      "performance": {
+        "pnl": 1.7275543590834732,
+        "pnlPercent": 72.75543590834732,
+        "status": "1.5x+",
+        "timeElapsed": 32554.884999990463,
+        "timeElapsedHours": 9.043023611108461,
+        "simulatedPnl": 1.7275543590834732,
+        "targetsHit": [
+          {
+            "target": 2,
+            "percent": 0.5,
+            "price": 0.00010852614062910534,
+            "timestamp": 1761274200,
+            "pnlSoFar": 1
+          }
+        ],
+        "maxPrice": 0.0001694867339003486,
+        "maxPnl": 3.123426907432004,
+        "currentPrice": 0,
+        "actualCallPrice": 0.00005426307031455267
+      },
+      "callTime": "2025-10-24T08:14:05.000+11:00"
+    },
+    {
+      "id": 26,
+      "token": "VALOR (VALOR)",
+      "chain": "solana",
+      "callPrice": 0,
+      "currentPrice": 0,
+      "performance": {
+        "pnl": 1.4789281666608816,
+        "pnlPercent": 47.89281666608816,
+        "status": "profitable",
+        "timeElapsed": 8163.7190001010895,
+        "timeElapsedHours": 2.2676997222503026,
+        "simulatedPnl": 1.4789281666608816,
+        "targetsHit": [],
+        "maxPrice": 0.01092627581429857,
+        "maxPnl": 1.7806326469036793,
+        "currentPrice": 0,
+        "actualCallPrice": 0.006136176281670529
+      },
+      "callTime": "2025-10-24T15:00:21.000+11:00"
+    },
+    {
+      "id": 12,
+      "token": "VALOR (VALOR)",
+      "chain": "solana",
+      "callPrice": 0,
+      "currentPrice": 0,
+      "performance": {
+        "pnl": 1.4721695431631148,
+        "pnlPercent": 47.21695431631148,
+        "status": "profitable",
+        "timeElapsed": 8162.8150000572205,
+        "timeElapsedHours": 2.267448611127006,
+        "simulatedPnl": 1.4721695431631148,
+        "targetsHit": [],
+        "maxPrice": 0.01092627581429857,
+        "maxPnl": 1.7806326469036793,
+        "currentPrice": 0,
+        "actualCallPrice": 0.006136176281670529
+      },
+      "callTime": "2025-10-24T15:00:21.000+11:00"
+    },
+    {
+      "id": 11,
+      "token": "Morgan (MORGAN)",
+      "chain": "solana",
+      "callPrice": 0,
+      "currentPrice": 0,
+      "performance": {
+        "pnl": 1.439928157540919,
+        "pnlPercent": 43.99281575409191,
+        "status": "profitable",
+        "timeElapsed": 8189.015000104904,
+        "timeElapsedHours": 2.274726388918029,
+        "simulatedPnl": 1.439928157540919,
+        "targetsHit": [],
+        "maxPrice": 0.00002300979216914197,
+        "maxPnl": 1.4464845004166453,
+        "currentPrice": 0,
+        "actualCallPrice": 0.000015907389372312132
+      },
+      "callTime": "2025-10-24T14:59:57.000+11:00"
+    },
+    {
+      "id": 25,
+      "token": "Morgan (MORGAN)",
+      "chain": "solana",
+      "callPrice": 0,
+      "currentPrice": 0,
+      "performance": {
+        "pnl": 1.439928157540919,
+        "pnlPercent": 43.99281575409191,
+        "status": "profitable",
+        "timeElapsed": 8189.943000078201,
+        "timeElapsedHours": 2.274984166688389,
+        "simulatedPnl": 1.439928157540919,
+        "targetsHit": [],
+        "maxPrice": 0.00002300979216914197,
+        "maxPnl": 1.4464845004166453,
+        "currentPrice": 0,
+        "actualCallPrice": 0.000015907389372312132
+      },
+      "callTime": "2025-10-24T14:59:57.000+11:00"
+    },
+    {
+      "id": 14,
+      "token": "Truth Farm (TRUTH)",
+      "chain": "bsc",
+      "callPrice": 0,
+      "currentPrice": 0,
+      "performance": {
+        "pnl": 1.114786182933292,
+        "pnlPercent": 11.478618293329191,
+        "status": "profitable",
+        "timeElapsed": 8102.380000114441,
+        "timeElapsedHours": 2.2506611111429002,
+        "simulatedPnl": 1.114786182933292,
+        "targetsHit": [],
+        "maxPrice": 0.00008926645756771207,
+        "maxPnl": 1.2422577418287062,
+        "currentPrice": 0,
+        "actualCallPrice": 0.00007185824210385235
+      },
+      "callTime": "2025-10-24T15:01:18.000+11:00"
+    },
+    {
+      "id": 28,
+      "token": "Truth Farm (TRUTH)",
+      "chain": "bsc",
+      "callPrice": 0,
+      "currentPrice": 0,
+      "performance": {
+        "pnl": 1.114786182933292,
+        "pnlPercent": 11.478618293329191,
+        "status": "profitable",
+        "timeElapsed": 8103.237999916077,
+        "timeElapsedHours": 2.2508994444211323,
+        "simulatedPnl": 1.114786182933292,
+        "targetsHit": [],
+        "maxPrice": 0.00008926645756771207,
+        "maxPnl": 1.2422577418287062,
+        "currentPrice": 0,
+        "actualCallPrice": 0.00007185824210385235
+      },
+      "callTime": "2025-10-24T15:01:18.000+11:00"
+    },
+    {
+      "id": 15,
+      "token": "My Mom Is Kinda Homeless (SPEED)",
+      "chain": "solana",
+      "callPrice": 0,
+      "currentPrice": 0,
+      "performance": {
+        "pnl": 1.0441750366812481,
+        "pnlPercent": 4.417503668124811,
+        "status": "profitable",
+        "timeElapsed": 7989.121999979019,
+        "timeElapsedHours": 2.2192005555497274,
+        "simulatedPnl": 1.0441750366812481,
+        "targetsHit": [],
+        "maxPrice": 0.000499642768696616,
+        "maxPnl": 1.0553384329928264,
+        "currentPrice": 0,
+        "actualCallPrice": 0.00047344316579060123
+      },
+      "callTime": "2025-10-24T15:03:09.000+11:00"
+    },
+    {
+      "id": 29,
+      "token": "My Mom Is Kinda Homeless (SPEED)",
+      "chain": "solana",
+      "callPrice": 0,
+      "currentPrice": 0,
+      "performance": {
+        "pnl": 1.0441750366812481,
+        "pnlPercent": 4.417503668124811,
+        "status": "profitable",
+        "timeElapsed": 7990.421000003815,
+        "timeElapsedHours": 2.2195613888899484,
+        "simulatedPnl": 1.0441750366812481,
+        "targetsHit": [],
+        "maxPrice": 0.000499642768696616,
+        "maxPnl": 1.0553384329928264,
+        "currentPrice": 0,
+        "actualCallPrice": 0.00047344316579060123
+      },
+      "callTime": "2025-10-24T15:03:09.000+11:00"
+    },
+    {
+      "id": 7,
+      "token": "tao.bot (TAOBOT)",
+      "chain": "ethereum",
+      "callPrice": 0,
+      "currentPrice": 0,
+      "performance": {
+        "pnl": 1.0178773686021179,
+        "pnlPercent": 1.787736860211786,
+        "status": "profitable",
+        "timeElapsed": 8421.292000055313,
+        "timeElapsedHours": 2.3392477777931426,
+        "simulatedPnl": 1.0178773686021179,
+        "targetsHit": [],
+        "maxPrice": 0.2874445459172134,
+        "maxPnl": 1.0178773686021179,
+        "currentPrice": 0,
+        "actualCallPrice": 0.28239604768103826
+      },
+      "callTime": "2025-10-24T14:56:12.000+11:00"
+    },
+    {
+      "id": 21,
+      "token": "tao.bot (TAOBOT)",
+      "chain": "ethereum",
+      "callPrice": 0,
+      "currentPrice": 0,
+      "performance": {
+        "pnl": 1.0178773686021179,
+        "pnlPercent": 1.787736860211786,
+        "status": "profitable",
+        "timeElapsed": 8422.147000074387,
+        "timeElapsedHours": 2.3394852777984405,
+        "simulatedPnl": 1.0178773686021179,
+        "targetsHit": [],
+        "maxPrice": 0.2874445459172134,
+        "maxPnl": 1.0178773686021179,
+        "currentPrice": 0,
+        "actualCallPrice": 0.28239604768103826
+      },
+      "callTime": "2025-10-24T14:56:12.000+11:00"
+    },
+    {
+      "id": 1,
+      "token": "Wo Qui Non (WO QUI NON)",
+      "chain": "bsc",
+      "callPrice": 0,
+      "currentPrice": 0,
+      "performance": {
+        "pnl": 1,
+        "pnlPercent": 0,
+        "status": "profitable",
+        "timeElapsed": 7571.447000026703,
+        "timeElapsedHours": 2.1031797222296396,
+        "simulatedPnl": 1,
+        "targetsHit": [],
+        "maxPrice": 0.000006465845599932858,
+        "maxPnl": 1,
+        "currentPrice": 0,
+        "actualCallPrice": 0.000006465845599932858
+      },
+      "callTime": "2025-10-24T15:10:05.000+11:00"
+    },
+    {
+      "id": 6,
+      "token": "Alpha Arena (Arena)",
+      "chain": "solana",
+      "callPrice": 0,
+      "currentPrice": 0,
+      "performance": {
+        "pnl": 1,
+        "pnlPercent": 0,
+        "status": "profitable",
+        "timeElapsed": 9152.016000032425,
+        "timeElapsedHours": 2.5422266666756737,
+        "simulatedPnl": 1,
+        "targetsHit": [],
+        "maxPrice": 0.00000517433831799118,
+        "maxPnl": 1,
+        "currentPrice": 0,
+        "actualCallPrice": 0.00000517433831799118
+      },
+      "callTime": "2025-10-24T14:44:03.000+11:00"
+    },
+    {
+      "id": 20,
+      "token": "Alpha Arena (Arena)",
+      "chain": "solana",
+      "callPrice": 0,
+      "currentPrice": 0,
+      "performance": {
+        "pnl": 1,
+        "pnlPercent": 0,
+        "status": "profitable",
+        "timeElapsed": 9152.953999996185,
+        "timeElapsedHours": 2.5424872222211627,
+        "simulatedPnl": 1,
+        "targetsHit": [],
+        "maxPrice": 0.00000517433831799118,
+        "maxPnl": 1,
+        "currentPrice": 0,
+        "actualCallPrice": 0.00000517433831799118
+      },
+      "callTime": "2025-10-24T14:44:03.000+11:00"
+    },
+    {
+      "id": 9,
+      "token": "r/antiwork (antiwork)",
+      "chain": "solana",
+      "callPrice": 0,
+      "currentPrice": 0,
+      "performance": {
+        "pnl": 0.9059791862825721,
+        "pnlPercent": -9.402081371742788,
+        "status": "loss",
+        "timeElapsed": 8222.615000009537,
+        "timeElapsedHours": 2.2840597222248715,
+        "simulatedPnl": 0.9059791862825721,
+        "targetsHit": [],
+        "maxPrice": 0.000007090509131523848,
+        "maxPnl": 1,
+        "currentPrice": 0,
+        "actualCallPrice": 0.000007090509131523848
+      },
+      "callTime": "2025-10-24T14:59:27.000+11:00"
+    },
+    {
+      "id": 23,
+      "token": "r/antiwork (antiwork)",
+      "chain": "solana",
+      "callPrice": 0,
+      "currentPrice": 0,
+      "performance": {
+        "pnl": 0.9059791862825721,
+        "pnlPercent": -9.402081371742788,
+        "status": "loss",
+        "timeElapsed": 8223.519000053406,
+        "timeElapsedHours": 2.2843108333481683,
+        "simulatedPnl": 0.9059791862825721,
+        "targetsHit": [],
+        "maxPrice": 0.000007090509131523848,
+        "maxPnl": 1,
+        "currentPrice": 0,
+        "actualCallPrice": 0.000007090509131523848
+      },
+      "callTime": "2025-10-24T14:59:27.000+11:00"
+    },
+    {
+      "id": 5,
+      "token": "1 coin can change your life (1)",
+      "chain": "solana",
+      "callPrice": 0,
+      "currentPrice": 0,
+      "performance": {
+        "pnl": 0.8657761904755099,
+        "pnlPercent": -13.422380952449009,
+        "status": "loss",
+        "timeElapsed": 11728.865000009537,
+        "timeElapsedHours": 3.2580180555582046,
+        "simulatedPnl": 0.8657761904755099,
+        "targetsHit": [],
+        "maxPrice": 0.018218415863678256,
+        "maxPnl": 1.0311926702908318,
+        "currentPrice": 0,
+        "actualCallPrice": 0.01766732482547615
+      },
+      "callTime": "2025-10-24T14:01:08.000+11:00"
+    },
+    {
+      "id": 19,
+      "token": "1 coin can change your life (1)",
+      "chain": "solana",
+      "callPrice": 0,
+      "currentPrice": 0,
+      "performance": {
+        "pnl": 0.8657761904755099,
+        "pnlPercent": -13.422380952449009,
+        "status": "loss",
+        "timeElapsed": 11729.766000032425,
+        "timeElapsedHours": 3.25826833334234,
+        "simulatedPnl": 0.8657761904755099,
+        "targetsHit": [],
+        "maxPrice": 0.018218415863678256,
+        "maxPnl": 1.0311926702908318,
+        "currentPrice": 0,
+        "actualCallPrice": 0.01766732482547615
+      },
+      "callTime": "2025-10-24T14:01:08.000+11:00"
+    },
+    {
+      "id": 8,
+      "token": "spawner (SPAWN)",
+      "chain": "solana",
+      "callPrice": 0,
+      "currentPrice": 0,
+      "performance": {
+        "pnl": 0.8622286440197816,
+        "pnlPercent": -13.77713559802184,
+        "status": "loss",
+        "timeElapsed": 8248.444000005722,
+        "timeElapsedHours": 2.291234444446034,
+        "simulatedPnl": 0.8622286440197816,
+        "targetsHit": [],
+        "maxPrice": 0.0000051957373466026045,
+        "maxPnl": 1,
+        "currentPrice": 0,
+        "actualCallPrice": 0.0000051957373466026045
+      },
+      "callTime": "2025-10-24T14:59:03.000+11:00"
+    },
+    {
+      "id": 22,
+      "token": "spawner (SPAWN)",
+      "chain": "solana",
+      "callPrice": 0,
+      "currentPrice": 0,
+      "performance": {
+        "pnl": 0.8622286440197816,
+        "pnlPercent": -13.77713559802184,
+        "status": "loss",
+        "timeElapsed": 8249.362999916077,
+        "timeElapsedHours": 2.2914897221989103,
+        "simulatedPnl": 0.8622286440197816,
+        "targetsHit": [],
+        "maxPrice": 0.0000051957373466026045,
+        "maxPnl": 1,
+        "currentPrice": 0,
+        "actualCallPrice": 0.0000051957373466026045
+      },
+      "callTime": "2025-10-24T14:59:03.000+11:00"
+    },
+    {
+      "id": 10,
+      "token": "TERMINAL OF 4 (FOUR)",
+      "chain": "bsc",
+      "callPrice": 0,
+      "currentPrice": 0,
+      "performance": {
+        "pnl": 0.7165186852940862,
+        "pnlPercent": -28.348131470591376,
+        "status": "loss",
+        "timeElapsed": 8195.892999887466,
+        "timeElapsedHours": 2.2766369444131853,
+        "simulatedPnl": 0.7165186852940862,
+        "targetsHit": [],
+        "maxPrice": 0.0003391213619011337,
+        "maxPnl": 1,
+        "currentPrice": 0,
+        "actualCallPrice": 0.0003391213619011337
+      },
+      "callTime": "2025-10-24T14:59:52.000+11:00"
+    },
+    {
+      "id": 24,
+      "token": "TERMINAL OF 4 (FOUR)",
+      "chain": "bsc",
+      "callPrice": 0,
+      "currentPrice": 0,
+      "performance": {
+        "pnl": 0.7165186852940862,
+        "pnlPercent": -28.348131470591376,
+        "status": "loss",
+        "timeElapsed": 8196.773000001907,
+        "timeElapsedHours": 2.276881388889419,
+        "simulatedPnl": 0.7165186852940862,
+        "targetsHit": [],
+        "maxPrice": 0.0003391213619011337,
+        "maxPnl": 1,
+        "currentPrice": 0,
+        "actualCallPrice": 0.0003391213619011337
+      },
+      "callTime": "2025-10-24T14:59:52.000+11:00"
+    },
+    {
+      "id": 13,
+      "token": "Bitcoin Vs Gold (BVG)",
+      "chain": "bsc",
+      "callPrice": 0,
+      "currentPrice": 0,
+      "performance": {
+        "pnl": 0.697471659152449,
+        "pnlPercent": -30.252834084755097,
+        "status": "loss",
+        "timeElapsed": 8156.107000112534,
+        "timeElapsedHours": 2.2655852778090373,
+        "simulatedPnl": 0.697471659152449,
+        "targetsHit": [],
+        "maxPrice": 0.0001768957548100083,
+        "maxPnl": 1.2950703219313242,
+        "currentPrice": 0,
+        "actualCallPrice": 0.0001365916211763741
+      },
+      "callTime": "2025-10-24T15:00:26.000+11:00"
+    },
+    {
+      "id": 27,
+      "token": "Bitcoin Vs Gold (BVG)",
+      "chain": "bsc",
+      "callPrice": 0,
+      "currentPrice": 0,
+      "performance": {
+        "pnl": 0.697471659152449,
+        "pnlPercent": -30.252834084755097,
+        "status": "loss",
+        "timeElapsed": 8156.9690001010895,
+        "timeElapsedHours": 2.2658247222503025,
+        "simulatedPnl": 0.697471659152449,
+        "targetsHit": [],
+        "maxPrice": 0.0001768957548100083,
+        "maxPnl": 1.2950703219313242,
+        "currentPrice": 0,
+        "actualCallPrice": 0.0001365916211763741
+      },
+      "callTime": "2025-10-24T15:00:26.000+11:00"
+    },
+    {
+      "id": 3,
+      "token": "CodeLABS (CLABS)",
+      "chain": "solana",
+      "callPrice": 0,
+      "currentPrice": 0,
+      "performance": {
+        "pnl": 0.5,
+        "pnlPercent": -50,
+        "status": "loss",
+        "timeElapsed": 173952.0309998989,
+        "timeElapsedHours": 48.32000861108303,
+        "simulatedPnl": 0.5,
+        "targetsHit": [],
+        "maxPrice": 0.00003927392929062048,
+        "maxPnl": 1.4356982151680275,
+        "currentPrice": 0,
+        "actualCallPrice": 0.00002735528182433802
+      },
+      "callTime": "2025-10-22T16:57:29.000+11:00"
+    },
+    {
+      "id": 17,
+      "token": "CodeLABS (CLABS)",
+      "chain": "solana",
+      "callPrice": 0,
+      "currentPrice": 0,
+      "performance": {
+        "pnl": 0.5,
+        "pnlPercent": -50,
+        "status": "loss",
+        "timeElapsed": 173953.80100011826,
+        "timeElapsedHours": 48.32050027781062,
+        "simulatedPnl": 0.5,
+        "targetsHit": [],
+        "maxPrice": 0.00003927392929062048,
+        "maxPnl": 1.4356982151680275,
+        "currentPrice": 0,
+        "actualCallPrice": 0.00002735528182433802
+      },
+      "callTime": "2025-10-22T16:57:29.000+11:00"
+    },
+    {
+      "id": 2,
+      "token": "Perieklu Exi.0ugoy (Perieklu)",
+      "chain": "solana",
+      "callPrice": 0,
+      "currentPrice": 0,
+      "performance": {
+        "pnl": 0.5,
+        "pnlPercent": -50,
+        "status": "loss",
+        "timeElapsed": 189509.55399990082,
+        "timeElapsedHours": 52.641542777750225,
+        "simulatedPnl": 0.5,
+        "targetsHit": [],
+        "maxPrice": 0.00004190818443881742,
+        "maxPnl": 1.051450894723009,
+        "currentPrice": 0,
+        "actualCallPrice": 0.00003985748136136932
+      },
+      "callTime": "2025-10-22T12:38:15.000+11:00"
+    },
+    {
+      "id": 16,
+      "token": "Perieklu Exi.0ugoy (Perieklu)",
+      "chain": "solana",
+      "callPrice": 0,
+      "currentPrice": 0,
+      "performance": {
+        "pnl": 0.5,
+        "pnlPercent": -50,
+        "status": "loss",
+        "timeElapsed": 189511.30100011826,
+        "timeElapsedHours": 52.642028055588405,
+        "simulatedPnl": 0.5,
+        "targetsHit": [],
+        "maxPrice": 0.00004190818443881742,
+        "maxPnl": 1.051450894723009,
+        "currentPrice": 0,
+        "actualCallPrice": 0.00003985748136136932
+      },
+      "callTime": "2025-10-22T12:38:15.000+11:00"
+    }
+  ]
+}

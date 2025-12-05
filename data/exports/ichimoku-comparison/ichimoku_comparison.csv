@@ -1,0 +1,3 @@
+Strategy,TotalTrades,WinRate,AvgPnlPerTrade,FinalPortfolio,CompoundFactor,First6hTrades,First6hWinRate,First6hAvgPnl,RemainingTrades,RemainingWinRate,RemainingAvgPnl
+Tenkan/Kijun Cross,1747,45.85,6.65,192800.66,1928.0066,763,37.35,0.22,984,52.44,11.64
+Cloud Cross,1587,8.76,-7.41,-0.00,-0.0000,568,8.45,-8.53,1019,8.93,-6.79

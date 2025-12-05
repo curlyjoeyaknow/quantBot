@@ -65,14 +65,31 @@ export class TextWorkflowHandler {
         return;
       }
       
+      logger.debug('Processing callback', { userId, callbackData: data });
+    
+    // Handle add_curlyjoe callbacks (doesn't require session)
+    if (data.startsWith('add_curlyjoe:')) {
+      const { AddCurlyJoeCommandHandler } = await import('../commands/AddCurlyJoeCommandHandler');
       const session = this.sessionService.getSession(userId);
-      if (!session) {
-        logger.debug('No session found for user when handling callback', { userId, callbackData: data });
-        await ctx.reply('❌ No active session found. Please start a new backtest with /backtest');
-        return;
-      }
-      
-      logger.debug('Processing callback', { userId, callbackData: data, sessionType: session.type });
+      await AddCurlyJoeCommandHandler.handleCallback(ctx, data, session);
+      return;
+    }
+    
+    // Handle watchlist callbacks
+    if (data.startsWith('watchlist:')) {
+      const { WatchlistCommandHandler } = await import('../commands/WatchlistCommandHandler');
+      await WatchlistCommandHandler.handleCallback(ctx, data);
+      return;
+    }
+    
+    const session = this.sessionService.getSession(userId);
+    if (!session) {
+      logger.debug('No session found for user when handling callback', { userId, callbackData: data });
+      await ctx.reply('❌ No active session found. Please start a new backtest with /backtest');
+      return;
+    }
+    
+    logger.debug('Processing callback', { userId, callbackData: data, sessionType: session.type });
     
     // Handle backtest source selection
     if (data.startsWith('backtest_source:')) {

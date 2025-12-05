@@ -1,0 +1,60 @@
+========================================
+SIGN IN - State & Interactions
+========================================
+State: email, password
+Inputs: 2 (email, password)
+Buttons: SIGN IN, REGISTER
+Links: Forgot password?, Create Account
+Code: /web/components/sign-in.tsx
+Live: localhost:3000/figma-replicas/sign-in
+
+========================================
+REGISTER - Validation
+========================================
+State: email, password, confirmPassword
+Validation: Email format, password match
+Error Display: Inline (red text, no alerts)
+Code: /web/components/register-account.tsx
+Live: localhost:3000/figma-replicas/register
+
+========================================
+SETUP OVERVIEW - Step 1/4
+========================================
+Global State: shopName (saved)
+Input: Shop name (persists to next steps)
+Navigation: ← BACK, CONTINUE →
+Code: /web/components/setup-overview.tsx
+
+========================================
+ADD PRODUCT - Step 2/4
+========================================
+State: productName, productImage, productPrice
+Image: Click to upload → preview
+Price: Slider + number input (sync)
+Button: ADD ANOTHER (saves, shows ✓)
+Code: /web/components/add-product.tsx
+
+========================================
+SHIPPING - Step 3/4
+========================================
+State: shippingType, deliveryDays, notes
+Dropdown: Auto-sets delivery days
+Time: +/- buttons, shows "Same Day"/"X Days"
+Code: /web/components/shipping-pricing.tsx
+
+========================================
+REVIEW - Step 4/4
+========================================
+Displays: shopName, all products, shipping
+Read-only (shows saved data)
+Buttons: BACK TO PRODUCTS, LAUNCH SHOP
+Code: /web/components/review-summary.tsx
+
+========================================
+GLOBAL STATE (All Pages)
+========================================
+File: shopify-flow-context.tsx
+Shared: shopName, products[], price, 
+        shippingType, deliveryDays, notes
+Flow: Step 1 → Step 2 → Step 3 → Step 4
+

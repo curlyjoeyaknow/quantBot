@@ -9,6 +9,7 @@ import {
   SimulationRunContext,
   SimulationLogger,
 } from './engine';
+import { getClickHouseClient } from '../storage/clickhouse-client';
 
 type CsvSinkConfig = Extract<OutputTargetConfig, { type: 'csv' }>;
 type JsonSinkConfig = Extract<OutputTargetConfig, { type: 'json' }>;
@@ -51,9 +52,10 @@ export class ConfigDrivenSink implements SimulationResultSink {
             await this.writeCsv(output as CsvSinkConfig, context);
             break;
           case 'clickhouse':
-            this.logger?.warn?.('ClickHouse sink not yet implemented', {
-              scenario: context.scenario.name,
-            });
+            await this.writeClickHouse(
+              output as Extract<OutputTargetConfig, { type: 'clickhouse' }>,
+              context,
+            );
             break;
         }
       } catch (error) {
@@ -157,6 +159,89 @@ export class ConfigDrivenSink implements SimulationResultSink {
 
   private resolvePath(targetPath: string): string {
     return path.isAbsolute(targetPath) ? targetPath : path.join(process.cwd(), targetPath);
+  }
+
+  private async writeClickHouse(
+    config: Extract<OutputTargetConfig, { type: 'clickhouse' }>,
+    context: SimulationRunContext,
+  ): Promise<void> {
+    const ch = getClickHouseClient();
+    const table =
+      config.schema === 'expanded'
+        ? 'simulation_events'
+        : 'simulation_aggregates';
+
+    if (config.schema === 'expanded') {
+      const rows = context.result.events.map((event, index) => ({
+        simulation_run_id: 0, // placeholder until Postgres IDs are wired
+        token_address: context.target.mint,
+        chain: context.target.chain,
+        event_time: DateTime.fromSeconds(event.timestamp).toFormat(
+          'yyyy-MM-dd HH:mm:ss',
+        ),
+        seq: index,
+        event_type: event.type,
+        price: event.price,
+        size: 1,
+        remaining_position: event.remainingPosition,
+        pnl_so_far: event.pnlSoFar,
+        indicators_json: '{}',
+        position_state_json: '{}',
+        metadata_json: JSON.stringify({
+          scenario: context.scenario.name,
+        }),
+      }));
+
+      if (!rows.length) {
+        return;
+      }
+
+      await ch.insert({
+        table: `${process.env.CLICKHOUSE_DATABASE || 'quantbot'}.${table}`,
+        values: rows,
+        format: 'JSONEachRow',
+      });
+      return;
+    }
+
+    const finalEvent = context.result.events[context.result.events.length - 1];
+    const aggregateRow = {
+      simulation_run_id: 0,
+      token_address: context.target.mint,
+      chain: context.target.chain,
+      final_pnl: context.result.finalPnl,
+      max_drawdown: null,
+      volatility: null,
+      sharpe_ratio: null,
+      sortino_ratio: null,
+      win_rate: null,
+      trade_count: context.result.events.filter(
+        (e) =>
+          e.type === 'entry' ||
+          e.type === 'trailing_entry_triggered' ||
+          e.type === 're_entry',
+      ).length,
+      reentry_count: context.result.events.filter(
+        (e) => e.type === 're_entry',
+      ).length,
+      ladder_entries_used: context.result.events.filter(
+        (e) => e.type === 'ladder_entry',
+      ).length,
+      ladder_exits_used: context.result.events.filter(
+        (e) => e.type === 'ladder_exit',
+      ).length,
+      created_at: finalEvent
+        ? DateTime.fromSeconds(finalEvent.timestamp).toFormat(
+            'yyyy-MM-dd HH:mm:ss',
+          )
+        : DateTime.utc().toFormat('yyyy-MM-dd HH:mm:ss'),
+    };
+
+    await ch.insert({
+      table: `${process.env.CLICKHOUSE_DATABASE || 'quantbot'}.${table}`,
+      values: [aggregateRow],
+      format: 'JSONEachRow',
+    });
   }
 }
 

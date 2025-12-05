@@ -471,6 +471,16 @@ The codebase has been refactored to use a modular, config-driven architecture. L
 - User-friendly error messages
 - Comprehensive logging
 
+## 🗂️ Backups
+
+Run the backup helper to create a compressed archive that keeps `.env`, `config`, and `configs` while skipping build output and compiled JavaScript artifacts such as `dist`, `.next`, `node_modules`, and `.tsbuildinfo` files:
+
+```bash
+./scripts/backup-project.sh
+```
+
+Archives are stored under `backups/quantbot-backup-<timestamp>.tar.gz` by default. Override the destination with `-o /path/to/dir` or provide a custom archive name with `-n my-backup.tar.gz`.
+
 ## 📝 License
 
 ISC License - See LICENSE file for details

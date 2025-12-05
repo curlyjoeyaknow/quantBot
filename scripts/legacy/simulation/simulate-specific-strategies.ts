@@ -14,12 +14,12 @@ import { DateTime } from 'luxon';
 import { parse } from 'csv-parse';
 import * as fs from 'fs';
 import * as path from 'path';
-import { fetchHybridCandles } from '../src/simulation/candles';
-import { initClickHouse, hasCandles, closeClickHouse } from '../src/storage/clickhouse-client';
+import { fetchHybridCandles } from '../../../src/simulation/candles';
+import { initClickHouse, hasCandles, closeClickHouse } from '../../../src/storage/clickhouse-client';
 import { stringify } from 'csv-stringify';
 
-const BROOK_CALLS_CSV = path.join(__dirname, '../data/exports/csv/all_brook_channels_calls.csv');
-const OUTPUT_DIR = path.join(__dirname, '../data/exports/strategy-simulation');
+const BROOK_CALLS_CSV = path.join(process.cwd(), 'data/exports/csv/all_brook_channels_calls.csv');
+const OUTPUT_DIR = path.join(process.cwd(), 'data/exports/strategy-simulation');
 const TOP_N_CALLERS = 5;
 
 // Ensure output directory exists

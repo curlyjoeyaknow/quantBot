@@ -1,143 +1,120 @@
 ---
-description: Monitoring service rules for src/monitoring/ directory
-globs: ["src/monitoring/**/*.ts"]
+description: Monitoring service rules and TypeScript best practices for src/monitoring/
+globs:
+  - "src/monitoring/**/*.ts"
 alwaysApply: true
 ---
 
-# Monitoring Rules (src/monitoring/)
+# Essential Monitoring Rules
 
-## Monitoring Architecture
+monitoring-architecture:
+  core-principles:
+    - "Monitor real-time trading activities"
+    - "Handle WebSocket connections properly (robust connect/reconnect/cleanup)"
+    - "Process transactions and events efficiently"
+    - "Alert on important events and state changes"
+    - "Log all monitoring operations with contextual detail"
+  service-structure:
+    - "Use dedicated, stateless services for each monitoring concern"
+    - "Process events asynchronously using async/await"
+    - "Implement robust error handling and error propagation"
+    - "Monitor and expose service health with diagnostics"
 
-### Core Principles
-- Monitor real-time trading activities
-- Handle WebSocket connections properly
-- Process transactions efficiently
-- Alert on important events
-- Log monitoring operations
+# Monitoring Services
+monitoring-services:
+  ca-monitoring:
+    - "Use `CAMonitoringService` as primary entry point for CA event streaming"
+    - "Encapsulate all WebSocket subscription logic within the service"
+    - "Efficiently process and filter CA events before downstream alerts"
+    - "Trigger and log alerts for CA detections following project alert patterns"
+  live-trade-alert:
+    - "Use `LiveTradeAlertService` to surface real-time trade data"
+    - "Validate incoming trade data and types"
+    - "Send alerts using centralized alert manager"
+    - "Log and handle alert failures gracefully"
+  tenkan-kijun-alert:
+    - "Implement `TenkanKijunAlertService` for technical indicator signals"
+    - "Correctly calculate all indicators following Ts technical analysis best practices"
+    - "Detect and surface all signal changes"
+    - "Send alerts and handle indicator errors with contextual logs"
 
-### Service Structure
-- Use dedicated services for monitoring
-- Handle WebSocket connections properly
-- Process events asynchronously
-- Implement proper error recovery
-- Monitor service health
+# WebSocket Management
+websocket-management:
+  connection-handling:
+    - "Centralize WebSocket connect, disconnect, and reconnect logic"
+    - "Implement exponential backoff and retries for reconnects"
+    - "Gracefully handle all connection errors, log with context"
+    - "Monitor and expose WebSocket connection health and stats"
+    - "Always clean up/close connections on shutdown"
+  subscription-management:
+    - "Subscribe and unsubscribe to all relevant event streams"
+    - "Track subscription state and errors"
+    - "Unsubscribe and clean up on teardown"
+    - "Monitor subscription activity and latency"
 
-## Monitoring Services
+# Event Processing
+event-processing:
+  event-handling:
+    - "All event processing is performed asynchronously (async/await)"
+    - "Validate event data using Zod schemas"
+    - "Handle event errors with logging and fallback, never crash monitor"
+    - "Queue and debounce events if downstream queue is busy"
+    - "Monitor event processing time/latency"
+  transaction-parsing:
+    - "Parse and validate transactions with strict schema"
+    - "Handle and log parsing errors"
+    - "Extract and normalize all relevant transaction information"
+    - "Log raw and processed transaction details for traceability"
 
-### CA Monitoring Service
-- Use `CAMonitoringService` for CA monitoring
-- Handle WebSocket subscriptions
-- Process CA events efficiently
-- Alert on CA detections
-- Log monitoring activities
+# Alert Management
+alert-management:
+  alert-generation:
+    - "Generate alerts only for validated, high-signal conditions"
+    - "Consistently format all alerts (enforced by alert manager/formatter)"
+    - "Log every alert operation with context"
+    - "Handle and surface alert generation errors, retry if recoverable"
+  alert-delivery:
+    - "Deliver alerts reliably, with retry logic on failure"
+    - "Monitor and log alert delivery status"
+    - "Clean up/expire stale alert state"
+    - "Support alert delivery metrics and diagnostics"
 
-### Live Trade Alert Service
-- Use `LiveTradeAlertService` for live trades
-- Process trade events in real-time
-- Validate trade data
-- Send alerts appropriately
-- Handle alert failures gracefully
+# Performance
+performance:
+  processing-performance:
+    - "Process high-frequency events with minimal overhead"
+    - "Use Maps/Sets and typed structures for event batching"
+    - "Continuously monitor performance and event queues"
+    - "Optimize hot code paths and profile large event bursts"
+  resource-management:
+    - "Manage memory and connection resources proactively"
+    - "Clean up resources, sockets and listeners on service shutdown"
+    - "Apply timeouts to all i/o and async operations"
+    - "Log resource usage anomalies"
 
-### Tenkan-Kijun Alert Service
-- Use `TenkanKijunAlertService` for technical alerts
-- Calculate indicators correctly
-- Detect signal changes
-- Send alerts on signals
-- Handle calculation errors
+# Testing
+testing:
+  unit-tests:
+    - "Unit test each monitoring service independently"
+    - "Mock all WebSocket, alerting, and downstream connections"
+    - "Test event validation, error and retry flows"
+    - "Test alert generation and formatting"
+  integration-tests:
+    - "Integration test with real/test WebSocket endpoints"
+    - "Test end-to-end event and alert flows"
+    - "Test connection drops, error recovery, resource cleanup"
+    - "Include performance and stress scenarios"
 
-## WebSocket Management
-
-### Connection Handling
-- Manage WebSocket connections properly
-- Implement reconnection logic
-- Handle connection errors
-- Monitor connection health
-- Clean up connections properly
-
-### Subscription Management
-- Subscribe to relevant events
-- Handle subscription errors
-- Unsubscribe when done
-- Manage subscription state
-- Monitor subscription health
-
-## Event Processing
-
-### Event Handling
-- Process events asynchronously
-- Validate event data
-- Handle event errors gracefully
-- Queue events when needed
-- Monitor event processing
-
-### Transaction Parsing
-- Parse transactions correctly
-- Validate transaction data
-- Handle parsing errors
-- Extract relevant information
-- Log parsing operations
-
-## Alert Management
-
-### Alert Generation
-- Generate alerts appropriately
-- Validate alert data
-- Format alerts consistently
-- Handle alert failures
-- Log alert operations
-
-### Alert Delivery
-- Deliver alerts reliably
-- Handle delivery failures
-- Retry failed deliveries
-- Monitor delivery status
-- Clean up alert state
-
-## Performance
-
-### Processing Performance
-- Process events efficiently
-- Use appropriate data structures
-- Minimize processing overhead
-- Monitor processing performance
-- Optimize hot paths
-
-### Resource Management
-- Manage resources efficiently
-- Clean up resources properly
-- Monitor resource usage
-- Handle resource errors
-- Implement proper timeouts
-
-## Testing
-
-### Unit Tests
-- Test monitoring services independently
-- Mock WebSocket connections
-- Test event processing
-- Test error handling
-- Test alert generation
-
-### Integration Tests
-- Test with real WebSocket connections
-- Test event processing flows
-- Test error scenarios
-- Test performance
-- Test resource cleanup
-
-## Documentation
-
-### Service Documentation
-- Document all monitoring services
-- Include usage examples
-- Document event formats
-- Include error scenarios
-- Keep documentation current
-
-### Code Documentation
-- Document monitoring logic
-- Explain event processing
-- Document alert rules
-- Include examples
-- Keep comments updated
+# Documentation
+documentation:
+  service-docs:
+    - "Document all monitoring services, their APIs and event formats"
+    - "Include usage and integration examples"
+    - "Enumerate and explain error/edge case flows"
+    - "Keep documentation and examples up to date"
+  code-docs:
+    - "Comment all monitoring logic, especially complex event flows"
+    - "Explain alert and event processing rules"
+    - "Document all technical indicator calculation algorithms"
+    - "Keep comments and inline documentation synchronized with code"
 

@@ -24,17 +24,23 @@ import type { IchimokuData, IchimokuSignal } from '../simulation/ichimoku';
 import type { EntryConfig } from '../simulation/config';
 import { storeEntryAlert, storePriceCache, getCachedPrice } from '../utils/live-trade-database';
 import { getEnabledStrategies } from '../utils/live-trade-strategies';
+import { storeMonitoredToken, updateMonitoredTokenEntry } from '../utils/monitored-tokens-db';
+import { creditMonitor } from '../utils/credit-monitor';
 import axios from 'axios';
 
 /* ============================================================================
  * Configuration
  * ============================================================================
  */
-const HELIUS_API_KEY = process.env.HELIUS_API_KEY || '';
-const HELIUS_WS_URL = `wss://mainnet.helius-rpc.com/?api-key=${HELIUS_API_KEY}`;
+const SHYFT_API_KEY = process.env.SHYFT_API_KEY || '';
+const SHYFT_X_TOKEN = process.env.SHYFT_X_TOKEN || '';
+const SHYFT_WS_URL = process.env.SHYFT_WS_URL || 'wss://api.shyft.to/v1/stream';
 const BIRDEYE_API_KEY = process.env.BIRDEYE_API_KEY || '';
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
 const ALERT_GROUP_IDS = process.env.LIVE_TRADE_ALERT_GROUP_IDS?.split(',').map(id => parseInt(id.trim())).filter(id => !isNaN(id)) || [];
+
+// RPC polling interval for ETH/BSC (1 minute)
+const RPC_POLL_INTERVAL_MS = 60 * 1000; // 1 minute
 
 // Entry configuration defaults
 const DEFAULT_ENTRY_CONFIG: EntryConfig = {
@@ -126,6 +132,7 @@ export class LiveTradeAlertService extends EventEmitter {
   private reconnectAttempts: number = 0;
   private maxReconnectAttempts: number = 10;
   private updateInterval: NodeJS.Timeout | null = null;
+  private rpcPollInterval: NodeJS.Timeout | null = null; // For ETH/BSC tokens
   private isRunning: boolean = false;
   private telegramBot: any = null;
   private enabledStrategies: Set<string> = new Set();
@@ -169,8 +176,11 @@ export class LiveTradeAlertService extends EventEmitter {
     // Load tokens from caller_alerts database
     await this.loadTokensFromDatabase();
 
-    // Connect to WebSocket
+    // Connect to WebSocket for Solana tokens (Shyft)
     await this.connectWebSocket();
+    
+    // Start RPC polling for ETH/BSC tokens
+    this.startRPCPolling();
 
     // Start periodic price updates (fallback)
     this.startPeriodicUpdates();
@@ -270,23 +280,47 @@ export class LiveTradeAlertService extends EventEmitter {
   }
 
   /**
-   * Connect to Helius WebSocket
+   * Connect to Shyft WebSocket for Solana tokens
    */
   private async connectWebSocket(): Promise<void> {
-    if (!HELIUS_API_KEY) {
-      logger.warn('HELIUS_API_KEY not set - using polling fallback');
+    // Only connect if we have Solana tokens to monitor
+    const solanaTokens = Array.from(this.activeMonitors.values()).filter(
+      (m) => m.chain === 'solana'
+    );
+
+    if (solanaTokens.length === 0) {
+      logger.debug('No Solana tokens to monitor, skipping WebSocket connection');
+      return;
+    }
+
+    if (!SHYFT_API_KEY && !SHYFT_X_TOKEN) {
+      logger.warn('SHYFT_API_KEY or SHYFT_X_TOKEN not set - using polling fallback for Solana');
       return;
     }
 
     try {
-      logger.info('Connecting to Helius WebSocket...');
-      this.ws = new WS.WebSocket(HELIUS_WS_URL);
+      logger.info('Connecting to Shyft WebSocket for Solana tokens...');
+      this.ws = new WS.WebSocket(SHYFT_WS_URL);
 
       if (this.ws) {
         this.ws.on('open', () => {
-          logger.info('Connected to Helius WebSocket');
+          logger.info('Connected to Shyft WebSocket');
           this.reconnectAttempts = 0;
-          this.subscribeToTokens();
+          
+          // Authenticate with Shyft
+          const authToken = SHYFT_X_TOKEN || SHYFT_API_KEY;
+          const authMessage = {
+            jsonrpc: '2.0',
+            id: 1,
+            method: 'auth',
+            params: [authToken],
+          };
+          this.ws!.send(JSON.stringify(authMessage));
+          
+          // Subscribe to Solana tokens after authentication
+          setTimeout(() => {
+            this.subscribeToSolanaTokens();
+          }, 1000); // Wait a bit for auth to complete
         });
 
         this.ws.on('message', (data: WS.RawData) => {
@@ -299,120 +333,96 @@ export class LiveTradeAlertService extends EventEmitter {
         });
 
         this.ws.on('close', () => {
-          logger.warn('Helius WebSocket connection closed');
+          logger.warn('Shyft WebSocket connection closed');
           this.reconnectWebSocket();
         });
 
         this.ws.on('error', (error: Error) => {
-          logger.error('Helius WebSocket error', error);
+          logger.error('Shyft WebSocket error', error);
           this.reconnectWebSocket();
         });
       }
     } catch (error) {
-      logger.error('Failed to connect to Helius WebSocket', error as Error);
-      // Fallback to polling
+      logger.error('Failed to connect to Shyft WebSocket', error as Error);
+      // Fallback to polling for Solana tokens
     }
   }
 
   /**
-   * Subscribe to all monitored tokens
+   * Subscribe to Solana tokens via Shyft WebSocket
    */
-  private subscribeToTokens(): void {
+  private subscribeToSolanaTokens(): void {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
       return;
     }
 
-    const accounts = Array.from(this.activeMonitors.values()).map(
-      (monitor) => monitor.tokenAddress
-    );
+    const solanaTokens = Array.from(this.activeMonitors.values())
+      .filter((m) => m.chain === 'solana')
+      .map((m) => m.tokenAddress);
 
-    if (accounts.length === 0) {
+    if (solanaTokens.length === 0) {
       return;
     }
 
-    // Helius WebSocket subscription format
-    // Subscribe to price updates for each token
-    accounts.forEach((account, index) => {
-      // Helius price update subscription
+    // Shyft WebSocket subscription format for token price updates
+    solanaTokens.forEach((tokenAddress, index) => {
       const subscription = {
         jsonrpc: '2.0',
         id: index + 1,
         method: 'subscribe',
-        params: [
-          'price-updates-solana',
-          { accounts: [account] },
-        ],
+        params: {
+          channel: 'token_price',
+          token: tokenAddress,
+        },
       };
 
       this.ws!.send(JSON.stringify(subscription));
-
-      // Also subscribe to account changes as fallback
-      const accountSubscription = {
-        jsonrpc: '2.0',
-        id: index + 1000,
-        method: 'accountSubscribe',
-        params: [
-          account,
-          {
-            encoding: 'jsonParsed',
-            commitment: 'confirmed',
-          },
-        ],
-      };
-
-      this.ws!.send(JSON.stringify(accountSubscription));
+      
+      // Record credit usage (Shyft typically charges per subscription)
+      creditMonitor.recordUsage('shyft_websocket', 1, 1);
     });
 
-    logger.info('Subscribed to tokens via WebSocket', { count: accounts.length });
+    logger.info('Subscribed to Solana tokens via Shyft WebSocket', { count: solanaTokens.length });
   }
 
   /**
-   * Handle WebSocket messages
+   * Handle WebSocket messages from Shyft
    */
   private handleWebSocketMessage(message: any): void {
-    // Helius sends price updates in different formats
-    // Check for price update notifications
-    if (message.type === 'price-update' || message.method === 'priceUpdate') {
-      const { account, price, timestamp } = message.params || message;
-      if (!account || !price) return;
+    // Shyft sends price updates in this format
+    if (message.method === 'token_price' || message.channel === 'token_price') {
+      const tokenAddress = message.params?.token || message.token;
+      const price = message.params?.price || message.price;
+      const timestamp = message.params?.timestamp || message.timestamp || Date.now();
 
-      // Find monitor for this token
+      if (!tokenAddress || !price) return;
+
+      // Find monitor for this token (Solana only)
       const monitor = Array.from(this.activeMonitors.values()).find(
-        (m) => m.tokenAddress.toLowerCase() === account.toLowerCase()
+        (m) => m.chain === 'solana' && m.tokenAddress.toLowerCase() === tokenAddress.toLowerCase()
       );
 
       if (!monitor) return;
 
-      this.updateTokenPrice(monitor, parseFloat(price), timestamp || Date.now());
+      this.updateTokenPrice(monitor, parseFloat(price), timestamp);
       return;
     }
 
-    // Handle account subscription notifications (Solana account changes)
-    if (message.method === 'accountNotification') {
-      const account = message.params?.result?.value;
-      if (!account) return;
+    // Handle other Shyft message types if needed
+    if (message.result && message.result.price) {
+      const tokenAddress = message.result.token;
+      const price = message.result.price;
+      const timestamp = message.result.timestamp || Date.now();
 
-      const tokenAddress = account.data?.parsed?.info?.mint || account.data?.parsed?.info?.address;
-      if (!tokenAddress) return;
+      if (!tokenAddress || !price) return;
 
-      // Find monitor for this token
       const monitor = Array.from(this.activeMonitors.values()).find(
-        (m) => m.tokenAddress.toLowerCase() === tokenAddress.toLowerCase()
+        (m) => m.chain === 'solana' && m.tokenAddress.toLowerCase() === tokenAddress.toLowerCase()
       );
 
       if (!monitor) return;
 
-      // For account notifications, we need to fetch price separately
-      // This is a fallback - primary price updates should come from price-update events
-      this.fetchPriceFromBirdeye(monitor.tokenAddress)
-        .then((price: number | null) => {
-          if (price && price > 0) {
-            this.updateTokenPrice(monitor, price, Date.now());
-          }
-        })
-        .catch(() => {
-          // Ignore errors
-        });
+      this.updateTokenPrice(monitor, parseFloat(price), timestamp);
     }
   }
 
@@ -441,22 +451,57 @@ export class LiveTradeAlertService extends EventEmitter {
   }
 
   /**
-   * Start periodic price updates (fallback if WebSocket fails)
+   * Start RPC polling for ETH/BSC tokens (1 minute interval)
+   */
+  private startRPCPolling(): void {
+    this.rpcPollInterval = setInterval(async () => {
+      if (!this.isRunning) return;
+
+      // Get ETH/BSC tokens only
+      const ethBscTokens = Array.from(this.activeMonitors.values()).filter(
+        (m) => m.chain === 'ethereum' || m.chain === 'bsc' || m.chain === 'eth' || m.chain === 'binance'
+      );
+
+      if (ethBscTokens.length === 0) return;
+
+      try {
+        logger.debug('Polling prices for ETH/BSC tokens', { count: ethBscTokens.length });
+        await this.updatePricesBatch(ethBscTokens);
+        
+        // Record credit usage for RPC calls
+        creditMonitor.recordUsage('rpc_polling', ethBscTokens.length, ethBscTokens.length);
+      } catch (error) {
+        logger.error('Error in RPC price polling', error as Error);
+      }
+    }, RPC_POLL_INTERVAL_MS); // 1 minute
+  }
+
+  /**
+   * Start periodic price updates (fallback if WebSocket fails for Solana)
    */
   private startPeriodicUpdates(): void {
     this.updateInterval = setInterval(async () => {
       if (!this.isRunning) return;
 
-      // Batch fetch prices for all monitored tokens
-      const tokens = Array.from(this.activeMonitors.values());
-      if (tokens.length === 0) return;
+      // Only poll Solana tokens if WebSocket is not connected
+      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+        return; // WebSocket is working, skip polling
+      }
+
+      // Batch fetch prices for Solana tokens (fallback)
+      const solanaTokens = Array.from(this.activeMonitors.values()).filter(
+        (m) => m.chain === 'solana'
+      );
+      
+      if (solanaTokens.length === 0) return;
 
       try {
-        await this.updatePricesBatch(tokens);
+        await this.updatePricesBatch(solanaTokens);
+        creditMonitor.recordUsage('birdeye_fallback', solanaTokens.length, solanaTokens.length);
       } catch (error) {
         logger.error('Error in periodic price update', error as Error);
       }
-    }, 10000); // Every 10 seconds
+    }, 10000); // Every 10 seconds (fallback only)
   }
 
   /**
@@ -829,6 +874,37 @@ export class LiveTradeAlertService extends EventEmitter {
         timestamp: alert.timestamp,
         sentToGroups: ALERT_GROUP_IDS.map(String),
       });
+
+      // Update monitored token entry information
+      const key = `${alert.chain}:${alert.tokenAddress}`.toLowerCase();
+      const monitor = this.activeMonitors.get(key);
+      if (monitor) {
+        // Try to find the monitored token ID from Postgres
+        // For now, we'll update by token address + caller + alert time
+        // In a full implementation, we'd store the ID when adding the token
+        try {
+          const { getActiveMonitoredTokens } = await import('../utils/monitored-tokens-db');
+          const monitoredTokens = await getActiveMonitoredTokens();
+          const monitoredToken = monitoredTokens.find(
+            mt =>
+              mt.tokenAddress.toLowerCase() === alert.tokenAddress.toLowerCase() &&
+              mt.chain === alert.chain &&
+              mt.callerName === alert.callerName &&
+              Math.abs(mt.alertTimestamp.getTime() - new Date(monitor.alertTime).getTime()) < 60000 // Within 1 minute
+          );
+
+          if (monitoredToken?.id) {
+            await updateMonitoredTokenEntry(
+              monitoredToken.id,
+              alert.entryPrice,
+              new Date(alert.timestamp),
+              alert.entryType
+            );
+          }
+        } catch (error) {
+          logger.warn('Failed to update monitored token entry', error as Error);
+        }
+      }
     } catch (error) {
       logger.error('Failed to store entry alert', error as Error);
     }
@@ -870,10 +946,12 @@ export class LiveTradeAlertService extends EventEmitter {
 
   /**
    * Add a token to monitoring manually
+   * Optionally pre-populate with historical candles
    */
   public async addToken(
     alert: CallerAlert,
-    entryConfig?: EntryConfig
+    entryConfig?: EntryConfig,
+    historicalCandles?: Candle[]
   ): Promise<void> {
     const key = `${alert.chain}:${alert.tokenAddress}`.toLowerCase();
 
@@ -889,6 +967,16 @@ export class LiveTradeAlertService extends EventEmitter {
       return;
     }
 
+    // Initialize candles - use provided historical candles or start empty
+    let initialCandles: Candle[] = [];
+    if (historicalCandles && historicalCandles.length > 0) {
+      initialCandles = historicalCandles;
+      logger.info('Pre-populating monitor with historical candles', {
+        tokenAddress: alert.tokenAddress.substring(0, 20),
+        candleCount: historicalCandles.length,
+      });
+    }
+
     const monitor: TokenMonitor = {
       alertId: alert.id || 0,
       tokenAddress: alert.tokenAddress,
@@ -897,7 +985,7 @@ export class LiveTradeAlertService extends EventEmitter {
       callerName: alert.callerName,
       alertTime: alert.alertTimestamp,
       alertPrice: alert.priceAtAlert,
-      candles: [],
+      candles: initialCandles,
       indicatorHistory: [],
       entrySignalSent: false,
       inPosition: false,
@@ -906,16 +994,58 @@ export class LiveTradeAlertService extends EventEmitter {
       entryConfig: entryConfig || DEFAULT_ENTRY_CONFIG,
     };
 
+    // If we have historical candles, calculate indicators immediately
+    if (initialCandles.length > 0) {
+      this.recalculateIndicators(monitor);
+      
+      // Update lowest price from historical data
+      for (const candle of initialCandles) {
+        if (!monitor.lowestPrice || candle.low < monitor.lowestPrice) {
+          monitor.lowestPrice = candle.low;
+          monitor.lowestPriceTime = candle.timestamp * 1000; // Convert to milliseconds
+        }
+      }
+      
+      // Set last price from most recent candle
+      const lastCandle = initialCandles[initialCandles.length - 1];
+      monitor.lastPrice = lastCandle.close;
+      monitor.lastUpdateTime = lastCandle.timestamp * 1000;
+    }
+
     this.activeMonitors.set(key, monitor);
 
-    // Subscribe if WebSocket is connected
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this.subscribeToTokens();
+    // Store in Postgres for watchlist access
+    try {
+      await storeMonitoredToken({
+        tokenAddress: alert.tokenAddress,
+        chain: alert.chain,
+        tokenSymbol: alert.tokenSymbol,
+        callerName: alert.callerName,
+        alertTimestamp: alert.alertTimestamp,
+        alertPrice: alert.priceAtAlert,
+        entryConfig: entryConfig || DEFAULT_ENTRY_CONFIG,
+        status: 'active',
+        historicalCandlesCount: initialCandles.length,
+        lastPrice: monitor.lastPrice,
+        lastUpdateTime: monitor.lastUpdateTime ? new Date(monitor.lastUpdateTime) : undefined,
+      });
+    } catch (error) {
+      logger.warn('Failed to store monitored token in Postgres', error as Error, {
+        tokenAddress: alert.tokenAddress.substring(0, 20),
+      });
+      // Continue even if storage fails
     }
+
+    // Subscribe if WebSocket is connected (Solana only)
+    if (alert.chain === 'solana' && this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.subscribeToSolanaTokens();
+    }
+    // ETH/BSC tokens will be polled via RPC polling interval
 
     logger.info('Added token to live monitoring', {
       tokenSymbol: monitor.tokenSymbol,
       callerName: monitor.callerName,
+      historicalCandles: initialCandles.length,
     });
   }
 
@@ -956,12 +1086,25 @@ export class LiveTradeAlertService extends EventEmitter {
     monitoredTokens: number;
     websocketConnected: boolean;
     alertGroups: number;
+    solanaTokens: number;
+    ethBscTokens: number;
+    creditUsage: ReturnType<typeof creditMonitor.getReport>;
   } {
+    const solanaTokens = Array.from(this.activeMonitors.values()).filter(
+      (m) => m.chain === 'solana'
+    ).length;
+    const ethBscTokens = Array.from(this.activeMonitors.values()).filter(
+      (m) => m.chain === 'ethereum' || m.chain === 'bsc' || m.chain === 'eth' || m.chain === 'binance'
+    ).length;
+
     return {
       isRunning: this.isRunning,
       monitoredTokens: this.activeMonitors.size,
       websocketConnected: this.ws?.readyState === WebSocket.OPEN,
       alertGroups: ALERT_GROUP_IDS.length,
+      solanaTokens,
+      ethBscTokens,
+      creditUsage: creditMonitor.getReport(),
     };
   }
 }

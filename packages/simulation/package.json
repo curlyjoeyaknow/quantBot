@@ -1,0 +1,25 @@
+{
+  "name": "@quantbot/simulation",
+  "version": "1.0.0",
+  "description": "Trading simulation engine for QuantBot",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@quantbot/utils": "workspace:*",
+    "luxon": "^3.7.2",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@types/luxon": "^3.7.1",
+    "@types/node": "^24.9.1",
+    "@vitest/coverage-v8": "^4.0.14",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.13"
+  }
+}
+

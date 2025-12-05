@@ -5,7 +5,7 @@ config({ override: true });
 
 import path from 'path';
 import { promises as fs } from 'fs';
-import { runSimulationConfig, loadSimulationConfig } from '../../src/simulation';
+import { runSimulationConfig, loadSimulationConfig } from '@quantbot/simulation';
 
 type CachePolicy = 'prefer-cache' | 'refresh' | 'cache-only';
 

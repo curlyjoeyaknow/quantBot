@@ -37,6 +37,11 @@ export type Candle = {
   volume: number;    // Volume (quoted currency)
 };
 
+/**
+ * Supported higher‑level aggregation intervals for derived candles.
+ */
+export type AggregationInterval = '5m' | '15m' | '1H' | '4H' | '1D';
+
 /* ============================================================================
  * Constants & System Configuration
  * ========================================================================== */
@@ -150,6 +155,105 @@ function loadCandlesFromCache(filename: string): Candle[] | null {
 }
 
 /* ============================================================================
+ * Candle Aggregation Utilities
+ * ========================================================================== */
+
+/**
+ * Map an aggregation interval string to its length in seconds.
+ */
+function getAggregationIntervalSeconds(interval: AggregationInterval): number {
+  switch (interval) {
+    case '5m':
+      return 5 * 60;
+    case '15m':
+      return 15 * 60;
+    case '1H':
+      return 60 * 60;
+    case '4H':
+      return 4 * 60 * 60;
+    case '1D':
+      return 24 * 60 * 60;
+    default:
+      // Exhaustiveness check
+      const exhaustiveCheck: never = interval;
+      throw new Error(`Unsupported aggregation interval: ${exhaustiveCheck}`);
+  }
+}
+
+/**
+ * Aggregate lower‑timeframe candles (e.g. 1m / 5m) into higher‑timeframe
+ * candles (e.g. 1H) by bucketing on timestamp.
+ *
+ * Assumptions:
+ * - Input candles are sorted ascending by timestamp (seconds).
+ * - All candles describe contiguous, non‑overlapping time ranges.
+ *
+ * The resulting candle for each bucket uses:
+ * - open:   first candle's open
+ * - close:  last candle's close
+ * - high:   max(high)
+ * - low:    min(low)
+ * - volume: sum(volume)
+ */
+export function aggregateCandles(
+  candles: readonly Candle[],
+  interval: AggregationInterval
+): Candle[] {
+  if (candles.length === 0) {
+    return [];
+  }
+
+  const intervalSeconds = getAggregationIntervalSeconds(interval);
+
+  // Ensure candles are sorted; cloning keeps function pure
+  const sorted = [...candles].sort((a, b) => a.timestamp - b.timestamp);
+
+  const aggregated: Candle[] = [];
+  let bucketStart = Math.floor(sorted[0].timestamp / intervalSeconds) * intervalSeconds;
+  let bucketCandles: Candle[] = [];
+
+  const flushBucket = (): void => {
+    if (bucketCandles.length === 0) {
+      return;
+    }
+    const first = bucketCandles[0];
+    const last = bucketCandles[bucketCandles.length - 1];
+
+    let high = first.high;
+    let low = first.low;
+    let volume = 0;
+
+    for (const c of bucketCandles) {
+      if (c.high > high) high = c.high;
+      if (c.low < low) low = c.low;
+      volume += c.volume;
+    }
+
+    aggregated.push({
+      timestamp: bucketStart,
+      open: first.open,
+      high,
+      low,
+      close: last.close,
+      volume,
+    });
+  };
+
+  for (const candle of sorted) {
+    if (candle.timestamp >= bucketStart + intervalSeconds) {
+      flushBucket();
+      bucketCandles = [candle];
+      bucketStart = Math.floor(candle.timestamp / intervalSeconds) * intervalSeconds;
+    } else {
+      bucketCandles.push(candle);
+    }
+  }
+
+  flushBucket();
+  return aggregated;
+}
+
+/* ============================================================================
  * API Fetch: Birdeye & Hybrid Helper
  * ========================================================================== */
 
@@ -163,7 +267,7 @@ async function fetchFreshCandles(
   startTime: DateTime,
   endTime: DateTime,
   chain: string = 'solana',
-  interval: '1m' | '5m' | '1H' = '5m'
+  interval: '15s' | '1m' | '5m' | '1H' = '5m'
 ): Promise<Candle[]> {
   const from = Math.floor(startTime.toSeconds());
   const to = Math.floor(endTime.toSeconds());
@@ -219,6 +323,7 @@ function mergeCandles(
 
 /**
  * Makes a GET request to Birdeye OHLCV API. All params are explicit.
+ * Automatically chunks requests into 5000-candle windows for optimal credit usage.
  * Throws on network/auth errors. Returns normalized array of Candle objects.
  * 
  * @param mint     Solana token mint address
@@ -229,7 +334,7 @@ function mergeCandles(
  */
 async function fetchBirdeyeCandles(
   mint: string,
-  interval: '1m' | '5m' | '1H',
+  interval: '15s' | '1m' | '5m' | '1H',
   from: number,
   to: number,
   chain: string = 'solana'
@@ -240,7 +345,107 @@ async function fetchBirdeyeCandles(
       throw new Error('BIRDEYE_API_KEY is not set in environment variables');
     }
     
-    // First try: fetch by date range
+    // Calculate interval seconds and max candles per request (5000 limit)
+    const intervalSeconds = interval === '15s' ? 15 : interval === '1m' ? 60 : interval === '5m' ? 300 : 3600;
+    const MAX_CANDLES_PER_REQUEST = 5000;
+    const maxWindowSeconds = MAX_CANDLES_PER_REQUEST * intervalSeconds;
+    
+    // Calculate total duration and number of chunks needed
+    const durationSeconds = to - from;
+    const estimatedCandles = Math.ceil(durationSeconds / intervalSeconds);
+    
+    // If we need more than 5000 candles, chunk the requests
+    if (estimatedCandles > MAX_CANDLES_PER_REQUEST) {
+      logger.debug(`Chunking request for ${mint.substring(0, 20)}... (${estimatedCandles} candles estimated, ${Math.ceil(estimatedCandles / MAX_CANDLES_PER_REQUEST)} chunks needed)`);
+      
+      const allCandles: Candle[] = [];
+      let currentFrom = from;
+      
+      while (currentFrom < to) {
+        // Calculate chunk end time (max 5000 candles worth)
+        const chunkTo = Math.min(currentFrom + maxWindowSeconds, to);
+        
+        const chunkCandles = await fetchBirdeyeCandlesChunk(
+          mint,
+          interval,
+          currentFrom,
+          chunkTo,
+          chain,
+          apiKey
+        );
+        
+        if (chunkCandles.length === 0) {
+          // No more data available, break
+          break;
+        }
+        
+        allCandles.push(...chunkCandles);
+        
+        // Move to next chunk (start from last candle timestamp + 1 interval)
+        const lastTimestamp = chunkCandles[chunkCandles.length - 1]?.timestamp;
+        if (lastTimestamp) {
+          currentFrom = lastTimestamp + intervalSeconds;
+        } else {
+          currentFrom = chunkTo;
+        }
+        
+        // Small delay between chunks to avoid rate limits
+        if (currentFrom < to) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+      }
+      
+      // Sort and deduplicate by timestamp
+      const uniqueCandles = new Map<number, Candle>();
+      for (const candle of allCandles) {
+        if (!uniqueCandles.has(candle.timestamp)) {
+          uniqueCandles.set(candle.timestamp, candle);
+        }
+      }
+      
+      return Array.from(uniqueCandles.values()).sort((a, b) => a.timestamp - b.timestamp);
+    }
+    
+    // Single request (<= 5000 candles)
+    return await fetchBirdeyeCandlesChunk(mint, interval, from, to, chain, apiKey);
+  } catch (error: any) {
+    // If it's a 400/404, that's expected for invalid tokens - return empty
+    if (error.response?.status === 400 || error.response?.status === 404) {
+      return [];
+    }
+    // Re-throw other errors (network, 500, etc.)
+    throw error;
+  }
+}
+
+/**
+ * Fetches candles from Birdeye API with automatic chunking.
+ * Exported for use in scripts that need direct access.
+ */
+export async function fetchBirdeyeCandlesDirect(
+  mint: string,
+  interval: '15s' | '1m' | '5m' | '1H',
+  from: number,
+  to: number,
+  chain: string = 'solana'
+): Promise<Candle[]> {
+  return fetchBirdeyeCandles(mint, interval, from, to, chain);
+}
+
+/**
+ * Fetches a single chunk of candles (up to 5000) from Birdeye API.
+ * Internal helper used by fetchBirdeyeCandles for chunking.
+ */
+async function fetchBirdeyeCandlesChunk(
+  mint: string,
+  interval: '15s' | '1m' | '5m' | '1H',
+  from: number,
+  to: number,
+  chain: string,
+  apiKey: string
+): Promise<Candle[]> {
+  try {
+    // Fetch by date range (up to 5000 candles)
     const response = await axios.get(BIRDEYE_ENDPOINT, {
       headers: {
         'X-API-KEY': apiKey,
@@ -274,16 +479,10 @@ async function fetchBirdeyeCandles(
     // Defensive: Normalize to Candle type
     let items: any[] = response.data?.data?.items ?? [];
     
-    // If date range returned no items, try fetching by max candles instead
+    // If date range returned no items, try fetching by limit (latest 5000)
     if (items.length === 0) {
-      logger.debug(`No candles found for date range, trying max candles approach for ${mint}`);
+      logger.debug(`No candles found for date range, trying limit approach for ${mint.substring(0, 20)}...`);
       
-      // Calculate how many candles we need based on time range
-      const durationSeconds = to - from;
-      const intervalSeconds = interval === '1m' ? 60 : interval === '5m' ? 300 : 3600; // 1m = 60s, 5m = 300s, 1H = 3600s
-      const maxCandles = Math.ceil(durationSeconds / intervalSeconds);
-      
-      // Fetch latest N candles (up to what we need)
       const limitResponse = await axios.get(BIRDEYE_ENDPOINT, {
         headers: {
           'X-API-KEY': apiKey,
@@ -295,7 +494,7 @@ async function fetchBirdeyeCandles(
           type: interval,
           currency: 'usd',
           ui_amount_mode: 'raw',
-          limit: Math.min(maxCandles, 10000), // Cap at 10k candles
+          limit: 5000, // Use max 5000 candles per request
         },
         validateStatus: (status) => status < 500,
       });
@@ -303,7 +502,7 @@ async function fetchBirdeyeCandles(
       if (limitResponse.status === 200) {
         items = limitResponse.data?.data?.items ?? [];
         if (items.length > 0) {
-          logger.debug(`Fetched ${items.length} candles using max candles approach for ${mint}`);
+          logger.debug(`Fetched ${items.length} candles using limit approach for ${mint.substring(0, 20)}...`);
           // Filter to only include candles within the requested time range
           items = items.filter((item: any) => {
             const timestamp = item.unix_time;
@@ -332,6 +531,178 @@ async function fetchBirdeyeCandles(
 }
 
 /* ============================================================================
+ * Optimized Multi-Timeframe Fetching Strategy
+ * ========================================================================== */
+
+/**
+ * Constants for optimized fetching strategy
+ */
+const FIFTY_TWO_HOURS_SEC = 52 * 60 * 60; // 52 hours in seconds
+const THREE_MONTHS_SEC = 90 * 24 * 60 * 60; // 90 days in seconds
+const MAX_CANDLES_15S = 5000;
+const MAX_CANDLES_1M = 5000;
+const MAX_CANDLES_5M = 5000;
+const CANDLE_15S_SEC = 15;
+const CANDLE_1M_SEC = 60;
+const CANDLE_5M_SEC = 5 * 60;
+const SEVENTEEN_DAYS_SEC = 17 * 24 * 60 * 60; // 17 days in seconds (safe limit for 5m)
+
+/**
+ * Fetches optimized multi-timeframe candles for maximum granularity and credit efficiency.
+ * 
+ * Strategy (simplified):
+ * 1. 1m: 52 hours back (3120 candles) + forward to fill 5000 candles total
+ * 2. 15s: 52×15s periods back (13 minutes) + forward to fill 5000 candles total
+ * 3. 5m: 52×5m periods back (4.33 hours) + forward in 17-day chunks for remainder
+ * 
+ * This minimizes credit usage while maximizing granularity around alert time.
+ * 
+ * @param mint Token mint address
+ * @param alertTime Alert/call time (DateTime)
+ * @param endTime End time for candles (DateTime, defaults to now)
+ * @param chain Blockchain name (defaults to 'solana')
+ * @returns Array of Candle objects, sorted by timestamp
+ */
+export async function fetchOptimizedCandlesForAlert(
+  mint: string,
+  alertTime: DateTime,
+  endTime: DateTime = DateTime.utc(),
+  chain: string = 'solana'
+): Promise<Candle[]> {
+  const alertUnix = Math.floor(alertTime.toSeconds());
+  const endUnix = Math.floor(endTime.toSeconds());
+  
+  const allCandles: Candle[] = [];
+  const apiKey = getBirdeyeApiKey();
+  if (!apiKey) {
+    throw new Error('BIRDEYE_API_KEY is not set in environment variables');
+  }
+
+  logger.debug('Fetching optimized candles for alert', {
+    mint: mint.substring(0, 20),
+    alertTime: alertTime.toISO(),
+    endTime: endTime.toISO(),
+  });
+
+  // Step 1: Fetch 1m candles - 52 hours back (3120 candles) + forward to 5000 total
+  const fiftyTwoHoursAgo = alertUnix - FIFTY_TWO_HOURS_SEC;
+  const oneMHistoricalStart = fiftyTwoHoursAgo; // 52 hours back
+  const oneMForwardEnd = oneMHistoricalStart + (MAX_CANDLES_1M * CANDLE_1M_SEC); // Forward to fill 5000 candles
+  
+  logger.debug('Fetching 1m candles', {
+    start: new Date(oneMHistoricalStart * 1000).toISOString(),
+    end: new Date(Math.min(oneMForwardEnd, endUnix) * 1000).toISOString(),
+    expectedCandles: MAX_CANDLES_1M,
+  });
+  
+  const oneMCandles = await fetchBirdeyeCandles(
+    mint,
+    '1m',
+    oneMHistoricalStart,
+    Math.min(oneMForwardEnd, endUnix),
+    chain
+  );
+  allCandles.push(...oneMCandles);
+  
+  // Step 2: Fetch 15s candles - 52×15s periods back (13 minutes) + forward to 5000 total
+  const fiftyTwoPeriods15s = 52 * CANDLE_15S_SEC; // 780 seconds = 13 minutes
+  const fifteenSStart = alertUnix - fiftyTwoPeriods15s;
+  const fifteenSEnd = fifteenSStart + (MAX_CANDLES_15S * CANDLE_15S_SEC); // Forward to fill 5000 candles
+  
+  // Only fetch 15s if alert time is within 3 months (Birdeye limit for 15s)
+  const threeMonthsAgo = alertUnix - THREE_MONTHS_SEC;
+  if (fifteenSStart >= threeMonthsAgo) {
+    logger.debug('Fetching 15s candles', {
+      start: new Date(fifteenSStart * 1000).toISOString(),
+      end: new Date(Math.min(fifteenSEnd, endUnix) * 1000).toISOString(),
+      expectedCandles: MAX_CANDLES_15S,
+    });
+    
+    const fifteenSCandles = await fetchBirdeyeCandles(
+      mint,
+      '15s',
+      fifteenSStart,
+      Math.min(fifteenSEnd, endUnix),
+      chain
+    );
+    allCandles.push(...fifteenSCandles);
+  } else {
+    logger.debug('Skipping 15s candles (alert >3 months ago)');
+  }
+  
+  // Step 3: Fetch 5m candles - 52×5m periods back (4.33 hours) + forward in 17-day chunks
+  const fiftyTwoPeriods5m = 52 * CANDLE_5M_SEC; // 15,600 seconds = 260 minutes = 4.33 hours
+  const fiveMHistoricalStart = alertUnix - fiftyTwoPeriods5m;
+  
+  // Always start 5m fetch from 52×5m back, then continue forward in 17-day chunks
+  // This ensures the 52×5m lookback is included in the first chunk
+  let current5mFrom = fiveMHistoricalStart;
+  
+  if (current5mFrom < endUnix) {
+    logger.debug('Fetching 5m candles', {
+      start: new Date(current5mFrom * 1000).toISOString(),
+      end: new Date(endUnix * 1000).toISOString(),
+      firstChunkIncludes52Periods: true,
+    });
+    
+    while (current5mFrom < endUnix) {
+      // Never fetch more than 17 days at once (safe limit to avoid 400 errors)
+      const chunk5mTo = Math.min(current5mFrom + SEVENTEEN_DAYS_SEC, endUnix);
+      
+      const fiveMCandles = await fetchBirdeyeCandles(
+        mint,
+        '5m',
+        current5mFrom,
+        chunk5mTo,
+        chain
+      );
+      
+      if (fiveMCandles.length === 0) {
+        break; // No more data
+      }
+      
+      allCandles.push(...fiveMCandles);
+      current5mFrom = fiveMCandles[fiveMCandles.length - 1].timestamp + CANDLE_5M_SEC;
+      
+      // Small delay between chunks
+      if (current5mFrom < endUnix) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+    }
+  }
+  
+  // Deduplicate and sort (prefer higher granularity candles when timestamps overlap)
+  const uniqueCandles = new Map<number, Candle>();
+  for (const candle of allCandles) {
+    const existing = uniqueCandles.get(candle.timestamp);
+    if (!existing) {
+      uniqueCandles.set(candle.timestamp, candle);
+    } else {
+      // Prefer 15s > 1m > 5m when timestamps overlap
+      const existingInterval = existing.timestamp === candle.timestamp 
+        ? (allCandles.filter(c => c.timestamp === existing.timestamp).length > 1 ? '15s' : '1m')
+        : '5m';
+      // For now, just keep the one with higher volume (better data quality)
+      if (candle.volume > existing.volume) {
+        uniqueCandles.set(candle.timestamp, candle);
+      }
+    }
+  }
+  
+  const sorted = Array.from(uniqueCandles.values()).sort((a, b) => a.timestamp - b.timestamp);
+  
+  logger.debug('Optimized fetch complete', {
+    mint: mint.substring(0, 20),
+    totalCandles: sorted.length,
+    timeRange: sorted.length > 0 
+      ? `${new Date(sorted[0].timestamp * 1000).toISOString()} to ${new Date(sorted[sorted.length - 1].timestamp * 1000).toISOString()}`
+      : 'N/A',
+  });
+  
+  return sorted;
+}
+
+/* ============================================================================
  * Public API: fetchHybridCandles
  * ========================================================================== */
 
@@ -357,15 +728,38 @@ export async function fetchHybridCandles(
   chain: string = 'solana',
   alertTime?: DateTime
 ): Promise<Candle[]> {
+  // If alertTime is provided, extend startTime back by 52 periods (260 minutes) for Ichimoku
+  // This ensures indicators can be calculated immediately when the alert comes in
+  let actualStartTime = startTime;
+  if (alertTime) {
+    const ichimokuLookback = alertTime.minus({ minutes: 260 }); // 52 periods * 5 minutes
+    // Only extend back if it's before the requested startTime
+    if (ichimokuLookback < startTime) {
+      actualStartTime = ichimokuLookback;
+      logger.debug(
+        `Extended start time back by 260 minutes for Ichimoku: ${actualStartTime.toISO()} (original: ${startTime.toISO()})`
+      );
+    }
+  }
+  
   // Try ClickHouse first (if enabled) - ClickHouse is a cache, so check it even in cache-only mode
   if (process.env.USE_CLICKHOUSE === 'true' || process.env.CLICKHOUSE_HOST) {
     try {
       const { queryCandles } = await import('../storage/clickhouse-client');
-      const clickhouseCandles = await queryCandles(mint, chain, startTime, endTime);
+      const clickhouseCandles = await queryCandles(mint, chain, actualStartTime, endTime);
       if (clickhouseCandles.length > 0) {
         logger.debug(
-          `Using ClickHouse candles for ${mint} (${clickhouseCandles.length} candles)`
+          `Using ClickHouse candles for ${mint} (${clickhouseCandles.length} candles, from ${actualStartTime.toISO()})`
         );
+        // Filter to requested range if we extended backwards
+        if (actualStartTime < startTime) {
+          const startUnix = Math.floor(startTime.toSeconds());
+          const filtered = clickhouseCandles.filter(c => c.timestamp >= startUnix);
+          logger.debug(
+            `Filtered ClickHouse candles to requested range: ${filtered.length} candles (had ${clickhouseCandles.length} with lookback)`
+          );
+          return filtered;
+        }
         return clickhouseCandles;
       }
     } catch (error: any) {
@@ -373,7 +767,7 @@ export async function fetchHybridCandles(
     }
   }
   
-  // Check CSV cache (exact match)
+  // Check CSV cache (exact match for requested range)
   const cacheFilename = getCacheFilename(mint, startTime, endTime, chain);
   const cachedCandles = loadCandlesFromCache(cacheFilename);
   if (cachedCandles) {
@@ -444,18 +838,28 @@ export async function fetchHybridCandles(
     `Fetching fresh candles for ${mint}: ${startTime.toISO()} — ${endTime.toISO()}`
   );
   
-  // Always fetch 5m candles for the full period
+  // Always fetch 5m candles for the full period (including lookback if alertTime provided)
   const candles5m = await fetchFreshCandles(
     mint,
-    startTime,
+    actualStartTime,
     endTime,
     chain,
     '5m'
   );
   
-  let finalCandles = candles5m;
+  // Filter to requested range for merging with 1m candles (but keep full range for Ichimoku)
+  let candles5mFiltered = candles5m;
+  if (actualStartTime < startTime) {
+    const startUnix = Math.floor(startTime.toSeconds());
+    candles5mFiltered = candles5m.filter(c => c.timestamp >= startUnix);
+    logger.debug(
+      `Fetched ${candles5m.length} 5m candles with lookback (${candles5mFiltered.length} in requested range)`
+    );
+  }
   
   // If alertTime is provided, also fetch 1m candles for 30min before and after
+  let finalCandles = candles5mFiltered;
+  
   if (alertTime) {
     const alertWindowStart = alertTime.minus({ minutes: 30 });
     const alertWindowEnd = alertTime.plus({ minutes: 30 });
@@ -476,19 +880,40 @@ export async function fetchHybridCandles(
       '1m'
     );
     
-    // Merge 5m and 1m candles, with 1m taking precedence in the alert window
-    finalCandles = mergeCandles(candles5m, candles1m, alertTime, 30);
+    // Merge filtered 5m and 1m candles, with 1m taking precedence in the alert window
+    finalCandles = mergeCandles(candles5mFiltered, candles1m, alertTime, 30);
+  }
+  
+  // Return full candles5m (with lookback) so Ichimoku can use all available data
+  // The lookback candles are included so indicators can be calculated immediately
+  if (alertTime && actualStartTime < startTime) {
+    // Prepend lookback candles to finalCandles for Ichimoku calculations
+    const startUnix = Math.floor(startTime.toSeconds());
+    const lookbackCandles = candles5m.filter(c => c.timestamp < startUnix);
+    finalCandles = [...lookbackCandles, ...finalCandles].sort((a, b) => a.timestamp - b.timestamp);
+    logger.debug(
+      `Returning ${finalCandles.length} candles (${lookbackCandles.length} lookback + ${finalCandles.length - lookbackCandles.length} requested range) for Ichimoku`
+    );
   }
   
   if (finalCandles.length > 0) {
-    // Save to CSV cache (always)
+    // Save to CSV cache (always) - save the filtered range (requested range)
     saveCandlesToCache(finalCandles, cacheFilename);
+    
+    // Also save the full range with lookback if we extended backwards (for future use)
+    if (actualStartTime < startTime && candles5m.length > candles5mFiltered.length) {
+      const lookbackCacheFilename = getCacheFilename(mint, actualStartTime, endTime, chain);
+      saveCandlesToCache(candles5m, lookbackCacheFilename);
+      logger.debug(
+        `Saved lookback candles to cache: ${lookbackCacheFilename} (${candles5m.length} candles)`
+      );
+    }
     
     // Also save to ClickHouse if enabled
     if (process.env.USE_CLICKHOUSE === 'true' || process.env.CLICKHOUSE_HOST) {
       try {
         const { insertCandles } = await import('../storage/clickhouse-client');
-        // Save both 5m and 1m candles separately to ClickHouse
+        // Save full 5m candles (with lookback) to ClickHouse
         if (candles5m.length > 0) {
           await insertCandles(mint, chain, candles5m, '5m');
         }

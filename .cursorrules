@@ -96,32 +96,46 @@ QuantBot is a TypeScript-based trading simulation and analysis platform for Sola
 ## Project-Specific Rules
 
 ### Module Architecture
-- Follow the modular architecture defined in `docs/migration/module-architecture.md`
-- Keep modules independent and loosely coupled
+- Follow the modular architecture defined in `docs/modularization.md`
+- Keep packages independent and loosely coupled
 - Use dependency injection for testability
 - Prefer composition over inheritance
+- Each package should have clear boundaries and minimal dependencies
+
+### Package Architecture
+- The codebase is organized into packages under `packages/`:
+  - `@quantbot/utils` - Shared utilities (logger, database, errors)
+  - `@quantbot/storage` - Storage layer (ClickHouse, Postgres, InfluxDB)
+  - `@quantbot/simulation` - Trading simulation engine
+  - `@quantbot/monitoring` - Real-time monitoring and stream services
+  - `@quantbot/services` - Business logic services
+  - `@quantbot/bot` - Telegram bot implementation
+  - `@quantbot/web` - Next.js web dashboard
+- Always use package imports: `import { logger } from '@quantbot/utils'`
+- Never use relative imports across packages
+- Each package has its own tests in `packages/{name}/tests/`
 
 ### Data Access
-- Use the data loader pattern from `src/data/loaders/`
+- Use the storage package: `@quantbot/storage`
 - Always validate data before processing
 - Use transactions for multi-step database operations
 - Implement proper error handling for data operations
 
 ### Simulation Engine
-- All simulation logic must be in `src/simulation/`
+- All simulation logic is in `@quantbot/simulation` package
 - Use the `SimulationEngine` class for all simulations
 - Strategy definitions must use the builder pattern
 - Configuration must be validated using Zod schemas
 
 ### API Integration
-- All external API calls must go through base clients in `src/api/`
+- All external API calls should go through base clients
 - Implement retry logic with exponential backoff
 - Use connection pooling where applicable
 - Cache API responses when appropriate
 - Handle rate limiting gracefully
 
 ### Logging
-- Use the logger from `src/utils/logger.ts`
+- Use the logger from `@quantbot/utils`: `import { logger } from '@quantbot/utils'`
 - Use appropriate log levels: error, warn, info, debug
 - Include context in log messages
 - Never log sensitive information
@@ -130,10 +144,10 @@ QuantBot is a TypeScript-based trading simulation and analysis platform for Sola
 
 ### Import Order
 1. External dependencies (npm packages)
-2. Internal modules (from src/)
+2. Internal package imports (`@quantbot/*`)
 3. Types and interfaces
 4. Constants
-5. Relative imports
+5. Relative imports (within same package only)
 
 ### Export Strategy
 - Use named exports for utilities and functions

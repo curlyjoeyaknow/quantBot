@@ -8,14 +8,14 @@ alwaysApply: true
 
 ## Command Handler Architecture
 
-### Core Principles
-- All commands must implement `CommandHandler` interface
-- Commands should be self-contained and testable
-- Use dependency injection for services
-- Validate all inputs before processing
-- Return structured responses
+core-principles:
+  - All commands must implement `CommandHandler` interface
+  - Commands should be self-contained and testable
+  - Use dependency injection for services
+  - Validate all inputs before processing
+  - Return structured responses
 
-### Handler Structure
+handler-structure:
 - One handler class per command
 - Handlers should be stateless
 - Use services for business logic
@@ -24,21 +24,21 @@ alwaysApply: true
 
 ## Command Implementation
 
-### Command Registration
+command-registration:
 - Register commands in `CommandRegistry`
 - Use consistent command naming
 - Document command usage
 - Provide help text
 - Handle command aliases
 
-### Command Execution
+command-execution:
 - Parse command arguments
 - Validate input parameters
 - Execute command logic
 - Format response appropriately
 - Handle errors with user-friendly messages
 
-### Command Responses
+command-responses:
 - Return structured response objects
 - Use consistent response format
 - Include relevant data
@@ -47,14 +47,14 @@ alwaysApply: true
 
 ## Input Validation
 
-### Parameter Validation
+parameter-validation:
 - Validate all command parameters
 - Use Zod schemas for validation
 - Provide helpful error messages
 - Handle missing parameters
 - Validate parameter types
 
-### Data Validation
+data-validation:
 - Validate input data formats
 - Check data ranges
 - Validate required fields
@@ -63,14 +63,14 @@ alwaysApply: true
 
 ## Error Handling
 
-### User-Facing Errors
+user-facing-errors:
 - Provide clear error messages
 - Don't expose internal errors
 - Suggest corrective actions
 - Handle common errors gracefully
 - Log errors for debugging
 
-### Internal Errors
+internal-errors:
 - Log errors with context
 - Use appropriate error types
 - Handle errors at appropriate levels
@@ -79,14 +79,14 @@ alwaysApply: true
 
 ## Service Integration
 
-### Service Usage
+service-usage:
 - Inject services via constructor
 - Use async/await for service calls
 - Handle service errors appropriately
 - Cache service responses when needed
 - Monitor service performance
 
-### Dependency Injection
+dependency-injection:
 - Use service container
 - Inject dependencies explicitly
 - Avoid global state
@@ -95,14 +95,14 @@ alwaysApply: true
 
 ## Testing
 
-### Unit Tests
+unit-tests:
 - Test handlers independently
 - Mock service dependencies
 - Test input validation
 - Test error handling
 - Test response formatting
 
-### Integration Tests
+integration-tests:
 - Test full command flows
 - Test with real services
 - Test error scenarios
@@ -111,14 +111,14 @@ alwaysApply: true
 
 ## Documentation
 
-### Command Documentation
+command-documentation:
 - Document all commands
 - Provide usage examples
 - Document parameters
 - Include error scenarios
 - Keep documentation current
 
-### Code Documentation
+code-documentation:
 - Document handler logic
 - Explain validation rules
 - Document error handling

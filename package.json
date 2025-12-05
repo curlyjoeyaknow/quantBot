@@ -1,18 +1,24 @@
 {
   "name": "quantbot",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Advanced Telegram bot for trading simulation, CA monitoring, and PNL analysis using Birdeye API and Helius WebSockets",
-  "main": "src/bot.ts",
+  "main": "packages/bot/src/main.ts",
+  "workspaces": [
+    "packages/*",
+    "packages/web"
+  ],
   "scripts": {
-    "start": "ts-node src/bot.ts",
-    "dev": "ts-node --watch src/bot.ts",
+    "start": "ts-node packages/bot/src/main.ts",
+    "dev": "ts-node --watch packages/bot/src/main.ts",
+    "build:packages": "npm run build --workspace=packages/utils && npm run build --workspace=packages/storage && npm run build --workspace=packages/simulation && npm run build --workspace=packages/services && npm run build --workspace=packages/monitoring && npm run build --workspace=packages/bot",
+    "test:packages": "npm run test --workspace=packages/utils && npm run test --workspace=packages/storage && npm run test --workspace=packages/simulation && npm run test --workspace=packages/services && npm run test --workspace=packages/monitoring && npm run test --workspace=packages/bot",
     "build": "tsc",
     "build:watch": "tsc --watch",
     "clean": "rm -rf dist/",
-    "test": "jest",
-    "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage",
-    "test:ci": "jest --coverage --watchAll=false",
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "test:coverage": "vitest run --coverage",
+    "test:ci": "vitest run --runInBand --coverage",
     "lint": "eslint src/**/*.ts",
     "lint:fix": "eslint src/**/*.ts --fix",
     "format": "prettier --write src/**/*.ts",
@@ -44,7 +50,16 @@
     "optimize:analyze": "ts-node scripts/legacy/analysis/analyze-strategy-results.ts",
     "optimize:all": "npm run optimize:strategies && npm run optimize:ml && npm run optimize:analyze",
     "fetch:tokens": "ts-node scripts/legacy/data-processing/fetch-all-tokens-to-clickhouse.ts",
-    "simulate:config": "ts-node scripts/simulation/run-engine.ts"
+    "simulate:config": "ts-node scripts/simulation/run-engine.ts",
+    "analyze:brook": "ts-node scripts/analysis/analyze-brook-token-selection.ts",
+    "score:tokens": "ts-node scripts/analysis/score-tokens-like-brook.ts",
+    "create:unified-calls": "ts-node scripts/analysis/create-unified-calls-table.ts",
+    "score:unified-calls": "ts-node scripts/analysis/score-and-analyze-unified-calls.ts",
+    "view:results": "ts-node scripts/analysis/view-scored-results.ts",
+    "view:results:html": "ts-node scripts/analysis/view-results-html.ts",
+    "check:clickhouse": "ts-node scripts/analysis/check-clickhouse-data.ts",
+    "monitor:brook": "ts-node scripts/monitoring/start-brook-monitoring.ts",
+    "forward:brook": "ts-node scripts/monitoring/forward-brook-channel.ts"
   },
   "keywords": [
     "telegram",
@@ -81,6 +96,7 @@
     "dotenv": "^17.2.3",
     "lru-cache": "^10.0.0",
     "luxon": "^3.7.2",
+    "pg": "^8.13.0",
     "sqlite3": "^5.1.7",
     "telegraf": "^4.16.3",
     "winston": "^3.18.3",
@@ -89,14 +105,14 @@
     "zod": "^4.1.12"
   },
   "devDependencies": {
-    "@types/jest": "^30.0.0",
     "@types/luxon": "^3.7.1",
     "@types/node": "^24.9.1",
+    "@types/pg": "^8.10.0",
     "@types/supertest": "^6.0.3",
-    "jest": "^30.2.0",
+    "@vitest/coverage-v8": "^4.0.14",
     "supertest": "^7.1.4",
-    "ts-jest": "^29.4.5",
     "ts-node": "^10.9.2",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.13"
   }
 }

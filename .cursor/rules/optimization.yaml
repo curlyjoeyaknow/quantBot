@@ -4,92 +4,92 @@ globs: ["src/simulation/optimization/**/*.ts", "scripts/optimization/**/*.ts"]
 alwaysApply: true
 ---
 
-# Optimization Rules (src/simulation/optimization/)
+# Essential Optimization Rules  
 
-## Optimization Engine
+optimization-engine:
+  core-principles:
+    - "All optimization must use `StrategyOptimizer` class"
+    - "Optimizations must be reproducible and deterministic"
+    - "Use proper parameter grid generation"
+    - "Validate all optimization parameters"
+    - "Log optimization progress for long-running operations"
+  parameter-grid:
+    - "Use `ParameterGrid` class for grid generation"
+    - "Define parameter ranges clearly"
+    - "Use appropriate step sizes for continuous parameters"
+    - "Document parameter constraints"
+    - "Validate grid bounds before optimization"
+optimization-types:
+  grid-search:
+    - "Use grid search for exhaustive parameter exploration"
+    - "ML-based optimization for complex parameter spaces"
+    - "Use appropriate optimization algorithms for the problem"
+    - "Document optimization methodology"
+    - "Compare optimization results across different methods"
 
-### Core Principles
-- All optimization must use `StrategyOptimizer` class
-- Optimizations must be reproducible and deterministic
-- Use proper parameter grid generation
-- Validate all optimization parameters
-- Log optimization progress for long-running operations
+optimization-results:
+  result-structure:
+    - "Structure results consistently"
+    - "Include optimization metadata"
+    - "Store parameter combinations with results"
+    - "Include performance metrics"
+    - "Export results in multiple formats"
 
-### Parameter Grid
-- Use `ParameterGrid` class for grid generation
-- Define parameter ranges clearly
-- Use appropriate step sizes for continuous parameters
-- Document parameter constraints
-- Validate grid bounds before optimization
+performance:
 
-### Optimization Types
-- Grid search for exhaustive parameter exploration
-- ML-based optimization for complex parameter spaces
-- Use appropriate optimization algorithms for the problem
-- Document optimization methodology
-- Compare optimization results across different methods
+  efficiency:
+    - "Use parallel processing for independent optimizations"
+    - "Cache expensive computations"
+    - "Implement proper batching"
+    - "Monitor memory usage during optimization"
+    - "Use appropriate timeout values"
 
-## Performance
+scalability:
+  scalability:
+    - "Design optimizations to scale with parameter space"
+    - "Use streaming for large result sets"
+    - "Implement proper pagination"
+    - "Clean up resources after optimization"
+    - "Handle large datasets efficiently"
 
-### Efficiency
-- Use parallel processing for independent optimizations
-- Cache expensive computations
-- Implement proper batching
-- Monitor memory usage during optimization
-- Use appropriate timeout values
+results:
 
-### Scalability
-- Design optimizations to scale with parameter space
-- Use streaming for large result sets
-- Implement proper pagination
-- Clean up resources after optimization
-- Handle large datasets efficiently
+  result-structure:
+    - "Structure results consistently"
+    - "Include optimization metadata"
+    - "Store parameter combinations with results"
+    - "Include performance metrics"
+    - "Export results in multiple formats"
 
-## Results
+testing:
 
-### Result Structure
-- Structure results consistently
-- Include optimization metadata
-- Store parameter combinations with results
-- Include performance metrics
-- Export results in multiple formats
+unit-tests:
+    - "Test parameter grid generation"
+    - "Test optimization algorithms"
+    - "Test result structures"
+    - "Test error handling"
+    - "Test edge cases"
 
-### Analysis
-- Compare optimization results
-- Identify best parameter combinations
-- Analyze parameter sensitivity
-- Document optimization findings
-- Generate optimization reports
+integration-tests:
+    - "Test full optimization runs"
+    - "Test with real data"
+    - "Test performance characteristics"
+    - "Verify result formats"
+    - "Test resource cleanup"
 
-## Testing
+documentation:
 
-### Unit Tests
-- Test parameter grid generation
-- Test optimization algorithms
-- Test result structures
-- Test error handling
-- Test edge cases
+code-documentation:
+    - "Document optimization algorithms"
+    - "Explain parameter constraints"
+    - "Provide usage examples"
+    - "Document performance characteristics"
+    - "Include optimization notes"
 
-### Integration Tests
-- Test full optimization runs
-- Test with real data
-- Test performance characteristics
-- Verify result formats
-- Test resource cleanup
-
-## Documentation
-
-### Code Documentation
-- Document optimization algorithms
-- Explain parameter constraints
-- Provide usage examples
-- Document performance characteristics
-- Include optimization notes
-
-### Result Documentation
-- Document optimization methodology
-- Explain parameter choices
-- Include performance metrics
-- Document findings
-- Provide recommendations
+result-documentation:
+    - "Document optimization methodology"
+    - "Explain parameter choices"
+    - "Include performance metrics"
+    - "Document findings"
+    - "Provide recommendations"
 

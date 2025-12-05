@@ -20,6 +20,15 @@ const CLICKHOUSE_DATABASE = process.env.CLICKHOUSE_DATABASE || 'quantbot';
 // Singleton client instance
 let client: ClickHouseClient | null = null;
 
+export interface TickEvent {
+  timestamp: number; // unix seconds
+  price: number;
+  size?: number;
+  signature?: string;
+  slot?: number;
+  source?: 'ws' | 'backfill' | 'rpc';
+}
+
 /**
  * Get or create ClickHouse client instance
  */
@@ -54,58 +63,131 @@ export function getClickHouseClient(): ClickHouseClient {
  * Initialize ClickHouse database and create tables
  */
 export async function initClickHouse(): Promise<void> {
-  // First, connect without a database to create it
   const url = `http://${CLICKHOUSE_HOST}:${CLICKHOUSE_PORT}`;
   const tempConfig: any = {
-    url: url,
+    url,
     username: CLICKHOUSE_USER,
-    // Don't specify database yet
   };
-  // Only add password field if explicitly provided (not undefined and not empty)
-  // Omit password field entirely if not set
+
   if (CLICKHOUSE_PASSWORD !== undefined && CLICKHOUSE_PASSWORD !== '') {
     tempConfig.password = CLICKHOUSE_PASSWORD;
   }
+
   const tempClient = createClient(tempConfig);
-  
+
   try {
-    // Create database if it doesn't exist (without specifying database in connection)
     await tempClient.exec({
       query: `CREATE DATABASE IF NOT EXISTS ${CLICKHOUSE_DATABASE}`,
     });
-    
+
     await tempClient.close();
-    
-    // Now connect with the database specified
+
     const ch = getClickHouseClient();
-    
-    // Create OHLCV candles table
-    await ch.exec({
-      query: `
-        CREATE TABLE IF NOT EXISTS ${CLICKHOUSE_DATABASE}.ohlcv_candles (
-          token_address String,
-          chain String,
-          timestamp DateTime,
-          interval String,
-          open Float64,
-          high Float64,
-          low Float64,
-          close Float64,
-          volume Float64
-        )
-        ENGINE = MergeTree()
-        PARTITION BY (chain, toYYYYMM(timestamp))
-        ORDER BY (token_address, chain, timestamp)
-        SETTINGS index_granularity = 8192
-      `,
-    });
-    
+    await ensureOhlcvTable(ch);
+    await ensureTickTable(ch);
+    await ensureSimulationTables(ch);
+
     logger.info('ClickHouse database and tables initialized');
   } catch (error: any) {
     logger.error('Error initializing ClickHouse', error as Error);
     await tempClient.close().catch(() => {});
     throw error;
   }
+}
+
+async function ensureOhlcvTable(ch: ClickHouseClient): Promise<void> {
+  await ch.exec({
+    query: `
+      CREATE TABLE IF NOT EXISTS ${CLICKHOUSE_DATABASE}.ohlcv_candles (
+        token_address String,
+        chain String,
+        timestamp DateTime,
+        interval String,
+        open Float64,
+        high Float64,
+        low Float64,
+        close Float64,
+        volume Float64,
+        is_backfill UInt8 DEFAULT 0
+      )
+      ENGINE = MergeTree()
+      PARTITION BY (chain, toYYYYMM(timestamp))
+      ORDER BY (token_address, chain, timestamp)
+      SETTINGS index_granularity = 8192
+    `,
+  });
+}
+
+async function ensureTickTable(ch: ClickHouseClient): Promise<void> {
+  await ch.exec({
+    query: `
+      CREATE TABLE IF NOT EXISTS ${CLICKHOUSE_DATABASE}.tick_events (
+        token_address String,
+        chain String,
+        timestamp DateTime,
+        price Float64,
+        size Float64,
+        signature String,
+        slot UInt64,
+        source String
+      )
+      ENGINE = MergeTree()
+      PARTITION BY (chain, toYYYYMM(timestamp))
+      ORDER BY (token_address, timestamp, signature)
+      SETTINGS index_granularity = 8192
+    `,
+  });
+}
+
+async function ensureSimulationTables(ch: ClickHouseClient): Promise<void> {
+  await ch.exec({
+    query: `
+      CREATE TABLE IF NOT EXISTS ${CLICKHOUSE_DATABASE}.simulation_events (
+        simulation_run_id UInt64,
+        token_address String,
+        chain String,
+        event_time DateTime,
+        seq UInt32,
+        event_type String,
+        price Float64,
+        size Float64,
+        remaining_position Float64,
+        pnl_so_far Float64,
+        indicators_json String,
+        position_state_json String,
+        metadata_json String
+      )
+      ENGINE = MergeTree()
+      PARTITION BY (chain, toYYYYMM(event_time))
+      ORDER BY (simulation_run_id, seq)
+      SETTINGS index_granularity = 8192
+    `,
+  });
+
+  await ch.exec({
+    query: `
+      CREATE TABLE IF NOT EXISTS ${CLICKHOUSE_DATABASE}.simulation_aggregates (
+        simulation_run_id UInt64,
+        token_address String,
+        chain String,
+        final_pnl Float64,
+        max_drawdown Float64,
+        volatility Float64,
+        sharpe_ratio Float64,
+        sortino_ratio Float64,
+        win_rate Float64,
+        trade_count UInt32,
+        reentry_count UInt32,
+        ladder_entries_used UInt32,
+        ladder_exits_used UInt32,
+        created_at DateTime DEFAULT now()
+      )
+      ENGINE = MergeTree()
+      PARTITION BY (chain, toYYYYMM(created_at))
+      ORDER BY (simulation_run_id)
+      SETTINGS index_granularity = 8192
+    `,
+  });
 }
 
 /**
@@ -115,7 +197,8 @@ export async function insertCandles(
   tokenAddress: string,
   chain: string,
   candles: Candle[],
-  interval: string = '5m'
+  interval: string = '5m',
+  isBackfill: boolean = false
 ): Promise<void> {
   if (candles.length === 0) return;
   
@@ -131,6 +214,7 @@ export async function insertCandles(
     low: candle.low,
     close: candle.close,
     volume: candle.volume,
+    is_backfill: isBackfill ? 1 : 0,
   }));
   
   try {
@@ -149,6 +233,40 @@ export async function insertCandles(
     if (process.env.USE_CACHE_ONLY === 'true') {
       return;
     }
+    throw error;
+  }
+}
+
+/**
+ * Insert raw ticks into ClickHouse for high-resolution replay.
+ */
+export async function insertTicks(
+  tokenAddress: string,
+  chain: string,
+  ticks: TickEvent[]
+): Promise<void> {
+  if (ticks.length === 0) return;
+
+  const ch = getClickHouseClient();
+  const values = ticks.map(tick => ({
+    token_address: tokenAddress,
+    chain,
+    timestamp: DateTime.fromSeconds(tick.timestamp).toFormat('yyyy-MM-dd HH:mm:ss'),
+    price: tick.price,
+    size: tick.size ?? 0,
+    signature: tick.signature ?? '',
+    slot: tick.slot ?? 0,
+    source: tick.source ?? 'ws',
+  }));
+
+  try {
+    await ch.insert({
+      table: `${CLICKHOUSE_DATABASE}.tick_events`,
+      values,
+      format: 'JSONEachRow',
+    });
+  } catch (error: any) {
+    logger.error('Error inserting ticks', error as Error, { tokenAddress: tokenAddress.substring(0, 20) });
     throw error;
   }
 }

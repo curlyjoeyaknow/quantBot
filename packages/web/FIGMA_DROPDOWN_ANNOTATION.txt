@@ -1,0 +1,20 @@
+=====================================
+SHIPPING TYPE DROPDOWN - Options
+=====================================
+
+This dropdown contains 6 options:
+
+1. Same Day Delivery (0 days)
+2. Next Day Delivery (1 day)  
+3. Express Shipping (2 days)
+4. Standard Shipping (5 days) ← default
+5. International Shipping (10 days)
+6. Free Shipping (7 days)
+
+Auto-behavior:
+When user selects an option, the delivery 
+time (component #3) automatically updates.
+
+State: shippingType (string)
+Default: "Standard Shipping"
+

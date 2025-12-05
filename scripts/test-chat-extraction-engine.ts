@@ -13,9 +13,9 @@ import 'dotenv/config';
 import * as fs from 'fs';
 import * as path from 'path';
 import { DateTime } from 'luxon';
-import { getChatExtractionEngine, ChatMessage } from '../src/services/chat-extraction-engine';
-import { getOHLCVEngine } from '../src/services/ohlcv-engine';
-import { logger } from '../src/utils/logger';
+import { getChatExtractionEngine, ChatMessage } from '@quantbot/services';
+import { getOHLCVEngine } from '@quantbot/services';
+import { logger } from '@quantbot/utils';
 
 interface TestResult {
   token: string;

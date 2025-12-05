@@ -1,0 +1,12 @@
+{
+  "totalCalls": 10,
+  "scoredCalls": 0,
+  "top10Percent": {
+    "count": 0,
+    "avgReturn30d": null
+  },
+  "top25Percent": {
+    "count": 0,
+    "avgReturn30d": null
+  }
+}

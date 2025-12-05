@@ -6,7 +6,7 @@
  * Run this once before using ClickHouse for the first time.
  */
 
-import { initClickHouse, closeClickHouse } from '../src/storage/clickhouse-client';
+import { initClickHouse, closeClickHouse } from '@quantbot/storage';
 
 async function main() {
   console.log('🚀 Setting up ClickHouse database...\n');

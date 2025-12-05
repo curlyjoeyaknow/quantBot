@@ -6,129 +6,120 @@ alwaysApply: true
 
 # Service Rules (src/services/)
 
-## Service Architecture
+service-architecture:
 
-### Core Principles
-- Services should be stateless when possible
-- Use dependency injection for testability
-- Implement proper error handling
-- Validate all inputs
-- Log important operations
+core-principles:  
+    - "Services should be stateless when possible"
+    - "Use dependency injection for testability"
+    - "Implement proper error handling"
+    - "Validate all inputs"
+    - "Log important operations"
 
-### Service Structure
-- One service class per domain
-- Services should have single responsibility
-- Use interfaces for service contracts
-- Keep services focused and cohesive
-- Document service responsibilities
+service-structure:
+    - "One service class per domain"
+    - "Services should have single responsibility"
+    - "Use interfaces for service contracts"
+    - "Keep services focused and cohesive"
+    - "Document service responsibilities"
 
-## Service Implementation
+service-implementation:
+    - "Inject dependencies via constructor"
+    - "Use service container for dependencies"
+    - "Avoid circular dependencies"
+    - "Document dependencies clearly"
+    - "Make dependencies testable" 
 
-### Service Methods
-- Use async/await for async operations
-- Return consistent result types
-- Handle errors appropriately
-- Validate inputs with Zod schemas
-- Log operations with appropriate levels
+domain-services:
 
-### Service Dependencies
-- Inject dependencies via constructor
-- Use service container for dependencies
-- Avoid circular dependencies
-- Document dependencies clearly
-- Make dependencies testable
+ca-detection-service:
+    - "Use `CADetectionService` for CA detection"
+    - "Validate detection parameters"
+    - "Handle detection errors gracefully"
+    - "Cache detection results when appropriate"
+    - "Log detection operations"
 
-## Domain Services
+ohlcv-services:
+    - "Use `OHLCVEngine` for OHLCV operations"
+    - "Cache OHLCV data appropriately"
+    - "Handle missing data gracefully"
+    - "Validate OHLCV data structure"
+    - "Monitor OHLCV operations"
 
-### CA Detection Service
-- Use `CADetectionService` for CA detection
-- Validate detection parameters
-- Handle detection errors gracefully
-- Cache detection results when appropriate
-- Log detection operations
+simulation-service:
+    - "Use `SimulationService` for simulations"
+    - "Validate simulation parameters"
+    - "Handle simulation errors"
+    - "Log simulation progress"
+    - "Return structured results"
 
-### OHLCV Services
-- Use `OHLCVEngine` for OHLCV operations
-- Cache OHLCV data appropriately
-- Handle missing data gracefully
-- Validate OHLCV data structure
-- Monitor OHLCV operations
+strategy-service:
+    - "Use `StrategyService` for strategy operations"
+    - "Validate strategy definitions"
+    - "Handle strategy errors"
+    - "Cache strategy data when appropriate"
+    - "Log strategy operations"
 
-### Simulation Service
-- Use `SimulationService` for simulations
-- Validate simulation parameters
-- Handle simulation errors
-- Log simulation progress
-- Return structured results
+error-handling:
 
-### Strategy Service
-- Use `StrategyService` for strategy operations
-- Validate strategy definitions
-- Handle strategy errors
-- Cache strategy data when appropriate
-- Log strategy operations
+service-errors:
+    - "Use custom error types"
+    - "Include context in error messages"
+    - "Log errors with appropriate severity"
+    - "Handle errors at service level"
+    - "Don't expose internal errors"
 
-## Error Handling
+validation-errors:
+    - "Validate inputs early"
+    - "Provide helpful validation messages"
+    - "Use Zod for validation"
+    - "Handle validation errors gracefully"
+    - "Document validation rules"
 
-### Service Errors
-- Use custom error types
-- Include context in error messages
-- Log errors with appropriate severity
-- Handle errors at service level
-- Don't expose internal errors
+caching:
 
-### Validation Errors
-- Validate inputs early
-- Provide helpful validation messages
-- Use Zod for validation
-- Handle validation errors gracefully
-- Document validation rules
+service-caching:
+    - "Cache expensive operations"
+    - "Use appropriate cache keys"
+    - "Invalidate cache when needed"
+    - "Monitor cache performance"
+    - "Handle cache errors gracefully"
 
-## Caching
-
-### Service Caching
-- Cache expensive operations
-- Use appropriate cache keys
-- Invalidate cache when needed
-- Monitor cache performance
-- Handle cache errors gracefully
-
-### Cache Strategy
-- Cache at appropriate levels
-- Use appropriate TTLs
-- Implement cache warming
-- Provide cache statistics
-- Document caching decisions
+cache-strategy:
+    - "Cache at appropriate levels"
+    - "Use appropriate TTLs"
+    - "Implement cache warming"
+    - "Provide cache statistics"
+    - "Document caching decisions"
 
 ## Testing
 
-### Unit Tests
-- Test services independently
-- Mock dependencies
-- Test error handling
-- Test validation
-- Test caching behavior
+unit-tests:
+    - "Test services independently"
+    - "Mock dependencies"
+    - "Test error handling"
+    - "Test validation"
+    - "Test caching behavior"
 
-### Integration Tests
-- Test with real dependencies
-- Test error scenarios
-- Test performance
-- Test caching
-- Test service interactions
+integration-tests:
+    - "Test with real dependencies"
+    - "Test error scenarios"
+    - "Test performance"
+    - "Test caching"
+    - "Test service interactions"
 
 ## Documentation
 
-### Service Documentation
-- Document all services
-- Include usage examples
-- Document dependencies
-- Include error scenarios
-- Keep documentation current
+service-documentation:
+    - "Document all services"
+    - "Include usage examples"
+    - "Document dependencies"
+    - "Include error scenarios"
+    - "Keep documentation current"
 
-### Code Documentation
-- Document service logic
-- Explain business rules
-- Document error handling
-- Include examples
-- Keep comments updated
+code-documentation:
+    - "Document service logic"
+    - "Explain business rules"
+    - "Document error handling"
+    - "Include examples"
+    - "Keep comments updated"
 

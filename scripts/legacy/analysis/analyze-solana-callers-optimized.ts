@@ -6,16 +6,16 @@
 
 import 'dotenv/config';
 import { DateTime } from 'luxon';
-import { queryCandles, getClickHouseClient } from '../src/storage/clickhouse-client';
+import { queryCandles, getClickHouseClient } from '../../../src/storage/clickhouse-client';
 import { parse } from 'csv-parse';
 import * as fs from 'fs';
 import * as path from 'path';
 import { stringify } from 'csv-stringify';
-import { calculateIndicators, IndicatorData } from '../src/simulation/indicators';
-import { calculateIchimoku, IchimokuData, detectIchimokuSignals } from '../src/simulation/ichimoku';
+import { calculateIndicators, IndicatorData } from '../../../src/simulation/indicators';
+import { calculateIchimoku, IchimokuData, detectIchimokuSignals } from '../../../src/simulation/ichimoku';
 
-const BROOK_CALLS_CSV = path.join(__dirname, '../data/exports/csv/all_brook_channels_calls.csv');
-const OUTPUT_DIR = path.join(__dirname, '../data/exports/solana-callers-optimized');
+const BROOK_CALLS_CSV = path.join(process.cwd(), 'data/exports/csv/all_brook_channels_calls.csv');
+const OUTPUT_DIR = path.join(process.cwd(), 'data/exports/solana-callers-optimized');
 const CLICKHOUSE_DATABASE = process.env.CLICKHOUSE_DATABASE || 'quantbot';
 
 // Create timestamped output directory for this run

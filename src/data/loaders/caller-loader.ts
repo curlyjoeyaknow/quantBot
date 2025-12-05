@@ -46,7 +46,7 @@ export class CallerDataLoader implements DataLoader {
     // If filtering is needed, it should be done at a higher level
 
     // Transform to LoadResult format
-    return filteredAlerts.map(alert => ({
+    return alerts.map(alert => ({
       mint: alert.tokenAddress,
       chain: alert.chain || chain,
       timestamp: DateTime.fromJSDate(alert.alertTimestamp),

@@ -166,12 +166,41 @@ export function initDatabase(): Promise<void> {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
+    -- Pump.fun token lifecycle tracking
+    CREATE TABLE IF NOT EXISTS pumpfun_tokens (
+      mint TEXT PRIMARY KEY,
+      creator TEXT,
+      bonding_curve TEXT,
+      launch_signature TEXT,
+      launch_timestamp INTEGER,
+      graduation_signature TEXT,
+      graduation_timestamp INTEGER,
+      is_graduated BOOLEAN DEFAULT 0,
+      metadata TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    );
+    -- Tokens registry
+    CREATE TABLE IF NOT EXISTS tokens (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      mint TEXT NOT NULL,
+      chain TEXT NOT NULL DEFAULT 'solana',
+      token_name TEXT,
+      token_symbol TEXT,
+      added_by_user_id INTEGER,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(mint, chain)
+    );
+    -- Enhanced simulation_runs with entry tracking
+    -- Note: We'll add columns via ALTER TABLE to avoid breaking existing data
     -- Indices for performance
     CREATE INDEX IF NOT EXISTS idx_user_id ON simulation_runs(user_id);
     CREATE INDEX IF NOT EXISTS idx_mint ON simulation_runs(mint);
     CREATE INDEX IF NOT EXISTS idx_created_at ON simulation_runs(created_at);
     CREATE INDEX IF NOT EXISTS idx_strategy_user ON strategies(user_id);
     CREATE INDEX IF NOT EXISTS idx_strategy_name ON strategies(name);
+    CREATE INDEX IF NOT EXISTS idx_tokens_mint_chain ON tokens(mint, chain);
   `;
 
   return new Promise((resolve, reject) => {
@@ -187,6 +216,31 @@ export function initDatabase(): Promise<void> {
           logger.error('Error creating tables', tableErr as Error);
           return reject(tableErr);
         }
+        
+        // Add new columns to simulation_runs if they don't exist (migration)
+        db!.exec(`
+          -- Add new columns to simulation_runs for entry tracking
+          ALTER TABLE simulation_runs ADD COLUMN entry_type TEXT;
+          ALTER TABLE simulation_runs ADD COLUMN entry_price REAL;
+          ALTER TABLE simulation_runs ADD COLUMN entry_timestamp INTEGER;
+          ALTER TABLE simulation_runs ADD COLUMN filter_criteria TEXT;
+        `, (alterErr) => {
+          // Ignore errors if columns already exist
+          if (alterErr && !alterErr.message.includes('duplicate column name')) {
+            logger.warn('Error adding columns to simulation_runs (may already exist)', alterErr as Error);
+          }
+        });
+        
+        // Create additional indexes
+        db!.exec(`
+          CREATE INDEX IF NOT EXISTS idx_backtest_runs_strategy ON simulation_runs(strategy_name);
+          CREATE INDEX IF NOT EXISTS idx_backtest_runs_entry_time ON simulation_runs(entry_timestamp);
+        `, (indexErr) => {
+          if (indexErr) {
+            logger.warn('Error creating indexes (may already exist)', indexErr as Error);
+          }
+        });
+        
         logger.info('Database tables created and ready');
         resolve();
       });
@@ -221,14 +275,19 @@ export function saveSimulationRun(data: {
   finalPnl: number;
   totalCandles: number;
   events: SimulationEvent[];
+  entryType?: string;
+  entryPrice?: number;
+  entryTimestamp?: number;
+  filterCriteria?: Record<string, unknown>;
+  strategyName?: string;
 }): Promise<number> {
   return new Promise((resolve, reject) => {
     if (!db) return reject(new Error('Database not initialized'));
 
     const insertRun = `
       INSERT INTO simulation_runs 
-      (user_id, mint, chain, token_name, token_symbol, start_time, end_time, strategy, stop_loss_config, final_pnl, total_candles)
-      VALUES ($userId, $mint, $chain, $tokenName, $tokenSymbol, $startTime, $endTime, $strategy, $stopLossConfig, $finalPnl, $totalCandles)
+      (user_id, mint, chain, token_name, token_symbol, start_time, end_time, strategy, stop_loss_config, final_pnl, total_candles, entry_type, entry_price, entry_timestamp, filter_criteria, strategy_name)
+      VALUES ($userId, $mint, $chain, $tokenName, $tokenSymbol, $startTime, $endTime, $strategy, $stopLossConfig, $finalPnl, $totalCandles, $entryType, $entryPrice, $entryTimestamp, $filterCriteria, $strategyName)
     `;
 
     const runData = {
@@ -243,6 +302,11 @@ export function saveSimulationRun(data: {
       $stopLossConfig: JSON.stringify(data.stopLossConfig),
       $finalPnl: data.finalPnl,
       $totalCandles: data.totalCandles,
+      $entryType: data.entryType || null,
+      $entryPrice: data.entryPrice || null,
+      $entryTimestamp: data.entryTimestamp || null,
+      $filterCriteria: data.filterCriteria ? JSON.stringify(data.filterCriteria) : null,
+      $strategyName: data.strategyName || null,
     };
 
     db.run(insertRun, runData, function (runErr) {
@@ -388,8 +452,13 @@ export function getSimulationRun(runId: number): Promise<any | null> {
         end_time,
         strategy,
         stop_loss_config,
+        strategy_name,
         final_pnl,
         total_candles,
+        entry_type,
+        entry_price,
+        entry_timestamp,
+        filter_criteria,
         created_at
       FROM simulation_runs
       WHERE id = ?
@@ -403,11 +472,23 @@ export function getSimulationRun(runId: number): Promise<any | null> {
       if (!row) return resolve(null);
 
       const run = {
-        ...row,
+        id: row.id,
+        userId: row.user_id,
+        mint: row.mint,
+        chain: row.chain,
+        tokenName: row.token_name,
+        tokenSymbol: row.token_symbol,
+        startTime: row.start_time,
+        endTime: row.end_time,
         strategy: JSON.parse(row.strategy),
         stopLossConfig: JSON.parse(row.stop_loss_config),
-        startTime: DateTime.fromISO(row.start_time),
-        endTime: DateTime.fromISO(row.end_time),
+        strategyName: row.strategy_name,
+        finalPnl: row.final_pnl,
+        totalCandles: row.total_candles,
+        entryType: row.entry_type,
+        entryPrice: row.entry_price,
+        entryTimestamp: row.entry_timestamp,
+        filterCriteria: row.filter_criteria ? JSON.parse(row.filter_criteria) : null,
         createdAt: DateTime.fromISO(row.created_at),
       };
       resolve(run);
@@ -701,6 +782,219 @@ export function getActiveCATracking(): Promise<any[]> {
         createdAt: DateTime.fromISO(row.created_at),
       }));
       resolve(cases);
+    });
+  });
+}
+
+export interface TrackedToken {
+  mint: string;
+  chain: string;
+  tokenName?: string;
+  tokenSymbol?: string;
+  firstSeen?: number;
+  source: 'ca_tracking' | 'token_registry' | 'pumpfun_launch' | 'pumpfun_graduated';
+}
+
+export interface PumpfunTokenRecord {
+  mint: string;
+  creator?: string;
+  bondingCurve?: string;
+  launchSignature?: string;
+  launchTimestamp?: number;
+  graduationSignature?: string;
+  graduationTimestamp?: number;
+  isGraduated: boolean;
+  metadata?: Record<string, unknown> | null;
+}
+
+export function upsertPumpfunToken(record: PumpfunTokenRecord): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (!db) return reject(new Error('Database not initialized'));
+
+    const query = `
+      INSERT INTO pumpfun_tokens
+      (mint, creator, bonding_curve, launch_signature, launch_timestamp, graduation_signature, graduation_timestamp, is_graduated, metadata, updated_at)
+      VALUES ($mint, $creator, $bondingCurve, $launchSignature, $launchTimestamp, $graduationSignature, $graduationTimestamp, $isGraduated, $metadata, CURRENT_TIMESTAMP)
+      ON CONFLICT(mint) DO UPDATE SET
+        creator=excluded.creator,
+        bonding_curve=excluded.bonding_curve,
+        launch_signature=excluded.launch_signature,
+        launch_timestamp=excluded.launch_timestamp,
+        graduation_signature=COALESCE(excluded.graduation_signature, pumpfun_tokens.graduation_signature),
+        graduation_timestamp=COALESCE(excluded.graduation_timestamp, pumpfun_tokens.graduation_timestamp),
+        is_graduated=excluded.is_graduated,
+        metadata=excluded.metadata,
+        updated_at=CURRENT_TIMESTAMP
+    `;
+
+    const params = {
+      $mint: record.mint,
+      $creator: record.creator ?? null,
+      $bondingCurve: record.bondingCurve ?? null,
+      $launchSignature: record.launchSignature ?? null,
+      $launchTimestamp: record.launchTimestamp ?? null,
+      $graduationSignature: record.graduationSignature ?? null,
+      $graduationTimestamp: record.graduationTimestamp ?? null,
+      $isGraduated: record.isGraduated ? 1 : 0,
+      $metadata: record.metadata ? JSON.stringify(record.metadata) : null,
+    };
+
+    db.run(query, params, (err) => {
+      if (err) {
+        logger.error('Error upserting Pump.fun token', err as Error, { mint: record.mint });
+        return reject(err);
+      }
+      resolve();
+    });
+  });
+}
+
+export function markPumpfunGraduated(
+  mint: string,
+  data: { graduationSignature?: string; graduationTimestamp?: number }
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (!db) return reject(new Error('Database not initialized'));
+
+    const query = `
+      UPDATE pumpfun_tokens
+      SET is_graduated = 1,
+          graduation_signature = COALESCE($graduationSignature, graduation_signature),
+          graduation_timestamp = COALESCE($graduationTimestamp, graduation_timestamp),
+          updated_at = CURRENT_TIMESTAMP
+      WHERE mint = $mint
+    `;
+
+    db.run(
+      query,
+      {
+        $mint: mint,
+        $graduationSignature: data.graduationSignature ?? null,
+        $graduationTimestamp: data.graduationTimestamp ?? null,
+      },
+      function (err) {
+        if (err) {
+          logger.error('Error marking Pump.fun token graduated', err as Error, { mint });
+          return reject(err);
+        }
+        resolve();
+      }
+    );
+  });
+}
+
+export function getPumpfunTokenRecords(): Promise<PumpfunTokenRecord[]> {
+  return new Promise((resolve, reject) => {
+    if (!db) return reject(new Error('Database not initialized'));
+
+    const query = `
+      SELECT mint, creator, bonding_curve, launch_signature, launch_timestamp,
+             graduation_signature, graduation_timestamp, is_graduated, metadata
+      FROM pumpfun_tokens
+    `;
+
+    db.all(query, [], (err, rows) => {
+      if (err) {
+        logger.error('Error fetching Pump.fun tokens', err as Error);
+        return reject(err);
+      }
+
+      const records: PumpfunTokenRecord[] = (rows ?? []).map((row: any) => ({
+        mint: row.mint,
+        creator: row.creator ?? undefined,
+        bondingCurve: row.bonding_curve ?? undefined,
+        launchSignature: row.launch_signature ?? undefined,
+        launchTimestamp: row.launch_timestamp ?? undefined,
+        graduationSignature: row.graduation_signature ?? undefined,
+        graduationTimestamp: row.graduation_timestamp ?? undefined,
+        isGraduated: Boolean(row.is_graduated),
+        metadata: row.metadata ? JSON.parse(row.metadata) : null,
+      }));
+
+      resolve(records);
+    });
+  });
+}
+
+export function getTrackedTokens(): Promise<TrackedToken[]> {
+  return new Promise((resolve, reject) => {
+    if (!db) return reject(new Error('Database not initialized'));
+
+    const caQuery = `
+      SELECT mint, chain, token_name, token_symbol, call_timestamp
+      FROM ca_tracking
+      WHERE is_active = 1
+    `;
+
+    const tokenQuery = `
+      SELECT mint, chain, token_name, token_symbol, created_at
+      FROM tokens
+    `;
+
+    db!.all(caQuery, [], (caErr, caRows) => {
+      if (caErr) {
+        logger.error('Error fetching CA tracked tokens', caErr as Error);
+        return reject(caErr);
+      }
+
+      db!.all(tokenQuery, [], async (tokenErr, tokenRows) => {
+        if (tokenErr) {
+          logger.error('Error fetching token registry', tokenErr as Error);
+          return reject(tokenErr);
+        }
+
+        try {
+          const pumpfunTokens = await getPumpfunTokenRecords();
+          const combined = new Map<string, TrackedToken>();
+
+          (caRows ?? []).forEach((row: any) => {
+            const key = `${row.chain}:${row.mint}`;
+            combined.set(key, {
+              mint: row.mint,
+              chain: row.chain,
+              tokenName: row.token_name ?? undefined,
+              tokenSymbol: row.token_symbol ?? undefined,
+              firstSeen: row.call_timestamp ? Number(row.call_timestamp) : undefined,
+              source: 'ca_tracking',
+            });
+          });
+
+          (tokenRows ?? []).forEach((row: any) => {
+            const key = `${row.chain}:${row.mint}`;
+            if (combined.has(key)) {
+              return;
+            }
+            const createdAt = row.created_at ? DateTime.fromISO(row.created_at).toSeconds() : undefined;
+            combined.set(key, {
+              mint: row.mint,
+              chain: row.chain,
+              tokenName: row.token_name ?? undefined,
+              tokenSymbol: row.token_symbol ?? undefined,
+              firstSeen: createdAt,
+              source: 'token_registry',
+            });
+          });
+
+          pumpfunTokens.forEach((token) => {
+            const key = `solana:${token.mint}`;
+            const source: TrackedToken['source'] = token.isGraduated ? 'pumpfun_graduated' : 'pumpfun_launch';
+            if (!combined.has(key)) {
+              combined.set(key, {
+                mint: token.mint,
+                chain: 'solana',
+                firstSeen: token.launchTimestamp,
+                tokenName: (token.metadata as any)?.name ?? undefined,
+                tokenSymbol: (token.metadata as any)?.symbol ?? undefined,
+                source,
+              });
+            }
+          });
+
+          resolve(Array.from(combined.values()));
+        } catch (pumpErr) {
+          reject(pumpErr);
+        }
+      });
     });
   });
 }

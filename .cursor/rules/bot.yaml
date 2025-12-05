@@ -1,143 +1,65 @@
 ---
-description: Telegram bot rules for src/bot/ and quantbot-bot/
+description: Essential Telegram bot rules for src/bot/ and quantbot-bot/
 globs: ["src/bot/**/*.ts", "quantbot-bot/**/*.ts", "src/bot.ts"]
 alwaysApply: true
 ---
 
-# Bot Rules (src/bot/, quantbot-bot/)
+# Essential Bot Rules
 
-## Bot Architecture
+# Core Architecture
+bot-architecture:
+  use-telegraf: "Use Telegraf for Telegram bot interactions"
+  command-pattern: "Implement the command pattern for handlers"
+  dependency-injection: "Use dependency injection for all bot services"
+  separate-bot-vs-business-logic: "Keep bot logic separate from business logic"
+  user-friendly-error-handling: "Handle errors gracefully and display user-friendly messages"
 
-### Core Principles
-- Use Telegraf framework for bot interactions
-- Implement command pattern for handlers
-- Use dependency injection for services
-- Keep bot logic separate from business logic
-- Handle errors gracefully with user-friendly messages
+# Initialization and Middleware
+bot-initialization:
+  proper-config: "Initialize bot with proper configuration"
+  register-commands: "Register command handlers centrally"
+  setup-middleware: "Use middleware for shared logic and logging"
+  error-handling: "Configure and centralize error handling"
 
-### Bot Initialization
-- Initialize bot with proper configuration
-- Register all command handlers
-- Set up middleware for common operations
-- Configure error handling
-- Set up logging for bot operations
+# Command Handlers
+command-handlers:
+  one-class-per-command: "Each command has its own handler class"
+  implements-interface: "Handlers must implement a CommandHandler interface"
+  validate-input: "Validate and sanitize all user inputs"
+  structured-responses: "Return structured and consistent responses"
 
-## Command Handlers
+# Message and Response
+message-processing:
+  consistent-parsing: "Parse and extract commands/arguments consistently"
+  async-processing: "Process messages asynchronously"
+  concise-responses: "Responses should be concise and use Markdown formatting if needed"
 
-### Handler Structure
-- Each command should have its own handler class
-- Handlers must implement `CommandHandler` interface
-- Use dependency injection for service access
-- Validate all user inputs
-- Return structured responses
+# Error Handling
+error-handling:
+  user-friendly-errors: "User-facing errors must not expose internals"
+  log-details-internally: "Log all error context internally without crashing the bot"
+  handle-rate-limit: "Gracefully handle Telegram API rate limiting"
 
-### Command Registration
-- Register commands in `CommandRegistry`
-- Use consistent command naming
-- Document command usage
-- Provide help text for commands
-- Handle command aliases appropriately
+# State Management
+state-management:
+  session-service: "Use a SessionService for session and state handling, including expiration"
+  clean-user-state: "Track and securely store/clean state when needed"
 
-### Command Execution
-- Validate command arguments
-- Handle missing or invalid arguments
-- Provide helpful error messages
-- Log command executions
-- Handle command timeouts
+# Integration
+integration:
+  use-service-container: "Inject all services using a DI container"
+  api-clients: "Access external APIs via client classes (with retry and caching if needed)"
+  handle-api-errors: "Handle remote errors gracefully"
 
-## Message Handling
+# Testing
+testing:
+  unit-test-handlers: "Unit test handlers and edge cases, mock services/deps"
+  test-errors: "Test error and input validation"
+  test-core-integration: "Test critical integrations (API, session, state)"
 
-### Message Processing
-- Parse messages consistently
-- Extract command and arguments
-- Validate message format
-- Handle different message types
-- Process messages asynchronously
-
-### Response Formatting
-- Format responses consistently
-- Use markdown for formatting
-- Keep messages concise
-- Provide actionable information
-- Handle long responses appropriately
-
-## Error Handling
-
-### User-Facing Errors
-- Provide user-friendly error messages
-- Don't expose internal errors
-- Log detailed errors internally
-- Handle rate limiting gracefully
-- Provide recovery suggestions
-
-### Internal Errors
-- Log all errors with context
-- Use appropriate error types
-- Handle errors at appropriate levels
-- Don't crash bot on errors
-- Implement proper error recovery
-
-## State Management
-
-### Session Management
-- Use `SessionService` for session handling
-- Store session data appropriately
-- Handle session expiration
-- Clean up expired sessions
-- Validate session data
-
-### User State
-- Track user state when needed
-- Store state securely
-- Handle state transitions
-- Clean up state appropriately
-- Validate state data
-
-## Integration
-
-### Service Integration
-- Use service container for dependencies
-- Inject services into handlers
-- Use async/await for service calls
-- Handle service errors appropriately
-- Cache service responses when appropriate
-
-### API Integration
-- Use API clients for external calls
-- Handle API rate limiting
-- Implement retry logic
-- Cache API responses
-- Handle API errors gracefully
-
-## Testing
-
-### Unit Tests
-- Test command handlers independently
-- Mock external dependencies
-- Test error handling
-- Test input validation
-- Test response formatting
-
-### Integration Tests
-- Test full command flows
-- Test with real services
-- Test error scenarios
-- Test state management
-- Test message parsing
-
-## Documentation
-
-### Command Documentation
-- Document all commands
-- Provide usage examples
-- Document command arguments
-- Include error scenarios
-- Keep documentation up-to-date
-
-### Code Documentation
-- Document handler logic
-- Explain state management
-- Document error handling
-- Include examples
-- Keep comments current
+# Documentation (Minimum)
+documentation:
+  document-architecture: "Document bot architecture, key handlers, and state/session/routing"
+  doc-commands: "Document all commands and their arguments, error cases, and provide usage examples"
+  keep-updated: "Keep documentation and examples up-to-date"
 

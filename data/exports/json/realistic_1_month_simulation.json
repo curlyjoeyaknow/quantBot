@@ -1,0 +1,86 @@
+[
+  {
+    "strategy": "ultraAggressive",
+    "avgReturn": 691135.4398733546,
+    "totalFinalValue": 24193240.39556741,
+    "totalTrades": 569,
+    "reentryRate": 55.88752196836555,
+    "takeProfits": {
+      "2x": 0,
+      "3x": 62,
+      "5x": 64,
+      "10x": 116
+    },
+    "bestPerformer": "Brook Giga I verify @BrookCalls"
+  },
+  {
+    "strategy": "aggressive",
+    "avgReturn": 98011.97390955532,
+    "totalFinalValue": 3433919.0868344363,
+    "totalTrades": 569,
+    "reentryRate": 53.25131810193322,
+    "takeProfits": {
+      "2x": 81,
+      "3x": 0,
+      "5x": 77,
+      "10x": 102
+    },
+    "bestPerformer": "Brook Giga I verify @BrookCalls"
+  },
+  {
+    "strategy": "higher",
+    "avgReturn": 40080.75702124618,
+    "totalFinalValue": 1406326.4957436165,
+    "totalTrades": 569,
+    "reentryRate": 54.6572934973638,
+    "takeProfits": {
+      "2x": 0,
+      "3x": 132,
+      "5x": 67,
+      "10x": 56
+    },
+    "bestPerformer": "Brook Giga I verify @BrookCalls"
+  },
+  {
+    "strategy": "balanced",
+    "avgReturn": 2384.431734866401,
+    "totalFinalValue": 86955.11072032404,
+    "totalTrades": 569,
+    "reentryRate": 51.66959578207382,
+    "takeProfits": {
+      "2x": 96,
+      "3x": 99,
+      "5x": 49,
+      "10x": 0
+    },
+    "bestPerformer": "Brook Giga I verify @BrookCalls"
+  },
+  {
+    "strategy": "original",
+    "avgReturn": 1977.1940339374694,
+    "totalFinalValue": 72701.79118781142,
+    "totalTrades": 569,
+    "reentryRate": 56.41476274165203,
+    "takeProfits": {
+      "2x": 123,
+      "3x": 61,
+      "5x": 52,
+      "10x": 0
+    },
+    "bestPerformer": "Brook Giga I verify @BrookCalls"
+  },
+  {
+    "strategy": "conservative",
+    "avgReturn": 1523.8376283160783,
+    "totalFinalValue": 56834.31699106274,
+    "totalTrades": 569,
+    "reentryRate": 55.008787346221446,
+    "takeProfits": {
+      "2x": 170,
+      "3x": 50,
+      "5x": 32,
+      "10x": 0
+    },
+    "bestPerformer": "Brook Giga I verify @BrookCalls"
+  }
+]

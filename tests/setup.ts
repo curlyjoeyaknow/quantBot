@@ -1,37 +1,39 @@
 // Test setup file
 import { config } from 'dotenv';
+import { vi, afterAll, afterEach, beforeAll } from 'vitest';
 
 // Load test environment variables
 config({ path: '.env.test' });
 
 // Mock fs.createWriteStream globally for winston-daily-rotate-file
-jest.mock('fs', () => {
-  const originalFs = jest.requireActual('fs');
+vi.mock('fs', async () => {
+  const actualFs = await vi.importActual<typeof import('fs')>('fs');
   return {
-    ...originalFs,
-    createWriteStream: jest.fn(() => ({
-      write: jest.fn(),
-      end: jest.fn(),
-      on: jest.fn(),
-      once: jest.fn(),
-      emit: jest.fn(),
-      pipe: jest.fn(),
+    ...actualFs,
+    createWriteStream: vi.fn(() => ({
+      write: vi.fn(),
+      end: vi.fn(),
+      on: vi.fn(),
+      once: vi.fn(),
+      emit: vi.fn(),
+      pipe: vi.fn(),
     })),
   };
 });
 
 // Mock winston-daily-rotate-file to prevent file system issues in tests
-jest.mock('winston-daily-rotate-file', () => {
-  const MockTransport = jest.fn().mockImplementation(() => ({
-    log: jest.fn(),
-    query: jest.fn(),
-    stream: jest.fn(),
+vi.mock('winston-daily-rotate-file', () => {
+  const MockTransport = vi.fn().mockImplementation(() => ({
+    log: vi.fn(),
+    query: vi.fn(),
+    stream: vi.fn(),
   }));
-  MockTransport.prototype = {
-    log: jest.fn(),
-    query: jest.fn(),
-    stream: jest.fn(),
-  };
+  // For compatibility with how Winston expects transport prototypes
+  Object.assign(MockTransport.prototype, {
+    log: vi.fn(),
+    query: vi.fn(),
+    stream: vi.fn(),
+  });
   return {
     __esModule: true,
     default: MockTransport,
@@ -39,25 +41,23 @@ jest.mock('winston-daily-rotate-file', () => {
 });
 
 // Mock console methods to reduce noise in tests
+// eslint-disable-next-line no-console
 global.console = {
   ...console,
-  log: jest.fn(),
-  debug: jest.fn(),
-  info: jest.fn(),
-  warn: jest.fn(),
-  error: jest.fn(),
+  log: vi.fn(),
+  debug: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
 };
-
-// Set test timeout
-jest.setTimeout(30000); // Increased timeout for async operations
 
 // Global cleanup after each test
 afterEach(() => {
-  jest.clearAllMocks();
-  jest.clearAllTimers();
+  vi.clearAllMocks();
+  vi.clearAllTimers();
 });
 
 // Global cleanup after all tests
 afterAll(() => {
-  jest.restoreAllMocks();
+  vi.restoreAllMocks();
 });

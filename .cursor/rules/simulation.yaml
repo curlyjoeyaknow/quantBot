@@ -6,142 +6,142 @@ alwaysApply: true
 
 # Simulation Engine Rules (src/simulation/)
 
-## Simulation Engine Architecture
+simulation-engine-architecture:
 
-### Core Principles
-- All simulation logic must use `SimulationEngine` class
-- Simulations must be deterministic and reproducible
-- Use proper type safety throughout
-- Validate all inputs with Zod schemas
-- Keep simulation logic pure when possible
+core-principles:
+    - "All simulation logic must use `SimulationEngine` class"
+    - "Simulations must be deterministic and reproducible"
+    - "Use proper type safety throughout"
+    - "Validate all inputs with Zod schemas"
+    - "Keep simulation logic pure when possible"
 
-### Engine Usage
-- Always use `SimulationEngine` for running simulations
-- Pass validated configuration objects
-- Use proper data loaders for input data
-- Handle simulation errors appropriately
-- Log simulation progress for long-running operations
+engine-usage:
+    - "Always use `SimulationEngine` for running simulations"
+    - "Pass validated configuration objects"
+    - "Use proper data loaders for input data"
+    - "Handle simulation errors appropriately"
+    - "Log simulation progress for long-running operations"
 
-## Strategy Definitions
+strategy-definitions:
 
-### Strategy Builder Pattern
-- All strategies must use `StrategyBuilder` class
-- Use fluent API for strategy construction
-- Validate strategy configuration before building
-- Provide sensible defaults
-- Document all strategy parameters
+strategy-builder-pattern:
+    - "All strategies must use `StrategyBuilder` class"
+    - "Use fluent API for strategy construction"
+    - "Validate strategy configuration before building"
+    - "Provide sensible defaults"
+    - "Document all strategy parameters"
 
-### Strategy Types
-- Define strategy types with discriminated unions
-- Use proper type guards for strategy validation
-- Keep strategy types in `src/simulation/strategies/types.ts`
-- Export strategy types from index files
+strategy-types:
+    - "Define strategy types with discriminated unions"
+    - "Use proper type guards for strategy validation"
+    - "Keep strategy types in `src/simulation/strategies/types.ts`"
+    - "Export strategy types from index files"
 
-### Strategy Presets
-- Create reusable strategy presets
-- Document preset parameters
-- Provide examples for each preset
-- Keep presets in `src/simulation/strategies/presets.ts`
+strategy-presets:
+    - "Create reusable strategy presets"
+    - "Document preset parameters"
+    - "Provide examples for each preset"
+    - "Keep presets in `src/simulation/strategies/presets.ts`"
 
-## Configuration
+configuration:
 
-### Config Validation
-- All configuration must use Zod schemas
-- Validate config before simulation starts
-- Provide helpful error messages for invalid config
-- Use default values where appropriate
-- Document all configuration options
+config-validation:
+    - "All configuration must use Zod schemas"
+    - "Validate config before simulation starts"
+    - "Provide helpful error messages for invalid config"
+    - "Use default values where appropriate"
+    - "Document all configuration options"
 
-### Config Structure
-- Keep configs in `src/simulation/config.ts`
-- Use nested objects for related settings
-- Provide type inference from schemas
-- Export config types for use in other modules
+config-structure:
+    - "Keep configs in `src/simulation/config.ts`"
+    - "Use nested objects for related settings"
+    - "Provide type inference from schemas"
+    - "Export config types for use in other modules"
 
-## Data Handling
+data-handling:
 
-### Candle Data
-- Use proper candle data structures
-- Validate candle data before processing
-- Handle missing or invalid candles gracefully
-- Use proper time series operations
-- Cache candle data when appropriate
+candle-data:
+    - "Use proper candle data structures"
+    - "Validate candle data before processing"
+    - "Handle missing or invalid candles gracefully"
+    - "Use proper time series operations"
+    - "Cache candle data when appropriate"
 
-### Data Loaders
-- Use data loader pattern for all data access
-- Support multiple data sources (CSV, ClickHouse, etc.)
-- Implement proper error handling
-- Validate loaded data
-- Cache loaded data when appropriate
+data-loaders:
+    - "Use data loader pattern for all data access"
+    - "Support multiple data sources (CSV, ClickHouse, etc.)"
+    - "Implement proper error handling"
+    - "Validate loaded data"
+    - "Cache loaded data when appropriate"
 
-## Performance
+performance:
 
-### Optimization
-- Use efficient algorithms for calculations
-- Cache expensive computations
-- Use streaming for large datasets
-- Implement proper batching
-- Profile simulation performance
+optimization:
+    - "Use efficient algorithms for calculations"
+    - "Cache expensive computations"
+    - "Use streaming for large datasets"
+    - "Implement proper batching"
+    - "Profile simulation performance"
 
-### Memory Management
-- Avoid memory leaks in long-running simulations
-- Clean up resources properly
-- Use appropriate data structures
-- Monitor memory usage
-- Implement pagination for large datasets
+memory-management:
+    - "Avoid memory leaks in long-running simulations"
+    - "Clean up resources properly"
+    - "Use appropriate data structures"
+    - "Monitor memory usage"
+    - "Implement pagination for large datasets"
 
-## Output and Reporting
+output-and-reporting:
 
-### Sinks
-- Use sink pattern for output handling
-- Support multiple output formats
-- Implement proper error handling in sinks
-- Log output operations
-- Validate output data
+sinks:
+    - "Use sink pattern for output handling"
+    - "Support multiple output formats"
+    - "Implement proper error handling in sinks"
+    - "Log output operations"
+    - "Validate output data"
 
-### Results
-- Structure results consistently
-- Include metadata in results
-- Provide summary statistics
-- Export results in multiple formats
-- Document result structure
+results:
+    - "Structure results consistently"
+    - "Include metadata in results"
+    - "Provide summary statistics"
+    - "Export results in multiple formats"
+    - "Document result structure"
 
-## Testing
+testing:
 
-### Unit Tests
-- Test individual simulation components
-- Test strategy builders
-- Test configuration validation
-- Test data loaders
-- Test calculation functions
+unit-tests:
+    - "Test individual simulation components"
+    - "Test strategy builders"
+    - "Test configuration validation"
+    - "Test data loaders"
+    - "Test calculation functions"
 
-### Integration Tests
-- Test full simulation runs
-- Test with real data
-- Test error scenarios
-- Test performance characteristics
-- Verify output formats
+integration-tests:
+    - "Test full simulation runs"
+    - "Test with real data"
+    - "Test error scenarios"
+    - "Test performance characteristics"
+    - "Verify output formats"
 
-### Test Data
-- Use realistic test data
-- Create test data factories
-- Test edge cases
-- Test with various data sizes
-- Clean up test data
+test-data:
+    - "Use realistic test data"
+    - "Create test data factories"
+    - "Test edge cases"
+    - "Test with various data sizes"
+    - "Clean up test data"
 
-## Documentation
+documentation:
 
-### Code Documentation
-- Document all public APIs
-- Explain complex algorithms
-- Provide usage examples
-- Document configuration options
-- Include performance notes
+code-documentation:
+    - "Document all public APIs"
+    - "Explain complex algorithms"
+    - "Provide usage examples"
+    - "Document configuration options"
+    - "Include performance notes"
 
-### Strategy Documentation
-- Document strategy parameters
-- Explain strategy logic
-- Provide usage examples
-- Include performance characteristics
-- Document edge cases
+strategy-documentation:
+    - "Document strategy parameters"
+    - "Explain strategy logic"
+    - "Provide usage examples"
+    - "Include performance characteristics"
+    - "Document edge cases"
 

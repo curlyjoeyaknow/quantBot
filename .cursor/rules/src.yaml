@@ -6,79 +6,79 @@ alwaysApply: true
 
 # Source Code Rules (src/)
 
-## Architecture Principles
+architecture-principles:
 
-### Module Structure
-- Each module should have a clear, single responsibility
-- Modules should export a clean public API via `index.ts`
-- Internal implementation details should not be exported
-- Use dependency injection for testability
+module-structure:
+    - "Each module should have a clear, single responsibility"
+    - "Modules should export a clean public API via `index.ts`"
+    - "Internal implementation details should not be exported"
+    - "Use dependency injection for testability"
 
-### Service Layer (`src/services/`)
-- Services should be stateless when possible
-- Use async/await for all async operations
-- Implement proper error handling with custom error types
-- Services should validate inputs using Zod schemas
-- Log all important operations with appropriate levels
+service-layer:
+    - "Services should be stateless when possible"
+    - "Use async/await for all async operations"
+    - "Implement proper error handling with custom error types"
+    - "Services should validate inputs using Zod schemas"
+    - "Log all important operations with appropriate levels"
 
-### API Clients (`src/api/`)
-- All external API calls must go through base client classes
-- Implement retry logic with exponential backoff
-- Use connection pooling for HTTP clients
-- Cache responses when appropriate (respect cache headers)
-- Handle rate limiting gracefully
-- Never expose API keys in logs or errors
+api-clients:
+    - "All external API calls must go through base client classes"
+    - "Implement retry logic with exponential backoff"
+    - "Use connection pooling for HTTP clients"
+    - "Cache responses when appropriate (respect cache headers)"
+    - "Handle rate limiting gracefully"
+    - "Never expose API keys in logs or errors"
 
-### Bot Commands (`src/commands/`)
-- Commands should be self-contained and testable
-- Use command pattern with handler classes
-- Validate all user inputs before processing
-- Return structured responses, not raw strings
-- Handle errors gracefully with user-friendly messages
+bot-commands:
+    - "Commands should be self-contained and testable"
+    - "Use command pattern with handler classes"
+    - "Validate all user inputs before processing"
+    - "Return structured responses, not raw strings"
+    - "Handle errors gracefully with user-friendly messages"
 
-### Simulation Engine (`src/simulation/`)
-- All simulation logic must use `SimulationEngine` class
-- Strategy definitions must use builder pattern
-- Configuration must be validated with Zod schemas
-- Keep simulation logic pure and deterministic
-- Use proper type guards for strategy types
+simulation-engine:
+    - "All simulation logic must use `SimulationEngine` class"
+    - "Strategy definitions must use builder pattern"
+    - "Configuration must be validated with Zod schemas"
+    - "Keep simulation logic pure and deterministic"
+    - "Use proper type guards for strategy types"
 
-### Data Layer (`src/data/`)
-- Use data loader pattern for all data access
-- Implement proper caching strategies
-- Validate all data before processing
-- Use transactions for multi-step operations
-- Handle database errors appropriately
+data-layer:
+    - "Use data loader pattern for all data access"
+    - "Implement proper caching strategies"
+    - "Validate all data before processing"
+    - "Use transactions for multi-step operations"
+    - "Handle database errors appropriately"
 
-### Utilities (`src/utils/`)
-- Keep utilities pure and stateless
-- Document all utility functions with JSDoc
-- Export utilities through barrel exports
-- Test all utility functions thoroughly
+utilities:
+    - "Keep utilities pure and stateless"
+    - "Document all utility functions with JSDoc"
+    - "Export utilities through barrel exports"
+    - "Test all utility functions thoroughly"
 
-## Code Quality Standards
+code-quality-standards:
 
-### Type Safety
-- Never use `any` type
-- Use `unknown` with type guards when type is truly unknown
-- Define proper return types for all functions
-- Use discriminated unions for state management
+type-safety:
+    - "Never use `any` type"
+    - "Use `unknown` with type guards when type is truly unknown"
+    - "Define proper return types for all functions"
+    - "Use discriminated unions for state management"
 
-### Error Handling
-- Use custom error classes extending `Error`
-- Include context in error messages
-- Log errors with appropriate severity
-- Never swallow errors silently
+error-handling:
+    - "Use custom error classes extending `Error`"
+    - "Include context in error messages"
+    - "Log errors with appropriate severity"
+    - "Never swallow errors silently"
 
-### Performance
-- Use appropriate data structures (Map, Set, etc.)
-- Cache expensive computations
-- Avoid unnecessary object creation in loops
-- Profile before optimizing
+performance:
+    - "Use appropriate data structures (Map, Set, etc.)"
+    - "Cache expensive computations"
+    - "Avoid unnecessary object creation in loops"
+    - "Profile before optimizing"
 
-### Testing
-- Write unit tests for all business logic
-- Mock external dependencies
-- Test edge cases and error conditions
-- Keep test files co-located with source files
+testing:
+    - "Write unit tests for all business logic"
+    - "Mock external dependencies"
+    - "Test edge cases and error conditions"
+    - "Keep test files co-located with source files"
 
