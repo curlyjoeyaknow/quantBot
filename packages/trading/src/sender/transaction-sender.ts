@@ -184,7 +184,7 @@ export class TransactionSender {
         throw new Error(`Relayer request failed: ${response.statusText}`);
       }
 
-      const result = await response.json();
+      const result: any = await response.json();
       const signature = result.signature || result.txid;
 
       if (!signature) {

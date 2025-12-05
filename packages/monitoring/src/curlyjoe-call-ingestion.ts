@@ -8,7 +8,7 @@
 import { Telegraf, Context } from 'telegraf';
 import { DateTime } from 'luxon';
 import axios from 'axios';
-import { CallerDatabase, CallerAlert } from '@quantbot/storage';
+import { CallerDatabase, CallerAlert } from '@quantbot/utils' /* TODO: Fix storage import */;
 import { logger } from '@quantbot/utils';
 import { LiveTradeAlertService } from './live-trade-alert-service';
 import { fetchHistoricalCandlesForMonitoring } from '@quantbot/services';

@@ -56,7 +56,8 @@ export class WalletManager {
       let keypair: Keypair;
       if (typeof privateKey === 'string') {
         // Base58 string
-        const { bs58 } = await import('bs58');
+        const bs58Module = await import('bs58');
+        const bs58 = bs58Module.default || bs58Module;
         const secretKey = bs58.decode(privateKey);
         keypair = Keypair.fromSecretKey(secretKey);
       } else {

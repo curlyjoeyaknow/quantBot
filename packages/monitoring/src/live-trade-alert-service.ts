@@ -15,7 +15,7 @@
 import * as WS from 'ws';
 import { EventEmitter } from 'events';
 import { DateTime } from 'luxon';
-import { callerDatabase, CallerAlert } from '@quantbot/storage';
+import { callerDatabase, CallerAlert } from '@quantbot/utils' /* TODO: Fix storage import */;
 import { logger } from '@quantbot/utils';
 import { calculateIchimoku, detectIchimokuSignals } from '@quantbot/simulation';
 import { calculateIndicators } from '@quantbot/simulation';

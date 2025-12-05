@@ -10,7 +10,6 @@ export type { HeliusRpcClientOptions } from './rpc/helius-rpc-client';
 
 // Transaction Building
 export { TransactionBuilder } from './builders/transaction-builder';
-export type { BuildPumpFunBuyParams, BuildPumpFunSellParams } from './builders/transaction-builder';
 
 // Transaction Sending
 export { TransactionSender } from './sender/transaction-sender';

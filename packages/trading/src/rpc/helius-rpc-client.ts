@@ -240,11 +240,15 @@ export class HeliusRpcClient {
           const sendOptions: SolanaSendOptions = {
             skipPreflight: options?.skipPreflight ?? false,
             preflightCommitment: options?.preflightCommitment || this.commitment,
-            commitment: options?.commitment || this.commitment,
             maxRetries: options?.maxRetries || this.maxRetries,
           };
 
-          const signature = await connection.sendTransaction(transaction, sendOptions);
+          let signature: string;
+          if (transaction instanceof VersionedTransaction) {
+            signature = await connection.sendTransaction(transaction, sendOptions);
+          } else {
+            signature = await connection.sendTransaction(transaction, [], sendOptions);
+          }
           return signature;
         },
         'sendTransaction'
@@ -312,9 +316,13 @@ export class HeliusRpcClient {
     return this.queueRequest(() =>
       this.executeWithRetry(
         async (connection) => {
-          return connection.simulateTransaction(transaction, {
-            commitment: commitment || this.commitment,
-          });
+          if (transaction instanceof VersionedTransaction) {
+            return connection.simulateTransaction(transaction, {
+              commitment: commitment || this.commitment,
+            });
+          } else {
+            return connection.simulateTransaction(transaction as Transaction);
+          }
         },
         'simulateTransaction'
       )

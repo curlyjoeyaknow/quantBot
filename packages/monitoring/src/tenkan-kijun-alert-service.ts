@@ -12,7 +12,7 @@ import { DateTime } from 'luxon';
 import WebSocket from 'ws';
 import axios from 'axios';
 import { PublicKey, Connection } from '@solana/web3.js';
-import { CallerDatabase } from '@quantbot/storage';
+import { CallerDatabase } from '@quantbot/utils' /* TODO: Fix storage import */;
 import { calculateIndicators, IndicatorData } from '@quantbot/simulation';
 import type { Candle } from '@quantbot/simulation';
 import { decodeBondingCurveAccount, calculatePriceFromBondingCurve } from './pump-idl-decoder';

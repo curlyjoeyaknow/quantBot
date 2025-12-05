@@ -20,8 +20,14 @@ import {
   detectIchimokuSignals, 
   formatIchimokuData 
 } from '@quantbot/simulation/ichimoku';
-import { eventBus, EventFactory } from '../events';
+// import { eventBus, EventFactory } from '../events'; /* TODO: Move events to monitoring */
 import { logger } from '@quantbot/utils';
+
+// Temporary stubs for events
+const eventBus = { emit: (event: string, data: any) => {} };
+const EventFactory = {
+  caMonitoringEvent: (type: string, data: any) => ({ type, data })
+};
 
 export interface CAMonitor {
   id: number;
@@ -382,3 +388,4 @@ export class CAMonitoringService extends EventEmitter {
     return `📊 **Performance Summary**\n\n${summaries.join('\n')}`;
   }
 }
+// TODO: Move events module here

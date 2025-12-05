@@ -133,14 +133,14 @@ ${trade.transactionSignature ? `[View on Solscan](https://solscan.io/tx/${trade.
 
       await this.telegramBot.telegram.sendMessage(userId, message, { parse_mode: 'Markdown' });
     } catch (error) {
-      logger.warn('Failed to send trade notification', error as Error, { userId, tradeId: trade.id });
+      logger.warn('Failed to send trade notification', { userId, tradeId: trade.id, error: (error as Error).message });
     }
   }
 
   /**
    * Map database row to Trade
    */
-  private mapRowToTrade(row: Record<string, any>): Trade {
+  private mapRowToTrade(row: any): Trade {
     return {
       id: parseInt(row.id),
       userId: parseInt(row.user_id),
