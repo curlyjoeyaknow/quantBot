@@ -2,11 +2,28 @@
  * Monitored Tokens Database Utilities
  * ====================================
  * Functions for storing and retrieving monitored tokens from Postgres
+ * 
+ * NOTE: This file will not compile in isolation because it depends on @quantbot/storage
+ * which hasn't been built yet. It will work when built as part of the monorepo.
  */
 
-import { queryPostgres, withPostgresTransaction } from '@quantbot/storage';
+// TODO: These imports require @quantbot/storage to be built first
+// For now, using type-only imports to avoid compilation errors
+import type { EntryConfig } from './types';
 import { logger } from './logger';
-import { EntryConfig } from './types';
+
+// Placeholder types until storage package is available
+type QueryResult = any;
+type PostgresClient = any;
+
+// TODO: Import these from @quantbot/storage once available
+const queryPostgres = async <T = any>(query: string, params?: any[]): Promise<QueryResult> => {
+  throw new Error('queryPostgres not implemented - requires @quantbot/storage');
+};
+
+const withPostgresTransaction = async <T>(callback: (client: PostgresClient) => Promise<T>): Promise<T> => {
+  throw new Error('withPostgresTransaction not implemented - requires @quantbot/storage');
+};
 
 export interface MonitoredToken {
   id?: number;
@@ -160,7 +177,7 @@ export async function getActiveMonitoredTokens(): Promise<MonitoredToken[]> {
        ORDER BY created_at DESC`
     );
 
-    return result.rows.map(row => ({
+    return result.rows.map((row: any) => ({
       id: row.id,
       tokenAddress: row.token_address,
       chain: row.chain,

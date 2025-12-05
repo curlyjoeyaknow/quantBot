@@ -13,9 +13,18 @@ import { Database } from 'sqlite3';
 import { promisify } from 'util';
 import * as path from 'path';
 import { Pool } from 'pg';
-import { getClickHouseClient } from '@quantbot/storage';
-import { logger } from '@quantbot/utils';
+import { createClient, type ClickHouseClient } from '@clickhouse/client';
 import { config } from 'dotenv';
+
+// Simple logger implementation
+const logger = {
+  info: (msg: string, ...args: any[]) => console.log(`[INFO] ${msg}`, ...args),
+  warn: (msg: string, ...args: any[]) => console.warn(`[WARN] ${msg}`, ...args),
+  error: (msg: string, error?: Error, ...args: any[]) => {
+    console.error(`[ERROR] ${msg}`, error?.message || '', ...args);
+    if (error?.stack) console.error(error.stack);
+  },
+};
 
 config();
 
@@ -30,6 +39,7 @@ interface VerificationResult {
 
 class MigrationVerifier {
   private pgPool: Pool;
+  private clickhouse: ClickHouseClient | null = null;
   private results: VerificationResult[] = [];
 
   constructor() {
@@ -40,6 +50,34 @@ class MigrationVerifier {
       password: process.env.POSTGRES_PASSWORD || '',
       database: process.env.POSTGRES_DATABASE || 'quantbot',
     });
+
+    // Initialize ClickHouse client if enabled
+    if (process.env.USE_CLICKHOUSE === 'true') {
+      const chHost = process.env.CLICKHOUSE_HOST || 'localhost';
+      const chPort = parseInt(process.env.CLICKHOUSE_PORT || '18123');
+      const chUser = process.env.CLICKHOUSE_USER || 'default';
+      const chPassword = process.env.CLICKHOUSE_PASSWORD || '';
+      const chDatabase = process.env.CLICKHOUSE_DATABASE || 'quantbot';
+
+      const config: any = {
+        url: `http://${chHost}:${chPort}`,
+        username: chUser,
+        database: chDatabase,
+      };
+
+      if (chPassword) {
+        config.password = chPassword;
+      }
+
+      this.clickhouse = createClient(config);
+    }
+  }
+
+  private getClickHouseClient(): ClickHouseClient {
+    if (!this.clickhouse) {
+      throw new Error('ClickHouse is not enabled');
+    }
+    return this.clickhouse;
   }
 
   private async openSqliteDb(dbPath: string): Promise<Database | null> {
@@ -77,7 +115,10 @@ class MigrationVerifier {
   }
 
   private async getClickHouseCount(query: string): Promise<number> {
-    const ch = getClickHouseClient();
+    if (!this.clickhouse) {
+      return 0;
+    }
+    const ch = this.getClickHouseClient();
     const result = await ch.query({
       query,
       format: 'JSONEachRow',

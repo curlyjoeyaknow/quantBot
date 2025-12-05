@@ -18,9 +18,18 @@ import { Database } from 'sqlite3';
 import { promisify } from 'util';
 import * as path from 'path';
 import { Pool, PoolClient } from 'pg';
-import { getClickHouseClient } from '@quantbot/storage';
-import { logger } from '@quantbot/utils';
+import { createClient, type ClickHouseClient } from '@clickhouse/client';
 import { config } from 'dotenv';
+
+// Simple logger implementation
+const logger = {
+  info: (msg: string, ...args: any[]) => console.log(`[INFO] ${msg}`, ...args),
+  warn: (msg: string, ...args: any[]) => console.warn(`[WARN] ${msg}`, ...args),
+  error: (msg: string, error?: Error, ...args: any[]) => {
+    console.error(`[ERROR] ${msg}`, error?.message || '', ...args);
+    if (error?.stack) console.error(error.stack);
+  },
+};
 
 config();
 
@@ -52,6 +61,7 @@ interface MigrationStats {
 
 class DatabaseMigrator {
   private pgPool: Pool;
+  private clickhouse: ClickHouseClient | null = null;
   private stats: MigrationStats[] = [];
   private dryRun: boolean;
 
@@ -65,6 +75,34 @@ class DatabaseMigrator {
       database: process.env.POSTGRES_DATABASE || 'quantbot',
       max: parseInt(process.env.POSTGRES_MAX_CONNECTIONS || '10'),
     });
+
+    // Initialize ClickHouse client if enabled
+    if (process.env.USE_CLICKHOUSE === 'true') {
+      const chHost = process.env.CLICKHOUSE_HOST || 'localhost';
+      const chPort = parseInt(process.env.CLICKHOUSE_PORT || '18123');
+      const chUser = process.env.CLICKHOUSE_USER || 'default';
+      const chPassword = process.env.CLICKHOUSE_PASSWORD || '';
+      const chDatabase = process.env.CLICKHOUSE_DATABASE || 'quantbot';
+
+      const config: any = {
+        url: `http://${chHost}:${chPort}`,
+        username: chUser,
+        database: chDatabase,
+      };
+
+      if (chPassword) {
+        config.password = chPassword;
+      }
+
+      this.clickhouse = createClient(config);
+    }
+  }
+
+  private getClickHouseClient(): ClickHouseClient {
+    if (!this.clickhouse) {
+      throw new Error('ClickHouse is not enabled. Set USE_CLICKHOUSE=true in .env');
+    }
+    return this.clickhouse;
   }
 
   /**
@@ -657,8 +695,14 @@ class DatabaseMigrator {
     const db = await this.openSqliteDb(dbPath);
     if (!db) return;
 
+    if (!this.clickhouse) {
+      logger.warn('ClickHouse not enabled, skipping simulation events migration');
+      await this.closeSqliteDb(db);
+      return;
+    }
+
     const all = promisify(db.all.bind(db));
-    const clickhouse = getClickHouseClient();
+    const clickhouse = this.getClickHouseClient();
     const pgClient = await this.pgPool.connect();
 
     try {

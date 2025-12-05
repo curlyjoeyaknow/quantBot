@@ -25,7 +25,7 @@ export * from './types';
 export { PUMP_FUN_PROGRAM_ID, derivePumpfunBondingCurve } from './pumpfun';
 
 // Credit monitoring
-export { CreditMonitor } from './credit-monitor';
+export { creditMonitor } from './credit-monitor';
 
 // Caller database utilities
 export * from './caller-database';

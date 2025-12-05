@@ -745,7 +745,7 @@ export async function fetchHybridCandles(
   // Try ClickHouse first (if enabled) - ClickHouse is a cache, so check it even in cache-only mode
   if (process.env.USE_CLICKHOUSE === 'true' || process.env.CLICKHOUSE_HOST) {
     try {
-      const { queryCandles } = await import('../storage/clickhouse-client');
+      const { queryCandles } = await import('@quantbot/storage');
       const clickhouseCandles = await queryCandles(mint, chain, actualStartTime, endTime);
       if (clickhouseCandles.length > 0) {
         logger.debug(

@@ -5,6 +5,7 @@
     "lib": ["ES2020"],
     "outDir": "./dist",
     "rootDir": "./",
+    "baseUrl": "./",
     "strict": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
@@ -18,12 +19,18 @@
     "moduleResolution": "node",
     "paths": {
       "@jest/globals": ["tests/jest-globals.ts"],
-      "@quantbot/utils": ["./packages/utils/src"],
-      "@quantbot/storage": ["./packages/storage/src"],
-      "@quantbot/monitoring": ["./packages/monitoring/src"],
-      "@quantbot/simulation": ["./packages/simulation/src"],
-      "@quantbot/services": ["./packages/services/src"],
-      "@quantbot/bot": ["./packages/bot/src"]
+      "@quantbot/utils": ["./packages/utils/src", "./packages/utils/dist"],
+      "@quantbot/utils/*": ["./packages/utils/src/*", "./packages/utils/dist/*"],
+      "@quantbot/storage": ["./packages/storage/src", "./packages/storage/dist"],
+      "@quantbot/storage/*": ["./packages/storage/src/*", "./packages/storage/dist/*"],
+      "@quantbot/monitoring": ["./packages/monitoring/src", "./packages/monitoring/dist"],
+      "@quantbot/monitoring/*": ["./packages/monitoring/src/*", "./packages/monitoring/dist/*"],
+      "@quantbot/simulation": ["./packages/simulation/src", "./packages/simulation/dist"],
+      "@quantbot/simulation/*": ["./packages/simulation/src/*", "./packages/simulation/dist/*"],
+      "@quantbot/services": ["./packages/services/src", "./packages/services/dist"],
+      "@quantbot/services/*": ["./packages/services/src/*", "./packages/services/dist/*"],
+      "@quantbot/bot": ["./packages/bot/src", "./packages/bot/dist"],
+      "@quantbot/bot/*": ["./packages/bot/src/*", "./packages/bot/dist/*"]
     }
   },
   "include": ["src/**/*", "scripts/**/*"],

@@ -4,7 +4,10 @@
  * Types for strategy optimization
  */
 
-import { StrategyConfig } from '../strategies/types';
+import type { StrategyConfig } from '../strategies/types';
+
+// Re-export for convenience
+export type { StrategyConfig };
 
 /**
  * Parameter grid definition

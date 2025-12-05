@@ -102,7 +102,9 @@ export function calculateIchimoku(candles: Candle[], currentIndex: number): Ichi
     cloudThickness,
     isBullish,
     isBearish,
-    inCloud
+    inCloud,
+    span_a: senkouA,  // Alias for compatibility
+    span_b: senkouB   // Alias for compatibility
   };
 }
 

@@ -39,19 +39,19 @@ See [Simulation Engine Guide](docs/guides/simulation-engine.md) for details.
 
 ### 💾 **Persistent Storage**
 
-- SQLite database for simulation history
-- **Caller tracking database** for individual caller alert history
-- Custom strategy management
-- CA tracking and performance data
-- Alert history and price updates
-- **InfluxDB time-series database** for OHLCV data
+- **PostgreSQL** for OLTP data (tokens, alerts, strategies, simulation runs)
+- **ClickHouse** for time-series data (simulation events, OHLCV candles)
+- **InfluxDB** for real-time monitoring (optional, legacy support)
+- **SQLite** (legacy, being phased out - see migration guide)
+- Automatic backup and migration tools
+- High-performance querying and analytics
 
 ## 🔧 Setup
 
 ### Prerequisites
 
 - Node.js 18+
-- Docker (for InfluxDB)
+- Docker (for PostgreSQL, ClickHouse, InfluxDB)
 - Telegram Bot Token
 - Birdeye API Keys (3.18M total credits across all keys)
 - Helius API Key (for CA monitoring)
@@ -66,63 +66,88 @@ npm install
 
 ### Environment Variables
 
-Create a `.env` file:
+Create a `.env` file (see `.env.example` for full configuration):
 
 ```env
 # Telegram Bot
 TELEGRAM_BOT_TOKEN=your_bot_token
 TELEGRAM_CHAT_ID=your_chat_id
 
-# InfluxDB Configuration
+# PostgreSQL (Primary OLTP Database)
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+POSTGRES_USER=quantbot
+POSTGRES_PASSWORD=your_secure_password
+POSTGRES_DATABASE=quantbot
+POSTGRES_MAX_CONNECTIONS=10
+
+# ClickHouse (Time-Series Database)
+USE_CLICKHOUSE=true
+CLICKHOUSE_HOST=localhost
+CLICKHOUSE_PORT=18123
+CLICKHOUSE_USER=default
+CLICKHOUSE_PASSWORD=
+CLICKHOUSE_DATABASE=quantbot
+
+# InfluxDB (Optional - Legacy Support)
 INFLUX_URL=http://localhost:8086
 INFLUX_TOKEN=your-admin-token
 INFLUX_ORG=quantbot
 INFLUX_BUCKET=ohlcv_data
-INFLUX_USERNAME=admin
-INFLUX_PASSWORD=your-secure-password
 
-# Birdeye API Keys (3.18M total credits - add as many keys as you have)
+# Birdeye API Keys
+BIRDEYE_API_KEY=your_primary_key
 BIRDEYE_API_KEY_1=your_first_key
 BIRDEYE_API_KEY_2=your_second_key
-BIRDEYE_API_KEY_3=your_third_key
 # Add more keys as needed...
 
 # Helius API
 HELIUS_API_KEY=your_helius_key
-HELIUS_WS_URL=wss://atlas-mainnet.helius-rpc.com/?api-key=your_helius_key
 
-# Database
-DATABASE_PATH=./quantbot.db
-SIMULATIONS_DB_PATH=./simulations.db
-CALLER_DB_PATH=./caller_alerts.db
+# Legacy SQLite (optional, for migration)
+DATABASE_PATH=./data/quantbot.db
 ```
 
 ### Running the Bot
 
-#### 1. Start InfluxDB
+#### 1. Start Databases
 ```bash
-npm run influxdb:start
+# Start all databases (PostgreSQL, ClickHouse, InfluxDB)
+docker-compose up -d
+
+# Check that databases are running
+docker-compose ps
 ```
 
-#### 2. Initialize InfluxDB
-- Visit http://localhost:8086
-- Create admin user and organization
-- Copy the admin token to your `.env` file
-
-#### 3. Migrate Existing Data (Optional)
+#### 2. Initialize Databases (First Time Only)
 ```bash
-npm run influxdb:migrate
-npm run caller:migrate
+# Initialize PostgreSQL schema
+psql -U quantbot -d quantbot -f scripts/migration/postgres/001_init.sql
+
+# Or let the app auto-initialize on first run
+npm run dev
 ```
 
-#### 4. Test Integration
+#### 3. Migrate Existing SQLite Data (If Upgrading)
 ```bash
-npm run influxdb:test
-npm run caller:stats
+# Backup your data first!
+./scripts/migration/backup-sqlite-dbs.sh
+
+# Run migration
+./scripts/migration/run-migration.sh
+
+# Verify migration
+tsx scripts/migration/verify-migration.ts
 ```
 
-#### 5. Start the Bot
+See [Migration Quick Start](scripts/migration/QUICKSTART.md) for detailed migration instructions.
+
+#### 4. Start the Bot
 ```bash
+# Development
+npm run dev
+
+# Production
 npm start
 ```
 
