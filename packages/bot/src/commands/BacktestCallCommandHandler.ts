@@ -14,9 +14,17 @@ import { fetchHybridCandles } from '@quantbot/simulation/candles';
 import { simulateStrategy } from '../simulate';
 import { DateTime } from 'luxon';
 import { logger } from '@quantbot/utils';
+import { extractCommandArgs, isValidTokenAddress, sanitizeInput, COMMAND_TIMEOUTS } from '../utils/command-helpers';
 
 export class BacktestCallCommandHandler extends BaseCommandHandler {
   readonly command = 'backtest_call';
+  
+  protected defaultOptions = {
+    timeout: COMMAND_TIMEOUTS.LONG, // 2 minutes for backtest operations
+    requirePrivateChat: true,
+    rateLimit: true,
+    showTyping: true,
+  };
   
   constructor(
     private sessionService: SessionService,
@@ -32,23 +40,38 @@ export class BacktestCallCommandHandler extends BaseCommandHandler {
       return;
     }
     
-    // Parse command arguments
+    // Parse and validate command arguments
     const message = 'text' in (ctx.message ?? {}) ? (ctx.message as { text: string }).text : '';
-    const args = message.split(' ').slice(1);
+    const args = extractCommandArgs(message, this.command);
     
     if (args.length === 0) {
       await ctx.reply(
         '❌ **Usage:** `/backtest_call <mint_address>`\n\n' +
-        'Example: `/backtest_call 0xf73f123Ff5fe61fd94fE0496b35f7bF4eBa84444`'
+        'Example: `/backtest_call 0xf73f123Ff5fe61fd94fE0496b35f7bF4eBa84444`',
+        { parse_mode: 'Markdown' }
       );
       return;
     }
 
-    const mint = args[0];
+    // Sanitize and validate token address
+    const mint = sanitizeInput(args[0], 100);
+    
+    if (!isValidTokenAddress(mint)) {
+      await this.sendError(
+        ctx,
+        'Invalid token address format. Please provide a valid Solana or EVM address.'
+      );
+      return;
+    }
     
     try {
+      const progress = this.createProgressMessage(ctx);
+      await progress.send('🔍 **Searching for historical call...**');
+      
       // Get the CA call from database
       const call = await getCACallByMint(mint);
+      
+      await progress.delete();
       
       if (!call) {
         await ctx.reply(
@@ -81,6 +104,8 @@ export class BacktestCallCommandHandler extends BaseCommandHandler {
       
       this.sessionService.setSession(userId, newSession);
 
+      await progress.send('📊 **Fetching historical data...**');
+      
       await ctx.reply(
         `🎯 **Backtesting Historical Call**\n\n` +
         `🪙 **${call.token_name}** (${call.token_symbol})\n` +
@@ -94,6 +119,8 @@ export class BacktestCallCommandHandler extends BaseCommandHandler {
 
       // Run the simulation immediately
       try {
+        await progress.update('📊 **Fetching candle data...**');
+        
         const alertTime = DateTime.fromSeconds(call.call_timestamp);
         // Pass alertTime for 1m candles around alert time
         const candles = await fetchHybridCandles(
@@ -105,16 +132,20 @@ export class BacktestCallCommandHandler extends BaseCommandHandler {
         );
 
         if (!candles.length) {
+          await progress.delete();
           await ctx.reply('❌ No candle data available for this historical call.');
           this.sessionService.clearSession(userId);
           return;
         }
 
         if (!newSession.data) {
+          await progress.delete();
           await ctx.reply('❌ Session data is missing.');
           this.sessionService.clearSession(userId);
           return;
         }
+        
+        await progress.update('⚙️ **Running simulation...**');
         
         const result = simulateStrategy(
           candles, 
@@ -159,6 +190,7 @@ export class BacktestCallCommandHandler extends BaseCommandHandler {
           resultMessage += `${eventEmoji} ${timestamp}: ${event.description}\n`;
         }
 
+        await progress.delete();
         await ctx.reply(resultMessage, { parse_mode: 'Markdown' });
 
         // Save this backtest run

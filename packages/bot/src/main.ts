@@ -32,6 +32,7 @@ import { ServiceContainer } from './container/ServiceContainer';
 import { CommandRegistry } from './commands/CommandRegistry';
 import { SessionService, SimulationService, StrategyService, IchimokuWorkflowService, CADetectionService, TextWorkflowHandler } from '@quantbot/services';
 import { initDatabase, logger, RepeatSimulationHelper } from '@quantbot/utils';
+import { SessionCleanupManager } from './utils/session-cleanup';
 
 // Import all command handlers
 import {
@@ -172,6 +173,10 @@ bot.catch(async (err, ctx) => {
     logger.info('Setting up bot commands menu...');
     await commandRegistry.setupBotCommands();
     logger.info('Bot commands menu set up successfully');
+    
+    // Start session cleanup manager
+    const sessionCleanupManager = serviceContainer.getService<SessionCleanupManager>('sessionCleanupManager');
+    logger.info('Session cleanup manager started');
   } catch (error) {
     logger.error('Failed to start bot', error as Error);
     process.exit(1);

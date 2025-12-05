@@ -11,7 +11,7 @@ import { StrategyService } from '@quantbot/services/StrategyService';
 import { SimulationService } from '@quantbot/services/SimulationService';
 import { IchimokuWorkflowService } from '@quantbot/services/IchimokuWorkflowService';
 import { CADetectionService } from '@quantbot/services/CADetectionService';
-import { RepeatSimulationHelper } from '../utils/RepeatSimulationHelper';
+import { RepeatSimulationHelper } from '@quantbot/utils';
 import { CommandRegistry } from '../commands/CommandRegistry';
 import { logger } from '@quantbot/utils';
 
@@ -87,6 +87,14 @@ export class ServiceContainer {
     this.registerService('repeatSimulationHelper', () => {
       const sessionService = this.getService<SessionService>('sessionService');
       return new RepeatSimulationHelper(sessionService);
+    });
+    
+    // Session cleanup manager
+    this.registerService('sessionCleanupManager', () => {
+      const sessionService = this.getService<SessionService>('sessionService');
+      const manager = new SessionCleanupManager(sessionService);
+      manager.start();
+      return manager;
     });
 
     // Command registry (depends on all services)

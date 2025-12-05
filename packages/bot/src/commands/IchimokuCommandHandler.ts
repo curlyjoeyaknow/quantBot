@@ -9,9 +9,17 @@ import { Context } from 'telegraf';
 import { BaseCommandHandler, Session } from './interfaces/CommandHandler';
 import { SessionService } from '@quantbot/services/SessionService';
 import { logger } from '@quantbot/utils';
+import { COMMAND_TIMEOUTS } from '../utils/command-helpers';
 
 export class IchimokuCommandHandler extends BaseCommandHandler {
   readonly command = 'ichimoku';
+  
+  protected defaultOptions = {
+    timeout: COMMAND_TIMEOUTS.STANDARD,
+    requirePrivateChat: true,
+    rateLimit: true,
+    showTyping: true,
+  };
   
   constructor(private sessionService: SessionService) {
     super();

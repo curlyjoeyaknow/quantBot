@@ -5,6 +5,7 @@ This document summarizes the improvements made to enhance overall bot functional
 ## Overview
 
 The improvements focus on:
+
 1. **Error Handling** - Consistent error recovery and user-friendly messages
 2. **Input Validation** - Sanitization and validation of user inputs
 3. **Async Operations** - Timeout handling and retry logic
@@ -19,6 +20,7 @@ The improvements focus on:
 **Location:** `packages/bot/src/commands/interfaces/CommandHandler.ts`
 
 **Improvements:**
+
 - Added `executeWithValidation()` wrapper method that provides:
   - Automatic user validation
   - Private chat validation
@@ -28,6 +30,7 @@ The improvements focus on:
   - Consistent error handling
 
 **Benefits:**
+
 - All command handlers automatically get validation and error handling
 - Consistent behavior across all commands
 - Reduced code duplication
@@ -37,6 +40,7 @@ The improvements focus on:
 **Location:** `packages/bot/src/utils/command-helpers.ts`
 
 **New Utilities:**
+
 - `withTimeout()` - Execute promises with timeout protection
 - `validateUser()` - Validate user ID exists
 - `validatePrivateChat()` - Ensure commands only work in private chats
@@ -48,6 +52,7 @@ The improvements focus on:
 - `CommandRateLimiter` - Rate limiting for commands
 
 **Benefits:**
+
 - Reusable utilities across all command handlers
 - Consistent validation logic
 - Better user experience with progress indicators
@@ -57,12 +62,14 @@ The improvements focus on:
 **Location:** `packages/bot/src/commands/CommandRegistry.ts`
 
 **Improvements:**
+
 - Automatic use of `executeWithValidation()` for BaseCommandHandler instances
 - Better error handling with try-catch around all command executions
 - Improved error messages to users
 - Fallback for handlers that don't extend BaseCommandHandler
 
 **Benefits:**
+
 - All commands get consistent error handling
 - Better logging and debugging
 - Graceful error recovery
@@ -72,12 +79,14 @@ The improvements focus on:
 **Location:** `packages/bot/src/main.ts`
 
 **Improvements:**
+
 - Added timeout handling for text message processing
 - Added timeout handling for callback queries
 - Better error handling in bot.catch()
 - Improved error messages
 
 **Benefits:**
+
 - Prevents hanging operations
 - Better user experience
 - More reliable bot operation
@@ -85,12 +94,14 @@ The improvements focus on:
 ### 5. Updated Command Handlers
 
 **Updated Handlers:**
+
 - `BacktestCommandHandler` - Uses improved logger import
 - `CallsCommandHandler` - Added input validation, progress indicators
 - `StrategyCommandHandler` - Added input sanitization
 - `AnalysisCommandHandler` - Added progress updates, longer timeout
 
 **Benefits:**
+
 - Better input validation
 - Improved user feedback
 - More reliable operation
@@ -173,6 +184,7 @@ if (!isValidTokenAddress(token)) {
 ### Example Migration
 
 **Before:**
+
 ```typescript
 async execute(ctx: Context, session?: Session): Promise<void> {
   const userId = ctx.from?.id;
@@ -185,6 +197,7 @@ async execute(ctx: Context, session?: Session): Promise<void> {
 ```
 
 **After:**
+
 ```typescript
 async execute(ctx: Context, session?: Session): Promise<void> {
   // User validation is automatic via executeWithValidation()
@@ -197,6 +210,7 @@ async execute(ctx: Context, session?: Session): Promise<void> {
 ## Testing
 
 All improvements maintain backward compatibility. Existing command handlers will continue to work, but will automatically benefit from:
+
 - Rate limiting
 - Timeout protection
 - Better error handling
@@ -205,6 +219,7 @@ All improvements maintain backward compatibility. Existing command handlers will
 ## Future Enhancements
 
 Potential future improvements:
+
 1. Command usage analytics
 2. Per-user rate limiting customization
 3. Command aliases
@@ -219,4 +234,3 @@ Potential future improvements:
 - Improved error messages don't expose internal details
 - Rate limiting helps prevent abuse
 - Timeout handling prevents hanging operations
-
