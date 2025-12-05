@@ -334,7 +334,7 @@ function generateHTML(results: ScoredToken[], outputPath: string): void {
           const chainClass = (result.chain || '').toLowerCase();
           const date = new Date((result.callTimestamp || 0) * 1000);
           
-          return \`
+          return `
           <tr>
             <td>${index + 1}</td>
             <td><span class="score ${scoreClass}">${(result.score || 0).toFixed(2)}</span></td>
@@ -347,7 +347,7 @@ function generateHTML(results: ScoredToken[], outputPath: string): void {
             <td>${result.marketCapAtCall ? '$' + (result.marketCapAtCall / 1e6).toFixed(2) + 'M' : 'N/A'}</td>
             <td>${date.toLocaleString()}</td>
           </tr>
-          \`;
+          `;
         }).join('')}
       </tbody>
     </table>
@@ -370,16 +370,16 @@ function generateHTML(results: ScoredToken[], outputPath: string): void {
         
         return \`
         <tr>
-          <td>${index + 1}</td>
-          <td><span class="score ${scoreClass}">${(result.score || 0).toFixed(2)}</span></td>
-          <td>${result.tokenSymbol || 'N/A'}</td>
-          <td><span class="chain-badge ${chainClass}">${result.chain || 'N/A'}</span></td>
-          <td>${result.callerName || 'N/A'}</td>
-          <td class="return ${return7dClass}">${(result.maxReturn7d || 0).toFixed(2)}%</td>
-          <td class="return ${return30dClass}">${(result.maxReturn30d || 0).toFixed(2)}%</td>
-          <td>$${(result.priceAtCall || 0).toFixed(6)}</td>
-          <td>${result.marketCapAtCall ? '$' + (result.marketCapAtCall / 1e6).toFixed(2) + 'M' : 'N/A'}</td>
-          <td>${date.toLocaleString()}</td>
+          <td>\${index + 1}</td>
+          <td><span class="score \${scoreClass}">\${(result.score || 0).toFixed(2)}</span></td>
+          <td>\${result.tokenSymbol || 'N/A'}</td>
+          <td><span class="chain-badge \${chainClass}">\${result.chain || 'N/A'}</span></td>
+          <td>\${result.callerName || 'N/A'}</td>
+          <td class="return \${return7dClass}">\${(result.maxReturn7d || 0).toFixed(2)}%</td>
+          <td class="return \${return30dClass}">\${(result.maxReturn30d || 0).toFixed(2)}%</td>
+          <td>$\${(result.priceAtCall || 0).toFixed(6)}</td>
+          <td>\${result.marketCapAtCall ? '$' + (result.marketCapAtCall / 1e6).toFixed(2) + 'M' : 'N/A'}</td>
+          <td>\${date.toLocaleString()}</td>
         </tr>
         \`;
       }).join('');

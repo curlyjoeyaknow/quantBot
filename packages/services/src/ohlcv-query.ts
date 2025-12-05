@@ -3,6 +3,7 @@ import { logger } from '@quantbot/utils';
 
 // TODO: ohlcvCache should be part of this package or injected
 // import { ohlcvCache } from '@quantbot/cache';
+import { ohlcvCache } from './api-stubs';
 
 export interface QueryOptions {
   useCache?: boolean;

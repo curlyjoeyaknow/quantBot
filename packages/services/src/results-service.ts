@@ -176,9 +176,10 @@ export class ResultsService {
                   });
 
                   // Generate PNL chart
-                  const pnlChart: ChartDataPoint[] = events.map((event) => ({
+                  const pnlChart: ChartDataPoint[] = events.map((event: any) => ({
                     timestamp: event.timestamp,
                     pnl: event.pnl_so_far,
+                    price: event.price || 0, // Add missing required field
                   }));
 
                   // Calculate trade distribution

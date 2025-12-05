@@ -23,16 +23,16 @@ import {
   savePriceUpdate,
   saveAlertSent,
   getRecentCAPerformance
-} from './utils/database';
-import { logger } from './utils/logger';
-import type { Candle } from './simulation/candles';
-import type { IchimokuData, IchimokuSignal } from './simulation/ichimoku';
-import { simulateStrategy } from './simulation/engine';
+} from '@quantbot/utils';
+import { logger } from '@quantbot/utils';
+import type { Candle } from '@quantbot/simulation';
+import type { IchimokuData, IchimokuSignal } from '@quantbot/simulation';
+import { simulateStrategy } from '@quantbot/simulation';
 import { 
   calculateIchimoku, 
   detectIchimokuSignals, 
   formatIchimokuData 
-} from './simulation/ichimoku';
+} from '@quantbot/simulation';
 
 /* ============================================================================
  * Configuration
@@ -602,7 +602,7 @@ class HeliusMonitor {
    */
   private async updateCandlesFromBirdeye(ca: CAMonitor): Promise<void> {
     try {
-      const { fetchHybridCandles } = await import('./simulation/candles');
+      const { fetchHybridCandles } = await import('@quantbot/simulation');
       
       // Fetch last 52 candles (about 4.3 hours of 5m data)
       const endTime = DateTime.now().toUTC();

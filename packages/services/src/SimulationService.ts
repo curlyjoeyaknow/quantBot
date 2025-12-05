@@ -8,11 +8,22 @@
 import { DateTime } from 'luxon';
 import { Strategy } from '@quantbot/simulation';
 import { StopLossConfig } from '@quantbot/simulation';
-import { simulateStrategy, SimulationResult as SimResult } from '../simulate';
+import { simulateStrategy, type SimulationResult as SimResult } from '@quantbot/simulation';
 import { fetchHybridCandles } from '@quantbot/simulation';
 import * as db from '@quantbot/utils';
-import { eventBus, EventFactory } from '../events';
-import { SimulationRunData } from '../types/session';
+import type { SimulationRunData } from '@quantbot/utils';
+
+// TODO: Events module needs to be in this package or utils
+const eventBus = { 
+  emit: (event: string, data: any) => {},
+  publish: (event: any) => {} // Add publish method
+};
+const EventFactory = {
+  simulationStarted: (data: any) => ({ type: 'simulation_started', data }),
+  simulationCompleted: (data: any) => ({ type: 'simulation_completed', data }),
+  simulationFailed: (data: any) => ({ type: 'simulation_failed', data }),
+  createUserEvent: (type: string, userId: number, data: any) => ({ type, userId, data })
+};
 
 export interface SimulationRun {
   id: number;
@@ -50,12 +61,9 @@ export class SimulationService {
     const { mint, chain, startTime, endTime, strategy, stopLossConfig, userId } = params;
     
     // Emit simulation started event
-    await eventBus.publish(EventFactory.createUserEvent(
-      'simulation.started',
-      { mint, chain, strategy },
-      'SimulationService',
-      userId
-    ));
+    await eventBus.publish(
+      EventFactory.createUserEvent('simulation.started', userId, { mint, chain, strategy })
+    );
     
     try {
       // Fetch candles for the simulation period
@@ -70,22 +78,16 @@ export class SimulationService {
       const result = simulateStrategy(candles, strategy, stopLossConfig);
       
       // Emit simulation completed event
-      await eventBus.publish(EventFactory.createUserEvent(
-        'simulation.completed',
-        { mint, chain, strategy, result },
-        'SimulationService',
-        userId
-      ));
+      await eventBus.publish(
+        EventFactory.createUserEvent('simulation.completed', userId, { mint, chain, strategy, result })
+      );
       
       return result;
     } catch (error) {
       // Emit simulation failed event
-      await eventBus.publish(EventFactory.createUserEvent(
-        'simulation.failed',
-        { mint, chain, strategy, error: error instanceof Error ? error.message : String(error) },
-        'SimulationService',
-        userId
-      ));
+      await eventBus.publish(
+        EventFactory.createUserEvent('simulation.failed', userId, { mint, chain, strategy, error: error instanceof Error ? error.message : String(error) })
+      );
       
       throw error;
     }

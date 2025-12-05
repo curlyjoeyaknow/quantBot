@@ -81,5 +81,9 @@ export const cacheKeys = {
   marketCap: (tokenAddress: string, chain: string, timestamp: string) =>
     `mcap:${chain}:${tokenAddress}:${timestamp}`,
   dashboard: () => 'dashboard:metrics',
+  callerStats: () => 'caller-stats',
+  recentAlerts: () => 'recent-alerts',
+  healthCheck: () => 'health-check',
+  simulationStats: () => 'simulation-stats',
 };
 

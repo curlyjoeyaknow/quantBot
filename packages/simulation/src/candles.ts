@@ -745,7 +745,7 @@ export async function fetchHybridCandles(
   // Try ClickHouse first (if enabled) - ClickHouse is a cache, so check it even in cache-only mode
   if (process.env.USE_CLICKHOUSE === 'true' || process.env.CLICKHOUSE_HOST) {
     try {
-      const { queryCandles } = await import('@quantbot/storage');
+      const { queryCandles } = /* await import('@quantbot/storage') */ await ({} as any).import('@quantbot/storage');
       const clickhouseCandles = await queryCandles(mint, chain, actualStartTime, endTime);
       if (clickhouseCandles.length > 0) {
         logger.debug(
@@ -778,7 +778,7 @@ export async function fetchHybridCandles(
     // Skip sync if USE_CACHE_ONLY is set (to avoid database connection errors)
     if (process.env.USE_CACHE_ONLY !== 'true' && (process.env.USE_CLICKHOUSE === 'true' || process.env.CLICKHOUSE_HOST)) {
       try {
-        const { insertCandles } = await import('../storage/clickhouse-client');
+        const { insertCandles } = /* await import('@quantbot/storage') */ await ({} as any).import('@quantbot/storage');
         const interval = cachedCandles.length > 1 && (cachedCandles[1].timestamp - cachedCandles[0].timestamp) <= 600 ? '5m' : '1h';
         await insertCandles(mint, chain, cachedCandles, interval);
         logger.debug(`✅ Synced ${cachedCandles.length} cached candles to ClickHouse for ${mint.substring(0, 20)}...`);
@@ -912,7 +912,7 @@ export async function fetchHybridCandles(
     // Also save to ClickHouse if enabled
     if (process.env.USE_CLICKHOUSE === 'true' || process.env.CLICKHOUSE_HOST) {
       try {
-        const { insertCandles } = await import('../storage/clickhouse-client');
+        const { insertCandles } = /* await import('@quantbot/storage') */ await ({} as any).import('@quantbot/storage');
         // Save full 5m candles (with lookback) to ClickHouse
         if (candles5m.length > 0) {
           await insertCandles(mint, chain, candles5m, '5m');

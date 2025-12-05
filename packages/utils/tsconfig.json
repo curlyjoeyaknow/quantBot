@@ -5,9 +5,7 @@
     "rootDir": "./src",
     "declaration": true,
     "declarationMap": true,
-    "composite": true,
-    "baseUrl": ".",
-    "paths": {}
+    "composite": true
   },
   "include": ["src/**/*"],
   "exclude": [

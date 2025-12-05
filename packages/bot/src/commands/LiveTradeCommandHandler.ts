@@ -1,125 +1,159 @@
 /**
  * Live Trade Command Handler
- * ==========================
- * Handles commands for starting/stopping live trade alert monitoring
+ * 
+ * Handles live trading commands: /livetrade enable, disable, status, config
  */
 
 import { Context } from 'telegraf';
 import { BaseCommandHandler, Session } from './interfaces/CommandHandler';
+import { TradingConfigService } from '@quantbot/trading';
 import { logger } from '@quantbot/utils';
-import { LiveTradeAlertService } from '@quantbot/monitoring/live-trade-alert-service';
-
-// Singleton service instance
-let liveTradeService: LiveTradeAlertService | null = null;
+import { extractCommandArgs } from '../utils/command-helpers';
 
 export class LiveTradeCommandHandler extends BaseCommandHandler {
   readonly command = 'livetrade';
 
+  protected defaultOptions = {
+    timeout: 10_000,
+    requirePrivateChat: true,
+    rateLimit: true,
+    showTyping: true,
+  };
+
+  constructor(private tradingConfigService: TradingConfigService) {
+    super();
+  }
+
   async execute(ctx: Context, session?: Session): Promise<void> {
-    try {
-      const args = ctx.message && 'text' in ctx.message 
-        ? ctx.message.text.split(' ').slice(1) 
-        : [];
-      const subcommand = args[0]?.toLowerCase();
-
-      if (subcommand === 'start') {
-        await this.handleStart(ctx);
-      } else if (subcommand === 'stop') {
-        await this.handleStop(ctx);
-      } else if (subcommand === 'status') {
-        await this.handleStatus(ctx);
-      } else {
-        await ctx.reply(
-          '📊 **Live Trade Alert Commands:**\n\n' +
-          '`/livetrade start` - Start monitoring tokens from caller_alerts\n' +
-          '`/livetrade stop` - Stop monitoring\n' +
-          '`/livetrade status` - Show current status',
-          { parse_mode: 'Markdown' }
-        );
-      }
-    } catch (error) {
-      logger.error('Live trade command error', error as Error, { userId: ctx.from?.id });
-      await this.sendError(ctx, '❌ Error processing live trade command. Please try again.');
-    }
-  }
-
-  private async handleStart(ctx: Context): Promise<void> {
-    if (liveTradeService && liveTradeService.getStatus().isRunning) {
-      await ctx.reply('⚠️ Live trade alert service is already running.');
+    const userId = ctx.from?.id;
+    if (!userId) {
+      await this.sendError(ctx, 'Unable to identify user.');
       return;
     }
 
-    await ctx.reply('🚀 Starting live trade alert service...');
+    const message = 'text' in (ctx.message ?? {}) ? (ctx.message as { text: string }).text : '';
+    const args = extractCommandArgs(message, this.command);
+    const subcommand = args[0]?.toLowerCase();
 
     try {
-      if (!liveTradeService) {
-        liveTradeService = new LiveTradeAlertService();
-
-        // Handle entry alerts
-        liveTradeService.on('entryAlert', async (alert) => {
-          logger.info('Entry alert triggered', {
-            tokenSymbol: alert.tokenSymbol,
-            entryType: alert.entryType,
-          });
-        });
+      switch (subcommand) {
+        case 'enable':
+          await this.handleEnable(ctx, userId);
+          break;
+        case 'disable':
+          await this.handleDisable(ctx, userId);
+          break;
+        case 'status':
+          await this.handleStatus(ctx, userId);
+          break;
+        case 'config':
+          await this.handleConfig(ctx, userId, args.slice(1));
+          break;
+        default:
+          await this.sendInfo(
+            ctx,
+            `Usage: /livetrade <enable|disable|status|config>\n\n` +
+              `• enable - Enable live trading\n` +
+              `• disable - Disable live trading\n` +
+              `• status - Show trading status and configuration\n` +
+              `• config - Configure trading parameters`
+          );
       }
+    } catch (error) {
+      logger.error('Live trade command failed', error as Error, { userId, subcommand });
+      await this.sendError(ctx, 'An error occurred processing your request.');
+    }
+  }
 
-      await liveTradeService.start();
-      const status = liveTradeService.getStatus();
+  private async handleEnable(ctx: Context, userId: number): Promise<void> {
+    await this.tradingConfigService.enableTrading(userId);
+    await this.sendSuccess(ctx, '✅ Live trading enabled for your account.');
+  }
 
-      await ctx.reply(
-        `✅ **Live Trade Alert Service Started**\n\n` +
-        `📊 Monitoring: ${status.monitoredTokens} tokens\n` +
-        `🔌 WebSocket: ${status.websocketConnected ? 'Connected' : 'Disconnected'}\n` +
-        `📢 Alert Groups: ${status.alertGroups}`,
-        { parse_mode: 'Markdown' }
+  private async handleDisable(ctx: Context, userId: number): Promise<void> {
+    await this.tradingConfigService.disableTrading(userId);
+    await this.sendSuccess(ctx, '❌ Live trading disabled for your account.');
+  }
+
+  private async handleStatus(ctx: Context, userId: number): Promise<void> {
+    const config = await this.tradingConfigService.getConfig(userId);
+
+    if (!config) {
+      await this.sendInfo(ctx, 'Trading not configured. Use /livetrade config to set up.');
+      return;
+    }
+
+    const status = config.enabled ? '✅ Enabled' : '❌ Disabled';
+    const dryRun = config.dryRun ? '🟡 Dry Run' : '🔴 Live';
+
+    const message = `
+**Live Trading Status**
+
+Status: ${status}
+Mode: ${dryRun}
+
+**Risk Limits:**
+• Max Position: ${config.maxPositionSize} SOL
+• Max Total Exposure: ${config.maxTotalExposure} SOL
+• Daily Loss Limit: ${config.dailyLossLimit} SOL
+• Slippage Tolerance: ${(config.slippageTolerance * 100).toFixed(2)}%
+
+**Alert Rules:**
+• CA Drop Alerts: ${config.alertRules.caDropAlerts ? '✅' : '❌'}
+• Ichimoku Signals: ${config.alertRules.ichimokuSignals ? '✅' : '❌'}
+• Live Trade Entry: ${config.alertRules.liveTradeEntry ? '✅' : '❌'}
+    `.trim();
+
+    await this.sendInfo(ctx, message);
+  }
+
+  private async handleConfig(ctx: Context, userId: number, args: string[]): Promise<void> {
+    if (args.length === 0) {
+      await this.sendInfo(
+        ctx,
+        `Usage: /livetrade config <parameter> <value>\n\n` +
+          `Parameters:\n` +
+          `• max_position <SOL> - Maximum position size\n` +
+          `• max_exposure <SOL> - Maximum total exposure\n` +
+          `• slippage <percent> - Slippage tolerance (e.g., 1 for 1%)\n` +
+          `• daily_loss <SOL> - Daily loss limit\n` +
+          `• dry_run <true|false> - Enable/disable dry-run mode`
       );
-    } catch (error) {
-      logger.error('Failed to start live trade service', error as Error);
-      await ctx.reply('❌ Failed to start live trade alert service. Check logs for details.');
-    }
-  }
-
-  private async handleStop(ctx: Context): Promise<void> {
-    if (!liveTradeService || !liveTradeService.getStatus().isRunning) {
-      await ctx.reply('⚠️ Live trade alert service is not running.');
       return;
     }
 
-    await ctx.reply('🛑 Stopping live trade alert service...');
+    const param = args[0].toLowerCase();
+    const value = args[1];
 
     try {
-      await liveTradeService.stop();
-      await ctx.reply('✅ Live trade alert service stopped.');
+      const updates: any = {};
+
+      switch (param) {
+        case 'max_position':
+          updates.maxPositionSize = parseFloat(value);
+          break;
+        case 'max_exposure':
+          updates.maxTotalExposure = parseFloat(value);
+          break;
+        case 'slippage':
+          updates.slippageTolerance = parseFloat(value) / 100;
+          break;
+        case 'daily_loss':
+          updates.dailyLossLimit = parseFloat(value);
+          break;
+        case 'dry_run':
+          updates.dryRun = value.toLowerCase() === 'true';
+          break;
+        default:
+          await this.sendError(ctx, `Unknown parameter: ${param}`);
+          return;
+      }
+
+      await this.tradingConfigService.upsertConfig({ userId, ...updates });
+      await this.sendSuccess(ctx, `✅ Configuration updated: ${param} = ${value}`);
     } catch (error) {
-      logger.error('Failed to stop live trade service', error as Error);
-      await ctx.reply('❌ Failed to stop live trade alert service. Check logs for details.');
+      logger.error('Config update failed', error as Error, { userId, param, value });
+      await this.sendError(ctx, 'Failed to update configuration. Please check your values.');
     }
-  }
-
-  private async handleStatus(ctx: Context): Promise<void> {
-    if (!liveTradeService) {
-      await ctx.reply('⚠️ Live trade alert service has not been initialized.');
-      return;
-    }
-
-    const status = liveTradeService.getStatus();
-
-    await ctx.reply(
-      `📊 **Live Trade Alert Status**\n\n` +
-      `🟢 Running: ${status.isRunning ? 'Yes' : 'No'}\n` +
-      `📊 Monitored Tokens: ${status.monitoredTokens}\n` +
-      `🔌 WebSocket: ${status.websocketConnected ? '✅ Connected' : '❌ Disconnected'}\n` +
-      `📢 Alert Groups: ${status.alertGroups}`,
-      { parse_mode: 'Markdown' }
-    );
-  }
-
-  /**
-   * Get the service instance (for external use)
-   */
-  public static getService(): LiveTradeAlertService | null {
-    return liveTradeService;
   }
 }
-

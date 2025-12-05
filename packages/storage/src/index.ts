@@ -18,4 +18,6 @@ export * from './caller-database';
 
 // Repository pattern
 export * from './repository';
+// Cache
+export * from './cache/ohlcv-cache';
 

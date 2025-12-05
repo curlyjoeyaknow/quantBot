@@ -966,7 +966,7 @@ export class LiveTradeAlertService extends EventEmitter {
         // For now, we'll update by token address + caller + alert time
         // In a full implementation, we'd store the ID when adding the token
         try {
-          const { getActiveMonitoredTokens } = await import('../utils/monitored-tokens-db');
+          const { getActiveMonitoredTokens } = await import('@quantbot/utils');
           const monitoredTokens = await getActiveMonitoredTokens();
           const monitoredToken = monitoredTokens.find(
             mt =>

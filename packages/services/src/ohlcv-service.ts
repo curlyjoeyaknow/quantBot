@@ -11,8 +11,7 @@ import { insertCandles, queryCandles, hasCandles, initClickHouse } from '@quantb
 import { fetchHybridCandles, type Candle } from '@quantbot/simulation';
 import { logger } from '@quantbot/utils';
 
-// TODO: birdeyeClient should be injected as dependency
-// import { birdeyeClient } from '@quantbot/external-apis';
+import { birdeyeClient } from './api/birdeye-client';
 
 export interface OHLCVFetchOptions {
   interval?: '1m' | '5m' | '1H';
@@ -87,7 +86,7 @@ export class OHLCVService {
 
       // Convert Birdeye format to Candle format
       const candles: Candle[] = birdeyeData.items
-        .map((item) => ({
+        .map((item: any) => ({
           timestamp: item.unixTime,
           open: parseFloat(item.open) || 0,
           high: parseFloat(item.high) || 0,
@@ -95,8 +94,8 @@ export class OHLCVService {
           close: parseFloat(item.close) || 0,
           volume: parseFloat(item.volume) || 0,
         }))
-        .filter((c) => c.timestamp >= startUnix && c.timestamp <= endUnix)
-        .sort((a, b) => a.timestamp - b.timestamp);
+        .filter((c: any) => c.timestamp >= startUnix && c.timestamp <= endUnix)
+        .sort((a: any, b: any) => a.timestamp - b.timestamp);
 
       logger.debug('Fetched candles from Birdeye', {
         mint: mint.substring(0, 20),

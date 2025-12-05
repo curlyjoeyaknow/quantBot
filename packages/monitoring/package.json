@@ -12,6 +12,8 @@
   "dependencies": {
     "@quantbot/utils": "workspace:*",
     "@quantbot/storage": "workspace:*",
+    "@quantbot/simulation": "workspace:*",
+    "@quantbot/services": "workspace:*",
     "@solana/web3.js": "^1.98.4",
     "@triton-one/yellowstone-grpc": "^4.0.2",
     "axios": "^1.12.2",
@@ -19,11 +21,11 @@
     "ws": "^8.18.3"
   },
   "devDependencies": {
-    "@types/node": "^24.9.1",
+    "@types/node": "^24.10.1",
     "@types/ws": "^8.18.1",
-    "@vitest/coverage-v8": "^4.0.14",
+    "@vitest/coverage-v8": "^4.0.15",
     "typescript": "^5.9.3",
-    "vitest": "^4.0.13"
+    "vitest": "^4.0.15"
   }
 }
 

@@ -1,181 +1,214 @@
 /**
- * Simulation Service
- * ==================
- * Business logic for simulations
+ * Simulation Service - PostgreSQL Version
+ * Handles simulation run data and results
  */
 
-import * as path from 'path';
-import { exists, readdir, readFile, isDirectory } from '../utils/fs-async';
-import { sanitizePath, sanitizeFilename, PathTraversalError } from '../security/path-sanitizer';
-import { parse } from 'csv-parse/sync';
-import { Simulation, SimulationSummary } from '../types/api';
+import { postgresManager } from '../db/postgres-manager';
+import { cache, cacheKeys } from '../cache';
+import { CONSTANTS } from '../constants';
 
-interface TradeHistoryRow {
-  [key: string]: string | number;
+export interface SimulationRun {
+  id: number;
+  strategy_name: string;
+  token_symbol?: string;
+  token_address: string;
+  chain: string;
+  run_type: string;
+  status: string;
+  final_pnl?: number;
+  win_rate?: number;
+  trade_count?: number;
+  started_at: Date;
+  completed_at?: Date;
+  created_at: Date;
 }
 
-const EXPORTS_DIR = path.join(process.cwd(), '../..', 'data', 'exports');
+export interface SimulationDetails extends SimulationRun {
+  config_json: any;
+  data_selection_json: any;
+  max_drawdown?: number;
+  sharpe_ratio?: number;
+  avg_trade_return?: number;
+  metadata_json?: any;
+}
 
 export class SimulationService {
   /**
-   * List all simulations
+   * List all simulations with optional filtering
    */
-  async listSimulations(): Promise<Simulation[]> {
-    if (!(await exists(EXPORTS_DIR))) {
-      return [];
-    }
+  async listSimulations(options: {
+    limit?: number;
+    offset?: number;
+    status?: string;
+    strategyId?: number;
+  } = {}): Promise<{ simulations: SimulationRun[]; total: number }> {
+    const { limit = 50, offset = 0, status, strategyId } = options;
 
-    const simulations: Simulation[] = [];
-    const entries = await readdir(EXPORTS_DIR, { withFileTypes: true }) as Array<{ name: string; isDirectory: () => boolean }>;
+    try {
+      let countQuery = `
+        SELECT COUNT(*) as total
+        FROM simulation_runs sr
+        WHERE 1=1
+      `;
 
-    for (const entry of entries) {
-      if (entry.isDirectory()) {
-        // Sanitize directory name to prevent path traversal
-        let safeDirName: string;
-        try {
-          safeDirName = sanitizeFilename(entry.name);
-        } catch (error) {
-          // Skip invalid directory names
-          continue;
-        }
+      let dataQuery = `
+        SELECT 
+          sr.id,
+          s.name as strategy_name,
+          t.symbol as token_symbol,
+          t.address as token_address,
+          t.chain,
+          sr.run_type,
+          sr.status,
+          srs.final_pnl,
+          srs.win_rate,
+          srs.trade_count,
+          sr.started_at,
+          sr.completed_at,
+          sr.created_at
+        FROM simulation_runs sr
+        LEFT JOIN strategies s ON s.id = sr.strategy_id
+        LEFT JOIN tokens t ON t.id = sr.token_id
+        LEFT JOIN simulation_results_summary srs ON srs.simulation_run_id = sr.id
+        WHERE 1=1
+      `;
 
-        // Sanitize the full path
-        let simPath: string;
-        try {
-          simPath = sanitizePath(safeDirName, EXPORTS_DIR);
-        } catch (error) {
-          // Skip invalid paths
-          continue;
-        }
+      const params: any[] = [];
+      let paramIndex = 1;
 
-        const summaryPath = path.join(simPath, 'summary.json');
-        const tradeHistoryPath = path.join(simPath, 'trade_history.csv');
-
-        let summary: SimulationSummary | null = null;
-        if (await exists(summaryPath)) {
-          try {
-            const summaryContent = await readFile(summaryPath, 'utf8');
-            summary = JSON.parse(summaryContent);
-          } catch (error) {
-            // Ignore parse errors
-          }
-        }
-
-        // Look for any CSV files as trade history
-        let tradeHistory: string | undefined;
-        try {
-          const dirFiles = await readdir(simPath) as string[];
-          const csvFiles = dirFiles.filter(f => f.endsWith('.csv') && f.includes('trade'));
-          if (csvFiles.length > 0) {
-            // Sanitize CSV filename
-            const safeCsvFile = sanitizeFilename(csvFiles[0]);
-            tradeHistory = sanitizePath(safeCsvFile, simPath);
-          } else if (await exists(tradeHistoryPath)) {
-            tradeHistory = tradeHistoryPath;
-          }
-        } catch (error) {
-          // Ignore errors when reading directory
-        }
-
-        simulations.push({
-          name: safeDirName,
-          path: simPath,
-          summary: summary || undefined,
-          tradeHistoryPath: tradeHistory,
-        });
+      if (status) {
+        countQuery += ` AND sr.status = $${paramIndex}`;
+        dataQuery += ` AND sr.status = $${paramIndex}`;
+        params.push(status);
+        paramIndex++;
       }
-    }
 
-    return simulations;
+      if (strategyId) {
+        countQuery += ` AND sr.strategy_id = $${paramIndex}`;
+        dataQuery += ` AND sr.strategy_id = $${paramIndex}`;
+        params.push(strategyId);
+        paramIndex++;
+      }
+
+      dataQuery += ` ORDER BY sr.created_at DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
+      params.push(limit, offset);
+
+      const [countResult, dataResult] = await Promise.all([
+        postgresManager.query(countQuery, params.slice(0, -2)),
+        postgresManager.query(dataQuery, params),
+      ]);
+
+      const simulations: SimulationRun[] = dataResult.rows.map((row: any) => ({
+        id: row.id,
+        strategy_name: row.strategy_name,
+        token_symbol: row.token_symbol,
+        token_address: row.token_address,
+        chain: row.chain,
+        run_type: row.run_type,
+        status: row.status,
+        final_pnl: row.final_pnl ? parseFloat(row.final_pnl) : undefined,
+        win_rate: row.win_rate ? parseFloat(row.win_rate) : undefined,
+        trade_count: row.trade_count ? parseInt(row.trade_count) : undefined,
+        started_at: new Date(row.started_at),
+        completed_at: row.completed_at ? new Date(row.completed_at) : undefined,
+        created_at: new Date(row.created_at),
+      }));
+
+      return {
+        simulations,
+        total: parseInt(countResult.rows[0].total),
+      };
+    } catch (error) {
+      console.error('Error listing simulations:', error);
+      throw error;
+    }
   }
 
   /**
-   * Get simulation details by name
+   * Get simulation details by ID
    */
-  async getSimulationByName(name: string): Promise<{ summary: SimulationSummary | null; tradeHistory: TradeHistoryRow[] }> {
-    // Sanitize the simulation name to prevent path traversal
-    let safeSimName: string;
+  async getSimulationDetails(id: number): Promise<SimulationDetails | null> {
     try {
-      safeSimName = sanitizeFilename(name);
-    } catch (error) {
-      if (error instanceof PathTraversalError) {
-        throw new Error('Invalid simulation name');
+      const result = await postgresManager.query(
+        `
+        SELECT 
+          sr.*,
+          s.name as strategy_name,
+          t.symbol as token_symbol,
+          t.address as token_address,
+          srs.final_pnl,
+          srs.max_drawdown,
+          srs.win_rate,
+          srs.trade_count,
+          srs.sharpe_ratio,
+          srs.avg_trade_return,
+          srs.metadata_json
+        FROM simulation_runs sr
+        LEFT JOIN strategies s ON s.id = sr.strategy_id
+        LEFT JOIN tokens t ON t.id = sr.token_id
+        LEFT JOIN simulation_results_summary srs ON srs.simulation_run_id = sr.id
+        WHERE sr.id = $1
+        `,
+        [id]
+      );
+
+      if (result.rows.length === 0) {
+        return null;
       }
+
+      const row = result.rows[0];
+
+      return {
+        id: row.id,
+        strategy_name: row.strategy_name,
+        token_symbol: row.token_symbol,
+        token_address: row.token_address,
+        chain: row.chain,
+        run_type: row.run_type,
+        status: row.status,
+        config_json: row.config_json,
+        data_selection_json: row.data_selection_json,
+        final_pnl: row.final_pnl ? parseFloat(row.final_pnl) : undefined,
+        max_drawdown: row.max_drawdown ? parseFloat(row.max_drawdown) : undefined,
+        win_rate: row.win_rate ? parseFloat(row.win_rate) : undefined,
+        trade_count: row.trade_count ? parseInt(row.trade_count) : undefined,
+        sharpe_ratio: row.sharpe_ratio ? parseFloat(row.sharpe_ratio) : undefined,
+        avg_trade_return: row.avg_trade_return ? parseFloat(row.avg_trade_return) : undefined,
+        metadata_json: row.metadata_json,
+        started_at: new Date(row.started_at),
+        completed_at: row.completed_at ? new Date(row.completed_at) : undefined,
+        created_at: new Date(row.created_at),
+      };
+    } catch (error) {
+      console.error('Error fetching simulation details:', error);
       throw error;
     }
+  }
 
-    // Sanitize the full path
-    let simPath: string;
+  /**
+   * Get simulation statistics
+   */
+  async getSimulationStats(): Promise<any> {
     try {
-      simPath = sanitizePath(safeSimName, EXPORTS_DIR);
+      const result = await postgresManager.query(`
+        SELECT 
+          COUNT(*) as total_simulations,
+          COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed,
+          COUNT(CASE WHEN status = 'failed' THEN 1 END) as failed,
+          COUNT(CASE WHEN status = 'running' THEN 1 END) as running,
+          AVG(srs.final_pnl) as avg_pnl,
+          MAX(srs.final_pnl) as best_pnl,
+          MIN(srs.final_pnl) as worst_pnl
+        FROM simulation_runs sr
+        LEFT JOIN simulation_results_summary srs ON srs.simulation_run_id = sr.id
+      `);
+
+      return result.rows[0];
     } catch (error) {
-      if (error instanceof PathTraversalError) {
-        throw new Error('Invalid simulation path');
-      }
+      console.error('Error fetching simulation stats:', error);
       throw error;
     }
-    
-    if (!(await exists(simPath))) {
-      throw new Error('Simulation not found');
-    }
-
-    // Get summary
-    const summaryPath = path.join(simPath, 'summary.json');
-    let summary: SimulationSummary | null = null;
-    if (await exists(summaryPath)) {
-      try {
-        const summaryContent = await readFile(summaryPath, 'utf8');
-        summary = JSON.parse(summaryContent);
-      } catch (error) {
-        // Ignore
-      }
-    }
-
-    // Get trade history
-    const dirFiles = await readdir(simPath) as string[];
-    const csvFiles = dirFiles.filter(f => f.endsWith('.csv') && f.includes('trade'));
-    let tradeHistory: TradeHistoryRow[] = [];
-    
-    if (csvFiles.length > 0) {
-      // Sanitize the CSV filename
-      let safeCsvFile: string;
-      try {
-        safeCsvFile = sanitizeFilename(csvFiles[0]);
-      } catch (error) {
-        // If filename is invalid, skip it
-        safeCsvFile = csvFiles[0];
-      }
-
-      // Sanitize the full path to the CSV file
-      let tradeHistoryPath: string;
-      try {
-        tradeHistoryPath = sanitizePath(safeCsvFile, simPath);
-      } catch (error) {
-        if (error instanceof PathTraversalError) {
-          // Skip invalid paths
-          tradeHistoryPath = path.join(simPath, safeCsvFile);
-        } else {
-          throw error;
-        }
-      }
-
-      try {
-        const csvContent = await readFile(tradeHistoryPath, 'utf8');
-        tradeHistory = parse(csvContent, {
-          columns: true,
-          skip_empty_lines: true,
-        });
-      } catch (error) {
-        // Ignore parse errors
-      }
-    }
-
-    return {
-      summary,
-      tradeHistory,
-    };
   }
 }
 
 export const simulationService = new SimulationService();
-

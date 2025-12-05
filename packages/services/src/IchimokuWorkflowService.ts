@@ -6,8 +6,10 @@
  */
 
 import { Context } from 'telegraf';
-import { SessionService } from '../services/SessionService';
-import { Session } from '../commands/interfaces/CommandHandler';
+import { SessionService } from './SessionService';
+
+// TODO: Session type should be defined in this package or imported from bot
+type Session = any;
 import axios from 'axios';
 import { DateTime } from 'luxon';
 import { fetchHybridCandles } from '@quantbot/simulation';
@@ -173,7 +175,7 @@ export class IchimokuWorkflowService {
       }
 
       // Calculate current Ichimoku data
-      const { calculateIchimoku, formatIchimokuData } = await import('../simulation/ichimoku');
+      const { calculateIchimoku, formatIchimokuData } = await import('@quantbot/simulation');
       const currentIndex = candles.length - 1;
       const ichimokuData = calculateIchimoku(candles, currentIndex);
 

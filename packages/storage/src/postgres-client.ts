@@ -1,4 +1,4 @@
-import { Pool, PoolClient, QueryResult } from 'pg';
+import { Pool, PoolClient, QueryResult, QueryResultRow } from 'pg';
 import { logger } from '@quantbot/utils';
 
 export interface PostgresConfig {
@@ -70,7 +70,7 @@ export async function getPostgresClient(): Promise<PoolClient> {
   return client;
 }
 
-export async function queryPostgres<T = unknown>(
+export async function queryPostgres<T extends QueryResultRow = QueryResultRow>(
   text: string,
   params?: unknown[],
 ): Promise<QueryResult<T>> {

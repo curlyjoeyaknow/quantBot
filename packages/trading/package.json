@@ -1,0 +1,29 @@
+{
+  "name": "@quantbot/trading",
+  "version": "1.0.0",
+  "description": "Live trading execution engine for QuantBot",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@quantbot/utils": "workspace:*",
+    "@quantbot/storage": "workspace:*",
+    "@quantbot/simulation": "workspace:*",
+    "@solana/web3.js": "^1.98.4",
+    "@solana/spl-token": "^0.4.8",
+    "@coral-xyz/anchor": "^0.32.1",
+    "bs58": "^5.0.0",
+    "tweetnacl": "^1.0.3"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "@vitest/coverage-v8": "^4.0.15",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.15"
+  }
+}
+

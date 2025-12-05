@@ -11,7 +11,9 @@
   "exclude": ["node_modules", "dist", "**/*.test.ts"],
   "references": [
     { "path": "../utils" },
-    { "path": "../storage" }
+    { "path": "../storage" },
+    { "path": "../simulation" },
+    { "path": "../services" }
   ]
 }
 

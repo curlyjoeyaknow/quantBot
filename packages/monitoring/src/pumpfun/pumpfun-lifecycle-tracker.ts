@@ -3,9 +3,7 @@ import { DateTime } from 'luxon';
 import { logger, derivePumpfunBondingCurve, PUMP_FUN_PROGRAM_ID, upsertPumpfunToken, markPumpfunGraduated, type PumpfunTokenRecord, type TrackedToken } from '@quantbot/utils';
 import { heliusStreamRecorder } from '../stream/helius-recorder';
 import { heliusBackfillService, type BackfillJob } from '../backfill/helius-backfill-service';
-// TODO: Update to @quantbot/api when migrated
-// TODO: heliusRestClient should be injected or moved to this package
-// import { heliusRestClient } from '@quantbot/external-apis';
+import { heliusRestClient } from '@quantbot/services';
 
 const PUMP_PROGRAM = PUMP_FUN_PROGRAM_ID.toBase58();
 

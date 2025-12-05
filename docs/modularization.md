@@ -193,15 +193,23 @@ The migration is complete for:
 - ✅ Monitoring package
 - ✅ Bot package
 
+### Migration Status
+
+✅ **Completed Migrations:**
+- API clients (`src/api/`) → `@quantbot/services/src/api/` (birdeye-client, helius-client, base-client)
+- Cache (`src/cache/`) → `@quantbot/storage/src/cache/` (ohlcv-cache)
+- Events (`src/events/`) → `@quantbot/utils/src/events/` (EventBus, EventHandlers, EventMiddleware, EventTypes)
+- All packages now use proper `@quantbot/*` imports
+
 ### Remaining Work
 
 Some files in `src/` still exist for backward compatibility and will be gradually migrated:
-- API clients (`src/api/`) - Can be moved to `@quantbot/api` package
 - Analysis modules (`src/analysis/`) - Can be moved to `@quantbot/analysis` package
 - Reporting modules (`src/reporting/`) - Can be moved to `@quantbot/reporting` package
 - Data loaders (`src/data/`) - Can be moved to `@quantbot/data` package
 - Types (`src/types/`) - Can be moved to `@quantbot/types` package
 - WebSocket utilities (`src/websocket/`) - Can be moved to `@quantbot/monitoring` or separate package
+- Bot entry point (`src/bot.ts`) - Can be removed after full migration
 
 ## Import Guidelines
 

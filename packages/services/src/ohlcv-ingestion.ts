@@ -1,9 +1,8 @@
 import { influxDBClient, OHLCVData } from '@quantbot/storage';
 import { logger } from '@quantbot/utils';
 
-// TODO: External API clients should be injected as dependencies
-// import { birdeyeClient, BirdeyeOHLCVResponse } from '@quantbot/external-apis';
-// import { ohlcvCache } from '@quantbot/cache';
+import { birdeyeClient } from './api/birdeye-client';
+import { ohlcvCache } from '@quantbot/storage';
 
 export interface IngestionResult {
   tokenAddress: string;
@@ -57,7 +56,7 @@ export class OHLCVIngestionService {
       }
 
       // Check cache first
-      const cachedData = this.cache.get(tokenAddress, startTime, endTime);
+      const cachedData = this.cache.get(tokenAddress, startTime, endTime, '1m');
       if (cachedData) {
         logger.debug('Using cached data', { tokenAddress });
         await this.influxClient.writeOHLCVData(tokenAddress, tokenSymbol, chain, cachedData);

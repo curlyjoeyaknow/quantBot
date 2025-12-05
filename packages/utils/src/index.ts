@@ -16,7 +16,7 @@ export * from './database';
 
 // Error handling
 export * from './errors';
-export { handleError } from './error-handler';
+export { handleError, retryWithBackoff } from './error-handler';
 
 // Shared types
 export * from './types';
@@ -44,4 +44,7 @@ export * from './monitored-tokens-db';
 // Repeat simulation helper
 // COMMENTED OUT: This has dependencies on bot-specific types and should be moved to @quantbot/bot
 // export { RepeatSimulationHelper } from './RepeatSimulationHelper';
+
+// Events
+// export * from './events'; // TODO: Move to @quantbot/services
 

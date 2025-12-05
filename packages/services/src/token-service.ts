@@ -12,6 +12,7 @@ import { logger } from '@quantbot/utils';
 
 // TODO: birdeyeClient should be injected as a dependency or moved to this package
 // import { birdeyeClient } from '@quantbot/external-apis';
+import { birdeyeClient } from './api-stubs';
 
 export interface TokenMetadata {
   mint: string;
@@ -61,7 +62,7 @@ export class TokenService {
    */
   private async ensureTable(): Promise<void> {
     const db = await this.getDatabase();
-    const run = promisify(db.run.bind(db));
+    const run = promisify(db.run.bind(db)) as (sql: string, params?: any[]) => Promise<any>;
 
     await run(`
       CREATE TABLE IF NOT EXISTS tokens (
@@ -93,7 +94,7 @@ export class TokenService {
   ): Promise<TokenMetadata> {
     await this.ensureTable();
     const db = await this.getDatabase();
-    const run = promisify(db.run.bind(db));
+    const run = promisify(db.run.bind(db)) as (sql: string, params?: any[]) => Promise<any>;
     const get = promisify(db.get.bind(db)) as (
       sql: string,
       params: any[]
@@ -250,7 +251,7 @@ export class TokenService {
   ): Promise<TokenMetadata | null> {
     await this.ensureTable();
     const db = await this.getDatabase();
-    const run = promisify(db.run.bind(db));
+    const run = promisify(db.run.bind(db)) as (sql: string, params?: any[]) => Promise<any>;
     const get = promisify(db.get.bind(db)) as (
       sql: string,
       params: any[]
@@ -299,7 +300,7 @@ export class TokenService {
   async deleteToken(mint: string, chain: string = 'solana'): Promise<boolean> {
     await this.ensureTable();
     const db = await this.getDatabase();
-    const run = promisify(db.run.bind(db));
+    const run = promisify(db.run.bind(db)) as (sql: string, params?: any[]) => Promise<any>;
 
     const result = await run('DELETE FROM tokens WHERE mint = ? AND chain = ?', [
       mint,

@@ -1,6 +1,6 @@
 {
   "name": "quantbot",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Advanced Telegram bot for trading simulation, CA monitoring, and PNL analysis using Birdeye API and Helius WebSockets",
   "main": "packages/bot/src/main.ts",
   "workspaces": [
@@ -14,7 +14,7 @@
     "test:packages": "npm run test --workspace=packages/utils && npm run test --workspace=packages/storage && npm run test --workspace=packages/simulation && npm run test --workspace=packages/services && npm run test --workspace=packages/monitoring && npm run test --workspace=packages/bot",
     "build": "tsc",
     "build:watch": "tsc --watch",
-    "clean": "rm -rf dist/",
+    "clean": "rm -rf dist/ packages/*/dist/",
     "test": "vitest",
     "test:watch": "vitest --watch",
     "test:coverage": "vitest run --coverage",
@@ -78,7 +78,7 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "@clickhouse/client": "^1.12.1",
+    "@clickhouse/client": "^1.14.0",
     "@coral-xyz/anchor": "^0.32.1",
     "@coral-xyz/borsh": "^0.32.1",
     "@influxdata/influxdb-client": "^1.33.2",
@@ -87,7 +87,7 @@
     "@triton-one/yellowstone-grpc": "^4.0.2",
     "@types/sqlite3": "^3.1.11",
     "@types/ws": "^8.18.1",
-    "axios": "^1.12.2",
+    "axios": "^1.13.2",
     "cheerio": "^1.1.2",
     "csv-parse": "^6.1.0",
     "csv-parser": "^3.2.0",
@@ -102,17 +102,17 @@
     "winston": "^3.18.3",
     "winston-daily-rotate-file": "^5.0.0",
     "ws": "^8.18.3",
-    "zod": "^4.1.12"
+    "zod": "^4.1.13"
   },
   "devDependencies": {
     "@types/luxon": "^3.7.1",
-    "@types/node": "^24.9.1",
+    "@types/node": "^24.10.1",
     "@types/pg": "^8.10.0",
     "@types/supertest": "^6.0.3",
-    "@vitest/coverage-v8": "^4.0.14",
+    "@vitest/coverage-v8": "^4.0.15",
     "supertest": "^7.1.4",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3",
-    "vitest": "^4.0.13"
+    "vitest": "^4.0.15"
   }
 }

@@ -2,9 +2,7 @@ import { DateTime } from 'luxon';
 import { logger } from '@quantbot/utils';
 import { insertTicks, type TickEvent } from '@quantbot/storage';
 import { ohlcvAggregator } from '../aggregation/ohlcv-aggregator';
-// TODO: Update to @quantbot/api when migrated
-// TODO: heliusRestClient should be injected or moved to this package
-// import { heliusRestClient } from '@quantbot/external-apis';
+import { heliusRestClient } from '@quantbot/services';
 
 const CREDIT_PER_CALL = 100;
 const MONTHLY_CREDIT_LIMIT =

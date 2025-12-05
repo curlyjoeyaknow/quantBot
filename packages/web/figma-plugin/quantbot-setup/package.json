@@ -1,0 +1,23 @@
+{
+  "name": "quantbot-design-system-setup",
+  "version": "1.0.0",
+  "description": "Figma plugin to automatically set up QuantBot Design System",
+  "main": "code.js",
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch"
+  },
+  "keywords": [
+    "figma",
+    "plugin",
+    "design-system",
+    "quantbot"
+  ],
+  "author": "QuantBot Team",
+  "license": "MIT",
+  "devDependencies": {
+    "@figma/plugin-typings": "^1.88.0",
+    "typescript": "^5.0.0"
+  }
+}
+

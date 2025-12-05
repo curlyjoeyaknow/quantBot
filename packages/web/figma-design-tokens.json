@@ -1,0 +1,273 @@
+{
+  "name": "QuantBot Trading Platform Design Tokens",
+  "version": "1.0.0",
+  "colors": {
+    "background": {
+      "primary": {
+        "value": "#0F172A",
+        "type": "color"
+      },
+      "secondary": {
+        "value": "#1E293B",
+        "type": "color"
+      },
+      "tertiary": {
+        "value": "#334155",
+        "type": "color"
+      },
+      "elevated": {
+        "value": "#475569",
+        "type": "color"
+      }
+    },
+    "text": {
+      "primary": {
+        "value": "#FFFFFF",
+        "type": "color"
+      },
+      "secondary": {
+        "value": "#CBD5E1",
+        "type": "color"
+      },
+      "tertiary": {
+        "value": "#94A3B8",
+        "type": "color"
+      },
+      "muted": {
+        "value": "#64748B",
+        "type": "color"
+      }
+    },
+    "accent": {
+      "success": {
+        "value": "#10B981",
+        "type": "color"
+      },
+      "successLight": {
+        "value": "#34D399",
+        "type": "color"
+      },
+      "danger": {
+        "value": "#EF4444",
+        "type": "color"
+      },
+      "dangerLight": {
+        "value": "#F87171",
+        "type": "color"
+      },
+      "warning": {
+        "value": "#F59E0B",
+        "type": "color"
+      },
+      "info": {
+        "value": "#3B82F6",
+        "type": "color"
+      },
+      "infoLight": {
+        "value": "#60A5FA",
+        "type": "color"
+      }
+    },
+    "interactive": {
+      "primary": {
+        "value": "#6366F1",
+        "type": "color"
+      },
+      "primaryHover": {
+        "value": "#818CF8",
+        "type": "color"
+      },
+      "secondary": {
+        "value": "#334155",
+        "type": "color"
+      },
+      "border": {
+        "value": "#475569",
+        "type": "color"
+      },
+      "borderHover": {
+        "value": "#64748B",
+        "type": "color"
+      }
+    }
+  },
+  "spacing": {
+    "xs": {
+      "value": "4px",
+      "type": "spacing"
+    },
+    "sm": {
+      "value": "8px",
+      "type": "spacing"
+    },
+    "md": {
+      "value": "16px",
+      "type": "spacing"
+    },
+    "lg": {
+      "value": "24px",
+      "type": "spacing"
+    },
+    "xl": {
+      "value": "32px",
+      "type": "spacing"
+    },
+    "2xl": {
+      "value": "48px",
+      "type": "spacing"
+    },
+    "3xl": {
+      "value": "64px",
+      "type": "spacing"
+    }
+  },
+  "typography": {
+    "fontFamily": {
+      "primary": {
+        "value": "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+        "type": "fontFamily"
+      },
+      "mono": {
+        "value": "'JetBrains Mono', 'Fira Code', 'Courier New', monospace",
+        "type": "fontFamily"
+      }
+    },
+    "fontSize": {
+      "display": {
+        "value": "48px",
+        "type": "fontSize"
+      },
+      "h1": {
+        "value": "36px",
+        "type": "fontSize"
+      },
+      "h2": {
+        "value": "30px",
+        "type": "fontSize"
+      },
+      "h3": {
+        "value": "24px",
+        "type": "fontSize"
+      },
+      "h4": {
+        "value": "20px",
+        "type": "fontSize"
+      },
+      "bodyLarge": {
+        "value": "18px",
+        "type": "fontSize"
+      },
+      "body": {
+        "value": "16px",
+        "type": "fontSize"
+      },
+      "bodySmall": {
+        "value": "14px",
+        "type": "fontSize"
+      },
+      "caption": {
+        "value": "12px",
+        "type": "fontSize"
+      }
+    },
+    "fontWeight": {
+      "regular": {
+        "value": "400",
+        "type": "fontWeight"
+      },
+      "medium": {
+        "value": "500",
+        "type": "fontWeight"
+      },
+      "semibold": {
+        "value": "600",
+        "type": "fontWeight"
+      },
+      "bold": {
+        "value": "700",
+        "type": "fontWeight"
+      }
+    },
+    "lineHeight": {
+      "tight": {
+        "value": "1.2",
+        "type": "lineHeight"
+      },
+      "normal": {
+        "value": "1.5",
+        "type": "lineHeight"
+      },
+      "relaxed": {
+        "value": "1.75",
+        "type": "lineHeight"
+      }
+    }
+  },
+  "borderRadius": {
+    "sm": {
+      "value": "4px",
+      "type": "borderRadius"
+    },
+    "md": {
+      "value": "8px",
+      "type": "borderRadius"
+    },
+    "lg": {
+      "value": "12px",
+      "type": "borderRadius"
+    },
+    "xl": {
+      "value": "16px",
+      "type": "borderRadius"
+    },
+    "full": {
+      "value": "9999px",
+      "type": "borderRadius"
+    }
+  },
+  "shadows": {
+    "sm": {
+      "value": "0 1px 2px rgba(0, 0, 0, 0.1)",
+      "type": "shadow"
+    },
+    "md": {
+      "value": "0 4px 6px rgba(0, 0, 0, 0.2)",
+      "type": "shadow"
+    },
+    "lg": {
+      "value": "0 10px 15px rgba(0, 0, 0, 0.3)",
+      "type": "shadow"
+    },
+    "focus": {
+      "value": "0 0 0 3px rgba(99, 102, 241, 0.1)",
+      "type": "shadow"
+    }
+  },
+  "components": {
+    "metricCard": {
+      "width": "280px",
+      "height": "160px",
+      "padding": "24px",
+      "borderRadius": "12px",
+      "border": "1px solid #475569"
+    },
+    "button": {
+      "height": "44px",
+      "padding": "12px 24px",
+      "borderRadius": "8px",
+      "minWidth": "120px"
+    },
+    "input": {
+      "height": "44px",
+      "padding": "12px 16px",
+      "borderRadius": "8px",
+      "border": "1px solid #475569"
+    },
+    "card": {
+      "padding": "24px",
+      "borderRadius": "12px",
+      "border": "1px solid #475569"
+    }
+  }
+}
+

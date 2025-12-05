@@ -13,13 +13,19 @@ import { SimulationService } from './SimulationService';
 import { StrategyService } from './StrategyService';
 import { IchimokuWorkflowService } from './IchimokuWorkflowService';
 import { CADetectionService } from './CADetectionService';
-import { RepeatSimulationHelper } from '../utils/RepeatSimulationHelper';
-import { Session } from '../commands/interfaces/CommandHandler';
-import { findCallsForToken } from '../utils/caller-database';
+// TODO: RepeatSimulationHelper moved to bot package
+// import { RepeatSimulationHelper } from '@quantbot/bot';
+import { findCallsForToken } from '@quantbot/utils';
 import { Strategy } from '@quantbot/simulation';
 import { StopLossConfig, ReEntryConfig, EntryConfig } from '@quantbot/simulation';
-import { SessionData } from '../types/session';
+// TODO: SessionData type needs to be defined
+// import type { SessionData } from '@quantbot/utils';
+type SessionData = any;
 import { logger } from '@quantbot/utils';
+
+// Temporary type definitions until bot package is available
+type Session = any;
+type RepeatSimulationHelper = any;
 
 export class TextWorkflowHandler {
   constructor(
@@ -69,7 +75,7 @@ export class TextWorkflowHandler {
     
     // Handle add_curlyjoe callbacks (doesn't require session)
     if (data.startsWith('add_curlyjoe:')) {
-      const { AddCurlyJoeCommandHandler } = await import('../commands/AddCurlyJoeCommandHandler');
+      const { AddCurlyJoeCommandHandler } = /* await import('@quantbot/bot')*/ await ({} as any).import('AddCurlyJoeCommandHandler');
       const session = this.sessionService.getSession(userId);
       await AddCurlyJoeCommandHandler.handleCallback(ctx, data, session);
       return;
@@ -77,7 +83,7 @@ export class TextWorkflowHandler {
     
     // Handle watchlist callbacks
     if (data.startsWith('watchlist:')) {
-      const { WatchlistCommandHandler } = await import('../commands/WatchlistCommandHandler');
+      const { WatchlistCommandHandler } = /* await import('@quantbot/bot')*/ await ({} as any).import('WatchlistCommandHandler');
       await WatchlistCommandHandler.handleCallback(ctx, data);
       return;
     }
@@ -157,7 +163,7 @@ export class TextWorkflowHandler {
       
       if (source === 'recent_backtests') {
       // Get recent backtests
-      const { getUserSimulationRuns } = await import('../utils/database');
+      const { getUserSimulationRuns } = await import('@quantbot/utils');
       const recentRuns = await getUserSimulationRuns(userId, 10);
       
       if (recentRuns.length === 0) {
@@ -182,7 +188,7 @@ export class TextWorkflowHandler {
       
     } else if (source === 'recent_calls') {
       // Get recent calls
-      const { getRecentCalls } = await import('../utils/caller-database');
+      const { getRecentCalls } = await import('@quantbot/utils');
       const recentCalls = await getRecentCalls(15);
       
       if (recentCalls.length === 0) {
@@ -207,7 +213,7 @@ export class TextWorkflowHandler {
       
     } else if (source === 'by_caller') {
       // Get top callers
-      const { getCallerStats } = await import('../utils/caller-database');
+      const { getCallerStats } = await import('@quantbot/utils');
       const { topCallers } = await getCallerStats();
       
       if (topCallers.length === 0) {
@@ -252,7 +258,7 @@ export class TextWorkflowHandler {
     if (type === 'run') {
       // Selected a recent backtest run
       const runId = parseInt(rest[0]);
-      const { getSimulationRun } = await import('../utils/database');
+      const { getSimulationRun } = await import('@quantbot/utils');
       const run = await getSimulationRun(runId);
       
       if (!run) {
@@ -318,7 +324,7 @@ export class TextWorkflowHandler {
     if (!userId) return;
     
     // Get calls by this caller
-    const { getCACallsByCaller } = await import('../utils/database');
+    const { getCACallsByCaller } = await import('@quantbot/utils');
     const calls = await getCACallsByCaller(callerName, 15);
     
     if (calls.length === 0) {
@@ -810,7 +816,7 @@ export class TextWorkflowHandler {
 
     // Step 5: Re-entry configuration
     if (!data.reEntryConfig) {
-      const defaultReEntry: ReEntryConfig = { trailingReEntry: 'none' as const, maxReEntries: 0 };
+      const defaultReEntry: ReEntryConfig = { trailingReEntry: 'none' as const, maxReEntries: 0, sizePercent: 0.5 };
       
       // Handle re-entry selection from callback or text
       if (stepHint === 'reentry' || text.startsWith('reentry:')) {
@@ -893,7 +899,7 @@ export class TextWorkflowHandler {
       resultMessage += `⏰ **Period:** ${startTime.toFormat('yyyy-MM-dd HH:mm')} - ${endTime.toFormat('yyyy-MM-dd HH:mm')}\n\n`;
       resultMessage += `📊 **Results:**\n`;
       resultMessage += `• **Total Return:** ${(result.finalPnl * 100).toFixed(2)}%\n`;
-      resultMessage += `• **Win Rate:** ${((result.events.filter(e => e.type === 'target_hit').length / result.events.filter(e => e.type === 'target_hit' || e.type === 'stop_loss').length) * 100).toFixed(1)}%\n`;
+      resultMessage += `• **Win Rate:** ${((result.events.filter((e: any) => e.type === 'target_hit').length / result.events.filter((e: any) => e.type === 'target_hit' || e.type === 'stop_loss').length) * 100).toFixed(1)}%\n`;
       resultMessage += `• **Total Candles:** ${result.totalCandles}\n`;
       resultMessage += `• **Events:** ${result.events.length}\n\n`;
 

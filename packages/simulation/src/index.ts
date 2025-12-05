@@ -19,12 +19,19 @@ export * from './target-resolver';
 export * from './strategies';
 export * from './optimization';
 
-// Config (exported last to avoid conflicts with engine re-exports)
+// Config (exported as types only to avoid conflicts)
 export type {
   SimulationScenarioConfig,
   CostConfig,
   OutputTargetConfig,
   RunOptions,
   StrategyLeg,
-  LadderConfig
+  StopLossConfig,
+  EntryConfig,
+  ReEntryConfig,
+  LadderConfig,
+  SignalCondition,
+  SignalGroup,
+  IndicatorName,
+  ComparisonOperator
 } from './config';

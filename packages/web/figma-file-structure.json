@@ -1,0 +1,1222 @@
+{
+  "name": "QuantBot Trading Platform - New Design",
+  "type": "FILE",
+  "document": {
+    "id": "0:0",
+    "name": "QuantBot Trading Platform",
+    "type": "DOCUMENT",
+    "children": [
+      {
+        "id": "1:0",
+        "name": "🎨 Design System",
+        "type": "PAGE",
+        "children": [
+          {
+            "id": "1:1",
+            "name": "Colors",
+            "type": "FRAME",
+            "layoutMode": "HORIZONTAL",
+            "paddingLeft": 32,
+            "paddingRight": 32,
+            "paddingTop": 32,
+            "paddingBottom": 32,
+            "itemSpacing": 16,
+            "children": [
+              {
+                "id": "color-bg-primary",
+                "name": "Background/primary",
+                "type": "RECTANGLE",
+                "fills": [
+                  {
+                    "type": "SOLID",
+                    "color": {
+                      "r": 0.058823529411764705,
+                      "g": 0.09019607843137255,
+                      "b": 0.16470588235294117
+                    }
+                  }
+                ],
+                "cornerRadius": 8,
+                "width": 120,
+                "height": 80,
+                "children": [
+                  {
+                    "type": "TEXT",
+                    "characters": "primary",
+                    "style": {
+                      "fontSize": 12,
+                      "fillStyleId": "text-secondary"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "color-bg-secondary",
+                "name": "Background/secondary",
+                "type": "RECTANGLE",
+                "fills": [
+                  {
+                    "type": "SOLID",
+                    "color": {
+                      "r": 0.11764705882352941,
+                      "g": 0.1607843137254902,
+                      "b": 0.23137254901960785
+                    }
+                  }
+                ],
+                "cornerRadius": 8,
+                "width": 120,
+                "height": 80,
+                "children": [
+                  {
+                    "type": "TEXT",
+                    "characters": "secondary",
+                    "style": {
+                      "fontSize": 12,
+                      "fillStyleId": "text-secondary"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "color-bg-tertiary",
+                "name": "Background/tertiary",
+                "type": "RECTANGLE",
+                "fills": [
+                  {
+                    "type": "SOLID",
+                    "color": {
+                      "r": 0.2,
+                      "g": 0.2549019607843137,
+                      "b": 0.3333333333333333
+                    }
+                  }
+                ],
+                "cornerRadius": 8,
+                "width": 120,
+                "height": 80,
+                "children": [
+                  {
+                    "type": "TEXT",
+                    "characters": "tertiary",
+                    "style": {
+                      "fontSize": 12,
+                      "fillStyleId": "text-secondary"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "color-bg-elevated",
+                "name": "Background/elevated",
+                "type": "RECTANGLE",
+                "fills": [
+                  {
+                    "type": "SOLID",
+                    "color": {
+                      "r": 0.2784313725490196,
+                      "g": 0.3333333333333333,
+                      "b": 0.4117647058823529
+                    }
+                  }
+                ],
+                "cornerRadius": 8,
+                "width": 120,
+                "height": 80,
+                "children": [
+                  {
+                    "type": "TEXT",
+                    "characters": "elevated",
+                    "style": {
+                      "fontSize": 12,
+                      "fillStyleId": "text-secondary"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "color-accent-success",
+                "name": "Accent/success",
+                "type": "RECTANGLE",
+                "fills": [
+                  {
+                    "type": "SOLID",
+                    "color": {
+                      "r": 0.06274509803921569,
+                      "g": 0.7254901960784313,
+                      "b": 0.5058823529411764
+                    }
+                  }
+                ],
+                "cornerRadius": 8,
+                "width": 120,
+                "height": 80
+              },
+              {
+                "id": "color-accent-successLight",
+                "name": "Accent/successLight",
+                "type": "RECTANGLE",
+                "fills": [
+                  {
+                    "type": "SOLID",
+                    "color": {
+                      "r": 0.20392156862745098,
+                      "g": 0.8274509803921568,
+                      "b": 0.6
+                    }
+                  }
+                ],
+                "cornerRadius": 8,
+                "width": 120,
+                "height": 80
+              },
+              {
+                "id": "color-accent-danger",
+                "name": "Accent/danger",
+                "type": "RECTANGLE",
+                "fills": [
+                  {
+                    "type": "SOLID",
+                    "color": {
+                      "r": 0.9372549019607843,
+                      "g": 0.26666666666666666,
+                      "b": 0.26666666666666666
+                    }
+                  }
+                ],
+                "cornerRadius": 8,
+                "width": 120,
+                "height": 80
+              },
+              {
+                "id": "color-accent-dangerLight",
+                "name": "Accent/dangerLight",
+                "type": "RECTANGLE",
+                "fills": [
+                  {
+                    "type": "SOLID",
+                    "color": {
+                      "r": 0.9725490196078431,
+                      "g": 0.44313725490196076,
+                      "b": 0.44313725490196076
+                    }
+                  }
+                ],
+                "cornerRadius": 8,
+                "width": 120,
+                "height": 80
+              },
+              {
+                "id": "color-accent-warning",
+                "name": "Accent/warning",
+                "type": "RECTANGLE",
+                "fills": [
+                  {
+                    "type": "SOLID",
+                    "color": {
+                      "r": 0.9607843137254902,
+                      "g": 0.6196078431372549,
+                      "b": 0.043137254901960784
+                    }
+                  }
+                ],
+                "cornerRadius": 8,
+                "width": 120,
+                "height": 80
+              },
+              {
+                "id": "color-accent-info",
+                "name": "Accent/info",
+                "type": "RECTANGLE",
+                "fills": [
+                  {
+                    "type": "SOLID",
+                    "color": {
+                      "r": 0.23137254901960785,
+                      "g": 0.5098039215686274,
+                      "b": 0.9647058823529412
+                    }
+                  }
+                ],
+                "cornerRadius": 8,
+                "width": 120,
+                "height": 80
+              },
+              {
+                "id": "color-accent-infoLight",
+                "name": "Accent/infoLight",
+                "type": "RECTANGLE",
+                "fills": [
+                  {
+                    "type": "SOLID",
+                    "color": {
+                      "r": 0.3764705882352941,
+                      "g": 0.6470588235294118,
+                      "b": 0.9803921568627451
+                    }
+                  }
+                ],
+                "cornerRadius": 8,
+                "width": 120,
+                "height": 80
+              }
+            ]
+          },
+          {
+            "id": "1:2",
+            "name": "Typography",
+            "type": "FRAME",
+            "layoutMode": "VERTICAL",
+            "paddingLeft": 32,
+            "paddingRight": 32,
+            "paddingTop": 32,
+            "paddingBottom": 32,
+            "itemSpacing": 16,
+            "children": [
+              {
+                "id": "text-display",
+                "name": "DISPLAY",
+                "type": "TEXT",
+                "characters": "The quick brown fox jumps over the lazy dog",
+                "style": {
+                  "fontSize": 48,
+                  "fontWeight": "700",
+                  "fontFamily": "Inter",
+                  "lineHeight": "1.5"
+                }
+              },
+              {
+                "id": "text-h1",
+                "name": "H1",
+                "type": "TEXT",
+                "characters": "The quick brown fox jumps over the lazy dog",
+                "style": {
+                  "fontSize": 36,
+                  "fontWeight": "700",
+                  "fontFamily": "Inter",
+                  "lineHeight": "1.5"
+                }
+              },
+              {
+                "id": "text-h2",
+                "name": "H2",
+                "type": "TEXT",
+                "characters": "The quick brown fox jumps over the lazy dog",
+                "style": {
+                  "fontSize": 30,
+                  "fontWeight": "700",
+                  "fontFamily": "Inter",
+                  "lineHeight": "1.5"
+                }
+              },
+              {
+                "id": "text-h3",
+                "name": "H3",
+                "type": "TEXT",
+                "characters": "The quick brown fox jumps over the lazy dog",
+                "style": {
+                  "fontSize": 24,
+                  "fontWeight": "700",
+                  "fontFamily": "Inter",
+                  "lineHeight": "1.5"
+                }
+              },
+              {
+                "id": "text-h4",
+                "name": "H4",
+                "type": "TEXT",
+                "characters": "The quick brown fox jumps over the lazy dog",
+                "style": {
+                  "fontSize": 20,
+                  "fontWeight": "700",
+                  "fontFamily": "Inter",
+                  "lineHeight": "1.5"
+                }
+              },
+              {
+                "id": "text-bodyLarge",
+                "name": "BODYLARGE",
+                "type": "TEXT",
+                "characters": "The quick brown fox jumps over the lazy dog",
+                "style": {
+                  "fontSize": 18,
+                  "fontWeight": "400",
+                  "fontFamily": "Inter",
+                  "lineHeight": "1.5"
+                }
+              },
+              {
+                "id": "text-body",
+                "name": "BODY",
+                "type": "TEXT",
+                "characters": "The quick brown fox jumps over the lazy dog",
+                "style": {
+                  "fontSize": 16,
+                  "fontWeight": "400",
+                  "fontFamily": "Inter",
+                  "lineHeight": "1.5"
+                }
+              },
+              {
+                "id": "text-bodySmall",
+                "name": "BODYSMALL",
+                "type": "TEXT",
+                "characters": "The quick brown fox jumps over the lazy dog",
+                "style": {
+                  "fontSize": 14,
+                  "fontWeight": "400",
+                  "fontFamily": "Inter",
+                  "lineHeight": "1.5"
+                }
+              },
+              {
+                "id": "text-caption",
+                "name": "CAPTION",
+                "type": "TEXT",
+                "characters": "The quick brown fox jumps over the lazy dog",
+                "style": {
+                  "fontSize": 12,
+                  "fontWeight": "400",
+                  "fontFamily": "Inter",
+                  "lineHeight": "1.5"
+                }
+              }
+            ]
+          },
+          {
+            "id": "1:3",
+            "name": "Spacing",
+            "type": "FRAME",
+            "layoutMode": "HORIZONTAL",
+            "paddingLeft": 32,
+            "paddingRight": 32,
+            "paddingTop": 32,
+            "paddingBottom": 32,
+            "itemSpacing": 16,
+            "children": [
+              {
+                "id": "spacing-xs",
+                "name": "xs",
+                "type": "RECTANGLE",
+                "width": 4,
+                "height": 4,
+                "fills": [
+                  {
+                    "type": "SOLID",
+                    "color": {
+                      "r": 0.2,
+                      "g": 0.2,
+                      "b": 0.2
+                    }
+                  }
+                ],
+                "cornerRadius": 4,
+                "children": [
+                  {
+                    "type": "TEXT",
+                    "characters": "4px",
+                    "style": {
+                      "fontSize": 10,
+                      "fillStyleId": "text-muted"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "spacing-sm",
+                "name": "sm",
+                "type": "RECTANGLE",
+                "width": 8,
+                "height": 8,
+                "fills": [
+                  {
+                    "type": "SOLID",
+                    "color": {
+                      "r": 0.2,
+                      "g": 0.2,
+                      "b": 0.2
+                    }
+                  }
+                ],
+                "cornerRadius": 4,
+                "children": [
+                  {
+                    "type": "TEXT",
+                    "characters": "8px",
+                    "style": {
+                      "fontSize": 10,
+                      "fillStyleId": "text-muted"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "spacing-md",
+                "name": "md",
+                "type": "RECTANGLE",
+                "width": 16,
+                "height": 16,
+                "fills": [
+                  {
+                    "type": "SOLID",
+                    "color": {
+                      "r": 0.2,
+                      "g": 0.2,
+                      "b": 0.2
+                    }
+                  }
+                ],
+                "cornerRadius": 4,
+                "children": [
+                  {
+                    "type": "TEXT",
+                    "characters": "16px",
+                    "style": {
+                      "fontSize": 10,
+                      "fillStyleId": "text-muted"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "spacing-lg",
+                "name": "lg",
+                "type": "RECTANGLE",
+                "width": 24,
+                "height": 24,
+                "fills": [
+                  {
+                    "type": "SOLID",
+                    "color": {
+                      "r": 0.2,
+                      "g": 0.2,
+                      "b": 0.2
+                    }
+                  }
+                ],
+                "cornerRadius": 4,
+                "children": [
+                  {
+                    "type": "TEXT",
+                    "characters": "24px",
+                    "style": {
+                      "fontSize": 10,
+                      "fillStyleId": "text-muted"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "spacing-xl",
+                "name": "xl",
+                "type": "RECTANGLE",
+                "width": 32,
+                "height": 32,
+                "fills": [
+                  {
+                    "type": "SOLID",
+                    "color": {
+                      "r": 0.2,
+                      "g": 0.2,
+                      "b": 0.2
+                    }
+                  }
+                ],
+                "cornerRadius": 4,
+                "children": [
+                  {
+                    "type": "TEXT",
+                    "characters": "32px",
+                    "style": {
+                      "fontSize": 10,
+                      "fillStyleId": "text-muted"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "spacing-2xl",
+                "name": "2xl",
+                "type": "RECTANGLE",
+                "width": 48,
+                "height": 48,
+                "fills": [
+                  {
+                    "type": "SOLID",
+                    "color": {
+                      "r": 0.2,
+                      "g": 0.2,
+                      "b": 0.2
+                    }
+                  }
+                ],
+                "cornerRadius": 4,
+                "children": [
+                  {
+                    "type": "TEXT",
+                    "characters": "48px",
+                    "style": {
+                      "fontSize": 10,
+                      "fillStyleId": "text-muted"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "spacing-3xl",
+                "name": "3xl",
+                "type": "RECTANGLE",
+                "width": 64,
+                "height": 64,
+                "fills": [
+                  {
+                    "type": "SOLID",
+                    "color": {
+                      "r": 0.2,
+                      "g": 0.2,
+                      "b": 0.2
+                    }
+                  }
+                ],
+                "cornerRadius": 4,
+                "children": [
+                  {
+                    "type": "TEXT",
+                    "characters": "64px",
+                    "style": {
+                      "fontSize": 10,
+                      "fillStyleId": "text-muted"
+                    }
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "2:0",
+        "name": "📦 Components",
+        "type": "PAGE",
+        "children": [
+          {
+            "id": "2:1",
+            "name": "Buttons",
+            "type": "FRAME",
+            "layoutMode": "HORIZONTAL",
+            "paddingLeft": 32,
+            "paddingRight": 32,
+            "paddingTop": 32,
+            "paddingBottom": 32,
+            "itemSpacing": 16,
+            "children": [
+              {
+                "id": "btn-primary",
+                "name": "Button/Primary",
+                "type": "COMPONENT",
+                "layoutMode": "HORIZONTAL",
+                "paddingLeft": 24,
+                "paddingRight": 24,
+                "paddingTop": 12,
+                "paddingBottom": 12,
+                "cornerRadius": 8,
+                "fills": [
+                  {
+                    "type": "SOLID",
+                    "color": {
+                      "r": 0.38823529411764707,
+                      "g": 0.4,
+                      "b": 0.9450980392156862
+                    }
+                  }
+                ],
+                "width": 120,
+                "height": 44,
+                "children": [
+                  {
+                    "type": "TEXT",
+                    "characters": "Button",
+                    "style": {
+                      "fontSize": 14,
+                      "fontWeight": 500,
+                      "fillStyleId": "text-primary"
+                    }
+                  }
+                ]
+              }
+            ]
+          },
+          {
+            "id": "2:2",
+            "name": "Cards",
+            "type": "FRAME",
+            "layoutMode": "HORIZONTAL",
+            "paddingLeft": 32,
+            "paddingRight": 32,
+            "paddingTop": 32,
+            "paddingBottom": 32,
+            "itemSpacing": 16,
+            "children": [
+              {
+                "id": "card-metric",
+                "name": "Card/Metric",
+                "type": "COMPONENT",
+                "layoutMode": "VERTICAL",
+                "paddingLeft": 24,
+                "paddingRight": 24,
+                "paddingTop": 24,
+                "paddingBottom": 24,
+                "cornerRadius": 12,
+                "fills": [
+                  {
+                    "type": "SOLID",
+                    "color": {
+                      "r": 0.11764705882352941,
+                      "g": 0.1607843137254902,
+                      "b": 0.23137254901960785
+                    }
+                  }
+                ],
+                "strokes": [
+                  {
+                    "type": "SOLID",
+                    "color": {
+                      "r": 0.2784313725490196,
+                      "g": 0.3333333333333333,
+                      "b": 0.4117647058823529
+                    }
+                  }
+                ],
+                "strokeWeight": 1,
+                "width": 280,
+                "height": 160
+              }
+            ]
+          },
+          {
+            "id": "2:3",
+            "name": "Inputs",
+            "type": "FRAME",
+            "layoutMode": "VERTICAL",
+            "paddingLeft": 32,
+            "paddingRight": 32,
+            "paddingTop": 32,
+            "paddingBottom": 32,
+            "itemSpacing": 16,
+            "children": [
+              {
+                "id": "input-text",
+                "name": "Input/Text",
+                "type": "COMPONENT",
+                "layoutMode": "HORIZONTAL",
+                "paddingLeft": 16,
+                "paddingRight": 16,
+                "paddingTop": 12,
+                "paddingBottom": 12,
+                "cornerRadius": 8,
+                "fills": [
+                  {
+                    "type": "SOLID",
+                    "color": {
+                      "r": 0.058823529411764705,
+                      "g": 0.09019607843137255,
+                      "b": 0.16470588235294117
+                    }
+                  }
+                ],
+                "strokes": [
+                  {
+                    "type": "SOLID",
+                    "color": {
+                      "r": 0.2784313725490196,
+                      "g": 0.3333333333333333,
+                      "b": 0.4117647058823529
+                    }
+                  }
+                ],
+                "strokeWeight": 1,
+                "width": 300,
+                "height": 44
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "3:0",
+        "name": "📊 Dashboard",
+        "type": "PAGE",
+        "children": [
+          {
+            "id": "3:1",
+            "name": "Dashboard Layout",
+            "type": "FRAME",
+            "width": 1920,
+            "height": 1080,
+            "fills": [
+              {
+                "type": "SOLID",
+                "color": {
+                  "r": 0.058823529411764705,
+                  "g": 0.09019607843137255,
+                  "b": 0.16470588235294117
+                }
+              }
+            ],
+            "layoutMode": "VERTICAL",
+            "paddingLeft": 32,
+            "paddingRight": 32,
+            "paddingTop": 32,
+            "paddingBottom": 32,
+            "itemSpacing": 32,
+            "children": [
+              {
+                "id": "3:2",
+                "name": "Header",
+                "type": "FRAME",
+                "layoutMode": "HORIZONTAL",
+                "width": "fill-parent",
+                "height": 80,
+                "children": [
+                  {
+                    "type": "TEXT",
+                    "characters": "Trading Dashboard",
+                    "style": {
+                      "fontSize": 36,
+                      "fontWeight": 700,
+                      "fillStyleId": "text-primary"
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "3:3",
+                "name": "Metrics Grid",
+                "type": "FRAME",
+                "layoutMode": "HORIZONTAL",
+                "width": "fill-parent",
+                "itemSpacing": 24,
+                "children": [
+                  {
+                    "id": "metric-0",
+                    "name": "Metric Card 1",
+                    "type": "INSTANCE",
+                    "componentId": "card-metric",
+                    "width": 280,
+                    "height": 160
+                  },
+                  {
+                    "id": "metric-1",
+                    "name": "Metric Card 2",
+                    "type": "INSTANCE",
+                    "componentId": "card-metric",
+                    "width": 280,
+                    "height": 160
+                  },
+                  {
+                    "id": "metric-2",
+                    "name": "Metric Card 3",
+                    "type": "INSTANCE",
+                    "componentId": "card-metric",
+                    "width": 280,
+                    "height": 160
+                  },
+                  {
+                    "id": "metric-3",
+                    "name": "Metric Card 4",
+                    "type": "INSTANCE",
+                    "componentId": "card-metric",
+                    "width": 280,
+                    "height": 160
+                  },
+                  {
+                    "id": "metric-4",
+                    "name": "Metric Card 5",
+                    "type": "INSTANCE",
+                    "componentId": "card-metric",
+                    "width": 280,
+                    "height": 160
+                  },
+                  {
+                    "id": "metric-5",
+                    "name": "Metric Card 6",
+                    "type": "INSTANCE",
+                    "componentId": "card-metric",
+                    "width": 280,
+                    "height": 160
+                  },
+                  {
+                    "id": "metric-6",
+                    "name": "Metric Card 7",
+                    "type": "INSTANCE",
+                    "componentId": "card-metric",
+                    "width": 280,
+                    "height": 160
+                  },
+                  {
+                    "id": "metric-7",
+                    "name": "Metric Card 8",
+                    "type": "INSTANCE",
+                    "componentId": "card-metric",
+                    "width": 280,
+                    "height": 160
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "4:0",
+        "name": "⚙️ Strategy Configuration",
+        "type": "PAGE",
+        "children": []
+      },
+      {
+        "id": "5:0",
+        "name": "📈 Simulation Results",
+        "type": "PAGE",
+        "children": []
+      },
+      {
+        "id": "6:0",
+        "name": "🔴 Live Trading",
+        "type": "PAGE",
+        "children": []
+      },
+      {
+        "id": "7:0",
+        "name": "💼 Portfolio",
+        "type": "PAGE",
+        "children": []
+      }
+    ]
+  },
+  "styles": {
+    "fills": [
+      {
+        "id": "fill-bg-primary",
+        "name": "Background/primary",
+        "type": "FILL",
+        "fills": [
+          {
+            "type": "SOLID",
+            "color": {
+              "r": 0.058823529411764705,
+              "g": 0.09019607843137255,
+              "b": 0.16470588235294117
+            }
+          }
+        ]
+      },
+      {
+        "id": "fill-bg-secondary",
+        "name": "Background/secondary",
+        "type": "FILL",
+        "fills": [
+          {
+            "type": "SOLID",
+            "color": {
+              "r": 0.11764705882352941,
+              "g": 0.1607843137254902,
+              "b": 0.23137254901960785
+            }
+          }
+        ]
+      },
+      {
+        "id": "fill-bg-tertiary",
+        "name": "Background/tertiary",
+        "type": "FILL",
+        "fills": [
+          {
+            "type": "SOLID",
+            "color": {
+              "r": 0.2,
+              "g": 0.2549019607843137,
+              "b": 0.3333333333333333
+            }
+          }
+        ]
+      },
+      {
+        "id": "fill-bg-elevated",
+        "name": "Background/elevated",
+        "type": "FILL",
+        "fills": [
+          {
+            "type": "SOLID",
+            "color": {
+              "r": 0.2784313725490196,
+              "g": 0.3333333333333333,
+              "b": 0.4117647058823529
+            }
+          }
+        ]
+      },
+      {
+        "id": "fill-accent-success",
+        "name": "Accent/success",
+        "type": "FILL",
+        "fills": [
+          {
+            "type": "SOLID",
+            "color": {
+              "r": 0.06274509803921569,
+              "g": 0.7254901960784313,
+              "b": 0.5058823529411764
+            }
+          }
+        ]
+      },
+      {
+        "id": "fill-accent-successLight",
+        "name": "Accent/successLight",
+        "type": "FILL",
+        "fills": [
+          {
+            "type": "SOLID",
+            "color": {
+              "r": 0.20392156862745098,
+              "g": 0.8274509803921568,
+              "b": 0.6
+            }
+          }
+        ]
+      },
+      {
+        "id": "fill-accent-danger",
+        "name": "Accent/danger",
+        "type": "FILL",
+        "fills": [
+          {
+            "type": "SOLID",
+            "color": {
+              "r": 0.9372549019607843,
+              "g": 0.26666666666666666,
+              "b": 0.26666666666666666
+            }
+          }
+        ]
+      },
+      {
+        "id": "fill-accent-dangerLight",
+        "name": "Accent/dangerLight",
+        "type": "FILL",
+        "fills": [
+          {
+            "type": "SOLID",
+            "color": {
+              "r": 0.9725490196078431,
+              "g": 0.44313725490196076,
+              "b": 0.44313725490196076
+            }
+          }
+        ]
+      },
+      {
+        "id": "fill-accent-warning",
+        "name": "Accent/warning",
+        "type": "FILL",
+        "fills": [
+          {
+            "type": "SOLID",
+            "color": {
+              "r": 0.9607843137254902,
+              "g": 0.6196078431372549,
+              "b": 0.043137254901960784
+            }
+          }
+        ]
+      },
+      {
+        "id": "fill-accent-info",
+        "name": "Accent/info",
+        "type": "FILL",
+        "fills": [
+          {
+            "type": "SOLID",
+            "color": {
+              "r": 0.23137254901960785,
+              "g": 0.5098039215686274,
+              "b": 0.9647058823529412
+            }
+          }
+        ]
+      },
+      {
+        "id": "fill-accent-infoLight",
+        "name": "Accent/infoLight",
+        "type": "FILL",
+        "fills": [
+          {
+            "type": "SOLID",
+            "color": {
+              "r": 0.3764705882352941,
+              "g": 0.6470588235294118,
+              "b": 0.9803921568627451
+            }
+          }
+        ]
+      }
+    ],
+    "text": [
+      {
+        "id": "text-display",
+        "name": "DISPLAY",
+        "type": "TEXT",
+        "fontSize": 48,
+        "fontWeight": 700,
+        "fontFamily": "Inter",
+        "lineHeight": {
+          "value": 72,
+          "unit": "PIXELS"
+        }
+      },
+      {
+        "id": "text-h1",
+        "name": "H1",
+        "type": "TEXT",
+        "fontSize": 36,
+        "fontWeight": 700,
+        "fontFamily": "Inter",
+        "lineHeight": {
+          "value": 54,
+          "unit": "PIXELS"
+        }
+      },
+      {
+        "id": "text-h2",
+        "name": "H2",
+        "type": "TEXT",
+        "fontSize": 30,
+        "fontWeight": 700,
+        "fontFamily": "Inter",
+        "lineHeight": {
+          "value": 45,
+          "unit": "PIXELS"
+        }
+      },
+      {
+        "id": "text-h3",
+        "name": "H3",
+        "type": "TEXT",
+        "fontSize": 24,
+        "fontWeight": 700,
+        "fontFamily": "Inter",
+        "lineHeight": {
+          "value": 36,
+          "unit": "PIXELS"
+        }
+      },
+      {
+        "id": "text-h4",
+        "name": "H4",
+        "type": "TEXT",
+        "fontSize": 20,
+        "fontWeight": 700,
+        "fontFamily": "Inter",
+        "lineHeight": {
+          "value": 30,
+          "unit": "PIXELS"
+        }
+      },
+      {
+        "id": "text-bodyLarge",
+        "name": "BODYLARGE",
+        "type": "TEXT",
+        "fontSize": 18,
+        "fontWeight": 400,
+        "fontFamily": "Inter",
+        "lineHeight": {
+          "value": 27,
+          "unit": "PIXELS"
+        }
+      },
+      {
+        "id": "text-body",
+        "name": "BODY",
+        "type": "TEXT",
+        "fontSize": 16,
+        "fontWeight": 400,
+        "fontFamily": "Inter",
+        "lineHeight": {
+          "value": 24,
+          "unit": "PIXELS"
+        }
+      },
+      {
+        "id": "text-bodySmall",
+        "name": "BODYSMALL",
+        "type": "TEXT",
+        "fontSize": 14,
+        "fontWeight": 400,
+        "fontFamily": "Inter",
+        "lineHeight": {
+          "value": 21,
+          "unit": "PIXELS"
+        }
+      },
+      {
+        "id": "text-caption",
+        "name": "CAPTION",
+        "type": "TEXT",
+        "fontSize": 12,
+        "fontWeight": 400,
+        "fontFamily": "Inter",
+        "lineHeight": {
+          "value": 18,
+          "unit": "PIXELS"
+        }
+      }
+    ],
+    "effects": [
+      {
+        "id": "shadow-sm",
+        "name": "Shadow/Small",
+        "type": "EFFECT",
+        "effects": [
+          {
+            "type": "DROP_SHADOW",
+            "color": {
+              "r": 0,
+              "g": 0,
+              "b": 0,
+              "a": 0.1
+            },
+            "offset": {
+              "x": 0,
+              "y": 1
+            },
+            "radius": 2,
+            "visible": true
+          }
+        ]
+      },
+      {
+        "id": "shadow-md",
+        "name": "Shadow/Medium",
+        "type": "EFFECT",
+        "effects": [
+          {
+            "type": "DROP_SHADOW",
+            "color": {
+              "r": 0,
+              "g": 0,
+              "b": 0,
+              "a": 0.2
+            },
+            "offset": {
+              "x": 0,
+              "y": 4
+            },
+            "radius": 6,
+            "visible": true
+          }
+        ]
+      }
+    ]
+  },
+  "componentSets": []
+}

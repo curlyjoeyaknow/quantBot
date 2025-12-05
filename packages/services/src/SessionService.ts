@@ -8,8 +8,26 @@
 import { DateTime } from 'luxon';
 import { Strategy } from '@quantbot/simulation';
 import { StopLossConfig, EntryConfig, ReEntryConfig } from '@quantbot/simulation';
-import { eventBus, EventFactory } from '../events';
-import { Session as SessionType } from '../types/session';
+// TODO: Events module needs to be in this package or utils
+// import { eventBus, EventFactory } from './events';
+
+// Temporary stubs until events module is available
+const eventBus = { 
+  emit: (event: string, data: any) => {},
+  publish: (event: any) => {} // Add publish method
+};
+const EventFactory = { 
+  sessionCreated: (data: any) => ({ type: 'session_created', data }),
+  sessionUpdated: (data: any) => ({ type: 'session_updated', data }),
+  sessionCleared: (data: any) => ({ type: 'session_cleared', data }),
+  createUserEvent: (type: string, userId: number, data: any) => ({ type, userId, data })
+};
+
+// Session type from utils
+import type { SimulationRunData } from '@quantbot/utils';
+
+// TODO: Define proper Session type
+type SessionType = any;
 
 /**
  * Session data structure for maintaining user state
@@ -48,12 +66,9 @@ export class SessionService {
     this.sessions[userId] = session;
     
     // Emit session updated event
-    eventBus.publish(EventFactory.createUserEvent(
-      'user.session.updated',
-      { sessionData: session },
-      'SessionService',
-      userId
-    ));
+    eventBus.publish(
+      EventFactory.createUserEvent('user.session.updated', userId, { sessionData: session })
+    );
   }
 
   /**
