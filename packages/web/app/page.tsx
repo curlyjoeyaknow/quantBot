@@ -50,6 +50,10 @@ const LiveTradeStrategies = dynamic(() => import('@/components/live-trade-strate
   loading: () => <div className="p-8 text-center text-white">Loading strategies...</div>,
 });
 
+const Analytics = dynamic(() => import('@/components/analytics').then(mod => ({ default: mod.Analytics })), {
+  loading: () => <div className="p-8 text-center text-white">Loading analytics...</div>,
+});
+
 const SignIn = dynamic(() => import('@/components/sign-in'), {
   loading: () => <div className="p-8 text-center text-white">Loading...</div>,
 });
@@ -101,21 +105,25 @@ export default function Home() {
         <Tabs defaultValue="dashboard" className="w-full">
           <TabsList className="grid w-full grid-cols-12 mb-6">
             <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-            <TabsTrigger value="caller-history">Caller History</TabsTrigger>
-            <TabsTrigger value="recent-alerts">Recent Alerts</TabsTrigger>
+            <TabsTrigger value="analytics">Analytics 📊</TabsTrigger>
+            <TabsTrigger value="caller-history">History</TabsTrigger>
+            <TabsTrigger value="recent-alerts">Alerts</TabsTrigger>
             <TabsTrigger value="callers">Callers</TabsTrigger>
-            <TabsTrigger value="simulations">Simulations</TabsTrigger>
-            <TabsTrigger value="optimizations">Optimizations</TabsTrigger>
-            <TabsTrigger value="recording">Recording</TabsTrigger>
+            <TabsTrigger value="simulations">Sims</TabsTrigger>
+            <TabsTrigger value="optimizations">Opts</TabsTrigger>
+            <TabsTrigger value="recording">Rec</TabsTrigger>
             <TabsTrigger value="health">Health</TabsTrigger>
-            <TabsTrigger value="live-trade">Live Trade</TabsTrigger>
+            <TabsTrigger value="live-trade">Live</TabsTrigger>
             <TabsTrigger value="weekly-reports">Reports</TabsTrigger>
             <TabsTrigger value="control-panel">Control</TabsTrigger>
-            <TabsTrigger value="figma">Figma 🎨</TabsTrigger>
           </TabsList>
 
           <TabsContent value="dashboard">
             <Dashboard />
+          </TabsContent>
+
+          <TabsContent value="analytics">
+            <Analytics />
           </TabsContent>
 
           <TabsContent value="caller-history">

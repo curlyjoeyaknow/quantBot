@@ -1,0 +1,10 @@
+/**
+ * Monitoring Package Logger
+ * =========================
+ * Centralized logger for the monitoring package with namespace '@quantbot/monitoring'
+ */
+
+import { createPackageLogger } from '@quantbot/utils/logging';
+
+export const logger = createPackageLogger('@quantbot/monitoring');
+

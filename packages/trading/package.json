@@ -6,8 +6,12 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc",
-    "test": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "test": "vitest run tests/**/*.test.ts --exclude tests/integration/**",
+    "test:watch": "vitest watch tests/**/*.test.ts --exclude tests/integration/**",
+    "test:coverage": "vitest run --coverage --exclude tests/integration/**",
+    "test:integration": "vitest run tests/integration/**/*.test.ts",
+    "test:integration:watch": "vitest watch tests/integration/**/*.test.ts",
+    "test:all": "vitest run"
   },
   "dependencies": {
     "@quantbot/utils": "workspace:*",

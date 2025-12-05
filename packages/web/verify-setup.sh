@@ -16,7 +16,7 @@ fi
 echo ""
 
 # Check project root
-PROJECT_ROOT="$(cd .. && pwd)"
+PROJECT_ROOT="$(cd ../.. && pwd)"
 echo "Project root: $PROJECT_ROOT"
 echo ""
 

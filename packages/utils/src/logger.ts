@@ -136,9 +136,19 @@ const winstonLogger = winston.createLogger({
   exitOnError: false,
 });
 
-// Logger class with context support
+// Logger class with context support and package namespacing
 class Logger {
   private context: LogContext = {};
+  private namespace: string = 'quantbot';
+
+  /**
+   * Create a logger with a specific namespace (package name)
+   */
+  constructor(namespace?: string) {
+    if (namespace) {
+      this.namespace = namespace;
+    }
+  }
 
   /**
    * Set context that will be included in all subsequent log messages
@@ -162,10 +172,21 @@ class Logger {
   }
 
   /**
-   * Merge context for a single log call
+   * Get the namespace for this logger
+   */
+  getNamespace(): string {
+    return this.namespace;
+  }
+
+  /**
+   * Merge context for a single log call, including namespace
    */
   private mergeContext(additionalContext?: LogContext): LogContext {
-    return { ...this.context, ...additionalContext };
+    return { 
+      namespace: this.namespace,
+      ...this.context, 
+      ...additionalContext 
+    };
   }
 
   /**
@@ -223,14 +244,19 @@ class Logger {
    * Create a child logger with persistent context
    */
   child(context: LogContext): Logger {
-    const childLogger = new Logger();
+    const childLogger = new Logger(this.namespace);
     childLogger.setContext({ ...this.context, ...context });
     return childLogger;
   }
 }
 
-// Export singleton instance
-export const logger = new Logger();
+// Factory function to create package-specific loggers
+export function createLogger(packageName: string): Logger {
+  return new Logger(packageName);
+}
+
+// Export singleton instance (default logger)
+export const logger = new Logger('quantbot');
 
 // Export Logger class for creating child loggers
 export { Logger };

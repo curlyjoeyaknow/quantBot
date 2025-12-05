@@ -5,9 +5,13 @@
  */
 
 // Logger and logging utilities
-export { logger, Logger, LogLevel, LogContext } from './logger';
-export { winstonLogger } from './logger';
+// Centralized logging system
+export { logger, Logger, LogLevel, LogContext, winstonLogger, createLogger } from './logger';
 export { createRequestId, logRequest, logResponse, logError, logPerformance, RequestContext } from './logging-middleware';
+
+// Package-aware logging
+export * from './logging';
+export { createPackageLogger, LogHelpers } from './logging';
 export { getLogLevel, isLogLevelEnabled } from './logging-config';
 export { logger as loggerNextjs } from './logger-nextjs';
 

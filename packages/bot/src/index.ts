@@ -12,3 +12,6 @@ export * from './events';
 export * from './health';
 export * from './config';
 
+// Package logger
+export { logger } from './logger';
+
