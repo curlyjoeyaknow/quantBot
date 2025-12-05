@@ -669,12 +669,20 @@ Local Machine
 
 ## Future Architecture Considerations
 
-1. **Microservices**: Split into separate services (bot, web, monitoring)
-2. **Message Queue**: Add message queue for async processing
-3. **Redis**: Add Redis for session storage and caching
-4. **Kubernetes**: Container orchestration for scaling
-5. **Service Mesh**: For inter-service communication
-6. **GraphQL**: Alternative API layer for web dashboard
+1. **Live Trading System** 🔥 - Execute trades based on strategies and alerts
+   - Helius RPC integration (Amsterdam/mainnet optimized endpoints)
+   - Relayer pattern for high-speed transaction sending
+   - Strategy-based trade execution
+   - Alert-triggered trading
+   - Position management and tracking
+   - Risk controls and safety mechanisms
+
+2. **Microservices**: Split into separate services (bot, web, monitoring, trading)
+3. **Message Queue**: Add message queue for async processing
+4. **Redis**: Add Redis for session storage and caching
+5. **Kubernetes**: Container orchestration for scaling
+6. **Service Mesh**: For inter-service communication
+7. **GraphQL**: Alternative API layer for web dashboard
 
 ---
 

@@ -9,6 +9,7 @@ A sophisticated, production-ready Telegram bot and web platform for trading simu
 ## 🎯 Overview
 
 QuantBot is a comprehensive trading analysis platform that combines:
+
 - **Telegram Bot Interface** - Interactive command-driven bot for trading simulations
 - **Real-Time Monitoring** - Live CA drop detection and price tracking via WebSockets
 - **Advanced Simulation Engine** - Config-driven backtesting with customizable strategies
@@ -37,6 +38,16 @@ QuantBot is a comprehensive trading analysis platform that combines:
 - **Price Tracking**: WebSocket-based real-time price updates via Helius
 - **Performance Summaries**: Hourly and daily performance reports
 
+### 💰 Live Trading System (Coming Soon) 🔥
+
+- **Strategy-Based Execution**: Execute trades using user-defined strategies
+- **Alert-Triggered Trading**: Automatic trade execution from alerts
+- **Helius RPC Integration**: Optimized Amsterdam/mainnet endpoints
+- **Relayer Support**: High-speed transaction sending via relayers
+- **Position Management**: Real-time position tracking and PNL
+- **Risk Controls**: Slippage protection, position limits, daily loss limits
+- **Safety Features**: Dry-run mode, trade confirmation, comprehensive logging
+
 ### 💾 Data Storage & Analytics
 
 - **PostgreSQL**: Primary OLTP database for transactions and metadata
@@ -48,6 +59,7 @@ QuantBot is a comprehensive trading analysis platform that combines:
 ### 🤖 Telegram Bot Commands
 
 #### Core Commands
+
 - `/backtest` - Start a new PNL simulation
 - `/repeat` - Repeat previous simulation with new strategy
 - `/strategy` - Manage custom trading strategies (save, use, delete, list)
@@ -55,6 +67,7 @@ QuantBot is a comprehensive trading analysis platform that combines:
 - `/ichimoku` - Start Ichimoku Cloud analysis for a token
 
 #### Analysis Commands
+
 - `/analysis` - Run comprehensive historical analysis on CA drops
 - `/calls <token>` - Show all historical calls for a token
 - `/callers` - Show top callers statistics
@@ -63,6 +76,7 @@ QuantBot is a comprehensive trading analysis platform that combines:
 - `/history` - View simulation history
 
 #### Monitoring Commands
+
 - `/alerts` - View active alerts and monitoring status
 - `/alert` - Check specific alert status
 - `/livetrade` - Manage live trade entry alerts
@@ -70,6 +84,7 @@ QuantBot is a comprehensive trading analysis platform that combines:
 - `/addcurlyjoe` - Add recent CurlyJoe calls to monitoring
 
 #### Utility Commands
+
 - `/begin` - Welcome message and bot introduction
 - `/options` - Show all available commands
 - `/extract` - Extract CA drops from HTML chat messages

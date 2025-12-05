@@ -41,6 +41,237 @@
 
 ## 🚀 High Priority - Next Steps
 
+### 0. Live Trading System 🔥 (NEW - Critical Feature)
+
+#### 0.1 Core Trading Infrastructure
+- [ ] **trading-infra-1** - Design live trading architecture
+  - Define transaction flow, safety mechanisms, position tracking
+  - Document decision: Helius RPC Amsterdam/mainnet optimized endpoints
+  - **Priority**: 🔴 High
+  - **Effort**: 2 days
+  - **Dependencies**: None
+
+- [ ] **trading-infra-2** - Create Helius RPC client with optimized endpoints
+  - Implement connection to Amsterdam/mainnet optimized endpoints
+  - Support for relayer pattern for transaction sending
+  - Connection pooling and failover
+  - **Priority**: 🔴 High
+  - **Effort**: 2 days
+  - **Dependencies**: trading-infra-1
+
+- [ ] **trading-infra-3** - Implement transaction builder service
+  - Build Solana transactions (buy/sell/swap)
+  - Support for Pump.fun, Raydium, Orca, Meteora
+  - Compute budget and priority fee management
+  - **Priority**: 🔴 High
+  - **Effort**: 3 days
+  - **Dependencies**: trading-infra-2
+
+- [ ] **trading-infra-4** - Create transaction sender with relayer support
+  - Send transactions via Helius optimized endpoints
+  - Implement relayer pattern for high-speed execution
+  - Retry logic with exponential backoff
+  - Transaction confirmation tracking
+  - **Priority**: 🔴 High
+  - **Effort**: 3 days
+  - **Dependencies**: trading-infra-3
+
+#### 0.2 Strategy-Based Trade Execution
+- [ ] **trading-strategy-1** - Integrate strategy engine with live trading
+  - Connect simulation strategies to live execution
+  - Strategy validation before execution
+  - **Priority**: 🔴 High
+  - **Effort**: 2 days
+  - **Dependencies**: trading-infra-4
+
+- [ ] **trading-strategy-2** - Implement strategy-to-trade mapping
+  - Convert strategy targets to actual trades
+  - Position sizing based on strategy percentages
+  - **Priority**: 🔴 High
+  - **Effort**: 2 days
+  - **Dependencies**: trading-strategy-1
+
+- [ ] **trading-strategy-3** - Add stop-loss execution
+  - Real-time stop-loss monitoring
+  - Automatic stop-loss execution
+  - Trailing stop-loss implementation
+  - **Priority**: 🔴 High
+  - **Effort**: 3 days
+  - **Dependencies**: trading-strategy-2
+
+- [ ] **trading-strategy-4** - Implement take-profit execution
+  - Multi-target take-profit execution
+  - Partial position closing at targets
+  - **Priority**: 🔴 High
+  - **Effort**: 2 days
+  - **Dependencies**: trading-strategy-2
+
+#### 0.3 Alert System Integration
+- [ ] **trading-alert-1** - Connect alert system to trading execution
+  - Trigger trades from alert conditions
+  - Support for CA drop alerts, Ichimoku signals, custom alerts
+  - **Priority**: 🔴 High
+  - **Effort**: 2 days
+  - **Dependencies**: trading-infra-4
+
+- [ ] **trading-alert-2** - Implement alert-to-trade rules
+  - User-configurable rules for alert-triggered trades
+  - Filtering and validation before execution
+  - **Priority**: 🔴 High
+  - **Effort**: 2 days
+  - **Dependencies**: trading-alert-1
+
+- [ ] **trading-alert-3** - Add alert confirmation system
+  - Optional user confirmation before trade execution
+  - Timeout for auto-execution
+  - **Priority**: 🟡 Medium
+  - **Effort**: 1 day
+  - **Dependencies**: trading-alert-2
+
+#### 0.4 Safety & Risk Management
+- [ ] **trading-safety-1** - Implement dry-run mode
+  - Simulate trades without execution
+  - Log all would-be trades for review
+  - **Priority**: 🔴 High
+  - **Effort**: 1 day
+  - **Dependencies**: trading-infra-4
+
+- [ ] **trading-safety-2** - Add position limits and risk controls
+  - Maximum position size per trade
+  - Maximum total exposure
+  - Daily loss limits
+  - **Priority**: 🔴 High
+  - **Effort**: 2 days
+  - **Dependencies**: trading-infra-4
+
+- [ ] **trading-safety-3** - Implement slippage protection
+  - Maximum acceptable slippage
+  - Price validation before execution
+  - **Priority**: 🔴 High
+  - **Effort**: 2 days
+  - **Dependencies**: trading-infra-4
+
+- [ ] **trading-safety-4** - Add trade confirmation and logging
+  - Log all trades with full details
+  - User notifications for executed trades
+  - Trade receipt generation
+  - **Priority**: 🔴 High
+  - **Effort**: 2 days
+  - **Dependencies**: trading-infra-4
+
+#### 0.5 Position Management
+- [ ] **trading-position-1** - Create position tracking system
+  - Track open positions in database
+  - Real-time position updates
+  - **Priority**: 🔴 High
+  - **Effort**: 2 days
+  - **Dependencies**: trading-infra-4
+
+- [ ] **trading-position-2** - Implement position monitoring
+  - Real-time PNL tracking
+  - Position status updates
+  - **Priority**: 🔴 High
+  - **Effort**: 2 days
+  - **Dependencies**: trading-position-1
+
+- [ ] **trading-position-3** - Add position management commands
+  - View open positions
+  - Manual position closing
+  - Position history
+  - **Priority**: 🟡 Medium
+  - **Effort**: 2 days
+  - **Dependencies**: trading-position-1
+
+#### 0.6 User Interface & Commands
+- [ ] **trading-ui-1** - Add live trading bot commands
+  - `/livetrade enable` - Enable live trading
+  - `/livetrade disable` - Disable live trading
+  - `/livetrade status` - View trading status
+  - `/livetrade positions` - View open positions
+  - `/livetrade history` - View trade history
+  - **Priority**: 🔴 High
+  - **Effort**: 2 days
+  - **Dependencies**: trading-infra-4
+
+- [ ] **trading-ui-2** - Create trading configuration interface
+  - Set trading parameters (max position, slippage, etc.)
+  - Configure alert-to-trade rules
+  - Enable/disable dry-run mode
+  - **Priority**: 🔴 High
+  - **Effort**: 2 days
+  - **Dependencies**: trading-ui-1
+
+- [ ] **trading-ui-3** - Add trade notifications
+  - Real-time trade execution notifications
+  - Position updates
+  - Alert-triggered trade notifications
+  - **Priority**: 🟡 Medium
+  - **Effort**: 1 day
+  - **Dependencies**: trading-ui-1
+
+#### 0.7 Wallet & Key Management
+- [ ] **trading-wallet-1** - Design wallet integration architecture
+  - Secure key storage (encrypted)
+  - Multi-wallet support
+  - Hot/cold wallet separation
+  - **Priority**: 🔴 High
+  - **Effort**: 2 days
+  - **Dependencies**: None
+
+- [ ] **trading-wallet-2** - Implement secure key storage
+  - Encrypted key storage in database
+  - Key derivation and management
+  - **Priority**: 🔴 High
+  - **Effort**: 3 days
+  - **Dependencies**: trading-wallet-1
+
+- [ ] **trading-wallet-3** - Add wallet management commands
+  - `/wallet add` - Add trading wallet
+  - `/wallet list` - List wallets
+  - `/wallet remove` - Remove wallet
+  - `/wallet balance` - Check wallet balance
+  - **Priority**: 🔴 High
+  - **Effort**: 2 days
+  - **Dependencies**: trading-wallet-2
+
+#### 0.8 Integration & Testing
+- [ ] **trading-integration-1** - Integrate with existing alert systems
+  - Connect to CA monitoring alerts
+  - Connect to Ichimoku signal alerts
+  - Connect to live trade entry alerts
+  - **Priority**: 🔴 High
+  - **Effort**: 2 days
+  - **Dependencies**: trading-alert-2
+
+- [ ] **trading-integration-2** - Add trade history to database
+  - Store all trades in PostgreSQL
+  - Link trades to strategies and alerts
+  - **Priority**: 🔴 High
+  - **Effort**: 2 days
+  - **Dependencies**: trading-infra-4
+
+- [ ] **trading-integration-3** - Create trade analytics
+  - Performance metrics for live trades
+  - Compare live vs simulated performance
+  - **Priority**: 🟡 Medium
+  - **Effort**: 3 days
+  - **Dependencies**: trading-integration-2
+
+- [ ] **trading-test-1** - Add comprehensive trading tests
+  - Unit tests for transaction building
+  - Integration tests for trade execution
+  - Test safety mechanisms
+  - **Priority**: 🔴 High
+  - **Effort**: 3 days
+  - **Dependencies**: trading-infra-4
+
+- [ ] **trading-test-2** - Implement testnet testing
+  - Test all trading functionality on devnet/testnet
+  - Validate transaction building and sending
+  - **Priority**: 🔴 High
+  - **Effort**: 2 days
+  - **Dependencies**: trading-infra-4
+
 ### 1. Bot Enhancements (In Progress)
 
 #### 1.1 Command Handler Improvements
@@ -467,6 +698,7 @@
 - **Pending**: ~150 tasks (75%)
 
 ### Phase Completion
+- **Live Trading System**: 0/30 tasks (0%) 🔥 NEW
 - **Bot Improvements**: 8/15 tasks (53%)
 - **Database**: 0/10 tasks (0%)
 - **Monitoring**: 0/8 tasks (0%)
@@ -487,19 +719,21 @@
 
 1. ✅ Complete bot functionality improvements
 2. ✅ Create comprehensive documentation
-3. [ ] Add authentication to web dashboard
-4. [ ] Increase test coverage to 60%+
-5. [ ] Implement Redis caching
-6. [ ] Add performance monitoring
+3. [ ] **Design and implement live trading infrastructure** 🔥
+4. [ ] Add authentication to web dashboard
+5. [ ] Increase test coverage to 60%+
+6. [ ] Implement Redis caching
+7. [ ] Add performance monitoring
 
 ## 🎯 Medium-Term Goals (Next Month)
 
-1. Complete database optimization
-2. Add advanced monitoring features
-3. Implement strategy sharing
-4. Create API documentation
-5. Set up CI/CD pipeline
-6. Add user authentication
+1. **Complete live trading system implementation** 🔥
+2. Complete database optimization
+3. Add advanced monitoring features
+4. Implement strategy sharing
+5. Create API documentation
+6. Set up CI/CD pipeline
+7. Add user authentication
 
 ## 🎯 Long-Term Goals (Next Quarter)
 
