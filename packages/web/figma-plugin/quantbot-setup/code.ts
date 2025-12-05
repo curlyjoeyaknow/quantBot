@@ -1,33 +1,49 @@
 /**
  * QuantBot Figma Replica Generator Plugin
  * ========================================
- * Creates Figma designs based on the existing React components:
- * - Sign In page
+ * Creates Figma designs based on the existing figma-replica React components:
+ * - Sign In page (440x956)
  * - Register page
  * - Forgot Password page
- * - Setup Overview
- * - Add Product
- * - Shipping & Pricing
- * - Review Summary
+ * - Setup Overview (Step 1/4)
+ * - Add Product (Step 2/4)
+ * - Shipping & Pricing (Step 3/4)
+ * - Review Summary (Step 4/4)
  * 
- * This plugin replicates the UI components as Figma frames.
+ * This plugin replicates the UI components as Figma frames with proper styling.
  */
 
-// Component specifications based on the React components
+// Component specifications based on the React figma-replica components
 const componentSpecs = {
   signIn: {
     name: 'Sign In',
     width: 440,
     height: 956,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#0a3a32', // Dark teal background from sign-in.tsx
     elements: [
-      { type: 'text', content: 'Sign In', fontSize: 32, fontWeight: 700, x: 40, y: 100 },
-      { type: 'input', label: 'Email', x: 40, y: 200, width: 360, height: 56 },
-      { type: 'input', label: 'Password', x: 40, y: 280, width: 360, height: 56, isPassword: true },
-      { type: 'link', content: 'Forgot password?', x: 40, y: 360, color: '#2481CC' },
-      { type: 'button', content: 'SIGN IN', x: 40, y: 440, width: 360, height: 56, primary: true },
-      { type: 'button', content: 'REGISTER', x: 40, y: 520, width: 360, height: 56, primary: false },
-      { type: 'link', content: 'Create Account', x: 40, y: 600, color: '#2481CC' },
+      // Header with logo and account icon
+      { type: 'frame', name: 'Header', x: 0, y: 0, width: 440, height: 100, bg: '#0a3a32' },
+      
+      // Title
+      { type: 'text', content: 'Sign In', fontSize: 32, fontWeight: 700, x: 40, y: 200, color: '#FFFFFF' },
+      
+      // Email input
+      { type: 'input', label: 'Email', x: 40, y: 280, width: 360, height: 56, placeholder: 'Enter your email' },
+      
+      // Password input
+      { type: 'input', label: 'Password', x: 40, y: 360, width: 360, height: 56, placeholder: 'Enter your password', isPassword: true },
+      
+      // Forgot password link
+      { type: 'link', content: 'Forgot password?', x: 40, y: 440, color: '#2481CC' },
+      
+      // Sign In button (dark, 35% width)
+      { type: 'button', content: 'SIGN IN', x: 40, y: 520, width: 154, height: 47, primary: true, bg: '#0a3a32', textColor: '#FFFFFF' },
+      
+      // Register button (light, 35% width)
+      { type: 'button', content: 'REGISTER', x: 214, y: 520, width: 154, height: 47, primary: false, bg: '#F5F5F5', textColor: '#0a3a32' },
+      
+      // Create Account link
+      { type: 'link', content: 'Create Account', x: 40, y: 600, color: '#000000' },
     ],
   },
   register: {
@@ -36,11 +52,11 @@ const componentSpecs = {
     height: 956,
     backgroundColor: '#FFFFFF',
     elements: [
-      { type: 'text', content: 'Create Account', fontSize: 32, fontWeight: 700, x: 40, y: 100 },
+      { type: 'text', content: 'Create Account', fontSize: 32, fontWeight: 700, x: 40, y: 100, color: '#000000' },
       { type: 'input', label: 'Email', x: 40, y: 200, width: 360, height: 56 },
       { type: 'input', label: 'Password', x: 40, y: 280, width: 360, height: 56, isPassword: true },
       { type: 'input', label: 'Confirm Password', x: 40, y: 360, width: 360, height: 56, isPassword: true },
-      { type: 'button', content: 'REGISTER', x: 40, y: 460, width: 360, height: 56, primary: true },
+      { type: 'button', content: 'REGISTER', x: 40, y: 460, width: 360, height: 56, primary: true, bg: '#2481CC', textColor: '#FFFFFF' },
       { type: 'link', content: 'Already have an account? Sign In', x: 40, y: 540, color: '#2481CC' },
     ],
   },
@@ -50,10 +66,10 @@ const componentSpecs = {
     height: 956,
     backgroundColor: '#FFFFFF',
     elements: [
-      { type: 'text', content: 'Forgot Password?', fontSize: 32, fontWeight: 700, x: 40, y: 100 },
+      { type: 'text', content: 'Forgot Password?', fontSize: 32, fontWeight: 700, x: 40, y: 100, color: '#000000' },
       { type: 'text', content: 'Enter your email to reset your password', fontSize: 16, fontWeight: 400, x: 40, y: 160, color: '#666666' },
       { type: 'input', label: 'Email', x: 40, y: 240, width: 360, height: 56 },
-      { type: 'button', content: 'SEND RESET LINK', x: 40, y: 320, width: 360, height: 56, primary: true },
+      { type: 'button', content: 'SEND RESET LINK', x: 40, y: 320, width: 360, height: 56, primary: true, bg: '#2481CC', textColor: '#FFFFFF' },
       { type: 'link', content: 'Back to Sign In', x: 40, y: 400, color: '#2481CC' },
     ],
   },
@@ -63,9 +79,12 @@ const componentSpecs = {
     height: 800,
     backgroundColor: '#FFFFFF',
     elements: [
-      { type: 'text', content: 'Setup Overview', fontSize: 28, fontWeight: 700, x: 40, y: 40 },
+      { type: 'text', content: 'Setup Overview', fontSize: 28, fontWeight: 700, x: 40, y: 40, color: '#000000' },
       { type: 'text', content: 'Step 1 of 4', fontSize: 16, fontWeight: 400, x: 40, y: 100, color: '#666666' },
-      { type: 'progress', steps: 4, current: 1, x: 40, y: 140, width: 1120 },
+      { type: 'progress', steps: 4, current: 1, x: 40, y: 140, width: 1120, height: 8 },
+      { type: 'input', label: 'Shop Name', x: 40, y: 200, width: 500, height: 56 },
+      { type: 'button', content: '← BACK', x: 40, y: 300, width: 120, height: 44, primary: false },
+      { type: 'button', content: 'CONTINUE →', x: 960, y: 300, width: 200, height: 44, primary: true, bg: '#0a3a32', textColor: '#FFFFFF' },
     ],
   },
   addProduct: {
@@ -74,11 +93,13 @@ const componentSpecs = {
     height: 800,
     backgroundColor: '#FFFFFF',
     elements: [
-      { type: 'text', content: 'Add Product', fontSize: 28, fontWeight: 700, x: 40, y: 40 },
+      { type: 'text', content: 'Add Product', fontSize: 28, fontWeight: 700, x: 40, y: 40, color: '#000000' },
       { type: 'text', content: 'Step 2 of 4', fontSize: 16, fontWeight: 400, x: 40, y: 100, color: '#666666' },
-      { type: 'progress', steps: 4, current: 2, x: 40, y: 140, width: 1120 },
+      { type: 'progress', steps: 4, current: 2, x: 40, y: 140, width: 1120, height: 8 },
       { type: 'input', label: 'Product Name', x: 40, y: 200, width: 500, height: 56 },
-      { type: 'input', label: 'Description', x: 40, y: 280, width: 500, height: 120, multiline: true },
+      { type: 'input', label: 'Product Price', x: 40, y: 280, width: 500, height: 56 },
+      { type: 'frame', name: 'Image Upload', x: 600, y: 200, width: 300, height: 300, bg: '#F5F5F5', border: true },
+      { type: 'button', content: 'ADD ANOTHER', x: 40, y: 400, width: 200, height: 44, primary: true },
     ],
   },
   shippingPricing: {
@@ -87,9 +108,11 @@ const componentSpecs = {
     height: 800,
     backgroundColor: '#FFFFFF',
     elements: [
-      { type: 'text', content: 'Shipping & Pricing', fontSize: 28, fontWeight: 700, x: 40, y: 40 },
+      { type: 'text', content: 'Shipping & Pricing', fontSize: 28, fontWeight: 700, x: 40, y: 40, color: '#000000' },
       { type: 'text', content: 'Step 3 of 4', fontSize: 16, fontWeight: 400, x: 40, y: 100, color: '#666666' },
-      { type: 'progress', steps: 4, current: 3, x: 40, y: 140, width: 1120 },
+      { type: 'progress', steps: 4, current: 3, x: 40, y: 140, width: 1120, height: 8 },
+      { type: 'input', label: 'Shipping Type', x: 40, y: 200, width: 500, height: 56 },
+      { type: 'input', label: 'Delivery Days', x: 40, y: 280, width: 500, height: 56 },
     ],
   },
   review: {
@@ -98,129 +121,16 @@ const componentSpecs = {
     height: 800,
     backgroundColor: '#FFFFFF',
     elements: [
-      { type: 'text', content: 'Review Summary', fontSize: 28, fontWeight: 700, x: 40, y: 40 },
+      { type: 'text', content: 'Review Summary', fontSize: 28, fontWeight: 700, x: 40, y: 40, color: '#000000' },
       { type: 'text', content: 'Step 4 of 4', fontSize: 16, fontWeight: 400, x: 40, y: 100, color: '#666666' },
-      { type: 'progress', steps: 4, current: 4, x: 40, y: 140, width: 1120 },
+      { type: 'progress', steps: 4, current: 4, x: 40, y: 140, width: 1120, height: 8 },
+      { type: 'text', content: 'Shop Name:', fontSize: 16, fontWeight: 600, x: 40, y: 200, color: '#000000' },
+      { type: 'text', content: 'Products:', fontSize: 16, fontWeight: 600, x: 40, y: 280, color: '#000000' },
+      { type: 'button', content: 'BACK TO PRODUCTS', x: 40, y: 500, width: 200, height: 44, primary: false },
+      { type: 'button', content: 'LAUNCH SHOP', x: 960, y: 500, width: 200, height: 44, primary: true, bg: '#0a3a32', textColor: '#FFFFFF' },
     ],
   },
 };
-
-// Create a frame for a component
-async function createComponentFrame(spec: any, page: PageNode) {
-  // Load fonts first
-  await figma.loadFontAsync({ family: 'Inter', style: 'Regular' });
-  await figma.loadFontAsync({ family: 'Inter', style: 'Medium' });
-  await figma.loadFontAsync({ family: 'Inter', style: 'Semi Bold' });
-  await figma.loadFontAsync({ family: 'Inter', style: 'Bold' });
-
-  const frame = figma.createFrame();
-  frame.name = spec.name;
-  frame.resize(spec.width, spec.height);
-  frame.fills = [{ type: 'SOLID', color: hexToRgb(spec.backgroundColor) }];
-  frame.x = 0;
-  frame.y = 0;
-
-  // Create elements - use for...of instead of forEach for async
-  for (const element of spec.elements) {
-    if (element.type === 'text') {
-      const fontWeight = element.fontWeight || 400;
-      let fontStyle = 'Regular';
-      if (fontWeight >= 700) fontStyle = 'Bold';
-      else if (fontWeight >= 600) fontStyle = 'Semi Bold';
-      else if (fontWeight >= 500) fontStyle = 'Medium';
-      
-      const text = figma.createText();
-      text.characters = element.content;
-      text.fontSize = element.fontSize;
-      text.fontName = { family: 'Inter', style: fontStyle };
-      text.fills = [{ type: 'SOLID', color: hexToRgb(element.color || '#000000') }];
-      text.x = element.x;
-      text.y = element.y;
-      frame.appendChild(text);
-    } else if (element.type === 'input') {
-      const inputFrame = figma.createFrame();
-      inputFrame.name = element.label;
-      inputFrame.resize(element.width, element.height);
-      inputFrame.fills = [{ type: 'SOLID', color: hexToRgb('#FFFFFF') }];
-      inputFrame.strokes = [{ type: 'SOLID', color: hexToRgb('#E0E0E0') }];
-      inputFrame.strokeWeight = 1;
-      inputFrame.cornerRadius = 8;
-      inputFrame.x = element.x;
-      inputFrame.y = element.y;
-      
-      // Add label
-      const label = figma.createText();
-      label.characters = element.label;
-      label.fontSize = 14;
-      label.fontName = { family: 'Inter', style: 'Regular' };
-      label.fills = [{ type: 'SOLID', color: hexToRgb('#666666') }];
-      label.x = 12;
-      label.y = 12;
-      inputFrame.appendChild(label);
-      
-      frame.appendChild(inputFrame);
-    } else if (element.type === 'button') {
-      const button = figma.createFrame();
-      button.name = element.content;
-      button.resize(element.width, element.height);
-      button.fills = [{ 
-        type: 'SOLID', 
-        color: hexToRgb(element.primary ? '#2481CC' : '#FFFFFF') 
-      }];
-      if (!element.primary) {
-        button.strokes = [{ type: 'SOLID', color: hexToRgb('#2481CC') }];
-        button.strokeWeight = 1;
-      }
-      button.cornerRadius = 8;
-      button.x = element.x;
-      button.y = element.y;
-      
-      const buttonText = figma.createText();
-      buttonText.characters = element.content;
-      buttonText.fontSize = 16;
-      buttonText.fontName = { family: 'Inter', style: 'Semi Bold' };
-      buttonText.fills = [{ 
-        type: 'SOLID', 
-        color: hexToRgb(element.primary ? '#FFFFFF' : '#2481CC') 
-      }];
-      buttonText.x = element.width / 2 - 50; // Approximate centering
-      buttonText.y = element.height / 2 - 10;
-      button.appendChild(buttonText);
-      
-      frame.appendChild(button);
-    } else if (element.type === 'link') {
-      const link = figma.createText();
-      link.characters = element.content;
-      link.fontSize = 14;
-      link.fontName = { family: 'Inter', style: 'Regular' };
-      link.fills = [{ type: 'SOLID', color: hexToRgb(element.color || '#2481CC') }];
-      link.x = element.x;
-      link.y = element.y;
-      frame.appendChild(link);
-    } else if (element.type === 'progress') {
-      const progressFrame = figma.createFrame();
-      progressFrame.name = 'Progress';
-      progressFrame.resize(element.width, 8);
-      progressFrame.fills = [{ type: 'SOLID', color: hexToRgb('#E0E0E0') }];
-      progressFrame.cornerRadius = 4;
-      progressFrame.x = element.x;
-      progressFrame.y = element.y;
-      
-      // Active step indicator
-      const activeWidth = (element.width / element.steps) * element.current;
-      const activeBar = figma.createFrame();
-      activeBar.resize(activeWidth, 8);
-      activeBar.fills = [{ type: 'SOLID', color: hexToRgb('#2481CC') }];
-      activeBar.cornerRadius = 4;
-      progressFrame.appendChild(activeBar);
-      
-      frame.appendChild(progressFrame);
-    }
-  }
-
-  page.appendChild(frame);
-  return frame;
-}
 
 // Helper function to convert hex to RGB
 function hexToRgb(hex: string): RGB {
@@ -234,16 +144,171 @@ function hexToRgb(hex: string): RGB {
     : { r: 0, g: 0, b: 0 };
 }
 
+// Create a frame for a component
+async function createComponentFrame(spec: any, page: PageNode) {
+  // Load fonts first
+  await figma.loadFontAsync({ family: 'Inter', style: 'Regular' });
+  await figma.loadFontAsync({ family: 'Inter', style: 'Medium' });
+  await figma.loadFontAsync({ family: 'Inter', style: 'Semi Bold' });
+  await figma.loadFontAsync({ family: 'Inter', style: 'Bold' });
+  await figma.loadFontAsync({ family: 'Albert Sans', style: 'Black' }); // For buttons
+
+  const frame = figma.createFrame();
+  frame.name = spec.name;
+  frame.resize(spec.width, spec.height);
+  frame.fills = [{ type: 'SOLID', color: hexToRgb(spec.backgroundColor) }];
+  frame.x = 0;
+  frame.y = 0;
+
+  // Create elements
+  for (const element of spec.elements) {
+    if (element.type === 'text') {
+      const fontWeight = element.fontWeight || 400;
+      let fontFamily = 'Inter';
+      let fontStyle = 'Regular';
+      if (fontWeight >= 700) fontStyle = 'Bold';
+      else if (fontWeight >= 600) fontStyle = 'Semi Bold';
+      else if (fontWeight >= 500) fontStyle = 'Medium';
+      
+      try {
+        await figma.loadFontAsync({ family: fontFamily, style: fontStyle });
+        const text = figma.createText();
+        text.characters = element.content;
+        text.fontSize = element.fontSize;
+        text.fontName = { family: fontFamily, style: fontStyle };
+        text.fills = [{ type: 'SOLID', color: hexToRgb(element.color || '#000000') }];
+        text.x = element.x;
+        text.y = element.y;
+        frame.appendChild(text);
+      } catch (e) {
+        // Fallback if font not available
+        console.warn(`Font ${fontFamily} ${fontStyle} not available, using Inter`);
+      }
+    } else if (element.type === 'input') {
+      const inputFrame = figma.createFrame();
+      inputFrame.name = element.label || 'Input';
+      inputFrame.resize(element.width, element.height);
+      inputFrame.fills = [{ type: 'SOLID', color: hexToRgb('#FFFFFF') }];
+      inputFrame.strokes = [{ type: 'SOLID', color: hexToRgb('#d9d9d9') }];
+      inputFrame.strokeWeight = 2;
+      inputFrame.cornerRadius = 8;
+      inputFrame.x = element.x;
+      inputFrame.y = element.y;
+      
+      // Add placeholder text
+      if (element.placeholder) {
+        try {
+          await figma.loadFontAsync({ family: 'Inter', style: 'Regular' });
+          const placeholder = figma.createText();
+          placeholder.characters = element.placeholder;
+          placeholder.fontSize = 16;
+          placeholder.fontName = { family: 'Inter', style: 'Regular' };
+          placeholder.fills = [{ type: 'SOLID', color: hexToRgb('#999999') }];
+          placeholder.x = 16;
+          placeholder.y = (element.height - 16) / 2;
+          inputFrame.appendChild(placeholder);
+        } catch (e) {
+          console.warn('Could not create placeholder text');
+        }
+      }
+      
+      frame.appendChild(inputFrame);
+    } else if (element.type === 'button') {
+      const button = figma.createFrame();
+      button.name = element.content;
+      button.resize(element.width, element.height);
+      const bgColor = element.bg || (element.primary ? '#2481CC' : '#FFFFFF');
+      const textColor = element.textColor || (element.primary ? '#FFFFFF' : '#2481CC');
+      
+      button.fills = [{ type: 'SOLID', color: hexToRgb(bgColor) }];
+      if (!element.primary) {
+        button.strokes = [{ type: 'SOLID', color: hexToRgb('#2481CC') }];
+        button.strokeWeight = 1;
+      }
+      button.cornerRadius = 8;
+      button.x = element.x;
+      button.y = element.y;
+      
+      // Button text - try Albert Sans Black first (as in sign-in.tsx), fallback to Inter
+      try {
+        await figma.loadFontAsync({ family: 'Albert Sans', style: 'Black' });
+        const buttonText = figma.createText();
+        buttonText.characters = element.content;
+        buttonText.fontSize = 20;
+        buttonText.fontName = { family: 'Albert Sans', style: 'Black' };
+        buttonText.fills = [{ type: 'SOLID', color: hexToRgb(textColor) }];
+        buttonText.x = (element.width - buttonText.width) / 2;
+        buttonText.y = (element.height - buttonText.height) / 2;
+        button.appendChild(buttonText);
+      } catch (e) {
+        // Fallback to Inter Bold
+        await figma.loadFontAsync({ family: 'Inter', style: 'Bold' });
+        const buttonText = figma.createText();
+        buttonText.characters = element.content;
+        buttonText.fontSize = 16;
+        buttonText.fontName = { family: 'Inter', style: 'Bold' };
+        buttonText.fills = [{ type: 'SOLID', color: hexToRgb(textColor) }];
+        buttonText.x = (element.width - buttonText.width) / 2;
+        buttonText.y = (element.height - buttonText.height) / 2;
+        button.appendChild(buttonText);
+      }
+      
+      frame.appendChild(button);
+    } else if (element.type === 'link') {
+      try {
+        await figma.loadFontAsync({ family: 'Inter', style: 'Regular' });
+        const link = figma.createText();
+        link.characters = element.content;
+        link.fontSize = 16;
+        link.fontName = { family: 'Inter', style: 'Regular' };
+        link.fills = [{ type: 'SOLID', color: hexToRgb(element.color || '#2481CC') }];
+        link.x = element.x;
+        link.y = element.y;
+        frame.appendChild(link);
+      } catch (e) {
+        console.warn('Could not create link text');
+      }
+    } else if (element.type === 'progress') {
+      const progressFrame = figma.createFrame();
+      progressFrame.name = 'Progress';
+      progressFrame.resize(element.width, element.height || 8);
+      progressFrame.fills = [{ type: 'SOLID', color: hexToRgb('#E0E0E0') }];
+      progressFrame.cornerRadius = 4;
+      progressFrame.x = element.x;
+      progressFrame.y = element.y;
+      
+      // Active step indicator
+      const activeWidth = (element.width / element.steps) * element.current;
+      const activeBar = figma.createFrame();
+      activeBar.resize(activeWidth, element.height || 8);
+      activeBar.fills = [{ type: 'SOLID', color: hexToRgb('#0a3a32') }];
+      activeBar.cornerRadius = 4;
+      progressFrame.appendChild(activeBar);
+      
+      frame.appendChild(progressFrame);
+    } else if (element.type === 'frame') {
+      const subFrame = figma.createFrame();
+      subFrame.name = element.name || 'Frame';
+      subFrame.resize(element.width, element.height);
+      subFrame.fills = [{ type: 'SOLID', color: hexToRgb(element.bg || '#FFFFFF') }];
+      if (element.border) {
+        subFrame.strokes = [{ type: 'SOLID', color: hexToRgb('#E0E0E0') }];
+        subFrame.strokeWeight = 1;
+      }
+      subFrame.x = element.x;
+      subFrame.y = element.y;
+      frame.appendChild(subFrame);
+    }
+  }
+
+  page.appendChild(frame);
+  return frame;
+}
+
 // Main function to create all replicas
 async function createFigmaReplicas() {
   try {
     figma.notify('🎨 Creating Figma replicas...', { timeout: 2000 });
-
-    // Load fonts
-    await figma.loadFontAsync({ family: 'Inter', style: 'Regular' });
-    await figma.loadFontAsync({ family: 'Inter', style: 'Medium' });
-    await figma.loadFontAsync({ family: 'Inter', style: 'Semi Bold' });
-    await figma.loadFontAsync({ family: 'Inter', style: 'Bold' });
 
     // Create or find the page
     let page = figma.currentPage;
@@ -260,11 +325,8 @@ async function createFigmaReplicas() {
       figma.currentPage = page;
     }
 
-    // Clear existing frames (optional - comment out if you want to keep existing)
-    // page.children.forEach(child => child.remove());
-
-    let currentX = 0;
     const spacing = 50;
+    let currentX = 50;
 
     // Create all component replicas
     const components = [
@@ -282,18 +344,6 @@ async function createFigmaReplicas() {
       frame.x = currentX;
       currentX += spec.width + spacing;
     }
-
-    // Center frames on page
-    const totalWidth = components.reduce((sum, spec) => sum + spec.width + spacing, -spacing);
-    const startX = (1920 - totalWidth) / 2;
-    let x = startX;
-    
-    page.children.forEach((child) => {
-      if (child.type === 'FRAME') {
-        child.x = x;
-        x += child.width + spacing;
-      }
-    });
 
     figma.notify('✅ Figma replicas created successfully!', { timeout: 3000 });
   } catch (error) {
@@ -366,18 +416,18 @@ figma.showUI(`
     <p class="subtitle">Generate Figma designs from React components</p>
     <div class="status">
       <strong>What this does:</strong><br>
-      Creates Figma frames replicating your React components.
+      Creates Figma frames replicating your figma-replica React components.
     </div>
     <div class="section">
       <div class="section-title">Components to Create</div>
       <ul class="feature-list">
-        <li>Sign In</li>
+        <li>Sign In (440×956)</li>
         <li>Register</li>
         <li>Forgot Password</li>
-        <li>Setup Overview</li>
-        <li>Add Product</li>
-        <li>Shipping & Pricing</li>
-        <li>Review Summary</li>
+        <li>Setup Overview (Step 1/4)</li>
+        <li>Add Product (Step 2/4)</li>
+        <li>Shipping & Pricing (Step 3/4)</li>
+        <li>Review Summary (Step 4/4)</li>
       </ul>
     </div>
     <button class="button button-primary" id="create-btn">🎨 Create Figma Replicas</button>

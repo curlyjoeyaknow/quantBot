@@ -142,4 +142,6 @@ export { Logger, createLogger, rootLogger as logger, LogContext };
 export * from '../logger';
 export * from '../logging-config';
 export * from '../logging-middleware';
+export * from './aggregator';
+export * from './monitor';
 

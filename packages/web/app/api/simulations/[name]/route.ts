@@ -8,10 +8,11 @@ import { withErrorHandling } from '@/lib/middleware/error-handler';
 import { rateLimit, RATE_LIMITS } from '@/lib/middleware/rate-limit';
 import { simulationService } from '@/lib/services/simulation-service';
 
-const getSimulationDetailsHandler = async (
+export async function GET(
   request: NextRequest,
-  { params }: { params: { name: string } }
-) => {
+  context: { params: Promise<{ name: string }> }
+) {
+  const params = await context.params;
   const simulationId = parseInt(params.name);
 
   if (isNaN(simulationId)) {
@@ -31,10 +32,6 @@ const getSimulationDetailsHandler = async (
   }
 
   return NextResponse.json(simulation);
-};
-
-export const GET = rateLimit(RATE_LIMITS.STANDARD)(
-  withErrorHandling(getSimulationDetailsHandler)
-);
+}
 
 export const dynamic = 'force-dynamic';

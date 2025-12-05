@@ -12,6 +12,7 @@ export const CONSTANTS = {
     CURRENT_PRICE: 300, // 5 minutes
     MARKET_CAP: 3600, // 1 hour
     DASHBOARD: 900, // 15 minutes
+    CALLER_STATS: 1800, // 30 minutes
   },
   
   // API limits
