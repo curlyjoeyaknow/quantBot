@@ -7,8 +7,7 @@
 
 import { createClient, type ClickHouseClient } from '@clickhouse/client';
 import { DateTime } from 'luxon';
-import { logger } from '@quantbot/utils';
-import type { Candle } from '@quantbot/utils';
+import { logger, type Candle } from '@quantbot/utils';
 
 // ClickHouse connection configuration
 const CLICKHOUSE_HOST = process.env.CLICKHOUSE_HOST || 'localhost';

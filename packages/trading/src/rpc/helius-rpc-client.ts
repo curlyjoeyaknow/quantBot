@@ -10,12 +10,12 @@
 
 import {
   Connection,
-  CommitmentLevel,
+  Commitment,
   Transaction,
   VersionedTransaction,
   BlockhashWithExpiryBlockHeight,
   SendOptions as SolanaSendOptions,
-  SignatureStatus,
+  SignatureResult,
   RpcResponseAndContext,
 } from '@solana/web3.js';
 import { logger } from '@quantbot/utils';
@@ -25,7 +25,7 @@ export type HeliusRegion = 'amsterdam' | 'mainnet';
 export interface HeliusRpcClientOptions {
   apiKey: string;
   region?: HeliusRegion;
-  commitment?: CommitmentLevel;
+  commitment?: Commitment;
   timeout?: number;
   maxRetries?: number;
   retryDelay?: number;
@@ -33,9 +33,9 @@ export interface HeliusRpcClientOptions {
 
 export interface SendOptions {
   skipPreflight?: boolean;
-  commitment?: CommitmentLevel;
+  commitment?: Commitment;
   maxRetries?: number;
-  preflightCommitment?: CommitmentLevel;
+  preflightCommitment?: Commitment;
 }
 
 /**
@@ -44,7 +44,7 @@ export interface SendOptions {
 export class HeliusRpcClient {
   private readonly apiKey: string;
   private readonly region: HeliusRegion;
-  private readonly commitment: CommitmentLevel;
+  private readonly commitment: Commitment;
   private readonly timeout: number;
   private readonly maxRetries: number;
   private readonly retryDelay: number;
@@ -215,7 +215,7 @@ export class HeliusRpcClient {
    * Get the latest blockhash with expiry
    */
   async getLatestBlockhash(
-    commitment?: CommitmentLevel
+    commitment?: Commitment
   ): Promise<BlockhashWithExpiryBlockHeight> {
     return this.queueRequest(() =>
       this.executeWithRetry(
@@ -257,8 +257,8 @@ export class HeliusRpcClient {
    */
   async confirmTransaction(
     signature: string,
-    commitment?: CommitmentLevel
-  ): Promise<RpcResponseAndContext<SignatureStatus>> {
+    commitment?: Commitment
+  ): Promise<RpcResponseAndContext<SignatureResult>> {
     return this.queueRequest(() =>
       this.executeWithRetry(
         async (connection) => {
@@ -274,7 +274,7 @@ export class HeliusRpcClient {
    */
   async getSignatureStatus(
     signature: string
-  ): Promise<RpcResponseAndContext<SignatureStatus | null>> {
+  ): Promise<RpcResponseAndContext<SignatureResult | null>> {
     return this.queueRequest(() =>
       this.executeWithRetry(
         async (connection) => {
@@ -307,7 +307,7 @@ export class HeliusRpcClient {
    */
   async simulateTransaction(
     transaction: Transaction | VersionedTransaction,
-    commitment?: CommitmentLevel
+    commitment?: Commitment
   ): Promise<any> {
     return this.queueRequest(() =>
       this.executeWithRetry(

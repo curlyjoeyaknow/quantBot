@@ -337,7 +337,7 @@ export class TransactionBuilder {
         throw new Error(`Jupiter swap failed: ${swapResponse.statusText}`);
       }
 
-      const swapData = await swapResponse.json();
+      const swapData: any = await swapResponse.json();
       
       // Deserialize the transaction
       const swapTransactionBuf = Buffer.from(swapData.swapTransaction, 'base64');

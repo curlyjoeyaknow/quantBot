@@ -754,7 +754,7 @@ export async function fetchHybridCandles(
         // Filter to requested range if we extended backwards
         if (actualStartTime < startTime) {
           const startUnix = Math.floor(startTime.toSeconds());
-          const filtered = clickhouseCandles.filter(c => c.timestamp >= startUnix);
+          const filtered = clickhouseCandles.filter((c: any) => c.timestamp >= startUnix);
           logger.debug(
             `Filtered ClickHouse candles to requested range: ${filtered.length} candles (had ${clickhouseCandles.length} with lookback)`
           );

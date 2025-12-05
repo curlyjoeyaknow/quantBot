@@ -5,13 +5,16 @@
  */
 
 // RPC Client
-export * from './rpc/helius-rpc-client';
+export { HeliusRpcClient } from './rpc/helius-rpc-client';
+export type { HeliusRpcClientOptions } from './rpc/helius-rpc-client';
 
 // Transaction Building
-export * from './builders/transaction-builder';
+export { TransactionBuilder } from './builders/transaction-builder';
+export type { BuildPumpFunBuyParams, BuildPumpFunSellParams } from './builders/transaction-builder';
 
 // Transaction Sending
-export * from './sender/transaction-sender';
+export { TransactionSender } from './sender/transaction-sender';
+export type { TransactionSenderOptions } from './sender/transaction-sender';
 
 // Strategy Execution
 export * from './execution/strategy-executor';

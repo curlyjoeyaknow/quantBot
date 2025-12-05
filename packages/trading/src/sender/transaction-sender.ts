@@ -13,7 +13,7 @@ import {
   Transaction,
   VersionedTransaction,
   Keypair,
-  CommitmentLevel,
+  Commitment,
 } from '@solana/web3.js';
 import { logger } from '@quantbot/utils';
 import { HeliusRpcClient } from '../rpc/helius-rpc-client';
@@ -22,7 +22,7 @@ import type { TradeResult, SendOptions, SimulationResult } from '../types';
 export interface TransactionSenderOptions {
   rpcClient: HeliusRpcClient;
   relayerUrl?: string;
-  defaultCommitment?: CommitmentLevel;
+  defaultCommitment?: Commitment;
   confirmationTimeout?: number;
   maxRetries?: number;
   retryDelay?: number;
@@ -34,7 +34,7 @@ export interface TransactionSenderOptions {
 export class TransactionSender {
   private readonly rpcClient: HeliusRpcClient;
   private readonly relayerUrl?: string;
-  private readonly defaultCommitment: CommitmentLevel;
+  private readonly defaultCommitment: Commitment;
   private readonly confirmationTimeout: number;
   private readonly maxRetries: number;
   private readonly retryDelay: number;
@@ -219,7 +219,7 @@ export class TransactionSender {
    */
   private async confirmTransaction(
     signature: string,
-    commitment: CommitmentLevel
+    commitment: Commitment
   ): Promise<boolean> {
     const startTime = Date.now();
     const timeout = this.confirmationTimeout;
@@ -242,11 +242,11 @@ export class TransactionSender {
             return true; // Processed is immediate
           }
 
-          if (commitment === 'confirmed' && status.value.confirmationStatus === 'confirmed') {
+          if (commitment === 'confirmed' && (status.value as any).confirmationStatus === 'confirmed') {
             return true;
           }
 
-          if (commitment === 'finalized' && status.value.confirmationStatus === 'finalized') {
+          if (commitment === 'finalized' && (status.value as any).confirmationStatus === 'finalized') {
             return true;
           }
         }

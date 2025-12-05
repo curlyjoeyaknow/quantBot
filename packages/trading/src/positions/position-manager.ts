@@ -190,7 +190,7 @@ export class PositionManager {
         [userId]
       );
 
-      return result.rows.map((row) => this.mapRowToPosition(row));
+      return result.rows.map((row: any) => this.mapRowToPosition(row));
     } catch (error) {
       logger.error('Failed to get open positions', error as Error, { userId });
       throw error;
@@ -207,7 +207,7 @@ export class PositionManager {
         [userId, limit]
       );
 
-      return result.rows.map((row) => this.mapRowToPosition(row));
+      return result.rows.map((row: any) => this.mapRowToPosition(row));
     } catch (error) {
       logger.error('Failed to get all positions', error as Error, { userId });
       throw error;

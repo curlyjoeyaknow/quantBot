@@ -140,7 +140,7 @@ ${trade.transactionSignature ? `[View on Solscan](https://solscan.io/tx/${trade.
   /**
    * Map database row to Trade
    */
-  private mapRowToTrade(row: any): Trade {
+  private mapRowToTrade(row: Record<string, any>): Trade {
     return {
       id: parseInt(row.id),
       userId: parseInt(row.user_id),

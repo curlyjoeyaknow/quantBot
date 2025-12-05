@@ -86,7 +86,7 @@ export class StrategyExecutor {
     }
 
     // Add stop-loss order if configured
-    if (stopLossConfig && stopLossConfig.initial !== 'none') {
+    if (stopLossConfig && typeof stopLossConfig.initial === 'number') {
       const stopLossPrice = entryPrice * (1 + stopLossConfig.initial);
       const stopLossOrder: TradeOrder = {
         type: 'sell',

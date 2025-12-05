@@ -8,10 +8,10 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "moduleResolution": "node",
-    "resolveJsonModule": true,
+    "resolveJsonModule": false,
     "typeRoots": ["./node_modules/@types", "./node_modules/@figma"]
   },
   "include": ["code.ts"],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules", "manifest.json", "*.json"]
 }
 

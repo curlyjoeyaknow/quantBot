@@ -6,6 +6,7 @@
 
 import * as crypto from 'crypto';
 import { Keypair, PublicKey } from '@solana/web3.js';
+import bs58 from 'bs58';
 import { queryPostgres } from '@quantbot/storage';
 import { logger } from '@quantbot/utils';
 import type { Wallet } from '../types';
