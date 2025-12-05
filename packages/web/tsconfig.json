@@ -42,6 +42,9 @@
     ".next/dev/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "figma-plugin",
+    "scripts/figma-code-viewer-plugin",
+    "scripts/figma-convert-frames-plugin.ts"
   ]
 }
