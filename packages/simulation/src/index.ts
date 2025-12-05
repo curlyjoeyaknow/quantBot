@@ -4,12 +4,9 @@
  * Public API exports for the simulation package
  */
 
-// Core engine
-export { SimulationEngine } from './engine';
-export type { EntryConfig, ReEntryConfig, StopLossConfig } from './engine';
-
-// Configuration
-export type { SimulationConfig, ComparisonOperator, IndicatorName, LadderConfig, SignalCondition, SignalGroup } from './config';
+// Core engine and types
+export { SimulationEngine, simulateStrategy } from './engine';
+export type { Strategy, SimulationEvent, SimulationResult } from './engine';
 
 // Candles and data
 export * from './candles';
@@ -25,11 +22,15 @@ export * from './sinks';
 // Target resolver
 export * from './target-resolver';
 
-// Strategies
-export * from './strategies';
+// Strategies (only export builder and presets, types come from config)
+export * from './strategies/builder';
+export * from './strategies/presets';
 
 // Optimization
 export * from './optimization';
+
+// Configuration types
+export * from './config';
 
 // Package logger
 export { logger } from './logger';

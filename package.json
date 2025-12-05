@@ -1,6 +1,6 @@
 {
   "name": "quantbot",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Advanced Telegram bot for trading simulation, CA monitoring, and PNL analysis using Birdeye API and Helius WebSockets",
   "main": "packages/bot/src/main.ts",
   "workspaces": [
