@@ -31,7 +31,8 @@ import * as dotenv from 'dotenv';
 import { ServiceContainer } from './container/ServiceContainer';
 import { CommandRegistry } from './commands/CommandRegistry';
 import { SessionService, SimulationService, StrategyService, IchimokuWorkflowService, CADetectionService, TextWorkflowHandler } from '@quantbot/services';
-import { initDatabase, logger, RepeatSimulationHelper } from '@quantbot/utils';
+import { initDatabase, logger } from '@quantbot/utils';
+import { RepeatSimulationHelper } from './utils/RepeatSimulationHelper';
 import { SessionCleanupManager } from './utils/session-cleanup';
 
 // Import all command handlers

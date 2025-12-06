@@ -11,7 +11,7 @@ import { StrategyService } from '@quantbot/services/StrategyService';
 import { SimulationService } from '@quantbot/services/SimulationService';
 import { IchimokuWorkflowService } from '@quantbot/services/IchimokuWorkflowService';
 import { CADetectionService } from '@quantbot/services/CADetectionService';
-import { RepeatSimulationHelper } from '@quantbot/utils';
+import { RepeatSimulationHelper } from '../utils/RepeatSimulationHelper';
 import { CommandRegistry } from '../commands/CommandRegistry';
 import { logger } from '@quantbot/utils';
 
