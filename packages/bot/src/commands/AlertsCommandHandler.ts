@@ -89,7 +89,7 @@ export class AlertsCommandHandler extends BaseCommandHandler {
         // Show only first 10 recent calls
         const recentCallsToShow = recentCalls.slice(0, 10);
         
-        for (const call of recentCallsToShow) {
+        for (const call of recentCallsToShow as any[]) {
           const chainEmoji = call.chain === 'solana' ? '🟣' : 
                             call.chain === 'ethereum' ? '🔵' : 
                             call.chain === 'bsc' ? '🟡' : '⚪';
