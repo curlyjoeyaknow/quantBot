@@ -34,19 +34,20 @@ export class HistoryCommandHandler extends BaseCommandHandler {
       let historyMessage = `📊 **Recent CA Calls (${caDrops.length} shown)**\n\n`;
 
       // Show calls in chronological order (newest first)
-      for (const call of caDrops) {
-        const date = call.call_timestamp ? new Date(call.call_timestamp * 1000).toISOString().split('T')[0] : 'Unknown';
-        const time = call.call_timestamp ? new Date(call.call_timestamp * 1000).toTimeString().substring(0, 5) : 'Unknown';
+      for (const call of caDrops as any[]) {
+        const ts = call.call_timestamp ?? call.alert_timestamp;
+        const date = ts ? new Date(ts * 1000).toISOString().split('T')[0] : 'Unknown';
+        const time = ts ? new Date(ts * 1000).toTimeString().substring(0, 5) : 'Unknown';
         const chainEmoji = call.chain === 'solana' ? '🟣' : call.chain === 'ethereum' ? '🔵' : call.chain === 'bsc' ? '🟡' : '⚪';
         
         historyMessage += `${chainEmoji} ${date} ${time} | ${call.token_name || 'Unknown'} (${call.token_symbol || 'N/A'})\n`;
-        historyMessage += `   Caller: ${call.caller || 'Unknown'} | Price: $${call.call_price?.toFixed(8) || 'N/A'}\n`;
+        historyMessage += `   Caller: ${call.caller || call.caller_name || 'Unknown'} | Price: $${call.call_price?.toFixed?.(8) || 'N/A'}\n`;
         historyMessage += `   Mint: \`${call.mint.replace(/`/g, '\\`')}\`\n\n`;
       }
 
       // Add summary and pagination info
       const chains = [...new Set(caDrops.map((c: any) => c.chain))];
-      const callers = [...new Set(caDrops.map((c: any) => c.caller).filter(Boolean))];
+      const callers = [...new Set((caDrops as any[]).map((c) => c.caller || c.caller_name).filter(Boolean))];
       
       historyMessage += `📈 **Summary:**\n`;
       historyMessage += `• Chains: ${chains.join(', ')}\n`;
