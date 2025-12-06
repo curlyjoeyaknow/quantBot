@@ -12,6 +12,7 @@ import { SimulationService } from '@quantbot/services/SimulationService';
 import { IchimokuWorkflowService } from '@quantbot/services/IchimokuWorkflowService';
 import { CADetectionService } from '@quantbot/services/CADetectionService';
 import { RepeatSimulationHelper } from '../utils/RepeatSimulationHelper';
+import { SessionCleanupManager } from '../utils/session-cleanup';
 import { CommandRegistry } from '../commands/CommandRegistry';
 import { logger } from '@quantbot/utils';
 

@@ -39,12 +39,20 @@ interface TokenMetadata {
 
 async function fetchBirdeyeMetadata(tokenAddress: string, chain: string): Promise<TokenMetadata | null> {
   try {
+    // Map chain to Birdeye format
+    const birdeyeChain = chain === 'solana' ? 'solana' : 
+                        chain === 'bsc' ? 'bsc' :
+                        chain === 'ethereum' ? 'eth' :
+                        chain === 'base' ? 'base' :
+                        chain === 'arbitrum' ? 'arbitrum' :
+                        'solana'; // default
+    
     // Try token metadata endpoint first
     const metaUrl = `${BIRDEYE_BASE_URL}/defi/v3/token/meta-data/single?address=${tokenAddress}`;
     const metaResponse = await fetch(metaUrl, {
       headers: {
         'X-API-KEY': BIRDEYE_API_KEY!,
-        'x-chain': chain === 'solana' ? 'solana' : chain,
+        'x-chain': birdeyeChain,
       },
     });
 
@@ -72,7 +80,7 @@ async function fetchBirdeyeMetadata(tokenAddress: string, chain: string): Promis
     const overviewResponse = await fetch(overviewUrl, {
       headers: {
         'X-API-KEY': BIRDEYE_API_KEY!,
-        'x-chain': chain === 'solana' ? 'solana' : chain,
+        'x-chain': birdeyeChain,
       },
     });
 
