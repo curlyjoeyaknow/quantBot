@@ -84,7 +84,8 @@ export class CommandRegistry {
     this.register(new AlertCommandHandler());
     this.register(new AlertsCommandHandler(this.sessionService));
     this.register(new MonitorCommandHandler());
-    this.register(new LiveTradeCommandHandler());
+    // Live trade handler requires trading config service; temporarily disabled until service wiring is added
+    // this.register(new LiveTradeCommandHandler());
     this.register(new AddCurlyJoeCommandHandler());
     this.register(new WatchlistCommandHandler());
     
