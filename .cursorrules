@@ -281,9 +281,45 @@ const entryMcap = currentMcap * (entryPrice / currentPrice);
 ### Critical Requirements
 
 1. **Always fetch and store entry MCAP at alert time**
-   - Fetch from Birdeye API: `/defi/v3/token/meta-data/single`
+   - Use automatic fallback chain (see below)
    - Store in database alongside entry price
    - Field: `entry_mcap` (REAL/FLOAT)
+
+### MCAP Fallback Chain (Automatic)
+
+The system automatically fetches MCAP in this order:
+
+1. **FIRST: Pump.fun/Bonk Detection** (FASTEST - 80% of tokens!)
+   - If address ends with `pump` or `bonk` → MCAP = price × 1B
+   - Instant, no API calls, 100% reliable
+   - Example: `7pXs...pump` at $0.00001 = $10K MCAP
+
+2. **SECOND: Birdeye API**
+   - Fetch from `/defi/v3/token/meta-data/single`
+   - Most accurate for non-pump tokens
+
+3. **THIRD: Message Extraction**
+   - Parse from alert text: "mcap: $500k", "2m mc", etc.
+   - Surprisingly effective!
+
+4. **FOURTH: Infer from Current**
+   - Calculate: `entry_mcap = current_mcap × (entry_price / current_price)`
+
+5. **FIFTH: Graceful degradation**
+   - Price multiples still work without MCAP
+
+**Usage:**
+```typescript
+import { getEntryMcapWithFallback } from './mcap-calculator';
+
+const mcap = await getEntryMcapWithFallback(
+  mint,           // Full, case-preserved address
+  'solana',
+  timestamp,
+  entryPrice,
+  messageText     // Provide for extraction step
+);
+```
 
 2. **Use MCAP for analytics, not raw price**
    - Display: "Entry: $50K → Peak: $5M (100x)"

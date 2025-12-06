@@ -12,7 +12,7 @@
 
 ```bash
 # 1. Create testnet environment file
-cp .env.example .env.testnet
+cp env.example .env.testnet
 
 # 2. Configure testnet variables
 vim .env.testnet
