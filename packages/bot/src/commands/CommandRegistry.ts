@@ -26,7 +26,7 @@ import { BeginCommandHandler } from './BeginCommandHandler';
 import { OptionsCommandHandler } from './OptionsCommandHandler';
 import { LiveTradeCommandHandler } from './LiveTradeCommandHandler';
 // import { AddCurlyJoeCommandHandler } from './AddCurlyJoeCommandHandler';
-import { WatchlistCommandHandler } from './WatchlistCommandHandler';
+// import { WatchlistCommandHandler } from './WatchlistCommandHandler';
 import { SessionService } from '@quantbot/services/SessionService';
 import { StrategyService } from '@quantbot/services/StrategyService';
 import { SimulationService } from '@quantbot/services/SimulationService';
@@ -89,7 +89,8 @@ export class CommandRegistry {
     // this.register(new LiveTradeCommandHandler());
     // CurlyJoe handler depends on monitoring/ingestion wiring; disabled for now
     // this.register(new AddCurlyJoeCommandHandler());
-    this.register(new WatchlistCommandHandler());
+    // Watchlist handler depends on monitored-tokens DB wiring; disabled for now
+    // this.register(new WatchlistCommandHandler());
     
     // Register handlers with the bot
     this.handlers.forEach((handler, commandName) => {
