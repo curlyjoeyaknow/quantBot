@@ -4,6 +4,7 @@
  */
 
 import { getClickHouseClient } from '../clickhouse';
+import { getEntryMcapWithFallback, isPumpOrBonkToken, calculatePumpBonkMcap } from './mcap-calculator';
 
 export interface PerformanceMetrics {
   multiple: number;  // MCAP multiple (peakMcap / entryMcap)
@@ -18,15 +19,36 @@ export class PerformanceCalculator {
   /**
    * Calculate performance metrics for a single alert using ClickHouse OHLCV data
    * Uses MCAP-based calculations for more meaningful cross-token comparisons
+   * 
+   * MCAP Fallback Chain:
+   * 1. Use provided entryMcap if available
+   * 2. Check if pump.fun/bonk token → Calculate from price
+   * 3. Fetch from Birdeye API
+   * 4. Extract from messageText if provided
+   * 5. Continue without MCAP (price multiples still valid)
    */
   async calculateAlertPerformance(
     tokenAddress: string,
     chain: string,
     alertTimestamp: Date,
     entryPrice: number,
-    entryMcap?: number  // Market cap at time of call
+    entryMcap?: number,     // Market cap at time of call (preferred)
+    messageText?: string    // Original alert message (for MCAP extraction)
   ): Promise<PerformanceMetrics | null> {
     try {
+      // If no MCAP provided, try to fetch/calculate it
+      let effectiveEntryMcap = entryMcap;
+      
+      if (!effectiveEntryMcap) {
+        // Use fallback chain to get MCAP
+        effectiveEntryMcap = await getEntryMcapWithFallback(
+          tokenAddress,
+          chain,
+          alertTimestamp,
+          entryPrice,
+          messageText
+        ) || undefined;
+      }
       // Calculate end time (7 days after alert)
       const endTime = new Date(alertTimestamp.getTime() + 7 * 24 * 60 * 60 * 1000);
 
@@ -79,12 +101,12 @@ export class PerformanceCalculator {
       }
 
       // Calculate MCAP-based metrics
-      // If no entryMcap provided, use a default baseline (price multiple is still valid)
-      const effectiveEntryMcap = entryMcap || entryPrice;
+      // If no MCAP available even after fallback, use price as baseline (multiples still work)
+      const finalEntryMcap = effectiveEntryMcap || entryPrice;
       
       // Calculate peak MCAP: peak_mcap = entry_mcap * (peak_price / entry_price)
       const priceMultiple = entryPrice > 0 ? peakPrice / entryPrice : 1.0;
-      const peakMcap = effectiveEntryMcap * priceMultiple;
+      const peakMcap = finalEntryMcap * priceMultiple;
       
       // MCAP multiple = peak_mcap / entry_mcap = price_multiple (mathematically equivalent)
       const multiple = priceMultiple;
@@ -98,7 +120,7 @@ export class PerformanceCalculator {
         multiple,
         peakPrice,
         peakMcap,
-        entryMcap: effectiveEntryMcap,
+        entryMcap: finalEntryMcap,
         timeToATHMinutes,
         peakTimestamp,
       };
@@ -117,7 +139,8 @@ export class PerformanceCalculator {
       chain: string;
       alertTimestamp: Date;
       entryPrice: number;
-      entryMcap?: number;  // Optional market cap at time of call
+      entryMcap?: number;    // Optional market cap at time of call
+      messageText?: string;  // Optional original alert message
     }>
   ): Promise<Map<string, PerformanceMetrics>> {
     const results = new Map<string, PerformanceMetrics>();
@@ -138,7 +161,8 @@ export class PerformanceCalculator {
           alert.chain,
           alert.alertTimestamp,
           alert.entryPrice,
-          alert.entryMcap  // Pass MCAP if available
+          alert.entryMcap,      // Pass MCAP if available
+          alert.messageText     // Pass message for extraction
         );
         
         if (metrics) {

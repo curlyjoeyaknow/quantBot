@@ -158,7 +158,7 @@ async function addCADropsToDatabase(db, caDrops) {
       await new Promise((resolve, reject) => {
         stmt.run([
           drop.sender,
-          drop.tokenAddress.toLowerCase(),
+          drop.tokenAddress, // NEVER lowercase - Solana addresses are case-sensitive!
           drop.tokenSymbol,
           drop.chain,
           drop.timestamp.toISOString(),

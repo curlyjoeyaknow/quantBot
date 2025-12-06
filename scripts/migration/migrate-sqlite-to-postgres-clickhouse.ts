@@ -185,7 +185,7 @@ class DatabaseMigrator {
             VALUES ($1, $2, $3)
             ON CONFLICT (chain, address) DO UPDATE
             SET symbol = COALESCE(tokens.symbol, EXCLUDED.symbol)
-          `, [row.chain || 'solana', row.token_address.toLowerCase(), row.token_symbol]);
+          `, [row.chain || 'solana', row.token_address, row.token_symbol]); // NEVER lowercase!
         }
       }
 
@@ -513,7 +513,7 @@ class DatabaseMigrator {
             // Get token_id
             const tokenResult = await client.query(
               'SELECT id FROM tokens WHERE chain = $1 AND address = $2',
-              [result.chain || 'solana', result.token_address.toLowerCase()]
+              [result.chain || 'solana', result.token_address] // NEVER lowercase!
             );
 
             if (tokenResult.rows.length === 0) {
@@ -801,12 +801,12 @@ class DatabaseMigrator {
               VALUES ($1, $2, $3)
               ON CONFLICT (chain, address) DO UPDATE
               SET symbol = COALESCE(tokens.symbol, EXCLUDED.symbol)
-            `, [call.chain || 'solana', call.token_address.toLowerCase(), call.token_symbol]);
+            `, [call.chain || 'solana', call.token_address, call.token_symbol]); // NEVER lowercase!
 
             // Get IDs
             const tokenResult = await client.query(
               'SELECT id FROM tokens WHERE chain = $1 AND address = $2',
-              [call.chain || 'solana', call.token_address.toLowerCase()]
+              [call.chain || 'solana', call.token_address] // NEVER lowercase!
             );
 
             const callerResult = await client.query(

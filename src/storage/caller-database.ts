@@ -102,7 +102,7 @@ export class CallerDatabase {
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       `, [
         alert.callerName,
-        alert.tokenAddress.toLowerCase(),
+        alert.tokenAddress, // NEVER lowercase - Solana addresses are case-sensitive!
         alert.tokenSymbol,
         alert.chain,
         alert.alertTimestamp.toISOString(),
@@ -137,7 +137,7 @@ export class CallerDatabase {
           await new Promise((resolve, reject) => {
             stmt.run([
               alert.callerName,
-              alert.tokenAddress.toLowerCase(),
+              alert.tokenAddress, // NEVER lowercase - Solana addresses are case-sensitive!
               alert.tokenSymbol,
               alert.chain,
               alert.alertTimestamp.toISOString(),

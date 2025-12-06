@@ -17,8 +17,8 @@ import { config } from 'dotenv';
 config({ override: true });
 
 import { DateTime } from 'luxon';
-import { fetchHybridCandles } from '@quantbot/simulation';
-import { logger } from '@quantbot/utils';
+import { fetchHybridCandles } from '../packages/simulation/src/candles';
+import { logger } from '../packages/utils/src/logger';
 import { postgresManager } from '../packages/web/lib/db/postgres-manager';
 
 interface RecentAlert {

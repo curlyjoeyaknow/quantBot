@@ -155,13 +155,13 @@ describe('trade-metrics', () => {
         createMockResult({
           events: [
             { timestamp: 1000, price: 1.0, action: 'buy' },
-            { timestamp: 2000, price: 1.0, action: 'sell' },
+            { timestamp: 61000, price: 1.0, action: 'sell' }, // 1000 minutes = 60000 seconds
           ],
         }), // 1000 minutes
         createMockResult({
           events: [
             { timestamp: 1000, price: 1.0, action: 'buy' },
-            { timestamp: 4000, price: 1.0, action: 'sell' },
+            { timestamp: 181000, price: 1.0, action: 'sell' }, // 3000 minutes = 180000 seconds
           ],
         }), // 3000 minutes
       ];
@@ -178,16 +178,16 @@ describe('trade-metrics', () => {
           entryPrice: 1.0,
           events: [
             { timestamp: 1000, price: 1.0, action: 'buy' },
-            { timestamp: 1500, price: 2.0, action: 'price_update' }, // ATH at 1500
-            { timestamp: 2000, price: 1.5, action: 'sell' },
+            { timestamp: 31000, price: 2.0, action: 'price_update' }, // ATH at 500 minutes = 30000 seconds
+            { timestamp: 61000, price: 1.5, action: 'sell' },
           ],
         }), // Time to ATH: 500 minutes
         createMockResult({
           entryPrice: 1.0,
           events: [
             { timestamp: 1000, price: 1.0, action: 'buy' },
-            { timestamp: 3000, price: 3.0, action: 'price_update' }, // ATH at 3000
-            { timestamp: 4000, price: 2.0, action: 'sell' },
+            { timestamp: 121000, price: 3.0, action: 'price_update' }, // ATH at 2000 minutes = 120000 seconds
+            { timestamp: 181000, price: 2.0, action: 'sell' },
           ],
         }), // Time to ATH: 2000 minutes
       ];
