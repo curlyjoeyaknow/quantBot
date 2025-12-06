@@ -6,11 +6,13 @@
 export interface UserEvent {
   type: string;
   payload: unknown;
+  source?: string;
+  userId?: number | string;
 }
 
 export const EventFactory = {
-  createUserEvent(type: string, payload: unknown): UserEvent {
-    return { type, payload };
+  createUserEvent(type: string, payload: unknown, source?: string, userId?: number | string): UserEvent {
+    return { type, payload, source, userId };
   },
 };
 
