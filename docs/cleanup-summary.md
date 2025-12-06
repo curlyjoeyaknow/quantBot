@@ -3,6 +3,7 @@
 ## Directory Reorganization
 
 ### Data Directory Structure
+
 ```
 data/
 ├── databases/          # All SQLite database files
@@ -21,15 +22,18 @@ data/
 ```
 
 ### Config Directory
+
 - Consolidated `config/` and `configs/` into single `config/` directory
 - Contains: `default.json`, `simulations/top-strategies.json`
 
 ### Tools Directory
+
 - Created `tools/` directory for utility scripts
 - Moved `scripts/tools/` → `tools/scripts/`
 - Moved `scripts/test/` → `tools/test/`
 
 ### Scripts Directory
+
 - Remains at root level for operational scripts
 - Organized by purpose: `analysis/`, `data-processing/`, `monitoring/`, etc.
 
@@ -47,23 +51,28 @@ All database paths updated to use `data/databases/`:
 ## Cleanup Actions
 
 ### Removed
+
 - ✅ `templates/node_modules/` - Stray node_modules directory
 - ✅ `quantbot-bot/` - Duplicate bot directory (replaced by `packages/bot/`)
 
 ### Moved
+
 - ✅ Root `.db` files → `data/databases/`
 - ✅ `logs/` → `data/logs/`
 - ✅ `cache/` → `data/cache/`
 - ✅ `configs/` → merged into `config/`
 
 ### Updated
+
 - ✅ `.gitignore` - Updated to ignore `data/databases/*.db`, `data/cache/`, `data/logs/`
 - ✅ Database path references in all packages
 
 ## Remaining Work
 
 ### Database Paths to Update
+
 Some files may still reference old database paths:
+
 - `packages/web/lib/jobs/dashboard-metrics-db.ts`
 - `packages/web/lib/jobs/strategy-results-db.ts`
 - `packages/web/lib/db-manager.ts`
@@ -71,7 +80,9 @@ Some files may still reference old database paths:
 These should be updated to use `data/databases/` paths.
 
 ### Scripts Organization
+
 Consider organizing scripts further:
+
 - `scripts/legacy/` - Could be archived or removed if no longer needed
 - `scripts/migration/` - One-time migrations, could be archived after completion
 
@@ -102,4 +113,3 @@ quantBot/
 3. **Cleaner Root**: No stray `.db` files in root
 4. **Better Gitignore**: Centralized ignore patterns
 5. **Consistent Paths**: All database paths use same pattern
-

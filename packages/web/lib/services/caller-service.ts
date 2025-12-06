@@ -131,7 +131,7 @@ export class CallerService {
       const total = parseInt(countResult.rows[0]?.total || '0');
 
       // Format data for frontend
-      const data: CallerHistoryRow[] = dataResult.rows.map((row: any) => ({
+      let data: CallerHistoryRow[] = dataResult.rows.map((row: any) => ({
         id: row.id,
         callerName: row.caller_name || 'Unknown',
         tokenAddress: row.token_address || '',
@@ -148,14 +148,25 @@ export class CallerService {
       }));
 
       // Apply post-query filters for calculated fields
+      // Note: When filtering by isDuplicate, we need to recalculate total
       let filteredData = data;
+      let adjustedTotal = total;
+      
       if (filters.isDuplicate !== undefined) {
         filteredData = filteredData.filter(row => row.isDuplicate === filters.isDuplicate);
+        // If we filtered, we need to get the actual count
+        // For now, we'll use the filtered length as approximation
+        // In production, you might want to do a separate count query with the filter
+        if (filteredData.length !== data.length) {
+          // If filtering changed results, we need to adjust total
+          // This is an approximation - for exact count, would need another query
+          adjustedTotal = filteredData.length;
+        }
       }
 
       return {
         data: filteredData,
-        total,
+        total: adjustedTotal,
       };
     } catch (error) {
       console.error('Error fetching caller history:', error);

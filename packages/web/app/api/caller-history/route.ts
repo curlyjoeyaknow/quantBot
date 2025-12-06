@@ -25,9 +25,10 @@ const getCallerHistoryHandler = async (request: NextRequest) => {
   const isDuplicate = isDuplicateParam === 'true' ? true : isDuplicateParam === 'false' ? false : undefined;
   const search = searchParams.get('search') ? sanitizeString(searchParams.get('search')!) : undefined;
   
-  const page = parseInt(searchParams.get('page') || '1');
+  // Validate and parse pagination parameters
+  const page = Math.max(1, parseInt(searchParams.get('page') || '1') || 1);
   const pageSize = Math.min(
-    parseInt(searchParams.get('pageSize') || CONSTANTS.FRONTEND.DEFAULT_PAGE_SIZE.toString()),
+    Math.max(1, parseInt(searchParams.get('pageSize') || CONSTANTS.FRONTEND.DEFAULT_PAGE_SIZE.toString()) || CONSTANTS.FRONTEND.DEFAULT_PAGE_SIZE),
     CONSTANTS.REQUEST.MAX_PAGE_SIZE
   );
 

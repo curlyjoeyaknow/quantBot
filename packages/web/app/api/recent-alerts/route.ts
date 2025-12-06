@@ -14,12 +14,13 @@ export const GET = rateLimit(RATE_LIMITS.STANDARD)(
     async (request: NextRequest) => {
       const { searchParams } = new URL(request.url);
       
-      const page = parseInt(searchParams.get('page') || '1');
+      // Validate and parse parameters
+      const page = Math.max(1, parseInt(searchParams.get('page') || '1') || 1);
       const pageSize = Math.min(
-        parseInt(searchParams.get('pageSize') || CONSTANTS.FRONTEND.RECENT_ALERTS_PAGE_SIZE.toString()),
+        Math.max(1, parseInt(searchParams.get('pageSize') || CONSTANTS.FRONTEND.RECENT_ALERTS_PAGE_SIZE.toString()) || CONSTANTS.FRONTEND.RECENT_ALERTS_PAGE_SIZE),
         CONSTANTS.REQUEST.MAX_PAGE_SIZE
       );
-      const daysBack = parseInt(searchParams.get('daysBack') || '7');
+      const daysBack = Math.min(Math.max(1, parseInt(searchParams.get('daysBack') || '7') || 7), 365);
 
       const result = await callerService.getRecentAlerts(page, pageSize, daysBack);
       
