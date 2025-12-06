@@ -174,7 +174,7 @@ async function fetchMcapFromBirdeye(
       return null;
     }
 
-    const data = await response.json();
+    const data: any = await response.json();
     
     // Birdeye returns market cap as 'mc'
     if (data.data && typeof data.data.mc === 'number') {

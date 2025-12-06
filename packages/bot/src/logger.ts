@@ -4,7 +4,7 @@
  * Centralized logger for the bot package with namespace '@quantbot/bot'
  */
 
-import { createPackageLogger } from '@quantbot/utils/logging';
+import { createPackageLogger } from '@quantbot/utils';
 
 export const logger = createPackageLogger('@quantbot/bot');
 

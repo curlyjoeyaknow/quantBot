@@ -147,18 +147,27 @@ async function main() {
 
   console.log('🔄 Fetching token metadata...\n');
 
-  // Get ALL tokens that need metadata (both Solana and EVM)
+  // Get tokens WITH alerts that need metadata (prioritize tokens that have actual calls)
   const result = await pgPool.query(`
-    SELECT id, address, chain, symbol, name, metadata_json
-    FROM tokens
+    SELECT 
+      t.id, 
+      t.address, 
+      t.chain, 
+      t.symbol, 
+      t.name, 
+      t.metadata_json,
+      COUNT(a.id) as alert_count
+    FROM tokens t
+    LEFT JOIN alerts a ON a.token_id = t.id AND a.alert_price IS NOT NULL
     WHERE (
-      symbol IS NULL 
-      OR symbol = 'UNKNOWN' 
-      OR name IS NULL 
-      OR metadata_json IS NULL
-      OR metadata_json->>'fetchedAt' IS NULL
+      t.symbol IS NULL 
+      OR t.symbol = 'UNKNOWN' 
+      OR t.name IS NULL 
+      OR t.metadata_json IS NULL
+      OR t.metadata_json->>'fetchedAt' IS NULL
     )
-    ORDER BY created_at DESC
+    GROUP BY t.id, t.address, t.chain, t.symbol, t.name, t.metadata_json
+    ORDER BY COUNT(a.id) DESC, t.created_at DESC
     LIMIT 500
   `);
 

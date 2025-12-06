@@ -14,14 +14,16 @@
  * - token metadata (symbol, name, decimals, etc.)
  */
 
-import Database from 'better-sqlite3';
+import { Database } from 'sqlite3';
+import { promisify } from 'util';
 import { DateTime } from 'luxon';
 import * as path from 'path';
 import { 
   getEntryMcapWithFallback, 
   isPumpOrBonkToken,
   calculatePumpBonkMcap,
-  formatMcap 
+  formatMcap,
+  extractMcapFromMessage
 } from '../packages/web/lib/services/mcap-calculator';
 
 const DB_PATH = process.env.CALLER_DB_PATH || path.join(process.cwd(), 'data', 'caller_alerts.db');
@@ -82,7 +84,7 @@ async function fetchBirdeyeMetadata(
       return null;
     }
 
-    const data = await response.json();
+    const data: any = await response.json();
     
     if (data.success && data.data) {
       return {
@@ -107,7 +109,9 @@ async function fetchBirdeyeMetadata(
 /**
  * Get all tokens that need MCAP or metadata
  */
-function getTokensNeedingUpdate(db: Database.Database): TokenCall[] {
+async function getTokensNeedingUpdate(db: Database): Promise<TokenCall[]> {
+  const all = promisify(db.all.bind(db)) as (query: string) => Promise<TokenCall[]>;
+  
   const query = `
     SELECT 
       id,
@@ -126,18 +130,20 @@ function getTokensNeedingUpdate(db: Database.Database): TokenCall[] {
     ORDER BY alert_timestamp DESC
   `;
   
-  return db.prepare(query).all() as TokenCall[];
+  return await all(query);
 }
 
 /**
  * Update token with MCAP and metadata
  */
-function updateTokenData(
-  db: Database.Database,
+async function updateTokenData(
+  db: Database,
   callId: number,
   entryMcap: number | null,
   metadata: TokenMetadata | null
-): void {
+): Promise<void> {
+  const run = promisify(db.run.bind(db)) as (query: string, params: any[]) => Promise<void>;
+  
   const updates: string[] = [];
   const params: any[] = [];
   
@@ -160,20 +166,22 @@ function updateTokenData(
   params.push(callId);
   
   const query = `UPDATE caller_alerts SET ${updates.join(', ')} WHERE id = ?`;
-  db.prepare(query).run(...params);
+  await run(query, params);
 }
 
 /**
  * Store metadata in separate table for caching
  */
-function storeMetadataCache(
-  db: Database.Database,
+async function storeMetadataCache(
+  db: Database,
   tokenAddress: string,
   metadata: TokenMetadata
-): void {
+): Promise<void> {
+  const run = promisify(db.run.bind(db)) as (query: string, params?: any[]) => Promise<void>;
+  
   try {
     // Create metadata table if it doesn't exist
-    db.exec(`
+    await run(`
       CREATE TABLE IF NOT EXISTS token_metadata (
         token_address TEXT PRIMARY KEY,
         symbol TEXT,
@@ -194,7 +202,7 @@ function storeMetadataCache(
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
     `;
     
-    db.prepare(query).run(
+    await run(query, [
       tokenAddress,
       metadata.symbol || null,
       metadata.name || null,
@@ -204,7 +212,7 @@ function storeMetadataCache(
       metadata.logoURI || null,
       metadata.v24hUSD || null,
       metadata.v24hChangePercent || null
-    );
+    ]);
   } catch (error) {
     console.error('  ❌ Error storing metadata cache:', error);
   }
@@ -214,7 +222,7 @@ function storeMetadataCache(
  * Process a single token call
  */
 async function processToken(
-  db: Database.Database,
+  db: Database,
   call: TokenCall,
   stats: {
     processed: number;
@@ -263,7 +271,6 @@ async function processToken(
         }
       } else if (call.alert_message) {
         // Try extracting from message
-        const { extractMcapFromMessage } = require('../packages/web/lib/services/mcap-calculator');
         const extractedMcap = extractMcapFromMessage(call.alert_message);
         
         if (extractedMcap) {
@@ -301,11 +308,11 @@ async function processToken(
   
   // Step 3: Update database
   if (entryMcap || metadata) {
-    updateTokenData(db, call.id, entryMcap, metadata);
+    await updateTokenData(db, call.id, entryMcap, metadata);
     
     // Store metadata in cache table
     if (metadata) {
-      storeMetadataCache(db, call.token_address, metadata);
+      await storeMetadataCache(db, call.token_address, metadata);
     }
   }
 }
@@ -321,7 +328,7 @@ async function backfillMcapAndMetadata(): Promise<void> {
   const db = new Database(DB_PATH);
   
   // Get tokens needing updates
-  const tokens = getTokensNeedingUpdate(db);
+  const tokens = await getTokensNeedingUpdate(db);
   console.log(`\n📊 Found ${tokens.length} tokens needing updates\n`);
   
   if (tokens.length === 0) {
