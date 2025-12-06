@@ -83,7 +83,8 @@ export class CommandRegistry {
     this.register(new IchimokuCommandHandler(this.sessionService));
     this.register(new AlertCommandHandler());
     this.register(new AlertsCommandHandler(this.sessionService));
-    this.register(new MonitorCommandHandler());
+    // Monitor command depends on monitoring package wiring; temporarily disabled until service is wired
+    // this.register(new MonitorCommandHandler());
     // Live trade handler requires trading config service; temporarily disabled until service wiring is added
     // this.register(new LiveTradeCommandHandler());
     this.register(new AddCurlyJoeCommandHandler());
