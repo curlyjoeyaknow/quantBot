@@ -96,9 +96,10 @@ export class AlertsCommandHandler extends BaseCommandHandler {
           const tokenName = (call.token_name || 'Unknown').substring(0, 18).padEnd(18);
           const chain = call.chain.toUpperCase().substring(0, 7).padEnd(7);
           const price = `$${(call.call_price || 0).toFixed(6)}`.padEnd(10);
-          const time = call.call_timestamp ? 
-            new Date(call.call_timestamp * 1000).toLocaleString().substring(0, 12).padEnd(12) : 
-            'Unknown'.padEnd(12);
+          const ts = call.call_timestamp ?? call.alert_timestamp;
+          const time = ts
+            ? new Date(ts * 1000).toLocaleString().substring(0, 12).padEnd(12)
+            : 'Unknown'.padEnd(12);
           
           alertsMessage += `│ ${tokenName} │ ${chain} │ ${price} │ ${time} │\n`;
         }
