@@ -9,7 +9,7 @@ import { Context } from 'telegraf';
 import { BaseCommandHandler, Session } from './interfaces/CommandHandler';
 import { SimulationService } from '@quantbot/services/SimulationService';
 import { SessionService } from '@quantbot/services/SessionService';
-import { RepeatSimulationHelper } from '@quantbot/utils';
+import { RepeatSimulationHelper } from '../utils/RepeatSimulationHelper';
 import { logger } from '@quantbot/utils';
 import { COMMAND_TIMEOUTS } from '../utils/command-helpers';
 
