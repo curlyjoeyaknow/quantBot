@@ -1,6 +1,6 @@
 import { DateTime } from 'luxon';
 import { logger } from '@quantbot/utils';
-import { insertCandles } from '@quantbot/utils' /* TODO: Fix storage import */;
+import { insertCandles } from '@quantbot/storage';
 // TODO: Update to @quantbot/simulation when migrated
 import type { Candle } from '@quantbot/simulation/candles';
 

@@ -1,433 +1,226 @@
 "use strict";
 /**
- * QuantBot Figma Replica Generator Plugin
- * ========================================
- * Creates Figma designs based on the existing figma-replica React components:
- * - Sign In page (440x956)
- * - Register page
- * - Forgot Password page
- * - Setup Overview (Step 1/4)
- * - Add Product (Step 2/4)
- * - Shipping & Pricing (Step 3/4)
- * - Review Summary (Step 4/4)
- *
- * This plugin replicates the UI components as Figma frames with proper styling.
+ * Shopify Mobile Figma Replicas
+ * Creates mobile screens with working navigation
  */
-// Component specifications based on the React figma-replica components
-const componentSpecs = {
+const specs = {
     signIn: {
-        name: 'Sign In',
-        width: 440,
-        height: 956,
-        backgroundColor: '#0a3a32', // Dark teal background from sign-in.tsx
-        elements: [
-            // Header with logo and account icon
-            { type: 'frame', name: 'Header', x: 0, y: 0, width: 440, height: 100, bg: '#0a3a32' },
-            // Title
-            { type: 'text', content: 'Sign In', fontSize: 32, fontWeight: 700, x: 40, y: 200, color: '#FFFFFF' },
-            // Email input
-            { type: 'input', label: 'Email', x: 40, y: 280, width: 360, height: 56, placeholder: 'Enter your email' },
-            // Password input
-            { type: 'input', label: 'Password', x: 40, y: 360, width: 360, height: 56, placeholder: 'Enter your password', isPassword: true },
-            // Forgot password link
-            { type: 'link', content: 'Forgot password?', x: 40, y: 440, color: '#2481CC' },
-            // Sign In button (dark, 35% width)
-            { type: 'button', content: 'SIGN IN', x: 40, y: 520, width: 154, height: 47, primary: true, bg: '#0a3a32', textColor: '#FFFFFF' },
-            // Register button (light, 35% width)
-            { type: 'button', content: 'REGISTER', x: 214, y: 520, width: 154, height: 47, primary: false, bg: '#F5F5F5', textColor: '#0a3a32' },
-            // Create Account link
-            { type: 'link', content: 'Create Account', x: 40, y: 600, color: '#000000' },
+        name: 'Sign In', w: 440, h: 956, bg: '#0a3a32',
+        els: [
+            { t: 'txt', c: 'Sign In', x: 40, y: 200, s: 32, col: '#FFF', bold: true },
+            { t: 'inp', l: 'Email', x: 40, y: 280, w: 360, h: 56 },
+            { t: 'inp', l: 'Password', x: 40, y: 360, w: 360, h: 56 },
+            { t: 'btn', c: 'SIGN IN', x: 40, y: 520, w: 154, h: 47, prim: true },
+            { t: 'btn', c: 'REGISTER', x: 214, y: 520, w: 154, h: 47, prim: false },
         ],
     },
     register: {
-        name: 'Register',
-        width: 440,
-        height: 956,
-        backgroundColor: '#FFFFFF',
-        elements: [
-            { type: 'text', content: 'Create Account', fontSize: 32, fontWeight: 700, x: 40, y: 100, color: '#000000' },
-            { type: 'input', label: 'Email', x: 40, y: 200, width: 360, height: 56 },
-            { type: 'input', label: 'Password', x: 40, y: 280, width: 360, height: 56, isPassword: true },
-            { type: 'input', label: 'Confirm Password', x: 40, y: 360, width: 360, height: 56, isPassword: true },
-            { type: 'button', content: 'REGISTER', x: 40, y: 460, width: 360, height: 56, primary: true, bg: '#2481CC', textColor: '#FFFFFF' },
-            { type: 'link', content: 'Already have an account? Sign In', x: 40, y: 540, color: '#2481CC' },
+        name: 'Register', w: 440, h: 956, bg: '#b8e0d2',
+        els: [
+            { t: 'txt', c: 'Create Account', x: 40, y: 100, s: 32, col: '#0a3a32', bold: true },
+            { t: 'inp', l: 'Email', x: 40, y: 200, w: 360, h: 56 },
+            { t: 'inp', l: 'Password', x: 40, y: 280, w: 360, h: 56 },
+            { t: 'inp', l: 'Confirm', x: 40, y: 360, w: 360, h: 56 },
+            { t: 'btn', c: 'REGISTER', x: 40, y: 460, w: 360, h: 56, prim: true },
         ],
     },
     forgotPassword: {
-        name: 'Forgot Password',
-        width: 440,
-        height: 956,
-        backgroundColor: '#FFFFFF',
-        elements: [
-            { type: 'text', content: 'Forgot Password?', fontSize: 32, fontWeight: 700, x: 40, y: 100, color: '#000000' },
-            { type: 'text', content: 'Enter your email to reset your password', fontSize: 16, fontWeight: 400, x: 40, y: 160, color: '#666666' },
-            { type: 'input', label: 'Email', x: 40, y: 240, width: 360, height: 56 },
-            { type: 'button', content: 'SEND RESET LINK', x: 40, y: 320, width: 360, height: 56, primary: true, bg: '#2481CC', textColor: '#FFFFFF' },
-            { type: 'link', content: 'Back to Sign In', x: 40, y: 400, color: '#2481CC' },
+        name: 'Forgot Password', w: 440, h: 956, bg: '#FFF',
+        els: [
+            { t: 'txt', c: 'Forgot Password?', x: 40, y: 100, s: 32, col: '#0a3a32', bold: true },
+            { t: 'inp', l: 'Email', x: 40, y: 240, w: 360, h: 56 },
+            { t: 'btn', c: 'SEND RESET LINK', x: 40, y: 320, w: 360, h: 56, prim: true },
         ],
     },
-    setupOverview: {
-        name: 'Setup Overview',
-        width: 1200,
-        height: 800,
-        backgroundColor: '#FFFFFF',
-        elements: [
-            { type: 'text', content: 'Setup Overview', fontSize: 28, fontWeight: 700, x: 40, y: 40, color: '#000000' },
-            { type: 'text', content: 'Step 1 of 4', fontSize: 16, fontWeight: 400, x: 40, y: 100, color: '#666666' },
-            { type: 'progress', steps: 4, current: 1, x: 40, y: 140, width: 1120, height: 8 },
-            { type: 'input', label: 'Shop Name', x: 40, y: 200, width: 500, height: 56 },
-            { type: 'button', content: '← BACK', x: 40, y: 300, width: 120, height: 44, primary: false },
-            { type: 'button', content: 'CONTINUE →', x: 960, y: 300, width: 200, height: 44, primary: true, bg: '#0a3a32', textColor: '#FFFFFF' },
+    setup: {
+        name: 'Setup Overview', w: 1200, h: 800, bg: '#FFF',
+        els: [
+            { t: 'txt', c: 'Step 1 of 4', x: 40, y: 40, s: 28, col: '#000', bold: true },
+            { t: 'prog', x: 40, y: 100, w: 1120, step: 1, total: 4 },
+            { t: 'inp', l: 'Shop Name', x: 40, y: 160, w: 500, h: 56 },
+            { t: 'btn', c: '← BACK', x: 40, y: 260, w: 120, h: 44, prim: false },
+            { t: 'btn', c: 'CONTINUE →', x: 1040, y: 260, w: 120, h: 44, prim: true },
         ],
     },
     addProduct: {
-        name: 'Add Product',
-        width: 1200,
-        height: 800,
-        backgroundColor: '#FFFFFF',
-        elements: [
-            { type: 'text', content: 'Add Product', fontSize: 28, fontWeight: 700, x: 40, y: 40, color: '#000000' },
-            { type: 'text', content: 'Step 2 of 4', fontSize: 16, fontWeight: 400, x: 40, y: 100, color: '#666666' },
-            { type: 'progress', steps: 4, current: 2, x: 40, y: 140, width: 1120, height: 8 },
-            { type: 'input', label: 'Product Name', x: 40, y: 200, width: 500, height: 56 },
-            { type: 'input', label: 'Product Price', x: 40, y: 280, width: 500, height: 56 },
-            { type: 'frame', name: 'Image Upload', x: 600, y: 200, width: 300, height: 300, bg: '#F5F5F5', border: true },
-            { type: 'button', content: 'ADD ANOTHER', x: 40, y: 400, width: 200, height: 44, primary: true },
+        name: 'Add Product', w: 1200, h: 800, bg: '#FFF',
+        els: [
+            { t: 'txt', c: 'Step 2 of 4', x: 40, y: 40, s: 28, col: '#000', bold: true },
+            { t: 'prog', x: 40, y: 100, w: 1120, step: 2, total: 4 },
+            { t: 'inp', l: 'Product Name', x: 40, y: 160, w: 500, h: 56 },
+            { t: 'btn', c: 'ADD ANOTHER', x: 40, y: 260, w: 200, h: 44, prim: true },
         ],
     },
-    shippingPricing: {
-        name: 'Shipping & Pricing',
-        width: 1200,
-        height: 800,
-        backgroundColor: '#FFFFFF',
-        elements: [
-            { type: 'text', content: 'Shipping & Pricing', fontSize: 28, fontWeight: 700, x: 40, y: 40, color: '#000000' },
-            { type: 'text', content: 'Step 3 of 4', fontSize: 16, fontWeight: 400, x: 40, y: 100, color: '#666666' },
-            { type: 'progress', steps: 4, current: 3, x: 40, y: 140, width: 1120, height: 8 },
-            { type: 'input', label: 'Shipping Type', x: 40, y: 200, width: 500, height: 56 },
-            { type: 'input', label: 'Delivery Days', x: 40, y: 280, width: 500, height: 56 },
+    shipping: {
+        name: 'Shipping & Pricing', w: 1200, h: 800, bg: '#FFF',
+        els: [
+            { t: 'txt', c: 'Step 3 of 4', x: 40, y: 40, s: 28, col: '#000', bold: true },
+            { t: 'prog', x: 40, y: 100, w: 1120, step: 3, total: 4 },
+            { t: 'btn', c: 'CONTINUE →', x: 1040, y: 260, w: 120, h: 44, prim: true },
         ],
     },
     review: {
-        name: 'Review Summary',
-        width: 1200,
-        height: 800,
-        backgroundColor: '#FFFFFF',
-        elements: [
-            { type: 'text', content: 'Review Summary', fontSize: 28, fontWeight: 700, x: 40, y: 40, color: '#000000' },
-            { type: 'text', content: 'Step 4 of 4', fontSize: 16, fontWeight: 400, x: 40, y: 100, color: '#666666' },
-            { type: 'progress', steps: 4, current: 4, x: 40, y: 140, width: 1120, height: 8 },
-            { type: 'text', content: 'Shop Name:', fontSize: 16, fontWeight: 600, x: 40, y: 200, color: '#000000' },
-            { type: 'text', content: 'Products:', fontSize: 16, fontWeight: 600, x: 40, y: 280, color: '#000000' },
-            { type: 'button', content: 'BACK TO PRODUCTS', x: 40, y: 500, width: 200, height: 44, primary: false },
-            { type: 'button', content: 'LAUNCH SHOP', x: 960, y: 500, width: 200, height: 44, primary: true, bg: '#0a3a32', textColor: '#FFFFFF' },
+        name: 'Review Summary', w: 1200, h: 800, bg: '#FFF',
+        els: [
+            { t: 'txt', c: 'Step 4 of 4', x: 40, y: 40, s: 28, col: '#000', bold: true },
+            { t: 'prog', x: 40, y: 100, w: 1120, step: 4, total: 4 },
+            { t: 'btn', c: 'BACK TO PRODUCTS', x: 40, y: 260, w: 200, h: 44, prim: false },
+            { t: 'btn', c: 'LAUNCH SHOP', x: 960, y: 260, w: 200, h: 44, prim: true },
         ],
     },
 };
-// Helper function to convert hex to RGB
-function hexToRgb(hex) {
-    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-    return result
-        ? {
-            r: parseInt(result[1], 16) / 255,
-            g: parseInt(result[2], 16) / 255,
-            b: parseInt(result[3], 16) / 255,
-        }
-        : { r: 0, g: 0, b: 0 };
+function hex(h) {
+    const r = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(h);
+    return r ? { r: parseInt(r[1], 16) / 255, g: parseInt(r[2], 16) / 255, b: parseInt(r[3], 16) / 255 } : { r: 0, g: 0, b: 0 };
 }
-// Create a frame for a component
-async function createComponentFrame(spec, page) {
-    // Load fonts first
+async function make(s, p) {
     await figma.loadFontAsync({ family: 'Inter', style: 'Regular' });
-    await figma.loadFontAsync({ family: 'Inter', style: 'Medium' });
-    await figma.loadFontAsync({ family: 'Inter', style: 'Semi Bold' });
     await figma.loadFontAsync({ family: 'Inter', style: 'Bold' });
-    await figma.loadFontAsync({ family: 'Albert Sans', style: 'Black' }); // For buttons
-    const frame = figma.createFrame();
-    frame.name = spec.name;
-    frame.resize(spec.width, spec.height);
-    frame.fills = [{ type: 'SOLID', color: hexToRgb(spec.backgroundColor) }];
-    frame.x = 0;
-    frame.y = 0;
-    // Create elements
-    for (const element of spec.elements) {
-        if (element.type === 'text') {
-            const fontWeight = element.fontWeight || 400;
-            let fontFamily = 'Inter';
-            let fontStyle = 'Regular';
-            if (fontWeight >= 700)
-                fontStyle = 'Bold';
-            else if (fontWeight >= 600)
-                fontStyle = 'Semi Bold';
-            else if (fontWeight >= 500)
-                fontStyle = 'Medium';
-            try {
-                await figma.loadFontAsync({ family: fontFamily, style: fontStyle });
-                const text = figma.createText();
-                text.characters = element.content;
-                text.fontSize = element.fontSize;
-                text.fontName = { family: fontFamily, style: fontStyle };
-                text.fills = [{ type: 'SOLID', color: hexToRgb(element.color || '#000000') }];
-                text.x = element.x;
-                text.y = element.y;
-                frame.appendChild(text);
-            }
-            catch (e) {
-                // Fallback if font not available
-                console.warn(`Font ${fontFamily} ${fontStyle} not available, using Inter`);
-            }
+    const f = figma.createFrame();
+    f.name = s.name;
+    f.resize(s.w, s.h);
+    f.fills = [{ type: 'SOLID', color: hex(s.bg) }];
+    for (const e of s.els) {
+        if (e.t === 'txt') {
+            const t = figma.createText();
+            t.characters = e.c;
+            t.fontSize = e.s;
+            t.fontName = { family: 'Inter', style: e.bold ? 'Bold' : 'Regular' };
+            t.fills = [{ type: 'SOLID', color: hex(e.col) }];
+            t.x = e.x;
+            t.y = e.y;
+            f.appendChild(t);
         }
-        else if (element.type === 'input') {
-            const inputFrame = figma.createFrame();
-            inputFrame.name = element.label || 'Input';
-            inputFrame.resize(element.width, element.height);
-            inputFrame.fills = [{ type: 'SOLID', color: hexToRgb('#FFFFFF') }];
-            inputFrame.strokes = [{ type: 'SOLID', color: hexToRgb('#d9d9d9') }];
-            inputFrame.strokeWeight = 2;
-            inputFrame.cornerRadius = 8;
-            inputFrame.x = element.x;
-            inputFrame.y = element.y;
-            // Add placeholder text
-            if (element.placeholder) {
-                try {
-                    await figma.loadFontAsync({ family: 'Inter', style: 'Regular' });
-                    const placeholder = figma.createText();
-                    placeholder.characters = element.placeholder;
-                    placeholder.fontSize = 16;
-                    placeholder.fontName = { family: 'Inter', style: 'Regular' };
-                    placeholder.fills = [{ type: 'SOLID', color: hexToRgb('#999999') }];
-                    placeholder.x = 16;
-                    placeholder.y = (element.height - 16) / 2;
-                    inputFrame.appendChild(placeholder);
-                }
-                catch (e) {
-                    console.warn('Could not create placeholder text');
-                }
-            }
-            frame.appendChild(inputFrame);
+        else if (e.t === 'inp') {
+            const i = figma.createFrame();
+            i.name = e.l;
+            i.resize(e.w, e.h);
+            i.fills = [{ type: 'SOLID', color: hex('#FFF') }];
+            i.strokes = [{ type: 'SOLID', color: hex('#d9d9d9') }];
+            i.strokeWeight = 2;
+            i.cornerRadius = 8;
+            i.x = e.x;
+            i.y = e.y;
+            f.appendChild(i);
         }
-        else if (element.type === 'button') {
-            const button = figma.createFrame();
-            button.name = element.content;
-            button.resize(element.width, element.height);
-            const bgColor = element.bg || (element.primary ? '#2481CC' : '#FFFFFF');
-            const textColor = element.textColor || (element.primary ? '#FFFFFF' : '#2481CC');
-            button.fills = [{ type: 'SOLID', color: hexToRgb(bgColor) }];
-            if (!element.primary) {
-                button.strokes = [{ type: 'SOLID', color: hexToRgb('#2481CC') }];
-                button.strokeWeight = 1;
+        else if (e.t === 'btn') {
+            const b = figma.createFrame();
+            b.name = e.c;
+            b.resize(e.w, e.h);
+            const bgC = e.prim ? '#0a3a32' : '#FFF';
+            const txC = e.prim ? '#FFF' : '#0a3a32';
+            b.fills = [{ type: 'SOLID', color: hex(bgC) }];
+            if (!e.prim) {
+                b.strokes = [{ type: 'SOLID', color: hex('#0a3a32') }];
+                b.strokeWeight = 1;
             }
-            button.cornerRadius = 8;
-            button.x = element.x;
-            button.y = element.y;
-            // Button text - try Albert Sans Black first (as in sign-in.tsx), fallback to Inter
-            try {
-                await figma.loadFontAsync({ family: 'Albert Sans', style: 'Black' });
-                const buttonText = figma.createText();
-                buttonText.characters = element.content;
-                buttonText.fontSize = 20;
-                buttonText.fontName = { family: 'Albert Sans', style: 'Black' };
-                buttonText.fills = [{ type: 'SOLID', color: hexToRgb(textColor) }];
-                buttonText.x = (element.width - buttonText.width) / 2;
-                buttonText.y = (element.height - buttonText.height) / 2;
-                button.appendChild(buttonText);
-            }
-            catch (e) {
-                // Fallback to Inter Bold
-                await figma.loadFontAsync({ family: 'Inter', style: 'Bold' });
-                const buttonText = figma.createText();
-                buttonText.characters = element.content;
-                buttonText.fontSize = 16;
-                buttonText.fontName = { family: 'Inter', style: 'Bold' };
-                buttonText.fills = [{ type: 'SOLID', color: hexToRgb(textColor) }];
-                buttonText.x = (element.width - buttonText.width) / 2;
-                buttonText.y = (element.height - buttonText.height) / 2;
-                button.appendChild(buttonText);
-            }
-            frame.appendChild(button);
+            b.cornerRadius = 8;
+            b.x = e.x;
+            b.y = e.y;
+            const bt = figma.createText();
+            bt.characters = e.c;
+            bt.fontSize = 14;
+            bt.fontName = { family: 'Inter', style: 'Bold' };
+            bt.fills = [{ type: 'SOLID', color: hex(txC) }];
+            bt.x = (e.w - bt.width) / 2;
+            bt.y = (e.h - 18) / 2;
+            b.appendChild(bt);
+            f.appendChild(b);
         }
-        else if (element.type === 'link') {
-            try {
-                await figma.loadFontAsync({ family: 'Inter', style: 'Regular' });
-                const link = figma.createText();
-                link.characters = element.content;
-                link.fontSize = 16;
-                link.fontName = { family: 'Inter', style: 'Regular' };
-                link.fills = [{ type: 'SOLID', color: hexToRgb(element.color || '#2481CC') }];
-                link.x = element.x;
-                link.y = element.y;
-                frame.appendChild(link);
-            }
-            catch (e) {
-                console.warn('Could not create link text');
-            }
-        }
-        else if (element.type === 'progress') {
-            const progressFrame = figma.createFrame();
-            progressFrame.name = 'Progress';
-            progressFrame.resize(element.width, element.height || 8);
-            progressFrame.fills = [{ type: 'SOLID', color: hexToRgb('#E0E0E0') }];
-            progressFrame.cornerRadius = 4;
-            progressFrame.x = element.x;
-            progressFrame.y = element.y;
-            // Active step indicator
-            const activeWidth = (element.width / element.steps) * element.current;
-            const activeBar = figma.createFrame();
-            activeBar.resize(activeWidth, element.height || 8);
-            activeBar.fills = [{ type: 'SOLID', color: hexToRgb('#0a3a32') }];
-            activeBar.cornerRadius = 4;
-            progressFrame.appendChild(activeBar);
-            frame.appendChild(progressFrame);
-        }
-        else if (element.type === 'frame') {
-            const subFrame = figma.createFrame();
-            subFrame.name = element.name || 'Frame';
-            subFrame.resize(element.width, element.height);
-            subFrame.fills = [{ type: 'SOLID', color: hexToRgb(element.bg || '#FFFFFF') }];
-            if (element.border) {
-                subFrame.strokes = [{ type: 'SOLID', color: hexToRgb('#E0E0E0') }];
-                subFrame.strokeWeight = 1;
-            }
-            subFrame.x = element.x;
-            subFrame.y = element.y;
-            frame.appendChild(subFrame);
+        else if (e.t === 'prog') {
+            const pr = figma.createFrame();
+            pr.name = 'Progress';
+            pr.resize(e.w, 8);
+            pr.fills = [{ type: 'SOLID', color: hex('#E0E0E0') }];
+            pr.cornerRadius = 4;
+            pr.x = e.x;
+            pr.y = e.y;
+            const ac = figma.createFrame();
+            ac.resize((e.w / e.total) * e.step, 8);
+            ac.fills = [{ type: 'SOLID', color: hex('#0a3a32') }];
+            ac.cornerRadius = 4;
+            pr.appendChild(ac);
+            f.appendChild(pr);
         }
     }
-    page.appendChild(frame);
-    return frame;
+    p.appendChild(f);
+    return f;
 }
-// Main function to create all replicas
-async function createFigmaReplicas() {
+async function run() {
     try {
-        figma.notify('🎨 Creating Figma replicas...', { timeout: 2000 });
-        // Create or find the page
-        let page = figma.currentPage;
-        const pageName = '📱 Figma Replicas';
-        // Check if page already exists
-        const existingPage = figma.root.children.find((p) => p.name === pageName);
-        if (existingPage) {
-            page = existingPage;
-            figma.currentPage = page;
+        figma.notify('Creating...', { timeout: 1000 });
+        let pg = figma.currentPage;
+        const ex = figma.root.children.find(p => p.name === '📱 Figma Replicas');
+        if (ex) {
+            pg = ex;
+            figma.currentPage = pg;
         }
         else {
-            page = figma.createPage();
-            page.name = pageName;
-            figma.currentPage = page;
+            pg = figma.createPage();
+            pg.name = '📱 Figma Replicas';
+            figma.currentPage = pg;
         }
-        const spacing = 50;
-        let currentX = 50;
-        // Create all component replicas
-        const components = [
-            componentSpecs.signIn,
-            componentSpecs.register,
-            componentSpecs.forgotPassword,
-            componentSpecs.setupOverview,
-            componentSpecs.addProduct,
-            componentSpecs.shippingPricing,
-            componentSpecs.review,
+        const all = [specs.signIn, specs.register, specs.forgotPassword, specs.setup, specs.addProduct, specs.shipping, specs.review];
+        const fs = {};
+        let x = 50;
+        for (const sp of all) {
+            const fr = await make(sp, pg);
+            fr.x = x;
+            fs[sp.name] = fr;
+            x += sp.w + 50;
+        }
+        // Add navigation
+        function find(fr, nm) {
+            for (const ch of fr.children) {
+                if (ch.name.includes(nm))
+                    return ch;
+                if ('children' in ch) {
+                    const fd = find(ch, nm);
+                    if (fd)
+                        return fd;
+                }
+            }
+            return null;
+        }
+        const nav = [
+            [fs['Sign In'], 'SIGN IN', fs['Setup Overview']],
+            [fs['Sign In'], 'REGISTER', fs['Register']],
+            [fs['Setup Overview'], 'CONTINUE', fs['Add Product']],
+            [fs['Setup Overview'], 'BACK', fs['Sign In']],
+            [fs['Add Product'], 'ADD ANOTHER', fs['Shipping & Pricing']],
+            [fs['Shipping & Pricing'], 'CONTINUE', fs['Review Summary']],
+            [fs['Review Summary'], 'BACK', fs['Add Product']],
         ];
-        for (const spec of components) {
-            const frame = await createComponentFrame(spec, page);
-            frame.x = currentX;
-            currentX += spec.width + spacing;
+        for (const [from, btnName, to] of nav) {
+            const btn = find(from, btnName);
+            if (btn && to && 'reactions' in btn) {
+                btn.reactions = [{
+                        action: { type: 'NODE', destinationId: to.id, navigation: 'NAVIGATE', transition: null },
+                        trigger: { type: 'ON_CLICK' }
+                    }];
+            }
         }
-        figma.notify('✅ Figma replicas created successfully!', { timeout: 3000 });
+        figma.notify('✅ Done! Press Shift+Space to test', { timeout: 3000 });
     }
-    catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        figma.notify(`❌ Error: ${errorMessage}`, { timeout: 5000 });
-        console.error(error);
+    catch (err) {
+        figma.notify('❌ Error: ' + err, { timeout: 5000 });
     }
 }
-// Handle messages from UI
 figma.ui.onmessage = (msg) => {
-    if (msg.type === 'create-replicas') {
-        createFigmaReplicas();
-    }
-    else if (msg.type === 'cancel') {
+    if (msg.type === 'go')
+        run();
+    else
         figma.closePlugin();
-    }
 };
-// Show UI
-figma.showUI(`
-  <!DOCTYPE html>
-  <html>
-  <head>
-    <meta charset="utf-8">
-    <title>QuantBot Figma Replicas</title>
-    <style>
-      * { box-sizing: border-box; margin: 0; padding: 0; }
-      body {
-        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-        background: #0F172A; color: #FFFFFF; padding: 24px; line-height: 1.5;
-      }
-      h1 { font-size: 24px; font-weight: 700; margin-bottom: 8px; }
-      .subtitle { font-size: 14px; color: #94A3B8; margin-bottom: 24px; }
-      .section { margin-bottom: 24px; }
-      .section-title {
-        font-size: 14px; font-weight: 600; color: #CBD5E1; margin-bottom: 12px;
-        text-transform: uppercase; letter-spacing: 0.5px;
-      }
-      .feature-list { list-style: none; margin-bottom: 16px; }
-      .feature-list li {
-        font-size: 13px; color: #94A3B8; padding: 6px 0; padding-left: 24px;
-        position: relative;
-      }
-      .feature-list li:before {
-        content: "✓"; position: absolute; left: 0; color: #10B981; font-weight: bold;
-      }
-      .button {
-        width: 100%; padding: 12px 24px; border: none; border-radius: 8px;
-        font-size: 14px; font-weight: 500; cursor: pointer; transition: all 0.2s;
-        margin-bottom: 12px;
-      }
-      .button-primary {
-        background: #6366F1; color: #FFFFFF;
-      }
-      .button-primary:hover { background: #818CF8; transform: translateY(-1px); }
-      .button-primary:active { background: #4F46E5; transform: translateY(0); }
-      .button-secondary {
-        background: transparent; color: #94A3B8; border: 1px solid #475569;
-      }
-      .button-secondary:hover { background: #1E293B; color: #FFFFFF; }
-      .status {
-        padding: 12px; border-radius: 8px; margin-bottom: 16px; font-size: 13px;
-        background: rgba(59, 130, 246, 0.1); border: 1px solid rgba(59, 130, 246, 0.3);
-        color: #60A5FA;
-      }
-    </style>
-  </head>
-  <body>
-    <h1>QuantBot Figma Replicas</h1>
-    <p class="subtitle">Generate Figma designs from React components</p>
-    <div class="status">
-      <strong>What this does:</strong><br>
-      Creates Figma frames replicating your figma-replica React components.
-    </div>
-    <div class="section">
-      <div class="section-title">Components to Create</div>
-      <ul class="feature-list">
-        <li>Sign In (440×956)</li>
-        <li>Register</li>
-        <li>Forgot Password</li>
-        <li>Setup Overview (Step 1/4)</li>
-        <li>Add Product (Step 2/4)</li>
-        <li>Shipping & Pricing (Step 3/4)</li>
-        <li>Review Summary (Step 4/4)</li>
-      </ul>
-    </div>
-    <button class="button button-primary" id="create-btn">🎨 Create Figma Replicas</button>
-    <button class="button button-secondary" id="cancel-btn">Cancel</button>
-    <script>
-      document.getElementById('create-btn').addEventListener('click', () => {
-        document.getElementById('create-btn').disabled = true;
-        document.getElementById('create-btn').textContent = 'Creating...';
-        parent.postMessage({ pluginMessage: { type: 'create-replicas' } }, '*');
-      });
-      document.getElementById('cancel-btn').addEventListener('click', () => {
-        parent.postMessage({ pluginMessage: { type: 'cancel' } }, '*');
-      });
-    </script>
-  </body>
-  </html>
-`, { width: 400, height: 500 });
+figma.showUI(`<html><head><style>
+*{margin:0;padding:0}body{font-family:Inter,sans-serif;background:#0a3a32;color:#FFF;padding:20px}
+h1{font-size:24px;margin-bottom:16px}
+.btn{width:100%;padding:14px;border:none;border-radius:8px;cursor:pointer;margin-top:12px;font-weight:600}
+.p{background:#b8e0d2;color:#0a3a32}.p:hover{background:#d4ede5}
+.s{background:transparent;color:#b8e0d2;border:2px solid #b8e0d2}.s:hover{background:#1a5447}
+</style></head><body>
+<h1>Shopify Mobile Replicas</h1>
+<p style="margin-bottom:20px;color:#b8e0d2">7 screens with working navigation</p>
+<button class="btn p" onclick="parent.postMessage({pluginMessage:{type:'go'}},'*')">🎨 Create Screens</button>
+<button class="btn s" onclick="parent.postMessage({pluginMessage:{type:'cancel'}},'*')">Cancel</button>
+</body></html>`, { width: 350, height: 250 });

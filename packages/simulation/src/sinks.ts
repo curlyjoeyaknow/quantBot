@@ -9,8 +9,7 @@ import {
   SimulationRunContext,
   SimulationLogger,
 } from './engine';
-// import { getClickHouseClient } from '@quantbot/storage'; // TODO: Re-enable
-const getClickHouseClient = (): any => null; // Stub
+import { getClickHouseClient } from '@quantbot/storage';
 
 type CsvSinkConfig = Extract<OutputTargetConfig, { type: 'csv' }>;
 type JsonSinkConfig = Extract<OutputTargetConfig, { type: 'json' }>;

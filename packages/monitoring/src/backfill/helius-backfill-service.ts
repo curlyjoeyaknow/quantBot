@@ -1,6 +1,6 @@
 import { DateTime } from 'luxon';
 import { logger } from '@quantbot/utils';
-import { insertTicks, type TickEvent } from '@quantbot/utils' /* TODO: Fix storage import */;
+import { insertTicks, type TickEvent } from '@quantbot/storage';
 import { ohlcvAggregator } from '../aggregation/ohlcv-aggregator';
 import { heliusRestClient } from '@quantbot/services';
 

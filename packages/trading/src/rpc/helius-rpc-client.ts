@@ -321,7 +321,9 @@ export class HeliusRpcClient {
               commitment: commitment || this.commitment,
             });
           } else {
-            return connection.simulateTransaction(transaction as Transaction);
+            return connection.simulateTransaction(transaction as Transaction, {
+              commitment: commitment || this.commitment,
+            });
           }
         },
         'simulateTransaction'

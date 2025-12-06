@@ -1,109 +1,156 @@
 /**
  * Caller Service - PostgreSQL Version
- * Replaces SQLite-based caller data access
+ * Unified caller data access with pagination, filtering, and statistics
  */
 
 import { postgresManager } from '../db/postgres-manager';
 import { cache, cacheKeys } from '../cache';
 import { CONSTANTS } from '../constants';
+import { CallerHistoryRow, CallerStatsData, CallerStat, RecentAlertRow } from '../types';
 
-export interface CallerAlert {
-  id: number;
-  token_address: string;
-  token_symbol?: string;
-  chain: string;
-  caller_handle: string;
-  alert_timestamp: Date;
-  alert_price?: number;
-  alert_message?: string;
+export interface CallerHistoryFilters {
+  caller?: string;
+  startDate?: string;
+  endDate?: string;
+  minMarketCap?: number;
+  maxMarketCap?: number;
+  minMaxGain?: number;
+  maxMaxGain?: number;
+  isDuplicate?: boolean;
+  search?: string;
 }
 
-export interface CallerStats {
-  caller_handle: string;
-  total_alerts: number;
-  unique_tokens: number;
-  first_alert: Date;
-  last_alert: Date;
+export interface CallerHistoryResult {
+  data: CallerHistoryRow[];
+  total: number;
+}
+
+export interface RecentAlertsResult {
+  data: RecentAlertRow[];
+  total: number;
 }
 
 export class CallerService {
   /**
    * Get caller history with pagination and filtering
+   * Returns data formatted for the frontend CallerHistoryRow interface
    */
-  async getCallerHistory(options: {
-    limit?: number;
-    offset?: number;
-    caller?: string;
-    search?: string;
-  } = {}): Promise<{ alerts: CallerAlert[]; total: number }> {
-    const { limit = 50, offset = 0, caller, search } = options;
+  async getCallerHistory(
+    filters: CallerHistoryFilters = {},
+    page: number = 1,
+    pageSize: number = 50
+  ): Promise<CallerHistoryResult> {
+    const { caller, startDate, endDate, search } = filters;
+    const offset = (page - 1) * pageSize;
 
     try {
-      // Build query
-      let countQuery = `
-        SELECT COUNT(*) as total
-        FROM alerts a
-        LEFT JOIN tokens t ON t.id = a.token_id
-        LEFT JOIN callers c ON c.id = a.caller_id
-        WHERE 1=1
-      `;
-
-      let dataQuery = `
-        SELECT 
-          a.id,
-          t.address as token_address,
-          t.symbol as token_symbol,
-          t.chain,
-          c.handle as caller_handle,
-          a.alert_timestamp,
-          a.alert_price,
-          (a.raw_payload_json->>'message') as alert_message
-        FROM alerts a
-        LEFT JOIN tokens t ON t.id = a.token_id
-        LEFT JOIN callers c ON c.id = a.caller_id
-        WHERE 1=1
-      `;
-
+      // Build dynamic WHERE clause
+      const conditions: string[] = ['1=1'];
       const params: any[] = [];
       let paramIndex = 1;
 
       if (caller) {
-        countQuery += ` AND c.handle = $${paramIndex}`;
-        dataQuery += ` AND c.handle = $${paramIndex}`;
+        conditions.push(`c.handle = $${paramIndex}`);
         params.push(caller);
         paramIndex++;
       }
 
+      if (startDate) {
+        conditions.push(`a.alert_timestamp >= $${paramIndex}::timestamptz`);
+        params.push(startDate);
+        paramIndex++;
+      }
+
+      if (endDate) {
+        conditions.push(`a.alert_timestamp <= $${paramIndex}::timestamptz`);
+        params.push(endDate);
+        paramIndex++;
+      }
+
       if (search) {
-        countQuery += ` AND (t.symbol ILIKE $${paramIndex} OR t.address ILIKE $${paramIndex} OR c.handle ILIKE $${paramIndex})`;
-        dataQuery += ` AND (t.symbol ILIKE $${paramIndex} OR t.address ILIKE $${paramIndex} OR c.handle ILIKE $${paramIndex})`;
+        conditions.push(`(t.symbol ILIKE $${paramIndex} OR t.address ILIKE $${paramIndex} OR c.handle ILIKE $${paramIndex})`);
         params.push(`%${search}%`);
         paramIndex++;
       }
 
-      dataQuery += ` ORDER BY a.alert_timestamp DESC LIMIT $${paramIndex} OFFSET $${paramIndex + 1}`;
-      params.push(limit, offset);
+      const whereClause = conditions.join(' AND ');
+
+      // Count query
+      const countQuery = `
+        SELECT COUNT(*) as total
+        FROM alerts a
+        LEFT JOIN tokens t ON t.id = a.token_id
+        LEFT JOIN callers c ON c.id = a.caller_id
+        WHERE ${whereClause}
+      `;
+
+      // Data query with all needed fields
+      const dataQuery = `
+        SELECT 
+          a.id,
+          c.handle as caller_name,
+          t.address as token_address,
+          t.symbol as token_symbol,
+          t.chain,
+          a.alert_timestamp,
+          a.alert_price as price_at_alert,
+          a.alert_price as entry_price,
+          (a.raw_payload_json->>'message') as alert_message,
+          -- Check for duplicates (same token within 24 hours by same caller)
+          EXISTS(
+            SELECT 1 FROM alerts a2
+            LEFT JOIN callers c2 ON c2.id = a2.caller_id
+            WHERE a2.token_id = a.token_id 
+              AND c2.handle = c.handle
+              AND a2.id != a.id
+              AND a2.alert_timestamp BETWEEN a.alert_timestamp - INTERVAL '24 hours' 
+                                         AND a.alert_timestamp + INTERVAL '24 hours'
+          ) as is_duplicate
+        FROM alerts a
+        LEFT JOIN tokens t ON t.id = a.token_id
+        LEFT JOIN callers c ON c.id = a.caller_id
+        WHERE ${whereClause}
+        ORDER BY a.alert_timestamp DESC
+        LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+      `;
+
+      const countParams = params.slice();
+      params.push(pageSize, offset);
 
       // Execute queries
       const [countResult, dataResult] = await Promise.all([
-        postgresManager.query(countQuery, params.slice(0, -2)),
+        postgresManager.query(countQuery, countParams),
         postgresManager.query(dataQuery, params),
       ]);
 
-      const alerts: CallerAlert[] = dataResult.rows.map((row: any) => ({
+      const total = parseInt(countResult.rows[0]?.total || '0');
+
+      // Format data for frontend
+      const data: CallerHistoryRow[] = dataResult.rows.map((row: any) => ({
         id: row.id,
-        token_address: row.token_address,
-        token_symbol: row.token_symbol,
-        chain: row.chain,
-        caller_handle: row.caller_handle,
-        alert_timestamp: new Date(row.alert_timestamp),
-        alert_price: row.alert_price ? parseFloat(row.alert_price) : undefined,
-        alert_message: row.alert_message,
+        callerName: row.caller_name || 'Unknown',
+        tokenAddress: row.token_address || '',
+        tokenSymbol: row.token_symbol || undefined,
+        chain: row.chain || 'solana',
+        alertTimestamp: row.alert_timestamp ? new Date(row.alert_timestamp).toISOString() : '',
+        priceAtAlert: row.price_at_alert ? parseFloat(row.price_at_alert) : undefined,
+        entryPrice: row.entry_price ? parseFloat(row.entry_price) : undefined,
+        marketCapAtCall: undefined, // Calculated separately if needed
+        maxPrice: undefined, // Calculated separately from OHLCV
+        maxGainPercent: undefined, // Calculated separately
+        timeToATH: null,
+        isDuplicate: row.is_duplicate || false,
       }));
 
+      // Apply post-query filters for calculated fields
+      let filteredData = data;
+      if (filters.isDuplicate !== undefined) {
+        filteredData = filteredData.filter(row => row.isDuplicate === filters.isDuplicate);
+      }
+
       return {
-        alerts,
-        total: parseInt(countResult.rows[0].total),
+        data: filteredData,
+        total,
       };
     } catch (error) {
       console.error('Error fetching caller history:', error);
@@ -112,53 +159,91 @@ export class CallerService {
   }
 
   /**
-   * Get recent alerts (past week)
+   * Get recent alerts (configurable time range, default past week)
+   * Returns data formatted for the frontend RecentAlertRow interface
    */
-  async getRecentAlerts(limit: number = 100): Promise<any[]> {
+  async getRecentAlerts(
+    page: number = 1,
+    pageSize: number = 100,
+    daysBack: number = 7
+  ): Promise<RecentAlertsResult> {
+    const offset = (page - 1) * pageSize;
+    const cacheKey = `recent-alerts:${page}:${pageSize}:${daysBack}`;
+
     try {
-      const cacheKey = cacheKeys.recentAlerts();
-      const cached = cache.get<any[]>(cacheKey);
+      const cached = cache.get<RecentAlertsResult>(cacheKey);
       if (cached) {
         return cached;
       }
 
-      const result = await postgresManager.query(
-        `
+      // Count query
+      const countQuery = `
+        SELECT COUNT(*) as total
+        FROM alerts a
+        WHERE a.alert_timestamp >= NOW() - INTERVAL '${daysBack} days'
+      `;
+
+      // Data query
+      const dataQuery = `
         SELECT 
           a.id,
+          c.handle as caller_name,
           t.address as token_address,
           t.symbol as token_symbol,
           t.chain,
-          c.handle as caller_handle,
           a.alert_timestamp,
-          a.alert_price,
+          a.alert_price as price_at_alert,
+          a.alert_price as entry_price,
           a.side,
           a.confidence,
-          (a.raw_payload_json->>'message') as alert_message
+          (a.raw_payload_json->>'message') as alert_message,
+          -- Check for duplicates
+          EXISTS(
+            SELECT 1 FROM alerts a2
+            LEFT JOIN callers c2 ON c2.id = a2.caller_id
+            WHERE a2.token_id = a.token_id 
+              AND c2.handle = c.handle
+              AND a2.id != a.id
+              AND a2.alert_timestamp BETWEEN a.alert_timestamp - INTERVAL '24 hours' 
+                                         AND a.alert_timestamp + INTERVAL '24 hours'
+          ) as is_duplicate
         FROM alerts a
         LEFT JOIN tokens t ON t.id = a.token_id
         LEFT JOIN callers c ON c.id = a.caller_id
+        WHERE a.alert_timestamp >= NOW() - INTERVAL '${daysBack} days'
         ORDER BY a.alert_timestamp DESC
-        LIMIT $1
-        `,
-        [limit]
-      );
+        LIMIT $1 OFFSET $2
+      `;
 
-      const alerts = result.rows.map((row: any) => ({
+      const [countResult, dataResult] = await Promise.all([
+        postgresManager.query(countQuery),
+        postgresManager.query(dataQuery, [pageSize, offset]),
+      ]);
+
+      const total = parseInt(countResult.rows[0]?.total || '0');
+
+      // Format data for frontend
+      const data: RecentAlertRow[] = dataResult.rows.map((row: any) => ({
         id: row.id,
-        tokenAddress: row.token_address,
-        tokenSymbol: row.token_symbol,
-        chain: row.chain,
-        callerName: row.caller_handle,
-        alertTimestamp: row.alert_timestamp,
-        priceAtAlert: row.alert_price ? parseFloat(row.alert_price) : undefined,
-        side: row.side,
-        confidence: row.confidence ? parseFloat(row.confidence) : undefined,
-        message: row.alert_message,
+        callerName: row.caller_name || 'Unknown',
+        tokenAddress: row.token_address || '',
+        tokenSymbol: row.token_symbol || undefined,
+        chain: row.chain || 'solana',
+        alertTimestamp: row.alert_timestamp ? new Date(row.alert_timestamp).toISOString() : '',
+        priceAtAlert: row.price_at_alert ? parseFloat(row.price_at_alert) : undefined,
+        entryPrice: row.entry_price ? parseFloat(row.entry_price) : undefined,
+        marketCapAtCall: undefined,
+        maxPrice: undefined,
+        maxGainPercent: undefined,
+        timeToATH: null,
+        isDuplicate: row.is_duplicate || false,
+        currentPrice: undefined, // Can be enriched with live price data
+        currentGainPercent: undefined,
       }));
 
-      cache.set(cacheKey, alerts, CONSTANTS.CACHE_TTL.RECENT_ALERTS || 300);
-      return alerts;
+      const result = { data, total };
+      cache.set(cacheKey, result, CONSTANTS.CACHE_TTL.RECENT_ALERTS || 300);
+      return result;
     } catch (error) {
       console.error('Error fetching recent alerts:', error);
       throw error;
@@ -166,39 +251,72 @@ export class CallerService {
   }
 
   /**
-   * Get caller statistics
+   * Get caller statistics formatted for the frontend CallerStatsData interface
    */
-  async getCallerStats(): Promise<CallerStats[]> {
+  async getCallerStatsFormatted(): Promise<CallerStatsData> {
     try {
-      const cacheKey = cacheKeys.callerStats();
-      const cached = cache.get<CallerStats[]>(cacheKey);
+      const cacheKey = 'caller-stats-formatted';
+      const cached = cache.get<CallerStatsData>(cacheKey);
       if (cached) {
         return cached;
       }
 
-      const result = await postgresManager.query(`
+      // Query for individual caller stats
+      const callerQuery = `
         SELECT 
-          c.handle as caller_handle,
-          COUNT(*) as total_alerts,
+          c.handle as name,
+          COUNT(*) as total_calls,
           COUNT(DISTINCT a.token_id) as unique_tokens,
-          MIN(a.alert_timestamp) as first_alert,
-          MAX(a.alert_timestamp) as last_alert
+          MIN(a.alert_timestamp) as first_call,
+          MAX(a.alert_timestamp) as last_call,
+          AVG(a.alert_price) as avg_price
         FROM alerts a
         LEFT JOIN callers c ON c.id = a.caller_id
+        WHERE c.handle IS NOT NULL
         GROUP BY c.handle
-        ORDER BY total_alerts DESC
-      `);
+        ORDER BY total_calls DESC
+      `;
 
-      const stats: CallerStats[] = result.rows.map((row: any) => ({
-        caller_handle: row.caller_handle,
-        total_alerts: parseInt(row.total_alerts),
-        unique_tokens: parseInt(row.unique_tokens),
-        first_alert: new Date(row.first_alert),
-        last_alert: new Date(row.last_alert),
+      // Query for overall totals
+      const totalsQuery = `
+        SELECT 
+          COUNT(*) as total_calls,
+          COUNT(DISTINCT a.caller_id) as total_callers,
+          COUNT(DISTINCT a.token_id) as total_tokens,
+          MIN(a.alert_timestamp) as earliest_call,
+          MAX(a.alert_timestamp) as latest_call
+        FROM alerts a
+      `;
+
+      const [callerResult, totalsResult] = await Promise.all([
+        postgresManager.query(callerQuery),
+        postgresManager.query(totalsQuery),
+      ]);
+
+      const callers: CallerStat[] = callerResult.rows.map((row: any) => ({
+        name: row.name || 'Unknown',
+        totalCalls: parseInt(row.total_calls || '0'),
+        uniqueTokens: parseInt(row.unique_tokens || '0'),
+        firstCall: row.first_call ? new Date(row.first_call).toISOString() : '',
+        lastCall: row.last_call ? new Date(row.last_call).toISOString() : '',
+        avgPrice: row.avg_price ? parseFloat(row.avg_price) : null,
+        avgMarketCap: null, // Calculated separately if needed
       }));
 
-      cache.set(cacheKey, stats, CONSTANTS.CACHE_TTL.CALLER_STATS);
-      return stats;
+      const totalsRow = totalsResult.rows[0] || {};
+      const result: CallerStatsData = {
+        callers,
+        totals: {
+          total_calls: parseInt(totalsRow.total_calls || '0'),
+          total_callers: parseInt(totalsRow.total_callers || '0'),
+          total_tokens: parseInt(totalsRow.total_tokens || '0'),
+          earliest_call: totalsRow.earliest_call ? new Date(totalsRow.earliest_call).toISOString() : null,
+          latest_call: totalsRow.latest_call ? new Date(totalsRow.latest_call).toISOString() : null,
+        },
+      };
+
+      cache.set(cacheKey, result, CONSTANTS.CACHE_TTL.CALLER_STATS);
+      return result;
     } catch (error) {
       console.error('Error fetching caller stats:', error);
       throw error;
@@ -210,13 +328,22 @@ export class CallerService {
    */
   async getAllCallers(): Promise<string[]> {
     try {
+      const cacheKey = 'all-callers-list';
+      const cached = cache.get<string[]>(cacheKey);
+      if (cached) {
+        return cached;
+      }
+
       const result = await postgresManager.query(`
         SELECT DISTINCT handle
         FROM callers
+        WHERE handle IS NOT NULL
         ORDER BY handle
       `);
 
-      return result.rows.map((row: any) => row.handle);
+      const callers = result.rows.map((row: any) => row.handle);
+      cache.set(cacheKey, callers, CONSTANTS.CACHE_TTL.CALLER_STATS);
+      return callers;
     } catch (error) {
       console.error('Error fetching callers:', error);
       throw error;

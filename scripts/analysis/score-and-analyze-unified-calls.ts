@@ -337,17 +337,23 @@ async function fetchCandlesForAnalysis(
 }
 
 /**
- * Calculate returns
+ * Calculate returns (MCAP-based)
+ * Uses market cap multiples instead of just price multiples for better cross-token comparison
  */
 function calculateReturns(
   callPrice: number,
   candles: Array<{ timestamp: number; price: number; volume: number }>,
-  callUnix: number
+  callUnix: number,
+  entryMcap?: number  // Optional: market cap at call time
 ): {
   maxReturn7d: number;
   maxReturn30d: number;
   returnAt7d: number;
   returnAt30d: number;
+  maxMcap7d?: number;
+  maxMcap30d?: number;
+  mcapAt7d?: number;
+  mcapAt30d?: number;
 } {
   const candlesAfter = candles.filter(c => c.timestamp > callUnix);
 
@@ -368,12 +374,29 @@ function calculateReturns(
     ? candles30d.sort((a, b) => a.timestamp - b.timestamp)[candles30d.length - 1]?.price || callPrice
     : callPrice;
 
-  return {
-    maxReturn7d: maxPrice7d / callPrice,
-    maxReturn30d: maxPrice30d / callPrice,
-    returnAt7d: priceAt7d / callPrice,
-    returnAt30d: priceAt30d / callPrice,
+  // Calculate price multiples (always available)
+  const priceMultiple7d = maxPrice7d / callPrice;
+  const priceMultiple30d = maxPrice30d / callPrice;
+  const priceMultipleAt7d = priceAt7d / callPrice;
+  const priceMultipleAt30d = priceAt30d / callPrice;
+
+  // If entry MCAP is available, calculate MCAP values
+  const result: any = {
+    maxReturn7d: priceMultiple7d,
+    maxReturn30d: priceMultiple30d,
+    returnAt7d: priceMultipleAt7d,
+    returnAt30d: priceMultipleAt30d,
   };
+
+  if (entryMcap) {
+    // Calculate peak MCAPs: peak_mcap = entry_mcap * (peak_price / entry_price)
+    result.maxMcap7d = entryMcap * priceMultiple7d;
+    result.maxMcap30d = entryMcap * priceMultiple30d;
+    result.mcapAt7d = entryMcap * priceMultipleAt7d;
+    result.mcapAt30d = entryMcap * priceMultipleAt30d;
+  }
+
+  return result;
 }
 
 function categorizePerformance(maxReturn30d: number): 'moon' | 'good' | 'decent' | 'poor' {

@@ -204,10 +204,10 @@ class DatabaseMigrator {
 
         for (const alert of alerts) {
           try {
-            // Get token_id
+            // Get token_id - CASE SENSITIVE for Solana addresses!
             const tokenResult = await client.query(
               'SELECT id FROM tokens WHERE chain = $1 AND address = $2',
-              [alert.chain || 'solana', alert.token_address.toLowerCase()]
+              [alert.chain || 'solana', alert.token_address]
             );
 
             // Get caller_id
