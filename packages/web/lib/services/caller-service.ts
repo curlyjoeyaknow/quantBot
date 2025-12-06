@@ -40,6 +40,11 @@ export class CallerService {
     page: number = 1,
     pageSize: number = 50
   ): Promise<CallerHistoryResult> {
+    // Validate inputs
+    if (page < 1) page = 1;
+    if (pageSize < 1) pageSize = 50;
+    if (pageSize > CONSTANTS.REQUEST.MAX_PAGE_SIZE) pageSize = CONSTANTS.REQUEST.MAX_PAGE_SIZE;
+
     const { caller, startDate, endDate, search } = filters;
     const offset = (page - 1) * pageSize;
 
@@ -167,6 +172,13 @@ export class CallerService {
     pageSize: number = 100,
     daysBack: number = 7
   ): Promise<RecentAlertsResult> {
+    // Validate inputs
+    if (page < 1) page = 1;
+    if (pageSize < 1) pageSize = 100;
+    if (pageSize > CONSTANTS.REQUEST.MAX_PAGE_SIZE) pageSize = CONSTANTS.REQUEST.MAX_PAGE_SIZE;
+    if (daysBack < 1) daysBack = 7;
+    if (daysBack > 365) daysBack = 365; // Cap at 1 year
+
     const offset = (page - 1) * pageSize;
     const cacheKey = `recent-alerts:${page}:${pageSize}:${daysBack}`;
 
@@ -176,11 +188,12 @@ export class CallerService {
         return cached;
       }
 
+      // Use parameterized query to prevent SQL injection
       // Count query
       const countQuery = `
         SELECT COUNT(*) as total
         FROM alerts a
-        WHERE a.alert_timestamp >= NOW() - INTERVAL '${daysBack} days'
+        WHERE a.alert_timestamp >= NOW() - INTERVAL '1 day' * $1
       `;
 
       // Data query
@@ -210,14 +223,14 @@ export class CallerService {
         FROM alerts a
         LEFT JOIN tokens t ON t.id = a.token_id
         LEFT JOIN callers c ON c.id = a.caller_id
-        WHERE a.alert_timestamp >= NOW() - INTERVAL '${daysBack} days'
+        WHERE a.alert_timestamp >= NOW() - INTERVAL '1 day' * $1
         ORDER BY a.alert_timestamp DESC
-        LIMIT $1 OFFSET $2
+        LIMIT $2 OFFSET $3
       `;
 
       const [countResult, dataResult] = await Promise.all([
-        postgresManager.query(countQuery),
-        postgresManager.query(dataQuery, [pageSize, offset]),
+        postgresManager.query(countQuery, [daysBack]),
+        postgresManager.query(dataQuery, [daysBack, pageSize, offset]),
       ]);
 
       const total = parseInt(countResult.rows[0]?.total || '0');

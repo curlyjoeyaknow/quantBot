@@ -147,16 +147,11 @@ async function main() {
 
   console.log('🔄 Fetching token metadata...\n');
 
-  // Get all Solana tokens that need metadata (base58 addresses only, not EVM)
+  // Get ALL tokens that need metadata (both Solana and EVM)
   const result = await pgPool.query(`
     SELECT id, address, chain, symbol, name, metadata_json
     FROM tokens
-    WHERE chain = 'solana'
-    AND address NOT LIKE '0x%'
-    AND address NOT LIKE 'x%'
-    AND LENGTH(address) >= 32
-    AND LENGTH(address) <= 44
-    AND (
+    WHERE (
       symbol IS NULL 
       OR symbol = 'UNKNOWN' 
       OR name IS NULL 
