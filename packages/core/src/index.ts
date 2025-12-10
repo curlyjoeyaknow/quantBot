@@ -1,22 +1,6 @@
-/**
- * Core simulation models
- * 
- * Defines the core data structures used throughout the simulation engine.
- * These types are shared between the engine, services, and storage layers.
- */
-
-import { DateTime } from 'luxon';
-
-/**
- * OHLCV Candle
- */
-export interface Candle {
-  timestamp: number; // UNIX timestamp (seconds UTC)
-  open: number;
-  high: number;
-  low: number;
-  close: number;
-  volume: number;
+export interface DateRange {
+  from: Date;
+  to: Date;
 }
 
 /**

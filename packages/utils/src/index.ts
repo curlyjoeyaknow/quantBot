@@ -27,9 +27,6 @@ export { logger as loggerNextjs } from './logger-nextjs';
 // Configuration loading
 export * from './config';
 
-// Core domain types (Golden Path)
-export * from './types/core';
-
 // Shared types (legacy, kept for backward compatibility)
 export * from './types';
 
