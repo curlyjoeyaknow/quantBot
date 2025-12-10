@@ -106,8 +106,7 @@ async function ensureOhlcvTable(ch: ClickHouseClient): Promise<void> {
         high Float64,
         low Float64,
         close Float64,
-        volume Float64,
-        is_backfill UInt8 DEFAULT 0
+        volume Float64
       )
       ENGINE = MergeTree()
       PARTITION BY (chain, toYYYYMM(timestamp))
@@ -213,7 +212,8 @@ export async function insertCandles(
     low: candle.low,
     close: candle.close,
     volume: candle.volume,
-    is_backfill: isBackfill ? 1 : 0,
+    // Note: is_backfill column removed - table doesn't have this column
+    // is_backfill: isBackfill ? 1 : 0,
   }));
   
   try {

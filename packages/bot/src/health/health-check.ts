@@ -6,7 +6,7 @@
 
 import { ServiceContainer, ServiceHealth, ServiceStatus } from '../container/ServiceContainer';
 import { logger } from '@quantbot/utils';
-import { DatabaseError } from '../utils/errors';
+import { DatabaseError } from '@quantbot/utils/errors';
 
 /**
  * Health check result
@@ -72,7 +72,7 @@ export class HealthCheckManager {
     // ClickHouse health check
     this.registerCheck('clickhouse', async () => {
       try {
-        const { getClickHouseClient } = await import('../storage/clickhouse-client');
+        const { getClickHouseClient } = await import('@quantbot/storage');
         const client = getClickHouseClient();
         await client.ping();
         return {

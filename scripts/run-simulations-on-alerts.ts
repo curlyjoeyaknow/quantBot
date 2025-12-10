@@ -5,8 +5,8 @@
 
 import 'dotenv/config';
 import { Pool } from 'pg';
-import { SimulationEngine, simulateStrategy } from '@quantbot/simulation';
-import { fetchHybridCandles } from '@quantbot/simulation';
+import { simulateStrategy } from '../packages/simulation/src/engine';
+import { fetchHybridCandles } from '../packages/simulation/src/candles';
 import { DateTime } from 'luxon';
 
 const pgPool = new Pool({
@@ -17,29 +17,29 @@ const pgPool = new Pool({
   database: process.env.POSTGRES_DATABASE || 'quantbot',
 });
 
-// Default strategy: Tenkan/Kijun with remaining period
-const DEFAULT_STRATEGY = {
-  entry: {
-    type: 'at_alert' as const,
-  },
-  exit: {
-    type: 'tenkan_kijun_remaining_period' as const,
-    config: {
-      remainingPeriods: 26,
-    },
-  },
-  stopLoss: {
-    initial: -0.2,
-    trailing: 'none' as const,
-  },
-  takeProfit: [
-    { percent: 0.5, target: 2.0 },
-    { percent: 0.3, target: 3.0 },
-    { percent: 0.2, target: 5.0 },
-  ],
-  positionSize: 0.025, // 2.5% of portfolio
-  slippage: 0.03,
-  fees: 0.005,
+// Default strategy: Simple multi-target
+const DEFAULT_STRATEGY = [
+  { percent: 0.5, target: 2.0 },
+  { percent: 0.3, target: 3.0 },
+  { percent: 0.2, target: 5.0 },
+];
+
+const DEFAULT_STOP_LOSS = {
+  initial: -0.2,
+  trailing: 'none' as const,
+};
+
+const DEFAULT_ENTRY = {
+  initialEntry: 0.0, // Enter immediately at alert price
+  trailingEntry: 'none' as const,
+  maxWaitTime: 0,
+};
+
+const DEFAULT_COSTS = {
+  entrySlippageBps: 300, // 3% = 300 basis points
+  exitSlippageBps: 300,
+  takerFeeBps: 50, // 0.5% = 50 basis points
+  borrowAprBps: 0,
 };
 
 async function runSimulationOnAlert(alert: any): Promise<void> {
@@ -58,13 +58,13 @@ async function runSimulationOnAlert(alert: any): Promise<void> {
 
     console.log(`🔄 Processing alert ${alert_id}: ${token_address.substring(0, 8)}...`);
 
-    // Fetch candles
+    // Fetch candles - fetchHybridCandles signature: (mint, startTime, endTime, chain, alertTime?)
     const candles = await fetchHybridCandles(
       token_address,
-      alertTime,
-      startTime.toUnixInteger(),
-      endTime.toUnixInteger(),
-      'solana'
+      startTime, // DateTime object
+      endTime, // DateTime object
+      'solana',
+      alertTime // Optional DateTime for Ichimoku lookback
     );
 
     if (candles.length < 52) {
@@ -73,30 +73,63 @@ async function runSimulationOnAlert(alert: any): Promise<void> {
     }
 
     // Run simulation
-    const result = await simulateStrategy({
+    const result = simulateStrategy(
       candles,
-      entryPrice: alert_price,
-      entryTime: alertTime.toJSDate(),
-      strategy: DEFAULT_STRATEGY,
-      initialBalance: 100, // 100 SOL
-    });
+      DEFAULT_STRATEGY,
+      DEFAULT_STOP_LOSS,
+      DEFAULT_ENTRY,
+      undefined, // reEntry
+      DEFAULT_COSTS
+    );
+
+    // Calculate metrics from result
+    const finalPrice = result.finalPrice;
+    const maxPrice = Math.max(...candles.map(c => c.high));
+    const pnl = (finalPrice / alert_price) - 1;
+    const holdDurationMinutes = result.events.length > 0 
+      ? Math.floor((result.events[result.events.length - 1].timestamp - result.events[0].timestamp) / 60)
+      : 0;
+
+    // Create table if it doesn't exist
+    await pgPool.query(`
+      CREATE TABLE IF NOT EXISTS simulation_results (
+        id BIGSERIAL PRIMARY KEY,
+        alert_id BIGINT NOT NULL,
+        token_address TEXT NOT NULL,
+        chain TEXT NOT NULL,
+        caller_name TEXT,
+        alert_timestamp TIMESTAMPTZ NOT NULL,
+        entry_price NUMERIC(38, 18) NOT NULL,
+        exit_price NUMERIC(38, 18) NOT NULL,
+        pnl NUMERIC(10, 4) NOT NULL,
+        max_reached NUMERIC(38, 18),
+        hold_duration_minutes INTEGER,
+        created_at TIMESTAMPTZ DEFAULT NOW(),
+        updated_at TIMESTAMPTZ DEFAULT NOW(),
+        UNIQUE(alert_id)
+      )
+    `);
 
     // Save to PostgreSQL
-    await insertSimulationResult({
-      alert_id,
-      token_address,
-      chain,
-      caller_name: alert.caller_name || 'unknown',
-      alert_timestamp: alertTime.toJSDate(),
-      entry_price: alert_price,
-      exit_price: result.exitPrice || alert_price,
-      pnl: result.pnl,
-      max_reached: result.maxPrice || alert_price,
-      hold_duration_minutes: result.holdDurationMinutes || 0,
-      trades: result.trades || [],
-    });
+    await pgPool.query(`
+      INSERT INTO simulation_results (
+        alert_id, token_address, chain, caller_name, 
+        alert_timestamp, entry_price, exit_price, pnl, 
+        max_reached, hold_duration_minutes
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      ON CONFLICT (alert_id) DO UPDATE SET
+        exit_price = EXCLUDED.exit_price,
+        pnl = EXCLUDED.pnl,
+        max_reached = EXCLUDED.max_reached,
+        hold_duration_minutes = EXCLUDED.hold_duration_minutes,
+        updated_at = NOW()
+    `, [
+      alert_id, token_address, chain, alert.caller_name || 'unknown',
+      alertTime.toJSDate(), alert_price, finalPrice, pnl,
+      maxPrice, holdDurationMinutes
+    ]);
 
-    console.log(`✅ Alert ${alert_id}: PNL ${result.pnl.toFixed(2)}x, Max ${result.maxPrice?.toFixed(4) || 'N/A'}`);
+    console.log(`✅ Alert ${alert_id}: PNL ${(pnl * 100).toFixed(2)}%, Max ${maxPrice.toFixed(6)}`);
 
   } catch (error: any) {
     console.error(`❌ Error processing alert ${alert.id}:`, error.message);
@@ -106,27 +139,28 @@ async function runSimulationOnAlert(alert: any): Promise<void> {
 async function main() {
   console.log('🚀 Starting simulations on PostgreSQL alerts...\n');
 
-  // Get alerts with prices from last 30 days
-  const thirtyDaysAgo = DateTime.now().minus({ days: 30 }).toJSDate();
-  
+  // Get all alerts with prices that don't have simulation results yet
   const result = await pgPool.query(`
     SELECT 
       a.id,
       a.token_id,
       a.alert_timestamp,
       a.alert_price,
-      a.caller_name,
+      COALESCE(c.handle, 'unknown') as caller_name,
       t.address as token_address,
       t.chain
     FROM alerts a
     JOIN tokens t ON t.id = a.token_id
+    LEFT JOIN callers c ON c.id = a.caller_id
     WHERE a.alert_price IS NOT NULL
     AND a.alert_price > 0
-    AND a.alert_timestamp >= $1
     AND t.chain = 'solana'
+    AND NOT EXISTS (
+      SELECT 1 FROM simulation_results sr WHERE sr.alert_id = a.id
+    )
     ORDER BY a.alert_timestamp DESC
-    LIMIT 100
-  `, [thirtyDaysAgo]);
+    LIMIT 5000
+  `, []);
 
   console.log(`📊 Found ${result.rows.length} alerts to simulate\n`);
 

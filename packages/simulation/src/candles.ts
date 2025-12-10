@@ -869,27 +869,39 @@ export async function fetchHybridCandles(
   }
   
   // Try ClickHouse first (if enabled) - ClickHouse is a cache, so check it even in cache-only mode
+  // If alertTime is provided, we'll use ClickHouse 5m candles but still fetch 1m candles from API
+  let clickhouseCandles5m: Candle[] | null = null;
   if (process.env.USE_CLICKHOUSE === 'true' || process.env.CLICKHOUSE_HOST) {
     try {
       const { queryCandles } = await import('../../storage/src/clickhouse-client');
-      const clickhouseCandles = await queryCandles(mint, chain, actualStartTime, endTime);
-      if (clickhouseCandles.length > 0) {
-        logger.debug(
-          `Using ClickHouse candles for ${mint} (${clickhouseCandles.length} candles, from ${actualStartTime.toISO()})`
-        );
-        // Filter to requested range if we extended backwards
-        if (actualStartTime < startTime) {
-          const startUnix = Math.floor(startTime.toSeconds());
-          const filtered = clickhouseCandles.filter((c: any) => c.timestamp >= startUnix);
+      const chCandles = await queryCandles(mint, chain, actualStartTime, endTime);
+      if (chCandles.length > 0) {
+        clickhouseCandles5m = chCandles;
+        if (alertTime) {
+          const alertUnix = Math.floor(alertTime.toSeconds());
+          const historicalCount = chCandles.filter((c: any) => c.timestamp < alertUnix).length;
           logger.debug(
-            `Filtered ClickHouse candles to requested range: ${filtered.length} candles (had ${clickhouseCandles.length} with lookback)`
+            `ClickHouse has ${chCandles.length} candles (${historicalCount} historical before alert). Will use as 5m base and fetch 1m from API.`
           );
-          return filtered;
+        } else {
+          // No alertTime, just use ClickHouse data and return early
+          logger.debug(
+            `Using ClickHouse candles for ${mint} (${chCandles.length} candles, from ${actualStartTime.toISO()})`
+          );
+          // Filter to requested range if we extended backwards
+          if (actualStartTime < startTime) {
+            const startUnix = Math.floor(startTime.toSeconds());
+            const filtered = chCandles.filter((c: any) => c.timestamp >= startUnix);
+            logger.debug(
+              `Filtered ClickHouse candles to requested range: ${filtered.length} candles (had ${chCandles.length} with lookback)`
+            );
+            return filtered;
+          }
+          return chCandles;
         }
-        return clickhouseCandles;
       }
     } catch (error: any) {
-      logger.warn('ClickHouse query failed, falling back to CSV cache', { error: error.message, mint });
+      logger.warn('ClickHouse query failed, falling back to API', { error: error.message, mint });
     }
   }
   
@@ -965,8 +977,17 @@ export async function fetchHybridCandles(
   );
   
   // Fetch 5m candles: if alertTime provided, start 52 periods before, then make multiple calls to fetch full history up to now
+  // Use ClickHouse data if available, otherwise fetch from API
   let candles5m: Candle[];
-  if (alertTime) {
+  if (clickhouseCandles5m && alertTime) {
+    // Use ClickHouse 5m candles, but we'll still fetch 1m candles below
+    candles5m = clickhouseCandles5m;
+    const alertUnix = Math.floor(alertTime.toSeconds());
+    const historicalCount = candles5m.filter(c => c.timestamp < alertUnix).length;
+    logger.debug(
+      `Using ClickHouse 5m candles: ${candles5m.length} total, ${historicalCount} historical (before alert)`
+    );
+  } else if (alertTime) {
     const MIN_HISTORICAL_5M = 52; // 52 periods for Ichimoku
     const CANDLE_5M_SEC = 5 * 60; // 300 seconds
     
@@ -1007,6 +1028,9 @@ export async function fetchHybridCandles(
         `Got ${historicalCount} historical 5m candles (>= ${MIN_HISTORICAL_5M} required for Ichimoku), ${candles5m.length} total candles`
       );
     }
+  } else if (clickhouseCandles5m) {
+    // No alertTime but we have ClickHouse data - use it
+    candles5m = clickhouseCandles5m;
   } else {
     // No alertTime: fetch 5m candles for the full period (including lookback if any)
     // fetchBirdeyeCandles will automatically chunk into 5000-candle requests
@@ -1032,57 +1056,52 @@ export async function fetchHybridCandles(
   // If alertTime is provided, fetch up to 5000 1m candles (max per API call)
   // Ensure at least 52 historical candles (before alertTime) for Ichimoku
   let finalCandles = candles5mFiltered;
+  let candles1m: Candle[] | null = null; // Store 1m candles separately for ClickHouse storage
   
   if (alertTime) {
-    // Fetch 5000 1m candles, ensuring at least 52 are historical (before alertTime) for Ichimoku
-    const MAX_1M_CANDLES = 5000;
-    const MIN_HISTORICAL_1M = 52; // Minimum historical candles for Ichimoku
+    // Fetch 5000 1m candles starting 52 minutes before alert time
+    // This ensures accurate entry prices at alert time and sufficient historical data for Ichimoku
+    const CANDLES_BACK = 52; // 52 minutes before alert for Ichimoku
+    const TOTAL_CANDLES = 5000; // Total candles to fetch
     const CANDLE_1M_SEC = 60;
     
     const alertUnix = Math.floor(alertTime.toSeconds());
-    const minHistoricalSeconds = MIN_HISTORICAL_1M * CANDLE_1M_SEC; // 52 minutes minimum
     
-    // Start at least 52 minutes before alertTime (for Ichimoku), then extend forward to get up to 5000 candles
-    const oneMStart = Math.max(
-      Math.floor(actualStartTime.toSeconds()),
-      alertUnix - minHistoricalSeconds // At least 52 minutes back
-    );
+    // Calculate time range: start 52 minutes before alert, fetch 5000 candles forward
+    const oneMStart = alertUnix - (CANDLES_BACK * CANDLE_1M_SEC); // 52 minutes before alert
+    const oneMEnd = oneMStart + (TOTAL_CANDLES * CANDLE_1M_SEC); // 5000 candles from start
     
-    // Calculate how many candles we can fetch forward from the start
-    const availableForwardSeconds = (MAX_1M_CANDLES * CANDLE_1M_SEC) - (alertUnix - oneMStart);
-    const oneMEnd = Math.min(
-      Math.floor(endTime.toSeconds()),
-      alertUnix + Math.max(0, availableForwardSeconds) // Extend forward to fill up to 5000 candles
-    );
+    // Cap end time to requested endTime if it's earlier
+    const oneMEndCapped = Math.min(oneMEnd, Math.floor(endTime.toSeconds()));
     
     logger.debug(
-      `Fetching up to ${MAX_1M_CANDLES} 1m candles (min ${MIN_HISTORICAL_1M} historical for Ichimoku): ${new Date(oneMStart * 1000).toISOString()} — ${new Date(oneMEnd * 1000).toISOString()}`
+      `Fetching ${TOTAL_CANDLES} 1m candles starting ${CANDLES_BACK} minutes before alert: ${new Date(oneMStart * 1000).toISOString()} — ${new Date(oneMEndCapped * 1000).toISOString()}`
     );
     
-    const candles1m = await fetchFreshCandles(
+    candles1m = await fetchFreshCandles(
       mint,
       DateTime.fromSeconds(oneMStart),
-      DateTime.fromSeconds(oneMEnd),
+      DateTime.fromSeconds(oneMEndCapped),
       chain,
       '1m'
     );
     
     // Verify we have at least 52 historical candles
-    const historicalCount = candles1m.filter(c => c.timestamp < alertUnix).length;
-    if (historicalCount < MIN_HISTORICAL_1M) {
+    const historicalCount = candles1m.filter((c: Candle) => c.timestamp < alertUnix).length;
+    if (historicalCount < CANDLES_BACK) {
       logger.warn(
-        `Only got ${historicalCount} historical 1m candles (need ${MIN_HISTORICAL_1M} for Ichimoku). Available data may be limited.`
+        `Only got ${historicalCount} historical 1m candles (need ${CANDLES_BACK} for Ichimoku). Available data may be limited.`
       );
     } else {
       logger.debug(
-        `Got ${historicalCount} historical 1m candles (>= ${MIN_HISTORICAL_1M} required for Ichimoku)`
+        `Got ${historicalCount} historical 1m candles (>= ${CANDLES_BACK} required for Ichimoku)`
       );
     }
     
     // Merge filtered 5m and 1m candles, with 1m taking precedence where they overlap
-    // Use a large window since we have up to 5000 candles (effectively merge all 1m candles)
-    const mergeWindowMinutes = Math.floor((oneMEnd - oneMStart) / 60 / 2); // Half the window in minutes
-    finalCandles = mergeCandles(candles5mFiltered, candles1m, alertTime, mergeWindowMinutes);
+    // Since we have 5000 1m candles (52 back + 4948 forward), merge all of them
+    // The merge function will replace 5m candles with 1m candles where they overlap
+    finalCandles = mergeCandles(candles5mFiltered, candles1m, alertTime, Math.floor((oneMEndCapped - oneMStart) / 60));
   }
   
   // Return full candles5m (with lookback) so Ichimoku can use all available data
@@ -1118,17 +1137,14 @@ export async function fetchHybridCandles(
         if (candles5m.length > 0) {
           await insertCandles(mint, chain, candles5m, '5m');
         }
-        if (alertTime) {
-          const alertWindowStart = alertTime.minus({ minutes: 30 });
-          const alertWindowEnd = alertTime.plus({ minutes: 30 });
-          const windowStart = alertWindowStart < startTime ? startTime : alertWindowStart;
-          const windowEnd = alertWindowEnd > endTime ? endTime : alertWindowEnd;
-          const candles1m = finalCandles.filter(c => {
-            const candleTime = DateTime.fromSeconds(c.timestamp);
-            return candleTime >= windowStart && candleTime <= windowEnd;
-          });
+        if (alertTime && candles1m) {
+          // Store ALL 1m candles that were fetched (up to 5000), not just a 60-minute window
+          // This ensures we have the full historical data for future use
           if (candles1m.length > 0) {
             await insertCandles(mint, chain, candles1m, '1m');
+            logger.debug(
+              `✅ Saved ${candles1m.length} 1m candles to ClickHouse (full range, not just alert window)`
+            );
           }
         }
         logger.debug(`✅ Saved candles to ClickHouse for ${mint.substring(0, 20)}...`);

@@ -6,7 +6,7 @@
 
 import { Context } from 'telegraf';
 import { BaseCommandHandler, Session } from './interfaces/CommandHandler';
-import { PositionManager } from '@quantbot/trading';
+import { PositionManager } from '../trading-stubs';
 import { logger } from '@quantbot/utils';
 import { extractCommandArgs } from '../utils/command-helpers';
 

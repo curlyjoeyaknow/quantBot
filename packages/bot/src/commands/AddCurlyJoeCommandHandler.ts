@@ -11,8 +11,9 @@ import { callerDatabase, CallerAlert } from '@quantbot/storage/caller-database';
 import { LiveTradeAlertService } from '@quantbot/monitoring/live-trade-alert-service';
 import { logger } from '@quantbot/utils';
 import { EntryConfig } from '@quantbot/simulation/config';
-import { fetchHistoricalCandlesForMonitoring } from '../utils/fetch-historical-candles';
+import { fetchHistoricalCandlesForMonitoring } from '@quantbot/services/historical-candles';
 import { sessionService } from '@quantbot/services/SessionService';
+import { LiveTradeCommandHandler } from './LiveTradeCommandHandler';
 
 // Default entry configuration with Ichimoku and price alerts enabled
 const DEFAULT_MONITOR_CONFIG: EntryConfig = {

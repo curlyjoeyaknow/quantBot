@@ -1,25 +1,98 @@
-# QuantBot - Advanced Trading Simulation & CA Monitoring Platform
+# QuantBot - Solana Analytics & Backtesting Pipeline
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue.svg)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-18+-green.svg)](https://nodejs.org/)
 [![License](https://img.shields.io/badge/License-ISC-blue.svg)](LICENSE)
 
-A sophisticated, production-ready Telegram bot and web platform for trading simulation, real-time contract address (CA) monitoring, and comprehensive PNL analysis across multiple blockchains.
+**A clean, focused analytics and backtesting pipeline for Solana token trading strategies.**
+
+This repository is primarily an **analytics & simulation engine**. Live trading execution is handled elsewhere.
+
+## 🎯 Golden Path: Analytics Pipeline
+
+The Golden Path is the core focus of this repository - a clean pipeline for:
+
+1. **Telegram Export Ingestion** → Parse caller alerts and extract token addresses
+2. **OHLCV Data Collection** → Fetch and store candle data from Birdeye
+3. **Strategy Simulation** → Run pure, deterministic backtests on historical calls
+4. **Performance Analytics** → Evaluate strategy performance with detailed metrics
+
+### Quick Start
+
+**🚀 Get started in 5 minutes:** See **[docs/QUICK_START.md](docs/QUICK_START.md)**
+
+**📖 Complete workflows:** See **[docs/WORKFLOWS.md](docs/WORKFLOWS.md)**
+
+**CLI Commands:**
+```bash
+# 1. Ingest Telegram export
+pnpm ingest:telegram --file data/raw/messages/brook7/messages.html --caller-name Brook
+
+# 2. Fetch OHLCV for calls
+pnpm ingest:ohlcv --from 2024-01-01 --to 2024-02-01
+
+# 3. Run simulation
+pnpm simulate:calls --strategy MyStrategy --caller Brook --from 2024-01-01 --to 2024-02-01
+```
+
+**Web Interface:**
+- Start web server: `cd packages/web && pnpm dev`
+- Open: `http://localhost:3000/golden-path`
+- Use UI to run all workflows
+
+**API Endpoints:**
+- `POST /api/golden-path/ingest/telegram` - Telegram ingestion
+- `POST /api/golden-path/ingest/ohlcv` - OHLCV ingestion
+- `POST /api/golden-path/simulate` - Run simulations
+
+See **[docs/GOLDEN_PATH.md](docs/GOLDEN_PATH.md)** for complete documentation.
 
 ## 🎯 Overview
 
-QuantBot is a comprehensive trading analysis platform that combines:
+QuantBot's Golden Path provides:
 
-- **Telegram Bot Interface** - Interactive command-driven bot for trading simulations
-- **Real-Time Monitoring** - Live CA drop detection and price tracking via WebSockets
-- **Advanced Simulation Engine** - Config-driven backtesting with customizable strategies
-- **Multi-Chain Support** - Solana, Ethereum, BSC, Base, and Arbitrum
-- **Web Dashboard** - Next.js-based analytics and visualization platform
-- **Technical Analysis** - Ichimoku Cloud analysis and trading signals
+- **Telegram Export Parsing** - Extract calls from Telegram HTML exports
+- **OHLCV Ingestion** - Fetch and store candle data from Birdeye API
+- **Pure Simulation Engine** - Deterministic backtesting with no side effects
+- **Postgres + ClickHouse** - Clean separation of OLTP and OLAP data
+- **Typed Repositories** - Type-safe database access layer
 
-## 🚀 Key Features
+### Secondary Features (Not Golden Path)
 
-### 📊 Trading Simulation Engine
+- **Telegram Bot Interface** - Interactive command-driven bot (see `packages/bot/`)
+- **Web Dashboard** - Next.js-based analytics UI (see `packages/web/`)
+- **Real-Time Monitoring** - Live CA drop detection (see `packages/monitoring/`)
+- **Live Trading** - Execution system (see `packages/trading/` - should be moved to separate repo)
+
+## 🚀 Golden Path Features
+
+### 📥 Telegram Export Ingestion
+- Parse HTML exports from Telegram
+- Extract Solana addresses (full, case-preserved)
+- Normalize into callers, alerts, calls, tokens
+- Idempotent processing (no duplicates)
+
+### 📈 OHLCV Data Management
+- Fetch candles from Birdeye API
+- Store in ClickHouse for fast queries
+- Automatic caching and deduplication
+- Support for 1m, 5m, 15m, 1h intervals
+
+### 🎯 Strategy Simulation
+- Pure simulation engine (deterministic, testable)
+- Config-driven strategies
+- Detailed event traces
+- Comprehensive performance metrics
+
+### 📊 Analytics & Reporting
+- Simulation run tracking
+- Aggregated performance metrics
+- Event-level traces for debugging
+- Strategy comparison tools
+
+## 🚀 Secondary Features (Not Golden Path)
+
+### 📊 Trading Simulation Engine (Legacy)
 
 - **Multi-Chain Support**: Solana, Ethereum, BSC, Base, Arbitrum
 - **Hybrid Candle Fetching**: 5-minute recent + 1-hour historical data

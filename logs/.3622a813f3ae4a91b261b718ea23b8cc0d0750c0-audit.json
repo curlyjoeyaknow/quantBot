@@ -6,21 +6,6 @@
     "auditLog": "/home/memez/quantBot/logs/.3622a813f3ae4a91b261b718ea23b8cc0d0750c0-audit.json",
     "files": [
         {
-            "date": 1763841231870,
-            "name": "/home/memez/quantBot/logs/error-2025-11-23.log",
-            "hash": "6fe035f29e5eed081a3992496e692a18adfd11a491653fc4aa796e79caafb0ec"
-        },
-        {
-            "date": 1763950176397,
-            "name": "/home/memez/quantBot/logs/error-2025-11-24.log",
-            "hash": "119dd2046dcf4e6df041d3399dd3dfb9aace27357d617c1aa721ef4c3dc272ce"
-        },
-        {
-            "date": 1763995298613,
-            "name": "/home/memez/quantBot/logs/error-2025-11-25.log",
-            "hash": "f7fb02a48b97c39b93a9f807016dc383b1f9fc6b5324d247155a5e017225671d"
-        },
-        {
             "date": 1764117670177,
             "name": "/home/memez/quantBot/logs/error-2025-11-26.log",
             "hash": "1ca50e407c1a76919cd955a3b60d4bc7f6fff2a8a9d2ffb1b5ac4c7391b8c9a3"
@@ -59,6 +44,21 @@
             "date": 1764977993882,
             "name": "/home/memez/quantBot/logs/error-2025-12-06.log",
             "hash": "643842ee5843b95dd14f3ca92dd629b48b32293371c2e709e39677e2a0da8369"
+        },
+        {
+            "date": 1765031603956,
+            "name": "/home/memez/quantBot/logs/error-2025-12-07.log",
+            "hash": "08e4a23e49dcb3302524c25d338bec812cf6d62411fdf9999a2b73c8fbf6905c"
+        },
+        {
+            "date": 1765118953249,
+            "name": "/home/memez/quantBot/logs/error-2025-12-08.log",
+            "hash": "e44b28b9f686d0d2ddcfffafce7c079288f20d1cc0fb23c052034c32a7dc11ad"
+        },
+        {
+            "date": 1765248012186,
+            "name": "/home/memez/quantBot/logs/error-2025-12-09.log",
+            "hash": "2bef5b6f462299e4349bdc3f850799eff7ecebbc09aa1780b336e3320349117a"
         }
     ],
     "hashType": "sha256"

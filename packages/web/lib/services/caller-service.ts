@@ -7,6 +7,7 @@ import { postgresManager } from '../db/postgres-manager';
 import { cache, cacheKeys } from '../cache';
 import { CONSTANTS } from '../constants';
 import { CallerHistoryRow, CallerStatsData, CallerStat, RecentAlertRow } from '../types';
+import { performanceAnalyticsService } from './performance-analytics-service';
 
 export interface CallerHistoryFilters {
   caller?: string;
@@ -276,6 +277,7 @@ export class CallerService {
 
   /**
    * Get caller statistics formatted for the frontend CallerStatsData interface
+   * Now includes performance metrics (win rate, avg multiple, best multiple, total return)
    */
   async getCallerStatsFormatted(): Promise<CallerStatsData> {
     try {
@@ -284,6 +286,12 @@ export class CallerService {
       if (cached) {
         return cached;
       }
+
+      // Get performance metrics from performance analytics service
+      const performanceMetrics = await performanceAnalyticsService.getTopCallersByReturns(1000); // Get all callers
+      const performanceMap = new Map(
+        performanceMetrics.map(metric => [metric.callerName, metric])
+      );
 
       // Query for individual caller stats
       const callerQuery = `
@@ -317,15 +325,24 @@ export class CallerService {
         postgresManager.query(totalsQuery),
       ]);
 
-      const callers: CallerStat[] = callerResult.rows.map((row: any) => ({
-        name: row.name || 'Unknown',
-        totalCalls: parseInt(row.total_calls || '0'),
-        uniqueTokens: parseInt(row.unique_tokens || '0'),
-        firstCall: row.first_call ? new Date(row.first_call).toISOString() : '',
-        lastCall: row.last_call ? new Date(row.last_call).toISOString() : '',
-        avgPrice: row.avg_price ? parseFloat(row.avg_price) : null,
-        avgMarketCap: null, // Calculated separately if needed
-      }));
+      const callers: CallerStat[] = callerResult.rows.map((row: any) => {
+        const perf = performanceMap.get(row.name);
+        return {
+          name: row.name || 'Unknown',
+          totalCalls: parseInt(row.total_calls || '0'),
+          uniqueTokens: parseInt(row.unique_tokens || '0'),
+          firstCall: row.first_call ? new Date(row.first_call).toISOString() : '',
+          lastCall: row.last_call ? new Date(row.last_call).toISOString() : '',
+          avgPrice: row.avg_price ? parseFloat(row.avg_price) : null,
+          avgMarketCap: null,
+          // Performance metrics
+          winRate: perf?.winRate || null,
+          avgMultiple: perf?.avgMultiple || null,
+          bestMultiple: perf?.bestMultiple || null,
+          totalReturn: perf?.totalReturn || null,
+          profitableCalls: perf?.profitableCalls || null,
+        };
+      });
 
       const totalsRow = totalsResult.rows[0] || {};
       const result: CallerStatsData = {

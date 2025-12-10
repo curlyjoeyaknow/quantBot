@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallerStats } from '@/lib/hooks/use-caller-stats';
-import { formatDate, formatAbbreviated } from '@/lib/utils/formatters';
+import { formatDate, formatAbbreviated, formatPercent } from '@/lib/utils/formatters';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 export function Callers() {
@@ -47,22 +47,48 @@ export function Callers() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="text-white">Caller</TableHead>
-                    <TableHead className="text-white">Total Calls</TableHead>
-                    <TableHead className="text-white">Unique Tokens</TableHead>
-                    <TableHead className="text-white">First Call</TableHead>
-                    <TableHead className="text-white">Last Call</TableHead>
-                    <TableHead className="text-white">Avg Price</TableHead>
+                    <TableHead className="text-white text-right">Total Calls</TableHead>
+                    <TableHead className="text-white text-right">Win Rate</TableHead>
+                    <TableHead className="text-white text-right">Avg Multiple</TableHead>
+                    <TableHead className="text-white text-right">Best Multiple</TableHead>
+                    <TableHead className="text-white text-right">Total Return</TableHead>
+                    <TableHead className="text-white text-right">Profitable</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {data.callers.map((caller) => (
                     <TableRow key={caller.name}>
                       <TableCell className="text-white font-medium">{caller.name}</TableCell>
-                      <TableCell className="text-slate-300">{caller.totalCalls.toLocaleString()}</TableCell>
-                      <TableCell className="text-slate-300">{caller.uniqueTokens.toLocaleString()}</TableCell>
-                      <TableCell className="text-slate-300">{formatDate(caller.firstCall)}</TableCell>
-                      <TableCell className="text-slate-300">{formatDate(caller.lastCall)}</TableCell>
-                      <TableCell className="text-slate-300">{formatAbbreviated(caller.avgPrice)}</TableCell>
+                      <TableCell className="text-slate-300 text-right">{caller.totalCalls.toLocaleString()}</TableCell>
+                      <TableCell className={`text-right font-semibold ${
+                        caller.winRate && caller.winRate >= 80 ? 'text-green-400' : 
+                        caller.winRate && caller.winRate >= 60 ? 'text-yellow-400' : 
+                        'text-red-400'
+                      }`}>
+                        {caller.winRate !== null && caller.winRate !== undefined 
+                          ? formatPercent(caller.winRate / 100) 
+                          : 'N/A'}
+                      </TableCell>
+                      <TableCell className="text-slate-300 text-right">
+                        {caller.avgMultiple !== null && caller.avgMultiple !== undefined
+                          ? `${caller.avgMultiple.toFixed(2)}x`
+                          : 'N/A'}
+                      </TableCell>
+                      <TableCell className="text-green-400 text-right font-semibold">
+                        {caller.bestMultiple !== null && caller.bestMultiple !== undefined
+                          ? `${caller.bestMultiple.toFixed(2)}x`
+                          : 'N/A'}
+                      </TableCell>
+                      <TableCell className="text-slate-300 text-right">
+                        {caller.totalReturn !== null && caller.totalReturn !== undefined
+                          ? `${caller.totalReturn.toFixed(2)}x`
+                          : 'N/A'}
+                      </TableCell>
+                      <TableCell className="text-slate-300 text-right">
+                        {caller.profitableCalls !== null && caller.profitableCalls !== undefined
+                          ? `${caller.profitableCalls}/${caller.totalCalls}`
+                          : 'N/A'}
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>

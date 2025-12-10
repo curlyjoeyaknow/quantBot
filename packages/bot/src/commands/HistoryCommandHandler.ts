@@ -8,6 +8,7 @@
 import { Context } from 'telegraf';
 import { BaseCommandHandler, Session } from './interfaces/CommandHandler';
 import { getAllCACalls } from '@quantbot/utils';
+import { BotCACall } from '../types/session';
 import { logger } from '@quantbot/utils';
 
 export class HistoryCommandHandler extends BaseCommandHandler {
@@ -24,7 +25,7 @@ export class HistoryCommandHandler extends BaseCommandHandler {
     
     try {
       // Get all CA drops from database (limit to 10 for pagination)
-      const caDrops = await getAllCACalls(10);
+      const caDrops = (await getAllCACalls(10)) as BotCACall[];
 
       if (caDrops.length === 0) {
         await ctx.reply('📊 **No Historical CA Calls Found**\n\nCA calls will be automatically stored when detected in the channel.');

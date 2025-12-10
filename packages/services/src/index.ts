@@ -27,5 +27,8 @@ export * from './api/birdeye-client';
 export * from './api/helius-client';
 export * from './api/base-client';
 
+// Monitoring helpers
+export * from './historical-candles';
+
 // Package logger
 export { logger } from './logger';

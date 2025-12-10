@@ -314,7 +314,7 @@ export class LiveTradeAlertService extends EventEmitter {
           const authToken = SHYFT_X_TOKEN || SHYFT_API_KEY;
           if (!authToken) {
             logger.error('No Shyft authentication token available');
-            this.ws.close();
+            this.ws?.close();
             return;
           }
 
@@ -324,7 +324,7 @@ export class LiveTradeAlertService extends EventEmitter {
             this.subscribeToSolanaTokens();
           } catch (error) {
             logger.error('Shyft WebSocket authentication failed', error as Error);
-            this.ws.close();
+            this.ws?.close();
             this.reconnectWebSocket();
           }
         });
@@ -1113,7 +1113,8 @@ export class LiveTradeAlertService extends EventEmitter {
         lastUpdateTime: monitor.lastUpdateTime ? new Date(monitor.lastUpdateTime) : undefined,
       });
     } catch (error) {
-      logger.warn('Failed to store monitored token in Postgres', error as Error, {
+      logger.warn('Failed to store monitored token in Postgres', {
+        error: error instanceof Error ? error.message : String(error),
         tokenAddress: alert.tokenAddress.substring(0, 20),
       });
       // Continue even if storage fails

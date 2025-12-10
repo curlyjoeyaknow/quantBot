@@ -1,0 +1,380 @@
+"use strict";
+/**
+ * ClickHouse Client for OHLCV Data Storage
+ *
+ * Provides fast, efficient storage and retrieval of OHLCV candle data
+ * using ClickHouse columnar database for time-series data.
+ */
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.getClickHouseClient = getClickHouseClient;
+exports.initClickHouse = initClickHouse;
+exports.insertCandles = insertCandles;
+exports.insertTicks = insertTicks;
+exports.queryCandles = queryCandles;
+exports.hasCandles = hasCandles;
+exports.closeClickHouse = closeClickHouse;
+const client_1 = require("@clickhouse/client");
+const luxon_1 = require("luxon");
+const logger_1 = require("../utils/logger");
+// ClickHouse connection configuration
+const CLICKHOUSE_HOST = process.env.CLICKHOUSE_HOST || 'localhost';
+const CLICKHOUSE_PORT = process.env.CLICKHOUSE_PORT ? parseInt(process.env.CLICKHOUSE_PORT) : 8123;
+const CLICKHOUSE_USER = process.env.CLICKHOUSE_USER || 'default';
+const CLICKHOUSE_PASSWORD = process.env.CLICKHOUSE_PASSWORD || '';
+const CLICKHOUSE_DATABASE = process.env.CLICKHOUSE_DATABASE || 'quantbot';
+// Singleton client instance
+let client = null;
+/**
+ * Get or create ClickHouse client instance
+ */
+function getClickHouseClient() {
+    // Reuse existing client - don't recreate on every call (this was causing socket hang ups)
+    if (client) {
+        return client;
+    }
+    // Create new client only if it doesn't exist
+    const url = `http://${CLICKHOUSE_HOST}:${CLICKHOUSE_PORT}`;
+    const config = {
+        url: url,
+        username: CLICKHOUSE_USER,
+        database: CLICKHOUSE_DATABASE,
+        // Connection settings to prevent socket hang ups
+        request_timeout: 60000, // 60 seconds
+        max_open_connections: 10, // Limit concurrent connections
+    };
+    // Use password only if explicitly set and not empty
+    // Default ClickHouse user often has no password
+    const password = process.env.CLICKHOUSE_PASSWORD;
+    if (password && password.trim() !== '') {
+        config.password = password;
+    }
+    client = (0, client_1.createClient)(config);
+    return client;
+}
+/**
+ * Initialize ClickHouse database and create tables
+ */
+async function initClickHouse() {
+    const url = `http://${CLICKHOUSE_HOST}:${CLICKHOUSE_PORT}`;
+    const tempConfig = {
+        url,
+        username: CLICKHOUSE_USER,
+    };
+    if (CLICKHOUSE_PASSWORD !== undefined && CLICKHOUSE_PASSWORD !== '') {
+        tempConfig.password = CLICKHOUSE_PASSWORD;
+    }
+    const tempClient = (0, client_1.createClient)(tempConfig);
+    try {
+        await tempClient.exec({
+            query: `CREATE DATABASE IF NOT EXISTS ${CLICKHOUSE_DATABASE}`,
+        });
+        await tempClient.close();
+        const ch = getClickHouseClient();
+        await ensureOhlcvTable(ch);
+        await ensureTickTable(ch);
+        await ensureSimulationTables(ch);
+        logger_1.logger.info('ClickHouse database and tables initialized');
+    }
+    catch (error) {
+        logger_1.logger.error('Error initializing ClickHouse', error);
+        await tempClient.close().catch(() => { });
+        throw error;
+    }
+}
+async function ensureOhlcvTable(ch) {
+    await ch.exec({
+        query: `
+      CREATE TABLE IF NOT EXISTS ${CLICKHOUSE_DATABASE}.ohlcv_candles (
+        token_address String,
+        chain String,
+        timestamp DateTime,
+        interval String,
+        open Float64,
+        high Float64,
+        low Float64,
+        close Float64,
+        volume Float64,
+        is_backfill UInt8 DEFAULT 0
+      )
+      ENGINE = MergeTree()
+      PARTITION BY (chain, toYYYYMM(timestamp))
+      ORDER BY (token_address, chain, timestamp)
+      SETTINGS index_granularity = 8192
+    `,
+    });
+}
+async function ensureTickTable(ch) {
+    await ch.exec({
+        query: `
+      CREATE TABLE IF NOT EXISTS ${CLICKHOUSE_DATABASE}.tick_events (
+        token_address String,
+        chain String,
+        timestamp DateTime,
+        price Float64,
+        size Float64,
+        signature String,
+        slot UInt64,
+        source String
+      )
+      ENGINE = MergeTree()
+      PARTITION BY (chain, toYYYYMM(timestamp))
+      ORDER BY (token_address, timestamp, signature)
+      SETTINGS index_granularity = 8192
+    `,
+    });
+}
+async function ensureSimulationTables(ch) {
+    await ch.exec({
+        query: `
+      CREATE TABLE IF NOT EXISTS ${CLICKHOUSE_DATABASE}.simulation_events (
+        simulation_run_id UInt64,
+        token_address String,
+        chain String,
+        event_time DateTime,
+        seq UInt32,
+        event_type String,
+        price Float64,
+        size Float64,
+        remaining_position Float64,
+        pnl_so_far Float64,
+        indicators_json String,
+        position_state_json String,
+        metadata_json String
+      )
+      ENGINE = MergeTree()
+      PARTITION BY (chain, toYYYYMM(event_time))
+      ORDER BY (simulation_run_id, seq)
+      SETTINGS index_granularity = 8192
+    `,
+    });
+    await ch.exec({
+        query: `
+      CREATE TABLE IF NOT EXISTS ${CLICKHOUSE_DATABASE}.simulation_aggregates (
+        simulation_run_id UInt64,
+        token_address String,
+        chain String,
+        final_pnl Float64,
+        max_drawdown Float64,
+        volatility Float64,
+        sharpe_ratio Float64,
+        sortino_ratio Float64,
+        win_rate Float64,
+        trade_count UInt32,
+        reentry_count UInt32,
+        ladder_entries_used UInt32,
+        ladder_exits_used UInt32,
+        created_at DateTime DEFAULT now()
+      )
+      ENGINE = MergeTree()
+      PARTITION BY (chain, toYYYYMM(created_at))
+      ORDER BY (simulation_run_id)
+      SETTINGS index_granularity = 8192
+    `,
+    });
+}
+/**
+ * Insert candles into ClickHouse
+ */
+async function insertCandles(tokenAddress, chain, candles, interval = '5m', isBackfill = false) {
+    if (candles.length === 0)
+        return;
+    const ch = getClickHouseClient();
+    const rows = candles.map(candle => ({
+        token_address: tokenAddress,
+        chain: chain,
+        timestamp: luxon_1.DateTime.fromSeconds(candle.timestamp).toFormat('yyyy-MM-dd HH:mm:ss'), // Convert to ClickHouse DateTime format
+        interval: interval,
+        open: candle.open,
+        high: candle.high,
+        low: candle.low,
+        close: candle.close,
+        volume: candle.volume,
+        is_backfill: isBackfill ? 1 : 0,
+    }));
+    try {
+        await ch.insert({
+            table: `${CLICKHOUSE_DATABASE}.ohlcv_candles`,
+            values: rows,
+            format: 'JSONEachRow',
+        });
+    }
+    catch (error) {
+        // Silently fail if USE_CACHE_ONLY is set (insertions not needed in cache-only mode)
+        if (process.env.USE_CACHE_ONLY !== 'true') {
+            const displayAddr = tokenAddress.length > 30 ? tokenAddress.substring(0, 30) + '...' : tokenAddress;
+            logger_1.logger.error('Error inserting candles', error, { tokenAddress: displayAddr });
+        }
+        // Don't throw in cache-only mode - just skip insertion
+        if (process.env.USE_CACHE_ONLY === 'true') {
+            return;
+        }
+        throw error;
+    }
+}
+/**
+ * Insert raw ticks into ClickHouse for high-resolution replay.
+ */
+async function insertTicks(tokenAddress, chain, ticks) {
+    if (ticks.length === 0)
+        return;
+    const ch = getClickHouseClient();
+    const values = ticks.map(tick => ({
+        token_address: tokenAddress,
+        chain,
+        timestamp: luxon_1.DateTime.fromSeconds(tick.timestamp).toFormat('yyyy-MM-dd HH:mm:ss'),
+        price: tick.price,
+        size: tick.size ?? 0,
+        signature: tick.signature ?? '',
+        slot: tick.slot ?? 0,
+        source: tick.source ?? 'ws',
+    }));
+    try {
+        await ch.insert({
+            table: `${CLICKHOUSE_DATABASE}.tick_events`,
+            values,
+            format: 'JSONEachRow',
+        });
+    }
+    catch (error) {
+        logger_1.logger.error('Error inserting ticks', error, { tokenAddress: tokenAddress.substring(0, 20) });
+        throw error;
+    }
+}
+/**
+ * Query candles from ClickHouse
+ */
+async function queryCandles(tokenAddress, chain, startTime, endTime, interval) {
+    // Reuse the singleton client - don't create new one each time
+    const ch = getClickHouseClient();
+    const startUnix = Math.floor(startTime.toSeconds());
+    const endUnix = Math.floor(endTime.toSeconds());
+    // Build query with string interpolation (ClickHouse client has issues with query_params for mixed types)
+    // Note: ClickHouse stores full addresses (e.g., with "pump" suffix), so we use LIKE to match
+    const escapedTokenAddress = tokenAddress.replace(/'/g, "''");
+    let query = `
+    SELECT 
+      toUnixTimestamp(timestamp) as timestamp,
+      open,
+      high,
+      low,
+      close,
+      volume
+    FROM ${CLICKHOUSE_DATABASE}.ohlcv_candles
+    WHERE (token_address = '${escapedTokenAddress}' 
+           OR lower(token_address) = lower('${escapedTokenAddress}')
+           OR token_address LIKE '${escapedTokenAddress}%'
+           OR lower(token_address) LIKE lower('${escapedTokenAddress}%')
+           OR token_address LIKE CONCAT('%', '${escapedTokenAddress}')
+           OR lower(token_address) LIKE lower(CONCAT('%', '${escapedTokenAddress}')))
+      AND chain = '${chain.replace(/'/g, "''")}'
+      AND timestamp >= toDateTime(${startUnix})
+      AND timestamp <= toDateTime(${endUnix})
+  `;
+    if (interval) {
+        // interval is a reserved keyword in ClickHouse, need to escape with backticks
+        query += ` AND \`interval\` = '${interval.replace(/'/g, "''")}'`;
+    }
+    query += ` ORDER BY timestamp ASC`;
+    // Retry logic for socket hang ups and connection errors
+    const maxRetries = 3;
+    let lastError = null;
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+        try {
+            // Debug logging (display only - use full address in query)
+            if (process.env.DEBUG_CLICKHOUSE === 'true') {
+                logger_1.logger.debug('ClickHouse query', { tokenAddress: tokenAddress.substring(0, 20), chain, startUnix, endUnix, attempt: attempt + 1 });
+            }
+            const result = await ch.query({
+                query,
+                format: 'JSONEachRow',
+                clickhouse_settings: {
+                    max_execution_time: 30, // 30 seconds max execution time
+                },
+            });
+            const data = await result.json();
+            // Ensure we have an array
+            if (!Array.isArray(data)) {
+                return [];
+            }
+            return data.map(row => ({
+                timestamp: row.timestamp, // Already in Unix seconds from toUnixTimestamp()
+                open: row.open,
+                high: row.high,
+                low: row.low,
+                close: row.close,
+                volume: row.volume,
+            }));
+        }
+        catch (error) {
+            lastError = error;
+            const isSocketError = error.message?.includes('socket hang up') ||
+                error.message?.includes('ECONNRESET') ||
+                error.message?.includes('ETIMEDOUT') ||
+                error.message?.includes('timeout');
+            // Retry on socket/timeout errors, but not on other errors (like syntax errors)
+            if (isSocketError && attempt < maxRetries - 1) {
+                // Wait before retry (exponential backoff: 1s, 2s, 3s)
+                await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+                continue;
+            }
+            // Silently fail if USE_CACHE_ONLY is set (will fallback to CSV cache)
+            if (process.env.USE_CACHE_ONLY !== 'true' && !isSocketError) {
+                logger_1.logger.error('Error querying candles', error, { tokenAddress });
+            }
+            return [];
+        }
+    }
+    // If we exhausted retries, return empty array
+    return [];
+}
+/**
+ * Check if candles exist in ClickHouse for a given token and time range
+ */
+async function hasCandles(tokenAddress, chain, startTime, endTime) {
+    const ch = getClickHouseClient();
+    const startUnix = Math.floor(startTime.toSeconds());
+    const endUnix = Math.floor(endTime.toSeconds());
+    try {
+        // Escape strings for SQL injection safety
+        const escapedTokenAddress = tokenAddress.replace(/'/g, "''");
+        const escapedChain = chain.replace(/'/g, "''");
+        // Use same flexible matching as queryCandles
+        const result = await ch.query({
+            query: `
+        SELECT count() as count
+        FROM ${CLICKHOUSE_DATABASE}.ohlcv_candles
+        WHERE (token_address = '${escapedTokenAddress}' 
+               OR lower(token_address) = lower('${escapedTokenAddress}')
+               OR token_address LIKE '${escapedTokenAddress}%'
+               OR lower(token_address) LIKE lower('${escapedTokenAddress}%')
+               OR token_address LIKE CONCAT('%', '${escapedTokenAddress}')
+               OR lower(token_address) LIKE lower(CONCAT('%', '${escapedTokenAddress}')))
+          AND chain = '${escapedChain}'
+          AND timestamp >= toDateTime(${startUnix})
+          AND timestamp <= toDateTime(${endUnix})
+      `,
+            format: 'JSONEachRow',
+        });
+        const data = await result.json();
+        // Ensure we have an array
+        if (!Array.isArray(data) || data.length === 0) {
+            return false;
+        }
+        return data[0]?.count > 0 || false;
+    }
+    catch (error) {
+        logger_1.logger.error('Error checking candles', error, { tokenAddress });
+        return false;
+    }
+}
+/**
+ * Close ClickHouse client connection
+ */
+async function closeClickHouse() {
+    if (client) {
+        await client.close();
+        client = null;
+        logger_1.logger.info('ClickHouse connection closed');
+    }
+}
+//# sourceMappingURL=clickhouse-client.js.map

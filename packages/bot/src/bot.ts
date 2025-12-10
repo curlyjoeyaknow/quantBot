@@ -53,13 +53,13 @@ import {
   getCACallByMint,
   getTrackedTokens,
 } from '@quantbot/utils';
-import { HeliusMonitor } from '../helius-monitor';
-import { heliusStreamRecorder } from '@quantbot/services/stream/helius-recorder';
-import { heliusBackfillService } from '@quantbot/services/backfill/helius-backfill-service';
-import { pumpfunLifecycleTracker } from '@quantbot/services/pumpfun/pumpfun-lifecycle-tracker';
+import { HeliusMonitor } from '@quantbot/monitoring/helius-monitor';
+import { heliusStreamRecorder } from '@quantbot/monitoring/stream/helius-recorder';
+import { heliusBackfillService } from '@quantbot/monitoring/backfill/helius-backfill-service';
+import { pumpfunLifecycleTracker } from '@quantbot/monitoring/pumpfun/pumpfun-lifecycle-tracker';
 import { findCallsForToken } from '@quantbot/utils';
 import { logger } from '@quantbot/utils';
-import { Session, TokenMetadata, CallerInfo, LastSimulation, SimulationRunData, CACall, ActiveCA } from '@quantbot/utils/session';
+import { Session, TokenMetadata, CallerInfo, LastSimulation, SimulationRunData, BotCACall, ActiveCA } from './types/session';
 
 // Load environment variables (API keys, bot token, etc.)
 dotenv.config();
@@ -251,7 +251,7 @@ bot.command('history', async ctx => {
   
   try {
     // Get CA calls from the database (limit to 10 for pagination)
-    const calls = await getAllCACalls(10); // Get only 10 recent calls
+    const calls = (await getAllCACalls(10)) as BotCACall[]; // Get only 10 recent calls
 
     if (calls.length === 0) {
       ctx.reply('📊 **No Historical CA Calls Found**\n\nCA calls will be automatically stored when detected in the channel.');
@@ -262,8 +262,11 @@ bot.command('history', async ctx => {
 
     // Show calls in chronological order (newest first)
     for (const call of calls) {
-      const date = call.call_timestamp ? new Date(call.call_timestamp * 1000).toISOString().split('T')[0] : 'Unknown';
-      const time = call.call_timestamp ? new Date(call.call_timestamp * 1000).toTimeString().substring(0, 5) : 'Unknown';
+      const callTimestamp =
+        call.call_timestamp ??
+        (call.alert_timestamp ? Math.floor(new Date(call.alert_timestamp).getTime() / 1000) : undefined);
+      const date = callTimestamp ? new Date(callTimestamp * 1000).toISOString().split('T')[0] : 'Unknown';
+      const time = callTimestamp ? new Date(callTimestamp * 1000).toTimeString().substring(0, 5) : 'Unknown';
       const chainEmoji = call.chain === 'solana' ? '🟣' : call.chain === 'ethereum' ? '🔵' : call.chain === 'bsc' ? '🟡' : '⚪';
       
       historyMessage += `${chainEmoji} ${date} ${time} | ${call.token_name || 'Unknown'} (${call.token_symbol || 'N/A'})\n`;
@@ -272,8 +275,8 @@ bot.command('history', async ctx => {
     }
 
     // Add summary and pagination info
-    const chains = [...new Set(calls.map((c: CACall) => c.chain))];
-    const callers = [...new Set(calls.map((c: CACall) => c.caller).filter(Boolean))];
+    const chains = [...new Set(calls.map((c: BotCACall) => c.chain))];
+    const callers = [...new Set(calls.map((c: BotCACall) => c.caller).filter(Boolean))];
     
     historyMessage += `📈 **Summary:**\n`;
     historyMessage += `• Chains: ${chains.join(', ')}\n`;
@@ -306,7 +309,7 @@ bot.command('backtest_call', async ctx => {
   
   try {
     // Get the CA call from database
-    const call = await getCACallByMint(mint);
+    const call = (await getCACallByMint(mint)) as BotCACall | null;
     
     if (!call) {
       ctx.reply(`❌ **CA Call Not Found**\n\nNo historical call found for mint: \`${mint.replace(/`/g, '\\`')}\`\n\nUse \`/history\` to see available calls.`);
@@ -314,14 +317,25 @@ bot.command('backtest_call', async ctx => {
     }
 
     // Start backtest workflow for this historical call
+    const callTimestamp =
+      call.call_timestamp ??
+      (call.alert_timestamp ? Math.floor(new Date(call.alert_timestamp).getTime() / 1000) : undefined);
+    const tokenName = call.token_name || 'Unknown';
+    const tokenSymbol = call.token_symbol || 'N/A';
+    if (!callTimestamp) {
+      ctx.reply('Call is missing timestamp information.');
+      delete sessions[userId];
+      return;
+    }
+
     sessions[userId] = {
       mint: call.mint,
       chain: call.chain,
       metadata: {
-        name: call.token_name,
-        symbol: call.token_symbol
+        name: tokenName,
+        symbol: tokenSymbol
       },
-      datetime: DateTime.fromSeconds(call.call_timestamp),
+      datetime: DateTime.fromSeconds(callTimestamp),
       strategy: [{ percent: 0.5, target: 2 }, { percent: 0.3, target: 5 }, { percent: 0.2, target: 10 }],
       stopLossConfig: { initial: -0.3, trailing: 0.5 },
       entryConfig: { initialEntry: 'none' as const, trailingEntry: 'none' as const, maxWaitTime: 60 },
@@ -329,16 +343,16 @@ bot.command('backtest_call', async ctx => {
     };
 
     ctx.reply(`🎯 **Backtesting Historical Call**\n\n` +
-      `🪙 **${call.token_name}** (${call.token_symbol})\n` +
+      `🪙 **${tokenName}** (${tokenSymbol})\n` +
       `🔗 **Chain**: ${call.chain.toUpperCase()}\n` +
-      `📅 **Call Date**: ${new Date(call.call_timestamp * 1000).toLocaleString()}\n` +
+      `📅 **Call Date**: ${new Date(callTimestamp * 1000).toLocaleString()}\n` +
       `💰 **Call Price**: $${call.call_price?.toFixed(8) || 'N/A'}\n` +
       `👤 **Caller**: ${call.caller || 'Unknown'}\n\n` +
       `Running simulation with default strategy...`);
 
     // Run the simulation immediately
     try {
-      const alertTime = DateTime.fromSeconds(call.call_timestamp);
+      const alertTime = DateTime.fromSeconds(callTimestamp);
       // Pass alertTime for 1m candles around alert time
       const candles = await fetchHybridCandles(
         call.mint,
@@ -368,7 +382,7 @@ bot.command('backtest_call', async ctx => {
       let resultMessage = `🎯 **Historical Call Backtest Results**\n\n` +
         `${chainEmoji} Chain: ${call.chain.toUpperCase()}\n` +
         `🪙 Token: ${call.token_name || 'Unknown'} (${call.token_symbol || 'N/A'})\n` +
-        `📅 Call Date: ${new Date(call.call_timestamp * 1000).toLocaleString()}\n` +
+        `📅 Call Date: ${new Date(callTimestamp * 1000).toLocaleString()}\n` +
         `👤 Caller: ${call.caller || 'Unknown'}\n` +
         `📈 Candles: ${result.totalCandles}\n` +
         `💰 Simulated PNL: **${result.finalPnl.toFixed(2)}x**\n\n` +
@@ -398,7 +412,7 @@ bot.command('backtest_call', async ctx => {
         tokenSymbol: call.token_symbol,
         strategy: sessions[userId].strategy!,
         stopLossConfig: sessions[userId].stopLossConfig!,
-        startTime: DateTime.fromSeconds(call.call_timestamp),
+        startTime: DateTime.fromSeconds(callTimestamp),
         endTime: DateTime.utc(),
         finalPnl: result.finalPnl,
         totalCandles: result.totalCandles,
@@ -589,9 +603,12 @@ bot.command('alerts', async ctx => {
         const tokenName = (call.token_name || 'Unknown').substring(0, 18).padEnd(18);
         const chain = call.chain.toUpperCase().substring(0, 7).padEnd(7);
         const price = `$${(call.call_price || 0).toFixed(6)}`.padEnd(10);
-        const time = call.call_timestamp ? 
-          new Date(call.call_timestamp * 1000).toLocaleString().substring(0, 12).padEnd(12) : 
-          'Unknown'.padEnd(12);
+        const callTimestamp =
+          call.call_timestamp ??
+          (call.alert_timestamp ? Math.floor(new Date(call.alert_timestamp).getTime() / 1000) : undefined);
+        const time = callTimestamp
+          ? new Date(callTimestamp * 1000).toLocaleString().substring(0, 12).padEnd(12)
+          : 'Unknown'.padEnd(12);
         
         alertsMessage += `│ ${tokenName} │ ${chain} │ ${price} │ ${time} │\n`;
       }
@@ -915,7 +932,7 @@ async function startIchimokuAnalysis(ctx: Context, session: Session): Promise<vo
     const startTime = endTime.minus({ minutes: 260 }); // 52 * 5 minutes
 
                     // Fetch historical candles
-                    const { fetchHybridCandles } = await import('../simulation/candles');
+                    const { fetchHybridCandles } = await import('@quantbot/simulation/candles');
                     let candles;
                     
                     try {
@@ -952,7 +969,7 @@ async function startIchimokuAnalysis(ctx: Context, session: Session): Promise<vo
                     }
 
     // Calculate current Ichimoku data
-    const { calculateIchimoku, formatIchimokuData } = await import('../simulation/ichimoku');
+    const { calculateIchimoku, formatIchimokuData } = await import('@quantbot/simulation/ichimoku');
     const currentIndex = candles.length - 1;
     const ichimokuData = calculateIchimoku(candles, currentIndex);
 

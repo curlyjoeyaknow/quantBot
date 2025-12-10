@@ -4,6 +4,7 @@ import type { AnalysisResult } from '../../src/analysis/result-analyzer';
 import { promises as fs } from 'fs';
 import path from 'path';
 import os from 'os';
+import { stringify } from 'csv-stringify';
 
 // Mock fs
 vi.mock('fs', () => ({
@@ -15,14 +16,15 @@ vi.mock('fs', () => ({
 }));
 
 // Mock csv-stringify
-const mockStringify = vi.fn((rows, options, callback) => {
-  const output = rows.map((row: any) => Object.values(row).join(',')).join('\n') + '\n';
-  callback(null, output);
+vi.mock('csv-stringify', () => {
+  const mockStringify = vi.fn((rows, options, callback) => {
+    const output = rows.map((row: any) => Object.values(row).join(',')).join('\n') + '\n';
+    callback(null, output);
+  });
+  return {
+    stringify: mockStringify,
+  };
 });
-
-vi.mock('csv-stringify', () => ({
-  stringify: mockStringify,
-}));
 
 describe('CsvReporter', () => {
   let reporter: CsvReporter;
@@ -91,7 +93,7 @@ describe('CsvReporter', () => {
 
       expect(fs.mkdir).toHaveBeenCalled();
       expect(fs.writeFile).toHaveBeenCalled();
-      expect(mockStringify).toHaveBeenCalled();
+      expect(vi.mocked(stringify)).toHaveBeenCalled();
     });
 
     it('should include header for new file', async () => {
@@ -152,7 +154,7 @@ describe('CsvReporter', () => {
 
       await reporter.generate(results, options);
 
-      expect(mockStringify).toHaveBeenCalledWith(
+      expect(vi.mocked(stringify)).toHaveBeenCalledWith(
         expect.arrayContaining([
           expect.objectContaining({ 'Total Trades': '10' }),
           expect.objectContaining({ 'Total Trades': '10' }),
@@ -193,14 +195,14 @@ describe('CsvReporter', () => {
 
       await reporter.generate(results, options);
 
-      const stringifyCall = mockStringify.mock.calls[0];
+      const stringifyCall = vi.mocked(stringify).mock.calls[0];
       const rows = stringifyCall[0] as any[];
       expect(rows[0]['Win Rate %']).toBe('50.00');
       expect(rows[0]['Avg PnL %']).toBe('10.00');
     });
 
     it('should handle csv-stringify errors', async () => {
-      mockStringify.mockImplementationOnce((rows, options, callback) => {
+      vi.mocked(stringify).mockImplementationOnce((rows, options, callback) => {
         callback(new Error('CSV generation failed'), null);
       });
 
@@ -215,7 +217,7 @@ describe('CsvReporter', () => {
     it('should handle file write errors', async () => {
       vi.mocked(fs.appendFile).mockRejectedValueOnce(new Error('Write failed'));
 
-      mockStringify.mockImplementationOnce((rows, options, callback) => {
+      vi.mocked(stringify).mockImplementationOnce((rows, options, callback) => {
         callback(null, 'test,data\n');
       });
 

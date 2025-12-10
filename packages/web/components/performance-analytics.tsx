@@ -34,6 +34,8 @@ export function PerformanceAnalytics() {
   const [highestMultipleCalls, setHighestMultipleCalls] = useState<any[]>([]);
   const [strategyComparison, setStrategyComparison] = useState<any[]>([]);
   const [selectedStrategy, setSelectedStrategy] = useState<string>('');
+  const [multiplesPage, setMultiplesPage] = useState(1);
+  const multiplesPerPage = 25;
 
   useEffect(() => {
     loadPerformanceData();
@@ -46,7 +48,7 @@ export function PerformanceAnalytics() {
 
       const [topReturnsRes, highestMultipleRes, strategyCompRes] = await Promise.all([
         fetch('/api/analytics/performance/top-returns?limit=10'),
-        fetch('/api/analytics/performance/highest-multiple?limit=10'),
+        fetch('/api/analytics/performance/highest-multiple?limit=100'),
         fetch('/api/analytics/performance/strategy-comparison'),
       ]);
 
@@ -111,28 +113,43 @@ export function PerformanceAnalytics() {
               <p className="text-sm text-slate-400 mb-4">
                 Ranked by average return multiple (bots excluded: Phanes, Rick)
               </p>
-              <ResponsiveContainer width="100%" height={400}>
-                <BarChart data={topCallersByReturns} layout="horizontal">
-                  <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                  <XAxis type="number" stroke="#94a3b8" />
-                  <YAxis dataKey="callerName" type="category" width={150} stroke="#94a3b8" />
-                  <Tooltip 
-                    contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px' }}
-                    formatter={(value: any, name: string) => {
-                      if (name === 'avgMultiple' || name === 'bestMultiple') {
-                        return [`${parseFloat(value).toFixed(2)}x`, name === 'avgMultiple' ? 'Avg Multiple' : 'Best Multiple'];
-                      }
-                      if (name === 'winRate') {
-                        return [`${parseFloat(value).toFixed(1)}%`, 'Win Rate'];
-                      }
-                      return [value, name];
-                    }}
-                  />
-                  <Legend />
-                  <Bar dataKey="avgMultiple" fill="#3b82f6" radius={[0, 8, 8, 0]} name="Avg Multiple" />
-                  <Bar dataKey="bestMultiple" fill="#8b5cf6" radius={[0, 8, 8, 0]} name="Best Multiple" />
-                </BarChart>
-              </ResponsiveContainer>
+              {topCallersByReturns.length > 0 ? (
+                <ResponsiveContainer width="100%" height={400}>
+                  <BarChart data={topCallersByReturns} layout="horizontal">
+                    <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                    <XAxis 
+                      type="number" 
+                      stroke="#94a3b8" 
+                      domain={[0, 'dataMax']}
+                      tickFormatter={(value) => `${value.toFixed(1)}x`}
+                    />
+                    <YAxis 
+                      dataKey="callerName" 
+                      type="category" 
+                      width={150} 
+                      stroke="#94a3b8"
+                      tick={{ fontSize: 12 }}
+                    />
+                    <Tooltip 
+                      contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #334155', borderRadius: '8px' }}
+                      formatter={(value: any, name: string) => {
+                        if (name === 'avgMultiple' || name === 'bestMultiple') {
+                          return [`${parseFloat(value).toFixed(2)}x`, name === 'avgMultiple' ? 'Avg Multiple' : 'Best Multiple'];
+                        }
+                        if (name === 'winRate') {
+                          return [`${parseFloat(value).toFixed(1)}%`, 'Win Rate'];
+                        }
+                        return [value, name];
+                      }}
+                    />
+                    <Legend />
+                    <Bar dataKey="avgMultiple" fill="#3b82f6" radius={[0, 8, 8, 0]} name="Avg Multiple" />
+                    <Bar dataKey="bestMultiple" fill="#8b5cf6" radius={[0, 8, 8, 0]} name="Best Multiple" />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="text-center text-slate-400 py-8">No data available</div>
+              )}
             </Card>
 
             {/* Win Rate Chart */}
@@ -176,33 +193,63 @@ export function PerformanceAnalytics() {
                   </tr>
                 </thead>
                 <tbody>
-                  {highestMultipleCalls.map((call, idx) => (
-                    <tr key={idx} className="border-b border-slate-700/50 hover:bg-slate-700/30">
-                      <td className="p-3 text-white font-bold">{idx + 1}</td>
-                      <td className="p-3 text-white">{call.callerName}</td>
-                      <td className="p-3">
-                        <div className="text-white font-mono">{call.tokenSymbol}</div>
-                        <div className="text-xs text-slate-400 truncate max-w-[200px]">{call.tokenAddress}</div>
-                      </td>
-                      <td className="p-3 text-right">
-                        <span className="text-green-400 font-bold text-lg">
-                          {call.multiple.toFixed(2)}x
-                        </span>
-                      </td>
-                      <td className="p-3 text-right text-slate-300">
-                        ${call.entryPrice.toExponential(2)}
-                      </td>
-                      <td className="p-3 text-right text-slate-300">
-                        ${call.peakPrice.toExponential(2)}
-                      </td>
-                      <td className="p-3 text-right text-slate-400">
-                        {call.timeToATH || 'N/A'}
-                      </td>
-                    </tr>
-                  ))}
+                  {highestMultipleCalls
+                    .slice((multiplesPage - 1) * multiplesPerPage, multiplesPage * multiplesPerPage)
+                    .map((call, idx) => {
+                      const globalRank = (multiplesPage - 1) * multiplesPerPage + idx + 1;
+                      return (
+                        <tr key={idx} className="border-b border-slate-700/50 hover:bg-slate-700/30">
+                          <td className="p-3 text-white font-bold">{globalRank}</td>
+                          <td className="p-3 text-white">{call.callerName}</td>
+                          <td className="p-3">
+                            <div className="text-white font-mono">{call.tokenSymbol}</div>
+                            <div className="text-xs text-slate-400 truncate max-w-[200px]">{call.tokenAddress}</div>
+                          </td>
+                          <td className="p-3 text-right">
+                            <span className="text-green-400 font-bold text-lg">
+                              {call.multiple.toFixed(2)}x
+                            </span>
+                          </td>
+                          <td className="p-3 text-right text-slate-300">
+                            ${call.entryPrice.toExponential(2)}
+                          </td>
+                          <td className="p-3 text-right text-slate-300">
+                            ${call.peakPrice.toExponential(2)}
+                          </td>
+                          <td className="p-3 text-right text-slate-400">
+                            {call.timeToATH >= 0 ? `${call.timeToATH}m` : 'N/A'}
+                          </td>
+                        </tr>
+                      );
+                    })}
                 </tbody>
               </table>
             </div>
+            
+            {/* Pagination */}
+            {highestMultipleCalls.length > multiplesPerPage && (
+              <div className="mt-4 flex items-center justify-between">
+                <div className="text-sm text-slate-400">
+                  Showing {((multiplesPage - 1) * multiplesPerPage) + 1} to {Math.min(multiplesPage * multiplesPerPage, highestMultipleCalls.length)} of {highestMultipleCalls.length} results
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setMultiplesPage(p => Math.max(1, p - 1))}
+                    disabled={multiplesPage === 1}
+                    className="px-4 py-2 bg-slate-700 text-white rounded hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Previous
+                  </button>
+                  <button
+                    onClick={() => setMultiplesPage(p => p + 1)}
+                    disabled={multiplesPage * multiplesPerPage >= highestMultipleCalls.length}
+                    className="px-4 py-2 bg-slate-700 text-white rounded hover:bg-slate-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Chart visualization */}
             <div className="mt-6">

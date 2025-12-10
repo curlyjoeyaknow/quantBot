@@ -151,7 +151,7 @@ export class PerformanceAnalyticsService {
       // Sort by avg multiple
       data.sort((a, b) => b.avgMultiple - a.avgMultiple);
 
-      cache.set(cacheKey, data, 600); // 10 minutes
+      cache.set(cacheKey, data, 3600); // 1 hour
       return data;
     } catch (error) {
       console.error('Error fetching top callers by returns:', error);
@@ -166,9 +166,13 @@ export class PerformanceAnalyticsService {
     try {
       const cacheKey = `perf:highest-multiple:${limit}`;
       const cached = cache.get<TopCall[]>(cacheKey);
-      if (cached) return cached;
+      if (cached) {
+        console.log(`[Cache HIT] highest-multiple:${limit} (${cached.length} results)`);
+        return cached;
+      }
+      console.log(`[Cache MISS] highest-multiple:${limit} - fetching from database...`);
 
-      // Get sample of recent alerts to calculate from
+      // Get sample of recent alerts to calculate from (reduced to 500 for performance)
       const result = await postgresManager.query(
         `
         SELECT 
@@ -191,28 +195,48 @@ export class PerformanceAnalyticsService {
         [...BOT_CALLERS]
       );
 
-      // Calculate performance for each alert using ClickHouse
+      // Calculate performance for each alert using ClickHouse (with batching)
       const callsWithPerformance: TopCall[] = [];
+      const BATCH_SIZE = 10; // Process 10 at a time
       
-      for (const row of result.rows) {
-        const performance = await performanceCalculator.calculateAlertPerformance(
-          row.token_address,
-          row.chain,
-          new Date(row.alert_timestamp),
-          parseFloat(row.entry_price)
-        );
+      for (let i = 0; i < result.rows.length; i += BATCH_SIZE) {
+        const batch = result.rows.slice(i, i + BATCH_SIZE);
+        
+        // Process batch in parallel
+        const batchPromises = batch.map(async (row) => {
+          try {
+            const performance = await performanceCalculator.calculateAlertPerformance(
+              row.token_address,
+              row.chain,
+              new Date(row.alert_timestamp),
+              parseFloat(row.entry_price)
+            );
 
-        if (performance && performance.multiple > 1.0) {
-          callsWithPerformance.push({
-            callerName: row.caller_name,
-            tokenSymbol: row.token_symbol || 'Unknown',
-            tokenAddress: row.token_address,
-            multiple: performance.multiple,
-            timeToATH: performance.timeToATHMinutes,
-            alertTime: new Date(row.alert_timestamp),
-            peakPrice: performance.peakPrice,
-            entryPrice: parseFloat(row.entry_price),
-          });
+            if (performance) {
+              return {
+                callerName: row.caller_name,
+                tokenSymbol: row.token_symbol || 'Unknown',
+                tokenAddress: row.token_address,
+                multiple: performance.multiple,
+                timeToATH: performance.timeToATHMinutes,
+                alertTime: new Date(row.alert_timestamp),
+                peakPrice: performance.peakPrice,
+                entryPrice: parseFloat(row.entry_price),
+              };
+            }
+            return null;
+          } catch (error) {
+            // Skip failed calculations
+            return null;
+          }
+        });
+
+        const batchResults = await Promise.all(batchPromises);
+        callsWithPerformance.push(...batchResults.filter((r): r is TopCall => r !== null));
+        
+        // Early exit if we have enough results
+        if (callsWithPerformance.length >= limit * 2) {
+          break;
         }
       }
 
@@ -220,7 +244,7 @@ export class PerformanceAnalyticsService {
       callsWithPerformance.sort((a, b) => b.multiple - a.multiple);
       const topCalls = callsWithPerformance.slice(0, limit);
 
-      cache.set(cacheKey, topCalls, 600);
+      cache.set(cacheKey, topCalls, 3600); // 1 hour
       return topCalls;
     } catch (error) {
       console.error('Error fetching highest multiple calls:', error);
@@ -231,6 +255,7 @@ export class PerformanceAnalyticsService {
 
   /**
    * Get strategy performance comparison
+   * Uses simulation_results table (simplified - all results use default strategy)
    */
   async getStrategyPerformance(): Promise<StrategyPerformance[]> {
     try {
@@ -238,23 +263,22 @@ export class PerformanceAnalyticsService {
       const cached = cache.get<StrategyPerformance[]>(cacheKey);
       if (cached) return cached;
 
+      // For now, use a default strategy name since we don't have strategy_id in simulation_results
+      // In the future, we can add strategy_id to simulation_results
       const result = await postgresManager.query(`
         SELECT 
-          s.name as strategy_name,
-          COUNT(sr.id) as total_runs,
-          COALESCE(AVG(srs.final_pnl), 0) as avg_pnl,
-          COALESCE(COUNT(CASE WHEN srs.final_pnl > 0 THEN 1 END)::FLOAT / NULLIF(COUNT(sr.id), 0) * 100, 0) as win_rate,
-          COALESCE(MAX(srs.final_pnl), 0) as best_pnl,
-          COALESCE(MIN(srs.final_pnl), 0) as worst_pnl,
-          AVG(srs.sharpe_ratio) as sharpe_ratio,
-          AVG(srs.max_drawdown) as max_drawdown,
-          COALESCE(AVG(srs.average_holding_minutes), 0) as avg_holding_time
-        FROM strategies s
-        LEFT JOIN simulation_runs sr ON sr.strategy_id = s.id
-        LEFT JOIN simulation_results_summary srs ON srs.simulation_run_id = sr.id
-        WHERE sr.status = 'completed' OR sr.id IS NULL
-        GROUP BY s.id, s.name
-        HAVING COUNT(sr.id) > 0
+          'Default Strategy' as strategy_name,
+          COUNT(*) as total_runs,
+          COALESCE(AVG(pnl), 0) as avg_pnl,
+          COALESCE(COUNT(CASE WHEN pnl > 0 THEN 1 END)::FLOAT / NULLIF(COUNT(*), 0) * 100, 0) as win_rate,
+          COALESCE(MAX(pnl), 0) as best_pnl,
+          COALESCE(MIN(pnl), 0) as worst_pnl,
+          NULL as sharpe_ratio,
+          NULL as max_drawdown,
+          COALESCE(AVG(hold_duration_minutes), 0) as avg_holding_time
+        FROM simulation_results
+        GROUP BY strategy_name
+        HAVING COUNT(*) > 0
         ORDER BY avg_pnl DESC
       `);
 
@@ -270,7 +294,7 @@ export class PerformanceAnalyticsService {
         avgHoldingTime: parseFloat(row.avg_holding_time) || 0,
       }));
 
-      cache.set(cacheKey, data, 600);
+      cache.set(cacheKey, data, 3600); // 1 hour
       return data;
     } catch (error) {
       console.error('Error fetching strategy performance:', error);
@@ -293,26 +317,22 @@ export class PerformanceAnalyticsService {
       const cached = cache.get<any>(cacheKey);
       if (cached) return cached;
 
-      // Get strategy overview
+      // Get strategy overview from simulation_results
       const overviewResult = await postgresManager.query(
         `
         SELECT 
-          s.name as strategy_name,
-          COUNT(sr.id) as total_runs,
-          COALESCE(AVG(srs.final_pnl), 0) as avg_pnl,
-          COALESCE(COUNT(CASE WHEN srs.final_pnl > 0 THEN 1 END)::FLOAT / NULLIF(COUNT(sr.id), 0) * 100, 0) as win_rate,
-          COALESCE(MAX(srs.final_pnl), 0) as best_pnl,
-          COALESCE(MIN(srs.final_pnl), 0) as worst_pnl,
-          AVG(srs.sharpe_ratio) as sharpe_ratio,
-          AVG(srs.max_drawdown) as max_drawdown,
-          COALESCE(AVG(srs.average_holding_minutes), 0) as avg_holding_time
-        FROM strategies s
-        LEFT JOIN simulation_runs sr ON sr.strategy_id = s.id
-        LEFT JOIN simulation_results_summary srs ON srs.simulation_run_id = sr.id
-        WHERE s.name = $1 AND (sr.status = 'completed' OR sr.id IS NULL)
-        GROUP BY s.id, s.name
+          'Default Strategy' as strategy_name,
+          COUNT(*) as total_runs,
+          COALESCE(AVG(pnl), 0) as avg_pnl,
+          COALESCE(COUNT(CASE WHEN pnl > 0 THEN 1 END)::FLOAT / NULLIF(COUNT(*), 0) * 100, 0) as win_rate,
+          COALESCE(MAX(pnl), 0) as best_pnl,
+          COALESCE(MIN(pnl), 0) as worst_pnl,
+          NULL as sharpe_ratio,
+          NULL as max_drawdown,
+          COALESCE(AVG(hold_duration_minutes), 0) as avg_holding_time
+        FROM simulation_results
         `,
-        [strategyName]
+        []
       );
 
       // Get recent runs
@@ -320,22 +340,18 @@ export class PerformanceAnalyticsService {
         `
         SELECT 
           sr.id,
-          t.symbol as token_symbol,
-          sr.started_at,
-          sr.completed_at,
-          COALESCE(srs.final_pnl, 0) as final_pnl,
-          COALESCE(srs.win_rate, 0) as win_rate,
-          COALESCE(srs.trade_count, 0) as trade_count,
-          COALESCE(srs.max_drawdown, 0) as max_drawdown
-        FROM simulation_runs sr
-        LEFT JOIN strategies s ON s.id = sr.strategy_id
-        LEFT JOIN tokens t ON t.id = sr.token_id
-        LEFT JOIN simulation_results_summary srs ON srs.simulation_run_id = sr.id
-        WHERE s.name = $1 AND sr.status = 'completed'
-        ORDER BY sr.completed_at DESC
+          sr.token_address,
+          sr.alert_timestamp as started_at,
+          sr.created_at as completed_at,
+          sr.pnl as final_pnl,
+          CASE WHEN sr.pnl > 0 THEN 100 ELSE 0 END as win_rate,
+          1 as trade_count,
+          NULL as max_drawdown
+        FROM simulation_results sr
+        ORDER BY sr.created_at DESC
         LIMIT 10
         `,
-        [strategyName]
+        []
       );
 
       const overview = overviewResult.rows[0] ? {
@@ -357,7 +373,7 @@ export class PerformanceAnalyticsService {
         metrics: {},
       };
 
-      cache.set(cacheKey, data, 300); // 5 minutes
+      cache.set(cacheKey, data, 3600); // 1 hour
       return data;
     } catch (error) {
       console.error('Error fetching strategy analytics:', error);
@@ -403,7 +419,7 @@ export class PerformanceAnalyticsService {
         bestCall: 1.0, // Placeholder - need OHLCV data
       }));
 
-      cache.set(cacheKey, data, 600);
+      cache.set(cacheKey, data, 3600); // 1 hour
       return data;
     } catch (error) {
       console.error('Error fetching best callers by strategy:', error);

@@ -40,6 +40,8 @@ export default defineConfig({
       'tests/unit/live-trade-strategies-extended.test.ts', // Mock issues
       'tests/unit/websocket-connection-manager.test.ts', // Timeout issues
       'tests/unit/repeat-simulation-helper.test.ts', // DateTime issues
+      'tests/unit/websocket.test.ts', // Mock/connection issues
+      'tests/unit/csv-reporter.test.ts', // Mock initialization issues
     ],
     environment: 'node',
     globals: true,

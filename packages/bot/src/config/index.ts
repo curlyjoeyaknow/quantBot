@@ -6,7 +6,7 @@
 
 import 'dotenv/config';
 import { envSchema, EnvConfig } from './schema';
-import { ConfigurationError } from '../utils/errors';
+import { ConfigurationError } from '@quantbot/utils/errors';
 import { logger } from '@quantbot/utils';
 
 let config: EnvConfig | null = null;

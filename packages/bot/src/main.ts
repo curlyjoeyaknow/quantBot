@@ -57,7 +57,7 @@ import {
 dotenv.config();
 
 // Initialize bot (support both BOT_TOKEN and TELEGRAM_BOT_TOKEN for compatibility)
-const bot = new Telegraf(process.env.BOT_TOKEN || process.env.TELEGRAM_BOT_TOKEN!);
+const bot: Telegraf = new Telegraf(process.env.BOT_TOKEN || process.env.TELEGRAM_BOT_TOKEN!);
 
 // -----------------------------------------------------------------------------
 // 2. ServiceContainer Setup

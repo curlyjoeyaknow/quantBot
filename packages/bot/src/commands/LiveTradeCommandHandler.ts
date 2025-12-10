@@ -6,12 +6,15 @@
 
 import { Context } from 'telegraf';
 import { BaseCommandHandler, Session } from './interfaces/CommandHandler';
-import { TradingConfigService } from '@quantbot/trading';
+import { TradingConfigService } from '../trading-stubs';
 import { logger } from '@quantbot/utils';
 import { extractCommandArgs } from '../utils/command-helpers';
 
 export class LiveTradeCommandHandler extends BaseCommandHandler {
   readonly command = 'livetrade';
+  static getService(): TradingConfigService | null {
+    return null;
+  }
 
   protected defaultOptions = {
     timeout: 10_000,

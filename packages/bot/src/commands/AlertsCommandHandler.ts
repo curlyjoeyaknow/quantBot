@@ -10,6 +10,7 @@ import { BaseCommandHandler, Session } from './interfaces/CommandHandler';
 import { SessionService } from '@quantbot/services/SessionService';
 import { getActiveCATracking, getAllCACalls } from '@quantbot/utils';
 import { logger } from '@quantbot/utils';
+import { BotCACall } from '../types/session';
 
 export class AlertsCommandHandler extends BaseCommandHandler {
   readonly command = 'alerts';
@@ -35,7 +36,7 @@ export class AlertsCommandHandler extends BaseCommandHandler {
       const activeCAs = await getActiveCATracking();
       
       // Get recent historical CA calls (last 20)
-      const recentCalls = await getAllCACalls(20);
+      const recentCalls = (await getAllCACalls(20)) as BotCACall[];
       
       if (activeCAs.length === 0 && recentCalls.length === 0) {
         await ctx.reply(

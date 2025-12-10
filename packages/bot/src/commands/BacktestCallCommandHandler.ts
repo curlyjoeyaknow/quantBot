@@ -14,6 +14,7 @@ import { fetchHybridCandles, simulateStrategy } from '@quantbot/simulation';
 import { DateTime } from 'luxon';
 import { logger } from '@quantbot/utils';
 import { extractCommandArgs, isValidTokenAddress, sanitizeInput, COMMAND_TIMEOUTS } from '../utils/command-helpers';
+import { BotCACall } from '../types/session';
 
 export class BacktestCallCommandHandler extends BaseCommandHandler {
   readonly command = 'backtest_call';
@@ -68,7 +69,7 @@ export class BacktestCallCommandHandler extends BaseCommandHandler {
       await progress.send('🔍 **Searching for historical call...**');
       
       // Get the CA call from database
-      const call = await getCACallByMint(mint);
+      const call = (await getCACallByMint(mint)) as BotCACall | null;
       
       await progress.delete();
       
@@ -82,6 +83,16 @@ export class BacktestCallCommandHandler extends BaseCommandHandler {
         return;
       }
 
+      const callTimestamp =
+        call.call_timestamp ??
+        (call.alert_timestamp ? Math.floor(new Date(call.alert_timestamp).getTime() / 1000) : undefined);
+      if (!callTimestamp) {
+        await this.sendError(ctx, 'Call is missing timestamp information.');
+        return;
+      }
+      const tokenName = call.token_name || 'Unknown';
+      const tokenSymbol = call.token_symbol || 'N/A';
+
       // Start backtest workflow for this historical call
       const newSession: Session = {
         step: 'backtesting',
@@ -90,10 +101,10 @@ export class BacktestCallCommandHandler extends BaseCommandHandler {
           mint: call.mint,
           chain: call.chain,
           metadata: {
-            name: call.token_name,
-            symbol: call.token_symbol
+            name: tokenName,
+            symbol: tokenSymbol
           },
-          datetime: DateTime.fromSeconds(call.call_timestamp),
+          datetime: DateTime.fromSeconds(callTimestamp),
           strategy: [{ percent: 0.5, target: 2 }, { percent: 0.3, target: 5 }, { percent: 0.2, target: 10 }],
           stopLossConfig: { initial: -0.3, trailing: 0.5 },
           entryConfig: { initialEntry: 'none', trailingEntry: 'none', maxWaitTime: 60 },
@@ -107,9 +118,9 @@ export class BacktestCallCommandHandler extends BaseCommandHandler {
       
       await ctx.reply(
         `🎯 **Backtesting Historical Call**\n\n` +
-        `🪙 **${call.token_name}** (${call.token_symbol})\n` +
+        `🪙 **${tokenName}** (${tokenSymbol})\n` +
         `🔗 **Chain**: ${call.chain.toUpperCase()}\n` +
-        `📅 **Call Date**: ${new Date(call.call_timestamp * 1000).toLocaleString()}\n` +
+        `📅 **Call Date**: ${new Date(callTimestamp * 1000).toLocaleString()}\n` +
         `💰 **Call Price**: $${call.call_price?.toFixed(8) || 'N/A'}\n` +
         `👤 **Caller**: ${call.caller || 'Unknown'}\n\n` +
         `Running simulation with default strategy...`,
@@ -120,7 +131,7 @@ export class BacktestCallCommandHandler extends BaseCommandHandler {
       try {
         await progress.update('📊 **Fetching candle data...**');
         
-        const alertTime = DateTime.fromSeconds(call.call_timestamp);
+        const alertTime = DateTime.fromSeconds(callTimestamp);
         // Pass alertTime for 1m candles around alert time
         const candles = await fetchHybridCandles(
           call.mint,
@@ -168,7 +179,7 @@ export class BacktestCallCommandHandler extends BaseCommandHandler {
         let resultMessage = `🎯 **Historical Call Backtest Results**\n\n` +
           `${chainEmoji} Chain: ${call.chain.toUpperCase()}\n` +
           `🪙 Token: ${call.token_name || 'Unknown'} (${call.token_symbol || 'N/A'})\n` +
-          `📅 Call Date: ${new Date(call.call_timestamp * 1000).toLocaleString()}\n` +
+          `📅 Call Date: ${new Date(callTimestamp * 1000).toLocaleString()}\n` +
           `👤 Caller: ${call.caller || 'Unknown'}\n` +
           `📈 Candles: ${result.totalCandles}\n` +
           `💰 Simulated PNL: **${result.finalPnl.toFixed(2)}x**\n\n` +
@@ -200,7 +211,7 @@ export class BacktestCallCommandHandler extends BaseCommandHandler {
             chain: call.chain,
             tokenName: call.token_name,
             tokenSymbol: call.token_symbol,
-            startTime: DateTime.fromSeconds(call.call_timestamp),
+            startTime: DateTime.fromSeconds(callTimestamp),
             endTime: DateTime.utc(),
             strategy: newSession.data.strategy!,
             stopLossConfig: newSession.data.stopLossConfig!,

@@ -12,7 +12,7 @@
     "dev": "ts-node --watch packages/bot/src/main.ts",
     "build:packages": "npm run build --workspace=packages/utils && npm run build --workspace=packages/storage && npm run build --workspace=packages/simulation && npm run build --workspace=packages/services && npm run build --workspace=packages/monitoring && npm run build --workspace=packages/bot",
     "test:packages": "npm run test --workspace=packages/utils && npm run test --workspace=packages/storage && npm run test --workspace=packages/simulation && npm run test --workspace=packages/services && npm run test --workspace=packages/monitoring && npm run test --workspace=packages/bot",
-    "build": "tsc",
+    "build": "./build-packages.sh",
     "build:watch": "tsc --watch",
     "clean": "rm -rf dist/ packages/*/dist/",
     "test": "vitest",
@@ -62,7 +62,10 @@
     "view:results:html": "ts-node scripts/analysis/view-results-html.ts",
     "check:clickhouse": "ts-node scripts/analysis/check-clickhouse-data.ts",
     "monitor:brook": "ts-node scripts/monitoring/start-brook-monitoring.ts",
-    "forward:brook": "ts-node scripts/monitoring/forward-brook-channel.ts"
+    "forward:brook": "ts-node scripts/monitoring/forward-brook-channel.ts",
+    "ingest:telegram": "ts-node scripts/ingest/telegram-alerts.ts",
+    "ingest:ohlcv": "ts-node scripts/ingest/fetch-ohlcv-for-calls.ts",
+    "simulate:calls": "ts-node scripts/simulation/run-strategy-on-calls.ts"
   },
   "keywords": [
     "telegram",
@@ -96,6 +99,7 @@
     "csv-parser": "^3.2.0",
     "csv-stringify": "^6.6.0",
     "csv-writer": "^1.6.0",
+    "commander": "^12.0.0",
     "dotenv": "^17.2.3",
     "lru-cache": "^10.0.0",
     "luxon": "^3.7.2",

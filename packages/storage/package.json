@@ -4,6 +4,10 @@
   "description": "Storage layer for QuantBot (ClickHouse, Postgres, InfluxDB)",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./*": "./dist/*.js"
+  },
   "scripts": {
     "build": "tsc",
     "test": "vitest",
@@ -26,4 +30,3 @@
     "vitest": "^4.0.15"
   }
 }
-

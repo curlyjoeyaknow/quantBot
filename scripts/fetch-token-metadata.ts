@@ -53,12 +53,14 @@ async function fetchBirdeyeMetadata(tokenAddress: string, chain: string): Promis
       headers: {
         'X-API-KEY': BIRDEYE_API_KEY!,
         'x-chain': birdeyeChain,
+        'Accept': 'application/json',
       },
     });
 
     if (metaResponse.ok) {
       const metaData = await metaResponse.json();
-      if (metaData.success && metaData.data) {
+      // Response format: { success: true, data: { symbol, name, ... } }
+      if (metaData.success === true && metaData.data && metaData.data.symbol) {
         const d = metaData.data;
         return {
           address: tokenAddress,
@@ -86,7 +88,8 @@ async function fetchBirdeyeMetadata(tokenAddress: string, chain: string): Promis
 
     if (overviewResponse.ok) {
       const overviewData = await overviewResponse.json();
-      if (overviewData.success && overviewData.data) {
+      // Response format: { success: true, data: { symbol, name, ... } }
+      if (overviewData.success === true && overviewData.data && overviewData.data.symbol) {
         const d = overviewData.data;
         return {
           address: tokenAddress,
@@ -107,7 +110,7 @@ async function fetchBirdeyeMetadata(tokenAddress: string, chain: string): Promis
 
     return null;
   } catch (error) {
-    console.error(`Error fetching metadata for ${tokenAddress}:`, error);
+    // Silently fail - many tokens won't exist
     return null;
   }
 }
@@ -145,9 +148,14 @@ async function main() {
     process.exit(1);
   }
 
+  console.log(`🔑 Using Birdeye key prefix: ${BIRDEYE_API_KEY.slice(0, 6)}**** (len=${BIRDEYE_API_KEY.length})`);
+
   console.log('🔄 Fetching token metadata...\n');
 
-  // Get tokens WITH alerts that need metadata (prioritize tokens that have actual calls)
+  // Get tokens WITH alerts that need metadata
+  // Filter to valid addresses only:
+  //  - Solana: base58, 32-44 chars, exact regex
+  //  - EVM: 0x + 40 hex chars
   const result = await pgPool.query(`
     SELECT 
       t.id, 
@@ -165,6 +173,13 @@ async function main() {
       OR t.name IS NULL 
       OR t.metadata_json IS NULL
       OR t.metadata_json->>'fetchedAt' IS NULL
+    )
+    AND (
+      -- Valid Solana addresses (base58, 32-44 chars)
+      (t.chain = 'solana' AND t.address ~ '^[1-9A-HJ-NP-Za-km-z]{32,44}$')
+      OR
+      -- Valid EVM addresses (0x + 40 hex chars)
+      (t.chain <> 'solana' AND t.address ~* '^0x[0-9a-f]{40}$')
     )
     GROUP BY t.id, t.address, t.chain, t.symbol, t.name, t.metadata_json
     ORDER BY COUNT(a.id) DESC, t.created_at DESC

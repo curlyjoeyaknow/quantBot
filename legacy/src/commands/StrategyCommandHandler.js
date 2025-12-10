@@ -1,0 +1,200 @@
+"use strict";
+/**
+ * Strategy Command Handler
+ * ========================
+ * Handles the /strategy command for managing custom trading strategies.
+ * Supports save, use, delete, and list operations.
+ */
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.StrategyCommandHandler = void 0;
+const CommandHandler_1 = require("./interfaces/CommandHandler");
+const events_1 = require("../events");
+const logger_1 = require("../utils/logger");
+class StrategyCommandHandler extends CommandHandler_1.BaseCommandHandler {
+    constructor(strategyService) {
+        super();
+        this.strategyService = strategyService;
+        this.command = 'strategy';
+    }
+    async execute(ctx, session) {
+        const userId = ctx.from?.id;
+        if (!userId) {
+            await this.sendError(ctx, 'Unable to identify user.');
+            return;
+        }
+        // Support 'text', 'caption', or fallback to empty string
+        let message = '';
+        if ('text' in (ctx.message ?? {})) {
+            message = ctx.message.text;
+        }
+        else if ('caption' in (ctx.message ?? {})) {
+            message = ctx.message.caption;
+        }
+        const parts = message.split(' ');
+        try {
+            if (parts.length === 1) {
+                // List strategies
+                await this.handleListStrategies(ctx, userId);
+            }
+            else if (parts[1] === 'save' && parts.length >= 3) {
+                // Save strategy
+                await this.handleSaveStrategy(ctx, userId, parts.slice(2));
+            }
+            else if (parts[1] === 'use' && parts.length >= 3) {
+                // Use strategy
+                await this.handleUseStrategy(ctx, userId, parts[2]);
+            }
+            else if (parts[1] === 'delete' && parts.length >= 3) {
+                // Delete strategy
+                await this.handleDeleteStrategy(ctx, userId, parts[2]);
+            }
+            else {
+                await this.sendError(ctx, '**Invalid strategy command.**\n\n' +
+                    '**Usage:**\n' +
+                    '• `/strategy` - List all strategies\n' +
+                    '• `/strategy save <name> <description> <strategy> <stop_loss>` - Save strategy\n' +
+                    '• `/strategy use <name>` - Use strategy\n' +
+                    '• `/strategy delete <name>` - Delete strategy\n\n' +
+                    '**Example:**\n' +
+                    '`/strategy save MyStrategy "Conservative approach" 50@2x,30@5x,20@10x initial:-20%,trailing:30%`');
+            }
+            // Emit command executed event
+            await events_1.eventBus.publish(events_1.EventFactory.createUserEvent('user.command.executed', { command: 'strategy', success: true }, 'StrategyCommandHandler', userId));
+        }
+        catch (error) {
+            logger_1.logger.error('Strategy command error', error, { userId });
+            // Emit command failed event
+            await events_1.eventBus.publish(events_1.EventFactory.createUserEvent('user.command.failed', { command: 'strategy', success: false, error: error instanceof Error ? error.message : String(error) }, 'StrategyCommandHandler', userId));
+            await this.sendError(ctx, 'Failed to process strategy command. Please try again.');
+        }
+    }
+    async handleListStrategies(ctx, userId) {
+        const strategies = await this.strategyService.getUserStrategies(userId);
+        if (strategies.length === 0) {
+            await ctx.reply('📊 **Your Saved Strategies**\n\n' +
+                'No strategies saved yet.\n\n' +
+                'Use `/strategy save <name> <description> <strategy> <stop_loss>` to create your first strategy.', { parse_mode: 'Markdown' });
+            return;
+        }
+        let message = '📊 **Your Saved Strategies**\n\n';
+        strategies.forEach((strategy, index) => {
+            message += `${index + 1}. **${strategy.name}**\n`;
+            message += `   Description: ${strategy.description || 'No description'}\n`;
+            message += `   Strategy: ${strategy.strategy}\n`;
+            message += `   Stop Loss: ${strategy.stopLossConfig}\n\n`;
+        });
+        message += '💡 Use `/strategy use <name>` to activate a strategy.';
+        await ctx.reply(message, { parse_mode: 'Markdown' });
+    }
+    async handleSaveStrategy(ctx, userId, args) {
+        if (args.length < 4) {
+            await this.sendError(ctx, '**Incomplete save command.**\n\n' +
+                '**Usage:** `/strategy save <name> <description> <strategy> <stop_loss>`\n\n' +
+                '**Example:**\n' +
+                '`/strategy save MyStrategy "Conservative approach" 50@2x,30@5x,20@10x initial:-20%,trailing:30%`');
+            return;
+        }
+        const [name, description, strategyStr, stopLossStr] = args;
+        // Parse strategy
+        const strategy = this.parseStrategy(strategyStr);
+        if (!strategy) {
+            await this.sendError(ctx, 'Invalid strategy format. Use format like: 50@2x,30@5x,20@10x');
+            return;
+        }
+        // Parse stop loss
+        const stopLossConfig = this.parseStopLoss(stopLossStr);
+        if (!stopLossConfig) {
+            await this.sendError(ctx, 'Invalid stop loss format. Use format like: initial:-20%,trailing:30%');
+            return;
+        }
+        const strategyData = {
+            name,
+            description,
+            strategy: strategy,
+            stopLossConfig: stopLossConfig
+        };
+        await this.strategyService.saveStrategy(userId, strategyData);
+        // Emit strategy saved event
+        await events_1.eventBus.publish(events_1.EventFactory.createUserEvent('user.strategy.saved', { strategyName: name, strategyData }, 'StrategyCommandHandler', userId));
+        await this.sendSuccess(ctx, `Strategy "${name}" saved successfully!\n\n` +
+            `**Strategy:** ${strategyStr}\n` +
+            `**Stop Loss:** ${stopLossStr}\n\n` +
+            `Use \`/strategy use ${name}\` to activate it.`);
+    }
+    async handleUseStrategy(ctx, userId, strategyName) {
+        const strategy = await this.strategyService.getStrategy(userId, strategyName);
+        if (!strategy) {
+            await this.sendError(ctx, `Strategy "${strategyName}" not found.`);
+            return;
+        }
+        // In a real implementation, this would set the active strategy in the session
+        // For now, we'll just confirm the strategy was found
+        // Emit strategy used event
+        await events_1.eventBus.publish(events_1.EventFactory.createUserEvent('user.strategy.used', { strategyName, strategyData: strategy }, 'StrategyCommandHandler', userId));
+        await this.sendSuccess(ctx, `Strategy "${strategyName}" is now active!\n\n` +
+            `**Description:** ${strategy.description || 'No description'}\n` +
+            `**Strategy:** ${strategy.strategy}\n` +
+            `**Stop Loss:** ${strategy.stopLossConfig}\n\n` +
+            `This strategy will be used for future simulations.`);
+    }
+    async handleDeleteStrategy(ctx, userId, strategyName) {
+        const strategy = await this.strategyService.getStrategy(userId, strategyName);
+        if (!strategy) {
+            await this.sendError(ctx, `Strategy "${strategyName}" not found.`);
+            return;
+        }
+        await this.strategyService.deleteStrategy(userId, strategyName);
+        // Emit strategy deleted event
+        await events_1.eventBus.publish(events_1.EventFactory.createUserEvent('user.strategy.deleted', { strategyName, strategyData: strategy }, 'StrategyCommandHandler', userId));
+        await this.sendSuccess(ctx, `Strategy "${strategyName}" deleted successfully.`);
+    }
+    parseStrategy(strategyStr) {
+        try {
+            // Parse format like "50@2x,30@5x,20@10x"
+            const parts = strategyStr.split(',');
+            const strategy = parts.map(part => {
+                const [percentStr, targetStr] = part.split('@');
+                const percent = parseFloat(percentStr) / 100;
+                const target = parseFloat(targetStr.replace('x', ''));
+                if (isNaN(percent) || isNaN(target) || percent <= 0 || target <= 0) {
+                    throw new Error('Invalid strategy format');
+                }
+                return { percent, target };
+            });
+            return strategy;
+        }
+        catch (error) {
+            return null;
+        }
+    }
+    parseStopLoss(stopLossStr) {
+        try {
+            // Parse format like "initial:-20%,trailing:30%"
+            const parts = stopLossStr.split(',');
+            const config = {};
+            parts.forEach(part => {
+                const [key, value] = part.split(':');
+                if (key === 'initial') {
+                    config.initial = parseFloat(value.replace('%', '')) / 100;
+                }
+                else if (key === 'trailing') {
+                    if (value.toLowerCase() === 'none') {
+                        config.trailing = 'none';
+                    }
+                    else {
+                        config.trailing = parseFloat(value.replace('%', '')) / 100;
+                    }
+                }
+            });
+            if (config.initial === undefined) {
+                throw new Error('Missing initial stop loss');
+            }
+            return config;
+        }
+        catch (error) {
+            return null;
+        }
+    }
+}
+exports.StrategyCommandHandler = StrategyCommandHandler;
+//# sourceMappingURL=StrategyCommandHandler.js.map

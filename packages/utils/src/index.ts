@@ -2,6 +2,15 @@
  * @quantbot/utils - Shared utilities package
  * 
  * Public API exports for the utils package
+ * 
+ * Golden Path: This package exports only:
+ * - Logger utilities
+ * - Configuration loading
+ * - Core domain types
+ * - Error handling
+ * - Utility functions (pumpfun, etc.)
+ * 
+ * NO database code - that lives in @quantbot/storage
  */
 
 // Logger and logging utilities
@@ -15,15 +24,18 @@ export { createPackageLogger, LogHelpers } from './logging';
 export { getLogLevel, isLogLevelEnabled } from './logging-config';
 export { logger as loggerNextjs } from './logger-nextjs';
 
-// Database utilities
-export * from './database';
+// Configuration loading
+export * from './config';
+
+// Core domain types (Golden Path)
+export * from './types/core';
+
+// Shared types (legacy, kept for backward compatibility)
+export * from './types';
 
 // Error handling
 export * from './errors';
 export { handleError, retryWithBackoff } from './error-handler';
-
-// Shared types
-export * from './types';
 
 // Pump.fun utilities
 export { PUMP_FUN_PROGRAM_ID, derivePumpfunBondingCurve } from './pumpfun';
@@ -31,24 +43,15 @@ export { PUMP_FUN_PROGRAM_ID, derivePumpfunBondingCurve } from './pumpfun';
 // Credit monitoring
 export { creditMonitor } from './credit-monitor';
 
-// Caller database utilities
-export * from './caller-database';
+// Events (kept for backward compatibility, but consider moving to services)
+export * from './events';
 
-// Live trade utilities
-export * from './live-trade-database';
-export * from './live-trade-strategies';
+// Database helpers (legacy compatibility)
+export * from './database';
 
-// Monitored tokens
-export * from './monitored-tokens-db';
-
-// Historical candles
-// COMMENTED OUT: This has dependencies on external services and should be moved to @quantbot/services
-// export { fetchHistoricalCandles } from './fetch-historical-candles';
-
-// Repeat simulation helper
-// COMMENTED OUT: This has dependencies on bot-specific types and should be moved to @quantbot/bot
-// export { RepeatSimulationHelper } from './RepeatSimulationHelper';
-
-// Events
-// export * from './events'; // TODO: Move to @quantbot/services
-
+// NOTE: Database utilities removed - use @quantbot/storage instead
+// - database.ts → moved to storage repositories
+// - caller-database.ts → moved to storage repositories
+// - live-trade-database.ts → moved to storage repositories
+// - monitored-tokens-db.ts → moved to storage repositories
+// - live-trade-strategies.ts → kept for now (may move to services)

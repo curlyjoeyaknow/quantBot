@@ -23,10 +23,20 @@ import {
 // import { eventBus, EventFactory } from '../events'; /* TODO: Move events to monitoring */
 import { logger } from '@quantbot/utils';
 
-// Temporary stubs for events
-const eventBus = { emit: (event: string, data: any) => {} };
+// Temporary stubs for events to keep monitoring buildable until the shared event
+// bus is moved into this package. Methods are no-ops but preserve the expected
+// surface area used below.
+const eventBus = {
+  emit: (_event: string, _data: any) => {},
+  publish: (_event: any) => {}
+};
 const EventFactory = {
-  caMonitoringEvent: (type: string, data: any) => ({ type, data })
+  caMonitoringEvent: (type: string, data: any) => ({ type, data }),
+  createSystemEvent: (event: string, payload: any, source?: string) => ({
+    event,
+    payload,
+    source: source ?? 'CAMonitoringService'
+  })
 };
 
 export interface CAMonitor {

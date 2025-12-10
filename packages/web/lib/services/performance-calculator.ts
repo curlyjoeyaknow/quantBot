@@ -54,11 +54,6 @@ export class PerformanceCalculator {
 
       const client = getClickHouseClient();
 
-      // Query ClickHouse for OHLCV data
-      // ClickHouse has short addresses (8 chars), PostgreSQL has full addresses
-      // Match using first 8 characters of the full address
-      const shortAddress = tokenAddress.substring(0, 8);
-      
       const startTs = alertTimestamp.toISOString().replace('T', ' ').substring(0, 19);
       const endTs = endTime.toISOString().replace('T', ' ').substring(0, 19);
       
@@ -69,7 +64,7 @@ export class PerformanceCalculator {
           low,
           close
         FROM ohlcv_candles
-        WHERE token_address = '${shortAddress}'
+        WHERE token_address = '${tokenAddress}'
         AND chain = '${chain}'
         AND timestamp >= '${startTs}'
         AND timestamp <= '${endTs}'
