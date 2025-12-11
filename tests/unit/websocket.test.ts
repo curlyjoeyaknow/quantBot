@@ -4,16 +4,16 @@
  * Tests for the WebSocket connection management functionality
  */
 
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { WebSocketConnectionManager, WebSocketConfig } from '../../src/websocket/WebSocketConnectionManager';
 
 // Mock WebSocket
-jest.mock('ws', () => {
-  const EventEmitter = require('events');
-  
+vi.mock('ws', () => {
+  const { EventEmitter } = require('events');
   class MockWebSocket extends EventEmitter {
     public readyState: number = 0; // CONNECTING
-    public send = jest.fn();
-    public close = jest.fn();
+    public send = vi.fn();
+    public close = vi.fn();
     
     // WebSocket constants
     static readonly CONNECTING = 0;
@@ -31,8 +31,30 @@ jest.mock('ws', () => {
     }
   }
   
-  return MockWebSocket;
+  return {
+    default: MockWebSocket,
+  };
 });
+
+// Mock logger and events
+vi.mock('../../src/utils/logger', () => ({
+  logger: {
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+  },
+}));
+
+vi.mock('../../src/events', () => ({
+  eventBus: {
+    emit: vi.fn(),
+    on: vi.fn(),
+    off: vi.fn(),
+  },
+  EventFactory: {
+    websocketEvent: vi.fn((type: string, data: any) => ({ type, data })),
+  },
+}));
 
 describe('WebSocketConnectionManager', () => {
   let wsManager: WebSocketConnectionManager;
@@ -68,7 +90,7 @@ describe('WebSocketConnectionManager', () => {
     });
 
     it('should emit connected event', async () => {
-      const connectedSpy = jest.fn();
+      const connectedSpy = vi.fn();
       wsManager.on('connected', connectedSpy);
       
       await wsManager.connect();
@@ -136,7 +158,7 @@ describe('WebSocketConnectionManager', () => {
 
   describe('Error Handling', () => {
     it('should handle connection errors', async () => {
-      const errorSpy = jest.fn();
+      const errorSpy = vi.fn();
       wsManager.on('error', errorSpy);
       
       // Simulate error

@@ -7,7 +7,7 @@ exports.ConfigDrivenSink = void 0;
 const fs_1 = require("fs");
 const path_1 = __importDefault(require("path"));
 const luxon_1 = require("luxon");
-const storage_1 = require("@quantbot/storage");
+const storage_1 = require("@quantbot/data");
 class ConfigDrivenSink {
     constructor(options = {}) {
         this.name = 'config-driven-sink';

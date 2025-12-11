@@ -1,0 +1,21 @@
+{
+  "name": "@quantbot/core",
+  "version": "1.0.0",
+  "description": "Core types and interfaces for QuantBot - foundational package with zero dependencies on other @quantbot packages",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "luxon": "^3.7.2"
+  },
+  "devDependencies": {
+    "@types/luxon": "^3.7.1",
+    "@types/node": "^24.10.1",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.15"
+  }
+}
+

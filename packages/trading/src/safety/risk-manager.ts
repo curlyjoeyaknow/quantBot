@@ -4,7 +4,7 @@
  * Validates trades against risk limits and safety rules
  */
 
-import { queryPostgres } from '@quantbot/storage';
+import { queryPostgres } from '@quantbot/data';
 import { logger } from '@quantbot/utils';
 import { PositionManager } from '../positions/position-manager';
 import { TradingConfigService } from '../config/trading-config';

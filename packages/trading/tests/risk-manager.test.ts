@@ -9,7 +9,7 @@ import { TradingConfigService } from '../src/config/trading-config';
 import type { TradeOrder, TradingConfig } from '../src/types';
 
 // Mock the queryPostgres function
-vi.mock('@quantbot/storage', () => ({
+vi.mock('@quantbot/data', () => ({
   queryPostgres: vi.fn(),
 }));
 

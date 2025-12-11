@@ -1,51 +1,23 @@
-# QuantBot Web Dashboard
+# @quantbot/web - Web Dashboard Package
 
-Unified UI for the QuantBot project providing comprehensive analytics and performance tracking.
+**⚠️ This package is not part of the Golden Path.**
 
-## Features
+This package provides the Next.js web dashboard for visualizing analytics and simulation results.
 
-- **Dashboard**: Overview metrics including total calls, PNL, drawdown, and profit percentages
-- **Caller History**: Complete history of all calls with filtering, sorting, and pagination
-- **Recent Alerts**: Past week's alerts with current price and gain/loss tracking
-- **Simulations**: View past simulation results and trade history
-- **Optimizations**: Consolidated view of all optimization runs and their performance
+## Status
 
-## Setup
+- Functional but not actively developed for Golden Path
+- Golden Path focuses on CLI-based analytics pipeline
+- Dashboard may be useful for visualization but is secondary
 
-1. Install dependencies:
-```bash
-cd web
-npm install
-```
+## Usage
 
-2. Set up environment variables:
-Create a `.env.local` file with:
-```
-CALLER_DB_PATH=../caller_alerts.db
-BIRDEYE_API_KEY=your_api_key_here
-```
+See main README.md for web dashboard setup.
 
-3. Run the development server:
-```bash
-npm run dev
-```
+## Golden Path Alternative
 
-4. Open [http://localhost:3000](http://localhost:3000) in your browser
-
-## API Routes
-
-The dashboard uses Next.js API routes to access data:
-
-- `/api/caller-history` - Get caller history with filtering
-- `/api/recent-alerts` - Get recent alerts (past week)
-- `/api/simulations` - List all simulations
-- `/api/simulations/[name]` - Get simulation details
-- `/api/optimizations` - Get optimization results
-- `/api/dashboard` - Get dashboard metrics
-
-## Notes
-
-- The API routes need access to the parent directory's databases and data files
-- ClickHouse client integration may need path adjustments based on your setup
-- Some metrics require additional calculation scripts to be run periodically
-
+For Golden Path workflows, use CLI scripts and query Postgres/ClickHouse directly:
+- `pnpm ingest:telegram` - Ingest Telegram exports
+- `pnpm ingest:ohlcv` - Fetch OHLCV data
+- `pnpm simulate:calls` - Run simulations
+- Query `simulation_results_summary` table for metrics

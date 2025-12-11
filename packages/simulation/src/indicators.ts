@@ -4,7 +4,7 @@
  * Provides moving averages and integrates with Ichimoku Cloud
  */
 
-import { Candle } from './candles';
+import type { Candle } from '@quantbot/core';
 import { calculateIchimoku, IchimokuData } from './ichimoku';
 
 export interface MovingAverages {

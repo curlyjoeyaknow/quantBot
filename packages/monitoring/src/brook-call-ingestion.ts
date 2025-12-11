@@ -11,8 +11,8 @@
 import { Telegraf, Context } from 'telegraf';
 import { DateTime } from 'luxon';
 import axios from 'axios';
-import { CallerDatabase, CallerAlert } from '@quantbot/utils' /* TODO: Fix storage import */;
 import { logger } from '@quantbot/utils';
+import { CallerDatabase, type CallerAlert } from '@quantbot/data';
 import { LiveTradeAlertService } from './live-trade-alert-service';
 import { TenkanKijunAlertService } from './tenkan-kijun-alert-service';
 
@@ -335,7 +335,8 @@ export class BrookCallIngestion {
       alertTimestamp: new Date(),
       alertMessage: originalText.substring(0, 500), // Truncate long messages
       priceAtAlert: price,
-      volumeAtAlert: null,
+      volumeAtAlert: undefined,
+      createdAt: new Date(),
     };
 
     // Store in database

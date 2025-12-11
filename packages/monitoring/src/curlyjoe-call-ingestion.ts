@@ -8,13 +8,13 @@
 import { Telegraf, Context } from 'telegraf';
 import { DateTime } from 'luxon';
 import axios from 'axios';
-import { CallerDatabase, CallerAlert } from '@quantbot/utils' /* TODO: Fix storage import */;
 import { logger } from '@quantbot/utils';
+import { CallerDatabase, type CallerAlert } from '@quantbot/data';
 import { LiveTradeAlertService } from './live-trade-alert-service';
 import { fetchHistoricalCandlesForMonitoring } from '@quantbot/services';
 import { storeMonitoredToken } from '@quantbot/utils';
 import { getActiveMonitoredTokens, updateMonitoredTokenStatus } from '@quantbot/utils';
-import { EntryConfig } from '@quantbot/simulation/config';
+import type { EntryConfig } from '@quantbot/core';
 
 const CALLER_NAME = 'curlyjoe';
 const BIRDEYE_API_KEY = process.env.BIRDEYE_API_KEY || '';
@@ -195,10 +195,10 @@ export class CurlyJoeCallIngestion {
     
     // Check if message is forwarded from CurlyJoe channel
     const forwardFromChat = ctx.message && 'forward_from_chat' in ctx.message 
-      ? ctx.message.forward_from_chat 
+      ? (ctx.message as any).forward_from_chat as { id?: number | string }
       : null;
     
-    if (forwardFromChat && forwardFromChat.id.toString() === this.curlyjoeChannelId) {
+    if (forwardFromChat?.id && forwardFromChat.id.toString() === this.curlyjoeChannelId) {
       return true;
     }
     
@@ -325,7 +325,8 @@ export class CurlyJoeCallIngestion {
         address: address.substring(0, 20),
       });
     } catch (error) {
-      logger.warn('Failed to store CurlyJoe call', error as Error, {
+      logger.warn('Failed to store CurlyJoe call', {
+        error: error instanceof Error ? error.message : String(error),
         address: address.substring(0, 20),
       });
       // Continue anyway - might be duplicate
@@ -347,7 +348,8 @@ export class CurlyJoeCallIngestion {
         candleCount: historicalCandles.length,
       });
     } catch (error) {
-      logger.warn('Failed to fetch historical candles', error as Error, {
+      logger.warn('Failed to fetch historical candles', {
+        error: error instanceof Error ? error.message : String(error),
         address: address.substring(0, 20),
       });
       // Continue without historical candles

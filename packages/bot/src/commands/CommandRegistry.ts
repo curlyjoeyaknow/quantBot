@@ -25,11 +25,9 @@ import { MonitorCommandHandler } from './MonitorCommandHandler';
 import { BeginCommandHandler } from './BeginCommandHandler';
 import { OptionsCommandHandler } from './OptionsCommandHandler';
 import { LiveTradeCommandHandler } from './LiveTradeCommandHandler';
-import { AddCurlyJoeCommandHandler } from './AddCurlyJoeCommandHandler';
-import { WatchlistCommandHandler } from './WatchlistCommandHandler';
-import { SessionService } from '@quantbot/services/SessionService';
-import { StrategyService } from '@quantbot/services/StrategyService';
-import { SimulationService } from '@quantbot/services/SimulationService';
+// import { AddCurlyJoeCommandHandler } from './AddCurlyJoeCommandHandler';
+// import { WatchlistCommandHandler } from './WatchlistCommandHandler';
+import { SessionService, StrategyService, SimulationService } from '@quantbot/services';
 import { RepeatSimulationHelper } from '../utils/RepeatSimulationHelper';
 import { logger } from '@quantbot/utils';
 
@@ -83,10 +81,14 @@ export class CommandRegistry {
     this.register(new IchimokuCommandHandler(this.sessionService));
     this.register(new AlertCommandHandler());
     this.register(new AlertsCommandHandler(this.sessionService));
-    this.register(new MonitorCommandHandler());
-    this.register(new LiveTradeCommandHandler());
-    this.register(new AddCurlyJoeCommandHandler());
-    this.register(new WatchlistCommandHandler());
+    // Monitor command depends on monitoring package wiring; temporarily disabled until service is wired
+    // this.register(new MonitorCommandHandler());
+    // Live trade handler requires trading config service; temporarily disabled until service wiring is added
+    // this.register(new LiveTradeCommandHandler());
+    // CurlyJoe handler depends on monitoring/ingestion wiring; disabled for now
+    // this.register(new AddCurlyJoeCommandHandler());
+    // Watchlist handler depends on monitored-tokens DB wiring; disabled for now
+    // this.register(new WatchlistCommandHandler());
     
     // Register handlers with the bot
     this.handlers.forEach((handler, commandName) => {

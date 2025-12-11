@@ -1,6 +1,6 @@
 import WebSocket from 'ws';
 import { ohlcvAggregator } from '../aggregation/ohlcv-aggregator';
-import { insertTicks, type TickEvent } from '@quantbot/utils' /* TODO: Fix storage import */;
+import { insertTicks, type TickEvent } from '@quantbot/data';
 import { logger, getTrackedTokens, type TrackedToken } from '@quantbot/utils';
 
 const HELIUS_API_KEY = process.env.HELIUS_API_KEY || '';
@@ -188,7 +188,7 @@ export class HeliusStreamRecorder {
     }
   }
 
-  private recordTick(token: TokenMeta, tick: TickEvent): void {
+  private recordTick(token: TrackedToken, tick: TickEvent): void {
     const key = this.getTokenKey(token.mint, token.chain);
     if (!this.tickBuffer.has(key)) {
       this.tickBuffer.set(key, []);
@@ -216,7 +216,7 @@ export class HeliusStreamRecorder {
       const [chain, mint] = key.split(':');
       this.tickBuffer.set(key, []);
       flushTasks.push(
-        insertTicks(mint, chain, ticks).catch((error) => {
+        insertTicks(mint, chain, ticks).catch((error: unknown) => {
           logger.error('Failed to insert ticks', error as Error, {
             token: mint.substring(0, 20),
             count: ticks.length,

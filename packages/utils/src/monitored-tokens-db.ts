@@ -3,11 +3,11 @@
  * ====================================
  * Functions for storing and retrieving monitored tokens from Postgres
  * 
- * NOTE: This file will not compile in isolation because it depends on @quantbot/storage
+ * NOTE: This file will not compile in isolation because it depends on @quantbot/data
  * which hasn't been built yet. It will work when built as part of the monorepo.
  */
 
-// TODO: These imports require @quantbot/storage to be built first
+// TODO: These imports require @quantbot/data to be built first
 // For now, using type-only imports to avoid compilation errors
 import type { EntryConfig } from './types';
 import { logger } from './logger';
@@ -16,13 +16,13 @@ import { logger } from './logger';
 type QueryResult = any;
 type PostgresClient = any;
 
-// TODO: Import these from @quantbot/storage once available
+// TODO: Import these from @quantbot/data once available
 const queryPostgres = async <T = any>(query: string, params?: any[]): Promise<QueryResult> => {
-  throw new Error('queryPostgres not implemented - requires @quantbot/storage');
+  throw new Error('queryPostgres not implemented - requires @quantbot/data');
 };
 
 const withPostgresTransaction = async <T>(callback: (client: PostgresClient) => Promise<T>): Promise<T> => {
-  throw new Error('withPostgresTransaction not implemented - requires @quantbot/storage');
+  throw new Error('withPostgresTransaction not implemented - requires @quantbot/data');
 };
 
 export interface MonitoredToken {

@@ -7,7 +7,7 @@
 
 import { Context, Markup } from 'telegraf';
 import { BaseCommandHandler, Session } from './interfaces/CommandHandler';
-import { SessionService } from '@quantbot/services/SessionService';
+import { SessionService } from '@quantbot/services';
 import { eventBus, EventFactory } from './events';
 import { getUserSimulationRuns } from '@quantbot/utils';
 import { getRecentCalls, getCallerStats } from '@quantbot/utils';

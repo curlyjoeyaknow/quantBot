@@ -7,9 +7,10 @@
 
 import { Context } from 'telegraf';
 import { BaseCommandHandler, Session } from './interfaces/CommandHandler';
-import { SessionService } from '@quantbot/services/SessionService';
+import { SessionService } from '@quantbot/services';
 import { getActiveCATracking, getAllCACalls } from '@quantbot/utils';
 import { logger } from '@quantbot/utils';
+import { BotCACall } from '../types/session';
 
 export class AlertsCommandHandler extends BaseCommandHandler {
   readonly command = 'alerts';
@@ -35,7 +36,7 @@ export class AlertsCommandHandler extends BaseCommandHandler {
       const activeCAs = await getActiveCATracking();
       
       // Get recent historical CA calls (last 20)
-      const recentCalls = await getAllCACalls(20);
+      const recentCalls = (await getAllCACalls(20)) as BotCACall[];
       
       if (activeCAs.length === 0 && recentCalls.length === 0) {
         await ctx.reply(
@@ -89,16 +90,17 @@ export class AlertsCommandHandler extends BaseCommandHandler {
         // Show only first 10 recent calls
         const recentCallsToShow = recentCalls.slice(0, 10);
         
-        for (const call of recentCallsToShow) {
+        for (const call of recentCallsToShow as any[]) {
           const chainEmoji = call.chain === 'solana' ? '🟣' : 
                             call.chain === 'ethereum' ? '🔵' : 
                             call.chain === 'bsc' ? '🟡' : '⚪';
           const tokenName = (call.token_name || 'Unknown').substring(0, 18).padEnd(18);
           const chain = call.chain.toUpperCase().substring(0, 7).padEnd(7);
           const price = `$${(call.call_price || 0).toFixed(6)}`.padEnd(10);
-          const time = call.call_timestamp ? 
-            new Date(call.call_timestamp * 1000).toLocaleString().substring(0, 12).padEnd(12) : 
-            'Unknown'.padEnd(12);
+          const ts = call.call_timestamp ?? call.alert_timestamp;
+          const time = ts
+            ? new Date(ts * 1000).toLocaleString().substring(0, 12).padEnd(12)
+            : 'Unknown'.padEnd(12);
           
           alertsMessage += `│ ${tokenName} │ ${chain} │ ${price} │ ${time} │\n`;
         }

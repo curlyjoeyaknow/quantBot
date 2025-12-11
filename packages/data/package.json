@@ -1,0 +1,34 @@
+{
+  "name": "@quantbot/data",
+  "version": "1.0.0",
+  "description": "Storage layer for QuantBot (ClickHouse, Postgres, InfluxDB)",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js",
+    "./*": "./dist/*.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@clickhouse/client": "^1.14.0",
+    "@influxdata/influxdb-client": "^1.33.2",
+    "@influxdata/influxdb-client-apis": "^1.33.2",
+    "@quantbot/core": "workspace:*",
+    "@quantbot/simulation": "workspace:*",
+    "@quantbot/utils": "workspace:*",
+    "pg": "^8.13.0",
+    "sqlite3": "^5.1.7"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "@types/pg": "^8.10.0",
+    "@types/sqlite3": "^3.1.11",
+    "@vitest/coverage-v8": "^4.0.15",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.15"
+  }
+}

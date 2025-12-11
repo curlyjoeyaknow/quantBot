@@ -3,7 +3,7 @@ import { DateTime } from 'luxon';
 import { logger, derivePumpfunBondingCurve, PUMP_FUN_PROGRAM_ID, upsertPumpfunToken, markPumpfunGraduated, type PumpfunTokenRecord, type TrackedToken } from '@quantbot/utils';
 import { heliusStreamRecorder } from '../stream/helius-recorder';
 import { heliusBackfillService, type BackfillJob } from '../backfill/helius-backfill-service';
-import { heliusRestClient } from '@quantbot/services';
+import { heliusRestClient } from '@quantbot/data';
 
 const PUMP_PROGRAM = PUMP_FUN_PROGRAM_ID.toBase58();
 
@@ -255,6 +255,9 @@ export class PumpfunLifecycleTracker {
         txData.transaction?.message?.accountKeys?.[0] ||
         metadata?.creator;
 
+      const tokenName = metadata && typeof metadata.name === 'string' ? metadata.name : undefined;
+      const tokenSymbol = metadata && typeof metadata.symbol === 'string' ? metadata.symbol : undefined;
+
       const record: PumpfunTokenRecord = {
         mint,
         creator: creator ?? undefined,
@@ -270,8 +273,8 @@ export class PumpfunLifecycleTracker {
       const trackedToken: TrackedToken = {
         mint,
         chain: 'solana',
-        tokenName: metadata?.name,
-        tokenSymbol: metadata?.symbol,
+        tokenName,
+        tokenSymbol,
         firstSeen: timestamp,
         source: 'pumpfun_launch',
       };

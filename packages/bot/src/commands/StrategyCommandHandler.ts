@@ -7,7 +7,7 @@
 
 import { Context } from 'telegraf';
 import { BaseCommandHandler, Session } from './interfaces/CommandHandler';
-import { StrategyService } from '@quantbot/services/StrategyService';
+import { StrategyService } from '@quantbot/services';
 import { eventBus, EventFactory } from './events';
 import { logger } from '@quantbot/utils';
 import { extractCommandArgs, sanitizeInput } from '../utils/command-helpers';

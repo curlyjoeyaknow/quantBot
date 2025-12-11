@@ -66,6 +66,27 @@ export declare function fetchBirdeyeCandlesDirect(mint: string, interval: '15s' 
  */
 export declare function fetchOptimizedCandlesForAlert(mint: string, alertTime: DateTime, endTime?: DateTime, chain?: string): Promise<Candle[]>;
 /**
+ * Token metadata enriched from Birdeye API
+ */
+export interface TokenMetadata {
+    name: string;
+    symbol: string;
+    marketCap?: number;
+    price?: number;
+    decimals?: number;
+    socials?: {
+        twitter?: string;
+        telegram?: string;
+        discord?: string;
+        website?: string;
+    };
+    creator?: string;
+    topWalletHoldings?: number;
+    volume24h?: number;
+    priceChange24h?: number;
+    logoURI?: string;
+}
+/**
  * Fetches OHLCV candles for a given token using 5m granularity for the entire period.
  * If alertTime is provided, also fetches 1m candles for 30min before and after alertTime
  * for precise entry pricing.
@@ -81,4 +102,19 @@ export declare function fetchOptimizedCandlesForAlert(mint: string, alertTime: D
  * @returns         Array of Candle objects, ascending by timestamp (merged 5m + 1m if alertTime provided)
  */
 export declare function fetchHybridCandles(mint: string, startTime: DateTime, endTime: DateTime, chain?: string, alertTime?: DateTime): Promise<Candle[]>;
+/**
+ * Fetches OHLCV candles with token metadata enrichment.
+ * Same as fetchHybridCandles but also returns token metadata (name, symbol, market cap).
+ *
+ * @param mint      Token mint address
+ * @param startTime Range start time (Luxon DateTime, UTC)
+ * @param endTime   Range end time   (Luxon DateTime, UTC)
+ * @param chain     Blockchain name (defaults to 'solana')
+ * @param alertTime Optional alert time - if provided, fetches 1m candles for 30min before/after
+ * @returns         Object with candles array and token metadata
+ */
+export declare function fetchHybridCandlesWithMetadata(mint: string, startTime: DateTime, endTime: DateTime, chain?: string, alertTime?: DateTime): Promise<{
+    candles: Candle[];
+    metadata: TokenMetadata | null;
+}>;
 //# sourceMappingURL=candles.d.ts.map

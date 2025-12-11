@@ -35,11 +35,26 @@ QuantBot is built as a **modular monorepo** using npm workspaces, following prin
            │                          │
 ┌──────────▼──────────────────────────▼───────────────────────┐
 │                    Service Layer                              │
-│              (@quantbot/services)                            │
 │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐        │
-│  │ Session  │ │Simulation│ │ Strategy │ │  CA      │        │
-│  │ Service  │ │ Service  │ │ Service  │ │Detection │        │
+│  │ Session  │ │Simulation│ │ Strategy │ │Workflows │        │
+│  │ Service  │ │ Service  │ │ Service  │ │(@quantbot│        │
+│  │(@quantbot│ │(@quantbot│ │(@quantbot│ │/workflows│        │
+│  │/services)│ │/services)│ │/services)│ │)         │        │
 │  └──────────┘ └──────────┘ └──────────┘ └──────────┘        │
+│                                                               │
+│  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐        │
+│  │ Token    │ │  OHLCV   │ │Ingestion │ │   API    │        │
+│  │Analysis  │ │ Services │ │ Services │ │ Clients  │        │
+│  │(@quantbot│ │(@quantbot│ │(@quantbot│ │(@quantbot│        │
+│  │/token-   │ │/ohlcv)   │ │/ingestion│ │/api-     │        │
+│  │analysis) │ │          │ │)         │ │clients)  │        │
+│  └──────────┘ └──────────┘ └──────────┘ └──────────┘        │
+│                                                               │
+│  ┌──────────┐                                                │
+│  │  Events  │                                                │
+│  │(@quantbot│                                                │
+│  │/events)  │                                                │
+│  └──────────┘                                                │
 └──────────┬──────────────────────────┬───────────────────────┘
            │                          │
            │                          │
@@ -87,9 +102,21 @@ QuantBot is built as a **modular monorepo** using npm workspaces, following prin
     │
     ├── @quantbot/storage
     │       │
+    │       ├── @quantbot/api-clients (depends on @quantbot/utils)
+    │       │       │
+    │       ├── @quantbot/events (depends on @quantbot/utils)
+    │       │       │
+    │       ├── @quantbot/token-analysis (depends on @quantbot/api-clients, @quantbot/storage)
+    │       │       │
+    │       ├── @quantbot/ohlcv (depends on @quantbot/api-clients, @quantbot/events, @quantbot/storage)
+    │       │       │
+    │       ├── @quantbot/ingestion (depends on @quantbot/ohlcv, @quantbot/token-analysis, @quantbot/events)
+    │       │       │
+    │       ├── @quantbot/workflows (depends on @quantbot/ingestion, @quantbot/simulation)
+    │       │       │
     │       ├── @quantbot/simulation
     │       │       │
-    │       │       ├── @quantbot/services
+    │       │       ├── @quantbot/services (core services: Session, Simulation, Strategy)
     │       │       │       │
     │       │       │       ├── @quantbot/bot
     │       │       │       └── @quantbot/monitoring
@@ -198,30 +225,145 @@ QuantBot is built as a **modular monorepo** using npm workspaces, following prin
 
 #### `@quantbot/services`
 
-**Purpose**: Business logic services
+**Purpose**: Core application services (Session, Simulation, Strategy management)
+
+**Status**: This package has been refactored. Most services have been moved to specialized packages. This package now primarily contains core application services and re-exports from modular packages for backward compatibility.
 
 **Exports**:
 - SessionService (user session management)
 - SimulationService (simulation operations)
 - StrategyService (strategy management)
-- IchimokuWorkflowService (Ichimoku analysis workflow)
-- CADetectionService (CA drop detection)
-- TextWorkflowHandler (bot text workflow)
-- OHLCV services (engine, query, ingestion)
-- Token services (service, filter)
-- Results service
-- Caller tracking
-- Chat extraction engine
+- Re-exports from `@quantbot/workflows`, `@quantbot/token-analysis`, `@quantbot/ohlcv`, `@quantbot/ingestion`, `@quantbot/api-clients`
 
 **Dependencies**:
 - External: `axios`, `cheerio`, `luxon`, `telegraf`
-- Internal: `@quantbot/utils`, `@quantbot/storage`, `@quantbot/simulation`
+- Internal: `@quantbot/utils`, `@quantbot/storage`, `@quantbot/simulation`, `@quantbot/api-clients`, `@quantbot/events`, `@quantbot/token-analysis`, `@quantbot/ohlcv`, `@quantbot/ingestion`, `@quantbot/workflows`
 
 **Key Files**:
 - `src/SessionService.ts` - Session management
 - `src/SimulationService.ts` - Simulation operations
-- `src/TextWorkflowHandler.ts` - Bot workflow handler
-- `src/ohlcv-service.ts` - OHLCV data service
+- `src/StrategyService.ts` - Strategy management
+- `src/index.ts` - Re-exports from modular packages
+
+#### `@quantbot/api-clients`
+
+**Purpose**: API client implementations for external services
+
+**Exports**:
+- BaseApiClient (base class with retry logic and rate limiting)
+- BirdeyeClient (Birdeye API client)
+- HeliusRestClient (Helius REST API client)
+
+**Dependencies**:
+- External: `axios`
+- Internal: `@quantbot/utils`
+
+**Key Files**:
+- `src/base-client.ts` - Base API client with retry/rate limiting
+- `src/birdeye-client.ts` - Birdeye API client
+- `src/helius-client.ts` - Helius REST client
+
+#### `@quantbot/events`
+
+**Purpose**: Event bus and event system for decoupled communication
+
+**Exports**:
+- EventBus (centralized event bus)
+- EventTypes (type definitions)
+- EventHandlers (event handler implementations)
+- EventMiddleware (middleware for event processing)
+
+**Dependencies**:
+- External: None
+- Internal: `@quantbot/utils`
+
+**Key Files**:
+- `src/EventBus.ts` - Event bus implementation
+- `src/EventTypes.ts` - Event type definitions
+- `src/EventHandlers.ts` - Event handlers
+- `src/EventMiddleware.ts` - Event middleware
+
+#### `@quantbot/token-analysis`
+
+**Purpose**: Token analysis and contract address detection services
+
+**Exports**:
+- TokenService (token metadata and analysis)
+- TokenFilterService (token filtering)
+- CADetectionService (contract address detection)
+- ChatExtractionEngine (extract tokens from chat messages)
+
+**Dependencies**:
+- External: `cheerio`
+- Internal: `@quantbot/utils`, `@quantbot/storage`, `@quantbot/api-clients`
+
+**Key Files**:
+- `src/token-service.ts` - Token service
+- `src/token-filter-service.ts` - Token filtering
+- `src/CADetectionService.ts` - CA detection
+- `src/chat-extraction-engine.ts` - Chat extraction
+
+#### `@quantbot/ohlcv`
+
+**Purpose**: OHLCV candle data management and services
+
+**Exports**:
+- OHLCVService (OHLCV data service)
+- OHLCVEngine (OHLCV engine)
+- OHLCVQuery (query utilities)
+- OHLCVIngestion (ingestion utilities)
+- HistoricalCandles (historical data fetching)
+
+**Dependencies**:
+- External: None
+- Internal: `@quantbot/utils`, `@quantbot/storage`, `@quantbot/api-clients`, `@quantbot/events`
+
+**Key Files**:
+- `src/ohlcv-service.ts` - OHLCV service
+- `src/ohlcv-engine.ts` - OHLCV engine
+- `src/ohlcv-query.ts` - Query utilities
+- `src/ohlcv-ingestion.ts` - Ingestion utilities
+- `src/historical-candles.ts` - Historical data
+
+#### `@quantbot/ingestion`
+
+**Purpose**: Data ingestion services for Telegram alerts and OHLCV data
+
+**Exports**:
+- TelegramAlertIngestionService (Telegram alert ingestion)
+- OhlcvIngestionService (OHLCV data ingestion)
+- TelegramExportParser (Telegram export parsing)
+- ExtractSolanaAddresses (address extraction utilities)
+
+**Dependencies**:
+- External: None
+- Internal: `@quantbot/utils`, `@quantbot/storage`, `@quantbot/ohlcv`, `@quantbot/token-analysis`, `@quantbot/events`
+
+**Key Files**:
+- `src/TelegramAlertIngestionService.ts` - Telegram ingestion
+- `src/OhlcvIngestionService.ts` - OHLCV ingestion
+- `src/TelegramExportParser.ts` - Export parser
+- `src/extractSolanaAddresses.ts` - Address extraction
+
+#### `@quantbot/workflows`
+
+**Purpose**: Workflow orchestration services
+
+**Exports**:
+- IchimokuWorkflowService (Ichimoku analysis workflow)
+- TextWorkflowHandler (bot text workflow handler)
+- CallerTracking (caller tracking service)
+- ResultsService (results service)
+
+**Dependencies**:
+- External: None
+- Internal: `@quantbot/utils`, `@quantbot/storage`, `@quantbot/ohlcv`, `@quantbot/token-analysis`, `@quantbot/ingestion`, `@quantbot/events`, `@quantbot/simulation`, `@quantbot/services`
+
+**Key Files**:
+- `src/IchimokuWorkflowService.ts` - Ichimoku workflow
+- `src/TextWorkflowHandler.ts` - Text workflow handler
+- `src/caller-tracking.ts` - Caller tracking
+- `src/results-service.ts` - Results service
 
 #### `@quantbot/bot`
 

@@ -7,12 +7,13 @@
 
 import { Context, Markup } from 'telegraf';
 import { BaseCommandHandler, Session } from './interfaces/CommandHandler';
-import { callerDatabase, CallerAlert } from '@quantbot/storage/caller-database';
-import { LiveTradeAlertService } from '@quantbot/monitoring/live-trade-alert-service';
+import { callerDatabase, CallerAlert } from '@quantbot/data';
+import { LiveTradeAlertService } from '@quantbot/monitoring';
 import { logger } from '@quantbot/utils';
-import { EntryConfig } from '@quantbot/simulation/config';
-import { fetchHistoricalCandlesForMonitoring } from '../utils/fetch-historical-candles';
-import { sessionService } from '@quantbot/services/SessionService';
+import type { EntryConfig } from '@quantbot/core';
+import { fetchHistoricalCandlesForMonitoring } from '@quantbot/ohlcv';
+import { sessionService } from '@quantbot/services';
+import { LiveTradeCommandHandler } from './LiveTradeCommandHandler';
 
 // Default entry configuration with Ichimoku and price alerts enabled
 const DEFAULT_MONITOR_CONFIG: EntryConfig = {

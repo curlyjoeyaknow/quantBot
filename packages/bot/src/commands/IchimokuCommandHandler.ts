@@ -7,7 +7,7 @@
 
 import { Context } from 'telegraf';
 import { BaseCommandHandler, Session } from './interfaces/CommandHandler';
-import { SessionService } from '@quantbot/services/SessionService';
+import { SessionService } from '@quantbot/services';
 import { logger } from '@quantbot/utils';
 import { COMMAND_TIMEOUTS } from '../utils/command-helpers';
 

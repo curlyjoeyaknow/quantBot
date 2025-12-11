@@ -7,6 +7,9 @@ import { postgresManager } from '../db/postgres-manager';
 import { cache, cacheKeys } from '../cache';
 import { startOfDay, subDays, format } from 'date-fns';
 
+// Bot callers to exclude from analytics (they just log calls, not make them)
+const BOT_CALLERS = ['Phanes [Gold]', 'Rick', 'Phanes', 'phanes'];
+
 export interface CallerPerformance {
   callerName: string;
   totalAlerts: number;
@@ -14,6 +17,10 @@ export interface CallerPerformance {
   avgPrice: number;
   firstAlert: Date;
   lastAlert: Date;
+  avgMultiple?: number;
+  bestMultiple?: number;
+  avgTimeToATH?: number; // minutes
+  winRate?: number;
 }
 
 export interface TimeSeriesPoint {
@@ -81,7 +88,7 @@ export class AnalyticsService {
   }
 
   /**
-   * Get top callers by alert count
+   * Get top callers by alert count (excluding bots)
    */
   async getTopCallers(limit: number = 10): Promise<CallerPerformance[]> {
     try {
@@ -100,12 +107,13 @@ export class AnalyticsService {
           MAX(a.alert_timestamp) as last_alert
         FROM callers c
         LEFT JOIN alerts a ON a.caller_id = c.id
+        WHERE c.handle NOT IN (${BOT_CALLERS.map((_, i) => `$${i + 1}`).join(', ')})
         GROUP BY c.id, c.handle
         HAVING COUNT(a.id) > 0
         ORDER BY total_alerts DESC
-        LIMIT $1
+        LIMIT $${BOT_CALLERS.length + 1}
         `,
-        [limit]
+        [...BOT_CALLERS, limit]
       );
 
       const data: CallerPerformance[] = result.rows.map((row: any) => ({

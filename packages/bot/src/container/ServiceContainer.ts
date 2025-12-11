@@ -6,12 +6,11 @@
  */
 
 import { Telegraf } from 'telegraf';
-import { SessionService } from '@quantbot/services/SessionService';
-import { StrategyService } from '@quantbot/services/StrategyService';
-import { SimulationService } from '@quantbot/services/SimulationService';
-import { IchimokuWorkflowService } from '@quantbot/services/IchimokuWorkflowService';
-import { CADetectionService } from '@quantbot/services/CADetectionService';
-import { RepeatSimulationHelper } from '@quantbot/utils';
+import { SessionService, StrategyService, SimulationService } from '@quantbot/services';
+import { IchimokuWorkflowService } from '@quantbot/workflows';
+import { CADetectionService } from '@quantbot/token-analysis';
+import { RepeatSimulationHelper } from '../utils/RepeatSimulationHelper';
+import { SessionCleanupManager } from '../utils/session-cleanup';
 import { CommandRegistry } from '../commands/CommandRegistry';
 import { logger } from '@quantbot/utils';
 

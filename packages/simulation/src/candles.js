@@ -51,6 +51,7 @@ exports.aggregateCandles = aggregateCandles;
 exports.fetchBirdeyeCandlesDirect = fetchBirdeyeCandlesDirect;
 exports.fetchOptimizedCandlesForAlert = fetchOptimizedCandlesForAlert;
 exports.fetchHybridCandles = fetchHybridCandles;
+exports.fetchHybridCandlesWithMetadata = fetchHybridCandlesWithMetadata;
 const dotenv_1 = require("dotenv");
 // Override existing env vars to ensure .env file takes precedence
 (0, dotenv_1.config)({ override: true });
@@ -565,9 +566,95 @@ async function fetchOptimizedCandlesForAlert(mint, alertTime, endTime = luxon_1.
     });
     return sorted;
 }
-/* ============================================================================
- * Public API: fetchHybridCandles
- * ========================================================================== */
+/**
+ * Fetch token metadata (name, symbol, market cap, socials, creator, top wallet holdings) from Birdeye API
+ * Tries multiple endpoints to get comprehensive metadata
+ */
+async function fetchTokenMetadata(mint, chain = 'solana') {
+    const apiKey = getBirdeyeApiKey();
+    if (!apiKey) {
+        utils_1.logger.debug('No Birdeye API key available for token metadata');
+        return null;
+    }
+    const headers = {
+        'X-API-KEY': apiKey,
+        'accept': 'application/json',
+        'x-chain': chain,
+    };
+    // Try token overview endpoint first (more comprehensive data)
+    try {
+        const overviewResponse = await axios_1.default.get('https://public-api.birdeye.so/defi/token_overview', {
+            headers,
+            params: { address: mint },
+            timeout: 10000,
+            validateStatus: (status) => status < 500,
+        });
+        if (overviewResponse.status === 200 && overviewResponse.data?.success && overviewResponse.data?.data) {
+            const data = overviewResponse.data.data;
+            return {
+                name: data.name || `Token ${mint.substring(0, 8)}`,
+                symbol: data.symbol || mint.substring(0, 4).toUpperCase(),
+                marketCap: data.marketCap || data.mc || data.marketCapUsd,
+                price: data.price || data.priceUsd,
+                decimals: data.decimals,
+                volume24h: data.volume24h || data.volume24hUsd,
+                priceChange24h: data.priceChange24h,
+                logoURI: data.logoURI || data.logo,
+                socials: data.socials ? {
+                    twitter: data.socials.twitter,
+                    telegram: data.socials.telegram,
+                    discord: data.socials.discord,
+                    website: data.socials.website || data.website,
+                } : undefined,
+                creator: data.creator || data.creatorAddress,
+                topWalletHoldings: data.topWalletHoldings || data.top10Holdings || data.top20Holdings,
+            };
+        }
+    }
+    catch (error) {
+        utils_1.logger.debug('Token overview endpoint failed, trying metadata endpoint', {
+            token: mint.substring(0, 20),
+            error: error.message,
+        });
+    }
+    // Fallback to metadata endpoint
+    try {
+        const metadataResponse = await axios_1.default.get('https://public-api.birdeye.so/defi/v3/token/meta-data/single', {
+            headers,
+            params: { address: mint },
+            timeout: 10000,
+            validateStatus: (status) => status < 500,
+        });
+        if (metadataResponse.status === 200 && metadataResponse.data?.success && metadataResponse.data?.data) {
+            const data = metadataResponse.data.data;
+            return {
+                name: data.name || `Token ${mint.substring(0, 8)}`,
+                symbol: data.symbol || mint.substring(0, 4).toUpperCase(),
+                marketCap: data.marketCap || data.mc,
+                price: data.price,
+                decimals: data.decimals,
+                volume24h: data.volume24h,
+                priceChange24h: data.priceChange24h,
+                logoURI: data.logoURI || data.logo,
+                socials: data.socials ? {
+                    twitter: data.socials.twitter,
+                    telegram: data.socials.telegram,
+                    discord: data.socials.discord,
+                    website: data.socials.website || data.website,
+                } : undefined,
+                creator: data.creator || data.creatorAddress,
+                topWalletHoldings: data.topWalletHoldings || data.top10Holdings,
+            };
+        }
+    }
+    catch (error) {
+        utils_1.logger.debug('Failed to fetch token metadata from Birdeye', {
+            token: mint.substring(0, 20),
+            error: error.message,
+        });
+    }
+    return null;
+}
 /**
  * Fetches OHLCV candles for a given token using 5m granularity for the entire period.
  * If alertTime is provided, also fetches 1m candles for 30min before and after alertTime
@@ -598,14 +685,14 @@ async function fetchHybridCandles(mint, startTime, endTime, chain = 'solana', al
     // Try ClickHouse first (if enabled) - ClickHouse is a cache, so check it even in cache-only mode
     if (process.env.USE_CLICKHOUSE === 'true' || process.env.CLICKHOUSE_HOST) {
         try {
-            const { queryCandles } = await Promise.resolve().then(() => __importStar(require('@quantbot/storage')));
+            const { queryCandles } = await Promise.resolve().then(() => __importStar(require('../../storage/src/clickhouse-client')));
             const clickhouseCandles = await queryCandles(mint, chain, actualStartTime, endTime);
             if (clickhouseCandles.length > 0) {
                 utils_1.logger.debug(`Using ClickHouse candles for ${mint} (${clickhouseCandles.length} candles, from ${actualStartTime.toISO()})`);
                 // Filter to requested range if we extended backwards
                 if (actualStartTime < startTime) {
                     const startUnix = Math.floor(startTime.toSeconds());
-                    const filtered = clickhouseCandles.filter(c => c.timestamp >= startUnix);
+                    const filtered = clickhouseCandles.filter((c) => c.timestamp >= startUnix);
                     utils_1.logger.debug(`Filtered ClickHouse candles to requested range: ${filtered.length} candles (had ${clickhouseCandles.length} with lookback)`);
                     return filtered;
                 }
@@ -625,7 +712,7 @@ async function fetchHybridCandles(mint, startTime, endTime, chain = 'solana', al
         // Skip sync if USE_CACHE_ONLY is set (to avoid database connection errors)
         if (process.env.USE_CACHE_ONLY !== 'true' && (process.env.USE_CLICKHOUSE === 'true' || process.env.CLICKHOUSE_HOST)) {
             try {
-                const { insertCandles } = await Promise.resolve().then(() => __importStar(require('@quantbot/storage')));
+                const { insertCandles } = await Promise.resolve().then(() => __importStar(require('../../storage/src/clickhouse-client')));
                 const interval = cachedCandles.length > 1 && (cachedCandles[1].timestamp - cachedCandles[0].timestamp) <= 600 ? '5m' : '1h';
                 await insertCandles(mint, chain, cachedCandles, interval);
                 utils_1.logger.debug(`✅ Synced ${cachedCandles.length} cached candles to ClickHouse for ${mint.substring(0, 20)}...`);
@@ -664,8 +751,36 @@ async function fetchHybridCandles(mint, startTime, endTime, chain = 'solana', al
         return [];
     }
     utils_1.logger.debug(`Fetching fresh candles for ${mint}: ${startTime.toISO()} — ${endTime.toISO()}`);
-    // Always fetch 5m candles for the full period (including lookback if alertTime provided)
-    const candles5m = await fetchFreshCandles(mint, actualStartTime, endTime, chain, '5m');
+    // Fetch 5m candles: if alertTime provided, start 52 periods before, then make multiple calls to fetch full history up to now
+    let candles5m;
+    if (alertTime) {
+        const MIN_HISTORICAL_5M = 52; // 52 periods for Ichimoku
+        const CANDLE_5M_SEC = 5 * 60; // 300 seconds
+        const alertUnix = Math.floor(alertTime.toSeconds());
+        const minHistoricalSeconds = MIN_HISTORICAL_5M * CANDLE_5M_SEC; // 260 minutes = 52 periods
+        // Start at least 52 periods (260 minutes) before alertTime for Ichimoku
+        const fiveMStart = Math.max(Math.floor(actualStartTime.toSeconds()), alertUnix - minHistoricalSeconds // At least 52 periods back
+        );
+        // Fetch from 52 periods before alertTime all the way to endTime (now)
+        // fetchBirdeyeCandles will automatically chunk into 5000-candle requests
+        const fiveMEnd = Math.floor(endTime.toSeconds());
+        utils_1.logger.debug(`Fetching 5m candles (min ${MIN_HISTORICAL_5M} historical for Ichimoku, then full history to now): ${new Date(fiveMStart * 1000).toISOString()} — ${new Date(fiveMEnd * 1000).toISOString()}`);
+        // Use fetchBirdeyeCandles directly - it handles chunking automatically (up to 5000 per call)
+        candles5m = await fetchBirdeyeCandles(mint, '5m', fiveMStart, fiveMEnd, chain);
+        // Verify we have at least 52 historical candles
+        const historicalCount = candles5m.filter(c => c.timestamp < alertUnix).length;
+        if (historicalCount < MIN_HISTORICAL_5M) {
+            utils_1.logger.warn(`Only got ${historicalCount} historical 5m candles (need ${MIN_HISTORICAL_5M} for Ichimoku). Available data may be limited.`);
+        }
+        else {
+            utils_1.logger.debug(`Got ${historicalCount} historical 5m candles (>= ${MIN_HISTORICAL_5M} required for Ichimoku), ${candles5m.length} total candles`);
+        }
+    }
+    else {
+        // No alertTime: fetch 5m candles for the full period (including lookback if any)
+        // fetchBirdeyeCandles will automatically chunk into 5000-candle requests
+        candles5m = await fetchBirdeyeCandles(mint, '5m', Math.floor(actualStartTime.toSeconds()), Math.floor(endTime.toSeconds()), chain);
+    }
     // Filter to requested range for merging with 1m candles (but keep full range for Ichimoku)
     let candles5mFiltered = candles5m;
     if (actualStartTime < startTime) {
@@ -673,18 +788,37 @@ async function fetchHybridCandles(mint, startTime, endTime, chain = 'solana', al
         candles5mFiltered = candles5m.filter(c => c.timestamp >= startUnix);
         utils_1.logger.debug(`Fetched ${candles5m.length} 5m candles with lookback (${candles5mFiltered.length} in requested range)`);
     }
-    // If alertTime is provided, also fetch 1m candles for 30min before and after
+    // If alertTime is provided, fetch up to 5000 1m candles (max per API call)
+    // Ensure at least 52 historical candles (before alertTime) for Ichimoku
     let finalCandles = candles5mFiltered;
     if (alertTime) {
-        const alertWindowStart = alertTime.minus({ minutes: 30 });
-        const alertWindowEnd = alertTime.plus({ minutes: 30 });
-        // Clamp to the requested time range
-        const windowStart = alertWindowStart < startTime ? startTime : alertWindowStart;
-        const windowEnd = alertWindowEnd > endTime ? endTime : alertWindowEnd;
-        utils_1.logger.debug(`Fetching 1m candles for alert window: ${windowStart.toISO()} — ${windowEnd.toISO()}`);
-        const candles1m = await fetchFreshCandles(mint, windowStart, windowEnd, chain, '1m');
-        // Merge filtered 5m and 1m candles, with 1m taking precedence in the alert window
-        finalCandles = mergeCandles(candles5mFiltered, candles1m, alertTime, 30);
+        // Fetch 5000 1m candles, ensuring at least 52 are historical (before alertTime) for Ichimoku
+        const MAX_1M_CANDLES = 5000;
+        const MIN_HISTORICAL_1M = 52; // Minimum historical candles for Ichimoku
+        const CANDLE_1M_SEC = 60;
+        const alertUnix = Math.floor(alertTime.toSeconds());
+        const minHistoricalSeconds = MIN_HISTORICAL_1M * CANDLE_1M_SEC; // 52 minutes minimum
+        // Start at least 52 minutes before alertTime (for Ichimoku), then extend forward to get up to 5000 candles
+        const oneMStart = Math.max(Math.floor(actualStartTime.toSeconds()), alertUnix - minHistoricalSeconds // At least 52 minutes back
+        );
+        // Calculate how many candles we can fetch forward from the start
+        const availableForwardSeconds = (MAX_1M_CANDLES * CANDLE_1M_SEC) - (alertUnix - oneMStart);
+        const oneMEnd = Math.min(Math.floor(endTime.toSeconds()), alertUnix + Math.max(0, availableForwardSeconds) // Extend forward to fill up to 5000 candles
+        );
+        utils_1.logger.debug(`Fetching up to ${MAX_1M_CANDLES} 1m candles (min ${MIN_HISTORICAL_1M} historical for Ichimoku): ${new Date(oneMStart * 1000).toISOString()} — ${new Date(oneMEnd * 1000).toISOString()}`);
+        const candles1m = await fetchFreshCandles(mint, luxon_1.DateTime.fromSeconds(oneMStart), luxon_1.DateTime.fromSeconds(oneMEnd), chain, '1m');
+        // Verify we have at least 52 historical candles
+        const historicalCount = candles1m.filter(c => c.timestamp < alertUnix).length;
+        if (historicalCount < MIN_HISTORICAL_1M) {
+            utils_1.logger.warn(`Only got ${historicalCount} historical 1m candles (need ${MIN_HISTORICAL_1M} for Ichimoku). Available data may be limited.`);
+        }
+        else {
+            utils_1.logger.debug(`Got ${historicalCount} historical 1m candles (>= ${MIN_HISTORICAL_1M} required for Ichimoku)`);
+        }
+        // Merge filtered 5m and 1m candles, with 1m taking precedence where they overlap
+        // Use a large window since we have up to 5000 candles (effectively merge all 1m candles)
+        const mergeWindowMinutes = Math.floor((oneMEnd - oneMStart) / 60 / 2); // Half the window in minutes
+        finalCandles = mergeCandles(candles5mFiltered, candles1m, alertTime, mergeWindowMinutes);
     }
     // Return full candles5m (with lookback) so Ichimoku can use all available data
     // The lookback candles are included so indicators can be calculated immediately
@@ -707,7 +841,7 @@ async function fetchHybridCandles(mint, startTime, endTime, chain = 'solana', al
         // Also save to ClickHouse if enabled
         if (process.env.USE_CLICKHOUSE === 'true' || process.env.CLICKHOUSE_HOST) {
             try {
-                const { insertCandles } = await Promise.resolve().then(() => __importStar(require('@quantbot/storage')));
+                const { insertCandles } = await Promise.resolve().then(() => __importStar(require('../../storage/src/clickhouse-client')));
                 // Save full 5m candles (with lookback) to ClickHouse
                 if (candles5m.length > 0) {
                     await insertCandles(mint, chain, candles5m, '5m');
@@ -739,6 +873,41 @@ async function fetchHybridCandles(mint, startTime, endTime, chain = 'solana', al
             utils_1.logger.debug(`⚠️ No candles returned for ${mint.substring(0, 20)}... (token may not exist or have no data)`);
         }
     }
+    // Fetch and log token metadata (name, symbol, market cap, socials, creator, top wallet holdings) - async, don't block
+    fetchTokenMetadata(mint, chain).then(metadata => {
+        if (metadata) {
+            utils_1.logger.info('Token metadata enriched', {
+                mint: mint.substring(0, 20),
+                name: metadata.name,
+                symbol: metadata.symbol,
+                marketCap: metadata.marketCap,
+                price: metadata.price,
+                creator: metadata.creator,
+                topWalletHoldings: metadata.topWalletHoldings,
+                socials: metadata.socials,
+                volume24h: metadata.volume24h,
+                priceChange24h: metadata.priceChange24h,
+            });
+        }
+    }).catch(err => {
+        utils_1.logger.debug('Failed to fetch token metadata (non-blocking)', { error: err.message });
+    });
     return finalCandles;
+}
+/**
+ * Fetches OHLCV candles with token metadata enrichment.
+ * Same as fetchHybridCandles but also returns token metadata (name, symbol, market cap).
+ *
+ * @param mint      Token mint address
+ * @param startTime Range start time (Luxon DateTime, UTC)
+ * @param endTime   Range end time   (Luxon DateTime, UTC)
+ * @param chain     Blockchain name (defaults to 'solana')
+ * @param alertTime Optional alert time - if provided, fetches 1m candles for 30min before/after
+ * @returns         Object with candles array and token metadata
+ */
+async function fetchHybridCandlesWithMetadata(mint, startTime, endTime, chain = 'solana', alertTime) {
+    const candles = await fetchHybridCandles(mint, startTime, endTime, chain, alertTime);
+    const metadata = await fetchTokenMetadata(mint, chain);
+    return { candles, metadata };
 }
 //# sourceMappingURL=candles.js.map

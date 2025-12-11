@@ -8,7 +8,7 @@ import type { OpenPositionParams } from '../src/types';
 
 // Mock the queryPostgres function
 const mockQueryPostgres = vi.fn();
-vi.mock('@quantbot/storage', () => ({
+vi.mock('@quantbot/data', () => ({
   queryPostgres: (...args: any[]) => mockQueryPostgres(...args),
 }));
 

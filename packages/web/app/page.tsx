@@ -54,6 +54,10 @@ const Analytics = dynamic(() => import('@/components/analytics').then(mod => ({ 
   loading: () => <div className="p-8 text-center text-white">Loading analytics...</div>,
 });
 
+const PerformanceAnalytics = dynamic(() => import('@/components/performance-analytics').then(mod => ({ default: mod.PerformanceAnalytics })), {
+  loading: () => <div className="p-8 text-center text-white">Loading performance analytics...</div>,
+});
+
 const SignIn = dynamic(() => import('@/components/sign-in'), {
   loading: () => <div className="p-8 text-center text-white">Loading...</div>,
 });
@@ -106,6 +110,7 @@ export default function Home() {
           <TabsList className="grid w-full grid-cols-12 mb-6">
             <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
             <TabsTrigger value="analytics">Analytics 📊</TabsTrigger>
+            <TabsTrigger value="performance">Performance 🎯</TabsTrigger>
             <TabsTrigger value="caller-history">History</TabsTrigger>
             <TabsTrigger value="recent-alerts">Alerts</TabsTrigger>
             <TabsTrigger value="callers">Callers</TabsTrigger>
@@ -115,7 +120,6 @@ export default function Home() {
             <TabsTrigger value="health">Health</TabsTrigger>
             <TabsTrigger value="live-trade">Live</TabsTrigger>
             <TabsTrigger value="weekly-reports">Reports</TabsTrigger>
-            <TabsTrigger value="control-panel">Control</TabsTrigger>
           </TabsList>
 
           <TabsContent value="dashboard">
@@ -124,6 +128,10 @@ export default function Home() {
 
           <TabsContent value="analytics">
             <Analytics />
+          </TabsContent>
+
+          <TabsContent value="performance">
+            <PerformanceAnalytics />
           </TabsContent>
 
           <TabsContent value="caller-history">

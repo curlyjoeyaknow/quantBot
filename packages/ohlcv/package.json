@@ -1,0 +1,28 @@
+{
+  "name": "@quantbot/ohlcv",
+  "version": "1.0.0",
+  "description": "OHLCV candle data management and services",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@quantbot/core": "workspace:*",
+    "@quantbot/utils": "workspace:*",
+    "@quantbot/storage": "workspace:*",
+    "@quantbot/api-clients": "workspace:*",
+    "@quantbot/events": "workspace:*",
+    "lru-cache": "^11.0.0",
+    "luxon": "^3.4.4"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "@vitest/coverage-v8": "^4.0.15",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.15"
+  }
+}
+

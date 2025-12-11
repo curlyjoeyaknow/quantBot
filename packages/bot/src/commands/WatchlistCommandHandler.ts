@@ -6,7 +6,7 @@
 
 import { Context, Markup } from 'telegraf';
 import { BaseCommandHandler } from './interfaces/CommandHandler';
-import { getActiveMonitoredTokens, updateMonitoredTokenStatus, MonitoredToken } from '../utils/monitored-tokens-db';
+import { getActiveMonitoredTokens, updateMonitoredTokenStatus, MonitoredToken } from '@quantbot/utils/monitored-tokens-db';
 import { logger } from '@quantbot/utils';
 
 export class WatchlistCommandHandler extends BaseCommandHandler {
@@ -71,19 +71,21 @@ export class WatchlistCommandHandler extends BaseCommandHandler {
             minute: '2-digit',
           });
           
-          const priceChange = token.lastPrice && token.alertPrice
-            ? ((token.lastPrice - token.alertPrice) / token.alertPrice * 100).toFixed(2)
-            : 'N/A';
+          const priceChangeValue = token.lastPrice && token.alertPrice
+            ? (token.lastPrice - token.alertPrice) / token.alertPrice * 100
+            : null;
+          const priceChange = priceChangeValue !== null ? priceChangeValue.toFixed(2) : 'N/A';
           
           const statusEmoji = token.entrySignalSent ? '✅' : '⏳';
-          const priceEmoji = token.lastPrice && token.alertPrice
-            ? (token.lastPrice >= token.alertPrice ? '📈' : '📉')
+          const priceEmoji = priceChangeValue !== null
+            ? (priceChangeValue >= 0 ? '📈' : '📉')
             : '📊';
           
           message += `${i + 1}. ${statusEmoji} **${symbol}** (${token.chain})\n`;
           message += `   ${priceEmoji} Alert: $${token.alertPrice.toFixed(8)} | `;
           if (token.lastPrice) {
-            message += `Current: $${token.lastPrice.toFixed(8)} (${priceChange >= 0 ? '+' : ''}${priceChange}%)\n`;
+            const sign = priceChangeValue !== null && priceChangeValue >= 0 ? '+' : '';
+            message += `Current: $${token.lastPrice.toFixed(8)} (${sign}${priceChange}%)\n`;
           } else {
             message += `Current: N/A\n`;
           }
