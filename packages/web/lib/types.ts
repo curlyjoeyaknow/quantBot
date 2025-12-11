@@ -67,6 +67,12 @@ export interface CallerStat {
   lastCall: string;
   avgPrice: number | null;
   avgMarketCap: number | null;
+  // Performance metrics
+  winRate?: number | null;
+  avgMultiple?: number | null;
+  bestMultiple?: number | null;
+  totalReturn?: number | null;
+  profitableCalls?: number | null;
 }
 
 export interface CallerStatsData {

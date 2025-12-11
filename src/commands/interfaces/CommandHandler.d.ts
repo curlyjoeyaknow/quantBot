@@ -1,0 +1,58 @@
+/**
+ * Command Handler Interface
+ * ========================
+ * Defines the contract for all command handlers in the QuantBot system.
+ * This interface enables consistent command processing and makes the system
+ * more testable and maintainable.
+ */
+import { Context } from 'telegraf';
+import { Session as SessionType } from '../../types/session';
+/**
+ * Session data structure for maintaining user state
+ * Re-export from types/session.ts for backward compatibility
+ */
+export type Session = SessionType;
+/**
+ * Base interface for all command handlers
+ */
+export interface CommandHandler {
+    /**
+     * The command name (e.g., 'backtest', 'strategy')
+     */
+    readonly command: string;
+    /**
+     * Execute the command with the given context and session
+     * @param ctx - Telegram bot context
+     * @param session - Current user session (may be undefined for new users)
+     * @returns Promise that resolves when command execution is complete
+     */
+    execute(ctx: Context, session?: Session): Promise<void>;
+}
+/**
+ * Base class for command handlers with common functionality
+ */
+export declare abstract class BaseCommandHandler implements CommandHandler {
+    abstract readonly command: string;
+    /**
+     * Get or create a session for the user
+     */
+    protected getOrCreateSession(userId: number, sessions: Record<number, Session>): Session;
+    /**
+     * Clear a user's session
+     */
+    protected clearSession(userId: number, sessions: Record<number, Session>): void;
+    /**
+     * Send a formatted error message
+     */
+    protected sendError(ctx: Context, message: string): Promise<void>;
+    /**
+     * Send a formatted success message
+     */
+    protected sendSuccess(ctx: Context, message: string): Promise<void>;
+    /**
+     * Send a formatted info message
+     */
+    protected sendInfo(ctx: Context, message: string): Promise<void>;
+    abstract execute(ctx: Context, session?: Session): Promise<void>;
+}
+//# sourceMappingURL=CommandHandler.d.ts.map

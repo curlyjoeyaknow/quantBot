@@ -10,11 +10,18 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "@quantbot/core": "workspace:*",
     "@quantbot/utils": "workspace:*",
-    "@quantbot/storage": "workspace:*",
+    "@quantbot/data": "workspace:*",
     "@quantbot/services": "workspace:*",
     "@quantbot/monitoring": "workspace:*",
     "@quantbot/simulation": "workspace:*",
+    "@quantbot/api-clients": "workspace:*",
+    "@quantbot/events": "workspace:*",
+    "@quantbot/token-analysis": "workspace:*",
+    "@quantbot/ohlcv": "workspace:*",
+    "@quantbot/ingestion": "workspace:*",
+    "@quantbot/workflows": "workspace:*",
     "telegraf": "^4.16.3",
     "dotenv": "^17.2.3"
   },

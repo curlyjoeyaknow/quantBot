@@ -1,0 +1,40 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "declaration": true,
+    "declarationMap": true,
+    "composite": true,
+    "baseUrl": ".",
+    "skipLibCheck": true,
+    "paths": {
+      "@quantbot/utils": ["../utils/src"],
+      "@quantbot/utils/*": ["../utils/src/*"],
+      "@quantbot/storage": ["../storage/src"],
+      "@quantbot/storage/*": ["../storage/src/*"],
+      "@quantbot/ohlcv": ["../ohlcv/src"],
+      "@quantbot/ohlcv/*": ["../ohlcv/src/*"],
+      "@quantbot/token-analysis": ["../token-analysis/src"],
+      "@quantbot/token-analysis/*": ["../token-analysis/src/*"],
+      "@quantbot/ingestion": ["../ingestion/src"],
+      "@quantbot/ingestion/*": ["../ingestion/src/*"],
+      "@quantbot/events": ["../events/src"],
+      "@quantbot/events/*": ["../events/src/*"],
+      "@quantbot/simulation": ["../simulation/src"],
+      "@quantbot/simulation/*": ["../simulation/src/*"]
+    }
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "**/*.test.ts"],
+  "references": [
+    { "path": "../utils" },
+    { "path": "../storage" },
+    { "path": "../ohlcv" },
+    { "path": "../token-analysis" },
+    { "path": "../ingestion" },
+    { "path": "../events" },
+    { "path": "../simulation" }
+  ]
+}
+

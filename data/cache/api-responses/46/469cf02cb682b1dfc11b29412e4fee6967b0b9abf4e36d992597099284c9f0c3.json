@@ -1,0 +1,11 @@
+{
+  "timestamp": 1765417467251,
+  "data": {
+    "items": []
+  },
+  "tokenAddress": "0x84698879ba7679da4f175bf1ed90afcacd074444",
+  "chain": "solana",
+  "startTime": 1761053907,
+  "endTime": 1763732307,
+  "interval": "5m"
+}

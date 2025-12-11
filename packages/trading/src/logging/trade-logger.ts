@@ -4,7 +4,7 @@
  * Comprehensive trade logging and Telegram notifications
  */
 
-import { queryPostgres } from '@quantbot/storage';
+import { queryPostgres } from '@quantbot/data';
 import { logger } from '@quantbot/utils';
 import type { Trade, TradeResult } from '../types';
 

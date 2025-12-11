@@ -10,8 +10,9 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "@quantbot/core": "workspace:*",
     "@quantbot/utils": "workspace:*",
-    "@quantbot/storage": "workspace:*",
+    "@quantbot/data": "workspace:*",
     "@quantbot/simulation": "workspace:*",
     "@quantbot/services": "workspace:*",
     "@solana/web3.js": "^1.98.4",

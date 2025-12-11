@@ -4,7 +4,7 @@
  * Converts simulation strategies to trade orders with position sizing
  */
 
-import { Strategy, StopLossConfig } from '@quantbot/simulation';
+import type { Strategy, StopLossConfig } from '@quantbot/core';
 import { logger } from '@quantbot/utils';
 import type { TradeOrder, TakeProfitTarget } from '../types';
 

@@ -8,375 +8,137 @@ import { DateTime } from 'luxon';
 import { config } from 'dotenv';
 import * as fs from 'fs';
 import * as path from 'path';
-import { birdeyeClient } from '../../src/api/birdeye-client';
 import { logger } from '../../src/utils/logger';
-import { buildScoringModel, type TokenFeatures } from './analyze-brook-token-selection';
-import { UNIFIED_DB_PATH } from './create-unified-calls-table';
-import { queryCandles } from '../../src/storage/clickhouse-client';
-import { getCachedResponse, cacheResponse, cacheNoDataResponse } from './cache-manager';
+import { birdeyeClient } from '../../src/api/birdeye-client';
+import { getEntryMcapWithFallback } from '../../src/lib/services/mcap-calculator';
 
 config();
 
-config();
-
-interface UnifiedCall {
-  id: number;
+export interface UnifiedCall {
+  id?: number;
   tokenAddress: string;
   tokenSymbol?: string;
   chain: string;
-  callTimestamp: number; // Unix timestamp
-  priceAtCall?: number;
-  volumeAtCall?: number;
-  marketCapAtCall?: number;
   callerName: string;
+  callTimestamp: number;
+  priceAtAlert?: number;
+  entryMcap?: number;
+  messageText?: string;
 }
 
-interface ScoredCall extends UnifiedCall {
+export interface ScoredCall extends UnifiedCall {
   score: number;
-  features: TokenFeatures;
+  returns: {
+    maxReturn7d: number;
+    maxReturn30d: number;
+    returnAt7d: number;
+    returnAt30d: number;
+  };
+  features: any; // Simplified for now
+}
+
+export interface ReturnData {
   maxReturn7d: number;
   maxReturn30d: number;
   returnAt7d: number;
   returnAt30d: number;
-  performanceCategory: 'moon' | 'good' | 'decent' | 'poor';
+  maxMcap7d?: number;
+  maxMcap30d?: number;
+  mcapAt7d?: number;
+  mcapAt30d?: number;
 }
 
-/**
- * Get all calls from unified database
- */
-async function getAllCalls(limit?: number): Promise<UnifiedCall[]> {
-  return new Promise((resolve, reject) => {
-    const db = new Database(UNIFIED_DB_PATH, (err) => {
-      if (err) {
-        logger.error('Failed to open unified database', err as Error);
-        return reject(err);
-      }
-    });
+export async function getAllCalls(): Promise<UnifiedCall[]> {
+  const dbPath = path.join(process.cwd(), 'data', 'unified_calls.db');
+  if (!fs.existsSync(dbPath)) {
+    logger.error('Unified calls database not found.', { path: dbPath });
+    return [];
+  }
+  const db = new Database(dbPath);
+  const allAsync = promisify(db.all.bind(db));
 
-    const all = promisify(db.all.bind(db)) as (sql: string, params?: any[]) => Promise<any[]>;
-
-    // Only get calls with valid timestamps (after 2020-01-01)
-    const query = limit
-      ? `SELECT * FROM unified_calls WHERE call_timestamp > 1577836800 AND call_timestamp < 2000000000 ORDER BY call_timestamp DESC LIMIT ?`
-      : `SELECT * FROM unified_calls WHERE call_timestamp > 1577836800 AND call_timestamp < 2000000000 ORDER BY call_timestamp DESC`;
-
-    const params = limit ? [limit] : [];
-
-    all(query, params)
-      .then((rows: any[]) => {
-        db.close();
-        const calls: UnifiedCall[] = rows.map(row => ({
-          id: row.id,
-          tokenAddress: row.token_address,
-          tokenSymbol: row.token_symbol,
-          chain: row.chain || 'solana',
-          callTimestamp: row.call_timestamp,
-          priceAtCall: row.price_at_call,
-          volumeAtCall: row.volume_at_call,
-          marketCapAtCall: row.market_cap_at_call,
-          callerName: row.caller_name,
-        }));
-        resolve(calls);
-      })
-      .catch((err) => {
-        db.close();
-        reject(err);
-      });
-  });
+  try {
+    const rows = await allAsync("SELECT * FROM unified_calls ORDER BY call_timestamp ASC");
+    return (rows as any[]).map(row => ({
+      ...row,
+      callTimestamp: row.call_timestamp,
+    }));
+  } finally {
+    db.close();
+  }
 }
 
-/**
- * Extract features from a call (similar to analyze-brook-token-selection.ts)
- */
-async function extractFeatures(
-  call: UnifiedCall,
-  candles: Array<{ timestamp: number; price: number; volume: number }>
-): Promise<TokenFeatures | null> {
-  const callUnix = call.callTimestamp;
-  const callTime = DateTime.fromSeconds(callUnix);
-
-  // Get price/volume at call time
-  // Try to find candle closest to call time (within 5 min), or use first available candle
-  let callCandle = candles.find(c => Math.abs(c.timestamp - callUnix) < 300); // Within 5 min
-  if (!callCandle && candles.length > 0) {
-    // If no candle within 5 min, use the closest one (could be after call time)
-    callCandle = candles.reduce((closest, current) => {
-      const closestDiff = Math.abs(closest.timestamp - callUnix);
-      const currentDiff = Math.abs(current.timestamp - callUnix);
-      return currentDiff < closestDiff ? current : closest;
-    });
-  }
-  
-  if (!callCandle || callCandle.price === 0) {
-    logger.debug('No valid candle at call time', {
-      tokenAddress: call.tokenAddress.substring(0, 20),
-      candlesCount: candles.length,
-      callUnix,
-    });
-    return null;
-  }
-
-  const price = call.priceAtCall || callCandle.price;
-  const volume = call.volumeAtCall || callCandle.volume;
-  const marketCap = call.marketCapAtCall || 0;
-
-  // Price changes before call (use whatever data is available)
-  const candlesBefore = candles.filter(c => c.timestamp < callUnix);
-
-  // Get prices at different time intervals before call (if available)
-  const price15mAgo = candlesBefore
-    .filter(c => callUnix - c.timestamp <= 900)
-    .sort((a, b) => b.timestamp - a.timestamp)[0]?.price;
-  const price1hAgo = candlesBefore
-    .filter(c => callUnix - c.timestamp <= 3600)
-    .sort((a, b) => b.timestamp - a.timestamp)[0]?.price;
-  const price24hAgo = candlesBefore
-    .filter(c => callUnix - c.timestamp <= 86400)
-    .sort((a, b) => b.timestamp - a.timestamp)[0]?.price;
-
-  // Calculate price changes (use 0 if no pre-call data available)
-  const priceChange15m = price15mAgo && price15mAgo > 0 ? ((price - price15mAgo) / price15mAgo) * 100 : 0;
-  const priceChange1h = price1hAgo && price1hAgo > 0 ? ((price - price1hAgo) / price1hAgo) * 100 : 0;
-  const priceChange24h = price24hAgo && price24hAgo > 0 ? ((price - price24hAgo) / price24hAgo) * 100 : 0;
-
-  // Volume analysis
-  const volume1hAgo = candlesBefore
-    .filter(c => callUnix - c.timestamp <= 3600 && callUnix - c.timestamp > 1800)
-    .reduce((sum, c) => sum + c.volume, 0);
-  const volume1hBefore = candlesBefore
-    .filter(c => callUnix - c.timestamp <= 1800 && callUnix - c.timestamp > 0)
-    .reduce((sum, c) => sum + c.volume, 0);
-
-  const volumeChange1h = volume1hAgo > 0
-    ? ((volume1hBefore - volume1hAgo) / volume1hAgo) * 100
-    : 0;
-
-  const avgVolume24h = candlesBefore
-    .filter(c => callUnix - c.timestamp <= 86400)
-    .reduce((sum, c) => sum + c.volume, 0) / Math.max(1, candlesBefore.filter(c => callUnix - c.timestamp <= 86400).length);
-
-  // Volatility
-  const priceChanges24h = candlesBefore
-    .filter(c => callUnix - c.timestamp <= 86400)
-    .map((c, i, arr) => {
-      if (i === 0) return 0;
-      const prev = arr[i - 1];
-      return prev.price > 0 ? ((c.price - prev.price) / prev.price) * 100 : 0;
-    })
-    .filter(change => change !== 0);
-
-  const avgChange = priceChanges24h.reduce((sum, c) => sum + c, 0) / Math.max(1, priceChanges24h.length);
-  const variance = priceChanges24h.reduce((sum, c) => sum + Math.pow(c - avgChange, 2), 0) / Math.max(1, priceChanges24h.length);
-  const volatility24h = Math.sqrt(variance);
-
-  // Timing features
-  const hourOfDay = callTime.hour;
-  const dayOfWeek = callTime.weekday % 7;
-  const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
-
-  // Market cap category
-  let marketCapCategory: 'micro' | 'small' | 'mid' | 'large';
-  if (marketCap < 1_000_000) {
-    marketCapCategory = 'micro';
-  } else if (marketCap < 10_000_000) {
-    marketCapCategory = 'small';
-  } else if (marketCap < 100_000_000) {
-    marketCapCategory = 'mid';
-  } else {
-    marketCapCategory = 'large';
-  }
-
-  return {
-    price,
-    volume,
-    marketCap,
-    priceChange15m,
-    priceChange1h,
-    priceChange24h,
-    volumeChange1h,
-    avgVolume24h,
-    hourOfDay,
-    dayOfWeek,
-    isWeekend,
-    volatility24h,
-    marketCapCategory,
-  };
-}
-
-/**
- * Fetch candles for analysis
- */
-async function fetchCandlesForAnalysis(
+export async function fetchCandlesForAnalysis(
   tokenAddress: string,
   callUnix: number,
   chain: string = 'solana'
 ): Promise<Array<{ timestamp: number; price: number; volume: number }>> {
-  // Request data from call time forward (tokens might not exist before creation)
-  // Also try to get some data before call if available (for price action analysis)
-  const startTime = DateTime.fromSeconds(callUnix - 3600); // 1 hour before (token might be new)
+  const startTime = DateTime.fromSeconds(callUnix - 86400 * 2); // 2 days before
   const endTime = DateTime.fromSeconds(callUnix + 2592000); // 30 days after
-
-  // Try ClickHouse first (much faster, no API limits)
-  try {
-    const clickhouseCandles = await queryCandles(
-      tokenAddress,
-      chain,
-      startTime,
-      endTime,
-      '5m'
-    );
-
-    if (clickhouseCandles && clickhouseCandles.length > 0) {
-      logger.info('✅ Using ClickHouse candles', {
-        tokenAddress: tokenAddress.substring(0, 30),
-        chain,
-        count: clickhouseCandles.length,
-        timeRange: `${new Date((callUnix - 3600) * 1000).toISOString()} to ${new Date((callUnix + 2592000) * 1000).toISOString()}`,
-      });
-
-      return clickhouseCandles.map(candle => ({
-        timestamp: candle.timestamp,
-        price: candle.close,
-        volume: candle.volume,
-      }));
-    }
-  } catch (error: any) {
-    logger.debug('ClickHouse query failed, falling back to API', {
-      tokenAddress: tokenAddress.substring(0, 20),
-      error: error.message,
-    });
-  }
-
-  // Fall back to Birdeye API if not in ClickHouse
-  // Check cache first to avoid wasting API credits
-  const startUnix = startTime.toSeconds();
-  const endUnix = endTime.toSeconds();
-  const cached = getCachedResponse(tokenAddress, chain, startUnix, endUnix, '5m');
-  
-  if (cached !== null) {
-    const cachedData = cached.data;
-    if (cachedData && cachedData.items && Array.isArray(cachedData.items) && cachedData.items.length > 0) {
-      logger.info('✅ Using cached API response', {
-        tokenAddress: tokenAddress.substring(0, 30),
-        chain,
-        count: cachedData.items.length,
-      });
-      return cachedData.items.map((item: any) => ({
-        timestamp: item.unixTime,
-        price: typeof item.close === 'string' ? parseFloat(item.close) : (item.close || 0),
-        volume: typeof item.volume === 'string' ? parseFloat(item.volume) : (item.volume || 0),
-      }));
-    } else {
-      // Cached "no data" response - but check if it's a recent cache (within 1 hour)
-      // If it's old, retry the API call in case data is now available
-      const cacheAge = Date.now() - cached.timestamp;
-      const oneHour = 60 * 60 * 1000;
-      
-      if (cacheAge < oneHour) {
-        logger.debug('Using cached no-data response (recent)', {
-          tokenAddress: tokenAddress.substring(0, 20),
-          ageMinutes: Math.floor(cacheAge / 60000),
-        });
-        return [];
-      } else {
-        logger.debug('Cached no-data response is old, retrying API', {
-          tokenAddress: tokenAddress.substring(0, 20),
-          ageHours: Math.floor(cacheAge / (60 * 60 * 1000)),
-        });
-        // Fall through to API call below
-      }
-    }
-  }
-
-  // Not in cache, fetch from API
-  logger.info('🌐 Fetching from Birdeye API', {
-    tokenAddress: tokenAddress.substring(0, 30),
-    chain,
-    timeRange: `${new Date(startUnix * 1000).toISOString()} to ${new Date(endUnix * 1000).toISOString()}`,
-  });
 
   try {
     const birdeyeData = await birdeyeClient.fetchOHLCVData(
       tokenAddress,
-      new Date(startUnix * 1000),
-      new Date(endUnix * 1000),
-      '5m',
-      chain
+      startTime.toJSDate(),
+      endTime.toJSDate(),
+      '5m'
     );
 
     if (!birdeyeData || !birdeyeData.items) {
-      // Cache the "no data" response to avoid retrying
-      cacheNoDataResponse(tokenAddress, chain, startUnix, endUnix, '5m');
       return [];
     }
 
-    // Cache the successful response
-    cacheResponse(tokenAddress, chain, startUnix, endUnix, '5m', birdeyeData);
-
-    logger.info('✅ Successfully fetched from Birdeye API', {
-      tokenAddress: tokenAddress.substring(0, 30),
-      chain,
-      count: birdeyeData.items.length,
-    });
-
-    return birdeyeData.items.map(item => ({
+    return birdeyeData.items.map((item: any) => ({
       timestamp: item.unixTime,
       price: typeof item.close === 'string' ? parseFloat(item.close) : (item.close || 0),
       volume: typeof item.volume === 'string' ? parseFloat(item.volume) : (item.volume || 0),
     }));
   } catch (error: any) {
-    // Cache the error (no data) to avoid retrying
-    cacheNoDataResponse(tokenAddress, chain, startUnix, endUnix, '5m');
-    
-    logger.warn('Failed to fetch candles from API', {
-      tokenAddress: tokenAddress.substring(0, 20),
-      error: error.message,
-    });
+    logger.debug('Failed to fetch candles', { tokenAddress: tokenAddress.substring(0, 10), error: error.message });
     return [];
   }
 }
 
-/**
- * Calculate returns
- */
-function calculateReturns(
+export function calculateReturns(
   callPrice: number,
   candles: Array<{ timestamp: number; price: number; volume: number }>,
-  callUnix: number
-): {
-  maxReturn7d: number;
-  maxReturn30d: number;
-  returnAt7d: number;
-  returnAt30d: number;
-} {
+  callUnix: number,
+  entryMcap?: number
+): ReturnData {
   const candlesAfter = candles.filter(c => c.timestamp > callUnix);
+  
+  const candles7d = candlesAfter.filter(c => c.timestamp <= callUnix + 604800); // 7 days
+  const candles30d = candlesAfter.filter(c => c.timestamp <= callUnix + 2592000); // 30 days
 
-  const candles7d = candlesAfter.filter(c => c.timestamp <= callUnix + 604800);
-  const candles30d = candlesAfter.filter(c => c.timestamp <= callUnix + 2592000);
+  const maxPrice7d = candles7d.length > 0 ? Math.max(...candles7d.map(c => c.price)) : callPrice;
+  const maxPrice30d = candles30d.length > 0 ? Math.max(...candles30d.map(c => c.price)) : callPrice;
 
-  const maxPrice7d = candles7d.length > 0
-    ? Math.max(...candles7d.map(c => c.price))
-    : callPrice;
-  const maxPrice30d = candles30d.length > 0
-    ? Math.max(...candles30d.map(c => c.price))
-    : callPrice;
+  const priceAt7d = candles7d.length > 0 ? candles7d[candles7d.length - 1]?.price || callPrice : callPrice;
+  const priceAt30d = candles30d.length > 0 ? candles30d[candles30d.length - 1]?.price || callPrice : callPrice;
 
-  const priceAt7d = candles7d.length > 0
-    ? candles7d.sort((a, b) => a.timestamp - b.timestamp)[candles7d.length - 1]?.price || callPrice
-    : callPrice;
-  const priceAt30d = candles30d.length > 0
-    ? candles30d.sort((a, b) => a.timestamp - b.timestamp)[candles30d.length - 1]?.price || callPrice
-    : callPrice;
+  const priceMultiple7d = callPrice > 0 ? maxPrice7d / callPrice : 0;
+  const priceMultiple30d = callPrice > 0 ? maxPrice30d / callPrice : 0;
+  const priceMultipleAt7d = callPrice > 0 ? priceAt7d / callPrice : 0;
+  const priceMultipleAt30d = callPrice > 0 ? priceAt30d / callPrice : 0;
 
-  return {
-    maxReturn7d: maxPrice7d / callPrice,
-    maxReturn30d: maxPrice30d / callPrice,
-    returnAt7d: priceAt7d / callPrice,
-    returnAt30d: priceAt30d / callPrice,
+  const result: ReturnData = {
+    maxReturn7d: priceMultiple7d,
+    maxReturn30d: priceMultiple30d,
+    returnAt7d: priceMultipleAt7d,
+    returnAt30d: priceMultipleAt30d,
   };
+
+  if (entryMcap && callPrice > 0) {
+    result.maxMcap7d = entryMcap * priceMultiple7d;
+    result.maxMcap30d = entryMcap * priceMultiple30d;
+    result.mcapAt7d = entryMcap * priceMultipleAt7d;
+    result.mcapAt30d = entryMcap * priceMultipleAt30d;
+  }
+
+  return result;
 }
 
-function categorizePerformance(maxReturn30d: number): 'moon' | 'good' | 'decent' | 'poor' {
+export function categorizePerformance(maxReturn30d: number): 'moon' | 'good' | 'decent' | 'poor' {
   if (maxReturn30d >= 10) return 'moon';
   if (maxReturn30d >= 3) return 'good';
   if (maxReturn30d >= 1.5) return 'decent';
@@ -388,7 +150,7 @@ function categorizePerformance(maxReturn30d: number): 'moon' | 'good' | 'decent'
  */
 async function scoreAndAnalyzeCalls(
   calls: UnifiedCall[],
-  scoreModel: (features: TokenFeatures) => number
+  scoreModel: (features: any) => number
 ): Promise<ScoredCall[]> {
   const scoredCalls: ScoredCall[] = [];
   const batchSize = 5;
@@ -456,9 +218,8 @@ async function scoreAndAnalyzeCalls(
           const scoredCall: ScoredCall = {
             ...call,
             score,
+            returns,
             features,
-            ...returns,
-            performanceCategory: categorizePerformance(returns.maxReturn30d),
           };
 
           scoredCalls.push(scoredCall);
@@ -516,9 +277,9 @@ function analyzePnLByScore(scoredCalls: ScoredCall[]): void {
 
     if (filtered.length === 0) continue;
 
-    const avgReturn30d = filtered.reduce((sum, c) => sum + c.maxReturn30d, 0) / filtered.length;
-    const avgReturn7d = filtered.reduce((sum, c) => sum + c.maxReturn7d, 0) / filtered.length;
-    const medianReturn30d = [...filtered].sort((a, b) => a.maxReturn30d - b.maxReturn30d)[Math.floor(filtered.length / 2)]?.maxReturn30d || 0;
+    const avgReturn30d = filtered.reduce((sum, c) => sum + c.returns.maxReturn30d, 0) / filtered.length;
+    const avgReturn7d = filtered.reduce((sum, c) => sum + c.returns.maxReturn7d, 0) / filtered.length;
+    const medianReturn30d = [...filtered].sort((a, b) => a.returns.maxReturn30d - b.returns.maxReturn30d)[Math.floor(filtered.length / 2)]?.returns.maxReturn30d || 0;
     
     const moonCount = filtered.filter(c => c.performanceCategory === 'moon').length;
     const goodCount = filtered.filter(c => c.performanceCategory === 'good').length;
@@ -544,7 +305,7 @@ function analyzePnLByScore(scoredCalls: ScoredCall[]): void {
     console.log(
       `${(call.tokenSymbol || call.tokenAddress.substring(0, 15)).padEnd(20)} ` +
       `Score: ${call.score.toFixed(2).padStart(6)} | ` +
-      `30d Max: ${call.maxReturn30d.toFixed(2)}x | ` +
+      `30d Max: ${call.returns.maxReturn30d.toFixed(2)}x | ` +
       `Category: ${call.performanceCategory.padEnd(6)} | ` +
       `Caller: ${call.callerName.substring(0, 20)}`
     );
@@ -562,7 +323,7 @@ async function main() {
 
   try {
     // Get all calls
-    const allCalls = await getAllCalls(limit);
+    const allCalls = await getAllCalls();
     
     // Filter out calls with invalid timestamps (before 2020-01-01 = 1577836800)
     // Also filter out calls with timestamp = 1 or 2 (obviously invalid)
@@ -609,13 +370,13 @@ async function main() {
         count: Math.floor(scoredCalls.length * 0.1),
         avgReturn30d: scoredCalls
           .slice(0, Math.floor(scoredCalls.length * 0.1))
-          .reduce((sum, c) => sum + c.maxReturn30d, 0) / Math.floor(scoredCalls.length * 0.1),
+          .reduce((sum, c) => sum + c.returns.maxReturn30d, 0) / Math.floor(scoredCalls.length * 0.1),
       },
       top25Percent: {
         count: Math.floor(scoredCalls.length * 0.25),
         avgReturn30d: scoredCalls
           .slice(0, Math.floor(scoredCalls.length * 0.25))
-          .reduce((sum, c) => sum + c.maxReturn30d, 0) / Math.floor(scoredCalls.length * 0.25),
+          .reduce((sum, c) => sum + c.returns.maxReturn30d, 0) / Math.floor(scoredCalls.length * 0.25),
       },
     };
 

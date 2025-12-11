@@ -229,7 +229,8 @@ export class BirdeyeClient {
         
         // Handle 400/404 errors (invalid token addresses)
         if (response.status === 400 || response.status === 404) {
-          throw { response: { status: response.status, data: response.data } };
+          // No need to throw, just log and let it be handled as an empty response
+          logger.debug('Token not found or bad request', { status: response.status, tokenAddress });
         }
         
         if (response.status === 200 && response.data) {

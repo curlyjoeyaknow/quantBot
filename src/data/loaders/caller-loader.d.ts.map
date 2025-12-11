@@ -1,0 +1,1 @@
+{"version":3,"file":"caller-loader.d.ts","sourceRoot":"","sources":["caller-loader.ts"],"names":[],"mappings":"AAAA;;;;GAIG;AAGH,OAAO,EAAE,UAAU,EAAE,UAAU,EAAE,UAAU,EAAoB,MAAM,SAAS,CAAC;AAG/E,qBAAa,gBAAiB,YAAW,UAAU;IACjD,SAAgB,IAAI,mBAAmB;IAEjC,IAAI,CAAC,MAAM,EAAE,UAAU,GAAG,OAAO,CAAC,UAAU,EAAE,CAAC;IAgDrD,OAAO,CAAC,MAAM,EAAE,MAAM,GAAG,OAAO;CAGjC"}

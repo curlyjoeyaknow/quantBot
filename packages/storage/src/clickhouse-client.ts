@@ -7,7 +7,8 @@
 
 import { createClient, type ClickHouseClient } from '@clickhouse/client';
 import { DateTime } from 'luxon';
-import { logger, type Candle } from '@quantbot/utils';
+import { logger } from '@quantbot/utils';
+import type { Candle } from '@quantbot/core';
 
 // ClickHouse connection configuration
 const CLICKHOUSE_HOST = process.env.CLICKHOUSE_HOST || 'localhost';
@@ -85,6 +86,8 @@ export async function initClickHouse(): Promise<void> {
     await ensureOhlcvTable(ch);
     await ensureTickTable(ch);
     await ensureSimulationTables(ch);
+    await ensureIndicatorsTable(ch);
+    await ensureTokenMetadataTable(ch);
 
     logger.info('ClickHouse database and tables initialized');
   } catch (error: any) {
@@ -106,8 +109,7 @@ async function ensureOhlcvTable(ch: ClickHouseClient): Promise<void> {
         high Float64,
         low Float64,
         close Float64,
-        volume Float64,
-        is_backfill UInt8 DEFAULT 0
+        volume Float64
       )
       ENGINE = MergeTree()
       PARTITION BY (chain, toYYYYMM(timestamp))
@@ -189,6 +191,57 @@ async function ensureSimulationTables(ch: ClickHouseClient): Promise<void> {
   });
 }
 
+async function ensureIndicatorsTable(ch: ClickHouseClient): Promise<void> {
+  const CLICKHOUSE_DATABASE = process.env.CLICKHOUSE_DATABASE || 'quantbot';
+  
+  await ch.exec({
+    query: `
+      CREATE TABLE IF NOT EXISTS ${CLICKHOUSE_DATABASE}.indicator_values (
+        token_address String,
+        chain String,
+        timestamp DateTime,
+        indicator_type String,
+        value_json String,
+        metadata_json String
+      )
+      ENGINE = MergeTree()
+      PARTITION BY (chain, toYYYYMM(timestamp))
+      ORDER BY (token_address, chain, timestamp, indicator_type)
+      SETTINGS index_granularity = 8192
+    `,
+  });
+}
+
+async function ensureTokenMetadataTable(ch: ClickHouseClient): Promise<void> {
+  const CLICKHOUSE_DATABASE = process.env.CLICKHOUSE_DATABASE || 'quantbot';
+  
+  await ch.exec({
+    query: `
+      CREATE TABLE IF NOT EXISTS ${CLICKHOUSE_DATABASE}.token_metadata (
+        token_address String,
+        chain String,
+        timestamp DateTime,
+        name String,
+        symbol String,
+        decimals Nullable(UInt8),
+        price Nullable(Float64),
+        market_cap Nullable(Float64),
+        volume_24h Nullable(Float64),
+        price_change_24h Nullable(Float64),
+        logo_uri Nullable(String),
+        socials_json String,
+        creator Nullable(String),
+        top_wallet_holdings Nullable(Float64),
+        metadata_json String
+      )
+      ENGINE = MergeTree()
+      PARTITION BY (chain, toYYYYMM(timestamp))
+      ORDER BY (token_address, chain, timestamp)
+      SETTINGS index_granularity = 8192
+    `,
+  });
+}
+
 /**
  * Insert candles into ClickHouse
  */
@@ -213,7 +266,8 @@ export async function insertCandles(
     low: candle.low,
     close: candle.close,
     volume: candle.volume,
-    is_backfill: isBackfill ? 1 : 0,
+    // Note: is_backfill column removed - table doesn't have this column
+    // is_backfill: isBackfill ? 1 : 0,
   }));
   
   try {

@@ -16,7 +16,7 @@ import * as sqlite3 from 'sqlite3';
 import { DateTime } from 'luxon';
 import * as path from 'path';
 import { logger } from './logger';
-import type { Strategy, StopLossConfig, SimulationEvent, SimulationRunData, CACall } from './types';
+import type { Strategy, StopLossConfig, SimulationEvent, SimulationRunData, CACall } from '@quantbot/core';
 
 // ---------------------------------------------------------------------
 // 1. Database Initialization & Lifecycle

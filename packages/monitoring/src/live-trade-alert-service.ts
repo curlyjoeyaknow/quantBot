@@ -15,13 +15,12 @@
 import * as WS from 'ws';
 import { EventEmitter } from 'events';
 import { DateTime } from 'luxon';
-import { callerDatabase, CallerAlert } from '@quantbot/utils' /* TODO: Fix storage import */;
+import { callerDatabase, CallerAlert } from '@quantbot/data';
 import { logger } from '@quantbot/utils';
 import { calculateIchimoku, detectIchimokuSignals } from '@quantbot/simulation';
 import { calculateIndicators } from '@quantbot/simulation';
-import type { Candle } from '@quantbot/simulation';
 import type { IchimokuData, IchimokuSignal } from '@quantbot/simulation';
-import type { EntryConfig } from '@quantbot/simulation';
+import type { Candle, EntryConfig } from '@quantbot/core';
 import { storeEntryAlert, storePriceCache, getCachedPrice } from '@quantbot/utils';
 import { getEnabledStrategies } from '@quantbot/utils';
 import { storeMonitoredToken, updateMonitoredTokenEntry } from '@quantbot/utils';
@@ -314,7 +313,7 @@ export class LiveTradeAlertService extends EventEmitter {
           const authToken = SHYFT_X_TOKEN || SHYFT_API_KEY;
           if (!authToken) {
             logger.error('No Shyft authentication token available');
-            this.ws.close();
+            this.ws?.close();
             return;
           }
 
@@ -324,7 +323,7 @@ export class LiveTradeAlertService extends EventEmitter {
             this.subscribeToSolanaTokens();
           } catch (error) {
             logger.error('Shyft WebSocket authentication failed', error as Error);
-            this.ws.close();
+            this.ws?.close();
             this.reconnectWebSocket();
           }
         });
@@ -1113,7 +1112,8 @@ export class LiveTradeAlertService extends EventEmitter {
         lastUpdateTime: monitor.lastUpdateTime ? new Date(monitor.lastUpdateTime) : undefined,
       });
     } catch (error) {
-      logger.warn('Failed to store monitored token in Postgres', error as Error, {
+      logger.warn('Failed to store monitored token in Postgres', {
+        error: error instanceof Error ? error.message : String(error),
         tokenAddress: alert.tokenAddress.substring(0, 20),
       });
       // Continue even if storage fails

@@ -27,7 +27,7 @@
         "./*"
       ],
       "@quantbot/utils": ["../utils/src"],
-      "@quantbot/storage": ["../storage/src"],
+      "@quantbot/data": ["../data/src"],
       "@quantbot/simulation": ["../simulation/src"],
       "@quantbot/services": ["../services/src"],
       "@quantbot/monitoring": ["../monitoring/src"],

@@ -4,7 +4,7 @@
  * Manages user trading settings and alert-to-trade rules
  */
 
-import { queryPostgres } from '@quantbot/storage';
+import { queryPostgres } from '@quantbot/data';
 import { logger } from '@quantbot/utils';
 import type { TradingConfig, AlertTradeRules } from '../types';
 

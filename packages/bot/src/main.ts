@@ -30,8 +30,11 @@ import { Telegraf } from 'telegraf';
 import * as dotenv from 'dotenv';
 import { ServiceContainer } from './container/ServiceContainer';
 import { CommandRegistry } from './commands/CommandRegistry';
-import { SessionService, SimulationService, StrategyService, IchimokuWorkflowService, CADetectionService, TextWorkflowHandler } from '@quantbot/services';
-import { initDatabase, logger, RepeatSimulationHelper } from '@quantbot/utils';
+import { SessionService, SimulationService, StrategyService } from '@quantbot/services';
+import { IchimokuWorkflowService, TextWorkflowHandler } from '@quantbot/workflows';
+import { CADetectionService } from '@quantbot/token-analysis';
+import { initDatabase, logger } from '@quantbot/utils';
+import { RepeatSimulationHelper } from './utils/RepeatSimulationHelper';
 import { SessionCleanupManager } from './utils/session-cleanup';
 
 // Import all command handlers
@@ -56,7 +59,7 @@ import {
 dotenv.config();
 
 // Initialize bot (support both BOT_TOKEN and TELEGRAM_BOT_TOKEN for compatibility)
-const bot = new Telegraf(process.env.BOT_TOKEN || process.env.TELEGRAM_BOT_TOKEN!);
+const bot: Telegraf = new Telegraf(process.env.BOT_TOKEN || process.env.TELEGRAM_BOT_TOKEN!);
 
 // -----------------------------------------------------------------------------
 // 2. ServiceContainer Setup

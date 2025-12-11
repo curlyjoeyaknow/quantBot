@@ -25,7 +25,7 @@ import {
   getRecentCAPerformance
 } from '@quantbot/utils';
 import { logger } from '@quantbot/utils';
-import type { Candle } from '@quantbot/simulation';
+import type { Candle } from '@quantbot/core';
 import type { IchimokuData, IchimokuSignal } from '@quantbot/simulation';
 import { simulateStrategy } from '@quantbot/simulation';
 import { 

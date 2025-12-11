@@ -49,7 +49,7 @@ vi.mock('@quantbot/utils', async () => {
   };
 });
 
-vi.mock('@quantbot/storage', () => {
+vi.mock('@quantbot/data', () => {
   const mockCallerDbInstance = {
     getActiveAlerts: vi.fn().mockResolvedValue([]),
     getCallerAlertsInRange: vi.fn().mockResolvedValue([]),

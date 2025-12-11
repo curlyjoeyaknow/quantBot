@@ -4,7 +4,7 @@
  * Utilities for cleaning up expired sessions and managing session lifecycle.
  */
 
-import { SessionService } from '@quantbot/services/SessionService';
+import { SessionService } from '@quantbot/services';
 import { logger } from '@quantbot/utils';
 import { DateTime } from 'luxon';
 
