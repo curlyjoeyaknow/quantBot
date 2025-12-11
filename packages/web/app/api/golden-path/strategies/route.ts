@@ -5,7 +5,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { StrategiesRepository } from '@quantbot/storage';
+import { StrategiesRepository } from '@quantbot/data';
 import { logger } from '@quantbot/utils';
 
 export async function GET() {

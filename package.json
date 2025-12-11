@@ -61,11 +61,15 @@
     "view:results": "ts-node scripts/analysis/view-scored-results.ts",
     "view:results:html": "ts-node scripts/analysis/view-results-html.ts",
     "check:clickhouse": "ts-node scripts/analysis/check-clickhouse-data.ts",
+    "validate:scoring": "ts-node scripts/analysis/validate-scoring-rolling-window.ts",
+    "interpret:validation": "ts-node scripts/analysis/interpret-validation-results.ts",
     "monitor:brook": "ts-node scripts/monitoring/start-brook-monitoring.ts",
     "forward:brook": "ts-node scripts/monitoring/forward-brook-channel.ts",
     "ingest:telegram": "ts-node scripts/ingest/telegram-alerts.ts",
     "ingest:ohlcv": "ts-node scripts/ingest/fetch-ohlcv-for-calls.ts",
-    "simulate:calls": "ts-node scripts/simulation/run-strategy-on-calls.ts"
+    "simulate:calls": "ts-node scripts/simulation/run-strategy-on-calls.ts",
+    "score:v2": "ts-node scripts/analysis/analyze-and-score-v2.ts",
+    "deep-dive:brook": "ts-node scripts/analysis/deep-dive-brook-winners.ts"
   },
   "keywords": [
     "telegram",

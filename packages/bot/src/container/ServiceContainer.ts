@@ -6,7 +6,9 @@
  */
 
 import { Telegraf } from 'telegraf';
-import { SessionService, StrategyService, SimulationService, IchimokuWorkflowService, CADetectionService } from '@quantbot/services';
+import { SessionService, StrategyService, SimulationService } from '@quantbot/services';
+import { IchimokuWorkflowService } from '@quantbot/workflows';
+import { CADetectionService } from '@quantbot/token-analysis';
 import { RepeatSimulationHelper } from '../utils/RepeatSimulationHelper';
 import { SessionCleanupManager } from '../utils/session-cleanup';
 import { CommandRegistry } from '../commands/CommandRegistry';

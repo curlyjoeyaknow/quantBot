@@ -41,6 +41,9 @@ importers:
       cheerio:
         specifier: ^1.1.2
         version: 1.1.2
+      commander:
+        specifier: ^12.0.0
+        version: 12.1.0
       csv-parse:
         specifier: ^6.1.0
         version: 6.1.0
@@ -114,6 +117,12 @@ importers:
 
   packages/bot:
     dependencies:
+      '@quantbot/core':
+        specifier: workspace:*
+        version: link:../core
+      '@quantbot/data':
+        specifier: workspace:*
+        version: link:../data
       '@quantbot/monitoring':
         specifier: workspace:*
         version: link:../monitoring
@@ -123,9 +132,6 @@ importers:
       '@quantbot/simulation':
         specifier: workspace:*
         version: link:../simulation
-      '@quantbot/storage':
-        specifier: workspace:*
-        version: link:../storage
       '@quantbot/utils':
         specifier: workspace:*
         version: link:../utils
@@ -149,17 +155,85 @@ importers:
         specifier: ^4.0.15
         version: 4.0.15(@types/node@24.10.1)(jiti@1.21.7)(jsdom@27.2.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))
 
+  packages/core:
+    dependencies:
+      luxon:
+        specifier: ^3.7.2
+        version: 3.7.2
+    devDependencies:
+      '@types/luxon':
+        specifier: ^3.7.1
+        version: 3.7.1
+      '@types/node':
+        specifier: ^24.10.1
+        version: 24.10.1
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^4.0.15
+        version: 4.0.15(@types/node@24.10.1)(jiti@1.21.7)(jsdom@27.2.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))
+
+  packages/data:
+    dependencies:
+      '@clickhouse/client':
+        specifier: ^1.14.0
+        version: 1.14.0
+      '@influxdata/influxdb-client':
+        specifier: ^1.33.2
+        version: 1.35.0
+      '@influxdata/influxdb-client-apis':
+        specifier: ^1.33.2
+        version: 1.35.0(@influxdata/influxdb-client@1.35.0)
+      '@quantbot/core':
+        specifier: workspace:*
+        version: link:../core
+      '@quantbot/simulation':
+        specifier: workspace:*
+        version: link:../simulation
+      '@quantbot/utils':
+        specifier: workspace:*
+        version: link:../utils
+      pg:
+        specifier: ^8.13.0
+        version: 8.16.3
+      sqlite3:
+        specifier: ^5.1.7
+        version: 5.1.7
+    devDependencies:
+      '@types/node':
+        specifier: ^24.10.1
+        version: 24.10.1
+      '@types/pg':
+        specifier: ^8.10.0
+        version: 8.15.6
+      '@types/sqlite3':
+        specifier: ^3.1.11
+        version: 3.1.11
+      '@vitest/coverage-v8':
+        specifier: ^4.0.15
+        version: 4.0.15(vitest@4.0.15(@types/node@24.10.1)(jiti@1.21.7)(jsdom@27.2.0(bufferutil@4.0.9)(utf-8-validate@5.0.10)))
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^4.0.15
+        version: 4.0.15(@types/node@24.10.1)(jiti@1.21.7)(jsdom@27.2.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))
+
   packages/monitoring:
     dependencies:
+      '@quantbot/core':
+        specifier: workspace:*
+        version: link:../core
+      '@quantbot/data':
+        specifier: workspace:*
+        version: link:../data
       '@quantbot/services':
         specifier: workspace:*
         version: link:../services
       '@quantbot/simulation':
         specifier: workspace:*
         version: link:../simulation
-      '@quantbot/storage':
-        specifier: workspace:*
-        version: link:../storage
       '@quantbot/utils':
         specifier: workspace:*
         version: link:../utils
@@ -197,12 +271,15 @@ importers:
 
   packages/services:
     dependencies:
+      '@quantbot/core':
+        specifier: workspace:*
+        version: link:../core
+      '@quantbot/data':
+        specifier: workspace:*
+        version: link:../data
       '@quantbot/simulation':
         specifier: workspace:*
         version: link:../simulation
-      '@quantbot/storage':
-        specifier: workspace:*
-        version: link:../storage
       '@quantbot/utils':
         specifier: workspace:*
         version: link:../utils
@@ -237,6 +314,9 @@ importers:
 
   packages/simulation:
     dependencies:
+      '@quantbot/core':
+        specifier: workspace:*
+        version: link:../core
       '@quantbot/utils':
         specifier: workspace:*
         version: link:../utils
@@ -274,6 +354,9 @@ importers:
       '@influxdata/influxdb-client-apis':
         specifier: ^1.33.2
         version: 1.35.0(@influxdata/influxdb-client@1.35.0)
+      '@quantbot/core':
+        specifier: workspace:*
+        version: link:../core
       '@quantbot/utils':
         specifier: workspace:*
         version: link:../utils
@@ -308,12 +391,15 @@ importers:
       '@coral-xyz/anchor':
         specifier: ^0.32.1
         version: 0.32.1(bufferutil@4.0.9)(encoding@0.1.13)(typescript@5.9.3)(utf-8-validate@5.0.10)
+      '@quantbot/core':
+        specifier: workspace:*
+        version: link:../core
+      '@quantbot/data':
+        specifier: workspace:*
+        version: link:../data
       '@quantbot/simulation':
         specifier: workspace:*
         version: link:../simulation
-      '@quantbot/storage':
-        specifier: workspace:*
-        version: link:../storage
       '@quantbot/utils':
         specifier: workspace:*
         version: link:../utils
@@ -345,6 +431,9 @@ importers:
 
   packages/utils:
     dependencies:
+      '@quantbot/core':
+        specifier: workspace:*
+        version: link:../core
       dotenv:
         specifier: ^17.2.3
         version: 17.2.3
@@ -385,15 +474,18 @@ importers:
       '@hookform/resolvers':
         specifier: ^5.2.2
         version: 5.2.2(react-hook-form@7.68.0(react@19.2.1))
+      '@quantbot/core':
+        specifier: workspace:*
+        version: link:../core
+      '@quantbot/data':
+        specifier: workspace:*
+        version: link:../data
       '@quantbot/services':
         specifier: workspace:*
         version: link:../services
       '@quantbot/simulation':
         specifier: workspace:*
         version: link:../simulation
-      '@quantbot/storage':
-        specifier: workspace:*
-        version: link:../storage
       '@quantbot/utils':
         specifier: workspace:*
         version: link:../utils

@@ -4,7 +4,7 @@
  * Tracks open positions in the database
  */
 
-import { queryPostgres } from '@quantbot/storage';
+import { queryPostgres } from '@quantbot/data';
 import { logger } from '@quantbot/utils';
 import type { Position, PositionEvent, OpenPositionParams, TakeProfitTarget } from '../types';
 

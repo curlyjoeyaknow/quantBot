@@ -1,4 +1,4 @@
-import type { Candle } from './candles';
+import type { Candle } from '@quantbot/core';
 import type { IndicatorData } from './indicators';
 import {
   ComparisonOperator,

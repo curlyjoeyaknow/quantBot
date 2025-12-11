@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { OhlcvAggregator } from '@quantbot/monitoring';
-import { insertCandles } from '@quantbot/storage';
+import { insertCandles } from '@quantbot/data';
 
 // Mock dependencies
-vi.mock('@quantbot/storage', () => ({
+vi.mock('@quantbot/data', () => ({
   insertCandles: vi.fn().mockResolvedValue(undefined),
 }));
 

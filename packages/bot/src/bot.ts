@@ -31,15 +31,15 @@ import { Telegraf, Context } from 'telegraf';
 import axios from 'axios';
 import { DateTime } from 'luxon';
 import dotenv from 'dotenv';
-import { fetchHybridCandles } from '@quantbot/simulation/candles';
-import {
-  simulateStrategy,
+import { fetchHybridCandles } from '@quantbot/data';
+import { simulateStrategy } from '@quantbot/simulation/engine';
+import type {
   Strategy,
   SimulationResult,
   StopLossConfig,
   EntryConfig,
   ReEntryConfig,
-} from '@quantbot/simulation/engine';
+} from '@quantbot/core';
 import {
   initDatabase,
   saveSimulationRun,

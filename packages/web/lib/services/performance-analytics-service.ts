@@ -162,17 +162,19 @@ export class PerformanceAnalyticsService {
   /**
    * Get highest multiple calls (with real OHLCV data from ClickHouse)
    */
-  async getHighestMultipleCalls(limit: number = 50): Promise<TopCall[]> {
+  async getHighestMultipleCalls(limit: number = 2000): Promise<TopCall[]> {
     try {
-      const cacheKey = `perf:highest-multiple:${limit}`;
+      const requestedLimit = Math.min(Math.max(limit, 1), 5000); // cap to avoid runaway queries
+      const sampleLimit = Math.max(requestedLimit * 2, 500); // fetch extra to offset missing candles
+      const cacheKey = `perf:highest-multiple:${requestedLimit}`;
       const cached = cache.get<TopCall[]>(cacheKey);
       if (cached) {
         console.log(`[Cache HIT] highest-multiple:${limit} (${cached.length} results)`);
         return cached;
       }
-      console.log(`[Cache MISS] highest-multiple:${limit} - fetching from database...`);
+      console.log(`[Cache MISS] highest-multiple:${requestedLimit} - fetching from database...`);
 
-      // Get sample of recent alerts to calculate from (reduced to 500 for performance)
+      // Get sample of recent alerts to calculate from (wider sample to cover more tokens)
       const result = await postgresManager.query(
         `
         SELECT 
@@ -190,9 +192,9 @@ export class PerformanceAnalyticsService {
         AND a.alert_price > 0
         AND a.alert_timestamp > '2025-01-01'
         ORDER BY a.alert_timestamp DESC
-        LIMIT 500
+        LIMIT $${BOT_CALLERS.length + 1}
         `,
-        [...BOT_CALLERS]
+        [...BOT_CALLERS, sampleLimit]
       );
 
       // Calculate performance for each alert using ClickHouse (with batching)
@@ -235,14 +237,14 @@ export class PerformanceAnalyticsService {
         callsWithPerformance.push(...batchResults.filter((r): r is TopCall => r !== null));
         
         // Early exit if we have enough results
-        if (callsWithPerformance.length >= limit * 2) {
+        if (callsWithPerformance.length >= requestedLimit * 2) {
           break;
         }
       }
 
       // Sort by multiple and take top N
       callsWithPerformance.sort((a, b) => b.multiple - a.multiple);
-      const topCalls = callsWithPerformance.slice(0, limit);
+      const topCalls = callsWithPerformance.slice(0, requestedLimit);
 
       cache.set(cacheKey, topCalls, 3600); // 1 hour
       return topCalls;

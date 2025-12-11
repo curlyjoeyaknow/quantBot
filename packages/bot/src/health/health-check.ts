@@ -72,7 +72,7 @@ export class HealthCheckManager {
     // ClickHouse health check
     this.registerCheck('clickhouse', async () => {
       try {
-        const { getClickHouseClient } = await import('@quantbot/storage');
+        const { getClickHouseClient } = await import('@quantbot/data');
         const client = getClickHouseClient();
         await client.ping();
         return {

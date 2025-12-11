@@ -1,15 +1,17 @@
 import { DateTime } from 'luxon';
-import type { StopLossConfig, EntryConfig, ReEntryConfig } from '@quantbot/simulation/config';
-import type { Strategy } from '@quantbot/simulation/engine';
-import type { Candle } from '@quantbot/simulation/candles';
 import type {
+  StopLossConfig,
+  EntryConfig,
+  ReEntryConfig,
+  Strategy,
+  Candle,
   TokenMetadata,
   CallerInfo,
   SimulationRunData,
   SimulationEvent,
   LastSimulation,
   CACall,
-} from '@quantbot/utils/types';
+} from '@quantbot/core';
 
 export interface ActiveCA {
   id: number;

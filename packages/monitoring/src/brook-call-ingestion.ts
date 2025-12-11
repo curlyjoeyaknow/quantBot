@@ -12,7 +12,7 @@ import { Telegraf, Context } from 'telegraf';
 import { DateTime } from 'luxon';
 import axios from 'axios';
 import { logger } from '@quantbot/utils';
-import { CallerDatabase, type CallerAlert } from '@quantbot/storage';
+import { CallerDatabase, type CallerAlert } from '@quantbot/data';
 import { LiveTradeAlertService } from './live-trade-alert-service';
 import { TenkanKijunAlertService } from './tenkan-kijun-alert-service';
 

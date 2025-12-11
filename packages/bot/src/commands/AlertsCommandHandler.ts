@@ -7,7 +7,7 @@
 
 import { Context } from 'telegraf';
 import { BaseCommandHandler, Session } from './interfaces/CommandHandler';
-import { SessionService } from '@quantbot/services/SessionService';
+import { SessionService } from '@quantbot/services';
 import { getActiveCATracking, getAllCACalls } from '@quantbot/utils';
 import { logger } from '@quantbot/utils';
 import { BotCACall } from '../types/session';

@@ -1,0 +1,11 @@
+{
+  "timestamp": 1765417326401,
+  "data": {
+    "items": []
+  },
+  "tokenAddress": "0x5c8d82b176faedae64729e17b87335d5f07b1e24",
+  "chain": "bsc",
+  "startTime": 1760032860,
+  "endTime": 1762711260,
+  "interval": "5m"
+}

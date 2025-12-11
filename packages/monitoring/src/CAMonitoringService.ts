@@ -13,7 +13,7 @@ import {
   saveAlertSent,
   getRecentCAPerformance
 } from '@quantbot/utils';
-import type { Candle } from '@quantbot/simulation/candles';
+import type { Candle } from '@quantbot/core';
 import type { IchimokuData, IchimokuSignal } from '@quantbot/simulation/ichimoku';
 import { 
   calculateIchimoku, 

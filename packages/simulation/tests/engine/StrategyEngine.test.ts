@@ -5,7 +5,7 @@
 import { describe, it, expect } from 'vitest';
 import { simulateOnCalls, type SimulationRequest } from '../../src/engine/StrategyEngine';
 import type { Candle } from '../../src/models';
-import type { Call } from '@quantbot/utils/types/core';
+import type { Call } from '@quantbot/core';
 import { DateTime } from 'luxon';
 
 describe('StrategyEngine', () => {

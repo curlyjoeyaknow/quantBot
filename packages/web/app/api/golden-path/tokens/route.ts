@@ -5,7 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { TokensRepository, CallsRepository, getPostgresPool } from '@quantbot/storage';
+import { TokensRepository, CallsRepository, getPostgresPool } from '@quantbot/data';
 import { logger } from '@quantbot/utils';
 
 export async function GET(request: NextRequest) {

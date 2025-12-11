@@ -17,7 +17,7 @@
  * - Price crosses cloud = trend change
  */
 
-import { Candle } from './candles';
+import type { Candle } from '@quantbot/core';
 
 export interface IchimokuData {
   span_b: number | undefined;

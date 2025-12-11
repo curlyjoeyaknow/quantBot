@@ -12,8 +12,18 @@
       "@quantbot/monitoring/*": ["./packages/monitoring/src/*"],
       "@quantbot/simulation": ["./packages/simulation/src"],
       "@quantbot/simulation/*": ["./packages/simulation/src/*"],
-      "@quantbot/services": ["./packages/services/src"],
-      "@quantbot/services/*": ["./packages/services/src/*"],
+      "@quantbot/api-clients": ["./packages/api-clients/src"],
+      "@quantbot/api-clients/*": ["./packages/api-clients/src/*"],
+      "@quantbot/events": ["./packages/events/src"],
+      "@quantbot/events/*": ["./packages/events/src/*"],
+      "@quantbot/token-analysis": ["./packages/token-analysis/src"],
+      "@quantbot/token-analysis/*": ["./packages/token-analysis/src/*"],
+      "@quantbot/ohlcv": ["./packages/ohlcv/src"],
+      "@quantbot/ohlcv/*": ["./packages/ohlcv/src/*"],
+      "@quantbot/ingestion": ["./packages/ingestion/src"],
+      "@quantbot/ingestion/*": ["./packages/ingestion/src/*"],
+      "@quantbot/workflows": ["./packages/workflows/src"],
+      "@quantbot/workflows/*": ["./packages/workflows/src/*"],
       "@quantbot/bot": ["./packages/bot/src"],
       "@quantbot/bot/*": ["./packages/bot/src/*"]
     }
@@ -24,8 +34,13 @@
     { "path": "./packages/utils" },
     { "path": "./packages/storage" },
     { "path": "./packages/simulation" },
-    { "path": "./packages/services" },
     { "path": "./packages/monitoring" },
-    { "path": "./packages/bot" }
+    { "path": "./packages/bot" },
+    { "path": "./packages/api-clients" },
+    { "path": "./packages/events" },
+    { "path": "./packages/token-analysis" },
+    { "path": "./packages/ohlcv" },
+    { "path": "./packages/ingestion" },
+    { "path": "./packages/workflows" }
   ]
 }

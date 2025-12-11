@@ -7,13 +7,19 @@
 import { DateTime } from 'luxon';
 import { getClickHouseClient } from '../../clickhouse-client';
 import { logger } from '@quantbot/utils';
-import type { SimulationEvent, SimulationAggregate } from '@quantbot/simulation/models';
+import type { SimulationEvent, SimulationAggregate } from '@quantbot/core';
 
 export class SimulationEventsRepository {
   /**
    * Insert simulation events for a run
+   * CRITICAL: Preserves full token address and exact case
    */
-  async insertEvents(runId: number, events: SimulationEvent[]): Promise<void> {
+  async insertEvents(
+    runId: number,
+    tokenAddress: string,
+    chain: string,
+    events: SimulationEvent[]
+  ): Promise<void> {
     if (events.length === 0) {
       return;
     }
@@ -21,31 +27,21 @@ export class SimulationEventsRepository {
     const ch = getClickHouseClient();
     const CLICKHOUSE_DATABASE = process.env.CLICKHOUSE_DATABASE || 'quantbot';
 
-    // Group events by token (assuming events have token info in metadata)
-    // For now, we'll need token_address and chain from the events
-    // This assumes events are structured with token info
-    const rows = events.map((event, index) => {
-      // Extract token info from event metadata or use defaults
-      // In practice, events should include token_address and chain
-      const tokenAddress = (event.metadata?.tokenAddress as string) || '';
-      const chain = (event.metadata?.chain as string) || 'SOL';
-
-      return {
-        simulation_run_id: runId,
-        token_address: tokenAddress,
-        chain: chain,
-        event_time: DateTime.fromSeconds(event.timestamp).toFormat('yyyy-MM-dd HH:mm:ss'),
-        seq: index + 1,
-        event_type: event.type,
-        price: event.price,
-        size: 0, // Size not in event, may need to add
-        remaining_position: event.remainingPosition,
-        pnl_so_far: event.pnlSoFar,
-        indicators_json: event.indicators ? JSON.stringify(event.indicators) : '',
-        position_state_json: event.positionState ? JSON.stringify(event.positionState) : '',
-        metadata_json: event.metadata ? JSON.stringify(event.metadata) : '',
-      };
-    });
+    const rows = events.map((event, index) => ({
+      simulation_run_id: runId,
+      token_address: tokenAddress, // Full address, case-preserved
+      chain: chain,
+      event_time: DateTime.fromSeconds(event.timestamp).toFormat('yyyy-MM-dd HH:mm:ss'),
+      seq: index + 1,
+      event_type: event.type,
+      price: event.price,
+      size: 0, // Size not in event, may need to add
+      remaining_position: event.remainingPosition,
+      pnl_so_far: event.pnlSoFar,
+      indicators_json: event.indicators ? JSON.stringify(event.indicators) : '',
+      position_state_json: event.positionState ? JSON.stringify(event.positionState) : '',
+      metadata_json: event.metadata ? JSON.stringify(event.metadata) : '',
+    }));
 
     try {
       await ch.insert({

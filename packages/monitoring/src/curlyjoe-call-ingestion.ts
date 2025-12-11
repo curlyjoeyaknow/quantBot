@@ -9,12 +9,12 @@ import { Telegraf, Context } from 'telegraf';
 import { DateTime } from 'luxon';
 import axios from 'axios';
 import { logger } from '@quantbot/utils';
-import { CallerDatabase, type CallerAlert } from '@quantbot/storage';
+import { CallerDatabase, type CallerAlert } from '@quantbot/data';
 import { LiveTradeAlertService } from './live-trade-alert-service';
 import { fetchHistoricalCandlesForMonitoring } from '@quantbot/services';
 import { storeMonitoredToken } from '@quantbot/utils';
 import { getActiveMonitoredTokens, updateMonitoredTokenStatus } from '@quantbot/utils';
-import { EntryConfig } from '@quantbot/simulation/config';
+import type { EntryConfig } from '@quantbot/core';
 
 const CALLER_NAME = 'curlyjoe';
 const BIRDEYE_API_KEY = process.env.BIRDEYE_API_KEY || '';

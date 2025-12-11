@@ -49,8 +49,11 @@ export class PerformanceCalculator {
           messageText
         ) || undefined;
       }
-      // Calculate end time (7 days after alert)
-      const endTime = new Date(alertTimestamp.getTime() + 7 * 24 * 60 * 60 * 1000);
+      // Calculate end time using full Birdeye window (5000 candles forward at 5m ≈ 17 days)
+      const forwardMinutes = 5000 * 5;
+      const endTime = new Date(
+        Math.min(Date.now(), alertTimestamp.getTime() + forwardMinutes * 60 * 1000)
+      );
 
       const client = getClickHouseClient();
 

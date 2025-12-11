@@ -14,8 +14,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { OhlcvIngestionService } from '@quantbot/services/ingestion/OhlcvIngestionService';
-import { CallsRepository, OhlcvRepository } from '@quantbot/storage';
+import { OhlcvIngestionService } from '@quantbot/ingestion';
+import { CallsRepository, OhlcvRepository } from '@quantbot/data';
 import { logger } from '@quantbot/utils';
 
 export async function POST(request: NextRequest) {

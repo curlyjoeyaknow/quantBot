@@ -5,7 +5,7 @@
 
 import 'dotenv/config';
 import { Pool } from 'pg';
-import { OHLCVIngestionService } from '@quantbot/services';
+import { OHLCVIngestionService } from '@quantbot/ingestion';
 import { insertCandles, initClickHouse, closeClickHouse } from '@quantbot/storage';
 import { DateTime } from 'luxon';
 

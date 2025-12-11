@@ -10,7 +10,7 @@
  * - Error handling
  * - Utility functions (pumpfun, etc.)
  * 
- * NO database code - that lives in @quantbot/storage
+ * NO database code - that lives in @quantbot/data
  */
 
 // Logger and logging utilities
@@ -27,7 +27,7 @@ export { logger as loggerNextjs } from './logger-nextjs';
 // Configuration loading
 export * from './config';
 
-// Shared types (legacy, kept for backward compatibility)
+// Shared types (legacy, kept for backward compatibility - re-exported from @quantbot/core)
 export * from './types';
 
 // Error handling
@@ -46,7 +46,7 @@ export * from './events';
 // Database helpers (legacy compatibility)
 export * from './database';
 
-// NOTE: Database utilities removed - use @quantbot/storage instead
+// NOTE: Database utilities removed - use @quantbot/data instead
 // - database.ts → moved to storage repositories
 // - caller-database.ts → moved to storage repositories
 // - live-trade-database.ts → moved to storage repositories

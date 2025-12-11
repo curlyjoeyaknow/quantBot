@@ -1,5 +1,6 @@
 import { DateTime } from 'luxon';
-import { Candle, fetchHybridCandles } from './candles';
+import type { Candle } from '@quantbot/core';
+import { fetchHybridCandles } from '@quantbot/data';
 import {
   CostConfig,
   EntryConfig,

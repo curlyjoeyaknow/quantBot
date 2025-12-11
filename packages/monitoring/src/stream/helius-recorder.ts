@@ -1,6 +1,6 @@
 import WebSocket from 'ws';
 import { ohlcvAggregator } from '../aggregation/ohlcv-aggregator';
-import { insertTicks, type TickEvent } from '@quantbot/storage';
+import { insertTicks, type TickEvent } from '@quantbot/data';
 import { logger, getTrackedTokens, type TrackedToken } from '@quantbot/utils';
 
 const HELIUS_API_KEY = process.env.HELIUS_API_KEY || '';

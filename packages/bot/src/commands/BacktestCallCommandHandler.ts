@@ -7,10 +7,10 @@
 
 import { Context } from 'telegraf';
 import { BaseCommandHandler, Session } from './interfaces/CommandHandler';
-import { SessionService } from '@quantbot/services/SessionService';
-import { SimulationService } from '@quantbot/services/SimulationService';
+import { SessionService, SimulationService } from '@quantbot/services';
 import { getCACallByMint, saveSimulationRun } from '@quantbot/utils';
-import { fetchHybridCandles, simulateStrategy } from '@quantbot/simulation';
+import { fetchHybridCandles } from '@quantbot/data';
+import { simulateStrategy } from '@quantbot/simulation';
 import { DateTime } from 'luxon';
 import { logger } from '@quantbot/utils';
 import { extractCommandArgs, isValidTokenAddress, sanitizeInput, COMMAND_TIMEOUTS } from '../utils/command-helpers';

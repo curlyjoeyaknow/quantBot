@@ -183,7 +183,7 @@ async function main() {
     )
     GROUP BY t.id, t.address, t.chain, t.symbol, t.name, t.metadata_json
     ORDER BY COUNT(a.id) DESC, t.created_at DESC
-    LIMIT 500
+    LIMIT 5000
   `);
 
   console.log(`📊 Found ${result.rows.length} tokens needing metadata\n`);

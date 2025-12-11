@@ -27,9 +27,7 @@ import { OptionsCommandHandler } from './OptionsCommandHandler';
 import { LiveTradeCommandHandler } from './LiveTradeCommandHandler';
 // import { AddCurlyJoeCommandHandler } from './AddCurlyJoeCommandHandler';
 // import { WatchlistCommandHandler } from './WatchlistCommandHandler';
-import { SessionService } from '@quantbot/services/SessionService';
-import { StrategyService } from '@quantbot/services/StrategyService';
-import { SimulationService } from '@quantbot/services/SimulationService';
+import { SessionService, StrategyService, SimulationService } from '@quantbot/services';
 import { RepeatSimulationHelper } from '../utils/RepeatSimulationHelper';
 import { logger } from '@quantbot/utils';
 

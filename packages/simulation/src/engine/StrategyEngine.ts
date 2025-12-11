@@ -8,7 +8,7 @@
 import { simulateStrategy, type SimulationResult, type SimulationStrategyOptions } from '../engine';
 import type { Candle } from '../models';
 import type { StrategyConfig } from './StrategyConfig';
-import type { Call } from '@quantbot/utils/types/core';
+import type { Call } from '@quantbot/core';
 import type {
   StopLossConfig,
   EntryConfig,

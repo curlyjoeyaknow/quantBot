@@ -137,7 +137,7 @@ async function getAlertTokens(): Promise<AlertToken[]> {
       AND a.alert_timestamp > '2025-01-01'
     GROUP BY t.address, t.chain, t.symbol
     ORDER BY COUNT(*) DESC
-    LIMIT 500
+    LIMIT 5000
   `);
 
   return res.rows.map(r => ({

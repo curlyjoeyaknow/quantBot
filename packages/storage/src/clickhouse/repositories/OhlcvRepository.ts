@@ -8,8 +8,7 @@
 import { DateTime } from 'luxon';
 import { getClickHouseClient } from '../../clickhouse-client';
 import { logger } from '@quantbot/utils';
-import type { Candle } from '@quantbot/utils/types/core';
-import type { DateRange } from '@quantbot/utils/types/core';
+import type { Candle, DateRange } from '@quantbot/core';
 
 export class OhlcvRepository {
   /**
@@ -69,6 +68,11 @@ export class OhlcvRepository {
   /**
    * Get candles for a token in a time range
    * CRITICAL: Uses full address, case-preserved
+   * 
+   * @param token Full mint address, case-preserved
+   * @param chain Chain identifier
+   * @param interval Candle interval ('1m', '5m', '15m', '1h', '4h', '1d')
+   * @param range Date range for query
    */
   async getCandles(
     token: string, // Full mint address, case-preserved

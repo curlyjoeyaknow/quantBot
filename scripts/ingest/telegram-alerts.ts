@@ -15,7 +15,7 @@ import {
   AlertsRepository,
   CallsRepository,
 } from '@quantbot/storage';
-import { TelegramAlertIngestionService } from '@quantbot/services/ingestion/TelegramAlertIngestionService';
+import { TelegramAlertIngestionService } from '@quantbot/ingestion';
 import { logger } from '@quantbot/utils';
 
 // Initialize repositories

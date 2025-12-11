@@ -3,7 +3,7 @@
  */
 
 import { PublicKey, Transaction, Keypair } from '@solana/web3.js';
-import { Strategy, StopLossConfig } from '@quantbot/simulation';
+import type { Strategy, StopLossConfig } from '@quantbot/core';
 
 /**
  * Trading configuration for a user

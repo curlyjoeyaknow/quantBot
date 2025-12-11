@@ -26,7 +26,7 @@ import {
   OhlcvRepository,
   SimulationEventsRepository,
 } from '@quantbot/storage';
-import { SimulationService } from '@quantbot/services/simulation/SimulationService';
+import { SimulationService } from '@quantbot/services';
 import { logger } from '@quantbot/utils';
 
 // Initialize service (repositories initialized internally)

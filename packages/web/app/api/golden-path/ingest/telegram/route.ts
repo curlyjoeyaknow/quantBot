@@ -13,10 +13,10 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { TelegramAlertIngestionService } from '@quantbot/services/ingestion/TelegramAlertIngestionService';
-import { CallersRepository, TokensRepository, AlertsRepository, CallsRepository } from '@quantbot/storage';
+import { TelegramAlertIngestionService } from '@quantbot/ingestion';
+import { CallersRepository, TokensRepository, AlertsRepository, CallsRepository } from '@quantbot/data';
 import { logger } from '@quantbot/utils';
-import type { Chain } from '@quantbot/utils/types/core';
+import type { Chain } from '@quantbot/core';
 
 export async function POST(request: NextRequest) {
   try {

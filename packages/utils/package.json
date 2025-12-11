@@ -11,6 +11,7 @@
     "test:watch": "vitest --watch"
   },
   "dependencies": {
+    "@quantbot/core": "workspace:*",
     "dotenv": "^17.2.3",
     "luxon": "^3.7.2",
     "winston": "^3.18.3",

@@ -22,7 +22,7 @@ export default defineConfig({
     alias: {
       '@quantbot/monitoring': path.resolve(__dirname, './src'),
       '@quantbot/utils': path.resolve(__dirname, '../utils/src'),
-      '@quantbot/storage': path.resolve(__dirname, '../storage/src'),
+      '@quantbot/data': path.resolve(__dirname, '../data/src'),
     },
   },
 });

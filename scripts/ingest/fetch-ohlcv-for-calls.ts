@@ -10,7 +10,7 @@
 // @ts-ignore - commander types may not be installed yet
 import { program } from 'commander';
 import { CallsRepository, OhlcvRepository } from '@quantbot/storage';
-import { OhlcvIngestionService } from '@quantbot/services/ingestion/OhlcvIngestionService';
+import { OhlcvIngestionService } from '@quantbot/ingestion';
 import { logger } from '@quantbot/utils';
 
 // Initialize repositories

@@ -17,9 +17,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { SimulationService } from '@quantbot/services/simulation/SimulationService';
+import { SimulationService } from '@quantbot/services';
 import { logger } from '@quantbot/utils';
-import type { CallSelection } from '@quantbot/utils/types/core';
+import type { CallSelection } from '@quantbot/core';
 
 export async function POST(request: NextRequest) {
   try {

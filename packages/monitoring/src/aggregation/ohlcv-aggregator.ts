@@ -1,8 +1,8 @@
 import { DateTime } from 'luxon';
 import { logger } from '@quantbot/utils';
-import { insertCandles } from '@quantbot/storage';
+import { insertCandles } from '@quantbot/data';
 // TODO: Update to @quantbot/simulation when migrated
-import type { Candle } from '@quantbot/simulation/candles';
+import type { Candle } from '@quantbot/core';
 
 interface CandleAccumulator {
   open: number;
