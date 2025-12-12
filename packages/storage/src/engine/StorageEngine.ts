@@ -25,25 +25,26 @@ import type {
   Alert,
   TokenMetadata,
 } from '@quantbot/core';
-import type { TokenMetadataSnapshot } from '../../clickhouse/repositories/TokenMetadataRepository';
+import type { TokenMetadataSnapshot } from '../clickhouse/repositories/TokenMetadataRepository';
 
 // Import repositories
-import { OhlcvRepository } from '../../clickhouse/repositories/OhlcvRepository';
-import { SimulationEventsRepository } from '../../clickhouse/repositories/SimulationEventsRepository';
-import { TokensRepository } from '../../postgres/repositories/TokensRepository';
-import { CallsRepository } from '../../postgres/repositories/CallsRepository';
-import { StrategiesRepository } from '../../postgres/repositories/StrategiesRepository';
-import { AlertsRepository } from '../../postgres/repositories/AlertsRepository';
-import { CallersRepository } from '../../postgres/repositories/CallersRepository';
+import { OhlcvRepository } from '../clickhouse/repositories/OhlcvRepository';
+import { SimulationEventsRepository } from '../clickhouse/repositories/SimulationEventsRepository';
+import { TokensRepository } from '../postgres/repositories/TokensRepository';
+import { CallsRepository } from '../postgres/repositories/CallsRepository';
+import { StrategiesRepository } from '../postgres/repositories/StrategiesRepository';
+import { AlertsRepository } from '../postgres/repositories/AlertsRepository';
+import { CallersRepository } from '../postgres/repositories/CallersRepository';
 
 // Import indicator storage
-import { IndicatorsRepository } from '../../clickhouse/repositories/IndicatorsRepository';
+import { IndicatorsRepository } from '../clickhouse/repositories/IndicatorsRepository';
 
 // Import token metadata storage
-import { TokenMetadataRepository } from '../../clickhouse/repositories/TokenMetadataRepository';
+import { TokenMetadataRepository } from '../clickhouse/repositories/TokenMetadataRepository';
 
 // Import simulation results storage
-import { SimulationResultsRepository } from '../../postgres/repositories/SimulationResultsRepository';
+import { SimulationResultsRepository } from '../postgres/repositories/SimulationResultsRepository';
+import { SimulationRunsRepository } from '../postgres/repositories/SimulationRunsRepository';
 
 /**
  * Storage engine configuration
@@ -163,6 +164,7 @@ export class StorageEngine {
   private readonly alertsRepo: AlertsRepository;
   private readonly callersRepo: CallersRepository;
   private readonly simulationResultsRepo: SimulationResultsRepository;
+  private readonly simulationRunsRepo: SimulationRunsRepository;
 
   private readonly config: Required<StorageEngineConfig>;
   private readonly cache: Map<string, { data: unknown; timestamp: number }>;
@@ -187,6 +189,7 @@ export class StorageEngine {
     this.alertsRepo = new AlertsRepository();
     this.callersRepo = new CallersRepository();
     this.simulationResultsRepo = new SimulationResultsRepository();
+    this.simulationRunsRepo = new SimulationRunsRepository();
 
     // Initialize cache
     this.cache = new Map();
@@ -482,7 +485,7 @@ export class StorageEngine {
    */
   async storeCall(call: Omit<Call, 'id' | 'createdAt'>): Promise<number> {
     try {
-      const callId = await this.callsRepo.create({
+      const callId = await this.callsRepo.insertCall({
         alertId: call.alertId,
         tokenId: call.tokenId,
         callerId: call.callerId,
@@ -490,7 +493,7 @@ export class StorageEngine {
         side: call.side,
         signalType: call.signalType,
         signalStrength: call.signalStrength,
-        signalTimestamp: call.signalTimestamp,
+        signalTimestamp: call.signalTimestamp.toJSDate(),
         metadata: call.metadata,
       });
 
@@ -525,7 +528,11 @@ export class StorageEngine {
     }
 
     try {
-      const calls = await this.callsRepo.findByToken(tokenId, options);
+      const calls = await this.callsRepo.findByTokenId(tokenId, options ? {
+        from: options.from?.toJSDate(),
+        to: options.to?.toJSDate(),
+        limit: options.limit,
+      } : undefined);
       if (this.config.enableCache) {
         this.setCache(cacheKey, calls);
       }
@@ -553,7 +560,13 @@ export class StorageEngine {
     }
 
     try {
-      const calls = await this.callsRepo.findByCaller(callerId, options);
+      const calls = await this.callsRepo.queryBySelection({
+        callerIds: [callerId],
+        from: options?.from?.toJSDate(),
+        to: options?.to?.toJSDate(),
+      });
+      
+      const limited = options?.limit ? calls.slice(0, options.limit) : calls;
       if (this.config.enableCache) {
         this.setCache(cacheKey, calls);
       }
@@ -866,9 +879,17 @@ export class StorageEngine {
    * Store simulation run metadata
    */
   async storeSimulationRun(metadata: SimulationRunMetadata): Promise<number> {
-    // This would need to be implemented in a repository
-    // For now, we'll use the simulation results repository pattern
-    throw new Error('Not yet implemented - requires SimulationRunsRepository');
+    return this.simulationRunsRepo.createRun({
+      strategyId: metadata.strategyId,
+      tokenId: metadata.tokenId,
+      callerId: metadata.callerId,
+      runType: metadata.runType,
+      engineVersion: metadata.engineVersion,
+      configHash: metadata.configHash,
+      config: metadata.config,
+      dataSelection: metadata.dataSelection,
+      status: metadata.status || 'pending',
+    });
   }
 
   /**
