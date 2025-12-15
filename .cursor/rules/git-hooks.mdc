@@ -1,0 +1,69 @@
+---
+description: Git hooks rules - pre-commit and pre-push enforcement of testing requirements
+globs:
+  - ".husky/**/*"
+  - "scripts/git/**/*"
+alwaysApply: false
+---
+
+# Git Hooks Rules
+
+## Pre-Commit Hook (`.husky/pre-commit`)
+
+Automatically runs on `git commit`:
+
+1. **Format Check**: `npm run format:check`
+2. **Lint & Fix**: `npm run lint:fix`
+3. **Type Check**: `npm run typecheck`
+4. **Test Requirements Check**: `scripts/git/check-test-requirements.ts`
+   - Analyzes staged changes
+   - Detects change type (financial, parser, database, API, etc.)
+   - Verifies appropriate tests exist
+   - Blocks commit if requirements not met
+5. **Run Related Tests**: `npm test -- --related`
+
+## Pre-Push Hook (`.husky/pre-push`)
+
+Automatically runs on `git push`:
+
+1. **Full Test Suite**: `npm test`
+2. **Coverage Check**: `npm run test:coverage`
+3. **Security Audit**: `npm audit --audit-level=moderate`
+4. **Build Verification**: `npm run build`
+
+## Test Requirements by Change Type
+
+The `check-test-requirements.ts` script enforces:
+
+- **financial-calculation**: unit + property tests
+- **parser**: unit + fuzzing tests
+- **database**: integration tests
+- **api-endpoint**: integration + unit tests
+- **mint-handling**: unit + property tests
+- **async-operation**: unit + concurrency tests
+- **retry-logic**: unit + integration tests
+- **bugfix**: regression + unit tests
+- **other**: unit tests
+
+## Development Stage Detection
+
+The script detects development stage from file location:
+
+- **Early**: New files, basic structure
+- **Mid**: Unit tests present
+- **Late**: Integration/property/fuzzing tests present
+- **Production**: E2E/load tests present
+
+## Bypassing Hooks (Not Recommended)
+
+To bypass hooks (use with caution):
+
+```bash
+# Skip pre-commit
+git commit --no-verify
+
+# Skip pre-push
+git push --no-verify
+```
+
+**Warning**: Only bypass for emergency hotfixes. Always add tests afterward.

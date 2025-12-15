@@ -1,0 +1,81 @@
+---
+description: "QuantBot Workflows package rules (orchestration layer)."
+globs:
+  - "packages/workflows/**"
+  - "packages/cli/src/commands/**"
+---
+
+"""
+Workflows are the orchestration layer. They coordinate storage + ohlcv + simulation.
+CLI/TUI are *thin adapters* that parse inputs, call workflows, format output.
+
+Goals:
+- No multi-step business flows live inside CLI command handlers.
+- Workflows must be testable in isolation via a mocked WorkflowContext.
+- Simulation remains pure compute (no network/db/fs) — workflows do I/O.
+"""
+
+## Required layering
+
+### Allowed dependencies for @quantbot/workflows
+- ✅ @quantbot/storage
+- ✅ @quantbot/ohlcv (data acquisition)
+- ✅ @quantbot/simulation (pure compute)
+- ✅ @quantbot/utils (logger, config)
+- ✅ zod, luxon (validation/time)
+
+### Forbidden patterns
+- ❌ CLI handlers performing multi-step flows (ingest→fetch→simulate→persist)
+- ❌ Workflows importing from @quantbot/cli or @quantbot/tui
+- ❌ Workflows exposing CLI-format output (tables/console formatting belongs to CLI/TUI)
+- ❌ Workflows returning “strings” intended for CLI printing (return structured results)
+
+## Workflow function contract
+
+Every workflow must:
+1) Validate `spec` (Zod schema preferred)
+2) Use `WorkflowContext` (DI) for:
+   - repositories (storage)
+   - services (ohlcv)
+   - logger
+   - now()/clock (determinism in tests)
+3) Return a structured result:
+   - summary stats
+   - counts
+   - per-item errors (do not throw for per-call failures unless requested)
+   - metadata (timestamps, run id, strategy name)
+
+### Signature pattern (required)
+- export async function runX(spec: XSpec, ctx?: WorkflowContext): Promise<XResult>
+
+If ctx is omitted:
+- Use createDefaultWorkflowContext() (real repos/services)
+- Never create “hidden singletons” inside the workflow
+
+## CLI command handler contract (thin adapter)
+
+CLI commands must:
+- parse args
+- build spec
+- call workflow
+- format output
+
+CLI commands must NOT:
+- open DB connections
+- call repositories directly for multi-step flows
+- implement orchestration logic (no loops over calls + fetch + simulate + persist)
+
+## Testing requirements for workflows
+
+Workflows must have unit tests that:
+- mock WorkflowContext fully (repos + ohlcv + clock)
+- assert the workflow steps (calls made with correct args)
+- assert structured result shape
+
+Critical: tests must NOT share:
+- fee helpers
+- rounding helpers
+- constants
+from production simulation modules.
+
+If a test needs fee math, hard-code expected numeric values or compute independently inside the test file.

@@ -1,0 +1,37 @@
+{
+  "name": "@quantbot/cli",
+  "version": "1.0.0",
+  "description": "Unified CLI interface for all QuantBot packages",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "quantbot": "./dist/bin/quantbot.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "commander": "^12.0.0",
+    "zod": "^4.1.13",
+    "luxon": "^3.4.4",
+    "@quantbot/core": "workspace:*",
+    "@quantbot/utils": "workspace:*",
+    "@quantbot/storage": "workspace:*",
+    "@quantbot/ohlcv": "workspace:*",
+    "@quantbot/simulation": "workspace:*",
+    "@quantbot/ingestion": "workspace:*",
+    "@quantbot/analytics": "workspace:*",
+    "@quantbot/observability": "workspace:*",
+    "@quantbot/api-clients": "workspace:*",
+    "@quantbot/workflows": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "@vitest/coverage-v8": "^4.0.15",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.15"
+  }
+}
+

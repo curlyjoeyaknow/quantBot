@@ -1,0 +1,153 @@
+# TODO Tracking and Completion Rules
+
+## CRITICAL: TODOs Must Be Tracked and Completed
+
+**MANDATORY**: All TODOs must be tracked, and when completed, must be marked as such.
+
+## TODO Format Requirements
+
+### In Code Comments
+```typescript
+// TODO: Description of what needs to be done
+// TODO(user): Specific assignment if applicable
+// FIXME: Critical issue that needs fixing
+// NOTE: Important note (not a TODO, but related)
+```
+
+### In Documentation
+```markdown
+- [ ] TODO item description
+- [x] Completed TODO item
+```
+
+### In Task Management
+- Use `todo_write` tool for complex multi-step tasks
+- Mark todos as `completed` when done
+- Update status: `pending` → `in_progress` → `completed` → `cancelled`
+
+## TODO Lifecycle
+
+1. **Created**: TODO is identified and documented
+2. **In Progress**: Work has started on the TODO
+3. **Completed**: TODO is finished - MUST be marked complete
+4. **Cancelled**: TODO is no longer needed - MUST be marked cancelled
+
+## Completion Requirements
+
+### When Completing a TODO:
+
+1. **Mark as Complete**:
+   - Change `[ ]` to `[x]` in markdown
+   - Update `todo_write` status to `completed`
+   - Remove TODO comment from code if task is done
+
+2. **Update CHANGELOG**:
+   - Log the completion in CHANGELOG.md
+   - Use appropriate section (Fixed/Added/Changed)
+
+3. **Clean Up**:
+   - Remove completed TODO comments from code
+   - Update documentation to reflect completion
+   - Close related issues/PRs
+
+### When Cancelling a TODO:
+
+1. **Mark as Cancelled**:
+   - Update `todo_write` status to `cancelled`
+   - Add note explaining why it was cancelled
+
+2. **Document Decision**:
+   - Add comment explaining cancellation
+   - Update documentation if needed
+
+## TODO Categories
+
+### Critical TODOs
+- Security vulnerabilities
+- Memory leaks
+- Data integrity issues
+- Breaking bugs
+
+### High Priority TODOs
+- Performance issues
+- Type safety improvements
+- Test coverage gaps
+- Architecture improvements
+
+### Medium Priority TODOs
+- Code quality improvements
+- Documentation updates
+- Refactoring opportunities
+
+### Low Priority TODOs
+- Nice-to-have features
+- Optimization opportunities
+- Code style improvements
+
+## Enforcement Rules
+
+### Pre-Commit
+- Check for uncompleted critical TODOs
+- Warn about stale TODOs (older than 30 days)
+- Verify completed TODOs are marked
+
+### Code Review
+- Reject PRs with new TODOs that aren't tracked
+- Require completion/cancellation of TODOs before merge
+- Verify TODO completion is logged in CHANGELOG
+
+### AI Assistant Rules
+- Always use `todo_write` for multi-step tasks
+- Mark todos as `completed` immediately after finishing
+- Update CHANGELOG when completing significant TODOs
+- Remind user to complete TODOs before committing
+
+## TODO Tracking Tools
+
+### In Code
+- Use `todo_write` tool for structured task management
+- Use markdown checkboxes in documentation
+- Use code comments for inline TODOs
+
+### In Documentation
+- `docs/TODO.md` - Main TODO list
+- Package-specific TODOs in package READMEs
+- Review documents track TODO completion
+
+## Examples
+
+### Good TODO Completion:
+```typescript
+// Before:
+// TODO: Fix memory leak in EventBus
+
+// After (removed, task complete):
+// EventBus now has periodic cleanup
+```
+
+```markdown
+<!-- Before -->
+- [ ] Fix SQL injection in ClickHouse
+
+<!-- After -->
+- [x] Fix SQL injection in ClickHouse - Completed 2025-01-13
+```
+
+### Bad TODO Management:
+- Leaving TODOs uncompleted for months
+- Not marking completed TODOs
+- Creating TODOs without tracking them
+- Not updating CHANGELOG when completing TODOs
+
+## Stale TODO Policy
+
+- **30 days**: Warning about stale TODOs
+- **90 days**: Review for cancellation or reprioritization
+- **180 days**: Auto-cancel low priority TODOs (with notification)
+
+## TODO Review Process
+
+1. **Weekly**: Review all `in_progress` TODOs
+2. **Monthly**: Review all `pending` TODOs
+3. **Quarterly**: Review and clean up stale TODOs
+4. **Before Release**: Complete or cancel all critical TODOs

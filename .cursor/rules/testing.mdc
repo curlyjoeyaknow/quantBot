@@ -1,0 +1,127 @@
+---
+description: Testing rules - property tests, fuzzing, invariants, crypto backend testing
+globs:
+  - "**/*.test.ts"
+  - "**/*.test.js"
+  - "**/*.spec.ts"
+  - "**/*.spec.js"
+  - "tests/**/*.ts"
+alwaysApply: false
+---
+
+# Testing Rules
+
+## Core Philosophy
+
+**Tests are the specification, not validation.**
+
+- Write invariants BEFORE implementation
+- Tests guide development
+- Every PR includes tests
+- Property tests and fuzzing are first-class
+
+## Testing Lifecycle
+
+1. **Design Phase**: Invariants as executable contracts
+2. **Implementation Phase**: Unit tests with code
+3. **Boundary Phase**: Integration tests start early
+4. **Hardening Phase**: Property tests + fuzzing
+5. **Pre-Release**: Load/soak/chaos tests
+6. **Always-On**: Security + supply chain
+
+## Test Types
+
+- **Unit Tests**: Every function, fast, deterministic (80%+ coverage)
+- **Integration Tests**: API/DB boundaries, realistic (all critical flows)
+- **Property Tests**: Math operations, invariants (all invariants documented)
+- **Fuzzing Tests**: Parsers, external input (all parsers)
+- **E2E Tests**: Critical user flows (happy path + failure modes)
+
+## Critical Rules for Crypto Backends
+
+### Rule 1: Mint Address Handling
+
+- Never truncate in storage
+- Preserve exact case
+- Property test: storage preserves exact case and length
+
+### Rule 2: Financial Math Must Have Property Tests
+
+- Example-based tests (known inputs/outputs)
+- Property tests (invariants that always hold)
+- Required invariants: monotonicity, bounds checking, conservation laws
+
+### Rule 3: Parsers Must Be Fuzzed
+
+- Never crashes on garbage input
+- Rejects malformed data
+- Handles unicode/special characters gracefully
+
+### Rule 4: Serialization Must Roundtrip
+
+- Encode/decode are inverses
+- Property test for all serializable data
+
+### Rule 5: Idempotency Must Be Tested
+
+- Inserting same data twice produces one record
+- Property test for any input
+
+### Rule 6: Race Conditions Must Be Tested
+
+- Concurrent operations tested for race safety
+- Balance updates, concurrent inserts, etc.
+
+## Property Test Patterns
+
+- **Conservation Laws**: Total supply conserved, balances never negative
+- **Monotonicity**: Higher input = higher output (fees, PnL)
+- **Idempotency**: Applying operation twice = same result
+- **Inverse Operations**: Encode/decode are inverses
+- **Bounds Checking**: Slippage never exceeds 100%, fees never exceed input
+
+## Fuzzing Patterns
+
+- **Parser Robustness**: Never crashes on malformed input
+- **Injection Prevention**: SQL injection, XSS attempts
+- **Resource Exhaustion**: Handles large inputs without OOM
+
+## Test Organization
+
+```
+tests/
+├── unit/          # Fast, isolated
+├── integration/   # DB/API boundaries
+├── properties/    # Property-based tests
+└── fuzzing/       # Fuzzing tests
+```
+
+## Common Crypto Invariants
+
+- Balances never go negative
+- Total supply is conserved
+- Fees never exceed input amount
+- PnL calculation is monotonic
+- Mint addresses never truncated
+- Case preserved exactly
+- Idempotency keys prevent double-processing
+- SQL injection impossible
+- Rate limits enforced
+
+## Testing Checklist (Every PR)
+
+- [ ] Unit tests for all new functions
+- [ ] Property tests for math/financial calculations
+- [ ] Integration tests for DB/API boundaries
+- [ ] Fuzzing tests for parsers
+- [ ] Regression test for bug fixes (test fails before fix, passes after)
+- [ ] All tests pass locally
+- [ ] Coverage doesn't decrease
+- [ ] Linting passes
+- [ ] Type checking passes
+
+## When to Skip Tests (Rarely)
+
+**Can skip**: Trivial getters/setters, pure type definitions, config files, temporary scaffolding
+
+**Cannot skip**: Financial calculations, external input parsing, database operations, API endpoints, security-critical code, anything touching user funds

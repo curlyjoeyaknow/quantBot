@@ -1,0 +1,99 @@
+---
+description: Development workflow rules - TDD, linting, formatting, pre-commit hooks
+globs:
+  - "**/*.ts"
+  - "**/*.js"
+  - "**/*.tsx"
+  - "**/*.jsx"
+alwaysApply: true
+---
+
+# Development Rules
+
+## Golden Rule: Tests Guide Development
+
+1. Write test (or invariant/contract) first
+2. Watch it fail
+3. Implement until it passes
+4. Refactor with confidence
+
+## TDD Workflow
+
+- **Red**: Write failing test
+- **Green**: Implement minimal code to pass
+- **Refactor**: Add property tests and edge cases
+
+## Pre-Commit Requirements
+
+Before committing (automated via `.husky/pre-commit`):
+
+- `npm run format:check` - Check formatting
+- `npm run lint:fix` - Auto-fix linting
+- `npm run typecheck` - Type check (no auto-fix)
+- `scripts/git/check-test-requirements.ts` - Enforce test requirements based on change type
+- `npm test -- --related` - Run tests for changed files
+
+## Pre-Push Requirements
+
+Before pushing (automated via `.husky/pre-push`):
+
+- `npm test` - Full test suite
+- `npm run test:coverage` - Coverage check
+- `npm audit` - Security audit
+- `npm run build` - Build verification
+
+## Package Structure (New Packages)
+
+```
+packages/new-package/
+├── src/
+├── tests/
+│   ├── unit/
+│   ├── integration/
+│   └── properties/
+├── package.json
+├── tsconfig.json
+└── vitest.config.ts
+```
+
+## Testing by Stage
+
+- **Early (Day 1-3)**: Interfaces, types, basic structure
+- **Mid (Week 1-2)**: Business logic, algorithms, calculations
+- **Late (Week 2-4)**: API boundaries, database, external services
+- **Production**: E2E, load tests, failure modes
+
+## Code Quality Standards
+
+- Never use `any` type (use `unknown` with type guards)
+- Custom error classes extending `Error`
+- No `console.log` (use logger)
+- No hardcoded secrets
+- Explicit return types for functions
+
+## Crypto-Specific Rules
+
+- Mint addresses never truncated in storage
+- Case preserved exactly
+- No string manipulation of addresses (except display)
+- Idempotency keys for side effects
+- Rate limiting implemented
+- Error messages don't leak sensitive data
+
+## Test Coverage Requirements
+
+- Critical packages (financial, security): 90%+
+- Important packages: 80%+
+- Utility packages: 80%+
+- 100% coverage required for: financial calculations, mint handling, signature verification, auth, idempotency logic
+
+## Red Flags: Stop and Add Tests
+
+- Writing financial calculations → Property tests
+- Parsing external input → Fuzzing tests
+- Touching database → Integration tests
+- Adding API endpoint → Integration + validation tests
+- Fixing a bug → Regression test FIRST
+- Modifying mint address handling → Property tests
+- Adding async operations → Concurrency tests
+- Implementing retry logic → Failure mode tests

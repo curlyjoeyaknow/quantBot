@@ -1,0 +1,41 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "🔍 Running pre-commit checks..."
+
+# 1. Format check
+echo "📝 Checking formatting..."
+npm run format:check || {
+  echo "❌ Formatting failed. Run: npm run format"
+  exit 1
+}
+
+# 2. Lint check
+echo "🔎 Linting..."
+npm run lint:fix || {
+  echo "❌ Linting failed. Run: npm run lint:fix"
+  exit 1
+}
+
+# 3. Type check
+echo "🔷 Type checking..."
+npm run typecheck || {
+  echo "❌ Type check failed. Fix TypeScript errors."
+  exit 1
+}
+
+# 4. Check test requirements based on changes
+echo "🧪 Checking test requirements..."
+npx ts-node scripts/git/check-test-requirements.ts || {
+  echo "❌ Test requirements not met. See above for details."
+  exit 1
+}
+
+# 5. Run tests for changed files (if any)
+echo "🧪 Running tests for changed files..."
+npm test -- --related || {
+  echo "⚠️  Some tests failed. Fix them before committing."
+  exit 1
+}
+
+echo "✅ All pre-commit checks passed!"

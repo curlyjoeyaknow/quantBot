@@ -1,0 +1,47 @@
+---
+description: API clients package rules - Birdeye, Helius, HTTP clients, dependency injection
+globs:
+  - "packages/api-clients/**/*.ts"
+  - "packages/api-clients/**/*.js"
+alwaysApply: false
+---
+
+# API Clients Package Rules
+
+## Birdeye API
+- Endpoint: `/defi/v3/token/meta-data/single` for metadata
+- Max 5000 candles per call (chunk automatically)
+- Always pass full mint addresses (never truncated)
+- Retry with exponential backoff on transient errors
+
+## Rate Limiting
+- Sequential chunking with 100ms delays
+- Handle 429 (rate limit) gracefully
+- Cache metadata to reduce redundant calls
+
+## Error Handling
+- Return null/empty array on 404 (token not found)
+- Log warnings for rate limits
+- Continue processing on individual failures
+
+## MCAP Fetching
+- Must fetch MCAP in metadata
+- Use fallback chain if primary endpoint fails
+- Cache results to avoid redundant calls
+
+## Dependency Injection (Testing)
+- **Always use dependency injection** for axios instances
+- Accept `axiosFactory` or `axiosInstance` in constructors
+- This allows tests to inject mocks without complex module mocking
+- Example: `constructor(config: { axiosFactory?: AxiosFactory })`
+
+## Singleton Pattern
+- Use lazy initialization with Proxy for singletons
+- Prevents module-load-time instantiation that breaks tests
+- Example: `export const client = new Proxy({}, { get: () => getClient() })`
+
+## Testing Setup
+- Mock `@quantbot/utils` and `@quantbot/observability` in `tests/setup.ts`
+- Add vitest aliases for all workspace packages in `vitest.config.ts`
+- Use `vi.mock()` in setup file to avoid native binding issues
+- Tests should inject mocked axios instances via constructor config

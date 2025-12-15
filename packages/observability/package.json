@@ -1,0 +1,24 @@
+{
+  "name": "@quantbot/observability",
+  "version": "1.0.0",
+  "description": "System observability and health monitoring for QuantBot",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "@quantbot/core": "workspace:*",
+    "@quantbot/utils": "workspace:*",
+    "@quantbot/storage": "workspace:*",
+    "@quantbot/api-clients": "workspace:*",
+    "luxon": "^3.6.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.15"
+  }
+}
+

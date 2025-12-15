@@ -1,0 +1,70 @@
+---
+description: "QuantBot workflow testing rules: Vitest, independence, coverage."
+globs:
+  - "packages/workflows/tests/**"
+  - "packages/workflows/src/**"
+---
+
+"""
+Workflows tests are NOT CLI tests.
+They validate orchestration behavior using a mocked WorkflowContext.
+
+Non-negotiables:
+- Deterministic tests (no real time, no network, no DB).
+- Hard-coded or independently computed expectations.
+- Coverage is required for workflows.
+"""
+
+## Test structure
+
+Required directories:
+- packages/workflows/tests/unit/
+- packages/workflows/tests/fixtures/ (optional)
+
+Unit tests must cover:
+1) success path (dryRun true and false)
+2) missing strategy => fails fast (throws or returns structured error, but consistent)
+3) invalid date range (to <= from) => validation failure
+4) no calls found => empty run, no persistence, summary reflects zeros
+5) per-call errors => collected and returned, workflow continues
+6) summary stats correctness (counts, pnl aggregation, etc.)
+
+## Mocking contract
+
+Use a mocked WorkflowContext:
+- ctx.repos.strategies.getByName()
+- ctx.repos.calls.listCalls()
+- ctx.ohlcv.getCandles() / ctx.ohlcv.fetchCandles()
+- ctx.repos.simulationRuns.create()
+- ctx.repos.simulationResults.bulkInsert()
+- ctx.clock.now()
+
+No real:
+- postgres/clickhouse clients
+- axios/fetch
+- filesystem
+
+## Independence (anti self-licking ice cream cone)
+
+Forbidden in tests:
+- importing any fee/rounding calculators from production modules
+- importing constants from simulation for expected values
+
+Allowed:
+- local helper inside the test file (only used by tests)
+- hard-coded numeric expectations
+
+Rule of thumb:
+If production math changes, tests should FAIL unless the behavior is truly unchanged.
+
+## Coverage requirement
+
+Workflows package must enable coverage:
+- add @vitest/coverage-v8 as devDependency
+- configure vitest to collect coverage for packages/workflows/src/**
+
+Minimum thresholds (workflows):
+- lines: 85%
+- branches: 75%
+- functions: 80%
+- statements: 85%

@@ -1,0 +1,36 @@
+---
+description: Simulation package rules - candle fetching, MCAP, Ichimoku calculations
+globs:
+  - "packages/simulation/**/*.ts"
+  - "packages/simulation/**/*.js"
+alwaysApply: false
+---
+
+# Simulation Package Rules
+
+## Candle Fetching
+
+- **1m candles**: 52 periods lookback, max 5000 candles per call
+- **5m candles**: 52 periods lookback, max 5000 candles, chunk if >17 days
+- Always check ClickHouse first before API calls
+- Update only if data >24hrs old (except active calls via WebSocket)
+
+## MCAP Requirements
+
+- Always fetch/store `entry_mcap` at alert time
+- Fallback chain: Pump.fun detection → Birdeye API → Message extraction → Infer from current
+- Use MCAP for analytics multiples, not raw price
+- Calculate peak MCAP: `peak_mcap = entry_mcap * (peak_price / entry_price)`
+
+## Functions
+
+- `fetchHybridCandles()`: Check ClickHouse, fetch with 52-period lookback
+- `fetchHybridCandlesWithMetadata()`: Same + returns metadata
+- `fetchTokenMetadata()`: Must fetch MCAP, cache results
+
+## Error Handling
+
+- Retry with exponential backoff
+- Return empty array on 404
+- Log warnings for rate limits
+- Continue processing on individual failures

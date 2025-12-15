@@ -1,0 +1,37 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "declaration": true,
+    "declarationMap": true,
+    "composite": true,
+    "baseUrl": ".",
+    "skipLibCheck": true,
+    "paths": {
+      "@quantbot/utils": ["../utils/src"],
+      "@quantbot/utils/*": ["../utils/src/*"],
+      "@quantbot/storage": ["../storage/src"],
+      "@quantbot/storage/*": ["../storage/src/*"],
+      "@quantbot/core": ["../core/src"],
+      "@quantbot/core/*": ["../core/src/*"],
+      "@quantbot/api-clients": ["../api-clients/src"],
+      "@quantbot/api-clients/*": ["../api-clients/src/*"],
+      "@quantbot/simulation": ["../simulation/src"],
+      "@quantbot/simulation/*": ["../simulation/src/*"],
+      "@quantbot/ohlcv": ["../ohlcv/src"],
+      "@quantbot/ohlcv/*": ["../ohlcv/src/*"]
+    }
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "**/*.test.ts"],
+  "references": [
+    { "path": "../utils" },
+    { "path": "../storage" },
+    { "path": "../core" },
+    { "path": "../api-clients" },
+    { "path": "../simulation" },
+    { "path": "../ohlcv" }
+  ]
+}
+

@@ -1,0 +1,28 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "declaration": true,
+    "declarationMap": true,
+    "composite": true,
+    "baseUrl": ".",
+    "skipLibCheck": true,
+    "paths": {
+      "@quantbot/utils": ["../utils/dist/index.d.ts"],
+      "@quantbot/utils/*": ["../utils/dist/*"],
+      "@quantbot/cli": ["../cli/src"],
+      "@quantbot/cli/*": ["../cli/src/*"],
+      "@quantbot/core": ["../core/src"],
+      "@quantbot/core/*": ["../core/src/*"]
+    }
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "**/*.test.ts"],
+  "references": [
+    { "path": "../utils" },
+    { "path": "../cli" },
+    { "path": "../core" }
+  ]
+}
+

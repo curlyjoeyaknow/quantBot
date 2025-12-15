@@ -1,0 +1,35 @@
+---
+description: Frontend/Next.js templates rules - React components, App Router, Tailwind CSS
+globs:
+  - "templates/**/*.tsx"
+  - "templates/**/*.ts"
+  - "templates/**/*.jsx"
+  - "templates/**/*.js"
+alwaysApply: false
+---
+
+# Frontend/Next.js Rules
+
+## Next.js Patterns
+- Use App Router (not Pages Router)
+- Server components by default
+- Client components only when needed
+- Type-safe API routes
+
+## Component Structure
+- Co-locate components with related files
+- Use TypeScript strict mode
+- Prefer functional components
+- Use proper prop types/interfaces
+
+## Styling
+- Use Tailwind CSS
+- Follow existing design system
+- Responsive design first
+- Accessible components
+
+## Data Fetching
+- Use server components for data fetching
+- Client-side fetching only when needed
+- Cache appropriately
+- Handle loading/error states

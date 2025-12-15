@@ -1,0 +1,47 @@
+---
+description: Root-level rules for QuantBot monorepo - global conventions and package structure
+globs:
+  - "**/*"
+alwaysApply: true
+---
+
+# QuantBot Root Rules
+
+## Package Structure
+Monorepo with package-specific rules. See `.cursor/rules/` for package-specific guidance.
+
+## Critical Global Rules
+
+### Mint Address Handling
+⚠️ **NEVER MODIFY MINT ADDRESSES**
+- No truncation, case changes, or string manipulation
+- Store/pass full 32-44 char addresses, preserve exact case
+- Truncate ONLY for display/logging, never for storage/API calls
+
+### Code Style
+- TypeScript strict mode
+- Use async/await, avoid callbacks
+- Prefer functional patterns where appropriate
+- Follow existing package conventions
+
+### Testing
+- Use vitest for unit tests
+- Write tests for new features
+- Integration tests in `tests/` directory
+
+#### Vitest Patterns
+- Use `vi.mock()` for module mocking - mocks are hoisted
+- For Zod 4.x: use `result.error.issues` not `result.error.errors`
+- Use Luxon `DateTime` objects, not JS `Date` objects for date ranges
+- Mock external packages in `tests/setup.ts` to avoid native binding issues
+- For async handlers in EventEmitter patterns, use `Promise.all()` with `listeners()`
+
+#### Native Binding Avoidance
+- Don't export modules with native bindings (sqlite3) from package index
+- Use lazy initialization for singletons with native deps
+- Mock `@quantbot/utils` and `@quantbot/observability` in test setup files
+
+#### Schema/Validation Testing
+- Match test data to Zod schemas exactly (required fields, correct types)
+- Use `vi.mock()` to bypass validation when testing database operations
+- Test validation separately from business logic
