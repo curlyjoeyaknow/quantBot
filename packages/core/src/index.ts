@@ -429,6 +429,7 @@ export interface SimulationTarget {
  */
 export interface SimulationRunData {
   id?: number;
+  userId?: number;
   mint: string;
   chain: string;
   tokenName?: string;
@@ -440,7 +441,26 @@ export interface SimulationRunData {
   finalPnl: number;
   totalCandles: number;
   events: SimulationEvent[];
+  strategyName?: string;
+  entryType?: string;
+  entryPrice?: number;
+  entryTimestamp?: number;
+  filterCriteria?: Record<string, unknown>;
   createdAt?: DateTime;
+}
+
+/**
+ * User-saved strategy with metadata
+ */
+export interface UserStrategy {
+  id?: number;
+  userId: number;
+  name: string;
+  description?: string;
+  strategy: StrategyLeg[];
+  stopLossConfig: StopLossConfig;
+  isDefault: boolean;
+  createdAt: DateTime;
 }
 
 // ============================================================================

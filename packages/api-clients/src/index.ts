@@ -9,5 +9,5 @@ export * from './birdeye-client';
 export * from './helius-client';
 
 // Explicit exports for better TypeScript support
-export { BirdeyeClient } from './birdeye-client';
+export { BirdeyeClient, getBirdeyeClient } from './birdeye-client';
 export { HeliusRestClient as HeliusClient } from './helius-client';
