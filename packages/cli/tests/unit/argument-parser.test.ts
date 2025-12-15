@@ -169,12 +169,17 @@ describe('ArgumentParser', () => {
       expect(result).toBe(trimmed);
     });
 
-    it('should accept addresses at boundary lengths', () => {
-      const minLength = 'A'.repeat(32);
-      const maxLength = 'A'.repeat(44);
+    it('should accept valid Solana addresses', () => {
+      // Use real Solana addresses that decode to exactly 32 bytes
+      const validAddresses = [
+        'So11111111111111111111111111111111111111112', // Wrapped SOL
+        'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', // USDC
+      ];
 
-      expect(validateMintAddress(minLength)).toBe(minLength);
-      expect(validateMintAddress(maxLength)).toBe(maxLength);
+      for (const address of validAddresses) {
+        const result = validateMintAddress(address);
+        expect(result).toBe(address);
+      }
     });
   });
 

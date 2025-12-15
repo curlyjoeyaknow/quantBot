@@ -10,6 +10,7 @@ import { DateTime } from 'luxon';
 import { getPostgresPool, withPostgresTransaction } from '../postgres-client';
 import { logger } from '@quantbot/utils';
 import type { Token, Chain, TokenAddress } from '@quantbot/core';
+import { createTokenAddress } from '@quantbot/core';
 
 export interface TokenMetadata {
   symbol?: string;
@@ -158,7 +159,7 @@ export class TokensRepository {
     return {
       id: row.id,
       chain: row.chain as Chain,
-      address: row.address, // Full address
+      address: createTokenAddress(row.address), // Full address
       symbol: row.symbol || undefined,
       name: row.name || undefined,
       decimals: row.decimals || undefined,

@@ -23,6 +23,7 @@
   },
   "dependencies": {
     "@quantbot/core": "workspace:*",
+    "@quantbot/ohlcv": "workspace:*",
     "@quantbot/utils": "workspace:*",
     "luxon": "^3.7.2",
     "uuid": "^11.1.0",

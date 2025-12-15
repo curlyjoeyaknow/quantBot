@@ -42,7 +42,10 @@ function median(nums: number[]): number | undefined {
   const s = [...nums].sort((a, b) => a - b);
   const mid = Math.floor(s.length / 2);
   if (s.length % 2 === 1) return s[mid];
-  return (s[mid - 1] + s[mid]) / 2;
+  const prev = s[mid - 1];
+  const curr = s[mid];
+  if (prev === undefined || curr === undefined) return undefined;
+  return (prev + curr) / 2;
 }
 
 export async function runSimulation(

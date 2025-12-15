@@ -10,3 +10,5 @@ export type {
 } from './types.js';
 
 export { runSimulation } from './simulation/runSimulation.js';
+export { createProductionContext } from './context/createProductionContext.js';
+export type { ProductionContextConfig } from './context/createProductionContext.js';

@@ -4,6 +4,7 @@
 
 import { z } from 'zod';
 import { logger } from '@quantbot/utils';
+import { validateMintAddress as validateMintAddressImpl } from './address-validator';
 
 /**
  * Parse and validate arguments using Zod schema
@@ -85,21 +86,11 @@ export function parseDate(value: unknown): string {
 
 /**
  * Validate mint address (Solana-specific)
- * Must be 32-44 characters, case-preserved
+ * Uses base58 decode → 32 bytes (gold standard)
+ *
+ * @deprecated Use validateSolanaAddress from address-validator.ts instead
  */
 export function validateMintAddress(value: unknown): string {
-  if (typeof value !== 'string') {
-    throw new Error('Mint address must be a string');
-  }
-
-  const trimmed = value.trim();
-
-  if (trimmed.length < 32 || trimmed.length > 44) {
-    throw new Error(
-      `Invalid mint address length: ${trimmed.length}. Must be between 32 and 44 characters.`
-    );
-  }
-
-  // Preserve exact case - no transformation
-  return trimmed;
+  // Re-export from address-validator
+  return validateMintAddressImpl(value);
 }

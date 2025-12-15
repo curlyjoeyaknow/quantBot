@@ -6,7 +6,7 @@
  */
 
 import * as winston from 'winston';
- 
+
 const DailyRotateFile =
   require('winston-daily-rotate-file').default || require('winston-daily-rotate-file');
 import * as path from 'path';

@@ -105,7 +105,7 @@ export class MetricsMiddleware {
     }
 
     const now = Date.now();
-    for (const [key, value] of this.metrics.entries()) {
+    for (const [key, value] of Array.from(this.metrics.entries())) {
       if (now - value.lastUpdated > this.ttlMs) {
         this.metrics.delete(key);
       }
@@ -215,7 +215,7 @@ export class RateLimitingMiddleware {
    * Clean up expired rate limit windows
    */
   private cleanupExpiredWindows(now: number): void {
-    for (const [key, value] of this.eventCounts.entries()) {
+    for (const [key, value] of Array.from(this.eventCounts.entries())) {
       if (now > value.resetTime) {
         this.eventCounts.delete(key);
       }

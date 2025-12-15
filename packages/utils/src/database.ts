@@ -1444,7 +1444,7 @@ export async function getCACallsByCaller(caller: string, limit: number = 20): Pr
       const calls: CACall[] = (rows || [])
         .map((row: any) => {
           try {
-            return {
+            const call: CACall = {
               mint: createTokenAddress(row.mint),
               chain: row.chain as Chain,
               token_name: row.token_name || undefined,
@@ -1454,6 +1454,7 @@ export async function getCACallsByCaller(caller: string, limit: number = 20): Pr
               alert_timestamp: row.call_timestamp ? new Date(row.call_timestamp * 1000) : undefined,
               caller_name: row.caller || undefined,
             };
+            return call;
           } catch (error) {
             logger.warn('Invalid mint address in CA call', { mint: row.mint, error });
             return null;

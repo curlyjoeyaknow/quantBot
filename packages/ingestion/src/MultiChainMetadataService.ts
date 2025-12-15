@@ -77,7 +77,8 @@ export async function fetchMultiChainMetadata(
         result.primaryMetadata = result.metadata[0];
       }
     } catch (error) {
-      logger.warn('Failed to fetch Solana metadata', error as Error, {
+      logger.warn('Failed to fetch Solana metadata', {
+        error: error instanceof Error ? error.message : String(error),
         address: address.substring(0, 20),
       });
 
@@ -124,7 +125,8 @@ export async function fetchMultiChainMetadata(
           });
         }
       } catch (error) {
-        logger.warn('Failed to fetch EVM metadata', error as Error, {
+        logger.warn('Failed to fetch EVM metadata', {
+          error: error instanceof Error ? error.message : String(error),
           address: address.substring(0, 20),
           chain,
         });

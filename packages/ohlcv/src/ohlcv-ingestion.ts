@@ -63,7 +63,12 @@ export class OHLCVIngestionService {
       const cachedData = this.cache.get(tokenAddress, startTime, endTime, '1m');
       if (cachedData) {
         logger.debug('Using cached data', { tokenAddress });
-        await this.influxClient.writeOHLCVData(tokenAddress, tokenSymbol, chain, cachedData);
+        // Convert OhlcvCacheCandle to OHLCVData by ensuring dateTime is present
+        const ohlcvData = cachedData.map((candle) => ({
+          ...candle,
+          dateTime: candle.dateTime || new Date(candle.timestamp),
+        }));
+        await this.influxClient.writeOHLCVData(tokenAddress, tokenSymbol, chain, ohlcvData);
         return {
           tokenAddress,
           recordsAdded: cachedData.length,

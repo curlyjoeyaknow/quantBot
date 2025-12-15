@@ -3,6 +3,23 @@
  */
 
 export { parseExport, type ParsedMessage } from './TelegramExportParser';
+export {
+  normalizeTelegramMessage,
+  type NormalizedTelegramMessage,
+  type NormalizeOk,
+  type NormalizeErr,
+} from './telegram/normalize';
+export { parseJsonExport, type ParseJsonExportResult } from './telegram/TelegramJsonExportParser';
+export {
+  TelegramMessageStreamProcessor,
+  type StreamProcessorOptions,
+  type StreamProcessorResult,
+} from './telegram/TelegramMessageStreamProcessor';
+export {
+  ingestJsonExport,
+  type IngestJsonExportParams,
+  type IngestJsonExportResult,
+} from './telegram/TelegramJsonIngestionService';
 export { extractSolanaAddresses } from './extractSolanaAddresses';
 
 // Address validation and extraction

@@ -1,0 +1,151 @@
+# @quantbot/workflows Package Rules
+
+## Purpose
+Orchestration layer for simulation workflows. Coordinates strategy loading, call fetching, OHLCV data retrieval, simulation execution, and result persistence.
+
+## Architecture Principles
+
+### Dependency Injection via WorkflowContext
+All external dependencies injected through `WorkflowContext`:
+- `clock`: Time source (deterministic in tests)
+- `ids`: ID generation (deterministic in tests)
+- `logger`: Logging interface
+- `repos`: Data access (strategies, calls, runs, results)
+- `ohlcv`: Candle data provider
+- `simulation`: Pure compute engine
+
+### Workflow Orchestration (not Business Logic)
+Workflows coordinate; they don't implement domain logic:
+- Strategy interpretation → `@quantbot/simulation`
+- Candle fetching strategy → `@quantbot/ohlcv`
+- Persistence schema → `@quantbot/storage`
+- Workflows only orchestrate the sequence
+
+### Error Handling Philosophy
+- **Fail fast**: Invalid spec, missing strategy → throw immediately
+- **Per-call resilience**: Individual call errors captured, workflow continues
+- **Structured errors**: Use error codes (INVALID_SPEC, STRATEGY_NOT_FOUND, NO_CANDLES, SIMULATION_ERROR)
+
+## Testing Requirements
+
+### Golden Test Suite
+Primary test file: `tests/unit/runSimulation.golden.test.ts`
+
+Must cover:
+1. **Dry run vs persist modes**
+2. **Fast failure paths** (missing strategy, invalid dates)
+3. **Empty result sets** (no calls found)
+4. **Per-call error handling** (errors don't kill workflow)
+5. **Deduplication** (duplicate call IDs)
+6. **Stable ordering** (by createdAt ascending)
+7. **Candle availability** (NO_CANDLES error)
+8. **Time windowing** (pre/post minutes applied correctly)
+9. **Statistics correctness** (PnL min/max/mean/median)
+10. **Persistence behavior** (dryRun=true → no persist, dryRun=false → persist)
+
+### Mutation Testing Checklist
+See `tests/MUTATION_CHECKLIST.md` for systematic mutation testing guide.
+
+### Coverage Thresholds
+- Lines: 85%
+- Branches: 75%
+- Functions: 80%
+- Statements: 85%
+
+## Key Invariants
+
+### Date Handling
+- Always use Luxon `DateTime` objects (not JS `Date`)
+- Validate `to > from` before processing
+- Time windows calculated per-call (not global)
+
+### Call Processing
+- Deduplicate by call ID (keep earliest)
+- Sort by `createdAt` ascending (stable ordering)
+- Process all calls even if some fail
+
+### Statistics
+- PnL stats computed only from successful calls
+- Median handles even/odd length arrays correctly
+- Mean uses floating-point division (no integer truncation)
+
+### Persistence
+- `dryRun=true` → no database writes
+- `dryRun=false` → persist run metadata + all results
+- Persistence happens after all calls processed (atomic batch)
+
+## Anti-Patterns to Avoid
+
+### ❌ Don't
+- Use `Date.now()` or `new Date()` directly (breaks determinism)
+- Generate random UUIDs in workflows (use `ctx.ids`)
+- Stop processing on first per-call error
+- Include failed calls in PnL statistics
+- Persist partial results mid-workflow
+- Truncate mint addresses
+- Use global time windows (must be per-call)
+
+### ✅ Do
+- Inject all dependencies via `WorkflowContext`
+- Use Luxon `DateTime` for all date operations
+- Capture per-call errors and continue
+- Validate specs early (fail fast)
+- Use deterministic IDs in tests
+- Apply time windows per-call timestamp
+- Test with golden test suite + mutation checklist
+
+## Dependencies
+
+### Internal
+- `@quantbot/utils`: Event system, Zod validation
+- `@quantbot/storage`: Database interfaces (via repos)
+- `@quantbot/ohlcv`: Candle fetching (via context)
+- `@quantbot/simulation`: Pure compute engine (via context)
+
+### External
+- `luxon`: Date/time handling
+- `zod`: Runtime validation
+- `uuid`: ID generation (injected via context)
+
+## File Organization
+
+```
+src/
+  index.ts              # Public API exports
+  types.ts              # Type definitions
+  simulation/
+    runSimulation.ts    # Main workflow implementation
+
+tests/
+  helpers/
+    mockContext.ts      # Test context factory
+  fixtures/
+    runSimulation.golden.ts  # Golden test data
+  unit/
+    runSimulation.golden.test.ts  # Golden test suite
+  MUTATION_CHECKLIST.md  # Mutation testing guide
+```
+
+## Development Workflow
+
+1. **Write test first** (golden test suite)
+2. **Implement workflow** (orchestration only)
+3. **Run mutation checklist** (verify test bite)
+4. **Check coverage** (`pnpm test:coverage`)
+5. **Typecheck** (`pnpm typecheck`)
+6. **Build** (`pnpm build`)
+
+## Common Pitfalls
+
+### Floating-Point Precision
+Use `toBeCloseTo()` for median/mean assertions (not exact equality).
+
+### Null vs Undefined in Mocks
+When mocking `strategy: null`, use explicit `!== undefined` check to distinguish from missing option.
+
+### TypeScript noUncheckedIndexedAccess
+Array access returns `T | undefined`. Always check or use non-null assertion with justification.
+
+### Zod 4.x API
+Use `result.error.issues` (not `result.error.errors`).
+

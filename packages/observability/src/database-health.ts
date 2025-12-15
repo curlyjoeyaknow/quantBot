@@ -49,7 +49,10 @@ export async function checkDatabaseHealth(): Promise<DatabaseHealth> {
   try {
     const start = Date.now();
     const client = getClickHouseClient();
-    await client.query('SELECT 1');
+    await client.query({
+      query: 'SELECT 1',
+      format: 'JSONEachRow',
+    });
     health.clickhouse = {
       connected: true,
       latency: Date.now() - start,

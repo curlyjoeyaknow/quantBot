@@ -27,12 +27,12 @@ describe('OHLCV Commands - Integration', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    
+
     mockGetCandles = vi.fn();
 
     // Create fresh registry and manually register the module
     registry = new CommandRegistry();
-    
+
     const querySchema = z.object({
       mint: z.string(),
       from: z.string(),

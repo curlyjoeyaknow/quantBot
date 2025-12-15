@@ -6,7 +6,17 @@
 
 import { getPostgresPool } from '../postgres-client';
 import { logger } from '@quantbot/utils';
-import type { ErrorEvent } from '@quantbot/observability';
+import { DateTime } from 'luxon';
+
+// ErrorEvent type - duplicated here to avoid circular dependency with @quantbot/observability
+export interface ErrorEvent {
+  timestamp: Date;
+  error: string;
+  message: string;
+  stack?: string;
+  context?: Record<string, unknown>;
+  severity: 'low' | 'medium' | 'high' | 'critical';
+}
 
 export interface ErrorStats {
   total: number;
@@ -33,7 +43,7 @@ export class ErrorRepository {
           event.stack || null,
           event.severity,
           event.context ? JSON.stringify(event.context) : null,
-          (event.context?.service as string | undefined) || null,
+          null, // service field - not in ErrorEvent interface
         ]
       );
 

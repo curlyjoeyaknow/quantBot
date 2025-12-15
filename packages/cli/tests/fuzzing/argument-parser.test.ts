@@ -165,16 +165,14 @@ describe('Argument Parser - Fuzzing Tests', () => {
 
     it('should handle unicode characters', () => {
       const unicode = '测试' + 'A'.repeat(30);
-      // Unicode characters count as multiple bytes, but length check is on string length
-      // '测试' is 2 chars, so total is 32 chars - should pass length check but may have other issues
-      const result = validateMintAddress(unicode);
-      expect(result.length).toBeGreaterThanOrEqual(32);
+      // Unicode characters are not valid base58, should throw
+      expect(() => validateMintAddress(unicode)).toThrow(/base58|bytes|string/i);
     });
 
     it('should handle special characters', () => {
       const special = '!@#$%^&*()' + 'A'.repeat(22);
-      // Should validate length but may fail other checks
-      expect(() => validateMintAddress(special)).not.toThrow(Error);
+      // Special characters are not valid base58, should throw
+      expect(() => validateMintAddress(special)).toThrow(/base58|bytes|string/i);
     });
 
     it('should handle control characters', () => {
@@ -196,26 +194,27 @@ describe('Argument Parser - Fuzzing Tests', () => {
 
     it('should handle SQL injection attempts', () => {
       const sqlInjection = "' OR '1'='1" + 'A'.repeat(20);
-      // SQL injection string is 31 chars, need at least 32
-      const padded = sqlInjection + 'A'; // Make it 32 chars
-      const result = validateMintAddress(padded);
-      // Should accept it (validation only checks length, not content)
-      expect(result.length).toBeGreaterThanOrEqual(32);
+      // SQL injection patterns are not valid base58, should throw
+      expect(() => validateMintAddress(sqlInjection)).toThrow(/base58|bytes|string/i);
     });
 
     it('should handle script injection attempts', () => {
       const scriptInjection = '<script>alert("xss")</script>' + 'A'.repeat(5);
-      expect(() => validateMintAddress(scriptInjection)).not.toThrow(Error);
+      // Script injection patterns are not valid base58, should throw
+      expect(() => validateMintAddress(scriptInjection)).toThrow(/base58|bytes|string/i);
     });
 
     it('should handle null bytes', () => {
       const nullByte = 'A'.repeat(32) + '\0';
-      expect(() => validateMintAddress(nullByte)).not.toThrow(Error);
+      // Null bytes are not valid base58, should throw
+      expect(() => validateMintAddress(nullByte)).toThrow(/base58|bytes|string/i);
     });
 
     it('should handle binary data', () => {
       const binary = Buffer.from('A'.repeat(32)).toString('binary');
-      expect(() => validateMintAddress(binary)).not.toThrow(Error);
+      // 'A' repeated 32 times is valid base58, but decodes to wrong length
+      // Should throw because decoded length != 32 bytes
+      expect(() => validateMintAddress(binary)).toThrow(/base58|bytes|length|32/i);
     });
   });
 

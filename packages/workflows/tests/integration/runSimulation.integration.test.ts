@@ -1,0 +1,91 @@
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { DateTime } from 'luxon';
+import { runSimulation } from '../../src/simulation/runSimulation.js';
+import { createProductionContext } from '../../src/context/createProductionContext.js';
+import { initClickHouse, closeClickHouse } from '@quantbot/storage';
+import { getPostgresPool, closePostgresPool } from '@quantbot/storage';
+
+describe('workflows.runSimulation - integration tests', () => {
+  beforeAll(async () => {
+    // Initialize database connections
+    await initClickHouse();
+    // Postgres pool initializes lazily
+  });
+
+  afterAll(async () => {
+    // Clean up connections
+    await closeClickHouse();
+    await closePostgresPool();
+  });
+
+  it.skip('INTEGRATION: runs simulation with real database and OHLCV', async () => {
+    // This test requires:
+    // 1. Postgres running with strategies and calls data
+    // 2. ClickHouse running with OHLCV data
+    // 3. Network access for Birdeye API (fallback)
+
+    const ctx = createProductionContext();
+
+    const spec = {
+      strategyName: 'IchimokuV1', // Must exist in database
+      callerName: 'Brook', // Must have calls in database
+      from: DateTime.fromISO('2025-10-01T00:00:00.000Z', { zone: 'utc' }),
+      to: DateTime.fromISO('2025-10-15T00:00:00.000Z', { zone: 'utc' }),
+      options: {
+        dryRun: true,
+        preWindowMinutes: 60,
+        postWindowMinutes: 120,
+      },
+    };
+
+    const result = await runSimulation(spec, ctx);
+
+    // Basic assertions
+    expect(result.runId).toBeDefined();
+    expect(result.strategyName).toBe('IchimokuV1');
+    expect(result.totals.callsFound).toBeGreaterThanOrEqual(0);
+
+    // Log results for manual inspection
+    console.log('Integration test results:', {
+      runId: result.runId,
+      totals: result.totals,
+      pnl: result.pnl,
+      sampleResults: result.results.slice(0, 3),
+    });
+  });
+
+  it('INTEGRATION: handles missing strategy gracefully', async () => {
+    const ctx = createProductionContext();
+
+    const spec = {
+      strategyName: 'NonExistentStrategy_12345',
+      from: DateTime.fromISO('2025-10-01T00:00:00.000Z', { zone: 'utc' }),
+      to: DateTime.fromISO('2025-10-15T00:00:00.000Z', { zone: 'utc' }),
+      options: {
+        dryRun: true,
+      },
+    };
+
+    await expect(runSimulation(spec, ctx)).rejects.toThrow(/STRATEGY_NOT_FOUND/);
+  });
+
+  it('INTEGRATION: handles empty date range (no calls)', async () => {
+    const ctx = createProductionContext();
+
+    const spec = {
+      strategyName: 'IchimokuV1',
+      // Use a date range in the far future where no calls exist
+      from: DateTime.fromISO('2099-01-01T00:00:00.000Z', { zone: 'utc' }),
+      to: DateTime.fromISO('2099-01-02T00:00:00.000Z', { zone: 'utc' }),
+      options: {
+        dryRun: true,
+      },
+    };
+
+    const result = await runSimulation(spec, ctx);
+
+    expect(result.totals.callsFound).toBe(0);
+    expect(result.totals.callsAttempted).toBe(0);
+    expect(result.results).toEqual([]);
+  });
+});

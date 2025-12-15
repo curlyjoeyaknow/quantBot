@@ -13,8 +13,8 @@ export interface HealthStatus {
   status: 'healthy' | 'degraded' | 'unhealthy';
   timestamp: Date;
   checks: {
-    postgres: { status: 'ok' | 'error'; message?: string };
-    clickhouse: { status: 'ok' | 'error'; message?: string };
+    postgres: { status: 'ok' | 'error' | 'warning'; message?: string };
+    clickhouse: { status: 'ok' | 'error' | 'warning'; message?: string };
     birdeye: { status: 'ok' | 'warning' | 'error'; message?: string };
     helius: { status: 'ok' | 'warning' | 'error'; message?: string };
   };
@@ -24,11 +24,11 @@ export interface HealthStatus {
  * Perform comprehensive health check
  */
 export async function performHealthCheck(): Promise<HealthStatus> {
-  const checks = {
-    postgres: { status: 'ok' as const },
-    clickhouse: { status: 'ok' as const },
-    birdeye: { status: 'ok' as const },
-    helius: { status: 'ok' as const },
+  const checks: HealthStatus['checks'] = {
+    postgres: { status: 'ok' },
+    clickhouse: { status: 'ok' },
+    birdeye: { status: 'ok' },
+    helius: { status: 'ok' },
   };
 
   // Check PostgreSQL
@@ -45,7 +45,7 @@ export async function performHealthCheck(): Promise<HealthStatus> {
   // Check ClickHouse
   try {
     const client = getClickHouseClient();
-    await client.query('SELECT 1');
+    await client.query({ query: 'SELECT 1', format: 'JSON' });
   } catch (error) {
     checks.clickhouse = {
       status: 'error',

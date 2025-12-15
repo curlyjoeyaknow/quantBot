@@ -105,7 +105,7 @@ export class CallDataLoader {
         atl_timestamp: Date | null;
       }
 
-      const result = await pool.query<QueryRow>(query, params);
+      const result = await pool.query(query, params);
 
       const calls: CallPerformance[] = result.rows.map((row: QueryRow) => {
         const entryPrice = row.initial_price

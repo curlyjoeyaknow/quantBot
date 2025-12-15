@@ -13,6 +13,7 @@
 import { DateTime } from 'luxon';
 import { logger } from '@quantbot/utils';
 import type { Chain } from '@quantbot/core';
+import { createTokenAddress } from '@quantbot/core';
 import {
   CallersRepository,
   TokensRepository,
@@ -403,10 +404,14 @@ export class TelegramAlertIngestionService {
 
         // 4. Upsert token with metadata from bot response or multi-chain fetch
         // Prefer actual metadata from Birdeye over bot-extracted metadata
-        const token = await this.tokensRepo.getOrCreateToken(detectedChain, botData.caAddress, {
-          name: actualMetadata?.name || botData.name,
-          symbol: actualMetadata?.symbol || botData.ticker,
-        });
+        const token = await this.tokensRepo.getOrCreateToken(
+          detectedChain,
+          createTokenAddress(botData.caAddress),
+          {
+            name: actualMetadata?.name || botData.name,
+            symbol: actualMetadata?.symbol || botData.ticker,
+          }
+        );
         tokensUpsertedSet.add(botData.caAddress);
 
         // 5. Insert alert using caller message timestamp (alert time)
@@ -415,7 +420,7 @@ export class TelegramAlertIngestionService {
           tokenId: token.id,
           callerId: caller.id,
           side: 'buy',
-          alertTimestamp: DateTime.fromJSDate(callerMessage.timestamp),
+          alertTimestamp: DateTime.fromJSDate(callerMessage.timestamp).toJSDate(),
           alertPrice: botData.price,
           chatId: chatIdToUse,
           messageId: callerMessage.messageId,
@@ -435,7 +440,7 @@ export class TelegramAlertIngestionService {
           callerId: caller.id,
           side: 'buy',
           signalType: 'entry',
-          signalTimestamp: DateTime.fromJSDate(callerMessage.timestamp),
+          signalTimestamp: DateTime.fromJSDate(callerMessage.timestamp).toJSDate(),
           metadata: {
             messageId: callerMessage.messageId,
             botMessageId: message.messageId,

@@ -8,6 +8,7 @@
     "composite": true,
     "baseUrl": ".",
     "skipLibCheck": true,
+    "jsx": "react",
     "paths": {
       "@quantbot/utils": ["../utils/dist/index.d.ts"],
       "@quantbot/utils/*": ["../utils/dist/*"],

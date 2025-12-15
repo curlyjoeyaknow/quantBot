@@ -1,0 +1,15 @@
+{
+    "keep": {
+        "days": true,
+        "amount": 14
+    },
+    "auditLog": "/home/memez/quantBot/packages/cli/logs/.9cfd21a5368a8ad9c6dfa5e90f34e78544d5aff9-audit.json",
+    "files": [
+        {
+            "date": 1765788643709,
+            "name": "/home/memez/quantBot/packages/cli/logs/error-2025-12-15.log",
+            "hash": "9cb6cc6e6bd9014390944f9988710cedfe73ad3a89ba07e57a74126bef73658a"
+        }
+    ],
+    "hashType": "sha256"
+}

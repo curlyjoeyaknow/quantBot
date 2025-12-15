@@ -14,6 +14,7 @@
 import { DateTime } from 'luxon';
 import { logger } from '@quantbot/utils';
 import type { Chain } from '@quantbot/core';
+import { createTokenAddress } from '@quantbot/core';
 import {
   CallersRepository,
   TokensRepository,
@@ -202,10 +203,14 @@ export class TelegramCallIngestionService {
     );
 
     // Get or create token
-    const token = await this.tokensRepo.getOrCreateToken(chain, botData.contractAddress, {
-      name: botData.tokenName,
-      symbol: botData.ticker,
-    });
+    const token = await this.tokensRepo.getOrCreateToken(
+      chain,
+      createTokenAddress(botData.contractAddress),
+      {
+        name: botData.tokenName,
+        symbol: botData.ticker,
+      }
+    );
 
     // Check for existing alert (idempotency)
     const existingAlert =
@@ -253,7 +258,7 @@ export class TelegramCallIngestionService {
       callerId: callerRecord.id,
       side: 'buy',
       signalType: 'entry',
-      signalTimestamp: DateTime.fromJSDate(caller.alertTimestamp),
+      signalTimestamp: DateTime.fromJSDate(caller.alertTimestamp).toJSDate(),
       metadata: {
         priceAtAlert: botData.price,
         marketCapAtAlert: botData.marketCap,

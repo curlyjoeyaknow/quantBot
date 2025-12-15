@@ -454,6 +454,21 @@ export class BirdeyeClient extends BaseApiClient {
   }
 
   /**
+   * Get count of active API keys (for testing)
+   */
+  getActiveKeysCount(): number {
+    return Array.from(this.keyUsage.values()).filter((usage) => usage.isActive).length;
+  }
+
+  /**
+   * Check if a specific API key is active (for testing)
+   */
+  isKeyActive(key: string): boolean {
+    const usage = this.keyUsage.get(key);
+    return usage?.isActive ?? false;
+  }
+
+  /**
    * Get total requests made across all keys
    */
   getTotalRequests(): number {
@@ -662,12 +677,7 @@ export class BirdeyeClient extends BaseApiClient {
         this.updateKeyUsage(apiKey);
 
         // Record API usage (1 credit per metadata call)
-        recordApiUsage('birdeye', 1, {
-          endpoint: '/defi/v3/token/meta-data/single',
-          chain,
-        }).catch((error: unknown) => {
-          logger.warn('Failed to record API usage', error as Error);
-        });
+        recordApiUsage('birdeye', 1);
 
         const data = response.data.data;
         return {

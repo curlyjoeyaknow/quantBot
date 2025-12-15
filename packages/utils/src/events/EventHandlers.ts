@@ -130,7 +130,11 @@ export class WebSocketEventHandlers {
         logger.info('WebSocket disconnected', { url });
         break;
       case 'websocket.error':
-        const wsError = error ? (typeof error === 'string' ? new Error(error) : new Error(String(error))) : new Error('Unknown WebSocket error');
+        const wsError = error
+          ? typeof error === 'string'
+            ? new Error(error)
+            : new Error(String(error))
+          : new Error('Unknown WebSocket error');
         logger.error('WebSocket error', wsError, { url });
         break;
       case 'websocket.reconnecting':
@@ -192,8 +196,11 @@ export class SystemEventHandlers {
         logger.info('System shutdown', { component, message });
         break;
       case 'system.error':
-        const sysError =
-          error instanceof Error ? error : new Error(String(error ?? 'Unknown error'));
+        const sysError = error
+          ? error instanceof Error
+            ? error
+            : new Error(String(error))
+          : new Error('Unknown system error');
         logger.error('System error', sysError, { component, message });
         break;
     }
@@ -216,12 +223,7 @@ export class SystemEventHandlers {
         logger.info('Service stopped', { serviceName });
         break;
       case 'service.error':
-        const svcError =
-          typeof error === 'string'
-            ? new Error(error)
-            : error instanceof Error
-              ? error
-              : new Error(String(error ?? 'Unknown error'));
+        const svcError = error ? new Error(error) : new Error('Unknown service error');
         logger.error('Service error', svcError, { serviceName });
         break;
     }

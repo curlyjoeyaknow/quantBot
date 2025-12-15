@@ -52,7 +52,8 @@ export function extractAddresses(text: string): {
 
   // Solana: greedy base58-ish tokens 32–44 chars; filter with base58 alphabet
   // Use word boundaries-ish: split on whitespace/punct, then validate.
-  const tokens = text.split(/[\s"'`<>()[\]{}.,;:!?|\\\/\n\r\t]+/g);
+  // Include Unicode box-drawing characters (├└│─) that bots use for formatting
+  const tokens = text.split(/[\s"'`<>()[\]{}.,;:!?|\\\/\n\r\t├└│─]+/g);
   for (const tok of tokens) {
     if (isSolanaAddress(tok)) solCandidates.add(tok);
   }

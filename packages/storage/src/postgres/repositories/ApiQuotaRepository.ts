@@ -7,7 +7,16 @@
 import { DateTime } from 'luxon';
 import { getPostgresPool } from '../postgres-client';
 import { logger } from '@quantbot/utils';
-import type { QuotaStatus } from '@quantbot/observability';
+
+// QuotaStatus type - duplicated here to avoid circular dependency with @quantbot/observability
+export interface QuotaStatus {
+  service: string;
+  limit: number;
+  used: number;
+  remaining: number;
+  resetAt: Date;
+  warningThreshold: number;
+}
 
 export interface ApiQuotaUsage {
   id: number;

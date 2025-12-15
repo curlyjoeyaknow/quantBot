@@ -15,7 +15,7 @@ import type { Candle } from '@quantbot/core';
 import { logger } from '@quantbot/utils';
 import { getStorageEngine, initClickHouse } from '@quantbot/storage';
 
-export interface OHLCVFetchOptions {
+export interface OHLCVEngineFetchOptions {
   /**
    * If true, only use cache (no API calls)
    */
@@ -89,7 +89,7 @@ export class OHLCVEngine {
     startTime: DateTime,
     endTime: DateTime,
     chain: string = 'solana',
-    options: OHLCVFetchOptions = {}
+    options: OHLCVEngineFetchOptions = {}
   ): Promise<OHLCVFetchResult> {
     const { cacheOnly = false, ensureIngestion = true, alertTime, interval = '5m' } = options;
 
@@ -269,7 +269,7 @@ export class OHLCVEngine {
     startTime: DateTime,
     endTime: DateTime,
     chain: string = 'solana',
-    options: OHLCVFetchOptions = {}
+    options: OHLCVEngineFetchOptions = {}
   ): Promise<Map<string, OHLCVFetchResult>> {
     const results = new Map<string, OHLCVFetchResult>();
 

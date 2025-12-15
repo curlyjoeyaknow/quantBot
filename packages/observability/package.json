@@ -13,6 +13,7 @@
     "@quantbot/utils": "workspace:*",
     "@quantbot/storage": "workspace:*",
     "@quantbot/api-clients": "workspace:*",
+    "@influxdata/influxdb-client": "^1.33.2",
     "luxon": "^3.6.1"
   },
   "devDependencies": {

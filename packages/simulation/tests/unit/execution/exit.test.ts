@@ -40,7 +40,11 @@ describe('Exit Detection', () => {
   describe('checkProfitTarget', () => {
     it('should detect profit target hit', () => {
       const target: StrategyLeg = { target: 2.0, percent: 0.5 };
-      const result = checkProfitTarget(mockCandle, 1.0, target, 0);
+      const candleWithTarget: Candle = {
+        ...mockCandle,
+        high: 2.1, // High must be >= target price (1.0 * 2.0 = 2.0)
+      };
+      const result = checkProfitTarget(candleWithTarget, 1.0, target, 0);
       expect(result).not.toBeNull();
       expect(result?.shouldExit).toBe(true);
       expect(result?.type).toBe('target');

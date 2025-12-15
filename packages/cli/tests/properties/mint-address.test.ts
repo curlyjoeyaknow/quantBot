@@ -49,34 +49,36 @@ describe('Mint Address Validation - Property Tests', () => {
     });
   });
 
-  describe('Length Validation Invariant', () => {
-    it('should accept addresses between 32 and 44 characters', () => {
-      const validLengths = [32, 33, 40, 44];
+  describe('Base58 Decode Validation (Upgraded)', () => {
+    it('should accept valid Solana addresses (base58 → 32 bytes)', () => {
+      // These are real Solana addresses that decode to exactly 32 bytes
+      const validAddresses = [
+        'So11111111111111111111111111111111111111112', // Wrapped SOL
+        'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', // USDC
+        'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB', // USDT
+      ];
 
-      for (const length of validLengths) {
-        const address = 'A'.repeat(length);
+      for (const address of validAddresses) {
         const result = validateMintAddress(address);
-        expect(result.length).toBe(length);
-        expect(result).toBe(address);
+        expect(result).toBe(address); // Exact case preserved
       }
     });
 
-    it('should reject addresses shorter than 32 characters', () => {
-      const invalidLengths = [1, 10, 31];
+    it('should reject invalid base58 strings', () => {
+      const invalidBase58 = [
+        'O0Il', // Ambiguous characters not in base58 alphabet
+        '!!!invalid!!!', // Special characters
+        'test@address', // Invalid characters
+      ];
 
-      for (const length of invalidLengths) {
-        const address = 'A'.repeat(length);
-        expect(() => validateMintAddress(address)).toThrow();
+      for (const address of invalidBase58) {
+        expect(() => validateMintAddress(address)).toThrow(/base58|bytes|string/i);
       }
     });
 
-    it('should reject addresses longer than 44 characters', () => {
-      const invalidLengths = [45, 50, 100];
-
-      for (const length of invalidLengths) {
-        const address = 'A'.repeat(length);
-        expect(() => validateMintAddress(address)).toThrow();
-      }
+    it('should reject addresses that decode to wrong length', () => {
+      const wrongLength = '111111111111111111111'; // Valid base58 but wrong length
+      expect(() => validateMintAddress(wrongLength)).toThrow(/32|bytes|length/i);
     });
   });
 

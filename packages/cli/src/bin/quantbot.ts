@@ -16,6 +16,7 @@ import { registerStorageCommands } from '../commands/storage';
 import { registerOhlcvCommands } from '../commands/ohlcv';
 import { registerIngestionCommands } from '../commands/ingestion';
 import { registerSimulationCommands } from '../commands/simulation';
+import { registerInteractiveSimulationCommand } from '../commands/simulation-interactive';
 // import { registerMonitoringCommands } from '../commands/monitoring'; // Archived
 import { registerAnalyticsCommands } from '../commands/analytics';
 import { registerApiClientsCommands } from '../commands/api-clients';
@@ -32,6 +33,7 @@ registerStorageCommands(program);
 registerOhlcvCommands(program);
 registerIngestionCommands(program);
 registerSimulationCommands(program);
+registerInteractiveSimulationCommand(program); // 🎯 Interactive simulation
 // registerMonitoringCommands(program); // Archived
 registerAnalyticsCommands(program);
 registerApiClientsCommands(program);

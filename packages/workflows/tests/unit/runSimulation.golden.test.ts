@@ -192,8 +192,9 @@ describe('workflows.runSimulation - golden suite', () => {
     expect(res.totals.callsFailed).toBe(1);
 
     const r = res.results[0];
-    expect(r.ok).toBe(false);
-    expect(r.errorCode).toBe('NO_CANDLES');
+    expect(r).toBeDefined();
+    expect(r!.ok).toBe(false);
+    expect(r!.errorCode).toBe('NO_CANDLES');
 
     expect(ctx.simulation.run).not.toHaveBeenCalled();
   });

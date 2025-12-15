@@ -20,6 +20,7 @@ import { birdeyeClient } from '@quantbot/api-clients';
 import { getStorageEngine, initClickHouse } from '@quantbot/storage';
 import { TokensRepository } from '@quantbot/storage';
 import type { Candle, Chain } from '@quantbot/core';
+import { createTokenAddress } from '@quantbot/core';
 import { logger } from '@quantbot/utils';
 import { LRUCache } from 'lru-cache';
 
@@ -262,7 +263,7 @@ export class OhlcvIngestionEngine {
       if (metadata) {
         // Store metadata in PostgreSQL using TokensRepository
         // This enriches the token details before inserting OHLCV candles
-        await this.tokensRepo.getOrCreateToken(chain, mint, {
+        await this.tokensRepo.getOrCreateToken(chain, createTokenAddress(mint), {
           name: metadata.name,
           symbol: metadata.symbol,
         });
