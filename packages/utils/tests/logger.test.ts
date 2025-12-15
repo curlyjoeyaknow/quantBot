@@ -4,11 +4,11 @@
  * Tests for the centralized logging system
  */
 
-import { logger, Logger, LogLevel } from '@quantbot/utils';
+import { logger, Logger, LogLevel, winstonLogger } from '../src';
 
 describe('Logger', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('Log Levels', () => {
@@ -31,46 +31,46 @@ describe('Logger', () => {
     });
 
     it('should log error messages', () => {
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+      const spy = vi.spyOn(winstonLogger, 'error').mockImplementation(() => {});
       logger.error('Test error message');
-      expect(consoleSpy).toHaveBeenCalled();
-      consoleSpy.mockRestore();
+      expect(spy).toHaveBeenCalled();
+      spy.mockRestore();
     });
 
     it('should log info messages', () => {
-      const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
+      const spy = vi.spyOn(winstonLogger, 'info').mockImplementation(() => {});
       logger.info('Test info message');
-      expect(consoleSpy).toHaveBeenCalled();
-      consoleSpy.mockRestore();
+      expect(spy).toHaveBeenCalled();
+      spy.mockRestore();
     });
 
     it('should log warn messages', () => {
-      const consoleSpy = jest.spyOn(console, 'warn').mockImplementation();
+      const spy = vi.spyOn(winstonLogger, 'warn').mockImplementation(() => {});
       logger.warn('Test warn message');
-      expect(consoleSpy).toHaveBeenCalled();
-      consoleSpy.mockRestore();
+      expect(spy).toHaveBeenCalled();
+      spy.mockRestore();
     });
 
     it('should log debug messages', () => {
-      const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
+      const spy = vi.spyOn(winstonLogger, 'debug').mockImplementation(() => {});
       logger.debug('Test debug message');
-      expect(consoleSpy).toHaveBeenCalled();
-      consoleSpy.mockRestore();
+      expect(spy).toHaveBeenCalled();
+      spy.mockRestore();
     });
 
     it('should log with context', () => {
-      const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
+      const spy = vi.spyOn(winstonLogger, 'info').mockImplementation(() => {});
       logger.info('Test message', { userId: 123, tokenAddress: '0x123' });
-      expect(consoleSpy).toHaveBeenCalled();
-      consoleSpy.mockRestore();
+      expect(spy).toHaveBeenCalled();
+      spy.mockRestore();
     });
 
     it('should log errors with Error objects', () => {
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation();
+      const spy = vi.spyOn(winstonLogger, 'error').mockImplementation(() => {});
       const error = new Error('Test error');
       logger.error('Error occurred', error);
-      expect(consoleSpy).toHaveBeenCalled();
-      consoleSpy.mockRestore();
+      expect(spy).toHaveBeenCalled();
+      spy.mockRestore();
     });
   });
 
@@ -78,7 +78,7 @@ describe('Logger', () => {
     it('should set and get context', () => {
       const childLogger = new Logger();
       childLogger.setContext({ userId: 123, tokenAddress: '0x123' });
-      
+
       const context = childLogger.getContext();
       expect(context.userId).toBe(123);
       expect(context.tokenAddress).toBe('0x123');
@@ -88,7 +88,7 @@ describe('Logger', () => {
       const childLogger = new Logger();
       childLogger.setContext({ userId: 123 });
       childLogger.clearContext();
-      
+
       const context = childLogger.getContext();
       expect(Object.keys(context)).toHaveLength(0);
     });
@@ -101,12 +101,11 @@ describe('Logger', () => {
 
     it('should merge context on log calls', () => {
       const childLogger = logger.child({ userId: 123 });
-      const consoleSpy = jest.spyOn(console, 'log').mockImplementation();
-      
+      const spy = vi.spyOn(winstonLogger, 'info').mockImplementation(() => {});
+
       childLogger.info('Test', { tokenAddress: '0x456' });
-      expect(consoleSpy).toHaveBeenCalled();
-      consoleSpy.mockRestore();
+      expect(spy).toHaveBeenCalled();
+      spy.mockRestore();
     });
   });
 });
-

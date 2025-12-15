@@ -2,12 +2,12 @@
 
 /**
  * CLI script for ingesting Telegram export files
- * 
+ *
  * Usage:
  *   ts-node scripts/ingest/telegram-alerts.ts --file <path> --caller-name <name> [--chain SOL] [--chat-id <id>]
  */
 
-// @ts-ignore - commander types may not be installed yet
+// @ts-expect-error - commander types may not be installed yet
 import { program } from 'commander';
 import {
   CallersRepository,
@@ -64,4 +64,3 @@ program
   });
 
 program.parse();
-

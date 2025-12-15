@@ -5,11 +5,11 @@
  */
 
 import { Context } from 'telegraf';
-import { RepeatSimulationHelper } from '../../src/utils/RepeatSimulationHelper';
-import { SessionService } from '../../src/services/SessionService';
+import { RepeatSimulationHelper } from '../src/utils/RepeatSimulationHelper';
+import { SessionService } from '../src/services/SessionService';
 
 // Mock SessionService
-jest.mock('../../src/services/SessionService');
+vi.mock('../src/services/SessionService');
 
 describe('RepeatSimulationHelper', () => {
   let helper: RepeatSimulationHelper;
@@ -17,19 +17,19 @@ describe('RepeatSimulationHelper', () => {
   let mockContext: Partial<Context>;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
     mockSessionService = {
-      setSession: jest.fn(),
-      getSession: jest.fn(),
-      clearSession: jest.fn(),
+      setSession: vi.fn(),
+      getSession: vi.fn(),
+      clearSession: vi.fn(),
     } as any;
 
     helper = new RepeatSimulationHelper(mockSessionService);
 
     mockContext = {
       from: { id: 12345, is_bot: false },
-      reply: jest.fn().mockResolvedValue({}),
+      reply: vi.fn().mockResolvedValue({}),
     };
   });
 
@@ -77,7 +77,7 @@ describe('RepeatSimulationHelper', () => {
 
       const sessionCall = mockSessionService.setSession.mock.calls[0];
       const session = sessionCall[1];
-      
+
       expect(session.data?.metadata?.name).toBe('Test Token');
       expect(session.data?.metadata?.symbol).toBe('TEST');
     });
@@ -95,7 +95,7 @@ describe('RepeatSimulationHelper', () => {
 
       const sessionCall = mockSessionService.setSession.mock.calls[0];
       const session = sessionCall[1];
-      
+
       expect(session.data?.metadata?.name).toBe('Fallback Name');
       expect(session.data?.metadata?.symbol).toBe('FALLBACK');
     });
@@ -105,7 +105,7 @@ describe('RepeatSimulationHelper', () => {
 
       const sessionCall = mockSessionService.setSession.mock.calls[0];
       const session = sessionCall[1];
-      
+
       expect(session.data?.lastSimulation).toBeDefined();
       expect(session.data?.lastSimulation?.mint).toBe('test-mint-123');
       expect(session.data?.lastSimulation?.chain).toBe('solana');
@@ -116,9 +116,8 @@ describe('RepeatSimulationHelper', () => {
 
       const sessionCall = mockSessionService.setSession.mock.calls[0];
       const session = sessionCall[1];
-      
+
       expect(session.data?.datetime).toBe(mockRun.startTime);
     });
   });
 });
-

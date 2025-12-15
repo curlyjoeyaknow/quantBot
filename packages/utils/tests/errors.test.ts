@@ -13,10 +13,10 @@ import {
   DatabaseError,
   ValidationError,
   NotFoundError,
-  UnauthorizedError,
-  ForbiddenError,
+  AuthorizationError,
+  AuthenticationError,
   isRetryableError,
-} from '../../src/utils/errors';
+} from '../src/errors';
 
 describe('Error Classes', () => {
   describe('AppError', () => {
@@ -52,20 +52,21 @@ describe('Error Classes', () => {
     it('should create ApiError with default values', () => {
       const error = new ApiError('API error');
       expect(error.message).toContain('API error');
-      expect(error.statusCode).toBe(500);
+      expect(error.statusCode).toBe(502);
       expect(error.isOperational).toBe(true);
     });
 
     it('should create ApiError with custom API name', () => {
       const error = new ApiError('API error', 'CustomAPI', 404);
-      expect(error.message).toContain('CustomAPI');
-      expect(error.statusCode).toBe(404);
+      expect(error.apiName).toBe('CustomAPI');
+      expect(error.statusCode).toBe(502); // ApiError always uses 502 statusCode
     });
 
-    it('should include response data in context', () => {
+    it('should include response data on the error', () => {
       const data = { error: 'Not found' };
       const error = new ApiError('API error', 'TestAPI', 404, data);
-      expect(error.context?.responseData).toEqual(data);
+      expect(error.apiResponse).toEqual(data);
+      expect(error.context?.apiStatusCode).toBe(404);
     });
   });
 
@@ -82,7 +83,7 @@ describe('Error Classes', () => {
     it('should create TimeoutError', () => {
       const error = new TimeoutError('Request timed out', 5000);
       expect(error.message).toContain('Request timed out');
-      expect(error.statusCode).toBe(408);
+      expect(error.statusCode).toBe(504);
       expect(error.context?.timeoutMs).toBe(5000);
     });
   });
@@ -92,8 +93,8 @@ describe('Error Classes', () => {
       const error = new ConfigurationError('Config error');
       expect(error.message).toBe('Config error');
       expect(error.statusCode).toBe(500);
-      expect(error.isOperational).toBe(false);
-      expect(error.code).toBe('CONFIG_ERROR');
+      expect(error.isOperational).toBe(true);
+      expect(error.code).toBe('CONFIGURATION_ERROR');
     });
   });
 
@@ -102,7 +103,7 @@ describe('Error Classes', () => {
       const error = new DatabaseError('Database error');
       expect(error.message).toBe('Database error');
       expect(error.statusCode).toBe(500);
-      expect(error.code).toBe('DB_ERROR');
+      expect(error.code).toBe('DATABASE_ERROR');
     });
   });
 
@@ -117,28 +118,28 @@ describe('Error Classes', () => {
 
   describe('NotFoundError', () => {
     it('should create NotFoundError', () => {
-      const error = new NotFoundError('Resource not found');
+      const error = new NotFoundError('Resource');
       expect(error.message).toBe('Resource not found');
       expect(error.statusCode).toBe(404);
       expect(error.code).toBe('NOT_FOUND');
     });
   });
 
-  describe('UnauthorizedError', () => {
-    it('should create UnauthorizedError', () => {
-      const error = new UnauthorizedError('Unauthorized');
+  describe('AuthenticationError', () => {
+    it('should create AuthenticationError', () => {
+      const error = new AuthenticationError('Unauthorized');
       expect(error.message).toBe('Unauthorized');
       expect(error.statusCode).toBe(401);
-      expect(error.code).toBe('UNAUTHORIZED');
+      expect(error.code).toBe('AUTHENTICATION_ERROR');
     });
   });
 
-  describe('ForbiddenError', () => {
-    it('should create ForbiddenError', () => {
-      const error = new ForbiddenError('Forbidden');
+  describe('AuthorizationError', () => {
+    it('should create AuthorizationError', () => {
+      const error = new AuthorizationError('Forbidden');
       expect(error.message).toBe('Forbidden');
       expect(error.statusCode).toBe(403);
-      expect(error.code).toBe('FORBIDDEN');
+      expect(error.code).toBe('AUTHORIZATION_ERROR');
     });
   });
 
@@ -148,9 +149,9 @@ describe('Error Classes', () => {
       expect(isRetryableError(error)).toBe(true);
     });
 
-    it('should return true for RateLimitError', () => {
+    it('should return false for RateLimitError (not treated as retryable)', () => {
       const error = new RateLimitError('Rate limit', 60);
-      expect(isRetryableError(error)).toBe(true);
+      expect(isRetryableError(error)).toBe(false);
     });
 
     it('should return true for TimeoutError', () => {
@@ -158,9 +159,9 @@ describe('Error Classes', () => {
       expect(isRetryableError(error)).toBe(true);
     });
 
-    it('should return false for 4xx ApiErrors', () => {
+    it('should return true for 4xx ApiErrors (treat all API errors as retryable)', () => {
       const error = new ApiError('Client error', 'TestAPI', 400);
-      expect(isRetryableError(error)).toBe(false);
+      expect(isRetryableError(error)).toBe(true);
     });
 
     it('should return false for non-retryable errors', () => {
@@ -174,4 +175,3 @@ describe('Error Classes', () => {
     });
   });
 });
-

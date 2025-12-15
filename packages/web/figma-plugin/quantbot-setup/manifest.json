@@ -1,7 +1,0 @@
-{
-  "name": "QuantBot Figma Replicas",
-  "id": "quantbot-figma-replicas",
-  "api": "1.0.0",
-  "main": "code.js",
-  "editorType": ["figma", "dev"]
-}

@@ -10,13 +10,16 @@
     "skipLibCheck": true,
     "paths": {
       "@quantbot/utils": ["../utils/src"],
-      "@quantbot/utils/*": ["../utils/src/*"]
+      "@quantbot/utils/*": ["../utils/src/*"],
+      "@quantbot/observability": ["../observability/src"],
+      "@quantbot/observability/*": ["../observability/src/*"]
     }
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "**/*.test.ts"],
   "references": [
-    { "path": "../utils" }
+    { "path": "../utils" },
+    { "path": "../observability" }
   ]
 }
 

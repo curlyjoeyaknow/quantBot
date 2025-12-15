@@ -1,30 +1,37 @@
 {
   "name": "@quantbot/workflows",
-  "version": "1.0.0",
-  "description": "Workflow orchestration services (Ichimoku, text workflows, etc.)",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
   "scripts": {
-    "build": "tsc",
-    "test": "vitest",
-    "test:coverage": "vitest run --coverage"
+    "build": "tsc -p tsconfig.json",
+    "clean": "rm -rf dist .vitest coverage",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:ci": "vitest run --coverage --reporter=default",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@quantbot/core": "workspace:*",
     "@quantbot/utils": "workspace:*",
     "@quantbot/storage": "workspace:*",
     "@quantbot/ohlcv": "workspace:*",
-    "@quantbot/token-analysis": "workspace:*",
-    "@quantbot/ingestion": "workspace:*",
-    "@quantbot/events": "workspace:*",
     "@quantbot/simulation": "workspace:*",
-    "pg": "^8.13.0"
+    "luxon": "^3.5.0",
+    "uuid": "^11.1.0",
+    "zod": "^4.1.13"
   },
   "devDependencies": {
-    "@types/node": "^24.10.1",
-    "@vitest/coverage-v8": "^4.0.15",
-    "typescript": "^5.9.3",
-    "vitest": "^4.0.15"
+    "@vitest/coverage-v8": "^2.1.9",
+    "typescript": "^5.9.2",
+    "vitest": "^2.1.9"
   }
 }
-

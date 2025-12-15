@@ -24,6 +24,7 @@ The Golden Path is the core focus of this repository - a clean pipeline for:
 **📖 Complete workflows:** See **[docs/WORKFLOWS.md](docs/WORKFLOWS.md)**
 
 **CLI Commands:**
+
 ```bash
 # 1. Ingest Telegram export
 pnpm ingest:telegram --file data/raw/messages/brook7/messages.html --caller-name Brook
@@ -36,14 +37,27 @@ pnpm simulate:calls --strategy MyStrategy --caller Brook --from 2024-01-01 --to 
 ```
 
 **Web Interface:**
+
 - Start web server: `cd packages/web && pnpm dev`
 - Open: `http://localhost:3000/golden-path`
 - Use UI to run all workflows
 
 **API Endpoints:**
-- `POST /api/golden-path/ingest/telegram` - Telegram ingestion
-- `POST /api/golden-path/ingest/ohlcv` - OHLCV ingestion
-- `POST /api/golden-path/simulate` - Run simulations
+
+The backend API (`@quantbot/api`) provides REST endpoints for all services:
+
+- `GET /api/v1/health` - Health check
+- `GET /api/v1/ohlcv/candles` - Fetch OHLCV candles
+- `GET /api/v1/tokens` - Token metadata and management
+- `GET /api/v1/calls` - Token call history
+- `GET /api/v1/simulations/runs` - Simulation run management
+- `POST /api/v1/ingestion/ohlcv` - Trigger OHLCV ingestion
+- `GET /api/docs` - Interactive API documentation (Swagger UI)
+
+**API Documentation:**
+
+- Interactive Swagger UI: `http://localhost:3000/api/docs`
+- OpenAPI JSON: `http://localhost:3000/api/docs/json`
 
 See **[docs/GOLDEN_PATH.md](docs/GOLDEN_PATH.md)** for complete documentation.
 
@@ -59,38 +73,43 @@ QuantBot's Golden Path provides:
 
 ### Secondary Features (Not Golden Path)
 
-- **Telegram Bot Interface** - Interactive command-driven bot (see `packages/bot/`)
-- **Web Dashboard** - Next.js-based analytics UI (see `packages/web/`)
+- **Backend REST API** - Fastify-based API exposing all services (see `packages/api/`)
 - **Real-Time Monitoring** - Live CA drop detection (see `packages/monitoring/`)
-- **Live Trading** - Execution system (see `packages/trading/` - should be moved to separate repo)
+- **Telegram Bot Interface** - Interactive command-driven bot (planned - `packages/bot/`)
+- **Web Dashboard** - Next.js-based analytics UI (planned - `packages/web/`)
+- **Live Trading** - Execution system (planned - `packages/trading/`)
 
 ## 🚀 Golden Path Features
 
 ### 📥 Telegram Export Ingestion
+
 - Parse HTML exports from Telegram
 - Extract Solana addresses (full, case-preserved)
 - Normalize into callers, alerts, calls, tokens
 - Idempotent processing (no duplicates)
 
 ### 📈 OHLCV Data Management
+
 - Fetch candles from Birdeye API
 - Store in ClickHouse for fast queries
 - Automatic caching and deduplication
 - Support for 1m, 5m, 15m, 1h intervals
 
 ### 🎯 Strategy Simulation
+
 - Pure simulation engine (deterministic, testable)
 - Config-driven strategies
 - Detailed event traces
 - Comprehensive performance metrics
 
 ### 📊 Analytics & Reporting
+
 - Simulation run tracking
 - Aggregated performance metrics
 - Event-level traces for debugging
 - Strategy comparison tools
 
-## 🚀 Secondary Features (Not Golden Path)
+## Secondary Features (Not Golden Path)
 
 ### 📊 Trading Simulation Engine (Legacy)
 
@@ -166,16 +185,20 @@ QuantBot's Golden Path provides:
 
 QuantBot follows a **modular monorepo architecture** with clear separation of concerns:
 
-```
+```text
 quantBot/
 ├── packages/
-│   ├── @quantbot/utils/        # Shared utilities (logger, errors, helpers)
-│   ├── @quantbot/storage/       # Storage layer (Postgres, ClickHouse, InfluxDB)
+│   ├── @quantbot/core/          # Core types and interfaces (Candle, Chain, etc.)
+│   ├── @quantbot/utils/         # Shared utilities (logger, errors, helpers, EventBus)
+│   ├── @quantbot/storage/       # Unified storage layer (Postgres, ClickHouse, InfluxDB, SQLite, Cache)
+│   ├── @quantbot/api-clients/   # External API clients (Birdeye, Helius)
+│   ├── @quantbot/ohlcv/        # OHLCV data services (uses StorageEngine)
 │   ├── @quantbot/simulation/    # Trading simulation engine
+│   ├── @quantbot/token-analysis/# Token analysis services
+│   ├── @quantbot/ingestion/    # Data ingestion (Telegram export, OHLCV)
+│   ├── @quantbot/workflows/    # Workflow orchestration
 │   ├── @quantbot/monitoring/    # Real-time monitoring services
-│   ├── @quantbot/services/      # Business logic services
-│   ├── @quantbot/bot/          # Telegram bot implementation
-│   └── @quantbot/web/          # Next.js web dashboard
+│   └── @quantbot/api/          # Backend REST API (Fastify) - NEW
 ├── scripts/                     # Standalone scripts and tools
 ├── docs/                        # Documentation
 └── configs/                     # Configuration files
@@ -194,7 +217,7 @@ See [ARCHITECTURE.md](docs/ARCHITECTURE.md) for detailed architecture documentat
 - **Helius API Key** - For Solana WebSocket monitoring
 - **Shyft API Key** (optional) - For additional Solana data
 
-### Quick Start
+### Installation & Quick Start
 
 ```bash
 # Clone repository
@@ -388,18 +411,18 @@ npm run analyze:callers
 npm run score:unified-calls
 ```
 
-## 🎯 Strategy Configuration
+## Strategy Configuration
 
 ### Take-Profit Strategy Format
 
-```
+```text
 Simple: 50@2x,30@5x,20@10x
 JSON: [{"percent":0.5,"target":2},{"percent":0.3,"target":5},{"percent":0.2,"target":10}]
 ```
 
 ### Stop-Loss Configuration
 
-```
+```text
 Format: initial: -30%, trailing: 50%
 Examples:
 - initial: -20%, trailing: 30%
@@ -410,7 +433,7 @@ Examples:
 
 ### Entry Configuration
 
-```
+```text
 initialEntry: none | immediate | trailing
 trailingEntry: none | price | percent
 maxWaitTime: 60 (minutes)
@@ -418,7 +441,7 @@ maxWaitTime: 60 (minutes)
 
 ### Re-Entry Configuration
 
-```
+```text
 trailingReEntry: none | price | percent
 maxReEntries: 0-10
 sizePercent: 0.5 (50% of original position)
@@ -459,16 +482,20 @@ sizePercent: 0.5 (50% of original position)
 
 ### Project Structure
 
-```
+```text
 quantBot/
 ├── packages/              # Modular packages
-│   ├── utils/            # Shared utilities
-│   ├── storage/          # Database clients
+│   ├── core/             # Core types and interfaces
+│   ├── utils/            # Shared utilities (logger, EventBus)
+│   ├── storage/          # Unified storage (Postgres, ClickHouse, Cache)
+│   ├── api-clients/      # External API clients (Birdeye, Helius)
+│   ├── ohlcv/            # OHLCV data services
 │   ├── simulation/       # Simulation engine
+│   ├── token-analysis/   # Token analysis services
+│   ├── ingestion/        # Data ingestion
+│   ├── workflows/        # Workflow orchestration
 │   ├── monitoring/       # Real-time monitoring
-│   ├── services/         # Business logic
-│   ├── bot/             # Telegram bot
-│   └── web/             # Next.js dashboard
+│   └── api/              # Backend REST API (Fastify)
 ├── scripts/              # Standalone scripts
 │   ├── analysis/        # Analysis tools
 │   ├── migration/       # Database migrations
@@ -563,10 +590,13 @@ Archives are stored in `backups/quantbot-backup-<timestamp>.tar.gz`
 ## 🤝 Contributing
 
 1. Follow TypeScript best practices (see `.cursorrules`)
-2. Use package imports: `@quantbot/utils`, `@quantbot/storage`, etc.
-3. Write tests for new features
-4. Update documentation
-5. Follow commit message conventions
+2. Use package imports: `@quantbot/utils`, `@quantbot/storage`, `@quantbot/ohlcv`, etc.
+3. **Storage operations**: Always use `StorageEngine` from `@quantbot/storage` - never direct DB calls
+4. **OHLCV operations**: Use `OHLCVEngine` or `OHLCVService` from `@quantbot/ohlcv`
+5. **API clients**: Use `@quantbot/api-clients` for external API interactions
+6. Write tests for new features
+7. Update documentation
+8. Follow commit message conventions
 
 ## 📝 License
 
@@ -579,10 +609,10 @@ ISC License - See LICENSE file for details
 - Telegram for bot platform
 - All contributors and users
 
-## 📞 Support
+## Support
 
 For issues, questions, or contributions, please open an issue on GitHub.
 
 ---
 
-**Built with ❤️ for the crypto trading community**
+Built with ❤️ for the crypto trading community

@@ -1,14 +1,14 @@
 /**
  * OHLCV Data Management Service
- * 
+ *
  * Centralized service for fetching, ingesting, and caching OHLCV candles.
  * Provides multi-layer caching (in-memory → ClickHouse → CSV cache) and
  * integrates with Birdeye API and ClickHouse storage.
  */
 
 import { DateTime } from 'luxon';
-import { insertCandles, queryCandles, hasCandles, initClickHouse } from '@quantbot/data';
-import { fetchHybridCandles } from '@quantbot/data';
+import { getStorageEngine, initClickHouse } from '@quantbot/storage';
+import { fetchHybridCandles } from './candles';
 import type { Candle } from '@quantbot/core';
 import { logger } from '@quantbot/utils';
 
@@ -34,6 +34,7 @@ export interface OHLCVGetOptions extends OHLCVFetchOptions {
  */
 export class OHLCVService {
   private readonly birdeyeClient = birdeyeClient;
+  private storageEngine = getStorageEngine();
   private inMemoryCache: Map<string, { candles: Candle[]; timestamp: number }> = new Map();
   private readonly cacheTTL = 5 * 60 * 1000; // 5 minutes
 
@@ -132,9 +133,11 @@ export class OHLCVService {
       if (skipDuplicates && candles.length > 0) {
         const firstCandle = DateTime.fromSeconds(candles[0].timestamp);
         const lastCandle = DateTime.fromSeconds(candles[candles.length - 1].timestamp);
-        const existing = await hasCandles(mint, chain, firstCandle, lastCandle);
+        const existing = await this.storageEngine.getCandles(mint, chain, firstCandle, lastCandle, {
+          interval,
+        });
 
-        if (existing) {
+        if (existing.length > 0) {
           logger.debug('Candles already exist in ClickHouse, skipping', {
             mint: mint.substring(0, 20),
             count: candles.length,
@@ -143,7 +146,7 @@ export class OHLCVService {
         }
       }
 
-      await insertCandles(mint, chain, candles, interval);
+      await this.storageEngine.storeCandles(mint, chain, candles, interval);
 
       logger.info('Ingested candles into ClickHouse', {
         mint: mint.substring(0, 20),
@@ -171,12 +174,7 @@ export class OHLCVService {
     endTime: DateTime,
     options: OHLCVGetOptions = {}
   ): Promise<Candle[]> {
-    const {
-      interval = '5m',
-      useCache = true,
-      forceRefresh = false,
-      alertTime,
-    } = options;
+    const { interval = '5m', useCache = true, forceRefresh = false, alertTime } = options;
 
     // Check in-memory cache first
     if (useCache && !forceRefresh) {
@@ -192,7 +190,13 @@ export class OHLCVService {
     // Try ClickHouse
     if (useCache && !forceRefresh) {
       try {
-        const clickhouseCandles = await queryCandles(mint, chain, startTime, endTime, interval);
+        const clickhouseCandles = await this.storageEngine.getCandles(
+          mint,
+          chain,
+          startTime,
+          endTime,
+          { interval }
+        );
         if (clickhouseCandles.length > 0) {
           logger.debug('Using ClickHouse cache', {
             mint: mint.substring(0, 20),
@@ -218,13 +222,7 @@ export class OHLCVService {
 
     // Fall back to fetchHybridCandles (which uses CSV cache and Birdeye API)
     try {
-      const candles = await fetchHybridCandles(
-        mint,
-        startTime,
-        endTime,
-        chain,
-        alertTime
-      );
+      const candles = await fetchHybridCandles(mint, startTime, endTime, chain, alertTime);
 
       // Ingest into ClickHouse for future use
       if (candles.length > 0 && useCache) {
@@ -318,4 +316,3 @@ export class OHLCVService {
 
 // Export singleton instance
 export const ohlcvService = new OHLCVService();
-

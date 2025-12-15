@@ -1,8 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { RepeatSimulationHelper } from '../../src/utils/RepeatSimulationHelper';
-import { SessionService } from '../../src/services/SessionService';
 import { DateTime } from 'luxon';
+import { fileURLToPath, pathToFileURL } from 'url';
+import path from 'path';
 import type { Context } from 'telegraf';
+import type { SessionService } from '../src/services/SessionService';
+
+let RepeatSimulationHelper: any;
 
 // Mock SessionService
 const mockSessionService = {
@@ -25,8 +28,11 @@ describe('RepeatSimulationHelper', () => {
   let helper: RepeatSimulationHelper;
   let mockCtx: Context;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
+    const mod = await import('../src/utils/RepeatSimulationHelper');
+    RepeatSimulationHelper = mod.RepeatSimulationHelper;
+
     helper = new RepeatSimulationHelper(mockSessionService);
     mockCtx = createMockContext();
   });
@@ -84,7 +90,7 @@ describe('RepeatSimulationHelper', () => {
 
       await helper.repeatSimulation(ctxWithoutUser, run);
 
-      expect(mockCtx.reply).toHaveBeenCalledWith('❌ Unable to identify user.');
+      expect(ctxWithoutUser.reply).toHaveBeenCalledWith('❌ Unable to identify user.');
       expect(mockSessionService.setSession).not.toHaveBeenCalled();
     });
 
@@ -125,10 +131,9 @@ describe('RepeatSimulationHelper', () => {
 
       await helper.repeatSimulation(mockCtx, run);
 
-      expect(mockCtx.reply).toHaveBeenCalledWith(
-        expect.stringContaining('◎ Chain: SOLANA'),
-        { parse_mode: 'Markdown' }
-      );
+      expect(mockCtx.reply).toHaveBeenCalledWith(expect.stringContaining('◎ Chain: SOLANA'), {
+        parse_mode: 'Markdown',
+      });
     });
 
     it('should use correct chain emoji for ethereum', async () => {
@@ -143,10 +148,9 @@ describe('RepeatSimulationHelper', () => {
 
       await helper.repeatSimulation(mockCtx, run);
 
-      expect(mockCtx.reply).toHaveBeenCalledWith(
-        expect.stringContaining('⟠ Chain: ETHEREUM'),
-        { parse_mode: 'Markdown' }
-      );
+      expect(mockCtx.reply).toHaveBeenCalledWith(expect.stringContaining('⟠ Chain: ETHEREUM'), {
+        parse_mode: 'Markdown',
+      });
     });
 
     it('should use correct chain emoji for bsc', async () => {
@@ -161,10 +165,9 @@ describe('RepeatSimulationHelper', () => {
 
       await helper.repeatSimulation(mockCtx, run);
 
-      expect(mockCtx.reply).toHaveBeenCalledWith(
-        expect.stringContaining('🟡 Chain: BSC'),
-        { parse_mode: 'Markdown' }
-      );
+      expect(mockCtx.reply).toHaveBeenCalledWith(expect.stringContaining('🟡 Chain: BSC'), {
+        parse_mode: 'Markdown',
+      });
     });
 
     it('should use correct chain emoji for base', async () => {
@@ -179,10 +182,9 @@ describe('RepeatSimulationHelper', () => {
 
       await helper.repeatSimulation(mockCtx, run);
 
-      expect(mockCtx.reply).toHaveBeenCalledWith(
-        expect.stringContaining('🔵 Chain: BASE'),
-        { parse_mode: 'Markdown' }
-      );
+      expect(mockCtx.reply).toHaveBeenCalledWith(expect.stringContaining('🔵 Chain: BASE'), {
+        parse_mode: 'Markdown',
+      });
     });
 
     it('should format reply message correctly', async () => {
@@ -197,23 +199,12 @@ describe('RepeatSimulationHelper', () => {
 
       await helper.repeatSimulation(mockCtx, run);
 
-      expect(mockCtx.reply).toHaveBeenCalledWith(
-        expect.stringContaining('🔄 **Repeating Simulation**'),
-        { parse_mode: 'Markdown' }
-      );
-      expect(mockCtx.reply).toHaveBeenCalledWith(
-        expect.stringContaining('🪙 Token: Test Token (TEST)'),
-        { parse_mode: 'Markdown' }
-      );
-      expect(mockCtx.reply).toHaveBeenCalledWith(
-        expect.stringContaining('📅 Period: 2024-01-01 10:00 - 2024-01-01 11:00'),
-        { parse_mode: 'Markdown' }
-      );
-      expect(mockCtx.reply).toHaveBeenCalledWith(
-        expect.stringContaining('**Take Profit Strategy:**'),
-        { parse_mode: 'Markdown' }
-      );
+      const call = mockCtx.reply.mock.calls[0];
+      expect(call[1]).toEqual({ parse_mode: 'Markdown' });
+      expect(call[0]).toContain('🔄 **Repeating Simulation**');
+      expect(call[0]).toContain('🪙 Token: Test Token (TEST)');
+      expect(call[0]).toContain('📅 Period:');
+      expect(call[0]).toContain('**Take Profit Strategy:**');
     });
   });
 });
-

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { getPreset, registerPreset, listPresets } from '../../src/simulation/strategies/presets';
-import type { StrategyConfig, StrategyPresetName } from '../../src/simulation/strategies/types';
+import { getPreset, registerPreset, listPresets } from '../src/strategies/presets';
+import type { StrategyConfig, StrategyPresetName } from '../src/strategies/types';
 
 describe('presets', () => {
   describe('getPreset', () => {
@@ -110,4 +110,3 @@ describe('presets', () => {
     });
   });
 });
-

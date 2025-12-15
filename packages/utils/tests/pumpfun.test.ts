@@ -1,6 +1,20 @@
-import { describe, it, expect } from 'vitest';
-import { derivePumpfunBondingCurve, PUMP_FUN_PROGRAM_ID } from '../../src/utils/pumpfun';
+import { describe, it, expect, beforeAll } from 'vitest';
 import { PublicKey } from '@solana/web3.js';
+import { fileURLToPath, pathToFileURL } from 'url';
+import path from 'path';
+
+let derivePumpfunBondingCurve: any;
+let PUMP_FUN_PROGRAM_ID: any;
+
+beforeAll(async () => {
+  const modulePath = path.resolve(
+    path.dirname(fileURLToPath(import.meta.url)),
+    '../src/pumpfun.ts'
+  );
+  const mod = await import(pathToFileURL(modulePath).href);
+  derivePumpfunBondingCurve = mod.derivePumpfunBondingCurve;
+  PUMP_FUN_PROGRAM_ID = mod.PUMP_FUN_PROGRAM_ID;
+});
 
 describe('pumpfun', () => {
   describe('derivePumpfunBondingCurve', () => {
@@ -51,4 +65,3 @@ describe('pumpfun', () => {
     });
   });
 });
-

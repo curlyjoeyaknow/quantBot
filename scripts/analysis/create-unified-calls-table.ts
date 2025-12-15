@@ -68,10 +68,18 @@ async function initUnifiedDatabase(): Promise<Database> {
         UNIQUE(token_address, call_timestamp, caller_name)
       )
     `)
-      .then(() => run(`CREATE INDEX IF NOT EXISTS idx_token_address ON unified_calls(token_address)`))
-      .then(() => run(`CREATE INDEX IF NOT EXISTS idx_call_timestamp ON unified_calls(call_timestamp)`))
+      .then(() =>
+        run(`CREATE INDEX IF NOT EXISTS idx_token_address ON unified_calls(token_address)`)
+      )
+      .then(() =>
+        run(`CREATE INDEX IF NOT EXISTS idx_call_timestamp ON unified_calls(call_timestamp)`)
+      )
       .then(() => run(`CREATE INDEX IF NOT EXISTS idx_caller_name ON unified_calls(caller_name)`))
-      .then(() => run(`CREATE INDEX IF NOT EXISTS idx_token_timestamp ON unified_calls(token_address, call_timestamp)`))
+      .then(() =>
+        run(
+          `CREATE INDEX IF NOT EXISTS idx_token_timestamp ON unified_calls(token_address, call_timestamp)`
+        )
+      )
       .then(() => {
         logger.info('Unified database initialized');
         resolve(db);
@@ -85,7 +93,10 @@ async function initUnifiedDatabase(): Promise<Database> {
  */
 async function extractCallerAlerts(sourceDb: Database): Promise<UnifiedCall[]> {
   return new Promise((resolve, reject) => {
-    const all = promisify(sourceDb.all.bind(sourceDb)) as (sql: string, params?: any[]) => Promise<any[]>;
+    const all = promisify(sourceDb.all.bind(sourceDb)) as (
+      sql: string,
+      params?: any[]
+    ) => Promise<any[]>;
 
     all(`
       SELECT 
@@ -102,14 +113,14 @@ async function extractCallerAlerts(sourceDb: Database): Promise<UnifiedCall[]> {
     `)
       .then((rows: any[]) => {
         const calls: UnifiedCall[] = rows
-          .filter(row => {
+          .filter((row) => {
             // Filter out excluded callers (case-insensitive)
             const callerName = (row.caller_name || '').toLowerCase();
-            return !EXCLUDED_CALLERS.some(excluded => 
+            return !EXCLUDED_CALLERS.some((excluded) =>
               callerName.includes(excluded.toLowerCase())
             );
           })
-          .map(row => {
+          .map((row) => {
             // Parse timestamp
             let timestamp: Date;
             if (typeof row.alert_timestamp === 'string') {
@@ -144,10 +155,13 @@ async function extractCallerAlerts(sourceDb: Database): Promise<UnifiedCall[]> {
 async function tableExists(db: Database, tableName: string): Promise<boolean> {
   return new Promise((resolve, reject) => {
     const all = promisify(db.all.bind(db)) as (sql: string, params?: any[]) => Promise<any[]>;
-    all(`
+    all(
+      `
       SELECT name FROM sqlite_master 
       WHERE type='table' AND name=?
-    `, [tableName])
+    `,
+      [tableName]
+    )
       .then((rows: any[]) => resolve(rows.length > 0))
       .catch(reject);
   });
@@ -165,7 +179,10 @@ async function extractCACalls(sourceDb: Database): Promise<UnifiedCall[]> {
   }
 
   return new Promise((resolve, reject) => {
-    const all = promisify(sourceDb.all.bind(sourceDb)) as (sql: string, params?: any[]) => Promise<any[]>;
+    const all = promisify(sourceDb.all.bind(sourceDb)) as (
+      sql: string,
+      params?: any[]
+    ) => Promise<any[]>;
 
     all(`
       SELECT 
@@ -182,14 +199,14 @@ async function extractCACalls(sourceDb: Database): Promise<UnifiedCall[]> {
     `)
       .then((rows: any[]) => {
         const calls: UnifiedCall[] = rows
-          .filter(row => {
+          .filter((row) => {
             // Filter out excluded callers (case-insensitive)
-            const callerName = ((row.caller || 'unknown') || '').toLowerCase();
-            return !EXCLUDED_CALLERS.some(excluded => 
+            const callerName = (row.caller || 'unknown' || '').toLowerCase();
+            return !EXCLUDED_CALLERS.some((excluded) =>
               callerName.includes(excluded.toLowerCase())
             );
           })
-          .map(row => {
+          .map((row) => {
             // Parse timestamp
             let timestamp: Date | null = null;
             if (typeof row.call_timestamp === 'number') {
@@ -243,22 +260,25 @@ async function insertCalls(db: Database, calls: UnifiedCall[]): Promise<number> 
       try {
         const timestampUnix = Math.floor(call.callTimestamp.getTime() / 1000);
 
-        await run(`
+        await run(
+          `
           INSERT OR IGNORE INTO unified_calls 
           (token_address, token_symbol, chain, call_timestamp, price_at_call, volume_at_call, market_cap_at_call, caller_name, source, original_id)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `, [
-          call.tokenAddress, // Keep case-sensitive
-          call.tokenSymbol,
-          call.chain,
-          timestampUnix,
-          call.priceAtCall,
-          call.volumeAtCall,
-          call.marketCapAtCall,
-          call.callerName,
-          call.source,
-          call.originalId,
-        ]);
+        `,
+          [
+            call.tokenAddress, // Keep case-sensitive
+            call.tokenSymbol,
+            call.chain,
+            timestampUnix,
+            call.priceAtCall,
+            call.volumeAtCall,
+            call.marketCapAtCall,
+            call.callerName,
+            call.source,
+            call.originalId,
+          ]
+        );
 
         inserted++;
       } catch (error: any) {
@@ -323,7 +343,7 @@ async function getStatistics(db: Database): Promise<void> {
     for (const caller of callerStats) {
       console.log(
         `${caller.caller_name.padEnd(40)} ${caller.call_count.toString().padStart(6)} calls, ` +
-        `${caller.unique_tokens} unique tokens`
+          `${caller.unique_tokens} unique tokens`
       );
     }
   }
@@ -362,7 +382,7 @@ async function main() {
 
     // Combine and deduplicate
     const allCalls = [...callerAlerts, ...caCalls];
-    logger.info('Total calls extracted', { 
+    logger.info('Total calls extracted', {
       callerAlerts: callerAlerts.length,
       caCalls: caCalls.length,
       total: allCalls.length,
@@ -397,4 +417,3 @@ if (require.main === module) {
 }
 
 export { initUnifiedDatabase, UNIFIED_DB_PATH };
-

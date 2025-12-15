@@ -1,21 +1,21 @@
 /**
  * StrategyEngine - Pure simulation engine for Golden Path
- * 
+ *
  * Wraps the existing simulateStrategy function to work with Golden Path types.
  * This is a pure function - no DB, no side effects, deterministic.
  */
 
-import { simulateStrategy, type SimulationResult, type SimulationStrategyOptions } from '../engine';
-import type { Candle } from '../models';
-import type { StrategyConfig } from './StrategyConfig';
-import type { Call } from '@quantbot/core';
+import { simulateStrategy, type SimulationOptions } from '../core/simulator';
 import type {
+  SimulationResult,
+  Candle,
   StopLossConfig,
   EntryConfig,
   ReEntryConfig,
-  CostConfig,
   StrategyLeg,
-} from '../config';
+} from '../types';
+import type { StrategyConfig } from './StrategyConfig';
+import type { Call } from '@quantbot/core';
 
 export interface SimulationRequest {
   strategy: StrategyConfig;
@@ -44,31 +44,37 @@ export interface SimulationTrace {
       pnlSoFar: number;
     };
   }>;
-  aggregates: Map<string, {
-    tokenAddress: string;
-    chain: string;
-    finalPnl: number;
-    maxDrawdown: number;
-    volatility: number;
-    sharpeRatio: number;
-    sortinoRatio: number;
-    winRate: number;
-    tradeCount: number;
-    reentryCount: number;
-    ladderEntriesUsed: number;
-    ladderExitsUsed: number;
-  }>;
+  aggregates: Map<
+    string,
+    {
+      tokenAddress: string;
+      chain: string;
+      finalPnl: number;
+      maxDrawdown: number;
+      volatility: number;
+      sharpeRatio: number;
+      sortinoRatio: number;
+      winRate: number;
+      tradeCount: number;
+      reentryCount: number;
+      ladderEntriesUsed: number;
+      ladderExitsUsed: number;
+    }
+  >;
 }
 
 /**
  * Simulate strategy on calls
- * 
+ *
  * Pure function - deterministic, no side effects
  */
-export function simulateOnCalls(request: SimulationRequest): SimulationTrace {
+export async function simulateOnCalls(request: SimulationRequest): Promise<SimulationTrace> {
   const trades: SimulationTrace['trades'] = [];
   const events: SimulationTrace['events'] = [];
-  const aggregates = new Map<string, SimulationTrace['aggregates']['value']>();
+  const aggregates = new Map<
+    string,
+    SimulationTrace['aggregates'] extends Map<string, infer V> ? V : never
+  >();
 
   // Group calls by token
   const callsByToken = new Map<string, Call[]>();
@@ -86,7 +92,7 @@ export function simulateOnCalls(request: SimulationRequest): SimulationTrace {
     // Note: In practice, you'd need to resolve tokenId to address first
     // This is a simplified version
     const candles = request.candlesByToken.get(tokenKey) || [];
-    
+
     if (candles.length === 0) {
       continue; // Skip tokens without candles
     }
@@ -96,8 +102,8 @@ export function simulateOnCalls(request: SimulationRequest): SimulationTrace {
     const stopLoss: StopLossConfig | undefined = request.strategy.stopLoss;
     const entry: EntryConfig | undefined = request.strategy.entry;
     const reEntry: ReEntryConfig | undefined = request.strategy.reEntry;
-    
-    const options: SimulationStrategyOptions = {
+
+    const options: SimulationOptions = {
       entrySignal: request.strategy.entrySignal,
       exitSignal: request.strategy.exitSignal,
       entryLadder: request.strategy.entryLadder,
@@ -105,7 +111,7 @@ export function simulateOnCalls(request: SimulationRequest): SimulationTrace {
     };
 
     // Run simulation
-    const result: SimulationResult = simulateStrategy(
+    const result: SimulationResult = await simulateStrategy(
       candles,
       strategyLegs,
       stopLoss,
@@ -147,7 +153,7 @@ export function simulateOnCalls(request: SimulationRequest): SimulationTrace {
     // Calculate aggregates (simplified - would need proper calculation)
     const tokenAggregate = {
       tokenAddress: tokenKey,
-      chain: 'SOL', // Would come from call
+      chain: 'solana', // Would come from call
       finalPnl: result.finalPnl,
       maxDrawdown: 0, // Would calculate from events
       volatility: 0, // Would calculate from price movements
@@ -169,4 +175,3 @@ export function simulateOnCalls(request: SimulationRequest): SimulationTrace {
     aggregates,
   };
 }
-

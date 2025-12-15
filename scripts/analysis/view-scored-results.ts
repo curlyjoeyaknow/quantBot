@@ -30,15 +30,16 @@ interface ScoredToken {
  */
 export function getLatestResultsFile(): string | null {
   const exportDir = path.join(process.cwd(), 'data', 'exports', 'brook-analysis');
-  
+
   if (!fs.existsSync(exportDir)) {
     logger.error('Export directory does not exist', { exportDir });
     return null;
   }
 
-  const files = fs.readdirSync(exportDir)
-    .filter(f => f.startsWith('unified-calls-scored-') && f.endsWith('.json'))
-    .map(f => ({
+  const files = fs
+    .readdirSync(exportDir)
+    .filter((f) => f.startsWith('unified-calls-scored-') && f.endsWith('.json'))
+    .map((f) => ({
       name: f,
       path: path.join(exportDir, f),
       mtime: fs.statSync(path.join(exportDir, f)).mtime.getTime(),
@@ -60,7 +61,7 @@ function loadResults(filePath: string): ScoredToken[] {
   try {
     const content = fs.readFileSync(filePath, 'utf-8');
     const results = JSON.parse(content);
-    
+
     if (!Array.isArray(results)) {
       logger.error('Results file is not an array');
       return [];
@@ -130,15 +131,15 @@ function displayTable(results: ScoredToken[], limit: number = 50): void {
   // Header
   console.log(
     'Rank'.padEnd(6) +
-    'Score'.padEnd(8) +
-    'Symbol'.padEnd(12) +
-    'Chain'.padEnd(10) +
-    'Caller'.padEnd(15) +
-    'Return 7d'.padEnd(12) +
-    'Return 30d'.padEnd(12) +
-    'Price'.padEnd(12) +
-    'Market Cap'.padEnd(15) +
-    'Call Time'.padEnd(20)
+      'Score'.padEnd(8) +
+      'Symbol'.padEnd(12) +
+      'Chain'.padEnd(10) +
+      'Caller'.padEnd(15) +
+      'Return 7d'.padEnd(12) +
+      'Return 30d'.padEnd(12) +
+      'Price'.padEnd(12) +
+      'Market Cap'.padEnd(15) +
+      'Call Time'.padEnd(20)
   );
   console.log('-'.repeat(150));
 
@@ -152,12 +153,14 @@ function displayTable(results: ScoredToken[], limit: number = 50): void {
     const return7d = formatPercent(result.maxReturn7d).padEnd(12);
     const return30d = formatPercent(result.maxReturn30d).padEnd(12);
     const price = `$${formatNumber(result.priceAtCall, 6)}`.padEnd(12);
-    const marketCap = result.marketCapAtCall 
+    const marketCap = result.marketCapAtCall
       ? `$${(result.marketCapAtCall / 1e6).toFixed(2)}M`.padEnd(15)
       : 'N/A'.padEnd(15);
     const callTime = formatTimestamp(result.callTimestamp).padEnd(20);
 
-    console.log(rank + score + symbol + chain + caller + return7d + return30d + price + marketCap + callTime);
+    console.log(
+      rank + score + symbol + chain + caller + return7d + return30d + price + marketCap + callTime
+    );
   });
 
   console.log('-'.repeat(150));
@@ -168,16 +171,16 @@ function displayTable(results: ScoredToken[], limit: number = 50): void {
  * Display statistics
  */
 function displayStats(results: ScoredToken[]): void {
-  const validResults = results.filter(r => r.score !== null && r.score !== undefined);
-  
+  const validResults = results.filter((r) => r.score !== null && r.score !== undefined);
+
   if (validResults.length === 0) {
     console.log('No valid results to analyze');
     return;
   }
 
-  const scores = validResults.map(r => r.score || 0);
-  const returns7d = validResults.map(r => r.maxReturn7d || 0).filter(r => !isNaN(r));
-  const returns30d = validResults.map(r => r.maxReturn30d || 0).filter(r => !isNaN(r));
+  const scores = validResults.map((r) => r.score || 0);
+  const returns7d = validResults.map((r) => r.maxReturn7d || 0).filter((r) => !isNaN(r));
+  const returns30d = validResults.map((r) => r.maxReturn30d || 0).filter((r) => !isNaN(r));
 
   console.log('\n' + '='.repeat(150));
   console.log('STATISTICS');
@@ -192,7 +195,9 @@ function displayStats(results: ScoredToken[]): void {
   console.log(`  Min:    ${Math.min(...scores).toFixed(2)}`);
   console.log(`  Max:    ${Math.max(...scores).toFixed(2)}`);
   console.log(`  Mean:   ${(scores.reduce((a, b) => a + b, 0) / scores.length).toFixed(2)}`);
-  console.log(`  Median: ${scores.sort((a, b) => a - b)[Math.floor(scores.length / 2)].toFixed(2)}`);
+  console.log(
+    `  Median: ${scores.sort((a, b) => a - b)[Math.floor(scores.length / 2)].toFixed(2)}`
+  );
   console.log();
 
   // Return statistics
@@ -200,7 +205,9 @@ function displayStats(results: ScoredToken[]): void {
     console.log('7-Day Returns:');
     console.log(`  Min:    ${formatPercent(Math.min(...returns7d))}`);
     console.log(`  Max:    ${formatPercent(Math.max(...returns7d))}`);
-    console.log(`  Mean:   ${formatPercent(returns7d.reduce((a, b) => a + b, 0) / returns7d.length)}`);
+    console.log(
+      `  Mean:   ${formatPercent(returns7d.reduce((a, b) => a + b, 0) / returns7d.length)}`
+    );
     console.log();
   }
 
@@ -208,16 +215,20 @@ function displayStats(results: ScoredToken[]): void {
     console.log('30-Day Returns:');
     console.log(`  Min:    ${formatPercent(Math.min(...returns30d))}`);
     console.log(`  Max:    ${formatPercent(Math.max(...returns30d))}`);
-    console.log(`  Mean:   ${formatPercent(returns30d.reduce((a, b) => a + b, 0) / returns30d.length)}`);
+    console.log(
+      `  Mean:   ${formatPercent(returns30d.reduce((a, b) => a + b, 0) / returns30d.length)}`
+    );
     console.log();
   }
 
   // Top performers
   const top10 = [...validResults].sort((a, b) => (b.score || 0) - (a.score || 0)).slice(0, 10);
-  const avgReturn30d = top10
-    .map(r => r.maxReturn30d || 0)
-    .filter(r => !isNaN(r))
-    .reduce((a, b) => a + b, 0) / Math.max(1, top10.filter(r => !isNaN(r.maxReturn30d || 0)).length);
+  const avgReturn30d =
+    top10
+      .map((r) => r.maxReturn30d || 0)
+      .filter((r) => !isNaN(r))
+      .reduce((a, b) => a + b, 0) /
+    Math.max(1, top10.filter((r) => !isNaN(r.maxReturn30d || 0)).length);
 
   console.log('Top 10 Tokens Average 30-Day Return:', formatPercent(avgReturn30d));
   console.log();
@@ -240,27 +251,27 @@ function filterResults(
   let filtered = [...results];
 
   if (options.minScore !== undefined) {
-    filtered = filtered.filter(r => (r.score || 0) >= options.minScore!);
+    filtered = filtered.filter((r) => (r.score || 0) >= options.minScore!);
   }
 
   if (options.maxScore !== undefined) {
-    filtered = filtered.filter(r => (r.score || 0) <= options.maxScore!);
+    filtered = filtered.filter((r) => (r.score || 0) <= options.maxScore!);
   }
 
   if (options.minReturn7d !== undefined) {
-    filtered = filtered.filter(r => (r.maxReturn7d || 0) >= options.minReturn7d!);
+    filtered = filtered.filter((r) => (r.maxReturn7d || 0) >= options.minReturn7d!);
   }
 
   if (options.minReturn30d !== undefined) {
-    filtered = filtered.filter(r => (r.maxReturn30d || 0) >= options.minReturn30d!);
+    filtered = filtered.filter((r) => (r.maxReturn30d || 0) >= options.minReturn30d!);
   }
 
   if (options.chain) {
-    filtered = filtered.filter(r => r.chain?.toLowerCase() === options.chain!.toLowerCase());
+    filtered = filtered.filter((r) => r.chain?.toLowerCase() === options.chain!.toLowerCase());
   }
 
   if (options.caller) {
-    filtered = filtered.filter(r => 
+    filtered = filtered.filter((r) =>
       r.callerName?.toLowerCase().includes(options.caller!.toLowerCase())
     );
   }
@@ -273,23 +284,23 @@ function filterResults(
  */
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
-  
+
   // Parse arguments
-  const limit = args.find(a => a.startsWith('--limit='))?.split('=')[1] 
-    ? parseInt(args.find(a => a.startsWith('--limit='))!.split('=')[1]) 
+  const limit = args.find((a) => a.startsWith('--limit='))?.split('=')[1]
+    ? parseInt(args.find((a) => a.startsWith('--limit='))!.split('=')[1])
     : 50;
-  
-  const minScore = args.find(a => a.startsWith('--min-score='))?.split('=')[1]
-    ? parseFloat(args.find(a => a.startsWith('--min-score='))!.split('=')[1])
+
+  const minScore = args.find((a) => a.startsWith('--min-score='))?.split('=')[1]
+    ? parseFloat(args.find((a) => a.startsWith('--min-score='))!.split('=')[1])
     : undefined;
 
-  const minReturn30d = args.find(a => a.startsWith('--min-return='))?.split('=')[1]
-    ? parseFloat(args.find(a => a.startsWith('--min-return='))!.split('=')[1])
+  const minReturn30d = args.find((a) => a.startsWith('--min-return='))?.split('=')[1]
+    ? parseFloat(args.find((a) => a.startsWith('--min-return='))!.split('=')[1])
     : undefined;
 
-  const chain = args.find(a => a.startsWith('--chain='))?.split('=')[1];
-  const caller = args.find(a => a.startsWith('--caller='))?.split('=')[1];
-  const filePath = args.find(a => !a.startsWith('--'));
+  const chain = args.find((a) => a.startsWith('--chain='))?.split('=')[1];
+  const caller = args.find((a) => a.startsWith('--caller='))?.split('=')[1];
+  const filePath = args.find((a) => !a.startsWith('--'));
 
   // Load results
   const resultsFile = filePath || getLatestResultsFile();
@@ -342,11 +353,10 @@ async function main(): Promise<void> {
 
 // Run if called directly
 if (require.main === module) {
-  main().catch(error => {
+  main().catch((error) => {
     logger.error('Error viewing results', error as Error);
     process.exit(1);
   });
 }
 
 export { loadResults, displayTable, displayStats, filterResults };
-

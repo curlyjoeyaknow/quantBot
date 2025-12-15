@@ -1,8 +1,8 @@
-import { influxDBClient, OHLCVData } from '@quantbot/data';
+import { influxDBClient, OHLCVData } from '@quantbot/storage';
 import { logger } from '@quantbot/utils';
 
 import { birdeyeClient } from '@quantbot/api-clients';
-import { ohlcvCache } from '@quantbot/data';
+import { ohlcvCache } from '@quantbot/storage';
 
 export interface IngestionResult {
   tokenAddress: string;
@@ -34,14 +34,18 @@ export class OHLCVIngestionService {
    * Fetch and store OHLCV for a single token
    */
   async fetchAndStoreOHLCV(
-    tokenAddress: string, 
-    startTime: Date, 
+    tokenAddress: string,
+    startTime: Date,
     endTime: Date,
     tokenSymbol: string = 'UNKNOWN',
     chain: string = 'solana'
   ): Promise<IngestionResult> {
     try {
-      logger.debug('Fetching OHLCV', { tokenAddress, startTime: startTime.toISOString(), endTime: endTime.toISOString() });
+      logger.debug('Fetching OHLCV', {
+        tokenAddress,
+        startTime: startTime.toISOString(),
+        endTime: endTime.toISOString(),
+      });
 
       // Check if data already exists in InfluxDB
       const hasData = await this.influxClient.hasData(tokenAddress, startTime, endTime);
@@ -51,7 +55,7 @@ export class OHLCVIngestionService {
           tokenAddress,
           recordsAdded: 0,
           recordsSkipped: 0,
-          success: true
+          success: true,
         };
       }
 
@@ -64,13 +68,13 @@ export class OHLCVIngestionService {
           tokenAddress,
           recordsAdded: cachedData.length,
           recordsSkipped: 0,
-          success: true
+          success: true,
         };
       }
 
       // Fetch from Birdeye API
       const birdeyeData = await this.birdeyeClient.fetchOHLCVData(tokenAddress, startTime, endTime);
-      
+
       if (!birdeyeData || !birdeyeData.items || birdeyeData.items.length === 0) {
         logger.warn('No data returned from Birdeye API', { tokenAddress });
         return {
@@ -78,19 +82,19 @@ export class OHLCVIngestionService {
           recordsAdded: 0,
           recordsSkipped: 0,
           success: false,
-          error: 'No data returned from API'
+          error: 'No data returned from API',
         };
       }
 
       // Convert Birdeye format to our OHLCV format
-      const ohlcvData: OHLCVData[] = birdeyeData.items.map(item => ({
+      const ohlcvData: OHLCVData[] = birdeyeData.items.map((item) => ({
         timestamp: item.unixTime * 1000, // Convert to milliseconds
         dateTime: new Date(item.unixTime * 1000),
         open: item.open,
         high: item.high,
         low: item.low,
         close: item.close,
-        volume: item.volume || 0
+        volume: item.volume || 0,
       }));
 
       // Write to InfluxDB
@@ -99,15 +103,17 @@ export class OHLCVIngestionService {
       // Cache the data with longer TTL for credit conservation
       this.cache.set(tokenAddress, startTime, endTime, ohlcvData, '1m', 120); // 2 hours TTL
 
-      logger.info('Successfully stored OHLCV records', { tokenAddress, recordCount: ohlcvData.length });
+      logger.info('Successfully stored OHLCV records', {
+        tokenAddress,
+        recordCount: ohlcvData.length,
+      });
 
       return {
         tokenAddress,
         recordsAdded: ohlcvData.length,
         recordsSkipped: 0,
-        success: true
+        success: true,
       };
-
     } catch (error: any) {
       logger.error('Failed to fetch and store OHLCV', error as Error, { tokenAddress });
       return {
@@ -115,7 +121,7 @@ export class OHLCVIngestionService {
         recordsAdded: 0,
         recordsSkipped: 0,
         success: false,
-        error: error.message
+        error: error.message,
       };
     }
   }
@@ -124,28 +130,28 @@ export class OHLCVIngestionService {
    * Batch fetch for multiple tokens (used in simulations)
    */
   async batchFetchOHLCV(
-    tokens: Array<{ address: string; symbol: string; chain: string }>, 
-    startTime: Date, 
+    tokens: Array<{ address: string; symbol: string; chain: string }>,
+    startTime: Date,
     endTime: Date
   ): Promise<Map<string, OHLCVData[]>> {
     logger.info('Batch fetching OHLCV', { tokenCount: tokens.length });
-    
+
     const results = new Map<string, OHLCVData[]>();
     const batchSize = 3; // Reduced to 3 tokens at a time to conserve credits
-    
+
     for (let i = 0; i < tokens.length; i += batchSize) {
       const batch = tokens.slice(i, i + batchSize);
-      
+
       const promises = batch.map(async (token) => {
         try {
           const result = await this.fetchAndStoreOHLCV(
-            token.address, 
-            startTime, 
-            endTime, 
-            token.symbol, 
+            token.address,
+            startTime,
+            endTime,
+            token.symbol,
             token.chain
           );
-          
+
           if (result.success && result.recordsAdded > 0) {
             // Get the data from InfluxDB to return
             const data = await this.influxClient.getOHLCVData(token.address, startTime, endTime);
@@ -159,14 +165,17 @@ export class OHLCVIngestionService {
       });
 
       await Promise.all(promises);
-      
+
       // Longer delay between batches to conserve credits
       if (i + batchSize < tokens.length) {
-        await new Promise(resolve => setTimeout(resolve, 2000)); // 2 second delay
+        await new Promise((resolve) => setTimeout(resolve, 2000)); // 2 second delay
       }
     }
 
-    logger.info('Batch fetch complete', { processedCount: results.size, totalCount: tokens.length });
+    logger.info('Batch fetch complete', {
+      processedCount: results.size,
+      totalCount: tokens.length,
+    });
     return results;
   }
 
@@ -179,7 +188,7 @@ export class OHLCVIngestionService {
 
       // Get existing data range
       const existingData = await this.influxClient.getOHLCVData(
-        tokenAddress, 
+        tokenAddress,
         new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), // Last 30 days
         new Date()
       );
@@ -188,20 +197,20 @@ export class OHLCVIngestionService {
         // No existing data, fetch last 7 days
         const endTime = new Date();
         const startTime = new Date(endTime.getTime() - 7 * 24 * 60 * 60 * 1000);
-        
+
         return await this.fetchAndStoreOHLCV(tokenAddress, startTime, endTime);
       }
 
       // Find gaps in existing data
       const gaps = this.findDataGaps(existingData);
-      
+
       if (gaps.length === 0) {
         logger.debug('No gaps found', { tokenAddress });
         return {
           tokenAddress,
           recordsAdded: 0,
           recordsSkipped: 0,
-          success: true
+          success: true,
         };
       }
 
@@ -218,9 +227,8 @@ export class OHLCVIngestionService {
         tokenAddress,
         recordsAdded: totalAdded,
         recordsSkipped: 0,
-        success: true
+        success: true,
       };
-
     } catch (error: any) {
       logger.error('Failed to backfill data', error as Error, { tokenAddress });
       return {
@@ -228,7 +236,7 @@ export class OHLCVIngestionService {
         recordsAdded: 0,
         recordsSkipped: 0,
         success: false,
-        error: error.message
+        error: error.message,
       };
     }
   }
@@ -251,7 +259,7 @@ export class OHLCVIngestionService {
       if (gap > expectedInterval * 2) {
         gaps.push({
           start: new Date(currentTime + expectedInterval),
-          end: new Date(nextTime - expectedInterval)
+          end: new Date(nextTime - expectedInterval),
         });
       }
     }
@@ -270,7 +278,7 @@ export class OHLCVIngestionService {
     return {
       apiUsage: this.birdeyeClient.getAPIKeyUsage(),
       cacheStats: this.cache.getStats(),
-      influxRecordCount: 0 // Would need to implement this in InfluxDB client
+      influxRecordCount: 0, // Would need to implement this in InfluxDB client
     };
   }
 

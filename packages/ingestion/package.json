@@ -10,12 +10,13 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "@quantbot/api-clients": "workspace:*",
     "@quantbot/core": "workspace:*",
     "@quantbot/utils": "workspace:*",
     "@quantbot/storage": "workspace:*",
     "@quantbot/ohlcv": "workspace:*",
-    "@quantbot/token-analysis": "workspace:*",
-    "@quantbot/events": "workspace:*"
+    "@quantbot/analytics": "workspace:*",
+    "@solana/web3.js": "^1.98.4"
   },
   "devDependencies": {
     "@types/node": "^24.10.1",

@@ -7,11 +7,10 @@ export function derivePumpfunBondingCurve(mint: string): string | null {
     const mintKey = new PublicKey(mint);
     const [bondingCurve] = PublicKey.findProgramAddressSync(
       [Buffer.from('bonding-curve'), mintKey.toBuffer()],
-      PUMP_FUN_PROGRAM_ID,
+      PUMP_FUN_PROGRAM_ID
     );
     return bondingCurve.toBase58();
   } catch {
     return null;
   }
 }
-

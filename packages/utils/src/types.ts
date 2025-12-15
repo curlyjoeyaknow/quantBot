@@ -2,7 +2,7 @@
  * Shared Type Definitions
  * ========================
  * Common types used across the QuantBot application
- * 
+ *
  * NOTE: These types are now defined in @quantbot/core.
  * This file re-exports them for backward compatibility.
  * New code should import directly from @quantbot/core.

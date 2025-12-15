@@ -1,15 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { generateParameterCombinations, generateFocusedGrid } from '../../src/simulation/optimization/grid';
-import type { ParameterGrid } from '../../src/simulation/optimization/types';
-import type { StrategyConfig } from '../../src/simulation/strategies/types';
+import { generateParameterCombinations, generateFocusedGrid } from '../src/optimization/grid';
+import type { ParameterGrid } from '../src/optimization/types';
+import type { StrategyConfig } from '../src/strategies/types';
 
 describe('optimization-grid', () => {
   describe('generateParameterCombinations', () => {
     it('should generate combinations from grid', () => {
       const grid: ParameterGrid = {
-        profitTargets: [
-          [{ target: 2, percent: 1.0 }],
-        ],
+        profitTargets: [[{ target: 2, percent: 1.0 }]],
         trailingStopPercent: [0.2],
         trailingStopActivation: [2.0],
         minExitPrice: [0.01],
@@ -45,9 +43,7 @@ describe('optimization-grid', () => {
 
     it('should merge with base strategy', () => {
       const grid: ParameterGrid = {
-        profitTargets: [
-          [{ target: 2, percent: 1.0 }],
-        ],
+        profitTargets: [[{ target: 2, percent: 1.0 }]],
       };
 
       const baseStrategy: StrategyConfig = {
@@ -121,5 +117,3 @@ describe('optimization-grid', () => {
     });
   });
 });
-
-

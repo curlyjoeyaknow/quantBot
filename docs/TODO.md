@@ -1,757 +1,311 @@
 # QuantBot Development Roadmap & TODO
 
-**Last Updated**: December 5, 2025  
+**Last Updated**: December 11, 2025  
 **Status**: Active Development  
-**Total Tasks**: 200+  
-**Completed**: ~15%  
-**In Progress**: ~10%  
-**Pending**: ~75%
+**Focus**: Backend API & Core Services
 
 ---
 
-## 📋 How to Use This TODO
+## ✅ Recently Completed (December 2025)
 
-1. **Mark tasks as `in_progress`** when starting work
-2. **Mark tasks as `completed`** when finished
-3. **Update status** regularly to track progress
-4. **Add notes** to tasks for blockers or issues
-5. **Follow dependencies** - complete prerequisites first
+### Package Consolidation - COMPLETE ✅
 
----
+- ✅ **Removed `@quantbot/data`** - Consolidated into `@quantbot/storage` and `@quantbot/api-clients`
+- ✅ **Removed `@quantbot/events`** - Moved EventBus to `@quantbot/utils/events`
+- ✅ **Removed `@quantbot/services`** - Services now in specialized packages
+- ✅ **Created `@quantbot/api`** - Fastify-based REST API backend
+- ✅ **Refactored OHLCV package** - Now uses `StorageEngine` pattern instead of direct DB calls
+- ✅ **Updated all imports** - 40+ files updated to use new package structure
+- ✅ **Updated dependencies** - All package.json files cleaned up
 
-## ✅ Recently Completed
+### Architecture Improvements - COMPLETE ✅
 
-### Bot Functionality Improvements (December 2025)
-- ✅ Enhanced error handling in command handlers
-- ✅ Added input validation and sanitization
-- ✅ Implemented session expiration and cleanup
-- ✅ Added rate limiting for commands
-- ✅ Improved async operation handling with timeouts
-- ✅ Enhanced user feedback with progress indicators
-- ✅ Created command helper utilities
-- ✅ Fixed import paths to use package imports
-
-### Package Migration (December 2025)
-- ✅ Migrated to modular monorepo structure
-- ✅ Created package architecture (@quantbot/*)
-- ✅ Updated all imports to use package paths
-- ✅ Fixed cross-package dependencies
+- ✅ **StorageEngine Pattern** - Unified interface for all storage operations
+- ✅ **OHLCV Engine Refactoring** - All OHLCV operations use StorageEngine
+- ✅ **API Routes** - Complete REST API with OHLCV, tokens, calls, simulations, ingestion, health endpoints
+- ✅ **Authentication & Validation** - Middleware for API security
+- ✅ **Test Updates** - All tests updated to mock StorageEngine
 
 ---
 
-## 🚀 High Priority - Next Steps
-
-### 0. Live Trading System 🔥 (NEW - Critical Feature)
-
-#### 0.1 Core Trading Infrastructure
-- [ ] **trading-infra-1** - Design live trading architecture
-  - Define transaction flow, safety mechanisms, position tracking
-  - Document decision: Helius RPC Amsterdam/mainnet optimized endpoints
-  - **Priority**: 🔴 High
-  - **Effort**: 2 days
-  - **Dependencies**: None
-
-- [ ] **trading-infra-2** - Create Helius RPC client with optimized endpoints
-  - Implement connection to Amsterdam/mainnet optimized endpoints
-  - Support for relayer pattern for transaction sending
-  - Connection pooling and failover
-  - **Priority**: 🔴 High
-  - **Effort**: 2 days
-  - **Dependencies**: trading-infra-1
-
-- [ ] **trading-infra-3** - Implement transaction builder service
-  - Build Solana transactions (buy/sell/swap)
-  - Support for Pump.fun, Raydium, Orca, Meteora
-  - Compute budget and priority fee management
-  - **Priority**: 🔴 High
-  - **Effort**: 3 days
-  - **Dependencies**: trading-infra-2
-
-- [ ] **trading-infra-4** - Create transaction sender with relayer support
-  - Send transactions via Helius optimized endpoints
-  - Implement relayer pattern for high-speed execution
-  - Retry logic with exponential backoff
-  - Transaction confirmation tracking
-  - **Priority**: 🔴 High
-  - **Effort**: 3 days
-  - **Dependencies**: trading-infra-3
-
-#### 0.2 Strategy-Based Trade Execution
-- [ ] **trading-strategy-1** - Integrate strategy engine with live trading
-  - Connect simulation strategies to live execution
-  - Strategy validation before execution
-  - **Priority**: 🔴 High
-  - **Effort**: 2 days
-  - **Dependencies**: trading-infra-4
-
-- [ ] **trading-strategy-2** - Implement strategy-to-trade mapping
-  - Convert strategy targets to actual trades
-  - Position sizing based on strategy percentages
-  - **Priority**: 🔴 High
-  - **Effort**: 2 days
-  - **Dependencies**: trading-strategy-1
-
-- [ ] **trading-strategy-3** - Add stop-loss execution
-  - Real-time stop-loss monitoring
-  - Automatic stop-loss execution
-  - Trailing stop-loss implementation
-  - **Priority**: 🔴 High
-  - **Effort**: 3 days
-  - **Dependencies**: trading-strategy-2
-
-- [ ] **trading-strategy-4** - Implement take-profit execution
-  - Multi-target take-profit execution
-  - Partial position closing at targets
-  - **Priority**: 🔴 High
-  - **Effort**: 2 days
-  - **Dependencies**: trading-strategy-2
-
-#### 0.3 Alert System Integration
-- [ ] **trading-alert-1** - Connect alert system to trading execution
-  - Trigger trades from alert conditions
-  - Support for CA drop alerts, Ichimoku signals, custom alerts
-  - **Priority**: 🔴 High
-  - **Effort**: 2 days
-  - **Dependencies**: trading-infra-4
-
-- [ ] **trading-alert-2** - Implement alert-to-trade rules
-  - User-configurable rules for alert-triggered trades
-  - Filtering and validation before execution
-  - **Priority**: 🔴 High
-  - **Effort**: 2 days
-  - **Dependencies**: trading-alert-1
-
-- [ ] **trading-alert-3** - Add alert confirmation system
-  - Optional user confirmation before trade execution
-  - Timeout for auto-execution
-  - **Priority**: 🟡 Medium
-  - **Effort**: 1 day
-  - **Dependencies**: trading-alert-2
-
-#### 0.4 Safety & Risk Management
-- [ ] **trading-safety-1** - Implement dry-run mode
-  - Simulate trades without execution
-  - Log all would-be trades for review
-  - **Priority**: 🔴 High
-  - **Effort**: 1 day
-  - **Dependencies**: trading-infra-4
-
-- [ ] **trading-safety-2** - Add position limits and risk controls
-  - Maximum position size per trade
-  - Maximum total exposure
-  - Daily loss limits
-  - **Priority**: 🔴 High
-  - **Effort**: 2 days
-  - **Dependencies**: trading-infra-4
-
-- [ ] **trading-safety-3** - Implement slippage protection
-  - Maximum acceptable slippage
-  - Price validation before execution
-  - **Priority**: 🔴 High
-  - **Effort**: 2 days
-  - **Dependencies**: trading-infra-4
-
-- [ ] **trading-safety-4** - Add trade confirmation and logging
-  - Log all trades with full details
-  - User notifications for executed trades
-  - Trade receipt generation
-  - **Priority**: 🔴 High
-  - **Effort**: 2 days
-  - **Dependencies**: trading-infra-4
-
-#### 0.5 Position Management
-- [ ] **trading-position-1** - Create position tracking system
-  - Track open positions in database
-  - Real-time position updates
-  - **Priority**: 🔴 High
-  - **Effort**: 2 days
-  - **Dependencies**: trading-infra-4
-
-- [ ] **trading-position-2** - Implement position monitoring
-  - Real-time PNL tracking
-  - Position status updates
-  - **Priority**: 🔴 High
-  - **Effort**: 2 days
-  - **Dependencies**: trading-position-1
-
-- [ ] **trading-position-3** - Add position management commands
-  - View open positions
-  - Manual position closing
-  - Position history
-  - **Priority**: 🟡 Medium
-  - **Effort**: 2 days
-  - **Dependencies**: trading-position-1
-
-#### 0.6 User Interface & Commands
-- [ ] **trading-ui-1** - Add live trading bot commands
-  - `/livetrade enable` - Enable live trading
-  - `/livetrade disable` - Disable live trading
-  - `/livetrade status` - View trading status
-  - `/livetrade positions` - View open positions
-  - `/livetrade history` - View trade history
-  - **Priority**: 🔴 High
-  - **Effort**: 2 days
-  - **Dependencies**: trading-infra-4
-
-- [ ] **trading-ui-2** - Create trading configuration interface
-  - Set trading parameters (max position, slippage, etc.)
-  - Configure alert-to-trade rules
-  - Enable/disable dry-run mode
-  - **Priority**: 🔴 High
-  - **Effort**: 2 days
-  - **Dependencies**: trading-ui-1
-
-- [ ] **trading-ui-3** - Add trade notifications
-  - Real-time trade execution notifications
-  - Position updates
-  - Alert-triggered trade notifications
-  - **Priority**: 🟡 Medium
-  - **Effort**: 1 day
-  - **Dependencies**: trading-ui-1
-
-#### 0.7 Wallet & Key Management
-- [ ] **trading-wallet-1** - Design wallet integration architecture
-  - Secure key storage (encrypted)
-  - Multi-wallet support
-  - Hot/cold wallet separation
-  - **Priority**: 🔴 High
-  - **Effort**: 2 days
-  - **Dependencies**: None
-
-- [ ] **trading-wallet-2** - Implement secure key storage
-  - Encrypted key storage in database
-  - Key derivation and management
-  - **Priority**: 🔴 High
-  - **Effort**: 3 days
-  - **Dependencies**: trading-wallet-1
-
-- [ ] **trading-wallet-3** - Add wallet management commands
-  - `/wallet add` - Add trading wallet
-  - `/wallet list` - List wallets
-  - `/wallet remove` - Remove wallet
-  - `/wallet balance` - Check wallet balance
-  - **Priority**: 🔴 High
-  - **Effort**: 2 days
-  - **Dependencies**: trading-wallet-2
-
-#### 0.8 Integration & Testing
-- [ ] **trading-integration-1** - Integrate with existing alert systems
-  - Connect to CA monitoring alerts
-  - Connect to Ichimoku signal alerts
-  - Connect to live trade entry alerts
-  - **Priority**: 🔴 High
-  - **Effort**: 2 days
-  - **Dependencies**: trading-alert-2
-
-- [ ] **trading-integration-2** - Add trade history to database
-  - Store all trades in PostgreSQL
-  - Link trades to strategies and alerts
-  - **Priority**: 🔴 High
-  - **Effort**: 2 days
-  - **Dependencies**: trading-infra-4
-
-- [ ] **trading-integration-3** - Create trade analytics
-  - Performance metrics for live trades
-  - Compare live vs simulated performance
-  - **Priority**: 🟡 Medium
-  - **Effort**: 3 days
-  - **Dependencies**: trading-integration-2
-
-- [ ] **trading-test-1** - Add comprehensive trading tests
-  - Unit tests for transaction building
-  - Integration tests for trade execution
-  - Test safety mechanisms
-  - **Priority**: 🔴 High
-  - **Effort**: 3 days
-  - **Dependencies**: trading-infra-4
-
-- [ ] **trading-test-2** - Implement testnet testing
-  - Test all trading functionality on devnet/testnet
-  - Validate transaction building and sending
-  - **Priority**: 🔴 High
-  - **Effort**: 2 days
-  - **Dependencies**: trading-infra-4
-
-### 1. Bot Enhancements (In Progress)
-
-#### 1.1 Command Handler Improvements
-- [ ] **bot-cmd-1** - Add command aliases support
-  - Allow multiple names for same command
-  - **Effort**: 0.5 days
-
-- [ ] **bot-cmd-2** - Implement command help text generation
-  - Auto-generate help from command metadata
-  - **Effort**: 1 day
-
-- [ ] **bot-cmd-3** - Add command usage analytics
-  - Track command usage, success rates
-  - **Effort**: 1 day
-
-- [ ] **bot-cmd-4** - Improve command error messages
-  - More specific error messages per command
-  - **Effort**: 1 day
-
-#### 1.2 Session Management Enhancements
-- [ ] **bot-session-1** - Add session persistence to database
-  - Store sessions in PostgreSQL for recovery
-  - **Effort**: 2 days
-
-- [ ] **bot-session-2** - Implement session recovery after restart
-  - Restore active sessions on bot restart
-  - **Effort**: 1 day
-
-- [ ] **bot-session-3** - Add session warning notifications
-  - Warn users before session expiration
-  - **Effort**: 1 day
-
-- [ ] **bot-session-4** - Per-user session timeout configuration
-  - Allow users to configure timeout
-  - **Effort**: 1 day
-
-#### 1.3 User Experience Improvements
-- [ ] **bot-ux-1** - Add command autocomplete
-  - Telegram bot command suggestions
-  - **Effort**: 1 day
-
-- [ ] **bot-ux-2** - Implement command history
-  - Show recent commands, allow re-execution
-  - **Effort**: 1 day
-
-- [ ] **bot-ux-3** - Add inline query support
-  - Quick token lookup via inline queries
-  - **Effort**: 2 days
-
-- [ ] **bot-ux-4** - Improve message formatting
-  - Better markdown, tables, charts
-  - **Effort**: 1 day
-
-### 2. Database & Storage Improvements
-
-#### 2.1 Database Optimization
-- [ ] **db-opt-1** - Add database indexes for performance
-  - Index frequently queried columns
-  - **Effort**: 1 day
-
-- [ ] **db-opt-2** - Implement query result caching
-  - Cache expensive queries
-  - **Effort**: 1 day
-
-- [ ] **db-opt-3** - Add database connection pooling
-  - Optimize connection management
-  - **Effort**: 1 day
-
-- [ ] **db-opt-4** - Implement read replicas for ClickHouse
-  - Scale read operations
-  - **Effort**: 2 days
-
-#### 2.2 Data Migration & Cleanup
-- [ ] **db-migrate-1** - Complete SQLite to PostgreSQL migration
-  - Migrate remaining SQLite databases
-  - **Effort**: 2 days
-
-- [ ] **db-migrate-2** - Archive old data to cold storage
-  - Move old data to cheaper storage
-  - **Effort**: 1 day
-
-- [ ] **db-migrate-3** - Implement data retention policies
-  - Automatic cleanup of old data
-  - **Effort**: 1 day
-
-### 3. Monitoring & Alerting Enhancements
-
-#### 3.1 Advanced Monitoring
-- [ ] **monitor-1** - Add monitoring dashboard
-  - Real-time monitoring metrics
-  - **Effort**: 3 days
-
-- [ ] **monitor-2** - Implement alert aggregation
-  - Reduce alert noise, smart grouping
-  - **Effort**: 2 days
-
-- [ ] **monitor-3** - Add monitoring for multiple channels
-  - Support more CA sources
-  - **Effort**: 2 days
-
-- [ ] **monitor-4** - Implement alert filtering
-  - User-configurable alert rules
-  - **Effort**: 2 days
-
-#### 3.2 Performance Monitoring
-- [ ] **perf-monitor-1** - Add performance metrics collection
-  - Track response times, query times
-  - **Effort**: 2 days
-
-- [ ] **perf-monitor-2** - Implement performance alerts
-  - Alert on performance degradation
-  - **Effort**: 1 day
-
-- [ ] **perf-monitor-3** - Add resource usage monitoring
-  - CPU, memory, disk usage
-  - **Effort**: 1 day
-
-### 4. Simulation Engine Improvements
-
-#### 4.1 Strategy Enhancements
-- [ ] **sim-strategy-1** - Add more strategy templates
-  - Pre-built strategy configurations
-  - **Effort**: 2 days
-
-- [ ] **sim-strategy-2** - Implement strategy backtesting
-  - Test strategies on historical data
-  - **Effort**: 3 days
-
-- [ ] **sim-strategy-3** - Add strategy optimization UI
-  - Web interface for strategy tuning
-  - **Effort**: 3 days
-
-- [ ] **sim-strategy-4** - Implement strategy sharing
-  - Share strategies between users
-  - **Effort**: 2 days
-
-#### 4.2 Simulation Features
-- [ ] **sim-feat-1** - Add simulation comparison
-  - Compare multiple simulation results
-  - **Effort**: 2 days
-
-- [ ] **sim-feat-2** - Implement simulation scheduling
-  - Schedule recurring simulations
-  - **Effort**: 2 days
-
-- [ ] **sim-feat-3** - Add simulation export
-  - Export results to various formats
-  - **Effort**: 1 day
-
-- [ ] **sim-feat-4** - Implement simulation templates
-  - Save and reuse simulation configurations
-  - **Effort**: 1 day
-
-### 5. Web Dashboard Enhancements
-
-#### 5.1 Dashboard Features
-- [ ] **web-dash-1** - Add real-time updates
-  - WebSocket integration for live data
-  - **Effort**: 3 days
-
-- [ ] **web-dash-2** - Implement advanced charts
-  - Interactive charts with zoom, pan
-  - **Effort**: 2 days
-
-- [ ] **web-dash-3** - Add user authentication
-  - Login, registration, user management
-  - **Effort**: 3 days
-
-- [ ] **web-dash-4** - Implement dashboard customization
-  - User-configurable dashboards
-  - **Effort**: 3 days
-
-#### 5.2 Analytics Features
-- [ ] **web-analytics-1** - Add advanced analytics
-  - More detailed performance metrics
-  - **Effort**: 2 days
-
-- [ ] **web-analytics-2** - Implement data export
-  - Export analytics to CSV, JSON, PDF
-  - **Effort**: 2 days
-
-- [ ] **web-analytics-3** - Add comparison tools
-  - Compare strategies, time periods
-  - **Effort**: 2 days
+## 📊 Current Architecture Status
+
+### Implemented Packages
+
+| Package | Status | Purpose |
+|---------|--------|---------|
+| `@quantbot/core` | ✅ Complete | Core types and interfaces |
+| `@quantbot/utils` | ✅ Complete | Shared utilities, logger, EventBus |
+| `@quantbot/storage` | ✅ Complete | Unified storage layer (Postgres, ClickHouse, Cache) |
+| `@quantbot/api-clients` | ✅ Complete | External API clients (Birdeye, Helius) |
+| `@quantbot/ohlcv` | ✅ Complete | OHLCV data services (uses StorageEngine) |
+| `@quantbot/simulation` | ✅ Complete | Trading simulation engine |
+| `@quantbot/token-analysis` | ✅ Complete | Token analysis services |
+| `@quantbot/ingestion` | ✅ Complete | Data ingestion (Telegram, OHLCV) |
+| `@quantbot/workflows` | ✅ Complete | Workflow orchestration |
+| `@quantbot/monitoring` | ✅ Complete | Real-time monitoring services |
+| `@quantbot/api` | ✅ Complete | Backend REST API (Fastify) |
+
+### Planned Packages
+
+| Package | Status | Priority |
+|---------|--------|----------|
+| `@quantbot/bot` | 🔄 Planned | Medium - Telegram bot implementation |
+| `@quantbot/web` | 🔄 Planned | Medium - Next.js web dashboard |
+| `@quantbot/trading` | 🔄 Planned | High - Live trading execution |
 
 ---
 
-## 🔴 Critical Security & Infrastructure
+## 🎯 Short-Term Priorities (Next 2-4 Weeks)
 
-### Security Improvements
-- [ ] **security-1** - Implement authentication for web dashboard
-  - JWT or session-based auth
-  - **Priority**: High
-  - **Effort**: 3 days
+### 1. API Enhancements
 
-- [ ] **security-2** - Add API rate limiting
-  - Protect API endpoints from abuse
-  - **Priority**: High
+- [ ] **api-enhance-1** - Add OpenAPI/Swagger documentation
+  - Generate API docs from Fastify routes
+  - Interactive API explorer
+  - **Priority**: Medium
   - **Effort**: 2 days
 
-- [ ] **security-3** - Implement input sanitization
-  - XSS and injection prevention
-  - **Priority**: High
-  - **Effort**: 2 days
-
-- [ ] **security-4** - Add security audit logging
-  - Log security-relevant events
+- [ ] **api-enhance-2** - Improve error handling and responses
+  - Standardized error response format
+  - Better error messages
   - **Priority**: Medium
   - **Effort**: 1 day
 
-### Infrastructure
-- [ ] **infra-1** - Set up CI/CD pipeline
-  - Automated testing and deployment
-  - **Priority**: High
-  - **Effort**: 3 days
-
-- [ ] **infra-2** - Add health check endpoints
-  - Monitor service health
-  - **Priority**: Medium
+- [ ] **api-enhance-3** - Add request/response logging
+  - Log all API requests
+  - Performance metrics
+  - **Priority**: Low
   - **Effort**: 1 day
 
-- [ ] **infra-3** - Implement graceful shutdown
-  - Clean shutdown on SIGTERM/SIGINT
-  - **Priority**: Medium
-  - **Effort**: 1 day
+### 2. StorageEngine Improvements
 
-- [ ] **infra-4** - Add monitoring and alerting
-  - Prometheus, Grafana integration
+- [ ] **storage-1** - Add transaction support
+  - Multi-database transactions
+  - Rollback support
   - **Priority**: Medium
   - **Effort**: 3 days
 
----
+- [ ] **storage-2** - Improve caching strategy
+  - Redis integration for distributed caching
+  - Cache invalidation strategies
+  - **Priority**: Medium
+  - **Effort**: 2 days
 
-## 🟡 Code Quality & Testing
+- [ ] **storage-3** - Add query optimization
+  - Query result caching
+  - Query performance monitoring
+  - **Priority**: Low
+  - **Effort**: 2 days
 
-### Testing
+### 3. OHLCV Engine Enhancements
+
+- [ ] **ohlcv-1** - Add real-time candle updates
+  - WebSocket support for live candles
+  - Incremental updates
+  - **Priority**: Medium
+  - **Effort**: 3 days
+
+- [ ] **ohlcv-2** - Improve ingestion performance
+  - Batch ingestion optimization
+  - Parallel fetching
+  - **Priority**: Medium
+  - **Effort**: 2 days
+
+- [ ] **ohlcv-3** - Add candle aggregation
+  - On-the-fly interval conversion
+  - Efficient aggregation algorithms
+  - **Priority**: Low
+  - **Effort**: 2 days
+
+### 4. Testing & Quality
+
 - [ ] **test-1** - Increase test coverage to 80%+
-  - Add unit tests for all packages
+  - Unit tests for all packages
+  - Integration tests for API
   - **Priority**: High
   - **Effort**: 5 days
 
-- [ ] **test-2** - Add integration tests
-  - Test cross-package interactions
+- [ ] **test-2** - Add E2E tests for API
+  - Test complete API workflows
   - **Priority**: Medium
   - **Effort**: 3 days
 
-- [ ] **test-3** - Add E2E tests for bot
-  - Test complete bot workflows
-  - **Priority**: Medium
-  - **Effort**: 3 days
-
-- [ ] **test-4** - Add load testing
-  - Test system under load
-  - **Priority**: Low
-  - **Effort**: 2 days
-
-### Code Quality
-- [ ] **quality-1** - Remove all `any` types
-  - Improve type safety
-  - **Priority**: Medium
-  - **Effort**: 2 days
-
-- [ ] **quality-2** - Add JSDoc comments
-  - Document all public APIs
-  - **Priority**: Medium
-  - **Effort**: 3 days
-
-- [ ] **quality-3** - Standardize error handling
-  - Consistent error patterns
-  - **Priority**: Medium
-  - **Effort**: 2 days
-
-- [ ] **quality-4** - Refactor duplicate code
-  - Extract common utilities
+- [ ] **test-3** - Performance testing
+  - Load testing for API
+  - Database query performance
   - **Priority**: Low
   - **Effort**: 2 days
 
 ---
 
-## 🟢 Feature Enhancements
+## 🎯 Medium-Term Goals (Next 1-3 Months)
 
-### New Features
-- [ ] **feat-1** - Add support for more chains
-  - Polygon, Avalanche, etc.
-  - **Priority**: Low
-  - **Effort**: 3 days
+### 1. Bot Package Implementation
 
-- [ ] **feat-2** - Implement portfolio tracking
-  - Track multiple positions
-  - **Priority**: Medium
-  - **Effort**: 4 days
-
-- [ ] **feat-3** - Add social features
-  - Share strategies, results
-  - **Priority**: Low
-  - **Effort**: 5 days
-
-- [ ] **feat-4** - Implement paper trading
-  - Simulate live trading
-  - **Priority**: Medium
-  - **Effort**: 5 days
-
-### API Enhancements
-- [ ] **api-1** - Create REST API
-  - Expose bot functionality via API
-  - **Priority**: Medium
-  - **Effort**: 5 days
-
-- [ ] **api-2** - Add GraphQL API
-  - Flexible data querying
-  - **Priority**: Low
-  - **Effort**: 4 days
-
-- [ ] **api-3** - Implement API versioning
-  - Support multiple API versions
-  - **Priority**: Low
-  - **Effort**: 2 days
-
----
-
-## 📊 Performance Optimization
-
-### Performance Improvements
-- [ ] **perf-1** - Optimize database queries
-  - Add indexes, optimize slow queries
+- [ ] **bot-1** - Design bot architecture
+  - Command handler structure
+  - Session management
   - **Priority**: High
   - **Effort**: 3 days
 
-- [ ] **perf-2** - Implement Redis caching
-  - Add Redis for session and cache
+- [ ] **bot-2** - Implement core bot commands
+  - `/backtest` - Run simulations
+  - `/strategy` - Manage strategies
+  - `/calls` - View call history
+  - **Priority**: High
+  - **Effort**: 5 days
+
+- [ ] **bot-3** - Integrate with API
+  - Use `@quantbot/api` for all operations
+  - Error handling
+  - **Priority**: High
+  - **Effort**: 2 days
+
+### 2. Web Dashboard Implementation
+
+- [ ] **web-1** - Set up Next.js project
+  - Project structure
+  - API client setup
   - **Priority**: Medium
   - **Effort**: 2 days
 
-- [ ] **perf-3** - Optimize API calls
-  - Batch requests, reduce calls
+- [ ] **web-2** - Implement core pages
+  - Dashboard overview
+  - Token analytics
+  - Simulation results
   - **Priority**: Medium
-  - **Effort**: 2 days
+  - **Effort**: 5 days
 
-- [ ] **perf-4** - Add CDN for static assets
-  - Serve static files via CDN
+- [ ] **web-3** - Add real-time updates
+  - WebSocket integration
+  - Live data visualization
   - **Priority**: Low
-  - **Effort**: 1 day
+  - **Effort**: 3 days
+
+### 3. Trading Package (Future)
+
+- [ ] **trading-1** - Design trading architecture
+  - Transaction building
+  - Position management
+  - Risk controls
+  - **Priority**: High (when ready)
+  - **Effort**: 5 days
+
+- [ ] **trading-2** - Implement core trading
+  - Buy/sell execution
+  - Stop-loss management
+  - Take-profit execution
+  - **Priority**: High (when ready)
+  - **Effort**: 10 days
 
 ---
 
-## 📚 Documentation
+## 🔧 Infrastructure & DevOps
 
-### Documentation Tasks
-- [x] **docs-1** - Create comprehensive README.md
-  - **Status**: Completed
+### CI/CD
 
-- [x] **docs-2** - Create ARCHITECTURE.md
-  - **Status**: Completed
+- [ ] **ci-1** - Set up GitHub Actions
+  - Automated testing
+  - Build verification
+  - **Priority**: Medium
+  - **Effort**: 2 days
 
-- [ ] **docs-3** - Add API documentation
+- [ ] **ci-2** - Add deployment pipeline
+  - Automated deployments
+  - Environment management
+  - **Priority**: Medium
+  - **Effort**: 3 days
+
+### Monitoring
+
+- [ ] **monitor-1** - Add application monitoring
+  - Prometheus metrics
+  - Grafana dashboards
+  - **Priority**: Medium
+  - **Effort**: 3 days
+
+- [ ] **monitor-2** - Add alerting
+  - Error rate alerts
+  - Performance alerts
+  - **Priority**: Low
+  - **Effort**: 2 days
+
+### Documentation
+
+- [ ] **docs-1** - API documentation
   - OpenAPI/Swagger docs
   - **Priority**: Medium
-  - **Effort**: 3 days
-
-- [ ] **docs-4** - Create user guide
-  - Step-by-step usage guide
-  - **Priority**: Medium
   - **Effort**: 2 days
 
-- [ ] **docs-5** - Add developer guide
+- [ ] **docs-2** - Developer guide
   - Contributing guidelines
+  - Architecture deep-dive
   - **Priority**: Low
-  - **Effort**: 2 days
-
-- [ ] **docs-6** - Create deployment guide
-  - Production deployment instructions
-  - **Priority**: Medium
-  - **Effort**: 2 days
+  - **Effort**: 3 days
 
 ---
 
-## 🔄 Maintenance & Technical Debt
+## 🐛 Known Issues & Technical Debt
 
-### Code Cleanup
-- [ ] **cleanup-1** - Remove legacy code
-  - Clean up old/unused code
-  - **Priority**: Low
+### High Priority
+
+- [ ] **debt-1** - Remove legacy CSV cache
+  - Migrate to StorageEngine cache
+  - **Priority**: High
   - **Effort**: 2 days
 
-- [ ] **cleanup-2** - Update dependencies
-  - Update to latest versions
+- [ ] **debt-2** - Clean up deprecated code
+  - Remove unused functions
+  - Update comments
   - **Priority**: Medium
-  - **Effort**: 1 day
-
-- [ ] **cleanup-3** - Fix linting issues
-  - Resolve all ESLint warnings
-  - **Priority**: Low
-  - **Effort**: 1 day
-
-- [ ] **cleanup-4** - Refactor large files
-  - Split files > 300 lines
-  - **Priority**: Low
   - **Effort**: 2 days
 
-### Migration Tasks
-- [ ] **migrate-1** - Complete package migration
-  - Move remaining src/ files to packages
+### Medium Priority
+
+- [ ] **debt-3** - Standardize error handling
+  - Consistent error patterns
+  - Better error types
+  - **Priority**: Medium
+  - **Effort**: 2 days
+
+- [ ] **debt-4** - Improve type safety
+  - Remove `any` types
+  - Add strict type checking
   - **Priority**: Medium
   - **Effort**: 3 days
-
-- [ ] **migrate-2** - Migrate to TypeScript strict mode
-  - Enable strict type checking
-  - **Priority**: Medium
-  - **Effort**: 2 days
-
-- [ ] **migrate-3** - Update to latest TypeScript
-  - Upgrade TypeScript version
-  - **Priority**: Low
-  - **Effort**: 1 day
 
 ---
 
 ## 📈 Progress Tracking
 
-### Statistics
-- **Total Tasks**: 200+
-- **Completed**: ~30 tasks (15%)
-- **In Progress**: ~20 tasks (10%)
-- **Pending**: ~150 tasks (75%)
+### Completion Status
 
-### Phase Completion
-- **Live Trading System**: 0/30 tasks (0%) 🔥 NEW
-- **Bot Improvements**: 8/15 tasks (53%)
-- **Database**: 0/10 tasks (0%)
-- **Monitoring**: 0/8 tasks (0%)
-- **Simulation**: 0/8 tasks (0%)
-- **Web Dashboard**: 0/8 tasks (0%)
-- **Security**: 0/8 tasks (0%)
-- **Testing**: 0/8 tasks (0%)
-- **Documentation**: 2/6 tasks (33%)
+- **Package Consolidation**: 100% ✅
+- **API Implementation**: 100% ✅
+- **StorageEngine Pattern**: 100% ✅
+- **OHLCV Refactoring**: 100% ✅
+- **Documentation**: 80% ✅
+- **Testing**: 60% 🔄
+- **Bot Package**: 0% ⏸️
+- **Web Package**: 0% ⏸️
+- **Trading Package**: 0% ⏸️
 
-### Priority Breakdown
-- **High Priority**: 15 tasks
-- **Medium Priority**: 45 tasks
-- **Low Priority**: 140 tasks
+### Next Milestones
 
----
-
-## 🎯 Short-Term Goals (Next 2 Weeks)
-
-1. ✅ Complete bot functionality improvements
-2. ✅ Create comprehensive documentation
-3. [ ] **Design and implement live trading infrastructure** 🔥
-4. [ ] Add authentication to web dashboard
-5. [ ] Increase test coverage to 60%+
-6. [ ] Implement Redis caching
-7. [ ] Add performance monitoring
-
-## 🎯 Medium-Term Goals (Next Month)
-
-1. **Complete live trading system implementation** 🔥
-2. Complete database optimization
-3. Add advanced monitoring features
-4. Implement strategy sharing
-5. Create API documentation
-6. Set up CI/CD pipeline
-7. Add user authentication
-
-## 🎯 Long-Term Goals (Next Quarter)
-
-1. Microservices architecture
-2. Advanced analytics platform
-3. Mobile app support
-4. Multi-user support
-5. Advanced strategy optimization
-6. Real-time collaboration features
+1. **Week 1-2**: API enhancements, testing improvements
+2. **Week 3-4**: Bot package implementation
+3. **Month 2**: Web dashboard implementation
+4. **Month 3+**: Trading package (when ready)
 
 ---
 
 ## 📝 Notes
 
-- Tasks are ordered by priority and dependencies
-- Update this file as tasks are completed
-- Add blockers or issues to individual task notes
-- Review and update priorities regularly
+- All packages now use `StorageEngine` for storage operations
+- API is the primary interface for bot/web/trading packages
+- EventBus is in `@quantbot/utils/events` (moved from `@quantbot/events`)
+- No more re-export packages - use direct imports
 
 ---
 
@@ -760,13 +314,12 @@
 - ⬜ **Not Started** - Task not yet begun
 - 🔄 **In Progress** - Currently working on
 - ✅ **Completed** - Task finished
-- ⏸️ **Blocked** - Waiting on dependency or blocker
-- ❌ **Cancelled** - Task no longer needed
+- ⏸️ **Planned** - Planned but not started
 - 🔴 **High Priority** - Critical, do soon
 - 🟡 **Medium Priority** - Important, do when possible
 - 🟢 **Low Priority** - Nice to have, do when time permits
 
 ---
 
-**Last Review**: December 5, 2025  
-**Next Review**: December 12, 2025
+**Last Review**: December 11, 2025  
+**Next Review**: December 18, 2025

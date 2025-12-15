@@ -10,8 +10,8 @@ import {
   isDeathCross,
   getBullishSignals,
   getBearishSignals,
-} from '../../src/simulation/indicators';
-import type { Candle } from '../../src/simulation/candles';
+} from '../src/indicators';
+import type { Candle } from '../src/candles';
 
 describe('indicators', () => {
   const createCandle = (timestamp: number, close: number, overrides?: Partial<Candle>): Candle => ({
@@ -99,7 +99,11 @@ describe('indicators', () => {
 
   describe('calculateMovingAverages', () => {
     it('should calculate all moving averages', () => {
-      const candles = createCandleSeries([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50]);
+      const candles = createCandleSeries([
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
+        26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48,
+        49, 50,
+      ]);
       const mas = calculateMovingAverages(candles, 49);
 
       expect(mas.sma9).toBeCloseTo(46, 0);
@@ -203,7 +207,9 @@ describe('indicators', () => {
 
   describe('getBullishSignals', () => {
     it('should return bullish signals', () => {
-      const candles = createCandleSeries([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20]);
+      const candles = createCandleSeries([
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
+      ]);
       const indicators = calculateIndicators(candles, 19);
       const prevIndicators = calculateIndicators(candles, 18);
 
@@ -215,7 +221,9 @@ describe('indicators', () => {
 
   describe('getBearishSignals', () => {
     it('should return bearish signals', () => {
-      const candles = createCandleSeries([20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1]);
+      const candles = createCandleSeries([
+        20, 19, 18, 17, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1,
+      ]);
       const indicators = calculateIndicators(candles, 19);
       const prevIndicators = calculateIndicators(candles, 18);
 
@@ -225,4 +233,3 @@ describe('indicators', () => {
     });
   });
 });
-

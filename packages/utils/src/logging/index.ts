@@ -2,11 +2,11 @@
  * Centralized Logging System
  * ==========================
  * Package-aware logging with namespaces, aggregation, and monitoring.
- * 
+ *
  * Usage:
  * ```typescript
  * import { createPackageLogger } from '@quantbot/utils/logging';
- * 
+ *
  * const logger = createPackageLogger('@quantbot/services');
  * logger.info('Service started', { version: '1.0.0' });
  * ```
@@ -47,12 +47,7 @@ export class LogHelpers {
   /**
    * Log API request with standard fields
    */
-  static apiRequest(
-    logger: Logger,
-    method: string,
-    url: string,
-    context?: LogContext
-  ): void {
+  static apiRequest(logger: Logger, method: string, url: string, context?: LogContext): void {
     logger.debug('API Request', { method, url, ...context });
   }
 
@@ -87,12 +82,7 @@ export class LogHelpers {
   /**
    * Log WebSocket event
    */
-  static websocketEvent(
-    logger: Logger,
-    event: string,
-    data?: any,
-    context?: LogContext
-  ): void {
+  static websocketEvent(logger: Logger, event: string, data?: any, context?: LogContext): void {
     logger.debug('WebSocket Event', { event, data, ...context });
   }
 
@@ -144,4 +134,3 @@ export * from '../logging-config';
 export * from '../logging-middleware';
 export * from './aggregator';
 export * from './monitor';
-

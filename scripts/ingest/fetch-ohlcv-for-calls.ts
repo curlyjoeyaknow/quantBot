@@ -2,30 +2,34 @@
 
 /**
  * CLI script for fetching OHLCV candles for calls
- * 
+ *
  * Usage:
  *   ts-node scripts/ingest/fetch-ohlcv-for-calls.ts [--from <date>] [--to <date>] [--pre-window-minutes <n>] [--post-window-minutes <n>] [--interval <1m|5m>]
  */
 
-// @ts-ignore - commander types may not be installed yet
+// @ts-expect-error - commander types may not be installed yet
 import { program } from 'commander';
-import { CallsRepository, OhlcvRepository } from '@quantbot/storage';
+import { CallsRepository, TokensRepository } from '@quantbot/storage';
 import { OhlcvIngestionService } from '@quantbot/ingestion';
 import { logger } from '@quantbot/utils';
 
 // Initialize repositories
 const callsRepo = new CallsRepository();
-const ohlcvRepo = new OhlcvRepository();
+const tokensRepo = new TokensRepository();
 
 // Initialize service
-const ingestionService = new OhlcvIngestionService(callsRepo, ohlcvRepo);
+const ingestionService = new OhlcvIngestionService(callsRepo, tokensRepo);
 
 program
   .name('fetch-ohlcv-for-calls')
   .description('Fetch OHLCV candles for calls and store in ClickHouse')
   .option('--from <date>', 'Start date (YYYY-MM-DD)')
   .option('--to <date>', 'End date (YYYY-MM-DD)')
-  .option('--pre-window-minutes <n>', 'Minutes before call time to fetch (default: 260 for 52x5m)', '260')
+  .option(
+    '--pre-window-minutes <n>',
+    'Minutes before call time to fetch (default: 260 for 52x5m)',
+    '260'
+  )
   .option('--post-window-minutes <n>', 'Minutes after call time to fetch (default: 1440)', '1440')
   .option('--interval <interval>', 'Candle interval (1m or 5m)', '5m')
   .action(async (options) => {
@@ -34,14 +38,11 @@ program
       const to = options.to ? new Date(options.to) : undefined;
       const preWindow = parseInt(options.preWindowMinutes, 10);
       const postWindow = parseInt(options.postWindowMinutes, 10);
-      const interval = options.interval as '1m' | '5m';
-
       logger.info('Starting OHLCV ingestion', {
         from,
         to,
         preWindowMinutes: preWindow,
         postWindowMinutes: postWindow,
-        interval,
       });
 
       const result = await ingestionService.ingestForCalls({
@@ -49,12 +50,15 @@ program
         to,
         preWindowMinutes: preWindow,
         postWindowMinutes: postWindow,
-        interval,
+        options: { useCache: true },
       });
 
       console.log('\n✅ OHLCV ingestion complete!');
       console.log(`   Tokens processed: ${result.tokensProcessed}`);
-      console.log(`   Candles inserted: ${result.candlesInserted}`);
+      console.log(`   Tokens succeeded: ${result.tokensSucceeded}`);
+      console.log(`   Tokens failed: ${result.tokensFailed}`);
+      console.log(`   Candles fetched 1m: ${result.candlesFetched1m}`);
+      console.log(`   Candles fetched 5m: ${result.candlesFetched5m}`);
 
       process.exit(0);
     } catch (error) {
@@ -65,4 +69,3 @@ program
   });
 
 program.parse();
-

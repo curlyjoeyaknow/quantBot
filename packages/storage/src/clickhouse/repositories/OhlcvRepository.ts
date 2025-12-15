@@ -1,6 +1,6 @@
 /**
  * OhlcvRepository - ClickHouse repository for OHLCV candles
- * 
+ *
  * Handles all database operations for ohlcv_candles table.
  * CRITICAL: Always preserve full token address and exact case.
  */
@@ -38,7 +38,7 @@ export class OhlcvRepository {
       low: candle.low,
       close: candle.close,
       volume: candle.volume,
-      is_backfill: 0,
+      // Note: is_backfill column removed - table doesn't have this column
     }));
 
     try {
@@ -68,7 +68,7 @@ export class OhlcvRepository {
   /**
    * Get candles for a token in a time range
    * CRITICAL: Uses full address, case-preserved
-   * 
+   *
    * @param token Full mint address, case-preserved
    * @param chain Chain identifier
    * @param interval Candle interval ('1m', '5m', '15m', '1h', '4h', '1d')
@@ -83,15 +83,16 @@ export class OhlcvRepository {
     const ch = getClickHouseClient();
     const CLICKHOUSE_DATABASE = process.env.CLICKHOUSE_DATABASE || 'quantbot';
 
-    const startUnix = Math.floor(range.from.getTime() / 1000);
-    const endUnix = Math.floor(range.to.getTime() / 1000);
+    // Convert DateTime to Unix timestamp (seconds)
+    const startUnix = range.from.toUnixInteger();
+    const endUnix = range.to.toUnixInteger();
 
-    // Escape for SQL injection safety
-    const escapedTokenAddress = token.replace(/'/g, "''");
-    const escapedChain = chain.replace(/'/g, "''");
-    const escapedInterval = interval.replace(/'/g, "''");
+    // Use parameterized queries to prevent SQL injection
+    // Note: ClickHouse parameterized queries use {paramName:Type} syntax
+    // For LIKE patterns, we need to construct the pattern as a parameter
+    const tokenPattern = `${token}%`;
+    const tokenPatternSuffix = `%${token}`;
 
-    // Use flexible matching (handles pump.fun addresses with suffixes)
     const query = `
       SELECT 
         toUnixTimestamp(timestamp) as timestamp,
@@ -101,22 +102,31 @@ export class OhlcvRepository {
         close,
         volume
       FROM ${CLICKHOUSE_DATABASE}.ohlcv_candles
-      WHERE (token_address = '${escapedTokenAddress}' 
-             OR lower(token_address) = lower('${escapedTokenAddress}')
-             OR token_address LIKE '${escapedTokenAddress}%'
-             OR lower(token_address) LIKE lower('${escapedTokenAddress}%')
-             OR token_address LIKE CONCAT('%', '${escapedTokenAddress}')
-             OR lower(token_address) LIKE lower(CONCAT('%', '${escapedTokenAddress}')))
-        AND chain = '${escapedChain}'
-        AND \`interval\` = '${escapedInterval}'
-        AND timestamp >= toDateTime(${startUnix})
-        AND timestamp <= toDateTime(${endUnix})
+      WHERE (token_address = {tokenAddress:String}
+             OR lower(token_address) = lower({tokenAddress:String})
+             OR token_address LIKE {tokenPattern:String}
+             OR lower(token_address) LIKE lower({tokenPattern:String})
+             OR token_address LIKE {tokenPatternSuffix:String}
+             OR lower(token_address) LIKE lower({tokenPatternSuffix:String}))
+        AND chain = {chain:String}
+        AND \`interval\` = {interval:String}
+        AND timestamp >= toDateTime({startUnix:UInt32})
+        AND timestamp <= toDateTime({endUnix:UInt32})
       ORDER BY timestamp ASC
     `;
 
     try {
       const result = await ch.query({
         query,
+        query_params: {
+          tokenAddress: token,
+          tokenPattern: tokenPattern,
+          tokenPatternSuffix: tokenPatternSuffix,
+          chain: chain,
+          interval: interval,
+          startUnix: startUnix,
+          endUnix: endUnix,
+        },
         format: 'JSONEachRow',
         clickhouse_settings: {
           max_execution_time: 30,
@@ -161,27 +171,37 @@ export class OhlcvRepository {
     const ch = getClickHouseClient();
     const CLICKHOUSE_DATABASE = process.env.CLICKHOUSE_DATABASE || 'quantbot';
 
-    const startUnix = Math.floor(range.from.getTime() / 1000);
-    const endUnix = Math.floor(range.to.getTime() / 1000);
+    // Convert DateTime to Unix timestamp (seconds)
+    const startUnix = range.from.toUnixInteger();
+    const endUnix = range.to.toUnixInteger();
 
-    const escapedTokenAddress = token.replace(/'/g, "''");
-    const escapedChain = chain.replace(/'/g, "''");
+    // Use parameterized queries to prevent SQL injection
+    const tokenPattern = `${token}%`;
+    const tokenPatternSuffix = `%${token}`;
 
     try {
       const result = await ch.query({
         query: `
           SELECT count() as count
           FROM ${CLICKHOUSE_DATABASE}.ohlcv_candles
-          WHERE (token_address = '${escapedTokenAddress}' 
-                 OR lower(token_address) = lower('${escapedTokenAddress}')
-                 OR token_address LIKE '${escapedTokenAddress}%'
-                 OR lower(token_address) LIKE lower('${escapedTokenAddress}%')
-                 OR token_address LIKE CONCAT('%', '${escapedTokenAddress}')
-                 OR lower(token_address) LIKE lower(CONCAT('%', '${escapedTokenAddress}')))
-            AND chain = '${escapedChain}'
-            AND timestamp >= toDateTime(${startUnix})
-            AND timestamp <= toDateTime(${endUnix})
+          WHERE (token_address = {tokenAddress:String}
+                 OR lower(token_address) = lower({tokenAddress:String})
+                 OR token_address LIKE {tokenPattern:String}
+                 OR lower(token_address) LIKE lower({tokenPattern:String})
+                 OR token_address LIKE {tokenPatternSuffix:String}
+                 OR lower(token_address) LIKE lower({tokenPatternSuffix:String}))
+            AND chain = {chain:String}
+            AND timestamp >= toDateTime({startUnix:UInt32})
+            AND timestamp <= toDateTime({endUnix:UInt32})
         `,
+        query_params: {
+          tokenAddress: token,
+          tokenPattern: tokenPattern,
+          tokenPatternSuffix: tokenPatternSuffix,
+          chain: chain,
+          startUnix: startUnix,
+          endUnix: endUnix,
+        },
         format: 'JSONEachRow',
       });
 
@@ -200,4 +220,3 @@ export class OhlcvRepository {
     }
   }
 }
-

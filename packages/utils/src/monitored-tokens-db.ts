@@ -2,7 +2,7 @@
  * Monitored Tokens Database Utilities
  * ====================================
  * Functions for storing and retrieving monitored tokens from Postgres
- * 
+ *
  * NOTE: This file will not compile in isolation because it depends on @quantbot/data
  * which hasn't been built yet. It will work when built as part of the monorepo.
  */
@@ -21,7 +21,9 @@ const queryPostgres = async <T = any>(query: string, params?: any[]): Promise<Qu
   throw new Error('queryPostgres not implemented - requires @quantbot/data');
 };
 
-const withPostgresTransaction = async <T>(callback: (client: PostgresClient) => Promise<T>): Promise<T> => {
+const withPostgresTransaction = async <T>(
+  callback: (client: PostgresClient) => Promise<T>
+): Promise<T> => {
   throw new Error('withPostgresTransaction not implemented - requires @quantbot/data');
 };
 
@@ -52,7 +54,7 @@ export async function storeMonitoredToken(token: MonitoredToken): Promise<number
     const result = await withPostgresTransaction(async (client) => {
       // First, ensure token exists in tokens table
       let tokenId: number | null = null;
-      
+
       const tokenResult = await client.query(
         `INSERT INTO tokens (chain, address, symbol, name, updated_at)
          VALUES ($1, $2, $3, $4, NOW())
@@ -248,8 +250,3 @@ export async function updateMonitoredTokenEntry(
     throw error;
   }
 }
-
-
-
-
-

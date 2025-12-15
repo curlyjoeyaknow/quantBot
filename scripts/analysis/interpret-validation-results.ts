@@ -1,4 +1,3 @@
-
 import fs from 'fs';
 import path from 'path';
 import { z } from 'zod';
@@ -36,8 +35,7 @@ const METRIC_EXPLANATIONS: Record<keyof ValidationResult['summary'], string> = {
     'PRECISION (TOP 25%): Same as above, but for the top quarter of tokens by score.',
   avgRecallTop10:
     'RECALL (TOP 10%): Of all the "winner" tokens across the entire set, what percentage did our top 10% scores successfully identify? High recall means the model is good at finding most of the big winners.',
-  avgRecallTop25:
-    'RECALL (TOP 25%): Same as above, but for the top quarter of tokens.',
+  avgRecallTop25: 'RECALL (TOP 25%): Same as above, but for the top quarter of tokens.',
   avgTop10Return7d:
     'AVG RETURN OF TOP 10% (7-DAY): The average 7-day return for the highest-scoring 10% of tokens. A key indicator of profitability.',
   avgTop10Return30d:
@@ -70,7 +68,9 @@ function interpretResults(results: ValidationResult) {
 
   console.log('\n--- Interpretation of Scoring Model Validation ---\n');
   console.log('This report analyzes how well our scoring model predicts token performance.');
-  console.log(`The analysis was run across ${summary.totalWindows} different time periods ("windows") to ensure consistency.\n`);
+  console.log(
+    `The analysis was run across ${summary.totalWindows} different time periods ("windows") to ensure consistency.\n`
+  );
 
   console.log('--- KEY METRICS ---\n');
 
@@ -88,25 +88,39 @@ function interpretResults(results: ValidationResult) {
   }
 
   console.log('--- EXECUTIVE SUMMARY ---\n');
-  
-  const correlationStrength = summary.avgCorrelation30d > 0.1 ? 'promising' : summary.avgCorrelation30d > 0 ? 'weak but positive' : 'not effective';
-  console.log(`1. Predictive Power: The model shows a ${correlationStrength} ability to connect higher scores with higher 30-day returns (Correlation: ${summary.avgCorrelation30d.toFixed(3)}). This means scores are somewhat meaningful.`);
+
+  const correlationStrength =
+    summary.avgCorrelation30d > 0.1
+      ? 'promising'
+      : summary.avgCorrelation30d > 0
+        ? 'weak but positive'
+        : 'not effective';
+  console.log(
+    `1. Predictive Power: The model shows a ${correlationStrength} ability to connect higher scores with higher 30-day returns (Correlation: ${summary.avgCorrelation30d.toFixed(3)}). This means scores are somewhat meaningful.`
+  );
 
   const outperformance = summary.avgTop10Return30d / (summary.avgBottom10Return30d || 1);
-  console.log(`2. Profitability: The highest-scoring 10% of tokens returned, on average, ${summary.avgTop10Return30d.toFixed(2)}x over 30 days. This is ${outperformance.toFixed(1)}x better than the lowest-scoring 10% of tokens.`);
+  console.log(
+    `2. Profitability: The highest-scoring 10% of tokens returned, on average, ${summary.avgTop10Return30d.toFixed(2)}x over 30 days. This is ${outperformance.toFixed(1)}x better than the lowest-scoring 10% of tokens.`
+  );
 
   const precisionInsight = summary.avgPrecisionTop10 > 20 ? 'a good number' : 'a decent number';
-  console.log(`3. Signal Quality: When the model flags a token with a top 10% score, it has a ${summary.avgPrecisionTop10.toFixed(2)}% chance of being a >3x winner. This tells us that while not every high-scoring pick is a home run, ${precisionInsight} of them are.`);
-  
+  console.log(
+    `3. Signal Quality: When the model flags a token with a top 10% score, it has a ${summary.avgPrecisionTop10.toFixed(2)}% chance of being a >3x winner. This tells us that while not every high-scoring pick is a home run, ${precisionInsight} of them are.`
+  );
+
   console.log('\n--- RECOMMENDATION ---\n');
   if (summary.avgCorrelation30d > 0.05 && summary.avgTop10Return30d > 1.5) {
-    console.log('The scoring model is effective. It successfully identifies a subset of tokens that, on average, outperform the rest. It should be used as a primary filter for identifying promising calls.');
+    console.log(
+      'The scoring model is effective. It successfully identifies a subset of tokens that, on average, outperform the rest. It should be used as a primary filter for identifying promising calls.'
+    );
   } else {
-    console.log('The scoring model shows a weak signal. While there is some positive correlation, it is not strong enough to be a reliable primary filter. Further refinement of the scoring features is needed.');
+    console.log(
+      'The scoring model shows a weak signal. While there is some positive correlation, it is not strong enough to be a reliable primary filter. Further refinement of the scoring features is needed.'
+    );
   }
   console.log('\n-----------------------------------------------\n');
 }
-
 
 async function main() {
   const filePath = findLatestValidationFile();
@@ -119,7 +133,7 @@ async function main() {
 
   const fileContent = fs.readFileSync(filePath, 'utf-8');
   const jsonData = JSON.parse(fileContent);
-  
+
   try {
     const validationResult = ValidationResultSchema.parse(jsonData);
     interpretResults(validationResult);

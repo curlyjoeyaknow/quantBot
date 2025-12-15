@@ -15,16 +15,42 @@ import { DateTime } from 'luxon';
 
 /**
  * Supported blockchain
+ *
+ * Note: Standardized to lowercase for consistency. Use 'solana' instead of 'SOL'.
  */
-export type Chain = 'SOL' | 'solana' | 'ethereum' | 'bsc' | 'base';
+export type Chain = 'solana' | 'ethereum' | 'bsc' | 'base';
 
 /**
  * Token address (Solana mint address)
  *
  * CRITICAL: Always preserve full address (32-44 chars) and exact case.
  * Never truncate or modify mint addresses for storage or API calls.
+ *
+ * This is a branded type to prevent accidental mixing with other strings.
+ * Use `createTokenAddress()` to create validated instances.
  */
-export type TokenAddress = string;
+export type TokenAddress = string & { readonly __brand: 'TokenAddress' };
+
+/**
+ * Creates a validated TokenAddress from a string.
+ *
+ * @param address - The mint address string to validate
+ * @returns A branded TokenAddress type
+ * @throws Error if address length is invalid (must be 32-44 characters)
+ *
+ * @example
+ * ```typescript
+ * const mint = createTokenAddress('So11111111111111111111111111111111111111112');
+ * ```
+ */
+export function createTokenAddress(address: string): TokenAddress {
+  if (address.length < 32 || address.length > 44) {
+    throw new Error(
+      `Invalid mint address length: ${address.length}. Must be between 32 and 44 characters.`
+    );
+  }
+  return address as TokenAddress;
+}
 
 /**
  * Caller (signal source)
@@ -68,7 +94,7 @@ export interface Alert {
   alertTimestamp: DateTime;
   rawPayload?: Record<string, unknown>;
   createdAt: DateTime;
-  
+
   // Telegram-specific fields
   chatId?: string;
   messageId?: string;
@@ -108,23 +134,27 @@ export interface StrategyConfig {
 
 /**
  * Call selection criteria for simulation
+ *
+ * Note: Uses DateTime for consistency with database entities and timezone handling.
  */
 export interface CallSelection {
   callerIds?: number[];
   callerNames?: string[];
   tokenAddresses?: TokenAddress[];
-  from?: Date;
-  to?: Date;
+  from?: DateTime;
+  to?: DateTime;
   side?: 'buy' | 'sell';
   signalTypes?: string[];
 }
 
 /**
  * Date range for queries
+ *
+ * Note: Uses DateTime for consistency with database entities and timezone handling.
  */
 export interface DateRange {
-  from: Date;
-  to: Date;
+  from: DateTime;
+  to: DateTime;
 }
 
 // ============================================================================
@@ -227,19 +257,9 @@ export interface Position {
 }
 
 /**
- * Simulation event
+ * Base fields shared by all simulation events
  */
-export interface SimulationEvent {
-  type:
-    | 'entry'
-    | 'stop_moved'
-    | 'target_hit'
-    | 'stop_loss'
-    | 'final_exit'
-    | 'trailing_entry_triggered'
-    | 're_entry'
-    | 'ladder_entry'
-    | 'ladder_exit';
+interface BaseSimulationEvent {
   timestamp: number;
   price: number;
   description: string;
@@ -249,6 +269,102 @@ export interface SimulationEvent {
   positionState?: Record<string, unknown>;
   metadata?: Record<string, unknown>;
 }
+
+/**
+ * Entry event - initial position entry
+ */
+export interface EntryEvent extends BaseSimulationEvent {
+  type: 'entry';
+}
+
+/**
+ * Trailing entry triggered event
+ */
+export interface TrailingEntryTriggeredEvent extends BaseSimulationEvent {
+  type: 'trailing_entry_triggered';
+}
+
+/**
+ * Re-entry event - re-entering after exit
+ */
+export interface ReEntryEvent extends BaseSimulationEvent {
+  type: 're_entry';
+}
+
+/**
+ * Ladder entry event - partial entry via ladder strategy
+ */
+export interface LadderEntryEvent extends BaseSimulationEvent {
+  type: 'ladder_entry';
+}
+
+/**
+ * Stop loss moved event - trailing stop activated or moved
+ */
+export interface StopMovedEvent extends BaseSimulationEvent {
+  type: 'stop_moved';
+  /** Previous stop loss price (optional) */
+  oldStop?: number;
+  /** New stop loss price (optional) */
+  newStop?: number;
+}
+
+/**
+ * Target hit event - profit target reached
+ */
+export interface TargetHitEvent extends BaseSimulationEvent {
+  type: 'target_hit';
+  /** Target multiplier that was hit (optional) */
+  target?: number;
+  /** Percentage of position sold (optional) */
+  percentSold?: number;
+}
+
+/**
+ * Stop loss event - stop loss triggered
+ */
+export interface StopLossEvent extends BaseSimulationEvent {
+  type: 'stop_loss';
+  /** Stop loss price that was triggered (optional) */
+  stopPrice?: number;
+}
+
+/**
+ * Ladder exit event - partial exit via ladder strategy
+ */
+export interface LadderExitEvent extends BaseSimulationEvent {
+  type: 'ladder_exit';
+}
+
+/**
+ * Final exit event - complete position exit
+ */
+export interface FinalExitEvent extends BaseSimulationEvent {
+  type: 'final_exit';
+  /** Exit reason (optional) */
+  exitReason?: string;
+}
+
+/**
+ * Simulation event - discriminated union of all event types
+ *
+ * Use type narrowing to access type-specific fields:
+ * ```typescript
+ * if (event.type === 'target_hit') {
+ *   // event.target is available here
+ * }
+ * ```
+ */
+export type SimulationEvent =
+  | EntryEvent
+  | TrailingEntryTriggeredEvent
+  | ReEntryEvent
+  | LadderEntryEvent
+  | StopMovedEvent
+  | TargetHitEvent
+  | StopLossEvent
+  | LadderExitEvent
+  | FinalExitEvent;
 
 /**
  * Simulation result
@@ -366,8 +482,8 @@ export interface CallerInfo {
  * CA Call structure from database
  */
 export interface CACall {
-  mint: string;
-  chain: string;
+  mint: TokenAddress;
+  chain: Chain;
   token_name?: string;
   token_symbol?: string;
   call_price?: number;
@@ -382,8 +498,8 @@ export interface CACall {
  */
 export interface ActiveCA {
   id: number;
-  mint: string;
-  chain: string;
+  mint: TokenAddress;
+  chain: Chain;
   token_name?: string;
   token_symbol?: string;
   call_price?: number;

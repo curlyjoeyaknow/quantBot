@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { creditMonitor, type CreditUsage } from '../../src/utils/credit-monitor';
-import { logger } from '../../src/utils/logger';
+import { creditMonitor, type CreditUsage } from '../src/credit-monitor';
+import { logger } from '../src/logger';
 
 // Mock logger
-vi.mock('../../src/utils/logger', () => ({
+vi.mock('../src/logger', () => ({
   logger: {
     warn: vi.fn(),
     info: vi.fn(),
@@ -18,7 +18,7 @@ describe('credit-monitor', () => {
     // Reset usage for each test by getting all providers and resetting them
     // Also clear limits to ensure clean state
     const allUsage = creditMonitor.getAllUsage();
-    allUsage.forEach(usage => {
+    allUsage.forEach((usage) => {
       creditMonitor.resetUsage(usage.provider);
       // Set limit to undefined by setting a new one without limit
       // Actually, we can't clear limits, so we'll just reset usage
@@ -170,12 +170,12 @@ describe('credit-monitor', () => {
       // This test verifies getAllUsage returns all providers
       // Since creditMonitor is a singleton, it may have existing state
       const allUsage = creditMonitor.getAllUsage();
-      
+
       // Should return an array (may be empty or have entries)
       expect(Array.isArray(allUsage)).toBe(true);
-      
+
       // If there are entries, they should have the correct structure
-      allUsage.forEach(usage => {
+      allUsage.forEach((usage) => {
         expect(usage).toHaveProperty('provider');
         expect(usage).toHaveProperty('creditsUsed');
         expect(usage).toHaveProperty('requestsCount');
@@ -185,9 +185,9 @@ describe('credit-monitor', () => {
     it('should return report with correct structure', () => {
       creditMonitor.resetUsage('test-provider');
       creditMonitor.recordUsage('test-provider', 100, 5);
-      
+
       const report = creditMonitor.getReport();
-      
+
       expect(report).toHaveProperty('providers');
       expect(report).toHaveProperty('totalCreditsUsed');
       expect(report).toHaveProperty('totalRequests');
@@ -202,8 +202,8 @@ describe('credit-monitor', () => {
 
       const allUsage = creditMonitor.getAllUsage();
       expect(allUsage.length).toBeGreaterThanOrEqual(2);
-      expect(allUsage.some(u => u.provider === 'birdeye')).toBe(true);
-      expect(allUsage.some(u => u.provider === 'helius')).toBe(true);
+      expect(allUsage.some((u) => u.provider === 'birdeye')).toBe(true);
+      expect(allUsage.some((u) => u.provider === 'helius')).toBe(true);
     });
   });
 
@@ -323,10 +323,9 @@ describe('credit-monitor', () => {
       const report = creditMonitor.getReport();
 
       expect(report.providers.length).toBeGreaterThanOrEqual(3);
-      expect(report.providers.some(p => p.provider === 'birdeye')).toBe(true);
-      expect(report.providers.some(p => p.provider === 'helius')).toBe(true);
-      expect(report.providers.some(p => p.provider === 'other')).toBe(true);
+      expect(report.providers.some((p) => p.provider === 'birdeye')).toBe(true);
+      expect(report.providers.some((p) => p.provider === 'helius')).toBe(true);
+      expect(report.providers.some((p) => p.provider === 'other')).toBe(true);
     });
   });
 });
-

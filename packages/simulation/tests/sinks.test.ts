@@ -2,12 +2,12 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { promises as fs } from 'fs';
 import path from 'path';
 import { DateTime } from 'luxon';
-import { ConfigDrivenSink } from '../../src/simulation/sinks';
-import type { SimulationRunContext } from '../../src/simulation/engine';
-import type { Scenario, Target } from '../../src/simulation/config';
+import { ConfigDrivenSink } from '../src/sinks';
+import type { SimulationRunContext } from '../src/engine';
+import type { Scenario, Target } from '../src/config';
 
 // Mock ClickHouse client
-vi.mock('../../src/storage/clickhouse-client', () => ({
+vi.mock('@quantbot/storage', () => ({
   getClickHouseClient: vi.fn(() => ({
     insert: vi.fn().mockResolvedValue(undefined),
   })),
@@ -95,9 +95,7 @@ describe('ConfigDrivenSink', () => {
 
       await sink.handle(context);
 
-      expect(console.log).toHaveBeenCalledWith(
-        expect.stringContaining('[simulation]'),
-      );
+      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('[simulation]'));
     });
 
     it('should write detailed output when configured', async () => {
@@ -113,7 +111,7 @@ describe('ConfigDrivenSink', () => {
         expect.objectContaining({
           scenario: 'test-scenario',
           mint: mockTarget.mint,
-        }),
+        })
       );
     });
   });
@@ -134,7 +132,7 @@ describe('ConfigDrivenSink', () => {
       expect(fs.appendFile).toHaveBeenCalledWith(
         '/tmp/test.json',
         expect.stringContaining('"scenario":"test-scenario"'),
-        'utf-8',
+        'utf-8'
       );
     });
 
@@ -190,7 +188,7 @@ describe('ConfigDrivenSink', () => {
       expect(fs.writeFile).toHaveBeenCalledWith(
         '/tmp/test.csv',
         expect.stringContaining('scenario,mint,token_symbol'),
-        'utf-8',
+        'utf-8'
       );
     });
 
@@ -213,7 +211,7 @@ describe('ConfigDrivenSink', () => {
       expect(fs.appendFile).toHaveBeenCalledWith(
         '/tmp/test.csv',
         expect.stringContaining('test-scenario'),
-        'utf-8',
+        'utf-8'
       );
     });
 
@@ -228,16 +226,16 @@ describe('ConfigDrivenSink', () => {
 
       await sink.handle(context);
 
-      const appendCall = vi.mocked(fs.appendFile).mock.calls.find(
-        (call) => call[0] === '/tmp/test.csv' && call[1]?.includes('TEST'),
-      );
+      const appendCall = vi
+        .mocked(fs.appendFile)
+        .mock.calls.find((call) => call[0] === '/tmp/test.csv' && call[1]?.includes('TEST'));
       expect(appendCall).toBeDefined();
     });
   });
 
   describe('ClickHouse output', () => {
     it('should write to simulation_events table with expanded schema', async () => {
-      const { getClickHouseClient } = await import('../../src/storage/clickhouse-client');
+      const { getClickHouseClient } = await import('@quantbot/storage');
       const mockClient = {
         insert: vi.fn().mockResolvedValue(undefined),
       };
@@ -262,12 +260,12 @@ describe('ConfigDrivenSink', () => {
               token_address: mockTarget.mint,
             }),
           ]),
-        }),
+        })
       );
     });
 
     it('should write to simulation_aggregates table with aggregate schema', async () => {
-      const { getClickHouseClient } = await import('../../src/storage/clickhouse-client');
+      const { getClickHouseClient } = await import('@quantbot/storage');
       const mockClient = {
         insert: vi.fn().mockResolvedValue(undefined),
       };
@@ -292,12 +290,12 @@ describe('ConfigDrivenSink', () => {
               trade_count: 1,
             }),
           ]),
-        }),
+        })
       );
     });
 
     it('should calculate reentry_count correctly', async () => {
-      const { getClickHouseClient } = await import('../../src/storage/clickhouse-client');
+      const { getClickHouseClient } = await import('@quantbot/storage');
       const mockClient = {
         insert: vi.fn().mockResolvedValue(undefined),
       };
@@ -339,10 +337,7 @@ describe('ConfigDrivenSink', () => {
       };
 
       const sink = new ConfigDrivenSink({
-        defaultOutputs: [
-          { type: 'json', path: '/invalid/path.json' },
-          { type: 'stdout' },
-        ],
+        defaultOutputs: [{ type: 'json', path: '/invalid/path.json' }, { type: 'stdout' }],
         logger: mockLogger as any,
       });
 
@@ -357,7 +352,7 @@ describe('ConfigDrivenSink', () => {
         expect.objectContaining({
           scenario: 'test-scenario',
           target: 'json',
-        }),
+        })
       );
 
       // Should still write stdout
@@ -397,4 +392,3 @@ describe('ConfigDrivenSink', () => {
     });
   });
 });
-

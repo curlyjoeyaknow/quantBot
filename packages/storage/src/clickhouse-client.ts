@@ -1,6 +1,6 @@
 /**
  * ClickHouse Client for OHLCV Data Storage
- * 
+ *
  * Provides fast, efficient storage and retrieval of OHLCV candle data
  * using ClickHouse columnar database for time-series data.
  */
@@ -37,7 +37,7 @@ export function getClickHouseClient(): ClickHouseClient {
   if (client) {
     return client;
   }
-  
+
   // Create new client only if it doesn't exist
   const url = `http://${CLICKHOUSE_HOST}:${CLICKHOUSE_PORT}`;
   const config: any = {
@@ -54,7 +54,7 @@ export function getClickHouseClient(): ClickHouseClient {
   if (password && password.trim() !== '') {
     config.password = password;
   }
-  
+
   client = createClient(config);
   return client;
 }
@@ -193,7 +193,7 @@ async function ensureSimulationTables(ch: ClickHouseClient): Promise<void> {
 
 async function ensureIndicatorsTable(ch: ClickHouseClient): Promise<void> {
   const CLICKHOUSE_DATABASE = process.env.CLICKHOUSE_DATABASE || 'quantbot';
-  
+
   await ch.exec({
     query: `
       CREATE TABLE IF NOT EXISTS ${CLICKHOUSE_DATABASE}.indicator_values (
@@ -214,7 +214,7 @@ async function ensureIndicatorsTable(ch: ClickHouseClient): Promise<void> {
 
 async function ensureTokenMetadataTable(ch: ClickHouseClient): Promise<void> {
   const CLICKHOUSE_DATABASE = process.env.CLICKHOUSE_DATABASE || 'quantbot';
-  
+
   await ch.exec({
     query: `
       CREATE TABLE IF NOT EXISTS ${CLICKHOUSE_DATABASE}.token_metadata (
@@ -253,10 +253,10 @@ export async function insertCandles(
   isBackfill: boolean = false
 ): Promise<void> {
   if (candles.length === 0) return;
-  
+
   const ch = getClickHouseClient();
-  
-  const rows = candles.map(candle => ({
+
+  const rows = candles.map((candle) => ({
     token_address: tokenAddress,
     chain: chain,
     timestamp: DateTime.fromSeconds(candle.timestamp).toFormat('yyyy-MM-dd HH:mm:ss'), // Convert to ClickHouse DateTime format
@@ -269,7 +269,7 @@ export async function insertCandles(
     // Note: is_backfill column removed - table doesn't have this column
     // is_backfill: isBackfill ? 1 : 0,
   }));
-  
+
   try {
     await ch.insert({
       table: `${CLICKHOUSE_DATABASE}.ohlcv_candles`,
@@ -279,7 +279,8 @@ export async function insertCandles(
   } catch (error: any) {
     // Silently fail if USE_CACHE_ONLY is set (insertions not needed in cache-only mode)
     if (process.env.USE_CACHE_ONLY !== 'true') {
-      const displayAddr = tokenAddress.length > 30 ? tokenAddress.substring(0, 30) + '...' : tokenAddress;
+      const displayAddr =
+        tokenAddress.length > 30 ? tokenAddress.substring(0, 30) + '...' : tokenAddress;
       logger.error('Error inserting candles', error as Error, { tokenAddress: displayAddr });
     }
     // Don't throw in cache-only mode - just skip insertion
@@ -301,7 +302,7 @@ export async function insertTicks(
   if (ticks.length === 0) return;
 
   const ch = getClickHouseClient();
-  const values = ticks.map(tick => ({
+  const values = ticks.map((tick) => ({
     token_address: tokenAddress,
     chain,
     timestamp: DateTime.fromSeconds(tick.timestamp).toFormat('yyyy-MM-dd HH:mm:ss'),
@@ -319,7 +320,9 @@ export async function insertTicks(
       format: 'JSONEachRow',
     });
   } catch (error: any) {
-    logger.error('Error inserting ticks', error as Error, { tokenAddress: tokenAddress.substring(0, 20) });
+    logger.error('Error inserting ticks', error as Error, {
+      tokenAddress: tokenAddress.substring(0, 20),
+    });
     throw error;
   }
 }
@@ -336,13 +339,16 @@ export async function queryCandles(
 ): Promise<Candle[]> {
   // Reuse the singleton client - don't create new one each time
   const ch = getClickHouseClient();
-  
+
   const startUnix = Math.floor(startTime.toSeconds());
   const endUnix = Math.floor(endTime.toSeconds());
-  
-  // Build query with string interpolation (ClickHouse client has issues with query_params for mixed types)
+
+  // Use parameterized queries to prevent SQL injection
   // Note: ClickHouse stores full addresses (e.g., with "pump" suffix), so we use LIKE to match
-  const escapedTokenAddress = tokenAddress.replace(/'/g, "''");
+  const tokenPattern = `${tokenAddress}%`;
+  const tokenPatternSuffix = `%${tokenAddress}`;
+
+  // Build base query with parameters
   let query = `
     SELECT 
       toUnixTimestamp(timestamp) as timestamp,
@@ -352,44 +358,62 @@ export async function queryCandles(
       close,
       volume
     FROM ${CLICKHOUSE_DATABASE}.ohlcv_candles
-    WHERE (token_address = '${escapedTokenAddress}' 
-           OR lower(token_address) = lower('${escapedTokenAddress}')
-           OR token_address LIKE '${escapedTokenAddress}%'
-           OR lower(token_address) LIKE lower('${escapedTokenAddress}%')
-           OR token_address LIKE CONCAT('%', '${escapedTokenAddress}')
-           OR lower(token_address) LIKE lower(CONCAT('%', '${escapedTokenAddress}')))
-      AND chain = '${chain.replace(/'/g, "''")}'
-      AND timestamp >= toDateTime(${startUnix})
-      AND timestamp <= toDateTime(${endUnix})
+    WHERE (token_address = {tokenAddress:String}
+           OR lower(token_address) = lower({tokenAddress:String})
+           OR token_address LIKE {tokenPattern:String}
+           OR lower(token_address) LIKE lower({tokenPattern:String})
+           OR token_address LIKE {tokenPatternSuffix:String}
+           OR lower(token_address) LIKE lower({tokenPatternSuffix:String}))
+      AND chain = {chain:String}
+      AND timestamp >= toDateTime({startUnix:UInt32})
+      AND timestamp <= toDateTime({endUnix:UInt32})
   `;
-  
+
+  // Build query params object
+  const queryParams: Record<string, unknown> = {
+    tokenAddress: tokenAddress,
+    tokenPattern: tokenPattern,
+    tokenPatternSuffix: tokenPatternSuffix,
+    chain: chain,
+    startUnix: startUnix,
+    endUnix: endUnix,
+  };
+
   if (interval) {
     // interval is a reserved keyword in ClickHouse, need to escape with backticks
-    query += ` AND \`interval\` = '${interval.replace(/'/g, "''")}'`;
+    query += ` AND \`interval\` = {interval:String}`;
+    queryParams.interval = interval;
   }
-  
+
   query += ` ORDER BY timestamp ASC`;
-  
+
   // Retry logic for socket hang ups and connection errors
   const maxRetries = 3;
   let lastError: any = null;
-  
+
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
       // Debug logging (display only - use full address in query)
       if (process.env.DEBUG_CLICKHOUSE === 'true') {
-        logger.debug('ClickHouse query', { tokenAddress: tokenAddress.substring(0, 20), chain, startUnix, endUnix, attempt: attempt + 1 });
+        logger.debug('ClickHouse query', {
+          tokenAddress: tokenAddress.substring(0, 20),
+          chain,
+          startUnix,
+          endUnix,
+          attempt: attempt + 1,
+        });
       }
-      
+
       const result = await ch.query({
         query,
+        query_params: queryParams,
         format: 'JSONEachRow',
         clickhouse_settings: {
           max_execution_time: 30, // 30 seconds max execution time
         },
       });
-      
-      const data = await result.json() as Array<{
+
+      const data = (await result.json()) as Array<{
         timestamp: number; // Unix timestamp in seconds
         open: number;
         high: number;
@@ -397,13 +421,13 @@ export async function queryCandles(
         close: number;
         volume: number;
       }>;
-      
+
       // Ensure we have an array
       if (!Array.isArray(data)) {
         return [];
       }
-      
-      return data.map(row => ({
+
+      return data.map((row) => ({
         timestamp: row.timestamp, // Already in Unix seconds from toUnixTimestamp()
         open: row.open,
         high: row.high,
@@ -413,18 +437,19 @@ export async function queryCandles(
       }));
     } catch (error: any) {
       lastError = error;
-      const isSocketError = error.message?.includes('socket hang up') || 
-                           error.message?.includes('ECONNRESET') ||
-                           error.message?.includes('ETIMEDOUT') ||
-                           error.message?.includes('timeout');
-      
+      const isSocketError =
+        error.message?.includes('socket hang up') ||
+        error.message?.includes('ECONNRESET') ||
+        error.message?.includes('ETIMEDOUT') ||
+        error.message?.includes('timeout');
+
       // Retry on socket/timeout errors, but not on other errors (like syntax errors)
       if (isSocketError && attempt < maxRetries - 1) {
         // Wait before retry (exponential backoff: 1s, 2s, 3s)
-        await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+        await new Promise((resolve) => setTimeout(resolve, 1000 * (attempt + 1)));
         continue;
       }
-      
+
       // Silently fail if USE_CACHE_ONLY is set (will fallback to CSV cache)
       if (process.env.USE_CACHE_ONLY !== 'true' && !isSocketError) {
         logger.error('Error querying candles', error as Error, { tokenAddress });
@@ -432,7 +457,7 @@ export async function queryCandles(
       return [];
     }
   }
-  
+
   // If we exhausted retries, return empty array
   return [];
 }
@@ -447,40 +472,48 @@ export async function hasCandles(
   endTime: DateTime
 ): Promise<boolean> {
   const ch = getClickHouseClient();
-  
+
   const startUnix = Math.floor(startTime.toSeconds());
   const endUnix = Math.floor(endTime.toSeconds());
-  
+
+  // Use parameterized queries to prevent SQL injection
+  const tokenPattern = `${tokenAddress}%`;
+  const tokenPatternSuffix = `%${tokenAddress}`;
+
   try {
-    // Escape strings for SQL injection safety
-    const escapedTokenAddress = tokenAddress.replace(/'/g, "''");
-    const escapedChain = chain.replace(/'/g, "''");
-    
-    // Use same flexible matching as queryCandles
+    // Use same flexible matching as queryCandles with parameterized queries
     const result = await ch.query({
       query: `
         SELECT count() as count
         FROM ${CLICKHOUSE_DATABASE}.ohlcv_candles
-        WHERE (token_address = '${escapedTokenAddress}' 
-               OR lower(token_address) = lower('${escapedTokenAddress}')
-               OR token_address LIKE '${escapedTokenAddress}%'
-               OR lower(token_address) LIKE lower('${escapedTokenAddress}%')
-               OR token_address LIKE CONCAT('%', '${escapedTokenAddress}')
-               OR lower(token_address) LIKE lower(CONCAT('%', '${escapedTokenAddress}')))
-          AND chain = '${escapedChain}'
-          AND timestamp >= toDateTime(${startUnix})
-          AND timestamp <= toDateTime(${endUnix})
+        WHERE (token_address = {tokenAddress:String}
+               OR lower(token_address) = lower({tokenAddress:String})
+               OR token_address LIKE {tokenPattern:String}
+               OR lower(token_address) LIKE lower({tokenPattern:String})
+               OR token_address LIKE {tokenPatternSuffix:String}
+               OR lower(token_address) LIKE lower({tokenPatternSuffix:String}))
+          AND chain = {chain:String}
+          AND timestamp >= toDateTime({startUnix:UInt32})
+          AND timestamp <= toDateTime({endUnix:UInt32})
       `,
+      query_params: {
+        tokenAddress: tokenAddress,
+        tokenPattern: tokenPattern,
+        tokenPatternSuffix: tokenPatternSuffix,
+        chain: chain,
+        startUnix: startUnix,
+        endUnix: endUnix,
+      },
       format: 'JSONEachRow',
     });
-    
-    const data = await result.json() as Array<{ count: number }>;
-    
+
+    const data = (await result.json()) as Array<{ count: number }>;
+
     // Ensure we have an array
     if (!Array.isArray(data) || data.length === 0) {
       return false;
     }
-    
+
     return data[0]?.count > 0 || false;
   } catch (error: any) {
     logger.error('Error checking candles', error as Error, { tokenAddress });
@@ -498,4 +531,3 @@ export async function closeClickHouse(): Promise<void> {
     logger.info('ClickHouse connection closed');
   }
 }
-

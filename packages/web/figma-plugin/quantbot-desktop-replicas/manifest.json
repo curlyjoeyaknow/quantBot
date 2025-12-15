@@ -1,8 +1,0 @@
-{
-  "name": "QuantBot Desktop Replicas",
-  "id": "quantbot-desktop-replicas",
-  "api": "1.0.0",
-  "main": "code.js",
-  "editorType": ["figma", "dev"]
-}
-

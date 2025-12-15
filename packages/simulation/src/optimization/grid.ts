@@ -1,6 +1,6 @@
 /**
  * Parameter Grid Generation
- * 
+ *
  * Generates parameter combinations for optimization
  */
 
@@ -18,7 +18,11 @@ export function generateParameterCombinations(
 
   // Default values
   const profitTargetsOptions = grid.profitTargets || [
-    [{ target: 2.0, percent: 0.5 }, { target: 3.0, percent: 0.3 }, { target: 5.0, percent: 0.2 }]
+    [
+      { target: 2.0, percent: 0.5 },
+      { target: 3.0, percent: 0.3 },
+      { target: 5.0, percent: 0.2 },
+    ],
   ];
   const trailingStopOptions = grid.trailingStopPercent || [0.2, 0.25, 0.3];
   const trailingActivationOptions = grid.trailingStopActivation || [2.0, 3.0];
@@ -89,22 +93,13 @@ export function generateFocusedGrid(
 
   if (variations.trailingStop) {
     const baseTrailing = baseStrategy.stopLoss?.trailingPercent || 0.2;
-    grid.trailingStopPercent = [
-      baseTrailing * 0.8,
-      baseTrailing,
-      baseTrailing * 1.2,
-    ];
+    grid.trailingStopPercent = [baseTrailing * 0.8, baseTrailing, baseTrailing * 1.2];
   }
 
   if (variations.stopLoss) {
     const baseStopLoss = baseStrategy.stopLoss?.initial || -0.2;
-    grid.stopLossInitial = [
-      baseStopLoss * 0.8,
-      baseStopLoss,
-      baseStopLoss * 1.2,
-    ];
+    grid.stopLossInitial = [baseStopLoss * 0.8, baseStopLoss, baseStopLoss * 1.2];
   }
 
   return grid;
 }
-

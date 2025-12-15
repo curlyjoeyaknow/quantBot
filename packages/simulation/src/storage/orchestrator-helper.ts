@@ -2,9 +2,17 @@
  * Orchestrator Helper with Storage
  * =================================
  * Helper function to create an orchestrator with storage sink enabled by default.
+ *
+ * @deprecated This has been moved to @quantbot/workflows.
+ * Import from @quantbot/workflows/storage/orchestrator-helper instead.
+ * This file will be removed in a future version.
  */
 
-import { createOrchestrator, type OrchestratorDeps } from '../core/orchestrator';
+/**
+ * @deprecated This has been moved to @quantbot/workflows.
+ * Import from @quantbot/workflows/storage/orchestrator-helper instead.
+ */
+import { SimulationOrchestrator, type OrchestratorDeps } from '../core/orchestrator';
 import { createStorageSink, type StorageSinkConfig } from './storage-sink';
 
 /**
@@ -14,12 +22,11 @@ export function createOrchestratorWithStorage(
   storageConfig?: StorageSinkConfig,
   deps?: OrchestratorDeps
 ) {
-  const orchestrator = createOrchestrator(deps);
-  
+  const orchestrator = new SimulationOrchestrator(deps);
+
   // Add storage sink
   const storageSink = createStorageSink(storageConfig);
   orchestrator.addSink(storageSink);
-  
+
   return orchestrator;
 }
-

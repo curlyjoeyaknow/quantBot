@@ -144,7 +144,7 @@ export class LogAggregator {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.config.apiKey}`,
+        Authorization: `Bearer ${this.config.apiKey}`,
       },
       body: JSON.stringify({ logs }),
     });
@@ -215,4 +215,3 @@ export function initializeLogAggregator(config: LogAggregatorConfig): LogAggrega
 export function getLogAggregator(): LogAggregator | null {
   return globalAggregator;
 }
-

@@ -23,6 +23,8 @@ import {
   DEFAULT_COSTS,
 } from '../types/strategy';
 import { calculateIndicatorSeries, type LegacyIndicatorData } from '../indicators/registry';
+import { calculateIndicatorSeriesOptimized } from '../performance/optimizations';
+import { getPerformanceMonitor } from '../performance/monitor';
 import { evaluateSignalGroup } from '../signals/evaluator';
 import { getEntryCostMultiplier, getExitCostMultiplier } from '../execution';
 import {
@@ -51,14 +53,14 @@ export interface SimulationOptions {
 
 /**
  * Run a strategy simulation on candle data
- * 
+ *
  * This is the core simulation function that:
  * 1. Handles entry logic (immediate, drop-based, trailing)
  * 2. Processes profit targets
  * 3. Manages stop loss (initial and trailing)
  * 4. Handles re-entries
  * 5. Calculates fees and slippage
- * 
+ *
  * @param candles - OHLCV candle data (sorted ascending by timestamp)
  * @param strategy - Strategy profit targets
  * @param stopLossConfig - Stop loss configuration
@@ -84,15 +86,26 @@ export async function simulateStrategy(
 
   // Merge with defaults
   const entryCfg = entryConfig ? { ...DEFAULT_ENTRY, ...entryConfig } : { ...DEFAULT_ENTRY };
-  const stopCfg = stopLossConfig ? { ...DEFAULT_STOP_LOSS, ...stopLossConfig } : { ...DEFAULT_STOP_LOSS };
-  const reEntryCfg = reEntryConfig ? { ...DEFAULT_REENTRY, ...reEntryConfig } : { ...DEFAULT_REENTRY };
+  const stopCfg = stopLossConfig
+    ? { ...DEFAULT_STOP_LOSS, ...stopLossConfig }
+    : { ...DEFAULT_STOP_LOSS };
+  const reEntryCfg = reEntryConfig
+    ? { ...DEFAULT_REENTRY, ...reEntryConfig }
+    : { ...DEFAULT_REENTRY };
   const costs = costConfig ? { ...DEFAULT_COSTS, ...costConfig } : { ...DEFAULT_COSTS };
 
   const entrySignal = options?.entrySignal;
   const exitSignal = options?.exitSignal;
 
-  // Precompute indicators
-  const indicatorSeries = calculateIndicatorSeries(candles);
+  // Precompute indicators (with caching optimization)
+  const perfMonitor = getPerformanceMonitor();
+  const indicatorSeries = await perfMonitor.measure(
+    'calculateIndicators',
+    async () => {
+      return calculateIndicatorSeriesOptimized(candles, calculateIndicatorSeries);
+    },
+    { candleCount: candles.length }
+  );
 
   // Cost multipliers
   const entryCostMultiplier = getEntryCostMultiplier(costs);
@@ -122,7 +135,7 @@ export async function simulateStrategy(
       entrySignal,
       events
     );
-    
+
     if (result.triggered) {
       actualEntryPrice = result.price;
       entryDelay = result.entryDelay;
@@ -144,7 +157,7 @@ export async function simulateStrategy(
       entrySignal,
       events
     );
-    
+
     if (result.triggered) {
       actualEntryPrice = result.price;
       entryDelay = result.entryDelay;
@@ -155,7 +168,8 @@ export async function simulateStrategy(
     } else {
       // Fallback to end of wait period
       const maxWaitTimestamp = candles[0].timestamp + entryCfg.maxWaitTime * 60;
-      const fallback = candles.find(c => c.timestamp <= maxWaitTimestamp) ?? candles[candles.length - 1];
+      const fallback =
+        candles.find((c) => c.timestamp <= maxWaitTimestamp) ?? candles[candles.length - 1];
       actualEntryPrice = fallback.close;
       entryDelay = (fallback.timestamp - candles[0].timestamp) / 60;
     }
@@ -276,7 +290,13 @@ function handleTrailingEntry(
   maxWaitTime: number,
   entrySignal: SignalGroup | undefined,
   events: LegacySimulationEvent[]
-): { triggered: boolean; price: number; entryDelay: number; lowestPrice: number; lowestPriceTimestamp: number } {
+): {
+  triggered: boolean;
+  price: number;
+  entryDelay: number;
+  lowestPrice: number;
+  lowestPriceTimestamp: number;
+} {
   const maxWaitTimestamp = candles[0].timestamp + maxWaitTime * 60;
   let lowestPrice = candles[0].open;
   let lowestPriceTimestamp = candles[0].timestamp;
@@ -351,7 +371,12 @@ async function runSimulationLoop(
   exitSignal: SignalGroup | undefined,
   events: LegacySimulationEvent[],
   candleProvider?: CandleProvider
-): Promise<{ pnl: number; lowestPrice: number; lowestPriceTimestamp: number; lowestPriceTimeFromEntry: number }> {
+): Promise<{
+  pnl: number;
+  lowestPrice: number;
+  lowestPriceTimestamp: number;
+  lowestPriceTimeFromEntry: number;
+}> {
   const entryPriceWithCosts = entryPrice * entryCostMultiplier;
   let stopLoss = entryPrice * (1 + stopCfg.initial);
   let stopMovedToEntry = false;
@@ -394,12 +419,7 @@ async function runSimulationLoop(
     // 1. Update rolling trailing stop first (affects stop loss price)
     if (hasRollingTrailing && trailingStopState) {
       const trailingPercent = stopCfg.trailingPercent ?? 0.25; // Default 25%
-      trailingStopState = updateRollingTrailingStop(
-        trailingStopState,
-        candle,
-        i,
-        trailingPercent
-      );
+      trailingStopState = updateRollingTrailingStop(trailingStopState, candle, i, trailingPercent);
       stopLoss = trailingStopState.currentStop;
     } else if (hasTrailing && !stopMovedToEntry) {
       // Legacy trailing stop activation
@@ -422,13 +442,8 @@ async function runSimulationLoop(
     if (waitingForReEntry && candle.low <= reEntryTriggerPrice) {
       // Validate sequential ordering
       if (lastExitIndex >= 0) {
-        const isValid = validateReEntrySequence(
-          candles,
-          lastExitIndex,
-          i,
-          stopLoss
-        );
-        
+        const isValid = validateReEntrySequence(candles, lastExitIndex, i, stopLoss);
+
         if (!isValid) {
           // Stop loss was hit between exit and re-entry, reject re-entry
           events.push({
@@ -443,14 +458,14 @@ async function runSimulationLoop(
           break;
         }
       }
-      
+
       remaining = Math.min(1, remaining + reEntryCfg.sizePercent);
       reEntryCount++;
       waitingForReEntry = false;
       stopLoss = reEntryTriggerPrice * (1 + stopCfg.initial);
       stopMovedToEntry = false;
       currentPeakPrice = reEntryTriggerPrice;
-      
+
       // Reset trailing stop state for new entry
       if (hasRollingTrailing) {
         trailingStopState = initTrailingStopState(reEntryTriggerPrice, stopCfg);
@@ -469,17 +484,16 @@ async function runSimulationLoop(
 
     // 3. Check stop loss with sequential detection
     if (remaining > 0) {
-      const targetPrice = targetIndex < strategy.length
-        ? entryPrice * strategy[targetIndex].target
-        : Infinity;
-      
+      const targetPrice =
+        targetIndex < strategy.length ? entryPrice * strategy[targetIndex].target : Infinity;
+
       const sequentialResult = await checkStopLossSequential(
         candle,
         stopLoss,
         targetPrice,
         candleProvider
       );
-      
+
       if (sequentialResult.outcome === 'stop_loss') {
         const stopComponent = (stopLoss * exitCostMultiplier) / entryPriceWithCosts;
         const stopPnl = remaining * stopComponent;
@@ -544,12 +558,16 @@ async function runSimulationLoop(
         indicators,
         currentIndex: i,
       };
-      
-      const result = evaluateSignalGroup(exitSignal, {
-        candle,
-        indicators: indicators[i],
-        prevIndicators: i > 0 ? indicators[i - 1] : undefined,
-      }, lookbackContext);
+
+      const result = evaluateSignalGroup(
+        exitSignal,
+        {
+          candle,
+          indicators: indicators[i],
+          prevIndicators: i > 0 ? indicators[i - 1] : undefined,
+        },
+        lookbackContext
+      );
 
       if (result.satisfied) {
         const exitComponent = (candle.close * exitCostMultiplier) / entryPriceWithCosts;
@@ -638,4 +656,3 @@ function createNoTradeResult(
     },
   };
 }
-

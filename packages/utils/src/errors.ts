@@ -123,7 +123,11 @@ export class ApiError extends AppError {
 export class RateLimitError extends AppError {
   public readonly retryAfter?: number;
 
-  constructor(message: string = 'Rate limit exceeded', retryAfter?: number, context?: Record<string, any>) {
+  constructor(
+    message: string = 'Rate limit exceeded',
+    retryAfter?: number,
+    context?: Record<string, any>
+  ) {
     super(message, 'RATE_LIMIT_ERROR', 429, { retryAfter, ...context });
     this.retryAfter = retryAfter;
   }
@@ -156,7 +160,11 @@ export class ServiceUnavailableError extends AppError {
 export class TimeoutError extends AppError {
   public readonly timeoutMs?: number;
 
-  constructor(message: string = 'Operation timed out', timeoutMs?: number, context?: Record<string, any>) {
+  constructor(
+    message: string = 'Operation timed out',
+    timeoutMs?: number,
+    context?: Record<string, any>
+  ) {
     super(message, 'TIMEOUT_ERROR', 504, { timeoutMs, ...context });
     this.timeoutMs = timeoutMs;
   }
@@ -186,4 +194,3 @@ export function isRetryableError(error: Error): boolean {
   }
   return false;
 }
-

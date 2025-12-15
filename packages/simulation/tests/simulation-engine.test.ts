@@ -8,8 +8,8 @@ import {
   DefaultTargetResolver,
   simulateStrategy,
   Strategy,
-} from '../../src/simulation';
-import { Candle } from '../../src/simulation/candles';
+} from '../src';
+import { Candle } from '../src/candles';
 
 describe('Simulation configuration parsing', () => {
   it('applies defaults and validates scenarios', () => {
@@ -54,8 +54,8 @@ describe('simulateStrategy', () => {
     { target: 3, percent: 0.5 },
   ];
 
-  it('realizes targets and exits remaining position', () => {
-    const result = simulateStrategy(candles, strategy);
+  it('realizes targets and exits remaining position', async () => {
+    const result = await simulateStrategy(candles, strategy);
     expect(result.events.some((e) => e.type === 'target_hit')).toBe(true);
     expect(result.events.some((e) => e.type === 'final_exit')).toBe(true);
     expect(result.finalPnl).toBeGreaterThan(1);
@@ -68,7 +68,7 @@ describe('DefaultTargetResolver', () => {
     const csvPath = path.join(tmpDir, 'calls.csv');
     await fs.writeFile(
       csvPath,
-      'mint,chain,timestamp\nMint1111111111111111111111111111111111111,solana,2024-01-01T00:00:00Z\n',
+      'mint,chain,timestamp\nMint1111111111111111111111111111111111111,solana,2024-01-01T00:00:00Z\n'
     );
 
     const scenario: SimulationScenarioConfig = {
@@ -95,4 +95,3 @@ describe('DefaultTargetResolver', () => {
     expect(DateTime.isDateTime(targets[0].startTime)).toBe(true);
   });
 });
-

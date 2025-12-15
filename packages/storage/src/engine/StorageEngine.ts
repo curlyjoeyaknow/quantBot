@@ -1,13 +1,13 @@
 /**
  * Unified Storage Engine for QuantBot
- * 
+ *
  * Provides a single, robust interface for storing and retrieving:
  * - OHLCV candles (ClickHouse)
  * - Token calls (Postgres)
  * - Strategies (Postgres)
  * - Indicators (ClickHouse for computed values)
  * - Simulation results (Postgres + ClickHouse)
- * 
+ *
  * This engine abstracts the complexity of multi-database storage and provides
  * intelligent caching, query optimization, and data consistency guarantees.
  */
@@ -15,16 +15,16 @@
 import { DateTime } from 'luxon';
 import { logger } from '@quantbot/utils';
 import type {
+  Chain,
   Candle,
   Call,
   StrategyConfig,
   SimulationResult,
   SimulationEvent,
-  Token,
-  Caller,
   Alert,
   TokenMetadata,
 } from '@quantbot/core';
+import { createTokenAddress } from '@quantbot/core';
 import type { TokenMetadataSnapshot } from '../clickhouse/repositories/TokenMetadataRepository';
 
 // Import repositories
@@ -241,7 +241,7 @@ export class StorageEngine {
   /**
    * Retrieve OHLCV candles for a token in a time range
    * CRITICAL: Uses full mint address, case-preserved
-   * 
+   *
    * Supports multiple intervals: '1m', '5m', '15m', '1h', '4h', '1d'
    */
   async getCandles(
@@ -252,11 +252,13 @@ export class StorageEngine {
     options: OHLCVQueryOptions = {}
   ): Promise<Candle[]> {
     const { interval = '5m', useCache = true, forceRefresh = false } = options;
-    
+
     // Validate interval
     const validIntervals = ['1m', '5m', '15m', '1h', '4h', '1d'];
     if (!validIntervals.includes(interval)) {
-      throw new Error(`Invalid interval: ${interval}. Must be one of: ${validIntervals.join(', ')}`);
+      throw new Error(
+        `Invalid interval: ${interval}. Must be one of: ${validIntervals.join(', ')}`
+      );
     }
 
     const cacheKey = `candles:${tokenAddress}:${chain}:${interval}:${startTime.toISO()}:${endTime.toISO()}`;
@@ -274,12 +276,10 @@ export class StorageEngine {
     }
 
     try {
-      const candles = await this.ohlcvRepo.getCandles(
-        tokenAddress,
-        chain,
-        interval,
-        { from: startTime.toJSDate(), to: endTime.toJSDate() } as { from: Date; to: Date }
-      );
+      const candles = await this.ohlcvRepo.getCandles(tokenAddress, chain, interval, {
+        from: startTime,
+        to: endTime,
+      });
 
       // Store in cache
       if (useCache && this.config.enableCache) {
@@ -361,7 +361,10 @@ export class StorageEngine {
   ): Promise<number> {
     try {
       // Get or create token
-      const token = await this.tokensRepo.getOrCreateToken(chain as any, tokenAddress);
+      const token = await this.tokensRepo.getOrCreateToken(
+        chain as Chain,
+        createTokenAddress(tokenAddress)
+      );
 
       // Store alert with initial mcap and price
       const alertId = await this.alertsRepo.insertAlert({
@@ -441,14 +444,18 @@ export class StorageEngine {
   async getCallerAlerts(
     callerId: number,
     options?: { from?: DateTime; to?: DateTime; limit?: number }
-  ): Promise<Array<Alert & { 
-    initialMcap?: number; 
-    initialPrice?: number;
-    timeToATH?: number; 
-    maxROI?: number; 
-    athPrice?: number; 
-    athTimestamp?: DateTime;
-  }>> {
+  ): Promise<
+    Array<
+      Alert & {
+        initialMcap?: number;
+        initialPrice?: number;
+        timeToATH?: number;
+        maxROI?: number;
+        athPrice?: number;
+        athTimestamp?: DateTime;
+      }
+    >
+  > {
     const cacheKey = `alerts:caller:${callerId}:${options?.from?.toISO()}:${options?.to?.toISO()}`;
 
     if (this.config.enableCache) {
@@ -528,11 +535,16 @@ export class StorageEngine {
     }
 
     try {
-      const calls = await this.callsRepo.findByTokenId(tokenId, options ? {
-        from: options.from?.toJSDate(),
-        to: options.to?.toJSDate(),
-        limit: options.limit,
-      } : undefined);
+      const calls = await this.callsRepo.findByTokenId(
+        tokenId,
+        options
+          ? {
+              from: options.from?.toJSDate(),
+              to: options.to?.toJSDate(),
+              limit: options.limit,
+            }
+          : undefined
+      );
       if (this.config.enableCache) {
         this.setCache(cacheKey, calls);
       }
@@ -562,15 +574,15 @@ export class StorageEngine {
     try {
       const calls = await this.callsRepo.queryBySelection({
         callerIds: [callerId],
-        from: options?.from?.toJSDate(),
-        to: options?.to?.toJSDate(),
+        from: options?.from,
+        to: options?.to,
       });
-      
-      const limited = options?.limit ? calls.slice(0, options.limit) : calls;
+
+      const result = options?.limit ? calls.slice(0, options.limit) : calls;
       if (this.config.enableCache) {
-        this.setCache(cacheKey, calls);
+        this.setCache(cacheKey, result);
       }
-      return calls;
+      return result;
     } catch (error) {
       logger.error('Error retrieving calls', error as Error);
       throw error;
@@ -584,9 +596,7 @@ export class StorageEngine {
   /**
    * Store a strategy
    */
-  async storeStrategy(
-    strategy: Omit<StrategyConfig, 'createdAt' | 'updatedAt'>
-  ): Promise<number> {
+  async storeStrategy(strategy: Omit<StrategyConfig, 'createdAt' | 'updatedAt'>): Promise<number> {
     try {
       const strategyId = await this.strategiesRepo.create({
         name: strategy.name,
@@ -677,12 +687,7 @@ export class StorageEngine {
     if (indicators.length === 0) return;
 
     try {
-      await this.indicatorsRepo.upsertIndicators(
-        tokenAddress,
-        chain,
-        timestamp,
-        indicators
-      );
+      await this.indicatorsRepo.upsertIndicators(tokenAddress, chain, timestamp, indicators);
 
       // Invalidate cache
       if (this.config.enableCache) {
@@ -754,12 +759,7 @@ export class StorageEngine {
     metadata: TokenMetadata
   ): Promise<void> {
     try {
-      await this.tokenMetadataRepo.upsertMetadata(
-        tokenAddress,
-        chain,
-        timestamp,
-        metadata
-      );
+      await this.tokenMetadataRepo.upsertMetadata(tokenAddress, chain, timestamp, metadata);
 
       // Invalidate cache
       if (this.config.enableCache) {
@@ -799,10 +799,7 @@ export class StorageEngine {
     }
 
     try {
-      const snapshot = await this.tokenMetadataRepo.getLatestMetadata(
-        tokenAddress,
-        chain
-      );
+      const snapshot = await this.tokenMetadataRepo.getLatestMetadata(tokenAddress, chain);
 
       if (!snapshot) {
         return null;
@@ -895,10 +892,7 @@ export class StorageEngine {
   /**
    * Store simulation results summary
    */
-  async storeSimulationResults(
-    simulationRunId: number,
-    result: SimulationResult
-  ): Promise<void> {
+  async storeSimulationResults(simulationRunId: number, result: SimulationResult): Promise<void> {
     try {
       // Store summary in Postgres
       await this.simulationResultsRepo.upsertSummary({
@@ -938,12 +932,7 @@ export class StorageEngine {
     if (events.length === 0) return;
 
     try {
-      await this.simulationEventsRepo.insertEvents(
-        simulationRunId,
-        tokenAddress,
-        chain,
-        events
-      );
+      await this.simulationEventsRepo.insertEvents(simulationRunId, tokenAddress, chain, events);
 
       logger.debug('Stored simulation events', {
         simulationRunId,
@@ -1042,4 +1031,3 @@ export function getStorageEngine(config?: StorageEngineConfig): StorageEngine {
   }
   return defaultEngine;
 }
-

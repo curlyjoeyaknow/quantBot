@@ -35,7 +35,14 @@ export interface EntryEvent extends BaseSimulationEvent {
  * Exit event
  */
 export interface ExitEvent extends BaseSimulationEvent {
-  type: 'target_hit' | 'stop_loss' | 'trailing_stop' | 'signal_exit' | 'ladder_exit' | 'final_exit' | 'timeout_exit';
+  type:
+    | 'target_hit'
+    | 'stop_loss'
+    | 'trailing_stop'
+    | 'signal_exit'
+    | 'ladder_exit'
+    | 'final_exit'
+    | 'timeout_exit';
   reason: ExitReason;
   size: number;
   remainingPosition: number;
@@ -74,11 +81,11 @@ export interface LifecycleEvent extends BaseSimulationEvent {
 /**
  * Union of all simulation events
  */
-export type SimulationEvent = 
-  | EntryEvent 
-  | ExitEvent 
-  | StopModifiedEvent 
-  | SignalEvent 
+export type SimulationEvent =
+  | EntryEvent
+  | ExitEvent
+  | StopModifiedEvent
+  | SignalEvent
   | LifecycleEvent;
 
 /**
@@ -180,4 +187,3 @@ export function toLegacyEvent(event: SimulationEvent): LegacySimulationEvent {
     pnlSoFar,
   };
 }
-

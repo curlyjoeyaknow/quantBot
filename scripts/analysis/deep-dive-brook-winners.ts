@@ -1,4 +1,3 @@
-
 /**
  * Deep Dive Analysis of Brook's Winning Token Selections
  *
@@ -41,8 +40,8 @@ async function getAllCalls(): Promise<UnifiedCall[]> {
   const allAsync = promisify(db.all.bind(db));
 
   try {
-    const rows = await allAsync("SELECT * FROM unified_calls ORDER BY call_timestamp ASC");
-    return (rows as any[]).map(row => ({
+    const rows = await allAsync('SELECT * FROM unified_calls ORDER BY call_timestamp ASC');
+    return (rows as any[]).map((row) => ({
       ...row,
       callerName: row.caller_name, // Corrected from callerName
       callTimestamp: row.call_timestamp,
@@ -75,8 +74,8 @@ async function fetchCandlesForAnalysis(
       endTime.toJSDate(),
       '5m'
     );
-    
-    logger.info('--- BIRDEYE RESPONSE ---', { 
+
+    logger.info('--- BIRDEYE RESPONSE ---', {
       token: tokenAddress,
       hasData: !!birdeyeData,
       hasItems: !!birdeyeData?.items,
@@ -84,22 +83,26 @@ async function fetchCandlesForAnalysis(
     });
 
     if (!birdeyeData || !birdeyeData.items) {
-      logger.warn('Birdeye data or items are null/undefined. Returning empty array.', { tokenAddress });
+      logger.warn('Birdeye data or items are null/undefined. Returning empty array.', {
+        tokenAddress,
+      });
       return [];
     }
 
     const mappedCandles = birdeyeData.items.map((item: any) => ({
       timestamp: item.unixTime,
-      price: typeof item.close === 'string' ? parseFloat(item.close) : (item.close || 0),
-      volume: typeof item.volume === 'string' ? parseFloat(item.volume) : (item.volume || 0),
+      price: typeof item.close === 'string' ? parseFloat(item.close) : item.close || 0,
+      volume: typeof item.volume === 'string' ? parseFloat(item.volume) : item.volume || 0,
     }));
 
-    logger.info('--- LEAVING fetchCandlesForAnalysis ---', { tokenAddress, returnedCandles: mappedCandles.length });
+    logger.info('--- LEAVING fetchCandlesForAnalysis ---', {
+      tokenAddress,
+      returnedCandles: mappedCandles.length,
+    });
     return mappedCandles;
-
   } catch (error: any) {
-    logger.error('--- CRITICAL ERROR in fetchCandlesForAnalysis ---', { 
-      tokenAddress: tokenAddress, 
+    logger.error('--- CRITICAL ERROR in fetchCandlesForAnalysis ---', {
+      tokenAddress: tokenAddress,
       error: error.message,
       stack: error.stack,
       response: error.response?.data,
@@ -113,30 +116,33 @@ function calculateReturns(
   candles: Array<{ timestamp: number; price: number; volume: number }>,
   callUnix: number,
   entryMcap?: number
-): any { // Return type simplified
-  const candlesAfter = candles.filter(c => c.timestamp > callUnix);
-  
-  const candles7d = candlesAfter.filter(c => c.timestamp <= callUnix + 604800); // 7 days
-  const candles30d = candlesAfter.filter(c => c.timestamp <= callUnix + 2592000); // 30 days
+): any {
+  // Return type simplified
+  const candlesAfter = candles.filter((c) => c.timestamp > callUnix);
 
-  const maxPrice7d = candles7d.length > 0 ? Math.max(...candles7d.map(c => c.price)) : callPrice;
-  const maxPrice30d = candles30d.length > 0 ? Math.max(...candles30d.map(c => c.price)) : callPrice;
+  const candles7d = candlesAfter.filter((c) => c.timestamp <= callUnix + 604800); // 7 days
+  const candles30d = candlesAfter.filter((c) => c.timestamp <= callUnix + 2592000); // 30 days
 
-  const priceAt7d = candles7d.length > 0 ? candles7d[candles7d.length - 1]?.price || callPrice : callPrice;
-  const priceAt30d = candles30d.length > 0 ? candles30d[candles30d.length - 1]?.price || callPrice : callPrice;
+  const maxPrice7d = candles7d.length > 0 ? Math.max(...candles7d.map((c) => c.price)) : callPrice;
+  const maxPrice30d =
+    candles30d.length > 0 ? Math.max(...candles30d.map((c) => c.price)) : callPrice;
+
+  const priceAt7d =
+    candles7d.length > 0 ? candles7d[candles7d.length - 1]?.price || callPrice : callPrice;
+  const priceAt30d =
+    candles30d.length > 0 ? candles30d[candles30d.length - 1]?.price || callPrice : callPrice;
 
   const maxReturn7d = callPrice > 0 ? maxPrice7d / callPrice : 0;
   const maxReturn30d = callPrice > 0 ? maxPrice30d / callPrice : 0;
-  
+
   logger.debug('Calculated returns', {
     callPrice,
     maxPrice30d,
-    maxReturn30d
+    maxReturn30d,
   });
 
   return { maxReturn30d, maxReturn7d };
 }
-
 
 // --------------------------------------------------------------------
 
@@ -150,27 +156,27 @@ interface DeepDiveFeatures {
   priceChange1h: number;
   priceChange6h: number;
   priceChange24h: number;
-  
+
   // Dip-and-Rip indicators
   isPostDip: boolean; // Was there a significant dip (>30%) before the call?
-  dipDepth: number;   // How deep was the dip from the prior peak?
+  dipDepth: number; // How deep was the dip from the prior peak?
   timeSinceDip: number; // Hours since the dip's trough
   recoveryFromDip: number; // % recovery from the trough to the call price
-  
+
   // Consolidation indicators
   isConsolidating: boolean; // Trading in a tight range before the call?
   consolidationRange: number; // % range of consolidation
   consolidationDuration: number; // Hours in consolidation
-  
+
   // Volume Profile
   volume5m: number;
   volume1h: number;
   volume24h: number;
   volumeSpikeFactor: number; // How much has volume spiked recently vs average?
-  
+
   // Token Age
   tokenAgeHours?: number;
-  
+
   // Market Cap
   marketCap: number;
 }
@@ -194,7 +200,7 @@ async function analyzeBrookWinners() {
 
   // 1. Get all calls and filter for Brook
   const allCalls = await getAllCalls();
-  const brookCalls = allCalls.filter(call => call.callerName?.toLowerCase().includes('brook'));
+  const brookCalls = allCalls.filter((call) => call.callerName?.toLowerCase().includes('brook'));
   logger.info(`Found ${brookCalls.length} total calls from Brook.`);
 
   const winners: WinnerAnalysis[] = [];
@@ -212,21 +218,26 @@ async function analyzeBrookWinners() {
       continue; // Skip calls with no token address
     }
 
-    const candles = await fetchCandlesForAnalysis(call.tokenAddress, call.callTimestamp, call.chain);
-    if (candles.length < 20) { // Need enough data for analysis
+    const candles = await fetchCandlesForAnalysis(
+      call.tokenAddress,
+      call.callTimestamp,
+      call.chain
+    );
+    if (candles.length < 20) {
+      // Need enough data for analysis
       logger.debug('Not enough candles, skipping', { token: call.tokenAddress });
       continue;
     }
 
     const returns = calculateReturns(
-      call.priceAtAlert || candles.find(c => c.timestamp >= call.callTimestamp)?.price || 0,
+      call.priceAtAlert || candles.find((c) => c.timestamp >= call.callTimestamp)?.price || 0,
       candles,
       call.callTimestamp,
       call.entryMcap
     );
 
     const performanceCategory = categorizePerformance(returns.maxReturn30d);
-    
+
     if (performanceCategory === 'moon' || performanceCategory === 'good') {
       const features = await extractDeepDiveFeatures(call, candles);
       if (features) {
@@ -240,27 +251,34 @@ async function analyzeBrookWinners() {
         });
       }
     } else {
-      logger.debug('Skipping low-performing call', { 
-        token: call.tokenAddress.substring(0, 10), 
-        maxReturn: returns.maxReturn30d.toFixed(2)
+      logger.debug('Skipping low-performing call', {
+        token: call.tokenAddress.substring(0, 10),
+        maxReturn: returns.maxReturn30d.toFixed(2),
       });
     }
   }
-  
+
   logger.info(`Identified ${winners.length} high-performing calls from Brook for analysis.`);
-  
+
   // 4. Aggregate and analyze the features of the winners
   if (winners.length > 0) {
     const featureSummary = aggregateWinnerFeatures(winners);
-    
+
     // 5. Save and print the findings
     const outputPath = path.join(OUTPUT_DIR, 'brook-winner-fingerprint.json');
     fs.mkdirSync(OUTPUT_DIR, { recursive: true });
-    fs.writeFileSync(outputPath, JSON.stringify({
-      totalWinnersAnalyzed: winners.length,
-      featureSummary,
-      rawWinners: winners,
-    }, null, 2));
+    fs.writeFileSync(
+      outputPath,
+      JSON.stringify(
+        {
+          totalWinnersAnalyzed: winners.length,
+          featureSummary,
+          rawWinners: winners,
+        },
+        null,
+        2
+      )
+    );
 
     logger.info(`Winner fingerprint saved to ${outputPath}`);
     printSummary(featureSummary);
@@ -272,19 +290,26 @@ async function analyzeBrookWinners() {
 /**
  * Placeholder for deep feature extraction.
  */
-async function extractDeepDiveFeatures(call: UnifiedCall, candles: Array<{ timestamp: number; price: number; volume: number }>): Promise<DeepDiveFeatures | null> {
+async function extractDeepDiveFeatures(
+  call: UnifiedCall,
+  candles: Array<{ timestamp: number; price: number; volume: number }>
+): Promise<DeepDiveFeatures | null> {
   const callUnix = call.callTimestamp;
-  const candlesBefore = candles.filter(c => c.timestamp < callUnix).sort((a, b) => a.timestamp - b.timestamp);
+  const candlesBefore = candles
+    .filter((c) => c.timestamp < callUnix)
+    .sort((a, b) => a.timestamp - b.timestamp);
 
-  if (candlesBefore.length < 12) { // At least 1 hour of data
+  if (candlesBefore.length < 12) {
+    // At least 1 hour of data
     return null;
   }
 
-  const callPrice = call.priceAtAlert || candles.find(c => c.timestamp >= callUnix)?.price;
+  const callPrice = call.priceAtAlert || candles.find((c) => c.timestamp >= callUnix)?.price;
   if (!callPrice) return null;
 
   // --- Pre-call momentum ---
-  const getPriceAt = (secsAgo: number) => candlesBefore.find(c => c.timestamp >= callUnix - secsAgo)?.price;
+  const getPriceAt = (secsAgo: number) =>
+    candlesBefore.find((c) => c.timestamp >= callUnix - secsAgo)?.price;
   const price5m = getPriceAt(300);
   const price15m = getPriceAt(900);
   const price1h = getPriceAt(3600);
@@ -296,66 +321,91 @@ async function extractDeepDiveFeatures(call: UnifiedCall, candles: Array<{ times
   const priceChange1h = price1h ? ((callPrice - price1h) / price1h) * 100 : 0;
   const priceChange6h = price6h ? ((callPrice - price6h) / price6h) * 100 : 0;
   const priceChange24h = price24h ? ((callPrice - price24h) / price24h) * 100 : 0;
-  
+
   // --- Dip-and-Rip indicators (looking at 24h before call) ---
-  const candles24h = candlesBefore.filter(c => c.timestamp >= callUnix - 86400);
-  let isPostDip = false, dipDepth = 0, timeSinceDip = 0, recoveryFromDip = 0;
+  const candles24h = candlesBefore.filter((c) => c.timestamp >= callUnix - 86400);
+  let isPostDip = false,
+    dipDepth = 0,
+    timeSinceDip = 0,
+    recoveryFromDip = 0;
 
   if (candles24h.length > 20) {
-    const peak24h = candles24h.reduce((max, c) => c.price > max.price ? c : max, candles24h[0]);
-    const candlesAfterPeak = candles24h.filter(c => c.timestamp > peak24h.timestamp);
+    const peak24h = candles24h.reduce((max, c) => (c.price > max.price ? c : max), candles24h[0]);
+    const candlesAfterPeak = candles24h.filter((c) => c.timestamp > peak24h.timestamp);
 
     if (candlesAfterPeak.length > 5) {
-      const troughAfterPeak = candlesAfterPeak.reduce((min, c) => c.price < min.price ? c : min, candlesAfterPeak[0]);
+      const troughAfterPeak = candlesAfterPeak.reduce(
+        (min, c) => (c.price < min.price ? c : min),
+        candlesAfterPeak[0]
+      );
       const localDipDepth = (peak24h.price - troughAfterPeak.price) / peak24h.price;
 
-      if (localDipDepth > 0.3) { // Significant dip happened
+      if (localDipDepth > 0.3) {
+        // Significant dip happened
         isPostDip = true;
         dipDepth = localDipDepth;
         timeSinceDip = (callUnix - troughAfterPeak.timestamp) / 3600; // in hours
-        recoveryFromDip = (callPrice - troughAfterPeak.price) / troughAfterPeak.price * 100;
+        recoveryFromDip = ((callPrice - troughAfterPeak.price) / troughAfterPeak.price) * 100;
       }
     }
   }
 
   // --- Consolidation indicators (looking at 6h before call) ---
-  const candles6h = candlesBefore.filter(c => c.timestamp >= callUnix - 21600);
-  let isConsolidating = false, consolidationRange = 0, consolidationDuration = 0;
+  const candles6h = candlesBefore.filter((c) => c.timestamp >= callUnix - 21600);
+  let isConsolidating = false,
+    consolidationRange = 0,
+    consolidationDuration = 0;
 
   if (candles6h.length > 30) {
-      const maxPrice6h = Math.max(...candles6h.map(c => c.price));
-      const minPrice6h = Math.min(...candles6h.map(c => c.price));
-      const range = (maxPrice6h - minPrice6h) / (maxPrice6h || 1);
+    const maxPrice6h = Math.max(...candles6h.map((c) => c.price));
+    const minPrice6h = Math.min(...candles6h.map((c) => c.price));
+    const range = (maxPrice6h - minPrice6h) / (maxPrice6h || 1);
 
-      if (range < 0.2) { // Price variation is less than 20%
-          isConsolidating = true;
-          consolidationRange = range;
-          consolidationDuration = 6; // Fixed for now
-      }
+    if (range < 0.2) {
+      // Price variation is less than 20%
+      isConsolidating = true;
+      consolidationRange = range;
+      consolidationDuration = 6; // Fixed for now
+    }
   }
 
   // --- Volume Profile ---
-  const getVolumeSum = (secsAgo: number) => candlesBefore.filter(c => c.timestamp >= callUnix - secsAgo).reduce((sum, c) => sum + c.volume, 0);
+  const getVolumeSum = (secsAgo: number) =>
+    candlesBefore
+      .filter((c) => c.timestamp >= callUnix - secsAgo)
+      .reduce((sum, c) => sum + c.volume, 0);
   const volume5m = getVolumeSum(300);
   const volume1h = getVolumeSum(3600);
   const volume24h = getVolumeSum(86400);
   const avgVolume24h = volume24h / (candles24h.length || 1);
-  const volumeSpikeFactor = avgVolume24h > 0 ? volume1h / (avgVolume24h * (3600/86400)) : 0;
-  
+  const volumeSpikeFactor = avgVolume24h > 0 ? volume1h / (avgVolume24h * (3600 / 86400)) : 0;
+
   // --- Market Cap ---
   const marketCap = await getEntryMcapWithFallback(
-    call.tokenAddress, 
-    call.chain, 
-    new Date(call.callTimestamp * 1000), 
-    callPrice, 
+    call.tokenAddress,
+    call.chain,
+    new Date(call.callTimestamp * 1000),
+    callPrice,
     call.messageText || ''
   );
 
   return {
-    priceChange5m, priceChange15m, priceChange1h, priceChange6h, priceChange24h,
-    isPostDip, dipDepth, timeSinceDip, recoveryFromDip,
-    isConsolidating, consolidationRange, consolidationDuration,
-    volume5m, volume1h, volume24h, volumeSpikeFactor,
+    priceChange5m,
+    priceChange15m,
+    priceChange1h,
+    priceChange6h,
+    priceChange24h,
+    isPostDip,
+    dipDepth,
+    timeSinceDip,
+    recoveryFromDip,
+    isConsolidating,
+    consolidationRange,
+    consolidationDuration,
+    volume5m,
+    volume1h,
+    volume24h,
+    volumeSpikeFactor,
     marketCap: marketCap || 0,
   };
 }
@@ -365,17 +415,31 @@ async function extractDeepDiveFeatures(call: UnifiedCall, candles: Array<{ times
  */
 function aggregateWinnerFeatures(winners: WinnerAnalysis[]): any {
   const featureValues: Record<keyof Omit<DeepDiveFeatures, 'tokenAgeHours'>, number[]> = {
-    priceChange5m: [], priceChange15m: [], priceChange1h: [], priceChange6h: [], priceChange24h: [],
-    dipDepth: [], timeSinceDip: [], recoveryFromDip: [],
-    consolidationRange: [], consolidationDuration: [],
-    volume5m: [], volume1h: [], volume24h: [], volumeSpikeFactor: [], marketCap: [],
-    isPostDip: [], isConsolidating: [] // Will be treated as booleans
+    priceChange5m: [],
+    priceChange15m: [],
+    priceChange1h: [],
+    priceChange6h: [],
+    priceChange24h: [],
+    dipDepth: [],
+    timeSinceDip: [],
+    recoveryFromDip: [],
+    consolidationRange: [],
+    consolidationDuration: [],
+    volume5m: [],
+    volume1h: [],
+    volume24h: [],
+    volumeSpikeFactor: [],
+    marketCap: [],
+    isPostDip: [],
+    isConsolidating: [], // Will be treated as booleans
   };
 
   for (const winner of winners) {
     for (const key in featureValues) {
       if (key in winner.features) {
-        featureValues[key as keyof typeof featureValues].push(winner.features[key as keyof DeepDiveFeatures] as number);
+        featureValues[key as keyof typeof featureValues].push(
+          winner.features[key as keyof DeepDiveFeatures] as number
+        );
       }
     }
   }
@@ -385,7 +449,7 @@ function aggregateWinnerFeatures(winners: WinnerAnalysis[]): any {
     const values = featureValues[key as keyof typeof featureValues];
     if (key === 'isPostDip' || key === 'isConsolidating') {
       stats[key] = {
-        prevalence: (values.filter(v => v).length / values.length) * 100
+        prevalence: (values.filter((v) => v).length / values.length) * 100,
       };
     } else if (values.length > 0) {
       const sorted = [...values].sort((a, b) => a - b);
@@ -410,27 +474,41 @@ function printSummary(summary: any) {
   console.log("This is the DNA of Brook's most successful calls (>3x returns).\n");
 
   const formatNum = (n: number) => (n || 0).toFixed(2);
-  
-  console.log("📈 Pre-Call Momentum:");
+
+  console.log('📈 Pre-Call Momentum:');
   console.log(`   - 1h before call: ${formatNum(summary.priceChange1h.avg)}% (avg)`);
   console.log(`   - 6h before call: ${formatNum(summary.priceChange6h.avg)}% (avg)`);
 
-  console.log("\n📉 Dip-and-Rip Pattern:");
-  console.log(`   - Prevalence: ${formatNum(summary.isPostDip.prevalence)}% of winners were called after a recent dip.`);
-  console.log(`   - Dip Depth: The average dip was ${formatNum(summary.dipDepth.avg * 100)}% from the peak.`);
-  console.log(`   - Recovery: Winners were called after recovering an average of ${formatNum(summary.recoveryFromDip.avg)}% from the bottom.`);
+  console.log('\n📉 Dip-and-Rip Pattern:');
+  console.log(
+    `   - Prevalence: ${formatNum(summary.isPostDip.prevalence)}% of winners were called after a recent dip.`
+  );
+  console.log(
+    `   - Dip Depth: The average dip was ${formatNum(summary.dipDepth.avg * 100)}% from the peak.`
+  );
+  console.log(
+    `   - Recovery: Winners were called after recovering an average of ${formatNum(summary.recoveryFromDip.avg)}% from the bottom.`
+  );
 
-  console.log("\n sideways Consolidation:");
-  console.log(`   - Prevalence: ${formatNum(summary.isConsolidating.prevalence)}% of winners were consolidating before the call.`);
-  console.log(`   - Tightness: The average consolidation range was ${formatNum(summary.consolidationRange.avg * 100)}%.`);
-  
-  console.log("\n📊 Volume Profile:");
-  console.log(`   - Spike Factor: Volume in the hour before the call was, on average, ${formatNum(summary.volumeSpikeFactor.avg)}x the daily average.`);
+  console.log('\n sideways Consolidation:');
+  console.log(
+    `   - Prevalence: ${formatNum(summary.isConsolidating.prevalence)}% of winners were consolidating before the call.`
+  );
+  console.log(
+    `   - Tightness: The average consolidation range was ${formatNum(summary.consolidationRange.avg * 100)}%.`
+  );
 
-  console.log("\n💰 Market Cap:");
-  console.log(`   - Sweet Spot: The median market cap was $${(summary.marketCap.median / 1000).toFixed(2)}K.`);
-  
-  console.log("\n-----------------------------------\n");
+  console.log('\n📊 Volume Profile:');
+  console.log(
+    `   - Spike Factor: Volume in the hour before the call was, on average, ${formatNum(summary.volumeSpikeFactor.avg)}x the daily average.`
+  );
+
+  console.log('\n💰 Market Cap:');
+  console.log(
+    `   - Sweet Spot: The median market cap was $${(summary.marketCap.median / 1000).toFixed(2)}K.`
+  );
+
+  console.log('\n-----------------------------------\n');
 }
 
 function categorizePerformance(maxReturn30d: number): 'moon' | 'good' | 'decent' | 'poor' {
@@ -440,12 +518,11 @@ function categorizePerformance(maxReturn30d: number): 'moon' | 'good' | 'decent'
   return 'poor';
 }
 
-
-main().catch(err => {
-  logger.error("Deep dive analysis failed", { error: err, stack: err.stack });
+main().catch((err) => {
+  logger.error('Deep dive analysis failed', { error: err, stack: err.stack });
   process.exit(1);
 });
 
 async function main() {
-    await analyzeBrookWinners();
+  await analyzeBrookWinners();
 }

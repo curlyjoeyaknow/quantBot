@@ -1,6 +1,6 @@
 /**
  * Strategy Presets
- * 
+ *
  * Predefined strategy configurations
  */
 
@@ -100,4 +100,3 @@ export function registerPreset(name: StrategyPresetName, config: StrategyConfig)
 export function listPresets(): StrategyPresetName[] {
   return Array.from(presets.keys());
 }
-

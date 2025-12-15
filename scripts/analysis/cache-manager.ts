@@ -168,4 +168,3 @@ export function getCacheStats(): { totalFiles: number; totalSize: number } {
 
   return { totalFiles, totalSize };
 }
-

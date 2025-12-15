@@ -1,9 +1,9 @@
 /**
  * IndicatorsRepository - ClickHouse repository for computed indicator values
- * 
+ *
  * Stores and retrieves computed technical indicator values (Ichimoku, EMA, RSI, etc.)
  * for efficient querying and reuse across simulations.
- * 
+ *
  * CRITICAL: Always preserve full token address and exact case.
  */
 
@@ -93,7 +93,7 @@ export class IndicatorsRepository {
   /**
    * Get indicator values for a token in a time range
    * CRITICAL: Uses full address, case-preserved
-   * 
+   *
    * Returns a Map where keys are timestamps (unix seconds) and values are arrays of IndicatorValue
    */
   async getIndicators(
@@ -143,7 +143,7 @@ export class IndicatorsRepository {
         },
       });
 
-      const data = await result.json() as Array<{
+      const data = (await result.json()) as Array<{
         timestamp: number;
         indicator_type: string;
         value_json: string;
@@ -222,7 +222,7 @@ export class IndicatorsRepository {
         },
       });
 
-      const data = await result.json() as Array<{
+      const data = (await result.json()) as Array<{
         timestamp: number;
         indicator_type: string;
         value_json: string;
@@ -246,10 +246,7 @@ export class IndicatorsRepository {
   /**
    * Delete old indicator values (cleanup)
    */
-  async deleteOldIndicators(
-    beforeTimestamp: DateTime,
-    chain?: string
-  ): Promise<number> {
+  async deleteOldIndicators(beforeTimestamp: DateTime, chain?: string): Promise<number> {
     await this.ensureTable();
 
     const ch = getClickHouseClient();
@@ -277,4 +274,3 @@ export class IndicatorsRepository {
     }
   }
 }
-

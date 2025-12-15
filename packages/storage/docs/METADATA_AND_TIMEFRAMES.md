@@ -3,6 +3,7 @@
 ## Overview
 
 The Storage Engine now supports:
+
 1. **Separate token metadata storage** - Time-series snapshots of token metadata (market cap, price, volume, etc.) stored separately from candles
 2. **Multi-timeframe candle handling** - Support for multiple candle intervals with validation and parallel fetching
 
@@ -11,6 +12,7 @@ The Storage Engine now supports:
 ### Architecture
 
 Token metadata is stored in ClickHouse `token_metadata` table, separate from candles. This allows:
+
 - Tracking metadata changes over time
 - Historical analysis of market cap, volume, price changes
 - Efficient queries for latest metadata
@@ -139,6 +141,7 @@ const oneHour = multiInterval.get('1h');
 ### Mint Address Preservation
 
 ✅ **CRITICAL**: All metadata operations preserve full mint addresses and exact case:
+
 - Storage: Full address stored as-is
 - Queries: Case-preserved matching
 - Display: Only truncated for logging
@@ -158,6 +161,7 @@ const oneHour = multiInterval.get('1h');
 ## Migration
 
 The new functionality is backward compatible:
+
 - Existing code using default `5m` interval continues to work
 - Metadata storage is optional (can be added incrementally)
 - No breaking changes to existing APIs
@@ -208,6 +212,7 @@ const marketCap = metadata?.marketCap;
 ## Testing
 
 Comprehensive tests cover:
+
 - ✅ Metadata storage with mint preservation
 - ✅ Latest metadata retrieval
 - ✅ Metadata history queries
@@ -216,4 +221,3 @@ Comprehensive tests cover:
 - ✅ Case sensitivity
 
 See `tests/TokenMetadataRepository.test.ts` for examples.
-

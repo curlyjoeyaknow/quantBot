@@ -1,16 +1,28 @@
 /**
  * Strategy Optimizer
- * 
+ *
  * Optimizes trading strategies by testing parameter combinations
+ *
+ * @deprecated This optimizer is incomplete and violates architectural rules.
+ * It should be moved to @quantbot/workflows or accept candles via dependency injection.
+ * For now, it's kept for reference but should not be used in production.
  */
 
 import { OptimizationConfig, StrategyOptimizationResult, OptimizationRunResult } from './types';
 import { StrategyConfig } from '../strategies/types';
 import { generateParameterCombinations } from './grid';
-import { buildStrategy, buildStopLossConfig, buildEntryConfig, buildReEntryConfig, validateStrategy } from '../strategies/builder';
+import {
+  buildStrategy,
+  buildStopLossConfig,
+  buildEntryConfig,
+  buildReEntryConfig,
+  validateStrategy,
+} from '../strategies/builder';
 import { simulateStrategy } from '../engine';
-import { fetchHybridCandles } from '../candles';
+// eslint-disable-next-line no-restricted-imports
+import { fetchHybridCandles } from '@quantbot/ohlcv';
 import { DateTime } from 'luxon';
+import type { Candle } from '@quantbot/core';
 
 // TODO: loadData should be part of @quantbot/services or removed
 // import { loadData } from '../../data/loaders';
@@ -21,13 +33,10 @@ export class StrategyOptimizer {
    */
   async optimize(config: OptimizationConfig): Promise<OptimizationRunResult> {
     // Generate strategy combinations
-    const strategies = generateParameterCombinations(
-      config.parameterGrid,
-      config.baseStrategy
-    );
+    const strategies = generateParameterCombinations(config.parameterGrid, config.baseStrategy);
 
     // Limit strategies if specified
-    const strategiesToTest = config.maxStrategies 
+    const strategiesToTest = config.maxStrategies
       ? strategies.slice(0, config.maxStrategies)
       : strategies;
 
@@ -48,9 +57,9 @@ export class StrategyOptimizer {
     for (let i = 0; i < strategiesToTest.length; i += maxConcurrent) {
       const batch = strategiesToTest.slice(i, i + maxConcurrent);
       const batchResults = await Promise.all(
-        batch.map(strategy => this.testStrategy(strategy, dataRecords))
+        batch.map((strategy) => this.testStrategy(strategy, dataRecords))
       );
-      results.push(...batchResults.filter(r => r !== null) as StrategyOptimizationResult[]);
+      results.push(...(batchResults.filter((r) => r !== null) as StrategyOptimizationResult[]));
     }
 
     // Find best strategy
@@ -90,9 +99,10 @@ export class StrategyOptimizer {
       try {
         const mint = record.mint || record.tokenAddress;
         const chain = record.chain || 'solana';
-        const timestamp = record.timestamp instanceof DateTime 
-          ? record.timestamp 
-          : DateTime.fromJSDate(record.timestamp);
+        const timestamp =
+          record.timestamp instanceof DateTime
+            ? record.timestamp
+            : DateTime.fromJSDate(record.timestamp);
 
         if (!mint || !timestamp.isValid) {
           skipped++;
@@ -115,7 +125,7 @@ export class StrategyOptimizer {
         const reEntryConfig = buildReEntryConfig(strategy);
 
         // Run simulation
-        const result = simulateStrategy(
+        const result = await simulateStrategy(
           candles,
           strategyParams,
           stopLossConfig,
@@ -124,10 +134,11 @@ export class StrategyOptimizer {
         );
 
         // Calculate additional metrics
-        const maxReached = Math.max(...candles.map(c => c.high / candles[0].open));
-        const holdDuration = result.events.length > 0
-          ? (result.events[result.events.length - 1].timestamp - result.events[0].timestamp) / 60
-          : 0;
+        const maxReached = Math.max(...candles.map((c) => c.high / candles[0].open));
+        const holdDuration =
+          result.events.length > 0
+            ? (result.events[result.events.length - 1].timestamp - result.events[0].timestamp) / 60
+            : 0;
         const timeToAth = this.calculateTimeToAth(candles, result.events);
 
         trades.push({
@@ -188,18 +199,16 @@ export class StrategyOptimizer {
 
     const totalPnl = trades.reduce((sum, t) => sum + (t.pnl - 1), 0);
     const totalPnlPercent = (totalPnl / trades.length) * 100;
-    const winningTrades = trades.filter(t => t.pnl > 1).length;
+    const winningTrades = trades.filter((t) => t.pnl > 1).length;
     const losingTrades = trades.length - winningTrades;
     const winRate = (winningTrades / trades.length) * 100;
 
-    const wins = trades.filter(t => t.pnl > 1);
-    const losses = trades.filter(t => t.pnl <= 1);
-    const avgWin = wins.length > 0 
-      ? wins.reduce((sum, t) => sum + (t.pnl - 1), 0) / wins.length 
-      : 0;
-    const avgLoss = losses.length > 0
-      ? losses.reduce((sum, t) => sum + (1 - t.pnl), 0) / losses.length
-      : 0;
+    const wins = trades.filter((t) => t.pnl > 1);
+    const losses = trades.filter((t) => t.pnl <= 1);
+    const avgWin =
+      wins.length > 0 ? wins.reduce((sum, t) => sum + (t.pnl - 1), 0) / wins.length : 0;
+    const avgLoss =
+      losses.length > 0 ? losses.reduce((sum, t) => sum + (1 - t.pnl), 0) / losses.length : 0;
 
     const profitFactor = avgLoss > 0 ? (avgWin * winningTrades) / (avgLoss * losingTrades) : 0;
 
@@ -215,9 +224,10 @@ export class StrategyOptimizer {
     }
 
     // Calculate Sharpe ratio (simplified - would need risk-free rate)
-    const returns = trades.map(t => t.pnl - 1);
+    const returns = trades.map((t) => t.pnl - 1);
     const avgReturn = returns.reduce((sum, r) => sum + r, 0) / returns.length;
-    const variance = returns.reduce((sum, r) => sum + Math.pow(r - avgReturn, 2), 0) / returns.length;
+    const variance =
+      returns.reduce((sum, r) => sum + Math.pow(r - avgReturn, 2), 0) / returns.length;
     const stdDev = Math.sqrt(variance);
     const sharpeRatio = stdDev > 0 ? avgReturn / stdDev : 0;
 
@@ -264,12 +274,14 @@ export class StrategyOptimizer {
   /**
    * Find the best strategy from results
    */
-  private findBestStrategy(results: StrategyOptimizationResult[]): StrategyOptimizationResult | null {
+  private findBestStrategy(
+    results: StrategyOptimizationResult[]
+  ): StrategyOptimizationResult | null {
     if (results.length === 0) return null;
 
     // Sort by total PnL percent
-    const sorted = [...results].sort((a, b) => 
-      b.metrics.totalPnlPercent - a.metrics.totalPnlPercent
+    const sorted = [...results].sort(
+      (a, b) => b.metrics.totalPnlPercent - a.metrics.totalPnlPercent
     );
 
     return sorted[0];
@@ -289,9 +301,9 @@ export class StrategyOptimizer {
       };
     }
 
-    const pnls = results.map(r => r.metrics.totalPnlPercent);
-    const winRates = results.map(r => r.metrics.winRate);
-    const profitFactors = results.map(r => r.metrics.profitFactor);
+    const pnls = results.map((r) => r.metrics.totalPnlPercent);
+    const winRates = results.map((r) => r.metrics.winRate);
+    const profitFactors = results.map((r) => r.metrics.profitFactor);
 
     return {
       totalStrategiesTested: results.length,
@@ -302,4 +314,3 @@ export class StrategyOptimizer {
     };
   }
 }
-

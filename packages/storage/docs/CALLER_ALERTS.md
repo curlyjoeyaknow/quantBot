@@ -9,6 +9,8 @@ The Storage Engine now supports storing and tracking caller alerts with comprehe
 - **Max ROI** - Maximum ROI percentage achieved
 - **ATH Price** - All-time high price after alert
 - **ATH Timestamp** - When all-time high was reached
+- **ATL Price** - All-time low price (from alert until ATH)
+- **ATL Timestamp** - When all-time low was reached
 
 ## Database Schema
 
@@ -21,6 +23,8 @@ time_to_ath INTEGER              -- Seconds from alert to all-time high
 max_roi NUMERIC(10, 6)           -- Maximum ROI percentage
 ath_price NUMERIC(38, 18)        -- All-time high price
 ath_timestamp TIMESTAMPTZ        -- Timestamp of all-time high
+atl_price NUMERIC(38, 18)        -- All-time low price (from alert until ATH)
+atl_timestamp TIMESTAMPTZ        -- Timestamp of all-time low
 ```
 
 ## Usage
@@ -61,6 +65,8 @@ const timeToATH = 3600; // 1 hour in seconds
 const maxROI = 150.5; // 150.5% ROI
 const athPrice = 0.0025; // All-time high price
 const athTimestamp = DateTime.now().plus({ hours: 1 });
+const atlPrice = 0.0008; // All-time low price (from alert until ATH)
+const atlTimestamp = DateTime.now().plus({ minutes: 15 });
 
 // Update alert with calculated metrics
 await engine.updateCallerAlertMetrics(alertId, {
@@ -68,6 +74,8 @@ await engine.updateCallerAlertMetrics(alertId, {
   maxROI,
   athPrice,
   athTimestamp,
+  atlPrice,
+  atlTimestamp,
 });
 ```
 
@@ -90,6 +98,8 @@ alerts.forEach(alert => {
   console.log('Max ROI:', alert.maxROI, '%');
   console.log('ATH Price:', alert.athPrice);
   console.log('ATH Timestamp:', alert.athTimestamp?.toISO());
+  console.log('ATL Price:', alert.atlPrice);
+  console.log('ATL Timestamp:', alert.atlTimestamp?.toISO());
 });
 ```
 
@@ -112,6 +122,12 @@ const mcapMultiple = athMcap / initialMcap;
 ### Price Multiple
 ```typescript
 const priceMultiple = athPrice / initialPrice;
+```
+
+### ATL Multiple (Drawdown)
+```typescript
+const atlMultiple = atlPrice / initialPrice; // Ratio of ATL to entry (0.5 = dropped to 50%)
+const maxDrawdown = (1 - atlMultiple) * 100; // Maximum drawdown percentage
 ```
 
 ### Time-Based Metrics
@@ -139,12 +155,14 @@ const alertId = await engine.storeCallerAlert(
 // 2. Monitor price and calculate metrics
 // ... (monitoring logic) ...
 
-// 3. When ATH is reached, update metrics
+// 3. When ATH is reached, update metrics (ATL is calculated from entry until ATH)
 await engine.updateCallerAlertMetrics(alertId, {
   timeToATH: secondsFromAlertToATH,
   maxROI: calculatedROI,
   athPrice: allTimeHighPrice,
   athTimestamp: athTime,
+  atlPrice: allTimeLowPrice, // Lowest price from entry until ATH
+  atlTimestamp: atlTime,
 });
 
 // 4. Query alerts for analysis

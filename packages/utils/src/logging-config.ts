@@ -11,13 +11,13 @@ import { LogLevel } from './logger';
  */
 export function getLogLevel(): LogLevel {
   const envLevel = process.env.LOG_LEVEL?.toLowerCase();
-  
+
   if (envLevel === 'error') return LogLevel.ERROR;
   if (envLevel === 'warn') return LogLevel.WARN;
   if (envLevel === 'info') return LogLevel.INFO;
   if (envLevel === 'debug') return LogLevel.DEBUG;
   if (envLevel === 'trace') return LogLevel.TRACE;
-  
+
   // Default based on environment
   return process.env.NODE_ENV === 'production' ? LogLevel.INFO : LogLevel.DEBUG;
 }
@@ -31,4 +31,3 @@ export function isLogLevelEnabled(level: LogLevel, currentLevel: LogLevel): bool
   const checkIndex = levels.indexOf(level);
   return checkIndex <= currentIndex;
 }
-

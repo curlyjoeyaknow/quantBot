@@ -19,14 +19,14 @@ async function checkClickHouseData(): Promise<void> {
 
   try {
     // Get sample of valid tokens
-    const rows = await all(`
+    const rows = (await all(`
       SELECT DISTINCT token_address, chain, MIN(call_timestamp) as first_call
       FROM unified_calls 
       WHERE call_timestamp > 1577836800 AND call_timestamp < 2000000000
       GROUP BY token_address, chain
       ORDER BY first_call DESC
       LIMIT 20
-    `) as Array<{ token_address: string; chain: string; first_call: number }>;
+    `)) as Array<{ token_address: string; chain: string; first_call: number }>;
 
     logger.info('Checking ClickHouse data', { tokenCount: rows.length });
 
@@ -44,7 +44,7 @@ async function checkClickHouseData(): Promise<void> {
 
       try {
         const candles = await queryCandles(tokenAddress, chain, startTime, endTime, '5m');
-        
+
         if (candles && candles.length > 0) {
           foundCount++;
           logger.info('✅ Found data in ClickHouse', {
@@ -71,7 +71,7 @@ async function checkClickHouseData(): Promise<void> {
       }
 
       // Small delay to avoid overwhelming ClickHouse
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise((resolve) => setTimeout(resolve, 100));
     }
 
     logger.info('ClickHouse data check complete', {
@@ -80,7 +80,6 @@ async function checkClickHouseData(): Promise<void> {
       notFound: notFoundCount,
       foundPercent: ((foundCount / rows.length) * 100).toFixed(1) + '%',
     });
-
   } catch (error: any) {
     logger.error('Error checking ClickHouse data', error as Error);
   } finally {
@@ -89,11 +88,10 @@ async function checkClickHouseData(): Promise<void> {
 }
 
 if (require.main === module) {
-  checkClickHouseData().catch(error => {
+  checkClickHouseData().catch((error) => {
     logger.error('Fatal error', error as Error);
     process.exit(1);
   });
 }
 
 export { checkClickHouseData };
-

@@ -22,11 +22,7 @@ class CreditMonitor {
   /**
    * Record credit usage
    */
-  recordUsage(
-    provider: string,
-    creditsUsed: number,
-    requestsCount: number = 1
-  ): void {
+  recordUsage(provider: string, creditsUsed: number, requestsCount: number = 1): void {
     const current = this.usage.get(provider) || {
       provider,
       creditsUsed: 0,
@@ -129,4 +125,3 @@ class CreditMonitor {
 }
 
 export const creditMonitor = new CreditMonitor();
-

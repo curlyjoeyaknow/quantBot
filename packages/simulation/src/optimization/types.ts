@@ -1,6 +1,6 @@
 /**
  * Optimization Types
- * 
+ *
  * Types for strategy optimization
  */
 
@@ -95,4 +95,3 @@ export interface OptimizationRunResult {
     averagePnl: number;
   };
 }
-

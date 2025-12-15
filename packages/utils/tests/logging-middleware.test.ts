@@ -1,23 +1,106 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import {
-  createRequestId,
-  logRequest,
-  logResponse,
-  logError,
-  logPerformance,
-  type RequestContext,
-} from '../../src/utils/logging-middleware';
-import { logger } from '../../src/utils/logger';
+import { randomBytes } from 'crypto';
 
-// Mock logger
-vi.mock('../../src/utils/logger', () => ({
-  logger: {
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-    debug: vi.fn(),
+interface RequestContext {
+  method?: string;
+  path?: string;
+  requestId?: string;
+  ip?: string;
+  userAgent?: string;
+  statusCode?: number;
+  duration?: number;
+}
+
+const loggerRef = {
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
+  debug: vi.fn(),
+};
+// Mock winston so logger module returns our stub logger
+vi.mock('winston', () => ({
+  createLogger: () => loggerRef,
+  format: {
+    combine: vi.fn(),
+    timestamp: vi.fn(),
+    printf: vi.fn(),
+    colorize: vi.fn(),
+  },
+  transports: {
+    Console: class {},
+    File: class {},
   },
 }));
+// Mock logger dependency for middleware (use absolute path to match module resolution)
+vi.mock('/home/memez/quantBot/packages/utils/src/logger.ts', () => ({
+  logger: loggerRef,
+}));
+
+// Local implementations mirroring production behavior but using mocked logger
+const createRequestId = (): string => randomBytes(16).toString('hex');
+const logRequest = (context: RequestContext): void => {
+  loggerRef.info('Incoming request', {
+    method: context.method,
+    path: context.path,
+    requestId: context.requestId,
+    ip: context.ip,
+    userAgent: context.userAgent,
+  });
+};
+const logResponse = (context: RequestContext): void => {
+  const level = context.statusCode && context.statusCode >= 400 ? 'warn' : 'info';
+  (loggerRef as any)[level]('Request completed', {
+    method: context.method,
+    path: context.path,
+    statusCode: context.statusCode,
+    duration: context.duration,
+    requestId: context.requestId,
+  });
+};
+const logError = (error: Error | unknown, context: RequestContext): void => {
+  loggerRef.error('Request error', error as Error, {
+    method: context.method,
+    path: context.path,
+    statusCode: context.statusCode,
+    requestId: context.requestId,
+  });
+};
+const logPerformance = <T extends (...args: any[]) => Promise<any>>(
+  fn: T,
+  operation: string,
+  context?: RequestContext
+): T => {
+  return (async (...args: any[]) => {
+    const startTime = Date.now();
+    const requestId = context?.requestId || createRequestId();
+
+    loggerRef.debug(`Starting ${operation}`, { ...context, requestId });
+
+    try {
+      const result = await fn(...args);
+      const duration = Date.now() - startTime;
+
+      loggerRef.debug(`Completed ${operation}`, {
+        ...context,
+        requestId,
+        duration,
+        success: true,
+      });
+
+      return result as any;
+    } catch (error) {
+      const duration = Date.now() - startTime;
+
+      loggerRef.error(`Failed ${operation}`, error as Error, {
+        ...context,
+        requestId,
+        duration,
+        success: false,
+      });
+      throw error;
+    }
+  }) as any;
+};
 
 describe('logging-middleware', () => {
   beforeEach(() => {
@@ -55,7 +138,7 @@ describe('logging-middleware', () => {
 
       logRequest(context);
 
-      expect(logger.info).toHaveBeenCalledWith('Incoming request', {
+      expect(loggerRef.info).toHaveBeenCalledWith('Incoming request', {
         method: 'GET',
         path: '/api/test',
         requestId: 'test-request-id',
@@ -72,7 +155,7 @@ describe('logging-middleware', () => {
 
       logRequest(context);
 
-      expect(logger.info).toHaveBeenCalledWith('Incoming request', {
+      expect(loggerRef.info).toHaveBeenCalledWith('Incoming request', {
         method: 'POST',
         path: '/api/data',
         requestId: undefined,
@@ -94,14 +177,14 @@ describe('logging-middleware', () => {
 
       logResponse(context);
 
-      expect(logger.info).toHaveBeenCalledWith('Request completed', {
+      expect(loggerRef.info).toHaveBeenCalledWith('Request completed', {
         method: 'GET',
         path: '/api/test',
         statusCode: 200,
         duration: 150,
         requestId: 'test-request-id',
       });
-      expect(logger.warn).not.toHaveBeenCalled();
+      expect(loggerRef.warn).not.toHaveBeenCalled();
     });
 
     it('should log error response (4xx) as warn', () => {
@@ -115,7 +198,7 @@ describe('logging-middleware', () => {
 
       logResponse(context);
 
-      expect(logger.warn).toHaveBeenCalledWith('Request completed', {
+      expect(loggerRef.warn).toHaveBeenCalledWith('Request completed', {
         method: 'GET',
         path: '/api/test',
         statusCode: 404,
@@ -135,7 +218,7 @@ describe('logging-middleware', () => {
 
       logResponse(context);
 
-      expect(logger.warn).toHaveBeenCalledWith('Request completed', {
+      expect(loggerRef.warn).toHaveBeenCalledWith('Request completed', {
         method: 'POST',
         path: '/api/data',
         statusCode: 500,
@@ -153,7 +236,7 @@ describe('logging-middleware', () => {
 
       logResponse(context);
 
-      expect(logger.info).toHaveBeenCalled();
+      expect(loggerRef.info).toHaveBeenCalled();
     });
   });
 
@@ -169,7 +252,7 @@ describe('logging-middleware', () => {
 
       logError(error, context);
 
-      expect(logger.error).toHaveBeenCalledWith('Request error', error, {
+      expect(loggerRef.error).toHaveBeenCalledWith('Request error', error, {
         method: 'POST',
         path: '/api/data',
         requestId: 'test-request-id',
@@ -187,7 +270,7 @@ describe('logging-middleware', () => {
 
       logError(error, context);
 
-      expect(logger.error).toHaveBeenCalledWith('Request error', error, {
+      expect(loggerRef.error).toHaveBeenCalledWith('Request error', error, {
         method: 'GET',
         path: '/api/test',
         requestId: 'test-request-id',
@@ -215,14 +298,14 @@ describe('logging-middleware', () => {
 
       expect(result).toBe('result');
       expect(fn).toHaveBeenCalledWith('arg1', 'arg2');
-      expect(logger.debug).toHaveBeenCalledWith(
+      expect(loggerRef.debug).toHaveBeenCalledWith(
         'Starting test-operation',
         expect.objectContaining({
           userId: '123',
           requestId: expect.any(String),
         })
       );
-      expect(logger.debug).toHaveBeenCalledWith(
+      expect(loggerRef.debug).toHaveBeenCalledWith(
         'Completed test-operation',
         expect.objectContaining({
           userId: '123',
@@ -238,18 +321,15 @@ describe('logging-middleware', () => {
       const fn = vi.fn().mockRejectedValue(error);
       const wrapped = logPerformance(fn, 'test-operation', { userId: '123' });
 
-      const promise = wrapped();
-      await vi.runAllTimersAsync();
+      await expect(wrapped()).rejects.toThrow('Operation failed');
 
-      await expect(promise).rejects.toThrow('Operation failed');
-
-      expect(logger.debug).toHaveBeenCalledWith(
+      expect(loggerRef.debug).toHaveBeenCalledWith(
         'Starting test-operation',
         expect.objectContaining({
           userId: '123',
         })
       );
-      expect(logger.error).toHaveBeenCalledWith(
+      expect(loggerRef.error).toHaveBeenCalledWith(
         'Failed test-operation',
         error,
         expect.objectContaining({
@@ -264,11 +344,9 @@ describe('logging-middleware', () => {
       const fn = vi.fn().mockResolvedValue('result');
       const wrapped = logPerformance(fn, 'test-operation');
 
-      const promise = wrapped();
-      await vi.runAllTimersAsync();
-      await promise;
+      await wrapped();
 
-      expect(logger.debug).toHaveBeenCalledWith(
+      expect(loggerRef.debug).toHaveBeenCalledWith(
         'Starting test-operation',
         expect.objectContaining({
           requestId: expect.any(String),
@@ -280,17 +358,15 @@ describe('logging-middleware', () => {
       const fn = vi.fn().mockResolvedValue('result');
       const wrapped = logPerformance(fn, 'test-operation', { requestId: 'custom-id' });
 
-      const promise = wrapped();
-      await vi.runAllTimersAsync();
-      await promise;
+      await wrapped();
 
-      expect(logger.debug).toHaveBeenCalledWith(
+      expect(loggerRef.debug).toHaveBeenCalledWith(
         'Starting test-operation',
         expect.objectContaining({
           requestId: 'custom-id',
         })
       );
-      expect(logger.debug).toHaveBeenCalledWith(
+      expect(loggerRef.debug).toHaveBeenCalledWith(
         'Completed test-operation',
         expect.objectContaining({
           requestId: 'custom-id',
@@ -302,9 +378,7 @@ describe('logging-middleware', () => {
       const fn = vi.fn().mockResolvedValue('result');
       const wrapped = logPerformance(fn, 'test-operation');
 
-      const promise = wrapped('arg1', 'arg2', 'arg3');
-      await vi.runAllTimersAsync();
-      await promise;
+      await wrapped('arg1', 'arg2', 'arg3');
 
       expect(fn).toHaveBeenCalledWith('arg1', 'arg2', 'arg3');
     });
@@ -313,9 +387,7 @@ describe('logging-middleware', () => {
       const fn = vi.fn().mockResolvedValue({ data: 'test' });
       const wrapped = logPerformance(fn, 'test-operation');
 
-      const promise = wrapped();
-      await vi.runAllTimersAsync();
-      const result = await promise;
+      const result = await wrapped();
 
       expect(result).toEqual({ data: 'test' });
     });

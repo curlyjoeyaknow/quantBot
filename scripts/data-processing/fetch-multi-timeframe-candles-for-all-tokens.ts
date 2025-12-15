@@ -56,12 +56,12 @@ interface ProcessingStats {
 }
 
 async function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 /**
  * Get unique tokens from alerts tables (tries multiple databases)
- * 
+ *
  * NOTE: Token addresses are stored in lowercase in the database, but Solana addresses
  * are case-sensitive. If API calls fail, it may be due to incorrect case.
  * The addresses should be stored with their original case in the database.
@@ -75,8 +75,14 @@ async function getTokensFromAlerts(chain: string = 'solana'): Promise<AlertToken
         logger.info(`Found ${tokens.length} tokens in ${dbPath}`);
         // Warn if addresses appear to be lowercase (may cause API failures)
         const sampleToken = tokens[0];
-        if (sampleToken && sampleToken.mint === sampleToken.mint.toLowerCase() && !sampleToken.mint.startsWith('0x')) {
-          logger.warn('⚠️  Token addresses appear to be lowercase in database. Solana addresses are case-sensitive - API calls may fail if case is incorrect.');
+        if (
+          sampleToken &&
+          sampleToken.mint === sampleToken.mint.toLowerCase() &&
+          !sampleToken.mint.startsWith('0x')
+        ) {
+          logger.warn(
+            '⚠️  Token addresses appear to be lowercase in database. Solana addresses are case-sensitive - API calls may fail if case is incorrect.'
+          );
         }
         return tokens;
       }
@@ -121,7 +127,7 @@ async function queryAlertsFromDatabase(dbPath: string, chain: string): Promise<A
     db.all(callerAlertsQuery, [chain], (err, rows: any[]) => {
       if (!err && rows && rows.length > 0) {
         db.close();
-        const tokens: AlertToken[] = rows.map(row => {
+        const tokens: AlertToken[] = rows.map((row) => {
           // Parse DATETIME string to Unix timestamp
           let timestamp: number;
           if (typeof row.alert_timestamp === 'string') {
@@ -161,7 +167,7 @@ async function queryAlertsFromDatabase(dbPath: string, chain: string): Promise<A
           return resolve([]);
         }
 
-        const tokens: AlertToken[] = rows2.map(row => ({
+        const tokens: AlertToken[] = rows2.map((row) => ({
           mint: row.mint,
           chain: row.chain || chain,
           callTimestamp: row.call_timestamp || 0,
@@ -268,7 +274,11 @@ async function fetchAndStoreInterval(
     // Store immediately
     const stored = await storeCandlesImmediately(mint, chain, candles, interval);
     if (!stored) {
-      logger.error('Failed to store candles', { mint: mint.substring(0, 20), interval, count: candles.length });
+      logger.error('Failed to store candles', {
+        mint: mint.substring(0, 20),
+        interval,
+        count: candles.length,
+      });
       return 0;
     }
 
@@ -301,7 +311,7 @@ async function processToken(
   try {
     const alertUnix = Math.floor(alertTime.toSeconds());
     const endUnix = Math.floor(DateTime.utc().toSeconds());
-    const threeMonthsAgo = alertUnix - (90 * 24 * 60 * 60);
+    const threeMonthsAgo = alertUnix - 90 * 24 * 60 * 60;
 
     let totalCandles = 0;
     let candles15s = 0;
@@ -309,13 +319,15 @@ async function processToken(
     let candles5m = 0;
 
     // Step 1: Fetch and store 1m candles (52 hours back + forward to 5000)
-    const fiftyTwoHoursAgo = alertUnix - (52 * 60 * 60);
+    const fiftyTwoHoursAgo = alertUnix - 52 * 60 * 60;
     const oneMStart = fiftyTwoHoursAgo;
-    const oneMEnd = Math.min(oneMStart + (5000 * 60), endUnix);
-    
+    const oneMEnd = Math.min(oneMStart + 5000 * 60, endUnix);
+
     console.log(`  📊 Fetching 1m candles...`);
     console.log(`    Alert time: ${alertTime.toISO()}`);
-    console.log(`    Range: ${new Date(oneMStart * 1000).toISOString()} to ${new Date(oneMEnd * 1000).toISOString()}`);
+    console.log(
+      `    Range: ${new Date(oneMStart * 1000).toISOString()} to ${new Date(oneMEnd * 1000).toISOString()}`
+    );
     candles1m = await fetchAndStoreInterval(mint, chain, '1m', oneMStart, oneMEnd);
     totalCandles += candles1m;
     if (candles1m > 0) {
@@ -327,10 +339,17 @@ async function processToken(
     // Step 2: Fetch and store 15s candles (52×15s back + forward to 5000)
     const fiftyTwoPeriods15s = 52 * 15; // 780 seconds = 13 minutes
     const fifteenSStart = alertUnix - fiftyTwoPeriods15s;
-    const fifteenSEnd = Math.min(fifteenSStart + (5000 * 15), endUnix);
-    
+    const fifteenSEnd = Math.min(fifteenSStart + 5000 * 15, endUnix);
+
     console.log(`  📊 Fetching 15s candles...`);
-    candles15s = await fetchAndStoreInterval(mint, chain, '15s', fifteenSStart, fifteenSEnd, threeMonthsAgo);
+    candles15s = await fetchAndStoreInterval(
+      mint,
+      chain,
+      '15s',
+      fifteenSStart,
+      fifteenSEnd,
+      threeMonthsAgo
+    );
     totalCandles += candles15s;
     if (candles15s > 0) {
       console.log(`    ✅ Stored ${candles15s} 15s candles`);
@@ -341,30 +360,30 @@ async function processToken(
     // Step 3: Fetch and store 5m candles (52×5m back + forward in 17-day chunks)
     const fiftyTwoPeriods5m = 52 * (5 * 60); // 15,600 seconds = 4.33 hours
     const fiveMStart = alertUnix - fiftyTwoPeriods5m;
-    
+
     console.log(`  📊 Fetching 5m candles...`);
     let current5mFrom = fiveMStart;
     let fiveMChunks = 0;
-    
+
     while (current5mFrom < endUnix) {
-      const chunk5mTo = Math.min(current5mFrom + (17 * 24 * 60 * 60), endUnix); // 17 days max
+      const chunk5mTo = Math.min(current5mFrom + 17 * 24 * 60 * 60, endUnix); // 17 days max
       const chunkCandles = await fetchAndStoreInterval(mint, chain, '5m', current5mFrom, chunk5mTo);
-      
+
       if (chunkCandles === 0) {
         break; // No more data
       }
-      
+
       candles5m += chunkCandles;
       totalCandles += chunkCandles;
       fiveMChunks++;
       current5mFrom = chunk5mTo;
-      
+
       // Small delay between chunks
       if (current5mFrom < endUnix) {
         await sleep(100);
       }
     }
-    
+
     if (candles5m > 0) {
       console.log(`    ✅ Stored ${candles5m} 5m candles (${fiveMChunks} chunks)`);
     } else {
@@ -372,11 +391,14 @@ async function processToken(
     }
 
     if (totalCandles === 0) {
-      logger.warn('No candles fetched for token (may not exist on Birdeye or have no historical data)', { 
-        mint: tokenDisplay, 
-        chain,
-        alertTime: alertTime.toISO(),
-      });
+      logger.warn(
+        'No candles fetched for token (may not exist on Birdeye or have no historical data)',
+        {
+          mint: tokenDisplay,
+          chain,
+          alertTime: alertTime.toISO(),
+        }
+      );
       stats.skipped++;
       return false; // Don't count as failed - token just doesn't have data
     }
@@ -468,7 +490,9 @@ async function main(): Promise<void> {
 
     console.log(`\n${progress} Processing: ${token.mint.substring(0, 30)}...`);
     if (token.tokenSymbol) {
-      console.log(`    Token: ${token.tokenSymbol}${token.tokenName ? ` (${token.tokenName})` : ''}`);
+      console.log(
+        `    Token: ${token.tokenSymbol}${token.tokenName ? ` (${token.tokenName})` : ''}`
+      );
     }
 
     // Use the alert timestamp from the database
@@ -482,9 +506,13 @@ async function main(): Promise<void> {
     stats.creditsUsed = creditStats.creditsUsed;
 
     if (success) {
-      console.log(`  ✅ Success (Credits: ${creditStats.creditsUsed.toLocaleString()}/${creditStats.totalCredits.toLocaleString()})`);
+      console.log(
+        `  ✅ Success (Credits: ${creditStats.creditsUsed.toLocaleString()}/${creditStats.totalCredits.toLocaleString()})`
+      );
     } else {
-      console.log(`  ❌ Failed (Credits: ${creditStats.creditsUsed.toLocaleString()}/${creditStats.totalCredits.toLocaleString()})`);
+      console.log(
+        `  ❌ Failed (Credits: ${creditStats.creditsUsed.toLocaleString()}/${creditStats.totalCredits.toLocaleString()})`
+      );
     }
 
     // Delay between tokens (except for last one)
@@ -516,6 +544,3 @@ if (require.main === module) {
     process.exit(1);
   });
 }
-
-
-

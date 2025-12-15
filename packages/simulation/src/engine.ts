@@ -1,6 +1,5 @@
 import { DateTime } from 'luxon';
 import type { Candle } from '@quantbot/core';
-import { fetchHybridCandles } from '@quantbot/data';
 import {
   CostConfig,
   EntryConfig,
@@ -87,25 +86,6 @@ export interface ScenarioRunSummary {
   errors: SimulationRunError[];
 }
 
-export interface CandleDataProvider {
-  fetchCandles(target: SimulationTarget): Promise<Candle[]>;
-}
-
-class HybridCandleProvider implements CandleDataProvider {
-  async fetchCandles(target: SimulationTarget): Promise<Candle[]> {
-    // Use startTime as alertTime for:
-    // 1. Precise entry pricing (1m candles 30min before/after)
-    // 2. Ichimoku lookback (52 periods = 260 minutes before alert)
-    return fetchHybridCandles(
-      target.mint,
-      target.startTime,
-      target.endTime,
-      target.chain,
-      target.startTime, // Pass startTime as alertTime for 1m candles and Ichimoku lookback
-    );
-  }
-}
-
 export interface SimulationResultSink {
   name: string;
   handle(context: SimulationRunContext): Promise<void>;
@@ -136,7 +116,6 @@ class ConsoleLogger implements SimulationLogger {
 }
 
 export interface SimulationEngineDeps {
-  dataProvider?: CandleDataProvider;
   sinks?: SimulationResultSink[];
   logger?: SimulationLogger;
   defaults?: Partial<ScenarioDefaults>;
@@ -179,18 +158,18 @@ const DEFAULT_RUN_OPTIONS: RunOptions = {
 export interface ScenarioRunRequest {
   scenario: SimulationScenarioConfig;
   targets: SimulationTarget[];
+  /** Pre-fetched candles for each target. Keys should match target indices or mint addresses. */
+  candlesMap: Map<SimulationTarget, Candle[]> | Record<string, Candle[]>;
   runOptions?: Partial<RunOptions>;
   overrides?: Partial<ScenarioDefaults>;
 }
 
 export class SimulationEngine {
-  private readonly dataProvider: CandleDataProvider;
   private readonly sinks: SimulationResultSink[];
   private readonly logger: SimulationLogger;
   private readonly defaults: ScenarioDefaults;
 
   constructor(deps: SimulationEngineDeps = {}) {
-    this.dataProvider = deps.dataProvider ?? new HybridCandleProvider();
     this.sinks = deps.sinks ?? [];
     this.logger = deps.logger ?? new ConsoleLogger();
     this.defaults = {
@@ -210,33 +189,40 @@ export class SimulationEngine {
 
     const results: SimulationRunContext[] = [];
     const errors: SimulationRunError[] = [];
-    const mergedConfigs = this.mergeScenarioConfigs(
-      request.scenario,
-      request.overrides,
-    );
+    const mergedConfigs = this.mergeScenarioConfigs(request.scenario, request.overrides);
 
     // Process targets in parallel batches for better performance
     const concurrency = runOptions.maxConcurrency || 4;
     const targets = request.targets;
-    
+
     // Process in chunks with concurrency limit
     for (let i = 0; i < targets.length; i += concurrency) {
       const batch = targets.slice(i, i + concurrency);
-      
+
       const batchPromises = batch.map(async (target) => {
         try {
-          const candles = await this.dataProvider.fetchCandles(target);
-          if (!candles.length) {
-            throw new Error('No candle data available for target');
+          // Get candles from the provided map
+          let candles: Candle[] | undefined;
+          if (request.candlesMap instanceof Map) {
+            candles = request.candlesMap.get(target);
+          } else {
+            // Try mint address first, then fallback to target object key
+            candles = request.candlesMap[target.mint] ?? request.candlesMap[JSON.stringify(target)];
           }
 
-          const result = simulateStrategy(
+          if (!candles || !candles.length) {
+            throw new Error(
+              `No candle data available for target ${target.mint}. Ensure candles are pre-fetched and provided in candlesMap.`
+            );
+          }
+
+          const result = await simulateStrategy(
             candles,
             request.scenario.strategy,
             mergedConfigs.stopLoss,
             mergedConfigs.entry,
             mergedConfigs.reEntry,
-            mergedConfigs.costs,
+            mergedConfigs.costs
           );
 
           const context: SimulationRunContext = {
@@ -247,7 +233,7 @@ export class SimulationEngine {
           };
 
           await Promise.all(this.sinks.map((sink) => sink.handle(context)));
-          
+
           return { success: true, context };
         } catch (error) {
           const err = error instanceof Error ? error : new Error(String(error));
@@ -257,17 +243,17 @@ export class SimulationEngine {
             chain: target.chain,
             error: err.message,
           });
-          
+
           if (runOptions.failFast) {
             throw error; // Re-throw to stop processing
           }
-          
+
           return { success: false, error: { target, error: err } };
         }
       });
 
       const batchResults = await Promise.all(batchPromises);
-      
+
       for (const batchResult of batchResults) {
         if (batchResult && batchResult.success && batchResult.context) {
           results.push(batchResult.context);
@@ -276,10 +262,7 @@ export class SimulationEngine {
         }
       }
 
-      if (
-        runOptions.progressInterval > 0 &&
-        results.length % runOptions.progressInterval === 0
-      ) {
+      if (runOptions.progressInterval > 0 && results.length % runOptions.progressInterval === 0) {
         this.logger.info('Simulation progress', {
           scenario: request.scenario.name,
           completed: results.length,
@@ -301,29 +284,14 @@ export class SimulationEngine {
 
   private mergeScenarioConfigs(
     scenario: SimulationScenarioConfig,
-    overrides?: Partial<ScenarioDefaults>,
+    overrides?: Partial<ScenarioDefaults>
   ): ScenarioDefaults {
     return {
       stopLoss:
-        scenario.stopLoss ??
-        overrides?.stopLoss ??
-        this.defaults.stopLoss ??
-        DEFAULT_STOP_LOSS,
-      entry:
-        scenario.entry ??
-        overrides?.entry ??
-        this.defaults.entry ??
-        DEFAULT_ENTRY,
-      reEntry:
-        scenario.reEntry ??
-        overrides?.reEntry ??
-        this.defaults.reEntry ??
-        DEFAULT_REENTRY,
-      costs:
-        scenario.costs ??
-        overrides?.costs ??
-        this.defaults.costs ??
-        DEFAULT_COSTS,
+        scenario.stopLoss ?? overrides?.stopLoss ?? this.defaults.stopLoss ?? DEFAULT_STOP_LOSS,
+      entry: scenario.entry ?? overrides?.entry ?? this.defaults.entry ?? DEFAULT_ENTRY,
+      reEntry: scenario.reEntry ?? overrides?.reEntry ?? this.defaults.reEntry ?? DEFAULT_REENTRY,
+      costs: scenario.costs ?? overrides?.costs ?? this.defaults.costs ?? DEFAULT_COSTS,
       outputs: scenario.outputs ?? overrides?.outputs ?? this.defaults.outputs,
     };
   }
@@ -343,7 +311,7 @@ export function simulateStrategy(
   entryConfig?: EntryConfig,
   reEntryConfig?: ReEntryConfig,
   costConfig?: CostConfig,
-  options?: SimulationStrategyOptions,
+  options?: SimulationStrategyOptions
 ): SimulationResult {
   if (!candles.length) {
     return {
@@ -373,9 +341,7 @@ export function simulateStrategy(
   const reEntryCfg: ReEntryConfig = reEntryConfig
     ? { ...DEFAULT_REENTRY, ...reEntryConfig }
     : { ...DEFAULT_REENTRY };
-  const costs: CostConfig = costConfig
-    ? { ...DEFAULT_COSTS, ...costConfig }
-    : { ...DEFAULT_COSTS };
+  const costs: CostConfig = costConfig ? { ...DEFAULT_COSTS, ...costConfig } : { ...DEFAULT_COSTS };
 
   const entrySignal: SignalGroup | undefined = options?.entrySignal;
   const exitSignal: SignalGroup | undefined = options?.exitSignal;
@@ -397,15 +363,11 @@ export function simulateStrategy(
     indicatorSeries[i] = calculateIndicators(candles, i, previousEMAs);
   }
 
-  const entryCostMultiplier =
-    1 + (costs.entrySlippageBps + costs.takerFeeBps) / 10_000;
-  const exitCostMultiplier = Math.max(
-    0,
-    1 - (costs.exitSlippageBps + costs.takerFeeBps) / 10_000,
-  );
+  const entryCostMultiplier = 1 + (costs.entrySlippageBps + costs.takerFeeBps) / 10_000;
+  const exitCostMultiplier = Math.max(0, 1 - (costs.exitSlippageBps + costs.takerFeeBps) / 10_000);
 
   const initialPrice = candles[0].open;
-  const finalPrice = candles[candles.length - 1].close;
+  let finalPrice = candles[candles.length - 1].close; // Default to last candle close, updated on exit
 
   let lowestPrice = initialPrice;
   let lowestPriceTimestamp = candles[0].timestamp;
@@ -421,7 +383,7 @@ export function simulateStrategy(
   if (entryCfg.initialEntry !== 'none') {
     const dropPercent = entryCfg.initialEntry as number;
     const triggerPrice = initialPrice * (1 + dropPercent);
-    
+
     for (let i = 0; i < candles.length; i += 1) {
       const candle = candles[i];
       if (candle.low <= triggerPrice) {
@@ -436,7 +398,7 @@ export function simulateStrategy(
           if (!signalResult.satisfied) {
             // Skip this candle as an entry and continue scanning.
             // This allows combining price-based and indicator-based triggers.
-            // eslint-disable-next-line no-continue
+
             continue;
           }
         }
@@ -449,7 +411,7 @@ export function simulateStrategy(
           timestamp: candle.timestamp,
           price: actualEntryPrice,
           description: `Initial entry at $${actualEntryPrice.toFixed(
-            8,
+            8
           )} (${(Math.abs(dropPercent) * 100).toFixed(0)}% drop)`,
           remainingPosition: 1,
           pnlSoFar: 0,
@@ -457,24 +419,22 @@ export function simulateStrategy(
         break;
       }
     }
-    
+
     if (!initialEntryTriggered) {
       events.push({
         type: 'entry',
         timestamp: candles[0].timestamp,
         price: initialPrice,
-        description: `No trade: price never dropped ${(
-          Math.abs(dropPercent) * 100
-        ).toFixed(0)}%`,
+        description: `No trade: price never dropped ${(Math.abs(dropPercent) * 100).toFixed(0)}%`,
         remainingPosition: 0,
         pnlSoFar: 0,
       });
-      return { 
-        finalPnl: 0, 
+      return {
+        finalPnl: 0,
         events,
         entryPrice: initialPrice,
         finalPrice,
-        totalCandles: candles.length, 
+        totalCandles: candles.length,
         entryOptimization: {
           lowestPrice,
           lowestPriceTimestamp,
@@ -516,7 +476,6 @@ export function simulateStrategy(
             prevIndicators,
           });
           if (!signalResult.satisfied) {
-            // eslint-disable-next-line no-continue
             continue;
           }
         }
@@ -529,7 +488,7 @@ export function simulateStrategy(
           timestamp: candle.timestamp,
           price: actualEntryPrice,
           description: `Trailing entry at $${actualEntryPrice.toFixed(
-            8,
+            8
           )} (${(trailingPercent * 100).toFixed(1)}% from low)`,
           remainingPosition: 1,
           pnlSoFar: 0,
@@ -540,15 +499,13 @@ export function simulateStrategy(
 
     if (!hasEntered) {
       const fallback =
-        candles.find((c) => c.timestamp <= maxWaitTimestamp) ??
-        candles[candles.length - 1];
+        candles.find((c) => c.timestamp <= maxWaitTimestamp) ?? candles[candles.length - 1];
       actualEntryPrice = fallback.close;
       entryDelay = (fallback.timestamp - candles[0].timestamp) / 60;
     }
   }
 
-  lowestPriceTimeFromEntry =
-    (lowestPriceTimestamp - candles[0].timestamp) / 60;
+  lowestPriceTimeFromEntry = (lowestPriceTimestamp - candles[0].timestamp) / 60;
 
   if (!trailingEntryUsed && events.length === 0) {
     events.push({
@@ -582,7 +539,7 @@ export function simulateStrategy(
       lowestPriceTimestamp = candle.timestamp;
       lowestPriceTimeFromEntry = (candle.timestamp - candles[0].timestamp) / 60;
     }
-    
+
     if (candle.high > currentPeakPrice) {
       currentPeakPrice = candle.high;
     }
@@ -613,7 +570,7 @@ export function simulateStrategy(
       stopLoss = reEntryPrice * (1 + stopCfg.initial);
       stopMovedToEntry = false;
       currentPeakPrice = reEntryPrice;
-      
+
       events.push({
         type: 're_entry',
         timestamp: candle.timestamp,
@@ -626,12 +583,12 @@ export function simulateStrategy(
       });
       continue;
     }
-    
+
     if (remaining > 0 && candle.low <= stopLoss) {
-      const stopComponent =
-        (stopLoss * exitCostMultiplier) / entryPriceForPnl;
+      const stopComponent = (stopLoss * exitCostMultiplier) / entryPriceForPnl;
       const stopPnl = remaining * stopComponent;
       pnl += stopPnl;
+      finalPrice = stopLoss; // Update finalPrice to stop loss price
       events.push({
         type: 'stop_loss',
         timestamp: candle.timestamp,
@@ -645,10 +602,7 @@ export function simulateStrategy(
       });
       remaining = 0;
 
-      if (
-        reEntryCfg.trailingReEntry !== 'none' &&
-        reEntryCount < reEntryCfg.maxReEntries
-      ) {
+      if (reEntryCfg.trailingReEntry !== 'none' && reEntryCount < reEntryCfg.maxReEntries) {
         const retracePercent = reEntryCfg.trailingReEntry as number;
         reEntryTriggerPrice = actualEntryPrice * (1 - retracePercent);
         waitingForReEntry = true;
@@ -665,22 +619,18 @@ export function simulateStrategy(
         const targetPnl = percent * (realizedPrice / entryPriceForPnl);
         pnl += targetPnl;
         remaining = Math.max(0, remaining - percent);
+        finalPrice = targetPrice; // Update finalPrice to last target hit
         events.push({
           type: 'target_hit',
           timestamp: candle.timestamp,
           price: targetPrice,
-          description: `Target ${target}x hit (sold ${(percent * 100).toFixed(
-            0,
-          )}%)`,
+          description: `Target ${target}x hit (sold ${(percent * 100).toFixed(0)}%)`,
           remainingPosition: remaining,
           pnlSoFar: pnl,
         });
         targetIndex++;
 
-        if (
-          reEntryCfg.trailingReEntry !== 'none' &&
-          reEntryCount < reEntryCfg.maxReEntries
-        ) {
+        if (reEntryCfg.trailingReEntry !== 'none' && reEntryCount < reEntryCfg.maxReEntries) {
           const retracePercent = reEntryCfg.trailingReEntry as number;
           reEntryTriggerPrice = targetPrice * (1 - retracePercent);
           waitingForReEntry = true;
@@ -697,8 +647,7 @@ export function simulateStrategy(
       });
 
       if (signalResult.satisfied) {
-        const exitComponent =
-          (candle.close * exitCostMultiplier) / entryPriceForPnl;
+        const exitComponent = (candle.close * exitCostMultiplier) / entryPriceForPnl;
         const finalComponent = remaining * exitComponent;
         pnl += finalComponent;
         events.push({
@@ -706,7 +655,7 @@ export function simulateStrategy(
           timestamp: candle.timestamp,
           price: candle.close,
           description: `Signal-based exit ${(remaining * 100).toFixed(
-            0,
+            0
           )}% at $${candle.close.toFixed(8)}`,
           remainingPosition: 0,
           pnlSoFar: pnl,
@@ -718,17 +667,14 @@ export function simulateStrategy(
   }
 
   if (remaining > 0) {
-    const exitComponent =
-      (finalPrice * exitCostMultiplier) / entryPriceForPnl;
+    const exitComponent = (finalPrice * exitCostMultiplier) / entryPriceForPnl;
     const finalComponent = remaining * exitComponent;
     pnl += finalComponent;
     events.push({
       type: 'final_exit',
       timestamp: candles[candles.length - 1].timestamp,
       price: finalPrice,
-      description: `Final exit ${(remaining * 100).toFixed(0)}% at $${finalPrice.toFixed(
-        8,
-      )}`,
+      description: `Final exit ${(remaining * 100).toFixed(0)}% at $${finalPrice.toFixed(8)}`,
       remainingPosition: 0,
       pnlSoFar: pnl,
     });

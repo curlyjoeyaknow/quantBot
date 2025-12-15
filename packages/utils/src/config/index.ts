@@ -1,6 +1,6 @@
 /**
  * Configuration loading from environment variables
- * 
+ *
  * Provides typed configuration objects for database connections,
  * API keys, and other environment-based settings.
  */
@@ -101,4 +101,3 @@ export function getBirdeyeConfig(): BirdeyeConfig {
     baseUrl: BIRDEYE_BASE_URL || 'https://public-api.birdeye.so',
   };
 }
-

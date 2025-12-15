@@ -1,13 +1,13 @@
 #!/usr/bin/env ts-node
 /**
  * Re-extract CA (Caller Alerts) from Chat Messages with Correct Case from Bot Replies
- * 
+ *
  * This script:
  * 1. Reads chat message HTML files
  * 2. Uses ChatExtractionEngine to extract tokens from bot replies (which preserve correct case)
  * 3. Updates caller_alerts database with correct case addresses
  * 4. Preserves existing metadata but fixes address case
- * 
+ *
  * This fixes the issue where addresses were stored in lowercase, but Solana addresses are case-sensitive.
  */
 
@@ -45,33 +45,34 @@ interface ExtractedCA {
 function parseMessagesFile(filePath: string): ChatMessage[] {
   const htmlContent = fs.readFileSync(filePath, 'utf8');
   const messages: ChatMessage[] = [];
-  
+
   // Parse HTML to find messages (Telegram export format)
-  const messageRegex = /<div class="message[^"]*"[^>]*id="message[^"]*">([\s\S]*?)(?=<div class="message|$)/g;
-  
+  const messageRegex =
+    /<div class="message[^"]*"[^>]*id="message[^"]*">([\s\S]*?)(?=<div class="message|$)/g;
+
   let match;
   while ((match = messageRegex.exec(htmlContent)) !== null) {
     const messageHtml = match[1];
-    
+
     // Skip service messages (date headers, etc.)
     if (messageHtml.includes('class="message service"')) {
       continue;
     }
-    
+
     // Extract sender (handle both single-line and multi-line formats)
     const senderMatch = messageHtml.match(/<div class="from_name">\s*([\s\S]*?)\s*<\/div>/);
     let sender = senderMatch ? senderMatch[1].trim() : '';
     // Clean up sender (remove any HTML tags that might be inside)
     sender = sender.replace(/<[^>]+>/g, '').trim();
-    
+
     // Extract timestamp
     const timestampMatch = messageHtml.match(/title="([^"]+)"/);
     const timestampStr = timestampMatch ? timestampMatch[1] : '';
-    
+
     // Extract text
     const textMatch = messageHtml.match(/<div class="text">([\s\S]*?)<\/div>/);
     let text = textMatch ? textMatch[1] : '';
-    
+
     // Clean up HTML entities and tags
     if (text) {
       text = text
@@ -85,7 +86,7 @@ function parseMessagesFile(filePath: string): ChatMessage[] {
         .replace(/\s+/g, ' ')
         .trim();
     }
-    
+
     // Only add messages with sender and text
     if (sender && text) {
       messages.push({
@@ -95,7 +96,7 @@ function parseMessagesFile(filePath: string): ChatMessage[] {
       });
     }
   }
-  
+
   return messages;
 }
 
@@ -104,17 +105,17 @@ function parseMessagesFile(filePath: string): ChatMessage[] {
  */
 function getAllMessageFiles(dir: string): string[] {
   const files: string[] = [];
-  
+
   function walkDir(currentPath: string, isInBrookFolder: boolean = false) {
     const entries = fs.readdirSync(currentPath, { withFileTypes: true });
-    
+
     // Check if current directory is named "brook" (case-insensitive)
     const currentDirName = path.basename(currentPath).toLowerCase();
     const isBrookFolder = currentDirName === 'brook' || isInBrookFolder;
-    
+
     for (const entry of entries) {
       const fullPath = path.join(currentPath, entry.name);
-      
+
       if (entry.isDirectory()) {
         // Continue walking, but track if we're in a brook folder
         walkDir(fullPath, isBrookFolder);
@@ -126,7 +127,7 @@ function getAllMessageFiles(dir: string): string[] {
       }
     }
   }
-  
+
   walkDir(dir);
   return files;
 }
@@ -144,7 +145,7 @@ async function initDatabase(): Promise<sqlite3.Database> {
     });
 
     const run = promisify(db.run.bind(db)) as (sql: string, params?: any[]) => Promise<any>;
-    
+
     // Create token_metadata table first
     run(`
       CREATE TABLE IF NOT EXISTS token_metadata (
@@ -156,9 +157,10 @@ async function initDatabase(): Promise<sqlite3.Database> {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
-    `).then(() => {
-      // Create caller_alerts table (references token_metadata via mint)
-      return run(`
+    `)
+      .then(() => {
+        // Create caller_alerts table (references token_metadata via mint)
+        return run(`
         CREATE TABLE IF NOT EXISTS caller_alerts (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           caller_name TEXT NOT NULL,
@@ -176,22 +178,31 @@ async function initDatabase(): Promise<sqlite3.Database> {
           FOREIGN KEY (token_address) REFERENCES token_metadata(mint)
         )
       `);
-    }).then(() => {
-      // Add columns if they don't exist (for existing databases)
-      return run(`ALTER TABLE caller_alerts ADD COLUMN is_duplicate INTEGER DEFAULT 0`).catch(() => {
-        // Column already exists, ignore
-      });
-    }).then(() => {
-      return run(`ALTER TABLE caller_alerts ADD COLUMN original_call_id INTEGER`).catch(() => {
-        // Column already exists, ignore
-      });
-    }).then(() => {
-      run(`CREATE INDEX IF NOT EXISTS idx_token_address ON caller_alerts(token_address)`);
-      run(`CREATE INDEX IF NOT EXISTS idx_alert_timestamp ON caller_alerts(alert_timestamp)`);
-      run(`CREATE INDEX IF NOT EXISTS idx_caller_timestamp ON caller_alerts(caller_name, alert_timestamp)`);
-    }).then(() => {
-      resolve(db);
-    }).catch(reject);
+      })
+      .then(() => {
+        // Add columns if they don't exist (for existing databases)
+        return run(`ALTER TABLE caller_alerts ADD COLUMN is_duplicate INTEGER DEFAULT 0`).catch(
+          () => {
+            // Column already exists, ignore
+          }
+        );
+      })
+      .then(() => {
+        return run(`ALTER TABLE caller_alerts ADD COLUMN original_call_id INTEGER`).catch(() => {
+          // Column already exists, ignore
+        });
+      })
+      .then(() => {
+        run(`CREATE INDEX IF NOT EXISTS idx_token_address ON caller_alerts(token_address)`);
+        run(`CREATE INDEX IF NOT EXISTS idx_alert_timestamp ON caller_alerts(alert_timestamp)`);
+        run(
+          `CREATE INDEX IF NOT EXISTS idx_caller_timestamp ON caller_alerts(caller_name, alert_timestamp)`
+        );
+      })
+      .then(() => {
+        resolve(db);
+      })
+      .catch(reject);
   });
 }
 
@@ -216,22 +227,26 @@ async function upsertTokenMetadata(
         decimals = COALESCE(?, decimals),
         updated_at = CURRENT_TIMESTAMP
     `;
-    
-    db.run(query, [
-      mint,
-      chain,
-      tokenName || null,
-      tokenSymbol || null,
-      decimals || null,
-      tokenName || null,
-      tokenSymbol || null,
-      decimals || null
-    ], (err) => {
-      if (err) {
-        return reject(err);
+
+    db.run(
+      query,
+      [
+        mint,
+        chain,
+        tokenName || null,
+        tokenSymbol || null,
+        decimals || null,
+        tokenName || null,
+        tokenSymbol || null,
+        decimals || null,
+      ],
+      (err) => {
+        if (err) {
+          return reject(err);
+        }
+        resolve();
       }
-      resolve();
-    });
+    );
   });
 }
 
@@ -242,7 +257,13 @@ async function fetchTokenMetadata(
   tokenAddress: string,
   chain: string = 'solana',
   alertTimestamp?: DateTime
-): Promise<{ name?: string; symbol?: string; price?: number; marketCap?: number; decimals?: number } | null> {
+): Promise<{
+  name?: string;
+  symbol?: string;
+  price?: number;
+  marketCap?: number;
+  decimals?: number;
+} | null> {
   const apiKey = process.env.BIRDEYE_API_KEY || process.env.BIRDEYE_API_KEY_1;
   if (!apiKey) {
     return null;
@@ -254,7 +275,7 @@ async function fetchTokenMetadata(
       {
         headers: {
           'X-API-KEY': apiKey,
-          'accept': 'application/json',
+          accept: 'application/json',
           'x-chain': chain,
         },
         params: {
@@ -299,14 +320,14 @@ async function checkForDuplicate(
     // Check for duplicates: same token, same caller, within 1 minute
     const oneMinuteAgo = alertTimestamp.minus({ minutes: 1 });
     const oneMinuteLater = alertTimestamp.plus({ minutes: 1 });
-    
+
     const oneMinuteAgoStr = oneMinuteAgo.toISO() || '';
     const oneMinuteLaterStr = oneMinuteLater.toISO() || '';
-    
+
     if (!oneMinuteAgoStr || !oneMinuteLaterStr) {
       return resolve(null);
     }
-    
+
     const duplicateQuery = `
       SELECT id, alert_timestamp FROM caller_alerts
       WHERE LOWER(token_address) = LOWER(?)
@@ -317,31 +338,30 @@ async function checkForDuplicate(
       ORDER BY alert_timestamp ASC
       LIMIT 1
     `;
-    
-    db.get(duplicateQuery, [
-      tokenAddress,
-      callerName,
-      oneMinuteAgoStr,
-      oneMinuteLaterStr
-    ], (err, row: any) => {
-      if (err) {
-        return reject(err);
-      }
-      
-      if (row) {
-        // Check if more than 3 days apart - if so, treat as separate call
-        const existingTimestamp = DateTime.fromISO(row.alert_timestamp);
-        const daysDiff = Math.abs(alertTimestamp.diff(existingTimestamp, 'days').days);
-        
-        if (daysDiff > 3) {
-          return resolve(null); // More than 3 days apart, treat as separate
+
+    db.get(
+      duplicateQuery,
+      [tokenAddress, callerName, oneMinuteAgoStr, oneMinuteLaterStr],
+      (err, row: any) => {
+        if (err) {
+          return reject(err);
         }
-        
-        return resolve(row.id); // Duplicate found
+
+        if (row) {
+          // Check if more than 3 days apart - if so, treat as separate call
+          const existingTimestamp = DateTime.fromISO(row.alert_timestamp);
+          const daysDiff = Math.abs(alertTimestamp.diff(existingTimestamp, 'days').days);
+
+          if (daysDiff > 3) {
+            return resolve(null); // More than 3 days apart, treat as separate
+          }
+
+          return resolve(row.id); // Duplicate found
+        }
+
+        resolve(null); // No duplicate
       }
-      
-      resolve(null); // No duplicate
-    });
+    );
   });
 }
 
@@ -355,150 +375,179 @@ async function upsertCallerAlert(
 ): Promise<void> {
   return new Promise((resolve, reject) => {
     // Check for duplicates first
-    checkForDuplicate(db, ca.tokenAddress, callerName, ca.alertTimestamp).then(async (duplicateId) => {
-      const isDuplicate = duplicateId !== null;
-      
-      // Fetch metadata from API if not available from bot messages
-      let metadata = null;
-      if (!ca.tokenName || !ca.tokenSymbol || !ca.priceAtAlert) {
-        console.log(`    🌐 Fetching metadata from Birdeye API...`);
-        metadata = await fetchTokenMetadata(ca.tokenAddress, ca.chain, ca.alertTimestamp);
-        if (metadata) {
-          console.log(`    📊 Metadata: ${metadata.name || 'N/A'} (${metadata.symbol || 'N/A'}) - $${metadata.price || 'N/A'}`);
-        } else {
-          console.log(`    ⚠️  No metadata found from API`);
-        }
-      }
+    checkForDuplicate(db, ca.tokenAddress, callerName, ca.alertTimestamp)
+      .then(async (duplicateId) => {
+        const isDuplicate = duplicateId !== null;
 
-      // Enhanced extraction from bot message text
-      let finalTokenSymbol = ca.tokenSymbol || metadata?.symbol;
-      let finalTokenName = ca.tokenName || metadata?.name;
-      
-      if (ca.botMessageText) {
-        // Clean HTML tags first for better matching
-        const cleanText = ca.botMessageText
-          .replace(/<[^>]+>/g, ' ')
-          .replace(/&nbsp;/g, ' ')
-          .replace(/\s+/g, ' ')
-          .trim();
-        
-        // Try multiple patterns for symbol extraction
-        if (!finalTokenSymbol) {
-          // Pattern 1: $SYMBOL (most common)
-          const symbolMatch1 = cleanText.match(/\$([A-Z0-9]{2,15})\b/);
-          // Pattern 2: (SYMBOL) in parentheses
-          const symbolMatch2 = cleanText.match(/\(([A-Z0-9]{2,15})\)/);
-          
-          if (symbolMatch1) {
-            finalTokenSymbol = symbolMatch1[1];
-          } else if (symbolMatch2) {
-            finalTokenSymbol = symbolMatch2[1];
-          }
-          
-          if (finalTokenSymbol) {
-            console.log(`    📝 Extracted symbol from bot message: ${finalTokenSymbol}`);
+        // Fetch metadata from API if not available from bot messages
+        let metadata = null;
+        if (!ca.tokenName || !ca.tokenSymbol || !ca.priceAtAlert) {
+          console.log(`    🌐 Fetching metadata from Birdeye API...`);
+          metadata = await fetchTokenMetadata(ca.tokenAddress, ca.chain, ca.alertTimestamp);
+          if (metadata) {
+            console.log(
+              `    📊 Metadata: ${metadata.name || 'N/A'} (${metadata.symbol || 'N/A'}) - $${metadata.price || 'N/A'}`
+            );
+          } else {
+            console.log(`    ⚠️  No metadata found from API`);
           }
         }
-        
-        // Try multiple patterns for name extraction (NAME comes before SYMBOL)
-        if (!finalTokenName) {
-          // Pattern 1: Token: NAME (Rick bot format) - most reliable
-          const nameMatch1 = cleanText.match(/Token:\s*([^($\[]+?)(?:\s*\(|\s*\$|\s*⋅|$)/i);
-          // Pattern 2: 🟣 NAME ($SYMBOL) or 🪙 NAME (Phanes format) - but avoid status text
-          const nameMatch2 = cleanText.match(/(?:🟣|🐶|🟢|🔷|🪙)\s*([A-Z][a-zA-Z0-9\s\-\.']+?)(?:\s*\(|\s*\[|\s*\$)/);
-          // Pattern 3: NAME ($SYMBOL) - name before symbol in parentheses (common format)
-          const nameMatch3 = cleanText.match(/^([A-Z][a-zA-Z0-9\s\-\.']+?)\s*\(/);
-          // Pattern 4: **NAME** or <strong>NAME</strong>
-          const nameMatch4 = ca.botMessageText.match(/(?:\*\*|<strong>)([^<*]+?)(?:\*\*|<\/strong>)/);
-          // Pattern 5: NAME - $SYMBOL (name before dollar sign)
-          const nameMatch5 = cleanText.match(/^([A-Z][a-zA-Z0-9\s\-\.']+?)\s*-\s*\$[A-Z0-9]/);
-          
-          let candidateName: string | undefined;
-          
-          // Try patterns in order of specificity
-          if (nameMatch1 && nameMatch1[1].trim().length > 2 && nameMatch1[1].trim().length < 50) {
-            candidateName = nameMatch1[1].trim();
-          } else if (nameMatch3 && nameMatch3[1].trim().length > 2 && nameMatch3[1].trim().length < 50) {
-            candidateName = nameMatch3[1].trim();
-          } else if (nameMatch5 && nameMatch5[1].trim().length > 2 && nameMatch5[1].trim().length < 50) {
-            candidateName = nameMatch5[1].trim();
-          } else if (nameMatch2 && nameMatch2[1].trim().length > 2 && nameMatch2[1].trim().length < 50) {
-            candidateName = nameMatch2[1].trim();
-          } else if (nameMatch4 && nameMatch4[1].trim().length > 2 && nameMatch4[1].trim().length < 50) {
-            candidateName = nameMatch4[1].trim();
+
+        // Enhanced extraction from bot message text
+        let finalTokenSymbol = ca.tokenSymbol || metadata?.symbol;
+        let finalTokenName = ca.tokenName || metadata?.name;
+
+        if (ca.botMessageText) {
+          // Clean HTML tags first for better matching
+          const cleanText = ca.botMessageText
+            .replace(/<[^>]+>/g, ' ')
+            .replace(/&nbsp;/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+
+          // Try multiple patterns for symbol extraction
+          if (!finalTokenSymbol) {
+            // Pattern 1: $SYMBOL (most common)
+            const symbolMatch1 = cleanText.match(/\$([A-Z0-9]{2,15})\b/);
+            // Pattern 2: (SYMBOL) in parentheses
+            const symbolMatch2 = cleanText.match(/\(([A-Z0-9]{2,15})\)/);
+
+            if (symbolMatch1) {
+              finalTokenSymbol = symbolMatch1[1];
+            } else if (symbolMatch2) {
+              finalTokenSymbol = symbolMatch2[1];
+            }
+
+            if (finalTokenSymbol) {
+              console.log(`    📝 Extracted symbol from bot message: ${finalTokenSymbol}`);
+            }
           }
-          
-          // Clean up and validate name
-          if (candidateName) {
-            candidateName = candidateName
-              .replace(/^Token:\s*/i, '')
-              .replace(/\s*\(.*$/, '')
-              .replace(/\s*\[.*$/, '')
-              .replace(/\s*\$.*$/, '')
-              .replace(/\s*⋅.*$/, '')
-              .trim();
-            
-            // Reject invalid names:
-            // - Too short (likely not a name)
-            // - All caps and short (likely a symbol)
-            // - Contains status emojis/text
-            // - Contains "DEX Paid" or similar status text
-            const invalidPatterns = [
-              /DEX Paid/i,
-              /🅳/,
-              /└/,
-              /🟢/,
-              /status/i,
-              /paid/i,
-              /verified/i
-            ];
-            
-            const isInvalid = invalidPatterns.some(pattern => pattern.test(candidateName!)) ||
-                             (candidateName.length <= 3 && candidateName === candidateName.toUpperCase()) ||
-                             candidateName.length < 2;
-            
-            if (!isInvalid) {
-              finalTokenName = candidateName;
-              console.log(`    📝 Extracted name from bot message: ${finalTokenName}`);
+
+          // Try multiple patterns for name extraction (NAME comes before SYMBOL)
+          if (!finalTokenName) {
+            // Pattern 1: Token: NAME (Rick bot format) - most reliable
+            const nameMatch1 = cleanText.match(/Token:\s*([^($\[]+?)(?:\s*\(|\s*\$|\s*⋅|$)/i);
+            // Pattern 2: 🟣 NAME ($SYMBOL) or 🪙 NAME (Phanes format) - but avoid status text
+            const nameMatch2 = cleanText.match(
+              /(?:🟣|🐶|🟢|🔷|🪙)\s*([A-Z][a-zA-Z0-9\s\-\.']+?)(?:\s*\(|\s*\[|\s*\$)/
+            );
+            // Pattern 3: NAME ($SYMBOL) - name before symbol in parentheses (common format)
+            const nameMatch3 = cleanText.match(/^([A-Z][a-zA-Z0-9\s\-\.']+?)\s*\(/);
+            // Pattern 4: **NAME** or <strong>NAME</strong>
+            const nameMatch4 = ca.botMessageText.match(
+              /(?:\*\*|<strong>)([^<*]+?)(?:\*\*|<\/strong>)/
+            );
+            // Pattern 5: NAME - $SYMBOL (name before dollar sign)
+            const nameMatch5 = cleanText.match(/^([A-Z][a-zA-Z0-9\s\-\.']+?)\s*-\s*\$[A-Z0-9]/);
+
+            let candidateName: string | undefined;
+
+            // Try patterns in order of specificity
+            if (nameMatch1 && nameMatch1[1].trim().length > 2 && nameMatch1[1].trim().length < 50) {
+              candidateName = nameMatch1[1].trim();
+            } else if (
+              nameMatch3 &&
+              nameMatch3[1].trim().length > 2 &&
+              nameMatch3[1].trim().length < 50
+            ) {
+              candidateName = nameMatch3[1].trim();
+            } else if (
+              nameMatch5 &&
+              nameMatch5[1].trim().length > 2 &&
+              nameMatch5[1].trim().length < 50
+            ) {
+              candidateName = nameMatch5[1].trim();
+            } else if (
+              nameMatch2 &&
+              nameMatch2[1].trim().length > 2 &&
+              nameMatch2[1].trim().length < 50
+            ) {
+              candidateName = nameMatch2[1].trim();
+            } else if (
+              nameMatch4 &&
+              nameMatch4[1].trim().length > 2 &&
+              nameMatch4[1].trim().length < 50
+            ) {
+              candidateName = nameMatch4[1].trim();
+            }
+
+            // Clean up and validate name
+            if (candidateName) {
+              candidateName = candidateName
+                .replace(/^Token:\s*/i, '')
+                .replace(/\s*\(.*$/, '')
+                .replace(/\s*\[.*$/, '')
+                .replace(/\s*\$.*$/, '')
+                .replace(/\s*⋅.*$/, '')
+                .trim();
+
+              // Reject invalid names:
+              // - Too short (likely not a name)
+              // - All caps and short (likely a symbol)
+              // - Contains status emojis/text
+              // - Contains "DEX Paid" or similar status text
+              const invalidPatterns = [
+                /DEX Paid/i,
+                /🅳/,
+                /└/,
+                /🟢/,
+                /status/i,
+                /paid/i,
+                /verified/i,
+              ];
+
+              const isInvalid =
+                invalidPatterns.some((pattern) => pattern.test(candidateName!)) ||
+                (candidateName.length <= 3 && candidateName === candidateName.toUpperCase()) ||
+                candidateName.length < 2;
+
+              if (!isInvalid) {
+                finalTokenName = candidateName;
+                console.log(`    📝 Extracted name from bot message: ${finalTokenName}`);
+              }
             }
           }
         }
-      }
-      const finalPrice = ca.priceAtAlert ?? metadata?.price;
-      const finalMarketCap = ca.marketCapAtAlert ?? metadata?.marketCap;
-      
-      // Upsert token metadata to separate table
-      try {
-        await upsertTokenMetadata(
-          db,
-          ca.tokenAddress,
-          ca.chain,
-          finalTokenName,
-          finalTokenSymbol,
-          metadata?.decimals
-        );
-        console.log(`    💾 Token metadata saved: ${finalTokenSymbol || 'N/A'} (${finalTokenName || 'N/A'})`);
-      } catch (error: any) {
-        console.log(`    ⚠️  Failed to save token metadata: ${error.message}`);
-      }
+        const finalPrice = ca.priceAtAlert ?? metadata?.price;
+        const finalMarketCap = ca.marketCapAtAlert ?? metadata?.marketCap;
 
-      // First, check if there's an existing entry with lowercase address and same timestamp
-      const checkQuery = `
+        // Upsert token metadata to separate table
+        try {
+          await upsertTokenMetadata(
+            db,
+            ca.tokenAddress,
+            ca.chain,
+            finalTokenName,
+            finalTokenSymbol,
+            metadata?.decimals
+          );
+          console.log(
+            `    💾 Token metadata saved: ${finalTokenSymbol || 'N/A'} (${finalTokenName || 'N/A'})`
+          );
+        } catch (error: any) {
+          console.log(`    ⚠️  Failed to save token metadata: ${error.message}`);
+        }
+
+        // First, check if there's an existing entry with lowercase address and same timestamp
+        const checkQuery = `
         SELECT id, token_address FROM caller_alerts
         WHERE LOWER(token_address) = LOWER(?)
           AND alert_timestamp = ?
           AND caller_name = ?
         LIMIT 1
       `;
-      
-      db.get(checkQuery, [ca.tokenAddress, ca.alertTimestamp.toISO(), callerName], (err, row: any) => {
-        if (err) {
-          return reject(err);
-        }
-        
-        if (row) {
-          // Update existing entry with correct case
-          const updateQuery = `
+
+        db.get(
+          checkQuery,
+          [ca.tokenAddress, ca.alertTimestamp.toISO(), callerName],
+          (err, row: any) => {
+            if (err) {
+              return reject(err);
+            }
+
+            if (row) {
+              // Update existing entry with correct case
+              const updateQuery = `
             UPDATE caller_alerts
             SET token_address = ?,
                 price_at_alert = COALESCE(?, price_at_alert),
@@ -508,55 +557,65 @@ async function upsertCallerAlert(
                 original_call_id = ?
             WHERE id = ?
           `;
-          
-          db.run(updateQuery, [
-            ca.tokenAddress, // Correct case
-            finalPrice || null,
-            finalMarketCap || null,
-            ca.volumeAtAlert || null,
-            isDuplicate ? 1 : 0,
-            duplicateId,
-            row.id
-          ], (updateErr) => {
-            if (updateErr) {
-              return reject(updateErr);
-            }
-            if (isDuplicate) {
-              console.log(`    🔄 Updated duplicate call (original: ${duplicateId})`);
-            }
-            resolve();
-          });
-        } else {
-          // Insert new entry (token metadata is in separate table)
-          const insertQuery = `
+
+              db.run(
+                updateQuery,
+                [
+                  ca.tokenAddress, // Correct case
+                  finalPrice || null,
+                  finalMarketCap || null,
+                  ca.volumeAtAlert || null,
+                  isDuplicate ? 1 : 0,
+                  duplicateId,
+                  row.id,
+                ],
+                (updateErr) => {
+                  if (updateErr) {
+                    return reject(updateErr);
+                  }
+                  if (isDuplicate) {
+                    console.log(`    🔄 Updated duplicate call (original: ${duplicateId})`);
+                  }
+                  resolve();
+                }
+              );
+            } else {
+              // Insert new entry (token metadata is in separate table)
+              const insertQuery = `
             INSERT OR IGNORE INTO caller_alerts
             (caller_name, token_address, chain, alert_timestamp, price_at_alert, market_cap_at_alert, volume_at_alert, is_duplicate, original_call_id, alert_message)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           `;
-          
-          db.run(insertQuery, [
-            callerName,
-            ca.tokenAddress, // Correct case
-            ca.chain,
-            ca.alertTimestamp.toISO(),
-            finalPrice || null,
-            finalMarketCap || null,
-            ca.volumeAtAlert || null,
-            isDuplicate ? 1 : 0,
-            duplicateId,
-            ca.originalCallerMessage || null
-          ], (insertErr) => {
-            if (insertErr) {
-              return reject(insertErr);
+
+              db.run(
+                insertQuery,
+                [
+                  callerName,
+                  ca.tokenAddress, // Correct case
+                  ca.chain,
+                  ca.alertTimestamp.toISO(),
+                  finalPrice || null,
+                  finalMarketCap || null,
+                  ca.volumeAtAlert || null,
+                  isDuplicate ? 1 : 0,
+                  duplicateId,
+                  ca.originalCallerMessage || null,
+                ],
+                (insertErr) => {
+                  if (insertErr) {
+                    return reject(insertErr);
+                  }
+                  if (isDuplicate) {
+                    console.log(`    🔄 Inserted duplicate call (original: ${duplicateId})`);
+                  }
+                  resolve();
+                }
+              );
             }
-            if (isDuplicate) {
-              console.log(`    🔄 Inserted duplicate call (original: ${duplicateId})`);
-            }
-            resolve();
-          });
-        }
-      });
-    }).catch(reject);
+          }
+        );
+      })
+      .catch(reject);
   });
 }
 
@@ -570,12 +629,12 @@ async function processMessageFile(
 ): Promise<number> {
   const fileName = path.basename(filePath);
   const channel = path.basename(path.dirname(filePath));
-  
+
   try {
     console.log(`  📄 Parsing ${fileName}...`);
     const messages = parseMessagesFile(filePath);
     console.log(`    Found ${messages.length} messages`);
-    
+
     if (messages.length === 0) {
       return 0;
     }
@@ -588,18 +647,18 @@ async function processMessageFile(
     for (let i = 0; i < messages.length; i++) {
       const message = messages[i];
       processedMessages++;
-      
+
       // Log progress periodically
       if (processedMessages % logInterval === 0 || processedMessages === messages.length) {
         console.log(`    Processing message ${processedMessages}/${messages.length}...`);
       }
-      
+
       // Get next 2 messages as potential bot replies
       const nextMessages = messages.slice(i + 1, i + 3);
-      
+
       // Check if this is a caller message (not a bot)
       const isCallerMessage = !extractionEngine['isBot'](message.sender);
-      
+
       if (isCallerMessage) {
         // Extract tokens from caller message and bot replies
         const extracted = await extractionEngine.extract(message, nextMessages, {
@@ -616,13 +675,19 @@ async function processMessageFile(
           // Only process if it came from bot or was validated by bot (correct case)
           if (token.source === 'bot' || token.source === 'validated') {
             try {
-              console.log(`    🔍 Processing token: ${token.mint.substring(0, 30)}... (source: ${token.source})`);
-              
+              console.log(
+                `    🔍 Processing token: ${token.mint.substring(0, 30)}... (source: ${token.source})`
+              );
+
               // Parse timestamp from ORIGINAL caller message (not bot message)
               let alertTimestamp: DateTime;
-              const timestampStr = typeof message.timestamp === 'string' ? message.timestamp : 
-                                  (message.timestamp instanceof DateTime ? message.timestamp.toISO() : '');
-              
+              const timestampStr =
+                typeof message.timestamp === 'string'
+                  ? message.timestamp
+                  : message.timestamp instanceof DateTime
+                    ? message.timestamp.toISO()
+                    : '';
+
               if (timestampStr) {
                 alertTimestamp = DateTime.fromISO(timestampStr);
                 if (!alertTimestamp.isValid) {
@@ -664,16 +729,21 @@ async function processMessageFile(
               await upsertCallerAlert(db, ca, message.sender);
               extractedCount++;
               // Get token metadata from token_metadata table for display
-            db.get('SELECT token_symbol, token_name FROM token_metadata WHERE mint = ?', 
-              [ca.tokenAddress], 
-              (err, tokenRow: any) => {
-                if (!err && tokenRow) {
-                  console.log(`    ✅ Saved call: ${tokenRow.token_symbol || 'N/A'} (${tokenRow.token_name || 'N/A'})`);
-                } else {
-                  console.log(`    ✅ Saved call for token: ${ca.tokenAddress.substring(0, 20)}...`);
+              db.get(
+                'SELECT token_symbol, token_name FROM token_metadata WHERE mint = ?',
+                [ca.tokenAddress],
+                (err, tokenRow: any) => {
+                  if (!err && tokenRow) {
+                    console.log(
+                      `    ✅ Saved call: ${tokenRow.token_symbol || 'N/A'} (${tokenRow.token_name || 'N/A'})`
+                    );
+                  } else {
+                    console.log(
+                      `    ✅ Saved call for token: ${ca.tokenAddress.substring(0, 20)}...`
+                    );
+                  }
                 }
-              }
-            );
+              );
             } catch (error: any) {
               console.log(`    ❌ Error processing token: ${error.message}`);
               logger.error('Error processing extracted token', error as Error, {
@@ -723,7 +793,7 @@ async function main(): Promise<void> {
 
   const messageFiles = getAllMessageFiles(MESSAGES_DIR);
   console.log(`📂 Found ${messageFiles.length} message files in 'brook' folders\n`);
-  
+
   if (messageFiles.length === 0) {
     console.log(`⚠️  No message files found in 'brook' folders. Exiting.`);
     db.close();
@@ -750,14 +820,16 @@ async function main(): Promise<void> {
       const fileDuration = ((Date.now() - fileStartTime) / 1000).toFixed(1);
       totalExtracted += extracted;
       processedFiles++;
-      
+
       console.log(`  ⏱️  Processed in ${fileDuration}s`);
     }
 
     const batchDuration = ((Date.now() - batchStartTime) / 1000).toFixed(1);
-    console.log(`\n  📊 Batch ${batchNum} complete: ${processedFiles}/${messageFiles.length} files, ${totalExtracted} tokens extracted (${batchDuration}s)`);
+    console.log(
+      `\n  📊 Batch ${batchNum} complete: ${processedFiles}/${messageFiles.length} files, ${totalExtracted} tokens extracted (${batchDuration}s)`
+    );
   }
-  
+
   const totalDuration = ((Date.now() - scriptStartTime) / 1000).toFixed(1);
   console.log(`\n⏱️  Total processing time: ${totalDuration}s`);
 
@@ -778,4 +850,3 @@ if (require.main === module) {
     process.exit(1);
   });
 }
-

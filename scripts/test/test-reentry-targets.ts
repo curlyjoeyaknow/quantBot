@@ -19,14 +19,16 @@ async function testReentryTargets() {
     });
   });
 
-  const brookOnly = (records as any[]).filter((r: any) => 
-    r.sender && (
-      r.sender.includes('Brook') || 
-      r.sender.includes('brook') || 
-      r.sender.includes('Brook Giga')
-    ) && !r.tokenAddress.includes('bonk') && r.tokenAddress.length > 20
+  const brookOnly = (records as any[]).filter(
+    (r: any) =>
+      r.sender &&
+      (r.sender.includes('Brook') ||
+        r.sender.includes('brook') ||
+        r.sender.includes('Brook Giga')) &&
+      !r.tokenAddress.includes('bonk') &&
+      r.tokenAddress.length > 20
   );
-  
+
   console.log(`📊 Testing ${brookOnly.length} Brook calls\n`);
 
   const targets = [2, 3, 4, 5, 7, 10];
@@ -41,7 +43,7 @@ async function testReentryTargets() {
 
   for (let i = 0; i < Math.min(brookOnly.length, maxCalls); i++) {
     const call = brookOnly[i];
-    
+
     try {
       const alertDate = DateTime.fromISO(call.timestamp);
       if (!alertDate.isValid) continue;
@@ -55,18 +57,18 @@ async function testReentryTargets() {
       for (const target of targets) {
         // Set strategy: 100% at target
         const STRATEGY = [{ percent: 1.0, target }];
-        
+
         // Configure stop loss: -30%
         const stopLossConfig = {
           initial: -0.3,
-          trailing: 'none' as const
+          trailing: 'none' as const,
         };
 
         // Configure re-entry at alert bounce (70% retrace = back to alert price)
         const reEntryConfig = {
           trailingReEntry: 0.7,
           maxReEntries: 1,
-          sizePercent: 0.5
+          sizePercent: 0.5,
         };
 
         const result = simulateStrategy(
@@ -78,16 +80,16 @@ async function testReentryTargets() {
         );
 
         const pnl = result.finalPnl;
-        
+
         if (pnl > 1) {
           results[`reentry-${target}x`].winners++;
-          results[`reentry-${target}x`].netPnl += (pnl - 1);
+          results[`reentry-${target}x`].netPnl += pnl - 1;
         } else {
           results[`reentry-${target}x`].losers++;
-          results[`reentry-${target}x`].netPnl += (pnl - 1);
+          results[`reentry-${target}x`].netPnl += pnl - 1;
         }
       }
-      
+
       processed++;
       if (processed % 10 === 0) {
         console.log(`Processed ${processed}/${Math.min(brookOnly.length, maxCalls)}...`);
@@ -100,14 +102,15 @@ async function testReentryTargets() {
   console.log('\n📊 RESULTS:\n');
   console.log('Re-entry Strategy | Winners | Losers | Net PNL');
   console.log('------------------|---------|--------|---------');
-  
+
   for (const target of targets) {
     const r = results[`reentry-${target}x`];
     const netPnl = r.netPnl.toFixed(2);
     const label = `TP @ ${target}x`.padEnd(17);
-    console.log(`${label} | ${String(r.winners).padStart(7)} | ${String(r.losers).padStart(6)} | ${netPnl.padStart(7)}x`);
+    console.log(
+      `${label} | ${String(r.winners).padStart(7)} | ${String(r.losers).padStart(6)} | ${netPnl.padStart(7)}x`
+    );
   }
 }
 
 testReentryTargets().catch(console.error);
-

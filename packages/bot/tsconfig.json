@@ -2,19 +2,14 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "outDir": "./dist",
-    "rootDir": "./src",
+    "rootDir": "./",
+    "composite": true,
     "declaration": true,
     "declarationMap": true,
-    "composite": true
+    "skipLibCheck": true,
+    "baseUrl": "./",
+    "paths": {}
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "**/*.test.ts"],
-  "references": [
-    { "path": "../utils" },
-    { "path": "../data" },
-    { "path": "../services" },
-    { "path": "../monitoring" },
-    { "path": "../simulation" }
-  ]
+  "exclude": ["dist", "node_modules"]
 }
-

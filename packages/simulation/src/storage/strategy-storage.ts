@@ -2,9 +2,14 @@
  * Strategy Auto-Storage
  * =====================
  * Automatically stores strategies when they are used in simulations.
+ *
+ * @deprecated This has been moved to @quantbot/workflows.
+ * Import from @quantbot/workflows/storage/strategy-storage instead.
+ * This file will be removed in a future version.
  */
 
 import { createHash } from 'crypto';
+// eslint-disable-next-line no-restricted-imports
 import { getStorageEngine } from '@quantbot/storage';
 import { logger } from '@quantbot/utils';
 import type { ScenarioConfig } from '../core/orchestrator';
@@ -22,7 +27,7 @@ export function hashStrategyConfig(scenario: ScenarioConfig): string {
     entrySignal: scenario.entrySignal,
     exitSignal: scenario.exitSignal,
   });
-  
+
   return createHash('sha256').update(configString).digest('hex').substring(0, 16);
 }
 
@@ -31,13 +36,13 @@ export function hashStrategyConfig(scenario: ScenarioConfig): string {
  */
 export function generateStrategyName(scenario: ScenarioConfig): string {
   const strategyParts: string[] = [];
-  
+
   // Add profit targets
   if (scenario.strategy.length > 0) {
-    const targets = scenario.strategy.map(s => `${s.target}x`).join('_');
+    const targets = scenario.strategy.map((s) => `${s.target}x`).join('_');
     strategyParts.push(`PT${targets}`);
   }
-  
+
   // Add stop loss
   if (scenario.stopLoss) {
     if (scenario.stopLoss.initial !== undefined) {
@@ -45,33 +50,34 @@ export function generateStrategyName(scenario: ScenarioConfig): string {
       strategyParts.push(`SL${slPct}`);
     }
     if (scenario.stopLoss.trailing !== undefined && scenario.stopLoss.trailing !== 'none') {
-      const trailingPct = (scenario.stopLoss.trailing as number * 100).toFixed(0);
+      const trailingPct = ((scenario.stopLoss.trailing as number) * 100).toFixed(0);
       strategyParts.push(`TS${trailingPct}`);
     }
   }
-  
+
   // Add entry config
   if (scenario.entry) {
     if (scenario.entry.initialEntry !== 'none' && typeof scenario.entry.initialEntry === 'number') {
       const dropPct = Math.abs(scenario.entry.initialEntry * 100).toFixed(0);
       strategyParts.push(`ED${dropPct}`);
     }
-    if (scenario.entry.trailingEntry !== 'none' && typeof scenario.entry.trailingEntry === 'number') {
-      const trailingPct = (scenario.entry.trailingEntry as number * 100).toFixed(0);
+    if (
+      scenario.entry.trailingEntry !== 'none' &&
+      typeof scenario.entry.trailingEntry === 'number'
+    ) {
+      const trailingPct = ((scenario.entry.trailingEntry as number) * 100).toFixed(0);
       strategyParts.push(`TE${trailingPct}`);
     }
   }
-  
+
   // Add re-entry config
   if (scenario.reEntry && scenario.reEntry.trailingReEntry !== 'none') {
-    const reEntryPct = (scenario.reEntry.trailingReEntry as number * 100).toFixed(0);
+    const reEntryPct = ((scenario.reEntry.trailingReEntry as number) * 100).toFixed(0);
     strategyParts.push(`RE${reEntryPct}`);
   }
-  
-  const name = strategyParts.length > 0 
-    ? strategyParts.join('_')
-    : 'default';
-  
+
+  const name = strategyParts.length > 0 ? strategyParts.join('_') : 'default';
+
   return name.toLowerCase();
 }
 
@@ -82,22 +88,22 @@ export async function ensureStrategyStored(scenario: ScenarioConfig): Promise<nu
   try {
     const storageEngine = getStorageEngine();
     const strategiesRepo = (storageEngine as any).strategiesRepo;
-    
+
     if (!strategiesRepo) {
       logger.warn('Strategies repository not available, skipping auto-storage');
       return null;
     }
-    
+
     const strategyName = generateStrategyName(scenario);
     const configHash = hashStrategyConfig(scenario);
-    
+
     // Check if strategy already exists
     const existing = await strategiesRepo.findByName(strategyName, '1');
     if (existing) {
       logger.debug('Strategy already exists', { name: strategyName, id: existing.id });
       return existing.id;
     }
-    
+
     // Create new strategy
     const strategyId = await strategiesRepo.create({
       name: strategyName,
@@ -115,7 +121,7 @@ export async function ensureStrategyStored(scenario: ScenarioConfig): Promise<nu
       },
       isActive: true,
     });
-    
+
     logger.info('Auto-stored strategy', { id: strategyId, name: strategyName });
     return strategyId;
   } catch (error) {
@@ -123,4 +129,3 @@ export async function ensureStrategyStored(scenario: ScenarioConfig): Promise<nu
     return null;
   }
 }
-

@@ -21,14 +21,16 @@ async function testProfitTargets() {
     });
   });
 
-  const brookOnly = (records as any[]).filter((r: any) => 
-    r.sender && (
-      r.sender.includes('Brook') || 
-      r.sender.includes('brook') || 
-      r.sender.includes('Brook Giga')
-    ) && !r.tokenAddress.includes('bonk') && r.tokenAddress.length > 20
+  const brookOnly = (records as any[]).filter(
+    (r: any) =>
+      r.sender &&
+      (r.sender.includes('Brook') ||
+        r.sender.includes('brook') ||
+        r.sender.includes('Brook Giga')) &&
+      !r.tokenAddress.includes('bonk') &&
+      r.tokenAddress.length > 20
   );
-  
+
   console.log(`📊 Testing ${brookOnly.length} Brook calls\n`);
 
   const strategies = [
@@ -51,7 +53,7 @@ async function testProfitTargets() {
 
   for (let i = 0; i < Math.min(brookOnly.length, maxCalls); i++) {
     const call = brookOnly[i];
-    
+
     try {
       const alertDate = DateTime.fromISO(call.timestamp);
       if (!alertDate.isValid) continue;
@@ -65,39 +67,35 @@ async function testProfitTargets() {
       for (const strat of strategies) {
         // Set strategy: 100% at target
         const STRATEGY = [{ percent: 1.0, target: strat.target }];
-        
-        // Configure re-entry
-        const reEntryConfig = strat.reentry ? {
-          trailingReEntry: 'none' as const,
-          maxReEntries: 1,
-          sizePercent: 0.5
-        } : {
-          trailingReEntry: 'none' as const,
-          maxReEntries: 0,
-          sizePercent: 0.5
-        };
 
-        const result = simulateStrategy(
-          candles,
-          STRATEGY,
-          STOP_LOSS,
-          undefined,
-          reEntryConfig
-        );
+        // Configure re-entry
+        const reEntryConfig = strat.reentry
+          ? {
+              trailingReEntry: 'none' as const,
+              maxReEntries: 1,
+              sizePercent: 0.5,
+            }
+          : {
+              trailingReEntry: 'none' as const,
+              maxReEntries: 0,
+              sizePercent: 0.5,
+            };
+
+        const result = simulateStrategy(candles, STRATEGY, STOP_LOSS, undefined, reEntryConfig);
 
         // Calculate PNL
         const pnl = result.finalPnl;
-        
+
         if (pnl > 1) {
           results[strat.name].winners++;
-          results[strat.name].netPnl += (pnl - 1);
+          results[strat.name].netPnl += pnl - 1;
         } else {
           results[strat.name].losers++;
-          results[strat.name].netPnl += (pnl - 1);
+          results[strat.name].netPnl += pnl - 1;
         }
         results[strat.name].total++;
       }
-      
+
       processed++;
       if (processed % 10 === 0) {
         console.log(`Processed ${processed}/${Math.min(brookOnly.length, maxCalls)}...`);
@@ -110,13 +108,14 @@ async function testProfitTargets() {
   console.log('\n📊 RESULTS:\n');
   console.log('Strategy | Winners | Losers | Net PNL');
   console.log('--------|---------|--------|---------');
-  
+
   for (const strat of strategies) {
     const r = results[strat.name];
     const netPnl = r.netPnl.toFixed(2);
-    console.log(`${strat.name.padEnd(20)} | ${String(r.winners).padStart(7)} | ${String(r.losers).padStart(6)} | ${netPnl.padStart(7)}x`);
+    console.log(
+      `${strat.name.padEnd(20)} | ${String(r.winners).padStart(7)} | ${String(r.losers).padStart(6)} | ${netPnl.padStart(7)}x`
+    );
   }
 }
 
 testProfitTargets().catch(console.error);
-

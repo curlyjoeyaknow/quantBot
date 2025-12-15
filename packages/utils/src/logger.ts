@@ -6,8 +6,9 @@
  */
 
 import * as winston from 'winston';
-// @ts-ignore - winston-daily-rotate-file has incorrect type definitions
-const DailyRotateFile = require('winston-daily-rotate-file').default || require('winston-daily-rotate-file');
+// @ts-expect-error - winston-daily-rotate-file has incorrect type definitions
+const DailyRotateFile =
+  require('winston-daily-rotate-file').default || require('winston-daily-rotate-file');
 import * as path from 'path';
 import * as fs from 'fs';
 
@@ -182,10 +183,10 @@ class Logger {
    * Merge context for a single log call, including namespace
    */
   private mergeContext(additionalContext?: LogContext): LogContext {
-    return { 
+    return {
       namespace: this.namespace,
-      ...this.context, 
-      ...additionalContext 
+      ...this.context,
+      ...additionalContext,
     };
   }
 
@@ -194,7 +195,7 @@ class Logger {
    */
   error(message: string, error?: Error | unknown, context?: LogContext): void {
     const logContext = this.mergeContext(context);
-    
+
     if (error instanceof Error) {
       winstonLogger.error(message, {
         ...logContext,
@@ -263,4 +264,3 @@ export { Logger };
 
 // Export winston logger for advanced usage
 export { winstonLogger };
-

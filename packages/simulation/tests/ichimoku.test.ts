@@ -1,9 +1,9 @@
-import { calculateIchimoku, formatIchimokuData } from '../../src/simulation/ichimoku';
-import { Candle } from '../../src/simulation/candles';
+import { calculateIchimoku, formatIchimokuData } from '../src/ichimoku';
+import { Candle } from '../src/candles';
 
 /**
  * Test Suite for Ichimoku Indicator-related computations and formatting.
- * 
+ *
  * Organization of sections:
  * 1. Mock Candle Data
  * 2. Tests for calculateIchimoku
@@ -25,11 +25,10 @@ const mockCandles: Candle[] = Array.from({ length: 60 }, (_, i) => ({
   high: 1.1 + i * 0.01,
   low: 0.9 + i * 0.01,
   close: 1.05 + i * 0.01,
-  volume: 1000 + i * 10
+  volume: 1000 + i * 10,
 }));
 
 describe('Ichimoku Calculations', () => {
-
   // -------------------------------------------------------------------------
   // SECTION 2: calculateIchimoku Calculation Tests
   // -------------------------------------------------------------------------
@@ -67,7 +66,7 @@ describe('Ichimoku Calculations', () => {
         high: 1.1 + i * 0.01,
         low: 0.9 + i * 0.01,
         close: 1.05 + i * 0.01,
-        volume: 1000 + i * 10
+        volume: 1000 + i * 10,
       }));
       const result = calculateIchimoku(exactly52Candles, exactly52Candles.length - 1);
       expect(result).toBeDefined();
@@ -139,10 +138,10 @@ describe('Ichimoku Calculations', () => {
     cloudThickness: 0.1,
     isBullish: true,
     isBearish: false,
-    inCloud: false,    // legacy/deprecated? (match to type if needed)
+    inCloud: false, // legacy/deprecated? (match to type if needed)
     isPriceAboveCloud: true,
     isPriceBelowCloud: false,
-    isPriceInCloud: false
+    isPriceInCloud: false,
   };
 
   describe('formatIchimokuData', () => {
@@ -176,9 +175,9 @@ describe('Ichimoku Calculations', () => {
         ...fullMockIchimokuData,
         isPriceAboveCloud: false,
         isPriceBelowCloud: true,
-        isPriceInCloud: false
+        isPriceInCloud: false,
       };
-      const formatted = formatIchimokuData(belowCloudData, 1.30);
+      const formatted = formatIchimokuData(belowCloudData, 1.3);
 
       expect(formatted).toContain('below cloud');
     });
@@ -191,9 +190,9 @@ describe('Ichimoku Calculations', () => {
         ...fullMockIchimokuData,
         isPriceAboveCloud: false,
         isPriceBelowCloud: false,
-        isPriceInCloud: true
+        isPriceInCloud: true,
       };
-      const formatted = formatIchimokuData(inCloudData, 1.40);
+      const formatted = formatIchimokuData(inCloudData, 1.4);
 
       expect(formatted).toContain('inside cloud');
     });
@@ -211,10 +210,10 @@ describe('Ichimoku Calculations', () => {
       const bullishCandles = Array.from({ length: 60 }, (_, i) => ({
         timestamp: i * 1000,
         open: 1.0,
-        high: 1.0 + i * 0.02,  // Strong upward trend
+        high: 1.0 + i * 0.02, // Strong upward trend
         low: 0.9,
         close: 1.0 + i * 0.02,
-        volume: 1000
+        volume: 1000,
       }));
 
       const result = calculateIchimoku(bullishCandles, bullishCandles.length - 1);
@@ -232,9 +231,9 @@ describe('Ichimoku Calculations', () => {
         timestamp: i * 1000,
         open: 2.0,
         high: 2.0,
-        low: 2.0 - i * 0.02,  // Strong downward trend
+        low: 2.0 - i * 0.02, // Strong downward trend
         close: 2.0 - i * 0.02,
-        volume: 1000
+        volume: 1000,
       }));
 
       const result = calculateIchimoku(bearishCandles, bearishCandles.length - 1);
@@ -244,5 +243,4 @@ describe('Ichimoku Calculations', () => {
       expect(result!.tenkan).toBeLessThanOrEqual(result!.kijun);
     });
   });
-
 });

@@ -108,7 +108,7 @@ export function deduplicateCandles(candles: readonly Candle[]): Candle[] {
 export interface SubCandleProvider {
   /**
    * Fetch candles for a specific time range and interval
-   * 
+   *
    * @param params - Fetch parameters
    * @returns Promise resolving to array of candles
    */
@@ -119,4 +119,3 @@ export interface SubCandleProvider {
     limit?: number;
   }): Promise<Candle[]>;
 }
-

@@ -58,8 +58,8 @@ export async function getAllCalls(): Promise<UnifiedCall[]> {
   const allAsync = promisify(db.all.bind(db));
 
   try {
-    const rows = await allAsync("SELECT * FROM unified_calls ORDER BY call_timestamp ASC");
-    return (rows as any[]).map(row => ({
+    const rows = await allAsync('SELECT * FROM unified_calls ORDER BY call_timestamp ASC');
+    return (rows as any[]).map((row) => ({
       ...row,
       callTimestamp: row.call_timestamp,
     }));
@@ -90,11 +90,14 @@ export async function fetchCandlesForAnalysis(
 
     return birdeyeData.items.map((item: any) => ({
       timestamp: item.unixTime,
-      price: typeof item.close === 'string' ? parseFloat(item.close) : (item.close || 0),
-      volume: typeof item.volume === 'string' ? parseFloat(item.volume) : (item.volume || 0),
+      price: typeof item.close === 'string' ? parseFloat(item.close) : item.close || 0,
+      volume: typeof item.volume === 'string' ? parseFloat(item.volume) : item.volume || 0,
     }));
   } catch (error: any) {
-    logger.debug('Failed to fetch candles', { tokenAddress: tokenAddress.substring(0, 10), error: error.message });
+    logger.debug('Failed to fetch candles', {
+      tokenAddress: tokenAddress.substring(0, 10),
+      error: error.message,
+    });
     return [];
   }
 }
@@ -105,16 +108,19 @@ export function calculateReturns(
   callUnix: number,
   entryMcap?: number
 ): ReturnData {
-  const candlesAfter = candles.filter(c => c.timestamp > callUnix);
-  
-  const candles7d = candlesAfter.filter(c => c.timestamp <= callUnix + 604800); // 7 days
-  const candles30d = candlesAfter.filter(c => c.timestamp <= callUnix + 2592000); // 30 days
+  const candlesAfter = candles.filter((c) => c.timestamp > callUnix);
 
-  const maxPrice7d = candles7d.length > 0 ? Math.max(...candles7d.map(c => c.price)) : callPrice;
-  const maxPrice30d = candles30d.length > 0 ? Math.max(...candles30d.map(c => c.price)) : callPrice;
+  const candles7d = candlesAfter.filter((c) => c.timestamp <= callUnix + 604800); // 7 days
+  const candles30d = candlesAfter.filter((c) => c.timestamp <= callUnix + 2592000); // 30 days
 
-  const priceAt7d = candles7d.length > 0 ? candles7d[candles7d.length - 1]?.price || callPrice : callPrice;
-  const priceAt30d = candles30d.length > 0 ? candles30d[candles30d.length - 1]?.price || callPrice : callPrice;
+  const maxPrice7d = candles7d.length > 0 ? Math.max(...candles7d.map((c) => c.price)) : callPrice;
+  const maxPrice30d =
+    candles30d.length > 0 ? Math.max(...candles30d.map((c) => c.price)) : callPrice;
+
+  const priceAt7d =
+    candles7d.length > 0 ? candles7d[candles7d.length - 1]?.price || callPrice : callPrice;
+  const priceAt30d =
+    candles30d.length > 0 ? candles30d[candles30d.length - 1]?.price || callPrice : callPrice;
 
   const priceMultiple7d = callPrice > 0 ? maxPrice7d / callPrice : 0;
   const priceMultiple30d = callPrice > 0 ? maxPrice30d / callPrice : 0;
@@ -233,7 +239,7 @@ async function scoreAndAnalyzeCalls(
     );
 
     // Rate limiting
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise((resolve) => setTimeout(resolve, 1000));
   }
 
   logger.info('Scoring complete', {
@@ -255,9 +261,9 @@ function analyzePnLByScore(scoredCalls: ScoredCall[]): void {
   const ranges = [
     { name: 'Top 1%', threshold: 0.01 },
     { name: 'Top 5%', threshold: 0.05 },
-    { name: 'Top 10%', threshold: 0.10 },
+    { name: 'Top 10%', threshold: 0.1 },
     { name: 'Top 25%', threshold: 0.25 },
-    { name: 'Top 50%', threshold: 0.50 },
+    { name: 'Top 50%', threshold: 0.5 },
     { name: 'Bottom 50%', threshold: 1.0 },
   ];
 
@@ -266,27 +272,33 @@ function analyzePnLByScore(scoredCalls: ScoredCall[]): void {
 
   for (const range of ranges) {
     let filtered: ScoredCall[];
-    
+
     if (range.name === 'Bottom 50%') {
       const threshold = scoredCalls[Math.floor(scoredCalls.length * 0.5)]?.score || 0;
-      filtered = scoredCalls.filter(c => c.score <= threshold);
+      filtered = scoredCalls.filter((c) => c.score <= threshold);
     } else {
-      const threshold = scoredCalls[Math.floor(scoredCalls.length * (1 - range.threshold))]?.score || 0;
-      filtered = scoredCalls.filter(c => c.score >= threshold);
+      const threshold =
+        scoredCalls[Math.floor(scoredCalls.length * (1 - range.threshold))]?.score || 0;
+      filtered = scoredCalls.filter((c) => c.score >= threshold);
     }
 
     if (filtered.length === 0) continue;
 
-    const avgReturn30d = filtered.reduce((sum, c) => sum + c.returns.maxReturn30d, 0) / filtered.length;
-    const avgReturn7d = filtered.reduce((sum, c) => sum + c.returns.maxReturn7d, 0) / filtered.length;
-    const medianReturn30d = [...filtered].sort((a, b) => a.returns.maxReturn30d - b.returns.maxReturn30d)[Math.floor(filtered.length / 2)]?.returns.maxReturn30d || 0;
-    
-    const moonCount = filtered.filter(c => c.performanceCategory === 'moon').length;
-    const goodCount = filtered.filter(c => c.performanceCategory === 'good').length;
-    const decentCount = filtered.filter(c => c.performanceCategory === 'decent').length;
-    const poorCount = filtered.filter(c => c.performanceCategory === 'poor').length;
+    const avgReturn30d =
+      filtered.reduce((sum, c) => sum + c.returns.maxReturn30d, 0) / filtered.length;
+    const avgReturn7d =
+      filtered.reduce((sum, c) => sum + c.returns.maxReturn7d, 0) / filtered.length;
+    const medianReturn30d =
+      [...filtered].sort((a, b) => a.returns.maxReturn30d - b.returns.maxReturn30d)[
+        Math.floor(filtered.length / 2)
+      ]?.returns.maxReturn30d || 0;
 
-    const winRate = (moonCount + goodCount + decentCount) / filtered.length * 100;
+    const moonCount = filtered.filter((c) => c.performanceCategory === 'moon').length;
+    const goodCount = filtered.filter((c) => c.performanceCategory === 'good').length;
+    const decentCount = filtered.filter((c) => c.performanceCategory === 'decent').length;
+    const poorCount = filtered.filter((c) => c.performanceCategory === 'poor').length;
+
+    const winRate = ((moonCount + goodCount + decentCount) / filtered.length) * 100;
 
     console.log(`\n${range.name} (Score >= ${filtered[0]?.score.toFixed(2)}):`);
     console.log(`  Count: ${filtered.length}`);
@@ -294,7 +306,9 @@ function analyzePnLByScore(scoredCalls: ScoredCall[]): void {
     console.log(`  Avg 7d Max Return: ${avgReturn7d.toFixed(2)}x`);
     console.log(`  Median 30d Return: ${medianReturn30d.toFixed(2)}x`);
     console.log(`  Win Rate: ${winRate.toFixed(1)}%`);
-    console.log(`  Performance: Moon ${moonCount}, Good ${goodCount}, Decent ${decentCount}, Poor ${poorCount}`);
+    console.log(
+      `  Performance: Moon ${moonCount}, Good ${goodCount}, Decent ${decentCount}, Poor ${poorCount}`
+    );
   }
 
   // Top 20 highest scoring
@@ -304,10 +318,10 @@ function analyzePnLByScore(scoredCalls: ScoredCall[]): void {
   for (const call of top20) {
     console.log(
       `${(call.tokenSymbol || call.tokenAddress.substring(0, 15)).padEnd(20)} ` +
-      `Score: ${call.score.toFixed(2).padStart(6)} | ` +
-      `30d Max: ${call.returns.maxReturn30d.toFixed(2)}x | ` +
-      `Category: ${call.performanceCategory.padEnd(6)} | ` +
-      `Caller: ${call.callerName.substring(0, 20)}`
+        `Score: ${call.score.toFixed(2).padStart(6)} | ` +
+        `30d Max: ${call.returns.maxReturn30d.toFixed(2)}x | ` +
+        `Category: ${call.performanceCategory.padEnd(6)} | ` +
+        `Caller: ${call.callerName.substring(0, 20)}`
     );
   }
 }
@@ -324,14 +338,14 @@ async function main() {
   try {
     // Get all calls
     const allCalls = await getAllCalls();
-    
+
     // Filter out calls with invalid timestamps (before 2020-01-01 = 1577836800)
     // Also filter out calls with timestamp = 1 or 2 (obviously invalid)
-    const validCalls = allCalls.filter(call => 
-      call.callTimestamp > 1577836800 && call.callTimestamp < 2000000000
+    const validCalls = allCalls.filter(
+      (call) => call.callTimestamp > 1577836800 && call.callTimestamp < 2000000000
     );
     const invalidCount = allCalls.length - validCalls.length;
-    
+
     if (invalidCount > 0) {
       logger.warn('Filtered out calls with invalid timestamps', {
         total: allCalls.length,
@@ -339,7 +353,7 @@ async function main() {
         invalid: invalidCount,
       });
     }
-    
+
     logger.info('Loaded calls', { count: validCalls.length });
 
     // Build scoring model (weights are hardcoded, so we can use empty array)
@@ -358,8 +372,11 @@ async function main() {
     // Save results
     const outputDir = path.join(process.cwd(), 'data/exports/brook-analysis');
     fs.mkdirSync(outputDir, { recursive: true });
-    
-    const outputPath = path.join(outputDir, `unified-calls-scored-${DateTime.now().toFormat('yyyy-MM-dd_HH-mm-ss')}.json`);
+
+    const outputPath = path.join(
+      outputDir,
+      `unified-calls-scored-${DateTime.now().toFormat('yyyy-MM-dd_HH-mm-ss')}.json`
+    );
     fs.writeFileSync(outputPath, JSON.stringify(scoredCalls, null, 2));
 
     // Save summary
@@ -368,19 +385,26 @@ async function main() {
       scoredCalls: scoredCalls.length,
       top10Percent: {
         count: Math.floor(scoredCalls.length * 0.1),
-        avgReturn30d: scoredCalls
-          .slice(0, Math.floor(scoredCalls.length * 0.1))
-          .reduce((sum, c) => sum + c.returns.maxReturn30d, 0) / Math.floor(scoredCalls.length * 0.1),
+        avgReturn30d:
+          scoredCalls
+            .slice(0, Math.floor(scoredCalls.length * 0.1))
+            .reduce((sum, c) => sum + c.returns.maxReturn30d, 0) /
+          Math.floor(scoredCalls.length * 0.1),
       },
       top25Percent: {
         count: Math.floor(scoredCalls.length * 0.25),
-        avgReturn30d: scoredCalls
-          .slice(0, Math.floor(scoredCalls.length * 0.25))
-          .reduce((sum, c) => sum + c.returns.maxReturn30d, 0) / Math.floor(scoredCalls.length * 0.25),
+        avgReturn30d:
+          scoredCalls
+            .slice(0, Math.floor(scoredCalls.length * 0.25))
+            .reduce((sum, c) => sum + c.returns.maxReturn30d, 0) /
+          Math.floor(scoredCalls.length * 0.25),
       },
     };
 
-    const summaryPath = path.join(outputDir, `unified-calls-summary-${DateTime.now().toFormat('yyyy-MM-dd_HH-mm-ss')}.json`);
+    const summaryPath = path.join(
+      outputDir,
+      `unified-calls-summary-${DateTime.now().toFormat('yyyy-MM-dd_HH-mm-ss')}.json`
+    );
     fs.writeFileSync(summaryPath, JSON.stringify(summary, null, 2));
 
     logger.info('Analysis complete', {
@@ -401,4 +425,3 @@ if (require.main === module) {
 }
 
 export { scoreAndAnalyzeCalls, analyzePnLByScore };
-

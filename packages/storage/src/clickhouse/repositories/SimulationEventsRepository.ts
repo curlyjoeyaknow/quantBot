@@ -1,6 +1,6 @@
 /**
  * SimulationEventsRepository - ClickHouse repository for simulation events and aggregates
- * 
+ *
  * Handles all database operations for simulation_events and simulation_aggregates tables.
  */
 
@@ -95,4 +95,3 @@ export class SimulationEventsRepository {
     }
   }
 }
-

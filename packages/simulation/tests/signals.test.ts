@@ -4,10 +4,10 @@ import {
   evaluateSignalCondition,
   evaluateLadderLegs,
   type SignalEvaluationContext,
-} from '../../src/simulation/signals';
-import type { Candle } from '../../src/simulation/candles';
-import type { IndicatorData } from '../../src/simulation/indicators';
-import type { SignalGroup, SignalCondition, LadderConfig } from '../../src/simulation/config';
+} from '../src/signals';
+import type { Candle } from '../src/candles';
+import type { IndicatorData } from '../src/indicators';
+import type { SignalGroup, SignalCondition, LadderConfig } from '../src/config';
 
 describe('signals', () => {
   const createMockCandle = (overrides?: Partial<Candle>): Candle => ({
@@ -40,7 +40,7 @@ describe('signals', () => {
   const createContext = (
     candle?: Candle,
     indicators?: IndicatorData,
-    prevIndicators?: IndicatorData | null,
+    prevIndicators?: IndicatorData | null
   ): SignalEvaluationContext => ({
     candle: candle ?? createMockCandle(),
     indicators: indicators ?? createMockIndicators(),
@@ -58,7 +58,7 @@ describe('signals', () => {
 
       const context = createContext(
         createMockCandle({ close: 1.05 }),
-        createMockIndicators({ candle: createMockCandle({ close: 1.05 }) }),
+        createMockIndicators({ candle: createMockCandle({ close: 1.05 }) })
       );
 
       const result = evaluateSignalCondition(condition, context);
@@ -76,7 +76,7 @@ describe('signals', () => {
 
       const context = createContext(
         createMockCandle({ close: 0.95 }),
-        createMockIndicators({ candle: createMockCandle({ close: 0.95 }) }),
+        createMockIndicators({ candle: createMockCandle({ close: 0.95 }) })
       );
 
       const result = evaluateSignalCondition(condition, context);
@@ -93,7 +93,7 @@ describe('signals', () => {
 
       const context = createContext(
         createMockCandle({ close: 1.05 }),
-        createMockIndicators({ candle: createMockCandle({ close: 1.05 }) }),
+        createMockIndicators({ candle: createMockCandle({ close: 1.05 }) })
       );
 
       const result = evaluateSignalCondition(condition, context);
@@ -109,7 +109,7 @@ describe('signals', () => {
 
       const context = createContext(
         undefined,
-        createMockIndicators({ movingAverages: { sma20: 1.0, ema20: 1.0 } }),
+        createMockIndicators({ movingAverages: { sma20: 1.0, ema20: 1.0 } })
       );
 
       const result = evaluateSignalCondition(condition, context);
@@ -125,7 +125,7 @@ describe('signals', () => {
 
       const context = createContext(
         undefined,
-        createMockIndicators({ movingAverages: { sma20: 1.0, ema20: 1.0 } }),
+        createMockIndicators({ movingAverages: { sma20: 1.0, ema20: 1.0 } })
       );
 
       const result = evaluateSignalCondition(condition, context);
@@ -151,7 +151,7 @@ describe('signals', () => {
             isBullish: true,
             isBearish: false,
           },
-        }),
+        })
       );
 
       const result = evaluateSignalCondition(condition, context);
@@ -209,7 +209,7 @@ describe('signals', () => {
 
       const context = createContext(
         undefined,
-        createMockIndicators({ movingAverages: { sma20: undefined, ema20: 1.0 } }),
+        createMockIndicators({ movingAverages: { sma20: undefined, ema20: 1.0 } })
       );
 
       const result = evaluateSignalCondition(condition, context);
@@ -254,7 +254,7 @@ describe('signals', () => {
         createMockIndicators({
           candle: createMockCandle({ close: 1.05 }),
           movingAverages: { sma20: 1.0, ema20: 1.0 },
-        }),
+        })
       );
 
       const result = evaluateSignalGroup(group, context);
@@ -285,7 +285,7 @@ describe('signals', () => {
         createMockIndicators({
           candle: createMockCandle({ close: 1.05 }),
           movingAverages: { sma20: 1.0, ema20: 1.0 },
-        }),
+        })
       );
 
       const result = evaluateSignalGroup(group, context);
@@ -315,7 +315,7 @@ describe('signals', () => {
         createMockIndicators({
           candle: createMockCandle({ close: 1.05 }),
           movingAverages: { sma20: 1.0, ema20: 1.0 },
-        }),
+        })
       );
 
       const result = evaluateSignalGroup(group, context);
@@ -352,7 +352,7 @@ describe('signals', () => {
         createMockIndicators({
           candle: createMockCandle({ close: 1.05 }),
           movingAverages: { sma20: 1.0, ema20: 1.0 },
-        }),
+        })
       );
 
       const result = evaluateSignalGroup(group, context);
@@ -434,7 +434,7 @@ describe('signals', () => {
 
       const context = createContext(
         createMockCandle({ close: 1.05 }),
-        createMockIndicators({ candle: createMockCandle({ close: 1.05 }) }),
+        createMockIndicators({ candle: createMockCandle({ close: 1.05 }) })
       );
 
       const alreadyFilled = new Set<string>();
@@ -478,4 +478,3 @@ describe('signals', () => {
     });
   });
 });
-

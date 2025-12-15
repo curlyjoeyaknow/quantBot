@@ -5,18 +5,18 @@
  * Provides centralized event processing logic.
  */
 
-import { EventHandler } from './EventBus';
-import { 
-  ApplicationEvent, 
-  UserSessionEvent, 
-  UserCommandEvent, 
+import { EventHandler, EventBus } from './EventBus';
+import {
+  ApplicationEvent,
+  UserSessionEvent,
+  UserCommandEvent,
   UserStrategyEvent,
   SimulationEvent,
   WebSocketEvent,
   PriceUpdateEvent,
   AlertEvent,
   SystemEvent,
-  ServiceEvent
+  ServiceEvent,
 } from './EventTypes';
 import { logger } from '../logger';
 
@@ -29,7 +29,7 @@ export class UserEventHandlers {
    */
   public static handleSessionEvent: EventHandler<UserSessionEvent['data']> = async (event) => {
     const { userId, sessionData } = event.data;
-    
+
     switch (event.type) {
       case 'user.session.started':
         logger.info('User started new session', { userId });
@@ -48,11 +48,14 @@ export class UserEventHandlers {
    */
   public static handleCommandEvent: EventHandler<UserCommandEvent['data']> = async (event) => {
     const { userId, command, success, error } = event.data;
-    
+
     if (success) {
       logger.info('User executed command successfully', { userId, command });
     } else {
-      logger.error('User failed to execute command', new Error(error || 'Unknown error'), { userId, command });
+      logger.error('User failed to execute command', new Error(error || 'Unknown error'), {
+        userId,
+        command,
+      });
     }
   };
 
@@ -61,7 +64,7 @@ export class UserEventHandlers {
    */
   public static handleStrategyEvent: EventHandler<UserStrategyEvent['data']> = async (event) => {
     const { userId, strategyName, strategyData } = event.data;
-    
+
     switch (event.type) {
       case 'user.strategy.saved':
         logger.info('User saved strategy', { userId, strategyName });
@@ -85,16 +88,25 @@ export class SimulationEventHandlers {
    */
   public static handleSimulationEvent: EventHandler<SimulationEvent['data']> = async (event) => {
     const { userId, mint, chain, strategy, result, error } = event.data;
-    
+
     switch (event.type) {
       case 'simulation.started':
         logger.info('Simulation started', { userId, mint, chain });
         break;
       case 'simulation.completed':
-        logger.info('Simulation completed', { userId, mint, chain, pnl: result?.finalPnl || 'N/A' });
+        logger.info('Simulation completed', {
+          userId,
+          mint,
+          chain,
+          pnl: result?.finalPnl || 'N/A',
+        });
         break;
       case 'simulation.failed':
-        logger.error('Simulation failed', new Error(error || 'Unknown error'), { userId, mint, chain });
+        logger.error('Simulation failed', new Error(error || 'Unknown error'), {
+          userId,
+          mint,
+          chain,
+        });
         break;
     }
   };
@@ -109,7 +121,7 @@ export class WebSocketEventHandlers {
    */
   public static handleConnectionEvent: EventHandler<WebSocketEvent['data']> = async (event) => {
     const { url, reconnectAttempts, error } = event.data;
-    
+
     switch (event.type) {
       case 'websocket.connected':
         logger.info('WebSocket connected', { url });
@@ -136,8 +148,13 @@ export class MonitoringEventHandlers {
    */
   public static handlePriceUpdateEvent: EventHandler<PriceUpdateEvent['data']> = async (event) => {
     const { mint, chain, price, priceChange } = event.data;
-    
-    logger.debug('Price update', { mint, chain, price, priceChange: (priceChange * 100).toFixed(2) });
+
+    logger.debug('Price update', {
+      mint,
+      chain,
+      price,
+      priceChange: (priceChange * 100).toFixed(2),
+    });
   };
 
   /**
@@ -145,8 +162,14 @@ export class MonitoringEventHandlers {
    */
   public static handleAlertEvent: EventHandler<AlertEvent['data']> = async (event) => {
     const { caId, tokenName, tokenSymbol, alertType, price, priceChange } = event.data;
-    
-    logger.info('Alert sent', { alertType, tokenName, tokenSymbol, price, priceChange: (priceChange * 100).toFixed(2) });
+
+    logger.info('Alert sent', {
+      alertType,
+      tokenName,
+      tokenSymbol,
+      price,
+      priceChange: (priceChange * 100).toFixed(2),
+    });
   };
 }
 
@@ -159,7 +182,7 @@ export class SystemEventHandlers {
    */
   public static handleSystemEvent: EventHandler<SystemEvent['data']> = async (event) => {
     const { component, message, error } = event.data;
-    
+
     switch (event.type) {
       case 'system.startup':
         logger.info('System startup', { component, message });
@@ -178,7 +201,7 @@ export class SystemEventHandlers {
    */
   public static handleServiceEvent: EventHandler<ServiceEvent['data']> = async (event) => {
     const { serviceName, status, error } = event.data;
-    
+
     switch (event.type) {
       case 'service.initialized':
         logger.info('Service initialized', { serviceName });
@@ -201,9 +224,9 @@ export class SystemEventHandlers {
  * Registers all event handlers with the event bus
  */
 export class EventHandlerRegistry {
-  private eventBus: any;
+  private eventBus: EventBus;
 
-  constructor(eventBus: any) {
+  constructor(eventBus: EventBus) {
     this.eventBus = eventBus;
   }
 
@@ -233,7 +256,10 @@ export class EventHandlerRegistry {
     this.eventBus.subscribe('websocket.reconnecting', WebSocketEventHandlers.handleConnectionEvent);
 
     // Monitoring events
-    this.eventBus.subscribe('price.update.received', MonitoringEventHandlers.handlePriceUpdateEvent);
+    this.eventBus.subscribe(
+      'price.update.received',
+      MonitoringEventHandlers.handlePriceUpdateEvent
+    );
     this.eventBus.subscribe('alert.profit_target', MonitoringEventHandlers.handleAlertEvent);
     this.eventBus.subscribe('alert.stop_loss', MonitoringEventHandlers.handleAlertEvent);
     this.eventBus.subscribe('alert.ichimoku_signal', MonitoringEventHandlers.handleAlertEvent);
@@ -260,4 +286,3 @@ export class EventHandlerRegistry {
     logger.info('Event handler unregistration requested');
   }
 }
-

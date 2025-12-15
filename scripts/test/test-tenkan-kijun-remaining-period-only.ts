@@ -11,10 +11,7 @@ import { parse } from 'csv-parse';
 import * as fs from 'fs';
 import * as path from 'path';
 import { stringify } from 'csv-stringify';
-import {
-  calculateIndicators,
-  IndicatorData,
-} from '../src/simulation/indicators';
+import { calculateIndicators, IndicatorData } from '../src/simulation/indicators';
 
 const BROOK_CALLS_CSV = path.join(__dirname, '../data/exports/csv/all_brook_channels_calls.csv');
 const OUTPUT_DIR = path.join(__dirname, '../data/exports/tenkan-kijun-remaining-period-only');
@@ -40,13 +37,20 @@ interface TradeResult {
 function simulateTenkanKijunRemainingPeriodOnly(
   candles: any[],
   alertTime: DateTime
-): { pnl: number; maxReached: number; holdDuration: number; entryTime: number; exitTime: number; entryPrice: number } | null {
+): {
+  pnl: number;
+  maxReached: number;
+  holdDuration: number;
+  entryTime: number;
+  exitTime: number;
+  entryPrice: number;
+} | null {
   if (candles.length < 52) {
     return null;
   }
 
   const alertTimestamp = alertTime.toMillis();
-  const sixHourMark = alertTimestamp + (6 * 60 * 60 * 1000);
+  const sixHourMark = alertTimestamp + 6 * 60 * 60 * 1000;
 
   // Find the index where 6 hours have passed
   let sixHourIndex = 0;
@@ -56,7 +60,7 @@ function simulateTenkanKijunRemainingPeriodOnly(
         ? candles[i].timestamp * 1000
         : new Date(candles[i].timestamp).getTime()
       : alertTimestamp;
-    
+
     if (candleTime >= sixHourMark) {
       sixHourIndex = i;
       break;
@@ -71,11 +75,11 @@ function simulateTenkanKijunRemainingPeriodOnly(
   // Calculate indicators from the beginning (needed for proper Ichimoku calculation)
   const indicatorData: IndicatorData[] = [];
   let previousEMAs: { ema9?: number | null; ema20?: number | null; ema50?: number | null } = {};
-  
+
   for (let i = 0; i < candles.length; i++) {
     const indicators = calculateIndicators(candles, i, previousEMAs);
     indicatorData.push(indicators);
-    
+
     previousEMAs = {
       ema9: indicators.movingAverages.ema9,
       ema20: indicators.movingAverages.ema20,
@@ -85,18 +89,19 @@ function simulateTenkanKijunRemainingPeriodOnly(
 
   // Find Tenkan/Kijun cross entry - ONLY after 6-hour mark
   let entryIndex = 0;
-  
+
   // Start looking from sixHourIndex + 52 to ensure we have enough data for Ichimoku
   // But also need at least 52 candles before sixHourIndex for proper indicator calculation
   const searchStartIndex = Math.max(sixHourIndex, 52);
-  
+
   for (let i = searchStartIndex; i < candles.length; i++) {
     const indicators = indicatorData[i];
     const previousIndicators = i > 0 ? indicatorData[i - 1] : null;
-    
+
     if (previousIndicators?.ichimoku && indicators.ichimoku) {
-      const crossedUp = previousIndicators.ichimoku.tenkan <= previousIndicators.ichimoku.kijun &&
-                        indicators.ichimoku.tenkan > indicators.ichimoku.kijun;
+      const crossedUp =
+        previousIndicators.ichimoku.tenkan <= previousIndicators.ichimoku.kijun &&
+        indicators.ichimoku.tenkan > indicators.ichimoku.kijun;
       if (crossedUp) {
         entryIndex = i;
         break;
@@ -129,7 +134,7 @@ function simulateTenkanKijunRemainingPeriodOnly(
   // Start from entryIndex + 1 to avoid exiting on the same candle we entered
   // Entry happens at candle[entryIndex].close, so we check exits starting from the next candle
   const startIndex = entryIndex + 1;
-  
+
   // If no candles after entry, exit immediately at entry price (shouldn't happen but handle it)
   if (startIndex >= candles.length) {
     return {
@@ -141,12 +146,12 @@ function simulateTenkanKijunRemainingPeriodOnly(
       entryPrice: actualEntryPrice,
     };
   }
-  
+
   for (let i = startIndex; i < candles.length; i++) {
     const candle = candles[i];
     const indicators = indicatorData[i];
     const previousIndicators = i > startIndex ? indicatorData[i - 1] : indicatorData[entryIndex];
-    
+
     // Calculate candle time - for 1h candles, this is the candle's start time
     // We need to add the candle duration to get the exit time
     const candleStartTime = candle.timestamp
@@ -154,7 +159,7 @@ function simulateTenkanKijunRemainingPeriodOnly(
         ? candle.timestamp * 1000
         : new Date(candle.timestamp).getTime()
       : entryTime;
-    
+
     // Estimate candle duration: if it's a 1h candle, add 1 hour; if 5m, add 5 minutes
     // We can detect this by checking the time difference from previous candle
     let candleDurationMs = 60 * 60 * 1000; // Default to 1 hour
@@ -168,16 +173,14 @@ function simulateTenkanKijunRemainingPeriodOnly(
       candleDurationMs = candleStartTime - prevCandleTime;
       if (candleDurationMs <= 0) candleDurationMs = 60 * 60 * 1000; // Fallback to 1h
     }
-    
+
     const candleTime = candleStartTime + candleDurationMs; // Exit happens at candle close
 
-    const effectiveHigh = candle.close > 0 && candle.high / candle.close > 10 
-      ? candle.close * 1.05
-      : candle.high;
-    
-    const effectiveLow = candle.close > 0 && candle.low / candle.close < 0.1
-      ? candle.close * 0.95
-      : candle.low;
+    const effectiveHigh =
+      candle.close > 0 && candle.high / candle.close > 10 ? candle.close * 1.05 : candle.high;
+
+    const effectiveLow =
+      candle.close > 0 && candle.low / candle.close < 0.1 ? candle.close * 0.95 : candle.low;
 
     const currentMultiplier = effectiveHigh / actualEntryPrice;
     if (currentMultiplier > maxReached) {
@@ -190,8 +193,9 @@ function simulateTenkanKijunRemainingPeriodOnly(
 
     // Check Tenkan/Kijun cross down exit
     if (previousIndicators?.ichimoku && indicators.ichimoku) {
-      const crossedDown = previousIndicators.ichimoku.tenkan >= previousIndicators.ichimoku.kijun &&
-                           indicators.ichimoku.tenkan < indicators.ichimoku.kijun;
+      const crossedDown =
+        previousIndicators.ichimoku.tenkan >= previousIndicators.ichimoku.kijun &&
+        indicators.ichimoku.tenkan < indicators.ichimoku.kijun;
       if (crossedDown && remaining > 0) {
         const exitPrice = Math.max(effectiveLow, minExitPrice);
         pnl += remaining * (exitPrice / actualEntryPrice);
@@ -215,7 +219,7 @@ function simulateTenkanKijunRemainingPeriodOnly(
     if (indicators.ichimoku) {
       currentStopPrice = Math.max(indicators.ichimoku.kijun, minExitPrice);
     }
-    
+
     if (remaining > 0 && effectiveLow <= currentStopPrice) {
       pnl += remaining * (currentStopPrice / actualEntryPrice);
       remaining = 0;
@@ -242,9 +246,7 @@ function simulateTenkanKijunRemainingPeriodOnly(
     pnl = 0.8;
   }
 
-  const holdDurationMinutes = exited
-    ? Math.max(0, Math.floor((exitTime - entryTime) / 60000))
-    : 0;
+  const holdDurationMinutes = exited ? Math.max(0, Math.floor((exitTime - entryTime) / 60000)) : 0;
 
   return {
     pnl,
@@ -269,8 +271,8 @@ function calculateReinvestmentPerformance(
   compoundGrowthFactor: number;
   positionSizePercent: number;
 } {
-  const sortedTrades = trades.sort((a, b) => 
-    DateTime.fromISO(a.alertTime).toMillis() - DateTime.fromISO(b.alertTime).toMillis()
+  const sortedTrades = trades.sort(
+    (a, b) => DateTime.fromISO(a.alertTime).toMillis() - DateTime.fromISO(b.alertTime).toMillis()
   );
 
   if (sortedTrades.length === 0) {
@@ -286,14 +288,14 @@ function calculateReinvestmentPerformance(
 
   // Group trades by week
   const tradesByWeek = new Map<string, TradeResult[]>();
-  
+
   for (const trade of sortedTrades) {
     const tradeDate = DateTime.fromISO(trade.alertTime);
     if (!tradeDate.isValid) continue;
-    
+
     const weekStart = tradeDate.startOf('week');
     const weekKey = weekStart.toISODate() || '';
-    
+
     if (!tradesByWeek.has(weekKey)) {
       tradesByWeek.set(weekKey, []);
     }
@@ -301,19 +303,19 @@ function calculateReinvestmentPerformance(
   }
 
   // Process trades week by week
-  const sortedWeeks = Array.from(tradesByWeek.entries()).sort((a, b) => 
-    DateTime.fromISO(a[0]).toMillis() - DateTime.fromISO(b[0]).toMillis()
+  const sortedWeeks = Array.from(tradesByWeek.entries()).sort(
+    (a, b) => DateTime.fromISO(a[0]).toMillis() - DateTime.fromISO(b[0]).toMillis()
   );
 
   for (const [weekKey, weekTrades] of sortedWeeks) {
     const weeklyPositionSize = portfolio * positionSizePercent;
     let weeklyPnL = 0;
-    
+
     for (const trade of weekTrades) {
       const tradeReturn = (trade.pnl - 1.0) * weeklyPositionSize;
       weeklyPnL += tradeReturn;
     }
-    
+
     portfolio = portfolio + weeklyPnL;
   }
 
@@ -384,7 +386,7 @@ async function testRemainingPeriodOnly() {
       }
 
       const result = simulateTenkanKijunRemainingPeriodOnly(candles, alertTime);
-      
+
       if (!result) {
         noCrossFound++;
         continue;
@@ -420,15 +422,15 @@ async function testRemainingPeriodOnly() {
   }
 
   // Sort trades by alert time for proper sequential processing
-  const sortedTrades = trades.sort((a, b) => 
-    DateTime.fromISO(a.alertTime).toMillis() - DateTime.fromISO(b.alertTime).toMillis()
+  const sortedTrades = trades.sort(
+    (a, b) => DateTime.fromISO(a.alertTime).toMillis() - DateTime.fromISO(b.alertTime).toMillis()
   );
 
   // Calculate metrics
-  const winningTrades = sortedTrades.filter(t => t.pnl > 1.0).length;
-  const losingTrades = sortedTrades.filter(t => t.pnl <= 1.0).length;
+  const winningTrades = sortedTrades.filter((t) => t.pnl > 1.0).length;
+  const losingTrades = sortedTrades.filter((t) => t.pnl <= 1.0).length;
   const winRate = sortedTrades.length > 0 ? winningTrades / sortedTrades.length : 0;
-  
+
   const totalPnl = sortedTrades.reduce((sum, t) => sum + (t.pnl - 1.0), 0);
   const avgPnlPerTrade = sortedTrades.length > 0 ? (totalPnl / sortedTrades.length) * 100 : 0;
 
@@ -451,14 +453,14 @@ async function testRemainingPeriodOnly() {
 
   // Group trades by week for weekly rebalancing
   const tradesByWeek = new Map<string, typeof sortedTrades>();
-  
+
   for (const trade of sortedTrades) {
     const tradeDate = DateTime.fromISO(trade.alertTime);
     if (!tradeDate.isValid) continue;
-    
+
     const weekStart = tradeDate.startOf('week');
     const weekKey = weekStart.toISODate() || '';
-    
+
     if (!tradesByWeek.has(weekKey)) {
       tradesByWeek.set(weekKey, []);
     }
@@ -466,20 +468,20 @@ async function testRemainingPeriodOnly() {
   }
 
   // Process trades week by week
-  const sortedWeeks = Array.from(tradesByWeek.entries()).sort((a, b) => 
-    DateTime.fromISO(a[0]).toMillis() - DateTime.fromISO(b[0]).toMillis()
+  const sortedWeeks = Array.from(tradesByWeek.entries()).sort(
+    (a, b) => DateTime.fromISO(a[0]).toMillis() - DateTime.fromISO(b[0]).toMillis()
   );
 
   let tradeNum = 0;
   for (const [weekKey, weekTrades] of sortedWeeks) {
     const weeklyPositionSize = portfolio * positionSizePercent;
-    
+
     for (const trade of weekTrades) {
       tradeNum++;
       const portfolioBefore = portfolio;
       const tradeReturn = (trade.pnl - 1.0) * weeklyPositionSize;
       portfolio = portfolio + tradeReturn;
-      
+
       reinvestmentHistory.push({
         tradeNum,
         alertTime: trade.alertTime,
@@ -499,32 +501,36 @@ async function testRemainingPeriodOnly() {
   // Risk-free rate: 5% annual = 0.0137% daily = 0.000137 per day
   const RISK_FREE_RATE_ANNUAL = 0.05;
   const RISK_FREE_RATE_DAILY = RISK_FREE_RATE_ANNUAL / 365;
-  
+
   // Calculate portfolio value over time for drawdown and return calculations
   let portfolioValue = initialPortfolio;
   let peak = initialPortfolio;
   let maxDrawdown = 0;
   const portfolioValues: Array<{ week: string; value: number; date: DateTime }> = [
-    { week: 'start', value: initialPortfolio, date: DateTime.fromISO(sortedTrades[0]?.alertTime || '') }
+    {
+      week: 'start',
+      value: initialPortfolio,
+      date: DateTime.fromISO(sortedTrades[0]?.alertTime || ''),
+    },
   ];
-  
+
   for (const [weekKey, weekTrades] of sortedWeeks) {
     const weeklyPositionSize = portfolioValue * positionSizePercent;
     let weeklyPnL = 0;
-    
+
     for (const trade of weekTrades) {
       const tradeReturn = (trade.pnl - 1.0) * weeklyPositionSize;
       weeklyPnL += tradeReturn;
     }
-    
+
     portfolioValue = portfolioValue + weeklyPnL;
     const weekDate = DateTime.fromISO(weekKey);
     portfolioValues.push({ week: weekKey, value: portfolioValue, date: weekDate });
-    
+
     if (portfolioValue > peak) {
       peak = portfolioValue;
     }
-    
+
     if (peak > 0) {
       const drawdown = (peak - portfolioValue) / peak;
       if (drawdown > maxDrawdown) {
@@ -532,7 +538,7 @@ async function testRemainingPeriodOnly() {
       }
     }
   }
-  
+
   // Calculate weekly returns (more appropriate than daily for this strategy)
   const weeklyReturns: number[] = [];
   for (let i = 1; i < portfolioValues.length; i++) {
@@ -543,41 +549,46 @@ async function testRemainingPeriodOnly() {
       weeklyReturns.push(weeklyReturn);
     }
   }
-  
+
   // Calculate average trade duration
-  const avgTradeDurationDays = sortedTrades.reduce((sum, t) => sum + (t.holdDuration / (24 * 60)), 0) / sortedTrades.length;
-  
+  const avgTradeDurationDays =
+    sortedTrades.reduce((sum, t) => sum + t.holdDuration / (24 * 60), 0) / sortedTrades.length;
+
   // Calculate time period
   const firstTradeDate = DateTime.fromISO(sortedTrades[0]?.alertTime || '');
   const lastTradeDate = DateTime.fromISO(sortedTrades[sortedTrades.length - 1]?.alertTime || '');
   const totalDays = lastTradeDate.diff(firstTradeDate, 'days').days || 1;
   const totalWeeks = portfolioValues.length - 1;
-  
+
   // Calculate Sharpe Ratio (using weekly returns, annualized)
   const avgWeeklyReturn = weeklyReturns.reduce((sum, r) => sum + r, 0) / weeklyReturns.length;
   const weeklyReturnStdDev = Math.sqrt(
-    weeklyReturns.reduce((sum, r) => sum + Math.pow(r - avgWeeklyReturn, 2), 0) / weeklyReturns.length
+    weeklyReturns.reduce((sum, r) => sum + Math.pow(r - avgWeeklyReturn, 2), 0) /
+      weeklyReturns.length
   );
   const weeklyRiskFreeRate = RISK_FREE_RATE_ANNUAL / 52;
-  const sharpeRatio = weeklyReturnStdDev > 0 
-    ? (avgWeeklyReturn - weeklyRiskFreeRate) / weeklyReturnStdDev * Math.sqrt(52) // Annualized
-    : 0;
-  
+  const sharpeRatio =
+    weeklyReturnStdDev > 0
+      ? ((avgWeeklyReturn - weeklyRiskFreeRate) / weeklyReturnStdDev) * Math.sqrt(52) // Annualized
+      : 0;
+
   // Calculate Sortino Ratio (only downside deviation)
-  const downsideReturns = weeklyReturns.filter(r => r < 0);
-  const downsideStdDev = downsideReturns.length > 0
-    ? Math.sqrt(downsideReturns.reduce((sum, r) => sum + Math.pow(r, 2), 0) / downsideReturns.length)
-    : 0;
-  const sortinoRatio = downsideStdDev > 0
-    ? (avgWeeklyReturn - weeklyRiskFreeRate) / downsideStdDev * Math.sqrt(52) // Annualized
-    : 0;
-  
+  const downsideReturns = weeklyReturns.filter((r) => r < 0);
+  const downsideStdDev =
+    downsideReturns.length > 0
+      ? Math.sqrt(
+          downsideReturns.reduce((sum, r) => sum + Math.pow(r, 2), 0) / downsideReturns.length
+        )
+      : 0;
+  const sortinoRatio =
+    downsideStdDev > 0
+      ? ((avgWeeklyReturn - weeklyRiskFreeRate) / downsideStdDev) * Math.sqrt(52) // Annualized
+      : 0;
+
   // Calculate Calmar Ratio (Annual Return / Max Drawdown)
-  const annualReturn = totalDays > 0 
-    ? Math.pow(compoundFactor, 365 / totalDays) - 1
-    : 0;
+  const annualReturn = totalDays > 0 ? Math.pow(compoundFactor, 365 / totalDays) - 1 : 0;
   const calmarRatio = maxDrawdown > 0 ? annualReturn / maxDrawdown : 0;
-  
+
   // Calculate total return and portfolio volatility
   const totalReturn = compoundFactor - 1;
   const portfolioVolatility = weeklyReturnStdDev * Math.sqrt(52); // Annualized volatility
@@ -591,7 +602,9 @@ async function testRemainingPeriodOnly() {
   console.log(`Win Rate: ${(winRate * 100).toFixed(2)}%`);
   console.log(`Winning Trades: ${winningTrades}`);
   console.log(`Losing Trades: ${losingTrades}`);
-  console.log(`Average PnL per Trade: ${avgPnlPerTrade >= 0 ? '+' : ''}${avgPnlPerTrade.toFixed(2)}%`);
+  console.log(
+    `Average PnL per Trade: ${avgPnlPerTrade >= 0 ? '+' : ''}${avgPnlPerTrade.toFixed(2)}%`
+  );
   console.log(`Average Trade Duration: ${avgTradeDurationDays.toFixed(2)} days`);
   console.log(`\n📊 REINVESTMENT CALCULATION (Using ACTUAL Trade Sequence):`);
   console.log(`  Initial Portfolio: $${initialPortfolio.toFixed(2)}`);
@@ -600,7 +613,7 @@ async function testRemainingPeriodOnly() {
   console.log(`  Compound Growth Factor: ${compoundFactor.toFixed(4)}x`);
   console.log(`  Total Return: ${(totalReturn * 100).toFixed(2)}%`);
   console.log(`  Max Drawdown: ${(maxDrawdown * 100).toFixed(2)}%`);
-  
+
   console.log(`\n📈 RISK-ADJUSTED METRICS:`);
   console.log(`  Risk-Free Rate: ${(RISK_FREE_RATE_ANNUAL * 100).toFixed(2)}% annual`);
   console.log(`  Total Period: ${totalDays.toFixed(1)} days (${totalWeeks} weeks)`);
@@ -617,26 +630,32 @@ async function testRemainingPeriodOnly() {
   // So: position_size = portfolio * 0.10 = 10% of portfolio
   const initialPortfolioForSimple = 100;
   const fixedPositionSize = initialPortfolioForSimple * positionSizePercent; // $10 (10% of $100)
-  
+
   // Calculate sequential trades without compounding (keep portfolio at $100, use $10 per trade)
-  let simplePortfolio = initialPortfolioForSimple;
+  const simplePortfolio = initialPortfolioForSimple;
   let simpleTotalProfit = 0;
-  
+
   for (const trade of sortedTrades) {
     const tradeReturn = (trade.pnl - 1.0) * fixedPositionSize;
     simpleTotalProfit += tradeReturn;
     // Don't compound - keep using fixed $10 per trade
   }
-  
+
   const simpleTotalReturn = initialPortfolioForSimple + simpleTotalProfit;
-  
+
   console.log(`  Risk Rule: 2% of portfolio risked per trade, 20% stop loss`);
-  console.log(`  Position Size: $${fixedPositionSize.toFixed(2)} (10% of $${initialPortfolioForSimple})`);
+  console.log(
+    `  Position Size: $${fixedPositionSize.toFixed(2)} (10% of $${initialPortfolioForSimple})`
+  );
   console.log(`  Total Trades: ${sortedTrades.length}`);
   console.log(`  Total Invested: $${(sortedTrades.length * fixedPositionSize).toFixed(2)}`);
-  console.log(`  Total Profit: $${simpleTotalProfit >= 0 ? '+' : ''}${simpleTotalProfit.toFixed(2)}`);
+  console.log(
+    `  Total Profit: $${simpleTotalProfit >= 0 ? '+' : ''}${simpleTotalProfit.toFixed(2)}`
+  );
   console.log(`  Final Portfolio: $${simpleTotalReturn.toFixed(2)}`);
-  console.log(`  Return %: ${((simpleTotalReturn / initialPortfolioForSimple) - 1) * 100 >= 0 ? '+' : ''}${(((simpleTotalReturn / initialPortfolioForSimple) - 1) * 100).toFixed(2)}%`);
+  console.log(
+    `  Return %: ${(simpleTotalReturn / initialPortfolioForSimple - 1) * 100 >= 0 ? '+' : ''}${((simpleTotalReturn / initialPortfolioForSimple - 1) * 100).toFixed(2)}%`
+  );
 
   // Save COMPLETE trade history
   const tradeHistoryPath = path.join(OUTPUT_DIR, 'complete_trade_history.csv');
@@ -665,7 +684,7 @@ async function testRemainingPeriodOnly() {
 
   // Save reinvestment history
   const reinvestmentPath = path.join(OUTPUT_DIR, 'reinvestment_history.csv');
-  const reinvestmentRows = reinvestmentHistory.map(r => ({
+  const reinvestmentRows = reinvestmentHistory.map((r) => ({
     TradeNumber: r.tradeNum,
     AlertTime: r.alertTime,
     PnL: r.pnl.toFixed(6),
@@ -689,8 +708,9 @@ async function testRemainingPeriodOnly() {
   console.log(`   Contains ${sortedTrades.length} trades with full details`);
   console.log(`✅ REINVESTMENT HISTORY saved to: ${reinvestmentPath}`);
   console.log(`   Contains portfolio before/after each trade with weekly rebalancing`);
-  console.log(`\n💡 You can now apply your own reinvestment model using the complete trade history.\n`);
+  console.log(
+    `\n💡 You can now apply your own reinvestment model using the complete trade history.\n`
+  );
 }
 
 testRemainingPeriodOnly().catch(console.error);
-

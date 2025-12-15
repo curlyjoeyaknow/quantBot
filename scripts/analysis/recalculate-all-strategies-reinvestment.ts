@@ -1,10 +1,10 @@
 #!/usr/bin/env ts-node
 /**
  * Recalculate ALL Strategies with Correct Risk Management
- * 
+ *
  * Risk Management Rule: Maximum RISK per trade = 2% of portfolio
  * Position size = 2% / stop_loss_percentage
- * 
+ *
  * This ensures that if stop loss hits, we lose exactly 2% of portfolio
  */
 
@@ -18,7 +18,10 @@ import { stringify } from 'csv-stringify';
 import { simulateStrategyWithParams } from './optimize-strategies';
 
 const BROOK_CALLS_CSV = path.join(__dirname, '../data/exports/csv/all_brook_channels_calls.csv');
-const TOP_STRATEGIES_JSON = path.join(__dirname, '../data/exports/strategy-optimization/top_10_strategies.json');
+const TOP_STRATEGIES_JSON = path.join(
+  __dirname,
+  '../data/exports/strategy-optimization/top_10_strategies.json'
+);
 const OUTPUT_DIR = path.join(__dirname, '../data/exports/reinvestment-analysis-corrected');
 
 if (!fs.existsSync(OUTPUT_DIR)) {
@@ -60,7 +63,7 @@ interface ReinvestmentResult {
 
 /**
  * Calculate reinvestment performance with CORRECT risk management
- * 
+ *
  * Risk Management Rule: Maximum RISK per trade = 2% of portfolio
  * Position size = 2% / stop_loss_percentage
  */
@@ -75,9 +78,7 @@ function calculateReinvestmentPerformance(
   maxDrawdown: number;
   positionSizePercent: number;
 } {
-  const sortedTrades = [...trades].sort((a, b) => 
-    a.timestamp.toMillis() - b.timestamp.toMillis()
-  );
+  const sortedTrades = [...trades].sort((a, b) => a.timestamp.toMillis() - b.timestamp.toMillis());
 
   // Calculate position size based on stop loss
   // Position size = maxRiskPerTrade / stopLossPercent
@@ -94,7 +95,7 @@ function calculateReinvestmentPerformance(
     const positionSize = portfolio * positionSizePercent;
     const tradeReturn = (trade.pnl - 1.0) * positionSize;
     portfolio = portfolio + tradeReturn;
-    
+
     if (portfolio > peak) {
       peak = portfolio;
     }
@@ -104,7 +105,7 @@ function calculateReinvestmentPerformance(
     if (portfolio < minPortfolio) {
       minPortfolio = portfolio;
     }
-    
+
     if (peak > 0) {
       const drawdown = (peak - portfolio) / peak;
       if (drawdown > maxDrawdown) {
@@ -144,7 +145,7 @@ async function recalculateAllStrategies() {
   });
 
   const TARGET_CALLER = 'Brook Giga I verify @BrookCalls';
-  const brookGigaCalls = records.filter(record => {
+  const brookGigaCalls = records.filter((record) => {
     const caller = (record.sender || record.caller || '').trim();
     return caller === TARGET_CALLER || caller.toLowerCase().includes('brook giga');
   });
@@ -172,13 +173,15 @@ async function recalculateAllStrategies() {
   for (let i = 0; i < topStrategiesJson.length; i++) {
     const strategyData = topStrategiesJson[i];
     const strategyParams: StrategyParams = strategyData.params;
-    
+
     console.log(`[${i + 1}/${topStrategiesJson.length}] Recalculating: ${strategyParams.name}`);
-    
+
     const stopLossPercent = 1 - strategyParams.minExitPrice; // e.g., minExitPrice 0.6 = 40% stop loss
     const positionSizePercent = maxRiskPerTrade / stopLossPercent;
-    
-    console.log(`   Stop Loss: ${(stopLossPercent * 100).toFixed(0)}% | Position Size: ${(positionSizePercent * 100).toFixed(2)}%`);
+
+    console.log(
+      `   Stop Loss: ${(stopLossPercent * 100).toFixed(0)}% | Position Size: ${(positionSizePercent * 100).toFixed(2)}%`
+    );
 
     const trades: Trade[] = [];
 
@@ -234,16 +237,16 @@ async function recalculateAllStrategies() {
     }
 
     // Calculate metrics
-    const winningTrades = trades.filter(t => t.pnl > 1.0).length;
-    const losingTrades = trades.filter(t => t.pnl <= 1.0).length;
+    const winningTrades = trades.filter((t) => t.pnl > 1.0).length;
+    const losingTrades = trades.filter((t) => t.pnl <= 1.0).length;
     const winRate = trades.length > 0 ? winningTrades / trades.length : 0;
-    
-    const wins = trades.filter(t => t.pnl > 1.0).map(t => t.pnl - 1.0);
-    const losses = trades.filter(t => t.pnl <= 1.0).map(t => 1.0 - t.pnl);
+
+    const wins = trades.filter((t) => t.pnl > 1.0).map((t) => t.pnl - 1.0);
+    const losses = trades.filter((t) => t.pnl <= 1.0).map((t) => 1.0 - t.pnl);
     const totalWins = wins.reduce((a, b) => a + b, 0);
     const totalLosses = losses.reduce((a, b) => a + b, 0);
     const profitFactor = totalLosses > 0 ? totalWins / totalLosses : totalWins > 0 ? 999 : 0;
-    
+
     const totalPnl = trades.reduce((sum, t) => sum + (t.pnl - 1.0), 0);
     const avgPnlPerTrade = trades.length > 0 ? (totalPnl / trades.length) * 100 : 0;
 
@@ -275,7 +278,9 @@ async function recalculateAllStrategies() {
       stopLossPercent,
     });
 
-    console.log(`   ✅ Final Portfolio: $${reinvestment.finalPortfolio.toFixed(2)} (${reinvestment.compoundGrowthFactor.toFixed(2)}x) | Win Rate: ${(winRate * 100).toFixed(1)}%\n`);
+    console.log(
+      `   ✅ Final Portfolio: $${reinvestment.finalPortfolio.toFixed(2)} (${reinvestment.compoundGrowthFactor.toFixed(2)}x) | Win Rate: ${(winRate * 100).toFixed(1)}%\n`
+    );
   }
 
   // Sort by final portfolio (reinvestment performance)
@@ -286,26 +291,28 @@ async function recalculateAllStrategies() {
   console.log('🏆 TOP STRATEGIES BY REINVESTMENT PERFORMANCE (CORRECT RISK MANAGEMENT)');
   console.log(`${'='.repeat(80)}\n`);
 
-  console.log('Rank | Win Rate | Avg PnL | Final Portfolio | Compound | Stop Loss | Position Size | Strategy');
+  console.log(
+    'Rank | Win Rate | Avg PnL | Final Portfolio | Compound | Stop Loss | Position Size | Strategy'
+  );
   console.log('-'.repeat(120));
 
   for (let i = 0; i < results.length; i++) {
     const r = results[i];
     console.log(
       `${(i + 1).toString().padStart(4)} | ` +
-      `${(r.winRate * 100).toFixed(1).padStart(7)}% | ` +
-      `${r.avgPnlPerTrade >= 0 ? '+' : ''}${r.avgPnlPerTrade.toFixed(2).padStart(6)}% | ` +
-      `$${r.finalPortfolio.toFixed(2).padStart(13)} | ` +
-      `${r.compoundGrowthFactor.toFixed(2).padStart(8)}x | ` +
-      `${(r.stopLossPercent * 100).toFixed(0).padStart(9)}% | ` +
-      `${(r.positionSizePercent * 100).toFixed(1).padStart(12)}% | ` +
-      `${r.strategyName.substring(0, 40)}`
+        `${(r.winRate * 100).toFixed(1).padStart(7)}% | ` +
+        `${r.avgPnlPerTrade >= 0 ? '+' : ''}${r.avgPnlPerTrade.toFixed(2).padStart(6)}% | ` +
+        `$${r.finalPortfolio.toFixed(2).padStart(13)} | ` +
+        `${r.compoundGrowthFactor.toFixed(2).padStart(8)}x | ` +
+        `${(r.stopLossPercent * 100).toFixed(0).padStart(9)}% | ` +
+        `${(r.positionSizePercent * 100).toFixed(1).padStart(12)}% | ` +
+        `${r.strategyName.substring(0, 40)}`
     );
   }
 
   // Save results
   const summaryPath = path.join(OUTPUT_DIR, 'all_strategies_reinvestment_corrected.csv');
-  const csvRows = results.map(r => ({
+  const csvRows = results.map((r) => ({
     Rank: results.indexOf(r) + 1,
     Strategy: r.strategyName,
     WinRate: (r.winRate * 100).toFixed(2),
@@ -341,15 +348,20 @@ async function recalculateAllStrategies() {
   console.log(`${'='.repeat(80)}\n`);
   console.log(`Strategy: ${topStrategy.strategyName}`);
   console.log(`Win Rate: ${(topStrategy.winRate * 100).toFixed(2)}%`);
-  console.log(`Average PnL per Trade: ${topStrategy.avgPnlPerTrade >= 0 ? '+' : ''}${topStrategy.avgPnlPerTrade.toFixed(2)}%`);
+  console.log(
+    `Average PnL per Trade: ${topStrategy.avgPnlPerTrade >= 0 ? '+' : ''}${topStrategy.avgPnlPerTrade.toFixed(2)}%`
+  );
   console.log(`Stop Loss: ${(topStrategy.stopLossPercent * 100).toFixed(0)}%`);
   console.log(`Position Size: ${(topStrategy.positionSizePercent * 100).toFixed(2)}% of portfolio`);
   console.log(`Final Portfolio: $${topStrategy.finalPortfolio.toFixed(2)}`);
-  console.log(`Total Return: ${topStrategy.totalReturnPercent >= 0 ? '+' : ''}${topStrategy.totalReturnPercent.toFixed(2)}%`);
+  console.log(
+    `Total Return: ${topStrategy.totalReturnPercent >= 0 ? '+' : ''}${topStrategy.totalReturnPercent.toFixed(2)}%`
+  );
   console.log(`Compound Growth Factor: ${topStrategy.compoundGrowthFactor.toFixed(2)}x`);
   console.log(`Max Drawdown: ${(topStrategy.maxDrawdown * 100).toFixed(2)}%`);
-  console.log(`\n💡 Starting with $100, you would have: $${topStrategy.finalPortfolio.toFixed(2)}\n`);
+  console.log(
+    `\n💡 Starting with $100, you would have: $${topStrategy.finalPortfolio.toFixed(2)}\n`
+  );
 }
 
 recalculateAllStrategies().catch(console.error);
-

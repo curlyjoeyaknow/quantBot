@@ -1,11 +1,11 @@
 /**
  * StrategiesRepository - Postgres repository for strategies
- * 
+ *
  * Handles all database operations for strategies table.
  */
 
 import { DateTime } from 'luxon';
-import { getPostgresPool } from '../../postgres-client';
+import { getPostgresPool } from '../postgres-client';
 import { logger } from '@quantbot/utils';
 import type { StrategyConfig } from '@quantbot/core';
 
@@ -40,7 +40,7 @@ export class StrategiesRepository {
        ORDER BY name, version`
     );
 
-    return result.rows.map(row => ({
+    return result.rows.map((row) => ({
       id: row.id,
       name: row.name,
       version: row.version,
@@ -148,4 +148,3 @@ export class StrategiesRepository {
     }));
   }
 }
-

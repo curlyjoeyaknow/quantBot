@@ -10,7 +10,10 @@ import { parse } from 'csv-parse';
 import * as fs from 'fs';
 import * as path from 'path';
 
-const CSV_PATH = path.join(__dirname, '../data/exports/tenkan-kijun-filtered-optimization/tenkan_kijun_filtered_strategies.csv');
+const CSV_PATH = path.join(
+  __dirname,
+  '../data/exports/tenkan-kijun-filtered-optimization/tenkan_kijun_filtered_strategies.csv'
+);
 
 interface Trade {
   pnl: number;
@@ -26,23 +29,35 @@ function calculateReinvestment(
   finalPortfolio: number;
   compoundGrowthFactor: number;
   positionSizePercent: number;
-  tradeDetails: Array<{ tradeNum: number; pnl: number; positionSize: number; return: number; portfolio: number }>;
+  tradeDetails: Array<{
+    tradeNum: number;
+    pnl: number;
+    positionSize: number;
+    return: number;
+    portfolio: number;
+  }>;
 } {
-  const sortedTrades = trades.sort((a, b) => 
-    DateTime.fromISO(a.alertTime).toMillis() - DateTime.fromISO(b.alertTime).toMillis()
+  const sortedTrades = trades.sort(
+    (a, b) => DateTime.fromISO(a.alertTime).toMillis() - DateTime.fromISO(b.alertTime).toMillis()
   );
 
   const positionSizePercent = maxRiskPerTrade / stopLossPercent;
 
   let portfolio = initialPortfolio;
-  const tradeDetails: Array<{ tradeNum: number; pnl: number; positionSize: number; return: number; portfolio: number }> = [];
+  const tradeDetails: Array<{
+    tradeNum: number;
+    pnl: number;
+    positionSize: number;
+    return: number;
+    portfolio: number;
+  }> = [];
 
   for (let i = 0; i < sortedTrades.length; i++) {
     const trade = sortedTrades[i];
     const positionSize = portfolio * positionSizePercent;
     const tradeReturn = (trade.pnl - 1.0) * positionSize;
     portfolio = portfolio + tradeReturn;
-    
+
     if (i < 10 || i >= sortedTrades.length - 10 || i % 200 === 0) {
       tradeDetails.push({
         tradeNum: i + 1,
@@ -74,7 +89,7 @@ async function verify() {
     });
   });
 
-  const baseStrategy = records.find(r => r.Strategy.includes('Base_0'));
+  const baseStrategy = records.find((r) => r.Strategy.includes('Base_0'));
   if (!baseStrategy) {
     console.log('❌ Base strategy not found');
     return;
@@ -93,7 +108,7 @@ async function verify() {
   const totalTrades = parseInt(baseStrategy.TotalTrades);
   const winRate = parseFloat(baseStrategy.WinRate) / 100;
   const avgPnlPercent = parseFloat(baseStrategy.AvgPnlPerTrade) / 100;
-  
+
   const wins = Math.floor(totalTrades * winRate);
   const losses = totalTrades - wins;
 
@@ -102,7 +117,7 @@ async function verify() {
   // 0.459 * winAvg = 0.0658 + 0.1082 = 0.174
   // winAvg = 0.379 = +37.9%
   const estimatedWinPnl = 1.379; // +37.9%
-  const estimatedLossPnl = 0.8;   // -20%
+  const estimatedLossPnl = 0.8; // -20%
 
   console.log('Estimated Trade Distribution:');
   console.log(`  Wins: ${wins} at ~${((estimatedWinPnl - 1) * 100).toFixed(1)}% each`);
@@ -120,7 +135,10 @@ async function verify() {
   for (let i = 0; i < losses; i++) {
     mockTrades.push({
       pnl: estimatedLossPnl,
-      alertTime: DateTime.now().plus({ days: wins + i }).toISO() || '',
+      alertTime:
+        DateTime.now()
+          .plus({ days: wins + i })
+          .toISO() || '',
     });
   }
 
@@ -141,13 +159,17 @@ async function verify() {
   console.log('');
 
   console.log('First 10 Trades:');
-  result.tradeDetails.slice(0, 10).forEach(t => {
-    console.log(`  Trade ${t.tradeNum}: PnL=${t.pnl.toFixed(3)}, Position=$${t.positionSize.toFixed(2)}, Return=$${t.return.toFixed(2)}, Portfolio=$${t.portfolio.toFixed(2)}`);
+  result.tradeDetails.slice(0, 10).forEach((t) => {
+    console.log(
+      `  Trade ${t.tradeNum}: PnL=${t.pnl.toFixed(3)}, Position=$${t.positionSize.toFixed(2)}, Return=$${t.return.toFixed(2)}, Portfolio=$${t.portfolio.toFixed(2)}`
+    );
   });
 
   console.log('\nLast 10 Trades:');
-  result.tradeDetails.slice(-10).forEach(t => {
-    console.log(`  Trade ${t.tradeNum}: PnL=${t.pnl.toFixed(3)}, Position=$${t.positionSize.toFixed(2)}, Return=$${t.return.toFixed(2)}, Portfolio=$${t.portfolio.toFixed(2)}`);
+  result.tradeDetails.slice(-10).forEach((t) => {
+    console.log(
+      `  Trade ${t.tradeNum}: PnL=${t.pnl.toFixed(3)}, Position=$${t.positionSize.toFixed(2)}, Return=$${t.return.toFixed(2)}, Portfolio=$${t.portfolio.toFixed(2)}`
+    );
   });
 
   console.log('\n⚠️  If the simulated result is much lower than reported, there may be:');
@@ -157,4 +179,3 @@ async function verify() {
 }
 
 verify().catch(console.error);
-

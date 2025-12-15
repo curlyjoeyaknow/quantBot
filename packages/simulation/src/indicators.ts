@@ -26,7 +26,11 @@ export interface IndicatorData {
 /**
  * Calculate Simple Moving Average (SMA)
  */
-export function calculateSMA(candles: Candle[], period: number, currentIndex: number): number | null {
+export function calculateSMA(
+  candles: Candle[],
+  period: number,
+  currentIndex: number
+): number | null {
   if (currentIndex < period - 1 || candles.length < period) {
     return null;
   }
@@ -178,7 +182,14 @@ export function getBullishSignals(
   if (isPriceAboveMA(price, current.movingAverages.ema20)) {
     signals.push('price_above_ema20');
   }
-  if (isGoldenCross(current.movingAverages.ema9, current.movingAverages.ema20, previous?.movingAverages.ema9 || null, previous?.movingAverages.ema20 || null)) {
+  if (
+    isGoldenCross(
+      current.movingAverages.ema9,
+      current.movingAverages.ema20,
+      previous?.movingAverages.ema9 || null,
+      previous?.movingAverages.ema20 || null
+    )
+  ) {
     signals.push('golden_cross');
   }
 
@@ -219,7 +230,14 @@ export function getBearishSignals(
   if (isPriceBelowMA(price, current.movingAverages.ema20)) {
     signals.push('price_below_ema20');
   }
-  if (isDeathCross(current.movingAverages.ema9, current.movingAverages.ema20, previous?.movingAverages.ema9 || null, previous?.movingAverages.ema20 || null)) {
+  if (
+    isDeathCross(
+      current.movingAverages.ema9,
+      current.movingAverages.ema20,
+      previous?.movingAverages.ema9 || null,
+      previous?.movingAverages.ema20 || null
+    )
+  ) {
     signals.push('death_cross');
   }
 
@@ -231,10 +249,14 @@ export function getBearishSignals(
  */
 export function isBullishEntry(current: IndicatorData, previous: IndicatorData | null): boolean {
   const bullishSignals = getBullishSignals(current, previous);
-  
+
   // Require at least one strong signal
-  const strongSignals = ['ichimoku_cloud_cross_up', 'ichimoku_tenkan_kijun_cross_up', 'golden_cross'];
-  return bullishSignals.some(signal => strongSignals.includes(signal));
+  const strongSignals = [
+    'ichimoku_cloud_cross_up',
+    'ichimoku_tenkan_kijun_cross_up',
+    'golden_cross',
+  ];
+  return bullishSignals.some((signal) => strongSignals.includes(signal));
 }
 
 /**
@@ -242,9 +264,12 @@ export function isBullishEntry(current: IndicatorData, previous: IndicatorData |
  */
 export function isBearishExit(current: IndicatorData, previous: IndicatorData | null): boolean {
   const bearishSignals = getBearishSignals(current, previous);
-  
-  // Require at least one strong signal
-  const strongSignals = ['ichimoku_cloud_cross_down', 'ichimoku_tenkan_kijun_cross_down', 'death_cross'];
-  return bearishSignals.some(signal => strongSignals.includes(signal));
-}
 
+  // Require at least one strong signal
+  const strongSignals = [
+    'ichimoku_cloud_cross_down',
+    'ichimoku_tenkan_kijun_cross_down',
+    'death_cross',
+  ];
+  return bearishSignals.some((signal) => strongSignals.includes(signal));
+}

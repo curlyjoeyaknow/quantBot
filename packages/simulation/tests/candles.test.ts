@@ -3,52 +3,83 @@
  * @description
  * Unit tests for the hybrid candle-fetching logic, including fetching, error handling,
  * data validation, and compatibility with multiple blockchains.
- * 
+ *
  * This file mocks axios and fs to isolate candle-fetching network behavior,
  * and validates that candle fields are handled robustly.
  */
 
-// Mock axios using doMock to ensure it's applied before module loading
-const mockAxiosGet = jest.fn();
-jest.doMock('axios', () => ({
-  __esModule: true,
-  default: {
-    get: mockAxiosGet
-  },
-  get: mockAxiosGet
-}));
-
-jest.doMock('fs', () => ({
-  existsSync: jest.fn(() => false),
-  readFileSync: jest.fn(),
-  writeFileSync: jest.fn(),
-  mkdirSync: jest.fn(),
-  readdirSync: jest.fn(() => []),
-  statSync: jest.fn(() => ({ mtime: new Date() })),
-  unlinkSync: jest.fn(),
-  createWriteStream: jest.fn(() => ({
-    write: jest.fn(),
-    end: jest.fn(),
-    on: jest.fn(),
-    once: jest.fn(),
-    emit: jest.fn(),
-    pipe: jest.fn(),
-  })),
-  promises: {
-    readFile: jest.fn(),
-    writeFile: jest.fn(),
-    mkdir: jest.fn(),
-    readdir: jest.fn(() => Promise.resolve([])),
-    stat: jest.fn(() => Promise.resolve({ mtime: new Date() })),
-    unlink: jest.fn()
-  }
-}));
-
-import { fetchHybridCandles, Candle } from '../../src/simulation/candles';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { DateTime } from 'luxon';
 
-// Get mocked fs after imports
-const mockedFs = require('fs');
+// Mock axios - define mock function inside factory to avoid hoisting issues
+vi.mock('axios', async () => {
+  const { vi } = await import('vitest');
+  const mockAxiosGet = vi.fn();
+  return {
+    default: {
+      get: mockAxiosGet,
+    },
+    get: mockAxiosGet,
+  };
+});
+
+// Mock fs
+vi.mock('fs', async () => {
+  const { vi } = await import('vitest');
+  const mockExistsSync = vi.fn(() => false);
+  const mockReadFileSync = vi.fn();
+  const mockWriteFileSync = vi.fn();
+  const mockMkdirSync = vi.fn();
+  const mockReaddirSync = vi.fn(() => []);
+  const mockStatSync = vi.fn(() => ({ mtime: new Date() }));
+  const mockUnlinkSync = vi.fn();
+  const mockCreateWriteStream = vi.fn(() => ({
+    write: vi.fn(),
+    end: vi.fn(),
+    on: vi.fn(),
+    once: vi.fn(),
+    emit: vi.fn(),
+    pipe: vi.fn(),
+  }));
+
+  return {
+    default: {
+      existsSync: mockExistsSync,
+      readFileSync: mockReadFileSync,
+      writeFileSync: mockWriteFileSync,
+      mkdirSync: mockMkdirSync,
+      readdirSync: mockReaddirSync,
+      statSync: mockStatSync,
+      unlinkSync: mockUnlinkSync,
+      createWriteStream: mockCreateWriteStream,
+      promises: {
+        readFile: vi.fn(),
+        writeFile: vi.fn(),
+        mkdir: vi.fn(),
+        readdir: vi.fn(() => Promise.resolve([])),
+        stat: vi.fn(() => Promise.resolve({ mtime: new Date() })),
+        unlink: vi.fn(),
+      },
+    },
+    existsSync: mockExistsSync,
+    readFileSync: mockReadFileSync,
+    writeFileSync: mockWriteFileSync,
+    mkdirSync: mockMkdirSync,
+    readdirSync: mockReaddirSync,
+    statSync: mockStatSync,
+    unlinkSync: mockUnlinkSync,
+    createWriteStream: mockCreateWriteStream,
+  };
+});
+
+// Mock ClickHouse client - mock the relative import path used in candles.ts
+vi.mock('../../storage/src/clickhouse-client', () => ({
+  queryCandles: vi.fn().mockResolvedValue([]),
+  insertCandles: vi.fn().mockResolvedValue(undefined),
+}));
+
+import { fetchHybridCandles, Candle } from '../src/candles';
+import axios from 'axios';
 
 describe('Candle Data Handling', () => {
   // Standard fixtures for tests
@@ -60,22 +91,9 @@ describe('Candle Data Handling', () => {
    * Resets mocks before each test to ensure test isolation.
    */
   beforeEach(() => {
-    jest.clearAllMocks();
-    // Reset axios mock to default behavior
-    mockAxiosGet.mockReset();
-    // Reset fs mocks
-    if (mockedFs.existsSync && typeof mockedFs.existsSync.mockReturnValue === 'function') {
-      mockedFs.existsSync.mockReturnValue(false);
-    }
-    if (mockedFs.readFileSync && typeof mockedFs.readFileSync.mockReturnValue === 'function') {
-      mockedFs.readFileSync.mockReturnValue('');
-    }
-    if (mockedFs.writeFileSync && typeof mockedFs.writeFileSync.mockClear === 'function') {
-      mockedFs.writeFileSync.mockClear();
-    }
-    if (mockedFs.mkdirSync && typeof mockedFs.mkdirSync.mockClear === 'function') {
-      mockedFs.mkdirSync.mockClear();
-    }
+    vi.clearAllMocks();
+    // Reset axios mock - access via axios.get
+    vi.mocked(axios.get).mockReset();
   });
 
   describe('fetchHybridCandles', () => {
@@ -96,7 +114,7 @@ describe('Candle Data Handling', () => {
                 h: '1.1',
                 l: '0.9',
                 c: '1.05',
-                v: '1000'
+                v: '1000',
               },
               {
                 unix_time: 1704070800,
@@ -104,33 +122,51 @@ describe('Candle Data Handling', () => {
                 h: '1.2',
                 l: '1.0',
                 c: '1.15',
-                v: '1200'
-              }
-            ]
-          }
-        }
+                v: '1200',
+              },
+            ],
+          },
+        },
       };
 
-      mockAxiosGet.mockResolvedValueOnce(mockResponse);
+      // Ensure USE_CACHE_ONLY is not set
+      const originalCacheOnly = process.env.USE_CACHE_ONLY;
+      delete process.env.USE_CACHE_ONLY;
 
-      const result = await fetchHybridCandles(
-        mockTokenAddress,
-        mockStartTime,
-        mockEndTime,
-        'solana'
-      );
+      try {
+        // Mock axios calls:
+        // 1. First call (range mode) returns empty items, so it tries limit mode
+        // 2. Second call (limit mode) returns the mock data
+        vi.mocked(axios.get).mockResolvedValueOnce({
+          status: 200,
+          data: { data: { items: [] } },
+        } as any);
+        vi.mocked(axios.get).mockResolvedValueOnce(mockResponse as any);
 
-      expect(result).toBeDefined();
-      expect(Array.isArray(result)).toBe(true);
-      expect(result).toHaveLength(2);
-      expect(result[0]).toMatchObject({
-        timestamp: 1704067200,
-        open: 1.0,
-        high: 1.1,
-        low: 0.9,
-        close: 1.05,
-        volume: 1000
-      });
+        const result = await fetchHybridCandles(
+          mockTokenAddress,
+          mockStartTime,
+          mockEndTime,
+          'solana'
+        );
+
+        expect(result).toBeDefined();
+        expect(Array.isArray(result)).toBe(true);
+        expect(result).toHaveLength(2);
+        expect(result[0]).toMatchObject({
+          timestamp: 1704067200,
+          open: 1.0,
+          high: 1.1,
+          low: 0.9,
+          close: 1.05,
+          volume: 1000,
+        });
+      } finally {
+        // Restore original value
+        if (originalCacheOnly) {
+          process.env.USE_CACHE_ONLY = originalCacheOnly;
+        }
+      }
     });
 
     /**
@@ -149,27 +185,47 @@ describe('Candle Data Handling', () => {
                 h: '1.1',
                 l: '0.9',
                 c: '1.05',
-                v: '1000'
-              }
-            ]
-          }
-        }
+                v: '1000',
+              },
+            ],
+          },
+        },
       };
 
-      mockAxiosGet.mockResolvedValueOnce(mockResponse);
+      // Ensure USE_CACHE_ONLY is not set
+      const originalCacheOnly = process.env.USE_CACHE_ONLY;
+      delete process.env.USE_CACHE_ONLY;
 
-      const result = await fetchHybridCandles(mockTokenAddress, mockStartTime, mockEndTime, 'ethereum');
+      try {
+        // Mock axios calls: range mode returns empty, limit mode returns data
+        vi.mocked(axios.get).mockResolvedValueOnce({
+          status: 200,
+          data: { data: { items: [] } },
+        } as any);
+        vi.mocked(axios.get).mockResolvedValueOnce(mockResponse as any);
 
-      expect(result).toBeDefined();
-      expect(result.length).toBe(1);
-      expect(mockAxiosGet).toHaveBeenCalledWith(
-        expect.stringContaining('birdeye.so'),
-        expect.objectContaining({
-          headers: expect.objectContaining({
-            'x-chain': 'ethereum'
+        const result = await fetchHybridCandles(
+          mockTokenAddress,
+          mockStartTime,
+          mockEndTime,
+          'ethereum'
+        );
+
+        expect(result).toBeDefined();
+        expect(result.length).toBe(1);
+        expect(axios.get).toHaveBeenCalledWith(
+          expect.stringContaining('birdeye.so'),
+          expect.objectContaining({
+            headers: expect.objectContaining({
+              'x-chain': 'ethereum',
+            }),
           })
-        })
-      );
+        );
+      } finally {
+        if (originalCacheOnly) {
+          process.env.USE_CACHE_ONLY = originalCacheOnly;
+        }
+      }
     });
 
     /**
@@ -177,10 +233,26 @@ describe('Candle Data Handling', () => {
      * The promise should reject with the "API Error".
      */
     it('should handle API errors gracefully', async () => {
-      mockAxiosGet.mockRejectedValueOnce(new Error('API Error'));
+      // Ensure USE_CACHE_ONLY is not set
+      const originalCacheOnly = process.env.USE_CACHE_ONLY;
+      delete process.env.USE_CACHE_ONLY;
 
-      await expect(fetchHybridCandles(mockTokenAddress, mockStartTime, mockEndTime, 'solana'))
-        .rejects.toThrow('API Error');
+      try {
+        // Mock range mode to return empty, then limit mode to throw error
+        vi.mocked(axios.get).mockResolvedValueOnce({
+          status: 200,
+          data: { data: { items: [] } },
+        } as any);
+        vi.mocked(axios.get).mockRejectedValueOnce(new Error('API Error'));
+
+        await expect(
+          fetchHybridCandles(mockTokenAddress, mockStartTime, mockEndTime, 'solana')
+        ).rejects.toThrow('API Error');
+      } finally {
+        if (originalCacheOnly) {
+          process.env.USE_CACHE_ONLY = originalCacheOnly;
+        }
+      }
     });
 
     /**
@@ -192,14 +264,21 @@ describe('Candle Data Handling', () => {
         data: {
           success: true,
           data: {
-            items: []
-          }
-        }
+            items: [],
+          },
+        },
       };
 
-      mockAxiosGet.mockResolvedValueOnce(mockResponse);
+      // Mock both axios calls: limit check and range fetch
+      vi.mocked(axios.get).mockResolvedValueOnce({ status: 404, data: {} } as any); // Limit check fails
+      vi.mocked(axios.get).mockResolvedValueOnce(mockResponse as any); // Range fetch succeeds
 
-      const result = await fetchHybridCandles(mockTokenAddress, mockStartTime, mockEndTime, 'solana');
+      const result = await fetchHybridCandles(
+        mockTokenAddress,
+        mockStartTime,
+        mockEndTime,
+        'solana'
+      );
 
       expect(result).toEqual([]);
     });
@@ -213,13 +292,20 @@ describe('Candle Data Handling', () => {
         status: 200,
         data: {
           success: false,
-          message: 'Token not found'
-        }
+          message: 'Token not found',
+        },
       };
 
-      mockAxiosGet.mockResolvedValueOnce(mockResponse);
+      // Mock both axios calls: limit check and range fetch
+      vi.mocked(axios.get).mockResolvedValueOnce({ status: 404, data: {} } as any); // Limit check fails
+      vi.mocked(axios.get).mockResolvedValueOnce(mockResponse as any); // Range fetch succeeds
 
-      const result = await fetchHybridCandles(mockTokenAddress, mockStartTime, mockEndTime, 'solana');
+      const result = await fetchHybridCandles(
+        mockTokenAddress,
+        mockStartTime,
+        mockEndTime,
+        'solana'
+      );
 
       expect(result).toEqual([]);
     });
@@ -230,26 +316,28 @@ describe('Candle Data Handling', () => {
      */
     it('should handle different chain types', async () => {
       const chains = ['solana', 'ethereum', 'bsc', 'base'];
-      
+
       for (const chain of chains) {
         const mockResponse = {
           status: 200,
           data: {
             success: true,
-            data: { items: [] }
-          }
+            data: { items: [] },
+          },
         };
 
-        mockAxiosGet.mockResolvedValueOnce(mockResponse);
+        // Mock both axios calls: limit check and range fetch
+        vi.mocked(axios.get).mockResolvedValueOnce({ status: 404, data: {} } as any); // Limit check fails
+        vi.mocked(axios.get).mockResolvedValueOnce(mockResponse as any); // Range fetch succeeds
 
         await fetchHybridCandles(mockTokenAddress, mockStartTime, mockEndTime, chain);
 
-        expect(mockAxiosGet).toHaveBeenCalledWith(
+        expect(axios.get).toHaveBeenCalledWith(
           expect.stringContaining('birdeye.so'),
           expect.objectContaining({
             headers: expect.objectContaining({
-              'x-chain': chain
-            })
+              'x-chain': chain,
+            }),
           })
         );
       }
@@ -272,20 +360,40 @@ describe('Candle Data Handling', () => {
                 h: '1.1',
                 l: '0.9',
                 c: '1.05',
-                v: '1000'
-              }
-            ]
-          }
-        }
+                v: '1000',
+              },
+            ],
+          },
+        },
       };
 
-      mockAxiosGet.mockResolvedValueOnce(mockResponse);
+      // Ensure USE_CACHE_ONLY is not set
+      const originalCacheOnly = process.env.USE_CACHE_ONLY;
+      delete process.env.USE_CACHE_ONLY;
 
-      const result = await fetchHybridCandles(mockTokenAddress, mockStartTime, mockEndTime, 'solana');
+      try {
+        // Mock range mode returns empty, limit mode returns malformed data
+        vi.mocked(axios.get).mockResolvedValueOnce({
+          status: 200,
+          data: { data: { items: [] } },
+        } as any);
+        vi.mocked(axios.get).mockResolvedValueOnce(mockResponse as any);
 
-      expect(result).toBeDefined();
-      expect(result.length).toBe(1);
-      expect(result[0].open).toBeNaN();
+        const result = await fetchHybridCandles(
+          mockTokenAddress,
+          mockStartTime,
+          mockEndTime,
+          'solana'
+        );
+
+        expect(result).toBeDefined();
+        expect(result.length).toBe(1);
+        expect(result[0].open).toBeNaN();
+      } finally {
+        if (originalCacheOnly) {
+          process.env.USE_CACHE_ONLY = originalCacheOnly;
+        }
+      }
     });
 
     /**
@@ -303,22 +411,42 @@ describe('Candle Data Handling', () => {
                 unix_time: 1704067200,
                 o: '1.0',
                 // Missing h, l, c, v
-              }
-            ]
-          }
-        }
+              },
+            ],
+          },
+        },
       };
 
-      mockAxiosGet.mockResolvedValueOnce(mockResponse);
+      // Ensure USE_CACHE_ONLY is not set
+      const originalCacheOnly = process.env.USE_CACHE_ONLY;
+      delete process.env.USE_CACHE_ONLY;
 
-      const result = await fetchHybridCandles(mockTokenAddress, mockStartTime, mockEndTime, 'solana');
+      try {
+        // Mock range mode returns empty, limit mode returns data with missing properties
+        vi.mocked(axios.get).mockResolvedValueOnce({
+          status: 200,
+          data: { data: { items: [] } },
+        } as any);
+        vi.mocked(axios.get).mockResolvedValueOnce(mockResponse as any);
 
-      expect(result).toBeDefined();
-      expect(result.length).toBe(1);
-      expect(result[0].high).toBeNaN();
-      expect(result[0].low).toBeNaN();
-      expect(result[0].close).toBeNaN();
-      expect(result[0].volume).toBeNaN();
+        const result = await fetchHybridCandles(
+          mockTokenAddress,
+          mockStartTime,
+          mockEndTime,
+          'solana'
+        );
+
+        expect(result).toBeDefined();
+        expect(result.length).toBe(1);
+        expect(result[0].high).toBeNaN();
+        expect(result[0].low).toBeNaN();
+        expect(result[0].close).toBeNaN();
+        expect(result[0].volume).toBeNaN();
+      } finally {
+        if (originalCacheOnly) {
+          process.env.USE_CACHE_ONLY = originalCacheOnly;
+        }
+      }
     });
   });
 
@@ -333,7 +461,7 @@ describe('Candle Data Handling', () => {
         high: 1.1,
         low: 0.9,
         close: 1.05,
-        volume: 1000
+        volume: 1000,
       };
 
       expect(candle.timestamp).toBeGreaterThan(0);
@@ -351,7 +479,7 @@ describe('Candle Data Handling', () => {
         high: 1.1,
         low: 0.9,
         close: 1.05,
-        volume: 1000
+        volume: 1000,
       };
 
       expect(candle.open).toBeGreaterThan(0);
@@ -372,7 +500,7 @@ describe('Candle Data Handling', () => {
         high: 1.1,
         low: 0.9,
         close: 1.05,
-        volume: 1000
+        volume: 1000,
       };
 
       expect(typeof candle.volume).toBe('number');

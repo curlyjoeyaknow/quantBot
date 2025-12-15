@@ -27,14 +27,16 @@ async function testStrategies() {
     });
   });
 
-  const brookOnly = (records as any[]).filter((r: any) => 
-    r.sender && (
-      r.sender.includes('Brook') || 
-      r.sender.includes('brook') || 
-      r.sender.includes('Brook Giga')
-    ) && !r.tokenAddress.includes('bonk') && r.tokenAddress.length > 20
+  const brookOnly = (records as any[]).filter(
+    (r: any) =>
+      r.sender &&
+      (r.sender.includes('Brook') ||
+        r.sender.includes('brook') ||
+        r.sender.includes('Brook Giga')) &&
+      !r.tokenAddress.includes('bonk') &&
+      r.tokenAddress.length > 20
   );
-  
+
   console.log(`📊 Testing ${brookOnly.length} Brook calls\n`);
 
   const results = {
@@ -48,7 +50,7 @@ async function testStrategies() {
 
   for (let i = 0; i < Math.min(brookOnly.length, 50); i++) {
     const call = brookOnly[i];
-    
+
     try {
       const alertDate = DateTime.fromISO(call.timestamp);
       if (!alertDate.isValid) continue;
@@ -58,7 +60,7 @@ async function testStrategies() {
       if (!candles || candles.length === 0) continue;
 
       const alertPrice = candles[0].close;
-      
+
       // Strategy 1: Wait for -30% dip then enter
       const entry1_price = alertPrice * 0.7;
       let entry1_idx = -1;
@@ -68,8 +70,8 @@ async function testStrategies() {
           break;
         }
       }
-      
-      // Strategy 2: Wait for -50% dip then enter  
+
+      // Strategy 2: Wait for -50% dip then enter
       const entry2_price = alertPrice * 0.5;
       let entry2_idx = -1;
       for (let j = 1; j < candles.length; j++) {
@@ -78,7 +80,7 @@ async function testStrategies() {
           break;
         }
       }
-      
+
       // Strategy 3: Wait for -30% dip, then wait for bounce (+10% from low)
       let entry3_idx = -1;
       let entry3_price = alertPrice * 0.7;
@@ -95,7 +97,7 @@ async function testStrategies() {
           break;
         }
       }
-      
+
       // Strategy 4: Wait for -70% dip then enter
       const entry4_price = alertPrice * 0.3;
       let entry4_idx = -1;
@@ -117,27 +119,25 @@ async function testStrategies() {
       for (let s = 0; s < strategies.length; s++) {
         const strat = strategies[s];
         if (strat.idx === -1) continue;
-        
+
         const entryCandles = candles.slice(strat.idx);
-        const result = simulateStrategy(
-          entryCandles,
-          STRATEGY,
-          STOP_LOSS,
-          undefined,
-          { trailingReEntry: 'none', maxReEntries: 0, sizePercent: 0.5 }
-        );
-        
+        const result = simulateStrategy(entryCandles, STRATEGY, STOP_LOSS, undefined, {
+          trailingReEntry: 'none',
+          maxReEntries: 0,
+          sizePercent: 0.5,
+        });
+
         const multiplier = result.finalPrice / alertPrice;
         const pnl = result.finalPnl;
-        
+
         if (pnl > 1) {
-          results[`strategy${s+1}_waitForDip` as keyof typeof results].winners++;
+          results[`strategy${s + 1}_waitForDip` as keyof typeof results].winners++;
         } else {
-          results[`strategy${s+1}_waitForDip` as keyof typeof results].losers++;
+          results[`strategy${s + 1}_waitForDip` as keyof typeof results].losers++;
         }
-        results[`strategy${s+1}_waitForDip` as keyof typeof results].netPnl += (pnl - 1);
+        results[`strategy${s + 1}_waitForDip` as keyof typeof results].netPnl += pnl - 1;
       }
-      
+
       processed++;
       if (processed % 10 === 0) console.log(`Processed ${processed}/50...`);
     } catch (error) {
@@ -147,21 +147,28 @@ async function testStrategies() {
 
   console.log('\n\n📊 Strategy Comparison:');
   console.log('\n1. Wait for -30% dip, then enter:');
-  console.log(`   Winners: ${results.strategy1_waitForDip.winners}, Losers: ${results.strategy1_waitForDip.losers}`);
+  console.log(
+    `   Winners: ${results.strategy1_waitForDip.winners}, Losers: ${results.strategy1_waitForDip.losers}`
+  );
   console.log(`   Net PNL: ${results.strategy1_waitForDip.netPnl.toFixed(2)}x`);
-  
+
   console.log('\n2. Wait for -50% dip, then enter:');
-  console.log(`   Winners: ${results.strategy2_waitForDipBigger.winners}, Losers: ${results.strategy2_waitForDipBigger.losers}`);
+  console.log(
+    `   Winners: ${results.strategy2_waitForDipBigger.winners}, Losers: ${results.strategy2_waitForDipBigger.losers}`
+  );
   console.log(`   Net PNL: ${results.strategy2_waitForDipBigger.netPnl.toFixed(2)}x`);
-  
+
   console.log('\n3. Wait for -30% dip, bounce +10%, then enter:');
-  console.log(`   Winners: ${results.strategy3_bounceFromLow.winners}, Losers: ${results.strategy3_bounceFromLow.losers}`);
+  console.log(
+    `   Winners: ${results.strategy3_bounceFromLow.winners}, Losers: ${results.strategy3_bounceFromLow.losers}`
+  );
   console.log(`   Net PNL: ${results.strategy3_bounceFromLow.netPnl.toFixed(2)}x`);
-  
+
   console.log('\n4. Wait for -70% dip, then enter:');
-  console.log(`   Winners: ${results.strategy4_veryDeepDip.winners}, Losers: ${results.strategy4_veryDeepDip.losers}`);
+  console.log(
+    `   Winners: ${results.strategy4_veryDeepDip.winners}, Losers: ${results.strategy4_veryDeepDip.losers}`
+  );
   console.log(`   Net PNL: ${results.strategy4_veryDeepDip.netPnl.toFixed(2)}x`);
 }
 
 testStrategies().catch(console.error);
-

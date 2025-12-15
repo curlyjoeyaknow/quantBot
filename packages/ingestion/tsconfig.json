@@ -15,10 +15,8 @@
       "@quantbot/storage/*": ["../storage/src/*"],
       "@quantbot/ohlcv": ["../ohlcv/src"],
       "@quantbot/ohlcv/*": ["../ohlcv/src/*"],
-      "@quantbot/token-analysis": ["../token-analysis/src"],
-      "@quantbot/token-analysis/*": ["../token-analysis/src/*"],
-      "@quantbot/events": ["../events/src"],
-      "@quantbot/events/*": ["../events/src/*"]
+      "@quantbot/analytics": ["../analytics/src"],
+      "@quantbot/analytics/*": ["../analytics/src/*"]
     }
   },
   "include": ["src/**/*"],
@@ -27,8 +25,7 @@
     { "path": "../utils" },
     { "path": "../storage" },
     { "path": "../ohlcv" },
-    { "path": "../token-analysis" },
-    { "path": "../events" }
+    { "path": "../analytics" }
   ]
 }
 

@@ -2,10 +2,20 @@
  * Storage Sink
  * ============
  * Sink that automatically stores simulation results to Postgres and ClickHouse.
+ *
+ * @deprecated This sink has been moved to @quantbot/workflows.
+ * Import from @quantbot/workflows/storage/storage-sink instead.
+ * This file will be removed in a future version.
  */
 
 import { DateTime } from 'luxon';
-import { getStorageEngine, SimulationRunsRepository, SimulationResultsRepository, SimulationEventsRepository } from '@quantbot/storage';
+// eslint-disable-next-line no-restricted-imports
+import {
+  getStorageEngine,
+  SimulationRunsRepository,
+  SimulationResultsRepository,
+  SimulationEventsRepository,
+} from '@quantbot/storage';
 import { logger } from '@quantbot/utils';
 import type { SimulationRunContext } from '../core/orchestrator';
 import type { SimulationResultSink } from '../core/orchestrator';
@@ -74,18 +84,24 @@ export class StorageSink implements SimulationResultSink {
       // 3. Calculate metrics
       const metrics = calculateResultMetrics(context.result);
 
-      // 4. Store results summary in Postgres
+      // 4. Extract period metrics if available
+      const periodMetrics =
+        'periodMetrics' in context.result && context.result.periodMetrics
+          ? context.result.periodMetrics
+          : undefined;
+
+      // 5. Store results summary in Postgres
       // Note: storeSimulationResults expects core SimulationResult, but we have simulation package result
       // The types are compatible except for events, which we handle separately
       await this.storageEngine.storeSimulationResults(runId, context.result as any);
 
-      // Update summary with calculated metrics
-      await this.updateResultsSummary(runId, metrics);
+      // Update summary with calculated metrics and period metrics
+      await this.updateResultsSummary(runId, metrics, periodMetrics);
 
       // 5. Store events in ClickHouse
       if (context.result.events.length > 0) {
         // Convert LegacySimulationEvent to SimulationEvent (they're compatible except for type)
-        const events = context.result.events.map(e => ({
+        const events = context.result.events.map((e) => ({
           ...e,
           type: e.type as any, // Type assertion needed due to re_entry_rejected
         }));
@@ -105,6 +121,8 @@ export class StorageSink implements SimulationResultSink {
         mint: context.target.mint.substring(0, 20) + '...',
         chain: context.target.chain,
         eventsCount: context.result.events.length,
+        hasPeriodMetrics: !!periodMetrics,
+        reEntryOpportunities: periodMetrics?.reEntryOpportunities?.length || 0,
       });
     } catch (error) {
       logger.error('Error storing simulation results', error as Error, {
@@ -155,8 +173,34 @@ export class StorageSink implements SimulationResultSink {
    */
   private async updateResultsSummary(
     runId: number,
-    metrics: ReturnType<typeof calculateResultMetrics>
+    metrics: ReturnType<typeof calculateResultMetrics>,
+    periodMetrics?: import('../types/results').PeriodMetrics
   ): Promise<void> {
+    // Build metadata with period metrics if available
+    const metadata: Record<string, unknown> = {};
+    if (periodMetrics) {
+      metadata.periodMetrics = {
+        periodAthPrice: periodMetrics.periodAthPrice,
+        periodAthTimestamp: periodMetrics.periodAthTimestamp,
+        periodAthMultiple: periodMetrics.periodAthMultiple,
+        timeToPeriodAthMinutes: periodMetrics.timeToPeriodAthMinutes,
+        periodAtlPrice: periodMetrics.periodAtlPrice,
+        periodAtlTimestamp: periodMetrics.periodAtlTimestamp,
+        periodAtlMultiple: periodMetrics.periodAtlMultiple,
+        postAthDrawdownPrice: periodMetrics.postAthDrawdownPrice,
+        postAthDrawdownTimestamp: periodMetrics.postAthDrawdownTimestamp,
+        postAthDrawdownPercent: periodMetrics.postAthDrawdownPercent,
+        postAthDrawdownMultiple: periodMetrics.postAthDrawdownMultiple,
+        reEntryOpportunities: periodMetrics.reEntryOpportunities?.map((opp) => ({
+          timestamp: opp.timestamp,
+          price: opp.price,
+          drawdownFromAth: opp.drawdownFromAth,
+          recoveryMultiple: opp.recoveryMultiple,
+          recoveryTimestamp: opp.recoveryTimestamp,
+        })),
+      };
+    }
+
     await this.simulationResultsRepo.upsertSummary({
       simulationRunId: runId,
       finalPnl: metrics.finalPnl,
@@ -173,6 +217,7 @@ export class StorageSink implements SimulationResultSink {
       ladderExitsUsed: metrics.ladderExitsUsed,
       averageHoldingMinutes: metrics.averageHoldingMinutes,
       maxHoldingMinutes: metrics.maxHoldingMinutes,
+      metadata: Object.keys(metadata).length > 0 ? metadata : undefined,
     });
   }
 
@@ -209,4 +254,3 @@ export class StorageSink implements SimulationResultSink {
 export function createStorageSink(config?: StorageSinkConfig): StorageSink {
   return new StorageSink(config);
 }
-

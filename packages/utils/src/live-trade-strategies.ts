@@ -19,9 +19,7 @@ export async function getEnabledStrategies(): Promise<Set<string>> {
     const db = new sqlite3.Database(DB_PATH);
     const all = promisify(db.all.bind(db)) as (query: string, params?: any[]) => Promise<any[]>;
 
-    all(
-      `SELECT id FROM live_trade_strategies WHERE enabled = 1`
-    )
+    all(`SELECT id FROM live_trade_strategies WHERE enabled = 1`)
       .then((rows: any[]) => {
         db.close();
         const enabledSet = new Set<string>(rows.map((r: any) => r.id));
@@ -44,10 +42,7 @@ export async function isStrategyEnabled(strategyId: string): Promise<boolean> {
     const db = new sqlite3.Database(DB_PATH);
     const get = promisify(db.get.bind(db)) as (query: string, params?: any[]) => Promise<any>;
 
-    get(
-      `SELECT enabled FROM live_trade_strategies WHERE id = ?`,
-      [strategyId]
-    )
+    get(`SELECT enabled FROM live_trade_strategies WHERE id = ?`, [strategyId])
       .then((row: any) => {
         db.close();
         // Default to enabled if not found (backward compatibility)
@@ -61,4 +56,3 @@ export async function isStrategyEnabled(strategyId: string): Promise<boolean> {
       });
   });
 }
-

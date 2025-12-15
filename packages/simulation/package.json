@@ -1,11 +1,19 @@
 {
   "name": "@quantbot/simulation",
-  "version": "1.0.0",
-  "description": "Trading simulation engine for QuantBot",
+  "version": "2.0.0",
+  "description": "Comprehensive trading simulation engine for QuantBot with modular architecture",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
     ".": "./dist/index.js",
+    "./types": "./dist/types/index.js",
+    "./data": "./dist/data/index.js",
+    "./indicators": "./dist/indicators/index.js",
+    "./signals": "./dist/signals/index.js",
+    "./position": "./dist/position/index.js",
+    "./execution": "./dist/execution/index.js",
+    "./core": "./dist/core/index.js",
+    "./sinks": "./dist/sinks/index.js",
     "./*": "./dist/*.js"
   },
   "scripts": {
@@ -17,11 +25,13 @@
     "@quantbot/core": "workspace:*",
     "@quantbot/utils": "workspace:*",
     "luxon": "^3.7.2",
+    "uuid": "^11.1.0",
     "zod": "^4.1.13"
   },
   "devDependencies": {
     "@types/luxon": "^3.7.1",
     "@types/node": "^24.10.1",
+    "@types/uuid": "^10.0.0",
     "@vitest/coverage-v8": "^4.0.15",
     "typescript": "^5.9.3",
     "vitest": "^4.0.15"

@@ -1,10 +1,10 @@
 #!/usr/bin/env tsx
 /**
  * Verification script for SQLite to PostgreSQL/ClickHouse migration
- * 
+ *
  * Compares row counts and key metrics between SQLite and PostgreSQL/ClickHouse
  * to ensure data was migrated correctly.
- * 
+ *
  * Usage:
  *   tsx scripts/migration/verify-migration.ts
  */
@@ -105,7 +105,7 @@ class MigrationVerifier {
 
   private async getSqliteCount(db: Database, query: string): Promise<number> {
     const get = promisify(db.get.bind(db));
-    const result = await get(query) as any;
+    const result = (await get(query)) as any;
     return result?.count || 0;
   }
 
@@ -123,7 +123,7 @@ class MigrationVerifier {
       query,
       format: 'JSONEachRow',
     });
-    const rows = await result.json() as any[];
+    const rows = (await result.json()) as any[];
     return rows[0]?.count || 0;
   }
 
@@ -170,9 +170,7 @@ class MigrationVerifier {
       db,
       'SELECT COUNT(DISTINCT token_address) as count FROM caller_alerts WHERE token_address IS NOT NULL'
     );
-    const pgTokens = await this.getPostgresCount(
-      'SELECT COUNT(*) as count FROM tokens'
-    );
+    const pgTokens = await this.getPostgresCount('SELECT COUNT(*) as count FROM tokens');
 
     this.results.push({
       source: 'caller_alerts',
@@ -188,9 +186,7 @@ class MigrationVerifier {
       db,
       'SELECT COUNT(*) as count FROM caller_alerts'
     );
-    const pgAlerts = await this.getPostgresCount(
-      'SELECT COUNT(*) as count FROM alerts'
-    );
+    const pgAlerts = await this.getPostgresCount('SELECT COUNT(*) as count FROM alerts');
 
     this.results.push({
       source: 'caller_alerts',
@@ -213,13 +209,8 @@ class MigrationVerifier {
     }
 
     // Verify tokens
-    const sqliteTokens = await this.getSqliteCount(
-      db,
-      'SELECT COUNT(*) as count FROM tokens'
-    );
-    const pgTokens = await this.getPostgresCount(
-      'SELECT COUNT(*) as count FROM tokens'
-    );
+    const sqliteTokens = await this.getSqliteCount(db, 'SELECT COUNT(*) as count FROM tokens');
+    const pgTokens = await this.getPostgresCount('SELECT COUNT(*) as count FROM tokens');
 
     this.results.push({
       source: 'quantbot',
@@ -235,9 +226,7 @@ class MigrationVerifier {
       db,
       'SELECT COUNT(*) as count FROM strategies'
     );
-    const pgStrategies = await this.getPostgresCount(
-      'SELECT COUNT(*) as count FROM strategies'
-    );
+    const pgStrategies = await this.getPostgresCount('SELECT COUNT(*) as count FROM strategies');
 
     this.results.push({
       source: 'quantbot',
@@ -253,9 +242,7 @@ class MigrationVerifier {
       db,
       'SELECT COUNT(*) as count FROM simulation_runs'
     );
-    const pgRuns = await this.getPostgresCount(
-      'SELECT COUNT(*) as count FROM simulation_runs'
-    );
+    const pgRuns = await this.getPostgresCount('SELECT COUNT(*) as count FROM simulation_runs');
 
     this.results.push({
       source: 'quantbot',
@@ -373,9 +360,7 @@ class MigrationVerifier {
       db,
       'SELECT COUNT(*) as count FROM unified_calls'
     );
-    const pgCalls = await this.getPostgresCount(
-      'SELECT COUNT(*) as count FROM calls'
-    );
+    const pgCalls = await this.getPostgresCount('SELECT COUNT(*) as count FROM calls');
 
     this.results.push({
       source: 'unified_calls',
@@ -395,9 +380,15 @@ class MigrationVerifier {
     logger.info('='.repeat(100));
 
     console.log('');
-    console.log('┌─────────────────────┬────────────────────────────────┬────────────┬────────────┬────────────┬──────────┐');
-    console.log('│ Source              │ Table                          │ SQLite     │ Target     │ Diff       │ Status   │');
-    console.log('├─────────────────────┼────────────────────────────────┼────────────┼────────────┼────────────┼──────────┤');
+    console.log(
+      '┌─────────────────────┬────────────────────────────────┬────────────┬────────────┬────────────┬──────────┐'
+    );
+    console.log(
+      '│ Source              │ Table                          │ SQLite     │ Target     │ Diff       │ Status   │'
+    );
+    console.log(
+      '├─────────────────────┼────────────────────────────────┼────────────┼────────────┼────────────┼──────────┤'
+    );
 
     let totalMatch = 0;
     let totalMismatch = 0;
@@ -424,7 +415,9 @@ class MigrationVerifier {
       }
     }
 
-    console.log('└─────────────────────┴────────────────────────────────┴────────────┴────────────┴────────────┴──────────┘');
+    console.log(
+      '└─────────────────────┴────────────────────────────────┴────────────┴────────────┴────────────┴──────────┘'
+    );
     console.log('');
 
     logger.info('='.repeat(100));
@@ -433,7 +426,9 @@ class MigrationVerifier {
 
     if (totalMismatch > 0) {
       logger.warn('Some verifications failed. Review the results above.');
-      logger.warn('Note: Target counts >= SQLite counts is acceptable (due to merging from multiple sources)');
+      logger.warn(
+        'Note: Target counts >= SQLite counts is acceptable (due to merging from multiple sources)'
+      );
     } else {
       logger.info('All verifications passed! ✓');
     }
@@ -449,7 +444,7 @@ class MigrationVerifier {
 
       this.printResults();
 
-      const allMatch = this.results.every(r => r.match);
+      const allMatch = this.results.every((r) => r.match);
       return allMatch;
     } catch (error) {
       logger.error('Verification failed', error as Error);
@@ -481,4 +476,3 @@ if (require.main === module) {
 }
 
 export { MigrationVerifier };
-

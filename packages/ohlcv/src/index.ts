@@ -1,6 +1,6 @@
 /**
  * @quantbot/ohlcv - OHLCV Package
- * 
+ *
  * Public API exports for OHLCV services
  */
 
@@ -10,4 +10,5 @@ export * from './ohlcv-query';
 export * from './ohlcv-ingestion';
 export * from './historical-candles';
 export * from './ohlcv-ingestion-engine';
-
+export * from './backfill-service';
+export * from './candles';

@@ -19,14 +19,16 @@ async function testAdvancedStrategies() {
     });
   });
 
-  const brookOnly = (records as any[]).filter((r: any) => 
-    r.sender && (
-      r.sender.includes('Brook') || 
-      r.sender.includes('brook') || 
-      r.sender.includes('Brook Giga')
-    ) && !r.tokenAddress.includes('bonk') && r.tokenAddress.length > 20
+  const brookOnly = (records as any[]).filter(
+    (r: any) =>
+      r.sender &&
+      (r.sender.includes('Brook') ||
+        r.sender.includes('brook') ||
+        r.sender.includes('Brook Giga')) &&
+      !r.tokenAddress.includes('bonk') &&
+      r.tokenAddress.length > 20
   );
-  
+
   console.log(`📊 Testing ${brookOnly.length} Brook calls\n`);
 
   const strategies = [
@@ -43,13 +45,13 @@ async function testAdvancedStrategies() {
   const results: any = {};
 
   for (const strat of strategies) {
-    results[strat.name] = { 
-      winners: 0, 
-      losers: 0, 
-      netPnl: 0, 
+    results[strat.name] = {
+      winners: 0,
+      losers: 0,
+      netPnl: 0,
       total: 0,
       avgMaxDrawdown: 0,
-      drawdowns: []
+      drawdowns: [],
     };
   }
 
@@ -58,7 +60,7 @@ async function testAdvancedStrategies() {
 
   for (let i = 0; i < Math.min(brookOnly.length, maxCalls); i++) {
     const call = brookOnly[i];
-    
+
     try {
       const alertDate = DateTime.fromISO(call.timestamp);
       if (!alertDate.isValid) continue;
@@ -72,23 +74,27 @@ async function testAdvancedStrategies() {
       for (const strat of strategies) {
         // Set strategy: 100% at target
         const STRATEGY = [{ percent: 1.0, target: strat.target }];
-        
+
         // Configure stop loss
         const stopLossConfig = {
           initial: -0.3,
-          trailing: (strat.trailingStop === 'none' ? 'none' : strat.trailingStop) as number | 'none'
+          trailing: (strat.trailingStop === 'none' ? 'none' : strat.trailingStop) as
+            | number
+            | 'none',
         };
 
         // Configure re-entry (if specified)
-        const reEntryConfig = strat.reentry ? {
-          trailingReEntry: 0.7, // 70% retrace = bounce back to alert price
-          maxReEntries: 1,
-          sizePercent: 0.5
-        } : {
-          trailingReEntry: 'none' as const,
-          maxReEntries: 0,
-          sizePercent: 0.5
-        };
+        const reEntryConfig = strat.reentry
+          ? {
+              trailingReEntry: 0.7, // 70% retrace = bounce back to alert price
+              maxReEntries: 1,
+              sizePercent: 0.5,
+            }
+          : {
+              trailingReEntry: 'none' as const,
+              maxReEntries: 0,
+              sizePercent: 0.5,
+            };
 
         const result = simulateStrategy(
           candles,
@@ -100,7 +106,7 @@ async function testAdvancedStrategies() {
 
         // Calculate PNL
         const pnl = result.finalPnl;
-        
+
         // Calculate max drawdown for winners that hit target
         let maxDrawdown = 0;
         if (pnl > 1 && result.events && result.events.length > 0) {
@@ -110,22 +116,22 @@ async function testAdvancedStrategies() {
             const lowestPrice = result.entryOptimization.lowestPrice;
             const entryPrice = result.entryOptimization.actualEntryPrice;
             if (lowestPrice && entryPrice) {
-              maxDrawdown = ((lowestPrice / entryPrice - 1) * 100);
+              maxDrawdown = (lowestPrice / entryPrice - 1) * 100;
             }
           }
           results[strat.name].drawdowns.push(Math.abs(maxDrawdown));
         }
-        
+
         if (pnl > 1) {
           results[strat.name].winners++;
-          results[strat.name].netPnl += (pnl - 1);
+          results[strat.name].netPnl += pnl - 1;
         } else {
           results[strat.name].losers++;
-          results[strat.name].netPnl += (pnl - 1);
+          results[strat.name].netPnl += pnl - 1;
         }
         results[strat.name].total++;
       }
-      
+
       processed++;
       if (processed % 10 === 0) {
         console.log(`Processed ${processed}/${Math.min(brookOnly.length, maxCalls)}...`);
@@ -139,22 +145,24 @@ async function testAdvancedStrategies() {
   for (const strat of strategies) {
     const r = results[strat.name];
     if (r.drawdowns.length > 0) {
-      r.avgMaxDrawdown = r.drawdowns.reduce((a: number, b: number) => a + b, 0) / r.drawdowns.length;
+      r.avgMaxDrawdown =
+        r.drawdowns.reduce((a: number, b: number) => a + b, 0) / r.drawdowns.length;
     }
   }
 
   console.log('\n📊 RESULTS:\n');
   console.log('Strategy                    | Win | Loss | Net PNL  | Avg Drawdown');
   console.log('----------------------------|-----|------|----------|------------');
-  
+
   for (const strat of strategies) {
     const r = results[strat.name];
     const netPnl = r.netPnl.toFixed(2);
     const avgDD = r.avgMaxDrawdown.toFixed(1);
     const label = strat.name.padEnd(27);
-    console.log(`${label} | ${String(r.winners).padStart(3)} | ${String(r.losers).padStart(4)} | ${netPnl.padStart(7)}x | ${avgDD.padStart(8)}%`);
+    console.log(
+      `${label} | ${String(r.winners).padStart(3)} | ${String(r.losers).padStart(4)} | ${netPnl.padStart(7)}x | ${avgDD.padStart(8)}%`
+    );
   }
 }
 
 testAdvancedStrategies().catch(console.error);
-

@@ -1,5 +1,5 @@
 import { DateTime } from 'luxon';
-import { fetchHybridCandles } from '@quantbot/data';
+import { fetchHybridCandles } from './candles';
 import type { Candle } from '@quantbot/core';
 import { logger } from '@quantbot/utils';
 
@@ -30,4 +30,3 @@ export async function fetchHistoricalCandlesForMonitoring(
     return [];
   }
 }
-

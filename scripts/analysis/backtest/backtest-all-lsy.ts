@@ -36,20 +36,28 @@ async function backtestAllLSYCalls() {
 
   for (let i = 0; i < validRecords.length; i++) {
     const call = validRecords[i];
-    
+
     console.log(`\n[${i + 1}/${validRecords.length}] ${call.tokenAddress.substring(0, 30)}...`);
-    
+
     try {
       const alertDate = DateTime.fromISO(call.timestamp);
       const entryDate = alertDate.minus({ hours: 0 }); // Use alert time as entry
       const endDate = DateTime.utc();
-      
-      console.log(`  📅 Period: ${entryDate.toFormat('yyyy-MM-dd HH:mm')} - ${endDate.toFormat('yyyy-MM-dd HH:mm')}`);
-      
+
+      console.log(
+        `  📅 Period: ${entryDate.toFormat('yyyy-MM-dd HH:mm')} - ${endDate.toFormat('yyyy-MM-dd HH:mm')}`
+      );
+
       // Fetch candles using bot's infrastructure
       // Pass alertDate as alertTime for 1m candles around alert time
-      const candles = await fetchHybridCandles(call.tokenAddress, entryDate, endDate, call.chain, alertDate);
-      
+      const candles = await fetchHybridCandles(
+        call.tokenAddress,
+        entryDate,
+        endDate,
+        call.chain,
+        alertDate
+      );
+
       if (candles.length === 0) {
         console.log('  ⚠️ No candles available');
         results.push({
@@ -57,21 +65,23 @@ async function backtestAllLSYCalls() {
           timestamp: call.timestamp,
           chain: call.chain,
           success: false,
-          error: 'No candles available'
+          error: 'No candles available',
         });
         continue;
       }
 
       // Use alert price as entry
       const entryPrice = candles[0].close;
-      
+
       // Run simulation
       const result = simulateStrategy(candles, STRATEGY, STOP_LOSS);
-      
+
       if (result) {
         console.log(`  ✅ PNL: ${result.finalPnl.toFixed(2)}x`);
-        console.log(`  📊 Entry: $${entryPrice.toFixed(8)}, Final: $${result.finalPrice.toFixed(8)}`);
-        
+        console.log(
+          `  📊 Entry: $${entryPrice.toFixed(8)}, Final: $${result.finalPrice.toFixed(8)}`
+        );
+
         results.push({
           address: call.tokenAddress,
           timestamp: call.timestamp,
@@ -82,10 +92,9 @@ async function backtestAllLSYCalls() {
           multiplier: parseFloat((result.finalPrice / entryPrice).toFixed(2)),
           events: result.events.length,
           candles: candles.length,
-          success: true
+          success: true,
         });
       }
-      
     } catch (error: any) {
       console.error(`  ❌ Error:`, error.message);
       results.push({
@@ -93,19 +102,19 @@ async function backtestAllLSYCalls() {
         timestamp: call.timestamp,
         chain: call.chain,
         success: false,
-        error: error.message
+        error: error.message,
       });
     }
   }
 
   // Save results
   fs.writeFileSync(OUTPUT_JSON, JSON.stringify(results, null, 2));
-  
+
   // Summary
-  const successful = results.filter(r => r.success);
+  const successful = results.filter((r) => r.success);
   const totalPnl = successful.reduce((sum, r) => sum + (r.pnl || 0), 0);
   const avgPnl = successful.length > 0 ? totalPnl / successful.length : 0;
-  
+
   console.log(`\n\n✅ Complete!`);
   console.log(`📊 Successful: ${successful.length}/${results.length}`);
   console.log(`💰 Total PNL: ${totalPnl.toFixed(2)}x`);
@@ -114,4 +123,3 @@ async function backtestAllLSYCalls() {
 }
 
 backtestAllLSYCalls().catch(console.error);
-

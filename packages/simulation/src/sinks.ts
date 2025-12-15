@@ -1,15 +1,10 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import { DateTime } from 'luxon';
-import {
-  OutputTargetConfig,
-} from './config';
-import {
-  SimulationResultSink,
-  SimulationRunContext,
-  SimulationLogger,
-} from './engine';
-import { getClickHouseClient } from '@quantbot/data';
+import { OutputTargetConfig } from './config';
+import { SimulationResultSink, SimulationRunContext, SimulationLogger } from './engine';
+// eslint-disable-next-line no-restricted-imports
+import { getClickHouseClient } from '@quantbot/storage';
 
 type CsvSinkConfig = Extract<OutputTargetConfig, { type: 'csv' }>;
 type JsonSinkConfig = Extract<OutputTargetConfig, { type: 'json' }>;
@@ -32,12 +27,11 @@ export class ConfigDrivenSink implements SimulationResultSink {
   }
 
   async handle(context: SimulationRunContext): Promise<void> {
-    const outputs: OutputTargetConfig[] =
-      context.scenario.outputs?.length
-        ? context.scenario.outputs
-        : this.defaultOutputs.length
-          ? this.defaultOutputs
-          : [{ type: 'stdout', detail: 'summary' }];
+    const outputs: OutputTargetConfig[] = context.scenario.outputs?.length
+      ? context.scenario.outputs
+      : this.defaultOutputs.length
+        ? this.defaultOutputs
+        : [{ type: 'stdout', detail: 'summary' }];
 
     for (const output of outputs) {
       try {
@@ -54,7 +48,7 @@ export class ConfigDrivenSink implements SimulationResultSink {
           case 'clickhouse':
             await this.writeClickHouse(
               output as Extract<OutputTargetConfig, { type: 'clickhouse' }>,
-              context,
+              context
             );
             break;
         }
@@ -70,8 +64,8 @@ export class ConfigDrivenSink implements SimulationResultSink {
   }
 
   private writeStdout(config: StdoutSinkConfig, context: SimulationRunContext): void {
-    const tokenSymbol = (context.target.metadata?.tokenSymbol as string) || 
-      context.target.mint.substring(0, 8);
+    const tokenSymbol =
+      (context.target.metadata?.tokenSymbol as string) || context.target.mint.substring(0, 8);
     const tokenName = (context.target.metadata?.tokenName as string) || undefined;
     const displayName = tokenName ? `${tokenName} (${tokenSymbol})` : tokenSymbol;
 
@@ -93,7 +87,7 @@ export class ConfigDrivenSink implements SimulationResultSink {
       });
     } else {
       console.log(
-        `[simulation] ${summary.scenario} ${displayName} ${summary.finalPnl >= 0 ? '+' : ''}${summary.finalPnl * 100}%`,
+        `[simulation] ${summary.scenario} ${displayName} ${summary.finalPnl >= 0 ? '+' : ''}${summary.finalPnl * 100}%`
       );
     }
   }
@@ -132,7 +126,8 @@ export class ConfigDrivenSink implements SimulationResultSink {
     await fs.mkdir(path.dirname(filePath), { recursive: true });
 
     if (!this.initializedCsv.has(filePath) || !config.append) {
-      const header = 'scenario,mint,token_symbol,token_name,chain,start_time,end_time,entry_price,final_price,final_pnl,total_candles\n';
+      const header =
+        'scenario,mint,token_symbol,token_name,chain,start_time,end_time,entry_price,final_price,final_pnl,total_candles\n';
       await fs.writeFile(filePath, header, 'utf-8');
       this.initializedCsv.add(filePath);
     }
@@ -163,22 +158,17 @@ export class ConfigDrivenSink implements SimulationResultSink {
 
   private async writeClickHouse(
     config: Extract<OutputTargetConfig, { type: 'clickhouse' }>,
-    context: SimulationRunContext,
+    context: SimulationRunContext
   ): Promise<void> {
     const ch = getClickHouseClient();
-    const table =
-      config.schema === 'expanded'
-        ? 'simulation_events'
-        : 'simulation_aggregates';
+    const table = config.schema === 'expanded' ? 'simulation_events' : 'simulation_aggregates';
 
     if (config.schema === 'expanded') {
       const rows = context.result.events.map((event, index) => ({
         simulation_run_id: 0, // placeholder until Postgres IDs are wired
         token_address: context.target.mint,
         chain: context.target.chain,
-        event_time: DateTime.fromSeconds(event.timestamp).toFormat(
-          'yyyy-MM-dd HH:mm:ss',
-        ),
+        event_time: DateTime.fromSeconds(event.timestamp).toFormat('yyyy-MM-dd HH:mm:ss'),
         seq: index,
         event_type: event.type,
         price: event.price,
@@ -216,24 +206,13 @@ export class ConfigDrivenSink implements SimulationResultSink {
       sortino_ratio: null,
       win_rate: null,
       trade_count: context.result.events.filter(
-        (e) =>
-          e.type === 'entry' ||
-          e.type === 'trailing_entry_triggered' ||
-          e.type === 're_entry',
+        (e) => e.type === 'entry' || e.type === 'trailing_entry_triggered' || e.type === 're_entry'
       ).length,
-      reentry_count: context.result.events.filter(
-        (e) => e.type === 're_entry',
-      ).length,
-      ladder_entries_used: context.result.events.filter(
-        (e) => e.type === 'ladder_entry',
-      ).length,
-      ladder_exits_used: context.result.events.filter(
-        (e) => e.type === 'ladder_exit',
-      ).length,
+      reentry_count: context.result.events.filter((e) => e.type === 're_entry').length,
+      ladder_entries_used: context.result.events.filter((e) => e.type === 'ladder_entry').length,
+      ladder_exits_used: context.result.events.filter((e) => e.type === 'ladder_exit').length,
       created_at: finalEvent
-        ? DateTime.fromSeconds(finalEvent.timestamp).toFormat(
-            'yyyy-MM-dd HH:mm:ss',
-          )
+        ? DateTime.fromSeconds(finalEvent.timestamp).toFormat('yyyy-MM-dd HH:mm:ss')
         : DateTime.utc().toFormat('yyyy-MM-dd HH:mm:ss'),
     };
 
@@ -244,4 +223,3 @@ export class ConfigDrivenSink implements SimulationResultSink {
     });
   }
 }
-

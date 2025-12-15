@@ -1,6 +1,6 @@
 /**
  * Rolling Window Validation of Scoring Model
- * 
+ *
  * Validates that high-scored tokens actually correlate with future success
  * by using a rolling window approach:
  * 1. Split calls into time windows
@@ -16,7 +16,11 @@ import { DateTime } from 'luxon';
 import { config } from 'dotenv';
 import * as fs from 'fs';
 import * as path from 'path';
-import { buildScoringModel, type TokenFeatures, type CallAnalysis } from './analyze-brook-token-selection';
+import {
+  buildScoringModel,
+  type TokenFeatures,
+  type CallAnalysis,
+} from './analyze-brook-token-selection';
 import { queryCandles } from '../../src/storage/clickhouse-client';
 import { birdeyeClient } from '../../src/api/birdeye-client';
 import { logger } from '../../src/utils/logger';
@@ -90,7 +94,7 @@ async function getAllCalls(): Promise<UnifiedCall[]> {
     all(query, [])
       .then((rows: any[]) => {
         db.close();
-        const calls: UnifiedCall[] = rows.map(row => ({
+        const calls: UnifiedCall[] = rows.map((row) => ({
           id: row.id,
           tokenAddress: row.token_address,
           tokenSymbol: row.token_symbol,
@@ -120,9 +124,9 @@ async function extractFeatures(
   if (candles.length === 0) return null;
 
   const callUnix = call.callTimestamp;
-  const callCandle = candles.find(c => Math.abs(c.timestamp - callUnix) < 300); // Within 5 minutes
+  const callCandle = candles.find((c) => Math.abs(c.timestamp - callUnix) < 300); // Within 5 minutes
   const callPrice = callCandle?.price || call.priceAtCall || candles[0]?.price || 0;
-  
+
   if (callPrice === 0) {
     logger.debug('No valid price found', { tokenAddress: call.tokenAddress.substring(0, 20) });
     return null;
@@ -133,9 +137,12 @@ async function extractFeatures(
   const oneDayAgo = callUnix - 86400;
   const fifteenMinAgo = callUnix - 900;
 
-  const price1hAgo = candles.find(c => Math.abs(c.timestamp - oneHourAgo) < 300)?.price || callPrice;
-  const price24hAgo = candles.find(c => Math.abs(c.timestamp - oneDayAgo) < 600)?.price || callPrice;
-  const price15mAgo = candles.find(c => Math.abs(c.timestamp - fifteenMinAgo) < 180)?.price || callPrice;
+  const price1hAgo =
+    candles.find((c) => Math.abs(c.timestamp - oneHourAgo) < 300)?.price || callPrice;
+  const price24hAgo =
+    candles.find((c) => Math.abs(c.timestamp - oneDayAgo) < 600)?.price || callPrice;
+  const price15mAgo =
+    candles.find((c) => Math.abs(c.timestamp - fifteenMinAgo) < 180)?.price || callPrice;
 
   const priceChange1h = ((callPrice - price1hAgo) / price1hAgo) * 100;
   const priceChange24h = ((callPrice - price24hAgo) / price24hAgo) * 100;
@@ -143,14 +150,15 @@ async function extractFeatures(
 
   // Volume
   const callVolume = callCandle?.volume || call.volumeAtCall || 0;
-  const volume1hAgo = candles.find(c => Math.abs(c.timestamp - oneHourAgo) < 300)?.volume || 0;
+  const volume1hAgo = candles.find((c) => Math.abs(c.timestamp - oneHourAgo) < 300)?.volume || 0;
   const volumeChange1h = volume1hAgo > 0 ? ((callVolume - volume1hAgo) / volume1hAgo) * 100 : 0;
 
   // Average volume 24h
-  const candles24h = candles.filter(c => c.timestamp >= oneDayAgo && c.timestamp <= callUnix);
-  const avgVolume24h = candles24h.length > 0
-    ? candles24h.reduce((sum, c) => sum + c.volume, 0) / candles24h.length
-    : callVolume;
+  const candles24h = candles.filter((c) => c.timestamp >= oneDayAgo && c.timestamp <= callUnix);
+  const avgVolume24h =
+    candles24h.length > 0
+      ? candles24h.reduce((sum, c) => sum + c.volume, 0) / candles24h.length
+      : callVolume;
 
   // Market cap
   const marketCap = call.marketCapAtCall || 0;
@@ -169,16 +177,17 @@ async function extractFeatures(
   const priceChanges = [];
   for (let i = 1; i < candles24h.length; i++) {
     if (candles24h[i - 1].price > 0) {
-      const change = ((candles24h[i].price - candles24h[i - 1].price) / candles24h[i - 1].price) * 100;
+      const change =
+        ((candles24h[i].price - candles24h[i - 1].price) / candles24h[i - 1].price) * 100;
       priceChanges.push(change);
     }
   }
-  const avgChange = priceChanges.length > 0
-    ? priceChanges.reduce((sum, c) => sum + c, 0) / priceChanges.length
-    : 0;
-  const variance = priceChanges.length > 0
-    ? priceChanges.reduce((sum, c) => sum + Math.pow(c - avgChange, 2), 0) / priceChanges.length
-    : 0;
+  const avgChange =
+    priceChanges.length > 0 ? priceChanges.reduce((sum, c) => sum + c, 0) / priceChanges.length : 0;
+  const variance =
+    priceChanges.length > 0
+      ? priceChanges.reduce((sum, c) => sum + Math.pow(c - avgChange, 2), 0) / priceChanges.length
+      : 0;
   const volatility24h = Math.sqrt(variance);
 
   return {
@@ -211,16 +220,10 @@ async function fetchCandlesForAnalysis(
 
   // Try ClickHouse first
   try {
-    const clickhouseCandles = await queryCandles(
-      tokenAddress,
-      chain,
-      startTime,
-      endTime,
-      '5m'
-    );
+    const clickhouseCandles = await queryCandles(tokenAddress, chain, startTime, endTime, '5m');
 
     if (clickhouseCandles && clickhouseCandles.length > 0) {
-      return clickhouseCandles.map(candle => ({
+      return clickhouseCandles.map((candle) => ({
         timestamp: candle.timestamp,
         price: candle.close,
         volume: candle.volume,
@@ -234,14 +237,19 @@ async function fetchCandlesForAnalysis(
   const startUnix = startTime.toSeconds();
   const endUnix = endTime.toSeconds();
   const cached = getCachedResponse(tokenAddress, chain, startUnix, endUnix, '5m');
-  
+
   if (cached !== null) {
     const cachedData = cached.data;
-    if (cachedData && cachedData.items && Array.isArray(cachedData.items) && cachedData.items.length > 0) {
+    if (
+      cachedData &&
+      cachedData.items &&
+      Array.isArray(cachedData.items) &&
+      cachedData.items.length > 0
+    ) {
       return cachedData.items.map((item: any) => ({
         timestamp: item.unixTime,
-        price: typeof item.close === 'string' ? parseFloat(item.close) : (item.close || 0),
-        volume: typeof item.volume === 'string' ? parseFloat(item.volume) : (item.volume || 0),
+        price: typeof item.close === 'string' ? parseFloat(item.close) : item.close || 0,
+        volume: typeof item.volume === 'string' ? parseFloat(item.volume) : item.volume || 0,
       }));
     }
   }
@@ -257,10 +265,10 @@ async function fetchCandlesForAnalysis(
 
     if (birdeyeData && birdeyeData.items && birdeyeData.items.length > 0) {
       cacheResponse(tokenAddress, chain, startUnix, endUnix, '5m', birdeyeData);
-      return birdeyeData.items.map(item => ({
+      return birdeyeData.items.map((item) => ({
         timestamp: item.unixTime,
-        price: typeof item.close === 'string' ? parseFloat(item.close) : (item.close || 0),
-        volume: typeof item.volume === 'string' ? parseFloat(item.volume) : (item.volume || 0),
+        price: typeof item.close === 'string' ? parseFloat(item.close) : item.close || 0,
+        volume: typeof item.volume === 'string' ? parseFloat(item.volume) : item.volume || 0,
       }));
     } else {
       cacheNoDataResponse(tokenAddress, chain, startUnix, endUnix, '5m');
@@ -290,7 +298,7 @@ function calculateReturns(
   mcapAt7d?: number;
   mcapAt30d?: number;
 } {
-  const candlesAfter = candles.filter(c => c.timestamp > callUnix);
+  const candlesAfter = candles.filter((c) => c.timestamp > callUnix);
   if (candlesAfter.length === 0) {
     return { maxReturn7d: 1, maxReturn30d: 1, returnAt7d: 1, returnAt30d: 1 };
   }
@@ -298,22 +306,15 @@ function calculateReturns(
   const sevenDays = callUnix + 604800;
   const thirtyDays = callUnix + 2592000;
 
-  const candles7d = candlesAfter.filter(c => c.timestamp <= sevenDays);
-  const candles30d = candlesAfter.filter(c => c.timestamp <= thirtyDays);
+  const candles7d = candlesAfter.filter((c) => c.timestamp <= sevenDays);
+  const candles30d = candlesAfter.filter((c) => c.timestamp <= thirtyDays);
 
-  const maxPrice7d = candles7d.length > 0
-    ? Math.max(...candles7d.map(c => c.price))
-    : callPrice;
-  const maxPrice30d = candles30d.length > 0
-    ? Math.max(...candles30d.map(c => c.price))
-    : callPrice;
+  const maxPrice7d = candles7d.length > 0 ? Math.max(...candles7d.map((c) => c.price)) : callPrice;
+  const maxPrice30d =
+    candles30d.length > 0 ? Math.max(...candles30d.map((c) => c.price)) : callPrice;
 
-  const priceAt7d = candles7d.length > 0
-    ? candles7d[candles7d.length - 1].price
-    : callPrice;
-  const priceAt30d = candles30d.length > 0
-    ? candles30d[candles30d.length - 1].price
-    : callPrice;
+  const priceAt7d = candles7d.length > 0 ? candles7d[candles7d.length - 1].price : callPrice;
+  const priceAt30d = candles30d.length > 0 ? candles30d[candles30d.length - 1].price : callPrice;
 
   const priceMultiple7d = maxPrice7d / callPrice;
   const priceMultiple30d = maxPrice30d / callPrice;
@@ -375,24 +376,29 @@ async function validateRollingWindow(
 
   // Build scoring model from training data
   const trainingAnalyses: CallAnalysis[] = [];
-  
+
   // Limit training calls to avoid excessive processing
   const maxTrainingCalls = Math.min(50, trainingCalls.length);
-  
-  logger.info('Processing training calls', { 
+
+  logger.info('Processing training calls', {
     total: maxTrainingCalls,
     window: `${new Date(windowStart * 1000).toISOString().split('T')[0]} to ${new Date(windowEnd * 1000).toISOString().split('T')[0]}`,
   });
-  
+
   let trainingProcessed = 0;
-  for (const call of trainingCalls.slice(-maxTrainingCalls)) { // Use most recent training calls
+  for (const call of trainingCalls.slice(-maxTrainingCalls)) {
+    // Use most recent training calls
     trainingProcessed++;
     if (trainingProcessed % 10 === 0) {
       logger.debug('Training progress', { processed: trainingProcessed, total: maxTrainingCalls });
     }
-    
+
     try {
-      const candles = await fetchCandlesForAnalysis(call.tokenAddress, call.callTimestamp, call.chain);
+      const candles = await fetchCandlesForAnalysis(
+        call.tokenAddress,
+        call.callTimestamp,
+        call.chain
+      );
       if (candles.length === 0) continue;
 
       const features = await extractFeatures(call, candles);
@@ -405,10 +411,14 @@ async function validateRollingWindow(
         features.marketCap
       );
 
-      const performanceCategory = returns.maxReturn30d > 10 ? 'moon'
-        : returns.maxReturn30d > 3 ? 'good'
-        : returns.maxReturn30d > 1.5 ? 'decent'
-        : 'poor';
+      const performanceCategory =
+        returns.maxReturn30d > 10
+          ? 'moon'
+          : returns.maxReturn30d > 3
+            ? 'good'
+            : returns.maxReturn30d > 1.5
+              ? 'decent'
+              : 'poor';
 
       trainingAnalyses.push({
         ...features,
@@ -438,11 +448,19 @@ async function validateRollingWindow(
   for (const call of testCalls) {
     testProcessed++;
     if (testProcessed % 50 === 0) {
-      logger.info('Test progress', { processed: testProcessed, total: testCalls.length, scored: scoredTestCalls.length });
+      logger.info('Test progress', {
+        processed: testProcessed,
+        total: testCalls.length,
+        scored: scoredTestCalls.length,
+      });
     }
-    
+
     try {
-      const candles = await fetchCandlesForAnalysis(call.tokenAddress, call.callTimestamp, call.chain);
+      const candles = await fetchCandlesForAnalysis(
+        call.tokenAddress,
+        call.callTimestamp,
+        call.chain
+      );
       if (candles.length === 0) continue;
 
       const features = await extractFeatures(call, candles);
@@ -488,9 +506,9 @@ async function validateRollingWindow(
   }
 
   // Calculate correlations
-  const scores = scoredTestCalls.map(s => s.score);
-  const returns7d = scoredTestCalls.map(s => s.maxReturn7d);
-  const returns30d = scoredTestCalls.map(s => s.maxReturn30d);
+  const scores = scoredTestCalls.map((s) => s.score);
+  const returns7d = scoredTestCalls.map((s) => s.maxReturn7d);
+  const returns30d = scoredTestCalls.map((s) => s.maxReturn30d);
 
   const correlation7d = calculateCorrelation(scores, returns7d);
   const correlation30d = calculateCorrelation(scores, returns30d);
@@ -507,23 +525,28 @@ async function validateRollingWindow(
 
   const top10PercentAvgReturn7d = top10.reduce((sum, s) => sum + s.maxReturn7d, 0) / top10.length;
   const top10PercentAvgReturn30d = top10.reduce((sum, s) => sum + s.maxReturn30d, 0) / top10.length;
-  const bottom10PercentAvgReturn7d = bottom10.reduce((sum, s) => sum + s.maxReturn7d, 0) / bottom10.length;
-  const bottom10PercentAvgReturn30d = bottom10.reduce((sum, s) => sum + s.maxReturn30d, 0) / bottom10.length;
+  const bottom10PercentAvgReturn7d =
+    bottom10.reduce((sum, s) => sum + s.maxReturn7d, 0) / bottom10.length;
+  const bottom10PercentAvgReturn30d =
+    bottom10.reduce((sum, s) => sum + s.maxReturn30d, 0) / bottom10.length;
 
   // Precision/Recall
   const top10Percent = scoredTestCalls.slice(0, top10Count);
-  const top25Percent = scoredTestCalls.slice(0, Math.max(1, Math.floor(scoredTestCalls.length * 0.25)));
+  const top25Percent = scoredTestCalls.slice(
+    0,
+    Math.max(1, Math.floor(scoredTestCalls.length * 0.25))
+  );
 
-  const allWinners7d = scoredTestCalls.filter(s => s.maxReturn7d > 3).length;
-  const allWinners30d = scoredTestCalls.filter(s => s.maxReturn30d > 3).length;
+  const allWinners7d = scoredTestCalls.filter((s) => s.maxReturn7d > 3).length;
+  const allWinners30d = scoredTestCalls.filter((s) => s.maxReturn30d > 3).length;
 
-  const top10Winners7d = top10Percent.filter(s => s.maxReturn7d > 3).length;
-  const top10Winners30d = top10Percent.filter(s => s.maxReturn30d > 3).length;
-  const top25Winners7d = top25Percent.filter(s => s.maxReturn7d > 3).length;
-  const top25Winners30d = top25Percent.filter(s => s.maxReturn30d > 3).length;
+  const top10Winners7d = top10Percent.filter((s) => s.maxReturn7d > 3).length;
+  const top10Winners30d = top10Percent.filter((s) => s.maxReturn30d > 3).length;
+  const top25Winners7d = top25Percent.filter((s) => s.maxReturn7d > 3).length;
+  const top25Winners30d = top25Percent.filter((s) => s.maxReturn30d > 3).length;
 
-  const precisionTop10 = (top10Count > 0) ? (top10Winners7d / top10Count) * 100 : 0;
-  const precisionTop25 = (top25Percent.length > 0) ? (top25Winners7d / top25Percent.length) * 100 : 0;
+  const precisionTop10 = top10Count > 0 ? (top10Winners7d / top10Count) * 100 : 0;
+  const precisionTop25 = top25Percent.length > 0 ? (top25Winners7d / top25Percent.length) * 100 : 0;
   const recallTop10 = allWinners7d > 0 ? (top10Winners7d / allWinners7d) * 100 : 0;
   const recallTop25 = allWinners7d > 0 ? (top25Winners7d / allWinners7d) * 100 : 0;
 
@@ -583,14 +606,14 @@ async function main() {
 
   while (windowStart < lastTimestamp) {
     windowIndex++;
-    const windowEnd = windowStart + (windowSizeDays * 86400);
+    const windowEnd = windowStart + windowSizeDays * 86400;
 
     // Training: all calls before window
-    const trainingCalls = allCalls.filter(c => c.callTimestamp < windowStart);
-    
+    const trainingCalls = allCalls.filter((c) => c.callTimestamp < windowStart);
+
     // Test: calls in window
     const testCalls = allCalls.filter(
-      c => c.callTimestamp >= windowStart && c.callTimestamp < windowEnd
+      (c) => c.callTimestamp >= windowStart && c.callTimestamp < windowEnd
     );
 
     if (trainingCalls.length >= 50 && testCalls.length >= 10) {
@@ -600,7 +623,7 @@ async function main() {
         trainingCalls: trainingCalls.length,
         testCalls: testCalls.length,
       });
-      
+
       const validation = await validateRollingWindow(
         trainingCalls,
         testCalls,
@@ -608,7 +631,7 @@ async function main() {
         windowEnd
       );
       validations.push(validation);
-      
+
       logger.info(`Window ${windowIndex} complete`, {
         scoredCalls: validation.scoredCalls,
         correlation30d: validation.correlation30d.toFixed(3),
@@ -619,16 +642,26 @@ async function main() {
   }
 
   // Aggregate results
-  const avgCorrelation7d = validations.reduce((sum, v) => sum + v.correlation7d, 0) / validations.length;
-  const avgCorrelation30d = validations.reduce((sum, v) => sum + v.correlation30d, 0) / validations.length;
-  const avgPrecisionTop10 = validations.reduce((sum, v) => sum + v.precisionTop10, 0) / validations.length;
-  const avgPrecisionTop25 = validations.reduce((sum, v) => sum + v.precisionTop25, 0) / validations.length;
-  const avgRecallTop10 = validations.reduce((sum, v) => sum + v.recallTop10, 0) / validations.length;
-  const avgRecallTop25 = validations.reduce((sum, v) => sum + v.recallTop25, 0) / validations.length;
-  const avgTop10Return7d = validations.reduce((sum, v) => sum + v.top10PercentAvgReturn7d, 0) / validations.length;
-  const avgTop10Return30d = validations.reduce((sum, v) => sum + v.top10PercentAvgReturn30d, 0) / validations.length;
-  const avgBottom10Return7d = validations.reduce((sum, v) => sum + v.bottom10PercentAvgReturn7d, 0) / validations.length;
-  const avgBottom10Return30d = validations.reduce((sum, v) => sum + v.bottom10PercentAvgReturn30d, 0) / validations.length;
+  const avgCorrelation7d =
+    validations.reduce((sum, v) => sum + v.correlation7d, 0) / validations.length;
+  const avgCorrelation30d =
+    validations.reduce((sum, v) => sum + v.correlation30d, 0) / validations.length;
+  const avgPrecisionTop10 =
+    validations.reduce((sum, v) => sum + v.precisionTop10, 0) / validations.length;
+  const avgPrecisionTop25 =
+    validations.reduce((sum, v) => sum + v.precisionTop25, 0) / validations.length;
+  const avgRecallTop10 =
+    validations.reduce((sum, v) => sum + v.recallTop10, 0) / validations.length;
+  const avgRecallTop25 =
+    validations.reduce((sum, v) => sum + v.recallTop25, 0) / validations.length;
+  const avgTop10Return7d =
+    validations.reduce((sum, v) => sum + v.top10PercentAvgReturn7d, 0) / validations.length;
+  const avgTop10Return30d =
+    validations.reduce((sum, v) => sum + v.top10PercentAvgReturn30d, 0) / validations.length;
+  const avgBottom10Return7d =
+    validations.reduce((sum, v) => sum + v.bottom10PercentAvgReturn7d, 0) / validations.length;
+  const avgBottom10Return30d =
+    validations.reduce((sum, v) => sum + v.bottom10PercentAvgReturn30d, 0) / validations.length;
 
   // Output results
   const outputDir = path.join(process.cwd(), 'data/exports/brook-analysis');
@@ -686,17 +719,20 @@ async function main() {
   console.log(`  Bottom 10% by score (7d):  ${avgBottom10Return7d.toFixed(2)}x`);
   console.log(`  Bottom 10% by score (30d): ${avgBottom10Return30d.toFixed(2)}x`);
   console.log(`\nOutperformance:`);
-  console.log(`  Top 10% vs Bottom 10% (7d):  ${(avgTop10Return7d / avgBottom10Return7d).toFixed(2)}x`);
-  console.log(`  Top 10% vs Bottom 10% (30d): ${(avgTop10Return30d / avgBottom10Return30d).toFixed(2)}x`);
+  console.log(
+    `  Top 10% vs Bottom 10% (7d):  ${(avgTop10Return7d / avgBottom10Return7d).toFixed(2)}x`
+  );
+  console.log(
+    `  Top 10% vs Bottom 10% (30d): ${(avgTop10Return30d / avgBottom10Return30d).toFixed(2)}x`
+  );
   console.log(`\n✅ Results saved to: ${outputPath}`);
 }
 
 if (require.main === module) {
-  main().catch(error => {
+  main().catch((error) => {
     logger.error('Fatal error', error as Error);
     process.exit(1);
   });
 }
 
 export { validateRollingWindow, WindowValidation };
-

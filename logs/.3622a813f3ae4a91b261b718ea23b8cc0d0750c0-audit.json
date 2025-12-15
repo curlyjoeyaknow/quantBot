@@ -6,16 +6,6 @@
     "auditLog": "/home/memez/quantBot/logs/.3622a813f3ae4a91b261b718ea23b8cc0d0750c0-audit.json",
     "files": [
         {
-            "date": 1764408902742,
-            "name": "/home/memez/quantBot/logs/error-2025-11-29.log",
-            "hash": "fe131bf06fa7a46563a5169d39e9bfc0a7cf01bd8d0b147f14e9e39d60f061ba"
-        },
-        {
-            "date": 1764455401734,
-            "name": "/home/memez/quantBot/logs/error-2025-11-30.log",
-            "hash": "7bcf8ec23ab890088a12381d051ab046bae3824e3b0be6462e581debc57bbe21"
-        },
-        {
             "date": 1764548958460,
             "name": "/home/memez/quantBot/logs/error-2025-12-01.log",
             "hash": "0e79fef6e8f7726d48b24b0f83b3fb5e0693194b0ad2abf22c8eb38b01b83b82"
@@ -54,6 +44,31 @@
             "date": 1765380616790,
             "name": "/home/memez/quantBot/logs/error-2025-12-11.log",
             "hash": "16741451f02d4fe6c169cc5fdfec85f9bd6716422f79aaf210ae476b8372d792"
+        },
+        {
+            "date": 1765483760792,
+            "name": "/home/memez/quantBot/logs/error-2025-12-12.log",
+            "hash": "f88ed316ca023e08d0861a0b5f00edea8e155d34b78e711e15318cd8b70c4e47"
+        },
+        {
+            "date": 1765577115830,
+            "name": "/home/memez/quantBot/logs/error-2025-12-13.log",
+            "hash": "e3d231c3f7e6360b364c65b63a6e71ca0bb13ab2f56ddeb17a892b8a096a38bc"
+        },
+        {
+            "date": 1765590099318,
+            "name": "/home/memez/quantBot/logs/error-2025-12-13.log.1",
+            "hash": "eb0abe1dd90e9a892c8ab9a43c42558863b6c91c4a70570e503302fe8769a9be"
+        },
+        {
+            "date": 1765590311027,
+            "name": "/home/memez/quantBot/logs/error-2025-12-13.log.2",
+            "hash": "1b312962293d734942a4a085224ddf8919be4851da22047ef61353e09a966a19"
+        },
+        {
+            "date": 1765682865653,
+            "name": "/home/memez/quantBot/logs/error-2025-12-14.log",
+            "hash": "fcf8b8304570ea68bf25542b5977932266576d80e0c52e0f9a0edefcc550c214"
         }
     ],
     "hashType": "sha256"

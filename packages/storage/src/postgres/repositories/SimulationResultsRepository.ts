@@ -1,6 +1,6 @@
 /**
  * SimulationResultsRepository - Postgres repository for simulation results summary
- * 
+ *
  * Handles all database operations for simulation_results_summary table.
  */
 
@@ -80,4 +80,3 @@ export class SimulationResultsRepository {
     logger.debug('Upserted simulation results summary', { runId: data.simulationRunId });
   }
 }
-

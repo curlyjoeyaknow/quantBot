@@ -1,9 +1,9 @@
 /**
  * TokenMetadataRepository - ClickHouse repository for token metadata snapshots
- * 
+ *
  * Stores time-series snapshots of token metadata (market cap, price, volume, etc.)
  * separate from candles. This allows tracking metadata changes over time.
- * 
+ *
  * CRITICAL: Always preserve full token address and exact case.
  */
 
@@ -159,7 +159,7 @@ export class TokenMetadataRepository {
         },
       });
 
-      const data = await result.json() as Array<{
+      const data = (await result.json()) as Array<{
         timestamp: number;
         token_address: string;
         chain: string;
@@ -262,7 +262,7 @@ export class TokenMetadataRepository {
         },
       });
 
-      const data = await result.json() as Array<{
+      const data = (await result.json()) as Array<{
         timestamp: number;
         token_address: string;
         chain: string;
@@ -314,4 +314,3 @@ export class TokenMetadataRepository {
     }
   }
 }
-

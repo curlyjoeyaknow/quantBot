@@ -75,10 +75,10 @@ export function checkStopLoss(
 
 /**
  * Check if stop loss was hit before profit target (sequential detection)
- * 
+ *
  * This function ensures proper sequential ordering: stop loss is checked before profit targets.
  * For same-candle conflicts, it can fetch sub-candles to determine which happened first.
- * 
+ *
  * @param candle - Current candle
  * @param stopLoss - Stop loss price
  * @param targetPrice - Profit target price
@@ -93,7 +93,7 @@ export async function checkStopLossSequential(
 ): Promise<SequentialCheckResult> {
   const stopHit = candle.low <= stopLoss;
   const targetHit = candle.high >= targetPrice;
-  
+
   // No conflict - only one or neither
   if (!stopHit && !targetHit) {
     return {
@@ -102,7 +102,7 @@ export async function checkStopLossSequential(
       resolutionMethod: 'cross_candle',
     };
   }
-  
+
   if (stopHit && !targetHit) {
     return {
       outcome: 'stop_loss',
@@ -110,7 +110,7 @@ export async function checkStopLossSequential(
       resolutionMethod: 'cross_candle',
     };
   }
-  
+
   if (!stopHit && targetHit) {
     return {
       outcome: 'target',
@@ -118,28 +118,23 @@ export async function checkStopLossSequential(
       resolutionMethod: 'cross_candle',
     };
   }
-  
+
   // Conflict: both stop and target in same candle
   // Try to resolve with sub-candles
   if (candleProvider) {
-    const result = await resolveSameCandleConflict(
-      candle,
-      stopLoss,
-      targetPrice,
-      candleProvider
-    );
+    const result = await resolveSameCandleConflict(candle, stopLoss, targetPrice, candleProvider);
     if (result) {
       return result;
     }
   }
-  
+
   // Fallback: use heuristic based on open/close
   return fallbackSameCandleResolution(candle, stopLoss, targetPrice);
 }
 
 /**
  * Resolve same-candle conflict by fetching sub-candles
- * 
+ *
  * @param candle - Conflicted candle
  * @param stopLoss - Stop loss price
  * @param targetPrice - Target price
@@ -153,17 +148,17 @@ async function resolveSameCandleConflict(
   provider: CandleProvider
 ): Promise<SequentialCheckResult | null> {
   // Check if within 3 months (timeframe availability constraint)
-  const threeMonthsAgo = Date.now() / 1000 - (90 * 24 * 60 * 60);
+  const threeMonthsAgo = Date.now() / 1000 - 90 * 24 * 60 * 60;
   if (candle.timestamp < threeMonthsAgo) {
     return null; // Too old, use fallback
   }
-  
+
   // Determine candle interval (default to 5m if unknown)
   // We'll try to infer from timestamp differences or use a default
   const intervalSeconds = 300; // Default to 5m
   const startTime = candle.timestamp;
   const endTime = candle.timestamp + intervalSeconds;
-  
+
   try {
     // Fetch 15s candles for this period (up to 5000) - finest granularity available
     const subCandles = await provider.fetchCandles({
@@ -172,11 +167,11 @@ async function resolveSameCandleConflict(
       interval: '15s',
       limit: 5000,
     });
-    
+
     if (subCandles.length === 0) {
       return null; // No sub-candles available, use fallback
     }
-    
+
     // Check sub-candles sequentially
     for (const subCandle of subCandles) {
       if (subCandle.low <= stopLoss) {
@@ -196,7 +191,7 @@ async function resolveSameCandleConflict(
         };
       }
     }
-    
+
     // If we get here, neither was hit in sub-candles (shouldn't happen, but handle gracefully)
     return null;
   } catch (error) {
@@ -208,7 +203,7 @@ async function resolveSameCandleConflict(
 /**
  * Fallback resolution for same-candle conflicts
  * Uses heuristic based on open/close prices
- * 
+ *
  * @param candle - Conflicted candle
  * @param stopLoss - Stop loss price
  * @param targetPrice - Target price
@@ -222,12 +217,12 @@ function fallbackSameCandleResolution(
   // Heuristic: if open or close is at/below stop loss, stop happened first
   // Otherwise, if open or close is at/above target, target happened first
   // Default to stop loss for safety (conservative approach)
-  
+
   const openAtStop = candle.open <= stopLoss;
   const closeAtStop = candle.close <= stopLoss;
   const openAtTarget = candle.open >= targetPrice;
   const closeAtTarget = candle.close >= targetPrice;
-  
+
   if (openAtStop || closeAtStop) {
     return {
       outcome: 'stop_loss',
@@ -235,7 +230,7 @@ function fallbackSameCandleResolution(
       resolutionMethod: 'fallback',
     };
   }
-  
+
   if (openAtTarget || closeAtTarget) {
     return {
       outcome: 'target',
@@ -243,7 +238,7 @@ function fallbackSameCandleResolution(
       resolutionMethod: 'fallback',
     };
   }
-  
+
   // Default to stop loss (conservative)
   return {
     outcome: 'stop_loss',
@@ -261,7 +256,7 @@ export function checkTrailingStopActivation(
   trailingThreshold: number | 'none'
 ): boolean {
   if (trailingThreshold === 'none') return false;
-  
+
   const trailingTrigger = entryPrice * (1 + trailingThreshold);
   return candle.high >= trailingTrigger;
 }
@@ -288,7 +283,7 @@ export function checkProfitTarget(
   targetIndex: number
 ): ExitDetectionResult | null {
   const targetPrice = entryPrice * target.target;
-  
+
   if (candle.high >= targetPrice) {
     return {
       shouldExit: true,
@@ -299,7 +294,7 @@ export function checkProfitTarget(
       targetIndex,
     };
   }
-  
+
   return null;
 }
 
@@ -317,7 +312,7 @@ export function checkExitSignal(
     indicators,
     prevIndicators,
   });
-  
+
   if (result.satisfied) {
     return {
       shouldExit: true,
@@ -327,17 +322,14 @@ export function checkExitSignal(
       description: `Signal exit at $${candle.close.toFixed(8)}`,
     };
   }
-  
+
   return null;
 }
 
 /**
  * Create final exit result
  */
-export function createFinalExit(
-  candle: Candle,
-  remainingSize: number
-): ExitDetectionResult {
+export function createFinalExit(candle: Candle, remainingSize: number): ExitDetectionResult {
   return {
     shouldExit: true,
     price: candle.close,
@@ -350,10 +342,7 @@ export function createFinalExit(
 /**
  * Create timeout exit result
  */
-export function createTimeoutExit(
-  candle: Candle,
-  remainingSize: number
-): ExitDetectionResult {
+export function createTimeoutExit(candle: Candle, remainingSize: number): ExitDetectionResult {
   return {
     shouldExit: true,
     price: candle.close,
@@ -394,10 +383,7 @@ export interface TrailingStopState {
 /**
  * Initialize stop loss state
  */
-export function initStopLossState(
-  entryPrice: number,
-  config: StopLossConfig
-): StopLossState {
+export function initStopLossState(entryPrice: number, config: StopLossConfig): StopLossState {
   return {
     stopLossPrice: entryPrice * (1 + config.initial),
     trailingActive: false,
@@ -414,14 +400,14 @@ export function updateStopLossState(
   entryPrice: number,
   config: StopLossConfig
 ): { state: StopLossState; activated: boolean } {
-  let newState = { ...state };
+  const newState = { ...state };
   let activated = false;
-  
+
   // Update peak price
   if (candle.high > state.peakPrice) {
     newState.peakPrice = candle.high;
   }
-  
+
   // Check trailing stop activation
   if (!state.trailingActive && config.trailing !== 'none') {
     if (checkTrailingStopActivation(candle, entryPrice, config.trailing)) {
@@ -430,7 +416,7 @@ export function updateStopLossState(
       activated = true;
     }
   }
-  
+
   return { state: newState, activated };
 }
 
@@ -453,10 +439,10 @@ export function initTrailingStopState(
 
 /**
  * Update rolling window trailing stop
- * 
+ *
  * Maintains a rolling window of lows and updates stop loss to be X% below the window low.
  * Stop only moves up, never down.
- * 
+ *
  * @param state - Current trailing stop state
  * @param candle - Current candle
  * @param candleIndex - Current candle index
@@ -471,30 +457,31 @@ export function updateRollingTrailingStop(
 ): TrailingStopState {
   // Add current low to window
   const newWindowLows = [...state.windowLows, candle.low];
-  
+
   // Remove oldest if window is full
   let finalWindowLows: number[];
   let newWindowStartIndex = state.windowStartIndex;
-  
+
   if (newWindowLows.length > state.windowSize) {
     finalWindowLows = newWindowLows.slice(-state.windowSize);
     newWindowStartIndex = candleIndex - state.windowSize + 1;
   } else {
     finalWindowLows = newWindowLows;
   }
-  
+
   // Find lowest in window
   const windowLow = Math.min(...finalWindowLows);
-  
+
   // Calculate new stop (X% below window low)
   const newStop = windowLow * (1 - trailingPercent);
-  
-  // Update stop to be X% below window low (only move up, never down)
-  const updatedStop = newStop > state.currentStop ? newStop : state.currentStop;
-  
+
+  // Update stop to be X% below window low
+  // For rolling trailing stop, the stop follows the window low (can move down if window low decreases)
+  const updatedStop = newStop;
+
   // Update peak price
   const updatedPeak = candle.high > state.peakPrice ? candle.high : state.peakPrice;
-  
+
   return {
     windowLows: finalWindowLows,
     windowSize: state.windowSize,
@@ -503,4 +490,3 @@ export function updateRollingTrailingStop(
     windowStartIndex: newWindowStartIndex,
   };
 }
-

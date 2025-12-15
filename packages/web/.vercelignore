@@ -1,8 +1,0 @@
-node_modules
-.next
-.env.local
-.env*.local
-.certs
-*.log
-.DS_Store
-

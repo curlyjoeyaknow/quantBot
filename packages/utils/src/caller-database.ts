@@ -4,7 +4,8 @@ import * as path from 'path';
 import { logger } from './logger';
 
 // Configuration
-const CALLER_DB_PATH = process.env.CALLER_DB_PATH || path.join(process.cwd(), 'data', 'databases', 'caller_alerts.db');
+const CALLER_DB_PATH =
+  process.env.CALLER_DB_PATH || path.join(process.cwd(), 'data', 'databases', 'caller_alerts.db');
 
 /**
  * Initialize caller database connection
@@ -28,10 +29,12 @@ function initCallerDatabase(): Promise<Database> {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         UNIQUE(caller_name, token_address, alert_timestamp)
       )
-    `).then(() => {
-      logger.info('Caller database initialized successfully');
-      resolve(db);
-    }).catch(reject);
+    `)
+      .then(() => {
+        logger.info('Caller database initialized successfully');
+        resolve(db);
+      })
+      .catch(reject);
   });
 }
 
@@ -41,10 +44,11 @@ function initCallerDatabase(): Promise<Database> {
 async function findCallsForToken(tokenAddress: string): Promise<any[]> {
   const db = await initCallerDatabase();
   const all = promisify(db.all.bind(db));
-  
+
   try {
-    const calls = await new Promise((resolve, reject) => {
-      db.all(`
+    const calls = (await new Promise((resolve, reject) => {
+      db.all(
+        `
         SELECT 
           caller_name,
           token_address,
@@ -57,19 +61,22 @@ async function findCallsForToken(tokenAddress: string): Promise<any[]> {
         FROM caller_alerts
         WHERE LOWER(token_address) = LOWER(?)
         ORDER BY alert_timestamp DESC
-      `, [tokenAddress], (err, rows) => {
-        if (err) reject(err);
-        else resolve(rows);
-      });
-    }) as any[];
-    
+      `,
+        [tokenAddress],
+        (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows);
+        }
+      );
+    })) as any[];
+
     await new Promise<void>((resolve, reject) => {
       db.close((err: Error | null) => {
         if (err) reject(err);
         else resolve();
       });
     });
-    
+
     return calls as any[];
   } catch (error) {
     logger.error('Error finding calls for token', error as Error, { tokenAddress });
@@ -89,10 +96,11 @@ async function findCallsForToken(tokenAddress: string): Promise<any[]> {
 async function getRecentCalls(limit: number = 20): Promise<any[]> {
   const db = await initCallerDatabase();
   const all = promisify(db.all.bind(db));
-  
+
   try {
-    const calls = await new Promise((resolve, reject) => {
-      db.all(`
+    const calls = (await new Promise((resolve, reject) => {
+      db.all(
+        `
         SELECT 
           caller_name,
           token_address,
@@ -105,19 +113,22 @@ async function getRecentCalls(limit: number = 20): Promise<any[]> {
         FROM caller_alerts
         ORDER BY alert_timestamp DESC
         LIMIT ?
-      `, [limit], (err, rows) => {
-        if (err) reject(err);
-        else resolve(rows);
-      });
-    }) as any[];
-    
+      `,
+        [limit],
+        (err, rows) => {
+          if (err) reject(err);
+          else resolve(rows);
+        }
+      );
+    })) as any[];
+
     await new Promise<void>((resolve, reject) => {
       db.close((err: Error | null) => {
         if (err) reject(err);
         else resolve();
       });
     });
-    
+
     return calls as any[];
   } catch (error) {
     logger.error('Error getting recent calls', error as Error, { limit });
@@ -137,7 +148,7 @@ async function getRecentCalls(limit: number = 20): Promise<any[]> {
 async function getCallerStats(): Promise<{ stats: any; topCallers: any[] }> {
   const db = await initCallerDatabase();
   const all = promisify(db.all.bind(db));
-  
+
   try {
     const stats = await all(`
       SELECT 
@@ -148,7 +159,7 @@ async function getCallerStats(): Promise<{ stats: any; topCallers: any[] }> {
         MAX(alert_timestamp) as latest_alert
       FROM caller_alerts
     `);
-    
+
     const topCallers = await all(`
       SELECT 
         caller_name,
@@ -159,14 +170,14 @@ async function getCallerStats(): Promise<{ stats: any; topCallers: any[] }> {
       ORDER BY alert_count DESC
       LIMIT 10
     `);
-    
+
     await new Promise<void>((resolve, reject) => {
       db.close((err: Error | null) => {
         if (err) reject(err);
         else resolve();
       });
     });
-    
+
     return { stats: (stats as any[])[0], topCallers: topCallers as any[] };
   } catch (error) {
     logger.error('Error getting caller stats', error as Error);
@@ -180,9 +191,4 @@ async function getCallerStats(): Promise<{ stats: any; topCallers: any[] }> {
   }
 }
 
-export {
-  initCallerDatabase,
-  findCallsForToken,
-  getRecentCalls,
-  getCallerStats
-};
+export { initCallerDatabase, findCallsForToken, getRecentCalls, getCallerStats };

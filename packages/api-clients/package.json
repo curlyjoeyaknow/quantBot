@@ -11,14 +11,15 @@
   },
   "dependencies": {
     "@quantbot/core": "workspace:*",
+    "@quantbot/observability": "workspace:*",
     "@quantbot/utils": "workspace:*",
     "axios": "^1.13.2"
   },
   "devDependencies": {
     "@types/node": "^24.10.1",
     "@vitest/coverage-v8": "^4.0.15",
+    "fast-check": "^4.4.0",
     "typescript": "^5.9.3",
     "vitest": "^4.0.15"
   }
 }
-

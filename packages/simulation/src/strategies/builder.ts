@@ -1,6 +1,6 @@
 /**
  * Strategy Builder
- * 
+ *
  * Builds strategy configurations from various inputs
  */
 
@@ -31,7 +31,9 @@ export function buildStrategy(config: StrategyConfig): Strategy[] {
 /**
  * Converts StrategyConfig to StopLossConfig format
  */
-export function buildStopLossConfig(config: StrategyConfig): import('../engine').StopLossConfig | undefined {
+export function buildStopLossConfig(
+  config: StrategyConfig
+): import('../engine').StopLossConfig | undefined {
   if (!config.stopLoss) {
     return undefined;
   }
@@ -45,7 +47,9 @@ export function buildStopLossConfig(config: StrategyConfig): import('../engine')
 /**
  * Converts StrategyConfig to EntryConfig format
  */
-export function buildEntryConfig(config: StrategyConfig): import('../engine').EntryConfig | undefined {
+export function buildEntryConfig(
+  config: StrategyConfig
+): import('../engine').EntryConfig | undefined {
   if (!config.entry) {
     return undefined;
   }
@@ -60,7 +64,9 @@ export function buildEntryConfig(config: StrategyConfig): import('../engine').En
 /**
  * Converts StrategyConfig to ReEntryConfig format
  */
-export function buildReEntryConfig(config: StrategyConfig): import('../engine').ReEntryConfig | undefined {
+export function buildReEntryConfig(
+  config: StrategyConfig
+): import('../engine').ReEntryConfig | undefined {
   if (!config.reEntry) {
     return undefined;
   }
@@ -147,7 +153,10 @@ export function validateStrategy(config: StrategyConfig): { valid: boolean; erro
 
   // Validate re-entry config
   if (config.reEntry) {
-    if (config.reEntry.trailingReEntry !== 'none' && typeof config.reEntry.trailingReEntry === 'number') {
+    if (
+      config.reEntry.trailingReEntry !== 'none' &&
+      typeof config.reEntry.trailingReEntry === 'number'
+    ) {
       if (config.reEntry.trailingReEntry <= 0 || config.reEntry.trailingReEntry >= 1) {
         errors.push('Trailing re-entry percent should be between 0 and 1');
       }
@@ -181,4 +190,3 @@ export function validateStrategy(config: StrategyConfig): { valid: boolean; erro
     errors,
   };
 }
-

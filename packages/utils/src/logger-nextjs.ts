@@ -55,4 +55,3 @@ export class NextJSLogger {
  * Export singleton for convenience
  */
 export const logger = NextJSLogger;
-

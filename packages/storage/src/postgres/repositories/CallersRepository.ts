@@ -1,13 +1,13 @@
 /**
  * CallersRepository - Postgres repository for callers (signal sources)
- * 
+ *
  * Handles all database operations for callers table.
  * No business logic - just SQL operations.
  */
 
 import { PoolClient, QueryResult } from 'pg';
 import { DateTime } from 'luxon';
-import { getPostgresPool, withPostgresTransaction } from '../../postgres-client';
+import { getPostgresPool, withPostgresTransaction } from '../postgres-client';
 import { logger } from '@quantbot/utils';
 import type { Caller } from '@quantbot/core';
 
@@ -15,7 +15,12 @@ export class CallersRepository {
   /**
    * Get or create a caller by source and handle
    */
-  async getOrCreateCaller(source: string, handle: string, displayName?: string, attributes?: Record<string, unknown>): Promise<Caller> {
+  async getOrCreateCaller(
+    source: string,
+    handle: string,
+    displayName?: string,
+    attributes?: Record<string, unknown>
+  ): Promise<Caller> {
     return withPostgresTransaction(async (client) => {
       // Try to find existing
       const findResult = await client.query<{
@@ -47,22 +52,14 @@ export class CallersRepository {
       }
 
       // Create new
-      const insertResult = await client.query<{
-        id: number;
-        source: string;
-        handle: string;
-        display_name: string | null;
-        attributes_json: Record<string, unknown> | null;
-        created_at: Date;
-        updated_at: Date;
-      }>(
+      const insertResult = await client.query(
         `INSERT INTO callers (source, handle, display_name, attributes_json)
          VALUES ($1, $2, $3, $4)
          RETURNING id, source, handle, display_name, attributes_json, created_at, updated_at`,
         [source, handle, displayName || null, attributes ? JSON.stringify(attributes) : null]
       );
 
-      const row = insertResult.rows[0];
+      const row = insertResult.rows[0] as any;
       logger.info('Created new caller', { id: row.id, source, handle });
       return {
         id: row.id,
@@ -175,4 +172,3 @@ export class CallersRepository {
     }));
   }
 }
-

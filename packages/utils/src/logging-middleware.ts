@@ -76,33 +76,32 @@ export function logPerformance<T extends (...args: any[]) => Promise<any>>(
   return (async (...args: any[]) => {
     const startTime = Date.now();
     const requestId = context?.requestId || createRequestId();
-    
+
     logger.debug(`Starting ${operation}`, { ...context, requestId });
-    
+
     try {
       const result = await fn(...args);
       const duration = Date.now() - startTime;
-      
+
       logger.debug(`Completed ${operation}`, {
         ...context,
         requestId,
         duration,
         success: true,
       });
-      
+
       return result;
     } catch (error) {
       const duration = Date.now() - startTime;
-      
+
       logger.error(`Failed ${operation}`, error as Error, {
         ...context,
         requestId,
         duration,
         success: false,
       });
-      
+
       throw error;
     }
   }) as T;
 }
-

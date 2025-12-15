@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { DateTime } from 'luxon';
-import { DefaultTargetResolver } from '../../src/simulation/target-resolver';
-import type { SimulationScenarioConfig } from '../../src/simulation/config';
+import { DefaultTargetResolver } from '../src/target-resolver';
+import type { SimulationScenarioConfig } from '../src/config';
 
 // Mock fs
 vi.mock('fs', async () => {
@@ -69,7 +69,10 @@ describe('target-resolver', () => {
         const targets = await resolver.resolve(scenario);
 
         expect(targets).toHaveLength(1);
-        expect(targets[0].endTime.toSeconds() - targets[0].startTime.toSeconds()).toBeCloseTo(24 * 3600, 0);
+        expect(targets[0].endTime.toSeconds() - targets[0].startTime.toSeconds()).toBeCloseTo(
+          24 * 3600,
+          0
+        );
       });
 
       it('should throw error for invalid start time', async () => {
@@ -126,7 +129,9 @@ describe('target-resolver', () => {
           } as any,
         };
 
-        await expect(resolver.resolve(scenario)).rejects.toThrow('Caller-based data selection is not yet implemented');
+        await expect(resolver.resolve(scenario)).rejects.toThrow(
+          'Caller-based data selection is not yet implemented'
+        );
       });
 
       it('should throw error for unsupported dataset kind', async () => {
@@ -142,9 +147,10 @@ describe('target-resolver', () => {
           } as any,
         };
 
-        await expect(resolver.resolve(scenario)).rejects.toThrow('Dataset-based data selection is not yet implemented');
+        await expect(resolver.resolve(scenario)).rejects.toThrow(
+          'Dataset-based data selection is not yet implemented'
+        );
       });
     });
   });
 });
-

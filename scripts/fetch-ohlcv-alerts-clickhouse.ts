@@ -58,7 +58,7 @@ async function fetchBirdeyeCandles(
   chain: string,
   startTime: Date,
   endTime: Date,
-  interval: '5m' | '1m' = '5m',
+  interval: '5m' | '1m' = '5m'
 ): Promise<Candle[]> {
   const params = new URLSearchParams({
     address: tokenAddress,
@@ -72,7 +72,7 @@ async function fetchBirdeyeCandles(
     headers: {
       'X-API-KEY': BIRDEYE_API_KEY!,
       'x-chain': mapChain(chain),
-      'Accept': 'application/json',
+      Accept: 'application/json',
     },
   });
 
@@ -101,13 +101,13 @@ async function insertCandles(
   tokenAddress: string,
   chain: string,
   interval: string,
-  candles: Candle[],
+  candles: Candle[]
 ): Promise<void> {
   if (!candles.length) return;
 
   await clickhouse.insert({
     table: 'ohlcv_candles',
-    values: candles.map(c => ({
+    values: candles.map((c) => ({
       token_address: tokenAddress, // full, case-preserved
       chain,
       timestamp: c.timestamp.toISOString().replace('T', ' ').substring(0, 19),
@@ -140,7 +140,7 @@ async function getAlertTokens(): Promise<AlertToken[]> {
     LIMIT 5000
   `);
 
-  return res.rows.map(r => ({
+  return res.rows.map((r) => ({
     address: r.address as string,
     chain: r.chain as string,
     symbol: r.symbol as string | null,
@@ -162,7 +162,7 @@ async function main() {
   console.log(`📊 Tokens to fetch: ${tokens.length}\n`);
 
   let fetched = 0;
-  let skipped = 0;
+  const skipped = 0;
   let failed = 0;
   let totalCandles = 0;
 
@@ -190,13 +190,13 @@ async function main() {
       fetched++;
       totalCandles += candles.length;
       // gentle rate limit
-      await new Promise(r => setTimeout(r, 200));
+      await new Promise((r) => setTimeout(r, 200));
     } catch (err: any) {
       console.log(`❌ ${err?.message || err}`);
       failed++;
       if (err?.message?.includes('429')) {
         console.log('⏳ Rate limited, waiting 60s...');
-        await new Promise(r => setTimeout(r, 60000));
+        await new Promise((r) => setTimeout(r, 60000));
       }
     }
   }
@@ -211,9 +211,7 @@ async function main() {
   await clickhouse.close();
 }
 
-main().catch(err => {
+main().catch((err) => {
   console.error('Fatal error', err);
   process.exit(1);
 });
-
-

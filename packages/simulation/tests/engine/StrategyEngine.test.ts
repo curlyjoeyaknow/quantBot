@@ -9,7 +9,7 @@ import type { Call } from '@quantbot/core';
 import { DateTime } from 'luxon';
 
 describe('StrategyEngine', () => {
-  it('should simulate strategy on calls with candles', () => {
+  it('should simulate strategy on calls with candles', async () => {
     // Create mock candles
     const candles: Candle[] = [
       { timestamp: 1000, open: 1.0, high: 1.1, low: 0.9, close: 1.05, volume: 1000 },
@@ -40,7 +40,7 @@ describe('StrategyEngine', () => {
       calls,
     };
 
-    const trace = simulateOnCalls(request);
+    const trace = await simulateOnCalls(request);
 
     expect(trace).toBeDefined();
     expect(trace.trades).toBeDefined();
@@ -48,7 +48,7 @@ describe('StrategyEngine', () => {
     expect(trace.aggregates).toBeDefined();
   });
 
-  it('should handle empty calls', () => {
+  it('should handle empty calls', async () => {
     const request: SimulationRequest = {
       strategy: {
         name: 'TestStrategy',
@@ -58,14 +58,14 @@ describe('StrategyEngine', () => {
       calls: [],
     };
 
-    const trace = simulateOnCalls(request);
+    const trace = await simulateOnCalls(request);
 
     expect(trace.trades).toEqual([]);
     expect(trace.events).toEqual([]);
     expect(trace.aggregates.size).toBe(0);
   });
 
-  it('should handle calls without candles', () => {
+  it('should handle calls without candles', async () => {
     const calls: Call[] = [
       {
         id: 1,
@@ -86,10 +86,9 @@ describe('StrategyEngine', () => {
       calls,
     };
 
-    const trace = simulateOnCalls(request);
+    const trace = await simulateOnCalls(request);
 
     // Should skip tokens without candles
     expect(trace.trades.length).toBe(0);
   });
 });
-

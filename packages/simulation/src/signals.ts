@@ -37,7 +37,7 @@ export interface GroupEvaluationResult {
 
 export function evaluateSignalGroup(
   group: SignalGroup,
-  context: SignalEvaluationContext,
+  context: SignalEvaluationContext
 ): GroupEvaluationResult {
   const children: Array<ConditionEvaluationResult | GroupEvaluationResult> = [];
 
@@ -62,23 +62,26 @@ export function evaluateSignalGroup(
 
 export function evaluateSignalCondition(
   condition: SignalCondition,
-  context: SignalEvaluationContext,
+  context: SignalEvaluationContext
 ): ConditionEvaluationResult {
   const { indicator, secondaryIndicator, operator } = condition;
   const field = condition.field ?? 'value';
 
   const primaryValue = getIndicatorField(indicator, field, context.indicators);
   const secondaryValue =
-    secondaryIndicator != null
+    secondaryIndicator !== null && secondaryIndicator !== undefined
       ? getIndicatorField(secondaryIndicator, field, context.indicators)
       : condition.value;
 
   const prevPrimaryValue =
-    context.prevIndicators != null
+    context.prevIndicators !== null && context.prevIndicators !== undefined
       ? getIndicatorField(indicator, field, context.prevIndicators)
       : undefined;
   const prevSecondaryValue =
-    context.prevIndicators != null && secondaryIndicator != null
+    context.prevIndicators !== null &&
+    context.prevIndicators !== undefined &&
+    secondaryIndicator !== null &&
+    secondaryIndicator !== undefined
       ? getIndicatorField(secondaryIndicator, field, context.prevIndicators)
       : undefined;
 
@@ -87,7 +90,7 @@ export function evaluateSignalCondition(
     primaryValue,
     secondaryValue,
     prevPrimaryValue,
-    prevSecondaryValue,
+    prevSecondaryValue
   );
 
   return {
@@ -98,7 +101,7 @@ export function evaluateSignalCondition(
 
 function aggregateChildren(
   logic: SignalGroup['logic'],
-  children: Array<ConditionEvaluationResult | GroupEvaluationResult>,
+  children: Array<ConditionEvaluationResult | GroupEvaluationResult>
 ): boolean {
   if (children.length === 0) {
     return false;
@@ -114,7 +117,7 @@ function aggregateChildren(
 function getIndicatorField(
   indicator: IndicatorName,
   field: string,
-  indicators: IndicatorData,
+  indicators: IndicatorData
 ): number | undefined {
   switch (indicator) {
     case 'price_change':
@@ -169,18 +172,14 @@ function compareValues(
   primary: number | undefined,
   secondary: number | undefined,
   prevPrimary?: number,
-  prevSecondary?: number,
+  prevSecondary?: number
 ): boolean {
   if (primary === undefined) {
     return false;
   }
 
   if (operator === 'crosses_above' || operator === 'crosses_below') {
-    if (
-      prevPrimary === undefined ||
-      prevSecondary === undefined ||
-      secondary === undefined
-    ) {
+    if (prevPrimary === undefined || prevSecondary === undefined || secondary === undefined) {
       return false;
     }
 
@@ -216,7 +215,7 @@ function compareValues(
 export function evaluateLadderLegs(
   ladder: LadderConfig,
   context: SignalEvaluationContext,
-  alreadyFilledLegIds: Set<string>,
+  alreadyFilledLegIds: Set<string>
 ): LadderLeg[] {
   const executable: LadderLeg[] = [];
 
@@ -245,5 +244,3 @@ export function evaluateLadderLegs(
 
   return executable;
 }
-
-

@@ -51,14 +51,14 @@ export class DefaultTargetResolver implements ScenarioTargetResolver {
     };
   }
 
-  private async fromFile(selector: Extract<DataSelectionConfig, { kind: 'file' }>): Promise<SimulationTarget[]> {
+  private async fromFile(
+    selector: Extract<DataSelectionConfig, { kind: 'file' }>
+  ): Promise<SimulationTarget[]> {
     const absolutePath = path.isAbsolute(selector.path)
       ? selector.path
       : path.join(process.cwd(), selector.path);
     const content = await fs.readFile(absolutePath, 'utf-8');
-    const records = selector.format === 'json'
-      ? this.parseJson(content)
-      : this.parseCsv(content);
+    const records = selector.format === 'json' ? this.parseJson(content) : this.parseCsv(content);
 
     const targets: SimulationTarget[] = [];
 
@@ -75,8 +75,8 @@ export class DefaultTargetResolver implements ScenarioTargetResolver {
         'phanes',
         'bot',
       ];
-      const isBotMessage = botPatterns.some(pattern => 
-        sender.includes(pattern) || message.includes(pattern)
+      const isBotMessage = botPatterns.some(
+        (pattern) => sender.includes(pattern) || message.includes(pattern)
       );
       if (isBotMessage) {
         continue; // Skip bot messages
@@ -91,12 +91,16 @@ export class DefaultTargetResolver implements ScenarioTargetResolver {
         continue;
       }
 
-      let chain = selector.chainField 
+      let chain = selector.chainField
         ? (record[selector.chainField] || 'solana').trim().toLowerCase()
         : 'solana';
 
       // Smart chain detection: if message mentions a chain, use that instead of CSV value
-      if (message.includes('base detected') || message.includes('on base') || message.includes('network=base')) {
+      if (
+        message.includes('base detected') ||
+        message.includes('on base') ||
+        message.includes('network=base')
+      ) {
         chain = 'base';
       } else if (message.includes('ethereum') || message.includes('eth network')) {
         chain = 'ethereum';
@@ -135,7 +139,7 @@ export class DefaultTargetResolver implements ScenarioTargetResolver {
       let tokenSymbol = (record.tokenSymbol || record.symbol || '').trim();
       let tokenName = (record.tokenName || record.name || '').trim();
       const caller = (record.caller || record.creator || record.sender || '').trim();
-      
+
       // If metadata is missing, try to extract from message text (Rick/Phanes bot format)
       const messageText = (record.message || record.text || '') as string;
       if ((!tokenSymbol || !tokenName) && messageText) {
@@ -146,12 +150,14 @@ export class DefaultTargetResolver implements ScenarioTargetResolver {
             tokenSymbol = symbolMatch[1];
           }
         }
-        
+
         // Extract name - look for pattern like "Token Name ($SYMBOL)" or "Token Name ["
         // Phanes format: "🟣 Token Name ($SYMBOL)" or "💊 Token Name ($SYMBOL)"
         // Rick format: "🐶 Token Name [100K/10%] $SYMBOL"
         if (!tokenName) {
-          const nameMatch = messageText.match(/(?:🟣|🐶|🟢|🔷|💊)\s*([^($\[]+?)(?:\s*\(|\s*\[|\s*\$)/);
+          const nameMatch = messageText.match(
+            /(?:🟣|🐶|🟢|🔷|💊)\s*([^($\[]+?)(?:\s*\(|\s*\[|\s*\$)/
+          );
           if (nameMatch) {
             tokenName = nameMatch[1].trim();
           } else {
@@ -226,4 +232,3 @@ export class DefaultTargetResolver implements ScenarioTargetResolver {
     return fromRFC.isValid ? fromRFC : null;
   }
 }
-

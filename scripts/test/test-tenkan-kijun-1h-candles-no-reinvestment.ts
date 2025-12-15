@@ -11,10 +11,7 @@ import { parse } from 'csv-parse';
 import * as fs from 'fs';
 import * as path from 'path';
 import { stringify } from 'csv-stringify';
-import {
-  calculateIndicators,
-  IndicatorData,
-} from '../src/simulation/indicators';
+import { calculateIndicators, IndicatorData } from '../src/simulation/indicators';
 
 const BROOK_CALLS_CSV = path.join(__dirname, '../data/exports/csv/all_brook_channels_calls.csv');
 const OUTPUT_DIR = path.join(__dirname, '../data/exports/tenkan-kijun-1h-no-reinvestment');
@@ -97,7 +94,14 @@ function consolidateTo1hCandles(candles: any[]): any[] {
 function simulateTenkanKijun1hStrategy(
   candles: any[],
   alertTime: DateTime
-): { pnl: number; maxReached: number; holdDuration: number; entryTime: number; exitTime: number; entryPrice: number } | null {
+): {
+  pnl: number;
+  maxReached: number;
+  holdDuration: number;
+  entryTime: number;
+  exitTime: number;
+  entryPrice: number;
+} | null {
   // Consolidate 5m candles to 1h candles
   const oneHourCandles = consolidateTo1hCandles(candles);
 
@@ -108,11 +112,11 @@ function simulateTenkanKijun1hStrategy(
   // Calculate indicators
   const indicatorData: IndicatorData[] = [];
   let previousEMAs: { ema9?: number | null; ema20?: number | null; ema50?: number | null } = {};
-  
+
   for (let i = 0; i < oneHourCandles.length; i++) {
     const indicators = calculateIndicators(oneHourCandles, i, previousEMAs);
     indicatorData.push(indicators);
-    
+
     previousEMAs = {
       ema9: indicators.movingAverages.ema9,
       ema20: indicators.movingAverages.ema20,
@@ -124,15 +128,16 @@ function simulateTenkanKijun1hStrategy(
 
   // Find Tenkan/Kijun cross entry - starting from alert time
   let entryIndex = 0;
-  
+
   // Start looking from candle 52 (need enough data for Ichimoku)
   for (let i = 52; i < oneHourCandles.length; i++) {
     const indicators = indicatorData[i];
     const previousIndicators = i > 0 ? indicatorData[i - 1] : null;
-    
+
     if (previousIndicators?.ichimoku && indicators.ichimoku) {
-      const crossedUp = previousIndicators.ichimoku.tenkan <= previousIndicators.ichimoku.kijun &&
-                        indicators.ichimoku.tenkan > indicators.ichimoku.kijun;
+      const crossedUp =
+        previousIndicators.ichimoku.tenkan <= previousIndicators.ichimoku.kijun &&
+        indicators.ichimoku.tenkan > indicators.ichimoku.kijun;
       if (crossedUp) {
         entryIndex = i;
         break;
@@ -166,20 +171,18 @@ function simulateTenkanKijun1hStrategy(
     const candle = oneHourCandles[i];
     const indicators = indicatorData[i];
     const previousIndicators = i > entryIndex ? indicatorData[i - 1] : null;
-    
+
     const candleTime = candle.timestamp
       ? typeof candle.timestamp === 'number'
         ? candle.timestamp * 1000
         : new Date(candle.timestamp).getTime()
       : entryTime;
 
-    const effectiveHigh = candle.close > 0 && candle.high / candle.close > 10 
-      ? candle.close * 1.05
-      : candle.high;
-    
-    const effectiveLow = candle.close > 0 && candle.low / candle.close < 0.1
-      ? candle.close * 0.95
-      : candle.low;
+    const effectiveHigh =
+      candle.close > 0 && candle.high / candle.close > 10 ? candle.close * 1.05 : candle.high;
+
+    const effectiveLow =
+      candle.close > 0 && candle.low / candle.close < 0.1 ? candle.close * 0.95 : candle.low;
 
     const currentMultiplier = effectiveHigh / actualEntryPrice;
     if (currentMultiplier > maxReached) {
@@ -192,8 +195,9 @@ function simulateTenkanKijun1hStrategy(
 
     // Check Tenkan/Kijun cross down exit
     if (previousIndicators?.ichimoku && indicators.ichimoku) {
-      const crossedDown = previousIndicators.ichimoku.tenkan >= previousIndicators.ichimoku.kijun &&
-                           indicators.ichimoku.tenkan < indicators.ichimoku.kijun;
+      const crossedDown =
+        previousIndicators.ichimoku.tenkan >= previousIndicators.ichimoku.kijun &&
+        indicators.ichimoku.tenkan < indicators.ichimoku.kijun;
       if (crossedDown && remaining > 0) {
         const exitPrice = Math.max(effectiveLow, minExitPrice);
         pnl += remaining * (exitPrice / actualEntryPrice);
@@ -217,7 +221,7 @@ function simulateTenkanKijun1hStrategy(
     if (indicators.ichimoku) {
       currentStopPrice = Math.max(indicators.ichimoku.kijun, minExitPrice);
     }
-    
+
     if (remaining > 0 && effectiveLow <= currentStopPrice) {
       pnl += remaining * (currentStopPrice / actualEntryPrice);
       remaining = 0;
@@ -244,9 +248,7 @@ function simulateTenkanKijun1hStrategy(
     pnl = 0.8;
   }
 
-  const holdDurationMinutes = exited
-    ? Math.max(0, Math.floor((exitTime - entryTime) / 60000))
-    : 0;
+  const holdDurationMinutes = exited ? Math.max(0, Math.floor((exitTime - entryTime) / 60000)) : 0;
 
   return {
     pnl,
@@ -317,7 +319,7 @@ async function test1hCandlesNoReinvestment() {
       }
 
       const result = simulateTenkanKijun1hStrategy(candles, alertTime);
-      
+
       if (!result) {
         noCrossFound++;
         continue;
@@ -353,16 +355,16 @@ async function test1hCandlesNoReinvestment() {
   }
 
   // Calculate metrics WITHOUT reinvestment (simple sum)
-  const winningTrades = trades.filter(t => t.pnl > 1.0).length;
-  const losingTrades = trades.filter(t => t.pnl <= 1.0).length;
+  const winningTrades = trades.filter((t) => t.pnl > 1.0).length;
+  const losingTrades = trades.filter((t) => t.pnl <= 1.0).length;
   const winRate = trades.length > 0 ? winningTrades / trades.length : 0;
-  
+
   const totalPnl = trades.reduce((sum, t) => sum + (t.pnl - 1.0), 0);
   const avgPnlPerTrade = trades.length > 0 ? (totalPnl / trades.length) * 100 : 0;
 
   // Sort trades by alert time for proper sequential processing
-  const sortedTrades = trades.sort((a, b) => 
-    DateTime.fromISO(a.alertTime).toMillis() - DateTime.fromISO(b.alertTime).toMillis()
+  const sortedTrades = trades.sort(
+    (a, b) => DateTime.fromISO(a.alertTime).toMillis() - DateTime.fromISO(b.alertTime).toMillis()
   );
 
   // Calculate reinvestment using ACTUAL trade sequence
@@ -384,14 +386,14 @@ async function test1hCandlesNoReinvestment() {
 
   // Group trades by week for weekly rebalancing
   const tradesByWeek = new Map<string, typeof sortedTrades>();
-  
+
   for (const trade of sortedTrades) {
     const tradeDate = DateTime.fromISO(trade.alertTime);
     if (!tradeDate.isValid) continue;
-    
+
     const weekStart = tradeDate.startOf('week');
     const weekKey = weekStart.toISODate() || '';
-    
+
     if (!tradesByWeek.has(weekKey)) {
       tradesByWeek.set(weekKey, []);
     }
@@ -399,20 +401,20 @@ async function test1hCandlesNoReinvestment() {
   }
 
   // Process trades week by week
-  const sortedWeeks = Array.from(tradesByWeek.entries()).sort((a, b) => 
-    DateTime.fromISO(a[0]).toMillis() - DateTime.fromISO(b[0]).toMillis()
+  const sortedWeeks = Array.from(tradesByWeek.entries()).sort(
+    (a, b) => DateTime.fromISO(a[0]).toMillis() - DateTime.fromISO(b[0]).toMillis()
   );
 
   let tradeNum = 0;
   for (const [weekKey, weekTrades] of sortedWeeks) {
     const weeklyPositionSize = portfolio * positionSizePercent;
-    
+
     for (const trade of weekTrades) {
       tradeNum++;
       const portfolioBefore = portfolio;
       const tradeReturn = (trade.pnl - 1.0) * weeklyPositionSize;
       portfolio = portfolio + tradeReturn;
-      
+
       reinvestmentHistory.push({
         tradeNum,
         alertTime: trade.alertTime,
@@ -441,7 +443,9 @@ async function test1hCandlesNoReinvestment() {
   console.log(`Win Rate: ${(winRate * 100).toFixed(2)}%`);
   console.log(`Winning Trades: ${winningTrades}`);
   console.log(`Losing Trades: ${losingTrades}`);
-  console.log(`Average PnL per Trade: ${avgPnlPerTrade >= 0 ? '+' : ''}${avgPnlPerTrade.toFixed(2)}%`);
+  console.log(
+    `Average PnL per Trade: ${avgPnlPerTrade >= 0 ? '+' : ''}${avgPnlPerTrade.toFixed(2)}%`
+  );
   console.log(`\n📊 REINVESTMENT CALCULATION (Using ACTUAL Trade Sequence):`);
   console.log(`  Initial Portfolio: $${initialPortfolio.toFixed(2)}`);
   console.log(`  Position Size: ${(positionSizePercent * 100).toFixed(2)}% of portfolio (weekly)`);
@@ -453,7 +457,9 @@ async function test1hCandlesNoReinvestment() {
   console.log(`  Total Invested: $${(sortedTrades.length * 100).toFixed(2)}`);
   console.log(`  Total Profit: $${simplePnL >= 0 ? '+' : ''}${simplePnL.toFixed(2)}`);
   console.log(`  Total Return: $${simpleTotalReturn.toFixed(2)}`);
-  console.log(`  Return %: ${((simpleTotalReturn / (sortedTrades.length * 100)) - 1) * 100 >= 0 ? '+' : ''}${(((simpleTotalReturn / (sortedTrades.length * 100)) - 1) * 100).toFixed(2)}%`);
+  console.log(
+    `  Return %: ${(simpleTotalReturn / (sortedTrades.length * 100) - 1) * 100 >= 0 ? '+' : ''}${((simpleTotalReturn / (sortedTrades.length * 100) - 1) * 100).toFixed(2)}%`
+  );
 
   // Save COMPLETE trade history
   const tradeHistoryPath = path.join(OUTPUT_DIR, 'complete_trade_history.csv');
@@ -482,7 +488,7 @@ async function test1hCandlesNoReinvestment() {
 
   // Save reinvestment history
   const reinvestmentPath = path.join(OUTPUT_DIR, 'reinvestment_history.csv');
-  const reinvestmentRows = reinvestmentHistory.map(r => ({
+  const reinvestmentRows = reinvestmentHistory.map((r) => ({
     TradeNumber: r.tradeNum,
     AlertTime: r.alertTime,
     PnL: r.pnl.toFixed(6),
@@ -506,8 +512,9 @@ async function test1hCandlesNoReinvestment() {
   console.log(`   Contains ${sortedTrades.length} trades with full details`);
   console.log(`✅ REINVESTMENT HISTORY saved to: ${reinvestmentPath}`);
   console.log(`   Contains portfolio before/after each trade with weekly rebalancing`);
-  console.log(`\n💡 You can now apply your own reinvestment model using the complete trade history.\n`);
+  console.log(
+    `\n💡 You can now apply your own reinvestment model using the complete trade history.\n`
+  );
 }
 
 test1hCandlesNoReinvestment().catch(console.error);
-

@@ -4,28 +4,28 @@
  * Tests for Next.js logger adapter
  */
 
-import { NextJSLogger, logger } from '../../src/utils/logger-nextjs';
-import { logger as baseLogger } from '../../src/utils/logger';
+import { NextJSLogger, logger } from '../src/logger-nextjs';
+import { logger as baseLogger } from '../src/logger';
 
 // Mock base logger
-jest.mock('../../src/utils/logger', () => ({
+vi.mock('../src/logger', () => ({
   logger: {
-    error: jest.fn(),
-    warn: jest.fn(),
-    info: jest.fn(),
-    debug: jest.fn(),
-    child: jest.fn().mockReturnValue({
-      error: jest.fn(),
-      warn: jest.fn(),
-      info: jest.fn(),
-      debug: jest.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    info: vi.fn(),
+    debug: vi.fn(),
+    child: vi.fn().mockReturnValue({
+      error: vi.fn(),
+      warn: vi.fn(),
+      info: vi.fn(),
+      debug: vi.fn(),
     }),
   },
 }));
 
 describe('NextJSLogger', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   describe('withRequest', () => {
@@ -82,4 +82,3 @@ describe('NextJSLogger', () => {
     });
   });
 });
-

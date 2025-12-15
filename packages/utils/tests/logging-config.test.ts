@@ -4,8 +4,8 @@
  * Tests for logging configuration utilities
  */
 
-import { getLogLevel, isLogLevelEnabled } from '../../src/utils/logging-config';
-import { LogLevel } from '../../src/utils/logger';
+import { getLogLevel, isLogLevelEnabled } from '../src/logging-config';
+import { LogLevel } from '../src/logger';
 
 describe('Logging Configuration', () => {
   const originalEnv = process.env;
@@ -79,7 +79,7 @@ describe('Logging Configuration', () => {
       expect(isLogLevelEnabled(LogLevel.ERROR, LogLevel.INFO)).toBe(true);
       expect(isLogLevelEnabled(LogLevel.ERROR, LogLevel.DEBUG)).toBe(true);
       expect(isLogLevelEnabled(LogLevel.ERROR, LogLevel.TRACE)).toBe(true);
-      
+
       expect(isLogLevelEnabled(LogLevel.WARN, LogLevel.INFO)).toBe(true);
       expect(isLogLevelEnabled(LogLevel.WARN, LogLevel.DEBUG)).toBe(true);
       expect(isLogLevelEnabled(LogLevel.WARN, LogLevel.TRACE)).toBe(true);
@@ -90,11 +90,10 @@ describe('Logging Configuration', () => {
       expect(isLogLevelEnabled(LogLevel.INFO, LogLevel.ERROR)).toBe(false);
       expect(isLogLevelEnabled(LogLevel.DEBUG, LogLevel.ERROR)).toBe(false);
       expect(isLogLevelEnabled(LogLevel.TRACE, LogLevel.ERROR)).toBe(false);
-      
+
       expect(isLogLevelEnabled(LogLevel.INFO, LogLevel.WARN)).toBe(false);
       expect(isLogLevelEnabled(LogLevel.DEBUG, LogLevel.WARN)).toBe(false);
       expect(isLogLevelEnabled(LogLevel.TRACE, LogLevel.WARN)).toBe(false);
     });
   });
 });
-

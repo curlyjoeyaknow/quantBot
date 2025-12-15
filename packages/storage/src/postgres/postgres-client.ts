@@ -72,7 +72,7 @@ export async function getPostgresClient(): Promise<PoolClient> {
 
 export async function queryPostgres<T extends QueryResultRow = QueryResultRow>(
   text: string,
-  params?: unknown[],
+  params?: unknown[]
 ): Promise<QueryResult<T>> {
   const client = await getPostgresClient();
   try {
@@ -83,7 +83,7 @@ export async function queryPostgres<T extends QueryResultRow = QueryResultRow>(
 }
 
 export async function withPostgresTransaction<T>(
-  handler: (client: PoolClient) => Promise<T>,
+  handler: (client: PoolClient) => Promise<T>
 ): Promise<T> {
   const client = await getPostgresClient();
 
@@ -111,4 +111,3 @@ export async function closePostgresPool(): Promise<void> {
   pool = null;
   logger.info('Postgres pool closed');
 }
-

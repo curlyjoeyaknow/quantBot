@@ -1,7 +1,7 @@
 #!/usr/bin/env ts-node
 /**
  * Fetch 5m Candles for All Tokens from November Onwards
- * 
+ *
  * Fetches 5m OHLCV candles for all tokens that have alerts from November 2025 onwards.
  * Reports any tokens that return no candle data.
  */
@@ -31,7 +31,9 @@ interface TokenResult {
   error?: string;
 }
 
-async function getAllTokensFromNovember(): Promise<Array<{ tokenAddress: string; chain: string; firstAlertTime: string }>> {
+async function getAllTokensFromNovember(): Promise<
+  Array<{ tokenAddress: string; chain: string; firstAlertTime: string }>
+> {
   return new Promise((resolve, reject) => {
     // Use caller_alerts.db (separate database for caller alerts)
     const dbPath = process.env.CALLER_DB_PATH || path.join(process.cwd(), 'caller_alerts.db');
@@ -70,20 +72,21 @@ async function fetchCandlesForToken(
   chain: string,
   firstAlertTime: string,
   engine: ReturnType<typeof getOHLCVEngine>
-): Promise<{ candleCount: number; success: boolean; fromCache: boolean; ingestedToClickHouse: boolean; source: 'clickhouse' | 'csv' | 'api'; error?: string }> {
+): Promise<{
+  candleCount: number;
+  success: boolean;
+  fromCache: boolean;
+  ingestedToClickHouse: boolean;
+  source: 'clickhouse' | 'csv' | 'api';
+  error?: string;
+}> {
   try {
     // Use the unified OHLCV engine - it handles caching, fetching, and ingestion
-    const result = await engine.fetch(
-      tokenAddress,
-      NOV_1_2025,
-      END_TIME,
-      chain,
-      {
-        ensureIngestion: true,
-        interval: '5m'
-        // Not passing alertTime - just fetching 5m candles for the full period
-      }
-    );
+    const result = await engine.fetch(tokenAddress, NOV_1_2025, END_TIME, chain, {
+      ensureIngestion: true,
+      interval: '5m',
+      // Not passing alertTime - just fetching 5m candles for the full period
+    });
 
     if (result.candles.length === 0) {
       return {
@@ -92,7 +95,7 @@ async function fetchCandlesForToken(
         fromCache: false,
         ingestedToClickHouse: false,
         source: 'api',
-        error: 'No candles returned'
+        error: 'No candles returned',
       };
     }
 
@@ -101,7 +104,7 @@ async function fetchCandlesForToken(
       success: true,
       fromCache: result.fromCache,
       ingestedToClickHouse: result.ingestedToClickHouse,
-      source: result.source
+      source: result.source,
     };
   } catch (error: any) {
     return {
@@ -110,20 +113,22 @@ async function fetchCandlesForToken(
       fromCache: false,
       ingestedToClickHouse: false,
       source: 'api',
-      error: error.message || String(error)
+      error: error.message || String(error),
     };
   }
 }
 
 async function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function main() {
   console.log(`\n${'='.repeat(80)}`);
   console.log('🚀 FETCHING 5M CANDLES FOR ALL TOKENS FROM NOVEMBER ONWARDS');
   console.log(`${'='.repeat(80)}\n`);
-  console.log(`📅 Date range: ${NOV_1_2025.toFormat('yyyy-MM-dd')} to ${END_TIME.toFormat('yyyy-MM-dd')}`);
+  console.log(
+    `📅 Date range: ${NOV_1_2025.toFormat('yyyy-MM-dd')} to ${END_TIME.toFormat('yyyy-MM-dd')}`
+  );
   console.log(`⏱️  Interval: 5m candles`);
   console.log(`💾 Cache: Using unified OHLCV engine (CSV cache and ClickHouse)\n`);
 
@@ -173,19 +178,24 @@ async function main() {
           fromCache: result.fromCache,
           ingestedToClickHouse: result.ingestedToClickHouse,
           source: result.source,
-          error: result.error
+          error: result.error,
         };
 
         results.push(tokenResult);
 
         if (!result.success || result.candleCount === 0) {
           noDataTokens.push(tokenResult);
-          console.log(`  ❌ ${token.tokenAddress.substring(0, 30)}... - ${result.error || 'No candles'}`);
+          console.log(
+            `  ❌ ${token.tokenAddress.substring(0, 30)}... - ${result.error || 'No candles'}`
+          );
         } else {
-          const sourceEmoji = result.source === 'clickhouse' ? '💾' : result.source === 'csv' ? '📦' : '🌐';
+          const sourceEmoji =
+            result.source === 'clickhouse' ? '💾' : result.source === 'csv' ? '📦' : '🌐';
           const cacheStatus = result.fromCache ? '(cached)' : '(fetched)';
           const clickhouseStatus = result.ingestedToClickHouse ? '✅' : '⚠️';
-          console.log(`  ✅ ${token.tokenAddress.substring(0, 30)}... - ${result.candleCount} candles ${sourceEmoji} ${cacheStatus} ${clickhouseStatus}`);
+          console.log(
+            `  ✅ ${token.tokenAddress.substring(0, 30)}... - ${result.candleCount} candles ${sourceEmoji} ${cacheStatus} ${clickhouseStatus}`
+          );
         }
 
         processed++;
@@ -200,11 +210,11 @@ async function main() {
     }
 
     // Summary
-    const successful = results.filter(r => r.success && r.candleCount > 0);
-    const fromCache = successful.filter(r => r.fromCache).length;
-    const fetchedFresh = successful.filter(r => !r.fromCache).length;
-    const ingestedToClickHouse = successful.filter(r => r.ingestedToClickHouse).length;
-    
+    const successful = results.filter((r) => r.success && r.candleCount > 0);
+    const fromCache = successful.filter((r) => r.fromCache).length;
+    const fetchedFresh = successful.filter((r) => !r.fromCache).length;
+    const ingestedToClickHouse = successful.filter((r) => r.ingestedToClickHouse).length;
+
     console.log(`\n${'='.repeat(80)}`);
     console.log('📊 SUMMARY');
     console.log(`${'='.repeat(80)}\n`);
@@ -219,7 +229,7 @@ async function main() {
       console.log(`\n${'='.repeat(80)}`);
       console.log('⚠️  TOKENS WITH NO CANDLE DATA');
       console.log(`${'='.repeat(80)}\n`);
-      
+
       for (const token of noDataTokens) {
         console.log(`Token: ${token.tokenAddress}`);
         console.log(`  Chain: ${token.chain}`);
@@ -229,7 +239,12 @@ async function main() {
       }
 
       // Save to file
-      const outputFile = path.join(process.cwd(), 'data', 'exports', 'tokens-no-candles-nov-onwards.json');
+      const outputFile = path.join(
+        process.cwd(),
+        'data',
+        'exports',
+        'tokens-no-candles-nov-onwards.json'
+      );
       const fs = await import('fs');
       const outputDir = path.dirname(outputFile);
       if (!fs.existsSync(outputDir)) {
@@ -250,4 +265,3 @@ async function main() {
 if (require.main === module) {
   main().catch(console.error);
 }
-

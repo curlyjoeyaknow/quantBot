@@ -5,7 +5,14 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    include: ['tests/**/*.test.ts', 'src/**/*.test.ts'],
+    include: [
+      'tests/unit/**/*.test.ts',
+      'tests/properties/**/*.property.ts',
+      'tests/integration/**/*.integration.ts',
+      'tests/fuzzing/**/*.fuzz.ts',
+      'src/**/*.test.ts',
+    ],
+    setupFiles: ['./tests/setup.ts'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],

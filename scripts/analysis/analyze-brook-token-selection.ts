@@ -32,27 +32,27 @@ interface TokenFeatures {
   price: number;
   volume: number;
   marketCap: number;
-  
+
   // Price action before call
   priceChange1h: number; // % change in 1 hour before call
   priceChange24h: number; // % change in 24 hours before call
   priceChange15m: number; // % change in 15 minutes before call
-  
+
   // Volume trends
   volumeChange1h: number; // % change in volume 1h vs previous 1h
   avgVolume24h: number; // Average volume in 24h before call
-  
+
   // Timing features
   hourOfDay: number; // 0-23
   dayOfWeek: number; // 0-6 (Sunday = 0)
   isWeekend: boolean;
-  
+
   // Token age (if available)
   tokenAgeHours?: number; // Hours since token creation/launch
-  
+
   // Price volatility
   volatility24h: number; // Standard deviation of price changes in 24h
-  
+
   // Market cap category
   marketCapCategory: 'micro' | 'small' | 'mid' | 'large'; // <1M, 1-10M, 10-100M, >100M
 }
@@ -61,13 +61,13 @@ interface CallAnalysis extends TokenFeatures {
   tokenAddress: string;
   tokenSymbol?: string;
   callTimestamp: Date;
-  
+
   // Returns
   maxReturn7d: number; // Max price in 7 days / call price
   maxReturn30d: number; // Max price in 30 days / call price
   returnAt7d: number; // Price at 7 days / call price
   returnAt30d: number; // Price at 30 days / call price
-  
+
   // Performance category
   performanceCategory: 'moon' | 'good' | 'decent' | 'poor'; // >10x, 3-10x, 1.5-3x, <1.5x
 }
@@ -129,13 +129,13 @@ async function getBrookCalls(): Promise<BrookCall[]> {
 
       db.all(caCallsQuery, [], (err2, rows2: any[]) => {
         db.close();
-        
+
         if (err2) {
           logger.warn('Failed to query ca_calls', { error: err2.message });
         }
 
         const allCalls: BrookCall[] = [];
-        
+
         // Process caller_alerts
         if (rows && rows.length > 0) {
           for (const row of rows) {
@@ -155,12 +155,12 @@ async function getBrookCalls(): Promise<BrookCall[]> {
         // Process ca_calls (avoid duplicates)
         // Note: Token addresses are case-sensitive
         if (rows2 && rows2.length > 0) {
-          const existingAddresses = new Set(allCalls.map(c => c.tokenAddress));
-          
+          const existingAddresses = new Set(allCalls.map((c) => c.tokenAddress));
+
           for (const row of rows2) {
             const address = row.token_address;
             if (!address || existingAddresses.has(address)) continue;
-            
+
             // Parse timestamp
             let timestamp: Date;
             if (typeof row.alert_timestamp === 'string') {
@@ -198,9 +198,9 @@ async function getBrookCalls(): Promise<BrookCall[]> {
           }
         }
 
-        logger.info('Loaded Brook calls', { 
-          total: allCalls.length, 
-          unique: uniqueCalls.length 
+        logger.info('Loaded Brook calls', {
+          total: allCalls.length,
+          unique: uniqueCalls.length,
         });
 
         resolve(uniqueCalls);
@@ -224,7 +224,7 @@ async function fetchPriceAtTime(
     const response = await axios.get('https://public-api.birdeye.so/defi/history_price', {
       headers: {
         'X-API-KEY': BIRDEYE_API_KEY,
-        'accept': 'application/json',
+        accept: 'application/json',
         'x-chain': chain,
       },
       params: {
@@ -290,15 +290,15 @@ async function fetchCandlesForAnalysis(
       return [];
     }
 
-    return birdeyeData.items.map(item => ({
+    return birdeyeData.items.map((item) => ({
       timestamp: item.unixTime,
-      price: typeof item.close === 'string' ? parseFloat(item.close) : (item.close || 0),
-      volume: typeof item.volume === 'string' ? parseFloat(item.volume) : (item.volume || 0),
+      price: typeof item.close === 'string' ? parseFloat(item.close) : item.close || 0,
+      volume: typeof item.volume === 'string' ? parseFloat(item.volume) : item.volume || 0,
     }));
   } catch (error: any) {
-    logger.warn('Failed to fetch candles', { 
-      tokenAddress: tokenAddress.substring(0, 20), 
-      error: error.message 
+    logger.warn('Failed to fetch candles', {
+      tokenAddress: tokenAddress.substring(0, 20),
+      error: error.message,
     });
     return [];
   }
@@ -315,14 +315,14 @@ async function extractFeatures(
   const callTime = DateTime.fromJSDate(call.alertTimestamp);
 
   // Get price/volume at call time
-  const callCandle = candles.find(c => Math.abs(c.timestamp - callUnix) < 300); // Within 5 min
+  const callCandle = candles.find((c) => Math.abs(c.timestamp - callUnix) < 300); // Within 5 min
   if (!callCandle || callCandle.price === 0) {
     return null;
   }
 
   const price = call.priceAtAlert || callCandle.price;
   const volume = call.volumeAtAlert || callCandle.volume;
-  
+
   // Fetch market cap if not available
   let marketCap = call.marketCapAtAlert || 0;
   if (!marketCap) {
@@ -331,16 +331,16 @@ async function extractFeatures(
   }
 
   // Price changes before call
-  const candlesBefore = candles.filter(c => c.timestamp < callUnix);
-  
+  const candlesBefore = candles.filter((c) => c.timestamp < callUnix);
+
   const price15mAgo = candlesBefore
-    .filter(c => callUnix - c.timestamp <= 900) // 15 min
+    .filter((c) => callUnix - c.timestamp <= 900) // 15 min
     .sort((a, b) => b.timestamp - a.timestamp)[0]?.price;
   const price1hAgo = candlesBefore
-    .filter(c => callUnix - c.timestamp <= 3600) // 1 hour
+    .filter((c) => callUnix - c.timestamp <= 3600) // 1 hour
     .sort((a, b) => b.timestamp - a.timestamp)[0]?.price;
   const price24hAgo = candlesBefore
-    .filter(c => callUnix - c.timestamp <= 86400) // 24 hours
+    .filter((c) => callUnix - c.timestamp <= 86400) // 24 hours
     .sort((a, b) => b.timestamp - a.timestamp)[0]?.price;
 
   const priceChange15m = price15mAgo ? ((price - price15mAgo) / price15mAgo) * 100 : 0;
@@ -349,32 +349,35 @@ async function extractFeatures(
 
   // Volume analysis
   const volume1hAgo = candlesBefore
-    .filter(c => callUnix - c.timestamp <= 3600 && callUnix - c.timestamp > 1800)
+    .filter((c) => callUnix - c.timestamp <= 3600 && callUnix - c.timestamp > 1800)
     .reduce((sum, c) => sum + c.volume, 0);
   const volume1hBefore = candlesBefore
-    .filter(c => callUnix - c.timestamp <= 1800 && callUnix - c.timestamp > 0)
+    .filter((c) => callUnix - c.timestamp <= 1800 && callUnix - c.timestamp > 0)
     .reduce((sum, c) => sum + c.volume, 0);
-  
-  const volumeChange1h = volume1hAgo > 0 
-    ? ((volume1hBefore - volume1hAgo) / volume1hAgo) * 100 
-    : 0;
 
-  const avgVolume24h = candlesBefore
-    .filter(c => callUnix - c.timestamp <= 86400)
-    .reduce((sum, c) => sum + c.volume, 0) / Math.max(1, candlesBefore.filter(c => callUnix - c.timestamp <= 86400).length);
+  const volumeChange1h = volume1hAgo > 0 ? ((volume1hBefore - volume1hAgo) / volume1hAgo) * 100 : 0;
+
+  const avgVolume24h =
+    candlesBefore
+      .filter((c) => callUnix - c.timestamp <= 86400)
+      .reduce((sum, c) => sum + c.volume, 0) /
+    Math.max(1, candlesBefore.filter((c) => callUnix - c.timestamp <= 86400).length);
 
   // Volatility (standard deviation of price changes)
   const priceChanges24h = candlesBefore
-    .filter(c => callUnix - c.timestamp <= 86400)
+    .filter((c) => callUnix - c.timestamp <= 86400)
     .map((c, i, arr) => {
       if (i === 0) return 0;
       const prev = arr[i - 1];
       return prev.price > 0 ? ((c.price - prev.price) / prev.price) * 100 : 0;
     })
-    .filter(change => change !== 0);
+    .filter((change) => change !== 0);
 
-  const avgChange = priceChanges24h.reduce((sum, c) => sum + c, 0) / Math.max(1, priceChanges24h.length);
-  const variance = priceChanges24h.reduce((sum, c) => sum + Math.pow(c - avgChange, 2), 0) / Math.max(1, priceChanges24h.length);
+  const avgChange =
+    priceChanges24h.reduce((sum, c) => sum + c, 0) / Math.max(1, priceChanges24h.length);
+  const variance =
+    priceChanges24h.reduce((sum, c) => sum + Math.pow(c - avgChange, 2), 0) /
+    Math.max(1, priceChanges24h.length);
   const volatility24h = Math.sqrt(variance);
 
   // Timing features
@@ -419,7 +422,7 @@ function calculateReturns(
   callPrice: number,
   candles: Array<{ timestamp: number; price: number; volume: number }>,
   callUnix: number,
-  entryMcap?: number  // Optional: market cap at call time
+  entryMcap?: number // Optional: market cap at call time
 ): {
   maxReturn7d: number;
   maxReturn30d: number;
@@ -430,24 +433,25 @@ function calculateReturns(
   mcapAt7d?: number;
   mcapAt30d?: number;
 } {
-  const candlesAfter = candles.filter(c => c.timestamp > callUnix);
-  
-  const candles7d = candlesAfter.filter(c => c.timestamp <= callUnix + 604800); // 7 days
-  const candles30d = candlesAfter.filter(c => c.timestamp <= callUnix + 2592000); // 30 days
+  const candlesAfter = candles.filter((c) => c.timestamp > callUnix);
 
-  const maxPrice7d = candles7d.length > 0 
-    ? Math.max(...candles7d.map(c => c.price))
-    : callPrice;
-  const maxPrice30d = candles30d.length > 0
-    ? Math.max(...candles30d.map(c => c.price))
-    : callPrice;
+  const candles7d = candlesAfter.filter((c) => c.timestamp <= callUnix + 604800); // 7 days
+  const candles30d = candlesAfter.filter((c) => c.timestamp <= callUnix + 2592000); // 30 days
 
-  const priceAt7d = candles7d.length > 0
-    ? candles7d.sort((a, b) => a.timestamp - b.timestamp)[candles7d.length - 1]?.price || callPrice
-    : callPrice;
-  const priceAt30d = candles30d.length > 0
-    ? candles30d.sort((a, b) => a.timestamp - b.timestamp)[candles30d.length - 1]?.price || callPrice
-    : callPrice;
+  const maxPrice7d = candles7d.length > 0 ? Math.max(...candles7d.map((c) => c.price)) : callPrice;
+  const maxPrice30d =
+    candles30d.length > 0 ? Math.max(...candles30d.map((c) => c.price)) : callPrice;
+
+  const priceAt7d =
+    candles7d.length > 0
+      ? candles7d.sort((a, b) => a.timestamp - b.timestamp)[candles7d.length - 1]?.price ||
+        callPrice
+      : callPrice;
+  const priceAt30d =
+    candles30d.length > 0
+      ? candles30d.sort((a, b) => a.timestamp - b.timestamp)[candles30d.length - 1]?.price ||
+        callPrice
+      : callPrice;
 
   // Calculate price multiples (always available)
   const priceMultiple7d = maxPrice7d / callPrice;
@@ -497,7 +501,7 @@ export async function analyzeBrookCalls(): Promise<CallAnalysis[]> {
 
   for (let i = 0; i < calls.length; i += batchSize) {
     const batch = calls.slice(i, i + batchSize);
-    
+
     await Promise.all(
       batch.map(async (call) => {
         try {
@@ -514,8 +518,8 @@ export async function analyzeBrookCalls(): Promise<CallAnalysis[]> {
           );
 
           if (candles.length === 0) {
-            logger.warn('No candles found', { 
-              tokenAddress: call.tokenAddress.substring(0, 20) 
+            logger.warn('No candles found', {
+              tokenAddress: call.tokenAddress.substring(0, 20),
             });
             return;
           }
@@ -551,12 +555,12 @@ export async function analyzeBrookCalls(): Promise<CallAnalysis[]> {
     );
 
     // Rate limiting
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise((resolve) => setTimeout(resolve, 1000));
   }
 
-  logger.info('Analysis complete', { 
-    total: calls.length, 
-    analyzed: analyses.length 
+  logger.info('Analysis complete', {
+    total: calls.length,
+    analyzed: analyses.length,
   });
 
   return analyses;
@@ -566,10 +570,10 @@ export async function analyzeBrookCalls(): Promise<CallAnalysis[]> {
  * Identify patterns in high performers
  */
 export function identifyPatterns(analyses: CallAnalysis[]): void {
-  const moon = analyses.filter(a => a.performanceCategory === 'moon');
-  const good = analyses.filter(a => a.performanceCategory === 'good');
-  const decent = analyses.filter(a => a.performanceCategory === 'decent');
-  const poor = analyses.filter(a => a.performanceCategory === 'poor');
+  const moon = analyses.filter((a) => a.performanceCategory === 'moon');
+  const good = analyses.filter((a) => a.performanceCategory === 'good');
+  const decent = analyses.filter((a) => a.performanceCategory === 'decent');
+  const poor = analyses.filter((a) => a.performanceCategory === 'poor');
 
   logger.info('Performance distribution', {
     moon: moon.length,
@@ -583,49 +587,49 @@ export function identifyPatterns(analyses: CallAnalysis[]): void {
 
   // Market cap patterns
   patterns.marketCap = {
-    moon: groupBy(moon, a => a.marketCapCategory),
-    good: groupBy(good, a => a.marketCapCategory),
-    poor: groupBy(poor, a => a.marketCapCategory),
+    moon: groupBy(moon, (a) => a.marketCapCategory),
+    good: groupBy(good, (a) => a.marketCapCategory),
+    poor: groupBy(poor, (a) => a.marketCapCategory),
   };
 
   // Price action patterns
   patterns.priceChange1h = {
-    moon: calculateStats(moon.map(a => a.priceChange1h)),
-    good: calculateStats(good.map(a => a.priceChange1h)),
-    poor: calculateStats(poor.map(a => a.priceChange1h)),
+    moon: calculateStats(moon.map((a) => a.priceChange1h)),
+    good: calculateStats(good.map((a) => a.priceChange1h)),
+    poor: calculateStats(poor.map((a) => a.priceChange1h)),
   };
 
   patterns.priceChange24h = {
-    moon: calculateStats(moon.map(a => a.priceChange24h)),
-    good: calculateStats(good.map(a => a.priceChange24h)),
-    poor: calculateStats(poor.map(a => a.priceChange24h)),
+    moon: calculateStats(moon.map((a) => a.priceChange24h)),
+    good: calculateStats(good.map((a) => a.priceChange24h)),
+    poor: calculateStats(poor.map((a) => a.priceChange24h)),
   };
 
   // Volume patterns
   patterns.volumeChange1h = {
-    moon: calculateStats(moon.map(a => a.volumeChange1h)),
-    good: calculateStats(good.map(a => a.volumeChange1h)),
-    poor: calculateStats(poor.map(a => a.volumeChange1h)),
+    moon: calculateStats(moon.map((a) => a.volumeChange1h)),
+    good: calculateStats(good.map((a) => a.volumeChange1h)),
+    poor: calculateStats(poor.map((a) => a.volumeChange1h)),
   };
 
   // Timing patterns
   patterns.hourOfDay = {
-    moon: groupBy(moon, a => a.hourOfDay),
-    good: groupBy(good, a => a.hourOfDay),
-    poor: groupBy(poor, a => a.hourOfDay),
+    moon: groupBy(moon, (a) => a.hourOfDay),
+    good: groupBy(good, (a) => a.hourOfDay),
+    poor: groupBy(poor, (a) => a.hourOfDay),
   };
 
   patterns.dayOfWeek = {
-    moon: groupBy(moon, a => a.dayOfWeek),
-    good: groupBy(good, a => a.dayOfWeek),
-    poor: groupBy(poor, a => a.dayOfWeek),
+    moon: groupBy(moon, (a) => a.dayOfWeek),
+    good: groupBy(good, (a) => a.dayOfWeek),
+    poor: groupBy(poor, (a) => a.dayOfWeek),
   };
 
   // Volatility patterns
   patterns.volatility24h = {
-    moon: calculateStats(moon.map(a => a.volatility24h)),
-    good: calculateStats(good.map(a => a.volatility24h)),
-    poor: calculateStats(poor.map(a => a.volatility24h)),
+    moon: calculateStats(moon.map((a) => a.volatility24h)),
+    good: calculateStats(good.map((a) => a.volatility24h)),
+    poor: calculateStats(poor.map((a) => a.volatility24h)),
   };
 
   // Save patterns
@@ -641,12 +645,12 @@ export function identifyPatterns(analyses: CallAnalysis[]): void {
   console.log('Moon (>10x):', patterns.marketCap.moon);
   console.log('Good (3-10x):', patterns.marketCap.good);
   console.log('Poor (<1.5x):', patterns.marketCap.poor);
-  
+
   console.log('\n=== Price Action (1h before call) ===');
   console.log('Moon avg:', patterns.priceChange1h.moon.avg.toFixed(2) + '%');
   console.log('Good avg:', patterns.priceChange1h.good.avg.toFixed(2) + '%');
   console.log('Poor avg:', patterns.priceChange1h.poor.avg.toFixed(2) + '%');
-  
+
   console.log('\n=== Volume Change (1h before call) ===');
   console.log('Moon avg:', patterns.volumeChange1h.moon.avg.toFixed(2) + '%');
   console.log('Good avg:', patterns.volumeChange1h.good.avg.toFixed(2) + '%');
@@ -662,7 +666,12 @@ function groupBy<T>(arr: T[], keyFn: (item: T) => string | number): Record<strin
   return groups;
 }
 
-function calculateStats(values: number[]): { avg: number; median: number; min: number; max: number } {
+function calculateStats(values: number[]): {
+  avg: number;
+  median: number;
+  min: number;
+  max: number;
+} {
   if (values.length === 0) {
     return { avg: 0, median: 0, min: 0, max: 0 };
   }
@@ -684,7 +693,7 @@ function calculateStats(values: number[]): { avg: number; median: number; min: n
  */
 export function buildScoringModel(analyses: CallAnalysis[]): (features: TokenFeatures) => number {
   // Calculate weights based on correlation with high returns
-  const moon = analyses.filter(a => a.performanceCategory === 'moon');
+  const moon = analyses.filter((a) => a.performanceCategory === 'moon');
   const all = analyses;
 
   // Market cap weights (micro/small tokens perform better)
@@ -780,10 +789,10 @@ async function main() {
 
     // Build scoring model
     const scoreModel = buildScoringModel(analyses);
-    
+
     // Test model on top performers
     const topPerformers = analyses
-      .filter(a => a.performanceCategory === 'moon' || a.performanceCategory === 'good')
+      .filter((a) => a.performanceCategory === 'moon' || a.performanceCategory === 'good')
       .sort((a, b) => b.maxReturn30d - a.maxReturn30d)
       .slice(0, 20);
 
@@ -792,37 +801,43 @@ async function main() {
       const score = scoreModel(perf);
       console.log(
         `${perf.tokenSymbol || perf.tokenAddress.substring(0, 10)}: ` +
-        `Score ${score.toFixed(2)}, ` +
-        `Return ${perf.maxReturn30d.toFixed(2)}x, ` +
-        `MCap ${perf.marketCapCategory}, ` +
-        `Price1h ${perf.priceChange1h.toFixed(1)}%, ` +
-        `Vol1h ${perf.volumeChange1h.toFixed(1)}%`
+          `Score ${score.toFixed(2)}, ` +
+          `Return ${perf.maxReturn30d.toFixed(2)}x, ` +
+          `MCap ${perf.marketCapCategory}, ` +
+          `Price1h ${perf.priceChange1h.toFixed(1)}%, ` +
+          `Vol1h ${perf.volumeChange1h.toFixed(1)}%`
       );
     }
 
     // Save model
     const modelPath = path.join(OUTPUT_DIR, 'brook-scoring-model.json');
-    fs.writeFileSync(modelPath, JSON.stringify({
-      description: 'Brook token selection scoring model',
-      weights: {
-        marketCap: { micro: 1.5, small: 1.2, mid: 0.8, large: 0.5 },
-        priceAction: 'Sweet spot: 5-20% gain in 24h, 0-10% in 1h',
-        volume: 'Increasing volume is positive',
-        timing: 'US market hours (14-22 UTC) slightly better',
-        volatility: 'Moderate volatility (5-20%) is optimal',
-      },
-      sampleScores: topPerformers.map(p => ({
-        token: p.tokenSymbol || p.tokenAddress.substring(0, 10),
-        score: scoreModel(p),
-        return: p.maxReturn30d,
-      })),
-    }, null, 2));
+    fs.writeFileSync(
+      modelPath,
+      JSON.stringify(
+        {
+          description: 'Brook token selection scoring model',
+          weights: {
+            marketCap: { micro: 1.5, small: 1.2, mid: 0.8, large: 0.5 },
+            priceAction: 'Sweet spot: 5-20% gain in 24h, 0-10% in 1h',
+            volume: 'Increasing volume is positive',
+            timing: 'US market hours (14-22 UTC) slightly better',
+            volatility: 'Moderate volatility (5-20%) is optimal',
+          },
+          sampleScores: topPerformers.map((p) => ({
+            token: p.tokenSymbol || p.tokenAddress.substring(0, 10),
+            score: scoreModel(p),
+            return: p.maxReturn30d,
+          })),
+        },
+        null,
+        2
+      )
+    );
 
     logger.info('Model saved', { path: modelPath });
 
     console.log('\n✅ Analysis complete!');
     console.log(`📁 Results saved to: ${OUTPUT_DIR}`);
-
   } catch (error: any) {
     logger.error('Analysis failed', error as Error);
     process.exit(1);
@@ -835,4 +850,3 @@ if (require.main === module) {
 
 // Functions are already exported above, just export types
 export type { CallAnalysis, TokenFeatures };
-

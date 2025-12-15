@@ -39,7 +39,7 @@ export class LogMonitor extends EventEmitter {
 
   constructor() {
     super();
-    
+
     // Cleanup old pattern counts every minute
     this.cleanupInterval = setInterval(() => {
       this.cleanupPatternCounts();
@@ -87,10 +87,11 @@ export class LogMonitor extends EventEmitter {
 
     // Check namespace
     if (pattern.namespacePattern) {
-      const namespaceRegex = typeof pattern.namespacePattern === 'string'
-        ? new RegExp(pattern.namespacePattern)
-        : pattern.namespacePattern;
-      
+      const namespaceRegex =
+        typeof pattern.namespacePattern === 'string'
+          ? new RegExp(pattern.namespacePattern)
+          : pattern.namespacePattern;
+
       if (!namespaceRegex.test(log.namespace || '')) {
         return false;
       }
@@ -98,10 +99,11 @@ export class LogMonitor extends EventEmitter {
 
     // Check message pattern
     if (pattern.messagePattern) {
-      const messageRegex = typeof pattern.messagePattern === 'string'
-        ? new RegExp(pattern.messagePattern)
-        : pattern.messagePattern;
-      
+      const messageRegex =
+        typeof pattern.messagePattern === 'string'
+          ? new RegExp(pattern.messagePattern)
+          : pattern.messagePattern;
+
       if (!messageRegex.test(log.message || '')) {
         return false;
       }
@@ -156,7 +158,7 @@ export class LogMonitor extends EventEmitter {
    */
   private cleanupPatternCounts(): void {
     const now = Date.now();
-    
+
     for (const [id, countData] of this.patternCounts) {
       const pattern = this.patterns.get(id);
       if (!pattern) continue;
@@ -262,7 +264,7 @@ let globalMonitor: LogMonitor | null = null;
 export function initializeLogMonitor(): LogMonitor {
   if (!globalMonitor) {
     globalMonitor = new LogMonitor();
-    
+
     // Register common patterns
     globalMonitor.registerPattern(CommonPatterns.databaseErrors());
     globalMonitor.registerPattern(CommonPatterns.rateLimitErrors());
@@ -270,7 +272,7 @@ export function initializeLogMonitor(): LogMonitor {
     globalMonitor.registerPattern(CommonPatterns.websocketDisconnects());
     globalMonitor.registerPattern(CommonPatterns.memoryWarnings());
   }
-  
+
   return globalMonitor;
 }
 
@@ -280,4 +282,3 @@ export function initializeLogMonitor(): LogMonitor {
 export function getLogMonitor(): LogMonitor | null {
   return globalMonitor;
 }
-

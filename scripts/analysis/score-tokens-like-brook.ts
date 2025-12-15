@@ -62,7 +62,7 @@ async function extractTokenFeatures(
     }
 
     const candles = birdeyeData.items
-      .map(item => ({
+      .map((item) => ({
         timestamp: item.unixTime,
         price: parseFloat(item.close) || 0,
         volume: parseFloat(item.volume) || 0,
@@ -86,7 +86,7 @@ async function extractTokenFeatures(
         {
           headers: {
             'X-API-KEY': process.env.BIRDEYE_API_KEY || process.env.BIRDEYE_API_KEY_1 || '',
-            'accept': 'application/json',
+            accept: 'application/json',
             'x-chain': chain,
           },
         }
@@ -100,13 +100,13 @@ async function extractTokenFeatures(
 
     // Price changes
     const price15mAgo = candles
-      .filter(c => nowUnix - c.timestamp <= 900)
+      .filter((c) => nowUnix - c.timestamp <= 900)
       .sort((a, b) => b.timestamp - a.timestamp)[0]?.price;
     const price1hAgo = candles
-      .filter(c => nowUnix - c.timestamp <= 3600)
+      .filter((c) => nowUnix - c.timestamp <= 3600)
       .sort((a, b) => b.timestamp - a.timestamp)[0]?.price;
     const price24hAgo = candles
-      .filter(c => nowUnix - c.timestamp <= 86400)
+      .filter((c) => nowUnix - c.timestamp <= 86400)
       .sort((a, b) => b.timestamp - a.timestamp)[0]?.price;
 
     const priceChange15m = price15mAgo ? ((price - price15mAgo) / price15mAgo) * 100 : 0;
@@ -115,32 +115,34 @@ async function extractTokenFeatures(
 
     // Volume analysis
     const volume1hAgo = candles
-      .filter(c => nowUnix - c.timestamp <= 3600 && nowUnix - c.timestamp > 1800)
+      .filter((c) => nowUnix - c.timestamp <= 3600 && nowUnix - c.timestamp > 1800)
       .reduce((sum, c) => sum + c.volume, 0);
     const volume1hBefore = candles
-      .filter(c => nowUnix - c.timestamp <= 1800 && nowUnix - c.timestamp > 0)
+      .filter((c) => nowUnix - c.timestamp <= 1800 && nowUnix - c.timestamp > 0)
       .reduce((sum, c) => sum + c.volume, 0);
 
-    const volumeChange1h = volume1hAgo > 0
-      ? ((volume1hBefore - volume1hAgo) / volume1hAgo) * 100
-      : 0;
+    const volumeChange1h =
+      volume1hAgo > 0 ? ((volume1hBefore - volume1hAgo) / volume1hAgo) * 100 : 0;
 
-    const avgVolume24h = candles
-      .filter(c => nowUnix - c.timestamp <= 86400)
-      .reduce((sum, c) => sum + c.volume, 0) / Math.max(1, candles.filter(c => nowUnix - c.timestamp <= 86400).length);
+    const avgVolume24h =
+      candles.filter((c) => nowUnix - c.timestamp <= 86400).reduce((sum, c) => sum + c.volume, 0) /
+      Math.max(1, candles.filter((c) => nowUnix - c.timestamp <= 86400).length);
 
     // Volatility
     const priceChanges24h = candles
-      .filter(c => nowUnix - c.timestamp <= 86400)
+      .filter((c) => nowUnix - c.timestamp <= 86400)
       .map((c, i, arr) => {
         if (i === 0) return 0;
         const prev = arr[i - 1];
         return prev.price > 0 ? ((c.price - prev.price) / prev.price) * 100 : 0;
       })
-      .filter(change => change !== 0);
+      .filter((change) => change !== 0);
 
-    const avgChange = priceChanges24h.reduce((sum, c) => sum + c, 0) / Math.max(1, priceChanges24h.length);
-    const variance = priceChanges24h.reduce((sum, c) => sum + Math.pow(c - avgChange, 2), 0) / Math.max(1, priceChanges24h.length);
+    const avgChange =
+      priceChanges24h.reduce((sum, c) => sum + c, 0) / Math.max(1, priceChanges24h.length);
+    const variance =
+      priceChanges24h.reduce((sum, c) => sum + Math.pow(c - avgChange, 2), 0) /
+      Math.max(1, priceChanges24h.length);
     const volatility24h = Math.sqrt(variance);
 
     // Timing
@@ -196,20 +198,35 @@ function scoreToken(
 
   // Market cap
   if (features.marketCapCategory === 'micro' || features.marketCapCategory === 'small') {
-    reasons.push(`✅ ${features.marketCapCategory} market cap (${(features.marketCap / 1_000_000).toFixed(2)}M)`);
+    reasons.push(
+      `✅ ${features.marketCapCategory} market cap (${(features.marketCap / 1_000_000).toFixed(2)}M)`
+    );
   } else {
     reasons.push(`⚠️  ${features.marketCapCategory} market cap (may be too large)`);
   }
 
   // Price action
-  if (features.priceChange24h >= 5 && features.priceChange24h <= 20 && features.priceChange1h >= 0 && features.priceChange1h <= 10) {
-    reasons.push(`✅ Optimal price action: +${features.priceChange24h.toFixed(1)}% (24h), +${features.priceChange1h.toFixed(1)}% (1h)`);
+  if (
+    features.priceChange24h >= 5 &&
+    features.priceChange24h <= 20 &&
+    features.priceChange1h >= 0 &&
+    features.priceChange1h <= 10
+  ) {
+    reasons.push(
+      `✅ Optimal price action: +${features.priceChange24h.toFixed(1)}% (24h), +${features.priceChange1h.toFixed(1)}% (1h)`
+    );
   } else if (features.priceChange24h > 50) {
-    reasons.push(`⚠️  Very high 24h pump: +${features.priceChange24h.toFixed(1)}% (may be too late)`);
+    reasons.push(
+      `⚠️  Very high 24h pump: +${features.priceChange24h.toFixed(1)}% (may be too late)`
+    );
   } else if (features.priceChange24h < -20) {
-    reasons.push(`📉 Significant dip: ${features.priceChange24h.toFixed(1)}% (could be opportunity)`);
+    reasons.push(
+      `📉 Significant dip: ${features.priceChange24h.toFixed(1)}% (could be opportunity)`
+    );
   } else {
-    reasons.push(`📊 Price action: +${features.priceChange24h.toFixed(1)}% (24h), +${features.priceChange1h.toFixed(1)}% (1h)`);
+    reasons.push(
+      `📊 Price action: +${features.priceChange24h.toFixed(1)}% (24h), +${features.priceChange1h.toFixed(1)}% (1h)`
+    );
   }
 
   // Volume
@@ -248,7 +265,7 @@ export async function scoreTokens(
   // We only need to call analyzeBrookCalls if we want to rebuild the model weights
   // For now, we'll use a dummy analysis array since weights are hardcoded
   logger.info('Initializing scoring model...');
-  
+
   // Create a minimal analysis array - the model weights are hardcoded anyway
   const dummyAnalyses: any[] = [];
   const scoreModel = buildScoringModel(dummyAnalyses);
@@ -275,7 +292,7 @@ export async function scoreTokens(
       });
 
       // Rate limiting
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise((resolve) => setTimeout(resolve, 500));
     } catch (error: any) {
       logger.warn('Failed to score token', {
         tokenAddress: address.substring(0, 20),
@@ -295,10 +312,12 @@ export async function scoreTokens(
  */
 async function main() {
   const args = process.argv.slice(2);
-  
+
   if (args.length === 0) {
     console.log('Usage: ts-node score-tokens-like-brook.ts <token1> [token2] [token3] ...');
-    console.log('Example: ts-node score-tokens-like-brook.ts So11111111111111111111111111111111111111112');
+    console.log(
+      'Example: ts-node score-tokens-like-brook.ts So11111111111111111111111111111111111111112'
+    );
     process.exit(1);
   }
 
@@ -313,7 +332,9 @@ async function main() {
     console.log(`\n📍 ${tokenScore.tokenAddress.substring(0, 20)}...`);
     console.log(`   Score: ${tokenScore.score.toFixed(2)}`);
     console.log(`   Price: $${tokenScore.features.price.toFixed(8)}`);
-    console.log(`   Market Cap: ${(tokenScore.features.marketCap / 1_000_000).toFixed(2)}M (${tokenScore.features.marketCapCategory})`);
+    console.log(
+      `   Market Cap: ${(tokenScore.features.marketCap / 1_000_000).toFixed(2)}M (${tokenScore.features.marketCapCategory})`
+    );
     console.log(`   Price 24h: ${tokenScore.features.priceChange24h.toFixed(1)}%`);
     console.log(`   Volume 1h: ${tokenScore.features.volumeChange1h.toFixed(1)}%`);
     console.log(`   Reasons:`);
@@ -325,7 +346,10 @@ async function main() {
   // Save results
   const outputDir = path.join(process.cwd(), 'data/exports/brook-analysis');
   fs.mkdirSync(outputDir, { recursive: true });
-  const outputPath = path.join(outputDir, `token-scores-${DateTime.now().toFormat('yyyy-MM-dd_HH-mm-ss')}.json`);
+  const outputPath = path.join(
+    outputDir,
+    `token-scores-${DateTime.now().toFormat('yyyy-MM-dd_HH-mm-ss')}.json`
+  );
   fs.writeFileSync(outputPath, JSON.stringify(scores, null, 2));
 
   console.log(`\n✅ Results saved to: ${outputPath}`);
@@ -336,4 +360,3 @@ if (require.main === module) {
 }
 
 export { scoreTokens, extractTokenFeatures };
-

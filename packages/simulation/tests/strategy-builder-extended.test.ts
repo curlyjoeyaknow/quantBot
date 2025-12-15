@@ -6,8 +6,8 @@ import {
   buildReEntryConfig,
   buildFromPreset,
   validateStrategy,
-} from '../../src/simulation/strategies/builder';
-import type { StrategyConfig } from '../../src/simulation/strategies/types';
+} from '../src/strategies/builder';
+import type { StrategyConfig } from '../src/strategies/types';
 
 describe('strategy-builder-extended', () => {
   describe('buildStrategy', () => {
@@ -308,7 +308,9 @@ describe('strategy-builder-extended', () => {
       const result = validateStrategy(config);
 
       expect(result.valid).toBe(false);
-      expect(result.errors.some((e) => e.includes('Initial entry drop should be negative'))).toBe(true);
+      expect(result.errors.some((e) => e.includes('Initial entry drop should be negative'))).toBe(
+        true
+      );
     });
 
     it('should reject negative trailing entry', () => {
@@ -323,7 +325,9 @@ describe('strategy-builder-extended', () => {
       const result = validateStrategy(config);
 
       expect(result.valid).toBe(false);
-      expect(result.errors.some((e) => e.includes('Trailing entry rebound should be positive'))).toBe(true);
+      expect(
+        result.errors.some((e) => e.includes('Trailing entry rebound should be positive'))
+      ).toBe(true);
     });
 
     it('should reject invalid re-entry percent', () => {
@@ -381,5 +385,3 @@ describe('strategy-builder-extended', () => {
     });
   });
 });
-
-

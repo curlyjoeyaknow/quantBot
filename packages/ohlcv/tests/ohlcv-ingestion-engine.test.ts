@@ -1,6 +1,6 @@
 /**
  * Unit tests for OHLCV Ingestion Engine
- * 
+ *
  * Tests cover:
  * - Metadata fetching and storage
  * - 1m and 5m candle fetching strategies
@@ -14,10 +14,15 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { DateTime } from 'luxon';
 import { OhlcvIngestionEngine } from '../src/ohlcv-ingestion-engine';
 import { birdeyeClient } from '@quantbot/api-clients';
-import { insertCandles, queryCandles, initClickHouse, TokensRepository } from '@quantbot/storage';
+import { getStorageEngine, initClickHouse, TokensRepository } from '@quantbot/storage';
 import type { Candle } from '@quantbot/core';
 
 // Mock dependencies
+const mockStorageEngine = {
+  storeCandles: vi.fn(),
+  getCandles: vi.fn(),
+};
+
 vi.mock('@quantbot/api-clients', () => ({
   birdeyeClient: {
     fetchOHLCVData: vi.fn(),
@@ -26,8 +31,7 @@ vi.mock('@quantbot/api-clients', () => ({
 }));
 
 vi.mock('@quantbot/storage', () => ({
-  insertCandles: vi.fn(),
-  queryCandles: vi.fn(),
+  getStorageEngine: vi.fn(() => mockStorageEngine),
   initClickHouse: vi.fn(),
   TokensRepository: vi.fn(),
 }));
@@ -51,7 +55,7 @@ describe('OhlcvIngestionEngine', () => {
     engine = new OhlcvIngestionEngine();
     vi.clearAllMocks();
     vi.mocked(initClickHouse).mockResolvedValue(undefined);
-    
+
     // Mock TokensRepository
     const mockTokensRepo = {
       getOrCreateToken: vi.fn().mockResolvedValue({
@@ -62,7 +66,7 @@ describe('OhlcvIngestionEngine', () => {
         name: 'Test Token',
       }),
     };
-    vi.mocked(TokensRepository).mockImplementation(function() {
+    vi.mocked(TokensRepository).mockImplementation(function () {
       return mockTokensRepo as any;
     });
   });
@@ -94,7 +98,7 @@ describe('OhlcvIngestionEngine', () => {
       const mockMetadata = { name: 'Test Token', symbol: 'TEST' };
       vi.mocked(birdeyeClient.getTokenMetadata).mockResolvedValue(mockMetadata);
       vi.mocked(birdeyeClient.fetchOHLCVData).mockResolvedValue({ items: [] } as any);
-      vi.mocked(queryCandles).mockResolvedValue([]);
+      mockStorageEngine.getCandles.mockResolvedValue([]);
 
       await engine.fetchCandles(TEST_MINT, TEST_CHAIN, TEST_ALERT_TIME);
 
@@ -111,7 +115,7 @@ describe('OhlcvIngestionEngine', () => {
     it('should continue even if metadata fetch fails', async () => {
       vi.mocked(birdeyeClient.getTokenMetadata).mockRejectedValue(new Error('Metadata failed'));
       vi.mocked(birdeyeClient.fetchOHLCVData).mockResolvedValue({ items: [] } as any);
-      vi.mocked(queryCandles).mockResolvedValue([]);
+      mockStorageEngine.getCandles.mockResolvedValue([]);
 
       const result = await engine.fetchCandles(TEST_MINT, TEST_CHAIN, TEST_ALERT_TIME);
 
@@ -124,14 +128,28 @@ describe('OhlcvIngestionEngine', () => {
   describe('fetchCandles - 1m Candles', () => {
     it('should fetch 1m candles from -52 minutes before alert', async () => {
       const mockCandles: Candle[] = [
-        { timestamp: TEST_ALERT_TIME.minus({ minutes: 52 }).toSeconds(), open: 1, high: 1.1, low: 0.9, close: 1.05, volume: 1000 },
-        { timestamp: TEST_ALERT_TIME.minus({ minutes: 51 }).toSeconds(), open: 1.05, high: 1.15, low: 1.0, close: 1.1, volume: 1200 },
+        {
+          timestamp: TEST_ALERT_TIME.minus({ minutes: 52 }).toSeconds(),
+          open: 1,
+          high: 1.1,
+          low: 0.9,
+          close: 1.05,
+          volume: 1000,
+        },
+        {
+          timestamp: TEST_ALERT_TIME.minus({ minutes: 51 }).toSeconds(),
+          open: 1.05,
+          high: 1.15,
+          low: 1.0,
+          close: 1.1,
+          volume: 1200,
+        },
       ];
 
       vi.mocked(birdeyeClient.getTokenMetadata).mockResolvedValue({ name: 'Test', symbol: 'TEST' });
-      vi.mocked(queryCandles).mockResolvedValue([]);
+      mockStorageEngine.getCandles.mockResolvedValue([]);
       vi.mocked(birdeyeClient.fetchOHLCVData).mockResolvedValue({
-        items: mockCandles.map(c => ({
+        items: mockCandles.map((c) => ({
           unixTime: c.timestamp,
           open: c.open,
           high: c.high,
@@ -145,11 +163,11 @@ describe('OhlcvIngestionEngine', () => {
 
       expect(result['1m'].length).toBe(2);
       expect(result.metadata.total1mCandles).toBe(2);
-      
+
       // Verify fetch was called with correct time range
-      const fetchCall = vi.mocked(birdeyeClient.fetchOHLCVData).mock.calls.find(
-        call => call[3] === '1m'
-      );
+      const fetchCall = vi
+        .mocked(birdeyeClient.fetchOHLCVData)
+        .mock.calls.find((call) => call[3] === '1m');
       expect(fetchCall).toBeDefined();
       if (fetchCall) {
         const startTime = DateTime.fromJSDate(fetchCall[1] as Date);
@@ -160,13 +178,22 @@ describe('OhlcvIngestionEngine', () => {
 
     it('should use cache for 1m candles if available', async () => {
       const cachedCandles: Candle[] = [
-        { timestamp: TEST_ALERT_TIME.minus({ minutes: 52 }).toSeconds(), open: 1, high: 1.1, low: 0.9, close: 1.05, volume: 1000 },
+        {
+          timestamp: TEST_ALERT_TIME.minus({ minutes: 52 }).toSeconds(),
+          open: 1,
+          high: 1.1,
+          low: 0.9,
+          close: 1.05,
+          volume: 1000,
+        },
       ];
 
       vi.mocked(birdeyeClient.getTokenMetadata).mockResolvedValue({ name: 'Test', symbol: 'TEST' });
-      vi.mocked(queryCandles).mockResolvedValue(cachedCandles);
+      mockStorageEngine.getCandles.mockResolvedValue(cachedCandles);
 
-      const result = await engine.fetchCandles(TEST_MINT, TEST_CHAIN, TEST_ALERT_TIME, { useCache: true });
+      const result = await engine.fetchCandles(TEST_MINT, TEST_CHAIN, TEST_ALERT_TIME, {
+        useCache: true,
+      });
 
       expect(result['1m']).toEqual(cachedCandles);
       expect(result.metadata.chunksFromCache).toBeGreaterThan(0);
@@ -175,13 +202,20 @@ describe('OhlcvIngestionEngine', () => {
 
     it('should store 1m candles immediately after fetching', async () => {
       const mockCandles: Candle[] = [
-        { timestamp: TEST_ALERT_TIME.minus({ minutes: 52 }).toSeconds(), open: 1, high: 1.1, low: 0.9, close: 1.05, volume: 1000 },
+        {
+          timestamp: TEST_ALERT_TIME.minus({ minutes: 52 }).toSeconds(),
+          open: 1,
+          high: 1.1,
+          low: 0.9,
+          close: 1.05,
+          volume: 1000,
+        },
       ];
 
       vi.mocked(birdeyeClient.getTokenMetadata).mockResolvedValue({ name: 'Test', symbol: 'TEST' });
-      vi.mocked(queryCandles).mockResolvedValue([]);
+      mockStorageEngine.getCandles.mockResolvedValue([]);
       vi.mocked(birdeyeClient.fetchOHLCVData).mockResolvedValue({
-        items: mockCandles.map(c => ({
+        items: mockCandles.map((c) => ({
           unixTime: c.timestamp,
           open: c.open,
           high: c.high,
@@ -193,7 +227,7 @@ describe('OhlcvIngestionEngine', () => {
 
       await engine.fetchCandles(TEST_MINT, TEST_CHAIN, TEST_ALERT_TIME);
 
-      expect(insertCandles).toHaveBeenCalledWith(
+      expect(mockStorageEngine.storeCandles).toHaveBeenCalledWith(
         TEST_MINT,
         TEST_CHAIN,
         expect.arrayContaining([expect.objectContaining({ timestamp: mockCandles[0].timestamp })]),
@@ -205,14 +239,28 @@ describe('OhlcvIngestionEngine', () => {
   describe('fetchCandles - 5m Candles', () => {
     it('should fetch 5m candles from -260 minutes before alert', async () => {
       const mockCandles: Candle[] = [
-        { timestamp: TEST_ALERT_TIME.minus({ minutes: 260 }).toSeconds(), open: 1, high: 1.1, low: 0.9, close: 1.05, volume: 1000 },
-        { timestamp: TEST_ALERT_TIME.minus({ minutes: 255 }).toSeconds(), open: 1.05, high: 1.15, low: 1.0, close: 1.1, volume: 1200 },
+        {
+          timestamp: TEST_ALERT_TIME.minus({ minutes: 260 }).toSeconds(),
+          open: 1,
+          high: 1.1,
+          low: 0.9,
+          close: 1.05,
+          volume: 1000,
+        },
+        {
+          timestamp: TEST_ALERT_TIME.minus({ minutes: 255 }).toSeconds(),
+          open: 1.05,
+          high: 1.15,
+          low: 1.0,
+          close: 1.1,
+          volume: 1200,
+        },
       ];
 
       vi.mocked(birdeyeClient.getTokenMetadata).mockResolvedValue({ name: 'Test', symbol: 'TEST' });
-      vi.mocked(queryCandles).mockResolvedValue([]);
+      mockStorageEngine.getCandles.mockResolvedValue([]);
       vi.mocked(birdeyeClient.fetchOHLCVData).mockResolvedValue({
-        items: mockCandles.map(c => ({
+        items: mockCandles.map((c) => ({
           unixTime: c.timestamp,
           open: c.open,
           high: c.high,
@@ -226,11 +274,11 @@ describe('OhlcvIngestionEngine', () => {
 
       expect(result['5m'].length).toBe(2);
       expect(result.metadata.total5mCandles).toBe(2);
-      
+
       // Verify fetch was called with correct time range
-      const fetchCall = vi.mocked(birdeyeClient.fetchOHLCVData).mock.calls.find(
-        call => call[3] === '5m'
-      );
+      const fetchCall = vi
+        .mocked(birdeyeClient.fetchOHLCVData)
+        .mock.calls.find((call) => call[3] === '5m');
       expect(fetchCall).toBeDefined();
       if (fetchCall) {
         const startTime = DateTime.fromJSDate(fetchCall[1] as Date);
@@ -242,11 +290,11 @@ describe('OhlcvIngestionEngine', () => {
     it('should chunk 5m candles when fetching large time ranges', async () => {
       const now = DateTime.utc();
       const startTime = TEST_ALERT_TIME.minus({ minutes: 260 });
-      
+
       // Simulate multiple chunks
       let chunkCount = 0;
       vi.mocked(birdeyeClient.getTokenMetadata).mockResolvedValue({ name: 'Test', symbol: 'TEST' });
-      vi.mocked(queryCandles).mockResolvedValue([]);
+      mockStorageEngine.getCandles.mockResolvedValue([]);
       vi.mocked(birdeyeClient.fetchOHLCVData).mockImplementation(() => {
         chunkCount++;
         const candles: Candle[] = [];
@@ -262,7 +310,7 @@ describe('OhlcvIngestionEngine', () => {
           });
         }
         return Promise.resolve({
-          items: candles.map(c => ({
+          items: candles.map((c) => ({
             unixTime: c.timestamp,
             open: c.open,
             high: c.high,
@@ -282,13 +330,20 @@ describe('OhlcvIngestionEngine', () => {
 
     it('should store each 5m chunk immediately', async () => {
       const mockCandles: Candle[] = [
-        { timestamp: TEST_ALERT_TIME.minus({ minutes: 260 }).toSeconds(), open: 1, high: 1.1, low: 0.9, close: 1.05, volume: 1000 },
+        {
+          timestamp: TEST_ALERT_TIME.minus({ minutes: 260 }).toSeconds(),
+          open: 1,
+          high: 1.1,
+          low: 0.9,
+          close: 1.05,
+          volume: 1000,
+        },
       ];
 
       vi.mocked(birdeyeClient.getTokenMetadata).mockResolvedValue({ name: 'Test', symbol: 'TEST' });
-      vi.mocked(queryCandles).mockResolvedValue([]);
+      mockStorageEngine.getCandles.mockResolvedValue([]);
       vi.mocked(birdeyeClient.fetchOHLCVData).mockResolvedValue({
-        items: mockCandles.map(c => ({
+        items: mockCandles.map((c) => ({
           unixTime: c.timestamp,
           open: c.open,
           high: c.high,
@@ -300,7 +355,7 @@ describe('OhlcvIngestionEngine', () => {
 
       await engine.fetchCandles(TEST_MINT, TEST_CHAIN, TEST_ALERT_TIME);
 
-      expect(insertCandles).toHaveBeenCalledWith(
+      expect(mockStorageEngine.storeCandles).toHaveBeenCalledWith(
         TEST_MINT,
         TEST_CHAIN,
         expect.arrayContaining([expect.objectContaining({ timestamp: mockCandles[0].timestamp })]),
@@ -312,13 +367,20 @@ describe('OhlcvIngestionEngine', () => {
   describe('Caching', () => {
     it('should use in-memory cache on subsequent calls', async () => {
       const mockCandles: Candle[] = [
-        { timestamp: TEST_ALERT_TIME.minus({ minutes: 52 }).toSeconds(), open: 1, high: 1.1, low: 0.9, close: 1.05, volume: 1000 },
+        {
+          timestamp: TEST_ALERT_TIME.minus({ minutes: 52 }).toSeconds(),
+          open: 1,
+          high: 1.1,
+          low: 0.9,
+          close: 1.05,
+          volume: 1000,
+        },
       ];
 
       vi.mocked(birdeyeClient.getTokenMetadata).mockResolvedValue({ name: 'Test', symbol: 'TEST' });
-      vi.mocked(queryCandles).mockResolvedValue([]);
+      mockStorageEngine.getCandles.mockResolvedValue([]);
       vi.mocked(birdeyeClient.fetchOHLCVData).mockResolvedValue({
-        items: mockCandles.map(c => ({
+        items: mockCandles.map((c) => ({
           unixTime: c.timestamp,
           open: c.open,
           high: c.high,
@@ -333,22 +395,29 @@ describe('OhlcvIngestionEngine', () => {
       const firstCallCount = vi.mocked(birdeyeClient.fetchOHLCVData).mock.calls.length;
 
       // Second call - should use cache
-      vi.mocked(queryCandles).mockResolvedValue(mockCandles);
+      mockStorageEngine.getCandles.mockResolvedValue(mockCandles);
       await engine.fetchCandles(TEST_MINT, TEST_CHAIN, TEST_ALERT_TIME, { useCache: true });
-      
+
       // Should not have made additional API calls
       expect(vi.mocked(birdeyeClient.fetchOHLCVData).mock.calls.length).toBe(firstCallCount);
     });
 
     it('should bypass cache when forceRefresh is true', async () => {
       const mockCandles: Candle[] = [
-        { timestamp: TEST_ALERT_TIME.minus({ minutes: 52 }).toSeconds(), open: 1, high: 1.1, low: 0.9, close: 1.05, volume: 1000 },
+        {
+          timestamp: TEST_ALERT_TIME.minus({ minutes: 52 }).toSeconds(),
+          open: 1,
+          high: 1.1,
+          low: 0.9,
+          close: 1.05,
+          volume: 1000,
+        },
       ];
 
       vi.mocked(birdeyeClient.getTokenMetadata).mockResolvedValue({ name: 'Test', symbol: 'TEST' });
-      vi.mocked(queryCandles).mockResolvedValue(mockCandles);
+      mockStorageEngine.getCandles.mockResolvedValue(mockCandles);
       vi.mocked(birdeyeClient.fetchOHLCVData).mockResolvedValue({
-        items: mockCandles.map(c => ({
+        items: mockCandles.map((c) => ({
           unixTime: c.timestamp,
           open: c.open,
           high: c.high,
@@ -366,13 +435,22 @@ describe('OhlcvIngestionEngine', () => {
 
     it('should use ClickHouse cache before API', async () => {
       const cachedCandles: Candle[] = [
-        { timestamp: TEST_ALERT_TIME.minus({ minutes: 52 }).toSeconds(), open: 1, high: 1.1, low: 0.9, close: 1.05, volume: 1000 },
+        {
+          timestamp: TEST_ALERT_TIME.minus({ minutes: 52 }).toSeconds(),
+          open: 1,
+          high: 1.1,
+          low: 0.9,
+          close: 1.05,
+          volume: 1000,
+        },
       ];
 
       vi.mocked(birdeyeClient.getTokenMetadata).mockResolvedValue({ name: 'Test', symbol: 'TEST' });
-      vi.mocked(queryCandles).mockResolvedValue(cachedCandles);
+      mockStorageEngine.getCandles.mockResolvedValue(cachedCandles);
 
-      const result = await engine.fetchCandles(TEST_MINT, TEST_CHAIN, TEST_ALERT_TIME, { useCache: true });
+      const result = await engine.fetchCandles(TEST_MINT, TEST_CHAIN, TEST_ALERT_TIME, {
+        useCache: true,
+      });
 
       expect(result['1m']).toEqual(cachedCandles);
       expect(birdeyeClient.fetchOHLCVData).not.toHaveBeenCalled();
@@ -383,13 +461,20 @@ describe('OhlcvIngestionEngine', () => {
     it('should preserve full mint address in all operations', async () => {
       const fullMint = '7pXs123456789012345678901234567890pump'; // Full address with case
       const mockCandles: Candle[] = [
-        { timestamp: TEST_ALERT_TIME.minus({ minutes: 52 }).toSeconds(), open: 1, high: 1.1, low: 0.9, close: 1.05, volume: 1000 },
+        {
+          timestamp: TEST_ALERT_TIME.minus({ minutes: 52 }).toSeconds(),
+          open: 1,
+          high: 1.1,
+          low: 0.9,
+          close: 1.05,
+          volume: 1000,
+        },
       ];
 
       vi.mocked(birdeyeClient.getTokenMetadata).mockResolvedValue({ name: 'Test', symbol: 'TEST' });
-      vi.mocked(queryCandles).mockResolvedValue([]);
+      mockStorageEngine.getCandles.mockResolvedValue([]);
       vi.mocked(birdeyeClient.fetchOHLCVData).mockResolvedValue({
-        items: mockCandles.map(c => ({
+        items: mockCandles.map((c) => ({
           unixTime: c.timestamp,
           open: c.open,
           high: c.high,
@@ -410,7 +495,7 @@ describe('OhlcvIngestionEngine', () => {
         expect.any(String),
         TEST_CHAIN
       );
-      expect(insertCandles).toHaveBeenCalledWith(
+      expect(mockStorageEngine.storeCandles).toHaveBeenCalledWith(
         fullMint,
         TEST_CHAIN,
         expect.any(Array),
@@ -422,21 +507,30 @@ describe('OhlcvIngestionEngine', () => {
   describe('Error Handling', () => {
     it('should handle API fetch errors gracefully', async () => {
       vi.mocked(birdeyeClient.getTokenMetadata).mockResolvedValue({ name: 'Test', symbol: 'TEST' });
-      vi.mocked(queryCandles).mockResolvedValue([]);
+      mockStorageEngine.getCandles.mockResolvedValue([]);
       vi.mocked(birdeyeClient.fetchOHLCVData).mockRejectedValue(new Error('API Error'));
 
-      await expect(engine.fetchCandles(TEST_MINT, TEST_CHAIN, TEST_ALERT_TIME)).rejects.toThrow('API Error');
+      await expect(engine.fetchCandles(TEST_MINT, TEST_CHAIN, TEST_ALERT_TIME)).rejects.toThrow(
+        'API Error'
+      );
     });
 
     it('should handle storage errors but still return data', async () => {
       const mockCandles: Candle[] = [
-        { timestamp: TEST_ALERT_TIME.minus({ minutes: 52 }).toSeconds(), open: 1, high: 1.1, low: 0.9, close: 1.05, volume: 1000 },
+        {
+          timestamp: TEST_ALERT_TIME.minus({ minutes: 52 }).toSeconds(),
+          open: 1,
+          high: 1.1,
+          low: 0.9,
+          close: 1.05,
+          volume: 1000,
+        },
       ];
 
       vi.mocked(birdeyeClient.getTokenMetadata).mockResolvedValue({ name: 'Test', symbol: 'TEST' });
-      vi.mocked(queryCandles).mockResolvedValue([]);
+      mockStorageEngine.getCandles.mockResolvedValue([]);
       vi.mocked(birdeyeClient.fetchOHLCVData).mockResolvedValue({
-        items: mockCandles.map(c => ({
+        items: mockCandles.map((c) => ({
           unixTime: c.timestamp,
           open: c.open,
           high: c.high,
@@ -445,7 +539,7 @@ describe('OhlcvIngestionEngine', () => {
           volume: c.volume,
         })),
       } as any);
-      vi.mocked(insertCandles).mockRejectedValue(new Error('Storage Error'));
+      mockStorageEngine.storeCandles.mockRejectedValue(new Error('Storage Error'));
 
       // Should not throw - storage error is logged but doesn't prevent returning data
       const result = await engine.fetchCandles(TEST_MINT, TEST_CHAIN, TEST_ALERT_TIME);
@@ -463,13 +557,20 @@ describe('OhlcvIngestionEngine', () => {
 
     it('should track cache statistics', async () => {
       const mockCandles: Candle[] = [
-        { timestamp: TEST_ALERT_TIME.minus({ minutes: 52 }).toSeconds(), open: 1, high: 1.1, low: 0.9, close: 1.05, volume: 1000 },
+        {
+          timestamp: TEST_ALERT_TIME.minus({ minutes: 52 }).toSeconds(),
+          open: 1,
+          high: 1.1,
+          low: 0.9,
+          close: 1.05,
+          volume: 1000,
+        },
       ];
 
       vi.mocked(birdeyeClient.getTokenMetadata).mockResolvedValue({ name: 'Test', symbol: 'TEST' });
-      vi.mocked(queryCandles).mockResolvedValue([]);
+      mockStorageEngine.getCandles.mockResolvedValue([]);
       vi.mocked(birdeyeClient.fetchOHLCVData).mockResolvedValue({
-        items: mockCandles.map(c => ({
+        items: mockCandles.map((c) => ({
           unixTime: c.timestamp,
           open: c.open,
           high: c.high,
@@ -490,14 +591,28 @@ describe('OhlcvIngestionEngine', () => {
   describe('Result Metadata', () => {
     it('should return comprehensive metadata', async () => {
       const mockCandles: Candle[] = [
-        { timestamp: TEST_ALERT_TIME.minus({ minutes: 52 }).toSeconds(), open: 1, high: 1.1, low: 0.9, close: 1.05, volume: 1000 },
-        { timestamp: TEST_ALERT_TIME.minus({ minutes: 260 }).toSeconds(), open: 1, high: 1.1, low: 0.9, close: 1.05, volume: 1000 },
+        {
+          timestamp: TEST_ALERT_TIME.minus({ minutes: 52 }).toSeconds(),
+          open: 1,
+          high: 1.1,
+          low: 0.9,
+          close: 1.05,
+          volume: 1000,
+        },
+        {
+          timestamp: TEST_ALERT_TIME.minus({ minutes: 260 }).toSeconds(),
+          open: 1,
+          high: 1.1,
+          low: 0.9,
+          close: 1.05,
+          volume: 1000,
+        },
       ];
 
       vi.mocked(birdeyeClient.getTokenMetadata).mockResolvedValue({ name: 'Test', symbol: 'TEST' });
-      vi.mocked(queryCandles).mockResolvedValue([]);
+      mockStorageEngine.getCandles.mockResolvedValue([]);
       vi.mocked(birdeyeClient.fetchOHLCVData).mockResolvedValue({
-        items: mockCandles.map(c => ({
+        items: mockCandles.map((c) => ({
           unixTime: c.timestamp,
           open: c.open,
           high: c.high,
@@ -520,4 +635,3 @@ describe('OhlcvIngestionEngine', () => {
     });
   });
 });
-

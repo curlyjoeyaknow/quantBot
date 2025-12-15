@@ -14,9 +14,10 @@
     "@quantbot/utils": "workspace:*",
     "@quantbot/storage": "workspace:*",
     "@quantbot/api-clients": "workspace:*",
-    "@quantbot/events": "workspace:*",
     "lru-cache": "^11.0.0",
-    "luxon": "^3.4.4"
+    "luxon": "^3.4.4",
+    "axios": "^1.7.9",
+    "dotenv": "^16.4.7"
   },
   "devDependencies": {
     "@types/node": "^24.10.1",

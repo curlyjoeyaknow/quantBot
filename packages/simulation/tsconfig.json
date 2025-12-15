@@ -11,15 +11,15 @@
     "paths": {
       "@quantbot/utils": ["../utils/dist/index.d.ts"],
       "@quantbot/utils/*": ["../utils/dist/*"],
-      "@quantbot/data": ["../data/dist/index.d.ts"],
-      "@quantbot/data/*": ["../data/dist/*"]
+      "@quantbot/storage": ["../storage/src"],
+      "@quantbot/storage/*": ["../storage/src/*"]
     }
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "**/*.test.ts"],
-  "references": [
+    "references": [
     { "path": "../utils" },
-    { "path": "../data" }
+    { "path": "../storage" }
   ]
 }
 

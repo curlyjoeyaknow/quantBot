@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { calculateIchimoku, detectIchimokuSignals, formatIchimokuData } from '../../src/simulation/ichimoku';
-import type { Candle } from '../../src/simulation/candles';
+import { calculateIchimoku, detectIchimokuSignals, formatIchimokuData } from '../src/ichimoku';
+import type { Candle } from '../src/candles';
 
 describe('ichimoku-extended', () => {
   const createCandle = (timestamp: number, price: number, overrides?: Partial<Candle>): Candle => ({
@@ -42,7 +42,9 @@ describe('ichimoku-extended', () => {
     });
 
     it('should handle price above cloud (bullish)', () => {
-      const prices = Array(60).fill(1).map((_, i) => 1 + i * 0.01);
+      const prices = Array(60)
+        .fill(1)
+        .map((_, i) => 1 + i * 0.01);
       const candles = createCandleSeries(prices);
       const result = calculateIchimoku(candles, 59);
 
@@ -51,7 +53,9 @@ describe('ichimoku-extended', () => {
     });
 
     it('should handle price below cloud (bearish)', () => {
-      const prices = Array(60).fill(1).map((_, i) => 1 - i * 0.01);
+      const prices = Array(60)
+        .fill(1)
+        .map((_, i) => 1 - i * 0.01);
       const candles = createCandleSeries(prices);
       const result = calculateIchimoku(candles, 59);
 
@@ -61,10 +65,12 @@ describe('ichimoku-extended', () => {
 
     it('should handle price inside cloud', () => {
       // Create candles where price is between cloud top and bottom
-      const prices = Array(60).fill(1).map((_, i) => {
-        // Vary prices slightly to create a cloud
-        return 1 + Math.sin(i * 0.1) * 0.01;
-      });
+      const prices = Array(60)
+        .fill(1)
+        .map((_, i) => {
+          // Vary prices slightly to create a cloud
+          return 1 + Math.sin(i * 0.1) * 0.01;
+        });
       const candles = createCandleSeries(prices);
       const result = calculateIchimoku(candles, 59);
 
@@ -88,16 +94,23 @@ describe('ichimoku-extended', () => {
   describe('detectIchimokuSignals', () => {
     it('should detect tenkan-kijun cross', () => {
       // Create candles where tenkan crosses above kijun
-      const prices = Array(60).fill(1).map((_, i) => {
-        if (i < 30) return 1 - (30 - i) * 0.01; // Decreasing
-        return 1 + (i - 30) * 0.01; // Increasing
-      });
+      const prices = Array(60)
+        .fill(1)
+        .map((_, i) => {
+          if (i < 30) return 1 - (30 - i) * 0.01; // Decreasing
+          return 1 + (i - 30) * 0.01; // Increasing
+        });
       const candles = createCandleSeries(prices);
       const current = calculateIchimoku(candles, 59);
       const previous = calculateIchimoku(candles, 58);
 
       if (current && previous) {
-        const signals = detectIchimokuSignals(current, previous, candles[59].close, candles[59].timestamp);
+        const signals = detectIchimokuSignals(
+          current,
+          previous,
+          candles[59].close,
+          candles[59].timestamp
+        );
         expect(Array.isArray(signals)).toBe(true);
       }
     });
@@ -109,7 +122,12 @@ describe('ichimoku-extended', () => {
       const previous = calculateIchimoku(candles, 58);
 
       if (current && previous) {
-        const signals = detectIchimokuSignals(current, previous, candles[59].close, candles[59].timestamp);
+        const signals = detectIchimokuSignals(
+          current,
+          previous,
+          candles[59].close,
+          candles[59].timestamp
+        );
         expect(Array.isArray(signals)).toBe(true);
       }
     });
@@ -129,7 +147,9 @@ describe('ichimoku-extended', () => {
     });
 
     it('should include price position analysis', () => {
-      const prices = Array(60).fill(1).map((_, i) => 1 + i * 0.01);
+      const prices = Array(60)
+        .fill(1)
+        .map((_, i) => 1 + i * 0.01);
       const candles = createCandleSeries(prices);
       const ichimoku = calculateIchimoku(candles, 59);
 
@@ -141,4 +161,3 @@ describe('ichimoku-extended', () => {
     });
   });
 });
-

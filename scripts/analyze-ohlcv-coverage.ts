@@ -36,27 +36,44 @@ async function analyzeCoverage() {
 
   console.log(`📈 Analyzing ${result.rows.length} simulation results...\n`);
 
-  const insufficient = result.rows.filter(r => {
+  const insufficient = result.rows.filter((r) => {
     const minutesBefore = r.minutes_between_token_creation_and_alert;
     return minutesBefore < 260; // 52 periods * 5 minutes = 260 minutes
   });
 
-  const sufficient = result.rows.filter(r => {
+  const sufficient = result.rows.filter((r) => {
     const minutesBefore = r.minutes_between_token_creation_and_alert;
     return minutesBefore >= 260;
   });
 
   console.log('📊 Coverage Analysis:');
-  console.log(`  ✅ Sufficient history (≥260 min): ${sufficient.length} (${((sufficient.length / result.rows.length) * 100).toFixed(1)}%)`);
-  console.log(`  ⚠️  Insufficient history (<260 min): ${insufficient.length} (${((insufficient.length / result.rows.length) * 100).toFixed(1)}%)`);
+  console.log(
+    `  ✅ Sufficient history (≥260 min): ${sufficient.length} (${((sufficient.length / result.rows.length) * 100).toFixed(1)}%)`
+  );
+  console.log(
+    `  ⚠️  Insufficient history (<260 min): ${insufficient.length} (${((insufficient.length / result.rows.length) * 100).toFixed(1)}%)`
+  );
 
   if (insufficient.length > 0) {
     console.log('\n⚠️  Alerts with insufficient history:');
     const byRange = {
-      '0-60 min': insufficient.filter(r => r.minutes_between_token_creation_and_alert < 60).length,
-      '60-120 min': insufficient.filter(r => r.minutes_between_token_creation_and_alert >= 60 && r.minutes_between_token_creation_and_alert < 120).length,
-      '120-180 min': insufficient.filter(r => r.minutes_between_token_creation_and_alert >= 120 && r.minutes_between_token_creation_and_alert < 180).length,
-      '180-260 min': insufficient.filter(r => r.minutes_between_token_creation_and_alert >= 180 && r.minutes_between_token_creation_and_alert < 260).length,
+      '0-60 min': insufficient.filter((r) => r.minutes_between_token_creation_and_alert < 60)
+        .length,
+      '60-120 min': insufficient.filter(
+        (r) =>
+          r.minutes_between_token_creation_and_alert >= 60 &&
+          r.minutes_between_token_creation_and_alert < 120
+      ).length,
+      '120-180 min': insufficient.filter(
+        (r) =>
+          r.minutes_between_token_creation_and_alert >= 120 &&
+          r.minutes_between_token_creation_and_alert < 180
+      ).length,
+      '180-260 min': insufficient.filter(
+        (r) =>
+          r.minutes_between_token_creation_and_alert >= 180 &&
+          r.minutes_between_token_creation_and_alert < 260
+      ).length,
     };
     Object.entries(byRange).forEach(([range, count]) => {
       if (count > 0) {
@@ -70,7 +87,9 @@ async function analyzeCoverage() {
   const sampleInsufficient = insufficient.slice(0, 5);
   for (const row of sampleInsufficient) {
     const minutes = parseFloat(row.minutes_between_token_creation_and_alert) || 0;
-    console.log(`  Alert ${row.alert_id}: Token created ${minutes.toFixed(1)} min before alert (need 260 min)`);
+    console.log(
+      `  Alert ${row.alert_id}: Token created ${minutes.toFixed(1)} min before alert (need 260 min)`
+    );
   }
 
   await pgPool.end();
@@ -79,11 +98,10 @@ async function analyzeCoverage() {
 if (require.main === module) {
   analyzeCoverage()
     .then(() => process.exit(0))
-    .catch(error => {
+    .catch((error) => {
       console.error('\n❌ Fatal error:', error);
       process.exit(1);
     });
 }
 
 export { analyzeCoverage };
-

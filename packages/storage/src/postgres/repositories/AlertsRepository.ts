@@ -1,11 +1,11 @@
 /**
  * AlertsRepository - Postgres repository for alerts
- * 
+ *
  * Handles all database operations for alerts table.
  */
 
 import { DateTime } from 'luxon';
-import { getPostgresPool, withPostgresTransaction } from '../../postgres-client';
+import { getPostgresPool, withPostgresTransaction } from '../postgres-client';
 import { logger } from '@quantbot/utils';
 import type { Alert } from '@quantbot/core';
 
@@ -29,6 +29,8 @@ export interface AlertInsertData {
   maxROI?: number; // Maximum ROI percentage
   athPrice?: number; // All-time high price
   athTimestamp?: Date; // Timestamp of all-time high
+  atlPrice?: number; // All-time low price (from alert until ATH)
+  atlTimestamp?: Date; // Timestamp of all-time low
 }
 
 export class AlertsRepository {
@@ -37,10 +39,10 @@ export class AlertsRepository {
    * Enforces idempotency by (chatId, messageId) if provided
    */
   async insertAlert(data: AlertInsertData): Promise<number> {
-    return withPostgresTransaction(async (client) => {
+    return withPostgresTransaction(async (client: any) => {
       // Check for existing alert if chatId and messageId provided
       if (data.chatId && data.messageId) {
-        const existing = await client.query<{ id: number }>(
+        const existing = await client.query(
           `SELECT id FROM alerts
            WHERE raw_payload_json->>'chatId' = $1
              AND raw_payload_json->>'messageId' = $2`,
@@ -61,13 +63,14 @@ export class AlertsRepository {
         ...(data.messageText ? { messageText: data.messageText } : {}),
       };
 
-      const result = await client.query<{ id: number }>(
+      const result = await client.query(
         `INSERT INTO alerts (
           token_id, caller_id, strategy_id, side, confidence,
           alert_price, alert_timestamp, raw_payload_json,
-          initial_mcap, initial_price, time_to_ath, max_roi, ath_price, ath_timestamp
+          initial_mcap, initial_price, time_to_ath, max_roi, ath_price, ath_timestamp,
+          atl_price, atl_timestamp
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
         RETURNING id`,
         [
           data.tokenId,
@@ -84,10 +87,12 @@ export class AlertsRepository {
           data.maxROI || null,
           data.athPrice || null,
           data.athTimestamp || null,
+          data.atlPrice || null,
+          data.atlTimestamp || null,
         ]
       );
 
-      const alertId = result.rows[0].id;
+      const alertId = (result.rows[0] as any).id;
       logger.debug('Inserted alert', { alertId, tokenId: data.tokenId });
       return alertId;
     });
@@ -151,6 +156,8 @@ export class AlertsRepository {
       maxROI?: number; // Maximum ROI percentage
       athPrice?: number; // All-time high price
       athTimestamp?: Date; // Timestamp of ATH
+      atlPrice?: number; // All-time low price (from alert until ATH)
+      atlTimestamp?: Date; // Timestamp of ATL
     }
   ): Promise<void> {
     const updates: string[] = [];
@@ -178,6 +185,18 @@ export class AlertsRepository {
     if (metrics.athTimestamp !== undefined) {
       updates.push(`ath_timestamp = $${paramIndex}`);
       params.push(metrics.athTimestamp);
+      paramIndex++;
+    }
+
+    if (metrics.atlPrice !== undefined) {
+      updates.push(`atl_price = $${paramIndex}`);
+      params.push(metrics.atlPrice);
+      paramIndex++;
+    }
+
+    if (metrics.atlTimestamp !== undefined) {
+      updates.push(`atl_timestamp = $${paramIndex}`);
+      params.push(metrics.atlTimestamp);
       paramIndex++;
     }
 
@@ -313,7 +332,7 @@ export class AlertsRepository {
       [from, to]
     );
 
-    return result.rows.map((row) => {
+    return result.rows.map((row: any) => {
       const payload = row.raw_payload_json || {};
       return {
         id: row.id,
@@ -333,4 +352,3 @@ export class AlertsRepository {
     });
   }
 }
-

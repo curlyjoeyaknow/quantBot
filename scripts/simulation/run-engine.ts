@@ -22,12 +22,12 @@ function parseArgs(argv: string[]): CliOptions {
 
   for (let i = 0; i < argv.length; i++) {
     let arg = argv[i];
-    
+
     // Handle --key=value format
     if (arg.includes('=')) {
       const [key, value] = arg.split('=', 2);
       arg = key;
-      
+
       switch (key) {
         case '--config':
         case '-c':
@@ -47,7 +47,7 @@ function parseArgs(argv: string[]): CliOptions {
           throw new Error(`Unknown flag ${key}`);
       }
     }
-    
+
     // Handle --key value format
     if (!arg.startsWith('--') && !arg.startsWith('-')) continue;
     const next = argv[i + 1];
@@ -134,7 +134,7 @@ async function main() {
   console.log('\n=== Simulation Summary ===');
   for (const summary of summaries) {
     console.log(
-      `${summary.scenarioName}: ${summary.successes}/${summary.totalTargets} succeeded, ${summary.failures} failed`,
+      `${summary.scenarioName}: ${summary.successes}/${summary.totalTargets} succeeded, ${summary.failures} failed`
     );
   }
 }
@@ -143,4 +143,3 @@ main().catch((error) => {
   console.error('Simulation engine failed:', error);
   process.exitCode = 1;
 });
-

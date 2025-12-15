@@ -7,4 +7,3 @@
 import { createPackageLogger } from '@quantbot/utils';
 
 export const logger = createPackageLogger('@quantbot/simulation');
-

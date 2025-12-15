@@ -2,30 +2,29 @@
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "baseUrl": ".",
+    "rootDir": ".",
     "paths": {
       "@jest/globals": ["tests/jest-globals.ts"],
       "@quantbot/utils": ["./packages/utils/src"],
       "@quantbot/utils/*": ["./packages/utils/src/*"],
       "@quantbot/storage": ["./packages/storage/src"],
       "@quantbot/storage/*": ["./packages/storage/src/*"],
-      "@quantbot/monitoring": ["./packages/monitoring/src"],
-      "@quantbot/monitoring/*": ["./packages/monitoring/src/*"],
       "@quantbot/simulation": ["./packages/simulation/src"],
       "@quantbot/simulation/*": ["./packages/simulation/src/*"],
       "@quantbot/api-clients": ["./packages/api-clients/src"],
       "@quantbot/api-clients/*": ["./packages/api-clients/src/*"],
       "@quantbot/events": ["./packages/events/src"],
       "@quantbot/events/*": ["./packages/events/src/*"],
-      "@quantbot/token-analysis": ["./packages/token-analysis/src"],
-      "@quantbot/token-analysis/*": ["./packages/token-analysis/src/*"],
       "@quantbot/ohlcv": ["./packages/ohlcv/src"],
       "@quantbot/ohlcv/*": ["./packages/ohlcv/src/*"],
       "@quantbot/ingestion": ["./packages/ingestion/src"],
       "@quantbot/ingestion/*": ["./packages/ingestion/src/*"],
-      "@quantbot/workflows": ["./packages/workflows/src"],
-      "@quantbot/workflows/*": ["./packages/workflows/src/*"],
       "@quantbot/bot": ["./packages/bot/src"],
-      "@quantbot/bot/*": ["./packages/bot/src/*"]
+      "@quantbot/bot/*": ["./packages/bot/src/*"],
+      "@quantbot/observability": ["./packages/observability/src"],
+      "@quantbot/observability/*": ["./packages/observability/src/*"],
+      "@quantbot/core": ["./packages/core/src"],
+      "@quantbot/core/*": ["./packages/core/src/*"]
     }
   },
   "include": ["src/**/*", "scripts/**/*"],
@@ -34,13 +33,12 @@
     { "path": "./packages/utils" },
     { "path": "./packages/storage" },
     { "path": "./packages/simulation" },
-    { "path": "./packages/monitoring" },
     { "path": "./packages/bot" },
     { "path": "./packages/api-clients" },
     { "path": "./packages/events" },
-    { "path": "./packages/token-analysis" },
     { "path": "./packages/ohlcv" },
     { "path": "./packages/ingestion" },
-    { "path": "./packages/workflows" }
+    { "path": "./packages/observability" },
+    { "path": "./packages/core" }
   ]
 }

@@ -1,11 +1,11 @@
 /**
  * CallsRepository - Postgres repository for calls (normalized trading signals)
- * 
+ *
  * Handles all database operations for calls table.
  */
 
 import { DateTime } from 'luxon';
-import { getPostgresPool } from '../../postgres-client';
+import { getPostgresPool } from '../postgres-client';
 import { logger } from '@quantbot/utils';
 import type { Call, CallSelection } from '@quantbot/core';
 
@@ -87,13 +87,15 @@ export class CallsRepository {
 
     if (selection.from) {
       conditions.push(`signal_timestamp >= $${paramIndex}`);
-      params.push(selection.from);
+      // Convert DateTime to Date for Postgres
+      params.push(selection.from instanceof Date ? selection.from : selection.from.toJSDate());
       paramIndex++;
     }
 
     if (selection.to) {
       conditions.push(`signal_timestamp <= $${paramIndex}`);
-      params.push(selection.to);
+      // Convert DateTime to Date for Postgres
+      params.push(selection.to instanceof Date ? selection.to : selection.to.toJSDate());
       paramIndex++;
     }
 
@@ -133,7 +135,73 @@ export class CallsRepository {
       created_at: Date;
     }>(query, params);
 
-    return result.rows.map((row) => ({
+    return result.rows.map((row: any) => ({
+      id: row.id,
+      alertId: row.alert_id || undefined,
+      tokenId: row.token_id,
+      callerId: row.caller_id || undefined,
+      strategyId: row.strategy_id || undefined,
+      side: row.side as 'buy' | 'sell',
+      signalType: row.signal_type as 'entry' | 'exit' | 'scale_in' | 'scale_out',
+      signalStrength: row.signal_strength || undefined,
+      signalTimestamp: DateTime.fromJSDate(row.signal_timestamp),
+      metadata: row.metadata_json || undefined,
+      createdAt: DateTime.fromJSDate(row.created_at),
+    }));
+  }
+
+  /**
+   * Find calls by token ID
+   */
+  async findByTokenId(
+    tokenId: number,
+    options?: { from?: Date; to?: Date; limit?: number }
+  ): Promise<Call[]> {
+    const conditions: string[] = ['token_id = $1'];
+    const params: unknown[] = [tokenId];
+    let paramIndex = 2;
+
+    if (options?.from) {
+      conditions.push(`signal_timestamp >= $${paramIndex}`);
+      params.push(options.from);
+      paramIndex++;
+    }
+
+    if (options?.to) {
+      conditions.push(`signal_timestamp <= $${paramIndex}`);
+      params.push(options.to);
+      paramIndex++;
+    }
+
+    const whereClause = conditions.join(' AND ');
+    const limitClause = options?.limit ? `LIMIT $${paramIndex}` : '';
+    if (options?.limit) {
+      params.push(options.limit);
+    }
+
+    const result = await getPostgresPool().query<{
+      id: number;
+      alert_id: number | null;
+      token_id: number;
+      caller_id: number | null;
+      strategy_id: number | null;
+      side: string;
+      signal_type: string;
+      signal_strength: number | null;
+      signal_timestamp: Date;
+      metadata_json: Record<string, unknown> | null;
+      created_at: Date;
+    }>(
+      `SELECT id, alert_id, token_id, caller_id, strategy_id, side,
+              signal_type, signal_strength, signal_timestamp, metadata_json, created_at
+       FROM calls
+       WHERE ${whereClause}
+       ORDER BY signal_timestamp ASC
+       ${limitClause}`,
+      params
+    );
+
+    return result.rows.map((row: any) => ({
       id: row.id,
       alertId: row.alert_id || undefined,
       tokenId: row.token_id,
@@ -174,7 +242,7 @@ export class CallsRepository {
       [tokenAddress] // Full address, case-preserved
     );
 
-    return result.rows.map((row) => ({
+    return result.rows.map((row: any) => ({
       id: row.id,
       alertId: row.alert_id || undefined,
       tokenId: row.token_id,
@@ -189,4 +257,3 @@ export class CallsRepository {
     }));
   }
 }
-

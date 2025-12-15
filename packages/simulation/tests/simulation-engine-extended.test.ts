@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { simulateStrategy } from '../../src/simulation/engine';
-import type { Candle } from '../../src/simulation/candles';
-import type { Strategy, StopLossConfig, EntryConfig, ReEntryConfig } from '../../src/simulation/config';
+import { simulateStrategy } from '../src/engine';
+import type { Candle } from '../src/candles';
+import type { Strategy, StopLossConfig, EntryConfig, ReEntryConfig } from '../src/config';
 
 describe('simulation-engine-extended', () => {
   const createCandle = (timestamp: number, price: number, volume: number = 1000): Candle => ({
@@ -102,15 +102,23 @@ describe('simulation-engine-extended', () => {
       const candles = createCandleSeries([1.0, 1.1, 1.2, 1.3, 1.4, 1.5]);
       const strategy: Strategy[] = [{ target: 2, percent: 1.0 }];
 
-      const result = simulateStrategy(candles, strategy, undefined, undefined, undefined, undefined, {
-        entryLadder: {
-          sequential: false,
-          legs: [
-            { sizePercent: 0.5, id: 'leg1' },
-            { sizePercent: 0.5, id: 'leg2' },
-          ],
-        },
-      });
+      const result = simulateStrategy(
+        candles,
+        strategy,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        {
+          entryLadder: {
+            sequential: false,
+            legs: [
+              { sizePercent: 0.5, id: 'leg1' },
+              { sizePercent: 0.5, id: 'leg2' },
+            ],
+          },
+        }
+      );
 
       const ladderEvents = result.events.filter((e) => e.type === 'ladder_entry');
       expect(ladderEvents.length).toBeGreaterThanOrEqual(0);
@@ -120,15 +128,23 @@ describe('simulation-engine-extended', () => {
       const candles = createCandleSeries([1.0, 1.5, 2.0, 2.5, 3.0, 3.5]);
       const strategy: Strategy[] = [{ target: 2, percent: 1.0 }];
 
-      const result = simulateStrategy(candles, strategy, undefined, undefined, undefined, undefined, {
-        exitLadder: {
-          sequential: false,
-          legs: [
-            { sizePercent: 0.5, priceOffset: 0.5 },
-            { sizePercent: 0.5, priceOffset: 1.0 },
-          ],
-        },
-      });
+      const result = simulateStrategy(
+        candles,
+        strategy,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        {
+          exitLadder: {
+            sequential: false,
+            legs: [
+              { sizePercent: 0.5, priceOffset: 0.5 },
+              { sizePercent: 0.5, priceOffset: 1.0 },
+            ],
+          },
+        }
+      );
 
       const ladderEvents = result.events.filter((e) => e.type === 'ladder_exit');
       expect(ladderEvents.length).toBeGreaterThanOrEqual(0);
@@ -195,4 +211,3 @@ describe('simulation-engine-extended', () => {
     });
   });
 });
-

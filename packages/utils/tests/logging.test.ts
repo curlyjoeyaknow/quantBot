@@ -13,12 +13,12 @@ import { LogAggregator } from '../src/logging/aggregator';
 describe('Centralized Logging System', () => {
   describe('Package Loggers', () => {
     it('should create package-specific loggers with namespaces', () => {
-      const botLogger = createPackageLogger('@quantbot/bot');
+      const workflowsLogger = createPackageLogger('@quantbot/workflows');
       const servicesLogger = createPackageLogger('@quantbot/services');
 
-      expect(botLogger).toBeInstanceOf(Logger);
+      expect(workflowsLogger).toBeInstanceOf(Logger);
       expect(servicesLogger).toBeInstanceOf(Logger);
-      expect(botLogger.getNamespace()).toBe('@quantbot/bot');
+      expect(workflowsLogger.getNamespace()).toBe('@quantbot/workflows');
       expect(servicesLogger.getNamespace()).toBe('@quantbot/services');
     });
 
@@ -65,9 +65,9 @@ describe('Centralized Logging System', () => {
 
     it('should log API requests', () => {
       const spy = vi.spyOn(logger, 'debug');
-      
+
       LogHelpers.apiRequest(logger, 'GET', 'https://api.example.com', { userId: 123 });
-      
+
       expect(spy).toHaveBeenCalledWith('API Request', {
         method: 'GET',
         url: 'https://api.example.com',
@@ -90,9 +90,9 @@ describe('Centralized Logging System', () => {
 
     it('should log database queries', () => {
       const spy = vi.spyOn(logger, 'debug');
-      
+
       LogHelpers.dbQuery(logger, 'SELECT', 'users', 45, { rows: 100 });
-      
+
       expect(spy).toHaveBeenCalledWith('Database Query', {
         operation: 'SELECT',
         table: 'users',
@@ -103,9 +103,9 @@ describe('Centralized Logging System', () => {
 
     it('should log WebSocket events', () => {
       const spy = vi.spyOn(logger, 'debug');
-      
+
       LogHelpers.websocketEvent(logger, 'message', { type: 'trade' });
-      
+
       expect(spy).toHaveBeenCalledWith('WebSocket Event', {
         event: 'message',
         data: { type: 'trade' },
@@ -114,9 +114,9 @@ describe('Centralized Logging System', () => {
 
     it('should log simulations', () => {
       const spy = vi.spyOn(logger, 'info');
-      
+
       LogHelpers.simulation(logger, 'ichimoku-v1', 'token123', { pnl: 1.5 });
-      
+
       expect(spy).toHaveBeenCalledWith('Simulation Completed', {
         strategy: 'ichimoku-v1',
         tokenAddress: 'token123',
@@ -126,9 +126,9 @@ describe('Centralized Logging System', () => {
 
     it('should log cache operations', () => {
       const spy = vi.spyOn(logger, 'debug');
-      
+
       LogHelpers.cache(logger, 'hit', 'ohlcv:token123:1m');
-      
+
       expect(spy).toHaveBeenCalledWith('Cache hit', {
         key: 'ohlcv:token123:1m',
       });
@@ -136,9 +136,9 @@ describe('Centralized Logging System', () => {
 
     it('should log performance metrics', () => {
       const spy = vi.spyOn(logger, 'info');
-      
+
       LogHelpers.performance(logger, 'fetchCandles', 234, true);
-      
+
       expect(spy).toHaveBeenCalledWith('Performance Metric', {
         operation: 'fetchCandles',
         duration: 234,
@@ -214,7 +214,7 @@ describe('Centralized Logging System', () => {
 
     it('should not match if level is different', () => {
       const matchFn = vi.fn();
-      
+
       monitor.registerPattern({
         id: 'level-test',
         name: 'Level Test',
@@ -306,4 +306,3 @@ describe('Centralized Logging System', () => {
     });
   });
 });
-

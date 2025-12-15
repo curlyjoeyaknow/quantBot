@@ -1,1 +1,0 @@
-{"version":3,"file":"clickhouse-loader.d.ts","sourceRoot":"","sources":["clickhouse-loader.ts"],"names":[],"mappings":"AAAA;;;;GAIG;AAIH,OAAO,EAAE,UAAU,EAAE,UAAU,EAAE,UAAU,EAAwB,MAAM,SAAS,CAAC;AAEnF,qBAAa,oBAAqB,YAAW,UAAU;IACrD,SAAgB,IAAI,uBAAuB;IAErC,IAAI,CAAC,MAAM,EAAE,UAAU,GAAG,OAAO,CAAC,UAAU,EAAE,CAAC;IAyCrD,OAAO,CAAC,MAAM,EAAE,MAAM,GAAG,OAAO;IAIhC,OAAO,CAAC,gBAAgB;CAczB"}

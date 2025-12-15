@@ -78,7 +78,7 @@ curl -X POST http://localhost:3000/api/golden-path/ingest/telegram \
 
 ## Workflow 2: OHLCV Data Collection
 
-### CLI Method
+### CLI Method (OHLCV)
 
 ```bash
 pnpm ingest:ohlcv \
@@ -89,7 +89,7 @@ pnpm ingest:ohlcv \
   --interval 5m
 ```
 
-### API Method
+### API Method (OHLCV)
 
 ```bash
 curl -X POST http://localhost:3000/api/golden-path/ingest/ohlcv \
@@ -103,7 +103,7 @@ curl -X POST http://localhost:3000/api/golden-path/ingest/ohlcv \
   }'
 ```
 
-### What It Does
+### What It Does (OHLCV)
 
 1. Queries calls from Postgres in the specified date range
 2. Groups calls by token
@@ -111,7 +111,7 @@ curl -X POST http://localhost:3000/api/golden-path/ingest/ohlcv \
 4. Fetches missing candles from Birdeye API
 5. Stores candles in ClickHouse
 
-### Expected Output
+### Expected Output (OHLCV)
 
 ```json
 {
@@ -126,7 +126,7 @@ curl -X POST http://localhost:3000/api/golden-path/ingest/ohlcv \
 
 ## Workflow 3: Strategy Simulation
 
-### CLI Method
+### CLI Method (Simulation)
 
 ```bash
 pnpm simulate:calls \
@@ -136,7 +136,7 @@ pnpm simulate:calls \
   --to 2024-02-01
 ```
 
-### API Method
+### API Method (Simulation)
 
 ```bash
 curl -X POST http://localhost:3000/api/golden-path/simulate \
@@ -149,7 +149,7 @@ curl -X POST http://localhost:3000/api/golden-path/simulate \
   }'
 ```
 
-### What It Does
+### What It Does (Simulation)
 
 1. Loads strategy configuration from Postgres
 2. Queries calls matching selection criteria
@@ -158,7 +158,7 @@ curl -X POST http://localhost:3000/api/golden-path/simulate \
 5. Writes events and aggregates to ClickHouse
 6. Writes summary to Postgres
 
-### Expected Output
+### Expected Output (Simulation)
 
 ```json
 {
@@ -206,6 +206,7 @@ The web interface provides UI for all three workflows:
 3. **Simulation Page** - Configure and run simulations
 
 Access these via:
+
 - `/golden-path/ingest` - Ingestion interface
 - `/golden-path/ohlcv` - OHLCV interface
 - `/golden-path/simulate` - Simulation interface
@@ -236,4 +237,3 @@ Access these via:
 - See `docs/GOLDEN_PATH.md` for architecture details
 - See `docs/SCHEMA.md` for database schema
 - See `docs/LOGGING.md` for logging standards
-

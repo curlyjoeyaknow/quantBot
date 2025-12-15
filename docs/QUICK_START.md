@@ -79,19 +79,20 @@ pnpm simulate:calls \
 ### Option B: Web Interface
 
 1. Start web server:
+
 ```bash
 cd packages/web
 pnpm dev
 ```
 
-2. Open browser: `http://localhost:3000/golden-path/ingest`
+1. Open browser: `http://localhost:3000/golden-path/ingest`
 
-3. Use the UI to:
+2. Use the UI to:
    - Upload Telegram exports
    - Trigger OHLCV fetching
    - Run simulations
 
-### Option C: API
+3. Option C: API
 
 ```bash
 # Ingest Telegram
@@ -152,4 +153,3 @@ tail -f logs/combined-*.log
 - Check logs: `logs/combined-*.log`
 - Check API health: `http://localhost:3000/api/health`
 - Review `docs/` directory for detailed documentation
-

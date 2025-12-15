@@ -2,13 +2,19 @@
  * @file engine.test.ts
  * @description
  * Unit tests for the simulation engine core logic.
- * 
+ *
  * Tests the simulateStrategy function with basic scenarios and validates
  * the result structure matches the expected types.
  */
 
-import { simulateStrategy, Strategy, StopLossConfig, EntryConfig, ReEntryConfig } from '../../src/simulation/engine';
-import { Candle } from '../../src/simulation/candles';
+import {
+  simulateStrategy,
+  Strategy,
+  StopLossConfig,
+  EntryConfig,
+  ReEntryConfig,
+} from '../src/engine';
+import { Candle } from '../src/candles';
 
 describe('Simulation Engine', () => {
   // Mock candle data for testing
@@ -22,28 +28,28 @@ describe('Simulation Engine', () => {
     { timestamp: 7000, open: 1.55, high: 1.7, low: 1.5, close: 1.65, volume: 2500 },
     { timestamp: 8000, open: 1.65, high: 1.8, low: 1.6, close: 1.75, volume: 2800 },
     { timestamp: 9000, open: 1.75, high: 1.9, low: 1.7, close: 1.85, volume: 3000 },
-    { timestamp: 10000, open: 1.85, high: 2.0, low: 1.8, close: 1.95, volume: 3200 }
+    { timestamp: 10000, open: 1.85, high: 2.0, low: 1.8, close: 1.95, volume: 3200 },
   ];
 
   const defaultStrategy: Strategy[] = [
     { percent: 0.5, target: 2.0 }, // 50% at 2x
-    { percent: 0.5, target: 3.0 }  // 50% at 3x
+    { percent: 0.5, target: 3.0 }, // 50% at 3x
   ];
 
   const defaultStopLoss: StopLossConfig = {
     initial: -0.3, // -30% stop loss
-    trailing: 0.5  // 50% trailing to break-even
+    trailing: 0.5, // 50% trailing to break-even
   };
 
   const defaultEntry: EntryConfig = {
     initialEntry: 'none',
     trailingEntry: 'none',
-    maxWaitTime: 60
+    maxWaitTime: 60,
   };
 
   const defaultReEntry: ReEntryConfig = {
     trailingReEntry: 'none',
-    maxReEntries: 0
+    maxReEntries: 0,
   };
 
   describe('Basic Strategy Execution', () => {
@@ -65,7 +71,7 @@ describe('Simulation Engine', () => {
 
     it('should handle single candle data', () => {
       const singleCandle = [mockCandles[0]];
-      
+
       const result = simulateStrategy(
         singleCandle,
         defaultStrategy,
@@ -145,16 +151,24 @@ describe('Simulation Engine', () => {
         expect(event).toHaveProperty('description');
         expect(event).toHaveProperty('remainingPosition');
         expect(event).toHaveProperty('pnlSoFar');
-        
+
         expect(typeof event.type).toBe('string');
         expect(typeof event.timestamp).toBe('number');
         expect(typeof event.price).toBe('number');
         expect(typeof event.description).toBe('string');
         expect(typeof event.remainingPosition).toBe('number');
         expect(typeof event.pnlSoFar).toBe('number');
-        
+
         // Validate event type is one of the allowed values
-        const validTypes = ['entry', 'stop_moved', 'target_hit', 'stop_loss', 'final_exit', 'trailing_entry_triggered', 're_entry'];
+        const validTypes = [
+          'entry',
+          'stop_moved',
+          'target_hit',
+          'stop_loss',
+          'final_exit',
+          'trailing_entry_triggered',
+          're_entry',
+        ];
         expect(validTypes).toContain(event.type);
       });
     });
@@ -164,7 +178,7 @@ describe('Simulation Engine', () => {
     it('should handle strategy with zero percent', () => {
       const zeroPercentStrategy: Strategy[] = [
         { percent: 0, target: 2.0 }, // 0% at 2x (tracking only)
-        { percent: 1.0, target: 3.0 } // 100% at 3x
+        { percent: 1.0, target: 3.0 }, // 100% at 3x
       ];
 
       const result = simulateStrategy(
@@ -182,7 +196,7 @@ describe('Simulation Engine', () => {
     it('should handle strategy with high targets', () => {
       const highTargetStrategy: Strategy[] = [
         { percent: 0.5, target: 10.0 }, // 50% at 10x
-        { percent: 0.5, target: 20.0 }   // 50% at 20x
+        { percent: 0.5, target: 20.0 }, // 50% at 20x
       ];
 
       const result = simulateStrategy(
@@ -203,7 +217,7 @@ describe('Simulation Engine', () => {
     it('should handle no trailing stop', () => {
       const noTrailingStopLoss: StopLossConfig = {
         initial: -0.3,
-        trailing: 'none'
+        trailing: 'none',
       };
 
       const result = simulateStrategy(
@@ -221,7 +235,7 @@ describe('Simulation Engine', () => {
     it('should handle negative stop loss values', () => {
       const negativeStopLoss: StopLossConfig = {
         initial: -0.5, // -50% stop loss
-        trailing: 'none'
+        trailing: 'none',
       };
 
       const result = simulateStrategy(
@@ -242,7 +256,7 @@ describe('Simulation Engine', () => {
       const trailingEntryConfig: EntryConfig = {
         initialEntry: 'none',
         trailingEntry: 0.1, // 10% trailing entry
-        maxWaitTime: 60
+        maxWaitTime: 60,
       };
 
       const result = simulateStrategy(
@@ -261,7 +275,7 @@ describe('Simulation Engine', () => {
       const noTrailingEntry: EntryConfig = {
         initialEntry: 'none',
         trailingEntry: 'none',
-        maxWaitTime: 60
+        maxWaitTime: 60,
       };
 
       const result = simulateStrategy(
@@ -282,7 +296,7 @@ describe('Simulation Engine', () => {
       const reEntryConfig: ReEntryConfig = {
         trailingReEntry: 0.2, // 20% retrace for re-entry
         maxReEntries: 2,
-        sizePercent: 0.5 // 50% position size on re-entry
+        sizePercent: 0.5, // 50% position size on re-entry
       };
 
       const result = simulateStrategy(
@@ -300,7 +314,7 @@ describe('Simulation Engine', () => {
     it('should handle no re-entry', () => {
       const noReEntry: ReEntryConfig = {
         trailingReEntry: 'none',
-        maxReEntries: 0
+        maxReEntries: 0,
       };
 
       const result = simulateStrategy(
@@ -320,7 +334,7 @@ describe('Simulation Engine', () => {
     it('should handle candles with zero volume', () => {
       const zeroVolumeCandles: Candle[] = [
         { timestamp: 1000, open: 1.0, high: 1.1, low: 0.9, close: 1.05, volume: 0 },
-        { timestamp: 2000, open: 1.05, high: 1.2, low: 1.0, close: 1.15, volume: 0 }
+        { timestamp: 2000, open: 1.05, high: 1.2, low: 1.0, close: 1.15, volume: 0 },
       ];
 
       const result = simulateStrategy(
@@ -339,7 +353,7 @@ describe('Simulation Engine', () => {
       const extremeCandles: Candle[] = [
         { timestamp: 1000, open: 1.0, high: 1.05, low: 0.95, close: 1.0, volume: 1000 },
         { timestamp: 2000, open: 1.0, high: 100.0, low: 0.01, close: 50.0, volume: 10000 }, // Extreme movement
-        { timestamp: 3000, open: 50.0, high: 50.5, low: 49.5, close: 50.0, volume: 2000 }
+        { timestamp: 3000, open: 50.0, high: 50.5, low: 49.5, close: 50.0, volume: 2000 },
       ];
 
       const result = simulateStrategy(

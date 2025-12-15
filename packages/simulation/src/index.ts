@@ -1,13 +1,13 @@
 /**
  * @quantbot/simulation - Trading Simulation Engine
  * =================================================
- * 
+ *
  * A comprehensive, modular simulation engine for backtesting trading strategies.
- * 
+ *
  * ## Architecture
- * 
+ *
  * The simulation engine is organized into the following modules:
- * 
+ *
  * - **types/**: Type definitions for candles, positions, events, strategies, and signals
  * - **data/**: Candle data providers (Birdeye API, ClickHouse, CSV cache)
  * - **indicators/**: Technical indicators (Ichimoku, Moving Averages, RSI)
@@ -16,22 +16,22 @@
  * - **execution/**: Entry, exit, and fee calculation logic
  * - **core/**: Main simulation engine and orchestrator
  * - **sinks/**: Output handlers (Console, CSV, JSON, ClickHouse)
- * 
+ *
  * ## Quick Start
- * 
+ *
  * ```typescript
- * import { 
- *   simulateStrategy, 
+ * import {
+ *   simulateStrategy,
  *   createOrchestrator,
- *   createHybridProvider 
+ *   createHybridProvider
  * } from '@quantbot/simulation';
- * 
+ *
  * // Simple simulation on candle data
  * const result = simulateStrategy(candles, [
  *   { target: 2, percent: 0.5 },
  *   { target: 3, percent: 0.5 },
  * ]);
- * 
+ *
  * // Advanced: Run simulations with orchestrator
  * const orchestrator = createOrchestrator();
  * const summary = await orchestrator.runScenario({
@@ -118,13 +118,55 @@ export type {
 export * from './core';
 
 // =============================================================================
+// Config - Configuration parsing and target resolution
+// =============================================================================
+export { parseSimulationConfig } from './config';
+export type {
+  SimulationScenarioConfig,
+  SimulationEngineConfig,
+  PeriodMetricsConfig,
+} from './config';
+export { DefaultTargetResolver } from './target-resolver';
+export type { ScenarioTargetResolver } from './target-resolver';
+
+// =============================================================================
 // Storage - Storage integration
 // =============================================================================
+/**
+ * @deprecated Storage integration has been moved to @quantbot/workflows.
+ * Import from @quantbot/workflows/storage instead.
+ */
 export { createStorageSink, StorageSink } from './storage/storage-sink';
 export type { StorageSinkConfig } from './storage/storage-sink';
-export { ensureStrategyStored, generateStrategyName, hashStrategyConfig } from './storage/strategy-storage';
+export {
+  ensureStrategyStored,
+  generateStrategyName,
+  hashStrategyConfig,
+} from './storage/strategy-storage';
 export { calculateResultMetrics } from './storage/metrics-calculator';
 export { createOrchestratorWithStorage } from './storage/orchestrator-helper';
+export { getResultCache, ResultCache } from './storage/result-cache';
+export type { ResultCacheConfig } from './storage/result-cache';
+
+// =============================================================================
+// Performance - Performance monitoring and optimization
+// =============================================================================
+export { getPerformanceMonitor, PerformanceMonitor } from './performance/monitor';
+export type { PerformanceMetrics } from './performance/monitor';
+export { calculateIndicatorSeriesOptimized } from './performance/optimizations';
+
+// =============================================================================
+// Analytics - Period metrics integration
+// =============================================================================
+export {
+  calculatePeriodMetricsForSimulation,
+  enrichSimulationResultWithPeriodMetrics,
+} from './period-metrics/period-metrics';
+
+// =============================================================================
+// Math - Pure math utilities
+// =============================================================================
+export * from './math';
 
 // =============================================================================
 // Sinks - Output handlers
@@ -140,6 +182,10 @@ export { simulateStrategy } from './core/simulator';
 export type { SimulationOptions } from './core/simulator';
 
 // Re-export orchestrator as SimulationEngine for backwards compatibility
+/**
+ * @deprecated Orchestrator has been moved to @quantbot/workflows.
+ * Import from @quantbot/workflows/simulation/orchestrator instead.
+ */
 export { SimulationOrchestrator as SimulationEngine } from './core/orchestrator';
 export { createOrchestrator } from './core/orchestrator';
 
@@ -163,6 +209,10 @@ export type {
   LadderLeg,
 } from './types';
 
+/**
+ * @deprecated Orchestrator types have been moved to @quantbot/workflows.
+ * Import from @quantbot/workflows/simulation/orchestrator instead.
+ */
 export type {
   SimulationTarget,
   ScenarioConfig,
@@ -174,11 +224,7 @@ export type {
 } from './core/orchestrator';
 
 // Re-export provider types
-export type { 
-  TokenMetadata, 
-  CandleFetchRequest, 
-  CandleFetchResult 
-} from './data/provider';
+export type { TokenMetadata, CandleFetchRequest, CandleFetchResult } from './data/provider';
 
 // Re-export indicator types
 export type { IchimokuData } from './indicators/ichimoku';
@@ -195,7 +241,7 @@ import type { Candle } from './types';
 
 /**
  * Legacy function: Fetch candles using hybrid provider
- * 
+ *
  * @deprecated Use HybridCandleProvider directly for more control
  */
 export async function fetchHybridCandles(
@@ -218,7 +264,7 @@ export async function fetchHybridCandles(
 
 /**
  * Legacy function: Fetch candles with metadata
- * 
+ *
  * @deprecated Use HybridCandleProvider.fetchCandlesWithMetadata directly
  */
 export async function fetchHybridCandlesWithMetadata(
@@ -252,8 +298,8 @@ export { evaluateSignalGroup, evaluateLadderLegs } from './signals';
 export { aggregateCandles } from './data/aggregator';
 
 // Re-export indicator calculation for legacy code
-export { 
-  calculateIndicators, 
+export {
+  calculateIndicators,
   calculateIndicatorSeries,
   getBullishSignals,
   getBearishSignals,

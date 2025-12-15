@@ -3,13 +3,13 @@ import { fetchHybridCandles } from '../src/simulation/candles';
 
 async function checkGiggle() {
   const tokenAddress = '0x20d6015660b3fe52e6690a889b5c51f69902ce0e';
-  
+
   // Check September 10th (if someone had called it then)
   const dates = [
     DateTime.fromISO('2025-09-10T00:00:00.000Z'),
-    DateTime.fromISO('2025-09-10T12:00:00.000Z')
+    DateTime.fromISO('2025-09-10T12:00:00.000Z'),
   ];
-  
+
   for (const alertDate of dates) {
     const endDate = alertDate.plus({ days: 60 });
 
@@ -45,9 +45,10 @@ async function checkGiggle() {
     console.log(`   Max High: $${maxCandle.high.toFixed(8)}`);
     console.log(`   Maximum Multiplier: ${maxMultiplier.toFixed(2)}x`);
     console.log(`   Final Price: $${candles[candles.length - 1].close.toFixed(8)}`);
-    console.log(`   Final Multiplier: ${(candles[candles.length - 1].close / entryPrice).toFixed(2)}x`);
+    console.log(
+      `   Final Multiplier: ${(candles[candles.length - 1].close / entryPrice).toFixed(2)}x`
+    );
   }
 }
 
 checkGiggle().catch(console.error);
-

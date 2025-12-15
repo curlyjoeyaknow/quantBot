@@ -1,9 +1,9 @@
 /**
  * Database Module
- * 
+ *
  * Provides a type-safe, maintainable API for accessing and modifying simulation and CA-tracking data
  * using a SQLite database.
- * 
+ *
  * Sections:
  *   1. Database Initialization & Lifecycle
  *   2. Simulation Run Management
@@ -16,7 +16,32 @@ import * as sqlite3 from 'sqlite3';
 import { DateTime } from 'luxon';
 import * as path from 'path';
 import { logger } from './logger';
-import type { Strategy, StopLossConfig, SimulationEvent, SimulationRunData, CACall } from '@quantbot/core';
+import type {
+  Strategy,
+  StopLossConfig,
+  SimulationEvent,
+  SimulationRunData,
+  CACall,
+  ActiveCA,
+  Chain,
+  TokenAddress,
+} from '@quantbot/core';
+import { createTokenAddress } from '@quantbot/core';
+import {
+  validateOrThrow,
+  saveStrategySchema,
+  saveSimulationRunSchema,
+  saveCATrackingSchema,
+  saveCACallSchema,
+  userIdSchema,
+  runIdSchema,
+  caIdSchema,
+  mintAddressSchema,
+  callerNameSchema,
+  chainParamSchema,
+  limitSchema,
+  hoursSchema,
+} from './database-validation';
 
 // ---------------------------------------------------------------------
 // 1. Database Initialization & Lifecycle
@@ -31,10 +56,15 @@ let db: sqlite3.Database | null = null;
 /**
  * Initializes the SQLite database connection.
  * Creates required tables and indices if they do not exist.
- * 
+ *
  * @returns {Promise<void>}
  */
 export function initDatabase(): Promise<void> {
+  // In test environment allow injecting a mock database to avoid sqlite3 constructor issues
+  if (process.env.NODE_ENV === 'test' && (globalThis as any).__mockDb) {
+    db = (globalThis as any).__mockDb as any;
+    return Promise.resolve();
+  }
   const TABLES_AND_INDICES_SQL = `
     -- Strategies definition
     CREATE TABLE IF NOT EXISTS strategies (
@@ -217,31 +247,40 @@ export function initDatabase(): Promise<void> {
           logger.error('Error creating tables', tableErr as Error);
           return reject(tableErr);
         }
-        
+
         // Add new columns to simulation_runs if they don't exist (migration)
-        db!.exec(`
+        db!.exec(
+          `
           -- Add new columns to simulation_runs for entry tracking
           ALTER TABLE simulation_runs ADD COLUMN entry_type TEXT;
           ALTER TABLE simulation_runs ADD COLUMN entry_price REAL;
           ALTER TABLE simulation_runs ADD COLUMN entry_timestamp INTEGER;
           ALTER TABLE simulation_runs ADD COLUMN filter_criteria TEXT;
-        `, (alterErr) => {
-          // Ignore errors if columns already exist
-          if (alterErr && !alterErr.message.includes('duplicate column name')) {
-            logger.warn('Error adding columns to simulation_runs (may already exist)', alterErr as Error);
+        `,
+          (alterErr) => {
+            // Ignore errors if columns already exist
+            if (alterErr && !alterErr.message.includes('duplicate column name')) {
+              logger.warn(
+                'Error adding columns to simulation_runs (may already exist)',
+                alterErr as Error
+              );
+            }
           }
-        });
-        
+        );
+
         // Create additional indexes
-        db!.exec(`
+        db!.exec(
+          `
           CREATE INDEX IF NOT EXISTS idx_backtest_runs_strategy ON simulation_runs(strategy_name);
           CREATE INDEX IF NOT EXISTS idx_backtest_runs_entry_time ON simulation_runs(entry_timestamp);
-        `, (indexErr) => {
-          if (indexErr) {
-            logger.warn('Error creating indexes (may already exist)', indexErr as Error);
+        `,
+          (indexErr) => {
+            if (indexErr) {
+              logger.warn('Error creating indexes (may already exist)', indexErr as Error);
+            }
           }
-        });
-        
+        );
+
         logger.info('Database tables created and ready');
         resolve();
       });
@@ -280,6 +319,19 @@ export function saveSimulationRun(data: {
 }): Promise<number> {
   return new Promise((resolve, reject) => {
     if (!db) return reject(new Error('Database not initialized'));
+
+    // Validate input
+    try {
+      const validated = validateOrThrow(saveSimulationRunSchema, {
+        ...data,
+        startTime: data.startTime.toJSDate(),
+        endTime: data.endTime.toJSDate(),
+      });
+      // Use validated data (mint is now TokenAddress, chain is validated)
+      data = { ...data, mint: validated.mint, chain: validated.chain };
+    } catch (error) {
+      return reject(error);
+    }
 
     const insertRun = `
       INSERT INTO simulation_runs 
@@ -352,9 +404,12 @@ export function saveSimulationRun(data: {
  *
  * @param userId User's identifier
  * @param limit Maximum number of runs to retrieve (default: 10)
- * @returns {Promise<any[]>}
+ * @returns {Promise<SimulationRunData[]>}
  */
-export function getUserSimulationRuns(userId: number, limit: number = 10): Promise<SimulationRunData[]> {
+export function getUserSimulationRuns(
+  userId: number,
+  limit: number = 10
+): Promise<SimulationRunData[]> {
   return new Promise((resolve, reject) => {
     if (!db) return reject(new Error('Database not initialized'));
 
@@ -398,7 +453,7 @@ export function getUserSimulationRuns(userId: number, limit: number = 10): Promi
         logger.error('Error fetching simulation runs', err as Error, { userId });
         return reject(err);
       }
-      
+
       // Fetch events for each run and build complete SimulationRunData
       const runs: SimulationRunData[] = await Promise.all(
         (rows as DatabaseRow[]).map(async (row) => {
@@ -429,11 +484,18 @@ export function getUserSimulationRuns(userId: number, limit: number = 10): Promi
  * Retrieves a simulation run and its details by run ID.
  *
  * @param runId Simulation run identifier
- * @returns {Promise<any|null>}
+ * @returns Promise with simulation run data or null if not found
  */
-export function getSimulationRun(runId: number): Promise<any | null> {
+export function getSimulationRun(runId: number): Promise<SimulationRunWithDetails | null> {
   return new Promise((resolve, reject) => {
     if (!db) return reject(new Error('Database not initialized'));
+
+    // Validate input
+    try {
+      validateOrThrow(runIdSchema, runId);
+    } catch (error) {
+      return reject(error);
+    }
 
     const query = `
       SELECT 
@@ -466,24 +528,25 @@ export function getSimulationRun(runId: number): Promise<any | null> {
       }
       if (!row) return resolve(null);
 
-      const run = {
+      const run: SimulationRunWithDetails = {
         id: row.id,
         userId: row.user_id,
         mint: row.mint,
-        chain: row.chain,
+        chain: row.chain as Chain,
         tokenName: row.token_name,
         tokenSymbol: row.token_symbol,
-        startTime: row.start_time,
-        endTime: row.end_time,
-        strategy: JSON.parse(row.strategy),
-        stopLossConfig: JSON.parse(row.stop_loss_config),
-        strategyName: row.strategy_name,
+        startTime: DateTime.fromISO(row.start_time),
+        endTime: DateTime.fromISO(row.end_time),
+        strategy: JSON.parse(row.strategy) as Strategy[],
+        stopLossConfig: JSON.parse(row.stop_loss_config) as StopLossConfig,
         finalPnl: row.final_pnl,
         totalCandles: row.total_candles,
+        events: [], // Events would need to be fetched separately
+        strategyName: row.strategy_name,
         entryType: row.entry_type,
         entryPrice: row.entry_price,
         entryTimestamp: row.entry_timestamp,
-        filterCriteria: row.filter_criteria ? JSON.parse(row.filter_criteria) : null,
+        filterCriteria: row.filter_criteria ? JSON.parse(row.filter_criteria) : undefined,
         createdAt: DateTime.fromISO(row.created_at),
       };
       resolve(run);
@@ -495,11 +558,18 @@ export function getSimulationRun(runId: number): Promise<any | null> {
  * Retrieves all events for a specific simulation run.
  *
  * @param runId Simulation run identifier
- * @returns {Promise<any[]>}
+ * @returns Promise with array of simulation events
  */
-export function getSimulationEvents(runId: number): Promise<any[]> {
+export function getSimulationEvents(runId: number): Promise<SimulationEvent[]> {
   return new Promise((resolve, reject) => {
     if (!db) return reject(new Error('Database not initialized'));
+
+    // Validate input
+    try {
+      validateOrThrow(runIdSchema, runId);
+    } catch (error) {
+      return reject(error);
+    }
 
     const query = `
       SELECT 
@@ -519,7 +589,16 @@ export function getSimulationEvents(runId: number): Promise<any[]> {
         logger.error('Error fetching simulation events', err as Error, { runId });
         return reject(err);
       }
-      resolve(rows ?? []);
+      // Map database rows to SimulationEvent format
+      const events: SimulationEvent[] = (rows ?? []).map((row: any) => ({
+        type: row.event_type as SimulationEvent['type'],
+        timestamp: row.timestamp,
+        price: row.price,
+        description: row.description,
+        remainingPosition: row.remaining_position,
+        pnlSoFar: row.pnl_so_far,
+      }));
+      resolve(events);
     });
   });
 }
@@ -538,12 +617,19 @@ export function saveStrategy(data: {
   userId: number;
   name: string;
   description?: string;
-  strategy: any[];
-  stopLossConfig: any;
+  strategy: Strategy[];
+  stopLossConfig: StopLossConfig;
   isDefault?: boolean;
 }): Promise<number> {
   return new Promise((resolve, reject) => {
     if (!db) return reject(new Error('Database not initialized'));
+
+    // Validate input
+    try {
+      validateOrThrow(saveStrategySchema, data);
+    } catch (error) {
+      return reject(error);
+    }
 
     const insertStrategy = `
       INSERT OR REPLACE INTO strategies
@@ -562,7 +648,10 @@ export function saveStrategy(data: {
 
     db.run(insertStrategy, strategyData, function (err) {
       if (err) {
-        logger.error('Error saving strategy', err as Error, { userId: data.userId, strategyName: data.name });
+        logger.error('Error saving strategy', err as Error, {
+          userId: data.userId,
+          strategyName: data.name,
+        });
         return reject(err);
       }
       logger.info('Saved strategy', { userId: data.userId, strategyName: data.name });
@@ -575,11 +664,18 @@ export function saveStrategy(data: {
  * Fetches all strategies defined by a specific user, newest first.
  *
  * @param userId User's identifier
- * @returns {Promise<any[]>}
+ * @returns Promise with array of user strategies
  */
-export function getUserStrategies(userId: number): Promise<any[]> {
+export function getUserStrategies(userId: number): Promise<UserStrategy[]> {
   return new Promise((resolve, reject) => {
     if (!db) return reject(new Error('Database not initialized'));
+
+    // Validate input
+    try {
+      validateOrThrow(userIdSchema, userId);
+    } catch (error) {
+      return reject(error);
+    }
 
     const query = `
       SELECT
@@ -600,10 +696,14 @@ export function getUserStrategies(userId: number): Promise<any[]> {
         logger.error('Error fetching strategies', err as Error, { userId });
         return reject(err);
       }
-      const strategies = (rows ?? []).map((row: any) => ({
-        ...row,
-        strategy: JSON.parse(row.strategy),
-        stopLossConfig: JSON.parse(row.stop_loss_config),
+      const strategies: UserStrategy[] = (rows ?? []).map((row: any) => ({
+        id: row.id,
+        userId: userId,
+        name: row.name,
+        description: row.description || undefined,
+        strategy: JSON.parse(row.strategy) as Strategy[],
+        stopLossConfig: JSON.parse(row.stop_loss_config) as StopLossConfig,
+        isDefault: Boolean(row.is_default),
         createdAt: DateTime.fromISO(row.created_at),
       }));
       resolve(strategies);
@@ -616,11 +716,19 @@ export function getUserStrategies(userId: number): Promise<any[]> {
  *
  * @param userId User's identifier
  * @param name Strategy name (unique per user)
- * @returns {Promise<any|null>}
+ * @returns Promise with strategy or null if not found
  */
-export function getStrategy(userId: number, name: string): Promise<any | null> {
+export function getStrategy(userId: number, name: string): Promise<UserStrategy | null> {
   return new Promise((resolve, reject) => {
     if (!db) return reject(new Error('Database not initialized'));
+
+    // Validate input
+    try {
+      validateOrThrow(userIdSchema, userId);
+      validateOrThrow(callerNameSchema, name); // Reusing callerNameSchema for strategy name
+    } catch (error) {
+      return reject(error);
+    }
 
     const query = `
       SELECT
@@ -642,12 +750,17 @@ export function getStrategy(userId: number, name: string): Promise<any | null> {
       }
       if (!row) return resolve(null);
 
-      resolve({
-        ...row,
-        strategy: JSON.parse(row.strategy),
-        stopLossConfig: JSON.parse(row.stop_loss_config),
+      const strategy: UserStrategy = {
+        id: row.id,
+        userId: userId,
+        name: row.name,
+        description: row.description || undefined,
+        strategy: JSON.parse(row.strategy) as Strategy[],
+        stopLossConfig: JSON.parse(row.stop_loss_config) as StopLossConfig,
+        isDefault: Boolean(row.is_default),
         createdAt: DateTime.fromISO(row.created_at),
-      });
+      };
+      resolve(strategy);
     });
   });
 }
@@ -699,11 +812,20 @@ export function saveCADrop(data: {
   callPrice: number;
   callMarketcap?: number;
   callTimestamp: number;
-  strategy: any[];
-  stopLossConfig: any;
+  strategy: Strategy[];
+  stopLossConfig: StopLossConfig;
 }): Promise<number> {
   return new Promise((resolve, reject) => {
     if (!db) return reject(new Error('Database not initialized'));
+
+    // Validate input
+    try {
+      const validated = validateOrThrow(saveCATrackingSchema, data);
+      // Use validated data (mint is now TokenAddress, chain is validated)
+      data = { ...data, mint: validated.mint, chain: validated.chain };
+    } catch (error) {
+      return reject(error);
+    }
 
     const insertCA = `
       INSERT INTO ca_tracking
@@ -727,7 +849,10 @@ export function saveCADrop(data: {
 
     db.run(insertCA, caData, function (err) {
       if (err) {
-        logger.error('Error saving CA drop', err as Error, { userId: data.userId, mint: data.mint });
+        logger.error('Error saving CA drop', err as Error, {
+          userId: data.userId,
+          mint: data.mint,
+        });
         return reject(err);
       }
       logger.info('Saved CA drop', { userId: data.userId, mint: data.mint });
@@ -739,9 +864,9 @@ export function saveCADrop(data: {
 /**
  * Returns all currently active CA tracking entries, with fully parsed config fields.
  *
- * @returns {Promise<any[]>}
+ * @returns Promise with array of active CA tracking entries
  */
-export function getActiveCATracking(): Promise<any[]> {
+export function getActiveCATracking(): Promise<ActiveCA[]> {
   return new Promise((resolve, reject) => {
     if (!db) return reject(new Error('Database not initialized'));
 
@@ -770,12 +895,27 @@ export function getActiveCATracking(): Promise<any[]> {
         logger.error('Error fetching active CA tracking', err as Error);
         return reject(err);
       }
-      const cases = (rows ?? []).map((row: any) => ({
-        ...row,
-        strategy: JSON.parse(row.strategy),
-        stopLossConfig: JSON.parse(row.stop_loss_config),
-        createdAt: DateTime.fromISO(row.created_at),
-      }));
+      const cases: ActiveCA[] = (rows ?? [])
+        .map((row: any) => {
+          try {
+            return {
+              id: row.id,
+              mint: createTokenAddress(row.mint),
+              chain: row.chain as Chain,
+              token_name: row.token_name || undefined,
+              token_symbol: row.token_symbol || undefined,
+              call_price: row.call_price || undefined,
+              call_marketcap: row.call_marketcap || undefined,
+              alert_timestamp: row.call_timestamp || undefined,
+              caller: row.caller || undefined,
+              created_at: row.created_at || undefined,
+            };
+          } catch (error) {
+            logger.warn('Invalid mint address in active CA tracking', { mint: row.mint, error });
+            return null;
+          }
+        })
+        .filter((ca): ca is ActiveCA => ca !== null);
       resolve(cases);
     });
   });
@@ -959,7 +1099,9 @@ export function getTrackedTokens(): Promise<TrackedToken[]> {
             if (combined.has(key)) {
               return;
             }
-            const createdAt = row.created_at ? DateTime.fromISO(row.created_at).toSeconds() : undefined;
+            const createdAt = row.created_at
+              ? DateTime.fromISO(row.created_at).toSeconds()
+              : undefined;
             combined.set(key, {
               mint: row.mint,
               chain: row.chain,
@@ -972,7 +1114,9 @@ export function getTrackedTokens(): Promise<TrackedToken[]> {
 
           pumpfunTokens.forEach((token) => {
             const key = `solana:${token.mint}`;
-            const source: TrackedToken['source'] = token.isGraduated ? 'pumpfun_graduated' : 'pumpfun_launch';
+            const source: TrackedToken['source'] = token.isGraduated
+              ? 'pumpfun_graduated'
+              : 'pumpfun_launch';
             if (!combined.has(key)) {
               combined.set(key, {
                 mint: token.mint,
@@ -996,7 +1140,7 @@ export function getTrackedTokens(): Promise<TrackedToken[]> {
 
 /**
  * Save a price update for a tracked CA.
- * 
+ *
  * @param caId ID of the CA tracking row
  * @param price Price value
  * @param marketcap Marketcap value
@@ -1062,11 +1206,19 @@ export function saveAlertSent(
  * Get summary of recent CA performances over the past `hours`.
  *
  * @param hours How many hours back to look (default: 24)
- * @returns {Promise<any[]>}
+ * @returns {Promise<CAPerformanceSummary[]>}
  */
-export function getRecentCAPerformance(hours: number = 24): Promise<any[]> {
+export function getRecentCAPerformance(hours: number = 24): Promise<CAPerformanceSummary[]> {
   return new Promise((resolve, reject) => {
     if (!db) return reject(new Error('Database not initialized'));
+
+    // Validate input
+    try {
+      validateOrThrow(hoursSchema, hours);
+    } catch (error) {
+      return reject(error);
+    }
+
     const cutoffTime = DateTime.now().minus({ hours }).toSeconds();
 
     const query = `
@@ -1094,16 +1246,27 @@ export function getRecentCAPerformance(hours: number = 24): Promise<any[]> {
         return reject(err);
       }
       // Group by CA id, picking latest price for each
-      const caMap = new Map<number, any>();
+      const caMap = new Map<number, CAPerformanceSummary>();
       (rows ?? []).forEach((row: any) => {
         if (!caMap.has(row.id)) {
-          caMap.set(row.id, {
-            ...row,
-            strategy: JSON.parse(row.strategy),
-            stopLossConfig: JSON.parse(row.stop_loss_config),
-            currentPrice: row.current_price || row.call_price,
-            priceTimestamp: row.price_timestamp || row.call_timestamp,
-          });
+          try {
+            caMap.set(row.id, {
+              id: row.id,
+              mint: createTokenAddress(row.mint),
+              chain: row.chain as Chain,
+              tokenName: row.token_name || undefined,
+              tokenSymbol: row.token_symbol || undefined,
+              callPrice: row.call_price,
+              callTimestamp: row.call_timestamp,
+              strategy: JSON.parse(row.strategy) as Strategy[],
+              stopLossConfig: JSON.parse(row.stop_loss_config) as StopLossConfig,
+              currentPrice: row.current_price || row.call_price,
+              priceTimestamp: row.price_timestamp || row.call_timestamp,
+            });
+          } catch (error) {
+            logger.warn('Invalid mint address in CA performance data', { mint: row.mint, error });
+            // Skip invalid entries
+          }
         }
       });
       resolve(Array.from(caMap.values()));
@@ -1158,11 +1321,18 @@ export async function getAllCACalls(limit: number = 50): Promise<CACall[]> {
  * @param mint The mint address to search for
  * @returns CA call object or null if not found
  */
-export async function getCACallByMint(mint: string): Promise<any | null> {
+export async function getCACallByMint(mint: string): Promise<CACall | null> {
   return new Promise((resolve, reject) => {
     if (!db) {
       reject(new Error('Database not initialized'));
       return;
+    }
+
+    // Validate input
+    try {
+      validateOrThrow(mintAddressSchema, mint);
+    } catch (error) {
+      return reject(error);
     }
 
     const sql = `
@@ -1182,12 +1352,31 @@ export async function getCACallByMint(mint: string): Promise<any | null> {
       LIMIT 1
     `;
 
-    db.get(sql, [mint], (err, row) => {
+    db.get(sql, [mint], (err, row: any) => {
       if (err) {
         reject(err);
         return;
       }
-      resolve(row || null);
+      if (!row) {
+        resolve(null);
+        return;
+      }
+      try {
+        const caCall: CACall = {
+          mint: createTokenAddress(row.mint),
+          chain: row.chain as Chain,
+          token_name: row.token_name || undefined,
+          token_symbol: row.token_symbol || undefined,
+          call_price: row.call_price || undefined,
+          volume_at_alert: row.call_marketcap || undefined,
+          alert_timestamp: row.call_timestamp ? new Date(row.call_timestamp * 1000) : undefined,
+          caller_name: row.caller || undefined,
+        };
+        resolve(caCall);
+      } catch (error) {
+        logger.warn('Invalid mint address in CA call', { mint: row.mint, error });
+        resolve(null);
+      }
     });
   });
 }
@@ -1198,11 +1387,19 @@ export async function getCACallByMint(mint: string): Promise<any | null> {
  * @param limit Maximum number of calls to return
  * @returns Array of CA call objects
  */
-export async function getCACallsByCaller(caller: string, limit: number = 20): Promise<any[]> {
+export async function getCACallsByCaller(caller: string, limit: number = 20): Promise<CACall[]> {
   return new Promise((resolve, reject) => {
     if (!db) {
       reject(new Error('Database not initialized'));
       return;
+    }
+
+    // Validate input
+    try {
+      validateOrThrow(callerNameSchema, caller);
+      validateOrThrow(limitSchema, limit);
+    } catch (error) {
+      return reject(error);
     }
 
     const sql = `
@@ -1227,7 +1424,26 @@ export async function getCACallsByCaller(caller: string, limit: number = 20): Pr
         reject(err);
         return;
       }
-      resolve(rows || []);
+      const calls: CACall[] = (rows || [])
+        .map((row: any) => {
+          try {
+            return {
+              mint: createTokenAddress(row.mint),
+              chain: row.chain as Chain,
+              token_name: row.token_name || undefined,
+              token_symbol: row.token_symbol || undefined,
+              call_price: row.call_price || undefined,
+              volume_at_alert: row.call_marketcap || undefined,
+              alert_timestamp: row.call_timestamp ? new Date(row.call_timestamp * 1000) : undefined,
+              caller_name: row.caller || undefined,
+            };
+          } catch (error) {
+            logger.warn('Invalid mint address in CA call', { mint: row.mint, error });
+            return null;
+          }
+        })
+        .filter((call): call is CACall => call !== null);
+      resolve(calls);
     });
   });
 }
@@ -1238,11 +1454,19 @@ export async function getCACallsByCaller(caller: string, limit: number = 20): Pr
  * @param limit Maximum number of calls to return
  * @returns Array of CA call objects
  */
-export async function getCACallsByChain(chain: string, limit: number = 20): Promise<any[]> {
+export async function getCACallsByChain(chain: string, limit: number = 20): Promise<CACall[]> {
   return new Promise((resolve, reject) => {
     if (!db) {
       reject(new Error('Database not initialized'));
       return;
+    }
+
+    // Validate input
+    try {
+      validateOrThrow(chainParamSchema, chain);
+      validateOrThrow(limitSchema, limit);
+    } catch (error) {
+      return reject(error);
     }
 
     const sql = `
@@ -1267,7 +1491,26 @@ export async function getCACallsByChain(chain: string, limit: number = 20): Prom
         reject(err);
         return;
       }
-      resolve(rows || []);
+      const calls: CACall[] = (rows || [])
+        .map((row: any) => {
+          try {
+            return {
+              mint: createTokenAddress(row.mint),
+              chain: row.chain as Chain,
+              token_name: row.token_name || undefined,
+              token_symbol: row.token_symbol || undefined,
+              call_price: row.call_price || undefined,
+              volume_at_alert: row.call_marketcap || undefined,
+              alert_timestamp: row.call_timestamp ? new Date(row.call_timestamp * 1000) : undefined,
+              caller_name: row.caller || undefined,
+            };
+          } catch (error) {
+            logger.warn('Invalid mint address in CA call', { mint: row.mint, error });
+            return null;
+          }
+        })
+        .filter((call): call is CACall => call !== null);
+      resolve(calls);
     });
   });
 }
@@ -1294,29 +1537,51 @@ export async function saveCACall(callData: {
       return;
     }
 
+    // Validate input
+    try {
+      const validated = validateOrThrow(saveCACallSchema, {
+        mint: callData.mint,
+        chain: callData.chain,
+        token_name: callData.tokenName,
+        token_symbol: callData.tokenSymbol,
+        call_price: callData.callPrice,
+        call_marketcap: callData.callMarketcap,
+        call_timestamp: callData.callTimestamp,
+        caller: callData.caller,
+      });
+      // Use validated data (mint is now TokenAddress, chain is validated)
+      callData = { ...callData, mint: validated.mint, chain: validated.chain };
+    } catch (error) {
+      return reject(error);
+    }
+
     const sql = `
       INSERT OR IGNORE INTO ca_calls 
       (mint, chain, token_name, token_symbol, call_price, call_marketcap, call_timestamp, caller, source_chat_id)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
-    db.run(sql, [
-      callData.mint,
-      callData.chain,
-      callData.tokenName || null,
-      callData.tokenSymbol || null,
-      callData.callPrice || null,
-      callData.callMarketcap || null,
-      callData.callTimestamp,
-      callData.caller || null,
-      callData.sourceChatId || null
-    ], function(err) {
-      if (err) {
-        reject(err);
-        return;
+    db.run(
+      sql,
+      [
+        callData.mint,
+        callData.chain,
+        callData.tokenName || null,
+        callData.tokenSymbol || null,
+        callData.callPrice || null,
+        callData.callMarketcap || null,
+        callData.callTimestamp,
+        callData.caller || null,
+        callData.sourceChatId || null,
+      ],
+      function (err) {
+        if (err) {
+          reject(err);
+          return;
+        }
+        resolve(this.lastID);
       }
-      resolve(this.lastID);
-    });
+    );
   });
 }
 

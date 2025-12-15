@@ -282,7 +282,7 @@ function generateHTML(results: ScoredToken[], outputPath: string): void {
       </div>
       <div class="stat-card">
         <div class="stat-label">Avg 30d Return</div>
-        <div class="stat-value ${results.filter(r => r.maxReturn30d > 0).length > 0 ? 'positive' : ''}">
+        <div class="stat-value ${results.filter((r) => r.maxReturn30d > 0).length > 0 ? 'positive' : ''}">
           ${(results.reduce((sum, r) => sum + (r.maxReturn30d || 0), 0) / results.length).toFixed(2)}%
         </div>
       </div>
@@ -327,14 +327,16 @@ function generateHTML(results: ScoredToken[], outputPath: string): void {
         </tr>
       </thead>
       <tbody id="tableBody">
-        ${sorted.map((result, index) => {
-          const scoreClass = (result.score || 0) >= 80 ? 'high' : (result.score || 0) >= 60 ? 'medium' : 'low';
-          const return7dClass = (result.maxReturn7d || 0) >= 0 ? 'positive' : 'negative';
-          const return30dClass = (result.maxReturn30d || 0) >= 0 ? 'positive' : 'negative';
-          const chainClass = (result.chain || '').toLowerCase();
-          const date = new Date((result.callTimestamp || 0) * 1000);
-          
-          return `
+        ${sorted
+          .map((result, index) => {
+            const scoreClass =
+              (result.score || 0) >= 80 ? 'high' : (result.score || 0) >= 60 ? 'medium' : 'low';
+            const return7dClass = (result.maxReturn7d || 0) >= 0 ? 'positive' : 'negative';
+            const return30dClass = (result.maxReturn30d || 0) >= 0 ? 'positive' : 'negative';
+            const chainClass = (result.chain || '').toLowerCase();
+            const date = new Date((result.callTimestamp || 0) * 1000);
+
+            return `
           <tr>
             <td>${index + 1}</td>
             <td><span class="score ${scoreClass}">${(result.score || 0).toFixed(2)}</span></td>
@@ -348,7 +350,8 @@ function generateHTML(results: ScoredToken[], outputPath: string): void {
             <td>${date.toLocaleString()}</td>
           </tr>
           `;
-        }).join('')}
+          })
+          .join('')}
       </tbody>
     </table>
   </div>
@@ -477,9 +480,16 @@ function generateHTML(results: ScoredToken[], outputPath: string): void {
  */
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
-  const filePath = args.find(a => !a.startsWith('--'));
-  const outputPath = args.find(a => a.startsWith('--output='))?.split('=')[1] ||
-    path.join(process.cwd(), 'data', 'exports', 'brook-analysis', `results-viewer-${Date.now()}.html`);
+  const filePath = args.find((a) => !a.startsWith('--'));
+  const outputPath =
+    args.find((a) => a.startsWith('--output='))?.split('=')[1] ||
+    path.join(
+      process.cwd(),
+      'data',
+      'exports',
+      'brook-analysis',
+      `results-viewer-${Date.now()}.html`
+    );
 
   // Load results
   const resultsFile = filePath || require('./view-scored-results').getLatestResultsFile();
@@ -502,11 +512,10 @@ async function main(): Promise<void> {
 }
 
 if (require.main === module) {
-  main().catch(error => {
+  main().catch((error) => {
     logger.error('Error generating HTML viewer', error as Error);
     process.exit(1);
   });
 }
 
 export { generateHTML };
-

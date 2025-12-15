@@ -20,7 +20,10 @@ export interface ErrorHandlerResult {
 /**
  * Handle and log error appropriately
  */
-export function handleError(error: Error | unknown, context?: Record<string, any>): ErrorHandlerResult {
+export function handleError(
+  error: Error | unknown,
+  context?: Record<string, any>
+): ErrorHandlerResult {
   // Convert unknown errors to Error instances
   const err = error instanceof Error ? error : new Error(String(error));
 
@@ -52,7 +55,8 @@ export function handleError(error: Error | unknown, context?: Record<string, any
 
   // Determine if error should be retried
   const shouldRetry = isRetryableError(err);
-  const retryAfter = err instanceof AppError && 'retryAfter' in err ? (err as any).retryAfter : undefined;
+  const retryAfter =
+    err instanceof AppError && 'retryAfter' in err ? (err as any).retryAfter : undefined;
 
   return {
     handled: true,
@@ -88,10 +92,11 @@ export function createErrorHandler() {
 
     // Send user-friendly message if context is available
     if (ctx && 'reply' in ctx && typeof ctx.reply === 'function') {
-      const message = error instanceof AppError && error.isOperational
-        ? `❌ ${error.message}`
-        : '❌ An unexpected error occurred. Please try again later.';
-      
+      const message =
+        error instanceof AppError && error.isOperational
+          ? `❌ ${error.message}`
+          : '❌ An unexpected error occurred. Please try again later.';
+
       ctx.reply(message).catch((replyError: Error) => {
         logger.error('Failed to send error message to user', replyError);
       });
@@ -127,13 +132,13 @@ export async function retryWithBackoff<T>(
   context?: Record<string, any>
 ): Promise<T> {
   let lastError: Error | unknown;
-  
+
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       return await fn();
     } catch (error) {
       lastError = error;
-      
+
       // Don't retry if error is not retryable
       if (!isRetryableError(error instanceof Error ? error : new Error(String(error)))) {
         throw error;
@@ -161,4 +166,3 @@ export async function retryWithBackoff<T>(
   handleError(lastError, { ...context, maxRetries });
   throw lastError;
 }
-

@@ -6,11 +6,11 @@ import {
   buildReEntryConfig,
   buildFromPreset,
   validateStrategy,
-} from '../../src/simulation/strategies/builder';
-import type { StrategyConfig } from '../../src/simulation/strategies/types';
+} from '../src/strategies/builder';
+import type { StrategyConfig } from '../src/strategies/types';
 
 // Mock presets
-vi.mock('../../src/simulation/strategies/presets', () => ({
+vi.mock('../src/strategies/presets', () => ({
   getPreset: vi.fn((name: string) => {
     if (name === 'conservative') {
       return {
@@ -322,7 +322,7 @@ describe('strategy-builder', () => {
 
       expect(result.valid).toBe(false);
       expect(result.errors.some((e) => e.includes('Stop loss initial should be negative'))).toBe(
-        true,
+        true
       );
     });
 
@@ -340,9 +340,9 @@ describe('strategy-builder', () => {
       const result = validateStrategy(config);
 
       expect(result.valid).toBe(false);
-      expect(result.errors.some((e) => e.includes('Trailing stop percent should be between 0 and 1'))).toBe(
-        true,
-      );
+      expect(
+        result.errors.some((e) => e.includes('Trailing stop percent should be between 0 and 1'))
+      ).toBe(true);
     });
 
     it('should validate entry config', () => {
@@ -358,7 +358,7 @@ describe('strategy-builder', () => {
 
       expect(result.valid).toBe(false);
       expect(result.errors.some((e) => e.includes('Initial entry drop should be negative'))).toBe(
-        true,
+        true
       );
     });
 
@@ -374,9 +374,9 @@ describe('strategy-builder', () => {
       const result = validateStrategy(config);
 
       expect(result.valid).toBe(false);
-      expect(result.errors.some((e) => e.includes('Trailing re-entry percent should be between 0 and 1'))).toBe(
-        true,
-      );
+      expect(
+        result.errors.some((e) => e.includes('Trailing re-entry percent should be between 0 and 1'))
+      ).toBe(true);
     });
 
     it('should validate hold hours', () => {
@@ -402,9 +402,9 @@ describe('strategy-builder', () => {
       const result = validateStrategy(config);
 
       expect(result.valid).toBe(false);
-      expect(result.errors.some((e) => e.includes('Loss clamp percent should be between 0 and 1'))).toBe(
-        true,
-      );
+      expect(
+        result.errors.some((e) => e.includes('Loss clamp percent should be between 0 and 1'))
+      ).toBe(true);
     });
 
     it('should validate min exit price', () => {
@@ -417,10 +417,9 @@ describe('strategy-builder', () => {
       const result = validateStrategy(config);
 
       expect(result.valid).toBe(false);
-      expect(result.errors.some((e) => e.includes('Min exit price should be between 0 and 1'))).toBe(
-        true,
-      );
+      expect(
+        result.errors.some((e) => e.includes('Min exit price should be between 0 and 1'))
+      ).toBe(true);
     });
   });
 });
-

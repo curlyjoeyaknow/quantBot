@@ -6,6 +6,7 @@
  */
 
 import { BaseEvent } from './EventBus';
+import type { Strategy, StopLossConfig, TokenAddress, Chain } from '@quantbot/core';
 
 // ============================================================================
 // User Events
@@ -15,7 +16,7 @@ export interface UserSessionEvent extends BaseEvent {
   type: 'user.session.started' | 'user.session.updated' | 'user.session.cleared';
   data: {
     userId: number;
-    sessionData: any;
+    sessionData: Record<string, unknown>;
   };
 }
 
@@ -34,7 +35,7 @@ export interface UserStrategyEvent extends BaseEvent {
   data: {
     userId: number;
     strategyName: string;
-    strategyData?: any;
+    strategyData?: Strategy[];
   };
 }
 
@@ -46,10 +47,10 @@ export interface SimulationEvent extends BaseEvent {
   type: 'simulation.started' | 'simulation.completed' | 'simulation.failed';
   data: {
     userId: number;
-    mint: string;
-    chain: string;
-    strategy: any[];
-    result?: any;
+    mint: TokenAddress;
+    chain: Chain;
+    strategy: Strategy[];
+    result?: Record<string, unknown>;
     error?: string;
   };
 }
@@ -59,7 +60,7 @@ export interface SimulationRunEvent extends BaseEvent {
   data: {
     userId: number;
     runId: number;
-    simulationData: any;
+    simulationData: Record<string, unknown>;
   };
 }
 
@@ -68,7 +69,11 @@ export interface SimulationRunEvent extends BaseEvent {
 // ============================================================================
 
 export interface WebSocketEvent extends BaseEvent {
-  type: 'websocket.connected' | 'websocket.disconnected' | 'websocket.error' | 'websocket.reconnecting';
+  type:
+    | 'websocket.connected'
+    | 'websocket.disconnected'
+    | 'websocket.error'
+    | 'websocket.reconnecting';
   data: {
     url: string;
     reconnectAttempts?: number;
@@ -79,7 +84,7 @@ export interface WebSocketEvent extends BaseEvent {
 export interface WebSocketMessageEvent extends BaseEvent {
   type: 'websocket.message.received' | 'websocket.message.sent';
   data: {
-    message: any;
+    message: unknown;
     messageType: string;
   };
 }
@@ -101,8 +106,8 @@ export interface CAMonitorEvent extends BaseEvent {
   type: 'ca.monitor.added' | 'ca.monitor.removed' | 'ca.monitor.updated';
   data: {
     caId: number;
-    mint: string;
-    chain: string;
+    mint: TokenAddress;
+    chain: Chain;
     tokenName: string;
     tokenSymbol: string;
   };
@@ -111,8 +116,8 @@ export interface CAMonitorEvent extends BaseEvent {
 export interface PriceUpdateEvent extends BaseEvent {
   type: 'price.update.received';
   data: {
-    mint: string;
-    chain: string;
+    mint: TokenAddress;
+    chain: Chain;
     price: number;
     marketcap: number;
     timestamp: number;
@@ -121,11 +126,15 @@ export interface PriceUpdateEvent extends BaseEvent {
 }
 
 export interface AlertEvent extends BaseEvent {
-  type: 'alert.profit_target' | 'alert.stop_loss' | 'alert.ichimoku_signal' | 'alert.leading_span_cross';
+  type:
+    | 'alert.profit_target'
+    | 'alert.stop_loss'
+    | 'alert.ichimoku_signal'
+    | 'alert.leading_span_cross';
   data: {
     caId: number;
-    mint: string;
-    chain: string;
+    mint: TokenAddress;
+    chain: Chain;
     tokenName: string;
     tokenSymbol: string;
     alertType: string;
@@ -138,10 +147,10 @@ export interface AlertEvent extends BaseEvent {
 export interface IchimokuEvent extends BaseEvent {
   type: 'ichimoku.analysis.completed' | 'ichimoku.signal.detected';
   data: {
-    mint: string;
-    chain: string;
-    ichimokuData: any;
-    signals: any[];
+    mint: TokenAddress;
+    chain: Chain;
+    ichimokuData: Record<string, unknown>;
+    signals: Array<Record<string, unknown>>;
     currentPrice: number;
   };
 }
@@ -155,7 +164,7 @@ export interface SystemEvent extends BaseEvent {
   data: {
     component: string;
     message: string;
-    error?: any;
+    error?: unknown;
   };
 }
 
@@ -196,7 +205,7 @@ export interface PerformanceEvent extends BaseEvent {
 // Event Type Union
 // ============================================================================
 
-export type ApplicationEvent = 
+export type ApplicationEvent =
   | UserSessionEvent
   | UserCommandEvent
   | UserStrategyEvent
@@ -224,7 +233,7 @@ export const EVENT_CATEGORIES = {
   WEBSOCKET: ['websocket', 'websocket.message', 'websocket.subscription'],
   MONITORING: ['ca.monitor', 'price.update', 'alert', 'ichimoku'],
   SYSTEM: ['system', 'database', 'service'],
-  PERFORMANCE: ['performance']
+  PERFORMANCE: ['performance'],
 } as const;
 
 // ============================================================================
@@ -235,7 +244,7 @@ export enum EventPriority {
   LOW = 1,
   NORMAL = 2,
   HIGH = 3,
-  CRITICAL = 4
+  CRITICAL = 4,
 }
 
 export const EVENT_PRIORITIES: Record<string, EventPriority> = {
@@ -245,6 +254,5 @@ export const EVENT_PRIORITIES: Record<string, EventPriority> = {
   'alert.profit_target': EventPriority.NORMAL,
   'price.update.received': EventPriority.NORMAL,
   'user.command.executed': EventPriority.NORMAL,
-  'performance.summary.generated': EventPriority.LOW
+  'performance.summary.generated': EventPriority.LOW,
 };
-

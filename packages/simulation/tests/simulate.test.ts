@@ -3,7 +3,7 @@
  * @description
  * Unit tests for the trading simulation engine, covering functional correctness,
  * error handling, and edge case validation for strategy and risk management configurations.
- * 
+ *
  * ----------------------------------------------------------------------------
  * SECTIONS:
  * 1. Imports and Common Mocks
@@ -42,7 +42,7 @@ const mockCandles: Candle[] = [
 const defaultStrategy: Strategy[] = [
   { percent: 0.5, target: 2 },
   { percent: 0.3, target: 5 },
-  { percent: 0.2, target: 10 }
+  { percent: 0.2, target: 10 },
 ];
 
 /** Default stop-loss configuration (with trailing for some scenarios) */
@@ -133,7 +133,11 @@ describe('Simulation Engine', () => {
      * validating additional output structure related to optimized entry.
      */
     it('should handle entry optimization', async () => {
-      const entryConfig: EntryConfig = { initialEntry: 'none', trailingEntry: 0.1, maxWaitTime: 30 };
+      const entryConfig: EntryConfig = {
+        initialEntry: 'none',
+        trailingEntry: 0.1,
+        maxWaitTime: 30,
+      };
       const result = await simulateStrategy(
         mockCandles,
         defaultStrategy,
@@ -144,26 +148,28 @@ describe('Simulation Engine', () => {
 
       expect(result).toBeDefined();
       expect(result.entryOptimization).toBeDefined();
-      expect(result.entryOptimization.lowestPrice).toBeLessThanOrEqual(result.entryOptimization.actualEntryPrice);
+      expect(result.entryOptimization.lowestPrice).toBeLessThanOrEqual(
+        result.entryOptimization.actualEntryPrice
+      );
     });
 
     /**
      * Edge-case: empty candle array should result in neutral PnL and empty events.
      */
-      it('should handle empty candle array', async () => {
-        const result = await simulateStrategy(
-          [],
-          defaultStrategy,
-          defaultStopLoss,
-          defaultEntry,
-          defaultReEntry
-        );
+    it('should handle empty candle array', async () => {
+      const result = await simulateStrategy(
+        [],
+        defaultStrategy,
+        defaultStopLoss,
+        defaultEntry,
+        defaultReEntry
+      );
 
-        expect(result).toBeDefined();
-        expect(result.finalPnl).toBe(0);
-        expect(result.totalCandles).toBe(0);
-        expect(result.events).toEqual([]);
-      });
+      expect(result).toBeDefined();
+      expect(result.finalPnl).toBe(0);
+      expect(result.totalCandles).toBe(0);
+      expect(result.events).toEqual([]);
+    });
 
     /**
      * Edge-case: simulation with only one candle should process but no real trade evolution.
@@ -188,7 +194,7 @@ describe('Simulation Engine', () => {
     it('should handle strategy with percentages not summing to 1', async () => {
       const invalidStrategy: Strategy[] = [
         { percent: 0.3, target: 2 },
-        { percent: 0.4, target: 5 }
+        { percent: 0.4, target: 5 },
       ];
 
       const result = await simulateStrategy(
@@ -263,4 +269,3 @@ describe('Simulation Engine', () => {
     });
   });
 });
-

@@ -5,7 +5,14 @@
  */
 
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosError, AxiosResponse } from 'axios';
-import { logger, ApiError, RateLimitError, TimeoutError, isRetryableError, retryWithBackoff } from '@quantbot/utils';
+import {
+  logger,
+  ApiError,
+  RateLimitError,
+  TimeoutError,
+  isRetryableError,
+  retryWithBackoff,
+} from '@quantbot/utils';
 
 /**
  * Rate limiter configuration
@@ -36,6 +43,8 @@ export interface BaseApiClientConfig {
   rateLimiter?: RateLimiterConfig;
   retry?: RetryConfig;
   apiName?: string;
+  /** Optional axios instance for testing */
+  axiosInstance?: AxiosInstance;
 }
 
 /**
@@ -59,15 +68,19 @@ class RateLimiter {
   canMakeRequest(): boolean {
     const now = Date.now();
     // Remove old requests outside the window
-    this.requests = this.requests.filter(timestamp => now - timestamp < this.windowMs);
+    this.requests = this.requests.filter((timestamp) => now - timestamp < this.windowMs);
     return this.requests.length < this.maxRequests;
   }
 
   /**
    * Record a request
+   * Also cleans up expired requests to prevent memory leaks
    */
   recordRequest(): void {
-    this.requests.push(Date.now());
+    const now = Date.now();
+    // Clean up expired requests before adding new one
+    this.requests = this.requests.filter((timestamp) => now - timestamp < this.windowMs);
+    this.requests.push(now);
   }
 
   /**
@@ -104,16 +117,18 @@ export class BaseApiClient {
 
   constructor(config: BaseApiClientConfig) {
     this.apiName = config.apiName || 'API';
-    
-    // Create axios instance
-    this.axiosInstance = axios.create({
-      baseURL: config.baseURL,
-      timeout: config.timeout || 30000,
-      headers: {
-        'Content-Type': 'application/json',
-        ...config.headers,
-      },
-    });
+
+    // Use injected axios instance or create a new one
+    this.axiosInstance =
+      config.axiosInstance ??
+      axios.create({
+        baseURL: config.baseURL,
+        timeout: config.timeout || 30000,
+        headers: {
+          'Content-Type': 'application/json',
+          ...config.headers,
+        },
+      });
 
     // Setup rate limiter
     if (config.rateLimiter) {
@@ -138,7 +153,7 @@ export class BaseApiClient {
                 apiName: this.apiName,
                 waitTimeMs: waitTime,
               });
-              await new Promise(resolve => setTimeout(resolve, waitTime));
+              await new Promise((resolve) => setTimeout(resolve, waitTime));
             }
           }
           this.rateLimiter.recordRequest();
@@ -159,13 +174,13 @@ export class BaseApiClient {
 
         // Handle rate limiting
         if (error.response?.status === 429) {
-          const retryAfter = this.rateLimiter?.getRetryAfter(error.response.headers as Record<string, any>);
+          const retryAfter = this.rateLimiter?.getRetryAfter(
+            error.response.headers as Record<string, any>
+          );
           if (retryAfter) {
-            throw new RateLimitError(
-              `Rate limit exceeded for ${this.apiName}`,
-              retryAfter,
-              { apiName: this.apiName }
-            );
+            throw new RateLimitError(`Rate limit exceeded for ${this.apiName}`, retryAfter, {
+              apiName: this.apiName,
+            });
           }
         }
 
@@ -280,4 +295,3 @@ export class BaseApiClient {
     return this.axiosInstance;
   }
 }
-

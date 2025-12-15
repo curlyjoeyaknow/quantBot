@@ -1,11 +1,10 @@
 /**
  * TradeLifecycle - Helpers for entry, exit, stop, trailing logic
- * 
+ *
  * Utility functions for trade lifecycle management in simulations.
  */
 
-import type { Candle } from '../models';
-import type { StopLossConfig, EntryConfig, ReEntryConfig } from '../config';
+import type { Candle, StopLossConfig, EntryConfig } from '../types';
 
 export interface PositionState {
   size: number;
@@ -19,10 +18,7 @@ export interface PositionState {
 /**
  * Calculate stop loss price
  */
-export function calculateStopLoss(
-  entryPrice: number,
-  stopLossConfig: StopLossConfig
-): number {
+export function calculateStopLoss(entryPrice: number, stopLossConfig: StopLossConfig): number {
   return entryPrice * (1 + stopLossConfig.initial);
 }
 
@@ -62,10 +58,7 @@ export function checkProfitTarget(
 /**
  * Check if stop loss is hit
  */
-export function checkStopLoss(
-  currentPrice: number,
-  stopLoss: number
-): boolean {
+export function checkStopLoss(currentPrice: number, stopLoss: number): boolean {
   return currentPrice <= stopLoss;
 }
 
@@ -101,4 +94,3 @@ export function calculateTrailingEntry(
   const entryPrice = lowestPrice * (1 + trailingPercent);
   return { price: entryPrice, index: lowestIndex };
 }
-

@@ -171,21 +171,17 @@ function buildOneMinuteCandles(ticks: Tick[]): Candle[] {
 }
 
 async function main(): Promise<void> {
-  const mint =
-    process.argv[2] ??
-    '6euErXNV8wD3FcJtvcmhe13Sd8jPuRJ9v9X7DLgHp777'; // default example mint
+  const mint = process.argv[2] ?? '6euErXNV8wD3FcJtvcmhe13Sd8jPuRJ9v9X7DLgHp777'; // default example mint
 
   if (!process.env.HELIUS_API_KEY) {
-    // eslint-disable-next-line no-console
     console.error('HELIUS_API_KEY is not set; cannot call Helius');
     process.exit(1);
   }
 
-  // eslint-disable-next-line no-console
   console.log(`Building Pump.fun OHLCV for mint ${mint} using Helius tx history...\n`);
 
   const txs = await fetchAllTransactionsForAddress(mint);
-  // eslint-disable-next-line no-console
+
   console.log(`Fetched ${txs.length} transactions involving ${mint.substring(0, 8)}...`);
 
   const allTicks: Tick[] = [];
@@ -194,7 +190,6 @@ async function main(): Promise<void> {
     allTicks.push(...ticks);
   }
 
-  // eslint-disable-next-line no-console
   console.log(`Derived ${allTicks.length} trade ticks for this mint.`);
 
   const candles1m = buildOneMinuteCandles(allTicks);
@@ -206,28 +201,22 @@ async function main(): Promise<void> {
   const first5m = candles5m[0];
   const last5m = candles5m[candles5m.length - 1];
 
-  // eslint-disable-next-line no-console
   console.log('\n1m candles:', candles1m.length);
-  // eslint-disable-next-line no-console
+
   console.log('First 1m candle:', first1m);
-  // eslint-disable-next-line no-console
+
   console.log('Last 1m candle:', last1m);
 
-  // eslint-disable-next-line no-console
   console.log('\n5m candles:', candles5m.length);
-  // eslint-disable-next-line no-console
+
   console.log('First 5m candle:', first5m);
-  // eslint-disable-next-line no-console
+
   console.log('Last 5m candle:', last5m);
 }
 
 if (require.main === module) {
-  // eslint-disable-next-line no-console
   main().catch((error) => {
-    // eslint-disable-next-line no-console
     console.error('Error building Pump.fun OHLCV from Helius:', error);
     process.exit(1);
   });
 }
-
-

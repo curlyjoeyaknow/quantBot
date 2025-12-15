@@ -26,7 +26,12 @@ export type StopLossConfig = z.infer<typeof StopLossConfigSchema>;
 export const EntryConfigSchema = z.object({
   initialEntry: z.union([z.number().min(-0.99).max(0), z.literal('none')]).default('none'),
   trailingEntry: z.union([z.number().min(0).max(5), z.literal('none')]).default('none'),
-  maxWaitTime: z.number().int().min(1).max(24 * 7).default(60),
+  maxWaitTime: z
+    .number()
+    .int()
+    .min(1)
+    .max(24 * 7)
+    .default(60),
 });
 
 export type EntryConfig = z.infer<typeof EntryConfigSchema>;
@@ -104,7 +109,7 @@ export const SignalGroupSchema: z.ZodType<any> = z.lazy(() =>
     logic: z.enum(['AND', 'OR']).default('AND'),
     conditions: z.array(SignalConditionSchema).default([]),
     groups: z.array(SignalGroupSchema).default([]),
-  }),
+  })
 );
 
 export type SignalGroup = z.infer<typeof SignalGroupSchema>;
@@ -149,6 +154,22 @@ export const CostConfigSchema = z.object({
 export type CostConfig = z.infer<typeof CostConfigSchema>;
 
 /**
+ * Period metrics configuration for re-entry analysis
+ */
+export const PeriodMetricsConfigSchema = z.object({
+  /** Enable period metrics calculation */
+  enabled: z.boolean().default(false),
+  /** Analysis period in days */
+  periodDays: z.number().int().min(1).max(90).default(7),
+  /** Minimum drawdown percentage to consider for re-entry */
+  minDrawdownPercent: z.number().min(0).max(100).default(20),
+  /** Minimum recovery percentage to mark as successful re-entry */
+  minRecoveryPercent: z.number().min(0).max(100).default(10),
+});
+
+export type PeriodMetricsConfig = z.infer<typeof PeriodMetricsConfigSchema>;
+
+/**
  * Data selection schemas
  */
 const MintSelectorSchema = z.object({
@@ -157,7 +178,12 @@ const MintSelectorSchema = z.object({
   chain: z.string().default('solana'),
   start: z.string().datetime(),
   end: z.string().datetime().optional(),
-  durationHours: z.number().int().min(1).max(24 * 90).optional(),
+  durationHours: z
+    .number()
+    .int()
+    .min(1)
+    .max(24 * 90)
+    .optional(),
 });
 
 const CallerSelectorSchema = z.object({
@@ -177,7 +203,13 @@ const FileSelectorSchema = z.object({
   chainField: z.string().optional().default('chain'),
   timestampField: z.string().default('timestamp'),
   startOffsetMinutes: z.number().int().min(0).optional().default(0),
-  durationHours: z.number().int().min(1).max(24 * 90).optional().default(24),
+  durationHours: z
+    .number()
+    .int()
+    .min(1)
+    .max(24 * 90)
+    .optional()
+    .default(24),
   filter: z.record(z.string(), z.any()).optional(),
 });
 
@@ -273,6 +305,10 @@ export const ScenarioSchema = z.object({
    */
   entryLadder: LadderConfigSchema.optional(),
   exitLadder: LadderConfigSchema.optional(),
+  /**
+   * Period metrics configuration for re-entry strategy analysis
+   */
+  periodMetrics: PeriodMetricsConfigSchema.optional(),
   outputs: z.array(OutputTargetSchema).optional(),
   notes: z.string().optional(),
 });
@@ -289,6 +325,7 @@ export const SimulationConfigSchema = z.object({
           entry: EntryConfigSchema.optional(),
           reEntry: ReEntryConfigSchema.optional(),
           costs: CostConfigSchema.optional(),
+          periodMetrics: PeriodMetricsConfigSchema.optional(),
           outputs: z.array(OutputTargetSchema).optional(),
         })
         .default({}),
@@ -303,4 +340,3 @@ export type SimulationEngineConfig = z.infer<typeof SimulationConfigSchema>;
 export function parseSimulationConfig(input: unknown): SimulationEngineConfig {
   return SimulationConfigSchema.parse(input);
 }
-

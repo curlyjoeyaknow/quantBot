@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { DateTime } from 'luxon';
-import { aggregateCandles, fetchHybridCandles } from '../../src/simulation/candles';
-import type { Candle } from '../../src/simulation/candles';
+import { aggregateCandles, fetchHybridCandles } from '../src/candles';
+import type { Candle } from '../src/candles';
 
 // Mock axios
 vi.mock('axios', () => ({
@@ -152,8 +152,22 @@ describe('candles-extended', () => {
       const baseTimestamp = Math.floor(1000 / 3600) * 3600;
       const candles: Candle[] = [
         { timestamp: baseTimestamp, open: 1.0, high: 1.05, low: 0.95, close: 1.0, volume: 100 },
-        { timestamp: baseTimestamp + 300, open: 1.0, high: 1.15, low: 0.90, close: 1.0, volume: 100 },
-        { timestamp: baseTimestamp + 600, open: 1.0, high: 1.02, low: 0.98, close: 1.0, volume: 100 },
+        {
+          timestamp: baseTimestamp + 300,
+          open: 1.0,
+          high: 1.15,
+          low: 0.9,
+          close: 1.0,
+          volume: 100,
+        },
+        {
+          timestamp: baseTimestamp + 600,
+          open: 1.0,
+          high: 1.02,
+          low: 0.98,
+          close: 1.0,
+          volume: 100,
+        },
       ];
 
       const aggregated = aggregateCandles(candles, '1H');
@@ -161,7 +175,7 @@ describe('candles-extended', () => {
       expect(aggregated.length).toBeGreaterThan(0);
       if (aggregated.length > 0) {
         expect(aggregated[0].high).toBeGreaterThanOrEqual(1.15);
-        expect(aggregated[0].low).toBeLessThanOrEqual(0.90);
+        expect(aggregated[0].low).toBeLessThanOrEqual(0.9);
       }
     });
   });
@@ -169,4 +183,3 @@ describe('candles-extended', () => {
   // Note: fetchHybridCandles tests are complex due to API/cache dependencies
   // These are covered in integration tests
 });
-

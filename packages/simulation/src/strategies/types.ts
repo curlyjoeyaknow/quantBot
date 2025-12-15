@@ -1,6 +1,6 @@
 /**
  * Strategy Type Definitions
- * 
+ *
  * Defines types for trading strategies and their configurations
  */
 
@@ -135,11 +135,10 @@ export interface StrategyConfig {
 /**
  * Strategy preset identifier
  */
-export type StrategyPresetName = 
+export type StrategyPresetName =
   | 'basic-6h-20pct-sl'
   | 'conservative-24h'
   | 'aggressive-multi-tp'
   | 'trailing-stop-20pct'
   | 'buy-the-dip-30pct'
   | string; // Allow custom presets
-

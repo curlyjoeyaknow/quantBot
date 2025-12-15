@@ -1,7 +1,7 @@
 #!/usr/bin/env ts-node
 /**
  * Optimization CLI
- * 
+ *
  * Run strategy optimization from config files
  */
 
@@ -18,7 +18,7 @@ interface CliOptions {
 
 function parseArgs(argv: string[]): CliOptions {
   const options: CliOptions = {};
-  
+
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === '--config' || arg === '-c') {
@@ -27,15 +27,13 @@ function parseArgs(argv: string[]): CliOptions {
       options.help = true;
     }
   }
-  
+
   return options;
 }
 
 async function loadConfigFromFile(configPath: string): Promise<OptimizationConfig> {
-  const filePath = path.isAbsolute(configPath) 
-    ? configPath 
-    : path.join(process.cwd(), configPath);
-  
+  const filePath = path.isAbsolute(configPath) ? configPath : path.join(process.cwd(), configPath);
+
   const content = await fs.readFile(filePath, 'utf-8');
   return JSON.parse(content) as OptimizationConfig;
 }
@@ -60,19 +58,19 @@ Example:
   try {
     console.log(`Loading optimization config from: ${options.config}`);
     const config = await loadConfigFromFile(options.config);
-    
+
     console.log(`Running optimization: ${config.name}`);
     console.log(`Testing ${config.maxStrategies || 'all'} strategies...`);
-    
+
     const optimizer = new StrategyOptimizer();
     const result = await optimizer.optimize(config);
-    
+
     console.log(`\n✅ Optimization complete!`);
     console.log(`   Total strategies tested: ${result.summary.totalStrategiesTested}`);
     console.log(`   Best PnL: ${result.summary.bestPnl.toFixed(2)}%`);
     console.log(`   Best Win Rate: ${result.summary.bestWinRate.toFixed(2)}%`);
     console.log(`   Best Profit Factor: ${result.summary.bestProfitFactor.toFixed(2)}`);
-    
+
     if (result.bestStrategy) {
       console.log(`\n🏆 Best Strategy: ${result.bestStrategy.strategy.name}`);
       console.log(`   PnL: ${result.bestStrategy.metrics.totalPnlPercent.toFixed(2)}%`);
@@ -99,4 +97,3 @@ Example:
 }
 
 main().catch(console.error);
-
