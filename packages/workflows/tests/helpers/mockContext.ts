@@ -25,12 +25,13 @@ export function mkStrategy(name = 'S1'): StrategyRecord {
 }
 
 export function createMockContext(opts?: {
-  strategy?: StrategyRecord | null;
+  strategy?: StrategyRecord | null | undefined;
   calls?: CallRecord[];
   candlesByMint?: Record<string, Candle[]>;
   simByCallId?: Record<string, SimulationEngineResult | Error>;
 }) {
-  const strategy = opts?.strategy ?? mkStrategy('S1');
+  // Explicitly handle null vs undefined for strategy
+  const strategy = opts?.strategy !== undefined ? opts.strategy : mkStrategy('S1');
   const calls = opts?.calls ?? [];
   const candlesByMint = opts?.candlesByMint ?? {};
   const simByCallId = opts?.simByCallId ?? {};
