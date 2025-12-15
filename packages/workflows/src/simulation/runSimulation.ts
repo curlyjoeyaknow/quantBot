@@ -1,240 +1,212 @@
-import pLimit from 'p-limit';
-import { DateTime } from 'luxon';
-import {
-  SimulationRunSpec,
-  SimulationRunSpecSchema,
-  SimulationRunResult,
+import { z } from 'zod';
+import type { DateTime } from 'luxon';
+import type {
   WorkflowContext,
-  WorkflowError,
-} from '../types';
+  SimulationRunSpec,
+  SimulationRunResult,
+  SimulationCallResult,
+} from '../types.js';
 
-function err(code: string, message: string, details?: Record<string, unknown>): WorkflowError {
-  return { code, message, details };
-}
+const isLuxonDateTime = (v: unknown): v is DateTime =>
+  typeof v === 'object' &&
+  v !== null &&
+  (v as any).isValid === true &&
+  typeof (v as any).toISO === 'function';
 
-function safeError(e: unknown): { message: string; details?: Record<string, unknown> } {
-  if (e instanceof Error) return { message: e.message };
-  return { message: String(e) };
-}
+const SpecSchema = z.object({
+  strategyName: z.string().min(1, 'strategyName is required'),
+  callerName: z.string().min(1).optional(),
+  from: z.custom<DateTime>(isLuxonDateTime, 'from must be a Luxon DateTime'),
+  to: z.custom<DateTime>(isLuxonDateTime, 'to must be a Luxon DateTime'),
+  options: z
+    .object({
+      dryRun: z.boolean().optional(),
+      preWindowMinutes: z
+        .number()
+        .int()
+        .min(0)
+        .max(60 * 24)
+        .optional(),
+      postWindowMinutes: z
+        .number()
+        .int()
+        .min(0)
+        .max(60 * 24)
+        .optional(),
+    })
+    .optional(),
+});
 
 function median(nums: number[]): number | undefined {
   if (nums.length === 0) return undefined;
-  const sorted = [...nums].sort((a, b) => a - b);
-  const mid = Math.floor(sorted.length / 2);
-  return sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
+  const s = [...nums].sort((a, b) => a - b);
+  const mid = Math.floor(s.length / 2);
+  if (s.length % 2 === 1) return s[mid];
+  return (s[mid - 1] + s[mid]) / 2;
 }
 
 export async function runSimulation(
-  specInput: SimulationRunSpec,
+  spec: SimulationRunSpec,
   ctx: WorkflowContext
 ): Promise<SimulationRunResult> {
-  const parsed = SimulationRunSpecSchema.safeParse(specInput);
+  const parsed = SpecSchema.safeParse(spec);
   if (!parsed.success) {
-    return {
-      runId: 'INVALID_SPEC',
-      strategyName: specInput.strategyName ?? 'UNKNOWN',
-      callerName: specInput.callerName,
-      from: specInput.from ?? '',
-      to: specInput.to ?? '',
-      interval: (specInput.interval ?? '1m') as any,
-      totals: { targets: 0, ok: 0, failed: 1 },
-      summary: {},
-      results: [],
-      errors: [
-        err('INVALID_SPEC', 'SimulationRunSpec validation failed', { issues: parsed.error.issues }),
-      ],
-    };
+    const msg = parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ');
+    throw new Error(`INVALID_SPEC: ${msg}`);
   }
 
-  const spec = parsed.data;
-
-  const fromDt = DateTime.fromISO(spec.from);
-  const toDt = DateTime.fromISO(spec.to);
-  if (!fromDt.isValid || !toDt.isValid) {
-    return {
-      runId: 'INVALID_DATES',
-      strategyName: spec.strategyName,
-      callerName: spec.callerName,
-      from: spec.from,
-      to: spec.to,
-      interval: spec.interval,
-      totals: { targets: 0, ok: 0, failed: 1 },
-      summary: {},
-      results: [],
-      errors: [err('INVALID_DATES', 'from/to must be valid ISO datetimes')],
-    };
-  }
-  if (toDt <= fromDt) {
-    return {
-      runId: 'INVALID_RANGE',
-      strategyName: spec.strategyName,
-      callerName: spec.callerName,
-      from: spec.from,
-      to: spec.to,
-      interval: spec.interval,
-      totals: { targets: 0, ok: 0, failed: 1 },
-      summary: {},
-      results: [],
-      errors: [err('INVALID_RANGE', '`to` must be after `from`')],
-    };
+  const fromISO = spec.from.toISO()!;
+  const toISO = spec.to.toISO()!;
+  if (spec.to <= spec.from) {
+    throw new Error(`INVALID_DATE_RANGE: to must be after from (from=${fromISO}, to=${toISO})`);
   }
 
-  ctx.logger.info('workflows.runSimulation:start', {
-    strategyName: spec.strategyName,
-    callerName: spec.callerName,
-    from: spec.from,
-    to: spec.to,
-    interval: spec.interval,
-    dryRun: spec.dryRun,
-    concurrency: spec.concurrency,
-  });
+  const dryRun = spec.options?.dryRun ?? false;
+  const preMin = spec.options?.preWindowMinutes ?? 0;
+  const postMin = spec.options?.postWindowMinutes ?? 0;
+
+  const runId = ctx.ids.newRunId();
 
   const strategy = await ctx.repos.strategies.getByName(spec.strategyName);
   if (!strategy) {
-    return {
-      runId: 'STRATEGY_NOT_FOUND',
-      strategyName: spec.strategyName,
-      callerName: spec.callerName,
-      from: spec.from,
-      to: spec.to,
-      interval: spec.interval,
-      totals: { targets: 0, ok: 0, failed: 1 },
-      summary: {},
-      results: [],
-      errors: [err('STRATEGY_NOT_FOUND', `Strategy not found: ${spec.strategyName}`)],
-    };
+    throw new Error(`STRATEGY_NOT_FOUND: ${spec.strategyName}`);
   }
 
-  const calls = await ctx.repos.calls.listByRange({
+  const calls = await ctx.repos.calls.list({
     callerName: spec.callerName,
-    fromIso: spec.from,
-    toIso: spec.to,
+    fromISO,
+    toISO,
   });
 
-  const runId = spec.dryRun
-    ? `dryrun_${Date.now()}`
-    : await ctx.repos.runs.createRun({
-        strategyName: spec.strategyName,
-        callerName: spec.callerName,
-        fromIso: spec.from,
-        toIso: spec.to,
-        interval: spec.interval,
-        dryRun: spec.dryRun,
-      });
-
-  if (calls.length === 0) {
-    ctx.logger.warn('workflows.runSimulation:no_calls', { runId });
-    return {
-      runId,
-      strategyName: spec.strategyName,
-      callerName: spec.callerName,
-      from: spec.from,
-      to: spec.to,
-      interval: spec.interval,
-      totals: { targets: 0, ok: 0, failed: 0 },
-      summary: {},
-      results: [],
-      errors: [],
-    };
+  // Dedup by call id; keep earliest instance.
+  const byId = new Map<string, (typeof calls)[number]>();
+  for (const c of calls) {
+    if (!byId.has(c.id)) byId.set(c.id, c);
   }
-
-  const limit = pLimit(spec.concurrency);
-
-  const results = await Promise.all(
-    calls.map((call) =>
-      limit(async () => {
-        const mint = call.mint;
-        const callId = call.id;
-
-        try {
-          const candles = await ctx.ohlcv.fetchHybridCandles({
-            mint,
-            fromIso: spec.from,
-            toIso: spec.to,
-            interval: spec.interval,
-            preWindowMinutes: spec.preWindowMinutes,
-            postWindowMinutes: spec.postWindowMinutes,
-          });
-
-          const simOut = await ctx.simulation.simulateOnCandles({
-            strategyName: spec.strategyName,
-            strategyConfig: strategy.config,
-            candles,
-            mint,
-            callId,
-          });
-
-          if (!spec.dryRun) {
-            await ctx.repos.results.upsertResult({
-              runId,
-              callId,
-              mint,
-              pnlMultiple: simOut.pnlMultiple,
-              exitReason: simOut.exitReason,
-              raw: simOut.raw,
-            });
-          }
-
-          return {
-            mint,
-            callId,
-            ok: true,
-            pnlMultiple: simOut.pnlMultiple,
-            exitReason: simOut.exitReason,
-          } as const;
-        } catch (e) {
-          const se = safeError(e);
-          ctx.logger.error('workflows.runSimulation:target_failed', {
-            runId,
-            mint,
-            callId,
-            error: se.message,
-          });
-          return {
-            mint,
-            callId,
-            ok: false,
-            errors: [err('TARGET_FAILED', se.message)],
-          } as const;
-        }
-      })
-    )
+  const uniqueCalls = [...byId.values()].sort(
+    (a, b) => a.createdAt.toMillis() - b.createdAt.toMillis()
   );
 
-  const okPnls = results
-    .filter((r) => r.ok && typeof r.pnlMultiple === 'number')
-    .map((r) => r.pnlMultiple as number);
-  const avg = okPnls.length ? okPnls.reduce((a, b) => a + b, 0) / okPnls.length : undefined;
-  const med = median(okPnls);
-  const winRate = okPnls.length ? okPnls.filter((m) => m > 1.0).length / okPnls.length : undefined;
+  const results: SimulationCallResult[] = [];
+  const pnlOk: number[] = [];
+  let tradesTotal = 0;
 
-  const okCount = results.filter((r) => r.ok).length;
-  const failedCount = results.length - okCount;
-
-  ctx.logger.info('workflows.runSimulation:done', {
+  ctx.logger.info('[workflows.runSimulation] start', {
     runId,
-    targets: results.length,
-    ok: okCount,
-    failed: failedCount,
+    strategy: strategy.name,
+    calls: uniqueCalls.length,
+    dryRun,
+  });
+
+  for (const call of uniqueCalls) {
+    const callISO = call.createdAt.toISO()!;
+    try {
+      // Workflow-controlled time window (conservative: window around call timestamp)
+      const fromWindow = call.createdAt.minus({ minutes: preMin }).toISO()!;
+      const toWindow = call.createdAt.plus({ minutes: postMin }).toISO()!;
+
+      const candles = await ctx.ohlcv.getCandles({
+        mint: call.mint,
+        fromISO: fromWindow,
+        toISO: toWindow,
+      });
+
+      if (candles.length === 0) {
+        results.push({
+          callId: call.id,
+          mint: call.mint,
+          createdAtISO: callISO,
+          ok: false,
+          errorCode: 'NO_CANDLES',
+          errorMessage: 'No candles returned for target window',
+        });
+        continue;
+      }
+
+      const sim = await ctx.simulation.run({ candles, strategy, call });
+
+      pnlOk.push(sim.pnlMultiplier);
+      tradesTotal += sim.trades;
+
+      results.push({
+        callId: call.id,
+        mint: call.mint,
+        createdAtISO: callISO,
+        ok: true,
+        pnlMultiplier: sim.pnlMultiplier,
+        trades: sim.trades,
+      });
+    } catch (e: any) {
+      const msg = e?.message ? String(e.message) : String(e);
+      results.push({
+        callId: call.id,
+        mint: call.mint,
+        createdAtISO: callISO,
+        ok: false,
+        errorCode: 'SIMULATION_ERROR',
+        errorMessage: msg,
+      });
+      // Continue (per-call errors should not kill the run)
+      ctx.logger.warn('[workflows.runSimulation] per-call error', {
+        runId,
+        callId: call.id,
+        mint: call.mint,
+        msg,
+      });
+    }
+  }
+
+  const callsAttempted = uniqueCalls.length;
+  const callsSucceeded = results.filter((r) => r.ok).length;
+  const callsFailed = results.length - callsSucceeded;
+
+  const pnlMin = pnlOk.length ? Math.min(...pnlOk) : undefined;
+  const pnlMax = pnlOk.length ? Math.max(...pnlOk) : undefined;
+  const pnlMean = pnlOk.length ? pnlOk.reduce((a, b) => a + b, 0) / pnlOk.length : undefined;
+  const pnlMedian = median(pnlOk);
+
+  if (!dryRun) {
+    await ctx.repos.simulationRuns.create({
+      runId,
+      strategyId: strategy.id,
+      fromISO,
+      toISO,
+      callerName: spec.callerName,
+    });
+
+    await ctx.repos.simulationResults.insertMany(runId, results);
+  }
+
+  ctx.logger.info('[workflows.runSimulation] done', {
+    runId,
+    callsFound: calls.length,
+    callsUnique: uniqueCalls.length,
+    callsSucceeded,
+    callsFailed,
+    tradesTotal,
+    dryRun,
   });
 
   return {
     runId,
     strategyName: spec.strategyName,
     callerName: spec.callerName,
-    from: spec.from,
-    to: spec.to,
-    interval: spec.interval,
-    totals: { targets: results.length, ok: okCount, failed: failedCount },
-    summary: { avgPnlMultiple: avg, medianPnlMultiple: med, winRate },
-    results: results.map((r) => ({
-      mint: r.mint,
-      callId: r.callId,
-      ok: r.ok,
-      pnlMultiple: (r as any).pnlMultiple,
-      exitReason: (r as any).exitReason,
-      errors: (r as any).errors,
-    })),
-    errors: [],
+    fromISO,
+    toISO,
+    dryRun,
+    totals: {
+      callsFound: calls.length,
+      callsAttempted,
+      callsSucceeded,
+      callsFailed,
+      tradesTotal,
+    },
+    pnl: {
+      min: pnlMin,
+      max: pnlMax,
+      mean: pnlMean,
+      median: pnlMedian,
+    },
+    results,
   };
 }
