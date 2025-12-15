@@ -7,7 +7,6 @@
  *   ts-node scripts/ingest/telegram-alerts.ts --file <path> --caller-name <name> [--chain SOL] [--chat-id <id>]
  */
 
-// @ts-expect-error - commander types may not be installed yet
 import { program } from 'commander';
 import {
   CallersRepository,
@@ -17,6 +16,7 @@ import {
 } from '@quantbot/storage';
 import { TelegramAlertIngestionService } from '@quantbot/ingestion';
 import { logger } from '@quantbot/utils';
+import type { Chain } from '@quantbot/core';
 
 // Initialize repositories
 const callersRepo = new CallersRepository();
@@ -37,7 +37,7 @@ program
   .description('Ingest Telegram export files into Postgres')
   .requiredOption('--file <path>', 'Path to Telegram HTML export file')
   .requiredOption('--caller-name <name>', 'Name of the caller (e.g., Brook, Lsy)')
-  .option('--chain <chain>', 'Blockchain (default: SOL)', 'SOL')
+  .option('--chain <chain>', 'Blockchain (default: solana)', 'solana')
   .option('--chat-id <id>', 'Chat ID (optional, will be extracted from file if not provided)')
   .action(async (options) => {
     try {
@@ -46,7 +46,7 @@ program
       const result = await ingestionService.ingestExport({
         filePath: options.file,
         callerName: options.callerName,
-        chain: options.chain as 'SOL',
+        chain: options.chain as Chain,
         chatId: options.chatId,
       });
 
