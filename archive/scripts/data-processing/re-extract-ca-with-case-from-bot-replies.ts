@@ -63,7 +63,12 @@ function parseMessagesFile(filePath: string): ChatMessage[] {
     const senderMatch = messageHtml.match(/<div class="from_name">\s*([\s\S]*?)\s*<\/div>/);
     let sender = senderMatch ? senderMatch[1].trim() : '';
     // Clean up sender (remove any HTML tags that might be inside)
-    sender = sender.replace(/<[^>]+>/g, '').trim();
+    let prevSender;
+    do {
+      prevSender = sender;
+      sender = sender.replace(/<[^>]+>/g, '');
+    } while (sender !== prevSender);
+    sender = sender.trim();
 
     // Extract timestamp
     const timestampMatch = messageHtml.match(/title="([^"]+)"/);
