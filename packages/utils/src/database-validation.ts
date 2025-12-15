@@ -44,7 +44,7 @@ const strategySchema = z.array(
     price: z.number().optional(),
     percent: z.number().min(0).max(100).optional(),
     multiplier: z.number().positive().optional(),
-    conditions: z.record(z.unknown()).optional(),
+    conditions: z.record(z.string(), z.unknown()).optional(),
   })
 );
 

@@ -139,7 +139,7 @@ describe('workflows.runSimulation - golden suite', () => {
     // Successful pnl stats should ignore failed calls
     expect(res.pnl.min).toBe(1.05);
     expect(res.pnl.max).toBe(1.1);
-    expect(res.pnl.median).toBe(1.075);
+    expect(res.pnl.median).toBeCloseTo(1.075, 10);
   });
 
   it('GOLDEN: dedupes duplicate call ids', async () => {

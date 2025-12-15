@@ -26,11 +26,11 @@ describe('Storage Commands - Integration', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     registry = new CommandRegistry();
-    
+
     mockPostgresPool = {
       query: vi.fn(),
     };
-    
+
     mockClickHouseClient = {
       query: vi.fn(),
     };
@@ -40,10 +40,24 @@ describe('Storage Commands - Integration', () => {
 
     // Register the storage module manually
     const { z } = require('zod');
-    
+
     const SAFE_TABLES = {
-      postgres: ['tokens', 'calls', 'alerts', 'callers', 'strategies', 'simulation_runs', 'simulation_results_summary'],
-      clickhouse: ['ohlcv_candles', 'indicator_values', 'simulation_events', 'simulation_aggregates', 'token_metadata_snapshots'],
+      postgres: [
+        'tokens',
+        'calls',
+        'alerts',
+        'callers',
+        'strategies',
+        'simulation_runs',
+        'simulation_results_summary',
+      ],
+      clickhouse: [
+        'ohlcv_candles',
+        'indicator_values',
+        'simulation_events',
+        'simulation_aggregates',
+        'token_metadata_snapshots',
+      ],
     };
 
     async function queryPostgresTable(table: string, limit: number) {

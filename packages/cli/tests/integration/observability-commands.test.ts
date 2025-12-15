@@ -7,6 +7,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { CommandRegistry } from '../../src/core/command-registry';
 import { performHealthCheck, checkApiQuotas } from '@quantbot/observability';
+import { z } from 'zod';
 
 // Mock observability package
 vi.mock('@quantbot/observability', () => ({
@@ -21,9 +22,6 @@ describe('Observability Commands - Integration', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     registry = new CommandRegistry();
-
-    // Register the observability module manually
-    const { z } = require('zod');
 
     registry.registerPackage({
       packageName: 'observability',
@@ -42,10 +40,11 @@ describe('Observability Commands - Integration', () => {
             service: z.enum(['birdeye', 'helius', 'all']).optional(),
             format: z.enum(['json', 'table', 'csv']).default('table'),
           }),
-          handler: async (args: any) => {
+          handler: async (args: unknown) => {
+            const typedArgs = args as { service?: 'birdeye' | 'helius' | 'all' };
             const quotas = await checkApiQuotas();
-            if (args.service && args.service !== 'all') {
-              return { [args.service]: quotas[args.service as keyof typeof quotas] };
+            if (typedArgs.service && typedArgs.service !== 'all') {
+              return { [typedArgs.service]: quotas[typedArgs.service as keyof typeof quotas] };
             }
             return quotas;
           },

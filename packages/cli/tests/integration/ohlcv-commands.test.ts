@@ -8,36 +8,30 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { CommandRegistry } from '../../src/core/command-registry';
 import { OhlcvRepository } from '@quantbot/storage';
 import { DateTime } from 'luxon';
+import { z } from 'zod';
+import { validateMintAddress } from '../../src/core/argument-parser';
 
 // Mock storage
-vi.mock('@quantbot/storage', () => ({
-  OhlcvRepository: vi.fn().mockImplementation(() => ({
-    getCandles: vi.fn(),
-  })),
-}));
+let mockGetCandles: ReturnType<typeof vi.fn>;
+
+vi.mock('@quantbot/storage', () => {
+  return {
+    OhlcvRepository: class {
+      getCandles = mockGetCandles;
+    },
+  };
+});
 
 describe('OHLCV Commands - Integration', () => {
   let registry: CommandRegistry;
-  let mockRepository: {
-    getCandles: ReturnType<typeof vi.fn>;
-  };
 
   beforeEach(() => {
     vi.clearAllMocks();
     
-    mockRepository = {
-      getCandles: vi.fn(),
-    };
-    
-    vi.mocked(OhlcvRepository).mockImplementation(() => mockRepository as never);
+    mockGetCandles = vi.fn();
 
     // Create fresh registry and manually register the module
     registry = new CommandRegistry();
-    
-    // Register the ohlcv module manually
-    const { z } = require('zod');
-    const { validateMintAddress } = require('../../src/core/argument-parser');
-    const { DateTime } = require('luxon');
     
     const querySchema = z.object({
       mint: z.string(),
@@ -56,17 +50,18 @@ describe('OHLCV Commands - Integration', () => {
           name: 'query',
           description: 'Query OHLCV candles for a token',
           schema: querySchema,
-          handler: async (args: any) => {
-            const mintAddress = validateMintAddress(args.mint);
-            const fromDate = DateTime.fromISO(args.from);
-            const toDate = DateTime.fromISO(args.to);
+          handler: async (args: unknown) => {
+            const typedArgs = args as z.infer<typeof querySchema>;
+            const mintAddress = validateMintAddress(typedArgs.mint);
+            const fromDate = DateTime.fromISO(typedArgs.from);
+            const toDate = DateTime.fromISO(typedArgs.to);
 
             if (!fromDate.isValid || !toDate.isValid) {
               throw new Error('Invalid date format');
             }
 
             const repository = new OhlcvRepository();
-            return await repository.getCandles(mintAddress, args.chain, args.interval, {
+            return await repository.getCandles(mintAddress, typedArgs.chain, typedArgs.interval, {
               from: fromDate,
               to: toDate,
             });
@@ -109,7 +104,7 @@ describe('OHLCV Commands - Integration', () => {
         },
       ];
 
-      mockRepository.getCandles.mockResolvedValue(mockCandles);
+      mockGetCandles.mockResolvedValue(mockCandles);
 
       const command = registry.getCommand('ohlcv', 'query');
       expect(command).toBeDefined();
@@ -126,7 +121,7 @@ describe('OHLCV Commands - Integration', () => {
 
         const result = await command.handler(args);
 
-        expect(mockRepository.getCandles).toHaveBeenCalledWith(
+        expect(mockGetCandles).toHaveBeenCalledWith(
           'So11111111111111111111111111111111111111112',
           'solana',
           '5m',
@@ -141,7 +136,7 @@ describe('OHLCV Commands - Integration', () => {
     });
 
     it('should preserve mint address case', async () => {
-      mockRepository.getCandles.mockResolvedValue([]);
+      mockGetCandles.mockResolvedValue([]);
 
       const command = registry.getCommand('ohlcv', 'query');
 
@@ -159,7 +154,7 @@ describe('OHLCV Commands - Integration', () => {
         await command.handler(args);
 
         // Verify exact case was preserved
-        expect(mockRepository.getCandles).toHaveBeenCalledWith(
+        expect(mockGetCandles).toHaveBeenCalledWith(
           mixedCaseMint,
           expect.anything(),
           expect.anything(),
@@ -203,7 +198,7 @@ describe('OHLCV Commands - Integration', () => {
     });
 
     it('should handle repository errors gracefully', async () => {
-      mockRepository.getCandles.mockRejectedValue(new Error('Database error'));
+      mockGetCandles.mockRejectedValue(new Error('Database error'));
 
       const command = registry.getCommand('ohlcv', 'query');
 
