@@ -130,7 +130,8 @@ export class WebSocketEventHandlers {
         logger.info('WebSocket disconnected', { url });
         break;
       case 'websocket.error':
-        logger.error('WebSocket error', error as Error, { url });
+        const wsError = error ? (typeof error === 'string' ? new Error(error) : new Error(String(error))) : new Error('Unknown WebSocket error');
+        logger.error('WebSocket error', wsError, { url });
         break;
       case 'websocket.reconnecting':
         logger.info('WebSocket reconnecting', { url, attempt: reconnectAttempts });
@@ -191,7 +192,9 @@ export class SystemEventHandlers {
         logger.info('System shutdown', { component, message });
         break;
       case 'system.error':
-        logger.error('System error', error as Error, { component, message });
+        const sysError =
+          error instanceof Error ? error : new Error(String(error ?? 'Unknown error'));
+        logger.error('System error', sysError, { component, message });
         break;
     }
   };
@@ -213,7 +216,13 @@ export class SystemEventHandlers {
         logger.info('Service stopped', { serviceName });
         break;
       case 'service.error':
-        logger.error('Service error', error as Error, { serviceName });
+        const svcError =
+          typeof error === 'string'
+            ? new Error(error)
+            : error instanceof Error
+              ? error
+              : new Error(String(error ?? 'Unknown error'));
+        logger.error('Service error', svcError, { serviceName });
         break;
     }
   };
@@ -235,44 +244,119 @@ export class EventHandlerRegistry {
    */
   public registerAll(): void {
     // User events
-    this.eventBus.subscribe('user.session.started', UserEventHandlers.handleSessionEvent);
-    this.eventBus.subscribe('user.session.updated', UserEventHandlers.handleSessionEvent);
-    this.eventBus.subscribe('user.session.cleared', UserEventHandlers.handleSessionEvent);
-    this.eventBus.subscribe('user.command.executed', UserEventHandlers.handleCommandEvent);
-    this.eventBus.subscribe('user.command.failed', UserEventHandlers.handleCommandEvent);
-    this.eventBus.subscribe('user.strategy.saved', UserEventHandlers.handleStrategyEvent);
-    this.eventBus.subscribe('user.strategy.deleted', UserEventHandlers.handleStrategyEvent);
-    this.eventBus.subscribe('user.strategy.used', UserEventHandlers.handleStrategyEvent);
+    this.eventBus.subscribe(
+      'user.session.started',
+      UserEventHandlers.handleSessionEvent as EventHandler
+    );
+    this.eventBus.subscribe(
+      'user.session.updated',
+      UserEventHandlers.handleSessionEvent as EventHandler
+    );
+    this.eventBus.subscribe(
+      'user.session.cleared',
+      UserEventHandlers.handleSessionEvent as EventHandler
+    );
+    this.eventBus.subscribe(
+      'user.command.executed',
+      UserEventHandlers.handleCommandEvent as EventHandler
+    );
+    this.eventBus.subscribe(
+      'user.command.failed',
+      UserEventHandlers.handleCommandEvent as EventHandler
+    );
+    this.eventBus.subscribe(
+      'user.strategy.saved',
+      UserEventHandlers.handleStrategyEvent as EventHandler
+    );
+    this.eventBus.subscribe(
+      'user.strategy.deleted',
+      UserEventHandlers.handleStrategyEvent as EventHandler
+    );
+    this.eventBus.subscribe(
+      'user.strategy.used',
+      UserEventHandlers.handleStrategyEvent as EventHandler
+    );
 
     // Simulation events
-    this.eventBus.subscribe('simulation.started', SimulationEventHandlers.handleSimulationEvent);
-    this.eventBus.subscribe('simulation.completed', SimulationEventHandlers.handleSimulationEvent);
-    this.eventBus.subscribe('simulation.failed', SimulationEventHandlers.handleSimulationEvent);
+    this.eventBus.subscribe(
+      'simulation.started',
+      SimulationEventHandlers.handleSimulationEvent as EventHandler
+    );
+    this.eventBus.subscribe(
+      'simulation.completed',
+      SimulationEventHandlers.handleSimulationEvent as EventHandler
+    );
+    this.eventBus.subscribe(
+      'simulation.failed',
+      SimulationEventHandlers.handleSimulationEvent as EventHandler
+    );
 
     // WebSocket events
-    this.eventBus.subscribe('websocket.connected', WebSocketEventHandlers.handleConnectionEvent);
-    this.eventBus.subscribe('websocket.disconnected', WebSocketEventHandlers.handleConnectionEvent);
-    this.eventBus.subscribe('websocket.error', WebSocketEventHandlers.handleConnectionEvent);
-    this.eventBus.subscribe('websocket.reconnecting', WebSocketEventHandlers.handleConnectionEvent);
+    this.eventBus.subscribe(
+      'websocket.connected',
+      WebSocketEventHandlers.handleConnectionEvent as EventHandler
+    );
+    this.eventBus.subscribe(
+      'websocket.disconnected',
+      WebSocketEventHandlers.handleConnectionEvent as EventHandler
+    );
+    this.eventBus.subscribe(
+      'websocket.error',
+      WebSocketEventHandlers.handleConnectionEvent as EventHandler
+    );
+    this.eventBus.subscribe(
+      'websocket.reconnecting',
+      WebSocketEventHandlers.handleConnectionEvent as EventHandler
+    );
 
     // Monitoring events
     this.eventBus.subscribe(
       'price.update.received',
-      MonitoringEventHandlers.handlePriceUpdateEvent
+      MonitoringEventHandlers.handlePriceUpdateEvent as EventHandler
     );
-    this.eventBus.subscribe('alert.profit_target', MonitoringEventHandlers.handleAlertEvent);
-    this.eventBus.subscribe('alert.stop_loss', MonitoringEventHandlers.handleAlertEvent);
-    this.eventBus.subscribe('alert.ichimoku_signal', MonitoringEventHandlers.handleAlertEvent);
-    this.eventBus.subscribe('alert.leading_span_cross', MonitoringEventHandlers.handleAlertEvent);
+    this.eventBus.subscribe(
+      'alert.profit_target',
+      MonitoringEventHandlers.handleAlertEvent as EventHandler
+    );
+    this.eventBus.subscribe(
+      'alert.stop_loss',
+      MonitoringEventHandlers.handleAlertEvent as EventHandler
+    );
+    this.eventBus.subscribe(
+      'alert.ichimoku_signal',
+      MonitoringEventHandlers.handleAlertEvent as EventHandler
+    );
+    this.eventBus.subscribe(
+      'alert.leading_span_cross',
+      MonitoringEventHandlers.handleAlertEvent as EventHandler
+    );
 
     // System events
-    this.eventBus.subscribe('system.startup', SystemEventHandlers.handleSystemEvent);
-    this.eventBus.subscribe('system.shutdown', SystemEventHandlers.handleSystemEvent);
-    this.eventBus.subscribe('system.error', SystemEventHandlers.handleSystemEvent);
-    this.eventBus.subscribe('service.initialized', SystemEventHandlers.handleServiceEvent);
-    this.eventBus.subscribe('service.started', SystemEventHandlers.handleServiceEvent);
-    this.eventBus.subscribe('service.stopped', SystemEventHandlers.handleServiceEvent);
-    this.eventBus.subscribe('service.error', SystemEventHandlers.handleServiceEvent);
+    this.eventBus.subscribe(
+      'system.startup',
+      SystemEventHandlers.handleSystemEvent as EventHandler
+    );
+    this.eventBus.subscribe(
+      'system.shutdown',
+      SystemEventHandlers.handleSystemEvent as EventHandler
+    );
+    this.eventBus.subscribe('system.error', SystemEventHandlers.handleSystemEvent as EventHandler);
+    this.eventBus.subscribe(
+      'service.initialized',
+      SystemEventHandlers.handleServiceEvent as EventHandler
+    );
+    this.eventBus.subscribe(
+      'service.started',
+      SystemEventHandlers.handleServiceEvent as EventHandler
+    );
+    this.eventBus.subscribe(
+      'service.stopped',
+      SystemEventHandlers.handleServiceEvent as EventHandler
+    );
+    this.eventBus.subscribe(
+      'service.error',
+      SystemEventHandlers.handleServiceEvent as EventHandler
+    );
 
     logger.info('All event handlers registered');
   }

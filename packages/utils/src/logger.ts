@@ -6,7 +6,7 @@
  */
 
 import * as winston from 'winston';
-// @ts-expect-error - winston-daily-rotate-file has incorrect type definitions
+ 
 const DailyRotateFile =
   require('winston-daily-rotate-file').default || require('winston-daily-rotate-file');
 import * as path from 'path';

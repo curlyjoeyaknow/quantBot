@@ -5,8 +5,15 @@
  */
 
 import type { Context } from 'telegraf';
-import type { SessionService } from '../services/SessionService';
 import { DateTime } from 'luxon';
+
+/**
+ * @deprecated SessionService no longer exists. This helper is kept for test coverage only.
+ * TODO: Remove or refactor to use a different service interface.
+ */
+export interface SessionService {
+  setSession(userId: number, session: unknown): void;
+}
 
 export class RepeatSimulationHelper {
   constructor(private sessionService: SessionService) {}

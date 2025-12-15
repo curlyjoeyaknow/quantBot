@@ -18,9 +18,11 @@ import * as path from 'path';
 import { logger } from './logger';
 import type {
   Strategy,
+  StrategyLeg,
   StopLossConfig,
   SimulationEvent,
   SimulationRunData,
+  UserStrategy,
   CACall,
   ActiveCA,
   Chain,
@@ -486,7 +488,7 @@ export function getUserSimulationRuns(
  * @param runId Simulation run identifier
  * @returns Promise with simulation run data or null if not found
  */
-export function getSimulationRun(runId: number): Promise<SimulationRunWithDetails | null> {
+export function getSimulationRun(runId: number): Promise<SimulationRunData | null> {
   return new Promise((resolve, reject) => {
     if (!db) return reject(new Error('Database not initialized'));
 
@@ -528,7 +530,7 @@ export function getSimulationRun(runId: number): Promise<SimulationRunWithDetail
       }
       if (!row) return resolve(null);
 
-      const run: SimulationRunWithDetails = {
+      const run: SimulationRunData = {
         id: row.id,
         userId: row.user_id,
         mint: row.mint,
@@ -701,7 +703,7 @@ export function getUserStrategies(userId: number): Promise<UserStrategy[]> {
         userId: userId,
         name: row.name,
         description: row.description || undefined,
-        strategy: JSON.parse(row.strategy) as Strategy[],
+        strategy: JSON.parse(row.strategy) as StrategyLeg[],
         stopLossConfig: JSON.parse(row.stop_loss_config) as StopLossConfig,
         isDefault: Boolean(row.is_default),
         createdAt: DateTime.fromISO(row.created_at),
@@ -755,7 +757,7 @@ export function getStrategy(userId: number, name: string): Promise<UserStrategy 
         userId: userId,
         name: row.name,
         description: row.description || undefined,
-        strategy: JSON.parse(row.strategy) as Strategy[],
+        strategy: JSON.parse(row.strategy) as StrategyLeg[],
         stopLossConfig: JSON.parse(row.stop_loss_config) as StopLossConfig,
         isDefault: Boolean(row.is_default),
         createdAt: DateTime.fromISO(row.created_at),
@@ -898,7 +900,7 @@ export function getActiveCATracking(): Promise<ActiveCA[]> {
       const cases: ActiveCA[] = (rows ?? [])
         .map((row: any) => {
           try {
-            return {
+            const activeCA: ActiveCA = {
               id: row.id,
               mint: createTokenAddress(row.mint),
               chain: row.chain as Chain,
@@ -910,6 +912,7 @@ export function getActiveCATracking(): Promise<ActiveCA[]> {
               caller: row.caller || undefined,
               created_at: row.created_at || undefined,
             };
+            return activeCA;
           } catch (error) {
             logger.warn('Invalid mint address in active CA tracking', { mint: row.mint, error });
             return null;
@@ -1208,6 +1211,20 @@ export function saveAlertSent(
  * @param hours How many hours back to look (default: 24)
  * @returns {Promise<CAPerformanceSummary[]>}
  */
+export interface CAPerformanceSummary {
+  id: number;
+  mint: TokenAddress;
+  chain: Chain;
+  tokenName?: string;
+  tokenSymbol?: string;
+  callPrice: number;
+  callTimestamp: number;
+  currentPrice?: number;
+  priceTimestamp?: number;
+  strategy?: Strategy[];
+  stopLossConfig?: StopLossConfig;
+}
+
 export function getRecentCAPerformance(hours: number = 24): Promise<CAPerformanceSummary[]> {
   return new Promise((resolve, reject) => {
     if (!db) return reject(new Error('Database not initialized'));

@@ -43,7 +43,8 @@ export class EventBus extends EventEmitter {
   private middleware: EventMiddleware[] = [];
   private eventHistory: ApplicationEvent[] | null = null;
   private maxHistorySize: number = 1000;
-  private handlerMap: Map<EventHandler, (event: ApplicationEvent) => Promise<void>> = new Map();
+  private handlerMap: Map<EventHandler<unknown>, (event: ApplicationEvent) => Promise<void>> =
+    new Map();
   private cleanupInterval: NodeJS.Timeout | null = null;
 
   /**
@@ -135,7 +136,7 @@ export class EventBus extends EventEmitter {
     };
 
     // Store mapping for unsubscribe
-    this.handlerMap.set(handler, wrappedHandler);
+    this.handlerMap.set(handler as EventHandler<unknown>, wrappedHandler);
     this.on(eventType, wrappedHandler);
   }
 
