@@ -4,6 +4,17 @@
 
 export { parseExport, type ParsedMessage } from './TelegramExportParser';
 export { extractSolanaAddresses } from './extractSolanaAddresses';
+
+// Address validation and extraction
+export { isEvmAddress, isSolanaAddress, isBase58, extractAddresses } from './addressValidation.js';
+
+// Multi-chain metadata fetching
+export {
+  fetchMultiChainMetadata,
+  batchFetchMultiChainMetadata,
+  type TokenMetadata,
+  type MultiChainMetadataResult,
+} from './MultiChainMetadataService.js';
 export {
   TelegramAlertIngestionService,
   type IngestExportParams,

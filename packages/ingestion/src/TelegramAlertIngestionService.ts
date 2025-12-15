@@ -23,6 +23,8 @@ import { parseExport, type ParsedMessage } from './TelegramExportParser';
 import { extractSolanaAddresses } from './extractSolanaAddresses';
 import { PublicKey } from '@solana/web3.js';
 import { getBirdeyeClient } from '@quantbot/api-clients';
+import { extractAddresses, isEvmAddress, isSolanaAddress } from './addressValidation.js';
+import { fetchMultiChainMetadata } from './MultiChainMetadataService.js';
 
 export interface IngestExportParams {
   filePath: string;
@@ -118,20 +120,18 @@ function extractFromBotResponse(botText: string): {
     price?: number;
   } = {};
 
-  // Extract CA address (full address, validated)
-  const addresses = extractSolanaAddresses(botText);
-  if (addresses.length > 0) {
-    result.caAddress = addresses[0]; // Use first valid address
+  // Extract CA address using new validation module
+  const extracted = extractAddresses(botText);
+
+  // Prefer Solana addresses first (most common in our use case)
+  if (extracted.solana.length > 0) {
+    result.caAddress = extracted.solana[0]; // Use first valid address
     // Detect chain from address format or bot text
-    result.chain = detectChain(botText, addresses[0]);
-  } else {
-    // Try to extract EVM addresses (0x...)
-    const evmRegex = /0x[a-fA-F0-9]{40}\b/g;
-    const evmMatches = botText.match(evmRegex);
-    if (evmMatches && evmMatches.length > 0) {
-      result.caAddress = evmMatches[0];
-      result.chain = detectChain(botText, evmMatches[0]);
-    }
+    result.chain = detectChain(botText, extracted.solana[0]);
+  } else if (extracted.evm.length > 0) {
+    // EVM address found
+    result.caAddress = extracted.evm[0];
+    result.chain = detectChain(botText, extracted.evm[0]);
   }
 
   // Extract ticker/symbol: $SYMBOL or (SYMBOL)
@@ -349,36 +349,49 @@ export class TelegramAlertIngestionService {
         }
 
         // Use chain from bot response, fallback to params.chain
-        const detectedChain = botData.chain || params.chain;
+        let detectedChain = botData.chain || params.chain;
+        let actualMetadata: { name?: string; symbol?: string } | null = null;
 
-        // Sanity check: Validate first N addresses with Birdeye API
+        // Sanity check: Validate first N addresses with multi-chain metadata fetching
         let isValidContract = true;
         if (validationCount < VALIDATION_SAMPLE_SIZE) {
           validationCount++;
           logger.info(
-            `Validating contract address (${validationCount}/${VALIDATION_SAMPLE_SIZE})`,
+            `Validating contract address with multi-chain fallback (${validationCount}/${VALIDATION_SAMPLE_SIZE})`,
             {
               address: botData.caAddress.substring(0, 20),
-              chain: detectedChain,
+              chainHint: detectedChain,
             }
           );
 
-          const validationResult = await validateContractAddress(botData.caAddress, detectedChain);
+          // Use multi-chain metadata fetching as definitive fallback
+          const multiChainResult = await fetchMultiChainMetadata(botData.caAddress, detectedChain);
 
-          if (validationResult === false) {
-            logger.warn('Invalid contract address detected - skipping', {
+          if (multiChainResult.primaryMetadata) {
+            // Found metadata on one of the chains
+            detectedChain = multiChainResult.primaryMetadata.chain;
+            actualMetadata = {
+              name: multiChainResult.primaryMetadata.name,
+              symbol: multiChainResult.primaryMetadata.symbol,
+            };
+            logger.info('Multi-chain validation successful', {
               address: botData.caAddress.substring(0, 20),
               chain: detectedChain,
+              symbol: actualMetadata.symbol,
+              name: actualMetadata.name,
+              addressKind: multiChainResult.addressKind,
+            });
+          } else {
+            // No metadata found on any chain
+            logger.warn('Invalid contract address detected - not found on any chain', {
+              address: botData.caAddress.substring(0, 20),
+              chainHint: detectedChain,
+              addressKind: multiChainResult.addressKind,
+              chainsAttempted: multiChainResult.metadata.map((m) => m.chain),
               caller: callerMessage.from,
             });
             isValidContract = false;
-          } else if (validationResult === true) {
-            logger.debug('Contract address validated successfully', {
-              address: botData.caAddress.substring(0, 20),
-              chain: detectedChain,
-            });
           }
-          // If validationResult is null, validation failed but we continue anyway
         }
 
         if (!isValidContract) {
@@ -388,10 +401,11 @@ export class TelegramAlertIngestionService {
         // Use caller name from prior message
         const callerName = callerMessage.from || params.callerName;
 
-        // 4. Upsert token with metadata from bot response
+        // 4. Upsert token with metadata from bot response or multi-chain fetch
+        // Prefer actual metadata from Birdeye over bot-extracted metadata
         const token = await this.tokensRepo.getOrCreateToken(detectedChain, botData.caAddress, {
-          name: botData.name,
-          symbol: botData.ticker,
+          name: actualMetadata?.name || botData.name,
+          symbol: actualMetadata?.symbol || botData.ticker,
         });
         tokensUpsertedSet.add(botData.caAddress);
 

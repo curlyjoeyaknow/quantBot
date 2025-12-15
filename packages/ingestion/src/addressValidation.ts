@@ -8,7 +8,7 @@
  * Solana: base58, typically 32–44 chars (public keys), no 0/O/I/l in base58 alphabet.
  */
 
-const BASE58_ALPHABET = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+const BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
 
 // quick base58 check (format-level; does NOT verify checksum or curve)
 export function isBase58(s: string): boolean {
@@ -21,7 +21,7 @@ export function isBase58(s: string): boolean {
 
 export function isSolanaAddress(s: string): boolean {
   // Typical Solana pubkey length 32–44 chars in base58
-  if (typeof s !== "string") return false;
+  if (typeof s !== 'string') return false;
   const t = s.trim();
   if (t.length < 32 || t.length > 44) return false;
   return isBase58(t);
@@ -30,7 +30,7 @@ export function isSolanaAddress(s: string): boolean {
 export function isEvmAddress(s: string): boolean {
   // Accepts lowercase/uppercase mixed, no checksum validation here.
   // Valid: 0x + 40 hex chars
-  if (typeof s !== "string") return false;
+  if (typeof s !== 'string') return false;
   const t = s.trim();
   return /^0x[a-fA-F0-9]{40}$/.test(t);
 }
@@ -59,7 +59,6 @@ export function extractAddresses(text: string): {
 
   return {
     solana: [...solCandidates],
-    evm: [...evmCandidates]
+    evm: [...evmCandidates],
   };
 }
-

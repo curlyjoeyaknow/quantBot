@@ -10,7 +10,9 @@
  */
 
 import * as cheerio from 'cheerio';
+import { PublicKey } from '@solana/web3.js';
 import type { Chain } from '@quantbot/core';
+import { logger } from '@quantbot/utils';
 
 export interface ExtractedBotData {
   contractAddress: string; // Case-sensitive, full address
@@ -55,7 +57,33 @@ export class BotMessageExtractor {
       if (match) {
         const chainFromUrl = match[1].toLowerCase();
         result.chain = this.normalizeChain(chainFromUrl);
-        result.contractAddress = match[2]; // Preserve exact case
+        const extractedAddress = match[2]; // Preserve exact case
+
+        // Validate Solana addresses are base58
+        if (result.chain === 'solana') {
+          try {
+            const pubkey = new PublicKey(extractedAddress);
+            // Verify it's valid base58 and preserve case
+            result.contractAddress = pubkey.toBase58();
+            // If case differs, log warning but use validated address
+            if (result.contractAddress !== extractedAddress) {
+              logger.warn('Solana address case mismatch', {
+                extracted: extractedAddress.substring(0, 20) + '...',
+                validated: result.contractAddress.substring(0, 20) + '...',
+              });
+            }
+          } catch (error) {
+            logger.warn('Invalid Solana address extracted', {
+              address: extractedAddress.substring(0, 20) + '...',
+              error: error instanceof Error ? error.message : String(error),
+            });
+            // Still set it, but it will fail validation later
+            result.contractAddress = extractedAddress;
+          }
+        } else {
+          // EVM addresses: preserve exact case
+          result.contractAddress = extractedAddress;
+        }
       }
     }
 

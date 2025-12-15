@@ -1,12 +1,12 @@
 /**
  * Property Tests: Full Enrichment Validation
- * 
+ *
  * Tests that all extracted data is fully enriched:
  * - All required fields present
  * - No missing critical data
  * - All numeric fields are valid numbers
  * - All string fields are non-empty when expected
- * 
+ *
  * Following cursor rules: "Tests are the specification"
  */
 
@@ -173,4 +173,3 @@ describe('Full Enrichment Property Tests', () => {
     });
   });
 });
-

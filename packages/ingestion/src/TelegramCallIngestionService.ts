@@ -207,27 +207,44 @@ export class TelegramCallIngestionService {
       symbol: botData.ticker,
     });
 
-    // Insert alert
-    const alertId = await this.alertsRepo.insertAlert({
-      tokenId: token.id,
-      callerId: callerRecord.id,
-      side: 'buy',
-      alertTimestamp: caller.alertTimestamp,
-      alertPrice: botData.price,
-      initialMcap: botData.marketCap,
-      initialPrice: botData.price,
-      chatId: params.chatId,
-      messageId: caller.callerMessage.messageId,
-      messageText: caller.callerMessageText,
-      rawPayload: {
-        botData,
-        callerData: {
-          name: caller.callerName,
-          messageText: caller.callerMessageText,
-          messageId: caller.callerMessage.messageId,
+    // Check for existing alert (idempotency)
+    const existingAlert =
+      params.chatId && caller.callerMessage.messageId
+        ? await this.alertsRepo.findByChatAndMessage(params.chatId, caller.callerMessage.messageId)
+        : null;
+
+    let alertId: number;
+    if (existingAlert) {
+      // Idempotency: alert already exists, return existing ID
+      logger.debug('Alert already exists, skipping insert', {
+        alertId: existingAlert.id,
+        chatId: params.chatId,
+        messageId: caller.callerMessage.messageId,
+      });
+      alertId = existingAlert.id;
+    } else {
+      // Insert new alert
+      alertId = await this.alertsRepo.insertAlert({
+        tokenId: token.id,
+        callerId: callerRecord.id,
+        side: 'buy',
+        alertTimestamp: caller.alertTimestamp,
+        alertPrice: botData.price,
+        initialMcap: botData.marketCap,
+        initialPrice: botData.price,
+        chatId: params.chatId,
+        messageId: caller.callerMessage.messageId,
+        messageText: caller.callerMessageText,
+        rawPayload: {
+          botData,
+          callerData: {
+            name: caller.callerName,
+            messageText: caller.callerMessageText,
+            messageId: caller.callerMessage.messageId,
+          },
         },
-      },
-    });
+      });
+    }
 
     // Insert call
     await this.callsRepo.insertCall({
