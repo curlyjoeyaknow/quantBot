@@ -93,7 +93,7 @@ export const saveSimulationRunSchema = z.object({
   entryType: z.string().max(50).optional(),
   entryPrice: z.number().positive().optional(),
   entryTimestamp: z.number().int().nonnegative().optional(),
-  filterCriteria: z.record(z.unknown()).optional(),
+  filterCriteria: z.record(z.string(), z.unknown()).optional(),
 });
 
 /**
