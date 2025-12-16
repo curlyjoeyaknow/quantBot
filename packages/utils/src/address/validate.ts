@@ -152,4 +152,3 @@ function validateEip55Checksum(address: string): boolean {
   // For now, we'll be lenient and accept any mixed-case
   return true;
 }
-

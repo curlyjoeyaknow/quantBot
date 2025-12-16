@@ -192,4 +192,3 @@ describe('analyzeAnalyticsHandler', () => {
     expect(analyzeCalls).toHaveBeenCalledTimes(1);
   });
 });
-

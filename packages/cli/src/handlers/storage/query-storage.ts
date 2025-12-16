@@ -28,4 +28,3 @@ export async function queryStorageHandler(
   }
   return await queryPostgresTable(args.table, args.limit);
 }
-

@@ -3,7 +3,7 @@
  *
  * Command definitions: schema + description + examples + handler pointer.
  * No business logic, no service instantiation, no console.log, no process.exit.
- * 
+ *
  * Note: Only ohlcv command is fully refactored. Telegram command still uses
  * the old pattern and will be migrated later.
  */

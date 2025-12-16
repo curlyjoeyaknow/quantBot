@@ -29,7 +29,10 @@ describe('queryStorageHandler', () => {
   });
 
   it('calls queryClickHouseTable for ClickHouse tables', async () => {
-    const mockData = [{ id: 1, name: 'test' }, { id: 2, name: 'test2' }];
+    const mockData = [
+      { id: 1, name: 'test' },
+      { id: 2, name: 'test2' },
+    ];
     vi.mocked(storageCommands.queryClickHouseTable).mockResolvedValue(mockData);
 
     const fakeCtx = {} as any;
@@ -49,7 +52,10 @@ describe('queryStorageHandler', () => {
   });
 
   it('calls queryPostgresTable for Postgres tables', async () => {
-    const mockData = [{ id: 1, name: 'test' }, { id: 2, name: 'test2' }];
+    const mockData = [
+      { id: 1, name: 'test' },
+      { id: 2, name: 'test2' },
+    ];
     vi.mocked(storageCommands.queryPostgresTable).mockResolvedValue(mockData);
 
     const fakeCtx = {} as any;
@@ -125,4 +131,3 @@ describe('queryStorageHandler', () => {
     expect(storageCommands.queryPostgresTable).toHaveBeenCalledTimes(limits.length);
   });
 });
-

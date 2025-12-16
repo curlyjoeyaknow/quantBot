@@ -86,4 +86,3 @@ describe('ingestTelegramHandler - Isolation Test', () => {
     expect(result1).toEqual(mockResult);
   });
 });
-

@@ -40,7 +40,7 @@ describe('validateSolanaMint - Pass 2 Validation', () => {
     it('preserves case (no lowercase transformation)', () => {
       const mixedCase = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
       const result = validateSolanaMint(mixedCase);
-      
+
       expect(result.ok).toBe(true);
       expect(result.normalized).toBe(mixedCase);
       expect(result.normalized).not.toBe(mixedCase.toLowerCase());
@@ -49,7 +49,7 @@ describe('validateSolanaMint - Pass 2 Validation', () => {
     it('trims leading/trailing spaces then validates', () => {
       const withSpaces = '  So11111111111111111111111111111111111111112  ';
       const result = validateSolanaMint(withSpaces);
-      
+
       expect(result.ok).toBe(true);
       expect(result.normalized).toBe('So11111111111111111111111111111111111111112');
       expect(result.normalized).not.toContain(' ');
@@ -59,7 +59,7 @@ describe('validateSolanaMint - Pass 2 Validation', () => {
       for (const address of validSolanaAddresses) {
         const result1 = validateSolanaMint(address);
         const result2 = validateSolanaMint(result1.normalized);
-        
+
         expect(result2.ok).toBe(true);
         expect(result2.normalized).toBe(result1.normalized);
       }
@@ -78,7 +78,7 @@ describe('validateSolanaMint - Pass 2 Validation', () => {
     it('invalid length fails', () => {
       const tooShort = 'So11111111111111111111111111111'; // 31 chars
       const result = validateSolanaMint(tooShort);
-      
+
       expect(result.ok).toBe(false);
       expect(result.reason).toBeDefined();
     });
@@ -87,7 +87,7 @@ describe('validateSolanaMint - Pass 2 Validation', () => {
       // This is a valid base58 string but decodes to wrong length
       const shortAddress = '111111111111111111111'; // Too short when decoded
       const result = validateSolanaMint(shortAddress);
-      
+
       expect(result.ok).toBe(false);
       expect(result.reason).toBeDefined();
     });
@@ -131,7 +131,7 @@ describe('validateEvmAddress - Pass 2 Validation (EIP-55)', () => {
     it('lowercase 0xabc... => ok, checksumStatus = not_checksummed', () => {
       const lowercase = '0x742d35cc6634c0532925a3b844bc9e7595f0beb0';
       const result = validateEvmAddress(lowercase);
-      
+
       expect(result.ok).toBe(true);
       expect(result.checksumStatus).toBe('valid_not_checksummed');
       expect(result.normalized).toBe(lowercase.toLowerCase());
@@ -140,7 +140,7 @@ describe('validateEvmAddress - Pass 2 Validation (EIP-55)', () => {
     it('uppercase => ok, not_checksummed', () => {
       const uppercase = '0x742D35CC6634C0532925A3B844BC9E7595F0BEB0';
       const result = validateEvmAddress(uppercase);
-      
+
       expect(result.ok).toBe(true);
       expect(result.checksumStatus).toBe('valid_not_checksummed');
       expect(result.normalized).toBe(uppercase.toLowerCase());
@@ -151,7 +151,7 @@ describe('validateEvmAddress - Pass 2 Validation (EIP-55)', () => {
       // In production, this would validate actual EIP-55 checksum
       const mixedCase = '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb0';
       const result = validateEvmAddress(mixedCase);
-      
+
       // Our placeholder accepts it, but in production this would validate checksum
       if (result.ok) {
         expect(result.checksumStatus).toBeDefined();
@@ -161,7 +161,7 @@ describe('validateEvmAddress - Pass 2 Validation (EIP-55)', () => {
     it('valid addresses are normalized to lowercase for storage', () => {
       const uppercase = '0x742D35CC6634C0532925A3B844BC9E7595F0BEB0';
       const result = validateEvmAddress(uppercase);
-      
+
       expect(result.ok).toBe(true);
       expect(result.normalized).toBe(uppercase.toLowerCase());
     });
@@ -172,7 +172,7 @@ describe('validateEvmAddress - Pass 2 Validation (EIP-55)', () => {
       // Our placeholder accepts any mixed-case, but production would reject invalid checksum
       const invalidChecksum = '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEG0'; // Invalid hex
       const result = validateEvmAddress(invalidChecksum);
-      
+
       expect(result.ok).toBe(false);
       expect(result.reason).toBeDefined();
     });
@@ -180,7 +180,7 @@ describe('validateEvmAddress - Pass 2 Validation (EIP-55)', () => {
     it('rejects missing 0x prefix', () => {
       const without0x = '742d35Cc6634C0532925a3b844Bc9e7595f0bEb0';
       const result = validateEvmAddress(without0x);
-      
+
       expect(result.ok).toBe(false);
       expect(result.reason).toBe('missing_0x_prefix');
     });
@@ -188,10 +188,10 @@ describe('validateEvmAddress - Pass 2 Validation (EIP-55)', () => {
     it('rejects wrong length', () => {
       const tooShort = '0x742d35cc6634c0532925a3b844bc9e7595f0b'; // 41 chars
       const tooLong = '0x742d35cc6634c0532925a3b844bc9e7595f0bebe0'; // 43 chars
-      
+
       const shortResult = validateEvmAddress(tooShort);
       const longResult = validateEvmAddress(tooLong);
-      
+
       expect(shortResult.ok).toBe(false);
       expect(longResult.ok).toBe(false);
     });
@@ -199,7 +199,7 @@ describe('validateEvmAddress - Pass 2 Validation (EIP-55)', () => {
     it('rejects invalid hex characters', () => {
       const invalidHex = '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEG0'; // G is not hex, but length is 42
       const result = validateEvmAddress(invalidHex);
-      
+
       expect(result.ok).toBe(false);
       // Length check happens first, so if length is wrong, that's the reason
       // If length is correct but hex is invalid, we get invalid_hex_characters
@@ -222,10 +222,9 @@ describe('validateEvmAddress - Pass 2 Validation (EIP-55)', () => {
       // Note: Zero address is valid format-wise, but we might want to reject it
       const zeroAddress = '0x0000000000000000000000000000000000000000';
       const result = validateEvmAddress(zeroAddress);
-      
+
       // Format is valid, so it passes (but extraction would reject it)
       expect(result.ok).toBe(true);
     });
   });
 });
-

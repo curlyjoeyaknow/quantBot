@@ -210,6 +210,49 @@ jobs:
             "
           fi
   
+  cli-quality:
+    name: CLI Quality Gate
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+      
+      - name: Install pnpm
+        run: npm install -g pnpm@10
+      
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      
+      - name: Build CLI package
+        run: pnpm --filter @quantbot/cli build
+      
+      - name: Type check CLI
+        run: pnpm --filter @quantbot/cli typecheck
+      
+      - name: Lint CLI
+        run: pnpm --filter @quantbot/cli lint
+      
+      - name: Format check CLI
+        run: pnpm --filter @quantbot/cli format:check
+      
+      - name: Run CLI tests (including smoke test)
+        run: pnpm --filter @quantbot/cli test --run
+      
+      - name: Run CLI command registry smoke test
+        run: pnpm --filter @quantbot/cli test command-registry-smoke.test.ts --run
+      
+      - name: Verify all CLI handlers have tests
+        run: |
+          # Ensure smoke test passes (catches missing handlers/tests)
+          pnpm --filter @quantbot/cli test command-registry-smoke.test.ts --run || exit 1
+          echo "✅ All CLI commands properly registered and testable"
+
   security-audit:
     name: Security Audit
     runs-on: ubuntu-latest

@@ -28,62 +28,7 @@ import type {
   AlertsRepository,
   CallsRepository,
 } from '@quantbot/storage';
-import { 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  
-
-
-
-
-
-
-
- } from '@quantbot/storage';
+import {} from '@quantbot/storage';
 
 const IngestSpecSchema = z.object({
   filePath: z.string().min(1, 'filePath is required'),
@@ -184,36 +129,6 @@ export async function ingestTelegramJson(
     }
   }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  
   // 4. Convert normalized messages to ParsedMessage format
   const parsedMessages = normalizedToParsedBatch(parseResult.normalized);
 
@@ -224,13 +139,13 @@ export async function ingestTelegramJson(
   // 5. Filter bot messages by fromId (Rick and Phanes bot IDs)
   // Rick: user6126376117, Phanes: user7774196337
   const BOT_IDS = ['user6126376117', 'user7774196337'];
-  
+
   // Create lookup map for normalized messages by messageId
-  const normalizedById = new Map<number, typeof parseResult.normalized[0]>();
+  const normalizedById = new Map<number, (typeof parseResult.normalized)[0]>();
   for (const msg of parseResult.normalized) {
     normalizedById.set(msg.messageId, msg);
   }
-  
+
   // Filter for bot messages by fromId
   const botNormalizedMessages = parseResult.normalized.filter(
     (msg) => msg.fromId && BOT_IDS.includes(msg.fromId)
@@ -242,7 +157,7 @@ export async function ingestTelegramJson(
   const chunkValidator = new ChunkValidator({
     chunkSize: validated.chunkSize || 10,
   });
-  
+
   // Import TokenDataRepository dynamically
   const { TokenDataRepository } = await import('@quantbot/storage');
   const tokenDataRepo = new TokenDataRepository();
@@ -316,7 +231,7 @@ export async function ingestTelegramJson(
       // Extract caller name from caller message
       const callerName: string = callerMsg.fromName || validated.callerName || 'Unknown';
       const chain: string = botData.chain || validated.chain || 'solana';
-      
+
       // Set original message ID from caller
       botData.originalMessageId = String(callerMsg.messageId);
 
@@ -332,7 +247,7 @@ export async function ingestTelegramJson(
       if (botData.twitterLink) tokenMetadata.twitterLink = botData.twitterLink;
       if (botData.telegramLink) tokenMetadata.telegramLink = botData.telegramLink;
       if (botData.websiteLink) tokenMetadata.websiteLink = botData.websiteLink;
-      
+
       const token = await ctx.repos.tokens.getOrCreateToken(
         chain.toLowerCase() as Chain,
         createTokenAddress(botData.contractAddress),
@@ -347,7 +262,7 @@ export async function ingestTelegramJson(
 
       // Use caller timestamp for alert (when the user originally called the token)
       const alertTime = new Date(callerMsg.timestampMs);
-      
+
       // The database will automatically determine first_caller by checking for earlier alerts
       // We pass undefined to let the database handle it
 

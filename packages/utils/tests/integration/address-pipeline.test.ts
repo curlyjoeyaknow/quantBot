@@ -104,11 +104,11 @@ describe('Address Pipeline - Pass 2 Before Persist', () => {
   describe('Pipeline Flow', () => {
     it('extraction → validation → persistence flow works', () => {
       const text = 'So11111111111111111111111111111111111111112';
-      
+
       // Step 1: Extract
       const candidates = extractCandidates(text);
       expect(candidates.length).toBeGreaterThan(0);
-      
+
       // Step 2: Validate (Pass 2)
       const validCandidates = candidates.filter((c) => {
         if (c.reason) return false;
@@ -118,9 +118,9 @@ describe('Address Pipeline - Pass 2 Before Persist', () => {
         }
         return false;
       });
-      
+
       expect(validCandidates.length).toBeGreaterThan(0);
-      
+
       // Step 3: Would persist validCandidates[0].normalized
       const addressToPersist = validCandidates[0]?.normalized;
       expect(addressToPersist).toBeDefined();
@@ -128,4 +128,3 @@ describe('Address Pipeline - Pass 2 Before Persist', () => {
     });
   });
 });
-

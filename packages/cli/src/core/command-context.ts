@@ -109,9 +109,6 @@ export class CommandContext {
  * Factory function to create CommandContext with optional overrides
  * Useful for testing and future Python integration
  */
-export function createCommandContext(
-  options: CommandContextOptions = {}
-): CommandContext {
+export function createCommandContext(options: CommandContextOptions = {}): CommandContext {
   return new CommandContext(options);
 }
-

@@ -17,10 +17,7 @@ export type IngestTelegramArgs = z.infer<typeof telegramSchema>;
 /**
  * Handler function: pure use-case orchestration
  */
-export async function ingestTelegramHandler(
-  args: IngestTelegramArgs,
-  ctx: CommandContext
-) {
+export async function ingestTelegramHandler(args: IngestTelegramArgs, ctx: CommandContext) {
   const service = ctx.services.telegramIngestion();
 
   return service.ingestExport({
@@ -30,4 +27,3 @@ export async function ingestTelegramHandler(
     chatId: args.chatId,
   });
 }
-

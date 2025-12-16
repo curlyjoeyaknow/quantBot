@@ -156,7 +156,9 @@ describe('ingestOhlcvHandler', () => {
     };
 
     // Handler should let errors bubble up (no try/catch)
-    await expect(ingestOhlcvHandler(args, fakeCtx)).rejects.toThrow('Service failed: database connection lost');
+    await expect(ingestOhlcvHandler(args, fakeCtx)).rejects.toThrow(
+      'Service failed: database connection lost'
+    );
     expect(ingestForCalls).toHaveBeenCalledTimes(1);
   });
 
@@ -200,4 +202,3 @@ describe('ingestOhlcvHandler', () => {
     expect(isNaN((callArg.to as Date).getTime())).toBe(true);
   });
 });
-

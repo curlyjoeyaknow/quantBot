@@ -84,7 +84,7 @@ export function TelegramTuiApp(props: Props) {
     let lineCount = 0;
     const maxScanLines = 1000; // Only scan first 1000 lines to find dates
 
-    const scanFile = (filePath: string, _isNormalized: boolean) => {
+    const scanFile = (filePath: string) => {
       return new Promise<void>((resolve) => {
         const rs = fs.createReadStream(filePath, { encoding: 'utf8' });
         const rl = readline.createInterface({ input: rs, crlfDelay: Infinity });
@@ -123,8 +123,8 @@ export function TelegramTuiApp(props: Props) {
     };
 
     Promise.all([
-      scanFile(props.normalizedPath, true),
-      scanFile(props.quarantinePath, false),
+      scanFile(props.normalizedPath),
+      scanFile(props.quarantinePath),
     ]).then(() => {
       const sortedMonths = Array.from(months).sort().reverse();
       const sortedDays = new Map<string, string[]>();

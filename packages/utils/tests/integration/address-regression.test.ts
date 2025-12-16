@@ -27,7 +27,7 @@ describe('Address Extraction - Regression Tests (Real Telegram Messages)', () =>
   for (const message of fixtures.messages) {
     it(`handles ${message.id} correctly`, () => {
       const candidates = extractCandidates(message.text);
-      
+
       // Filter valid candidates (Pass 1 + Pass 2)
       const validSolana = candidates
         .filter((c) => c.addressType === 'solana' && !c.reason)
@@ -65,4 +65,3 @@ describe('Address Extraction - Regression Tests (Real Telegram Messages)', () =>
     });
   }
 });
-

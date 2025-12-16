@@ -68,7 +68,7 @@ async function debugFile(
     console.log(`   From: ${msg.fromName || '(anonymous)'}${msg.fromId ? ` (${msg.fromId})` : ''}`);
     console.log(`   Text: ${msg.text.substring(0, 100)}${msg.text.length > 100 ? '...' : ''}`);
     if (msg.links.length > 0) {
-      console.log(`   Links: ${msg.links.map(l => l.href).join(', ')}`);
+      console.log(`   Links: ${msg.links.map((l) => l.href).join(', ')}`);
     }
     if (msg.replyToMessageId) {
       console.log(`   Reply to: ${msg.replyToMessageId}`);
@@ -99,7 +99,9 @@ async function debugFile(
   const botExtractor = new BotMessageExtractor();
   const callerResolver = new CallerResolver(messageIndex);
 
-  console.log(`\n\n🔍 Extraction Results (first ${Math.min(limit, botMessages.length)} bot messages):`);
+  console.log(
+    `\n\n🔍 Extraction Results (first ${Math.min(limit, botMessages.length)} bot messages):`
+  );
   console.log('='.repeat(80));
 
   const botMessagesToShow = botMessages.slice(0, limit);
@@ -111,50 +113,52 @@ async function debugFile(
     console.log(`   Timestamp: ${botMessage.timestamp.toISOString()}`);
     console.log(`   From: ${botMessage.from}`);
 
-      // Extract bot data
-      // First, get the original normalized message to access links
-      const normalizedMsg = parseResult.normalized.find((m) => String(m.messageId) === botMessage.messageId);
-      
-      // Try to extract address from links if available
-      let extractedAddress = '';
-      if (normalizedMsg?.links) {
-        // Look for pump.fun, dexscreener, or solscan links
-        for (const link of normalizedMsg.links) {
-          // pump.fun links: https://pump.fun/ADDRESS
-          const pumpMatch = link.href.match(/pump\.fun\/([A-Za-z0-9]{32,44})/);
-          if (pumpMatch) {
-            extractedAddress = pumpMatch[1];
-            break;
-          }
-          // dexscreener links: https://dexscreener.com/solana/ADDRESS
-          const dexMatch = link.href.match(/dexscreener\.com\/[^\/]+\/([A-Za-z0-9]{32,44})/);
-          if (dexMatch) {
-            extractedAddress = dexMatch[1];
-            break;
-          }
-          // solscan links: https://solscan.io/token/ADDRESS
-          const solscanMatch = link.href.match(/solscan\.io\/token\/([A-Za-z0-9]{32,44})/);
-          if (solscanMatch) {
-            extractedAddress = solscanMatch[1];
-            break;
-          }
+    // Extract bot data
+    // First, get the original normalized message to access links
+    const normalizedMsg = parseResult.normalized.find(
+      (m) => String(m.messageId) === botMessage.messageId
+    );
+
+    // Try to extract address from links if available
+    let extractedAddress = '';
+    if (normalizedMsg?.links) {
+      // Look for pump.fun, dexscreener, or solscan links
+      for (const link of normalizedMsg.links) {
+        // pump.fun links: https://pump.fun/ADDRESS
+        const pumpMatch = link.href.match(/pump\.fun\/([A-Za-z0-9]{32,44})/);
+        if (pumpMatch) {
+          extractedAddress = pumpMatch[1];
+          break;
+        }
+        // dexscreener links: https://dexscreener.com/solana/ADDRESS
+        const dexMatch = link.href.match(/dexscreener\.com\/[^\/]+\/([A-Za-z0-9]{32,44})/);
+        if (dexMatch) {
+          extractedAddress = dexMatch[1];
+          break;
+        }
+        // solscan links: https://solscan.io/token/ADDRESS
+        const solscanMatch = link.href.match(/solscan\.io\/token\/([A-Za-z0-9]{32,44})/);
+        if (solscanMatch) {
+          extractedAddress = solscanMatch[1];
+          break;
         }
       }
-      
-      const botData = botExtractor.extract(botMessage.text);
-      console.log(`\n   📦 Extracted Bot Data:`);
-      console.log(`      Contract Address (from extractor): ${botData.contractAddress || '(none)'}`);
-      if (extractedAddress && !botData.contractAddress) {
-        console.log(`      Contract Address (from links): ${extractedAddress}`);
-        botData.contractAddress = extractedAddress; // Use extracted address
-      }
-      console.log(`      Chain: ${botData.chain}`);
-      console.log(`      Token Name: ${botData.tokenName || '(none)'}`);
-      console.log(`      Ticker: ${botData.ticker || '(none)'}`);
-      console.log(`      Price: ${botData.price || '(none)'}`);
-      console.log(`      Market Cap: ${botData.marketCap || '(none)'}`);
-      console.log(`      Liquidity: ${botData.liquidity || '(none)'}`);
-      console.log(`      Volume: ${botData.volume || '(none)'}`);
+    }
+
+    const botData = botExtractor.extract(botMessage.text);
+    console.log(`\n   📦 Extracted Bot Data:`);
+    console.log(`      Contract Address (from extractor): ${botData.contractAddress || '(none)'}`);
+    if (extractedAddress && !botData.contractAddress) {
+      console.log(`      Contract Address (from links): ${extractedAddress}`);
+      botData.contractAddress = extractedAddress; // Use extracted address
+    }
+    console.log(`      Chain: ${botData.chain}`);
+    console.log(`      Token Name: ${botData.tokenName || '(none)'}`);
+    console.log(`      Ticker: ${botData.ticker || '(none)'}`);
+    console.log(`      Price: ${botData.price || '(none)'}`);
+    console.log(`      Market Cap: ${botData.marketCap || '(none)'}`);
+    console.log(`      Liquidity: ${botData.liquidity || '(none)'}`);
+    console.log(`      Volume: ${botData.volume || '(none)'}`);
 
     // Resolve caller
     const resolvedCaller = callerResolver.resolveCaller(botMessage, fileName);
@@ -163,15 +167,21 @@ async function debugFile(
       console.log(`      Caller Name: ${resolvedCaller.callerName || '(none)'}`);
       console.log(`      Alert Timestamp: ${resolvedCaller.alertTimestamp.toISOString()}`);
       if (resolvedCaller.callerMessage) {
-        console.log(`      Caller Message ID: ${resolvedCaller.callerMessage.messageId || '(none)'}`);
-        console.log(`      Caller Text: ${resolvedCaller.callerMessage.text?.substring(0, 100) || '(none)'}${resolvedCaller.callerMessage.text && resolvedCaller.callerMessage.text.length > 100 ? '...' : ''}`);
+        console.log(
+          `      Caller Message ID: ${resolvedCaller.callerMessage.messageId || '(none)'}`
+        );
+        console.log(
+          `      Caller Text: ${resolvedCaller.callerMessage.text?.substring(0, 100) || '(none)'}${resolvedCaller.callerMessage.text && resolvedCaller.callerMessage.text.length > 100 ? '...' : ''}`
+        );
       }
     } else {
       console.log(`      (No caller found)`);
     }
 
     console.log(`\n   📄 Original Bot Message Text (first 200 chars):`);
-    console.log(`      ${botMessage.text.substring(0, 200)}${botMessage.text.length > 200 ? '...' : ''}`);
+    console.log(
+      `      ${botMessage.text.substring(0, 200)}${botMessage.text.length > 200 ? '...' : ''}`
+    );
 
     console.log('\n' + '-'.repeat(80));
   }
@@ -183,14 +193,22 @@ async function debugFile(
   console.log(`Normalized: ${parseResult.normalized.length}`);
   console.log(`Quarantined: ${parseResult.quarantined.length}`);
   console.log(`Bot messages: ${botMessages.length}`);
-  console.log(`Bot messages with contract address: ${botMessages.filter((msg) => {
-    const data = botExtractor.extract(msg.text);
-    return !!data.contractAddress;
-  }).length}`);
-  console.log(`Bot messages with resolved caller: ${botMessages.filter((msg) => {
-    const resolved = callerResolver.resolveCaller(msg, fileName);
-    return !!resolved;
-  }).length}`);
+  console.log(
+    `Bot messages with contract address: ${
+      botMessages.filter((msg) => {
+        const data = botExtractor.extract(msg.text);
+        return !!data.contractAddress;
+      }).length
+    }`
+  );
+  console.log(
+    `Bot messages with resolved caller: ${
+      botMessages.filter((msg) => {
+        const resolved = callerResolver.resolveCaller(msg, fileName);
+        return !!resolved;
+      }).length
+    }`
+  );
 }
 
 program
@@ -215,4 +233,3 @@ program
   });
 
 program.parse();
-

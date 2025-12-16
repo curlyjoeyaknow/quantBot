@@ -16,10 +16,22 @@ describe('extractCandidates - Pass 1 Extraction', () => {
   describe('Punctuation Stripping', () => {
     it('strips surrounding punctuation from Solana addresses', () => {
       const testCases = [
-        { input: '(So11111111111111111111111111111111111111112)', expected: 'So11111111111111111111111111111111111111112' },
-        { input: 'So11111111111111111111111111111111111111112,', expected: 'So11111111111111111111111111111111111111112' },
-        { input: 'So11111111111111111111111111111111111111112.', expected: 'So11111111111111111111111111111111111111112' },
-        { input: '[So11111111111111111111111111111111111111112]', expected: 'So11111111111111111111111111111111111111112' },
+        {
+          input: '(So11111111111111111111111111111111111111112)',
+          expected: 'So11111111111111111111111111111111111111112',
+        },
+        {
+          input: 'So11111111111111111111111111111111111111112,',
+          expected: 'So11111111111111111111111111111111111111112',
+        },
+        {
+          input: 'So11111111111111111111111111111111111111112.',
+          expected: 'So11111111111111111111111111111111111111112',
+        },
+        {
+          input: '[So11111111111111111111111111111111111111112]',
+          expected: 'So11111111111111111111111111111111111111112',
+        },
       ];
 
       for (const { input, expected } of testCases) {
@@ -31,9 +43,18 @@ describe('extractCandidates - Pass 1 Extraction', () => {
 
     it('strips surrounding punctuation from EVM addresses', () => {
       const testCases = [
-        { input: '(0x742d35cc6634c0532925a3b844bc9e7595f0beb0)', expected: '0x742d35cc6634c0532925a3b844bc9e7595f0beb0' },
-        { input: '0x742d35cc6634c0532925a3b844bc9e7595f0beb0,', expected: '0x742d35cc6634c0532925a3b844bc9e7595f0beb0' },
-        { input: '0x742d35cc6634c0532925a3b844bc9e7595f0beb0.', expected: '0x742d35cc6634c0532925a3b844bc9e7595f0beb0' },
+        {
+          input: '(0x742d35cc6634c0532925a3b844bc9e7595f0beb0)',
+          expected: '0x742d35cc6634c0532925a3b844bc9e7595f0beb0',
+        },
+        {
+          input: '0x742d35cc6634c0532925a3b844bc9e7595f0beb0,',
+          expected: '0x742d35cc6634c0532925a3b844bc9e7595f0beb0',
+        },
+        {
+          input: '0x742d35cc6634c0532925a3b844bc9e7595f0beb0.',
+          expected: '0x742d35cc6634c0532925a3b844bc9e7595f0beb0',
+        },
       ];
 
       for (const { input, expected } of testCases) {
@@ -52,8 +73,12 @@ describe('extractCandidates - Pass 1 Extraction', () => {
       `;
       const candidates = extractSolanaCandidates(text);
       expect(candidates.length).toBeGreaterThanOrEqual(2);
-      expect(candidates.map((c) => c.normalized)).toContain('So11111111111111111111111111111111111111112');
-      expect(candidates.map((c) => c.normalized)).toContain('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v');
+      expect(candidates.map((c) => c.normalized)).toContain(
+        'So11111111111111111111111111111111111111112'
+      );
+      expect(candidates.map((c) => c.normalized)).toContain(
+        'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'
+      );
     });
 
     it('extracts multiple EVM addresses', () => {
@@ -63,7 +88,9 @@ describe('extractCandidates - Pass 1 Extraction', () => {
       `;
       const candidates = extractEvmCandidates(text);
       expect(candidates.length).toBeGreaterThanOrEqual(2);
-      expect(candidates.map((c) => c.normalized)).toContain('0x1111111111111111111111111111111111111111');
+      expect(candidates.map((c) => c.normalized)).toContain(
+        '0x1111111111111111111111111111111111111111'
+      );
     });
 
     it('extracts mixed Solana + EVM addresses', () => {
@@ -269,9 +296,18 @@ describe('extractCandidates - Pass 1 Extraction', () => {
 
     it('removes surrounding punctuation', () => {
       const testCases = [
-        { input: '(So11111111111111111111111111111111111111112)', expected: 'So11111111111111111111111111111111111111112' },
-        { input: 'So11111111111111111111111111111111111111112,', expected: 'So11111111111111111111111111111111111111112' },
-        { input: '[So11111111111111111111111111111111111111112]', expected: 'So11111111111111111111111111111111111111112' },
+        {
+          input: '(So11111111111111111111111111111111111111112)',
+          expected: 'So11111111111111111111111111111111111111112',
+        },
+        {
+          input: 'So11111111111111111111111111111111111111112,',
+          expected: 'So11111111111111111111111111111111111111112',
+        },
+        {
+          input: '[So11111111111111111111111111111111111111112]',
+          expected: 'So11111111111111111111111111111111111111112',
+        },
       ];
 
       for (const { input, expected } of testCases) {
@@ -280,4 +316,3 @@ describe('extractCandidates - Pass 1 Extraction', () => {
     });
   });
 });
-

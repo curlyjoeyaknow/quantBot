@@ -191,12 +191,7 @@ describe('queryOhlcvHandler', () => {
       };
 
       await queryOhlcvHandler(args, fakeCtx);
-      expect(getCandles).toHaveBeenCalledWith(
-        args.mint,
-        args.chain,
-        interval,
-        expect.any(Object)
-      );
+      expect(getCandles).toHaveBeenCalledWith(args.mint, args.chain, interval, expect.any(Object));
     }
 
     expect(getCandles).toHaveBeenCalledTimes(intervals.length);
@@ -226,4 +221,3 @@ describe('queryOhlcvHandler', () => {
     expect(getCandles).toHaveBeenCalledTimes(1);
   });
 });
-

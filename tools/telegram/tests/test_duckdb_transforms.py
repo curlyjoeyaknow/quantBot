@@ -33,13 +33,19 @@ def test_db():
 def schema_sql():
     """Load the schema SQL from the pipeline"""
     schema_path = Path(__file__).parent.parent / "duckdb_punch_pipeline.py"
-    with open(schema_path, "r") as f:
-        content = f.read()
-        # Extract DUCK_SCHEMA_SQL
-        start = content.find('DUCK_SCHEMA_SQL = """')
-        end = content.find('"""', start + len('DUCK_SCHEMA_SQL = """'))
-        if start != -1 and end != -1:
-            return content[start + len('DUCK_SCHEMA_SQL = """'):end]
+    try:
+        with open(schema_path, "r") as f:
+            content = f.read()
+            # Extract DUCK_SCHEMA_SQL
+            start = content.find('DUCK_SCHEMA_SQL = """')
+            if start == -1:
+                return ""
+            start_pos = start + len('DUCK_SCHEMA_SQL = """')
+            end = content.find('"""', start_pos)
+            if end != -1:
+                return content[start_pos:end]
+    except Exception:
+        pass
     return ""
 
 

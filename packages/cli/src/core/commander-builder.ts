@@ -20,9 +20,7 @@ function buildCommanderCommand(
   packageName: string,
   commandDef: { name: string; description: string; schema: z.ZodSchema; examples?: string[] }
 ): Command {
-  const cmd = parent
-    .command(commandDef.name)
-    .description(commandDef.description);
+  const cmd = parent.command(commandDef.name).description(commandDef.description);
 
   // Add examples to help text if available
   if (commandDef.examples && commandDef.examples.length > 0) {
@@ -49,9 +47,7 @@ export function buildCommandsFromRegistry(program: Command): void {
 
   for (const pkg of packages) {
     // Create package command group
-    const pkgCmd = program
-      .command(pkg.packageName)
-      .description(pkg.description);
+    const pkgCmd = program.command(pkg.packageName).description(pkg.description);
 
     // Add all commands from this package
     for (const command of pkg.commands) {
@@ -59,4 +55,3 @@ export function buildCommandsFromRegistry(program: Command): void {
     }
   }
 }
-

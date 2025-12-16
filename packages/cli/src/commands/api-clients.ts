@@ -4,37 +4,14 @@
 
 import type { Command } from 'commander';
 import { z } from 'zod';
-import { BirdeyeClient } from '@quantbot/api-clients';
-import { HeliusClient } from '@quantbot/api-clients';
-import { parseArguments } from '../core/argument-parser.js';
-import { formatOutput } from '../core/output-formatter.js';
-import { handleError } from '../core/error-handler.js';
 import type { PackageCommandModule } from '../types/index.js';
 import { commandRegistry } from '../core/command-registry.js';
-
-/**
- * Test command schema
- */
-const testSchema = z.object({
-  service: z.enum(['birdeye', 'helius']),
-  format: z.enum(['json', 'table', 'csv']).default('table'),
-});
-
-/**
- * Status command schema
- */
-const statusSchema = z.object({
-  service: z.enum(['birdeye', 'helius', 'all']).optional(),
-  format: z.enum(['json', 'table', 'csv']).default('table'),
-});
-
-/**
- * Credits command schema
- */
-const creditsSchema = z.object({
-  service: z.enum(['birdeye', 'helius', 'all']).optional(),
-  format: z.enum(['json', 'table', 'csv']).default('table'),
-});
+import { execute } from '../core/execute.js';
+import type { CommandContext } from '../core/command-context.js';
+import { testApiClientsHandler } from '../handlers/api-clients/test-api-clients.js';
+import { statusApiClientsHandler } from '../handlers/api-clients/status-api-clients.js';
+import { creditsApiClientsHandler } from '../handlers/api-clients/credits-api-clients.js';
+import { testSchema, statusSchema, creditsSchema } from '../command-defs/api-clients.js';
 
 /**
  * Register API clients commands
@@ -49,36 +26,11 @@ export function registerApiClientsCommands(program: Command): void {
     .requiredOption('--service <service>', 'Service name (birdeye, helius)')
     .option('--format <format>', 'Output format', 'table')
     .action(async (options) => {
-      try {
-        const args = parseArguments(testSchema, options);
-
-        let result: unknown;
-        if (args.service === 'birdeye') {
-          const _client = new BirdeyeClient();
-          // Simple test - try to get token metadata for a known token
-          result = {
-            service: 'birdeye',
-            status: 'connected',
-            message: 'Connection test successful',
-          };
-        } else if (args.service === 'helius') {
-          const _client = new HeliusClient({});
-          result = {
-            service: 'helius',
-            status: 'connected',
-            message: 'Connection test successful',
-          };
-        } else {
-          throw new Error(`Unknown service: ${args.service}`);
-        }
-
-        const output = formatOutput(result, args.format);
-        console.log(output);
-      } catch (error) {
-        const message = handleError(error);
-        console.error(`Error: ${message}`);
-        process.exit(1);
+      const commandDef = commandRegistry.getCommand('api-clients', 'test');
+      if (!commandDef) {
+        throw new Error('Command api-clients test not found in registry');
       }
+      await execute(commandDef, options);
     });
 
   // Status command
@@ -88,24 +40,11 @@ export function registerApiClientsCommands(program: Command): void {
     .option('--service <service>', 'Service name', 'all')
     .option('--format <format>', 'Output format', 'table')
     .action(async (options) => {
-      try {
-        const args = parseArguments(statusSchema, options);
-
-        const status: Record<string, unknown> = {};
-        if (args.service === 'all' || args.service === 'birdeye') {
-          status.birdeye = { status: 'operational' };
-        }
-        if (args.service === 'all' || args.service === 'helius') {
-          status.helius = { status: 'operational' };
-        }
-
-        const output = formatOutput(status, args.format);
-        console.log(output);
-      } catch (error) {
-        const message = handleError(error);
-        console.error(`Error: ${message}`);
-        process.exit(1);
+      const commandDef = commandRegistry.getCommand('api-clients', 'status');
+      if (!commandDef) {
+        throw new Error('Command api-clients status not found in registry');
       }
+      await execute(commandDef, options);
     });
 
   // Credits command
@@ -115,29 +54,11 @@ export function registerApiClientsCommands(program: Command): void {
     .option('--service <service>', 'Service name', 'all')
     .option('--format <format>', 'Output format', 'table')
     .action(async (options) => {
-      try {
-        const args = parseArguments(creditsSchema, options);
-        // Use observability quotas command
-        const { checkApiQuotas } = await import('@quantbot/observability');
-        const quotas = await checkApiQuotas();
-
-        const typedArgs = args as z.infer<typeof creditsSchema>;
-        let outputData: unknown;
-        if (typedArgs.service === 'all') {
-          outputData = quotas;
-        } else if (typedArgs.service) {
-          outputData = { [typedArgs.service]: quotas[typedArgs.service as keyof typeof quotas] };
-        } else {
-          outputData = quotas;
-        }
-
-        const output = formatOutput(outputData, args.format);
-        console.log(output);
-      } catch (error) {
-        const message = handleError(error);
-        console.error(`Error: ${message}`);
-        process.exit(1);
+      const commandDef = commandRegistry.getCommand('api-clients', 'credits');
+      if (!commandDef) {
+        throw new Error('Command api-clients credits not found in registry');
       }
+      await execute(commandDef, options);
     });
 }
 
@@ -152,12 +73,9 @@ const apiClientsModule: PackageCommandModule = {
       name: 'test',
       description: 'Test API connection',
       schema: testSchema,
-      handler: async (args: z.infer<typeof testSchema>) => {
-        return {
-          service: args.service,
-          status: 'connected',
-          message: 'Connection test successful',
-        };
+      handler: async (args: unknown, ctx: CommandContext) => {
+        const typedArgs = args as z.infer<typeof testSchema>;
+        return await testApiClientsHandler(typedArgs, ctx);
       },
       examples: [
         'quantbot api-clients test --service birdeye',
@@ -168,8 +86,9 @@ const apiClientsModule: PackageCommandModule = {
       name: 'status',
       description: 'Check API status',
       schema: statusSchema,
-      handler: async (_args: z.infer<typeof statusSchema>) => {
-        return { status: 'operational' };
+      handler: async (args: unknown, ctx: CommandContext) => {
+        const typedArgs = args as z.infer<typeof statusSchema>;
+        return await statusApiClientsHandler(typedArgs, ctx);
       },
       examples: ['quantbot api-clients status'],
     },
@@ -177,9 +96,9 @@ const apiClientsModule: PackageCommandModule = {
       name: 'credits',
       description: 'Check API credits/quota',
       schema: creditsSchema,
-      handler: async (_args: z.infer<typeof creditsSchema>) => {
-        const { checkApiQuotas } = await import('@quantbot/observability');
-        return await checkApiQuotas();
+      handler: async (args: unknown, ctx: CommandContext) => {
+        const typedArgs = args as z.infer<typeof creditsSchema>;
+        return await creditsApiClientsHandler(typedArgs, ctx);
       },
       examples: ['quantbot api-clients credits --service birdeye'],
     },

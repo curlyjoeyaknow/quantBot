@@ -104,4 +104,3 @@ describe('ingestOhlcvHandler - Isolation Test', () => {
     expect(result1).toEqual(mockResult);
   });
 });
-

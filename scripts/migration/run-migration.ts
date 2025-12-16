@@ -36,4 +36,3 @@ if (!migrationFile) {
 }
 
 runMigration(migrationFile);
-
