@@ -34,13 +34,21 @@ async function main() {
 
     console.log('\n=== Token Address Length Analysis ===');
     console.log('\nShortest addresses:');
-    result.rows.forEach((row) => {
-      const status =
-        row.addr_length < 32 ? '❌ TOO SHORT' : row.addr_length > 44 ? '❌ TOO LONG' : '✅ OK';
-      console.log(
-        `  ${status} | ID: ${row.id} | Length: ${row.addr_length} | Address: ${row.address} | Symbol: ${row.symbol || 'N/A'}`
-      );
-    });
+    result.rows.forEach(
+      (row: {
+        id: number;
+        address: string;
+        addr_length: number;
+        chain: string;
+        symbol: string | null;
+      }) => {
+        const status =
+          row.addr_length < 32 ? '❌ TOO SHORT' : row.addr_length > 44 ? '❌ TOO LONG' : '✅ OK';
+        console.log(
+          `  ${status} | ID: ${row.id} | Length: ${row.addr_length} | Address: ${row.address} | Symbol: ${row.symbol || 'N/A'}`
+        );
+      }
+    );
 
     // Get statistics
     const stats = await pool.query<{
@@ -88,11 +96,13 @@ async function main() {
         LIMIT 10
       `);
       console.log('\n=== Truncated Addresses (First 10) ===');
-      shortAddrs.rows.forEach((row) => {
-        console.log(
-          `  ID: ${row.id} | Length: ${row.addr_length} | Address: ${row.address} | Symbol: ${row.symbol || 'N/A'}`
-        );
-      });
+      shortAddrs.rows.forEach(
+        (row: { id: number; address: string; addr_length: number; symbol: string | null }) => {
+          console.log(
+            `  ID: ${row.id} | Length: ${row.addr_length} | Address: ${row.address} | Symbol: ${row.symbol || 'N/A'}`
+          );
+        }
+      );
     }
 
     // Check addresses that are exactly 20 characters (common truncation point)
@@ -109,7 +119,7 @@ async function main() {
 
     if (exactly20.rows.length > 0) {
       console.log('\n=== Addresses Exactly 20 Characters (Likely Truncated) ===');
-      exactly20.rows.forEach((row) => {
+      exactly20.rows.forEach((row: { id: number; address: string; symbol: string | null }) => {
         console.log(`  ID: ${row.id} | Address: ${row.address} | Symbol: ${row.symbol || 'N/A'}`);
       });
     }

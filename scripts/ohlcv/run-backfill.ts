@@ -225,13 +225,21 @@ async function main() {
     [limit, offset]
   );
 
-  const alerts: AlertToBackfill[] = result.rows.map((row) => ({
-    id: row.id,
-    tokenAddress: row.token_address,
-    tokenSymbol: row.token_symbol,
-    chain: row.chain,
-    alertTimestamp: row.alert_timestamp,
-  }));
+  const alerts: AlertToBackfill[] = result.rows.map(
+    (row: {
+      id: number;
+      token_address: string;
+      token_symbol: string | null;
+      chain: string;
+      alert_timestamp: Date;
+    }) => ({
+      id: row.id,
+      tokenAddress: row.token_address,
+      tokenSymbol: row.token_symbol,
+      chain: row.chain,
+      alertTimestamp: row.alert_timestamp,
+    })
+  );
 
   console.log(`   Found ${alerts.length} alerts to backfill\n`);
 

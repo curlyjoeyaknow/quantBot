@@ -7,7 +7,6 @@
  *   ts-node scripts/simulation/run-strategy-on-calls.ts --strategy <name> --caller <name> --from <date> --to <date>
  */
 
-// @ts-expect-error - commander types may not be installed yet
 import { program } from 'commander';
 import {
   StrategiesRepository,
