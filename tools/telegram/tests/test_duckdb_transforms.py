@@ -100,24 +100,29 @@ def test_deduplication_logic(test_db, schema_sql):
     con, db_path = test_db
     con.execute(schema_sql)
     
-    # Insert test caller_links with duplicates (43 columns total)
+    # Insert test caller_links with duplicates
+    # Use minimal required columns for the test
     con.execute("""
-        INSERT INTO caller_links_d VALUES (
+        INSERT INTO caller_links_d (
+            trigger_chat_id, trigger_message_id, trigger_ts_ms, trigger_from_id, trigger_from_name, trigger_text,
+            bot_message_id, bot_ts_ms, bot_from_name, bot_type, token_name, ticker, mint,
+            mint_validation_status, chain, validation_passed
+        ) VALUES (
             'test_chat', 1, 1704067200000, 'user1', 'User1', 'Trigger 1',
             10, 1704067201000, 'bot', 'phanes', 'Token', 'TKN',
-            'So11111111111111111111111111111111111111112', NULL, 'pass2_accepted', NULL,
-            'solana', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-            NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, TRUE, NULL
+            'So11111111111111111111111111111111111111112', 'pass2_accepted', 'solana', TRUE
         )
     """)
     
     con.execute("""
-        INSERT INTO caller_links_d VALUES (
+        INSERT INTO caller_links_d (
+            trigger_chat_id, trigger_message_id, trigger_ts_ms, trigger_from_id, trigger_from_name, trigger_text,
+            bot_message_id, bot_ts_ms, bot_from_name, bot_type, token_name, ticker, mint,
+            mint_validation_status, chain, validation_passed
+        ) VALUES (
             'test_chat', 2, 1704067202000, 'user1', 'User1', 'Trigger 2',
             11, 1704067203000, 'bot', 'phanes', 'Token', 'TKN',
-            'So11111111111111111111111111111111111111112', NULL, 'pass2_accepted', NULL,
-            'solana', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-            NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, TRUE, NULL
+            'So11111111111111111111111111111111111111112', 'pass2_accepted', 'solana', TRUE
         )
     """)
     
@@ -301,12 +306,14 @@ def test_join_correctness(test_db, schema_sql):
     """)
     
     con.execute("""
-        INSERT INTO caller_links_d VALUES (
+        INSERT INTO caller_links_d (
+            trigger_chat_id, trigger_message_id, trigger_ts_ms, trigger_from_id, trigger_from_name, trigger_text,
+            bot_message_id, bot_ts_ms, bot_from_name, bot_type, token_name, ticker, mint,
+            mint_validation_status, chain, validation_passed
+        ) VALUES (
             'test_chat', 1, 1704067200000, 'user1', 'User1', 'Trigger message',
             10, 1704067201000, 'bot', 'phanes', 'Token', 'TKN',
-            'So11111111111111111111111111111111111111112', NULL, 'pass2_accepted', NULL,
-            'solana', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-            NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, TRUE
+            'So11111111111111111111111111111111111111112', 'pass2_accepted', 'solana', TRUE
         )
     """)
     
@@ -335,12 +342,14 @@ def test_zero_liquidity_flag(test_db, schema_sql):
     
     # Insert with zero liquidity
     con.execute("""
-        INSERT INTO caller_links_d VALUES (
+        INSERT INTO caller_links_d (
+            trigger_chat_id, trigger_message_id, trigger_ts_ms, trigger_from_id, trigger_from_name, trigger_text,
+            bot_message_id, bot_ts_ms, bot_from_name, bot_type, token_name, ticker, mint,
+            mint_validation_status, chain, liquidity_usd, zero_liquidity, validation_passed
+        ) VALUES (
             'test_chat', 1, 1704067200000, 'user1', 'User1', 'Trigger',
             10, 1704067201000, 'bot', 'phanes', 'Token', 'TKN',
-            'So11111111111111111111111111111111111111112', NULL, 'pass2_accepted', NULL,
-            'solana', NULL, NULL, NULL, NULL, 0.0, NULL, NULL, NULL, NULL,
-            NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, TRUE, TRUE
+            'So11111111111111111111111111111111111111112', 'pass2_accepted', 'solana', 0.0, TRUE, TRUE
         )
     """)
     

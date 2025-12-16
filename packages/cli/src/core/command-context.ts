@@ -30,11 +30,28 @@ export interface CommandServices {
 }
 
 /**
+ * Options for creating a CommandContext with service overrides
+ * Useful for testing and future Python integration
+ */
+export interface CommandContextOptions {
+  /**
+   * Override analytics engine (for testing or Python integration)
+   */
+  analyticsEngineOverride?: AnalyticsEngine;
+  // Add more overrides as needed
+}
+
+/**
  * Command context - provides services and initialization
  */
 export class CommandContext {
   private _initialized = false;
   private _services: CommandServices | null = null;
+  private readonly _options: CommandContextOptions;
+
+  constructor(options: CommandContextOptions = {}) {
+    this._options = options;
+  }
 
   /**
    * Ensure storage is initialized (lazy, only when needed)
@@ -58,6 +75,7 @@ export class CommandContext {
 
   /**
    * Create service instances
+   * Uses overrides from options if provided, otherwise creates default instances
    */
   private _createServices(): CommandServices {
     return {
@@ -80,9 +98,20 @@ export class CommandContext {
         return new OhlcvRepository();
       },
       analyticsEngine: () => {
-        return getAnalyticsEngine();
+        // Use override if provided (for tests/Python integration), otherwise use singleton
+        return this._options.analyticsEngineOverride ?? getAnalyticsEngine();
       },
     };
   }
+}
+
+/**
+ * Factory function to create CommandContext with optional overrides
+ * Useful for testing and future Python integration
+ */
+export function createCommandContext(
+  options: CommandContextOptions = {}
+): CommandContext {
+  return new CommandContext(options);
 }
 
