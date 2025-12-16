@@ -51,4 +51,3 @@ export const reportSchema = z.object({
  * Report command arguments type
  */
 export type ReportArgs = z.infer<typeof reportSchema>;
-

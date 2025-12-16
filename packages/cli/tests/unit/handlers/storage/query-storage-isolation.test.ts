@@ -72,4 +72,3 @@ describe('queryStorageHandler - Isolation Test', () => {
     expect(result1).toEqual(mockResult);
   });
 });
-

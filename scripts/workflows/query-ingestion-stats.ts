@@ -14,12 +14,14 @@ async function queryStats() {
     // Counts
     console.log('\n📊 Database Counts:');
     console.log('='.repeat(80));
-    
-    const alerts = await pool.query('SELECT COUNT(*) as count FROM alerts WHERE raw_payload_json->>\'botMessageId\' IS NOT NULL');
+
+    const alerts = await pool.query(
+      "SELECT COUNT(*) as count FROM alerts WHERE raw_payload_json->>'botMessageId' IS NOT NULL"
+    );
     const calls = await pool.query('SELECT COUNT(*) as count FROM calls');
     const tokens = await pool.query('SELECT COUNT(*) as count FROM tokens');
     const tokenData = await pool.query('SELECT COUNT(*) as count FROM token_data');
-    
+
     console.log(`Alerts: ${alerts.rows[0].count}`);
     console.log(`Calls: ${calls.rows[0].count}`);
     console.log(`Tokens: ${tokens.rows[0].count}`);
@@ -63,7 +65,7 @@ async function queryStats() {
       ORDER BY a.alert_timestamp DESC
       LIMIT 10
     `);
-    
+
     for (const row of sampleAlerts.rows) {
       console.log(`\n[${row.id}] ${row.ticker || row.symbol} - ${row.token_name || 'N/A'}`);
       console.log(`   Caller: ${row.caller_name}`);
@@ -72,7 +74,9 @@ async function queryStats() {
       console.log(`   Price: $${row.initial_price}`);
       console.log(`   MCap: $${row.initial_mcap?.toLocaleString()}`);
       console.log(`   First Caller: ${row.first_caller}`);
-      console.log(`   Caller Text: ${(row.caller_text || '').substring(0, 100)}${row.caller_text && row.caller_text.length > 100 ? '...' : ''}`);
+      console.log(
+        `   Caller Text: ${(row.caller_text || '').substring(0, 100)}${row.caller_text && row.caller_text.length > 100 ? '...' : ''}`
+      );
     }
 
     // Sample token data
@@ -99,7 +103,7 @@ async function queryStats() {
       ORDER BY td.recorded_at DESC
       LIMIT 10
     `);
-    
+
     for (const row of sampleTokenData.rows) {
       console.log(`\n[${row.id}] ${row.symbol} - ${row.address.substring(0, 20)}...`);
       console.log(`   Recorded: ${row.recorded_at}`);
@@ -130,7 +134,7 @@ async function queryStats() {
       GROUP BY COALESCE(c.display_name, c.handle)
       ORDER BY alert_count DESC
     `);
-    
+
     for (const row of callerStats.rows) {
       console.log(`\n${row.caller_name}:`);
       console.log(`   Total Alerts: ${row.alert_count}`);
@@ -148,4 +152,3 @@ async function queryStats() {
 }
 
 queryStats();
-

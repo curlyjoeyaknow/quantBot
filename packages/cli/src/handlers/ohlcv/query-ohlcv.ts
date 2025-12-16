@@ -19,10 +19,7 @@ export type QueryOhlcvArgs = z.infer<typeof querySchema>;
 /**
  * Handler function: pure use-case orchestration
  */
-export async function queryOhlcvHandler(
-  args: QueryOhlcvArgs,
-  ctx: CommandContext
-) {
+export async function queryOhlcvHandler(args: QueryOhlcvArgs, ctx: CommandContext) {
   const repository = ctx.services.ohlcvRepository();
 
   // Validate and preserve mint address case
@@ -48,4 +45,3 @@ export async function queryOhlcvHandler(
     to: toDate,
   });
 }
-

@@ -9,4 +9,3 @@
 
 export * from './extract-candidates.js';
 export * from './validate.js';
-

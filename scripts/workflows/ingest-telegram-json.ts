@@ -194,7 +194,9 @@ async function processDirectory(
   console.log(`Total calls inserted: ${totalCalls}`);
   console.log(`Total tokens upserted: ${totalTokens}`);
   if (totalQuarantined > 0) {
-    console.log(`\n⚠️  ${totalQuarantined} messages quarantined - check quarantine files for details`);
+    console.log(
+      `\n⚠️  ${totalQuarantined} messages quarantined - check quarantine files for details`
+    );
   }
   if (totalFailed > 0) {
     console.log(`⚠️  ${totalFailed} files failed`);

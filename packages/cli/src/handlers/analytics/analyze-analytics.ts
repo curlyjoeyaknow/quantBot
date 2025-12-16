@@ -7,7 +7,7 @@
 
 import { DateTime } from 'luxon';
 import type { CommandContext } from '../../core/command-context.js';
-import { analyzeSchema, type AnalyzeArgs } from '../../command-defs/analytics.js';
+import { type AnalyzeArgs } from '../../command-defs/analytics.js';
 
 /**
  * Input arguments (already validated by Zod)
@@ -17,10 +17,7 @@ export type AnalyzeAnalyticsArgs = AnalyzeArgs;
 /**
  * Handler function: pure use-case orchestration
  */
-export async function analyzeAnalyticsHandler(
-  args: AnalyzeAnalyticsArgs,
-  ctx: CommandContext
-) {
+export async function analyzeAnalyticsHandler(args: AnalyzeAnalyticsArgs, ctx: CommandContext) {
   const engine = ctx.services.analyticsEngine();
 
   return engine.analyzeCalls({
@@ -29,4 +26,3 @@ export async function analyzeAnalyticsHandler(
     to: args.to ? DateTime.fromISO(args.to).toJSDate() : undefined,
   });
 }
-

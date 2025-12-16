@@ -17,10 +17,7 @@ export type IngestOhlcvArgs = z.infer<typeof ohlcvSchema>;
 /**
  * Handler function: pure use-case orchestration
  */
-export async function ingestOhlcvHandler(
-  args: IngestOhlcvArgs,
-  ctx: CommandContext
-) {
+export async function ingestOhlcvHandler(args: IngestOhlcvArgs, ctx: CommandContext) {
   const service = ctx.services.ohlcvIngestion();
 
   // Note: interval is accepted in args but not currently passed to service
@@ -34,4 +31,3 @@ export async function ingestOhlcvHandler(
     postWindowMinutes: args.postWindow,
   });
 }
-

@@ -8,6 +8,8 @@ import type { PackageCommandModule } from '../types/index.js';
 import { commandRegistry } from '../core/command-registry.js';
 import type { CommandContext } from '../core/command-context.js';
 import { analyzeAnalyticsHandler } from '../handlers/analytics/analyze-analytics.js';
+import { metricsAnalyticsHandler } from '../handlers/analytics/metrics-analytics.js';
+import { reportAnalyticsHandler } from '../handlers/analytics/report-analytics.js';
 import { analyzeSchema, metricsSchema, reportSchema } from '../command-defs/analytics.js';
 
 /**
@@ -91,14 +93,20 @@ const analyticsModule: PackageCommandModule = {
       name: 'metrics',
       description: 'Calculate period metrics',
       schema: metricsSchema,
-      handler: async () => ({ message: 'Metrics calculation' }),
+      handler: async (args: unknown, ctx: CommandContext) => {
+        const typedArgs = args as z.infer<typeof metricsSchema>;
+        return await metricsAnalyticsHandler(typedArgs, ctx);
+      },
       examples: ['quantbot analytics metrics --caller Brook'],
     },
     {
       name: 'report',
       description: 'Generate analytics report',
       schema: reportSchema,
-      handler: async () => ({ message: 'Report generation' }),
+      handler: async (args: unknown, ctx: CommandContext) => {
+        const typedArgs = args as z.infer<typeof reportSchema>;
+        return await reportAnalyticsHandler(typedArgs, ctx);
+      },
       examples: ['quantbot analytics report --caller Brook'],
     },
   ],

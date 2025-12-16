@@ -2,7 +2,7 @@
  * Bridge Test: Runs real Python tool and validates output
  *
  * This is the "contract test" that ensures the TypeScript/Python boundary works correctly.
- * 
+ *
  * IMPORTANT: This does NOT test address validation correctness - that's tested in Python (pytest).
  * This only tests:
  * - Python tool executes successfully
@@ -29,8 +29,14 @@ const PythonManifestSchema = z.object({
 
 describe('Python Bridge Test - Telegram Ingestion', () => {
   const pythonToolPath = join(__dirname, '../../../../tools/telegram/duckdb_punch_pipeline.py');
-  const testFixturePath = join(__dirname, '../../../../tools/telegram/tests/fixtures/sample_telegram.json');
-  const outputDbPath = join(__dirname, '../../../../tools/telegram/tests/fixtures/test_output.duckdb');
+  const testFixturePath = join(
+    __dirname,
+    '../../../../tools/telegram/tests/fixtures/sample_telegram.json'
+  );
+  const outputDbPath = join(
+    __dirname,
+    '../../../../tools/telegram/tests/fixtures/test_output.duckdb'
+  );
 
   it('runs Python tool on tiny fixture and validates output schema', () => {
     // Skip if Python tool doesn't exist
@@ -131,4 +137,3 @@ describe('Python Bridge Test - Telegram Ingestion', () => {
     }
   });
 });
-

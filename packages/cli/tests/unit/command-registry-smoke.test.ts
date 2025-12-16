@@ -62,12 +62,12 @@ describe('Command Registry Smoke Test', () => {
       for (const command of pkg.commands) {
         // Handler should be a function
         expect(typeof command.handler).toBe('function');
-        
+
         // Handler should be callable (not throw on call with empty args)
         // Note: Some handlers may be stubs (0 params) or not yet migrated (1 param)
         // Migrated handlers accept 2 parameters (args, ctx)
         const handlerLength = command.handler.length;
-        
+
         // Log handlers that need migration
         if (handlerLength === 0) {
           console.warn(
@@ -132,4 +132,3 @@ describe('Command Registry Smoke Test', () => {
     }
   });
 });
-

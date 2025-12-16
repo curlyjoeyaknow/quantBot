@@ -165,4 +165,3 @@ export function extractCandidates(text: string): AddressCandidate[] {
   const evm = extractEvmCandidates(text);
   return [...solana, ...evm];
 }
-

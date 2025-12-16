@@ -131,4 +131,3 @@ describe('statsStorageHandler - Isolation Test', () => {
     expect(result2).toHaveProperty('clickhouse');
   });
 });
-

@@ -11,7 +11,10 @@ import { validateSolanaMint, validateEvmAddress } from '../../src/address/valida
 
 // Mock OHLCV provider interface
 interface MockOhlcvProvider {
-  fetchOhlcv(address: string, chain: string): Promise<{ success: boolean; data?: any; error?: string }>;
+  fetchOhlcv(
+    address: string,
+    chain: string
+  ): Promise<{ success: boolean; data?: any; error?: string }>;
 }
 
 describe('Address Semantic Verification - Pass 3 (OHLCV Provider)', () => {
@@ -28,18 +31,18 @@ describe('Address Semantic Verification - Pass 3 (OHLCV Provider)', () => {
   describe('Semantic Verification Only at Fetch Time', () => {
     it('validation (Pass 2) does not call OHLCV provider', () => {
       const address = 'So11111111111111111111111111111111111111112';
-      
+
       // Pass 1: Extract
       const candidates = extractCandidates(address);
       expect(candidates.length).toBeGreaterThan(0);
-      
+
       // Pass 2: Validate (should NOT call OHLCV provider)
       const candidate = candidates.find((c) => c.addressType === 'solana' && !c.reason);
       if (candidate) {
         const result = validateSolanaMint(candidate.normalized);
         expect(result.ok).toBe(true);
       }
-      
+
       // OHLCV provider should NOT be called during validation
       expect(fetchOhlcvSpy).not.toHaveBeenCalled();
     });
@@ -52,7 +55,7 @@ describe('Address Semantic Verification - Pass 3 (OHLCV Provider)', () => {
 
       // Pass 1: Extract
       const candidates = extractCandidates(text);
-      
+
       // Pass 2: Validate
       const validCandidates = candidates.filter((c) => {
         if (c.reason) return false;
@@ -118,11 +121,11 @@ describe('Address Semantic Verification - Pass 3 (OHLCV Provider)', () => {
 
     it('does not cache validation failures (Pass 2) - only semantic failures', () => {
       const invalidAddress = 'So1111111111111111111111111111111111111111O';
-      
+
       // Pass 2 validation should fail
       const result = validateSolanaMint(invalidAddress);
       expect(result.ok).toBe(false);
-      
+
       // This is a validation failure, not a semantic failure
       // Should NOT be cached as "OHLCV not found" - it's just invalid
       // Semantic verification would never be called for invalid addresses
@@ -139,12 +142,12 @@ describe('Address Semantic Verification - Pass 3 (OHLCV Provider)', () => {
 
       // Pass 1: Extract
       const candidates = extractCandidates(text);
-      
+
       // Pass 2: Validate
       const validatedAddresses: Array<{ address: string; chain: string }> = [];
       for (const candidate of candidates) {
         if (candidate.reason) continue; // Skip Pass 1 failures
-        
+
         if (candidate.addressType === 'solana') {
           const result = validateSolanaMint(candidate.normalized);
           if (result.ok) {
@@ -169,4 +172,3 @@ describe('Address Semantic Verification - Pass 3 (OHLCV Provider)', () => {
     });
   });
 });
-

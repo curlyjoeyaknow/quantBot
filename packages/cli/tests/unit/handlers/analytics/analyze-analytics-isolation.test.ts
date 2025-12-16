@@ -131,4 +131,3 @@ describe('analyzeAnalyticsHandler - Isolation Test', () => {
     expect(result1.metadata.totalCalls).toBe(result2.metadata.totalCalls);
   });
 });
-

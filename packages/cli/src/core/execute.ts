@@ -56,4 +56,3 @@ export async function execute(
     process.exit(1);
   }
 }
-

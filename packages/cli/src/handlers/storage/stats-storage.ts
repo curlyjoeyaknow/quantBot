@@ -66,4 +66,3 @@ export async function statsStorageHandler(
 
   return stats;
 }
-

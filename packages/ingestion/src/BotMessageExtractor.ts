@@ -56,7 +56,7 @@ export class BotMessageExtractor {
     const isHtml = textOrHtml.includes('<') && textOrHtml.includes('>');
     const $ = isHtml ? cheerio.load(textOrHtml) : null;
     const plainText = isHtml && $ ? $.text() : textOrHtml;
-    
+
     const result: ExtractedBotData = {
       contractAddress: '',
       chain: 'solana', // Default
@@ -73,7 +73,7 @@ export class BotMessageExtractor {
         dexscreenerLink = `https://dexscreener.com/${dexMatch[0]}`;
       }
     }
-    
+
     if (dexscreenerLink) {
       const match = dexscreenerLink.match(/dexscreener\.com\/([^\/]+)\/([^\/\?]+)/);
       if (match) {
@@ -180,7 +180,9 @@ export class BotMessageExtractor {
     }
 
     // Extract price: 💰 USD: <code>$0.0001553</code> (HTML) or 💰 USD: $0.0001553 (plain text)
-    let priceMatch = textOrHtml.match(/💰\s*USD[:\s]*(?:<code>)?\$?([0-9,]+\.?[0-9]*)(?:<\/code>)?/i);
+    let priceMatch = textOrHtml.match(
+      /💰\s*USD[:\s]*(?:<code>)?\$?([0-9,]+\.?[0-9]*)(?:<\/code>)?/i
+    );
     if (!priceMatch) {
       // Try plain text pattern: 💰 USD: $0.0001553
       priceMatch = plainText.match(/💰\s*USD[:\s]*\$?([0-9,]+\.?[0-9]*)/i);
@@ -190,7 +192,9 @@ export class BotMessageExtractor {
     }
 
     // Extract market cap/FDV: 💎 FDV: <code>$155K</code> (HTML) or 💎 FDV: $155K (plain text)
-    let mcapMatch = textOrHtml.match(/💎\s*FDV[:\s]*(?:<code>)?\$?([0-9,]+\.?[0-9]*)([KMB]?)(?:<\/code>)?/i);
+    let mcapMatch = textOrHtml.match(
+      /💎\s*FDV[:\s]*(?:<code>)?\$?([0-9,]+\.?[0-9]*)([KMB]?)(?:<\/code>)?/i
+    );
     if (!mcapMatch) {
       // Try plain text pattern
       mcapMatch = plainText.match(/💎\s*FDV[:\s]*\$?([0-9,]+\.?[0-9]*)([KMB]?)/i);
@@ -200,7 +204,9 @@ export class BotMessageExtractor {
     }
 
     // Extract liquidity: 💦 Liq: <code>$32.8K</code> <code>[x5]</code> (HTML) or 💦 Liq: $32.8K [x5] (plain text)
-    let liqMatch = textOrHtml.match(/💦\s*Liq[:\s]*(?:<code>)?\$?([0-9,]+\.?[0-9]*)([KMB]?)(?:<\/code>)?/i);
+    let liqMatch = textOrHtml.match(
+      /💦\s*Liq[:\s]*(?:<code>)?\$?([0-9,]+\.?[0-9]*)([KMB]?)(?:<\/code>)?/i
+    );
     if (!liqMatch) {
       liqMatch = plainText.match(/💦\s*Liq[:\s]*\$?([0-9,]+\.?[0-9]*)([KMB]?)/i);
     }
@@ -215,7 +221,9 @@ export class BotMessageExtractor {
     }
 
     // Extract volume: 📊 Vol: <code>$56K</code> (HTML) or 📊 Vol: $56K (plain text)
-    let volMatch = textOrHtml.match(/📊\s*Vol[:\s]*(?:<code>)?\$?([0-9,]+\.?[0-9]*)([KMB]?)(?:<\/code>)?/i);
+    let volMatch = textOrHtml.match(
+      /📊\s*Vol[:\s]*(?:<code>)?\$?([0-9,]+\.?[0-9]*)([KMB]?)(?:<\/code>)?/i
+    );
     if (!volMatch) {
       volMatch = plainText.match(/📊\s*Vol[:\s]*\$?([0-9,]+\.?[0-9]*)([KMB]?)/i);
     }
@@ -279,11 +287,14 @@ export class BotMessageExtractor {
         }
       });
     }
-    
+
     // Also try to extract TH from text pattern: TH: 2.2⋅1.9⋅1.5...
     const thTextMatch = textOrHtml.match(/TH[:\s]*([0-9.]+(?:⋅[0-9.]+)*)/i);
     if (thTextMatch) {
-      const thValues = thTextMatch[1].split('⋅').map((v) => parseFloat(v.trim())).filter((v) => !isNaN(v));
+      const thValues = thTextMatch[1]
+        .split('⋅')
+        .map((v) => parseFloat(v.trim()))
+        .filter((v) => !isNaN(v));
       if (thValues.length > 0) {
         result.topHolders = thValues;
         result.thPercent = thValues.reduce((sum, val) => sum + val, 0);
@@ -312,7 +323,9 @@ export class BotMessageExtractor {
     }
 
     // Extract fresh wallets: 🌱 Fresh 1D: <code>3%</code> ⋅ 7D: <code>9%</code>
-    let fresh1dMatch = textOrHtml.match(/🌱\s*Fresh\s*1D[:\s]*(?:<code>)?([0-9,]+\.?[0-9]*)%(?:<\/code>)?/i);
+    let fresh1dMatch = textOrHtml.match(
+      /🌱\s*Fresh\s*1D[:\s]*(?:<code>)?([0-9,]+\.?[0-9]*)%(?:<\/code>)?/i
+    );
     if (!fresh1dMatch) {
       fresh1dMatch = plainText.match(/🌱\s*Fresh\s*1D[:\s]*([0-9,]+\.?[0-9]*)%/i);
     }
@@ -335,12 +348,20 @@ export class BotMessageExtractor {
         result.twitterLink = twitterLink;
       }
 
-      const telegramLink = $('a[href*="t.me"]').not('a[href*="t.me/phanes"], a[href*="t.me/RickBurpBot"], a[href*="t.me/maestro"]').first().attr('href');
+      const telegramLink = $('a[href*="t.me"]')
+        .not('a[href*="t.me/phanes"], a[href*="t.me/RickBurpBot"], a[href*="t.me/maestro"]')
+        .first()
+        .attr('href');
       if (telegramLink && !telegramLink.includes('bot')) {
         result.telegramLink = telegramLink;
       }
 
-      const websiteLink = $('a[href^="http"]').not('a[href*="t.me"], a[href*="x.com"], a[href*="twitter.com"], a[href*="dexscreener"], a[href*="solscan"], a[href*="etherscan"], a[href*="pump.fun"]').first().attr('href');
+      const websiteLink = $('a[href^="http"]')
+        .not(
+          'a[href*="t.me"], a[href*="x.com"], a[href*="twitter.com"], a[href*="dexscreener"], a[href*="solscan"], a[href*="etherscan"], a[href*="pump.fun"]'
+        )
+        .first()
+        .attr('href');
       if (websiteLink) {
         result.websiteLink = websiteLink;
       }
@@ -351,23 +372,41 @@ export class BotMessageExtractor {
       for (const url of urls) {
         if ((url.includes('x.com') || url.includes('twitter.com')) && !result.twitterLink) {
           result.twitterLink = url;
-        } else if (url.includes('t.me') && !url.includes('bot') && !url.includes('phanes') && !url.includes('RickBurpBot') && !url.includes('maestro') && !result.telegramLink) {
+        } else if (
+          url.includes('t.me') &&
+          !url.includes('bot') &&
+          !url.includes('phanes') &&
+          !url.includes('RickBurpBot') &&
+          !url.includes('maestro') &&
+          !result.telegramLink
+        ) {
           result.telegramLink = url;
-        } else if (!url.includes('t.me') && !url.includes('x.com') && !url.includes('twitter.com') && !url.includes('dexscreener') && !url.includes('solscan') && !url.includes('etherscan') && !url.includes('pump.fun') && !result.websiteLink) {
+        } else if (
+          !url.includes('t.me') &&
+          !url.includes('x.com') &&
+          !url.includes('twitter.com') &&
+          !url.includes('dexscreener') &&
+          !url.includes('solscan') &&
+          !url.includes('etherscan') &&
+          !url.includes('pump.fun') &&
+          !result.websiteLink
+        ) {
           result.websiteLink = url;
         }
       }
     }
 
     // Extract ATH mcap if mentioned: ATH: <code>$500K</code> or similar
-    let athMatch = textOrHtml.match(/ATH[:\s]*(?:<code>)?\$?([0-9,]+\.?[0-9]*)([KMB]?)(?:<\/code>)?/i);
+    let athMatch = textOrHtml.match(
+      /ATH[:\s]*(?:<code>)?\$?([0-9,]+\.?[0-9]*)([KMB]?)(?:<\/code>)?/i
+    );
     if (!athMatch) {
       athMatch = plainText.match(/ATH[:\s]*\$?([0-9,]+\.?[0-9]*)([KMB]?)/i);
     }
     if (athMatch) {
       result.athMcap = this.parseNumberWithSuffix(athMatch[1], athMatch[2]);
     }
-    
+
     // Calculate supply: mcap / price (for Solana tokens, use SOL price of $130)
     if (result.marketCap && result.price) {
       if (result.chain === 'solana') {
@@ -383,9 +422,13 @@ export class BotMessageExtractor {
     }
 
     // Extract exchange/platform: 🌐 Ethereum @ Uniswap V2
-    let exchangeMatch = textOrHtml.match(/🌐[^>]*>\s*([A-Za-z0-9\s]+?)\s*@\s*([A-Za-z0-9\sV]+?)(?:<|$)/);
+    let exchangeMatch = textOrHtml.match(
+      /🌐[^>]*>\s*([A-Za-z0-9\s]+?)\s*@\s*([A-Za-z0-9\sV]+?)(?:<|$)/
+    );
     if (!exchangeMatch) {
-      exchangeMatch = textOrHtml.match(/🌐\s+([A-Za-z0-9\s]+?)\s*@\s*([A-Za-z0-9\sV]+?)(?:<br|<|$)/);
+      exchangeMatch = textOrHtml.match(
+        /🌐\s+([A-Za-z0-9\s]+?)\s*@\s*([A-Za-z0-9\sV]+?)(?:<br|<|$)/
+      );
     }
     if (!exchangeMatch) {
       exchangeMatch = plainText.match(/🌐\s+([A-Za-z0-9\s]+?)\s*@\s*([A-Za-z0-9\sV]+?)(?:\n|$)/);
