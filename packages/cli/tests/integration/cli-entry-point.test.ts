@@ -117,9 +117,24 @@ describe('CLI Entry Point', () => {
     it('should parse command line arguments', () => {
       const testProgram = new Command();
       testProgram.name('quantbot').version('1.0.0');
+      testProgram.exitOverride((err) => {
+        // Override exit - version flag triggers exit with code 0
+        if (err && err.exitCode === 0) {
+          // This is expected for --version flag
+          return;
+        }
+        throw err;
+      });
 
-      // Parse version flag
-      testProgram.parse(['node', 'quantbot', '--version'], { from: 'user' });
+      // Parse version flag - this will trigger exit, but we handle it
+      try {
+        testProgram.parse(['node', 'quantbot', '--version'], { from: 'user' });
+      } catch (error: any) {
+        // Expected - version flag triggers exit
+        if (error.exitCode !== 0) {
+          throw error;
+        }
+      }
 
       expect(testProgram.version()).toBe('1.0.0');
     });
