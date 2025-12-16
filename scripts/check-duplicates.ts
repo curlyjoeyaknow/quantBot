@@ -14,11 +14,13 @@ async function checkDuplicates() {
   // Get all callers
   const callers = await callersRepo.list();
   console.log('Total callers:', callers.length);
-  callers.forEach((c) => console.log('  -', c.handle || c.source, '(id:', c.id + ')'));
+  callers.forEach((c: { handle?: string; source?: string; id: number }) =>
+    console.log('  -', c.handle || c.source, '(id:', c.id + ')')
+  );
 
   // Check for duplicate calls (same token, same timestamp)
   const duplicates = new Map<string, typeof allCalls>();
-  allCalls.forEach((call) => {
+  allCalls.forEach((call: (typeof allCalls)[number]) => {
     const key = `${call.tokenId}-${call.signalTimestamp.toISO()}`;
     if (!duplicates.has(key)) {
       duplicates.set(key, []);
@@ -26,16 +28,18 @@ async function checkDuplicates() {
     duplicates.get(key)!.push(call);
   });
 
-  const dupGroups = Array.from(duplicates.values()).filter((arr) => arr.length > 1);
+  const dupGroups = Array.from(duplicates.values()).filter(
+    (arr: typeof allCalls) => arr.length > 1
+  );
   console.log('\nDuplicate groups found:', dupGroups.length);
 
   if (dupGroups.length > 0) {
     console.log('\nSample duplicates:');
-    dupGroups.slice(0, 10).forEach((arr) => {
+    dupGroups.slice(0, 10).forEach((arr: typeof allCalls) => {
       console.log(
         `  Token ${arr[0].tokenId}, Time ${arr[0].signalTimestamp.toISO()}: ${arr.length} duplicates`
       );
-      arr.forEach((call, idx) => {
+      arr.forEach((call: (typeof allCalls)[number], idx: number) => {
         console.log(`    [${idx + 1}] Call ID: ${call.id}, Caller ID: ${call.callerId}`);
       });
     });
@@ -48,7 +52,7 @@ async function checkDuplicates() {
   console.log('\nTotal alerts:', allAlerts.length);
 
   const alertDuplicates = new Map<string, typeof allAlerts>();
-  allAlerts.forEach((alert) => {
+  allAlerts.forEach((alert: (typeof allAlerts)[number]) => {
     const key = `${alert.tokenId}-${alert.alertTimestamp.toISO()}`;
     if (!alertDuplicates.has(key)) {
       alertDuplicates.set(key, []);

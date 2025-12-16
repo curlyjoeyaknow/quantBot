@@ -119,7 +119,7 @@ function analyzeFile(file: string, diff: string): ChangeAnalysis {
 
   // Find test file
   const testFile = findTestFile(file);
-  const hasTests = testFile && existsSync(testFile);
+  const hasTests = Boolean(testFile && existsSync(testFile));
 
   // Get required tests
   const requiredTests = TEST_REQUIREMENTS[changeType] || ['unit'];

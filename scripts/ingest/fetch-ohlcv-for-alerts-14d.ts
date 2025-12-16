@@ -36,6 +36,7 @@ import { OhlcvIngestionEngine } from '@quantbot/ohlcv';
 import { birdeyeClient } from '@quantbot/api-clients';
 import { logger } from '@quantbot/utils';
 import type { Chain, Candle } from '@quantbot/core';
+import type { BirdeyeOHLCVResponse } from '@quantbot/api-clients';
 
 // Rate limiting: 50 RPS = 1 request every 20ms, use 25ms to be safe (40 RPS effective)
 const BIRDEYE_RATE_LIMIT_MS = 25; // Minimum delay between requests (40 RPS = safe margin under 50 RPS)
@@ -188,7 +189,7 @@ async function fetch1sCandles(
     }
 
     const candles: Candle[] = birdeyeData.items
-      .map((item) => ({
+      .map((item: BirdeyeOHLCVResponse['items'][number]) => ({
         timestamp: item.unixTime,
         open: item.open,
         high: item.high,
@@ -196,11 +197,11 @@ async function fetch1sCandles(
         close: item.close,
         volume: item.volume,
       }))
-      .filter((candle) => {
+      .filter((candle: Candle) => {
         const candleTime = DateTime.fromSeconds(candle.timestamp);
         return candleTime >= startTime && candleTime <= endTime;
       })
-      .sort((a, b) => a.timestamp - b.timestamp);
+      .sort((a: Candle, b: Candle) => a.timestamp - b.timestamp);
 
     // Store candles if we got any
     if (candles.length > 0) {
@@ -275,7 +276,7 @@ async function fetch15sCandles(
 
       if (birdeyeData && birdeyeData.items && birdeyeData.items.length > 0) {
         const chunkCandles: Candle[] = birdeyeData.items
-          .map((item) => ({
+          .map((item: BirdeyeOHLCVResponse['items'][number]) => ({
             timestamp: item.unixTime,
             open: item.open,
             high: item.high,
@@ -283,11 +284,11 @@ async function fetch15sCandles(
             close: item.close,
             volume: item.volume,
           }))
-          .filter((candle) => {
+          .filter((candle: Candle) => {
             const candleTime = DateTime.fromSeconds(candle.timestamp);
             return candleTime >= currentStart && candleTime <= actualCurrentEnd;
           })
-          .sort((a, b) => a.timestamp - b.timestamp);
+          .sort((a: Candle, b: Candle) => a.timestamp - b.timestamp);
 
         allCandles.push(...chunkCandles);
 
@@ -399,7 +400,7 @@ async function fetch1mCandles(
 
       if (birdeyeData && birdeyeData.items && birdeyeData.items.length > 0) {
         const chunkCandles: Candle[] = birdeyeData.items
-          .map((item) => ({
+          .map((item: BirdeyeOHLCVResponse['items'][number]) => ({
             timestamp: item.unixTime,
             open: item.open,
             high: item.high,
@@ -407,11 +408,11 @@ async function fetch1mCandles(
             close: item.close,
             volume: item.volume,
           }))
-          .filter((candle) => {
+          .filter((candle: Candle) => {
             const candleTime = DateTime.fromSeconds(candle.timestamp);
             return candleTime >= currentStart && candleTime <= actualCurrentEnd;
           })
-          .sort((a, b) => a.timestamp - b.timestamp);
+          .sort((a: Candle, b: Candle) => a.timestamp - b.timestamp);
 
         allCandles.push(...chunkCandles);
 
@@ -520,7 +521,7 @@ async function fetch5mCandles(
 
       if (birdeyeData && birdeyeData.items && birdeyeData.items.length > 0) {
         const chunkCandles: Candle[] = birdeyeData.items
-          .map((item) => ({
+          .map((item: BirdeyeOHLCVResponse['items'][number]) => ({
             timestamp: item.unixTime,
             open: item.open,
             high: item.high,
@@ -528,11 +529,11 @@ async function fetch5mCandles(
             close: item.close,
             volume: item.volume,
           }))
-          .filter((candle) => {
+          .filter((candle: Candle) => {
             const candleTime = DateTime.fromSeconds(candle.timestamp);
             return candleTime >= currentStart && candleTime <= actualCurrentEnd;
           })
-          .sort((a, b) => a.timestamp - b.timestamp);
+          .sort((a: Candle, b: Candle) => a.timestamp - b.timestamp);
 
         allCandles.push(...chunkCandles);
 

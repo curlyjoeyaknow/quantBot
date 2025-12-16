@@ -7,18 +7,18 @@
  *   ts-node scripts/ingest/fetch-ohlcv-for-calls.ts [--from <date>] [--to <date>] [--pre-window-minutes <n>] [--post-window-minutes <n>] [--interval <1m|5m>]
  */
 
-// @ts-expect-error - commander types may not be installed yet
 import { program } from 'commander';
-import { CallsRepository, TokensRepository } from '@quantbot/storage';
+import { CallsRepository, TokensRepository, AlertsRepository } from '@quantbot/storage';
 import { OhlcvIngestionService } from '@quantbot/ingestion';
 import { logger } from '@quantbot/utils';
 
 // Initialize repositories
 const callsRepo = new CallsRepository();
 const tokensRepo = new TokensRepository();
+const alertsRepo = new AlertsRepository();
 
 // Initialize service
-const ingestionService = new OhlcvIngestionService(callsRepo, tokensRepo);
+const ingestionService = new OhlcvIngestionService(callsRepo, tokensRepo, alertsRepo);
 
 program
   .name('fetch-ohlcv-for-calls')
