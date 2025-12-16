@@ -43,6 +43,16 @@ lerna-debug.log*
 data/backups/
 data/archive/
 
+# Large data files
+data/**/*.json
+data/**/*.ndjson
+data/**/*.html
+data/**/*.duckdb
+data/messages/
+data/normalized/
+*.ndjson
+*.duckdb
+
 # Temporary files
 tmp/
 temp/
@@ -62,3 +72,9 @@ out/
 
 # Environment
 .env*.local
+
+# Python virtual environment
+.venv/
+venv/
+*.pyc
+__pycache__/
