@@ -4,18 +4,16 @@
 
 import type { Command } from 'commander';
 import { z } from 'zod';
-import { DateTime } from 'luxon';
-import { OhlcvRepository } from '@quantbot/storage';
-import { parseArguments, validateMintAddress, parseDate } from '../core/argument-parser';
-import { formatOutput } from '../core/output-formatter';
-import { handleError } from '../core/error-handler';
-import type { PackageCommandModule } from '../types';
-import { commandRegistry } from '../core/command-registry';
+import { parseDate, validateMintAddress } from '../core/argument-parser.js';
+import type { PackageCommandModule } from '../types/index.js';
+import { commandRegistry } from '../core/command-registry.js';
+import type { CommandContext } from '../core/command-context.js';
+import { queryOhlcvHandler } from '../handlers/ohlcv/query-ohlcv.js';
 
 /**
  * Query command schema
  */
-const querySchema = z.object({
+export const querySchema = z.object({
   mint: z.string().refine(
     (val) => {
       try {
@@ -91,7 +89,7 @@ const coverageSchema = z.object({
 export function registerOhlcvCommands(program: Command): void {
   const ohlcvCmd = program.command('ohlcv').description('OHLCV candle data operations');
 
-  // Query command (already implemented above)
+  // Query command
   ohlcvCmd
     .command('query')
     .description('Query OHLCV candles for a token')
@@ -102,45 +100,12 @@ export function registerOhlcvCommands(program: Command): void {
     .option('--format <format>', 'Output format', 'table')
     .option('--chain <chain>', 'Blockchain', 'solana')
     .action(async (options) => {
-      try {
-        const args = parseArguments(querySchema, options);
-
-        // Validate and preserve mint address case
-        const mintAddress = validateMintAddress(args.mint);
-
-        // Parse dates
-        const fromDate = DateTime.fromISO(args.from);
-        const toDate = DateTime.fromISO(args.to);
-
-        if (!fromDate.isValid) {
-          throw new Error(`Invalid from date: ${args.from}`);
-        }
-        if (!toDate.isValid) {
-          throw new Error(`Invalid to date: ${args.to}`);
-        }
-
-        if (fromDate >= toDate) {
-          throw new Error('From date must be before to date');
-        }
-
-        // Query candles
-        const repository = new OhlcvRepository();
-        const candles = await repository.getCandles(mintAddress, args.chain, args.interval, {
-          from: fromDate,
-          to: toDate,
-        });
-
-        // Format output
-        const output = formatOutput(candles, args.format);
-        console.log(output);
-
-        // Log summary
-        console.error(`\nFound ${candles.length} candles for ${mintAddress}`);
-      } catch (error) {
-        const message = handleError(error, { mint: options.mint });
-        console.error(`Error: ${message}`);
-        process.exit(1);
+      const { execute } = await import('../core/execute.js');
+      const commandDef = commandRegistry.getCommand('ohlcv', 'query');
+      if (!commandDef) {
+        throw new Error('Command ohlcv query not found in registry');
       }
+      await execute(commandDef, options);
     });
 
   // Backfill command
@@ -154,18 +119,12 @@ export function registerOhlcvCommands(program: Command): void {
     .option('--format <format>', 'Output format', 'table')
     .option('--chain <chain>', 'Blockchain', 'solana')
     .action(async (options) => {
-      try {
-        const args = parseArguments(backfillSchema, options);
-        console.error('Backfilling OHLCV data...');
-        // TODO: Implement backfill
-        const result = { message: 'Backfill completed', candlesFetched: 0 };
-        const output = formatOutput(result, args.format);
-        console.log(output);
-      } catch (error) {
-        const message = handleError(error);
-        console.error(`Error: ${message}`);
-        process.exit(1);
+      const { execute } = await import('../core/execute.js');
+      const commandDef = commandRegistry.getCommand('ohlcv', 'backfill');
+      if (!commandDef) {
+        throw new Error('Command ohlcv backfill not found in registry');
       }
+      await execute(commandDef, options);
     });
 
   // Coverage command
@@ -176,18 +135,12 @@ export function registerOhlcvCommands(program: Command): void {
     .option('--interval <interval>', 'Candle interval')
     .option('--format <format>', 'Output format', 'table')
     .action(async (options) => {
-      try {
-        const args = parseArguments(coverageSchema, options);
-        const result = {
-          message: 'Coverage check - implementation in progress',
-        };
-        const output = formatOutput(result, args.format);
-        console.log(output);
-      } catch (error) {
-        const message = handleError(error);
-        console.error(`Error: ${message}`);
-        process.exit(1);
+      const { execute } = await import('../core/execute.js');
+      const commandDef = commandRegistry.getCommand('ohlcv', 'coverage');
+      if (!commandDef) {
+        throw new Error('Command ohlcv coverage not found in registry');
       }
+      await execute(commandDef, options);
     });
 }
 
@@ -202,21 +155,9 @@ const ohlcvModule: PackageCommandModule = {
       name: 'query',
       description: 'Query OHLCV candles for a token',
       schema: querySchema,
-      handler: async (args: unknown) => {
+      handler: async (args: unknown, ctx: CommandContext) => {
         const typedArgs = args as z.infer<typeof querySchema>;
-        const mintAddress = validateMintAddress(typedArgs.mint);
-        const fromDate = DateTime.fromISO(typedArgs.from);
-        const toDate = DateTime.fromISO(typedArgs.to);
-
-        if (!fromDate.isValid || !toDate.isValid) {
-          throw new Error('Invalid date format');
-        }
-
-        const repository = new OhlcvRepository();
-        return await repository.getCandles(mintAddress, typedArgs.chain, typedArgs.interval, {
-          from: fromDate,
-          to: toDate,
-        });
+        return await queryOhlcvHandler(typedArgs, ctx);
       },
       examples: [
         'quantbot ohlcv query --mint So111... --from 2024-01-01 --to 2024-01-02',

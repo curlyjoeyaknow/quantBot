@@ -249,7 +249,9 @@ describe('Golden Path Integration Tests', () => {
       });
 
       // Should extract Ethereum address (not base58)
+      expect(tokensRepo.getOrCreateToken).toHaveBeenCalled();
       const tokenCall = (tokensRepo.getOrCreateToken as any).mock.calls[0];
+      expect(tokenCall).toBeDefined();
       const address = tokenCall[1];
       expect(address).toBe('0xe6cb52bf0d374236a15290a05ea988d7f643bba4');
       expect(address.startsWith('0x')).toBe(true);

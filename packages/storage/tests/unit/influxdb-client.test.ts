@@ -6,33 +6,39 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { DateTime } from 'luxon';
-import { InfluxDBOHLCVClient, type OHLCVData, type TokenInfo } from '../src/influxdb-client';
+import { InfluxDBOHLCVClient, type OHLCVData, type TokenInfo } from '../../src/influxdb-client';
+
+// Use vi.hoisted() to create mocks that can be used in vi.mock() factories
+const { mockWriteApi, mockQueryApi, mockInfluxDB, mockInfluxDBConstructor, mockBucketsAPI } =
+  vi.hoisted(() => {
+    const mockWriteApi = {
+      writePoint: vi.fn(),
+      writePoints: vi.fn(),
+      flush: vi.fn().mockResolvedValue(undefined),
+      close: vi.fn().mockResolvedValue(undefined),
+      useDefaultTags: vi.fn(),
+    };
+
+    const mockQueryApi = {
+      collectRows: vi.fn(),
+    };
+
+    const mockInfluxDB = {
+      getWriteApi: vi.fn(() => mockWriteApi),
+      getQueryApi: vi.fn(() => mockQueryApi),
+    };
+
+    const mockInfluxDBConstructor = vi.fn(() => mockInfluxDB);
+
+    const mockBucketsAPI = {
+      getBuckets: vi.fn(),
+      postBuckets: vi.fn(),
+    };
+
+    return { mockWriteApi, mockQueryApi, mockInfluxDB, mockInfluxDBConstructor, mockBucketsAPI };
+  });
 
 // Mock InfluxDB client
-const mockWriteApi = {
-  writePoint: vi.fn(),
-  writePoints: vi.fn(),
-  flush: vi.fn().mockResolvedValue(undefined),
-  close: vi.fn().mockResolvedValue(undefined),
-  useDefaultTags: vi.fn(),
-};
-
-const mockQueryApi = {
-  collectRows: vi.fn(),
-};
-
-const mockBucketsAPI = {
-  getBuckets: vi.fn(),
-  postBuckets: vi.fn(),
-};
-
-const mockInfluxDB = {
-  getWriteApi: vi.fn(() => mockWriteApi),
-  getQueryApi: vi.fn(() => mockQueryApi),
-};
-
-const mockInfluxDBConstructor = vi.fn(() => mockInfluxDB);
-
 vi.mock('@influxdata/influxdb-client', () => ({
   InfluxDB: mockInfluxDBConstructor,
   Point: class {

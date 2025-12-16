@@ -15,7 +15,7 @@ import {
   queryPostgres,
   withPostgresTransaction,
   closePostgresPool,
-} from '../src/postgres/postgres-client';
+} from '../../src/postgres/postgres-client';
 
 // Mock pg - must define mocks inside factory to avoid hoisting issues
 vi.mock('pg', async () => {

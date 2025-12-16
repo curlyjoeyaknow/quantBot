@@ -8,6 +8,7 @@ import {
   SimulationResultsRepository,
   TokensRepository,
   CallersRepository,
+  TokenDataRepository,
 } from '@quantbot/storage';
 import { simulateStrategy, fetchHybridCandles } from '@quantbot/simulation';
 import type {
@@ -223,7 +224,7 @@ export function createProductionContext(config?: ProductionContextConfig): Workf
         );
 
         return {
-          pnlMultiplier: result.pnlMultiplier,
+          pnlMultiplier: result.finalPnl,
           trades: result.events.filter((e: any) => e.type === 'entry' || e.type === 'exit').length,
         };
       },

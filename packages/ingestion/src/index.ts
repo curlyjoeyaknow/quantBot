@@ -20,6 +20,10 @@ export {
   type IngestJsonExportParams,
   type IngestJsonExportResult,
 } from './telegram/TelegramJsonIngestionService';
+export {
+  normalizedToParsed,
+  normalizedToParsedBatch,
+} from './telegram/normalizedToParsedConverter';
 export { extractSolanaAddresses } from './extractSolanaAddresses';
 
 // Address validation and extraction

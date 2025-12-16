@@ -40,7 +40,7 @@ vi.mock('@quantbot/storage', async () => {
   return mockStorage;
 });
 
-vi.mock('@quantbot/simulation', async () => {
+vi.mock('../src/candles', async () => {
   const { vi } = await import('vitest');
   const fetchHybridCandles = vi.fn();
   (globalThis as any).__ohlcvServiceCandlesMock__ = fetchHybridCandles;
@@ -56,6 +56,12 @@ vi.mock('@quantbot/utils', () => ({
     warn: vi.fn(),
     error: vi.fn(),
   },
+  createPackageLogger: vi.fn(() => ({
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  })),
 }));
 
 describe('OHLCVService', () => {
@@ -280,7 +286,7 @@ describe('OHLCVService', () => {
     ];
 
     it('should use in-memory cache when available', async () => {
-      const { fetchHybridCandles } = await import('@quantbot/simulation');
+      const { fetchHybridCandles } = await import('../src/candles');
       vi.mocked(fetchHybridCandles).mockResolvedValue(mockCandles);
 
       // First call populates cache
@@ -309,7 +315,7 @@ describe('OHLCVService', () => {
     });
 
     it('should fall back to API when cache miss', async () => {
-      const { fetchHybridCandles } = await import('@quantbot/simulation');
+      const { fetchHybridCandles } = await import('../src/candles');
       vi.mocked(fetchHybridCandles).mockResolvedValue(mockCandles);
 
       const result = await service.getCandles(FULL_MINT, 'solana', startTime, endTime, {
@@ -327,7 +333,7 @@ describe('OHLCVService', () => {
     });
 
     it('should bypass cache when forceRefresh is true', async () => {
-      const { fetchHybridCandles } = await import('@quantbot/simulation');
+      const { fetchHybridCandles } = await import('../src/candles');
       vi.mocked(fetchHybridCandles).mockResolvedValue(mockCandles);
       mockStorageEngine.getCandles.mockClear();
 
@@ -338,7 +344,7 @@ describe('OHLCVService', () => {
     });
 
     it('should ingest candles after fetching from API', async () => {
-      const { fetchHybridCandles } = await import('@quantbot/simulation');
+      const { fetchHybridCandles } = await import('../src/candles');
       vi.mocked(fetchHybridCandles).mockResolvedValue(mockCandles);
 
       await service.getCandles(FULL_MINT, 'solana', startTime, endTime, { forceRefresh: true });

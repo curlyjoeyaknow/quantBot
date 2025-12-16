@@ -116,7 +116,7 @@ export class TelegramMessageStreamProcessor {
       if (!stream) return Promise.resolve();
 
       return new Promise<void>((resolve, reject) => {
-        stream.end((err) => {
+        stream.end((err: Error | null | undefined) => {
           if (err) {
             reject(err);
           } else {

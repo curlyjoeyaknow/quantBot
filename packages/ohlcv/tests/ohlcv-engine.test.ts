@@ -38,7 +38,7 @@ vi.mock('@quantbot/storage', async () => {
   return mockStorage;
 });
 
-vi.mock('@quantbot/simulation', async () => {
+vi.mock('../src/candles', async () => {
   const { vi } = await import('vitest');
   const fetchHybridCandles = vi.fn();
   (globalThis as any).__ohlcvEngineCandlesMock__ = fetchHybridCandles;

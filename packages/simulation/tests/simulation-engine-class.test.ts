@@ -129,7 +129,16 @@ describe('simulation-engine-class', () => {
     });
 
     it('should handle target failures gracefully', async () => {
-      const engine = new SimulationEngine();
+      const mockLogger = {
+        debug: vi.fn(),
+        info: vi.fn(),
+        warn: vi.fn(),
+        error: vi.fn(),
+      };
+
+      const engine = new SimulationEngine({
+        logger: mockLogger as any,
+      });
 
       const scenario: SimulationScenarioConfig = {
         name: 'test',
@@ -157,10 +166,20 @@ describe('simulation-engine-class', () => {
 
       expect(result.failures).toBe(1);
       expect(result.errors).toHaveLength(1);
+      expect(mockLogger.warn).toHaveBeenCalled();
     });
 
     it('should fail fast when configured', async () => {
-      const engine = new SimulationEngine();
+      const mockLogger = {
+        debug: vi.fn(),
+        info: vi.fn(),
+        warn: vi.fn(),
+        error: vi.fn(),
+      };
+
+      const engine = new SimulationEngine({
+        logger: mockLogger as any,
+      });
 
       const scenario: SimulationScenarioConfig = {
         name: 'test',
@@ -187,6 +206,8 @@ describe('simulation-engine-class', () => {
           runOptions: { failFast: true },
         })
       ).rejects.toThrow();
+
+      expect(mockLogger.warn).toHaveBeenCalled();
     });
 
     it('should merge scenario configs with overrides', async () => {

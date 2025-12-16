@@ -21,13 +21,18 @@ import type {
 } from '../types';
 import type { ExtendedSimulationResult } from '../types/results';
 import type { PeriodMetricsConfig } from '../config';
-// eslint-disable-next-line no-restricted-imports
-import { fetchHybridCandlesWithMetadata } from '@quantbot/ohlcv';
 import type { TokenMetadata } from '@quantbot/core';
 import { simulateStrategy, type SimulationOptions } from './simulator';
 import { getResultCache, type ResultCacheConfig } from '../storage/result-cache';
 import { getPerformanceMonitor } from '../performance/monitor';
 import { enrichSimulationResultWithPeriodMetrics } from '../period-metrics/period-metrics';
+import {
+  createProgress,
+  logOperationStart,
+  logStep,
+  logOperationComplete,
+  logError,
+} from '../utils/progress';
 
 /**
  * Simulation target
@@ -218,14 +223,43 @@ export class SimulationOrchestrator {
     const errors: SimulationRunError[] = [];
     const { scenario, targets } = request;
 
+    // Verbose start logging
+    logOperationStart(`Running scenario: ${scenario.name}`, {
+      targets: targets.length,
+      concurrency: runOptions.maxConcurrency || 4,
+    });
+
+    // Create progress indicator
+    const progress = createProgress({
+      total: targets.length,
+      label: `Simulating ${scenario.name}`,
+      showBar: true,
+      showPercentage: true,
+      showETA: true,
+    });
+
     // Process in batches with concurrency limit
     const concurrency = runOptions.maxConcurrency || 4;
+    const startTime = Date.now();
 
     for (let i = 0; i < targets.length; i += concurrency) {
       const batch = targets.slice(i, i + concurrency);
+      const batchNum = Math.floor(i / concurrency) + 1;
+      const totalBatches = Math.ceil(targets.length / concurrency);
 
-      const batchPromises = batch.map(async (target) => {
+      logStep(`Processing batch ${batchNum}/${totalBatches}`, {
+        targets: batch.length,
+        completed: results.length,
+        remaining: targets.length - results.length,
+      });
+
+      const batchPromises = batch.map(async (target, batchIdx) => {
         try {
+          logStep(`Simulating target ${i + batchIdx + 1}/${targets.length}`, {
+            mint: target.mint.substring(0, 20) + '...',
+            chain: target.chain,
+          });
+
           const perfMonitor = getPerformanceMonitor();
           const context = await perfMonitor.measure(
             'runSimulation',
@@ -236,9 +270,17 @@ export class SimulationOrchestrator {
           // Run sinks
           await Promise.all(this.sinks.map((sink) => sink.handle(context)));
 
+          progress.update(1);
+
           return { success: true, context };
         } catch (error) {
           const err = error instanceof Error ? error : new Error(String(error));
+          logError(`Simulation target ${i + batchIdx + 1}`, err, {
+            scenario: scenario.name,
+            mint: target.mint.substring(0, 20) + '...',
+            chain: target.chain,
+          });
+
           this.logger.warn('Simulation target failed', {
             scenario: scenario.name,
             mint: target.mint,
@@ -249,6 +291,8 @@ export class SimulationOrchestrator {
           if (runOptions.failFast) {
             throw error;
           }
+
+          progress.update(1);
 
           return { success: false, error: { target, error: err } };
         }
@@ -264,7 +308,7 @@ export class SimulationOrchestrator {
         }
       }
 
-      // Progress logging
+      // Progress logging (legacy support)
       if (runOptions.progressInterval > 0 && results.length % runOptions.progressInterval === 0) {
         this.logger.info('Simulation progress', {
           scenario: scenario.name,
@@ -274,9 +318,14 @@ export class SimulationOrchestrator {
       }
     }
 
+    progress.complete(`Completed ${results.length} simulations`);
+
     // Log performance summary if enabled
     const perfMonitor = getPerformanceMonitor();
     perfMonitor.logSummary();
+
+    const duration = Date.now() - startTime;
+    logOperationComplete(`Scenario: ${scenario.name}`, duration);
 
     return {
       scenarioId: scenario.id,
@@ -310,44 +359,51 @@ export class SimulationOrchestrator {
     scenario: ScenarioConfig,
     target: SimulationTarget
   ): Promise<SimulationRunContext> {
-    // Fetch candles from OHLCV package (external to simulation)
-    const fetchResult = await fetchHybridCandlesWithMetadata(
-      target.mint,
-      target.startTime,
-      target.endTime,
-      target.chain,
-      target.alertTime ?? target.startTime
+    // This orchestrator is deprecated and has been moved to @quantbot/workflows.
+    // It should not fetch candles directly. Candles should be provided via dependency injection.
+    throw new Error(
+      'SimulationOrchestrator has been moved to @quantbot/workflows. ' +
+        'Import from @quantbot/workflows/simulation/orchestrator instead. ' +
+        'The new orchestrator accepts candles via dependency injection to maintain architectural boundaries.'
     );
 
-    const candles = fetchResult.candles;
-    const metadata: TokenMetadata | undefined = fetchResult.metadata ?? undefined;
+    // Unreachable code - kept for type checking
+    // This code is unreachable but kept for reference
+    // @ts-expect-error - Unreachable code after throw
+    const candles: Candle[] = [];
+    // @ts-expect-error - Unreachable code after throw
+    const metadata: TokenMetadata | undefined = undefined;
 
+    // @ts-expect-error - Unreachable code after throw
     if (!candles.length) {
       throw new Error('No candle data available for target');
     }
 
-    // Check cache first
+    // @ts-expect-error - Unreachable code after throw
     const cacheKey = this.resultCache.generateCacheKey(
       scenario,
       target.mint,
-      candles[0].timestamp,
-      candles[candles.length - 1].timestamp,
+      candles[0]!.timestamp,
+      candles[candles.length - 1]!.timestamp,
       candles.length
     );
 
-    let result = this.resultCache.get(cacheKey);
+    // @ts-expect-error - Unreachable code after throw
+    let result: SimulationResult | null = this.resultCache.get(cacheKey);
+    // @ts-expect-error - Unreachable code after throw
     if (result) {
       this.logger.debug('Using cached simulation result', {
         mint: target.mint.substring(0, 20) + '...',
         chain: target.chain,
       });
     } else {
-      // Run simulation
+      // @ts-expect-error - Unreachable code after throw
       const options: SimulationOptions = {
         entrySignal: scenario.entrySignal,
         exitSignal: scenario.exitSignal,
       };
 
+      // @ts-expect-error - Unreachable code after throw
       result = await simulateStrategy(
         candles,
         scenario.strategy,
@@ -358,15 +414,24 @@ export class SimulationOrchestrator {
         options
       );
 
-      // Cache result
-      this.resultCache.set(cacheKey, result);
+      // @ts-expect-error - Unreachable code after throw
+      if (result) {
+        this.resultCache.set(cacheKey, result as SimulationResult);
+      }
     }
 
-    // Calculate period metrics if enabled
+    // @ts-expect-error - Unreachable code after throw
+    if (!result) {
+      throw new Error('Simulation failed');
+    }
+
+    // @ts-expect-error - Unreachable code after throw
     let extendedResult: SimulationResult | ExtendedSimulationResult = result;
+    // @ts-expect-error - Unreachable code after throw
     if (scenario.periodMetrics?.enabled) {
+      // @ts-expect-error - Unreachable code after throw
       const periodMetrics = enrichSimulationResultWithPeriodMetrics(
-        result,
+        result as SimulationResult,
         candles,
         scenario.periodMetrics
       );

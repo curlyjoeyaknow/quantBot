@@ -2,24 +2,40 @@
 
 /**
  * QuantBot CLI Entry Point
+ *
+ * Command modules register themselves in commandRegistry when imported (side effects).
+ * registerXCommands functions add Commander options and wire them to execute(),
+ * which uses handlers from the registry.
  */
 
 import { program } from 'commander';
-import { commandRegistry } from '../core/command-registry';
-import { ensureInitialized } from '../core/initialization-manager';
-import { handleError } from '../core/error-handler';
+import { ensureInitialized } from '../core/initialization-manager.js';
+import { handleError } from '../core/error-handler.js';
 import { logger } from '@quantbot/utils';
 
-// Import command modules
-import { registerObservabilityCommands } from '../commands/observability';
-import { registerStorageCommands } from '../commands/storage';
-import { registerOhlcvCommands } from '../commands/ohlcv';
-import { registerIngestionCommands } from '../commands/ingestion';
-import { registerSimulationCommands } from '../commands/simulation';
-import { registerInteractiveSimulationCommand } from '../commands/simulation-interactive';
-// import { registerMonitoringCommands } from '../commands/monitoring'; // Archived
-import { registerAnalyticsCommands } from '../commands/analytics';
-import { registerApiClientsCommands } from '../commands/api-clients';
+// Import command modules for side effects (they register themselves in commandRegistry)
+// These imports cause commandRegistry.registerPackage() to be called
+import '../commands/observability.js';
+import '../commands/storage.js';
+import '../commands/ohlcv.js';
+import '../commands/ingestion.js';
+import '../commands/simulation.js';
+import '../commands/simulation-interactive.js';
+// import '../commands/monitoring.js'; // Archived
+import '../commands/analytics.js';
+import '../commands/api-clients.js';
+import '../commands/telegram.js';
+
+// Import register functions to add Commander options
+import { registerObservabilityCommands } from '../commands/observability.js';
+import { registerStorageCommands } from '../commands/storage.js';
+import { registerOhlcvCommands } from '../commands/ohlcv.js';
+import { registerIngestionCommands } from '../commands/ingestion.js';
+import { registerSimulationCommands } from '../commands/simulation.js';
+import { registerInteractiveSimulationCommand } from '../commands/simulation-interactive.js';
+import { registerAnalyticsCommands } from '../commands/analytics.js';
+import { registerApiClientsCommands } from '../commands/api-clients.js';
+import { registerTelegramCommands } from '../commands/telegram.js';
 
 // Set up program
 program
@@ -28,15 +44,17 @@ program
   .version('1.0.0');
 
 // Register commands
+// These functions add Commander options and wire them to execute(),
+// which uses handlers from commandRegistry
 registerObservabilityCommands(program);
 registerStorageCommands(program);
 registerOhlcvCommands(program);
 registerIngestionCommands(program);
 registerSimulationCommands(program);
-registerInteractiveSimulationCommand(program); // 🎯 Interactive simulation
-// registerMonitoringCommands(program); // Archived
+registerInteractiveSimulationCommand(program);
 registerAnalyticsCommands(program);
 registerApiClientsCommands(program);
+registerTelegramCommands(program);
 
 // Global error handler
 program.configureOutput({
@@ -60,12 +78,10 @@ async function main() {
   }
 }
 
-// Run if executed directly
-if (require.main === module) {
-  main().catch((error) => {
-    logger.error('Unhandled error in CLI', error as Error);
-    process.exit(1);
-  });
-}
+// Always run main() for CLI entry point
+main().catch((error) => {
+  logger.error('Unhandled error in CLI', error as Error);
+  process.exit(1);
+});
 
 export { program };

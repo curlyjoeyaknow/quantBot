@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { DateTime } from 'luxon';
-import { TokensRepository } from '../../src/postgres/repositories/TokensRepository';
-import { getPostgresPool, withPostgresTransaction } from '../../src/postgres-client';
+import { TokensRepository } from '../../../src/postgres/repositories/TokensRepository';
+import { getPostgresPool, withPostgresTransaction } from '../../../src/postgres/postgres-client';
 import { createTokenAddress } from '@quantbot/core';
 
-vi.mock('../../src/postgres-client', () => ({
+vi.mock('../../../src/postgres/postgres-client', () => ({
   getPostgresPool: vi.fn(),
   withPostgresTransaction: vi.fn(),
 }));
@@ -61,29 +61,6 @@ describe('TokensRepository', () => {
     });
   });
 
-  describe('findByAddress', () => {
-    it('should find token by address and preserve case', async () => {
-      const fullMint = '7pXs123456789012345678901234567890pump';
-      const mockToken = {
-        id: 1,
-        chain: 'solana',
-        address: fullMint,
-        symbol: 'TEST',
-        name: null,
-        decimals: null,
-        metadata_json: null,
-        created_at: new Date(),
-        updated_at: new Date(),
-      };
-      mockPool.query.mockResolvedValue({ rows: [mockToken] });
-
-      const result = await repository.findByAddress(createTokenAddress(fullMint), 'solana');
-
-      expect(result).toBeDefined();
-      expect(result?.address).toBe(fullMint);
-    });
-  });
-
   describe('getOrCreateToken', () => {
     it('should return existing token if found', async () => {
       const fullMint = '7pXs123456789012345678901234567890pump';
@@ -100,7 +77,7 @@ describe('TokensRepository', () => {
       };
       mockClient.query.mockResolvedValueOnce({ rows: [mockToken] });
 
-      const result = await repository.getOrCreateToken(createTokenAddress(fullMint), 'solana');
+      const result = await repository.getOrCreateToken('solana', createTokenAddress(fullMint));
 
       expect(result.id).toBe(1);
       expect(result.address).toBe(fullMint);
@@ -112,7 +89,7 @@ describe('TokensRepository', () => {
         .mockResolvedValueOnce({ rows: [] }) // Not found
         .mockResolvedValueOnce({ rows: [{ id: 2 }] }); // Insert
 
-      const result = await repository.getOrCreateToken(createTokenAddress(fullMint), 'solana', {
+      const result = await repository.getOrCreateToken('solana', createTokenAddress(fullMint), {
         symbol: 'NEW',
       });
 

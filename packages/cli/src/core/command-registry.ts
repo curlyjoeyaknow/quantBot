@@ -3,7 +3,7 @@
  */
 
 import type { Command } from 'commander';
-import type { CommandDefinition, PackageCommandModule } from '../types';
+import type { CommandDefinition, PackageCommandModule } from '../types/index.js';
 
 /**
  * Command registry for managing CLI commands

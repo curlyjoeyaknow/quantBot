@@ -4,18 +4,15 @@
 
 import type { Command } from 'commander';
 import { z } from 'zod';
-import { DateTime } from 'luxon';
-import { AnalyticsEngine, getAnalyticsEngine } from '@quantbot/analytics';
-import { parseArguments } from '../core/argument-parser';
-import { formatOutput } from '../core/output-formatter';
-import { handleError } from '../core/error-handler';
-import type { PackageCommandModule } from '../types';
-import { commandRegistry } from '../core/command-registry';
+import type { PackageCommandModule } from '../types/index.js';
+import { commandRegistry } from '../core/command-registry.js';
+import type { CommandContext } from '../core/command-context.js';
+import { analyzeAnalyticsHandler } from '../handlers/analytics/analyze-analytics.js';
 
 /**
  * Analyze command schema
  */
-const analyzeSchema = z.object({
+export const analyzeSchema = z.object({
   caller: z.string().optional(),
   from: z.string().optional(),
   to: z.string().optional(),
@@ -59,23 +56,12 @@ export function registerAnalyticsCommands(program: Command): void {
     .option('--to <date>', 'End date (ISO 8601)')
     .option('--format <format>', 'Output format', 'table')
     .action(async (options) => {
-      try {
-        const args = parseArguments(analyzeSchema, options);
-
-        const engine = getAnalyticsEngine();
-        const result = await engine.analyzeCalls({
-          callerNames: args.caller ? [args.caller] : undefined,
-          from: args.from ? DateTime.fromISO(args.from).toJSDate() : undefined,
-          to: args.to ? DateTime.fromISO(args.to).toJSDate() : undefined,
-        });
-
-        const output = formatOutput(result, args.format);
-        console.log(output);
-      } catch (error) {
-        const message = handleError(error);
-        console.error(`Error: ${message}`);
-        process.exit(1);
+      const { execute } = await import('../core/execute.js');
+      const commandDef = commandRegistry.getCommand('analytics', 'analyze');
+      if (!commandDef) {
+        throw new Error('Command analytics analyze not found in registry');
       }
+      await execute(commandDef, options);
     });
 
   // Metrics command
@@ -87,18 +73,12 @@ export function registerAnalyticsCommands(program: Command): void {
     .option('--to <date>', 'End date (ISO 8601)')
     .option('--format <format>', 'Output format', 'table')
     .action(async (options) => {
-      try {
-        const args = parseArguments(metricsSchema, options);
-        const result = {
-          message: 'Metrics calculation - implementation in progress',
-        };
-        const output = formatOutput(result, args.format);
-        console.log(output);
-      } catch (error) {
-        const message = handleError(error);
-        console.error(`Error: ${message}`);
-        process.exit(1);
+      const { execute } = await import('../core/execute.js');
+      const commandDef = commandRegistry.getCommand('analytics', 'metrics');
+      if (!commandDef) {
+        throw new Error('Command analytics metrics not found in registry');
       }
+      await execute(commandDef, options);
     });
 
   // Report command
@@ -110,18 +90,12 @@ export function registerAnalyticsCommands(program: Command): void {
     .option('--to <date>', 'End date (ISO 8601)')
     .option('--format <format>', 'Output format', 'table')
     .action(async (options) => {
-      try {
-        const args = parseArguments(reportSchema, options);
-        const result = {
-          message: 'Report generation - implementation in progress',
-        };
-        const output = formatOutput(result, args.format);
-        console.log(output);
-      } catch (error) {
-        const message = handleError(error);
-        console.error(`Error: ${message}`);
-        process.exit(1);
+      const { execute } = await import('../core/execute.js');
+      const commandDef = commandRegistry.getCommand('analytics', 'report');
+      if (!commandDef) {
+        throw new Error('Command analytics report not found in registry');
       }
+      await execute(commandDef, options);
     });
 }
 
@@ -136,14 +110,9 @@ const analyticsModule: PackageCommandModule = {
       name: 'analyze',
       description: 'Analyze calls with metrics',
       schema: analyzeSchema,
-      handler: async (args: unknown) => {
+      handler: async (args: unknown, ctx: CommandContext) => {
         const typedArgs = args as z.infer<typeof analyzeSchema>;
-        const engine = getAnalyticsEngine();
-        return await engine.analyzeCalls({
-          callerNames: typedArgs.caller ? [typedArgs.caller] : undefined,
-          from: typedArgs.from ? DateTime.fromISO(typedArgs.from).toJSDate() : undefined,
-          to: typedArgs.to ? DateTime.fromISO(typedArgs.to).toJSDate() : undefined,
-        });
+        return await analyzeAnalyticsHandler(typedArgs, ctx);
       },
       examples: ['quantbot analytics analyze --caller Brook --from 2024-01-01 --to 2024-02-01'],
     },

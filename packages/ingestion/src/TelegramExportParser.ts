@@ -46,8 +46,9 @@ export function parseExport(filePath: string): ParsedMessage[] {
     // Extract sender name
     const from = $msg.find('.from_name').text().trim();
 
-    // Extract message text
-    const text = $msg.find('.text').text().trim();
+    // Extract message text (preserve HTML for bot message extraction)
+    const textElement = $msg.find('.text');
+    const text = textElement.html() || textElement.text().trim();
 
     if (!text) {
       return; // Skip empty messages

@@ -10,6 +10,7 @@
 import { DateTime } from 'luxon';
 import { logger } from '@quantbot/utils';
 import type { Candle, CandleInterval } from '../types';
+import { logStep, logOperationStart, logOperationComplete } from '../utils/progress';
 import type { 
   CandleProvider, 
   CandleFetchRequest, 
@@ -139,25 +140,41 @@ export class HybridCandleProvider implements CandleProvider {
     }
     
     // Fetch from API
-    logger.debug(`Fetching fresh candles for ${request.mint.substring(0, 20)}...`);
+    const mintShort = request.mint.substring(0, 20) + '...';
+    logStep(`Fetching candles from API`, {
+      mint: mintShort,
+      interval: '5m',
+      startTime: actualStartTime.toISO(),
+      endTime: request.endTime.toISO(),
+    });
     
+    const fetchStart = Date.now();
     const apiResult = await this.apiProvider.fetchCandles({
       ...request,
       startTime: actualStartTime,
       interval: '5m',
     });
+    const fetchDuration = Date.now() - fetchStart;
+    
+    logStep(`Fetched ${apiResult.candles.length} candles`, {
+      duration: `${(fetchDuration / 1000).toFixed(2)}s`,
+      source: 'api',
+    });
     
     if (apiResult.candles.length > 0) {
       // Store in all storage providers
+      logStep('Storing candles in cache');
       await this.storeInProviders(request.mint, chain, apiResult.candles, '5m');
       
       // Fetch and merge 1m candles if alertTime is provided
       if (request.alertTime && this.options.fetchOneMinuteCandles) {
+        logStep('Fetching 1m candles for high-resolution data');
         apiResult.candles = await this.mergeWithOneMinuteCandles(
           apiResult.candles,
           request,
           chain
         );
+        logStep(`Merged to ${apiResult.candles.length} total candles`);
       }
     }
     

@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { DateTime } from 'luxon';
-import { SimulationRunsRepository } from '../../src/postgres/repositories/SimulationRunsRepository';
-import { getPostgresPool } from '../../src/postgres-client';
+import { SimulationRunsRepository } from '../../../src/postgres/repositories/SimulationRunsRepository';
+import { getPostgresPool } from '../../../src/postgres/postgres-client';
 
-vi.mock('../../src/postgres-client', () => ({
+vi.mock('../../../src/postgres/postgres-client', () => ({
   getPostgresPool: vi.fn(),
 }));
 
@@ -56,7 +56,7 @@ describe('SimulationRunsRepository', () => {
     });
   });
 
-  describe('findById', () => {
+  describe('getRunById', () => {
     it('should find simulation run by ID', async () => {
       const mockRun = {
         id: 1,
@@ -66,8 +66,8 @@ describe('SimulationRunsRepository', () => {
         run_type: 'backtest',
         engine_version: '1.0.0',
         config_hash: 'abc123',
-        config_json: {},
-        data_selection_json: {},
+        config_json: '{}',
+        data_selection_json: '{}',
         status: 'completed',
         started_at: new Date(),
         completed_at: new Date(),
@@ -76,7 +76,7 @@ describe('SimulationRunsRepository', () => {
       };
       mockPool.query.mockResolvedValue({ rows: [mockRun] });
 
-      const result = await repository.findById(1);
+      const result = await repository.getRunById(1);
 
       expect(result).toBeDefined();
       expect(result?.id).toBe(1);
@@ -86,17 +86,17 @@ describe('SimulationRunsRepository', () => {
     it('should return null if run not found', async () => {
       mockPool.query.mockResolvedValue({ rows: [] });
 
-      const result = await repository.findById(999);
+      const result = await repository.getRunById(999);
 
       expect(result).toBeNull();
     });
   });
 
-  describe('updateStatus', () => {
+  describe('updateRunStatus', () => {
     it('should update run status', async () => {
       mockPool.query.mockResolvedValue({ rows: [] });
 
-      await repository.updateStatus(1, 'running');
+      await repository.updateRunStatus(1, 'running');
 
       expect(mockPool.query).toHaveBeenCalled();
       const query = mockPool.query.mock.calls[0][0];

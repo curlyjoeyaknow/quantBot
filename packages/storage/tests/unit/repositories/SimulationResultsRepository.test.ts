@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { SimulationResultsRepository } from '../../src/postgres/repositories/SimulationResultsRepository';
-import { getPostgresPool } from '../../src/postgres-client';
+import { SimulationResultsRepository } from '../../../src/postgres/repositories/SimulationResultsRepository';
+import { getPostgresPool } from '../../../src/postgres/postgres-client';
 
-vi.mock('../../src/postgres-client', () => ({
+vi.mock('../../../src/postgres/postgres-client', () => ({
   getPostgresPool: vi.fn(),
 }));
 

@@ -241,7 +241,8 @@ async function validateContractAddress(address: string, chain: Chain): Promise<b
     // If we get null, it might not exist or might not be a token
     return metadata !== null;
   } catch (error) {
-    logger.warn('Failed to validate contract address', error as Error, {
+    logger.warn('Failed to validate contract address', {
+      error: error instanceof Error ? error.message : String(error),
       address: address.substring(0, 20),
       chain,
     });

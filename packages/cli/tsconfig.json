@@ -8,7 +8,9 @@
     "composite": true,
     "baseUrl": ".",
     "skipLibCheck": true,
-    "jsx": "react",
+    "jsx": "react-jsx",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
     "paths": {
       "@quantbot/utils": ["../utils/dist/index.d.ts"],
       "@quantbot/utils/*": ["../utils/dist/*"],

@@ -1,0 +1,347 @@
+---
+description: CLI handlers and commands - pure use-case functions, separation of concerns, testability
+globs:
+  - "packages/cli/src/handlers/**/*.ts"
+  - "packages/cli/src/commands/**/*.ts"
+  - "packages/cli/src/core/execute.ts"
+  - "packages/cli/src/core/command-context.ts"
+alwaysApply: true
+---
+
+# CLI Handlers and Commands - MANDATORY RULES
+
+## Core Principle: Separation of Concerns
+
+**Handlers are pure use-case functions. Commands are metadata. Executor handles side effects.**
+
+This pattern makes handlers testable, repeatable, and decoupled from CLI infrastructure.
+
+## The Three Layers
+
+### 1. Handler (Pure Use-Case Function)
+
+**Location**: `packages/cli/src/handlers/{package}/{command-name}.ts`
+
+**Rules**:
+
+- ✅ Takes validated args (already Zod-checked) + CommandContext
+- ✅ Returns data (not formatted output)
+- ✅ No Commander.js
+- ✅ No console.log / console.error
+- ✅ No process.exit
+- ✅ No environment variable reads
+- ✅ No try/catch (let errors bubble up)
+- ✅ No output formatting
+- ✅ Pure orchestration: get service from context, call service method, return result
+
+**Handler should feel underwhelming** - if it's complex, move logic to domain services.
+
+**Example**:
+
+```typescript
+import type { z } from 'zod';
+import type { CommandContext } from '../../core/command-context.js';
+import { ohlcvSchema } from '../../commands/ingestion.js';
+
+export type IngestOhlcvArgs = z.infer<typeof ohlcvSchema>;
+
+export async function ingestOhlcvHandler(
+  args: IngestOhlcvArgs,
+  ctx: CommandContext
+) {
+  const service = ctx.services.ohlcvIngestion();
+  return service.ingestForCalls({
+    from: args.from ? new Date(args.from) : undefined,
+    to: args.to ? new Date(args.to) : undefined,
+    preWindowMinutes: args.preWindow,
+    postWindowMinutes: args.postWindow,
+  });
+}
+```
+
+**Forbidden in handlers**:
+
+```typescript
+// ❌ NO - Commander
+import { program } from 'commander';
+
+// ❌ NO - Console output
+console.log('Processing...');
+console.error('Error!');
+
+// ❌ NO - Process exit
+process.exit(1);
+
+// ❌ NO - Error handling (let it bubble)
+try {
+  // ...
+} catch (error) {
+  // ...
+}
+
+// ❌ NO - Output formatting
+const output = formatOutput(result, 'table');
+return output;
+
+// ❌ NO - Direct service instantiation
+const service = new SomeService(new Repo1(), new Repo2());
+
+// ❌ NO - Environment reads
+const apiKey = process.env.API_KEY;
+```
+
+### 2. Command File (Metadata Only)
+
+**Location**: `packages/cli/src/commands/{package}.ts`
+
+**Rules**:
+
+- ✅ Defines Zod schema
+- ✅ Defines command description
+- ✅ Defines examples
+- ✅ Points to handler function
+- ✅ Registers in commandRegistry
+- ✅ Adds Commander options (for CLI)
+- ✅ Wires Commander action to `execute()`
+
+**Command file is metadata, not execution.**
+
+**Example**:
+
+```typescript
+export const ohlcvSchema = z.object({
+  from: z.string().optional(),
+  to: z.string().optional(),
+  preWindow: z.number().int().positive().default(260),
+  postWindow: z.number().int().positive().default(1440),
+  interval: z.enum(['1m', '5m', '15m', '1h']).default('5m'),
+  format: z.enum(['json', 'table', 'csv']).default('table'),
+});
+
+// In registerXCommands function:
+ingestionCmd
+  .command('ohlcv')
+  .description('Fetch OHLCV data for calls')
+  .option('--from <date>', 'Start date (ISO 8601)')
+  .option('--to <date>', 'End date (ISO 8601)')
+  .option('--pre-window <minutes>', 'Pre-window minutes', '260')
+  .option('--post-window <minutes>', 'Post-window minutes', '1440')
+  .option('--format <format>', 'Output format', 'table')
+  .action(async (options) => {
+    const { execute } = await import('../core/execute.js');
+    const commandDef = commandRegistry.getCommand('ingestion', 'ohlcv');
+    if (!commandDef) {
+      throw new Error('Command not found in registry');
+    }
+    await execute(commandDef, options);
+  });
+
+// In PackageCommandModule:
+const ingestionModule: PackageCommandModule = {
+  packageName: 'ingestion',
+  description: 'Data ingestion operations',
+  commands: [
+    {
+      name: 'ohlcv',
+      description: 'Fetch OHLCV data for calls',
+      schema: ohlcvSchema,
+      handler: async (args: unknown, ctx: CommandContext) => {
+        const typedArgs = args as z.infer<typeof ohlcvSchema>;
+        return await ingestOhlcvHandler(typedArgs, ctx);
+      },
+      examples: ['quantbot ingestion ohlcv --from 2024-01-01 --to 2024-02-01'],
+    },
+  ],
+};
+```
+
+**Forbidden in command files**:
+
+```typescript
+// ❌ NO - Business logic
+const service = new SomeService(new Repo1(), new Repo2());
+const result = await service.doSomething();
+
+// ❌ NO - Output formatting
+const output = formatOutput(result, args.format);
+console.log(output);
+
+// ❌ NO - Error handling with process.exit
+try {
+  // ...
+} catch (error) {
+  console.error(`Error: ${message}`);
+  process.exit(1);
+}
+
+// ❌ NO - Direct service instantiation
+new CallsRepository();
+new TokensRepository();
+```
+
+### 3. Executor (All Side Effects)
+
+**Location**: `packages/cli/src/core/execute.ts`
+
+**Rules**:
+
+- ✅ Normalizes options
+- ✅ Parses/validates arguments (Zod)
+- ✅ Creates CommandContext
+- ✅ Ensures storage initialization
+- ✅ Calls handler
+- ✅ Formats output
+- ✅ Handles errors
+- ✅ Calls process.exit on error
+
+**Executor centralizes all CLI glue.**
+
+## CommandContext (Service Factory)
+
+**Location**: `packages/cli/src/core/command-context.ts`
+
+**Rules**:
+
+- ✅ Lazy service creation
+- ✅ Handles storage initialization
+- ✅ Provides services via `ctx.services.serviceName()`
+- ✅ No business logic
+
+**Services are created lazily, not in command files.**
+
+## Testing Requirements
+
+### Handler Tests (Mandatory)
+
+**Location**: `packages/cli/tests/unit/handlers/{package}/{command-name}.test.ts`
+
+**Required tests**:
+
+1. ✅ Calls service with correct parameters
+2. ✅ Handles optional parameters (undefined)
+3. ✅ Propagates errors (no try/catch in handler)
+4. ✅ Parameter conversion (e.g., string dates → Date objects)
+5. ✅ Isolation test - can be called with plain objects (REPL-friendly)
+
+**Test pattern**:
+
+```typescript
+import { describe, it, expect, vi } from 'vitest';
+import { ingestOhlcvHandler } from '../../../../src/handlers/ingestion/ingest-ohlcv.js';
+
+describe('ingestOhlcvHandler', () => {
+  it('calls service with converted dates', async () => {
+    const ingestForCalls = vi.fn().mockResolvedValue({ /* ... */ });
+    const fakeCtx = {
+      services: {
+        ohlcvIngestion: () => ({ ingestForCalls }),
+      },
+    } as any;
+
+    const result = await ingestOhlcvHandler(args, fakeCtx);
+    // Assertions...
+  });
+});
+```
+
+### Litmus Test
+
+**Handler must pass this test**:
+
+- Can be imported into a REPL
+- Can be called with plain objects (no CLI infrastructure)
+- Returns deterministic results
+
+If handler fails this test, it's still coupled to CLI infrastructure.
+
+## Migration Checklist
+
+When refactoring an existing command:
+
+1. ✅ Create handler file in `packages/cli/src/handlers/{package}/{command-name}.ts`
+2. ✅ Move business logic to handler (remove from command file)
+3. ✅ Remove service instantiation from command file
+4. ✅ Remove formatting from command file
+5. ✅ Remove try/catch + process.exit from command file
+6. ✅ Wire command action to `execute()`
+7. ✅ Update registry entry to use handler
+8. ✅ Write unit tests for handler
+9. ✅ Write isolation test (litmus test)
+10. ✅ Verify handler can be called directly (no CLI)
+
+## Code Review Checklist
+
+When reviewing handler/command code:
+
+- [ ] Handler has no console.log/error
+- [ ] Handler has no process.exit
+- [ ] Handler has no try/catch
+- [ ] Handler has no output formatting
+- [ ] Handler has no direct service instantiation
+- [ ] Command file has no business logic
+- [ ] Command file uses `execute()` in action
+- [ ] Handler has unit tests
+- [ ] Handler has isolation test
+- [ ] Handler can be called with plain objects
+
+## Anti-Patterns (Never Do This)
+
+### ❌ Handler with CLI concerns
+
+```typescript
+export async function badHandler(args, ctx) {
+  console.log('Starting...'); // ❌ NO
+  try {
+    const result = await service.doSomething();
+    console.log(formatOutput(result, 'table')); // ❌ NO
+    return result;
+  } catch (error) {
+    console.error('Error:', error); // ❌ NO
+    process.exit(1); // ❌ NO
+  }
+}
+```
+
+### ❌ Command file with business logic
+
+```typescript
+.action(async (options) => {
+  const service = new SomeService( // ❌ NO - instantiate in context
+    new Repo1(),
+    new Repo2()
+  );
+  const result = await service.doSomething(); // ❌ NO - move to handler
+  console.log(formatOutput(result, options.format)); // ❌ NO - executor does this
+});
+```
+
+### ❌ Handler with direct dependencies
+
+```typescript
+export async function badHandler(args, ctx) {
+  const repo = new CallsRepository(); // ❌ NO - use context
+  const service = new SomeService(repo); // ❌ NO - use context
+  // ...
+}
+```
+
+## Why This Pattern?
+
+1. **Testability**: Handlers can be tested without CLI infrastructure
+2. **Repeatability**: Handlers can be called from scripts, REPL, or other contexts
+3. **Separation of Concerns**: CLI glue is separate from business logic
+4. **Maintainability**: Changes to CLI don't affect business logic
+5. **Reusability**: Handlers can be used programmatically
+
+## Enforcement
+
+**This pattern is MANDATORY for all new commands.**
+
+When creating a new command:
+
+1. Start with handler (pure function)
+2. Add command metadata (schema, description, examples)
+3. Wire to executor
+4. Write tests
+
+**Do not skip steps. Do not mix concerns.**

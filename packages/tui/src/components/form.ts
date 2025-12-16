@@ -2,6 +2,7 @@
  * Form Component - Input forms with validation
  */
 
+// @ts-expect-error - prompts doesn't have TypeScript declarations
 import prompts from 'prompts';
 
 /**
