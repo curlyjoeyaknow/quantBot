@@ -6,14 +6,13 @@
  */
 
 import { DateTime } from 'luxon';
-import type { z } from 'zod';
 import type { CommandContext } from '../../core/command-context.js';
-import { analyzeSchema } from '../../commands/analytics.js';
+import { analyzeSchema, type AnalyzeArgs } from '../../command-defs/analytics.js';
 
 /**
  * Input arguments (already validated by Zod)
  */
-export type AnalyzeAnalyticsArgs = z.infer<typeof analyzeSchema>;
+export type AnalyzeAnalyticsArgs = AnalyzeArgs;
 
 /**
  * Handler function: pure use-case orchestration

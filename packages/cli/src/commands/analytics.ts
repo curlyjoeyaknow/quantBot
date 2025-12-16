@@ -8,36 +8,7 @@ import type { PackageCommandModule } from '../types/index.js';
 import { commandRegistry } from '../core/command-registry.js';
 import type { CommandContext } from '../core/command-context.js';
 import { analyzeAnalyticsHandler } from '../handlers/analytics/analyze-analytics.js';
-
-/**
- * Analyze command schema
- */
-export const analyzeSchema = z.object({
-  caller: z.string().optional(),
-  from: z.string().optional(),
-  to: z.string().optional(),
-  format: z.enum(['json', 'table', 'csv']).default('table'),
-});
-
-/**
- * Metrics command schema
- */
-const metricsSchema = z.object({
-  caller: z.string().optional(),
-  from: z.string().optional(),
-  to: z.string().optional(),
-  format: z.enum(['json', 'table', 'csv']).default('table'),
-});
-
-/**
- * Report command schema
- */
-const reportSchema = z.object({
-  caller: z.string().optional(),
-  from: z.string().optional(),
-  to: z.string().optional(),
-  format: z.enum(['json', 'table', 'csv']).default('table'),
-});
+import { analyzeSchema, metricsSchema, reportSchema } from '../command-defs/analytics.js';
 
 /**
  * Register analytics commands
