@@ -6,11 +6,11 @@ import type { Command } from 'commander';
 import { z } from 'zod';
 import { performHealthCheck } from '@quantbot/observability';
 import { checkApiQuotas } from '@quantbot/observability';
-import { commandRegistry } from '../core/command-registry';
-import { parseArguments } from '../core/argument-parser';
-import { formatOutput } from '../core/output-formatter';
-import { handleError } from '../core/error-handler';
-import type { PackageCommandModule } from '../types';
+import { commandRegistry } from '../core/command-registry.js';
+import { parseArguments } from '../core/argument-parser.js';
+import { formatOutput } from '../core/output-formatter.js';
+import { handleError } from '../core/error-handler.js';
+import type { PackageCommandModule } from '../types/index.js';
 
 /**
  * Health command schema

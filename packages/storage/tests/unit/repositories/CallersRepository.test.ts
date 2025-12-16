@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { DateTime } from 'luxon';
-import { CallersRepository } from '../../src/postgres/repositories/CallersRepository';
-import { getPostgresPool, withPostgresTransaction } from '../../src/postgres-client';
+import { CallersRepository } from '../../../src/postgres/repositories/CallersRepository';
+import { getPostgresPool, withPostgresTransaction } from '../../../src/postgres/postgres-client';
 
-vi.mock('../../src/postgres-client', () => ({
+vi.mock('../../../src/postgres/postgres-client', () => ({
   getPostgresPool: vi.fn(),
   withPostgresTransaction: vi.fn(),
 }));
@@ -100,7 +100,7 @@ describe('CallersRepository', () => {
     });
   });
 
-  describe('findBySourceAndHandle', () => {
+  describe('findByName', () => {
     it('should find caller by source and handle', async () => {
       const mockCaller = {
         id: 1,
@@ -116,7 +116,7 @@ describe('CallersRepository', () => {
       };
       vi.mocked(getPostgresPool).mockReturnValue(pool as any);
 
-      const result = await repository.findBySourceAndHandle('telegram', 'test');
+      const result = await repository.findByName('telegram', 'test');
 
       expect(result).toBeDefined();
       expect(result?.source).toBe('telegram');

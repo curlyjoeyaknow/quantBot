@@ -26,11 +26,11 @@ export interface CommandDefinition {
   /**
    * Command handler function
    * Note: Handlers can be typed more specifically, but the interface accepts unknown for flexibility.
-   * The handler will receive validated args matching the schema.
+   * The handler will receive validated args matching the schema and a command context.
    */
   handler:
-    | ((args: unknown) => Promise<unknown> | unknown)
-    | ((args: any) => Promise<unknown> | unknown);
+    | ((args: unknown, ctx: unknown) => Promise<unknown> | unknown)
+    | ((args: any, ctx: any) => Promise<unknown> | unknown);
 
   /**
    * Optional examples for help text

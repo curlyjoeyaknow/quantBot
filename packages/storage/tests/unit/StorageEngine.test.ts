@@ -14,7 +14,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { DateTime } from 'luxon';
-import { StorageEngine } from '../src/engine/StorageEngine';
+import { StorageEngine } from '../../src/engine/StorageEngine';
 import type {
   Candle,
   Call,
@@ -22,7 +22,7 @@ import type {
   SimulationResult,
   SimulationEvent,
 } from '@quantbot/core';
-import type { IndicatorValue } from '../src/engine/StorageEngine';
+import type { IndicatorValue } from '../../src/engine/StorageEngine';
 
 // Mock all repositories
 const mockOhlcvRepoInstance = {
@@ -62,7 +62,7 @@ const mockSimulationResultsRepoInstance = {
   upsertSummary: vi.fn().mockResolvedValue(undefined),
 };
 
-vi.mock('../src/clickhouse/repositories/OhlcvRepository', () => ({
+vi.mock('../../src/clickhouse/repositories/OhlcvRepository', () => ({
   OhlcvRepository: class {
     constructor() {
       return mockOhlcvRepoInstance;
@@ -70,7 +70,7 @@ vi.mock('../src/clickhouse/repositories/OhlcvRepository', () => ({
   },
 }));
 
-vi.mock('../src/clickhouse/repositories/IndicatorsRepository', () => ({
+vi.mock('../../src/clickhouse/repositories/IndicatorsRepository', () => ({
   IndicatorsRepository: class {
     constructor() {
       return mockIndicatorsRepoInstance;
@@ -78,7 +78,7 @@ vi.mock('../src/clickhouse/repositories/IndicatorsRepository', () => ({
   },
 }));
 
-vi.mock('../src/clickhouse/repositories/SimulationEventsRepository', () => ({
+vi.mock('../../src/clickhouse/repositories/SimulationEventsRepository', () => ({
   SimulationEventsRepository: class {
     constructor() {
       return mockSimulationEventsRepoInstance;
@@ -86,7 +86,7 @@ vi.mock('../src/clickhouse/repositories/SimulationEventsRepository', () => ({
   },
 }));
 
-vi.mock('../src/clickhouse/repositories/TokenMetadataRepository', () => ({
+vi.mock('../../src/clickhouse/repositories/TokenMetadataRepository', () => ({
   TokenMetadataRepository: class {
     constructor() {
       return mockTokenMetadataRepoInstance;
@@ -94,7 +94,7 @@ vi.mock('../src/clickhouse/repositories/TokenMetadataRepository', () => ({
   },
 }));
 
-vi.mock('../src/postgres/repositories/CallsRepository', () => ({
+vi.mock('../../src/postgres/repositories/CallsRepository', () => ({
   CallsRepository: class {
     constructor() {
       return mockCallsRepoInstance;
@@ -102,7 +102,7 @@ vi.mock('../src/postgres/repositories/CallsRepository', () => ({
   },
 }));
 
-vi.mock('../src/postgres/repositories/StrategiesRepository', () => ({
+vi.mock('../../src/postgres/repositories/StrategiesRepository', () => ({
   StrategiesRepository: class {
     constructor() {
       return mockStrategiesRepoInstance;
@@ -110,7 +110,7 @@ vi.mock('../src/postgres/repositories/StrategiesRepository', () => ({
   },
 }));
 
-vi.mock('../src/postgres/repositories/SimulationResultsRepository', () => ({
+vi.mock('../../src/postgres/repositories/SimulationResultsRepository', () => ({
   SimulationResultsRepository: class {
     constructor() {
       return mockSimulationResultsRepoInstance;
@@ -118,7 +118,7 @@ vi.mock('../src/postgres/repositories/SimulationResultsRepository', () => ({
   },
 }));
 
-vi.mock('../src/postgres/repositories/TokensRepository', () => ({
+vi.mock('../../src/postgres/repositories/TokensRepository', () => ({
   TokensRepository: class {
     constructor() {
       return {};
@@ -126,7 +126,7 @@ vi.mock('../src/postgres/repositories/TokensRepository', () => ({
   },
 }));
 
-vi.mock('../src/postgres/repositories/AlertsRepository', () => ({
+vi.mock('../../src/postgres/repositories/AlertsRepository', () => ({
   AlertsRepository: class {
     constructor() {
       return {};
@@ -134,7 +134,7 @@ vi.mock('../src/postgres/repositories/AlertsRepository', () => ({
   },
 }));
 
-vi.mock('../src/postgres/repositories/CallersRepository', () => ({
+vi.mock('../../src/postgres/repositories/CallersRepository', () => ({
   CallersRepository: class {
     constructor() {
       return {};
@@ -156,7 +156,7 @@ const mockPgPool = {
   end: vi.fn(),
 };
 
-vi.mock('../src/postgres/postgres-client', () => ({
+vi.mock('../../src/postgres/postgres-client', () => ({
   getPostgresPool: () => mockPgPool,
   getPostgresClient: () => ({ query: vi.fn(), release: vi.fn() }),
   closePostgresPool: vi.fn(),

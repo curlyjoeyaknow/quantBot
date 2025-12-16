@@ -19,6 +19,8 @@
       "@quantbot/ohlcv/*": ["./packages/ohlcv/src/*"],
       "@quantbot/ingestion": ["./packages/ingestion/src"],
       "@quantbot/ingestion/*": ["./packages/ingestion/src/*"],
+      "@quantbot/workflows": ["./packages/workflows/src"],
+      "@quantbot/workflows/*": ["./packages/workflows/src/*"],
       "@quantbot/bot": ["./packages/bot/src"],
       "@quantbot/bot/*": ["./packages/bot/src/*"],
       "@quantbot/observability": ["./packages/observability/src"],
@@ -38,6 +40,7 @@
     { "path": "./packages/events" },
     { "path": "./packages/ohlcv" },
     { "path": "./packages/ingestion" },
+    { "path": "./packages/workflows" },
     { "path": "./packages/observability" },
     { "path": "./packages/core" }
   ]

@@ -1,6 +1,9 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { LogAggregator } from '../src/logging/aggregator';
 
+// Mock fetch globally
+global.fetch = vi.fn();
+
 describe('LogAggregator', () => {
   let aggregator: LogAggregator;
 
@@ -59,16 +62,28 @@ describe('LogAggregator', () => {
 
   describe('flush', () => {
     it('should flush logs when buffer has entries', async () => {
+      const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+      // Mock fetch to return success
+      vi.mocked(global.fetch).mockResolvedValue({
+        ok: true,
+        statusText: 'OK',
+      } as Response);
+
       aggregator = new LogAggregator({
         enabled: true,
         endpoint: 'https://test.com',
         apiKey: 'test-key',
+        serviceType: 'custom', // Provide serviceType to avoid warning
       });
 
       aggregator.add({ level: 'info', message: 'Test' });
       await aggregator.flush();
 
       aggregator.stop();
+      consoleWarnSpy.mockRestore();
+      consoleErrorSpy.mockRestore();
     });
 
     it('should do nothing when buffer is empty', async () => {

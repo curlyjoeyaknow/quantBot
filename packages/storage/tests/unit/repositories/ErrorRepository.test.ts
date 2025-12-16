@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { ErrorRepository } from '../../src/postgres/repositories/ErrorRepository';
-import { getPostgresPool } from '../../src/postgres-client';
+import { ErrorRepository } from '../../../src/postgres/repositories/ErrorRepository';
+import { getPostgresPool } from '../../../src/postgres/postgres-client';
 import type { ErrorEvent } from '@quantbot/observability';
 
-vi.mock('../../src/postgres-client', () => ({
+vi.mock('../../../src/postgres/postgres-client', () => ({
   getPostgresPool: vi.fn(),
 }));
 
@@ -55,7 +55,7 @@ describe('ErrorRepository', () => {
     });
   });
 
-  describe('getErrorsInRange', () => {
+  describe('getErrors', () => {
     it('should get errors in time range', async () => {
       const mockErrors = [
         {
@@ -74,7 +74,7 @@ describe('ErrorRepository', () => {
       const start = new Date('2024-01-01');
       const end = new Date('2024-01-02');
 
-      const result = await repository.getErrorsInRange(start, end);
+      const result = await repository.getErrors({ from: start, to: end });
 
       expect(result).toHaveLength(1);
       expect(result[0].error).toBe('TestError');

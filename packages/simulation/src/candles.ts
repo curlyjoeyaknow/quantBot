@@ -46,50 +46,43 @@ export { aggregateCandles } from './data/aggregator';
 /**
  * Fetch candles using hybrid provider (Birdeye API + ClickHouse cache).
  *
- * @deprecated Import from '@quantbot/ohlcv' instead.
- * This function has been moved to @quantbot/ohlcv to break circular dependencies.
- *
- * @example
- * ```typescript
- * // Old (deprecated):
- * import { fetchHybridCandles } from '@quantbot/simulation';
- *
- * // New (recommended):
- * import { fetchHybridCandles } from '@quantbot/ohlcv';
- * ```
+ * @deprecated This function has been moved to the @quantbot/ohlcv package.
+ * This stub throws an error to enforce migration.
  */
-// eslint-disable-next-line no-restricted-imports
-export { fetchHybridCandles } from '@quantbot/ohlcv';
+export async function fetchHybridCandles(..._args: unknown[]): Promise<never> {
+  throw new Error('fetchHybridCandles has been moved. Import from @quantbot/ohlcv instead.');
+}
 
 /**
  * Fetch candles with token metadata.
  *
- * @deprecated Import from '@quantbot/ohlcv' instead.
- *
- * @example
- * ```typescript
- * // Old (deprecated):
- * import { fetchHybridCandlesWithMetadata } from '@quantbot/simulation';
- *
- * // New (recommended):
- * import { fetchHybridCandlesWithMetadata } from '@quantbot/ohlcv';
- * ```
+ * @deprecated This function has been moved to the @quantbot/ohlcv package.
+ * This stub throws an error to enforce migration.
  */
-// eslint-disable-next-line no-restricted-imports
-export { fetchHybridCandlesWithMetadata } from '@quantbot/ohlcv';
+export async function fetchHybridCandlesWithMetadata(..._args: unknown[]): Promise<never> {
+  throw new Error(
+    'fetchHybridCandlesWithMetadata has been moved. Import from @quantbot/ohlcv instead.'
+  );
+}
 
 /**
  * Fetch candles directly from Birdeye API (bypasses cache).
  *
- * @deprecated Import from '@quantbot/ohlcv' instead.
+ * @deprecated This function has been moved to the @quantbot/ohlcv package.
+ * This stub throws an error to enforce migration.
  */
-// eslint-disable-next-line no-restricted-imports
-export { fetchBirdeyeCandlesDirect } from '@quantbot/ohlcv';
+export async function fetchBirdeyeCandlesDirect(..._args: unknown[]): Promise<never> {
+  throw new Error('fetchBirdeyeCandlesDirect has been moved. Import from @quantbot/ohlcv instead.');
+}
 
 /**
  * Fetch optimized candles for alert (multi-timeframe strategy).
  *
- * @deprecated Import from '@quantbot/ohlcv' instead.
+ * @deprecated This function has been moved to the @quantbot/ohlcv package.
+ * This stub throws an error to enforce migration.
  */
-// eslint-disable-next-line no-restricted-imports
-export { fetchOptimizedCandlesForAlert } from '@quantbot/ohlcv';
+export async function fetchOptimizedCandlesForAlert(..._args: unknown[]): Promise<never> {
+  throw new Error(
+    'fetchOptimizedCandlesForAlert has been moved. Import from @quantbot/ohlcv instead.'
+  );
+}

@@ -9,8 +9,6 @@
  */
 
 import { createHash } from 'crypto';
-// eslint-disable-next-line no-restricted-imports
-import { getStorageEngine } from '@quantbot/storage';
 import { logger } from '@quantbot/utils';
 import type {
   SimulationResult,

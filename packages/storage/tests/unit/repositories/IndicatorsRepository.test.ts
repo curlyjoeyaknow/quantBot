@@ -10,8 +10,8 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { DateTime } from 'luxon';
-import { IndicatorsRepository } from '../../src/clickhouse/repositories/IndicatorsRepository';
-import type { IndicatorValue } from '../../src/clickhouse/repositories/IndicatorsRepository';
+import { IndicatorsRepository } from '../../../src/clickhouse/repositories/IndicatorsRepository';
+import type { IndicatorValue } from '../../../src/clickhouse/repositories/IndicatorsRepository';
 
 // Mock ClickHouse client
 const mockClickHouseClient = {

@@ -1,7 +1,15 @@
 /**
  * Interactive Simulation Commands using Ink
  * ==========================================
- * Beautiful, React-based interactive prompts for running simulations
+ * Provides beautiful, React-based interactive prompts for running simulations.
+ *
+ * This module is the main entry point for the guided simulation CLI workflow.
+ *
+ * Maintainer Notes:
+ * - Uses Ink (React for CLI) for UI.
+ * - Connects to Quantbot storage repositories for strategies and callers.
+ * - The workflow is stateful through AppState and advances based on user interactions.
+ * - See `runInteractiveSimulation` and `registerInteractiveSimulationCommand` at bottom for CLI integration.
  */
 
 import React, { useState, useEffect } from 'react';
@@ -12,9 +20,12 @@ import type { Command } from 'commander';
 import { DateTime } from 'luxon';
 import { runSimulation, createProductionContext } from '@quantbot/workflows';
 import { StrategiesRepository, CallersRepository } from '@quantbot/storage';
-import { ensureInitialized } from '../core/initialization-manager';
-import { handleError } from '../core/error-handler';
+import { ensureInitialized } from '../core/initialization-manager.js';
+import { handleError } from '../core/error-handler.js';
 
+/**
+ * Constant: List of months, for selection UIs.
+ */
 const MONTHS = [
   { label: 'January', value: 1 },
   { label: 'February', value: 2 },
@@ -30,6 +41,9 @@ const MONTHS = [
   { label: 'December', value: 12 },
 ];
 
+/**
+ * Step-by-step state values for interactive workflow.
+ */
 type Step =
   | 'loading'
   | 'strategy'
@@ -48,6 +62,9 @@ type Step =
   | 'results'
   | 'error';
 
+/**
+ * Application state for the top-level interactive simulation.
+ */
 interface AppState {
   step: Step;
   strategies: Array<{ label: string; value: string }>;
@@ -63,10 +80,13 @@ interface AppState {
   preWindow?: number;
   postWindow?: number;
   dryRun?: boolean;
-  result?: any;
+  result?: unknown;
   error?: string;
 }
 
+/**
+ * UI Component: Loading indicator.
+ */
 function LoadingScreen() {
   return (
     <Box flexDirection="column" padding={1}>
@@ -75,7 +95,21 @@ function LoadingScreen() {
   );
 }
 
-function StrategySelection({ strategies, onSelect }: { strategies: Array<{ label: string; value: string }>; onSelect: (value: string) => void }) {
+/**
+ * UI Component: Strategy Selection Screen.
+ * @param strategies List of selectable strategies
+ * @param onSelect Callback when a strategy is selected
+ */
+function StrategySelection({
+  strategies,
+  onSelect,
+}: {
+  strategies: Array<{ label: string; value: string }>;
+  onSelect: (value: string) => void;
+}) {
+  /**
+   * Handle select event from SelectInput.
+   */
   const handleSelect = (item: { label: string; value: string }) => {
     onSelect(item.value);
   };
@@ -93,7 +127,18 @@ function StrategySelection({ strategies, onSelect }: { strategies: Array<{ label
   );
 }
 
-function CallerSelection({ callers, onSelect }: { callers: Array<{ label: string; value: string | undefined }>; onSelect: (value: string | undefined) => void }) {
+/**
+ * UI Component: Caller Selection Screen.
+ * @param callers List of callable entities (or all)
+ * @param onSelect Callback when a caller is selected
+ */
+function CallerSelection({
+  callers,
+  onSelect,
+}: {
+  callers: Array<{ label: string; value: string | undefined }>;
+  onSelect: (value: string | undefined) => void;
+}) {
   const handleSelect = (item: { label: string; value: string | undefined }) => {
     onSelect(item.value);
   };
@@ -111,8 +156,20 @@ function CallerSelection({ callers, onSelect }: { callers: Array<{ label: string
   );
 }
 
-function YearSelection({ label, defaultYear, onSelect }: { label: string; defaultYear: number; onSelect: (year: number) => void }) {
+/**
+ * UI Component: Year Selection (for both start/end date).
+ * @param label Start or End date
+ * @param onSelect Callback for year selection
+ */
+function YearSelection({
+  label,
+  onSelect,
+}: {
+  label: string;
+  onSelect: (year: number) => void;
+}) {
   const currentYear = DateTime.utc().year;
+  // Populate up to 5 recent years, descending
   const years = Array.from({ length: 5 }, (_, i) => currentYear - i).map((y) => ({
     label: String(y),
     value: y,
@@ -135,7 +192,18 @@ function YearSelection({ label, defaultYear, onSelect }: { label: string; defaul
   );
 }
 
-function MonthSelection({ label, onSelect }: { label: string; onSelect: (month: number) => void }) {
+/**
+ * UI Component: Month Selection (for both start/end date).
+ * @param label Start or End date
+ * @param onSelect Callback for month selection
+ */
+function MonthSelection({
+  label,
+  onSelect,
+}: {
+  label: string;
+  onSelect: (month: number) => void;
+}) {
   const handleSelect = (item: { label: string; value: number }) => {
     onSelect(item.value);
   };
@@ -153,10 +221,30 @@ function MonthSelection({ label, onSelect }: { label: string; onSelect: (month: 
   );
 }
 
-function DayInput({ label, maxDay, defaultDay, onComplete }: { label: string; maxDay: number; defaultDay: number; onComplete: (day: number) => void }) {
+/**
+ * UI Component: Day Input prompt.
+ * @param label Start or End date
+ * @param maxDay Maximum day of the selected month/year
+ * @param defaultDay Default value for day input
+ * @param onComplete Callback when a valid day is submitted
+ */
+function DayInput({
+  label,
+  maxDay,
+  defaultDay,
+  onComplete,
+}: {
+  label: string;
+  maxDay: number;
+  defaultDay: number;
+  onComplete: (day: number) => void;
+}) {
   const [value, setValue] = useState(String(defaultDay));
   const [error, setError] = useState<string | undefined>();
 
+  /**
+   * Validate and submit entered day.
+   */
   const handleSubmit = () => {
     const num = parseInt(value, 10);
     if (isNaN(num) || num < 1 || num > maxDay) {
@@ -181,7 +269,22 @@ function DayInput({ label, maxDay, defaultDay, onComplete }: { label: string; ma
   );
 }
 
-function WindowSelection({ label, options, defaultOption, onSelect }: { label: string; options: Array<{ label: string; value: number }>; defaultOption: number; onSelect: (value: number) => void }) {
+/**
+ * UI Component: Window Time Selection prompt.
+ * Used for both pre- and post-window durations.
+ * @param label Window type label
+ * @param options List of time length options
+ * @param onSelect Callback with chosen duration
+ */
+function WindowSelection({
+  label,
+  options,
+  onSelect,
+}: {
+  label: string;
+  options: Array<{ label: string; value: number }>;
+  onSelect: (value: number) => void;
+}) {
   const handleSelect = (item: { label: string; value: number }) => {
     onSelect(item.value);
   };
@@ -199,14 +302,21 @@ function WindowSelection({ label, options, defaultOption, onSelect }: { label: s
   );
 }
 
+/**
+ * UI Component: Dry Run Confirmation step.
+ * Allows toggling dry run (no persistence).
+ * @param onConfirm Callback with boolean for dryRun
+ */
 function DryRunConfirmation({ onConfirm }: { onConfirm: (dryRun: boolean) => void }) {
   const [selected, setSelected] = useState(0);
+  // Prompt options, yes = dry run, no = persist
   const options = [
     { label: 'Yes (dry run - no persistence)', value: true },
     { label: 'No (persist results)', value: false },
   ];
 
-  useInput((_input: string, key: any) => {
+  // Keyboard input handler for navigation/submit
+  useInput((_input: string, key: { upArrow?: boolean; downArrow?: boolean; return?: boolean }) => {
     if (key.upArrow) {
       setSelected((s) => Math.max(0, s - 1));
     } else if (key.downArrow) {
@@ -234,10 +344,26 @@ function DryRunConfirmation({ onConfirm }: { onConfirm: (dryRun: boolean) => voi
   );
 }
 
-function SummaryScreen({ state, onConfirm, onCancel }: { state: AppState; onConfirm: () => void; onCancel: () => void }) {
+/**
+ * UI Component: Final Summary/confirmation screen.
+ * Lists out all gathered inputs and allows user to proceed or cancel.
+ * @param state The AppState snapshot for summary
+ * @param onConfirm Proceed callback
+ * @param onCancel Cancel callback
+ */
+function SummaryScreen({
+  state,
+  onConfirm,
+  onCancel,
+}: {
+  state: AppState;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
   const [selected, setSelected] = useState(0);
 
-  useInput((_input: string, key: any) => {
+  // Navigation input: up/down/enter for summary options
+  useInput((_input: string, key: { upArrow?: boolean; downArrow?: boolean; return?: boolean }) => {
     if (key.upArrow) {
       setSelected((s) => Math.max(0, s - 1));
     } else if (key.downArrow) {
@@ -251,6 +377,7 @@ function SummaryScreen({ state, onConfirm, onCancel }: { state: AppState; onConf
     }
   });
 
+  // ISO date summaries
   const fromDate = DateTime.utc(state.fromYear!, state.fromMonth!, state.fromDay!);
   const toDate = DateTime.utc(state.toYear!, state.toMonth!, state.toDay!);
 
@@ -277,13 +404,18 @@ function SummaryScreen({ state, onConfirm, onCancel }: { state: AppState; onConf
           Cancel
         </Text>
       </Box>
-      <Text dimColor marginTop={1}>
-        Use ↑↓ to navigate, Enter to select
-      </Text>
+      <Box marginTop={1}>
+        <Text dimColor>
+          Use ↑↓ to navigate, Enter to select
+        </Text>
+      </Box>
     </Box>
   );
 }
 
+/**
+ * UI Component: Running progress indicator.
+ */
 function RunningScreen() {
   return (
     <Box flexDirection="column" padding={1}>
@@ -293,7 +425,36 @@ function RunningScreen() {
   );
 }
 
-function ResultsScreen({ result }: { result: any }) {
+/**
+ * Simulation result type returned from workflow.
+ */
+interface SimulationResult {
+  runId: string;
+  strategyName: string;
+  callerName?: string;
+  fromISO: string;
+  toISO: string;
+  dryRun: boolean;
+  totals: {
+    callsFound: number;
+    callsAttempted: number;
+    callsSucceeded: number;
+    callsFailed: number;
+    tradesTotal: number;
+  };
+  pnl: {
+    min?: number;
+    max?: number;
+    mean?: number;
+    median?: number;
+  };
+}
+
+/**
+ * UI Component: Render simulation results in summary table.
+ * @param result The completed simulation result object
+ */
+function ResultsScreen({ result }: { result: SimulationResult }) {
   return (
     <Box flexDirection="column" padding={1}>
       <Text color="green" bold>
@@ -323,14 +484,20 @@ function ResultsScreen({ result }: { result: any }) {
         <Text>  Median:          {result.pnl.median?.toFixed(4) ?? 'N/A'}</Text>
       </Box>
       {result.dryRun && (
-        <Text color="yellow" marginTop={1}>
-          ℹ️  Dry run mode: Results were not persisted to database
-        </Text>
+        <Box paddingTop={1}>
+          <Text color="yellow">
+            ℹ️  Dry run mode: Results were not persisted to database
+          </Text>
+        </Box>
       )}
     </Box>
   );
 }
 
+/**
+ * UI Component: Error display screen for fatal workflow issues.
+ * @param error Error message string
+ */
 function ErrorScreen({ error }: { error: string }) {
   return (
     <Box flexDirection="column" padding={1}>
@@ -342,14 +509,22 @@ function ErrorScreen({ error }: { error: string }) {
   );
 }
 
+/**
+ * The main React component for interactive simulation workflow.
+ *
+ * Advances through a series of state transitions and renders the relevant UI component for each step.
+ */
 function InteractiveSimulationApp() {
   const { exit } = useApp();
+
+  // Main local state tracking all workflow and form progress
   const [state, setState] = useState<AppState>({
     step: 'loading',
     strategies: [],
     callers: [],
   });
 
+  // Initial load (strategies & callers)
   useEffect(() => {
     async function loadData() {
       try {
@@ -384,7 +559,7 @@ function InteractiveSimulationApp() {
             })),
           ],
         });
-      } catch (error: any) {
+      } catch (error: unknown) {
         setState((s) => ({
           ...s,
           step: 'error',
@@ -396,10 +571,12 @@ function InteractiveSimulationApp() {
     loadData();
   }, []);
 
+  // Transition: strategy selection
   const handleStrategySelect = (strategy: string) => {
     setState((s) => ({ ...s, step: 'caller', selectedStrategy: strategy }));
   };
 
+  // Transition: caller selection (set initial start date as today)
   const handleCallerSelect = (caller: string | undefined) => {
     const now = DateTime.utc();
     setState((s) => ({
@@ -412,6 +589,7 @@ function InteractiveSimulationApp() {
     }));
   };
 
+  // Date selection transitions
   const handleFromYearSelect = (year: number) => {
     setState((s) => ({ ...s, step: 'month-from', fromYear: year }));
   };
@@ -436,6 +614,7 @@ function InteractiveSimulationApp() {
     setState((s) => ({ ...s, step: 'pre-window', toDay: day }));
   };
 
+  // Window selection transitions
   const handlePreWindowSelect = (minutes: number) => {
     setState((s) => ({ ...s, step: 'post-window', preWindow: minutes }));
   };
@@ -444,10 +623,12 @@ function InteractiveSimulationApp() {
     setState((s) => ({ ...s, step: 'dry-run', postWindow: minutes }));
   };
 
+  // Dry run selection transition
   const handleDryRunConfirm = (dryRun: boolean) => {
     setState((s) => ({ ...s, step: 'summary', dryRun }));
   };
 
+  // Confirmation triggers simulation
   const handleSummaryConfirm = async () => {
     setState((s) => ({ ...s, step: 'running' }));
 
@@ -456,6 +637,7 @@ function InteractiveSimulationApp() {
       const fromDate = DateTime.utc(state.fromYear!, state.fromMonth!, state.fromDay!);
       const toDate = DateTime.utc(state.toYear!, state.toMonth!, state.toDay!);
 
+      // Check date validity
       if (toDate <= fromDate) {
         setState((s) => ({
           ...s,
@@ -465,6 +647,7 @@ function InteractiveSimulationApp() {
         return;
       }
 
+      // Run the core workflow
       const result = await runSimulation(
         {
           strategyName: state.selectedStrategy!,
@@ -479,9 +662,8 @@ function InteractiveSimulationApp() {
         },
         ctx
       );
-
       setState((s) => ({ ...s, step: 'results', result }));
-    } catch (error: any) {
+    } catch (error: unknown) {
       setState((s) => ({
         ...s,
         step: 'error',
@@ -490,13 +672,22 @@ function InteractiveSimulationApp() {
     }
   };
 
+  // Cancel returns to CLI
   const handleSummaryCancel = () => {
     exit();
   };
 
-  const maxDayFrom = state.fromYear && state.fromMonth ? DateTime.utc(state.fromYear, state.fromMonth, 1).daysInMonth ?? 31 : 31;
-  const maxDayTo = state.toYear && state.toMonth ? DateTime.utc(state.toYear, state.toMonth, 1).daysInMonth ?? 31 : 31;
+  // Compute max valid days for current from/to month+year selection
+  const maxDayFrom =
+    state.fromYear && state.fromMonth
+      ? DateTime.utc(state.fromYear, state.fromMonth, 1).daysInMonth ?? 31
+      : 31;
+  const maxDayTo =
+    state.toYear && state.toMonth
+      ? DateTime.utc(state.toYear, state.toMonth, 1).daysInMonth ?? 31
+      : 31;
 
+  // Common options for time windows before/after call
   const windowOptions = [
     { label: 'None (0 min)', value: 0 },
     { label: '15 minutes', value: 15 },
@@ -505,6 +696,7 @@ function InteractiveSimulationApp() {
     { label: '120 minutes (2 hours)', value: 120 },
   ];
 
+  // Slightly longer for post-window
   const postWindowOptions = [
     { label: 'None (0 min)', value: 0 },
     { label: '30 minutes', value: 30 },
@@ -513,6 +705,7 @@ function InteractiveSimulationApp() {
     { label: '240 minutes (4 hours)', value: 240 },
   ];
 
+  // Main step rendering for the workflow
   switch (state.step) {
     case 'loading':
       return <LoadingScreen />;
@@ -521,21 +714,47 @@ function InteractiveSimulationApp() {
     case 'caller':
       return <CallerSelection callers={state.callers} onSelect={handleCallerSelect} />;
     case 'year-from':
-      return <YearSelection label="Start Date" defaultYear={state.fromYear!} onSelect={handleFromYearSelect} />;
+      return <YearSelection label="Start Date" onSelect={handleFromYearSelect} />;
     case 'month-from':
       return <MonthSelection label="Start Date" onSelect={handleFromMonthSelect} />;
     case 'day-from':
-      return <DayInput label="Start Date" maxDay={maxDayFrom} defaultDay={state.fromDay!} onComplete={handleFromDayComplete} />;
+      return (
+        <DayInput
+          label="Start Date"
+          maxDay={maxDayFrom}
+          defaultDay={state.fromDay!}
+          onComplete={handleFromDayComplete}
+        />
+      );
     case 'year-to':
-      return <YearSelection label="End Date" defaultYear={state.toYear!} onSelect={handleToYearSelect} />;
+      return <YearSelection label="End Date" onSelect={handleToYearSelect} />;
     case 'month-to':
       return <MonthSelection label="End Date" onSelect={handleToMonthSelect} />;
     case 'day-to':
-      return <DayInput label="End Date" maxDay={maxDayTo} defaultDay={state.toDay!} onComplete={handleToDayComplete} />;
+      return (
+        <DayInput
+          label="End Date"
+          maxDay={maxDayTo}
+          defaultDay={state.toDay!}
+          onComplete={handleToDayComplete}
+        />
+      );
     case 'pre-window':
-      return <WindowSelection label="Pre-window (minutes before call)" options={windowOptions} defaultOption={0} onSelect={handlePreWindowSelect} />;
+      return (
+        <WindowSelection
+          label="Pre-window (minutes before call)"
+          options={windowOptions}
+          onSelect={handlePreWindowSelect}
+        />
+      );
     case 'post-window':
-      return <WindowSelection label="Post-window (minutes after call)" options={postWindowOptions} defaultOption={120} onSelect={handlePostWindowSelect} />;
+      return (
+        <WindowSelection
+          label="Post-window (minutes after call)"
+          options={postWindowOptions}
+          onSelect={handlePostWindowSelect}
+        />
+      );
     case 'dry-run':
       return <DryRunConfirmation onConfirm={handleDryRunConfirm} />;
     case 'summary':
@@ -543,7 +762,7 @@ function InteractiveSimulationApp() {
     case 'running':
       return <RunningScreen />;
     case 'results':
-      return <ResultsScreen result={state.result} />;
+      return <ResultsScreen result={state.result as SimulationResult} />;
     case 'error':
       return <ErrorScreen error={state.error!} />;
     default:
@@ -552,14 +771,19 @@ function InteractiveSimulationApp() {
 }
 
 /**
- * Run interactive simulation workflow
+ * Entrypoint: Run the interactive simulation workflow and render it to the terminal.
+ * This function is launched by the CLI command defined below.
+ * 
+ * @returns {Promise<void>}
  */
 export async function runInteractiveSimulation(): Promise<void> {
   render(<InteractiveSimulationApp />);
 }
 
 /**
- * Register interactive simulation command
+ * Registers the interactive simulation command (sim/simulate) on a Commander program.
+ * 
+ * @param program Commander program instance to attach to
  */
 export function registerInteractiveSimulationCommand(program: Command): void {
   program
@@ -570,4 +794,3 @@ export function registerInteractiveSimulationCommand(program: Command): void {
       await runInteractiveSimulation();
     });
 }
-

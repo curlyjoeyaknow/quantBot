@@ -18,7 +18,7 @@ const chainSchema = z.enum(['solana', 'ethereum', 'bsc', 'base']);
  * Validates a TokenAddress (mint address)
  * Must be 32-44 characters
  */
-const tokenAddressSchema = z
+export const tokenAddressSchema = z
   .string()
   .min(32, 'Token address must be at least 32 characters')
   .max(44, 'Token address must be at most 44 characters')
@@ -86,7 +86,7 @@ export const saveSimulationRunSchema = z.object({
     .union([z.date(), z.string()])
     .transform((val) => (val instanceof Date ? val : new Date(val))),
   strategy: strategySchema,
-  stopLossConfig: stopLossConfigSchema,
+  stopLossConfig: stopLossConfigSchema.optional(),
   strategyName: z.string().max(100).optional(),
   finalPnl: z.number().optional(),
   totalCandles: z.number().int().nonnegative().optional(),
@@ -110,7 +110,7 @@ export const saveCATrackingSchema = z.object({
   callMarketcap: z.number().nonnegative().optional(),
   callTimestamp: z.number().int().nonnegative('Call timestamp must be non-negative'),
   strategy: strategySchema,
-  stopLossConfig: stopLossConfigSchema,
+  stopLossConfig: stopLossConfigSchema.optional(),
 });
 
 /**

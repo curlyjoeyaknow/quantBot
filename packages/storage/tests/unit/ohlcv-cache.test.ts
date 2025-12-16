@@ -6,7 +6,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { DateTime } from 'luxon';
-import { OHLCVCache, type OhlcvCacheCandle } from '../src/cache/ohlcv-cache';
+import { OHLCVCache, type OhlcvCacheCandle } from '../../src/cache/ohlcv-cache';
 
 describe('OHLCVCache', () => {
   let cache: OHLCVCache;

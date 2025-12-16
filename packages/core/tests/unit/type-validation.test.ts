@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { createTokenAddress, type TokenAddress } from '../src/index';
+import { createTokenAddress, type TokenAddress } from '../../src/index';
 
 describe('createTokenAddress', () => {
   describe('valid addresses', () => {

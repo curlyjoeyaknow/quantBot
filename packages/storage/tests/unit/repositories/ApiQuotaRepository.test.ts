@@ -1,9 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { DateTime } from 'luxon';
-import { ApiQuotaRepository } from '../../src/postgres/repositories/ApiQuotaRepository';
-import { getPostgresPool } from '../../src/postgres-client';
+import { ApiQuotaRepository } from '../../../src/postgres/repositories/ApiQuotaRepository';
+import { getPostgresPool } from '../../../src/postgres/postgres-client';
 
-vi.mock('../../src/postgres-client', () => ({
+vi.mock('../../../src/postgres/postgres-client', () => ({
   getPostgresPool: vi.fn(),
 }));
 
@@ -61,33 +61,23 @@ describe('ApiQuotaRepository', () => {
     });
   });
 
-  describe('getUsageInRange', () => {
-    it('should get usage in date range', async () => {
-      const mockUsage = [
-        {
-          id: 1,
-          service: 'birdeye',
-          credits_used: 50,
-          timestamp: new Date(),
-          metadata_json: null,
-        },
-        {
-          id: 2,
-          service: 'birdeye',
-          credits_used: 30,
-          timestamp: new Date(),
-          metadata_json: null,
-        },
-      ];
-      mockPool.query.mockResolvedValue({ rows: mockUsage });
+  describe('getUsageThisMonth', () => {
+    it('should get usage for this month', async () => {
+      mockPool.query.mockResolvedValue({
+        rows: [{ credits_used: 150 }],
+      });
 
-      const start = DateTime.utc().startOf('day');
-      const end = DateTime.utc().endOf('day');
+      const result = await repository.getUsageThisMonth('birdeye');
 
-      const result = await repository.getUsageInRange('birdeye', start, end);
+      expect(result).toBe(150);
+    });
 
-      expect(result).toHaveLength(2);
-      expect(result[0].creditsUsed).toBe(50);
+    it('should return 0 if no usage recorded', async () => {
+      mockPool.query.mockResolvedValue({ rows: [] });
+
+      const result = await repository.getUsageThisMonth('helius');
+
+      expect(result).toBe(0);
     });
   });
 });

@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { DateTime } from 'luxon';
-import { CallsRepository } from '../../src/postgres/repositories/CallsRepository';
-import { getPostgresPool } from '../../src/postgres-client';
+import { CallsRepository } from '../../../src/postgres/repositories/CallsRepository';
+import { getPostgresPool } from '../../../src/postgres/postgres-client';
 import { createTokenAddress } from '@quantbot/core';
 
-vi.mock('../../src/postgres-client', () => ({
+vi.mock('../../../src/postgres/postgres-client', () => ({
   getPostgresPool: vi.fn(),
 }));
 

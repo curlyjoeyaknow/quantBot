@@ -9,8 +9,6 @@
  */
 
 import { createHash } from 'crypto';
-// eslint-disable-next-line no-restricted-imports
-import { getStorageEngine } from '@quantbot/storage';
 import { logger } from '@quantbot/utils';
 import type { ScenarioConfig } from '../core/orchestrator';
 
@@ -83,49 +81,12 @@ export function generateStrategyName(scenario: ScenarioConfig): string {
 
 /**
  * Auto-store strategy if it doesn't exist
+ * @deprecated This function uses @quantbot/storage which violates architectural rules.
+ * It should be moved to @quantbot/workflows.
  */
-export async function ensureStrategyStored(scenario: ScenarioConfig): Promise<number | null> {
-  try {
-    const storageEngine = getStorageEngine();
-    const strategiesRepo = (storageEngine as any).strategiesRepo;
-
-    if (!strategiesRepo) {
-      logger.warn('Strategies repository not available, skipping auto-storage');
-      return null;
-    }
-
-    const strategyName = generateStrategyName(scenario);
-    const configHash = hashStrategyConfig(scenario);
-
-    // Check if strategy already exists
-    const existing = await strategiesRepo.findByName(strategyName, '1');
-    if (existing) {
-      logger.debug('Strategy already exists', { name: strategyName, id: existing.id });
-      return existing.id;
-    }
-
-    // Create new strategy
-    const strategyId = await strategiesRepo.create({
-      name: strategyName,
-      version: '1',
-      category: 'auto-generated',
-      description: `Auto-generated strategy from simulation run (hash: ${configHash})`,
-      config: {
-        strategy: scenario.strategy,
-        stopLoss: scenario.stopLoss,
-        entry: scenario.entry,
-        reEntry: scenario.reEntry,
-        costs: scenario.costs,
-        entrySignal: scenario.entrySignal,
-        exitSignal: scenario.exitSignal,
-      },
-      isActive: true,
-    });
-
-    logger.info('Auto-stored strategy', { id: strategyId, name: strategyName });
-    return strategyId;
-  } catch (error) {
-    logger.warn('Failed to auto-store strategy', error as Error);
-    return null;
-  }
+export async function ensureStrategyStored(_scenario: ScenarioConfig): Promise<number | null> {
+  throw new Error(
+    'ensureStrategyStored is deprecated and uses @quantbot/storage (forbidden in simulation package). ' +
+      'Move this function to @quantbot/workflows or use dependency injection to provide storage client.'
+  );
 }

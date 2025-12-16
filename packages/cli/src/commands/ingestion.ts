@@ -1,28 +1,25 @@
 /**
  * Ingestion Commands
+ *
+ * Command definitions: schema + description + examples + handler pointer.
+ * No business logic, no service instantiation, no console.log, no process.exit.
+ * 
+ * Note: Only ohlcv command is fully refactored. Telegram command still uses
+ * the old pattern and will be migrated later.
  */
 
 import type { Command } from 'commander';
 import { z } from 'zod';
-import { TelegramAlertIngestionService } from '@quantbot/ingestion';
-import { OhlcvIngestionService } from '@quantbot/ingestion';
-import {
-  CallersRepository,
-  TokensRepository,
-  AlertsRepository,
-  CallsRepository,
-} from '@quantbot/storage';
-import { parseArguments } from '../core/argument-parser';
-import { formatOutput } from '../core/output-formatter';
-import { handleError } from '../core/error-handler';
-import { createProgressIndicator } from '../core/output-formatter';
-import type { PackageCommandModule } from '../types';
-import { commandRegistry } from '../core/command-registry';
+import type { PackageCommandModule } from '../types/index.js';
+import { commandRegistry } from '../core/command-registry.js';
+import { ingestOhlcvHandler } from '../handlers/ingestion/ingest-ohlcv.js';
+import type { CommandContext } from '../core/command-context.js';
+import { ingestTelegramHandler } from '../handlers/ingestion/ingest-telegram.js';
 
 /**
  * Telegram ingestion schema
  */
-const telegramSchema = z.object({
+export const telegramSchema = z.object({
   file: z.string().min(1),
   callerName: z.string().min(1),
   chain: z.enum(['solana', 'ethereum', 'bsc', 'base']).default('solana'),
@@ -33,7 +30,7 @@ const telegramSchema = z.object({
 /**
  * OHLCV ingestion schema
  */
-const ohlcvSchema = z.object({
+export const ohlcvSchema = z.object({
   from: z.string().optional(),
   to: z.string().optional(),
   preWindow: z.number().int().positive().default(260),
@@ -58,35 +55,12 @@ export function registerIngestionCommands(program: Command): void {
     .option('--chat-id <id>', 'Chat ID (optional)')
     .option('--format <format>', 'Output format', 'table')
     .action(async (options) => {
-      try {
-        const args = parseArguments(telegramSchema, {
-          ...options,
-          file: options.file,
-        });
-
-        const service = new TelegramAlertIngestionService(
-          new CallersRepository(),
-          new TokensRepository(),
-          new AlertsRepository(),
-          new CallsRepository()
-        );
-
-        console.error('Processing Telegram export...');
-        const result = await service.ingestExport({
-          filePath: args.file,
-          callerName: args.callerName,
-          chain: args.chain,
-          chatId: args.chatId,
-        });
-
-        const output = formatOutput(result, args.format);
-        console.log(output);
-        console.error('\n✅ Ingestion complete!');
-      } catch (error) {
-        const message = handleError(error);
-        console.error(`Error: ${message}`);
-        process.exit(1);
+      const { execute } = await import('../core/execute.js');
+      const commandDef = commandRegistry.getCommand('ingestion', 'telegram');
+      if (!commandDef) {
+        throw new Error('Command ingestion telegram not found in registry');
       }
+      await execute(commandDef, options);
     });
 
   // OHLCV ingestion
@@ -100,35 +74,12 @@ export function registerIngestionCommands(program: Command): void {
     .option('--interval <interval>', 'Candle interval', '5m')
     .option('--format <format>', 'Output format', 'table')
     .action(async (options) => {
-      try {
-        const args = parseArguments(ohlcvSchema, {
-          ...options,
-          preWindow: options.preWindow ? parseInt(options.preWindow, 10) : 260,
-          postWindow: options.postWindow ? parseInt(options.postWindow, 10) : 1440,
-        });
-
-        const service = new OhlcvIngestionService(
-          new CallsRepository(),
-          new TokensRepository(),
-          new AlertsRepository()
-        );
-
-        console.error('Fetching OHLCV data...');
-        const result = await service.ingestForCalls({
-          from: args.from ? new Date(args.from) : undefined,
-          to: args.to ? new Date(args.to) : undefined,
-          preWindowMinutes: args.preWindow,
-          postWindowMinutes: args.postWindow,
-        });
-
-        const output = formatOutput(result, args.format);
-        console.log(output);
-        console.error('\n✅ OHLCV ingestion complete!');
-      } catch (error) {
-        const message = handleError(error);
-        console.error(`Error: ${message}`);
-        process.exit(1);
+      const { execute } = await import('../core/execute.js');
+      const commandDef = commandRegistry.getCommand('ingestion', 'ohlcv');
+      if (!commandDef) {
+        throw new Error('Command ingestion ohlcv not found in registry');
       }
+      await execute(commandDef, options);
     });
 }
 
@@ -143,20 +94,9 @@ const ingestionModule: PackageCommandModule = {
       name: 'telegram',
       description: 'Ingest Telegram export file',
       schema: telegramSchema,
-      handler: async (args: unknown) => {
+      handler: async (args: unknown, ctx: CommandContext) => {
         const typedArgs = args as z.infer<typeof telegramSchema>;
-        const service = new TelegramAlertIngestionService(
-          new CallersRepository(),
-          new TokensRepository(),
-          new AlertsRepository(),
-          new CallsRepository()
-        );
-        return await service.ingestExport({
-          filePath: args.file,
-          callerName: args.callerName,
-          chain: args.chain,
-          chatId: args.chatId,
-        });
+        return await ingestTelegramHandler(typedArgs, ctx);
       },
       examples: ['quantbot ingestion telegram --file data/messages.html --caller-name Brook'],
     },
@@ -164,19 +104,9 @@ const ingestionModule: PackageCommandModule = {
       name: 'ohlcv',
       description: 'Fetch OHLCV data for calls',
       schema: ohlcvSchema,
-      handler: async (args: unknown) => {
+      handler: async (args: unknown, ctx: CommandContext) => {
         const typedArgs = args as z.infer<typeof ohlcvSchema>;
-        const service = new OhlcvIngestionService(
-          new CallsRepository(),
-          new TokensRepository(),
-          new AlertsRepository()
-        );
-        return await service.ingestForCalls({
-          from: args.from ? new Date(args.from) : undefined,
-          to: args.to ? new Date(args.to) : undefined,
-          preWindowMinutes: args.preWindow,
-          postWindowMinutes: args.postWindow,
-        });
+        return await ingestOhlcvHandler(typedArgs, ctx);
       },
       examples: ['quantbot ingestion ohlcv --from 2024-01-01 --to 2024-02-01'],
     },

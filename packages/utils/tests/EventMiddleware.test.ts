@@ -3,11 +3,11 @@ import {
   loggingMiddleware,
   MetricsMiddleware,
   errorHandlingMiddleware,
-  rateLimitingMiddleware,
+  RateLimitingMiddleware,
   validationMiddleware,
   correlationMiddleware,
   userContextMiddleware,
-  performanceMiddleware,
+  PerformanceMiddleware,
 } from '../src/events/EventMiddleware';
 import { EventFactory } from '../src/events/EventBus';
 import { logger } from '../src/logger';
@@ -28,10 +28,15 @@ describe('Event Middleware', () => {
 
   describe('loggingMiddleware', () => {
     it('should log events with appropriate level', async () => {
-      const event = EventFactory.createSystemEvent('system.startup', {
-        component: 'test',
-        message: 'Starting',
-      });
+      // The EventFactory.createSystemEvent expects 3 arguments: (type, payload, metadata)
+      const event = EventFactory.createSystemEvent(
+        'system.startup',
+        {
+          component: 'test',
+          message: 'Starting',
+        },
+        'test' // Provide string metadata as required third argument
+      );
       const next = vi.fn().mockResolvedValue(undefined);
 
       await loggingMiddleware(event, next);
@@ -44,10 +49,14 @@ describe('Event Middleware', () => {
   describe('MetricsMiddleware', () => {
     it('should track event metrics', async () => {
       const middleware = new MetricsMiddleware(100, 0);
-      const event = EventFactory.createSystemEvent('system.startup', {
-        component: 'test',
-        message: 'Starting',
-      });
+      const event = EventFactory.createSystemEvent(
+        'system.startup',
+        {
+          component: 'test',
+          message: 'Starting',
+        },
+        'test' // Provide string for metadata as required third argument
+      );
       const next = vi.fn().mockResolvedValue(undefined);
 
       await middleware.middleware(event, next);
@@ -59,10 +68,14 @@ describe('Event Middleware', () => {
 
     it('should clean up old metrics', async () => {
       const middleware = new MetricsMiddleware(100, 1000);
-      const event = EventFactory.createSystemEvent('system.startup', {
-        component: 'test',
-        message: 'Starting',
-      });
+      const event = EventFactory.createSystemEvent(
+        'system.startup',
+        {
+          component: 'test',
+          message: 'Starting',
+        },
+        'test' // Provide metadata as required third argument
+      );
       const next = vi.fn().mockResolvedValue(undefined);
 
       await middleware.middleware(event, next);
@@ -74,9 +87,9 @@ describe('Event Middleware', () => {
       expect(metrics).toBeDefined();
     });
 
-    it('should stop cleanup loop', () => {
+    it('should clear metrics', () => {
       const middleware = new MetricsMiddleware();
-      middleware.stopCleanupLoop();
+      middleware.clearMetrics();
       // Should not throw
       expect(true).toBe(true);
     });
@@ -84,23 +97,44 @@ describe('Event Middleware', () => {
 
   describe('errorHandlingMiddleware', () => {
     it('should catch and log errors', async () => {
-      const event = EventFactory.createSystemEvent('system.startup', {
-        component: 'test',
-        message: 'Starting',
-      });
+      const event = EventFactory.createSystemEvent(
+        'system.startup',
+        {
+          component: 'test',
+          message: 'Starting',
+        },
+        'test'
+      );
       const error = new Error('Test error');
       const next = vi.fn().mockRejectedValue(error);
 
-      await errorHandlingMiddleware(event, next);
-
+      await expect(errorHandlingMiddleware(event, next)).rejects.toThrow('Test error');
       expect(logger.error).toHaveBeenCalled();
     });
 
     it('should pass through successful events', async () => {
-      const event = EventFactory.createSystemEvent('system.startup', {
-        component: 'test',
-        message: 'Starting',
-      });
+      const event = EventFactory.createSystemEvent(
+        'system.startup',
+        {
+          component: 'test',
+          message: 'Starting',
+        },
+        'test'
+      ); // Provide metadata as third argument
+      const next = vi.fn().mockResolvedValue(undefined);
+
+      await errorHandlingMiddleware(event, next);
+    });
+
+    it('should call next handler', async () => {
+      const event = EventFactory.createSystemEvent(
+        'system.startup',
+        {
+          component: 'test',
+          message: 'Starting',
+        },
+        'test'
+      );
       const next = vi.fn().mockResolvedValue(undefined);
 
       await errorHandlingMiddleware(event, next);
@@ -109,23 +143,27 @@ describe('Event Middleware', () => {
     });
   });
 
-  describe('rateLimitingMiddleware', () => {
+  describe('RateLimitingMiddleware', () => {
     it('should allow events within rate limit', async () => {
-      const middleware = new rateLimitingMiddleware(10, 1000);
-      const event = EventFactory.createSystemEvent('system.startup', {
-        component: 'test',
-        message: 'Starting',
-      });
+      const middleware = new RateLimitingMiddleware(1000, 10);
+      const event = EventFactory.createSystemEvent(
+        'system.startup',
+        {
+          component: 'test',
+          message: 'Starting',
+        },
+        'test'
+      );
       const next = vi.fn().mockResolvedValue(undefined);
 
-      await middleware(event, next);
+      await middleware.middleware(event, next);
 
       expect(next).toHaveBeenCalled();
     });
 
-    it('should stop cleanup loop', () => {
-      const middleware = new rateLimitingMiddleware(10, 1000);
-      middleware.stopCleanupLoop();
+    it('should cleanup expired windows', () => {
+      const middleware = new RateLimitingMiddleware(1000, 10);
+      middleware.cleanup();
       // Should not throw
       expect(true).toBe(true);
     });
@@ -133,10 +171,14 @@ describe('Event Middleware', () => {
 
   describe('validationMiddleware', () => {
     it('should validate event structure', async () => {
-      const event = EventFactory.createSystemEvent('system.startup', {
-        component: 'test',
-        message: 'Starting',
-      });
+      const event = EventFactory.createSystemEvent(
+        'system.startup',
+        {
+          component: 'test',
+          message: 'Starting',
+        },
+        'test'
+      );
       const next = vi.fn().mockResolvedValue(undefined);
 
       await validationMiddleware(event, next);
@@ -147,10 +189,14 @@ describe('Event Middleware', () => {
 
   describe('correlationMiddleware', () => {
     it('should add correlation ID if missing', async () => {
-      const event = EventFactory.createSystemEvent('system.startup', {
-        component: 'test',
-        message: 'Starting',
-      });
+      const event = EventFactory.createSystemEvent(
+        'system.startup',
+        {
+          component: 'test',
+          message: 'Starting',
+        },
+        'test'
+      );
       const originalCorrelationId = event.metadata.correlationId;
       const next = vi.fn().mockResolvedValue(undefined);
 
@@ -163,10 +209,14 @@ describe('Event Middleware', () => {
 
   describe('userContextMiddleware', () => {
     it('should preserve user context', async () => {
-      const event = EventFactory.createSystemEvent('system.startup', {
-        component: 'test',
-        message: 'Starting',
-      });
+      const event = EventFactory.createSystemEvent(
+        'system.startup',
+        {
+          component: 'test',
+          message: 'Starting',
+        },
+        'test'
+      );
       event.metadata.userId = 1;
       const next = vi.fn().mockResolvedValue(undefined);
 
@@ -177,15 +227,20 @@ describe('Event Middleware', () => {
     });
   });
 
-  describe('performanceMiddleware', () => {
+  describe('PerformanceMiddleware', () => {
     it('should measure event processing time', async () => {
-      const event = EventFactory.createSystemEvent('system.startup', {
-        component: 'test',
-        message: 'Starting',
-      });
+      const middleware = new PerformanceMiddleware();
+      const event = EventFactory.createSystemEvent(
+        'system.startup',
+        {
+          component: 'test',
+          message: 'Starting',
+        },
+        'test'
+      );
       const next = vi.fn().mockResolvedValue(undefined);
 
-      await performanceMiddleware(event, next);
+      await middleware.middleware(event, next);
 
       expect(next).toHaveBeenCalled();
     });

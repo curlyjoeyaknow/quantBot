@@ -31,9 +31,10 @@ export type NormalizeErr = {
 };
 
 function safeString(x: unknown): string {
-  if (x == null) return '';
+  if (x === null || x === undefined) return '';
   const s = String(x);
   // remove null bytes + normalize newlines
+  // eslint-disable-next-line no-control-regex
   return s.replace(/\u0000/g, '').replace(/\r\n/g, '\n');
 }
 
@@ -120,7 +121,7 @@ export function normalizeTelegramMessage(
 
     const msg: any = input;
     const messageId = parseMessageId(msg.id);
-    if (messageId == null) {
+    if (messageId === null) {
       return {
         ok: false,
         error: { code: 'MISSING_ID', message: 'Missing/invalid message id' },
@@ -129,7 +130,7 @@ export function normalizeTelegramMessage(
     }
 
     const timestampMs = parseTimestampMs(msg);
-    if (timestampMs == null) {
+    if (timestampMs === null) {
       return {
         ok: false,
         error: { code: 'BAD_DATE', message: 'Missing/invalid date/date_unixtime' },
@@ -138,15 +139,21 @@ export function normalizeTelegramMessage(
     }
 
     const type = safeString(msg.type || 'message');
-    const isService = type !== 'message' || msg.action != null || msg.actor != null;
+    const isService =
+      type !== 'message' ||
+      (msg.action !== null && msg.action !== undefined) ||
+      (msg.actor !== null && msg.actor !== undefined);
 
-    const fromName = msg.from != null ? safeString(msg.from) : null;
-    const fromId = msg.from_id != null ? safeString(msg.from_id) : null;
+    const fromName = msg.from !== null && msg.from !== undefined ? safeString(msg.from) : null;
+    const fromId =
+      msg.from_id !== null && msg.from_id !== undefined ? safeString(msg.from_id) : null;
 
     const { text, links } = flattenText(msg.text);
 
     const replyToMessageId =
-      msg.reply_to_message_id != null ? parseMessageId(msg.reply_to_message_id) : null;
+      msg.reply_to_message_id !== null && msg.reply_to_message_id !== undefined
+        ? parseMessageId(msg.reply_to_message_id)
+        : null;
 
     const norm: NormalizedTelegramMessage = {
       chatId: safeString(chatId),

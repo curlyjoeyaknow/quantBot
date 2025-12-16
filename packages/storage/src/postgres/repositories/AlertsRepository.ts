@@ -31,6 +31,7 @@ export interface AlertInsertData {
   athTimestamp?: Date; // Timestamp of all-time high
   atlPrice?: number; // All-time low price (from alert until ATH)
   atlTimestamp?: Date; // Timestamp of all-time low
+  firstCaller?: boolean; // Whether this is the first call for this token
 }
 
 export class AlertsRepository {
@@ -63,14 +64,27 @@ export class AlertsRepository {
         ...(data.messageText ? { messageText: data.messageText } : {}),
       };
 
+      // Determine if this is the first caller for this token
+      let firstCaller = data.firstCaller;
+      if (firstCaller === undefined) {
+        // Check if there are any earlier alerts for this token
+        const earlierAlerts = await client.query(
+          `SELECT id FROM alerts
+           WHERE token_id = $1 AND alert_timestamp < $2
+           LIMIT 1`,
+          [data.tokenId, data.alertTimestamp]
+        );
+        firstCaller = earlierAlerts.rows.length === 0;
+      }
+
       const result = await client.query(
         `INSERT INTO alerts (
           token_id, caller_id, strategy_id, side, confidence,
           alert_price, alert_timestamp, raw_payload_json,
           initial_mcap, initial_price, time_to_ath, max_roi, ath_price, ath_timestamp,
-          atl_price, atl_timestamp
+          atl_price, atl_timestamp, first_caller
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
         RETURNING id`,
         [
           data.tokenId,
@@ -89,6 +103,7 @@ export class AlertsRepository {
           data.athTimestamp || null,
           data.atlPrice || null,
           data.atlTimestamp || null,
+          firstCaller,
         ]
       );
 

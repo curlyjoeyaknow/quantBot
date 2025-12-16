@@ -6,17 +6,19 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { DateTime } from 'luxon';
-import { CallerDatabase, type CallerAlert, type CallerStats } from '../src/caller-database';
+import { CallerDatabase, type CallerAlert, type CallerStats } from '../../src/caller-database';
 
 // Mock sqlite3
-const mockDb = {
-  run: vi.fn(),
-  all: vi.fn(),
-  prepare: vi.fn(),
-  close: vi.fn(),
-};
-
-const mockDatabase = vi.fn(() => mockDb);
+const { mockDatabase, mockDb } = vi.hoisted(() => {
+  const mockDb = {
+    run: vi.fn(),
+    all: vi.fn(),
+    prepare: vi.fn(),
+    close: vi.fn(),
+  };
+  const mockDatabase = vi.fn(() => mockDb);
+  return { mockDatabase, mockDb };
+});
 
 vi.mock('sqlite3', () => ({
   Database: mockDatabase,

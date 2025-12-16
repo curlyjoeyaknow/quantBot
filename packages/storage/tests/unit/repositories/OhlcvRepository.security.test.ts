@@ -9,7 +9,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { DateTime } from 'luxon';
-import { OhlcvRepository } from '../../src/clickhouse/repositories/OhlcvRepository';
+import { OhlcvRepository } from '../../../src/clickhouse/repositories/OhlcvRepository';
 import type { Chain, TokenAddress } from '@quantbot/core';
 
 // Mock ClickHouse client

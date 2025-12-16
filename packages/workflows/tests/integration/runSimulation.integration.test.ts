@@ -2,14 +2,50 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { DateTime } from 'luxon';
 import { runSimulation } from '../../src/simulation/runSimulation.js';
 import { createProductionContext } from '../../src/context/createProductionContext.js';
-import { initClickHouse, closeClickHouse } from '@quantbot/storage';
-import { getPostgresPool, closePostgresPool } from '@quantbot/storage';
+import {
+  initClickHouse,
+  closeClickHouse,
+  StrategiesRepository,
+  closePostgresPool,
+} from '@quantbot/storage';
 
 describe('workflows.runSimulation - integration tests', () => {
   beforeAll(async () => {
     // Initialize database connections
     await initClickHouse();
     // Postgres pool initializes lazily
+
+    // Ensure IchimokuV1 strategy exists for tests
+    const strategiesRepo = new StrategiesRepository();
+    const existing = await strategiesRepo.findByName('IchimokuV1', '1');
+    if (!existing) {
+      await strategiesRepo.create({
+        name: 'IchimokuV1',
+        version: '1',
+        category: 'indicator-based',
+        description: 'Ichimoku cloud strategy with dynamic profit targets',
+        config: {
+          legs: [
+            { target: 2.0, percent: 0.3 },
+            { target: 3.0, percent: 0.3 },
+            { target: 5.0, percent: 0.4 },
+          ],
+          stopLoss: {
+            initial: -0.25,
+            trailing: 0.1,
+          },
+          entry: {
+            type: 'immediate',
+          },
+          costs: {
+            entryFee: 0.01,
+            exitFee: 0.01,
+            slippage: 0.005,
+          },
+        },
+        isActive: true,
+      });
+    }
   });
 
   afterAll(async () => {

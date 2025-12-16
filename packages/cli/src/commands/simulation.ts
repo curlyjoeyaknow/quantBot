@@ -8,12 +8,12 @@ import { z } from 'zod';
 import { DateTime } from 'luxon';
 import { runSimulation, createProductionContext } from '@quantbot/workflows';
 import type { SimulationRunSpec } from '@quantbot/workflows';
-import { parseArguments } from '../core/argument-parser';
-import { formatOutput } from '../core/output-formatter';
-import { handleError } from '../core/error-handler';
-import { ensureInitialized } from '../core/initialization-manager';
-import type { PackageCommandModule } from '../types';
-import { commandRegistry } from '../core/command-registry';
+import { parseArguments } from '../core/argument-parser.js';
+import { formatOutput } from '../core/output-formatter.js';
+import { handleError } from '../core/error-handler.js';
+import { ensureInitialized } from '../core/initialization-manager.js';
+import type { PackageCommandModule } from '../types/index.js';
+import { commandRegistry } from '../core/command-registry.js';
 
 /**
  * Run command schema

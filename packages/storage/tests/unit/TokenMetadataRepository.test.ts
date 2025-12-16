@@ -10,11 +10,11 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { DateTime } from 'luxon';
-import { TokenMetadataRepository } from '../src/clickhouse/repositories/TokenMetadataRepository';
-import { getClickHouseClient } from '../src/clickhouse-client';
+import { TokenMetadataRepository } from '../../src/clickhouse/repositories/TokenMetadataRepository';
+import { getClickHouseClient } from '../../src/clickhouse-client';
 import type { TokenMetadata } from '@quantbot/core';
 
-vi.mock('../src/clickhouse-client', () => ({
+vi.mock('../../src/clickhouse-client', () => ({
   getClickHouseClient: vi.fn(),
 }));
 

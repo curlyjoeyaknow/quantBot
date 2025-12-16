@@ -10,10 +10,10 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { DateTime } from 'luxon';
-import { IndicatorsRepository } from '../src/clickhouse/repositories/IndicatorsRepository';
-import { getClickHouseClient } from '../src/clickhouse-client';
+import { IndicatorsRepository } from '../../src/clickhouse/repositories/IndicatorsRepository';
+import { getClickHouseClient } from '../../src/clickhouse-client';
 
-vi.mock('../src/clickhouse-client', () => ({
+vi.mock('../../src/clickhouse-client', () => ({
   getClickHouseClient: vi.fn(),
 }));
 

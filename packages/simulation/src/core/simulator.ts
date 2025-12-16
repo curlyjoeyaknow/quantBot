@@ -27,6 +27,7 @@ import { calculateIndicatorSeriesOptimized } from '../performance/optimizations'
 import { getPerformanceMonitor } from '../performance/monitor';
 import { evaluateSignalGroup } from '../signals/evaluator';
 import { getEntryCostMultiplier, getExitCostMultiplier } from '../execution';
+import { logStep, createProgress } from '../utils/progress';
 import {
   checkStopLossSequential,
   initTrailingStopState,
@@ -98,6 +99,9 @@ export async function simulateStrategy(
   const exitSignal = options?.exitSignal;
 
   // Precompute indicators (with caching optimization)
+  if (candles.length > 100) {
+    logStep(`Calculating indicators for ${candles.length} candles`);
+  }
   const perfMonitor = getPerformanceMonitor();
   const indicatorSeries = await perfMonitor.measure(
     'calculateIndicators',
@@ -106,6 +110,9 @@ export async function simulateStrategy(
     },
     { candleCount: candles.length }
   );
+  if (candles.length > 100) {
+    logStep(`Calculated indicators for ${indicatorSeries.length} candles`);
+  }
 
   // Cost multipliers
   const entryCostMultiplier = getEntryCostMultiplier(costs);

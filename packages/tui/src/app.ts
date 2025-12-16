@@ -61,7 +61,7 @@ export class TUIApp {
       },
     });
 
-    this.stateManager.setState({ initialized: true });
+    this.stateManager.setState((prev) => ({ ...prev, initialized: true }));
   }
 
   /**
@@ -69,7 +69,7 @@ export class TUIApp {
    */
   navigateTo(screen: Screen): void {
     this.screenManager.navigateTo(screen);
-    this.stateManager.setState({ currentScreen: screen.name });
+    this.stateManager.setState((prev) => ({ ...prev, currentScreen: screen.name }));
   }
 
   /**

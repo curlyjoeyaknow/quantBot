@@ -103,7 +103,7 @@ function extractChatId(exportData: any, filePath: string): string {
     return exportData.name.toLowerCase().replace(/\s+/g, '_');
   }
 
-  if (exportData.id != null) {
+  if (exportData.id !== null && exportData.id !== undefined) {
     return String(exportData.id);
   }
 

@@ -2,7 +2,7 @@
  * Output Formatter - JSON, table, CSV formats
  */
 
-import type { OutputFormat } from '../types';
+import type { OutputFormat } from '../types/index.js';
 
 /**
  * Format output as JSON

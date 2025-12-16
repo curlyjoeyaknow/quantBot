@@ -4,7 +4,7 @@
 
 import { z } from 'zod';
 import { logger } from '@quantbot/utils';
-import { validateMintAddress as validateMintAddressImpl } from './address-validator';
+import { validateMintAddress as validateMintAddressImpl } from './address-validator.js';
 
 /**
  * Parse and validate arguments using Zod schema

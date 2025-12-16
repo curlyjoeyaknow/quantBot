@@ -30,8 +30,8 @@ vi.mock('@quantbot/utils', () => ({
   },
 }));
 
-// Mock the module using vi.mock - this should intercept before import
-vi.mock('@quantbot/simulation', () => ({
+// Mock the candles module
+vi.mock('../src/candles', () => ({
   fetchHybridCandles: mockFetchHybridCandles,
 }));
 
@@ -46,9 +46,6 @@ describe('fetchHistoricalCandlesForMonitoring', () => {
     vi.clearAllMocks();
     // Clear the hoisted mock
     mockFetchHybridCandles.mockClear();
-    // Dynamically import and spy on the module to ensure it's mocked
-    const candlesModule = await import('@quantbot/simulation');
-    vi.spyOn(candlesModule, 'fetchHybridCandles').mockImplementation(mockFetchHybridCandles as any);
     // Set USE_CACHE_ONLY to prevent fetchHybridCandles from trying to use ClickHouse
     process.env.USE_CACHE_ONLY = 'true';
   });

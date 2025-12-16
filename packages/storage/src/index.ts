@@ -27,6 +27,11 @@ export { IndicatorsRepository } from './clickhouse/repositories/IndicatorsReposi
 export { TokenMetadataRepository } from './clickhouse/repositories/TokenMetadataRepository';
 export { SimulationEventsRepository } from './clickhouse/repositories/SimulationEventsRepository';
 export { TokensRepository } from './postgres/repositories/TokensRepository';
+export { TokenDataRepository } from './postgres/repositories/TokenDataRepository';
+export type {
+  TokenDataInsertData,
+  TokenDataRecord,
+} from './postgres/repositories/TokenDataRepository';
 export { CallsRepository } from './postgres/repositories/CallsRepository';
 export { StrategiesRepository } from './postgres/repositories/StrategiesRepository';
 export { AlertsRepository } from './postgres/repositories/AlertsRepository';

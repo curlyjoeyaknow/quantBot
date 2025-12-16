@@ -3,9 +3,15 @@ import { getEnabledStrategies, isStrategyEnabled } from '../src/live-trade-strat
 import * as sqlite3 from 'sqlite3';
 import { promisify } from 'util';
 
-vi.mock('sqlite3', () => ({
-  Database: vi.fn(),
-}));
+vi.mock('sqlite3', () => {
+  const DatabaseConstructor = vi.fn(function (this: any) {
+    return (globalThis as any).__mockDb;
+  });
+  return {
+    Database: DatabaseConstructor,
+    default: { Database: DatabaseConstructor },
+  };
+});
 
 vi.mock('util', () => ({
   promisify: vi.fn((fn) => fn),
@@ -25,7 +31,7 @@ describe('Live Trade Strategies', () => {
       get: mockGet,
       close: vi.fn(),
     };
-    vi.mocked(sqlite3.Database).mockImplementation(() => mockDb as any);
+    (globalThis as any).__mockDb = mockDb;
   });
 
   describe('getEnabledStrategies', () => {
