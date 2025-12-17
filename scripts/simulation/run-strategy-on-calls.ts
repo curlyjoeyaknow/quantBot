@@ -8,19 +8,9 @@
  */
 
 import { program } from 'commander';
-import {
-  StrategiesRepository,
-  CallsRepository,
-  SimulationRunsRepository,
-  SimulationResultsRepository,
-  OhlcvRepository,
-  SimulationEventsRepository,
-} from '@quantbot/storage';
-import { SimulationService } from '@quantbot/services';
+import { DateTime } from 'luxon';
+import { runSimulation, createProductionContext } from '@quantbot/workflows';
 import { logger } from '@quantbot/utils';
-
-// Initialize service (repositories initialized internally)
-const simulationService = new SimulationService();
 
 program
   .name('run-strategy-on-calls')
@@ -33,22 +23,30 @@ program
     try {
       logger.info('Starting simulation', options);
 
-      const result = await simulationService.runOnCalls({
-        strategyName: options.strategy,
-        selection: {
-          callerNames: [options.caller],
-          from: new Date(options.from),
-          to: new Date(options.to),
+      const ctx = createProductionContext();
+      const result = await runSimulation(
+        {
+          strategyName: options.strategy,
+          callerName: options.caller,
+          from: DateTime.fromISO(options.from, { zone: 'utc' }),
+          to: DateTime.fromISO(options.to, { zone: 'utc' }),
+          options: {
+            dryRun: false,
+            preWindowMinutes: 60,
+            postWindowMinutes: 1440,
+          },
         },
-      });
+        ctx
+      );
 
       console.log('\n✅ Simulation complete!');
-      console.log(`   Run ID: ${result.runId}`);
-      console.log(`   Final PnL: $${result.finalPnl.toFixed(2)}`);
-      console.log(`   Win Rate: ${(result.winRate * 100).toFixed(1)}%`);
-      console.log(`   Max Drawdown: ${(result.maxDrawdown * 100).toFixed(1)}%`);
-      console.log(`   Trade Count: ${result.tradeCount}`);
-      console.log(`   Token Count: ${result.tokenCount}`);
+      console.log(`   Calls attempted: ${result.totals.calls}`);
+      console.log(`   Calls succeeded: ${result.totals.ok}`);
+      console.log(`   Calls failed: ${result.totals.errors}`);
+      if (result.pnl.mean !== undefined) {
+        console.log(`   Mean PnL: ${(result.pnl.mean * 100).toFixed(1)}%`);
+        console.log(`   Median PnL: ${result.pnl.median ? (result.pnl.median * 100).toFixed(1) + '%' : 'N/A'}`);
+      }
 
       process.exit(0);
     } catch (error) {

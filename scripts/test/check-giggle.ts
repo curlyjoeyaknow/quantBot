@@ -1,5 +1,5 @@
 import { DateTime } from 'luxon';
-import { fetchHybridCandles } from '../src/simulation/candles';
+import { fetchHybridCandles } from '@quantbot/ohlcv';
 
 async function checkGiggle() {
   const tokenAddress = '0x20d6015660b3fe52e6690a889b5c51f69902ce0e';

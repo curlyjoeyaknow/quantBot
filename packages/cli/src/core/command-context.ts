@@ -17,6 +17,7 @@ import { TelegramAlertIngestionService } from '@quantbot/ingestion';
 import { getAnalyticsEngine } from '@quantbot/analytics';
 import type { AnalyticsEngine } from '@quantbot/analytics';
 import { getPythonEngine, type PythonEngine } from '@quantbot/utils';
+import { DuckDBStorageService, ClickHouseService } from '@quantbot/simulation';
 import { ensureInitialized } from './initialization-manager.js';
 
 /**
@@ -28,6 +29,8 @@ export interface CommandServices {
   ohlcvRepository(): OhlcvRepository;
   analyticsEngine(): AnalyticsEngine;
   pythonEngine(): PythonEngine;
+  duckdbStorage(): DuckDBStorageService;
+  clickHouse(): ClickHouseService;
   // Add more services as needed
 }
 
@@ -110,6 +113,14 @@ export class CommandContext {
       pythonEngine: () => {
         // Use override if provided (for tests), otherwise use singleton
         return this._options.pythonEngineOverride ?? getPythonEngine();
+      },
+      duckdbStorage: () => {
+        const engine = this._options.pythonEngineOverride ?? getPythonEngine();
+        return new DuckDBStorageService(engine);
+      },
+      clickHouse: () => {
+        const engine = this._options.pythonEngineOverride ?? getPythonEngine();
+        return new ClickHouseService(engine);
       },
     };
   }

@@ -10,7 +10,8 @@ import {
   CallersRepository,
   TokenDataRepository,
 } from '@quantbot/storage';
-import { simulateStrategy, fetchHybridCandles } from '@quantbot/simulation';
+import { simulateStrategy } from '@quantbot/simulation';
+import { fetchHybridCandles } from '@quantbot/ohlcv';
 import type {
   WorkflowContext,
   StrategyRecord,

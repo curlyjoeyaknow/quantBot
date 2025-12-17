@@ -75,7 +75,7 @@ QuantBot's Golden Path provides:
 
 - **Backend REST API** - Fastify-based API exposing all services (see `packages/api/`)
 - **Real-Time Monitoring** - Live CA drop detection (see `packages/monitoring/`)
-- **Telegram Bot Interface** - Interactive command-driven bot (planned - `packages/bot/`)
+- **Telegram Bot Interface** - Interactive command-driven bot (planned)
 - **Web Dashboard** - Next.js-based analytics UI (planned - `packages/web/`)
 - **Live Trading** - Execution system (planned - `packages/trading/`)
 
@@ -374,12 +374,11 @@ npm run simulate:config -- --config=configs/simulations/top-strategies.json
 #### Programmatic API
 
 ```typescript
-import { SimulationEngine } from '@quantbot/simulation';
-import { fetchHybridCandles } from '@quantbot/simulation/candles';
+import { simulateStrategy } from '@quantbot/simulation';
+import { fetchHybridCandles } from '@quantbot/ohlcv';
 
-const engine = new SimulationEngine();
 const candles = await fetchHybridCandles(tokenAddress, startTime, endTime, chain);
-const result = await engine.simulate(candles, strategy, stopLossConfig);
+const result = await simulateStrategy(candles, strategy, stopLossConfig);
 ```
 
 ### Monitoring Services
@@ -528,7 +527,7 @@ npm run test:watch
 npm run test:coverage
 
 # Test specific package
-npm run test --workspace=packages/bot
+npm run test --workspace=packages/cli
 ```
 
 ### Code Quality

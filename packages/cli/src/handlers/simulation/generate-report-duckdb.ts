@@ -1,7 +1,7 @@
 /**
  * Handler for simulation generate-report command
  *
- * Generates a report from DuckDB simulation data using Python service.
+ * Generates a report from DuckDB simulation data using DuckDBStorageService.
  */
 
 import type { CommandContext } from '../../core/command-context.js';
@@ -10,21 +10,9 @@ import { generateReportSchema, type GenerateReportArgs } from '../../command-def
 export async function generateReportDuckdbHandler(
   args: GenerateReportArgs,
   ctx: CommandContext
-): Promise<Record<string, unknown>> {
-  const engine = ctx.services.pythonEngine();
+) {
+  const service = ctx.services.duckdbStorage();
 
-  const reportConfig: Record<string, unknown> = {
-    type: args.type,
-  };
-
-  if (args.strategyId) {
-    reportConfig.strategy_id = args.strategyId;
-  }
-
-  return await engine.runDuckDBStorage({
-    duckdbPath: args.duckdb,
-    operation: 'generate_report',
-    data: reportConfig,
-  });
+  return await service.generateReport(args.duckdb, args.type, args.strategyId);
 }
 

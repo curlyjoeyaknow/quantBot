@@ -1,6 +1,6 @@
 import { DateTime } from 'luxon';
-import { fetchHybridCandles } from '../src/simulation/candles';
-import { simulateStrategy } from '../src/simulation/engine';
+import { fetchHybridCandles } from '@quantbot/ohlcv';
+import { simulateStrategy } from '@quantbot/simulation';
 import * as fs from 'fs';
 import * as path from 'path';
 import { parse } from 'csv-parse';

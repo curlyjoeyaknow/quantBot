@@ -6,12 +6,13 @@
 
 import 'dotenv/config';
 import { DateTime } from 'luxon';
-import { queryCandles } from '../src/storage/clickhouse-client';
+import { queryCandles } from '@quantbot/storage';
 import { parse } from 'csv-parse';
 import * as fs from 'fs';
 import * as path from 'path';
 import { stringify } from 'csv-stringify';
-import { calculateIndicators, IndicatorData } from '../src/simulation/indicators';
+import { calculateIndicators } from '@quantbot/simulation';
+import type { IndicatorData } from '@quantbot/simulation';
 
 const BROOK_CALLS_CSV = path.join(__dirname, '../data/exports/csv/all_brook_channels_calls.csv');
 const OUTPUT_DIR = path.join(__dirname, '../data/exports/tenkan-kijun-remaining-period-by-caller');

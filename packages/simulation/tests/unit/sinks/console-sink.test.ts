@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ConsoleSink } from '../../../src/sinks/console-sink';
-import type { SimulationRunContext } from '../../../src/core/orchestrator';
+import type { SimulationRunContext } from '../../../src/core';
 
 describe('Console Sink', () => {
   let consoleLogSpy: ReturnType<typeof vi.spyOn>;

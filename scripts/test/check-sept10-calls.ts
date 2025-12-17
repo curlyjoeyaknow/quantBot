@@ -1,5 +1,5 @@
 import { DateTime } from 'luxon';
-import { fetchHybridCandles } from '../src/simulation/candles';
+import { fetchHybridCandles } from '@quantbot/ohlcv';
 
 async function checkSept10Calls() {
   const tokens = [

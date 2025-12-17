@@ -8,10 +8,8 @@
 export * from './provider';
 
 // Provider implementations
-export { BirdeyeCandleProvider, BirdeyeMetadataProvider } from './birdeye-provider';
-export { ClickHouseProvider } from './clickhouse-provider';
-export { HybridCandleProvider, createHybridProvider } from './hybrid-provider';
-export type { HybridProviderOptions } from './hybrid-provider';
+// Birdeye, ClickHouse, and Hybrid providers have been moved to @quantbot/ohlcv
+// Use @quantbot/ohlcv instead
 
 // Aggregation utilities
 export * from './aggregator';
