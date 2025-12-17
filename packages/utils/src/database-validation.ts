@@ -8,6 +8,7 @@
 import { z } from 'zod';
 import { Chain, TokenAddress, Strategy, StopLossConfig } from '@quantbot/core';
 import { createTokenAddress } from '@quantbot/core';
+import { ValidationError } from './errors.js';
 
 /**
  * Validates a Chain value
@@ -189,7 +190,9 @@ export function validateOrThrow<T>(schema: z.ZodSchema<T>, data: unknown): T {
     // Zod 4.x uses 'issues' instead of 'errors'
     const issues = result.error.issues || (result.error as any).errors || [];
     const errors = issues.map((e: any) => `${(e.path || []).join('.')}: ${e.message}`).join(', ');
-    throw new Error(`Validation failed: ${errors}`);
+    throw new ValidationError(`Database validation failed: ${errors}`, {
+      errors: result.error.issues,
+    });
   }
   return result.data;
 }

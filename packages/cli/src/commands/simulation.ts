@@ -8,6 +8,7 @@ import type { PackageCommandModule } from '../types/index.js';
 import { commandRegistry } from '../core/command-registry.js';
 import { execute } from '../core/execute.js';
 import type { CommandContext } from '../core/command-context.js';
+import { NotFoundError } from '@quantbot/utils';
 import { runSimulationHandler } from '../handlers/simulation/run-simulation.js';
 import { listRunsHandler } from '../handlers/simulation/list-runs.js';
 import { runSimulationDuckdbHandler } from '../handlers/simulation/run-simulation-duckdb.js';
@@ -50,7 +51,7 @@ export function registerSimulationCommands(program: Command): void {
     .action(async (options) => {
       const commandDef = commandRegistry.getCommand('simulation', 'run');
       if (!commandDef) {
-        throw new Error('Command simulation run not found in registry');
+        throw new NotFoundError('Command', 'simulation.run');
       }
       await execute(commandDef, {
         ...options,
@@ -73,7 +74,7 @@ export function registerSimulationCommands(program: Command): void {
     .action(async (options) => {
       const commandDef = commandRegistry.getCommand('simulation', 'list-runs');
       if (!commandDef) {
-        throw new Error('Command simulation list-runs not found in registry');
+        throw new NotFoundError('Command', 'simulation.list-runs');
       }
       await execute(commandDef, {
         ...options,
@@ -95,7 +96,7 @@ export function registerSimulationCommands(program: Command): void {
     .option('--format <format>', 'Output format', 'table')
     .action(async (options) => {
       const commandDef = commandRegistry.getCommand('simulation', 'store-strategy');
-      if (!commandDef) throw new Error('Command simulation store-strategy not found in registry');
+      if (!commandDef) throw new NotFoundError('Command', 'simulation.store-strategy');
       await execute(commandDef, {
         ...options,
         entryConfig: JSON.parse(options.entryConfig),
@@ -126,7 +127,7 @@ export function registerSimulationCommands(program: Command): void {
     .option('--format <format>', 'Output format', 'table')
     .action(async (options) => {
       const commandDef = commandRegistry.getCommand('simulation', 'store-run');
-      if (!commandDef) throw new Error('Command simulation store-run not found in registry');
+      if (!commandDef) throw new NotFoundError('Command', 'simulation.store-run');
       await execute(commandDef, {
         ...options,
         initialCapital: options.initialCapital ? parseFloat(options.initialCapital) : 1000.0,
@@ -149,7 +150,7 @@ export function registerSimulationCommands(program: Command): void {
     .option('--format <format>', 'Output format', 'table')
     .action(async (options) => {
       const commandDef = commandRegistry.getCommand('simulation', 'generate-report');
-      if (!commandDef) throw new Error('Command simulation generate-report not found in registry');
+      if (!commandDef) throw new NotFoundError('Command', 'simulation.generate-report');
       await execute(commandDef, options);
     });
 
@@ -173,7 +174,7 @@ export function registerSimulationCommands(program: Command): void {
     .option('--format <format>', 'Output format', 'table')
     .action(async (options) => {
       const commandDef = commandRegistry.getCommand('simulation', 'clickhouse-query');
-      if (!commandDef) throw new Error('Command simulation clickhouse-query not found in registry');
+      if (!commandDef) throw new NotFoundError('Command', 'simulation.clickhouse-query');
       await execute(commandDef, {
         ...options,
         port: options.port ? parseInt(options.port, 10) : 8123,

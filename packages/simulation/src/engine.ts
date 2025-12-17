@@ -1,5 +1,6 @@
 import { DateTime } from 'luxon';
 import type { Candle } from '@quantbot/core';
+import { NotFoundError } from '@quantbot/utils';
 import {
   CostConfig,
   EntryConfig,
@@ -211,9 +212,11 @@ export class SimulationEngine {
           }
 
           if (!candles || !candles.length) {
-            throw new Error(
-              `No candle data available for target ${target.mint}. Ensure candles are pre-fetched and provided in candlesMap.`
-            );
+            throw new NotFoundError('Candle data', target.mint, {
+              operation: 'simulateStrategy',
+              target,
+              availableMints: Object.keys(request.candlesMap),
+            });
           }
 
           const result = await simulateStrategy(

@@ -64,3 +64,8 @@ export const analyzeDuckdbSchema = z.object({
  * Report command arguments type
  */
 export type ReportArgs = z.infer<typeof reportSchema>;
+
+/**
+ * Analyze DuckDB command arguments type
+ */
+export type AnalyzeDuckdbArgs = z.infer<typeof analyzeDuckdbSchema>;

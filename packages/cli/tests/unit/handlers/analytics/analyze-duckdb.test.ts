@@ -100,9 +100,7 @@ describe('analyzeDuckdbHandler', () => {
       duckdb: '/path/to/tele.duckdb',
     };
 
-    await expect(analyzeDuckdbHandler(args, mockCtx)).rejects.toThrow(
-      'Must specify'
-    );
+    await expect(analyzeDuckdbHandler(args, mockCtx)).rejects.toThrow('Must specify');
   });
 
   it('should handle Python script errors', async () => {
@@ -116,4 +114,3 @@ describe('analyzeDuckdbHandler', () => {
     await expect(analyzeDuckdbHandler(args, mockCtx)).rejects.toThrow('Analysis failed');
   });
 });
-

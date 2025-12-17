@@ -189,4 +189,3 @@ describe('coverageOhlcvHandler', () => {
     await expect(coverageOhlcvHandler(args, mockCtx)).rejects.toThrow();
   });
 });
-

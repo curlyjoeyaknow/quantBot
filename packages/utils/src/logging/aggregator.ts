@@ -7,6 +7,7 @@
 
 import { Logger } from '../logger';
 import * as winston from 'winston';
+import { ApiError } from '../index.js';
 
 /**
  * Log aggregator configuration
@@ -150,7 +151,13 @@ export class LogAggregator {
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to send logs: ${response.statusText}`);
+      throw new ApiError(
+        `Failed to send logs: ${response.statusText}`,
+        'LogAggregator',
+        response.status,
+        undefined,
+        { url: this.config.endpoint, statusText: response.statusText }
+      );
     }
   }
 

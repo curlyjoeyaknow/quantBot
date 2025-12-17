@@ -8,7 +8,7 @@
 import { execSync, spawn } from 'child_process';
 import { join } from 'path';
 import { z } from 'zod';
-import { logger } from '../logger.js';
+import { logger, ValidationError, TimeoutError, AppError } from '../index.js';
 
 export interface PythonScriptOptions {
   /**
@@ -139,8 +139,9 @@ export class PythonEngine {
         try {
           parsed = JSON.parse(output.trim());
         } catch {
-          throw new Error(
-            `Failed to parse JSON output from Python script. Last line: ${jsonLine.substring(0, 200)}`
+          throw new ValidationError(
+            `Failed to parse JSON output from Python script. Last line: ${jsonLine.substring(0, 200)}`,
+            { script: scriptPath, lastLine: jsonLine.substring(0, 200) }
           );
         }
       }
@@ -150,11 +151,16 @@ export class PythonEngine {
       return validated;
     } catch (error: any) {
       if (error.signal === 'SIGTERM' || error.status === 124) {
-        throw new Error(`Python script timed out after ${timeout}ms`);
+        throw new TimeoutError(`Python script timed out after ${timeout}ms`, timeout, {
+          script: scriptPath,
+        });
       }
       if (error.status !== undefined && error.status !== 0) {
-        throw new Error(
-          `Python script exited with code ${error.status}: ${error.message || error.stderr?.toString() || 'Unknown error'}`
+        throw new AppError(
+          `Python script exited with code ${error.status}: ${error.message || error.stderr?.toString() || 'Unknown error'}`,
+          'PYTHON_SCRIPT_ERROR',
+          500,
+          { script: scriptPath, exitCode: error.status, stderr: error.stderr?.toString() }
         );
       }
       throw error;
@@ -172,10 +178,7 @@ export class PythonEngine {
     config: TelegramPipelineConfig,
     options?: PythonScriptOptions
   ): Promise<PythonManifest> {
-    const scriptPath = join(
-      process.cwd(),
-      'tools/telegram/duckdb_punch_pipeline.py'
-    );
+    const scriptPath = join(process.cwd(), 'tools/telegram/duckdb_punch_pipeline.py');
 
     const args: Record<string, unknown> = {
       in: config.inputFile,
@@ -193,16 +196,11 @@ export class PythonEngine {
       PYTHONPATH: join(process.cwd(), 'tools/telegram'),
     };
 
-    return this.runScript(
-      scriptPath,
-      args,
-      PythonManifestSchema,
-      {
-        ...options,
-        cwd,
-        env,
-      }
-    );
+    return this.runScript(scriptPath, args, PythonManifestSchema, {
+      ...options,
+      cwd,
+      env,
+    });
   }
 
   /**
@@ -216,10 +214,7 @@ export class PythonEngine {
     config: DuckDBStorageConfig,
     options?: PythonScriptOptions
   ): Promise<Record<string, unknown>> {
-    const scriptPath = join(
-      process.cwd(),
-      'tools/simulation/duckdb_storage.py'
-    );
+    const scriptPath = join(process.cwd(), 'tools/simulation/duckdb_storage.py');
 
     const args: Record<string, unknown> = {
       duckdb: config.duckdbPath,
@@ -233,21 +228,18 @@ export class PythonEngine {
       PYTHONPATH: join(process.cwd(), 'tools/simulation'),
     };
 
-    const resultSchema = z.object({
-      success: z.boolean(),
-      error: z.string().optional(),
-    }).passthrough();
+    const resultSchema = z
+      .object({
+        success: z.boolean(),
+        error: z.string().optional(),
+      })
+      .passthrough();
 
-    return this.runScript(
-      scriptPath,
-      args,
-      resultSchema,
-      {
-        ...options,
-        cwd,
-        env,
-      }
-    );
+    return this.runScript(scriptPath, args, resultSchema, {
+      ...options,
+      cwd,
+      env,
+    });
   }
 
   /**
@@ -261,10 +253,7 @@ export class PythonEngine {
     config: ClickHouseEngineConfig,
     options?: PythonScriptOptions
   ): Promise<Record<string, unknown>> {
-    const scriptPath = join(
-      process.cwd(),
-      'tools/simulation/clickhouse_engine.py'
-    );
+    const scriptPath = join(process.cwd(), 'tools/simulation/clickhouse_engine.py');
 
     const args: Record<string, unknown> = {
       operation: config.operation,
@@ -283,21 +272,18 @@ export class PythonEngine {
       PYTHONPATH: join(process.cwd(), 'tools/simulation'),
     };
 
-    const resultSchema = z.object({
-      success: z.boolean(),
-      error: z.string().optional(),
-    }).passthrough();
+    const resultSchema = z
+      .object({
+        success: z.boolean(),
+        error: z.string().optional(),
+      })
+      .passthrough();
 
-    return this.runScript(
-      scriptPath,
-      args,
-      resultSchema,
-      {
-        ...options,
-        cwd,
-        env,
-      }
-    );
+    return this.runScript(scriptPath, args, resultSchema, {
+      ...options,
+      cwd,
+      env,
+    });
   }
 }
 
@@ -312,4 +298,3 @@ export function getPythonEngine(): PythonEngine {
   }
   return defaultEngine;
 }
-

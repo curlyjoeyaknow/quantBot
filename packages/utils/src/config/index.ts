@@ -5,6 +5,8 @@
  * API keys, and other environment-based settings.
  */
 
+import { ConfigurationError } from '../errors.js';
+
 export interface PostgresConfig {
   host: string;
   port: number;
@@ -89,11 +91,15 @@ export function getDatabaseConfig(): DatabaseConfig {
 /**
  * Load Birdeye API configuration
  */
+
 export function getBirdeyeConfig(): BirdeyeConfig {
   const { BIRDEYE_API_KEY, BIRDEYE_BASE_URL } = process.env;
 
   if (!BIRDEYE_API_KEY) {
-    throw new Error('BIRDEYE_API_KEY environment variable is required');
+    throw new ConfigurationError(
+      'BIRDEYE_API_KEY environment variable is required',
+      'BIRDEYE_API_KEY'
+    );
   }
 
   return {

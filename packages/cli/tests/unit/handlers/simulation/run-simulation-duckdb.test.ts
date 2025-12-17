@@ -116,9 +116,6 @@ describe('runSimulationDuckdbHandler', () => {
       lookforward_minutes: 1440,
     };
 
-    await expect(runSimulationDuckdbHandler(args, mockCtx)).rejects.toThrow(
-      'Simulation failed'
-    );
+    await expect(runSimulationDuckdbHandler(args, mockCtx)).rejects.toThrow('Simulation failed');
   });
 });
-

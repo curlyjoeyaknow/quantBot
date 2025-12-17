@@ -8,6 +8,7 @@ import { getPostgresPool, getClickHouseClient } from '@quantbot/storage';
 import type { PackageCommandModule } from '../types/index.js';
 import { commandRegistry } from '../core/command-registry.js';
 import type { CommandContext } from '../core/command-context.js';
+import { NotFoundError, ValidationError } from '@quantbot/utils';
 import { queryStorageHandler } from '../handlers/storage/query-storage.js';
 import { statsStorageHandler } from '../handlers/storage/stats-storage.js';
 
@@ -57,8 +58,9 @@ function validateTableName(table: string, database: 'postgres' | 'clickhouse'): 
  */
 export async function queryPostgresTable(table: string, limit: number): Promise<unknown[]> {
   if (!validateTableName(table, 'postgres')) {
-    throw new Error(
-      `Invalid table name: ${table}. Allowed tables: ${SAFE_TABLES.postgres.join(', ')}`
+    throw new ValidationError(
+      `Invalid table name: ${table}. Allowed tables: ${SAFE_TABLES.postgres.join(', ')}`,
+      { table, database: 'postgres', allowedTables: SAFE_TABLES.postgres }
     );
   }
 
@@ -74,8 +76,9 @@ export async function queryPostgresTable(table: string, limit: number): Promise<
  */
 export async function queryClickHouseTable(table: string, limit: number): Promise<unknown[]> {
   if (!validateTableName(table, 'clickhouse')) {
-    throw new Error(
-      `Invalid table name: ${table}. Allowed tables: ${SAFE_TABLES.clickhouse.join(', ')}`
+    throw new ValidationError(
+      `Invalid table name: ${table}. Allowed tables: ${SAFE_TABLES.clickhouse.join(', ')}`,
+      { table, database: 'clickhouse', allowedTables: SAFE_TABLES.clickhouse }
     );
   }
 
@@ -112,7 +115,7 @@ export function registerStorageCommands(program: Command): void {
       const { execute } = await import('../core/execute.js');
       const commandDef = commandRegistry.getCommand('storage', 'query');
       if (!commandDef) {
-        throw new Error('Command storage query not found in registry');
+        throw new NotFoundError('Command', 'storage.query');
       }
       await execute(commandDef, {
         ...options,
@@ -129,7 +132,7 @@ export function registerStorageCommands(program: Command): void {
       const { execute } = await import('../core/execute.js');
       const commandDef = commandRegistry.getCommand('storage', 'stats');
       if (!commandDef) {
-        throw new Error('Command storage stats not found in registry');
+        throw new NotFoundError('Command', 'storage.stats');
       }
       await execute(commandDef, options);
     });

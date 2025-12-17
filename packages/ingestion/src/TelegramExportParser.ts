@@ -7,7 +7,7 @@
 import * as fs from 'fs';
 import * as cheerio from 'cheerio';
 import { DateTime } from 'luxon';
-import { logger } from '@quantbot/utils';
+import { logger, NotFoundError } from '@quantbot/utils';
 
 export interface ParsedMessage {
   timestamp: Date;
@@ -27,7 +27,7 @@ export function parseExport(filePath: string): ParsedMessage[] {
   logger.info('Parsing Telegram export', { filePath });
 
   if (!fs.existsSync(filePath)) {
-    throw new Error(`File not found: ${filePath}`);
+    throw new NotFoundError('File', filePath);
   }
 
   const htmlContent = fs.readFileSync(filePath, 'utf8');

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { DateTime } from 'luxon';
+import { ValidationError, NotFoundError } from '@quantbot/utils';
 import type {
   WorkflowContext,
   SimulationRunSpec,
@@ -55,13 +56,19 @@ export async function runSimulation(
   const parsed = SpecSchema.safeParse(spec);
   if (!parsed.success) {
     const msg = parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ');
-    throw new Error(`INVALID_SPEC: ${msg}`);
+    throw new ValidationError(`Invalid simulation spec: ${msg}`, {
+      spec,
+      issues: parsed.error.issues,
+    });
   }
 
   const fromISO = spec.from.toISO()!;
   const toISO = spec.to.toISO()!;
   if (spec.to <= spec.from) {
-    throw new Error(`INVALID_DATE_RANGE: to must be after from (from=${fromISO}, to=${toISO})`);
+    throw new ValidationError(`Invalid date range: to must be after from`, {
+      from: fromISO,
+      to: toISO,
+    });
   }
 
   const dryRun = spec.options?.dryRun ?? false;
@@ -72,7 +79,7 @@ export async function runSimulation(
 
   const strategy = await ctx.repos.strategies.getByName(spec.strategyName);
   if (!strategy) {
-    throw new Error(`STRATEGY_NOT_FOUND: ${spec.strategyName}`);
+    throw new NotFoundError('Strategy', spec.strategyName);
   }
 
   const calls = await ctx.repos.calls.list({

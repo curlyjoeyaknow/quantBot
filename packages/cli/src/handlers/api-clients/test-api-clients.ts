@@ -2,6 +2,7 @@ import type { CommandContext } from '../../core/command-context.js';
 import { testSchema, type TestApiClientsArgs } from '../../command-defs/api-clients.js';
 import { BirdeyeClient } from '@quantbot/api-clients';
 import { HeliusClient } from '@quantbot/api-clients';
+import { ValidationError } from '@quantbot/utils';
 
 export async function testApiClientsHandler(
   args: TestApiClientsArgs,
@@ -22,6 +23,9 @@ export async function testApiClientsHandler(
       message: 'Connection test successful',
     };
   } else {
-    throw new Error(`Unknown service: ${args.service}`);
+    throw new ValidationError(`Unknown service: ${args.service}`, {
+      service: args.service,
+      allowedServices: ['birdeye', 'helius'],
+    });
   }
 }

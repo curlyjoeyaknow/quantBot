@@ -333,6 +333,135 @@ export async function badHandler(args, ctx) {
 4. **Maintainability**: Changes to CLI don't affect business logic
 5. **Reusability**: Handlers can be used programmatically
 
+## Python/DuckDB Integration Pattern
+
+**When integrating Python tools (DuckDB, ClickHouse, etc.):**
+
+### Required Flow
+
+```
+Handler → Service → PythonEngine.run() → Python Script → Zod Validation → Typed Result
+```
+
+### Rules
+
+1. **Handler** (`packages/cli/src/handlers/{package}/{command-name}.ts`)
+   - ✅ Gets service from `ctx.services.serviceName()`
+   - ✅ Calls service method with validated args
+   - ✅ Returns typed result (no PythonEngine calls)
+   - ❌ NO direct PythonEngine calls
+   - ❌ NO subprocess management
+   - ❌ NO JSON parsing/validation
+
+2. **Service** (`packages/{package}/src/{service-name}-service.ts`)
+   - ✅ Wraps PythonEngine calls
+   - ✅ Validates output with Zod schemas
+   - ✅ Handles errors and logging
+   - ✅ Returns typed results
+   - ✅ Can be used outside CLI handlers
+   - ❌ NO handler-specific logic
+   - ❌ NO output formatting
+
+3. **PythonEngine** (`packages/utils/src/python/python-engine.ts`)
+   - ✅ Executes Python scripts as subprocesses
+   - ✅ Validates JSON output with Zod
+   - ✅ Handles subprocess errors
+   - ❌ NO business logic
+   - ❌ NO domain-specific validation
+
+### Example: Python/DuckDB Integration
+
+**Handler** (`packages/cli/src/handlers/simulation/store-strategy-duckdb.ts`):
+```typescript
+export async function storeStrategyDuckdbHandler(
+  args: StoreStrategyArgs,
+  ctx: CommandContext
+) {
+  const service = ctx.services.duckdbStorage(); // ✅ Get service from context
+  return await service.storeStrategy(           // ✅ Call service method
+    args.duckdb,
+    args.strategyId,
+    args.name,
+    args.entryConfig,
+    args.exitConfig,
+    args.reentryConfig,
+    args.costConfig
+  );
+}
+```
+
+**Service** (`packages/simulation/src/duckdb-storage-service.ts`):
+```typescript
+export class DuckDBStorageService {
+  constructor(private readonly pythonEngine: PythonEngine) {}
+
+  async storeStrategy(
+    duckdbPath: string,
+    strategyId: string,
+    // ... other params
+  ): Promise<StrategyStorageResult> {
+    try {
+      const result = await this.pythonEngine.runDuckDBStorage({ // ✅ Call PythonEngine
+        duckdbPath,
+        operation: 'store_strategy',
+        data: { /* ... */ },
+      });
+
+      return StrategyStorageResultSchema.parse(result); // ✅ Validate with Zod
+    } catch (error) {
+      logger.error('Failed to store strategy', error as Error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
+  }
+}
+```
+
+**PythonEngine** (`packages/utils/src/python/python-engine.ts`):
+```typescript
+async runDuckDBStorage(
+  config: DuckDBStorageConfig,
+  options?: PythonScriptOptions
+): Promise<Record<string, unknown>> {
+  const scriptPath = join(process.cwd(), 'tools/simulation/duckdb_storage.py');
+  const resultSchema = z.object({
+    success: z.boolean(),
+    error: z.string().optional(),
+  }).passthrough();
+
+  return this.runScript(scriptPath, args, resultSchema, options); // ✅ Execute & validate
+}
+```
+
+### Forbidden Patterns
+
+**❌ Handler calling PythonEngine directly:**
+```typescript
+export async function badHandler(args, ctx) {
+  const engine = ctx.services.pythonEngine(); // ❌ NO
+  return await engine.runDuckDBStorage({ /* ... */ }); // ❌ NO
+}
+```
+
+**❌ Service with handler-specific logic:**
+```typescript
+export class BadService {
+  async doSomething(args, format: 'json' | 'table') { // ❌ NO format param
+    // Format-specific logic // ❌ NO
+  }
+}
+```
+
+**❌ PythonEngine with business logic:**
+```typescript
+async runDuckDBStorage(config) {
+  // Business logic here // ❌ NO
+  // Domain validation // ❌ NO
+}
+```
+
 ## Enforcement
 
 **This pattern is MANDATORY for all new commands.**
@@ -343,5 +472,11 @@ When creating a new command:
 2. Add command metadata (schema, description, examples)
 3. Wire to executor
 4. Write tests
+
+**For Python integration:**
+1. Create service in appropriate package (`@quantbot/simulation`, etc.)
+2. Service wraps PythonEngine with Zod validation
+3. Handler calls service (not PythonEngine directly)
+4. Add service to CommandContext
 
 **Do not skip steps. Do not mix concerns.**

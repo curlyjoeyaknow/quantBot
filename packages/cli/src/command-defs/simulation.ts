@@ -39,7 +39,7 @@ export const runSimulationDuckdbSchema = z.object({
     stop_loss_pct: z.number().min(0).max(1).optional(),
     trailing_stop_pct: z.number().min(0).max(1).optional(),
     trailing_activation_pct: z.number().min(0).max(1).optional(),
-    reentry_config: z.record(z.unknown()).optional(),
+    reentry_config: z.record(z.string(), z.unknown()).optional(),
     maker_fee: z.number().min(0).max(1).default(0.001),
     taker_fee: z.number().min(0).max(1).default(0.001),
     slippage: z.number().min(0).max(1).default(0.005),
@@ -59,10 +59,10 @@ export const storeStrategySchema = z.object({
   duckdb: z.string().min(1),
   strategyId: z.string().min(1),
   name: z.string().min(1),
-  entryConfig: z.record(z.unknown()),
-  exitConfig: z.record(z.unknown()),
-  reentryConfig: z.record(z.unknown()).optional(),
-  costConfig: z.record(z.unknown()).optional(),
+  entryConfig: z.record(z.string(), z.unknown()),
+  exitConfig: z.record(z.string(), z.unknown()),
+  reentryConfig: z.record(z.string(), z.unknown()).optional(),
+  costConfig: z.record(z.string(), z.unknown()).optional(),
   format: z.enum(['json', 'table', 'csv']).default('table'),
 });
 
@@ -99,7 +99,19 @@ export const clickHouseQuerySchema = z.object({
   endTime: z.string().optional(),
   interval: z.enum(['1m', '5m', '15m', '1h']).optional(),
   runId: z.string().optional(),
-  events: z.array(z.record(z.unknown())).optional(),
+  events: z
+    .array(
+      z.object({
+        event_type: z.string(),
+        timestamp: z.number(),
+        price: z.number(),
+        quantity: z.number().optional(),
+        value_usd: z.number().optional(),
+        pnl_usd: z.number().optional(),
+        metadata: z.record(z.string(), z.unknown()).optional(),
+      })
+    )
+    .optional(),
   host: z.string().optional(),
   port: z.number().int().positive().optional(),
   database: z.string().optional(),

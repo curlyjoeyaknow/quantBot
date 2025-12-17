@@ -31,8 +31,9 @@ export class ConsoleSink implements ResultSink {
   }
 
   async handle(context: SimulationRunContext): Promise<void> {
-    const tokenSymbol = (context.metadata?.symbol as string) || context.target.mint.substring(0, 8);
-    const tokenName = (context.metadata?.name as string) || undefined;
+    const metadata = context.target.metadata as { symbol?: string; name?: string } | undefined;
+    const tokenSymbol = (metadata?.symbol as string) || context.target.mint.substring(0, 8);
+    const tokenName = (metadata?.name as string) || undefined;
     const displayName = tokenName ? `${tokenName} (${tokenSymbol})` : tokenSymbol;
 
     const pnlPercent = (context.result.finalPnl - 1) * 100;

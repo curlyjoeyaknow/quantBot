@@ -14,6 +14,7 @@
 import { z } from 'zod';
 import type { Chain } from '@quantbot/core';
 import { createTokenAddress } from '@quantbot/core';
+import { ValidationError, AppError } from '@quantbot/utils';
 import type { WorkflowContext } from '../types.js';
 import {
   parseJsonExport,
@@ -82,7 +83,10 @@ export async function ingestTelegramJson(
   const parsed = IngestSpecSchema.safeParse(spec);
   if (!parsed.success) {
     const msg = parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ');
-    throw new Error(`INVALID_SPEC: ${msg}`);
+    throw new ValidationError(`Invalid ingestion spec: ${msg}`, {
+      spec,
+      issues: parsed.error.issues,
+    });
   }
 
   const validated = parsed.data;
@@ -100,7 +104,12 @@ export async function ingestTelegramJson(
     parseResult = parseJsonExport(validated.filePath, validated.chatId);
   } catch (error) {
     ctx.logger.error('Failed to parse JSON export', error as Error);
-    throw new Error(`PARSE_ERROR: ${error instanceof Error ? error.message : String(error)}`);
+    throw new AppError(
+      `Failed to parse Telegram JSON export: ${error instanceof Error ? error.message : String(error)}`,
+      'PARSE_ERROR',
+      500,
+      { filePath: validated.filePath, chatId: validated.chatId }
+    );
   }
 
   ctx.logger.info('Normalization complete', {
@@ -148,7 +157,7 @@ export async function ingestTelegramJson(
 
   // Filter for bot messages by fromId
   const botNormalizedMessages = parseResult.normalized.filter(
-    (msg) => msg.fromId && BOT_IDS.includes(msg.fromId)
+    (msg) => msg.fromId !== null && BOT_IDS.includes(String(msg.fromId))
   );
   ctx.logger.info('Found bot messages', { count: botNormalizedMessages.length });
 

@@ -103,7 +103,8 @@ describe('storeStrategyDuckdbHandler', () => {
       format: 'table' as const,
     };
 
-    await expect(storeStrategyDuckdbHandler(args, mockCtx)).rejects.toThrow('DuckDB operation failed');
+    await expect(storeStrategyDuckdbHandler(args, mockCtx)).rejects.toThrow(
+      'DuckDB operation failed'
+    );
   });
 });
-

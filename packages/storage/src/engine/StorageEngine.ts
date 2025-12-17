@@ -13,7 +13,7 @@
  */
 
 import { DateTime } from 'luxon';
-import { logger } from '@quantbot/utils';
+import { logger, ValidationError } from '@quantbot/utils';
 import type {
   Chain,
   Candle,
@@ -256,8 +256,9 @@ export class StorageEngine {
     // Validate interval
     const validIntervals = ['1m', '5m', '15m', '1h', '4h', '1d'];
     if (!validIntervals.includes(interval)) {
-      throw new Error(
-        `Invalid interval: ${interval}. Must be one of: ${validIntervals.join(', ')}`
+      throw new ValidationError(
+        `Invalid interval: ${interval}. Must be one of: ${validIntervals.join(', ')}`,
+        { interval, validIntervals }
       );
     }
 
@@ -910,7 +911,10 @@ export class StorageEngine {
       if (result.events.length > 0) {
         // This would need the simulation run metadata to get token info
         // For now, we'll assume it's passed separately
-        throw new Error('Event storage requires token address and chain');
+        throw new ValidationError('Event storage requires token address and chain', {
+          operation: 'storeSimulationResults',
+          eventsCount: result.events.length,
+        });
       }
 
       logger.info('Stored simulation results', { simulationRunId });

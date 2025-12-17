@@ -37,7 +37,7 @@ export type RunStorageResult = z.infer<typeof RunStorageResultSchema>;
 export const ReportResultSchema = z.object({
   success: z.boolean(),
   report_type: z.enum(['summary', 'strategy_performance']).optional(),
-  data: z.record(z.unknown()).optional(),
+  data: z.record(z.string(), z.unknown()).optional(),
   error: z.string().optional(),
 });
 
@@ -160,7 +160,7 @@ export class DuckDBStorageService {
       const result = await this.pythonEngine.runDuckDBStorage({
         duckdbPath,
         operation: 'store_alerts',
-        data: alerts,
+        data: { alerts },
       });
 
       return AlertsStorageResultSchema.parse(result);
@@ -206,4 +206,3 @@ export class DuckDBStorageService {
     }
   }
 }
-

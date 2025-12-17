@@ -40,7 +40,9 @@ export async function coverageOhlcvHandler(
 
   if (args.mint) {
     const mintAddress = validateMintAddress(args.mint);
-    conditions.push(`(token_address = {mint:String} OR lower(token_address) = lower({mint:String}))`);
+    conditions.push(
+      `(token_address = {mint:String} OR lower(token_address) = lower({mint:String}))`
+    );
     params.mint = mintAddress;
   }
 
@@ -131,4 +133,3 @@ export async function coverageOhlcvHandler(
     intervals,
   };
 }
-

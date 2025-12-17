@@ -6,7 +6,7 @@
  */
 
 import * as fs from 'fs';
-import { logger } from '@quantbot/utils';
+import { logger, NotFoundError, ValidationError } from '@quantbot/utils';
 import {
   normalizeTelegramMessage,
   type NormalizedTelegramMessage,
@@ -37,7 +37,7 @@ export function parseJsonExport(filePath: string, chatId?: string): ParseJsonExp
   logger.info('Parsing Telegram JSON export', { filePath });
 
   if (!fs.existsSync(filePath)) {
-    throw new Error(`File not found: ${filePath}`);
+    throw new NotFoundError('File', filePath);
   }
 
   const fileContent = fs.readFileSync(filePath, 'utf8');
@@ -46,8 +46,9 @@ export function parseJsonExport(filePath: string, chatId?: string): ParseJsonExp
   try {
     exportData = JSON.parse(fileContent);
   } catch (error) {
-    throw new Error(
-      `Invalid JSON in file ${filePath}: ${error instanceof Error ? error.message : String(error)}`
+    throw new ValidationError(
+      `Invalid JSON in file ${filePath}: ${error instanceof Error ? error.message : String(error)}`,
+      { filePath, error: error instanceof Error ? error.message : String(error) }
     );
   }
 
@@ -57,7 +58,10 @@ export function parseJsonExport(filePath: string, chatId?: string): ParseJsonExp
   // Extract messages array
   const rawMessages = exportData.messages || [];
   if (!Array.isArray(rawMessages)) {
-    throw new Error(`Expected messages array in export file ${filePath}`);
+    throw new ValidationError(`Expected messages array in export file ${filePath}`, {
+      filePath,
+      dataType: typeof exportData.messages,
+    });
   }
 
   logger.info('Found raw messages', { count: rawMessages.length, chatId: resolvedChatId });
@@ -72,6 +76,7 @@ export function parseJsonExport(filePath: string, chatId?: string): ParseJsonExp
     if (result.ok) {
       normalized.push(result.value);
     } else {
+      // TypeScript now knows result is NormalizeErr
       quarantined.push({
         error: result.error,
         raw: result.raw,

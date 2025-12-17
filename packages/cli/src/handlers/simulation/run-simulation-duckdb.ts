@@ -7,8 +7,11 @@ import type { CommandContext } from '../../core/command-context.js';
 import { execa } from 'execa';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { logger } from '@quantbot/utils';
-import { runSimulationDuckdbSchema, type RunSimulationDuckdbArgs } from '../../command-defs/simulation.js';
+import { logger, AppError, ValidationError, TimeoutError } from '@quantbot/utils';
+import {
+  runSimulationDuckdbSchema,
+  type RunSimulationDuckdbArgs,
+} from '../../command-defs/simulation.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -41,7 +44,10 @@ export async function runSimulationDuckdbHandler(
     logger.warn('Batch mode requires fetching calls from database - not yet implemented');
   } else {
     if (!args.mint) {
-      throw new Error('mint is required for single simulation');
+      throw new ValidationError('mint is required for single simulation', {
+        operation: 'run_simulation_duckdb',
+        mode: 'single',
+      });
     }
     config.mint = args.mint;
     config.alert_timestamp = args.alert_timestamp || new Date().toISOString();
@@ -55,14 +61,37 @@ export async function runSimulationDuckdbHandler(
     });
 
     if (stderr) {
-      logger.warn('Python simulation stderr:', stderr);
+      logger.warn('Python simulation stderr', { stderr });
     }
 
     // Parse JSON output
     const result = JSON.parse(stdout);
     return result;
   } catch (error) {
-    logger.error('Simulation failed:', error);
-    throw new Error(`Simulation failed: ${error instanceof Error ? error.message : String(error)}`);
+    logger.error('Simulation failed', error);
+
+    // Handle timeout errors
+    if (
+      error instanceof Error &&
+      (error.message.includes('timeout') || error.message.includes('killed'))
+    ) {
+      throw new TimeoutError('Simulation timed out after 5 minutes', 300000, {
+        script: pythonScript,
+        config,
+      });
+    }
+
+    // Re-throw AppErrors as-is
+    if (error instanceof AppError) {
+      throw error;
+    }
+
+    // Wrap other errors
+    throw new AppError(
+      `Simulation failed: ${error instanceof Error ? error.message : String(error)}`,
+      'SIMULATION_FAILED',
+      500,
+      { script: pythonScript, config }
+    );
   }
 }

@@ -6,7 +6,7 @@
 
 import { DateTime } from 'luxon';
 import { getPostgresPool } from '../postgres-client';
-import { logger } from '@quantbot/utils';
+import { logger, DatabaseError } from '@quantbot/utils';
 
 export interface SimulationRun {
   id: number;
@@ -64,7 +64,9 @@ export class SimulationRunsRepository {
     );
 
     if (result.rows.length === 0) {
-      throw new Error('Failed to create simulation run');
+      throw new DatabaseError('Failed to create simulation run', 'createRun', {
+        data,
+      });
     }
 
     return result.rows[0].id;

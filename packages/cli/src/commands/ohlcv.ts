@@ -8,6 +8,7 @@ import { parseDate, validateMintAddress } from '../core/argument-parser.js';
 import type { PackageCommandModule } from '../types/index.js';
 import { commandRegistry } from '../core/command-registry.js';
 import type { CommandContext } from '../core/command-context.js';
+import { NotFoundError } from '@quantbot/utils';
 import { queryOhlcvHandler } from '../handlers/ohlcv/query-ohlcv.js';
 import { backfillOhlcvHandler } from '../handlers/ohlcv/backfill-ohlcv.js';
 import { coverageOhlcvHandler } from '../handlers/ohlcv/coverage-ohlcv.js';
@@ -57,7 +58,7 @@ export const querySchema = z.object({
 /**
  * Backfill command schema
  */
-const backfillSchema = z.object({
+export const backfillSchema = z.object({
   mint: z.string().refine(
     (val) => {
       try {
@@ -79,7 +80,7 @@ const backfillSchema = z.object({
 /**
  * Coverage command schema
  */
-const coverageSchema = z.object({
+export const coverageSchema = z.object({
   mint: z.string().optional(),
   interval: z.enum(['1m', '5m', '15m', '1h', '4h', '1d']).optional(),
   format: z.enum(['json', 'table', 'csv']).default('table'),
@@ -105,7 +106,7 @@ export function registerOhlcvCommands(program: Command): void {
       const { execute } = await import('../core/execute.js');
       const commandDef = commandRegistry.getCommand('ohlcv', 'query');
       if (!commandDef) {
-        throw new Error('Command ohlcv query not found in registry');
+        throw new NotFoundError('Command', 'ohlcv.query');
       }
       await execute(commandDef, options);
     });
@@ -124,7 +125,7 @@ export function registerOhlcvCommands(program: Command): void {
       const { execute } = await import('../core/execute.js');
       const commandDef = commandRegistry.getCommand('ohlcv', 'backfill');
       if (!commandDef) {
-        throw new Error('Command ohlcv backfill not found in registry');
+        throw new NotFoundError('Command', 'ohlcv.backfill');
       }
       await execute(commandDef, options);
     });
@@ -140,7 +141,7 @@ export function registerOhlcvCommands(program: Command): void {
       const { execute } = await import('../core/execute.js');
       const commandDef = commandRegistry.getCommand('ohlcv', 'coverage');
       if (!commandDef) {
-        throw new Error('Command ohlcv coverage not found in registry');
+        throw new NotFoundError('Command', 'ohlcv.coverage');
       }
       await execute(commandDef, options);
     });

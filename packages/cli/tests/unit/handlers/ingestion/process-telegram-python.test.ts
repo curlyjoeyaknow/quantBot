@@ -93,7 +93,8 @@ describe('processTelegramPythonHandler', () => {
       format: 'table' as const,
     };
 
-    await expect(processTelegramPythonHandler(args, mockCtx)).rejects.toThrow('Python script failed');
+    await expect(processTelegramPythonHandler(args, mockCtx)).rejects.toThrow(
+      'Python script failed'
+    );
   });
 });
-

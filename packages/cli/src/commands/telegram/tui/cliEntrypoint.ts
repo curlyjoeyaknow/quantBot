@@ -1,5 +1,6 @@
 import path from 'node:path';
 import fs from 'node:fs';
+import { NotFoundError } from '@quantbot/utils';
 import { runTelegramTui } from './run.js';
 
 function readArg(argv: string[], name: string): string | null {
@@ -85,10 +86,10 @@ export async function runTelegramTuiFromCli(argv: string[]): Promise<void> {
   const maxLines = readNum(argv, '--max') ?? readNum(argv, '-m') ?? 200000;
 
   if (!exists(normalizedPath)) {
-    throw new Error(`normalized file not found: ${normalizedPath}`);
+    throw new NotFoundError('File', normalizedPath, { fileType: 'normalized' });
   }
   if (!exists(quarantinePath)) {
-    throw new Error(`quarantine file not found: ${quarantinePath}`);
+    throw new NotFoundError('File', quarantinePath, { fileType: 'quarantine' });
   }
 
   await runTelegramTui({

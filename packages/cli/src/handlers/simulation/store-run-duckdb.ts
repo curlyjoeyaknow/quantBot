@@ -27,4 +27,3 @@ export async function storeRunDuckdbHandler(args: StoreRunArgs, ctx: CommandCont
     args.totalTrades
   );
 }
-

@@ -59,15 +59,10 @@ export async function backfillOhlcvHandler(
   await engine.initialize();
 
   try {
-    const result = await engine.fetchCandles(
-      mintAddress,
-      args.chain as Chain,
-      fromDate,
-      {
-        useCache: true,
-        forceRefresh: false,
-      }
-    );
+    const result = await engine.fetchCandles(mintAddress, args.chain as Chain, fromDate, {
+      useCache: true,
+      forceRefresh: false,
+    });
 
     return {
       mint: mintAddress,
@@ -93,4 +88,3 @@ export async function backfillOhlcvHandler(
     };
   }
 }
-

@@ -119,7 +119,9 @@ describe('backfillOhlcvHandler', () => {
       format: 'table' as const,
     };
 
-    await expect(backfillOhlcvHandler(args, mockCtx)).rejects.toThrow('From date must be before to date');
+    await expect(backfillOhlcvHandler(args, mockCtx)).rejects.toThrow(
+      'From date must be before to date'
+    );
   });
 
   it('should handle errors gracefully', async () => {

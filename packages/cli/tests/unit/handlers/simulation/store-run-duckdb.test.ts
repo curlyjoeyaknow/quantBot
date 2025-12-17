@@ -107,4 +107,3 @@ describe('storeRunDuckdbHandler', () => {
     expect(callArgs.data.win_rate).toBeUndefined();
   });
 });
-

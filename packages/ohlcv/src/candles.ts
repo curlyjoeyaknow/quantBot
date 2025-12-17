@@ -16,7 +16,7 @@ config({ override: true });
 import axios from 'axios';
 import { DateTime } from 'luxon';
 import type { Candle } from '@quantbot/core';
-import { logger } from '@quantbot/utils';
+import { logger, ConfigurationError, ApiError } from '@quantbot/utils';
 
 /* ============================================================================
  * Constants & System Configuration
@@ -29,7 +29,6 @@ function getBirdeyeApiKey(): string {
   return process.env.BIRDEYE_API_KEY_1 || process.env.BIRDEYE_API_KEY || '';
 }
 const BIRDEYE_ENDPOINT = 'https://public-api.birdeye.so/defi/v3/ohlcv';
-
 
 /* ============================================================================
  * API Fetch: Birdeye & Hybrid Helper
@@ -114,7 +113,10 @@ async function fetchBirdeyeCandles(
   try {
     const apiKey = getBirdeyeApiKey();
     if (!apiKey) {
-      throw new Error('BIRDEYE_API_KEY is not set in environment variables');
+      throw new ConfigurationError(
+        'BIRDEYE_API_KEY is not set in environment variables',
+        'BIRDEYE_API_KEY'
+      );
     }
 
     // Calculate interval seconds and max candles per request (5000 limit)
@@ -248,7 +250,13 @@ async function fetchBirdeyeCandlesChunk(
     }
 
     if (response.status !== 200) {
-      throw new Error(`Birdeye API returned status ${response.status}`);
+      throw new ApiError(
+        `Birdeye API returned status ${response.status}`,
+        'Birdeye',
+        response.status,
+        response.data,
+        { url: response.config?.url, method: response.config?.method }
+      );
     }
 
     // Defensive: Normalize to Candle type
@@ -354,7 +362,10 @@ export async function fetchOptimizedCandlesForAlert(
   const allCandles: Candle[] = [];
   const apiKey = getBirdeyeApiKey();
   if (!apiKey) {
-    throw new Error('BIRDEYE_API_KEY is not set in environment variables');
+    throw new ConfigurationError(
+      'BIRDEYE_API_KEY is not set in environment variables',
+      'BIRDEYE_API_KEY'
+    );
   }
 
   logger.debug('Fetching optimized candles for alert', {

@@ -45,8 +45,10 @@ export type TokenAddress = string & { readonly __brand: 'TokenAddress' };
  */
 export function createTokenAddress(address: string): TokenAddress {
   if (address.length < 32 || address.length > 44) {
+    // Note: @quantbot/core has zero dependencies, so we use plain Error
+    // ValidationError would require @quantbot/utils dependency
     throw new Error(
-      `Invalid mint address length: ${address.length}. Must be between 32 and 44 characters.`
+      `ValidationError: Invalid mint address length: ${address.length}. Must be between 32 and 44 characters.`
     );
   }
   return address as TokenAddress;

@@ -7,11 +7,17 @@ import { z } from 'zod';
 import type { PackageCommandModule } from '../types/index.js';
 import { commandRegistry } from '../core/command-registry.js';
 import type { CommandContext } from '../core/command-context.js';
+import { NotFoundError } from '@quantbot/utils';
 import { analyzeAnalyticsHandler } from '../handlers/analytics/analyze-analytics.js';
 import { metricsAnalyticsHandler } from '../handlers/analytics/metrics-analytics.js';
 import { reportAnalyticsHandler } from '../handlers/analytics/report-analytics.js';
 import { analyzeDuckdbHandler } from '../handlers/analytics/analyze-duckdb.js';
-import { analyzeSchema, metricsSchema, reportSchema, analyzeDuckdbSchema } from '../command-defs/analytics.js';
+import {
+  analyzeSchema,
+  metricsSchema,
+  reportSchema,
+  analyzeDuckdbSchema,
+} from '../command-defs/analytics.js';
 
 /**
  * Register analytics commands
@@ -33,7 +39,7 @@ export function registerAnalyticsCommands(program: Command): void {
       const { execute } = await import('../core/execute.js');
       const commandDef = commandRegistry.getCommand('analytics', 'analyze');
       if (!commandDef) {
-        throw new Error('Command analytics analyze not found in registry');
+        throw new NotFoundError('Command', 'analytics.analyze');
       }
       await execute(commandDef, options);
     });
@@ -50,7 +56,7 @@ export function registerAnalyticsCommands(program: Command): void {
       const { execute } = await import('../core/execute.js');
       const commandDef = commandRegistry.getCommand('analytics', 'metrics');
       if (!commandDef) {
-        throw new Error('Command analytics metrics not found in registry');
+        throw new NotFoundError('Command', 'analytics.metrics');
       }
       await execute(commandDef, options);
     });
@@ -67,7 +73,7 @@ export function registerAnalyticsCommands(program: Command): void {
       const { execute } = await import('../core/execute.js');
       const commandDef = commandRegistry.getCommand('analytics', 'report');
       if (!commandDef) {
-        throw new Error('Command analytics report not found in registry');
+        throw new NotFoundError('Command', 'analytics.report');
       }
       await execute(commandDef, options);
     });
@@ -85,13 +91,14 @@ export function registerAnalyticsCommands(program: Command): void {
       const { execute } = await import('../core/execute.js');
       const commandDef = commandRegistry.getCommand('analytics', 'analyze-duckdb');
       if (!commandDef) {
-        throw new Error('Command analytics analyze-duckdb not found in registry');
+        throw new NotFoundError('Command', 'analytics.analyze-duckdb');
       }
       await execute(commandDef, {
         duckdb: options.duckdb,
         caller: options.caller,
         mint: options.mint,
-        correlation: options.correlation === true || options.correlation === 'true' ? {} : undefined,
+        correlation:
+          options.correlation === true || options.correlation === 'true' ? {} : undefined,
         format: options.format,
       });
     });
