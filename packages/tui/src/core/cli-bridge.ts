@@ -4,8 +4,8 @@
 
 import type { CLIExecutionResult } from '../types';
 import { logger } from '@quantbot/utils';
-import { commandRegistry } from '@quantbot/cli';
-import { parseArguments } from '@quantbot/cli';
+import { commandRegistry, parseArguments } from '@quantbot/cli';
+import { CommandContext } from '@quantbot/cli';
 
 /**
  * Execute a CLI command programmatically
@@ -27,8 +27,12 @@ export async function executeCLICommand(
     // Parse and validate arguments
     const parsedArgs = parseArguments(command.schema, args);
 
+    // Create command context
+    const ctx = new CommandContext();
+    await ctx.ensureInitialized();
+
     // Execute command
-    const result = await command.handler(parsedArgs);
+    const result = await command.handler(parsedArgs, ctx);
 
     return {
       success: true,

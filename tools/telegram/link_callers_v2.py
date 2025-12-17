@@ -19,7 +19,9 @@ import sys
 import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
 
-from tools.telegram.parse_bot_cards import parse_any_bot_card, find_mint_addresses, BASE58_RE
+# Use DuckDB parsers - they're more lenient and handle more edge cases
+from tools.telegram.duckdb_punch_pipeline import parse_bot, find_address_candidates
+from tools.telegram.parse_bot_cards import find_mint_addresses, BASE58_RE
 import re
 
 TICKER_RE = re.compile(r"\$\$?([A-Za-z0-9_]+)")
@@ -146,8 +148,8 @@ def merge_bot_cards(rick_card: Optional[Dict], phanes_card: Optional[Dict]) -> T
     phanes_liq = phanes_card.get("liquidity_usd") if phanes_card else None
     merge_field("liquidity_usd", rick_liq, phanes_liq)
     
-    # Volume
-    rick_vol = rick_card.get("volume_usd") if rick_card else None
+    # Volume - DuckDB parser uses vol_usd for both
+    rick_vol = rick_card.get("vol_usd") or rick_card.get("volume_usd") if rick_card else None
     phanes_vol = phanes_card.get("vol_usd") if phanes_card else None
     merge_field("volume_usd", rick_vol, phanes_vol)
     
@@ -265,8 +267,9 @@ def link_callers_v2(db_path: str, window_seconds: int = 60, quiet: bool = False)
         
         bot_with_trigger += 1
         
-        # Now try to parse the bot card
-        bot_card = parse_any_bot_card(msg["text"])
+        # Now try to parse the bot card using DuckDB parser (more lenient)
+        trigger_text = trigger.get("text") if trigger else None
+        bot_card = parse_bot(msg["from_name"], msg["text"], trigger_text)
         if not bot_card:
             # Still link it, but without card data
             bot_name = msg["from_name"]
@@ -443,7 +446,7 @@ def link_callers_v2(db_path: str, window_seconds: int = 60, quiet: bool = False)
                 rick_card.get("mcap_usd") or rick_card.get("fdv_now_usd") if rick_card else None,
                 rick_card.get("price_usd") if rick_card else None,
                 rick_card.get("liquidity_usd") if rick_card else None,
-                rick_card.get("volume_usd") if rick_card else None,
+                rick_card.get("vol_usd") or rick_card.get("volume_usd") if rick_card else None,
                 rick_card.get("ath_mcap_usd") if rick_card else None,
                 rick_card.get("ath_age_days") if rick_card else None,
                 top_holders[0] if len(top_holders) > 0 else None,

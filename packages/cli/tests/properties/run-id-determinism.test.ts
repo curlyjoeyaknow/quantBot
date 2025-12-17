@@ -147,13 +147,19 @@ describe('Run ID Determinism - Property Tests', () => {
       const parts = id.split('_');
 
       // Format: command_strategyId_mintShort_timestamp_hash
+      // Command may have multiple parts after dot replacement
       expect(parts.length).toBeGreaterThanOrEqual(5);
-      expect(parts[0]).toContain('simulation');
-      expect(parts[1]).toContain('run');
-      expect(parts[2]).toBe('PT2_SL25');
-      expect(parts[3]).toBe('So11111');
-      expect(parts[4]).toMatch(/^\d{14}$/); // yyyyMMddHHmmss
-      expect(parts[5]).toMatch(/^[a-f0-9]{8}$/); // 8-char hex hash
+      expect(id).toContain('simulation');
+      expect(id).toContain('run');
+      // Find strategyId, mintShort, timestamp, hash in the parts
+      expect(id).toContain('PT2_SL25');
+      const mintPart = parts.find((p) => p.startsWith('So') && p.length === 8);
+      const timestampPart = parts.find((p) => /^\d{14}$/.test(p));
+      const hashPart = parts.find((p) => /^[a-f0-9]{8}$/.test(p));
+
+      expect(mintPart).toBe('So111111'); // 8 characters
+      expect(timestampPart).toMatch(/^\d{14}$/); // yyyyMMddHHmmss
+      expect(hashPart).toMatch(/^[a-f0-9]{8}$/); // 8-char hex hash
     });
 
     it('should include suffix when provided', () => {

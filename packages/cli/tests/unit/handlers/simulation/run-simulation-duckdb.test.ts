@@ -6,6 +6,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { runSimulationDuckdbHandler } from '../../../../src/handlers/simulation/run-simulation-duckdb.js';
 import type { CommandContext } from '../../../../src/core/command-context.js';
 import { execa } from 'execa';
+import { ValidationError, AppError } from '@quantbot/utils';
 
 vi.mock('execa', () => ({
   execa: vi.fn(),
@@ -78,7 +79,7 @@ describe('runSimulationDuckdbHandler', () => {
     expect(result.results[0]).toHaveProperty('run_id');
   });
 
-  it('should throw error if mint is missing in single mode', async () => {
+  it('should throw ValidationError if mint is missing in single mode', async () => {
     const args = {
       duckdb: '/path/to/tele.duckdb',
       strategy: {
@@ -93,6 +94,7 @@ describe('runSimulationDuckdbHandler', () => {
       lookforward_minutes: 1440,
     };
 
+    await expect(runSimulationDuckdbHandler(args as any, mockCtx)).rejects.toThrow(ValidationError);
     await expect(runSimulationDuckdbHandler(args as any, mockCtx)).rejects.toThrow(
       'mint is required'
     );
@@ -116,6 +118,7 @@ describe('runSimulationDuckdbHandler', () => {
       lookforward_minutes: 1440,
     };
 
+    await expect(runSimulationDuckdbHandler(args, mockCtx)).rejects.toThrow(AppError);
     await expect(runSimulationDuckdbHandler(args, mockCtx)).rejects.toThrow('Simulation failed');
   });
 });

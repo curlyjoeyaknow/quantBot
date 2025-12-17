@@ -6,6 +6,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { analyzeDuckdbHandler } from '../../../../src/handlers/analytics/analyze-duckdb.js';
 import type { CommandContext } from '../../../../src/core/command-context.js';
 import { execa } from 'execa';
+import { ValidationError, AppError } from '@quantbot/utils';
 
 vi.mock('execa', () => ({
   execa: vi.fn(),
@@ -95,11 +96,12 @@ describe('analyzeDuckdbHandler', () => {
     expect(result).toHaveProperty('mint');
   });
 
-  it('should throw error if no analysis type specified', async () => {
+  it('should throw ValidationError if no analysis type specified', async () => {
     const args = {
       duckdb: '/path/to/tele.duckdb',
     };
 
+    await expect(analyzeDuckdbHandler(args, mockCtx)).rejects.toThrow(ValidationError);
     await expect(analyzeDuckdbHandler(args, mockCtx)).rejects.toThrow('Must specify');
   });
 
@@ -111,6 +113,7 @@ describe('analyzeDuckdbHandler', () => {
       caller: 'Brook',
     };
 
+    await expect(analyzeDuckdbHandler(args, mockCtx)).rejects.toThrow(AppError);
     await expect(analyzeDuckdbHandler(args, mockCtx)).rejects.toThrow('Analysis failed');
   });
 });

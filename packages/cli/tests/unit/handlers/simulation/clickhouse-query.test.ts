@@ -6,6 +6,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { clickHouseQueryHandler } from '../../../../src/handlers/simulation/clickhouse-query.js';
 import type { CommandContext } from '../../../../src/core/command-context.js';
 import type { PythonEngine } from '@quantbot/utils';
+import { ValidationError } from '@quantbot/utils';
 
 describe('clickHouseQueryHandler', () => {
   let mockEngine: PythonEngine;
@@ -131,30 +132,37 @@ describe('clickHouseQueryHandler', () => {
     expect(result.success).toBe(true);
   });
 
-  it('should validate required fields for query_ohlcv', async () => {
+  it('should throw ValidationError for missing required fields in query_ohlcv', async () => {
     const args = {
       operation: 'query_ohlcv' as const,
       format: 'table' as const,
     };
 
-    await expect(clickHouseQueryHandler(args, mockCtx)).rejects.toThrow();
+    await expect(clickHouseQueryHandler(args, mockCtx)).rejects.toThrow(ValidationError);
+    await expect(clickHouseQueryHandler(args, mockCtx)).rejects.toThrow(
+      'tokenAddress, chain, startTime, and endTime are required'
+    );
   });
 
-  it('should validate required fields for store_events', async () => {
+  it('should throw ValidationError for missing required fields in store_events', async () => {
     const args = {
       operation: 'store_events' as const,
       format: 'table' as const,
     };
 
-    await expect(clickHouseQueryHandler(args, mockCtx)).rejects.toThrow();
+    await expect(clickHouseQueryHandler(args, mockCtx)).rejects.toThrow(ValidationError);
+    await expect(clickHouseQueryHandler(args, mockCtx)).rejects.toThrow(
+      'runId and events are required'
+    );
   });
 
-  it('should validate required fields for aggregate_metrics', async () => {
+  it('should throw ValidationError for missing required fields in aggregate_metrics', async () => {
     const args = {
       operation: 'aggregate_metrics' as const,
       format: 'table' as const,
     };
 
-    await expect(clickHouseQueryHandler(args, mockCtx)).rejects.toThrow();
+    await expect(clickHouseQueryHandler(args, mockCtx)).rejects.toThrow(ValidationError);
+    await expect(clickHouseQueryHandler(args, mockCtx)).rejects.toThrow('runId is required');
   });
 });

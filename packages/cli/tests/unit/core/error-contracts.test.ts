@@ -48,7 +48,7 @@ describe('Error Contracts', () => {
       const contract = errorToContract(error, 'api.fetch');
 
       expect(contract.code).toBe('TIMEOUT_ERROR');
-      expect(contract.metadata?.timeout).toBe(5000);
+      expect(contract.metadata?.timeoutMs).toBe(5000);
       expect(contract.metadata?.operation).toBe('fetch');
       expect(contract.errorType).toBe('TimeoutError');
     });
