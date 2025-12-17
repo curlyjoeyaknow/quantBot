@@ -43,7 +43,8 @@ describe('Artifact Manager', () => {
       const paths = await createArtifactDirectory(components, TEST_ARTIFACTS_DIR);
 
       expect(paths.baseDir).toBe(TEST_ARTIFACTS_DIR);
-      expect(paths.runDir).toContain(TEST_ARTIFACTS_DIR);
+      // runDir is an absolute or relative path, check it contains the base dir name
+      expect(paths.runDir.replace(/^\.\//, '')).toContain(TEST_ARTIFACTS_DIR.replace(/^\.\//, ''));
       expect(existsSync(paths.runDir)).toBe(true);
       expect(existsSync(paths.resultsJson)).toBe(false); // File not created yet
       expect(paths.resultsJson).toContain('results.json');

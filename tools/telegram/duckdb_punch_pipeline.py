@@ -967,6 +967,9 @@ def main():
   ap.add_argument("--chat-id", default=None, help="Override/force chat_id")
   ap.add_argument("--export-csv", default=None, help="Export alerts to CSV file")
   ap.add_argument("--export-parquet", default=None, help="Export alerts to Parquet file")
+  ap.add_argument("--export-parquet-run", action="store_true", help="Export user_calls_d and caller_links_d to Parquet with run ID")
+  ap.add_argument("--run-id", default=None, help="Run ID for Parquet export (required with --export-parquet-run)")
+  ap.add_argument("--output-dir", default="./artifacts", help="Output directory for Parquet exports (default: ./artifacts)")
   args = ap.parse_args()
 
   con = duckdb.connect(args.duckdb)
@@ -1368,6 +1371,39 @@ def main():
     WHERE chat_id = '{chat_id}';
   """)
   
+  # --- create v_alerts_summary_d first (used by other views) ---
+  con.execute(f"""
+    CREATE OR REPLACE VIEW v_alerts_summary_d AS
+    SELECT
+      trigger_from_name AS caller_name,
+      mint,
+      ticker,
+      mcap_usd AS mcap_at_alert,
+      trigger_ts_ms AS alert_ts_ms,
+      to_timestamp(trigger_ts_ms/1000.0) AS alert_datetime,
+      strftime(to_timestamp(trigger_ts_ms/1000.0), '%Y-%m-%d %H:%M:%S') AS alert_dt,
+      price_usd AS price_at_alert,
+      chain,
+      trigger_chat_id AS chat_id,
+      trigger_message_id AS message_id,
+      trigger_from_id AS caller_id,
+      -- pick best bot reply (prefer phanes, fallback to rick)
+      COALESCE(
+        MAX(bot_message_id) FILTER (WHERE bot_type = 'phanes'),
+        MAX(bot_message_id) FILTER (WHERE bot_type = 'rick')
+      ) AS bot_reply_id,
+      COALESCE(
+        MAX(bot_type) FILTER (WHERE bot_type = 'phanes'),
+        MAX(bot_type) FILTER (WHERE bot_type = 'rick')
+      ) AS bot_type_used
+    FROM caller_links_d
+    WHERE trigger_chat_id = '{chat_id}'
+      AND mint IS NOT NULL
+    GROUP BY
+      trigger_chat_id, trigger_message_id, trigger_ts_ms,
+      trigger_from_name, trigger_from_id, mint, ticker, mcap_usd, price_usd, chain;
+  """)
+  
   # --- data quality views ---
   # Alerts missing mint (unrecoverable - can't look up token without mint)
   con.execute(f"""
@@ -1501,47 +1537,7 @@ def main():
     WHERE trigger_chat_id = '{chat_id}';
   """)
 
-  # --- commonly used metrics view (one row per alert) ---
-  con.execute(f"""
-    CREATE OR REPLACE VIEW v_alerts_summary_d AS
-    SELECT
-      trigger_from_name AS caller_name,
-      mint,
-      ticker,
-      mcap_usd AS mcap_at_alert,
-      trigger_ts_ms AS alert_ts_ms,
-      to_timestamp(trigger_ts_ms/1000.0) AS alert_datetime,
-      strftime(to_timestamp(trigger_ts_ms/1000.0), '%Y-%m-%d %H:%M:%S') AS alert_dt,
-      price_usd AS price_at_alert,
-      chain,
-      trigger_chat_id AS chat_id,
-      trigger_message_id AS message_id,
-      trigger_from_id AS caller_id,
-      -- pick best bot reply (prefer phanes, fallback to rick)
-      COALESCE(
-        MAX(bot_message_id) FILTER (WHERE bot_type = 'phanes'),
-        MAX(bot_message_id) FILTER (WHERE bot_type = 'rick')
-      ) AS bot_reply_id,
-      COALESCE(
-        MAX(bot_type) FILTER (WHERE bot_type = 'phanes'),
-        MAX(bot_type) FILTER (WHERE bot_type = 'rick')
-      ) AS bot_type_used
-    FROM caller_links_d
-    WHERE trigger_chat_id = '{chat_id}'
-      AND mint IS NOT NULL
-    GROUP BY
-      trigger_chat_id,
-      trigger_message_id,
-      trigger_ts_ms,
-      trigger_from_name,
-      trigger_from_id,
-      mint,
-      ticker,
-      mcap_usd,
-      price_usd,
-      chain
-    ORDER BY trigger_ts_ms DESC;
-  """)
+  # --- v_alerts_summary_d already created above ---
 
   # --- optional comparison against SQLite tele.db ---
   if args.sqlite:
@@ -1662,6 +1658,54 @@ def main():
       ) TO '{args.export_parquet}' (FORMAT PARQUET)
     """)
     print(f"Exported alerts to Parquet: {args.export_parquet}")
+
+  # Export user_calls_d and caller_links_d to Parquet with run ID
+  if args.export_parquet_run:
+    if not args.run_id:
+      print("Error: --run-id is required with --export-parquet-run")
+      con.close()
+      return
+    
+    import os
+    output_dir = args.output_dir
+    os.makedirs(output_dir, exist_ok=True)
+    
+    # Export user_calls_d
+    user_calls_path = os.path.join(output_dir, f"{args.run_id}_user_calls.parquet")
+    user_calls_count = con.execute("SELECT COUNT(*) FROM user_calls_d").fetchone()[0]
+    con.execute(f"""
+      COPY (
+        SELECT * FROM user_calls_d
+        ORDER BY call_ts_ms DESC
+      ) TO '{user_calls_path}' (FORMAT PARQUET)
+    """)
+    print(f"Exported {user_calls_count} rows from user_calls_d to {user_calls_path}")
+    
+    # Export caller_links_d
+    caller_links_path = os.path.join(output_dir, f"{args.run_id}_caller_links.parquet")
+    caller_links_count = con.execute("SELECT COUNT(*) FROM caller_links_d").fetchone()[0]
+    con.execute(f"""
+      COPY (
+        SELECT * FROM caller_links_d
+        ORDER BY bot_ts_ms DESC
+      ) TO '{caller_links_path}' (FORMAT PARQUET)
+    """)
+    print(f"Exported {caller_links_count} rows from caller_links_d to {caller_links_path}")
+    
+    # Validate row counts
+    import pyarrow.parquet as pq
+    user_calls_parquet_count = len(pq.read_table(user_calls_path))
+    caller_links_parquet_count = len(pq.read_table(caller_links_path))
+    
+    if user_calls_parquet_count != user_calls_count:
+      print(f"WARNING: user_calls_d row count mismatch: DuckDB={user_calls_count}, Parquet={user_calls_parquet_count}")
+    else:
+      print(f"✓ user_calls_d row count validated: {user_calls_count}")
+    
+    if caller_links_parquet_count != caller_links_count:
+      print(f"WARNING: caller_links_d row count mismatch: DuckDB={caller_links_count}, Parquet={caller_links_parquet_count}")
+    else:
+      print(f"✓ caller_links_d row count validated: {caller_links_count}")
 
   con.close()
 

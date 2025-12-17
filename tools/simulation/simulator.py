@@ -12,6 +12,12 @@ import logging
 
 from .sql_functions import setup_simulation_schema
 
+# Import canonical contracts
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent / 'telegram' / 'simulation'))
+from contracts import SimInput, SimResult, SimEvent, SimMetrics
+
 logger = logging.getLogger(__name__)
 
 @dataclass
@@ -672,4 +678,203 @@ class DuckDBSimulator:
                 logger.error(f"Failed to store simulation event: {e}")
         
         self.con.commit()
+    
+    def run_from_contract(self, sim_input: 'SimInput') -> 'SimResult':
+        """
+        Run simulation from canonical SimInput contract.
+        
+        This method accepts a canonical SimInput and returns a canonical SimResult,
+        ensuring compatibility with the TypeScript simulator.
+        
+        Args:
+            sim_input: Canonical simulation input (from contracts module)
+            
+        Returns:
+            Canonical simulation result
+        """
+        try:
+            # Import contracts here to avoid circular imports
+            import sys
+            from pathlib import Path
+            sys.path.insert(0, str(Path(__file__).parent.parent / 'telegram' / 'simulation'))
+            from contracts import SimInput, SimResult, SimEvent, SimMetrics
+            
+            # Convert SimInput to internal format
+            alert_timestamp = datetime.fromisoformat(sim_input.alert_timestamp.replace('Z', '+00:00'))
+            
+            # Convert candles to internal format
+            candles = []
+            for c in sim_input.candles:
+                candles.append({
+                    'timestamp': datetime.fromtimestamp(c.timestamp),
+                    'open': c.open,
+                    'high': c.high,
+                    'low': c.low,
+                    'close': c.close,
+                    'volume': c.volume,
+                    'interval_seconds': 300,  # Default 5m
+                })
+            
+            # Convert entry config
+            entry_type = 'immediate'
+            if sim_input.entry_config.initialEntry != 'none':
+                entry_type = 'drop'
+            elif sim_input.entry_config.trailingEntry != 'none':
+                entry_type = 'trailing'
+            
+            # Convert exit config to StrategyConfig
+            profit_targets = [
+                {'target': pt.target, 'percent': pt.percent}
+                for pt in sim_input.exit_config.profit_targets
+            ]
+            
+            stop_loss_pct = None
+            if sim_input.exit_config.stop_loss:
+                stop_loss_pct = abs(sim_input.exit_config.stop_loss.initial)
+            
+            strategy = StrategyConfig(
+                strategy_id=sim_input.strategy_id,
+                name=sim_input.strategy_id,
+                entry_type=entry_type,
+                profit_targets=profit_targets,
+                stop_loss_pct=stop_loss_pct,
+                trailing_stop_pct=sim_input.exit_config.stop_loss.trailingPercent if sim_input.exit_config.stop_loss and sim_input.exit_config.stop_loss.trailingPercent else None,
+                reentry_config=sim_input.reentry_config.to_dict() if sim_input.reentry_config else None,
+                maker_fee=(sim_input.cost_config.makerFeeBps / 10000) if sim_input.cost_config and sim_input.cost_config.makerFeeBps else 0.001,
+                taker_fee=(sim_input.cost_config.takerFeeBps / 10000) if sim_input.cost_config and sim_input.cost_config.takerFeeBps else 0.001,
+                slippage=(sim_input.cost_config.entrySlippageBps / 10000) if sim_input.cost_config and sim_input.cost_config.entrySlippageBps else 0.005,
+            )
+            
+            # Run simulation using existing method with provided candles
+            result = self._run_simulation_with_candles(
+                strategy, sim_input.mint, alert_timestamp, candles
+            )
+            
+            if 'error' in result:
+                # Return error result
+                return SimResult(
+                    run_id=sim_input.run_id,
+                    final_pnl=0.0,
+                    events=[],
+                    entry_price=0.0,
+                    final_price=0.0,
+                    total_candles=len(sim_input.candles),
+                    metrics=SimMetrics(),
+                )
+            
+            # Convert result to canonical format
+            events = []
+            for e in result.get('events', []):
+                event_ts = e.get('timestamp')
+                if isinstance(event_ts, datetime):
+                    ts_int = int(event_ts.timestamp())
+                elif isinstance(event_ts, str):
+                    ts_int = int(datetime.fromisoformat(event_ts.replace('Z', '+00:00')).timestamp())
+                else:
+                    ts_int = int(event_ts) if event_ts else 0
+                
+                event = SimEvent(
+                    event_type=e.get('event_type', 'unknown'),
+                    timestamp=ts_int,
+                    price=float(e.get('price', 0.0)),
+                    quantity=float(e.get('quantity', 0.0)),
+                    value_usd=float(e.get('value_usd', 0.0)),
+                    fee_usd=float(e.get('fee_usd', 0.0)),
+                    pnl_usd=e.get('pnl_usd'),
+                    cumulative_pnl_usd=e.get('cumulative_pnl_usd'),
+                    position_size=float(e.get('position_size', 0.0)),
+                    metadata=e.get('metadata'),
+                )
+                events.append(event)
+            
+            # Calculate final PnL from events
+            final_pnl = 1.0
+            if events:
+                last_event = events[-1]
+                if last_event.cumulative_pnl_usd is not None:
+                    # Convert to multiplier (assuming initial capital of 1.0)
+                    final_pnl = 1.0 + (last_event.cumulative_pnl_usd / 1.0)
+            
+            entry_price = float(result.get('entry_price', 0.0))
+            final_price = float(result.get('final_price', entry_price))
+            
+            metrics = SimMetrics(
+                max_drawdown=result.get('max_drawdown_pct') / 100.0 if result.get('max_drawdown_pct') else None,
+                sharpe_ratio=result.get('sharpe_ratio'),
+                win_rate=result.get('win_rate'),
+                total_trades=result.get('total_trades'),
+            )
+            
+            return SimResult(
+                run_id=sim_input.run_id,
+                final_pnl=final_pnl,
+                events=events,
+                entry_price=entry_price,
+                final_price=final_price,
+                total_candles=len(sim_input.candles),
+                metrics=metrics,
+            )
+        except Exception as e:
+            logger.error(f"Failed to run simulation from contract: {e}", exc_info=True)
+            # Import here to avoid issues if import fails
+            import sys
+            from pathlib import Path
+            sys.path.insert(0, str(Path(__file__).parent.parent / 'telegram' / 'simulation'))
+            from contracts import SimResult, SimMetrics
+            
+            # Return error result
+            return SimResult(
+                run_id=sim_input.run_id,
+                final_pnl=0.0,
+                events=[],
+                entry_price=0.0,
+                final_price=0.0,
+                total_candles=len(sim_input.candles),
+                metrics=SimMetrics(),
+            )
+    
+    def _run_simulation_with_candles(
+        self,
+        strategy: StrategyConfig,
+        mint: str,
+        alert_timestamp: datetime,
+        candles: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        """Internal method to run simulation with provided candles"""
+        if not candles:
+            return {
+                'error': 'No candles provided',
+                'mint': mint,
+                'alert_timestamp': alert_timestamp.isoformat()
+            }
+        
+        # Execute entry logic
+        entry_event = self._execute_entry(strategy, alert_timestamp, candles)
+        
+        if not entry_event:
+            return {
+                'error': 'Failed to execute entry',
+                'mint': mint,
+                'alert_timestamp': alert_timestamp.isoformat()
+            }
+        
+        # Execute exit logic
+        exit_events = self._execute_exits(strategy, entry_event, candles)
+        
+        # Calculate metrics
+        initial_capital = 1000.0
+        metrics = self._calculate_metrics(
+            entry_event, exit_events, initial_capital, candles
+        )
+        
+        # Get entry and final prices
+        entry_price = entry_event.price
+        final_price = candles[-1]['close'] if candles else entry_price
+        
+        return {
+            'entry_price': entry_price,
+            'final_price': final_price,
+            'events': [entry_event.to_dict()] + [e.to_dict() for e in exit_events],
+            **metrics,
+        }
 

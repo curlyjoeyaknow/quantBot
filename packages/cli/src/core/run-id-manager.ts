@@ -48,7 +48,9 @@ export function generateRunId(components: RunIdComponents): string {
 
   const hash = createHash('sha256').update(hashInput).digest('hex').substring(0, 8);
   const mintShort = components.mint.substring(0, 8);
-  const timestamp = DateTime.fromISO(components.alertTimestamp).toFormat('yyyyMMddHHmmss');
+  const timestamp = DateTime.fromISO(components.alertTimestamp, { zone: 'utc' }).toFormat(
+    'yyyyMMddHHmmss'
+  );
 
   const parts = [
     components.command.replace(/\./g, '_'),
@@ -81,6 +83,8 @@ export interface ParsedRunId {
  * Parse run ID to extract components (for debugging/tracing)
  *
  * Note: This is best-effort parsing. The exact format may vary.
+ * Format: command_strategyId_mintShort_timestamp_hash[_suffix]
+ * We parse from the end since command name can have variable parts.
  *
  * @param runId - Run ID to parse
  * @returns Parsed components (partial)
@@ -92,16 +96,41 @@ export function parseRunId(runId: string): ParsedRunId {
     return {};
   }
 
+  // Parse from the end: hash, timestamp, mintShort, strategyId, then command (rest)
   // Format: command_strategyId_mintShort_timestamp_hash[_suffix]
-  const [command, strategyId, mintShort, timestamp, hash, ...suffixParts] = parts;
+  const hash = parts[parts.length - 1];
+  const timestamp = parts[parts.length - 2];
+  const mintShort = parts[parts.length - 3];
+  const strategyId = parts[parts.length - 4];
+  const command = parts.slice(0, parts.length - 4).join('_');
+
+  // Check if there's a suffix (if hash is not 8 hex chars, it might be part of suffix)
+  let actualHash = hash;
+  let suffix: string | undefined = undefined;
+
+  if (!/^[a-f0-9]{8}$/.test(hash)) {
+    // Hash doesn't match pattern, might be suffix
+    // Try to find the actual hash (8 hex chars) before the last part
+    const hashIndex = parts.findIndex((p, i) => i >= parts.length - 3 && /^[a-f0-9]{8}$/.test(p));
+    if (hashIndex >= 0) {
+      actualHash = parts[hashIndex];
+      suffix = parts.slice(hashIndex + 1).join('_');
+    }
+  } else if (parts.length > 5) {
+    // Check if there's a suffix after the hash
+    const potentialSuffix = parts.slice(parts.length - 1);
+    if (potentialSuffix.length > 0 && !/^[a-f0-9]{8}$/.test(potentialSuffix[0])) {
+      suffix = potentialSuffix.join('_');
+    }
+  }
 
   return {
     command,
     strategyId,
     mintShort,
     timestamp,
-    hash,
-    suffix: suffixParts.length > 0 ? suffixParts.join('_') : undefined,
+    hash: actualHash,
+    suffix,
   };
 }
 

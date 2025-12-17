@@ -14,7 +14,8 @@ CREATE TABLE IF NOT EXISTS simulation_strategies (
   exit_config JSON,
   reentry_config JSON,
   cost_config JSON,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Simulation runs (one per strategy + token + time window)
@@ -63,12 +64,14 @@ CREATE TABLE IF NOT EXISTS ohlcv_candles_d (
   close DOUBLE NOT NULL,
   volume DOUBLE NOT NULL,
   interval_seconds INTEGER NOT NULL,
+  source TEXT,  -- 'birdeye'|'clickhouse'|'cache'
   PRIMARY KEY (mint, timestamp, interval_seconds)
 );
 
 -- Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_simulation_runs_strategy ON simulation_runs(strategy_id);
 CREATE INDEX IF NOT EXISTS idx_simulation_runs_mint ON simulation_runs(mint);
+CREATE INDEX IF NOT EXISTS idx_simulation_runs_alert_timestamp ON simulation_runs(alert_timestamp);
 CREATE INDEX IF NOT EXISTS idx_simulation_events_run ON simulation_events(run_id);
 CREATE INDEX IF NOT EXISTS idx_ohlcv_mint_timestamp ON ohlcv_candles_d(mint, timestamp);
 """

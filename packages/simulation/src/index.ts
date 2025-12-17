@@ -168,6 +168,9 @@ export * from './sinks';
 
 // Re-export the main simulation function directly for convenience
 export { simulateStrategy } from './core/simulator';
+export { simulateFromInput } from './core/contract-adapter';
+export type { SimInput, SimResult, SimEvent, SimMetrics } from './types/contracts';
+export { SimInputSchema, SimResultSchema } from './types/contracts';
 export type { SimulationOptions } from './core/simulator';
 
 // Orchestrator has been moved to @quantbot/workflows.

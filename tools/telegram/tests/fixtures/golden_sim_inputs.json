@@ -1,0 +1,188 @@
+[
+  {
+    "name": "simple_profit_target",
+    "run_id": "test_simple_001",
+    "strategy_id": "PT2_SL25",
+    "mint": "So11111111111111111111111111111111111111112",
+    "alert_timestamp": "2024-01-01T12:00:00Z",
+    "candles": [
+      {"timestamp": 1704110400, "open": 1.0, "high": 1.1, "low": 0.9, "close": 1.05, "volume": 1000},
+      {"timestamp": 1704110460, "open": 1.05, "high": 1.2, "low": 1.0, "close": 1.15, "volume": 1200},
+      {"timestamp": 1704110520, "open": 1.15, "high": 2.1, "low": 1.1, "close": 2.0, "volume": 2000}
+    ],
+    "entry_config": {
+      "initialEntry": "none",
+      "trailingEntry": "none",
+      "maxWaitTime": 60
+    },
+    "exit_config": {
+      "profit_targets": [{"target": 2.0, "percent": 1.0}],
+      "stop_loss": {"initial": -0.25}
+    }
+  },
+  {
+    "name": "stop_loss_hit",
+    "run_id": "test_stop_001",
+    "strategy_id": "PT2_SL25",
+    "mint": "So22222222222222222222222222222222222222223",
+    "alert_timestamp": "2024-01-01T12:00:00Z",
+    "candles": [
+      {"timestamp": 1704110400, "open": 1.0, "high": 1.0, "low": 0.7, "close": 0.75, "volume": 1000}
+    ],
+    "entry_config": {
+      "initialEntry": "none",
+      "trailingEntry": "none",
+      "maxWaitTime": 60
+    },
+    "exit_config": {
+      "profit_targets": [{"target": 2.0, "percent": 1.0}],
+      "stop_loss": {"initial": -0.25}
+    }
+  },
+  {
+    "name": "trailing_stop_activation",
+    "run_id": "test_trailing_001",
+    "strategy_id": "PT2_TS25",
+    "mint": "So33333333333333333333333333333333333333334",
+    "alert_timestamp": "2024-01-01T12:00:00Z",
+    "candles": [
+      {"timestamp": 1704110400, "open": 1.0, "high": 1.1, "low": 0.9, "close": 1.05, "volume": 1000},
+      {"timestamp": 1704110460, "open": 1.05, "high": 1.6, "low": 1.0, "close": 1.5, "volume": 1500},
+      {"timestamp": 1704110520, "open": 1.5, "high": 1.5, "low": 1.1, "close": 1.125, "volume": 1200}
+    ],
+    "entry_config": {
+      "initialEntry": "none",
+      "trailingEntry": "none",
+      "maxWaitTime": 60
+    },
+    "exit_config": {
+      "profit_targets": [{"target": 2.0, "percent": 1.0}],
+      "stop_loss": {
+        "initial": -0.25,
+        "trailing": 0.5,
+        "trailingPercent": 0.25
+      }
+    }
+  },
+  {
+    "name": "reentry_after_target",
+    "run_id": "test_reentry_001",
+    "strategy_id": "PT2_RE",
+    "mint": "So44444444444444444444444444444444444444445",
+    "alert_timestamp": "2024-01-01T12:00:00Z",
+    "candles": [
+      {"timestamp": 1704110400, "open": 1.0, "high": 1.1, "low": 0.9, "close": 1.05, "volume": 1000},
+      {"timestamp": 1704110460, "open": 1.05, "high": 2.1, "low": 1.0, "close": 2.0, "volume": 2000},
+      {"timestamp": 1704110520, "open": 2.0, "high": 2.0, "low": 1.0, "close": 1.0, "volume": 1500},
+      {"timestamp": 1704110580, "open": 1.0, "high": 1.5, "low": 0.9, "close": 1.4, "volume": 1200}
+    ],
+    "entry_config": {
+      "initialEntry": "none",
+      "trailingEntry": "none",
+      "maxWaitTime": 60
+    },
+    "exit_config": {
+      "profit_targets": [{"target": 2.0, "percent": 0.5}],
+      "stop_loss": {"initial": -0.25}
+    },
+    "reentry_config": {
+      "trailingReEntry": 0.5,
+      "maxReEntries": 1,
+      "sizePercent": 0.5
+    }
+  },
+  {
+    "name": "no_trade_price_never_drops",
+    "run_id": "test_no_trade_001",
+    "strategy_id": "PT2_DROP",
+    "mint": "So55555555555555555555555555555555555555556",
+    "alert_timestamp": "2024-01-01T12:00:00Z",
+    "candles": [
+      {"timestamp": 1704110400, "open": 1.0, "high": 1.2, "low": 0.95, "close": 1.1, "volume": 1000},
+      {"timestamp": 1704110460, "open": 1.1, "high": 1.3, "low": 1.0, "close": 1.2, "volume": 1200}
+    ],
+    "entry_config": {
+      "initialEntry": -0.3,
+      "trailingEntry": "none",
+      "maxWaitTime": 60
+    },
+    "exit_config": {
+      "profit_targets": [{"target": 2.0, "percent": 1.0}],
+      "stop_loss": {"initial": -0.25}
+    }
+  },
+  {
+    "name": "multiple_targets_ladder",
+    "run_id": "test_ladder_001",
+    "strategy_id": "LADDER",
+    "mint": "So66666666666666666666666666666666666666667",
+    "alert_timestamp": "2024-01-01T12:00:00Z",
+    "candles": [
+      {"timestamp": 1704110400, "open": 1.0, "high": 1.1, "low": 0.9, "close": 1.05, "volume": 1000},
+      {"timestamp": 1704110460, "open": 1.05, "high": 1.5, "low": 1.0, "close": 1.5, "volume": 1500},
+      {"timestamp": 1704110520, "open": 1.5, "high": 2.0, "low": 1.4, "close": 2.0, "volume": 2000},
+      {"timestamp": 1704110580, "open": 2.0, "high": 3.0, "low": 1.9, "close": 3.0, "volume": 2500}
+    ],
+    "entry_config": {
+      "initialEntry": "none",
+      "trailingEntry": "none",
+      "maxWaitTime": 60
+    },
+    "exit_config": {
+      "profit_targets": [
+        {"target": 1.5, "percent": 0.33},
+        {"target": 2.0, "percent": 0.33},
+        {"target": 3.0, "percent": 0.34}
+      ],
+      "stop_loss": {"initial": -0.25}
+    }
+  },
+  {
+    "name": "edge_single_candle",
+    "run_id": "test_edge_single_001",
+    "strategy_id": "PT2_SL25",
+    "mint": "So77777777777777777777777777777777777777778",
+    "alert_timestamp": "2024-01-01T12:00:00Z",
+    "candles": [
+      {"timestamp": 1704110400, "open": 1.0, "high": 1.0, "low": 1.0, "close": 1.0, "volume": 1000}
+    ],
+    "entry_config": {
+      "initialEntry": "none",
+      "trailingEntry": "none",
+      "maxWaitTime": 60
+    },
+    "exit_config": {
+      "profit_targets": [{"target": 2.0, "percent": 1.0}],
+      "stop_loss": {"initial": -0.25}
+    }
+  },
+  {
+    "name": "edge_many_candles",
+    "run_id": "test_edge_many_001",
+    "strategy_id": "PT2_SL25",
+    "mint": "So88888888888888888888888888888888888888889",
+    "alert_timestamp": "2024-01-01T12:00:00Z",
+    "candles": [
+      {"timestamp": 1704110400, "open": 1.0, "high": 1.05, "low": 0.95, "close": 1.0, "volume": 1000},
+      {"timestamp": 1704110460, "open": 1.01, "high": 1.06, "low": 0.96, "close": 1.01, "volume": 1010},
+      {"timestamp": 1704110520, "open": 1.02, "high": 1.07, "low": 0.97, "close": 1.02, "volume": 1020},
+      {"timestamp": 1704110580, "open": 1.03, "high": 1.08, "low": 0.98, "close": 1.03, "volume": 1030},
+      {"timestamp": 1704110640, "open": 1.04, "high": 1.09, "low": 0.99, "close": 1.04, "volume": 1040},
+      {"timestamp": 1704110700, "open": 1.05, "high": 1.10, "low": 1.00, "close": 1.05, "volume": 1050},
+      {"timestamp": 1704110760, "open": 1.06, "high": 1.11, "low": 1.01, "close": 1.06, "volume": 1060},
+      {"timestamp": 1704110820, "open": 1.07, "high": 1.12, "low": 1.02, "close": 1.07, "volume": 1070},
+      {"timestamp": 1704110880, "open": 1.08, "high": 1.13, "low": 1.03, "close": 1.08, "volume": 1080},
+      {"timestamp": 1704110940, "open": 1.09, "high": 1.14, "low": 1.04, "close": 1.09, "volume": 1090}
+    ],
+    "entry_config": {
+      "initialEntry": "none",
+      "trailingEntry": "none",
+      "maxWaitTime": 60
+    },
+    "exit_config": {
+      "profit_targets": [{"target": 2.0, "percent": 1.0}],
+      "stop_loss": {"initial": -0.25}
+    }
+  }
+]
+

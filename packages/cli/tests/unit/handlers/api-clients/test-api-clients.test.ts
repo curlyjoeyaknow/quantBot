@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { testApiClientsHandler } from '../../../../src/handlers/api-clients/test-api-clients.js';
 import type { CommandContext } from '../../../../src/core/command-context.js';
 import { BirdeyeClient, HeliusClient } from '@quantbot/api-clients';
+import { ValidationError } from '@quantbot/utils';
 
 vi.mock('@quantbot/api-clients', () => ({
   BirdeyeClient: vi.fn(),
@@ -48,12 +49,13 @@ describe('testApiClientsHandler', () => {
     });
   });
 
-  it('should throw error for unknown service', async () => {
+  it('should throw ValidationError for unknown service', async () => {
     const args = {
       service: 'unknown' as any,
       format: 'table' as const,
     };
 
+    await expect(testApiClientsHandler(args, mockCtx)).rejects.toThrow(ValidationError);
     await expect(testApiClientsHandler(args, mockCtx)).rejects.toThrow('Unknown service');
   });
 });

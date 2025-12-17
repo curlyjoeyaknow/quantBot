@@ -5,6 +5,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { CommandContext } from '../../../../src/core/command-context.js';
 import { DateTime } from 'luxon';
+import { ValidationError } from '@quantbot/utils';
 
 // Mock the ingestion engine before importing the handler
 const mockFetchCandles = vi.fn();
@@ -96,7 +97,7 @@ describe('backfillOhlcvHandler', () => {
     });
   });
 
-  it('should validate mint address', async () => {
+  it('should throw ValidationError for invalid mint address', async () => {
     const args = {
       mint: 'invalid',
       from: '2024-01-01T00:00:00Z',
@@ -106,10 +107,10 @@ describe('backfillOhlcvHandler', () => {
       format: 'table' as const,
     };
 
-    await expect(backfillOhlcvHandler(args, mockCtx)).rejects.toThrow();
+    await expect(backfillOhlcvHandler(args, mockCtx)).rejects.toThrow(ValidationError);
   });
 
-  it('should validate date range', async () => {
+  it('should throw ValidationError for invalid date range', async () => {
     const args = {
       mint: 'So11111111111111111111111111111111111111112',
       from: '2024-01-02T00:00:00Z',
@@ -119,6 +120,7 @@ describe('backfillOhlcvHandler', () => {
       format: 'table' as const,
     };
 
+    await expect(backfillOhlcvHandler(args, mockCtx)).rejects.toThrow(ValidationError);
     await expect(backfillOhlcvHandler(args, mockCtx)).rejects.toThrow(
       'From date must be before to date'
     );

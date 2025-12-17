@@ -74,7 +74,7 @@ export function errorToContract(error: unknown, operation: string, runId?: strin
       message: error.message,
       operation,
       metadata: {
-        timeout: error.timeoutMs,
+        timeoutMs: error.timeoutMs,
         ...(error.context || {}),
       },
       timestamp,
