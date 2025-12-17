@@ -6,12 +6,13 @@
 
 import 'dotenv/config';
 import { DateTime } from 'luxon';
-import { fetchHybridCandles } from '../src/simulation/candles';
+import { fetchHybridCandles } from '@quantbot/ohlcv';
 import { parse } from 'csv-parse';
 import * as fs from 'fs';
 import * as path from 'path';
 import { stringify } from 'csv-stringify';
-import { calculateIndicators, IndicatorData } from '../src/simulation/indicators';
+import { calculateIndicators } from '@quantbot/simulation';
+import type { IndicatorData } from '@quantbot/simulation';
 
 const BROOK_CALLS_CSV = path.join(__dirname, '../data/exports/csv/all_brook_channels_calls.csv');
 const OUTPUT_DIR = path.join(__dirname, '../data/exports/tenkan-kijun-remaining-period-only');

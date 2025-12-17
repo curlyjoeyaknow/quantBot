@@ -45,6 +45,8 @@
 // Types - Core type definitions
 // =============================================================================
 export * from './types';
+export * from './duckdb-storage-service';
+export * from './clickhouse-service';
 
 // =============================================================================
 // Data - Candle providers and aggregation
@@ -132,21 +134,8 @@ export type { ScenarioTargetResolver } from './target-resolver';
 // =============================================================================
 // Storage - Storage integration
 // =============================================================================
-/**
- * @deprecated Storage integration has been moved to @quantbot/workflows.
- * Import from @quantbot/workflows/storage instead.
- */
-export { createStorageSink, StorageSink } from './storage/storage-sink';
-export type { StorageSinkConfig } from './storage/storage-sink';
-export {
-  ensureStrategyStored,
-  generateStrategyName,
-  hashStrategyConfig,
-} from './storage/strategy-storage';
-export { calculateResultMetrics } from './storage/metrics-calculator';
-export { createOrchestratorWithStorage } from './storage/orchestrator-helper';
-export { getResultCache, ResultCache } from './storage/result-cache';
-export type { ResultCacheConfig } from './storage/result-cache';
+// Storage integration has been moved to @quantbot/workflows.
+// Import from @quantbot/workflows/storage instead.
 
 // =============================================================================
 // Performance - Performance monitoring and optimization
@@ -181,13 +170,8 @@ export * from './sinks';
 export { simulateStrategy } from './core/simulator';
 export type { SimulationOptions } from './core/simulator';
 
-// Re-export orchestrator as SimulationEngine for backwards compatibility
-/**
- * @deprecated Orchestrator has been moved to @quantbot/workflows.
- * Import from @quantbot/workflows/simulation/orchestrator instead.
- */
-export { SimulationOrchestrator as SimulationEngine } from './core/orchestrator';
-export { createOrchestrator } from './core/orchestrator';
+// Orchestrator has been moved to @quantbot/workflows.
+// Import from @quantbot/workflows/simulation/orchestrator instead.
 
 // Re-export common types at top level
 export type {
@@ -209,19 +193,8 @@ export type {
   LadderLeg,
 } from './types';
 
-/**
- * @deprecated Orchestrator types have been moved to @quantbot/workflows.
- * Import from @quantbot/workflows/simulation/orchestrator instead.
- */
-export type {
-  SimulationTarget,
-  ScenarioConfig,
-  SimulationRunContext,
-  ScenarioRunSummary,
-  RunOptions,
-  SimulationResultSink,
-  SimulationLogger,
-} from './core/orchestrator';
+// Orchestrator types have been moved to @quantbot/workflows.
+// Import from @quantbot/workflows/simulation/orchestrator instead.
 
 // Re-export provider types
 export type { TokenMetadata, CandleFetchRequest, CandleFetchResult } from './data/provider';
@@ -234,55 +207,8 @@ export type { LegacyIndicatorData } from './indicators/registry';
 // Legacy Exports (for backwards compatibility with existing code)
 // =============================================================================
 
-// Re-export fetchHybridCandles at top level (legacy)
-import { HybridCandleProvider } from './data/hybrid-provider';
-import { DateTime } from 'luxon';
-import type { Candle } from './types';
-
-/**
- * Legacy function: Fetch candles using hybrid provider
- *
- * @deprecated Use HybridCandleProvider directly for more control
- */
-export async function fetchHybridCandles(
-  mint: string,
-  startTime: DateTime,
-  endTime: DateTime,
-  chain: string = 'solana',
-  alertTime?: DateTime
-): Promise<Candle[]> {
-  const provider = new HybridCandleProvider();
-  const result = await provider.fetchCandles({
-    mint,
-    chain,
-    startTime,
-    endTime,
-    alertTime,
-  });
-  return result.candles;
-}
-
-/**
- * Legacy function: Fetch candles with metadata
- *
- * @deprecated Use HybridCandleProvider.fetchCandlesWithMetadata directly
- */
-export async function fetchHybridCandlesWithMetadata(
-  mint: string,
-  startTime: DateTime,
-  endTime: DateTime,
-  chain: string = 'solana',
-  alertTime?: DateTime
-) {
-  const provider = new HybridCandleProvider();
-  return provider.fetchCandlesWithMetadata({
-    mint,
-    chain,
-    startTime,
-    endTime,
-    alertTime,
-  });
-}
+// Hybrid provider functions have been moved to @quantbot/ohlcv
+// Use @quantbot/ohlcv instead
 
 // Re-export ichimoku at top level for legacy code
 export { calculateIchimoku } from './indicators/ichimoku';

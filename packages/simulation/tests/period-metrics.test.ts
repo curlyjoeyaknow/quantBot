@@ -10,7 +10,6 @@ import {
   enrichSimulationResultWithPeriodMetrics,
 } from '../src/period-metrics/period-metrics';
 import type { Candle } from '../src/types';
-import { createOrchestrator } from '../src/core/orchestrator';
 import { DateTime } from 'luxon';
 
 describe('Period Metrics Integration', () => {

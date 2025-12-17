@@ -2,6 +2,9 @@
 /**
  * Test Chat Extraction Engine
  *
+ * @deprecated This script is deprecated. Chat extraction functionality has been moved to @quantbot/ingestion.
+ * This script needs to be rewritten to use TelegramCallIngestionService or TelegramAlertIngestionService.
+ *
  * Tests the unified chat extraction engine by:
  * 1. Parsing the most recent messages HTML file
  * 2. Extracting tokens and metadata using the engine
@@ -13,9 +16,16 @@ import 'dotenv/config';
 import * as fs from 'fs';
 import * as path from 'path';
 import { DateTime } from 'luxon';
-import { getChatExtractionEngine, ChatMessage } from '../src/services/chat-extraction-engine';
-import { getOHLCVEngine } from '../src/services/ohlcv-engine';
-import { logger } from '../src/utils/logger';
+import { getOHLCVEngine } from '@quantbot/ohlcv';
+import { logger } from '@quantbot/utils';
+
+// Chat extraction engine has been moved/removed - this script needs updating
+// For now, define a minimal interface
+interface ChatMessage {
+  sender: string;
+  text: string;
+  timestamp: DateTime;
+}
 
 interface TestResult {
   token: string;
@@ -143,9 +153,10 @@ async function main() {
   console.log(`✅ Parsed ${messages.length} messages\n`);
 
   // Initialize engines
-  const extractionEngine = getChatExtractionEngine();
+  // NOTE: Chat extraction engine has been removed - this script needs to be updated
+  // to use @quantbot/ingestion services instead
   const ohlcvEngine = getOHLCVEngine();
-  await ohlcvEngine.initialize();
+  // await ohlcvEngine.initialize(); // OHLCVEngine doesn't have initialize() method
 
   console.log('🔍 Extracting tokens from messages...\n');
 
@@ -156,15 +167,17 @@ async function main() {
   for (let i = 0; i < messages.length; i++) {
     const original = messages[i];
 
-    // Skip if original is a bot
-    if (extractionEngine.isBot(original.sender)) {
+    // NOTE: Chat extraction engine removed - this script is deprecated
+    // Skip if original is a bot (simple check for now)
+    const isBot = (sender: string) => sender.toLowerCase().includes('bot') || sender.toLowerCase().includes('rick') || sender.toLowerCase().includes('phanes');
+    if (isBot(original.sender)) {
       continue;
     }
 
     // Find next 2 bot messages
     const botMessages: ChatMessage[] = [];
     for (let j = i + 1; j < Math.min(messages.length, i + 10); j++) {
-      if (extractionEngine.isBot(messages[j].sender)) {
+      if (isBot(messages[j].sender)) {
         botMessages.push(messages[j]);
         if (botMessages.length >= 2) {
           break;
@@ -172,12 +185,11 @@ async function main() {
       }
     }
 
-    // Extract tokens
+    // Extract tokens - DEPRECATED: This functionality has been moved to @quantbot/ingestion
+    // For now, skip token extraction as the engine no longer exists
     try {
-      const extracted = await extractionEngine.extract(original, botMessages, {
-        botMessageLookahead: 2,
-        extractMetadata: true,
-      });
+      // TODO: Rewrite to use TelegramCallIngestionService or TelegramAlertIngestionService
+      const extracted: any[] = []; // Empty for now
 
       for (const token of extracted) {
         const key = `${token.mint.toLowerCase()}_${token.chain}`;

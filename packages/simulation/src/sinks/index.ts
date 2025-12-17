@@ -10,13 +10,5 @@
 export * from './base';
 export * from './console-sink';
 export * from './json-sink';
-/**
- * @deprecated CSV sink has been moved to @quantbot/workflows.
- * Import from @quantbot/workflows/sinks/csv-sink instead.
- */
-export * from './csv-sink';
-/**
- * @deprecated ClickHouse sink has been moved to @quantbot/workflows.
- * Import from @quantbot/workflows/sinks/clickhouse-sink instead.
- */
-export * from './clickhouse-sink';
+// CSV and ClickHouse sinks have been moved to @quantbot/workflows.
+// Import from @quantbot/workflows/sinks instead.

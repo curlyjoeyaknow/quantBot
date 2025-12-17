@@ -5,8 +5,15 @@ Tests for simulation engine.
 import pytest
 import duckdb
 from datetime import datetime, timedelta
-from simulation.simulator import DuckDBSimulator, StrategyConfig
-from simulation.sql_functions import setup_simulation_schema
+import sys
+from pathlib import Path
+
+# Add simulation directory to path
+simulation_path = Path(__file__).parent.parent.parent / 'simulation'
+sys.path.insert(0, str(simulation_path))
+
+from simulator import DuckDBSimulator, StrategyConfig
+from sql_functions import setup_simulation_schema
 
 @pytest.fixture
 def test_db():

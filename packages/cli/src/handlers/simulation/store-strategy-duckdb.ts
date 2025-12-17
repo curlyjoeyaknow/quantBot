@@ -1,7 +1,7 @@
 /**
  * Handler for simulation store-strategy command
  *
- * Stores a strategy in DuckDB using Python service.
+ * Stores a strategy in DuckDB using DuckDBStorageService.
  */
 
 import type { CommandContext } from '../../core/command-context.js';
@@ -10,20 +10,17 @@ import { storeStrategySchema, type StoreStrategyArgs } from '../../command-defs/
 export async function storeStrategyDuckdbHandler(
   args: StoreStrategyArgs,
   ctx: CommandContext
-): Promise<Record<string, unknown>> {
-  const engine = ctx.services.pythonEngine();
+) {
+  const service = ctx.services.duckdbStorage();
 
-  return await engine.runDuckDBStorage({
-    duckdbPath: args.duckdb,
-    operation: 'store_strategy',
-    data: {
-      strategy_id: args.strategyId,
-      name: args.name,
-      entry_config: args.entryConfig,
-      exit_config: args.exitConfig,
-      reentry_config: args.reentryConfig,
-      cost_config: args.costConfig,
-    },
-  });
+  return await service.storeStrategy(
+    args.duckdb,
+    args.strategyId,
+    args.name,
+    args.entryConfig,
+    args.exitConfig,
+    args.reentryConfig,
+    args.costConfig
+  );
 }
 

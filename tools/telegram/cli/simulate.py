@@ -9,10 +9,11 @@ import sys
 import duckdb
 from pathlib import Path
 
-# Add parent directory to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent))
+# Add simulation directory to path for imports
+simulation_path = Path(__file__).parent.parent.parent / 'simulation'
+sys.path.insert(0, str(simulation_path))
 
-from simulation.simulator import DuckDBSimulator, StrategyConfig
+from simulator import DuckDBSimulator, StrategyConfig
 from datetime import datetime
 
 def main():
