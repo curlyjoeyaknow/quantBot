@@ -16,6 +16,7 @@ import { OhlcvIngestionService } from '@quantbot/ingestion';
 import { TelegramAlertIngestionService } from '@quantbot/ingestion';
 import { getAnalyticsEngine } from '@quantbot/analytics';
 import type { AnalyticsEngine } from '@quantbot/analytics';
+import { getPythonEngine, type PythonEngine } from '@quantbot/utils';
 import { ensureInitialized } from './initialization-manager.js';
 
 /**
@@ -26,6 +27,7 @@ export interface CommandServices {
   telegramIngestion(): TelegramAlertIngestionService;
   ohlcvRepository(): OhlcvRepository;
   analyticsEngine(): AnalyticsEngine;
+  pythonEngine(): PythonEngine;
   // Add more services as needed
 }
 
@@ -38,6 +40,10 @@ export interface CommandContextOptions {
    * Override analytics engine (for testing or Python integration)
    */
   analyticsEngineOverride?: AnalyticsEngine;
+  /**
+   * Override Python engine (for testing)
+   */
+  pythonEngineOverride?: PythonEngine;
   // Add more overrides as needed
 }
 
@@ -100,6 +106,10 @@ export class CommandContext {
       analyticsEngine: () => {
         // Use override if provided (for tests/Python integration), otherwise use singleton
         return this._options.analyticsEngineOverride ?? getAnalyticsEngine();
+      },
+      pythonEngine: () => {
+        // Use override if provided (for tests), otherwise use singleton
+        return this._options.pythonEngineOverride ?? getPythonEngine();
       },
     };
   }

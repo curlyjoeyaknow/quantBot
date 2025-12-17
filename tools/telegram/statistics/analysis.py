@@ -48,7 +48,8 @@ class StatisticalAnalyzer:
                     COALESCE(a.ath_multiple, 0) as ath_multiple,
                     COALESCE(a.atl_multiple, 0) as atl_multiple
                 FROM user_calls_d u
-                LEFT JOIN alerts a ON u.mint = a.token_id AND u.call_ts_ms = a.alert_timestamp
+                LEFT JOIN alerts a ON u.mint = a.token_id 
+                    AND to_timestamp(u.call_ts_ms / 1000.0) = a.alert_timestamp
                 WHERE u.caller_name = ?
                 ORDER BY u.call_ts_ms
             """, [caller_name]).fetchall()

@@ -9,6 +9,8 @@ import type { PackageCommandModule } from '../types/index.js';
 import { commandRegistry } from '../core/command-registry.js';
 import type { CommandContext } from '../core/command-context.js';
 import { queryOhlcvHandler } from '../handlers/ohlcv/query-ohlcv.js';
+import { backfillOhlcvHandler } from '../handlers/ohlcv/backfill-ohlcv.js';
+import { coverageOhlcvHandler } from '../handlers/ohlcv/coverage-ohlcv.js';
 
 /**
  * Query command schema
@@ -168,14 +170,20 @@ const ohlcvModule: PackageCommandModule = {
       name: 'backfill',
       description: 'Backfill OHLCV data for a token',
       schema: backfillSchema,
-      handler: async () => ({ message: 'Backfill completed' }),
+      handler: async (args: unknown, ctx: CommandContext) => {
+        const typedArgs = args as z.infer<typeof backfillSchema>;
+        return await backfillOhlcvHandler(typedArgs, ctx);
+      },
       examples: ['quantbot ohlcv backfill --mint So111... --from 2024-01-01 --to 2024-01-02'],
     },
     {
       name: 'coverage',
       description: 'Check data coverage for tokens',
       schema: coverageSchema,
-      handler: async () => ({ message: 'Coverage check' }),
+      handler: async (args: unknown, ctx: CommandContext) => {
+        const typedArgs = args as z.infer<typeof coverageSchema>;
+        return await coverageOhlcvHandler(typedArgs, ctx);
+      },
       examples: ['quantbot ohlcv coverage --mint So111...'],
     },
   ],

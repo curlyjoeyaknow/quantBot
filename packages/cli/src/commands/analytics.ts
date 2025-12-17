@@ -10,7 +10,8 @@ import type { CommandContext } from '../core/command-context.js';
 import { analyzeAnalyticsHandler } from '../handlers/analytics/analyze-analytics.js';
 import { metricsAnalyticsHandler } from '../handlers/analytics/metrics-analytics.js';
 import { reportAnalyticsHandler } from '../handlers/analytics/report-analytics.js';
-import { analyzeSchema, metricsSchema, reportSchema } from '../command-defs/analytics.js';
+import { analyzeDuckdbHandler } from '../handlers/analytics/analyze-duckdb.js';
+import { analyzeSchema, metricsSchema, reportSchema, analyzeDuckdbSchema } from '../command-defs/analytics.js';
 
 /**
  * Register analytics commands
@@ -70,6 +71,30 @@ export function registerAnalyticsCommands(program: Command): void {
       }
       await execute(commandDef, options);
     });
+
+  // DuckDB analysis command
+  analyticsCmd
+    .command('analyze-duckdb')
+    .description('Statistical analysis using DuckDB Python engine')
+    .requiredOption('--duckdb <path>', 'Path to DuckDB file')
+    .option('--caller <name>', 'Analyze specific caller')
+    .option('--mint <mint>', 'Analyze specific token')
+    .option('--correlation', 'Run correlation analysis', false)
+    .option('--format <format>', 'Output format', 'table')
+    .action(async (options) => {
+      const { execute } = await import('../core/execute.js');
+      const commandDef = commandRegistry.getCommand('analytics', 'analyze-duckdb');
+      if (!commandDef) {
+        throw new Error('Command analytics analyze-duckdb not found in registry');
+      }
+      await execute(commandDef, {
+        duckdb: options.duckdb,
+        caller: options.caller,
+        mint: options.mint,
+        correlation: options.correlation === true || options.correlation === 'true' ? {} : undefined,
+        format: options.format,
+      });
+    });
 }
 
 /**
@@ -108,6 +133,19 @@ const analyticsModule: PackageCommandModule = {
         return await reportAnalyticsHandler(typedArgs, ctx);
       },
       examples: ['quantbot analytics report --caller Brook'],
+    },
+    {
+      name: 'analyze-duckdb',
+      description: 'Statistical analysis using DuckDB Python engine',
+      schema: analyzeDuckdbSchema,
+      handler: async (args: unknown, ctx: CommandContext) => {
+        const typedArgs = args as z.infer<typeof analyzeDuckdbSchema>;
+        return await analyzeDuckdbHandler(typedArgs, ctx);
+      },
+      examples: [
+        'quantbot analytics analyze-duckdb --duckdb tele.duckdb --caller Brook',
+        'quantbot analytics analyze-duckdb --duckdb tele.duckdb --mint So111...',
+      ],
     },
   ],
 };

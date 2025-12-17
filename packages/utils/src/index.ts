@@ -52,6 +52,16 @@ export { creditMonitor } from './credit-monitor';
 // Events (kept for backward compatibility, but consider moving to services)
 export * from './events';
 
+// Python integration
+export {
+  PythonEngine,
+  getPythonEngine,
+  PythonManifestSchema,
+  type PythonManifest,
+  type PythonScriptOptions,
+  type TelegramPipelineConfig,
+} from './python/python-engine';
+
 // NOTE: Database utilities DEPRECATED - use @quantbot/storage instead
 //
 // ⚠️ DEPRECATION NOTICE:

@@ -6,7 +6,7 @@ Stores computed features in DuckDB for model training.
 import duckdb
 import json
 import uuid
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from datetime import datetime
 import logging
 
