@@ -4,6 +4,7 @@
 
 import type { Command } from 'commander';
 import type { CommandDefinition, PackageCommandModule } from '../types/index.js';
+import { ConfigurationError, ValidationError } from '@quantbot/utils';
 
 /**
  * Command registry for managing CLI commands
@@ -17,7 +18,11 @@ export class CommandRegistry {
    */
   registerPackage(module: PackageCommandModule): void {
     if (this.packages.has(module.packageName)) {
-      throw new Error(`Package ${module.packageName} is already registered`);
+      throw new ConfigurationError(
+        `Package ${module.packageName} is already registered`,
+        'packageName',
+        { packageName: module.packageName }
+      );
     }
 
     this.packages.set(module.packageName, module);
@@ -26,7 +31,11 @@ export class CommandRegistry {
     for (const command of module.commands) {
       const fullName = `${module.packageName}.${command.name}`;
       if (this.commands.has(fullName)) {
-        throw new Error(`Command ${fullName} is already registered`);
+        throw new ConfigurationError(
+          `Command ${fullName} is already registered`,
+          'commandName',
+          { packageName: module.packageName, commandName: command.name }
+        );
       }
       this.commands.set(fullName, command);
     }
@@ -107,19 +116,27 @@ export class CommandRegistry {
    */
   validateCommand(command: CommandDefinition): void {
     if (!command.name || typeof command.name !== 'string') {
-      throw new Error('Command name must be a non-empty string');
+      throw new ValidationError('Command name must be a non-empty string', {
+        command: command.name,
+      });
     }
 
     if (!command.description || typeof command.description !== 'string') {
-      throw new Error('Command description must be a non-empty string');
+      throw new ValidationError('Command description must be a non-empty string', {
+        command: command.name,
+      });
     }
 
     if (!command.schema) {
-      throw new Error('Command must have a Zod schema');
+      throw new ValidationError('Command must have a Zod schema', {
+        command: command.name,
+      });
     }
 
     if (typeof command.handler !== 'function') {
-      throw new Error('Command must have a handler function');
+      throw new ValidationError('Command must have a handler function', {
+        command: command.name,
+      });
     }
   }
 }

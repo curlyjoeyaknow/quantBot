@@ -54,3 +54,61 @@ export const runSimulationDuckdbSchema = z.object({
 });
 
 export type RunSimulationDuckdbArgs = z.infer<typeof runSimulationDuckdbSchema>;
+
+export const storeStrategySchema = z.object({
+  duckdb: z.string().min(1),
+  strategyId: z.string().min(1),
+  name: z.string().min(1),
+  entryConfig: z.record(z.unknown()),
+  exitConfig: z.record(z.unknown()),
+  reentryConfig: z.record(z.unknown()).optional(),
+  costConfig: z.record(z.unknown()).optional(),
+  format: z.enum(['json', 'table', 'csv']).default('table'),
+});
+
+export const storeRunSchema = z.object({
+  duckdb: z.string().min(1),
+  runId: z.string().min(1),
+  strategyId: z.string().min(1),
+  mint: z.string().min(1),
+  alertTimestamp: z.string(),
+  startTime: z.string(),
+  endTime: z.string(),
+  initialCapital: z.number().positive().default(1000.0),
+  finalCapital: z.number().optional(),
+  totalReturnPct: z.number().optional(),
+  maxDrawdownPct: z.number().optional(),
+  sharpeRatio: z.number().optional(),
+  winRate: z.number().optional(),
+  totalTrades: z.number().int().min(0).default(0),
+  format: z.enum(['json', 'table', 'csv']).default('table'),
+});
+
+export const generateReportSchema = z.object({
+  duckdb: z.string().min(1),
+  type: z.enum(['summary', 'strategy_performance']),
+  strategyId: z.string().optional(),
+  format: z.enum(['json', 'table', 'csv']).default('table'),
+});
+
+export const clickHouseQuerySchema = z.object({
+  operation: z.enum(['query_ohlcv', 'store_events', 'aggregate_metrics']),
+  tokenAddress: z.string().optional(),
+  chain: z.string().optional(),
+  startTime: z.string().optional(),
+  endTime: z.string().optional(),
+  interval: z.enum(['1m', '5m', '15m', '1h']).optional(),
+  runId: z.string().optional(),
+  events: z.array(z.record(z.unknown())).optional(),
+  host: z.string().optional(),
+  port: z.number().int().positive().optional(),
+  database: z.string().optional(),
+  username: z.string().optional(),
+  password: z.string().optional(),
+  format: z.enum(['json', 'table', 'csv']).default('table'),
+});
+
+export type StoreStrategyArgs = z.infer<typeof storeStrategySchema>;
+export type StoreRunArgs = z.infer<typeof storeRunSchema>;
+export type GenerateReportArgs = z.infer<typeof generateReportSchema>;
+export type ClickHouseQueryArgs = z.infer<typeof clickHouseQuerySchema>;

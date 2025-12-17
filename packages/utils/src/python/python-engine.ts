@@ -36,6 +36,22 @@ export interface TelegramPipelineConfig {
   rebuild?: boolean;
 }
 
+export interface DuckDBStorageConfig {
+  duckdbPath: string;
+  operation: 'store_strategy' | 'store_run' | 'store_alerts' | 'generate_report';
+  data: Record<string, unknown>;
+}
+
+export interface ClickHouseEngineConfig {
+  operation: 'query_ohlcv' | 'store_events' | 'aggregate_metrics';
+  data: Record<string, unknown>;
+  host?: string;
+  port?: number;
+  database?: string;
+  username?: string;
+  password?: string;
+}
+
 /**
  * Schema for Python tool output (manifest)
  */
@@ -181,6 +197,101 @@ export class PythonEngine {
       scriptPath,
       args,
       PythonManifestSchema,
+      {
+        ...options,
+        cwd,
+        env,
+      }
+    );
+  }
+
+  /**
+   * Run DuckDB storage operation
+   *
+   * @param config - Storage configuration
+   * @param options - Execution options
+   * @returns Operation result
+   */
+  async runDuckDBStorage(
+    config: DuckDBStorageConfig,
+    options?: PythonScriptOptions
+  ): Promise<Record<string, unknown>> {
+    const scriptPath = join(
+      process.cwd(),
+      'tools/simulation/duckdb_storage.py'
+    );
+
+    const args: Record<string, unknown> = {
+      duckdb: config.duckdbPath,
+      operation: config.operation,
+      data: JSON.stringify(config.data),
+    };
+
+    const cwd = options?.cwd ?? join(process.cwd(), 'tools/simulation');
+    const env = {
+      ...options?.env,
+      PYTHONPATH: join(process.cwd(), 'tools/simulation'),
+    };
+
+    const resultSchema = z.object({
+      success: z.boolean(),
+      error: z.string().optional(),
+    }).passthrough();
+
+    return this.runScript(
+      scriptPath,
+      args,
+      resultSchema,
+      {
+        ...options,
+        cwd,
+        env,
+      }
+    );
+  }
+
+  /**
+   * Run ClickHouse engine operation
+   *
+   * @param config - Engine configuration
+   * @param options - Execution options
+   * @returns Operation result
+   */
+  async runClickHouseEngine(
+    config: ClickHouseEngineConfig,
+    options?: PythonScriptOptions
+  ): Promise<Record<string, unknown>> {
+    const scriptPath = join(
+      process.cwd(),
+      'tools/simulation/clickhouse_engine.py'
+    );
+
+    const args: Record<string, unknown> = {
+      operation: config.operation,
+      data: JSON.stringify(config.data),
+    };
+
+    if (config.host) args.host = config.host;
+    if (config.port) args.port = config.port;
+    if (config.database) args.database = config.database;
+    if (config.username) args.username = config.username;
+    if (config.password) args.password = config.password;
+
+    const cwd = options?.cwd ?? join(process.cwd(), 'tools/simulation');
+    const env = {
+      ...options?.env,
+      PYTHONPATH: join(process.cwd(), 'tools/simulation'),
+    };
+
+    const resultSchema = z.object({
+      success: z.boolean(),
+      error: z.string().optional(),
+    }).passthrough();
+
+    return this.runScript(
+      scriptPath,
+      args,
+      resultSchema,
       {
         ...options,
         cwd,

@@ -2,7 +2,7 @@
  * OHLCV Data Management Service
  *
  * Centralized service for fetching, ingesting, and caching OHLCV candles.
- * Provides multi-layer caching (in-memory → ClickHouse → CSV cache) and
+ * Provides multi-layer caching (in-memory → ClickHouse via StorageEngine) and
  * integrates with Birdeye API and ClickHouse storage.
  */
 
@@ -220,7 +220,7 @@ export class OHLCVService {
       }
     }
 
-    // Fall back to fetchHybridCandles (which uses CSV cache and Birdeye API)
+    // Fall back to fetchHybridCandles (which uses ClickHouse and Birdeye API)
     try {
       const candles = await fetchHybridCandles(mint, startTime, endTime, chain, alertTime);
 

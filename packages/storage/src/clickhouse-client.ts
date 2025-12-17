@@ -450,7 +450,7 @@ export async function queryCandles(
         continue;
       }
 
-      // Silently fail if USE_CACHE_ONLY is set (will fallback to CSV cache)
+      // Silently fail if USE_CACHE_ONLY is set (will return empty result)
       if (process.env.USE_CACHE_ONLY !== 'true' && !isSocketError) {
         logger.error('Error querying candles', error as Error, { tokenAddress });
       }
