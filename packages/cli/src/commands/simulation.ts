@@ -10,7 +10,8 @@ import { execute } from '../core/execute.js';
 import type { CommandContext } from '../core/command-context.js';
 import { runSimulationHandler } from '../handlers/simulation/run-simulation.js';
 import { listRunsHandler } from '../handlers/simulation/list-runs.js';
-import { runSchema, listRunsSchema } from '../command-defs/simulation.js';
+import { runSimulationDuckdbHandler } from '../handlers/simulation/run-simulation-duckdb.js';
+import { runSchema, listRunsSchema, runSimulationDuckdbSchema } from '../command-defs/simulation.js';
 
 /**
  * Register simulation commands
@@ -97,6 +98,18 @@ const simulationModule: PackageCommandModule = {
         return await listRunsHandler(typedArgs, ctx);
       },
       examples: ['quantbot simulation list-runs --limit 50'],
+    },
+    {
+      name: 'run-duckdb',
+      description: 'Run simulation using DuckDB Python engine',
+      schema: runSimulationDuckdbSchema,
+      handler: async (args: unknown, ctx: CommandContext) => {
+        const typedArgs = args as z.infer<typeof runSimulationDuckdbSchema>;
+        return await runSimulationDuckdbHandler(typedArgs, ctx);
+      },
+      examples: [
+        'quantbot simulation run-duckdb --duckdb tele.duckdb --strategy strategy.json --mint So111...',
+      ],
     },
   ],
 };

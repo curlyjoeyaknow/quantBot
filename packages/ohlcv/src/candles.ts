@@ -1,10 +1,9 @@
 /*******************************************************************************
- * Candle I/O Operations: Birdeye Fetching, Local Caching, and ClickHouse
+ * Candle I/O Operations: Birdeye Fetching and ClickHouse Storage
  *
  * This module provides I/O operations for fetching token OHLCV data:
  *   - Birdeye API fetching with automatic chunking
- *   - CSV-based local caching
- *   - ClickHouse integration
+ *   - ClickHouse integration via StorageEngine
  *   - Token metadata fetching
  *
  * Moved from @quantbot/simulation to break circular dependency.
@@ -16,8 +15,6 @@ import { config } from 'dotenv';
 config({ override: true });
 import axios from 'axios';
 import { DateTime } from 'luxon';
-import * as fs from 'fs';
-import * as path from 'path';
 import type { Candle } from '@quantbot/core';
 import { logger } from '@quantbot/utils';
 
@@ -33,96 +30,6 @@ function getBirdeyeApiKey(): string {
 }
 const BIRDEYE_ENDPOINT = 'https://public-api.birdeye.so/defi/v3/ohlcv';
 
-// --- Candle cache settings ---
-const CACHE_DIR = path.join(process.cwd(), 'cache');
-// Extended cache expiry for simulations - use cached data when available
-const CACHE_EXPIRY_HOURS = process.env.USE_CACHE_ONLY === 'true' ? 999999 : 24;
-
-// --- Ensure cache directory exists (idempotent) ---
-if (!fs.existsSync(CACHE_DIR)) {
-  fs.mkdirSync(CACHE_DIR, { recursive: true });
-}
-
-/* ============================================================================
- * CSV Cache Utilities
- * ========================================================================== */
-
-/**
- * Generate a cache filename for specified token and time range on a chain.
- * Allows deterministic lookup and simplifies cache management/upgrade.
- */
-function getCacheFilename(
-  mint: string,
-  startTime: DateTime,
-  endTime: DateTime,
-  chain: string
-): string {
-  const start = startTime.toFormat('yyyyMMdd-HHmm');
-  const end = endTime.toFormat('yyyyMMdd-HHmm');
-  return `${chain}_${mint}_${start}_${end}.csv`;
-}
-
-/**
- * Persist an array of Candle objects to the cache folder as a CSV file.
- * Supplies an upgrade point (e.g., for binary or compressed storage).
- */
-function saveCandlesToCache(candles: Candle[], filename: string): void {
-  try {
-    const csvContent = [
-      'timestamp,open,high,low,close,volume',
-      ...candles.map((c) => `${c.timestamp},${c.open},${c.high},${c.low},${c.close},${c.volume}`),
-    ].join('\n');
-
-    fs.writeFileSync(path.join(CACHE_DIR, filename), csvContent);
-    logger.debug('Cached candles', { count: candles.length, filename });
-  } catch (error) {
-    logger.error('Failed to save cache', error as Error, { filename });
-  }
-}
-
-/**
- * Load candles from CSV cache, or null if not present or expired.
- * Automatic cache expiry and removal ensures maintainability.
- */
-function loadCandlesFromCache(filename: string): Candle[] | null {
-  try {
-    const filePath = path.join(CACHE_DIR, filename);
-
-    if (!fs.existsSync(filePath)) return null;
-
-    // Check expiration (skip if USE_CACHE_ONLY is set)
-    if (process.env.USE_CACHE_ONLY !== 'true') {
-      const stats = fs.statSync(filePath);
-      const ageHours = (Date.now() - stats.mtime.getTime()) / (1000 * 60 * 60);
-      if (ageHours > CACHE_EXPIRY_HOURS) {
-        logger.debug(`Cache expired (${ageHours.toFixed(1)}h old). Removing ${filename}...`);
-        fs.unlinkSync(filePath);
-        return null;
-      }
-    }
-
-    // Parse CSV
-    const content = fs.readFileSync(filePath, 'utf-8');
-    const lines = content.trim().split('\n');
-    const candles: Candle[] = [];
-    for (let i = 1; i < lines.length; i++) {
-      const [timestamp, open, high, low, close, volume] = lines[i].split(',');
-      candles.push({
-        timestamp: parseInt(timestamp, 10),
-        open: parseFloat(open),
-        high: parseFloat(high),
-        low: parseFloat(low),
-        close: parseFloat(close),
-        volume: parseFloat(volume),
-      });
-    }
-    logger.debug(`Loaded ${candles.length} candles from cache ${filename}`);
-    return candles;
-  } catch (error) {
-    logger.error('Failed to load cache', error as Error, { filename });
-    return null;
-  }
-}
 
 /* ============================================================================
  * API Fetch: Birdeye & Hybrid Helper
@@ -783,62 +690,7 @@ export async function fetchHybridCandles(
     }
   }
 
-  // Check CSV cache (exact match for requested range)
-  const cacheFilename = getCacheFilename(mint, startTime, endTime, chain);
-  const cachedCandles = loadCandlesFromCache(cacheFilename);
-  if (cachedCandles) {
-    logger.debug(`Using cached candles for ${mint} (${cachedCandles.length} candles)`);
-    // Also ensure it's in ClickHouse (idempotent - won't duplicate)
-    // Skip sync if USE_CACHE_ONLY is set (to avoid database connection errors)
-    if (
-      process.env.USE_CACHE_ONLY !== 'true' &&
-      (process.env.USE_CLICKHOUSE === 'true' || process.env.CLICKHOUSE_HOST)
-    ) {
-      try {
-        const { insertCandles } = await import('@quantbot/storage');
-        const interval =
-          cachedCandles.length > 1 && cachedCandles[1].timestamp - cachedCandles[0].timestamp <= 600
-            ? '5m'
-            : '1h';
-        await insertCandles(mint, chain, cachedCandles, interval);
-        logger.debug(
-          `✅ Synced ${cachedCandles.length} cached candles to ClickHouse for ${mint.substring(0, 20)}...`
-        );
-      } catch (error: any) {
-        // Silently continue - ClickHouse may already have the data
-      }
-    }
-    return cachedCandles;
-  }
-
-  // Look for partial cache (matching mint & start, wider end)
-  const basePattern = `${chain}_${mint}_${startTime.toFormat('yyyyMMdd-HHmm')}_`;
-  const cacheFiles = fs
-    .readdirSync(CACHE_DIR)
-    .filter((f) => f.startsWith(basePattern) && f.endsWith('.csv'));
-
-  if (cacheFiles.length > 0) {
-    // Use latest-available partial cache if it's sufficiently fresh
-    const latestCache = cacheFiles.sort().pop()!;
-    const cachedData = loadCandlesFromCache(latestCache);
-    if (cachedData && cachedData.length > 0) {
-      const lastCachedTime = DateTime.fromSeconds(cachedData[cachedData.length - 1].timestamp);
-      if (endTime.diff(lastCachedTime, 'hours').hours < 1) {
-        logger.debug(
-          `Extending recent cache from ${lastCachedTime.toFormat(
-            'yyyy-MM-dd HH:mm'
-          )} to ${endTime.toFormat('yyyy-MM-dd HH:mm')}`
-        );
-        // Only fetch candles missing after cached range
-        const newCandles = await fetchFreshCandles(mint, lastCachedTime, endTime, chain);
-        const combinedCandles = [...cachedData, ...newCandles];
-        saveCandlesToCache(combinedCandles, cacheFilename);
-        return combinedCandles;
-      }
-    }
-  }
-
-  // Otherwise, fetch from API and cache (unless USE_CACHE_ONLY is set)
+  // Fetch from API (unless USE_CACHE_ONLY is set)
   if (process.env.USE_CACHE_ONLY === 'true') {
     logger.debug(
       `⚠️ No cached candles found for ${mint}: ${startTime.toISO()} — ${endTime.toISO()}`
@@ -989,19 +841,7 @@ export async function fetchHybridCandles(
   }
 
   if (finalCandles.length > 0) {
-    // Save to CSV cache (always) - save the filtered range (requested range)
-    saveCandlesToCache(finalCandles, cacheFilename);
-
-    // Also save the full range with lookback if we extended backwards (for future use)
-    if (actualStartTime < startTime && candles5m.length > candles5mFiltered.length) {
-      const lookbackCacheFilename = getCacheFilename(mint, actualStartTime, endTime, chain);
-      saveCandlesToCache(candles5m, lookbackCacheFilename);
-      logger.debug(
-        `Saved lookback candles to cache: ${lookbackCacheFilename} (${candles5m.length} candles)`
-      );
-    }
-
-    // Also save to ClickHouse if enabled
+    // Save to ClickHouse if enabled
     if (process.env.USE_CLICKHOUSE === 'true' || process.env.CLICKHOUSE_HOST) {
       try {
         const { insertCandles } = await import('@quantbot/storage');

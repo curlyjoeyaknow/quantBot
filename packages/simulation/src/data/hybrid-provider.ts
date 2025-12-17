@@ -20,7 +20,6 @@ import type {
   MetadataProvider 
 } from './provider';
 import { BirdeyeCandleProvider, BirdeyeMetadataProvider } from './birdeye-provider';
-import { CsvCacheProvider } from './cache-provider';
 import { ClickHouseProvider } from './clickhouse-provider';
 
 /**
@@ -37,12 +36,6 @@ const ICHIMOKU_5M_LOOKBACK_SECONDS = ICHIMOKU_LOOKBACK_PERIODS * FIVE_MINUTE_SEC
 export interface HybridProviderOptions {
   /** Enable ClickHouse storage */
   enableClickHouse?: boolean;
-  /** Enable CSV cache */
-  enableCsvCache?: boolean;
-  /** Cache directory for CSV files */
-  cacheDir?: string;
-  /** Cache expiry in hours */
-  cacheExpiryHours?: number;
   /** Fetch 1m candles around alert time */
   fetchOneMinuteCandles?: boolean;
   /** Minutes of 1m candles before alert */
@@ -65,9 +58,6 @@ export class HybridCandleProvider implements CandleProvider {
   constructor(options: HybridProviderOptions = {}) {
     this.options = {
       enableClickHouse: options.enableClickHouse ?? true,
-      enableCsvCache: options.enableCsvCache ?? true,
-      cacheDir: options.cacheDir ?? undefined as any,
-      cacheExpiryHours: options.cacheExpiryHours ?? 24,
       fetchOneMinuteCandles: options.fetchOneMinuteCandles ?? true,
       oneMinuteWindowBefore: options.oneMinuteWindowBefore ?? 52, // For Ichimoku
       oneMinuteWindowAfter: options.oneMinuteWindowAfter ?? 4948, // Fill to 5000 candles
@@ -77,13 +67,6 @@ export class HybridCandleProvider implements CandleProvider {
     
     if (this.options.enableClickHouse) {
       this.providers.push(new ClickHouseProvider());
-    }
-    
-    if (this.options.enableCsvCache) {
-      this.providers.push(new CsvCacheProvider({
-        cacheDir: this.options.cacheDir,
-        expiryHours: this.options.cacheExpiryHours,
-      }));
     }
     
     this.apiProvider = new BirdeyeCandleProvider();
@@ -105,7 +88,7 @@ export class HybridCandleProvider implements CandleProvider {
       }
     }
     
-    // Try storage providers first (ClickHouse, then CSV cache)
+    // Try storage providers first (ClickHouse)
     for (const provider of this.providers) {
       try {
         const result = await provider.fetchCandles({

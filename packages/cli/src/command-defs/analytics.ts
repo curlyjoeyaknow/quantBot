@@ -47,6 +47,19 @@ export const reportSchema = z.object({
   format: z.enum(['json', 'table', 'csv']).default('table'),
 });
 
+export const analyzeDuckdbSchema = z.object({
+  duckdb: z.string(),
+  caller: z.string().optional(),
+  mint: z.string().optional(),
+  correlation: z
+    .object({
+      feature_cols: z.array(z.string()),
+      target_col: z.string().default('ath_multiple'),
+    })
+    .optional(),
+  format: z.enum(['json', 'table', 'csv']).default('table'),
+});
+
 /**
  * Report command arguments type
  */

@@ -23,3 +23,34 @@ export const listRunsSchema = z.object({
 
 export type RunSimulationArgs = z.infer<typeof runSchema>;
 export type ListRunsArgs = z.infer<typeof listRunsSchema>;
+
+export const runSimulationDuckdbSchema = z.object({
+  duckdb: z.string(),
+  strategy: z.object({
+    strategy_id: z.string(),
+    name: z.string(),
+    entry_type: z.enum(['immediate', 'drop', 'trailing']),
+    profit_targets: z.array(
+      z.object({
+        target: z.number().positive(),
+        percent: z.number().min(0).max(1),
+      })
+    ),
+    stop_loss_pct: z.number().min(0).max(1).optional(),
+    trailing_stop_pct: z.number().min(0).max(1).optional(),
+    trailing_activation_pct: z.number().min(0).max(1).optional(),
+    reentry_config: z.record(z.unknown()).optional(),
+    maker_fee: z.number().min(0).max(1).default(0.001),
+    taker_fee: z.number().min(0).max(1).default(0.001),
+    slippage: z.number().min(0).max(1).default(0.005),
+  }),
+  mint: z.string().optional(),
+  alert_timestamp: z.string().optional(),
+  batch: z.boolean().default(false),
+  initial_capital: z.number().positive().default(1000.0),
+  lookback_minutes: z.number().int().positive().default(260),
+  lookforward_minutes: z.number().int().positive().default(1440),
+  format: z.enum(['json', 'table', 'csv']).default('table'),
+});
+
+export type RunSimulationDuckdbArgs = z.infer<typeof runSimulationDuckdbSchema>;

@@ -12,20 +12,9 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { execSync } from 'child_process';
-import { readFileSync, existsSync } from 'fs';
+import { existsSync } from 'fs';
 import { join } from 'path';
-import { z } from 'zod';
-
-// Schema for Python tool output (manifest)
-const PythonManifestSchema = z.object({
-  chat_id: z.string(),
-  chat_name: z.string(),
-  duckdb_file: z.string(),
-  tg_rows: z.number().optional(),
-  caller_links_rows: z.number().optional(),
-  user_calls_rows: z.number().optional(),
-});
+import { PythonEngine, PythonManifestSchema } from '../../src/python/python-engine.js';
 
 describe('Python Bridge Test - Telegram Ingestion', () => {
   const pythonToolPath = join(__dirname, '../../../../tools/telegram/duckdb_punch_pipeline.py');
@@ -38,7 +27,7 @@ describe('Python Bridge Test - Telegram Ingestion', () => {
     '../../../../tools/telegram/tests/fixtures/test_output.duckdb'
   );
 
-  it('runs Python tool on tiny fixture and validates output schema', () => {
+  it('runs Python tool on tiny fixture and validates output schema', async () => {
     // Skip if Python tool doesn't exist
     if (!existsSync(pythonToolPath)) {
       console.warn('Python tool not found, skipping bridge test');
@@ -72,21 +61,20 @@ describe('Python Bridge Test - Telegram Ingestion', () => {
     fs.writeFileSync(testFixturePath, JSON.stringify(minimalFixture, null, 2));
 
     try {
-      // Run Python tool
-      const command = `python3 ${pythonToolPath} --in ${testFixturePath} --duckdb ${outputDbPath} --rebuild --chat-id test_chat`;
-      const output = execSync(command, {
-        encoding: 'utf-8',
-        cwd: join(__dirname, '../../../../tools/telegram'),
-        env: { ...process.env, PYTHONPATH: join(__dirname, '../../../../tools/telegram') },
-      });
-
-      // Parse output JSON
-      const lines = output.trim().split('\n');
-      const jsonLine = lines[lines.length - 1];
-      const result = JSON.parse(jsonLine);
-
-      // Validate against schema
-      const validated = PythonManifestSchema.parse(result);
+      // Use PythonEngine to run the tool
+      const engine = new PythonEngine();
+      const validated = await engine.runTelegramPipeline(
+        {
+          inputFile: testFixturePath,
+          outputDb: outputDbPath,
+          chatId: 'test_chat',
+          rebuild: true,
+        },
+        {
+          cwd: join(__dirname, '../../../../tools/telegram'),
+          env: { PYTHONPATH: join(__dirname, '../../../../tools/telegram') },
+        }
+      );
 
       // Assertions
       expect(validated.chat_id).toBe('test_chat');
@@ -120,16 +108,22 @@ describe('Python Bridge Test - Telegram Ingestion', () => {
     fs.writeFileSync(invalidPath, JSON.stringify(invalidFixture));
 
     try {
-      const command = `python3 ${pythonToolPath} --in ${invalidPath} --duckdb ${outputDbPath} --rebuild 2>&1 || true`;
-      execSync(command, {
-        encoding: 'utf-8',
-        cwd: join(__dirname, '../../../../tools/telegram'),
-        env: { ...process.env, PYTHONPATH: join(__dirname, '../../../../tools/telegram') },
-      });
-      // Should not throw - tool should handle invalid input gracefully
-    } catch (error) {
-      // Tool may exit with error code, which is acceptable
-      expect(error).toBeDefined();
+      const engine = new PythonEngine();
+      // Tool should handle invalid input gracefully or throw an error
+      await expect(
+        engine.runTelegramPipeline(
+          {
+            inputFile: invalidPath,
+            outputDb: outputDbPath,
+            chatId: 'test_chat',
+            rebuild: true,
+          },
+          {
+            cwd: join(__dirname, '../../../../tools/telegram'),
+            env: { PYTHONPATH: join(__dirname, '../../../../tools/telegram') },
+          }
+        )
+      ).rejects.toThrow();
     } finally {
       if (existsSync(invalidPath)) {
         require('fs').unlinkSync(invalidPath);
