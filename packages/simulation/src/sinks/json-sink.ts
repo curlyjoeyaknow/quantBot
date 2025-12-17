@@ -48,8 +48,9 @@ export class JsonSink implements ResultSink {
   }
 
   private formatPayload(context: SimulationRunContext): Record<string, unknown> {
-    const tokenSymbol = context.metadata?.symbol;
-    const tokenName = context.metadata?.name;
+    const metadata = context.target.metadata as { symbol?: string; name?: string } | undefined;
+    const tokenSymbol = metadata?.symbol;
+    const tokenName = metadata?.name;
 
     return {
       scenario: context.scenario.name,

@@ -91,4 +91,3 @@ describe('generateReportDuckdbHandler', () => {
     expect(result.report_type).toBe('strategy_performance');
   });
 });
-

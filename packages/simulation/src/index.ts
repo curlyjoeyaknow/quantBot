@@ -201,7 +201,7 @@ export type { TokenMetadata, CandleFetchRequest, CandleFetchResult } from './dat
 
 // Re-export indicator types
 export type { IchimokuData } from './indicators/ichimoku';
-export type { LegacyIndicatorData } from './indicators/registry';
+export type { LegacyIndicatorData, IndicatorData } from './indicators/registry';
 
 // =============================================================================
 // Legacy Exports (for backwards compatibility with existing code)

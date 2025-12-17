@@ -1,5 +1,5 @@
 import { AxiosInstance } from 'axios';
-import { logger } from '@quantbot/utils';
+import { logger, ConfigurationError } from '@quantbot/utils';
 import { recordApiUsage } from '@quantbot/observability';
 import { BaseApiClient } from './base-client';
 
@@ -61,7 +61,7 @@ export class HeliusRestClient extends BaseApiClient {
     options: AddressTransactionsOptions = {}
   ): Promise<HeliusTransaction[]> {
     if (!this.apiKey) {
-      throw new Error('HELIUS_API_KEY missing');
+      throw new ConfigurationError('HELIUS_API_KEY missing', 'HELIUS_API_KEY');
     }
 
     const params: Record<string, unknown> = {
@@ -99,7 +99,7 @@ export class HeliusRestClient extends BaseApiClient {
 
   async getTransactions(signatures: string[]): Promise<HeliusTransaction[]> {
     if (!this.apiKey) {
-      throw new Error('HELIUS_API_KEY missing');
+      throw new ConfigurationError('HELIUS_API_KEY missing', 'HELIUS_API_KEY');
     }
     if (!Array.isArray(signatures) || signatures.length === 0) {
       return [];

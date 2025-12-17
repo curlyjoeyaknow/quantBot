@@ -8,6 +8,7 @@ import type { Command } from 'commander';
 import { commandRegistry } from './command-registry.js';
 import { execute } from './execute.js';
 import type { z } from 'zod';
+import { NotFoundError } from '@quantbot/utils';
 
 // Note: Commander options are currently added manually in registerXCommands functions.
 // Future enhancement: parse Zod schemas to auto-generate Commander options.
@@ -31,7 +32,7 @@ function buildCommanderCommand(
   cmd.action(async (options) => {
     const fullCommandDef = commandRegistry.getCommand(packageName, commandDef.name);
     if (!fullCommandDef) {
-      throw new Error(`Command ${packageName} ${commandDef.name} not found in registry`);
+      throw new NotFoundError('Command', `${packageName}.${commandDef.name}`);
     }
     await execute(fullCommandDef, options);
   });

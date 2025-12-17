@@ -9,30 +9,231 @@ alwaysApply: false
 # Utils Package Rules
 
 ## Shared Utilities
+
 - Event system: `@quantbot/utils/events`
 - Common helpers for all packages
 - Zero dependencies where possible
 
 ## Code Style
+
 - Pure functions preferred
 - Type-safe utilities
 - Well-documented with JSDoc
 
 ## Testing
+
 - Unit tests for all utilities
 - Test edge cases
 - Mock external dependencies
 
 ## EventBus Patterns
+
 - **Async handlers**: Use `Promise.all()` with `listeners()` to await all async handlers
 - Don't rely on EventEmitter's synchronous emit - explicitly await handlers
 - Wrap handlers in try/catch to prevent one failure from breaking others
 
 ## Database Utilities (Deprecated)
+
 - ⚠️ Database functions are deprecated - use `@quantbot/storage` instead
 - Tests mock validation to focus on database operations
 - Use proper Zod schema structure in test data (type, percent, etc. for strategies)
 
 ## Zod Validation
+
 - For Zod 4.x: access errors via `result.error.issues` (not `.errors`)
 - Handle both `issues` and legacy `errors` for compatibility
+
+## PythonEngine (`packages/utils/src/python/python-engine.ts`)
+
+### Purpose
+
+**PythonEngine is a boundary layer between TypeScript and Python tools. It handles subprocess execution, JSON I/O, and schema validation.**
+
+### Rules
+
+**Location**: `packages/utils/src/python/python-engine.ts`
+
+**Responsibilities**:
+
+- ✅ Execute Python scripts as subprocesses
+- ✅ Validate JSON output with Zod schemas
+- ✅ Handle subprocess errors (timeouts, exit codes, stderr)
+- ✅ Manage Python environment (PYTHONPATH, cwd, env vars)
+- ✅ Parse JSON from stdout (last line or full output)
+- ❌ NO business logic
+- ❌ NO domain-specific validation (delegate to services)
+- ❌ NO output formatting
+- ❌ NO error message formatting (return raw errors)
+
+### Method Pattern
+
+**All PythonEngine methods must:**
+
+```typescript
+async runScript<T>(
+  scriptPath: string,
+  args: Record<string, unknown>,
+  schema: z.ZodSchema<T>,  // ✅ Zod schema for validation
+  options?: PythonScriptOptions
+): Promise<T> {
+  // 1. Build command with args
+  // 2. Execute subprocess
+  // 3. Parse JSON output
+  // 4. Validate with schema
+  // 5. Return typed result
+}
+```
+
+### Domain-Specific Methods
+
+**For each Python tool category, add a typed method:**
+
+```typescript
+// DuckDB operations
+async runDuckDBStorage(
+  config: DuckDBStorageConfig,
+  options?: PythonScriptOptions
+): Promise<Record<string, unknown>> {
+  const scriptPath = join(process.cwd(), 'tools/simulation/duckdb_storage.py');
+  const resultSchema = z.object({
+    success: z.boolean(),
+    error: z.string().optional(),
+  }).passthrough();
+  
+  return this.runScript(scriptPath, args, resultSchema, options);
+}
+
+// ClickHouse operations
+async runClickHouseEngine(
+  config: ClickHouseEngineConfig,
+  options?: PythonScriptOptions
+): Promise<Record<string, unknown>> {
+  const scriptPath = join(process.cwd(), 'tools/simulation/clickhouse_engine.py');
+  const resultSchema = z.object({
+    success: z.boolean(),
+    error: z.string().optional(),
+  }).passthrough();
+  
+  return this.runScript(scriptPath, args, resultSchema, options);
+}
+```
+
+### Error Handling
+
+**PythonEngine must:**
+
+- ✅ Catch subprocess errors (timeouts, exit codes)
+- ✅ Parse JSON errors from Python output
+- ✅ Throw descriptive errors with context
+- ✅ Log subprocess execution details
+- ❌ NO domain-specific error handling (delegate to services)
+
+**Example**:
+
+```typescript
+try {
+  const output = execSync(command, { /* ... */ });
+  const parsed = JSON.parse(jsonLine);
+  const validated = schema.parse(parsed); // ✅ Validate with Zod
+  return validated;
+} catch (error: any) {
+  if (error.signal === 'SIGTERM' || error.status === 124) {
+    throw new Error(`Python script timed out after ${timeout}ms`);
+  }
+  if (error.status !== undefined && error.status !== 0) {
+    throw new Error(
+      `Python script exited with code ${error.status}: ${error.message}`
+    );
+  }
+  throw error;
+}
+```
+
+### Forbidden Patterns
+
+**❌ PythonEngine with business logic:**
+
+```typescript
+async runDuckDBStorage(config) {
+  // Validate strategy config // ❌ NO - domain logic
+  // Format output // ❌ NO - formatting
+  // Business rules // ❌ NO
+}
+```
+
+**❌ PythonEngine without Zod validation:**
+
+```typescript
+async runScript(scriptPath, args) {
+  const output = execSync(/* ... */);
+  return JSON.parse(output); // ❌ NO - must validate with schema
+}
+```
+
+**❌ PythonEngine with domain-specific error handling:**
+
+```typescript
+async runDuckDBStorage(config) {
+  try {
+    // ...
+  } catch (error) {
+    if (error.message.includes('strategy')) { // ❌ NO - domain logic
+      // Handle strategy errors
+    }
+  }
+}
+```
+
+### Usage Pattern
+
+**PythonEngine is used by services, not handlers:**
+
+```typescript
+// ✅ Service uses PythonEngine
+export class DuckDBStorageService {
+  constructor(private readonly pythonEngine: PythonEngine) {}
+  
+  async storeStrategy(/* ... */) {
+    const result = await this.pythonEngine.runDuckDBStorage({ /* ... */ });
+    return StrategyStorageResultSchema.parse(result);
+  }
+}
+
+// ❌ Handler should NOT use PythonEngine directly
+export async function badHandler(args, ctx) {
+  const engine = ctx.services.pythonEngine(); // ❌ NO
+  return await engine.runDuckDBStorage({ /* ... */ }); // ❌ NO
+}
+```
+
+### Testing
+
+**PythonEngine tests must:**
+
+- ✅ Mock `execSync` or subprocess calls
+- ✅ Test JSON parsing (valid and invalid)
+- ✅ Test Zod validation (valid and invalid outputs)
+- ✅ Test error handling (timeouts, exit codes, parse errors)
+- ✅ Test argument building
+- ✅ Test environment variable passing
+
+**Example**:
+
+```typescript
+describe('PythonEngine', () => {
+  it('validates output with Zod schema', async () => {
+    vi.spyOn(child_process, 'execSync').mockReturnValue(
+      Buffer.from('{"success": true, "strategy_id": "test"}\n')
+    );
+    
+    const engine = new PythonEngine();
+    const result = await engine.runDuckDBStorage({
+      duckdbPath: '/path/to/db',
+      operation: 'store_strategy',
+      data: { /* ... */ },
+    });
+    
+    expect(result.success).toBe(true);
+  });
+});
+```

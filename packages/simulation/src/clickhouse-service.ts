@@ -45,7 +45,7 @@ export const SimulationEventSchema = z.object({
   quantity: z.number().optional(),
   value_usd: z.number().optional(),
   pnl_usd: z.number().optional(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
 export type SimulationEvent = z.infer<typeof SimulationEventSchema>;
@@ -226,4 +226,3 @@ export class ClickHouseService {
     }
   }
 }
-

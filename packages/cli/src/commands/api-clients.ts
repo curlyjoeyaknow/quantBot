@@ -8,6 +8,7 @@ import type { PackageCommandModule } from '../types/index.js';
 import { commandRegistry } from '../core/command-registry.js';
 import { execute } from '../core/execute.js';
 import type { CommandContext } from '../core/command-context.js';
+import { NotFoundError } from '@quantbot/utils';
 import { testApiClientsHandler } from '../handlers/api-clients/test-api-clients.js';
 import { statusApiClientsHandler } from '../handlers/api-clients/status-api-clients.js';
 import { creditsApiClientsHandler } from '../handlers/api-clients/credits-api-clients.js';
@@ -28,7 +29,7 @@ export function registerApiClientsCommands(program: Command): void {
     .action(async (options) => {
       const commandDef = commandRegistry.getCommand('api-clients', 'test');
       if (!commandDef) {
-        throw new Error('Command api-clients test not found in registry');
+        throw new NotFoundError('Command', 'api-clients.test');
       }
       await execute(commandDef, options);
     });
@@ -42,7 +43,7 @@ export function registerApiClientsCommands(program: Command): void {
     .action(async (options) => {
       const commandDef = commandRegistry.getCommand('api-clients', 'status');
       if (!commandDef) {
-        throw new Error('Command api-clients status not found in registry');
+        throw new NotFoundError('Command', 'api-clients.status');
       }
       await execute(commandDef, options);
     });
@@ -56,7 +57,7 @@ export function registerApiClientsCommands(program: Command): void {
     .action(async (options) => {
       const commandDef = commandRegistry.getCommand('api-clients', 'credits');
       if (!commandDef) {
-        throw new Error('Command api-clients credits not found in registry');
+        throw new NotFoundError('Command', 'api-clients.credits');
       }
       await execute(commandDef, options);
     });

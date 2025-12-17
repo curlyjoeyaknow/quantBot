@@ -1,6 +1,6 @@
 import { DateTime } from 'luxon';
 import { v4 as uuidv4 } from 'uuid';
-import { logger as utilsLogger } from '@quantbot/utils';
+import { logger as utilsLogger, ValidationError } from '@quantbot/utils';
 import {
   StrategiesRepository,
   CallsRepository,
@@ -148,7 +148,10 @@ export function createProductionContext(config?: ProductionContextConfig): Workf
         }): Promise<void> {
           const strategyIdNum = parseInt(run.strategyId, 10);
           if (isNaN(strategyIdNum)) {
-            throw new Error(`Invalid strategyId: ${run.strategyId}`);
+            throw new ValidationError(`Invalid strategyId: ${run.strategyId}`, {
+              strategyId: run.strategyId,
+              operation: 'createRun',
+            });
           }
 
           await simulationRunsRepo.createRun({
@@ -207,7 +210,10 @@ export function createProductionContext(config?: ProductionContextConfig): Workf
         const strategyLegs = config.legs ?? config.strategy ?? [];
 
         if (!Array.isArray(strategyLegs) || strategyLegs.length === 0) {
-          throw new Error(`Invalid strategy config: missing legs array`);
+          throw new ValidationError('Invalid strategy config: missing legs array', {
+            strategyId: q.strategy.id,
+            config: q.strategy.config,
+          });
         }
 
         // Run simulation

@@ -3,6 +3,7 @@ import path from 'path';
 import { DateTime } from 'luxon';
 import { OutputTargetConfig } from './config';
 import { SimulationResultSink, SimulationRunContext, SimulationLogger } from './engine';
+import { AppError } from '@quantbot/utils';
 
 type CsvSinkConfig = Extract<OutputTargetConfig, { type: 'csv' }>;
 type JsonSinkConfig = Extract<OutputTargetConfig, { type: 'json' }>;
@@ -160,9 +161,12 @@ export class ConfigDrivenSink implements SimulationResultSink {
   ): Promise<void> {
     // This sink uses @quantbot/storage which violates architectural rules.
     // It should be moved to @quantbot/workflows.
-    throw new Error(
+    throw new AppError(
       'ConfigDrivenSink.writeClickHouse is deprecated and uses @quantbot/storage (forbidden in simulation package). ' +
-        'Move this sink to @quantbot/workflows or use dependency injection to provide storage client.'
+        'Move this sink to @quantbot/workflows or use dependency injection to provide storage client.',
+      'DEPRECATED_METHOD',
+      501,
+      { method: 'writeClickHouse', package: '@quantbot/simulation' }
     );
   }
 }

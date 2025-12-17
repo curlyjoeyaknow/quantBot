@@ -7,6 +7,7 @@
  */
 
 import bs58 from 'bs58';
+import { ValidationError } from '@quantbot/utils';
 
 export type Chain = 'solana' | 'ethereum' | 'bsc' | 'base';
 
@@ -189,7 +190,10 @@ export function validateAddress(address: unknown, chain: Chain): ValidationResul
 export function validateMintAddress(value: unknown): string {
   const result = validateSolanaAddress(value);
   if (!result.valid) {
-    throw new Error(result.error);
+    throw new ValidationError(result.error || 'Invalid address', {
+      value,
+      addressType: 'solana',
+    });
   }
   return result.address!;
 }

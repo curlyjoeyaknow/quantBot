@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { commandRegistry } from '../core/command-registry.js';
 import { execute } from '../core/execute.js';
 import type { CommandContext } from '../core/command-context.js';
+import { NotFoundError } from '@quantbot/utils';
 import { healthObservabilityHandler } from '../handlers/observability/health-observability.js';
 import { quotasObservabilityHandler } from '../handlers/observability/quotas-observability.js';
 import { errorsObservabilityHandler } from '../handlers/observability/errors-observability.js';
@@ -29,7 +30,7 @@ export function registerObservabilityCommands(program: Command): void {
     .action(async (options) => {
       const commandDef = commandRegistry.getCommand('observability', 'health');
       if (!commandDef) {
-        throw new Error('Command observability health not found in registry');
+        throw new NotFoundError('Command', 'observability.health');
       }
       await execute(commandDef, options);
     });
@@ -43,7 +44,7 @@ export function registerObservabilityCommands(program: Command): void {
     .action(async (options) => {
       const commandDef = commandRegistry.getCommand('observability', 'quotas');
       if (!commandDef) {
-        throw new Error('Command observability quotas not found in registry');
+        throw new NotFoundError('Command', 'observability.quotas');
       }
       await execute(commandDef, options);
     });
@@ -59,7 +60,7 @@ export function registerObservabilityCommands(program: Command): void {
     .action(async (options) => {
       const commandDef = commandRegistry.getCommand('observability', 'errors');
       if (!commandDef) {
-        throw new Error('Command observability errors not found in registry');
+        throw new NotFoundError('Command', 'observability.errors');
       }
       await execute(commandDef, {
         ...options,

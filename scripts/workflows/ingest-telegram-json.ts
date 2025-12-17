@@ -17,8 +17,8 @@
 import 'tsconfig-paths/register';
 
 import { program } from 'commander';
-// Import from dist to avoid ES module issues with ts-node
-import { ingestTelegramJson, createProductionContext } from '../../packages/workflows/dist/index';
+// Import from package (tsconfig-paths will resolve it)
+import { ingestTelegramJson, createProductionContext } from '@quantbot/workflows';
 import {
   CallersRepository,
   TokensRepository,

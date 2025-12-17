@@ -31,11 +31,10 @@ export class CommandRegistry {
     for (const command of module.commands) {
       const fullName = `${module.packageName}.${command.name}`;
       if (this.commands.has(fullName)) {
-        throw new ConfigurationError(
-          `Command ${fullName} is already registered`,
-          'commandName',
-          { packageName: module.packageName, commandName: command.name }
-        );
+        throw new ConfigurationError(`Command ${fullName} is already registered`, 'commandName', {
+          packageName: module.packageName,
+          commandName: command.name,
+        });
       }
       this.commands.set(fullName, command);
     }

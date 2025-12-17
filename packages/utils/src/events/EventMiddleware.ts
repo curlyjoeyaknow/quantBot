@@ -7,7 +7,7 @@
 import { EventMiddleware } from './EventBus';
 import type { ApplicationEvent } from './EventTypes';
 import { EventPriority, EVENT_PRIORITIES } from './EventTypes';
-import { logger } from '../logger';
+import { logger, ValidationError } from '../index.js';
 
 /**
  * Logging Middleware
@@ -237,11 +237,17 @@ export class RateLimitingMiddleware {
 export const validationMiddleware: EventMiddleware = async (event: ApplicationEvent, next) => {
   // Validate required fields
   if (!event.type || !event.metadata || !event.data) {
-    throw new Error('Invalid event structure: missing required fields');
+    throw new ValidationError('Invalid event structure: missing required fields', {
+      event: event as any,
+      requiredFields: ['type', 'payload', 'metadata'],
+    });
   }
 
   if (!event.metadata.timestamp || !event.metadata.source) {
-    throw new Error('Invalid event metadata: missing timestamp or source');
+    throw new ValidationError('Invalid event metadata: missing timestamp or source', {
+      metadata: event.metadata,
+      requiredFields: ['timestamp', 'source'],
+    });
   }
 
   // Validate timestamp is reasonable (not too old or in the future)
@@ -251,7 +257,10 @@ export const validationMiddleware: EventMiddleware = async (event: ApplicationEv
 
   if (eventTime < now - maxAge || eventTime > now + 60000) {
     // 1 minute future tolerance
-    throw new Error(`Invalid event timestamp: ${new Date(eventTime).toISOString()}`);
+    throw new ValidationError(`Invalid event timestamp: ${new Date(eventTime).toISOString()}`, {
+      timestamp: eventTime,
+      parsedDate: new Date(eventTime).toISOString(),
+    });
   }
 
   await next();

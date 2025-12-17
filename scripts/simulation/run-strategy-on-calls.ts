@@ -40,12 +40,15 @@ program
       );
 
       console.log('\n✅ Simulation complete!');
-      console.log(`   Calls attempted: ${result.totals.calls}`);
-      console.log(`   Calls succeeded: ${result.totals.ok}`);
-      console.log(`   Calls failed: ${result.totals.errors}`);
+      console.log(`   Calls found: ${result.totals.callsFound}`);
+      console.log(`   Calls attempted: ${result.totals.callsAttempted}`);
+      console.log(`   Calls succeeded: ${result.totals.callsSucceeded}`);
+      console.log(`   Calls failed: ${result.totals.callsFailed}`);
       if (result.pnl.mean !== undefined) {
         console.log(`   Mean PnL: ${(result.pnl.mean * 100).toFixed(1)}%`);
-        console.log(`   Median PnL: ${result.pnl.median ? (result.pnl.median * 100).toFixed(1) + '%' : 'N/A'}`);
+        console.log(
+          `   Median PnL: ${result.pnl.median ? (result.pnl.median * 100).toFixed(1) + '%' : 'N/A'}`
+        );
       }
 
       process.exit(0);

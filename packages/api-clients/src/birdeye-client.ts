@@ -1,6 +1,6 @@
 import axios, { AxiosInstance, AxiosResponse, AxiosRequestConfig } from 'axios';
 import { config } from 'dotenv';
-import { logger } from '@quantbot/utils';
+import { logger, ConfigurationError } from '@quantbot/utils';
 import { recordApiUsage } from '@quantbot/observability';
 import { BaseApiClient, type BaseApiClientConfig } from './base-client';
 
@@ -115,7 +115,10 @@ export class BirdeyeClient extends BaseApiClient {
     }
 
     if (keys.length === 0) {
-      throw new Error('No Birdeye API keys found in environment variables');
+      throw new ConfigurationError(
+        'No Birdeye API keys found in environment variables',
+        'BIRDEYE_API_KEY'
+      );
     }
 
     logger.info('Loaded Birdeye API keys', { keyCount: keys.length, totalCredits: '~3.18M' });
@@ -173,7 +176,10 @@ export class BirdeyeClient extends BaseApiClient {
     const activeKeys = Array.from(this.keyUsage.values()).filter((usage) => usage.isActive);
 
     if (activeKeys.length === 0) {
-      throw new Error('No active API keys available');
+      throw new ConfigurationError('No active API keys available', 'BIRDEYE_API_KEY', {
+        totalKeys: this.apiKeys.length,
+        activeKeys: Array.from(this.keyUsage.values()).filter((k) => k.isActive).length,
+      });
     }
 
     const key = activeKeys[this.currentKeyIndex % activeKeys.length];

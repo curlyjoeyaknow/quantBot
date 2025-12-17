@@ -10,7 +10,7 @@
 // TODO: These imports require @quantbot/data to be built first
 // For now, using type-only imports to avoid compilation errors
 import type { EntryConfig } from './types';
-import { logger } from './logger';
+import { logger, AppError } from './index.js';
 
 // Placeholder types until storage package is available
 type QueryResult = any;
@@ -18,13 +18,21 @@ type PostgresClient = any;
 
 // TODO: Import these from @quantbot/data once available
 const queryPostgres = async <T = any>(query: string, params?: any[]): Promise<QueryResult> => {
-  throw new Error('queryPostgres not implemented - requires @quantbot/data');
+  throw new AppError(
+    'queryPostgres not implemented - requires @quantbot/data',
+    'NOT_IMPLEMENTED',
+    501
+  );
 };
 
 const withPostgresTransaction = async <T>(
   callback: (client: PostgresClient) => Promise<T>
 ): Promise<T> => {
-  throw new Error('withPostgresTransaction not implemented - requires @quantbot/data');
+  throw new AppError(
+    'withPostgresTransaction not implemented - requires @quantbot/data',
+    'NOT_IMPLEMENTED',
+    501
+  );
 };
 
 export interface MonitoredToken {

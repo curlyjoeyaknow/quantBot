@@ -11,7 +11,7 @@
 import 'dotenv/config';
 import { program } from 'commander';
 import { Pool } from 'pg';
-import { fetchHybridCandles } from '@quantbot/simulation';
+import { fetchHybridCandles } from '@quantbot/ohlcv';
 import { insertCandles } from '@quantbot/storage';
 import { logger } from '@quantbot/utils';
 import { DateTime } from 'luxon';

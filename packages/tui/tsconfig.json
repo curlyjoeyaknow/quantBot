@@ -11,8 +11,8 @@
     "paths": {
       "@quantbot/utils": ["../utils/dist/index.d.ts"],
       "@quantbot/utils/*": ["../utils/dist/*"],
-      "@quantbot/cli": ["../cli/src"],
-      "@quantbot/cli/*": ["../cli/src/*"],
+      "@quantbot/cli": ["../cli/dist/index.d.ts"],
+      "@quantbot/cli/*": ["../cli/dist/*"],
       "@quantbot/core": ["../core/src"],
       "@quantbot/core/*": ["../core/src/*"]
     }

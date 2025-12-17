@@ -4,6 +4,7 @@ import { DateTime } from 'luxon';
 import { parse as parseCsv } from 'csv-parse/sync';
 import { SimulationScenarioConfig, DataSelectionConfig } from './config';
 import { SimulationTarget } from './engine';
+import { ValidationError, AppError } from '@quantbot/utils';
 
 type CsvRecord = Record<string, string>;
 
@@ -20,18 +21,41 @@ export class DefaultTargetResolver implements ScenarioTargetResolver {
       case 'file':
         return this.fromFile(selector);
       case 'caller':
-        throw new Error('Caller-based data selection is not yet implemented');
+        throw new AppError(
+          'Caller-based data selection is not yet implemented',
+          'NOT_IMPLEMENTED',
+          501,
+          {
+            selector: selector.kind,
+          }
+        );
       case 'dataset':
-        throw new Error('Dataset-based data selection is not yet implemented');
+        throw new AppError(
+          'Dataset-based data selection is not yet implemented',
+          'NOT_IMPLEMENTED',
+          501,
+          {
+            selector: selector.kind,
+          }
+        );
       default:
-        throw new Error(`Unsupported data selector ${(selector as DataSelectionConfig).kind}`);
+        throw new ValidationError(
+          `Unsupported data selector ${(selector as DataSelectionConfig).kind}`,
+          {
+            selector: selector as DataSelectionConfig,
+            allowedKinds: ['mint', 'file', 'caller', 'dataset'],
+          }
+        );
     }
   }
 
   private fromMint(selector: Extract<DataSelectionConfig, { kind: 'mint' }>): SimulationTarget {
     const startTime = DateTime.fromISO(selector.start, { zone: 'utc' });
     if (!startTime.isValid) {
-      throw new Error(`Invalid ISO timestamp for mint selector: ${selector.start}`);
+      throw new ValidationError(`Invalid ISO timestamp for mint selector: ${selector.start}`, {
+        selector,
+        field: 'start',
+      });
     }
 
     const endTime = selector.end
@@ -39,7 +63,10 @@ export class DefaultTargetResolver implements ScenarioTargetResolver {
       : startTime.plus({ hours: selector.durationHours ?? 24 });
 
     if (!endTime.isValid) {
-      throw new Error(`Invalid ISO timestamp for mint selector end: ${selector.end}`);
+      throw new ValidationError(`Invalid ISO timestamp for mint selector end: ${selector.end}`, {
+        selector,
+        field: 'end',
+      });
     }
 
     return {
@@ -58,7 +85,8 @@ export class DefaultTargetResolver implements ScenarioTargetResolver {
       ? selector.path
       : path.join(process.cwd(), selector.path);
     const content = await fs.readFile(absolutePath, 'utf-8');
-    const records = selector.format === 'json' ? this.parseJson(content) : this.parseCsv(content);
+    const records =
+      selector.format === 'json' ? this.parseJson(content, absolutePath) : this.parseCsv(content);
 
     const targets: SimulationTarget[] = [];
 
@@ -196,7 +224,7 @@ export class DefaultTargetResolver implements ScenarioTargetResolver {
     }) as CsvRecord[];
   }
 
-  private parseJson(content: string): CsvRecord[] {
+  private parseJson(content: string, filePath?: string): CsvRecord[] {
     const data = JSON.parse(content);
     if (Array.isArray(data)) {
       return data as CsvRecord[];
@@ -204,7 +232,13 @@ export class DefaultTargetResolver implements ScenarioTargetResolver {
     if (Array.isArray(data.records)) {
       return data.records as CsvRecord[];
     }
-    throw new Error('JSON data selection files must contain an array or { records: [] }');
+    throw new ValidationError(
+      'JSON data selection files must contain an array or { records: [] }',
+      {
+        filePath: filePath || 'unknown',
+        dataType: Array.isArray(data) ? 'array' : typeof data,
+      }
+    );
   }
 
   private matchesFilter(record: CsvRecord, filter: Record<string, unknown>): boolean {

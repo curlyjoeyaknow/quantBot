@@ -1,7 +1,7 @@
 import { InfluxDB, Point, WriteApi, QueryApi } from '@influxdata/influxdb-client';
 import { BucketsAPI } from '@influxdata/influxdb-client-apis';
 import { config } from 'dotenv';
-import { logger } from '@quantbot/utils';
+import { logger, ValidationError } from '@quantbot/utils';
 
 config();
 
@@ -151,7 +151,11 @@ export class InfluxDBOHLCVClient {
     // Token addresses should be 32-44 characters, alphanumeric (base58 for Solana)
     // Allow only alphanumeric characters and common base58 characters
     if (!/^[A-Za-z0-9]{32,44}$/.test(address)) {
-      throw new Error(`Invalid token address format: ${address.substring(0, 20)}...`);
+      throw new ValidationError(`Invalid token address format: ${address.substring(0, 20)}...`, {
+        address: address.substring(0, 20) + '...',
+        addressLength: address.length,
+        expectedFormat: '32-44 alphanumeric characters',
+      });
     }
   }
 
@@ -181,7 +185,12 @@ export class InfluxDBOHLCVClient {
       isNaN(startTime.getTime()) ||
       isNaN(endTime.getTime())
     ) {
-      throw new Error('Invalid date range provided');
+      throw new ValidationError('Invalid date range provided', {
+        startTime,
+        endTime,
+        startTimeType: typeof startTime,
+        endTimeType: typeof endTime,
+      });
     }
 
     try {
@@ -263,7 +272,12 @@ export class InfluxDBOHLCVClient {
       isNaN(startTime.getTime()) ||
       isNaN(endTime.getTime())
     ) {
-      throw new Error('Invalid date range provided');
+      throw new ValidationError('Invalid date range provided', {
+        startTime,
+        endTime,
+        startTimeType: typeof startTime,
+        endTimeType: typeof endTime,
+      });
     }
 
     try {

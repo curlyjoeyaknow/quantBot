@@ -3,7 +3,7 @@
  */
 
 import { z } from 'zod';
-import { logger } from '@quantbot/utils';
+import { logger, ValidationError } from '@quantbot/utils';
 import { validateMintAddress as validateMintAddressImpl } from './address-validator.js';
 
 /**
@@ -23,7 +23,10 @@ export function parseArguments<T extends z.ZodSchema>(
         return `  ${path}: ${issue.message}`;
       });
 
-      throw new Error(`Invalid arguments:\n${messages.join('\n')}`);
+      throw new ValidationError(`Invalid arguments:\n${messages.join('\n')}`, {
+        issues: error.issues,
+        formattedMessages: messages,
+      });
     }
     throw error;
   }
@@ -70,14 +73,15 @@ export function normalizeOptions(options: Record<string, unknown>): Record<strin
  */
 export function parseDate(value: unknown): string {
   if (typeof value !== 'string') {
-    throw new Error('Date must be a string');
+    throw new ValidationError('Date must be a string', { value, type: typeof value });
   }
 
   // Validate ISO 8601 format or common date formats
   const dateRegex = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d{3})?Z?)?$/;
   if (!dateRegex.test(value) && !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
-    throw new Error(
-      `Invalid date format: ${value}. Expected ISO 8601 format (YYYY-MM-DD or YYYY-MM-DDTHH:mm:ssZ)`
+    throw new ValidationError(
+      `Invalid date format: ${value}. Expected ISO 8601 format (YYYY-MM-DD or YYYY-MM-DDTHH:mm:ssZ)`,
+      { value, expectedFormat: 'ISO 8601 (YYYY-MM-DD or YYYY-MM-DDTHH:mm:ssZ)' }
     );
   }
 

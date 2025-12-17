@@ -158,4 +158,3 @@ describe('clickHouseQueryHandler', () => {
     await expect(clickHouseQueryHandler(args, mockCtx)).rejects.toThrow();
   });
 });
-

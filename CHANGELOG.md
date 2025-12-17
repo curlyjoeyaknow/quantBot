@@ -17,6 +17,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **CRITICAL**: Improved EventBus type safety - `EventHandler<T>` now defaults to `unknown` instead of `any`, uses `ApplicationEvent` for better type inference
 - **CRITICAL**: Fixed database function type safety - `saveStrategy` and `saveCADrop` now use `Strategy[]` and `StopLossConfig` instead of `any`
 - **CRITICAL**: Fixed all database function return type JSDoc comments to match actual return types
+- Standardized error handling across codebase - replaced generic `Error` with `AppError` subclasses (`ValidationError`, `NotFoundError`, `ConfigurationError`, `ApiError`, `DatabaseError`, `TimeoutError`, `ServiceUnavailableError`) for better error clarity and debugging (packages/cli, packages/utils, packages/storage, packages/api-clients, packages/workflows, packages/ingestion, packages/ohlcv, packages/simulation, packages/core)
+- Removed deprecated CSV cache system - all OHLCV data now uses ClickHouse via StorageEngine (packages/simulation, packages/ohlcv)
 
 ### Fixed
 
