@@ -9,7 +9,7 @@
  * The simulation engine is organized into the following modules:
  *
  * - **types/**: Type definitions for candles, positions, events, strategies, and signals
- * - **data/**: Candle data providers (Birdeye API, ClickHouse, CSV cache)
+ * - **data/**: Candle data providers (Birdeye API, ClickHouse via StorageEngine)
  * - **indicators/**: Technical indicators (Ichimoku, Moving Averages, RSI)
  * - **signals/**: Signal evaluation for entry/exit conditions
  * - **position/**: Position and portfolio management

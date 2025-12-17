@@ -16,6 +16,7 @@ import { ingestOhlcvHandler } from '../handlers/ingestion/ingest-ohlcv.js';
 import type { CommandContext } from '../core/command-context.js';
 import { ingestTelegramHandler } from '../handlers/ingestion/ingest-telegram.js';
 import { processTelegramPythonHandler } from '../handlers/ingestion/process-telegram-python.js';
+import { NotFoundError } from '@quantbot/utils';
 
 /**
  * Telegram ingestion schema
@@ -70,7 +71,7 @@ export function registerIngestionCommands(program: Command): void {
       const { execute } = await import('../core/execute.js');
       const commandDef = commandRegistry.getCommand('ingestion', 'telegram');
       if (!commandDef) {
-        throw new Error('Command ingestion telegram not found in registry');
+        throw new NotFoundError('Command', 'ingestion.telegram');
       }
       await execute(commandDef, options);
     });
@@ -89,7 +90,7 @@ export function registerIngestionCommands(program: Command): void {
       const { execute } = await import('../core/execute.js');
       const commandDef = commandRegistry.getCommand('ingestion', 'ohlcv');
       if (!commandDef) {
-        throw new Error('Command ingestion ohlcv not found in registry');
+        throw new NotFoundError('Command', 'ingestion.ohlcv');
       }
       await execute(commandDef, options);
     });
@@ -107,7 +108,7 @@ export function registerIngestionCommands(program: Command): void {
       const { execute } = await import('../core/execute.js');
       const commandDef = commandRegistry.getCommand('ingestion', 'telegram-python');
       if (!commandDef) {
-        throw new Error('Command ingestion telegram-python not found in registry');
+        throw new NotFoundError('Command', 'ingestion.telegram-python');
       }
       await execute(commandDef, {
         ...options,

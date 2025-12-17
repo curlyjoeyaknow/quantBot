@@ -60,6 +60,8 @@ export {
   type PythonManifest,
   type PythonScriptOptions,
   type TelegramPipelineConfig,
+  type DuckDBStorageConfig,
+  type ClickHouseEngineConfig,
 } from './python/python-engine';
 
 // NOTE: Database utilities DEPRECATED - use @quantbot/storage instead

@@ -3,7 +3,7 @@
  *
  * Single source of truth for all OHLCV operations:
  * - Fetching (from API, cache, or ClickHouse)
- * - Ingestion (to ClickHouse and CSV cache)
+ * - Ingestion (to ClickHouse via StorageEngine)
  * - Caching (ClickHouse and CSV)
  *
  * This eliminates ad-hoc scripts and ensures consistent behavior across the codebase.
@@ -72,7 +72,7 @@ export class OHLCVEngine {
    *
    * This is the main entry point - it handles:
    * 1. Checking ClickHouse cache
-   * 2. Checking CSV cache
+   * 2. Fetching from API if needed
    * 3. Fetching from API if needed
    * 4. Ingesting to ClickHouse
    * 5. Caching to CSV
@@ -135,7 +135,7 @@ export class OHLCVEngine {
       };
     }
 
-    // Step 3: Fetch from API (fetchHybridCandles handles CSV cache internally)
+    // Step 3: Fetch from API (fetchHybridCandles uses ClickHouse/StorageEngine)
     // Temporarily set USE_CACHE_ONLY to preserve existing cache behavior
     const originalCacheOnly = process.env.USE_CACHE_ONLY;
     if (cacheOnly) {

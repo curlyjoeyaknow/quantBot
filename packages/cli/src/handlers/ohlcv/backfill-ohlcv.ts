@@ -12,6 +12,7 @@ import type { z } from 'zod';
 import { validateMintAddress } from '../../core/argument-parser.js';
 import { getOhlcvIngestionEngine } from '@quantbot/ohlcv';
 import type { Chain } from '@quantbot/core';
+import { ValidationError } from '@quantbot/utils';
 
 export type BackfillOhlcvArgs = z.infer<typeof backfillSchema>;
 
@@ -40,13 +41,16 @@ export async function backfillOhlcvHandler(
   const toDate = DateTime.fromISO(args.to, { zone: 'utc' });
 
   if (!fromDate.isValid) {
-    throw new Error(`Invalid from date: ${args.from}`);
+    throw new ValidationError(`Invalid from date: ${args.from}`, { from: args.from });
   }
   if (!toDate.isValid) {
-    throw new Error(`Invalid to date: ${args.to}`);
+    throw new ValidationError(`Invalid to date: ${args.to}`, { to: args.to });
   }
   if (fromDate >= toDate) {
-    throw new Error('From date must be before to date');
+    throw new ValidationError('From date must be before to date', {
+      from: args.from,
+      to: args.to,
+    });
   }
 
   // Use the ingestion engine to fetch candles

@@ -10,6 +10,7 @@ import type { z } from 'zod';
 import type { CommandContext } from '../../core/command-context.js';
 import { querySchema } from '../../commands/ohlcv.js';
 import { validateMintAddress } from '../../core/argument-parser.js';
+import { ValidationError } from '@quantbot/utils';
 
 /**
  * Input arguments (already validated by Zod)
@@ -30,14 +31,17 @@ export async function queryOhlcvHandler(args: QueryOhlcvArgs, ctx: CommandContex
   const toDate = DateTime.fromISO(args.to);
 
   if (!fromDate.isValid) {
-    throw new Error(`Invalid from date: ${args.from}`);
+    throw new ValidationError(`Invalid from date: ${args.from}`, { from: args.from });
   }
   if (!toDate.isValid) {
-    throw new Error(`Invalid to date: ${args.to}`);
+    throw new ValidationError(`Invalid to date: ${args.to}`, { to: args.to });
   }
 
   if (fromDate >= toDate) {
-    throw new Error('From date must be before to date');
+    throw new ValidationError('From date must be before to date', {
+      from: args.from,
+      to: args.to,
+    });
   }
 
   return repository.getCandles(mintAddress, args.chain, args.interval, {
