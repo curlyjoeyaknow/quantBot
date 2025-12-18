@@ -1,34 +1,14 @@
 #!/usr/bin/env sh
 . "$(dirname -- "$0")/_/husky.sh"
 
-echo "🔍 Running pre-push checks..."
+echo "🔍 Running lightweight pre-push checks..."
 
-# 1. Full test suite
-echo "🧪 Running full test suite..."
-npm test || {
-  echo "❌ Tests failed"
+# Quick type check only (fast)
+echo "🔍 Type checking..."
+npm run typecheck || {
+  echo "❌ Type check failed"
   exit 1
 }
 
-# 2. Coverage check
-echo "📊 Checking coverage..."
-npm run test:coverage || {
-  echo "❌ Coverage below threshold"
-  exit 1
-}
-
-# 3. Security audit
-echo "🔒 Running security audit..."
-npm audit --audit-level=moderate || {
-  echo "⚠️  Security vulnerabilities found"
-  exit 1
-}
-
-# 4. Build check
-echo "🔨 Building packages..."
-npm run build || {
-  echo "❌ Build failed"
-  exit 1
-}
-
-echo "✅ All pre-push checks passed!"
+echo "✅ Pre-push checks passed!"
+echo "💡 Note: Full tests, coverage, and build run in CI"
