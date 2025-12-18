@@ -1,5 +1,5 @@
 import type { CommandContext } from '../../core/command-context.js';
-import { testSchema, type TestApiClientsArgs } from '../../command-defs/api-clients.js';
+import type { TestApiClientsArgs } from '../../command-defs/api-clients.js';
 import { BirdeyeClient } from '@quantbot/api-clients';
 import { HeliusClient } from '@quantbot/api-clients';
 import { ValidationError } from '@quantbot/utils';

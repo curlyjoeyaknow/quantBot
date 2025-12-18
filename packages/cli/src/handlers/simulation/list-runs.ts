@@ -1,6 +1,5 @@
-import { DateTime } from 'luxon';
 import type { CommandContext } from '../../core/command-context.js';
-import { listRunsSchema, type ListRunsArgs } from '../../command-defs/simulation.js';
+import type { ListRunsArgs } from '../../command-defs/simulation.js';
 import { SimulationRunsRepository, CallersRepository } from '@quantbot/storage';
 
 export async function listRunsHandler(

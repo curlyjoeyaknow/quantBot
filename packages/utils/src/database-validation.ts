@@ -188,8 +188,13 @@ export function validateOrThrow<T>(schema: z.ZodSchema<T>, data: unknown): T {
   const result = schema.safeParse(data);
   if (!result.success) {
     // Zod 4.x uses 'issues' instead of 'errors'
-    const issues = result.error.issues || (result.error as any).errors || [];
-    const errors = issues.map((e: any) => `${(e.path || []).join('.')}: ${e.message}`).join(', ');
+    const issues = result.error.issues || [];
+    const errors = issues
+      .map((e) => {
+        const path = Array.isArray(e.path) ? e.path : [];
+        return `${path.join('.')}: ${e.message}`;
+      })
+      .join(', ');
     throw new ValidationError(`Database validation failed: ${errors}`, {
       errors: result.error.issues,
     });

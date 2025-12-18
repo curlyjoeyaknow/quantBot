@@ -5,26 +5,26 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { generateReportDuckdbHandler } from '../../../../src/handlers/simulation/generate-report-duckdb.js';
 import type { CommandContext } from '../../../../src/core/command-context.js';
-import type { PythonEngine } from '@quantbot/utils';
 
 describe('generateReportDuckdbHandler', () => {
-  let mockEngine: PythonEngine;
+  let mockDuckDBStorage: { generateReport: ReturnType<typeof vi.fn> };
   let mockCtx: CommandContext;
 
   beforeEach(() => {
-    mockEngine = {
-      runDuckDBStorage: vi.fn(),
-    } as unknown as PythonEngine;
+    // Mock DuckDBStorageService
+    mockDuckDBStorage = {
+      generateReport: vi.fn(),
+    };
 
     mockCtx = {
       services: {
-        pythonEngine: () => mockEngine,
+        duckdbStorage: () => mockDuckDBStorage as any,
       },
     } as unknown as CommandContext;
   });
 
   it('should generate summary report', async () => {
-    vi.mocked(mockEngine.runDuckDBStorage).mockResolvedValue({
+    vi.mocked(mockDuckDBStorage.generateReport).mockResolvedValue({
       success: true,
       report_type: 'summary',
       data: {
@@ -45,19 +45,17 @@ describe('generateReportDuckdbHandler', () => {
 
     const result = await generateReportDuckdbHandler(args, mockCtx);
 
-    expect(mockEngine.runDuckDBStorage).toHaveBeenCalledWith({
-      duckdbPath: '/path/to/sim.duckdb',
-      operation: 'generate_report',
-      data: {
-        type: 'summary',
-      },
-    });
+    expect(mockDuckDBStorage.generateReport).toHaveBeenCalledWith(
+      '/path/to/sim.duckdb',
+      'summary',
+      undefined
+    );
     expect(result.success).toBe(true);
     expect(result.report_type).toBe('summary');
   });
 
   it('should generate strategy performance report', async () => {
-    vi.mocked(mockEngine.runDuckDBStorage).mockResolvedValue({
+    vi.mocked(mockDuckDBStorage.generateReport).mockResolvedValue({
       success: true,
       report_type: 'strategy_performance',
       data: {
@@ -79,14 +77,11 @@ describe('generateReportDuckdbHandler', () => {
 
     const result = await generateReportDuckdbHandler(args, mockCtx);
 
-    expect(mockEngine.runDuckDBStorage).toHaveBeenCalledWith({
-      duckdbPath: '/path/to/sim.duckdb',
-      operation: 'generate_report',
-      data: {
-        type: 'strategy_performance',
-        strategy_id: 'PT2_SL25',
-      },
-    });
+    expect(mockDuckDBStorage.generateReport).toHaveBeenCalledWith(
+      '/path/to/sim.duckdb',
+      'strategy_performance',
+      'PT2_SL25'
+    );
     expect(result.success).toBe(true);
     expect(result.report_type).toBe('strategy_performance');
   });

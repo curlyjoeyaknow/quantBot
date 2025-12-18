@@ -71,7 +71,7 @@ export class TokenDataRepository {
    * Uses ON CONFLICT to update if record exists for same token_id and recorded_at
    */
   async upsertTokenData(data: TokenDataInsertData): Promise<number> {
-    return withPostgresTransaction(async (client: any) => {
+    return withPostgresTransaction(async (client) => {
       const result = await client.query(
         `INSERT INTO token_data (
           token_id, price, market_cap, liquidity, liquidity_multiplier,

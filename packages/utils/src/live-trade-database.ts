@@ -105,7 +105,10 @@ export async function getCachedPrice(
 ): Promise<number | null> {
   return new Promise((resolve, reject) => {
     const db = new sqlite3.Database(DB_PATH);
-    const get = promisify(db.get.bind(db)) as (query: string, params?: any[]) => Promise<any>;
+    const get = promisify(db.get.bind(db)) as (
+      query: string,
+      params?: Array<unknown>
+    ) => Promise<Record<string, unknown> | undefined>;
 
     get(
       `SELECT price FROM live_trade_price_cache 
@@ -114,9 +117,10 @@ export async function getCachedPrice(
        ORDER BY timestamp DESC LIMIT 1`,
       [tokenAddress, chain, Math.floor(Date.now() / 1000) - maxAgeSeconds]
     )
-      .then((row: any) => {
+      .then((row) => {
         db.close();
-        resolve(row ? row.price : null);
+        const price = row ? Number((row as Record<string, unknown>).price) : null;
+        resolve(price ?? null);
       })
       .catch((err) => {
         db.close();
@@ -135,7 +139,10 @@ export async function getEntryAlertsForToken(
 ): Promise<any[]> {
   return new Promise((resolve, reject) => {
     const db = new sqlite3.Database(DB_PATH);
-    const all = promisify(db.all.bind(db)) as (query: string, params?: any[]) => Promise<any[]>;
+    const all = promisify(db.all.bind(db)) as (
+      query: string,
+      params?: Array<unknown>
+    ) => Promise<Array<Record<string, unknown>>>;
 
     all(
       `SELECT * FROM live_trade_entry_alerts 
@@ -144,7 +151,7 @@ export async function getEntryAlertsForToken(
        LIMIT ?`,
       [tokenAddress, limit]
     )
-      .then((rows: any[]) => {
+      .then((rows) => {
         db.close();
         resolve(rows);
       })

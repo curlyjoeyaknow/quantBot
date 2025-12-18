@@ -40,7 +40,7 @@ export class AlertsRepository {
    * Enforces idempotency by (chatId, messageId) if provided
    */
   async insertAlert(data: AlertInsertData): Promise<number> {
-    return withPostgresTransaction(async (client: any) => {
+    return withPostgresTransaction(async (client) => {
       // Check for existing alert if chatId and messageId provided
       if (data.chatId && data.messageId) {
         const existing = await client.query(
@@ -107,7 +107,7 @@ export class AlertsRepository {
         ]
       );
 
-      const alertId = (result.rows[0] as any).id;
+      const alertId = (result.rows[0] as { id: number }).id;
       logger.debug('Inserted alert', { alertId, tokenId: data.tokenId });
       return alertId;
     });
@@ -347,8 +347,8 @@ export class AlertsRepository {
       [from, to]
     );
 
-    return result.rows.map((row: any) => {
-      const payload = row.raw_payload_json || {};
+    return result.rows.map((row) => {
+      const payload = (row.raw_payload_json as Record<string, unknown>) || {};
       return {
         id: row.id,
         tokenId: row.token_id,

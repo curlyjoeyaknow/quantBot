@@ -13,11 +13,14 @@ import type { EntryConfig } from './types';
 import { logger, AppError } from './index.js';
 
 // Placeholder types until storage package is available
-type QueryResult = any;
-type PostgresClient = any;
+type QueryResult = { rows: Array<Record<string, unknown>> };
+type PostgresClient = unknown;
 
 // TODO: Import these from @quantbot/data once available
-const queryPostgres = async <T = any>(query: string, params?: any[]): Promise<QueryResult> => {
+const queryPostgres = async <T = unknown>(
+  query: string,
+  params?: Array<unknown>
+): Promise<QueryResult> => {
   throw new AppError(
     'queryPostgres not implemented - requires @quantbot/data',
     'NOT_IMPLEMENTED',
@@ -187,7 +190,7 @@ export async function getActiveMonitoredTokens(): Promise<MonitoredToken[]> {
        ORDER BY created_at DESC`
     );
 
-    return result.rows.map((row: any) => ({
+    return result.rows.map((row) => ({
       id: row.id,
       tokenAddress: row.token_address,
       chain: row.chain,

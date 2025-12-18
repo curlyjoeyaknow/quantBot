@@ -135,7 +135,7 @@ export class CallsRepository {
       created_at: Date;
     }>(query, params);
 
-    return result.rows.map((row: any) => ({
+    return result.rows.map((row) => ({
       id: row.id,
       alertId: row.alert_id || undefined,
       tokenId: row.token_id,
@@ -201,7 +201,7 @@ export class CallsRepository {
       params
     );
 
-    return result.rows.map((row: any) => ({
+    return result.rows.map((row) => ({
       id: row.id,
       alertId: row.alert_id || undefined,
       tokenId: row.token_id,
@@ -242,7 +242,7 @@ export class CallsRepository {
       [tokenAddress] // Full address, case-preserved
     );
 
-    return result.rows.map((row: any) => ({
+    return result.rows.map((row) => ({
       id: row.id,
       alertId: row.alert_id || undefined,
       tokenId: row.token_id,

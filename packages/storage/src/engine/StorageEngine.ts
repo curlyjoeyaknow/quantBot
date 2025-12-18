@@ -462,7 +462,16 @@ export class StorageEngine {
     if (this.config.enableCache) {
       const cached = this.cache.get(cacheKey);
       if (cached && Date.now() - cached.timestamp < this.config.cacheTTL) {
-        return cached.data as any;
+        return cached.data as Array<
+          Alert & {
+            initialMcap?: number;
+            initialPrice?: number;
+            timeToATH?: number;
+            maxROI?: number;
+            athPrice?: number;
+            athTimestamp?: DateTime;
+          }
+        >;
       }
     }
 

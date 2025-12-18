@@ -68,12 +68,12 @@ export function logError(error: Error | unknown, context: RequestContext): void 
 /**
  * Performance logging decorator
  */
-export function logPerformance<T extends (...args: any[]) => Promise<any>>(
+export function logPerformance<T extends (...args: Array<unknown>) => Promise<unknown>>(
   fn: T,
   operation: string,
   context?: LogContext
 ): T {
-  return (async (...args: any[]) => {
+  return (async (...args: Array<unknown>) => {
     const startTime = Date.now();
     const requestId = context?.requestId || createRequestId();
 

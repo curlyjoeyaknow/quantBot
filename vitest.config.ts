@@ -8,12 +8,31 @@ const resolveFromRoot = (p: string) => path.join(projectRoot, p);
 export default defineConfig({
   test: {
     // Only test packages (new architecture)
-    include: ['packages/**/*.test.ts', 'packages/**/*.spec.ts'],
+    // Exclude stress tests (they have their own config)
+    include: [
+      'packages/**/tests/unit/**/*.test.ts',
+      'packages/**/tests/unit/**/*.spec.ts',
+      'packages/**/tests/integration/**/*.test.ts',
+      'packages/**/tests/integration/**/*.spec.ts',
+      'packages/**/tests/properties/**/*.test.ts',
+      'packages/**/tests/properties/**/*.spec.ts',
+      'packages/**/tests/fuzzing/**/*.test.ts',
+      'packages/**/tests/fuzzing/**/*.spec.ts',
+      'packages/**/tests/e2e/**/*.test.ts',
+      'packages/**/tests/e2e/**/*.spec.ts',
+      // Legacy: tests at package root (migrate to tests/unit)
+      'packages/**/*.test.ts',
+      'packages/**/*.spec.ts',
+    ],
     exclude: [
       'node_modules',
       'dist',
       '**/node_modules/**',
       '**/dist/**',
+      // Exclude stress tests (they have their own config)
+      '**/tests/stress/**',
+      '**/*.stress.test.ts',
+      '**/*.stress.test.js',
     ],
     environment: 'node',
     globals: true,

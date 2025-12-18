@@ -68,7 +68,7 @@ async function findCallsForToken(tokenAddress: string): Promise<any[]> {
           else resolve(rows);
         }
       );
-    })) as any[];
+    })) as Array<Record<string, unknown>>;
 
     await new Promise<void>((resolve, reject) => {
       db.close((err: Error | null) => {
@@ -77,7 +77,7 @@ async function findCallsForToken(tokenAddress: string): Promise<any[]> {
       });
     });
 
-    return calls as any[];
+    return calls;
   } catch (error) {
     logger.error('Error finding calls for token', error as Error, { tokenAddress });
     await new Promise<void>((resolve, reject) => {
@@ -120,7 +120,7 @@ async function getRecentCalls(limit: number = 20): Promise<any[]> {
           else resolve(rows);
         }
       );
-    })) as any[];
+    })) as Array<Record<string, unknown>>;
 
     await new Promise<void>((resolve, reject) => {
       db.close((err: Error | null) => {
@@ -129,7 +129,7 @@ async function getRecentCalls(limit: number = 20): Promise<any[]> {
       });
     });
 
-    return calls as any[];
+    return calls;
   } catch (error) {
     logger.error('Error getting recent calls', error as Error, { limit });
     await new Promise<void>((resolve, reject) => {
@@ -145,7 +145,10 @@ async function getRecentCalls(limit: number = 20): Promise<any[]> {
 /**
  * Get caller statistics
  */
-async function getCallerStats(): Promise<{ stats: any; topCallers: any[] }> {
+async function getCallerStats(): Promise<{
+  stats: Record<string, unknown>;
+  topCallers: Array<Record<string, unknown>>;
+}> {
   const db = await initCallerDatabase();
   const all = promisify(db.all.bind(db));
 
@@ -178,7 +181,10 @@ async function getCallerStats(): Promise<{ stats: any; topCallers: any[] }> {
       });
     });
 
-    return { stats: (stats as any[])[0], topCallers: topCallers as any[] };
+    return {
+      stats: (Array.isArray(stats) && stats.length > 0 ? stats[0] : {}) as Record<string, unknown>,
+      topCallers: (Array.isArray(topCallers) ? topCallers : []) as Array<Record<string, unknown>>,
+    };
   } catch (error) {
     logger.error('Error getting caller stats', error as Error);
     await new Promise<void>((resolve, reject) => {

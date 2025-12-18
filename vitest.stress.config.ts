@@ -33,6 +33,7 @@
  */
 
 import { defineConfig } from 'vitest/config';
+import path from 'path';
 
 export default defineConfig({
   test: {
@@ -59,6 +60,22 @@ export default defineConfig({
     coverage: {
       enabled: false, // Stress tests don't contribute to coverage
     },
+  },
+  resolve: {
+    alias: {
+      '@quantbot/ingestion': path.resolve(__dirname, './packages/ingestion/src'),
+      '@quantbot/ohlcv': path.resolve(__dirname, './packages/ohlcv/src'),
+      '@quantbot/storage': path.resolve(__dirname, './packages/storage/src'),
+      '@quantbot/api-clients': path.resolve(__dirname, './packages/api-clients/src'),
+      '@quantbot/utils': path.resolve(__dirname, './packages/utils/src'),
+      '@quantbot/core': path.resolve(__dirname, './packages/core/src'),
+      '@quantbot/analytics': path.resolve(__dirname, './packages/analytics/src'),
+      '@quantbot/simulation': path.resolve(__dirname, './packages/simulation/src'),
+      '@quantbot/workflows': path.resolve(__dirname, './packages/workflows/src'),
+    },
+  },
+  esbuild: {
+    target: 'node18',
   },
 });
 

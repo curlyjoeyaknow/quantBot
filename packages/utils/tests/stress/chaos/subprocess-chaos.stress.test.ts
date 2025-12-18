@@ -7,7 +7,15 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { execSync } from 'child_process';
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync, readFileSync, unlinkSync, chmodSync } from 'fs';
+import {
+  mkdtempSync,
+  mkdirSync,
+  rmSync,
+  writeFileSync,
+  readFileSync,
+  unlinkSync,
+  chmodSync,
+} from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { PythonEngine } from '../../../src/python/python-engine.js';

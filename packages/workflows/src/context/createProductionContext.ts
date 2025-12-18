@@ -26,9 +26,9 @@ export interface ProductionContextConfig {
    * Optional logger override (defaults to @quantbot/utils logger)
    */
   logger?: {
-    info: (...args: any[]) => void;
-    warn: (...args: any[]) => void;
-    error: (...args: any[]) => void;
+    info: (...args: Array<unknown>) => void;
+    warn: (...args: Array<unknown>) => void;
+    error: (...args: Array<unknown>) => void;
   };
 
   /**
@@ -206,8 +206,14 @@ export function createProductionContext(config?: ProductionContextConfig): Workf
         call: CallRecord;
       }): Promise<SimulationEngineResult> {
         // Extract strategy legs from config
-        const config = q.strategy.config as any;
-        const strategyLegs = config.legs ?? config.strategy ?? [];
+        const config = q.strategy.config as Record<string, unknown>;
+        const strategyLegs = (
+          Array.isArray(config.legs)
+            ? config.legs
+            : Array.isArray(config.strategy)
+              ? config.strategy
+              : []
+        ) as Array<unknown>;
 
         if (!Array.isArray(strategyLegs) || strategyLegs.length === 0) {
           throw new ValidationError('Invalid strategy config: missing legs array', {
@@ -232,7 +238,10 @@ export function createProductionContext(config?: ProductionContextConfig): Workf
 
         return {
           pnlMultiplier: result.finalPnl,
-          trades: result.events.filter((e: any) => e.type === 'entry' || e.type === 'exit').length,
+          trades: result.events.filter((e) => {
+            const event = e as { type?: string };
+            return event.type === 'entry' || event.type === 'exit';
+          }).length,
         };
       },
     },

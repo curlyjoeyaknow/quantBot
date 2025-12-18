@@ -6,6 +6,7 @@
  */
 
 import * as fs from 'fs';
+import * as path from 'path';
 import { logger, NotFoundError, ValidationError } from '@quantbot/utils';
 import {
   normalizeTelegramMessage,
@@ -41,7 +42,7 @@ export function parseJsonExport(filePath: string, chatId?: string): ParseJsonExp
   }
 
   const fileContent = fs.readFileSync(filePath, 'utf8');
-  let exportData: any;
+  let exportData: unknown;
 
   try {
     exportData = JSON.parse(fileContent);
@@ -101,19 +102,26 @@ export function parseJsonExport(filePath: string, chatId?: string): ParseJsonExp
 /**
  * Extract chat ID from export data or file path
  */
-function extractChatId(exportData: any, filePath: string): string {
-  // Try to get from export data
-  if (exportData.name && typeof exportData.name === 'string') {
-    // Use chat name as identifier
-    return exportData.name.toLowerCase().replace(/\s+/g, '_');
+function extractChatId(exportData: unknown, filePath: string): string {
+  // Type guard for export data
+  if (typeof exportData !== 'object' || exportData === null) {
+    return path.basename(filePath, path.extname(filePath));
   }
 
-  if (exportData.id !== null && exportData.id !== undefined) {
-    return String(exportData.id);
+  const data = exportData as Record<string, unknown>;
+
+  // Try to get from export data
+  if (data.name && typeof data.name === 'string') {
+    // Use chat name as identifier
+    return data.name.toLowerCase().replace(/\s+/g, '_');
+  }
+
+  if (data.id !== null && data.id !== undefined) {
+    return String(data.id);
   }
 
   // Extract from file path (e.g., "messages/brook7/messages.json" -> "brook7")
-  const pathMatch = filePath.match(/messages[\/\\]([^\/\\]+)[\/\\]/);
+  const pathMatch = filePath.match(/messages[/\\]([^/\\]+)[/\\]/);
   if (pathMatch) {
     return pathMatch[1];
   }

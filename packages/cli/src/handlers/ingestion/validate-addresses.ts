@@ -8,6 +8,7 @@ import type { z } from 'zod';
 import type { CommandContext } from '../../core/command-context.js';
 import { fetchMultiChainMetadata } from '@quantbot/ingestion';
 import { isEvmAddress, isSolanaAddress } from '@quantbot/ingestion';
+import type { Chain } from '@quantbot/ingestion';
 
 export type ValidateAddressesArgs = {
   addresses: string[];
@@ -35,7 +36,8 @@ export async function validateAddressesHandler(args: ValidateAddressesArgs, _ctx
     }
 
     try {
-      const result = await fetchMultiChainMetadata(address, args.chainHint as any);
+      const chainHint: Chain | undefined = args.chainHint as Chain | undefined;
+      const result = await fetchMultiChainMetadata(address, chainHint);
 
       results.push({
         address,

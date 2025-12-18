@@ -190,15 +190,41 @@ export function extractAndValidateAddresses(input: string): ExtractionResult {
   // Match pattern: alphanumeric chars, then whitespace/invisible/hyphen, then more alphanumeric
   const invisibleChars = '\u200B\u200C\u200D\uFEFF\u00AD';
   // Match addresses split by whitespace, newlines, tabs, hyphens, or invisible chars
+  // Build regex pattern by escaping invisible chars properly
+  const invisibleCharsEscaped = invisibleChars
+    .split('')
+    .map((c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, '0')}`)
+    .join('');
   const whitespacePattern = new RegExp(
-    `([A-Za-z0-9]{10,}[\\s\\n\\r\\t\\-${invisibleChars}]+[A-Za-z0-9]{10,})`
+    `([A-Za-z0-9]{10,}[\\s\\n\\r\\t\\-${invisibleCharsEscaped}]+[A-Za-z0-9]{10,})`
   );
   const whitespaceMatch = input.match(whitespacePattern);
   if (whitespaceMatch) {
-    const candidate = whitespaceMatch[0].replace(
-      /[\s\n\r\t\u200B\u200C\u200D\uFEFF\u00AD\u00A0\-]/g,
-      ''
-    );
+    // Build replacement regex with proper Unicode escapes
+    // Use a function to check for invisible chars instead of regex character class
+    const hasInvisibleOrWhitespace = (str: string): boolean => {
+      const invisibleChars = ['\u200B', '\u200C', '\u200D', '\uFEFF', '\u00AD', '\u00A0'];
+      const whitespaceChars = [' ', '\n', '\r', '\t', '-'];
+      return [...invisibleChars, ...whitespaceChars].some((char) => str.includes(char));
+    };
+    // Remove whitespace and invisible chars manually
+    let candidate = whitespaceMatch[0];
+    const charsToRemove = [
+      '\u200B',
+      '\u200C',
+      '\u200D',
+      '\uFEFF',
+      '\u00AD',
+      '\u00A0',
+      ' ',
+      '\n',
+      '\r',
+      '\t',
+      '-',
+    ];
+    for (const char of charsToRemove) {
+      candidate = candidate.replaceAll(char, '');
+    }
     if (candidate.length >= 32 && candidate.length <= 44) {
       const matchText = whitespaceMatch[0];
       // Check if it has invisible chars (not just whitespace)
@@ -244,7 +270,9 @@ export function extractAndValidateAddresses(input: string): ExtractionResult {
   // This catches various obfuscation techniques attackers use to hide malicious addresses
 
   // 1. Cyrillic x (0х instead of 0x) - common phishing technique
-  const evmWithCyrillicX = input.match(/0[хХ]\s*[a-fA-F0-9\s]{40,}/i);
+  // Use RegExp constructor to properly handle Cyrillic characters
+  const evmWithCyrillicXPattern = new RegExp('0[\\u0445\\u0425]\\s*[a-fA-F0-9\\s]{40,}', 'i');
+  const evmWithCyrillicX = input.match(evmWithCyrillicXPattern);
   if (evmWithCyrillicX) {
     rejected.push({
       raw: evmWithCyrillicX[0],
@@ -267,7 +295,7 @@ export function extractAndValidateAddresses(input: string): ExtractionResult {
   // Pattern: 0x followed by hex chars with separators
   // This catches: 0x12 34 56..., 0x12-34-56..., 0x12.34.56...
   // Match 0x followed by hex chars with separators (at least 3 separator occurrences to avoid false positives)
-  const evmWithSeparatorsPattern = /0x([a-fA-F0-9]{1,4}[\s\-\.]){3,}[a-fA-F0-9]{1,4}/gi;
+  const evmWithSeparatorsPattern = /0x([a-fA-F0-9]{1,4}[\s.\-]){3,}[a-fA-F0-9]{1,4}/gi;
   const evmWithSeparatorsMatches = input.matchAll(evmWithSeparatorsPattern);
   for (const match of evmWithSeparatorsMatches) {
     const candidate = match[0];
@@ -284,7 +312,7 @@ export function extractAndValidateAddresses(input: string): ExtractionResult {
           reason: 'contains_whitespace',
           category: 'obfuscation',
         });
-      } else if (/[\-\.]/.test(hexPart)) {
+      } else if (/[-.]/.test(hexPart)) {
         rejected.push({
           raw: candidate,
           reason: 'invalid_format',
@@ -296,11 +324,18 @@ export function extractAndValidateAddresses(input: string): ExtractionResult {
 
   // 4. Zero-width characters in hex part (invisible separators)
   // Check for 0x followed by hex with zero-width chars
-  const evmWithZeroWidth = input.match(/0x[a-fA-F0-9\u200B\u200C\u200D\uFEFF]{40,}/i);
+  // Use RegExp constructor to properly handle Unicode in character class
+  // Build pattern by checking for zero-width chars individually
+  const hasZeroWidthChars = (str: string): boolean => {
+    const zeroWidthChars = ['\u200B', '\u200C', '\u200D', '\uFEFF'];
+    return zeroWidthChars.some((char) => str.includes(char));
+  };
+  const evmWithZeroWidthPattern = /0x[a-fA-F0-9]{40,}/i;
+  const evmWithZeroWidth = input.match(evmWithZeroWidthPattern);
   if (evmWithZeroWidth) {
     const candidate = evmWithZeroWidth[0];
     // Check if it has zero-width chars in hex part (after 0x)
-    if (/[\u200B\u200C\u200D\uFEFF]/.test(candidate.slice(2))) {
+    if (hasZeroWidthChars(candidate.slice(2))) {
       rejected.push({
         raw: candidate,
         reason: 'invisible_character',
@@ -328,7 +363,7 @@ export function extractAndValidateAddresses(input: string): ExtractionResult {
   }
 
   // 6. Mixed separators (different separator types in same address - highly suspicious)
-  const evmMixedSeparators = input.match(/0x([a-fA-F0-9]+[\s\-\.]){5,}[a-fA-F0-9]+/i);
+  const evmMixedSeparators = input.match(/0x([a-fA-F0-9]+[\s.\-]){5,}[a-fA-F0-9]+/i);
   if (evmMixedSeparators) {
     const candidate = evmMixedSeparators[0];
     const hexPart = candidate.slice(2);

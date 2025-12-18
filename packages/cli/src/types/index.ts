@@ -30,7 +30,7 @@ export interface CommandDefinition {
    */
   handler:
     | ((args: unknown, ctx: unknown) => Promise<unknown> | unknown)
-    | ((args: any, ctx: any) => Promise<unknown> | unknown);
+    | ((args: unknown, ctx: unknown) => Promise<unknown> | unknown);
 
   /**
    * Optional examples for help text

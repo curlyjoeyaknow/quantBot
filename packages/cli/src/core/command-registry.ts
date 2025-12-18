@@ -2,7 +2,6 @@
  * Command Registry - Dynamic command loading and management
  */
 
-import type { Command } from 'commander';
 import type { CommandDefinition, PackageCommandModule } from '../types/index.js';
 import { ConfigurationError, ValidationError } from '@quantbot/utils';
 

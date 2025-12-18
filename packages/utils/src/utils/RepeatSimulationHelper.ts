@@ -22,7 +22,7 @@ export class RepeatSimulationHelper {
    * Prime a session from a previous run's parameters so user can rerun/re-edit.
    * Preserves full mint address and chain metadata.
    */
-  async repeatSimulation(ctx: Context, run: any): Promise<void> {
+  async repeatSimulation(ctx: Context, run: Record<string, unknown>): Promise<void> {
     const userId = ctx.from?.id;
     if (!userId) {
       await ctx.reply('❌ Unable to identify user.');
@@ -39,7 +39,7 @@ export class RepeatSimulationHelper {
 
     const startTime = run.startTime;
 
-    const newSession: any = {
+    const newSession: Record<string, unknown> = {
       step: 'waiting_for_strategy',
       type: 'repeat',
       data: {

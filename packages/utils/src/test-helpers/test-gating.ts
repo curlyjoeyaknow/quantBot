@@ -2,10 +2,19 @@
  * Test Gating Utilities
  *
  * Provides utilities to conditionally skip tests based on environment variables.
- * This allows stress tests to be categorized:
- * - Offline tests (run always)
- * - DB tests (require RUN_DB_STRESS=1)
- * - Chaos tests (require RUN_CHAOS_TESTS=1)
+ * This allows tests to be categorized:
+ * - Unit tests (run always, no external dependencies)
+ * - Integration tests (may require RUN_DB_STRESS=1 for database tests)
+ * - Stress tests (require specific flags: RUN_DB_STRESS, RUN_CHAOS_TESTS, etc.)
+ *
+ * Usage:
+ * ```typescript
+ * import { shouldRunDbStress, describe.skipIf } from '@quantbot/utils/test-helpers/test-gating';
+ *
+ * describe.skipIf(!shouldRunDbStress())('Database Integration Tests', () => {
+ *   // Tests that require real database connections
+ * });
+ * ```
  */
 
 /**

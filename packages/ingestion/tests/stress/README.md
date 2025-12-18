@@ -63,7 +63,21 @@ Tests simulation engine edge cases.
 - Numerical stability
 - Tiny datasets
 
-### 6. Chaos Engineering (`chaos/`)
+### 6. OHLCV Ingestion Stress (`ohlcv-ingestion.stress.test.ts`)
+Comprehensive stress tests for OHLCV ingestion pipeline.
+
+- **Input Violence**: Invalid mint addresses, extreme date ranges, malformed call data
+- **API Failure Modes**: Rate limiting, timeouts, malformed responses, partial failures
+- **Data Integrity**: Invalid candles (NaN, negative prices, high < low), duplicates, out-of-order
+- **Storage Failures**: ClickHouse connection failures, partial writes, concurrent conflicts
+- **Resource Exhaustion**: Too many concurrent requests, huge datasets, memory pressure
+- **Concurrency**: Race conditions, concurrent ingestion of same token, token grouping
+- **Boundary Conditions**: Empty results, single candle, maximum candles (5000)
+- **Error Recovery**: Partial failures, error tracking, continuation after failures
+- **Performance Degradation**: Slow API responses, many tokens, large time ranges
+- **Integration Stress**: Complete failure scenarios, mixed success/failure
+
+### 7. Chaos Engineering (`chaos/`)
 Meta-tests that simulate real-world failures.
 
 - Random subprocess kills
@@ -97,6 +111,7 @@ pnpm test:stress --reporter=verbose
 Shared test fixtures are in `fixtures/`:
 - `malicious-addresses.ts` - Address extraction edge cases
 - `malformed-json.ts` - Invalid Python outputs
+- `pathological-ohlcv.ts` - OHLCV ingestion edge cases (invalid mints, extreme dates, pathological candles, API failures, cache corruption, storage failures, resource exhaustion)
 - `nasty-candles.ts` - Pathological candle sequences
 - `corrupt-artifacts.ts` - Damaged files for chaos tests
 

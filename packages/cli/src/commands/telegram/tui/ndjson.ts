@@ -63,7 +63,8 @@ export function streamNdjsonFile(
       // Apply date filter if provided
       if (opts?.dateFilter) {
         const filter = opts.dateFilter;
-        const tsMs = (obj as any)?.timestampMs ?? (obj as any)?.timestamp_ms;
+        const objRecord = obj as Record<string, unknown>;
+        const tsMs = (objRecord?.timestampMs ?? objRecord?.timestamp_ms) as number | undefined;
         if (tsMs && Number.isFinite(tsMs)) {
           const d = new Date(tsMs);
           const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
@@ -81,7 +82,7 @@ export function streamNdjsonFile(
       }
 
       handlers.onObject(obj, { lineNo });
-    } catch (e: any) {
+    } catch (e: unknown) {
       const err = e instanceof Error ? e : new Error(String(e));
       handlers.onParseError(err, { lineNo, line });
     }

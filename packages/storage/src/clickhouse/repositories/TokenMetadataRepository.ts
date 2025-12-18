@@ -68,9 +68,10 @@ export class TokenMetadataRepository {
     const ch = getClickHouseClient();
     const CLICKHOUSE_DATABASE = process.env.CLICKHOUSE_DATABASE || 'quantbot';
 
-    const socials = (metadata as any).socials || {};
-    const metadataExtras = {
-      ...metadata,
+    const metadataObj = metadata as Record<string, unknown>;
+    const socials = (metadataObj.socials as Record<string, unknown>) || {};
+    const metadataExtras: Record<string, unknown> = {
+      ...metadataObj,
       socials: undefined, // Remove from extras since we store separately
     };
 
@@ -87,8 +88,8 @@ export class TokenMetadataRepository {
       price_change_24h: metadata.priceChange24h || null,
       logo_uri: metadata.logoURI || null,
       socials_json: JSON.stringify(socials),
-      creator: (metadata as any).creator || null,
-      top_wallet_holdings: (metadata as any).topWalletHoldings || null,
+      creator: (metadataObj.creator as string | undefined) || null,
+      top_wallet_holdings: (metadataObj.topWalletHoldings as unknown) || null,
       metadata_json: JSON.stringify(metadataExtras),
     };
 

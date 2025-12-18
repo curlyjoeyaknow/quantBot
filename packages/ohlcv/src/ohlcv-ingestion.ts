@@ -119,7 +119,7 @@ export class OHLCVIngestionService {
         recordsSkipped: 0,
         success: true,
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('Failed to fetch and store OHLCV', error as Error, { tokenAddress });
       return {
         tokenAddress,
@@ -234,7 +234,7 @@ export class OHLCVIngestionService {
         recordsSkipped: 0,
         success: true,
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('Failed to backfill data', error as Error, { tokenAddress });
       return {
         tokenAddress,
@@ -276,8 +276,8 @@ export class OHLCVIngestionService {
    * Get ingestion statistics
    */
   getIngestionStats(): {
-    apiUsage: any;
-    cacheStats: any;
+    apiUsage: Record<string, unknown>;
+    cacheStats: Record<string, unknown>;
     influxRecordCount: number;
   } {
     return {

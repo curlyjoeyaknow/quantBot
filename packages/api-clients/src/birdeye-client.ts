@@ -1,8 +1,8 @@
-import axios, { AxiosInstance, AxiosResponse, AxiosRequestConfig } from 'axios';
+import axios, { AxiosInstance, AxiosResponse, AxiosRequestConfig, AxiosError } from 'axios';
 import { config } from 'dotenv';
 import { logger, ConfigurationError } from '@quantbot/utils';
 import { recordApiUsage } from '@quantbot/observability';
-import { BaseApiClient, type BaseApiClientConfig } from './base-client';
+import { BaseApiClient } from './base-client';
 
 config();
 
@@ -252,7 +252,7 @@ export class BirdeyeClient extends BaseApiClient {
    * Overrides BaseApiClient's request to handle multiple API keys
    * Returns both the response and the API key used
    */
-  protected async requestWithKeyRotation<T = any>(
+  protected async requestWithKeyRotation<T = unknown>(
     config: AxiosRequestConfig,
     maxAttempts: number = 5
   ): Promise<{ response: AxiosResponse<T>; apiKey: string } | null> {
@@ -283,11 +283,26 @@ export class BirdeyeClient extends BaseApiClient {
           });
         }
         return { response, apiKey };
-      } catch (error: any) {
+      } catch (error: unknown) {
         logger.warn('Request attempt failed', {
           attempt: attempt + 1,
           keyPrefix: apiKey.substring(0, 8),
         });
+
+        // Type guard for AxiosError
+        const isAxiosError = (e: unknown): e is AxiosError => {
+          return (
+            typeof e === 'object' &&
+            e !== null &&
+            'response' in e &&
+            'request' in e &&
+            'config' in e
+          );
+        };
+
+        if (!isAxiosError(error)) {
+          throw error;
+        }
 
         // Handle rate limiting - deactivate key and try next one
         if (error.response?.status === 429) {
@@ -369,7 +384,7 @@ export class BirdeyeClient extends BaseApiClient {
 
       if (response.status === 200 && response.data) {
         // v3/ohlcv returns { data: { items: [...] } } or { success: true, data: { items: [...] } }
-        const responseData = response.data as any;
+        const responseData = response.data as Record<string, unknown>;
 
         // Check if response indicates failure
         if (responseData.success === false) {
@@ -391,14 +406,17 @@ export class BirdeyeClient extends BaseApiClient {
 
         if (Array.isArray(items) && items.length > 0) {
           // Convert v3 format to history_price format
-          const formattedItems = items.map((item: any) => ({
-            unixTime: item.unix_time || item.unixTime,
-            open: parseFloat(String(item.o)) || 0,
-            high: parseFloat(String(item.h)) || 0,
-            low: parseFloat(String(item.l)) || 0,
-            close: parseFloat(String(item.c)) || 0,
-            volume: parseFloat(String(item.v)) || 0,
-          }));
+          const formattedItems = items.map((item) => {
+            const itemObj = item as Record<string, unknown>;
+            return {
+              unixTime: Number(itemObj.unix_time ?? itemObj.unixTime) || 0,
+              open: parseFloat(String(itemObj.o)) || 0,
+              high: parseFloat(String(itemObj.h)) || 0,
+              low: parseFloat(String(itemObj.l)) || 0,
+              close: parseFloat(String(itemObj.c)) || 0,
+              volume: parseFloat(String(itemObj.v)) || 0,
+            };
+          });
 
           const candleCount = formattedItems.length;
           this.updateKeyUsage(apiKey, candleCount);
@@ -441,12 +459,18 @@ export class BirdeyeClient extends BaseApiClient {
         status: response.status,
         hasData: !!response.data,
         dataKeys: response.data ? Object.keys(response.data) : [],
-        tokenAddress: tokenAddress.substring(0, 20),
+        tokenAddress: tokenAddress, // Full address for debugging
+        tokenAddressDisplay: tokenAddress.length > 40 
+          ? `${tokenAddress.substring(0, 8)}...${tokenAddress.substring(tokenAddress.length - 8)}` 
+          : tokenAddress,
       });
       return null;
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('Failed to fetch OHLCV data', error as Error, {
-        tokenAddress: tokenAddress.substring(0, 20),
+        tokenAddress: tokenAddress, // Full address for debugging
+        tokenAddressDisplay: tokenAddress.length > 40 
+          ? `${tokenAddress.substring(0, 8)}...${tokenAddress.substring(tokenAddress.length - 8)}` 
+          : tokenAddress,
       });
       return null;
     }
@@ -569,7 +593,85 @@ export class BirdeyeClient extends BaseApiClient {
   }
 
   /**
-   * Fetch historical price data at a specific timestamp
+   * Fetch historical price at a specific unix timestamp
+   * Uses the historical_price_unix endpoint: https://public-api.birdeye.so/defi/historical_price_unix
+   *
+   * @param tokenAddress Token address
+   * @param unixTime Unix timestamp (seconds) - exact time to fetch price
+   * @param chain Chain identifier (default: 'solana')
+   * @returns Historical price at the specified time or null if not found
+   */
+  async fetchHistoricalPriceAtUnixTime(
+    tokenAddress: string,
+    unixTime: number,
+    chain: string = 'solana'
+  ): Promise<{ unixTime: number; value: number; price?: number } | null> {
+    try {
+      const result = await this.requestWithKeyRotation<{
+        success: boolean;
+        data?: {
+          updateUnixTime?: number;
+          value?: number;
+          priceChange24h?: number;
+          isScaledUiToken?: boolean;
+          address?: string;
+        };
+      }>(
+        {
+          method: 'GET',
+          url: '/defi/historical_price_unix',
+          params: {
+            address: tokenAddress,
+            unixtime: unixTime, // Note: parameter is 'unixtime' not 'unix_time'
+            ui_amount_mode: 'raw',
+          },
+          headers: {
+            'x-chain': chain,
+          },
+        },
+        3
+      );
+
+      if (!result) {
+        return null;
+      }
+
+      const { response, apiKey } = result;
+
+      if (response.status === 200 && response.data?.success && response.data?.data) {
+        this.updateKeyUsage(apiKey, 1);
+
+        // Record API usage (estimate: 1 credit per request)
+        recordApiUsage('birdeye', 1, {
+          endpoint: '/defi/historical_price_unix',
+          chain,
+        }).catch((error: unknown) => {
+          logger.warn('Failed to record API usage', error as Error);
+        });
+
+        const data = response.data.data;
+        if (data.value !== undefined) {
+          return {
+            unixTime: data.updateUnixTime ?? unixTime,
+            value: data.value,
+            price: data.value, // value is the price
+          };
+        }
+      }
+
+      return null;
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logger.warn('Failed to fetch historical price at unix time', {
+        token: tokenAddress.substring(0, 20) + '...',
+        error: errorMessage,
+      });
+      return null;
+    }
+  }
+
+  /**
+   * Fetch historical price data in a time range
    * Uses the history_price endpoint: https://public-api.birdeye.so/defi/history_price
    *
    * @param tokenAddress Token address
@@ -593,8 +695,10 @@ export class BirdeyeClient extends BaseApiClient {
           items?: Array<{
             unixTime: number;
             value: number;
-            price?: number;
+            address?: string;
           }>;
+          isScaledUiToken?: boolean;
+          multiplier?: number | null;
         };
       }>(
         {
@@ -606,6 +710,7 @@ export class BirdeyeClient extends BaseApiClient {
             type: interval,
             time_from: timeFrom,
             time_to: timeTo,
+            ui_amount_mode: 'raw',
           },
           headers: {
             'x-chain': chain,
@@ -632,14 +737,20 @@ export class BirdeyeClient extends BaseApiClient {
           logger.warn('Failed to record API usage', error as Error);
         });
 
-        return response.data.data.items;
+        // Map items to include price field (value is the price)
+        return response.data.data.items.map((item) => ({
+          unixTime: item.unixTime,
+          value: item.value,
+          price: item.value, // value is the price
+        }));
       }
 
       return null;
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
       logger.warn('Failed to fetch historical price', {
         token: tokenAddress.substring(0, 20) + '...',
-        error: error.message,
+        error: errorMessage,
       });
       return null;
     }
@@ -698,7 +809,7 @@ export class BirdeyeClient extends BaseApiClient {
       }
 
       return null;
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('Failed to fetch token metadata', error as Error, {
         tokenAddress: tokenAddress.substring(0, 20),
       });
@@ -731,6 +842,7 @@ export function resetBirdeyeClient(): void {
 // For backward compatibility - lazy getter
 export const birdeyeClient = new Proxy({} as BirdeyeClient, {
   get(_target, prop) {
-    return (getBirdeyeClient() as any)[prop];
+    const client = getBirdeyeClient();
+    return (client as Record<string, unknown>)[prop as string];
   },
 });

@@ -8,11 +8,13 @@ import type {
   SimulationCallResult,
 } from '../types.js';
 
-const isLuxonDateTime = (v: unknown): v is DateTime =>
-  typeof v === 'object' &&
-  v !== null &&
-  (v as any).isValid === true &&
-  typeof (v as any).toISO === 'function';
+const isLuxonDateTime = (v: unknown): v is DateTime => {
+  if (typeof v !== 'object' || v === null) return false;
+  const obj = v as Record<string, unknown>;
+  return (
+    typeof obj.isValid === 'boolean' && obj.isValid === true && typeof obj.toISO === 'function'
+  );
+};
 
 const SpecSchema = z.object({
   strategyName: z.string().min(1, 'strategyName is required'),
@@ -146,8 +148,8 @@ export async function runSimulation(
         pnlMultiplier: sim.pnlMultiplier,
         trades: sim.trades,
       });
-    } catch (e: any) {
-      const msg = e?.message ? String(e.message) : String(e);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
       results.push({
         callId: call.id,
         mint: call.mint,

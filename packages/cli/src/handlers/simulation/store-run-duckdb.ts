@@ -5,7 +5,7 @@
  */
 
 import type { CommandContext } from '../../core/command-context.js';
-import { storeRunSchema, type StoreRunArgs } from '../../command-defs/simulation.js';
+import type { StoreRunArgs } from '../../command-defs/simulation.js';
 
 export async function storeRunDuckdbHandler(args: StoreRunArgs, ctx: CommandContext) {
   const service = ctx.services.duckdbStorage();

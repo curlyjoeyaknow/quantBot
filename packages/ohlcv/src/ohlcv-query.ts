@@ -59,7 +59,7 @@ export class OHLCVQueryService {
       }
 
       return data;
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('Failed to get OHLCV data', error as Error, { tokenAddress });
       return [];
     }
@@ -71,7 +71,7 @@ export class OHLCVQueryService {
   async getLatestPrice(tokenAddress: string): Promise<number> {
     try {
       return await this.influxClient.getLatestPrice(tokenAddress);
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('Failed to get latest price', error as Error, { tokenAddress });
       return 0;
     }
@@ -83,7 +83,7 @@ export class OHLCVQueryService {
   async hasData(tokenAddress: string, startTime: Date, endTime: Date): Promise<boolean> {
     try {
       return await this.influxClient.hasData(tokenAddress, startTime, endTime);
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('Failed to check data existence', error as Error, { tokenAddress });
       return false;
     }
@@ -95,7 +95,7 @@ export class OHLCVQueryService {
   async getAvailableTokens(): Promise<TokenInfo[]> {
     try {
       return await this.influxClient.getAvailableTokens();
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('Failed to get available tokens', error as Error);
       return [];
     }
@@ -127,7 +127,7 @@ export class OHLCVQueryService {
       }
 
       return this.aggregateData(data, aggregation);
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('Failed to get aggregated OHLCV data', error as Error, {
         tokenAddress,
         aggregation,
@@ -251,8 +251,8 @@ export class OHLCVQueryService {
    * Get query statistics
    */
   getQueryStats(): {
-    cacheStats: any;
-    cacheInfo: any;
+    cacheStats: Record<string, unknown>;
+    cacheInfo: Record<string, unknown>;
   } {
     return {
       cacheStats: this.cache.getStats(),

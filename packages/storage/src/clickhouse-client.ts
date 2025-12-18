@@ -40,7 +40,14 @@ export function getClickHouseClient(): ClickHouseClient {
 
   // Create new client only if it doesn't exist
   const url = `http://${CLICKHOUSE_HOST}:${CLICKHOUSE_PORT}`;
-  const config: any = {
+  const config: {
+    url: string;
+    username: string;
+    database: string;
+    request_timeout?: number;
+    max_open_connections?: number;
+    password?: string;
+  } = {
     url: url,
     username: CLICKHOUSE_USER,
     database: CLICKHOUSE_DATABASE,
@@ -64,7 +71,11 @@ export function getClickHouseClient(): ClickHouseClient {
  */
 export async function initClickHouse(): Promise<void> {
   const url = `http://${CLICKHOUSE_HOST}:${CLICKHOUSE_PORT}`;
-  const tempConfig: any = {
+  const tempConfig: {
+    url: string;
+    username: string;
+    password?: string;
+  } = {
     url,
     username: CLICKHOUSE_USER,
   };
@@ -90,7 +101,7 @@ export async function initClickHouse(): Promise<void> {
     await ensureTokenMetadataTable(ch);
 
     logger.info('ClickHouse database and tables initialized');
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('Error initializing ClickHouse', error as Error);
     await tempClient.close().catch(() => {});
     throw error;
@@ -276,7 +287,7 @@ export async function insertCandles(
       values: rows,
       format: 'JSONEachRow',
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Silently fail if USE_CACHE_ONLY is set (insertions not needed in cache-only mode)
     if (process.env.USE_CACHE_ONLY !== 'true') {
       const displayAddr =
@@ -319,7 +330,7 @@ export async function insertTicks(
       values,
       format: 'JSONEachRow',
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('Error inserting ticks', error as Error, {
       tokenAddress: tokenAddress.substring(0, 20),
     });
@@ -389,7 +400,7 @@ export async function queryCandles(
 
   // Retry logic for socket hang ups and connection errors
   const maxRetries = 3;
-  let lastError: any = null;
+  let lastError: unknown = null;
 
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
@@ -435,10 +446,11 @@ export async function queryCandles(
         close: row.close,
         volume: row.volume,
       }));
-    } catch (error: any) {
+    } catch (error: unknown) {
       lastError = error;
+      const errorMessage = error instanceof Error ? error.message : String(error);
       const isSocketError =
-        error.message?.includes('socket hang up') ||
+        errorMessage.includes('socket hang up') ||
         error.message?.includes('ECONNRESET') ||
         error.message?.includes('ETIMEDOUT') ||
         error.message?.includes('timeout');
@@ -515,7 +527,7 @@ export async function hasCandles(
     }
 
     return data[0]?.count > 0 || false;
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.error('Error checking candles', error as Error, { tokenAddress });
     return false;
   }

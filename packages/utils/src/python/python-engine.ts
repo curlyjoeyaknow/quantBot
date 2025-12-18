@@ -54,6 +54,13 @@ export interface ClickHouseEngineConfig {
   password?: string;
 }
 
+export interface OhlcvWorklistConfig {
+  duckdbPath: string;
+  from?: string;
+  to?: string;
+  side?: 'buy' | 'sell';
+}
+
 /**
  * Schema for Python tool output (manifest)
  */
@@ -100,7 +107,7 @@ export class PythonEngine {
    * @param artifactFields - Fields in result that contain file paths
    * @throws ValidationError if any artifacts are missing
    */
-  private verifyArtifacts(result: any, artifactFields: string[]): void {
+  private verifyArtifacts(result: Record<string, unknown>, artifactFields: string[]): void {
     const missingArtifacts: string[] = [];
 
     for (const field of artifactFields) {
@@ -119,9 +126,9 @@ export class PythonEngine {
             missingArtifacts.push(path);
           }
         }
-      } else if (typeof value === 'object') {
+      } else if (typeof value === 'object' && value !== null) {
         // Nested object - recursively check
-        this.verifyArtifacts(value, Object.keys(value));
+        this.verifyArtifacts(value as Record<string, unknown>, Object.keys(value));
       }
     }
 
@@ -210,7 +217,8 @@ export class PythonEngine {
 
       // Handle both string and Buffer outputs (for compatibility with mocks)
       // Note: execSync with encoding: 'utf-8' should return string, but mocks may return Buffer
-      const outputString = typeof output === 'string' ? output : (output as Buffer).toString('utf-8');
+      const outputString =
+        typeof output === 'string' ? output : (output as Buffer).toString('utf-8');
 
       // Parse JSON from last line (Python tools typically output JSON on last line)
       const lines = outputString.trim().split('\n');
@@ -219,7 +227,7 @@ export class PythonEngine {
       let parsed: unknown;
       try {
         parsed = JSON.parse(jsonLine);
-      } catch (error) {
+      } catch {
         // Try parsing entire output if last line isn't JSON
         try {
           parsed = JSON.parse(outputString.trim());
@@ -235,13 +243,26 @@ export class PythonEngine {
       let validated: T;
       try {
         validated = schema.parse(parsed);
-      } catch (zodError: any) {
+      } catch (zodError: unknown) {
         // Enhance Zod validation errors with script context
+        const errorMessage =
+          zodError instanceof Error
+            ? zodError.message
+            : typeof zodError === 'object' && zodError !== null && 'message' in zodError
+              ? String((zodError as { message: unknown }).message)
+              : String(zodError);
+        const zodIssues =
+          typeof zodError === 'object' &&
+          zodError !== null &&
+          ('issues' in zodError || 'errors' in zodError)
+            ? (zodError as { issues?: unknown; errors?: unknown }).issues ||
+              (zodError as { issues?: unknown; errors?: unknown }).errors
+            : undefined;
         throw new ValidationError(
-          `Python script output failed schema validation: ${zodError.message}`,
+          `Python script output failed schema validation: ${errorMessage}`,
           {
             script: scriptPath,
-            zodError: zodError.issues || zodError.errors || zodError.message,
+            zodError: zodIssues || errorMessage,
             receivedData: parsed,
           }
         );
@@ -249,27 +270,34 @@ export class PythonEngine {
 
       // Verify artifacts if requested
       if (artifactOptions?.verifyArtifacts && artifactOptions.artifactFields) {
-        this.verifyArtifacts(validated, artifactOptions.artifactFields);
+        this.verifyArtifacts(validated as Record<string, unknown>, artifactOptions.artifactFields);
       }
 
       return validated;
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Handle subprocess errors
-      if (error.signal === 'SIGTERM' || error.status === 124) {
+      const errorObj = error as {
+        signal?: string;
+        status?: number;
+        stderr?: { toString(): string };
+        stdout?: { toString(): string };
+        message?: string;
+      };
+      if (errorObj.signal === 'SIGTERM' || errorObj.status === 124) {
         throw new TimeoutError(`Python script timed out after ${timeout}ms`, timeout, {
           script: scriptPath,
         });
       }
-      if (error.status !== undefined && error.status !== 0) {
-        const stderr = error.stderr?.toString() || '';
-        const stdout = error.stdout?.toString() || '';
+      if (errorObj.status !== undefined && errorObj.status !== 0) {
+        const stderr = errorObj.stderr?.toString() || '';
+        const stdout = errorObj.stdout?.toString() || '';
         throw new AppError(
-          `Python script exited with code ${error.status}: ${stderr || error.message || 'Unknown error'}`,
+          `Python script exited with code ${errorObj.status}: ${stderr || errorObj.message || 'Unknown error'}`,
           'PYTHON_SCRIPT_ERROR',
           500,
           {
             script: scriptPath,
-            exitCode: error.status,
+            exitCode: errorObj.status,
             stderr: stderr.substring(0, 1000), // Truncate to prevent huge error messages
             stdout: stdout.substring(0, 500), // Include some stdout for context
           }
@@ -400,6 +428,123 @@ export class PythonEngine {
   }
 
   /**
+   * Run OHLCV worklist query from DuckDB
+   *
+   * @param config - Worklist configuration
+   * @param options - Execution options
+   * @returns Worklist with token groups and individual calls
+   */
+  async runOhlcvWorklist(
+    config: OhlcvWorklistConfig,
+    options?: PythonScriptOptions
+  ): Promise<{
+    tokenGroups: Array<{
+      mint: string;
+      chain: string;
+      earliestAlertTime: string | null;
+      callCount: number;
+    }>;
+    calls: Array<{
+      mint: string;
+      chain: string;
+      alertTime: string | null;
+      chatId: string | null;
+      messageId: string | null;
+      priceUsd: number | null;
+      mcapUsd: number | null;
+      botTsMs: number | null;
+    }>;
+  }> {
+    const scriptPath = join(process.cwd(), 'tools/ingestion/ohlcv_worklist.py');
+
+    const args: Record<string, unknown> = {
+      duckdb: config.duckdbPath,
+    };
+
+    if (config.from) {
+      args.from = config.from;
+    }
+    if (config.to) {
+      args.to = config.to;
+    }
+    if (config.side) {
+      args.side = config.side;
+    }
+
+    const cwd = options?.cwd ?? join(process.cwd(), 'tools/ingestion');
+    const env = {
+      ...options?.env,
+      PYTHONPATH: join(process.cwd(), 'tools/ingestion'),
+    };
+
+    const tokenGroupSchema = z.object({
+      mint: z.string(),
+      chain: z.string(),
+      earliestAlertTime: z.string().nullable(),
+      callCount: z.number(),
+    });
+
+    const callSchema = z.object({
+      mint: z.string(),
+      chain: z.string(),
+      alertTime: z.string().nullable(),
+      chatId: z.string().nullable(),
+      messageId: z.string().nullable(),
+      priceUsd: z.number().nullable(),
+      mcapUsd: z.number().nullable(),
+      botTsMs: z.number().nullable(),
+    });
+
+    const resultSchema = z
+      .object({
+        tokenGroups: z.array(tokenGroupSchema),
+        calls: z.array(callSchema),
+      })
+      .or(
+        z.object({
+          error: z.string(),
+          tokenGroups: z.array(tokenGroupSchema),
+          calls: z.array(callSchema),
+        })
+      );
+
+    const result = await this.runScript(scriptPath, args, resultSchema, {
+      ...options,
+      cwd,
+      env,
+    });
+
+    // Handle error response
+    if (typeof result === 'object' && result !== null && 'error' in result) {
+      throw new AppError(
+        `OHLCV worklist query failed: ${(result as { error: string }).error}`,
+        'OHLCV_WORKLIST_ERROR',
+        500,
+        { config }
+      );
+    }
+
+    return result as {
+      tokenGroups: Array<{
+        mint: string;
+        chain: string;
+        earliestAlertTime: string | null;
+        callCount: number;
+      }>;
+      calls: Array<{
+        mint: string;
+        chain: string;
+        alertTime: string | null;
+        chatId: string | null;
+        messageId: string | null;
+        priceUsd: number | null;
+        mcapUsd: number | null;
+        botTsMs: number | null;
+      }>;
+    };
+  }
+
+  /**
    * Run a Python script with stdin input
    *
    * @param scriptPath - Path to Python script
@@ -461,37 +606,58 @@ export class PythonEngine {
       let validated: T;
       try {
         validated = schema.parse(parsed);
-      } catch (zodError: any) {
+      } catch (zodError: unknown) {
+        const errorMessage =
+          zodError instanceof Error
+            ? zodError.message
+            : typeof zodError === 'object' && zodError !== null && 'message' in zodError
+              ? String((zodError as { message: unknown }).message)
+              : String(zodError);
+        const zodIssues =
+          typeof zodError === 'object' &&
+          zodError !== null &&
+          ('issues' in zodError || 'errors' in zodError)
+            ? (zodError as { issues?: unknown; errors?: unknown }).issues ||
+              (zodError as { issues?: unknown; errors?: unknown }).errors
+            : undefined;
         throw new ValidationError(
-          `Python script output failed schema validation: ${zodError.message}`,
+          `Python script output failed schema validation: ${errorMessage}`,
           {
             script: scriptFullPath,
-            zodError: zodError.issues || zodError.errors || zodError.message,
+            zodError: zodIssues || errorMessage,
             receivedData: parsed,
           }
         );
       }
 
       return validated;
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Handle timeout errors
-      if (error.timedOut || error.signal === 'SIGTERM') {
+      const errorObj = error as {
+        timedOut?: boolean;
+        signal?: string;
+        exitCode?: number;
+        stderr?: string;
+        stdout?: string;
+        message?: string;
+      };
+      if (errorObj.timedOut || errorObj.signal === 'SIGTERM') {
         throw new TimeoutError(`Python script timed out after ${timeout}ms`, timeout, {
           script: scriptFullPath,
         });
       }
 
       // Handle execa errors
-      if (error.exitCode !== undefined && error.exitCode !== 0) {
-        const stderr = error.stderr || '';
-        const stdout = error.stdout || '';
+      if (errorObj.exitCode !== undefined && errorObj.exitCode !== 0) {
+        const stderr = errorObj.stderr || '';
+        const stdout = errorObj.stdout || '';
         throw new AppError(
-          `Python script exited with code ${error.exitCode}: ${stderr || error.message || 'Unknown error'}`,
+          `Python script exited with code ${errorObj.exitCode}: ${stderr || errorObj.message || 'Unknown error'}`,
           'PYTHON_SCRIPT_ERROR',
           500,
           {
             script: scriptFullPath,
-            exitCode: error.exitCode,
+            exitCode: errorObj.exitCode,
             stderr: stderr.substring(0, 1000),
             stdout: stdout.substring(0, 500),
           }
@@ -508,8 +674,9 @@ export class PythonEngine {
       }
 
       // Wrap unknown errors
+      const errorMessage = error instanceof Error ? error.message : String(error);
       throw new AppError(
-        `Failed to execute Python script: ${error.message || String(error)}`,
+        `Failed to execute Python script: ${errorMessage}`,
         'PYTHON_SCRIPT_ERROR',
         500,
         { script: scriptFullPath }

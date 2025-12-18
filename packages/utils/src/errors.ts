@@ -10,14 +10,14 @@
 export class AppError extends Error {
   public readonly code: string;
   public readonly statusCode: number;
-  public readonly context?: Record<string, any>;
+  public readonly context?: Record<string, unknown>;
   public readonly isOperational: boolean;
 
   constructor(
     message: string,
     code: string = 'APP_ERROR',
     statusCode: number = 500,
-    context?: Record<string, any>,
+    context?: Record<string, unknown>,
     isOperational: boolean = true
   ) {
     super(message);
@@ -34,7 +34,7 @@ export class AppError extends Error {
   /**
    * Convert error to JSON for logging
    */
-  toJSON(): Record<string, any> {
+  toJSON(): Record<string, unknown> {
     return {
       name: this.name,
       message: this.message,
@@ -101,14 +101,14 @@ export class DatabaseError extends AppError {
 export class ApiError extends AppError {
   public readonly apiName?: string;
   public readonly apiStatusCode?: number;
-  public readonly apiResponse?: any;
+  public readonly apiResponse?: unknown;
 
   constructor(
     message: string,
     apiName?: string,
     apiStatusCode?: number,
-    apiResponse?: any,
-    context?: Record<string, any>
+    apiResponse?: unknown,
+    context?: Record<string, unknown>
   ) {
     super(message, 'API_ERROR', 502, { apiName, apiStatusCode, ...context });
     this.apiName = apiName;
@@ -126,7 +126,7 @@ export class RateLimitError extends AppError {
   constructor(
     message: string = 'Rate limit exceeded',
     retryAfter?: number,
-    context?: Record<string, any>
+    context?: Record<string, unknown>
   ) {
     super(message, 'RATE_LIMIT_ERROR', 429, { retryAfter, ...context });
     this.retryAfter = retryAfter;
@@ -164,7 +164,7 @@ export class TimeoutError extends AppError {
   constructor(
     message: string = 'Operation timed out',
     timeoutMs?: number,
-    context?: Record<string, any>
+    context?: Record<string, unknown>
   ) {
     super(message, 'TIMEOUT_ERROR', 504, { timeoutMs, ...context });
     this.timeoutMs = timeoutMs;

@@ -86,7 +86,7 @@ export function parseExport(filePath: string): ParsedMessage[] {
       // 1. "#go_to_message149468" (same file)
       // 2. "messages47.html#go_to_message149468" (cross-file)
       const sameFileMatch = replyToHref.match(/#go_to_message(\d+)$/);
-      const crossFileMatch = replyToHref.match(/([^\/]+\.html)#go_to_message(\d+)$/);
+      const crossFileMatch = replyToHref.match(/([^/]+\.html)#go_to_message(\d+)$/);
 
       if (crossFileMatch) {
         // Cross-file reference
@@ -205,7 +205,7 @@ function extractChatId($: cheerio.CheerioAPI, filePath: string): string | undefi
   }
 
   // Extract from file path (e.g., "messages/brook7/messages.html" -> "brook7")
-  const pathMatch = filePath.match(/messages\/([^\/]+)\//);
+  const pathMatch = filePath.match(/messages\/([^/]+)\//);
   if (pathMatch) {
     return pathMatch[1];
   }

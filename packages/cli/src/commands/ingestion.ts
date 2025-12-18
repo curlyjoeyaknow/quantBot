@@ -40,6 +40,7 @@ export const ohlcvSchema = z.object({
   postWindow: z.number().int().positive().default(1440),
   interval: z.enum(['1m', '5m', '15m', '1h']).default('5m'),
   format: z.enum(['json', 'table', 'csv']).default('table'),
+  duckdb: z.string().optional(), // Path to DuckDB database file
 });
 
 /**
@@ -96,6 +97,7 @@ export function registerIngestionCommands(program: Command): void {
     .option('--post-window <minutes>', 'Post-window minutes', '1440')
     .option('--interval <interval>', 'Candle interval', '5m')
     .option('--format <format>', 'Output format', 'table')
+    .option('--duckdb <path>', 'Path to DuckDB database file (or set DUCKDB_PATH env var)')
     .action(async (options) => {
       const { execute } = await import('../core/execute.js');
       const commandDef = commandRegistry.getCommand('ingestion', 'ohlcv');

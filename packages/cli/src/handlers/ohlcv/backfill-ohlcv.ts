@@ -74,7 +74,8 @@ export async function backfillOhlcvHandler(
       candlesFetched5m: result.metadata.total5mCandles,
       success: true,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
     return {
       mint: mintAddress,
       chain: args.chain,
@@ -84,7 +85,7 @@ export async function backfillOhlcvHandler(
       candlesFetched1m: 0,
       candlesFetched5m: 0,
       success: false,
-      error: error.message || String(error),
+      error: errorMessage,
     };
   }
 }
