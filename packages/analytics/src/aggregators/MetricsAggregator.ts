@@ -168,8 +168,10 @@ export class MetricsAggregator {
 
       logger.debug('[MetricsAggregator] Calculated system metrics');
       return metrics;
-    } catch (error) {
-      logger.error('[MetricsAggregator] Failed to calculate system metrics', error as Error);
+    } catch (error: unknown) {
+      logger.error('[MetricsAggregator] Failed to calculate system metrics', {
+        error: error instanceof Error ? error.message : String(error),
+      });
       throw error;
     }
   }

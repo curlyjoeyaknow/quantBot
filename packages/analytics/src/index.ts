@@ -52,6 +52,8 @@ export type {
   CallerAnalysisResult,
   MintAnalysisResult,
   CorrelationAnalysisResult,
-  AnalyticsResult,
   AnalyticsConfig,
 } from './analytics-service';
+// Note: AnalyticsResult from analytics-service conflicts with AnalyticsResult from AnalyticsEngine
+// Use AnalyticsResult from AnalyticsEngine for the main analytics results
+// For Python-based analytics results, use the specific types: CallerAnalysisResult, MintAnalysisResult, etc.

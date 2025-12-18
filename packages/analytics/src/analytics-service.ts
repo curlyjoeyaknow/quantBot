@@ -98,8 +98,10 @@ export class AnalyticsService {
       });
 
       return result;
-    } catch (error) {
-      logger.error('Analysis failed', error as Error);
+    } catch (error: unknown) {
+      logger.error('Analysis failed', {
+        error: error instanceof Error ? error.message : String(error),
+      });
 
       // Re-throw AppErrors as-is
       if (error instanceof AppError || error instanceof TimeoutError) {

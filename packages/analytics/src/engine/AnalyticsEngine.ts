@@ -80,8 +80,10 @@ export class AnalyticsEngine {
 
       this.initialized = true;
       logger.info('[AnalyticsEngine] Initialized');
-    } catch (error) {
-      logger.error('[AnalyticsEngine] Failed to initialize', error as Error);
+    } catch (error: unknown) {
+      logger.error('[AnalyticsEngine] Failed to initialize', {
+        error: error instanceof Error ? error.message : String(error),
+      });
       throw error;
     }
   }
@@ -93,7 +95,7 @@ export class AnalyticsEngine {
     await this.initialize();
 
     const startTime = Date.now();
-    logger.info('[AnalyticsEngine] Starting call analysis', options);
+    logger.info('[AnalyticsEngine] Starting call analysis', options as Record<string, unknown>);
 
     try {
       // 1. Load calls from database
@@ -150,8 +152,10 @@ export class AnalyticsEngine {
       });
 
       return result;
-    } catch (error) {
-      logger.error('[AnalyticsEngine] Analysis failed', error as Error);
+    } catch (error: unknown) {
+      logger.error('[AnalyticsEngine] Analysis failed', {
+        error: error instanceof Error ? error.message : String(error),
+      });
       throw error;
     }
   }
