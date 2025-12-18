@@ -24,8 +24,8 @@ import { parseExport, type ParsedMessage } from './TelegramExportParser';
 import { extractSolanaAddresses } from './extractSolanaAddresses';
 import { PublicKey } from '@solana/web3.js';
 import { getBirdeyeClient } from '@quantbot/api-clients';
-import { extractAddresses, isEvmAddress, isSolanaAddress } from './addressValidation.js';
-import { fetchMultiChainMetadata } from './MultiChainMetadataService.js';
+import { extractAddresses, isEvmAddress, isSolanaAddress } from './addressValidation';
+import { fetchMultiChainMetadata } from './MultiChainMetadataService';
 
 export interface IngestExportParams {
   filePath: string;
@@ -145,12 +145,12 @@ function extractFromBotResponse(botText: string): {
   }
 
   // Extract name: Token: NAME or 🟣 NAME or NAME ($SYMBOL)
-  const nameMatch1 = botText.match(/Token:\s*([^($\[]+?)(?:\s*\(|\s*\$|\s*⋅|$)/i);
+  const nameMatch1 = botText.match(/Token:\s*([^($[]+?)(?:\s*\(|\s*\$|\s*⋅|$)/i);
   const nameMatch2 = botText.match(
-    /(?:🟣|🐶|🟢|🔷|🪙|💊)\s*([A-Z][a-zA-Z0-9\s\-\.']+?)(?:\s*\(|\s*\[|\s*\$)/
+    /(?:🟣|🐶|🟢|🔷|🪙|💊)\s*([A-Z][a-zA-Z0-9\s-.']+?)(?:\s*\(|\s*\[|\s*\$)/
   );
-  const nameMatch3 = botText.match(/^([A-Z][a-zA-Z0-9\s\-\.']+?)\s*\(/);
-  const nameMatch4 = botText.match(/^([A-Z][a-zA-Z0-9\s\-\.']+?)\s*-\s*\$[A-Z0-9]/);
+  const nameMatch3 = botText.match(/^([A-Z][a-zA-Z0-9\s-.']+?)\s*\(/);
+  const nameMatch4 = botText.match(/^([A-Z][a-zA-Z0-9\s-.']+?)\s*-\s*\$[A-Z0-9]/);
 
   let candidateName: string | undefined;
   if (nameMatch1 && nameMatch1[1].trim().length > 2) {

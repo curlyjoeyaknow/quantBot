@@ -8,11 +8,13 @@
 
 import { DateTime } from 'luxon';
 import { logger, getPythonEngine, type PythonEngine } from '@quantbot/utils';
-import type { Chain } from '@quantbot/core';
+import type { Chain, Candle } from '@quantbot/core';
 import { AlertsRepository, getStorageEngine, getPostgresPool } from '@quantbot/storage';
 import { getOhlcvIngestionEngine, type OhlcvIngestionOptions } from '@quantbot/ohlcv';
 import { getBirdeyeClient } from '@quantbot/api-clients';
 import { calculateAthFromCandleObjects } from '@quantbot/analytics';
+import { fetchMultiChainMetadata } from './MultiChainMetadataService';
+import { isEvmAddress } from './addressValidation';
 
 export interface IngestForCallsParams {
   from?: Date;
@@ -23,6 +25,9 @@ export interface IngestForCallsParams {
   options?: OhlcvIngestionOptions;
   duckdbPath?: string; // Path to DuckDB database (required for DuckDB-based ingestion)
   resume?: boolean; // If true, skip tokens that already have sufficient data (default: true)
+  interval?: '1s' | '15s' | '1m' | '5m' | '15m' | '1h'; // Candle interval to fetch (default: '1m')
+  candles?: number; // Number of candles to fetch (default: 5000)
+  startOffsetMinutes?: number; // Minutes before alert to start fetching (default: -52)
 }
 
 export interface IngestForCallsResult {
@@ -30,6 +35,7 @@ export interface IngestForCallsResult {
   tokensSucceeded: number;
   tokensFailed: number;
   tokensSkipped: number; // Tokens skipped due to resume mode
+  tokensNoData: number; // Tokens where API returned 0 candles (early exit optimization)
   candlesFetched1m: number;
   candlesFetched5m: number;
   chunksFromCache: number;
@@ -67,6 +73,9 @@ export class OhlcvIngestionService {
       preWindowMinutes = 260, // 52 * 5m
       postWindowMinutes = 1440, // 24h
       chain = 'solana' as Chain,
+      interval,
+      candles,
+      startOffsetMinutes,
       options = { useCache: true },
       resume = true, // Default to resume mode - skip already processed tokens
     } = params;
@@ -116,6 +125,7 @@ export class OhlcvIngestionService {
         tokensSucceeded: 0,
         tokensFailed: 0,
         tokensSkipped: 0,
+        tokensNoData: 0,
         candlesFetched1m: 0,
         candlesFetched5m: 0,
         chunksFromCache: 0,
@@ -152,6 +162,7 @@ export class OhlcvIngestionService {
     let tokensSucceeded = 0;
     let tokensFailed = 0;
     let tokensSkipped = 0;
+    let tokensNoData = 0;
     let candlesFetched1m = 0;
     let candlesFetched5m = 0;
     let chunksFromCache = 0;
@@ -161,7 +172,7 @@ export class OhlcvIngestionService {
     // Process tokens in parallel batches
     for (let i = 0; i < worklist.tokenGroups.length; i += CONCURRENT_TOKENS) {
       const batch = worklist.tokenGroups.slice(i, i + CONCURRENT_TOKENS);
-      
+
       const batchResults = await Promise.all(
         batch.map(async (tokenGroup, batchIndex) => {
           const tokenId = i + batchIndex + 1;
@@ -191,21 +202,79 @@ export class OhlcvIngestionService {
 
             // Resume mode: Check if token already has sufficient data
             if (resume) {
-              const alreadyProcessed = await this._isTokenAlreadyProcessed(
-                mint,
-                (tokenChain as Chain) || chain,
-                alertTime,
-                preWindowMinutes,
-                postWindowMinutes
-              );
-              
-              if (alreadyProcessed) {
-                logger.debug('Token already processed, skipping (resume mode)', {
-                  mint: mint.substring(0, 20) + '...',
-                  alertTime: alertTime.toISO(),
-                });
-                tokensSkipped++;
-                return null;
+              const storedChain = (tokenChain as Chain) || chain;
+
+              // For EVM addresses, verify chain is correct before skipping
+              if (isEvmAddress(mint)) {
+                const chainResult = await fetchMultiChainMetadata(mint, storedChain);
+                if (chainResult.primaryMetadata) {
+                  const actualChain = chainResult.primaryMetadata.chain;
+                  if (actualChain !== storedChain) {
+                    // Chain mismatch - need to refetch with correct chain
+                    logger.warn('Chain mismatch detected in resume mode, refetching', {
+                      mint: mint.substring(0, 20) + '...',
+                      storedChain,
+                      actualChain,
+                      symbol: chainResult.primaryMetadata.symbol,
+                    });
+                    // Continue to fetch with correct chain (don't skip)
+                  } else {
+                    // Chain is correct, check if data exists
+                    const alreadyProcessed = await this._isTokenAlreadyProcessed(
+                      mint,
+                      actualChain,
+                      alertTime,
+                      preWindowMinutes,
+                      postWindowMinutes
+                    );
+
+                    if (alreadyProcessed) {
+                      logger.debug('Token already processed, skipping (resume mode)', {
+                        mint: mint.substring(0, 20) + '...',
+                        alertTime: alertTime.toISO(),
+                        chain: actualChain,
+                      });
+                      tokensSkipped++;
+                      return null;
+                    }
+                  }
+                } else {
+                  // No metadata found - check with stored chain anyway
+                  const alreadyProcessed = await this._isTokenAlreadyProcessed(
+                    mint,
+                    storedChain,
+                    alertTime,
+                    preWindowMinutes,
+                    postWindowMinutes
+                  );
+
+                  if (alreadyProcessed) {
+                    logger.debug('Token already processed, skipping (resume mode)', {
+                      mint: mint.substring(0, 20) + '...',
+                      alertTime: alertTime.toISO(),
+                    });
+                    tokensSkipped++;
+                    return null;
+                  }
+                }
+              } else {
+                // Solana: existing logic
+                const alreadyProcessed = await this._isTokenAlreadyProcessed(
+                  mint,
+                  storedChain,
+                  alertTime,
+                  preWindowMinutes,
+                  postWindowMinutes
+                );
+
+                if (alreadyProcessed) {
+                  logger.debug('Token already processed, skipping (resume mode)', {
+                    mint: mint.substring(0, 20) + '...',
+                    alertTime: alertTime.toISO(),
+                  });
+                  tokensSkipped++;
+                  return null;
+                }
               }
             }
 
@@ -217,12 +286,19 @@ export class OhlcvIngestionService {
             });
 
             // Fetch candles once per token (not per call) - candles are token-specific
-            // The ingestion engine will use optimized strategy if alert is < 3 months old
+            // Use user-specified parameters for interval, candles, and start offset
+            const fetchOptions: OhlcvIngestionOptions = {
+              ...options,
+              interval: interval || '1m',
+              candles: candles || 5000,
+              startOffsetMinutes: startOffsetMinutes ?? -52,
+            };
+
             const result = await this.ingestionEngine.fetchCandles(
               mint,
               (tokenChain as Chain) || chain,
               alertTime,
-              options
+              fetchOptions
             );
 
             // Calculate and store ATH/ATL for calls using the fetched candles
@@ -232,13 +308,26 @@ export class OhlcvIngestionService {
             if (allCandles.length > 0 && callsForToken.length > 0) {
               await this.calculateAndStoreAthAtl(
                 callsForToken,
-                allCandles,
+                allCandles as Candle[],
                 mint,
                 (tokenChain as Chain) || chain
               );
             }
 
-            tokensSucceeded++;
+            // Only count as succeeded if we actually fetched candles
+            // Early exit optimization may return 0 candles if API has no data
+            const totalCandles = result['1m'].length + result['5m'].length;
+            if (totalCandles > 0) {
+              tokensSucceeded++;
+            } else {
+              // No data available from API - count separately
+              // This is different from an error (which would be counted as failed)
+              tokensNoData++;
+              logger.debug('Token processed but no candles available (early exit)', {
+                mint: mint.substring(0, 20) + '...',
+              });
+            }
+
             return {
               '1m': result['1m'].length,
               '5m': result['5m'].length,
@@ -276,6 +365,7 @@ export class OhlcvIngestionService {
       tokensSucceeded,
       tokensFailed,
       tokensSkipped,
+      tokensNoData,
       candlesFetched1m,
       candlesFetched5m,
       chunksFromCache,
@@ -287,6 +377,8 @@ export class OhlcvIngestionService {
       tokensProcessed: summary.tokensProcessed,
       tokensSucceeded: summary.tokensSucceeded,
       tokensFailed: summary.tokensFailed,
+      tokensSkipped: summary.tokensSkipped,
+      tokensNoData: summary.tokensNoData,
       candlesFetched1m: summary.candlesFetched1m,
       candlesFetched5m: summary.candlesFetched5m,
       chunksFromCache: summary.chunksFromCache,
@@ -300,7 +392,7 @@ export class OhlcvIngestionService {
    * Check if token already has sufficient data (resume mode)
    * Returns true if token has 1m and 5m candles for the required time range
    * Note: Only checks 1m and 5m (core intervals) since storage engine doesn't support 1s/15s queries
-   * 
+   *
    * For alerts older than 3 days: requires minimum 5000 candles (one full API call worth)
    * For recent alerts: requires sufficient data in the time range
    */
@@ -321,22 +413,14 @@ export class OhlcvIngestionService {
       // Don't cap to now - check the actual time range around the alert
 
       // Check for 1m candles (required for all tokens)
-      const has1m = await this.storageEngine.getCandles(
-        mint,
-        chain,
-        startTime,
-        endTime,
-        { interval: '1m' }
-      );
-      
+      const has1m = await this.storageEngine.getCandles(mint, chain, startTime, endTime, {
+        interval: '1m',
+      });
+
       // Check for 5m candles (required for all tokens)
-      const has5m = await this.storageEngine.getCandles(
-        mint,
-        chain,
-        startTime,
-        endTime,
-        { interval: '5m' }
-      );
+      const has5m = await this.storageEngine.getCandles(mint, chain, startTime, endTime, {
+        interval: '5m',
+      });
 
       // For alerts older than 3 days: require minimum 5000 candles (one full API call)
       // For recent alerts: require sufficient data
@@ -378,14 +462,7 @@ export class OhlcvIngestionService {
       mcapUsd: number | null;
       botTsMs: number | null;
     }>,
-    candles: Array<{
-      timestamp: number;
-      high: number;
-      low: number;
-      open: number;
-      close: number;
-      volume: number;
-    }>,
+    candles: Candle[],
     tokenAddress: string,
     chain: string
   ): Promise<void> {
@@ -524,7 +601,7 @@ export class OhlcvIngestionService {
         const athResult = calculateAthFromCandleObjects(
           alertData.entryPrice,
           entryTimestamp,
-          candles as Array<{ timestamp: number; high: number; low: number }>
+          candles
         );
 
         // Calculate ATH timestamp (entry timestamp + time to ATH)
@@ -546,8 +623,6 @@ export class OhlcvIngestionService {
               ? Math.floor(athResult.timeToAthMinutes * 60)
               : undefined,
           maxROI: athResult.athMultiple > 1 ? (athResult.athMultiple - 1) * 100 : undefined,
-          // Also update initial price/mcap if available from DuckDB call
-          initialPrice: alertData.entryPrice,
         });
 
         logger.debug('[OhlcvIngestionService] Updated alert with ATH/ATL', {

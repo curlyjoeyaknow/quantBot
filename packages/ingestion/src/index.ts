@@ -27,7 +27,7 @@ export {
 export { extractSolanaAddresses } from './extractSolanaAddresses';
 
 // Address validation and extraction
-export { isEvmAddress, isSolanaAddress, isBase58, extractAddresses } from './addressValidation.js';
+export { isEvmAddress, isSolanaAddress, isBase58, extractAddresses } from './addressValidation';
 
 // Multi-chain metadata fetching
 export {
@@ -35,10 +35,10 @@ export {
   batchFetchMultiChainMetadata,
   type TokenMetadata,
   type MultiChainMetadataResult,
-} from './MultiChainMetadataService.js';
+} from './MultiChainMetadataService';
 
 // Multi-chain metadata cache
-export { MultiChainMetadataCache, getMetadataCache } from './MultiChainMetadataCache.js';
+export { MultiChainMetadataCache, getMetadataCache } from './MultiChainMetadataCache';
 export {
   TelegramAlertIngestionService,
   type IngestExportParams,
