@@ -215,16 +215,16 @@ export class CallerDatabase {
       const rows = await all(query, params);
 
       return rows.map((row) => ({
-        id: row.id,
-        callerName: row.caller_name,
-        tokenAddress: row.token_address,
-        tokenSymbol: row.token_symbol,
-        chain: row.chain,
-        alertTimestamp: new Date(row.alert_timestamp),
-        alertMessage: row.alert_message,
-        priceAtAlert: row.price_at_alert,
-        volumeAtAlert: row.volume_at_alert,
-        createdAt: new Date(row.created_at),
+        id: typeof row.id === 'number' ? row.id : undefined,
+        callerName: String(row.caller_name ?? ''),
+        tokenAddress: String(row.token_address ?? ''),
+        tokenSymbol: String(row.token_symbol ?? ''),
+        chain: String(row.chain ?? ''),
+        alertTimestamp: new Date(String(row.alert_timestamp ?? '')),
+        alertMessage: String(row.alert_message ?? ''),
+        priceAtAlert: typeof row.price_at_alert === 'number' ? row.price_at_alert : undefined,
+        volumeAtAlert: typeof row.volume_at_alert === 'number' ? row.volume_at_alert : undefined,
+        createdAt: new Date(String(row.created_at ?? '')),
       }));
     } catch (error) {
       logger.error('Failed to get caller alerts', error as Error, { callerName });
@@ -258,16 +258,16 @@ export class CallerDatabase {
       );
 
       return rows.map((row) => ({
-        id: row.id,
-        callerName: row.caller_name,
-        tokenAddress: row.token_address,
-        tokenSymbol: row.token_symbol,
-        chain: row.chain,
-        alertTimestamp: new Date(row.alert_timestamp),
-        alertMessage: row.alert_message,
-        priceAtAlert: row.price_at_alert,
-        volumeAtAlert: row.volume_at_alert,
-        createdAt: new Date(row.created_at),
+        id: typeof row.id === 'number' ? row.id : undefined,
+        callerName: String(row.caller_name ?? ''),
+        tokenAddress: String(row.token_address ?? ''),
+        tokenSymbol: String(row.token_symbol ?? ''),
+        chain: String(row.chain ?? ''),
+        alertTimestamp: new Date(String(row.alert_timestamp ?? '')),
+        alertMessage: String(row.alert_message ?? ''),
+        priceAtAlert: typeof row.price_at_alert === 'number' ? row.price_at_alert : undefined,
+        volumeAtAlert: typeof row.volume_at_alert === 'number' ? row.volume_at_alert : undefined,
+        createdAt: new Date(String(row.created_at ?? '')),
       }));
     } catch (error) {
       logger.error('Failed to get caller alerts in range', error as Error, {
@@ -326,13 +326,19 @@ export class CallerDatabase {
       if (rows.length === 0) return null;
 
       const row = rows[0];
+      const avgAlertsPerDay =
+        typeof row.avg_alerts_per_day === 'number'
+          ? row.avg_alerts_per_day
+          : typeof row.avg_alerts_per_day === 'string'
+            ? parseFloat(row.avg_alerts_per_day)
+            : 0;
       return {
-        callerName: row.caller_name,
-        totalAlerts: row.total_alerts,
-        uniqueTokens: row.unique_tokens,
-        firstAlert: new Date(row.first_alert),
-        lastAlert: new Date(row.last_alert),
-        avgAlertsPerDay: parseFloat(row.avg_alerts_per_day.toFixed(2)),
+        callerName: String(row.caller_name ?? ''),
+        totalAlerts: typeof row.total_alerts === 'number' ? row.total_alerts : 0,
+        uniqueTokens: typeof row.unique_tokens === 'number' ? row.unique_tokens : 0,
+        firstAlert: new Date(String(row.first_alert ?? '')),
+        lastAlert: new Date(String(row.last_alert ?? '')),
+        avgAlertsPerDay: parseFloat(avgAlertsPerDay.toFixed(2)),
       };
     } catch (error) {
       logger.error('Failed to get caller stats', error as Error, { callerName });
@@ -363,14 +369,22 @@ export class CallerDatabase {
         ORDER BY total_alerts DESC
       `);
 
-      return rows.map((row) => ({
-        callerName: row.caller_name,
-        totalAlerts: row.total_alerts,
-        uniqueTokens: row.unique_tokens,
-        firstAlert: new Date(row.first_alert),
-        lastAlert: new Date(row.last_alert),
-        avgAlertsPerDay: parseFloat(row.avg_alerts_per_day.toFixed(2)),
-      }));
+      return rows.map((row) => {
+        const avgAlertsPerDay =
+          typeof row.avg_alerts_per_day === 'number'
+            ? row.avg_alerts_per_day
+            : typeof row.avg_alerts_per_day === 'string'
+              ? parseFloat(row.avg_alerts_per_day)
+              : 0;
+        return {
+          callerName: String(row.caller_name ?? ''),
+          totalAlerts: typeof row.total_alerts === 'number' ? row.total_alerts : 0,
+          uniqueTokens: typeof row.unique_tokens === 'number' ? row.unique_tokens : 0,
+          firstAlert: new Date(String(row.first_alert ?? '')),
+          lastAlert: new Date(String(row.last_alert ?? '')),
+          avgAlertsPerDay: parseFloat(avgAlertsPerDay.toFixed(2)),
+        };
+      });
     } catch (error) {
       logger.error('Failed to get all caller stats', error as Error);
       throw error;
@@ -407,10 +421,10 @@ export class CallerDatabase {
       );
 
       return rows.map((row) => ({
-        tokenAddress: row.token_address,
-        tokenSymbol: row.token_symbol,
-        chain: row.chain,
-        alertCount: row.alert_count,
+        tokenAddress: String(row.token_address ?? ''),
+        tokenSymbol: String(row.token_symbol ?? ''),
+        chain: String(row.chain ?? ''),
+        alertCount: typeof row.alert_count === 'number' ? row.alert_count : 0,
       }));
     } catch (error) {
       logger.error('Failed to get caller tokens', error as Error, { callerName });
@@ -485,12 +499,12 @@ export class CallerDatabase {
 
       const row = rows[0];
       return {
-        totalAlerts: row.total_alerts,
-        totalCallers: row.total_callers,
-        totalTokens: row.total_tokens,
+        totalAlerts: typeof row.total_alerts === 'number' ? row.total_alerts : 0,
+        totalCallers: typeof row.total_callers === 'number' ? row.total_callers : 0,
+        totalTokens: typeof row.total_tokens === 'number' ? row.total_tokens : 0,
         dateRange: {
-          start: new Date(row.earliest_alert),
-          end: new Date(row.latest_alert),
+          start: new Date(String(row.earliest_alert ?? '')),
+          end: new Date(String(row.latest_alert ?? '')),
         },
       };
     } catch (error) {

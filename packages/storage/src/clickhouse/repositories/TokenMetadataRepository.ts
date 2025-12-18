@@ -68,7 +68,7 @@ export class TokenMetadataRepository {
     const ch = getClickHouseClient();
     const CLICKHOUSE_DATABASE = process.env.CLICKHOUSE_DATABASE || 'quantbot';
 
-    const metadataObj = metadata as Record<string, unknown>;
+    const metadataObj = metadata as unknown as Record<string, unknown>;
     const socials = (metadataObj.socials as Record<string, unknown>) || {};
     const metadataExtras: Record<string, unknown> = {
       ...metadataObj,

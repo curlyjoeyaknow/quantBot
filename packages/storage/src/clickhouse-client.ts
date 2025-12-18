@@ -451,9 +451,9 @@ export async function queryCandles(
       const errorMessage = error instanceof Error ? error.message : String(error);
       const isSocketError =
         errorMessage.includes('socket hang up') ||
-        error.message?.includes('ECONNRESET') ||
-        error.message?.includes('ETIMEDOUT') ||
-        error.message?.includes('timeout');
+        errorMessage.includes('ECONNRESET') ||
+        errorMessage.includes('ETIMEDOUT') ||
+        errorMessage.includes('timeout');
 
       // Retry on socket/timeout errors, but not on other errors (like syntax errors)
       if (isSocketError && attempt < maxRetries - 1) {
