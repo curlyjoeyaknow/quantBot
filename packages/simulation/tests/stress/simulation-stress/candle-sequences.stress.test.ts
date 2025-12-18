@@ -17,12 +17,12 @@ import {
   TINY_SEQUENCES,
   AMBIGUITY_SEQUENCES,
   type CandleSequence,
-} from '../fixtures/nasty-candles.js';
+} from '../fixtures/nasty-candles';
 import {
   validateCandleSequence,
   sortCandlesByTimestamp,
-} from '../../../src/validation/candleValidation.js';
-import { simulateStrategy } from '../../../src/core/simulator.js';
+} from '../../../src/validation/candleValidation';
+import { simulateStrategy } from '../../../src/core/simulator';
 import type { StrategyLeg } from '../../../src/types';
 
 /**
