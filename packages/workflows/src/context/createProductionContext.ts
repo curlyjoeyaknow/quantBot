@@ -11,6 +11,7 @@ import {
   TokenDataRepository,
 } from '@quantbot/storage';
 import { simulateStrategy } from '@quantbot/simulation';
+import type { StopLossConfig, SignalGroup } from '@quantbot/simulation';
 import { fetchHybridCandles } from '@quantbot/ohlcv';
 import type {
   WorkflowContext,
@@ -26,9 +27,10 @@ export interface ProductionContextConfig {
    * Optional logger override (defaults to @quantbot/utils logger)
    */
   logger?: {
-    info: (...args: Array<unknown>) => void;
-    warn: (...args: Array<unknown>) => void;
-    error: (...args: Array<unknown>) => void;
+    info: (...args: unknown[]) => void;
+    warn: (...args: unknown[]) => void;
+    error: (...args: unknown[]) => void;
+    debug?: (...args: unknown[]) => void;
   };
 
   /**
@@ -63,7 +65,12 @@ export function createProductionContext(config?: ProductionContextConfig): Workf
   const tokensRepo = new TokensRepository();
   const callersRepo = new CallersRepository();
 
-  const logger = config?.logger ?? utilsLogger;
+  const logger = config?.logger ?? {
+    info: (...args: unknown[]) => utilsLogger.info(String(args[0] || ''), args[1] as any),
+    warn: (...args: unknown[]) => utilsLogger.warn(String(args[0] || ''), args[1] as any),
+    error: (...args: unknown[]) => utilsLogger.error(String(args[0] || ''), args[1] as any),
+    debug: (...args: unknown[]) => utilsLogger.debug(String(args[0] || ''), args[1] as any),
+  };
   const clock = config?.clock ?? { nowISO: () => DateTime.utc().toISO()! };
   const ids = config?.ids ?? { newRunId: () => `run_${uuidv4()}` };
 
@@ -213,7 +220,7 @@ export function createProductionContext(config?: ProductionContextConfig): Workf
             : Array.isArray(config.strategy)
               ? config.strategy
               : []
-        ) as Array<unknown>;
+        ) as Array<{ target: number; percent: number }>;
 
         if (!Array.isArray(strategyLegs) || strategyLegs.length === 0) {
           throw new ValidationError('Invalid strategy config: missing legs array', {
@@ -222,25 +229,25 @@ export function createProductionContext(config?: ProductionContextConfig): Workf
           });
         }
 
-        // Run simulation
+        // Run simulation - cast config types to match simulation engine expectations
+        // Config comes from database as unknown, so we cast to expected types
         const result = await simulateStrategy(
           q.candles,
           strategyLegs,
-          config.stopLoss,
-          config.entry,
-          config.reEntry,
-          config.costs,
+          config.stopLoss as any,
+          config.entry as any,
+          config.reEntry as any,
+          config.costs as any,
           {
-            entrySignal: config.entrySignal,
-            exitSignal: config.exitSignal,
+            entrySignal: config.entrySignal as any,
+            exitSignal: config.exitSignal as any,
           }
         );
 
         return {
           pnlMultiplier: result.finalPnl,
-          trades: result.events.filter((e) => {
-            const event = e as { type?: string };
-            return event.type === 'entry' || event.type === 'exit';
+          trades: result.events.filter((e: { type?: string }) => {
+            return e.type === 'entry' || e.type === 'exit';
           }).length,
         };
       },

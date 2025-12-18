@@ -14,7 +14,11 @@
     "types": ["node"],
     "strict": true,
     "noUncheckedIndexedAccess": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "paths": {
+      "@quantbot/simulation": ["../simulation/dist/index.d.ts"],
+      "@quantbot/ingestion": ["../ingestion/dist/index.d.ts"]
+    }
   },
   "include": ["src/**/*.ts"],
   "exclude": ["dist", "node_modules", "tests"]
