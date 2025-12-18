@@ -32,9 +32,29 @@ export async function runSimulationDuckdbHandler(
 
   if (args.batch) {
     config.batch = true;
-    // In batch mode, we'd need to fetch mints and timestamps from DB
-    // For now, this is a placeholder
-    // TODO: Implement batch mode with DB fetching
+
+    // Query DuckDB for calls to simulate
+    const duckdbService = ctx.services.duckdbStorage();
+    const callsResult = await duckdbService.queryCalls(args.duckdb, 1000); // Default limit: 1000 calls
+
+    if (!callsResult.success || !callsResult.calls || callsResult.calls.length === 0) {
+      throw new ValidationError(
+        callsResult.error || 'No calls found in DuckDB for batch simulation',
+        {
+          operation: 'run_simulation_duckdb',
+          mode: 'batch',
+          duckdbPath: args.duckdb,
+        }
+      );
+    }
+
+    // Extract mints and alert timestamps
+    config.mints = callsResult.calls.map(
+      (call: { mint: string; alert_timestamp: string }) => call.mint
+    );
+    config.alert_timestamps = callsResult.calls.map(
+      (call: { mint: string; alert_timestamp: string }) => call.alert_timestamp
+    );
   } else {
     if (!args.mint) {
       throw new ValidationError('mint is required for single simulation', {

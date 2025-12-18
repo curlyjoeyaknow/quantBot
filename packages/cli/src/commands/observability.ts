@@ -80,9 +80,10 @@ const observabilityModule: PackageCommandModule = {
       name: 'health',
       description: 'Check system health (databases, APIs)',
       schema: healthSchema,
-      handler: async (args: unknown, ctx: CommandContext) => {
+      handler: async (args: unknown, ctx: unknown) => {
+        const typedCtx = ctx as CommandContext;
         const typedArgs = args as z.infer<typeof healthSchema>;
-        return await healthObservabilityHandler(typedArgs, ctx);
+        return await healthObservabilityHandler(typedArgs, typedCtx);
       },
       examples: ['quantbot observability health', 'quantbot observability health --format json'],
     },
@@ -90,9 +91,10 @@ const observabilityModule: PackageCommandModule = {
       name: 'quotas',
       description: 'Check API quota usage',
       schema: quotasSchema,
-      handler: async (args: unknown, ctx: CommandContext) => {
+      handler: async (args: unknown, ctx: unknown) => {
+        const typedCtx = ctx as CommandContext;
         const typedArgs = args as z.infer<typeof quotasSchema>;
-        return await quotasObservabilityHandler(typedArgs, ctx);
+        return await quotasObservabilityHandler(typedArgs, typedCtx);
       },
       examples: [
         'quantbot observability quotas',
@@ -103,9 +105,10 @@ const observabilityModule: PackageCommandModule = {
       name: 'errors',
       description: 'View error statistics',
       schema: errorsSchema,
-      handler: async (args: unknown, ctx: CommandContext) => {
+      handler: async (args: unknown, ctx: unknown) => {
+        const typedCtx = ctx as CommandContext;
         const typedArgs = args as z.infer<typeof errorsSchema>;
-        return await errorsObservabilityHandler(typedArgs, ctx);
+        return await errorsObservabilityHandler(typedArgs, typedCtx);
       },
       examples: [
         'quantbot observability errors',

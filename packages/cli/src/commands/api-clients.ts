@@ -74,9 +74,10 @@ const apiClientsModule: PackageCommandModule = {
       name: 'test',
       description: 'Test API connection',
       schema: testSchema,
-      handler: async (args: unknown, ctx: CommandContext) => {
+      handler: async (args: unknown, ctx: unknown) => {
+        const typedCtx = ctx as CommandContext;
         const typedArgs = args as z.infer<typeof testSchema>;
-        return await testApiClientsHandler(typedArgs, ctx);
+        return await testApiClientsHandler(typedArgs, typedCtx);
       },
       examples: [
         'quantbot api-clients test --service birdeye',
@@ -87,9 +88,10 @@ const apiClientsModule: PackageCommandModule = {
       name: 'status',
       description: 'Check API status',
       schema: statusSchema,
-      handler: async (args: unknown, ctx: CommandContext) => {
+      handler: async (args: unknown, ctx: unknown) => {
+        const typedCtx = ctx as CommandContext;
         const typedArgs = args as z.infer<typeof statusSchema>;
-        return await statusApiClientsHandler(typedArgs, ctx);
+        return await statusApiClientsHandler(typedArgs, typedCtx);
       },
       examples: ['quantbot api-clients status'],
     },
@@ -97,9 +99,10 @@ const apiClientsModule: PackageCommandModule = {
       name: 'credits',
       description: 'Check API credits/quota',
       schema: creditsSchema,
-      handler: async (args: unknown, ctx: CommandContext) => {
+      handler: async (args: unknown, ctx: unknown) => {
+        const typedCtx = ctx as CommandContext;
         const typedArgs = args as z.infer<typeof creditsSchema>;
-        return await creditsApiClientsHandler(typedArgs, ctx);
+        return await creditsApiClientsHandler(typedArgs, typedCtx);
       },
       examples: ['quantbot api-clients credits --service birdeye'],
     },

@@ -35,7 +35,9 @@ export async function initializeStorage(): Promise<InitializationStatus> {
         logger.info('ClickHouse initialized');
       }
     } catch (error) {
-      logger.warn('ClickHouse initialization failed', error as Error);
+      logger.warn('ClickHouse initialization failed', {
+        error: error instanceof Error ? error.message : String(error),
+      });
       // Continue - ClickHouse is optional
     }
 
@@ -49,7 +51,9 @@ export async function initializeStorage(): Promise<InitializationStatus> {
         logger.info('PostgreSQL initialized');
       }
     } catch (error) {
-      logger.warn('PostgreSQL initialization failed', error as Error);
+      logger.warn('PostgreSQL initialization failed', {
+        error: error instanceof Error ? error.message : String(error),
+      });
       // Continue - may be optional for some commands
     }
 

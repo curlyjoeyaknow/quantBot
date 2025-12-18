@@ -1,13 +1,10 @@
+import { DateTime } from 'luxon';
 import type { CommandContext } from '../../core/command-context.js';
 import type { ListRunsArgs } from '../../command-defs/simulation.js';
-import { SimulationRunsRepository, CallersRepository } from '@quantbot/storage';
 
-export async function listRunsHandler(
-  args: ListRunsArgs,
-  _ctx: CommandContext
-): Promise<unknown[]> {
-  const runsRepo = new SimulationRunsRepository();
-  const callersRepo = new CallersRepository();
+export async function listRunsHandler(args: ListRunsArgs, ctx: CommandContext): Promise<unknown[]> {
+  const runsRepo = ctx.services.simulationRunsRepository();
+  const callersRepo = ctx.services.callersRepository();
 
   // Build filters
   const filters: {

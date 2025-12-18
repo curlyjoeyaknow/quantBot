@@ -158,9 +158,10 @@ const ohlcvModule: PackageCommandModule = {
       name: 'query',
       description: 'Query OHLCV candles for a token',
       schema: querySchema,
-      handler: async (args: unknown, ctx: CommandContext) => {
+      handler: async (args: unknown, ctx: unknown) => {
+        const typedCtx = ctx as CommandContext;
         const typedArgs = args as z.infer<typeof querySchema>;
-        return await queryOhlcvHandler(typedArgs, ctx);
+        return await queryOhlcvHandler(typedArgs, typedCtx);
       },
       examples: [
         'quantbot ohlcv query --mint So111... --from 2024-01-01 --to 2024-01-02',
@@ -171,9 +172,10 @@ const ohlcvModule: PackageCommandModule = {
       name: 'backfill',
       description: 'Backfill OHLCV data for a token',
       schema: backfillSchema,
-      handler: async (args: unknown, ctx: CommandContext) => {
+      handler: async (args: unknown, ctx: unknown) => {
+        const typedCtx = ctx as CommandContext;
         const typedArgs = args as z.infer<typeof backfillSchema>;
-        return await backfillOhlcvHandler(typedArgs, ctx);
+        return await backfillOhlcvHandler(typedArgs, typedCtx);
       },
       examples: ['quantbot ohlcv backfill --mint So111... --from 2024-01-01 --to 2024-01-02'],
     },
@@ -181,9 +183,10 @@ const ohlcvModule: PackageCommandModule = {
       name: 'coverage',
       description: 'Check data coverage for tokens',
       schema: coverageSchema,
-      handler: async (args: unknown, ctx: CommandContext) => {
+      handler: async (args: unknown, ctx: unknown) => {
+        const typedCtx = ctx as CommandContext;
         const typedArgs = args as z.infer<typeof coverageSchema>;
-        return await coverageOhlcvHandler(typedArgs, ctx);
+        return await coverageOhlcvHandler(typedArgs, typedCtx);
       },
       examples: ['quantbot ohlcv coverage --mint So111...'],
     },
