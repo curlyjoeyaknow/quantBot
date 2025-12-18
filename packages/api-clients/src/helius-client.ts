@@ -85,12 +85,15 @@ export class HeliusRestClient extends BaseApiClient {
         endpoint: '/v0/addresses/:address/transactions',
         transactionCount: data.length,
       }).catch((error: unknown) => {
-        logger.warn('Failed to record API usage', error as Error);
+        logger.warn('Failed to record API usage', {
+          error: error instanceof Error ? error.message : String(error),
+        });
       });
 
       return data;
-    } catch (error) {
-      logger.error('Helius REST call failed', error as Error, {
+    } catch (error: unknown) {
+      logger.error('Helius REST call failed', {
+        error: error instanceof Error ? error.message : String(error),
         address: address.substring(0, 20),
       });
       throw error;
@@ -118,12 +121,17 @@ export class HeliusRestClient extends BaseApiClient {
         signatureCount: signatures.length,
         transactionCount: data.length,
       }).catch((error: unknown) => {
-        logger.warn('Failed to record API usage', error as Error);
+        logger.warn('Failed to record API usage', {
+          error: error instanceof Error ? error.message : String(error),
+        });
       });
 
       return data;
-    } catch (error) {
-      logger.error('Helius transaction fetch failed', error as Error, { count: signatures.length });
+    } catch (error: unknown) {
+      logger.error('Helius transaction fetch failed', {
+        error: error instanceof Error ? error.message : String(error),
+        count: signatures.length,
+      });
       throw error;
     }
   }

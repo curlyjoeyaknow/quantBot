@@ -384,7 +384,7 @@ export class BirdeyeClient extends BaseApiClient {
 
       if (response.status === 200 && response.data) {
         // v3/ohlcv returns { data: { items: [...] } } or { success: true, data: { items: [...] } }
-        const responseData = response.data as Record<string, unknown>;
+        const responseData = response.data as unknown as Record<string, unknown>;
 
         // Check if response indicates failure
         if (responseData.success === false) {
@@ -393,7 +393,8 @@ export class BirdeyeClient extends BaseApiClient {
         }
 
         // v3/ohlcv format: { data: { items: [...] } }
-        const items = responseData.data?.items;
+        const dataObj = responseData.data as Record<string, unknown> | undefined;
+        const items = dataObj?.items;
 
         if (!items) {
           // No items field - might be different response structure
@@ -431,7 +432,9 @@ export class BirdeyeClient extends BaseApiClient {
             candleCount,
             chain: detectedChain,
           }).catch((error: unknown) => {
-            logger.warn('Failed to record API usage', error as Error);
+            logger.warn('Failed to record API usage', {
+              error: error instanceof Error ? error.message : String(error),
+            });
           });
 
           logger.debug('Successfully fetched OHLCV records from API', {
@@ -460,17 +463,20 @@ export class BirdeyeClient extends BaseApiClient {
         hasData: !!response.data,
         dataKeys: response.data ? Object.keys(response.data) : [],
         tokenAddress: tokenAddress, // Full address for debugging
-        tokenAddressDisplay: tokenAddress.length > 40 
-          ? `${tokenAddress.substring(0, 8)}...${tokenAddress.substring(tokenAddress.length - 8)}` 
-          : tokenAddress,
+        tokenAddressDisplay:
+          tokenAddress.length > 40
+            ? `${tokenAddress.substring(0, 8)}...${tokenAddress.substring(tokenAddress.length - 8)}`
+            : tokenAddress,
       });
       return null;
     } catch (error: unknown) {
-      logger.error('Failed to fetch OHLCV data', error as Error, {
+      logger.error('Failed to fetch OHLCV data', {
+        error: error instanceof Error ? error.message : String(error),
         tokenAddress: tokenAddress, // Full address for debugging
-        tokenAddressDisplay: tokenAddress.length > 40 
-          ? `${tokenAddress.substring(0, 8)}...${tokenAddress.substring(tokenAddress.length - 8)}` 
-          : tokenAddress,
+        tokenAddressDisplay:
+          tokenAddress.length > 40
+            ? `${tokenAddress.substring(0, 8)}...${tokenAddress.substring(tokenAddress.length - 8)}`
+            : tokenAddress,
       });
       return null;
     }
@@ -646,7 +652,9 @@ export class BirdeyeClient extends BaseApiClient {
           endpoint: '/defi/historical_price_unix',
           chain,
         }).catch((error: unknown) => {
-          logger.warn('Failed to record API usage', error as Error);
+          logger.warn('Failed to record API usage', {
+            error: error instanceof Error ? error.message : String(error),
+          });
         });
 
         const data = response.data.data;
@@ -734,7 +742,9 @@ export class BirdeyeClient extends BaseApiClient {
           chain,
           itemCount: response.data.data.items.length,
         }).catch((error: unknown) => {
-          logger.warn('Failed to record API usage', error as Error);
+          logger.warn('Failed to record API usage', {
+            error: error instanceof Error ? error.message : String(error),
+          });
         });
 
         // Map items to include price field (value is the price)
@@ -810,7 +820,8 @@ export class BirdeyeClient extends BaseApiClient {
 
       return null;
     } catch (error: unknown) {
-      logger.error('Failed to fetch token metadata', error as Error, {
+      logger.error('Failed to fetch token metadata', {
+        error: error instanceof Error ? error.message : String(error),
         tokenAddress: tokenAddress.substring(0, 20),
       });
       return null;
@@ -843,6 +854,6 @@ export function resetBirdeyeClient(): void {
 export const birdeyeClient = new Proxy({} as BirdeyeClient, {
   get(_target, prop) {
     const client = getBirdeyeClient();
-    return (client as Record<string, unknown>)[prop as string];
+    return (client as unknown as Record<string, unknown>)[prop as string];
   },
 });

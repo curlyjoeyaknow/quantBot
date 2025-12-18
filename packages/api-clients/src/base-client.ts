@@ -98,10 +98,10 @@ class RateLimiter {
    * Extract retry-after from response headers
    */
   getRetryAfter(headers: Record<string, string | string[] | undefined>): number | undefined {
-    if (this.retryAfterHeader && headers[this.retryAfterHeader]) {
-      const headerValue = Array.isArray(headers[this.retryAfterHeader])
-        ? headers[this.retryAfterHeader][0]
-        : headers[this.retryAfterHeader];
+    if (this.retryAfterHeader) {
+      const header = headers[this.retryAfterHeader];
+      if (!header) return undefined;
+      const headerValue = Array.isArray(header) ? header[0] : header;
       if (typeof headerValue !== 'string') return undefined;
       const retryAfter = parseInt(headerValue, 10);
       return isNaN(retryAfter) ? undefined : retryAfter * 1000; // Convert to milliseconds
@@ -164,8 +164,12 @@ export class BaseApiClient {
         }
         return config;
       },
-      (error) => {
-        logger.error('Request interceptor error', error as Error, { apiName: this.apiName });
+      (error: unknown) => {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        logger.error('Request interceptor error', {
+          error: errorMessage,
+          apiName: this.apiName,
+        });
         return Promise.reject(error);
       }
     );
