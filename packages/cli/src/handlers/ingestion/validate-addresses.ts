@@ -71,4 +71,3 @@ export async function validateAddressesHandler(args: ValidateAddressesArgs, _ctx
     },
   };
 }
-

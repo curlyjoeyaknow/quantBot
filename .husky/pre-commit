@@ -1,0 +1,23 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "🔍 Running lightweight pre-commit checks..."
+
+# 1. Auto-fix formatting (fast)
+echo "📝 Auto-fixing formatting..."
+npm run format
+
+# 2. Auto-fix linting (fast)
+echo "🔍 Auto-fixing linting..."
+npm run lint:fix
+
+# 3. Type check (fast)
+echo "🔍 Type checking..."
+npm run typecheck || {
+  echo "❌ Type check failed"
+  exit 1
+}
+
+echo "✅ Pre-commit checks passed!"
+echo "💡 Note: Test requirements and full tests run in CI"
+
