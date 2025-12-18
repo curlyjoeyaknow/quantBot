@@ -1,5 +1,5 @@
 ---
-description: Git hooks rules - pre-commit and pre-push enforcement of testing requirements
+description: Git hooks rules - lightweight pre-commit and pre-push checks
 globs:
   - ".husky/**/*"
   - "scripts/git/**/*"
@@ -24,12 +24,11 @@ Automatically runs on `git commit`:
 
 ## Pre-Push Hook (`.husky/pre-push`)
 
-Automatically runs on `git push`:
+**Lightweight checks only** - runs on `git push`:
 
-1. **Full Test Suite**: `npm test`
-2. **Coverage Check**: `npm run test:coverage`
-3. **Security Audit**: `npm audit --audit-level=moderate`
-4. **Build Verification**: `npm run build`
+1. **Type Check**: `npm run typecheck` (fast, catches type errors before push)
+
+**Note**: Full test suite, coverage, security audit, and build verification run in CI, not pre-push.
 
 ## Test Requirements by Change Type
 
@@ -67,3 +66,10 @@ git push --no-verify
 ```
 
 **Warning**: Only bypass for emergency hotfixes. Always add tests afterward.
+
+## Rationale
+
+- **Pre-commit**: Catches formatting, linting, and type errors early
+- **Pre-push**: Lightweight type check only - prevents pushing broken types
+- **CI**: Full test suite, coverage, security audit, and build verification
+- This approach balances developer velocity with code quality
