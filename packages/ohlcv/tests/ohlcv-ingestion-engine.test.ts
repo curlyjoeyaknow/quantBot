@@ -17,17 +17,18 @@ const mockStorageEngine = {
   getCandles: vi.fn(),
 };
 
-// Create mock birdeyeClient - must be defined before the mock
-const mockBirdeyeClient = {
-  fetchOHLCVData: vi.fn(),
-  getTokenMetadata: vi.fn(),
-  fetchHistoricalPriceAtUnixTime: vi.fn(),
-};
-
-vi.mock('@quantbot/api-clients', () => ({
-  birdeyeClient: mockBirdeyeClient,
-  getBirdeyeClient: () => mockBirdeyeClient,
-}));
+// Create mock birdeyeClient using factory function to avoid hoisting issues
+vi.mock('@quantbot/api-clients', () => {
+  const mockBirdeyeClient = {
+    fetchOHLCVData: vi.fn(),
+    getTokenMetadata: vi.fn(),
+    fetchHistoricalPriceAtUnixTime: vi.fn(),
+  };
+  return {
+    birdeyeClient: mockBirdeyeClient,
+    getBirdeyeClient: () => mockBirdeyeClient,
+  };
+});
 
 vi.mock('@quantbot/storage', () => ({
   getStorageEngine: vi.fn(() => mockStorageEngine),
@@ -62,24 +63,27 @@ vi.mock('@quantbot/utils', () => ({
 
 describe('OhlcvIngestionEngine', () => {
   let engine: OhlcvIngestionEngine;
+  let mockGetOrCreateToken: ReturnType<typeof vi.fn>;
   const TEST_MINT = '7pXs123456789012345678901234567890pump'; // Full address, case-preserved
   const TEST_CHAIN = 'solana' as const;
-  const TEST_ALERT_TIME = DateTime.fromISO('2024-01-15T10:30:00Z');
+  // Use a recent date (< 90 days old) to trigger optimized strategy
+  const TEST_ALERT_TIME = DateTime.utc().minus({ days: 30 });
 
   beforeEach(() => {
     engine = new OhlcvIngestionEngine();
     vi.clearAllMocks();
     vi.mocked(initClickHouse).mockResolvedValue(undefined);
 
-    // Mock TokensRepository
+    // Mock TokensRepository - create spy that can be accessed
+    mockGetOrCreateToken = vi.fn().mockResolvedValue({
+      id: 1,
+      chain: TEST_CHAIN,
+      address: TEST_MINT,
+      symbol: 'TEST',
+      name: 'Test Token',
+    });
     const mockTokensRepo = {
-      getOrCreateToken: vi.fn().mockResolvedValue({
-        id: 1,
-        chain: TEST_CHAIN,
-        address: TEST_MINT,
-        symbol: 'TEST',
-        name: 'Test Token',
-      }),
+      getOrCreateToken: mockGetOrCreateToken,
     };
     vi.mocked(TokensRepository).mockImplementation(function () {
       return mockTokensRepo as any;
@@ -143,8 +147,7 @@ describe('OhlcvIngestionEngine', () => {
 
       expect(birdeyeClient.getTokenMetadata).toHaveBeenCalledWith(TEST_MINT, TEST_CHAIN);
       // TokensRepository instance method should be called
-      const tokensRepoInstance = (engine as any).tokensRepo;
-      expect(tokensRepoInstance.getOrCreateToken).toHaveBeenCalledWith(
+      expect(mockGetOrCreateToken).toHaveBeenCalledWith(
         TEST_CHAIN,
         TEST_MINT,
         expect.objectContaining({ name: mockMetadata.name, symbol: mockMetadata.symbol })
