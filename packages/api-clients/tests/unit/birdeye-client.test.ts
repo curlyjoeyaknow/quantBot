@@ -16,8 +16,8 @@ import {
   BirdeyeClient,
   type BirdeyeOHLCVResponse,
   type APIKeyUsage,
-} from '../../src/birdeye-client.js';
-import type { AxiosFactory } from '../../src/birdeye-client.js';
+} from '../../src/birdeye-client';
+import type { AxiosFactory } from '../../src/birdeye-client';
 
 // Mock utils
 vi.mock('@quantbot/utils', () => ({
