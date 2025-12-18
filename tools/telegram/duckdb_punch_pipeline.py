@@ -1494,6 +1494,17 @@ def main():
     (c_id, bot_mid, bot_ts, bot_from, bot_text, trig_mid, trig_ts, trig_from_id, trig_from_name, trig_text) = r
     card = parse_bot(bot_from, bot_text or "", trig_text)
     
+    # Ensure bot_type is set correctly from bot_from name (override any incorrect bot_type from parser)
+    if card:
+      bot_from_lower = (bot_from or "").lower()
+      if "phanes" in bot_from_lower:
+        card["bot_type"] = "phanes"
+      elif "rick" in bot_from_lower:
+        card["bot_type"] = "rick"
+      elif "prometheus" in bot_from_lower:
+        card["bot_type"] = "prometheus"
+      # else keep existing bot_type from parser
+    
     # Link bot messages even if card parsing fails (like SQLite does)
     # This improves Phanes reply rate significantly
     if not card:
@@ -1533,7 +1544,17 @@ def main():
           ticker = ticker_matches[0].upper()
       
       # Create minimal card for linking
-      bot_type = "rick" if "rick" in (bot_from or "").lower() else ("phanes" if "phanes" in (bot_from or "").lower() else "unknown")
+      # Determine bot_type from bot_from name (more reliable than parsing)
+      bot_from_lower = (bot_from or "").lower()
+      if "phanes" in bot_from_lower:
+        bot_type = "phanes"
+      elif "rick" in bot_from_lower:
+        bot_type = "rick"
+      elif "prometheus" in bot_from_lower:
+        bot_type = "prometheus"
+      else:
+        bot_type = "unknown"
+      
       card = {
         "bot_type": bot_type,
         "mint": mint,

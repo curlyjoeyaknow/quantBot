@@ -48,8 +48,8 @@ export class CallerDatabase {
   private async initDatabase(): Promise<void> {
     const run = promisify(this.db.run.bind(this.db)) as (
       sql: string,
-      params?: any[]
-    ) => Promise<any>;
+      params?: Array<unknown>
+    ) => Promise<{ lastID?: number; changes?: number }>;
 
     try {
       // Create caller_alerts table
@@ -104,8 +104,8 @@ export class CallerDatabase {
   async addCallerAlert(alert: CallerAlert): Promise<number> {
     const run = promisify(this.db.run.bind(this.db)) as (
       sql: string,
-      params?: any[]
-    ) => Promise<any>;
+      params?: Array<unknown>
+    ) => Promise<{ lastID?: number; changes?: number }>;
 
     try {
       const result = await run(
@@ -126,7 +126,7 @@ export class CallerDatabase {
         ]
       );
 
-      return (result as any).lastID;
+      return (result as { lastID?: number }).lastID ?? 0;
     } catch (error) {
       logger.error('Failed to add caller alert', error as Error, {
         callerName: alert.callerName,
@@ -142,8 +142,8 @@ export class CallerDatabase {
   async addCallerAlertsBatch(alerts: CallerAlert[]): Promise<number> {
     const run = promisify(this.db.run.bind(this.db)) as (
       sql: string,
-      params?: any[]
-    ) => Promise<any>;
+      params?: Array<unknown>
+    ) => Promise<{ lastID?: number; changes?: number }>;
 
     try {
       const stmt = this.db.prepare(`
@@ -203,8 +203,8 @@ export class CallerDatabase {
   async getCallerAlerts(callerName: string, limit?: number): Promise<CallerAlert[]> {
     const all = promisify(this.db.all.bind(this.db)) as (
       sql: string,
-      params?: any[]
-    ) => Promise<any[]>;
+      params?: Array<unknown>
+    ) => Promise<Array<Record<string, unknown>>>;
 
     try {
       const query = limit
@@ -212,9 +212,9 @@ export class CallerDatabase {
         : `SELECT * FROM caller_alerts WHERE caller_name = ? ORDER BY alert_timestamp DESC`;
 
       const params = limit ? [callerName, limit] : [callerName];
-      const rows = (await all(query, params)) as any[];
+      const rows = await all(query, params);
 
-      return rows.map((row: any) => ({
+      return rows.map((row) => ({
         id: row.id,
         callerName: row.caller_name,
         tokenAddress: row.token_address,
@@ -242,11 +242,11 @@ export class CallerDatabase {
   ): Promise<CallerAlert[]> {
     const all = promisify(this.db.all.bind(this.db)) as (
       sql: string,
-      params?: any[]
-    ) => Promise<any[]>;
+      params?: Array<unknown>
+    ) => Promise<Array<Record<string, unknown>>>;
 
     try {
-      const rows = (await all(
+      const rows = await all(
         `
         SELECT * FROM caller_alerts 
         WHERE caller_name = ? 
@@ -255,9 +255,9 @@ export class CallerDatabase {
         ORDER BY alert_timestamp ASC
       `,
         [callerName, startTime.toISOString(), endTime.toISOString()]
-      )) as any[];
+      );
 
-      return rows.map((row: any) => ({
+      return rows.map((row) => ({
         id: row.id,
         callerName: row.caller_name,
         tokenAddress: row.token_address,
@@ -285,14 +285,12 @@ export class CallerDatabase {
   async getAllCallers(): Promise<string[]> {
     const all = promisify(this.db.all.bind(this.db)) as (
       sql: string,
-      params?: any[]
-    ) => Promise<any[]>;
+      params?: Array<unknown>
+    ) => Promise<Array<Record<string, unknown>>>;
 
     try {
-      const rows = (await all(
-        `SELECT DISTINCT caller_name FROM caller_alerts ORDER BY caller_name`
-      )) as any[];
-      return rows.map((row: any) => row.caller_name);
+      const rows = await all(`SELECT DISTINCT caller_name FROM caller_alerts ORDER BY caller_name`);
+      return rows.map((row) => String(row.caller_name ?? ''));
     } catch (error) {
       logger.error('Failed to get all callers', error as Error);
       throw error;
@@ -305,8 +303,8 @@ export class CallerDatabase {
   async getCallerStats(callerName: string): Promise<CallerStats | null> {
     const all = promisify(this.db.all.bind(this.db)) as (
       sql: string,
-      params?: any[]
-    ) => Promise<any[]>;
+      params?: Array<unknown>
+    ) => Promise<Array<Record<string, unknown>>>;
 
     try {
       const rows = await all(
@@ -348,8 +346,8 @@ export class CallerDatabase {
   async getAllCallerStats(): Promise<CallerStats[]> {
     const all = promisify(this.db.all.bind(this.db)) as (
       sql: string,
-      params?: any[]
-    ) => Promise<any[]>;
+      params?: Array<unknown>
+    ) => Promise<Array<Record<string, unknown>>>;
 
     try {
       const rows = await all(`
@@ -365,7 +363,7 @@ export class CallerDatabase {
         ORDER BY total_alerts DESC
       `);
 
-      return rows.map((row: any) => ({
+      return rows.map((row) => ({
         callerName: row.caller_name,
         totalAlerts: row.total_alerts,
         uniqueTokens: row.unique_tokens,
@@ -389,8 +387,8 @@ export class CallerDatabase {
   > {
     const all = promisify(this.db.all.bind(this.db)) as (
       sql: string,
-      params?: any[]
-    ) => Promise<any[]>;
+      params?: Array<unknown>
+    ) => Promise<Array<Record<string, unknown>>>;
 
     try {
       const rows = await all(
@@ -408,7 +406,7 @@ export class CallerDatabase {
         [callerName]
       );
 
-      return rows.map((row: any) => ({
+      return rows.map((row) => ({
         tokenAddress: row.token_address,
         tokenSymbol: row.token_symbol,
         chain: row.chain,
@@ -426,8 +424,8 @@ export class CallerDatabase {
   async updateCallerSuccessRate(callerName: string, successRate: number): Promise<void> {
     const run = promisify(this.db.run.bind(this.db)) as (
       sql: string,
-      params?: any[]
-    ) => Promise<any>;
+      params?: Array<unknown>
+    ) => Promise<{ lastID?: number; changes?: number }>;
 
     try {
       await run(
@@ -471,8 +469,8 @@ export class CallerDatabase {
   }> {
     const all = promisify(this.db.all.bind(this.db)) as (
       sql: string,
-      params?: any[]
-    ) => Promise<any[]>;
+      params?: Array<unknown>
+    ) => Promise<Array<Record<string, unknown>>>;
 
     try {
       const rows = await all(`

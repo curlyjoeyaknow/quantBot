@@ -60,8 +60,9 @@ export class OHLCVEngine {
       try {
         await initClickHouse();
         logger.info('OHLCV Engine: ClickHouse initialized');
-      } catch (error: any) {
-        logger.warn('OHLCV Engine: ClickHouse initialization failed', { error: error.message });
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        logger.warn('OHLCV Engine: ClickHouse initialization failed', { error: errorMessage });
         this.clickHouseEnabled = false;
       }
     }
@@ -114,9 +115,10 @@ export class OHLCVEngine {
             source: 'clickhouse',
           };
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
         logger.warn('OHLCV Engine: ClickHouse query failed', {
-          error: error.message,
+          error: errorMessage,
           tokenAddress: tokenAddress.substring(0, 20),
         });
       }
@@ -229,10 +231,11 @@ export class OHLCVEngine {
           logger.debug(
             `OHLCV Engine: Ingested ${candles.length} candles to ClickHouse for ${tokenAddress.substring(0, 20)}...`
           );
-        } catch (error: any) {
+        } catch (error: unknown) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
           logger.warn(
             `OHLCV Engine: Failed to ingest to ClickHouse for ${tokenAddress.substring(0, 20)}...`,
-            { error: error.message }
+            { error: errorMessage }
           );
         }
       }
@@ -243,7 +246,7 @@ export class OHLCVEngine {
         ingestedToClickHouse,
         source: fromCache ? 'csv' : 'api',
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Restore original setting on error
       if (originalCacheOnly !== undefined) {
         process.env.USE_CACHE_ONLY = originalCacheOnly;
@@ -279,7 +282,7 @@ export class OHLCVEngine {
       try {
         const result = await this.fetch(token, startTime, endTime, chain, options);
         results.set(token, result);
-      } catch (error: any) {
+      } catch (error: unknown) {
         logger.error(`OHLCV Engine: Failed to fetch ${token.substring(0, 20)}...`, error as Error);
         results.set(token, {
           candles: [],

@@ -88,16 +88,19 @@ export class OHLCVService {
 
       // Convert Birdeye format to Candle format
       const candles: Candle[] = birdeyeData.items
-        .map((item: any) => ({
-          timestamp: item.unixTime,
-          open: parseFloat(item.open) || 0,
-          high: parseFloat(item.high) || 0,
-          low: parseFloat(item.low) || 0,
-          close: parseFloat(item.close) || 0,
-          volume: parseFloat(item.volume) || 0,
-        }))
-        .filter((c: any) => c.timestamp >= startUnix && c.timestamp <= endUnix)
-        .sort((a: any, b: any) => a.timestamp - b.timestamp);
+        .map((item) => {
+          const itemObj = item as Record<string, unknown>;
+          return {
+            timestamp: Number(itemObj.unixTime) || 0,
+            open: parseFloat(String(itemObj.open)) || 0,
+            high: parseFloat(String(itemObj.high)) || 0,
+            low: parseFloat(String(itemObj.low)) || 0,
+            close: parseFloat(String(itemObj.close)) || 0,
+            volume: parseFloat(String(itemObj.volume)) || 0,
+          };
+        })
+        .filter((c) => c.timestamp >= startUnix && c.timestamp <= endUnix)
+        .sort((a, b) => a.timestamp - b.timestamp);
 
       logger.debug('Fetched candles from Birdeye', {
         mint: mint.substring(0, 20),
@@ -105,7 +108,7 @@ export class OHLCVService {
       });
 
       return candles;
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('Failed to fetch candles from Birdeye', error as Error, {
         mint: mint.substring(0, 20),
       });
@@ -155,7 +158,7 @@ export class OHLCVService {
       });
 
       return { ingested: candles.length, skipped: 0 };
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('Failed to ingest candles', error as Error, {
         mint: mint.substring(0, 20),
       });
@@ -212,9 +215,10 @@ export class OHLCVService {
 
           return clickhouseCandles;
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
         logger.warn('ClickHouse query failed, falling back to API', {
-          error: error.message,
+          error: errorMessage,
           mint: mint.substring(0, 20),
         });
       }
@@ -228,9 +232,10 @@ export class OHLCVService {
       if (candles.length > 0 && useCache) {
         try {
           await this.ingestCandles(mint, chain, candles, { interval, skipDuplicates: true });
-        } catch (error: any) {
+        } catch (error: unknown) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
           logger.warn('Failed to ingest candles to ClickHouse', {
-            error: error.message,
+            error: errorMessage,
             mint: mint.substring(0, 20),
           });
         }
@@ -246,7 +251,7 @@ export class OHLCVService {
       }
 
       return candles;
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error('Failed to get candles', error as Error, {
         mint: mint.substring(0, 20),
       });

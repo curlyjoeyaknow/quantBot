@@ -5,26 +5,26 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { storeRunDuckdbHandler } from '../../../../src/handlers/simulation/store-run-duckdb.js';
 import type { CommandContext } from '../../../../src/core/command-context.js';
-import type { PythonEngine } from '@quantbot/utils';
 
 describe('storeRunDuckdbHandler', () => {
-  let mockEngine: PythonEngine;
+  let mockDuckDBStorage: { storeRun: ReturnType<typeof vi.fn> };
   let mockCtx: CommandContext;
 
   beforeEach(() => {
-    mockEngine = {
-      runDuckDBStorage: vi.fn(),
-    } as unknown as PythonEngine;
+    // Mock DuckDBStorageService
+    mockDuckDBStorage = {
+      storeRun: vi.fn(),
+    };
 
     mockCtx = {
       services: {
-        pythonEngine: () => mockEngine,
+        duckdbStorage: () => mockDuckDBStorage as any,
       },
     } as unknown as CommandContext;
   });
 
   it('should call PythonEngine with correct parameters', async () => {
-    vi.mocked(mockEngine.runDuckDBStorage).mockResolvedValue({
+    vi.mocked(mockDuckDBStorage.storeRun).mockResolvedValue({
       success: true,
       run_id: 'run123',
     });
@@ -49,30 +49,27 @@ describe('storeRunDuckdbHandler', () => {
 
     const result = await storeRunDuckdbHandler(args, mockCtx);
 
-    expect(mockEngine.runDuckDBStorage).toHaveBeenCalledWith({
-      duckdbPath: '/path/to/sim.duckdb',
-      operation: 'store_run',
-      data: {
-        run_id: 'run123',
-        strategy_id: 'PT2_SL25',
-        mint: 'So11111111111111111111111111111111111111112',
-        alert_timestamp: '2024-01-01T00:00:00Z',
-        start_time: '2024-01-01T00:00:00Z',
-        end_time: '2024-01-02T00:00:00Z',
-        initial_capital: 1000.0,
-        final_capital: 1200.0,
-        total_return_pct: 20.0,
-        max_drawdown_pct: 5.0,
-        sharpe_ratio: 1.5,
-        win_rate: 0.6,
-        total_trades: 10,
-      },
-    });
+    expect(mockDuckDBStorage.storeRun).toHaveBeenCalledWith(
+      '/path/to/sim.duckdb',
+      'run123',
+      'PT2_SL25',
+      'So11111111111111111111111111111111111111112',
+      '2024-01-01T00:00:00Z',
+      '2024-01-01T00:00:00Z',
+      '2024-01-02T00:00:00Z',
+      1000.0,
+      1200.0,
+      20.0,
+      5.0,
+      1.5,
+      0.6,
+      10
+    );
     expect(result.success).toBe(true);
   });
 
   it('should handle optional fields', async () => {
-    vi.mocked(mockEngine.runDuckDBStorage).mockResolvedValue({
+    vi.mocked(mockDuckDBStorage.storeRun).mockResolvedValue({
       success: true,
       run_id: 'run123',
     });
@@ -91,19 +88,21 @@ describe('storeRunDuckdbHandler', () => {
 
     await storeRunDuckdbHandler(args, mockCtx);
 
-    const callArgs = vi.mocked(mockEngine.runDuckDBStorage).mock.calls[0][0];
-    expect(callArgs.duckdbPath).toBe('/path/to/sim.duckdb');
-    expect(callArgs.operation).toBe('store_run');
-    expect(callArgs.data.run_id).toBe('run123');
-    expect(callArgs.data.strategy_id).toBe('PT2_SL25');
-    expect(callArgs.data.mint).toBe('So11111111111111111111111111111111111111112');
-    expect(callArgs.data.initial_capital).toBe(1000.0);
-    // total_trades has a default, so it should be included if provided
-    // Optional fields should not be present
-    expect(callArgs.data.final_capital).toBeUndefined();
-    expect(callArgs.data.total_return_pct).toBeUndefined();
-    expect(callArgs.data.max_drawdown_pct).toBeUndefined();
-    expect(callArgs.data.sharpe_ratio).toBeUndefined();
-    expect(callArgs.data.win_rate).toBeUndefined();
+    expect(mockDuckDBStorage.storeRun).toHaveBeenCalledWith(
+      '/path/to/sim.duckdb',
+      'run123',
+      'PT2_SL25',
+      'So11111111111111111111111111111111111111112',
+      '2024-01-01T00:00:00Z',
+      '2024-01-01T00:00:00Z',
+      '2024-01-02T00:00:00Z',
+      1000.0,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined
+    );
   });
 });

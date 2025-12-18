@@ -94,11 +94,7 @@ export class CommandContext {
   private _createServices(): CommandServices {
     return {
       ohlcvIngestion: () => {
-        return new OhlcvIngestionService(
-          new CallsRepository(),
-          new TokensRepository(),
-          new AlertsRepository()
-        );
+        return new OhlcvIngestionService(new AlertsRepository());
       },
       telegramIngestion: () => {
         return new TelegramAlertIngestionService(

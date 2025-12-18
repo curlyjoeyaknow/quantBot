@@ -180,7 +180,7 @@ export class TelegramCallIngestionService {
       botMessagesProcessed,
     };
 
-    logger.info('Completed Telegram call ingestion', result);
+    logger.info('Completed Telegram call ingestion', result as Record<string, unknown>);
     return result;
   }
 

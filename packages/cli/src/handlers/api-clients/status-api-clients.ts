@@ -1,5 +1,5 @@
 import type { CommandContext } from '../../core/command-context.js';
-import { statusSchema, type StatusApiClientsArgs } from '../../command-defs/api-clients.js';
+import type { StatusApiClientsArgs } from '../../command-defs/api-clients.js';
 
 export async function statusApiClientsHandler(
   args: StatusApiClientsArgs,

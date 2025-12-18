@@ -8,8 +8,13 @@ import {
   StrategiesRepository,
   closePostgresPool,
 } from '@quantbot/storage';
+import { shouldRunDbStress, TEST_GATES } from '@quantbot/utils/test-helpers/test-gating';
 
-describe('workflows.runSimulation - integration tests', () => {
+// Gate this test suite behind RUN_DB_STRESS=1
+// These tests require real database connections (ClickHouse, Postgres)
+const shouldRun = shouldRunDbStress();
+
+describe.skipIf(!shouldRun)('workflows.runSimulation - integration tests', () => {
   beforeAll(async () => {
     // Initialize database connections
     await initClickHouse();

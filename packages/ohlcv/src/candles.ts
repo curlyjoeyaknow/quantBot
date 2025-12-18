@@ -185,9 +185,17 @@ async function fetchBirdeyeCandles(
 
     // Single request (<= 5000 candles)
     return await fetchBirdeyeCandlesChunk(mint, interval, from, to, chain, apiKey);
-  } catch (error: any) {
+  } catch (error: unknown) {
     // If it's a 400/404, that's expected for invalid tokens - return empty
-    if (error.response?.status === 400 || error.response?.status === 404) {
+    if (
+      error &&
+      typeof error === 'object' &&
+      'response' in error &&
+      error.response &&
+      typeof error.response === 'object' &&
+      'status' in error.response &&
+      (error.response.status === 400 || error.response.status === 404)
+    ) {
       return [];
     }
     // Re-throw other errors (network, 500, etc.)
@@ -260,7 +268,8 @@ async function fetchBirdeyeCandlesChunk(
     }
 
     // Defensive: Normalize to Candle type
-    let items: any[] = response.data?.data?.items ?? [];
+    let items: Array<Record<string, unknown>> =
+      (response.data?.data?.items as Array<Record<string, unknown>>) ?? [];
 
     // If date range returned no items, try fetching by limit (latest 5000)
     if (items.length === 0) {
@@ -291,9 +300,9 @@ async function fetchBirdeyeCandlesChunk(
             `Fetched ${items.length} candles using limit approach for ${mint.substring(0, 20)}...`
           );
           // Filter to only include candles within the requested time range
-          items = items.filter((item: any) => {
+          items = items.filter((item) => {
             const timestamp = item.unix_time;
-            return timestamp >= from && timestamp <= to;
+            return typeof timestamp === 'number' && timestamp >= from && timestamp <= to;
           });
         }
       }
@@ -307,9 +316,17 @@ async function fetchBirdeyeCandlesChunk(
       close: parseFloat(item.c) || NaN,
       volume: parseFloat(item.v) || NaN,
     }));
-  } catch (error: any) {
+  } catch (error: unknown) {
     // If it's a 400/404, that's expected for invalid tokens - return empty
-    if (error.response?.status === 400 || error.response?.status === 404) {
+    if (
+      error &&
+      typeof error === 'object' &&
+      'response' in error &&
+      error.response &&
+      typeof error.response === 'object' &&
+      'status' in error.response &&
+      (error.response.status === 400 || error.response.status === 404)
+    ) {
       return [];
     }
     // Re-throw other errors (network, 500, etc.)
@@ -572,10 +589,11 @@ async function fetchTokenMetadata(
         topWalletHoldings: data.topWalletHoldings || data.top10Holdings || data.top20Holdings,
       };
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
     logger.debug('Token overview endpoint failed, trying metadata endpoint', {
       token: mint.substring(0, 20),
-      error: error.message,
+      error: errorMessage,
     });
   }
 
@@ -675,7 +693,9 @@ export async function fetchHybridCandles(
         clickhouseCandles5m = chCandles;
         if (alertTime) {
           const alertUnix = Math.floor(alertTime.toSeconds());
-          const historicalCount = chCandles.filter((c: any) => c.timestamp < alertUnix).length;
+          const historicalCount = chCandles.filter(
+            (c) => typeof c.timestamp === 'number' && c.timestamp < alertUnix
+          ).length;
           logger.debug(
             `ClickHouse has ${chCandles.length} candles (${historicalCount} historical before alert). Will use as 5m base and fetch 1m from API.`
           );
@@ -687,7 +707,9 @@ export async function fetchHybridCandles(
           // Filter to requested range if we extended backwards
           if (actualStartTime < startTime) {
             const startUnix = Math.floor(startTime.toSeconds());
-            const filtered = chCandles.filter((c: any) => c.timestamp >= startUnix);
+            const filtered = chCandles.filter(
+              (c) => typeof c.timestamp === 'number' && c.timestamp >= startUnix
+            );
             logger.debug(
               `Filtered ClickHouse candles to requested range: ${filtered.length} candles (had ${chCandles.length} with lookback)`
             );
@@ -696,8 +718,9 @@ export async function fetchHybridCandles(
           return chCandles;
         }
       }
-    } catch (error: any) {
-      logger.warn('ClickHouse query failed, falling back to API', { error: error.message, mint });
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logger.warn('ClickHouse query failed, falling back to API', { error: errorMessage, mint });
     }
   }
 
@@ -871,7 +894,7 @@ export async function fetchHybridCandles(
           }
         }
         logger.debug(`✅ Saved candles to ClickHouse for ${mint.substring(0, 20)}...`);
-      } catch (error: any) {
+      } catch (error: unknown) {
         logger.error('Failed to save to ClickHouse', error as Error, {
           mint: mint.substring(0, 20),
         });

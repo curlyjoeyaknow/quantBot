@@ -81,9 +81,9 @@ export type WorkflowContext = {
   clock: { nowISO(): string };
   ids: { newRunId(): string };
   logger: {
-    info: (...a: any[]) => void;
-    warn: (...a: any[]) => void;
-    error: (...a: any[]) => void;
+    info: (...a: Array<unknown>) => void;
+    warn: (...a: Array<unknown>) => void;
+    error: (...a: Array<unknown>) => void;
   };
 
   repos: {

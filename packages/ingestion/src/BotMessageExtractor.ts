@@ -69,14 +69,14 @@ export class BotMessageExtractor {
       dexscreenerLink = $('a[href*="dexscreener.com"]').first().attr('href');
     } else {
       // Plain text: extract from URL pattern
-      const dexMatch = plainText.match(/dexscreener\.com\/[^\/\s]+\/([A-Za-z0-9]{32,44})/);
+      const dexMatch = plainText.match(/dexscreener\.com\/[^/\s]+\/([A-Za-z0-9]{32,44})/);
       if (dexMatch) {
         dexscreenerLink = `https://dexscreener.com/${dexMatch[0]}`;
       }
     }
 
     if (dexscreenerLink) {
-      const match = dexscreenerLink.match(/dexscreener\.com\/([^\/]+)\/([^\/\?]+)/);
+      const match = dexscreenerLink.match(/dexscreener\.com\/([^/]+)\/([^/?]+)/);
       if (match) {
         const chainFromUrl = match[1].toLowerCase();
         result.chain = this.normalizeChain(chainFromUrl);
@@ -152,9 +152,9 @@ export class BotMessageExtractor {
     } else {
       // Plain text: extract name patterns like "💊 Token Name ($TICKER)" or "Token Name"
       const namePatterns = [
-        /(?:💊|🟣|🐶|🟢|🔷|🪙)\s*([A-Z][a-zA-Z0-9\s\-\.']+?)(?:\s*\(|\s*\[|\s*\$|$)/,
-        /^([A-Z][a-zA-Z0-9\s\-\.']+?)\s*\(/,
-        /([A-Z][a-zA-Z][a-zA-Z0-9\s\-\.']{2,30}?)(?:\s*\(|\s*\$)/,
+        /(?:💊|🟣|🐶|🟢|🔷|🪙)\s*([A-Z][a-zA-Z0-9\s\-.'\]]+?)(?:\s*\(|\s*\[|\s*\$|$)/,
+        /^([A-Z][a-zA-Z0-9\s\-.'\]]+?)\s*\(/,
+        /([A-Z][a-zA-Z][a-zA-Z0-9\s\-.'\]]{2,30}?)(?:\s*\(|\s*\$)/,
       ];
       for (const pattern of namePatterns) {
         const match = plainText.match(pattern);

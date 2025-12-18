@@ -11,7 +11,7 @@ describe('Logging Configuration', () => {
   const originalEnv = process.env;
 
   beforeEach(() => {
-    jest.resetModules();
+    // Vitest handles module isolation automatically, no need for resetModules
     process.env = { ...originalEnv };
   });
 

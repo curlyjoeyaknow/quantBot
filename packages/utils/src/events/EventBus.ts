@@ -309,9 +309,10 @@ export class EventBus extends EventEmitter {
 
     try {
       await next();
-    } catch (error: any) {
+    } catch (error: unknown) {
       // If middleware throws a specific "blocked" error or returns early, mark as blocked
-      if (error?.blocked === true) {
+      const errorObj = error as { blocked?: boolean };
+      if (errorObj?.blocked === true) {
         blocked = true;
       } else {
         throw error;

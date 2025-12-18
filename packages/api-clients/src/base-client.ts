@@ -97,9 +97,13 @@ class RateLimiter {
   /**
    * Extract retry-after from response headers
    */
-  getRetryAfter(headers: Record<string, any>): number | undefined {
+  getRetryAfter(headers: Record<string, string | string[] | undefined>): number | undefined {
     if (this.retryAfterHeader && headers[this.retryAfterHeader]) {
-      const retryAfter = parseInt(headers[this.retryAfterHeader], 10);
+      const headerValue = Array.isArray(headers[this.retryAfterHeader])
+        ? headers[this.retryAfterHeader][0]
+        : headers[this.retryAfterHeader];
+      if (typeof headerValue !== 'string') return undefined;
+      const retryAfter = parseInt(headerValue, 10);
       return isNaN(retryAfter) ? undefined : retryAfter * 1000; // Convert to milliseconds
     }
     return undefined;
@@ -170,12 +174,10 @@ export class BaseApiClient {
     this.axiosInstance.interceptors.response.use(
       (response) => response,
       async (error: AxiosError) => {
-        const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
-
         // Handle rate limiting
         if (error.response?.status === 429) {
           const retryAfter = this.rateLimiter?.getRetryAfter(
-            error.response.headers as Record<string, any>
+            error.response.headers as Record<string, string | string[] | undefined>
           );
           if (retryAfter) {
             throw new RateLimitError(`Rate limit exceeded for ${this.apiName}`, retryAfter, {
@@ -226,7 +228,9 @@ export class BaseApiClient {
   /**
    * Make a request with retry logic
    */
-  protected async request<T = any>(config: AxiosRequestConfig): Promise<AxiosResponse<T>> {
+  protected async request<T = unknown>(
+    config: AxiosRequestConfig & { _retry?: boolean }
+  ): Promise<AxiosResponse<T>> {
     return retryWithBackoff(
       async () => {
         try {
@@ -239,7 +243,7 @@ export class BaseApiClient {
               ? this.retryConfig.retryableStatusCodes?.includes(statusCode)
               : isRetryableError(error);
 
-            if (!isRetryable || (config as any)._retry) {
+            if (!isRetryable || config._retry) {
               throw error;
             }
           }
@@ -259,7 +263,7 @@ export class BaseApiClient {
   /**
    * GET request
    */
-  async get<T = any>(url: string, config?: AxiosRequestConfig): Promise<T> {
+  async get<T = unknown>(url: string, config?: AxiosRequestConfig): Promise<T> {
     const response = await this.request<T>({ ...config, method: 'GET', url });
     return response.data;
   }
@@ -267,7 +271,7 @@ export class BaseApiClient {
   /**
    * POST request
    */
-  async post<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
+  async post<T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
     const response = await this.request<T>({ ...config, method: 'POST', url, data });
     return response.data;
   }
@@ -275,7 +279,7 @@ export class BaseApiClient {
   /**
    * PUT request
    */
-  async put<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
+  async put<T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<T> {
     const response = await this.request<T>({ ...config, method: 'PUT', url, data });
     return response.data;
   }
@@ -283,7 +287,7 @@ export class BaseApiClient {
   /**
    * DELETE request
    */
-  async delete<T = any>(url: string, config?: AxiosRequestConfig): Promise<T> {
+  async delete<T = unknown>(url: string, config?: AxiosRequestConfig): Promise<T> {
     const response = await this.request<T>({ ...config, method: 'DELETE', url });
     return response.data;
   }

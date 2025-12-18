@@ -1,5 +1,5 @@
 import type { CommandContext } from '../../core/command-context.js';
-import { creditsSchema, type CreditsApiClientsArgs } from '../../command-defs/api-clients.js';
+import type { CreditsApiClientsArgs } from '../../command-defs/api-clients.js';
 import { checkApiQuotas, type ApiQuotas } from '@quantbot/observability';
 
 export async function creditsApiClientsHandler(

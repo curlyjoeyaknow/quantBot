@@ -59,7 +59,9 @@ export class InfluxDBOHLCVClient {
       // Check if bucket exists
       const buckets = await this.managementApi.getBuckets({ org: this.org });
 
-      const existingBucket = buckets?.buckets?.find((b: any) => b.name === this.bucket);
+      const existingBucket = buckets?.buckets?.find(
+        (b: { name?: string }) => b.name === this.bucket
+      );
 
       if (!existingBucket) {
         logger.info('Creating bucket', { bucket: this.bucket });
@@ -208,16 +210,16 @@ export class InfluxDBOHLCVClient {
           |> sort(columns: ["_time"])
       `;
 
-      const result: any[] = await this.queryApi.collectRows(query);
+      const result = (await this.queryApi.collectRows(query)) as Array<Record<string, unknown>>;
 
-      return result.map((row: any) => ({
-        timestamp: new Date(row._time).getTime(),
-        dateTime: new Date(row._time),
-        open: parseFloat(row.open) || 0,
-        high: parseFloat(row.high) || 0,
-        low: parseFloat(row.low) || 0,
-        close: parseFloat(row.close) || 0,
-        volume: parseFloat(row.volume) || 0,
+      return result.map((row) => ({
+        timestamp: new Date(String(row._time)).getTime(),
+        dateTime: new Date(String(row._time)),
+        open: parseFloat(String(row.open)) || 0,
+        high: parseFloat(String(row.high)) || 0,
+        low: parseFloat(String(row.low)) || 0,
+        close: parseFloat(String(row.close)) || 0,
+        volume: parseFloat(String(row.volume)) || 0,
       }));
     } catch (error) {
       logger.error('Failed to query OHLCV data', error as Error, { tokenAddress });
@@ -245,10 +247,10 @@ export class InfluxDBOHLCVClient {
           |> last()
       `;
 
-      const result: any[] = await this.queryApi.collectRows(query);
+      const result = (await this.queryApi.collectRows(query)) as Array<Record<string, unknown>>;
 
       if (result.length > 0) {
-        return parseFloat(result[0]._value as string);
+        return parseFloat(String(result[0]?._value));
       }
 
       return 0;
@@ -294,7 +296,7 @@ export class InfluxDBOHLCVClient {
           |> limit(n: 1)
       `;
 
-      const result: any[] = await this.queryApi.collectRows(query);
+      const result = (await this.queryApi.collectRows(query)) as Array<Record<string, unknown>>;
       return result.length > 0;
     } catch (error) {
       logger.error('Failed to check data existence', error as Error, { tokenAddress });
@@ -317,12 +319,12 @@ export class InfluxDBOHLCVClient {
           |> sort(columns: ["_value"], desc: true)
       `;
 
-      const result: any[] = await this.queryApi.collectRows(query);
+      const result = (await this.queryApi.collectRows(query)) as Array<Record<string, unknown>>;
 
-      return result.map((row: any) => ({
-        address: row.token_address,
-        symbol: row.token_symbol,
-        chain: row.chain,
+      return result.map((row) => ({
+        address: String(row.token_address ?? ''),
+        symbol: String(row.token_symbol ?? ''),
+        chain: String(row.chain ?? ''),
         recordCount: parseInt(row._value),
         firstTimestamp: 0, // Would need separate query for this
         lastTimestamp: 0, // Would need separate query for this
@@ -352,10 +354,10 @@ export class InfluxDBOHLCVClient {
           |> count()
       `;
 
-      const result: any[] = await this.queryApi.collectRows(query);
+      const result = (await this.queryApi.collectRows(query)) as Array<Record<string, unknown>>;
 
       if (result.length > 0) {
-        return parseInt(result[0]._value as string);
+        return parseInt(String(result[0]?._value));
       }
 
       return 0;

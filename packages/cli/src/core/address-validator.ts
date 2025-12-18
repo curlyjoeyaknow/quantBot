@@ -154,7 +154,7 @@ export function validateEvmAddress(
  * EIP-55 uses Keccak-256 hash to determine case of each hex character
  * For simplicity, we'll do basic validation here
  */
-function validateEip55Checksum(address: string): boolean {
+function validateEip55Checksum(_address: string): boolean {
   // For now, accept any mixed-case address
   // Full implementation would require keccak256 hashing
   // This is a placeholder for proper checksum validation

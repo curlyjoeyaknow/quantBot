@@ -32,7 +32,7 @@ export interface LogAggregatorConfig {
  */
 export class LogAggregator {
   private config: LogAggregatorConfig;
-  private logBuffer: any[] = [];
+  private logBuffer: Array<Record<string, unknown>> = [];
   private flushTimer?: NodeJS.Timeout;
 
   constructor(config: LogAggregatorConfig) {
@@ -50,7 +50,7 @@ export class LogAggregator {
   /**
    * Add log to buffer
    */
-  add(log: any): void {
+  add(log: Record<string, unknown>): void {
     if (!this.config.enabled) return;
 
     this.logBuffer.push({
@@ -86,7 +86,7 @@ export class LogAggregator {
   /**
    * Send logs to external service
    */
-  private async sendLogs(logs: any[]): Promise<void> {
+  private async sendLogs(logs: Array<Record<string, unknown>>): Promise<void> {
     if (!this.config.endpoint || !this.config.apiKey) {
       return;
     }
@@ -113,7 +113,7 @@ export class LogAggregator {
   /**
    * Send to AWS CloudWatch
    */
-  private async sendToCloudWatch(logs: any[]): Promise<void> {
+  private async sendToCloudWatch(logs: Array<Record<string, unknown>>): Promise<void> {
     // Implement CloudWatch integration
     // This would use AWS SDK to send logs
     console.debug(`Would send ${logs.length} logs to CloudWatch`);
@@ -122,7 +122,7 @@ export class LogAggregator {
   /**
    * Send to Datadog
    */
-  private async sendToDatadog(logs: any[]): Promise<void> {
+  private async sendToDatadog(logs: Array<Record<string, unknown>>): Promise<void> {
     // Implement Datadog integration
     console.debug(`Would send ${logs.length} logs to Datadog`);
   }
@@ -130,7 +130,7 @@ export class LogAggregator {
   /**
    * Send to Elasticsearch
    */
-  private async sendToElasticsearch(logs: any[]): Promise<void> {
+  private async sendToElasticsearch(logs: Array<Record<string, unknown>>): Promise<void> {
     // Implement Elasticsearch integration
     console.debug(`Would send ${logs.length} logs to Elasticsearch`);
   }
@@ -138,7 +138,7 @@ export class LogAggregator {
   /**
    * Send to custom endpoint
    */
-  private async sendToCustomEndpoint(logs: any[]): Promise<void> {
+  private async sendToCustomEndpoint(logs: Array<Record<string, unknown>>): Promise<void> {
     if (!this.config.endpoint) return;
 
     const response = await fetch(this.config.endpoint, {
@@ -189,13 +189,13 @@ export function createAggregatorTransport(aggregator: LogAggregator): winston.tr
     stream: {
       write: (message: string) => {
         try {
-          const log = JSON.parse(message);
+          const log = JSON.parse(message) as Record<string, unknown>;
           aggregator.add(log);
-        } catch (error) {
+        } catch {
           // Ignore parse errors
         }
       },
-    } as any,
+    } as NodeJS.WritableStream,
   });
 }
 

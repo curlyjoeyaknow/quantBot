@@ -196,7 +196,7 @@ export class RateLimitingMiddleware {
           logger.warn(
             `[RATE_LIMIT] Event ${event.type} from ${event.metadata.source} rate limited`
           );
-          const error: any = new Error('Rate limited');
+          const error = new Error('Rate limited') as Error & { blocked?: boolean };
           error.blocked = true;
           throw error; // Block processing
         }
@@ -238,7 +238,7 @@ export const validationMiddleware: EventMiddleware = async (event: ApplicationEv
   // Validate required fields
   if (!event.type || !event.metadata || !event.data) {
     throw new ValidationError('Invalid event structure: missing required fields', {
-      event: event as any,
+      event: event as Record<string, unknown>,
       requiredFields: ['type', 'payload', 'metadata'],
     });
   }

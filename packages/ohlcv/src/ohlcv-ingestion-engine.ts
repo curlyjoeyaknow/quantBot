@@ -16,7 +16,9 @@
  */
 
 import { DateTime } from 'luxon';
-import { birdeyeClient } from '@quantbot/api-clients';
+import { getBirdeyeClient } from '@quantbot/api-clients';
+
+const birdeyeClient = getBirdeyeClient();
 import { getStorageEngine, initClickHouse } from '@quantbot/storage';
 import { TokensRepository } from '@quantbot/storage';
 import type { Candle, Chain } from '@quantbot/core';
@@ -64,7 +66,7 @@ const cache = new LRUCache<string, Candle[]>(cacheOptions);
 
 function getCacheKey(
   mint: string,
-  interval: '1m' | '5m' | '15s',
+  interval: '1m' | '5m' | '1s' | '15s',
   startTime: DateTime,
   endTime: DateTime
 ): string {
@@ -122,6 +124,7 @@ export class OhlcvIngestionEngine {
     const metadata = {
       tokenStored: false,
       total1mCandles: 0,
+      total1sCandles: 0,
       total15sCandles: 0,
       total5mCandles: 0,
       chunksFetched: 0,
@@ -138,47 +141,76 @@ export class OhlcvIngestionEngine {
       const alertAge = now.diff(alertTime, 'days').days;
       const useOptimizedStrategy = alertAge < 90; // Only for alerts < 3 months old
 
+      // CRITICAL OPTIMIZATION: Try 1m first - if API returns 0 candles, skip all other periods
+      // This saves ~12 API calls per token when there's no data
+      logger.info(
+        `[OhlcvIngestionEngine] Checking 1m data availability first (early exit optimization)...`
+      );
+      const oneMinuteProbe = await this._probe1mData(mint, chain, alertTime, options);
+      
+      if (oneMinuteProbe.hasData === false && oneMinuteProbe.fromAPI) {
+        // API returned 0 candles - no data exists for this token, skip everything
+        logger.warn(
+          `[OhlcvIngestionEngine] No 1m data from API for ${mint.substring(0, 20)}..., skipping all intervals`
+        );
+        return {
+          '1m': [],
+          '5m': [],
+          metadata,
+        };
+      }
+
+      // If we have cached data or API returned data, continue with full fetch
       if (useOptimizedStrategy) {
         logger.info(
           `[OhlcvIngestionEngine] Using optimized strategy for alert < 3 months old (${alertAge.toFixed(1)} days)`
         );
 
-        // Step 2: 1m call - 5000 candles starting -52min before alert (for Ichimoku)
-        logger.info(`[OhlcvIngestionEngine] Fetching 1m candles (-52min, 5000 candles)...`);
-        const oneMinuteInitial = await this._fetch1mCandles(mint, chain, alertTime, options);
-        metadata.total1mCandles += oneMinuteInitial.candles.length;
-        metadata.chunksFetched += oneMinuteInitial.chunksFetched;
-        metadata.chunksFromCache += oneMinuteInitial.chunksFromCache;
-        metadata.chunksFromAPI += oneMinuteInitial.chunksFromAPI;
-
-        // Step 3: 15s call - 5000 candles starting at alert time (~21 hours granular data)
+        // Step 1: 1s call - 5000 candles starting from -52 candles BEFORE alert
         logger.info(
-          `[OhlcvIngestionEngine] Fetching 15s candles (from alert time, 5000 candles)...`
+          `[OhlcvIngestionEngine] Fetching 1s candles (from -52 candles before alert, 5000 candles)...`
         );
-        const fifteenSecondResult = await this._fetch15sCandles(mint, chain, alertTime, options);
-        metadata.total15sCandles = fifteenSecondResult.candles.length;
-        metadata.chunksFetched += fifteenSecondResult.chunksFetched;
-        metadata.chunksFromCache += fifteenSecondResult.chunksFromCache;
-        metadata.chunksFromAPI += fifteenSecondResult.chunksFromAPI;
+        const oneSecondResult = await this._fetch1sCandles(mint, chain, alertTime, options);
+        metadata.total1sCandles = oneSecondResult.candles.length;
+        metadata.chunksFetched += oneSecondResult.chunksFetched;
+        metadata.chunksFromCache += oneSecondResult.chunksFromCache;
+        metadata.chunksFromAPI += oneSecondResult.chunksFromAPI;
 
-        // Step 4: 1m calls - 2 additional calls to cover first week
+        // Step 2: 15s calls - 2 calls of 5000 candles each, starting from -52 candles BEFORE alert
         logger.info(
-          `[OhlcvIngestionEngine] Fetching additional 1m candles (2 calls for first week)...`
+          `[OhlcvIngestionEngine] Fetching 15s candles (2 calls, from -52 candles before alert, 5000 candles each)...`
         );
-        const oneMinuteAdditional = await this._fetch1mCandlesAdditional(
+        const fifteenSecondResult = await this._fetch15sCandlesForWeek(
           mint,
           chain,
           alertTime,
           options
         );
-        metadata.total1mCandles += oneMinuteAdditional.candles.length;
-        metadata.chunksFetched += oneMinuteAdditional.chunksFetched;
-        metadata.chunksFromCache += oneMinuteAdditional.chunksFromCache;
-        metadata.chunksFromAPI += oneMinuteAdditional.chunksFromAPI;
+        metadata.total15sCandles = fifteenSecondResult.candles.length;
+        metadata.chunksFetched += fifteenSecondResult.chunksFetched;
+        metadata.chunksFromCache += fifteenSecondResult.chunksFromCache;
+        metadata.chunksFromAPI += fifteenSecondResult.chunksFromAPI;
 
-        // Step 5: 5m calls - 6 calls to cover ~3.5 months
-        logger.info(`[OhlcvIngestionEngine] Fetching 5m candles (6 calls for ~3.5 months)...`);
-        const fiveMinuteResult = await this._fetch5mCandlesOptimized(
+        // Step 3: 1m calls - 4 calls of 5000 candles each for first week, starting from -52 candles BEFORE alert
+        logger.info(
+          `[OhlcvIngestionEngine] Fetching 1m candles (4 calls for first week, from -52 candles before alert)...`
+        );
+        const oneMinuteResult = await this._fetch1mCandlesForWeek(
+          mint,
+          chain,
+          alertTime,
+          options
+        );
+        metadata.total1mCandles = oneMinuteResult.candles.length;
+        metadata.chunksFetched += oneMinuteResult.chunksFetched;
+        metadata.chunksFromCache += oneMinuteResult.chunksFromCache;
+        metadata.chunksFromAPI += oneMinuteResult.chunksFromAPI;
+
+        // Step 4: 5m calls - 6 calls of 5000 candles each for first 34 days, starting from -52 candles BEFORE alert
+        logger.info(
+          `[OhlcvIngestionEngine] Fetching 5m candles (6 calls for first 34 days, from -52 candles before alert)...`
+        );
+        const fiveMinuteResult = await this._fetch5mCandlesFor34Days(
           mint,
           chain,
           alertTime,
@@ -190,12 +222,13 @@ export class OhlcvIngestionEngine {
         metadata.chunksFromAPI += fiveMinuteResult.chunksFromAPI;
 
         // Combine all 1m candles
-        const all1mCandles = [...oneMinuteInitial.candles, ...oneMinuteAdditional.candles];
+        const all1mCandles = oneMinuteResult.candles;
 
         logger.info(
           `[OhlcvIngestionEngine] Completed optimized fetch for ${mint.substring(0, 20)}...`,
           {
             '1m': metadata.total1mCandles,
+            '1s': metadata.total1sCandles,
             '15s': metadata.total15sCandles,
             '5m': metadata.total5mCandles,
             chunksFromCache: metadata.chunksFromCache,
@@ -210,22 +243,48 @@ export class OhlcvIngestionEngine {
           metadata,
         };
       } else {
-        // Fallback to original strategy for older alerts
+        // Fallback strategy for alerts >= 3 months old
         logger.info(
           `[OhlcvIngestionEngine] Using standard strategy for alert >= 3 months old (${alertAge.toFixed(1)} days)`
         );
 
-        // Step 2: Fetch 1m candles (-52 minutes before alert, max 5000 candles)
-        logger.info(`[OhlcvIngestionEngine] Fetching 1m candles for ${mint.substring(0, 20)}...`);
-        const oneMinuteResult = await this._fetch1mCandles(mint, chain, alertTime, options);
+        // Step 1: 1m calls - 4 calls of 5000 candles each for first week, starting from -52 candles BEFORE alert
+        logger.info(
+          `[OhlcvIngestionEngine] Fetching 1m candles (4 calls for first week, from -52 candles before alert)...`
+        );
+        const oneMinuteResult = await this._fetch1mCandlesForWeek(
+          mint,
+          chain,
+          alertTime,
+          options
+        );
         metadata.total1mCandles = oneMinuteResult.candles.length;
         metadata.chunksFetched += oneMinuteResult.chunksFetched;
         metadata.chunksFromCache += oneMinuteResult.chunksFromCache;
         metadata.chunksFromAPI += oneMinuteResult.chunksFromAPI;
+        
+        // Early exit: if 1m API returned 0 candles, skip 5m
+        if (oneMinuteResult.candles.length === 0 && oneMinuteResult.chunksFromAPI > 0) {
+          logger.warn(
+            `[OhlcvIngestionEngine] No 1m data from API for ${mint.substring(0, 20)}..., skipping 5m`
+          );
+          return {
+            '1m': [],
+            '5m': [],
+            metadata,
+          };
+        }
 
-        // Step 3: Fetch 5m candles (-260 minutes before alert, up to current time, in chunks)
-        logger.info(`[OhlcvIngestionEngine] Fetching 5m candles for ${mint.substring(0, 20)}...`);
-        const fiveMinuteResult = await this._fetch5mCandles(mint, chain, alertTime, options);
+        // Step 2: 5m calls - 6 calls of 5000 candles each for first 34 days, starting from -52 candles BEFORE alert
+        logger.info(
+          `[OhlcvIngestionEngine] Fetching 5m candles (6 calls for first 34 days, from -52 candles before alert)...`
+        );
+        const fiveMinuteResult = await this._fetch5mCandlesFor34Days(
+          mint,
+          chain,
+          alertTime,
+          options
+        );
         metadata.total5mCandles = fiveMinuteResult.candles.length;
         metadata.chunksFetched += fiveMinuteResult.chunksFetched;
         metadata.chunksFromCache += fiveMinuteResult.chunksFromCache;
@@ -251,6 +310,49 @@ export class OhlcvIngestionEngine {
       );
       throw error;
     }
+  }
+
+  /**
+   * Probe 1m data availability - makes ONE API call to check if data exists
+   * Returns early if API returns 0 candles (saves ~12 API calls per token)
+   */
+  private async _probe1mData(
+    mint: string,
+    chain: Chain,
+    alertTime: DateTime,
+    options: OhlcvIngestionOptions
+  ): Promise<{ hasData: boolean; fromAPI: boolean }> {
+    // Make a single small API call to check if 1m data exists
+    // Use a small window: -52 minutes to alert time (just 52 candles)
+    const baseStartTime = alertTime.minus({ minutes: 52 });
+    const probeEndTime = alertTime;
+
+    const result = await this._fetchAndStoreChunk({
+      mint,
+      chain,
+      interval: '1m',
+      startTime: baseStartTime,
+      endTime: probeEndTime,
+      options,
+    });
+
+    // If from cache and has data, we know data exists
+    if (result.fromCache && result.candles.length > 0) {
+      return { hasData: true, fromAPI: false };
+    }
+
+    // If from API and has 0 candles, no data exists
+    if (!result.fromCache && result.candles.length === 0) {
+      return { hasData: false, fromAPI: true };
+    }
+
+    // If from API and has candles, data exists
+    if (!result.fromCache && result.candles.length > 0) {
+      return { hasData: true, fromAPI: true };
+    }
+
+    // If from cache and 0 candles, we need to check API (shouldn't happen, but handle it)
+    return { hasData: false, fromAPI: false };
   }
 
   /**
@@ -283,10 +385,11 @@ export class OhlcvIngestionEngine {
   }
 
   /**
-   * Fetch 1-minute candles
-   * Strategy: -52 minutes before alert, up to 5000 candles (max API limit)
+   * Fetch 1-second candles
+   * Strategy: Starting from -52 candles BEFORE alert, fetch 5000 candles forward
+   * -52 candles * 1s = -52 seconds before alert
    */
-  private async _fetch1mCandles(
+  private async _fetch1sCandles(
     mint: string,
     chain: Chain,
     alertTime: DateTime,
@@ -297,14 +400,16 @@ export class OhlcvIngestionEngine {
     chunksFromCache: number;
     chunksFromAPI: number;
   }> {
-    const startTime = alertTime.minus({ minutes: 52 });
-    // 5000 candles = 5000 minutes = ~83 hours, but we'll cap at a reasonable window
-    const endTime = startTime.plus({ minutes: 5000 });
+    // Start from -52 candles before alert
+    // -52 candles * 1 second = -52 seconds
+    const startTime = alertTime.minus({ seconds: 52 });
+    // 5000 candles * 1 second = 5000 seconds = ~1.39 hours forward
+    const endTime = startTime.plus({ seconds: 5000 });
 
     const result = await this._fetchAndStoreChunk({
       mint,
       chain,
-      interval: '1m',
+      interval: '1s',
       startTime,
       endTime,
       options,
@@ -319,46 +424,11 @@ export class OhlcvIngestionEngine {
   }
 
   /**
-   * Fetch 15-second candles
-   * Strategy: Starting at alert time, fetch 5000 candles forward (~20.83 hours)
+   * Fetch 15-second candles - 2 calls of 5000 candles each
+   * Strategy: Starting from -52 candles BEFORE alert, fetch 2 calls of 5000 candles each
+   * -52 candles * 15s = -780 seconds = -13 minutes before alert
    */
-  private async _fetch15sCandles(
-    mint: string,
-    chain: Chain,
-    alertTime: DateTime,
-    options: OhlcvIngestionOptions
-  ): Promise<{
-    candles: Candle[];
-    chunksFetched: number;
-    chunksFromCache: number;
-    chunksFromAPI: number;
-  }> {
-    const startTime = alertTime;
-    // 5000 candles * 15 seconds = 75000 seconds = ~20.83 hours
-    const endTime = startTime.plus({ seconds: 5000 * 15 });
-
-    const result = await this._fetchAndStoreChunk({
-      mint,
-      chain,
-      interval: '15s',
-      startTime,
-      endTime,
-      options,
-    });
-
-    return {
-      candles: result.candles,
-      chunksFetched: 1,
-      chunksFromCache: result.fromCache ? 1 : 0,
-      chunksFromAPI: result.fromCache ? 0 : 1,
-    };
-  }
-
-  /**
-   * Fetch additional 1-minute candles
-   * Strategy: 2 additional calls to cover first week after alert
-   */
-  private async _fetch1mCandlesAdditional(
+  private async _fetch15sCandlesForWeek(
     mint: string,
     chain: Chain,
     alertTime: DateTime,
@@ -374,59 +444,53 @@ export class OhlcvIngestionEngine {
     let chunksFromCache = 0;
     let chunksFromAPI = 0;
 
-    // First week = 7 days = 10080 minutes
-    // We'll make 2 calls of ~5000 candles each
-    const weekStart = alertTime;
-    const weekEnd = weekStart.plus({ days: 7 });
+    // Start from -52 candles before alert
+    // -52 candles * 15s = -780 seconds = -13 minutes
+    const baseStartTime = alertTime.minus({ seconds: 52 * 15 });
+    const weekEnd = alertTime.plus({ days: 7 });
     const now = DateTime.utc();
     const actualEnd = weekEnd > now ? now : weekEnd;
 
-    // First call: from alert time, 5000 candles forward
-    const firstCallEnd = weekStart.plus({ minutes: 5000 });
-    const firstEnd = firstCallEnd > actualEnd ? actualEnd : firstCallEnd;
+    let currentStartTime = baseStartTime;
+    let callCount = 0;
+    const maxCalls = 2;
 
-    const firstResult = await this._fetchAndStoreChunk({
-      mint,
-      chain,
-      interval: '1m',
-      startTime: weekStart,
-      endTime: firstEnd,
-      options,
-    });
+    while (currentStartTime < actualEnd && callCount < maxCalls) {
+      const chunkEndTime = currentStartTime.plus({ seconds: 5000 * 15 }); // 5000 * 15s = 75000 seconds
+      const end = chunkEndTime > actualEnd ? actualEnd : chunkEndTime;
 
-    chunksFetched++;
-    if (firstResult.fromCache) {
-      chunksFromCache++;
-    } else {
-      chunksFromAPI++;
-    }
-    allCandles.push(...firstResult.candles);
+      const result = await this._fetchAndStoreChunk({
+        mint,
+        chain,
+        interval: '15s',
+        startTime: currentStartTime,
+        endTime: end,
+        options,
+      });
 
-    // Second call: continue from where first call ended
-    if (firstEnd < actualEnd && firstResult.candles.length > 0) {
-      const secondStart = DateTime.fromSeconds(
-        firstResult.candles[firstResult.candles.length - 1].timestamp
-      ).plus({ minutes: 1 });
-      const secondEnd = secondStart.plus({ minutes: 5000 });
-      const actualSecondEnd = secondEnd > actualEnd ? actualEnd : secondEnd;
+      chunksFetched++;
+      callCount++;
 
-      if (secondStart < actualEnd) {
-        const secondResult = await this._fetchAndStoreChunk({
-          mint,
-          chain,
-          interval: '1m',
-          startTime: secondStart,
-          endTime: actualSecondEnd,
-          options,
-        });
+      if (result.fromCache) {
+        chunksFromCache++;
+      } else {
+        chunksFromAPI++;
+      }
 
-        chunksFetched++;
-        if (secondResult.fromCache) {
-          chunksFromCache++;
-        } else {
-          chunksFromAPI++;
-        }
-        allCandles.push(...secondResult.candles);
+      if (result.candles.length === 0) {
+        break;
+      }
+
+      allCandles.push(...result.candles);
+
+      // Move to next chunk
+      if (result.candles.length > 0) {
+        const lastCandleTime = DateTime.fromSeconds(
+          result.candles[result.candles.length - 1].timestamp
+        );
+        currentStartTime = lastCandleTime.plus({ seconds: 15 });
+      } else {
+        currentStartTime = end;
       }
     }
 
@@ -439,10 +503,11 @@ export class OhlcvIngestionEngine {
   }
 
   /**
-   * Fetch 5-minute candles (optimized)
-   * Strategy: 6 calls to cover ~3.5 months from alert time
+   * Fetch 1-minute candles for first week
+   * Strategy: 4 calls of 5000 candles each, starting from -52 candles BEFORE alert
+   * -52 candles * 1m = -52 minutes before alert
    */
-  private async _fetch5mCandlesOptimized(
+  private async _fetch1mCandlesForWeek(
     mint: string,
     chain: Chain,
     alertTime: DateTime,
@@ -458,19 +523,98 @@ export class OhlcvIngestionEngine {
     let chunksFromCache = 0;
     let chunksFromAPI = 0;
 
-    // ~3.5 months = ~105 days = ~30240 minutes = ~6048 5m candles
-    // We'll make 6 calls of ~5000 candles each
-    const startTime = alertTime.minus({ minutes: 5 * 52 }); // -260 minutes
-    const endTime = alertTime.plus({ days: 105 }); // ~3.5 months forward
+    // Start from -52 candles before alert
+    // -52 candles * 1m = -52 minutes
+    const baseStartTime = alertTime.minus({ minutes: 52 });
+    const weekEnd = alertTime.plus({ days: 7 });
     const now = DateTime.utc();
-    const actualEnd = endTime > now ? now : endTime;
+    const actualEnd = weekEnd > now ? now : weekEnd;
 
-    let currentStartTime = startTime;
+    let currentStartTime = baseStartTime;
+    let callCount = 0;
+    const maxCalls = 4;
+
+    while (currentStartTime < actualEnd && callCount < maxCalls) {
+      const chunkEndTime = currentStartTime.plus({ minutes: 5000 });
+      const end = chunkEndTime > actualEnd ? actualEnd : chunkEndTime;
+
+      const result = await this._fetchAndStoreChunk({
+        mint,
+        chain,
+        interval: '1m',
+        startTime: currentStartTime,
+        endTime: end,
+        options,
+      });
+
+      chunksFetched++;
+      callCount++;
+
+      if (result.fromCache) {
+        chunksFromCache++;
+      } else {
+        chunksFromAPI++;
+      }
+
+      if (result.candles.length === 0) {
+        break;
+      }
+
+      allCandles.push(...result.candles);
+
+      // Move to next chunk
+      if (result.candles.length > 0) {
+        const lastCandleTime = DateTime.fromSeconds(
+          result.candles[result.candles.length - 1].timestamp
+        );
+        currentStartTime = lastCandleTime.plus({ minutes: 1 });
+      } else {
+        currentStartTime = end;
+      }
+    }
+
+    return {
+      candles: allCandles,
+      chunksFetched,
+      chunksFromCache,
+      chunksFromAPI,
+    };
+  }
+
+  /**
+   * Fetch 5-minute candles for first 34 days
+   * Strategy: 6 calls of 5000 candles each, starting from -52 candles BEFORE alert
+   * -52 candles * 5m = -260 minutes before alert
+   */
+  private async _fetch5mCandlesFor34Days(
+    mint: string,
+    chain: Chain,
+    alertTime: DateTime,
+    options: OhlcvIngestionOptions
+  ): Promise<{
+    candles: Candle[];
+    chunksFetched: number;
+    chunksFromCache: number;
+    chunksFromAPI: number;
+  }> {
+    const allCandles: Candle[] = [];
+    let chunksFetched = 0;
+    let chunksFromCache = 0;
+    let chunksFromAPI = 0;
+
+    // Start from -52 candles before alert
+    // -52 candles * 5m = -260 minutes
+    const baseStartTime = alertTime.minus({ minutes: 52 * 5 });
+    const days34End = alertTime.plus({ days: 34 });
+    const now = DateTime.utc();
+    const actualEnd = days34End > now ? now : days34End;
+
+    let currentStartTime = baseStartTime;
     let callCount = 0;
     const maxCalls = 6;
 
     while (currentStartTime < actualEnd && callCount < maxCalls) {
-      const chunkEndTime = currentStartTime.plus({ minutes: 5000 * 5 }); // 5000 5m candles
+      const chunkEndTime = currentStartTime.plus({ minutes: 5000 * 5 });
       const end = chunkEndTime > actualEnd ? actualEnd : chunkEndTime;
 
       const result = await this._fetchAndStoreChunk({
@@ -515,6 +659,7 @@ export class OhlcvIngestionEngine {
       chunksFromAPI,
     };
   }
+
 
   /**
    * Fetch 5-minute candles
@@ -605,7 +750,7 @@ export class OhlcvIngestionEngine {
   private async _fetchAndStoreChunk(params: {
     mint: string;
     chain: Chain;
-    interval: '1m' | '5m' | '15s';
+    interval: '1m' | '5m' | '15s' | '1s';
     startTime: DateTime;
     endTime: DateTime;
     options: OhlcvIngestionOptions;
@@ -674,8 +819,8 @@ export class OhlcvIngestionEngine {
       }
 
       // Convert Birdeye format to Candle format
-      const candles: Candle[] = birdeyeData.items
-        .map((item) => ({
+      let candles: Candle[] = birdeyeData.items
+        .map((item: { unixTime: number; open: number; high: number; low: number; close: number; volume: number }) => ({
           timestamp: item.unixTime,
           open: item.open,
           high: item.high,
@@ -683,12 +828,186 @@ export class OhlcvIngestionEngine {
           close: item.close,
           volume: item.volume,
         }))
-        .filter((candle) => {
+        .filter((candle: Candle) => {
           // Filter candles within the requested time range
           const candleTime = DateTime.fromSeconds(candle.timestamp);
           return candleTime >= startTime && candleTime <= endTime;
         })
-        .sort((a, b) => a.timestamp - b.timestamp); // Ensure chronological order
+        .sort((a: Candle, b: Candle) => a.timestamp - b.timestamp); // Ensure chronological order
+
+      // Validate candles for data errors
+      const invalidCandles: Array<{ candle: Candle; reason: string }> = [];
+      const missingTimestamps: number[] = [];
+
+      for (const candle of candles) {
+        // Check for invalid OHLC values
+        if (candle.low > candle.high) {
+          invalidCandles.push({
+            candle,
+            reason: `low (${candle.low}) > high (${candle.high})`,
+          });
+        }
+        if (candle.open <= 0 || candle.high <= 0 || candle.low <= 0 || candle.close <= 0) {
+          invalidCandles.push({
+            candle,
+            reason: 'non-positive OHLC values',
+          });
+        }
+        if (isNaN(candle.open) || isNaN(candle.high) || isNaN(candle.low) || isNaN(candle.close)) {
+          invalidCandles.push({
+            candle,
+            reason: 'NaN values in OHLC',
+          });
+        }
+        // Check if OHLC values are within reasonable bounds (high >= open/close >= low)
+        if (
+          candle.high < candle.open ||
+          candle.high < candle.close ||
+          candle.low > candle.open ||
+          candle.low > candle.close
+        ) {
+          invalidCandles.push({
+            candle,
+            reason: 'OHLC values out of bounds',
+          });
+        }
+      }
+
+      // Check for missing candles (gaps in expected time series)
+      // Only flag as issues if we have very few candles relative to expected count
+      // Gaps are normal in API data, especially for older/less liquid tokens
+      if (candles.length > 0 && interval !== '1s' && interval !== '15s') {
+        const intervalSeconds = interval === '1m' ? 60 : interval === '5m' ? 300 : 3600;
+        const expectedStart = Math.floor(startTime.toSeconds());
+        const expectedEnd = Math.floor(endTime.toSeconds());
+        const expectedCount = Math.floor((expectedEnd - expectedStart) / intervalSeconds);
+        
+        // Only flag if we have less than 50% of expected candles (significant data loss)
+        // This prevents false positives from normal gaps in historical data
+        if (candles.length < expectedCount * 0.5 && expectedCount > 10) {
+          // Only check for missing timestamps if we have significant data loss
+          for (
+            let expectedTime = expectedStart;
+            expectedTime <= expectedEnd;
+            expectedTime += intervalSeconds
+          ) {
+            const hasCandle = candles.some(
+              (c) => Math.abs(c.timestamp - expectedTime) < intervalSeconds / 2
+            );
+            if (!hasCandle) {
+              missingTimestamps.push(expectedTime);
+            }
+          }
+          // Limit missing timestamps to avoid huge arrays
+          if (missingTimestamps.length > 100) {
+            missingTimestamps.length = 100;
+          }
+        }
+      }
+
+      // If we have invalid candles or significant missing candles, try to fix them
+      // Only warn if we have actual invalid data (not just gaps, which are normal)
+      if (invalidCandles.length > 0 || (missingTimestamps.length > 0 && missingTimestamps.length > candles.length * 0.5)) {
+        logger.warn(`[OhlcvIngestionEngine] Found data issues for ${mint.substring(0, 20)}...`, {
+          invalidCandles: invalidCandles.length,
+          missingCandles: missingTimestamps.length,
+          totalCandles: candles.length,
+          interval,
+        });
+
+        // Try a repeat fetch first
+        logger.debug(
+          `[OhlcvIngestionEngine] Attempting repeat OHLCV fetch for ${mint.substring(0, 20)}...`
+        );
+        try {
+          const retryData = await birdeyeClient.fetchOHLCVData(
+            mint,
+            startTime.toJSDate(),
+            endTime.toJSDate(),
+            interval,
+            chain
+          );
+
+          if (retryData && retryData.items && retryData.items.length > 0) {
+            // Re-validate the retry data
+            const retryCandles: Candle[] = retryData.items
+              .map((item: { unixTime: number; open: number; high: number; low: number; close: number; volume: number }) => ({
+                timestamp: item.unixTime,
+                open: item.open,
+                high: item.high,
+                low: item.low,
+                close: item.close,
+                volume: item.volume,
+              }))
+              .filter((candle: Candle) => {
+                const candleTime = DateTime.fromSeconds(candle.timestamp);
+                return candleTime >= startTime && candleTime <= endTime;
+              })
+              .sort((a: Candle, b: Candle) => a.timestamp - b.timestamp);
+
+            // Check if retry fixed the issues
+            const retryInvalid = retryCandles.filter(
+              (c) =>
+                c.low > c.high ||
+                c.open <= 0 ||
+                c.high <= 0 ||
+                c.low <= 0 ||
+                c.close <= 0 ||
+                isNaN(c.open) ||
+                isNaN(c.high) ||
+                isNaN(c.low) ||
+                isNaN(c.close)
+            );
+
+            if (retryInvalid.length === 0) {
+              logger.info(
+                `[OhlcvIngestionEngine] Repeat fetch fixed data issues for ${mint.substring(0, 20)}...`
+              );
+              candles = retryCandles;
+            } else {
+              // Retry also has issues, use historical price fallback for invalid/missing candles
+              logger.warn(
+                `[OhlcvIngestionEngine] Repeat fetch still has issues, using historical price fallback for ${mint.substring(0, 20)}...`
+              );
+              candles = await this._fixCandlesWithHistoricalPrice(
+                mint,
+                chain,
+                retryCandles,
+                invalidCandles.map((ic) => ic.candle),
+                missingTimestamps,
+                interval
+              );
+            }
+          } else {
+            // Retry returned no data, use historical price fallback
+            logger.warn(
+              `[OhlcvIngestionEngine] Repeat fetch returned no data, using historical price fallback for ${mint.substring(0, 20)}...`
+            );
+            candles = await this._fixCandlesWithHistoricalPrice(
+              mint,
+              chain,
+              candles,
+              invalidCandles.map((ic) => ic.candle),
+              missingTimestamps,
+              interval
+            );
+          }
+        } catch (retryError) {
+          // Retry failed, use historical price fallback
+          logger.warn(
+            `[OhlcvIngestionEngine] Repeat fetch failed, using historical price fallback for ${mint.substring(0, 20)}...`,
+            { error: retryError instanceof Error ? retryError.message : String(retryError) }
+          );
+          candles = await this._fixCandlesWithHistoricalPrice(
+            mint,
+            chain,
+            candles,
+            invalidCandles.map((ic) => ic.candle),
+            missingTimestamps,
+            interval
+          );
+        }
+      }
 
       if (candles.length === 0) {
         logger.debug(
@@ -733,6 +1052,110 @@ export class OhlcvIngestionEngine {
       });
       throw error;
     }
+  }
+
+  /**
+   * Fix invalid or missing candles using historical price API
+   * Replaces invalid candles and fills missing candles with historical price data
+   */
+  private async _fixCandlesWithHistoricalPrice(
+    mint: string,
+    chain: Chain,
+    existingCandles: Candle[],
+    invalidCandles: Candle[],
+    missingTimestamps: number[],
+    _interval: '1m' | '5m' | '15s' | '1s'
+  ): Promise<Candle[]> {
+    const fixedCandles: Candle[] = [];
+    const timestampsToFix = new Set<number>();
+
+    // Collect all timestamps that need fixing
+    for (const invalidCandle of invalidCandles) {
+      timestampsToFix.add(invalidCandle.timestamp);
+    }
+    for (const missingTs of missingTimestamps) {
+      timestampsToFix.add(missingTs);
+    }
+
+    // Keep valid existing candles
+    const validCandles = existingCandles.filter(
+      (c) =>
+        !timestampsToFix.has(c.timestamp) &&
+        c.low <= c.high &&
+        c.open > 0 &&
+        c.high > 0 &&
+        c.low > 0 &&
+        c.close > 0 &&
+        !isNaN(c.open) &&
+        !isNaN(c.high) &&
+        !isNaN(c.low) &&
+        !isNaN(c.close)
+    );
+    fixedCandles.push(...validCandles);
+
+    // Fix invalid/missing candles using historical price API
+    logger.debug(
+      `[OhlcvIngestionEngine] Fixing ${timestampsToFix.size} candles using historical price API for ${mint.substring(0, 20)}...`
+    );
+
+    for (const timestamp of timestampsToFix) {
+      try {
+        const historicalPrice = await birdeyeClient.fetchHistoricalPriceAtUnixTime(
+          mint,
+          timestamp,
+          chain
+        );
+
+        if (historicalPrice && historicalPrice.value > 0) {
+          // Create a candle from the historical price
+          // Use the price as open, high, low, close (since we only have one price point)
+          const price = historicalPrice.value;
+          fixedCandles.push({
+            timestamp,
+            open: price,
+            high: price,
+            low: price,
+            close: price,
+            volume: 0, // No volume data from historical price endpoint
+          });
+          logger.debug(
+            `[OhlcvIngestionEngine] Fixed candle at ${timestamp} using historical price: ${price}`
+          );
+        } else {
+          logger.warn(
+            `[OhlcvIngestionEngine] Could not fetch historical price for timestamp ${timestamp}`
+          );
+          // Try to use nearby valid candle as fallback
+          const nearbyCandle = existingCandles
+            .filter((c) => c.low <= c.high && c.close > 0)
+            .sort(
+              (a, b) => Math.abs(a.timestamp - timestamp) - Math.abs(b.timestamp - timestamp)
+            )[0];
+
+          if (nearbyCandle) {
+            fixedCandles.push({
+              timestamp,
+              open: nearbyCandle.close,
+              high: nearbyCandle.close,
+              low: nearbyCandle.close,
+              close: nearbyCandle.close,
+              volume: 0,
+            });
+            logger.debug(
+              `[OhlcvIngestionEngine] Used nearby candle price (${nearbyCandle.close}) for timestamp ${timestamp}`
+            );
+          }
+        }
+      } catch (error) {
+        logger.warn(
+          `[OhlcvIngestionEngine] Failed to fetch historical price for timestamp ${timestamp}`,
+          { error: error instanceof Error ? error.message : String(error) }
+        );
+      }
+    }
+
+    // Sort by timestamp and return
+    return fixedCandles.sort((a: Candle, b: Candle) => a.timestamp - b.timestamp);
   }
 
   /**

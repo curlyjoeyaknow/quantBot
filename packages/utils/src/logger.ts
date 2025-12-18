@@ -29,7 +29,7 @@ export interface LogContext {
   callerName?: string;
   strategy?: string;
   sessionId?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 // Logger configuration interface

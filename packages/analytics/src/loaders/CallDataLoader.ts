@@ -52,7 +52,7 @@ export class CallDataLoader {
         WHERE 1=1
       `;
 
-      const params: any[] = [];
+      const params: Array<string | number | string[] | Date> = [];
       let paramIndex = 1;
 
       if (options.from) {

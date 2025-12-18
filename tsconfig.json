@@ -27,7 +27,7 @@
       "@quantbot/core/*": ["./packages/core/src/*"]
     }
   },
-  "include": ["src/**/*", "scripts/**/*"],
+  "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "web", "examples", "scripts/legacy/**/*", "legacy/**/*"],
   "references": [
     { "path": "./packages/utils" },

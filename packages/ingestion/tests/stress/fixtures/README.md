@@ -29,6 +29,18 @@ Invalid Python tool outputs for contract brutality tests:
 - **Stdout contamination**: Logs mixed with JSON data
 - **Huge outputs**: Exceeding maxBuffer limits
 
+### `pathological-ohlcv.ts`
+
+Extreme edge cases for OHLCV ingestion stress testing:
+
+- **Invalid Mints**: Empty strings, too short/long, forbidden characters, zero addresses
+- **Extreme Date Ranges**: Future dates, very old dates, reversed ranges, same start/end, huge ranges, tiny ranges, invalid timestamps
+- **Pathological Candles**: Empty arrays, negative prices, zero prices, high < low, invalid values (NaN, Infinity), duplicates, out-of-order, huge gaps, maximum candles (5000), over maximum (5001), flatlines, extreme spikes, near-zero prices, invalid timestamps, mixed valid/invalid
+- **API Failure Scenarios**: Empty responses, malformed JSON, missing fields, rate limits (429), server errors (500), not found (404), timeouts, partial responses, wrong data structures
+- **Cache Corruption**: Stale cache, corrupted entries, wrong data types, empty entries, wrong mint
+- **Storage Failures**: Connection failures, query timeouts, disk full, partial writes, schema mismatches, concurrent conflicts
+- **Resource Exhaustion**: Too many concurrent requests, very large responses, memory exhaustion, cache overflow
+
 ### `nasty-candles.ts`
 
 Pathological candle sequences for simulation stress tests:

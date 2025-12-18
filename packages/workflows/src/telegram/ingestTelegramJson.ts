@@ -22,6 +22,8 @@ import {
   normalizedToParsedBatch,
   BotMessageExtractor,
   ChunkValidator,
+  type ExtractedBotData,
+  type ResolvedCaller,
 } from '@quantbot/ingestion';
 import type {
   CallersRepository,
@@ -176,7 +178,7 @@ export async function ingestTelegramJson(
   let messagesFailed = 0;
   let botMessagesProcessed = 0;
   const tokensUpsertedSet = new Set<string>();
-  const chunkResults: Array<{ botData: any; caller: any }> = [];
+  const chunkResults: Array<{ botData: ExtractedBotData; caller: ResolvedCaller }> = [];
 
   for (let i = 0; i < botNormalizedMessages.length; i++) {
     const botMsg = botNormalizedMessages[i];

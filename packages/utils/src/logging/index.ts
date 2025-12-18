@@ -82,7 +82,7 @@ export class LogHelpers {
   /**
    * Log WebSocket event
    */
-  static websocketEvent(logger: Logger, event: string, data?: any, context?: LogContext): void {
+  static websocketEvent(logger: Logger, event: string, data?: unknown, context?: LogContext): void {
     logger.debug('WebSocket Event', { event, data, ...context });
   }
 
@@ -93,7 +93,7 @@ export class LogHelpers {
     logger: Logger,
     strategy: string,
     tokenAddress: string,
-    result: any,
+    result: unknown,
     context?: LogContext
   ): void {
     logger.info('Simulation Completed', { strategy, tokenAddress, result, ...context });

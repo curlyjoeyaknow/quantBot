@@ -47,10 +47,12 @@ function parseMessageId(x: unknown): number | null {
   return null;
 }
 
-function parseTimestampMs(msg: any): number | null {
+function parseTimestampMs(msg: unknown): number | null {
   // Telegram exports often have: date (ISO-ish string) and/or date_unixtime (string)
-  const du = msg?.date_unixtime;
-  const d = msg?.date;
+  if (typeof msg !== 'object' || msg === null) return null;
+  const msgObj = msg as Record<string, unknown>;
+  const du = msgObj.date_unixtime;
+  const d = msgObj.date;
 
   if (typeof du === 'string' && du.trim() !== '') {
     const secs = Number(du);
@@ -68,7 +70,7 @@ function parseTimestampMs(msg: any): number | null {
 
 type Link = { text: string; href: string };
 
-function flattenText(textField: any): { text: string; links: Link[] } {
+function flattenText(textField: unknown): { text: string; links: Link[] } {
   // Telegram "text" can be:
   // - string
   // - array: [ "hi", {type:"link", text:"site", href:"..."}, ...]
@@ -91,10 +93,11 @@ function flattenText(textField: any): { text: string; links: Link[] } {
       continue;
     }
     if (part && typeof part === 'object') {
-      const t = safeString((part as any).text);
+      const partObj = part as Record<string, unknown>;
+      const t = safeString(partObj.text);
       out += t;
 
-      const href = (part as any).href;
+      const href = partObj.href;
       if (typeof href === 'string' && href.trim() !== '') {
         links.push({ text: t, href: href.trim() });
       }
@@ -119,7 +122,7 @@ export function normalizeTelegramMessage(
       };
     }
 
-    const msg: any = input;
+    const msg = input as Record<string, unknown>;
     const messageId = parseMessageId(msg.id);
     if (messageId === null) {
       return {
@@ -170,12 +173,13 @@ export function normalizeTelegramMessage(
     };
 
     return { ok: true, value: norm };
-  } catch (e: any) {
+  } catch (e: unknown) {
+    const errorMessage = e instanceof Error ? e.message : String(e);
     return {
       ok: false,
       error: {
         code: 'UNKNOWN_SHAPE',
-        message: `Normalizer threw: ${safeString(e?.message || e)}`,
+        message: `Normalizer threw: ${errorMessage}`,
       },
       raw: input,
     };

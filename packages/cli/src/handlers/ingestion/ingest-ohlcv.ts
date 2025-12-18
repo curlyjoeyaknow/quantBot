@@ -29,5 +29,6 @@ export async function ingestOhlcvHandler(args: IngestOhlcvArgs, ctx: CommandCont
     to: args.to ? new Date(args.to) : undefined,
     preWindowMinutes: args.preWindow,
     postWindowMinutes: args.postWindow,
+    duckdbPath: args.duckdb,
   });
 }
