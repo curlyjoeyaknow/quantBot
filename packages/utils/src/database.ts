@@ -262,10 +262,9 @@ export function initDatabase(): Promise<void> {
           (alterErr) => {
             // Ignore errors if columns already exist
             if (alterErr && !alterErr.message.includes('duplicate column name')) {
-              logger.warn(
-                'Error adding columns to simulation_runs (may already exist)',
-                alterErr as Error
-              );
+              logger.warn('Error adding columns to simulation_runs (may already exist)', {
+                error: alterErr instanceof Error ? alterErr.message : String(alterErr),
+              });
             }
           }
         );
@@ -278,7 +277,9 @@ export function initDatabase(): Promise<void> {
         `,
           (indexErr) => {
             if (indexErr) {
-              logger.warn('Error creating indexes (may already exist)', indexErr as Error);
+              logger.warn('Error creating indexes (may already exist)', {
+                error: indexErr instanceof Error ? indexErr.message : String(indexErr),
+              });
             }
           }
         );

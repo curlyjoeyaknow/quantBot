@@ -238,7 +238,7 @@ export const validationMiddleware: EventMiddleware = async (event: ApplicationEv
   // Validate required fields
   if (!event.type || !event.metadata || !event.data) {
     throw new ValidationError('Invalid event structure: missing required fields', {
-      event: event as Record<string, unknown>,
+      event: event as unknown as Record<string, unknown>,
       requiredFields: ['type', 'payload', 'metadata'],
     });
   }

@@ -27,14 +27,14 @@ export function normalizeCandidate(raw: string): string {
   let normalized = raw.trim();
   // Remove common surrounding punctuation: , ) ] . ( [ etc.
   // Match one or more punctuation chars at start or end
-  normalized = normalized.replace(/^[,)\].]+|[,(\[.]+$/g, '');
+  normalized = normalized.replace(/^[,)\].]+|[,([.]+$/g, '');
   // Also handle parentheses and brackets more explicitly (need to escape)
-  normalized = normalized.replace(/^[\(\[\{]+|[\)\]\}]+$/g, '');
+  normalized = normalized.replace(/^[([{]+|[)\]}]+$/g, '');
   // Final trim
   normalized = normalized.trim();
   // If still has parentheses/brackets, try again (handles nested cases)
   if (normalized.startsWith('(') || normalized.startsWith('[') || normalized.startsWith('{')) {
-    normalized = normalized.replace(/^[\(\[\{]+|[\)\]\}]+$/g, '');
+    normalized = normalized.replace(/^[([{]+|[)\]}]+$/g, '');
     normalized = normalized.trim();
   }
   return normalized;

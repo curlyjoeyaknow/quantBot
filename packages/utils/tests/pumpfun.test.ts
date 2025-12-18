@@ -7,10 +7,10 @@ let derivePumpfunBondingCurve: any;
 let PUMP_FUN_PROGRAM_ID: any;
 
 beforeAll(async () => {
-  const modulePath = path.resolve(
-    path.dirname(fileURLToPath(import.meta.url)),
-    '../src/pumpfun.ts'
-  );
+  // CommonJS __dirname equivalent
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = path.dirname(__filename);
+  const modulePath = path.resolve(__dirname, '../src/pumpfun.ts');
   const mod = await import(pathToFileURL(modulePath).href);
   derivePumpfunBondingCurve = mod.derivePumpfunBondingCurve;
   PUMP_FUN_PROGRAM_ID = mod.PUMP_FUN_PROGRAM_ID;

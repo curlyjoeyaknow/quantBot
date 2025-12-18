@@ -40,7 +40,7 @@ export interface TelegramPipelineConfig {
 
 export interface DuckDBStorageConfig {
   duckdbPath: string;
-  operation: 'store_strategy' | 'store_run' | 'store_alerts' | 'generate_report';
+  operation: 'store_strategy' | 'store_run' | 'store_alerts' | 'generate_report' | 'query_calls';
   data: Record<string, unknown>;
 }
 

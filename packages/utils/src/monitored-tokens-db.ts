@@ -62,7 +62,7 @@ export interface MonitoredToken {
  */
 export async function storeMonitoredToken(token: MonitoredToken): Promise<number> {
   try {
-    const result = await withPostgresTransaction(async (client) => {
+    const result = await withPostgresTransaction(async (client: any) => {
       // First, ensure token exists in tokens table
       let tokenId: number | null = null;
 
@@ -83,7 +83,7 @@ export async function storeMonitoredToken(token: MonitoredToken): Promise<number
 
       // Ensure caller exists
       let callerId: number | null = null;
-      const callerResult = await client.query(
+      const callerResult = await (client as any).query(
         `INSERT INTO callers (source, handle, display_name, updated_at)
          VALUES ('telegram', $1, $1, NOW())
          ON CONFLICT (source, handle) 
@@ -97,7 +97,7 @@ export async function storeMonitoredToken(token: MonitoredToken): Promise<number
       }
 
       // Insert or update monitored token
-      const insertResult = await client.query(
+      const insertResult = await (client as any).query(
         `INSERT INTO monitored_tokens (
           token_id, token_address, chain, token_symbol, caller_id, caller_name,
           alert_timestamp, alert_price, entry_config_json, status,
@@ -190,22 +190,22 @@ export async function getActiveMonitoredTokens(): Promise<MonitoredToken[]> {
        ORDER BY created_at DESC`
     );
 
-    return result.rows.map((row) => ({
-      id: row.id,
-      tokenAddress: row.token_address,
-      chain: row.chain,
-      tokenSymbol: row.token_symbol || undefined,
-      callerName: row.caller_name,
-      alertTimestamp: row.alert_timestamp,
-      alertPrice: parseFloat(row.alert_price),
-      entryConfig: row.entry_config_json ? JSON.parse(row.entry_config_json) : undefined,
+    return result.rows.map((row: any) => ({
+      id: row.id as number | undefined,
+      tokenAddress: String(row.token_address || ''),
+      chain: String(row.chain || ''),
+      tokenSymbol: row.token_symbol ? String(row.token_symbol) : undefined,
+      callerName: String(row.caller_name || ''),
+      alertTimestamp: row.alert_timestamp as Date,
+      alertPrice: parseFloat(String(row.alert_price || '0')),
+      entryConfig: row.entry_config_json ? JSON.parse(String(row.entry_config_json)) : undefined,
       status: row.status as 'active' | 'paused' | 'completed' | 'removed',
-      historicalCandlesCount: row.historical_candles_count,
-      lastPrice: row.last_price ? parseFloat(row.last_price) : undefined,
-      lastUpdateTime: row.last_update_time || undefined,
-      entrySignalSent: row.entry_signal_sent,
-      entryPrice: row.entry_price ? parseFloat(row.entry_price) : undefined,
-      entryTime: row.entry_time || undefined,
+      historicalCandlesCount: row.historical_candles_count as number | undefined,
+      lastPrice: row.last_price ? parseFloat(String(row.last_price)) : undefined,
+      lastUpdateTime: row.last_update_time as Date | undefined,
+      entrySignalSent: row.entry_signal_sent as boolean | undefined,
+      entryPrice: row.entry_price ? parseFloat(String(row.entry_price)) : undefined,
+      entryTime: row.entry_time as Date | undefined,
       entryType: row.entry_type as 'initial' | 'trailing' | 'ichimoku' | undefined,
     }));
   } catch (error) {
