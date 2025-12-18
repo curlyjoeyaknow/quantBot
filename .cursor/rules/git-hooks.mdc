@@ -10,17 +10,13 @@ alwaysApply: false
 
 ## Pre-Commit Hook (`.husky/pre-commit`)
 
-Automatically runs on `git commit`:
+**Lightweight checks only** - runs on `git commit`:
 
-1. **Format Check**: `npm run format:check`
-2. **Lint & Fix**: `npm run lint:fix`
-3. **Type Check**: `npm run typecheck`
-4. **Test Requirements Check**: `scripts/git/check-test-requirements.ts`
-   - Analyzes staged changes
-   - Detects change type (financial, parser, database, API, etc.)
-   - Verifies appropriate tests exist
-   - Blocks commit if requirements not met
-5. **Run Related Tests**: `npm test -- --related`
+1. **Format Check**: `npm run format:check` (fast)
+2. **Lint Check**: `npm run lint` (fast)
+3. **Type Check**: `npm run typecheck` (fast)
+
+**Note**: Test requirements check and test execution run in CI, not pre-commit.
 
 ## Pre-Push Hook (`.husky/pre-push`)
 
