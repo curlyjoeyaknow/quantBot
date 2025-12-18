@@ -69,7 +69,9 @@ export async function getErrorStats(timeRange: { from: Date; to: Date }): Promis
     const repo = getErrorRepository();
     return await repo.getErrorStats(timeRange);
   } catch (error) {
-    logger.error('Failed to get error stats', error as Error);
+    logger.error('Failed to get error stats', {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return {
       total: 0,
       bySeverity: {},

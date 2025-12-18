@@ -104,7 +104,9 @@ export class InfluxDBMetricsWriter {
       logger.warn('Package.json not found in any expected location');
       return 'unknown';
     } catch (error) {
-      logger.warn('Failed to extract package version, using "unknown"', error as Error);
+      logger.warn('Failed to extract package version, using "unknown"', {
+        error: error instanceof Error ? error.message : String(error),
+      });
       return 'unknown';
     }
   }
@@ -137,7 +139,8 @@ export class InfluxDBMetricsWriter {
         component: metric.component,
       });
     } catch (error) {
-      logger.error('Failed to write latency metric', error as Error, {
+      logger.error('Failed to write latency metric', {
+        error: error instanceof Error ? error.message : String(error),
         operation: metric.operation,
         component: metric.component,
       });
@@ -174,7 +177,8 @@ export class InfluxDBMetricsWriter {
         component: metric.component,
       });
     } catch (error) {
-      logger.error('Failed to write throughput metric', error as Error, {
+      logger.error('Failed to write throughput metric', {
+        error: error instanceof Error ? error.message : String(error),
         operation: metric.operation,
         component: metric.component,
       });
