@@ -11,6 +11,7 @@ import {
   TokensRepository,
   AlertsRepository,
   OhlcvRepository,
+  SimulationRunsRepository,
 } from '@quantbot/storage';
 import { OhlcvIngestionService } from '@quantbot/ingestion';
 import { TelegramAlertIngestionService } from '@quantbot/ingestion';
@@ -36,6 +37,8 @@ export interface CommandServices {
   telegramPipeline(): TelegramPipelineService;
   simulation(): SimulationService;
   analytics(): AnalyticsService;
+  simulationRunsRepository(): SimulationRunsRepository;
+  callersRepository(): CallersRepository;
   // Add more services as needed
 }
 
@@ -134,6 +137,12 @@ export class CommandContext {
       analytics: () => {
         const engine = this._options.pythonEngineOverride ?? getPythonEngine();
         return new AnalyticsService(engine);
+      },
+      simulationRunsRepository: () => {
+        return new SimulationRunsRepository();
+      },
+      callersRepository: () => {
+        return new CallersRepository();
       },
     };
   }

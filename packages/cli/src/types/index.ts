@@ -3,6 +3,7 @@
  */
 
 import type { z } from 'zod';
+import type { CommandContext } from '../core/command-context.js';
 
 /**
  * Command definition structure
@@ -28,9 +29,9 @@ export interface CommandDefinition {
    * Note: Handlers can be typed more specifically, but the interface accepts unknown for flexibility.
    * The handler will receive validated args matching the schema and a command context.
    */
-  handler:
-    | ((args: unknown, ctx: unknown) => Promise<unknown> | unknown)
-    | ((args: unknown, ctx: unknown) => Promise<unknown> | unknown);
+  handler: (args: unknown, ctx: CommandContext | unknown) => Promise<unknown> | unknown;
+  // Note: Handlers are typically typed as (args: T, ctx: CommandContext) => Promise<R>
+  // but the interface uses unknown to allow flexible typing at registration time
 
   /**
    * Optional examples for help text

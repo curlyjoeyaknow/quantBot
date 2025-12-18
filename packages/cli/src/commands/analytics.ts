@@ -115,9 +115,10 @@ const analyticsModule: PackageCommandModule = {
       name: 'analyze',
       description: 'Analyze calls with metrics',
       schema: analyzeSchema,
-      handler: async (args: unknown, ctx: CommandContext) => {
+      handler: async (args: unknown, ctx: unknown) => {
+        const typedCtx = ctx as CommandContext;
         const typedArgs = args as z.infer<typeof analyzeSchema>;
-        return await analyzeAnalyticsHandler(typedArgs, ctx);
+        return await analyzeAnalyticsHandler(typedArgs, typedCtx);
       },
       examples: ['quantbot analytics analyze --caller Brook --from 2024-01-01 --to 2024-02-01'],
     },
@@ -125,9 +126,10 @@ const analyticsModule: PackageCommandModule = {
       name: 'metrics',
       description: 'Calculate period metrics',
       schema: metricsSchema,
-      handler: async (args: unknown, ctx: CommandContext) => {
+      handler: async (args: unknown, ctx: unknown) => {
+        const typedCtx = ctx as CommandContext;
         const typedArgs = args as z.infer<typeof metricsSchema>;
-        return await metricsAnalyticsHandler(typedArgs, ctx);
+        return await metricsAnalyticsHandler(typedArgs, typedCtx);
       },
       examples: ['quantbot analytics metrics --caller Brook'],
     },
@@ -135,9 +137,10 @@ const analyticsModule: PackageCommandModule = {
       name: 'report',
       description: 'Generate analytics report',
       schema: reportSchema,
-      handler: async (args: unknown, ctx: CommandContext) => {
+      handler: async (args: unknown, ctx: unknown) => {
+        const typedCtx = ctx as CommandContext;
         const typedArgs = args as z.infer<typeof reportSchema>;
-        return await reportAnalyticsHandler(typedArgs, ctx);
+        return await reportAnalyticsHandler(typedArgs, typedCtx);
       },
       examples: ['quantbot analytics report --caller Brook'],
     },
@@ -145,9 +148,10 @@ const analyticsModule: PackageCommandModule = {
       name: 'analyze-duckdb',
       description: 'Statistical analysis using DuckDB Python engine',
       schema: analyzeDuckdbSchema,
-      handler: async (args: unknown, ctx: CommandContext) => {
+      handler: async (args: unknown, ctx: unknown) => {
+        const typedCtx = ctx as CommandContext;
         const typedArgs = args as z.infer<typeof analyzeDuckdbSchema>;
-        return await analyzeDuckdbHandler(typedArgs, ctx);
+        return await analyzeDuckdbHandler(typedArgs, typedCtx);
       },
       examples: [
         'quantbot analytics analyze-duckdb --duckdb tele.duckdb --caller Brook',

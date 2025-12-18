@@ -38,9 +38,11 @@ export const ohlcvSchema = z.object({
   to: z.string().optional(),
   preWindow: z.number().int().positive().default(260),
   postWindow: z.number().int().positive().default(1440),
-  interval: z.enum(['1m', '5m', '15m', '1h']).default('5m'),
+  interval: z.enum(['1m', '5m', '15m', '1h', '1s', '15s']).default('1m'),
   format: z.enum(['json', 'table', 'csv']).default('table'),
   duckdb: z.string().optional(), // Path to DuckDB database file
+  candles: z.number().int().positive().default(5000), // Number of candles to fetch
+  startOffsetMinutes: z.number().int().default(-52), // Minutes before alert to start fetching
 });
 
 /**
@@ -95,7 +97,9 @@ export function registerIngestionCommands(program: Command): void {
     .option('--to <date>', 'End date (ISO 8601)')
     .option('--pre-window <minutes>', 'Pre-window minutes', '260')
     .option('--post-window <minutes>', 'Post-window minutes', '1440')
-    .option('--interval <interval>', 'Candle interval', '5m')
+    .option('--interval <interval>', 'Candle interval (1s, 15s, 1m, 5m, 15m, 1h)', '1m')
+    .option('--candles <number>', 'Number of candles to fetch', '5000')
+    .option('--start-offset-minutes <number>', 'Minutes before alert to start fetching', '-52')
     .option('--format <format>', 'Output format', 'table')
     .option('--duckdb <path>', 'Path to DuckDB database file (or set DUCKDB_PATH env var)')
     .action(async (options) => {
@@ -156,9 +160,10 @@ const ingestionModule: PackageCommandModule = {
       name: 'telegram',
       description: 'Ingest Telegram export file',
       schema: telegramSchema,
-      handler: async (args: unknown, ctx: CommandContext) => {
+      handler: async (args: unknown, ctx: unknown) => {
+        const typedCtx = ctx as CommandContext;
         const typedArgs = args as z.infer<typeof telegramSchema>;
-        return await ingestTelegramHandler(typedArgs, ctx);
+        return await ingestTelegramHandler(typedArgs, typedCtx);
       },
       examples: ['quantbot ingestion telegram --file data/messages.html --caller-name Brook'],
     },
@@ -166,9 +171,10 @@ const ingestionModule: PackageCommandModule = {
       name: 'ohlcv',
       description: 'Fetch OHLCV data for calls',
       schema: ohlcvSchema,
-      handler: async (args: unknown, ctx: CommandContext) => {
+      handler: async (args: unknown, ctx: unknown) => {
+        const typedCtx = ctx as CommandContext;
         const typedArgs = args as z.infer<typeof ohlcvSchema>;
-        return await ingestOhlcvHandler(typedArgs, ctx);
+        return await ingestOhlcvHandler(typedArgs, typedCtx);
       },
       examples: ['quantbot ingestion ohlcv --from 2024-01-01 --to 2024-02-01'],
     },
@@ -176,9 +182,10 @@ const ingestionModule: PackageCommandModule = {
       name: 'telegram-python',
       description: 'Process Telegram export using Python DuckDB pipeline',
       schema: telegramProcessSchema,
-      handler: async (args: unknown, ctx: CommandContext) => {
+      handler: async (args: unknown, ctx: unknown) => {
+        const typedCtx = ctx as CommandContext;
         const typedArgs = args as z.infer<typeof telegramProcessSchema>;
-        return await processTelegramPythonHandler(typedArgs, ctx);
+        return await processTelegramPythonHandler(typedArgs, typedCtx);
       },
       examples: [
         'quantbot ingestion telegram-python --file data/telegram.json --output-db data/output.duckdb --chat-id test_chat',
@@ -188,9 +195,10 @@ const ingestionModule: PackageCommandModule = {
       name: 'validate-addresses',
       description: 'Validate addresses and fetch metadata across chains',
       schema: validateAddressesSchema,
-      handler: async (args: unknown, ctx: CommandContext) => {
+      handler: async (args: unknown, ctx: unknown) => {
+        const typedCtx = ctx as CommandContext;
         const typedArgs = args as z.infer<typeof validateAddressesSchema>;
-        return await validateAddressesHandler(typedArgs, ctx);
+        return await validateAddressesHandler(typedArgs, typedCtx);
       },
       examples: [
         'quantbot ingestion validate-addresses 0x123... So111...',

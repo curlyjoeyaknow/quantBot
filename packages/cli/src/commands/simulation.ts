@@ -194,9 +194,10 @@ const simulationModule: PackageCommandModule = {
       name: 'run',
       description: 'Run simulation on calls',
       schema: runSchema,
-      handler: async (args: unknown, ctx: CommandContext) => {
+      handler: async (args: unknown, ctx: unknown) => {
         const typedArgs = args as z.infer<typeof runSchema>;
-        return await runSimulationHandler(typedArgs, ctx);
+        const typedCtx = ctx as CommandContext;
+        return await runSimulationHandler(typedArgs, typedCtx);
       },
       examples: [
         'quantbot simulation run --strategy PT2_SL25 --caller Brook --from 2024-01-01 --to 2024-02-01',
@@ -206,9 +207,10 @@ const simulationModule: PackageCommandModule = {
       name: 'list-runs',
       description: 'List simulation runs',
       schema: listRunsSchema,
-      handler: async (args: unknown, ctx: CommandContext) => {
+      handler: async (args: unknown, ctx: unknown) => {
+        const typedCtx = ctx as CommandContext;
         const typedArgs = args as z.infer<typeof listRunsSchema>;
-        return await listRunsHandler(typedArgs, ctx);
+        return await listRunsHandler(typedArgs, typedCtx);
       },
       examples: ['quantbot simulation list-runs --limit 50'],
     },
@@ -216,9 +218,10 @@ const simulationModule: PackageCommandModule = {
       name: 'run-duckdb',
       description: 'Run simulation using DuckDB Python engine',
       schema: runSimulationDuckdbSchema,
-      handler: async (args: unknown, ctx: CommandContext) => {
+      handler: async (args: unknown, ctx: unknown) => {
+        const typedCtx = ctx as CommandContext;
         const typedArgs = args as z.infer<typeof runSimulationDuckdbSchema>;
-        return await runSimulationDuckdbHandler(typedArgs, ctx);
+        return await runSimulationDuckdbHandler(typedArgs, typedCtx);
       },
       examples: [
         'quantbot simulation run-duckdb --duckdb tele.duckdb --strategy strategy.json --mint So111...',
@@ -228,9 +231,10 @@ const simulationModule: PackageCommandModule = {
       name: 'store-strategy',
       description: 'Store a strategy in DuckDB',
       schema: storeStrategySchema,
-      handler: async (args: unknown, ctx: CommandContext) => {
+      handler: async (args: unknown, ctx: unknown) => {
+        const typedCtx = ctx as CommandContext;
         const typedArgs = args as z.infer<typeof storeStrategySchema>;
-        return await storeStrategyDuckdbHandler(typedArgs, ctx);
+        return await storeStrategyDuckdbHandler(typedArgs, typedCtx);
       },
       examples: [
         'quantbot simulation store-strategy --duckdb sim.duckdb --strategy-id PT2_SL25 --name "PT2 SL25" --entry-config \'{"type":"immediate"}\' --exit-config \'{"targets":[{"target":2.0,"percent":0.5}]}\'',
@@ -240,9 +244,10 @@ const simulationModule: PackageCommandModule = {
       name: 'store-run',
       description: 'Store a simulation run in DuckDB',
       schema: storeRunSchema,
-      handler: async (args: unknown, ctx: CommandContext) => {
+      handler: async (args: unknown, ctx: unknown) => {
+        const typedCtx = ctx as CommandContext;
         const typedArgs = args as z.infer<typeof storeRunSchema>;
-        return await storeRunDuckdbHandler(typedArgs, ctx);
+        return await storeRunDuckdbHandler(typedArgs, typedCtx);
       },
       examples: [
         'quantbot simulation store-run --duckdb sim.duckdb --run-id run123 --strategy-id PT2_SL25 --mint So111... --alert-timestamp 2024-01-01T00:00:00Z --start-time 2024-01-01T00:00:00Z --end-time 2024-01-02T00:00:00Z',
@@ -252,9 +257,10 @@ const simulationModule: PackageCommandModule = {
       name: 'generate-report',
       description: 'Generate a report from DuckDB simulation data',
       schema: generateReportSchema,
-      handler: async (args: unknown, ctx: CommandContext) => {
+      handler: async (args: unknown, ctx: unknown) => {
+        const typedCtx = ctx as CommandContext;
         const typedArgs = args as z.infer<typeof generateReportSchema>;
-        return await generateReportDuckdbHandler(typedArgs, ctx);
+        return await generateReportDuckdbHandler(typedArgs, typedCtx);
       },
       examples: [
         'quantbot simulation generate-report --duckdb sim.duckdb --type summary',
@@ -265,9 +271,10 @@ const simulationModule: PackageCommandModule = {
       name: 'clickhouse-query',
       description: 'Query ClickHouse using Python engine',
       schema: clickHouseQuerySchema,
-      handler: async (args: unknown, ctx: CommandContext) => {
+      handler: async (args: unknown, ctx: unknown) => {
+        const typedCtx = ctx as CommandContext;
         const typedArgs = args as z.infer<typeof clickHouseQuerySchema>;
-        return await clickHouseQueryHandler(typedArgs, ctx);
+        return await clickHouseQueryHandler(typedArgs, typedCtx);
       },
       examples: [
         'quantbot simulation clickhouse-query --operation query_ohlcv --token-address So111... --chain solana --start-time 2024-01-01T00:00:00Z --end-time 2024-01-02T00:00:00Z',

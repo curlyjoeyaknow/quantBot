@@ -149,9 +149,10 @@ const storageModule: PackageCommandModule = {
       name: 'query',
       description: 'Query database tables (safe, read-only)',
       schema: querySchema,
-      handler: async (args: unknown, ctx: CommandContext) => {
+      handler: async (args: unknown, ctx: unknown) => {
+        const typedCtx = ctx as CommandContext;
         const typedArgs = args as z.infer<typeof querySchema>;
-        return await queryStorageHandler(typedArgs, ctx);
+        return await queryStorageHandler(typedArgs, typedCtx);
       },
       examples: [
         'quantbot storage query --table tokens --limit 10',
@@ -164,8 +165,9 @@ const storageModule: PackageCommandModule = {
       schema: z.object({
         format: z.enum(['json', 'table', 'csv']).default('table'),
       }),
-      handler: async (args: unknown, ctx: CommandContext) => {
-        return await statsStorageHandler(args as { format?: 'json' | 'table' | 'csv' }, ctx);
+      handler: async (args: unknown, ctx: unknown) => {
+        const typedCtx = ctx as CommandContext;
+        return await statsStorageHandler(args as { format?: 'json' | 'table' | 'csv' }, typedCtx);
       },
       examples: ['quantbot storage stats'],
     },

@@ -8,7 +8,7 @@
 import { DateTime } from 'luxon';
 import type { CommandContext } from '../../core/command-context.js';
 import { backfillSchema } from '../../commands/ohlcv.js';
-import type { z } from 'zod';
+import { z } from 'zod';
 import { validateMintAddress } from '../../core/argument-parser.js';
 import { getOhlcvIngestionEngine } from '@quantbot/ohlcv';
 import type { Chain } from '@quantbot/core';
@@ -21,7 +21,7 @@ export type BackfillOhlcvArgs = z.infer<typeof backfillSchema>;
  */
 export async function backfillOhlcvHandler(
   args: BackfillOhlcvArgs,
-  ctx: CommandContext
+  _ctx: CommandContext
 ): Promise<{
   mint: string;
   chain: string;
