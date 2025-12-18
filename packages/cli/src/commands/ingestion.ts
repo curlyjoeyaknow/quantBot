@@ -16,6 +16,7 @@ import { ingestOhlcvHandler } from '../handlers/ingestion/ingest-ohlcv.js';
 import type { CommandContext } from '../core/command-context.js';
 import { ingestTelegramHandler } from '../handlers/ingestion/ingest-telegram.js';
 import { processTelegramPythonHandler } from '../handlers/ingestion/process-telegram-python.js';
+import { validateAddressesHandler } from '../handlers/ingestion/validate-addresses.js';
 import { NotFoundError } from '@quantbot/utils';
 
 /**
@@ -49,6 +50,15 @@ export const telegramProcessSchema = z.object({
   outputDb: z.string().min(1),
   chatId: z.string().min(1),
   rebuild: z.boolean().default(false),
+  format: z.enum(['json', 'table', 'csv']).default('table'),
+});
+
+/**
+ * Address validation schema
+ */
+export const validateAddressesSchema = z.object({
+  addresses: z.array(z.string().min(1)).min(1),
+  chainHint: z.enum(['solana', 'ethereum', 'base', 'bsc']).optional(),
   format: z.enum(['json', 'table', 'csv']).default('table'),
 });
 
@@ -115,6 +125,22 @@ export function registerIngestionCommands(program: Command): void {
         rebuild: options.rebuild === true || options.rebuild === 'true',
       });
     });
+
+  // Address validation
+  ingestionCmd
+    .command('validate-addresses')
+    .description('Validate addresses and fetch metadata across chains')
+    .argument('<addresses...>', 'Addresses to validate (space-separated)')
+    .option('--chain-hint <chain>', 'Chain hint (solana, ethereum, base, bsc)')
+    .option('--format <format>', 'Output format', 'table')
+    .action(async (addresses: string[], options) => {
+      const { execute } = await import('../core/execute.js');
+      const commandDef = commandRegistry.getCommand('ingestion', 'validate-addresses');
+      if (!commandDef) {
+        throw new NotFoundError('Command', 'ingestion.validate-addresses');
+      }
+      await execute(commandDef, { ...options, addresses });
+    });
 }
 
 /**
@@ -154,6 +180,19 @@ const ingestionModule: PackageCommandModule = {
       },
       examples: [
         'quantbot ingestion telegram-python --file data/telegram.json --output-db data/output.duckdb --chat-id test_chat',
+      ],
+    },
+    {
+      name: 'validate-addresses',
+      description: 'Validate addresses and fetch metadata across chains',
+      schema: validateAddressesSchema,
+      handler: async (args: unknown, ctx: CommandContext) => {
+        const typedArgs = args as z.infer<typeof validateAddressesSchema>;
+        return await validateAddressesHandler(typedArgs, ctx);
+      },
+      examples: [
+        'quantbot ingestion validate-addresses 0x123... So111...',
+        'quantbot ingestion validate-addresses 0x123... --chain-hint base',
       ],
     },
   ],

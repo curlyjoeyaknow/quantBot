@@ -13,6 +13,7 @@ import * as cheerio from 'cheerio';
 import { PublicKey } from '@solana/web3.js';
 import type { Chain } from '@quantbot/core';
 import { logger } from '@quantbot/utils';
+import { extractAddresses } from './addressValidation.js';
 
 export interface ExtractedBotData {
   contractAddress: string; // Case-sensitive, full address
@@ -112,31 +113,31 @@ export class BotMessageExtractor {
     // Also check for address in code blocks (HTML) or plain text patterns (backup)
     if (!result.contractAddress) {
       if ($) {
+        // Extract from code blocks first (more reliable)
         const codeBlock = $('code').first().text().trim();
-        if (codeBlock && (codeBlock.startsWith('0x') || codeBlock.length >= 32)) {
-          result.contractAddress = codeBlock;
-          if (codeBlock.startsWith('0x')) {
-            result.chain = 'ethereum';
-          }
-        }
-      } else {
-        // Plain text: look for addresses in text
-        // Solana addresses: 32-44 base58 chars
-        const solanaMatch = plainText.match(/\b([1-9A-HJ-NP-Za-km-z]{32,44})\b/);
-        if (solanaMatch) {
-          try {
-            const pubkey = new PublicKey(solanaMatch[1]);
-            result.contractAddress = pubkey.toBase58();
+        if (codeBlock) {
+          const extracted = extractAddresses(codeBlock);
+          if (extracted.solana.length > 0) {
+            result.contractAddress = extracted.solana[0];
             result.chain = 'solana';
-          } catch {
-            // Not a valid Solana address
+          } else if (extracted.evm.length > 0) {
+            result.contractAddress = extracted.evm[0];
+            // Default to ethereum, but chain will be detected from context
+            result.chain = this.detectChainFromText(plainText, extracted.evm[0]);
           }
         }
-        // EVM addresses: 0x followed by 40 hex chars
-        const evmMatch = plainText.match(/\b(0x[a-fA-F0-9]{40})\b/);
-        if (evmMatch && !result.contractAddress) {
-          result.contractAddress = evmMatch[1];
-          result.chain = 'ethereum';
+      }
+
+      // If still no address, extract from full plain text using centralized function
+      if (!result.contractAddress) {
+        const extracted = extractAddresses(plainText);
+        // Prefer Solana addresses first (most common in our use case)
+        if (extracted.solana.length > 0) {
+          result.contractAddress = extracted.solana[0];
+          result.chain = 'solana';
+        } else if (extracted.evm.length > 0) {
+          result.contractAddress = extracted.evm[0];
+          result.chain = this.detectChainFromText(plainText, extracted.evm[0]);
         }
       }
     }
@@ -465,5 +466,17 @@ export class BotMessageExtractor {
     if (normalized === 'bsc' || normalized === 'binance') return 'bsc';
     if (normalized === 'solana' || normalized === 'sol') return 'solana';
     return 'solana'; // Default
+  }
+
+  /**
+   * Detect chain from text context (for EVM addresses that can't be distinguished by format)
+   */
+  private detectChainFromText(text: string, address: string): Chain {
+    const lowerText = text.toLowerCase();
+    if (lowerText.includes('base') || lowerText.includes('base chain')) return 'base';
+    if (lowerText.includes('bsc') || lowerText.includes('binance')) return 'bsc';
+    if (lowerText.includes('ethereum') || lowerText.includes('eth')) return 'ethereum';
+    // Default to ethereum for EVM addresses if no context
+    return 'ethereum';
   }
 }

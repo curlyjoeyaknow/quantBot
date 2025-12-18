@@ -156,6 +156,13 @@ export function TelegramTuiApp(props: Props) {
       }
     };
 
+    // Build date filter for streaming
+    const dateFilter = selectedDay
+      ? { day: selectedDay }
+      : selectedMonth
+        ? { month: selectedMonth }
+        : undefined;
+
     const stopNorm = streamNdjsonFile(
       props.normalizedPath,
       {
@@ -178,7 +185,7 @@ export function TelegramTuiApp(props: Props) {
           maybeBump();
         },
       },
-      { maxLines: props.maxLines, signal: ac.signal }
+      { maxLines: props.maxLines, signal: ac.signal, dateFilter }
     );
 
     const stopQ = streamNdjsonFile(
@@ -203,7 +210,7 @@ export function TelegramTuiApp(props: Props) {
           maybeBump();
         },
       },
-      { maxLines: props.maxLines, signal: ac.signal }
+      { maxLines: props.maxLines, signal: ac.signal, dateFilter }
     );
 
     return () => {
@@ -235,43 +242,23 @@ export function TelegramTuiApp(props: Props) {
   }, [mode, version]);
 
   const visibleRows = useMemo(() => {
-    let filtered = allRows;
-
-    // Apply date filters
-    if (selectedDay) {
-      filtered = filtered.filter((r) => {
-        if (!r.tsMs) return false;
-        const d = new Date(r.tsMs);
-        const dayKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-        return dayKey === selectedDay;
-      });
-    } else if (selectedMonth) {
-      filtered = filtered.filter((r) => {
-        if (!r.tsMs) return false;
-        const d = new Date(r.tsMs);
-        const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-        return monthKey === selectedMonth;
-      });
-    }
-
-    // Apply text filter
-    if (filter.trim()) {
-      const f = filter.trim();
-      filtered = filtered.filter((r) => {
-        const blob = [
-          r.kind,
-          r.chatId,
-          r.from ?? '',
-          r.preview,
-          r.kind === 'err' ? r.errorCode : '',
-          r.kind === 'err' ? r.errorMessage : '',
-        ].join(' | ');
-        return includesCI(blob, f);
-      });
-    }
-
-    return filtered;
-  }, [allRows, filter, selectedMonth, selectedDay]);
+    // Date filtering is now done at stream level, so allRows already contains filtered data
+    // Only apply text filter here
+    if (!filter.trim()) return allRows;
+    
+    const f = filter.trim();
+    return allRows.filter((r) => {
+      const blob = [
+        r.kind,
+        r.chatId,
+        r.from ?? '',
+        r.preview,
+        r.kind === 'err' ? r.errorCode : '',
+        r.kind === 'err' ? r.errorMessage : '',
+      ].join(' | ');
+      return includesCI(blob, f);
+    });
+  }, [allRows, filter]);
 
   const selectedIndex = useMemo(() => {
     if (!selectedKey) return 0;

@@ -7,8 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Python Bridge Foundation Hardening** (packages/utils)
+  - Comprehensive failure mode tests for PythonEngine subprocess execution (26 tests)
+  - Handler integration tests verifying error propagation (17 tests)
+  - Artifact verification tests ensuring file existence before claiming success (12 tests)
+  - Test fixtures for Python tool misbehavior: non-JSON output, wrong schema, timeouts, huge output, non-determinism, missing artifacts
+  - `PythonEngine.runScriptWithArtifacts()` method with optional artifact verification
+  - Enhanced error context with Zod validation details, truncated stderr/stdout
+- Comprehensive stress testing suite across all packages
+- Input violence tests for address extraction and validation (packages/ingestion)
+- Contract brutality tests for Python bridge failure modes (packages/utils)
+- Storage discipline tests for DuckDB and ClickHouse idempotency (packages/storage)
+- Pipeline invariants tests for run manifest completeness (packages/ingestion)
+- Simulation stress tests for pathological candle sequences (packages/simulation)
+- Chaos engineering tests for subprocess failures and resource exhaustion (packages/utils)
+- Stress test fixtures: malicious addresses, malformed JSON, nasty candle sequences
+- `vitest.stress.config.ts` - Dedicated configuration for stress tests
+- `test:stress` npm script to run all stress tests
+- Stress test documentation in `packages/*/tests/stress/README.md`
+
 ### Security
 
+- **HIGH**: Python bridge now validates tool output against schemas before returning - prevents silent data corruption (packages/utils)
+- **HIGH**: Python bridge enforces artifact file existence verification - prevents "half-truth" runs where tools claim success but files are missing (packages/utils)
 - **CRITICAL**: Fixed SQL injection vulnerability in ClickHouse queries - now uses parameterized queries with `{param:Type}` syntax
 - **CRITICAL**: Mitigated InfluxDB query injection risk with input validation and string escaping (Flux limitation - best possible mitigation)
 
@@ -22,6 +45,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **HIGH**: PythonEngine now includes Zod validation errors in error context for better debugging (packages/utils)
+- **MEDIUM**: PythonEngine truncates large stderr/stdout in errors to prevent memory issues (packages/utils)
+- **MEDIUM**: Fixed async syntax error in python-bridge integration test (packages/utils)
 - **CRITICAL**: Fixed EventBus memory leak - event history now optional, periodic cleanup implemented, `clearHistory()` method added
 - **CRITICAL**: Fixed EventBus HandlerMap memory leak - `removeAllListeners()` now clears handlerMap, periodic cleanup for orphaned handlers
 - **CRITICAL**: Fixed RateLimitingMiddleware memory leak - added `cleanupExpiredWindows()` with periodic cleanup every 100 events

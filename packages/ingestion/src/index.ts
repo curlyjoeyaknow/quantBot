@@ -36,6 +36,9 @@ export {
   type TokenMetadata,
   type MultiChainMetadataResult,
 } from './MultiChainMetadataService.js';
+
+// Multi-chain metadata cache
+export { MultiChainMetadataCache, getMetadataCache } from './MultiChainMetadataCache.js';
 export {
   TelegramAlertIngestionService,
   type IngestExportParams,
@@ -61,3 +64,8 @@ export {
   type IngestExportParams as TelegramCallIngestParams,
   type IngestExportResult as TelegramCallIngestResult,
 } from './TelegramCallIngestionService';
+export {
+  TelegramPipelineService,
+  TelegramPipelineResultSchema,
+  type TelegramPipelineResult,
+} from './TelegramPipelineService';
