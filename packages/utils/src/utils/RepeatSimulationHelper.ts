@@ -29,15 +29,16 @@ export class RepeatSimulationHelper {
       return;
     }
 
-    const mint = run.mint;
-    const chain = run.chain;
+    const mint = run.mint as string | undefined;
+    const chain = run.chain as string | undefined;
 
     const metadata = {
-      name: run.token_name || run.tokenName,
-      symbol: run.token_symbol || run.tokenSymbol,
+      name: (run.token_name || run.tokenName) as string | undefined,
+      symbol: (run.token_symbol || run.tokenSymbol) as string | undefined,
     };
 
     const startTime = run.startTime;
+    const endTime = run.endTime;
 
     const newSession: Record<string, unknown> = {
       step: 'waiting_for_strategy',
@@ -64,13 +65,18 @@ export class RepeatSimulationHelper {
     const chainEmoji =
       chain === 'ethereum' ? '⟠' : chain === 'bsc' ? '🟡' : chain === 'base' ? '🔵' : '◎';
 
+    // Type guard for DateTime/Date conversion
     const startDt =
-      startTime instanceof DateTime ? startTime : startTime ? DateTime.fromJSDate(startTime) : null;
+      startTime instanceof DateTime
+        ? startTime
+        : startTime instanceof Date
+          ? DateTime.fromJSDate(startTime)
+          : null;
     const endDt =
-      run.endTime instanceof DateTime
-        ? run.endTime
-        : run.endTime
-          ? DateTime.fromJSDate(run.endTime)
+      endTime instanceof DateTime
+        ? endTime
+        : endTime instanceof Date
+          ? DateTime.fromJSDate(endTime)
           : null;
 
     const startStr = startDt?.toFormat('yyyy-MM-dd HH:mm');
@@ -78,9 +84,9 @@ export class RepeatSimulationHelper {
 
     await ctx.reply(
       `🔄 **Repeating Simulation**\n\n` +
-        `${chainEmoji} Chain: ${chain.toUpperCase()}\n` +
-        `🪙 Token: ${metadata.name} (${metadata.symbol})\n` +
-        `📅 Period: ${startStr} - ${endStr}\n\n` +
+        `${chainEmoji} Chain: ${chain ? chain.toUpperCase() : 'UNKNOWN'}\n` +
+        `🪙 Token: ${metadata.name || 'Unknown'} (${metadata.symbol || 'N/A'})\n` +
+        `📅 Period: ${startStr || 'N/A'} - ${endStr || 'N/A'}\n\n` +
         `**Take Profit Strategy:**\n` +
         `• \`yes\` - Default: 50%@2x, 30%@5x, 20%@10x\n` +
         `• \`50@2x,30@5x,20@10x\` - Custom\n` +

@@ -65,7 +65,7 @@ async function findCallsForToken(tokenAddress: string): Promise<any[]> {
         [tokenAddress],
         (err, rows) => {
           if (err) reject(err);
-          else resolve(rows);
+          else resolve((rows || []) as Array<Record<string, unknown>>);
         }
       );
     })) as Array<Record<string, unknown>>;
@@ -117,7 +117,7 @@ async function getRecentCalls(limit: number = 20): Promise<any[]> {
         [limit],
         (err, rows) => {
           if (err) reject(err);
-          else resolve(rows);
+          else resolve((rows || []) as Array<Record<string, unknown>>);
         }
       );
     })) as Array<Record<string, unknown>>;
@@ -193,7 +193,7 @@ async function getCallerStats(): Promise<{
         else resolve();
       });
     });
-    return { stats: null, topCallers: [] };
+    return { stats: {} as Record<string, unknown>, topCallers: [] };
   }
 }
 
