@@ -7,13 +7,15 @@
 
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'fs';
-import { join } from 'path';
+import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
-import { simulateFromInput } from '../../../src/core/contract-adapter.js';
-import { SimInputSchema, SimResultSchema } from '../../../src/types/contracts.js';
-import type { SimInput, SimResult } from '../../../src/types/contracts.js';
+import { simulateFromInput } from '../../../src/core/contract-adapter';
+import { SimInputSchema, SimResultSchema } from '../../../src/types/contracts';
+import type { SimInput, SimResult } from '../../../src/types/contracts';
 
-const __dirname = fileURLToPath(new URL('.', import.meta.url));
+// CommonJS __dirname equivalent
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 const fixturesDir = join(__dirname, '../../../../tools/telegram/tests/fixtures');
 
 describe('Golden Fixtures', () => {

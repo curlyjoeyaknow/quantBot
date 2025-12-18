@@ -70,7 +70,7 @@ export class SimulationService {
     try {
       const result = await this.pythonEngine.runScriptWithStdin(
         scriptPath,
-        config,
+        config as unknown as Record<string, unknown>,
         SimulationOutputSchema,
         {
           timeout: 300000, // 5 minute timeout

@@ -16,8 +16,8 @@ import type {
   CostConfig as CanonicalCostConfig,
   SimEvent,
   SimMetrics,
-} from '../types/contracts.js';
-import { SimInputSchema, SimResultSchema } from '../types/contracts.js';
+} from '../types/contracts';
+import { SimInputSchema, SimResultSchema } from '../types/contracts';
 import type {
   Candle,
   StrategyLeg,
@@ -26,8 +26,8 @@ import type {
   ReEntryConfig,
   CostConfig,
   SimulationResult,
-} from '../types/index.js';
-import { simulateStrategy } from './simulator.js';
+} from '../types/index';
+import { simulateStrategy } from './simulator';
 
 /**
  * Convert canonical SimInput to internal simulator format and run simulation
@@ -90,13 +90,13 @@ export async function simulateFromInput(input: SimInput): Promise<SimResult> {
       }
     : undefined;
 
-  // Convert cost config
+  // Convert cost config - provide defaults for missing fields
   const costConfig: CostConfig | undefined = validatedInput.cost_config
     ? {
-        entrySlippageBps: validatedInput.cost_config.entrySlippageBps,
-        exitSlippageBps: validatedInput.cost_config.exitSlippageBps,
-        takerFeeBps: validatedInput.cost_config.takerFeeBps,
-        borrowAprBps: validatedInput.cost_config.borrowAprBps,
+        entrySlippageBps: validatedInput.cost_config.entrySlippageBps ?? 0,
+        exitSlippageBps: validatedInput.cost_config.exitSlippageBps ?? 0,
+        takerFeeBps: validatedInput.cost_config.takerFeeBps ?? 0,
+        borrowAprBps: validatedInput.cost_config.borrowAprBps ?? 0,
       }
     : undefined;
 

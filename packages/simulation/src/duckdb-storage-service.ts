@@ -55,6 +55,24 @@ export const AlertsStorageResultSchema = z.object({
 export type AlertsStorageResult = z.infer<typeof AlertsStorageResultSchema>;
 
 /**
+ * Schema for calls query result
+ */
+export const CallsQueryResultSchema = z.object({
+  success: z.boolean(),
+  calls: z
+    .array(
+      z.object({
+        mint: z.string(),
+        alert_timestamp: z.string(), // ISO format timestamp
+      })
+    )
+    .optional(),
+  error: z.string().optional(),
+});
+
+export type CallsQueryResult = z.infer<typeof CallsQueryResultSchema>;
+
+/**
  * DuckDB Storage Service
  */
 export class DuckDBStorageService {
@@ -199,6 +217,30 @@ export class DuckDBStorageService {
       return ReportResultSchema.parse(result);
     } catch (error) {
       logger.error('Failed to generate report', error as Error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
+  }
+
+  /**
+   * Query calls from DuckDB for batch simulation
+   * Returns list of calls with mint addresses and alert timestamps
+   */
+  async queryCalls(duckdbPath: string, limit?: number): Promise<CallsQueryResult> {
+    try {
+      const result = await this.pythonEngine.runDuckDBStorage({
+        duckdbPath,
+        operation: 'query_calls',
+        data: {
+          limit: limit || 1000, // Default limit
+        },
+      });
+
+      return CallsQueryResultSchema.parse(result);
+    } catch (error) {
+      logger.error('Failed to query calls from DuckDB', error as Error);
       return {
         success: false,
         error: error instanceof Error ? error.message : String(error),

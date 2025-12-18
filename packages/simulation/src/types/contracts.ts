@@ -113,7 +113,7 @@ export const SimEventSchema = z.object({
   pnl_usd: z.number().optional(),
   cumulative_pnl_usd: z.number().optional(),
   position_size: z.number(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
 export type SimEvent = z.infer<typeof SimEventSchema>;
