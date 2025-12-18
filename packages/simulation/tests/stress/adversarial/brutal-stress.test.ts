@@ -137,14 +137,7 @@ describe('Brutal Adversarial Stress Tests', () => {
     it('should handle division by zero in fee calculations', async () => {
       // Create scenario where fees could cause division by zero
       const candles = Array.from({ length: 100 }, (_, i) =>
-        createCandle(
-          1000 + i * 60000,
-          1.0,
-          1.01,
-          0.99,
-          1.0,
-          1000
-        )
+        createCandle(1000 + i * 60000, 1.0, 1.01, 0.99, 1.0, 1000)
       );
 
       // Extreme fee configuration that could cause issues
@@ -157,7 +150,14 @@ describe('Brutal Adversarial Stress Tests', () => {
 
       const strategy: StrategyLeg[] = [{ target: 1.1, percent: 1.0 }];
 
-      const result = await simulateStrategy(candles, strategy, undefined, undefined, undefined, costConfig);
+      const result = await simulateStrategy(
+        candles,
+        strategy,
+        undefined,
+        undefined,
+        undefined,
+        costConfig
+      );
 
       // Should handle zero fees gracefully
       expect(Number.isFinite(result.finalPnl)).toBe(true);
@@ -166,14 +166,7 @@ describe('Brutal Adversarial Stress Tests', () => {
 
     it('should handle fees that exceed 100% (pathological but test anyway)', async () => {
       const candles = Array.from({ length: 100 }, (_, i) =>
-        createCandle(
-          1000 + i * 60000,
-          1.0,
-          1.01,
-          0.99,
-          1.0,
-          1000
-        )
+        createCandle(1000 + i * 60000, 1.0, 1.01, 0.99, 1.0, 1000)
       );
 
       // Fees > 100% should be impossible, but test edge case handling
@@ -186,7 +179,14 @@ describe('Brutal Adversarial Stress Tests', () => {
 
       const strategy: StrategyLeg[] = [{ target: 1.1, percent: 1.0 }];
 
-      const result = await simulateStrategy(candles, strategy, undefined, undefined, undefined, costConfig);
+      const result = await simulateStrategy(
+        candles,
+        strategy,
+        undefined,
+        undefined,
+        undefined,
+        costConfig
+      );
 
       // Should handle extreme fees without crashing
       expect(Number.isFinite(result.finalPnl)).toBe(true);
@@ -196,14 +196,7 @@ describe('Brutal Adversarial Stress Tests', () => {
 
     it('should prevent negative exit prices from excessive fees', async () => {
       const candles = Array.from({ length: 100 }, (_, i) =>
-        createCandle(
-          1000 + i * 60000,
-          1.0,
-          1.01,
-          0.99,
-          1.0,
-          1000
-        )
+        createCandle(1000 + i * 60000, 1.0, 1.01, 0.99, 1.0, 1000)
       );
 
       // Fees that would make exit price negative
@@ -216,7 +209,14 @@ describe('Brutal Adversarial Stress Tests', () => {
 
       const strategy: StrategyLeg[] = [{ target: 1.1, percent: 1.0 }];
 
-      const result = await simulateStrategy(candles, strategy, undefined, undefined, undefined, costConfig);
+      const result = await simulateStrategy(
+        candles,
+        strategy,
+        undefined,
+        undefined,
+        undefined,
+        costConfig
+      );
 
       // Exit price must never be negative
       expect(result.finalPrice).toBeGreaterThanOrEqual(0);
@@ -227,14 +227,7 @@ describe('Brutal Adversarial Stress Tests', () => {
   describe('Strategy Configuration Edge Cases', () => {
     it('should handle targets that sum to > 100%', async () => {
       const candles = Array.from({ length: 100 }, (_, i) =>
-        createCandle(
-          1000 + i * 60000,
-          1.0,
-          1.01 + i * 0.01,
-          0.99,
-          1.0 + i * 0.01,
-          1000
-        )
+        createCandle(1000 + i * 60000, 1.0, 1.01 + i * 0.01, 0.99, 1.0 + i * 0.01, 1000)
       );
 
       // Invalid strategy: percentages sum to > 100%
@@ -251,14 +244,7 @@ describe('Brutal Adversarial Stress Tests', () => {
 
     it('should handle targets that sum to < 100%', async () => {
       const candles = Array.from({ length: 100 }, (_, i) =>
-        createCandle(
-          1000 + i * 60000,
-          1.0,
-          1.01 + i * 0.01,
-          0.99,
-          1.0 + i * 0.01,
-          1000
-        )
+        createCandle(1000 + i * 60000, 1.0, 1.01 + i * 0.01, 0.99, 1.0 + i * 0.01, 1000)
       );
 
       // Strategy with only 50% allocated
@@ -272,14 +258,7 @@ describe('Brutal Adversarial Stress Tests', () => {
 
     it('should handle zero percent targets', async () => {
       const candles = Array.from({ length: 100 }, (_, i) =>
-        createCandle(
-          1000 + i * 60000,
-          1.0,
-          1.01 + i * 0.01,
-          0.99,
-          1.0 + i * 0.01,
-          1000
-        )
+        createCandle(1000 + i * 60000, 1.0, 1.01 + i * 0.01, 0.99, 1.0 + i * 0.01, 1000)
       );
 
       // Strategy with zero percent (should be ignored)
@@ -296,14 +275,7 @@ describe('Brutal Adversarial Stress Tests', () => {
     it('should handle targets already reached at entry', async () => {
       // Price starts at 1.0, first target is 0.9 (already below entry)
       const candles = Array.from({ length: 100 }, (_, i) =>
-        createCandle(
-          1000 + i * 60000,
-          1.0,
-          1.01,
-          0.99,
-          1.0,
-          1000
-        )
+        createCandle(1000 + i * 60000, 1.0, 1.01, 0.99, 1.0, 1000)
       );
 
       // Target below entry price (impossible for long)
@@ -318,14 +290,7 @@ describe('Brutal Adversarial Stress Tests', () => {
     it('should handle targets that are impossible to reach', async () => {
       // Price oscillates between 1.0 and 1.05, but target is 2.0
       const candles = Array.from({ length: 1000 }, (_, i) =>
-        createCandle(
-          1000 + i * 60000,
-          1.0,
-          1.05,
-          0.99,
-          1.0 + Math.sin(i / 10) * 0.05,
-          1000
-        )
+        createCandle(1000 + i * 60000, 1.0, 1.05, 0.99, 1.0 + Math.sin(i / 10) * 0.05, 1000)
       );
 
       const strategy: StrategyLeg[] = [{ target: 2.0, percent: 1.0 }];
@@ -338,14 +303,7 @@ describe('Brutal Adversarial Stress Tests', () => {
 
     it('should handle negative target multipliers', async () => {
       const candles = Array.from({ length: 100 }, (_, i) =>
-        createCandle(
-          1000 + i * 60000,
-          1.0,
-          1.01,
-          0.99,
-          1.0,
-          1000
-        )
+        createCandle(1000 + i * 60000, 1.0, 1.01, 0.99, 1.0, 1000)
       );
 
       // Negative target (invalid but test handling)
@@ -361,14 +319,7 @@ describe('Brutal Adversarial Stress Tests', () => {
   describe('Stop Loss Edge Cases', () => {
     it('should handle stop loss at entry price (0% stop)', async () => {
       const candles = Array.from({ length: 100 }, (_, i) =>
-        createCandle(
-          1000 + i * 60000,
-          1.0,
-          1.01,
-          0.99,
-          1.0,
-          1000
-        )
+        createCandle(1000 + i * 60000, 1.0, 1.01, 0.99, 1.0, 1000)
       );
 
       const stopLoss: StopLossConfig = {
@@ -386,14 +337,7 @@ describe('Brutal Adversarial Stress Tests', () => {
 
     it('should handle stop loss above entry (invalid for long)', async () => {
       const candles = Array.from({ length: 100 }, (_, i) =>
-        createCandle(
-          1000 + i * 60000,
-          1.0,
-          1.01,
-          0.99,
-          1.0,
-          1000
-        )
+        createCandle(1000 + i * 60000, 1.0, 1.01, 0.99, 1.0, 1000)
       );
 
       // Stop loss at +10% (above entry) - invalid for long position
@@ -588,14 +532,7 @@ describe('Brutal Adversarial Stress Tests', () => {
       const candles = Array.from({ length: 100 }, (_, i) => {
         const swing = Math.sin(i / 5) * 10; // ±1000% swings
         const price = 1.0 + swing;
-        return createCandle(
-          1000 + i * 60000,
-          price,
-          price * 1.1,
-          price * 0.9,
-          price * 1.05,
-          1000
-        );
+        return createCandle(1000 + i * 60000, price, price * 1.1, price * 0.9, price * 1.05, 1000);
       });
 
       const strategy: StrategyLeg[] = [{ target: 1.1, percent: 1.0 }];
@@ -611,14 +548,7 @@ describe('Brutal Adversarial Stress Tests', () => {
     it('should handle missing indicator data gracefully', async () => {
       // Dataset too small for some indicators (e.g., Ichimoku needs 52 candles)
       const candles = Array.from({ length: 30 }, (_, i) =>
-        createCandle(
-          1000 + i * 60000,
-          1.0,
-          1.01,
-          0.99,
-          1.0,
-          1000
-        )
+        createCandle(1000 + i * 60000, 1.0, 1.01, 0.99, 1.0, 1000)
       );
 
       const strategy: StrategyLeg[] = [{ target: 1.1, percent: 1.0 }];
@@ -661,14 +591,7 @@ describe('Brutal Adversarial Stress Tests', () => {
       // Price oscillates to trigger trades every candle
       const candles = Array.from({ length: 1000 }, (_, i) => {
         const price = 1.0 + Math.sin(i) * 0.5; // Oscillates between 0.5 and 1.5
-        return createCandle(
-          1000 + i * 60000,
-          price,
-          price * 1.1,
-          price * 0.9,
-          price * 1.05,
-          1000
-        );
+        return createCandle(1000 + i * 60000, price, price * 1.1, price * 0.9, price * 1.05, 1000);
       });
 
       // Multiple small targets to trigger frequent trades
@@ -687,14 +610,7 @@ describe('Brutal Adversarial Stress Tests', () => {
     it('should handle very long hold times (never exit)', async () => {
       // Price never reaches target or stop loss
       const candles = Array.from({ length: 10000 }, (_, i) =>
-        createCandle(
-          1000 + i * 60000,
-          1.0,
-          1.01,
-          0.99,
-          1.0,
-          1000
-        )
+        createCandle(1000 + i * 60000, 1.0, 1.01, 0.99, 1.0, 1000)
       );
 
       const strategy: StrategyLeg[] = [{ target: 2.0, percent: 1.0 }]; // Unreachable
@@ -715,14 +631,7 @@ describe('Brutal Adversarial Stress Tests', () => {
     it('should handle entry at first candle', async () => {
       // Entry signal triggers immediately
       const candles = Array.from({ length: 100 }, (_, i) =>
-        createCandle(
-          1000 + i * 60000,
-          1.0,
-          1.01,
-          0.99,
-          1.0,
-          1000
-        )
+        createCandle(1000 + i * 60000, 1.0, 1.01, 0.99, 1.0, 1000)
       );
 
       const strategy: StrategyLeg[] = [{ target: 1.1, percent: 1.0 }];
@@ -864,7 +773,11 @@ describe('Brutal Adversarial Stress Tests', () => {
       const stopEvents = result.events.filter((e) => e.type === 'stop_loss');
       const targetEvents = result.events.filter((e) => e.type === 'target_hit');
       // Should not have both (or should have clear resolution)
-      expect(stopEvents.length === 0 || targetEvents.length === 0 || stopEvents.length + targetEvents.length === 1).toBe(true);
+      expect(
+        stopEvents.length === 0 ||
+          targetEvents.length === 0 ||
+          stopEvents.length + targetEvents.length === 1
+      ).toBe(true);
     });
 
     it('should handle re-entry and stop loss in same candle', async () => {
@@ -902,14 +815,7 @@ describe('Brutal Adversarial Stress Tests', () => {
   describe('Extreme Configuration Edge Cases', () => {
     it('should handle zero stop loss (immediate stop)', async () => {
       const candles = Array.from({ length: 100 }, (_, i) =>
-        createCandle(
-          1000 + i * 60000,
-          1.0,
-          1.01,
-          0.99,
-          1.0,
-          1000
-        )
+        createCandle(1000 + i * 60000, 1.0, 1.01, 0.99, 1.0, 1000)
       );
 
       const stopLoss: StopLossConfig = {
@@ -996,14 +902,7 @@ describe('Brutal Adversarial Stress Tests', () => {
       // Volume near Number.MAX_SAFE_INTEGER
       const maxVolume = Number.MAX_SAFE_INTEGER / 1000;
       const candles = Array.from({ length: 100 }, (_, i) =>
-        createCandle(
-          1000 + i * 60000,
-          1.0,
-          1.01,
-          0.99,
-          1.0,
-          maxVolume
-        )
+        createCandle(1000 + i * 60000, 1.0, 1.01, 0.99, 1.0, maxVolume)
       );
 
       const strategy: StrategyLeg[] = [{ target: 1.1, percent: 1.0 }];
@@ -1105,4 +1004,3 @@ describe('Brutal Adversarial Stress Tests', () => {
     });
   });
 });
-

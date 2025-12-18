@@ -18,7 +18,10 @@ import {
   AMBIGUITY_SEQUENCES,
   type CandleSequence,
 } from '../fixtures/nasty-candles.js';
-import { validateCandleSequence, sortCandlesByTimestamp } from '../../../src/validation/candleValidation.js';
+import {
+  validateCandleSequence,
+  sortCandlesByTimestamp,
+} from '../../../src/validation/candleValidation.js';
 import { simulateStrategy } from '../../../src/core/simulator.js';
 import type { StrategyLeg } from '../../../src/types';
 
@@ -84,7 +87,6 @@ async function runSimulationWithValidation(
 }
 
 describe('Candle Sequence Stress Tests', () => {
-
   describe('Flatline sequences', () => {
     FLATLINE_SEQUENCES.forEach((sequence) => {
       it(sequence.description, async () => {

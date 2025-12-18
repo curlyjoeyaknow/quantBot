@@ -80,7 +80,7 @@ class MockClickHouseClient {
     for (const candle of candles) {
       // Create unique key: timestamp + token_address + chain + interval
       const key = `${candle.timestamp}_${candle.token_address || ''}_${candle.chain || ''}_${candle.interval || '5m'}`;
-      
+
       if (batchKeys.has(key)) {
         duplicatesInBatch++;
         continue; // Skip duplicate within batch
@@ -100,7 +100,8 @@ class MockClickHouseClient {
       success: true,
       operation: 'insert_candles',
       rowsInserted: uniqueCandles.length,
-      duplicatesSkipped: duplicatesInBatch + (candles.length - uniqueCandles.length - duplicatesInBatch),
+      duplicatesSkipped:
+        duplicatesInBatch + (candles.length - uniqueCandles.length - duplicatesInBatch),
     };
   }
 
@@ -564,7 +565,7 @@ describe('ClickHouse Idempotency Stress Tests', () => {
       // First insert should succeed, rest should be duplicates
       const firstResult = results[0];
       expect(firstResult.rowsInserted).toBe(1);
-      
+
       // Remaining should be duplicates
       const remainingResults = results.slice(1);
       for (const r of remainingResults) {

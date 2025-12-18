@@ -208,8 +208,12 @@ export class PythonEngine {
         return output as unknown as T;
       }
 
+      // Handle both string and Buffer outputs (for compatibility with mocks)
+      // Note: execSync with encoding: 'utf-8' should return string, but mocks may return Buffer
+      const outputString = typeof output === 'string' ? output : (output as Buffer).toString('utf-8');
+
       // Parse JSON from last line (Python tools typically output JSON on last line)
-      const lines = output.trim().split('\n');
+      const lines = outputString.trim().split('\n');
       const jsonLine = lines[lines.length - 1];
 
       let parsed: unknown;
@@ -218,7 +222,7 @@ export class PythonEngine {
       } catch (error) {
         // Try parsing entire output if last line isn't JSON
         try {
-          parsed = JSON.parse(output.trim());
+          parsed = JSON.parse(outputString.trim());
         } catch {
           throw new ValidationError(
             `Failed to parse JSON output from Python script. Last line: ${jsonLine.substring(0, 200)}`,

@@ -159,6 +159,7 @@ export class ServiceUnavailableError extends AppError {
  */
 export class TimeoutError extends AppError {
   public readonly timeoutMs?: number;
+  public readonly timeout?: number; // Alias for timeoutMs for backward compatibility
 
   constructor(
     message: string = 'Operation timed out',
@@ -167,6 +168,7 @@ export class TimeoutError extends AppError {
   ) {
     super(message, 'TIMEOUT_ERROR', 504, { timeoutMs, ...context });
     this.timeoutMs = timeoutMs;
+    this.timeout = timeoutMs; // Alias for compatibility
   }
 }
 

@@ -1812,8 +1812,10 @@ def main():
     HAVING 
       -- Only include triggers with at least one bot link that has mint or ticker
       -- OR trigger text contains mint/ticker (extracted above)
-      MAX(CASE WHEN l.mint IS NOT NULL OR l.ticker IS NOT NULL THEN 1 ELSE 0 END) = 1
-      OR MAX(l.trigger_text) IS NOT NULL
+      -- AND filter out TON, SUI, PLASMA at the trigger level (exclude if ANY link has these chains)
+      (MAX(CASE WHEN l.mint IS NOT NULL OR l.ticker IS NOT NULL THEN 1 ELSE 0 END) = 1
+       OR MAX(l.trigger_text) IS NOT NULL)
+      AND COUNT(CASE WHEN UPPER(COALESCE(l.chain, '')) IN ('TON', 'SUI', 'PLASMA') THEN 1 END) = 0
   """, [chat_id])
   
   # Now filter to only first call per caller per mint

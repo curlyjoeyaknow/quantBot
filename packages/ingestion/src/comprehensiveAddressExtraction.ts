@@ -190,10 +190,15 @@ export function extractAndValidateAddresses(input: string): ExtractionResult {
   // Match pattern: alphanumeric chars, then whitespace/invisible/hyphen, then more alphanumeric
   const invisibleChars = '\u200B\u200C\u200D\uFEFF\u00AD';
   // Match addresses split by whitespace, newlines, tabs, hyphens, or invisible chars
-  const whitespacePattern = new RegExp(`([A-Za-z0-9]{10,}[\\s\\n\\r\\t\\-${invisibleChars}]+[A-Za-z0-9]{10,})`);
+  const whitespacePattern = new RegExp(
+    `([A-Za-z0-9]{10,}[\\s\\n\\r\\t\\-${invisibleChars}]+[A-Za-z0-9]{10,})`
+  );
   const whitespaceMatch = input.match(whitespacePattern);
   if (whitespaceMatch) {
-    const candidate = whitespaceMatch[0].replace(/[\s\n\r\t\u200B\u200C\u200D\uFEFF\u00AD\u00A0\-]/g, '');
+    const candidate = whitespaceMatch[0].replace(
+      /[\s\n\r\t\u200B\u200C\u200D\uFEFF\u00AD\u00A0\-]/g,
+      ''
+    );
     if (candidate.length >= 32 && candidate.length <= 44) {
       const matchText = whitespaceMatch[0];
       // Check if it has invisible chars (not just whitespace)
@@ -206,7 +211,7 @@ export function extractAndValidateAddresses(input: string): ExtractionResult {
       }
       const hasHyphen = /-/.test(matchText);
       const hasTab = /\t/.test(matchText);
-      
+
       if (hasInvisible) {
         rejected.push({
           raw: matchText,
@@ -237,7 +242,7 @@ export function extractAndValidateAddresses(input: string): ExtractionResult {
 
   // Enhanced EVM obfuscation detection BEFORE extraction
   // This catches various obfuscation techniques attackers use to hide malicious addresses
-  
+
   // 1. Cyrillic x (0х instead of 0x) - common phishing technique
   const evmWithCyrillicX = input.match(/0[хХ]\s*[a-fA-F0-9\s]{40,}/i);
   if (evmWithCyrillicX) {
@@ -247,7 +252,7 @@ export function extractAndValidateAddresses(input: string): ExtractionResult {
       category: 'obfuscation',
     });
   }
-  
+
   // 2. Spaces in prefix (0 x instead of 0x)
   const evmWithSpacesInPrefix = input.match(/0\s+x\s+[a-fA-F0-9\s]{40,}/i);
   if (evmWithSpacesInPrefix) {
@@ -257,7 +262,7 @@ export function extractAndValidateAddresses(input: string): ExtractionResult {
       category: 'obfuscation',
     });
   }
-  
+
   // 3. Separators in hex part (spaces, dashes, dots between hex chars)
   // Pattern: 0x followed by hex chars with separators
   // This catches: 0x12 34 56..., 0x12-34-56..., 0x12.34.56...
@@ -288,7 +293,7 @@ export function extractAndValidateAddresses(input: string): ExtractionResult {
       }
     }
   }
-  
+
   // 4. Zero-width characters in hex part (invisible separators)
   // Check for 0x followed by hex with zero-width chars
   const evmWithZeroWidth = input.match(/0x[a-fA-F0-9\u200B\u200C\u200D\uFEFF]{40,}/i);
@@ -303,7 +308,7 @@ export function extractAndValidateAddresses(input: string): ExtractionResult {
       });
     }
   }
-  
+
   // 5. Lookalike characters in hex (O instead of 0, etc.)
   // EVM hex should only be 0-9, a-f, A-F
   // Check for common lookalikes: O (letter O) instead of 0
@@ -321,7 +326,7 @@ export function extractAndValidateAddresses(input: string): ExtractionResult {
       });
     }
   }
-  
+
   // 6. Mixed separators (different separator types in same address - highly suspicious)
   const evmMixedSeparators = input.match(/0x([a-fA-F0-9]+[\s\-\.]){5,}[a-fA-F0-9]+/i);
   if (evmMixedSeparators) {
@@ -403,7 +408,9 @@ export function extractAndValidateAddresses(input: string): ExtractionResult {
   for (const match of evmNoPrefixMatches) {
     const candidate = match[0];
     // Only reject if it's not part of a larger hex string and not already extracted
-    const isPartOfLarger = input.slice(Math.max(0, match.index! - 1), match.index! + candidate.length + 1).match(/[a-fA-F0-9]{41,}/i);
+    const isPartOfLarger = input
+      .slice(Math.max(0, match.index! - 1), match.index! + candidate.length + 1)
+      .match(/[a-fA-F0-9]{41,}/i);
     if (!isPartOfLarger) {
       rejected.push({
         raw: candidate,
@@ -480,7 +487,7 @@ export function extractAndValidateAddresses(input: string): ExtractionResult {
     // Remove invisible chars from address for validation
     const cleanAddr = removeInvisibleChars(addr);
     originalAddresses.set(cleanAddr.toLowerCase(), originalAddr);
-    
+
     const validation = validateSolanaAddress(cleanAddr);
     if (validation.valid) {
       // Use original case if available
@@ -530,7 +537,7 @@ export function extractAndValidateAddresses(input: string): ExtractionResult {
 
     const cleanAddr = removeInvisibleChars(addr);
     originalAddresses.set(cleanAddr.toLowerCase(), originalAddr);
-    
+
     const validation = validateSolanaAddress(cleanAddr);
     if (validation.valid) {
       const finalAddr = originalAddresses.get(cleanAddr.toLowerCase()) || cleanAddr;
@@ -574,7 +581,7 @@ export function extractAndValidateAddresses(input: string): ExtractionResult {
       // - Preserve EIP-55 checksummed addresses (if valid checksum)
       // - Normalize non-checksummed to lowercase
       const normalized = cleanAddr.toLowerCase();
-      
+
       valid.push({
         address: cleanAddr, // Preserve original case for display
         chain: 'ethereum', // Default to ethereum (address alone is ambiguous - could be ETH/Base/Arbitrum/etc)
@@ -592,7 +599,7 @@ export function extractAndValidateAddresses(input: string): ExtractionResult {
 
   // Track all potential candidates from input to ensure nothing is silently dropped
   const allCandidates = new Set<string>();
-  
+
   // Add all extracted candidates
   for (const addr of extracted.evm) {
     allCandidates.add(addr);
@@ -634,8 +641,9 @@ export function extractAndValidateAddresses(input: string): ExtractionResult {
   for (const match of solanaTooShortMatches) {
     const candidate = match[0];
     // Only reject if it's not already in extracted addresses
-    const alreadyExtracted = solanaExtracted.some((a) => a.toLowerCase() === candidate.toLowerCase()) ||
-                             extracted.solana.some((a) => a.toLowerCase() === candidate.toLowerCase());
+    const alreadyExtracted =
+      solanaExtracted.some((a) => a.toLowerCase() === candidate.toLowerCase()) ||
+      extracted.solana.some((a) => a.toLowerCase() === candidate.toLowerCase());
     if (!alreadyExtracted) {
       // Use 'invalid_length' for addresses that are too short (not 'too_short')
       rejected.push({
@@ -649,8 +657,10 @@ export function extractAndValidateAddresses(input: string): ExtractionResult {
   const solanaTooLong = input.match(/\b[1-9A-HJ-NP-Za-km-z]{45,}\b/);
   if (solanaTooLong) {
     const candidate = solanaTooLong[0];
-    if (!solanaExtracted.some((a) => a.toLowerCase() === candidate.toLowerCase()) &&
-        !extracted.solana.some((a) => a.toLowerCase() === candidate.toLowerCase())) {
+    if (
+      !solanaExtracted.some((a) => a.toLowerCase() === candidate.toLowerCase()) &&
+      !extracted.solana.some((a) => a.toLowerCase() === candidate.toLowerCase())
+    ) {
       rejected.push({
         raw: candidate,
         reason: 'invalid_length',
@@ -677,4 +687,3 @@ export function extractAndValidateAddresses(input: string): ExtractionResult {
 
   return { valid: deduplicatedValid, rejected };
 }
-

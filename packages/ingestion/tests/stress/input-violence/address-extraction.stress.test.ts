@@ -208,10 +208,10 @@ describe('Address Extraction Stress Tests', () => {
       expect(totalProcessed).toBeGreaterThan(0);
 
       // We should have found at least the valid addresses
-      // (Invalid non-address patterns like "INVALID_TOO_SHORT" and "$SOL" 
+      // (Invalid non-address patterns like "INVALID_TOO_SHORT" and "$SOL"
       // don't match address patterns, so they're not candidates to reject)
       expect(result.valid.length).toBeGreaterThan(0);
-      
+
       // If there are any address-like candidates that fail validation, they should be rejected
       // (In this case, both addresses are valid, so no rejections is OK)
     });
