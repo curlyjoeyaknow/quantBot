@@ -126,7 +126,7 @@ export class OHLCVIngestionService {
         recordsAdded: 0,
         recordsSkipped: 0,
         success: false,
-        error: error.message,
+        error: error instanceof Error ? error.message : String(error),
       };
     }
   }
@@ -241,7 +241,7 @@ export class OHLCVIngestionService {
         recordsAdded: 0,
         recordsSkipped: 0,
         success: false,
-        error: error.message,
+        error: error instanceof Error ? error.message : String(error),
       };
     }
   }
@@ -281,8 +281,8 @@ export class OHLCVIngestionService {
     influxRecordCount: number;
   } {
     return {
-      apiUsage: this.birdeyeClient.getAPIKeyUsage(),
-      cacheStats: this.cache.getStats(),
+      apiUsage: this.birdeyeClient.getAPIKeyUsage() as unknown as Record<string, unknown>,
+      cacheStats: this.cache.getStats() as unknown as Record<string, unknown>,
       influxRecordCount: 0, // Would need to implement this in InfluxDB client
     };
   }

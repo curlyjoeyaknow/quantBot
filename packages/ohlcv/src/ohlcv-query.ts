@@ -255,7 +255,7 @@ export class OHLCVQueryService {
     cacheInfo: Record<string, unknown>;
   } {
     return {
-      cacheStats: this.cache.getStats(),
+      cacheStats: this.cache.getStats() as unknown as Record<string, unknown>,
       cacheInfo: this.cache.getCacheInfo(),
     };
   }

@@ -25,6 +25,7 @@ import type { Candle, Chain } from '@quantbot/core';
 import { createTokenAddress } from '@quantbot/core';
 import { logger } from '@quantbot/utils';
 import { LRUCache } from 'lru-cache';
+import { fetchMultiChainMetadata, isEvmAddress } from '@quantbot/ingestion';
 
 // --- Interfaces ---
 
@@ -40,6 +41,24 @@ export interface OhlcvIngestionOptions {
    * @default false
    */
   forceRefresh?: boolean;
+
+  /**
+   * Candle interval to fetch (1s, 15s, 1m, 5m, 15m, 1h)
+   * @default '1m'
+   */
+  interval?: '1s' | '15s' | '1m' | '5m' | '15m' | '1h';
+
+  /**
+   * Number of candles to fetch
+   * @default 5000
+   */
+  candles?: number;
+
+  /**
+   * Minutes before alert to start fetching (negative = before alert)
+   * @default -52
+   */
+  startOffsetMinutes?: number;
 }
 
 export interface OhlcvIngestionResult {
@@ -79,6 +98,8 @@ export class OhlcvIngestionEngine {
   private clickhouseInitialized = false;
   private storageEngine = getStorageEngine();
   private tokensRepo = new TokensRepository();
+  // Chain detection cache: mint -> actual chain
+  private chainCache = new LRUCache<string, Chain>({ max: 1000, ttl: 1000 * 60 * 60 }); // 1 hour TTL
 
   /**
    * Initialize the engine (ensure ClickHouse is ready)
@@ -133,9 +154,49 @@ export class OhlcvIngestionEngine {
     };
 
     try {
+      // Step 0: Detect actual chain for EVM addresses (before fetching metadata/candles)
+      let actualChain = chain;
+      if (isEvmAddress(mint)) {
+        const cachedChain = this.chainCache.get(mint);
+        if (cachedChain) {
+          actualChain = cachedChain;
+          logger.debug(
+            `[OhlcvIngestionEngine] Using cached chain for ${mint.substring(0, 20)}...`,
+            {
+              chain: actualChain,
+            }
+          );
+        } else {
+          logger.info(
+            `[OhlcvIngestionEngine] Detecting chain for EVM address ${mint.substring(0, 20)}...`,
+            {
+              chainHint: chain,
+            }
+          );
+          const metadataResult = await fetchMultiChainMetadata(mint, chain);
+          if (metadataResult.primaryMetadata) {
+            actualChain = metadataResult.primaryMetadata.chain;
+            this.chainCache.set(mint, actualChain);
+            logger.info(`[OhlcvIngestionEngine] Chain detected for ${mint.substring(0, 20)}...`, {
+              chainHint: chain,
+              actualChain,
+              symbol: metadataResult.primaryMetadata.symbol,
+            });
+          } else {
+            logger.warn(
+              `[OhlcvIngestionEngine] No metadata found for ${mint.substring(0, 20)}... on any chain, using hint`,
+              {
+                chainHint: chain,
+              }
+            );
+            // Keep original chain hint if no metadata found
+          }
+        }
+      }
+
       // Step 1: Fetch and store metadata first (enrich token details)
       logger.info(`[OhlcvIngestionEngine] Fetching metadata for ${mint.substring(0, 20)}...`);
-      metadata.tokenStored = await this._fetchAndStoreMetadata(mint, chain);
+      metadata.tokenStored = await this._fetchAndStoreMetadata(mint, actualChain);
 
       const now = DateTime.utc();
       const alertAge = now.diff(alertTime, 'days').days;
@@ -143,130 +204,18 @@ export class OhlcvIngestionEngine {
 
       // CRITICAL OPTIMIZATION: Try 1m first - if API returns 0 candles, skip all other periods
       // This saves ~12 API calls per token when there's no data
-      logger.info(
-        `[OhlcvIngestionEngine] Checking 1m data availability first (early exit optimization)...`
-      );
-      const oneMinuteProbe = await this._probe1mData(mint, chain, alertTime, options);
-      
-      if (oneMinuteProbe.hasData === false && oneMinuteProbe.fromAPI) {
-        // API returned 0 candles - no data exists for this token, skip everything
-        logger.warn(
-          `[OhlcvIngestionEngine] No 1m data from API for ${mint.substring(0, 20)}..., skipping all intervals`
-        );
-        return {
-          '1m': [],
-          '5m': [],
-          metadata,
-        };
-      }
-
-      // If we have cached data or API returned data, continue with full fetch
+      // NOTE: Only apply early exit for recent alerts (< 3 months) - old alerts might have data
+      // in different time windows, so we should still try to fetch
       if (useOptimizedStrategy) {
         logger.info(
-          `[OhlcvIngestionEngine] Using optimized strategy for alert < 3 months old (${alertAge.toFixed(1)} days)`
+          `[OhlcvIngestionEngine] Checking 1m data availability first (early exit optimization for recent alerts)...`
         );
+        const oneMinuteProbe = await this._probe1mData(mint, actualChain, alertTime, options);
 
-        // Step 1: 1s call - 5000 candles starting from -52 candles BEFORE alert
-        logger.info(
-          `[OhlcvIngestionEngine] Fetching 1s candles (from -52 candles before alert, 5000 candles)...`
-        );
-        const oneSecondResult = await this._fetch1sCandles(mint, chain, alertTime, options);
-        metadata.total1sCandles = oneSecondResult.candles.length;
-        metadata.chunksFetched += oneSecondResult.chunksFetched;
-        metadata.chunksFromCache += oneSecondResult.chunksFromCache;
-        metadata.chunksFromAPI += oneSecondResult.chunksFromAPI;
-
-        // Step 2: 15s calls - 2 calls of 5000 candles each, starting from -52 candles BEFORE alert
-        logger.info(
-          `[OhlcvIngestionEngine] Fetching 15s candles (2 calls, from -52 candles before alert, 5000 candles each)...`
-        );
-        const fifteenSecondResult = await this._fetch15sCandlesForWeek(
-          mint,
-          chain,
-          alertTime,
-          options
-        );
-        metadata.total15sCandles = fifteenSecondResult.candles.length;
-        metadata.chunksFetched += fifteenSecondResult.chunksFetched;
-        metadata.chunksFromCache += fifteenSecondResult.chunksFromCache;
-        metadata.chunksFromAPI += fifteenSecondResult.chunksFromAPI;
-
-        // Step 3: 1m calls - 4 calls of 5000 candles each for first week, starting from -52 candles BEFORE alert
-        logger.info(
-          `[OhlcvIngestionEngine] Fetching 1m candles (4 calls for first week, from -52 candles before alert)...`
-        );
-        const oneMinuteResult = await this._fetch1mCandlesForWeek(
-          mint,
-          chain,
-          alertTime,
-          options
-        );
-        metadata.total1mCandles = oneMinuteResult.candles.length;
-        metadata.chunksFetched += oneMinuteResult.chunksFetched;
-        metadata.chunksFromCache += oneMinuteResult.chunksFromCache;
-        metadata.chunksFromAPI += oneMinuteResult.chunksFromAPI;
-
-        // Step 4: 5m calls - 6 calls of 5000 candles each for first 34 days, starting from -52 candles BEFORE alert
-        logger.info(
-          `[OhlcvIngestionEngine] Fetching 5m candles (6 calls for first 34 days, from -52 candles before alert)...`
-        );
-        const fiveMinuteResult = await this._fetch5mCandlesFor34Days(
-          mint,
-          chain,
-          alertTime,
-          options
-        );
-        metadata.total5mCandles = fiveMinuteResult.candles.length;
-        metadata.chunksFetched += fiveMinuteResult.chunksFetched;
-        metadata.chunksFromCache += fiveMinuteResult.chunksFromCache;
-        metadata.chunksFromAPI += fiveMinuteResult.chunksFromAPI;
-
-        // Combine all 1m candles
-        const all1mCandles = oneMinuteResult.candles;
-
-        logger.info(
-          `[OhlcvIngestionEngine] Completed optimized fetch for ${mint.substring(0, 20)}...`,
-          {
-            '1m': metadata.total1mCandles,
-            '1s': metadata.total1sCandles,
-            '15s': metadata.total15sCandles,
-            '5m': metadata.total5mCandles,
-            chunksFromCache: metadata.chunksFromCache,
-            chunksFromAPI: metadata.chunksFromAPI,
-            totalCalls: metadata.chunksFetched,
-          }
-        );
-
-        return {
-          '1m': all1mCandles,
-          '5m': fiveMinuteResult.candles,
-          metadata,
-        };
-      } else {
-        // Fallback strategy for alerts >= 3 months old
-        logger.info(
-          `[OhlcvIngestionEngine] Using standard strategy for alert >= 3 months old (${alertAge.toFixed(1)} days)`
-        );
-
-        // Step 1: 1m calls - 4 calls of 5000 candles each for first week, starting from -52 candles BEFORE alert
-        logger.info(
-          `[OhlcvIngestionEngine] Fetching 1m candles (4 calls for first week, from -52 candles before alert)...`
-        );
-        const oneMinuteResult = await this._fetch1mCandlesForWeek(
-          mint,
-          chain,
-          alertTime,
-          options
-        );
-        metadata.total1mCandles = oneMinuteResult.candles.length;
-        metadata.chunksFetched += oneMinuteResult.chunksFetched;
-        metadata.chunksFromCache += oneMinuteResult.chunksFromCache;
-        metadata.chunksFromAPI += oneMinuteResult.chunksFromAPI;
-        
-        // Early exit: if 1m API returned 0 candles, skip 5m
-        if (oneMinuteResult.candles.length === 0 && oneMinuteResult.chunksFromAPI > 0) {
+        if (oneMinuteProbe.hasData === false && oneMinuteProbe.fromAPI) {
+          // API returned 0 candles - no data exists for this token, skip everything
           logger.warn(
-            `[OhlcvIngestionEngine] No 1m data from API for ${mint.substring(0, 20)}..., skipping 5m`
+            `[OhlcvIngestionEngine] No 1m data from API for ${mint.substring(0, 20)}..., skipping all intervals`
           );
           return {
             '1m': [],
@@ -274,36 +223,81 @@ export class OhlcvIngestionEngine {
             metadata,
           };
         }
-
-        // Step 2: 5m calls - 6 calls of 5000 candles each for first 34 days, starting from -52 candles BEFORE alert
-        logger.info(
-          `[OhlcvIngestionEngine] Fetching 5m candles (6 calls for first 34 days, from -52 candles before alert)...`
-        );
-        const fiveMinuteResult = await this._fetch5mCandlesFor34Days(
-          mint,
-          chain,
-          alertTime,
-          options
-        );
-        metadata.total5mCandles = fiveMinuteResult.candles.length;
-        metadata.chunksFetched += fiveMinuteResult.chunksFetched;
-        metadata.chunksFromCache += fiveMinuteResult.chunksFromCache;
-        metadata.chunksFromAPI += fiveMinuteResult.chunksFromAPI;
-
-        logger.info(`[OhlcvIngestionEngine] Completed fetch for ${mint.substring(0, 20)}...`, {
-          '1m': metadata.total1mCandles,
-          '5m': metadata.total5mCandles,
-          chunksFromCache: metadata.chunksFromCache,
-          chunksFromAPI: metadata.chunksFromAPI,
-        });
-
-        return {
-          '1m': oneMinuteResult.candles,
-          '5m': fiveMinuteResult.candles,
-          metadata,
-        };
       }
+
+      // Simplified: Just fetch 5000 x 1m candles starting from -52 minutes before alert
+      logger.info(
+        `[OhlcvIngestionEngine] Fetching 5000 x 1m candles (from -52 minutes before alert)...`
+      );
+
+      // Start from -52 minutes before alert
+      const baseStartTime = alertTime.minus({ minutes: 52 });
+      // 5000 candles * 1 minute = 5000 minutes = ~3.47 days forward
+      const endTime = baseStartTime.plus({ minutes: 5000 });
+
+      const result = await this._fetchAndStoreChunk({
+        mint,
+        chain: actualChain,
+        interval: '1m',
+        startTime: baseStartTime,
+        endTime: endTime,
+        options,
+      });
+
+      metadata.total1mCandles = result.candles.length;
+      metadata.chunksFetched = 1;
+      if (result.fromCache) {
+        metadata.chunksFromCache = 1;
+      } else {
+        metadata.chunksFromAPI = 1;
+      }
+
+      logger.info(`[OhlcvIngestionEngine] Completed fetch for ${mint.substring(0, 20)}...`, {
+        '1m': metadata.total1mCandles,
+        chunksFromCache: metadata.chunksFromCache,
+        chunksFromAPI: metadata.chunksFromAPI,
+      });
+
+      return {
+        '1m': result.candles,
+        '5m': [], // No 5m candles for now
+        metadata,
+      };
     } catch (error) {
+      // Check if error might be due to wrong chain for EVM addresses
+      if (isEvmAddress(mint)) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        if (
+          errorMessage.includes('not found') ||
+          errorMessage.includes('404') ||
+          errorMessage.includes('invalid')
+        ) {
+          // Try to detect correct chain (use chain parameter, not actualChain which may not be in scope)
+          try {
+            const chainResult = await fetchMultiChainMetadata(mint, chain);
+            if (chainResult.primaryMetadata && chainResult.primaryMetadata.chain !== chain) {
+              logger.error('OHLCV fetch failed - wrong chain detected', {
+                mint: mint.substring(0, 20),
+                attemptedChain: chain,
+                correctChain: chainResult.primaryMetadata.chain,
+                symbol: chainResult.primaryMetadata.symbol,
+                error: errorMessage,
+              });
+              throw new Error(
+                `OHLCV fetch failed: Token ${mint.substring(0, 20)}... is on ${chainResult.primaryMetadata.chain}, not ${chain}. ` +
+                  `Please retry with the correct chain.`
+              );
+            }
+          } catch (chainError) {
+            // If chain detection also fails, log but don't override original error
+            logger.debug('Chain detection failed during error handling', {
+              mint: mint.substring(0, 20),
+              error: chainError instanceof Error ? chainError.message : String(chainError),
+            });
+          }
+        }
+      }
+
       logger.error(
         `[OhlcvIngestionEngine] Failed to fetch candles for ${mint.substring(0, 20)}...`,
         error as Error
@@ -313,8 +307,9 @@ export class OhlcvIngestionEngine {
   }
 
   /**
-   * Probe 1m data availability - makes ONE API call to check if data exists
-   * Returns early if API returns 0 candles (saves ~12 API calls per token)
+   * Probe 1m data availability - uses cheap historical price endpoint (10 credits)
+   * instead of fetching candles (60 credits) to check if data exists
+   * Returns early if API returns no price (saves ~12 API calls per token)
    */
   private async _probe1mData(
     mint: string,
@@ -322,45 +317,112 @@ export class OhlcvIngestionEngine {
     alertTime: DateTime,
     options: OhlcvIngestionOptions
   ): Promise<{ hasData: boolean; fromAPI: boolean }> {
-    // Make a single small API call to check if 1m data exists
-    // Use a small window: -52 minutes to alert time (just 52 candles)
-    const baseStartTime = alertTime.minus({ minutes: 52 });
-    const probeEndTime = alertTime;
+    // Step 1: Check ClickHouse cache first - if we have candles, we know data exists
+    if (options.useCache !== false) {
+      try {
+        const baseStartTime = alertTime.minus({ minutes: 52 });
+        const cachedCandles = await this.storageEngine.getCandles(
+          mint,
+          chain,
+          baseStartTime,
+          alertTime,
+          { interval: '1m' }
+        );
+        if (cachedCandles.length > 0) {
+          logger.debug(
+            `[OhlcvIngestionEngine] Probe: Found cached candles for ${mint.substring(0, 20)}...`
+          );
+          return { hasData: true, fromAPI: false };
+        }
+      } catch (error) {
+        logger.debug('Probe: ClickHouse check failed, falling back to API', {
+          error: (error as Error).message,
+        });
+      }
+    }
 
-    const result = await this._fetchAndStoreChunk({
-      mint,
-      chain,
-      interval: '1m',
-      startTime: baseStartTime,
-      endTime: probeEndTime,
-      options,
-    });
+    // Step 2: Use cheap historical price endpoint (10 credits) instead of candles (60 credits)
+    // Check if price exists at alert time - if price exists, data exists
+    const alertUnixTime = Math.floor(alertTime.toSeconds());
+    try {
+      const historicalPrice = await birdeyeClient.fetchHistoricalPriceAtUnixTime(
+        mint,
+        alertUnixTime,
+        chain
+      );
 
-    // If from cache and has data, we know data exists
-    if (result.fromCache && result.candles.length > 0) {
+      if (
+        historicalPrice &&
+        historicalPrice.value !== null &&
+        historicalPrice.value !== undefined
+      ) {
+        logger.debug(
+          `[OhlcvIngestionEngine] Probe: Historical price found for ${mint.substring(0, 20)}... (10 credits)`
+        );
+        return { hasData: true, fromAPI: true };
+      } else {
+        logger.debug(
+          `[OhlcvIngestionEngine] Probe: No historical price for ${mint.substring(0, 20)}... (10 credits)`
+        );
+        return { hasData: false, fromAPI: true };
+      }
+    } catch (error) {
+      logger.warn('Probe: Historical price check failed, assuming data exists', {
+        error: (error as Error).message,
+        mint: mint.substring(0, 20),
+      });
+      // If probe fails, assume data exists (safer to try than skip)
       return { hasData: true, fromAPI: false };
     }
-
-    // If from API and has 0 candles, no data exists
-    if (!result.fromCache && result.candles.length === 0) {
-      return { hasData: false, fromAPI: true };
-    }
-
-    // If from API and has candles, data exists
-    if (!result.fromCache && result.candles.length > 0) {
-      return { hasData: true, fromAPI: true };
-    }
-
-    // If from cache and 0 candles, we need to check API (shouldn't happen, but handle it)
-    return { hasData: false, fromAPI: false };
   }
 
   /**
    * Fetch and store token metadata
    * CRITICAL: Preserves full mint address and exact case
+   * For EVM addresses, uses multi-chain metadata to find correct chain
    */
   private async _fetchAndStoreMetadata(mint: string, chain: Chain): Promise<boolean> {
     try {
+      // For EVM addresses, use multi-chain fetching to ensure correct chain
+      if (isEvmAddress(mint)) {
+        const metadataResult = await fetchMultiChainMetadata(mint, chain);
+        if (metadataResult.primaryMetadata) {
+          const metadata = metadataResult.primaryMetadata;
+          // Use actual chain from API response
+          const actualChain = metadata.chain;
+
+          // Store metadata in PostgreSQL using TokensRepository
+          // This enriches the token details before inserting OHLCV candles
+          await this.tokensRepo.getOrCreateToken(actualChain, createTokenAddress(mint), {
+            name: metadata.name,
+            symbol: metadata.symbol,
+          });
+
+          // Update chain cache if different from hint
+          if (actualChain !== chain) {
+            this.chainCache.set(mint, actualChain);
+            logger.debug(
+              `[OhlcvIngestionEngine] Chain corrected during metadata fetch for ${mint.substring(0, 20)}...`,
+              {
+                chainHint: chain,
+                actualChain,
+              }
+            );
+          }
+
+          logger.debug(`[OhlcvIngestionEngine] Metadata stored for ${mint.substring(0, 20)}...`, {
+            chain: actualChain,
+            symbol: metadata.symbol,
+          });
+          return true;
+        }
+        logger.warn(
+          `[OhlcvIngestionEngine] No metadata returned for ${mint.substring(0, 20)}... on any chain`
+        );
+        return false;
+      }
+
+      // Solana: use existing logic
       const metadata = await birdeyeClient.getTokenMetadata(mint, chain);
       if (metadata) {
         // Store metadata in PostgreSQL using TokensRepository
@@ -660,7 +722,6 @@ export class OhlcvIngestionEngine {
     };
   }
 
-
   /**
    * Fetch 5-minute candles
    * Strategy: -260 minutes (5*52) before alert, up to current time, in chunks of 5000 candles
@@ -820,14 +881,23 @@ export class OhlcvIngestionEngine {
 
       // Convert Birdeye format to Candle format
       let candles: Candle[] = birdeyeData.items
-        .map((item: { unixTime: number; open: number; high: number; low: number; close: number; volume: number }) => ({
-          timestamp: item.unixTime,
-          open: item.open,
-          high: item.high,
-          low: item.low,
-          close: item.close,
-          volume: item.volume,
-        }))
+        .map(
+          (item: {
+            unixTime: number;
+            open: number;
+            high: number;
+            low: number;
+            close: number;
+            volume: number;
+          }) => ({
+            timestamp: item.unixTime,
+            open: item.open,
+            high: item.high,
+            low: item.low,
+            close: item.close,
+            volume: item.volume,
+          })
+        )
         .filter((candle: Candle) => {
           // Filter candles within the requested time range
           const candleTime = DateTime.fromSeconds(candle.timestamp);
@@ -881,7 +951,7 @@ export class OhlcvIngestionEngine {
         const expectedStart = Math.floor(startTime.toSeconds());
         const expectedEnd = Math.floor(endTime.toSeconds());
         const expectedCount = Math.floor((expectedEnd - expectedStart) / intervalSeconds);
-        
+
         // Only flag if we have less than 50% of expected candles (significant data loss)
         // This prevents false positives from normal gaps in historical data
         if (candles.length < expectedCount * 0.5 && expectedCount > 10) {
@@ -907,7 +977,10 @@ export class OhlcvIngestionEngine {
 
       // If we have invalid candles or significant missing candles, try to fix them
       // Only warn if we have actual invalid data (not just gaps, which are normal)
-      if (invalidCandles.length > 0 || (missingTimestamps.length > 0 && missingTimestamps.length > candles.length * 0.5)) {
+      if (
+        invalidCandles.length > 0 ||
+        (missingTimestamps.length > 0 && missingTimestamps.length > candles.length * 0.5)
+      ) {
         logger.warn(`[OhlcvIngestionEngine] Found data issues for ${mint.substring(0, 20)}...`, {
           invalidCandles: invalidCandles.length,
           missingCandles: missingTimestamps.length,
@@ -931,14 +1004,23 @@ export class OhlcvIngestionEngine {
           if (retryData && retryData.items && retryData.items.length > 0) {
             // Re-validate the retry data
             const retryCandles: Candle[] = retryData.items
-              .map((item: { unixTime: number; open: number; high: number; low: number; close: number; volume: number }) => ({
-                timestamp: item.unixTime,
-                open: item.open,
-                high: item.high,
-                low: item.low,
-                close: item.close,
-                volume: item.volume,
-              }))
+              .map(
+                (item: {
+                  unixTime: number;
+                  open: number;
+                  high: number;
+                  low: number;
+                  close: number;
+                  volume: number;
+                }) => ({
+                  timestamp: item.unixTime,
+                  open: item.open,
+                  high: item.high,
+                  low: item.low,
+                  close: item.close,
+                  volume: item.volume,
+                })
+              )
               .filter((candle: Candle) => {
                 const candleTime = DateTime.fromSeconds(candle.timestamp);
                 return candleTime >= startTime && candleTime <= endTime;
@@ -1044,11 +1126,47 @@ export class OhlcvIngestionEngine {
       );
       return { candles, fromCache: false };
     } catch (error) {
+      // Check if error might be due to wrong chain for EVM addresses
+      if (isEvmAddress(mint)) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        if (
+          errorMessage.includes('not found') ||
+          errorMessage.includes('404') ||
+          errorMessage.includes('invalid')
+        ) {
+          // Try to detect correct chain
+          try {
+            const chainResult = await fetchMultiChainMetadata(mint, chain);
+            if (chainResult.primaryMetadata && chainResult.primaryMetadata.chain !== chain) {
+              logger.error('OHLCV fetch failed - wrong chain detected in _fetchAndStoreChunk', {
+                mint: mint.substring(0, 20),
+                attemptedChain: chain,
+                correctChain: chainResult.primaryMetadata.chain,
+                symbol: chainResult.primaryMetadata.symbol,
+                interval,
+                error: errorMessage,
+              });
+              throw new Error(
+                `OHLCV fetch failed: Token ${mint.substring(0, 20)}... is on ${chainResult.primaryMetadata.chain}, not ${chain}. ` +
+                  `Please retry with the correct chain.`
+              );
+            }
+          } catch (chainError) {
+            // If chain detection also fails, log but don't override original error
+            logger.debug('Chain detection failed during error handling in _fetchAndStoreChunk', {
+              mint: mint.substring(0, 20),
+              error: chainError instanceof Error ? chainError.message : String(chainError),
+            });
+          }
+        }
+      }
+
       logger.error(`[OhlcvIngestionEngine] Failed to fetch candles from Birdeye`, error as Error, {
         mint: mint.substring(0, 20),
         interval,
         startTime: startTime.toISO(),
         endTime: endTime.toISO(),
+        chain,
       });
       throw error;
     }
