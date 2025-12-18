@@ -52,6 +52,7 @@ Service → PythonEngine.run() → Python Script → Zod Validation → Typed Re
 **Location**: `packages/simulation/src/{service-name}-service.ts`
 
 **Rules**:
+
 - ✅ Takes PythonEngine as constructor dependency
 - ✅ Wraps PythonEngine calls with domain-specific methods
 - ✅ Validates all outputs with Zod schemas
@@ -67,6 +68,7 @@ Service → PythonEngine.run() → Python Script → Zod Validation → Typed Re
 ### Service Examples
 
 **DuckDBStorageService** (`packages/simulation/src/duckdb-storage-service.ts`):
+
 ```typescript
 export class DuckDBStorageService {
   constructor(private readonly pythonEngine: PythonEngine) {}
@@ -100,6 +102,7 @@ export class DuckDBStorageService {
 ```
 
 **ClickHouseService** (`packages/simulation/src/clickhouse-service.ts`):
+
 ```typescript
 export class ClickHouseService {
   constructor(
@@ -133,12 +136,14 @@ export class ClickHouseService {
 ### Zod Schema Requirements
 
 **All service methods must:**
+
 - ✅ Define Zod schemas for return types
 - ✅ Export schemas for reuse
 - ✅ Validate PythonEngine output before returning
 - ✅ Handle validation errors gracefully
 
 **Example**:
+
 ```typescript
 export const StrategyStorageResultSchema = z.object({
   success: z.boolean(),
@@ -178,6 +183,7 @@ private _createServices(): CommandServices {
 ### Forbidden Patterns
 
 **❌ Service with handler-specific logic:**
+
 ```typescript
 export class BadService {
   async storeStrategy(args, format: 'json' | 'table') { // ❌ NO format
@@ -187,6 +193,7 @@ export class BadService {
 ```
 
 **❌ Service with direct subprocess calls:**
+
 ```typescript
 export class BadService {
   async storeStrategy() {
@@ -196,6 +203,7 @@ export class BadService {
 ```
 
 **❌ Service without Zod validation:**
+
 ```typescript
 export class BadService {
   async storeStrategy() {
@@ -208,6 +216,7 @@ export class BadService {
 ### Testing Requirements
 
 **Service tests must:**
+
 - ✅ Mock PythonEngine
 - ✅ Test Zod validation (valid and invalid outputs)
 - ✅ Test error handling
@@ -215,6 +224,7 @@ export class BadService {
 - ✅ Verify correct PythonEngine calls
 
 **Example**:
+
 ```typescript
 describe('DuckDBStorageService', () => {
   it('validates output with Zod schema', async () => {

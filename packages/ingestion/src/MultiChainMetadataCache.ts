@@ -125,3 +125,4 @@ export function getMetadataCache(): MultiChainMetadataCache {
   }
   return _cacheInstance;
 }
+

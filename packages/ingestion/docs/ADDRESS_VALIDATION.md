@@ -220,3 +220,4 @@ Uses multi-chain fetching for validation:
 - [ ] Chain detection from transaction history
 - [ ] Support for more EVM chains (Polygon, Arbitrum, etc.)
 
+
