@@ -309,12 +309,12 @@ async function fetchBirdeyeCandlesChunk(
     }
 
     return items.map((item) => ({
-      timestamp: item.unix_time,
-      open: parseFloat(item.o) || NaN,
-      high: parseFloat(item.h) || NaN,
-      low: parseFloat(item.l) || NaN,
-      close: parseFloat(item.c) || NaN,
-      volume: parseFloat(item.v) || NaN,
+      timestamp: typeof item.unix_time === 'number' ? item.unix_time : 0,
+      open: parseFloat(String(item.o ?? '0')) || NaN,
+      high: parseFloat(String(item.h ?? '0')) || NaN,
+      low: parseFloat(String(item.l ?? '0')) || NaN,
+      close: parseFloat(String(item.c ?? '0')) || NaN,
+      volume: parseFloat(String(item.v ?? '0')) || NaN,
     }));
   } catch (error: unknown) {
     // If it's a 400/404, that's expected for invalid tokens - return empty

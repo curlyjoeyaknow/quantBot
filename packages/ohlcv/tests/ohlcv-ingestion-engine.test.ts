@@ -10,24 +10,23 @@
  * - Mint address preservation (CRITICAL)
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { DateTime } from 'luxon';
-import { OhlcvIngestionEngine } from '../src/ohlcv-ingestion-engine';
-import { birdeyeClient } from '@quantbot/api-clients';
-import { getStorageEngine, initClickHouse, TokensRepository } from '@quantbot/storage';
-import type { Candle } from '@quantbot/core';
-
+// IMPORTANT: Mocks must be defined BEFORE imports to prevent module resolution issues
 // Mock dependencies
 const mockStorageEngine = {
   storeCandles: vi.fn(),
   getCandles: vi.fn(),
 };
 
+// Create mock birdeyeClient - must be defined before the mock
+const mockBirdeyeClient = {
+  fetchOHLCVData: vi.fn(),
+  getTokenMetadata: vi.fn(),
+  fetchHistoricalPriceAtUnixTime: vi.fn(),
+};
+
 vi.mock('@quantbot/api-clients', () => ({
-  birdeyeClient: {
-    fetchOHLCVData: vi.fn(),
-    getTokenMetadata: vi.fn(),
-  },
+  birdeyeClient: mockBirdeyeClient,
+  getBirdeyeClient: () => mockBirdeyeClient,
 }));
 
 vi.mock('@quantbot/storage', () => ({
@@ -35,6 +34,22 @@ vi.mock('@quantbot/storage', () => ({
   initClickHouse: vi.fn(),
   TokensRepository: vi.fn(),
 }));
+
+vi.mock('@quantbot/ingestion', () => ({
+  fetchMultiChainMetadata: vi.fn(),
+  isEvmAddress: vi.fn(),
+}));
+
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { DateTime } from 'luxon';
+import { OhlcvIngestionEngine } from '../src/ohlcv-ingestion-engine';
+import { getBirdeyeClient } from '@quantbot/api-clients';
+import { getStorageEngine, initClickHouse, TokensRepository } from '@quantbot/storage';
+import { fetchMultiChainMetadata, isEvmAddress } from '@quantbot/ingestion';
+import type { Candle } from '@quantbot/core';
+
+// Get the mocked birdeyeClient
+const birdeyeClient = getBirdeyeClient();
 
 vi.mock('@quantbot/utils', () => ({
   logger: {
@@ -69,6 +84,23 @@ describe('OhlcvIngestionEngine', () => {
     vi.mocked(TokensRepository).mockImplementation(function () {
       return mockTokensRepo as any;
     });
+
+    // Default mocks for birdeyeClient
+    vi.mocked(birdeyeClient.getTokenMetadata).mockResolvedValue({ name: 'Test', symbol: 'TEST' });
+    vi.mocked(birdeyeClient.fetchOHLCVData).mockResolvedValue({ items: [] } as any);
+    // Mock fetchHistoricalPriceAtUnixTime for the probe (returns a price to indicate data exists, so probe continues)
+    vi.mocked(birdeyeClient.fetchHistoricalPriceAtUnixTime).mockResolvedValue({
+      value: 1.0,
+    } as any);
+
+    // Default mocks for ingestion functions - default to Solana addresses
+    vi.mocked(isEvmAddress).mockReturnValue(false);
+    vi.mocked(fetchMultiChainMetadata).mockResolvedValue({
+      address: TEST_MINT,
+      addressKind: 'solana',
+      metadata: [],
+      primaryMetadata: undefined,
+    });
   });
 
   afterEach(() => {
@@ -96,9 +128,16 @@ describe('OhlcvIngestionEngine', () => {
   describe('fetchCandles - Metadata', () => {
     it('should fetch and store metadata before candles', async () => {
       const mockMetadata = { name: 'Test Token', symbol: 'TEST' };
+      // For Solana addresses, birdeyeClient.getTokenMetadata is still used directly
       vi.mocked(birdeyeClient.getTokenMetadata).mockResolvedValue(mockMetadata);
       vi.mocked(birdeyeClient.fetchOHLCVData).mockResolvedValue({ items: [] } as any);
+      // Mock fetchHistoricalPriceAtUnixTime for the probe (returns a price to indicate data exists, so probe continues)
+      vi.mocked(birdeyeClient.fetchHistoricalPriceAtUnixTime).mockResolvedValue({
+        value: 1.0,
+      } as any);
       mockStorageEngine.getCandles.mockResolvedValue([]);
+      // Ensure isEvmAddress returns false for Solana addresses
+      vi.mocked(isEvmAddress).mockReturnValue(false);
 
       await engine.fetchCandles(TEST_MINT, TEST_CHAIN, TEST_ALERT_TIME);
 
@@ -621,6 +660,8 @@ describe('OhlcvIngestionEngine', () => {
           volume: c.volume,
         })),
       } as any);
+      // Ensure isEvmAddress returns false for Solana addresses
+      vi.mocked(isEvmAddress).mockReturnValue(false);
 
       const result = await engine.fetchCandles(TEST_MINT, TEST_CHAIN, TEST_ALERT_TIME);
 

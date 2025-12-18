@@ -79,11 +79,17 @@ vi.mock('@quantbot/utils', () => ({
   },
 }));
 
+vi.mock('@quantbot/ingestion', () => ({
+  fetchMultiChainMetadata: vi.fn(),
+  isEvmAddress: vi.fn(),
+}));
+
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { DateTime } from 'luxon';
 import { OhlcvIngestionEngine } from '../src/ohlcv-ingestion-engine';
 import { birdeyeClient } from '@quantbot/api-clients';
 import { getStorageEngine, initClickHouse, TokensRepository } from '@quantbot/storage';
+import { fetchMultiChainMetadata, isEvmAddress } from '@quantbot/ingestion';
 import type { Candle } from '@quantbot/core';
 
 describe('OhlcvIngestionEngine - Integration Tests', () => {
