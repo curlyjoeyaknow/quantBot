@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isEvmAddress, isSolanaAddress, extractAddresses } from '../../src/addressValidation.js';
+import { isEvmAddress, isSolanaAddress, extractAddresses } from '../../src/addressValidation';
 
 /**
  * Property tests for address validation

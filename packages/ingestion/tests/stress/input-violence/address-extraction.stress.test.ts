@@ -18,8 +18,8 @@ import {
   SOLANA_VALIDATION_CASES,
   EVM_VALIDATION_CASES,
   type AddressTestCase,
-} from '../fixtures/malicious-addresses.js';
-import { extractAndValidateAddresses } from '../../../src/comprehensiveAddressExtraction.js';
+} from '../fixtures/malicious-addresses';
+import { extractAndValidateAddresses } from '../../../src/comprehensiveAddressExtraction';
 
 describe('Address Extraction Stress Tests', () => {
   describe('Punctuation-wrapped candidates', () => {

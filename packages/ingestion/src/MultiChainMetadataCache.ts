@@ -9,7 +9,7 @@
  * Cache value: TokenMetadata with timestamp
  */
 
-import type { TokenMetadata } from './MultiChainMetadataService.js';
+import type { TokenMetadata } from './MultiChainMetadataService';
 
 interface CachedMetadata {
   metadata: TokenMetadata;

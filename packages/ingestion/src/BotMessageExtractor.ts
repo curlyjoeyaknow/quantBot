@@ -13,7 +13,7 @@ import * as cheerio from 'cheerio';
 import { PublicKey } from '@solana/web3.js';
 import type { Chain } from '@quantbot/core';
 import { logger } from '@quantbot/utils';
-import { extractAddresses } from './addressValidation.js';
+import { extractAddresses } from './addressValidation';
 
 export interface ExtractedBotData {
   contractAddress: string; // Case-sensitive, full address
@@ -470,12 +470,73 @@ export class BotMessageExtractor {
 
   /**
    * Detect chain from text context (for EVM addresses that can't be distinguished by format)
+   * Enhanced with exchange/platform hints and message patterns
    */
-  private detectChainFromText(text: string, address: string): Chain {
+  private detectChainFromText(text: string, address: string, callerHistory?: string[]): Chain {
     const lowerText = text.toLowerCase();
-    if (lowerText.includes('base') || lowerText.includes('base chain')) return 'base';
-    if (lowerText.includes('bsc') || lowerText.includes('binance')) return 'bsc';
-    if (lowerText.includes('ethereum') || lowerText.includes('eth')) return 'ethereum';
+
+    // Explicit chain mentions (highest priority)
+    if (
+      lowerText.includes('base') ||
+      lowerText.includes('base chain') ||
+      lowerText.includes('base network')
+    ) {
+      return 'base';
+    }
+    if (
+      lowerText.includes('bsc') ||
+      lowerText.includes('binance smart chain') ||
+      lowerText.includes('binance chain')
+    ) {
+      return 'bsc';
+    }
+    if (
+      lowerText.includes('ethereum') ||
+      lowerText.includes('eth mainnet') ||
+      lowerText.includes('ethereum mainnet')
+    ) {
+      return 'ethereum';
+    }
+
+    // Exchange/platform hints
+    if (lowerText.includes('uniswap') || lowerText.includes('ethereum')) {
+      return 'ethereum';
+    }
+    if (
+      lowerText.includes('baseswap') ||
+      lowerText.includes('aerodrome') ||
+      lowerText.includes('base dex')
+    ) {
+      return 'base';
+    }
+    if (lowerText.includes('pancakeswap') || lowerText.includes('pancake swap')) {
+      return 'bsc';
+    }
+
+    // Token name patterns (e.g., "BASE token", "Base Token")
+    if (lowerText.match(/\bbase\s+token\b/i)) {
+      return 'base';
+    }
+
+    // Caller history analysis (if available)
+    // Note: callerHistory would need to be passed from the caller
+    // For now, this is a placeholder for future enhancement
+    if (callerHistory && callerHistory.length > 0) {
+      const baseCount = callerHistory.filter((c) => c === 'base').length;
+      const ethCount = callerHistory.filter((c) => c === 'ethereum').length;
+      const bscCount = callerHistory.filter((c) => c === 'bsc').length;
+
+      if (baseCount > ethCount * 2 && baseCount > bscCount * 2) {
+        return 'base';
+      }
+      if (bscCount > ethCount * 2 && bscCount > baseCount * 2) {
+        return 'bsc';
+      }
+      if (ethCount > baseCount * 2 && ethCount > bscCount * 2) {
+        return 'ethereum';
+      }
+    }
+
     // Default to ethereum for EVM addresses if no context
     return 'ethereum';
   }

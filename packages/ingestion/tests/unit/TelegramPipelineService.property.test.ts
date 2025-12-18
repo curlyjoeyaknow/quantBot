@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { TelegramPipelineService } from '../../src/TelegramPipelineService.js';
+import { TelegramPipelineService } from '../../src/TelegramPipelineService';
 import type { PythonEngine } from '@quantbot/utils';
 import { PythonManifestSchema } from '@quantbot/utils';
 

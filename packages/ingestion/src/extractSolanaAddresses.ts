@@ -91,7 +91,7 @@ export function extractSolanaAddresses(text: string): string[] {
 
   // Addresses in URLs (common format: https://pump.fun/ADDRESS)
   const urlRegex =
-    /(?:pump\.fun|birdeye\.so|solscan\.io|solana\.fm)[\/=]([1-9A-HJ-NP-Za-km-z]{32,44})/gi;
+    /(?:pump\.fun|birdeye\.so|solscan\.io|solana\.fm)[/=]([1-9A-HJ-NP-Za-km-z]{32,44})/gi;
   const urlMatches = cleanText.matchAll(urlRegex);
   for (const match of urlMatches) {
     const addr = match[1];

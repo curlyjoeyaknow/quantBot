@@ -26,7 +26,7 @@ import { MessageIndex } from './MessageIndex';
 import { BotMessageExtractor, type ExtractedBotData } from './BotMessageExtractor';
 import { CallerResolver, type ResolvedCaller } from './CallerResolver';
 import { ChunkValidator, type ChunkValidationResult } from './ChunkValidator';
-import { fetchMultiChainMetadata } from './MultiChainMetadataService.js';
+import { fetchMultiChainMetadata } from './MultiChainMetadataService';
 import * as path from 'path';
 
 export interface IngestExportParams {
@@ -180,7 +180,7 @@ export class TelegramCallIngestionService {
       botMessagesProcessed,
     };
 
-    logger.info('Completed Telegram call ingestion', result as Record<string, unknown>);
+    logger.info('Completed Telegram call ingestion', result as unknown as Record<string, unknown>);
     return result;
   }
 

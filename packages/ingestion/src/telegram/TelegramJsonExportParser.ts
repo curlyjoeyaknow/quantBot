@@ -56,12 +56,16 @@ export function parseJsonExport(filePath: string, chatId?: string): ParseJsonExp
   // Extract chat ID from export or use provided
   const resolvedChatId = chatId || extractChatId(exportData, filePath);
 
-  // Extract messages array
-  const rawMessages = exportData.messages || [];
+  // Extract messages array - type guard for exportData
+  if (typeof exportData !== 'object' || exportData === null) {
+    throw new ValidationError(`Expected object in export file ${filePath}`, { filePath });
+  }
+  const data = exportData as Record<string, unknown>;
+  const rawMessages = data.messages || [];
   if (!Array.isArray(rawMessages)) {
     throw new ValidationError(`Expected messages array in export file ${filePath}`, {
       filePath,
-      dataType: typeof exportData.messages,
+      dataType: typeof data.messages,
     });
   }
 
@@ -127,6 +131,6 @@ function extractChatId(exportData: unknown, filePath: string): string {
   }
 
   // Fallback to filename without extension
-  const fileName = filePath.split(/[\/\\]/).pop() || 'unknown';
+  const fileName = filePath.split(/[/\\]/).pop() || 'unknown';
   return fileName.replace(/\.json$/, '');
 }

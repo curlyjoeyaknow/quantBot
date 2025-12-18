@@ -9,11 +9,11 @@
  * We must try all three chains to determine which one actually has the token.
  */
 
-import { logger } from '@quantbot/utils';
-import type { Chain } from './types.js';
+import { logger, retryWithBackoff } from '@quantbot/utils';
+import type { Chain } from './types';
 import { getBirdeyeClient } from '@quantbot/api-clients';
-import { isEvmAddress, isSolanaAddress } from './addressValidation.js';
-import { getMetadataCache } from './MultiChainMetadataCache.js';
+import { isEvmAddress, isSolanaAddress } from './addressValidation';
+import { getMetadataCache } from './MultiChainMetadataCache';
 
 export interface TokenMetadata {
   address: string;
@@ -65,6 +65,7 @@ export async function fetchMultiChainMetadata(
     if (cached) {
       logger.debug('Using cached Solana metadata', {
         address: address.substring(0, 20),
+        cacheHit: true,
       });
       result.metadata.push(cached);
       if (cached.found) {
@@ -78,7 +79,12 @@ export async function fetchMultiChainMetadata(
     });
 
     try {
-      const metadata = await birdeyeClient.getTokenMetadata(address, 'solana');
+      const metadata = await retryWithBackoff(
+        () => birdeyeClient.getTokenMetadata(address, 'solana'),
+        3, // maxRetries
+        1000, // initialDelayMs (1 second)
+        { address: address.substring(0, 20), chain: 'solana' }
+      );
 
       const tokenMetadata: TokenMetadata = {
         address,
@@ -124,6 +130,7 @@ export async function fetchMultiChainMetadata(
       logger.debug('Using cached EVM metadata', {
         address: address.substring(0, 20),
         chain: cachedAny.chain,
+        cacheHit: true,
       });
       result.metadata.push(cachedAny.metadata);
       result.primaryMetadata = cachedAny.metadata;
@@ -136,59 +143,122 @@ export async function fetchMultiChainMetadata(
       chainHint,
     });
 
-    // Try chains in order (prioritize chainHint)
+    // Check cache for each chain first
+    const cachedResults: Array<{ chain: Chain; metadata: TokenMetadata }> = [];
+    const chainsToFetch: Chain[] = [];
+
     for (const chain of chains) {
-      // Check cache for this specific chain
       const cached = cache.get(address, chain);
       if (cached) {
+        cachedResults.push({ chain, metadata: cached });
         result.metadata.push(cached);
         if (cached.found && !result.primaryMetadata) {
           result.primaryMetadata = cached;
         }
-        continue;
+      } else {
+        chainsToFetch.push(chain);
       }
+    }
 
-      try {
-        const metadata = await birdeyeClient.getTokenMetadata(address, chain);
+    // If we found metadata in cache, return early (unless we need to fetch more)
+    if (result.primaryMetadata && chainsToFetch.length === 0) {
+      return result;
+    }
 
-        const tokenMetadata: TokenMetadata = {
-          address,
-          chain,
-          name: metadata?.name,
-          symbol: metadata?.symbol,
-          found: metadata !== null,
-        };
+    // Query all remaining chains in parallel
+    if (chainsToFetch.length > 0) {
+      const startTime = Date.now();
+      const parallelQueries = chainsToFetch.map(async (chain) => {
+        const chainStartTime = Date.now();
+        try {
+          const metadata = await retryWithBackoff(
+            () => birdeyeClient.getTokenMetadata(address, chain),
+            3, // maxRetries
+            1000, // initialDelayMs (1 second)
+            { address: address.substring(0, 20), chain }
+          );
 
-        result.metadata.push(tokenMetadata);
+          const tokenMetadata: TokenMetadata = {
+            address,
+            chain,
+            name: metadata?.name,
+            symbol: metadata?.symbol,
+            found: metadata !== null,
+          };
 
-        // Cache the result
-        cache.set(address, chain, tokenMetadata);
+          // Cache the result
+          cache.set(address, chain, tokenMetadata);
 
-        // Set primary metadata to first successful result
-        if (metadata && !result.primaryMetadata) {
-          result.primaryMetadata = tokenMetadata;
-          logger.info('Found token metadata', {
+          const chainDuration = Date.now() - chainStartTime;
+          logger.debug('Metadata API call completed', {
             address: address.substring(0, 20),
             chain,
-            symbol: metadata.symbol,
-            name: metadata.name,
+            found: !!metadata,
+            fromCache: false,
+            durationMs: chainDuration,
           });
-        }
-      } catch (error) {
-        logger.warn('Failed to fetch EVM metadata', {
-          error: error instanceof Error ? error.message : String(error),
-          address: address.substring(0, 20),
-          chain,
-        });
 
-        const tokenMetadata: TokenMetadata = {
-          address,
-          chain,
-          found: false,
-        };
-        result.metadata.push(tokenMetadata);
-        // Cache negative result with shorter TTL (5 minutes)
-        cache.set(address, chain, tokenMetadata, 1000 * 60 * 5);
+          return { chain, tokenMetadata, error: null };
+        } catch (error) {
+          logger.warn('Failed to fetch EVM metadata', {
+            error: error instanceof Error ? error.message : String(error),
+            address: address.substring(0, 20),
+            chain,
+          });
+
+          const tokenMetadata: TokenMetadata = {
+            address,
+            chain,
+            found: false,
+          };
+          // Cache negative result with shorter TTL (5 minutes)
+          cache.set(address, chain, tokenMetadata, 1000 * 60 * 5);
+
+          return {
+            chain,
+            tokenMetadata,
+            error: error instanceof Error ? error.message : String(error),
+          };
+        }
+      });
+
+      const queryResults = await Promise.all(parallelQueries);
+      const endTime = Date.now();
+      const totalDuration = endTime - startTime;
+
+      // Track metrics
+      const foundCount = queryResults.filter((r) => r.tokenMetadata.found).length;
+      const cacheHitCount = cachedResults.length;
+      const hintCorrect = chainHint && result.primaryMetadata?.chain === chainHint;
+
+      logger.debug('Parallel EVM queries completed', {
+        address: address.substring(0, 20),
+        durationMs: totalDuration,
+        chainsQueried: chainsToFetch.length,
+        chainsFound: foundCount,
+        cacheHits: cacheHitCount,
+        chainHint,
+        hintCorrect,
+        actualChain: result.primaryMetadata?.chain,
+      });
+
+      // Process results in priority order (chainHint first)
+      for (const chain of chains) {
+        const queryResult = queryResults.find((r) => r.chain === chain);
+        if (queryResult) {
+          result.metadata.push(queryResult.tokenMetadata);
+
+          // Set primary metadata to first successful result (respecting priority order)
+          if (queryResult.tokenMetadata.found && !result.primaryMetadata) {
+            result.primaryMetadata = queryResult.tokenMetadata;
+            logger.info('Found token metadata', {
+              address: address.substring(0, 20),
+              chain: queryResult.tokenMetadata.chain,
+              symbol: queryResult.tokenMetadata.symbol,
+              name: queryResult.tokenMetadata.name,
+            });
+          }
+        }
       }
     }
   }
@@ -200,37 +270,50 @@ export async function fetchMultiChainMetadata(
  * Batch fetch metadata for multiple addresses
  *
  * Useful for processing Telegram messages with multiple addresses.
- * Executes requests sequentially to avoid rate limiting.
+ * Processes addresses in parallel batches to improve performance while respecting rate limits.
  *
  * @param addresses - Array of addresses to fetch
  * @param chainHint - Optional chain hint for all addresses
+ * @param batchSize - Number of addresses to process in parallel (default: 5)
  * @returns Array of metadata results
  */
 export async function batchFetchMultiChainMetadata(
   addresses: string[],
-  chainHint?: Chain
+  chainHint?: Chain,
+  batchSize: number = 5
 ): Promise<MultiChainMetadataResult[]> {
   const results: MultiChainMetadataResult[] = [];
 
-  for (const address of addresses) {
-    try {
-      const result = await fetchMultiChainMetadata(address, chainHint);
-      results.push(result);
+  // Process in batches
+  for (let i = 0; i < addresses.length; i += batchSize) {
+    const batch = addresses.slice(i, i + batchSize);
 
-      // Small delay to avoid rate limiting (100ms between requests)
+    // Process batch in parallel
+    const batchResults = await Promise.all(
+      batch.map(async (address) => {
+        try {
+          return await fetchMultiChainMetadata(address, chainHint);
+        } catch (error) {
+          logger.error('Failed to fetch metadata for address', error as Error, {
+            address: address.substring(0, 20),
+          });
+
+          // Add failed result
+          return {
+            address,
+            addressKind: isEvmAddress(address) ? 'evm' : 'solana',
+            chainHint,
+            metadata: [],
+          };
+        }
+      })
+    );
+
+    results.push(...batchResults);
+
+    // Small delay between batches to respect rate limits
+    if (i + batchSize < addresses.length) {
       await new Promise((resolve) => setTimeout(resolve, 100));
-    } catch (error) {
-      logger.error('Failed to fetch metadata for address', error as Error, {
-        address: address.substring(0, 20),
-      });
-
-      // Add failed result
-      results.push({
-        address,
-        addressKind: isEvmAddress(address) ? 'evm' : 'solana',
-        chainHint,
-        metadata: [],
-      });
     }
   }
 
