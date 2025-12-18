@@ -1,0 +1,196 @@
+---
+description: Build ordering rules for monorepo packages - enforce correct dependency build sequence
+globs:
+  - "package.json"
+  - "packages/**/package.json"
+  - "pnpm-workspace.yaml"
+alwaysApply: true
+---
+
+# Build Ordering Rules
+
+## Core Principle
+
+**Packages must be built in dependency order. Dependencies must be built before dependents.**
+
+## Build Order (Mandatory Sequence)
+
+Packages must be built in this exact order:
+
+1. **@quantbot/core** - Foundation types and interfaces (no dependencies)
+2. **@quantbot/utils** - Shared utilities (depends on core)
+3. **@quantbot/storage** - Storage layer (depends on utils, core)
+4. **@quantbot/observability** - Observability services (depends on utils, core)
+5. **@quantbot/api-clients** - External API clients (depends on utils, core)
+6. **@quantbot/ohlcv** - OHLCV data services (depends on api-clients, storage, utils, core)
+7. **@quantbot/analytics** - Analytics engine (depends on storage, utils, core)
+8. **@quantbot/ingestion** - Data ingestion (depends on api-clients, ohlcv, storage, analytics, utils, core)
+9. **Remaining packages** - All other packages (workflows, simulation, cli, tui, etc.)
+
+## Dependency Rules
+
+### Foundation Layer (Build First)
+
+- **@quantbot/core**: Zero dependencies on other workspace packages
+- **@quantbot/utils**: Only depends on @quantbot/core
+
+### Infrastructure Layer (Build Second)
+
+- **@quantbot/storage**: Depends on utils, core
+- **@quantbot/observability**: Depends on utils, core
+- **@quantbot/api-clients**: Depends on utils, core
+
+### Service Layer (Build Third)
+
+- **@quantbot/ohlcv**: Depends on api-clients, storage, utils, core
+- **@quantbot/analytics**: Depends on storage, utils, core
+- **@quantbot/ingestion**: Depends on api-clients, ohlcv, storage, analytics, utils, core
+
+### Application Layer (Build Last)
+
+- **@quantbot/workflows**: Depends on storage, ohlcv, simulation, ingestion, utils, core
+- **@quantbot/simulation**: Depends on utils, storage, ohlcv, core
+- **@quantbot/cli**: Depends on all packages
+- **@quantbot/tui**: Depends on all packages
+
+## Build Commands
+
+### Root Build Script
+
+Always use `pnpm build:ordered` which enforces the correct sequence:
+
+```bash
+pnpm build:ordered
+```
+
+This builds packages in the correct dependency order.
+
+### Individual Package Builds
+
+When building a single package, ensure dependencies are built first:
+
+```bash
+# Build dependencies first
+pnpm --filter @quantbot/utils build
+pnpm --filter @quantbot/storage build
+
+# Then build dependent package
+pnpm --filter @quantbot/ingestion build
+```
+
+## Adding New Packages
+
+### Dependency Declaration
+
+When adding a new package:
+
+1. **Declare dependencies** in `package.json` using `workspace:*` protocol
+2. **Ensure dependencies are listed** in the correct build order
+3. **Update root `build:ordered` script** if package is in the first 8 packages
+4. **Place in "Remaining packages"** section if it depends on multiple foundation packages
+
+### Example
+
+```json
+{
+  "name": "@quantbot/new-package",
+  "dependencies": {
+    "@quantbot/utils": "workspace:*",
+    "@quantbot/storage": "workspace:*"
+  }
+}
+```
+
+This package must be built **after** utils and storage.
+
+## TypeScript Project References
+
+### Configuration
+
+Use TypeScript project references for proper build ordering:
+
+```json
+{
+  "compilerOptions": {
+    "composite": true,
+    "declaration": true,
+    "declarationMap": true
+  },
+  "references": [
+    { "path": "../core" },
+    { "path": "../utils" }
+  ]
+}
+```
+
+### Benefits
+
+- TypeScript enforces build order
+- Faster incremental builds
+- Better IDE support
+- Catches circular dependencies
+
+## Circular Dependency Prevention
+
+### Rules
+
+- **Never create circular dependencies** between packages
+- **Dependency graph must be acyclic**
+- **Use dependency injection** to break circular references
+- **Extract shared code** to @quantbot/core or @quantbot/utils
+
+### Detection
+
+TypeScript project references will fail if circular dependencies exist.
+
+## Build Failures
+
+### Common Causes
+
+1. **Dependency not built**: Build dependencies first
+2. **Circular dependency**: Refactor to break cycle
+3. **Missing workspace reference**: Add to package.json dependencies
+4. **Type errors in dependency**: Fix dependency before building dependent
+
+### Resolution
+
+1. Build dependencies in order
+2. Check for circular dependencies
+3. Verify workspace protocol in package.json
+4. Fix type errors in dependencies first
+
+## CI/CD Considerations
+
+### Build Pipeline
+
+1. Install dependencies: `pnpm install`
+2. Build in order: `pnpm build:ordered`
+3. Run tests: `pnpm test`
+4. Type check: `pnpm typecheck`
+
+### Parallelization
+
+- Foundation packages (core, utils) can build in parallel
+- Infrastructure packages can build in parallel after foundation
+- Service packages can build in parallel after infrastructure
+- Application packages must wait for all dependencies
+
+## Enforcement
+
+### Pre-Commit
+
+- Verify build order in `package.json` scripts
+- Check for circular dependencies
+- Ensure TypeScript project references are correct
+
+### Code Review
+
+- Reject PRs that break build order
+- Require dependency updates in build script
+- Verify new packages follow ordering rules
+
+### AI Assistant
+
+- Always suggest correct build order when adding dependencies
+- Warn about potential circular dependencies
+- Update build scripts when package dependencies change

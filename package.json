@@ -7,7 +7,12 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "pnpm -r build",
+    "build": "pnpm build:ordered",
+    "build:ordered": "pnpm --filter @quantbot/core build && pnpm --filter @quantbot/utils build && pnpm --filter @quantbot/storage build && pnpm --filter @quantbot/observability build && pnpm --filter @quantbot/api-clients build && pnpm --filter @quantbot/ohlcv build && pnpm --filter @quantbot/analytics build && pnpm --filter @quantbot/ingestion build && pnpm -r --filter './packages/*' --filter '!@quantbot/core' --filter '!@quantbot/utils' --filter '!@quantbot/storage' --filter '!@quantbot/observability' --filter '!@quantbot/api-clients' --filter '!@quantbot/ohlcv' --filter '!@quantbot/analytics' --filter '!@quantbot/ingestion' build",
+    "build:core": "pnpm --filter @quantbot/core build",
+    "build:utils": "pnpm --filter @quantbot/utils build",
+    "build:storage": "pnpm --filter @quantbot/storage build",
+    "build:ingestion": "pnpm --filter @quantbot/ingestion build",
     "build:packages": "pnpm --filter './packages/*' build",
     "build:watch": "tsc --watch",
     "clean": "rm -rf dist/ packages/*/dist/",

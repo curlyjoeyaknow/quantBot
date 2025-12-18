@@ -83,6 +83,56 @@ def store_alerts(con: duckdb.DuckDBPyConnection, alerts_data: List[Dict[str, Any
         return {'success': False, 'error': str(e)}
 
 
+def query_calls(con: duckdb.DuckDBPyConnection, query_data: Dict[str, Any]) -> Dict[str, Any]:
+    """Query calls from DuckDB for batch simulation."""
+    try:
+        limit = query_data.get('limit', 1000)
+        
+        # Query user_calls_d table for mint addresses and alert timestamps
+        # Use call_datetime or call_ts_ms depending on what's available
+        result = con.execute("""
+            SELECT DISTINCT
+                mint,
+                call_datetime
+            FROM user_calls_d
+            WHERE mint IS NOT NULL 
+              AND TRIM(CAST(mint AS VARCHAR)) != ''
+              AND call_datetime IS NOT NULL
+            ORDER BY call_datetime DESC
+            LIMIT ?
+        """, [limit]).fetchall()
+        
+        calls = []
+        for row in result:
+            mint = row[0]
+            call_datetime = row[1]
+            
+            # Convert datetime to ISO format string
+            if isinstance(call_datetime, datetime):
+                alert_timestamp = call_datetime.isoformat()
+            elif isinstance(call_datetime, str):
+                alert_timestamp = call_datetime
+            else:
+                # Try to parse as timestamp
+                try:
+                    dt = datetime.fromtimestamp(call_datetime)
+                    alert_timestamp = dt.isoformat()
+                except:
+                    continue  # Skip invalid timestamps
+            
+            calls.append({
+                'mint': str(mint),
+                'alert_timestamp': alert_timestamp
+            })
+        
+        return {
+            'success': True,
+            'calls': calls
+        }
+    except Exception as e:
+        return {'success': False, 'error': str(e)}
+
+
 def generate_report(con: duckdb.DuckDBPyConnection, report_config: Dict[str, Any]) -> Dict[str, Any]:
     """Generate a report from DuckDB simulation data."""
     try:
@@ -154,7 +204,7 @@ def generate_report(con: duckdb.DuckDBPyConnection, report_config: Dict[str, Any
 def main():
     parser = argparse.ArgumentParser(description='DuckDB Storage Service for Simulation')
     parser.add_argument('--duckdb', required=True, help='Path to DuckDB file')
-    parser.add_argument('--operation', required=True, choices=['store_strategy', 'store_run', 'store_alerts', 'generate_report'])
+    parser.add_argument('--operation', required=True, choices=['store_strategy', 'store_run', 'store_alerts', 'generate_report', 'query_calls'])
     parser.add_argument('--data', required=True, help='JSON data for operation')
     
     args = parser.parse_args()
@@ -176,6 +226,8 @@ def main():
             result = store_alerts(con, data)
         elif args.operation == 'generate_report':
             result = generate_report(con, data)
+        elif args.operation == 'query_calls':
+            result = query_calls(con, data)
         else:
             result = {'success': False, 'error': f'Unknown operation: {args.operation}'}
         
