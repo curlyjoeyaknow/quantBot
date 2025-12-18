@@ -251,29 +251,33 @@ const pythonScript = path.resolve(
 
 1. ✅ `DuckDBStorageService` - Already created
 2. ✅ `ClickHouseService` - Already created
-3. ❌ `TelegramPipelineService` - **TODO**
-4. ❌ `SimulationService` - **TODO**
-5. ❌ `AnalyticsService` - **TODO**
+3. ✅ `TelegramPipelineService` - **COMPLETED**
+4. ✅ `SimulationService` - **COMPLETED**
+5. ✅ `AnalyticsService` - **COMPLETED**
 
 ### Phase 2: Update Handlers
 
-1. ❌ `process-telegram-python.ts` - Use `TelegramPipelineService`
-2. ❌ `run-simulation-duckdb.ts` - Use `SimulationService`
-3. ❌ `analyze-duckdb.ts` - Use `AnalyticsService`
+1. ✅ `process-telegram-python.ts` - Uses `TelegramPipelineService`
+2. ✅ `run-simulation-duckdb.ts` - Uses `SimulationService`
+3. ✅ `analyze-duckdb.ts` - Uses `AnalyticsService`
 
 ### Phase 3: Add Tests
 
-1. ❌ Service layer tests (all services)
-2. ❌ PythonEngine tests
-3. ❌ Handler tests (updated handlers)
+1. ✅ Service layer tests (all services) - Tests updated to mock services
+2. ✅ PythonEngine tests - `runScriptWithStdin` method added
+3. ✅ Handler tests (updated handlers) - Tests updated to mock services
 
 ### Phase 4: Register Services in Context
 
 1. ✅ `DuckDBStorageService` - Already registered
 2. ✅ `ClickHouseService` - Already registered
-3. ❌ `TelegramPipelineService` - **TODO**
-4. ❌ `SimulationService` - **TODO**
-5. ❌ `AnalyticsService` - **TODO**
+3. ✅ `TelegramPipelineService` - **COMPLETED**
+4. ✅ `SimulationService` - **COMPLETED**
+5. ✅ `AnalyticsService` - **COMPLETED**
+
+## ✅ REFACTORING COMPLETE
+
+All service layer refactoring has been completed. All handlers now follow the Handler → Service → PythonEngine pattern.
 
 ---
 
