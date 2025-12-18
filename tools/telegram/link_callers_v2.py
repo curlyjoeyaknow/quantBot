@@ -20,7 +20,14 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../..'))
 
 # Use DuckDB parsers - they're more lenient and handle more edge cases
-from tools.telegram.duckdb_punch_pipeline import parse_bot, find_address_candidates
+try:
+    from tools.telegram.duckdb_punch_pipeline import parse_bot, find_address_candidates
+    HAS_DUCKDB_PARSER = True
+except ImportError:
+    HAS_DUCKDB_PARSER = False
+    # Fallback to original parser
+    from tools.telegram.parse_bot_cards import parse_any_bot_card
+
 from tools.telegram.parse_bot_cards import find_mint_addresses, BASE58_RE
 import re
 
@@ -45,6 +52,12 @@ def is_bot_message(msg: Dict[str, Any]) -> bool:
 def extract_mints_and_tickers(text: str) -> Tuple[List[str], List[str]]:
     """Extract mints and tickers from text"""
     mints = find_mint_addresses(text)
+    # Also extract EVM addresses (0x followed by 40 hex characters)
+    evm_pattern = re.compile(r'0x[a-fA-F0-9]{40}')
+    evm_addresses = evm_pattern.findall(text or "")
+    mints.extend(evm_addresses)
+    # Deduplicate while preserving order
+    mints = list(dict.fromkeys(mints))
     tickers = find_tickers(text)
     return mints, tickers
 
@@ -269,7 +282,14 @@ def link_callers_v2(db_path: str, window_seconds: int = 60, quiet: bool = False)
         
         # Now try to parse the bot card using DuckDB parser (more lenient)
         trigger_text = trigger.get("text") if trigger else None
-        bot_card = parse_bot(msg["from_name"], msg["text"], trigger_text)
+        # Use DuckDB parser if available, otherwise fallback to original
+        if HAS_DUCKDB_PARSER:
+            bot_card = parse_bot(msg["from_name"], msg["text"], trigger_text)
+        else:
+            bot_card = parse_any_bot_card(msg["text"])
+            if bot_card:
+                bot_card = bot_card.get("card") if isinstance(bot_card, dict) else bot_card
+        
         if not bot_card:
             # Still link it, but without card data
             bot_name = msg["from_name"]
@@ -317,18 +337,24 @@ def link_callers_v2(db_path: str, window_seconds: int = 60, quiet: bool = False)
         ticker = merged_card.get("ticker")
         caller_name = trigger["from_name"]
         
-        # Extract mint/ticker from trigger if bot cards don't have them
-        if not mint and not ticker:
-            trigger_text = trigger.get("text") or ""
-            from tools.telegram.parse_bot_cards import find_mint_addresses
-            import re
-            TICKER_RE = re.compile(r"(?<!\w)\${1,2}([A-Za-z0-9_]{2,20})(?!\w)")
-            trigger_mints = find_mint_addresses(trigger_text)
-            trigger_tickers = [m.group(1).upper() for m in TICKER_RE.finditer(trigger_text)]
-            if trigger_mints:
-                mint = trigger_mints[0]
-            if trigger_tickers and not ticker:
-                ticker = trigger_tickers[0]
+        # Extract mint/ticker from trigger text
+        # If bot replied directly to this message (via reply_to_message_id),
+        # we can trust the mint/address in the trigger text - ESPECIALLY for EVM addresses
+        trigger_text = trigger.get("text") or ""
+        trigger_mints, trigger_tickers = extract_mints_and_tickers(trigger_text)
+        
+        # ALWAYS prioritize EVM addresses (0x...) from trigger text if present
+        # The bot replied to this message, so the 0x address IS the mint address
+        evm_addresses = [m for m in trigger_mints if m.startswith('0x')]
+        if evm_addresses:
+            mint = evm_addresses[0]  # Use first EVM address from trigger
+        # Otherwise, use mint from bot cards if available
+        elif (mint is None or mint == "") and trigger_mints:
+            mint = trigger_mints[0]
+        
+        # Use trigger ticker if bot cards don't have one
+        if (ticker is None or ticker == "") and trigger_tickers:
+            ticker = trigger_tickers[0]
         
         # Still skip if we have absolutely no identifier
         if not mint and not ticker:
@@ -355,7 +381,7 @@ def link_callers_v2(db_path: str, window_seconds: int = 60, quiet: bool = False)
         call_dt = datetime.fromtimestamp(trigger["ts_ms"] / 1000, tz=timezone.utc)
         
         cur.execute("""
-            INSERT OR IGNORE INTO user_calls (
+            INSERT OR REPLACE INTO user_calls (
                 caller_name, caller_id, call_datetime, call_ts_ms, message_id, chat_id,
                 bot_reply_id_1, bot_reply_id_2, mint, ticker, mcap_usd, price_usd,
                 first_caller, trigger_text

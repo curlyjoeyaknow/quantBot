@@ -46,8 +46,9 @@ export function extractAddresses(text: string): {
   const solCandidates = new Set<string>();
   const evmCandidates = new Set<string>();
 
-  // EVM: 0x + 40 hex
-  const evmMatches = text.match(/0x[a-fA-F0-9]{40}/g) ?? [];
+  // EVM: 0x + 40 hex (exactly 42 chars total)
+  // Use word boundaries to avoid matching partial addresses
+  const evmMatches = text.match(/\b0x[a-fA-F0-9]{40}\b/g) ?? [];
   for (const m of evmMatches) evmCandidates.add(m);
 
   // Solana: greedy base58-ish tokens 32–44 chars; filter with base58 alphabet

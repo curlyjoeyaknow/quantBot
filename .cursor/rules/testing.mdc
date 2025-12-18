@@ -88,7 +88,7 @@ alwaysApply: false
 
 ## Test Organization
 
-```
+```text
 tests/
 ├── unit/          # Fast, isolated
 ├── integration/   # DB/API boundaries

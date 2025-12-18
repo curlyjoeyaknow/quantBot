@@ -12,12 +12,15 @@ import { join } from 'path';
 import { tmpdir } from 'os';
 import { PythonEngine } from '../../../src/python/python-engine.js';
 import { z } from 'zod';
+import { shouldRunChaosTests, TEST_GATES } from '../../../src/test-helpers/test-gating';
 
 vi.mock('child_process');
 
-describe('Subprocess Chaos Tests', () => {
-  let tempDir: string;
-  let engine: PythonEngine;
+describe.skipIf(!shouldRunChaosTests())(
+  'Subprocess Chaos Tests',
+  () => {
+    let tempDir: string;
+    let engine: PythonEngine;
 
   beforeEach(() => {
     tempDir = mkdtempSync(join(tmpdir(), 'chaos-'));
@@ -388,4 +391,6 @@ describe('Subprocess Chaos Tests', () => {
       }
     });
   });
-});
+  },
+  `Chaos tests require ${TEST_GATES.CHAOS}=1`
+);
