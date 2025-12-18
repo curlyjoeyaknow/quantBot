@@ -9,7 +9,7 @@
     "./*": "./dist/*.js"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && tsc --emitDeclarationOnly",
     "test": "vitest",
     "test:coverage": "vitest run --coverage"
   },

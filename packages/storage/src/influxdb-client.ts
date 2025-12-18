@@ -325,7 +325,7 @@ export class InfluxDBOHLCVClient {
         address: String(row.token_address ?? ''),
         symbol: String(row.token_symbol ?? ''),
         chain: String(row.chain ?? ''),
-        recordCount: parseInt(row._value),
+        recordCount: parseInt(String(row._value ?? '0')),
         firstTimestamp: 0, // Would need separate query for this
         lastTimestamp: 0, // Would need separate query for this
       }));
