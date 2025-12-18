@@ -69,7 +69,9 @@ export async function performHealthCheck(): Promise<HealthStatus> {
       };
     }
   } catch (error) {
-    logger.error('Failed to check API quotas', error as Error);
+    logger.error('Failed to check API quotas', {
+      error: error instanceof Error ? error.message : String(error),
+    });
     checks.birdeye = { status: 'error', message: 'Failed to check quota' };
     checks.helius = { status: 'error', message: 'Failed to check quota' };
   }
@@ -100,7 +102,9 @@ export async function simpleHealthCheck(): Promise<{ status: string }> {
     await pool.query('SELECT 1');
     return { status: 'ok' };
   } catch (error) {
-    logger.error('Health check failed', error as Error);
+    logger.error('Health check failed', {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return { status: 'error' };
   }
 }

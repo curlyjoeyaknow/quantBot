@@ -210,7 +210,10 @@ export class MetricsCollector {
 
       await this.writer.writeLatency(metric);
     } catch (error) {
-      logger.error('Failed to handle simulation event', error as Error, { eventType: event.type });
+      logger.error('Failed to handle simulation event', {
+        error: error instanceof Error ? error.message : String(error),
+        eventType: event.type,
+      });
     }
   }
 
@@ -245,7 +248,10 @@ export class MetricsCollector {
 
       await this.writer.writeLatency(metric);
     } catch (error) {
-      logger.error('Failed to handle database event', error as Error, { eventType: event.type });
+      logger.error('Failed to handle database event', {
+        error: error instanceof Error ? error.message : String(error),
+        eventType: event.type,
+      });
     }
   }
 
@@ -277,7 +283,10 @@ export class MetricsCollector {
         await this.writer.writeLatency(metric);
       }
     } catch (error) {
-      logger.error('Failed to handle websocket event', error as Error, { eventType: event.type });
+      logger.error('Failed to handle websocket event', {
+        error: error instanceof Error ? error.message : String(error),
+        eventType: event.type,
+      });
     }
   }
 
@@ -298,7 +307,10 @@ export class MetricsCollector {
         eventType: event.type,
       });
     } catch (error) {
-      logger.error('Failed to handle service event', error as Error, { eventType: event.type });
+      logger.error('Failed to handle service event', {
+        error: error instanceof Error ? error.message : String(error),
+        eventType: event.type,
+      });
     }
   }
 
