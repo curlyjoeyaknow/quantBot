@@ -7,10 +7,15 @@ export type NdjsonHandlers = {
   onDone?: () => void;
 };
 
+export type DateFilter = {
+  month?: string; // Format: "2025-07"
+  day?: string; // Format: "2025-07-15"
+};
+
 export function streamNdjsonFile(
   path: string,
   handlers: NdjsonHandlers,
-  opts?: { maxLines?: number; signal?: AbortSignal }
+  opts?: { maxLines?: number; signal?: AbortSignal; dateFilter?: DateFilter }
 ): () => void {
   const maxLines = opts?.maxLines ?? Infinity;
 
@@ -54,6 +59,27 @@ export function streamNdjsonFile(
 
     try {
       const obj = JSON.parse(trimmed);
+
+      // Apply date filter if provided
+      if (opts?.dateFilter) {
+        const filter = opts.dateFilter;
+        const tsMs = (obj as any)?.timestampMs ?? (obj as any)?.timestamp_ms;
+        if (tsMs && Number.isFinite(tsMs)) {
+          const d = new Date(tsMs);
+          const monthKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+
+          if (filter.day) {
+            const dayKey = `${monthKey}-${String(d.getDate()).padStart(2, '0')}`;
+            if (dayKey !== filter.day) return; // Skip this line
+          } else if (filter.month) {
+            if (monthKey !== filter.month) return; // Skip this line
+          }
+        } else {
+          // No timestamp, skip if filtering
+          return;
+        }
+      }
+
       handlers.onObject(obj, { lineNo });
     } catch (e: any) {
       const err = e instanceof Error ? e : new Error(String(e));

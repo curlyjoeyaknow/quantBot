@@ -1081,8 +1081,60 @@ def main():
   for r in rows:
     (c_id, bot_mid, bot_ts, bot_from, bot_text, trig_mid, trig_ts, trig_from_id, trig_from_name, trig_text) = r
     card = parse_bot(bot_from, bot_text or "", trig_text)
+    
+    # Link bot messages even if card parsing fails (like SQLite does)
+    # This improves Phanes reply rate significantly
     if not card:
-      continue
+      # Still create a link entry with minimal data
+      # Extract mint/ticker from bot text or trigger text as fallback
+      mint = None
+      ticker = None
+      
+      # Try to extract mint from bot text (use BASE58_RE from this file)
+      if bot_text:
+        mints = BASE58_RE.findall(bot_text)
+        if mints:
+          mint = mints[0]
+        # Also check for EVM addresses
+        evm_matches = EVM_ADDRESS_RE.findall(bot_text)
+        if evm_matches and not mint:
+          mint = evm_matches[0].lower()
+      
+      # Try to extract ticker from bot text
+      if bot_text:
+        ticker_matches = re.findall(r"\$\$?([A-Za-z0-9_]{2,20})", bot_text)
+        if ticker_matches:
+          ticker = ticker_matches[0].upper()
+      
+      # Fallback to trigger text if bot text didn't yield results
+      if not mint and trig_text:
+        mints = BASE58_RE.findall(trig_text)
+        if mints:
+          mint = mints[0]
+        evm_matches = EVM_ADDRESS_RE.findall(trig_text)
+        if evm_matches and not mint:
+          mint = evm_matches[0].lower()
+      
+      if not ticker and trig_text:
+        ticker_matches = re.findall(r"\$\$?([A-Za-z0-9_]{2,20})", trig_text)
+        if ticker_matches:
+          ticker = ticker_matches[0].upper()
+      
+      # Create minimal card for linking
+      bot_type = "rick" if "rick" in (bot_from or "").lower() else ("phanes" if "phanes" in (bot_from or "").lower() else "unknown")
+      card = {
+        "bot_type": bot_type,
+        "mint": mint,
+        "ticker": ticker,
+        "token_name": None,
+        "chain": None,
+        "platform": None,
+        "price_usd": None,
+        "mcap_usd": None,
+        "vol_usd": None,
+        "liquidity_usd": None,
+        "card_json": json.dumps({"bot": bot_type, "mint": mint, "ticker": ticker}, ensure_ascii=False)
+      }
     
     # Pass 1 + Pass 2: Extract and validate address (Solana or EVM)
     # Preserves case, never truncates
@@ -1284,11 +1336,23 @@ def main():
       MIN(l.bot_message_id) FILTER (WHERE l.bot_type = 'phanes') AS bot_reply_id_2,
       COALESCE(
         MAX(l.mint) FILTER (WHERE l.bot_type='rick'),
-        MAX(l.mint) FILTER (WHERE l.bot_type='phanes')
+        MAX(l.mint) FILTER (WHERE l.bot_type='phanes'),
+        -- Extract from trigger text if bot links don't have mint
+        CASE 
+          WHEN regexp_matches(MAX(l.trigger_text), '[1-9A-HJ-NP-Za-km-z]{32,44}') THEN
+            (regexp_extract(MAX(l.trigger_text), '([1-9A-HJ-NP-Za-km-z]{32,44})', 1))[1]
+          ELSE NULL
+        END
       ) AS mint,
       COALESCE(
         MAX(l.ticker) FILTER (WHERE l.bot_type='rick'),
-        MAX(l.ticker) FILTER (WHERE l.bot_type='phanes')
+        MAX(l.ticker) FILTER (WHERE l.bot_type='phanes'),
+        -- Extract from trigger text if bot links don't have ticker
+        CASE 
+          WHEN regexp_matches(MAX(l.trigger_text), '\$\$?([A-Za-z0-9_]{2,20})') THEN
+            UPPER((regexp_extract(MAX(l.trigger_text), '\$\$?([A-Za-z0-9_]{2,20})', 1))[1])
+          ELSE NULL
+        END
       ) AS ticker,
       COALESCE(
         MAX(l.mcap_usd) FILTER (WHERE l.bot_type='rick'),
@@ -1300,10 +1364,14 @@ def main():
       ) AS price_usd
     FROM caller_links_d l
     WHERE l.trigger_chat_id = ?
-      AND l.mint IS NOT NULL
     GROUP BY
       l.trigger_chat_id, l.trigger_message_id, l.trigger_ts_ms,
       l.trigger_from_name, l.trigger_from_id, l.trigger_text
+    HAVING 
+      -- Only include triggers with at least one bot link that has mint or ticker
+      -- OR trigger text contains mint/ticker (extracted above)
+      MAX(CASE WHEN l.mint IS NOT NULL OR l.ticker IS NOT NULL THEN 1 ELSE 0 END) = 1
+      OR MAX(l.trigger_text) IS NOT NULL
   """, [chat_id])
   
   # Now filter to only first call per caller per mint
@@ -1329,11 +1397,14 @@ def main():
       SELECT
         t.*,
         ROW_NUMBER() OVER (
-          PARTITION BY t.caller_id, t.mint 
-          ORDER BY t.call_ts_ms ASC, t.message_id ASC
+          PARTITION BY t.caller_id, COALESCE(t.mint, t.ticker, CAST(t.message_id AS TEXT))
+          ORDER BY 
+            -- Prefer triggers with both bots (Rick + Phanes)
+            CASE WHEN t.bot_reply_id_1 IS NOT NULL AND t.bot_reply_id_2 IS NOT NULL THEN 0 ELSE 1 END,
+            t.call_ts_ms ASC, 
+            t.message_id ASC
         ) AS rn
       FROM temp_user_calls t
-      WHERE t.mint IS NOT NULL
     ) ranked
     WHERE rn = 1
   """)

@@ -19,6 +19,7 @@
     "test:properties": "vitest run --grep 'tests/properties'",
     "test:fuzzing": "vitest run --grep 'tests/fuzzing'",
     "test:e2e": "vitest run --grep 'tests/e2e'",
+    "test:stress": "vitest run --config vitest.stress.config.ts",
     "test:ci": "vitest run --runInBand --coverage",
     "test:packages": "pnpm -r test",
     "lint": "eslint 'packages/**/src/**/*.ts' 'packages/**/tests/**/*.ts'",

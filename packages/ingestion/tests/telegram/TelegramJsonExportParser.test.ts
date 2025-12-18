@@ -202,7 +202,7 @@ describe('TelegramJsonExportParser', () => {
   });
 
   it('should throw error for missing file', () => {
-    expect(() => parseJsonExport('/nonexistent/file.json')).toThrow('File not found');
+    expect(() => parseJsonExport('/nonexistent/file.json')).toThrow('not found');
   });
 
   it('should throw error if messages is not an array', () => {

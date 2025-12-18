@@ -17,20 +17,14 @@ import { join } from 'path';
 import { PythonEngine, PythonManifestSchema } from '../../src/python/python-engine.js';
 
 describe('Python Bridge Test - Telegram Ingestion', () => {
-  const pythonToolPath = join(__dirname, '../../../../tools/telegram/duckdb_punch_pipeline.py');
-  const testFixturePath = join(
-    __dirname,
-    '../../../../tools/telegram/tests/fixtures/sample_telegram.json'
-  );
-  const outputDbPath = join(
-    __dirname,
-    '../../../../tools/telegram/tests/fixtures/test_output.duckdb'
-  );
+  const pythonToolPath = join(process.cwd(), 'tools/telegram/duckdb_punch_pipeline.py');
+  const testFixturePath = join(process.cwd(), 'tools/telegram/tests/fixtures/sample_telegram.json');
+  const outputDbPath = join(process.cwd(), 'tools/telegram/tests/fixtures/test_output.duckdb');
 
   it('runs Python tool on tiny fixture and validates output schema', async () => {
     // Skip if Python tool doesn't exist
     if (!existsSync(pythonToolPath)) {
-      console.warn('Python tool not found, skipping bridge test');
+      console.warn(`Python tool not found at ${pythonToolPath}, skipping bridge test`);
       return;
     }
 
@@ -54,7 +48,7 @@ describe('Python Bridge Test - Telegram Ingestion', () => {
 
     // Write minimal fixture
     const fs = require('fs');
-    const fixtureDir = join(__dirname, '../../../../tools/telegram/tests/fixtures');
+    const fixtureDir = join(process.cwd(), 'tools/telegram/tests/fixtures');
     if (!existsSync(fixtureDir)) {
       fs.mkdirSync(fixtureDir, { recursive: true });
     }
@@ -71,8 +65,8 @@ describe('Python Bridge Test - Telegram Ingestion', () => {
           rebuild: true,
         },
         {
-          cwd: join(__dirname, '../../../../tools/telegram'),
-          env: { PYTHONPATH: join(__dirname, '../../../../tools/telegram') },
+          cwd: join(process.cwd(), 'tools/telegram'),
+          env: { PYTHONPATH: join(process.cwd(), 'tools/telegram') },
         }
       );
 
@@ -97,14 +91,15 @@ describe('Python Bridge Test - Telegram Ingestion', () => {
     }
   });
 
-  it('validates Python tool handles invalid input gracefully', () => {
+  it('validates Python tool handles invalid input gracefully', async () => {
     if (!existsSync(pythonToolPath)) {
+      console.warn(`Python tool not found at ${pythonToolPath}, skipping test`);
       return;
     }
 
     const invalidFixture = { invalid: 'data' };
     const fs = require('fs');
-    const invalidPath = join(__dirname, '../../../../tools/telegram/tests/fixtures/invalid.json');
+    const invalidPath = join(process.cwd(), 'tools/telegram/tests/fixtures/invalid.json');
     fs.writeFileSync(invalidPath, JSON.stringify(invalidFixture));
 
     try {
@@ -119,8 +114,8 @@ describe('Python Bridge Test - Telegram Ingestion', () => {
             rebuild: true,
           },
           {
-            cwd: join(__dirname, '../../../../tools/telegram'),
-            env: { PYTHONPATH: join(__dirname, '../../../../tools/telegram') },
+            cwd: join(process.cwd(), 'tools/telegram'),
+            env: { PYTHONPATH: join(process.cwd(), 'tools/telegram') },
           }
         )
       ).rejects.toThrow();

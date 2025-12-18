@@ -20,23 +20,22 @@
  * ## Quick Start
  *
  * ```typescript
- * import {
- *   simulateStrategy,
- *   createOrchestrator,
- *   createHybridProvider
- * } from '@quantbot/simulation';
+ * import { simulateStrategy } from '@quantbot/simulation';
+ * import { fetchHybridCandles } from '@quantbot/ohlcv';
+ * import { runSimulation } from '@quantbot/workflows';
  *
  * // Simple simulation on candle data
+ * const candles = await fetchHybridCandles(mint, startTime, endTime, chain);
  * const result = simulateStrategy(candles, [
  *   { target: 2, percent: 0.5 },
  *   { target: 3, percent: 0.5 },
  * ]);
  *
- * // Advanced: Run simulations with orchestrator
- * const orchestrator = createOrchestrator();
- * const summary = await orchestrator.runScenario({
- *   scenario: { name: 'test', strategy: [...] },
- *   targets: [...],
+ * // Advanced: Run simulations with orchestrator (from workflows package)
+ * const summary = await runSimulation({
+ *   strategyName: 'test',
+ *   from: startTime,
+ *   to: endTime,
  * });
  * ```
  */

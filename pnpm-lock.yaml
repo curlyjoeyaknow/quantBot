@@ -435,9 +435,6 @@ importers:
       '@quantbot/core':
         specifier: workspace:*
         version: link:../core
-      '@quantbot/ohlcv':
-        specifier: workspace:*
-        version: link:../ohlcv
       '@quantbot/utils':
         specifier: workspace:*
         version: link:../utils

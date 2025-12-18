@@ -8,6 +8,7 @@
 import { execSync, spawn } from 'child_process';
 import { join } from 'path';
 import { z } from 'zod';
+import { existsSync, statSync } from 'fs';
 import { logger, ValidationError, TimeoutError, AppError } from '../index.js';
 
 export interface PythonScriptOptions {
@@ -67,6 +68,20 @@ export const PythonManifestSchema = z.object({
 export type PythonManifest = z.infer<typeof PythonManifestSchema>;
 
 /**
+ * Options for artifact verification
+ */
+export interface ArtifactVerificationOptions {
+  /**
+   * Whether to verify artifacts exist on filesystem
+   */
+  verifyArtifacts?: boolean;
+  /**
+   * Paths to artifact fields in the result object (e.g., ['duckdb_file', 'artifacts'])
+   */
+  artifactFields?: string[];
+}
+
+/**
  * PythonEngine - Executes Python scripts and validates output
  */
 export class PythonEngine {
@@ -75,6 +90,49 @@ export class PythonEngine {
 
   constructor(pythonCommand: string = 'python3') {
     this.pythonCommand = pythonCommand;
+  }
+
+  /**
+   * Verify that artifact files exist on the filesystem
+   *
+   * @param result - The result object from Python script
+   * @param artifactFields - Fields in result that contain file paths
+   * @throws ValidationError if any artifacts are missing
+   */
+  private verifyArtifacts(result: any, artifactFields: string[]): void {
+    const missingArtifacts: string[] = [];
+
+    for (const field of artifactFields) {
+      const value = result[field];
+      if (!value) continue;
+
+      if (typeof value === 'string') {
+        // Single file path
+        if (!existsSync(value)) {
+          missingArtifacts.push(value);
+        }
+      } else if (Array.isArray(value)) {
+        // Array of file paths
+        for (const path of value) {
+          if (typeof path === 'string' && !existsSync(path)) {
+            missingArtifacts.push(path);
+          }
+        }
+      } else if (typeof value === 'object') {
+        // Nested object - recursively check
+        this.verifyArtifacts(value, Object.keys(value));
+      }
+    }
+
+    if (missingArtifacts.length > 0) {
+      throw new ValidationError(
+        `Python script claimed artifacts that do not exist: ${missingArtifacts.join(', ')}`,
+        {
+          missingArtifacts,
+          result,
+        }
+      );
+    }
   }
 
   /**
@@ -91,6 +149,28 @@ export class PythonEngine {
     args: Record<string, unknown>,
     schema: z.ZodSchema<T>,
     options?: PythonScriptOptions
+  ): Promise<T> {
+    return this.runScriptWithArtifacts(scriptPath, args, schema, options, {
+      verifyArtifacts: false,
+    });
+  }
+
+  /**
+   * Run a Python script with artifact verification
+   *
+   * @param scriptPath - Path to Python script
+   * @param args - Arguments as key-value pairs
+   * @param schema - Zod schema to validate output against
+   * @param options - Execution options
+   * @param artifactOptions - Artifact verification options
+   * @returns Validated output with verified artifacts
+   */
+  async runScriptWithArtifacts<T>(
+    scriptPath: string,
+    args: Record<string, unknown>,
+    schema: z.ZodSchema<T>,
+    options?: PythonScriptOptions,
+    artifactOptions?: ArtifactVerificationOptions
   ): Promise<T> {
     const timeout = options?.timeout ?? this.defaultTimeout;
     const expectJson = options?.expectJsonOutput ?? true;
@@ -147,22 +227,50 @@ export class PythonEngine {
       }
 
       // Validate against schema
-      const validated = schema.parse(parsed);
+      let validated: T;
+      try {
+        validated = schema.parse(parsed);
+      } catch (zodError: any) {
+        // Enhance Zod validation errors with script context
+        throw new ValidationError(
+          `Python script output failed schema validation: ${zodError.message}`,
+          {
+            script: scriptPath,
+            zodError: zodError.issues || zodError.errors || zodError.message,
+            receivedData: parsed,
+          }
+        );
+      }
+
+      // Verify artifacts if requested
+      if (artifactOptions?.verifyArtifacts && artifactOptions.artifactFields) {
+        this.verifyArtifacts(validated, artifactOptions.artifactFields);
+      }
+
       return validated;
     } catch (error: any) {
+      // Handle subprocess errors
       if (error.signal === 'SIGTERM' || error.status === 124) {
         throw new TimeoutError(`Python script timed out after ${timeout}ms`, timeout, {
           script: scriptPath,
         });
       }
       if (error.status !== undefined && error.status !== 0) {
+        const stderr = error.stderr?.toString() || '';
+        const stdout = error.stdout?.toString() || '';
         throw new AppError(
-          `Python script exited with code ${error.status}: ${error.message || error.stderr?.toString() || 'Unknown error'}`,
+          `Python script exited with code ${error.status}: ${stderr || error.message || 'Unknown error'}`,
           'PYTHON_SCRIPT_ERROR',
           500,
-          { script: scriptPath, exitCode: error.status, stderr: error.stderr?.toString() }
+          {
+            script: scriptPath,
+            exitCode: error.status,
+            stderr: stderr.substring(0, 1000), // Truncate to prevent huge error messages
+            stdout: stdout.substring(0, 500), // Include some stdout for context
+          }
         );
       }
+      // Re-throw if already a custom error (ValidationError, etc.)
       throw error;
     }
   }

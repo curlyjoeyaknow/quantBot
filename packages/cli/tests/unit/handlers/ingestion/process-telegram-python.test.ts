@@ -5,35 +5,36 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { processTelegramPythonHandler } from '../../../../src/handlers/ingestion/process-telegram-python.js';
 import type { CommandContext } from '../../../../src/core/command-context.js';
-import type { PythonEngine, PythonManifest } from '@quantbot/utils';
+import type { TelegramPipelineService, TelegramPipelineResult } from '@quantbot/ingestion';
+import { PythonManifestSchema } from '@quantbot/utils';
 
 describe('processTelegramPythonHandler', () => {
-  let mockEngine: PythonEngine;
+  let mockService: TelegramPipelineService;
   let mockCtx: CommandContext;
 
   beforeEach(() => {
-    mockEngine = {
-      runTelegramPipeline: vi.fn(),
-    } as unknown as PythonEngine;
+    mockService = {
+      runPipeline: vi.fn(),
+    } as unknown as TelegramPipelineService;
 
     mockCtx = {
       services: {
-        pythonEngine: () => mockEngine,
+        telegramPipeline: () => mockService,
       },
     } as unknown as CommandContext;
   });
 
-  it('should call PythonEngine with correct parameters', async () => {
-    const mockManifest: PythonManifest = {
+  it('should call service with correct parameters', async () => {
+    const mockManifest: TelegramPipelineResult = PythonManifestSchema.parse({
       chat_id: 'test_chat',
       chat_name: 'Test Chat',
       duckdb_file: '/path/to/output.duckdb',
       tg_rows: 100,
       caller_links_rows: 50,
       user_calls_rows: 25,
-    };
+    });
 
-    vi.mocked(mockEngine.runTelegramPipeline).mockResolvedValue(mockManifest);
+    vi.mocked(mockService.runPipeline).mockResolvedValue(mockManifest);
 
     const args = {
       file: '/path/to/input.json',
@@ -45,23 +46,23 @@ describe('processTelegramPythonHandler', () => {
 
     const result = await processTelegramPythonHandler(args, mockCtx);
 
-    expect(mockEngine.runTelegramPipeline).toHaveBeenCalledWith({
-      inputFile: '/path/to/input.json',
-      outputDb: '/path/to/output.duckdb',
-      chatId: 'test_chat',
-      rebuild: false,
-    });
+    expect(mockService.runPipeline).toHaveBeenCalledWith(
+      '/path/to/input.json',
+      '/path/to/output.duckdb',
+      'test_chat',
+      false
+    );
     expect(result).toEqual(mockManifest);
   });
 
   it('should pass rebuild flag when true', async () => {
-    const mockManifest: PythonManifest = {
+    const mockManifest: TelegramPipelineResult = PythonManifestSchema.parse({
       chat_id: 'test_chat',
       chat_name: 'Test Chat',
       duckdb_file: '/path/to/output.duckdb',
-    };
+    });
 
-    vi.mocked(mockEngine.runTelegramPipeline).mockResolvedValue(mockManifest);
+    vi.mocked(mockService.runPipeline).mockResolvedValue(mockManifest);
 
     const args = {
       file: '/path/to/input.json',
@@ -73,17 +74,43 @@ describe('processTelegramPythonHandler', () => {
 
     await processTelegramPythonHandler(args, mockCtx);
 
-    expect(mockEngine.runTelegramPipeline).toHaveBeenCalledWith({
-      inputFile: '/path/to/input.json',
-      outputDb: '/path/to/output.duckdb',
-      chatId: 'test_chat',
-      rebuild: true,
-    });
+    expect(mockService.runPipeline).toHaveBeenCalledWith(
+      '/path/to/input.json',
+      '/path/to/output.duckdb',
+      'test_chat',
+      true
+    );
   });
 
-  it('should propagate errors from PythonEngine', async () => {
-    const error = new Error('Python script failed');
-    vi.mocked(mockEngine.runTelegramPipeline).mockRejectedValue(error);
+  it('should handle optional rebuild parameter', async () => {
+    const mockManifest: TelegramPipelineResult = PythonManifestSchema.parse({
+      chat_id: 'test_chat',
+      chat_name: 'Test Chat',
+      duckdb_file: '/path/to/output.duckdb',
+    });
+
+    vi.mocked(mockService.runPipeline).mockResolvedValue(mockManifest);
+
+    const args = {
+      file: '/path/to/input.json',
+      outputDb: '/path/to/output.duckdb',
+      chatId: 'test_chat',
+      format: 'table' as const,
+    };
+
+    await processTelegramPythonHandler(args, mockCtx);
+
+    expect(mockService.runPipeline).toHaveBeenCalledWith(
+      '/path/to/input.json',
+      '/path/to/output.duckdb',
+      'test_chat',
+      undefined
+    );
+  });
+
+  it('should propagate errors from service', async () => {
+    const error = new Error('Service failed');
+    vi.mocked(mockService.runPipeline).mockRejectedValue(error);
 
     const args = {
       file: '/path/to/input.json',
@@ -93,8 +120,6 @@ describe('processTelegramPythonHandler', () => {
       format: 'table' as const,
     };
 
-    await expect(processTelegramPythonHandler(args, mockCtx)).rejects.toThrow(
-      'Python script failed'
-    );
+    await expect(processTelegramPythonHandler(args, mockCtx)).rejects.toThrow('Service failed');
   });
 });

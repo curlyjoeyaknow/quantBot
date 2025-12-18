@@ -18,6 +18,7 @@ import { getAnalyticsEngine } from '@quantbot/analytics';
 import type { AnalyticsEngine } from '@quantbot/analytics';
 import { getPythonEngine, type PythonEngine } from '@quantbot/utils';
 import { DuckDBStorageService, ClickHouseService } from '@quantbot/simulation';
+import { TelegramPipelineService } from '@quantbot/ingestion';
 import { ensureInitialized } from './initialization-manager.js';
 
 /**
@@ -31,6 +32,7 @@ export interface CommandServices {
   pythonEngine(): PythonEngine;
   duckdbStorage(): DuckDBStorageService;
   clickHouse(): ClickHouseService;
+  telegramPipeline(): TelegramPipelineService;
   // Add more services as needed
 }
 
@@ -121,6 +123,10 @@ export class CommandContext {
       clickHouse: () => {
         const engine = this._options.pythonEngineOverride ?? getPythonEngine();
         return new ClickHouseService(engine);
+      },
+      telegramPipeline: () => {
+        const engine = this._options.pythonEngineOverride ?? getPythonEngine();
+        return new TelegramPipelineService(engine);
       },
     };
   }
