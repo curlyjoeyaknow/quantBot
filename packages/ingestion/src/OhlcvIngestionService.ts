@@ -28,6 +28,7 @@ export interface IngestForCallsParams {
   interval?: '1s' | '15s' | '1m' | '5m' | '15m' | '1h'; // Candle interval to fetch (default: '1m')
   candles?: number; // Number of candles to fetch (default: 5000)
   startOffsetMinutes?: number; // Minutes before alert to start fetching (default: -52)
+  queueItems?: Array<{ mint: string; alertTimestamp: string; queuedAt: string }>; // Prioritized queue items from simulation failures
 }
 
 export interface IngestForCallsResult {
@@ -41,6 +42,7 @@ export interface IngestForCallsResult {
   chunksFromCache: number;
   chunksFromAPI: number;
   errors: Array<{ tokenId: number; error: string }>;
+  queueItemsProcessed?: Array<{ mint: string; alertTimestamp: string }>; // Queue items that were successfully processed
 }
 
 export class OhlcvIngestionService {
@@ -78,6 +80,7 @@ export class OhlcvIngestionService {
       startOffsetMinutes,
       options = { useCache: true },
       resume = true, // Default to resume mode - skip already processed tokens
+      queueItems = [], // Prioritized queue items from simulation failures
     } = params;
 
     logger.info('Starting OHLCV ingestion for calls', {
@@ -86,6 +89,7 @@ export class OhlcvIngestionService {
       preWindowMinutes,
       postWindowMinutes,
       chain,
+      queueItemsCount: queueItems.length,
     });
 
     // Ensure engine is initialized (ClickHouse)
@@ -116,10 +120,51 @@ export class OhlcvIngestionService {
     logger.info('Found worklist', {
       tokenGroups: worklist.tokenGroups.length,
       calls: worklist.calls.length,
+      queueItems: queueItems.length,
     });
 
-    if (worklist.tokenGroups.length === 0) {
-      logger.info('No worklist items found, nothing to ingest');
+    // 1.5. Merge queue items with worklist (prioritize queue items)
+    // Convert queue items to worklist format and prepend to tokenGroups
+    const queueTokenGroups: Array<{
+      mint: string;
+      chain: string;
+      earliestAlertTime: string;
+      isFromQueue: boolean; // Flag to track queue items
+    }> = queueItems.map((item) => ({
+      mint: item.mint,
+      chain: chain, // Default chain, will be resolved during processing
+      earliestAlertTime: item.alertTimestamp,
+      isFromQueue: true,
+    }));
+
+    // Merge: queue items first (priority), then worklist items
+    // Deduplicate: if a mint+timestamp exists in both, prefer queue item
+    const worklistMap = new Map<string, typeof worklist.tokenGroups[0]>();
+    for (const group of worklist.tokenGroups) {
+      const key = `${group.mint}:${group.earliestAlertTime}`;
+      worklistMap.set(key, group);
+    }
+
+    // Remove worklist items that are in queue (queue takes priority)
+    for (const queueItem of queueTokenGroups) {
+      const key = `${queueItem.mint}:${queueItem.earliestAlertTime}`;
+      worklistMap.delete(key);
+    }
+
+    // Combine: queue items first, then remaining worklist items
+    const prioritizedTokenGroups = [
+      ...queueTokenGroups.map((q) => ({ ...q, isFromQueue: true })),
+      ...Array.from(worklistMap.values()).map((w) => ({ ...w, isFromQueue: false })),
+    ];
+
+    logger.info('Prioritized token groups', {
+      queueItems: queueTokenGroups.length,
+      worklistItems: worklistMap.size,
+      total: prioritizedTokenGroups.length,
+    });
+
+    if (prioritizedTokenGroups.length === 0) {
+      logger.info('No token groups found (worklist + queue), nothing to ingest');
       return {
         tokensProcessed: 0,
         tokensSucceeded: 0,
@@ -131,6 +176,7 @@ export class OhlcvIngestionService {
         chunksFromCache: 0,
         chunksFromAPI: 0,
         errors: [],
+        queueItemsProcessed: [],
       };
     }
 
@@ -146,9 +192,9 @@ export class OhlcvIngestionService {
     const totalCalls = worklist.calls.length;
     logger.info('Grouped calls by token', {
       totalCalls,
-      uniqueTokens: worklist.tokenGroups.length,
-      avgCallsPerToken: (totalCalls / worklist.tokenGroups.length).toFixed(2),
-      estimatedApiCallsSaved: (totalCalls - worklist.tokenGroups.length) * 10,
+      uniqueTokens: prioritizedTokenGroups.length,
+      avgCallsPerToken: worklist.calls.length > 0 ? (totalCalls / prioritizedTokenGroups.length).toFixed(2) : '0',
+      estimatedApiCallsSaved: (totalCalls - prioritizedTokenGroups.length) * 10,
     });
 
     // 3. Process each unique token (fetch candles once per token, not per call)
@@ -168,15 +214,17 @@ export class OhlcvIngestionService {
     let chunksFromCache = 0;
     let chunksFromAPI = 0;
     const errors: Array<{ tokenId: number; error: string }> = [];
+    const queueItemsProcessed: Array<{ mint: string; alertTimestamp: string }> = [];
 
     // Process tokens in parallel batches
-    for (let i = 0; i < worklist.tokenGroups.length; i += CONCURRENT_TOKENS) {
-      const batch = worklist.tokenGroups.slice(i, i + CONCURRENT_TOKENS);
+    for (let i = 0; i < prioritizedTokenGroups.length; i += CONCURRENT_TOKENS) {
+      const batch = prioritizedTokenGroups.slice(i, i + CONCURRENT_TOKENS);
 
       const batchResults = await Promise.all(
         batch.map(async (tokenGroup, batchIndex) => {
           const tokenId = i + batchIndex + 1;
           tokensProcessed++;
+          const isFromQueue = (tokenGroup as { isFromQueue?: boolean }).isFromQueue ?? false;
 
           try {
             const { mint, chain: tokenChain, earliestAlertTime } = tokenGroup;
@@ -319,6 +367,14 @@ export class OhlcvIngestionService {
             const totalCandles = result['1m'].length + result['5m'].length;
             if (totalCandles > 0) {
               tokensSucceeded++;
+              
+              // Track queue items that were successfully processed
+              if (isFromQueue) {
+                queueItemsProcessed.push({
+                  mint,
+                  alertTimestamp: earliestAlertTime,
+                });
+              }
             } else {
               // No data available from API - count separately
               // This is different from an error (which would be counted as failed)
@@ -371,6 +427,7 @@ export class OhlcvIngestionService {
       chunksFromCache,
       chunksFromAPI,
       errors,
+      queueItemsProcessed,
     };
 
     logger.info('Completed OHLCV ingestion for calls', {

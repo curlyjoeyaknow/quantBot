@@ -19,6 +19,8 @@ export const SimulationResultSchema = z.object({
   total_return_pct: z.number().optional(),
   total_trades: z.number().optional(),
   error: z.string().optional(),
+  mint: z.string().optional(), // Included when error occurs (for queue tracking)
+  alert_timestamp: z.string().optional(), // Included when error occurs (for queue tracking)
 });
 
 /**

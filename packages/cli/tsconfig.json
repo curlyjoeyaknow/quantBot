@@ -20,6 +20,8 @@
       "@quantbot/core/*": ["../core/src/*"],
       "@quantbot/api-clients": ["../api-clients/src"],
       "@quantbot/api-clients/*": ["../api-clients/src/*"],
+      "@quantbot/simulation": ["../simulation/src"],
+      "@quantbot/simulation/*": ["../simulation/src/*"],
       "@quantbot/workflows": ["../workflows/src"],
       "@quantbot/workflows/*": ["../workflows/src/*"]
     }
@@ -31,6 +33,7 @@
     { "path": "../storage" },
     { "path": "../core" },
     { "path": "../api-clients" },
+    { "path": "../simulation" },
     { "path": "../workflows" }
   ]
 }

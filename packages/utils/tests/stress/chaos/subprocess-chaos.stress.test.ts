@@ -18,7 +18,7 @@ import {
 } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
-import { PythonEngine } from '../../../src/python/python-engine.js';
+import { PythonEngine } from '../../../src/python/python-engine';
 import { z } from 'zod';
 import { shouldRunChaosTests, TEST_GATES } from '../../../src/test-helpers/test-gating';
 

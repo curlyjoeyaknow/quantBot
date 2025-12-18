@@ -7,7 +7,7 @@
 
 import { describe, it, expect } from 'vitest';
 import fc from 'fast-check';
-import { extractCandidates, normalizeCandidate } from '../../src/address/extract-candidates.js';
+import { extractCandidates, normalizeCandidate } from '../../src/address/extract-candidates';
 
 describe('Address Extraction - Property Tests', () => {
   // Known valid addresses

@@ -5,7 +5,7 @@
  * API keys, and other environment-based settings.
  */
 
-import { ConfigurationError } from '../errors.js';
+import { ConfigurationError } from '../errors';
 
 export interface PostgresConfig {
   host: string;

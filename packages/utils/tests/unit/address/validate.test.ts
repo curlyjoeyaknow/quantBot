@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { validateSolanaMint, validateEvmAddress } from '../../../src/address/validate.js';
+import { validateSolanaMint, validateEvmAddress } from '../../../src/address/validate';
 
 describe('validateSolanaMint - Pass 2 Validation', () => {
   // Known valid Solana addresses (32 bytes when decoded)

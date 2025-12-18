@@ -7,7 +7,7 @@
 
 import { Logger } from '../logger';
 import * as winston from 'winston';
-import { ApiError } from '../index.js';
+import { ApiError } from '../index';
 
 /**
  * Log aggregator configuration

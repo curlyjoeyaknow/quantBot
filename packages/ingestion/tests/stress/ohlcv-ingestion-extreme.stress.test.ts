@@ -11,13 +11,19 @@
  * They are designed to FAIL and expose real weaknesses in the codebase.
  *
  * WARNING: These tests will:
- * - Create real DuckDB files with test data
+ * - Create real DuckDB files with test data (cleaned up after tests)
  * - Make real API calls to Birdeye (if API key is available)
- * - Write to ClickHouse (if available)
+ * - Write REAL OHLCV candles to ClickHouse (cleaned up after tests)
+ * - Use REAL token addresses (wrapped SOL: So11111111111111111111111111111111111111112)
  * - Consume significant resources (memory, CPU, network)
  * - Take a long time to run
  *
- * Run with: RUN_INTEGRATION_STRESS=1 pnpm test packages/ingestion/tests/stress/ohlcv-ingestion-extreme.stress.test.ts
+ * DATA CLEANUP:
+ * - DuckDB files: Automatically deleted in temp directory after tests
+ * - ClickHouse data: Automatically deleted in afterAll hook
+ * - Note: ClickHouse cleanup uses ALTER TABLE DELETE (async) - may take a few seconds
+ *
+ * Run with: RUN_INTEGRATION_STRESS=1 pnpm test:stress -- packages/ingestion/tests/stress/ohlcv-ingestion-extreme.stress.test.ts
  */
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
@@ -206,6 +212,54 @@ async function verifyClickHouseCandles(
   }
 }
 
+/**
+ * Clean up test data from ClickHouse
+ * Deletes OHLCV candles for test tokens within a time range
+ */
+async function cleanupClickHouseTestData(
+  mints: string[],
+  chain: string,
+  fromTime: Date,
+  toTime: Date
+): Promise<void> {
+  try {
+    const { getClickHouseClient } = await import('@quantbot/storage');
+    const client = getClickHouseClient();
+    const database = process.env.CLICKHOUSE_DATABASE || 'quantbot';
+
+    const fromTimeStr = DateTime.fromJSDate(fromTime).toFormat('yyyy-MM-dd HH:mm:ss');
+    const toTimeStr = DateTime.fromJSDate(toTime).toFormat('yyyy-MM-dd HH:mm:ss');
+
+    // Delete candles for each test mint
+    for (const mint of mints) {
+      try {
+        await client.command({
+          query: `
+            ALTER TABLE ${database}.ohlcv_candles
+            DELETE WHERE token_address = {mint:String}
+              AND chain = {chain:String}
+              AND timestamp >= {fromTime:String}
+              AND timestamp <= {toTime:String}
+          `,
+          query_params: {
+            mint,
+            chain,
+            fromTime: fromTimeStr,
+            toTime: toTimeStr,
+          },
+        });
+        console.log(`[CLEANUP] Deleted test data for ${mint.substring(0, 20)}...`);
+      } catch (error) {
+        console.warn(`[CLEANUP] Failed to delete test data for ${mint.substring(0, 20)}...:`, error);
+        // Continue with other mints even if one fails
+      }
+    }
+  } catch (error) {
+    // ClickHouse might not be available - that's OK for testing
+    console.warn('[CLEANUP] ClickHouse cleanup failed (may not be available):', error);
+  }
+}
+
 describe.skipIf(!shouldRun)(
   'OHLCV Ingestion EXTREME E2E Stress Tests (DuckDB → Birdeye → ClickHouse)',
   () => {
@@ -213,6 +267,9 @@ describe.skipIf(!shouldRun)(
     let alertsRepo: AlertsRepository;
     let tempDir: string;
     let testDbPath: string;
+    // Track test data for cleanup
+    const testMints = new Set<string>();
+    const testTimeRanges: Array<{ from: Date; to: Date }> = [];
 
     beforeAll(async () => {
       // Initialize ClickHouse (for OHLCV storage)
@@ -234,6 +291,21 @@ describe.skipIf(!shouldRun)(
     });
 
     afterAll(async () => {
+      // Clean up ClickHouse test data
+      if (testMints.size > 0 && testTimeRanges.length > 0) {
+        const allMints = Array.from(testMints);
+        // Use the widest time range to ensure all test data is deleted
+        const earliestFrom = new Date(Math.min(...testTimeRanges.map((r) => r.from.getTime())));
+        const latestTo = new Date(Math.max(...testTimeRanges.map((r) => r.to.getTime())));
+        
+        console.log(
+          `[CLEANUP] Cleaning up ClickHouse test data: ${allMints.length} mints, ` +
+            `time range ${earliestFrom.toISOString()} to ${latestTo.toISOString()}`
+        );
+        
+        await cleanupClickHouseTestData(allMints, 'solana', earliestFrom, latestTo);
+      }
+
       try {
         await closeClickHouse();
       } catch {
@@ -294,6 +366,13 @@ describe.skipIf(!shouldRun)(
         expect(result.tokensProcessed).toBeGreaterThanOrEqual(0);
         expect(result.tokensSucceeded + result.tokensFailed).toBe(result.tokensProcessed);
 
+        // Track test data for cleanup
+        testMints.add(VALID_MINT);
+        testTimeRanges.push({
+          from: oneHourAgo.minus({ days: 1 }).toJSDate(),
+          to: now.toJSDate(),
+        });
+
         // Verify ClickHouse storage (if available)
         if (result.tokensSucceeded > 0) {
           const candleCount = await verifyClickHouseCandles(
@@ -322,6 +401,13 @@ describe.skipIf(!shouldRun)(
         }
 
         await createTestDuckDB(testDbPath, calls);
+
+        // Track test data for cleanup
+        testMints.add(VALID_MINT);
+        testTimeRanges.push({
+          from: now.minus({ days: 1 }).toJSDate(),
+          to: now.toJSDate(),
+        });
 
         const result = await service.ingestForCalls({
           duckdbPath: testDbPath,

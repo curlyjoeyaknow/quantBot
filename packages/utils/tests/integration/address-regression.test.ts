@@ -8,8 +8,8 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'fs';
 import { join } from 'path';
-import { extractCandidates } from '../../src/address/extract-candidates.js';
-import { validateSolanaMint, validateEvmAddress } from '../../src/address/validate.js';
+import { extractCandidates } from '../../src/address/extract-candidates';
+import { validateSolanaMint, validateEvmAddress } from '../../src/address/validate';
 
 type TelegramMessageFixture = {
   id: string;

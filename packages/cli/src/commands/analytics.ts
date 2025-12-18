@@ -115,7 +115,7 @@ const analyticsModule: PackageCommandModule = {
       name: 'analyze',
       description: 'Analyze calls with metrics',
       schema: analyzeSchema,
-      handler: async (args: unknown, ctx: unknown) => {
+      handler: async (args: unknown, ctx: unknown): Promise<unknown> => {
         const typedCtx = ctx as CommandContext;
         const typedArgs = args as z.infer<typeof analyzeSchema>;
         return await analyzeAnalyticsHandler(typedArgs, typedCtx);
@@ -126,7 +126,7 @@ const analyticsModule: PackageCommandModule = {
       name: 'metrics',
       description: 'Calculate period metrics',
       schema: metricsSchema,
-      handler: async (args: unknown, ctx: unknown) => {
+      handler: async (args: unknown, ctx: unknown): Promise<unknown> => {
         const typedCtx = ctx as CommandContext;
         const typedArgs = args as z.infer<typeof metricsSchema>;
         return await metricsAnalyticsHandler(typedArgs, typedCtx);
@@ -137,7 +137,7 @@ const analyticsModule: PackageCommandModule = {
       name: 'report',
       description: 'Generate analytics report',
       schema: reportSchema,
-      handler: async (args: unknown, ctx: unknown) => {
+      handler: async (args: unknown, ctx: unknown): Promise<unknown> => {
         const typedCtx = ctx as CommandContext;
         const typedArgs = args as z.infer<typeof reportSchema>;
         return await reportAnalyticsHandler(typedArgs, typedCtx);
@@ -148,7 +148,7 @@ const analyticsModule: PackageCommandModule = {
       name: 'analyze-duckdb',
       description: 'Statistical analysis using DuckDB Python engine',
       schema: analyzeDuckdbSchema,
-      handler: async (args: unknown, ctx: unknown) => {
+      handler: async (args: unknown, ctx: unknown): Promise<unknown> => {
         const typedCtx = ctx as CommandContext;
         const typedArgs = args as z.infer<typeof analyzeDuckdbSchema>;
         return await analyzeDuckdbHandler(typedArgs, typedCtx);
