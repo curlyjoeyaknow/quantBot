@@ -18,10 +18,13 @@ import {
   AMBIGUITY_SEQUENCES,
   type CandleSequence,
 } from '../fixtures/nasty-candles.js';
+import { validateCandleSequence, sortCandlesByTimestamp } from '../../../src/validation/candleValidation.js';
+import { simulateStrategy } from '../../../src/core/simulator.js';
+import type { StrategyLeg } from '../../../src/types';
 
 /**
- * Mock simulation engine
- * Replace with actual implementation from @quantbot/simulation
+ * Run simulation with validation
+ * Uses real implementation from @quantbot/simulation
  */
 interface SimulationResult {
   success: boolean;
@@ -30,81 +33,62 @@ interface SimulationResult {
   finalBalance?: number;
 }
 
-class MockSimulationEngine {
-  async runSimulation(candles: CandleSequence['candles']): Promise<SimulationResult> {
-    // Validate candles first
-    const validation = this.validateCandles(candles);
-    if (!validation.valid) {
-      return {
-        success: false,
-        error: validation.error,
-      };
-    }
-
-    // Run simulation
+async function runSimulationWithValidation(
+  candles: CandleSequence['candles']
+): Promise<SimulationResult> {
+  // Validate candles first
+  const validation = validateCandleSequence(candles);
+  if (!validation.valid) {
     return {
-      success: true,
-      trades: 0,
-      finalBalance: 1000,
+      success: false,
+      error: validation.error,
     };
   }
 
-  private validateCandles(candles: CandleSequence['candles']): { valid: boolean; error?: string } {
-    if (candles.length === 0) {
-      return { valid: false, error: 'insufficient_data' };
+  // Sort candles if needed (validation ensures they're monotonic, but sort anyway for safety)
+  const sortedCandles = sortCandlesByTimestamp(candles);
+
+  try {
+    // Use real simulation engine with a simple strategy
+    const strategy: StrategyLeg[] = [
+      { target: 1.1, percent: 50 },
+      { target: 1.2, percent: 30 },
+      { target: 1.5, percent: 20 },
+    ];
+
+    const result = await simulateStrategy(sortedCandles, strategy);
+
+    // Check for NaN or Infinity in result
+    if (
+      !isFinite(result.finalPnl) ||
+      !isFinite(result.entryPrice) ||
+      !isFinite(result.finalPrice)
+    ) {
+      return {
+        success: false,
+        error: 'numerical_instability',
+      };
     }
 
-    if (candles.length < 52) {
-      return { valid: false, error: 'insufficient_data' };
-    }
-
-    // Check for invalid prices
-    for (const candle of candles) {
-      if (candle.open <= 0 || candle.high <= 0 || candle.low <= 0 || candle.close <= 0) {
-        return { valid: false, error: 'zero_price' };
-      }
-      if (candle.open < 0 || candle.high < 0 || candle.low < 0 || candle.close < 0) {
-        return { valid: false, error: 'negative_price' };
-      }
-      if (candle.volume < 0) {
-        return { valid: false, error: 'negative_volume' };
-      }
-      if (candle.high < candle.low) {
-        return { valid: false, error: 'high_less_than_low' };
-      }
-      if (candle.open > candle.high || candle.open < candle.low) {
-        return { valid: false, error: 'ohlc_inconsistent' };
-      }
-      if (candle.close > candle.high || candle.close < candle.low) {
-        return { valid: false, error: 'ohlc_inconsistent' };
-      }
-    }
-
-    // Check for duplicate timestamps
-    const timestamps = candles.map((c) => c.timestamp);
-    const uniqueTimestamps = new Set(timestamps);
-    if (timestamps.length !== uniqueTimestamps.size) {
-      return { valid: false, error: 'duplicate_timestamp' };
-    }
-
-    // Check for monotonic timestamps
-    for (let i = 1; i < candles.length; i++) {
-      if (candles[i].timestamp <= candles[i - 1].timestamp) {
-        return { valid: false, error: 'non_monotonic_timestamps' };
-      }
-    }
-
-    return { valid: true };
+    return {
+      success: true,
+      trades: result.events.filter((e) => e.type === 'exit').length,
+      finalBalance: 1000 + result.finalPnl, // Assume starting balance of 1000
+    };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
   }
 }
 
 describe('Candle Sequence Stress Tests', () => {
-  const engine = new MockSimulationEngine();
 
   describe('Flatline sequences', () => {
     FLATLINE_SEQUENCES.forEach((sequence) => {
       it(sequence.description, async () => {
-        const result = await engine.runSimulation(sequence.candles);
+        const result = await runSimulationWithValidation(sequence.candles);
 
         if (sequence.expectedBehavior === 'accept') {
           expect(result.success).toBe(true);
@@ -119,7 +103,7 @@ describe('Candle Sequence Stress Tests', () => {
 
     it('should handle flatline without division by zero', async () => {
       const flatline = FLATLINE_SEQUENCES[0];
-      const result = await engine.runSimulation(flatline.candles);
+      const result = await runSimulationWithValidation(flatline.candles);
 
       // Should not crash or produce NaN
       expect(result.success).toBe(true);
@@ -133,7 +117,7 @@ describe('Candle Sequence Stress Tests', () => {
   describe('Spike sequences', () => {
     SPIKE_SEQUENCES.forEach((sequence) => {
       it(sequence.description, async () => {
-        const result = await engine.runSimulation(sequence.candles);
+        const result = await runSimulationWithValidation(sequence.candles);
 
         if (sequence.expectedBehavior === 'accept') {
           expect(result.success).toBe(true);
@@ -147,7 +131,7 @@ describe('Candle Sequence Stress Tests', () => {
 
     it('should not overflow on extreme spikes', async () => {
       const spike = SPIKE_SEQUENCES[0];
-      const result = await engine.runSimulation(spike.candles);
+      const result = await runSimulationWithValidation(spike.candles);
 
       expect(result.success).toBe(true);
       if (result.finalBalance) {
@@ -160,7 +144,7 @@ describe('Candle Sequence Stress Tests', () => {
   describe('Gap sequences', () => {
     GAP_SEQUENCES.forEach((sequence) => {
       it(sequence.description, async () => {
-        const result = await engine.runSimulation(sequence.candles);
+        const result = await runSimulationWithValidation(sequence.candles);
 
         // Gaps should be accepted (common in real data)
         expect(result.success).toBe(true);
@@ -169,7 +153,7 @@ describe('Candle Sequence Stress Tests', () => {
 
     it('should handle gaps in indicator calculations', async () => {
       const gapped = GAP_SEQUENCES[0];
-      const result = await engine.runSimulation(gapped.candles);
+      const result = await runSimulationWithValidation(gapped.candles);
 
       // Indicators should handle gaps gracefully
       expect(result.success).toBe(true);
@@ -179,7 +163,7 @@ describe('Candle Sequence Stress Tests', () => {
   describe('Duplicate sequences', () => {
     DUPLICATE_SEQUENCES.forEach((sequence) => {
       it(sequence.description, async () => {
-        const result = await engine.runSimulation(sequence.candles);
+        const result = await runSimulationWithValidation(sequence.candles);
 
         // Duplicates should be rejected
         expect(result.success).toBe(false);
@@ -193,7 +177,7 @@ describe('Candle Sequence Stress Tests', () => {
   describe('Out-of-order sequences', () => {
     OUT_OF_ORDER_SEQUENCES.forEach((sequence) => {
       it(sequence.description, async () => {
-        const result = await engine.runSimulation(sequence.candles);
+        const result = await runSimulationWithValidation(sequence.candles);
 
         // Out-of-order should be rejected
         expect(result.success).toBe(false);
@@ -205,7 +189,7 @@ describe('Candle Sequence Stress Tests', () => {
 
     it('should sort or reject non-monotonic timestamps', async () => {
       const outOfOrder = OUT_OF_ORDER_SEQUENCES[0];
-      const result = await engine.runSimulation(outOfOrder.candles);
+      const result = await runSimulationWithValidation(outOfOrder.candles);
 
       // Must either sort (and document) or reject
       // Current implementation rejects
@@ -217,7 +201,7 @@ describe('Candle Sequence Stress Tests', () => {
   describe('Invalid data sequences', () => {
     INVALID_SEQUENCES.forEach((sequence) => {
       it(sequence.description, async () => {
-        const result = await engine.runSimulation(sequence.candles);
+        const result = await runSimulationWithValidation(sequence.candles);
 
         // All invalid sequences should be rejected
         expect(result.success).toBe(false);
@@ -229,7 +213,7 @@ describe('Candle Sequence Stress Tests', () => {
 
     it('should provide clear error for invalid data', async () => {
       const invalid = INVALID_SEQUENCES[0];
-      const result = await engine.runSimulation(invalid.candles);
+      const result = await runSimulationWithValidation(invalid.candles);
 
       expect(result.success).toBe(false);
       expect(result.error).toBeDefined();
@@ -240,7 +224,7 @@ describe('Candle Sequence Stress Tests', () => {
   describe('Tiny datasets', () => {
     TINY_SEQUENCES.forEach((sequence) => {
       it(sequence.description, async () => {
-        const result = await engine.runSimulation(sequence.candles);
+        const result = await runSimulationWithValidation(sequence.candles);
 
         if (sequence.expectedBehavior === 'accept') {
           expect(result.success).toBe(true);
@@ -255,7 +239,7 @@ describe('Candle Sequence Stress Tests', () => {
 
     it('should require minimum candles for indicators', async () => {
       const tiny = TINY_SEQUENCES[0]; // Single candle
-      const result = await engine.runSimulation(tiny.candles);
+      const result = await runSimulationWithValidation(tiny.candles);
 
       expect(result.success).toBe(false);
       expect(result.error).toBe('insufficient_data');
@@ -265,7 +249,7 @@ describe('Candle Sequence Stress Tests', () => {
   describe('Order-of-events ambiguity', () => {
     AMBIGUITY_SEQUENCES.forEach((sequence) => {
       it(sequence.description, async () => {
-        const result = await engine.runSimulation(sequence.candles);
+        const result = await runSimulationWithValidation(sequence.candles);
 
         // Ambiguous cases should either:
         // 1. Follow documented order (e.g., stop before target)
@@ -283,7 +267,7 @@ describe('Candle Sequence Stress Tests', () => {
       // Test that stop loss is checked before take profit (or vice versa)
       // This must be documented and consistent
       const ambiguous = AMBIGUITY_SEQUENCES[0];
-      const result = await engine.runSimulation(ambiguous.candles);
+      const result = await runSimulationWithValidation(ambiguous.candles);
 
       expect(result.success).toBe(true);
       // Verify consistent behavior (requires actual implementation)
@@ -292,7 +276,7 @@ describe('Candle Sequence Stress Tests', () => {
     it('should define order when entry and exit in same candle', async () => {
       // Test that entry happens before exit (or vice versa)
       const ambiguous = AMBIGUITY_SEQUENCES[1];
-      const result = await engine.runSimulation(ambiguous.candles);
+      const result = await runSimulationWithValidation(ambiguous.candles);
 
       expect(result.success).toBe(true);
       // Verify consistent behavior
@@ -310,7 +294,7 @@ describe('Candle Sequence Stress Tests', () => {
         volume: 1000,
       }));
 
-      const result = await engine.runSimulation(tinyPrices);
+      const result = await runSimulationWithValidation(tinyPrices);
       expect(result.success).toBe(true);
 
       if (result.finalBalance) {
@@ -329,7 +313,7 @@ describe('Candle Sequence Stress Tests', () => {
         volume: 1000,
       }));
 
-      const result = await engine.runSimulation(hugePrices);
+      const result = await runSimulationWithValidation(hugePrices);
       expect(result.success).toBe(true);
 
       if (result.finalBalance) {
@@ -348,7 +332,7 @@ describe('Candle Sequence Stress Tests', () => {
         volume: 1000,
       }));
 
-      const result = await engine.runSimulation(candles);
+      const result = await runSimulationWithValidation(candles);
       expect(result.success).toBe(true);
     });
 
@@ -363,7 +347,7 @@ describe('Candle Sequence Stress Tests', () => {
         volume: 1000,
       }));
 
-      const result = await engine.runSimulation(candles);
+      const result = await runSimulationWithValidation(candles);
       expect(result.success).toBe(true);
     });
 
@@ -378,7 +362,7 @@ describe('Candle Sequence Stress Tests', () => {
         volume: 1000,
       }));
 
-      const result = await engine.runSimulation(candles);
+      const result = await runSimulationWithValidation(candles);
       expect(result.success).toBe(true);
 
       if (result.finalBalance) {
@@ -402,7 +386,7 @@ describe('Candle Sequence Stress Tests', () => {
       }));
 
       const startTime = Date.now();
-      const result = await engine.runSimulation(largeDataset);
+      const result = await runSimulationWithValidation(largeDataset);
       const duration = Date.now() - startTime;
 
       expect(result.success).toBe(true);
@@ -421,7 +405,7 @@ describe('Candle Sequence Stress Tests', () => {
           volume: 1000,
         }));
 
-        const result = await engine.runSimulation(candles);
+        const result = await runSimulationWithValidation(candles);
         expect(result.success).toBe(true);
       }
 

@@ -9,21 +9,25 @@ alwaysApply: false
 # Monitoring Package Rules
 
 ## WebSocket Streams
+
 - Real-time candle updates for active calls
 - Yellowstone gRPC for Solana account updates
 - Gate trades on BondingCurve account updates (not CREATE tx)
 
 ## Active Calls
+
 - Update via WebSocket streams (no API fetch needed)
 - More efficient than polling API
 - Provides real-time data
 
 ## Token Program Detection
+
 - Detect from Yellowstone: TokenzQd... = Token-2022, Tokenkeg... = Legacy
 - Store program ID string (not labels)
 - Use consistently: derive ATAs, create ATAs, pass to instructions
 
 ## Error Handling
+
 - Handle WebSocket disconnections gracefully
 - Retry with exponential backoff
 - Log connection status

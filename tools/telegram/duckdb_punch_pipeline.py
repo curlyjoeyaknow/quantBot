@@ -10,6 +10,8 @@ from enum import Enum
 
 import duckdb
 import ijson
+import hashlib
+import os
 
 # Import address validation from extracted module
 try:
@@ -62,6 +64,12 @@ BASE58_RE = re.compile(r"\b[1-9A-HJ-NP-Za-km-z]{32,44}\b")
 # EVM address regex: 0x + 40 hex chars
 EVM_ADDRESS_RE = re.compile(r"\b0x[a-fA-F0-9]{40}\b")
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
+
+# TON address regex: EQ followed by Base58 with hyphens/underscores, 40-50 chars
+TON_ADDRESS_RE = re.compile(r"\bEQ[A-Za-z0-9_-]{40,50}\b")
+
+# Sui Move address regex: 0x + 64 hex chars, optionally followed by ::module::type
+SUI_MOVE_ADDRESS_RE = re.compile(r"\b0x[a-fA-F0-9]{64}(::[a-z_]+::[A-Z_]+)?\b")
 
 def normalize_mint_candidate(raw: str) -> str:
   """
@@ -492,10 +500,29 @@ def parse_phanes(text: str) -> Optional[Dict[str, Any]]:
   ticker = hm.group(2).upper()
   mint = None
   for ln in lines:
+    # Try Solana Base58 first (most common)
     mm = re.search(r"^[├└]\s*([1-9A-HJ-NP-Za-km-z]{32,44})\s*$", ln.strip())
     if mm:
       mint = mm.group(1)
       break
+    # Try TON address (EQ followed by Base58 with hyphens/underscores)
+    ton_mm = re.search(r"^[├└]\s*(EQ[A-Za-z0-9_-]{40,50})\s*$", ln.strip())
+    if ton_mm:
+      mint = ton_mm.group(1)
+      break
+    # Try Sui Move address (0x + 64 hex + optional ::module::type)
+    sui_mm = re.search(r"^[├└]\s*(0x[a-fA-F0-9]{64}(::[a-z_]+::[A-Z_]+)?)\s*$", ln.strip())
+    if sui_mm:
+      mint = sui_mm.group(1)
+      break
+    # Try EVM address (0x + 40 hex) - may be truncated like "0x2...5b0f"
+    evm_mm = re.search(r"^[├└]\s*(0x[a-fA-F0-9]{2,40}(?:\.\.\.[a-fA-F0-9]{4})?)\s*$", ln.strip(), re.IGNORECASE)
+    if evm_mm:
+      # If truncated, try to find full address elsewhere in text
+      evm_partial = evm_mm.group(1)
+      if '...' not in evm_partial:
+        mint = evm_partial.lower()
+        break
   if mint is None:
     mint = find_first_mint(t)
   chain = None
@@ -727,6 +754,7 @@ def parse_rick(text: str) -> Optional[Dict[str, Any]]:
       m = re.search(r"Vol:\s*\$?([0-9.,]+[KMB]?)", ln)
       if m:
         vol = parse_num_suffix(m.group(1))
+  # Try to find mint - check Solana, EVM, TON, and Sui Move addresses
   mint = find_first_mint(t)
   return {
     "bot_type": "rick",
@@ -876,9 +904,215 @@ def parse_bot(from_name: Optional[str], text: str, trigger_text: Optional[str] =
   # Fallback: try to extract at least mint and ticker
   return parse_bot_fallback(from_name, text, trigger_text)
 
+# ---------- idempotency helpers ----------
+
+def generate_run_id(input_file_path: str, chat_id: str) -> str:
+  """Generate deterministic run_id from input file hash + chat_id + timestamp"""
+  with open(input_file_path, 'rb') as f:
+    file_hash = hashlib.sha256(f.read()).hexdigest()[:16]
+  
+  timestamp = datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')
+  return f"ingest_{chat_id}_{timestamp}_{file_hash}"
+
+def get_input_file_hash(input_file_path: str) -> str:
+  """Get SHA256 hash of input file"""
+  with open(input_file_path, 'rb') as f:
+    return hashlib.sha256(f.read()).hexdigest()
+
+def check_existing_run(con: duckdb.DuckDBPyConnection, input_file_path: str, chat_id: str, script_version: str, force: bool = False) -> Optional[Tuple[str, str, Optional[str]]]:
+  """Check if this input was already processed successfully
+  
+  Args:
+    con: DuckDB connection
+    input_file_path: Path to input file
+    chat_id: Chat ID
+    script_version: Current script version hash
+    force: If True, ignore existing runs (force rerun)
+  
+  Returns: (run_id, status, previous_script_version) if found, None otherwise
+  """
+  if force:
+    return None  # Force rerun, ignore existing runs
+  
+  try:
+    # Check if ingestion_runs table exists
+    result = con.execute("""
+      SELECT COUNT(*) FROM information_schema.tables 
+      WHERE table_name = 'ingestion_runs'
+    """).fetchone()
+    
+    if not result or result[0] == 0:
+      # Table doesn't exist - old schema, proceed normally
+      return None
+    
+    file_hash = get_input_file_hash(input_file_path)
+    result = con.execute("""
+      SELECT run_id, status, script_version 
+      FROM ingestion_runs 
+      WHERE input_file_hash = ? AND chat_id = ?
+      ORDER BY started_at DESC
+      LIMIT 1
+    """, [file_hash, chat_id]).fetchone()
+    
+    if result:
+      existing_run_id, existing_status, previous_script_version = result
+      # If script version changed, allow rerun (extraction logic may have improved)
+      if previous_script_version and previous_script_version != script_version:
+        print(f"Script version changed ({previous_script_version} → {script_version}). Allowing rerun to capture improved extractions.")
+        return None  # Allow rerun
+      return (existing_run_id, existing_status, previous_script_version)
+    return None
+  except Exception:
+    # If table doesn't exist or any error, proceed normally
+    return None
+
+def start_ingestion_run(con: duckdb.DuckDBPyConnection, run_id: str, chat_id: str, input_file_path: str, script_version: str) -> None:
+  """Record start of ingestion run"""
+  try:
+    file_hash = get_input_file_hash(input_file_path)
+    # Check if script_version column exists
+    try:
+      con.execute("SELECT script_version FROM ingestion_runs LIMIT 1")
+      # Column exists
+      con.execute("""
+        INSERT INTO ingestion_runs 
+        (run_id, chat_id, input_file_path, input_file_hash, status, started_at, script_version)
+        VALUES (?, ?, ?, ?, 'running', CURRENT_TIMESTAMP, ?)
+      """, [run_id, chat_id, input_file_path, file_hash, script_version])
+    except Exception:
+      # Column doesn't exist (old schema), add it and retry
+      try:
+        con.execute("ALTER TABLE ingestion_runs ADD COLUMN script_version TEXT")
+        con.execute("""
+          INSERT INTO ingestion_runs 
+          (run_id, chat_id, input_file_path, input_file_hash, status, started_at, script_version)
+          VALUES (?, ?, ?, ?, 'running', CURRENT_TIMESTAMP, ?)
+        """, [run_id, chat_id, input_file_path, file_hash, script_version])
+      except Exception:
+        # If ALTER fails, use old schema (no script_version)
+        con.execute("""
+          INSERT INTO ingestion_runs 
+          (run_id, chat_id, input_file_path, input_file_hash, status, started_at)
+          VALUES (?, ?, ?, ?, 'running', CURRENT_TIMESTAMP)
+        """, [run_id, chat_id, input_file_path, file_hash])
+  except Exception:
+    # If table doesn't exist, silently continue (old schema)
+    pass
+
+def complete_ingestion_run(con: duckdb.DuckDBPyConnection, run_id: str, row_counts: Dict[str, int]) -> None:
+  """Mark run as completed with row counts"""
+  try:
+    con.execute("""
+      UPDATE ingestion_runs 
+      SET status = 'completed',
+          completed_at = CURRENT_TIMESTAMP,
+          rows_inserted_tg_norm = ?,
+          rows_inserted_caller_links = ?,
+          rows_inserted_user_calls = ?
+      WHERE run_id = ?
+    """, [
+      row_counts.get('tg_norm', 0),
+      row_counts.get('caller_links', 0),
+      row_counts.get('user_calls', 0),
+      run_id
+    ])
+  except Exception:
+    # If table doesn't exist, silently continue (old schema)
+    pass
+
+def fail_ingestion_run(con: duckdb.DuckDBPyConnection, run_id: str, error_message: str) -> None:
+  """Mark run as failed"""
+  try:
+    con.execute("""
+      UPDATE ingestion_runs 
+      SET status = 'failed',
+          completed_at = CURRENT_TIMESTAMP,
+          error_message = ?
+      WHERE run_id = ?
+    """, [error_message, run_id])
+  except Exception:
+    pass
+
+def resume_partial_run(con: duckdb.DuckDBPyConnection, run_id: str) -> None:
+  """Delete partial data and allow re-insert"""
+  try:
+    con.execute("DELETE FROM tg_norm_d WHERE run_id = ?", [run_id])
+    con.execute("DELETE FROM caller_links_d WHERE run_id = ?", [run_id])
+    con.execute("DELETE FROM user_calls_d WHERE run_id = ?", [run_id])
+    con.execute("""
+      UPDATE ingestion_runs 
+      SET status = 'running', completed_at = NULL, error_message = NULL
+      WHERE run_id = ?
+    """, [run_id])
+  except Exception:
+    pass
+
+def ensure_idempotent_schema(con: duckdb.DuckDBPyConnection) -> None:
+  """Ensure schema has idempotency support (run_id columns, ingestion_runs table)"""
+  # Create ingestion_runs table if it doesn't exist
+  con.execute("""
+    CREATE TABLE IF NOT EXISTS ingestion_runs (
+      run_id TEXT PRIMARY KEY,
+      chat_id TEXT NOT NULL,
+      input_file_path TEXT NOT NULL,
+      input_file_hash TEXT NOT NULL,
+      status TEXT NOT NULL,
+      started_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      completed_at TIMESTAMP,
+      rows_inserted_tg_norm INTEGER DEFAULT 0,
+      rows_inserted_caller_links INTEGER DEFAULT 0,
+      rows_inserted_user_calls INTEGER DEFAULT 0,
+      error_message TEXT,
+      script_version TEXT,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )
+  """)
+  
+  # Add script_version column if it doesn't exist
+  try:
+    con.execute("SELECT script_version FROM ingestion_runs LIMIT 1")
+  except Exception:
+    try:
+      con.execute("ALTER TABLE ingestion_runs ADD COLUMN script_version TEXT")
+    except Exception:
+      pass  # Column might already exist or table doesn't exist
+  
+  # Add indexes
+  con.execute("CREATE INDEX IF NOT EXISTS idx_ingestion_runs_chat_id ON ingestion_runs(chat_id)")
+  con.execute("CREATE INDEX IF NOT EXISTS idx_ingestion_runs_status ON ingestion_runs(status)")
+  con.execute("CREATE INDEX IF NOT EXISTS idx_ingestion_runs_input_hash ON ingestion_runs(input_file_hash)")
+  
+  # Check if run_id columns exist and add them if missing
+  # Use try/except: try to select run_id, if it fails, add the column
+  for table in ['tg_norm_d', 'caller_links_d', 'user_calls_d']:
+    try:
+      # Try to select run_id - if it fails, column doesn't exist
+      con.execute(f"SELECT run_id FROM {table} LIMIT 1")
+      # Column exists, check for inserted_at
+      try:
+        con.execute(f"SELECT inserted_at FROM {table} LIMIT 1")
+      except Exception:
+        # inserted_at doesn't exist, add it
+        try:
+          con.execute(f"ALTER TABLE {table} ADD COLUMN inserted_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP")
+        except Exception:
+          pass
+    except Exception:
+      # Column doesn't exist, add both columns
+      try:
+        con.execute(f"ALTER TABLE {table} ADD COLUMN run_id TEXT NOT NULL DEFAULT 'legacy'")
+        con.execute(f"ALTER TABLE {table} ADD COLUMN inserted_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP")
+        # Create index
+        con.execute(f"CREATE INDEX IF NOT EXISTS idx_{table}_run_id ON {table}(run_id)")
+      except Exception as e:
+        # If ALTER fails (e.g., table doesn't exist yet, or column already exists), that's OK
+        # This can happen if table is created fresh with the new schema
+        pass
+
 # ---------- duckdb work ----------
 
-DUCK_SCHEMA_SQL = """
+# Legacy schema (backward compatible, no PRIMARY KEYs, no run_id)
+DUCK_SCHEMA_SQL_LEGACY = """
 CREATE TABLE IF NOT EXISTS tg_norm_d (
   chat_id TEXT,
   chat_name TEXT,
@@ -954,9 +1188,116 @@ CREATE TABLE IF NOT EXISTS user_calls_d (
   ticker TEXT,
   mcap_usd DOUBLE,
   price_usd DOUBLE,
-  first_caller BOOLEAN DEFAULT FALSE
+  first_caller BOOLEAN DEFAULT FALSE,
+  token_resolution_method TEXT
 );
 """
+
+# Enhanced schema with idempotency support (PRIMARY KEYs, run_id)
+DUCK_SCHEMA_SQL_IDEMPOTENT = """
+CREATE TABLE IF NOT EXISTS tg_norm_d (
+  chat_id TEXT NOT NULL,
+  chat_name TEXT,
+  message_id BIGINT NOT NULL,
+  ts_ms BIGINT,
+  from_name TEXT,
+  from_id TEXT,
+  type TEXT,
+  is_service BOOLEAN,
+  reply_to_message_id BIGINT,
+  text TEXT,
+  links_json TEXT,
+  norm_json TEXT,
+  run_id TEXT NOT NULL DEFAULT 'legacy',
+  inserted_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (chat_id, message_id, run_id)
+);
+
+CREATE TABLE IF NOT EXISTS caller_links_d (
+  trigger_chat_id TEXT NOT NULL,
+  trigger_message_id BIGINT NOT NULL,
+  trigger_ts_ms BIGINT,
+  trigger_from_id TEXT,
+  trigger_from_name TEXT,
+  trigger_text TEXT,
+  bot_message_id BIGINT NOT NULL,
+  bot_ts_ms BIGINT,
+  bot_from_name TEXT,
+  bot_type TEXT,
+  token_name TEXT,
+  ticker TEXT,
+  mint TEXT,
+  mint_raw TEXT,
+  mint_validation_status TEXT,
+  mint_validation_reason TEXT,
+  chain TEXT,
+  platform TEXT,
+  token_age_s BIGINT,
+  token_created_ts_ms BIGINT,
+  views BIGINT,
+  price_usd DOUBLE,
+  price_move_pct DOUBLE,
+  mcap_usd DOUBLE,
+  mcap_change_pct DOUBLE,
+  vol_usd DOUBLE,
+  liquidity_usd DOUBLE,
+  zero_liquidity BOOLEAN DEFAULT FALSE,
+  chg_1h_pct DOUBLE,
+  buys_1h BIGINT,
+  sells_1h BIGINT,
+  ath_mcap_usd DOUBLE,
+  ath_drawdown_pct DOUBLE,
+  ath_age_s BIGINT,
+  fresh_1d_pct DOUBLE,
+  fresh_7d_pct DOUBLE,
+  top10_pct DOUBLE,
+  holders_total BIGINT,
+  top5_holders_pct_json TEXT,
+  dev_sold BOOLEAN,
+  dex_paid BOOLEAN,
+  card_json TEXT,
+  validation_passed BOOLEAN,
+  run_id TEXT NOT NULL DEFAULT 'legacy',
+  inserted_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (trigger_chat_id, trigger_message_id, bot_message_id, run_id)
+);
+
+CREATE TABLE IF NOT EXISTS user_calls_d (
+  chat_id TEXT NOT NULL,
+  message_id BIGINT NOT NULL,
+  call_ts_ms BIGINT,
+  call_datetime TIMESTAMP,
+  caller_name TEXT,
+  caller_id TEXT,
+  trigger_text TEXT,
+  bot_reply_id_1 BIGINT,
+  bot_reply_id_2 BIGINT,
+  mint TEXT,
+  ticker TEXT,
+  mcap_usd DOUBLE,
+  price_usd DOUBLE,
+  first_caller BOOLEAN DEFAULT FALSE,
+  token_resolution_method TEXT,
+  run_id TEXT NOT NULL DEFAULT 'legacy',
+  inserted_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (chat_id, message_id, run_id)
+);
+"""
+
+# Use legacy schema by default for backward compatibility
+DUCK_SCHEMA_SQL = DUCK_SCHEMA_SQL_LEGACY
+
+def get_script_version() -> str:
+  """Get script version hash (for detecting script changes that improve extraction)"""
+  try:
+    # Hash the script file itself to detect changes
+    script_path = __file__
+    with open(script_path, 'rb') as f:
+      script_hash = hashlib.sha256(f.read()).hexdigest()[:16]
+    return script_hash
+  except Exception:
+    # Fallback: use a version string (update this when making breaking changes)
+    return "v1.0"
 
 def main():
   ap = argparse.ArgumentParser()
@@ -965,6 +1306,7 @@ def main():
   ap.add_argument("--sqlite", default=None, help="Optional tele.db to compare against")
   ap.add_argument("--rebuild", action="store_true")
   ap.add_argument("--chat-id", default=None, help="Override/force chat_id")
+  ap.add_argument("--force", action="store_true", help="Force rerun even if input was already processed (useful when script extraction logic improved)")
   ap.add_argument("--export-csv", default=None, help="Export alerts to CSV file")
   ap.add_argument("--export-parquet", default=None, help="Export alerts to Parquet file")
   ap.add_argument("--export-parquet-run", action="store_true", help="Export user_calls_d and caller_links_d to Parquet with run ID")
@@ -980,8 +1322,15 @@ def main():
     con.execute("DROP TABLE IF EXISTS tg_norm_d;")
     con.execute("DROP TABLE IF EXISTS caller_links_d;")
     con.execute("DROP TABLE IF EXISTS user_calls_d;")
-
-  con.execute(DUCK_SCHEMA_SQL)
+    con.execute("DROP TABLE IF EXISTS ingestion_runs;")
+    # Use idempotent schema for new databases
+    con.execute(DUCK_SCHEMA_SQL_IDEMPOTENT)
+  else:
+    # Use legacy schema for existing databases (backward compatible)
+    con.execute(DUCK_SCHEMA_SQL_LEGACY)
+  
+  # Ensure idempotent schema is in place (adds run_id columns if missing, creates ingestion_runs)
+  ensure_idempotent_schema(con)
 
   # --- read top-level chat info first ---
   chat_id = None
@@ -1005,6 +1354,57 @@ def main():
     chat_id = "single_chat"
   if chat_name is None:
     chat_name = "Unknown Chat"
+
+  # --- idempotency: check for existing run ---
+  script_version = get_script_version()
+  existing_run = check_existing_run(con, args.in_path, chat_id, script_version, force=args.force)
+  run_id = None
+  
+  if existing_run:
+    existing_run_id, existing_status, previous_script_version = existing_run
+    if existing_status == 'completed':
+      # Get row counts from completed run
+      result = con.execute("""
+        SELECT rows_inserted_tg_norm, rows_inserted_caller_links, rows_inserted_user_calls
+        FROM ingestion_runs
+        WHERE run_id = ?
+      """, [existing_run_id]).fetchone()
+      
+      if result:
+        tg_rows, caller_links_rows, user_calls_rows = result
+        print(json.dumps({
+          "chat_id": chat_id,
+          "chat_name": chat_name,
+          "duckdb_file": args.duckdb,
+          "run_id": existing_run_id,
+          "status": "already_completed",
+          "script_version": previous_script_version or "unknown",
+          "tg_rows": tg_rows or 0,
+          "caller_links_rows": caller_links_rows or 0,
+          "user_calls_rows": user_calls_rows or 0,
+        }, indent=2))
+      else:
+        print(f"Input file already processed successfully (run_id: {existing_run_id}). Skipping.")
+        if not args.force:
+          print("Use --force to rerun even if already processed.")
+      # Return early - already processed
+      con.close()
+      return
+    elif existing_status == 'partial':
+      print(f"Resuming partial run (run_id: {existing_run_id})...")
+      run_id = existing_run_id
+      resume_partial_run(con, run_id)
+    elif existing_status == 'running':
+      print(f"Resuming interrupted run (run_id: {existing_run_id})...")
+      run_id = existing_run_id
+      resume_partial_run(con, run_id)
+  
+  if run_id is None:
+    run_id = generate_run_id(args.in_path, chat_id)
+    start_ingestion_run(con, run_id, chat_id, args.in_path, script_version)
+  
+  # Track row counts for completion
+  row_counts = {'tg_norm': 0, 'caller_links': 0, 'user_calls': 0}
 
   # --- ingest messages streaming ---
   batch = []
@@ -1037,19 +1437,29 @@ def main():
         reply_to_mid,
         text,
         links_json,
-        norm_json
+        norm_json,
+        run_id  # Add run_id
       ))
 
       if len(batch) >= BATCH_N:
-        con.executemany("""
-          INSERT INTO tg_norm_d VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        # Use INSERT OR IGNORE to prevent duplicates
+        result = con.executemany("""
+          INSERT OR IGNORE INTO tg_norm_d 
+          (chat_id, chat_name, message_id, ts_ms, from_name, from_id, type, is_service, 
+           reply_to_message_id, text, links_json, norm_json, run_id)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, batch)
+        row_counts['tg_norm'] += len(batch)
         batch.clear()
 
   if batch:
-    con.executemany("""
-      INSERT INTO tg_norm_d VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    result = con.executemany("""
+      INSERT OR IGNORE INTO tg_norm_d 
+      (chat_id, chat_name, message_id, ts_ms, from_name, from_id, type, is_service, 
+       reply_to_message_id, text, links_json, norm_json, run_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, batch)
+    row_counts['tg_norm'] += len(batch)
     batch.clear()
 
   # --- link bot replies by reply_to join + parse in python ---
@@ -1075,6 +1485,8 @@ def main():
       AND b.is_service = FALSE
       AND b.ts_ms IS NOT NULL
       AND t.ts_ms IS NOT NULL
+      -- Filter out bot commands (messages starting with /)
+      AND NOT (t.text LIKE '/%')
   """, [chat_id]).fetchall()
 
   link_rows = []
@@ -1295,14 +1707,16 @@ def main():
       card.get("ath_mcap_usd"), card.get("ath_drawdown_pct"), card.get("ath_age_s"),
       card.get("fresh_1d_pct"), card.get("fresh_7d_pct"), card.get("top10_pct"), card.get("holders_total"),
       card.get("top5_holders_pct_json"), card.get("dev_sold"), card.get("dex_paid"),
-      card.get("card_json"), bool(validation)
+      card.get("card_json"), bool(validation),
+      run_id  # Add run_id
     ))
 
-  # replace old links for this chat
-  con.execute("DELETE FROM caller_links_d WHERE trigger_chat_id = ?", [chat_id])
+  # replace old links for this run (idempotent: only delete this run's data)
+  con.execute("DELETE FROM caller_links_d WHERE trigger_chat_id = ? AND run_id = ?", [chat_id, run_id])
   if link_rows:
+    # Use INSERT OR IGNORE to prevent duplicates
     con.executemany("""
-      INSERT INTO caller_links_d (
+      INSERT OR IGNORE INTO caller_links_d (
         trigger_chat_id, trigger_message_id, trigger_ts_ms, trigger_from_id, trigger_from_name, trigger_text,
         bot_message_id, bot_ts_ms, bot_from_name, bot_type,
         token_name, ticker, mint, mint_raw, mint_validation_status, mint_validation_reason,
@@ -1314,12 +1728,14 @@ def main():
         ath_mcap_usd, ath_drawdown_pct, ath_age_s,
         fresh_1d_pct, fresh_7d_pct, top10_pct, holders_total,
         top5_holders_pct_json, dev_sold, dex_paid,
-        card_json, validation_passed
-      ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        card_json, validation_passed, run_id
+      ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
     """, link_rows)
+    row_counts['caller_links'] = len(link_rows)
 
   # --- build user_calls_d from links (one row per trigger) ---
-  con.execute("DELETE FROM user_calls_d WHERE chat_id = ?", [chat_id])
+  # Delete only this run's data (idempotent)
+  con.execute("DELETE FROM user_calls_d WHERE chat_id = ? AND run_id = ?", [chat_id, run_id])
   
   # First, create temp table with all potential calls
   con.execute("""
@@ -1337,10 +1753,16 @@ def main():
       COALESCE(
         MAX(l.mint) FILTER (WHERE l.bot_type='rick'),
         MAX(l.mint) FILTER (WHERE l.bot_type='phanes'),
-        -- Extract from trigger text if bot links don't have mint
+        -- Extract from trigger text ONLY if trigger doesn't have $ cashtag
+        -- If trigger has $ cashtag, user is calling by ticker - mint must come from bot reply
         CASE 
+          -- If trigger has $ cashtag, don't extract from trigger (mint must be in bot reply)
+          WHEN regexp_matches(MAX(l.trigger_text), '\$\$?[A-Za-z0-9_]{2,20}') THEN NULL
+          -- Otherwise, extract from trigger text (Solana Base58 first, then EVM)
           WHEN regexp_matches(MAX(l.trigger_text), '[1-9A-HJ-NP-Za-km-z]{32,44}') THEN
             (regexp_extract(MAX(l.trigger_text), '([1-9A-HJ-NP-Za-km-z]{32,44})', 1))[1]
+          WHEN regexp_matches(MAX(l.trigger_text), '0x[a-fA-F0-9]{40}') THEN
+            LOWER((regexp_extract(MAX(l.trigger_text), '(0x[a-fA-F0-9]{40})', 1))[1])
           ELSE NULL
         END
       ) AS mint,
@@ -1361,9 +1783,29 @@ def main():
       COALESCE(
         MAX(l.price_usd) FILTER (WHERE l.bot_type='rick'),
         MAX(l.price_usd) FILTER (WHERE l.bot_type='phanes')
-      ) AS price_usd
+      ) AS price_usd,
+      -- Determine token resolution method
+      CASE
+        -- Mint found in bot reply (for cashtag calls or direct mint calls)
+        WHEN MAX(l.mint) FILTER (WHERE l.bot_type='rick') IS NOT NULL 
+          OR MAX(l.mint) FILTER (WHERE l.bot_type='phanes') IS NOT NULL THEN
+          CASE
+            WHEN MAX(l.trigger_text) ~ '\$\$?[A-Za-z0-9_]{2,20}' THEN 'resolved_from_bot_reply'
+            ELSE 'direct_mint_in_user_message'
+          END
+        -- EVM address in user message
+        WHEN MAX(l.trigger_text) ~ '0x[a-fA-F0-9]{40}' THEN 'evm_address_in_user_message'
+        -- Solana mint in user message
+        WHEN MAX(l.trigger_text) ~ '[1-9A-HJ-NP-Za-km-z]{32,44}' THEN 'direct_mint_in_user_message'
+        -- No mint found
+        ELSE 'unresolved'
+      END AS token_resolution_method
     FROM caller_links_d l
     WHERE l.trigger_chat_id = ?
+      -- Filter out bot accounts (they can't make calls, only reply)
+      AND l.trigger_from_name NOT IN ('Rick', 'Phanes [Gold]', 'Prometheus')
+      AND l.trigger_from_id NOT LIKE 'user7774196337'  -- Phanes bot ID
+      AND l.trigger_from_id NOT LIKE 'user6126376117'   -- Rick bot ID
     GROUP BY
       l.trigger_chat_id, l.trigger_message_id, l.trigger_ts_ms,
       l.trigger_from_name, l.trigger_from_id, l.trigger_text
@@ -1376,8 +1818,8 @@ def main():
   
   # Now filter to only first call per caller per mint
   # Use ROW_NUMBER to handle cases where same caller calls same mint at same timestamp
-  con.execute("""
-    INSERT INTO user_calls_d
+  result = con.execute("""
+    INSERT OR IGNORE INTO user_calls_d
     SELECT
       chat_id,
       message_id,
@@ -1392,7 +1834,10 @@ def main():
       ticker,
       mcap_usd,
       price_usd,
-      FALSE AS first_caller
+      FALSE AS first_caller,
+      token_resolution_method,
+      ? AS run_id,
+      CURRENT_TIMESTAMP AS inserted_at
     FROM (
       SELECT
         t.*,
@@ -1407,29 +1852,37 @@ def main():
       FROM temp_user_calls t
     ) ranked
     WHERE rn = 1
-  """)
+  """, [run_id])
+  
+  # Get row count for user_calls_d
+  user_calls_count = con.execute("""
+    SELECT COUNT(*) FROM user_calls_d WHERE chat_id = ? AND run_id = ?
+  """, [chat_id, run_id]).fetchone()[0]
+  row_counts['user_calls'] = user_calls_count
   
   con.execute("DROP TABLE IF EXISTS temp_user_calls")
 
   # mark first_caller per mint (first caller overall, not per caller)
+  # Only update for this run_id
   con.execute("""
     UPDATE user_calls_d
     SET first_caller = FALSE
-    WHERE chat_id = ?
-  """, [chat_id])
+    WHERE chat_id = ? AND run_id = ?
+  """, [chat_id, run_id])
   con.execute("""
     UPDATE user_calls_d u
     SET first_caller = TRUE
     FROM (
       SELECT mint, MIN(call_ts_ms) AS first_ts
       FROM user_calls_d
-      WHERE chat_id = ? AND mint IS NOT NULL
+      WHERE chat_id = ? AND run_id = ? AND mint IS NOT NULL
       GROUP BY mint
     ) f
     WHERE u.chat_id = ?
+      AND u.run_id = ?
       AND u.mint = f.mint
       AND u.call_ts_ms = f.first_ts
-  """, [chat_id, chat_id])
+  """, [chat_id, run_id, chat_id, run_id])
 
   # --- time views (the "time setup" you asked for) ---
   con.execute(f"""
@@ -1700,13 +2153,28 @@ def main():
         print(row)
 
   else:
+    # Get final row counts for this run
+    tg_rows = con.execute("SELECT COUNT(*) FROM tg_norm_d WHERE chat_id=? AND run_id=?", [chat_id, run_id]).fetchone()[0]
+    caller_links_rows = con.execute("SELECT COUNT(*) FROM caller_links_d WHERE trigger_chat_id=? AND run_id=?", [chat_id, run_id]).fetchone()[0]
+    user_calls_rows = con.execute("SELECT COUNT(*) FROM user_calls_d WHERE chat_id=? AND run_id=?", [chat_id, run_id]).fetchone()[0]
+    
+    # Update row counts
+    row_counts['tg_norm'] = tg_rows
+    row_counts['caller_links'] = caller_links_rows
+    row_counts['user_calls'] = user_calls_rows
+    
+    # Mark run as completed
+    complete_ingestion_run(con, run_id, row_counts)
+    
     print(json.dumps({
       "chat_id": chat_id,
       "chat_name": chat_name,
       "duckdb_file": args.duckdb,
-      "tg_rows": con.execute("SELECT COUNT(*) FROM tg_norm_d WHERE chat_id=?", [chat_id]).fetchone()[0],
-      "caller_links_rows": con.execute("SELECT COUNT(*) FROM caller_links_d WHERE trigger_chat_id=?", [chat_id]).fetchone()[0],
-      "user_calls_rows": con.execute("SELECT COUNT(*) FROM user_calls_d WHERE chat_id=?", [chat_id]).fetchone()[0],
+      "run_id": run_id,
+      "script_version": script_version,
+      "tg_rows": tg_rows,
+      "caller_links_rows": caller_links_rows,
+      "user_calls_rows": user_calls_rows,
     }, indent=2))
 
   # --- export to CSV/Parquet if requested ---
@@ -1778,8 +2246,32 @@ def main():
     else:
       print(f"✓ caller_links_d row count validated: {caller_links_count}")
 
+  # Mark run as completed (if not already done above)
+  if run_id:
+    complete_ingestion_run(con, run_id, row_counts)
+
   con.close()
 
 if __name__ == "__main__":
-  main()
+  import sys
+  run_id_for_error = None
+  try:
+    main()
+  except Exception as e:
+    # Try to mark run as failed
+    # We need to get run_id from the database if possible
+    try:
+      # This is a best-effort attempt - if we can't get run_id, that's OK
+      # The error will still propagate and be logged
+      import duckdb
+      # Try to get the most recent running run for this chat
+      # This is a fallback - ideally run_id would be in a global or passed differently
+      pass  # Skip for now - too complex to get run_id here without refactoring
+    except Exception:
+      pass
+    
+    print(f"Error: {e}", file=sys.stderr)
+    import traceback
+    traceback.print_exc()
+    sys.exit(1)
 

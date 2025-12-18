@@ -21,17 +21,86 @@ interface ClickHouseResult {
 
 class MockClickHouseClient {
   private connected: boolean = true;
+  private insertedKeys = new Set<string>();
+  private midInsertFailure: boolean = false;
 
   async insertCandles(candles: Array<Record<string, unknown>>): Promise<ClickHouseResult> {
     if (!this.connected) {
       throw new Error('Network unavailable');
     }
 
+    // Validate data before insert
+    for (const candle of candles) {
+      // Check for negative prices
+      if (candle.open !== undefined && (candle.open as number) < 0) {
+        throw new Error('Invalid candle: negative price');
+      }
+      if (candle.high !== undefined && (candle.high as number) < 0) {
+        throw new Error('Invalid candle: negative price');
+      }
+      if (candle.low !== undefined && (candle.low as number) < 0) {
+        throw new Error('Invalid candle: negative price');
+      }
+      if (candle.close !== undefined && (candle.close as number) < 0) {
+        throw new Error('Invalid candle: negative price');
+      }
+      if (candle.volume !== undefined && (candle.volume as number) < 0) {
+        throw new Error('Invalid candle: negative volume');
+      }
+
+      // Check for required fields
+      if (candle.timestamp === undefined) {
+        throw new Error('Invalid candle: missing required field "timestamp"');
+      }
+      if (candle.open === undefined) {
+        throw new Error('Invalid candle: missing required field "open"');
+      }
+      if (candle.high === undefined) {
+        throw new Error('Invalid candle: missing required field "high"');
+      }
+      if (candle.low === undefined) {
+        throw new Error('Invalid candle: missing required field "low"');
+      }
+      if (candle.close === undefined) {
+        throw new Error('Invalid candle: missing required field "close"');
+      }
+    }
+
+    // Simulate mid-insert failure
+    if (this.midInsertFailure) {
+      this.midInsertFailure = false;
+      throw new Error('Network failure during insert');
+    }
+
+    // Deduplicate within batch
+    const uniqueCandles: Array<Record<string, unknown>> = [];
+    const batchKeys = new Set<string>();
+    let duplicatesInBatch = 0;
+
+    for (const candle of candles) {
+      // Create unique key: timestamp + token_address + chain + interval
+      const key = `${candle.timestamp}_${candle.token_address || ''}_${candle.chain || ''}_${candle.interval || '5m'}`;
+      
+      if (batchKeys.has(key)) {
+        duplicatesInBatch++;
+        continue; // Skip duplicate within batch
+      }
+      batchKeys.add(key);
+
+      // Check if already inserted (across batches)
+      if (this.insertedKeys.has(key)) {
+        continue; // Skip duplicate across batches
+      }
+
+      this.insertedKeys.add(key);
+      uniqueCandles.push(candle);
+    }
+
     return {
       success: true,
       operation: 'insert_candles',
-      rowsInserted: candles.length,
-      duplicatesSkipped: 0,
+      rowsInserted: uniqueCandles.length,
+      duplicatesSkipped: duplicatesInBatch + (candles.length - uniqueCandles.length - duplicatesInBatch),
     };
   }
 
@@ -55,6 +124,16 @@ class MockClickHouseClient {
   simulateReconnect() {
     this.connected = true;
   }
+
+  simulateMidInsertFailure() {
+    this.midInsertFailure = true;
+  }
+
+  reset() {
+    this.insertedKeys.clear();
+    this.connected = true;
+    this.midInsertFailure = false;
+  }
 }
 
 describe('ClickHouse Idempotency Stress Tests', () => {
@@ -62,6 +141,10 @@ describe('ClickHouse Idempotency Stress Tests', () => {
 
   beforeEach(() => {
     client = new MockClickHouseClient();
+  });
+
+  afterEach(() => {
+    client.reset();
   });
 
   describe('Network failures', () => {
@@ -76,11 +159,31 @@ describe('ClickHouse Idempotency Stress Tests', () => {
     it('should recover after network comes back', async () => {
       client.simulateDisconnect();
 
-      await expect(client.insertCandles([{ timestamp: Date.now(), open: 1.0 }])).rejects.toThrow();
+      await expect(
+        client.insertCandles([
+          {
+            timestamp: Date.now(),
+            open: 1.0,
+            high: 1.1,
+            low: 0.9,
+            close: 1.0,
+            volume: 1000,
+          },
+        ])
+      ).rejects.toThrow();
 
       client.simulateReconnect();
 
-      const result = await client.insertCandles([{ timestamp: Date.now(), open: 1.0 }]);
+      const result = await client.insertCandles([
+        {
+          timestamp: Date.now(),
+          open: 1.0,
+          high: 1.1,
+          low: 0.9,
+          close: 1.0,
+          volume: 1000,
+        },
+      ]);
       expect(result.success).toBe(true);
     });
 
@@ -148,19 +251,21 @@ describe('ClickHouse Idempotency Stress Tests', () => {
       const candles = Array.from({ length: 100 }, (_, i) => ({
         timestamp: Date.now() + i * 1000,
         open: 1.0,
+        high: 1.1,
+        low: 0.9,
+        close: 1.0,
+        volume: 1000,
       }));
 
       // Simulate network failure mid-insert
-      const insertPromise = client.insertCandles(candles);
-
-      // Disconnect after a delay
-      setTimeout(() => client.simulateDisconnect(), 10);
+      client.simulateMidInsertFailure();
 
       try {
-        await insertPromise;
-      } catch (error) {
+        await client.insertCandles(candles);
+        expect.fail('Should have thrown');
+      } catch (error: any) {
         // Should fail with clear error
-        expect(error).toBeDefined();
+        expect(error.message).toMatch(/network|failure/i);
       }
 
       // Reconnect and retry - should be idempotent
@@ -179,6 +284,10 @@ describe('ClickHouse Idempotency Stress Tests', () => {
         chain: 'solana',
         interval: '5m',
         open: 1.0,
+        high: 1.1,
+        low: 0.9,
+        close: 1.0,
+        volume: 1000,
       };
 
       const candle2 = {
@@ -189,11 +298,9 @@ describe('ClickHouse Idempotency Stress Tests', () => {
       await client.insertCandles([candle1]);
       const result = await client.insertCandles([candle2]);
 
-      // Should either:
-      // 1. Skip duplicate (keep first)
-      // 2. Update existing (use last)
-      // 3. Error with duplicate key violation
+      // Should skip duplicate (keep first)
       expect(result.success).toBe(true);
+      expect(result.duplicatesSkipped).toBeGreaterThanOrEqual(1);
     });
 
     it('should deduplicate within same batch', async () => {
@@ -202,6 +309,10 @@ describe('ClickHouse Idempotency Stress Tests', () => {
         token_address: 'So11111111111111111111111111111111111111112',
         chain: 'solana',
         open: 1.0,
+        high: 1.1,
+        low: 0.9,
+        close: 1.0,
+        volume: 1000,
       };
 
       // Insert batch with duplicates
@@ -209,7 +320,8 @@ describe('ClickHouse Idempotency Stress Tests', () => {
 
       expect(result.success).toBe(true);
       // Should only insert once
-      expect(result.rowsInserted).toBeLessThanOrEqual(1);
+      expect(result.rowsInserted).toBe(1);
+      expect(result.duplicatesSkipped).toBe(2);
     });
 
     it('should handle duplicates across batches', async () => {
@@ -218,6 +330,10 @@ describe('ClickHouse Idempotency Stress Tests', () => {
         token_address: 'So11111111111111111111111111111111111111112',
         chain: 'solana',
         open: 1.0,
+        high: 1.1,
+        low: 0.9,
+        close: 1.0,
+        volume: 1000,
       };
 
       await client.insertCandles([candle]);
@@ -225,9 +341,8 @@ describe('ClickHouse Idempotency Stress Tests', () => {
 
       expect(result.success).toBe(true);
       // Should skip duplicate
-      if (result.duplicatesSkipped !== undefined) {
-        expect(result.duplicatesSkipped).toBe(1);
-      }
+      expect(result.rowsInserted).toBe(0);
+      expect(result.duplicatesSkipped).toBe(1);
     });
   });
 
@@ -239,12 +354,15 @@ describe('ClickHouse Idempotency Stress Tests', () => {
       const candle = {
         timestamp: localTime.getTime(),
         open: 1.0,
+        high: 1.1,
+        low: 0.9,
+        close: 1.0,
+        volume: 1000,
       };
 
-      await client.insertCandles([candle]);
-
-      // Verify timestamp is stored as UTC
-      // (Requires actual query)
+      const result = await client.insertCandles([candle]);
+      expect(result.success).toBe(true);
+      // Timestamp should be stored as-is (milliseconds since epoch are timezone-agnostic)
     });
 
     it('should prevent duplicate inserts due to timezone mismatch', async () => {
@@ -254,14 +372,29 @@ describe('ClickHouse Idempotency Stress Tests', () => {
       // These are the same time, different representations
       expect(time1).toBe(time2);
 
-      const candle1 = { timestamp: time1, open: 1.0 };
-      const candle2 = { timestamp: time2, open: 1.0 };
+      const candle1 = {
+        timestamp: time1,
+        open: 1.0,
+        high: 1.1,
+        low: 0.9,
+        close: 1.0,
+        volume: 1000,
+      };
+      const candle2 = {
+        timestamp: time2,
+        open: 1.0,
+        high: 1.1,
+        low: 0.9,
+        close: 1.0,
+        volume: 1000,
+      };
 
       await client.insertCandles([candle1]);
       const result = await client.insertCandles([candle2]);
 
-      // Should recognize as duplicate
+      // Should recognize as duplicate (same timestamp)
       expect(result.success).toBe(true);
+      expect(result.duplicatesSkipped).toBe(1);
     });
 
     it('should handle daylight saving time transitions', async () => {
@@ -270,8 +403,22 @@ describe('ClickHouse Idempotency Stress Tests', () => {
       const afterDST = new Date('2024-03-10T03:00:00-04:00').getTime();
 
       const candles = [
-        { timestamp: beforeDST, open: 1.0 },
-        { timestamp: afterDST, open: 1.0 },
+        {
+          timestamp: beforeDST,
+          open: 1.0,
+          high: 1.1,
+          low: 0.9,
+          close: 1.0,
+          volume: 1000,
+        },
+        {
+          timestamp: afterDST,
+          open: 1.0,
+          high: 1.1,
+          low: 0.9,
+          close: 1.0,
+          volume: 1000,
+        },
       ];
 
       const result = await client.insertCandles(candles);
@@ -285,6 +432,10 @@ describe('ClickHouse Idempotency Stress Tests', () => {
       const candles = Array.from({ length: 10000 }, (_, i) => ({
         timestamp: Date.now() + i * 1000,
         open: 1.0,
+        high: 1.1,
+        low: 0.9,
+        close: 1.0,
+        volume: 1000,
       }));
 
       const startTime = Date.now();
@@ -301,21 +452,31 @@ describe('ClickHouse Idempotency Stress Tests', () => {
       const candles = Array.from({ length: 100000 }, (_, i) => ({
         timestamp: Date.now() + i * 1000,
         open: 1.0,
+        high: 1.1,
+        low: 0.9,
+        close: 1.0,
+        volume: 1000,
       }));
 
       const result = await client.insertCandles(candles);
       expect(result.success).toBe(true);
+      expect(result.rowsInserted).toBe(100000);
     });
 
     it('should report progress for long operations', async () => {
       const candles = Array.from({ length: 50000 }, (_, i) => ({
         timestamp: Date.now() + i * 1000,
         open: 1.0,
+        high: 1.1,
+        low: 0.9,
+        close: 1.0,
+        volume: 1000,
       }));
 
       // Should provide progress updates (via events or callbacks)
       const result = await client.insertCandles(candles);
       expect(result.success).toBe(true);
+      expect(result.rowsInserted).toBe(50000);
     });
   });
 
@@ -362,6 +523,10 @@ describe('ClickHouse Idempotency Stress Tests', () => {
         Array.from({ length: 100 }, (_, j) => ({
           timestamp: Date.now() + (i * 100 + j) * 1000,
           open: 1.0,
+          high: 1.1,
+          low: 0.9,
+          close: 1.0,
+          volume: 1000,
         }))
       );
 
@@ -371,7 +536,7 @@ describe('ClickHouse Idempotency Stress Tests', () => {
       // All should succeed
       expect(results.every((r) => r.success)).toBe(true);
 
-      // Total rows should match
+      // Total rows should match (no duplicates across batches)
       const totalRows = results.reduce((sum, r) => sum + (r.rowsInserted || 0), 0);
       expect(totalRows).toBe(1000);
     });
@@ -382,6 +547,10 @@ describe('ClickHouse Idempotency Stress Tests', () => {
         token_address: 'So11111111111111111111111111111111111111112',
         chain: 'solana',
         open: 1.0,
+        high: 1.1,
+        low: 0.9,
+        close: 1.0,
+        volume: 1000,
       };
 
       // Insert same candle concurrently
@@ -392,7 +561,16 @@ describe('ClickHouse Idempotency Stress Tests', () => {
       // All should succeed (idempotent)
       expect(results.every((r) => r.success)).toBe(true);
 
-      // But only one row should be inserted (requires query to verify)
+      // First insert should succeed, rest should be duplicates
+      const firstResult = results[0];
+      expect(firstResult.rowsInserted).toBe(1);
+      
+      // Remaining should be duplicates
+      const remainingResults = results.slice(1);
+      for (const r of remainingResults) {
+        expect(r.rowsInserted).toBe(0);
+        expect(r.duplicatesSkipped).toBe(1);
+      }
     });
   });
 
@@ -412,11 +590,31 @@ describe('ClickHouse Idempotency Stress Tests', () => {
     it('should not corrupt state on error', async () => {
       client.simulateDisconnect();
 
-      await expect(client.insertCandles([{ timestamp: Date.now(), open: 1.0 }])).rejects.toThrow();
+      await expect(
+        client.insertCandles([
+          {
+            timestamp: Date.now(),
+            open: 1.0,
+            high: 1.1,
+            low: 0.9,
+            close: 1.0,
+            volume: 1000,
+          },
+        ])
+      ).rejects.toThrow();
 
       // Reconnect and verify state is clean
       client.simulateReconnect();
-      const result = await client.insertCandles([{ timestamp: Date.now(), open: 1.0 }]);
+      const result = await client.insertCandles([
+        {
+          timestamp: Date.now(),
+          open: 1.0,
+          high: 1.1,
+          low: 0.9,
+          close: 1.0,
+          volume: 1000,
+        },
+      ]);
       expect(result.success).toBe(true);
     });
 
@@ -433,7 +631,16 @@ describe('ClickHouse Idempotency Stress Tests', () => {
             } else {
               client.simulateReconnect();
             }
-            return await client.insertCandles([{ timestamp: Date.now(), open: 1.0 }]);
+            return await client.insertCandles([
+              {
+                timestamp: Date.now(),
+                open: 1.0,
+                high: 1.1,
+                low: 0.9,
+                close: 1.0,
+                volume: 1000,
+              },
+            ]);
           } catch (error) {
             if (attempts >= maxAttempts) throw error;
             await new Promise((resolve) => setTimeout(resolve, 100 * Math.pow(2, attempts)));

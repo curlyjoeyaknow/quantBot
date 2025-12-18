@@ -1,206 +1,160 @@
+---
+description: Documentation organization rules enforcing proper file placement. Root directory must only contain core docs (README, CHANGELOG, TODO, ARCHITECTURE). All other documentation belongs in docs/ subdirectories.
+globs:
+  - "*.md"
+  - "docs/**/*.md"
+  - "**/README.md"
+alwaysApply: true
+---
+
 # Documentation Organization Rules
 
-## CRITICAL: Documentation Structure Enforcement
+## Root Directory (Allowed Files Only)
 
-**MANDATORY**: Documentation files must be properly organized. Root directory should ONLY contain core documentation files.
+**Only these files belong in root:**
 
-## Root Directory Documentation (ALLOWED)
+- `README.md` - Project overview
+- `CHANGELOG.md` - Version history
+- `TODO.md` - Task list (if exists)
+- `ARCHITECTURE.md` - System architecture (if exists)
 
-**ONLY these files belong in root directory:**
+**All other documentation must be in `docs/` subdirectories.**
 
-1. `README.md` - Project overview and quick start
-2. `CHANGELOG.md` - Version history and changes
-3. `TODO.md` - Main task list (if exists)
-4. `ARCHITECTURE.md` - System architecture documentation
+## Directory Structure
 
-**That's it. No exceptions.**
-
-## Documentation Organization Structure
-
-### Root Level (Core Docs Only)
-```
+```text
 /
-├── README.md              ✅ ALLOWED
-├── CHANGELOG.md           ✅ ALLOWED
-├── TODO.md                ✅ ALLOWED (if exists)
-├── ARCHITECTURE.md        ✅ ALLOWED (if exists)
-└── docs/                  ✅ ALL other docs go here
+├── README.md              ✅
+├── CHANGELOG.md           ✅
+├── TODO.md                ✅ (if exists)
+├── ARCHITECTURE.md        ✅ (if exists)
+└── docs/
+    ├── api/               - API documentation
+    ├── guides/            - User guides and tutorials
+    ├── reviews/           - Code review documents
+    ├── migration/         - Migration guides
+    ├── roadmap/           - Project roadmap
+    ├── examples/          - Code examples
+    └── [package-name]/    - Package-specific docs
 ```
 
-### `docs/` Directory Structure
-```
-docs/
-├── api/                   - API documentation
-├── guides/                - User guides and tutorials
-├── reviews/               - Code review documents
-├── migration/             - Migration guides
-├── roadmap/               - Project roadmap
-├── examples/              - Code examples
-└── [package-name]/        - Package-specific docs
-```
-
-## File Naming Conventions
+## File Naming & Placement
 
 ### Prohibited in Root
-- ❌ `*_SUMMARY.md` - Move to `docs/`
-- ❌ `*_COMPLETE.md` - Move to `docs/`
-- ❌ `*_STATUS.md` - Move to `docs/`
-- ❌ `*_PROGRESS.md` - Move to `docs/`
-- ❌ `*_REPORT.md` - Move to `docs/`
-- ❌ `COVERAGE_*.md` - Move to `docs/`
-- ❌ `TEST_*.md` - Move to `docs/testing/`
-- ❌ `SETUP_*.md` - Move to `docs/guides/`
 
-### Allowed Patterns
-- ✅ `README.md` - Project readme
-- ✅ `CHANGELOG.md` - Change log
-- ✅ `ARCHITECTURE.md` - Architecture doc
-- ✅ `TODO.md` - Task list
+- `*_SUMMARY.md` → Move to `docs/`
+- `*_COMPLETE.md` → Move to `docs/reviews/`
+- `*_STATUS.md` → Move to `docs/`
+- `*_PROGRESS.md` → Move to `docs/`
+- `*_REPORT.md` → Move to `docs/`
+- `COVERAGE_*.md` → Move to `docs/testing/`
+- `TEST_*.md` → Move to `docs/testing/`
+- `SETUP_*.md` → Move to `docs/guides/`
+- `IMPLEMENTATION_*.md` → Move to `docs/`
+- `*_REVIEW.md` → Move to `docs/reviews/`
+
+### Allowed in Root
+
+- `README.md`
+- `CHANGELOG.md`
+- `ARCHITECTURE.md`
+- `TODO.md`
 
 ## Documentation Categories
 
-### Must Move to `docs/`:
+### Status/Progress Reports
 
-1. **Status/Progress Reports**:
-   - `*_STATUS.md` → `docs/reviews/` or `docs/`
-   - `*_PROGRESS.md` → `docs/`
-   - `*_SUMMARY.md` → `docs/`
+- `*_STATUS.md`, `*_PROGRESS.md`, `*_SUMMARY.md` → `docs/`
 
-2. **Completion Reports**:
-   - `*_COMPLETE.md` → `docs/reviews/` or `docs/`
-   - `*_FINAL_*.md` → `docs/reviews/`
+### Completion Reports
 
-3. **Test Documentation**:
-   - `TEST_*.md` → `docs/testing/`
-   - `COVERAGE_*.md` → `docs/testing/`
+- `*_COMPLETE.md`, `*_FINAL_*.md` → `docs/reviews/`
 
-4. **Setup/Guide Docs**:
-   - `SETUP_*.md` → `docs/guides/`
-   - `QUICK_START_*.md` → `docs/guides/`
+### Test Documentation
 
-5. **Implementation Docs**:
-   - `IMPLEMENTATION_*.md` → `docs/`
-   - `*_IMPLEMENTATION_*.md` → `docs/`
+- `TEST_*.md`, `COVERAGE_*.md` → `docs/testing/`
 
-6. **Review Documents**:
-   - `*_REVIEW.md` → `docs/reviews/`
-   - `*_COMPLIANCE_*.md` → `docs/reviews/`
+### Setup/Guide Docs
 
-## Enforcement Rules
+- `SETUP_*.md`, `QUICK_START_*.md` → `docs/guides/`
+
+### Implementation Docs
+
+- `IMPLEMENTATION_*.md`, `*_IMPLEMENTATION_*.md` → `docs/`
+
+### Review Documents
+
+- `*_REVIEW.md`, `*_COMPLIANCE_*.md` → `docs/reviews/`
+
+## Enforcement
 
 ### Pre-Commit Checks
-- Reject commits that add documentation files to root (except allowed files)
-- Warn about documentation files in wrong locations
-- Suggest correct location for misplaced docs
+
+- Reject commits adding docs to root (except allowed files)
+- Warn about misplaced documentation
+- Suggest correct location
 
 ### AI Assistant Rules
-- **NEVER** create documentation files in root (except README, CHANGELOG, TODO, ARCHITECTURE)
+
+- **NEVER** create docs in root (except README, CHANGELOG, TODO, ARCHITECTURE)
 - **ALWAYS** place new docs in `docs/` with appropriate subdirectory
-- **ALWAYS** suggest moving misplaced docs to correct location
-- **ALWAYS** check root directory for misplaced docs before creating new ones
+- **ALWAYS** suggest moving misplaced docs
+- **ALWAYS** check root for misplaced docs before creating new ones
 
 ### Code Review
-- Reject PRs that add docs to root (except allowed files)
+
+- Reject PRs adding docs to root (except allowed files)
 - Require moving misplaced docs before merge
-- Verify documentation structure in review
+- Verify documentation structure
 
-## Migration Guide
+## Migration Process
 
-### If You Find Misplaced Docs:
-
-1. **Identify Category**:
-   - Status/Progress → `docs/`
-   - Review → `docs/reviews/`
-   - Test → `docs/testing/`
-   - Guide → `docs/guides/`
-
-2. **Move File**:
-   ```bash
-   git mv OLD_LOCATION.md docs/NEW_LOCATION.md
-   ```
-
-3. **Update References**:
-   - Update links in other docs
-   - Update README if it references the file
-   - Update any scripts that reference the file
-
-4. **Commit**:
-   - Commit the move
-   - Update CHANGELOG if it's a significant reorganization
-
-## Examples
-
-### ❌ BAD (Root Directory Clutter):
-```
-/
-├── README.md
-├── CHANGELOG.md
-├── COVERAGE_SUMMARY.md          ❌ MOVE TO docs/testing/
-├── TEST_RESULTS_SUMMARY.md      ❌ MOVE TO docs/testing/
-├── FINAL_REVIEW_COMPLETE.md     ❌ MOVE TO docs/reviews/
-├── IMPLEMENTATION_COMPLETE.md   ❌ MOVE TO docs/
-└── SETUP_SUMMARY.md             ❌ MOVE TO docs/guides/
-```
-
-### ✅ GOOD (Clean Root):
-```
-/
-├── README.md                    ✅
-├── CHANGELOG.md                 ✅
-├── ARCHITECTURE.md              ✅
-└── docs/
-    ├── testing/
-    │   ├── COVERAGE_SUMMARY.md  ✅
-    │   └── TEST_RESULTS_SUMMARY.md ✅
-    ├── reviews/
-    │   └── FINAL_REVIEW_COMPLETE.md ✅
-    ├── IMPLEMENTATION_COMPLETE.md ✅
-    └── guides/
-        └── SETUP_SUMMARY.md     ✅
-```
+1. **Identify category** - Determine appropriate `docs/` subdirectory
+2. **Move file** - Use `git mv OLD_LOCATION.md docs/NEW_LOCATION.md`
+3. **Update references** - Update links in other docs, README, scripts
+4. **Commit** - Commit move and update CHANGELOG if significant
 
 ## Special Cases
 
 ### Package-Specific Docs
+
 - Package READMEs: `packages/[package]/README.md` ✅
 - Package docs: `docs/[package-name]/` ✅
 - Don't put package docs in root ❌
 
 ### Temporary Docs
-- Even temporary docs should go in `docs/temp/` or `docs/`
+
+- Place in `docs/temp/` or `docs/`
 - Never create temporary docs in root
-- Clean up temporary docs regularly
+- Clean up regularly
 
 ### Generated Docs
+
 - API docs: `docs/api/` ✅
 - Coverage reports: `docs/testing/` ✅
 - Build artifacts: Not in repo (use CI artifacts)
 
 ## Documentation Quality
 
-### All Docs Should:
-- Be properly categorized
-- Have clear, descriptive names
-- Be in the correct location
-- Be linked from appropriate index files
+- Properly categorize all docs
+- Use clear, descriptive names
+- Place in correct location
+- Link from appropriate index files
 - Follow markdown best practices
-
-### Documentation Index
-- Consider creating `docs/README.md` as an index
-- Link to all major documentation sections
-- Keep index updated when docs are added/moved
 
 ## Cleanup Process
 
-### Quarterly Review:
-1. Scan root directory for misplaced docs
+### Quarterly Review
+
+1. Scan root for misplaced docs
 2. Move to appropriate `docs/` subdirectory
 3. Update all references
 4. Commit changes
 5. Update CHANGELOG
 
-### Before Major Releases:
+### Before Major Releases
+
 1. Audit documentation structure
-2. Move any misplaced files
+2. Move misplaced files
 3. Update documentation index
 4. Verify all links work

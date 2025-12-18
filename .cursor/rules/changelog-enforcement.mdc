@@ -6,86 +6,95 @@ alwaysApply: true
 
 # Changelog Enforcement Rules
 
-changelog-enforcement:
-  enforcement:
-    - pre-commit: Block commit if required changelog entry missing (if pre-commit hook enabled)
-    - code-review: Reject PR if changelog is not up to date for relevant changes
-    - ai-assistant: Always prompt developer to update changelog for impactful code changes
-  checklist:
-    - CHANGELOG.md updated for each functional, security, or behavioral change
-    - Changes properly grouped: Security, Fixed, Added, Changed, Deprecated, Removed
-    - Security/bug fixes include severity (**CRITICAL**, **HIGH**, **MEDIUM**)
-    - Reference file/package for context if beneficial
-  must_update_changelog_for:
-    - Security fixes
-    - Bug fixes
-    - New features
-    - Breaking changes
-    - Performance improvements
-    - Memory leak fixes
-    - Type safety improvements
-    - API or dependency changes that affect runtime or public API/behavior
-  changelog_format:
-    base: "Keep a Changelog"
-    sections:
-      - Security
-      - Fixed
-      - Added
-      - Changed
-      - Deprecated
-      - Removed
-    severity_indicators:
-      - CRITICAL
-      - HIGH
-      - MEDIUM
-    severity_usage: 'Security/bug fixes prefixed, e.g. "**CRITICAL**: ...".'
-    location_example: "(packages/utils/src/events/EventBus.ts)"
-    date_format: "YYYY-MM-DD (e.g. ## [1.0.4] - 2025-01-13)"
-  checklist_before_commit:
-    - All required changes documented in CHANGELOG.md
-    - Categories/sections match "Keep a Changelog" style
-    - Severity and/or file/package noted when relevant
-  special_cases:
-    multiple_changes:
-      - Group related entries
-      - Use individual bullets under each section
-      - Place newest entries first under [Unreleased]
-    breaking_changes:
-      - Clearly mark as breaking
-      - Provide migration detail where necessary
-      - At release, move to versioned section
-  release_process:
-    - Move [Unreleased] to a new version/datestamped section
-    - Add date in YYYY-MM-DD format
-    - Start new [Unreleased] at top of file
-    - Tag commit with version
+This repository enforces strict changelog policies for all packages. **Any change affecting functionality, security, or behavior _must_ be documented in `CHANGELOG.md`.**
+
+---
+
+## Enforcement
+
+- **Pre-commit:** Block commit if a required changelog entry is missing (when pre-commit hook is enabled).
+- **Code-review:** Reject PR if the changelog is not up to date for relevant changes.
+- **AI assistant:** Always prompt developers to update the changelog for impactful code changes.
+
+---
+
+## Changelog Update Checklist
+
+- [ ] `CHANGELOG.md` is updated for every functional, security, or behavioral change.
+- [ ] Entries are properly grouped using one of the following sections:
+  - Security
+  - Fixed
+  - Added
+  - Changed
+  - Deprecated
+  - Removed
+- [ ] Security and bug fixes include severity indicators (**CRITICAL**, **HIGH**, **MEDIUM**).
+- [ ] Reference file/package for context, if beneficial.
+
+---
 
 ## When Must You Update the Changelog?
 
-- Every code change that impacts functionality, security, or behavior must be recorded in CHANGELOG.md
-- Use guide: [Keep a Changelog](https://keepachangelog.com)
-- Security fixes (### Security)
-- Bug fixes (### Fixed)
-- New features (### Added)
-- Breaking changes (### Changed or ### Removed)
-- Performance or memory updates
+Update the changelog **for any of the following:**
+
+- Security fixes
+- Bug fixes
+- New features
+- Breaking changes
+- Performance improvements
+- Memory leak fixes
 - Type safety improvements
-- Public API (or breaking dependency) changes
+- API or dependency changes that affect runtime or the public API/behavior
+
+---
 
 ## Changelog Format
 
-- Sections: Security, Fixed, Added, Changed, Deprecated, Removed
-- Security/bug fix severity (CRITICAL, HIGH, MEDIUM) prefixed in entry
-- Include file/package reference where it aids review
-- Version date must use YYYY-MM-DD format
+- Follow [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) style.
+- Use the following sections (in order):
+  1. Security
+  2. Fixed
+  3. Added
+  4. Changed
+  5. Deprecated
+  6. Removed
+- Prefix security and bug fix entries with severity:
+  - `CRITICAL`
+  - `HIGH`
+  - `MEDIUM`
+- Example severity usage: `**CRITICAL**: ...`
+- Reference location/file where helpful, e.g. `(packages/utils/src/events/EventBus.ts)`
+- Use version date format: `YYYY-MM-DD` (e.g., `## [1.0.4] - 2025-01-13`)
 
-## Special Case Handling
+---
 
-- Multiple changes: group under their sections, newest changes first, bullets per change
-- Breaking changes: mark clearly, add migration notes if needed
+### Commit Checklist
+
+- [ ] All required changes are documented in `CHANGELOG.md`.
+- [ ] Categories/sections match the [Keep a Changelog](https://keepachangelog.com) format.
+- [ ] Severity and/or file/package are noted when relevant.
+
+---
+
+## Special Cases
+
+### Multiple Changes
+
+- Group related entries under appropriate sections.
+- Use individual bullets under each section.
+- Place the newest entries first under the `[Unreleased]` section.
+
+### Breaking Changes
+
+- Clearly mark as breaking in the changelog.
+- Provide migration notes or details if necessary.
+- At release, move breaking changes to the versioned section.
+
+---
 
 ## Release Process
 
-1. Move [Unreleased] section to new version section, dated
-2. Start fresh [Unreleased] at top
-3. Tag commit with new version and date
+1. Move the `[Unreleased]` section to a new, versioned section with the release date.
+2. Add the date in `YYYY-MM-DD` format.
+3. Start a new `[Unreleased]` section at the top of the file.
+4. Tag the commit with the new version and date.

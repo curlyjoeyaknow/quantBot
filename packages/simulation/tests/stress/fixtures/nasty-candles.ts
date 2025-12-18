@@ -208,14 +208,22 @@ export const GAP_SEQUENCES: CandleSequence[] = [
   },
   {
     description: 'Random gaps throughout',
-    candles: Array.from({ length: 100 }, (_, i) => ({
-      timestamp: BASE_TIMESTAMP + i * FIVE_MINUTES * (i % 3 === 0 ? 2 : 1), // Random gaps
-      open: 1.0,
-      high: 1.01,
-      low: 0.99,
-      close: 1.0,
-      volume: 1000,
-    })),
+    candles: Array.from({ length: 100 }, (_, i) => {
+      // Create gaps but keep timestamps monotonic
+      // Every 3rd candle has a 2x gap, but we accumulate to maintain order
+      let timestampOffset = 0;
+      for (let j = 0; j <= i; j++) {
+        timestampOffset += FIVE_MINUTES * (j % 3 === 0 ? 2 : 1);
+      }
+      return {
+        timestamp: BASE_TIMESTAMP + timestampOffset,
+        open: 1.0,
+        high: 1.01,
+        low: 0.99,
+        close: 1.0,
+        volume: 1000,
+      };
+    }),
     expectedBehavior: 'accept',
     category: 'gap',
   },
@@ -442,7 +450,7 @@ export const AMBIGUITY_SEQUENCES: CandleSequence[] = [
   {
     description: 'Stop loss and take profit in same candle',
     candles: [
-      ...Array.from({ length: 50 }, (_, i) => ({
+      ...Array.from({ length: 51 }, (_, i) => ({
         timestamp: BASE_TIMESTAMP + i * FIVE_MINUTES,
         open: 1.0,
         high: 1.01,
@@ -451,7 +459,7 @@ export const AMBIGUITY_SEQUENCES: CandleSequence[] = [
         volume: 1000,
       })),
       {
-        timestamp: BASE_TIMESTAMP + 50 * FIVE_MINUTES,
+        timestamp: BASE_TIMESTAMP + 51 * FIVE_MINUTES,
         open: 1.0,
         high: 1.5, // Hits take profit
         low: 0.5, // Hits stop loss
@@ -465,7 +473,7 @@ export const AMBIGUITY_SEQUENCES: CandleSequence[] = [
   {
     description: 'Entry and exit signal in same candle',
     candles: [
-      ...Array.from({ length: 50 }, (_, i) => ({
+      ...Array.from({ length: 51 }, (_, i) => ({
         timestamp: BASE_TIMESTAMP + i * FIVE_MINUTES,
         open: 1.0,
         high: 1.01,
@@ -474,7 +482,7 @@ export const AMBIGUITY_SEQUENCES: CandleSequence[] = [
         volume: 1000,
       })),
       {
-        timestamp: BASE_TIMESTAMP + 50 * FIVE_MINUTES,
+        timestamp: BASE_TIMESTAMP + 51 * FIVE_MINUTES,
         open: 0.5,
         high: 2.0, // Wide range could trigger both entry and exit
         low: 0.5,
