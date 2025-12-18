@@ -96,4 +96,3 @@ export function validateCandleSequence(candles: readonly Candle[]): ValidationRe
 export function sortCandlesByTimestamp(candles: readonly Candle[]): Candle[] {
   return [...candles].sort((a, b) => a.timestamp - b.timestamp);
 }
-

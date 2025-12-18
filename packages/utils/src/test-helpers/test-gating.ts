@@ -29,9 +29,7 @@ export function shouldRunTest(envVar: string, reason?: string): boolean {
  */
 export function requireEnv(envVar: string, reason?: string): void {
   if (!shouldRunTest(envVar, reason)) {
-    const message = reason
-      ? `Test requires ${envVar}=1: ${reason}`
-      : `Test requires ${envVar}=1`;
+    const message = reason ? `Test requires ${envVar}=1: ${reason}` : `Test requires ${envVar}=1`;
     throw new Error(message);
   }
 }
@@ -79,4 +77,3 @@ export function shouldRunChaosTests(): boolean {
 export function shouldRunIntegrationStress(): boolean {
   return shouldRunTest(TEST_GATES.INTEGRATION_STRESS);
 }
-
