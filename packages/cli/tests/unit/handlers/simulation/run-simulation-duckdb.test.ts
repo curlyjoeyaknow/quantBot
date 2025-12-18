@@ -5,26 +5,29 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { runSimulationDuckdbHandler } from '../../../../src/handlers/simulation/run-simulation-duckdb.js';
 import type { CommandContext } from '../../../../src/core/command-context.js';
-import { execa } from 'execa';
 import { ValidationError, AppError } from '@quantbot/utils';
-
-vi.mock('execa', () => ({
-  execa: vi.fn(),
-}));
+import type { SimulationService } from '@quantbot/simulation';
 
 describe('runSimulationDuckdbHandler', () => {
   let mockCtx: CommandContext;
+  let mockService: SimulationService;
 
   beforeEach(() => {
+    mockService = {
+      runSimulation: vi.fn(),
+    } as unknown as SimulationService;
+
     mockCtx = {
-      services: {} as any,
-    } as CommandContext;
+      services: {
+        simulation: () => mockService,
+      },
+    } as unknown as CommandContext;
 
     vi.clearAllMocks();
   });
 
-  it('should call Python script with correct config', async () => {
-    const mockStdout = JSON.stringify({
+  it('should call service with correct config', async () => {
+    const mockResult = {
       results: [
         {
           run_id: 'test-run-id',
@@ -38,12 +41,9 @@ describe('runSimulationDuckdbHandler', () => {
         successful: 1,
         failed: 0,
       },
-    });
+    };
 
-    vi.mocked(execa).mockResolvedValue({
-      stdout: mockStdout,
-      stderr: '',
-    } as any);
+    vi.mocked(mockService.runSimulation).mockResolvedValue(mockResult);
 
     const args = {
       duckdb: '/path/to/tele.duckdb',
@@ -64,15 +64,15 @@ describe('runSimulationDuckdbHandler', () => {
 
     const result = await runSimulationDuckdbHandler(args, mockCtx);
 
-    expect(execa).toHaveBeenCalledWith(
-      'python3',
-      [expect.stringContaining('run_simulation.py')],
-      expect.objectContaining({
-        input: expect.stringContaining('"duckdb_path"'),
-        encoding: 'utf8',
-        timeout: 300000,
-      })
-    );
+    expect(mockService.runSimulation).toHaveBeenCalledWith({
+      duckdb_path: '/path/to/tele.duckdb',
+      strategy: args.strategy,
+      initial_capital: 1000.0,
+      lookback_minutes: 260,
+      lookforward_minutes: 1440,
+      mint: 'So11111111111111111111111111111111111111112',
+      alert_timestamp: '2024-01-01T12:00:00Z',
+    });
 
     expect(result).toHaveProperty('results');
     expect(result.results).toHaveLength(1);
@@ -100,8 +100,9 @@ describe('runSimulationDuckdbHandler', () => {
     );
   });
 
-  it('should handle Python script errors', async () => {
-    vi.mocked(execa).mockRejectedValue(new Error('Python script failed'));
+  it('should propagate service errors', async () => {
+    const error = new AppError('Simulation failed', 'SIMULATION_FAILED', 500);
+    vi.mocked(mockService.runSimulation).mockRejectedValue(error);
 
     const args = {
       duckdb: '/path/to/tele.duckdb',

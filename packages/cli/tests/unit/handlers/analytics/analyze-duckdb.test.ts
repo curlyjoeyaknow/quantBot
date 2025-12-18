@@ -5,36 +5,36 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { analyzeDuckdbHandler } from '../../../../src/handlers/analytics/analyze-duckdb.js';
 import type { CommandContext } from '../../../../src/core/command-context.js';
-import { execa } from 'execa';
 import { ValidationError, AppError } from '@quantbot/utils';
-
-vi.mock('execa', () => ({
-  execa: vi.fn(),
-}));
+import type { AnalyticsService } from '@quantbot/analytics';
 
 describe('analyzeDuckdbHandler', () => {
   let mockCtx: CommandContext;
+  let mockService: AnalyticsService;
 
   beforeEach(() => {
+    mockService = {
+      runAnalysis: vi.fn(),
+    } as unknown as AnalyticsService;
+
     mockCtx = {
-      services: {} as any,
-    } as CommandContext;
+      services: {
+        analytics: () => mockService,
+      },
+    } as unknown as CommandContext;
 
     vi.clearAllMocks();
   });
 
-  it('should call Python script for caller analysis', async () => {
-    const mockStdout = JSON.stringify({
+  it('should call service for caller analysis', async () => {
+    const mockResult = {
       caller_name: 'Brook',
       total_calls: 100,
       win_rate: 0.65,
       avg_return: 2.5,
-    });
+    };
 
-    vi.mocked(execa).mockResolvedValue({
-      stdout: mockStdout,
-      stderr: '',
-    } as any);
+    vi.mocked(mockService.runAnalysis).mockResolvedValue(mockResult);
 
     const args = {
       duckdb: '/path/to/tele.duckdb',
@@ -43,36 +43,23 @@ describe('analyzeDuckdbHandler', () => {
 
     const result = await analyzeDuckdbHandler(args, mockCtx);
 
-    expect(execa).toHaveBeenCalledWith(
-      'python3',
-      expect.arrayContaining([
-        expect.stringContaining('analyze.py'),
-        '--duckdb',
-        '/path/to/tele.duckdb',
-        '--caller',
-        'Brook',
-      ]),
-      expect.objectContaining({
-        encoding: 'utf8',
-        timeout: 60000,
-      })
-    );
+    expect(mockService.runAnalysis).toHaveBeenCalledWith({
+      duckdb: '/path/to/tele.duckdb',
+      caller: 'Brook',
+    });
 
     expect(result).toHaveProperty('caller_name', 'Brook');
     expect(result).toHaveProperty('total_calls');
   });
 
-  it('should call Python script for mint analysis', async () => {
-    const mockStdout = JSON.stringify({
+  it('should call service for mint analysis', async () => {
+    const mockResult = {
       mint: 'So11111111111111111111111111111111111111112',
       total_candles: 1000,
       volatility: 0.05,
-    });
+    };
 
-    vi.mocked(execa).mockResolvedValue({
-      stdout: mockStdout,
-      stderr: '',
-    } as any);
+    vi.mocked(mockService.runAnalysis).mockResolvedValue(mockResult);
 
     const args = {
       duckdb: '/path/to/tele.duckdb',
@@ -81,17 +68,10 @@ describe('analyzeDuckdbHandler', () => {
 
     const result = await analyzeDuckdbHandler(args, mockCtx);
 
-    expect(execa).toHaveBeenCalledWith(
-      'python3',
-      expect.arrayContaining([
-        expect.stringContaining('analyze.py'),
-        '--duckdb',
-        '/path/to/tele.duckdb',
-        '--mint',
-        'So11111111111111111111111111111111111111112',
-      ]),
-      expect.anything()
-    );
+    expect(mockService.runAnalysis).toHaveBeenCalledWith({
+      duckdb: '/path/to/tele.duckdb',
+      mint: 'So11111111111111111111111111111111111111112',
+    });
 
     expect(result).toHaveProperty('mint');
   });
@@ -105,8 +85,9 @@ describe('analyzeDuckdbHandler', () => {
     await expect(analyzeDuckdbHandler(args, mockCtx)).rejects.toThrow('Must specify');
   });
 
-  it('should handle Python script errors', async () => {
-    vi.mocked(execa).mockRejectedValue(new Error('Python script failed'));
+  it('should propagate service errors', async () => {
+    const error = new AppError('Analysis failed', 'ANALYSIS_FAILED', 500);
+    vi.mocked(mockService.runAnalysis).mockRejectedValue(error);
 
     const args = {
       duckdb: '/path/to/tele.duckdb',

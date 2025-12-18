@@ -46,6 +46,7 @@
 export * from './types';
 export * from './duckdb-storage-service';
 export * from './clickhouse-service';
+export * from './simulation-service';
 
 // =============================================================================
 // Data - Candle providers and aggregation
