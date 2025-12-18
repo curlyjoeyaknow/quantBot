@@ -184,14 +184,25 @@ class DuckDBSimulator:
         lookback_minutes: int,
         lookforward_minutes: int
     ) -> List[Dict[str, Any]]:
-        """Fetch candles for the simulation window."""
+        """
+        Fetch candles for the simulation window.
+        
+        Simulation layer is read-only: only reads from DuckDB, never calls external APIs.
+        OHLCV data must be pre-ingested by the OHLCV ingestion job before simulation runs.
+        
+        Data sources (in order):
+        1. ohlcv_candles_d table (primary) - populated by OHLCV ingestion job
+        2. user_calls_d table (fallback) - creates single candle from call price if OHLCV not available
+        
+        Returns empty list if no data found (simulation will fail gracefully).
+        """
         start_time = alert_timestamp - timedelta(minutes=lookback_minutes)
         end_time = alert_timestamp + timedelta(minutes=lookforward_minutes)
         
         start_ts = int(start_time.timestamp())
         end_ts = int(end_time.timestamp())
         
-        # Try to fetch from ohlcv_candles_d table
+        # Primary source: ohlcv_candles_d table (populated by OHLCV ingestion job)
         result = self.con.execute("""
             SELECT 
                 timestamp,
@@ -222,7 +233,8 @@ class DuckDBSimulator:
                 for row in result
             ]
         
-        # Fallback: try to get price from user_calls_d
+        # Fallback: try to get price from user_calls_d (still read-only, no API calls)
+        # This creates a minimal single candle if OHLCV data not available
         price_result = self.con.execute("""
             SELECT price_usd
             FROM user_calls_d
@@ -230,7 +242,7 @@ class DuckDBSimulator:
         """, [mint, int(alert_timestamp.timestamp() * 1000)]).fetchone()
         
         if price_result and price_result[0]:
-            # Create a single candle at alert time
+            # Create a single candle at alert time (limited data, but better than nothing)
             price = float(price_result[0])
             return [{
                 'timestamp': alert_timestamp,
@@ -242,6 +254,7 @@ class DuckDBSimulator:
                 'interval_seconds': 60
             }]
         
+        # No data found - simulation will handle this gracefully
         return []
     
     def _execute_entry(

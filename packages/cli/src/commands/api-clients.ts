@@ -74,7 +74,7 @@ const apiClientsModule: PackageCommandModule = {
       name: 'test',
       description: 'Test API connection',
       schema: testSchema,
-      handler: async (args: unknown, ctx: unknown) => {
+      handler: async (args: unknown, ctx: unknown): Promise<unknown> => {
         const typedCtx = ctx as CommandContext;
         const typedArgs = args as z.infer<typeof testSchema>;
         return await testApiClientsHandler(typedArgs, typedCtx);
@@ -88,7 +88,7 @@ const apiClientsModule: PackageCommandModule = {
       name: 'status',
       description: 'Check API status',
       schema: statusSchema,
-      handler: async (args: unknown, ctx: unknown) => {
+      handler: async (args: unknown, ctx: unknown): Promise<unknown> => {
         const typedCtx = ctx as CommandContext;
         const typedArgs = args as z.infer<typeof statusSchema>;
         return await statusApiClientsHandler(typedArgs, typedCtx);
@@ -99,7 +99,7 @@ const apiClientsModule: PackageCommandModule = {
       name: 'credits',
       description: 'Check API credits/quota',
       schema: creditsSchema,
-      handler: async (args: unknown, ctx: unknown) => {
+      handler: async (args: unknown, ctx: unknown): Promise<unknown> => {
         const typedCtx = ctx as CommandContext;
         const typedArgs = args as z.infer<typeof creditsSchema>;
         return await creditsApiClientsHandler(typedArgs, typedCtx);

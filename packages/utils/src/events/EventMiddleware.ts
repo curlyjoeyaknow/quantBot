@@ -7,7 +7,7 @@
 import { EventMiddleware } from './EventBus';
 import type { ApplicationEvent } from './EventTypes';
 import { EventPriority, EVENT_PRIORITIES } from './EventTypes';
-import { logger, ValidationError } from '../index.js';
+import { logger, ValidationError } from '../index';
 
 /**
  * Logging Middleware

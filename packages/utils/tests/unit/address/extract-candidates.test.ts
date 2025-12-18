@@ -10,7 +10,7 @@ import {
   extractSolanaCandidates,
   extractEvmCandidates,
   normalizeCandidate,
-} from '../../../src/address/extract-candidates.js';
+} from '../../../src/address/extract-candidates';
 
 describe('extractCandidates - Pass 1 Extraction', () => {
   describe('Punctuation Stripping', () => {

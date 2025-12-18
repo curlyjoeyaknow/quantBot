@@ -6,8 +6,8 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { extractCandidates } from '../../src/address/extract-candidates.js';
-import { validateSolanaMint, validateEvmAddress } from '../../src/address/validate.js';
+import { extractCandidates } from '../../src/address/extract-candidates';
+import { validateSolanaMint, validateEvmAddress } from '../../src/address/validate';
 
 describe('Address Pipeline - Pass 2 Before Persist', () => {
   describe('Only Valid Addresses Result in DB Writes', () => {

@@ -7,9 +7,9 @@
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { join } from 'path';
-import { PythonEngine } from '../src/python/python-engine.js';
+import { PythonEngine } from '../src/python/python-engine';
 import { z } from 'zod';
-import { ValidationError } from '../src/index.js';
+import { ValidationError } from '../src/index';
 import { writeFileSync, unlinkSync, mkdirSync, existsSync } from 'fs';
 import { tmpdir } from 'os';
 

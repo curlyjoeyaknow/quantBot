@@ -14,7 +14,7 @@
 import { describe, it, expect } from 'vitest';
 import { existsSync } from 'fs';
 import { join } from 'path';
-import { PythonEngine, PythonManifestSchema } from '../../src/python/python-engine.js';
+import { PythonEngine, PythonManifestSchema } from '../../src/python/python-engine';
 
 describe('Python Bridge Test - Telegram Ingestion', () => {
   const pythonToolPath = join(process.cwd(), 'tools/telegram/duckdb_punch_pipeline.py');

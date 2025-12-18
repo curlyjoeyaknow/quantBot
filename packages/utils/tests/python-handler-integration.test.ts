@@ -10,9 +10,9 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { PythonEngine } from '../src/python/python-engine.js';
+import { PythonEngine } from '../src/python/python-engine';
 import { z } from 'zod';
-import { ValidationError, TimeoutError, AppError } from '../src/index.js';
+import { ValidationError, TimeoutError, AppError } from '../src/index';
 import { join } from 'path';
 
 const FIXTURES_DIR = join(__dirname, 'fixtures', 'bad-tools');

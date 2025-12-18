@@ -10,7 +10,7 @@
 // TODO: These imports require @quantbot/data to be built first
 // For now, using type-only imports to avoid compilation errors
 import type { EntryConfig } from './types';
-import { logger, AppError } from './index.js';
+import { logger, AppError } from './index';
 
 // Placeholder types until storage package is available
 type QueryResult = { rows: Array<Record<string, unknown>> };

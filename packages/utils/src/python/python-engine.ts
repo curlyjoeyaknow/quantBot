@@ -10,7 +10,7 @@ import { join } from 'path';
 import { z } from 'zod';
 import { existsSync, statSync } from 'fs';
 import { execa } from 'execa';
-import { logger, ValidationError, TimeoutError, AppError } from '../index.js';
+import { logger, ValidationError, TimeoutError, AppError } from '../index';
 
 export interface PythonScriptOptions {
   /**

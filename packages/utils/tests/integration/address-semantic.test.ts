@@ -6,8 +6,8 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { extractCandidates } from '../../src/address/extract-candidates.js';
-import { validateSolanaMint, validateEvmAddress } from '../../src/address/validate.js';
+import { extractCandidates } from '../../src/address/extract-candidates';
+import { validateSolanaMint, validateEvmAddress } from '../../src/address/validate';
 
 // Mock OHLCV provider interface
 interface MockOhlcvProvider {

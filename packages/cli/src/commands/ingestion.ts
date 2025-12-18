@@ -160,7 +160,7 @@ const ingestionModule: PackageCommandModule = {
       name: 'telegram',
       description: 'Ingest Telegram export file',
       schema: telegramSchema,
-      handler: async (args: unknown, ctx: unknown) => {
+      handler: async (args: unknown, ctx: unknown): Promise<unknown> => {
         const typedCtx = ctx as CommandContext;
         const typedArgs = args as z.infer<typeof telegramSchema>;
         return await ingestTelegramHandler(typedArgs, typedCtx);
@@ -171,7 +171,7 @@ const ingestionModule: PackageCommandModule = {
       name: 'ohlcv',
       description: 'Fetch OHLCV data for calls',
       schema: ohlcvSchema,
-      handler: async (args: unknown, ctx: unknown) => {
+      handler: async (args: unknown, ctx: unknown): Promise<unknown> => {
         const typedCtx = ctx as CommandContext;
         const typedArgs = args as z.infer<typeof ohlcvSchema>;
         return await ingestOhlcvHandler(typedArgs, typedCtx);
@@ -182,7 +182,7 @@ const ingestionModule: PackageCommandModule = {
       name: 'telegram-python',
       description: 'Process Telegram export using Python DuckDB pipeline',
       schema: telegramProcessSchema,
-      handler: async (args: unknown, ctx: unknown) => {
+      handler: async (args: unknown, ctx: unknown): Promise<unknown> => {
         const typedCtx = ctx as CommandContext;
         const typedArgs = args as z.infer<typeof telegramProcessSchema>;
         return await processTelegramPythonHandler(typedArgs, typedCtx);
