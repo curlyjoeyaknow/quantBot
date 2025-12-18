@@ -9,6 +9,7 @@ import { execSync, spawn } from 'child_process';
 import { join } from 'path';
 import { z } from 'zod';
 import { existsSync, statSync } from 'fs';
+import { execa } from 'execa';
 import { logger, ValidationError, TimeoutError, AppError } from '../index.js';
 
 export interface PythonScriptOptions {
@@ -392,6 +393,120 @@ export class PythonEngine {
       cwd,
       env,
     });
+  }
+
+  /**
+   * Run a Python script with stdin input
+   *
+   * @param scriptPath - Path to Python script
+   * @param stdinInput - Input to pass via stdin (will be JSON stringified if object)
+   * @param schema - Zod schema to validate output against
+   * @param options - Execution options
+   * @returns Validated output parsed from JSON
+   */
+  async runScriptWithStdin<T>(
+    scriptPath: string,
+    stdinInput: string | Record<string, unknown>,
+    schema: z.ZodSchema<T>,
+    options?: PythonScriptOptions
+  ): Promise<T> {
+    const timeout = options?.timeout ?? this.defaultTimeout;
+    const inputString = typeof stdinInput === 'string' ? stdinInput : JSON.stringify(stdinInput);
+    const scriptFullPath = join(process.cwd(), scriptPath);
+
+    logger.debug('Executing Python script with stdin', {
+      script: scriptFullPath,
+      cwd: options?.cwd,
+      inputLength: inputString.length,
+    });
+
+    try {
+      const { stdout, stderr } = await execa(this.pythonCommand, [scriptFullPath], {
+        input: inputString,
+        encoding: 'utf8',
+        timeout,
+        cwd: options?.cwd ?? process.cwd(),
+        env: { ...process.env, ...options?.env },
+        maxBuffer: 10 * 1024 * 1024, // 10MB buffer
+      });
+
+      if (stderr) {
+        logger.warn('Python script stderr', { script: scriptFullPath, stderr });
+      }
+
+      // Parse JSON from stdout
+      let parsed: unknown;
+      try {
+        // Try parsing entire output first
+        parsed = JSON.parse(stdout.trim());
+      } catch {
+        // Try parsing last line if entire output isn't JSON
+        const lines = stdout.trim().split('\n');
+        const jsonLine = lines[lines.length - 1];
+        try {
+          parsed = JSON.parse(jsonLine);
+        } catch {
+          throw new ValidationError(
+            `Failed to parse JSON output from Python script. Output: ${stdout.substring(0, 500)}`,
+            { script: scriptFullPath, output: stdout.substring(0, 500) }
+          );
+        }
+      }
+
+      // Validate against schema
+      let validated: T;
+      try {
+        validated = schema.parse(parsed);
+      } catch (zodError: any) {
+        throw new ValidationError(
+          `Python script output failed schema validation: ${zodError.message}`,
+          {
+            script: scriptFullPath,
+            zodError: zodError.issues || zodError.errors || zodError.message,
+            receivedData: parsed,
+          }
+        );
+      }
+
+      return validated;
+    } catch (error: any) {
+      // Handle timeout errors
+      if (error.timedOut || error.signal === 'SIGTERM') {
+        throw new TimeoutError(`Python script timed out after ${timeout}ms`, timeout, {
+          script: scriptFullPath,
+        });
+      }
+
+      // Handle execa errors
+      if (error.exitCode !== undefined && error.exitCode !== 0) {
+        const stderr = error.stderr || '';
+        const stdout = error.stdout || '';
+        throw new AppError(
+          `Python script exited with code ${error.exitCode}: ${stderr || error.message || 'Unknown error'}`,
+          'PYTHON_SCRIPT_ERROR',
+          500,
+          {
+            script: scriptFullPath,
+            exitCode: error.exitCode,
+            stderr: stderr.substring(0, 1000),
+            stdout: stdout.substring(0, 500),
+          }
+        );
+      }
+
+      // Re-throw if already a custom error
+      if (error instanceof AppError || error instanceof ValidationError || error instanceof TimeoutError) {
+        throw error;
+      }
+
+      // Wrap unknown errors
+      throw new AppError(
+        `Failed to execute Python script: ${error.message || String(error)}`,
+        'PYTHON_SCRIPT_ERROR',
+        500,
+        { script: scriptFullPath }
+      );
+    }
   }
 }
 

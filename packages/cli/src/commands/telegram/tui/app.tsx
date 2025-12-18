@@ -200,15 +200,22 @@ export function TelegramTuiApp(props: Props) {
     okRef.current = [];
     errRef.current = [];
     statusRef.current = { normalizedDone: false, quarantineDone: false, lastBump: 0 };
+    setLoadingProgress({ loaded: 0, total: 0, phase: 'loading' });
     bump();
 
     const ac = new AbortController();
+    let loadedCount = 0;
+    let estimatedTotal = 0;
 
     const maybeBump = () => {
       const now = Date.now();
       // Throttle updates to every 500ms to reduce flickering
       if (now - statusRef.current.lastBump > 500) {
         statusRef.current.lastBump = now;
+        // Update progress
+        if (estimatedTotal > 0) {
+          setLoadingProgress({ loaded: loadedCount, total: estimatedTotal, phase: 'loading' });
+        }
         bump();
       }
     };
@@ -227,6 +234,12 @@ export function TelegramTuiApp(props: Props) {
           const row = rowFromNormalized(obj, props.chatId ?? 'unknown', meta.lineNo);
           if (props.chatId && row.chatId !== props.chatId) return;
           okRef.current.push(row);
+          loadedCount++;
+          // Estimate total based on first 100 lines
+          if (meta.lineNo === 100 && estimatedTotal === 0) {
+            // Rough estimate: assume similar density throughout file
+            estimatedTotal = Math.floor((meta.lineNo / 100) * 50000); // Conservative estimate
+          }
           // Only set initial selection, don't change it as we load
           if (!selectedKey && okRef.current.length === 1) {
             setSelectedKey(row.key);
@@ -239,6 +252,7 @@ export function TelegramTuiApp(props: Props) {
         },
         onDone: () => {
           statusRef.current.normalizedDone = true;
+          setLoadingProgress((p) => ({ ...p, phase: statusRef.current.quarantineDone ? 'idle' : 'loading' }));
           maybeBump();
         },
       },
@@ -252,6 +266,7 @@ export function TelegramTuiApp(props: Props) {
           const row = rowFromQuarantine(obj, props.chatId ?? 'unknown', meta.lineNo);
           if (props.chatId && row.chatId !== props.chatId) return;
           errRef.current.push(row);
+          loadedCount++;
           // Only set initial selection if we have no ok rows
           if (!selectedKey && okRef.current.length === 0 && errRef.current.length === 1) {
             setSelectedKey(row.key);
@@ -264,6 +279,7 @@ export function TelegramTuiApp(props: Props) {
         },
         onDone: () => {
           statusRef.current.quarantineDone = true;
+          setLoadingProgress((p) => ({ ...p, phase: 'idle' }));
           maybeBump();
         },
       },
@@ -475,9 +491,19 @@ export function TelegramTuiApp(props: Props) {
 
   // Show date selection screen if not loaded yet
   if (scanningDates) {
+    const progress = loadingProgress.phase === 'scanning' && loadingProgress.total > 0
+      ? ` (${loadingProgress.loaded}/${loadingProgress.total} lines)`
+      : '';
     return (
       <Box flexDirection="column" paddingX={1} paddingY={1}>
-        <Text color="cyan">📅 Scanning files for available dates...</Text>
+        <Text color="cyan">📅 Scanning files for available dates{progress}...</Text>
+        {loadingProgress.total > 0 && (
+          <Box marginTop={1}>
+            <Text>
+              Progress: {Math.floor((loadingProgress.loaded / loadingProgress.total) * 100)}%
+            </Text>
+          </Box>
+        )}
       </Box>
     );
   }
@@ -564,7 +590,7 @@ export function TelegramTuiApp(props: Props) {
       )}
 
       <Box flexDirection="row" paddingX={1} paddingY={1}>
-        {/* LEFT: DATE FILTER PANEL */}
+        {/* LEFT: DATE FILTER & STATISTICS PANEL */}
         <Box flexDirection="column" width={Math.floor(w * 0.25)} borderStyle="round" paddingX={1} paddingY={1} marginRight={1}>
           <Text color="cyan" bold>📅 Date Filter</Text>
           {selectedMonth && (
@@ -581,6 +607,86 @@ export function TelegramTuiApp(props: Props) {
           {!selectedMonth && (
             <Box paddingTop={1}>
               <Text dimColor>Press 'm' to select month</Text>
+            </Box>
+          )}
+
+          {/* Statistics Panel */}
+          <Box marginTop={2} flexDirection="column">
+            <Text color="cyan" bold>📊 Statistics</Text>
+            {selectedDay ? (
+              <Box marginTop={1} flexDirection="column">
+                <Text bold>Day: {selectedDay}</Text>
+                {(() => {
+                  const dayStats = statistics.byDay.get(selectedDay);
+                  if (dayStats) {
+                    return (
+                      <>
+                        <Text>  OK: {dayStats.ok}</Text>
+                        <Text>  Errors: {dayStats.err}</Text>
+                        <Text>  Total: {dayStats.ok + dayStats.err}</Text>
+                      </>
+                    );
+                  }
+                  return <Text dimColor>  No data</Text>;
+                })()}
+              </Box>
+            ) : selectedMonth ? (
+              <Box marginTop={1} flexDirection="column">
+                <Text bold>Month: {selectedMonth}</Text>
+                {(() => {
+                  const monthStats = statistics.byMonth.get(selectedMonth);
+                  if (monthStats) {
+                    return (
+                      <>
+                        <Text>  OK: {monthStats.ok}</Text>
+                        <Text>  Errors: {monthStats.err}</Text>
+                        <Text>  Total: {monthStats.ok + monthStats.err}</Text>
+                      </>
+                    );
+                  }
+                  return <Text dimColor>  No data</Text>;
+                })()}
+                <Box marginTop={1}>
+                  <Text dimColor>Top days:</Text>
+                  {Array.from(statistics.byDay.entries())
+                    .filter(([day]) => day.startsWith(selectedMonth))
+                    .sort((a, b) => {
+                      const aTotal = a[1].ok + a[1].err;
+                      const bTotal = b[1].ok + b[1].err;
+                      return bTotal - aTotal;
+                    })
+                    .slice(0, 5)
+                    .map(([day, stats]) => (
+                      <Text key={day} dimColor>
+                        {'  '}{day.split('-')[2]}: {stats.ok + stats.err} msgs
+                      </Text>
+                    ))}
+                </Box>
+              </Box>
+            ) : (
+              <Box marginTop={1} flexDirection="column">
+                <Text dimColor>Select date to see stats</Text>
+                <Box marginTop={1}>
+                  <Text>Total months: {availableMonths.length}</Text>
+                </Box>
+              </Box>
+            )}
+          </Box>
+
+          {/* Loading Progress */}
+          {loadingProgress.phase === 'loading' && (
+            <Box marginTop={2} flexDirection="column">
+              <Text color="yellow" bold>⏳ Loading...</Text>
+              {loadingProgress.total > 0 && (
+                <Box marginTop={1}>
+                  <Text>
+                    {loadingProgress.loaded} / {loadingProgress.total} messages
+                  </Text>
+                  <Text>
+                    {Math.floor((loadingProgress.loaded / loadingProgress.total) * 100)}%
+                  </Text>
+                </Box>
+              )}
             </Box>
           )}
         </Box>

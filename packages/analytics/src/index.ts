@@ -39,3 +39,19 @@ export {
   analyzeReEntryOpportunities,
 } from './utils/period-metrics';
 export type { EnrichPeriodMetricsOptions, ReEntryAnalysis } from './utils/period-metrics';
+
+// Analytics service
+export {
+  AnalyticsService,
+  CallerAnalysisResultSchema,
+  MintAnalysisResultSchema,
+  CorrelationAnalysisResultSchema,
+  AnalyticsResultSchema,
+} from './analytics-service';
+export type {
+  CallerAnalysisResult,
+  MintAnalysisResult,
+  CorrelationAnalysisResult,
+  AnalyticsResult,
+  AnalyticsConfig,
+} from './analytics-service';
