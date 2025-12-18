@@ -145,8 +145,10 @@ export class CallDataLoader {
 
       logger.debug(`[CallDataLoader] Loaded ${calls.length} calls from Postgres`);
       return calls;
-    } catch (error) {
-      logger.error('[CallDataLoader] Failed to load calls', error as Error);
+    } catch (error: unknown) {
+      logger.error('[CallDataLoader] Failed to load calls', {
+        error: error instanceof Error ? error.message : String(error),
+      });
       throw error;
     }
   }
@@ -271,8 +273,10 @@ export class CallDataLoader {
         atlTimestamp: athResult.atlTimestamp ? new Date(athResult.atlTimestamp * 1000) : undefined,
         atlMultiple: athResult.atlMultiple,
       };
-    } catch (error) {
-      logger.warn(`[CallDataLoader] Failed to enrich call ${call.callId}`, error as Error);
+    } catch (error: unknown) {
+      logger.warn(`[CallDataLoader] Failed to enrich call ${call.callId}`, {
+        error: error instanceof Error ? error.message : String(error),
+      });
       // Return original call on error
       return call;
     }
