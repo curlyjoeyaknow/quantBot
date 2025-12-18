@@ -24,6 +24,8 @@ import {
   ChunkValidator,
   type ExtractedBotData,
   type ResolvedCaller,
+  fetchMultiChainMetadata,
+  isEvmAddress,
 } from '@quantbot/ingestion';
 import type {
   CallersRepository,
@@ -159,7 +161,8 @@ export async function ingestTelegramJson(
 
   // Filter for bot messages by fromId
   const botNormalizedMessages = parseResult.normalized.filter(
-    (msg) => msg.fromId !== null && BOT_IDS.includes(String(msg.fromId))
+    (msg: (typeof parseResult.normalized)[0]) =>
+      msg.fromId !== null && BOT_IDS.includes(String(msg.fromId))
   );
   ctx.logger.info('Found bot messages', { count: botNormalizedMessages.length });
 
@@ -241,10 +244,40 @@ export async function ingestTelegramJson(
 
       // Extract caller name from caller message
       const callerName: string = callerMsg.fromName || validated.callerName || 'Unknown';
-      const chain: string = botData.chain || validated.chain || 'solana';
+      let chain: string = botData.chain || validated.chain || 'solana';
 
       // Set original message ID from caller
       botData.originalMessageId = String(callerMsg.messageId);
+
+      // For EVM addresses, validate and get correct chain using multi-chain metadata
+      if (isEvmAddress(botData.contractAddress)) {
+        const metadataResult = await fetchMultiChainMetadata(
+          botData.contractAddress,
+          chain.toLowerCase() as Chain
+        );
+        if (metadataResult.primaryMetadata) {
+          // Use actual chain from API response
+          chain = metadataResult.primaryMetadata.chain;
+          // Update botData with actual metadata if not already set
+          if (!botData.tokenName && metadataResult.primaryMetadata.name) {
+            botData.tokenName = metadataResult.primaryMetadata.name;
+          }
+          if (!botData.ticker && metadataResult.primaryMetadata.symbol) {
+            botData.ticker = metadataResult.primaryMetadata.symbol;
+          }
+          ctx.logger.debug?.('Chain validated via multi-chain metadata', {
+            address: botData.contractAddress.substring(0, 20),
+            chainHint: botData.chain || validated.chain,
+            actualChain: chain,
+            symbol: metadataResult.primaryMetadata.symbol,
+          });
+        } else {
+          ctx.logger.warn('No metadata found for EVM address on any chain', {
+            address: botData.contractAddress.substring(0, 20),
+            chainHint: chain,
+          });
+        }
+      }
 
       // Resolve/create caller
       const caller = await ctx.repos.callers.getOrCreateCaller(
