@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Module System Consistency**: Standardized all packages to CommonJS with proper TypeScript configuration
+  - Updated `tsconfig.base.json` to use `"module": "commonjs"` and `"moduleResolution": "node"`
+  - Verified all packages have consistent module system configuration (CommonJS for most, ESM for CLI/workflows/data)
+  - Fixed test files to use CommonJS-compatible patterns where needed
+  - Removed `.js` extensions from relative imports in CommonJS packages (standard CommonJS practice)
+  - ESM packages (CLI, workflows, data) remain ESM as intended with proper `.js` extensions
+
 ### Added
 
 - **DuckDB Ingestion Idempotency Foundation** (packages/ingestion)
