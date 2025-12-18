@@ -64,6 +64,7 @@ export function TelegramTuiApp(props: Props) {
   const [monthIndex, setMonthIndex] = useState(0);
   const [dayIndex, setDayIndex] = useState(0);
   const [shouldLoad, setShouldLoad] = useState(false); // Don't load until date is selected
+  const [loadingProgress, setLoadingProgress] = useState({ loaded: 0, total: 0, phase: 'idle' as 'idle' | 'scanning' | 'loading' });
 
   const statusRef = useRef({
     normalizedDone: false,
@@ -74,23 +75,58 @@ export function TelegramTuiApp(props: Props) {
   // First, scan files to get available dates (lightweight - just read first few lines)
   const [availableDates, setAvailableDates] = useState<{ months: string[]; days: Map<string, string[]> }>({ months: [], days: new Map() });
   const [scanningDates, setScanningDates] = useState(true);
+  
+  // Statistics: message counts per day/month
+  const [statistics, setStatistics] = useState<{
+    byMonth: Map<string, { ok: number; err: number }>;
+    byDay: Map<string, { ok: number; err: number }>;
+  }>({ byMonth: new Map(), byDay: new Map() });
 
   // Scan for available dates without loading all data
   useEffect(() => {
     if (!scanningDates) return;
 
+    setLoadingProgress({ loaded: 0, total: 0, phase: 'scanning' });
+
     const months = new Set<string>();
     const daysByMonth = new Map<string, Set<string>>();
+    const statsByMonth = new Map<string, { ok: number; err: number }>();
+    const statsByDay = new Map<string, { ok: number; err: number }>();
     let lineCount = 0;
-    const maxScanLines = 1000; // Only scan first 1000 lines to find dates
+    let totalLines = 0;
+    const maxScanLines = 10000; // Scan more lines for better statistics
 
-    const scanFile = (filePath: string) => {
+    // Count total lines first (approximate)
+    const countLines = (filePath: string): Promise<number> => {
+      return new Promise((resolve) => {
+        const rs = fs.createReadStream(filePath, { encoding: 'utf8' });
+        const rl = readline.createInterface({ input: rs, crlfDelay: Infinity });
+        let count = 0;
+        rl.on('line', () => {
+          count++;
+          if (count >= 100000) {
+            // Cap at 100k for performance
+            rl.close();
+            rs.close();
+            resolve(count);
+          }
+        });
+        rl.on('close', () => resolve(count));
+        rs.on('error', () => resolve(0));
+      });
+    };
+
+    const scanFile = (filePath: string, isNormalized: boolean) => {
       return new Promise<void>((resolve) => {
         const rs = fs.createReadStream(filePath, { encoding: 'utf8' });
         const rl = readline.createInterface({ input: rs, crlfDelay: Infinity });
 
         rl.on('line', (line: string) => {
-          if (lineCount++ >= maxScanLines) {
+          lineCount++;
+          if (lineCount % 100 === 0) {
+            setLoadingProgress({ loaded: lineCount, total: totalLines || 1, phase: 'scanning' });
+          }
+          if (lineCount >= maxScanLines) {
             rl.close();
             rs.close();
             resolve();
@@ -111,6 +147,19 @@ export function TelegramTuiApp(props: Props) {
                 daysByMonth.set(monthKey, new Set());
               }
               daysByMonth.get(monthKey)!.add(dayKey);
+
+              // Update statistics
+              const monthStats = statsByMonth.get(monthKey) || { ok: 0, err: 0 };
+              const dayStats = statsByDay.get(dayKey) || { ok: 0, err: 0 };
+              if (isNormalized) {
+                monthStats.ok++;
+                dayStats.ok++;
+              } else {
+                monthStats.err++;
+                dayStats.err++;
+              }
+              statsByMonth.set(monthKey, monthStats);
+              statsByDay.set(dayKey, dayStats);
             }
           } catch {
             // Skip parse errors during scan
@@ -123,16 +172,24 @@ export function TelegramTuiApp(props: Props) {
     };
 
     Promise.all([
-      scanFile(props.normalizedPath),
-      scanFile(props.quarantinePath),
-    ]).then(() => {
+      countLines(props.normalizedPath),
+      countLines(props.quarantinePath),
+    ]).then(([normCount, qCount]) => {
+      totalLines = normCount + qCount;
+      return Promise.all([
+        scanFile(props.normalizedPath, true),
+        scanFile(props.quarantinePath, false),
+      ]);
+    }).then(() => {
       const sortedMonths = Array.from(months).sort().reverse();
       const sortedDays = new Map<string, string[]>();
       for (const [month, days] of daysByMonth.entries()) {
         sortedDays.set(month, Array.from(days).sort().reverse());
       }
       setAvailableDates({ months: sortedMonths, days: sortedDays });
+      setStatistics({ byMonth: statsByMonth, byDay: statsByDay });
       setScanningDates(false);
+      setLoadingProgress({ loaded: 0, total: 0, phase: 'idle' });
     });
   }, [props.normalizedPath, props.quarantinePath, scanningDates]);
 
