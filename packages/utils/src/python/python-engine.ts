@@ -495,7 +495,11 @@ export class PythonEngine {
       }
 
       // Re-throw if already a custom error
-      if (error instanceof AppError || error instanceof ValidationError || error instanceof TimeoutError) {
+      if (
+        error instanceof AppError ||
+        error instanceof ValidationError ||
+        error instanceof TimeoutError
+      ) {
         throw error;
       }
 

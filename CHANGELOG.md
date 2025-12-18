@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **DuckDB Ingestion Idempotency Foundation** (packages/ingestion)
+  - Comprehensive idempotency test matrix covering: same input twice, partial runs, concurrent writes, schema mismatches
+  - Enhanced DuckDB schema with `run_id` tracking, PRIMARY KEY constraints, and `ingestion_runs` table
+  - Schema migration script (`tools/telegram/migrate_schema_idempotent.py`) for upgrading existing databases
+  - Test suite documenting current state and target behavior (packages/ingestion/tests/duckdb-idempotency.test.ts)
+  - Schema design documentation with implementation strategy (packages/ingestion/docs/DUCKDB_IDEMPOTENCY_SCHEMA.md)
+  - Idempotency README with test matrix and migration path (packages/ingestion/tests/DUCKDB_IDEMPOTENCY_README.md)
 - **Python Bridge Foundation Hardening** (packages/utils)
   - Comprehensive failure mode tests for PythonEngine subprocess execution (26 tests)
   - Handler integration tests verifying error propagation (17 tests)
@@ -30,6 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+- **HIGH**: DuckDB ingestion schema enhanced with PRIMARY KEY constraints and run_id tracking - prevents duplicate data and enables idempotent ingestion (packages/ingestion)
 - **HIGH**: Python bridge now validates tool output against schemas before returning - prevents silent data corruption (packages/utils)
 - **HIGH**: Python bridge enforces artifact file existence verification - prevents "half-truth" runs where tools claim success but files are missing (packages/utils)
 - **CRITICAL**: Fixed SQL injection vulnerability in ClickHouse queries - now uses parameterized queries with `{param:Type}` syntax
