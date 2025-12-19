@@ -115,6 +115,9 @@ export class CommandContext {
         return new OhlcvIngestionService();
       },
       ohlcvFetchJob: () => {
+        // Deprecated: Use OhlcvBirdeyeFetch directly or via workflow
+        // Keeping for backward compatibility
+        const { OhlcvFetchJob } = require('@quantbot/jobs');
         return new OhlcvFetchJob();
       },
       telegramIngestion: () => {

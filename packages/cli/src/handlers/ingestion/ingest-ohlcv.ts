@@ -55,10 +55,9 @@ export async function ingestOhlcvHandler(args: IngestOhlcvArgs, ctx: CommandCont
     maxRetries: 3,
   };
 
-  // Create workflow context with jobs service
-  const workflowContext = createOhlcvIngestionContext({
-    ohlcvFetchJob: ctx.services.ohlcvFetchJob(),
-  });
+  // Create workflow context with Birdeye fetch service
+  // Note: The workflow handles storage (ClickHouse) and metadata (DuckDB) internally
+  const workflowContext = createOhlcvIngestionContext();
 
   // Call workflow (orchestration happens here)
   const result = await ingestOhlcv(spec, workflowContext);

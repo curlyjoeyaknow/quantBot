@@ -697,7 +697,7 @@ export class PythonEngine {
 /**
  * @deprecated Use CommandContext or createProductionContext factory instead.
  * This singleton is kept for backward compatibility but should not be used in new code.
- * 
+ *
  * Use:
  * - CommandContext.services.pythonEngine() for CLI commands
  * - Pass PythonEngine to createProductionContext config for workflows
