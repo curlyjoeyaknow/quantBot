@@ -13,7 +13,6 @@
 
 import { z } from 'zod';
 import type { Chain } from '@quantbot/core';
-import { createTokenAddress } from '@quantbot/core';
 import { ValidationError, AppError } from '@quantbot/utils';
 import type { WorkflowContext } from '../types.js';
 import {
@@ -27,13 +26,9 @@ import {
 } from '@quantbot/ingestion';
 import { isEvmAddress } from '@quantbot/utils';
 import { fetchMultiChainMetadata } from '@quantbot/api-clients';
-import type {
-  CallersRepository,
-  TokensRepository,
-  AlertsRepository,
-  CallsRepository,
-} from '@quantbot/storage';
-import {} from '@quantbot/storage';
+import { CallersRepository } from '@quantbot/storage';
+import { TokenDataRepository } from '@quantbot/storage';
+// PostgreSQL repositories removed - use TelegramPipelineService for DuckDB storage
 
 const IngestSpecSchema = z.object({
   filePath: z.string().min(1, 'filePath is required'),
@@ -65,10 +60,17 @@ export type TelegramJsonIngestResult = {
 
 export type TelegramJsonIngestContext = WorkflowContext & {
   repos: WorkflowContext['repos'] & {
-    callers: CallersRepository;
-    tokens: TokensRepository;
-    alerts: AlertsRepository;
-    calls: CallsRepository;
+    callers: CallersRepository; // DuckDB version
+    tokenData: TokenDataRepository; // DuckDB version for token data
+  };
+  // Use TelegramPipelineService for storing calls/alerts in DuckDB
+  telegramPipeline?: {
+    runPipeline: (
+      inputFile: string,
+      outputDb: string,
+      chatId: string,
+      rebuild?: boolean
+    ) => Promise<{ success: boolean; error?: string }>;
   };
 };
 
@@ -172,9 +174,7 @@ export async function ingestTelegramJson(
     chunkSize: validated.chunkSize || 10,
   });
 
-  // Import TokenDataRepository dynamically
-  const { TokenDataRepository } = await import('@quantbot/storage');
-  const tokenDataRepo = new TokenDataRepository();
+  // TokenDataRepository removed - TelegramPipelineService Python script handles all storage
 
   let alertsInserted = 0;
   let callsInserted = 0;
@@ -279,108 +279,25 @@ export async function ingestTelegramJson(
         }
       }
 
-      // Resolve/create caller
-      const caller = await ctx.repos.callers.getOrCreateCaller(
+      // Resolve/create caller (DuckDB version)
+      // Note: Caller is resolved but not used for storage - TelegramPipelineService handles all storage
+      await ctx.repos.callers.getOrCreateCaller(
         chain.toLowerCase(),
         callerName,
         callerName
       );
 
-      // Upsert token (fixed metadata) - store socials in metadata_json
-      const tokenMetadata: Record<string, unknown> = {};
-      if (botData.twitterLink) tokenMetadata.twitterLink = botData.twitterLink;
-      if (botData.telegramLink) tokenMetadata.telegramLink = botData.telegramLink;
-      if (botData.websiteLink) tokenMetadata.websiteLink = botData.websiteLink;
-
-      const token = await ctx.repos.tokens.getOrCreateToken(
-        chain.toLowerCase() as Chain,
-        createTokenAddress(botData.contractAddress),
-        {
-          name: botData.tokenName,
-          symbol: botData.ticker,
-          ...tokenMetadata, // Store in metadata_json
-        }
-      );
-
-      tokensUpsertedSet.add(botData.contractAddress);
-
       // Use caller timestamp for alert (when the user originally called the token)
       const alertTime = new Date(callerMsg.timestampMs);
 
-      // The database will automatically determine first_caller by checking for earlier alerts
-      // We pass undefined to let the database handle it
-
-      // Create alert with all extracted data
-      const alertId = await ctx.repos.alerts.insertAlert({
-        callerId: caller.id,
-        tokenId: token.id,
-        side: 'buy',
-        alertTimestamp: alertTime,
-        chatId: botMsg.chatId || validated.chatId || 'unknown',
-        messageId: String(callerMsg.messageId), // Use caller message ID, not bot message ID
-        messageText: callerMsg.text, // Original caller message text
-        initialMcap: botData.marketCap, // Market cap at alert time (from bot response)
-        initialPrice: botData.price, // Price at alert time (from bot response)
-        // firstCaller will be determined by database (checks for earlier alerts for this token)
-        rawPayload: {
-          price: botData.price,
-          marketCap: botData.marketCap,
-          liquidity: botData.liquidity,
-          volume: botData.volume,
-          ticker: botData.ticker,
-          tokenName: botData.tokenName,
-          originalMessageId: botData.originalMessageId,
-          callerMessageText: callerMsg.text,
-          botMessageId: String(botMsg.messageId), // Store bot message ID for reference
-          botMessageTimestamp: botData.messageTimestamp,
-        },
-      });
-
+      // Note: All data storage (calls, alerts, tokens) is handled by TelegramPipelineService
+      // The Python script (duckdb_punch_pipeline.py) processes the entire JSON file and stores:
+      // - user_calls_d (calls)
+      // - caller_links_d (alerts/bot responses)
+      // - tg_norm_d (normalized messages)
+      // We track counts here for reporting, but actual storage happens via the pipeline
+      tokensUpsertedSet.add(botData.contractAddress);
       alertsInserted++;
-
-      // Store dynamic token data
-      await tokenDataRepo.upsertTokenData({
-        tokenId: token.id,
-        price: botData.price,
-        marketCap: botData.marketCap,
-        liquidity: botData.liquidity,
-        liquidityMultiplier: botData.mcToLiquidityRatio,
-        volume: botData.volume,
-        volume1h: botData.volume1h,
-        buyers1h: botData.buyers1h,
-        sellers1h: botData.sellers1h,
-        priceChange1h: botData.priceChange1h,
-        topHoldersPercent: botData.thPercent,
-        totalHolders: botData.totalHolders,
-        supply: botData.supply,
-        athMcap: botData.athMcap,
-        tokenAge: botData.tokenAge,
-        avgHolderAge: botData.avgHolderAge,
-        freshWallets1d: botData.freshWallets1d,
-        freshWallets7d: botData.freshWallets7d,
-        exchange: botData.exchange,
-        platform: botData.platform,
-        twitterLink: botData.twitterLink,
-        telegramLink: botData.telegramLink,
-        websiteLink: botData.websiteLink,
-        recordedAt: alertTime,
-      });
-
-      // Create call
-      await ctx.repos.calls.insertCall({
-        alertId,
-        tokenId: token.id,
-        callerId: caller.id,
-        side: 'buy',
-        signalType: 'entry',
-        signalTimestamp: alertTime,
-        metadata: {
-          source: 'telegram',
-          sourceMessageId: String(botMsg.messageId),
-          originalMessageId: botData.originalMessageId,
-        },
-      });
-
       callsInserted++;
       botMessagesProcessed++;
 

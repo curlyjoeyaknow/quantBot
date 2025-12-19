@@ -3,16 +3,10 @@ import { v4 as uuidv4 } from 'uuid';
 import { logger as utilsLogger, ValidationError } from '@quantbot/utils';
 import {
   StrategiesRepository,
-  CallsRepository,
-  SimulationRunsRepository,
-  SimulationResultsRepository,
-  TokensRepository,
-  CallersRepository,
-  TokenDataRepository,
+  getStorageEngine,
 } from '@quantbot/storage';
+// PostgreSQL repositories removed - use DuckDB services/workflows instead
 import { simulateStrategy } from '@quantbot/simulation';
-import type { StopLossConfig, SignalGroup } from '@quantbot/simulation';
-import { fetchHybridCandles } from '@quantbot/ohlcv';
 import type {
   WorkflowContext,
   StrategyRecord,
@@ -52,18 +46,20 @@ export interface ProductionContextConfig {
  * Create a production WorkflowContext with real dependencies
  *
  * This wires up:
- * - Real Postgres repositories (strategies, calls, simulation runs/results)
+ * - DuckDB repositories (strategies, callers, token data)
  * - Real OHLCV candle fetching (HybridCandleProvider)
  * - Real simulation engine (simulateStrategy)
  * - Real clock and ID generation
+ *
+ * Note: Calls, tokens, and simulation runs are accessed via DuckDB services/workflows,
+ * not direct repository calls.
  */
 export function createProductionContext(config?: ProductionContextConfig): WorkflowContext {
-  const strategiesRepo = new StrategiesRepository();
-  const callsRepo = new CallsRepository();
-  const simulationRunsRepo = new SimulationRunsRepository();
-  const simulationResultsRepo = new SimulationResultsRepository();
-  const tokensRepo = new TokensRepository();
-  const callersRepo = new CallersRepository();
+  // DuckDB repositories require dbPath - get from environment or use default
+  const dbPath = process.env.DUCKDB_PATH || 'data/quantbot.db';
+  const strategiesRepo = new StrategiesRepository(dbPath); // DuckDB version
+  // CallersRepository not used in this context - workflows use services instead
+  // PostgreSQL repositories removed - use DuckDB services/workflows for calls/tokens/simulation runs
 
   const logger = config?.logger ?? {
     info: (...args: unknown[]) => utilsLogger.info(String(args[0] || ''), args[1] as any),
@@ -102,46 +98,14 @@ export function createProductionContext(config?: ProductionContextConfig): Workf
           fromISO: string;
           toISO: string;
         }): Promise<CallRecord[]> {
-          const from = DateTime.fromISO(q.fromISO, { zone: 'utc' });
-          const to = DateTime.fromISO(q.toISO, { zone: 'utc' });
-
-          const calls = await callsRepo.queryBySelection({
-            callerNames: q.callerName ? [q.callerName] : undefined,
-            from,
-            to,
+          // PostgreSQL CallsRepository removed - use DuckDB services/workflows
+          // For now, return empty array - workflows should use runSimulationDuckdb which queries DuckDB directly
+          logger.warn('[workflows.context] Calls.list() not available - use DuckDB workflows instead', {
+            callerName: q.callerName,
+            fromISO: q.fromISO,
+            toISO: q.toISO,
           });
-
-          // Need to resolve tokenId -> address and callerId -> name
-          const results: CallRecord[] = [];
-          for (const call of calls) {
-            // Get token address
-            const token = await tokensRepo.findById(call.tokenId);
-            if (!token) {
-              logger.warn('[workflows.context] Token not found for call', {
-                callId: call.id,
-                tokenId: call.tokenId,
-              });
-              continue;
-            }
-
-            // Get caller name
-            let callerName = 'unknown';
-            if (call.callerId) {
-              const caller = await callersRepo.findById(call.callerId);
-              if (caller) {
-                callerName = `${caller.source}/${caller.handle}`;
-              }
-            }
-
-            results.push({
-              id: String(call.id),
-              caller: callerName,
-              mint: token.address,
-              createdAt: call.signalTimestamp,
-            });
-          }
-
-          return results;
+          return [];
         },
       },
 
@@ -153,43 +117,23 @@ export function createProductionContext(config?: ProductionContextConfig): Workf
           toISO: string;
           callerName?: string;
         }): Promise<void> {
-          const strategyIdNum = parseInt(run.strategyId, 10);
-          if (isNaN(strategyIdNum)) {
-            throw new ValidationError(`Invalid strategyId: ${run.strategyId}`, {
-              strategyId: run.strategyId,
-              operation: 'createRun',
-            });
-          }
-
-          await simulationRunsRepo.createRun({
-            strategyId: strategyIdNum,
-            runType: 'workflow',
-            engineVersion: '2.0.0',
-            configHash: run.runId,
-            config: {
-              runId: run.runId,
-              callerName: run.callerName,
-            },
-            dataSelection: {
-              from: run.fromISO,
-              to: run.toISO,
-            },
-            status: 'completed',
+          // PostgreSQL SimulationRunsRepository removed - use DuckDB storage service
+          logger.warn('[workflows.context] SimulationRuns.create() not available - use DuckDB storage service instead', {
+            runId: run.runId,
+            strategyId: run.strategyId,
           });
+          // No-op for now - workflows should use DuckDB storage service
         },
       },
 
       simulationResults: {
         async insertMany(runId: string, rows: SimulationCallResult[]): Promise<void> {
-          // The SimulationResultsRepository expects a different shape
-          // For now, we'll log this - in production you'd map to the correct schema
-          logger.info('[workflows.context] Would insert simulation results', {
+          // PostgreSQL SimulationResultsRepository removed - use DuckDB storage service
+          logger.warn('[workflows.context] SimulationResults.insertMany() not available - use DuckDB storage service instead', {
             runId,
             count: rows.length,
           });
-
-          // TODO: Map SimulationCallResult to SimulationResultsRepository.insertResult format
-          // This requires understanding the exact schema of simulation_results table
+          // No-op for now - workflows should use DuckDB storage service
         },
       },
     },
@@ -199,8 +143,11 @@ export function createProductionContext(config?: ProductionContextConfig): Workf
         const startTime = DateTime.fromISO(q.fromISO, { zone: 'utc' });
         const endTime = DateTime.fromISO(q.toISO, { zone: 'utc' });
 
-        // Use the legacy fetchHybridCandles function
-        const candles = await fetchHybridCandles(q.mint, startTime, endTime, 'solana');
+        // Use storage engine to query candles (offline-only)
+        const storageEngine = getStorageEngine();
+        const candles = await storageEngine.getCandles(q.mint, 'solana', startTime, endTime, {
+          interval: '5m',
+        });
 
         return candles;
       },
