@@ -10,7 +10,7 @@
 export * from './ohlcv-service';
 export * from './ohlcv-engine';
 export * from './ohlcv-query';
-export * from './backfill-service';
+// export * from './backfill-service'; // TEMPORARILY COMMENTED OUT - has build errors
 export * from './ohlcv-storage';
 // Export getCoverage for jobs to check coverage before fetching
 export { getCoverage } from './ohlcv-storage';

@@ -25,7 +25,7 @@ export const EventLogEntrySchema = z.object({
   credits_cost: z.number().default(0),
   run_id: z.string().optional(),
   error_message: z.string().nullable().optional(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
 export type EventLogEntry = z.infer<typeof EventLogEntrySchema>;
@@ -144,7 +144,7 @@ export class EventLogService {
     }
 
     try {
-      const id = entry.id || crypto.randomUUID();
+      const id = crypto.randomUUID();
       const validated = EventLogEntrySchema.parse({ ...entry, id });
 
       const scriptPath = join(process.cwd(), 'tools/observability/event_log.py');

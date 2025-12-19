@@ -263,7 +263,7 @@ describe('OHLCV Ingestion Stress Tests', () => {
 
     API_FAILURE_SCENARIOS.forEach((scenario) => {
       it(`should handle ${scenario.description}`, async () => {
-        if (scenario.timeout) {
+        if ('timeout' in scenario && scenario.timeout) {
           ingestionEngine.fetchCandles.mockImplementation(() => {
             return new Promise((_, reject) => {
               setTimeout(() => reject(new Error('Timeout')), 100);
@@ -373,20 +373,9 @@ describe('OHLCV Ingestion Stress Tests', () => {
 
     PATHOLOGICAL_CANDLES.forEach((testCase) => {
       it(`should handle ${testCase.description}`, async () => {
-        const { getPostgresPool } = await import('@quantbot/storage');
-        const mockPool = {
-          query: vi.fn().mockResolvedValue({
-            rows: [
-              {
-                id: 1,
-                alert_price: 1.0,
-                initial_price: 1.0,
-                alert_timestamp: new Date(),
-              },
-            ],
-          }),
-        };
-        vi.mocked(getPostgresPool).mockReturnValue(mockPool as any);
+        // PostgreSQL removed - use DuckDB workflows instead
+        // This test case needs to be updated to use DuckDB workflows
+        // For now, we'll skip the PostgreSQL-specific parts
 
         ingestionEngine.fetchCandles.mockResolvedValue({
           '1m': testCase.candles,
@@ -561,7 +550,7 @@ describe('OHLCV Ingestion Stress Tests', () => {
           });
         } else if (scenario.error === 'Disk full') {
           storageEngine.storeCandles.mockRejectedValue(new Error('Disk full'));
-        } else if (scenario.partial) {
+        } else if ('partial' in scenario && scenario.partial) {
           // Partial write - some succeed, some fail
           storageEngine.storeCandles.mockResolvedValueOnce(undefined);
           storageEngine.storeCandles.mockRejectedValueOnce(new Error('Partial write'));

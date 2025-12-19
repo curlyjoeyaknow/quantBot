@@ -156,7 +156,9 @@ export async function getCoverage(
   try {
     const startDateTime = DateTime.fromJSDate(startTime);
     const endDateTime = DateTime.fromJSDate(endTime);
-    const candles = await storageEngine.getCandles(mint, chain, startDateTime, endDateTime, { interval });
+    const candles = await storageEngine.getCandles(mint, chain, startDateTime, endDateTime, {
+      interval,
+    });
 
     if (candles.length === 0) {
       return {

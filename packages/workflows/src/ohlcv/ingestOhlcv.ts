@@ -303,7 +303,8 @@ export async function ingestOhlcv(
       });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
-      ctx.logger.error('Failed to store OHLCV candles', error as Error, {
+      ctx.logger.error('Failed to store OHLCV candles', {
+        error: error instanceof Error ? error.message : String(error),
         mint: fetchResult.workItem.mint.substring(0, 20),
       });
       ingestionResults.push({
@@ -325,8 +326,8 @@ export async function ingestOhlcv(
   const totalCandlesStored = ingestionResults.reduce((sum, r) => sum + r.candlesStored, 0);
 
   const errors = ingestionResults
-    .filter((r) => !r.success && r.error)
-    .map((r) => ({
+    .filter((r: any) => !r.success && r.error)
+    .map((r: any) => ({
       mint: r.workItem.mint,
       chain: r.workItem.chain,
       error: r.error!,

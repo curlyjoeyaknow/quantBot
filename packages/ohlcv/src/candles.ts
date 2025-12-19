@@ -18,6 +18,28 @@
 // import { config } from 'dotenv';
 // config({ override: true });
 // import axios from 'axios';
+// Temporary: Import axios for deprecated code (will be removed)
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const axios = require('axios');
+//
+// Type declarations for deprecated functions (to satisfy TypeScript)
+// These functions should not be used - they are kept for reference only
+declare const axios: {
+  get: (url: string, config?: {
+    headers?: Record<string, string>;
+    params?: Record<string, unknown>;
+    timeout?: number;
+    validateStatus?: (status: number) => boolean;
+  }) => Promise<{
+    status: number;
+    data?: {
+      data?: {
+        items?: unknown[];
+      };
+      success?: boolean;
+    };
+  }>;
+};
 import { DateTime } from 'luxon';
 import type { Candle } from '@quantbot/core';
 import { logger, ConfigurationError, ApiError } from '@quantbot/utils';
@@ -254,7 +276,7 @@ async function fetchBirdeyeCandlesChunk(
         padding: true, // Always fill missing intervals with zeros
         outlier: true, // Remove outliers (Birdeye-API specific)
       },
-      validateStatus: (status) => status < 500, // Don't throw on 4xx errors
+      validateStatus: (status: number) => status < 500, // Don't throw on 4xx errors
     });
 
     // Handle API errors gracefully

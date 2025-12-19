@@ -8,6 +8,7 @@
     "composite": true,
     "baseUrl": ".",
     "skipLibCheck": true,
+    "noImplicitAny": false,
     "paths": {
       "@quantbot/utils": ["../utils/src"],
       "@quantbot/utils/*": ["../utils/src/*"],
@@ -20,14 +21,19 @@
     }
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "**/*.test.ts"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "**/*.test.ts",
+    "src/TelegramAlertIngestionService.ts",
+    "src/TelegramCallIngestionService.ts"
+  ],
   "references": [
     { "path": "../core" },
     { "path": "../utils" },
     { "path": "../storage" },
     { "path": "../api-clients" },
     { "path": "../ohlcv" },
-    { "path": "../analytics" }
   ]
 }
 

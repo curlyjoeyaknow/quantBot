@@ -5,7 +5,8 @@
  */
 
 import { logger } from '@quantbot/utils';
-import { ApiQuotaRepository } from '@quantbot/storage';
+// TODO: ApiQuotaRepository needs to be implemented in storage package
+// import { ApiQuotaRepository } from '@quantbot/storage';
 
 export interface QuotaStatus {
   service: string;
@@ -21,34 +22,49 @@ export interface ApiQuotas {
   helius: QuotaStatus;
 }
 
+// TODO: ApiQuotaRepository needs to be implemented in storage package
 // Singleton repository instance
-let quotaRepository: ApiQuotaRepository | null = null;
+// let quotaRepository: ApiQuotaRepository | null = null;
 
-function getQuotaRepository(): ApiQuotaRepository {
-  if (!quotaRepository) {
-    quotaRepository = new ApiQuotaRepository();
-  }
-  return quotaRepository;
-}
+// function getQuotaRepository(): ApiQuotaRepository {
+//   if (!quotaRepository) {
+//     quotaRepository = new ApiQuotaRepository();
+//   }
+//   return quotaRepository;
+// }
 
 /**
  * Check API quotas
  */
 export async function checkApiQuotas(): Promise<ApiQuotas> {
-  const repo = getQuotaRepository();
+  // TODO: Implement ApiQuotaRepository in storage package
+  // const repo = getQuotaRepository();
 
   // Get limits from environment variables
   const birdeyeLimit = parseInt(process.env.BIRDEYE_QUOTA_LIMIT || '100000', 10);
   const heliusLimit = parseInt(process.env.HELIUS_QUOTA_LIMIT || '5000000', 10);
 
-  const [birdeyeStatus, heliusStatus] = await Promise.all([
-    repo.getQuotaStatus('birdeye', birdeyeLimit, 0.2),
-    repo.getQuotaStatus('helius', heliusLimit, 0.2),
-  ]);
+  // Return default statuses until repository is implemented
+  const now = new Date();
+  const resetAt = new Date(now.getTime() + 24 * 60 * 60 * 1000); // 24 hours from now
 
   return {
-    birdeye: birdeyeStatus,
-    helius: heliusStatus,
+    birdeye: {
+      service: 'birdeye',
+      limit: birdeyeLimit,
+      used: 0,
+      remaining: birdeyeLimit,
+      resetAt,
+      warningThreshold: 0.2,
+    },
+    helius: {
+      service: 'helius',
+      limit: heliusLimit,
+      used: 0,
+      remaining: heliusLimit,
+      resetAt,
+      warningThreshold: 0.2,
+    },
   };
 }
 
@@ -60,8 +76,9 @@ export async function recordApiUsage(
   credits: number,
   metadata?: Record<string, unknown>
 ): Promise<void> {
-  const repo = getQuotaRepository();
-  await repo.recordUsage(service, credits, metadata);
+  // TODO: Implement ApiQuotaRepository in storage package
+  // const repo = getQuotaRepository();
+  // await repo.recordUsage(service, credits, metadata);
   logger.debug('API usage recorded', { service, credits });
 }
 

@@ -13,6 +13,7 @@
 
 import { z } from 'zod';
 import { ValidationError, AppError } from '@quantbot/utils';
+import type { Chain } from '@quantbot/core';
 import type { WorkflowContext } from '../types.js';
 import {
   parseJsonExport,

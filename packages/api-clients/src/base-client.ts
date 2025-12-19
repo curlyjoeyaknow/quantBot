@@ -196,7 +196,7 @@ export class BaseApiClient {
         return response;
       },
       async (error: AxiosError) => {
-        const startTime = error.config?.['_startTime'] as number | undefined;
+        const startTime = (error.config as AxiosRequestConfig & { _startTime?: number })?._startTime;
         const latencyMs = startTime ? Date.now() - startTime : 0;
 
         // Handle rate limiting
