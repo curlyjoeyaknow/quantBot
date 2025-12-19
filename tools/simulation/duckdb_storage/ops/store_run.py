@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 from typing import Optional, Dict, Any
 import duckdb
 import json
+import hashlib
 
 
 class StoreRunInput(BaseModel):
@@ -39,7 +40,35 @@ class StoreRunInput(BaseModel):
 class StoreRunOutput(BaseModel):
     success: bool
     run_id: Optional[str] = None
+    strategy_config_id: Optional[str] = None
     error: Optional[str] = None
+
+
+def _generate_strategy_config_id(
+    strategy_id: str,
+    entry_config: Dict[str, Any],
+    exit_config: Dict[str, Any],
+    reentry_config: Optional[Dict[str, Any]],
+    cost_config: Optional[Dict[str, Any]],
+    stop_loss_config: Optional[Dict[str, Any]],
+    entry_signal_config: Optional[Dict[str, Any]],
+    exit_signal_config: Optional[Dict[str, Any]],
+) -> str:
+    """Generate a unique ID for a strategy config based on its contents."""
+    # Create a deterministic hash of the config
+    config_dict = {
+        "strategy_id": strategy_id,
+        "entry_config": entry_config,
+        "exit_config": exit_config,
+        "reentry_config": reentry_config,
+        "cost_config": cost_config,
+        "stop_loss_config": stop_loss_config,
+        "entry_signal_config": entry_signal_config,
+        "exit_signal_config": exit_signal_config,
+    }
+    config_json = json.dumps(config_dict, sort_keys=True)
+    config_hash = hashlib.sha256(config_json.encode()).hexdigest()[:16]
+    return f"{strategy_id}_cfg_{config_hash}"
 
 
 def run(con: duckdb.DuckDBPyConnection, input: StoreRunInput) -> StoreRunOutput:
@@ -69,14 +98,26 @@ def run(con: duckdb.DuckDBPyConnection, input: StoreRunInput) -> StoreRunOutput:
             input.caller_name,
         ])
 
-        # Insert into run_strategies_used table (for reproducibility)
+        # Generate or get strategy_config_id
+        strategy_config_id = _generate_strategy_config_id(
+            input.strategy_id,
+            input.entry_config,
+            input.exit_config,
+            input.reentry_config,
+            input.cost_config,
+            input.stop_loss_config,
+            input.entry_signal_config,
+            input.exit_signal_config,
+        )
+
+        # Insert or replace into strategy_config table (replica of strategies with run-specific params)
         con.execute("""
-            INSERT OR REPLACE INTO run_strategies_used
-            (run_id, strategy_id, strategy_name, entry_config, exit_config,
+            INSERT OR REPLACE INTO strategy_config
+            (strategy_config_id, strategy_id, strategy_name, entry_config, exit_config,
              reentry_config, cost_config, stop_loss_config, entry_signal_config, exit_signal_config)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, [
-            input.run_id,
+            strategy_config_id,
             input.strategy_id,
             input.strategy_name,
             json.dumps(input.entry_config),
@@ -88,7 +129,17 @@ def run(con: duckdb.DuckDBPyConnection, input: StoreRunInput) -> StoreRunOutput:
             json.dumps(input.exit_signal_config) if input.exit_signal_config else None,
         ])
 
+        # Insert into run_strategies_used table (links run to strategy config)
+        con.execute("""
+            INSERT OR REPLACE INTO run_strategies_used
+            (run_id, strategy_config_id)
+            VALUES (?, ?)
+        """, [
+            input.run_id,
+            strategy_config_id,
+        ])
+
         con.commit()
-        return StoreRunOutput(success=True, run_id=input.run_id)
+        return StoreRunOutput(success=True, run_id=input.run_id, strategy_config_id=strategy_config_id)
     except Exception as e:
         return StoreRunOutput(success=False, error=str(e))

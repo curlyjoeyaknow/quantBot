@@ -38,10 +38,10 @@ CREATE TABLE IF NOT EXISTS simulation_runs (
   FOREIGN KEY (strategy_id) REFERENCES simulation_strategies(strategy_id)
 );
 
--- Run strategies used (stores exact strategy configuration for each run)
--- This allows reproducibility even if strategy config changes later
-CREATE TABLE IF NOT EXISTS run_strategies_used (
-  run_id TEXT NOT NULL,
+-- Strategy configurations (replica of strategies table with run-specific parameters)
+-- Each unique config gets its own ID, allowing reuse across runs
+CREATE TABLE IF NOT EXISTS strategy_config (
+  strategy_config_id TEXT PRIMARY KEY,
   strategy_id TEXT NOT NULL,
   strategy_name TEXT NOT NULL,
   entry_config JSON NOT NULL,
@@ -52,8 +52,18 @@ CREATE TABLE IF NOT EXISTS run_strategies_used (
   entry_signal_config JSON,
   exit_signal_config JSON,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (strategy_id) REFERENCES simulation_strategies(strategy_id)
+);
+
+-- Run strategies used (links runs to their exact strategy configuration)
+-- This allows reproducibility even if strategy config changes later
+CREATE TABLE IF NOT EXISTS run_strategies_used (
+  run_id TEXT NOT NULL,
+  strategy_config_id TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (run_id),
-  FOREIGN KEY (run_id) REFERENCES simulation_runs(run_id) ON DELETE CASCADE
+  FOREIGN KEY (run_id) REFERENCES simulation_runs(run_id) ON DELETE CASCADE,
+  FOREIGN KEY (strategy_config_id) REFERENCES strategy_config(strategy_config_id) ON DELETE RESTRICT
 );
 
 -- Simulation events (trades, entries, exits)
@@ -94,7 +104,8 @@ CREATE INDEX IF NOT EXISTS idx_simulation_runs_alert_timestamp ON simulation_run
 CREATE INDEX IF NOT EXISTS idx_simulation_runs_caller ON simulation_runs(caller_name);
 CREATE INDEX IF NOT EXISTS idx_simulation_events_run ON simulation_events(run_id);
 CREATE INDEX IF NOT EXISTS idx_ohlcv_mint_timestamp ON ohlcv_candles_d(mint, timestamp);
-CREATE INDEX IF NOT EXISTS idx_run_strategies_used_strategy ON run_strategies_used(strategy_id);
+CREATE INDEX IF NOT EXISTS idx_strategy_config_strategy_id ON strategy_config(strategy_id);
+CREATE INDEX IF NOT EXISTS idx_run_strategies_used_config ON run_strategies_used(strategy_config_id);
 """
 
 def setup_simulation_schema(con: duckdb.DuckDBPyConnection) -> None:

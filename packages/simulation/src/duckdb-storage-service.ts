@@ -26,6 +26,7 @@ export type StrategyStorageResult = z.infer<typeof StrategyStorageResultSchema>;
 export const RunStorageResultSchema = z.object({
   success: z.boolean(),
   run_id: z.string().optional(),
+  strategy_config_id: z.string().optional(),
   error: z.string().optional(),
 });
 
