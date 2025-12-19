@@ -58,6 +58,8 @@ def get_ohlcv_worklist(
         # Priority: caller_links_d (normalized) > user_calls_d (legacy)
         if 'caller_links_d' in table_names:
             # Query 1: Token groups (for efficient candle fetching)
+            # Note: side parameter is accepted but caller_links_d may not have a side column
+            # If side column exists, we'll add it to the WHERE clause
             token_group_query = """
             SELECT 
                 cl.mint,
@@ -69,6 +71,18 @@ def get_ohlcv_worklist(
               AND cl.mint != ''
               AND cl.trigger_ts_ms IS NOT NULL
             """
+            
+            # Try to add side filter if side column exists (check dynamically)
+            # Most caller_links_d tables don't have side, so we'll make it optional
+            try:
+                # Check if side column exists
+                columns = con.execute("PRAGMA table_info('caller_links_d')").fetchall()
+                column_names = [col[1] for col in columns]
+                if 'side' in column_names and side:
+                    token_group_query += f" AND cl.side = '{side}'"
+            except Exception:
+                # If table_info fails or side column doesn't exist, continue without side filter
+                pass
             
             # Query 2: Individual calls with enriched data (for ATH/ATL)
             calls_query = """
@@ -86,6 +100,15 @@ def get_ohlcv_worklist(
               AND cl.mint != ''
               AND cl.trigger_ts_ms IS NOT NULL
             """
+            
+            # Add side filter if side column exists (same check as above)
+            try:
+                columns = con.execute("PRAGMA table_info('caller_links_d')").fetchall()
+                column_names = [col[1] for col in columns]
+                if 'side' in column_names and side:
+                    calls_query += f" AND cl.side = '{side}'"
+            except Exception:
+                pass
             
             params = []
             
@@ -164,6 +187,24 @@ def get_ohlcv_worklist(
         else:
             token_groups = con.execute(token_group_query).fetchall()
             calls = con.execute(calls_query).fetchall()
+        
+        # Debug: Log query results and total counts
+        total_tokens_query = "SELECT COUNT(DISTINCT mint) FROM caller_links_d WHERE mint IS NOT NULL AND mint != '' AND trigger_ts_ms IS NOT NULL"
+        if params and from_date:
+            # Reuse from_date param if available
+            total_tokens_query += " AND trigger_ts_ms >= ?"
+            total_tokens_result = con.execute(total_tokens_query, [params[0]]).fetchone()
+        else:
+            total_tokens_result = con.execute(total_tokens_query).fetchone()
+        total_tokens = total_tokens_result[0] if total_tokens_result else 0
+        
+        print(f"DEBUG: Query returned {len(token_groups)} token groups (grouped by mint+chain)", file=sys.stderr)
+        print(f"DEBUG: Total unique tokens in date range: {total_tokens}", file=sys.stderr)
+        print(f"DEBUG: Total calls in date range: {len(calls)}", file=sys.stderr)
+        if from_date:
+            print(f"DEBUG: Date filter FROM: {from_date}", file=sys.stderr)
+        if to_date:
+            print(f"DEBUG: Date filter TO: {to_date}", file=sys.stderr)
         
         # Convert token groups
         token_groups_list = []

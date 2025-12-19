@@ -4,7 +4,7 @@
  * Event system for simulation lifecycle tracking.
  */
 
-import type { SimulationEvent, SimulationEventEmitter, EventHandler } from '../types';
+import type { SimulationEvent, SimulationEventEmitter, EventHandler } from '../types/index.js';
 
 /**
  * Simple event emitter implementation

@@ -5,7 +5,7 @@
  * Provides type safety and documentation for event-driven communication.
  */
 
-import { BaseEvent } from './EventBus';
+import { BaseEvent } from './EventBus.js';
 import type { Strategy, StopLossConfig, TokenAddress, Chain } from '@quantbot/core';
 
 // ============================================================================

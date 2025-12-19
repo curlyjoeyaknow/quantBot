@@ -16,6 +16,8 @@ import { storeStrategyDuckdbHandler } from '../handlers/simulation/store-strateg
 import { storeRunDuckdbHandler } from '../handlers/simulation/store-run-duckdb.js';
 import { generateReportDuckdbHandler } from '../handlers/simulation/generate-report-duckdb.js';
 import { clickHouseQueryHandler } from '../handlers/simulation/clickhouse-query.js';
+import { listStrategiesHandler } from '../handlers/simulation/list-strategies.js';
+import { runInteractiveStrategyCreation } from './simulation-strategy-interactive.js';
 import {
   runSchema,
   listRunsSchema,
@@ -24,6 +26,8 @@ import {
   storeRunSchema,
   generateReportSchema,
   clickHouseQuerySchema,
+  listStrategiesSchema,
+  createStrategyInteractiveSchema,
 } from '../command-defs/simulation.js';
 
 /**
@@ -80,6 +84,28 @@ export function registerSimulationCommands(program: Command): void {
         ...options,
         limit: options.limit ? parseInt(options.limit, 10) : 100,
       });
+    });
+
+  // List strategies command
+  simCmd
+    .command('list-strategies')
+    .description('List all available strategies')
+    .option('--duckdb <path>', 'Path to DuckDB file')
+    .option('--format <format>', 'Output format', 'table')
+    .action(async (options) => {
+      const commandDef = commandRegistry.getCommand('simulation', 'list-strategies');
+      if (!commandDef) throw new NotFoundError('Command', 'simulation.list-strategies');
+      await execute(commandDef, options);
+    });
+
+  // Create strategy (interactive) command
+  simCmd
+    .command('create-strategy')
+    .alias('strategy-create')
+    .description('🎯 Interactive strategy creation (guided prompts)')
+    .option('--duckdb <path>', 'Path to DuckDB file', process.env.DUCKDB_PATH || 'data/quantbot.db')
+    .action(async (options) => {
+      await runInteractiveStrategyCreation(options.duckdb);
     });
 
   // Store strategy command
@@ -309,6 +335,34 @@ const simulationModule: PackageCommandModule = {
       examples: [
         'quantbot simulation clickhouse-query --operation query_ohlcv --token-address So111... --chain solana --start-time 2024-01-01T00:00:00Z --end-time 2024-01-02T00:00:00Z',
         'quantbot simulation clickhouse-query --operation aggregate_metrics --run-id run123',
+      ],
+    },
+    {
+      name: 'list-strategies',
+      description: 'List all available strategies',
+      schema: listStrategiesSchema,
+      handler: async (args: unknown, ctx: unknown) => {
+        const typedCtx = ctx as CommandContext;
+        const typedArgs = args as z.infer<typeof listStrategiesSchema>;
+        return await listStrategiesHandler(typedArgs, typedCtx);
+      },
+      examples: [
+        'quantbot simulation list-strategies',
+        'quantbot simulation list-strategies --duckdb data/quantbot.db --format json',
+      ],
+    },
+    {
+      name: 'create-strategy',
+      description: '🎯 Interactive strategy creation (guided prompts)',
+      schema: createStrategyInteractiveSchema,
+      handler: async (args: unknown, ctx: unknown) => {
+        const typedArgs = args as z.infer<typeof createStrategyInteractiveSchema>;
+        await runInteractiveStrategyCreation(typedArgs.duckdb);
+        return { success: true };
+      },
+      examples: [
+        'quantbot simulation create-strategy',
+        'quantbot simulation create-strategy --duckdb data/quantbot.db',
       ],
     },
   ],

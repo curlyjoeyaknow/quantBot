@@ -4,9 +4,9 @@
  * Moving Average Convergence Divergence calculation.
  */
 
-import type { Candle } from '../types';
-import type { IndicatorCalculator, IndicatorResult } from './base';
-import { calculateEMA } from './moving-averages';
+import type { Candle } from '../types/index.js';
+import type { IndicatorCalculator, IndicatorResult } from './base.js';
+import { calculateEMA } from './moving-averages.js';
 
 const DEFAULT_FAST_PERIOD = 12;
 const DEFAULT_SLOW_PERIOD = 26;

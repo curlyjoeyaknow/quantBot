@@ -12,7 +12,7 @@ import type {
   ReEntryConfig,
   SignalGroup,
   LadderConfig,
-} from '../types';
+} from '../types/index.js';
 
 /**
  * Strategy configuration matching Postgres strategies.config_json

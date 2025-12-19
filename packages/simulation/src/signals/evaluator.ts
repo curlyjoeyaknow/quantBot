@@ -4,9 +4,14 @@
  * Evaluate signal conditions and groups.
  */
 
-import type { SignalCondition, SignalGroup, IndicatorName, ComparisonOperator } from '../types';
-import type { Candle } from '../types/candle';
-import type { LegacyIndicatorData } from '../indicators/registry';
+import type {
+  SignalCondition,
+  SignalGroup,
+  IndicatorName,
+  ComparisonOperator,
+} from '../types/index.js';
+import type { Candle } from '../types/candle.js';
+import type { LegacyIndicatorData } from '../indicators/registry.js';
 
 /**
  * Signal evaluation context

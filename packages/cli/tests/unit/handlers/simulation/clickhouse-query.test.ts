@@ -5,31 +5,33 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { clickHouseQueryHandler } from '../../../../src/handlers/simulation/clickhouse-query.js';
 import type { CommandContext } from '../../../../src/core/command-context.js';
-import type { PythonEngine } from '@quantbot/utils';
 import { ValidationError } from '@quantbot/utils';
 
 describe('clickHouseQueryHandler', () => {
-  let mockEngine: PythonEngine;
+  let mockClickHouseService: any;
   let mockCtx: CommandContext;
 
   beforeEach(() => {
-    mockEngine = {
-      runClickHouseEngine: vi.fn(),
-    } as unknown as PythonEngine;
+    mockClickHouseService = {
+      queryOHLCV: vi.fn(),
+      storeEvents: vi.fn(),
+      aggregateMetrics: vi.fn(),
+    };
 
     mockCtx = {
       services: {
-        pythonEngine: () => mockEngine,
+        clickHouse: () => mockClickHouseService,
       },
     } as unknown as CommandContext;
   });
 
   it('should query OHLCV data', async () => {
-    vi.mocked(mockEngine.runClickHouseEngine).mockResolvedValue({
+    const mockResult = {
       success: true,
       candles: [],
       count: 0,
-    });
+    };
+    vi.mocked(mockClickHouseService.queryOHLCV).mockResolvedValue(mockResult);
 
     const args = {
       operation: 'query_ohlcv' as const,
@@ -43,24 +45,14 @@ describe('clickHouseQueryHandler', () => {
 
     const result = await clickHouseQueryHandler(args, mockCtx);
 
-    expect(mockEngine.runClickHouseEngine).toHaveBeenCalledWith(
-      {
-        operation: 'query_ohlcv',
-        data: {
-          token_address: 'So11111111111111111111111111111111111111112',
-          chain: 'solana',
-          start_time: '2024-01-01T00:00:00Z',
-          end_time: '2024-01-02T00:00:00Z',
-          interval: '5m',
-        },
-      },
-      expect.objectContaining({
-        env: expect.objectContaining({
-          CLICKHOUSE_HOST: 'localhost',
-        }),
-      })
+    expect(mockClickHouseService.queryOHLCV).toHaveBeenCalledWith(
+      'So11111111111111111111111111111111111111112',
+      'solana',
+      '2024-01-01T00:00:00Z',
+      '2024-01-02T00:00:00Z',
+      '5m'
     );
-    expect(result.success).toBe(true);
+    expect(result).toEqual(mockResult);
   });
 
   it('should store simulation events', async () => {
@@ -75,10 +67,11 @@ describe('clickHouseQueryHandler', () => {
       },
     ];
 
-    vi.mocked(mockEngine.runClickHouseEngine).mockResolvedValue({
+    const mockResult = {
       success: true,
       stored_count: 1,
-    });
+    };
+    vi.mocked(mockClickHouseService.storeEvents).mockResolvedValue(mockResult);
 
     const args = {
       operation: 'store_events' as const,
@@ -89,28 +82,20 @@ describe('clickHouseQueryHandler', () => {
 
     const result = await clickHouseQueryHandler(args, mockCtx);
 
-    expect(mockEngine.runClickHouseEngine).toHaveBeenCalledWith(
-      {
-        operation: 'store_events',
-        data: {
-          run_id: 'run123',
-          events,
-        },
-      },
-      expect.any(Object)
-    );
-    expect(result.success).toBe(true);
+    expect(mockClickHouseService.storeEvents).toHaveBeenCalledWith('run123', events);
+    expect(result).toEqual(mockResult);
   });
 
   it('should aggregate metrics', async () => {
-    vi.mocked(mockEngine.runClickHouseEngine).mockResolvedValue({
+    const mockResult = {
       success: true,
       metrics: {
         event_count: 10,
         total_pnl: 100.0,
         avg_pnl: 10.0,
       },
-    });
+    };
+    vi.mocked(mockClickHouseService.aggregateMetrics).mockResolvedValue(mockResult);
 
     const args = {
       operation: 'aggregate_metrics' as const,
@@ -120,16 +105,8 @@ describe('clickHouseQueryHandler', () => {
 
     const result = await clickHouseQueryHandler(args, mockCtx);
 
-    expect(mockEngine.runClickHouseEngine).toHaveBeenCalledWith(
-      {
-        operation: 'aggregate_metrics',
-        data: {
-          run_id: 'run123',
-        },
-      },
-      expect.any(Object)
-    );
-    expect(result.success).toBe(true);
+    expect(mockClickHouseService.aggregateMetrics).toHaveBeenCalledWith('run123');
+    expect(result).toEqual(mockResult);
   });
 
   it('should throw ValidationError for missing required fields in query_ohlcv', async () => {

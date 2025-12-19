@@ -5,7 +5,7 @@
  * Provides centralized event processing logic.
  */
 
-import { EventHandler, EventBus } from './EventBus';
+import { EventHandler, EventBus } from './EventBus.js';
 import {
   ApplicationEvent,
   UserSessionEvent,
@@ -17,8 +17,8 @@ import {
   AlertEvent,
   SystemEvent,
   ServiceEvent,
-} from './EventTypes';
-import { logger } from '../logger';
+} from './EventTypes.js';
+import { logger } from '../logger.js';
 
 /**
  * User Event Handlers

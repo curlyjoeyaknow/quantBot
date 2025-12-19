@@ -5,19 +5,22 @@
  */
 
 // Candle types
-export * from './candle';
+export * from './candle.js';
 
 // Position types
-export * from './position';
+export * from './position.js';
 
 // Event types
-export * from './events';
+export * from './events.js';
 
 // Strategy types
-export * from './strategy';
+export * from './strategy.js';
 
 // Signal types
-export * from './signals';
+export * from './signals.js';
 
 // Result types
-export * from './results';
+export * from './results.js';
+
+// Re-export StrategyPresetName from strategies/types
+export type { StrategyPresetName } from '../strategies/types.js';

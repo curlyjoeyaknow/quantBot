@@ -41,3 +41,25 @@ export type {
   QueryCallsDuckdbResult,
   QueryCallsDuckdbContext,
 } from './calls/queryCallsDuckdb.js';
+export { getStorageStats } from './storage/getStorageStats.js';
+export type {
+  GetStorageStatsSpec,
+  GetStorageStatsResult,
+  StorageStatsContext,
+} from './storage/getStorageStats.js';
+export { getOhlcvStats } from './storage/getOhlcvStats.js';
+export type {
+  GetOhlcvStatsSpec,
+  GetOhlcvStatsResult,
+  OhlcvStatsContext,
+} from './storage/getOhlcvStats.js';
+export { createStorageStatsContext, createOhlcvStatsContext } from './context/createStorageStatsContext.js';
+export type { StorageStatsContextConfig } from './context/createStorageStatsContext.js';
+export { getTokenStats } from './storage/getTokenStats.js';
+export type {
+  GetTokenStatsSpec,
+  GetTokenStatsResult,
+  TokenStatsContext,
+} from './storage/getTokenStats.js';
+export { createTokenStatsContext } from './context/createTokenStatsContext.js';
+export type { TokenStatsContextConfig } from './context/createTokenStatsContext.js';

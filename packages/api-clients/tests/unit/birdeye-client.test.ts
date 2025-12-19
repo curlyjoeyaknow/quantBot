@@ -27,6 +27,12 @@ vi.mock('@quantbot/utils', () => ({
     warn: vi.fn(),
     error: vi.fn(),
   },
+  ConfigurationError: class ConfigurationError extends Error {
+    constructor(message: string, public configKey?: string) {
+      super(message);
+      this.name = 'ConfigurationError';
+    }
+  },
 }));
 
 // Mock observability
@@ -98,13 +104,32 @@ describe('BirdeyeClient', () => {
     });
 
     it('should throw error if no API keys found', () => {
+      // Save original env vars
+      const originalKeys = {
+        BIRDEYE_API_KEY: process.env.BIRDEYE_API_KEY,
+        BIRDEYE_API_KEY_1: process.env.BIRDEYE_API_KEY_1,
+        BIRDEYE_API_KEY_2: process.env.BIRDEYE_API_KEY_2,
+        BIRDEYE_API_KEY_3: process.env.BIRDEYE_API_KEY_3,
+        BIRDEYE_API_KEY_4: process.env.BIRDEYE_API_KEY_4,
+        BIRDEYE_API_KEY_5: process.env.BIRDEYE_API_KEY_5,
+        BIRDEYE_API_KEY_6: process.env.BIRDEYE_API_KEY_6,
+      };
+
+      // Delete all API keys
       delete process.env.BIRDEYE_API_KEY;
       delete process.env.BIRDEYE_API_KEY_1;
       delete process.env.BIRDEYE_API_KEY_2;
+      delete process.env.BIRDEYE_API_KEY_3;
+      delete process.env.BIRDEYE_API_KEY_4;
+      delete process.env.BIRDEYE_API_KEY_5;
+      delete process.env.BIRDEYE_API_KEY_6;
 
       expect(() => new BirdeyeClient({ axiosFactory: mockAxiosFactory })).toThrow(
         'No Birdeye API keys found'
       );
+
+      // Restore original env vars
+      Object.assign(process.env, originalKeys);
     });
 
     it('should create axios instance for each API key', () => {
@@ -258,9 +283,36 @@ describe('BirdeyeClient', () => {
     });
 
     it('should handle rate limit (429) and retry with next key', async () => {
+      // Create separate mock instances for each key
+      const mockAxiosInstanceBase = {
+        ...mockAxiosInstance,
+        get: vi.fn(),
+      };
+      const mockAxiosInstance1 = {
+        ...mockAxiosInstance,
+        get: vi.fn(),
+      };
+      const mockAxiosInstance2 = {
+        ...mockAxiosInstance,
+        get: vi.fn(),
+      };
+
+      // Factory returns different instances: base (for constructor), then key1, then key2
+      let factoryCallCount = 0;
+      const factoryWithMultipleInstances = vi.fn((config) => {
+        factoryCallCount++;
+        if (factoryCallCount === 1) {
+          return mockAxiosInstanceBase; // Base client instance
+        } else if (factoryCallCount === 2) {
+          return mockAxiosInstance1; // First API key
+        } else {
+          return mockAxiosInstance2; // Second API key
+        }
+      });
+
       const client = new BirdeyeClient({
         apiKeys: ['key1', 'key2'],
-        axiosFactory: mockAxiosFactory,
+        axiosFactory: factoryWithMultipleInstances,
       });
 
       const rateLimitError = {
@@ -296,14 +348,14 @@ describe('BirdeyeClient', () => {
         config: {} as any,
       };
 
-      mockAxiosInstance.get
-        .mockRejectedValueOnce(rateLimitError)
-        .mockResolvedValueOnce(successResponse);
+      mockAxiosInstance1.get.mockRejectedValueOnce(rateLimitError);
+      mockAxiosInstance2.get.mockResolvedValueOnce(successResponse);
 
       const result = await client.fetchOHLCVData(tokenAddress, startTime, endTime);
 
       expect(result).toBeDefined();
-      expect(mockAxiosInstance.get).toHaveBeenCalledTimes(2);
+      expect(mockAxiosInstance1.get).toHaveBeenCalledTimes(1);
+      expect(mockAxiosInstance2.get).toHaveBeenCalledTimes(1);
     });
 
     it('should detect chain from address format (0x = ethereum)', async () => {

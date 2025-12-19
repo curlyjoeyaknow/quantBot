@@ -284,70 +284,34 @@ describe('StorageEngine', () => {
     };
 
     it('should store a call', async () => {
-      const callId = await engine.storeCall(mockCall);
-
-      expect(mockCallsRepoInstance.insertCall).toHaveBeenCalledWith(
-        expect.objectContaining({
-          tokenId: mockCall.tokenId,
-          side: mockCall.side,
-          signalType: mockCall.signalType,
-          signalTimestamp: expect.any(Date), // Converted to Date in StorageEngine
-        })
+      // Method is deprecated - PostgreSQL removed, use DuckDB repositories directly
+      await expect(engine.storeCall(mockCall)).rejects.toThrow(
+        'storeCall is not available. PostgreSQL has been removed. Use DuckDB repositories directly.'
       );
-      expect(callId).toBe(1);
     });
 
     it('should retrieve calls by token', async () => {
-      const mockCalls: Call[] = [
-        {
-          id: 1,
-          tokenId: 1,
-          side: 'buy',
-          signalType: 'entry',
-          signalTimestamp: DateTime.now(),
-          createdAt: DateTime.now(),
-        },
-      ];
-      mockCallsRepoInstance.findByTokenId.mockResolvedValue(mockCalls);
-
-      const result = await engine.getCallsByToken(1);
-
-      expect(mockCallsRepoInstance.findByTokenId).toHaveBeenCalledWith(1, undefined);
-      expect(result).toEqual(mockCalls);
+      // Method is deprecated - PostgreSQL removed, use DuckDB repositories directly
+      await expect(engine.getCallsByToken(1)).rejects.toThrow(
+        'getCallsByToken is not available. PostgreSQL has been removed. Use DuckDB repositories directly.'
+      );
     });
 
     it('should retrieve calls by caller', async () => {
-      const mockCalls: Call[] = [
-        {
-          id: 1,
-          tokenId: 1,
-          callerId: 2,
-          side: 'buy',
-          signalType: 'entry',
-          signalTimestamp: DateTime.now(),
-          createdAt: DateTime.now(),
-        },
-      ];
-      mockCallsRepoInstance.queryBySelection.mockResolvedValue(mockCalls);
-
-      const result = await engine.getCallsByCaller(2);
-
-      expect(mockCallsRepoInstance.queryBySelection).toHaveBeenCalledWith({
-        callerIds: [2],
-        from: undefined,
-        to: undefined,
-      });
-      expect(result).toEqual(mockCalls);
+      // Method is deprecated - PostgreSQL removed, use DuckDB repositories directly
+      await expect(engine.getCallsByCaller(2)).rejects.toThrow(
+        'getCallsByCaller is not available. PostgreSQL has been removed. Use DuckDB repositories directly.'
+      );
     });
 
     it('should cache calls', async () => {
-      const mockCalls: Call[] = [];
-      mockCallsRepoInstance.findByTokenId.mockResolvedValue(mockCalls);
+      // Method is deprecated - PostgreSQL removed, use DuckDB repositories directly
+      await expect(engine.getCallsByToken(1)).rejects.toThrow(
+        'getCallsByToken is not available. PostgreSQL has been removed. Use DuckDB repositories directly.'
+      );
 
-      await engine.getCallsByToken(1);
-      await engine.getCallsByToken(1);
-
-      expect(mockCallsRepoInstance.findByTokenId).toHaveBeenCalledTimes(1);
+      // Repository should not be called since method throws immediately
+      expect(mockCallsRepoInstance.findByTokenId).not.toHaveBeenCalled();
     });
   });
 
@@ -360,53 +324,24 @@ describe('StorageEngine', () => {
     };
 
     it('should store a strategy', async () => {
-      const strategyId = await engine.storeStrategy(mockStrategy);
-
-      expect(mockStrategiesRepoInstance.create).toHaveBeenCalledWith({
-        name: mockStrategy.name,
-        version: mockStrategy.version,
-        category: mockStrategy.category,
-        description: mockStrategy.description,
-        config: mockStrategy.config,
-        isActive: mockStrategy.isActive,
-      });
-      expect(strategyId).toBe(1);
+      // Method is deprecated - PostgreSQL removed, use DuckDB StrategiesRepository directly
+      await expect(engine.storeStrategy(mockStrategy)).rejects.toThrow(
+        'storeStrategy is not available. PostgreSQL has been removed. Use DuckDB StrategiesRepository directly.'
+      );
     });
 
     it('should retrieve active strategies', async () => {
-      const mockStrategies: StrategyConfig[] = [
-        {
-          name: 'test_strategy',
-          version: '1',
-          config: {},
-          isActive: true,
-          createdAt: DateTime.now(),
-          updatedAt: DateTime.now(),
-        },
-      ];
-      mockStrategiesRepoInstance.findAllActive.mockResolvedValue(mockStrategies);
-
-      const result = await engine.getActiveStrategies();
-
-      expect(mockStrategiesRepoInstance.findAllActive).toHaveBeenCalled();
-      expect(result).toEqual(mockStrategies);
+      // Method is deprecated - PostgreSQL removed, use DuckDB StrategiesRepository directly
+      await expect(engine.getActiveStrategies()).rejects.toThrow(
+        'getActiveStrategies is not available. PostgreSQL has been removed. Use DuckDB StrategiesRepository directly.'
+      );
     });
 
     it('should retrieve strategy by name', async () => {
-      const mockStrategy: StrategyConfig = {
-        name: 'test_strategy',
-        version: '1',
-        config: {},
-        isActive: true,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      };
-      mockStrategiesRepoInstance.findByName.mockResolvedValue(mockStrategy);
-
-      const result = await engine.getStrategy('test_strategy', '1');
-
-      expect(mockStrategiesRepoInstance.findByName).toHaveBeenCalledWith('test_strategy', '1');
-      expect(result).toEqual(mockStrategy);
+      // Method is deprecated - PostgreSQL removed, use DuckDB StrategiesRepository directly
+      await expect(engine.getStrategy('test_strategy', '1')).rejects.toThrow(
+        'getStrategy is not available. PostgreSQL has been removed. Use DuckDB StrategiesRepository directly.'
+      );
     });
   });
 
@@ -494,17 +429,12 @@ describe('StorageEngine', () => {
     ];
 
     it('should store simulation results summary', async () => {
+      // Method is deprecated - PostgreSQL removed, only ClickHouse event storage available
+      // With empty events array, it just logs a warning and doesn't throw
       await engine.storeSimulationResults(1, mockResult);
 
-      expect(mockSimulationResultsRepoInstance.upsertSummary).toHaveBeenCalledWith({
-        simulationRunId: 1,
-        finalPnl: 100.5,
-        metadata: {
-          entryPrice: 1.0,
-          finalPrice: 1.1,
-          totalCandles: 100,
-        },
-      });
+      // Should not throw, but also should not call any repository (PostgreSQL removed)
+      expect(mockSimulationResultsRepoInstance.upsertSummary).not.toHaveBeenCalled();
     });
 
     it('should store simulation events with full mint address preserved', async () => {

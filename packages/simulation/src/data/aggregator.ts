@@ -4,7 +4,7 @@
  * Functions for aggregating lower-timeframe candles into higher timeframes.
  */
 
-import type { Candle, AggregationInterval } from '../types';
+import type { Candle, AggregationInterval } from "../types/index.js";
 
 /**
  * Get aggregation interval in seconds

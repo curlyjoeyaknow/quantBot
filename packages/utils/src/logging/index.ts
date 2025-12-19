@@ -12,8 +12,8 @@
  * ```
  */
 
-import { Logger, createLogger, logger as rootLogger } from '../logger';
-import type { LogContext } from '../logger';
+import { Logger, createLogger, logger as rootLogger } from '../logger.js';
+import type { LogContext } from '../logger.js';
 
 /**
  * Package logger registry
@@ -129,8 +129,8 @@ export class LogHelpers {
  * Export all logging utilities
  */
 export { Logger, createLogger, rootLogger as logger, LogContext };
-export * from '../logger';
-export * from '../logging-config';
-export * from '../logging-middleware';
-export * from './aggregator';
-export * from './monitor';
+export * from '../logger.js';
+export * from '../logging-config.js';
+export * from '../logging-middleware.js';
+export * from './aggregator.js';
+export * from './monitor.js';

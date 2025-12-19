@@ -53,17 +53,20 @@ describe('storeRunDuckdbHandler', () => {
       '/path/to/sim.duckdb',
       'run123',
       'PT2_SL25',
+      'PT2_SL25', // strategyName (uses strategyId as fallback)
       'So11111111111111111111111111111111111111112',
       '2024-01-01T00:00:00Z',
       '2024-01-01T00:00:00Z',
       '2024-01-02T00:00:00Z',
       1000.0,
-      1200.0,
-      20.0,
-      5.0,
-      1.5,
-      0.6,
-      10
+      { entry: {}, exit: {} }, // strategyConfig
+      undefined, // callerName
+      1200.0, // finalCapital
+      20.0, // totalReturnPct
+      5.0, // maxDrawdownPct
+      1.5, // sharpeRatio
+      0.6, // winRate
+      10 // totalTrades
     );
     expect(result.success).toBe(true);
   });
@@ -92,17 +95,20 @@ describe('storeRunDuckdbHandler', () => {
       '/path/to/sim.duckdb',
       'run123',
       'PT2_SL25',
+      'PT2_SL25', // strategyName (uses strategyId as fallback)
       'So11111111111111111111111111111111111111112',
       '2024-01-01T00:00:00Z',
       '2024-01-01T00:00:00Z',
       '2024-01-02T00:00:00Z',
       1000.0,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      undefined
+      { entry: {}, exit: {} }, // strategyConfig
+      undefined, // callerName
+      undefined, // finalCapital
+      undefined, // totalReturnPct
+      undefined, // maxDrawdownPct
+      undefined, // sharpeRatio
+      undefined, // winRate
+      undefined // totalTrades
     );
   });
 });

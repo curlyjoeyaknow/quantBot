@@ -7,8 +7,8 @@
  * - Alert timestamp from caller message (not bot message)
  */
 
-import { MessageIndex } from './MessageIndex';
-import type { ParsedMessage } from './TelegramExportParser';
+import { MessageIndex } from './MessageIndex.js';
+import type { ParsedMessage } from './TelegramExportParser.js';
 
 export interface ResolvedCaller {
   callerName: string;

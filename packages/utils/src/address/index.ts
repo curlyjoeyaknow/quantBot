@@ -7,5 +7,5 @@
  * - Pass 3: Semantic (optional, at OHLCV fetch time - not in this module)
  */
 
-export * from './extract-candidates';
-export * from './validate';
+export * from './extract-candidates.js';
+export * from './validate.js';

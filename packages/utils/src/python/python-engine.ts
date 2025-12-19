@@ -6,11 +6,49 @@
  */
 
 import { execSync } from 'child_process';
-import { join } from 'path';
+import { join, dirname } from 'path';
 import { z } from 'zod';
-import { existsSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import { execa } from 'execa';
-import { logger, ValidationError, TimeoutError, AppError } from '../index';
+import { logger, ValidationError, TimeoutError, AppError } from '../index.js';
+
+/**
+ * Find workspace root by walking up from current directory
+ * looking for pnpm-workspace.yaml or package.json with workspace config
+ */
+function findWorkspaceRoot(startDir: string = process.cwd()): string {
+  let current = startDir;
+
+  while (current !== '/' && current !== '') {
+    const workspaceFile = join(current, 'pnpm-workspace.yaml');
+    const packageFile = join(current, 'package.json');
+
+    if (existsSync(workspaceFile)) {
+      return current;
+    }
+
+    if (existsSync(packageFile)) {
+      try {
+        const pkg = JSON.parse(readFileSync(packageFile, 'utf8'));
+        if (pkg.workspaces || pkg.pnpm?.workspace) {
+          return current;
+        }
+      } catch {
+        // Continue searching
+      }
+    }
+
+    const parent = dirname(current);
+    if (parent === current) {
+      // Reached filesystem root
+      break;
+    }
+    current = parent;
+  }
+
+  // Fallback to start directory if workspace root not found
+  return startDir;
+}
 
 export interface PythonScriptOptions {
   /**
@@ -208,7 +246,16 @@ export class PythonEngine {
       }
     }
 
-    const command = `${this.pythonCommand} ${argList.join(' ')}`;
+    // Properly escape arguments for shell execution
+    const escapedArgs = argList.map((arg) => {
+      // If the argument contains spaces or special characters, quote it
+      if (arg.includes(' ') || arg.includes('{') || arg.includes('}') || arg.includes('"')) {
+        // Escape quotes and wrap in quotes
+        return `"${arg.replace(/"/g, '\\"')}"`;
+      }
+      return arg;
+    });
+    const command = `${this.pythonCommand} ${escapedArgs.join(' ')}`;
     logger.debug('Executing Python script', { command, cwd: options?.cwd });
 
     try {
@@ -218,6 +265,7 @@ export class PythonEngine {
         env: { ...process.env, ...options?.env },
         maxBuffer: 10 * 1024 * 1024, // 10MB buffer
         timeout,
+        shell: '/bin/bash', // Explicitly use bash to avoid ENOENT errors
       });
 
       if (!expectJson) {
@@ -328,7 +376,8 @@ export class PythonEngine {
     config: TelegramPipelineConfig,
     options?: PythonScriptOptions
   ): Promise<PythonManifest> {
-    const scriptPath = join(process.cwd(), 'tools/telegram/duckdb_punch_pipeline.py');
+    const workspaceRoot = findWorkspaceRoot();
+    const scriptPath = join(workspaceRoot, 'tools/telegram/duckdb_punch_pipeline.py');
 
     const args: Record<string, unknown> = {
       in: config.inputFile,
@@ -340,10 +389,10 @@ export class PythonEngine {
       args.rebuild = true;
     }
 
-    const cwd = options?.cwd ?? join(process.cwd(), 'tools/telegram');
+    const cwd = options?.cwd ?? join(workspaceRoot, 'tools/telegram');
     const env = {
       ...options?.env,
-      PYTHONPATH: join(process.cwd(), 'tools/telegram'),
+      PYTHONPATH: join(workspaceRoot, 'tools/telegram'),
     };
 
     return this.runScript(scriptPath, args, PythonManifestSchema, {
@@ -364,7 +413,8 @@ export class PythonEngine {
     config: DuckDBStorageConfig,
     options?: PythonScriptOptions
   ): Promise<Record<string, unknown>> {
-    const scriptPath = join(process.cwd(), 'tools/simulation/duckdb_storage/main.py');
+    const workspaceRoot = findWorkspaceRoot();
+    const scriptPath = join(workspaceRoot, 'tools/simulation/duckdb_storage/main.py');
 
     const args: Record<string, unknown> = {
       duckdb: config.duckdbPath,
@@ -372,16 +422,16 @@ export class PythonEngine {
       data: JSON.stringify(config.data),
     };
 
-    const cwd = options?.cwd ?? join(process.cwd(), 'tools/simulation');
+    const cwd = options?.cwd ?? join(workspaceRoot, 'tools/simulation');
     const env = {
       ...options?.env,
-      PYTHONPATH: join(process.cwd(), 'tools/simulation'),
+      PYTHONPATH: join(workspaceRoot, 'tools/simulation'),
     };
 
     const resultSchema = z
       .object({
         success: z.boolean(),
-        error: z.string().optional(),
+        error: z.string().nullable().optional(),
       })
       .passthrough();
 
@@ -403,7 +453,8 @@ export class PythonEngine {
     config: ClickHouseEngineConfig,
     options?: PythonScriptOptions
   ): Promise<Record<string, unknown>> {
-    const scriptPath = join(process.cwd(), 'tools/simulation/clickhouse_engine.py');
+    const workspaceRoot = findWorkspaceRoot();
+    const scriptPath = join(workspaceRoot, 'tools/simulation/clickhouse_engine.py');
 
     const args: Record<string, unknown> = {
       operation: config.operation,
@@ -416,16 +467,16 @@ export class PythonEngine {
     if (config.username) args.username = config.username;
     if (config.password) args.password = config.password;
 
-    const cwd = options?.cwd ?? join(process.cwd(), 'tools/simulation');
+    const cwd = options?.cwd ?? join(workspaceRoot, 'tools/simulation');
     const env = {
       ...options?.env,
-      PYTHONPATH: join(process.cwd(), 'tools/simulation'),
+      PYTHONPATH: join(workspaceRoot, 'tools/simulation'),
     };
 
     const resultSchema = z
       .object({
         success: z.boolean(),
-        error: z.string().optional(),
+        error: z.string().nullable().optional(),
       })
       .passthrough();
 
@@ -464,7 +515,8 @@ export class PythonEngine {
       botTsMs: number | null;
     }>;
   }> {
-    const scriptPath = join(process.cwd(), 'tools/ingestion/ohlcv_worklist.py');
+    const workspaceRoot = findWorkspaceRoot();
+    const scriptPath = join(workspaceRoot, 'tools/ingestion/ohlcv_worklist.py');
 
     const args: Record<string, unknown> = {
       duckdb: config.duckdbPath,
@@ -480,10 +532,10 @@ export class PythonEngine {
       args.side = config.side;
     }
 
-    const cwd = options?.cwd ?? join(process.cwd(), 'tools/ingestion');
+    const cwd = options?.cwd ?? join(workspaceRoot, 'tools/ingestion');
     const env = {
       ...options?.env,
-      PYTHONPATH: join(process.cwd(), 'tools/ingestion'),
+      PYTHONPATH: join(workspaceRoot, 'tools/ingestion'),
     };
 
     const tokenGroupSchema = z.object({

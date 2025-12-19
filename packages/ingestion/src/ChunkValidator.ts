@@ -6,8 +6,8 @@
  */
 
 import { logger } from '@quantbot/utils';
-import type { ExtractedBotData } from './BotMessageExtractor';
-import type { ResolvedCaller } from './CallerResolver';
+import type { ExtractedBotData } from './BotMessageExtractor.js';
+import type { ResolvedCaller } from './CallerResolver.js';
 
 export interface ChunkValidationResult {
   botData: ExtractedBotData;

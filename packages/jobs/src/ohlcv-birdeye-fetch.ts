@@ -132,13 +132,43 @@ export class OhlcvBirdeyeFetch {
           workItem.interval
         );
 
-        if (coverage.hasData && coverage.coverageRatio >= this.minCoverageToSkip) {
+        // CRITICAL: Always require minimum 5000 candles, regardless of work item time range
+        // This ensures we fetch enough data for simulation even if work items have old time ranges
+        const MIN_REQUIRED_CANDLES = 5000;
+        const hasMinimumCandles = coverage.candleCount >= MIN_REQUIRED_CANDLES;
+        
+        if (coverage.hasData && coverage.coverageRatio >= this.minCoverageToSkip && hasMinimumCandles) {
+          // Calculate expected candles for the work item time range
+          const timeRangeSeconds = Math.floor(
+            (workItem.endTime.toSeconds() - workItem.startTime.toSeconds())
+          );
+          const intervalSeconds =
+            workItem.interval === '1m' ? 60 : workItem.interval === '5m' ? 300 : workItem.interval === '15s' ? 15 : 3600;
+          const expectedCandles = Math.floor(timeRangeSeconds / intervalSeconds);
+          
           logger.debug('Skipping fetch - sufficient coverage exists', {
             mint: workItem.mint.substring(0, 20),
             chain: workItem.chain,
             interval: workItem.interval,
             coverageRatio: coverage.coverageRatio,
             candleCount: coverage.candleCount,
+            minRequiredCandles: MIN_REQUIRED_CANDLES,
+            hasMinimumCandles,
+            expectedCandles,
+            timeRangeHours: (timeRangeSeconds / 3600).toFixed(2),
+            startTime: workItem.startTime.toISO(),
+            endTime: workItem.endTime.toISO(),
+            minCoverageToSkip: this.minCoverageToSkip,
+          });
+        } else if (coverage.hasData && !hasMinimumCandles) {
+          logger.debug('Not skipping - insufficient candles (below 5000 minimum)', {
+            mint: workItem.mint.substring(0, 20),
+            chain: workItem.chain,
+            interval: workItem.interval,
+            coverageRatio: coverage.coverageRatio,
+            candleCount: coverage.candleCount,
+            minRequiredCandles: MIN_REQUIRED_CANDLES,
+            minCoverageToSkip: this.minCoverageToSkip,
           });
           return {
             workItem,
@@ -171,6 +201,30 @@ export class OhlcvBirdeyeFetch {
         workItem.chain
       );
 
+      // Check if we actually got candles
+      // Empty array could mean:
+      // 1. Invalid token (422) - non-retryable, don't count toward circuit breaker
+      // 2. No data available - non-retryable, don't count toward circuit breaker
+      // 3. Actual API/system error - retryable, would throw exception
+      if (candles.length === 0) {
+        logger.debug('No candles returned from Birdeye (likely invalid token or no data)', {
+          mint: workItem.mint.substring(0, 20),
+          chain: workItem.chain,
+          interval: workItem.interval,
+        });
+        // Don't count toward circuit breaker - this is expected for invalid tokens
+        // Only actual exceptions count toward circuit breaker
+        return {
+          workItem,
+          success: false,
+          candles: [],
+          candlesFetched: 0,
+          skipped: false,
+          error: 'No candles returned from Birdeye API (likely invalid token or no data available)',
+          durationMs: Date.now() - startTime,
+        };
+      }
+
       // Reset failure count on success
       this.failureCount = 0;
 
@@ -190,14 +244,27 @@ export class OhlcvBirdeyeFetch {
         durationMs: Date.now() - startTime,
       };
     } catch (error) {
+      // Only count actual exceptions toward circuit breaker (network errors, timeouts, etc.)
+      // These are retryable errors that indicate system issues
       this.failureCount++;
 
       const errorMessage = error instanceof Error ? error.message : String(error);
+      
+      // Check if this is a retryable error (network, timeout, rate limit)
+      const isRetryableError =
+        errorMessage.includes('timeout') ||
+        errorMessage.includes('network') ||
+        errorMessage.includes('ECONNREFUSED') ||
+        errorMessage.includes('ETIMEDOUT') ||
+        errorMessage.includes('rate limit') ||
+        errorMessage.includes('429');
+
       logger.error('Failed to fetch OHLCV from Birdeye', error as Error, {
         mint: workItem.mint.substring(0, 20),
         chain: workItem.chain,
         interval: workItem.interval,
         failureCount: this.failureCount,
+        isRetryable: isRetryableError,
       });
 
       return {

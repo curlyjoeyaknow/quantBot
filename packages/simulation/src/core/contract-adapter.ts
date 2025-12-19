@@ -16,8 +16,8 @@ import type {
   CostConfig as CanonicalCostConfig,
   SimEvent,
   SimMetrics,
-} from '../types/contracts';
-import { SimInputSchema, SimResultSchema } from '../types/contracts';
+} from '../types/contracts.js';
+import { SimInputSchema, SimResultSchema } from '../types/contracts.js';
 import type {
   Candle,
   StrategyLeg,
@@ -26,8 +26,8 @@ import type {
   ReEntryConfig,
   CostConfig,
   SimulationResult,
-} from '../types/index';
-import { simulateStrategy } from './simulator';
+} from '../types/index.js';
+import { simulateStrategy } from './simulator.js';
 
 /**
  * Convert canonical SimInput to internal simulator format and run simulation

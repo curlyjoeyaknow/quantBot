@@ -4,8 +4,8 @@
  * Centralized error handling utilities and middleware.
  */
 
-import { AppError, isOperationalError, isRetryableError, RateLimitError } from './errors';
-import { logger } from './logger';
+import { AppError, isOperationalError, isRetryableError, RateLimitError } from './errors.js';
+import { logger } from './logger.js';
 
 /**
  * Error handler result

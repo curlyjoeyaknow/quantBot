@@ -12,10 +12,13 @@
  */
 
 import type { z } from 'zod';
+import { resolve } from 'path';
+import { ConfigurationError } from '@quantbot/utils';
 import type { CommandContext } from '../../core/command-context.js';
 import { ohlcvSchema } from '../../commands/ingestion.js';
 import { ingestOhlcv, createOhlcvIngestionContext } from '@quantbot/workflows';
 import type { IngestOhlcvSpec } from '@quantbot/workflows';
+import { OhlcvBirdeyeFetch } from '@quantbot/jobs';
 
 /**
  * Input arguments (already validated by Zod)
@@ -31,14 +34,18 @@ export type IngestOhlcvArgs = z.infer<typeof ohlcvSchema>;
  * - Call workflow
  * - Return structured result (already JSON-serializable from workflow)
  */
-export async function ingestOhlcvHandler(args: IngestOhlcvArgs, ctx: CommandContext) {
+export async function ingestOhlcvHandler(args: IngestOhlcvArgs, _ctx: CommandContext) {
   // Parse args → build spec
-  const duckdbPath = args.duckdb || process.env.DUCKDB_PATH;
-  if (!duckdbPath) {
-    throw new Error(
-      'DuckDB path is required. Provide --duckdb or set DUCKDB_PATH environment variable.'
+  const duckdbPathRaw = args.duckdb || process.env.DUCKDB_PATH;
+  if (!duckdbPathRaw) {
+    throw new ConfigurationError(
+      'DuckDB path is required. Provide --duckdb or set DUCKDB_PATH environment variable.',
+      'duckdb',
+      { envVar: 'DUCKDB_PATH' }
     );
   }
+  // Convert relative paths to absolute paths (Python scripts run from different working directories)
+  const duckdbPath = resolve(process.cwd(), duckdbPathRaw);
 
   // Map CLI interval to workflow interval format
   // CLI: '1m' | '5m' | '15m' | '1h'
@@ -68,7 +75,14 @@ export async function ingestOhlcvHandler(args: IngestOhlcvArgs, ctx: CommandCont
 
   // Create workflow context with Birdeye fetch service
   // Note: The workflow handles storage (ClickHouse) and metadata (DuckDB) internally
-  const workflowContext = createOhlcvIngestionContext();
+  const ohlcvBirdeyeFetch = new OhlcvBirdeyeFetch({
+    rateLimitMs: spec.rateLimitMs,
+    maxRetries: spec.maxRetries,
+    checkCoverage: spec.checkCoverage,
+  });
+  const workflowContext = createOhlcvIngestionContext({
+    ohlcvBirdeyeFetch,
+  });
 
   // Call workflow (orchestration happens here)
   const result = await ingestOhlcv(spec, workflowContext);

@@ -19,7 +19,7 @@ import {
 // Using type assertion to bypass module resolution
 type OhlcvBirdeyeFetch = any;
 import { DuckDBStorageService } from '@quantbot/simulation';
-import { getPythonEngine } from '@quantbot/utils';
+import { getPythonEngine, ConfigurationError } from '@quantbot/utils';
 import type { IngestOhlcvContext } from '../ohlcv/ingestOhlcv.js';
 import type { WorkflowContext } from '../types.js';
 
@@ -46,8 +46,10 @@ export function createOhlcvIngestionContext(
   // Create OhlcvBirdeyeFetch instance (or use provided one for testing)
   // TODO: Use dynamic import when jobs package is properly referenced
   if (!config?.ohlcvBirdeyeFetch) {
-    throw new Error(
-      'OhlcvBirdeyeFetch service is required in config - jobs package must be available'
+    throw new ConfigurationError(
+      'OhlcvBirdeyeFetch service is required in config - jobs package must be available',
+      'ohlcvBirdeyeFetch',
+      { hasOhlcvBirdeyeFetch: !!config?.ohlcvBirdeyeFetch }
     );
   }
   const fetchService = config.ohlcvBirdeyeFetch;

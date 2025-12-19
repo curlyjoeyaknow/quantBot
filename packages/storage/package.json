@@ -2,11 +2,18 @@
   "name": "@quantbot/storage",
   "version": "1.0.0",
   "description": "Storage layer for QuantBot (ClickHouse, DuckDB, InfluxDB)",
+  "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
-    ".": "./dist/index.js",
-    "./*": "./dist/*.js"
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./*": {
+      "import": "./dist/*.js",
+      "types": "./dist/*.d.ts"
+    }
   },
   "scripts": {
     "build": "tsc --build",

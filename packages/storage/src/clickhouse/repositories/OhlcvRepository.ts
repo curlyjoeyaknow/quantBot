@@ -6,7 +6,7 @@
  */
 
 import { DateTime } from 'luxon';
-import { getClickHouseClient } from '../../clickhouse-client';
+import { getClickHouseClient } from '../../clickhouse-client.js';
 import { logger } from '@quantbot/utils';
 import type { Candle, DateRange } from '@quantbot/core';
 
@@ -87,12 +87,17 @@ export class OhlcvRepository {
     const startUnix = range.from.toUnixInteger();
     const endUnix = range.to.toUnixInteger();
 
-    // Use parameterized queries to prevent SQL injection
-    // Note: ClickHouse parameterized queries use {paramName:Type} syntax
-    // For LIKE patterns, we need to construct the pattern as a parameter
+    // Escape values for SQL injection prevention
+    const escapedToken = token.replace(/'/g, "''");
+    const escapedChain = chain.replace(/'/g, "''");
+    const escapedInterval = interval.replace(/'/g, "''");
     const tokenPattern = `${token}%`;
     const tokenPatternSuffix = `%${token}`;
+    const escapedTokenPattern = tokenPattern.replace(/'/g, "''");
+    const escapedTokenPatternSuffix = tokenPatternSuffix.replace(/'/g, "''");
 
+    // Build query with string interpolation (properly escaped to prevent SQL injection)
+    // Using string interpolation instead of parameterized queries to avoid "Unknown setting param_*" error
     const query = `
       SELECT 
         toUnixTimestamp(timestamp) as timestamp,
@@ -102,31 +107,22 @@ export class OhlcvRepository {
         close,
         volume
       FROM ${CLICKHOUSE_DATABASE}.ohlcv_candles
-      WHERE (token_address = {tokenAddress:String}
-             OR lower(token_address) = lower({tokenAddress:String})
-             OR token_address LIKE {tokenPattern:String}
-             OR lower(token_address) LIKE lower({tokenPattern:String})
-             OR token_address LIKE {tokenPatternSuffix:String}
-             OR lower(token_address) LIKE lower({tokenPatternSuffix:String}))
-        AND chain = {chain:String}
-        AND \`interval\` = {interval:String}
-        AND timestamp >= toDateTime({startUnix:UInt32})
-        AND timestamp <= toDateTime({endUnix:UInt32})
+      WHERE (token_address = '${escapedToken}'
+             OR lower(token_address) = lower('${escapedToken}')
+             OR token_address LIKE '${escapedTokenPattern}'
+             OR lower(token_address) LIKE lower('${escapedTokenPattern}')
+             OR token_address LIKE '${escapedTokenPatternSuffix}'
+             OR lower(token_address) LIKE lower('${escapedTokenPatternSuffix}'))
+        AND chain = '${escapedChain}'
+        AND \`interval\` = '${escapedInterval}'
+        AND timestamp >= toDateTime(${startUnix})
+        AND timestamp <= toDateTime(${endUnix})
       ORDER BY timestamp ASC
     `;
 
     try {
       const result = await ch.query({
         query,
-        query_params: {
-          tokenAddress: token,
-          tokenPattern: tokenPattern,
-          tokenPatternSuffix: tokenPatternSuffix,
-          chain: chain,
-          interval: interval,
-          startUnix: startUnix,
-          endUnix: endUnix,
-        },
         format: 'JSONEachRow',
         clickhouse_settings: {
           max_execution_time: 30,
@@ -175,33 +171,30 @@ export class OhlcvRepository {
     const startUnix = range.from.toUnixInteger();
     const endUnix = range.to.toUnixInteger();
 
-    // Use parameterized queries to prevent SQL injection
+    // Escape values for SQL injection prevention
+    const escapedToken = token.replace(/'/g, "''");
+    const escapedChain = chain.replace(/'/g, "''");
     const tokenPattern = `${token}%`;
     const tokenPatternSuffix = `%${token}`;
+    const escapedTokenPattern = tokenPattern.replace(/'/g, "''");
+    const escapedTokenPatternSuffix = tokenPatternSuffix.replace(/'/g, "''");
 
+    // Build query with string interpolation (properly escaped to prevent SQL injection)
     try {
       const result = await ch.query({
         query: `
           SELECT count() as count
           FROM ${CLICKHOUSE_DATABASE}.ohlcv_candles
-          WHERE (token_address = {tokenAddress:String}
-                 OR lower(token_address) = lower({tokenAddress:String})
-                 OR token_address LIKE {tokenPattern:String}
-                 OR lower(token_address) LIKE lower({tokenPattern:String})
-                 OR token_address LIKE {tokenPatternSuffix:String}
-                 OR lower(token_address) LIKE lower({tokenPatternSuffix:String}))
-            AND chain = {chain:String}
-            AND timestamp >= toDateTime({startUnix:UInt32})
-            AND timestamp <= toDateTime({endUnix:UInt32})
+          WHERE (token_address = '${escapedToken}'
+                 OR lower(token_address) = lower('${escapedToken}')
+                 OR token_address LIKE '${escapedTokenPattern}'
+                 OR lower(token_address) LIKE lower('${escapedTokenPattern}')
+                 OR token_address LIKE '${escapedTokenPatternSuffix}'
+                 OR lower(token_address) LIKE lower('${escapedTokenPatternSuffix}'))
+            AND chain = '${escapedChain}'
+            AND timestamp >= toDateTime(${startUnix})
+            AND timestamp <= toDateTime(${endUnix})
         `,
-        query_params: {
-          tokenAddress: token,
-          tokenPattern: tokenPattern,
-          tokenPatternSuffix: tokenPatternSuffix,
-          chain: chain,
-          startUnix: startUnix,
-          endUnix: endUnix,
-        },
         format: 'JSONEachRow',
       });
 

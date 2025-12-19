@@ -62,8 +62,8 @@ CREATE TABLE IF NOT EXISTS run_strategies_used (
   strategy_config_id TEXT NOT NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (run_id),
-  FOREIGN KEY (run_id) REFERENCES simulation_runs(run_id) ON DELETE CASCADE,
-  FOREIGN KEY (strategy_config_id) REFERENCES strategy_config(strategy_config_id) ON DELETE RESTRICT
+  FOREIGN KEY (run_id) REFERENCES simulation_runs(run_id),
+  FOREIGN KEY (strategy_config_id) REFERENCES strategy_config(strategy_config_id)
 );
 
 -- Simulation events (trades, entries, exits)

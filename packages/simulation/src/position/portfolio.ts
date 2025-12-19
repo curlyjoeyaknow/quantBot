@@ -4,7 +4,7 @@
  * Track multiple positions and aggregate metrics.
  */
 
-import type { Position, PositionSummary } from '../types';
+import type { Position, PositionSummary } from '../types/index.js';
 import {
   createPosition,
   executeEntry,
@@ -15,7 +15,7 @@ import {
   type CreatePositionParams,
   type EntryParams,
   type ExitParams,
-} from './position';
+} from './position.js';
 
 /**
  * Portfolio state

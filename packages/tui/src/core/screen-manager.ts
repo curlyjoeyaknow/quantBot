@@ -2,7 +2,8 @@
  * Screen Manager - Screen stack, navigation, lifecycle
  */
 
-import type { Screen, NavigationOptions } from '../types';
+import type { Screen, NavigationOptions } from '../types/index.js';
+import { BlessedScreen } from './blessed-screen.js';
 
 /**
  * Screen manager for handling screen navigation and lifecycle
@@ -10,6 +11,21 @@ import type { Screen, NavigationOptions } from '../types';
 export class ScreenManager {
   private screens: Screen[] = [];
   private currentScreen: Screen | null = null;
+  private blessedScreen: BlessedScreen | null = null;
+
+  /**
+   * Set blessed screen instance
+   */
+  setBlessedScreen(blessedScreen: BlessedScreen): void {
+    this.blessedScreen = blessedScreen;
+  }
+
+  /**
+   * Get blessed screen instance
+   */
+  getBlessedScreen(): BlessedScreen | null {
+    return this.blessedScreen;
+  }
 
   /**
    * Navigate to a screen
@@ -23,6 +39,9 @@ export class ScreenManager {
     // Clear stack if requested
     if (options?.clearStack) {
       this.screens = [];
+      if (this.blessedScreen) {
+        this.blessedScreen.clear();
+      }
     }
 
     // Replace current screen or add to stack
@@ -95,13 +114,18 @@ export class ScreenManager {
     if (this.currentScreen) {
       this.currentScreen.render();
     }
+    if (this.blessedScreen) {
+      this.blessedScreen.render();
+    }
   }
 
   /**
    * Handle keyboard input
    */
   handleInput(key: string): void {
-    if (this.currentScreen) {
+    if (this.currentScreen && this.blessedScreen) {
+      this.blessedScreen.handleTuiScreenInput(this.currentScreen, key);
+    } else if (this.currentScreen) {
       this.currentScreen.handleInput(key);
     }
   }
@@ -112,6 +136,9 @@ export class ScreenManager {
   clear(): void {
     if (this.currentScreen) {
       this.currentScreen.onUnmount?.();
+    }
+    if (this.blessedScreen) {
+      this.blessedScreen.clear();
     }
     this.screens = [];
     this.currentScreen = null;

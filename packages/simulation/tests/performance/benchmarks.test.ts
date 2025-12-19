@@ -5,8 +5,8 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { simulateFromInput } from '../../../src/core/contract-adapter';
-import type { SimInput } from '../../../src/types/contracts';
+import { simulateFromInput } from '../../src/core/contract-adapter';
+import type { SimInput } from '../../src/types/contracts';
 
 /**
  * Generate test candles

@@ -4,7 +4,7 @@
  * Utility functions for trade lifecycle management in simulations.
  */
 
-import type { Candle, StopLossConfig, EntryConfig } from '../types';
+import type { Candle, StopLossConfig, EntryConfig } from '../types/index.js';
 
 export interface PositionState {
   size: number;
@@ -85,8 +85,9 @@ export function calculateTrailingEntry(
     }
 
     // Check if we've exceeded max wait time
+    const maxWaitTime = entryConfig.maxWaitTime ?? 60;
     const minutesElapsed = (candles[i].timestamp - candles[startIndex].timestamp) / 60;
-    if (minutesElapsed > entryConfig.maxWaitTime) {
+    if (minutesElapsed > maxWaitTime) {
       break;
     }
   }

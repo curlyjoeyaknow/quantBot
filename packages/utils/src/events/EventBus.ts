@@ -6,8 +6,8 @@
  */
 
 import { EventEmitter } from 'events';
-import { logger } from '../logger';
-import type { ApplicationEvent } from './EventTypes';
+import { logger } from '../logger.js';
+import type { ApplicationEvent } from './EventTypes.js';
 
 export interface EventMetadata {
   timestamp: number;

@@ -5,8 +5,6 @@
  */
 
 import { logger } from '@quantbot/utils';
-// TODO: ErrorRepository needs to be implemented in storage package
-// import { ErrorRepository } from '@quantbot/storage';
 
 export interface ErrorEvent {
   timestamp: Date;
@@ -17,16 +15,9 @@ export interface ErrorEvent {
   severity: 'low' | 'medium' | 'high' | 'critical';
 }
 
-// TODO: ErrorRepository needs to be implemented in storage package
-// Singleton repository instance
-// let errorRepository: ErrorRepository | null = null;
-
-// function getErrorRepository(): ErrorRepository {
-//   if (!errorRepository) {
-//     errorRepository = new ErrorRepository();
-//   }
-//   return errorRepository;
-// }
+// In-memory error tracking (until ErrorRepository is implemented in storage)
+const errorStore: ErrorEvent[] = [];
+const MAX_STORED_ERRORS = 1000;
 
 /**
  * Track an error event
@@ -46,13 +37,16 @@ export async function trackError(
   };
 
   try {
-    // TODO: Implement ErrorRepository in storage package
-    // const repo = getErrorRepository();
-    // await repo.insertError(event);
+    // Store in memory (FIFO, max 1000)
+    errorStore.push(event);
+    if (errorStore.length > MAX_STORED_ERRORS) {
+      errorStore.shift();
+    }
+    
     logger.error('Error tracked', error, { context, severity });
   } catch (dbError) {
     // Don't fail if error tracking fails - just log it
-    logger.error('Failed to track error in database', dbError as Error, {
+    logger.error('Failed to track error', dbError as Error, {
       originalError: error.message,
     });
     // Still log the original error
@@ -69,14 +63,31 @@ export async function getErrorStats(timeRange: { from: Date; to: Date }): Promis
   recent: ErrorEvent[];
 }> {
   try {
-    // TODO: Implement ErrorRepository in storage package
-    // const repo = getErrorRepository();
-    // return await repo.getErrorStats(timeRange);
-    logger.warn('ErrorRepository not implemented - returning empty stats');
+    const filtered = errorStore.filter(
+      (e) => e.timestamp >= timeRange.from && e.timestamp <= timeRange.to
+    );
+
+    const total = filtered.length;
+    const bySeverity: Record<string, number> = {};
+    filtered.forEach((e) => {
+      bySeverity[e.severity] = (bySeverity[e.severity] || 0) + 1;
+    });
+
+    const recent = filtered
+      .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+      .slice(0, 10)
+      .map((e) => ({
+        timestamp: e.timestamp,
+        error: e.error,
+        message: e.message,
+        severity: e.severity,
+        context: e.context,
+      }));
+
     return {
-      total: 0,
-      bySeverity: {},
-      recent: [],
+      total,
+      bySeverity,
+      recent,
     };
   } catch (error) {
     logger.error('Failed to get error stats', {

@@ -4,13 +4,13 @@
  * Central registry for all indicator calculators.
  */
 
-import type { IndicatorName } from '../types';
-import type { Candle } from '../types/candle';
-import type { IndicatorCalculator, IndicatorResult, IndicatorSnapshot } from './base';
-import { SMACalculator, EMACalculator, calculateMovingAverages } from './moving-averages';
-import { IchimokuCalculator, calculateIchimoku, type IchimokuData } from './ichimoku';
-import { RSICalculator } from './rsi';
-import { MACDCalculator, calculateMACD, type MACDData, type MACDState } from './macd';
+import type { IndicatorName } from '../types/index.js';
+import type { Candle } from '../types/candle.js';
+import type { IndicatorCalculator, IndicatorResult, IndicatorSnapshot } from './base.js';
+import { SMACalculator, EMACalculator, calculateMovingAverages } from './moving-averages.js';
+import { IchimokuCalculator, calculateIchimoku, type IchimokuData } from './ichimoku.js';
+import { RSICalculator } from './rsi.js';
+import { MACDCalculator, calculateMACD, type MACDData, type MACDState } from './macd.js';
 
 // Export IndicatorData as well for backwards compatibility
 export type IndicatorData = LegacyIndicatorData;

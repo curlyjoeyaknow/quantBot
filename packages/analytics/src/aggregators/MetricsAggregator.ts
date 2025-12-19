@@ -6,7 +6,7 @@
 
 import { logger } from '@quantbot/utils';
 // PostgreSQL removed - use DuckDB workflows instead
-import type { CallPerformance, CallerMetrics, AthDistribution, SystemMetrics } from '../types';
+import type { CallPerformance, CallerMetrics, AthDistribution, SystemMetrics } from '../types.js';
 
 /**
  * ATH bucket definitions

@@ -4,8 +4,8 @@
  * Detection and execution of re-entries after exits.
  */
 
-import type { Candle, ReEntryConfig } from '../types';
-import type { StopLossConfig } from '../types/strategy';
+import type { Candle, ReEntryConfig } from '../types/index.js';
+import type { StopLossConfig } from '../types/strategy.js';
 
 /**
  * Re-entry detection result

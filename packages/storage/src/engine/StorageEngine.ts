@@ -27,17 +27,17 @@ import type {
   Alert,
   TokenMetadata,
 } from '@quantbot/core';
-import type { TokenMetadataSnapshot } from '../clickhouse/repositories/TokenMetadataRepository';
+import type { TokenMetadataSnapshot } from '../clickhouse/repositories/TokenMetadataRepository.js';
 
 // Import repositories
-import { OhlcvRepository } from '../clickhouse/repositories/OhlcvRepository';
-import { SimulationEventsRepository } from '../clickhouse/repositories/SimulationEventsRepository';
+import { OhlcvRepository } from '../clickhouse/repositories/OhlcvRepository.js';
+import { SimulationEventsRepository } from '../clickhouse/repositories/SimulationEventsRepository.js';
 
 // Import indicator storage
-import { IndicatorsRepository } from '../clickhouse/repositories/IndicatorsRepository';
+import { IndicatorsRepository } from '../clickhouse/repositories/IndicatorsRepository.js';
 
 // Import token metadata storage
-import { TokenMetadataRepository } from '../clickhouse/repositories/TokenMetadataRepository';
+import { TokenMetadataRepository } from '../clickhouse/repositories/TokenMetadataRepository.js';
 
 /**
  * Storage engine configuration
@@ -595,15 +595,17 @@ export class StorageEngine {
       }
 
       // Convert snapshot to TokenMetadata
+      // TokenMetadataSnapshot extends TokenMetadata, so all properties are available
+      const meta = snapshot as TokenMetadata;
       const metadata: TokenMetadata = {
-        name: snapshot.name,
-        symbol: snapshot.symbol,
-        decimals: snapshot.decimals,
-        price: snapshot.price,
-        marketCap: snapshot.marketCap,
-        volume24h: snapshot.volume24h,
-        priceChange24h: snapshot.priceChange24h,
-        logoURI: snapshot.logoURI,
+        name: meta.name,
+        symbol: meta.symbol,
+        decimals: meta.decimals,
+        price: meta.price,
+        marketCap: meta.marketCap,
+        volume24h: meta.volume24h,
+        priceChange24h: meta.priceChange24h,
+        logoURI: meta.logoURI,
       };
 
       // Store in cache
@@ -638,17 +640,21 @@ export class StorageEngine {
         endTime
       );
 
-      return snapshots.map((snapshot: TokenMetadataSnapshot) => ({
-        name: snapshot.name,
-        symbol: snapshot.symbol,
-        decimals: snapshot.decimals,
-        price: snapshot.price,
-        marketCap: snapshot.marketCap,
-        volume24h: snapshot.volume24h,
-        priceChange24h: snapshot.priceChange24h,
-        logoURI: snapshot.logoURI,
-        timestamp: snapshot.timestamp,
-      }));
+      return snapshots.map((snapshot) => {
+        // TokenMetadataSnapshot extends TokenMetadata, access properties safely
+        const meta = snapshot as TokenMetadata & { timestamp: number };
+        return {
+          name: meta.name ?? '',
+          symbol: meta.symbol ?? '',
+          decimals: meta.decimals,
+          price: meta.price,
+          marketCap: meta.marketCap,
+          volume24h: meta.volume24h,
+          priceChange24h: meta.priceChange24h,
+          logoURI: meta.logoURI,
+          timestamp: snapshot.timestamp,
+        };
+      });
     } catch (error) {
       logger.error('Error retrieving token metadata history', error as Error, {
         token: tokenAddress.substring(0, 20) + '...',

@@ -2,8 +2,8 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { DateTime } from 'luxon';
 import { parse as parseCsv } from 'csv-parse/sync';
-import { SimulationScenarioConfig, DataSelectionConfig } from './config';
-import { SimulationTarget } from './engine';
+import { SimulationScenarioConfig, DataSelectionConfig } from './config.js';
+import { SimulationTarget } from './engine.js';
 import { ValidationError, AppError } from '@quantbot/utils';
 
 type CsvRecord = Record<string, string>;

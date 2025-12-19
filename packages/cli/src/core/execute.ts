@@ -26,6 +26,7 @@ import {
 } from './artifact-manager.js';
 import { errorToContract } from './error-contracts.js';
 import { commandRegistry } from './command-registry.js';
+import { getProgressIndicator, resetProgressIndicator } from './progress-indicator.js';
 
 /**
  * Find package name for a command by searching the registry
@@ -82,22 +83,28 @@ export async function execute(
   const packageName = findPackageName(commandDef.name);
   const fullCommandName = packageName ? `${packageName}.${commandDef.name}` : commandDef.name;
 
+  const progress = getProgressIndicator();
+
   try {
     // 1. Normalize options (handles --flag value and --flag=value)
+    progress.start('Parsing arguments...');
     const normalized = normalizeOptions(rawOptions);
 
     // 2. Parse and validate arguments
     const args = parseArguments(commandDef.schema, normalized) as Record<string, unknown>;
+    progress.updateMessage('Validating configuration...');
 
     // 3. Generate run ID and create artifact directory (if applicable)
     const runIdComponents = extractRunIdComponents(commandDef.name, packageName, args);
     if (runIdComponents) {
       runId = generateRunId(runIdComponents);
       const artifactsDir = process.env.ARTIFACTS_DIR || './artifacts';
+      progress.updateMessage('Creating artifact directory...');
       artifactPaths = await createArtifactDirectory(runIdComponents, artifactsDir);
     }
 
     // 4. Create context and ensure initialization
+    progress.updateMessage('Initializing services...');
     const ctx = new CommandContext();
     await ctx.ensureInitialized();
 
@@ -111,10 +118,12 @@ export async function execute(
     }
 
     // 6. Call handler (pure use-case function)
+    progress.updateMessage(`Running ${fullCommandName}...`);
     const result = await commandDef.handler(handlerArgs, ctx);
 
     // 7. Persist artifacts (if applicable)
     if (artifactPaths && runId) {
+      progress.updateMessage('Saving artifacts...');
       await writeArtifact(artifactPaths, 'resultsJson', result);
       await writeArtifact(artifactPaths, 'metricsJson', {
         runId,
@@ -134,9 +143,12 @@ export async function execute(
     }
 
     // 8. Format and print output
+    progress.updateMessage('Formatting output...');
     const output = formatOutput(result, format);
+    progress.stop(); // Stop spinner before printing output
     console.log(output);
   } catch (error) {
+    progress.fail('Error occurred');
     // 9. Log error contract to artifacts (if applicable)
     if (artifactPaths && runId) {
       const contract = errorToContract(error, fullCommandName, runId);
@@ -146,5 +158,8 @@ export async function execute(
     const message = handleError(error);
     console.error(`Error: ${message}`);
     process.exit(1);
+  } finally {
+    // Always clean up progress indicator
+    resetProgressIndicator();
   }
 }

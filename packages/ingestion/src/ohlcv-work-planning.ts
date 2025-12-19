@@ -16,6 +16,7 @@
  * - "fetch" logic
  */
 
+import { resolve } from 'path';
 import { DateTime } from 'luxon';
 import type { Chain } from '@quantbot/core';
 import { logger, getPythonEngine } from '@quantbot/utils';
@@ -67,12 +68,22 @@ export async function generateOhlcvWorklist(
     side = 'buy',
     chain = 'solana',
     interval = '1m',
+    // Default windows to ensure 5000 candles are fetched for each interval
+    // For 1m: 5000 candles = 5000 minutes = ~83.3 hours
+    // For 5m: 5000 candles = 25000 minutes = ~416.7 hours
+    // Using 52 minutes pre-window (as per OhlcvIngestionEngine), calculate post-window to get 5000 candles
     preWindowMinutes = 260, // Default: 260 minutes (52 * 5m) before alert
-    postWindowMinutes = 1440, // Default: 1440 minutes (24h) after alert
+    // For 1m interval: 5000 - 260 = 4740 minutes post-window to get 5000 candles total
+    // For 5m interval: 25000 - 260 = 24740 minutes post-window to get 5000 candles total
+    // Default to 1m calculation (4740), but this should be adjusted based on interval
+    postWindowMinutes = 4740, // Default: 4740 minutes to get 5000 candles for 1m interval
   } = options;
 
+  // Convert relative paths to absolute paths (Python scripts run from different working directories)
+  const absoluteDuckdbPath = resolve(process.cwd(), duckdbPath);
+
   logger.info('Generating OHLCV worklist from DuckDB', {
-    duckdbPath,
+    duckdbPath: absoluteDuckdbPath,
     from: from?.toISOString(),
     to: to?.toISOString(),
     side,
@@ -84,7 +95,7 @@ export async function generateOhlcvWorklist(
 
   // Query DuckDB for worklist
   const worklist = await pythonEngine.runOhlcvWorklist({
-    duckdbPath,
+    duckdbPath: absoluteDuckdbPath,
     from: from?.toISOString(),
     to: to?.toISOString(),
     side,
@@ -117,8 +128,24 @@ export async function generateOhlcvWorklist(
     }
 
     // Calculate fetch window based on alert time
+    // Adjust post-window based on interval to ensure 5000 candles
+    // For 1m: 5000 candles = 5000 minutes total, so postWindow = 5000 - preWindow
+    // For 5m: 5000 candles = 25000 minutes total, so postWindow = 25000 - preWindow
+    // For 15s: 5000 candles = 75000 seconds = 1250 minutes total, so postWindow = 1250 - preWindow
+    // For 1H: 5000 candles = 5000 hours total, so postWindow = 5000 * 60 - preWindow
+    let adjustedPostWindow = postWindowMinutes;
+    if (interval === '1m') {
+      adjustedPostWindow = 5000 - preWindowMinutes; // 5000 candles for 1m
+    } else if (interval === '5m') {
+      adjustedPostWindow = 25000 - preWindowMinutes; // 5000 candles for 5m
+    } else if (interval === '15s') {
+      adjustedPostWindow = 1250 - preWindowMinutes; // 5000 candles for 15s (1250 minutes)
+    } else if (interval === '1H') {
+      adjustedPostWindow = 5000 * 60 - preWindowMinutes; // 5000 candles for 1H (5000 hours = 300000 minutes)
+    }
+    
     const startTime = alertTime.minus({ minutes: preWindowMinutes });
-    const endTime = alertTime.plus({ minutes: postWindowMinutes });
+    const endTime = alertTime.plus({ minutes: adjustedPostWindow });
 
     // Use chain from token group, or fallback to options.chain
     const tokenChain = (tokenGroup.chain as Chain) || chain;

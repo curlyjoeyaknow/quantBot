@@ -22,33 +22,42 @@ export type StatsStorageArgs = {
 export async function statsStorageHandler(
   _args: StatsStorageArgs,
   ctx: CommandContext
-): Promise<Record<string, unknown>> {
-  const stats: Record<string, unknown> = {};
-
-  // PostgreSQL removed - no postgres stats
-  stats.postgres = { error: 'PostgreSQL removed - use DuckDB instead' };
-
+): Promise<Record<string, unknown> | Array<Record<string, unknown>>> {
   // ClickHouse stats - use factory to get client
-  try {
-    const client = ctx.services.clickHouseClient();
-    const database = process.env.CLICKHOUSE_DATABASE || 'quantbot';
-    const tables = SAFE_TABLES.clickhouse;
-    const counts: Record<string, number> = {};
+  const client = ctx.services.clickHouseClient();
+  const database = process.env.CLICKHOUSE_DATABASE || 'quantbot';
+  const tables = SAFE_TABLES.clickhouse;
+  const rows: Array<Record<string, unknown>> = [];
 
-    for (const table of tables) {
+  for (const table of tables) {
+    try {
       const result = await client.query({
         query: `SELECT COUNT(*) as count FROM ${database}.${table}`,
         format: 'JSONEachRow',
       });
       const data = (await result.json()) as { count: string }[];
       const firstRow = data[0];
-      counts[table] = firstRow ? parseInt(firstRow.count, 10) : 0;
+      const count = firstRow ? parseInt(firstRow.count, 10) : 0;
+      rows.push({
+        table,
+        count,
+        storage: 'clickhouse',
+      });
+    } catch (error) {
+      // Skip tables that don't exist, but log the error
+      const errorMessage = (error as Error).message;
+      if (errorMessage.includes("doesn't exist")) {
+        // Table doesn't exist - skip it
+        continue;
+      }
+      // For other errors, include in results
+      rows.push({
+        table,
+        storage: 'clickhouse',
+        error: errorMessage,
+      });
     }
-
-    stats.clickhouse = counts;
-  } catch (error) {
-    stats.clickhouse = { error: (error as Error).message };
   }
 
-  return stats;
+  return rows;
 }

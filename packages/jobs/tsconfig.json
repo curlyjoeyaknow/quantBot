@@ -18,8 +18,8 @@
       "@quantbot/utils/*": ["../utils/src/*"],
       "@quantbot/storage": ["../storage/src"],
       "@quantbot/storage/*": ["../storage/src/*"],
-      "@quantbot/api-clients": ["../api-clients/src"],
-      "@quantbot/api-clients/*": ["../api-clients/src/*"],
+      "@quantbot/api-clients": ["../api-clients/dist"],
+      "@quantbot/api-clients/*": ["../api-clients/dist/*"],
       "@quantbot/ohlcv": ["../ohlcv/src"],
       "@quantbot/ohlcv/*": ["../ohlcv/src/*"],
       "@quantbot/observability": ["../observability/src"],
@@ -29,7 +29,7 @@
     }
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["node_modules", "dist", "**/*.test.ts", "**/dist/**"],
+  "exclude": ["node_modules", "**/dist/**", "**/*.test.ts", "dist"],
   "references": [
     { "path": "../core" },
     { "path": "../utils" },

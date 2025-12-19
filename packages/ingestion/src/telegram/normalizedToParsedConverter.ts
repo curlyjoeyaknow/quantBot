@@ -5,8 +5,8 @@
  * that expect ParsedMessage format.
  */
 
-import type { NormalizedTelegramMessage } from './normalize';
-import type { ParsedMessage } from '../TelegramExportParser';
+import type { NormalizedTelegramMessage } from './normalize.js';
+import type { ParsedMessage } from '../TelegramExportParser.js';
 
 /**
  * Convert a normalized message to ParsedMessage format

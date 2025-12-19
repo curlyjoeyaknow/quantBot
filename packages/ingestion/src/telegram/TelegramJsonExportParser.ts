@@ -12,7 +12,7 @@ import {
   normalizeTelegramMessage,
   type NormalizedTelegramMessage,
   type NormalizeErr,
-} from './normalize';
+} from './normalize.js';
 
 export interface ParseJsonExportResult {
   normalized: NormalizedTelegramMessage[];

@@ -4,7 +4,7 @@
  * Tracks API credit usage for monitoring and alerting
  */
 
-import { logger } from './logger';
+import { logger } from './logger.js';
 
 export interface CreditUsage {
   provider: string;

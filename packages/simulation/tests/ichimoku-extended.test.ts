@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { calculateIchimoku, detectIchimokuSignals, formatIchimokuData } from '../src/ichimoku';
-import type { Candle } from '../src/candles';
+import type { Candle } from '../src/types/candle';
 
 describe('ichimoku-extended', () => {
   const createCandle = (timestamp: number, price: number, overrides?: Partial<Candle>): Candle => ({

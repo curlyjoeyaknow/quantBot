@@ -4,11 +4,11 @@
  * Exit detection for targets, stop loss, and signals.
  */
 
-import type { StopLossConfig, StrategyLeg, SignalGroup } from '../types';
-import type { Candle, SubCandleProvider as CandleProvider } from '../types/candle';
-import type { LegacyIndicatorData } from '../indicators/registry';
-import { evaluateSignalGroup } from '../signals/evaluator';
-import { getIntervalSeconds } from '../types/candle';
+import type { StopLossConfig, StrategyLeg, SignalGroup } from '../types/index.js';
+import type { Candle, SubCandleProvider as CandleProvider } from '../types/candle.js';
+import type { LegacyIndicatorData } from '../indicators/registry.js';
+import { evaluateSignalGroup } from '../signals/evaluator.js';
+import { getIntervalSeconds } from '../types/candle.js';
 
 /**
  * Exit detection result
@@ -409,7 +409,7 @@ export function updateStopLossState(
   }
 
   // Check trailing stop activation
-  if (!state.trailingActive && config.trailing !== 'none') {
+  if (!state.trailingActive && config.trailing !== undefined && config.trailing !== 'none') {
     if (checkTrailingStopActivation(candle, entryPrice, config.trailing)) {
       newState.trailingActive = true;
       newState.stopLossPrice = entryPrice; // Move to break-even

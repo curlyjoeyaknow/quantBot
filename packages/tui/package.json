@@ -23,11 +23,13 @@
     "cli-table3": "^0.6.5",
     "prompts": "^2.4.2",
     "blessed": "^0.1.81",
+    "blessed-contrib": "^4.11.0",
     "@quantbot/cli": "workspace:*",
     "@quantbot/core": "workspace:*",
     "@quantbot/utils": "workspace:*"
   },
   "devDependencies": {
+    "@types/blessed": "^0.1.25",
     "@types/node": "^24.10.1",
     "@vitest/coverage-v8": "^4.0.15",
     "typescript": "^5.9.3",

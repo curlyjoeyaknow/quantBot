@@ -1,7 +1,7 @@
 import { Database } from 'sqlite3';
 import { promisify } from 'util';
 import * as path from 'path';
-import { logger } from './logger';
+import { logger } from './logger.js';
 
 // Configuration
 const CALLER_DB_PATH =

@@ -5,16 +5,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { coverageOhlcvHandler } from '../../../../src/handlers/ohlcv/coverage-ohlcv.js';
 import type { CommandContext } from '../../../../src/core/command-context.js';
-import { getClickHouseClient } from '@quantbot/storage';
-
-// Mock ClickHouse client
-vi.mock('@quantbot/storage', async () => {
-  const actual = await vi.importActual('@quantbot/storage');
-  return {
-    ...actual,
-    getClickHouseClient: vi.fn(),
-  };
-});
 
 describe('coverageOhlcvHandler', () => {
   let mockClient: any;
@@ -25,10 +15,10 @@ describe('coverageOhlcvHandler', () => {
       query: vi.fn(),
     };
 
-    vi.mocked(getClickHouseClient).mockReturnValue(mockClient);
-
     mockCtx = {
-      services: {},
+      services: {
+        clickHouseClient: () => mockClient,
+      },
     } as unknown as CommandContext;
   });
 

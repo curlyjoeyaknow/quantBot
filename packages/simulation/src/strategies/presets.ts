@@ -4,7 +4,7 @@
  * Predefined strategy configurations
  */
 
-import { StrategyConfig, StrategyPresetName } from './types';
+import { StrategyConfig, StrategyPresetName } from '../types/index.js';
 
 const presets: Map<StrategyPresetName, StrategyConfig> = new Map();
 
@@ -14,6 +14,7 @@ presets.set('basic-6h-20pct-sl', {
   profitTargets: [],
   stopLoss: {
     initial: -0.2,
+    trailing: 'none',
   },
   holdHours: 6,
 });
@@ -44,6 +45,7 @@ presets.set('aggressive-multi-tp', {
   ],
   stopLoss: {
     initial: -0.4,
+    trailing: 'none',
   },
   holdHours: 24,
 });
@@ -72,9 +74,11 @@ presets.set('buy-the-dip-30pct', {
   ],
   stopLoss: {
     initial: -0.2,
+    trailing: 'none',
   },
   entry: {
     initialEntry: -0.3,
+    trailingEntry: 'none',
     maxWaitTime: 60,
   },
   holdHours: 6,

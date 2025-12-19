@@ -4,8 +4,8 @@
  * TUI Entry Point
  */
 
-import { TUIApp } from '../app';
-import { DashboardScreen } from '../screens/dashboard';
+import { TUIApp } from '../app.js';
+import { DashboardScreen } from '../screens/dashboard.js';
 import { logger } from '@quantbot/utils';
 
 async function main() {
@@ -15,25 +15,24 @@ async function main() {
 
     // Navigate to dashboard
     const dashboard = new DashboardScreen();
+    const blessedScreen = app.getBlessedScreen();
+    const screenManager = app.getScreenManager();
+    
+    // Set blessed screen on dashboard
+    dashboard.setBlessedScreen(blessedScreen, screenManager);
+    
     app.navigateTo(dashboard);
 
-    // Set up input handling (simplified - would use readline in production)
-    process.stdin.setRawMode(true);
-    process.stdin.resume();
-    process.stdin.setEncoding('utf8');
-
-    process.stdin.on('data', async (key: string) => {
-      if (key === '\u0003') {
-        // Ctrl+C
-        app.quit();
-        process.exit(0);
-      }
-
-      await app.handleInput(key);
-    });
+    // Blessed handles input automatically through the screen's key handlers
+    // Additional key handling is done in the app and blessed screen
 
     // Keep process alive
     process.on('SIGINT', () => {
+      app.quit();
+      process.exit(0);
+    });
+
+    process.on('SIGTERM', () => {
       app.quit();
       process.exit(0);
     });
@@ -43,9 +42,8 @@ async function main() {
   }
 }
 
-if (require.main === module) {
-  main().catch((error) => {
-    logger.error('Failed to start TUI', error as Error);
-    process.exit(1);
-  });
-}
+// ES module entry point
+main().catch((error) => {
+  logger.error('Failed to start TUI', error as Error);
+  process.exit(1);
+});

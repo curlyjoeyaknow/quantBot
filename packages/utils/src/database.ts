@@ -15,7 +15,7 @@
 import * as sqlite3 from 'sqlite3';
 import { DateTime } from 'luxon';
 import * as path from 'path';
-import { logger } from './logger';
+import { logger } from './logger.js';
 import type {
   Strategy,
   StrategyLeg,
@@ -43,7 +43,7 @@ import {
   chainParamSchema,
   limitSchema,
   hoursSchema,
-} from './database-validation';
+} from './database-validation.js';
 
 // ---------------------------------------------------------------------
 // Type Definitions for Database Rows

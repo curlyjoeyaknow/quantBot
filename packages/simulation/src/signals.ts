@@ -1,5 +1,5 @@
 import type { Candle } from '@quantbot/core';
-import type { IndicatorData } from './indicators';
+import type { IndicatorData } from './indicators.js';
 import {
   ComparisonOperator,
   IndicatorName,
@@ -7,7 +7,7 @@ import {
   LadderLeg,
   SignalCondition,
   SignalGroup,
-} from './config';
+} from './config.js';
 
 export interface SignalEvaluationContext {
   candle: Candle;

@@ -8,8 +8,8 @@
 import { DateTime } from 'luxon';
 import { logger } from '@quantbot/utils';
 import { getStorageEngine } from '@quantbot/storage';
-import type { CallPerformance, PeriodMetrics } from '../types';
-import { calculatePeriodAthAtlFromCandles } from './ath-calculator';
+import type { CallPerformance, PeriodMetrics } from '../types.js';
+import { calculatePeriodAthAtlFromCandles } from './ath-calculator.js';
 
 export interface EnrichPeriodMetricsOptions {
   /** Analysis period in days (default: 7 days) */

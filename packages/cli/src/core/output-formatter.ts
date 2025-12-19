@@ -12,6 +12,30 @@ export function formatJSON(data: unknown): string {
 }
 
 /**
+ * Convert a value to a displayable string, handling nested objects
+ */
+function valueToString(value: unknown): string {
+  if (value === null || value === undefined) {
+    return '';
+  }
+  // Handle Date objects explicitly
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+  if (typeof value === 'object') {
+    // Convert objects/arrays to compact JSON
+    // Use a replacer to handle Date objects and other special cases
+    return JSON.stringify(value, (key, val) => {
+      if (val instanceof Date) {
+        return val.toISOString();
+      }
+      return val;
+    });
+  }
+  return String(value);
+}
+
+/**
  * Format output as a simple table
  */
 export function formatTable(data: unknown[], columns?: string[]): string {
@@ -37,7 +61,7 @@ export function formatTable(data: unknown[], columns?: string[]): string {
       col.length,
       ...data.map((row) => {
         const value = (row as Record<string, unknown>)[col];
-        return value ? String(value).length : 0;
+        return valueToString(value).length;
       })
     );
   }
@@ -55,7 +79,7 @@ export function formatTable(data: unknown[], columns?: string[]): string {
     const rowData = detectedColumns
       .map((col) => {
         const value = (row as Record<string, unknown>)[col];
-        return String(value ?? '').padEnd(widths[col]!);
+        return valueToString(value).padEnd(widths[col]!);
       })
       .join(' | ');
     lines.push(rowData);
@@ -96,7 +120,7 @@ export function formatCSV(data: unknown[], columns?: string[]): string {
       if (value === null || value === undefined) {
         return '';
       }
-      const str = String(value);
+      const str = valueToString(value);
       if (str.includes(',') || str.includes('"') || str.includes('\n')) {
         return `"${str.replace(/"/g, '""')}"`;
       }
@@ -148,6 +172,7 @@ export function formatOutput(data: unknown, format: OutputFormat = 'table'): str
 
 /**
  * Create a progress indicator (simple text-based)
+ * @deprecated Use progress-indicator.ts instead
  */
 export function createProgressIndicator(current: number, total: number, label?: string): string {
   const percent = total > 0 ? Math.round((current / total) * 100) : 0;

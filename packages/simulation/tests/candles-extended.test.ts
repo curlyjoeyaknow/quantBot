@@ -1,7 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { DateTime } from 'luxon';
-import { aggregateCandles, fetchHybridCandles } from '../src/candles';
-import type { Candle } from '../src/candles';
+import { aggregateCandles } from '../src/data/aggregator';
+import type { Candle } from '../src/types/candle';
+// fetchHybridCandles has been moved to @quantbot/ohlcv
 
 // Mock axios
 vi.mock('axios', () => ({

@@ -5,7 +5,7 @@ import {
   evaluateLadderLegs,
   type SignalEvaluationContext,
 } from '../src/signals';
-import type { Candle } from '../src/candles';
+import type { Candle } from '../src/types/candle';
 import type { IndicatorData } from '../src/indicators';
 import type { SignalGroup, SignalCondition, LadderConfig } from '../src/config';
 

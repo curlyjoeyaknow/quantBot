@@ -2,7 +2,7 @@
  * State Manager - Reactive state updates
  */
 
-import type { StateSubscription } from '../types';
+import type { StateSubscription } from '../types/index.js';
 
 /**
  * State manager for reactive state updates

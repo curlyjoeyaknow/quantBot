@@ -5,7 +5,7 @@
  */
 
 import { DateTime } from 'luxon';
-import { getClickHouseClient } from '../../clickhouse-client';
+import { getClickHouseClient } from '../../clickhouse-client.js';
 import { logger } from '@quantbot/utils';
 import type { SimulationEvent, SimulationAggregate } from '@quantbot/core';
 

@@ -4,8 +4,8 @@
  * Relative Strength Index calculation.
  */
 
-import type { Candle } from '../types';
-import type { IndicatorCalculator, IndicatorResult } from './base';
+import type { Candle } from '../types/index.js';
+import type { IndicatorCalculator, IndicatorResult } from './base.js';
 
 const DEFAULT_RSI_PERIOD = 14;
 

@@ -51,9 +51,10 @@ export class OHLCVQueryService {
         }
       }
 
-      // Query from InfluxDB
-      logger.debug('Querying OHLCV data from InfluxDB', { tokenAddress });
-      const data = await this.influxClient.getOHLCVData(tokenAddress, startTime, endTime, interval);
+      // InfluxDB is not in use - return empty array
+      // TODO: Replace with ClickHouse query when needed
+      logger.warn('InfluxDB is not in use - returning empty data. Use ClickHouse queries instead.', { tokenAddress });
+      const data: OHLCVData[] = [];
 
       // Cache the data if enabled
       if (useCache && data.length > 0) {

@@ -121,7 +121,18 @@ export const clickHouseQuerySchema = z.object({
   format: z.enum(['json', 'table', 'csv']).default('table'),
 });
 
+export const listStrategiesSchema = z.object({
+  duckdb: z.string().optional(),
+  format: z.enum(['json', 'table', 'csv']).default('table'),
+});
+
+export const createStrategyInteractiveSchema = z.object({
+  duckdb: z.string().optional(),
+});
+
 export type StoreStrategyArgs = z.infer<typeof storeStrategySchema>;
 export type StoreRunArgs = z.infer<typeof storeRunSchema>;
 export type GenerateReportArgs = z.infer<typeof generateReportSchema>;
 export type ClickHouseQueryArgs = z.infer<typeof clickHouseQuerySchema>;
+export type ListStrategiesArgs = z.infer<typeof listStrategiesSchema>;
+export type CreateStrategyInteractiveArgs = z.infer<typeof createStrategyInteractiveSchema>;

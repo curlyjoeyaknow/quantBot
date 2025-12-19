@@ -15,9 +15,13 @@ The dispatcher is intentionally boring - that's a feature.
 import argparse
 import json
 import sys
+from pathlib import Path
 
-from .utils import get_connection
-from .ops import (
+# Add parent directory to path to allow imports when run as script
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from duckdb_storage.utils import get_connection
+from duckdb_storage.ops import (
     StoreStrategyInput,
     StoreStrategyOutput,
     store_strategy_run,

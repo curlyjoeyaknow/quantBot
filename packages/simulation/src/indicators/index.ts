@@ -5,13 +5,13 @@
  */
 
 // Base types
-export * from './base';
+export * from './base.js';
 
 // Indicator calculators
-export * from './moving-averages';
-export * from './ichimoku';
-export * from './rsi';
-export * from './macd';
+export * from './moving-averages.js';
+export * from './ichimoku.js';
+export * from './rsi.js';
+export * from './macd.js';
 
 // Registry
-export * from './registry';
+export * from './registry.js';

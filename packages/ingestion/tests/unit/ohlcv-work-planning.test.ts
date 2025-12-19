@@ -88,9 +88,11 @@ describe('OHLCV Work Planning', () => {
       expect(workItems[0].priority).toBe(5); // Higher call count = higher priority
 
       // Verify time windows
+      // Note: For '1m' interval, postWindow is automatically adjusted to 5000 - preWindow = 4740
       const alertTime = DateTime.fromISO('2024-01-01T12:00:00Z');
       expect(workItems[0].startTime.toISO()).toBe(alertTime.minus({ minutes: 260 }).toISO());
-      expect(workItems[0].endTime.toISO()).toBe(alertTime.plus({ minutes: 1440 }).toISO());
+      const expectedPostWindow = 5000 - 260; // Auto-adjusted for 1m interval
+      expect(workItems[0].endTime.toISO()).toBe(alertTime.plus({ minutes: expectedPostWindow }).toISO());
     });
 
     it('should sort work items by priority (call count)', async () => {
@@ -157,10 +159,12 @@ describe('OHLCV Work Planning', () => {
       expect(workItems[0].interval).toBe('1m'); // Default
       expect(workItems[0].chain).toBe('solana'); // Default
 
-      // Default windows: 260 pre, 1440 post
+      // Default windows: 260 pre, auto-adjusted post for 1m interval (5000 - 260 = 4740)
       const alertTime = DateTime.fromISO('2024-01-01T12:00:00Z');
       expect(workItems[0].startTime.toISO()).toBe(alertTime.minus({ minutes: 260 }).toISO());
-      expect(workItems[0].endTime.toISO()).toBe(alertTime.plus({ minutes: 1440 }).toISO());
+      // Note: For '1m' interval, postWindow is automatically adjusted to 5000 - preWindow = 4740
+      const expectedPostWindow = 5000 - 260; // Auto-adjusted for 1m interval
+      expect(workItems[0].endTime.toISO()).toBe(alertTime.plus({ minutes: expectedPostWindow }).toISO());
     });
 
     it('should handle missing required fields gracefully', async () => {

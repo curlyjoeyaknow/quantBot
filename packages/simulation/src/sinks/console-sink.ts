@@ -4,8 +4,8 @@
  * Output simulation results to console.
  */
 
-import type { SimulationRunContext } from '../core';
-import type { ResultSink, BaseSinkOptions } from './base';
+import type { SimulationRunContext } from '../core/index.js';
+import type { ResultSink, BaseSinkOptions } from './base.js';
 
 /**
  * Console sink options

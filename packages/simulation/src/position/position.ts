@@ -11,8 +11,8 @@ import type {
   TradeExecution,
   UpdatePositionParams,
   PositionSummary,
-} from '../types';
-import type { EntryReason, ExitReason } from '../types/position';
+} from '../types/index.js';
+import type { EntryReason, ExitReason } from '../types/position.js';
 
 /**
  * Position creation parameters

@@ -18,9 +18,9 @@
 // import { config } from 'dotenv';
 // config({ override: true });
 // import axios from 'axios';
-// Temporary: Import axios for deprecated code (will be removed)
-
-const axios = require('axios');
+// NOTE: This file is deprecated and should not be used.
+// All API calls have been moved to @quantbot/api-clients in @quantbot/jobs.
+// This file is kept for reference only and is excluded from dependency boundary checks.
 //
 // Type declarations for deprecated functions (to satisfy TypeScript)
 // These functions should not be used - they are kept for reference only
@@ -262,6 +262,7 @@ async function fetchBirdeyeCandlesChunk(
 ): Promise<Candle[]> {
   try {
     // Fetch by date range (up to 5000 candles)
+    // @ts-expect-error - axios is declared but not imported (deprecated code)
     const response = await axios.get(BIRDEYE_ENDPOINT, {
       headers: {
         'X-API-KEY': apiKey,

@@ -9,7 +9,7 @@ import {
   simulateStrategy,
   Strategy,
 } from '../src';
-import { Candle } from '../src/candles';
+import type { Candle } from '../src/types/candle';
 
 describe('Simulation configuration parsing', () => {
   it('applies defaults and validates scenarios', () => {

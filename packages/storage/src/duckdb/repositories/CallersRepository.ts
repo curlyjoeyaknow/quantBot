@@ -10,7 +10,7 @@ import { logger } from '@quantbot/utils';
 import { join } from 'path';
 import { z } from 'zod';
 import type { Caller } from '@quantbot/core';
-import { DuckDBClient } from '../duckdb-client';
+import { DuckDBClient } from '../duckdb-client.js';
 
 export interface CallerInsertData {
   source: string;

@@ -5,7 +5,7 @@
  */
 
 import { DateTime } from 'luxon';
-import type { Candle, CandleInterval } from '../types';
+import type { Candle, CandleInterval } from "../types/index.js";
 
 /**
  * Token metadata from data providers

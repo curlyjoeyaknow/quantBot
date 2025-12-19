@@ -5,7 +5,7 @@
  * Provides the same structured logging interface as the main logger.
  */
 
-import { logger as baseLogger, LogContext } from './logger';
+import { logger as baseLogger, LogContext } from './logger.js';
 
 /**
  * Next.js-specific logger with request context support

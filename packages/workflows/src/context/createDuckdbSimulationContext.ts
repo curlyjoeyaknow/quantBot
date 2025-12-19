@@ -6,6 +6,7 @@
  */
 
 import { v4 as uuidv4 } from 'uuid';
+import { ConfigurationError } from '@quantbot/utils';
 import {
   createProductionContext,
   type ProductionContextConfig,
@@ -47,8 +48,14 @@ export function createDuckdbSimulationContext(
   const ohlcvIngestionService = config?.ohlcvIngestionService;
 
   if (!simulationService || !duckdbStorageService || !ohlcvIngestionService) {
-    throw new Error(
-      'createDuckdbSimulationContext requires all services to be provided. Use CommandContext in production.'
+    throw new ConfigurationError(
+      'createDuckdbSimulationContext requires all services to be provided. Use CommandContext in production.',
+      'services',
+      {
+        hasSimulationService: !!simulationService,
+        hasDuckdbStorageService: !!duckdbStorageService,
+        hasOhlcvIngestionService: !!ohlcvIngestionService,
+      }
     );
   }
 
@@ -65,7 +72,12 @@ export function createDuckdbSimulationContext(
       },
       duckdbStorage: {
         async queryCalls(path, limit) {
-          return duckdbStorageService.queryCalls(path, limit);
+          const result = await duckdbStorageService.queryCalls(path, limit);
+          // Convert null to undefined for error field to match expected type
+          return {
+            ...result,
+            error: result.error ?? undefined,
+          };
         },
         async checkOhlcvAvailability(
           path,
