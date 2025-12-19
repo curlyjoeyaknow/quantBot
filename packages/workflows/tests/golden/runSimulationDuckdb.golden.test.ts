@@ -517,4 +517,3 @@ describe('runSimulationDuckdb Workflow - Golden Path', () => {
     });
   });
 });
-
