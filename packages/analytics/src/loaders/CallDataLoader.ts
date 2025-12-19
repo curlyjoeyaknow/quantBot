@@ -61,8 +61,11 @@ export class CallDataLoader {
       // Dynamic imports to avoid build-time dependency
       // Type assertions needed because packages may not be built yet
       // Use type assertion on the import path to bypass TypeScript module resolution
-      const workflowsModule = await import('@quantbot/workflows' as string) as {
-        queryCallsDuckdb: (spec: QueryCallsDuckdbSpec, ctx: WorkflowContext) => Promise<{
+      const workflowsModule = (await import('@quantbot/workflows' as string)) as {
+        queryCallsDuckdb: (
+          spec: QueryCallsDuckdbSpec,
+          ctx: WorkflowContext
+        ) => Promise<{
           calls: Array<{ mint: string; createdAt: { toJSDate: () => Date }; caller?: string }>;
         }>;
         createProductionContext: () => WorkflowContext;
@@ -72,13 +75,16 @@ export class CallDataLoader {
       const workflowCtx: WorkflowContext = {
         ...ctx,
         services: {
-          ...ctx.services as Record<string, unknown>,
+          ...(ctx.services as Record<string, unknown>),
           duckdbStorage: {
             queryCalls: async (path: string, limit: number) => {
               // Get DuckDBStorageService from context
-              const simulationModule = await import('@quantbot/simulation' as string) as {
+              const simulationModule = (await import('@quantbot/simulation' as string)) as {
                 DuckDBStorageService: new (engine: unknown) => {
-                  queryCalls: (path: string, limit: number) => Promise<{
+                  queryCalls: (
+                    path: string,
+                    limit: number
+                  ) => Promise<{
                     success: boolean;
                     calls?: Array<{ mint: string; alert_timestamp: string }>;
                     error?: string;
@@ -99,23 +105,28 @@ export class CallDataLoader {
       // Convert CallRecord[] to CallPerformance[]
       // Note: CallPerformance requires more fields than CallRecord provides
       // We'll need to enrich with additional data or adjust the type
-      const callPerformance: CallPerformance[] = result.calls.map((call: {
-        mint: string;
-        createdAt: { toJSDate: () => Date };
-        caller?: string;
-      }, index: number) => ({
-        callId: index + 1, // Generate ID since we don't have numeric ID from DuckDB
-        tokenAddress: call.mint,
-        callerName: call.caller || 'unknown',
-        chain: 'solana', // Default to solana, could be enriched later
-        alertTimestamp: call.createdAt.toJSDate(),
-        entryPrice: 0, // Will need to be enriched from alerts table or OHLCV
-        athPrice: 0, // Will need to be enriched
-        athMultiple: 1, // Default, will be enriched
-        timeToAthMinutes: 0, // Will need to be enriched
-        atlPrice: 0, // Will need to be enriched
-        atlMultiple: 1, // Default, will be enriched
-      }));
+      const callPerformance: CallPerformance[] = result.calls.map(
+        (
+          call: {
+            mint: string;
+            createdAt: { toJSDate: () => Date };
+            caller?: string;
+          },
+          index: number
+        ) => ({
+          callId: index + 1, // Generate ID since we don't have numeric ID from DuckDB
+          tokenAddress: call.mint,
+          callerName: call.caller || 'unknown',
+          chain: 'solana', // Default to solana, could be enriched later
+          alertTimestamp: call.createdAt.toJSDate(),
+          entryPrice: 0, // Will need to be enriched from alerts table or OHLCV
+          athPrice: 0, // Will need to be enriched
+          athMultiple: 1, // Default, will be enriched
+          timeToAthMinutes: 0, // Will need to be enriched
+          atlPrice: 0, // Will need to be enriched
+          atlMultiple: 1, // Default, will be enriched
+        })
+      );
 
       logger.info(`[CallDataLoader] Loaded ${callPerformance.length} calls from DuckDB`, {
         fromISO,

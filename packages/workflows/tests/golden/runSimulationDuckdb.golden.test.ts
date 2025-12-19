@@ -172,9 +172,7 @@ describe('runSimulationDuckdb Workflow - Golden Path', () => {
         },
       };
 
-      mockContext.services.simulation.runSimulation = vi
-        .fn()
-        .mockResolvedValue(mockSimResult);
+      mockContext.services.simulation.runSimulation = vi.fn().mockResolvedValue(mockSimResult);
 
       // Execute: Run workflow
       const result = await runSimulationDuckdb(
@@ -265,9 +263,7 @@ describe('runSimulationDuckdb Workflow - Golden Path', () => {
         },
       };
 
-      mockContext.services.simulation.runSimulation = vi
-        .fn()
-        .mockResolvedValue(mockSimResult);
+      mockContext.services.simulation.runSimulation = vi.fn().mockResolvedValue(mockSimResult);
 
       // Setup: OHLCV ingestion succeeds
       mockContext.services.ohlcvIngestion.ingestForCalls = vi.fn().mockResolvedValue({
@@ -345,9 +341,7 @@ describe('runSimulationDuckdb Workflow - Golden Path', () => {
         },
       };
 
-      mockContext.services.simulation.runSimulation = vi
-        .fn()
-        .mockResolvedValue(mockSimResult);
+      mockContext.services.simulation.runSimulation = vi.fn().mockResolvedValue(mockSimResult);
 
       const result = await runSimulationDuckdb(
         {
@@ -491,9 +485,7 @@ describe('runSimulationDuckdb Workflow - Golden Path', () => {
         },
       };
 
-      mockContext.services.simulation.runSimulation = vi
-        .fn()
-        .mockResolvedValue(mockSimResult);
+      mockContext.services.simulation.runSimulation = vi.fn().mockResolvedValue(mockSimResult);
 
       const result = await runSimulationDuckdb(
         {
@@ -549,9 +541,7 @@ describe('runSimulationDuckdb Workflow - Golden Path', () => {
         },
       };
 
-      mockContext.services.simulation.runSimulation = vi
-        .fn()
-        .mockResolvedValue(mockSimResult);
+      mockContext.services.simulation.runSimulation = vi.fn().mockResolvedValue(mockSimResult);
 
       const result = await runSimulationDuckdb(
         {
