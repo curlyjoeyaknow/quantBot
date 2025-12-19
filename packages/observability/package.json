@@ -5,15 +5,14 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "tsc && tsc --emitDeclarationOnly",
+    "build": "tsc --build",
     "test": "vitest"
   },
   "dependencies": {
     "@quantbot/core": "workspace:*",
     "@quantbot/utils": "workspace:*",
     "@quantbot/storage": "workspace:*",
-    "@quantbot/api-clients": "workspace:*",
-    "@influxdata/influxdb-client": "^1.33.2",
+    "prom-client": "^15.1.0",
     "luxon": "^3.6.1"
   },
   "devDependencies": {

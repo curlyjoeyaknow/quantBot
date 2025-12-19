@@ -7,7 +7,6 @@
 import { logger } from '@quantbot/utils';
 import { getPostgresPool, getClickHouseClient } from '@quantbot/storage';
 import { checkApiQuotas } from './quotas';
-import { checkDatabaseHealth } from './database-health';
 
 export interface HealthStatus {
   status: 'healthy' | 'degraded' | 'unhealthy';

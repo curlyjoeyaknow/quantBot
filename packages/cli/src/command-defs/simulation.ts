@@ -50,6 +50,7 @@ export const runSimulationDuckdbSchema = z.object({
   initial_capital: z.number().positive().default(1000.0),
   lookback_minutes: z.number().int().positive().default(260),
   lookforward_minutes: z.number().int().positive().default(1440),
+  resume: z.boolean().default(false),
   format: z.enum(['json', 'table', 'csv']).default('table'),
 });
 

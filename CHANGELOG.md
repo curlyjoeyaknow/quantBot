@@ -7,7 +7,156 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Offline-Only Architecture**: Refactored `@quantbot/ohlcv` and `@quantbot/ingestion` to be fully offline-only
+  - `@quantbot/ohlcv`: Now only queries ClickHouse and stores candles (no API calls)
+  - `@quantbot/ingestion`: Now only generates worklists and manages metadata (no API calls)
+  - `@quantbot/jobs`: New package for online orchestration (API calls, rate limiting, metrics)
+  - Dependency boundary tests enforce offline-only constraints
+  - See `docs/OHLCV_OFFLINE_REFACTORING_PLAN.md` for detailed architecture
+
+- **Dependency Boundary Enforcement**: Added tripwire tests to prevent architectural violations
+  - `@quantbot/ohlcv` must not depend on `@quantbot/api-clients`, `axios`, or `dotenv`
+  - `@quantbot/ingestion` must not depend on `@quantbot/api-clients`, `axios`, or `dotenv`
+  - Tests fail if forbidden dependencies are added
+
+### Changed
+
+- **OHLCV Architecture**: Moved API-calling logic from `@quantbot/ohlcv` to `@quantbot/jobs`
+  - `OhlcvIngestionEngine` moved from `@quantbot/ohlcv` to `@quantbot/jobs`
+  - `OhlcvFetchJob` refactored to use `fetchBirdeyeCandles` from `@quantbot/api-clients`
+  - `storeCandles` remains in `@quantbot/ohlcv` for offline storage operations
+
+- **Ingestion Architecture**: Removed all API client calls from `@quantbot/ingestion`
+  - Removed ATH/ATL calculation (moved to simulation layer)
+  - Removed contract validation and chain detection via API
+  - `generateOhlcvWorklist` now generates worklists from DuckDB only (offline)
+  - Telegram ingestion services no longer validate contracts via API
+
+- **Build Order**: Updated build order to include `@quantbot/jobs`
+  - `@quantbot/jobs` built after `@quantbot/ohlcv` and `@quantbot/api-clients`
+  - `@quantbot/ingestion` built after `@quantbot/jobs`
+
+### Removed
+
+- **Dependencies**: Removed forbidden dependencies from offline packages
+  - Removed `@quantbot/api-clients` from `@quantbot/ohlcv/package.json`
+  - Removed `@quantbot/api-clients` from `@quantbot/ingestion/package.json`
+  - Removed `axios` and `dotenv` from `@quantbot/ohlcv/package.json`
+  - Removed `process.env` usage from `@quantbot/ohlcv` package files
+
+- **API-Calling Functions**: Deprecated or removed API-calling functions
+  - `fetchHybridCandles` in `candles.ts` (not exported, deprecated)
+  - `fetchHistoricalCandlesForMonitoring` refactored to use offline storage only
+  - ATH/ATL calculation removed from `OhlcvIngestionService`
+
 ### Fixed
+
+- **Type Safety**: Fixed type errors in refactored code
+  - Added `Chain` type import to `ohlcv-engine.ts`
+  - Fixed interval type constraints to match API client interfaces
+  - Updated test mocks to use `vi.hoisted()` for proper initialization
+
+### Deprecated
+
+- **PostgreSQL repositories and client** - All PostgreSQL functionality is deprecated in favor of:
+  - DuckDB for event logging and data storage
+  - Prometheus for live counters and alerting
+  - See `docs/POSTGRES_DEPRECATION.md` for migration guide
+
+## [Unreleased]
+
+### Added
+
+- **TypeScript Project References**: Added project references to all packages for incremental builds
+  - All packages now use `composite: true` with explicit dependency references
+  - Enables faster incremental builds and compile-time dependency checking
+  - Better IDE support with proper type resolution
+  - See [BUILD_SYSTEM.md](docs/BUILD_SYSTEM.md) for detailed documentation
+- **Build System Documentation**: Created comprehensive build system documentation
+  - `docs/BUILD_SYSTEM.md` - Complete guide to the build system, project references, and troubleshooting
+  - Updated `docs/BUILD_STATUS.md` with current status and improvements
+
+### Fixed
+
+- **Circular Dependencies Resolved**: Fixed two circular dependencies that violated build ordering rules
+  - Resolved `@quantbot/api-clients ↔ @quantbot/observability` circular dependency
+    - Removed unused `@quantbot/api-clients` dependency from `observability/package.json`
+    - Verified `observability` source code does not import from `api-clients`
+  - Resolved `@quantbot/ingestion ↔ @quantbot/ohlcv` circular dependency
+    - Moved `@quantbot/ingestion` from `dependencies` to `devDependencies` in `ohlcv/package.json`
+    - Removed `@quantbot/ingestion` path mapping from `ohlcv/tsconfig.json`
+    - Verified `ohlcv` only imports from `ingestion` in test files
+  - Production-level circular dependencies eliminated, ensuring correct build order
+  - All affected packages tested and verified working correctly
+  - Updated `docs/ARCHITECTURAL_ISSUES.md` with resolution details
+
+### Changed
+
+- **Type Safety Improvements**: Fixed 42 linting warnings (203 → 161 remaining)
+  - Replaced `Record<string, any>` with `Record<string, unknown>` in error classes
+  - Fixed `any` types in error handlers (`error-handler.ts`, `errors.ts`)
+  - Fixed `any` types in storage repositories (`TokensRepository.ts`)
+  - Improved type safety in critical paths (error handling, API clients, storage)
+- **Build Scripts**: All packages now use `tsc --build` for incremental compilation
+  - Build scripts already configured correctly
+  - Incremental builds enabled via TypeScript project references
+  - Build caching configured in CI/CD workflow
+
+### Added
+
+- **CI/CD Workflows**: Added GitHub Actions workflows for automated builds and testing
+  - `.github/workflows/build.yml` - Builds packages in order, runs type checking and linting
+  - `.github/workflows/test.yml` - Runs test suites (unit, integration, property tests) with coverage
+  - Caching for node_modules and build artifacts to speed up CI runs
+  - Build order verification before building packages
+- **Build Order Verification Script**: Added `scripts/verify-build-order.ts` to validate package build order
+  - Checks that dependencies are built before dependents
+  - Detects circular dependencies between packages
+  - Validates build order matches expected sequence
+  - Can be run locally or in CI
+- **Architectural Issues Documentation**: Documented circular dependencies and build order violations for future resolution
+  - Created `docs/ARCHITECTURAL_ISSUES.md` tracking two circular dependencies:
+    - `@quantbot/api-clients ↔ @quantbot/observability` (api-clients uses observability, observability declares unused dependency)
+    - `@quantbot/ingestion ↔ @quantbot/ohlcv` (ohlcv only imports ingestion in tests, should be devDependency)
+  - Issues documented but not blocking current development
+  - Resolution strategies and plan included for future work
+- **Incremental Build Script**: Added `build:incremental` script to root `package.json`
+  - Uses TypeScript's `tsc --build` for faster incremental compilation
+  - Leverages TypeScript project references for dependency-aware builds
+  - Faster rebuilds when only specific packages change
+- **TypeScript Project References**: Added TypeScript project references for incremental builds and better dependency management
+  - Added `composite: true` to root `tsconfig.json`
+  - Added project references to all package `tsconfig.json` files following dependency order
+  - Updated build scripts to use `tsc --build` for incremental compilation
+  - Enables faster incremental builds and better IDE support
+
+### Fixed
+
+- **Linting Warnings**: Fixed 35 linting warnings (212 → 177 remaining)
+  - Removed unused imports (DateTime, z, logger, etc.)
+  - Fixed unused variables by prefixing with `_` or removing
+  - Fixed `any` types in CLI handlers (ingest-ohlcv, run-simulation-duckdb)
+  - Fixed `prefer-const` warnings
+  - Fixed useless regex escapes in comprehensiveAddressExtraction.ts
+  - Fixed type errors in simulation package (duckdb-storage-service.ts)
+
+### Changed
+
+- **Build Scripts**: Updated all package build scripts to use `tsc --build` instead of `tsc` or `tsc && tsc --emitDeclarationOnly`
+  - Enables incremental compilation and dependency checking
+  - Faster rebuilds when dependencies haven't changed
+  - Better error messages for circular dependencies
+
+### Fixed
+
+- **Circular Dependency Resolved**: Moved shared functions to break circular dependency between `@quantbot/ohlcv` and `@quantbot/ingestion`
+  - Moved `isEvmAddress` and `isSolanaAddress` to `@quantbot/utils`
+  - Moved `fetchMultiChainMetadata` and `MultiChainMetadataCache` to `@quantbot/api-clients`
+  - Updated all imports across codebase
+  - Removed circular dependency reference from ohlcv tsconfig
+  - TypeScript project references now work correctly
 
 - **Module System Consistency**: Standardized all packages to CommonJS with proper TypeScript configuration
   - Updated `tsconfig.base.json` to use `"module": "commonjs"` and `"moduleResolution": "node"`

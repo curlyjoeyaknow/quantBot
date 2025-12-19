@@ -250,7 +250,10 @@ async function cleanupClickHouseTestData(
         });
         console.log(`[CLEANUP] Deleted test data for ${mint.substring(0, 20)}...`);
       } catch (error) {
-        console.warn(`[CLEANUP] Failed to delete test data for ${mint.substring(0, 20)}...:`, error);
+        console.warn(
+          `[CLEANUP] Failed to delete test data for ${mint.substring(0, 20)}...:`,
+          error
+        );
         // Continue with other mints even if one fails
       }
     }
@@ -297,12 +300,12 @@ describe.skipIf(!shouldRun)(
         // Use the widest time range to ensure all test data is deleted
         const earliestFrom = new Date(Math.min(...testTimeRanges.map((r) => r.from.getTime())));
         const latestTo = new Date(Math.max(...testTimeRanges.map((r) => r.to.getTime())));
-        
+
         console.log(
           `[CLEANUP] Cleaning up ClickHouse test data: ${allMints.length} mints, ` +
             `time range ${earliestFrom.toISOString()} to ${latestTo.toISOString()}`
         );
-        
+
         await cleanupClickHouseTestData(allMints, 'solana', earliestFrom, latestTo);
       }
 

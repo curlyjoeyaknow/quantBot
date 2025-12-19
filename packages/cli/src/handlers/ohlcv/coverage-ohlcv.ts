@@ -5,7 +5,6 @@
  * Checks OHLCV data coverage for tokens.
  */
 
-import { DateTime } from 'luxon';
 import type { CommandContext } from '../../core/command-context.js';
 import { coverageSchema } from '../../commands/ohlcv.js';
 import type { z } from 'zod';

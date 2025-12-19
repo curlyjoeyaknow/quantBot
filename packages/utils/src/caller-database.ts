@@ -41,7 +41,7 @@ function initCallerDatabase(): Promise<Database> {
 /**
  * Find calls for a specific token address
  */
-async function findCallsForToken(tokenAddress: string): Promise<any[]> {
+async function findCallsForToken(tokenAddress: string): Promise<Array<Record<string, unknown>>> {
   const db = await initCallerDatabase();
   const all = promisify(db.all.bind(db));
 
@@ -93,7 +93,7 @@ async function findCallsForToken(tokenAddress: string): Promise<any[]> {
 /**
  * Get recent calls (for /history command)
  */
-async function getRecentCalls(limit: number = 20): Promise<any[]> {
+async function getRecentCalls(limit: number = 20): Promise<Array<Record<string, unknown>>> {
   const db = await initCallerDatabase();
   const all = promisify(db.all.bind(db));
 

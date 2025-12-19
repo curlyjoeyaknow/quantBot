@@ -4,7 +4,7 @@
  * Centralized error handling utilities and middleware.
  */
 
-import { AppError, isOperationalError, isRetryableError } from './errors';
+import { AppError, isOperationalError, isRetryableError, RateLimitError } from './errors';
 import { logger } from './logger';
 
 /**
@@ -22,7 +22,7 @@ export interface ErrorHandlerResult {
  */
 export function handleError(
   error: Error | unknown,
-  context?: Record<string, any>
+  context?: Record<string, unknown>
 ): ErrorHandlerResult {
   // Convert unknown errors to Error instances
   const err = error instanceof Error ? error : new Error(String(error));
@@ -55,8 +55,7 @@ export function handleError(
 
   // Determine if error should be retried
   const shouldRetry = isRetryableError(err);
-  const retryAfter =
-    err instanceof AppError && 'retryAfter' in err ? (err as any).retryAfter : undefined;
+  const retryAfter = err instanceof RateLimitError ? err.retryAfter : undefined;
 
   return {
     handled: true,
@@ -69,9 +68,9 @@ export function handleError(
 /**
  * Wrap async function with error handling
  */
-export function withErrorHandling<T extends (...args: any[]) => Promise<any>>(
+export function withErrorHandling<T extends (...args: unknown[]) => Promise<unknown>>(
   fn: T,
-  context?: Record<string, any>
+  context?: Record<string, unknown>
 ): T {
   return (async (...args: Parameters<T>) => {
     try {
@@ -87,7 +86,7 @@ export function withErrorHandling<T extends (...args: any[]) => Promise<any>>(
  * Create error handler middleware for Express/Telegraf
  */
 export function createErrorHandler() {
-  return (error: Error | unknown, ctx?: any) => {
+  return (error: Error | unknown, ctx?: unknown) => {
     const result = handleError(error, { userId: ctx?.from?.id, chatId: ctx?.chat?.id });
 
     // Send user-friendly message if context is available
@@ -112,7 +111,7 @@ export function createErrorHandler() {
 export async function safeAsync<T>(
   fn: () => Promise<T>,
   defaultValue: T,
-  context?: Record<string, any>
+  context?: Record<string, unknown>
 ): Promise<T> {
   try {
     return await fn();
@@ -129,7 +128,7 @@ export async function retryWithBackoff<T>(
   fn: () => Promise<T>,
   maxRetries: number = 3,
   initialDelayMs: number = 1000,
-  context?: Record<string, any>
+  context?: Record<string, unknown>
 ): Promise<T> {
   let lastError: Error | unknown;
 

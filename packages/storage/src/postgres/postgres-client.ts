@@ -1,6 +1,15 @@
+/**
+ * @deprecated PostgreSQL is being phased out in favor of DuckDB for event logging and Prometheus for live metrics.
+ * This module will be removed in a future version.
+ * Use DuckDB repositories (@quantbot/storage/duckdb) instead.
+ */
+
 import { Pool, PoolClient, QueryResult, QueryResultRow } from 'pg';
 import { logger } from '@quantbot/utils';
 
+/**
+ * @deprecated Use DuckDB instead
+ */
 export interface PostgresConfig {
   host: string;
   port: number;
@@ -32,6 +41,9 @@ function buildConfigFromEnv(): PostgresConfig {
   };
 }
 
+/**
+ * @deprecated Use DuckDB instead. This will be removed in a future version.
+ */
 export function getPostgresPool(): Pool {
   if (pool) {
     return pool;
@@ -65,11 +77,17 @@ export function getPostgresPool(): Pool {
   return pool;
 }
 
+/**
+ * @deprecated Use DuckDB instead. This will be removed in a future version.
+ */
 export async function getPostgresClient(): Promise<PoolClient> {
   const client = await getPostgresPool().connect();
   return client;
 }
 
+/**
+ * @deprecated Use DuckDB instead. This will be removed in a future version.
+ */
 export async function queryPostgres<T extends QueryResultRow = QueryResultRow>(
   text: string,
   params?: unknown[]
@@ -82,6 +100,9 @@ export async function queryPostgres<T extends QueryResultRow = QueryResultRow>(
   }
 }
 
+/**
+ * @deprecated Use DuckDB instead. This will be removed in a future version.
+ */
 export async function withPostgresTransaction<T>(
   handler: (client: PoolClient) => Promise<T>
 ): Promise<T> {
@@ -102,6 +123,9 @@ export async function withPostgresTransaction<T>(
   }
 }
 
+/**
+ * @deprecated Use DuckDB instead. This will be removed in a future version.
+ */
 export async function closePostgresPool(): Promise<void> {
   if (!pool) {
     return;

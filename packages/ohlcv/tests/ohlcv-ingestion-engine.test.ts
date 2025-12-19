@@ -27,6 +27,7 @@ vi.mock('@quantbot/api-clients', () => {
   return {
     birdeyeClient: mockBirdeyeClient,
     getBirdeyeClient: () => mockBirdeyeClient,
+    fetchMultiChainMetadata: vi.fn(),
   };
 });
 
@@ -36,21 +37,9 @@ vi.mock('@quantbot/storage', () => ({
   TokensRepository: vi.fn(),
 }));
 
-vi.mock('@quantbot/ingestion', () => ({
-  fetchMultiChainMetadata: vi.fn(),
-  isEvmAddress: vi.fn(),
+vi.mock('@quantbot/observability', () => ({
+  recordApiUsage: vi.fn().mockResolvedValue(undefined),
 }));
-
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { DateTime } from 'luxon';
-import { OhlcvIngestionEngine } from '../src/ohlcv-ingestion-engine';
-import { getBirdeyeClient } from '@quantbot/api-clients';
-import { getStorageEngine, initClickHouse, TokensRepository } from '@quantbot/storage';
-import { fetchMultiChainMetadata, isEvmAddress } from '@quantbot/ingestion';
-import type { Candle } from '@quantbot/core';
-
-// Get the mocked birdeyeClient
-const birdeyeClient = getBirdeyeClient();
 
 vi.mock('@quantbot/utils', () => ({
   logger: {
@@ -59,7 +48,20 @@ vi.mock('@quantbot/utils', () => ({
     warn: vi.fn(),
     error: vi.fn(),
   },
+  isEvmAddress: vi.fn(),
 }));
+
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { DateTime } from 'luxon';
+import { OhlcvIngestionEngine } from '@quantbot/jobs';
+import { getBirdeyeClient } from '@quantbot/api-clients';
+import { getStorageEngine, initClickHouse, TokensRepository } from '@quantbot/storage';
+import { fetchMultiChainMetadata } from '@quantbot/api-clients';
+import { isEvmAddress } from '@quantbot/utils';
+import type { Candle } from '@quantbot/core';
+
+// Get the mocked birdeyeClient
+const birdeyeClient = getBirdeyeClient();
 
 describe('OhlcvIngestionEngine', () => {
   let engine: OhlcvIngestionEngine;
@@ -85,9 +87,13 @@ describe('OhlcvIngestionEngine', () => {
     const mockTokensRepo = {
       getOrCreateToken: mockGetOrCreateToken,
     };
+    // Make sure the mock returns the same instance
     vi.mocked(TokensRepository).mockImplementation(function () {
       return mockTokensRepo as any;
     });
+    
+    // Also set it directly on the engine after creation
+    (engine as any).tokensRepo = mockTokensRepo;
 
     // Default mocks for birdeyeClient
     vi.mocked(birdeyeClient.getTokenMetadata).mockResolvedValue({ name: 'Test', symbol: 'TEST' });
@@ -131,6 +137,9 @@ describe('OhlcvIngestionEngine', () => {
 
   describe('fetchCandles - Metadata', () => {
     it('should fetch and store metadata before candles', async () => {
+      // Initialize engine first
+      await engine.initialize();
+      
       const mockMetadata = { name: 'Test Token', symbol: 'TEST' };
       // For Solana addresses, birdeyeClient.getTokenMetadata is still used directly
       vi.mocked(birdeyeClient.getTokenMetadata).mockResolvedValue(mockMetadata);
@@ -143,7 +152,8 @@ describe('OhlcvIngestionEngine', () => {
       // Ensure isEvmAddress returns false for Solana addresses
       vi.mocked(isEvmAddress).mockReturnValue(false);
 
-      await engine.fetchCandles(TEST_MINT, TEST_CHAIN, TEST_ALERT_TIME);
+      const result = await engine.fetchCandles(TEST_MINT, TEST_CHAIN, TEST_ALERT_TIME);
+      
 
       expect(birdeyeClient.getTokenMetadata).toHaveBeenCalledWith(TEST_MINT, TEST_CHAIN);
       // TokensRepository instance method should be called

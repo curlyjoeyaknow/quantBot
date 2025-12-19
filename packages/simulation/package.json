@@ -17,7 +17,7 @@
     "./*": "./dist/*.js"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc --build",
     "test": "vitest",
     "test:coverage": "vitest run --coverage"
   },

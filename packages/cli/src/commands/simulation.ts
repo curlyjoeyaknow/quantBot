@@ -140,6 +140,36 @@ export function registerSimulationCommands(program: Command): void {
       });
     });
 
+  // Run DuckDB command
+  simCmd
+    .command('run-duckdb')
+    .description('Run simulation using DuckDB Python engine')
+    .requiredOption('--duckdb <path>', 'Path to DuckDB file')
+    .requiredOption('--strategy <json>', 'Strategy config (JSON string)')
+    .option('--mint <address>', 'Token mint address (for single simulation)')
+    .option('--alert-timestamp <timestamp>', 'Alert timestamp (ISO 8601, for single simulation)')
+    .option('--batch', 'Run batch simulation on all calls in DuckDB', false)
+    .option('--initial-capital <amount>', 'Initial capital', '1000.0')
+    .option('--lookback-minutes <minutes>', 'Lookback minutes', '260')
+    .option('--lookforward-minutes <minutes>', 'Lookforward minutes', '1440')
+    .option('--resume', 'Skip tokens with insufficient data and continue', false)
+    .option('--format <format>', 'Output format', 'table')
+    .action(async (options) => {
+      const commandDef = commandRegistry.getCommand('simulation', 'run-duckdb');
+      if (!commandDef) throw new NotFoundError('Command', 'simulation.run-duckdb');
+      await execute(commandDef, {
+        ...options,
+        strategy: JSON.parse(options.strategy),
+        initial_capital: options.initialCapital ? parseFloat(options.initialCapital) : 1000.0,
+        lookback_minutes: options.lookbackMinutes ? parseInt(options.lookbackMinutes, 10) : 260,
+        lookforward_minutes: options.lookforwardMinutes
+          ? parseInt(options.lookforwardMinutes, 10)
+          : 1440,
+        batch: options.batch === true || options.batch === 'true',
+        resume: options.resume === true || options.resume === 'true',
+      });
+    });
+
   // Generate report command
   simCmd
     .command('generate-report')

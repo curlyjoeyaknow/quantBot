@@ -1,0 +1,28 @@
+{
+  "name": "@quantbot/jobs",
+  "version": "1.0.0",
+  "description": "Online orchestration jobs for OHLCV fetching and data ingestion",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc --build",
+    "test": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@quantbot/core": "workspace:*",
+    "@quantbot/utils": "workspace:*",
+    "@quantbot/storage": "workspace:*",
+    "@quantbot/api-clients": "workspace:*",
+    "@quantbot/ohlcv": "workspace:*",
+    "@quantbot/observability": "workspace:*",
+    "luxon": "^3.4.4"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "@vitest/coverage-v8": "^4.0.15",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.15"
+  }
+}
+

@@ -296,7 +296,7 @@ export class MetricsCollector {
   private async handleServiceEvent(event: ApplicationEvent): Promise<void> {
     try {
       const data = event.data as { serviceName?: string; status?: string };
-      const durationMs = 0; // Service events are state changes, not operations
+      // Service events are state changes, not operations (no duration to track)
 
       // Track service lifecycle events as throughput
       this.incrementThroughput('service.lifecycle', 'system', 1);

@@ -1,18 +1,19 @@
 /**
- * OHLCV Data Management Service
+ * OHLCV Data Management Service (Offline-Only)
  *
- * Centralized service for fetching, ingesting, and caching OHLCV candles.
- * Provides multi-layer caching (in-memory → ClickHouse via StorageEngine) and
- * integrates with Birdeye API and ClickHouse storage.
+ * Centralized service for querying and caching OHLCV candles.
+ * Provides multi-layer caching (in-memory → ClickHouse via StorageEngine).
+ * 
+ * NOTE: This service is OFFLINE-ONLY. It does NOT fetch candles from APIs.
+ * For fetching candles, use @quantbot/api-clients in @quantbot/ingestion workflows,
+ * then store them using the storeCandles() function from ohlcv-storage.
  */
 
 import { DateTime } from 'luxon';
 import { getStorageEngine, initClickHouse } from '@quantbot/storage';
-import { fetchHybridCandles } from './candles';
 import type { Candle } from '@quantbot/core';
 import { logger } from '@quantbot/utils';
-
-import { birdeyeClient } from '@quantbot/api-clients';
+import { storeCandles as storeCandlesOffline } from './ohlcv-storage';
 
 export interface OHLCVFetchOptions {
   interval?: '1m' | '5m' | '1H';
@@ -30,10 +31,11 @@ export interface OHLCVGetOptions extends OHLCVFetchOptions {
 }
 
 /**
- * OHLCV Service for managing candle data
+ * OHLCV Service for managing candle data (offline-only)
+ * 
+ * This service only queries ClickHouse and cache. It does NOT fetch from APIs.
  */
 export class OHLCVService {
-  private readonly birdeyeClient = birdeyeClient;
   private storageEngine = getStorageEngine();
   private inMemoryCache: Map<string, { candles: Candle[]; timestamp: number }> = new Map();
   private readonly cacheTTL = 5 * 60 * 1000; // 5 minutes
@@ -52,68 +54,18 @@ export class OHLCVService {
   }
 
   /**
-   * Fetch candles from Birdeye API
+   * Store candles (offline operation)
+   * 
+   * Stores candles that have already been fetched. For fetching, use
+   * @quantbot/api-clients in @quantbot/ingestion workflows.
    */
-  async fetchCandles(
+  async storeCandles(
     mint: string,
     chain: string,
-    startTime: DateTime,
-    endTime: DateTime,
+    candles: Candle[],
     interval: '1m' | '5m' | '1H' = '5m'
-  ): Promise<Candle[]> {
-    try {
-      logger.debug('Fetching candles from Birdeye', {
-        mint: mint.substring(0, 20),
-        chain,
-        startTime: startTime.toISO(),
-        endTime: endTime.toISO(),
-        interval,
-      });
-
-      const startUnix = Math.floor(startTime.toSeconds());
-      const endUnix = Math.floor(endTime.toSeconds());
-
-      // Use Birdeye client to fetch OHLCV data
-      const birdeyeData = await this.birdeyeClient.fetchOHLCVData(
-        mint,
-        new Date(startUnix * 1000),
-        new Date(endUnix * 1000),
-        interval
-      );
-
-      if (!birdeyeData || !birdeyeData.items || birdeyeData.items.length === 0) {
-        logger.warn('No data returned from Birdeye API', { mint: mint.substring(0, 20) });
-        return [];
-      }
-
-      // Convert Birdeye format to Candle format
-      const candles: Candle[] = birdeyeData.items
-        .map((item) => {
-          const itemObj = item as Record<string, unknown>;
-          return {
-            timestamp: Number(itemObj.unixTime) || 0,
-            open: parseFloat(String(itemObj.open)) || 0,
-            high: parseFloat(String(itemObj.high)) || 0,
-            low: parseFloat(String(itemObj.low)) || 0,
-            close: parseFloat(String(itemObj.close)) || 0,
-            volume: parseFloat(String(itemObj.volume)) || 0,
-          };
-        })
-        .filter((c) => c.timestamp >= startUnix && c.timestamp <= endUnix)
-        .sort((a, b) => a.timestamp - b.timestamp);
-
-      logger.debug('Fetched candles from Birdeye', {
-        mint: mint.substring(0, 20),
-        count: candles.length,
-      });
-
-      return candles;
-    } catch (error: unknown) {
-      logger.error('Failed to fetch candles from Birdeye', error as Error, {
-        mint: mint.substring(0, 20),
-      });
-      throw error;
-    }
+  ): Promise<void> {
+    await storeCandlesOffline(mint, chain, candles, interval);
   }
 
   /**
@@ -224,59 +176,29 @@ export class OHLCVService {
       }
     }
 
-    // Fall back to fetchHybridCandles (which uses ClickHouse and Birdeye API)
-    try {
-      const candles = await fetchHybridCandles(mint, startTime, endTime, chain, alertTime);
-
-      // Ingest into ClickHouse for future use
-      if (candles.length > 0 && useCache) {
-        try {
-          await this.ingestCandles(mint, chain, candles, { interval, skipDuplicates: true });
-        } catch (error: unknown) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
-          logger.warn('Failed to ingest candles to ClickHouse', {
-            error: errorMessage,
-            mint: mint.substring(0, 20),
-          });
-        }
-      }
-
-      // Store in in-memory cache
-      if (candles.length > 0) {
-        const cacheKey = this.getCacheKey(mint, chain, startTime, endTime, interval);
-        this.inMemoryCache.set(cacheKey, {
-          candles,
-          timestamp: Date.now(),
-        });
-      }
-
-      return candles;
-    } catch (error: unknown) {
-      logger.error('Failed to get candles', error as Error, {
-        mint: mint.substring(0, 20),
-      });
-      throw error;
-    }
+    // Offline-only: Return empty if not in cache
+    // Candles must be fetched via @quantbot/api-clients and stored via storeCandles()
+    logger.debug('No candles found in cache (offline-only mode)', {
+      mint: mint.substring(0, 20),
+      chain,
+      interval,
+    });
+    return [];
   }
 
   /**
-   * Fetch and ingest candles in one operation
+   * Store candles (offline operation)
+   * 
+   * This method stores candles that have already been fetched.
+   * For fetching, use @quantbot/api-clients in @quantbot/ingestion workflows.
    */
-  async fetchAndIngest(
+  async storeCandlesWithOptions(
     mint: string,
     chain: string,
-    startTime: DateTime,
-    endTime: DateTime,
-    options: OHLCVFetchOptions & OHLCVIngestOptions = {}
-  ): Promise<{ fetched: number; ingested: number; skipped: number }> {
-    const candles = await this.fetchCandles(mint, chain, startTime, endTime, options.interval);
-    const result = await this.ingestCandles(mint, chain, candles, options);
-
-    return {
-      fetched: candles.length,
-      ingested: result.ingested,
-      skipped: result.skipped,
-    };
+    candles: Candle[],
+    options: OHLCVIngestOptions = {}
+  ): Promise<{ ingested: number; skipped: number }> {
+    return this.ingestCandles(mint, chain, candles, options);
   }
 
   /**

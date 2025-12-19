@@ -8,13 +8,9 @@
 
 import { DateTime } from 'luxon';
 import { logger, getPythonEngine, type PythonEngine } from '@quantbot/utils';
-import type { Chain, Candle } from '@quantbot/core';
-import { AlertsRepository, getStorageEngine, getPostgresPool } from '@quantbot/storage';
-import { getOhlcvIngestionEngine, type OhlcvIngestionOptions } from '@quantbot/ohlcv';
-import { getBirdeyeClient } from '@quantbot/api-clients';
-import { calculateAthFromCandleObjects } from '@quantbot/analytics';
-import { fetchMultiChainMetadata } from './MultiChainMetadataService';
-import { isEvmAddress } from './addressValidation';
+import type { Chain } from '@quantbot/core';
+import { AlertsRepository, getStorageEngine, type StorageEngine } from '@quantbot/storage';
+import { getOhlcvIngestionEngine, type OhlcvIngestionOptions, type OhlcvIngestionEngine } from '@quantbot/jobs';
 
 export interface IngestForCallsParams {
   from?: Date;
@@ -25,7 +21,7 @@ export interface IngestForCallsParams {
   options?: OhlcvIngestionOptions;
   duckdbPath?: string; // Path to DuckDB database (required for DuckDB-based ingestion)
   resume?: boolean; // If true, skip tokens that already have sufficient data (default: true)
-  interval?: '1s' | '15s' | '1m' | '5m' | '15m' | '1h'; // Candle interval to fetch (default: '1m')
+  interval?: '15s' | '1m' | '5m' | '1H'; // Candle interval to fetch (default: '1m')
   candles?: number; // Number of candles to fetch (default: 5000)
   startOffsetMinutes?: number; // Minutes before alert to start fetching (default: -52)
   queueItems?: Array<{ mint: string; alertTimestamp: string; queuedAt: string }>; // Prioritized queue items from simulation failures
@@ -37,6 +33,11 @@ export interface IngestForCallsResult {
   tokensFailed: number;
   tokensSkipped: number; // Tokens skipped due to resume mode
   tokensNoData: number; // Tokens where API returned 0 candles (early exit optimization)
+  tokensUnrecoverable?: Array<{
+    mint: string;
+    alertTimestamp: string;
+    reason: string;
+  }>; // Tokens that couldn't get OHLCV after all retries
   candlesFetched1m: number;
   candlesFetched5m: number;
   chunksFromCache: number;
@@ -48,8 +49,8 @@ export interface IngestForCallsResult {
 export class OhlcvIngestionService {
   constructor(
     private readonly alertsRepo: AlertsRepository,
-    private readonly ingestionEngine = getOhlcvIngestionEngine(),
-    private readonly storageEngine = getStorageEngine(),
+    private readonly ingestionEngine: OhlcvIngestionEngine = getOhlcvIngestionEngine(),
+    private readonly storageEngine: StorageEngine = getStorageEngine(),
     private readonly pythonEngine: PythonEngine = getPythonEngine()
   ) {}
 
@@ -139,7 +140,7 @@ export class OhlcvIngestionService {
 
     // Merge: queue items first (priority), then worklist items
     // Deduplicate: if a mint+timestamp exists in both, prefer queue item
-    const worklistMap = new Map<string, typeof worklist.tokenGroups[0]>();
+    const worklistMap = new Map<string, (typeof worklist.tokenGroups)[0]>();
     for (const group of worklist.tokenGroups) {
       const key = `${group.mint}:${group.earliestAlertTime}`;
       worklistMap.set(key, group);
@@ -193,7 +194,8 @@ export class OhlcvIngestionService {
     logger.info('Grouped calls by token', {
       totalCalls,
       uniqueTokens: prioritizedTokenGroups.length,
-      avgCallsPerToken: worklist.calls.length > 0 ? (totalCalls / prioritizedTokenGroups.length).toFixed(2) : '0',
+      avgCallsPerToken:
+        worklist.calls.length > 0 ? (totalCalls / prioritizedTokenGroups.length).toFixed(2) : '0',
       estimatedApiCallsSaved: (totalCalls - prioritizedTokenGroups.length) * 10,
     });
 
@@ -215,6 +217,11 @@ export class OhlcvIngestionService {
     let chunksFromAPI = 0;
     const errors: Array<{ tokenId: number; error: string }> = [];
     const queueItemsProcessed: Array<{ mint: string; alertTimestamp: string }> = [];
+    const tokensUnrecoverable: Array<{
+      mint: string;
+      alertTimestamp: string;
+      reason: string;
+    }> = [];
 
     // Process tokens in parallel batches
     for (let i = 0; i < prioritizedTokenGroups.length; i += CONCURRENT_TOKENS) {
@@ -251,78 +258,22 @@ export class OhlcvIngestionService {
             // Resume mode: Check if token already has sufficient data
             if (resume) {
               const storedChain = (tokenChain as Chain) || chain;
+              const alreadyProcessed = await this._isTokenAlreadyProcessed(
+                mint,
+                storedChain,
+                alertTime,
+                preWindowMinutes,
+                postWindowMinutes
+              );
 
-              // For EVM addresses, verify chain is correct before skipping
-              if (isEvmAddress(mint)) {
-                const chainResult = await fetchMultiChainMetadata(mint, storedChain);
-                if (chainResult.primaryMetadata) {
-                  const actualChain = chainResult.primaryMetadata.chain;
-                  if (actualChain !== storedChain) {
-                    // Chain mismatch - need to refetch with correct chain
-                    logger.warn('Chain mismatch detected in resume mode, refetching', {
-                      mint: mint.substring(0, 20) + '...',
-                      storedChain,
-                      actualChain,
-                      symbol: chainResult.primaryMetadata.symbol,
-                    });
-                    // Continue to fetch with correct chain (don't skip)
-                  } else {
-                    // Chain is correct, check if data exists
-                    const alreadyProcessed = await this._isTokenAlreadyProcessed(
-                      mint,
-                      actualChain,
-                      alertTime,
-                      preWindowMinutes,
-                      postWindowMinutes
-                    );
-
-                    if (alreadyProcessed) {
-                      logger.debug('Token already processed, skipping (resume mode)', {
-                        mint: mint.substring(0, 20) + '...',
-                        alertTime: alertTime.toISO(),
-                        chain: actualChain,
-                      });
-                      tokensSkipped++;
-                      return null;
-                    }
-                  }
-                } else {
-                  // No metadata found - check with stored chain anyway
-                  const alreadyProcessed = await this._isTokenAlreadyProcessed(
-                    mint,
-                    storedChain,
-                    alertTime,
-                    preWindowMinutes,
-                    postWindowMinutes
-                  );
-
-                  if (alreadyProcessed) {
-                    logger.debug('Token already processed, skipping (resume mode)', {
-                      mint: mint.substring(0, 20) + '...',
-                      alertTime: alertTime.toISO(),
-                    });
-                    tokensSkipped++;
-                    return null;
-                  }
-                }
-              } else {
-                // Solana: existing logic
-                const alreadyProcessed = await this._isTokenAlreadyProcessed(
-                  mint,
-                  storedChain,
-                  alertTime,
-                  preWindowMinutes,
-                  postWindowMinutes
-                );
-
-                if (alreadyProcessed) {
-                  logger.debug('Token already processed, skipping (resume mode)', {
-                    mint: mint.substring(0, 20) + '...',
-                    alertTime: alertTime.toISO(),
-                  });
-                  tokensSkipped++;
-                  return null;
-                }
+              if (alreadyProcessed) {
+                logger.debug('Token already processed, skipping (resume mode)', {
+                  mint: mint.substring(0, 20) + '...',
+                  alertTime: alertTime.toISO(),
+                  chain: storedChain,
+                });
+                tokensSkipped++;
+                return null;
               }
             }
 
@@ -349,25 +300,15 @@ export class OhlcvIngestionService {
               fetchOptions
             );
 
-            // Calculate and store ATH/ATL for calls using the fetched candles
-            // Combine 1m and 5m candles (prefer 5m for accuracy, use 1m if 5m is empty)
-            const allCandles = result['5m'].length > 0 ? result['5m'] : result['1m'];
-
-            if (allCandles.length > 0 && callsForToken.length > 0) {
-              await this.calculateAndStoreAthAtl(
-                callsForToken,
-                allCandles as Candle[],
-                mint,
-                (tokenChain as Chain) || chain
-              );
-            }
+            // NOTE: ATH/ATL calculation is now handled by simulation layer
+            // Simulation will query OHLCV offline and calculate ATH/ATL for its specific time range
 
             // Only count as succeeded if we actually fetched candles
             // Early exit optimization may return 0 candles if API has no data
             const totalCandles = result['1m'].length + result['5m'].length;
             if (totalCandles > 0) {
               tokensSucceeded++;
-              
+
               // Track queue items that were successfully processed
               if (isFromQueue) {
                 queueItemsProcessed.push({
@@ -382,6 +323,15 @@ export class OhlcvIngestionService {
               logger.debug('Token processed but no candles available (early exit)', {
                 mint: mint.substring(0, 20) + '...',
               });
+
+              // If this was from queue (simulation failure), mark as unrecoverable
+              if (isFromQueue) {
+                tokensUnrecoverable.push({
+                  mint,
+                  alertTimestamp: earliestAlertTime,
+                  reason: 'No OHLCV data available from API after all retries',
+                });
+              }
             }
 
             return {
@@ -400,6 +350,16 @@ export class OhlcvIngestionService {
             logger.error('Failed to ingest OHLCV for token', error as Error, {
               mint: tokenGroup.mint?.substring(0, 20),
             });
+
+            // If this was from queue (simulation failure), mark as unrecoverable
+            if (isFromQueue) {
+              tokensUnrecoverable.push({
+                mint: tokenGroup.mint || '',
+                alertTimestamp: tokenGroup.earliestAlertTime || '',
+                reason: `Persistent error: ${errorMessage}`,
+              });
+            }
+
             return null;
           }
         })
@@ -422,6 +382,7 @@ export class OhlcvIngestionService {
       tokensFailed,
       tokensSkipped,
       tokensNoData,
+      tokensUnrecoverable: tokensUnrecoverable.length > 0 ? tokensUnrecoverable : undefined,
       candlesFetched1m,
       candlesFetched5m,
       chunksFromCache,
@@ -436,6 +397,7 @@ export class OhlcvIngestionService {
       tokensFailed: summary.tokensFailed,
       tokensSkipped: summary.tokensSkipped,
       tokensNoData: summary.tokensNoData,
+      tokensUnrecoverable: summary.tokensUnrecoverable?.length || 0,
       candlesFetched1m: summary.candlesFetched1m,
       candlesFetched5m: summary.candlesFetched5m,
       chunksFromCache: summary.chunksFromCache,
@@ -508,191 +470,7 @@ export class OhlcvIngestionService {
    * fetches historical price from Birdeye for calls missing price/mcap,
    * then calculates and stores ATH/ATL metrics.
    */
-  private async calculateAndStoreAthAtl(
-    calls: Array<{
-      mint: string;
-      chain: string;
-      alertTime: string | null;
-      chatId: string | null;
-      messageId: string | null;
-      priceUsd: number | null;
-      mcapUsd: number | null;
-      botTsMs: number | null;
-    }>,
-    candles: Candle[],
-    tokenAddress: string,
-    chain: string
-  ): Promise<void> {
-    if (calls.length === 0) {
-      return;
-    }
-
-    const pool = getPostgresPool();
-    const birdeye = getBirdeyeClient();
-
-    // Map calls to alerts using chatId + messageId
-    const alertsToUpdate: Array<{
-      alertId: number;
-      entryPrice: number;
-      alertTimestamp: DateTime;
-    }> = [];
-
-    for (const call of calls) {
-      if (!call.chatId || !call.messageId || !call.alertTime) {
-        logger.debug('Call missing chatId/messageId/alertTime, skipping ATH/ATL', {
-          mint: call.mint.substring(0, 20),
-        });
-        continue;
-      }
-
-      // Find alert in PostgreSQL by chatId + messageId
-      const alertResult = await pool.query<{
-        id: number;
-        alert_price: number | null;
-        initial_price: number | null;
-        alert_timestamp: Date;
-      }>(
-        `SELECT id, alert_price, initial_price, alert_timestamp
-         FROM alerts
-         WHERE raw_payload_json->>'chatId' = $1
-           AND raw_payload_json->>'messageId' = $2
-         LIMIT 1`,
-        [call.chatId, call.messageId]
-      );
-
-      if (alertResult.rows.length === 0) {
-        logger.debug('Alert not found for call', {
-          chatId: call.chatId,
-          messageId: call.messageId,
-        });
-        continue;
-      }
-
-      const alert = alertResult.rows[0];
-      const alertTimestamp = DateTime.fromJSDate(alert.alert_timestamp);
-
-      // Determine entry price: use from DuckDB, or alert, or fetch from Birdeye
-      let entryPrice = call.priceUsd ?? alert.initial_price ?? alert.alert_price ?? null;
-
-      if (entryPrice === null || entryPrice === 0) {
-        // Fetch historical price from Birdeye for the call's exact datetime
-        logger.debug('Fetching historical price from Birdeye', {
-          mint: call.mint.substring(0, 20),
-          alertTime: call.alertTime,
-        });
-
-        try {
-          const alertDate = DateTime.fromISO(call.alertTime);
-          const unixTime = Math.floor(alertDate.toSeconds());
-
-          // Try the unix_time endpoint first (more efficient for single timestamp)
-          let historicalPrice = await birdeye.fetchHistoricalPriceAtUnixTime(
-            call.mint,
-            unixTime,
-            call.chain || chain
-          );
-
-          // Fallback to time range endpoint if unix_time endpoint fails
-          if (!historicalPrice) {
-            logger.debug('Unix time endpoint failed, trying time range endpoint', {
-              mint: call.mint.substring(0, 20),
-            });
-            const timeFrom = unixTime;
-            const timeTo = unixTime + 60; // 1 minute window
-
-            const historicalPrices = await birdeye.fetchHistoricalPrice(
-              call.mint,
-              timeFrom,
-              timeTo,
-              '1m',
-              call.chain || chain
-            );
-
-            if (historicalPrices && historicalPrices.length > 0) {
-              // Use the closest price to our target time
-              historicalPrice = historicalPrices[0];
-            }
-          }
-
-          if (historicalPrice) {
-            // Use the price value (or price field if available)
-            entryPrice = historicalPrice.price ?? historicalPrice.value;
-            logger.debug('Fetched historical price from Birdeye', {
-              mint: call.mint.substring(0, 20),
-              price: entryPrice,
-              method: historicalPrice.price !== undefined ? 'unix_time' : 'time_range',
-            });
-          }
-        } catch (error) {
-          logger.warn('Failed to fetch historical price from Birdeye', {
-            error: error instanceof Error ? error.message : String(error),
-            mint: call.mint.substring(0, 20),
-          });
-        }
-      }
-
-      if (entryPrice === null || entryPrice === 0) {
-        logger.warn('Could not determine entry price for alert', {
-          alertId: alert.id,
-          mint: call.mint.substring(0, 20),
-        });
-        continue;
-      }
-
-      alertsToUpdate.push({
-        alertId: alert.id,
-        entryPrice,
-        alertTimestamp,
-      });
-    }
-
-    if (alertsToUpdate.length === 0) {
-      logger.debug('No alerts to update with ATH/ATL metrics');
-      return;
-    }
-
-    // Calculate ATH/ATL for each alert
-    for (const alertData of alertsToUpdate) {
-      try {
-        const entryTimestamp = Math.floor(alertData.alertTimestamp.toSeconds());
-        const athResult = calculateAthFromCandleObjects(
-          alertData.entryPrice,
-          entryTimestamp,
-          candles
-        );
-
-        // Calculate ATH timestamp (entry timestamp + time to ATH)
-        const athTimestamp =
-          athResult.timeToAthMinutes > 0
-            ? new Date((entryTimestamp + athResult.timeToAthMinutes * 60) * 1000)
-            : undefined;
-
-        // Update alert with ATH/ATL metrics
-        await this.alertsRepo.updateAlertMetrics(alertData.alertId, {
-          athPrice: athResult.athPrice,
-          athTimestamp: athTimestamp,
-          atlPrice: athResult.atlPrice,
-          atlTimestamp: athResult.atlTimestamp
-            ? new Date(athResult.atlTimestamp * 1000)
-            : undefined,
-          timeToATH:
-            athResult.timeToAthMinutes > 0
-              ? Math.floor(athResult.timeToAthMinutes * 60)
-              : undefined,
-          maxROI: athResult.athMultiple > 1 ? (athResult.athMultiple - 1) * 100 : undefined,
-        });
-
-        logger.debug('[OhlcvIngestionService] Updated alert with ATH/ATL', {
-          alertId: alertData.alertId,
-          athPrice: athResult.athPrice,
-          atlPrice: athResult.atlPrice,
-        });
-      } catch (error) {
-        logger.warn('[OhlcvIngestionService] Failed to calculate ATH/ATL for alert', {
-          error: error instanceof Error ? error.message : String(error),
-          alertId: alertData.alertId,
-        });
-      }
-    }
-  }
+  // NOTE: ATH/ATL calculation has been removed from ingestion service.
+  // Simulation layer will query OHLCV offline and calculate ATH/ATL for its specific time range.
+  // This ensures ATH/ATL is calculated based on the simulation's parameters (lookback/lookforward windows).
 }

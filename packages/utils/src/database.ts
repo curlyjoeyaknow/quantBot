@@ -46,6 +46,116 @@ import {
 } from './database-validation';
 
 // ---------------------------------------------------------------------
+// Type Definitions for Database Rows
+// ---------------------------------------------------------------------
+
+interface SimulationRunRow {
+  id: number;
+  user_id: number;
+  mint: string;
+  chain: string;
+  token_name?: string;
+  token_symbol?: string;
+  start_time: string;
+  end_time: string;
+  strategy: string;
+  stop_loss_config: string;
+  final_pnl: number;
+  total_candles: number;
+  strategy_name?: string;
+  entry_type?: string;
+  entry_price?: number;
+  entry_timestamp?: string;
+  filter_criteria?: string;
+  created_at: string;
+}
+
+interface SimulationEventRow {
+  event_type: string;
+  timestamp: string;
+  price: number;
+  description?: string;
+  remaining_position: number;
+  pnl_so_far: number;
+}
+
+interface UserStrategyRow {
+  id: number;
+  name: string;
+  description?: string;
+  strategy: string;
+  stop_loss_config: string;
+  is_default: number; // SQLite stores boolean as 0/1
+  created_at: string;
+}
+
+interface PumpfunTokenRow {
+  mint: string;
+  creator?: string;
+  bonding_curve?: string;
+  launch_signature?: string;
+  launch_timestamp?: string;
+  graduation_signature?: string;
+  graduation_timestamp?: string;
+  is_graduated: number; // SQLite stores boolean as 0/1
+  metadata?: string; // JSON string
+}
+
+interface CATrackingRow {
+  mint: string;
+  chain: string;
+  token_name?: string;
+  token_symbol?: string;
+  call_timestamp: string;
+}
+
+interface TokenRow {
+  mint: string;
+  chain: string;
+  token_name?: string;
+  token_symbol?: string;
+}
+
+interface ActiveCARow {
+  id: number;
+  mint: string;
+  chain: string;
+  token_name?: string;
+  token_symbol?: string;
+  call_price?: number;
+  call_marketcap?: number;
+  call_timestamp?: number;
+  caller?: string;
+  created_at?: string;
+}
+
+interface CACallRow {
+  mint: string;
+  chain: string;
+  token_name?: string;
+  token_symbol?: string;
+  call_price?: number;
+  call_marketcap?: number;
+  call_timestamp?: number;
+  caller?: string;
+  created_at?: string;
+}
+
+interface CAPerformanceRow {
+  id: number;
+  mint: string;
+  chain: string;
+  token_name?: string;
+  token_symbol?: string;
+  call_price: number;
+  call_timestamp: number;
+  strategy?: string;
+  stop_loss_config?: string;
+  current_price?: number;
+  price_timestamp?: number;
+}
+
+// ---------------------------------------------------------------------
 // 1. Database Initialization & Lifecycle
 // ---------------------------------------------------------------------
 
@@ -63,9 +173,12 @@ let db: sqlite3.Database | null = null;
  */
 export function initDatabase(): Promise<void> {
   // In test environment allow injecting a mock database to avoid sqlite3 constructor issues
-  if (process.env.NODE_ENV === 'test' && (globalThis as any).__mockDb) {
-    db = (globalThis as any).__mockDb as any;
-    return Promise.resolve();
+  if (process.env.NODE_ENV === 'test') {
+    const mockDb = (globalThis as { __mockDb?: sqlite3.Database }).__mockDb;
+    if (mockDb) {
+      db = mockDb;
+      return Promise.resolve();
+    }
   }
   const TABLES_AND_INDICES_SQL = `
     -- Strategies definition
@@ -161,7 +274,8 @@ export function initDatabase(): Promise<void> {
       timestamp INTEGER NOT NULL,
       FOREIGN KEY (ca_id) REFERENCES ca_tracking (id)
     );
-    -- Live trade entry alerts
+    -- Live trade entry alerts (ARCHIVED - see scripts/archive/live-trades/)
+    -- This table is no longer actively used. Functionality moved to simulation workflows.
     CREATE TABLE IF NOT EXISTS live_trade_entry_alerts (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       alert_id INTEGER NOT NULL,
@@ -178,7 +292,8 @@ export function initDatabase(): Promise<void> {
       sent_to_groups TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     );
-    -- Live trade price cache
+    -- Live trade price cache (ARCHIVED - see scripts/archive/live-trades/)
+    -- This table is no longer actively used. Functionality moved to simulation workflows.
     CREATE TABLE IF NOT EXISTS live_trade_price_cache (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       token_address TEXT NOT NULL,
@@ -189,7 +304,8 @@ export function initDatabase(): Promise<void> {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       UNIQUE(token_address, chain, timestamp)
     );
-    -- Live trade strategies configuration
+    -- Live trade strategies configuration (ARCHIVED - see scripts/archive/live-trades/)
+    -- This table is no longer actively used. Functionality moved to simulation workflows.
     CREATE TABLE IF NOT EXISTS live_trade_strategies (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
@@ -524,33 +640,34 @@ export function getSimulationRun(runId: number): Promise<SimulationRunData | nul
       WHERE id = ?
     `;
 
-    db.get(query, [runId], (err, row: any) => {
+    db.get(query, [runId], (err, row: unknown) => {
       if (err) {
         logger.error('Error fetching simulation run', err as Error, { runId });
         return reject(err);
       }
       if (!row) return resolve(null);
 
+      const dbRow = row as SimulationRunRow;
       const run: SimulationRunData = {
-        id: row.id,
-        userId: row.user_id,
-        mint: row.mint,
-        chain: row.chain as Chain,
-        tokenName: row.token_name,
-        tokenSymbol: row.token_symbol,
-        startTime: DateTime.fromISO(row.start_time),
-        endTime: DateTime.fromISO(row.end_time),
-        strategy: JSON.parse(row.strategy) as Strategy[],
-        stopLossConfig: JSON.parse(row.stop_loss_config) as StopLossConfig,
-        finalPnl: row.final_pnl,
-        totalCandles: row.total_candles,
+        id: dbRow.id,
+        userId: dbRow.user_id,
+        mint: dbRow.mint,
+        chain: dbRow.chain as Chain,
+        tokenName: dbRow.token_name,
+        tokenSymbol: dbRow.token_symbol,
+        startTime: DateTime.fromISO(dbRow.start_time),
+        endTime: DateTime.fromISO(dbRow.end_time),
+        strategy: JSON.parse(dbRow.strategy) as Strategy[],
+        stopLossConfig: JSON.parse(dbRow.stop_loss_config) as StopLossConfig,
+        finalPnl: dbRow.final_pnl,
+        totalCandles: dbRow.total_candles,
         events: [], // Events would need to be fetched separately
-        strategyName: row.strategy_name,
-        entryType: row.entry_type,
-        entryPrice: row.entry_price,
-        entryTimestamp: row.entry_timestamp,
-        filterCriteria: row.filter_criteria ? JSON.parse(row.filter_criteria) : undefined,
-        createdAt: DateTime.fromISO(row.created_at),
+        strategyName: dbRow.strategy_name,
+        entryType: dbRow.entry_type,
+        entryPrice: dbRow.entry_price,
+        entryTimestamp: dbRow.entry_timestamp,
+        filterCriteria: dbRow.filter_criteria ? JSON.parse(dbRow.filter_criteria) : undefined,
+        createdAt: DateTime.fromISO(dbRow.created_at),
       };
       resolve(run);
     });
@@ -593,14 +710,17 @@ export function getSimulationEvents(runId: number): Promise<SimulationEvent[]> {
         return reject(err);
       }
       // Map database rows to SimulationEvent format
-      const events: SimulationEvent[] = (rows ?? []).map((row: any) => ({
-        type: row.event_type as SimulationEvent['type'],
-        timestamp: row.timestamp,
-        price: row.price,
-        description: row.description,
-        remainingPosition: row.remaining_position,
-        pnlSoFar: row.pnl_so_far,
-      }));
+      const events: SimulationEvent[] = (rows ?? []).map((row: unknown) => {
+        const dbRow = row as SimulationEventRow;
+        return {
+          type: dbRow.event_type as SimulationEvent['type'],
+          timestamp: dbRow.timestamp,
+          price: dbRow.price,
+          description: dbRow.description,
+          remainingPosition: dbRow.remaining_position,
+          pnlSoFar: dbRow.pnl_so_far,
+        };
+      });
       resolve(events);
     });
   });
@@ -699,16 +819,19 @@ export function getUserStrategies(userId: number): Promise<UserStrategy[]> {
         logger.error('Error fetching strategies', err as Error, { userId });
         return reject(err);
       }
-      const strategies: UserStrategy[] = (rows ?? []).map((row: any) => ({
-        id: row.id,
-        userId: userId,
-        name: row.name,
-        description: row.description || undefined,
-        strategy: JSON.parse(row.strategy) as StrategyLeg[],
-        stopLossConfig: JSON.parse(row.stop_loss_config) as StopLossConfig,
-        isDefault: Boolean(row.is_default),
-        createdAt: DateTime.fromISO(row.created_at),
-      }));
+      const strategies: UserStrategy[] = (rows ?? []).map((row: unknown) => {
+        const dbRow = row as UserStrategyRow;
+        return {
+          id: dbRow.id,
+          userId: userId,
+          name: dbRow.name,
+          description: dbRow.description || undefined,
+          strategy: JSON.parse(dbRow.strategy) as StrategyLeg[],
+          stopLossConfig: JSON.parse(dbRow.stop_loss_config) as StopLossConfig,
+          isDefault: Boolean(dbRow.is_default),
+          createdAt: DateTime.fromISO(dbRow.created_at),
+        };
+      });
       resolve(strategies);
     });
   });
@@ -746,19 +869,20 @@ export function getStrategy(userId: number, name: string): Promise<UserStrategy 
       WHERE user_id = ? AND name = ?
     `;
 
-    db.get(query, [userId, name], (err, row: any) => {
+    db.get(query, [userId, name], (err, row: unknown) => {
       if (err) {
         logger.error('Error fetching strategy', err as Error, { userId, strategyName: name });
         return reject(err);
       }
       if (!row) return resolve(null);
 
+      const dbRow = row as UserStrategyRow;
       const strategy: UserStrategy = {
-        id: row.id,
+        id: dbRow.id,
         userId: userId,
-        name: row.name,
-        description: row.description || undefined,
-        strategy: JSON.parse(row.strategy) as StrategyLeg[],
+        name: dbRow.name,
+        description: dbRow.description || undefined,
+        strategy: JSON.parse(dbRow.strategy) as StrategyLeg[],
         stopLossConfig: JSON.parse(row.stop_loss_config) as StopLossConfig,
         isDefault: Boolean(row.is_default),
         createdAt: DateTime.fromISO(row.created_at),
@@ -899,19 +1023,20 @@ export function getActiveCATracking(): Promise<ActiveCA[]> {
         return reject(err);
       }
       const cases: ActiveCA[] = (rows ?? [])
-        .map((row: any) => {
+        .map((row: unknown) => {
           try {
+            const dbRow = row as ActiveCARow;
             const activeCA: ActiveCA = {
-              id: row.id,
-              mint: createTokenAddress(row.mint),
-              chain: row.chain as Chain,
-              token_name: row.token_name || undefined,
-              token_symbol: row.token_symbol || undefined,
-              call_price: row.call_price || undefined,
-              call_marketcap: row.call_marketcap || undefined,
-              alert_timestamp: row.call_timestamp || undefined,
-              caller: row.caller || undefined,
-              created_at: row.created_at || undefined,
+              id: dbRow.id,
+              mint: createTokenAddress(dbRow.mint),
+              chain: dbRow.chain as Chain,
+              token_name: dbRow.token_name || undefined,
+              token_symbol: dbRow.token_symbol || undefined,
+              call_price: dbRow.call_price || undefined,
+              call_marketcap: dbRow.call_marketcap || undefined,
+              alert_timestamp: dbRow.call_timestamp || undefined,
+              caller: dbRow.caller || undefined,
+              created_at: dbRow.created_at || undefined,
             };
             return activeCA;
           } catch (error) {
@@ -1038,17 +1163,20 @@ export function getPumpfunTokenRecords(): Promise<PumpfunTokenRecord[]> {
         return reject(err);
       }
 
-      const records: PumpfunTokenRecord[] = (rows ?? []).map((row: any) => ({
-        mint: row.mint,
-        creator: row.creator ?? undefined,
-        bondingCurve: row.bonding_curve ?? undefined,
-        launchSignature: row.launch_signature ?? undefined,
-        launchTimestamp: row.launch_timestamp ?? undefined,
-        graduationSignature: row.graduation_signature ?? undefined,
-        graduationTimestamp: row.graduation_timestamp ?? undefined,
-        isGraduated: Boolean(row.is_graduated),
-        metadata: row.metadata ? JSON.parse(row.metadata) : null,
-      }));
+      const records: PumpfunTokenRecord[] = (rows ?? []).map((row: unknown) => {
+        const dbRow = row as PumpfunTokenRow;
+        return {
+          mint: dbRow.mint,
+          creator: dbRow.creator ?? undefined,
+          bondingCurve: dbRow.bonding_curve ?? undefined,
+          launchSignature: dbRow.launch_signature ?? undefined,
+          launchTimestamp: dbRow.launch_timestamp ?? undefined,
+          graduationSignature: dbRow.graduation_signature ?? undefined,
+          graduationTimestamp: dbRow.graduation_timestamp ?? undefined,
+          isGraduated: Boolean(dbRow.is_graduated),
+          metadata: dbRow.metadata ? JSON.parse(dbRow.metadata) : null,
+        };
+      });
 
       resolve(records);
     });
@@ -1086,25 +1214,27 @@ export function getTrackedTokens(): Promise<TrackedToken[]> {
           const pumpfunTokens = await getPumpfunTokenRecords();
           const combined = new Map<string, TrackedToken>();
 
-          (caRows ?? []).forEach((row: any) => {
-            const key = `${row.chain}:${row.mint}`;
+          (caRows ?? []).forEach((row: unknown) => {
+            const dbRow = row as CATrackingRow;
+            const key = `${dbRow.chain}:${dbRow.mint}`;
             combined.set(key, {
-              mint: row.mint,
-              chain: row.chain,
-              tokenName: row.token_name ?? undefined,
-              tokenSymbol: row.token_symbol ?? undefined,
-              firstSeen: row.call_timestamp ? Number(row.call_timestamp) : undefined,
+              mint: dbRow.mint,
+              chain: dbRow.chain,
+              tokenName: dbRow.token_name ?? undefined,
+              tokenSymbol: dbRow.token_symbol ?? undefined,
+              firstSeen: dbRow.call_timestamp ? Number(dbRow.call_timestamp) : undefined,
               source: 'ca_tracking',
             });
           });
 
-          (tokenRows ?? []).forEach((row: any) => {
-            const key = `${row.chain}:${row.mint}`;
+          (tokenRows ?? []).forEach((row: unknown) => {
+            const dbRow = row as TokenRow;
+            const key = `${dbRow.chain}:${dbRow.mint}`;
             if (combined.has(key)) {
               return;
             }
-            const createdAt = row.created_at
-              ? DateTime.fromISO(row.created_at).toSeconds()
+            const createdAt = dbRow.created_at
+              ? DateTime.fromISO(dbRow.created_at).toSeconds()
               : undefined;
             combined.set(key, {
               mint: row.mint,
@@ -1126,8 +1256,12 @@ export function getTrackedTokens(): Promise<TrackedToken[]> {
                 mint: token.mint,
                 chain: 'solana',
                 firstSeen: token.launchTimestamp,
-                tokenName: (token.metadata as any)?.name ?? undefined,
-                tokenSymbol: (token.metadata as any)?.symbol ?? undefined,
+                tokenName: token.metadata && typeof token.metadata === 'object' && 'name' in token.metadata
+                  ? String(token.metadata.name)
+                  : undefined,
+                tokenSymbol: token.metadata && typeof token.metadata === 'object' && 'symbol' in token.metadata
+                  ? String(token.metadata.symbol)
+                  : undefined,
                 source,
               });
             }
@@ -1265,21 +1399,22 @@ export function getRecentCAPerformance(hours: number = 24): Promise<CAPerformanc
       }
       // Group by CA id, picking latest price for each
       const caMap = new Map<number, CAPerformanceSummary>();
-      (rows ?? []).forEach((row: any) => {
-        if (!caMap.has(row.id)) {
+      (rows ?? []).forEach((row: unknown) => {
+        const dbRow = row as CAPerformanceRow;
+        if (!caMap.has(dbRow.id)) {
           try {
-            caMap.set(row.id, {
-              id: row.id,
-              mint: createTokenAddress(row.mint),
-              chain: row.chain as Chain,
-              tokenName: row.token_name || undefined,
-              tokenSymbol: row.token_symbol || undefined,
-              callPrice: row.call_price,
-              callTimestamp: row.call_timestamp,
-              strategy: JSON.parse(row.strategy) as Strategy[],
-              stopLossConfig: JSON.parse(row.stop_loss_config) as StopLossConfig,
-              currentPrice: row.current_price || row.call_price,
-              priceTimestamp: row.price_timestamp || row.call_timestamp,
+            caMap.set(dbRow.id, {
+              id: dbRow.id,
+              mint: createTokenAddress(dbRow.mint),
+              chain: dbRow.chain as Chain,
+              tokenName: dbRow.token_name || undefined,
+              tokenSymbol: dbRow.token_symbol || undefined,
+              callPrice: dbRow.call_price,
+              callTimestamp: dbRow.call_timestamp,
+              strategy: dbRow.strategy ? JSON.parse(dbRow.strategy) as Strategy[] : undefined,
+              stopLossConfig: dbRow.stop_loss_config ? JSON.parse(dbRow.stop_loss_config) as StopLossConfig : undefined,
+              currentPrice: dbRow.current_price || dbRow.call_price,
+              priceTimestamp: dbRow.price_timestamp || dbRow.call_timestamp,
             });
           } catch (error) {
             logger.warn('Invalid mint address in CA performance data', { mint: row.mint, error });
@@ -1370,7 +1505,7 @@ export async function getCACallByMint(mint: string): Promise<CACall | null> {
       LIMIT 1
     `;
 
-    db.get(sql, [mint], (err, row: any) => {
+    db.get(sql, [mint], (err, row: unknown) => {
       if (err) {
         reject(err);
         return;
@@ -1380,15 +1515,16 @@ export async function getCACallByMint(mint: string): Promise<CACall | null> {
         return;
       }
       try {
+        const dbRow = row as CACallRow;
         const caCall: CACall = {
-          mint: createTokenAddress(row.mint),
-          chain: row.chain as Chain,
-          token_name: row.token_name || undefined,
-          token_symbol: row.token_symbol || undefined,
-          call_price: row.call_price || undefined,
-          volume_at_alert: row.call_marketcap || undefined,
-          alert_timestamp: row.call_timestamp ? new Date(row.call_timestamp * 1000) : undefined,
-          caller_name: row.caller || undefined,
+          mint: createTokenAddress(dbRow.mint),
+          chain: dbRow.chain as Chain,
+          token_name: dbRow.token_name || undefined,
+          token_symbol: dbRow.token_symbol || undefined,
+          call_price: dbRow.call_price || undefined,
+          volume_at_alert: dbRow.call_marketcap || undefined,
+          alert_timestamp: dbRow.call_timestamp ? new Date(dbRow.call_timestamp * 1000) : undefined,
+          caller_name: dbRow.caller || undefined,
         };
         resolve(caCall);
       } catch (error) {
@@ -1443,21 +1579,23 @@ export async function getCACallsByCaller(caller: string, limit: number = 20): Pr
         return;
       }
       const calls: CACall[] = (rows || [])
-        .map((row: any) => {
+        .map((row: unknown) => {
           try {
+            const dbRow = row as CACallRow;
             const call: CACall = {
-              mint: createTokenAddress(row.mint),
-              chain: row.chain as Chain,
-              token_name: row.token_name || undefined,
-              token_symbol: row.token_symbol || undefined,
-              call_price: row.call_price || undefined,
-              volume_at_alert: row.call_marketcap || undefined,
-              alert_timestamp: row.call_timestamp ? new Date(row.call_timestamp * 1000) : undefined,
-              caller_name: row.caller || undefined,
+              mint: createTokenAddress(dbRow.mint),
+              chain: dbRow.chain as Chain,
+              token_name: dbRow.token_name || undefined,
+              token_symbol: dbRow.token_symbol || undefined,
+              call_price: dbRow.call_price || undefined,
+              volume_at_alert: dbRow.call_marketcap || undefined,
+              alert_timestamp: dbRow.call_timestamp ? new Date(dbRow.call_timestamp * 1000) : undefined,
+              caller_name: dbRow.caller || undefined,
             };
             return call;
           } catch (error) {
-            logger.warn('Invalid mint address in CA call', { mint: row.mint, error });
+            const dbRow = row as CACallRow;
+            logger.warn('Invalid mint address in CA call', { mint: dbRow.mint, error });
             return null;
           }
         })
@@ -1511,21 +1649,23 @@ export async function getCACallsByChain(chain: string, limit: number = 20): Prom
         return;
       }
       const calls: CACall[] = (rows || [])
-        .map((row: any) => {
+        .map((row: unknown) => {
           try {
+            const dbRow = row as CACallRow;
             const call: CACall = {
-              mint: createTokenAddress(row.mint),
-              chain: row.chain as Chain,
-              token_name: row.token_name || undefined,
-              token_symbol: row.token_symbol || undefined,
-              call_price: row.call_price || undefined,
-              volume_at_alert: row.call_marketcap || undefined,
-              alert_timestamp: row.call_timestamp ? new Date(row.call_timestamp * 1000) : undefined,
-              caller_name: row.caller || undefined,
+              mint: createTokenAddress(dbRow.mint),
+              chain: dbRow.chain as Chain,
+              token_name: dbRow.token_name || undefined,
+              token_symbol: dbRow.token_symbol || undefined,
+              call_price: dbRow.call_price || undefined,
+              volume_at_alert: dbRow.call_marketcap || undefined,
+              alert_timestamp: dbRow.call_timestamp ? new Date(dbRow.call_timestamp * 1000) : undefined,
+              caller_name: dbRow.caller || undefined,
             };
             return call;
           } catch (error) {
-            logger.warn('Invalid mint address in CA call', { mint: row.mint, error });
+            const dbRow = row as CACallRow;
+            logger.warn('Invalid mint address in CA call', { mint: dbRow.mint, error });
             return null;
           }
         })

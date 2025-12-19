@@ -1,19 +1,22 @@
 /**
- * Unified OHLCV Engine
+ * Unified OHLCV Engine (Offline-Only)
  *
- * Single source of truth for all OHLCV operations:
- * - Fetching (from API, cache, or ClickHouse)
- * - Ingestion (to ClickHouse via StorageEngine)
- * - Caching (ClickHouse and CSV)
+ * Single source of truth for all OHLCV query operations:
+ * - Querying from ClickHouse/cache
+ * - Storing candles (offline operation)
+ * 
+ * NOTE: This engine is OFFLINE-ONLY. It does NOT fetch candles from APIs.
+ * For fetching candles, use @quantbot/api-clients in @quantbot/jobs workflows,
+ * then store them using the storeCandles() method.
  *
  * This eliminates ad-hoc scripts and ensures consistent behavior across the codebase.
  */
 
 import { DateTime } from 'luxon';
-import { fetchHybridCandles } from './candles';
-import type { Candle } from '@quantbot/core';
+import type { Candle, Chain } from '@quantbot/core';
 import { logger } from '@quantbot/utils';
 import { getStorageEngine, initClickHouse } from '@quantbot/storage';
+import { storeCandles as storeCandlesOffline } from './ohlcv-storage';
 
 export interface OHLCVEngineFetchOptions {
   /**
@@ -45,45 +48,109 @@ export interface OHLCVFetchResult {
 }
 
 export class OHLCVEngine {
-  private clickHouseEnabled: boolean;
   private storageEngine = getStorageEngine();
-
-  constructor() {
-    this.clickHouseEnabled = process.env.USE_CLICKHOUSE === 'true' || !!process.env.CLICKHOUSE_HOST;
-  }
 
   /**
    * Initialize the engine (e.g., connect to ClickHouse)
+   * NOTE: ClickHouse initialization is handled by the storage engine.
+   * This method is kept for backward compatibility but may be a no-op.
    */
   async initialize(): Promise<void> {
-    if (this.clickHouseEnabled) {
-      try {
-        await initClickHouse();
-        logger.info('OHLCV Engine: ClickHouse initialized');
-      } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        logger.warn('OHLCV Engine: ClickHouse initialization failed', { error: errorMessage });
-        this.clickHouseEnabled = false;
-      }
+    try {
+      await initClickHouse();
+      logger.info('OHLCV Engine: ClickHouse initialized');
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logger.warn('OHLCV Engine: ClickHouse initialization failed', { error: errorMessage });
+      // Continue anyway - queries will fail gracefully if ClickHouse is unavailable
     }
   }
 
   /**
-   * Fetch OHLCV candles with automatic caching and ingestion
+   * Query OHLCV candles from ClickHouse/cache (offline operation)
    *
-   * This is the main entry point - it handles:
-   * 1. Checking ClickHouse cache
-   * 2. Fetching from API if needed
-   * 3. Fetching from API if needed
-   * 4. Ingesting to ClickHouse
-   * 5. Caching to CSV
+   * This is the main entry point for querying candles. It only queries
+   * ClickHouse and cache - it does NOT fetch from APIs.
    *
    * @param tokenAddress Token mint address
    * @param startTime Start time for candles
    * @param endTime End time for candles
    * @param chain Blockchain name (defaults to 'solana')
-   * @param options Fetch options
-   * @returns Fetch result with candles and metadata
+   * @param options Query options
+   * @returns Query result with candles and metadata
+   */
+  async query(
+    tokenAddress: string,
+    startTime: DateTime,
+    endTime: DateTime,
+    chain: string = 'solana',
+    options: OHLCVEngineFetchOptions = {}
+  ): Promise<OHLCVFetchResult> {
+    const { interval = '5m' } = options;
+
+    // Query ClickHouse (storage engine handles availability)
+    try {
+      const candles = await this.storageEngine.getCandles(
+        tokenAddress,
+        chain,
+        startTime,
+        endTime,
+        { interval }
+      );
+      if (candles.length > 0) {
+        logger.debug(
+          `OHLCV Engine: Found ${candles.length} candles in ClickHouse for ${tokenAddress.substring(0, 20)}...`
+        );
+        return {
+          candles,
+          fromCache: true,
+          ingestedToClickHouse: true,
+          source: 'clickhouse',
+        };
+      }
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logger.warn('OHLCV Engine: ClickHouse query failed', {
+        error: errorMessage,
+        tokenAddress: tokenAddress.substring(0, 20),
+      });
+      // Continue to return empty result (offline-only mode)
+    }
+
+    // No candles found (offline-only mode - no API calls)
+    logger.debug(
+      `OHLCV Engine: No candles found for ${tokenAddress.substring(0, 20)}... (offline-only mode)`
+    );
+    return {
+      candles: [],
+      fromCache: false,
+      ingestedToClickHouse: false,
+      source: 'clickhouse',
+    };
+  }
+
+  /**
+   * Store candles (offline operation)
+   * 
+   * Stores candles that have already been fetched. For fetching, use
+   * @quantbot/api-clients in @quantbot/jobs workflows.
+   * 
+   * @param tokenAddress Token mint address
+   * @param chain Blockchain name
+   * @param candles Array of candles to store
+   * @param interval Candle interval
+   */
+  async storeCandles(
+    tokenAddress: string,
+    chain: Chain,
+    candles: Candle[],
+    interval: '1m' | '5m' | '1H' = '5m'
+  ): Promise<void> {
+    await storeCandlesOffline(tokenAddress, chain, candles, interval);
+  }
+
+  /**
+   * @deprecated Use query() instead. This method is kept for backward compatibility.
    */
   async fetch(
     tokenAddress: string,
@@ -92,169 +159,7 @@ export class OHLCVEngine {
     chain: string = 'solana',
     options: OHLCVEngineFetchOptions = {}
   ): Promise<OHLCVFetchResult> {
-    const { cacheOnly = false, ensureIngestion = true, alertTime, interval = '5m' } = options;
-
-    // Step 1: Check ClickHouse cache first (if enabled)
-    if (this.clickHouseEnabled) {
-      try {
-        const cachedCandles = await this.storageEngine.getCandles(
-          tokenAddress,
-          chain,
-          startTime,
-          endTime,
-          { interval }
-        );
-        if (cachedCandles.length > 0) {
-          logger.debug(
-            `OHLCV Engine: Using ClickHouse cache for ${tokenAddress.substring(0, 20)}... (${cachedCandles.length} candles)`
-          );
-          return {
-            candles: cachedCandles,
-            fromCache: true,
-            ingestedToClickHouse: true,
-            source: 'clickhouse',
-          };
-        }
-      } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        logger.warn('OHLCV Engine: ClickHouse query failed', {
-          error: errorMessage,
-          tokenAddress: tokenAddress.substring(0, 20),
-        });
-      }
-    }
-
-    // Step 2: If cache-only mode, return empty (no API calls)
-    if (cacheOnly) {
-      logger.debug(
-        `OHLCV Engine: Cache-only mode, no candles found for ${tokenAddress.substring(0, 20)}...`
-      );
-      return {
-        candles: [],
-        fromCache: false,
-        ingestedToClickHouse: false,
-        source: 'api',
-      };
-    }
-
-    // Step 3: Fetch from API (fetchHybridCandles uses ClickHouse/StorageEngine)
-    // Temporarily set USE_CACHE_ONLY to preserve existing cache behavior
-    const originalCacheOnly = process.env.USE_CACHE_ONLY;
-    if (cacheOnly) {
-      process.env.USE_CACHE_ONLY = 'true';
-    }
-
-    try {
-      const candles = await fetchHybridCandles(tokenAddress, startTime, endTime, chain, alertTime);
-
-      // Restore original setting
-      if (originalCacheOnly !== undefined) {
-        process.env.USE_CACHE_ONLY = originalCacheOnly;
-      } else {
-        delete process.env.USE_CACHE_ONLY;
-      }
-
-      if (candles.length === 0) {
-        return {
-          candles: [],
-          fromCache: false,
-          ingestedToClickHouse: false,
-          source: 'api',
-        };
-      }
-
-      // Step 4: Determine if we got candles from cache (CSV) or API
-      // fetchHybridCandles returns from cache if available, so we check ClickHouse again
-      // to see if these candles are already there
-      let fromCache = false;
-      let ingestedToClickHouse = false;
-
-      if (this.clickHouseEnabled) {
-        try {
-          const existingCandles = await this.storageEngine.getCandles(
-            tokenAddress,
-            chain,
-            startTime,
-            endTime,
-            { interval }
-          );
-          if (existingCandles.length >= candles.length * 0.9) {
-            // If ClickHouse has most of the candles, they were likely from cache
-            fromCache = true;
-            ingestedToClickHouse = true;
-          }
-        } catch (error) {
-          // Ignore - we'll ingest below
-        }
-      }
-
-      // Step 5: Ensure ingestion to ClickHouse if requested
-      if (ensureIngestion && this.clickHouseEnabled && !ingestedToClickHouse) {
-        try {
-          // Determine intervals to ingest
-          if (alertTime && candles.length > 1) {
-            // Separate 5m and 1m candles based on timestamp differences
-            const alertWindowStart = alertTime.minus({ minutes: 30 });
-            const alertWindowEnd = alertTime.plus({ minutes: 30 });
-
-            const candles5m: Candle[] = [];
-            const candles1m: Candle[] = [];
-
-            // Detect interval by checking time difference between consecutive candles
-            const timeDiff = candles[1].timestamp - candles[0].timestamp;
-            const is1mInterval = timeDiff <= 90; // 1m candles have ~60s difference, 5m have ~300s
-
-            for (const candle of candles) {
-              const candleTime = DateTime.fromSeconds(candle.timestamp);
-              if (candleTime >= alertWindowStart && candleTime <= alertWindowEnd && is1mInterval) {
-                candles1m.push(candle);
-              } else {
-                candles5m.push(candle);
-              }
-            }
-
-            // Ingest 5m candles
-            if (candles5m.length > 0) {
-              await this.storageEngine.storeCandles(tokenAddress, chain, candles5m, '5m');
-            }
-
-            // Ingest 1m candles
-            if (candles1m.length > 0) {
-              await this.storageEngine.storeCandles(tokenAddress, chain, candles1m, '1m');
-            }
-          } else {
-            // Ingest all as single interval
-            await this.storageEngine.storeCandles(tokenAddress, chain, candles, interval);
-          }
-
-          ingestedToClickHouse = true;
-          logger.debug(
-            `OHLCV Engine: Ingested ${candles.length} candles to ClickHouse for ${tokenAddress.substring(0, 20)}...`
-          );
-        } catch (error: unknown) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
-          logger.warn(
-            `OHLCV Engine: Failed to ingest to ClickHouse for ${tokenAddress.substring(0, 20)}...`,
-            { error: errorMessage }
-          );
-        }
-      }
-
-      return {
-        candles,
-        fromCache,
-        ingestedToClickHouse,
-        source: fromCache ? 'csv' : 'api',
-      };
-    } catch (error: unknown) {
-      // Restore original setting on error
-      if (originalCacheOnly !== undefined) {
-        process.env.USE_CACHE_ONLY = originalCacheOnly;
-      } else {
-        delete process.env.USE_CACHE_ONLY;
-      }
-      throw error;
-    }
+    return this.query(tokenAddress, startTime, endTime, chain, options);
   }
 
   /**

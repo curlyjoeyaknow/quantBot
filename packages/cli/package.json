@@ -9,7 +9,7 @@
     "quantbot": "./dist/bin/quantbot.js"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc --build",
     "test": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:mutation": "stryker run",
@@ -28,6 +28,7 @@
     "@quantbot/api-clients": "workspace:*",
     "@quantbot/core": "workspace:*",
     "@quantbot/ingestion": "workspace:*",
+    "@quantbot/jobs": "workspace:*",
     "@quantbot/observability": "workspace:*",
     "@quantbot/ohlcv": "workspace:*",
     "@quantbot/simulation": "workspace:*",

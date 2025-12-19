@@ -3,7 +3,7 @@
  * ======================================================
  *
  * Monitors system health, API quotas, database connections, and application performance.
- * Provides E2E observability with InfluxDB persistence for regression validation.
+ * Provides E2E observability with DuckDB event logging and Prometheus metrics.
  * Separate from @quantbot/monitoring which handles live token monitoring.
  */
 
@@ -22,7 +22,13 @@ export * from './system-metrics';
 // Error tracking
 export * from './error-tracking';
 
-// Metrics collection and InfluxDB persistence
+// DuckDB event log (billing-grade API call tracking)
+export * from './event-log';
+
+// Prometheus metrics (live counters and alerting)
+export * from './prometheus-metrics';
+
+// Legacy: Metrics collection and InfluxDB persistence (deprecated)
 export * from './types';
 export * from './metrics-collector';
 export * from './influxdb-metrics-writer';

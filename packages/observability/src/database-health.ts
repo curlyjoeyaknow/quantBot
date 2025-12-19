@@ -4,7 +4,6 @@
  * Monitors database connection health and performance.
  */
 
-import { logger } from '@quantbot/utils';
 import { getPostgresPool, getClickHouseClient } from '@quantbot/storage';
 
 export interface DatabaseHealth {

@@ -25,7 +25,9 @@ Packages must be built in this exact order:
 6. **@quantbot/ohlcv** - OHLCV data services (depends on api-clients, storage, utils, core)
 7. **@quantbot/analytics** - Analytics engine (depends on storage, utils, core)
 8. **@quantbot/ingestion** - Data ingestion (depends on api-clients, ohlcv, storage, analytics, utils, core)
-9. **Remaining packages** - All other packages (workflows, simulation, cli, tui, etc.)
+9. **@quantbot/simulation** - Trading simulation engine (depends on utils, core)
+10. **@quantbot/workflows** - Workflow orchestration (depends on simulation, ohlcv, ingestion, api-clients, storage, utils, core)
+11. **Remaining packages** - All other packages (cli, tui, data, etc.)
 
 ## Dependency Rules
 
@@ -48,8 +50,8 @@ Packages must be built in this exact order:
 
 ### Application Layer (Build Last)
 
-- **@quantbot/workflows**: Depends on storage, ohlcv, simulation, ingestion, utils, core
-- **@quantbot/simulation**: Depends on utils, storage, ohlcv, core
+- **@quantbot/simulation**: Depends on utils, core (build position 9)
+- **@quantbot/workflows**: Depends on storage, ohlcv, simulation, ingestion, api-clients, utils, core (build position 10)
 - **@quantbot/cli**: Depends on all packages
 - **@quantbot/tui**: Depends on all packages
 
@@ -86,7 +88,7 @@ When adding a new package:
 
 1. **Declare dependencies** in `package.json` using `workspace:*` protocol
 2. **Ensure dependencies are listed** in the correct build order
-3. **Update root `build:ordered` script** if package is in the first 8 packages
+3. **Update root `build:ordered` script** if package is in the first 10 packages
 4. **Place in "Remaining packages"** section if it depends on multiple foundation packages
 
 ### Example

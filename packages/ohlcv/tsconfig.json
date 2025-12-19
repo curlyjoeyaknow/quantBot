@@ -18,9 +18,7 @@
       "@quantbot/api-clients": ["../api-clients/src"],
       "@quantbot/api-clients/*": ["../api-clients/src/*"],
       "@quantbot/simulation": ["../simulation/src"],
-      "@quantbot/simulation/*": ["../simulation/src/*"],
-      "@quantbot/ingestion": ["../ingestion/src"],
-      "@quantbot/ingestion/*": ["../ingestion/src/*"]
+      "@quantbot/simulation/*": ["../simulation/src/*"]
     }
   },
   "include": ["src/**/*"],
@@ -28,10 +26,8 @@
   "references": [
     { "path": "../core" },
     { "path": "../utils" },
-    { "path": "../api-clients" },
     { "path": "../storage" },
-    { "path": "../simulation" },
-    { "path": "../ingestion" }
+    { "path": "../api-clients" }
   ]
 }
 

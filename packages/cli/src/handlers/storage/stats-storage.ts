@@ -5,7 +5,6 @@
  * No Commander, no console.log, no process.exit, no env reads.
  */
 
-import type { z } from 'zod';
 import type { CommandContext } from '../../core/command-context.js';
 import { getPostgresPool, getClickHouseClient } from '@quantbot/storage';
 import { SAFE_TABLES } from '../../commands/storage.js';

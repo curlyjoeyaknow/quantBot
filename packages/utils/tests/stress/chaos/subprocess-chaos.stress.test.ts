@@ -25,7 +25,7 @@ import { shouldRunChaosTests, TEST_GATES } from '../../../src/test-helpers/test-
 vi.mock('child_process');
 
 describe.skipIf(!shouldRunChaosTests())(
-  'Subprocess Chaos Tests',
+  `Subprocess Chaos Tests (requires ${TEST_GATES.CHAOS}=1)`,
   () => {
     let tempDir: string;
     let engine: PythonEngine;
@@ -399,6 +399,5 @@ describe.skipIf(!shouldRunChaosTests())(
         }
       });
     });
-  },
-  `Chaos tests require ${TEST_GATES.CHAOS}=1`
+  }
 );

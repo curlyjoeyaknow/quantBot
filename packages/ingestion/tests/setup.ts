@@ -8,7 +8,6 @@ vi.mock('sqlite3', () => ({
 
 // Mock @quantbot/storage to avoid loading sqlite-backed modules (caller database)
 vi.mock('@quantbot/storage', async () => {
-  const noop = vi.fn();
   class BaseRepo {}
   return {
     // Repositories (stub classes)

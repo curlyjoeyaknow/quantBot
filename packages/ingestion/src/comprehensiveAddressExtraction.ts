@@ -202,7 +202,7 @@ export function extractAndValidateAddresses(input: string): ExtractionResult {
   if (whitespaceMatch) {
     // Build replacement regex with proper Unicode escapes
     // Use a function to check for invisible chars instead of regex character class
-    const hasInvisibleOrWhitespace = (str: string): boolean => {
+    const _hasInvisibleOrWhitespace = (str: string): boolean => {
       const invisibleChars = ['\u200B', '\u200C', '\u200D', '\uFEFF', '\u00AD', '\u00A0'];
       const whitespaceChars = [' ', '\n', '\r', '\t', '-'];
       return [...invisibleChars, ...whitespaceChars].some((char) => str.includes(char));
@@ -717,7 +717,6 @@ export function extractAndValidateAddresses(input: string): ExtractionResult {
 
   // Ensure we've tracked all candidates (for "should not silently drop" test)
   // This is a sanity check - in practice, all candidates should be in valid or rejected
-  const totalTracked = deduplicatedValid.length + rejected.length;
   // Note: Some candidates might be filtered out early (URLs, noise), which is OK
 
   return { valid: deduplicatedValid, rejected };

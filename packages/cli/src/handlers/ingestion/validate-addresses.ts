@@ -4,10 +4,9 @@
  * Validates addresses and fetches metadata across chains
  */
 
-import type { z } from 'zod';
 import type { CommandContext } from '../../core/command-context.js';
-import { fetchMultiChainMetadata } from '@quantbot/ingestion';
-import { isEvmAddress, isSolanaAddress } from '@quantbot/ingestion';
+import { isEvmAddress, isSolanaAddress } from '@quantbot/utils';
+import { fetchMultiChainMetadata } from '@quantbot/api-clients';
 import type { Chain } from '@quantbot/core';
 
 export type ValidateAddressesArgs = {

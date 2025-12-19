@@ -3,13 +3,15 @@
  *
  * Provides a single, robust interface for storing and retrieving:
  * - OHLCV candles (ClickHouse)
- * - Token calls (Postgres)
- * - Strategies (Postgres)
+ * - Token calls (DuckDB - migrated from Postgres)
+ * - Strategies (DuckDB - migrated from Postgres)
  * - Indicators (ClickHouse for computed values)
- * - Simulation results (Postgres + ClickHouse)
+ * - Simulation results (ClickHouse)
  *
  * This engine abstracts the complexity of multi-database storage and provides
  * intelligent caching, query optimization, and data consistency guarantees.
+ *
+ * @deprecated PostgreSQL repositories are deprecated. The engine will be updated to use DuckDB repositories.
  */
 
 import { DateTime } from 'luxon';

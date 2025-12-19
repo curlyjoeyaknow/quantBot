@@ -40,7 +40,16 @@ export interface TelegramPipelineConfig {
 
 export interface DuckDBStorageConfig {
   duckdbPath: string;
-  operation: 'store_strategy' | 'store_run' | 'store_alerts' | 'generate_report' | 'query_calls';
+  operation:
+    | 'store_strategy'
+    | 'store_run'
+    | 'store_alerts'
+    | 'generate_report'
+    | 'query_calls'
+    | 'update_ohlcv_metadata'
+    | 'query_ohlcv_metadata'
+    | 'add_ohlcv_exclusion'
+    | 'query_ohlcv_exclusions';
   data: Record<string, unknown>;
 }
 
@@ -355,7 +364,7 @@ export class PythonEngine {
     config: DuckDBStorageConfig,
     options?: PythonScriptOptions
   ): Promise<Record<string, unknown>> {
-    const scriptPath = join(process.cwd(), 'tools/simulation/duckdb_storage.py');
+    const scriptPath = join(process.cwd(), 'tools/simulation/duckdb_storage/main.py');
 
     const args: Record<string, unknown> = {
       duckdb: config.duckdbPath,

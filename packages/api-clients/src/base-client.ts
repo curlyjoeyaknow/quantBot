@@ -13,6 +13,8 @@ import {
   isRetryableError,
   retryWithBackoff,
 } from '@quantbot/utils';
+import type { EventLogService } from '@quantbot/observability';
+import type { PrometheusMetricsService } from '@quantbot/observability';
 
 /**
  * Rate limiter configuration
@@ -45,6 +47,12 @@ export interface BaseApiClientConfig {
   apiName?: string;
   /** Optional axios instance for testing */
   axiosInstance?: AxiosInstance;
+  /** Optional event log service for billing-grade tracking */
+  eventLogService?: EventLogService;
+  /** Optional Prometheus metrics service */
+  prometheusMetrics?: PrometheusMetricsService;
+  /** Optional run ID for tracking */
+  runId?: string;
 }
 
 /**
@@ -118,9 +126,15 @@ export class BaseApiClient {
   protected rateLimiter?: RateLimiter;
   protected retryConfig?: RetryConfig;
   protected apiName: string;
+  protected eventLogService?: EventLogService;
+  protected prometheusMetrics?: PrometheusMetricsService;
+  protected runId?: string;
 
   constructor(config: BaseApiClientConfig) {
     this.apiName = config.apiName || 'API';
+    this.eventLogService = config.eventLogService;
+    this.prometheusMetrics = config.prometheusMetrics;
+    this.runId = config.runId;
 
     // Use injected axios instance or create a new one
     this.axiosInstance =
@@ -174,34 +188,53 @@ export class BaseApiClient {
       }
     );
 
-    // Setup response interceptor for error handling
+    // Setup response interceptor for error handling and event logging
     this.axiosInstance.interceptors.response.use(
-      (response) => response,
+      async (response) => {
+        // Log successful API call
+        await this.logApiCall(response.config, response.status, response.statusText, null);
+        return response;
+      },
       async (error: AxiosError) => {
+        const startTime = error.config?.['_startTime'] as number | undefined;
+        const latencyMs = startTime ? Date.now() - startTime : 0;
+
         // Handle rate limiting
         if (error.response?.status === 429) {
           const retryAfter = this.rateLimiter?.getRetryAfter(
             error.response.headers as Record<string, string | string[] | undefined>
           );
           if (retryAfter) {
-            throw new RateLimitError(`Rate limit exceeded for ${this.apiName}`, retryAfter, {
-              apiName: this.apiName,
-            });
+            const rateLimitError = new RateLimitError(
+              `Rate limit exceeded for ${this.apiName}`,
+              retryAfter,
+              { apiName: this.apiName }
+            );
+            await this.logApiCall(
+              error.config,
+              error.response.status,
+              error.response.statusText,
+              rateLimitError,
+              latencyMs
+            );
+            throw rateLimitError;
           }
         }
 
         // Handle timeout
         if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
-          throw new TimeoutError(
+          const timeoutError = new TimeoutError(
             `Request to ${this.apiName} timed out`,
             this.axiosInstance.defaults.timeout as number,
             { apiName: this.apiName }
           );
+          await this.logApiCall(error.config, undefined, 'timeout', timeoutError, latencyMs);
+          throw timeoutError;
         }
 
         // Handle API errors
         if (error.response) {
-          throw new ApiError(
+          const apiError = new ApiError(
             error.response.statusText || error.message,
             this.apiName,
             error.response.status,
@@ -211,21 +244,41 @@ export class BaseApiClient {
               method: error.config?.method,
             }
           );
+          await this.logApiCall(
+            error.config,
+            error.response.status,
+            error.response.statusText,
+            apiError,
+            latencyMs
+          );
+          throw apiError;
         }
 
         // Handle network errors
         if (error.request) {
-          throw new ApiError(
+          const networkError = new ApiError(
             `Network error: ${error.message}`,
             this.apiName,
             undefined,
             undefined,
             { url: error.config?.url }
           );
+          await this.logApiCall(error.config, undefined, 'network_error', networkError, latencyMs);
+          throw networkError;
         }
 
+        await this.logApiCall(error.config, undefined, 'unknown_error', error, latencyMs);
         throw error;
       }
+    );
+
+    // Setup request interceptor to track start time
+    this.axiosInstance.interceptors.request.use(
+      (config) => {
+        (config as AxiosRequestConfig & { _startTime?: number })._startTime = Date.now();
+        return config;
+      },
+      (error) => Promise.reject(error)
     );
   }
 
@@ -301,5 +354,93 @@ export class BaseApiClient {
    */
   getAxiosInstance(): AxiosInstance {
     return this.axiosInstance;
+  }
+
+  /**
+   * Log API call to event log and Prometheus
+   */
+  private async logApiCall(
+    config: AxiosRequestConfig | undefined,
+    statusCode: number | undefined,
+    statusText: string | undefined,
+    error: Error | unknown | null,
+    latencyMs?: number
+  ): Promise<void> {
+    if (!config) return;
+
+    const startTime = (config as AxiosRequestConfig & { _startTime?: number })._startTime;
+    const actualLatency = latencyMs ?? (startTime ? Date.now() - startTime : 0);
+    const success = !error && statusCode !== undefined && statusCode >= 200 && statusCode < 300;
+    const endpoint = config.url || 'unknown';
+    const method = config.method?.toUpperCase() || 'GET';
+
+    // Calculate credits (override in subclasses)
+    const credits = this.calculateCredits(config, statusCode, success);
+
+    // Log to event log
+    if (this.eventLogService) {
+      try {
+        await this.eventLogService.logEvent({
+          timestamp: new Date(),
+          api_name: this.apiName,
+          endpoint,
+          method,
+          status_code: statusCode ?? null,
+          success,
+          latency_ms: actualLatency,
+          credits_cost: credits,
+          run_id: this.runId,
+          error_message: error instanceof Error ? error.message : error ? String(error) : null,
+          metadata: {
+            url: config.url,
+            method: config.method,
+            baseURL: config.baseURL,
+          },
+        });
+      } catch (logError) {
+        // Don't break API calls if logging fails
+        logger.debug('Failed to log API call event', { error: logError });
+      }
+    }
+
+    // Record Prometheus metrics
+    if (this.prometheusMetrics) {
+      try {
+        this.prometheusMetrics.recordApiCall(
+          this.apiName,
+          endpoint,
+          statusCode ?? 0,
+          actualLatency,
+          credits
+        );
+
+        if (error) {
+          const errorType =
+            error instanceof RateLimitError
+              ? 'rate_limit'
+              : error instanceof TimeoutError
+                ? 'timeout'
+                : error instanceof ApiError
+                  ? `api_error_${error.apiStatusCode ?? 'unknown'}`
+                  : 'unknown_error';
+          this.prometheusMetrics.recordApiError(this.apiName, endpoint, errorType);
+        }
+      } catch (metricsError) {
+        // Don't break API calls if metrics fail
+        logger.debug('Failed to record Prometheus metrics', { error: metricsError });
+      }
+    }
+  }
+
+  /**
+   * Calculate credits for API call (override in subclasses)
+   */
+  protected calculateCredits(
+    _config: AxiosRequestConfig,
+    _statusCode: number | undefined,
+    _success: boolean
+  ): number {
+    // Default: no credits (subclasses should override)
+    return 0;
   }
 }

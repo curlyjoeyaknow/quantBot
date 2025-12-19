@@ -1,11 +1,39 @@
 # @quantbot/ingestion
 
-Data ingestion services for Telegram alerts and OHLCV candles.
+**Offline-only data ingestion services for Telegram alerts and OHLCV work planning.**
+
+This package provides offline parsing, worklist generation, and metadata management. It does **NOT** fetch data from APIs - that responsibility belongs to `@quantbot/jobs`.
+
+## Architecture
+
+- **Offline-only**: No network calls, no API clients, no environment variables
+- **Work planning**: Generates worklists for OHLCV ingestion
+- **Parsing**: Parses Telegram exports and extracts token/alert data
+- **Metadata**: Manages OHLCV metadata and exclusions in DuckDB
 
 ## Services
 
-- `TelegramAlertIngestionService`: parses Telegram exports, upserts tokens, inserts alerts and calls.
-- `OhlcvIngestionService`: fetches OHLCV candles for calls using the new `OhlcvIngestionEngine` (metadata-first, cached, chunked, incremental storage). Also calculates and stores ATH/ATL metrics for alerts during ingestion.
+### Telegram Ingestion
+- `TelegramAlertIngestionService`: Parses Telegram exports, upserts tokens, inserts alerts and calls (offline parsing only).
+- `TelegramCallIngestionService`: Orchestrates full Telegram ingestion workflow (offline parsing only).
+
+### OHLCV Work Planning
+- `generateOhlcvWorklist`: Generates worklist of OHLCV items to fetch by querying DuckDB (offline operation).
+
+```typescript
+import { generateOhlcvWorklist } from '@quantbot/ingestion';
+
+// Generate worklist from DuckDB (offline)
+const worklist = await generateOhlcvWorklist({
+  duckdbPath: '/path/to/duckdb',
+  from: '2024-01-01',
+  to: '2024-01-02',
+  side: 'buy',
+});
+```
+
+### OHLCV Ingestion Service
+- `OhlcvIngestionService`: Orchestrates OHLCV ingestion workflow (uses `@quantbot/jobs` for actual fetching).
 
 ## Usage
 

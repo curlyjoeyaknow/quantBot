@@ -21,6 +21,9 @@ export const SimulationResultSchema = z.object({
   error: z.string().optional(),
   mint: z.string().optional(), // Included when error occurs (for queue tracking)
   alert_timestamp: z.string().optional(), // Included when error occurs (for queue tracking)
+  skipped: z.boolean().optional(), // True if token was skipped due to insufficient data
+  lookback_minutes: z.number().optional(), // Lookback requirement when skipped
+  lookforward_minutes: z.number().optional(), // Lookforward requirement when skipped
 });
 
 /**
@@ -52,6 +55,8 @@ export interface SimulationConfig {
   alert_timestamp?: string;
   mints?: string[];
   alert_timestamps?: string[];
+  resume?: boolean; // Skip tokens with insufficient data and continue
+  skipTokens?: Array<{ mint: string; alert_timestamp: string }>; // Tokens to skip
 }
 
 /**

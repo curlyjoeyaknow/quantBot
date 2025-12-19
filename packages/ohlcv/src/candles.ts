@@ -10,10 +10,14 @@
  * Pure math operations (aggregation, etc.) remain in simulation.
  ******************************************************************************/
 
-import { config } from 'dotenv';
-// Override existing env vars to ensure .env file takes precedence
-config({ override: true });
-import axios from 'axios';
+// NOTE: This file contains deprecated API-calling functions.
+// These functions are NOT exported and should not be used.
+// Use @quantbot/api-clients in @quantbot/jobs instead.
+//
+// Removed imports: dotenv, axios (violate offline-only boundary)
+// import { config } from 'dotenv';
+// config({ override: true });
+// import axios from 'axios';
 import { DateTime } from 'luxon';
 import type { Candle } from '@quantbot/core';
 import { logger, ConfigurationError, ApiError } from '@quantbot/utils';
@@ -204,6 +208,8 @@ async function fetchBirdeyeCandles(
 }
 
 /**
+ * @deprecated This function makes API calls. Use @quantbot/api-clients/fetchBirdeyeCandles instead.
+ * 
  * Fetches candles from Birdeye API with automatic chunking.
  * Exported for use in scripts that need direct access.
  */
@@ -636,10 +642,10 @@ async function fetchTokenMetadata(
         topWalletHoldings: data.topWalletHoldings || data.top10Holdings,
       };
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.debug('Failed to fetch token metadata from Birdeye', {
       token: mint.substring(0, 20),
-      error: error.message,
+      error: error instanceof Error ? error.message : String(error),
     });
   }
 
@@ -647,6 +653,9 @@ async function fetchTokenMetadata(
 }
 
 /**
+ * @deprecated This function makes API calls and will be moved to @quantbot/jobs layer.
+ * For offline querying, use OHLCVEngine.query() or OHLCVService.getCandles().
+ * 
  * Fetches OHLCV candles for a given token using 5m granularity for the entire period.
  * If alertTime is provided, also fetches 1m candles for 30min before and after alertTime
  * for precise entry pricing.
@@ -936,6 +945,9 @@ export async function fetchHybridCandles(
 }
 
 /**
+ * @deprecated This function makes API calls and will be moved to @quantbot/jobs layer.
+ * For offline querying, use OHLCVEngine.query() or OHLCVService.getCandles().
+ * 
  * Fetches OHLCV candles with token metadata enrichment.
  * Same as fetchHybridCandles but also returns token metadata (name, symbol, market cap).
  *

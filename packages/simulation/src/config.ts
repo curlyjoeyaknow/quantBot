@@ -103,7 +103,15 @@ export const SignalConditionSchema = z.object({
 
 export type SignalCondition = z.infer<typeof SignalConditionSchema>;
 
-export const SignalGroupSchema: z.ZodType<any> = z.lazy(() =>
+// Forward declaration for recursive type
+export interface SignalGroup {
+  id?: string;
+  logic?: 'AND' | 'OR';
+  conditions?: SignalCondition[];
+  groups?: SignalGroup[];
+}
+
+export const SignalGroupSchema: z.ZodType<SignalGroup> = z.lazy(() =>
   z.object({
     id: z.string().optional(),
     logic: z.enum(['AND', 'OR']).default('AND'),
@@ -111,8 +119,6 @@ export const SignalGroupSchema: z.ZodType<any> = z.lazy(() =>
     groups: z.array(SignalGroupSchema).default([]),
   })
 );
-
-export type SignalGroup = z.infer<typeof SignalGroupSchema>;
 
 export const LadderLegSchema = z.object({
   id: z.string().optional(),
@@ -210,7 +216,7 @@ const FileSelectorSchema = z.object({
     .max(24 * 90)
     .optional()
     .default(24),
-  filter: z.record(z.string(), z.any()).optional(),
+  filter: z.record(z.string(), z.unknown()).optional(),
 });
 
 const DatasetSelectorSchema = z.object({

@@ -46,6 +46,9 @@ export { handleError, retryWithBackoff } from './error-handler';
 // Pump.fun utilities
 export { PUMP_FUN_PROGRAM_ID, derivePumpfunBondingCurve } from './pumpfun';
 
+// Address validation
+export { isBase58, isSolanaAddress, isEvmAddress } from './addressValidation';
+
 // Credit monitoring
 export { creditMonitor } from './credit-monitor';
 
@@ -77,8 +80,8 @@ export {
 // Migration mapping:
 // - database.ts → @quantbot/storage repositories (SimulationRunsRepository, etc.)
 // - caller-database.ts → @quantbot/storage repositories
-// - live-trade-database.ts → @quantbot/storage repositories
-// - monitored-tokens-db.ts → @quantbot/storage repositories
-// - live-trade-strategies.ts → kept for now (may move to services)
+// - live-trade-database.ts → ARCHIVED (see scripts/archive/live-trades/)
+// - monitored-tokens-db.ts → ARCHIVED (see scripts/archive/monitored-tokens/)
+// - live-trade-strategies.ts → ARCHIVED (see scripts/archive/live-trades/)
 //
 // See packages/utils/MIGRATION_GUIDE.md for complete migration instructions.

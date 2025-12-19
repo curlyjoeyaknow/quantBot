@@ -5,7 +5,6 @@
  * Orchestrates data loading, aggregation, and metric calculation.
  */
 
-import { DateTime } from 'luxon';
 import { logger } from '@quantbot/utils';
 import { getPostgresPool } from '@quantbot/storage';
 import type {

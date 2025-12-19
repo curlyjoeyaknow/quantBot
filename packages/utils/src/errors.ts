@@ -51,7 +51,7 @@ export class AppError extends Error {
  * Validation error - for input validation failures
  */
 export class ValidationError extends AppError {
-  constructor(message: string, context?: Record<string, any>) {
+  constructor(message: string, context?: Record<string, unknown>) {
     super(message, 'VALIDATION_ERROR', 400, context);
   }
 }
@@ -60,7 +60,7 @@ export class ValidationError extends AppError {
  * Not found error - for missing resources
  */
 export class NotFoundError extends AppError {
-  constructor(resource: string, identifier?: string, context?: Record<string, any>) {
+  constructor(resource: string, identifier?: string, context?: Record<string, unknown>) {
     const message = identifier
       ? `${resource} with identifier '${identifier}' not found`
       : `${resource} not found`;
@@ -72,7 +72,7 @@ export class NotFoundError extends AppError {
  * Authentication error - for authentication failures
  */
 export class AuthenticationError extends AppError {
-  constructor(message: string = 'Authentication failed', context?: Record<string, any>) {
+  constructor(message: string = 'Authentication failed', context?: Record<string, unknown>) {
     super(message, 'AUTHENTICATION_ERROR', 401, context);
   }
 }
@@ -81,7 +81,7 @@ export class AuthenticationError extends AppError {
  * Authorization error - for permission failures
  */
 export class AuthorizationError extends AppError {
-  constructor(message: string = 'Insufficient permissions', context?: Record<string, any>) {
+  constructor(message: string = 'Insufficient permissions', context?: Record<string, unknown>) {
     super(message, 'AUTHORIZATION_ERROR', 403, context);
   }
 }
@@ -90,7 +90,7 @@ export class AuthorizationError extends AppError {
  * Database error - for database operation failures
  */
 export class DatabaseError extends AppError {
-  constructor(message: string, operation?: string, context?: Record<string, any>) {
+  constructor(message: string, operation?: string, context?: Record<string, unknown>) {
     super(message, 'DATABASE_ERROR', 500, { operation, ...context });
   }
 }
@@ -137,7 +137,7 @@ export class RateLimitError extends AppError {
  * Configuration error - for configuration issues
  */
 export class ConfigurationError extends AppError {
-  constructor(message: string, configKey?: string, context?: Record<string, any>) {
+  constructor(message: string, configKey?: string, context?: Record<string, unknown>) {
     super(message, 'CONFIGURATION_ERROR', 500, { configKey, ...context });
   }
 }
@@ -146,7 +146,7 @@ export class ConfigurationError extends AppError {
  * Service unavailable error - for service unavailability
  */
 export class ServiceUnavailableError extends AppError {
-  constructor(serviceName: string, context?: Record<string, any>) {
+  constructor(serviceName: string, context?: Record<string, unknown>) {
     super(`Service '${serviceName}' is currently unavailable`, 'SERVICE_UNAVAILABLE', 503, {
       serviceName,
       ...context,
