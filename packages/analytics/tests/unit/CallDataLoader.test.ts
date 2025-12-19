@@ -5,8 +5,8 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { CallDataLoader } from '../src/loaders/CallDataLoader';
-import type { CallPerformance } from '../src/types';
+import { CallDataLoader } from '@quantbot/analytics/loaders/CallDataLoader.js';
+import type { CallPerformance } from '@quantbot/analytics/types.js';
 import { DateTime } from 'luxon';
 
 // Mock dependencies
@@ -23,7 +23,7 @@ vi.mock('@quantbot/storage', () => ({
   getStorageEngine: vi.fn(() => mockStorageEngine),
 }));
 
-vi.mock('../src/utils/ath-calculator', () => ({
+vi.mock('@quantbot/analytics/utils/ath-calculator.js', () => ({
   calculateAthFromCandleObjects: vi.fn((entryPrice, entryTimestamp, candles) => ({
     athPrice: 2,
     athMultiple: 2,

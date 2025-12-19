@@ -5,8 +5,13 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { MetricsAggregator } from '../src/aggregators/MetricsAggregator';
-import type { CallPerformance, CallerMetrics, AthDistribution, SystemMetrics } from '../src/types';
+import { MetricsAggregator } from '@quantbot/analytics/aggregators/MetricsAggregator.js';
+import type {
+  CallPerformance,
+  CallerMetrics,
+  AthDistribution,
+  SystemMetrics,
+} from '@quantbot/analytics/types.js';
 
 // Mock dependencies
 const mockPool = {

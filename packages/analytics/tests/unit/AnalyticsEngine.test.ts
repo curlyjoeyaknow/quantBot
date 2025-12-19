@@ -5,10 +5,10 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { AnalyticsEngine } from '../src/engine/AnalyticsEngine';
-import { CallDataLoader } from '../src/loaders/CallDataLoader';
-import { MetricsAggregator } from '../src/aggregators/MetricsAggregator';
-import type { CallPerformance } from '../src/types';
+import { AnalyticsEngine } from '@quantbot/analytics/engine/AnalyticsEngine.js';
+import { CallDataLoader } from '@quantbot/analytics/loaders/CallDataLoader.js';
+import { MetricsAggregator } from '@quantbot/analytics/aggregators/MetricsAggregator.js';
+import type { CallPerformance } from '@quantbot/analytics/types.js';
 
 // Mock dependencies
 const mockCallLoaderInstance = {
@@ -22,7 +22,7 @@ const mockAggregatorInstance = {
   calculateSystemMetrics: vi.fn(),
 };
 
-vi.mock('../src/loaders/CallDataLoader', () => ({
+vi.mock('@quantbot/analytics/loaders/CallDataLoader.js', () => ({
   CallDataLoader: class {
     constructor() {
       return mockCallLoaderInstance;
@@ -30,7 +30,7 @@ vi.mock('../src/loaders/CallDataLoader', () => ({
   },
 }));
 
-vi.mock('../src/aggregators/MetricsAggregator', () => ({
+vi.mock('@quantbot/analytics/aggregators/MetricsAggregator.js', () => ({
   MetricsAggregator: class {
     constructor() {
       return mockAggregatorInstance;
