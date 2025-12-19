@@ -27,11 +27,11 @@ export async function ingestTelegramHandler(args: IngestTelegramArgs, ctx: Comma
   // Create workflow context with DuckDB repositories
   const dbPath = process.env.DUCKDB_PATH || 'data/quantbot.db';
   const workflowContext = createProductionContext();
-  
+
   // Add DuckDB repositories to context
   const callersRepo = new CallersRepository(dbPath);
   const tokenDataRepo = new TokenDataRepository(dbPath);
-  
+
   // Call workflow instead of service
   return ingestTelegramJson(
     {

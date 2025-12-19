@@ -1,10 +1,7 @@
 import { DateTime } from 'luxon';
 import { v4 as uuidv4 } from 'uuid';
 import { logger as utilsLogger, ValidationError } from '@quantbot/utils';
-import {
-  StrategiesRepository,
-  getStorageEngine,
-} from '@quantbot/storage';
+import { StrategiesRepository, StorageEngine } from '@quantbot/storage';
 // PostgreSQL repositories removed - use DuckDB services/workflows instead
 import { simulateStrategy } from '@quantbot/simulation';
 import type {
@@ -40,6 +37,11 @@ export interface ProductionContextConfig {
   ids?: {
     newRunId: () => string;
   };
+
+  /**
+   * Optional storage engine override (for testing)
+   */
+  storageEngine?: StorageEngine;
 }
 
 /**
@@ -60,6 +62,9 @@ export function createProductionContext(config?: ProductionContextConfig): Workf
   const strategiesRepo = new StrategiesRepository(dbPath); // DuckDB version
   // CallersRepository not used in this context - workflows use services instead
   // PostgreSQL repositories removed - use DuckDB services/workflows for calls/tokens/simulation runs
+
+  // Create storage engine (NO SINGLETON - created fresh per context)
+  const storageEngine = config?.storageEngine ?? new StorageEngine();
 
   const logger = config?.logger ?? {
     info: (...args: unknown[]) => utilsLogger.info(String(args[0] || ''), args[1] as any),
@@ -100,11 +105,14 @@ export function createProductionContext(config?: ProductionContextConfig): Workf
         }): Promise<CallRecord[]> {
           // PostgreSQL CallsRepository removed - use DuckDB services/workflows
           // For now, return empty array - workflows should use runSimulationDuckdb which queries DuckDB directly
-          logger.warn('[workflows.context] Calls.list() not available - use DuckDB workflows instead', {
-            callerName: q.callerName,
-            fromISO: q.fromISO,
-            toISO: q.toISO,
-          });
+          logger.warn(
+            '[workflows.context] Calls.list() not available - use DuckDB workflows instead',
+            {
+              callerName: q.callerName,
+              fromISO: q.fromISO,
+              toISO: q.toISO,
+            }
+          );
           return [];
         },
       },
@@ -118,10 +126,13 @@ export function createProductionContext(config?: ProductionContextConfig): Workf
           callerName?: string;
         }): Promise<void> {
           // PostgreSQL SimulationRunsRepository removed - use DuckDB storage service
-          logger.warn('[workflows.context] SimulationRuns.create() not available - use DuckDB storage service instead', {
-            runId: run.runId,
-            strategyId: run.strategyId,
-          });
+          logger.warn(
+            '[workflows.context] SimulationRuns.create() not available - use DuckDB storage service instead',
+            {
+              runId: run.runId,
+              strategyId: run.strategyId,
+            }
+          );
           // No-op for now - workflows should use DuckDB storage service
         },
       },
@@ -129,10 +140,13 @@ export function createProductionContext(config?: ProductionContextConfig): Workf
       simulationResults: {
         async insertMany(runId: string, rows: SimulationCallResult[]): Promise<void> {
           // PostgreSQL SimulationResultsRepository removed - use DuckDB storage service
-          logger.warn('[workflows.context] SimulationResults.insertMany() not available - use DuckDB storage service instead', {
-            runId,
-            count: rows.length,
-          });
+          logger.warn(
+            '[workflows.context] SimulationResults.insertMany() not available - use DuckDB storage service instead',
+            {
+              runId,
+              count: rows.length,
+            }
+          );
           // No-op for now - workflows should use DuckDB storage service
         },
       },
@@ -144,7 +158,7 @@ export function createProductionContext(config?: ProductionContextConfig): Workf
         const endTime = DateTime.fromISO(q.toISO, { zone: 'utc' });
 
         // Use storage engine to query candles (offline-only)
-        const storageEngine = getStorageEngine();
+        // Storage engine created fresh per context (no singleton)
         const candles = await storageEngine.getCandles(q.mint, 'solana', startTime, endTime, {
           interval: '5m',
         });

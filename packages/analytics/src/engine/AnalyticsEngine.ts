@@ -199,11 +199,19 @@ export class AnalyticsEngine {
   }
 }
 
-// Singleton instance
+/**
+ * @deprecated Use CommandContext or createProductionContext factory instead.
+ * This singleton is kept for backward compatibility but should not be used in new code.
+ * 
+ * Use:
+ * - CommandContext.services.analyticsEngine() for CLI commands
+ * - Pass AnalyticsEngine to createProductionContext config for workflows
+ */
 let engineInstance: AnalyticsEngine | null = null;
 
 /**
- * Get analytics engine instance
+ * @deprecated Use CommandContext or createProductionContext factory instead.
+ * Get analytics engine instance (singleton pattern - deprecated)
  */
 export function getAnalyticsEngine(): AnalyticsEngine {
   if (!engineInstance) {

@@ -25,12 +25,14 @@ export interface LoadCallsOptions {
 export class CallDataLoader {
   /**
    * Load calls from DuckDB (via workflows)
-   * 
+   *
    * @deprecated PostgreSQL removed - use DuckDB workflows to query calls
    */
   async loadCalls(_options: LoadCallsOptions = {}): Promise<CallPerformance[]> {
     // PostgreSQL removed - use DuckDB workflows to query calls
-    throw new Error('CallDataLoader.loadCalls() requires PostgreSQL which was removed. Use DuckDB workflows to query calls instead.');
+    throw new Error(
+      'CallDataLoader.loadCalls() requires PostgreSQL which was removed. Use DuckDB workflows to query calls instead.'
+    );
   }
 
   // Original PostgreSQL implementation removed - use DuckDB workflows instead

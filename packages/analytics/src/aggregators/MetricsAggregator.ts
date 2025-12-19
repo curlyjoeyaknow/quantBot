@@ -121,13 +121,13 @@ export class MetricsAggregator {
    */
   /**
    * Calculate system metrics
-   * 
+   *
    * @deprecated PostgreSQL removed - use DuckDB workflows to get system metrics
    */
   async calculateSystemMetrics(calls: CallPerformance[]): Promise<SystemMetrics> {
     // PostgreSQL removed - calculate metrics from provided calls only
     // For full system metrics, use DuckDB workflows
-    
+
     // Calculate date range from calls
     const timestamps = calls.map((c) => c.alertTimestamp.getTime());
     const dataRange = {

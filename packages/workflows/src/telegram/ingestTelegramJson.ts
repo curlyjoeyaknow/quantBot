@@ -281,11 +281,7 @@ export async function ingestTelegramJson(
 
       // Resolve/create caller (DuckDB version)
       // Note: Caller is resolved but not used for storage - TelegramPipelineService handles all storage
-      await ctx.repos.callers.getOrCreateCaller(
-        chain.toLowerCase(),
-        callerName,
-        callerName
-      );
+      await ctx.repos.callers.getOrCreateCaller(chain.toLowerCase(), callerName, callerName);
 
       // Use caller timestamp for alert (when the user originally called the token)
       const alertTime = new Date(callerMsg.timestampMs);

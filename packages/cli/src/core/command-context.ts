@@ -14,12 +14,14 @@ import {
 import { OhlcvIngestionService } from '@quantbot/ingestion';
 import { TelegramAlertIngestionService } from '@quantbot/ingestion';
 import { OhlcvFetchJob } from '@quantbot/jobs';
-import { getAnalyticsEngine } from '@quantbot/analytics';
-import type { AnalyticsEngine } from '@quantbot/analytics';
-import { getPythonEngine, type PythonEngine } from '@quantbot/utils';
+import { AnalyticsEngine } from '@quantbot/analytics';
+import type { AnalyticsEngine as AnalyticsEngineType } from '@quantbot/analytics';
+import { PythonEngine, type PythonEngine as PythonEngineType } from '@quantbot/utils';
+import { StorageEngine } from '@quantbot/storage';
 import { DuckDBStorageService, ClickHouseService, SimulationService } from '@quantbot/simulation';
 import { TelegramPipelineService } from '@quantbot/ingestion';
 import { AnalyticsService } from '@quantbot/analytics';
+import { getClickHouseClient, type ClickHouseClient } from '@quantbot/storage';
 import { ensureInitialized } from './initialization-manager.js';
 
 /**
@@ -30,10 +32,12 @@ export interface CommandServices {
   telegramIngestion(): TelegramAlertIngestionService;
   ohlcvFetchJob(): OhlcvFetchJob;
   ohlcvRepository(): OhlcvRepository;
-  analyticsEngine(): AnalyticsEngine;
-  pythonEngine(): PythonEngine;
+  analyticsEngine(): AnalyticsEngineType;
+  pythonEngine(): PythonEngineType;
+  storageEngine(): StorageEngine;
   duckdbStorage(): DuckDBStorageService;
   clickHouse(): ClickHouseService;
+  clickHouseClient(): ClickHouseClient; // Low-level client (singleton for connection pooling)
   telegramPipeline(): TelegramPipelineService;
   simulation(): SimulationService;
   analytics(): AnalyticsService;
@@ -50,11 +54,15 @@ export interface CommandContextOptions {
   /**
    * Override analytics engine (for testing or Python integration)
    */
-  analyticsEngineOverride?: AnalyticsEngine;
+  analyticsEngineOverride?: AnalyticsEngineType;
   /**
    * Override Python engine (for testing)
    */
-  pythonEngineOverride?: PythonEngine;
+  pythonEngineOverride?: PythonEngineType;
+  /**
+   * Override storage engine (for testing)
+   */
+  storageEngineOverride?: StorageEngine;
   // Add more overrides as needed
 }
 
@@ -92,9 +100,15 @@ export class CommandContext {
 
   /**
    * Create service instances
-   * Uses overrides from options if provided, otherwise creates default instances
+   * Uses overrides from options if provided, otherwise creates new instances
+   * NO SINGLETONS - all services created fresh through this factory
    */
   private _createServices(): CommandServices {
+    // Create shared services once (lazy, but not singletons - created per CommandContext instance)
+    const pythonEngine = this._options.pythonEngineOverride ?? new PythonEngine();
+    const storageEngine = this._options.storageEngineOverride ?? new StorageEngine();
+    const analyticsEngine = this._options.analyticsEngineOverride ?? new AnalyticsEngine();
+
     return {
       ohlcvIngestion: () => {
         // AlertsRepository removed - service updated to not require it
@@ -113,32 +127,33 @@ export class CommandContext {
         return new OhlcvRepository();
       },
       analyticsEngine: () => {
-        // Use override if provided (for tests/Python integration), otherwise use singleton
-        return this._options.analyticsEngineOverride ?? getAnalyticsEngine();
+        return analyticsEngine;
       },
       pythonEngine: () => {
-        // Use override if provided (for tests), otherwise use singleton
-        return this._options.pythonEngineOverride ?? getPythonEngine();
+        return pythonEngine;
+      },
+      storageEngine: () => {
+        return storageEngine;
       },
       duckdbStorage: () => {
-        const engine = this._options.pythonEngineOverride ?? getPythonEngine();
-        return new DuckDBStorageService(engine);
+        return new DuckDBStorageService(pythonEngine);
       },
       clickHouse: () => {
-        const engine = this._options.pythonEngineOverride ?? getPythonEngine();
-        return new ClickHouseService(engine);
+        return new ClickHouseService(pythonEngine);
+      },
+      clickHouseClient: () => {
+        // Low-level client - singleton for connection pooling
+        // This is the ONLY place where getClickHouseClient() should be called
+        return getClickHouseClient();
       },
       telegramPipeline: () => {
-        const engine = this._options.pythonEngineOverride ?? getPythonEngine();
-        return new TelegramPipelineService(engine);
+        return new TelegramPipelineService(pythonEngine);
       },
       simulation: () => {
-        const engine = this._options.pythonEngineOverride ?? getPythonEngine();
-        return new SimulationService(engine);
+        return new SimulationService(pythonEngine);
       },
       analytics: () => {
-        const engine = this._options.pythonEngineOverride ?? getPythonEngine();
-        return new AnalyticsService(engine);
+        return new AnalyticsService(pythonEngine);
       },
       // simulationRunsRepository removed (PostgreSQL)
       callersRepository: () => {

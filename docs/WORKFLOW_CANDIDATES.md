@@ -23,6 +23,7 @@ This document identifies packages and handlers that require workflows based on t
 ### 1. **Telegram Ingestion** (High Priority)
 
 **Current State**:
+
 - Handler: `packages/cli/src/handlers/ingestion/ingest-telegram.ts`
 - Calls: `TelegramAlertIngestionService.ingestExport()` directly
 - Workflow exists: `packages/workflows/src/telegram/ingestTelegramJson.ts`
@@ -32,6 +33,7 @@ This document identifies packages and handlers that require workflows based on t
 **Solution**: Update handler to use `ingestTelegramJson` workflow
 
 **Orchestration Steps** (already in workflow):
+
 1. Parse and normalize JSON export
 2. Convert normalized messages to ParsedMessage format
 3. Build message index
@@ -43,6 +45,7 @@ This document identifies packages and handlers that require workflows based on t
 ### 2. **OHLCV Backfill** (Medium Priority)
 
 **Current State**:
+
 - Handler: `packages/cli/src/handlers/ohlcv/backfill-ohlcv.ts`
 - Directly calls: `getOhlcvIngestionEngine().fetchCandles()`
 - Does orchestration: validation → fetch → return results
@@ -52,6 +55,7 @@ This document identifies packages and handlers that require workflows based on t
 **Solution**: Create `backfillOhlcv` workflow
 
 **Orchestration Steps**:
+
 1. Validate mint address and date range
 2. Check coverage (optional)
 3. Fetch candles from API (via jobs service)
@@ -59,6 +63,7 @@ This document identifies packages and handlers that require workflows based on t
 5. Return structured results
 
 **Workflow Spec**:
+
 ```typescript
 type BackfillOhlcvSpec = {
   mint: string;
@@ -76,6 +81,7 @@ type BackfillOhlcvSpec = {
 ### 3. **DuckDB Simulation** (CRITICAL - High Priority)
 
 **Current State**:
+
 - Handler: `packages/cli/src/handlers/simulation/run-simulation-duckdb.ts`
 - **MASSIVE orchestration** (326 lines):
   1. Query DuckDB for calls
@@ -94,6 +100,7 @@ type BackfillOhlcvSpec = {
 **Solution**: Create `runSimulationDuckdb` workflow
 
 **Orchestration Steps**:
+
 1. Query DuckDB for calls (batch mode)
 2. Check OHLCV availability (resume mode)
 3. Filter calls by OHLCV availability
@@ -108,6 +115,7 @@ type BackfillOhlcvSpec = {
 7. Return structured results
 
 **Workflow Spec**:
+
 ```typescript
 type RunSimulationDuckdbSpec = {
   duckdbPath: string;
@@ -125,6 +133,7 @@ type RunSimulationDuckdbSpec = {
 ```
 
 **Context Extension**:
+
 ```typescript
 type RunSimulationDuckdbContext = WorkflowContext & {
   services: {
@@ -145,6 +154,7 @@ type RunSimulationDuckdbContext = WorkflowContext & {
 ### 4. **Telegram Pipeline** (Low Priority)
 
 **Current State**:
+
 - Handler: `packages/cli/src/handlers/ingestion/process-telegram-python.ts`
 - Calls: `TelegramPipelineService.runPipeline()`
 - Simple: Just calls Python tool
@@ -202,4 +212,3 @@ type RunSimulationDuckdbContext = WorkflowContext & {
   - These are domain services, not workflows
   - They're called by the `ingestTelegramJson` workflow
   - This is correct - workflows orchestrate, services implement domain logic
-

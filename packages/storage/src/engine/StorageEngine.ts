@@ -787,12 +787,18 @@ export class StorageEngine {
 }
 
 /**
- * Default storage engine instance
+ * @deprecated Use CommandContext or createProductionContext factory instead.
+ * This singleton is kept for backward compatibility but should not be used in new code.
+ * 
+ * Use:
+ * - CommandContext.services.storageEngine() for CLI commands
+ * - createProductionContext({ storageEngine }) for workflows
  */
 let defaultEngine: StorageEngine | null = null;
 
 /**
- * Get or create the default storage engine instance
+ * @deprecated Use CommandContext or createProductionContext factory instead.
+ * Get or create the default storage engine instance (singleton pattern - deprecated)
  */
 export function getStorageEngine(config?: StorageEngineConfig): StorageEngine {
   if (!defaultEngine) {
