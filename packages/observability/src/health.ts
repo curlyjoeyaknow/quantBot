@@ -5,14 +5,13 @@
  */
 
 import { logger } from '@quantbot/utils';
-import { getPostgresPool, getClickHouseClient } from '@quantbot/storage';
+import { getClickHouseClient } from '@quantbot/storage';
 import { checkApiQuotas } from './quotas';
 
 export interface HealthStatus {
   status: 'healthy' | 'degraded' | 'unhealthy';
   timestamp: Date;
   checks: {
-    postgres: { status: 'ok' | 'error' | 'warning'; message?: string };
     clickhouse: { status: 'ok' | 'error' | 'warning'; message?: string };
     birdeye: { status: 'ok' | 'warning' | 'error'; message?: string };
     helius: { status: 'ok' | 'warning' | 'error'; message?: string };
@@ -24,22 +23,10 @@ export interface HealthStatus {
  */
 export async function performHealthCheck(): Promise<HealthStatus> {
   const checks: HealthStatus['checks'] = {
-    postgres: { status: 'ok' },
     clickhouse: { status: 'ok' },
     birdeye: { status: 'ok' },
     helius: { status: 'ok' },
   };
-
-  // Check PostgreSQL
-  try {
-    const pool = getPostgresPool();
-    await pool.query('SELECT 1');
-  } catch (error) {
-    checks.postgres = {
-      status: 'error',
-      message: (error as Error).message,
-    };
-  }
 
   // Check ClickHouse
   try {
@@ -97,8 +84,9 @@ export async function performHealthCheck(): Promise<HealthStatus> {
  */
 export async function simpleHealthCheck(): Promise<{ status: string }> {
   try {
-    const pool = getPostgresPool();
-    await pool.query('SELECT 1');
+    // Check ClickHouse instead of PostgreSQL
+    const client = getClickHouseClient();
+    await client.query({ query: 'SELECT 1', format: 'JSON' });
     return { status: 'ok' };
   } catch (error) {
     logger.error('Health check failed', {

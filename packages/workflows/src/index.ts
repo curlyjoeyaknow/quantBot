@@ -33,3 +33,5 @@ export type {
   RunSimulationDuckdbContext,
   SkippedToken,
 } from './simulation/runSimulationDuckdb.js';
+export { createDuckdbSimulationContext } from './context/createDuckdbSimulationContext.js';
+export type { DuckdbSimulationContextConfig } from './context/createDuckdbSimulationContext.js';

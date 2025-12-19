@@ -159,10 +159,10 @@ type RunSimulationDuckdbContext = WorkflowContext & {
 
 ### Critical (Must Fix)
 
-1. **DuckDB Simulation** - 326 lines of orchestration in handler
-   - Violates "no orchestration in CLI" rule
-   - Complex multi-step flow
-   - Should be workflow
+1. ✅ **DuckDB Simulation** - 326 lines of orchestration in handler
+   - ✅ **COMPLETED**: Created `runSimulationDuckdb` workflow
+   - ✅ **COMPLETED**: Updated CLI handler to be thin adapter
+   - ✅ **COMPLETED**: All orchestration moved to workflow
 
 ### High Priority
 

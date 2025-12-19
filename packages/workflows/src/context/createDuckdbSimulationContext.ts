@@ -5,16 +5,14 @@
  * simulation, and OHLCV ingestion.
  */
 
-import { DateTime } from 'luxon';
 import { v4 as uuidv4 } from 'uuid';
-import { logger as utilsLogger } from '@quantbot/utils';
-import { createProductionContext, type ProductionContextConfig } from './createProductionContext.js';
+import {
+  createProductionContext,
+  type ProductionContextConfig,
+} from './createProductionContext.js';
 import type { RunSimulationDuckdbContext } from '../simulation/runSimulationDuckdb.js';
 import type { WorkflowContext } from '../types.js';
-import type {
-  SimulationService,
-  DuckDBStorageService,
-} from '@quantbot/simulation';
+import type { SimulationService, DuckDBStorageService } from '@quantbot/simulation';
 import type { OhlcvIngestionService } from '@quantbot/ingestion';
 import { createOhlcvIngestionContext } from './createOhlcvIngestionContext.js';
 
@@ -118,4 +116,3 @@ export function createDuckdbSimulationContext(
     ohlcvIngestion: ohlcvContext.jobs,
   };
 }
-

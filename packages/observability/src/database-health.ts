@@ -4,15 +4,15 @@
  * Monitors database connection health and performance.
  */
 
-import { getPostgresPool, getClickHouseClient } from '@quantbot/storage';
+import { getClickHouseClient } from '@quantbot/storage';
 
 export interface DatabaseHealth {
-  postgres: {
+  clickhouse: {
     connected: boolean;
     latency?: number;
     error?: string;
   };
-  clickhouse: {
+  duckdb?: {
     connected: boolean;
     latency?: number;
     error?: string;
@@ -24,25 +24,8 @@ export interface DatabaseHealth {
  */
 export async function checkDatabaseHealth(): Promise<DatabaseHealth> {
   const health: DatabaseHealth = {
-    postgres: { connected: false },
     clickhouse: { connected: false },
   };
-
-  // Check PostgreSQL
-  try {
-    const start = Date.now();
-    const pool = getPostgresPool();
-    await pool.query('SELECT 1');
-    health.postgres = {
-      connected: true,
-      latency: Date.now() - start,
-    };
-  } catch (error) {
-    health.postgres = {
-      connected: false,
-      error: (error as Error).message,
-    };
-  }
 
   // Check ClickHouse
   try {

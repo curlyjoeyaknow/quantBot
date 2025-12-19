@@ -97,10 +97,8 @@ export class CommandContext {
   private _createServices(): CommandServices {
     return {
       ohlcvIngestion: () => {
-        // AlertsRepository removed (PostgreSQL). Service may need updating.
-        throw new Error(
-          'OhlcvIngestionService requires AlertsRepository which was removed. Update service to use DuckDB.'
-        );
+        // AlertsRepository removed - service updated to not require it
+        return new OhlcvIngestionService();
       },
       ohlcvFetchJob: () => {
         return new OhlcvFetchJob();
