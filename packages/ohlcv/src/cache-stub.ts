@@ -4,8 +4,10 @@
  * TODO: Replace with proper cache implementation from @quantbot/storage
  */
 
+import type { Candle } from '@quantbot/core';
+
 export const ohlcvCache = {
-  get: (tokenAddress: string, startTime: Date, endTime: Date, interval: string): any[] | null => {
+  get: (tokenAddress: string, startTime: Date, endTime: Date, interval: string): Candle[] | null => {
     return null;
   },
 
@@ -13,7 +15,7 @@ export const ohlcvCache = {
     tokenAddress: string,
     startTime: Date,
     endTime: Date,
-    data: any[],
+    data: Candle[],
     interval: string,
     ttl: number
   ): void => {
@@ -40,8 +42,8 @@ export const ohlcvCache = {
     tokens: string[],
     startTime: Date,
     endTime: Date,
-    fetchFunction: (token: string, start: Date, end: Date) => Promise<any[]>
-  ): Promise<Map<string, any[]>> => {
+    fetchFunction: (token: string, start: Date, end: Date) => Promise<Candle[]>
+  ): Promise<Map<string, Candle[]>> => {
     return new Map();
   },
 };

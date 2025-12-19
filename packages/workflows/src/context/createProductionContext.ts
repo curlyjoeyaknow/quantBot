@@ -74,10 +74,10 @@ export function createProductionContext(config?: ProductionContextConfig): Workf
   const clickHouse = new ClickHouseService(pythonEngine);
 
   const logger = config?.logger ?? {
-    info: (...args: unknown[]) => utilsLogger.info(String(args[0] || ''), args[1] as any),
-    warn: (...args: unknown[]) => utilsLogger.warn(String(args[0] || ''), args[1] as any),
-    error: (...args: unknown[]) => utilsLogger.error(String(args[0] || ''), args[1] as any),
-    debug: (...args: unknown[]) => utilsLogger.debug(String(args[0] || ''), args[1] as any),
+    info: (...args: unknown[]) => utilsLogger.info(String(args[0] || ''), (args[1] as Record<string, unknown> | undefined)),
+    warn: (...args: unknown[]) => utilsLogger.warn(String(args[0] || ''), (args[1] as Record<string, unknown> | undefined)),
+    error: (...args: unknown[]) => utilsLogger.error(String(args[0] || ''), (args[1] as Record<string, unknown> | undefined)),
+    debug: (...args: unknown[]) => utilsLogger.debug(String(args[0] || ''), (args[1] as Record<string, unknown> | undefined)),
   };
   const clock = config?.clock ?? { nowISO: () => DateTime.utc().toISO()! };
   const ids = config?.ids ?? { newRunId: () => `run_${uuidv4()}` };
@@ -196,8 +196,6 @@ export function createProductionContext(config?: ProductionContextConfig): Workf
 
             // Calculate aggregate metrics
             const pnlMean = run.pnlStats?.mean;
-            const pnlMin = run.pnlStats?.min;
-            const pnlMax = run.pnlStats?.max;
             const winRate =
               run.successfulCalls && run.totalCalls
                 ? run.successfulCalls / run.totalCalls
@@ -217,6 +215,7 @@ export function createProductionContext(config?: ProductionContextConfig): Workf
               syntheticAlertTimestamp,
               run.fromISO,
               run.toISO,
+              1000.0, // initialCapital - default value for run-level records
               {
                 entry: entryConfig,
                 exit: exitConfig,
