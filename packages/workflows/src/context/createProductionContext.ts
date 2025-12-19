@@ -176,23 +176,32 @@ export function createProductionContext(config?: ProductionContextConfig): Workf
           // This stores run-level metadata (not per-call) for performance viewing and reproducibility
           try {
             const config = run.strategyConfig as Record<string, unknown>;
-            
+
             // Extract strategy config components
             const entryConfig = (config.entry || {}) as Record<string, unknown>;
             const exitConfig = (config.exit || {}) as Record<string, unknown>;
-            const reEntryConfig = (config.reEntry || config.reentry) as Record<string, unknown> | undefined;
+            const reEntryConfig = (config.reEntry || config.reentry) as
+              | Record<string, unknown>
+              | undefined;
             const costConfig = (config.costs || config.cost) as Record<string, unknown> | undefined;
-            const stopLossConfig = (config.stopLoss || config.stop_loss) as Record<string, unknown> | undefined;
-            const entrySignalConfig = (config.entrySignal || config.entry_signal) as Record<string, unknown> | undefined;
-            const exitSignalConfig = (config.exitSignal || config.exit_signal) as Record<string, unknown> | undefined;
+            const stopLossConfig = (config.stopLoss || config.stop_loss) as
+              | Record<string, unknown>
+              | undefined;
+            const entrySignalConfig = (config.entrySignal || config.entry_signal) as
+              | Record<string, unknown>
+              | undefined;
+            const exitSignalConfig = (config.exitSignal || config.exit_signal) as
+              | Record<string, unknown>
+              | undefined;
 
             // Calculate aggregate metrics
             const pnlMean = run.pnlStats?.mean;
             const pnlMin = run.pnlStats?.min;
             const pnlMax = run.pnlStats?.max;
-            const winRate = run.successfulCalls && run.totalCalls 
-              ? run.successfulCalls / run.totalCalls 
-              : undefined;
+            const winRate =
+              run.successfulCalls && run.totalCalls
+                ? run.successfulCalls / run.totalCalls
+                : undefined;
 
             // Use a synthetic mint/alertTimestamp for run-level records
             // The run_id serves as the unique identifier
@@ -223,7 +232,7 @@ export function createProductionContext(config?: ProductionContextConfig): Workf
               undefined, // maxDrawdownPct - not calculated at run level
               undefined, // sharpeRatio - not calculated at run level
               winRate,
-              run.totalTrades
+              run.totalTrades || 0
             );
 
             if (!result.success) {
