@@ -5,6 +5,12 @@
   "description": "API client implementations for external services (Birdeye, Helius, etc.)",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
   "scripts": {
     "build": "tsc --build",
     "test": "vitest",
