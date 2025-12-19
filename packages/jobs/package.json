@@ -23,6 +23,7 @@
     "@quantbot/api-clients": "workspace:*",
     "@quantbot/ohlcv": "workspace:*",
     "@quantbot/observability": "workspace:*",
+    "@quantbot/ingestion": "workspace:*",
     "luxon": "^3.4.4"
   },
   "devDependencies": {

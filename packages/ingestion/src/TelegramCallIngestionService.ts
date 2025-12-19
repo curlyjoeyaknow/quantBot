@@ -16,11 +16,11 @@ import { logger } from '@quantbot/utils';
 import type { Chain } from '@quantbot/core';
 import { createTokenAddress } from '@quantbot/core';
 import { CallersRepository, TokenDataRepository } from '@quantbot/storage';
-import { parseExport } from './TelegramExportParser';
-import { MessageIndex } from './MessageIndex';
-import { BotMessageExtractor } from './BotMessageExtractor';
-import { CallerResolver } from './CallerResolver';
-import { ChunkValidator, type ChunkValidationResult } from './ChunkValidator';
+import { parseExport } from './TelegramExportParser.js';
+import { MessageIndex } from './MessageIndex.js';
+import { BotMessageExtractor } from './BotMessageExtractor.js';
+import { CallerResolver } from './CallerResolver.js';
+import { ChunkValidator, type ChunkValidationResult } from './ChunkValidator.js';
 import * as path from 'path';
 
 export interface IngestExportParams {

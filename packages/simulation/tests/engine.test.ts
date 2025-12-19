@@ -14,7 +14,7 @@ import {
   EntryConfig,
   ReEntryConfig,
 } from '../src/engine';
-import { Candle } from '../src/candles';
+import type { Candle } from '../src/types/candle';
 
 describe('Simulation Engine', () => {
   // Mock candle data for testing

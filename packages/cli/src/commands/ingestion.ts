@@ -98,17 +98,35 @@ export function registerIngestionCommands(program: Command): void {
     .option('--pre-window <minutes>', 'Pre-window minutes', '260')
     .option('--post-window <minutes>', 'Post-window minutes', '1440')
     .option('--interval <interval>', 'Candle interval (1s, 15s, 1m, 5m, 15m, 1h)', '1m')
+    .option('--tui', 'Run with interactive TUI', false)
     .option('--candles <number>', 'Number of candles to fetch', '5000')
     .option('--start-offset-minutes <number>', 'Minutes before alert to start fetching', '-52')
     .option('--format <format>', 'Output format', 'table')
     .option('--duckdb <path>', 'Path to DuckDB database file (or set DUCKDB_PATH env var)')
     .action(async (options) => {
-      const { execute } = await import('../core/execute.js');
-      const commandDef = commandRegistry.getCommand('ingestion', 'ohlcv');
-      if (!commandDef) {
-        throw new NotFoundError('Command', 'ingestion.ohlcv');
+      // Normalize numeric options from strings to numbers (Commander.js passes all as strings)
+      const normalizedOptions = {
+        ...options,
+        preWindow: options.preWindow ? Number(options.preWindow) : undefined,
+        postWindow: options.postWindow ? Number(options.postWindow) : undefined,
+        candles: options.candles ? Number(options.candles) : undefined,
+        startOffsetMinutes: options.startOffsetMinutes ? Number(options.startOffsetMinutes) : undefined,
+      };
+
+      if (options.tui) {
+        // Run with TUI
+        const { runOhlcvIngestionWithTui } = await import('./ingestion/run-ohlcv-with-tui.js');
+        const typedArgs = ohlcvSchema.parse(normalizedOptions);
+        await runOhlcvIngestionWithTui(typedArgs);
+      } else {
+        // Run normally
+        const { execute } = await import('../core/execute.js');
+        const commandDef = commandRegistry.getCommand('ingestion', 'ohlcv');
+        if (!commandDef) {
+          throw new NotFoundError('Command', 'ingestion.ohlcv');
+        }
+        await execute(commandDef, normalizedOptions);
       }
-      await execute(commandDef, options);
     });
 
   // Telegram Python pipeline

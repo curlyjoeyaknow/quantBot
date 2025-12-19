@@ -12,34 +12,34 @@
  */
 
 // Export the main storage engine
-export { StorageEngine, getStorageEngine } from './engine/StorageEngine';
+export { StorageEngine, getStorageEngine } from './engine/StorageEngine.js';
 export type {
   StorageEngineConfig,
   OHLCVQueryOptions,
   IndicatorValue,
   IndicatorQueryOptions,
   SimulationRunMetadata,
-} from './engine/StorageEngine';
+} from './engine/StorageEngine.js';
 
 // Export repositories (for advanced usage)
-export { OhlcvRepository } from './clickhouse/repositories/OhlcvRepository';
-export { IndicatorsRepository } from './clickhouse/repositories/IndicatorsRepository';
-export { TokenMetadataRepository } from './clickhouse/repositories/TokenMetadataRepository';
-export { SimulationEventsRepository } from './clickhouse/repositories/SimulationEventsRepository';
+export { OhlcvRepository } from './clickhouse/repositories/OhlcvRepository.js';
+export { IndicatorsRepository } from './clickhouse/repositories/IndicatorsRepository.js';
+export { TokenMetadataRepository } from './clickhouse/repositories/TokenMetadataRepository.js';
+export { SimulationEventsRepository } from './clickhouse/repositories/SimulationEventsRepository.js';
 
 // PostgreSQL repositories removed - use DuckDB repositories instead
 
 // DuckDB client and repositories (new - preferred)
-export { DuckDBClient, getDuckDBClient } from './duckdb/duckdb-client';
-export { TokenDataRepository } from './duckdb/repositories/TokenDataRepository';
-export type { OHLCVCoverageRecord } from './duckdb/repositories/TokenDataRepository';
-export { CallersRepository } from './duckdb/repositories/CallersRepository';
-export { StrategiesRepository } from './duckdb/repositories/StrategiesRepository';
+export { DuckDBClient, getDuckDBClient } from './duckdb/duckdb-client.js';
+export { TokenDataRepository } from './duckdb/repositories/TokenDataRepository.js';
+export type { OHLCVCoverageRecord } from './duckdb/repositories/TokenDataRepository.js';
+export { CallersRepository } from './duckdb/repositories/CallersRepository.js';
+export { StrategiesRepository } from './duckdb/repositories/StrategiesRepository.js';
 
 // Export clients
-export { getClickHouseClient, initClickHouse, closeClickHouse } from './clickhouse-client';
-export { insertCandles, queryCandles, insertTicks, hasCandles } from './clickhouse-client';
-export type { TickEvent } from './clickhouse-client';
+export { getClickHouseClient, initClickHouse, closeClickHouse } from './clickhouse-client.js';
+export { insertCandles, queryCandles, insertTicks, hasCandles } from './clickhouse-client.js';
+export type { TickEvent } from './clickhouse-client.js';
 
 // PostgreSQL client removed - use DuckDB instead
 
@@ -50,14 +50,14 @@ export {
   type OhlcvCacheCandle,
   type CacheEntry,
   type CacheStats,
-} from './cache/ohlcv-cache';
+} from './cache/ohlcv-cache.js';
 
 // Legacy exports (temporary - will be deprecated)
 // Note: CallerDatabase export removed to avoid sqlite3 dependency
-// Import directly from './caller-database' if needed
-export {
-  InfluxDBOHLCVClient,
-  influxDBClient,
-  type OHLCVData,
-  type TokenInfo,
-} from './influxdb-client';
+// Import directly from './caller-database.js' if needed
+
+// InfluxDB exports - types only (implementation not in use)
+// Exporting types for backward compatibility, but InfluxDBOHLCVClient is not used
+export type { OHLCVData, TokenInfo } from './influxdb-client.js';
+// Export stub for influxDBClient (not actually used, but needed for type compatibility)
+export { influxDBClient } from './influxdb-client.js';

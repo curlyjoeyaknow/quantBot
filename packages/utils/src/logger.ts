@@ -6,11 +6,14 @@
  */
 
 import * as winston from 'winston';
-
-const DailyRotateFile =
-  require('winston-daily-rotate-file').default || require('winston-daily-rotate-file');
 import * as path from 'path';
 import * as fs from 'fs';
+import { createRequire } from 'module';
+
+// Use createRequire for CommonJS packages in ESM
+const require = createRequire(import.meta.url);
+const DailyRotateFile =
+  require('winston-daily-rotate-file').default || require('winston-daily-rotate-file');
 
 // Log levels
 export enum LogLevel {

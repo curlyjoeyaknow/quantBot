@@ -4,10 +4,10 @@
  * Entry detection and execution logic.
  */
 
-import type { EntryConfig, SignalGroup } from '../types';
-import type { Candle } from '../types/candle';
-import type { LegacyIndicatorData } from '../indicators/registry';
-import { evaluateSignalGroup } from '../signals/evaluator';
+import type { EntryConfig, SignalGroup } from '../types/index.js';
+import type { Candle } from '../types/candle.js';
+import type { LegacyIndicatorData } from '../indicators/registry.js';
+import { evaluateSignalGroup } from '../signals/evaluator.js';
 
 /**
  * Entry detection result
@@ -63,7 +63,8 @@ export function detectEntry(
     };
   }
 
-  const maxWaitTimestamp = startCandle.timestamp + config.maxWaitTime * 60;
+  const maxWaitTime = config.maxWaitTime ?? DEFAULT_ENTRY_CONFIG.maxWaitTime ?? 60;
+  const maxWaitTimestamp = startCandle.timestamp + maxWaitTime * 60;
 
   // Check for initial drop entry
   if (config.initialEntry !== 'none') {

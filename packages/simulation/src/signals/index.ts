@@ -4,5 +4,5 @@
  * Exports signal evaluation functions.
  */
 
-export * from './evaluator';
-export * from './ladder';
+export * from './evaluator.js';
+export * from './ladder.js';

@@ -45,7 +45,11 @@ describe('quotasObservabilityHandler', () => {
     const result = await quotasObservabilityHandler(args, mockCtx);
 
     expect(checkApiQuotas).toHaveBeenCalledTimes(1);
-    expect(result).toEqual(mockQuotas);
+    // For table format, should return array of rows
+    expect(Array.isArray(result)).toBe(true);
+    expect((result as any[]).length).toBe(2);
+    expect((result as any[])[0].service).toBe('birdeye');
+    expect((result as any[])[1].service).toBe('helius');
   });
 
   it('should return birdeye quota only', async () => {
@@ -77,9 +81,11 @@ describe('quotasObservabilityHandler', () => {
 
     const result = await quotasObservabilityHandler(args, mockCtx);
 
-    expect(result).toEqual({
-      birdeye: mockQuotas.birdeye,
-    });
+    // For table format, should return array with single row
+    expect(Array.isArray(result)).toBe(true);
+    expect((result as any[]).length).toBe(1);
+    expect((result as any[])[0].service).toBe('birdeye');
+    expect((result as any[])[0].limit).toBe(100000);
   });
 
   it('should return all quotas when service is undefined', async () => {
@@ -111,7 +117,11 @@ describe('quotasObservabilityHandler', () => {
 
     const result = await quotasObservabilityHandler(args, mockCtx);
 
-    expect(result).toEqual(mockQuotas);
+    // For table format, should return array of rows
+    expect(Array.isArray(result)).toBe(true);
+    expect((result as any[]).length).toBe(2);
+    expect((result as any[])[0].service).toBe('birdeye');
+    expect((result as any[])[1].service).toBe('helius');
   });
 
   it('should propagate errors', async () => {

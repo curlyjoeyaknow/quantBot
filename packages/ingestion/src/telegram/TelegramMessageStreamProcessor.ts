@@ -8,7 +8,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { logger } from '@quantbot/utils';
-import type { NormalizedTelegramMessage, NormalizeErr } from './normalize';
+import type { NormalizedTelegramMessage, NormalizeErr } from './normalize.js';
 
 export interface StreamProcessorOptions {
   outputDir?: string;

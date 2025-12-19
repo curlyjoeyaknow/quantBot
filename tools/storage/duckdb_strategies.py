@@ -122,12 +122,27 @@ def create_strategy(db_path: str, data: dict) -> dict:
         con = duckdb.connect(db_path)
         
         name = data.get("name")
+        if not name:
+            con.close()
+            raise ValueError("Strategy name is required")
+        
         version = data.get("version", "1")
         category = data.get("category")
         description = data.get("description")
         config_json = json.dumps(data.get("config_json", {}))
         is_active = data.get("is_active", True)
         
+        # Check if strategy already exists
+        existing = con.execute("""
+            SELECT id FROM strategies
+            WHERE name = ? AND version = ?
+        """, (name, version)).fetchone()
+        
+        if existing:
+            con.close()
+            raise ValueError(f"Strategy '{name}' version '{version}' already exists")
+        
+        # Insert the new strategy
         con.execute("""
             INSERT INTO strategies (name, version, category, description, config_json, is_active)
             VALUES (?, ?, ?, ?, ?, ?)
@@ -141,9 +156,13 @@ def create_strategy(db_path: str, data: dict) -> dict:
         
         con.close()
         
+        if not result or len(result) == 0:
+            raise RuntimeError("Failed to retrieve created strategy ID")
+        
         return {"id": result[0]}
     except Exception as e:
-        return {"error": str(e)}
+        # Re-raise as ValueError so it can be caught and handled properly
+        raise ValueError(str(e)) from e
 
 
 def list_strategies(db_path: str) -> dict:
@@ -205,13 +224,15 @@ def main():
             result = find_by_name(args.db_path, args.name, version)
     elif args.operation == "create":
         if not args.data:
-            result = {"error": "Data required for create operation"}
+            print("ERROR: Data required for create operation", file=sys.stderr)
+            sys.exit(1)
         else:
             try:
                 data = json.loads(args.data)
                 result = create_strategy(args.db_path, data)
-            except json.JSONDecodeError as e:
-                result = {"error": f"Invalid JSON: {str(e)}"}
+            except (json.JSONDecodeError, ValueError, RuntimeError) as e:
+                print(f"ERROR: {str(e)}", file=sys.stderr)
+                sys.exit(1)
     elif args.operation == "list":
         result = list_strategies(args.db_path)
     

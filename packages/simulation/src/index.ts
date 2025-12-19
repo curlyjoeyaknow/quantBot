@@ -43,30 +43,30 @@
 // =============================================================================
 // Types - Core type definitions
 // =============================================================================
-export * from "./types/index.js";
-export * from "./duckdb-storage-service.js";
-export * from "./clickhouse-service.js";
-export * from "./simulation-service.js";
+export * from './types/index.js';
+export * from './duckdb-storage-service.js';
+export * from './clickhouse-service.js';
+export * from './simulation-service.js';
 
 // =============================================================================
 // Data - Candle providers and aggregation
 // =============================================================================
-export * from "./data/index.js";
+export * from './data/index.js';
 
 // =============================================================================
 // Indicators - Technical analysis
 // =============================================================================
-export * from "./indicators.js";
+export * from './indicators.js';
 
 // =============================================================================
 // Signals - Signal evaluation
 // =============================================================================
-export * from "./signals.js";
+export * from './signals.js';
 
 // =============================================================================
 // Position - Position/portfolio management
 // =============================================================================
-export * from "./position/index.js";
+export * from './position/index.js';
 
 // =============================================================================
 // Execution - Entry/exit logic and fees
@@ -104,7 +104,7 @@ export {
   completeReEntry,
   cancelReEntryWait,
   canReEnter,
-} from "./execution/index.js";
+} from './execution/index.js';
 
 export type {
   EntryDetectionResult,
@@ -112,24 +112,24 @@ export type {
   StopLossState,
   ReEntryDetectionResult,
   ReEntryState,
-} from "./execution/index.js";
+} from './execution/index.js';
 
 // =============================================================================
 // Core - Main simulation engine
 // =============================================================================
-export * from "./core/index.js";
+export * from './core/index.js';
 
 // =============================================================================
 // Config - Configuration parsing and target resolution
 // =============================================================================
-export { parseSimulationConfig } from "./config.js";
+export { parseSimulationConfig } from './config.js';
 export type {
   SimulationScenarioConfig,
   SimulationEngineConfig,
   PeriodMetricsConfig,
-} from "./config.js";
-export { DefaultTargetResolver } from "./target-resolver.js";
-export type { ScenarioTargetResolver } from "./target-resolver.js";
+} from './config.js';
+export { DefaultTargetResolver } from './target-resolver.js';
+export type { ScenarioTargetResolver } from './target-resolver.js';
 
 // =============================================================================
 // Storage - Storage integration
@@ -140,9 +140,11 @@ export type { ScenarioTargetResolver } from "./target-resolver.js";
 // =============================================================================
 // Performance - Performance monitoring and optimization
 // =============================================================================
-export { getPerformanceMonitor, PerformanceMonitor } from "./performance/monitor.js";
-export type { PerformanceMetrics } from "./performance/monitor.js";
-export { calculateIndicatorSeriesOptimized } from "./performance/optimizations.js";
+export { getPerformanceMonitor, PerformanceMonitor } from './performance/monitor.js';
+export type { PerformanceMetrics } from './performance/monitor.js';
+export { calculateIndicatorSeriesOptimized } from './performance/optimizations.js';
+export { ResultCache, getResultCache, resetResultCache } from './performance/result-cache.js';
+export type { ResultCacheOptions } from './performance/result-cache.js';
 
 // =============================================================================
 // Analytics - Period metrics integration
@@ -150,28 +152,28 @@ export { calculateIndicatorSeriesOptimized } from "./performance/optimizations.j
 export {
   calculatePeriodMetricsForSimulation,
   enrichSimulationResultWithPeriodMetrics,
-} from "./period-metrics/period-metrics.js";
+} from './period-metrics/period-metrics.js';
 
 // =============================================================================
 // Math - Pure math utilities
 // =============================================================================
-export * from "./math/index.js";
+export * from './math/index.js';
 
 // =============================================================================
 // Sinks - Output handlers
 // =============================================================================
-export * from "./sinks.js";
+export * from './sinks.js';
 
 // =============================================================================
 // Backwards Compatibility Exports
 // =============================================================================
 
 // Re-export the main simulation function directly for convenience
-export { simulateStrategy } from "./core/simulator.js";
-export { simulateFromInput } from "./core/contract-adapter.js";
-export type { SimInput, SimResult, SimEvent, SimMetrics } from "./types/contracts.js";
-export { SimInputSchema, SimResultSchema } from "./types/contracts.js";
-export type { SimulationOptions } from "./core/simulator.js";
+export { simulateStrategy } from './core/simulator.js';
+export { simulateFromInput } from './core/contract-adapter.js';
+export type { SimInput, SimResult, SimEvent, SimMetrics } from './types/contracts.js';
+export { SimInputSchema, SimResultSchema } from './types/contracts.js';
+export type { SimulationOptions } from './core/simulator.js';
 
 // Orchestrator has been moved to @quantbot/workflows.
 // Import from @quantbot/workflows/simulation/orchestrator instead.
@@ -194,17 +196,17 @@ export type {
   SignalCondition,
   LadderConfig,
   LadderLeg,
-} from "./types/index.js";
+} from './types/index.js';
 
 // Orchestrator types have been moved to @quantbot/workflows.
 // Import from @quantbot/workflows/simulation/orchestrator instead.
 
 // Re-export provider types
-export type { TokenMetadata, CandleFetchRequest, CandleFetchResult } from "./data/provider.js";
+export type { TokenMetadata, CandleFetchRequest, CandleFetchResult } from './data/provider.js';
 
 // Re-export indicator types
-export type { IchimokuData } from "./indicators/ichimoku.js";
-export type { LegacyIndicatorData, IndicatorData } from "./indicators/registry.js";
+export type { IchimokuData } from './indicators/ichimoku.js';
+export type { LegacyIndicatorData, IndicatorData } from './indicators/registry.js';
 
 // =============================================================================
 // Legacy Exports (for backwards compatibility with existing code)
@@ -214,17 +216,17 @@ export type { LegacyIndicatorData, IndicatorData } from "./indicators/registry.j
 // Use @quantbot/ohlcv instead
 
 // Re-export ichimoku at top level for legacy code
-export { calculateIchimoku } from "./indicators/ichimoku.js";
+export { calculateIchimoku } from './indicators/ichimoku.js';
 
 // Re-export ichimoku functions from legacy ichimoku.ts file
-export { detectIchimokuSignals, formatIchimokuData } from "./ichimoku.js";
-export type { IchimokuSignal } from "./ichimoku.js";
+export { detectIchimokuSignals, formatIchimokuData } from './ichimoku.js';
+export type { IchimokuSignal } from './ichimoku.js';
 
 // Re-export signal evaluation at top level
-export { evaluateSignalGroup, evaluateLadderLegs } from "./signals.js";
+export { evaluateSignalGroup, evaluateLadderLegs } from './signals.js';
 
 // Re-export candle aggregation
-export { aggregateCandles } from "./data/aggregator.js";
+export { aggregateCandles } from './data/aggregator.js';
 
 // Re-export indicator calculation for legacy code
 export {
@@ -232,14 +234,14 @@ export {
   calculateIndicatorSeries,
   getBullishSignals,
   getBearishSignals,
-} from "./indicators/registry.js";
+} from './indicators/registry.js';
 
 // =============================================================================
 // Package logger
 // =============================================================================
-export { logger } from "./logger.js";
+export { logger } from './logger.js';
 
 // =============================================================================
 // Utilities - Progress indicators and helpers
 // =============================================================================
-export * from "./utils/progress.js";
+export * from './utils/progress.js';

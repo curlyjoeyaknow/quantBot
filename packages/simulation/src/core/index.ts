@@ -4,8 +4,8 @@
  * Exports core simulation functionality.
  */
 
-export * from './events';
-export * from './simulator';
+export * from './events.js';
+export * from './simulator.js';
 // Orchestrator has been moved to @quantbot/workflows.
 // Import from @quantbot/workflows/simulation/orchestrator instead.
 // SimulationRunContext and related types are exported from engine.ts
@@ -16,4 +16,4 @@ export type {
   SimulationTarget,
   ScenarioRunSummary,
   SimulationRunError,
-} from '../engine';
+} from '../engine.js';

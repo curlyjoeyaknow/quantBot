@@ -1,8 +1,8 @@
 import { promises as fs } from 'fs';
 import path from 'path';
 import { DateTime } from 'luxon';
-import { OutputTargetConfig } from './config';
-import { SimulationResultSink, SimulationRunContext, SimulationLogger } from './engine';
+import { OutputTargetConfig } from './config.js';
+import { SimulationResultSink, SimulationRunContext, SimulationLogger } from './engine.js';
 import { AppError } from '@quantbot/utils';
 
 type CsvSinkConfig = Extract<OutputTargetConfig, { type: 'csv' }>;

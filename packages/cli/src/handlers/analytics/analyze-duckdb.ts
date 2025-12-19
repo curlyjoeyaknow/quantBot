@@ -27,13 +27,20 @@ export async function analyzeDuckdbHandler(args: AnalyzeDuckdbArgs, ctx: Command
     });
   }
 
-  // Build config
+  // Build config - only include properties that are provided
   const config: AnalyticsConfig = {
     duckdb: args.duckdb,
-    caller: args.caller,
-    mint: args.mint,
-    correlation: !!args.correlation, // Convert object to boolean
   };
+
+  if (args.caller) {
+    config.caller = args.caller;
+  }
+  if (args.mint) {
+    config.mint = args.mint;
+  }
+  if (args.correlation) {
+    config.correlation = true;
+  }
 
   return await service.runAnalysis(config);
 }

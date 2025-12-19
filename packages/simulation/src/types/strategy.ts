@@ -4,7 +4,7 @@
  * Types for trading strategy configuration.
  */
 
-import type { SignalGroup, LadderConfig } from './signals';
+import type { SignalGroup, LadderConfig } from './signals.js';
 
 /**
  * Take profit level configuration
@@ -23,7 +23,7 @@ export interface StopLossConfig {
   /** Initial stop loss as fraction of entry (e.g., -0.3 for -30%) */
   initial: number;
   /** Trailing stop activation threshold as multiplier (e.g., 0.5 for +50%) */
-  trailing: number | 'none';
+  trailing?: number | 'none';
   /** Trailing stop percent from peak (e.g., 0.25 for -25% from peak) */
   trailingPercent?: number;
   /** Rolling window size for trailing stop (number of candles) */
@@ -35,11 +35,11 @@ export interface StopLossConfig {
  */
 export interface EntryConfig {
   /** Wait for price drop before entry (e.g., -0.3 for 30% drop) */
-  initialEntry: number | 'none';
+  initialEntry?: number | 'none';
   /** Trailing entry: wait for rebound from low (e.g., 0.1 for 10% rebound) */
-  trailingEntry: number | 'none';
+  trailingEntry?: number | 'none';
   /** Maximum wait time in minutes */
-  maxWaitTime: number;
+  maxWaitTime?: number;
 }
 
 /**
@@ -106,6 +106,10 @@ export interface StrategyConfig {
   exitLadder?: LadderConfig;
   /** Hold duration in hours */
   holdHours?: number;
+  /** Loss clamp: maximum loss as fraction (e.g., 0.2 for -20% max) */
+  lossClampPercent?: number;
+  /** Minimum exit price as fraction of entry */
+  minExitPrice?: number;
   /** Notes/description */
   notes?: string;
 }

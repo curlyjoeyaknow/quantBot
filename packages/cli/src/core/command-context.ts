@@ -119,8 +119,9 @@ export class CommandContext {
       // ohlcvFetchJob: () => {
       //   // Deprecated: Use OhlcvBirdeyeFetch directly or via workflow
       //   // Keeping for backward compatibility
-      //   const { OhlcvFetchJob } = require('@quantbot/jobs');
-      //   return new OhlcvFetchJob();
+      //   // Removed: require() - use ESM import if needed
+      //   // const { OhlcvFetchJob } = await import('@quantbot/jobs');
+      //   // return new OhlcvFetchJob();
       // },
       // telegramIngestion: () => {
       //   // PostgreSQL repositories removed - use ingestTelegramJson workflow instead

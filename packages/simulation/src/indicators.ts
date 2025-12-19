@@ -5,7 +5,7 @@
  */
 
 import type { Candle } from '@quantbot/core';
-import { calculateIchimoku, IchimokuData } from './ichimoku';
+import { calculateIchimoku, IchimokuData } from './ichimoku.js';
 
 export interface MovingAverages {
   sma9: number | null;

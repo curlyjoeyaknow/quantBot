@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { simulateStrategy } from '../src/engine';
-import type { Candle } from '../src/candles';
+import type { Candle } from '../src/types/candle';
 import type { Strategy, StopLossConfig, EntryConfig, ReEntryConfig } from '../src/config';
 
 describe('simulation-engine-extended', () => {

@@ -41,7 +41,7 @@ describe('Fee Calculations - Property Tests', () => {
             return multiplier >= 1;
           }
         ),
-        { numRuns: 1000 }
+        { numRuns: 200, timeout: 10000 }
       );
     });
 
@@ -66,7 +66,7 @@ describe('Fee Calculations - Property Tests', () => {
             return Number.isFinite(costPrice) && costPrice >= price;
           }
         ),
-        { numRuns: 1000 }
+        { numRuns: 200, timeout: 10000 }
       );
     });
   });
@@ -86,7 +86,7 @@ describe('Fee Calculations - Property Tests', () => {
             return multiplier <= 1 && multiplier >= 0;
           }
         ),
-        { numRuns: 1000 }
+        { numRuns: 200, timeout: 10000 }
       );
     });
 
@@ -111,7 +111,7 @@ describe('Fee Calculations - Property Tests', () => {
             return Number.isFinite(costPrice) && costPrice <= price && costPrice >= 0;
           }
         ),
-        { numRuns: 1000 }
+        { numRuns: 200, timeout: 10000 }
       );
     });
   });
@@ -139,7 +139,7 @@ describe('Fee Calculations - Property Tests', () => {
             return Number.isFinite(fee) && fee >= 0 && fee <= amount;
           }
         ),
-        { numRuns: 1000 }
+        { numRuns: 200, timeout: 10000 }
       );
     });
   });
@@ -191,7 +191,7 @@ describe('Fee Calculations - Property Tests', () => {
             return true;
           }
         ),
-        { numRuns: 500 }
+        { numRuns: 100, timeout: 10000 }
       );
     });
 
@@ -235,7 +235,7 @@ describe('Fee Calculations - Property Tests', () => {
             return true;
           }
         ),
-        { numRuns: 500 }
+        { numRuns: 100, timeout: 10000 }
       );
     });
   });

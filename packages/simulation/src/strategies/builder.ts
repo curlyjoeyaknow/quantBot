@@ -11,9 +11,9 @@ import {
   StopLossConfig,
   EntryConfig,
   ReEntryConfig,
-} from "../types/index.js";
-import { getPreset } from "./presets.js";
-import { Strategy } from "../engine.js";
+} from '../types/index.js';
+import { getPreset } from './presets.js';
+import { Strategy } from '../engine.js';
 
 /**
  * Converts StrategyConfig to the format expected by simulateStrategy

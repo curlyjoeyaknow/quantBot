@@ -15,7 +15,7 @@
 
 // Logger and logging utilities
 // Centralized logging system
-export { logger, Logger, LogLevel, LogContext, winstonLogger, createLogger } from './logger';
+export { logger, Logger, LogLevel, LogContext, winstonLogger, createLogger } from './logger.js';
 export {
   createRequestId,
   logRequest,
@@ -23,37 +23,37 @@ export {
   logError,
   logPerformance,
   RequestContext,
-} from './logging-middleware';
+} from './logging-middleware.js';
 
 // Package-aware logging
-export * from './logging';
-export { createPackageLogger, LogHelpers } from './logging';
-export { getLogLevel, isLogLevelEnabled } from './logging-config';
-export { logger as loggerNextjs } from './logger-nextjs';
+export * from './logging/index.js';
+export { createPackageLogger, LogHelpers } from './logging/index.js';
+export { getLogLevel, isLogLevelEnabled } from './logging-config.js';
+export { logger as loggerNextjs } from './logger-nextjs.js';
 
 // Configuration loading
-export * from './config';
+export * from './config/index.js';
 
 // Shared types (legacy, kept for backward compatibility - re-exported from @quantbot/core)
 // Note: SimulationEvent is exported from events, not types, to avoid conflicts
-export * from './types';
+export * from './types.js';
 export type { SimulationEvent } from '@quantbot/core'; // Re-export from core for consistency
 
 // Error handling
-export * from './errors';
-export { handleError, retryWithBackoff } from './error-handler';
+export * from './errors.js';
+export { handleError, retryWithBackoff } from './error-handler.js';
 
 // Pump.fun utilities
-export { PUMP_FUN_PROGRAM_ID, derivePumpfunBondingCurve } from './pumpfun';
+export { PUMP_FUN_PROGRAM_ID, derivePumpfunBondingCurve } from './pumpfun.js';
 
 // Address validation
-export { isBase58, isSolanaAddress, isEvmAddress } from './addressValidation';
+export { isBase58, isSolanaAddress, isEvmAddress } from './addressValidation.js';
 
 // Credit monitoring
-export { creditMonitor } from './credit-monitor';
+export { creditMonitor } from './credit-monitor.js';
 
 // Events (kept for backward compatibility, but consider moving to services)
-export * from './events';
+export * from './events/index.js';
 
 // Python integration
 export {
@@ -65,7 +65,7 @@ export {
   type TelegramPipelineConfig,
   type DuckDBStorageConfig,
   type ClickHouseEngineConfig,
-} from './python/python-engine';
+} from './python/python-engine.js';
 
 // NOTE: Database utilities DEPRECATED - use @quantbot/storage instead
 //

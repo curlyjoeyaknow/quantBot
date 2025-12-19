@@ -13,9 +13,9 @@ import type {
   AthDistribution,
   SystemMetrics,
   DashboardSummary,
-} from '../types';
-import { CallDataLoader } from '../loaders/CallDataLoader';
-import { MetricsAggregator } from '../aggregators/MetricsAggregator';
+} from '../types.js';
+import { CallDataLoader } from '../loaders/CallDataLoader.js';
+import { MetricsAggregator } from '../aggregators/MetricsAggregator.js';
 
 export interface AnalyticsOptions {
   /** Date range for analysis */

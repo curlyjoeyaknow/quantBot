@@ -13,8 +13,8 @@
  */
 
 import { PublicKey } from '@solana/web3.js';
-import { extractAddresses } from './addressValidation';
-import { extractSolanaAddresses } from './extractSolanaAddresses';
+import { extractAddresses } from './addressValidation.js';
+import { extractSolanaAddresses } from './extractSolanaAddresses.js';
 
 export interface ExtractionResult {
   valid: Array<{

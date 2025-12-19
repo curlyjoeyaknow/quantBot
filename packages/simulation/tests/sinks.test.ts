@@ -5,6 +5,7 @@ import { DateTime } from 'luxon';
 import { ConfigDrivenSink } from '../src/sinks';
 import type { SimulationRunContext } from '../src/engine';
 import type { Scenario, Target } from '../src/config';
+import { createContext } from 'node:vm';
 
 // Mock ClickHouse client
 vi.mock('@quantbot/storage', () => ({
@@ -75,7 +76,7 @@ describe('ConfigDrivenSink', () => {
     scenario: mockScenario,
     target: mockTarget,
     result: mockResult,
-    ...overrides,
+    ...(overrides || {}),
   });
 
   beforeEach(() => {
@@ -234,14 +235,14 @@ describe('ConfigDrivenSink', () => {
   });
 
   describe('ClickHouse output', () => {
-    it('should write to simulation_events table with expanded schema', async () => {
-      const { getClickHouseClient } = await import('@quantbot/storage');
-      const mockClient = {
-        insert: vi.fn().mockResolvedValue(undefined),
+    it('should log error for deprecated ClickHouse sink', async () => {
+      const mockLogger = {
+        error: vi.fn(),
       };
-      vi.mocked(getClickHouseClient).mockReturnValue(mockClient as any);
 
-      const sink = new ConfigDrivenSink();
+      const sink = new ConfigDrivenSink({
+        logger: mockLogger as any,
+      });
       const context = createContext({
         scenario: {
           ...mockScenario,
@@ -251,27 +252,24 @@ describe('ConfigDrivenSink', () => {
 
       await sink.handle(context);
 
-      expect(mockClient.insert).toHaveBeenCalledWith(
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Failed to emit simulation result',
         expect.objectContaining({
-          table: expect.stringContaining('simulation_events'),
-          values: expect.arrayContaining([
-            expect.objectContaining({
-              event_type: 'entry',
-              token_address: mockTarget.mint,
-            }),
-          ]),
+          scenario: 'test-scenario',
+          target: 'clickhouse',
+          error: expect.stringMatching(/deprecated|DEPRECATED|forbidden|@quantbot\/storage/i),
         })
       );
     });
 
-    it('should write to simulation_aggregates table with aggregate schema', async () => {
-      const { getClickHouseClient } = await import('@quantbot/storage');
-      const mockClient = {
-        insert: vi.fn().mockResolvedValue(undefined),
+    it('should log error for deprecated ClickHouse aggregate schema', async () => {
+      const mockLogger = {
+        error: vi.fn(),
       };
-      vi.mocked(getClickHouseClient).mockReturnValue(mockClient as any);
 
-      const sink = new ConfigDrivenSink();
+      const sink = new ConfigDrivenSink({
+        logger: mockLogger as any,
+      });
       const context = createContext({
         scenario: {
           ...mockScenario,
@@ -281,27 +279,24 @@ describe('ConfigDrivenSink', () => {
 
       await sink.handle(context);
 
-      expect(mockClient.insert).toHaveBeenCalledWith(
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Failed to emit simulation result',
         expect.objectContaining({
-          table: expect.stringContaining('simulation_aggregates'),
-          values: expect.arrayContaining([
-            expect.objectContaining({
-              final_pnl: 1.1,
-              trade_count: 1,
-            }),
-          ]),
+          scenario: 'test-scenario',
+          target: 'clickhouse',
+          error: expect.stringMatching(/deprecated|DEPRECATED|forbidden|@quantbot\/storage/i),
         })
       );
     });
 
-    it('should calculate reentry_count correctly', async () => {
-      const { getClickHouseClient } = await import('@quantbot/storage');
-      const mockClient = {
-        insert: vi.fn().mockResolvedValue(undefined),
+    it('should log error when calculating reentry_count with ClickHouse', async () => {
+      const mockLogger = {
+        error: vi.fn(),
       };
-      vi.mocked(getClickHouseClient).mockReturnValue(mockClient as any);
 
-      const sink = new ConfigDrivenSink();
+      const sink = new ConfigDrivenSink({
+        logger: mockLogger as any,
+      });
       const context = createContext({
         result: {
           ...mockResult,
@@ -309,7 +304,7 @@ describe('ConfigDrivenSink', () => {
             ...mockResult.events,
             {
               timestamp: 1500,
-              type: 're_entry' as const,
+              type: 'reentry' as const,
               price: 1.05,
               remainingPosition: 1.0,
               pnlSoFar: 0.05,
@@ -324,9 +319,102 @@ describe('ConfigDrivenSink', () => {
 
       await sink.handle(context);
 
-      const insertCall = vi.mocked(mockClient.insert).mock.calls[0];
-      const values = insertCall[0].values as any[];
-      expect(values[0].reentry_count).toBe(1);
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Failed to emit simulation result',
+        expect.objectContaining({
+          scenario: 'test-scenario',
+          target: 'clickhouse',
+          error: expect.stringMatching(/deprecated|DEPRECATED|forbidden|@quantbot\/storage/i),
+        })
+      );
+    });
+  });
+
+  describe('error handling', () => {
+    it('should log errors but continue with other outputs', async () => {
+      const mockLogger = {
+        error: vi.fn(),
+      };
+
+      const sink = new ConfigDrivenSink({
+        defaultOutputs: [{ type: 'json', path: '/invalid/path.json' }, { type: 'stdout' }],
+        logger: mockLogger as any,
+      });
+
+      vi.mocked(fs.appendFile).mockRejectedValueOnce(new Error('Permission denied'));
+
+      const context = createContext({
+        result: {
+          ...mockResult,
+          events: [
+            ...mockResult.events,
+            {
+              timestamp: 1500,
+              type: 'reentry' as const,
+              price: 1.05,
+              remainingPosition: 1.0,
+              pnlSoFar: 0.05,
+            },
+          ],
+        },
+        scenario: {
+          ...mockScenario,
+          outputs: [
+            { type: 'json', path: '/invalid/path.json' },
+            { type: 'stdout' },
+          ],
+        },
+      });
+
+      await sink.handle(context);
+
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Failed to emit simulation result',
+        expect.objectContaining({
+          scenario: 'test-scenario',
+          target: 'clickhouse',
+          error: expect.stringMatching(/deprecated|DEPRECATED|forbidden|@quantbot\/storage/i),
+        })
+      );
+    });
+  });
+
+  describe('error handling', () => {
+    it('should log errors but continue with other outputs', async () => {
+      const mockLogger = {
+        error: vi.fn(),
+      };
+
+      const sink = new ConfigDrivenSink({
+        defaultOutputs: [{ type: 'json', path: '/invalid/path.json' }, { type: 'stdout' }],
+        logger: mockLogger as any,
+      });
+
+      vi.mocked(fs.appendFile).mockRejectedValueOnce(new Error('Permission denied'));
+
+      const context = createContext();
+
+      await sink.handle(context);
+
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Failed to emit simulation result',
+        expect.objectContaining({
+          scenario: 'test-scenario',
+          target: 'json',
+        })
+      );
+
+      // Should still write stdout
+      await sink.handle(context);
+
+      expect(mockLogger.error).toHaveBeenCalledWith(
+        'Failed to emit simulation result',
+        expect.objectContaining({
+          scenario: 'test-scenario',
+          target: 'clickhouse',
+          error: expect.stringMatching(/deprecated|DEPRECATED|forbidden|@quantbot\/storage/i),
+        })
+      );
     });
   });
 
@@ -366,7 +454,7 @@ describe('ConfigDrivenSink', () => {
       const context = createContext({
         scenario: {
           ...mockScenario,
-          outputs: [{ type: 'json', path: 'data/test.json' }],
+          outputs: [{ type: 'json', path: './data/test.json' }],
         },
       });
 

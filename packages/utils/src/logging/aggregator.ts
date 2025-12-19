@@ -5,9 +5,9 @@
  * to external services (e.g., CloudWatch, Datadog, Elasticsearch).
  */
 
-import { Logger } from '../logger';
+import { Logger } from '../logger.js';
 import * as winston from 'winston';
-import { ApiError } from '../index';
+import { ApiError } from '../index.js';
 
 /**
  * Log aggregator configuration

@@ -1,5 +1,5 @@
 import { calculateIchimoku, formatIchimokuData } from '../src/ichimoku';
-import { Candle } from '../src/candles';
+import type { Candle } from '../src/types/candle';
 
 /**
  * Test Suite for Ichimoku Indicator-related computations and formatting.

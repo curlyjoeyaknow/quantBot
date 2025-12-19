@@ -5,7 +5,7 @@
  * Extracted from @quantbot/analytics to remove dependency.
  */
 
-import type { Candle } from '../types';
+import type { Candle } from '../types/index.js';
 
 /**
  * Period-based ATH/ATL result with post-ATH drawdown tracking

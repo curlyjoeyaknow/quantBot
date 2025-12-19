@@ -2,7 +2,7 @@ import axios, { AxiosInstance, AxiosResponse, AxiosRequestConfig, AxiosError } f
 import { config } from 'dotenv';
 import { logger, ConfigurationError } from '@quantbot/utils';
 import { recordApiUsage } from '@quantbot/observability';
-import { BaseApiClient } from './base-client';
+import { BaseApiClient } from './base-client.js';
 
 config();
 
@@ -121,7 +121,19 @@ export class BirdeyeClient extends BaseApiClient {
       );
     }
 
-    logger.info('Loaded Birdeye API keys', { keyCount: keys.length, totalCredits: '~3.18M' });
+    logger.info('Loaded Birdeye API keys', {
+      keyCount: keys.length,
+      totalCredits: '~3.18M',
+      keysFound: keys.length > 0 ? `${keys.length} key(s)` : 'none',
+    });
+    if (keys.length > 0) {
+      logger.debug('Birdeye API keys loaded', {
+        baseKey: process.env.BIRDEYE_API_KEY ? 'present' : 'missing',
+        numberedKeys: Array.from({ length: 6 }, (_, i) => i + 1)
+          .map((i) => (process.env[`BIRDEYE_API_KEY_${i}`] ? `_${i}` : null))
+          .filter(Boolean),
+      });
+    }
     return keys;
   }
 
@@ -344,8 +356,33 @@ export class BirdeyeClient extends BaseApiClient {
     const startUnix = Math.floor(startTime.getTime() / 1000);
     const endUnix = Math.floor(endTime.getTime() / 1000);
 
-    // Determine chain from address format (0x = ethereum/evm, otherwise solana)
-    const detectedChain = tokenAddress.startsWith('0x') ? 'ethereum' : chain;
+    // Normalize chain to lowercase (Birdeye API expects lowercase)
+    const normalizedChain = chain.toLowerCase();
+
+    // Determine chain from address format (0x = ethereum/evm, otherwise use normalized chain)
+    // Also handle common chain name variations
+    let detectedChain: string;
+    if (tokenAddress.startsWith('0x')) {
+      detectedChain = 'ethereum';
+    } else if (normalizedChain === 'sol' || normalizedChain === 'solana') {
+      detectedChain = 'solana';
+    } else if (normalizedChain === 'eth' || normalizedChain === 'ethereum') {
+      detectedChain = 'ethereum';
+    } else if (normalizedChain === 'bsc' || normalizedChain === 'binance') {
+      detectedChain = 'bsc';
+    } else if (normalizedChain === 'base') {
+      detectedChain = 'base';
+    } else {
+      // Default to solana for unknown chains (most tokens are Solana)
+      detectedChain = 'solana';
+      logger.debug('Invalid chain input', {
+        status: 422,
+        tokenAddress: tokenAddress.substring(0, 20),
+        originalChain: chain,
+        normalizedChain,
+        usingDefault: 'solana',
+      });
+    }
 
     logger.debug('Fetching OHLCV', {
       tokenAddress: tokenAddress.substring(0, 20),
@@ -377,18 +414,58 @@ export class BirdeyeClient extends BaseApiClient {
 
       const { response, apiKey } = result;
 
-      // Handle 400/404 errors (invalid token addresses)
-      if (response.status === 400 || response.status === 404) {
+      // Handle error status codes (invalid token addresses, validation errors, etc.)
+      if (response.status === 400 || response.status === 404 || response.status === 422) {
+        // 422 = Unprocessable Entity (validation error, invalid parameters, etc.)
+        const responseData = response.data as unknown as Record<string, unknown> | undefined;
+        const errorMessage = responseData?.message || responseData?.error || 'Unknown error';
+        logger.debug('Birdeye API error response', {
+          status: response.status,
+          message: typeof errorMessage === 'string' ? errorMessage : String(errorMessage),
+          tokenAddress: tokenAddress.substring(0, 20),
+        });
         return null;
+      }
+
+      // Check for error responses even with 200 status (some APIs return 200 with success: false)
+      if (response.data) {
+        const responseData = response.data as unknown as Record<string, unknown>;
+        if (responseData.success === false || (responseData.message && !responseData.data)) {
+          // Error response structure: { success: false, message: "..." }
+          const errorMessage = responseData.message || responseData.error || 'Unknown error';
+          logger.debug('Birdeye API error response (success: false)', {
+            status: response.status,
+            message: typeof errorMessage === 'string' ? errorMessage : String(errorMessage),
+            tokenAddress: tokenAddress.substring(0, 20),
+          });
+          return null;
+        }
       }
 
       if (response.status === 200 && response.data) {
         // v3/ohlcv returns { data: { items: [...] } } or { success: true, data: { items: [...] } }
         const responseData = response.data as unknown as Record<string, unknown>;
 
-        // Check if response indicates failure
+        // Check if response indicates failure (even with 200 status)
         if (responseData.success === false) {
-          // API returned success: false
+          // API returned success: false (some APIs return 200 with success: false)
+          const errorMessage = responseData.message || responseData.error || 'API returned success: false';
+          logger.debug('Birdeye API error response (success: false)', {
+            status: response.status,
+            message: typeof errorMessage === 'string' ? errorMessage : String(errorMessage),
+            tokenAddress: tokenAddress.substring(0, 20),
+          });
+          return null;
+        }
+
+        // Check for error message without data field (error response structure)
+        if (responseData.message && !responseData.data && responseData.success !== true) {
+          const errorMessage = responseData.message || 'Unknown error';
+          logger.debug('Birdeye API error response (message without data)', {
+            status: response.status,
+            message: typeof errorMessage === 'string' ? errorMessage : String(errorMessage),
+            tokenAddress: tokenAddress.substring(0, 20),
+          });
           return null;
         }
 

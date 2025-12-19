@@ -261,7 +261,7 @@ export async function insertCandles(
   chain: string,
   candles: Candle[],
   interval: string = '5m',
-  isBackfill: boolean = false
+  _isBackfill: boolean = false
 ): Promise<void> {
   if (candles.length === 0) return;
 
@@ -359,7 +359,14 @@ export async function queryCandles(
   const tokenPattern = `${tokenAddress}%`;
   const tokenPatternSuffix = `%${tokenAddress}`;
 
-  // Build base query with parameters
+  // Escape values for SQL injection prevention
+  const escapedTokenAddress = tokenAddress.replace(/'/g, "''");
+  const escapedChain = chain.replace(/'/g, "''");
+  const escapedTokenPattern = tokenPattern.replace(/'/g, "''");
+  const escapedTokenPatternSuffix = tokenPatternSuffix.replace(/'/g, "''");
+
+  // Build query with string interpolation (properly escaped to prevent SQL injection)
+  // Using string interpolation instead of parameterized queries to avoid "Unknown setting param_*" error
   let query = `
     SELECT 
       toUnixTimestamp(timestamp) as timestamp,
@@ -369,38 +376,27 @@ export async function queryCandles(
       close,
       volume
     FROM ${CLICKHOUSE_DATABASE}.ohlcv_candles
-    WHERE (token_address = {tokenAddress:String}
-           OR lower(token_address) = lower({tokenAddress:String})
-           OR token_address LIKE {tokenPattern:String}
-           OR lower(token_address) LIKE lower({tokenPattern:String})
-           OR token_address LIKE {tokenPatternSuffix:String}
-           OR lower(token_address) LIKE lower({tokenPatternSuffix:String}))
-      AND chain = {chain:String}
-      AND timestamp >= toDateTime({startUnix:UInt32})
-      AND timestamp <= toDateTime({endUnix:UInt32})
+    WHERE (token_address = '${escapedTokenAddress}'
+           OR lower(token_address) = lower('${escapedTokenAddress}')
+           OR token_address LIKE '${escapedTokenPattern}'
+           OR lower(token_address) LIKE lower('${escapedTokenPattern}')
+           OR token_address LIKE '${escapedTokenPatternSuffix}'
+           OR lower(token_address) LIKE lower('${escapedTokenPatternSuffix}'))
+      AND chain = '${escapedChain}'
+      AND timestamp >= toDateTime(${startUnix})
+      AND timestamp <= toDateTime(${endUnix})
   `;
-
-  // Build query params object
-  const queryParams: Record<string, unknown> = {
-    tokenAddress: tokenAddress,
-    tokenPattern: tokenPattern,
-    tokenPatternSuffix: tokenPatternSuffix,
-    chain: chain,
-    startUnix: startUnix,
-    endUnix: endUnix,
-  };
 
   if (interval) {
     // interval is a reserved keyword in ClickHouse, need to escape with backticks
-    query += ` AND \`interval\` = {interval:String}`;
-    queryParams.interval = interval;
+    const escapedInterval = interval.replace(/'/g, "''");
+    query += ` AND \`interval\` = '${escapedInterval}'`;
   }
 
   query += ` ORDER BY timestamp ASC`;
 
   // Retry logic for socket hang ups and connection errors
   const maxRetries = 3;
-  let lastError: unknown = null;
 
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
@@ -417,7 +413,6 @@ export async function queryCandles(
 
       const result = await ch.query({
         query,
-        query_params: queryParams,
         format: 'JSONEachRow',
         clickhouse_settings: {
           max_execution_time: 30, // 30 seconds max execution time
@@ -447,7 +442,6 @@ export async function queryCandles(
         volume: row.volume,
       }));
     } catch (error: unknown) {
-      lastError = error;
       const errorMessage = error instanceof Error ? error.message : String(error);
       const isSocketError =
         errorMessage.includes('socket hang up') ||
@@ -488,34 +482,30 @@ export async function hasCandles(
   const startUnix = Math.floor(startTime.toSeconds());
   const endUnix = Math.floor(endTime.toSeconds());
 
-  // Use parameterized queries to prevent SQL injection
+  // Escape values for SQL injection prevention
+  const escapedTokenAddress = tokenAddress.replace(/'/g, "''");
+  const escapedChain = chain.replace(/'/g, "''");
   const tokenPattern = `${tokenAddress}%`;
   const tokenPatternSuffix = `%${tokenAddress}`;
+  const escapedTokenPattern = tokenPattern.replace(/'/g, "''");
+  const escapedTokenPatternSuffix = tokenPatternSuffix.replace(/'/g, "''");
 
+  // Build query with string interpolation (properly escaped to prevent SQL injection)
   try {
-    // Use same flexible matching as queryCandles with parameterized queries
     const result = await ch.query({
       query: `
         SELECT count() as count
         FROM ${CLICKHOUSE_DATABASE}.ohlcv_candles
-        WHERE (token_address = {tokenAddress:String}
-               OR lower(token_address) = lower({tokenAddress:String})
-               OR token_address LIKE {tokenPattern:String}
-               OR lower(token_address) LIKE lower({tokenPattern:String})
-               OR token_address LIKE {tokenPatternSuffix:String}
-               OR lower(token_address) LIKE lower({tokenPatternSuffix:String}))
-          AND chain = {chain:String}
-          AND timestamp >= toDateTime({startUnix:UInt32})
-          AND timestamp <= toDateTime({endUnix:UInt32})
+        WHERE (token_address = '${escapedTokenAddress}'
+               OR lower(token_address) = lower('${escapedTokenAddress}')
+               OR token_address LIKE '${escapedTokenPattern}'
+               OR lower(token_address) LIKE lower('${escapedTokenPattern}')
+               OR token_address LIKE '${escapedTokenPatternSuffix}'
+               OR lower(token_address) LIKE lower('${escapedTokenPatternSuffix}'))
+          AND chain = '${escapedChain}'
+          AND timestamp >= toDateTime(${startUnix})
+          AND timestamp <= toDateTime(${endUnix})
       `,
-      query_params: {
-        tokenAddress: tokenAddress,
-        tokenPattern: tokenPattern,
-        tokenPatternSuffix: tokenPatternSuffix,
-        chain: chain,
-        startUnix: startUnix,
-        endUnix: endUnix,
-      },
       format: 'JSONEachRow',
     });
 

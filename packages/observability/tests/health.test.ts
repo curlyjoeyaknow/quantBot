@@ -1,20 +1,14 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { performHealthCheck, simpleHealthCheck } from '../src/health';
-import { getPostgresPool, getClickHouseClient } from '@quantbot/storage';
-import { checkApiQuotas } from '../src/quotas';
-import { checkDatabaseHealth } from '../src/database-health';
+import { performHealthCheck, simpleHealthCheck } from '../src/health.js';
+import { getClickHouseClient } from '@quantbot/storage';
+import { checkApiQuotas } from '../src/quotas.js';
 
 vi.mock('@quantbot/storage', () => ({
-  getPostgresPool: vi.fn(),
   getClickHouseClient: vi.fn(),
 }));
 
 vi.mock('../src/quotas', () => ({
   checkApiQuotas: vi.fn(),
-}));
-
-vi.mock('../src/database-health', () => ({
-  checkDatabaseHealth: vi.fn(),
 }));
 
 describe('Health Check Service', () => {
@@ -28,24 +22,19 @@ describe('Health Check Service', () => {
 
   describe('performHealthCheck', () => {
     it('should return healthy status when all checks pass', async () => {
-      const mockPool = {
-        query: vi.fn().mockResolvedValue({ rows: [{ '?column?': 1 }] }),
-      };
       const mockClickHouse = {
-        query: vi.fn().mockResolvedValue({ rows: [{ '?column?': 1 }] }),
+        query: vi.fn().mockResolvedValue({ json: async () => [{ '?column?': 1 }] }),
       };
 
-      vi.mocked(getPostgresPool).mockReturnValue(mockPool as any);
       vi.mocked(getClickHouseClient).mockReturnValue(mockClickHouse as any);
       vi.mocked(checkApiQuotas).mockResolvedValue({
-        birdeye: { remaining: 1000, limit: 10000, warningThreshold: 100 },
-        helius: { remaining: 5000, limit: 10000, warningThreshold: 1000 },
+        birdeye: { remaining: 1000, limit: 10000, warningThreshold: 100, used: 9000, service: 'birdeye', resetAt: new Date() },
+        helius: { remaining: 5000, limit: 10000, warningThreshold: 1000, used: 5000, service: 'helius', resetAt: new Date() },
       });
 
       const result = await performHealthCheck();
 
       expect(result.status).toBe('healthy');
-      expect(result.checks.postgres.status).toBe('ok');
       expect(result.checks.clickhouse.status).toBe('ok');
       expect(result.checks.birdeye.status).toBe('ok');
       expect(result.checks.helius.status).toBe('ok');
@@ -53,18 +42,14 @@ describe('Health Check Service', () => {
     });
 
     it('should return degraded status when API quotas are low', async () => {
-      const mockPool = {
-        query: vi.fn().mockResolvedValue({ rows: [{ '?column?': 1 }] }),
-      };
       const mockClickHouse = {
-        query: vi.fn().mockResolvedValue({ rows: [{ '?column?': 1 }] }),
+        query: vi.fn().mockResolvedValue({ json: async () => [{ '?column?': 1 }] }),
       };
 
-      vi.mocked(getPostgresPool).mockReturnValue(mockPool as any);
       vi.mocked(getClickHouseClient).mockReturnValue(mockClickHouse as any);
       vi.mocked(checkApiQuotas).mockResolvedValue({
-        birdeye: { remaining: 50, limit: 10000, warningThreshold: 100 },
-        helius: { remaining: 500, limit: 10000, warningThreshold: 1000 },
+        birdeye: { remaining: 50, limit: 10000, warningThreshold: 100, used: 9950, service: 'birdeye', resetAt: new Date() },
+        helius: { remaining: 500, limit: 10000, warningThreshold: 1000, used: 9500, service: 'helius', resetAt: new Date() },
       });
 
       const result = await performHealthCheck();
@@ -75,40 +60,31 @@ describe('Health Check Service', () => {
     });
 
     it('should return unhealthy status when databases fail', async () => {
-      const mockPool = {
-        query: vi.fn().mockRejectedValue(new Error('Connection failed')),
-      };
       const mockClickHouse = {
         query: vi.fn().mockRejectedValue(new Error('Connection failed')),
       };
 
-      vi.mocked(getPostgresPool).mockReturnValue(mockPool as any);
       vi.mocked(getClickHouseClient).mockReturnValue(mockClickHouse as any);
       vi.mocked(checkApiQuotas).mockResolvedValue({
-        birdeye: { remaining: 1000, limit: 10000, warningThreshold: 100 },
-        helius: { remaining: 5000, limit: 10000, warningThreshold: 1000 },
+        birdeye: { remaining: 1000, limit: 10000, warningThreshold: 100, used: 9000, service: 'birdeye', resetAt: new Date() },
+        helius: { remaining: 5000, limit: 10000, warningThreshold: 1000, used: 5000, service: 'helius', resetAt: new Date() },
       });
 
       const result = await performHealthCheck();
 
       expect(result.status).toBe('unhealthy');
-      expect(result.checks.postgres.status).toBe('error');
       expect(result.checks.clickhouse.status).toBe('error');
     });
 
     it('should return unhealthy status when API quotas are exhausted', async () => {
-      const mockPool = {
-        query: vi.fn().mockResolvedValue({ rows: [{ '?column?': 1 }] }),
-      };
       const mockClickHouse = {
-        query: vi.fn().mockResolvedValue({ rows: [{ '?column?': 1 }] }),
+        query: vi.fn().mockResolvedValue({ json: async () => [{ '?column?': 1 }] }),
       };
 
-      vi.mocked(getPostgresPool).mockReturnValue(mockPool as any);
       vi.mocked(getClickHouseClient).mockReturnValue(mockClickHouse as any);
       vi.mocked(checkApiQuotas).mockResolvedValue({
-        birdeye: { remaining: 0, limit: 10000, warningThreshold: 100 },
-        helius: { remaining: 0, limit: 10000, warningThreshold: 1000 },
+        birdeye: { remaining: 0, limit: 10000, warningThreshold: 100, used: 10000, service: 'birdeye', resetAt: new Date() },
+        helius: { remaining: 0, limit: 10000, warningThreshold: 1000, used: 10000, service: 'helius', resetAt: new Date() },
       });
 
       const result = await performHealthCheck();
@@ -119,14 +95,10 @@ describe('Health Check Service', () => {
     });
 
     it('should handle quota check failures gracefully', async () => {
-      const mockPool = {
-        query: vi.fn().mockResolvedValue({ rows: [{ '?column?': 1 }] }),
-      };
       const mockClickHouse = {
-        query: vi.fn().mockResolvedValue({ rows: [{ '?column?': 1 }] }),
+        query: vi.fn().mockResolvedValue({ json: async () => [{ '?column?': 1 }] }),
       };
 
-      vi.mocked(getPostgresPool).mockReturnValue(mockPool as any);
       vi.mocked(getClickHouseClient).mockReturnValue(mockClickHouse as any);
       vi.mocked(checkApiQuotas).mockRejectedValue(new Error('Quota check failed'));
 
@@ -140,11 +112,11 @@ describe('Health Check Service', () => {
 
   describe('simpleHealthCheck', () => {
     it('should return ok when database is accessible', async () => {
-      const mockPool = {
-        query: vi.fn().mockResolvedValue({ rows: [{ '?column?': 1 }] }),
+      const mockClickHouse = {
+        query: vi.fn().mockResolvedValue({ json: async () => [{ '?column?': 1 }] }),
       };
 
-      vi.mocked(getPostgresPool).mockReturnValue(mockPool as any);
+      vi.mocked(getClickHouseClient).mockReturnValue(mockClickHouse as any);
 
       const result = await simpleHealthCheck();
 
@@ -152,11 +124,11 @@ describe('Health Check Service', () => {
     });
 
     it('should return error when database is inaccessible', async () => {
-      const mockPool = {
+      const mockClickHouse = {
         query: vi.fn().mockRejectedValue(new Error('Connection failed')),
       };
 
-      vi.mocked(getPostgresPool).mockReturnValue(mockPool as any);
+      vi.mocked(getClickHouseClient).mockReturnValue(mockClickHouse as any);
 
       const result = await simpleHealthCheck();
 

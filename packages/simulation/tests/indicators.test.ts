@@ -11,7 +11,7 @@ import {
   getBullishSignals,
   getBearishSignals,
 } from '../src/indicators';
-import type { Candle } from '../src/candles';
+import type { Candle } from '../src/types/candle';
 
 describe('indicators', () => {
   const createCandle = (timestamp: number, close: number, overrides?: Partial<Candle>): Candle => ({

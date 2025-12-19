@@ -5,7 +5,7 @@
  * This prevents silent failures and ensures deterministic behavior.
  */
 
-import type { Candle } from '../types/candle';
+import type { Candle } from '../types/candle.js';
 
 export interface ValidationResult {
   valid: boolean;

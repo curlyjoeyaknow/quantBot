@@ -1,6 +1,7 @@
 {
   "name": "@quantbot/api-clients",
   "version": "1.0.0",
+  "type": "module",
   "description": "API client implementations for external services (Birdeye, Helius, etc.)",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

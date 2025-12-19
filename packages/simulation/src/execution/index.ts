@@ -4,7 +4,7 @@
  * Exports all execution logic functions.
  */
 
-export * from './fees';
-export * from './entry';
-export * from './exit';
-export * from './reentry';
+export * from './fees.js';
+export * from './entry.js';
+export * from './exit.js';
+export * from './reentry.js';

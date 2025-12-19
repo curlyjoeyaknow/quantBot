@@ -5,7 +5,7 @@
  * This is a pure function - no DB, no side effects, deterministic.
  */
 
-import { simulateStrategy, type SimulationOptions } from '../core/simulator';
+import { simulateStrategy, type SimulationOptions } from '../core/simulator.js';
 import type {
   SimulationResult,
   Candle,
@@ -13,8 +13,8 @@ import type {
   EntryConfig,
   ReEntryConfig,
   StrategyLeg,
-} from '../types';
-import type { StrategyConfig } from './StrategyConfig';
+} from '../types/index.js';
+import type { StrategyConfig } from './StrategyConfig.js';
 import type { Call } from '@quantbot/core';
 
 export interface SimulationRequest {

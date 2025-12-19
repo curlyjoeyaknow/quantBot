@@ -8,7 +8,7 @@
 
 import { describe, it, expect } from 'vitest';
 import { DateTime } from 'luxon';
-import type { Candle } from '../../src/candles';
+import type { Candle } from '../../src/types/candle';
 
 describe('Timestamp Window Boundaries', () => {
   const createCandle = (timestamp: number, price: number): Candle => ({

@@ -11,21 +11,10 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { DateTime } from 'luxon';
-import { OHLCVService } from '../src/ohlcv-service';
+import { OHLCVService } from '../src/ohlcv-service.js';
 import type { Candle } from '@quantbot/core';
 
-// Mock dependencies (factories to avoid hoisting issues)
-vi.mock('@quantbot/api-clients', async () => {
-  const { vi } = await import('vitest');
-  const mockBirdeyeClient = {
-    fetchOHLCVData: vi.fn(),
-  };
-  (globalThis as any).__ohlcvServiceApiMocks__ = { mockBirdeyeClient };
-  return {
-    birdeyeClient: mockBirdeyeClient,
-  };
-});
-
+// Mock dependencies
 vi.mock('@quantbot/storage', async () => {
   const { vi } = await import('vitest');
   const mockStorageEngine = {
@@ -38,15 +27,6 @@ vi.mock('@quantbot/storage', async () => {
   };
   (globalThis as any).__ohlcvServiceStorageMocks__ = { mockStorage, mockStorageEngine };
   return mockStorage;
-});
-
-vi.mock('../src/candles', async () => {
-  const { vi } = await import('vitest');
-  const fetchHybridCandles = vi.fn();
-  (globalThis as any).__ohlcvServiceCandlesMock__ = fetchHybridCandles;
-  return {
-    fetchHybridCandles,
-  };
 });
 
 vi.mock('@quantbot/utils', () => ({
@@ -68,8 +48,6 @@ describe('OHLCVService', () => {
   let service: OHLCVService;
   let mockStorage: any;
   let mockStorageEngine: any;
-  let mockBirdeyeClient: any;
-  let fetchHybridCandles: any;
   const FULL_MINT = '7pXs123456789012345678901234567890pump';
   const FULL_MINT_LOWERCASE = '7pxs123456789012345678901234567890pump';
   const startTime = DateTime.fromISO('2024-01-01T00:00:00Z');
@@ -80,9 +58,6 @@ describe('OHLCVService', () => {
     const storageMocks = (globalThis as any).__ohlcvServiceStorageMocks__;
     mockStorage = storageMocks.mockStorage;
     mockStorageEngine = storageMocks.mockStorageEngine;
-    const apiMocks = (globalThis as any).__ohlcvServiceApiMocks__;
-    mockBirdeyeClient = apiMocks.mockBirdeyeClient;
-    fetchHybridCandles = (globalThis as any).__ohlcvServiceCandlesMock__;
 
     service = new OHLCVService();
     mockStorage.initClickHouse.mockResolvedValue(undefined);
@@ -104,109 +79,8 @@ describe('OHLCVService', () => {
     });
   });
 
-  describe('fetchCandles', () => {
-    it('should fetch candles from Birdeye API', async () => {
-      const mockBirdeyeData = {
-        items: [
-          {
-            unixTime: Math.floor(startTime.toSeconds()),
-            open: '1.0',
-            high: '1.1',
-            low: '0.9',
-            close: '1.05',
-            volume: '1000',
-          },
-        ],
-      };
-      mockBirdeyeClient.fetchOHLCVData.mockResolvedValue(mockBirdeyeData);
-
-      const result = await service.fetchCandles(FULL_MINT, 'solana', startTime, endTime, '5m');
-
-      expect(mockBirdeyeClient.fetchOHLCVData).toHaveBeenCalledWith(
-        FULL_MINT, // Full address, case-preserved
-        expect.any(Date),
-        expect.any(Date),
-        '5m'
-      );
-      expect(result.length).toBeGreaterThan(0);
-      expect(result[0]).toMatchObject({
-        timestamp: expect.any(Number),
-        open: 1.0,
-        high: 1.1,
-        low: 0.9,
-        close: 1.05,
-        volume: 1000,
-      });
-    });
-
-    it('should preserve exact case of mint address', async () => {
-      mockBirdeyeClient.fetchOHLCVData.mockResolvedValue({ items: [] });
-
-      await service.fetchCandles(FULL_MINT_LOWERCASE, 'solana', startTime, endTime);
-
-      expect(mockBirdeyeClient.fetchOHLCVData).toHaveBeenCalledWith(
-        FULL_MINT_LOWERCASE, // Exact case preserved
-        expect.any(Date),
-        expect.any(Date),
-        '5m'
-      );
-    });
-
-    it('should return empty array when no data', async () => {
-      mockBirdeyeClient.fetchOHLCVData.mockResolvedValue(null);
-
-      const result = await service.fetchCandles(FULL_MINT, 'solana', startTime, endTime);
-
-      expect(result).toEqual([]);
-    });
-
-    it('should filter candles by time range', async () => {
-      const startUnix = Math.floor(startTime.toSeconds());
-      const endUnix = Math.floor(endTime.toSeconds());
-      const mockBirdeyeData = {
-        items: [
-          {
-            unixTime: startUnix - 1000, // Before range
-            open: '1.0',
-            high: '1.0',
-            low: '1.0',
-            close: '1.0',
-            volume: '1000',
-          },
-          {
-            unixTime: startUnix + 100, // In range
-            open: '1.0',
-            high: '1.0',
-            low: '1.0',
-            close: '1.0',
-            volume: '1000',
-          },
-          {
-            unixTime: endUnix + 1000, // After range
-            open: '1.0',
-            high: '1.0',
-            low: '1.0',
-            close: '1.0',
-            volume: '1000',
-          },
-        ],
-      };
-      mockBirdeyeClient.fetchOHLCVData.mockResolvedValue(mockBirdeyeData);
-
-      const result = await service.fetchCandles(FULL_MINT, 'solana', startTime, endTime);
-
-      expect(result.length).toBe(1);
-      expect(result[0].timestamp).toBe(startUnix + 100);
-    });
-
-    it('should handle API errors', async () => {
-      mockBirdeyeClient.fetchOHLCVData.mockRejectedValue(new Error('API error'));
-
-      await expect(service.fetchCandles(FULL_MINT, 'solana', startTime, endTime)).rejects.toThrow(
-        'API error'
-      );
-    });
-  });
+  // Note: fetchCandles method removed - service is offline-only
+  // For fetching candles, use @quantbot/api-clients in @quantbot/ingestion workflows
 
   describe('ingestCandles', () => {
     const mockCandles: Candle[] = [
@@ -286,17 +160,17 @@ describe('OHLCVService', () => {
     ];
 
     it('should use in-memory cache when available', async () => {
-      const { fetchHybridCandles } = await import('../src/candles');
-      vi.mocked(fetchHybridCandles).mockResolvedValue(mockCandles);
-
-      // First call populates cache
+      // First call populates cache from ClickHouse
+      mockStorageEngine.getCandles.mockResolvedValue(mockCandles);
       await service.getCandles(FULL_MINT, 'solana', startTime, endTime);
 
-      // Second call should use cache
+      // Second call should use in-memory cache
+      mockStorageEngine.getCandles.mockClear();
       const result = await service.getCandles(FULL_MINT, 'solana', startTime, endTime);
 
       expect(result).toEqual(mockCandles);
-      // Should not call fetchHybridCandles again (cached)
+      // Should not call getCandles again (cached)
+      expect(mockStorageEngine.getCandles).not.toHaveBeenCalled();
     });
 
     it('should use ClickHouse cache when available', async () => {
@@ -314,42 +188,36 @@ describe('OHLCVService', () => {
       expect(result).toEqual(mockCandles);
     });
 
-    it('should fall back to API when cache miss', async () => {
-      const { fetchHybridCandles } = await import('../src/candles');
-      vi.mocked(fetchHybridCandles).mockResolvedValue(mockCandles);
+    it('should return empty when cache miss (offline-only mode)', async () => {
+      mockStorageEngine.getCandles.mockResolvedValue([]);
 
       const result = await service.getCandles(FULL_MINT, 'solana', startTime, endTime, {
         forceRefresh: true,
       });
 
-      expect(fetchHybridCandles).toHaveBeenCalledWith(
-        FULL_MINT,
-        startTime,
-        endTime,
-        'solana',
-        undefined
-      );
-      expect(result).toEqual(mockCandles);
+      // Offline-only mode: returns empty if not in cache
+      expect(result).toEqual([]);
     });
 
     it('should bypass cache when forceRefresh is true', async () => {
-      const { fetchHybridCandles } = await import('../src/candles');
-      vi.mocked(fetchHybridCandles).mockResolvedValue(mockCandles);
-      mockStorageEngine.getCandles.mockClear();
+      // With forceRefresh: true, both in-memory and ClickHouse cache are bypassed
+      // The service returns empty array (offline-only mode)
+      const result = await service.getCandles(FULL_MINT, 'solana', startTime, endTime, { forceRefresh: true });
 
-      await service.getCandles(FULL_MINT, 'solana', startTime, endTime, { forceRefresh: true });
-
-      // Should avoid cache; allow 0 or minimal calls due to implementation details
-      expect(mockStorageEngine.getCandles.mock.calls.length).toBeLessThanOrEqual(1);
+      // Should return empty (offline-only mode, no API calls)
+      expect(result).toEqual([]);
+      // ClickHouse is not queried when forceRefresh is true (cache is bypassed)
+      expect(mockStorageEngine.getCandles).not.toHaveBeenCalled();
     });
 
-    it('should ingest candles after fetching from API', async () => {
-      const { fetchHybridCandles } = await import('../src/candles');
-      vi.mocked(fetchHybridCandles).mockResolvedValue(mockCandles);
+    it('should not ingest candles automatically (offline-only mode)', async () => {
+      mockStorageEngine.getCandles.mockResolvedValue([]);
 
       await service.getCandles(FULL_MINT, 'solana', startTime, endTime, { forceRefresh: true });
 
-      expect(mockStorageEngine.storeCandles).toHaveBeenCalled();
+      // Offline-only mode: getCandles doesn't automatically ingest
+      // Candles must be stored via storeCandles() or ingestCandles()
+      expect(mockStorageEngine.storeCandles).not.toHaveBeenCalled();
     });
   });
 });

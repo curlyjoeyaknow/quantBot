@@ -14,7 +14,8 @@ vi.mock('axios');
 vi.mock('fs');
 
 // Import after mocks are set up
-import { fetchHybridCandles, Candle } from '../src/candles';
+import type { Candle } from '../src/types/candle';
+// fetchHybridCandles has been moved to @quantbot/ohlcv
 import { DateTime } from 'luxon';
 import axios from 'axios';
 import * as fs from 'fs';
@@ -49,7 +50,9 @@ describe('Candle Data Handling', () => {
     } as any);
   });
 
-  describe('fetchHybridCandles', () => {
+  // NOTE: fetchHybridCandles has been moved to @quantbot/ohlcv
+  // These tests are skipped as they test functionality that's no longer in this package
+  describe.skip('fetchHybridCandles', () => {
     it('should fetch candles successfully for Solana', async () => {
       const mockResponse = {
         data: {
@@ -424,7 +427,8 @@ describe('Candle Data Handling', () => {
     });
   });
 
-  describe('Cache functionality', () => {
+  // NOTE: Cache functionality is part of fetchHybridCandles which has been moved to @quantbot/ohlcv
+  describe.skip('Cache functionality', () => {
     it('should create cache directory if it does not exist', async () => {
       // NOTE: Cache directory is created at module load time, not during function execution
       // This test verifies the directory exists check happens (via existsSync)
@@ -550,7 +554,8 @@ describe('Candle Data Handling', () => {
     });
   });
 
-  describe('API integration', () => {
+  // NOTE: API integration is part of fetchHybridCandles which has been moved to @quantbot/ohlcv
+  describe.skip('API integration', () => {
     it('should construct correct API URLs for different chains', async () => {
       // Ensure USE_CACHE_ONLY is not set
       const originalCacheOnly = process.env.USE_CACHE_ONLY;

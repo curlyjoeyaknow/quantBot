@@ -2,7 +2,7 @@
  * Command Palette Screen - Fuzzy search for commands
  */
 
-import type { Screen } from '../types';
+import type { Screen } from '../types/index.js';
 import { commandRegistry } from '@quantbot/cli';
 
 /**

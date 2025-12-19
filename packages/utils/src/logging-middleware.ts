@@ -4,7 +4,7 @@
  * Middleware utilities for request/response logging and context propagation.
  */
 
-import { logger, LogContext } from './logger';
+import { logger, LogContext } from './logger.js';
 import { randomBytes } from 'crypto';
 
 /**

@@ -13,7 +13,7 @@ import { DateTime } from 'luxon';
 import { getStorageEngine, initClickHouse } from '@quantbot/storage';
 import type { Candle, Chain } from '@quantbot/core';
 import { logger } from '@quantbot/utils';
-import { storeCandles as storeCandlesOffline } from './ohlcv-storage';
+import { storeCandles as storeCandlesOffline } from './ohlcv-storage.js';
 
 export interface OHLCVFetchOptions {
   interval?: '1m' | '5m' | '1H';

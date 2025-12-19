@@ -14,27 +14,27 @@ import type {
   LadderConfig,
   SimulationResult,
   LegacySimulationEvent,
-} from '../types';
-import type { Candle, SubCandleProvider as CandleProvider } from '../types/candle';
+} from '../types/index.js';
+import type { Candle, SubCandleProvider as CandleProvider } from '../types/candle.js';
 import {
   DEFAULT_STOP_LOSS,
   DEFAULT_ENTRY,
   DEFAULT_REENTRY,
   DEFAULT_COSTS,
-} from '../types/strategy';
-import { calculateIndicatorSeries, type LegacyIndicatorData } from '../indicators/registry';
-import { calculateIndicatorSeriesOptimized } from '../performance/optimizations';
-import { getPerformanceMonitor } from '../performance/monitor';
-import { evaluateSignalGroup } from '../signals/evaluator';
-import { getEntryCostMultiplier, getExitCostMultiplier } from '../execution';
-import { logStep, createProgress } from '../utils/progress';
+} from '../types/strategy.js';
+import { calculateIndicatorSeries, type LegacyIndicatorData } from '../indicators/registry.js';
+import { calculateIndicatorSeriesOptimized } from '../performance/optimizations.js';
+import { getPerformanceMonitor } from '../performance/monitor.js';
+import { evaluateSignalGroup } from '../signals/evaluator.js';
+import { getEntryCostMultiplier, getExitCostMultiplier } from '../execution/index.js';
+import { logStep, createProgress } from '../utils/progress.js';
 import {
   checkStopLossSequential,
   initTrailingStopState,
   updateRollingTrailingStop,
   type TrailingStopState,
-} from '../execution/exit';
-import { validateReEntrySequence } from '../execution/reentry';
+} from '../execution/exit.js';
+import { validateReEntrySequence } from '../execution/reentry.js';
 
 /**
  * Simulation options
@@ -156,11 +156,12 @@ export async function simulateStrategy(
 
   // Handle trailing entry
   if (!hasEntered && entryCfg.trailingEntry !== 'none') {
+    const maxWaitTime = entryCfg.maxWaitTime ?? DEFAULT_ENTRY.maxWaitTime ?? 60;
     const result = handleTrailingEntry(
       candles,
       indicatorSeries,
       entryCfg.trailingEntry as number,
-      entryCfg.maxWaitTime,
+      maxWaitTime,
       entrySignal,
       events
     );
@@ -174,7 +175,7 @@ export async function simulateStrategy(
       lowestPriceTimestamp = result.lowestPriceTimestamp;
     } else {
       // Fallback to end of wait period
-      const maxWaitTimestamp = candles[0].timestamp + entryCfg.maxWaitTime * 60;
+      const maxWaitTimestamp = candles[0].timestamp + maxWaitTime * 60;
       const fallback =
         candles.find((c) => c.timestamp <= maxWaitTimestamp) ?? candles[candles.length - 1];
       actualEntryPrice = fallback.close;

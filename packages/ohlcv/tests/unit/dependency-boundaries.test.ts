@@ -34,7 +34,8 @@ function findTsFiles(dir: string, baseDir: string = dir): string[] {
 }
 
 describe('Dependency Boundaries - @quantbot/ohlcv', () => {
-  const packageJsonPath = join(process.cwd(), 'package.json');
+  // Read package.json from the package directory (not monorepo root)
+  const packageJsonPath = join(__dirname, '../../package.json');
   let packageJson: {
     dependencies?: Record<string, string>;
     devDependencies?: Record<string, string>;

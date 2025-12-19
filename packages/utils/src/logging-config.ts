@@ -4,7 +4,7 @@
  * Configuration and utilities for the logging system
  */
 
-import { LogLevel } from './logger';
+import { LogLevel } from './logger.js';
 
 /**
  * Get log level from environment or default

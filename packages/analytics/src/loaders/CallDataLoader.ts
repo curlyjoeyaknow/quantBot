@@ -23,8 +23,8 @@ type WorkflowContext = {
   services: Record<string, unknown>;
   [key: string]: unknown;
 };
-import type { CallPerformance } from '../types';
-import { calculateAthFromCandleObjects } from '../utils/ath-calculator';
+import type { CallPerformance } from '../types.js';
+import { calculateAthFromCandleObjects } from '../utils/ath-calculator.js';
 
 export interface LoadCallsOptions {
   from?: Date;

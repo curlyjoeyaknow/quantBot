@@ -8,7 +8,7 @@
 import { z } from 'zod';
 import { Chain, TokenAddress, Strategy, StopLossConfig } from '@quantbot/core';
 import { createTokenAddress } from '@quantbot/core';
-import { ValidationError } from './errors';
+import { ValidationError } from './errors.js';
 
 /**
  * Validates a Chain value

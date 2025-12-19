@@ -2,7 +2,7 @@
  * CLI-TUI Bridge - Execute CLI commands from TUI
  */
 
-import type { CLIExecutionResult } from '../types';
+import type { CLIExecutionResult } from '../types/index.js';
 import { logger } from '@quantbot/utils';
 import { commandRegistry, parseArguments } from '@quantbot/cli';
 import { CommandContext } from '@quantbot/cli';

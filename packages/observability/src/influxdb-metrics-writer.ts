@@ -7,6 +7,8 @@
 import { InfluxDB, Point, WriteApi } from '@influxdata/influxdb-client';
 import { logger } from '@quantbot/utils';
 import type { LatencyMetric, ThroughputMetric } from './types.js';
+import * as fs from 'fs';
+import * as path from 'path';
 
 export type { InfluxDB, WriteApi };
 
@@ -71,8 +73,6 @@ export class InfluxDBMetricsWriter {
    */
   private extractPackageVersion(): string {
     try {
-      const fs = require('fs');
-      const path = require('path');
 
       // Try multiple possible paths
       const possiblePaths = [

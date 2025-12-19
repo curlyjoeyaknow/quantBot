@@ -9,7 +9,7 @@ import { DateTime } from 'luxon';
 import { logger } from '@quantbot/utils';
 import { join } from 'path';
 import { z } from 'zod';
-import { DuckDBClient } from '../duckdb-client';
+import { DuckDBClient } from '../duckdb-client.js';
 
 export interface OHLCVCoverageRecord {
   mint: string;

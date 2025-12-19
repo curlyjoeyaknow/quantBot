@@ -4,7 +4,7 @@
  * Base types for simulation result sinks.
  */
 
-import type { SimulationRunContext, SimulationLogger } from "../core/index.js";
+import type { SimulationRunContext, SimulationLogger } from '../core/index.js';
 
 /**
  * Result sink interface

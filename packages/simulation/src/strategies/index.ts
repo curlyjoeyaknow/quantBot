@@ -2,6 +2,6 @@
  * Strategy Module Public API
  */
 
-export * from './types';
-export * from './builder';
-export * from './presets';
+export * from '../types/index.js';
+export * from './builder.js';
+export * from './presets.js';

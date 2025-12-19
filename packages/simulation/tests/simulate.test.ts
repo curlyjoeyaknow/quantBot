@@ -18,7 +18,7 @@
 // ============================================================================
 
 import { simulateStrategy, Strategy, StopLossConfig, EntryConfig, ReEntryConfig } from '../src';
-import { Candle } from '../src/candles';
+import type { Candle } from '../src/types/candle';
 
 /**
  * Mock dataset representing a series of OHLCV candles for use in simulation tests.

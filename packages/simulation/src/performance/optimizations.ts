@@ -4,8 +4,8 @@
  * Optimizations for hot paths in simulation engine.
  */
 
-import type { Candle } from '../types/candle';
-import type { LegacyIndicatorData } from '../indicators/registry';
+import type { Candle } from '../types/candle.js';
+import type { LegacyIndicatorData } from '../indicators/registry.js';
 
 /**
  * Memoized indicator calculation cache

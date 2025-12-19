@@ -4,4 +4,4 @@
  * Pure math functions for simulation calculations.
  */
 
-export * from './ath-atl';
+export * from './ath-atl.js';

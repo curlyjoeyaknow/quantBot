@@ -106,9 +106,11 @@ describe('OHLCV Work Planning - Golden Path', () => {
       expect(workItems[0].alertTime).toBeDefined();
 
       // Assert: Time windows calculated correctly
+      // Note: For '1m' interval, postWindow is automatically adjusted to 5000 - preWindow = 4740
       const alertTime1 = DateTime.fromISO('2024-01-01T12:00:00Z');
       expect(workItems[0].startTime.toISO()).toBe(alertTime1.minus({ minutes: 260 }).toISO());
-      expect(workItems[0].endTime.toISO()).toBe(alertTime1.plus({ minutes: 1440 }).toISO());
+      const expectedPostWindow = 5000 - 260; // Auto-adjusted for 1m interval
+      expect(workItems[0].endTime.toISO()).toBe(alertTime1.plus({ minutes: expectedPostWindow }).toISO());
 
       // Assert: Sorted by priority (descending)
       expect(workItems[0].priority).toBe(10);
@@ -237,7 +239,9 @@ describe('OHLCV Work Planning - Golden Path', () => {
 
       const alertTime = DateTime.fromISO('2024-01-01T12:00:00Z');
       const expectedStart = alertTime.minus({ minutes: preWindow });
-      const expectedEnd = alertTime.plus({ minutes: postWindow });
+      // Note: For '1m' interval, postWindow is automatically adjusted to 5000 - preWindow = 4740
+      const expectedPostWindow = 5000 - preWindow; // Auto-adjusted for 1m interval
+      const expectedEnd = alertTime.plus({ minutes: expectedPostWindow });
 
       // Assert: Time windows calculated correctly
       expect(workItems[0].startTime.toISO()).toBe(expectedStart.toISO());
@@ -367,7 +371,9 @@ describe('OHLCV Work Planning - Golden Path', () => {
       // Assert: Default windows (260 pre, 1440 post)
       const alertTime = DateTime.fromISO('2024-01-01T12:00:00Z');
       expect(workItems[0].startTime.toISO()).toBe(alertTime.minus({ minutes: 260 }).toISO());
-      expect(workItems[0].endTime.toISO()).toBe(alertTime.plus({ minutes: 1440 }).toISO());
+      // Note: For '1m' interval, postWindow is automatically adjusted to 5000 - preWindow = 4740
+      const expectedPostWindow = 5000 - 260; // Auto-adjusted for 1m interval
+      expect(workItems[0].endTime.toISO()).toBe(alertTime.plus({ minutes: expectedPostWindow }).toISO());
     });
   });
 });

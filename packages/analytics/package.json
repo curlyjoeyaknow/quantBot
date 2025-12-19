@@ -2,8 +2,15 @@
   "name": "@quantbot/analytics",
   "version": "1.0.0",
   "description": "Historical analytics and performance metrics for QuantBot",
+  "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
   "scripts": {
     "build": "tsc --build",
     "test": "vitest"

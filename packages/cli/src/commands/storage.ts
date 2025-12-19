@@ -12,6 +12,10 @@ import type { CommandContext } from '../core/command-context.js';
 import { NotFoundError, ValidationError } from '@quantbot/utils';
 import { queryStorageHandler } from '../handlers/storage/query-storage.js';
 import { statsStorageHandler } from '../handlers/storage/stats-storage.js';
+import { listTokensHandler } from '../handlers/storage/list-tokens.js';
+import { storageStatsWorkflowHandler } from '../handlers/storage/stats-workflow.js';
+import { ohlcvStatsWorkflowHandler } from '../handlers/storage/ohlcv-stats-workflow.js';
+import { tokenStatsWorkflowHandler } from '../handlers/storage/token-stats-workflow.js';
 
 /**
  * Query command schema - Only allow safe queries
@@ -22,6 +26,50 @@ export const querySchema = z.object({
   format: z.enum(['json', 'table', 'csv']).default('table'),
   // Note: WHERE clauses are not supported via CLI for security
   // Users should use package-specific commands for filtered queries
+});
+
+/**
+ * List tokens command schema
+ */
+export const listTokensSchema = z.object({
+  chain: z.enum(['solana', 'ethereum', 'bsc', 'base']).optional(),
+  source: z.enum(['ohlcv', 'metadata']).default('ohlcv'),
+  format: z.enum(['json', 'table', 'csv']).default('table'),
+  limit: z.number().int().positive().max(10000).default(1000),
+});
+
+/**
+ * Storage stats workflow schema
+ */
+export const storageStatsWorkflowSchema = z.object({
+  source: z.enum(['clickhouse', 'duckdb', 'all']).default('all'),
+  includeTableSizes: z.boolean().default(true),
+  includeRowCounts: z.boolean().default(true),
+  includeDateRanges: z.boolean().default(true),
+  duckdbPath: z.string().optional(),
+  format: z.enum(['json', 'table', 'csv']).default('table'),
+});
+
+/**
+ * OHLCV stats workflow schema
+ */
+export const ohlcvStatsWorkflowSchema = z.object({
+  chain: z.enum(['solana', 'ethereum', 'bsc', 'base']).optional(),
+  interval: z.enum(['1m', '5m', '15m', '1h', '4h', '1d']).optional(),
+  mint: z.string().optional(),
+  format: z.enum(['json', 'table', 'csv']).default('table'),
+});
+
+/**
+ * Token stats workflow schema
+ */
+export const tokenStatsWorkflowSchema = z.object({
+  from: z.string().optional(),
+  to: z.string().optional(),
+  chain: z.enum(['solana', 'ethereum', 'bsc', 'base']).optional(),
+  duckdbPath: z.string().optional(),
+  limit: z.number().int().positive().optional(),
+  format: z.enum(['json', 'table', 'csv']).default('table'),
 });
 
 /**
@@ -42,7 +90,7 @@ export const SAFE_TABLES = {
     'indicator_values',
     'simulation_events',
     'simulation_aggregates',
-    'token_metadata_snapshots',
+    'token_metadata',
   ],
 };
 
@@ -135,6 +183,89 @@ export function registerStorageCommands(program: Command): void {
       }
       await execute(commandDef, options);
     });
+
+  // List tokens command
+  storageCmd
+    .command('tokens')
+    .description('List unique tokens from ClickHouse')
+    .option('--chain <chain>', 'Blockchain (solana, ethereum, bsc, base)', 'solana')
+    .option('--source <source>', 'Data source (ohlcv, metadata)', 'ohlcv')
+    .option('--limit <limit>', 'Maximum tokens to return', '1000')
+    .option('--format <format>', 'Output format', 'table')
+    .action(async (options) => {
+      const { execute } = await import('../core/execute.js');
+      const commandDef = commandRegistry.getCommand('storage', 'tokens');
+      if (!commandDef) {
+        throw new NotFoundError('Command', 'storage.tokens');
+      }
+      await execute(commandDef, {
+        ...options,
+        limit: options.limit ? parseInt(options.limit, 10) : undefined,
+      });
+    });
+
+  // Stats workflow command (comprehensive stats using workflow)
+  storageCmd
+    .command('stats-workflow')
+    .description('Get comprehensive storage statistics using workflow (ClickHouse + DuckDB)')
+    .option('--source <source>', 'Data source (clickhouse, duckdb, all)', 'all')
+    .option('--no-include-table-sizes', 'Exclude table sizes')
+    .option('--no-include-row-counts', 'Exclude row counts')
+    .option('--no-include-date-ranges', 'Exclude date ranges')
+    .option('--duckdb-path <path>', 'DuckDB file path')
+    .option('--format <format>', 'Output format', 'table')
+    .action(async (options) => {
+      const { execute } = await import('../core/execute.js');
+      const commandDef = commandRegistry.getCommand('storage', 'stats-workflow');
+      if (!commandDef) {
+        throw new NotFoundError('Command', 'storage.stats-workflow');
+      }
+      await execute(commandDef, {
+        ...options,
+        includeTableSizes: options.includeTableSizes !== false,
+        includeRowCounts: options.includeRowCounts !== false,
+        includeDateRanges: options.includeDateRanges !== false,
+      });
+    });
+
+  // OHLCV stats workflow command
+  storageCmd
+    .command('ohlcv-stats')
+    .description('Get comprehensive OHLCV statistics using workflow')
+    .option('--chain <chain>', 'Filter by chain (solana, ethereum, bsc, base)')
+    .option('--interval <interval>', 'Filter by interval (1m, 5m, 15m, 1h, 4h, 1d)')
+    .option('--mint <address>', 'Filter by token mint address')
+    .option('--format <format>', 'Output format', 'table')
+    .action(async (options) => {
+      const { execute } = await import('../core/execute.js');
+      const commandDef = commandRegistry.getCommand('storage', 'ohlcv-stats');
+      if (!commandDef) {
+        throw new NotFoundError('Command', 'storage.ohlcv-stats');
+      }
+      await execute(commandDef, options);
+    });
+
+  // Token stats workflow command
+  storageCmd
+    .command('token-stats')
+    .description('Get comprehensive token statistics combining DuckDB calls with ClickHouse OHLCV and simulations')
+    .option('--from <date>', 'Start date (ISO 8601)')
+    .option('--to <date>', 'End date (ISO 8601)')
+    .option('--chain <chain>', 'Filter by chain (solana, ethereum, bsc, base)')
+    .option('--duckdb-path <path>', 'DuckDB file path')
+    .option('--limit <limit>', 'Maximum tokens to return', parseInt)
+    .option('--format <format>', 'Output format', 'table')
+    .action(async (options) => {
+      const { execute } = await import('../core/execute.js');
+      const commandDef = commandRegistry.getCommand('storage', 'token-stats');
+      if (!commandDef) {
+        throw new NotFoundError('Command', 'storage.token-stats');
+      }
+      await execute(commandDef, {
+        ...options,
+        limit: options.limit ? parseInt(options.limit, 10) : undefined,
+      });
+    });
 }
 
 /**
@@ -169,6 +300,69 @@ const storageModule: PackageCommandModule = {
         return await statsStorageHandler(args as { format?: 'json' | 'table' | 'csv' }, typedCtx);
       },
       examples: ['quantbot storage stats'],
+    },
+    {
+      name: 'tokens',
+      description: 'List unique tokens from ClickHouse',
+      schema: listTokensSchema,
+      handler: async (args: unknown, ctx: unknown) => {
+        const typedCtx = ctx as CommandContext;
+        const typedArgs = args as z.infer<typeof listTokensSchema>;
+        return await listTokensHandler(typedArgs, typedCtx);
+      },
+      examples: [
+        'quantbot storage tokens',
+        'quantbot storage tokens --chain solana --source ohlcv --limit 100',
+        'quantbot storage tokens --chain ethereum --source metadata --format json',
+      ],
+    },
+    {
+      name: 'stats-workflow',
+      description: 'Get comprehensive storage statistics using workflow (ClickHouse + DuckDB)',
+      schema: storageStatsWorkflowSchema,
+      handler: async (args: unknown, ctx: unknown) => {
+        const typedCtx = ctx as CommandContext;
+        const typedArgs = args as z.infer<typeof storageStatsWorkflowSchema>;
+        return await storageStatsWorkflowHandler(typedArgs, typedCtx);
+      },
+      examples: [
+        'quantbot storage stats-workflow',
+        'quantbot storage stats-workflow --source clickhouse',
+        'quantbot storage stats-workflow --source all --duckdb-path data/quantbot.db',
+        'quantbot storage stats-workflow --no-include-date-ranges --format json',
+      ],
+    },
+    {
+      name: 'ohlcv-stats',
+      description: 'Get comprehensive OHLCV statistics using workflow',
+      schema: ohlcvStatsWorkflowSchema,
+      handler: async (args: unknown, ctx: unknown) => {
+        const typedCtx = ctx as CommandContext;
+        const typedArgs = args as z.infer<typeof ohlcvStatsWorkflowSchema>;
+        return await ohlcvStatsWorkflowHandler(typedArgs, typedCtx);
+      },
+      examples: [
+        'quantbot storage ohlcv-stats',
+        'quantbot storage ohlcv-stats --chain solana',
+        'quantbot storage ohlcv-stats --interval 5m --format json',
+        'quantbot storage ohlcv-stats --mint So11111111111111111111111111111111111111112',
+      ],
+    },
+    {
+      name: 'token-stats',
+      description: 'Get comprehensive token statistics combining DuckDB calls with ClickHouse OHLCV and simulations',
+      schema: tokenStatsWorkflowSchema,
+      handler: async (args: unknown, ctx: unknown) => {
+        const typedCtx = ctx as CommandContext;
+        const typedArgs = args as z.infer<typeof tokenStatsWorkflowSchema>;
+        return await tokenStatsWorkflowHandler(typedArgs, typedCtx);
+      },
+      examples: [
+        'quantbot storage token-stats',
+        'quantbot storage token-stats --from 2024-01-01 --to 2024-12-31',
+        'quantbot storage token-stats --chain solana --limit 100',
+        'quantbot storage token-stats --duckdb-path data/tele.duckdb --format json',
+      ],
     },
   ],
 };

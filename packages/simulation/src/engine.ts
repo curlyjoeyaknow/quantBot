@@ -12,15 +12,15 @@ import {
   StrategyLeg,
   LadderConfig,
   SignalGroup,
-} from './config';
-import type { IndicatorData } from './indicators';
-import { calculateIndicators } from './indicators';
-import { evaluateLadderLegs, evaluateSignalGroup } from './signals';
+} from './config.js';
+import type { IndicatorData } from './indicators.js';
+import { calculateIndicators } from './indicators.js';
+import { evaluateLadderLegs, evaluateSignalGroup } from './signals.js';
 
 export type Strategy = StrategyLeg;
 
 // Re-export config types for convenience
-export type { StopLossConfig, EntryConfig, ReEntryConfig } from './config';
+export type { StopLossConfig, EntryConfig, ReEntryConfig } from './config.js';
 
 export type SimulationEvent = {
   type:

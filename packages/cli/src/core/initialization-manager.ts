@@ -4,6 +4,7 @@
 
 import { logger } from '@quantbot/utils';
 import { initClickHouse, getClickHouseClient } from '@quantbot/storage';
+import { getProgressIndicator } from './progress-indicator.js';
 // PostgreSQL removed - getPostgresPool no longer available
 
 /**
@@ -23,16 +24,21 @@ export async function initializeStorage(): Promise<InitializationStatus> {
     initialized: false,
   };
 
+  const progress = getProgressIndicator();
+
   try {
     // Initialize ClickHouse
     try {
+      progress.start('Initializing ClickHouse...');
       await initClickHouse();
       const client = getClickHouseClient();
       if (client) {
         status.clickhouse = true;
+        progress.updateMessage('ClickHouse connected');
         logger.info('ClickHouse initialized');
       }
     } catch (error) {
+      progress.updateMessage('ClickHouse initialization failed (continuing...)');
       logger.warn('ClickHouse initialization failed', {
         error: error instanceof Error ? error.message : String(error),
       });
@@ -44,11 +50,15 @@ export async function initializeStorage(): Promise<InitializationStatus> {
     status.initialized = status.clickhouse;
 
     if (!status.initialized) {
+      progress.updateMessage('Warning: No storage backends initialized');
       logger.warn('No storage backends initialized. Some commands may not work.');
+    } else {
+      progress.succeed('Storage initialized');
     }
 
     return status;
   } catch (error) {
+    progress.fail('Storage initialization error');
     logger.error('Storage initialization error', error as Error);
     throw error;
   }

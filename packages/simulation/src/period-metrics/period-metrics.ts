@@ -6,14 +6,14 @@
  */
 
 import { DateTime } from 'luxon';
-import type { Candle } from '../types';
-import type { PeriodMetrics } from '../types/results';
-import type { PeriodMetricsConfig } from '../config';
+import type { Candle } from '../types/index.js';
+import type { PeriodMetrics } from '../types/results.js';
+import type { PeriodMetricsConfig } from '../config.js';
 import {
   calculatePeriodAthAtlFromCandles,
   type PeriodAthAtlResult,
   type ReEntryOpportunity,
-} from '../math/ath-atl';
+} from '../math/ath-atl.js';
 
 /**
  * Calculate period metrics from simulation candles and entry price

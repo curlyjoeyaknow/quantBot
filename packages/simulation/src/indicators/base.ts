@@ -4,7 +4,7 @@
  * Core interfaces for technical indicators.
  */
 
-import type { Candle, IndicatorName } from '../types';
+import type { Candle, IndicatorName } from '../types/index.js';
 
 /**
  * Indicator calculation result

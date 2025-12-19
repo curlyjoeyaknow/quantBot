@@ -16,7 +16,12 @@
 
 import { describe, it, expect } from 'vitest';
 import { readFileSync, readdirSync, statSync } from 'fs';
-import { join } from 'path';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+// Get __dirname equivalent for ESM
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const FORBIDDEN_IMPORTS = [
   '@quantbot/storage',
@@ -54,7 +59,8 @@ function getAllTsFiles(dir: string, baseDir: string = dir): string[] {
 
 describe('Architectural Enforcement - Import Rules', () => {
   it('should not import forbidden packages in simulation source', () => {
-    const simulationSrcDir = join(process.cwd(), 'packages/simulation/src');
+    // Get path relative to test file location
+    const simulationSrcDir = join(__dirname, '../../src');
     const files = getAllTsFiles(simulationSrcDir, simulationSrcDir);
 
     const violations: Array<{ file: string; import: string }> = [];
@@ -63,15 +69,25 @@ describe('Architectural Enforcement - Import Rules', () => {
       const filePath = join(simulationSrcDir, file);
       const content = readFileSync(filePath, 'utf-8');
 
-      // Check for forbidden imports
+      // Remove comments and strings to avoid false positives
+      // Simple approach: remove single-line comments and multi-line comments
+      let codeOnly = content;
+      
+      // Remove multi-line comments /* ... */
+      codeOnly = codeOnly.replace(/\/\*[\s\S]*?\*\//g, '');
+      
+      // Remove single-line comments // ...
+      codeOnly = codeOnly.replace(/\/\/.*$/gm, '');
+
+      // Check for forbidden imports in code (not in comments)
       for (const forbidden of FORBIDDEN_IMPORTS) {
-        // Match import statements
+        // Match import statements: import ... from 'package' or require('package')
         const importRegex = new RegExp(
           `(?:import|from|require)\\s+['"]${forbidden.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}['"]`,
           'g'
         );
 
-        if (importRegex.test(content)) {
+        if (importRegex.test(codeOnly)) {
           violations.push({ file, import: forbidden });
         }
       }
@@ -88,7 +104,8 @@ describe('Architectural Enforcement - Import Rules', () => {
   });
 
   it('should not have network-related imports', () => {
-    const simulationSrcDir = join(process.cwd(), 'packages/simulation/src');
+    // Get path relative to test file location
+    const simulationSrcDir = join(__dirname, '../../src');
     const files = getAllTsFiles(simulationSrcDir, simulationSrcDir);
 
     const violations: Array<{ file: string; import: string }> = [];

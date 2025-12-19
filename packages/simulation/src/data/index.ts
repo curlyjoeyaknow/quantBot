@@ -5,12 +5,12 @@
  */
 
 // Provider interfaces
-export * from './provider';
+export * from "./provider.js";
 
 // Provider implementations
 // Birdeye, ClickHouse, and Hybrid providers have been moved to @quantbot/ohlcv
 // Use @quantbot/ohlcv instead
 
 // Aggregation utilities
-export * from './aggregator';
+export * from "./aggregator.js";
 

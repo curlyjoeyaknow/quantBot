@@ -7,7 +7,7 @@
  * - Handling duplicate message IDs across files
  */
 
-import type { ParsedMessage } from './TelegramExportParser';
+import type { ParsedMessage } from './TelegramExportParser.js';
 
 export class MessageIndex {
   // Map: messageId -> Map<fileName, ParsedMessage>

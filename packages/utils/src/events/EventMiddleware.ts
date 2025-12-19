@@ -4,10 +4,10 @@
  * Middleware functions for the event bus to handle logging, metrics, and error handling.
  */
 
-import { EventMiddleware } from './EventBus';
-import type { ApplicationEvent } from './EventTypes';
-import { EventPriority, EVENT_PRIORITIES } from './EventTypes';
-import { logger, ValidationError } from '../index';
+import { EventMiddleware } from './EventBus.js';
+import type { ApplicationEvent } from './EventTypes.js';
+import { EventPriority, EVENT_PRIORITIES } from './EventTypes.js';
+import { logger, ValidationError } from '../index.js';
 
 /**
  * Logging Middleware

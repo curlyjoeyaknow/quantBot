@@ -2,8 +2,8 @@
  * Analytics Viewer Screen
  */
 
-import type { Screen } from '../types';
-import { executeCLICommand } from '../core/cli-bridge';
+import type { Screen } from '../types/index.js';
+import { executeCLICommand } from '../core/cli-bridge.js';
 
 /**
  * Analytics viewer screen implementation

@@ -15,7 +15,7 @@ import { logger } from '@quantbot/utils';
 export const StrategyStorageResultSchema = z.object({
   success: z.boolean(),
   strategy_id: z.string().optional(),
-  error: z.string().optional(),
+  error: z.string().nullable().optional(),
 });
 
 export type StrategyStorageResult = z.infer<typeof StrategyStorageResultSchema>;
@@ -27,7 +27,7 @@ export const RunStorageResultSchema = z.object({
   success: z.boolean(),
   run_id: z.string().optional(),
   strategy_config_id: z.string().optional(),
-  error: z.string().optional(),
+  error: z.string().nullable().optional(),
 });
 
 export type RunStorageResult = z.infer<typeof RunStorageResultSchema>;
@@ -39,7 +39,7 @@ export const ReportResultSchema = z.object({
   success: z.boolean(),
   report_type: z.enum(['summary', 'strategy_performance']).optional(),
   data: z.record(z.string(), z.unknown()).optional(),
-  error: z.string().optional(),
+  error: z.string().nullable().optional(),
 });
 
 export type ReportResult = z.infer<typeof ReportResultSchema>;
@@ -50,7 +50,7 @@ export type ReportResult = z.infer<typeof ReportResultSchema>;
 export const AlertsStorageResultSchema = z.object({
   success: z.boolean(),
   stored_count: z.number().optional(),
-  error: z.string().optional(),
+  error: z.string().nullable().optional(),
 });
 
 export type AlertsStorageResult = z.infer<typeof AlertsStorageResultSchema>;
@@ -68,7 +68,7 @@ export const CallsQueryResultSchema = z.object({
       })
     )
     .optional(),
-  error: z.string().optional(),
+  error: z.string().nullable().optional(),
 });
 
 export type CallsQueryResult = z.infer<typeof CallsQueryResultSchema>;
@@ -82,7 +82,7 @@ export const OhlcvMetadataResultSchema = z.object({
   time_range_start: z.string().optional(),
   time_range_end: z.string().optional(),
   candle_count: z.number().optional(),
-  error: z.string().optional(),
+  error: z.string().nullable().optional(),
 });
 
 export type OhlcvMetadataResult = z.infer<typeof OhlcvMetadataResultSchema>;
@@ -101,7 +101,7 @@ export const OhlcvExclusionResultSchema = z.object({
       })
     )
     .optional(),
-  error: z.string().optional(),
+  error: z.string().nullable().optional(),
 });
 
 export type OhlcvExclusionResult = z.infer<typeof OhlcvExclusionResultSchema>;

@@ -4,7 +4,7 @@
  * Types for simulation outputs and metrics.
  */
 
-import type { LegacySimulationEvent } from './events';
+import type { LegacySimulationEvent } from './events.js';
 
 /**
  * Entry optimization details

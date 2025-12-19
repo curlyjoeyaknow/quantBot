@@ -33,21 +33,20 @@ export async function coverageOhlcvHandler(
   const client = ctx.services.clickHouseClient();
   const CLICKHOUSE_DATABASE = process.env.CLICKHOUSE_DATABASE || 'quantbot';
 
-  // Build query based on filters
+  // Build query based on filters (using string interpolation with proper escaping)
   const conditions: string[] = [];
-  const params: Record<string, unknown> = {};
 
   if (args.mint) {
     const mintAddress = validateMintAddress(args.mint);
+    const escapedMint = mintAddress.replace(/'/g, "''");
     conditions.push(
-      `(token_address = {mint:String} OR lower(token_address) = lower({mint:String}))`
+      `(token_address = '${escapedMint}' OR lower(token_address) = lower('${escapedMint}'))`
     );
-    params.mint = mintAddress;
   }
 
   if (args.interval) {
-    conditions.push(`\`interval\` = {interval:String}`);
-    params.interval = args.interval;
+    const escapedInterval = args.interval.replace(/'/g, "''");
+    conditions.push(`\`interval\` = '${escapedInterval}'`);
   }
 
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
@@ -61,7 +60,6 @@ export async function coverageOhlcvHandler(
 
   const countResult = await client.query({
     query: countQuery,
-    query_params: params,
     format: 'JSONEachRow',
   });
   const countData = (await countResult.json()) as { count: string }[];
@@ -80,7 +78,6 @@ export async function coverageOhlcvHandler(
   if (totalCandles > 0) {
     const dateResult = await client.query({
       query: dateRangeQuery,
-      query_params: params,
       format: 'JSONEachRow',
     });
     const dateData = (await dateResult.json()) as {
@@ -103,7 +100,6 @@ export async function coverageOhlcvHandler(
   `;
   const chainsResult = await client.query({
     query: chainsQuery,
-    query_params: params,
     format: 'JSONEachRow',
   });
   const chainsData = (await chainsResult.json()) as { chain: string }[];
@@ -117,7 +113,6 @@ export async function coverageOhlcvHandler(
   `;
   const intervalsResult = await client.query({
     query: intervalsQuery,
-    query_params: params,
     format: 'JSONEachRow',
   });
   const intervalsData = (await intervalsResult.json()) as { interval: string }[];

@@ -7,8 +7,8 @@
  * Only pure sinks (console, json) remain here.
  */
 
-export * from './base';
-export * from './console-sink';
-export * from './json-sink';
+export * from './base.js';
+export * from './console-sink.js';
+export * from './json-sink.js';
 // CSV and ClickHouse sinks have been moved to @quantbot/workflows.
 // Import from @quantbot/workflows/sinks instead.

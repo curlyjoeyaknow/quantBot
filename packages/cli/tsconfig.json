@@ -25,7 +25,9 @@
       "@quantbot/workflows": ["../workflows/dist"],
       "@quantbot/workflows/*": ["../workflows/dist/*"],
       "@quantbot/jobs": ["../jobs/dist"],
-      "@quantbot/jobs/*": ["../jobs/dist/*"]
+      "@quantbot/jobs/*": ["../jobs/dist/*"],
+      "@quantbot/ingestion": ["../ingestion/dist"],
+      "@quantbot/ingestion/*": ["../ingestion/dist/*"]
     }
   },
   "include": ["src/**/*"],

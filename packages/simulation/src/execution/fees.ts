@@ -4,7 +4,7 @@
  * Calculate trading costs for simulations.
  */
 
-import type { CostConfig } from '../types';
+import type { CostConfig } from '../types/index.js';
 
 /**
  * Default cost configuration

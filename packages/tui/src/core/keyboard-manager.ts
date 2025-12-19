@@ -2,7 +2,7 @@
  * Keyboard Manager - Shortcut registration and handling
  */
 
-import type { KeyboardShortcut } from '../types';
+import type { KeyboardShortcut } from '../types/index.js';
 
 /**
  * Keyboard manager for handling shortcuts

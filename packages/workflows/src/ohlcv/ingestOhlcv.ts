@@ -25,7 +25,7 @@ import { DateTime } from 'luxon';
 import { ValidationError } from '@quantbot/utils';
 import type { WorkflowContext } from '../types.js';
 import { generateOhlcvWorklist, type OhlcvWorkItem } from '@quantbot/ingestion';
-import { storeCandles } from '@quantbot/ohlcv';
+import { storeCandles as defaultStoreCandles } from '@quantbot/ohlcv';
 import { createOhlcvIngestionContext } from '../context/createOhlcvIngestionContext.js';
 
 /**
@@ -39,7 +39,9 @@ export const IngestOhlcvSpecSchema = z.object({
   chain: z.enum(['solana', 'ethereum', 'base', 'bsc']).optional().default('solana'),
   interval: z.enum(['15s', '1m', '5m', '1H']).optional().default('1m'),
   preWindowMinutes: z.number().int().min(0).optional().default(260),
-  postWindowMinutes: z.number().int().min(0).optional().default(1440),
+  // Default post-window adjusted to ensure 5000 candles for 1m interval
+  // Will be automatically adjusted based on interval in work planning
+  postWindowMinutes: z.number().int().min(0).optional().default(4740),
   errorMode: z.enum(['collect', 'failFast']).optional().default('collect'),
   checkCoverage: z.boolean().optional().default(true),
   rateLimitMs: z.number().int().min(0).optional().default(100),
@@ -112,6 +114,22 @@ export type IngestOhlcvContext = WorkflowContext & {
       candleCount: number
     ) => Promise<{ success: boolean; error?: string }>;
   };
+  /**
+   * Store candles function (can be wrapped for event emission)
+   */
+  storeCandles?: (
+    mint: string,
+    chain: string,
+    candles: Array<{
+      timestamp: number;
+      open: number;
+      high: number;
+      low: number;
+      close: number;
+      volume: number;
+    }>,
+    interval: string
+  ) => Promise<void>;
 };
 
 /**
@@ -267,7 +285,8 @@ export async function ingestOhlcv(
 
     try {
       // Store candles in ClickHouse (ingestion)
-      await storeCandles(
+      const storeFn = ctx.storeCandles || defaultStoreCandles;
+      await storeFn(
         fetchResult.workItem.mint,
         fetchResult.workItem.chain,
         fetchResult.candles,

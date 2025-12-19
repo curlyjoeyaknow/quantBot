@@ -6,8 +6,8 @@
 
 import { promises as fs } from 'fs';
 import path from 'path';
-import type { SimulationRunContext } from '../core';
-import type { ResultSink, BaseSinkOptions } from './base';
+import type { SimulationRunContext } from '../core/index.js';
+import type { ResultSink, BaseSinkOptions } from './base.js';
 
 /**
  * JSON sink options

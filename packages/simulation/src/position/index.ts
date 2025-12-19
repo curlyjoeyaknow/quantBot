@@ -4,5 +4,5 @@
  * Exports position and portfolio management functions.
  */
 
-export * from './position';
-export * from './portfolio';
+export * from './position.js';
+export * from './portfolio.js';

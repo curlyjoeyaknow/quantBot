@@ -1,3 +1,3 @@
 import { vi } from 'vitest';
 
-export const fetchHybridCandles = vi.fn();
+export const fetchHybridCandles: ReturnType<typeof vi.fn> = vi.fn();

@@ -7,14 +7,35 @@
  */
 
 import { DateTime } from 'luxon';
-import { logger, getPythonEngine, type PythonEngine } from '@quantbot/utils';
+import { logger, getPythonEngine, type PythonEngine, ConfigurationError } from '@quantbot/utils';
 import type { Chain } from '@quantbot/core';
 import { getStorageEngine, type StorageEngine } from '@quantbot/storage';
-import {
-  getOhlcvIngestionEngine,
-  type OhlcvIngestionOptions,
-  type OhlcvIngestionEngine,
-} from '@quantbot/jobs';
+// Types imported dynamically to break circular dependency
+type OhlcvIngestionOptions = {
+  useCache?: boolean;
+  forceRefresh?: boolean;
+  [key: string]: unknown;
+};
+type FetchCandlesResult = {
+  '1m': Array<{ timestamp: number; open: number; high: number; low: number; close: number; volume: number }>;
+  '5m': Array<{ timestamp: number; open: number; high: number; low: number; close: number; volume: number }>;
+  metadata: {
+    chunksFromCache: number;
+    chunksFromAPI: number;
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+};
+type OhlcvIngestionEngine = {
+  initialize(): Promise<void>;
+  fetchCandles(
+    mint: string,
+    chain: string,
+    alertTime: DateTime,
+    options?: OhlcvIngestionOptions
+  ): Promise<FetchCandlesResult>;
+  [key: string]: unknown;
+};
 
 export interface IngestForCallsParams {
   from?: Date;
@@ -51,11 +72,33 @@ export interface IngestForCallsResult {
 }
 
 export class OhlcvIngestionService {
+  private _ingestionEngine: OhlcvIngestionEngine | null = null;
+  private ingestionEnginePromise: Promise<OhlcvIngestionEngine> | null = null;
+
   constructor(
-    private readonly ingestionEngine: OhlcvIngestionEngine = getOhlcvIngestionEngine(),
+    ingestionEngine?: OhlcvIngestionEngine,
     private readonly storageEngine: StorageEngine = getStorageEngine(),
     private readonly pythonEngine: PythonEngine = getPythonEngine()
-  ) {}
+  ) {
+    this._ingestionEngine = ingestionEngine ?? null;
+  }
+
+  private async getIngestionEngine(): Promise<OhlcvIngestionEngine> {
+    if (this._ingestionEngine) {
+      return this._ingestionEngine;
+    }
+    if (!this.ingestionEnginePromise) {
+      this.ingestionEnginePromise = (async () => {
+        // Dynamic import to break circular dependency - use string to avoid type checking
+        const jobsModule = await import('@quantbot/jobs' as string);
+        const getOhlcvIngestionEngine = (jobsModule as { getOhlcvIngestionEngine: () => OhlcvIngestionEngine }).getOhlcvIngestionEngine;
+        const engine = getOhlcvIngestionEngine();
+        this._ingestionEngine = engine;
+        return engine;
+      })();
+    }
+    return this.ingestionEnginePromise;
+  }
 
   /**
    * Ingest OHLCV candles for calls in a time window
@@ -97,12 +140,13 @@ export class OhlcvIngestionService {
     });
 
     // Ensure engine is initialized (ClickHouse)
-    await this.ingestionEngine.initialize();
+    const engine = await this.getIngestionEngine();
+    await engine.initialize();
 
     // Determine DuckDB path (from params or environment)
     const duckdbPath = params.duckdbPath || process.env.DUCKDB_PATH;
     if (!duckdbPath) {
-      throw new Error(
+      throw new ConfigurationError(
         'DuckDB path is required. Provide duckdbPath in params or set DUCKDB_PATH environment variable.'
       );
     }
@@ -296,7 +340,8 @@ export class OhlcvIngestionService {
               startOffsetMinutes: startOffsetMinutes ?? -52,
             };
 
-            const result = await this.ingestionEngine.fetchCandles(
+            const engine = await this.getIngestionEngine();
+            const result = await engine.fetchCandles(
               mint,
               (tokenChain as Chain) || chain,
               alertTime,
