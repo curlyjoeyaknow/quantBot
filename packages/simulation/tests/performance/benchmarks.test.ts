@@ -12,7 +12,7 @@ import type { SimInput } from '../../src/types/contracts';
  * Generate test candles
  */
 function generateCandles(count: number): SimInput['candles'] {
-  const candles = [];
+  const candles: SimInput['candles'] = [];
   let price = 1.0;
   for (let i = 0; i < count; i++) {
     price += (Math.random() - 0.5) * 0.1;
