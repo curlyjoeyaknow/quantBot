@@ -34,16 +34,21 @@ import {
 
 // Mock logger to suppress expected error logs
 vi.mock('@quantbot/utils', async () => {
-  const actual = await vi.importActual('@quantbot/utils');
-  return {
-    ...actual,
-    logger: {
-      debug: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
-    },
-  };
+  try {
+    const actual = await vi.importActual('@quantbot/utils');
+    return {
+      ...actual,
+      logger: {
+        debug: vi.fn(),
+        info: vi.fn(),
+        warn: vi.fn(),
+        error: vi.fn(),
+      },
+    };
+  } catch {
+    // If importActual fails, return minimal mock (already handled in setup.ts)
+    return {};
+  }
 });
 
 // Mock storage modules

@@ -33,11 +33,16 @@ vi.mock('util', () => ({
     return (...args: any[]) => {
       return new Promise((resolve, reject) => {
         // promisify always provides a callback as the last argument
+        // The callback must be called by the function for the promise to resolve
         const callback = (err: any, result: any) => {
-          if (err) reject(err);
-          else resolve(result);
+          if (err) {
+            reject(err);
+          } else {
+            resolve(result);
+          }
         };
-        // Call the original function with the callback
+        // Call the original function with the callback appended
+        // This simulates how Node.js util.promisify works
         fn(...args, callback);
       });
     };
@@ -52,16 +57,15 @@ describe('CallerDatabase', () => {
 
     // Setup default implementations for promisified calls
     // promisify always provides a callback as the last argument
+    // Callbacks must be called synchronously for promises to resolve
     mockDb.run.mockImplementation((sql: string, params: any[], callback?: any) => {
-      // Always call callback if provided (promisify always provides it)
       if (typeof callback === 'function') {
-        setImmediate(() => callback(null, { lastID: 1, changes: 1 }));
+        callback(null, { lastID: 1, changes: 1 });
       }
       return { lastID: 1, changes: 1 };
     });
 
     mockDb.all.mockImplementation((sql: string, params: any[], callback?: any) => {
-      // Always call callback if provided (promisify always provides it)
       if (typeof callback === 'function') {
         callback(null, []);
       }
@@ -70,7 +74,7 @@ describe('CallerDatabase', () => {
 
     mockDb.close.mockImplementation((callback?: any) => {
       if (typeof callback === 'function') {
-        setImmediate(() => callback(null));
+        callback(null);
       }
     });
 
@@ -292,8 +296,9 @@ describe('CallerDatabase', () => {
     it('should get all unique callers', async () => {
       const mockRows = [{ caller_name: 'caller1' }, { caller_name: 'caller2' }];
 
-      mockDb.all.mockImplementation((sql: string, params: any[], callback?: any) => {
-        if (typeof callback === 'function') {
+      // getAllCallers calls all(sql) with no params, so callback is 2nd arg
+      mockDb.all.mockImplementation((sql: string, callback?: any) => {
+        if (callback && typeof callback === 'function') {
           callback(null, mockRows);
         }
         return mockRows;
@@ -366,8 +371,9 @@ describe('CallerDatabase', () => {
         },
       ];
 
-      mockDb.all.mockImplementation((sql: string, params: any[], callback?: any) => {
-        if (typeof callback === 'function') {
+      // getAllCallerStats calls all(sql) with no params, so callback is 2nd arg
+      mockDb.all.mockImplementation((sql: string, callback?: any) => {
+        if (callback && typeof callback === 'function') {
           callback(null, mockRows);
         }
         return mockRows;
@@ -425,8 +431,9 @@ describe('CallerDatabase', () => {
         },
       ];
 
-      mockDb.all.mockImplementation((sql: string, params: any[], callback?: any) => {
-        if (typeof callback === 'function') {
+      // getDatabaseStats calls all(sql) with no params, so callback is 2nd arg
+      mockDb.all.mockImplementation((sql: string, callback?: any) => {
+        if (callback && typeof callback === 'function') {
           callback(null, mockRows);
         }
         return mockRows;

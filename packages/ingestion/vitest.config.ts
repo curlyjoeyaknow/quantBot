@@ -1,5 +1,41 @@
 import { defineConfig } from 'vitest/config';
 import path from 'path';
+import type { Plugin } from 'vite';
+
+// Plugin to force resolution to source files instead of dist
+// This prevents "No exports main defined" errors by intercepting module resolution
+const forceSourceResolution = (): Plugin => {
+  return {
+    name: 'force-source-resolution',
+    enforce: 'pre',
+    resolveId(id) {
+      // If it's a @quantbot package import, force it to use source
+      if (id.startsWith('@quantbot/')) {
+        const packageName = id.replace('@quantbot/', '').split('/')[0];
+        let subPath = id.replace(`@quantbot/${packageName}`, '') || '';
+        if (subPath.startsWith('/')) {
+          subPath = subPath.slice(1);
+        }
+        if (subPath && !subPath.endsWith('.ts') && !subPath.endsWith('.js')) {
+          subPath = `${subPath}.ts`;
+        }
+        if (!subPath) {
+          subPath = 'index.ts';
+        }
+        const sourcePath = path.resolve(__dirname, `../${packageName}/src/${subPath}`);
+        try {
+          const fs = require('fs');
+          if (fs.existsSync(sourcePath)) {
+            return sourcePath;
+          }
+        } catch {
+          // Ignore
+        }
+      }
+      return null;
+    },
+  };
+};
 
 export default defineConfig({
   test: {
@@ -48,6 +84,7 @@ export default defineConfig({
     conditions: ['import', 'module', 'browser', 'default'],
     extensions: ['.ts', '.tsx', '.js', '.jsx', '.json'],
   },
+  plugins: [forceSourceResolution()],
   esbuild: {
     target: 'node18',
   },

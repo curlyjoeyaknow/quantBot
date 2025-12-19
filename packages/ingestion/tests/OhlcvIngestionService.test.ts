@@ -3,19 +3,7 @@ import { DateTime } from 'luxon';
 import { OhlcvIngestionService } from '../src/OhlcvIngestionService';
 import type { Chain } from '@quantbot/core';
 
-// Mock logger to suppress expected error logs in tests
-vi.mock('@quantbot/utils', async () => {
-  const actual = await vi.importActual('@quantbot/utils');
-  return {
-    ...actual,
-    logger: {
-      debug: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
-    },
-  };
-});
+// Mock logger is handled in tests/setup.ts
 
 // Mock getPostgresPool for ATH/ATL calculation tests
 vi.mock('@quantbot/storage', async () => {

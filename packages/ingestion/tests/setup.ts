@@ -1,53 +1,42 @@
 import { vi } from 'vitest';
 
 // Mock @quantbot/utils logger to avoid native binding issues
-vi.mock('@quantbot/utils', async () => {
-  try {
-    const actual = await vi.importActual('@quantbot/utils');
-    return {
-      ...actual,
-      logger: {
-        info: vi.fn(),
-        error: vi.fn(),
-        warn: vi.fn(),
-        debug: vi.fn(),
-      },
-    };
-  } catch {
-    // If importActual fails, return a minimal mock with just what we need
-    return {
-      logger: {
-        info: vi.fn(),
-        error: vi.fn(),
-        warn: vi.fn(),
-        debug: vi.fn(),
-      },
-      isSolanaAddress: (s: string) => {
-        if (typeof s !== 'string') return false;
-        const t = s.trim();
-        if (t.length < 32 || t.length > 44) return false;
-        const BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
-        for (const ch of t) {
-          if (!BASE58_ALPHABET.includes(ch)) return false;
-        }
-        return true;
-      },
-      isEvmAddress: (s: string) => {
-        if (typeof s !== 'string') return false;
-        const t = s.trim();
-        return /^0x[a-fA-F0-9]{40}$/.test(t);
-      },
-      isBase58: (s: string) => {
-        if (!s) return false;
-        const BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
-        for (const ch of s) {
-          if (!BASE58_ALPHABET.includes(ch)) return false;
-        }
-        return true;
-      },
-      getPythonEngine: vi.fn(),
-    };
-  }
+// Don't use importActual to avoid module resolution errors
+vi.mock('@quantbot/utils', () => {
+  const BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+  return {
+    logger: {
+      info: vi.fn(),
+      error: vi.fn(),
+      warn: vi.fn(),
+      debug: vi.fn(),
+    },
+    isSolanaAddress: (s: string) => {
+      if (typeof s !== 'string') return false;
+      const t = s.trim();
+      if (t.length < 32 || t.length > 44) return false;
+      for (const ch of t) {
+        if (!BASE58_ALPHABET.includes(ch)) return false;
+      }
+      return true;
+    },
+    isEvmAddress: (s: string) => {
+      if (typeof s !== 'string') return false;
+      const t = s.trim();
+      return /^0x[a-fA-F0-9]{40}$/.test(t);
+    },
+    isBase58: (s: string) => {
+      if (!s) return false;
+      for (const ch of s) {
+        if (!BASE58_ALPHABET.includes(ch)) return false;
+      }
+      return true;
+    },
+    getPythonEngine: vi.fn(),
+    retryWithBackoff: async <T>(fn: () => Promise<T>): Promise<T> => {
+      return fn();
+    },
+  };
 });
 
 // Mock sqlite3 to avoid opening real databases during tests

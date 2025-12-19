@@ -17,31 +17,7 @@ vi.mock('@quantbot/api-clients', () => {
   };
 });
 
-// Mock retryWithBackoff to avoid retries in tests (just call the function directly)
-vi.mock('@quantbot/utils', async () => {
-  try {
-    const actual = await vi.importActual('@quantbot/utils');
-    return {
-      ...actual,
-      retryWithBackoff: async <T>(fn: () => Promise<T>): Promise<T> => {
-        return fn();
-      },
-    };
-  } catch {
-    // If importActual fails, return minimal mock
-    return {
-      retryWithBackoff: async <T>(fn: () => Promise<T>): Promise<T> => {
-        return fn();
-      },
-      logger: {
-        info: vi.fn(),
-        error: vi.fn(),
-        warn: vi.fn(),
-        debug: vi.fn(),
-      },
-    };
-  }
-});
+// Mock retryWithBackoff is handled in tests/setup.ts
 
 describe('MultiChainMetadataService', () => {
   beforeEach(() => {
