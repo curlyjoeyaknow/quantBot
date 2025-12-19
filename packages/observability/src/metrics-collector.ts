@@ -8,8 +8,8 @@
 
 import { logger, eventBus } from '@quantbot/utils';
 import type { ApplicationEvent } from '@quantbot/utils';
-import { getMetricsWriter } from './influxdb-metrics-writer';
-import type { LatencyMetric, MetricTimer, ThroughputMetric } from './types';
+import { getMetricsWriter } from './influxdb-metrics-writer.js';
+import type { LatencyMetric, MetricTimer, ThroughputMetric } from './types.js';
 
 /**
  * Active timer tracking

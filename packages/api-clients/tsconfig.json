@@ -8,6 +8,9 @@
     "composite": true,
     "baseUrl": ".",
     "skipLibCheck": true,
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "target": "ES2022",
     "paths": {
       "@quantbot/utils": ["../utils/src"],
       "@quantbot/utils/*": ["../utils/src/*"],

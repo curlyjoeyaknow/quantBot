@@ -1,7 +1,7 @@
 import { AxiosInstance } from 'axios';
 import { logger, ConfigurationError } from '@quantbot/utils';
 import { recordApiUsage } from '@quantbot/observability';
-import { BaseApiClient } from './base-client';
+import { BaseApiClient } from './base-client.js';
 
 const HELIUS_API_KEY = process.env.HELIUS_API_KEY || '';
 const HELIUS_REST_URL = process.env.HELIUS_REST_URL || 'https://api.helius.xyz';

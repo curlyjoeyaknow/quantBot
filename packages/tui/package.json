@@ -2,8 +2,15 @@
   "name": "@quantbot/tui",
   "version": "1.0.0",
   "description": "Interactive TUI for QuantBot CLI",
+  "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
   "bin": {
     "quantbot-tui": "./dist/bin/tui.js"
   },

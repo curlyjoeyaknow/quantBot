@@ -15,7 +15,7 @@
 import { DateTime } from 'luxon';
 import type { Candle } from '@quantbot/core';
 import { logger } from '@quantbot/utils';
-import { BirdeyeClient, getBirdeyeClient, type BirdeyeOHLCVResponse } from './birdeye-client';
+import { BirdeyeClient, getBirdeyeClient, type BirdeyeOHLCVResponse } from './birdeye-client.js';
 
 /**
  * Convert BirdeyeOHLCVResponse to Candle[] format
