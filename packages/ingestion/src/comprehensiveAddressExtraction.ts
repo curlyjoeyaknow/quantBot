@@ -330,7 +330,10 @@ export function extractAndValidateAddresses(input: string): ExtractionResult {
     const zeroWidthChars = ['\u200B', '\u200C', '\u200D', '\uFEFF'];
     return zeroWidthChars.some((char) => str.includes(char));
   };
-  const evmWithZeroWidthPattern = /0x[a-fA-F0-9]{40,}/i;
+  // Match 0x followed by hex chars OR zero-width chars (to catch addresses with invisible chars)
+  // Use a more flexible pattern that allows any characters, then check for zero-width chars
+  // eslint-disable-next-line no-misleading-character-class
+  const evmWithZeroWidthPattern = /0x[\u200B\u200C\u200D\uFEFFa-fA-F0-9]{40,}/i;
   const evmWithZeroWidth = input.match(evmWithZeroWidthPattern);
   if (evmWithZeroWidth) {
     const candidate = evmWithZeroWidth[0];

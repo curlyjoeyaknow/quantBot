@@ -83,6 +83,20 @@ export class OhlcvRepository {
     const ch = getClickHouseClient();
     const CLICKHOUSE_DATABASE = process.env.CLICKHOUSE_DATABASE || 'quantbot';
 
+    // Validate chain to prevent SQL injection (whitelist approach)
+    const validChains = ['solana', 'ethereum', 'bsc', 'base'];
+    if (!validChains.includes(chain)) {
+      throw new Error(`Invalid chain: ${chain}. Must be one of: ${validChains.join(', ')}`);
+    }
+
+    // Validate interval to prevent SQL injection (whitelist approach)
+    const validIntervals = ['1m', '5m', '15m', '1h', '4h', '1d'];
+    if (!validIntervals.includes(interval)) {
+      throw new Error(
+        `Invalid interval: ${interval}. Must be one of: ${validIntervals.join(', ')}`
+      );
+    }
+
     // Convert DateTime to Unix timestamp (seconds)
     const startUnix = range.from.toUnixInteger();
     const endUnix = range.to.toUnixInteger();

@@ -66,14 +66,14 @@ describe('OhlcvRepository Security', () => {
       // Verify the call was made with the expected structure
       expect(queryCall).toBeDefined();
       expect(queryCall).toHaveProperty('query');
-      
+
       // Repository uses string interpolation with escaping (not parameterized queries)
       // Verify that malicious input is properly escaped (single quotes doubled)
       const query = queryCall.query as string;
       expect(query).toBeDefined();
       // Malicious input should be escaped (single quotes doubled: '' becomes ''''')
       // The query should not contain unescaped malicious SQL
-      expect(query).not.toContain("DROP TABLE");
+      expect(query).not.toContain('DROP TABLE');
       // Token address should be in the query (properly escaped)
       expect(query).toContain(tokenAddress);
     });
@@ -86,21 +86,13 @@ describe('OhlcvRepository Security', () => {
         to: DateTime.now(),
       };
 
-      // TypeScript should prevent this, but test runtime behavior
-      try {
-        await repository.getCandles(tokenAddress, maliciousChain, '1m', range);
-      } catch (error) {
-        // Expected to fail validation
-      }
+      // Repository validates chain against whitelist, so malicious input should throw
+      await expect(
+        repository.getCandles(tokenAddress, maliciousChain, '1m', range)
+      ).rejects.toThrow('Invalid chain');
 
-      if (mockClickHouseClient.query.mock.calls.length > 0) {
-        const queryCall = mockClickHouseClient.query.mock.calls[0][0];
-        // Repository uses string interpolation with escaping
-        const query = queryCall.query as string;
-        expect(query).toBeDefined();
-        // Malicious SQL should not appear unescaped in query
-        expect(query).not.toContain("DROP TABLE");
-      }
+      // Query should not be called with malicious input
+      expect(mockClickHouseClient.query).not.toHaveBeenCalled();
     });
 
     it('should use parameterized queries for interval', async () => {
@@ -112,18 +104,13 @@ describe('OhlcvRepository Security', () => {
         to: DateTime.now(),
       };
 
-      await repository.getCandles(tokenAddress, chain, maliciousInterval, range);
+      // Repository validates interval against whitelist, so malicious input should throw
+      await expect(
+        repository.getCandles(tokenAddress, chain, maliciousInterval, range)
+      ).rejects.toThrow('Invalid interval');
 
-      expect(mockClickHouseClient.query).toHaveBeenCalled();
-      const queryCall = mockClickHouseClient.query.mock.calls[0][0];
-
-      // Repository uses string interpolation with escaping
-      const query = queryCall.query as string;
-      expect(query).toBeDefined();
-      // Malicious SQL should not appear unescaped in query
-      expect(query).not.toContain("DROP TABLE");
-      // Interval should be properly escaped in the query
-      expect(query).toContain('interval');
+      // Query should not be called with malicious input
+      expect(mockClickHouseClient.query).not.toHaveBeenCalled();
     });
 
     it('should use parameterized queries for timestamps', async () => {

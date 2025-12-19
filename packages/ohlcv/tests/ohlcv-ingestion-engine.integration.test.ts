@@ -38,10 +38,32 @@ vi.mock('@quantbot/storage', async () => {
     getOrCreateToken = mockGetOrCreateToken;
   }
 
+  // Create mock ohlcvCache
+  const mockOhlcvCache = {
+    get: vi.fn(),
+    set: vi.fn(),
+    clear: vi.fn(),
+    getStats: vi.fn(),
+    getCacheInfo: vi.fn(),
+    prefetchForSimulation: vi.fn(),
+  };
+
+  // Create mock influxDBClient
+  const mockInfluxDBClient = {
+    getOHLCVData: vi.fn(),
+    getLatestPrice: vi.fn(),
+    hasData: vi.fn(),
+    getAvailableTokens: vi.fn(),
+    writeOHLCVData: vi.fn(),
+    initialize: vi.fn(),
+  };
+
   return {
     getStorageEngine: vi.fn(() => mockStorageEngine),
     initClickHouse: mockInitClickHouse,
     TokensRepository: MockTokensRepository,
+    ohlcvCache: mockOhlcvCache,
+    influxDBClient: mockInfluxDBClient,
     // Mock other exports that might be imported
     StorageEngine: class {},
     OhlcvRepository: class {},
@@ -63,16 +85,19 @@ vi.mock('@quantbot/storage', async () => {
   };
 });
 
-vi.mock('@quantbot/api-clients', () => {
+vi.mock('@quantbot/api-clients', async () => {
+  const { vi } = await import('vitest');
   const mockBirdeyeClient = {
     fetchOHLCVData: vi.fn(),
     getTokenMetadata: vi.fn(),
     fetchHistoricalPriceAtUnixTime: vi.fn(),
   };
+  const mockFetchBirdeyeCandles = vi.fn();
   return {
     birdeyeClient: mockBirdeyeClient,
     getBirdeyeClient: () => mockBirdeyeClient,
     fetchMultiChainMetadata: vi.fn(),
+    fetchBirdeyeCandles: mockFetchBirdeyeCandles,
   };
 });
 

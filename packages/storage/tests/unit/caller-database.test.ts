@@ -16,7 +16,11 @@ const { mockDatabase, mockDb } = vi.hoisted(() => {
     prepare: vi.fn(),
     close: vi.fn(),
   };
-  const mockDatabase = vi.fn(() => mockDb);
+  // Create a proper constructor function
+  const mockDatabase = function (this: any) {
+    return mockDb;
+  } as any;
+  mockDatabase.prototype = {};
   return { mockDatabase, mockDb };
 });
 
@@ -45,17 +49,27 @@ describe('CallerDatabase', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    // Setup promisified mocks
-    mockRun = vi.fn((sql: string, params: any[], callback: any) => {
-      callback(null, { lastID: 1, changes: 1 });
+    // Setup default implementations for promisified calls
+    // promisify always provides a callback as the last argument
+    mockDb.run.mockImplementation((sql: string, params: any[], callback?: any) => {
+      if (typeof callback === 'function') {
+        callback(null, { lastID: 1, changes: 1 });
+      }
+      return { lastID: 1, changes: 1 };
     });
 
-    mockAll = vi.fn((sql: string, params: any[], callback: any) => {
-      callback(null, []);
+    mockDb.all.mockImplementation((sql: string, params: any[], callback?: any) => {
+      if (typeof callback === 'function') {
+        callback(null, []);
+      }
+      return [];
     });
 
-    mockDb.run = mockRun;
-    mockDb.all = mockAll;
+    mockDb.close.mockImplementation((callback?: any) => {
+      if (typeof callback === 'function') {
+        callback(null);
+      }
+    });
 
     db = new CallerDatabase(':memory:');
   });
@@ -78,10 +92,16 @@ describe('CallerDatabase', () => {
 
       expect(id).toBe(1);
       expect(mockRun).toHaveBeenCalled();
-      const callArgs = mockRun.mock.calls[0];
-      expect(callArgs[0]).toContain('INSERT OR IGNORE');
-      expect(callArgs[1]).toContain('caller1');
-      expect(callArgs[1]).toContain('So11111111111111111111111111111111111111112');
+      // Find the INSERT call (skip initDatabase calls)
+      const insertCall = mockRun.mock.calls.find((call) => call[0].includes('INSERT OR IGNORE'));
+      expect(insertCall).toBeDefined();
+      if (insertCall) {
+        expect(insertCall[0]).toContain('INSERT OR IGNORE');
+        const params = insertCall[1] || [];
+        const paramsStr = Array.isArray(params) ? params.join(' ') : String(params);
+        expect(paramsStr).toContain('caller1');
+        expect(paramsStr).toContain('So11111111111111111111111111111111111111112');
+      }
     });
 
     it('should preserve case of token address', async () => {
@@ -95,9 +115,14 @@ describe('CallerDatabase', () => {
 
       await db.addCallerAlert(alert);
 
-      const callArgs = mockRun.mock.calls[0];
-      const addressIndex = callArgs[1].indexOf('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v');
-      expect(addressIndex).toBeGreaterThan(-1);
+      // Find the INSERT call (skip initDatabase calls)
+      const insertCall = mockRun.mock.calls.find((call) => call[0].includes('INSERT OR IGNORE'));
+      expect(insertCall).toBeDefined();
+      if (insertCall) {
+        const params = insertCall[1] || [];
+        const paramsStr = Array.isArray(params) ? params.join(' ') : String(params);
+        expect(paramsStr).toContain('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v');
+      }
     });
 
     it('should handle database errors', async () => {
@@ -137,13 +162,22 @@ describe('CallerDatabase', () => {
       ];
 
       const mockStmt = {
-        run: vi.fn((params: any[], callback: any) => {
-          callback(null, { changes: 1 });
+        run: vi.fn(function (this: any, params: any[], callback?: any) {
+          // Set this.changes for sqlite3 callback behavior
+          this.changes = 1;
+          if (typeof callback === 'function') {
+            callback.call(this, null);
+          }
+          return this;
         }),
-        finalize: vi.fn(),
+        finalize: vi.fn((callback?: any) => {
+          if (typeof callback === 'function') {
+            callback(null);
+          }
+        }),
       };
 
-      mockDb.prepare = vi.fn(() => mockStmt);
+      mockDb.prepare.mockReturnValue(mockStmt);
 
       const count = await db.addCallerAlertsBatch(alerts);
 
@@ -164,14 +198,21 @@ describe('CallerDatabase', () => {
       ];
 
       const mockStmt = {
-        run: vi.fn((params: any[], callback: any) => {
+        run: vi.fn(function (this: any, params: any[], callback?: any) {
           const error = new Error('UNIQUE constraint failed');
-          callback(error);
+          if (typeof callback === 'function') {
+            callback.call(this, error);
+          }
+          return this;
         }),
-        finalize: vi.fn(),
+        finalize: vi.fn((callback?: any) => {
+          if (typeof callback === 'function') {
+            callback(null);
+          }
+        }),
       };
 
-      mockDb.prepare = vi.fn(() => mockStmt);
+      mockDb.prepare.mockReturnValue(mockStmt);
 
       const count = await db.addCallerAlertsBatch(alerts);
 
@@ -248,8 +289,11 @@ describe('CallerDatabase', () => {
     it('should get all unique callers', async () => {
       const mockRows = [{ caller_name: 'caller1' }, { caller_name: 'caller2' }];
 
-      mockAll.mockImplementation((sql: string, params: any[], callback: any) => {
-        callback(null, mockRows);
+      mockDb.all.mockImplementationOnce((sql: string, params: any[], callback?: any) => {
+        if (typeof callback === 'function') {
+          callback(null, mockRows);
+        }
+        return mockRows;
       });
 
       const result = await db.getAllCallers();
@@ -319,8 +363,11 @@ describe('CallerDatabase', () => {
         },
       ];
 
-      mockAll.mockImplementation((sql: string, params: any[], callback: any) => {
-        callback(null, mockRows);
+      mockDb.all.mockImplementationOnce((sql: string, params: any[], callback?: any) => {
+        if (typeof callback === 'function') {
+          callback(null, mockRows);
+        }
+        return mockRows;
       });
 
       const result = await db.getAllCallerStats();
@@ -375,8 +422,11 @@ describe('CallerDatabase', () => {
         },
       ];
 
-      mockAll.mockImplementation((sql: string, params: any[], callback: any) => {
-        callback(null, mockRows);
+      mockDb.all.mockImplementationOnce((sql: string, params: any[], callback?: any) => {
+        if (typeof callback === 'function') {
+          callback(null, mockRows);
+        }
+        return mockRows;
       });
 
       const result = await db.getDatabaseStats();

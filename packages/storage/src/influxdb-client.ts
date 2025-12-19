@@ -1,10 +1,10 @@
 /**
  * InfluxDB Client (Stub Implementation)
  * ======================================
- * 
+ *
  * InfluxDB is not currently in use. This file provides type definitions
  * and stub implementations for backward compatibility.
- * 
+ *
  * All methods return empty/default values.
  */
 

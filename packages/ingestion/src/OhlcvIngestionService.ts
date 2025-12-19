@@ -17,8 +17,22 @@ type OhlcvIngestionOptions = {
   [key: string]: unknown;
 };
 type FetchCandlesResult = {
-  '1m': Array<{ timestamp: number; open: number; high: number; low: number; close: number; volume: number }>;
-  '5m': Array<{ timestamp: number; open: number; high: number; low: number; close: number; volume: number }>;
+  '1m': Array<{
+    timestamp: number;
+    open: number;
+    high: number;
+    low: number;
+    close: number;
+    volume: number;
+  }>;
+  '5m': Array<{
+    timestamp: number;
+    open: number;
+    high: number;
+    low: number;
+    close: number;
+    volume: number;
+  }>;
   metadata: {
     chunksFromCache: number;
     chunksFromAPI: number;
@@ -91,7 +105,9 @@ export class OhlcvIngestionService {
       this.ingestionEnginePromise = (async () => {
         // Dynamic import to break circular dependency - use string to avoid type checking
         const jobsModule = await import('@quantbot/jobs' as string);
-        const getOhlcvIngestionEngine = (jobsModule as { getOhlcvIngestionEngine: () => OhlcvIngestionEngine }).getOhlcvIngestionEngine;
+        const getOhlcvIngestionEngine = (
+          jobsModule as { getOhlcvIngestionEngine: () => OhlcvIngestionEngine }
+        ).getOhlcvIngestionEngine;
         const engine = getOhlcvIngestionEngine();
         this._ingestionEngine = engine;
         return engine;

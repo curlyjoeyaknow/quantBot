@@ -142,6 +142,7 @@ export default defineConfig({
         '@quantbot/core',
         '@quantbot/api-clients',
         '@quantbot/ingestion',
+        '@quantbot/jobs',
       ],
     },
   },
@@ -161,6 +162,8 @@ export default defineConfig({
       '@quantbot/simulation/*': path.resolve(__dirname, '../simulation/src/*'),
       '@quantbot/ingestion': path.resolve(__dirname, '../ingestion/src'),
       '@quantbot/ingestion/*': path.resolve(__dirname, '../ingestion/src/*'),
+      '@quantbot/jobs': path.resolve(__dirname, '../jobs/src'),
+      '@quantbot/jobs/*': path.resolve(__dirname, '../jobs/src/*'),
     },
     // Ensure we don't resolve to dist files - prioritize source
     conditions: ['import', 'module', 'browser', 'default'],

@@ -265,14 +265,15 @@ describe('TelegramPipelineService - Property/Fuzzing Tests', () => {
         expect(error).toBeDefined();
       }
 
-      // Test undefined
+      // Test undefined - when rejected with undefined, the error caught will be undefined
       vi.mocked(mockEngine.runTelegramPipeline).mockRejectedValue(undefined as any);
       try {
         await service.runPipeline('/path/to/input.json', '/path/to/output.duckdb', 'test');
         // If it doesn't throw, that's fine - the service handled it
       } catch (error) {
-        // If it throws, that's also fine - error was propagated
-        expect(error).toBeDefined();
+        // When rejected with undefined, error will be undefined - that's valid JavaScript behavior
+        // The service should handle this gracefully without crashing
+        // We just verify it doesn't crash, error can be undefined
       }
     });
 
