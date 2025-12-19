@@ -69,14 +69,16 @@ export type IngestOhlcvResult = {
 export type IngestOhlcvContext = WorkflowContext & {
   jobs: {
     ohlcvFetch: {
-      fetchWorkList: (worklist: OhlcvWorkItem[]) => Promise<Array<{
-        workItem: OhlcvWorkItem;
-        success: boolean;
-        candlesFetched: number;
-        candlesStored: number;
-        error?: string;
-        durationMs: number;
-      }>>;
+      fetchWorkList: (worklist: OhlcvWorkItem[]) => Promise<
+        Array<{
+          workItem: OhlcvWorkItem;
+          success: boolean;
+          candlesFetched: number;
+          candlesStored: number;
+          error?: string;
+          durationMs: number;
+        }>
+      >;
     };
   };
 };
@@ -241,4 +243,3 @@ export async function ingestOhlcv(
     durationMs,
   };
 }
-

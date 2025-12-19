@@ -26,3 +26,10 @@ export type {
 } from './ohlcv/ingestOhlcv.js';
 export { createOhlcvIngestionContext } from './context/createOhlcvIngestionContext.js';
 export type { OhlcvIngestionContextConfig } from './context/createOhlcvIngestionContext.js';
+export { runSimulationDuckdb } from './simulation/runSimulationDuckdb.js';
+export type {
+  RunSimulationDuckdbSpec,
+  RunSimulationDuckdbResult,
+  RunSimulationDuckdbContext,
+  SkippedToken,
+} from './simulation/runSimulationDuckdb.js';

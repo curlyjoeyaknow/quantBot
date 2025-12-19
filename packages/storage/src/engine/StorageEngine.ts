@@ -340,7 +340,9 @@ export class StorageEngine {
       rawPayload?: Record<string, unknown>;
     }
   ): Promise<number> {
-    throw new Error('storeCallerAlert is not available. PostgreSQL has been removed. Use DuckDB repositories directly.');
+    throw new Error(
+      'storeCallerAlert is not available. PostgreSQL has been removed. Use DuckDB repositories directly.'
+    );
   }
 
   /**
@@ -356,7 +358,9 @@ export class StorageEngine {
       athTimestamp?: DateTime;
     }
   ): Promise<void> {
-    throw new Error('updateCallerAlertMetrics is not available. PostgreSQL has been removed. Use DuckDB repositories directly.');
+    throw new Error(
+      'updateCallerAlertMetrics is not available. PostgreSQL has been removed. Use DuckDB repositories directly.'
+    );
   }
 
   /**
@@ -378,7 +382,9 @@ export class StorageEngine {
       }
     >
   > {
-    throw new Error('getCallerAlerts is not available. PostgreSQL has been removed. Use DuckDB repositories directly.');
+    throw new Error(
+      'getCallerAlerts is not available. PostgreSQL has been removed. Use DuckDB repositories directly.'
+    );
   }
 
   // ============================================================================
@@ -390,7 +396,9 @@ export class StorageEngine {
    * @deprecated PostgreSQL removed. Use DuckDB repositories directly.
    */
   async storeCall(_call: Omit<Call, 'id' | 'createdAt'>): Promise<number> {
-    throw new Error('storeCall is not available. PostgreSQL has been removed. Use DuckDB repositories directly.');
+    throw new Error(
+      'storeCall is not available. PostgreSQL has been removed. Use DuckDB repositories directly.'
+    );
   }
 
   /**
@@ -401,7 +409,9 @@ export class StorageEngine {
     _tokenId: number,
     _options?: { from?: DateTime; to?: DateTime; limit?: number }
   ): Promise<Call[]> {
-    throw new Error('getCallsByToken is not available. PostgreSQL has been removed. Use DuckDB repositories directly.');
+    throw new Error(
+      'getCallsByToken is not available. PostgreSQL has been removed. Use DuckDB repositories directly.'
+    );
   }
 
   /**
@@ -412,7 +422,9 @@ export class StorageEngine {
     _callerId: number,
     _options?: { from?: DateTime; to?: DateTime; limit?: number }
   ): Promise<Call[]> {
-    throw new Error('getCallsByCaller is not available. PostgreSQL has been removed. Use DuckDB repositories directly.');
+    throw new Error(
+      'getCallsByCaller is not available. PostgreSQL has been removed. Use DuckDB repositories directly.'
+    );
   }
 
   // ============================================================================
@@ -424,7 +436,9 @@ export class StorageEngine {
    * @deprecated PostgreSQL removed. Use DuckDB StrategiesRepository directly.
    */
   async storeStrategy(_strategy: Omit<StrategyConfig, 'createdAt' | 'updatedAt'>): Promise<number> {
-    throw new Error('storeStrategy is not available. PostgreSQL has been removed. Use DuckDB StrategiesRepository directly.');
+    throw new Error(
+      'storeStrategy is not available. PostgreSQL has been removed. Use DuckDB StrategiesRepository directly.'
+    );
   }
 
   /**
@@ -432,7 +446,9 @@ export class StorageEngine {
    * @deprecated PostgreSQL removed. Use DuckDB StrategiesRepository directly.
    */
   async getActiveStrategies(): Promise<StrategyConfig[]> {
-    throw new Error('getActiveStrategies is not available. PostgreSQL has been removed. Use DuckDB StrategiesRepository directly.');
+    throw new Error(
+      'getActiveStrategies is not available. PostgreSQL has been removed. Use DuckDB StrategiesRepository directly.'
+    );
   }
 
   /**
@@ -440,7 +456,9 @@ export class StorageEngine {
    * @deprecated PostgreSQL removed. Use DuckDB StrategiesRepository directly.
    */
   async getStrategy(_name: string, _version?: string): Promise<StrategyConfig | null> {
-    throw new Error('getStrategy is not available. PostgreSQL has been removed. Use DuckDB StrategiesRepository directly.');
+    throw new Error(
+      'getStrategy is not available. PostgreSQL has been removed. Use DuckDB StrategiesRepository directly.'
+    );
   }
 
   // ============================================================================
@@ -649,7 +667,9 @@ export class StorageEngine {
    * @deprecated PostgreSQL removed. Use DuckDB storage service directly.
    */
   async storeSimulationRun(_metadata: SimulationRunMetadata): Promise<number> {
-    throw new Error('storeSimulationRun is not available. PostgreSQL has been removed. Use DuckDB storage service directly.');
+    throw new Error(
+      'storeSimulationRun is not available. PostgreSQL has been removed. Use DuckDB storage service directly.'
+    );
   }
 
   /**
@@ -664,7 +684,9 @@ export class StorageEngine {
         eventsCount: result.events.length,
       });
     }
-    logger.warn('storeSimulationResults: PostgreSQL removed. Only ClickHouse event storage available.');
+    logger.warn(
+      'storeSimulationResults: PostgreSQL removed. Only ClickHouse event storage available.'
+    );
   }
 
   /**

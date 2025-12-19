@@ -7,7 +7,10 @@
 import { DateTime } from 'luxon';
 import { v4 as uuidv4 } from 'uuid';
 import { logger as utilsLogger } from '@quantbot/utils';
-import { createProductionContext, type ProductionContextConfig } from './createProductionContext.js';
+import {
+  createProductionContext,
+  type ProductionContextConfig,
+} from './createProductionContext.js';
 import { OhlcvFetchJob } from '@quantbot/jobs';
 import type { IngestOhlcvContext } from '../ohlcv/ingestOhlcv.js';
 import type { WorkflowContext } from '../types.js';
@@ -40,4 +43,3 @@ export function createOhlcvIngestionContext(
     },
   };
 }
-
