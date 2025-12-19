@@ -15,6 +15,10 @@ import type { OHLCVData, TokenInfo } from '@quantbot/storage';
 // Mock dependencies - must be defined inside vi.mock factory to avoid hoisting issues
 vi.mock('@quantbot/storage', async () => {
   const { vi } = await import('vitest');
+  const mockStorageEngine = {
+    getCandles: vi.fn(),
+    storeCandles: vi.fn(),
+  };
   return {
     influxDBClient: {
       getOHLCVData: vi.fn(),
@@ -26,6 +30,7 @@ vi.mock('@quantbot/storage', async () => {
       get: vi.fn(),
       set: vi.fn(),
     },
+    getStorageEngine: vi.fn(() => mockStorageEngine),
   };
 });
 
@@ -42,6 +47,7 @@ describe('OHLCVQueryService', () => {
   let service: OHLCVQueryService;
   let mockInfluxClient: any;
   let mockCache: any;
+  let mockStorageEngine: any;
   const TEST_MINT = '7pXs123456789012345678901234567890pump';
   const startTime = new Date('2024-01-01T00:00:00Z');
   const endTime = new Date('2024-01-02T00:00:00Z');
@@ -51,12 +57,15 @@ describe('OHLCVQueryService', () => {
     const storage = await import('@quantbot/storage');
     mockInfluxClient = storage.influxDBClient;
     mockCache = storage.ohlcvCache;
+    mockStorageEngine = storage.getStorageEngine();
     service = new OHLCVQueryService();
     mockCache.get.mockReturnValue(null);
     mockInfluxClient.getOHLCVData.mockResolvedValue([]);
     mockInfluxClient.getLatestPrice.mockResolvedValue(1.0);
     mockInfluxClient.hasData.mockResolvedValue(true);
     mockInfluxClient.getAvailableTokens.mockResolvedValue([]);
+    // Default mock for StorageEngine.getCandles - return empty array
+    mockStorageEngine.getCandles.mockResolvedValue([]);
   });
 
   describe('getOHLCV', () => {
@@ -84,17 +93,44 @@ describe('OHLCVQueryService', () => {
       expect(mockInfluxClient.getOHLCVData).not.toHaveBeenCalled();
     });
 
-    it('should return empty array when cache miss (InfluxDB not in use)', async () => {
-      // Current implementation returns empty array when cache misses
-      // InfluxDB is not in use - ClickHouse queries should be used instead
+    it('should query ClickHouse when cache miss', async () => {
+      // Implementation now queries ClickHouse via StorageEngine when cache misses
+      const clickHouseCandles = [
+        {
+          timestamp: Math.floor(startTime.getTime() / 1000),
+          open: 1.0,
+          high: 1.1,
+          low: 0.9,
+          close: 1.05,
+          volume: 1000,
+        },
+      ];
+      mockStorageEngine.getCandles.mockResolvedValue(clickHouseCandles);
+
       const result = await service.getOHLCV(TEST_MINT, startTime, endTime, '1m');
 
-      // Should not call InfluxDB (it's not in use)
-      expect(mockInfluxClient.getOHLCVData).not.toHaveBeenCalled();
-      // Should not cache empty data
-      expect(mockCache.set).not.toHaveBeenCalled();
-      // Should return empty array
-      expect(result).toEqual([]);
+      // Should query ClickHouse via StorageEngine
+      expect(mockStorageEngine.getCandles).toHaveBeenCalledWith(
+        TEST_MINT,
+        'solana', // Default chain
+        expect.any(Object), // DateTime startTime
+        expect.any(Object), // DateTime endTime
+        { interval: '1m', useCache: false }
+      );
+      // Should convert and cache the data
+      expect(mockCache.set).toHaveBeenCalled();
+      // Should return converted data (timestamp in milliseconds, with dateTime)
+      expect(result).toEqual([
+        {
+          timestamp: clickHouseCandles[0].timestamp * 1000,
+          dateTime: new Date(clickHouseCandles[0].timestamp * 1000),
+          open: 1.0,
+          high: 1.1,
+          low: 0.9,
+          close: 1.05,
+          volume: 1000,
+        },
+      ]);
     });
 
     it('should skip cache when useCache is false', async () => {
@@ -199,22 +235,23 @@ describe('OHLCVQueryService', () => {
   });
 
   describe('getAggregatedOHLCV', () => {
-    it('should return empty array when no data available (InfluxDB not in use)', async () => {
-      // Current implementation returns empty array when cache misses
-      // InfluxDB is not in use - ClickHouse queries should be used instead
+    it('should return empty array when no data available from ClickHouse', async () => {
+      // Implementation queries ClickHouse via StorageEngine
+      mockStorageEngine.getCandles.mockResolvedValue([]);
+
       const result = await service.getAggregatedOHLCV(TEST_MINT, startTime, endTime, '5m');
 
-      // Should not call InfluxDB (it's not in use)
-      expect(mockInfluxClient.getOHLCVData).not.toHaveBeenCalled();
-      // Should return empty array
+      // Should query ClickHouse via StorageEngine
+      expect(mockStorageEngine.getCandles).toHaveBeenCalled();
+      // Should return empty array when no data
       expect(result).toEqual([]);
     });
 
-    it('should aggregate cached data when available', async () => {
-      const cachedData: OHLCVData[] = [
+    it('should aggregate data from ClickHouse when available', async () => {
+      // Mock ClickHouse returning candles (timestamp in seconds)
+      const clickHouseCandles = [
         {
-          timestamp: startTime.getTime(),
-          dateTime: startTime,
+          timestamp: Math.floor(startTime.getTime() / 1000),
           open: 1.0,
           high: 1.1,
           low: 0.9,
@@ -222,8 +259,7 @@ describe('OHLCVQueryService', () => {
           volume: 1000,
         },
         {
-          timestamp: startTime.getTime() + 60000,
-          dateTime: new Date(startTime.getTime() + 60000),
+          timestamp: Math.floor(startTime.getTime() / 1000) + 60,
           open: 1.05,
           high: 1.15,
           low: 1.0,
@@ -231,8 +267,7 @@ describe('OHLCVQueryService', () => {
           volume: 1200,
         },
         {
-          timestamp: startTime.getTime() + 120000,
-          dateTime: new Date(startTime.getTime() + 120000),
+          timestamp: Math.floor(startTime.getTime() / 1000) + 120,
           open: 1.1,
           high: 1.2,
           low: 1.05,
@@ -240,8 +275,7 @@ describe('OHLCVQueryService', () => {
           volume: 1300,
         },
         {
-          timestamp: startTime.getTime() + 180000,
-          dateTime: new Date(startTime.getTime() + 180000),
+          timestamp: Math.floor(startTime.getTime() / 1000) + 180,
           open: 1.15,
           high: 1.25,
           low: 1.1,
@@ -249,8 +283,7 @@ describe('OHLCVQueryService', () => {
           volume: 1400,
         },
         {
-          timestamp: startTime.getTime() + 240000,
-          dateTime: new Date(startTime.getTime() + 240000),
+          timestamp: Math.floor(startTime.getTime() / 1000) + 240,
           open: 1.2,
           high: 1.3,
           low: 1.15,
@@ -258,21 +291,19 @@ describe('OHLCVQueryService', () => {
           volume: 1500,
         },
       ];
-      mockCache.get.mockReturnValue(
-        cachedData.map((c) => ({
-          timestamp: c.timestamp,
-          dateTime: c.dateTime,
-          open: c.open,
-          high: c.high,
-          low: c.low,
-          close: c.close,
-          volume: c.volume,
-        }))
-      );
+      mockStorageEngine.getCandles.mockResolvedValue(clickHouseCandles);
 
       const result = await service.getAggregatedOHLCV(TEST_MINT, startTime, endTime, '5m');
 
-      // Should aggregate the cached data
+      // Should query ClickHouse via StorageEngine
+      expect(mockStorageEngine.getCandles).toHaveBeenCalledWith(
+        TEST_MINT,
+        'solana',
+        expect.any(Object),
+        expect.any(Object),
+        { interval: '1m', useCache: false }
+      );
+      // Should aggregate the data (5 candles at 1m intervals should aggregate to fewer 5m candles)
       expect(result.length).toBeGreaterThan(0);
       expect(result[0]).toMatchObject({
         timestamp: expect.any(Number),
