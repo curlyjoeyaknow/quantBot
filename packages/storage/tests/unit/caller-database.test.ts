@@ -32,10 +32,13 @@ vi.mock('util', () => ({
   promisify: (fn: any) => {
     return (...args: any[]) => {
       return new Promise((resolve, reject) => {
-        fn(...args, (err: any, result: any) => {
+        // promisify always provides a callback as the last argument
+        const callback = (err: any, result: any) => {
           if (err) reject(err);
           else resolve(result);
-        });
+        };
+        // Call the original function with the callback
+        fn(...args, callback);
       });
     };
   },
@@ -43,8 +46,6 @@ vi.mock('util', () => ({
 
 describe('CallerDatabase', () => {
   let db: CallerDatabase;
-  let mockRun: any;
-  let mockAll: any;
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -52,13 +53,15 @@ describe('CallerDatabase', () => {
     // Setup default implementations for promisified calls
     // promisify always provides a callback as the last argument
     mockDb.run.mockImplementation((sql: string, params: any[], callback?: any) => {
+      // Always call callback if provided (promisify always provides it)
       if (typeof callback === 'function') {
-        callback(null, { lastID: 1, changes: 1 });
+        setImmediate(() => callback(null, { lastID: 1, changes: 1 }));
       }
       return { lastID: 1, changes: 1 };
     });
 
     mockDb.all.mockImplementation((sql: string, params: any[], callback?: any) => {
+      // Always call callback if provided (promisify always provides it)
       if (typeof callback === 'function') {
         callback(null, []);
       }
@@ -67,7 +70,7 @@ describe('CallerDatabase', () => {
 
     mockDb.close.mockImplementation((callback?: any) => {
       if (typeof callback === 'function') {
-        callback(null);
+        setImmediate(() => callback(null));
       }
     });
 
@@ -91,9 +94,9 @@ describe('CallerDatabase', () => {
       const id = await db.addCallerAlert(alert);
 
       expect(id).toBe(1);
-      expect(mockRun).toHaveBeenCalled();
+      expect(mockDb.run).toHaveBeenCalled();
       // Find the INSERT call (skip initDatabase calls)
-      const insertCall = mockRun.mock.calls.find((call) => call[0].includes('INSERT OR IGNORE'));
+      const insertCall = mockDb.run.mock.calls.find((call) => call[0].includes('INSERT OR IGNORE'));
       expect(insertCall).toBeDefined();
       if (insertCall) {
         expect(insertCall[0]).toContain('INSERT OR IGNORE');
@@ -116,7 +119,7 @@ describe('CallerDatabase', () => {
       await db.addCallerAlert(alert);
 
       // Find the INSERT call (skip initDatabase calls)
-      const insertCall = mockRun.mock.calls.find((call) => call[0].includes('INSERT OR IGNORE'));
+      const insertCall = mockDb.run.mock.calls.find((call) => call[0].includes('INSERT OR IGNORE'));
       expect(insertCall).toBeDefined();
       if (insertCall) {
         const params = insertCall[1] || [];
@@ -126,7 +129,7 @@ describe('CallerDatabase', () => {
     });
 
     it('should handle database errors', async () => {
-      mockRun.mockImplementation((sql: string, params: any[], callback: any) => {
+      mockDb.run.mockImplementation((sql: string, params: any[], callback: any) => {
         callback(new Error('Database error'));
       });
 
@@ -237,7 +240,7 @@ describe('CallerDatabase', () => {
         },
       ];
 
-      mockAll.mockImplementation((sql: string, params: any[], callback: any) => {
+      mockDb.all.mockImplementation((sql: string, params: any[], callback: any) => {
         callback(null, mockRows);
       });
 
@@ -254,13 +257,13 @@ describe('CallerDatabase', () => {
     });
 
     it('should apply limit when provided', async () => {
-      mockAll.mockImplementation((sql: string, params: any[], callback: any) => {
+      mockDb.all.mockImplementation((sql: string, params: any[], callback: any) => {
         callback(null, []);
       });
 
       await db.getCallerAlerts('caller1', 10);
 
-      const callArgs = mockAll.mock.calls[0];
+      const callArgs = mockDb.all.mock.calls[0];
       expect(callArgs[0]).toContain('LIMIT');
       expect(callArgs[1]).toContain(10);
     });
@@ -271,13 +274,13 @@ describe('CallerDatabase', () => {
       const startTime = DateTime.fromISO('2024-01-01T00:00:00Z').toJSDate();
       const endTime = DateTime.fromISO('2024-01-31T00:00:00Z').toJSDate();
 
-      mockAll.mockImplementation((sql: string, params: any[], callback: any) => {
+      mockDb.all.mockImplementation((sql: string, params: any[], callback: any) => {
         callback(null, []);
       });
 
       await db.getCallerAlertsInRange('caller1', startTime, endTime);
 
-      const callArgs = mockAll.mock.calls[0];
+      const callArgs = mockDb.all.mock.calls[0];
       expect(callArgs[0]).toContain('alert_timestamp >=');
       expect(callArgs[0]).toContain('alert_timestamp <=');
       expect(callArgs[1]).toContain(startTime.toISOString());
@@ -289,7 +292,7 @@ describe('CallerDatabase', () => {
     it('should get all unique callers', async () => {
       const mockRows = [{ caller_name: 'caller1' }, { caller_name: 'caller2' }];
 
-      mockDb.all.mockImplementationOnce((sql: string, params: any[], callback?: any) => {
+      mockDb.all.mockImplementation((sql: string, params: any[], callback?: any) => {
         if (typeof callback === 'function') {
           callback(null, mockRows);
         }
@@ -315,7 +318,7 @@ describe('CallerDatabase', () => {
         },
       ];
 
-      mockAll.mockImplementation((sql: string, params: any[], callback: any) => {
+      mockDb.all.mockImplementation((sql: string, params: any[], callback: any) => {
         callback(null, mockRows);
       });
 
@@ -332,7 +335,7 @@ describe('CallerDatabase', () => {
     });
 
     it('should return null for non-existent caller', async () => {
-      mockAll.mockImplementation((sql: string, params: any[], callback: any) => {
+      mockDb.all.mockImplementation((sql: string, params: any[], callback: any) => {
         callback(null, []);
       });
 
@@ -363,7 +366,7 @@ describe('CallerDatabase', () => {
         },
       ];
 
-      mockDb.all.mockImplementationOnce((sql: string, params: any[], callback?: any) => {
+      mockDb.all.mockImplementation((sql: string, params: any[], callback?: any) => {
         if (typeof callback === 'function') {
           callback(null, mockRows);
         }
@@ -394,7 +397,7 @@ describe('CallerDatabase', () => {
         },
       ];
 
-      mockAll.mockImplementation((sql: string, params: any[], callback: any) => {
+      mockDb.all.mockImplementation((sql: string, params: any[], callback: any) => {
         callback(null, mockRows);
       });
 
@@ -422,7 +425,7 @@ describe('CallerDatabase', () => {
         },
       ];
 
-      mockDb.all.mockImplementationOnce((sql: string, params: any[], callback?: any) => {
+      mockDb.all.mockImplementation((sql: string, params: any[], callback?: any) => {
         if (typeof callback === 'function') {
           callback(null, mockRows);
         }

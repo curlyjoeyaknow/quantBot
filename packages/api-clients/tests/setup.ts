@@ -46,6 +46,15 @@ vi.mock('@quantbot/utils', () => ({
       this.name = 'TimeoutError';
     }
   },
+  ConfigurationError: class ConfigurationError extends Error {
+    constructor(
+      message: string,
+      public configKey?: string
+    ) {
+      super(message);
+      this.name = 'ConfigurationError';
+    }
+  },
   isRetryableError: vi.fn().mockReturnValue(false),
   retryWithBackoff: vi.fn().mockImplementation(async (fn: () => Promise<any>) => fn()),
 }));

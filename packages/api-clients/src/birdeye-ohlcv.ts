@@ -58,7 +58,7 @@ export async function fetchBirdeyeCandles(
   client?: BirdeyeClient
 ): Promise<Candle[]> {
   const birdeyeClient = client || getBirdeyeClient();
-  
+
   // Normalize chain to lowercase for Birdeye API compatibility
   const normalizedChain = chain.toLowerCase();
 
@@ -133,7 +133,13 @@ export async function fetchBirdeyeCandles(
   // Single request (<= 5000 candles)
   const startDate = new Date(from * 1000);
   const endDate = new Date(to * 1000);
-  const response = await birdeyeClient.fetchOHLCVData(mint, startDate, endDate, interval, normalizedChain);
+  const response = await birdeyeClient.fetchOHLCVData(
+    mint,
+    startDate,
+    endDate,
+    interval,
+    normalizedChain
+  );
   const candles = convertBirdeyeResponseToCandles(response);
 
   // Ensure chronological order for all downstream consumers

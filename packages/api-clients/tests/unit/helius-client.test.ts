@@ -48,6 +48,15 @@ vi.mock('@quantbot/utils', () => ({
       super(message);
     }
   },
+  ConfigurationError: class ConfigurationError extends Error {
+    constructor(
+      message: string,
+      public configKey?: string
+    ) {
+      super(message);
+      this.name = 'ConfigurationError';
+    }
+  },
   isRetryableError: vi.fn(() => false),
   retryWithBackoff: vi.fn(async (fn, maxRetries, initialDelay, context) => {
     // Just call the function once without actual retry logic
