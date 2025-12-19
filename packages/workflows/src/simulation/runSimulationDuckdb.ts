@@ -89,7 +89,10 @@ export type RunSimulationDuckdbContext = WorkflowContext & {
       runSimulation: (config: SimulationConfig) => Promise<SimulationOutput>;
     };
     duckdbStorage: {
-      queryCalls: (path: string, limit: number) => Promise<{
+      queryCalls: (
+        path: string,
+        limit: number
+      ) => Promise<{
         success: boolean;
         calls?: Array<{ mint: string; alert_timestamp: string }>;
         error?: string;
@@ -153,7 +156,9 @@ export type RunSimulationDuckdbContext = WorkflowContext & {
  * Create default context (for testing)
  */
 export function createDefaultRunSimulationDuckdbContext(): RunSimulationDuckdbContext {
-  throw new Error('createDefaultRunSimulationDuckdbContext must be implemented with actual services');
+  throw new Error(
+    'createDefaultRunSimulationDuckdbContext must be implemented with actual services'
+  );
 }
 
 /**
@@ -207,7 +212,7 @@ export async function runSimulationDuckdb(
 
   let callsQueried = 0;
   let callsToSimulate: Array<{ mint: string; alert_timestamp: string }> = [];
-  let initialSkippedTokens: SkippedToken[] = [];
+  const initialSkippedTokens: SkippedToken[] = [];
 
   // 3. Query DuckDB for calls (batch mode) or use single mode
   if (validated.batch) {
@@ -259,12 +264,8 @@ export async function runSimulationDuckdb(
           continue;
         }
 
-        const requiredStart = alertTime
-          .minus({ minutes: validated.lookbackMinutes ?? 0 })
-          .toISO()!;
-        const requiredEnd = alertTime
-          .plus({ minutes: validated.lookforwardMinutes ?? 0 })
-          .toISO()!;
+        const requiredStart = alertTime.minus({ minutes: validated.lookbackMinutes ?? 0 }).toISO()!;
+        const requiredEnd = alertTime.plus({ minutes: validated.lookforwardMinutes ?? 0 }).toISO()!;
 
         const available = await ctx.services.duckdbStorage.checkOhlcvAvailability(
           validated.duckdbPath,
@@ -534,4 +535,3 @@ export async function runSimulationDuckdb(
     durationMs,
   };
 }
-

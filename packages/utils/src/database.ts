@@ -1172,13 +1172,19 @@ export function getPumpfunTokenRecords(): Promise<PumpfunTokenRecord[]> {
           creator: dbRow.creator ?? undefined,
           bondingCurve: dbRow.bonding_curve ?? undefined,
           launchSignature: dbRow.launch_signature ?? undefined,
-          launchTimestamp: typeof dbRow.launch_timestamp === 'number' 
-            ? dbRow.launch_timestamp 
-            : dbRow.launch_timestamp ? Number(dbRow.launch_timestamp) : undefined,
+          launchTimestamp:
+            typeof dbRow.launch_timestamp === 'number'
+              ? dbRow.launch_timestamp
+              : dbRow.launch_timestamp
+                ? Number(dbRow.launch_timestamp)
+                : undefined,
           graduationSignature: dbRow.graduation_signature ?? undefined,
-          graduationTimestamp: typeof dbRow.graduation_timestamp === 'number'
-            ? dbRow.graduation_timestamp
-            : dbRow.graduation_timestamp ? Number(dbRow.graduation_timestamp) : undefined,
+          graduationTimestamp:
+            typeof dbRow.graduation_timestamp === 'number'
+              ? dbRow.graduation_timestamp
+              : dbRow.graduation_timestamp
+                ? Number(dbRow.graduation_timestamp)
+                : undefined,
           isGraduated: Boolean(dbRow.is_graduated),
           metadata: dbRow.metadata ? JSON.parse(dbRow.metadata) : null,
         };

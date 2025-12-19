@@ -98,14 +98,18 @@ export class CommandContext {
     return {
       ohlcvIngestion: () => {
         // AlertsRepository removed (PostgreSQL). Service may need updating.
-        throw new Error('OhlcvIngestionService requires AlertsRepository which was removed. Update service to use DuckDB.');
+        throw new Error(
+          'OhlcvIngestionService requires AlertsRepository which was removed. Update service to use DuckDB.'
+        );
       },
       ohlcvFetchJob: () => {
         return new OhlcvFetchJob();
       },
       telegramIngestion: () => {
         // PostgreSQL repositories removed. Service needs updating to use DuckDB.
-        throw new Error('TelegramAlertIngestionService requires PostgreSQL repositories which were removed. Update service to use DuckDB.');
+        throw new Error(
+          'TelegramAlertIngestionService requires PostgreSQL repositories which were removed. Update service to use DuckDB.'
+        );
       },
       ohlcvRepository: () => {
         return new OhlcvRepository();
