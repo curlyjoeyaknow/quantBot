@@ -695,10 +695,19 @@ export class PythonEngine {
 }
 
 /**
- * Get default PythonEngine instance (singleton pattern)
+ * @deprecated Use CommandContext or createProductionContext factory instead.
+ * This singleton is kept for backward compatibility but should not be used in new code.
+ * 
+ * Use:
+ * - CommandContext.services.pythonEngine() for CLI commands
+ * - Pass PythonEngine to createProductionContext config for workflows
  */
 let defaultEngine: PythonEngine | null = null;
 
+/**
+ * @deprecated Use CommandContext or createProductionContext factory instead.
+ * Get default PythonEngine instance (singleton pattern - deprecated)
+ */
 export function getPythonEngine(): PythonEngine {
   if (!defaultEngine) {
     defaultEngine = new PythonEngine();

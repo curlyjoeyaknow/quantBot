@@ -9,7 +9,6 @@ import type { CommandContext } from '../../core/command-context.js';
 import { coverageSchema } from '../../commands/ohlcv.js';
 import type { z } from 'zod';
 import { validateMintAddress } from '../../core/argument-parser.js';
-import { getClickHouseClient } from '@quantbot/storage';
 
 export type CoverageOhlcvArgs = z.infer<typeof coverageSchema>;
 
@@ -18,7 +17,7 @@ export type CoverageOhlcvArgs = z.infer<typeof coverageSchema>;
  */
 export async function coverageOhlcvHandler(
   args: CoverageOhlcvArgs,
-  _ctx: CommandContext
+  ctx: CommandContext
 ): Promise<{
   mint?: string;
   interval?: string;
@@ -30,7 +29,8 @@ export async function coverageOhlcvHandler(
   chains: string[];
   intervals: string[];
 }> {
-  const client = getClickHouseClient();
+  // Use factory to get client (no direct singleton access)
+  const client = ctx.services.clickHouseClient();
   const CLICKHOUSE_DATABASE = process.env.CLICKHOUSE_DATABASE || 'quantbot';
 
   // Build query based on filters

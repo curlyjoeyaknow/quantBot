@@ -4,7 +4,8 @@
 
 import type { Command } from 'commander';
 import { z } from 'zod';
-import { getPostgresPool, getClickHouseClient } from '@quantbot/storage';
+// PostgreSQL removed - getPostgresPool no longer available
+// getClickHouseClient should be accessed through CommandContext factory
 import type { PackageCommandModule } from '../types/index.js';
 import { commandRegistry } from '../core/command-registry.js';
 import type { CommandContext } from '../core/command-context.js';
@@ -55,24 +56,19 @@ function validateTableName(table: string, database: 'postgres' | 'clickhouse'): 
 
 /**
  * Query Postgres table safely
+ * @deprecated PostgreSQL removed - this function no longer works
  */
-export async function queryPostgresTable(table: string, limit: number): Promise<unknown[]> {
-  if (!validateTableName(table, 'postgres')) {
-    throw new ValidationError(
-      `Invalid table name: ${table}. Allowed tables: ${SAFE_TABLES.postgres.join(', ')}`,
-      { table, database: 'postgres', allowedTables: SAFE_TABLES.postgres }
-    );
-  }
-
-  const pool = getPostgresPool();
-  // Use parameterized query to prevent SQL injection
-  const result = await pool.query(`SELECT * FROM ${table} LIMIT $1`, [limit]);
-
-  return result.rows;
+export async function queryPostgresTable(_table: string, _limit: number): Promise<unknown[]> {
+  throw new ValidationError('PostgreSQL removed - use DuckDB instead', {
+    table: _table,
+    limit: _limit,
+  });
 }
 
 /**
  * Query ClickHouse table safely
+ * @deprecated Use CommandContext.services.clickHouseClient() instead
+ * This function is kept for backward compatibility but should not be used in new code
  */
 export async function queryClickHouseTable(table: string, limit: number): Promise<unknown[]> {
   if (!validateTableName(table, 'clickhouse')) {
@@ -82,6 +78,9 @@ export async function queryClickHouseTable(table: string, limit: number): Promis
     );
   }
 
+  // This function should not be used - handlers should use CommandContext factory
+  // Keeping for backward compatibility only
+  const { getClickHouseClient } = await import('@quantbot/storage');
   const client = getClickHouseClient();
   const database = process.env.CLICKHOUSE_DATABASE || 'quantbot';
 

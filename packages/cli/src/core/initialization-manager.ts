@@ -4,14 +4,13 @@
 
 import { logger } from '@quantbot/utils';
 import { initClickHouse, getClickHouseClient } from '@quantbot/storage';
-import { getPostgresPool } from '@quantbot/storage';
+// PostgreSQL removed - getPostgresPool no longer available
 
 /**
  * Initialization status
  */
 export interface InitializationStatus {
   clickhouse: boolean;
-  postgres: boolean;
   initialized: boolean;
 }
 
@@ -21,7 +20,6 @@ export interface InitializationStatus {
 export async function initializeStorage(): Promise<InitializationStatus> {
   const status: InitializationStatus = {
     clickhouse: false,
-    postgres: false,
     initialized: false,
   };
 
@@ -41,23 +39,9 @@ export async function initializeStorage(): Promise<InitializationStatus> {
       // Continue - ClickHouse is optional
     }
 
-    // Initialize Postgres
-    try {
-      const pool = getPostgresPool();
-      if (pool) {
-        // Test connection
-        await pool.query('SELECT 1');
-        status.postgres = true;
-        logger.info('PostgreSQL initialized');
-      }
-    } catch (error) {
-      logger.warn('PostgreSQL initialization failed', {
-        error: error instanceof Error ? error.message : String(error),
-      });
-      // Continue - may be optional for some commands
-    }
+    // PostgreSQL removed - no longer initialized
 
-    status.initialized = status.clickhouse || status.postgres;
+    status.initialized = status.clickhouse;
 
     if (!status.initialized) {
       logger.warn('No storage backends initialized. Some commands may not work.');
@@ -77,12 +61,10 @@ export async function checkStorageHealth(): Promise<{
   healthy: boolean;
   details: {
     clickhouse?: { healthy: boolean; error?: string };
-    postgres?: { healthy: boolean; error?: string };
   };
 }> {
   const details: {
     clickhouse?: { healthy: boolean; error?: string };
-    postgres?: { healthy: boolean; error?: string };
   } = {};
 
   // Check ClickHouse
@@ -101,23 +83,9 @@ export async function checkStorageHealth(): Promise<{
     };
   }
 
-  // Check Postgres
-  try {
-    const pool = getPostgresPool();
-    if (pool) {
-      await pool.query('SELECT 1');
-      details.postgres = { healthy: true };
-    } else {
-      details.postgres = { healthy: false, error: 'Not initialized' };
-    }
-  } catch (error) {
-    details.postgres = {
-      healthy: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
-    };
-  }
+  // PostgreSQL removed - no longer checked
 
-  const healthy = (details.clickhouse?.healthy ?? false) || (details.postgres?.healthy ?? false);
+  const healthy = details.clickhouse?.healthy ?? false;
 
   return { healthy, details };
 }
