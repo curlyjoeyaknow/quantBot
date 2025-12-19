@@ -12,8 +12,8 @@
     "moduleResolution": "NodeNext",
     "target": "ES2022",
     "paths": {
-      "@quantbot/core": ["../core/src"],
-      "@quantbot/core/*": ["../core/src/*"]
+      "@quantbot/core": ["../core/dist"],
+      "@quantbot/core/*": ["../core/dist/*"]
     }
   },
   "include": ["src/**/*"],
