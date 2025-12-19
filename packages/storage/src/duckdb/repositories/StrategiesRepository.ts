@@ -60,7 +60,7 @@ export class StrategiesRepository {
           version: z.string(),
           category: z.string().nullable(),
           description: z.string().nullable(),
-          config_json: z.record(z.unknown()),
+          config_json: z.record(z.string(), z.unknown()),
           is_active: z.boolean(),
           created_at: z.string(),
           updated_at: z.string(),
@@ -103,7 +103,7 @@ export class StrategiesRepository {
           version: z.string(),
           category: z.string().nullable(),
           description: z.string().nullable(),
-          config_json: z.record(z.unknown()),
+          config_json: z.record(z.string(), z.unknown()),
           is_active: z.boolean(),
           created_at: z.string(),
           updated_at: z.string(),
@@ -124,7 +124,6 @@ export class StrategiesRepository {
       }
 
       return {
-        id: result.id,
         name: result.name,
         version: result.version,
         category: result.category || undefined,
@@ -191,7 +190,7 @@ export class StrategiesRepository {
           version: z.string(),
           category: z.string().nullable(),
           description: z.string().nullable(),
-          config_json: z.record(z.unknown()),
+          config_json: z.record(z.string(), z.unknown()),
           is_active: z.boolean(),
           created_at: z.string(),
           updated_at: z.string(),

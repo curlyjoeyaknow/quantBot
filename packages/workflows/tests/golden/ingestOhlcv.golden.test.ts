@@ -40,6 +40,12 @@ vi.mock('@quantbot/utils', () => ({
     warn: vi.fn(),
     error: vi.fn(),
   },
+  ValidationError: class extends Error {
+    constructor(message: string) {
+      super(message);
+      this.name = 'ValidationError';
+    }
+  },
 }));
 
 describe('ingestOhlcv Workflow - Golden Path', () => {

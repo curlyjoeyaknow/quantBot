@@ -116,7 +116,7 @@ describe('OHLCV Work Planning - Golden Path', () => {
       expect(workItems[2].priority).toBe(1);
 
       // Assert: Mint addresses preserved exactly
-      expect(workItems[0].mint.length).toBe(44); // Full address
+      expect(workItems[0].mint.length).toBeGreaterThanOrEqual(32); // Valid address length (32-44 chars)
       expect(workItems[0].mint).toBe('7pXs123456789012345678901234567890pump');
     });
 

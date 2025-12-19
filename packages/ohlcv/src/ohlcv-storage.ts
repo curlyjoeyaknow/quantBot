@@ -9,6 +9,7 @@
  * @quantbot/api-clients, then candles should be stored via this service.
  */
 
+import { DateTime } from 'luxon';
 import type { Candle, Chain } from '@quantbot/core';
 import { logger } from '@quantbot/utils';
 import { getStorageEngine } from '@quantbot/storage';
@@ -153,7 +154,9 @@ export async function getCoverage(
   const storageEngine = getStorageEngine();
 
   try {
-    const candles = await storageEngine.getCandles(mint, chain, startTime, endTime, { interval });
+    const startDateTime = DateTime.fromJSDate(startTime);
+    const endDateTime = DateTime.fromJSDate(endTime);
+    const candles = await storageEngine.getCandles(mint, chain, startDateTime, endDateTime, { interval });
 
     if (candles.length === 0) {
       return {
