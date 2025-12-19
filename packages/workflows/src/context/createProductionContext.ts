@@ -3,7 +3,14 @@ import { v4 as uuidv4 } from 'uuid';
 import { logger as utilsLogger, ValidationError } from '@quantbot/utils';
 import { StrategiesRepository, StorageEngine } from '@quantbot/storage';
 // PostgreSQL repositories removed - use DuckDB services/workflows instead
-import { simulateStrategy, type StopLossConfig, type EntryConfig, type ReEntryConfig, type CostConfig, type SignalGroup } from '@quantbot/simulation';
+import {
+  simulateStrategy,
+  type StopLossConfig,
+  type EntryConfig,
+  type ReEntryConfig,
+  type CostConfig,
+  type SignalGroup,
+} from '@quantbot/simulation';
 import { DuckDBStorageService, ClickHouseService } from '@quantbot/simulation';
 import { PythonEngine } from '@quantbot/utils';
 import type {
@@ -74,10 +81,14 @@ export function createProductionContext(config?: ProductionContextConfig): Workf
   const clickHouse = new ClickHouseService(pythonEngine);
 
   const logger = config?.logger ?? {
-    info: (...args: unknown[]) => utilsLogger.info(String(args[0] || ''), (args[1] as Record<string, unknown> | undefined)),
-    warn: (...args: unknown[]) => utilsLogger.warn(String(args[0] || ''), (args[1] as Record<string, unknown> | undefined)),
-    error: (...args: unknown[]) => utilsLogger.error(String(args[0] || ''), (args[1] as Record<string, unknown> | undefined)),
-    debug: (...args: unknown[]) => utilsLogger.debug(String(args[0] || ''), (args[1] as Record<string, unknown> | undefined)),
+    info: (...args: unknown[]) =>
+      utilsLogger.info(String(args[0] || ''), args[1] as Record<string, unknown> | undefined),
+    warn: (...args: unknown[]) =>
+      utilsLogger.warn(String(args[0] || ''), args[1] as Record<string, unknown> | undefined),
+    error: (...args: unknown[]) =>
+      utilsLogger.error(String(args[0] || ''), args[1] as Record<string, unknown> | undefined),
+    debug: (...args: unknown[]) =>
+      utilsLogger.debug(String(args[0] || ''), args[1] as Record<string, unknown> | undefined),
   };
   const clock = config?.clock ?? { nowISO: () => DateTime.utc().toISO()! };
   const ids = config?.ids ?? { newRunId: () => `run_${uuidv4()}` };

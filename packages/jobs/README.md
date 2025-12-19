@@ -19,6 +19,7 @@ This package is the **only** place allowed to make network calls for OHLCV data.
 ## Services
 
 ### OhlcvBirdeyeFetch (Recommended)
+
 Fetches OHLCV candles from Birdeye API only. Does NOT store candles.
 
 **Terminology**: "Fetch" = API call to Birdeye (this service)
@@ -38,6 +39,7 @@ const result = await fetchService.fetchWorkItem(workItem);
 ```
 
 ### OhlcvFetchJob (Deprecated)
+
 **Status**: Deprecated, kept for backward compatibility.
 
 **Old behavior**: Did both fetch AND store.
@@ -68,6 +70,7 @@ const fetchResults = await fetchService.fetchWorkList(worklist);
 ```
 
 ### OhlcvIngestionEngine
+
 Low-level engine for fetching and storing candles with intelligent chunking and caching.
 
 ```typescript

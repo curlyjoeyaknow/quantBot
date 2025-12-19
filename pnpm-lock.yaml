@@ -328,9 +328,6 @@ importers:
       '@quantbot/analytics':
         specifier: workspace:*
         version: link:../analytics
-      '@quantbot/api-clients':
-        specifier: workspace:*
-        version: link:../api-clients
       '@quantbot/core':
         specifier: workspace:*
         version: link:../core
@@ -522,9 +519,6 @@ importers:
       luxon:
         specifier: ^3.4.4
         version: 3.7.2
-      pg:
-        specifier: ^8.13.0
-        version: 8.16.3
       sqlite3:
         specifier: ^5.1.7
         version: 5.1.7
@@ -532,9 +526,6 @@ importers:
       '@types/node':
         specifier: ^24.10.1
         version: 24.10.1
-      '@types/pg':
-        specifier: ^8.10.0
-        version: 8.15.6
       '@types/sqlite3':
         specifier: ^3.1.11
         version: 3.1.11
