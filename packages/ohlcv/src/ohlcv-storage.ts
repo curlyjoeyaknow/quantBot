@@ -174,18 +174,18 @@ export async function getCoverage(
     const intervalSeconds =
       interval === '1m' ? 60 : interval === '5m' ? 300 : interval === '15s' ? 15 : 3600;
     const expectedCandles = Math.floor(totalSeconds / intervalSeconds);
-    
+
     // Minimum required candles: 5000 for each interval
     // This ensures we have enough data for simulation
     const MIN_REQUIRED_CANDLES = 5000;
     const hasMinimumCandles = candles.length >= MIN_REQUIRED_CANDLES;
-    
+
     // Check if candles actually cover the time range (not just count)
     // Sort candles by timestamp to check for gaps
     const sortedCandles = [...candles].sort((a, b) => a.timestamp - b.timestamp);
     const startTimestamp = Math.floor(startTime.getTime() / 1000);
     const endTimestamp = Math.floor(endTime.getTime() / 1000);
-    
+
     // Check if first candle is at or near start time (within 1 interval)
     // Allow some tolerance for rounding/alignment issues, but be strict
     const firstCandleTime = sortedCandles[0]?.timestamp ?? 0;
@@ -194,14 +194,14 @@ export async function getCoverage(
     const startsAtBeginning = firstCandleTime <= startTimestamp + intervalSeconds;
     // End: last candle should be at or after end (allow up to 1 interval before for alignment)
     const endsAtEnd = lastCandleTime >= endTimestamp - intervalSeconds;
-    
+
     // Additional check: verify we have candles covering the full range
     // Count how many expected timestamps are actually present
     const expectedTimestamps = new Set<number>();
     for (let ts = startTimestamp; ts <= endTimestamp; ts += intervalSeconds) {
       expectedTimestamps.add(ts);
     }
-    
+
     // Count how many of these expected timestamps we actually have
     const actualTimestamps = new Set<number>();
     for (const candle of sortedCandles) {
@@ -209,12 +209,11 @@ export async function getCoverage(
         actualTimestamps.add(candle.timestamp);
       }
     }
-    
+
     // Calculate coverage based on actual timestamp coverage
-    const timestampCoverageRatio = expectedTimestamps.size > 0 
-      ? actualTimestamps.size / expectedTimestamps.size 
-      : 0;
-    
+    const timestampCoverageRatio =
+      expectedTimestamps.size > 0 ? actualTimestamps.size / expectedTimestamps.size : 0;
+
     // Calculate actual coverage: count unique timestamps that fall within the range
     const timestampsInRange = new Set<number>();
     for (const candle of sortedCandles) {
@@ -222,14 +221,15 @@ export async function getCoverage(
         timestampsInRange.add(candle.timestamp);
       }
     }
-    
+
     // Coverage ratio based on actual timestamps in range
     // Use the more accurate timestamp-based coverage ratio
     const actualCandlesInRange = timestampsInRange.size;
-    let coverageRatio = expectedCandles > 0 
-      ? Math.min(timestampCoverageRatio, actualCandlesInRange / expectedCandles, 1.0) 
-      : 0;
-    
+    let coverageRatio =
+      expectedCandles > 0
+        ? Math.min(timestampCoverageRatio, actualCandlesInRange / expectedCandles, 1.0)
+        : 0;
+
     // CRITICAL: If we don't have the minimum required 5000 candles, coverage is insufficient
     // Even if the time range is covered, we need 5000 candles minimum
     // ALWAYS enforce minimum requirement - override coverage ratio if below minimum
@@ -257,14 +257,17 @@ export async function getCoverage(
         });
       }
     }
-    
+
     // If we have the expected count but candles don't cover the range, reduce coverage ratio
     // This handles cases where candles are in the wrong time range
     // Also check timestamp coverage ratio - if it's less than 0.95, we don't have full coverage
-    if (candles.length >= expectedCandles && (!startsAtBeginning || !endsAtEnd || timestampCoverageRatio < 0.95)) {
+    if (
+      candles.length >= expectedCandles &&
+      (!startsAtBeginning || !endsAtEnd || timestampCoverageRatio < 0.95)
+    ) {
       // Candles exist but don't cover the full range - reduce coverage ratio
       const adjustedRatio = Math.min(actualCandlesInRange / expectedCandles, 0.95); // Cap at 95% if range not covered
-      logger.debug('Candles exist but don\'t cover full time range', {
+      logger.debug("Candles exist but don't cover full time range", {
         mint: mint.substring(0, 20),
         expectedCandles,
         actualCandles: candles.length,
@@ -285,7 +288,7 @@ export async function getCoverage(
       });
       // Use adjusted ratio if it's lower
       const finalCoverageRatio = Math.min(coverageRatio, adjustedRatio);
-      
+
       return {
         hasData: true,
         candleCount: candles.length,
@@ -313,8 +316,12 @@ export async function getCoverage(
       timeRangeHours: (totalSeconds / 3600).toFixed(2),
       startsAtBeginning,
       endsAtEnd,
-      firstCandleTime: sortedCandles[0] ? new Date(sortedCandles[0].timestamp * 1000).toISOString() : 'none',
-      lastCandleTime: sortedCandles[sortedCandles.length - 1] ? new Date(sortedCandles[sortedCandles.length - 1].timestamp * 1000).toISOString() : 'none',
+      firstCandleTime: sortedCandles[0]
+        ? new Date(sortedCandles[0].timestamp * 1000).toISOString()
+        : 'none',
+      lastCandleTime: sortedCandles[sortedCandles.length - 1]
+        ? new Date(sortedCandles[sortedCandles.length - 1].timestamp * 1000).toISOString()
+        : 'none',
     });
 
     // Detect gaps (simplified - just check if we have significantly fewer candles than expected)

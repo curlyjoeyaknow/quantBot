@@ -110,7 +110,9 @@ describe('OHLCV Work Planning - Golden Path', () => {
       const alertTime1 = DateTime.fromISO('2024-01-01T12:00:00Z');
       expect(workItems[0].startTime.toISO()).toBe(alertTime1.minus({ minutes: 260 }).toISO());
       const expectedPostWindow = 5000 - 260; // Auto-adjusted for 1m interval
-      expect(workItems[0].endTime.toISO()).toBe(alertTime1.plus({ minutes: expectedPostWindow }).toISO());
+      expect(workItems[0].endTime.toISO()).toBe(
+        alertTime1.plus({ minutes: expectedPostWindow }).toISO()
+      );
 
       // Assert: Sorted by priority (descending)
       expect(workItems[0].priority).toBe(10);
@@ -373,7 +375,9 @@ describe('OHLCV Work Planning - Golden Path', () => {
       expect(workItems[0].startTime.toISO()).toBe(alertTime.minus({ minutes: 260 }).toISO());
       // Note: For '1m' interval, postWindow is automatically adjusted to 5000 - preWindow = 4740
       const expectedPostWindow = 5000 - 260; // Auto-adjusted for 1m interval
-      expect(workItems[0].endTime.toISO()).toBe(alertTime.plus({ minutes: expectedPostWindow }).toISO());
+      expect(workItems[0].endTime.toISO()).toBe(
+        alertTime.plus({ minutes: expectedPostWindow }).toISO()
+      );
     });
   });
 });

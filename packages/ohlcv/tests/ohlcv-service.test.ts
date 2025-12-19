@@ -202,7 +202,9 @@ describe('OHLCVService', () => {
     it('should bypass cache when forceRefresh is true', async () => {
       // With forceRefresh: true, both in-memory and ClickHouse cache are bypassed
       // The service returns empty array (offline-only mode)
-      const result = await service.getCandles(FULL_MINT, 'solana', startTime, endTime, { forceRefresh: true });
+      const result = await service.getCandles(FULL_MINT, 'solana', startTime, endTime, {
+        forceRefresh: true,
+      });
 
       // Should return empty (offline-only mode, no API calls)
       expect(result).toEqual([]);

@@ -18,7 +18,6 @@
 import { DateTime } from 'luxon';
 import { logger, ValidationError } from '@quantbot/utils';
 import type {
-  Chain,
   Candle,
   Call,
   StrategyConfig,
@@ -27,7 +26,6 @@ import type {
   Alert,
   TokenMetadata,
 } from '@quantbot/core';
-import type { TokenMetadataSnapshot } from '../clickhouse/repositories/TokenMetadataRepository.js';
 
 // Import repositories
 import { OhlcvRepository } from '../clickhouse/repositories/OhlcvRepository.js';

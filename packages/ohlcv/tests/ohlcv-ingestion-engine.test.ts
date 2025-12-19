@@ -11,31 +11,53 @@
  */
 
 // IMPORTANT: Mocks must be defined BEFORE imports to prevent module resolution issues
-// Mock dependencies
-const mockStorageEngine = {
-  storeCandles: vi.fn(),
-  getCandles: vi.fn(),
-};
-
-// Create mock birdeyeClient using factory function to avoid hoisting issues
-vi.mock('@quantbot/api-clients', () => {
+// Mock dependencies - use factory functions to avoid hoisting issues
+vi.mock('@quantbot/api-clients', async () => {
+  const { vi } = await import('vitest');
   const mockBirdeyeClient = {
     fetchOHLCVData: vi.fn(),
     getTokenMetadata: vi.fn(),
     fetchHistoricalPriceAtUnixTime: vi.fn(),
   };
+  const mockFetchBirdeyeCandles = vi.fn();
   return {
     birdeyeClient: mockBirdeyeClient,
     getBirdeyeClient: () => mockBirdeyeClient,
     fetchMultiChainMetadata: vi.fn(),
+    fetchBirdeyeCandles: mockFetchBirdeyeCandles,
   };
 });
 
-vi.mock('@quantbot/storage', () => ({
-  getStorageEngine: vi.fn(() => mockStorageEngine),
-  initClickHouse: vi.fn(),
-  TokensRepository: vi.fn(),
-}));
+vi.mock('@quantbot/storage', async () => {
+  const { vi } = await import('vitest');
+  const mockStorageEngine = {
+    storeCandles: vi.fn(),
+    getCandles: vi.fn(),
+  };
+  // Store in global for test access
+  (globalThis as any).__mockStorageEngine__ = mockStorageEngine;
+  return {
+    getStorageEngine: vi.fn(() => mockStorageEngine),
+    initClickHouse: vi.fn(),
+    TokensRepository: vi.fn(),
+    ohlcvCache: {
+      get: vi.fn(),
+      set: vi.fn(),
+      clear: vi.fn(),
+      getStats: vi.fn(),
+      getCacheInfo: vi.fn(),
+      prefetchForSimulation: vi.fn(),
+    },
+    influxDBClient: {
+      getOHLCVData: vi.fn(),
+      getLatestPrice: vi.fn(),
+      hasData: vi.fn(),
+      getAvailableTokens: vi.fn(),
+      writeOHLCVData: vi.fn(),
+      initialize: vi.fn(),
+    },
+  };
+});
 
 vi.mock('@quantbot/observability', () => ({
   recordApiUsage: vi.fn().mockResolvedValue(undefined),
@@ -54,7 +76,7 @@ vi.mock('@quantbot/utils', () => ({
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { DateTime } from 'luxon';
 import { OhlcvIngestionEngine } from '@quantbot/jobs';
-import { getBirdeyeClient } from '@quantbot/api-clients';
+import { getBirdeyeClient, fetchBirdeyeCandles } from '@quantbot/api-clients';
 import { getStorageEngine, initClickHouse, TokensRepository } from '@quantbot/storage';
 import { fetchMultiChainMetadata } from '@quantbot/api-clients';
 import { isEvmAddress } from '@quantbot/utils';
@@ -66,15 +88,25 @@ const birdeyeClient = getBirdeyeClient();
 describe('OhlcvIngestionEngine', () => {
   let engine: OhlcvIngestionEngine;
   let mockGetOrCreateToken: ReturnType<typeof vi.fn>;
+  let mockStorageEngine: any;
   const TEST_MINT = '7pXs123456789012345678901234567890pump'; // Full address, case-preserved
   const TEST_CHAIN = 'solana' as const;
   // Use a recent date (< 90 days old) to trigger optimized strategy
   const TEST_ALERT_TIME = DateTime.utc().minus({ days: 30 });
 
   beforeEach(() => {
+    // Get mockStorageEngine from global (set by vi.mock factory)
+    mockStorageEngine = (globalThis as any).__mockStorageEngine__;
+    if (!mockStorageEngine) {
+      // Fallback: get from mocked getStorageEngine
+      const getStorageEngineMock = vi.mocked(getStorageEngine);
+      mockStorageEngine = getStorageEngineMock();
+    }
     engine = new OhlcvIngestionEngine();
     vi.clearAllMocks();
     vi.mocked(initClickHouse).mockResolvedValue(undefined);
+    // Default mock for fetchBirdeyeCandles - return empty array
+    vi.mocked(fetchBirdeyeCandles).mockResolvedValue([]);
 
     // Mock TokensRepository - create spy that can be accessed
     mockGetOrCreateToken = vi.fn().mockResolvedValue({

@@ -143,7 +143,7 @@ export async function generateOhlcvWorklist(
     } else if (interval === '1H') {
       adjustedPostWindow = 5000 * 60 - preWindowMinutes; // 5000 candles for 1H (5000 hours = 300000 minutes)
     }
-    
+
     const startTime = alertTime.minus({ minutes: preWindowMinutes });
     const endTime = alertTime.plus({ minutes: adjustedPostWindow });
 

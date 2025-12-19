@@ -53,7 +53,10 @@ export class OHLCVQueryService {
 
       // InfluxDB is not in use - return empty array
       // TODO: Replace with ClickHouse query when needed
-      logger.warn('InfluxDB is not in use - returning empty data. Use ClickHouse queries instead.', { tokenAddress });
+      logger.warn(
+        'InfluxDB is not in use - returning empty data. Use ClickHouse queries instead.',
+        { tokenAddress }
+      );
       const data: OHLCVData[] = [];
 
       // Cache the data if enabled
