@@ -27,7 +27,21 @@ import { z } from 'zod';
 import { DateTime } from 'luxon';
 import { ValidationError } from '@quantbot/utils';
 import type { WorkflowContext } from '../types.js';
-import type { SimulationConfig, SimulationOutput, SimulationResult } from '@quantbot/simulation';
+import type { SimulationConfig, SimulationOutput } from '@quantbot/simulation';
+
+// SimulationResult from service layer (includes error/skipped fields)
+type SimulationResult = {
+  run_id?: string;
+  final_capital?: number;
+  total_return_pct?: number;
+  total_trades?: number;
+  error?: string;
+  mint?: string;
+  alert_timestamp?: string;
+  skipped?: boolean;
+  lookback_minutes?: number;
+  lookforward_minutes?: number;
+};
 import type { IngestOhlcvSpec } from '../ohlcv/ingestOhlcv.js';
 import type { IngestOhlcvContext } from '../ohlcv/ingestOhlcv.js';
 
@@ -36,7 +50,7 @@ import type { IngestOhlcvContext } from '../ohlcv/ingestOhlcv.js';
  */
 export const RunSimulationDuckdbSpecSchema = z.object({
   duckdbPath: z.string().min(1, 'duckdbPath is required'),
-  strategy: z.record(z.unknown()), // Strategy config object
+  strategy: z.record(z.string(), z.unknown()), // Strategy config object
   initialCapital: z.number().positive().optional(),
   lookbackMinutes: z.number().int().min(0).optional(),
   lookforwardMinutes: z.number().int().min(0).optional(),
@@ -66,9 +80,12 @@ export type SkippedToken = {
  * DuckDB Simulation Result (JSON-serializable)
  */
 export type RunSimulationDuckdbResult = {
+  success: boolean;
   simulationResults: SimulationOutput;
   callsQueried: number;
   callsSimulated: number;
+  callsSucceeded: number;
+  callsFailed: number;
   callsSkipped: number;
   callsRetried: number;
   tokensIngested: number;
@@ -126,13 +143,10 @@ export type RunSimulationDuckdbContext = WorkflowContext & {
         duckdbPath: string;
         preWindowMinutes: number;
         postWindowMinutes: number;
-        queueItems: Array<{
+        queueItems?: Array<{
           mint: string;
           alertTimestamp: string;
-          lookbackMinutes: number;
-          lookforwardMinutes: number;
-          preWindowMinutes: number;
-          postWindowMinutes: number;
+          queuedAt: string;
         }>;
       }) => Promise<{
         tokensProcessed: number;
@@ -232,12 +246,15 @@ export async function runSimulationDuckdb(
         });
       }
       return {
+        success: false,
         simulationResults: {
           results: [],
           summary: { total_runs: 0, successful: 0, failed: 0 },
         },
         callsQueried: 0,
         callsSimulated: 0,
+        callsSucceeded: 0,
+        callsFailed: 0,
         callsSkipped: 0,
         callsRetried: 0,
         tokensIngested: 0,
@@ -388,10 +405,7 @@ export async function runSimulationDuckdb(
       const queueItems = skippedTokens.map((token) => ({
         mint: token.mint,
         alertTimestamp: token.alertTimestamp,
-        lookbackMinutes: token.lookbackMinutes,
-        lookforwardMinutes: token.lookforwardMinutes,
-        preWindowMinutes: token.lookbackMinutes,
-        postWindowMinutes: token.lookforwardMinutes,
+        queuedAt: DateTime.utc().toISO()!,
       }));
 
       // Note: We need to call the ingestion service directly here since we need the queueItems
@@ -475,7 +489,7 @@ export async function runSimulationDuckdb(
             }
           });
 
-          simulationResults.results = simulationResults.results.map((r) => {
+          simulationResults.results = simulationResults.results.map((r: any) => {
             if (r.mint && r.alert_timestamp) {
               const retry = resultMap.get(`${r.mint}:${r.alert_timestamp}`);
               return retry || r;
@@ -486,8 +500,8 @@ export async function runSimulationDuckdb(
           // Update summary
           simulationResults.summary = {
             total_runs: simulationResults.summary.total_runs,
-            successful: simulationResults.results.filter((r) => !r.error && !r.skipped).length,
-            failed: simulationResults.results.filter((r) => r.error || r.skipped).length,
+            successful: simulationResults.results.filter((r: any) => !r.error && !r.skipped).length,
+            failed: simulationResults.results.filter((r: any) => r.error || r.skipped).length,
           };
         }
 
@@ -503,18 +517,33 @@ export async function runSimulationDuckdb(
   const completedAtISO = completedAt.toISO()!;
   const durationMs = completedAt.diff(startedAt, 'milliseconds').milliseconds;
 
+  // Calculate success metrics
+  const callsSimulated = callsToSimulate.length;
+  const callsSucceeded = simulationResults.results
+    ? simulationResults.results.filter((r: any) => !r.error && !r.skipped).length
+    : 0;
+  const callsFailed = simulationResults.results
+    ? simulationResults.results.filter((r: any) => r.error || r.skipped).length
+    : 0;
+  const success = callsFailed === 0 && callsSimulated > 0;
+
   ctx.logger.info('Completed DuckDB simulation workflow', {
     callsQueried,
-    callsSimulated: callsToSimulate.length,
+    callsSimulated,
+    callsSucceeded,
+    callsFailed,
     callsSkipped: skippedTokens.length,
     callsRetried,
     tokensIngested,
   });
 
   return {
+    success,
     simulationResults,
     callsQueried,
-    callsSimulated: callsToSimulate.length,
+    callsSimulated,
+    callsSucceeded,
+    callsFailed,
     callsSkipped: skippedTokens.length,
     callsRetried,
     tokensIngested,

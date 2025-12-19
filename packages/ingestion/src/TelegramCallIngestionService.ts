@@ -15,10 +15,7 @@ import { DateTime } from 'luxon';
 import { logger } from '@quantbot/utils';
 import type { Chain } from '@quantbot/core';
 import { createTokenAddress } from '@quantbot/core';
-import {
-  CallersRepository,
-  TokenDataRepository,
-} from '@quantbot/storage';
+import { CallersRepository, TokenDataRepository } from '@quantbot/storage';
 import { parseExport } from './TelegramExportParser';
 import { MessageIndex } from './MessageIndex';
 import { BotMessageExtractor } from './BotMessageExtractor';

@@ -91,8 +91,9 @@ export class PrometheusMetricsService {
       collectDefaultMetrics({
         register: this.registry,
         prefix: 'quantbot_',
-        interval: (config.defaultMetricsInterval || 15) * 1000,
       });
+      // Note: interval is set via setInterval in collectDefaultMetrics internally
+      // The interval option may not be available in all prom-client versions
     }
 
     logger.info('Prometheus metrics service initialized');

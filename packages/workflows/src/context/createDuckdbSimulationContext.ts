@@ -93,7 +93,7 @@ export function createDuckdbSimulationContext(
           timeRangeEnd,
           candleCount
         ) {
-          return duckdbStorageService.updateOhlcvMetadata(
+          await duckdbStorageService.updateOhlcvMetadata(
             path,
             mint,
             alertTimestamp,
@@ -104,7 +104,7 @@ export function createDuckdbSimulationContext(
           );
         },
         async addOhlcvExclusion(path, mint, alertTimestamp, reason) {
-          return duckdbStorageService.addOhlcvExclusion(path, mint, alertTimestamp, reason);
+          await duckdbStorageService.addOhlcvExclusion(path, mint, alertTimestamp, reason);
         },
       },
       ohlcvIngestion: {

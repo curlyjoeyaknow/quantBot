@@ -14,7 +14,8 @@ import {
   createProductionContext,
   type ProductionContextConfig,
 } from './createProductionContext.js';
-import { OhlcvBirdeyeFetch } from '@quantbot/jobs';
+// Dynamic import to avoid build-time dependency
+// import { OhlcvBirdeyeFetch } from '@quantbot/jobs';
 import { DuckDBStorageService } from '@quantbot/simulation';
 import { getPythonEngine } from '@quantbot/utils';
 import type { IngestOhlcvContext } from '../ohlcv/ingestOhlcv.js';

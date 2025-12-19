@@ -16,15 +16,8 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { DateTime } from 'luxon';
-import { ingestOhlcv } from '../../src/ohlcv/ingestOhlcv.js';
-import { generateOhlcvWorklist } from '@quantbot/ingestion';
-import { storeCandles } from '@quantbot/ohlcv';
-import type { IngestOhlcvContext } from '../../src/ohlcv/ingestOhlcv.js';
-import type { WorkflowContext } from '../../src/types.js';
-import type { OhlcvWorkItem } from '@quantbot/ingestion';
-import type { Candle } from '@quantbot/core';
 
-// Mock dependencies
+// Mock dependencies BEFORE imports to prevent module resolution issues
 vi.mock('@quantbot/ingestion', () => ({
   generateOhlcvWorklist: vi.fn(),
 }));
@@ -33,20 +26,45 @@ vi.mock('@quantbot/ohlcv', () => ({
   storeCandles: vi.fn(),
 }));
 
-vi.mock('@quantbot/utils', () => ({
-  logger: {
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-  },
-  ValidationError: class extends Error {
-    constructor(message: string) {
-      super(message);
-      this.name = 'ValidationError';
-    }
-  },
+vi.mock('@quantbot/utils', async () => {
+  const actual = await vi.importActual<typeof import('@quantbot/utils')>('@quantbot/utils');
+  return {
+    ...actual,
+    logger: {
+      debug: vi.fn(),
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+    },
+    ValidationError: class extends Error {
+      constructor(message: string) {
+        super(message);
+        this.name = 'ValidationError';
+      }
+    },
+  };
+});
+
+vi.mock('@quantbot/jobs', () => ({
+  OhlcvBirdeyeFetch: vi.fn().mockImplementation(() => ({
+    fetchWorkList: vi.fn(),
+  })),
 }));
+
+vi.mock('@quantbot/simulation', () => ({
+  DuckDBStorageService: vi.fn().mockImplementation(() => ({
+    updateOhlcvMetadata: vi.fn(),
+  })),
+}));
+
+// Now import after mocks are set up
+import { ingestOhlcv } from '../../src/ohlcv/ingestOhlcv.js';
+import { generateOhlcvWorklist } from '@quantbot/ingestion';
+import { storeCandles } from '@quantbot/ohlcv';
+import type { IngestOhlcvContext } from '../../src/ohlcv/ingestOhlcv.js';
+import type { WorkflowContext } from '../../src/types.js';
+import type { OhlcvWorkItem } from '@quantbot/ingestion';
+import type { Candle } from '@quantbot/core';
 
 describe('ingestOhlcv Workflow - Golden Path', () => {
   let mockContext: IngestOhlcvContext;
@@ -253,6 +271,12 @@ describe('ingestOhlcv Workflow - Golden Path', () => {
           side: 'buy',
           chain: TEST_CHAIN,
           interval: '1m',
+          preWindowMinutes: 260,
+          postWindowMinutes: 1440,
+          errorMode: 'collect',
+          checkCoverage: true,
+          rateLimitMs: 100,
+          maxRetries: 3,
         },
         mockContext
       );
@@ -289,6 +313,12 @@ describe('ingestOhlcv Workflow - Golden Path', () => {
           side: 'buy',
           chain: TEST_CHAIN,
           interval: '1m',
+          preWindowMinutes: 260,
+          postWindowMinutes: 1440,
+          errorMode: 'collect',
+          checkCoverage: true,
+          rateLimitMs: 100,
+          maxRetries: 3,
         },
         mockContext
       );
@@ -371,7 +401,12 @@ describe('ingestOhlcv Workflow - Golden Path', () => {
           side: 'buy',
           chain: TEST_CHAIN,
           interval: '1m',
+          preWindowMinutes: 260,
+          postWindowMinutes: 1440,
           errorMode: 'collect',
+          checkCoverage: true,
+          rateLimitMs: 100,
+          maxRetries: 3,
         },
         mockContext
       );
@@ -398,7 +433,12 @@ describe('ingestOhlcv Workflow - Golden Path', () => {
             side: 'buy',
             chain: TEST_CHAIN,
             interval: '1m',
+            preWindowMinutes: 260,
+            postWindowMinutes: 1440,
             errorMode: 'failFast',
+            checkCoverage: true,
+            rateLimitMs: 100,
+            maxRetries: 3,
           },
           mockContext
         )
@@ -416,6 +456,12 @@ describe('ingestOhlcv Workflow - Golden Path', () => {
           side: 'buy',
           chain: TEST_CHAIN,
           interval: '1m',
+          preWindowMinutes: 260,
+          postWindowMinutes: 1440,
+          errorMode: 'collect',
+          checkCoverage: true,
+          rateLimitMs: 100,
+          maxRetries: 3,
         },
         mockContext
       );
@@ -467,7 +513,12 @@ describe('ingestOhlcv Workflow - Golden Path', () => {
           side: 'buy',
           chain: TEST_CHAIN,
           interval: '1m',
+          preWindowMinutes: 260,
+          postWindowMinutes: 1440,
           errorMode: 'collect',
+          checkCoverage: true,
+          rateLimitMs: 100,
+          maxRetries: 3,
         },
         mockContext
       );
@@ -520,6 +571,12 @@ describe('ingestOhlcv Workflow - Golden Path', () => {
             side: 'buy',
             chain: TEST_CHAIN,
             interval,
+            preWindowMinutes: 260,
+            postWindowMinutes: 1440,
+            errorMode: 'collect',
+            checkCoverage: true,
+            rateLimitMs: 100,
+            maxRetries: 3,
           },
           mockContext
         );
@@ -568,6 +625,12 @@ describe('ingestOhlcv Workflow - Golden Path', () => {
           side: 'buy',
           chain: TEST_CHAIN,
           interval: '1m',
+          preWindowMinutes: 260,
+          postWindowMinutes: 1440,
+          errorMode: 'collect',
+          checkCoverage: true,
+          rateLimitMs: 100,
+          maxRetries: 3,
         },
         mockContext
       );

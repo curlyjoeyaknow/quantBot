@@ -21,26 +21,41 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { DateTime } from 'luxon';
+
+// Mock dependencies BEFORE imports to prevent module resolution issues
+vi.mock('@quantbot/utils', async () => {
+  const actual = await vi.importActual<typeof import('@quantbot/utils')>('@quantbot/utils');
+  return {
+    ...actual,
+    logger: {
+      debug: vi.fn(),
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+    },
+    ValidationError: class extends Error {
+      constructor(message: string) {
+        super(message);
+        this.name = 'ValidationError';
+      }
+    },
+  };
+});
+
+vi.mock('@quantbot/simulation', () => ({
+  DuckDBStorageService: vi.fn().mockImplementation(() => ({
+    queryCalls: vi.fn(),
+    checkOhlcvAvailability: vi.fn(),
+    updateOhlcvMetadata: vi.fn(),
+    markUnrecoverable: vi.fn(),
+  })),
+}));
+
+// Now import after mocks are set up
 import { runSimulationDuckdb } from '../../src/simulation/runSimulationDuckdb.js';
 import type { RunSimulationDuckdbContext } from '../../src/simulation/runSimulationDuckdb.js';
 import type { WorkflowContext } from '../../src/types.js';
-import type { SimulationResult } from '@quantbot/simulation';
-
-// Mock dependencies
-vi.mock('@quantbot/utils', () => ({
-  logger: {
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-  },
-  ValidationError: class extends Error {
-    constructor(message: string) {
-      super(message);
-      this.name = 'ValidationError';
-    }
-  },
-}));
+import type { SimulationOutput } from '@quantbot/simulation';
 
 describe('runSimulationDuckdb Workflow - Golden Path', () => {
   let mockContext: RunSimulationDuckdbContext;
@@ -92,7 +107,7 @@ describe('runSimulationDuckdb Workflow - Golden Path', () => {
         generate: () => 'test-id-1',
       },
       services: {
-        simulationService: {
+        simulation: {
           runSimulation: vi.fn(),
         },
         duckdbStorage: {
@@ -128,30 +143,36 @@ describe('runSimulationDuckdb Workflow - Golden Path', () => {
       });
 
       // Setup: OHLCV available for all calls
-      mockContext.services.duckdbStorage.checkOhlcvAvailability = vi.fn().mockResolvedValue({
-        available: true,
-        coverageRatio: 0.98,
-      });
+      mockContext.services.duckdbStorage.checkOhlcvAvailability = vi.fn().mockResolvedValue(true);
 
       // Setup: Simulation succeeds
-      const mockSimResult: SimulationResult = {
-        success: true,
-        pnl: 1.15,
-        trades: [
+      const mockSimResult: SimulationOutput = {
+        results: [
           {
-            entryTime: TEST_ALERT_TIME.toSeconds(),
-            exitTime: TEST_ALERT_TIME.plus({ minutes: 10 }).toSeconds(),
-            entryPrice: 1.0,
-            exitPrice: 2.0,
-            quantity: 100,
-            pnl: 100,
+            run_id: 'test-run-1',
+            final_capital: 115,
+            total_return_pct: 15,
+            total_trades: 1,
+            mint: TEST_MINT,
+            alert_timestamp: TEST_ALERT_ISO,
+          },
+          {
+            run_id: 'test-run-2',
+            final_capital: 120,
+            total_return_pct: 20,
+            total_trades: 1,
+            mint: TEST_MINT,
+            alert_timestamp: TEST_ALERT_ISO,
           },
         ],
-        finalBalance: 115,
-        maxDrawdown: 0,
+        summary: {
+          total_runs: 2,
+          successful: 2,
+          failed: 0,
+        },
       };
 
-      mockContext.services.simulationService.runSimulation = vi
+      mockContext.services.simulation.runSimulation = vi
         .fn()
         .mockResolvedValue(mockSimResult);
 
@@ -180,7 +201,7 @@ describe('runSimulationDuckdb Workflow - Golden Path', () => {
       expect(result.callsFailed).toBe(0);
       expect(result.skippedTokens).toEqual([]);
       expect(result.simulationResults).toBeDefined();
-      expect(result.simulationResults.length).toBe(2);
+      expect(result.simulationResults.results.length).toBe(2);
       expect(result.startedAtISO).toBeDefined();
       expect(result.completedAtISO).toBeDefined();
       expect(result.durationMs).toBeGreaterThan(0);
@@ -195,7 +216,7 @@ describe('runSimulationDuckdb Workflow - Golden Path', () => {
       expect(mockContext.services.duckdbStorage.checkOhlcvAvailability).toHaveBeenCalledTimes(2);
 
       // Assert: Simulation run for each call
-      expect(mockContext.services.simulationService.runSimulation).toHaveBeenCalledTimes(2);
+      expect(mockContext.services.simulation.runSimulation).toHaveBeenCalledTimes(2);
 
       // Assert: Result is JSON-serializable
       const jsonString = JSON.stringify(result);
@@ -223,24 +244,28 @@ describe('runSimulationDuckdb Workflow - Golden Path', () => {
       // Setup: First call has OHLCV, second doesn't
       mockContext.services.duckdbStorage.checkOhlcvAvailability = vi
         .fn()
-        .mockResolvedValueOnce({
-          available: true,
-          coverageRatio: 0.98,
-        })
-        .mockResolvedValueOnce({
-          available: false,
-          coverageRatio: 0,
-        });
+        .mockResolvedValueOnce(true)
+        .mockResolvedValueOnce(false);
 
-      const mockSimResult: SimulationResult = {
-        success: true,
-        pnl: 1.15,
-        trades: [],
-        finalBalance: 115,
-        maxDrawdown: 0,
+      const mockSimResult: SimulationOutput = {
+        results: [
+          {
+            run_id: 'test-run-1',
+            final_capital: 115,
+            total_return_pct: 15,
+            total_trades: 0,
+            mint: TEST_MINT,
+            alert_timestamp: TEST_ALERT_ISO,
+          },
+        ],
+        summary: {
+          total_runs: 1,
+          successful: 1,
+          failed: 0,
+        },
       };
 
-      mockContext.services.simulationService.runSimulation = vi
+      mockContext.services.simulation.runSimulation = vi
         .fn()
         .mockResolvedValue(mockSimResult);
 
@@ -281,6 +306,7 @@ describe('runSimulationDuckdb Workflow - Golden Path', () => {
           resume: true,
           errorMode: 'collect',
           maxRetries: 1,
+          callsLimit: 1000,
         },
         mockContext
       );
@@ -292,27 +318,34 @@ describe('runSimulationDuckdb Workflow - Golden Path', () => {
       expect(mockContext.services.ohlcvIngestion.ingestForCalls).toHaveBeenCalled();
 
       // Assert: Re-simulation attempted for retry tokens
-      expect(mockContext.services.simulationService.runSimulation).toHaveBeenCalled();
+      expect(mockContext.services.simulation.runSimulation).toHaveBeenCalled();
     });
   });
 
   describe('GOLDEN: Single mode - mint and alert timestamp', () => {
     it('should complete golden path for single call mode', async () => {
       // Setup: OHLCV available
-      mockContext.services.duckdbStorage.checkOhlcvAvailability = vi.fn().mockResolvedValue({
-        available: true,
-        coverageRatio: 0.98,
-      });
+      mockContext.services.duckdbStorage.checkOhlcvAvailability = vi.fn().mockResolvedValue(true);
 
-      const mockSimResult: SimulationResult = {
-        success: true,
-        pnl: 1.2,
-        trades: [],
-        finalBalance: 120,
-        maxDrawdown: 0,
+      const mockSimResult: SimulationOutput = {
+        results: [
+          {
+            run_id: 'test-run-1',
+            final_capital: 120,
+            total_return_pct: 20,
+            total_trades: 0,
+            mint: TEST_MINT,
+            alert_timestamp: TEST_ALERT_ISO,
+          },
+        ],
+        summary: {
+          total_runs: 1,
+          successful: 1,
+          failed: 0,
+        },
       };
 
-      mockContext.services.simulationService.runSimulation = vi
+      mockContext.services.simulation.runSimulation = vi
         .fn()
         .mockResolvedValue(mockSimResult);
 
@@ -324,6 +357,9 @@ describe('runSimulationDuckdb Workflow - Golden Path', () => {
           alertTimestamp: TEST_ALERT_ISO,
           batch: false,
           resume: true,
+          errorMode: 'collect',
+          maxRetries: 1,
+          callsLimit: 1000,
         },
         mockContext
       );
@@ -367,20 +403,27 @@ describe('runSimulationDuckdb Workflow - Golden Path', () => {
         calls: mockCalls,
       });
 
-      mockContext.services.duckdbStorage.checkOhlcvAvailability = vi.fn().mockResolvedValue({
-        available: true,
-        coverageRatio: 0.98,
-      });
+      mockContext.services.duckdbStorage.checkOhlcvAvailability = vi.fn().mockResolvedValue(true);
 
-      const mockSimResult: SimulationResult = {
-        success: true,
-        pnl: 1.15,
-        trades: [],
-        finalBalance: 115,
-        maxDrawdown: 0,
+      const mockSimResult: SimulationOutput = {
+        results: [
+          {
+            run_id: 'test-run-1',
+            final_capital: 115,
+            total_return_pct: 15,
+            total_trades: 0,
+            mint: TEST_MINT,
+            alert_timestamp: TEST_ALERT_ISO,
+          },
+        ],
+        summary: {
+          total_runs: 1,
+          successful: 1,
+          failed: 0,
+        },
       };
 
-      mockContext.services.simulationService.runSimulation = vi
+      mockContext.services.simulation.runSimulation = vi
         .fn()
         .mockResolvedValueOnce(mockSimResult)
         .mockRejectedValueOnce(new Error('Simulation error'))
@@ -391,7 +434,10 @@ describe('runSimulationDuckdb Workflow - Golden Path', () => {
           duckdbPath: TEST_DUCKDB_PATH,
           strategy: mockStrategy,
           batch: true,
+          resume: false,
           errorMode: 'collect',
+          maxRetries: 1,
+          callsLimit: 1000,
         },
         mockContext
       );
@@ -424,24 +470,28 @@ describe('runSimulationDuckdb Workflow - Golden Path', () => {
       // Setup: First has OHLCV, second doesn't
       mockContext.services.duckdbStorage.checkOhlcvAvailability = vi
         .fn()
-        .mockResolvedValueOnce({
-          available: true,
-          coverageRatio: 0.98,
-        })
-        .mockResolvedValueOnce({
-          available: false,
-          coverageRatio: 0,
-        });
+        .mockResolvedValueOnce(true)
+        .mockResolvedValueOnce(false);
 
-      const mockSimResult: SimulationResult = {
-        success: true,
-        pnl: 1.15,
-        trades: [],
-        finalBalance: 115,
-        maxDrawdown: 0,
+      const mockSimResult: SimulationOutput = {
+        results: [
+          {
+            run_id: 'test-run-1',
+            final_capital: 115,
+            total_return_pct: 15,
+            total_trades: 0,
+            mint: TEST_MINT,
+            alert_timestamp: TEST_ALERT_ISO,
+          },
+        ],
+        summary: {
+          total_runs: 1,
+          successful: 1,
+          failed: 0,
+        },
       };
 
-      mockContext.services.simulationService.runSimulation = vi
+      mockContext.services.simulation.runSimulation = vi
         .fn()
         .mockResolvedValue(mockSimResult);
 
@@ -451,6 +501,9 @@ describe('runSimulationDuckdb Workflow - Golden Path', () => {
           strategy: mockStrategy,
           batch: true,
           resume: true, // Resume mode enabled
+          errorMode: 'collect',
+          maxRetries: 1,
+          callsLimit: 1000,
         },
         mockContext
       );
@@ -458,7 +511,7 @@ describe('runSimulationDuckdb Workflow - Golden Path', () => {
       // Assert: Only call with OHLCV simulated
       expect(result.callsSimulated).toBe(1);
       expect(result.callsSucceeded).toBe(1);
-      expect(mockContext.services.simulationService.runSimulation).toHaveBeenCalledTimes(1);
+      expect(mockContext.services.simulation.runSimulation).toHaveBeenCalledTimes(1);
     });
   });
 
@@ -476,20 +529,27 @@ describe('runSimulationDuckdb Workflow - Golden Path', () => {
         calls: mockCalls,
       });
 
-      mockContext.services.duckdbStorage.checkOhlcvAvailability = vi.fn().mockResolvedValue({
-        available: true,
-        coverageRatio: 0.98,
-      });
+      mockContext.services.duckdbStorage.checkOhlcvAvailability = vi.fn().mockResolvedValue(true);
 
-      const mockSimResult: SimulationResult = {
-        success: true,
-        pnl: 1.15,
-        trades: [],
-        finalBalance: 115,
-        maxDrawdown: 0,
+      const mockSimResult: SimulationOutput = {
+        results: [
+          {
+            run_id: 'test-run-1',
+            final_capital: 115,
+            total_return_pct: 15,
+            total_trades: 0,
+            mint: TEST_MINT,
+            alert_timestamp: TEST_ALERT_ISO,
+          },
+        ],
+        summary: {
+          total_runs: 1,
+          successful: 1,
+          failed: 0,
+        },
       };
 
-      mockContext.services.simulationService.runSimulation = vi
+      mockContext.services.simulation.runSimulation = vi
         .fn()
         .mockResolvedValue(mockSimResult);
 
@@ -498,6 +558,10 @@ describe('runSimulationDuckdb Workflow - Golden Path', () => {
           duckdbPath: TEST_DUCKDB_PATH,
           strategy: mockStrategy,
           batch: true,
+          resume: false,
+          errorMode: 'collect',
+          maxRetries: 1,
+          callsLimit: 1000,
         },
         mockContext
       );

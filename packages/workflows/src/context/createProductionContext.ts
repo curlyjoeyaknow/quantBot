@@ -139,11 +139,11 @@ export function createProductionContext(config?: ProductionContextConfig): Workf
             const toDate = DateTime.fromISO(q.toISO, { zone: 'utc' });
 
             const filtered = result.calls
-              .filter((call) => {
+              .filter((call: any) => {
                 const callDate = DateTime.fromISO(call.alert_timestamp, { zone: 'utc' });
                 return callDate >= fromDate && callDate <= toDate;
               })
-              .map((call, index) => ({
+              .map((call: any, index: number) => ({
                 id: `call_${call.mint}_${call.alert_timestamp}_${index}`,
                 caller: q.callerName || 'unknown',
                 mint: call.mint,

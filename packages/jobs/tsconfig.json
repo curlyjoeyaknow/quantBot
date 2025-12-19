@@ -20,18 +20,21 @@
       "@quantbot/ohlcv": ["../ohlcv/src"],
       "@quantbot/ohlcv/*": ["../ohlcv/src/*"],
       "@quantbot/observability": ["../observability/src"],
-      "@quantbot/observability/*": ["../observability/src/*"]
+      "@quantbot/observability/*": ["../observability/src/*"],
+      "@quantbot/ingestion": ["../ingestion/dist"],
+      "@quantbot/ingestion/*": ["../ingestion/dist/*"]
     }
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "**/*.test.ts"],
+  "exclude": ["node_modules", "dist", "**/*.test.ts", "dist/**/*"],
   "references": [
     { "path": "../core" },
     { "path": "../utils" },
     { "path": "../storage" },
     { "path": "../api-clients" },
     { "path": "../ohlcv" },
-    { "path": "../observability" }
+    { "path": "../observability" },
+    { "path": "../ingestion" }
   ]
 }
 

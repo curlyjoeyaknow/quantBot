@@ -16,8 +16,12 @@
     "noUncheckedIndexedAccess": true,
     "skipLibCheck": true,
     "paths": {
-      "@quantbot/simulation": ["../simulation/dist/index.d.ts"],
-      "@quantbot/ingestion": ["../ingestion/dist/index.d.ts"]
+      "@quantbot/simulation": ["../simulation/dist"],
+      "@quantbot/simulation/*": ["../simulation/dist/*"],
+      "@quantbot/ingestion": ["../ingestion/dist"],
+      "@quantbot/ingestion/*": ["../ingestion/dist/*"],
+      "@quantbot/jobs": ["../jobs/dist"],
+      "@quantbot/jobs/*": ["../jobs/dist/*"]
     }
   },
   "include": ["src/**/*.ts"],
@@ -29,6 +33,7 @@
     { "path": "../ohlcv" },
     { "path": "../simulation" },
     { "path": "../ingestion" },
-    { "path": "../api-clients" }
+    { "path": "../api-clients" },
+    { "path": "../jobs" }
   ]
 }

@@ -7,8 +7,8 @@
 
 import { DateTime } from 'luxon';
 import { logger } from '@quantbot/utils';
-import { queryPostgres } from '@quantbot/storage';
 import { getOhlcvIngestionEngine, type OhlcvIngestionEngine } from '@quantbot/jobs';
+import { queryCallsDuckdb, createProductionContext } from '@quantbot/workflows';
 import type { Chain } from '@quantbot/core';
 
 export interface BackfillOptions {
@@ -59,117 +59,53 @@ export class OhlcvBackfillService {
 
   /**
    * Get alerts that need backfilling
+   * Uses DuckDB workflow to query calls
    */
   async getAlertsToBackfill(options: BackfillOptions = {}): Promise<AlertToBackfill[]> {
     const { limit = 1000, callerNames, fromDate, toDate } = options;
 
-    const conditions: string[] = ["t.chain = 'solana'"];
-    const params: unknown[] = [];
-    let paramIndex = 1;
+    const ctx = createProductionContext();
+    const dbPath = process.env.DUCKDB_PATH || 'data/quantbot.duckdb';
 
-    if (callerNames && callerNames.length > 0) {
-      conditions.push(`c.handle = ANY($${paramIndex}::text[])`);
-      params.push(callerNames);
-      paramIndex++;
+    const fromISO = fromDate?.toISO() || DateTime.utc().minus({ years: 1 }).toISO()!;
+    const toISO = toDate?.toISO() || DateTime.utc().toISO()!;
+
+    const result = await queryCallsDuckdb(
+      {
+        duckdbPath: dbPath,
+        fromISO,
+        toISO,
+        callerName: callerNames?.[0], // Use first caller if multiple provided
+        limit,
+      },
+      ctx
+    );
+
+    if (!result.success || !result.calls) {
+      logger.warn('[Backfill] Failed to query calls from DuckDB', { error: result.error });
+      return [];
     }
 
-    if (fromDate) {
-      conditions.push(`a.alert_timestamp >= $${paramIndex}`);
-      params.push(fromDate.toJSDate());
-      paramIndex++;
-    }
-
-    if (toDate) {
-      conditions.push(`a.alert_timestamp <= $${paramIndex}`);
-      params.push(toDate.toJSDate());
-      paramIndex++;
-    }
-
-    params.push(limit);
-
-    const query = `
-      SELECT 
-        a.id,
-        t.address as token_address,
-        t.symbol as token_symbol,
-        t.chain,
-        a.alert_timestamp,
-        c.handle as caller_name
-      FROM alerts a
-      JOIN tokens t ON a.token_id = t.id
-      LEFT JOIN callers c ON a.caller_id = c.id
-      WHERE ${conditions.join(' AND ')}
-      ORDER BY a.alert_timestamp DESC
-      LIMIT $${paramIndex}
-    `;
-
-    const result = await queryPostgres<{
-      id: number;
-      token_address: string;
-      token_symbol: string | null;
-      chain: string;
-      alert_timestamp: Date;
-      caller_name: string | null;
-    }>(query, params);
-
-    return result.rows.map((row) => ({
-      id: row.id,
-      tokenAddress: row.token_address,
-      tokenSymbol: row.token_symbol,
-      chain: row.chain,
-      alertTimestamp: row.alert_timestamp,
-      callerName: row.caller_name,
+    // Map to AlertToBackfill format
+    return result.calls.map((call, index) => ({
+      id: index, // Use index as ID since we don't have alert ID in calls
+      tokenAddress: call.mint,
+      tokenSymbol: null, // Not available in calls query
+      chain: 'solana', // Assuming solana for now
+      alertTimestamp: call.createdAt.toJSDate(),
+      callerName: call.caller || null,
     }));
   }
 
   /**
    * Backfill OHLCV data for a single alert
+   * @deprecated Use DuckDB workflows via @quantbot/workflows instead
    */
   async backfillAlert(
-    alert: AlertToBackfill,
-    options: BackfillOptions = {}
+    _alert: AlertToBackfill,
+    _options: BackfillOptions = {}
   ): Promise<{ success: boolean; candles1m: number; candles5m: number; error?: string }> {
-    const { forceRefresh = false, dryRun = false } = options;
-
-    if (dryRun) {
-      logger.info(`[Backfill] DRY RUN: Would backfill ${alert.tokenAddress.substring(0, 20)}...`);
-      return { success: true, candles1m: 0, candles5m: 0 };
-    }
-
-    try {
-      const alertTime = DateTime.fromJSDate(alert.alertTimestamp);
-
-      const result = await this.engine.fetchCandles(
-        alert.tokenAddress, // Full address, case-preserved
-        alert.chain as Chain,
-        alertTime,
-        { useCache: !forceRefresh, forceRefresh }
-      );
-
-      logger.info(`[Backfill] Backfilled ${alert.tokenAddress.substring(0, 20)}...`, {
-        '1m': result.metadata.total1mCandles,
-        '5m': result.metadata.total5mCandles,
-        fromCache: result.metadata.chunksFromCache,
-        fromAPI: result.metadata.chunksFromAPI,
-      });
-
-      return {
-        success: true,
-        candles1m: result.metadata.total1mCandles,
-        candles5m: result.metadata.total5mCandles,
-      };
-    } catch (error: unknown) {
-      logger.error(
-        `[Backfill] Failed to backfill ${alert.tokenAddress.substring(0, 20)}...`,
-        error
-      );
-      return {
-        success: false,
-        candles1m: 0,
-        candles5m: 0,
-        error: error instanceof Error ? error.message : String(error),
-      };
-    }
+    throw new Error('This function is deprecated. Use DuckDB workflows via @quantbot/workflows instead.');
   }
 
   /**
