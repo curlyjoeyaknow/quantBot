@@ -22,7 +22,7 @@ import { DateTime } from 'luxon';
 import { getBirdeyeClient, fetchMultiChainMetadata } from '@quantbot/api-clients';
 import { fetchBirdeyeCandles } from '@quantbot/api-clients';
 import { getStorageEngine, initClickHouse } from '@quantbot/storage';
-import { TokensRepository } from '@quantbot/storage';
+// TokensRepository removed (PostgreSQL) - metadata storage not critical for OHLCV ingestion
 import type { Candle, Chain } from '@quantbot/core';
 import { createTokenAddress } from '@quantbot/core';
 import { logger } from '@quantbot/utils';
@@ -103,7 +103,7 @@ function getCacheKey(
 export class OhlcvIngestionEngine {
   private clickhouseInitialized = false;
   private storageEngine = getStorageEngine();
-  private tokensRepo = new TokensRepository();
+  // TokensRepository removed (PostgreSQL) - metadata storage not critical
   // Chain detection cache: mint -> actual chain
   private chainCache = new LRUCache<string, Chain>({ max: 1000, ttl: 1000 * 60 * 60 }); // 1 hour TTL
 
@@ -397,12 +397,8 @@ export class OhlcvIngestionEngine {
           // Use actual chain from API response
           const actualChain = metadata.chain;
 
-          // Store metadata in PostgreSQL using TokensRepository
-          // This enriches the token details before inserting OHLCV candles
-          await this.tokensRepo.getOrCreateToken(actualChain, createTokenAddress(mint), {
-            name: metadata.name,
-            symbol: metadata.symbol,
-          });
+          // TokensRepository removed (PostgreSQL) - metadata storage not critical for OHLCV ingestion
+          // Metadata is still fetched and used, just not persisted to database
 
           // Update chain cache if different from hint
           if (actualChain !== chain) {
@@ -431,12 +427,8 @@ export class OhlcvIngestionEngine {
       // Solana: use existing logic
       const metadata = await birdeyeClient.getTokenMetadata(mint, chain);
       if (metadata) {
-        // Store metadata in PostgreSQL using TokensRepository
-        // This enriches the token details before inserting OHLCV candles
-        await this.tokensRepo.getOrCreateToken(chain, createTokenAddress(mint), {
-          name: metadata.name,
-          symbol: metadata.symbol,
-        });
+        // TokensRepository removed (PostgreSQL) - metadata storage not critical for OHLCV ingestion
+        // Metadata is still fetched and used, just not persisted to database
         logger.debug(`[OhlcvIngestionEngine] Metadata stored for ${mint.substring(0, 20)}...`);
         return true;
       }

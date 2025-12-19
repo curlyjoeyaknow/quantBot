@@ -6,7 +6,7 @@
  */
 
 import { logger } from '@quantbot/utils';
-import { getPostgresPool } from '@quantbot/storage';
+import { getClickHouseClient } from '@quantbot/storage';
 import type {
   CallPerformance,
   CallerMetrics,
@@ -73,9 +73,9 @@ export class AnalyticsEngine {
     }
 
     try {
-      // Verify database connection
-      const pool = getPostgresPool();
-      await pool.query('SELECT 1');
+      // Verify database connection (ClickHouse instead of PostgreSQL)
+      const client = getClickHouseClient();
+      await client.query({ query: 'SELECT 1', format: 'JSON' });
 
       this.initialized = true;
       logger.info('[AnalyticsEngine] Initialized');

@@ -78,7 +78,7 @@ export {
 //   import { saveSimulationRun } from '@quantbot/utils/database'; // ⚠️ DEPRECATED
 //
 // Migration mapping:
-// - database.ts → @quantbot/storage repositories (SimulationRunsRepository, etc.)
+// - database.ts → @quantbot/storage repositories (DuckDB repositories, etc.)
 // - caller-database.ts → @quantbot/storage repositories
 // - live-trade-database.ts → ARCHIVED (see scripts/archive/live-trades/)
 // - monitored-tokens-db.ts → ARCHIVED (see scripts/archive/monitored-tokens/)

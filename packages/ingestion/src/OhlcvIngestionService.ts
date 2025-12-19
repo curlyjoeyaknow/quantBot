@@ -6,10 +6,9 @@
  * mint case, and aggregates ingestion statistics.
  */
 
-import { DateTime } from 'luxon';
 import { logger, getPythonEngine, type PythonEngine } from '@quantbot/utils';
 import type { Chain } from '@quantbot/core';
-import { AlertsRepository, getStorageEngine, type StorageEngine } from '@quantbot/storage';
+import { getStorageEngine, type StorageEngine } from '@quantbot/storage';
 import {
   getOhlcvIngestionEngine,
   type OhlcvIngestionOptions,
@@ -52,7 +51,6 @@ export interface IngestForCallsResult {
 
 export class OhlcvIngestionService {
   constructor(
-    private readonly alertsRepo: AlertsRepository,
     private readonly ingestionEngine: OhlcvIngestionEngine = getOhlcvIngestionEngine(),
     private readonly storageEngine: StorageEngine = getStorageEngine(),
     private readonly pythonEngine: PythonEngine = getPythonEngine()
