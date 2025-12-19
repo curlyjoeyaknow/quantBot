@@ -7,7 +7,7 @@ export async function listRunsHandler(args: ListRunsArgs, ctx: CommandContext): 
   // PostgreSQL SimulationRunsRepository was removed - need to implement DuckDB equivalent
   // For now, return empty array
   return [];
-  
+
   // const callersRepo = ctx.services.callersRepository();
 
   // TODO: Re-implement using DuckDB when simulation runs storage is available

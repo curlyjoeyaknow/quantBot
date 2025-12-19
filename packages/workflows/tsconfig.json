@@ -25,7 +25,7 @@
     }
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["dist", "node_modules", "tests", "**/*.d.ts"],
+  "exclude": ["dist", "node_modules", "tests", "**/*.d.ts", "../jobs/dist"],
   "references": [
     { "path": "../core" },
     { "path": "../utils" },
