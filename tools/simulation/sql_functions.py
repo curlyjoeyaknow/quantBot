@@ -33,8 +33,27 @@ CREATE TABLE IF NOT EXISTS simulation_runs (
   sharpe_ratio DOUBLE,
   win_rate DOUBLE,
   total_trades INTEGER,
+  caller_name TEXT,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (strategy_id) REFERENCES simulation_strategies(strategy_id)
+);
+
+-- Run strategies used (stores exact strategy configuration for each run)
+-- This allows reproducibility even if strategy config changes later
+CREATE TABLE IF NOT EXISTS run_strategies_used (
+  run_id TEXT NOT NULL,
+  strategy_id TEXT NOT NULL,
+  strategy_name TEXT NOT NULL,
+  entry_config JSON NOT NULL,
+  exit_config JSON NOT NULL,
+  reentry_config JSON,
+  cost_config JSON,
+  stop_loss_config JSON,
+  entry_signal_config JSON,
+  exit_signal_config JSON,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (run_id),
+  FOREIGN KEY (run_id) REFERENCES simulation_runs(run_id) ON DELETE CASCADE
 );
 
 -- Simulation events (trades, entries, exits)
@@ -72,8 +91,10 @@ CREATE TABLE IF NOT EXISTS ohlcv_candles_d (
 CREATE INDEX IF NOT EXISTS idx_simulation_runs_strategy ON simulation_runs(strategy_id);
 CREATE INDEX IF NOT EXISTS idx_simulation_runs_mint ON simulation_runs(mint);
 CREATE INDEX IF NOT EXISTS idx_simulation_runs_alert_timestamp ON simulation_runs(alert_timestamp);
+CREATE INDEX IF NOT EXISTS idx_simulation_runs_caller ON simulation_runs(caller_name);
 CREATE INDEX IF NOT EXISTS idx_simulation_events_run ON simulation_events(run_id);
 CREATE INDEX IF NOT EXISTS idx_ohlcv_mint_timestamp ON ohlcv_candles_d(mint, timestamp);
+CREATE INDEX IF NOT EXISTS idx_run_strategies_used_strategy ON run_strategies_used(strategy_id);
 """
 
 def setup_simulation_schema(con: duckdb.DuckDBPyConnection) -> None:

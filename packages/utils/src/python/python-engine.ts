@@ -5,10 +5,10 @@
  * This is the boundary layer between TypeScript handlers and Python tools.
  */
 
-import { execSync, spawn } from 'child_process';
+import { execSync } from 'child_process';
 import { join } from 'path';
 import { z } from 'zod';
-import { existsSync, statSync } from 'fs';
+import { existsSync } from 'fs';
 import { execa } from 'execa';
 import { logger, ValidationError, TimeoutError, AppError } from '../index';
 

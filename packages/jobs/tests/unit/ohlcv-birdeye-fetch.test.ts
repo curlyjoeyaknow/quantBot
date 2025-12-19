@@ -138,7 +138,7 @@ describe('OhlcvBirdeyeFetch', () => {
 
       vi.mocked(getCoverage).mockResolvedValue({
         hasData: true,
-        coverageRatio: 0.90, // Below threshold
+        coverageRatio: 0.9, // Below threshold
         candleCount: 500,
       });
 
@@ -305,10 +305,7 @@ describe('OhlcvBirdeyeFetch', () => {
     });
 
     it('should handle mixed success and failure', async () => {
-      const workItems: OhlcvWorkItem[] = [
-        mockWorkItem,
-        { ...mockWorkItem, mint: '10pXs...' },
-      ];
+      const workItems: OhlcvWorkItem[] = [mockWorkItem, { ...mockWorkItem, mint: '10pXs...' }];
 
       vi.mocked(getCoverage).mockResolvedValue({
         hasData: false,
@@ -356,4 +353,3 @@ describe('OhlcvBirdeyeFetch', () => {
     });
   });
 });
-

@@ -41,7 +41,7 @@ vi.mock('@quantbot/utils', () => ({
 
 describe('OhlcvBirdeyeFetch - Golden Path', () => {
   let fetchService: OhlcvBirdeyeFetch;
-  const TEST_MINT = '7pXs123456789012345678901234567890pump'; // Full 44-char address
+  const TEST_MINT = '7pXs1234567890123456789012345678901234pump'; // Full 44-char address
   const TEST_CHAIN = 'solana' as const;
   const TEST_INTERVAL = '1m' as const;
   const TEST_ALERT_TIME = DateTime.utc().minus({ days: 1 });
@@ -117,7 +117,7 @@ describe('OhlcvBirdeyeFetch - Golden Path', () => {
       expect(result.candlesFetched).toBe(3);
       expect(result.skipped).toBe(false);
       expect(result.error).toBeUndefined();
-      expect(result.durationMs).toBeGreaterThan(0);
+      expect(result.durationMs).toBeGreaterThanOrEqual(0); // Duration can be 0 in fast tests
 
       // Assert: Coverage was checked
       expect(getCoverage).toHaveBeenCalledWith(
@@ -178,7 +178,7 @@ describe('OhlcvBirdeyeFetch - Golden Path', () => {
     });
 
     it('should preserve mint address case exactly (critical for Solana)', async () => {
-      const mixedCaseMint = '7pXsAbCdEfGhIjKlMnOpQrStUvWxYz1234567890';
+      const mixedCaseMint = '7pXsAbCdEfGhIjKlMnOpQrStUvWxYz12345678901234';
       const workItem = { ...mockWorkItem, mint: mixedCaseMint };
 
       vi.mocked(getCoverage).mockResolvedValue({
@@ -340,7 +340,7 @@ describe('OhlcvBirdeyeFetch - Golden Path', () => {
 
       vi.mocked(getCoverage).mockResolvedValue({
         hasData: true,
-        coverageRatio: 0.90, // Below 0.95 threshold
+        coverageRatio: 0.9, // Below 0.95 threshold
         candleCount: 500,
       });
 
@@ -551,4 +551,3 @@ describe('OhlcvBirdeyeFetch - Golden Path', () => {
     });
   });
 });
-

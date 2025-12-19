@@ -12,7 +12,6 @@
  */
 
 import { z } from 'zod';
-import type { Chain } from '@quantbot/core';
 import { ValidationError, AppError } from '@quantbot/utils';
 import type { WorkflowContext } from '../types.js';
 import {

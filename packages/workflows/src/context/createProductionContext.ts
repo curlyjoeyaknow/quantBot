@@ -1,7 +1,7 @@
 import { DateTime } from 'luxon';
 import { v4 as uuidv4 } from 'uuid';
 import { logger as utilsLogger, ValidationError } from '@quantbot/utils';
-import { StrategiesRepository, StorageEngine } from '@quantbot/storage';
+import { StrategiesRepository } from '@quantbot/storage';
 // PostgreSQL repositories removed - use DuckDB services/workflows instead
 import { simulateStrategy } from '@quantbot/simulation';
 import { DuckDBStorageService, ClickHouseService } from '@quantbot/simulation';

@@ -16,7 +16,11 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { DateTime } from 'luxon';
 import { OhlcvIngestionEngine } from '../../src/ohlcv-ingestion-engine.js';
-import { fetchBirdeyeCandles, getBirdeyeClient, fetchMultiChainMetadata } from '@quantbot/api-clients';
+import {
+  fetchBirdeyeCandles,
+  getBirdeyeClient,
+  fetchMultiChainMetadata,
+} from '@quantbot/api-clients';
 import { getStorageEngine, initClickHouse } from '@quantbot/storage';
 import { storeCandles } from '@quantbot/ohlcv';
 import { isEvmAddress } from '@quantbot/utils';
@@ -222,4 +226,3 @@ describe('OhlcvIngestionEngine', () => {
     });
   });
 });
-

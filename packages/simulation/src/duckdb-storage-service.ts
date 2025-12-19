@@ -148,17 +148,29 @@ export class DuckDBStorageService {
   }
 
   /**
-   * Store a simulation run in DuckDB
+   * Store a simulation run in DuckDB with strategy configuration
+   * Stores both run metadata and exact strategy config for reproducibility
    */
   async storeRun(
     duckdbPath: string,
     runId: string,
     strategyId: string,
+    strategyName: string,
     mint: string,
     alertTimestamp: string,
     startTime: string,
     endTime: string,
     initialCapital: number,
+    strategyConfig: {
+      entry: Record<string, unknown>;
+      exit: Record<string, unknown>;
+      reEntry?: Record<string, unknown>;
+      costs?: Record<string, unknown>;
+      stopLoss?: Record<string, unknown>;
+      entrySignal?: Record<string, unknown>;
+      exitSignal?: Record<string, unknown>;
+    },
+    callerName?: string,
     finalCapital?: number,
     totalReturnPct?: number,
     maxDrawdownPct?: number,
@@ -170,19 +182,28 @@ export class DuckDBStorageService {
       const data: Record<string, unknown> = {
         run_id: runId,
         strategy_id: strategyId,
+        strategy_name: strategyName,
         mint,
         alert_timestamp: alertTimestamp,
         start_time: startTime,
         end_time: endTime,
         initial_capital: initialCapital,
+        entry_config: strategyConfig.entry,
+        exit_config: strategyConfig.exit,
       };
 
+      if (callerName) data.caller_name = callerName;
       if (totalTrades !== undefined) data.total_trades = totalTrades;
       if (finalCapital !== undefined) data.final_capital = finalCapital;
       if (totalReturnPct !== undefined) data.total_return_pct = totalReturnPct;
       if (maxDrawdownPct !== undefined) data.max_drawdown_pct = maxDrawdownPct;
       if (sharpeRatio !== undefined) data.sharpe_ratio = sharpeRatio;
       if (winRate !== undefined) data.win_rate = winRate;
+      if (strategyConfig.reEntry) data.reentry_config = strategyConfig.reEntry;
+      if (strategyConfig.costs) data.cost_config = strategyConfig.costs;
+      if (strategyConfig.stopLoss) data.stop_loss_config = strategyConfig.stopLoss;
+      if (strategyConfig.entrySignal) data.entry_signal_config = strategyConfig.entrySignal;
+      if (strategyConfig.exitSignal) data.exit_signal_config = strategyConfig.exitSignal;
 
       const result = await this.pythonEngine.runDuckDBStorage({
         duckdbPath,

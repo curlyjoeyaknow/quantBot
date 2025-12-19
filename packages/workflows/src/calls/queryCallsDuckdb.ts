@@ -144,4 +144,3 @@ export async function queryCallsDuckdb(
     callerName: validated.callerName,
   };
 }
-
