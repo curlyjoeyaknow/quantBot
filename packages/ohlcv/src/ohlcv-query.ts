@@ -45,7 +45,9 @@ export class OHLCVQueryService {
         const cachedData = this.cache.get(tokenAddress, startTime, endTime, interval);
         if (cachedData) {
           logger.debug('Returning cached OHLCV data', { tokenAddress });
-          return cachedData.map((candle: OhlcvCacheCandle) => this.convertCacheCandleToOHLCVData(candle));
+          return cachedData.map((candle: OhlcvCacheCandle) =>
+            this.convertCacheCandleToOHLCVData(candle)
+          );
         }
       }
 

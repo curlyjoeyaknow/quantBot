@@ -25,7 +25,7 @@
     }
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["dist", "node_modules", "tests"],
+  "exclude": ["dist", "node_modules", "tests", "**/*.d.ts"],
   "references": [
     { "path": "../core" },
     { "path": "../utils" },

@@ -32,7 +32,7 @@ export async function analyzeDuckdbHandler(args: AnalyzeDuckdbArgs, ctx: Command
     duckdb: args.duckdb,
     caller: args.caller,
     mint: args.mint,
-    correlation: args.correlation,
+    correlation: !!args.correlation, // Convert object to boolean
   };
 
   return await service.runAnalysis(config);

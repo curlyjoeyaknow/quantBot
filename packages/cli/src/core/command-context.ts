@@ -12,8 +12,9 @@ import {
   // CallsRepository, TokensRepository, AlertsRepository, SimulationRunsRepository
 } from '@quantbot/storage';
 import { OhlcvIngestionService } from '@quantbot/ingestion';
-import { TelegramAlertIngestionService } from '@quantbot/ingestion';
-import { OhlcvFetchJob } from '@quantbot/jobs';
+// TelegramAlertIngestionService temporarily commented out - needs repository refactoring
+// import { TelegramAlertIngestionService } from '@quantbot/ingestion';
+// import { OhlcvFetchJob } from '@quantbot/jobs';
 import { AnalyticsEngine } from '@quantbot/analytics';
 import type { AnalyticsEngine as AnalyticsEngineType } from '@quantbot/analytics';
 import { PythonEngine, type PythonEngine as PythonEngineType } from '@quantbot/utils';
@@ -21,7 +22,8 @@ import { StorageEngine } from '@quantbot/storage';
 import { DuckDBStorageService, ClickHouseService, SimulationService } from '@quantbot/simulation';
 import { TelegramPipelineService } from '@quantbot/ingestion';
 import { AnalyticsService } from '@quantbot/analytics';
-import { getClickHouseClient, type ClickHouseClient } from '@quantbot/storage';
+import { getClickHouseClient } from '@quantbot/storage';
+import type { ClickHouseClient } from '@clickhouse/client';
 import { ensureInitialized } from './initialization-manager.js';
 
 /**
@@ -29,8 +31,8 @@ import { ensureInitialized } from './initialization-manager.js';
  */
 export interface CommandServices {
   ohlcvIngestion(): OhlcvIngestionService;
-  telegramIngestion(): TelegramAlertIngestionService;
-  ohlcvFetchJob(): OhlcvFetchJob;
+  // telegramIngestion(): TelegramAlertIngestionService; // Temporarily disabled - needs repository refactoring
+  // ohlcvFetchJob(): OhlcvFetchJob; // Temporarily disabled - jobs package not fully resolved
   ohlcvRepository(): OhlcvRepository;
   analyticsEngine(): AnalyticsEngineType;
   pythonEngine(): PythonEngineType;
@@ -114,18 +116,18 @@ export class CommandContext {
         // AlertsRepository removed - service updated to not require it
         return new OhlcvIngestionService();
       },
-      ohlcvFetchJob: () => {
-        // Deprecated: Use OhlcvBirdeyeFetch directly or via workflow
-        // Keeping for backward compatibility
-        const { OhlcvFetchJob } = require('@quantbot/jobs');
-        return new OhlcvFetchJob();
-      },
-      telegramIngestion: () => {
-        // PostgreSQL repositories removed - use ingestTelegramJson workflow instead
-        throw new Error(
-          'TelegramAlertIngestionService requires PostgreSQL repositories which were removed. Use ingestTelegramJson workflow instead.'
-        );
-      },
+      // ohlcvFetchJob: () => {
+      //   // Deprecated: Use OhlcvBirdeyeFetch directly or via workflow
+      //   // Keeping for backward compatibility
+      //   const { OhlcvFetchJob } = require('@quantbot/jobs');
+      //   return new OhlcvFetchJob();
+      // },
+      // telegramIngestion: () => {
+      //   // PostgreSQL repositories removed - use ingestTelegramJson workflow instead
+      //   throw new Error(
+      //     'TelegramAlertIngestionService requires PostgreSQL repositories which were removed. Use ingestTelegramJson workflow instead.'
+      //   );
+      // },
       ohlcvRepository: () => {
         return new OhlcvRepository();
       },

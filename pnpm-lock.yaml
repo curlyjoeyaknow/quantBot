@@ -433,12 +433,18 @@ importers:
       '@quantbot/core':
         specifier: workspace:*
         version: link:../core
+      '@quantbot/jobs':
+        specifier: workspace:*
+        version: link:../jobs
       '@quantbot/storage':
         specifier: workspace:*
         version: link:../storage
       '@quantbot/utils':
         specifier: workspace:*
         version: link:../utils
+      '@quantbot/workflows':
+        specifier: workspace:*
+        version: link:../workflows
       lru-cache:
         specifier: ^11.0.0
         version: 11.2.4
@@ -633,6 +639,9 @@ importers:
       '@quantbot/ingestion':
         specifier: workspace:*
         version: link:../ingestion
+      '@quantbot/jobs':
+        specifier: workspace:*
+        version: link:../jobs
       '@quantbot/ohlcv':
         specifier: workspace:*
         version: link:../ohlcv

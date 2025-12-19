@@ -105,7 +105,9 @@ export class OhlcvBackfillService {
     _alert: AlertToBackfill,
     _options: BackfillOptions = {}
   ): Promise<{ success: boolean; candles1m: number; candles5m: number; error?: string }> {
-    throw new Error('This function is deprecated. Use DuckDB workflows via @quantbot/workflows instead.');
+    throw new Error(
+      'This function is deprecated. Use DuckDB workflows via @quantbot/workflows instead.'
+    );
   }
 
   /**

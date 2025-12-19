@@ -19,18 +19,21 @@
 // config({ override: true });
 // import axios from 'axios';
 // Temporary: Import axios for deprecated code (will be removed)
-// eslint-disable-next-line @typescript-eslint/no-require-imports
+ 
 const axios = require('axios');
 //
 // Type declarations for deprecated functions (to satisfy TypeScript)
 // These functions should not be used - they are kept for reference only
 declare const axios: {
-  get: (url: string, config?: {
-    headers?: Record<string, string>;
-    params?: Record<string, unknown>;
-    timeout?: number;
-    validateStatus?: (status: number) => boolean;
-  }) => Promise<{
+  get: (
+    url: string,
+    config?: {
+      headers?: Record<string, string>;
+      params?: Record<string, unknown>;
+      timeout?: number;
+      validateStatus?: (status: number) => boolean;
+    }
+  ) => Promise<{
     status: number;
     data?: {
       data?: {

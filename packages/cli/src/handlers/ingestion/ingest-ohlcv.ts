@@ -40,13 +40,24 @@ export async function ingestOhlcvHandler(args: IngestOhlcvArgs, ctx: CommandCont
     );
   }
 
+  // Map CLI interval to workflow interval format
+  // CLI: '1m' | '5m' | '15m' | '1h'
+  // Workflow: '15s' | '1m' | '5m' | '1H'
+  const intervalMap: Record<string, '15s' | '1m' | '5m' | '1H'> = {
+    '1m': '1m',
+    '5m': '5m',
+    '15m': '5m', // Map 15m to 5m (closest available)
+    '1h': '1H',
+  };
+  const workflowInterval = intervalMap[args.interval] || '1m';
+
   const spec: IngestOhlcvSpec = {
     duckdbPath,
     from: args.from,
     to: args.to,
     side: 'buy', // Default to buy side
     chain: 'solana', // Default chain
-    interval: args.interval,
+    interval: workflowInterval,
     preWindowMinutes: args.preWindow,
     postWindowMinutes: args.postWindow,
     errorMode: 'collect', // Collect errors, don't fail fast

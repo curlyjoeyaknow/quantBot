@@ -530,7 +530,8 @@ function InteractiveSimulationApp() {
       try {
         await ensureInitialized();
 
-        const strategiesRepo = new StrategiesRepository();
+        const dbPath = process.env.DUCKDB_PATH || 'data/quantbot.duckdb';
+        const strategiesRepo = new StrategiesRepository(dbPath);
         const strategies = await strategiesRepo.findAllActive();
 
         if (strategies.length === 0) {
@@ -542,7 +543,7 @@ function InteractiveSimulationApp() {
           return;
         }
 
-        const callersRepo = new CallersRepository();
+        const callersRepo = new CallersRepository(dbPath);
         const callers = await callersRepo.list();
 
         setState({

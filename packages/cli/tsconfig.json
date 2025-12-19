@@ -22,8 +22,10 @@
       "@quantbot/api-clients/*": ["../api-clients/src/*"],
       "@quantbot/simulation": ["../simulation/src"],
       "@quantbot/simulation/*": ["../simulation/src/*"],
-      "@quantbot/workflows": ["../workflows/src"],
-      "@quantbot/workflows/*": ["../workflows/src/*"]
+      "@quantbot/workflows": ["../workflows/dist"],
+      "@quantbot/workflows/*": ["../workflows/dist/*"],
+      "@quantbot/jobs": ["../jobs/dist"],
+      "@quantbot/jobs/*": ["../jobs/dist/*"]
     }
   },
   "include": ["src/**/*"],
@@ -38,7 +40,8 @@
     { "path": "../ohlcv" },
     { "path": "../ingestion" },
     { "path": "../simulation" },
-    { "path": "../workflows" }
+    { "path": "../workflows" },
+    { "path": "../jobs" }
   ]
 }
 

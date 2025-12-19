@@ -148,6 +148,7 @@ export type RunSimulationDuckdbContext = WorkflowContext & {
           alertTimestamp: string;
           queuedAt: string;
         }>;
+        [key: string]: unknown; // Allow additional params
       }) => Promise<{
         tokensProcessed: number;
         tokensSucceeded: number;
@@ -482,10 +483,10 @@ export async function runSimulationDuckdb(
 
         // Merge retry results with original results
         if (retryResult.results) {
-          const resultMap = new Map<string, SimulationResult>();
-          retryResult.results.forEach((r) => {
+          const resultMap = new Map<string, any>();
+          retryResult.results.forEach((r: any) => {
             if (r.mint && r.alert_timestamp) {
-              resultMap.set(`${r.mint}:${r.alert_timestamp}`, r);
+              resultMap.set(`${r.mint}:${r.alert_timestamp}`, r as any);
             }
           });
 
