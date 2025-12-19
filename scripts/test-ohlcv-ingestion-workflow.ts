@@ -19,7 +19,7 @@ async function testOhlcvIngestion() {
   console.log('Date range: 2025-07-15 to 2025-07-16\n');
 
   // Get DuckDB path from environment or use default
-  const duckdbPath = process.env.DUCKDB_PATH || './data/tele.duckdb';
+  const duckdbPath = process.env.DUCKDB_PATH || join(projectRoot, 'data', 'tele.duckdb');
   console.log(`Using DuckDB: ${duckdbPath}\n`);
 
   const spec: IngestOhlcvSpec = {

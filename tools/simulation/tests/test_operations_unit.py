@@ -85,6 +85,7 @@ class TestStoreRun:
         input_data = StoreRunInput(
             run_id="run_123",
             strategy_id="PT2_SL25",
+            strategy_name="PT2 SL25",
             mint="So11111111111111111111111111111111111111112",
             alert_timestamp="2024-01-01T12:00:00",
             start_time="2024-01-01T12:00:00",
@@ -92,6 +93,8 @@ class TestStoreRun:
             initial_capital=1000.0,
             final_capital=1200.0,
             total_return_pct=20.0,
+            entry_config={"type": "immediate"},
+            exit_config={"targets": [{"target": 2.0, "percent": 0.5}]},
         )
 
         result = store_run_run(duckdb_connection, input_data)
@@ -116,6 +119,7 @@ class TestStoreRun:
         input_data = StoreRunInput(
             run_id="run_456",
             strategy_id="PT2_SL25",
+            strategy_name="PT2 SL25",
             mint="EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
             alert_timestamp="2024-01-02T12:00:00",
             start_time="2024-01-02T12:00:00",
@@ -127,6 +131,8 @@ class TestStoreRun:
             sharpe_ratio=1.5,
             win_rate=0.6,
             total_trades=10,
+            entry_config={"type": "immediate"},
+            exit_config={"targets": [{"target": 2.0, "percent": 0.5}]},
         )
 
         result = store_run_run(duckdb_connection, input_data)
@@ -288,12 +294,16 @@ class TestGenerateReport:
             StoreRunInput(
                 run_id="run_1",
                 strategy_id="PT2_SL25",
+                strategy_name="PT2 SL25",
                 mint="So11111111111111111111111111111111111111112",
                 alert_timestamp="2024-01-01T12:00:00",
                 start_time="2024-01-01T12:00:00",
                 end_time="2024-01-02T12:00:00",
+                initial_capital=1000.0,
                 final_capital=1200.0,
                 total_return_pct=20.0,
+                entry_config={"type": "immediate"},
+                exit_config={"targets": [{"target": 2.0, "percent": 0.5}]},
             ),
         )
 
@@ -314,12 +324,16 @@ class TestGenerateReport:
             StoreRunInput(
                 run_id="run_1",
                 strategy_id="PT2_SL25",
+                strategy_name="PT2 SL25",
                 mint="So11111111111111111111111111111111111111112",
                 alert_timestamp="2024-01-01T12:00:00",
                 start_time="2024-01-01T12:00:00",
                 end_time="2024-01-02T12:00:00",
+                initial_capital=1000.0,
                 final_capital=1200.0,
                 total_return_pct=20.0,
+                entry_config={"type": "immediate"},
+                exit_config={"targets": [{"target": 2.0, "percent": 0.5}]},
             ),
         )
 
