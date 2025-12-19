@@ -140,8 +140,10 @@ export async function getStorageStats(
                 const max = rangeResult[0]?.['max'];
                 if (min && max) {
                   tableStat.dateRange = {
-                    min: typeof min === 'string' ? min : DateTime.fromSeconds(min as number).toISO()!,
-                    max: typeof max === 'string' ? max : DateTime.fromSeconds(max as number).toISO()!,
+                    min:
+                      typeof min === 'string' ? min : DateTime.fromSeconds(min as number).toISO()!,
+                    max:
+                      typeof max === 'string' ? max : DateTime.fromSeconds(max as number).toISO()!,
                   };
                   break; // Found a timestamp column, stop looking
                 }
@@ -193,7 +195,10 @@ export async function getStorageStats(
           const tableStat: { name: string; rowCount?: number; error?: string } = { name: table };
 
           if (validated.includeRowCounts && ctx.storage.duckdb) {
-            const countResult = await ctx.storage.duckdb.query(dbPath, `SELECT COUNT(*) as count FROM ${table}`);
+            const countResult = await ctx.storage.duckdb.query(
+              dbPath,
+              `SELECT COUNT(*) as count FROM ${table}`
+            );
             const count = countResult[0]?.['count'];
             if (typeof count === 'number') {
               tableStat.rowCount = count;
@@ -236,4 +241,3 @@ export async function getStorageStats(
 function createDefaultStorageStatsContext(): StorageStatsContext {
   throw new Error('StorageStatsContext must be provided - no default implementation');
 }
-

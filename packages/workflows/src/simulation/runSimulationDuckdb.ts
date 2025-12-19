@@ -112,7 +112,7 @@ export type RunSimulationDuckdbContext = WorkflowContext & {
       ) => Promise<{
         success: boolean;
         calls?: Array<{ mint: string; alert_timestamp: string }>;
-        error?: string;
+        error?: string | null;
       }>;
       checkOhlcvAvailability: (
         path: string,

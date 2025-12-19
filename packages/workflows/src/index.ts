@@ -53,7 +53,10 @@ export type {
   GetOhlcvStatsResult,
   OhlcvStatsContext,
 } from './storage/getOhlcvStats.js';
-export { createStorageStatsContext, createOhlcvStatsContext } from './context/createStorageStatsContext.js';
+export {
+  createStorageStatsContext,
+  createOhlcvStatsContext,
+} from './context/createStorageStatsContext.js';
 export type { StorageStatsContextConfig } from './context/createStorageStatsContext.js';
 export { getTokenStats } from './storage/getTokenStats.js';
 export type {

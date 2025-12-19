@@ -73,9 +73,7 @@ export type TokenStatsContext = WorkflowContext & {
  * Create default context (for testing)
  */
 export function createDefaultTokenStatsContext(): TokenStatsContext {
-  throw new Error(
-    'createDefaultTokenStatsContext must be implemented with actual services'
-  );
+  throw new Error('createDefaultTokenStatsContext must be implemented with actual services');
 }
 
 /**
@@ -91,12 +89,14 @@ export async function getTokenStats(
   const duckdbPathRaw = validated.duckdbPath || ctx.duckdb?.path || process.env.DUCKDB_PATH;
 
   if (!duckdbPathRaw) {
-    throw new Error('DuckDB path is required. Provide duckdbPath in spec or set DUCKDB_PATH environment variable.');
+    throw new Error(
+      'DuckDB path is required. Provide duckdbPath in spec or set DUCKDB_PATH environment variable.'
+    );
   }
 
   // Resolve relative paths to absolute paths
-  const duckdbPath = duckdbPathRaw.startsWith('/') 
-    ? duckdbPathRaw 
+  const duckdbPath = duckdbPathRaw.startsWith('/')
+    ? duckdbPathRaw
     : resolve(process.cwd(), duckdbPathRaw);
 
   // 1. Query DuckDB for token calls
@@ -142,11 +142,13 @@ export async function getTokenStats(
 
     // Find last call time for this token
     const tokenCalls = calls.filter(
-      (c) => c.mint === mint && c.chain === chain
+      (c: { mint: string; chain: string; alertTime?: string }) =>
+        c.mint === mint && c.chain === chain
     );
-    const lastCallTime = tokenCalls.length > 0 && tokenCalls[tokenCalls.length - 1]?.alertTime
-      ? DateTime.fromISO(tokenCalls[tokenCalls.length - 1]!.alertTime!)
-      : firstCallTime;
+    const lastCallTime =
+      tokenCalls.length > 0 && tokenCalls[tokenCalls.length - 1]?.alertTime !== null
+        ? DateTime.fromISO(tokenCalls[tokenCalls.length - 1]!.alertTime!)
+        : firstCallTime;
 
     // Check OHLCV data availability (check for candles around alert time ± 24h)
     const alertTime = firstCallTime;
@@ -187,7 +189,11 @@ export async function getTokenStats(
       } catch (error) {
         // Skip this interval if query fails
         if (ctx.logger.debug) {
-          ctx.logger.debug('Failed to query interval', { mint, interval, error: (error as Error).message });
+          ctx.logger.debug('Failed to query interval', {
+            mint,
+            interval,
+            error: (error as Error).message,
+          });
         }
       }
     }
@@ -207,7 +213,10 @@ export async function getTokenStats(
       totalTokenCandles = parseInt(String(totalResult[0]?.['count'] || 0), 10);
     } catch (error) {
       if (ctx.logger.debug) {
-        ctx.logger.debug('Failed to query total candles', { mint, error: (error as Error).message });
+        ctx.logger.debug('Failed to query total candles', {
+          mint,
+          error: (error as Error).message,
+        });
       }
     }
 
@@ -226,8 +235,10 @@ export async function getTokenStats(
       const minTs = rangeResult[0]?.['min'];
       const maxTs = rangeResult[0]?.['max'];
       if (minTs && maxTs) {
-        const earliest = typeof minTs === 'string' ? minTs : DateTime.fromSeconds(minTs as number).toISO()!;
-        const latest = typeof maxTs === 'string' ? maxTs : DateTime.fromSeconds(maxTs as number).toISO()!;
+        const earliest =
+          typeof minTs === 'string' ? minTs : DateTime.fromSeconds(minTs as number).toISO()!;
+        const latest =
+          typeof maxTs === 'string' ? maxTs : DateTime.fromSeconds(maxTs as number).toISO()!;
         dateRange = { earliest, latest };
       }
     } catch (error) {
@@ -295,4 +306,3 @@ export async function getTokenStats(
     },
   };
 }
-

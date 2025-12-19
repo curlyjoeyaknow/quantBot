@@ -72,12 +72,7 @@ export function createDuckdbSimulationContext(
       },
       duckdbStorage: {
         async queryCalls(path, limit) {
-          const result = await duckdbStorageService.queryCalls(path, limit);
-          // Convert null to undefined for error field to match expected type
-          return {
-            ...result,
-            error: result.error ?? undefined,
-          };
+          return await duckdbStorageService.queryCalls(path, limit);
         },
         async checkOhlcvAvailability(
           path,

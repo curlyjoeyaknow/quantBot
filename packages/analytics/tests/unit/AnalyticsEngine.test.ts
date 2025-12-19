@@ -41,6 +41,12 @@ vi.mock('@quantbot/storage', () => ({
   getPostgresPool: vi.fn(() => ({
     query: vi.fn().mockResolvedValue({ rows: [] }),
   })),
+  getClickHouseClient: vi.fn(() => ({
+    query: vi.fn().mockResolvedValue([]),
+  })),
+  getStorageEngine: vi.fn(() => ({
+    getCandles: vi.fn().mockResolvedValue([]),
+  })),
 }));
 
 describe('AnalyticsEngine', () => {
