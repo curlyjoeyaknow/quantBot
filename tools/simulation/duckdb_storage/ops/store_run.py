@@ -1,17 +1,19 @@
 """
 Store simulation run operation.
 
-Pure DuckDB logic: stores a simulation run result.
+Pure DuckDB logic: stores a simulation run result and strategy configuration.
 """
 
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, Dict, Any
 import duckdb
+import json
 
 
 class StoreRunInput(BaseModel):
     run_id: str
     strategy_id: str
+    strategy_name: str
     mint: str
     alert_timestamp: str
     start_time: str
@@ -23,6 +25,15 @@ class StoreRunInput(BaseModel):
     sharpe_ratio: Optional[float] = None
     win_rate: Optional[float] = None
     total_trades: int = Field(default=0)
+    caller_name: Optional[str] = None
+    # Strategy configuration (for reproducibility)
+    entry_config: Dict[str, Any]
+    exit_config: Dict[str, Any]
+    reentry_config: Optional[Dict[str, Any]] = None
+    cost_config: Optional[Dict[str, Any]] = None
+    stop_loss_config: Optional[Dict[str, Any]] = None
+    entry_signal_config: Optional[Dict[str, Any]] = None
+    exit_signal_config: Optional[Dict[str, Any]] = None
 
 
 class StoreRunOutput(BaseModel):
@@ -32,14 +43,15 @@ class StoreRunOutput(BaseModel):
 
 
 def run(con: duckdb.DuckDBPyConnection, input: StoreRunInput) -> StoreRunOutput:
-    """Store a simulation run in DuckDB."""
+    """Store a simulation run in DuckDB with strategy configuration."""
     try:
+        # Insert into simulation_runs table
         con.execute("""
             INSERT OR REPLACE INTO simulation_runs
             (run_id, strategy_id, mint, alert_timestamp, start_time, end_time,
              initial_capital, final_capital, total_return_pct, max_drawdown_pct,
-             sharpe_ratio, win_rate, total_trades)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             sharpe_ratio, win_rate, total_trades, caller_name)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, [
             input.run_id,
             input.strategy_id,
@@ -54,7 +66,28 @@ def run(con: duckdb.DuckDBPyConnection, input: StoreRunInput) -> StoreRunOutput:
             input.sharpe_ratio,
             input.win_rate,
             input.total_trades,
+            input.caller_name,
         ])
+
+        # Insert into run_strategies_used table (for reproducibility)
+        con.execute("""
+            INSERT OR REPLACE INTO run_strategies_used
+            (run_id, strategy_id, strategy_name, entry_config, exit_config,
+             reentry_config, cost_config, stop_loss_config, entry_signal_config, exit_signal_config)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, [
+            input.run_id,
+            input.strategy_id,
+            input.strategy_name,
+            json.dumps(input.entry_config),
+            json.dumps(input.exit_config),
+            json.dumps(input.reentry_config) if input.reentry_config else None,
+            json.dumps(input.cost_config) if input.cost_config else None,
+            json.dumps(input.stop_loss_config) if input.stop_loss_config else None,
+            json.dumps(input.entry_signal_config) if input.entry_signal_config else None,
+            json.dumps(input.exit_signal_config) if input.exit_signal_config else None,
+        ])
+
         con.commit()
         return StoreRunOutput(success=True, run_id=input.run_id)
     except Exception as e:

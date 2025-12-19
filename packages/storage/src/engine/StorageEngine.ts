@@ -27,7 +27,6 @@ import type {
   Alert,
   TokenMetadata,
 } from '@quantbot/core';
-import { createTokenAddress } from '@quantbot/core';
 import type { TokenMetadataSnapshot } from '../clickhouse/repositories/TokenMetadataRepository';
 
 // Import repositories

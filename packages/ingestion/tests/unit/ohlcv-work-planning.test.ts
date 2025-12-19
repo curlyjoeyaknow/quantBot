@@ -89,12 +89,8 @@ describe('OHLCV Work Planning', () => {
 
       // Verify time windows
       const alertTime = DateTime.fromISO('2024-01-01T12:00:00Z');
-      expect(workItems[0].startTime.toISO()).toBe(
-        alertTime.minus({ minutes: 260 }).toISO()
-      );
-      expect(workItems[0].endTime.toISO()).toBe(
-        alertTime.plus({ minutes: 1440 }).toISO()
-      );
+      expect(workItems[0].startTime.toISO()).toBe(alertTime.minus({ minutes: 260 }).toISO());
+      expect(workItems[0].endTime.toISO()).toBe(alertTime.plus({ minutes: 1440 }).toISO());
     });
 
     it('should sort work items by priority (call count)', async () => {
@@ -163,12 +159,8 @@ describe('OHLCV Work Planning', () => {
 
       // Default windows: 260 pre, 1440 post
       const alertTime = DateTime.fromISO('2024-01-01T12:00:00Z');
-      expect(workItems[0].startTime.toISO()).toBe(
-        alertTime.minus({ minutes: 260 }).toISO()
-      );
-      expect(workItems[0].endTime.toISO()).toBe(
-        alertTime.plus({ minutes: 1440 }).toISO()
-      );
+      expect(workItems[0].startTime.toISO()).toBe(alertTime.minus({ minutes: 260 }).toISO());
+      expect(workItems[0].endTime.toISO()).toBe(alertTime.plus({ minutes: 1440 }).toISO());
     });
 
     it('should handle missing required fields gracefully', async () => {
@@ -288,4 +280,3 @@ describe('OHLCV Work Planning', () => {
     });
   });
 });
-

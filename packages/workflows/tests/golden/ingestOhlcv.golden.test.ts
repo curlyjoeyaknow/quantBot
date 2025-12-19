@@ -180,12 +180,7 @@ describe('ingestOhlcv Workflow - Golden Path', () => {
       expect(mockContext.jobs.ohlcvBirdeyeFetch.fetchWorkList).toHaveBeenCalledWith(worklist);
 
       // Assert: Candles were stored
-      expect(storeCandles).toHaveBeenCalledWith(
-        TEST_MINT,
-        TEST_CHAIN,
-        mockCandles,
-        '1m'
-      );
+      expect(storeCandles).toHaveBeenCalledWith(TEST_MINT, TEST_CHAIN, mockCandles, '1m');
 
       // Assert: Metadata was updated
       expect(mockContext.duckdbStorage!.updateOhlcvMetadata).toHaveBeenCalledWith(
@@ -524,12 +519,7 @@ describe('ingestOhlcv Workflow - Golden Path', () => {
         );
 
         expect(result.workItemsSucceeded).toBe(1);
-        expect(storeCandles).toHaveBeenCalledWith(
-          TEST_MINT,
-          TEST_CHAIN,
-          mockCandles,
-          interval
-        );
+        expect(storeCandles).toHaveBeenCalledWith(TEST_MINT, TEST_CHAIN, mockCandles, interval);
       }
     });
   });
@@ -591,4 +581,3 @@ describe('ingestOhlcv Workflow - Golden Path', () => {
     });
   });
 });
-

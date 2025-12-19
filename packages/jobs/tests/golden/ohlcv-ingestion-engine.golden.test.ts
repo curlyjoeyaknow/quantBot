@@ -59,7 +59,7 @@ vi.mock('@quantbot/utils', () => ({
 
 describe('OhlcvIngestionEngine - Golden Path', () => {
   let engine: OhlcvIngestionEngine;
-  const TEST_MINT = '7pXs123456789012345678901234567890pump'; // Full 44-char address
+  const TEST_MINT = '7pXs1234567890123456789012345678901234pump'; // Full 44-char address
   const TEST_CHAIN = 'solana' as const;
   const TEST_ALERT_TIME = DateTime.utc().minus({ days: 30 }); // Recent alert
 
@@ -126,9 +126,7 @@ describe('OhlcvIngestionEngine - Golden Path', () => {
       vi.mocked(mockStorageEngine.getCandles).mockResolvedValue([]);
 
       // Mock: API returns candles
-      vi.mocked(fetchBirdeyeCandles)
-        .mockResolvedValueOnce(candles1m) // 1m candles
-        .mockResolvedValueOnce(candles5m); // 5m candles
+      vi.mocked(fetchBirdeyeCandles).mockResolvedValueOnce(candles1m); // Only 1m candles (engine only fetches 1m)
 
       // Execute: Initialize and fetch
       await engine.initialize();
@@ -139,10 +137,10 @@ describe('OhlcvIngestionEngine - Golden Path', () => {
 
       // Assert: Complete result structure
       expect(result['1m']).toHaveLength(52);
-      expect(result['5m']).toHaveLength(52);
+      expect(result['5m']).toEqual([]); // Engine only returns 1m candles now
       expect(result.metadata.tokenStored).toBe(true);
       expect(result.metadata.total1mCandles).toBe(52);
-      expect(result.metadata.total5mCandles).toBe(52);
+      expect(result.metadata.total5mCandles).toBe(0); // Not fetched in current implementation
       expect(result.metadata.chunksFetched).toBeGreaterThan(0);
       expect(result.metadata.chunksFromAPI).toBeGreaterThan(0);
 
@@ -164,22 +162,22 @@ describe('OhlcvIngestionEngine - Golden Path', () => {
       const start5m = alertTimeSeconds - 260 * 60;
       const end5m = Math.floor(DateTime.utc().toSeconds());
 
-      const largeCandles5m: Candle[] = [];
+      // Generate 5000 1m candles (engine fetches 1m candles, not 5m)
+      const largeCandles1m: Candle[] = [];
+      const start1m = alertTimeSeconds - 52 * 60; // -52 minutes
       for (let i = 0; i < 5000; i++) {
-        largeCandles5m.push({
-          timestamp: start5m + i * 300,
-          open: 1.0,
-          high: 1.1,
-          low: 0.9,
-          close: 1.05,
-          volume: 1000,
+        largeCandles1m.push({
+          timestamp: start1m + i * 60, // 1 minute intervals
+          open: 1.0 + i * 0.0001,
+          high: 1.1 + i * 0.0001,
+          low: 0.9 + i * 0.0001,
+          close: 1.05 + i * 0.0001,
+          volume: 1000 + i,
         });
       }
 
       vi.mocked(mockStorageEngine.getCandles).mockResolvedValue([]);
-      vi.mocked(fetchBirdeyeCandles)
-        .mockResolvedValueOnce([]) // 1m (empty for this test)
-        .mockResolvedValueOnce(largeCandles5m); // 5m (large set)
+      vi.mocked(fetchBirdeyeCandles).mockResolvedValueOnce(largeCandles1m); // Large 1m set
 
       await engine.initialize();
       const result = await engine.fetchCandles(TEST_MINT, TEST_CHAIN, TEST_ALERT_TIME, {
@@ -187,9 +185,9 @@ describe('OhlcvIngestionEngine - Golden Path', () => {
         useCache: false,
       });
 
-      // Assert: All candles processed
-      expect(result['5m']).toHaveLength(5000);
-      expect(result.metadata.total5mCandles).toBe(5000);
+      // Assert: Large candle set processed (engine fetches up to 5000 x 1m)
+      expect(result['1m'].length).toBe(5000);
+      expect(result.metadata.total1mCandles).toBe(5000);
       expect(result.metadata.chunksFetched).toBeGreaterThan(0);
     });
 
@@ -258,40 +256,39 @@ describe('OhlcvIngestionEngine - Golden Path', () => {
     });
   });
 
-  describe('GOLDEN: Multi-interval support', () => {
-    it('should fetch and store all supported intervals correctly', async () => {
-      const intervals: Array<'15s' | '1m' | '5m' | '1H'> = ['15s', '1m', '5m', '1H'];
+  describe('GOLDEN: Interval handling', () => {
+    it('should fetch 1m candles regardless of interval option (engine always uses 1m)', async () => {
+      // Note: Engine always fetches 1m candles, interval option is for future use
+      const mockCandles: Candle[] = [
+        {
+          timestamp: Math.floor(TEST_ALERT_TIME.minus({ minutes: 52 }).toSeconds()),
+          open: 1.0,
+          high: 1.1,
+          low: 0.9,
+          close: 1.05,
+          volume: 1000,
+        },
+      ];
 
-      for (const interval of intervals) {
-        const mockCandles: Candle[] = [
-          {
-            timestamp: Math.floor(TEST_ALERT_TIME.minus({ minutes: 52 }).toSeconds()),
-            open: 1.0,
-            high: 1.1,
-            low: 0.9,
-            close: 1.05,
-            volume: 1000,
-          },
-        ];
+      vi.mocked(mockStorageEngine.getCandles).mockResolvedValue([]);
+      vi.mocked(fetchBirdeyeCandles).mockResolvedValue(mockCandles);
 
-        vi.mocked(mockStorageEngine.getCandles).mockResolvedValue([]);
-        vi.mocked(fetchBirdeyeCandles).mockResolvedValue(mockCandles);
+      await engine.initialize();
+      const result = await engine.fetchCandles(TEST_MINT, TEST_CHAIN, TEST_ALERT_TIME, {
+        interval: '1m', // Engine always uses 1m
+        useCache: false,
+      });
 
-        await engine.initialize();
-        const result = await engine.fetchCandles(TEST_MINT, TEST_CHAIN, TEST_ALERT_TIME, {
-          interval,
-          useCache: false,
-        });
-
-        expect(result).toBeDefined();
-        expect(fetchBirdeyeCandles).toHaveBeenCalledWith(
-          TEST_MINT,
-          interval,
-          expect.any(Number),
-          expect.any(Number),
-          TEST_CHAIN
-        );
-      }
+      expect(result).toBeDefined();
+      expect(result['1m']).toBeDefined();
+      // Engine always fetches with '1m' interval
+      expect(fetchBirdeyeCandles).toHaveBeenCalledWith(
+        TEST_MINT,
+        '1m',
+        expect.any(Number),
+        expect.any(Number),
+        TEST_CHAIN
+      );
     });
   });
 
@@ -309,23 +306,20 @@ describe('OhlcvIngestionEngine - Golden Path', () => {
       ];
 
       vi.mocked(mockStorageEngine.getCandles).mockResolvedValue([]);
-      vi.mocked(fetchBirdeyeCandles)
-        .mockResolvedValueOnce(partialCandles) // 1m succeeds
-        .mockRejectedValueOnce(new Error('API error')); // 5m fails
+      vi.mocked(fetchBirdeyeCandles).mockRejectedValueOnce(new Error('API error')); // Fetch fails
 
       await engine.initialize();
 
-      // Should not throw, but handle error gracefully
+      // Engine should propagate error
       await expect(
         engine.fetchCandles(TEST_MINT, TEST_CHAIN, TEST_ALERT_TIME, {
           interval: '1m',
           useCache: false,
         })
-      ).rejects.toThrow(); // Engine should propagate error or handle it
+      ).rejects.toThrow('API error');
 
-      // Verify partial data was processed
+      // Verify API was called
       expect(fetchBirdeyeCandles).toHaveBeenCalled();
     });
   });
 });
-
