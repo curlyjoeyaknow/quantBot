@@ -104,9 +104,9 @@ export class CommandContext {
         return new OhlcvFetchJob();
       },
       telegramIngestion: () => {
-        // PostgreSQL repositories removed. Service needs updating to use DuckDB.
+        // PostgreSQL repositories removed - use ingestTelegramJson workflow instead
         throw new Error(
-          'TelegramAlertIngestionService requires PostgreSQL repositories which were removed. Update service to use DuckDB.'
+          'TelegramAlertIngestionService requires PostgreSQL repositories which were removed. Use ingestTelegramJson workflow instead.'
         );
       },
       ohlcvRepository: () => {

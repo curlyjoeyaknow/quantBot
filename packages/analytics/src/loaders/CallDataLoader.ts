@@ -6,7 +6,8 @@
 
 import { DateTime } from 'luxon';
 import { logger } from '@quantbot/utils';
-import { getPostgresPool, getStorageEngine } from '@quantbot/storage';
+import { getStorageEngine } from '@quantbot/storage';
+// PostgreSQL removed - use DuckDB workflows instead
 import type { CallPerformance } from '../types';
 import { calculateAthFromCandleObjects } from '../utils/ath-calculator';
 
@@ -23,135 +24,16 @@ export interface LoadCallsOptions {
  */
 export class CallDataLoader {
   /**
-   * Load calls from Postgres
+   * Load calls from DuckDB (via workflows)
+   * 
+   * @deprecated PostgreSQL removed - use DuckDB workflows to query calls
    */
-  async loadCalls(options: LoadCallsOptions = {}): Promise<CallPerformance[]> {
-    try {
-      const pool = getPostgresPool();
-
-      // Build query with filters (include ATH/ATL from alerts table)
-      let query = `
-        SELECT 
-          a.id,
-          t.address as token_address,
-          t.symbol as token_symbol,
-          t.chain,
-          c.handle as caller_name,
-          c.source as caller_source,
-          a.alert_timestamp,
-          a.alert_price,
-          a.initial_price,
-          a.ath_price,
-          a.ath_timestamp,
-          a.time_to_ath,
-          a.atl_price,
-          a.atl_timestamp
-        FROM alerts a
-        JOIN tokens t ON a.token_id = t.id
-        LEFT JOIN callers c ON a.caller_id = c.id
-        WHERE 1=1
-      `;
-
-      const params: Array<string | number | string[] | Date> = [];
-      let paramIndex = 1;
-
-      if (options.from) {
-        query += ` AND a.alert_timestamp >= $${paramIndex}`;
-        params.push(options.from);
-        paramIndex++;
-      }
-
-      if (options.to) {
-        query += ` AND a.alert_timestamp <= $${paramIndex}`;
-        params.push(options.to);
-        paramIndex++;
-      }
-
-      if (options.callerNames && options.callerNames.length > 0) {
-        query += ` AND c.handle = ANY($${paramIndex})`;
-        params.push(options.callerNames);
-        paramIndex++;
-      }
-
-      if (options.chains && options.chains.length > 0) {
-        query += ` AND t.chain = ANY($${paramIndex})`;
-        params.push(options.chains);
-        paramIndex++;
-      }
-
-      query += ` ORDER BY a.alert_timestamp DESC`;
-
-      if (options.limit) {
-        query += ` LIMIT $${paramIndex}`;
-        params.push(options.limit);
-      } else {
-        query += ` LIMIT 10000`; // Default limit
-      }
-
-      interface QueryRow {
-        id: number;
-        token_address: string;
-        token_symbol: string | null;
-        chain: string;
-        caller_name: string | null;
-        caller_source: string | null;
-        alert_timestamp: Date;
-        alert_price: string | null;
-        initial_price: string | null;
-        ath_price: string | null;
-        ath_timestamp: Date | null;
-        time_to_ath: number | null;
-        atl_price: string | null;
-        atl_timestamp: Date | null;
-      }
-
-      const result = await pool.query(query, params);
-
-      const calls: CallPerformance[] = result.rows.map((row: QueryRow) => {
-        const entryPrice = row.initial_price
-          ? parseFloat(row.initial_price)
-          : row.alert_price
-            ? parseFloat(row.alert_price)
-            : 1;
-        const callerName = row.caller_name
-          ? row.caller_source
-            ? `${row.caller_source}/${row.caller_name}`
-            : row.caller_name
-          : 'unknown';
-
-        // Read ATH/ATL from alerts table (calculated during OHLCV ingestion)
-        const athPrice = row.ath_price ? parseFloat(row.ath_price) : entryPrice;
-        const atlPrice = row.atl_price ? parseFloat(row.atl_price) : entryPrice;
-        const athMultiple = entryPrice > 0 ? athPrice / entryPrice : 1;
-        const atlMultiple = entryPrice > 0 ? atlPrice / entryPrice : 1;
-        const timeToAthMinutes = row.time_to_ath ? row.time_to_ath / 60 : 0;
-
-        return {
-          callId: row.id,
-          tokenAddress: row.token_address,
-          tokenSymbol: row.token_symbol ?? undefined,
-          callerName,
-          chain: row.chain || 'solana',
-          alertTimestamp: new Date(row.alert_timestamp),
-          entryPrice,
-          athPrice,
-          athMultiple,
-          timeToAthMinutes,
-          atlPrice,
-          atlTimestamp: row.atl_timestamp ? new Date(row.atl_timestamp) : undefined,
-          atlMultiple,
-        };
-      });
-
-      logger.debug(`[CallDataLoader] Loaded ${calls.length} calls from Postgres`);
-      return calls;
-    } catch (error: unknown) {
-      logger.error('[CallDataLoader] Failed to load calls', {
-        error: error instanceof Error ? error.message : String(error),
-      });
-      throw error;
-    }
+  async loadCalls(_options: LoadCallsOptions = {}): Promise<CallPerformance[]> {
+    // PostgreSQL removed - use DuckDB workflows to query calls
+    throw new Error('CallDataLoader.loadCalls() requires PostgreSQL which was removed. Use DuckDB workflows to query calls instead.');
   }
+
+  // Original PostgreSQL implementation removed - use DuckDB workflows instead
 
   /**
    * Enrich calls with ATH data from OHLCV cache

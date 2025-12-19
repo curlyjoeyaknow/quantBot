@@ -5,7 +5,7 @@
  */
 
 import { logger } from '@quantbot/utils';
-import { getPostgresPool } from '@quantbot/storage';
+// PostgreSQL removed - use DuckDB workflows instead
 import type { CallPerformance, CallerMetrics, AthDistribution, SystemMetrics } from '../types';
 
 /**
@@ -119,60 +119,30 @@ export class MetricsAggregator {
   /**
    * Calculate system metrics
    */
+  /**
+   * Calculate system metrics
+   * 
+   * @deprecated PostgreSQL removed - use DuckDB workflows to get system metrics
+   */
   async calculateSystemMetrics(calls: CallPerformance[]): Promise<SystemMetrics> {
-    try {
-      const pool = getPostgresPool();
+    // PostgreSQL removed - calculate metrics from provided calls only
+    // For full system metrics, use DuckDB workflows
+    
+    // Calculate date range from calls
+    const timestamps = calls.map((c) => c.alertTimestamp.getTime());
+    const dataRange = {
+      start: timestamps.length > 0 ? new Date(Math.min(...timestamps)) : new Date(),
+      end: timestamps.length > 0 ? new Date(Math.max(...timestamps)) : new Date(),
+    };
 
-      // Get total counts from database
-      const [
-        callsResult,
-        callersResult,
-        tokensResult,
-        simulationsTotalResult,
-        simulationsTodayResult,
-      ] = await Promise.all([
-        pool.query('SELECT COUNT(*) as count FROM alerts'),
-        pool.query(
-          'SELECT COUNT(DISTINCT caller_id) as count FROM alerts WHERE caller_id IS NOT NULL'
-        ),
-        pool.query('SELECT COUNT(*) as count FROM tokens'),
-        pool.query('SELECT COUNT(*) as count FROM simulation_runs'),
-        pool.query(`
-          SELECT COUNT(*) as count 
-          FROM simulation_runs 
-          WHERE created_at >= CURRENT_DATE
-        `),
-      ]);
-
-      const totalCalls = parseInt(callsResult.rows[0]?.count || '0', 10);
-      const totalCallers = parseInt(callersResult.rows[0]?.count || '0', 10);
-      const totalTokens = parseInt(tokensResult.rows[0]?.count || '0', 10);
-      const simulationsTotal = parseInt(simulationsTotalResult.rows[0]?.count || '0', 10);
-      const simulationsToday = parseInt(simulationsTodayResult.rows[0]?.count || '0', 10);
-
-      // Calculate date range from calls
-      const timestamps = calls.map((c) => c.alertTimestamp.getTime());
-      const dataRange = {
-        start: timestamps.length > 0 ? new Date(Math.min(...timestamps)) : new Date(),
-        end: timestamps.length > 0 ? new Date(Math.max(...timestamps)) : new Date(),
-      };
-
-      const metrics: SystemMetrics = {
-        totalCalls,
-        totalCallers,
-        totalTokens,
-        dataRange,
-        simulationsToday,
-        simulationsTotal,
-      };
-
-      logger.debug('[MetricsAggregator] Calculated system metrics');
-      return metrics;
-    } catch (error: unknown) {
-      logger.error('[MetricsAggregator] Failed to calculate system metrics', {
-        error: error instanceof Error ? error.message : String(error),
-      });
-      throw error;
-    }
+    // Return metrics based on provided calls (no DB queries)
+    return {
+      totalCalls: calls.length,
+      totalCallers: new Set(calls.map((c) => c.callerName)).size,
+      totalTokens: new Set(calls.map((c) => c.tokenAddress)).size,
+      dataRange,
+      simulationsTotal: 0, // Requires DuckDB query - use workflows
+      simulationsToday: 0, // Requires DuckDB query - use workflows
+    };
   }
 }
