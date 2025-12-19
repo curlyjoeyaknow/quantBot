@@ -8,7 +8,7 @@ import { DateTime } from 'luxon';
 import { logger } from '@quantbot/utils';
 import { StorageEngine } from '@quantbot/storage';
 // PostgreSQL removed - use DuckDB workflows instead
-import { queryCallsDuckdb, type QueryCallsDuckdbSpec } from '@quantbot/workflows';
+import { queryCallsDuckdb, type QueryCallsDuckdbSpec, type WorkflowContext } from '@quantbot/workflows';
 import { createProductionContext } from '@quantbot/workflows';
 import type { CallPerformance } from '../types';
 import { calculateAthFromCandleObjects } from '../utils/ath-calculator';
@@ -59,7 +59,7 @@ export class CallDataLoader {
           },
         },
       },
-    } as any;
+    } as WorkflowContext;
 
     try {
       const result = await queryCallsDuckdb(spec, workflowCtx);
