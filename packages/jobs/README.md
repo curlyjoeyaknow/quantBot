@@ -91,39 +91,46 @@ const result = await engine.fetchCandles(
 
 ### Complete OHLCV Ingestion Flow
 
-```typescript
-import { generateOhlcvWorklist } from '@quantbot/ingestion';
-import { OhlcvFetchJob } from '@quantbot/jobs';
+**Terminology**: "Ingestion" = Full process (fetch + store + metadata)
 
+```typescript
+import { ingestOhlcv, createOhlcvIngestionContext } from '@quantbot/workflows';
+
+// The workflow handles the complete flow:
 // 1. Generate worklist (offline - DuckDB queries)
-const worklist = await generateOhlcvWorklist({
+// 2. Fetch from Birdeye (online - API call)
+// 3. Store in ClickHouse (ingestion)
+// 4. Update DuckDB metadata (ingestion)
+
+const workflowContext = createOhlcvIngestionContext();
+const result = await ingestOhlcv({
   duckdbPath: process.env.DUCKDB_PATH!,
   from: '2024-01-01',
   to: '2024-01-02',
-});
-
-// 2. Execute fetch job (online - API calls + storage)
-const fetchJob = new OhlcvFetchJob({
-  rateLimitMs: 100,
-  maxRetries: 3,
-});
-
-const results = await fetchJob.fetchWorkList(worklist);
+  interval: '1m',
+  preWindowMinutes: 260,
+  postWindowMinutes: 1440,
+}, workflowContext);
 
 // Results include:
-// - success/failure status
-// - candles fetched and stored
-// - errors and retry information
+// - worklistGenerated
+// - workItemsProcessed/Succeeded/Failed/Skipped
+// - totalCandlesFetched (from Birdeye)
+// - totalCandlesStored (in ClickHouse)
+// - errors
 ```
 
 ## Boundaries
 
 This package **can**:
 - Import `@quantbot/api-clients`
-- Make HTTP requests
-- Write to ClickHouse
+- Make HTTP requests to Birdeye API
 - Enforce rate limits
 - Emit metrics
+
+This package **does NOT**:
+- Store candles (that's handled by the ingestion workflow)
+- Update DuckDB metadata (that's handled by the ingestion workflow)
 
 This package **must not** be imported by:
 - `@quantbot/simulation` (simulation must be offline-only)

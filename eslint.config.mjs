@@ -70,6 +70,67 @@ export default tseslint.config(
       }],
     },
   },
+  // Workflow boundaries: enforce clean separation
+  // Workflows cannot import from CLI/TUI or storage implementations
+  {
+    files: ['packages/workflows/src/**/*.ts'],
+    rules: {
+      'no-restricted-imports': ['error', {
+        paths: [
+          {
+            name: '@quantbot/cli',
+            message: 'Workflows cannot depend on CLI. Use WorkflowContext for all dependencies.',
+          },
+          {
+            name: '@quantbot/tui',
+            message: 'Workflows cannot depend on TUI. Use WorkflowContext for all dependencies.',
+          },
+          {
+            name: '@quantbot/storage/src/postgres',
+            message: 'Use WorkflowContext repos, not direct Postgres imports',
+          },
+          {
+            name: '@quantbot/storage/src/clickhouse',
+            message: 'Use WorkflowContext repos, not direct ClickHouse imports',
+          },
+          {
+            name: '@quantbot/storage/src/duckdb',
+            message: 'Use WorkflowContext repos, not direct DuckDB imports',
+          },
+        ],
+        patterns: [
+          {
+            group: ['@quantbot/cli*', '@quantbot/tui*'],
+            message: 'Workflows cannot import from CLI or TUI packages',
+          },
+          {
+            group: ['@quantbot/storage/src/**/postgres*', '@quantbot/storage/src/**/clickhouse*', '@quantbot/storage/src/**/duckdb*'],
+            message: 'Workflows must use WorkflowContext, not direct storage implementation imports',
+          },
+        ],
+      }],
+    },
+  },
+  // CLI handler boundaries: prevent importing workflow internals
+  {
+    files: ['packages/cli/src/handlers/**/*.ts'],
+    rules: {
+      'no-restricted-imports': ['error', {
+        paths: [
+          {
+            name: '@quantbot/workflows/src',
+            message: 'CLI handlers can only import from @quantbot/workflows public API (index.ts)',
+          },
+        ],
+        patterns: [
+          {
+            group: ['@quantbot/workflows/src/**'],
+            message: 'CLI handlers cannot import workflow internals. Use public API only.',
+          },
+        ],
+      }],
+    },
+  },
   {
     ignores: [
       'node_modules/**',

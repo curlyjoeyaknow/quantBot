@@ -27,7 +27,7 @@ import { z } from 'zod';
 import { ValidationError } from '@quantbot/utils';
 import type { WorkflowContext } from '../types.js';
 import type { SimulationConfig, SimulationOutput, SimulationResult } from '@quantbot/simulation';
-import { ingestOhlcv, type IngestOhlcvSpec } from '../ohlcv/ingestOhlcv.js';
+import type { IngestOhlcvSpec } from '../ohlcv/ingestOhlcv.js';
 import type { IngestOhlcvContext } from '../ohlcv/ingestOhlcv.js';
 
 /**
@@ -392,15 +392,6 @@ export async function runSimulationDuckdb(
         preWindowMinutes: token.lookbackMinutes,
         postWindowMinutes: token.lookforwardMinutes,
       }));
-
-      // Use OHLCV ingestion workflow
-      const ingestionSpec: IngestOhlcvSpec = {
-        duckdbPath: validated.duckdbPath,
-        preWindowMinutes: validated.lookbackMinutes ?? 0,
-        postWindowMinutes: validated.lookforwardMinutes ?? 0,
-        errorMode: 'collect',
-        checkCoverage: true,
-      };
 
       // Note: We need to call the ingestion service directly here since we need the queueItems
       // The workflow doesn't support queueItems yet, so we use the service
