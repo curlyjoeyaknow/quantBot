@@ -1,6 +1,5 @@
-import { DateTime } from 'luxon';
 import type { CommandContext } from '../../core/command-context.js';
-import { runSchema, type RunSimulationArgs } from '../../command-defs/simulation.js';
+import { type RunSimulationArgs } from '../../command-defs/simulation.js';
 import { runSimulation, createProductionContext } from '@quantbot/workflows';
 import type { SimulationRunSpec } from '@quantbot/workflows';
 

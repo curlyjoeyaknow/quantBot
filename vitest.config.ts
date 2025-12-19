@@ -81,8 +81,6 @@ export default defineConfig({
       '@quantbot/ingestion/*': resolveFromRoot('packages/ingestion/src/*'),
       '@quantbot/analytics': resolveFromRoot('packages/analytics/src'),
       '@quantbot/analytics/*': resolveFromRoot('packages/analytics/src/*'),
-      '@quantbot/data': resolveFromRoot('packages/data/src'),
-      '@quantbot/data/*': resolveFromRoot('packages/data/src/*'),
     },
   },
   optimizeDeps: {

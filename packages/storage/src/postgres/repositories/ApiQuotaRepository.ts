@@ -1,7 +1,11 @@
 /**
  * ApiQuotaRepository - Postgres repository for API quota tracking
  *
- * Handles all database operations for api_quota_usage table.
+ * @deprecated This repository is replaced by:
+ * - DuckDB event log (@quantbot/observability/event-log) for billing-grade API call tracking
+ * - Prometheus metrics (@quantbot/observability/prometheus-metrics) for live counters and alerting
+ *
+ * This will be removed in a future version.
  */
 
 import { DateTime } from 'luxon';

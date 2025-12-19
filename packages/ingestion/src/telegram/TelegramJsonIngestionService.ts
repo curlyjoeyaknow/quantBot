@@ -10,10 +10,9 @@
 
 import * as path from 'path';
 import { logger } from '@quantbot/utils';
-import { parseJsonExport, type ParseJsonExportResult } from './TelegramJsonExportParser';
+import { parseJsonExport } from './TelegramJsonExportParser';
 import {
   TelegramMessageStreamProcessor,
-  type StreamProcessorOptions,
   type StreamProcessorResult,
 } from './TelegramMessageStreamProcessor';
 

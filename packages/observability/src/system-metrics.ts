@@ -4,7 +4,6 @@
  * Collects system-level metrics (CPU, memory, disk, etc.)
  */
 
-import { logger } from '@quantbot/utils';
 import * as os from 'os';
 
 export interface SystemMetrics {

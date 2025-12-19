@@ -5,7 +5,7 @@
  */
 
 import type { CommandContext } from '../../core/command-context.js';
-import { storeStrategySchema, type StoreStrategyArgs } from '../../command-defs/simulation.js';
+import { type StoreStrategyArgs } from '../../command-defs/simulation.js';
 
 export async function storeStrategyDuckdbHandler(args: StoreStrategyArgs, ctx: CommandContext) {
   const service = ctx.services.duckdbStorage();

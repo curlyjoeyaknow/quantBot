@@ -26,19 +26,13 @@ export {
 } from './telegram/normalizedToParsedConverter';
 export { extractSolanaAddresses } from './extractSolanaAddresses';
 
-// Address validation and extraction
-export { isEvmAddress, isSolanaAddress, isBase58, extractAddresses } from './addressValidation';
+// Address validation and extraction (isEvmAddress, isSolanaAddress moved to @quantbot/utils)
+export { isBase58, extractAddresses } from './addressValidation';
 
-// Multi-chain metadata fetching
-export {
-  fetchMultiChainMetadata,
-  batchFetchMultiChainMetadata,
-  type TokenMetadata,
-  type MultiChainMetadataResult,
-} from './MultiChainMetadataService';
-
-// Multi-chain metadata cache
-export { MultiChainMetadataCache, getMetadataCache } from './MultiChainMetadataCache';
+// NOTE: Multi-chain metadata fetching has been moved to @quantbot/api-clients
+// These re-exports are removed to maintain offline-only boundary.
+// Import directly from @quantbot/api-clients if needed.
+// For offline work planning, use DuckDB queries instead.
 export {
   TelegramAlertIngestionService,
   type IngestExportParams,
@@ -49,6 +43,11 @@ export {
   type IngestForCallsParams,
   type IngestForCallsResult,
 } from './OhlcvIngestionService';
+export {
+  generateOhlcvWorklist,
+  type OhlcvWorkItem,
+  type WorklistOptions,
+} from './ohlcv-work-planning';
 
 // New Telegram Call Ingestion System
 export { MessageIndex } from './MessageIndex';

@@ -11,7 +11,7 @@ import { ValidationError } from '@quantbot/utils';
 const mockFetchCandles = vi.fn();
 const mockInitialize = vi.fn().mockResolvedValue(undefined);
 
-vi.mock('@quantbot/ohlcv', () => ({
+vi.mock('@quantbot/jobs', () => ({
   getOhlcvIngestionEngine: vi.fn(() => ({
     initialize: mockInitialize,
     fetchCandles: mockFetchCandles,

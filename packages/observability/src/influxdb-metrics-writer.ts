@@ -6,7 +6,7 @@
 
 import { InfluxDB, Point, WriteApi } from '@influxdata/influxdb-client';
 import { logger } from '@quantbot/utils';
-import type { LatencyMetric, ThroughputMetric, VersionedMetricPoint } from './types';
+import type { LatencyMetric, ThroughputMetric } from './types';
 
 export type { InfluxDB, WriteApi };
 

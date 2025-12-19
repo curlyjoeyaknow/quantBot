@@ -73,6 +73,39 @@ export const CallsQueryResultSchema = z.object({
 export type CallsQueryResult = z.infer<typeof CallsQueryResultSchema>;
 
 /**
+ * Schema for OHLCV metadata result
+ */
+export const OhlcvMetadataResultSchema = z.object({
+  success: z.boolean(),
+  available: z.boolean().optional(),
+  time_range_start: z.string().optional(),
+  time_range_end: z.string().optional(),
+  candle_count: z.number().optional(),
+  error: z.string().optional(),
+});
+
+export type OhlcvMetadataResult = z.infer<typeof OhlcvMetadataResultSchema>;
+
+/**
+ * Schema for OHLCV exclusion result
+ */
+export const OhlcvExclusionResultSchema = z.object({
+  success: z.boolean(),
+  excluded: z
+    .array(
+      z.object({
+        mint: z.string(),
+        alert_timestamp: z.string(),
+        reason: z.string(),
+      })
+    )
+    .optional(),
+  error: z.string().optional(),
+});
+
+export type OhlcvExclusionResult = z.infer<typeof OhlcvExclusionResultSchema>;
+
+/**
  * DuckDB Storage Service
  */
 export class DuckDBStorageService {
@@ -228,19 +261,178 @@ export class DuckDBStorageService {
    * Query calls from DuckDB for batch simulation
    * Returns list of calls with mint addresses and alert timestamps
    */
-  async queryCalls(duckdbPath: string, limit?: number): Promise<CallsQueryResult> {
+  async queryCalls(
+    duckdbPath: string,
+    limit?: number,
+    excludeUnrecoverable?: boolean
+  ): Promise<CallsQueryResult> {
     try {
       const result = await this.pythonEngine.runDuckDBStorage({
         duckdbPath,
         operation: 'query_calls',
         data: {
           limit: limit || 1000, // Default limit
+          exclude_unrecoverable: excludeUnrecoverable !== false, // Default to true
         },
       });
 
       return CallsQueryResultSchema.parse(result);
     } catch (error) {
       logger.error('Failed to query calls from DuckDB', error as Error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
+  }
+
+  /**
+   * Update OHLCV metadata table
+   */
+  async updateOhlcvMetadata(
+    duckdbPath: string,
+    mint: string,
+    alertTimestamp: string,
+    intervalSeconds: number,
+    timeRangeStart: string,
+    timeRangeEnd: string,
+    candleCount: number
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      const result = await this.pythonEngine.runDuckDBStorage({
+        duckdbPath,
+        operation: 'update_ohlcv_metadata',
+        data: {
+          mint,
+          alert_timestamp: alertTimestamp,
+          interval_seconds: intervalSeconds,
+          time_range_start: timeRangeStart,
+          time_range_end: timeRangeEnd,
+          candle_count: candleCount,
+        },
+      });
+
+      return { success: result.success === true, error: result.error as string | undefined };
+    } catch (error) {
+      logger.error('Failed to update OHLCV metadata', error as Error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
+  }
+
+  /**
+   * Query OHLCV metadata to check availability
+   */
+  async queryOhlcvMetadata(
+    duckdbPath: string,
+    mint: string,
+    alertTimestamp: string,
+    intervalSeconds: number,
+    requiredStart?: string,
+    requiredEnd?: string
+  ): Promise<OhlcvMetadataResult> {
+    try {
+      const data: Record<string, unknown> = {
+        mint,
+        alert_timestamp: alertTimestamp,
+        interval_seconds: intervalSeconds,
+      };
+
+      if (requiredStart) data.required_start = requiredStart;
+      if (requiredEnd) data.required_end = requiredEnd;
+
+      const result = await this.pythonEngine.runDuckDBStorage({
+        duckdbPath,
+        operation: 'query_ohlcv_metadata',
+        data,
+      });
+
+      return OhlcvMetadataResultSchema.parse(result);
+    } catch (error) {
+      logger.error('Failed to query OHLCV metadata', error as Error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
+  }
+
+  /**
+   * Check if OHLCV data is available for given timeframes
+   */
+  async checkOhlcvAvailability(
+    duckdbPath: string,
+    mint: string,
+    alertTimestamp: string,
+    intervalSeconds: number,
+    requiredStart: string,
+    requiredEnd: string
+  ): Promise<boolean> {
+    const result = await this.queryOhlcvMetadata(
+      duckdbPath,
+      mint,
+      alertTimestamp,
+      intervalSeconds,
+      requiredStart,
+      requiredEnd
+    );
+
+    return result.success === true && result.available === true;
+  }
+
+  /**
+   * Add token to OHLCV exclusions table
+   */
+  async addOhlcvExclusion(
+    duckdbPath: string,
+    mint: string,
+    alertTimestamp: string,
+    reason: string
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      const result = await this.pythonEngine.runDuckDBStorage({
+        duckdbPath,
+        operation: 'add_ohlcv_exclusion',
+        data: {
+          mint,
+          alert_timestamp: alertTimestamp,
+          reason,
+        },
+      });
+
+      return { success: result.success === true, error: result.error as string | undefined };
+    } catch (error) {
+      logger.error('Failed to add OHLCV exclusion', error as Error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
+  }
+
+  /**
+   * Query OHLCV exclusions to filter out excluded tokens
+   */
+  async queryOhlcvExclusions(
+    duckdbPath: string,
+    mints: string[],
+    alertTimestamps: string[]
+  ): Promise<OhlcvExclusionResult> {
+    try {
+      const result = await this.pythonEngine.runDuckDBStorage({
+        duckdbPath,
+        operation: 'query_ohlcv_exclusions',
+        data: {
+          mints,
+          alert_timestamps: alertTimestamps,
+        },
+      });
+
+      return OhlcvExclusionResultSchema.parse(result);
+    } catch (error) {
+      logger.error('Failed to query OHLCV exclusions', error as Error);
       return {
         success: false,
         error: error instanceof Error ? error.message : String(error),

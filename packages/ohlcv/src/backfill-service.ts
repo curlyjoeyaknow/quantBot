@@ -7,8 +7,8 @@
 
 import { DateTime } from 'luxon';
 import { logger } from '@quantbot/utils';
-import { queryPostgres, closePostgresPool } from '@quantbot/storage';
-import { getOhlcvIngestionEngine, OhlcvIngestionEngine } from './ohlcv-ingestion-engine';
+import { queryPostgres } from '@quantbot/storage';
+import { getOhlcvIngestionEngine, type OhlcvIngestionEngine } from '@quantbot/jobs';
 import type { Chain } from '@quantbot/core';
 
 export interface BackfillOptions {
@@ -158,7 +158,7 @@ export class OhlcvBackfillService {
         candles1m: result.metadata.total1mCandles,
         candles5m: result.metadata.total5mCandles,
       };
-    } catch (error: any) {
+    } catch (error: unknown) {
       logger.error(
         `[Backfill] Failed to backfill ${alert.tokenAddress.substring(0, 20)}...`,
         error
@@ -167,7 +167,7 @@ export class OhlcvBackfillService {
         success: false,
         candles1m: 0,
         candles5m: 0,
-        error: error.message,
+        error: error instanceof Error ? error.message : String(error),
       };
     }
   }
@@ -235,7 +235,7 @@ export class OhlcvBackfillService {
         if (!dryRun && delayMs > 0) {
           await new Promise((resolve) => setTimeout(resolve, delayMs));
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         logger.error(`[Backfill] Unexpected error processing alert ${alert.id}`, error);
         progress.processed++;
         progress.failed++;

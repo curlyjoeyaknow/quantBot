@@ -69,9 +69,19 @@ export class TokensRepository {
     address: TokenAddress,
     metadata?: TokenMetadata
   ): Promise<Token> {
-    return withPostgresTransaction(async (client: any) => {
+    return withPostgresTransaction(async (client: PoolClient) => {
       // Try to find existing (case-sensitive match)
-      const findResult: any = await client.query(
+      const findResult = await client.query<{
+        id: number;
+        chain: string;
+        address: string;
+        symbol: string | null;
+        name: string | null;
+        decimals: number | null;
+        metadata_json: Record<string, unknown> | null;
+        created_at: Date;
+        updated_at: Date;
+      }>(
         `SELECT id, chain, address, symbol, name, decimals, metadata_json, created_at, updated_at
          FROM tokens
          WHERE chain = $1 AND address = $2`,
@@ -95,7 +105,17 @@ export class TokensRepository {
 
       // Create new
       const metadataJson = metadata ? JSON.stringify(metadata) : null;
-      const insertResult = await client.query(
+      const insertResult = await client.query<{
+        id: number;
+        chain: string;
+        address: string;
+        symbol: string | null;
+        name: string | null;
+        decimals: number | null;
+        metadata_json: Record<string, unknown> | null;
+        created_at: Date;
+        updated_at: Date;
+      }>(
         `INSERT INTO tokens (chain, address, symbol, name, decimals, metadata_json)
          VALUES ($1, $2, $3, $4, $5, $6)
          RETURNING id, chain, address, symbol, name, decimals, metadata_json, created_at, updated_at`,
@@ -109,7 +129,7 @@ export class TokensRepository {
         ]
       );
 
-      const row = insertResult.rows[0] as any;
+      const row = insertResult.rows[0];
       logger.info('Created new token', {
         id: row.id,
         chain,

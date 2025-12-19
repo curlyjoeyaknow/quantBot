@@ -24,9 +24,9 @@ import {
   ChunkValidator,
   type ExtractedBotData,
   type ResolvedCaller,
-  fetchMultiChainMetadata,
-  isEvmAddress,
 } from '@quantbot/ingestion';
+import { isEvmAddress } from '@quantbot/utils';
+import { fetchMultiChainMetadata } from '@quantbot/api-clients';
 import type {
   CallersRepository,
   TokensRepository,

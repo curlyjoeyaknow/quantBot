@@ -13,7 +13,7 @@
     }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc --build",
     "clean": "rm -rf dist .vitest coverage",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -27,6 +27,7 @@
     "@quantbot/ohlcv": "workspace:*",
     "@quantbot/simulation": "workspace:*",
     "@quantbot/ingestion": "workspace:*",
+    "@quantbot/api-clients": "workspace:*",
     "@quantbot/core": "workspace:*",
     "luxon": "^3.5.0",
     "uuid": "^11.1.0",

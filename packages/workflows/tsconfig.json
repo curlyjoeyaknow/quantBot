@@ -21,5 +21,14 @@
     }
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["dist", "node_modules", "tests"]
+  "exclude": ["dist", "node_modules", "tests"],
+  "references": [
+    { "path": "../core" },
+    { "path": "../utils" },
+    { "path": "../storage" },
+    { "path": "../ohlcv" },
+    { "path": "../simulation" },
+    { "path": "../ingestion" },
+    { "path": "../api-clients" }
+  ]
 }

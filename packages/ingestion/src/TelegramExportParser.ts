@@ -6,7 +6,6 @@
 
 import * as fs from 'fs';
 import * as cheerio from 'cheerio';
-import { DateTime } from 'luxon';
 import { logger, NotFoundError } from '@quantbot/utils';
 
 export interface ParsedMessage {

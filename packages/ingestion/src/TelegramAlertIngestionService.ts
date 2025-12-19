@@ -21,11 +21,8 @@ import {
   CallsRepository,
 } from '@quantbot/storage';
 import { parseExport, type ParsedMessage } from './TelegramExportParser';
-import { extractSolanaAddresses } from './extractSolanaAddresses';
 import { PublicKey } from '@solana/web3.js';
-import { getBirdeyeClient } from '@quantbot/api-clients';
-import { extractAddresses, isEvmAddress, isSolanaAddress } from './addressValidation';
-import { fetchMultiChainMetadata } from './MultiChainMetadataService';
+import { extractAddresses } from './addressValidation';
 
 export interface IngestExportParams {
   filePath: string;
@@ -228,27 +225,8 @@ function extractFromBotResponse(botText: string): {
   return result;
 }
 
-/**
- * Validate that an address is actually a valid token contract using Birdeye API
- * Returns true if valid, false if invalid, null if validation failed
- */
-async function validateContractAddress(address: string, chain: Chain): Promise<boolean | null> {
-  try {
-    const birdeyeClient = getBirdeyeClient();
-    const metadata = await birdeyeClient.getTokenMetadata(address, chain);
-
-    // If we get metadata back, it's a valid token contract
-    // If we get null, it might not exist or might not be a token
-    return metadata !== null;
-  } catch (error) {
-    logger.warn('Failed to validate contract address', {
-      error: error instanceof Error ? error.message : String(error),
-      address: address.substring(0, 20),
-      chain,
-    });
-    return null; // Validation failed, but don't reject the address
-  }
-}
+// NOTE: Contract address validation removed - ingestion is offline-only.
+// Address validation should be done at the jobs layer if needed.
 
 export class TelegramAlertIngestionService {
   constructor(
@@ -284,8 +262,6 @@ export class TelegramAlertIngestionService {
     let callsInserted = 0;
     let messagesFailed = 0;
     const tokensUpsertedSet = new Set<string>();
-    let validationCount = 0;
-    const VALIDATION_SAMPLE_SIZE = 10; // Validate first 10 addresses as sanity check
 
     // 3. Process messages: Find bot responses, then get the prior caller message
     logger.info('Processing messages', { totalMessages: messages.length });
@@ -351,60 +327,19 @@ export class TelegramAlertIngestionService {
         }
 
         // Use chain from bot response, fallback to params.chain
-        let detectedChain = botData.chain || params.chain;
-        let actualMetadata: { name?: string; symbol?: string } | null = null;
-
-        // Sanity check: Validate first N addresses with multi-chain metadata fetching
-        let isValidContract = true;
-        if (validationCount < VALIDATION_SAMPLE_SIZE) {
-          validationCount++;
-          logger.info(
-            `Validating contract address with multi-chain fallback (${validationCount}/${VALIDATION_SAMPLE_SIZE})`,
-            {
-              address: botData.caAddress.substring(0, 20),
-              chainHint: detectedChain,
-            }
-          );
-
-          // Use multi-chain metadata fetching as definitive fallback
-          const multiChainResult = await fetchMultiChainMetadata(botData.caAddress, detectedChain);
-
-          if (multiChainResult.primaryMetadata) {
-            // Found metadata on one of the chains
-            detectedChain = multiChainResult.primaryMetadata.chain;
-            actualMetadata = {
-              name: multiChainResult.primaryMetadata.name,
-              symbol: multiChainResult.primaryMetadata.symbol,
-            };
-            logger.info('Multi-chain validation successful', {
-              address: botData.caAddress.substring(0, 20),
-              chain: detectedChain,
-              symbol: actualMetadata.symbol,
-              name: actualMetadata.name,
-              addressKind: multiChainResult.addressKind,
-            });
-          } else {
-            // No metadata found on any chain
-            logger.warn('Invalid contract address detected - not found on any chain', {
-              address: botData.caAddress.substring(0, 20),
-              chainHint: detectedChain,
-              addressKind: multiChainResult.addressKind,
-              chainsAttempted: multiChainResult.metadata.map((m) => m.chain),
-              caller: callerMessage.from,
-            });
-            isValidContract = false;
-          }
-        }
-
-        if (!isValidContract) {
-          continue; // Skip invalid contracts
-        }
+        const detectedChain = botData.chain || params.chain;
+        // NOTE: Multi-chain metadata fetching removed - ingestion is offline-only.
+        // Use metadata from bot data only.
+        const actualMetadata: { name?: string; symbol?: string } | null = {
+          name: botData.name,
+          symbol: botData.ticker,
+        };
 
         // Use caller name from prior message
         const callerName = callerMessage.from || params.callerName;
 
-        // 4. Upsert token with metadata from bot response or multi-chain fetch
-        // Prefer actual metadata from Birdeye over bot-extracted metadata
+        // 4. Upsert token with metadata from bot response
+        // NOTE: Metadata comes from bot data only (offline ingestion)
         const token = await this.tokensRepo.getOrCreateToken(
           detectedChain,
           createTokenAddress(botData.caAddress),
@@ -494,7 +429,6 @@ export class TelegramAlertIngestionService {
       ...result,
       botMessagesFound: botMessageCount,
       botMessagesProcessed: processedBotMessages,
-      validationSampleSize: Math.min(validationCount, VALIDATION_SAMPLE_SIZE),
     });
     return result;
   }

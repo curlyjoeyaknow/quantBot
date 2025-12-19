@@ -26,7 +26,7 @@ export interface LogPattern {
   /** Time window in milliseconds */
   timeWindow?: number;
   /** Callback when pattern matches */
-  onMatch?: (log: any) => void;
+  onMatch?: (log: Record<string, unknown>) => void;
 }
 
 /**
@@ -68,7 +68,7 @@ export class LogMonitor extends EventEmitter {
   /**
    * Process a log entry
    */
-  processLog(log: any): void {
+  processLog(log: Record<string, unknown>): void {
     for (const [id, pattern] of this.patterns) {
       if (this.matchesPattern(log, pattern)) {
         this.handleMatch(id, pattern, log);
@@ -79,7 +79,7 @@ export class LogMonitor extends EventEmitter {
   /**
    * Check if log matches pattern
    */
-  private matchesPattern(log: any, pattern: LogPattern): boolean {
+  private matchesPattern(log: Record<string, unknown>, pattern: LogPattern): boolean {
     // Check level
     if (pattern.level && log.level !== pattern.level) {
       return false;
@@ -115,7 +115,7 @@ export class LogMonitor extends EventEmitter {
   /**
    * Handle pattern match
    */
-  private handleMatch(id: string, pattern: LogPattern, log: any): void {
+  private handleMatch(id: string, pattern: LogPattern, log: Record<string, unknown>): void {
     const now = Date.now();
     const countData = this.patternCounts.get(id);
 

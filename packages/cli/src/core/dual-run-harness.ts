@@ -74,7 +74,7 @@ export async function runDualSimulation(input: SimInput): Promise<DualRunResult>
     const parity = calculateParity(tsResult, pythonResult);
 
     return { tsResult, pythonResult, parity };
-  } catch (error) {
+  } catch (_error) {
     // If Python simulation fails, return TS result with failed parity
     const failedParity: ParityStats = {
       pnlDiff: Infinity,

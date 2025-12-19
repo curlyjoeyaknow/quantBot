@@ -17,6 +17,10 @@ export interface OhlcvQueueItem {
   mint: string;
   alertTimestamp: string; // ISO format timestamp
   queuedAt: string; // ISO format timestamp when queued
+  lookbackMinutes?: number; // Simulation lookback requirement
+  lookforwardMinutes?: number; // Simulation lookforward requirement
+  preWindowMinutes?: number; // OHLCV pre-window requirement
+  postWindowMinutes?: number; // OHLCV post-window requirement
 }
 
 /**
@@ -32,7 +36,7 @@ function getQueuePath(): string {
  */
 export async function readQueue(): Promise<OhlcvQueueItem[]> {
   const queuePath = getQueuePath();
-  
+
   if (!existsSync(queuePath)) {
     return [];
   }
@@ -41,7 +45,7 @@ export async function readQueue(): Promise<OhlcvQueueItem[]> {
     const content = await readFile(queuePath, 'utf-8');
     const queue = JSON.parse(content) as OhlcvQueueItem[];
     return Array.isArray(queue) ? queue : [];
-  } catch (error) {
+  } catch (_error) {
     // If file is corrupted or doesn't exist, return empty queue
     return [];
   }
@@ -53,10 +57,10 @@ export async function readQueue(): Promise<OhlcvQueueItem[]> {
 export async function writeQueue(queue: OhlcvQueueItem[]): Promise<void> {
   const queuePath = getQueuePath();
   const queueDir = join(queuePath, '..');
-  
+
   // Ensure directory exists
   await mkdir(queueDir, { recursive: true });
-  
+
   // Write queue as JSON
   await writeFile(queuePath, JSON.stringify(queue, null, 2), 'utf-8');
 }
@@ -64,21 +68,40 @@ export async function writeQueue(queue: OhlcvQueueItem[]): Promise<void> {
 /**
  * Add item to queue (deduplicates by mint + alertTimestamp)
  */
-export async function addToQueue(mint: string, alertTimestamp: string): Promise<void> {
+export async function addToQueue(
+  mint: string,
+  alertTimestamp: string,
+  options?: {
+    lookbackMinutes?: number;
+    lookforwardMinutes?: number;
+    preWindowMinutes?: number;
+    postWindowMinutes?: number;
+  }
+): Promise<void> {
   const queue = await readQueue();
-  
+
   // Check if already in queue
-  const exists = queue.some(
+  const existingIndex = queue.findIndex(
     (item) => item.mint === mint && item.alertTimestamp === alertTimestamp
   );
-  
-  if (!exists) {
+
+  if (existingIndex >= 0) {
+    // Update existing item with new timeframe requirements if provided
+    if (options) {
+      queue[existingIndex] = {
+        ...queue[existingIndex],
+        ...options,
+      };
+      await writeQueue(queue);
+    }
+  } else {
     queue.push({
       mint,
       alertTimestamp,
       queuedAt: new Date().toISOString(),
+      ...options,
     });
-    
+
     await writeQueue(queue);
   }
 }
@@ -88,11 +111,11 @@ export async function addToQueue(mint: string, alertTimestamp: string): Promise<
  */
 export async function removeFromQueue(mint: string, alertTimestamp: string): Promise<void> {
   const queue = await readQueue();
-  
+
   const filtered = queue.filter(
     (item) => !(item.mint === mint && item.alertTimestamp === alertTimestamp)
   );
-  
+
   if (filtered.length !== queue.length) {
     await writeQueue(filtered);
   }
@@ -112,4 +135,3 @@ export async function getQueueSize(): Promise<number> {
   const queue = await readQueue();
   return queue.length;
 }
-

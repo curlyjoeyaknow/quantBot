@@ -73,6 +73,10 @@ export default defineConfig({
       '@quantbot/simulation': path.resolve(__dirname, './packages/simulation/src'),
       '@quantbot/workflows': path.resolve(__dirname, './packages/workflows/src'),
     },
+    dedupe: ['@quantbot/core', '@quantbot/utils', '@quantbot/storage'],
+  },
+  optimizeDeps: {
+    exclude: ['@quantbot/core', '@quantbot/utils', '@quantbot/storage', '@quantbot/ingestion'],
   },
   esbuild: {
     target: 'node18',

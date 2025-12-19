@@ -15,6 +15,7 @@ import {
 } from '@quantbot/storage';
 import { OhlcvIngestionService } from '@quantbot/ingestion';
 import { TelegramAlertIngestionService } from '@quantbot/ingestion';
+import { OhlcvFetchJob } from '@quantbot/jobs';
 import { getAnalyticsEngine } from '@quantbot/analytics';
 import type { AnalyticsEngine } from '@quantbot/analytics';
 import { getPythonEngine, type PythonEngine } from '@quantbot/utils';
@@ -29,6 +30,7 @@ import { ensureInitialized } from './initialization-manager.js';
 export interface CommandServices {
   ohlcvIngestion(): OhlcvIngestionService;
   telegramIngestion(): TelegramAlertIngestionService;
+  ohlcvFetchJob(): OhlcvFetchJob;
   ohlcvRepository(): OhlcvRepository;
   analyticsEngine(): AnalyticsEngine;
   pythonEngine(): PythonEngine;
@@ -98,6 +100,9 @@ export class CommandContext {
     return {
       ohlcvIngestion: () => {
         return new OhlcvIngestionService(new AlertsRepository());
+      },
+      ohlcvFetchJob: () => {
+        return new OhlcvFetchJob();
       },
       telegramIngestion: () => {
         return new TelegramAlertIngestionService(

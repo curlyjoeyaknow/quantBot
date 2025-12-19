@@ -21,12 +21,11 @@ import {
   AlertsRepository,
   CallsRepository,
 } from '@quantbot/storage';
-import { parseExport, type ParsedMessage } from './TelegramExportParser';
+import { parseExport } from './TelegramExportParser';
 import { MessageIndex } from './MessageIndex';
-import { BotMessageExtractor, type ExtractedBotData } from './BotMessageExtractor';
-import { CallerResolver, type ResolvedCaller } from './CallerResolver';
+import { BotMessageExtractor } from './BotMessageExtractor';
+import { CallerResolver } from './CallerResolver';
 import { ChunkValidator, type ChunkValidationResult } from './ChunkValidator';
-import { fetchMultiChainMetadata } from './MultiChainMetadataService';
 import * as path from 'path';
 
 export interface IngestExportParams {
@@ -195,40 +194,14 @@ export class TelegramCallIngestionService {
 
     // Get or create caller
     const callerName = caller.callerName || params.callerName || 'Unknown';
-    let chain = botData.chain || params.chain || 'solana';
+    const chain = botData.chain || params.chain || 'solana';
 
-    // Fetch multi-chain metadata to validate address and get actual chain
-    let actualMetadata: { name?: string; symbol?: string } | null = null;
-    try {
-      const multiChainResult = await fetchMultiChainMetadata(botData.contractAddress, chain);
-
-      if (multiChainResult.primaryMetadata) {
-        // Found metadata on one of the chains - use the actual chain
-        chain = multiChainResult.primaryMetadata.chain;
-        actualMetadata = {
-          name: multiChainResult.primaryMetadata.name,
-          symbol: multiChainResult.primaryMetadata.symbol,
-        };
-        logger.debug('Multi-chain metadata found', {
-          address: botData.contractAddress.substring(0, 20),
-          chain,
-          symbol: actualMetadata.symbol,
-        });
-      } else {
-        logger.warn('Address not found on any chain', {
-          address: botData.contractAddress.substring(0, 20),
-          chainHint: chain,
-          addressKind: multiChainResult.addressKind,
-        });
-        // Continue anyway - might be a new token or API issue
-      }
-    } catch (error) {
-      logger.warn('Failed to fetch multi-chain metadata', {
-        error: error instanceof Error ? error.message : String(error),
-        address: botData.contractAddress.substring(0, 20),
-      });
-      // Continue with original chain - don't fail the ingestion
-    }
+    // NOTE: Multi-chain metadata fetching removed - ingestion is offline-only.
+    // Use metadata from bot data only.
+    const actualMetadata: { name?: string; symbol?: string } | null = {
+      name: botData.tokenName,
+      symbol: botData.ticker,
+    };
 
     const callerRecord = await this.callersRepo.getOrCreateCaller(
       chain.toLowerCase(),

@@ -827,6 +827,34 @@ export class BirdeyeClient extends BaseApiClient {
       return null;
     }
   }
+
+  /**
+   * Calculate credits for Birdeye API call
+   * Overrides base class method to use Birdeye-specific credit calculation
+   */
+  protected calculateCredits(
+    config: AxiosRequestConfig,
+    statusCode: number | undefined,
+    success: boolean
+  ): number {
+    if (!success || !statusCode || statusCode < 200 || statusCode >= 300) {
+      return 0;
+    }
+
+    // Try to extract candle count from response if available
+    // This is a best-effort calculation - actual credits depend on response size
+    // For OHLCV endpoints, we estimate based on typical response sizes
+    const url = config.url || '';
+    if (url.includes('/defi/ohlcv')) {
+      // Default to 5000-candle pricing (120 credits) for OHLCV endpoints
+      // Actual calculation would require response data, which we don't have here
+      // The event log will record the estimated cost, and we can refine this later
+      return this.CREDITS_FOR_5000_CANDLES;
+    }
+
+    // For other endpoints, use minimal credit cost
+    return this.CREDITS_FOR_LESS_THAN_1000;
+  }
 }
 
 // Lazy singleton - only created when accessed

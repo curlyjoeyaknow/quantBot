@@ -17,9 +17,9 @@
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "**/*.test.ts"],
-    "references": [
-    { "path": "../utils" },
-    { "path": "../storage" }
+  "references": [
+    { "path": "../core" },
+    { "path": "../utils" }
   ]
 }
 

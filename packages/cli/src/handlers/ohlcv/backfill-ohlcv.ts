@@ -10,7 +10,7 @@ import type { CommandContext } from '../../core/command-context.js';
 import { backfillSchema } from '../../commands/ohlcv.js';
 import { z } from 'zod';
 import { validateMintAddress } from '../../core/argument-parser.js';
-import { getOhlcvIngestionEngine } from '@quantbot/ohlcv';
+import { getOhlcvIngestionEngine } from '@quantbot/jobs';
 import type { Chain } from '@quantbot/core';
 import { ValidationError } from '@quantbot/utils';
 

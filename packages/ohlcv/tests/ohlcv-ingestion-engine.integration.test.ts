@@ -63,12 +63,18 @@ vi.mock('@quantbot/storage', async () => {
   };
 });
 
-vi.mock('@quantbot/api-clients', () => ({
-  birdeyeClient: {
+vi.mock('@quantbot/api-clients', () => {
+  const mockBirdeyeClient = {
     fetchOHLCVData: vi.fn(),
     getTokenMetadata: vi.fn(),
-  },
-}));
+    fetchHistoricalPriceAtUnixTime: vi.fn(),
+  };
+  return {
+    birdeyeClient: mockBirdeyeClient,
+    getBirdeyeClient: () => mockBirdeyeClient,
+    fetchMultiChainMetadata: vi.fn(),
+  };
+});
 
 vi.mock('@quantbot/utils', () => ({
   logger: {
@@ -79,17 +85,27 @@ vi.mock('@quantbot/utils', () => ({
   },
 }));
 
-vi.mock('@quantbot/ingestion', () => ({
-  fetchMultiChainMetadata: vi.fn(),
+vi.mock('@quantbot/observability', () => ({
+  recordApiUsage: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock('@quantbot/utils', () => ({
+  logger: {
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  },
   isEvmAddress: vi.fn(),
 }));
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { DateTime } from 'luxon';
-import { OhlcvIngestionEngine } from '../src/ohlcv-ingestion-engine';
+import { OhlcvIngestionEngine } from '@quantbot/jobs';
 import { birdeyeClient } from '@quantbot/api-clients';
 import { getStorageEngine, initClickHouse, TokensRepository } from '@quantbot/storage';
-import { fetchMultiChainMetadata, isEvmAddress } from '@quantbot/ingestion';
+import { fetchMultiChainMetadata } from '@quantbot/api-clients';
+import { isEvmAddress } from '@quantbot/utils';
 import type { Candle } from '@quantbot/core';
 
 describe('OhlcvIngestionEngine - Integration Tests', () => {
