@@ -6,9 +6,19 @@
     "composite": true,
     "declaration": true,
     "declarationMap": true,
+    "baseUrl": ".",
+    "skipLibCheck": true,
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "target": "ES2022"
+    "target": "ES2022",
+    "paths": {
+      "@quantbot/utils": ["../utils/src"],
+      "@quantbot/utils/*": ["../utils/src/*"],
+      "@quantbot/storage": ["../storage/src"],
+      "@quantbot/storage/*": ["../storage/src/*"],
+      "@quantbot/core": ["../core/src"],
+      "@quantbot/core/*": ["../core/src/*"]
+    }
   },
   "include": ["src/**/*"],
   "exclude": ["dist", "node_modules", "**/*.test.ts"],
