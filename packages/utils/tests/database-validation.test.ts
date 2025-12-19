@@ -208,7 +208,7 @@ describe('Database Validation Schemas', () => {
     it('should throw error when invalid', () => {
       const schema = tokenAddressSchema;
       const data = 'invalid';
-      expect(() => validateOrThrow(schema, data)).toThrow('Validation failed');
+      expect(() => validateOrThrow(schema, data)).toThrow('Database validation failed');
     });
   });
 
