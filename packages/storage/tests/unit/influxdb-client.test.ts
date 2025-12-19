@@ -58,7 +58,9 @@ describe('InfluxDBOHLCVClient', () => {
       ];
 
       // Stub implementation - should not throw
-      await expect(client.writeOHLCVData('token1', 'TOKEN1', 'solana', data)).resolves.toBeUndefined();
+      await expect(
+        client.writeOHLCVData('token1', 'TOKEN1', 'solana', data)
+      ).resolves.toBeUndefined();
     });
 
     it('should handle write errors', async () => {
@@ -75,7 +77,9 @@ describe('InfluxDBOHLCVClient', () => {
       ];
 
       // Stub implementation - should not throw
-      await expect(client.writeOHLCVData('token1', 'TOKEN1', 'solana', data)).resolves.toBeUndefined();
+      await expect(
+        client.writeOHLCVData('token1', 'TOKEN1', 'solana', data)
+      ).resolves.toBeUndefined();
     });
   });
 
@@ -161,7 +165,11 @@ describe('InfluxDBOHLCVClient', () => {
       const invalidDate = new Date('invalid');
 
       // Stub doesn't validate - just returns false
-      const result = await client.hasData('token1', invalidDate, DateTime.fromISO('2024-01-02T00:00:00Z').toJSDate());
+      const result = await client.hasData(
+        'token1',
+        invalidDate,
+        DateTime.fromISO('2024-01-02T00:00:00Z').toJSDate()
+      );
       expect(result).toBe(false);
     });
   });
@@ -207,4 +215,3 @@ describe('InfluxDBOHLCVClient', () => {
     });
   });
 });
-
