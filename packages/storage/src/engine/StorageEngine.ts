@@ -789,7 +789,7 @@ export class StorageEngine {
 /**
  * @deprecated Use CommandContext or createProductionContext factory instead.
  * This singleton is kept for backward compatibility but should not be used in new code.
- * 
+ *
  * Use:
  * - CommandContext.services.storageEngine() for CLI commands
  * - createProductionContext({ storageEngine }) for workflows

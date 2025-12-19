@@ -202,7 +202,7 @@ export class AnalyticsEngine {
 /**
  * @deprecated Use CommandContext or createProductionContext factory instead.
  * This singleton is kept for backward compatibility but should not be used in new code.
- * 
+ *
  * Use:
  * - CommandContext.services.analyticsEngine() for CLI commands
  * - Pass AnalyticsEngine to createProductionContext config for workflows

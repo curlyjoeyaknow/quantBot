@@ -25,7 +25,7 @@ export async function queryStorageHandler(
   ctx: CommandContext
 ): Promise<unknown[]> {
   const isClickHouse = SAFE_TABLES.clickhouse.includes(args.table.toLowerCase());
-  
+
   if (isClickHouse) {
     // Use factory to get ClickHouse client
     const client = ctx.services.clickHouseClient();
@@ -49,7 +49,7 @@ export async function queryStorageHandler(
     const data = await result.json<Record<string, unknown>[]>();
     return data;
   }
-  
+
   // PostgreSQL removed
   throw new ValidationError('PostgreSQL removed - use DuckDB instead', {
     table: args.table,

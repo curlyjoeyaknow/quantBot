@@ -1,23 +1,53 @@
 # @quantbot/jobs
 
-**Online orchestration jobs for OHLCV fetching and data ingestion.**
+**Online orchestration jobs for OHLCV fetching from Birdeye API.**
 
-This package is the **only** place allowed to make network calls for OHLCV data. It orchestrates API calls, rate limiting, and storage operations.
+This package is the **only** place allowed to make network calls for OHLCV data.
+
+## Terminology
+
+- **"Fetch"** = API call to Birdeye (returns candles, no storage)
+- **"Ingestion"** = Storing in ClickHouse + updating DuckDB metadata (handled by workflow)
 
 ## Architecture
 
 - **Online boundary**: The only package allowed to call `@quantbot/api-clients`
-- **Orchestration**: Coordinates between API clients, storage, and ingestion services
+- **Fetch only**: Returns raw candles, does NOT store them
 - **Rate limiting**: Enforces API rate limits and circuit breakers
 - **Metrics**: Emits usage metrics and monitoring data
 
 ## Services
 
-### OhlcvFetchJob
-Fetches OHLCV candles from Birdeye API and stores them to ClickHouse.
+### OhlcvBirdeyeFetch (Recommended)
+Fetches OHLCV candles from Birdeye API only. Does NOT store candles.
+
+**Terminology**: "Fetch" = API call to Birdeye (this service)
 
 ```typescript
-import { OhlcvFetchJob } from '@quantbot/jobs';
+import { OhlcvBirdeyeFetch } from '@quantbot/jobs';
+
+const fetchService = new OhlcvBirdeyeFetch({
+  rateLimitMs: 100,
+  maxRetries: 3,
+  checkCoverage: true,
+});
+
+const result = await fetchService.fetchWorkItem(workItem);
+// result.candles contains raw candles from Birdeye
+// No storage happens here - that's handled by the ingestion workflow
+```
+
+### OhlcvFetchJob (Deprecated)
+**Status**: Deprecated, kept for backward compatibility.
+
+**Old behavior**: Did both fetch AND store.
+
+**Replacement**: 
+- Use `OhlcvBirdeyeFetch` for fetch only
+- Use `ingestOhlcv` workflow for full ingestion (storage + metadata)
+
+```typescript
+import { OhlcvBirdeyeFetch } from '@quantbot/jobs';
 import { generateOhlcvWorklist } from '@quantbot/ingestion';
 
 // Generate worklist (offline)
@@ -27,13 +57,14 @@ const worklist = await generateOhlcvWorklist({
   to: '2024-01-02',
 });
 
-// Execute fetch job (online)
-const fetchJob = new OhlcvFetchJob({
+// Fetch from Birdeye (online - API call only)
+const fetchService = new OhlcvBirdeyeFetch({
   rateLimitMs: 100,
   maxRetries: 3,
 });
 
-const results = await fetchJob.fetchWorkList(worklist);
+const fetchResults = await fetchService.fetchWorkList(worklist);
+// fetchResults contain raw candles - no storage happens here
 ```
 
 ### OhlcvIngestionEngine
