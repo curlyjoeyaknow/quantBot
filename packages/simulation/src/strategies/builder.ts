@@ -11,9 +11,9 @@ import {
   StopLossConfig,
   EntryConfig,
   ReEntryConfig,
-} from './types';
-import { getPreset } from './presets';
-import { Strategy } from '../engine';
+} from "../types/index.js";
+import { getPreset } from "./presets.js";
+import { Strategy } from "../engine.js";
 
 /**
  * Converts StrategyConfig to the format expected by simulateStrategy
@@ -33,7 +33,7 @@ export function buildStrategy(config: StrategyConfig): Strategy[] {
  */
 export function buildStopLossConfig(
   config: StrategyConfig
-): import('../engine').StopLossConfig | undefined {
+): import('../engine.js').StopLossConfig | undefined {
   if (!config.stopLoss) {
     return undefined;
   }
@@ -49,7 +49,7 @@ export function buildStopLossConfig(
  */
 export function buildEntryConfig(
   config: StrategyConfig
-): import('../engine').EntryConfig | undefined {
+): import('../engine.js').EntryConfig | undefined {
   if (!config.entry) {
     return undefined;
   }
@@ -66,7 +66,7 @@ export function buildEntryConfig(
  */
 export function buildReEntryConfig(
   config: StrategyConfig
-): import('../engine').ReEntryConfig | undefined {
+): import('../engine.js').ReEntryConfig | undefined {
   if (!config.reEntry) {
     return undefined;
   }

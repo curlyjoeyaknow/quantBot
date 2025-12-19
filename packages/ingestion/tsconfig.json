@@ -9,6 +9,9 @@
     "baseUrl": ".",
     "skipLibCheck": true,
     "noImplicitAny": false,
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "target": "ES2022",
     "paths": {
       "@quantbot/utils": ["../utils/src"],
       "@quantbot/utils/*": ["../utils/src/*"],

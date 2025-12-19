@@ -7,7 +7,7 @@
  */
 
 // Types
-export * from './types';
+export * from './types.js';
 
 // Core engine
 export {
@@ -15,13 +15,13 @@ export {
   getAnalyticsEngine,
   type AnalyticsOptions,
   type AnalyticsResult,
-} from './engine/AnalyticsEngine';
+} from './engine/AnalyticsEngine.js';
 
 // Loaders
-export { CallDataLoader, type LoadCallsOptions } from './loaders/CallDataLoader';
+export { CallDataLoader, type LoadCallsOptions } from './loaders/CallDataLoader.js';
 
 // Aggregators
-export { MetricsAggregator } from './aggregators/MetricsAggregator';
+export { MetricsAggregator } from './aggregators/MetricsAggregator.js';
 
 // Utilities
 export {
@@ -29,16 +29,16 @@ export {
   calculateAthFromCandleObjects,
   calculatePeriodAthAtl,
   calculatePeriodAthAtlFromCandles,
-} from './utils/ath-calculator';
-export type { AthResult, PeriodAthAtlResult, ReEntryOpportunity } from './utils/ath-calculator';
+} from './utils/ath-calculator.js';
+export type { AthResult, PeriodAthAtlResult, ReEntryOpportunity } from './utils/ath-calculator.js';
 
 // Period metrics utilities
 export {
   enrichCallWithPeriodMetrics,
   enrichCallsWithPeriodMetrics,
   analyzeReEntryOpportunities,
-} from './utils/period-metrics';
-export type { EnrichPeriodMetricsOptions, ReEntryAnalysis } from './utils/period-metrics';
+} from './utils/period-metrics.js';
+export type { EnrichPeriodMetricsOptions, ReEntryAnalysis } from './utils/period-metrics.js';
 
 // Analytics service
 export {
@@ -47,13 +47,13 @@ export {
   MintAnalysisResultSchema,
   CorrelationAnalysisResultSchema,
   AnalyticsResultSchema,
-} from './analytics-service';
+} from './analytics-service.js';
 export type {
   CallerAnalysisResult,
   MintAnalysisResult,
   CorrelationAnalysisResult,
   AnalyticsConfig,
-} from './analytics-service';
+} from './analytics-service.js';
 // Note: AnalyticsResult from analytics-service conflicts with AnalyticsResult from AnalyticsEngine
 // Use AnalyticsResult from AnalyticsEngine for the main analytics results
 // For Python-based analytics results, use the specific types: CallerAnalysisResult, MintAnalysisResult, etc.

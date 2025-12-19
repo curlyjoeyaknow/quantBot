@@ -6,7 +6,7 @@
 
 import { logger } from '@quantbot/utils';
 import { getClickHouseClient } from '@quantbot/storage';
-import { checkApiQuotas } from './quotas';
+import { checkApiQuotas } from './quotas.js';
 
 export interface HealthStatus {
   status: 'healthy' | 'degraded' | 'unhealthy';

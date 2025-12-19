@@ -11,8 +11,8 @@
 
 import { logger, retryWithBackoff, isEvmAddress, isSolanaAddress } from '@quantbot/utils';
 import type { Chain } from '@quantbot/core';
-import { getBirdeyeClient } from './birdeye-client';
-import { getMetadataCache } from './multi-chain-metadata-cache';
+import { getBirdeyeClient } from './birdeye-client.js';
+import { getMetadataCache } from './multi-chain-metadata-cache.js';
 
 export interface TokenMetadata {
   address: string;
