@@ -449,7 +449,8 @@ export class BirdeyeClient extends BaseApiClient {
         // Check if response indicates failure (even with 200 status)
         if (responseData.success === false) {
           // API returned success: false (some APIs return 200 with success: false)
-          const errorMessage = responseData.message || responseData.error || 'API returned success: false';
+          const errorMessage =
+            responseData.message || responseData.error || 'API returned success: false';
           logger.debug('Birdeye API error response (success: false)', {
             status: response.status,
             message: typeof errorMessage === 'string' ? errorMessage : String(errorMessage),

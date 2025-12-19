@@ -28,7 +28,10 @@ vi.mock('@quantbot/utils', () => ({
     error: vi.fn(),
   },
   ConfigurationError: class ConfigurationError extends Error {
-    constructor(message: string, public configKey?: string) {
+    constructor(
+      message: string,
+      public configKey?: string
+    ) {
       super(message);
       this.name = 'ConfigurationError';
     }
@@ -323,6 +326,7 @@ describe('BirdeyeClient', () => {
           headers: {},
           config: {} as any,
         },
+        request: {},
         config: {} as any,
         isAxiosError: true,
       };

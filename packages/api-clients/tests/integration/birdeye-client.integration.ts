@@ -185,6 +185,7 @@ describe('BirdeyeClient - Integration Tests', () => {
           headers: {},
           config: {} as InternalAxiosRequestConfig,
         },
+        request: {},
         config: {} as InternalAxiosRequestConfig,
         isAxiosError: true,
       };
