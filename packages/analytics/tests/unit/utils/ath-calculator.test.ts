@@ -9,7 +9,7 @@ import {
   calculateAthFromCandles,
   calculateAthFromCandleObjects,
   calculatePeriodAthAtl,
-} from '../../src/utils/ath-calculator';
+} from '@quantbot/analytics/utils/ath-calculator.js';
 import type { Candle } from '@quantbot/core';
 
 describe('ATH Calculator', () => {

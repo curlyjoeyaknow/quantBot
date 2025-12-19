@@ -44,9 +44,15 @@ export class MetricsAggregator {
     const metrics: CallerMetrics[] = [];
 
     for (const [callerName, callerCalls] of byCaller.entries()) {
-      const winningCalls = callerCalls.filter((c) => c.athMultiple > 1);
-      const losingCalls = callerCalls.filter((c) => c.athMultiple <= 1);
-      const multiples = callerCalls.map((c) => c.athMultiple);
+      // Filter out NaN values for valid calculations, but count them as losing calls
+      const validCalls = callerCalls.filter((c) => !Number.isNaN(c.athMultiple));
+      const nanCalls = callerCalls.filter((c) => Number.isNaN(c.athMultiple));
+
+      const winningCalls = validCalls.filter((c) => c.athMultiple > 1);
+      const losingCalls = validCalls.filter((c) => c.athMultiple <= 1);
+      // Include NaN calls as losing calls for conservation law
+      const totalLosingCalls = losingCalls.length + nanCalls.length;
+      const multiples = validCalls.map((c) => c.athMultiple);
       const timesToAth = callerCalls
         .filter((c) => c.timeToAthMinutes > 0)
         .map((c) => c.timeToAthMinutes);
@@ -57,7 +63,7 @@ export class MetricsAggregator {
         callerName,
         totalCalls: callerCalls.length,
         winningCalls: winningCalls.length,
-        losingCalls: losingCalls.length,
+        losingCalls: totalLosingCalls,
         winRate: callerCalls.length > 0 ? winningCalls.length / callerCalls.length : 0,
         avgMultiple:
           multiples.length > 0 ? multiples.reduce((a, b) => a + b, 0) / multiples.length : 0,
@@ -90,12 +96,21 @@ export class MetricsAggregator {
       }));
     }
 
+    // Separate valid and NaN calls
+    const validCalls = calls.filter((c) => !Number.isNaN(c.athMultiple));
+    const nanCalls = calls.filter((c) => Number.isNaN(c.athMultiple));
+    const validCallsCount = validCalls.length;
+
     const distribution: AthDistribution[] = [];
 
     for (const bucket of ATH_BUCKETS) {
-      const inBucket = calls.filter(
+      const inBucket = validCalls.filter(
         (c) => c.athMultiple >= bucket.min && c.athMultiple < bucket.max
       );
+
+      // Include NaN calls in the "Loss (<1x)" bucket (first bucket)
+      const count =
+        bucket.min === 0 && bucket.max === 1 ? inBucket.length + nanCalls.length : inBucket.length;
 
       const avgTimeToAth =
         inBucket.length > 0
@@ -106,8 +121,8 @@ export class MetricsAggregator {
 
       distribution.push({
         bucket: bucket.label,
-        count: inBucket.length,
-        percentage: (inBucket.length / calls.length) * 100,
+        count,
+        percentage: calls.length > 0 ? (count / calls.length) * 100 : 0,
         avgTimeToAth,
       });
     }

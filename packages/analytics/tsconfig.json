@@ -17,11 +17,7 @@
       "@quantbot/storage": ["../storage/src"],
       "@quantbot/storage/*": ["../storage/src/*"],
       "@quantbot/core": ["../core/src"],
-      "@quantbot/core/*": ["../core/src/*"],
-      "@quantbot/workflows": ["../workflows/src"],
-      "@quantbot/workflows/*": ["../workflows/src/*"],
-      "@quantbot/simulation": ["../simulation/src"],
-      "@quantbot/simulation/*": ["../simulation/src/*"]
+      "@quantbot/core/*": ["../core/src/*"]
     }
   },
   "include": ["src/**/*"],
@@ -29,9 +25,7 @@
   "references": [
     { "path": "../core" },
     { "path": "../utils" },
-    { "path": "../storage" },
-    { "path": "../workflows" },
-    { "path": "../simulation" }
+    { "path": "../storage" }
   ]
 }
 

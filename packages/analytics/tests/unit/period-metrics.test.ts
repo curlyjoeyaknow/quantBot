@@ -9,8 +9,8 @@ import {
   enrichCallWithPeriodMetrics,
   enrichCallsWithPeriodMetrics,
   analyzeReEntryOpportunities,
-} from '../src/utils/period-metrics';
-import type { CallPerformance } from '../src/types';
+} from '@quantbot/analytics/utils/period-metrics.js';
+import type { CallPerformance } from '@quantbot/analytics/types.js';
 
 // Mock dependencies
 const mockStorageEngine = {
