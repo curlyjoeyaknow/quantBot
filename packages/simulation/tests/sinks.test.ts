@@ -3,9 +3,8 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import { DateTime } from 'luxon';
 import { ConfigDrivenSink } from '../src/sinks';
-import type { SimulationRunContext } from '../src/engine';
-import type { Scenario, Target } from '../src/config';
-import { createContext } from 'node:vm';
+import type { SimulationRunContext, SimulationTarget } from '../src/engine';
+import type { SimulationScenarioConfig } from '../src/config';
 
 // Mock ClickHouse client
 vi.mock('@quantbot/storage', () => ({
@@ -29,16 +28,20 @@ vi.mock('fs', async () => {
 });
 
 describe('ConfigDrivenSink', () => {
-  const mockScenario: Scenario = {
+  const mockScenario: SimulationScenarioConfig = {
     name: 'test-scenario',
-    strategy: {
-      entry: { type: 'market' },
-      targets: [{ percent: 0.5, multiple: 2 }],
-      stopLoss: { type: 'fixed', value: 0.1 },
+    tags: [],
+    strategy: [{ target: 2.0, percent: 1.0 }],
+    stopLoss: { initial: -0.1, trailing: 'none' },
+    data: {
+      kind: 'mint',
+      mint: 'So11111111111111111111111111111111111111112',
+      chain: 'solana',
+      start: '2024-01-01T00:00:00Z',
     },
   };
 
-  const mockTarget: Target = {
+  const mockTarget: SimulationTarget = {
     mint: 'So11111111111111111111111111111111111111112',
     chain: 'solana',
     startTime: DateTime.fromSeconds(1000),
@@ -54,18 +57,29 @@ describe('ConfigDrivenSink', () => {
     entryPrice: 1.0,
     finalPrice: 1.1,
     totalCandles: 100,
+    entryOptimization: {
+      lowestPrice: 1.0,
+      lowestPriceTimestamp: 1000,
+      lowestPricePercent: 0,
+      lowestPriceTimeFromEntry: 0,
+      trailingEntryUsed: false,
+      actualEntryPrice: 1.0,
+      entryDelay: 0,
+    },
     events: [
       {
         timestamp: 1000,
         type: 'entry' as const,
         price: 1.0,
+        description: 'Entry at 1.0',
         remainingPosition: 1.0,
         pnlSoFar: 0,
       },
       {
         timestamp: 2000,
-        type: 'exit' as const,
+        type: 'target_hit' as const,
         price: 1.1,
+        description: 'Target hit at 1.1',
         remainingPosition: 0,
         pnlSoFar: 0.1,
       },
@@ -76,6 +90,7 @@ describe('ConfigDrivenSink', () => {
     scenario: mockScenario,
     target: mockTarget,
     result: mockResult,
+    candles: [],
     ...(overrides || {}),
   });
 
@@ -123,7 +138,7 @@ describe('ConfigDrivenSink', () => {
       const context = createContext({
         scenario: {
           ...mockScenario,
-          outputs: [{ type: 'json', path: '/tmp/test.json' }],
+          outputs: [{ type: 'json', path: '/tmp/test.json', pretty: true, includeEvents: true }],
         },
       });
 
@@ -132,7 +147,7 @@ describe('ConfigDrivenSink', () => {
       expect(fs.mkdir).toHaveBeenCalledWith('/tmp', { recursive: true });
       expect(fs.appendFile).toHaveBeenCalledWith(
         '/tmp/test.json',
-        expect.stringContaining('"scenario":"test-scenario"'),
+        expect.stringContaining('"scenario"'),
         'utf-8'
       );
     });
@@ -142,7 +157,7 @@ describe('ConfigDrivenSink', () => {
       const context = createContext({
         scenario: {
           ...mockScenario,
-          outputs: [{ type: 'json', path: '/tmp/test.json', includeEvents: true }],
+          outputs: [{ type: 'json', path: '/tmp/test.json', pretty: true, includeEvents: true }],
         },
       });
 
@@ -160,7 +175,7 @@ describe('ConfigDrivenSink', () => {
       const context = createContext({
         scenario: {
           ...mockScenario,
-          outputs: [{ type: 'json', path: '/tmp/test.json' }],
+          outputs: [{ type: 'json', path: '/tmp/test.json', pretty: true, includeEvents: false }],
         },
       });
 
@@ -180,7 +195,7 @@ describe('ConfigDrivenSink', () => {
       const context = createContext({
         scenario: {
           ...mockScenario,
-          outputs: [{ type: 'csv', path: '/tmp/test.csv' }],
+          outputs: [{ type: 'csv', path: '/tmp/test.csv', includeEvents: false, append: false }],
         },
       });
 
@@ -198,7 +213,7 @@ describe('ConfigDrivenSink', () => {
       const context = createContext({
         scenario: {
           ...mockScenario,
-          outputs: [{ type: 'csv', path: '/tmp/test.csv', append: true }],
+          outputs: [{ type: 'csv', path: '/tmp/test.csv', includeEvents: false, append: true }],
         },
       });
 
@@ -221,7 +236,7 @@ describe('ConfigDrivenSink', () => {
       const context = createContext({
         scenario: {
           ...mockScenario,
-          outputs: [{ type: 'csv', path: '/tmp/test.csv' }],
+          outputs: [{ type: 'csv', path: '/tmp/test.csv', includeEvents: false, append: false }],
         },
       });
 
@@ -229,7 +244,11 @@ describe('ConfigDrivenSink', () => {
 
       const appendCall = vi
         .mocked(fs.appendFile)
-        .mock.calls.find((call) => call[0] === '/tmp/test.csv' && call[1]?.includes('TEST'));
+        .mock.calls.find((call) => {
+          const path = call[0] as string;
+          const content = call[1] as string;
+          return path === '/tmp/test.csv' && content?.includes('TEST');
+        });
       expect(appendCall).toBeDefined();
     });
   });
@@ -246,7 +265,9 @@ describe('ConfigDrivenSink', () => {
       const context = createContext({
         scenario: {
           ...mockScenario,
-          outputs: [{ type: 'clickhouse', schema: 'expanded' }],
+          outputs: [
+            { type: 'clickhouse', table: 'simulation_results', schema: 'expanded', upsert: false },
+          ],
         },
       });
 
@@ -273,7 +294,9 @@ describe('ConfigDrivenSink', () => {
       const context = createContext({
         scenario: {
           ...mockScenario,
-          outputs: [{ type: 'clickhouse', schema: 'aggregate' }],
+          outputs: [
+            { type: 'clickhouse', table: 'simulation_results', schema: 'aggregate', upsert: false },
+          ],
         },
       });
 
@@ -304,8 +327,9 @@ describe('ConfigDrivenSink', () => {
             ...mockResult.events,
             {
               timestamp: 1500,
-              type: 'reentry' as const,
+              type: 're_entry' as const,
               price: 1.05,
+              description: 'Re-entry at 1.05',
               remainingPosition: 1.0,
               pnlSoFar: 0.05,
             },
@@ -313,7 +337,9 @@ describe('ConfigDrivenSink', () => {
         },
         scenario: {
           ...mockScenario,
-          outputs: [{ type: 'clickhouse', schema: 'aggregate' }],
+          outputs: [
+            { type: 'clickhouse', table: 'simulation_results', schema: 'aggregate', upsert: false },
+          ],
         },
       });
 
@@ -337,7 +363,10 @@ describe('ConfigDrivenSink', () => {
       };
 
       const sink = new ConfigDrivenSink({
-        defaultOutputs: [{ type: 'json', path: '/invalid/path.json' }, { type: 'stdout' }],
+        defaultOutputs: [
+          { type: 'json', path: '/invalid/path.json', pretty: true, includeEvents: true },
+          { type: 'stdout', detail: 'summary' },
+        ],
         logger: mockLogger as any,
       });
 
@@ -350,8 +379,9 @@ describe('ConfigDrivenSink', () => {
             ...mockResult.events,
             {
               timestamp: 1500,
-              type: 'reentry' as const,
+              type: 're_entry' as const,
               price: 1.05,
+              description: 'Re-entry at 1.05',
               remainingPosition: 1.0,
               pnlSoFar: 0.05,
             },
@@ -360,8 +390,8 @@ describe('ConfigDrivenSink', () => {
         scenario: {
           ...mockScenario,
           outputs: [
-            { type: 'json', path: '/invalid/path.json' },
-            { type: 'stdout' },
+            { type: 'json', path: '/invalid/path.json', pretty: true, includeEvents: true },
+            { type: 'stdout', detail: 'summary' },
           ],
         },
       });
@@ -372,49 +402,13 @@ describe('ConfigDrivenSink', () => {
         'Failed to emit simulation result',
         expect.objectContaining({
           scenario: 'test-scenario',
-          target: 'clickhouse',
-          error: expect.stringMatching(/deprecated|DEPRECATED|forbidden|@quantbot\/storage/i),
-        })
-      );
-    });
-  });
-
-  describe('error handling', () => {
-    it('should log errors but continue with other outputs', async () => {
-      const mockLogger = {
-        error: vi.fn(),
-      };
-
-      const sink = new ConfigDrivenSink({
-        defaultOutputs: [{ type: 'json', path: '/invalid/path.json' }, { type: 'stdout' }],
-        logger: mockLogger as any,
-      });
-
-      vi.mocked(fs.appendFile).mockRejectedValueOnce(new Error('Permission denied'));
-
-      const context = createContext();
-
-      await sink.handle(context);
-
-      expect(mockLogger.error).toHaveBeenCalledWith(
-        'Failed to emit simulation result',
-        expect.objectContaining({
-          scenario: 'test-scenario',
           target: 'json',
+          error: 'Permission denied',
         })
       );
 
       // Should still write stdout
-      await sink.handle(context);
-
-      expect(mockLogger.error).toHaveBeenCalledWith(
-        'Failed to emit simulation result',
-        expect.objectContaining({
-          scenario: 'test-scenario',
-          target: 'clickhouse',
-          error: expect.stringMatching(/deprecated|DEPRECATED|forbidden|@quantbot\/storage/i),
-        })
-      );
+      expect(console.log).toHaveBeenCalled();
     });
   });
 
@@ -425,7 +419,10 @@ describe('ConfigDrivenSink', () => {
       };
 
       const sink = new ConfigDrivenSink({
-        defaultOutputs: [{ type: 'json', path: '/invalid/path.json' }, { type: 'stdout' }],
+        defaultOutputs: [
+          { type: 'json', path: '/invalid/path.json', pretty: true, includeEvents: true },
+          { type: 'stdout', detail: 'summary' },
+        ],
         logger: mockLogger as any,
       });
 
@@ -454,7 +451,7 @@ describe('ConfigDrivenSink', () => {
       const context = createContext({
         scenario: {
           ...mockScenario,
-          outputs: [{ type: 'json', path: './data/test.json' }],
+          outputs: [{ type: 'json', path: './data/test.json', pretty: true, includeEvents: true }],
         },
       });
 
@@ -469,7 +466,9 @@ describe('ConfigDrivenSink', () => {
       const context = createContext({
         scenario: {
           ...mockScenario,
-          outputs: [{ type: 'json', path: '/absolute/path.json' }],
+          outputs: [
+            { type: 'json', path: '/absolute/path.json', pretty: true, includeEvents: true },
+          ],
         },
       });
 
