@@ -35,3 +35,9 @@ export type {
 } from './simulation/runSimulationDuckdb.js';
 export { createDuckdbSimulationContext } from './context/createDuckdbSimulationContext.js';
 export type { DuckdbSimulationContextConfig } from './context/createDuckdbSimulationContext.js';
+export { queryCallsDuckdb } from './calls/queryCallsDuckdb.js';
+export type {
+  QueryCallsDuckdbSpec,
+  QueryCallsDuckdbResult,
+  QueryCallsDuckdbContext,
+} from './calls/queryCallsDuckdb.js';

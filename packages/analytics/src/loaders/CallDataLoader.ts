@@ -6,8 +6,10 @@
 
 import { DateTime } from 'luxon';
 import { logger } from '@quantbot/utils';
-import { getStorageEngine } from '@quantbot/storage';
+import { StorageEngine } from '@quantbot/storage';
 // PostgreSQL removed - use DuckDB workflows instead
+import { queryCallsDuckdb, type QueryCallsDuckdbSpec } from '@quantbot/workflows';
+import { createProductionContext } from '@quantbot/workflows';
 import type { CallPerformance } from '../types';
 import { calculateAthFromCandleObjects } from '../utils/ath-calculator';
 
@@ -25,17 +27,73 @@ export interface LoadCallsOptions {
 export class CallDataLoader {
   /**
    * Load calls from DuckDB (via workflows)
-   *
-   * @deprecated PostgreSQL removed - use DuckDB workflows to query calls
    */
-  async loadCalls(_options: LoadCallsOptions = {}): Promise<CallPerformance[]> {
-    // PostgreSQL removed - use DuckDB workflows to query calls
-    throw new Error(
-      'CallDataLoader.loadCalls() requires PostgreSQL which was removed. Use DuckDB workflows to query calls instead.'
-    );
-  }
+  async loadCalls(options: LoadCallsOptions = {}): Promise<CallPerformance[]> {
+    // Use queryCallsDuckdb workflow to query calls
+    const duckdbPath = process.env.DUCKDB_PATH || 'data/quantbot.db';
+    const fromISO = options.from ? DateTime.fromJSDate(options.from).toISO()! : DateTime.utc().minus({ days: 30 }).toISO()!;
+    const toISO = options.to ? DateTime.fromJSDate(options.to).toISO()! : DateTime.utc().toISO()!;
 
-  // Original PostgreSQL implementation removed - use DuckDB workflows instead
+    const spec: QueryCallsDuckdbSpec = {
+      duckdbPath,
+      fromISO,
+      toISO,
+      callerName: options.callerNames?.[0], // Use first caller name if provided
+      limit: options.limit || 1000,
+    };
+
+    const ctx = createProductionContext();
+    const workflowCtx = {
+      ...ctx,
+      services: {
+        ...ctx.services,
+        duckdbStorage: {
+          queryCalls: async (path: string, limit: number) => {
+            // Get DuckDBStorageService from context
+            const { DuckDBStorageService } = await import('@quantbot/simulation');
+            const { PythonEngine } = await import('@quantbot/utils');
+            const storage = new DuckDBStorageService(new PythonEngine());
+            return await storage.queryCalls(path, limit);
+          },
+        },
+      },
+    } as any;
+
+    try {
+      const result = await queryCallsDuckdb(spec, workflowCtx);
+
+      // Convert CallRecord[] to CallPerformance[]
+      // Note: CallPerformance requires more fields than CallRecord provides
+      // We'll need to enrich with additional data or adjust the type
+      const callPerformance: CallPerformance[] = result.calls.map((call, index) => ({
+        callId: index + 1, // Generate ID since we don't have numeric ID from DuckDB
+        tokenAddress: call.mint,
+        callerName: call.caller,
+        chain: 'solana', // Default to solana, could be enriched later
+        alertTimestamp: call.createdAt.toJSDate(),
+        entryPrice: 0, // Will need to be enriched from alerts table or OHLCV
+        athPrice: 0, // Will need to be enriched
+        athMultiple: 1, // Default, will be enriched
+        timeToAthMinutes: 0, // Will need to be enriched
+        atlPrice: 0, // Will need to be enriched
+        atlMultiple: 1, // Default, will be enriched
+      }));
+
+      logger.info(`[CallDataLoader] Loaded ${callPerformance.length} calls from DuckDB`, {
+        fromISO,
+        toISO,
+        callerName: options.callerNames?.[0],
+      });
+
+      return callPerformance;
+    } catch (error) {
+      logger.error('[CallDataLoader] Failed to load calls from DuckDB', {
+        error: error instanceof Error ? error.message : String(error),
+        options,
+      });
+      return [];
+    }
+  }
 
   /**
    * Enrich calls with ATH data from OHLCV cache

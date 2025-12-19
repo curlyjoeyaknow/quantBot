@@ -20,14 +20,14 @@ async function main() {
   });
 
   try {
-      // Create workflow context with OHLCV Birdeye fetch service
-      const workflowContext = createOhlcvIngestionContext({
-        ohlcvBirdeyeFetch: new OhlcvBirdeyeFetch({
-          rateLimitMs: 100,
-          maxRetries: 3,
-          checkCoverage: true,
-        }),
-      });
+    // Create workflow context with OHLCV Birdeye fetch service
+    const workflowContext = createOhlcvIngestionContext({
+      ohlcvBirdeyeFetch: new OhlcvBirdeyeFetch({
+        rateLimitMs: 100,
+        maxRetries: 3,
+        checkCoverage: true,
+      }),
+    });
 
     // Call workflow
     const result = await ingestOhlcv(

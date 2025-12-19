@@ -41,8 +41,7 @@ export function createOhlcvIngestionContext(
   const baseContext: WorkflowContext = createProductionContext(config);
 
   const fetchService = config?.ohlcvBirdeyeFetch ?? new OhlcvBirdeyeFetch();
-  const duckdbStorage =
-    config?.duckdbStorage ?? new DuckDBStorageService(getPythonEngine());
+  const duckdbStorage = config?.duckdbStorage ?? new DuckDBStorageService(getPythonEngine());
 
   return {
     ...baseContext,
