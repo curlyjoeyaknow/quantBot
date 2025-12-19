@@ -92,7 +92,8 @@ export class LogMonitor extends EventEmitter {
           ? new RegExp(pattern.namespacePattern)
           : pattern.namespacePattern;
 
-      if (!namespaceRegex.test(log.namespace || '')) {
+      const namespace = typeof log.namespace === 'string' ? log.namespace : '';
+      if (!namespaceRegex.test(namespace)) {
         return false;
       }
     }
@@ -104,7 +105,8 @@ export class LogMonitor extends EventEmitter {
           ? new RegExp(pattern.messagePattern)
           : pattern.messagePattern;
 
-      if (!messageRegex.test(log.message || '')) {
+      const message = typeof log.message === 'string' ? log.message : '';
+      if (!messageRegex.test(message)) {
         return false;
       }
     }

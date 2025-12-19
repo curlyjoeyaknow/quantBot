@@ -319,4 +319,3 @@ export async function batchFetchMultiChainMetadata(
 
   return results;
 }
-

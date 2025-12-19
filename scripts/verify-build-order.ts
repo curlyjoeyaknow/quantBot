@@ -35,10 +35,7 @@ const EXPECTED_BUILD_ORDER = [
 ] as const;
 
 // Remaining packages (can be built after the ordered packages)
-const REMAINING_PACKAGES = [
-  '@quantbot/cli',
-  '@quantbot/tui',
-] as const;
+const REMAINING_PACKAGES = ['@quantbot/cli', '@quantbot/tui'] as const;
 
 const ALL_PACKAGES = [...EXPECTED_BUILD_ORDER, ...REMAINING_PACKAGES] as const;
 
@@ -127,9 +124,7 @@ function checkBuildOrder(packages: PackageInfo[]): {
 
       // Check if dependency exists
       if (!packageMap.has(dep)) {
-        errors.push(
-          `Package ${pkg.name} depends on ${dep}, but ${dep} is not found in packages/`
-        );
+        errors.push(`Package ${pkg.name} depends on ${dep}, but ${dep} is not found in packages/`);
         continue;
       }
 
@@ -265,4 +260,3 @@ function main(): void {
 if (require.main === module) {
   main();
 }
-

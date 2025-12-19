@@ -109,16 +109,18 @@ export class TokenDataRepository {
     interval: string
   ): Promise<OHLCVCoverageRecord | null> {
     try {
-      const resultSchema = z.object({
-        mint: z.string(),
-        chain: z.string(),
-        interval: z.string(),
-        earliest_timestamp: z.string().nullable(),
-        latest_timestamp: z.string().nullable(),
-        candle_count: z.number(),
-        coverage_percent: z.number(),
-        last_updated: z.string(),
-      }).nullable();
+      const resultSchema = z
+        .object({
+          mint: z.string(),
+          chain: z.string(),
+          interval: z.string(),
+          earliest_timestamp: z.string().nullable(),
+          latest_timestamp: z.string().nullable(),
+          candle_count: z.number(),
+          coverage_percent: z.number(),
+          last_updated: z.string(),
+        })
+        .nullable();
 
       const result = await this.client.execute(
         this.scriptPath,
@@ -154,9 +156,11 @@ export class TokenDataRepository {
   /**
    * List all tokens with OHLCV coverage
    */
-  async listCoverage(
-    options?: { chain?: string; interval?: string; minCoverage?: number }
-  ): Promise<OHLCVCoverageRecord[]> {
+  async listCoverage(options?: {
+    chain?: string;
+    interval?: string;
+    minCoverage?: number;
+  }): Promise<OHLCVCoverageRecord[]> {
     try {
       const resultSchema = z.array(
         z.object({
@@ -186,9 +190,7 @@ export class TokenDataRepository {
         mint: row.mint,
         chain: row.chain,
         interval: row.interval,
-        earliestTimestamp: row.earliest_timestamp
-          ? DateTime.fromISO(row.earliest_timestamp)
-          : null,
+        earliestTimestamp: row.earliest_timestamp ? DateTime.fromISO(row.earliest_timestamp) : null,
         latestTimestamp: row.latest_timestamp ? DateTime.fromISO(row.latest_timestamp) : null,
         candleCount: row.candle_count,
         coveragePercent: row.coverage_percent,
@@ -204,11 +206,7 @@ export class TokenDataRepository {
    * Update coverage from ClickHouse query
    * Queries ClickHouse to get actual coverage and updates DuckDB
    */
-  async updateCoverageFromClickHouse(
-    mint: string,
-    chain: string,
-    interval: string
-  ): Promise<void> {
+  async updateCoverageFromClickHouse(mint: string, chain: string, interval: string): Promise<void> {
     // This would query ClickHouse to get actual candle counts and date ranges
     // For now, this is a placeholder - implementation would need ClickHouse client
     logger.debug('Update coverage from ClickHouse not yet implemented', {
@@ -218,4 +216,3 @@ export class TokenDataRepository {
     });
   }
 }
-

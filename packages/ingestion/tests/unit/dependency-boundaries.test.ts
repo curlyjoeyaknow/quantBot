@@ -1,9 +1,9 @@
 /**
  * Dependency Boundary Enforcement Tests
  * =====================================
- * 
+ *
  * Tripwire tests to ensure @quantbot/ingestion maintains offline-only boundaries.
- * 
+ *
  * These tests will fail if forbidden dependencies are added, preventing
  * accidental network creep into the offline package.
  */
@@ -35,12 +35,17 @@ function findTsFiles(dir: string, baseDir: string = dir): string[] {
 
 describe('Dependency Boundaries - @quantbot/ingestion', () => {
   const packageJsonPath = join(process.cwd(), 'package.json');
-  let packageJson: { dependencies?: Record<string, string>; devDependencies?: Record<string, string> };
-  
+  let packageJson: {
+    dependencies?: Record<string, string>;
+    devDependencies?: Record<string, string>;
+  };
+
   try {
     packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
   } catch (error) {
-    throw new Error(`Failed to read package.json: ${error instanceof Error ? error.message : String(error)}`);
+    throw new Error(
+      `Failed to read package.json: ${error instanceof Error ? error.message : String(error)}`
+    );
   }
 
   it('should not depend on @quantbot/api-clients', () => {
@@ -61,7 +66,7 @@ describe('Dependency Boundaries - @quantbot/ingestion', () => {
   it('should not import network modules in source files', () => {
     const srcDir = join(process.cwd(), 'src');
     const srcFiles = findTsFiles(srcDir, srcDir);
-    
+
     // Exclude files that are being refactored:
     // - OhlcvIngestionService: still has API calls for ATH/ATL calculation (needs Phase 5 refactoring)
     // - TelegramAlertIngestionService, TelegramCallIngestionService: use api-clients for metadata (needs refactoring)
@@ -71,8 +76,10 @@ describe('Dependency Boundaries - @quantbot/ingestion', () => {
       'TelegramAlertIngestionService.ts',
       'TelegramCallIngestionService.ts',
     ];
-    const activeFiles = srcFiles.filter((file) => !excludedFiles.some((excluded) => file.includes(excluded)));
-    
+    const activeFiles = srcFiles.filter(
+      (file) => !excludedFiles.some((excluded) => file.includes(excluded))
+    );
+
     const forbiddenPatterns = [
       /from ['"]@quantbot\/api-clients/,
       /from ['"]axios/,
@@ -102,9 +109,8 @@ describe('Dependency Boundaries - @quantbot/ingestion', () => {
       const violationMessages = violations.map((v) => `  ${v.file}: ${v.pattern}`).join('\n');
       throw new Error(
         `Found forbidden network imports in source files:\n${violationMessages}\n\n` +
-        `@quantbot/ingestion must remain offline-only. Use @quantbot/jobs for network operations.`
+          `@quantbot/ingestion must remain offline-only. Use @quantbot/jobs for network operations.`
       );
     }
   });
 });
-

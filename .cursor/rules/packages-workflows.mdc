@@ -17,6 +17,29 @@ Goals:
 - Simulation remains pure compute (no network/db/fs) — workflows do I/O.
 """
 
+## Architecture Layers
+
+### Layer Responsibilities
+
+**Workflows = Orchestration (Application Layer)**
+- Use cases that glue together storage + acquisition + simulation
+- Coordinate I/O operations
+- Handle error collection and aggregation
+- Return structured, serializable results
+
+**Simulation = Pure Compute**
+- No I/O, no clocks, no global config
+- Given inputs → deterministic outputs
+- Testable without I/O chaos contaminating results
+- Critical for sniping/latency-sensitive strategies
+
+**CLI/TUI = Adapters**
+- Translate human intent → spec
+- Translate result → presentation
+- No orchestration logic
+
+**Reason**: This separation is especially correct for sniping/latency-sensitive strategies because it lets you test and iterate strategy logic without I/O chaos contaminating results.
+
 ## Required layering
 
 ### Allowed dependencies for @quantbot/workflows
@@ -32,6 +55,7 @@ Goals:
 **Workflows depend on interfaces, not implementations**
 
 **Required pattern**:
+
 ```typescript
 // ✅ CORRECT: Use context methods
 await ctx.ohlcv.fetchCandles(...);
@@ -39,6 +63,7 @@ await ctx.repos.simulationRuns.saveRun(...);
 ```
 
 **Forbidden**:
+
 ```typescript
 // ❌ WRONG: Direct implementation imports
 import { PostgresRunRepo } from '@quantbot/storage/src/postgres/run-repo';
@@ -95,6 +120,7 @@ type WorkflowSpec = {
 **Result must be JSON-serializable (JSON-safe)**
 
 **Forbidden in results**:
+
 - ❌ Date objects (use ISO strings: `DateTime.toISO()`)
 - ❌ Class instances (use plain objects)
 - ❌ Logger objects
@@ -111,6 +137,7 @@ type WorkflowSpec = {
 **Always accept ctx (no optional inside function body)**
 
 Prefer default parameter pattern:
+
 ```typescript
 export async function runX(
   spec: XSpec,
@@ -121,6 +148,7 @@ export async function runX(
 **Reason**: Forces defaulting behavior to be explicit and consistent, keeps tests clean.
 
 **Forbidden**:
+
 - ❌ Optional ctx with conditional inside function: `ctx = ctx ?? createDefaultWorkflowContext()`
 - ❌ Creating "hidden singletons" inside the workflow
 - ❌ Accessing global state or environment variables directly
@@ -147,11 +175,13 @@ CLI commands must NOT:
 **Forbidden imports, forbidden deps**
 
 Configure ESLint rules to enforce:
+
 - ❌ Workflows cannot import from `@quantbot/cli` or `@quantbot/tui`
 - ❌ Workflows cannot import implementation classes (only interfaces/types)
 - ❌ CLI handlers cannot import workflow internals (only public API)
 
 **Example ESLint config**:
+
 ```json
 {
   "rules": {
@@ -179,6 +209,7 @@ Configure ESLint rules to enforce:
 **"No orchestration in CLI" rule**
 
 Every PR must verify:
+
 - [ ] CLI handlers are thin adapters (parse → call workflow → format)
 - [ ] No multi-step business logic in CLI handlers
 - [ ] Workflows use WorkflowContext for all dependencies
@@ -206,12 +237,14 @@ Workflows must have unit tests that:
 ### Test independence (critical)
 
 **Tests must NOT share**:
+
 - fee helpers
 - rounding helpers
 - constants
 from production simulation modules.
 
 **If a test needs fee math**:
+
 - Hard-code expected numeric values, OR
 - Compute independently inside the test file
 
@@ -253,6 +286,7 @@ import { DEFAULT_FEE_RATE } from '@quantbot/simulation';
 **Unit test harness for WorkflowContext (easy mocking)**
 
 Create reusable mock context factory:
+
 ```typescript
 export function createMockWorkflowContext(overrides?: Partial<WorkflowContext>): WorkflowContext {
   return {
@@ -268,3 +302,33 @@ export function createMockWorkflowContext(overrides?: Partial<WorkflowContext>):
 ```
 
 **Reason**: Makes tests easy to write and maintain, ensures consistent mocking.
+
+## Enforcement Trio (Practical)
+
+To keep the architecture enforced (not just declared), use these three mechanisms:
+
+### 1. ESLint Boundaries
+
+**Forbidden imports, forbidden deps**
+
+Configure ESLint rules to enforce:
+- ❌ Workflows cannot import from `@quantbot/cli` or `@quantbot/tui`
+- ❌ Workflows cannot import implementation classes (only interfaces/types)
+- ❌ CLI handlers cannot import workflow internals (only public API)
+- ❌ Workflows cannot import storage implementations (PostgresRunRepo, ClickHouseClient, etc.)
+
+### 2. Unit Test Harness for WorkflowContext
+
+**Easy mocking for all workflow tests**
+
+Create reusable mock context factory (see "Test harness" section above). This makes correct patterns easy and incorrect patterns hard.
+
+### 3. "No Orchestration in CLI" Rule
+
+**Lint + code review checklist**
+
+- ESLint rule to detect multi-step flows in CLI handlers
+- Code review checklist (see "Code review checklist" section above)
+- Pre-commit hooks to verify workflow contract compliance
+
+**Why this trio works**: ESLint catches violations at write-time, test harness makes correct patterns easy, code review ensures human oversight. Together they prevent architectural drift.

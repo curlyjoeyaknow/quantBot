@@ -34,4 +34,3 @@ export function isEvmAddress(s: string): boolean {
   const t = s.trim();
   return /^0x[a-fA-F0-9]{40}$/.test(t);
 }
-

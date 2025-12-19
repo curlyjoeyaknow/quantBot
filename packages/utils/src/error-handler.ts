@@ -85,8 +85,14 @@ export function withErrorHandling<T extends (...args: unknown[]) => Promise<unkn
 /**
  * Create error handler middleware for Express/Telegraf
  */
+interface ErrorHandlerContext {
+  from?: { id: number | string };
+  chat?: { id: number | string };
+  reply?: (message: string) => Promise<unknown>;
+}
+
 export function createErrorHandler() {
-  return (error: Error | unknown, ctx?: unknown) => {
+  return (error: Error | unknown, ctx?: ErrorHandlerContext) => {
     const result = handleError(error, { userId: ctx?.from?.id, chatId: ctx?.chat?.id });
 
     // Send user-friendly message if context is available

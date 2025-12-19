@@ -5,10 +5,10 @@ import { getStorageEngine } from '@quantbot/storage';
 
 /**
  * Fetch a monitoring-friendly slice of historical candles from ClickHouse (offline-only).
- * 
+ *
  * NOTE: This function is OFFLINE-ONLY. It queries ClickHouse only.
  * For fetching candles from APIs, use @quantbot/jobs workflows.
- * 
+ *
  * @param mint Token mint address
  * @param chain Blockchain name (defaults to 'solana')
  * @param alertTime Optional alert time (not used for query, kept for API compatibility)
@@ -24,14 +24,10 @@ export async function fetchHistoricalCandlesForMonitoring(
 
   try {
     const storageEngine = getStorageEngine();
-    const candles = await storageEngine.getCandles(
-      mint,
-      chain,
-      startTime,
-      endTime,
-      { interval: '5m' }
-    );
-    
+    const candles = await storageEngine.getCandles(mint, chain, startTime, endTime, {
+      interval: '5m',
+    });
+
     // Limit to 5000 candles (monitoring-friendly slice)
     return candles.slice(-5000);
   } catch (error) {

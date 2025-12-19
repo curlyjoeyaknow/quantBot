@@ -15,7 +15,7 @@ export declare function isEvmAddress(s: string): boolean;
  * Returns de-duplicated addresses preserving first-seen order.
  */
 export declare function extractAddresses(text: string): {
-    solana: string[];
-    evm: string[];
+  solana: string[];
+  evm: string[];
 };
 //# sourceMappingURL=addressValidation.d.ts.map

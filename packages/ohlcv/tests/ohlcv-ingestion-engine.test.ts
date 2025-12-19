@@ -91,7 +91,7 @@ describe('OhlcvIngestionEngine', () => {
     vi.mocked(TokensRepository).mockImplementation(function () {
       return mockTokensRepo as any;
     });
-    
+
     // Also set it directly on the engine after creation
     (engine as any).tokensRepo = mockTokensRepo;
 
@@ -139,7 +139,7 @@ describe('OhlcvIngestionEngine', () => {
     it('should fetch and store metadata before candles', async () => {
       // Initialize engine first
       await engine.initialize();
-      
+
       const mockMetadata = { name: 'Test Token', symbol: 'TEST' };
       // For Solana addresses, birdeyeClient.getTokenMetadata is still used directly
       vi.mocked(birdeyeClient.getTokenMetadata).mockResolvedValue(mockMetadata);
@@ -153,7 +153,6 @@ describe('OhlcvIngestionEngine', () => {
       vi.mocked(isEvmAddress).mockReturnValue(false);
 
       const result = await engine.fetchCandles(TEST_MINT, TEST_CHAIN, TEST_ALERT_TIME);
-      
 
       expect(birdeyeClient.getTokenMetadata).toHaveBeenCalledWith(TEST_MINT, TEST_CHAIN);
       // TokensRepository instance method should be called

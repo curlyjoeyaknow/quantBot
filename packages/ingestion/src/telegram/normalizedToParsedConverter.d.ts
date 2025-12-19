@@ -13,5 +13,7 @@ export declare function normalizedToParsed(normalized: NormalizedTelegramMessage
 /**
  * Convert multiple normalized messages to ParsedMessage format
  */
-export declare function normalizedToParsedBatch(normalized: NormalizedTelegramMessage[]): ParsedMessage[];
+export declare function normalizedToParsedBatch(
+  normalized: NormalizedTelegramMessage[]
+): ParsedMessage[];
 //# sourceMappingURL=normalizedToParsedConverter.d.ts.map

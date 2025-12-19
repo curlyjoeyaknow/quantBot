@@ -21,4 +21,3 @@ export * from './ohlcv-fetch-job';
 export * from './ohlcv-ingestion-engine';
 // Re-export OhlcvWorkItem from ingestion for convenience
 export type { OhlcvWorkItem } from '@quantbot/ingestion';
-

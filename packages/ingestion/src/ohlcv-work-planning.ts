@@ -1,15 +1,15 @@
 /**
  * OHLCV Work Planning Service (Offline-Only)
  * ===========================================
- * 
+ *
  * Generates worklists for OHLCV fetching by querying DuckDB.
  * This service is 100% offline and does NOT make any API calls.
- * 
+ *
  * Responsibilities:
  * - Read DuckDB calls/tokens
  * - Produce worklist: (mint, chain, interval, start, end, priority)
  * - Write OHLCV metadata/exclusions back to DuckDB (offline)
- * 
+ *
  * Forbidden:
  * - Any HTTP / Birdeye
  * - ClickHouse writes (optional, but kept out for now)
@@ -49,10 +49,10 @@ export interface WorklistOptions {
 
 /**
  * Generate OHLCV worklist from DuckDB
- * 
+ *
  * This is an offline operation that queries DuckDB to determine
  * what OHLCV data needs to be fetched.
- * 
+ *
  * @param duckdbPath - Path to DuckDB database
  * @param options - Worklist generation options
  * @returns Array of work items to be processed by @quantbot/jobs
@@ -145,4 +145,3 @@ export async function generateOhlcvWorklist(
 
   return workItems;
 }
-

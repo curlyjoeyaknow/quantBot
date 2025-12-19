@@ -7,11 +7,9 @@
 
 import {
   CallersRepository,
-  CallsRepository,
-  TokensRepository,
-  AlertsRepository,
   OhlcvRepository,
-  SimulationRunsRepository,
+  // PostgreSQL repositories removed - use DuckDB equivalents
+  // CallsRepository, TokensRepository, AlertsRepository, SimulationRunsRepository
 } from '@quantbot/storage';
 import { OhlcvIngestionService } from '@quantbot/ingestion';
 import { TelegramAlertIngestionService } from '@quantbot/ingestion';
@@ -39,8 +37,8 @@ export interface CommandServices {
   telegramPipeline(): TelegramPipelineService;
   simulation(): SimulationService;
   analytics(): AnalyticsService;
-  simulationRunsRepository(): SimulationRunsRepository;
-  callersRepository(): CallersRepository;
+  // simulationRunsRepository(): SimulationRunsRepository; // PostgreSQL removed
+  callersRepository(): CallersRepository; // DuckDB version
   // Add more services as needed
 }
 
@@ -99,18 +97,15 @@ export class CommandContext {
   private _createServices(): CommandServices {
     return {
       ohlcvIngestion: () => {
-        return new OhlcvIngestionService(new AlertsRepository());
+        // AlertsRepository removed (PostgreSQL). Service may need updating.
+        throw new Error('OhlcvIngestionService requires AlertsRepository which was removed. Update service to use DuckDB.');
       },
       ohlcvFetchJob: () => {
         return new OhlcvFetchJob();
       },
       telegramIngestion: () => {
-        return new TelegramAlertIngestionService(
-          new CallersRepository(),
-          new TokensRepository(),
-          new AlertsRepository(),
-          new CallsRepository()
-        );
+        // PostgreSQL repositories removed. Service needs updating to use DuckDB.
+        throw new Error('TelegramAlertIngestionService requires PostgreSQL repositories which were removed. Update service to use DuckDB.');
       },
       ohlcvRepository: () => {
         return new OhlcvRepository();
@@ -143,11 +138,11 @@ export class CommandContext {
         const engine = this._options.pythonEngineOverride ?? getPythonEngine();
         return new AnalyticsService(engine);
       },
-      simulationRunsRepository: () => {
-        return new SimulationRunsRepository();
-      },
+      // simulationRunsRepository removed (PostgreSQL)
       callersRepository: () => {
-        return new CallersRepository();
+        // Use DuckDB CallersRepository - requires dbPath
+        const dbPath = process.env.DUCKDB_PATH || 'data/quantbot.duckdb';
+        return new CallersRepository(dbPath);
       },
     };
   }

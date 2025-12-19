@@ -209,7 +209,7 @@ async function fetchBirdeyeCandles(
 
 /**
  * @deprecated This function makes API calls. Use @quantbot/api-clients/fetchBirdeyeCandles instead.
- * 
+ *
  * Fetches candles from Birdeye API with automatic chunking.
  * Exported for use in scripts that need direct access.
  */
@@ -655,7 +655,7 @@ async function fetchTokenMetadata(
 /**
  * @deprecated This function makes API calls and will be moved to @quantbot/jobs layer.
  * For offline querying, use OHLCVEngine.query() or OHLCVService.getCandles().
- * 
+ *
  * Fetches OHLCV candles for a given token using 5m granularity for the entire period.
  * If alertTime is provided, also fetches 1m candles for 30min before and after alertTime
  * for precise entry pricing.
@@ -947,7 +947,7 @@ export async function fetchHybridCandles(
 /**
  * @deprecated This function makes API calls and will be moved to @quantbot/jobs layer.
  * For offline querying, use OHLCVEngine.query() or OHLCVService.getCandles().
- * 
+ *
  * Fetches OHLCV candles with token metadata enrichment.
  * Same as fetchHybridCandles but also returns token metadata (name, symbol, market cap).
  *

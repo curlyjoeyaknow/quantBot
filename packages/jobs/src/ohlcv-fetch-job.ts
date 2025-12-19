@@ -1,19 +1,19 @@
 /**
  * OHLCV Fetch Job
  * ================
- * 
+ *
  * Online orchestration job for fetching OHLCV candles from Birdeye API
  * and storing them in ClickHouse.
- * 
+ *
  * This is the ONLY place where network calls for OHLCV data are allowed.
- * 
+ *
  * Happy Path Flow:
  * 1. Get worklist from @quantbot/ingestion (offline work planning)
  * 2. Optionally check coverage from @quantbot/ohlcv (read-only, to avoid refetch)
  * 3. Fetch candles from @quantbot/api-clients (Birdeye API)
  * 4. Store candles in ClickHouse via @quantbot/storage
  * 5. Optionally update metadata via @quantbot/ingestion (offline bookkeeping)
- * 
+ *
  * Responsibilities:
  * - Take worklist items from ingestion
  * - Optionally check coverage from ohlcv (read-only)
@@ -79,7 +79,7 @@ export interface OhlcvFetchJobOptions {
 
 /**
  * OHLCV Fetch Job
- * 
+ *
  * Orchestrates fetching candles from Birdeye API and storing in ClickHouse.
  */
 export class OhlcvFetchJob {
@@ -227,13 +227,13 @@ export class OhlcvFetchJob {
 
   /**
    * Fetch candles for a worklist from ingestion
-   * 
+   *
    * This is the main entry point following the happy path:
    * 1. Worklist comes from @quantbot/ingestion (offline work planning)
    * 2. Optionally check coverage from @quantbot/ohlcv (read-only)
    * 3. Fetch candles from @quantbot/api-clients (Birdeye API)
    * 4. Store candles in ClickHouse via @quantbot/storage
-   * 
+   *
    * @param workItems - Work items from ingestion work planning
    * @returns Results for each work item
    */
@@ -296,4 +296,3 @@ export class OhlcvFetchJob {
     };
   }
 }
-
