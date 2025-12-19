@@ -3,7 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { logger as utilsLogger, ValidationError } from '@quantbot/utils';
 import { StrategiesRepository, StorageEngine } from '@quantbot/storage';
 // PostgreSQL repositories removed - use DuckDB services/workflows instead
-import { simulateStrategy } from '@quantbot/simulation';
+import { simulateStrategy, type StopLossConfig, type EntryConfig, type ReEntryConfig, type CostConfig, type SignalGroup } from '@quantbot/simulation';
 import { DuckDBStorageService, ClickHouseService } from '@quantbot/simulation';
 import { PythonEngine } from '@quantbot/utils';
 import type {
@@ -196,6 +196,8 @@ export function createProductionContext(config?: ProductionContextConfig): Workf
 
             // Calculate aggregate metrics
             const pnlMean = run.pnlStats?.mean;
+            const pnlMin = run.pnlStats?.min;
+            const pnlMax = run.pnlStats?.max;
             const winRate =
               run.successfulCalls && run.totalCalls
                 ? run.successfulCalls / run.totalCalls
@@ -383,13 +385,13 @@ export function createProductionContext(config?: ProductionContextConfig): Workf
         const result = await simulateStrategy(
           q.candles,
           strategyLegs,
-          config.stopLoss as any,
-          config.entry as any,
-          config.reEntry as any,
-          config.costs as any,
+          config.stopLoss as StopLossConfig | undefined,
+          config.entry as EntryConfig | undefined,
+          config.reEntry as ReEntryConfig | undefined,
+          config.costs as CostConfig | undefined,
           {
-            entrySignal: config.entrySignal as any,
-            exitSignal: config.exitSignal as any,
+            entrySignal: config.entrySignal as SignalGroup | undefined,
+            exitSignal: config.exitSignal as SignalGroup | undefined,
           }
         );
 

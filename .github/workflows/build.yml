@@ -56,6 +56,9 @@ jobs:
       - name: Verify build order
         run: pnpm tsx scripts/verify-build-order.ts
 
+      - name: Verify workflow contracts
+        run: pnpm tsx scripts/verify-workflow-contract.ts
+
       - name: Build packages (ordered)
         run: pnpm build:ordered
 

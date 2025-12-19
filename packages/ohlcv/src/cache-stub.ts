@@ -7,7 +7,12 @@
 import type { Candle } from '@quantbot/core';
 
 export const ohlcvCache = {
-  get: (tokenAddress: string, startTime: Date, endTime: Date, interval: string): Candle[] | null => {
+  get: (
+    tokenAddress: string,
+    startTime: Date,
+    endTime: Date,
+    interval: string
+  ): Candle[] | null => {
     return null;
   },
 

@@ -43,6 +43,7 @@
     "precommit": "npm run format && npm run lint && npm run typecheck && npm test",
     "prepush": "npm run test:coverage && npm audit --audit-level=moderate",
     "check:test-requirements": "ts-node scripts/git/check-test-requirements.ts",
+    "verify:workflow-contracts": "tsx scripts/verify-workflow-contract.ts",
     "audit": "npm audit --audit-level=moderate",
     "audit:fix": "npm audit fix",
     "analysis": "node scripts/analysis/historical_analysis.js",
