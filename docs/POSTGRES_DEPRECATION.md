@@ -24,19 +24,19 @@ PostgreSQL is being phased out in favor of:
 - **Strategies**: `StrategiesRepository` (DuckDB)
   - Strategy configuration storage
 
-### ⚠️ Deprecated (Still in Use, But Being Phased Out)
+### ✅ Removed (PostgreSQL Completely Removed)
 
-All PostgreSQL repositories are now deprecated:
+All PostgreSQL repositories have been removed:
 
-- `TokensRepository` (Postgres) - Use DuckDB equivalent when available
-- `CallsRepository` (Postgres) - DuckDB has `user_calls_d` table
-- `AlertsRepository` (Postgres) - Deprecated (no live monitoring)
-- `CallersRepository` (Postgres) - Use DuckDB `CallersRepository`
-- `StrategiesRepository` (Postgres) - Use DuckDB `StrategiesRepository`
-- `SimulationResultsRepository` (Postgres) - Migrate to ClickHouse
-- `SimulationRunsRepository` (Postgres) - Migrate to ClickHouse
-- `ErrorRepository` (Postgres) - Migrate to DuckDB or logging system
-- `ApiQuotaRepository` (Postgres) - **Replaced by DuckDB event log + Prometheus**
+- ✅ `TokensRepository` (Postgres) - **REMOVED** - Use DuckDB `TokenDataRepository` or ClickHouse for OHLCV metadata
+- ✅ `CallsRepository` (Postgres) - **REMOVED** - Use DuckDB `user_calls_d` table via `queryCallsDuckdb` workflow
+- ✅ `AlertsRepository` (Postgres) - **REMOVED** - No longer needed (no live monitoring)
+- ✅ `CallersRepository` (Postgres) - **REMOVED** - Use DuckDB `CallersRepository`
+- ✅ `StrategiesRepository` (Postgres) - **REMOVED** - Use DuckDB `StrategiesRepository`
+- ✅ `SimulationResultsRepository` (Postgres) - **REMOVED** - Use ClickHouse `storeEvents()` via `ClickHouseService`
+- ✅ `SimulationRunsRepository` (Postgres) - **REMOVED** - Metadata logging implemented (full DuckDB table pending if needed)
+- ✅ `ErrorRepository` (Postgres) - **REMOVED** - Use DuckDB event log or logging system
+- ✅ `ApiQuotaRepository` (Postgres) - **REMOVED** - Replaced by DuckDB event log + Prometheus
 
 ## Replacement Architecture
 
