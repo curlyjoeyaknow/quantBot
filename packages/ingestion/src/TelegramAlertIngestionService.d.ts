@@ -10,28 +10,38 @@
  * Bot responses are already perfectly formatted with all the data we need.
  */
 import type { Chain } from '@quantbot/core';
-import { CallersRepository, TokensRepository, AlertsRepository, CallsRepository } from '@quantbot/storage';
+import {
+  CallersRepository,
+  TokensRepository,
+  AlertsRepository,
+  CallsRepository,
+} from '@quantbot/storage';
 export interface IngestExportParams {
-    filePath: string;
-    callerName: string;
-    chain: Chain;
-    chatId?: string;
+  filePath: string;
+  callerName: string;
+  chain: Chain;
+  chatId?: string;
 }
 export interface IngestExportResult {
-    alertsInserted: number;
-    callsInserted: number;
-    tokensUpserted: number;
-    messagesFailed: number;
+  alertsInserted: number;
+  callsInserted: number;
+  tokensUpserted: number;
+  messagesFailed: number;
 }
 export declare class TelegramAlertIngestionService {
-    private callersRepo;
-    private tokensRepo;
-    private alertsRepo;
-    private callsRepo;
-    constructor(callersRepo: CallersRepository, tokensRepo: TokensRepository, alertsRepo: AlertsRepository, callsRepo: CallsRepository);
-    /**
-     * Ingest a Telegram export file
-     */
-    ingestExport(params: IngestExportParams): Promise<IngestExportResult>;
+  private callersRepo;
+  private tokensRepo;
+  private alertsRepo;
+  private callsRepo;
+  constructor(
+    callersRepo: CallersRepository,
+    tokensRepo: TokensRepository,
+    alertsRepo: AlertsRepository,
+    callsRepo: CallsRepository
+  );
+  /**
+   * Ingest a Telegram export file
+   */
+  ingestExport(params: IngestExportParams): Promise<IngestExportResult>;
 }
 //# sourceMappingURL=TelegramAlertIngestionService.d.ts.map

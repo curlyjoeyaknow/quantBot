@@ -3,7 +3,7 @@
  *
  * Centralized service for querying and caching OHLCV candles.
  * Provides multi-layer caching (in-memory → ClickHouse via StorageEngine).
- * 
+ *
  * NOTE: This service is OFFLINE-ONLY. It does NOT fetch candles from APIs.
  * For fetching candles, use @quantbot/api-clients in @quantbot/ingestion workflows,
  * then store them using the storeCandles() function from ohlcv-storage.
@@ -32,7 +32,7 @@ export interface OHLCVGetOptions extends OHLCVFetchOptions {
 
 /**
  * OHLCV Service for managing candle data (offline-only)
- * 
+ *
  * This service only queries ClickHouse and cache. It does NOT fetch from APIs.
  */
 export class OHLCVService {
@@ -55,7 +55,7 @@ export class OHLCVService {
 
   /**
    * Store candles (offline operation)
-   * 
+   *
    * Stores candles that have already been fetched. For fetching, use
    * @quantbot/api-clients in @quantbot/ingestion workflows.
    */
@@ -188,7 +188,7 @@ export class OHLCVService {
 
   /**
    * Store candles (offline operation)
-   * 
+   *
    * This method stores candles that have already been fetched.
    * For fetching, use @quantbot/api-clients in @quantbot/ingestion workflows.
    */

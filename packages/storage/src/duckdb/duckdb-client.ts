@@ -13,10 +13,12 @@ import { join } from 'path';
 /**
  * DuckDB operation result schema
  */
-const DuckDBResultSchema = z.object({
-  success: z.boolean(),
-  error: z.string().optional(),
-}).passthrough();
+const DuckDBResultSchema = z
+  .object({
+    success: z.boolean(),
+    error: z.string().optional(),
+  })
+  .passthrough();
 
 /**
  * DuckDB Client
@@ -87,7 +89,7 @@ export class DuckDBClient {
 /**
  * Get or create DuckDB client
  */
-let duckdbClients: Map<string, DuckDBClient> = new Map();
+const duckdbClients: Map<string, DuckDBClient> = new Map();
 
 export function getDuckDBClient(dbPath: string): DuckDBClient {
   if (!duckdbClients.has(dbPath)) {
@@ -95,4 +97,3 @@ export function getDuckDBClient(dbPath: string): DuckDBClient {
   }
   return duckdbClients.get(dbPath)!;
 }
-

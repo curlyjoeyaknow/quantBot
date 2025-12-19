@@ -15,7 +15,12 @@ import { existsSync, unlinkSync } from 'fs';
 import { join } from 'path';
 import { PythonEngine } from '../../src/python/python-engine';
 // Import directly from source to avoid package resolution issues in tests
-import { DuckDBStorageService, CallsQueryResultSchema, OhlcvMetadataResultSchema, OhlcvExclusionResultSchema } from '../../../simulation/src/duckdb-storage-service';
+import {
+  DuckDBStorageService,
+  CallsQueryResultSchema,
+  OhlcvMetadataResultSchema,
+  OhlcvExclusionResultSchema,
+} from '../../../simulation/src/duckdb-storage-service';
 import { getPythonEngine } from '../../src/index';
 
 describe('DuckDB Storage Bridge Test', () => {
@@ -26,7 +31,7 @@ describe('DuckDB Storage Bridge Test', () => {
   beforeAll(() => {
     pythonEngine = getPythonEngine();
     storageService = new DuckDBStorageService(pythonEngine);
-    
+
     // Create temporary DuckDB file
     testDbPath = join(process.cwd(), 'test_storage.duckdb');
   });
@@ -74,7 +79,7 @@ describe('DuckDB Storage Bridge Test', () => {
   it('queries calls and validates output schema', async () => {
     // First, ensure we have a DuckDB with calls table
     // (This would normally be set up by ingestion)
-    
+
     const result = await storageService.queryCalls(testDbPath, 10);
 
     expect(result.success).toBe(true);
@@ -188,10 +193,7 @@ describe('DuckDB Storage Bridge Test', () => {
       20.0
     );
 
-    const result = await storageService.generateReport(
-      testDbPath,
-      'summary'
-    );
+    const result = await storageService.generateReport(testDbPath, 'summary');
 
     expect(result.success).toBe(true);
     expect(result.report_type).toBe('summary');
@@ -201,4 +203,3 @@ describe('DuckDB Storage Bridge Test', () => {
     }
   });
 });
-

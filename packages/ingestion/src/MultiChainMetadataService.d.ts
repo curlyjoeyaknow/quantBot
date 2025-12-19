@@ -10,18 +10,18 @@
  */
 import type { Chain } from './types';
 export interface TokenMetadata {
-    address: string;
-    chain: Chain;
-    name?: string;
-    symbol?: string;
-    found: boolean;
+  address: string;
+  chain: Chain;
+  name?: string;
+  symbol?: string;
+  found: boolean;
 }
 export interface MultiChainMetadataResult {
-    address: string;
-    addressKind: 'solana' | 'evm';
-    chainHint?: Chain;
-    metadata: TokenMetadata[];
-    primaryMetadata?: TokenMetadata;
+  address: string;
+  addressKind: 'solana' | 'evm';
+  chainHint?: Chain;
+  metadata: TokenMetadata[];
+  primaryMetadata?: TokenMetadata;
 }
 /**
  * Fetch metadata for an address across all relevant chains
@@ -33,7 +33,10 @@ export interface MultiChainMetadataResult {
  * @param chainHint - Optional hint from context (e.g., from Telegram message)
  * @returns Multi-chain metadata result with all attempted chains
  */
-export declare function fetchMultiChainMetadata(address: string, chainHint?: Chain): Promise<MultiChainMetadataResult>;
+export declare function fetchMultiChainMetadata(
+  address: string,
+  chainHint?: Chain
+): Promise<MultiChainMetadataResult>;
 /**
  * Batch fetch metadata for multiple addresses
  *
@@ -45,5 +48,9 @@ export declare function fetchMultiChainMetadata(address: string, chainHint?: Cha
  * @param batchSize - Number of addresses to process in parallel (default: 5)
  * @returns Array of metadata results
  */
-export declare function batchFetchMultiChainMetadata(addresses: string[], chainHint?: Chain, batchSize?: number): Promise<MultiChainMetadataResult[]>;
+export declare function batchFetchMultiChainMetadata(
+  addresses: string[],
+  chainHint?: Chain,
+  batchSize?: number
+): Promise<MultiChainMetadataResult[]>;
 //# sourceMappingURL=MultiChainMetadataService.d.ts.map

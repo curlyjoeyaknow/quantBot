@@ -270,8 +270,7 @@ export async function runSimulationDuckdbHandler(
       const tokensToRetry = skippedTokens.filter(
         (token) =>
           !unrecoverable.some(
-            (u) =>
-              u.mint === token.mint && u.alertTimestamp === token.alertTimestamp
+            (u) => u.mint === token.mint && u.alertTimestamp === token.alertTimestamp
           )
       );
 
@@ -310,8 +309,7 @@ export async function runSimulationDuckdbHandler(
           // Update summary
           result.summary = {
             total_runs: result.summary.total_runs,
-            successful:
-              result.results.filter((r) => !r.error && !r.skipped).length,
+            successful: result.results.filter((r) => !r.error && !r.skipped).length,
             failed: result.results.filter((r) => r.error || r.skipped).length,
           };
         }

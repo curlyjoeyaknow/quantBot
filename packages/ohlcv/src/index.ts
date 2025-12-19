@@ -2,7 +2,7 @@
  * @quantbot/ohlcv - OHLCV Package (Offline-Only)
  *
  * Public API exports for OHLCV services.
- * 
+ *
  * NOTE: This package is offline-only. It does NOT fetch candles from APIs.
  * For fetching candles, use @quantbot/jobs which orchestrates API calls.
  */

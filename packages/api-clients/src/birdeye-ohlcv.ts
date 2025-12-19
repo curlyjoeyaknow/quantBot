@@ -1,13 +1,13 @@
 /**
  * Birdeye OHLCV Fetching Utilities
  * ==================================
- * 
+ *
  * High-level functions for fetching OHLCV candles from Birdeye API with automatic chunking.
  * These functions wrap BirdeyeClient.fetchOHLCVData() and handle:
  * - Automatic chunking for requests > 5000 candles
  * - Conversion from BirdeyeOHLCVResponse to Candle[] format
  * - Error handling and retries (via BirdeyeClient)
- * 
+ *
  * This module centralizes all Birdeye OHLCV fetching logic that was previously
  * scattered across the codebase.
  */
@@ -37,10 +37,10 @@ function convertBirdeyeResponseToCandles(response: BirdeyeOHLCVResponse | null):
 
 /**
  * Fetches candles from Birdeye API with automatic chunking for large requests.
- * 
+ *
  * Handles requests that exceed 5000 candles by automatically chunking them
  * into multiple API calls. Returns all candles sorted by timestamp.
- * 
+ *
  * @param mint - Token address (Solana mint or EVM address)
  * @param interval - Candle interval: '15s', '1m', '5m', or '1H'
  * @param from - Start time (UNIX seconds)
@@ -140,7 +140,7 @@ export async function fetchBirdeyeCandles(
 /**
  * Fetches candles from Birdeye API with automatic chunking.
  * Exported for use in scripts that need direct access.
- * 
+ *
  * This is an alias for fetchBirdeyeCandles for backward compatibility.
  */
 export async function fetchBirdeyeCandlesDirect(
@@ -153,4 +153,3 @@ export async function fetchBirdeyeCandlesDirect(
 ): Promise<Candle[]> {
   return fetchBirdeyeCandles(mint, interval, from, to, chain, client);
 }
-

@@ -1,7 +1,7 @@
 {
   "name": "@quantbot/storage",
   "version": "1.0.0",
-  "description": "Storage layer for QuantBot (ClickHouse, DuckDB, InfluxDB). PostgreSQL is deprecated.",
+  "description": "Storage layer for QuantBot (ClickHouse, DuckDB, InfluxDB)",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
@@ -21,15 +21,10 @@
     "@quantbot/utils": "workspace:*",
     "lru-cache": "^11.0.0",
     "luxon": "^3.4.4",
-    "pg": "^8.13.0",
     "sqlite3": "^5.1.7"
-  },
-  "_deprecated": {
-    "pg": "PostgreSQL is being phased out in favor of DuckDB for event logging and Prometheus for live metrics. This dependency will be removed in a future version."
   },
   "devDependencies": {
     "@types/node": "^24.10.1",
-    "@types/pg": "^8.10.0",
     "@types/sqlite3": "^3.1.11",
     "@vitest/coverage-v8": "^4.0.15",
     "typescript": "^5.9.3",

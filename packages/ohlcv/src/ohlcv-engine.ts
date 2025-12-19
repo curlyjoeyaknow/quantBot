@@ -4,7 +4,7 @@
  * Single source of truth for all OHLCV query operations:
  * - Querying from ClickHouse/cache
  * - Storing candles (offline operation)
- * 
+ *
  * NOTE: This engine is OFFLINE-ONLY. It does NOT fetch candles from APIs.
  * For fetching candles, use @quantbot/api-clients in @quantbot/jobs workflows,
  * then store them using the storeCandles() method.
@@ -90,13 +90,9 @@ export class OHLCVEngine {
 
     // Query ClickHouse (storage engine handles availability)
     try {
-      const candles = await this.storageEngine.getCandles(
-        tokenAddress,
-        chain,
-        startTime,
-        endTime,
-        { interval }
-      );
+      const candles = await this.storageEngine.getCandles(tokenAddress, chain, startTime, endTime, {
+        interval,
+      });
       if (candles.length > 0) {
         logger.debug(
           `OHLCV Engine: Found ${candles.length} candles in ClickHouse for ${tokenAddress.substring(0, 20)}...`
@@ -131,10 +127,10 @@ export class OHLCVEngine {
 
   /**
    * Store candles (offline operation)
-   * 
+   *
    * Stores candles that have already been fetched. For fetching, use
    * @quantbot/api-clients in @quantbot/jobs workflows.
-   * 
+   *
    * @param tokenAddress Token mint address
    * @param chain Blockchain name
    * @param candles Array of candles to store

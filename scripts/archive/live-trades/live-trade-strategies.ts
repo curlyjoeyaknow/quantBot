@@ -21,7 +21,10 @@ export async function getEnabledStrategies(): Promise<Set<string>> {
       id: string;
     }
 
-    const all = promisify(db.all.bind(db)) as (query: string, params?: unknown[]) => Promise<StrategyRow[]>;
+    const all = promisify(db.all.bind(db)) as (
+      query: string,
+      params?: unknown[]
+    ) => Promise<StrategyRow[]>;
 
     all(`SELECT id FROM live_trade_strategies WHERE enabled = 1`)
       .then((rows) => {
@@ -48,7 +51,10 @@ export async function isStrategyEnabled(strategyId: string): Promise<boolean> {
       enabled: number;
     }
 
-    const get = promisify(db.get.bind(db)) as (query: string, params?: unknown[]) => Promise<EnabledRow | undefined>;
+    const get = promisify(db.get.bind(db)) as (
+      query: string,
+      params?: unknown[]
+    ) => Promise<EnabledRow | undefined>;
 
     get(`SELECT enabled FROM live_trade_strategies WHERE id = ?`, [strategyId])
       .then((row) => {

@@ -18,3 +18,11 @@ export type {
   TelegramJsonIngestResult,
   TelegramJsonIngestContext,
 } from './telegram/ingestTelegramJson.js';
+export { ingestOhlcv } from './ohlcv/ingestOhlcv.js';
+export type {
+  IngestOhlcvSpec,
+  IngestOhlcvResult,
+  IngestOhlcvContext,
+} from './ohlcv/ingestOhlcv.js';
+export { createOhlcvIngestionContext } from './context/createOhlcvIngestionContext.js';
+export type { OhlcvIngestionContextConfig } from './context/createOhlcvIngestionContext.js';

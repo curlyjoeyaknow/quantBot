@@ -182,12 +182,9 @@ let metricsInstance: PrometheusMetricsService | null = null;
 /**
  * Get or create the singleton PrometheusMetricsService instance
  */
-export function getPrometheusMetrics(
-  config?: PrometheusMetricsConfig
-): PrometheusMetricsService {
+export function getPrometheusMetrics(config?: PrometheusMetricsConfig): PrometheusMetricsService {
   if (!metricsInstance) {
     metricsInstance = new PrometheusMetricsService(config);
   }
   return metricsInstance;
 }
-

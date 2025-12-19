@@ -2,7 +2,7 @@
  * OHLCV Ingestion Engine
  * =======================
  * Core engine for fetching, caching, and managing OHLCV candle data from Birdeye.
- * 
+ *
  * MOVED FROM @quantbot/ohlcv to @quantbot/jobs because it makes API calls.
  * This is the ONLY place where OHLCV fetching from APIs is allowed.
  *
@@ -474,15 +474,15 @@ export class OhlcvIngestionEngine {
     // 5000 candles * 1 second = 5000 seconds = ~1.39 hours forward
     const endTime = startTime.plus({ seconds: 5000 });
 
-      // Note: '1s' interval not supported by fetchBirdeyeCandles, using '15s' as fallback
-      const result = await this._fetchAndStoreChunk({
-        mint,
-        chain,
-        interval: '15s', // Fallback to 15s since 1s is not supported by Birdeye API
-        startTime,
-        endTime,
-        options,
-      });
+    // Note: '1s' interval not supported by fetchBirdeyeCandles, using '15s' as fallback
+    const result = await this._fetchAndStoreChunk({
+      mint,
+      chain,
+      interval: '15s', // Fallback to 15s since 1s is not supported by Birdeye API
+      startTime,
+      endTime,
+      options,
+    });
 
     return {
       candles: result.candles,
@@ -873,14 +873,12 @@ export class OhlcvIngestionEngine {
     try {
       const from = Math.floor(startTime.toSeconds());
       const to = Math.floor(endTime.toSeconds());
-      
+
       // Use fetchBirdeyeCandles from api-clients (handles chunking automatically)
       // Note: fetchBirdeyeCandles only supports '15s' | '1m' | '5m' | '1H'
       // Map interval to supported Birdeye interval
-      const birdeyeInterval: '15s' | '1m' | '5m' | '1H' = 
-        interval === '1H' ? '1H' : 
-        interval === '15s' ? '15s' :
-        interval === '1m' ? '1m' : '5m';
+      const birdeyeInterval: '15s' | '1m' | '5m' | '1H' =
+        interval === '1H' ? '1H' : interval === '15s' ? '15s' : interval === '1m' ? '1m' : '5m';
       let candles = await fetchBirdeyeCandles(mint, birdeyeInterval, from, to, chain);
 
       if (candles.length === 0) {
@@ -1056,10 +1054,8 @@ export class OhlcvIngestionEngine {
       // CRITICAL: Store to ClickHouse using ohlcv storage service (offline operation)
       try {
         // Map interval to storeCandles format (accepts '1m' | '5m' | '15m' | '1h' | '15s' | '1H')
-        const storeInterval: '1m' | '5m' | '15m' | '1h' | '15s' | '1H' = 
-          interval === '1H' ? '1H' :
-          interval === '15s' ? '15s' :
-          interval === '1m' ? '1m' : '5m';
+        const storeInterval: '1m' | '5m' | '15m' | '1h' | '15s' | '1H' =
+          interval === '1H' ? '1H' : interval === '15s' ? '15s' : interval === '1m' ? '1m' : '5m';
         await storeCandles(mint, chain, candles, storeInterval);
         logger.debug(
           `[OhlcvIngestionEngine] Stored ${candles.length} ${interval} candles to ClickHouse for ${mint.substring(0, 20)}...`
@@ -1274,4 +1270,3 @@ export function getOhlcvIngestionEngine(): OhlcvIngestionEngine {
   }
   return engineInstance;
 }
-

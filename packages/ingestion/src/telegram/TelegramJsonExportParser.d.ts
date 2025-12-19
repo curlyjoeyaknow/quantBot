@@ -6,12 +6,12 @@
  */
 import { type NormalizedTelegramMessage, type NormalizeErr } from './normalize';
 export interface ParseJsonExportResult {
-    normalized: NormalizedTelegramMessage[];
-    quarantined: Array<{
-        error: NormalizeErr['error'];
-        raw: unknown;
-    }>;
-    totalProcessed: number;
+  normalized: NormalizedTelegramMessage[];
+  quarantined: Array<{
+    error: NormalizeErr['error'];
+    raw: unknown;
+  }>;
+  totalProcessed: number;
 }
 /**
  * Parse a Telegram JSON export file

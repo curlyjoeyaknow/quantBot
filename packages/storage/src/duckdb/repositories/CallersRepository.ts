@@ -100,15 +100,17 @@ export class CallersRepository {
    */
   async findByName(source: string, handle: string): Promise<Caller | null> {
     try {
-      const resultSchema = z.object({
-        id: z.number(),
-        source: z.string(),
-        handle: z.string(),
-        display_name: z.string().nullable(),
-        attributes_json: z.record(z.unknown()).nullable(),
-        created_at: z.string(),
-        updated_at: z.string(),
-      }).nullable();
+      const resultSchema = z
+        .object({
+          id: z.number(),
+          source: z.string(),
+          handle: z.string(),
+          display_name: z.string().nullable(),
+          attributes_json: z.record(z.unknown()).nullable(),
+          created_at: z.string(),
+          updated_at: z.string(),
+        })
+        .nullable();
 
       const result = await this.client.execute(
         this.scriptPath,
@@ -141,22 +143,19 @@ export class CallersRepository {
    */
   async findById(id: number): Promise<Caller | null> {
     try {
-      const resultSchema = z.object({
-        id: z.number(),
-        source: z.string(),
-        handle: z.string(),
-        display_name: z.string().nullable(),
-        attributes_json: z.record(z.unknown()).nullable(),
-        created_at: z.string(),
-        updated_at: z.string(),
-      }).nullable();
+      const resultSchema = z
+        .object({
+          id: z.number(),
+          source: z.string(),
+          handle: z.string(),
+          display_name: z.string().nullable(),
+          attributes_json: z.record(z.unknown()).nullable(),
+          created_at: z.string(),
+          updated_at: z.string(),
+        })
+        .nullable();
 
-      const result = await this.client.execute(
-        this.scriptPath,
-        'find_by_id',
-        { id },
-        resultSchema
-      );
+      const result = await this.client.execute(this.scriptPath, 'find_by_id', { id }, resultSchema);
 
       if (!result) {
         return null;
@@ -195,12 +194,7 @@ export class CallersRepository {
         })
       );
 
-      const result = await this.client.execute(
-        this.scriptPath,
-        'list',
-        {},
-        resultSchema
-      );
+      const result = await this.client.execute(this.scriptPath, 'list', {}, resultSchema);
 
       return result.map((row) => ({
         id: row.id,
@@ -244,4 +238,3 @@ export class CallersRepository {
     }
   }
 }
-

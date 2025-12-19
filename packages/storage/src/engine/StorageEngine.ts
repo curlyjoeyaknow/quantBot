@@ -3,15 +3,16 @@
  *
  * Provides a single, robust interface for storing and retrieving:
  * - OHLCV candles (ClickHouse)
- * - Token calls (DuckDB - migrated from Postgres)
- * - Strategies (DuckDB - migrated from Postgres)
+ * - Token calls (DuckDB)
+ * - Strategies (DuckDB)
  * - Indicators (ClickHouse for computed values)
  * - Simulation results (ClickHouse)
  *
  * This engine abstracts the complexity of multi-database storage and provides
  * intelligent caching, query optimization, and data consistency guarantees.
  *
- * @deprecated PostgreSQL repositories are deprecated. The engine will be updated to use DuckDB repositories.
+ * Note: Some methods that previously used PostgreSQL have been removed.
+ * Use DuckDB repositories directly for token calls, strategies, and callers.
  */
 
 import { DateTime } from 'luxon';
@@ -32,21 +33,12 @@ import type { TokenMetadataSnapshot } from '../clickhouse/repositories/TokenMeta
 // Import repositories
 import { OhlcvRepository } from '../clickhouse/repositories/OhlcvRepository';
 import { SimulationEventsRepository } from '../clickhouse/repositories/SimulationEventsRepository';
-import { TokensRepository } from '../postgres/repositories/TokensRepository';
-import { CallsRepository } from '../postgres/repositories/CallsRepository';
-import { StrategiesRepository } from '../postgres/repositories/StrategiesRepository';
-import { AlertsRepository } from '../postgres/repositories/AlertsRepository';
-import { CallersRepository } from '../postgres/repositories/CallersRepository';
 
 // Import indicator storage
 import { IndicatorsRepository } from '../clickhouse/repositories/IndicatorsRepository';
 
 // Import token metadata storage
 import { TokenMetadataRepository } from '../clickhouse/repositories/TokenMetadataRepository';
-
-// Import simulation results storage
-import { SimulationResultsRepository } from '../postgres/repositories/SimulationResultsRepository';
-import { SimulationRunsRepository } from '../postgres/repositories/SimulationRunsRepository';
 
 /**
  * Storage engine configuration
@@ -160,13 +152,6 @@ export class StorageEngine {
   private readonly indicatorsRepo: IndicatorsRepository;
   private readonly tokenMetadataRepo: TokenMetadataRepository;
   private readonly simulationEventsRepo: SimulationEventsRepository;
-  private readonly tokensRepo: TokensRepository;
-  private readonly callsRepo: CallsRepository;
-  private readonly strategiesRepo: StrategiesRepository;
-  private readonly alertsRepo: AlertsRepository;
-  private readonly callersRepo: CallersRepository;
-  private readonly simulationResultsRepo: SimulationResultsRepository;
-  private readonly simulationRunsRepo: SimulationRunsRepository;
 
   private readonly config: Required<StorageEngineConfig>;
   private readonly cache: Map<string, { data: unknown; timestamp: number }>;
@@ -185,13 +170,6 @@ export class StorageEngine {
     this.indicatorsRepo = new IndicatorsRepository();
     this.tokenMetadataRepo = new TokenMetadataRepository();
     this.simulationEventsRepo = new SimulationEventsRepository();
-    this.tokensRepo = new TokensRepository();
-    this.callsRepo = new CallsRepository();
-    this.strategiesRepo = new StrategiesRepository();
-    this.alertsRepo = new AlertsRepository();
-    this.callersRepo = new CallersRepository();
-    this.simulationResultsRepo = new SimulationResultsRepository();
-    this.simulationRunsRepo = new SimulationRunsRepository();
 
     // Initialize cache
     this.cache = new Map();
@@ -344,17 +322,17 @@ export class StorageEngine {
 
   /**
    * Store a caller alert with initial market cap and price
-   * CRITICAL: Preserves full mint address and exact case
+   * @deprecated PostgreSQL removed. Use DuckDB repositories directly.
    */
   async storeCallerAlert(
-    tokenAddress: string,
-    chain: string,
-    callerId: number,
-    alertTimestamp: DateTime,
-    data: {
+    _tokenAddress: string,
+    _chain: string,
+    _callerId: number,
+    _alertTimestamp: DateTime,
+    _data: {
       alertPrice?: number;
       initialMcap?: number;
-      initialPrice?: number; // Price at alert time (for performance calculations)
+      initialPrice?: number;
       confidence?: number;
       chatId?: string;
       messageId?: string;
@@ -362,91 +340,32 @@ export class StorageEngine {
       rawPayload?: Record<string, unknown>;
     }
   ): Promise<number> {
-    try {
-      // Get or create token
-      const token = await this.tokensRepo.getOrCreateToken(
-        chain as Chain,
-        createTokenAddress(tokenAddress)
-      );
-
-      // Store alert with initial mcap and price
-      const alertId = await this.alertsRepo.insertAlert({
-        tokenId: token.id,
-        callerId,
-        side: 'buy',
-        alertPrice: data.alertPrice,
-        alertTimestamp: alertTimestamp.toJSDate(),
-        initialMcap: data.initialMcap,
-        initialPrice: data.initialPrice || data.alertPrice, // Use alertPrice as fallback
-        confidence: data.confidence,
-        chatId: data.chatId,
-        messageId: data.messageId,
-        messageText: data.messageText,
-        rawPayload: data.rawPayload,
-      });
-
-      // Invalidate cache
-      if (this.config.enableCache) {
-        this.invalidateCache(`alerts:caller:${callerId}`);
-        this.invalidateCache(`alerts:token:${token.id}`);
-      }
-
-      logger.info('Stored caller alert', {
-        alertId,
-        callerId,
-        token: tokenAddress.substring(0, 20) + '...',
-        initialMcap: data.initialMcap,
-        initialPrice: data.initialPrice || data.alertPrice,
-      });
-
-      return alertId;
-    } catch (error) {
-      logger.error('Error storing caller alert', error as Error, {
-        token: tokenAddress.substring(0, 20) + '...',
-        callerId,
-      });
-      throw error;
-    }
+    throw new Error('storeCallerAlert is not available. PostgreSQL has been removed. Use DuckDB repositories directly.');
   }
 
   /**
    * Update caller alert metrics (time to ATH, max ROI)
+   * @deprecated PostgreSQL removed. Use DuckDB repositories directly.
    */
   async updateCallerAlertMetrics(
-    alertId: number,
-    metrics: {
-      timeToATH?: number; // Seconds from alert to ATH
-      maxROI?: number; // Maximum ROI percentage
-      athPrice?: number; // All-time high price
-      athTimestamp?: DateTime; // Timestamp of ATH
+    _alertId: number,
+    _metrics: {
+      timeToATH?: number;
+      maxROI?: number;
+      athPrice?: number;
+      athTimestamp?: DateTime;
     }
   ): Promise<void> {
-    try {
-      await this.alertsRepo.updateAlertMetrics(alertId, {
-        timeToATH: metrics.timeToATH,
-        maxROI: metrics.maxROI,
-        athPrice: metrics.athPrice,
-        athTimestamp: metrics.athTimestamp?.toJSDate(),
-      });
-
-      // Invalidate cache
-      if (this.config.enableCache) {
-        this.invalidateCache(`alerts:${alertId}`);
-      }
-
-      logger.debug('Updated caller alert metrics', { alertId, metrics });
-    } catch (error) {
-      logger.error('Error updating caller alert metrics', error as Error, { alertId });
-      throw error;
-    }
+    throw new Error('updateCallerAlertMetrics is not available. PostgreSQL has been removed. Use DuckDB repositories directly.');
   }
 
   /**
    * Get caller alerts with metrics
+   * @deprecated PostgreSQL removed. Use DuckDB repositories directly.
    */
   async getCallerAlerts(
-    callerId: number,
-    options?: { from?: DateTime; to?: DateTime; limit?: number }
+    _callerId: number,
+    _options?: { from?: DateTime; to?: DateTime; limit?: number }
   ): Promise<
     Array<
       Alert & {
@@ -459,40 +378,7 @@ export class StorageEngine {
       }
     >
   > {
-    const cacheKey = `alerts:caller:${callerId}:${options?.from?.toISO()}:${options?.to?.toISO()}`;
-
-    if (this.config.enableCache) {
-      const cached = this.cache.get(cacheKey);
-      if (cached && Date.now() - cached.timestamp < this.config.cacheTTL) {
-        return cached.data as Array<
-          Alert & {
-            initialMcap?: number;
-            initialPrice?: number;
-            timeToATH?: number;
-            maxROI?: number;
-            athPrice?: number;
-            athTimestamp?: DateTime;
-          }
-        >;
-      }
-    }
-
-    try {
-      const alerts = await this.alertsRepo.findByCaller(callerId, {
-        from: options?.from?.toJSDate(),
-        to: options?.to?.toJSDate(),
-        limit: options?.limit,
-      });
-
-      if (this.config.enableCache) {
-        this.setCache(cacheKey, alerts);
-      }
-
-      return alerts;
-    } catch (error) {
-      logger.error('Error retrieving caller alerts', error as Error);
-      throw error;
-    }
+    throw new Error('getCallerAlerts is not available. PostgreSQL has been removed. Use DuckDB repositories directly.');
   }
 
   // ============================================================================
@@ -501,104 +387,32 @@ export class StorageEngine {
 
   /**
    * Store a token call
+   * @deprecated PostgreSQL removed. Use DuckDB repositories directly.
    */
-  async storeCall(call: Omit<Call, 'id' | 'createdAt'>): Promise<number> {
-    try {
-      const callId = await this.callsRepo.insertCall({
-        alertId: call.alertId,
-        tokenId: call.tokenId,
-        callerId: call.callerId,
-        strategyId: call.strategyId,
-        side: call.side,
-        signalType: call.signalType,
-        signalStrength: call.signalStrength,
-        signalTimestamp: call.signalTimestamp.toJSDate(),
-        metadata: call.metadata,
-      });
-
-      // Invalidate cache
-      if (this.config.enableCache) {
-        this.invalidateCache(`calls:token:${call.tokenId}`);
-        this.invalidateCache(`calls:caller:${call.callerId}`);
-      }
-
-      logger.debug('Stored call', { callId, tokenId: call.tokenId });
-      return callId;
-    } catch (error) {
-      logger.error('Error storing call', error as Error);
-      throw error;
-    }
+  async storeCall(_call: Omit<Call, 'id' | 'createdAt'>): Promise<number> {
+    throw new Error('storeCall is not available. PostgreSQL has been removed. Use DuckDB repositories directly.');
   }
 
   /**
    * Retrieve calls by token
+   * @deprecated PostgreSQL removed. Use DuckDB repositories directly.
    */
   async getCallsByToken(
-    tokenId: number,
-    options?: { from?: DateTime; to?: DateTime; limit?: number }
+    _tokenId: number,
+    _options?: { from?: DateTime; to?: DateTime; limit?: number }
   ): Promise<Call[]> {
-    const cacheKey = `calls:token:${tokenId}:${options?.from?.toISO()}:${options?.to?.toISO()}`;
-
-    if (this.config.enableCache) {
-      const cached = this.cache.get(cacheKey);
-      if (cached && Date.now() - cached.timestamp < this.config.cacheTTL) {
-        return cached.data as Call[];
-      }
-    }
-
-    try {
-      const calls = await this.callsRepo.findByTokenId(
-        tokenId,
-        options
-          ? {
-              from: options.from?.toJSDate(),
-              to: options.to?.toJSDate(),
-              limit: options.limit,
-            }
-          : undefined
-      );
-      if (this.config.enableCache) {
-        this.setCache(cacheKey, calls);
-      }
-      return calls;
-    } catch (error) {
-      logger.error('Error retrieving calls', error as Error);
-      throw error;
-    }
+    throw new Error('getCallsByToken is not available. PostgreSQL has been removed. Use DuckDB repositories directly.');
   }
 
   /**
    * Retrieve calls by caller
+   * @deprecated PostgreSQL removed. Use DuckDB repositories directly.
    */
   async getCallsByCaller(
-    callerId: number,
-    options?: { from?: DateTime; to?: DateTime; limit?: number }
+    _callerId: number,
+    _options?: { from?: DateTime; to?: DateTime; limit?: number }
   ): Promise<Call[]> {
-    const cacheKey = `calls:caller:${callerId}:${options?.from?.toISO()}:${options?.to?.toISO()}`;
-
-    if (this.config.enableCache) {
-      const cached = this.cache.get(cacheKey);
-      if (cached && Date.now() - cached.timestamp < this.config.cacheTTL) {
-        return cached.data as Call[];
-      }
-    }
-
-    try {
-      const calls = await this.callsRepo.queryBySelection({
-        callerIds: [callerId],
-        from: options?.from,
-        to: options?.to,
-      });
-
-      const result = options?.limit ? calls.slice(0, options.limit) : calls;
-      if (this.config.enableCache) {
-        this.setCache(cacheKey, result);
-      }
-      return result;
-    } catch (error) {
-      logger.error('Error retrieving calls', error as Error);
-      throw error;
-    }
+    throw new Error('getCallsByCaller is not available. PostgreSQL has been removed. Use DuckDB repositories directly.');
   }
 
   // ============================================================================
@@ -607,80 +421,26 @@ export class StorageEngine {
 
   /**
    * Store a strategy
+   * @deprecated PostgreSQL removed. Use DuckDB StrategiesRepository directly.
    */
-  async storeStrategy(strategy: Omit<StrategyConfig, 'createdAt' | 'updatedAt'>): Promise<number> {
-    try {
-      const strategyId = await this.strategiesRepo.create({
-        name: strategy.name,
-        version: strategy.version,
-        category: strategy.category,
-        description: strategy.description,
-        config: strategy.config,
-        isActive: strategy.isActive,
-      });
-
-      // Invalidate cache
-      if (this.config.enableCache) {
-        this.invalidateCache('strategies:all');
-        this.invalidateCache(`strategies:${strategy.name}`);
-      }
-
-      logger.info('Stored strategy', { strategyId, name: strategy.name });
-      return strategyId;
-    } catch (error) {
-      logger.error('Error storing strategy', error as Error);
-      throw error;
-    }
+  async storeStrategy(_strategy: Omit<StrategyConfig, 'createdAt' | 'updatedAt'>): Promise<number> {
+    throw new Error('storeStrategy is not available. PostgreSQL has been removed. Use DuckDB StrategiesRepository directly.');
   }
 
   /**
    * Retrieve all active strategies
+   * @deprecated PostgreSQL removed. Use DuckDB StrategiesRepository directly.
    */
   async getActiveStrategies(): Promise<StrategyConfig[]> {
-    const cacheKey = 'strategies:active';
-
-    if (this.config.enableCache) {
-      const cached = this.cache.get(cacheKey);
-      if (cached && Date.now() - cached.timestamp < this.config.cacheTTL) {
-        return cached.data as StrategyConfig[];
-      }
-    }
-
-    try {
-      const strategies = await this.strategiesRepo.findAllActive();
-      if (this.config.enableCache) {
-        this.setCache(cacheKey, strategies);
-      }
-      return strategies;
-    } catch (error) {
-      logger.error('Error retrieving strategies', error as Error);
-      throw error;
-    }
+    throw new Error('getActiveStrategies is not available. PostgreSQL has been removed. Use DuckDB StrategiesRepository directly.');
   }
 
   /**
    * Retrieve strategy by name
+   * @deprecated PostgreSQL removed. Use DuckDB StrategiesRepository directly.
    */
-  async getStrategy(name: string, version?: string): Promise<StrategyConfig | null> {
-    const cacheKey = `strategies:${name}:${version || '1'}`;
-
-    if (this.config.enableCache) {
-      const cached = this.cache.get(cacheKey);
-      if (cached && Date.now() - cached.timestamp < this.config.cacheTTL) {
-        return cached.data as StrategyConfig | null;
-      }
-    }
-
-    try {
-      const strategy = await this.strategiesRepo.findByName(name, version);
-      if (this.config.enableCache) {
-        this.setCache(cacheKey, strategy);
-      }
-      return strategy;
-    } catch (error) {
-      logger.error('Error retrieving strategy', error as Error);
-      throw error;
-    }
+  async getStrategy(_name: string, _version?: string): Promise<StrategyConfig | null> {
+    throw new Error('getStrategy is not available. PostgreSQL has been removed. Use DuckDB StrategiesRepository directly.');
   }
 
   // ============================================================================
@@ -886,53 +646,25 @@ export class StorageEngine {
 
   /**
    * Store simulation run metadata
+   * @deprecated PostgreSQL removed. Use DuckDB storage service directly.
    */
-  async storeSimulationRun(metadata: SimulationRunMetadata): Promise<number> {
-    return this.simulationRunsRepo.createRun({
-      strategyId: metadata.strategyId,
-      tokenId: metadata.tokenId,
-      callerId: metadata.callerId,
-      runType: metadata.runType,
-      engineVersion: metadata.engineVersion,
-      configHash: metadata.configHash,
-      config: metadata.config,
-      dataSelection: metadata.dataSelection,
-      status: metadata.status || 'pending',
-    });
+  async storeSimulationRun(_metadata: SimulationRunMetadata): Promise<number> {
+    throw new Error('storeSimulationRun is not available. PostgreSQL has been removed. Use DuckDB storage service directly.');
   }
 
   /**
    * Store simulation results summary
+   * @deprecated PostgreSQL removed. Use DuckDB storage service directly.
    */
-  async storeSimulationResults(simulationRunId: number, result: SimulationResult): Promise<void> {
-    try {
-      // Store summary in Postgres
-      await this.simulationResultsRepo.upsertSummary({
-        simulationRunId,
-        finalPnl: result.finalPnl,
-        // Additional metrics would be calculated from result
-        metadata: {
-          entryPrice: result.entryPrice,
-          finalPrice: result.finalPrice,
-          totalCandles: result.totalCandles,
-        },
+  async storeSimulationResults(_simulationRunId: number, result: SimulationResult): Promise<void> {
+    // Store events in ClickHouse only (PostgreSQL removed)
+    if (result.events.length > 0) {
+      throw new ValidationError('Event storage requires token address and chain', {
+        operation: 'storeSimulationResults',
+        eventsCount: result.events.length,
       });
-
-      // Store events in ClickHouse
-      if (result.events.length > 0) {
-        // This would need the simulation run metadata to get token info
-        // For now, we'll assume it's passed separately
-        throw new ValidationError('Event storage requires token address and chain', {
-          operation: 'storeSimulationResults',
-          eventsCount: result.events.length,
-        });
-      }
-
-      logger.info('Stored simulation results', { simulationRunId });
-    } catch (error) {
-      logger.error('Error storing simulation results', error as Error);
-      throw error;
     }
+    logger.warn('storeSimulationResults: PostgreSQL removed. Only ClickHouse event storage available.');
   }
 
   /**

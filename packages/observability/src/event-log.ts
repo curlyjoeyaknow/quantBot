@@ -361,4 +361,3 @@ export function getEventLogService(config?: EventLogConfig): EventLogService {
   }
   return eventLogInstance;
 }
-

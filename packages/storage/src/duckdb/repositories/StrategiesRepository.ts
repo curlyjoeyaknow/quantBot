@@ -96,17 +96,19 @@ export class StrategiesRepository {
   async findByName(name: string, version?: string): Promise<StrategyConfig | null> {
     try {
       const scriptPath = join(process.cwd(), 'tools/storage/duckdb_strategies.py');
-      const resultSchema = z.object({
-        id: z.number(),
-        name: z.string(),
-        version: z.string(),
-        category: z.string().nullable(),
-        description: z.string().nullable(),
-        config_json: z.record(z.unknown()),
-        is_active: z.boolean(),
-        created_at: z.string(),
-        updated_at: z.string(),
-      }).nullable();
+      const resultSchema = z
+        .object({
+          id: z.number(),
+          name: z.string(),
+          version: z.string(),
+          category: z.string().nullable(),
+          description: z.string().nullable(),
+          config_json: z.record(z.unknown()),
+          is_active: z.boolean(),
+          created_at: z.string(),
+          updated_at: z.string(),
+        })
+        .nullable();
 
       const versionToUse = version || '1';
 
@@ -196,12 +198,7 @@ export class StrategiesRepository {
         })
       );
 
-      const result = await this.client.execute(
-        this.scriptPath,
-        'list',
-        {},
-        resultSchema
-      );
+      const result = await this.client.execute(this.scriptPath, 'list', {}, resultSchema);
 
       return result.map((row) => ({
         name: row.name,
@@ -219,4 +216,3 @@ export class StrategiesRepository {
     }
   }
 }
-

@@ -4,14 +4,14 @@
  * Parses Telegram HTML export files and extracts messages with metadata.
  */
 export interface ParsedMessage {
-    timestamp: Date;
-    chatId?: string;
-    messageId: string;
-    text: string;
-    from?: string;
-    replyTo?: string;
-    replyToMessageId?: string;
-    replyToFile?: string;
+  timestamp: Date;
+  chatId?: string;
+  messageId: string;
+  text: string;
+  from?: string;
+  replyTo?: string;
+  replyToMessageId?: string;
+  replyToFile?: string;
 }
 /**
  * Parse a Telegram HTML export file

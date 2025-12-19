@@ -15,9 +15,11 @@ import type { Candle } from '@quantbot/core';
 
 // Create hoisted mocks
 const mockGetCandles = vi.hoisted(() => vi.fn());
-const mockGetStorageEngine = vi.hoisted(() => vi.fn(() => ({
-  getCandles: mockGetCandles,
-})));
+const mockGetStorageEngine = vi.hoisted(() =>
+  vi.fn(() => ({
+    getCandles: mockGetCandles,
+  }))
+);
 
 vi.mock('@quantbot/storage', () => ({
   getStorageEngine: mockGetStorageEngine,

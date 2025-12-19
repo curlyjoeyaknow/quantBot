@@ -94,9 +94,9 @@ interface PumpfunTokenRow {
   creator?: string;
   bonding_curve?: string;
   launch_signature?: string;
-  launch_timestamp?: string;
+  launch_timestamp?: string | number; // Can be string from DB or number
   graduation_signature?: string;
-  graduation_timestamp?: string;
+  graduation_timestamp?: string | number; // Can be string from DB or number
   is_graduated: number; // SQLite stores boolean as 0/1
   metadata?: string; // JSON string
 }
@@ -114,6 +114,7 @@ interface TokenRow {
   chain: string;
   token_name?: string;
   token_symbol?: string;
+  created_at?: string;
 }
 
 interface ActiveCARow {
@@ -883,9 +884,9 @@ export function getStrategy(userId: number, name: string): Promise<UserStrategy 
         name: dbRow.name,
         description: dbRow.description || undefined,
         strategy: JSON.parse(dbRow.strategy) as StrategyLeg[],
-        stopLossConfig: JSON.parse(row.stop_loss_config) as StopLossConfig,
-        isDefault: Boolean(row.is_default),
-        createdAt: DateTime.fromISO(row.created_at),
+        stopLossConfig: JSON.parse(dbRow.stop_loss_config) as StopLossConfig,
+        isDefault: Boolean(dbRow.is_default),
+        createdAt: DateTime.fromISO(dbRow.created_at),
       };
       resolve(strategy);
     });
@@ -1040,7 +1041,8 @@ export function getActiveCATracking(): Promise<ActiveCA[]> {
             };
             return activeCA;
           } catch (error) {
-            logger.warn('Invalid mint address in active CA tracking', { mint: row.mint, error });
+            const dbRow = row as ActiveCARow;
+            logger.warn('Invalid mint address in active CA tracking', { mint: dbRow.mint, error });
             return null;
           }
         })
@@ -1170,9 +1172,13 @@ export function getPumpfunTokenRecords(): Promise<PumpfunTokenRecord[]> {
           creator: dbRow.creator ?? undefined,
           bondingCurve: dbRow.bonding_curve ?? undefined,
           launchSignature: dbRow.launch_signature ?? undefined,
-          launchTimestamp: dbRow.launch_timestamp ?? undefined,
+          launchTimestamp: typeof dbRow.launch_timestamp === 'number' 
+            ? dbRow.launch_timestamp 
+            : dbRow.launch_timestamp ? Number(dbRow.launch_timestamp) : undefined,
           graduationSignature: dbRow.graduation_signature ?? undefined,
-          graduationTimestamp: dbRow.graduation_timestamp ?? undefined,
+          graduationTimestamp: typeof dbRow.graduation_timestamp === 'number'
+            ? dbRow.graduation_timestamp
+            : dbRow.graduation_timestamp ? Number(dbRow.graduation_timestamp) : undefined,
           isGraduated: Boolean(dbRow.is_graduated),
           metadata: dbRow.metadata ? JSON.parse(dbRow.metadata) : null,
         };
@@ -1237,10 +1243,10 @@ export function getTrackedTokens(): Promise<TrackedToken[]> {
               ? DateTime.fromISO(dbRow.created_at).toSeconds()
               : undefined;
             combined.set(key, {
-              mint: row.mint,
-              chain: row.chain,
-              tokenName: row.token_name ?? undefined,
-              tokenSymbol: row.token_symbol ?? undefined,
+              mint: dbRow.mint,
+              chain: dbRow.chain,
+              tokenName: dbRow.token_name ?? undefined,
+              tokenSymbol: dbRow.token_symbol ?? undefined,
               firstSeen: createdAt,
               source: 'token_registry',
             });
@@ -1256,12 +1262,14 @@ export function getTrackedTokens(): Promise<TrackedToken[]> {
                 mint: token.mint,
                 chain: 'solana',
                 firstSeen: token.launchTimestamp,
-                tokenName: token.metadata && typeof token.metadata === 'object' && 'name' in token.metadata
-                  ? String(token.metadata.name)
-                  : undefined,
-                tokenSymbol: token.metadata && typeof token.metadata === 'object' && 'symbol' in token.metadata
-                  ? String(token.metadata.symbol)
-                  : undefined,
+                tokenName:
+                  token.metadata && typeof token.metadata === 'object' && 'name' in token.metadata
+                    ? String(token.metadata.name)
+                    : undefined,
+                tokenSymbol:
+                  token.metadata && typeof token.metadata === 'object' && 'symbol' in token.metadata
+                    ? String(token.metadata.symbol)
+                    : undefined,
                 source,
               });
             }
@@ -1411,13 +1419,15 @@ export function getRecentCAPerformance(hours: number = 24): Promise<CAPerformanc
               tokenSymbol: dbRow.token_symbol || undefined,
               callPrice: dbRow.call_price,
               callTimestamp: dbRow.call_timestamp,
-              strategy: dbRow.strategy ? JSON.parse(dbRow.strategy) as Strategy[] : undefined,
-              stopLossConfig: dbRow.stop_loss_config ? JSON.parse(dbRow.stop_loss_config) as StopLossConfig : undefined,
+              strategy: dbRow.strategy ? (JSON.parse(dbRow.strategy) as Strategy[]) : undefined,
+              stopLossConfig: dbRow.stop_loss_config
+                ? (JSON.parse(dbRow.stop_loss_config) as StopLossConfig)
+                : undefined,
               currentPrice: dbRow.current_price || dbRow.call_price,
               priceTimestamp: dbRow.price_timestamp || dbRow.call_timestamp,
             });
           } catch (error) {
-            logger.warn('Invalid mint address in CA performance data', { mint: row.mint, error });
+            logger.warn('Invalid mint address in CA performance data', { mint: dbRow.mint, error });
             // Skip invalid entries
           }
         }
@@ -1528,7 +1538,8 @@ export async function getCACallByMint(mint: string): Promise<CACall | null> {
         };
         resolve(caCall);
       } catch (error) {
-        logger.warn('Invalid mint address in CA call', { mint: row.mint, error });
+        const dbRow = row as CACallRow;
+        logger.warn('Invalid mint address in CA call', { mint: dbRow.mint, error });
         resolve(null);
       }
     });
@@ -1589,7 +1600,9 @@ export async function getCACallsByCaller(caller: string, limit: number = 20): Pr
               token_symbol: dbRow.token_symbol || undefined,
               call_price: dbRow.call_price || undefined,
               volume_at_alert: dbRow.call_marketcap || undefined,
-              alert_timestamp: dbRow.call_timestamp ? new Date(dbRow.call_timestamp * 1000) : undefined,
+              alert_timestamp: dbRow.call_timestamp
+                ? new Date(dbRow.call_timestamp * 1000)
+                : undefined,
               caller_name: dbRow.caller || undefined,
             };
             return call;
@@ -1659,7 +1672,9 @@ export async function getCACallsByChain(chain: string, limit: number = 20): Prom
               token_symbol: dbRow.token_symbol || undefined,
               call_price: dbRow.call_price || undefined,
               volume_at_alert: dbRow.call_marketcap || undefined,
-              alert_timestamp: dbRow.call_timestamp ? new Date(dbRow.call_timestamp * 1000) : undefined,
+              alert_timestamp: dbRow.call_timestamp
+                ? new Date(dbRow.call_timestamp * 1000)
+                : undefined,
               caller_name: dbRow.caller || undefined,
             };
             return call;

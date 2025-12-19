@@ -1,10 +1,10 @@
 /**
  * OHLCV Storage Service (Offline-Only)
  * =====================================
- * 
+ *
  * Provides offline candle storage operations. This service does NOT fetch
  * data from APIs - it only stores candles that have already been fetched.
- * 
+ *
  * All API fetching should happen in @quantbot/ingestion workflows using
  * @quantbot/api-clients, then candles should be stored via this service.
  */
@@ -32,18 +32,18 @@ export interface StoreCandlesOptions {
 
 /**
  * Store candles to ClickHouse via StorageEngine (offline operation)
- * 
+ *
  * This function does NOT fetch candles from APIs. It only stores candles
  * that have already been fetched. For fetching, use @quantbot/api-clients
  * in @quantbot/ingestion workflows.
- * 
+ *
  * @param tokenAddress - Token address (full mint address, case-preserved)
  * @param chain - Blockchain name (e.g., 'solana', 'ethereum')
  * @param candles - Array of Candle objects to store
  * @param interval - Candle interval ('1m', '5m', '15m', '1h', etc.)
  * @param options - Storage options
  * @returns Promise that resolves when candles are stored
- * 
+ *
  * @example
  * ```typescript
  * // In ingestion workflow:
@@ -93,9 +93,9 @@ export async function storeCandles(
 
 /**
  * Store multiple candle sets for different intervals
- * 
+ *
  * Useful for storing both 1m and 5m candles for the same token.
- * 
+ *
  * @param tokenAddress - Token address
  * @param chain - Blockchain name
  * @param candleSets - Map of interval to candles
@@ -127,10 +127,10 @@ export async function storeCandlesMultiInterval(
 
 /**
  * Check coverage for a given mint, interval, and time range (offline operation)
- * 
+ *
  * Returns coverage information indicating what data exists in ClickHouse.
  * This is useful for avoiding unnecessary API calls.
- * 
+ *
  * @param mint - Token mint address
  * @param chain - Blockchain name
  * @param startTime - Start time for coverage check
@@ -166,7 +166,8 @@ export async function getCoverage(
 
     // Calculate coverage ratio
     const totalSeconds = Math.floor((endTime.getTime() - startTime.getTime()) / 1000);
-    const intervalSeconds = interval === '1m' ? 60 : interval === '5m' ? 300 : interval === '15s' ? 15 : 3600;
+    const intervalSeconds =
+      interval === '1m' ? 60 : interval === '5m' ? 300 : interval === '15s' ? 15 : 3600;
     const expectedCandles = Math.floor(totalSeconds / intervalSeconds);
     const coverageRatio = expectedCandles > 0 ? Math.min(candles.length / expectedCandles, 1.0) : 0;
 
@@ -199,4 +200,3 @@ export async function getCoverage(
     };
   }
 }
-

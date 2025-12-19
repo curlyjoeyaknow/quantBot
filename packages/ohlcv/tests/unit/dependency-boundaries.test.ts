@@ -1,9 +1,9 @@
 /**
  * Dependency Boundary Enforcement Tests
  * =====================================
- * 
+ *
  * Tripwire tests to ensure @quantbot/ohlcv maintains offline-only boundaries.
- * 
+ *
  * These tests will fail if forbidden dependencies are added, preventing
  * accidental network creep into the offline package.
  */
@@ -35,12 +35,17 @@ function findTsFiles(dir: string, baseDir: string = dir): string[] {
 
 describe('Dependency Boundaries - @quantbot/ohlcv', () => {
   const packageJsonPath = join(process.cwd(), 'package.json');
-  let packageJson: { dependencies?: Record<string, string>; devDependencies?: Record<string, string> };
-  
+  let packageJson: {
+    dependencies?: Record<string, string>;
+    devDependencies?: Record<string, string>;
+  };
+
   try {
     packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
   } catch (error) {
-    throw new Error(`Failed to read package.json: ${error instanceof Error ? error.message : String(error)}`);
+    throw new Error(
+      `Failed to read package.json: ${error instanceof Error ? error.message : String(error)}`
+    );
   }
 
   it('should not depend on @quantbot/api-clients', () => {
@@ -61,11 +66,13 @@ describe('Dependency Boundaries - @quantbot/ohlcv', () => {
   it('should not import network modules in source files', () => {
     const srcDir = join(process.cwd(), 'src');
     const srcFiles = findTsFiles(srcDir, srcDir);
-    
+
     // Exclude deprecated files that are not exported
     const excludedFiles = ['candles.ts', 'historical-candles.ts'];
-    const activeFiles = srcFiles.filter((file) => !excludedFiles.some((excluded) => file.includes(excluded)));
-    
+    const activeFiles = srcFiles.filter(
+      (file) => !excludedFiles.some((excluded) => file.includes(excluded))
+    );
+
     const forbiddenPatterns = [
       /from ['"]@quantbot\/api-clients/,
       /from ['"]axios/,
@@ -95,9 +102,8 @@ describe('Dependency Boundaries - @quantbot/ohlcv', () => {
       const violationMessages = violations.map((v) => `  ${v.file}: ${v.pattern}`).join('\n');
       throw new Error(
         `Found forbidden network imports in source files:\n${violationMessages}\n\n` +
-        `@quantbot/ohlcv must remain offline-only. Use @quantbot/jobs for network operations.`
+          `@quantbot/ohlcv must remain offline-only. Use @quantbot/jobs for network operations.`
       );
     }
   });
 });
-
