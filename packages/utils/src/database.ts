@@ -65,14 +65,14 @@ interface SimulationRunRow {
   strategy_name?: string;
   entry_type?: string;
   entry_price?: number;
-  entry_timestamp?: string;
+  entry_timestamp?: number;
   filter_criteria?: string;
   created_at: string;
 }
 
 interface SimulationEventRow {
   event_type: string;
-  timestamp: string;
+  timestamp: number;
   price: number;
   description?: string;
   remaining_position: number;
@@ -717,10 +717,10 @@ export function getSimulationEvents(runId: number): Promise<SimulationEvent[]> {
           type: dbRow.event_type as SimulationEvent['type'],
           timestamp: dbRow.timestamp,
           price: dbRow.price,
-          description: dbRow.description,
+          description: dbRow.description ?? '',
           remainingPosition: dbRow.remaining_position,
           pnlSoFar: dbRow.pnl_so_far,
-        };
+        } as SimulationEvent;
       });
       resolve(events);
     });

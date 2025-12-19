@@ -17,9 +17,7 @@ import type { Chain } from '@quantbot/core';
 import { createTokenAddress } from '@quantbot/core';
 import {
   CallersRepository,
-  TokensRepository,
-  AlertsRepository,
-  CallsRepository,
+  TokenDataRepository,
 } from '@quantbot/storage';
 import { parseExport } from './TelegramExportParser';
 import { MessageIndex } from './MessageIndex';

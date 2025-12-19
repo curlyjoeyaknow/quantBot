@@ -33,11 +33,12 @@ export { isBase58, extractAddresses } from './addressValidation';
 // These re-exports are removed to maintain offline-only boundary.
 // Import directly from @quantbot/api-clients if needed.
 // For offline work planning, use DuckDB queries instead.
-export {
-  TelegramAlertIngestionService,
-  type IngestExportParams,
-  type IngestExportResult,
-} from './TelegramAlertIngestionService';
+// TEMPORARILY COMMENTED OUT - needs repository refactoring
+// export {
+//   TelegramAlertIngestionService,
+//   type IngestExportParams,
+//   type IngestExportResult,
+// } from './TelegramAlertIngestionService';
 export {
   OhlcvIngestionService,
   type IngestForCallsParams,
@@ -58,11 +59,12 @@ export {
   type ChunkValidationResult,
   type ChunkValidatorOptions,
 } from './ChunkValidator';
-export {
-  TelegramCallIngestionService,
-  type IngestExportParams as TelegramCallIngestParams,
-  type IngestExportResult as TelegramCallIngestResult,
-} from './TelegramCallIngestionService';
+// TEMPORARILY COMMENTED OUT - needs repository refactoring
+// export {
+//   TelegramCallIngestionService,
+//   type IngestExportParams as TelegramCallIngestParams,
+//   type IngestExportResult as TelegramCallIngestResult,
+// } from './TelegramCallIngestionService';
 export {
   TelegramPipelineService,
   TelegramPipelineResultSchema,

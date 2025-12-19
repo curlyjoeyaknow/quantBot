@@ -5,7 +5,10 @@
  * Tests the workflow for date range: 2025-07-15 to 2025-07-16
  */
 
-import { ingestOhlcv, createOhlcvIngestionContext } from '../packages/workflows/src/ohlcv/ingestOhlcv.js';
+import {
+  ingestOhlcv,
+  createOhlcvIngestionContext,
+} from '../packages/workflows/src/ohlcv/ingestOhlcv.js';
 import type { IngestOhlcvSpec } from '../packages/workflows/src/ohlcv/ingestOhlcv.js';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
@@ -55,4 +58,3 @@ async function testOhlcvIngestion() {
 }
 
 testOhlcvIngestion();
-

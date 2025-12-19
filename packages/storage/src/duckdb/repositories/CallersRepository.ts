@@ -63,7 +63,7 @@ export class CallersRepository {
         source: z.string(),
         handle: z.string(),
         display_name: z.string().nullable(),
-        attributes_json: z.record(z.unknown()).nullable(),
+        attributes_json: z.record(z.string(), z.unknown()).nullable(),
         created_at: z.string(),
         updated_at: z.string(),
       });
@@ -106,7 +106,7 @@ export class CallersRepository {
           source: z.string(),
           handle: z.string(),
           display_name: z.string().nullable(),
-          attributes_json: z.record(z.unknown()).nullable(),
+          attributes_json: z.record(z.string(), z.unknown()).nullable(),
           created_at: z.string(),
           updated_at: z.string(),
         })
@@ -149,7 +149,7 @@ export class CallersRepository {
           source: z.string(),
           handle: z.string(),
           display_name: z.string().nullable(),
-          attributes_json: z.record(z.unknown()).nullable(),
+          attributes_json: z.record(z.string(), z.unknown()).nullable(),
           created_at: z.string(),
           updated_at: z.string(),
         })
@@ -188,7 +188,7 @@ export class CallersRepository {
           source: z.string(),
           handle: z.string(),
           display_name: z.string().nullable(),
-          attributes_json: z.record(z.unknown()).nullable(),
+          attributes_json: z.record(z.string(), z.unknown()).nullable(),
           created_at: z.string(),
           updated_at: z.string(),
         })
@@ -221,12 +221,10 @@ export class CallersRepository {
         synced_count: z.number(),
       });
 
-      const result = await this.pythonEngine.runScript(
-        scriptPath,
-        {
-          operation: 'sync_from_calls',
-          'db-path': this.dbPath,
-        },
+      const result = await this.client.execute(
+        this.scriptPath,
+        'sync_from_calls',
+        {},
         resultSchema
       );
 

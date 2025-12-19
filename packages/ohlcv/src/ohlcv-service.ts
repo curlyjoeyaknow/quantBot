@@ -65,7 +65,7 @@ export class OHLCVService {
     candles: Candle[],
     interval: '1m' | '5m' | '1H' = '5m'
   ): Promise<void> {
-    await storeCandlesOffline(mint, chain, candles, interval);
+    await storeCandlesOffline(mint, chain as Chain, candles, interval);
   }
 
   /**
