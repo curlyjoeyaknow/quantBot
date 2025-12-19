@@ -42,7 +42,7 @@ export async function trackError(
     if (errorStore.length > MAX_STORED_ERRORS) {
       errorStore.shift();
     }
-    
+
     logger.error('Error tracked', error, { context, severity });
   } catch (dbError) {
     // Don't fail if error tracking fails - just log it

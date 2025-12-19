@@ -74,7 +74,7 @@ describe('API Quotas', () => {
     it('should return false when quota is insufficient', async () => {
       // Set a low limit to test insufficient quota
       process.env.BIRDEYE_QUOTA_LIMIT = '5000';
-      
+
       const available = await hasQuotaAvailable('birdeye', 10000);
 
       // Limit is 5000, required is 10000, so should be false

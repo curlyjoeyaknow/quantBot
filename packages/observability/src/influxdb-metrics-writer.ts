@@ -73,7 +73,6 @@ export class InfluxDBMetricsWriter {
    */
   private extractPackageVersion(): string {
     try {
-
       // Try multiple possible paths
       const possiblePaths = [
         // From workspace root (if running from root)
