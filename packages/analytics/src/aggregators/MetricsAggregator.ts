@@ -99,7 +99,6 @@ export class MetricsAggregator {
     // Separate valid and NaN calls
     const validCalls = calls.filter((c) => !Number.isNaN(c.athMultiple));
     const nanCalls = calls.filter((c) => Number.isNaN(c.athMultiple));
-    const validCallsCount = validCalls.length;
 
     const distribution: AthDistribution[] = [];
 

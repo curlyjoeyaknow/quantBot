@@ -28,14 +28,16 @@ export interface StorageStatsContextConfig {
 /**
  * Create storage stats context with ClickHouse and optional DuckDB access
  */
-export function createStorageStatsContext(
-  config?: StorageStatsContextConfig
-): StorageStatsContext {
+export function createStorageStatsContext(config?: StorageStatsContextConfig): StorageStatsContext {
   const logger = config?.logger ?? {
-    info: (msg: string, ctx?: unknown) => utilsLogger.info(msg, ctx as Record<string, unknown> | undefined),
-    warn: (msg: string, ctx?: unknown) => utilsLogger.warn(msg, ctx as Record<string, unknown> | undefined),
-    error: (msg: string, ctx?: unknown) => utilsLogger.error(msg, ctx as Record<string, unknown> | undefined),
-    debug: (msg: string, ctx?: unknown) => utilsLogger.debug(msg, ctx as Record<string, unknown> | undefined),
+    info: (msg: string, ctx?: unknown) =>
+      utilsLogger.info(msg, ctx as Record<string, unknown> | undefined),
+    warn: (msg: string, ctx?: unknown) =>
+      utilsLogger.warn(msg, ctx as Record<string, unknown> | undefined),
+    error: (msg: string, ctx?: unknown) =>
+      utilsLogger.error(msg, ctx as Record<string, unknown> | undefined),
+    debug: (msg: string, ctx?: unknown) =>
+      utilsLogger.debug(msg, ctx as Record<string, unknown> | undefined),
   };
 
   const clock = config?.clock ?? { nowISO: () => DateTime.utc().toISO()! };
@@ -52,9 +54,7 @@ export function createStorageStatsContext(
   };
 
   // DuckDB query helper (optional)
-  const duckdbQuery = config?.duckdbQuery
-    ? { query: config.duckdbQuery }
-    : undefined;
+  const duckdbQuery = config?.duckdbQuery ? { query: config.duckdbQuery } : undefined;
 
   return {
     clock,
@@ -86,9 +86,7 @@ export function createStorageStatsContext(
 /**
  * Create OHLCV stats context (simpler, just ClickHouse)
  */
-export function createOhlcvStatsContext(
-  config?: StorageStatsContextConfig
-): OhlcvStatsContext {
+export function createOhlcvStatsContext(config?: StorageStatsContextConfig): OhlcvStatsContext {
   const baseContext = createStorageStatsContext(config);
   return {
     ...baseContext,
@@ -97,4 +95,3 @@ export function createOhlcvStatsContext(
     },
   };
 }
-

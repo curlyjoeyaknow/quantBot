@@ -28,14 +28,16 @@ export interface TokenStatsContextConfig {
 /**
  * Create token stats context with ClickHouse and DuckDB access
  */
-export function createTokenStatsContext(
-  config?: TokenStatsContextConfig
-): TokenStatsContext {
+export function createTokenStatsContext(config?: TokenStatsContextConfig): TokenStatsContext {
   const logger = config?.logger ?? {
-    info: (msg: string, ctx?: unknown) => utilsLogger.info(msg, ctx as Record<string, unknown> | undefined),
-    warn: (msg: string, ctx?: unknown) => utilsLogger.warn(msg, ctx as Record<string, unknown> | undefined),
-    error: (msg: string, ctx?: unknown) => utilsLogger.error(msg, ctx as Record<string, unknown> | undefined),
-    debug: (msg: string, ctx?: unknown) => utilsLogger.debug(msg, ctx as Record<string, unknown> | undefined),
+    info: (msg: string, ctx?: unknown) =>
+      utilsLogger.info(msg, ctx as Record<string, unknown> | undefined),
+    warn: (msg: string, ctx?: unknown) =>
+      utilsLogger.warn(msg, ctx as Record<string, unknown> | undefined),
+    error: (msg: string, ctx?: unknown) =>
+      utilsLogger.error(msg, ctx as Record<string, unknown> | undefined),
+    debug: (msg: string, ctx?: unknown) =>
+      utilsLogger.debug(msg, ctx as Record<string, unknown> | undefined),
   };
 
   const clock = config?.clock ?? { nowISO: () => DateTime.utc().toISO()! };
@@ -82,4 +84,3 @@ export function createTokenStatsContext(
     },
   };
 }
-
