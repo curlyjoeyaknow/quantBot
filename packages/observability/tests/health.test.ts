@@ -28,8 +28,22 @@ describe('Health Check Service', () => {
 
       vi.mocked(getClickHouseClient).mockReturnValue(mockClickHouse as any);
       vi.mocked(checkApiQuotas).mockResolvedValue({
-        birdeye: { remaining: 1000, limit: 10000, warningThreshold: 100, used: 9000, service: 'birdeye', resetAt: new Date() },
-        helius: { remaining: 5000, limit: 10000, warningThreshold: 1000, used: 5000, service: 'helius', resetAt: new Date() },
+        birdeye: {
+          remaining: 1000,
+          limit: 10000,
+          warningThreshold: 100,
+          used: 9000,
+          service: 'birdeye',
+          resetAt: new Date(),
+        },
+        helius: {
+          remaining: 5000,
+          limit: 10000,
+          warningThreshold: 1000,
+          used: 5000,
+          service: 'helius',
+          resetAt: new Date(),
+        },
       });
 
       const result = await performHealthCheck();
@@ -48,8 +62,22 @@ describe('Health Check Service', () => {
 
       vi.mocked(getClickHouseClient).mockReturnValue(mockClickHouse as any);
       vi.mocked(checkApiQuotas).mockResolvedValue({
-        birdeye: { remaining: 50, limit: 10000, warningThreshold: 100, used: 9950, service: 'birdeye', resetAt: new Date() },
-        helius: { remaining: 500, limit: 10000, warningThreshold: 1000, used: 9500, service: 'helius', resetAt: new Date() },
+        birdeye: {
+          remaining: 50,
+          limit: 10000,
+          warningThreshold: 100,
+          used: 9950,
+          service: 'birdeye',
+          resetAt: new Date(),
+        },
+        helius: {
+          remaining: 500,
+          limit: 10000,
+          warningThreshold: 1000,
+          used: 9500,
+          service: 'helius',
+          resetAt: new Date(),
+        },
       });
 
       const result = await performHealthCheck();
@@ -66,8 +94,22 @@ describe('Health Check Service', () => {
 
       vi.mocked(getClickHouseClient).mockReturnValue(mockClickHouse as any);
       vi.mocked(checkApiQuotas).mockResolvedValue({
-        birdeye: { remaining: 1000, limit: 10000, warningThreshold: 100, used: 9000, service: 'birdeye', resetAt: new Date() },
-        helius: { remaining: 5000, limit: 10000, warningThreshold: 1000, used: 5000, service: 'helius', resetAt: new Date() },
+        birdeye: {
+          remaining: 1000,
+          limit: 10000,
+          warningThreshold: 100,
+          used: 9000,
+          service: 'birdeye',
+          resetAt: new Date(),
+        },
+        helius: {
+          remaining: 5000,
+          limit: 10000,
+          warningThreshold: 1000,
+          used: 5000,
+          service: 'helius',
+          resetAt: new Date(),
+        },
       });
 
       const result = await performHealthCheck();
@@ -83,8 +125,22 @@ describe('Health Check Service', () => {
 
       vi.mocked(getClickHouseClient).mockReturnValue(mockClickHouse as any);
       vi.mocked(checkApiQuotas).mockResolvedValue({
-        birdeye: { remaining: 0, limit: 10000, warningThreshold: 100, used: 10000, service: 'birdeye', resetAt: new Date() },
-        helius: { remaining: 0, limit: 10000, warningThreshold: 1000, used: 10000, service: 'helius', resetAt: new Date() },
+        birdeye: {
+          remaining: 0,
+          limit: 10000,
+          warningThreshold: 100,
+          used: 10000,
+          service: 'birdeye',
+          resetAt: new Date(),
+        },
+        helius: {
+          remaining: 0,
+          limit: 10000,
+          warningThreshold: 1000,
+          used: 10000,
+          service: 'helius',
+          resetAt: new Date(),
+        },
       });
 
       const result = await performHealthCheck();

@@ -58,11 +58,18 @@ vi.mock('@quantbot/storage', async () => {
 
 // Mock OHLCV engine
 vi.mock('@quantbot/jobs', async () => {
-  const actual = await vi.importActual('@quantbot/jobs');
-  return {
-    ...actual,
-    getOhlcvIngestionEngine: vi.fn(),
-  };
+  try {
+    const actual = await vi.importActual('@quantbot/jobs');
+    return {
+      ...actual,
+      getOhlcvIngestionEngine: vi.fn(),
+    };
+  } catch {
+    // If importActual fails, return minimal mock
+    return {
+      getOhlcvIngestionEngine: vi.fn(),
+    };
+  }
 });
 
 describe('OHLCV Ingestion Stress Tests', () => {

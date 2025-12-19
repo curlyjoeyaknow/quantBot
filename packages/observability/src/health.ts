@@ -28,14 +28,25 @@ export async function performHealthCheck(): Promise<HealthStatus> {
     helius: { status: 'ok' },
   };
 
-  // Check ClickHouse
+  // Check ClickHouse with timeout
   try {
     const client = getClickHouseClient();
-    await client.query({ query: 'SELECT 1', format: 'JSON' });
+    // Add timeout to prevent hanging - use Promise.race with a short timeout
+    const queryPromise = client.query({
+      query: 'SELECT 1',
+      format: 'JSON',
+      clickhouse_settings: {
+        max_execution_time: 2, // 2 seconds max execution time
+      },
+    });
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error('ClickHouse query timeout')), 3000);
+    });
+    await Promise.race([queryPromise, timeoutPromise]);
   } catch (error) {
     checks.clickhouse = {
       status: 'error',
-      message: (error as Error).message,
+      message: error instanceof Error ? error.message : 'Unknown error',
     };
   }
 
