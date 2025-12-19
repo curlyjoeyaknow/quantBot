@@ -1,6 +1,14 @@
-import { influxDBClient, OHLCVData, TokenInfo, type OhlcvCacheCandle } from '@quantbot/storage';
+import {
+  influxDBClient,
+  OHLCVData,
+  TokenInfo,
+  type OhlcvCacheCandle,
+  getStorageEngine,
+} from '@quantbot/storage';
 import { logger } from '@quantbot/utils';
 import { ohlcvCache } from '@quantbot/storage';
+import { DateTime } from 'luxon';
+import type { Candle } from '@quantbot/core';
 
 export interface QueryOptions {
   useCache?: boolean;
@@ -11,6 +19,7 @@ export interface QueryOptions {
 export class OHLCVQueryService {
   private influxClient = influxDBClient;
   private cache = ohlcvCache;
+  private storageEngine = getStorageEngine();
 
   /**
    * Convert OhlcvCacheCandle to OHLCVData, ensuring dateTime is set
@@ -51,20 +60,45 @@ export class OHLCVQueryService {
         }
       }
 
-      // InfluxDB is not in use - return empty array
-      // TODO: Replace with ClickHouse query when needed
-      logger.warn(
-        'InfluxDB is not in use - returning empty data. Use ClickHouse queries instead.',
-        { tokenAddress }
-      );
-      const data: OHLCVData[] = [];
+      // Query ClickHouse via StorageEngine
+      try {
+        const startDateTime = DateTime.fromJSDate(startTime);
+        const endDateTime = DateTime.fromJSDate(endTime);
 
-      // Cache the data if enabled
-      if (useCache && data.length > 0) {
-        this.cache.set(tokenAddress, startTime, endTime, data, interval, cacheTTL);
+        // Default to 'solana' chain if not specified
+        // Note: This is a limitation - we should accept chain as a parameter
+        const chain = 'solana';
+
+        const candles = await this.storageEngine.getCandles(
+          tokenAddress,
+          chain,
+          startDateTime,
+          endDateTime,
+          { interval, useCache: false } // Don't use StorageEngine cache, we handle caching here
+        );
+
+        // Convert Candle[] (timestamp in seconds) to OHLCVData[] (timestamp in milliseconds, with dateTime)
+        const data: OHLCVData[] = candles.map((candle: Candle) => ({
+          timestamp: candle.timestamp * 1000, // Convert seconds to milliseconds
+          dateTime: new Date(candle.timestamp * 1000), // Convert seconds to Date
+          open: candle.open,
+          high: candle.high,
+          low: candle.low,
+          close: candle.close,
+          volume: candle.volume,
+        }));
+
+        // Cache the data if enabled
+        if (useCache && data.length > 0) {
+          this.cache.set(tokenAddress, startTime, endTime, data, interval, cacheTTL);
+        }
+
+        return data;
+      } catch (error: unknown) {
+        logger.error('Failed to query ClickHouse for OHLCV data', error as Error, { tokenAddress });
+        // Return empty array on error (graceful degradation)
+        return [];
       }
-
-      return data;
     } catch (error: unknown) {
       logger.error('Failed to get OHLCV data', error as Error, { tokenAddress });
       return [];
