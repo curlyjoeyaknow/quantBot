@@ -181,9 +181,21 @@ export async function runSimulation(
     await ctx.repos.simulationRuns.create({
       runId,
       strategyId: strategy.id,
+      strategyName: strategy.name,
+      strategyConfig: strategy.config, // Store full config for reproducibility
       fromISO,
       toISO,
       callerName: spec.callerName,
+      totalCalls: callsAttempted,
+      successfulCalls: callsSucceeded,
+      failedCalls: callsFailed,
+      totalTrades: tradesTotal,
+      pnlStats: {
+        min: pnlMin,
+        max: pnlMax,
+        mean: pnlMean,
+        median: pnlMedian,
+      },
     });
 
     await ctx.repos.simulationResults.insertMany(runId, results);

@@ -140,7 +140,7 @@ describe('OhlcvBirdeyeFetch - Golden Path', () => {
       // Assert: Mint address preserved exactly (case and length)
       const apiCall = vi.mocked(fetchBirdeyeCandles).mock.calls[0];
       expect(apiCall[0]).toBe(TEST_MINT); // Exact match, no truncation
-      expect(apiCall[0].length).toBe(44); // Full address length
+      expect(apiCall[0].length).toBeGreaterThanOrEqual(32); // Valid address length (32-44 chars)
     });
 
     it('should handle large candle responses (5000+ candles - API limit)', async () => {

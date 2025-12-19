@@ -1,7 +1,7 @@
 import { DateTime } from 'luxon';
 import { v4 as uuidv4 } from 'uuid';
 import { logger as utilsLogger, ValidationError } from '@quantbot/utils';
-import { StrategiesRepository } from '@quantbot/storage';
+import { StrategiesRepository, StorageEngine } from '@quantbot/storage';
 // PostgreSQL repositories removed - use DuckDB services/workflows instead
 import { simulateStrategy } from '@quantbot/simulation';
 import { DuckDBStorageService, ClickHouseService } from '@quantbot/simulation';
@@ -156,23 +156,101 @@ export function createProductionContext(config?: ProductionContextConfig): Workf
         async create(run: {
           runId: string;
           strategyId: string;
+          strategyName: string;
+          strategyConfig: unknown;
           fromISO: string;
           toISO: string;
           callerName?: string;
+          totalCalls?: number;
+          successfulCalls?: number;
+          failedCalls?: number;
+          totalTrades?: number;
+          pnlStats?: {
+            min?: number;
+            max?: number;
+            mean?: number;
+            median?: number;
+          };
         }): Promise<void> {
-          // Store simulation run metadata in DuckDB
-          // Note: storeRun() requires mint and alertTimestamp which we don't have here
-          // This is metadata about the run itself, not individual call results
-          // For now, we'll log it - individual call results are stored via simulationResults.insertMany()
-          logger.info('[workflows.context] Simulation run created (metadata only)', {
-            runId: run.runId,
-            strategyId: run.strategyId,
-            fromISO: run.fromISO,
-            toISO: run.toISO,
-            callerName: run.callerName,
-          });
-          // TODO: Create a simulation_runs table in DuckDB if needed for run-level metadata
-          // For now, run metadata is tracked via the results themselves
+          // Store simulation run metadata in DuckDB with strategy configuration
+          // This stores run-level metadata (not per-call) for performance viewing and reproducibility
+          try {
+            const config = run.strategyConfig as Record<string, unknown>;
+            
+            // Extract strategy config components
+            const entryConfig = (config.entry || {}) as Record<string, unknown>;
+            const exitConfig = (config.exit || {}) as Record<string, unknown>;
+            const reEntryConfig = (config.reEntry || config.reentry) as Record<string, unknown> | undefined;
+            const costConfig = (config.costs || config.cost) as Record<string, unknown> | undefined;
+            const stopLossConfig = (config.stopLoss || config.stop_loss) as Record<string, unknown> | undefined;
+            const entrySignalConfig = (config.entrySignal || config.entry_signal) as Record<string, unknown> | undefined;
+            const exitSignalConfig = (config.exitSignal || config.exit_signal) as Record<string, unknown> | undefined;
+
+            // Calculate aggregate metrics
+            const pnlMean = run.pnlStats?.mean;
+            const pnlMin = run.pnlStats?.min;
+            const pnlMax = run.pnlStats?.max;
+            const winRate = run.successfulCalls && run.totalCalls 
+              ? run.successfulCalls / run.totalCalls 
+              : undefined;
+
+            // Use a synthetic mint/alertTimestamp for run-level records
+            // The run_id serves as the unique identifier
+            const syntheticMint = `run_${run.runId}`;
+            const syntheticAlertTimestamp = run.fromISO; // Use start of date range
+
+            const result = await duckdbStorage.storeRun(
+              dbPath,
+              run.runId,
+              run.strategyId,
+              run.strategyName,
+              syntheticMint,
+              syntheticAlertTimestamp,
+              run.fromISO,
+              run.toISO,
+              {
+                entry: entryConfig,
+                exit: exitConfig,
+                reEntry: reEntryConfig,
+                costs: costConfig,
+                stopLoss: stopLossConfig,
+                entrySignal: entrySignalConfig,
+                exitSignal: exitSignalConfig,
+              },
+              run.callerName,
+              undefined, // finalCapital - not available at run level
+              pnlMean, // totalReturnPct - use mean PnL
+              undefined, // maxDrawdownPct - not calculated at run level
+              undefined, // sharpeRatio - not calculated at run level
+              winRate,
+              run.totalTrades
+            );
+
+            if (!result.success) {
+              logger.error('[workflows.context] Failed to store simulation run', {
+                runId: run.runId,
+                error: result.error,
+              });
+            } else {
+              logger.info('[workflows.context] Stored simulation run with strategy config', {
+                runId: run.runId,
+                strategyId: run.strategyId,
+                strategyName: run.strategyName,
+                fromISO: run.fromISO,
+                toISO: run.toISO,
+                callerName: run.callerName,
+                totalCalls: run.totalCalls,
+                successfulCalls: run.successfulCalls,
+                totalTrades: run.totalTrades,
+              });
+            }
+          } catch (error) {
+            logger.error('[workflows.context] Error storing simulation run', {
+              error: error instanceof Error ? error.message : String(error),
+              runId: run.runId,
+            });
+            // Don't throw - workflow should continue even if storage fails
+          }
         },
       },
 

@@ -96,9 +96,22 @@ export type WorkflowContext = {
       create: (run: {
         runId: string;
         strategyId: string;
+        strategyName: string;
+        strategyConfig: unknown; // Full strategy config for reproducibility
         fromISO: string;
         toISO: string;
         callerName?: string;
+        // Aggregate metrics from all calls in the run
+        totalCalls?: number;
+        successfulCalls?: number;
+        failedCalls?: number;
+        totalTrades?: number;
+        pnlStats?: {
+          min?: number;
+          max?: number;
+          mean?: number;
+          median?: number;
+        };
       }) => Promise<void>;
     };
     simulationResults: {
