@@ -46,7 +46,9 @@ export function createOhlcvIngestionContext(
   // Create OhlcvBirdeyeFetch instance (or use provided one for testing)
   // TODO: Use dynamic import when jobs package is properly referenced
   if (!config?.ohlcvBirdeyeFetch) {
-    throw new Error('OhlcvBirdeyeFetch service is required in config - jobs package must be available');
+    throw new Error(
+      'OhlcvBirdeyeFetch service is required in config - jobs package must be available'
+    );
   }
   const fetchService = config.ohlcvBirdeyeFetch;
   const duckdbStorage = config?.duckdbStorage ?? new DuckDBStorageService(getPythonEngine());
@@ -58,15 +60,25 @@ export function createOhlcvIngestionContext(
         async fetchWorkList(worklist) {
           const results = await fetchService.fetchWorkList(worklist);
           // Convert to workflow format
-          return results.map((r: { workItem: unknown; success: boolean; candles: unknown[]; candlesFetched: number; skipped: boolean; error?: string; durationMs: number }) => ({
-            workItem: r.workItem,
-            success: r.success,
-            candles: r.candles,
-            candlesFetched: r.candlesFetched,
-            skipped: r.skipped,
-            error: r.error,
-            durationMs: r.durationMs,
-          }));
+          return results.map(
+            (r: {
+              workItem: unknown;
+              success: boolean;
+              candles: unknown[];
+              candlesFetched: number;
+              skipped: boolean;
+              error?: string;
+              durationMs: number;
+            }) => ({
+              workItem: r.workItem,
+              success: r.success,
+              candles: r.candles,
+              candlesFetched: r.candlesFetched,
+              skipped: r.skipped,
+              error: r.error,
+              durationMs: r.durationMs,
+            })
+          );
         },
       },
     },
