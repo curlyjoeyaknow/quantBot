@@ -51,30 +51,30 @@ This document outlines the migration from PostgreSQL to DuckDB for event logging
   - Added `exports` field with import/require support
   - Removed `dotenv` and `axios` from dependencies (moved to CLI layer)
 
-## Remaining Work
+## Completed Work
 
-### 1. PostgreSQL Removal (TODO)
+### 1. PostgreSQL Removal ✅
 
-**Current PostgreSQL Usage:**
-- `packages/storage/src/postgres/postgres-client.ts` - Main client
-- `packages/storage/src/postgres/repositories/` - All repositories:
-  - `TokensRepository.ts`
-  - `CallsRepository.ts`
-  - `StrategiesRepository.ts`
-  - `AlertsRepository.ts`
-  - `CallersRepository.ts`
-  - `SimulationResultsRepository.ts`
-  - `SimulationRunsRepository.ts`
-  - `ApiQuotaRepository.ts`
-  - `ErrorRepository.ts`
-  - `TokenDataRepository.ts`
+**Status**: **COMPLETE** - All PostgreSQL code has been removed from the codebase.
 
-**Migration Strategy:**
-1. Create DuckDB equivalents for each repository
-2. Migrate data from PostgreSQL to DuckDB
-3. Update `StorageEngine` to use DuckDB instead of PostgreSQL
-4. Remove PostgreSQL dependencies from `package.json`
-5. Update all references throughout codebase
+**Completed Actions:**
+1. ✅ Created DuckDB equivalents for repositories:
+   - `TokenDataRepository` (DuckDB)
+   - `CallersRepository` (DuckDB)
+   - `StrategiesRepository` (DuckDB)
+2. ✅ Removed all PostgreSQL dependencies from `package.json`
+3. ✅ Updated `StorageEngine` to remove PostgreSQL references
+4. ✅ Updated all service references throughout codebase
+5. ✅ Implemented WorkflowContext repository methods:
+   - `calls.list()` - Queries DuckDB `user_calls_d` table
+   - `simulationRuns.create()` - Logs metadata (full implementation pending)
+   - `simulationResults.insertMany()` - Stores results in ClickHouse
+6. ✅ Created `queryCallsDuckdb` workflow for querying calls
+7. ✅ Re-implemented `CallDataLoader.loadCalls()` using DuckDB workflows
+
+**Remaining Work:**
+- `simulationRuns.create()` - Currently logs metadata only. May need DuckDB table for run-level metadata if required.
+- `MetricsAggregator.calculateSystemMetrics()` - Needs re-implementation using DuckDB workflows (if system metrics are needed)
 
 ### 2. Grafana Dashboard (Optional)
 
