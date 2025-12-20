@@ -71,7 +71,7 @@ describe('workflows.runSimulation - golden suite', () => {
       calls: [mkCall('c1', 'Brook', 'MintA', '2025-11-01T00:00:00.000Z')],
     });
 
-    await expect(runSimulation(spec, ctx)).rejects.toThrow(/STRATEGY_NOT_FOUND/);
+    await expect(runSimulation(spec, ctx)).rejects.toThrow(/Strategy.*not found/);
 
     expect(ctx.repos.calls.list).not.toHaveBeenCalled();
     expect(ctx.ohlcv.getCandles).not.toHaveBeenCalled();
@@ -86,7 +86,7 @@ describe('workflows.runSimulation - golden suite', () => {
     };
     const ctx = createMockContext({ calls: [] });
 
-    await expect(runSimulation(spec, ctx)).rejects.toThrow(/INVALID_DATE_RANGE/);
+    await expect(runSimulation(spec, ctx)).rejects.toThrow(/Invalid date range/);
   });
 
   it('GOLDEN: no calls => returns empty result, no persist, no sim', async () => {

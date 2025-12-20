@@ -67,6 +67,9 @@ export {
   type ClickHouseEngineConfig,
 } from './python/python-engine.js';
 
+// Test helpers
+export { shouldRunDbStress, TEST_GATES } from './test-helpers/test-gating.js';
+
 // NOTE: Database utilities DEPRECATED - use @quantbot/storage instead
 //
 // ⚠️ DEPRECATION NOTICE:
