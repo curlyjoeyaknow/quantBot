@@ -120,10 +120,35 @@ describe('OhlcvIngestionService (integration)', () => {
       pythonEngine
     );
 
+    // Verify DuckDB file exists before querying
+    const { existsSync } = await import('fs');
+    expect(existsSync(testDuckDBPath)).toBe(true);
+
     // Verify PythonEngine can query the real DuckDB
+    // Use absolute path to ensure Python script can find it
+    const { resolve } = await import('path');
+    const absoluteDuckDBPath = resolve(testDuckDBPath);
     const worklist = await pythonEngine.runOhlcvWorklist({
-      duckdbPath: testDuckDBPath,
+      duckdbPath: absoluteDuckDBPath,
     });
+
+    // Debug: Log worklist if empty
+    if (worklist.tokenGroups.length === 0) {
+      console.log('Worklist is empty. DuckDB path:', absoluteDuckDBPath);
+      console.log('Worklist result:', JSON.stringify(worklist, null, 2));
+      
+      // Try to verify the DuckDB file has data
+      const { execSync } = await import('child_process');
+      try {
+        const checkResult = execSync(
+          `python3 -c "import duckdb; con = duckdb.connect('${absoluteDuckDBPath}'); rows = con.execute('SELECT COUNT(*) FROM caller_links_d').fetchone(); print(f'Rows in caller_links_d: {rows[0]}'); con.close()"`,
+          { encoding: 'utf-8' }
+        );
+        console.log('DuckDB check:', checkResult);
+      } catch (error) {
+        console.log('Failed to check DuckDB:', error);
+      }
+    }
 
     // Verify worklist contains valid mint (empty mint should be filtered out)
     expect(worklist.tokenGroups.length).toBe(1);
@@ -159,8 +184,8 @@ describe('OhlcvIngestionService (integration)', () => {
       metadata: { chunksFromAPI: 1, chunksFromCache: 0 },
     });
 
-    // Use REAL service with REAL DuckDB
-    const result = await service.ingestForCalls({ duckdbPath: testDuckDBPath });
+    // Use REAL service with REAL DuckDB (use absolute path)
+    const result = await service.ingestForCalls({ duckdbPath: absoluteDuckDBPath });
 
     // Verify ingestion results
     expect(result.tokensProcessed).toBe(1); // Only valid mint processed
@@ -255,8 +280,11 @@ describe('OhlcvIngestionService (integration)', () => {
     );
 
     // Verify PythonEngine queries DuckDB correctly
+    // Use absolute path to ensure Python script can find it
+    const { resolve } = await import('path');
+    const absoluteDuckDBPath = resolve(testDuckDBPath);
     const worklist = await pythonEngine.runOhlcvWorklist({
-      duckdbPath: testDuckDBPath,
+      duckdbPath: absoluteDuckDBPath,
     });
     expect(worklist.tokenGroups.length).toBe(1);
     expect(worklist.tokenGroups[0].mint).toBe(validMint);
@@ -286,8 +314,8 @@ describe('OhlcvIngestionService (integration)', () => {
       metadata: { chunksFromAPI: 1, chunksFromCache: 0 },
     });
 
-    // Use REAL service with REAL DuckDB
-    const result = await service.ingestForCalls({ duckdbPath: testDuckDBPath });
+    // Use REAL service with REAL DuckDB (use absolute path)
+    const result = await service.ingestForCalls({ duckdbPath: absoluteDuckDBPath });
 
     // Verify ingestion processed the token
     expect(result.tokensProcessed).toBe(1);
@@ -337,8 +365,11 @@ describe('OhlcvIngestionService (integration)', () => {
     );
 
     // Query WITHOUT date filter - should return both calls
+    // Use absolute path to ensure Python script can find it
+    const { resolve } = await import('path');
+    const absoluteDuckDBPath = resolve(testDuckDBPath);
     const worklistAll = await pythonEngine.runOhlcvWorklist({
-      duckdbPath: testDuckDBPath,
+      duckdbPath: absoluteDuckDBPath,
     });
     expect(worklistAll.tokenGroups.length).toBe(1); // Same mint, grouped together
     expect(worklistAll.tokenGroups[0].callCount).toBe(2); // Both calls
@@ -348,7 +379,7 @@ describe('OhlcvIngestionService (integration)', () => {
     // The Python script filters by converting ISO date to timestamp and comparing
     const fromDate = now.minus({ days: 1 }).toISO();
     const worklist = await pythonEngine.runOhlcvWorklist({
-      duckdbPath: testDuckDBPath,
+      duckdbPath: absoluteDuckDBPath,
       from: fromDate,
     });
 

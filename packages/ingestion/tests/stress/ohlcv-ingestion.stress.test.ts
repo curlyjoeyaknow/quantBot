@@ -370,7 +370,7 @@ describe('OHLCV Ingestion Stress Tests', () => {
 
     it('should handle partial API response (some chunks fail)', async () => {
       const now = DateTime.utc();
-      
+
       // Create REAL DuckDB
       await createTestDuckDB(
         testDuckDBPath,
@@ -385,7 +385,7 @@ describe('OHLCV Ingestion Stress Tests', () => {
         ],
         pythonEngine
       );
-      
+
       // Mock API calls - simulate partial failure
       const apiClients = await import('@quantbot/api-clients');
       vi.mocked(apiClients.fetchBirdeyeCandles).mockResolvedValue({
@@ -606,14 +606,14 @@ describe('OHLCV Ingestion Stress Tests', () => {
           storeCandles: vi.fn(),
           getCandles: vi.fn().mockResolvedValue([]),
         };
-        
+
         // Create service with mocked storage for failure scenarios
         const testService = new OhlcvIngestionService(
           ingestionEngine,
           mockStorageEngine as any,
           pythonEngine
         );
-        
+
         if (scenario.error === 'Connection refused') {
           mockStorageEngine.storeCandles.mockRejectedValue(new Error('Connection refused'));
         } else if (scenario.error === 'Query timeout') {

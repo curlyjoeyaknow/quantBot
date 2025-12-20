@@ -38,13 +38,18 @@ export async function createTestDuckDB(
 ): Promise<void> {
   // Use execa directly for DuckDB creation (setup step)
   const { execa } = await import('execa');
+  const { resolve } = await import('path');
+  
+  // Resolve to absolute path to ensure Python script can find it
+  const absoluteDbPath = resolve(dbPath);
 
   const pythonScript = `
 import duckdb
 import sys
 import json
 
-db_path = sys.argv[1]
+import os
+db_path = os.path.abspath(sys.argv[1])
 calls_json = sys.argv[2]
 
 # Connect to DuckDB
@@ -122,8 +127,8 @@ for i, call in enumerate(calls):
             trigger_chat_id, trigger_message_id, trigger_ts_ms,
             trigger_from_id, trigger_from_name, trigger_text,
             bot_message_id, bot_ts_ms, bot_from_name, bot_type,
-            mint, chain, run_id
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            mint, chain, run_id, price_usd, mcap_usd
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, [
         chat_id,
         message_id,
@@ -137,7 +142,9 @@ for i, call in enumerate(calls):
         'call',
         mint,
         chain,
-        'test'
+        'test',
+        None,  # price_usd (nullable)
+        None   # mcap_usd (nullable)
     ])
 
 con.close()
@@ -145,7 +152,7 @@ print("DuckDB created successfully")
 `;
 
   // Execute Python script directly (setup operation)
-  const result = await execa('python3', ['-c', pythonScript, dbPath, JSON.stringify(calls)], {
+  const result = await execa('python3', ['-c', pythonScript, absoluteDbPath, JSON.stringify(calls)], {
     cwd: process.cwd(),
   });
 

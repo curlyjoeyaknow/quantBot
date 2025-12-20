@@ -6,7 +6,7 @@
  */
 
 import { execSync } from 'child_process';
-import { join, dirname } from 'path';
+import { join, dirname, resolve } from 'path';
 import { z } from 'zod';
 import { existsSync, readFileSync } from 'fs';
 import { execa } from 'execa';
@@ -72,7 +72,7 @@ export interface PythonScriptOptions {
 export interface TelegramPipelineConfig {
   inputFile: string;
   outputDb: string;
-  chatId: string;
+  chatId?: string; // Optional - Python script will extract from file or default to "single_chat"
   rebuild?: boolean;
 }
 
@@ -256,7 +256,7 @@ export class PythonEngine {
       return arg;
     });
     const command = `${this.pythonCommand} ${escapedArgs.join(' ')}`;
-    logger.debug('Executing Python script', { command, cwd: options?.cwd });
+    logger.debug('Executing Python script', { command, cwd: options?.cwd, args });
 
     try {
       const output = execSync(command, {
@@ -379,11 +379,23 @@ export class PythonEngine {
     const workspaceRoot = findWorkspaceRoot();
     const scriptPath = join(workspaceRoot, 'tools/telegram/duckdb_punch_pipeline.py');
 
+    // Resolve paths to absolute paths to avoid issues with working directory
+    const inputFile = config.inputFile.startsWith('/')
+      ? config.inputFile
+      : join(workspaceRoot, config.inputFile);
+    const outputDb = config.outputDb.startsWith('/')
+      ? config.outputDb
+      : join(workspaceRoot, config.outputDb);
+
     const args: Record<string, unknown> = {
-      in: config.inputFile,
-      duckdb: config.outputDb,
-      'chat-id': config.chatId,
+      in: inputFile,
+      duckdb: outputDb,
     };
+
+    // Only pass chat-id if provided (Python script will extract from file or default to "single_chat")
+    if (config.chatId) {
+      args['chat-id'] = config.chatId;
+    }
 
     if (config.rebuild) {
       args.rebuild = true;
@@ -518,8 +530,11 @@ export class PythonEngine {
     const workspaceRoot = findWorkspaceRoot();
     const scriptPath = join(workspaceRoot, 'tools/ingestion/ohlcv_worklist.py');
 
+    // Resolve duckdbPath to absolute path (Python script runs from tools/ingestion directory)
+    const absoluteDuckdbPath = resolve(config.duckdbPath);
+
     const args: Record<string, unknown> = {
-      duckdb: config.duckdbPath,
+      duckdb: absoluteDuckdbPath,
     };
 
     if (config.from) {
@@ -623,9 +638,10 @@ export class PythonEngine {
     const timeout = options?.timeout ?? this.defaultTimeout;
     const inputString = typeof stdinInput === 'string' ? stdinInput : JSON.stringify(stdinInput);
     // Resolve script path: if absolute, use as-is; if relative, resolve from workspace root
-    const scriptFullPath = scriptPath.startsWith('/') || scriptPath.match(/^[A-Z]:/)
-      ? scriptPath
-      : join(findWorkspaceRoot(), scriptPath);
+    const scriptFullPath =
+      scriptPath.startsWith('/') || scriptPath.match(/^[A-Z]:/)
+        ? scriptPath
+        : join(findWorkspaceRoot(), scriptPath);
 
     logger.debug('Executing Python script with stdin', {
       script: scriptFullPath,
