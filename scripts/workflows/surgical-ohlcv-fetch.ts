@@ -11,7 +11,7 @@
  */
 
 import { program } from 'commander';
-import { execSync } from 'child_process';
+import { execSync, spawn } from 'child_process';
 import { DateTime } from 'luxon';
 
 interface FetchTask {
@@ -56,10 +56,15 @@ async function getCoverageData(
   if (endMonth) args.push('--end-month', endMonth);
   if (caller) args.push('--caller', caller);
 
+  process.stdout.write('   Querying DuckDB and ClickHouse...');
+  
   const stdout = execSync(`python3 ${args.join(' ')}`, {
     encoding: 'utf-8',
     maxBuffer: 50 * 1024 * 1024,
   });
+  
+  process.stdout.write(' ✓\n');
+  
   return JSON.parse(stdout);
 }
 
@@ -123,37 +128,45 @@ async function fetchOhlcvForTask(
         '-52', // Start 52 candles before alert
       ];
 
-      console.log(`   Running [${interval}]: pnpm ${args.join(' ')}`);
+      console.log(`   🔄 [${interval}] Starting ingestion (live output below)...`);
+      console.log(`   ${'─'.repeat(70)}`);
+      const startTime = Date.now();
 
-      const stdout = execSync(`pnpm ${args.join(' ')}`, {
-        encoding: 'utf-8',
-        maxBuffer: 50 * 1024 * 1024,
-        env: {
-          ...process.env,
-          DUCKDB_PATH: duckdbPath,
-        },
+      // Use spawn to show live output
+      await new Promise<void>((resolve, reject) => {
+        const child = spawn('pnpm', args, {
+          env: {
+            ...process.env,
+            DUCKDB_PATH: duckdbPath,
+          },
+          stdio: 'inherit', // Show all output in real-time
+        });
+
+        child.on('close', (code) => {
+          if (code === 0) {
+            resolve();
+          } else {
+            reject(new Error(`Process exited with code ${code}`));
+          }
+        });
+
+        child.on('error', (err) => {
+          reject(err);
+        });
       });
 
-      // Parse output for success metrics
-      const lines = stdout.split('\n');
-      const summaryLine = lines.find((line) => line.includes('workItemsSucceeded'));
-
-      if (summaryLine) {
-        console.log(`   ✅ [${interval}] Completed: ${summaryLine}`);
-      } else {
-        console.log(`   ✅ [${interval}] Fetch completed`);
-      }
+      const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+      console.log(`   ${'─'.repeat(70)}`);
+      console.log(`   ✅ [${interval}] Completed in ${duration}s`);
 
       // Small delay between intervals
       if (intervals.indexOf(interval) < intervals.length - 1) {
+        console.log(`   ⏳ Waiting 2s before next interval...`);
         await new Promise((resolve) => setTimeout(resolve, 2000));
       }
     }
   } catch (error: any) {
     console.error(`   ❌ Error: ${error.message}`);
-    if (error.stderr) {
-      console.error(`   stderr: ${error.stderr}`);
-    }
     throw error;
   }
 }
@@ -253,24 +266,40 @@ async function main() {
 
     let successCount = 0;
     let failCount = 0;
+    const overallStartTime = Date.now();
 
     for (const [i, task] of tasksToFetch.entries()) {
-      console.log(`\n[${i + 1}/${tasksToFetch.length}]`);
+      const progress = `[${i + 1}/${tasksToFetch.length}]`;
+      const progressPct = ((i + 1) / tasksToFetch.length * 100).toFixed(0);
+      
+      console.log(`\n${progress} (${progressPct}% complete)`);
 
       try {
         await fetchOhlcvForTask(task, options.duckdb, options.dryRun);
         successCount++;
+        
+        // Show running stats
+        const elapsed = ((Date.now() - overallStartTime) / 1000).toFixed(0);
+        const avgTime = (Date.now() - overallStartTime) / (i + 1) / 1000;
+        const remaining = tasksToFetch.length - (i + 1);
+        const eta = (avgTime * remaining).toFixed(0);
+        
+        if (!options.dryRun && remaining > 0) {
+          console.log(`   📊 Progress: ${successCount} succeeded, ${failCount} failed | Elapsed: ${elapsed}s | ETA: ${eta}s`);
+        }
       } catch (error) {
         failCount++;
-        console.error(`Failed to fetch for ${task.caller} - ${task.month}`);
+        console.error(`   ❌ Failed to fetch for ${task.caller} - ${task.month}`);
       }
 
       // Add delay between fetches to avoid rate limiting
       if (i < tasksToFetch.length - 1 && !options.dryRun) {
-        console.log('\n   ⏳ Waiting 5 seconds before next fetch...');
+        console.log('   ⏳ Waiting 5s before next task...');
         await new Promise((resolve) => setTimeout(resolve, 5000));
       }
     }
+    
+    const totalTime = ((Date.now() - overallStartTime) / 1000).toFixed(1);
 
     console.log(`\n${'='.repeat(80)}`);
     console.log('📊 Surgical Fetch Summary');
@@ -278,6 +307,7 @@ async function main() {
     console.log(`✅ Successful: ${successCount}`);
     console.log(`❌ Failed: ${failCount}`);
     console.log(`📈 Total: ${tasksToFetch.length}`);
+    console.log(`⏱️  Total Time: ${totalTime}s`);
     console.log(`${'='.repeat(80)}\n`);
   } catch (error: any) {
     console.error('❌ Error:', error.message);
