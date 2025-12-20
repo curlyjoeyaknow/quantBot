@@ -622,7 +622,10 @@ export class PythonEngine {
   ): Promise<T> {
     const timeout = options?.timeout ?? this.defaultTimeout;
     const inputString = typeof stdinInput === 'string' ? stdinInput : JSON.stringify(stdinInput);
-    const scriptFullPath = join(process.cwd(), scriptPath);
+    // Resolve script path: if absolute, use as-is; if relative, resolve from workspace root
+    const scriptFullPath = scriptPath.startsWith('/') || scriptPath.match(/^[A-Z]:/)
+      ? scriptPath
+      : join(findWorkspaceRoot(), scriptPath);
 
     logger.debug('Executing Python script with stdin', {
       script: scriptFullPath,
