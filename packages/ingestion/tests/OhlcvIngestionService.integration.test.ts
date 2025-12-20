@@ -1,14 +1,14 @@
 /**
  * Integration Tests for OhlcvIngestionService
- * 
+ *
  * Uses REAL implementations:
  * - Real PythonEngine (calls actual Python scripts)
  * - Real DuckDB files (created with test data)
  * - Real OhlcvIngestionEngine (mocks only external API calls)
  * - Real StorageEngine (can use test ClickHouse instance)
- * 
+ *
  * This tests the actual integration boundaries, not just mocks.
- * 
+ *
  * What this tests:
  * 1. Real PythonEngine successfully queries DuckDB via Python script
  * 2. Service processes worklist correctly
@@ -23,7 +23,11 @@ import { OhlcvIngestionService } from '../src/OhlcvIngestionService';
 import { getPythonEngine } from '@quantbot/utils';
 import { getOhlcvIngestionEngine } from '@quantbot/jobs';
 import { getStorageEngine } from '@quantbot/storage';
-import { createTestDuckDB, cleanupTestDuckDB, createTempDuckDBPath } from './helpers/createTestDuckDB.js';
+import {
+  createTestDuckDB,
+  cleanupTestDuckDB,
+  createTempDuckDBPath,
+} from './helpers/createTestDuckDB.js';
 import type { PythonEngine } from '@quantbot/utils';
 
 // Mock only external API calls (Birdeye) - use real implementations for everything else
@@ -68,13 +72,13 @@ describe('OhlcvIngestionService (integration)', () => {
     pythonEngine = getPythonEngine();
     ingestionEngine = getOhlcvIngestionEngine();
     storageEngine = getStorageEngine();
-    
+
     // Initialize engine (ClickHouse)
     await ingestionEngine.initialize();
-    
+
     // Create test DuckDB file
     testDuckDBPath = createTempDuckDBPath('integration_test');
-    
+
     // Create service with real implementations
     service = new OhlcvIngestionService(
       ingestionEngine, // Real engine
@@ -160,12 +164,12 @@ describe('OhlcvIngestionService (integration)', () => {
 
     // Verify ingestion results
     expect(result.tokensProcessed).toBe(1); // Only valid mint processed
-    
+
     // If ingestion failed, check why (might be API-related or other issues)
     if (result.tokensSucceeded === 0 && result.errors.length > 0) {
       console.log('Ingestion errors:', result.errors);
     }
-    
+
     // At minimum, verify the service processed the worklist
     expect(result.tokensProcessed).toBeGreaterThan(0);
     // The service may skip tokens if API calls fail or other conditions aren't met
@@ -287,7 +291,7 @@ describe('OhlcvIngestionService (integration)', () => {
 
     // Verify ingestion processed the token
     expect(result.tokensProcessed).toBe(1);
-    
+
     // The key integration test: verify real DuckDB query worked
     // Ingestion may succeed or fail based on API availability, but the integration
     // boundary (PythonEngine → DuckDB → Service) is what we're testing
@@ -299,7 +303,7 @@ describe('OhlcvIngestionService (integration)', () => {
       // The integration test verified the DuckDB query worked
       console.log('Ingestion failed (expected in test environment):', result.errors);
     }
-    
+
     // ATH/ATL calculation happens in calculateAndStoreAthAtl which uses Postgres mock
     // The fact that the service processed the worklist means the integration worked
   });

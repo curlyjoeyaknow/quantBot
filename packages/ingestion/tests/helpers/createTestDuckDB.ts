@@ -27,7 +27,7 @@ const CreateDuckDBResultSchema = z.object({
 
 /**
  * Create a DuckDB file with test data for OHLCV ingestion
- * 
+ *
  * Uses execa to run Python directly (setup operation, not part of integration boundary).
  * The real integration test uses PythonEngine.runOhlcvWorklist() which calls the actual Python script.
  */
@@ -38,7 +38,7 @@ export async function createTestDuckDB(
 ): Promise<void> {
   // Use execa directly for DuckDB creation (setup step)
   const { execa } = await import('execa');
-  
+
   const pythonScript = `
 import duckdb
 import sys
@@ -106,6 +106,17 @@ calls = json.loads(calls_json)
 
 # Insert test calls
 for i, call in enumerate(calls):
+    chat_id = call.get('chatId') or 'test_chat'
+    message_id = call.get('messageId') or (i + 1)
+    trigger_ts_ms = call.get('triggerTsMs') or 0
+    mint = call.get('mint') or ''
+    chain = call.get('chain') or 'solana'
+    
+    # Ensure trigger_ts_ms is an integer
+    if trigger_ts_ms is None:
+        trigger_ts_ms = 0
+    trigger_ts_ms = int(trigger_ts_ms)
+    
     con.execute("""
         INSERT INTO caller_links_d (
             trigger_chat_id, trigger_message_id, trigger_ts_ms,
@@ -114,18 +125,18 @@ for i, call in enumerate(calls):
             mint, chain, run_id
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, [
-        call.get('chatId', 'test_chat'),
-        call.get('messageId', i + 1),
-        call['triggerTsMs'],
+        chat_id,
+        message_id,
+        trigger_ts_ms,
         'test_caller_id',
         'Test Caller',
-        f"Call for {call['mint']}",
+        f"Call for {mint}",
         i + 1000,  # bot_message_id
-        call['triggerTsMs'] + 1000,  # bot_ts_ms (1 second after trigger)
+        trigger_ts_ms + 1000,  # bot_ts_ms (1 second after trigger)
         'Rick',
         'call',
-        call['mint'],
-        call.get('chain', 'solana'),
+        mint,
+        chain,
         'test'
     ])
 

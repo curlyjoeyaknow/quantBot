@@ -69,7 +69,12 @@ vi.mock('@quantbot/utils', () => {
     PythonEngine,
     getPythonEngine: vi.fn(() => new PythonEngine()),
     PythonManifestSchema,
-    retryWithBackoff: async <T>(fn: () => Promise<T>): Promise<T> => {
+    retryWithBackoff: async <T>(
+      fn: () => Promise<T>,
+      _maxRetries?: number,
+      _initialDelayMs?: number,
+      _context?: Record<string, unknown>
+    ): Promise<T> => {
       return fn();
     },
     ValidationError: class ValidationError extends Error {
