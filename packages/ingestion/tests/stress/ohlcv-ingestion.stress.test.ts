@@ -78,28 +78,12 @@ vi.mock('@quantbot/jobs', async () => {
 });
 
 describe('OHLCV Ingestion Stress Tests', () => {
-  let callsRepo: any;
-  let tokensRepo: any;
-  let alertsRepo: any;
   let ingestionEngine: any;
-  let storageEngine: any;
+  let mockPythonEngine: any;
   let service: OhlcvIngestionService;
 
-  beforeEach(async () => {
+  beforeEach(() => {
     vi.clearAllMocks();
-
-    // Setup repositories
-    callsRepo = {
-      queryBySelection: vi.fn(),
-    };
-
-    tokensRepo = {
-      findById: vi.fn(),
-    };
-
-    alertsRepo = {
-      updateAlertMetrics: vi.fn(),
-    };
 
     // Setup ingestion engine
     ingestionEngine = {
@@ -107,20 +91,19 @@ describe('OHLCV Ingestion Stress Tests', () => {
       fetchCandles: vi.fn(),
     };
 
-    // Setup storage engine
-    storageEngine = {
-      storeCandles: vi.fn().mockResolvedValue(undefined),
-      getCandles: vi.fn().mockResolvedValue([]),
+    // Setup PythonEngine mock with default empty worklist
+    mockPythonEngine = {
+      runOhlcvWorklist: vi.fn().mockResolvedValue({
+        tokenGroups: [],
+        calls: [],
+      }),
     };
 
-    // Mock module exports
-    const { getOhlcvIngestionEngine } = await import('@quantbot/jobs');
-    vi.mocked(getOhlcvIngestionEngine).mockReturnValue(ingestionEngine as any);
-
-    const { getStorageEngine } = await import('@quantbot/storage');
-    vi.mocked(getStorageEngine).mockReturnValue(storageEngine as any);
-
-    service = new OhlcvIngestionService(callsRepo as any, tokensRepo as any, alertsRepo as any);
+    service = new OhlcvIngestionService(
+      ingestionEngine as any,
+      undefined, // storageEngine (will use default)
+      mockPythonEngine as any // pythonEngine
+    );
   });
 
   afterEach(() => {
@@ -132,25 +115,28 @@ describe('OHLCV Ingestion Stress Tests', () => {
       INVALID_MINTS.forEach((invalidMint) => {
         it(`should handle invalid mint: ${invalidMint || '(empty)'}`, async () => {
           const now = DateTime.utc();
-          const calls = [
-            {
-              id: 1,
-              tokenId: 1,
-              signalTimestamp: now,
-              callerId: 1,
-              side: 'buy' as const,
-            },
-          ];
 
-          callsRepo.queryBySelection.mockResolvedValue(calls);
-          tokensRepo.findById.mockResolvedValue({
-            id: 1,
-            address: invalidMint,
-            chain: 'solana',
+          // Mock worklist with invalid mint
+          mockPythonEngine.runOhlcvWorklist.mockResolvedValue({
+            tokenGroups: [
+              {
+                mint: invalidMint || '',
+                earliestAlertTime: now.toISO() || '',
+                chain: 'solana',
+              },
+            ],
+            calls: [
+              {
+                id: 1,
+                tokenId: 1,
+                signalTimestamp: now,
+                alertId: 1,
+              },
+            ],
           });
 
           // Should either fail gracefully or skip invalid tokens
-          const result = await service.ingestForCalls({});
+          const result = await service.ingestForCalls({ duckdbPath: '/tmp/test.duckdb' });
 
           // System must not crash - either fail with error or skip
           expect(result).toBeDefined();
@@ -165,25 +151,28 @@ describe('OHLCV Ingestion Stress Tests', () => {
     describe('Extreme date ranges', () => {
       EXTREME_DATE_RANGES.forEach((range) => {
         it(`should handle ${range.description}`, async () => {
-          const calls = [
-            {
-              id: 1,
-              tokenId: 1,
-              signalTimestamp: range.start,
-              callerId: 1,
-              side: 'buy' as const,
-            },
-          ];
-
-          callsRepo.queryBySelection.mockResolvedValue(calls);
-          tokensRepo.findById.mockResolvedValue({
-            id: 1,
-            address: VALID_MINT,
-            chain: 'solana',
+          // Mock worklist with valid mint but extreme date range
+          mockPythonEngine.runOhlcvWorklist.mockResolvedValue({
+            tokenGroups: [
+              {
+                mint: VALID_MINT,
+                earliestAlertTime: range.start.toISO() || '',
+                chain: 'solana',
+              },
+            ],
+            calls: [
+              {
+                id: 1,
+                tokenId: 1,
+                signalTimestamp: range.start,
+                alertId: 1,
+              },
+            ],
           });
 
           // Should handle gracefully - either return empty or fail with clear error
           const result = await service.ingestForCalls({
+            duckdbPath: '/tmp/test.duckdb',
             from: range.start.toJSDate(),
             to: range.end.toJSDate(),
           });
@@ -211,7 +200,7 @@ describe('OHLCV Ingestion Stress Tests', () => {
 
         callsRepo.queryBySelection.mockResolvedValue(calls);
 
-        const result = await service.ingestForCalls({});
+        const result = await service.ingestForCalls({ duckdbPath: '/tmp/test.duckdb' });
 
         // Should skip invalid calls or fail gracefully
         expect(result).toBeDefined();
@@ -236,7 +225,7 @@ describe('OHLCV Ingestion Stress Tests', () => {
           chain: 'solana',
         });
 
-        const result = await service.ingestForCalls({});
+        const result = await service.ingestForCalls({ duckdbPath: '/tmp/test.duckdb' });
 
         // Should handle invalid timestamp gracefully
         expect(result).toBeDefined();
@@ -245,7 +234,7 @@ describe('OHLCV Ingestion Stress Tests', () => {
       it('should handle empty calls array', async () => {
         callsRepo.queryBySelection.mockResolvedValue([]);
 
-        const result = await service.ingestForCalls({});
+        const result = await service.ingestForCalls({ duckdbPath: '/tmp/test.duckdb' });
 
         expect(result.tokensProcessed).toBe(0);
         expect(result.tokensSucceeded).toBe(0);
@@ -294,7 +283,7 @@ describe('OHLCV Ingestion Stress Tests', () => {
           ingestionEngine.fetchCandles.mockRejectedValue(new Error('Invalid response'));
         }
 
-        const result = await service.ingestForCalls({});
+        const result = await service.ingestForCalls({ duckdbPath: '/tmp/test.duckdb' });
 
         // Must fail gracefully with error tracking
         expect(result).toBeDefined();
@@ -332,7 +321,7 @@ describe('OHLCV Ingestion Stress Tests', () => {
         });
       });
 
-      const result = await service.ingestForCalls({});
+      const result = await service.ingestForCalls({ duckdbPath: '/tmp/test.duckdb' });
 
       // Should eventually succeed or fail with clear error
       expect(result).toBeDefined();
@@ -355,7 +344,7 @@ describe('OHLCV Ingestion Stress Tests', () => {
         metadata: { chunksFromAPI: 1, chunksFromCache: 0 },
       });
 
-      const result = await service.ingestForCalls({});
+      const result = await service.ingestForCalls({ duckdbPath: '/tmp/test.duckdb' });
 
       // Should handle partial data gracefully
       expect(result.tokensSucceeded).toBeGreaterThanOrEqual(0);
@@ -395,7 +384,7 @@ describe('OHLCV Ingestion Stress Tests', () => {
           metadata: { chunksFromAPI: 1, chunksFromCache: 0 },
         });
 
-        const result = await service.ingestForCalls({});
+        const result = await service.ingestForCalls({ duckdbPath: '/tmp/test.duckdb' });
 
         // System must handle pathological data without crashing
         expect(result).toBeDefined();
@@ -432,7 +421,7 @@ describe('OHLCV Ingestion Stress Tests', () => {
         metadata: { chunksFromAPI: 1, chunksFromCache: 0 },
       });
 
-      const result = await service.ingestForCalls({});
+      const result = await service.ingestForCalls({ duckdbPath: '/tmp/test.duckdb' });
 
       // Should not store invalid candles
       expect(storageEngine.storeCandles).not.toHaveBeenCalledWith(
@@ -469,7 +458,7 @@ describe('OHLCV Ingestion Stress Tests', () => {
         metadata: { chunksFromAPI: 1, chunksFromCache: 0 },
       });
 
-      const result = await service.ingestForCalls({});
+      const result = await service.ingestForCalls({ duckdbPath: '/tmp/test.duckdb' });
 
       // Should handle duplicates (either merge or keep one)
       expect(result).toBeDefined();
@@ -501,7 +490,7 @@ describe('OHLCV Ingestion Stress Tests', () => {
         metadata: { chunksFromAPI: 1, chunksFromCache: 0 },
       });
 
-      const result = await service.ingestForCalls({});
+      const result = await service.ingestForCalls({ duckdbPath: '/tmp/test.duckdb' });
 
       // Should sort candles before storing
       expect(result).toBeDefined();
@@ -570,7 +559,7 @@ describe('OHLCV Ingestion Stress Tests', () => {
           storageEngine.storeCandles.mockRejectedValue(new Error(scenario.error));
         }
 
-        const result = await service.ingestForCalls({});
+        const result = await service.ingestForCalls({ duckdbPath: '/tmp/test.duckdb' });
 
         // Should handle storage failures gracefully
         expect(result).toBeDefined();
@@ -582,7 +571,7 @@ describe('OHLCV Ingestion Stress Tests', () => {
     it('should not lose data on storage failure', async () => {
       storageEngine.storeCandles.mockRejectedValue(new Error('Storage failed'));
 
-      const result = await service.ingestForCalls({});
+      const result = await service.ingestForCalls({ duckdbPath: '/tmp/test.duckdb' });
 
       // Data should still be available in result even if storage fails
       expect(result.candlesFetched1m).toBeGreaterThanOrEqual(0);
@@ -615,7 +604,7 @@ describe('OHLCV Ingestion Stress Tests', () => {
         metadata: { chunksFromAPI: 0, chunksFromCache: 0 },
       });
 
-      const result = await service.ingestForCalls({});
+      const result = await service.ingestForCalls({ duckdbPath: '/tmp/test.duckdb' });
 
       // Should handle large batches without crashing
       expect(result.tokensProcessed).toBe(1000);
@@ -654,7 +643,7 @@ describe('OHLCV Ingestion Stress Tests', () => {
         metadata: { chunksFromAPI: 20, chunksFromCache: 0 },
       });
 
-      const result = await service.ingestForCalls({});
+      const result = await service.ingestForCalls({ duckdbPath: '/tmp/test.duckdb' });
 
       // Should handle large datasets without memory issues
       expect(result).toBeDefined();
@@ -693,7 +682,7 @@ describe('OHLCV Ingestion Stress Tests', () => {
         metadata: { chunksFromAPI: 1, chunksFromCache: 0 },
       });
 
-      const result = await service.ingestForCalls({});
+      const result = await service.ingestForCalls({ duckdbPath: '/tmp/test.duckdb' });
 
       // Should handle many requests without memory leaks
       expect(result.tokensProcessed).toBe(100);
@@ -733,7 +722,7 @@ describe('OHLCV Ingestion Stress Tests', () => {
         metadata: { chunksFromAPI: 1, chunksFromCache: 0 },
       });
 
-      const result = await service.ingestForCalls({});
+      const result = await service.ingestForCalls({ duckdbPath: '/tmp/test.duckdb' });
 
       // Should deduplicate by tokenId (fetch once per token, not per call)
       expect(ingestionEngine.fetchCandles).toHaveBeenCalledTimes(1);
@@ -765,7 +754,7 @@ describe('OHLCV Ingestion Stress Tests', () => {
         metadata: { chunksFromAPI: 1, chunksFromCache: 0 },
       });
 
-      const result = await service.ingestForCalls({});
+      const result = await service.ingestForCalls({ duckdbPath: '/tmp/test.duckdb' });
 
       // Should group correctly (10 unique tokens)
       expect(result.tokensProcessed).toBe(10);
@@ -797,7 +786,7 @@ describe('OHLCV Ingestion Stress Tests', () => {
         metadata: { chunksFromAPI: 0, chunksFromCache: 0 },
       });
 
-      const result = await service.ingestForCalls({});
+      const result = await service.ingestForCalls({ duckdbPath: '/tmp/test.duckdb' });
 
       expect(result.tokensSucceeded).toBe(1);
       expect(result.candlesFetched1m).toBe(0);
@@ -836,7 +825,7 @@ describe('OHLCV Ingestion Stress Tests', () => {
         metadata: { chunksFromAPI: 1, chunksFromCache: 0 },
       });
 
-      const result = await service.ingestForCalls({});
+      const result = await service.ingestForCalls({ duckdbPath: '/tmp/test.duckdb' });
 
       expect(result.tokensSucceeded).toBe(1);
       expect(result.candlesFetched1m).toBe(1);
@@ -874,7 +863,7 @@ describe('OHLCV Ingestion Stress Tests', () => {
         metadata: { chunksFromAPI: 1, chunksFromCache: 0 },
       });
 
-      const result = await service.ingestForCalls({});
+      const result = await service.ingestForCalls({ duckdbPath: '/tmp/test.duckdb' });
 
       expect(result.tokensSucceeded).toBe(1);
       expect(result.candlesFetched1m).toBe(5000);
@@ -927,7 +916,7 @@ describe('OHLCV Ingestion Stress Tests', () => {
         metadata: { chunksFromAPI: 1, chunksFromCache: 0 },
       });
 
-      const result = await service.ingestForCalls({});
+      const result = await service.ingestForCalls({ duckdbPath: '/tmp/test.duckdb' });
 
       // Should process other tokens even if one fails
       expect(result.tokensProcessed).toBe(3);
@@ -958,7 +947,7 @@ describe('OHLCV Ingestion Stress Tests', () => {
       tokensRepo.findById.mockResolvedValue(null); // Token not found
       ingestionEngine.fetchCandles.mockRejectedValue(new Error('API failed'));
 
-      const result = await service.ingestForCalls({});
+      const result = await service.ingestForCalls({ duckdbPath: '/tmp/test.duckdb' });
 
       // Should track errors
       expect(result.errors.length).toBeGreaterThanOrEqual(0);
@@ -1002,7 +991,7 @@ describe('OHLCV Ingestion Stress Tests', () => {
       });
 
       const startTime = Date.now();
-      const result = await service.ingestForCalls({});
+      const result = await service.ingestForCalls({ duckdbPath: '/tmp/test.duckdb' });
       const duration = Date.now() - startTime;
 
       // Should complete (with timeout handling if needed)
@@ -1036,7 +1025,7 @@ describe('OHLCV Ingestion Stress Tests', () => {
       });
 
       const startTime = Date.now();
-      const result = await service.ingestForCalls({});
+      const result = await service.ingestForCalls({ duckdbPath: '/tmp/test.duckdb' });
       const duration = Date.now() - startTime;
 
       // Should complete in reasonable time
@@ -1054,7 +1043,7 @@ describe('OHLCV Ingestion Stress Tests', () => {
       storageEngine.storeCandles.mockRejectedValue(new Error('Storage failed'));
 
       // Should fail with clear error, not crash
-      await expect(service.ingestForCalls({})).rejects.toThrow();
+      await expect(service.ingestForCalls({ duckdbPath: '/tmp/test.duckdb' })).rejects.toThrow();
     });
 
     it('should handle mixed success/failure scenario', async () => {
@@ -1090,7 +1079,7 @@ describe('OHLCV Ingestion Stress Tests', () => {
         });
       });
 
-      const result = await service.ingestForCalls({});
+      const result = await service.ingestForCalls({ duckdbPath: '/tmp/test.duckdb' });
 
       // Should handle mixed scenario
       expect(result.tokensProcessed).toBe(10);

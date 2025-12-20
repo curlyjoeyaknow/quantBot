@@ -295,7 +295,7 @@ export function extractAndValidateAddresses(input: string): ExtractionResult {
   // Pattern: 0x followed by hex chars with separators
   // This catches: 0x12 34 56..., 0x12-34-56..., 0x12.34.56...
   // Match 0x followed by hex chars with separators (at least 3 separator occurrences to avoid false positives)
-  const evmWithSeparatorsPattern = /0x([a-fA-F0-9]{1,4}[\s.\-]){3,}[a-fA-F0-9]{1,4}/gi;
+  const evmWithSeparatorsPattern = /0x([a-fA-F0-9]{1,4}[\s.-]){3,}[a-fA-F0-9]{1,4}/gi;
   const evmWithSeparatorsMatches = input.matchAll(evmWithSeparatorsPattern);
   for (const match of evmWithSeparatorsMatches) {
     const candidate = match[0];
@@ -366,7 +366,7 @@ export function extractAndValidateAddresses(input: string): ExtractionResult {
   }
 
   // 6. Mixed separators (different separator types in same address - highly suspicious)
-  const evmMixedSeparators = input.match(/0x([a-fA-F0-9]+[\s.\-]){5,}[a-fA-F0-9]+/i);
+  const evmMixedSeparators = input.match(/0x([a-fA-F0-9]+[\s.-]){5,}[a-fA-F0-9]+/i);
   if (evmMixedSeparators) {
     const candidate = evmMixedSeparators[0];
     const hexPart = candidate.slice(2);

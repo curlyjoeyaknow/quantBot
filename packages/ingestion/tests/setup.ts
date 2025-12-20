@@ -33,6 +33,9 @@ vi.mock('@quantbot/utils', () => {
     async runClickHouseEngine() {
       return { success: true };
     }
+    async runOhlcvWorklist() {
+      return { tokenGroups: [], calls: [] };
+    }
   }
 
   return {
@@ -78,6 +81,16 @@ vi.mock('@quantbot/utils', () => {
         this.name = 'ValidationError';
         this.code = 'VALIDATION_ERROR';
         this.statusCode = 400;
+        this.context = context;
+      }
+    },
+    ConfigurationError: class ConfigurationError extends Error {
+      public readonly configKey?: string;
+      public readonly context?: Record<string, unknown>;
+      constructor(message: string, configKey?: string, context?: Record<string, unknown>) {
+        super(message);
+        this.name = 'ConfigurationError';
+        this.configKey = configKey;
         this.context = context;
       }
     },
