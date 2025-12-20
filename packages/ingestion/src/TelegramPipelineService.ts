@@ -8,7 +8,6 @@
 import type { PythonEngine, PythonManifest } from '@quantbot/utils';
 import { PythonManifestSchema } from '@quantbot/utils';
 import { logger } from '@quantbot/utils';
-import type { z } from 'zod';
 
 /**
  * Schema for Telegram pipeline result (re-exported from PythonEngine)

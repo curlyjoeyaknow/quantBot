@@ -1,19 +1,28 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import {
-  fetchMultiChainMetadata,
-  batchFetchMultiChainMetadata,
-} from '../../src/MultiChainMetadataService';
-import { getMetadataCache } from '../../src/MultiChainMetadataCache';
+import { fetchMultiChainMetadata, batchFetchMultiChainMetadata } from '@quantbot/api-clients';
+import { getMetadataCache } from '@quantbot/api-clients';
 
 // Create mock function at module level
 const mockGetTokenMetadata = vi.fn();
 
-// Mock the api-clients module
-vi.mock('@quantbot/api-clients', () => {
+// Mock the api-clients module - use importOriginal to get real functions, only mock Birdeye client
+vi.mock('@quantbot/api-clients', async () => {
+  const actual = await vi.importActual('@quantbot/api-clients');
+  // Create a mock cache instance
+  const mockCache = {
+    get: vi.fn(),
+    set: vi.fn(),
+    clear: vi.fn(),
+    getAnyChain: vi.fn(),
+    size: vi.fn(() => 0),
+  };
+
   return {
+    ...actual,
     getBirdeyeClient: vi.fn(() => ({
       getTokenMetadata: mockGetTokenMetadata,
     })),
+    getMetadataCache: vi.fn(() => mockCache),
   };
 });
 
