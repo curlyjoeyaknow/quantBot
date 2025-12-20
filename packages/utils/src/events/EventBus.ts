@@ -350,7 +350,7 @@ export class EventFactory {
    * Create a new event
    * Note: For type-safe events, use the specific event type constructors
    */
-  public static create<T extends ApplicationEvent = ApplicationEvent>(
+  public static create<_T extends ApplicationEvent = ApplicationEvent>(
     type: string,
     data: unknown,
     source: string,

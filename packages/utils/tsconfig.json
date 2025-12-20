@@ -10,11 +10,7 @@
     "skipLibCheck": true,
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "target": "ES2022",
-    "paths": {
-      "@quantbot/core": ["../core/dist"],
-      "@quantbot/core/*": ["../core/dist/*"]
-    }
+    "target": "ES2022"
   },
   "include": ["src/**/*"],
   "exclude": [

@@ -17,6 +17,7 @@ import {
 // Dynamic import to avoid build-time dependency
 // import { OhlcvBirdeyeFetch } from '@quantbot/jobs';
 // Using type assertion to bypass module resolution
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type OhlcvBirdeyeFetch = any;
 import { DuckDBStorageService } from '@quantbot/simulation';
 import { getPythonEngine, ConfigurationError } from '@quantbot/utils';

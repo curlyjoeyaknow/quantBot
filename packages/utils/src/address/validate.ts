@@ -7,7 +7,6 @@
  */
 
 import { PublicKey } from '@solana/web3.js';
-import bs58 from 'bs58';
 
 export interface ValidationResult {
   ok: boolean;
@@ -43,7 +42,7 @@ export function validateSolanaMint(candidate: string): ValidationResult {
 
   try {
     // PublicKey constructor validates base58 and decodes to 32 bytes
-    const publicKey = new PublicKey(trimmed);
+    new PublicKey(trimmed);
 
     // Success - return normalized (case-preserved, just trimmed)
     return {
@@ -143,7 +142,7 @@ export function validateEvmAddress(candidate: string): ValidationResult {
  * TODO: Implement proper Keccak-256 checksum validation
  * For now, we accept any mixed-case address (this is a placeholder)
  */
-function validateEip55Checksum(address: string): boolean {
+function validateEip55Checksum(_address: string): boolean {
   // Placeholder: accept any mixed-case address
   // Full implementation would:
   // 1. Hash address (lowercase) with Keccak-256

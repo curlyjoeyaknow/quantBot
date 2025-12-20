@@ -6,7 +6,7 @@
  */
 
 import { BaseEvent } from './EventBus.js';
-import type { Strategy, StopLossConfig, TokenAddress, Chain } from '@quantbot/core';
+import type { Strategy, TokenAddress, Chain } from '@quantbot/core';
 
 // ============================================================================
 // User Events

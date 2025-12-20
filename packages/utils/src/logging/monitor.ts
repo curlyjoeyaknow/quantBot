@@ -4,7 +4,6 @@
  * Real-time log monitoring, alerting, and analytics.
  */
 
-import { Logger } from '../logger.js';
 import { EventEmitter } from 'events';
 
 /**

@@ -37,7 +37,6 @@ import {
   saveCACallSchema,
   userIdSchema,
   runIdSchema,
-  caIdSchema,
   mintAddressSchema,
   callerNameSchema,
   chainParamSchema,
