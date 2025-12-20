@@ -10,42 +10,127 @@
  * 2. Upsert with same key → should update, not duplicate
  * 3. Batch insert with duplicates → should deduplicate within batch
  * 4. Transaction rollback → should leave no partial state
+ *
+ * These tests use a mocked DuckDBClient to avoid requiring Python scripts.
+ * The mock simulates idempotent behavior by tracking state in memory.
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { TokenDataRepository } from '../../src/duckdb/repositories/TokenDataRepository.js';
-import { join } from 'path';
-import { unlinkSync, existsSync } from 'fs';
-import { tmpdir } from 'os';
-import { randomUUID } from 'crypto';
+import { DuckDBClient } from '../../src/duckdb/duckdb-client.js';
+import { DateTime } from 'luxon';
+import { z } from 'zod';
+import type { PythonEngine } from '@quantbot/utils';
+
+// Mock PythonEngine to avoid requiring real Python
+const mockPythonEngine = {
+  runScript: vi.fn(),
+} as unknown as PythonEngine;
+
+vi.mock('@quantbot/utils', async () => {
+  const actual = await vi.importActual('@quantbot/utils');
+  return {
+    ...actual,
+    getPythonEngine: () => mockPythonEngine,
+  };
+});
+
+/**
+ * Mock DuckDBClient that simulates idempotent storage behavior
+ */
+class MockDuckDBClient extends DuckDBClient {
+  private storage: Map<string, any> = new Map();
+
+  constructor(dbPath: string) {
+    // Pass mock PythonEngine to avoid calling getPythonEngine()
+    super(dbPath, mockPythonEngine);
+  }
+
+  async initSchema(_scriptPath: string): Promise<void> {
+    // No-op for mock
+  }
+
+  async execute<T>(
+    _scriptPath: string,
+    operation: string,
+    params: Record<string, unknown>,
+    resultSchema: z.ZodSchema<T>
+  ): Promise<T> {
+    if (operation === 'upsert') {
+      const data = JSON.parse(params.data as string);
+      const key = `${data.mint}:${data.chain}:${data.interval}`;
+      
+      // Simulate upsert: update if exists, create if not
+      const existing = this.storage.get(key);
+      const now = DateTime.utc().toISO();
+      
+      // Preserve existing timestamps if not provided in update
+      const record = {
+        mint: data.mint,
+        chain: data.chain,
+        interval: data.interval,
+        earliest_timestamp: data.earliest_timestamp !== undefined 
+          ? data.earliest_timestamp 
+          : (existing?.earliest_timestamp || null),
+        latest_timestamp: data.latest_timestamp !== undefined 
+          ? data.latest_timestamp 
+          : (existing?.latest_timestamp || null),
+        candle_count: data.candle_count,
+        coverage_percent: data.coverage_percent,
+        last_updated: now,
+      };
+      
+      this.storage.set(key, record);
+      
+      return resultSchema.parse({ success: true });
+    } else if (operation === 'get') {
+      const key = `${params.mint}:${params.chain}:${params.interval}`;
+      const record = this.storage.get(key);
+      
+      if (!record) {
+        return resultSchema.parse(null);
+      }
+      
+      return resultSchema.parse(record);
+    } else if (operation === 'list') {
+      const records = Array.from(this.storage.values());
+      let filtered = records;
+      
+      if (params.chain) {
+        filtered = filtered.filter((r) => r.chain === params.chain);
+      }
+      if (params.interval) {
+        filtered = filtered.filter((r) => r.interval === params.interval);
+      }
+      if (params.min_coverage !== undefined) {
+        filtered = filtered.filter((r) => r.coverage_percent >= params.min_coverage);
+      }
+      
+      return resultSchema.parse(filtered);
+    }
+    
+    throw new Error(`Unknown operation: ${operation}`);
+  }
+
+  getDbPath(): string {
+    return 'mock://test.db';
+  }
+}
 
 describe('Storage Idempotency - Golden Tests', () => {
-  let dbPath: string;
   let repo: TokenDataRepository;
+  let mockClient: MockDuckDBClient;
 
   beforeEach(async () => {
-    // Use unique temp DB for each test
-    dbPath = join(tmpdir(), `test-idempotency-${randomUUID()}.db`);
-    repo = new TokenDataRepository(dbPath);
-    // Wait for database initialization
-    await new Promise((resolve) => setTimeout(resolve, 100));
-  });
-
-  afterEach(() => {
-    // Cleanup
-    if (existsSync(dbPath)) {
-      try {
-        unlinkSync(dbPath);
-      } catch {
-        // Ignore cleanup errors
-      }
-    }
+    // Create mock client with in-memory storage
+    mockClient = new MockDuckDBClient('mock://test.db');
+    repo = new TokenDataRepository('mock://test.db', mockClient);
+    // Wait for initialization
+    await new Promise((resolve) => setTimeout(resolve, 10));
   });
 
   describe('TokenDataRepository Idempotency', () => {
-    // TODO: These tests require proper DuckDB Python script setup
-    // They are skipped until database initialization is properly mocked or set up
-    it.skip('GOLDEN: upsert same data twice should produce one record', async () => {
+    it('GOLDEN: upsert same data twice should produce one record', async () => {
       const data = {
         mint: 'So11111111111111111111111111111111111111112',
         chain: 'solana',
@@ -70,7 +155,7 @@ describe('Storage Idempotency - Golden Tests', () => {
       expect(record!.candleCount).toBe(data.candleCount);
     });
 
-    it.skip('GOLDEN: upsert with updated data should update existing record', async () => {
+    it('GOLDEN: upsert with updated data should update existing record', async () => {
       const initialData = {
         mint: 'So11111111111111111111111111111111111111112',
         chain: 'solana',
@@ -106,7 +191,7 @@ describe('Storage Idempotency - Golden Tests', () => {
       expect(record!.coveragePercent).toBe(updatedData.coveragePercent);
     });
 
-    it.skip('GOLDEN: different tokens should create separate records', async () => {
+    it('GOLDEN: different tokens should create separate records', async () => {
       const data1 = {
         mint: 'So11111111111111111111111111111111111111112',
         chain: 'solana',
@@ -136,7 +221,7 @@ describe('Storage Idempotency - Golden Tests', () => {
       expect(record2!.mint).toBe(data2.mint);
     });
 
-    it.skip('GOLDEN: same mint different interval should create separate records', async () => {
+    it('GOLDEN: same mint different interval should create separate records', async () => {
       const data1m = {
         mint: 'So11111111111111111111111111111111111111112',
         chain: 'solana',
@@ -168,7 +253,7 @@ describe('Storage Idempotency - Golden Tests', () => {
   });
 
   describe('Mint Address Preservation', () => {
-    it.skip('GOLDEN: should preserve exact case of mint addresses', async () => {
+    it('GOLDEN: should preserve exact case of mint addresses', async () => {
       // Solana addresses are case-sensitive
       const upperCaseMint = 'So11111111111111111111111111111111111111112';
       const lowerCaseMint = upperCaseMint.toLowerCase();
