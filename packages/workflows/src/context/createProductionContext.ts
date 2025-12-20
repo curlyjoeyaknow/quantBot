@@ -139,16 +139,30 @@ export function createProductionContext(config?: ProductionContextConfig): Workf
             const toDate = DateTime.fromISO(q.toISO, { zone: 'utc' });
 
             const filtered = result.calls
-              .filter((call: any) => {
-                const callDate = DateTime.fromISO(call.alert_timestamp, { zone: 'utc' });
+              .filter((call: Record<string, unknown>) => {
+                const alertTimestamp = call.alert_timestamp;
+                if (typeof alertTimestamp !== 'string') {
+                  return false;
+                }
+                const callDate = DateTime.fromISO(alertTimestamp, { zone: 'utc' });
                 return callDate >= fromDate && callDate <= toDate;
               })
-              .map((call: any, index: number) => ({
-                id: `call_${call.mint}_${call.alert_timestamp}_${index}`,
-                caller: q.callerName || 'unknown',
-                mint: call.mint,
-                createdAt: DateTime.fromISO(call.alert_timestamp, { zone: 'utc' }),
-              }));
+              .map((call: Record<string, unknown>, index: number) => {
+                const alertTimestamp = call.alert_timestamp;
+                const mint = call.mint;
+                if (typeof alertTimestamp !== 'string' || typeof mint !== 'string') {
+                  throw new ValidationError('Invalid call data: missing alert_timestamp or mint', {
+                    call,
+                    index,
+                  });
+                }
+                return {
+                  id: `call_${mint}_${alertTimestamp}_${index}`,
+                  caller: q.callerName || 'unknown',
+                  mint,
+                  createdAt: DateTime.fromISO(alertTimestamp, { zone: 'utc' }),
+                };
+              });
 
             return filtered;
           } catch (error) {

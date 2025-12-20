@@ -30,19 +30,18 @@ import type { WorkflowContext } from '../types.js';
 import type { SimulationConfig, SimulationOutput } from '@quantbot/simulation';
 
 // SimulationResult from service layer (includes error/skipped fields)
-type SimulationResult = {
-  run_id?: string;
-  final_capital?: number;
-  total_return_pct?: number;
-  total_trades?: number;
-  error?: string;
-  mint?: string;
-  alert_timestamp?: string;
-  skipped?: boolean;
-  lookback_minutes?: number;
-  lookforward_minutes?: number;
-};
-import type { IngestOhlcvSpec } from '../ohlcv/ingestOhlcv.js';
+// type SimulationResult = {
+//   run_id?: string;
+//   final_capital?: number;
+//   total_return_pct?: number;
+//   total_trades?: number;
+//   error?: string;
+//   mint?: string;
+//   alert_timestamp?: string;
+//   skipped?: boolean;
+//   lookback_minutes?: number;
+//   lookforward_minutes?: number;
+// };
 import type { IngestOhlcvContext } from '../ohlcv/ingestOhlcv.js';
 
 /**
@@ -483,14 +482,14 @@ export async function runSimulationDuckdb(
 
         // Merge retry results with original results
         if (retryResult.results) {
-          const resultMap = new Map<string, any>();
-          retryResult.results.forEach((r: any) => {
+          const resultMap = new Map<string, Record<string, unknown>>();
+          retryResult.results.forEach((r: Record<string, unknown>) => {
             if (r.mint && r.alert_timestamp) {
-              resultMap.set(`${r.mint}:${r.alert_timestamp}`, r as any);
+              resultMap.set(`${r.mint}:${r.alert_timestamp}`, r);
             }
           });
 
-          simulationResults.results = simulationResults.results.map((r: any) => {
+          simulationResults.results = simulationResults.results.map((r: Record<string, unknown>) => {
             if (r.mint && r.alert_timestamp) {
               const retry = resultMap.get(`${r.mint}:${r.alert_timestamp}`);
               return retry || r;
@@ -501,8 +500,8 @@ export async function runSimulationDuckdb(
           // Update summary
           simulationResults.summary = {
             total_runs: simulationResults.summary.total_runs,
-            successful: simulationResults.results.filter((r: any) => !r.error && !r.skipped).length,
-            failed: simulationResults.results.filter((r: any) => r.error || r.skipped).length,
+            successful: simulationResults.results.filter((r: Record<string, unknown>) => !r.error && !r.skipped).length,
+            failed: simulationResults.results.filter((r: Record<string, unknown>) => r.error || r.skipped).length,
           };
         }
 
@@ -521,10 +520,10 @@ export async function runSimulationDuckdb(
   // Calculate success metrics
   const callsSimulated = callsToSimulate.length;
   const callsSucceeded = simulationResults.results
-    ? simulationResults.results.filter((r: any) => !r.error && !r.skipped).length
+    ? simulationResults.results.filter((r: Record<string, unknown>) => !r.error && !r.skipped).length
     : 0;
   const callsFailed = simulationResults.results
-    ? simulationResults.results.filter((r: any) => r.error || r.skipped).length
+    ? simulationResults.results.filter((r: Record<string, unknown>) => r.error || r.skipped).length
     : 0;
   const success = callsFailed === 0 && callsSimulated > 0;
 

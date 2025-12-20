@@ -43,7 +43,7 @@ function initCallerDatabase(): Promise<Database> {
  */
 async function findCallsForToken(tokenAddress: string): Promise<Array<Record<string, unknown>>> {
   const db = await initCallerDatabase();
-  const all = promisify(db.all.bind(db));
+  const _all = promisify(db.all.bind(db));
 
   try {
     const calls = (await new Promise((resolve, reject) => {
@@ -95,7 +95,7 @@ async function findCallsForToken(tokenAddress: string): Promise<Array<Record<str
  */
 async function getRecentCalls(limit: number = 20): Promise<Array<Record<string, unknown>>> {
   const db = await initCallerDatabase();
-  const all = promisify(db.all.bind(db));
+  const _all = promisify(db.all.bind(db));
 
   try {
     const calls = (await new Promise((resolve, reject) => {

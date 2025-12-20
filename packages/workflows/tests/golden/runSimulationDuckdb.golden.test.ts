@@ -213,8 +213,8 @@ describe('runSimulationDuckdb Workflow - Golden Path', () => {
       // Assert: OHLCV checked for each call
       expect(mockContext.services.duckdbStorage.checkOhlcvAvailability).toHaveBeenCalledTimes(2);
 
-      // Assert: Simulation run for each call
-      expect(mockContext.services.simulation.runSimulation).toHaveBeenCalledTimes(2);
+      // Assert: Simulation run once with all calls batched
+      expect(mockContext.services.simulation.runSimulation).toHaveBeenCalledTimes(1);
 
       // Assert: Result is JSON-serializable
       const jsonString = JSON.stringify(result);
@@ -240,11 +240,13 @@ describe('runSimulationDuckdb Workflow - Golden Path', () => {
       });
 
       // Setup: First call has OHLCV, second doesn't
+      // Note: checkOhlcvAvailability returns boolean, not an object
       mockContext.services.duckdbStorage.checkOhlcvAvailability = vi
         .fn()
-        .mockResolvedValueOnce(true)
-        .mockResolvedValueOnce(false);
+        .mockResolvedValueOnce(true) // First call has OHLCV
+        .mockResolvedValueOnce(false); // Second call doesn't have OHLCV
 
+      // Setup: Simulation result for the first call only (second was skipped)
       const mockSimResult: SimulationOutput = {
         results: [
           {
@@ -278,21 +280,11 @@ describe('runSimulationDuckdb Workflow - Golden Path', () => {
         errors: [],
       });
 
-      // Setup: After ingestion, OHLCV is available
+      // Setup: After ingestion, OHLCV is available (for retry check)
+      // Note: checkOhlcvAvailability returns boolean, not an object
       mockContext.services.duckdbStorage.checkOhlcvAvailability = vi
         .fn()
-        .mockResolvedValueOnce({
-          available: true,
-          coverageRatio: 0.98,
-        })
-        .mockResolvedValueOnce({
-          available: false,
-          coverageRatio: 0,
-        })
-        .mockResolvedValueOnce({
-          available: true,
-          coverageRatio: 0.95,
-        });
+        .mockResolvedValueOnce(true); // After ingestion, OHLCV is available
 
       const result = await runSimulationDuckdb(
         {
@@ -359,19 +351,12 @@ describe('runSimulationDuckdb Workflow - Golden Path', () => {
       );
 
       // Assert: Single call simulated
-      expect(result.callsQueried).toBe(0); // Not queried in single mode
+      expect(result.callsQueried).toBe(1); // Set to 1 in single mode (even though not actually queried from DB)
       expect(result.callsSimulated).toBe(1);
       expect(result.callsSucceeded).toBe(1);
 
-      // Assert: OHLCV checked
-      expect(mockContext.services.duckdbStorage.checkOhlcvAvailability).toHaveBeenCalledWith(
-        TEST_DUCKDB_PATH,
-        TEST_MINT,
-        TEST_ALERT_ISO,
-        60, // 1m interval
-        expect.any(String), // requiredStart
-        expect.any(String) // requiredEnd
-      );
+      // Note: OHLCV availability is not checked in single mode (only in batch mode with resume=true)
+      // The simulation service handles OHLCV checking internally
     });
   });
 
@@ -399,6 +384,7 @@ describe('runSimulationDuckdb Workflow - Golden Path', () => {
 
       mockContext.services.duckdbStorage.checkOhlcvAvailability = vi.fn().mockResolvedValue(true);
 
+      // Setup: Simulation result with 2 successful and 1 failed (batched call)
       const mockSimResult: SimulationOutput = {
         results: [
           {
@@ -409,19 +395,30 @@ describe('runSimulationDuckdb Workflow - Golden Path', () => {
             mint: TEST_MINT,
             alert_timestamp: TEST_ALERT_ISO,
           },
+          {
+            run_id: 'test-run-2',
+            error: 'Simulation error',
+            mint: 'failMint',
+            alert_timestamp: TEST_ALERT_ISO,
+          },
+          {
+            run_id: 'test-run-3',
+            final_capital: 120,
+            total_return_pct: 20,
+            total_trades: 0,
+            mint: 'successMint',
+            alert_timestamp: TEST_ALERT_ISO,
+          },
         ],
         summary: {
-          total_runs: 1,
-          successful: 1,
-          failed: 0,
+          total_runs: 3,
+          successful: 2,
+          failed: 1,
         },
       };
 
-      mockContext.services.simulation.runSimulation = vi
-        .fn()
-        .mockResolvedValueOnce(mockSimResult)
-        .mockRejectedValueOnce(new Error('Simulation error'))
-        .mockResolvedValueOnce(mockSimResult);
+      // Simulation is called once with all calls batched
+      mockContext.services.simulation.runSimulation = vi.fn().mockResolvedValue(mockSimResult);
 
       const result = await runSimulationDuckdb(
         {

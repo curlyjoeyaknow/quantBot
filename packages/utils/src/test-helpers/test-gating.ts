@@ -24,7 +24,7 @@
  * @param reason - Reason for skipping (shown in test output)
  * @returns true if test should run, false if it should be skipped
  */
-export function shouldRunTest(envVar: string, reason?: string): boolean {
+export function shouldRunTest(envVar: string, _reason?: string): boolean {
   const value = process.env[envVar];
   return value === '1' || value === 'true' || value === 'yes';
 }

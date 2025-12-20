@@ -345,11 +345,11 @@ export async function ingestOhlcv(
   const totalCandlesStored = ingestionResults.reduce((sum, r) => sum + r.candlesStored, 0);
 
   const errors = ingestionResults
-    .filter((r: any) => !r.success && r.error)
-    .map((r: any) => ({
+    .filter((r) => !r.success && r.error)
+    .map((r) => ({
       mint: r.workItem.mint,
       chain: r.workItem.chain,
-      error: r.error!,
+      error: typeof r.error === 'string' ? r.error : String(r.error || 'Unknown error'),
     }));
 
   const completedAt = DateTime.utc();

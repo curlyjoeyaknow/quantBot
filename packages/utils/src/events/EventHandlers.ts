@@ -7,7 +7,6 @@
 
 import { EventHandler, EventBus } from './EventBus.js';
 import {
-  ApplicationEvent,
   UserSessionEvent,
   UserCommandEvent,
   UserStrategyEvent,
@@ -28,7 +27,7 @@ export class UserEventHandlers {
    * Handle user session events
    */
   public static handleSessionEvent: EventHandler<UserSessionEvent['data']> = async (event) => {
-    const { userId, sessionData } = event.data;
+    const { userId } = event.data;
 
     switch (event.type) {
       case 'user.session.started':
@@ -63,7 +62,7 @@ export class UserEventHandlers {
    * Handle user strategy events
    */
   public static handleStrategyEvent: EventHandler<UserStrategyEvent['data']> = async (event) => {
-    const { userId, strategyName, strategyData } = event.data;
+    const { userId, strategyName } = event.data;
 
     switch (event.type) {
       case 'user.strategy.saved':
@@ -129,7 +128,7 @@ export class WebSocketEventHandlers {
       case 'websocket.disconnected':
         logger.info('WebSocket disconnected', { url });
         break;
-      case 'websocket.error':
+      case 'websocket.error': {
         const wsError = error
           ? typeof error === 'string'
             ? new Error(error)
@@ -137,6 +136,7 @@ export class WebSocketEventHandlers {
           : new Error('Unknown WebSocket error');
         logger.error('WebSocket error', wsError, { url });
         break;
+      }
       case 'websocket.reconnecting':
         logger.info('WebSocket reconnecting', { url, attempt: reconnectAttempts });
         break;
@@ -166,7 +166,7 @@ export class MonitoringEventHandlers {
    * Handle alert events
    */
   public static handleAlertEvent: EventHandler<AlertEvent['data']> = async (event) => {
-    const { caId, tokenName, tokenSymbol, alertType, price, priceChange } = event.data;
+    const { tokenName, tokenSymbol, alertType, price, priceChange } = event.data;
 
     logger.info('Alert sent', {
       alertType,
@@ -195,7 +195,7 @@ export class SystemEventHandlers {
       case 'system.shutdown':
         logger.info('System shutdown', { component, message });
         break;
-      case 'system.error':
+      case 'system.error': {
         const sysError = error
           ? error instanceof Error
             ? error
@@ -203,6 +203,7 @@ export class SystemEventHandlers {
           : new Error('Unknown system error');
         logger.error('System error', sysError, { component, message });
         break;
+      }
     }
   };
 
@@ -210,7 +211,7 @@ export class SystemEventHandlers {
    * Handle service events
    */
   public static handleServiceEvent: EventHandler<ServiceEvent['data']> = async (event) => {
-    const { serviceName, status, error } = event.data;
+    const { serviceName, error } = event.data;
 
     switch (event.type) {
       case 'service.initialized':
@@ -222,10 +223,11 @@ export class SystemEventHandlers {
       case 'service.stopped':
         logger.info('Service stopped', { serviceName });
         break;
-      case 'service.error':
+      case 'service.error': {
         const svcError = error ? new Error(error) : new Error('Unknown service error');
         logger.error('Service error', svcError, { serviceName });
         break;
+      }
     }
   };
 }
