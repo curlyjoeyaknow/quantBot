@@ -48,6 +48,7 @@
     "audit:fix": "npm audit fix",
     "clickhouse:start": "docker-compose up -d clickhouse",
     "clickhouse:stop": "docker-compose stop clickhouse",
+    "test:db-stress": "bash scripts/test-db-stress.sh",
     "cli": "node packages/cli/dist/bin/bin/quantbot.js",
     "tui": "node packages/tui/dist/bin/tui.js",
     "prepare": "husky"

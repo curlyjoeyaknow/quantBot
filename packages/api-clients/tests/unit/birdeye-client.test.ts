@@ -194,7 +194,7 @@ describe('BirdeyeClient', () => {
       });
     });
 
-    it.skip('should fetch OHLCV data successfully', async () => {
+    it('should fetch OHLCV data successfully', async () => {
       const mockResponse: AxiosResponse = {
         status: 200,
         data: {

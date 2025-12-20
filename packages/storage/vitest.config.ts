@@ -10,6 +10,7 @@ export default defineConfig({
       'tests/properties/**/*.property.ts',
       'tests/integration/**/*.integration.ts',
       'tests/fuzzing/**/*.fuzz.ts',
+      'tests/golden/**/*.test.ts',
       'src/**/*.test.ts',
     ],
     setupFiles: ['./tests/setup.ts'],

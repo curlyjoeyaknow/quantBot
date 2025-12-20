@@ -61,9 +61,8 @@ describe.skipIf(!shouldRun)('workflows.runSimulation - integration tests', () =>
 
   it.skip('INTEGRATION: runs simulation with real database and OHLCV', async () => {
     // This test requires:
-    // 1. Postgres running with strategies and calls data
-    // 2. ClickHouse running with OHLCV data
-    // 3. Network access for Birdeye API (fallback)
+    // 1. ClickHouse running with strategies, calls, and OHLCV data
+    // 2. Network access for Birdeye API (fallback)
 
     const ctx = createProductionContext();
 
