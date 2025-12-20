@@ -56,16 +56,62 @@ async function getCoverageData(
   if (endMonth) args.push('--end-month', endMonth);
   if (caller) args.push('--caller', caller);
 
-  process.stdout.write('   Querying DuckDB and ClickHouse...');
-  
-  const stdout = execSync(`python3 ${args.join(' ')}`, {
-    encoding: 'utf-8',
-    maxBuffer: 50 * 1024 * 1024,
-  });
-  
-  process.stdout.write(' ✓\n');
-  
-  return JSON.parse(stdout);
+  console.log('   Querying DuckDB and ClickHouse...');
+  console.log(`   Command: python3 ${args.join(' ')}`);
+  console.log('   (This may take 10-30 seconds for large datasets)\n');
+
+  try {
+    // Show spinner while waiting
+    const startTime = Date.now();
+    let spinnerInterval: NodeJS.Timeout | null = null;
+    const spinnerFrames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+    let spinnerIndex = 0;
+
+    if (process.stdout.isTTY) {
+      spinnerInterval = setInterval(() => {
+        const elapsed = ((Date.now() - startTime) / 1000).toFixed(0);
+        process.stdout.write(`\r   ${spinnerFrames[spinnerIndex]} Analyzing... (${elapsed}s)`);
+        spinnerIndex = (spinnerIndex + 1) % spinnerFrames.length;
+      }, 100);
+    }
+
+    const stdout = execSync(`python3 ${args.join(' ')} 2>&1`, {
+      encoding: 'utf-8',
+      maxBuffer: 50 * 1024 * 1024,
+      timeout: 120000, // 2 minute timeout
+    });
+
+    if (spinnerInterval) {
+      clearInterval(spinnerInterval);
+      const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+      process.stdout.write(`\r   ✓ Analysis complete (${elapsed}s)\n\n`);
+    }
+
+    // Check if output contains error
+    if (stdout.includes('ERROR:') || stdout.includes('Traceback')) {
+      console.error('❌ Python script error:');
+      console.error(stdout);
+      throw new Error('Coverage analysis failed');
+    }
+
+    return JSON.parse(stdout);
+  } catch (error: any) {
+    process.stdout.write('\r   ✗ Analysis failed\n\n');
+    console.error('❌ Failed to get coverage data');
+    
+    if (error.killed) {
+      console.error('   Timeout: Analysis took longer than 2 minutes');
+    }
+    
+    if (error.stdout) {
+      console.error('Output:', error.stdout.substring(0, 1000));
+    }
+    if (error.stderr) {
+      console.error('Error:', error.stderr.substring(0, 1000));
+    }
+    
+    throw error;
+  }
 }
 
 async function fetchOhlcvForTask(
@@ -270,22 +316,24 @@ async function main() {
 
     for (const [i, task] of tasksToFetch.entries()) {
       const progress = `[${i + 1}/${tasksToFetch.length}]`;
-      const progressPct = ((i + 1) / tasksToFetch.length * 100).toFixed(0);
-      
+      const progressPct = (((i + 1) / tasksToFetch.length) * 100).toFixed(0);
+
       console.log(`\n${progress} (${progressPct}% complete)`);
 
       try {
         await fetchOhlcvForTask(task, options.duckdb, options.dryRun);
         successCount++;
-        
+
         // Show running stats
         const elapsed = ((Date.now() - overallStartTime) / 1000).toFixed(0);
         const avgTime = (Date.now() - overallStartTime) / (i + 1) / 1000;
         const remaining = tasksToFetch.length - (i + 1);
         const eta = (avgTime * remaining).toFixed(0);
-        
+
         if (!options.dryRun && remaining > 0) {
-          console.log(`   📊 Progress: ${successCount} succeeded, ${failCount} failed | Elapsed: ${elapsed}s | ETA: ${eta}s`);
+          console.log(
+            `   📊 Progress: ${successCount} succeeded, ${failCount} failed | Elapsed: ${elapsed}s | ETA: ${eta}s`
+          );
         }
       } catch (error) {
         failCount++;
@@ -298,7 +346,7 @@ async function main() {
         await new Promise((resolve) => setTimeout(resolve, 5000));
       }
     }
-    
+
     const totalTime = ((Date.now() - overallStartTime) / 1000).toFixed(1);
 
     console.log(`\n${'='.repeat(80)}`);
