@@ -5,14 +5,20 @@ import { z } from 'zod';
 // Don't use importActual to avoid module resolution errors
 vi.mock('@quantbot/utils', () => {
   const BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
-  
-  // Mock PythonManifestSchema (Zod schema)
+
+  // Mock PythonManifestSchema (Zod schema) - matches actual schema structure
   const PythonManifestSchema = z.object({
-    version: z.string(),
+    chat_id: z.string(),
+    chat_name: z.string(),
+    duckdb_file: z.string(),
+    tg_rows: z.number().optional(),
+    user_calls_rows: z.number().optional(),
+    caller_links_rows: z.number().optional(),
+    version: z.string().optional(),
     calls: z.array(z.any()).optional(),
     alerts: z.array(z.any()).optional(),
   });
-  
+
   // Mock PythonEngine class
   class PythonEngine {
     async runScript() {
@@ -28,7 +34,7 @@ vi.mock('@quantbot/utils', () => {
       return { success: true };
     }
   }
-  
+
   return {
     logger: {
       info: vi.fn(),
@@ -64,9 +70,21 @@ vi.mock('@quantbot/utils', () => {
       return fn();
     },
     ValidationError: class ValidationError extends Error {
-      constructor(message: string) {
+      public readonly code: string;
+      public readonly statusCode: number;
+      public readonly context?: Record<string, unknown>;
+      constructor(message: string, context?: Record<string, unknown>) {
         super(message);
         this.name = 'ValidationError';
+        this.code = 'VALIDATION_ERROR';
+        this.statusCode = 400;
+        this.context = context;
+      }
+    },
+    NotFoundError: class NotFoundError extends Error {
+      constructor(resource: string, identifier: string) {
+        super(`${resource} not found: ${identifier}`);
+        this.name = 'NotFoundError';
       }
     },
   };
