@@ -144,8 +144,16 @@ def main():
                 skipped += 1
                 continue
             
-            # Create strategy
-            result = create_strategy(db_path, strategy_data)
+            # Create strategy - convert 'config' to 'config_json' for the function
+            strategy_data_for_db = {
+                'name': strategy_data['name'],
+                'version': strategy_data['version'],
+                'category': strategy_data['category'],
+                'description': strategy_data['description'],
+                'config_json': strategy_data['config'],  # Convert 'config' to 'config_json'
+                'is_active': strategy_data['is_active'],
+            }
+            result = create_strategy(db_path, strategy_data_for_db)
             
             if 'id' in result:
                 print(f"✅ Created {strategy_data['name']} (ID: {result['id']})")
