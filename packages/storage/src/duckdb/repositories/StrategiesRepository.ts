@@ -33,7 +33,8 @@ export class StrategiesRepository {
     // Resolve script path relative to workspace root (find root by looking for tools/ directory)
     const workspaceRoot = this.findWorkspaceRoot();
     this.scriptPath = join(workspaceRoot, 'tools/storage/duckdb_strategies.py');
-    this.initializeDatabase();
+    // NOTE: Do NOT call initializeDatabase() here - it holds a database lock
+    // The Python script uses CREATE TABLE IF NOT EXISTS, so initialization happens on first use
   }
 
   /**
@@ -75,6 +76,9 @@ export class StrategiesRepository {
 
   /**
    * Initialize DuckDB database and schema
+   * 
+   * NOTE: This is intentionally NOT called in constructor to avoid holding database locks.
+   * The database schema is created lazily on first use or can be initialized explicitly.
    */
   private async initializeDatabase(): Promise<void> {
     try {
