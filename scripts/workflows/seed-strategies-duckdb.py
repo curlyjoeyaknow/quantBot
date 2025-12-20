@@ -15,6 +15,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent / 'tools' / 'storage'
 from duckdb_strategies import safe_connect, create_strategy
 
 # Strategy presets based on packages/simulation/src/strategies/presets.ts
+# Plus additional strategies from seed-strategies.ts and optimized strategies
 STRATEGIES = [
     {
         'name': 'Basic_6h_20pctSL',
@@ -114,6 +115,192 @@ STRATEGIES = [
                 'maxWaitTime': 60,
             },
             'holdHours': 6,
+        },
+        'is_active': True,
+    },
+    # Additional strategies from seed-strategies.ts
+    {
+        'name': 'IchimokuV1',
+        'version': '1',
+        'category': 'indicator-based',
+        'description': 'Ichimoku cloud strategy with dynamic profit targets (2x, 3x, 5x) | Stop loss: 25% | Trailing stop: 10%',
+        'config': {
+            'name': 'IchimokuV1',
+            'profitTargets': [
+                {'target': 2.0, 'percent': 0.3},
+                {'target': 3.0, 'percent': 0.3},
+                {'target': 5.0, 'percent': 0.4},
+            ],
+            'stopLoss': {
+                'initial': -0.25,
+                'trailing': 0.1,
+            },
+            'entry': {
+                'initialEntry': 'none',
+            },
+        },
+        'is_active': True,
+    },
+    {
+        'name': 'Ichimoku_Cloud_Entry',
+        'version': '1',
+        'category': 'indicator-based',
+        'description': 'Ichimoku cloud entry strategy - Enter when price crosses above cloud | Exit on cloud break or profit targets',
+        'config': {
+            'name': 'Ichimoku_Cloud_Entry',
+            'profitTargets': [
+                {'target': 2.0, 'percent': 0.3},
+                {'target': 3.0, 'percent': 0.3},
+                {'target': 5.0, 'percent': 0.4},
+            ],
+            'stopLoss': {
+                'initial': -0.25,
+                'trailing': 0.1,
+            },
+            'entry': {
+                'initialEntry': 'none',
+            },
+            'entrySignal': {
+                'logic': 'AND',
+                'conditions': [
+                    {
+                        'indicator': 'ichimoku_cloud',
+                        'field': 'isBullish',
+                        'operator': '==',
+                        'value': 1,
+                    },
+                    {
+                        'indicator': 'ichimoku_cloud',
+                        'field': 'tenkan',
+                        'secondaryIndicator': 'ichimoku_cloud',
+                        'secondaryField': 'kijun',
+                        'operator': 'crosses_above',
+                    },
+                ],
+            },
+            'exitSignal': {
+                'logic': 'OR',
+                'conditions': [
+                    {
+                        'indicator': 'ichimoku_cloud',
+                        'field': 'isBearish',
+                        'operator': '==',
+                        'value': 1,
+                    },
+                    {
+                        'indicator': 'ichimoku_cloud',
+                        'field': 'tenkan',
+                        'secondaryIndicator': 'ichimoku_cloud',
+                        'secondaryField': 'kijun',
+                        'operator': 'crosses_below',
+                    },
+                ],
+            },
+        },
+        'is_active': True,
+    },
+    {
+        'name': 'PT2_SL25',
+        'version': '1',
+        'category': 'simple',
+        'description': 'Simple 2x profit target with 25% stop loss',
+        'config': {
+            'name': 'PT2_SL25',
+            'profitTargets': [
+                {'target': 2.0, 'percent': 1.0},
+            ],
+            'stopLoss': {
+                'initial': -0.25,
+            },
+            'entry': {
+                'initialEntry': 'none',
+            },
+        },
+        'is_active': True,
+    },
+    {
+        'name': 'Scalper_Fast',
+        'version': '1',
+        'category': 'scalping',
+        'description': 'Fast scalping strategy with tight stops | Profit targets: 1.5x, 2x | Stop loss: 15% | Trailing stop: 5%',
+        'config': {
+            'name': 'Scalper_Fast',
+            'profitTargets': [
+                {'target': 1.5, 'percent': 0.5},
+                {'target': 2.0, 'percent': 0.5},
+            ],
+            'stopLoss': {
+                'initial': -0.15,
+                'trailing': 0.05,
+            },
+            'entry': {
+                'initialEntry': 'none',
+            },
+        },
+        'is_active': True,
+    },
+    # Optimized strategies from top-strategies.json
+    {
+        'name': 'Strategy_980',
+        'version': '1',
+        'category': 'optimized',
+        'description': 'Optimized strategy with 2x, 3x, 5x targets | Stop loss: 50%',
+        'config': {
+            'name': 'Strategy_980',
+            'profitTargets': [
+                {'target': 2.0, 'percent': 0.1},
+                {'target': 3.0, 'percent': 0.1},
+                {'target': 5.0, 'percent': 0.1},
+            ],
+            'stopLoss': {
+                'initial': -0.5,
+                'trailing': 'none',
+            },
+            'entry': {
+                'initialEntry': 'none',
+            },
+        },
+        'is_active': True,
+    },
+    {
+        'name': 'Strategy_1000',
+        'version': '1',
+        'category': 'optimized',
+        'description': 'Optimized strategy with 2x, 4x targets | Stop loss: 50%',
+        'config': {
+            'name': 'Strategy_1000',
+            'profitTargets': [
+                {'target': 2.0, 'percent': 0.15},
+                {'target': 4.0, 'percent': 0.15},
+            ],
+            'stopLoss': {
+                'initial': -0.5,
+                'trailing': 'none',
+            },
+            'entry': {
+                'initialEntry': 'none',
+            },
+        },
+        'is_active': True,
+    },
+    {
+        'name': 'Strategy_1010',
+        'version': '1',
+        'category': 'optimized',
+        'description': 'Optimized strategy with 2.5x, 5x targets | Stop loss: 50%',
+        'config': {
+            'name': 'Strategy_1010',
+            'profitTargets': [
+                {'target': 2.5, 'percent': 0.1},
+                {'target': 5.0, 'percent': 0.1},
+            ],
+            'stopLoss': {
+                'initial': -0.5,
+                'trailing': 'none',
+            },
+            'entry': {
+                'initialEntry': 'none',
+            },
         },
         'is_active': True,
     },
