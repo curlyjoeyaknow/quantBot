@@ -18,9 +18,13 @@ Usage:
 import argparse
 import json
 import sys
+import warnings
 from datetime import datetime, timedelta
 from typing import Dict, List, Any, Optional
 from collections import defaultdict
+
+# Suppress deprecation warnings for cleaner output
+warnings.filterwarnings('ignore', category=DeprecationWarning)
 
 try:
     from clickhouse_driver import Client
@@ -56,7 +60,8 @@ def get_coverage_by_period(
     chain: Optional[str] = None,
     interval: Optional[str] = None,
     start_date: Optional[str] = None,
-    end_date: Optional[str] = None
+    end_date: Optional[str] = None,
+    verbose: bool = False
 ) -> Dict[str, Any]:
     """
     Get coverage statistics by time period (daily, weekly, monthly)
@@ -122,8 +127,16 @@ def get_coverage_by_period(
     LIMIT 12
     """
     
+    if verbose:
+        print("  Querying daily coverage...", file=sys.stderr, flush=True)
     daily_data = client.execute(daily_query)
+    
+    if verbose:
+        print("  Querying weekly coverage...", file=sys.stderr, flush=True)
     weekly_data = client.execute(weekly_query)
+    
+    if verbose:
+        print("  Querying monthly coverage...", file=sys.stderr, flush=True)
     monthly_data = client.execute(monthly_query)
     
     return {
@@ -160,9 +173,13 @@ def get_coverage_by_period(
 def get_coverage_by_interval(
     client: Client,
     database: str,
-    chain: Optional[str] = None
+    chain: Optional[str] = None,
+    verbose: bool = False
 ) -> List[Dict[str, Any]]:
     """Get coverage statistics by interval"""
+    
+    if verbose:
+        print("Querying coverage by interval...", file=sys.stderr, flush=True)
     
     where_sql = f"WHERE chain = '{chain}'" if chain else ""
     
@@ -195,8 +212,11 @@ def get_coverage_by_interval(
     ]
 
 
-def get_coverage_by_chain(client: Client, database: str) -> List[Dict[str, Any]]:
+def get_coverage_by_chain(client: Client, database: str, verbose: bool = False) -> List[Dict[str, Any]]:
     """Get coverage statistics by chain"""
+    
+    if verbose:
+        print("Querying coverage by chain...", file=sys.stderr, flush=True)
     
     query = f"""
     SELECT 
@@ -214,8 +234,12 @@ def get_coverage_by_chain(client: Client, database: str) -> List[Dict[str, Any]]
     
     # Get intervals separately for each chain using a simpler approach
     chain_data = []
-    for row in results:
+    for idx, row in enumerate(results):
         chain = row[0]
+        
+        if verbose:
+            print(f"  Chain {idx+1}/{len(results)}: {chain}", file=sys.stderr, flush=True)
+        
         interval_query = f"""
         SELECT DISTINCT `interval`
         FROM {database}.ohlcv_candles
@@ -413,23 +437,32 @@ def main():
     parser.add_argument('--end-date', help='End date (YYYY-MM-DD)')
     parser.add_argument('--min-gap-hours', type=int, default=24,
                        help='Minimum gap size in hours to report (default: 24)')
+    parser.add_argument('--verbose', action='store_true',
+                       help='Show verbose progress output to stderr')
     
     args = parser.parse_args()
     
     try:
+        if args.verbose:
+            print("Connecting to ClickHouse...", file=sys.stderr, flush=True)
+        
         client, database = get_clickhouse_client()
+        
+        if args.verbose:
+            print(f"Connected to database: {database}\n", file=sys.stderr, flush=True)
         
         # Gather coverage data
         coverage_data = {
-            'by_chain': get_coverage_by_chain(client, database),
-            'by_interval': get_coverage_by_interval(client, database, args.chain),
+            'by_chain': get_coverage_by_chain(client, database, args.verbose),
+            'by_interval': get_coverage_by_interval(client, database, args.chain, args.verbose),
             'by_period': get_coverage_by_period(
                 client,
                 database,
                 args.chain, 
                 args.interval,
                 args.start_date,
-                args.end_date
+                args.end_date,
+                args.verbose
             ),
             # Gaps analysis disabled for older ClickHouse versions (requires window functions)
             'gaps': [],  # get_gaps_analysis requires ClickHouse 21.1+
