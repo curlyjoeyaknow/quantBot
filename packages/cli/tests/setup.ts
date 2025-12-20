@@ -6,7 +6,7 @@ import { vi } from 'vitest';
 
 // Mock @quantbot/utils logger to avoid native binding issues
 vi.mock('@quantbot/utils', async () => {
-  const actual = await vi.importActual('@quantbot/utils');
+  const actual = await vi.importActual<typeof import('@quantbot/utils')>('@quantbot/utils');
   return {
     ...actual,
     logger: {
@@ -15,6 +15,7 @@ vi.mock('@quantbot/utils', async () => {
       warn: vi.fn(),
       debug: vi.fn(),
     },
+    ValidationError: actual?.ValidationError || class ValidationError extends Error {},
   };
 });
 

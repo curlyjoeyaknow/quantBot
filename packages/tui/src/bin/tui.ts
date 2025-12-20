@@ -10,6 +10,9 @@ import { logger } from '@quantbot/utils';
 
 async function main() {
   try {
+    // Set TUI mode to disable progress indicators that write to stdout
+    process.env.TUI_MODE = 'true';
+
     const app = new TUIApp();
     await app.start();
 
@@ -17,10 +20,10 @@ async function main() {
     const dashboard = new DashboardScreen();
     const blessedScreen = app.getBlessedScreen();
     const screenManager = app.getScreenManager();
-    
+
     // Set blessed screen on dashboard
     dashboard.setBlessedScreen(blessedScreen, screenManager);
-    
+
     app.navigateTo(dashboard);
 
     // Blessed handles input automatically through the screen's key handlers

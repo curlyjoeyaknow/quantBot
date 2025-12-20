@@ -8,7 +8,6 @@ import type { StopLossConfig, StrategyLeg, SignalGroup } from '../types/index.js
 import type { Candle, SubCandleProvider as CandleProvider } from '../types/candle.js';
 import type { LegacyIndicatorData } from '../indicators/registry.js';
 import { evaluateSignalGroup } from '../signals/evaluator.js';
-import { getIntervalSeconds } from '../types/candle.js';
 
 /**
  * Exit detection result
@@ -194,7 +193,7 @@ async function resolveSameCandleConflict(
 
     // If we get here, neither was hit in sub-candles (shouldn't happen, but handle gracefully)
     return null;
-  } catch (error) {
+  } catch {
     // Provider error, use fallback
     return null;
   }
@@ -267,7 +266,7 @@ export function checkTrailingStopActivation(
 export function calculateTrailingStopPrice(
   peakPrice: number,
   entryPrice: number,
-  trailingPercent: number
+  _trailingPercent: number
 ): number {
   // Trailing stop at entry price (break-even)
   return entryPrice;

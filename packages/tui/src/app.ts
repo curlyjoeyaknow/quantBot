@@ -30,7 +30,7 @@ export class TUIApp {
     this.blessedScreen = new BlessedScreen();
     this.screenManager = new ScreenManager();
     this.screenManager.setBlessedScreen(this.blessedScreen);
-    
+
     this.stateManager = new StateManager<AppState>({
       initialized: false,
       currentScreen: null,
@@ -55,12 +55,18 @@ export class TUIApp {
 
     // Set up global key handler to forward to current screen
     const screen = this.blessedScreen.getScreen();
-    screen.on('keypress', (ch: string | undefined, key: { name?: string; full?: string; ctrl?: boolean; shift?: boolean }) => {
-      const currentScreen = this.screenManager.getCurrentScreen();
-      if (currentScreen) {
-        this.blessedScreen.handleBlessedKeypress(currentScreen, ch, key);
+    screen.on(
+      'keypress',
+      (
+        ch: string | undefined,
+        key: { name?: string; full?: string; ctrl?: boolean; shift?: boolean }
+      ) => {
+        const currentScreen = this.screenManager.getCurrentScreen();
+        if (currentScreen) {
+          this.blessedScreen.handleBlessedKeypress(currentScreen, ch, key);
+        }
       }
-    });
+    );
   }
 
   /**

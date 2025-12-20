@@ -74,7 +74,7 @@ export async function checkApiQuotas(): Promise<ApiQuotas> {
 export async function recordApiUsage(
   service: string,
   credits: number,
-  metadata?: Record<string, unknown>
+  _metadata?: Record<string, unknown>
 ): Promise<void> {
   // TODO: Implement ApiQuotaRepository in storage package
   // const repo = getQuotaRepository();

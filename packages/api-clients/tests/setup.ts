@@ -56,5 +56,5 @@ vi.mock('@quantbot/utils', () => ({
     }
   },
   isRetryableError: vi.fn().mockReturnValue(false),
-  retryWithBackoff: vi.fn().mockImplementation(async (fn: () => Promise<any>) => fn()),
+  retryWithBackoff: vi.fn().mockImplementation(async (fn: () => Promise<unknown>) => fn()),
 }));

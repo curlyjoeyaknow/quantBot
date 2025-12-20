@@ -181,7 +181,7 @@ export class CallersRepository {
    */
   async list(): Promise<Caller[]> {
     try {
-      const scriptPath = join(process.cwd(), 'tools/storage/duckdb_callers.py');
+      const _scriptPath = join(process.cwd(), 'tools/storage/duckdb_callers.py');
       const resultSchema = z.array(
         z.object({
           id: z.number(),

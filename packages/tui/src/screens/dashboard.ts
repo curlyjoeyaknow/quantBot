@@ -19,6 +19,8 @@ export class DashboardScreen implements Screen {
   private blessedScreen: BlessedScreen | null = null;
   private screenManager: ScreenManager | null = null;
   private refreshInterval: NodeJS.Timeout | null = null;
+  private healthError: string | null = null;
+  private quotasError: string | null = null;
 
   /**
    * Set blessed screen and screen manager
@@ -29,8 +31,13 @@ export class DashboardScreen implements Screen {
   }
 
   async onMount(): Promise<void> {
-    // Load initial data
-    await this.refresh();
+    // Render immediately with loading state
+    this.render();
+
+    // Load initial data asynchronously (non-blocking)
+    this.refresh().catch((error) => {
+      logger.error('Dashboard initial refresh error', error as Error);
+    });
 
     // Set up auto-refresh every 5 seconds
     this.refreshInterval = setInterval(() => {
@@ -48,23 +55,57 @@ export class DashboardScreen implements Screen {
   }
 
   async refresh(): Promise<void> {
+    // Reset errors
+    this.healthError = null;
+    this.quotasError = null;
+
     try {
-      // Fetch health status
-      const healthResult = await executeCLICommand('observability', 'health', {});
-      if (healthResult.success) {
-        this.healthStatus = healthResult.data;
+      // Fetch health status with timeout
+      try {
+        const healthResult = await Promise.race([
+          executeCLICommand('observability', 'health', {}),
+          new Promise<{ success: false; error: string }>((_, reject) =>
+            setTimeout(() => reject(new Error('Health check timeout')), 5000)
+          ),
+        ]);
+        if (healthResult.success) {
+          this.healthStatus = healthResult.data;
+          this.healthError = null;
+        } else {
+          this.healthError = healthResult.error || 'Unknown error';
+          this.healthStatus = null;
+        }
+      } catch (error) {
+        this.healthError = error instanceof Error ? error.message : 'Failed to fetch health';
+        this.healthStatus = null;
+        logger.error('Health check failed', error as Error);
       }
 
-      // Fetch quotas
-      const quotasResult = await executeCLICommand('observability', 'quotas', {});
-      if (quotasResult.success) {
-        this.quotas = quotasResult.data;
+      // Fetch quotas with timeout
+      try {
+        const quotasResult = await Promise.race([
+          executeCLICommand('observability', 'quotas', {}),
+          new Promise<{ success: false; error: string }>((_, reject) =>
+            setTimeout(() => reject(new Error('Quotas check timeout')), 5000)
+          ),
+        ]);
+        if (quotasResult.success) {
+          this.quotas = quotasResult.data;
+          this.quotasError = null;
+        } else {
+          this.quotasError = quotasResult.error || 'Unknown error';
+          this.quotas = null;
+        }
+      } catch (error) {
+        this.quotasError = error instanceof Error ? error.message : 'Failed to fetch quotas';
+        this.quotas = null;
+        logger.error('Quotas check failed', error as Error);
       }
     } catch (error) {
       logger.error('Dashboard refresh error', error as Error);
     }
 
-    // Re-render after data update
+    // Always re-render after data update (even if failed)
     this.render();
   }
 
@@ -79,7 +120,7 @@ export class DashboardScreen implements Screen {
     this.blessedScreen.clear();
 
     // Header box
-    const header = this.blessedScreen.createBox('header', {
+    const _header = this.blessedScreen.createBox('header', {
       row: 0,
       col: 0,
       rowSpan: 1,
@@ -94,7 +135,7 @@ export class DashboardScreen implements Screen {
     });
 
     // Status panel (left side)
-    const statusBox = this.blessedScreen.createBox('status', {
+    const _statusBox = this.blessedScreen.createBox('status', {
       row: 1,
       col: 0,
       rowSpan: 4,
@@ -108,7 +149,7 @@ export class DashboardScreen implements Screen {
     });
 
     // Health gauge
-    const healthGauge = this.blessedScreen.createGauge('health', {
+    const _healthGauge = this.blessedScreen.createGauge('health', {
       row: 1,
       col: 4,
       rowSpan: 2,
@@ -118,7 +159,7 @@ export class DashboardScreen implements Screen {
     });
 
     // Quota gauge
-    const quotaGauge = this.blessedScreen.createGauge('quota', {
+    const _quotaGauge = this.blessedScreen.createGauge('quota', {
       row: 3,
       col: 4,
       rowSpan: 2,
@@ -129,7 +170,7 @@ export class DashboardScreen implements Screen {
 
     // Recent calls table
     const callsTableData = this.renderCallsTable();
-    const callsTable = this.blessedScreen.createTable('calls', {
+    const _callsTable = this.blessedScreen.createTable('calls', {
       row: 1,
       col: 6,
       rowSpan: 4,
@@ -140,7 +181,7 @@ export class DashboardScreen implements Screen {
     });
 
     // Quick actions box
-    const actionsBox = this.blessedScreen.createBox('actions', {
+    const _actionsBox = this.blessedScreen.createBox('actions', {
       row: 5,
       col: 0,
       rowSpan: 2,
@@ -154,7 +195,7 @@ export class DashboardScreen implements Screen {
     });
 
     // Log/Info panel (bottom) - use a simple box instead of log widget to avoid parent issues
-    const logBox = this.blessedScreen.createBox('log', {
+    const _logBox = this.blessedScreen.createBox('log', {
       row: 7,
       col: 0,
       rowSpan: 5,
@@ -162,8 +203,16 @@ export class DashboardScreen implements Screen {
       label: ' System Log ',
       content: [
         'Dashboard initialized',
-        `Health: ${this.healthStatus ? 'OK' : 'Loading...'}`,
-        `Quotas: ${this.quotas ? 'OK' : 'Loading...'}`,
+        this.healthError
+          ? `Health: ❌ Error - ${this.healthError}`
+          : this.healthStatus
+            ? 'Health: ✅ OK'
+            : 'Health: ⏳ Loading...',
+        this.quotasError
+          ? `Quotas: ❌ Error - ${this.quotasError}`
+          : this.quotas
+            ? 'Quotas: ✅ OK'
+            : 'Quotas: ⏳ Loading...',
         '',
         'Use arrow keys to navigate, Q to quit',
       ].join('\n'),
@@ -195,8 +244,18 @@ export class DashboardScreen implements Screen {
     const lines: string[] = [];
     lines.push('System Status');
     lines.push('');
-    lines.push(`Health: ${this.healthStatus ? '✅ OK' : '⏳ Loading...'}`);
-    lines.push(`Quotas: ${this.quotas ? '✅ OK' : '⏳ Loading...'}`);
+    if (this.healthError) {
+      lines.push(`Health: ❌ Error`);
+      lines.push(`  ${this.healthError.substring(0, 40)}`);
+    } else {
+      lines.push(`Health: ${this.healthStatus ? '✅ OK' : '⏳ Loading...'}`);
+    }
+    if (this.quotasError) {
+      lines.push(`Quotas: ❌ Error`);
+      lines.push(`  ${this.quotasError.substring(0, 40)}`);
+    } else {
+      lines.push(`Quotas: ${this.quotas ? '✅ OK' : '⏳ Loading...'}`);
+    }
     lines.push('');
     lines.push('Last Update: ' + new Date().toLocaleTimeString());
     return lines.join('\n');

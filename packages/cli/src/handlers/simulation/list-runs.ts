@@ -1,8 +1,10 @@
-import { DateTime } from 'luxon';
 import type { CommandContext } from '../../core/command-context.js';
 import type { ListRunsArgs } from '../../command-defs/simulation.js';
 
-export async function listRunsHandler(args: ListRunsArgs, ctx: CommandContext): Promise<unknown[]> {
+export async function listRunsHandler(
+  _args: ListRunsArgs,
+  _ctx: CommandContext
+): Promise<unknown[]> {
   // TODO: Implement DuckDB-based simulation runs listing
   // PostgreSQL SimulationRunsRepository was removed - need to implement DuckDB equivalent
   // For now, return empty array

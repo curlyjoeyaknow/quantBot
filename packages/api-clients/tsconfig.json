@@ -10,13 +10,7 @@
     "skipLibCheck": true,
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "target": "ES2022",
-    "paths": {
-      "@quantbot/utils": ["../utils/src"],
-      "@quantbot/utils/*": ["../utils/src/*"],
-      "@quantbot/observability": ["../observability/src"],
-      "@quantbot/observability/*": ["../observability/src/*"]
-    }
+    "target": "ES2022"
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "**/*.test.ts"],

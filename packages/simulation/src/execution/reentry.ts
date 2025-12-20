@@ -5,7 +5,6 @@
  */
 
 import type { Candle, ReEntryConfig } from '../types/index.js';
-import type { StopLossConfig } from '../types/strategy.js';
 
 /**
  * Re-entry detection result

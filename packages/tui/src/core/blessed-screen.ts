@@ -348,7 +348,10 @@ export class BlessedScreen {
    */
   onKey(
     keys: string | string[],
-    handler: (ch: string, key: { name: string; full: string; ctrl?: boolean; shift?: boolean }) => void
+    handler: (
+      ch: string,
+      key: { name: string; full: string; ctrl?: boolean; shift?: boolean }
+    ) => void
   ): void {
     this.screen.key(keys, handler);
   }
@@ -409,4 +412,3 @@ export class BlessedScreen {
     return key.toLowerCase();
   }
 }
-

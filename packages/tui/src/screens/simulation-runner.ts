@@ -58,7 +58,7 @@ export class SimulationRunnerScreen implements Screen {
       });
 
       this.result = result.data;
-    } catch (error) {
+    } catch {
       // Handle error
     } finally {
       this.running = false;

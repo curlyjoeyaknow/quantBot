@@ -95,7 +95,7 @@ export class StrategiesRepository {
    */
   async findByName(name: string, version?: string): Promise<StrategyConfig | null> {
     try {
-      const scriptPath = join(process.cwd(), 'tools/storage/duckdb_strategies.py');
+      const _scriptPath = join(process.cwd(), 'tools/storage/duckdb_strategies.py');
       const resultSchema = z
         .object({
           id: z.number(),

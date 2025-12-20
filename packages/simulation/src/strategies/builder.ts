@@ -4,14 +4,7 @@
  * Builds strategy configurations from various inputs
  */
 
-import {
-  StrategyConfig,
-  StrategyPresetName,
-  TakeProfitLevel,
-  StopLossConfig,
-  EntryConfig,
-  ReEntryConfig,
-} from '../types/index.js';
+import { StrategyConfig, StrategyPresetName, TakeProfitLevel } from '../types/index.js';
 import { getPreset } from './presets.js';
 import { Strategy } from '../engine.js';
 

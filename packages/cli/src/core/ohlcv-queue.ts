@@ -45,7 +45,7 @@ export async function readQueue(): Promise<OhlcvQueueItem[]> {
     const content = await readFile(queuePath, 'utf-8');
     const queue = JSON.parse(content) as OhlcvQueueItem[];
     return Array.isArray(queue) ? queue : [];
-  } catch (_error) {
+  } catch {
     // If file is corrupted or doesn't exist, return empty queue
     return [];
   }

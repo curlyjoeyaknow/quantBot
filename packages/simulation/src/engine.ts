@@ -15,7 +15,7 @@ import {
 } from './config.js';
 import type { IndicatorData } from './indicators.js';
 import { calculateIndicators } from './indicators.js';
-import { evaluateLadderLegs, evaluateSignalGroup } from './signals.js';
+import { evaluateSignalGroup } from './signals.js';
 
 export type Strategy = StrategyLeg;
 
@@ -348,8 +348,6 @@ export function simulateStrategy(
 
   const entrySignal: SignalGroup | undefined = options?.entrySignal;
   const exitSignal: SignalGroup | undefined = options?.exitSignal;
-  const entryLadder: LadderConfig | undefined = options?.entryLadder;
-  const exitLadder: LadderConfig | undefined = options?.exitLadder;
 
   // Precompute indicator series once for the full candle set. This keeps
   // signal evaluation cheap and reusable for entry/exit checks.

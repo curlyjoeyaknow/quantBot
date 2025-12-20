@@ -1,6 +1,6 @@
 /**
  * Progress Indicator Utilities
- * 
+ *
  * Provides loading spinners and progress bars for CLI commands
  */
 
@@ -100,11 +100,11 @@ export class ProgressIndicator {
  */
 export function createProgressBar(current: number, total: number, width = 30): string {
   if (total === 0) return '[' + ' '.repeat(width) + '] 0%';
-  
+
   const percent = Math.min(100, Math.round((current / total) * 100));
   const filled = Math.round((percent / 100) * width);
   const empty = width - filled;
-  
+
   const bar = '█'.repeat(filled) + '░'.repeat(empty);
   return `[${bar}] ${percent}% (${current}/${total})`;
 }
@@ -112,11 +112,7 @@ export function createProgressBar(current: number, total: number, width = 30): s
 /**
  * Create a simple progress indicator with label
  */
-export function createProgressIndicator(
-  current: number,
-  total: number,
-  label?: string
-): string {
+export function createProgressIndicator(current: number, total: number, label?: string): string {
   const bar = createProgressBar(current, total);
   return label ? `${label}: ${bar}` : bar;
 }
@@ -156,4 +152,3 @@ export function resetProgressIndicator(): void {
     globalProgress = null;
   }
 }
-

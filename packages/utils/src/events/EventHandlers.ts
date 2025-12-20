@@ -86,7 +86,7 @@ export class SimulationEventHandlers {
    * Handle simulation events
    */
   public static handleSimulationEvent: EventHandler<SimulationEvent['data']> = async (event) => {
-    const { userId, mint, chain, strategy, result, error } = event.data;
+    const { userId, mint, chain, result, error } = event.data;
 
     switch (event.type) {
       case 'simulation.started':

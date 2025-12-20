@@ -1,6 +1,5 @@
 import { promises as fs } from 'fs';
 import path from 'path';
-import { DateTime } from 'luxon';
 import { OutputTargetConfig } from './config.js';
 import { SimulationResultSink, SimulationRunContext, SimulationLogger } from './engine.js';
 import { AppError } from '@quantbot/utils';
@@ -156,8 +155,8 @@ export class ConfigDrivenSink implements SimulationResultSink {
   }
 
   private async writeClickHouse(
-    config: Extract<OutputTargetConfig, { type: 'clickhouse' }>,
-    context: SimulationRunContext
+    _config: Extract<OutputTargetConfig, { type: 'clickhouse' }>,
+    _context: SimulationRunContext
   ): Promise<void> {
     // This sink uses @quantbot/storage which violates architectural rules.
     // It should be moved to @quantbot/workflows.

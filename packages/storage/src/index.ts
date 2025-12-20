@@ -35,6 +35,13 @@ export { TokenDataRepository } from './duckdb/repositories/TokenDataRepository.j
 export type { OHLCVCoverageRecord } from './duckdb/repositories/TokenDataRepository.js';
 export { CallersRepository } from './duckdb/repositories/CallersRepository.js';
 export { StrategiesRepository } from './duckdb/repositories/StrategiesRepository.js';
+export { ErrorRepository } from './duckdb/repositories/ErrorRepository.js';
+export type {
+  ErrorEvent,
+  ErrorInsertData,
+  ErrorStats,
+  ErrorQueryOptions,
+} from './duckdb/repositories/ErrorRepository.js';
 
 // Export clients
 export { getClickHouseClient, initClickHouse, closeClickHouse } from './clickhouse-client.js';

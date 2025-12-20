@@ -23,7 +23,7 @@ export type IngestTelegramArgs = z.infer<typeof telegramSchema>;
  * Handler function: pure use-case orchestration
  * Uses workflow instead of direct service calls
  */
-export async function ingestTelegramHandler(args: IngestTelegramArgs, ctx: CommandContext) {
+export async function ingestTelegramHandler(args: IngestTelegramArgs, _ctx: CommandContext) {
   // Create workflow context with DuckDB repositories
   const dbPath = process.env.DUCKDB_PATH || 'data/quantbot.db';
   const workflowContext = createProductionContext();

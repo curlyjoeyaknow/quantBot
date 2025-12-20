@@ -23,7 +23,6 @@
  * - Emit metrics
  */
 
-import { DateTime } from 'luxon';
 import { logger } from '@quantbot/utils';
 import { fetchBirdeyeCandles } from '@quantbot/api-clients';
 import { storeCandles, getCoverage } from '@quantbot/ohlcv';

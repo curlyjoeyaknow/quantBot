@@ -34,7 +34,7 @@ export class OhlcvViewerScreen implements Screen {
       if (result.success && Array.isArray(result.data)) {
         this.candles = result.data;
       }
-    } catch (error) {
+    } catch {
       // Handle error
     }
   }

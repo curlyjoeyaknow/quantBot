@@ -6,17 +6,7 @@
  * maintaining compatibility with existing code.
  */
 
-import type {
-  SimInput,
-  SimResult,
-  Candle as CanonicalCandle,
-  EntryConfig as CanonicalEntryConfig,
-  ExitConfig as CanonicalExitConfig,
-  ReEntryConfig as CanonicalReEntryConfig,
-  CostConfig as CanonicalCostConfig,
-  SimEvent,
-  SimMetrics,
-} from '../types/contracts.js';
+import type { SimInput, SimResult, SimEvent } from '../types/contracts.js';
 import { SimInputSchema, SimResultSchema } from '../types/contracts.js';
 import type {
   Candle,
@@ -25,7 +15,6 @@ import type {
   EntryConfig,
   ReEntryConfig,
   CostConfig,
-  SimulationResult,
 } from '../types/index.js';
 import { simulateStrategy } from './simulator.js';
 

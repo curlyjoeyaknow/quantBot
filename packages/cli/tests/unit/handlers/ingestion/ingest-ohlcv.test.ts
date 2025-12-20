@@ -9,26 +9,53 @@
  * - Pure orchestration + correct parameter translation
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ingestOhlcvHandler } from '../../../../src/handlers/ingestion/ingest-ohlcv.js';
 
+// Mock workflows
+const mockIngestOhlcv = vi.fn();
+const mockCreateOhlcvIngestionContext = vi.fn();
+
+vi.mock('@quantbot/workflows', () => ({
+  ingestOhlcv: (...args: unknown[]) => mockIngestOhlcv(...args),
+  createOhlcvIngestionContext: (...args: unknown[]) => mockCreateOhlcvIngestionContext(...args),
+}));
+
+// Mock jobs
+vi.mock('@quantbot/jobs', () => ({
+  OhlcvBirdeyeFetch: class {
+    constructor(_config: unknown) {
+      // Mock constructor
+    }
+  },
+}));
+
 describe('ingestOhlcvHandler', () => {
-  it('calls OhlcvIngestionService.ingestForCalls with converted dates + windows', async () => {
-    const ingestForCalls = vi.fn().mockResolvedValue({
+  beforeEach(() => {
+    vi.clearAllMocks();
+    // Set default DUCKDB_PATH for tests
+    process.env.DUCKDB_PATH = '/tmp/test.duckdb';
+  });
+
+  it('calls ingestOhlcv workflow with correct spec', async () => {
+    const mockResult = {
       tokensProcessed: 2,
       tokensSucceeded: 2,
       tokensFailed: 0,
+      tokensSkipped: 0,
+      tokensNoData: 0,
       candlesFetched1m: 100,
       candlesFetched5m: 500,
       chunksFromCache: 5,
       chunksFromAPI: 10,
       errors: [],
-    });
+    };
+
+    mockIngestOhlcv.mockResolvedValue(mockResult);
+    mockCreateOhlcvIngestionContext.mockReturnValue({} as any);
 
     const fakeCtx = {
-      services: {
-        ohlcvIngestion: () => ({ ingestForCalls }),
-      },
+      services: {},
     } as any;
 
     const args = {
@@ -38,40 +65,30 @@ describe('ingestOhlcvHandler', () => {
       postWindow: 1440,
       interval: '5m' as const,
       format: 'json' as const,
+      duckdb: '/tmp/test.duckdb',
     };
 
     const result = await ingestOhlcvHandler(args, fakeCtx);
 
-    expect(ingestForCalls).toHaveBeenCalledTimes(1);
+    expect(mockIngestOhlcv).toHaveBeenCalledTimes(1);
+    const spec = mockIngestOhlcv.mock.calls[0][0];
 
-    const callArg = ingestForCalls.mock.calls[0][0];
+    expect(spec.preWindowMinutes).toBe(260);
+    expect(spec.postWindowMinutes).toBe(1440);
+    expect(spec.from).toBe(args.from);
+    expect(spec.to).toBe(args.to);
+    expect(spec.interval).toBe('5m');
 
-    expect(callArg.preWindowMinutes).toBe(260);
-    expect(callArg.postWindowMinutes).toBe(1440);
-
-    // The important bit: handler does Date conversion (not leaving strings)
-    expect(callArg.from).toBeInstanceOf(Date);
-    expect(callArg.to).toBeInstanceOf(Date);
-    expect((callArg.from as Date).toISOString()).toBe(args.from);
-    expect((callArg.to as Date).toISOString()).toBe(args.to);
-
-    expect(result).toEqual({
-      tokensProcessed: 2,
-      tokensSucceeded: 2,
-      tokensFailed: 0,
-      candlesFetched1m: 100,
-      candlesFetched5m: 500,
-      chunksFromCache: 5,
-      chunksFromAPI: 10,
-      errors: [],
-    });
+    expect(result).toEqual(mockResult);
   });
 
   it('passes undefined from/to when not provided', async () => {
-    const ingestForCalls = vi.fn().mockResolvedValue({
+    mockIngestOhlcv.mockResolvedValue({
       tokensProcessed: 0,
       tokensSucceeded: 0,
       tokensFailed: 0,
+      tokensSkipped: 0,
+      tokensNoData: 0,
       candlesFetched1m: 0,
       candlesFetched5m: 0,
       chunksFromCache: 0,
@@ -80,9 +97,7 @@ describe('ingestOhlcvHandler', () => {
     });
 
     const fakeCtx = {
-      services: {
-        ohlcvIngestion: () => ({ ingestForCalls }),
-      },
+      services: {},
     } as any;
 
     const args = {
@@ -90,22 +105,25 @@ describe('ingestOhlcvHandler', () => {
       postWindow: 1440,
       interval: '5m' as const,
       format: 'table' as const,
+      duckdb: '/tmp/test.duckdb',
     };
 
     await ingestOhlcvHandler(args, fakeCtx);
 
-    const callArg = ingestForCalls.mock.calls[0][0];
-    expect(callArg.from).toBeUndefined();
-    expect(callArg.to).toBeUndefined();
-    expect(callArg.preWindowMinutes).toBe(260);
-    expect(callArg.postWindowMinutes).toBe(1440);
+    const spec = mockIngestOhlcv.mock.calls[0][0];
+    expect(spec.from).toBeUndefined();
+    expect(spec.to).toBeUndefined();
+    expect(spec.preWindowMinutes).toBe(260);
+    expect(spec.postWindowMinutes).toBe(1440);
   });
 
-  it('handles interval option (even though service does not use it yet)', async () => {
-    const ingestForCalls = vi.fn().mockResolvedValue({
+  it('handles interval option and maps to workflow format', async () => {
+    mockIngestOhlcv.mockResolvedValue({
       tokensProcessed: 1,
       tokensSucceeded: 1,
       tokensFailed: 0,
+      tokensSkipped: 0,
+      tokensNoData: 0,
       candlesFetched1m: 50,
       candlesFetched5m: 200,
       chunksFromCache: 2,
@@ -114,38 +132,38 @@ describe('ingestOhlcvHandler', () => {
     });
 
     const fakeCtx = {
-      services: {
-        ohlcvIngestion: () => ({ ingestForCalls }),
-      },
+      services: {},
     } as any;
 
     // Test with different interval values
     const intervals: Array<'1m' | '5m' | '15m' | '1h'> = ['1m', '5m', '15m', '1h'];
+    const expectedWorkflowIntervals = ['1m', '5m', '5m', '1H']; // 15m maps to 5m
 
-    for (const interval of intervals) {
+    for (let i = 0; i < intervals.length; i++) {
+      const interval = intervals[i];
       const args = {
         preWindow: 260,
         postWindow: 1440,
         interval,
         format: 'json' as const,
+        duckdb: '/tmp/test.duckdb',
       };
 
       await ingestOhlcvHandler(args, fakeCtx);
+
+      const spec = mockIngestOhlcv.mock.calls[i][0];
+      expect(spec.interval).toBe(expectedWorkflowIntervals[i]);
     }
 
-    // Handler should accept all interval values without error
-    // (Note: service doesn't use interval yet, but handler accepts it for future compatibility)
-    expect(ingestForCalls).toHaveBeenCalledTimes(intervals.length);
+    expect(mockIngestOhlcv).toHaveBeenCalledTimes(intervals.length);
   });
 
-  it('propagates service errors without catching them', async () => {
-    const serviceError = new Error('Service failed: database connection lost');
-    const ingestForCalls = vi.fn().mockRejectedValue(serviceError);
+  it('propagates workflow errors without catching them', async () => {
+    const workflowError = new Error('Workflow failed: database connection lost');
+    mockIngestOhlcv.mockRejectedValue(workflowError);
 
     const fakeCtx = {
-      services: {
-        ohlcvIngestion: () => ({ ingestForCalls }),
-      },
+      services: {},
     } as any;
 
     const args = {
@@ -153,20 +171,23 @@ describe('ingestOhlcvHandler', () => {
       postWindow: 1440,
       interval: '5m' as const,
       format: 'json' as const,
+      duckdb: '/tmp/test.duckdb',
     };
 
     // Handler should let errors bubble up (no try/catch)
     await expect(ingestOhlcvHandler(args, fakeCtx)).rejects.toThrow(
-      'Service failed: database connection lost'
+      'Workflow failed: database connection lost'
     );
-    expect(ingestForCalls).toHaveBeenCalledTimes(1);
+    expect(mockIngestOhlcv).toHaveBeenCalledTimes(1);
   });
 
-  it('handles invalid date strings gracefully (service will handle validation)', async () => {
-    const ingestForCalls = vi.fn().mockResolvedValue({
+  it('passes date strings to workflow (workflow handles validation)', async () => {
+    mockIngestOhlcv.mockResolvedValue({
       tokensProcessed: 0,
       tokensSucceeded: 0,
       tokensFailed: 0,
+      tokensSkipped: 0,
+      tokensNoData: 0,
       candlesFetched1m: 0,
       candlesFetched5m: 0,
       chunksFromCache: 0,
@@ -175,13 +196,11 @@ describe('ingestOhlcvHandler', () => {
     });
 
     const fakeCtx = {
-      services: {
-        ohlcvIngestion: () => ({ ingestForCalls }),
-      },
+      services: {},
     } as any;
 
-    // Handler converts string to Date - invalid strings become Invalid Date objects
-    // The service should handle validation, not the handler
+    // Handler passes date strings as-is to workflow
+    // The workflow should handle validation
     const args = {
       from: 'not-a-date',
       to: 'also-not-a-date',
@@ -189,16 +208,14 @@ describe('ingestOhlcvHandler', () => {
       postWindow: 1440,
       interval: '5m' as const,
       format: 'json' as const,
+      duckdb: '/tmp/test.duckdb',
     };
 
     await ingestOhlcvHandler(args, fakeCtx);
 
-    const callArg = ingestForCalls.mock.calls[0][0];
-    // Handler still converts (creates Invalid Date objects)
-    // Service will handle validation/error handling
-    expect(callArg.from).toBeInstanceOf(Date);
-    expect(callArg.to).toBeInstanceOf(Date);
-    expect(isNaN((callArg.from as Date).getTime())).toBe(true);
-    expect(isNaN((callArg.to as Date).getTime())).toBe(true);
+    const spec = mockIngestOhlcv.mock.calls[0][0];
+    // Handler passes strings as-is to workflow
+    expect(spec.from).toBe('not-a-date');
+    expect(spec.to).toBe('also-not-a-date');
   });
 });

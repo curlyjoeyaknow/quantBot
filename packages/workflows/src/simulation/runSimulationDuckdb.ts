@@ -489,19 +489,25 @@ export async function runSimulationDuckdb(
             }
           });
 
-          simulationResults.results = simulationResults.results.map((r: Record<string, unknown>) => {
-            if (r.mint && r.alert_timestamp) {
-              const retry = resultMap.get(`${r.mint}:${r.alert_timestamp}`);
-              return retry || r;
+          simulationResults.results = simulationResults.results.map(
+            (r: Record<string, unknown>) => {
+              if (r.mint && r.alert_timestamp) {
+                const retry = resultMap.get(`${r.mint}:${r.alert_timestamp}`);
+                return retry || r;
+              }
+              return r;
             }
-            return r;
-          });
+          );
 
           // Update summary
           simulationResults.summary = {
             total_runs: simulationResults.summary.total_runs,
-            successful: simulationResults.results.filter((r: Record<string, unknown>) => !r.error && !r.skipped).length,
-            failed: simulationResults.results.filter((r: Record<string, unknown>) => r.error || r.skipped).length,
+            successful: simulationResults.results.filter(
+              (r: Record<string, unknown>) => !r.error && !r.skipped
+            ).length,
+            failed: simulationResults.results.filter(
+              (r: Record<string, unknown>) => r.error || r.skipped
+            ).length,
           };
         }
 
@@ -520,7 +526,8 @@ export async function runSimulationDuckdb(
   // Calculate success metrics
   const callsSimulated = callsToSimulate.length;
   const callsSucceeded = simulationResults.results
-    ? simulationResults.results.filter((r: Record<string, unknown>) => !r.error && !r.skipped).length
+    ? simulationResults.results.filter((r: Record<string, unknown>) => !r.error && !r.skipped)
+        .length
     : 0;
   const callsFailed = simulationResults.results
     ? simulationResults.results.filter((r: Record<string, unknown>) => r.error || r.skipped).length

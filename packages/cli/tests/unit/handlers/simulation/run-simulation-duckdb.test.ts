@@ -8,6 +8,19 @@ import type { CommandContext } from '../../../../src/core/command-context.js';
 import { ValidationError, AppError } from '@quantbot/utils';
 import type { SimulationService } from '@quantbot/simulation';
 
+// Mock workflows
+const mockCreateDuckdbSimulationContext = vi.fn();
+const mockRunSimulationDuckdb = vi.fn();
+vi.mock('@quantbot/workflows', () => ({
+  createDuckdbSimulationContext: (...args: unknown[]) => mockCreateDuckdbSimulationContext(...args),
+  runSimulationDuckdb: (...args: unknown[]) => mockRunSimulationDuckdb(...args),
+}));
+
+// Mock jobs
+vi.mock('@quantbot/jobs', () => ({
+  OhlcvBirdeyeFetch: vi.fn().mockImplementation(() => ({})),
+}));
+
 describe('runSimulationDuckdbHandler', () => {
   let mockCtx: CommandContext;
   let mockService: SimulationService;
@@ -20,8 +33,36 @@ describe('runSimulationDuckdbHandler', () => {
     mockCtx = {
       services: {
         simulation: () => mockService,
+        duckdbStorage: () => ({
+          storeRun: vi.fn(),
+        }),
+        ohlcvIngestion: () => ({
+          ingestForCalls: vi.fn(),
+        }),
       },
     } as unknown as CommandContext;
+
+    mockCreateDuckdbSimulationContext.mockReturnValue({
+      simulation: {
+        runSimulation: mockService.runSimulation,
+      },
+    } as any);
+
+    mockRunSimulationDuckdb.mockImplementation(async (spec, ctx) => {
+      // Call the actual service's runSimulation method
+      const result = await mockService.runSimulation({
+        duckdb_path: spec.duckdbPath,
+        strategy: spec.strategy,
+        initial_capital: spec.initialCapital,
+        lookback_minutes: spec.lookbackMinutes,
+        lookforward_minutes: spec.lookforwardMinutes,
+        mint: spec.mint,
+        alert_timestamp: spec.alertTimestamp,
+      });
+      return {
+        simulationResults: result,
+      };
+    });
 
     vi.clearAllMocks();
   });
@@ -64,6 +105,7 @@ describe('runSimulationDuckdbHandler', () => {
 
     const result = await runSimulationDuckdbHandler(args, mockCtx);
 
+    expect(mockRunSimulationDuckdb).toHaveBeenCalledTimes(1);
     expect(mockService.runSimulation).toHaveBeenCalledWith({
       duckdb_path: '/path/to/tele.duckdb',
       strategy: args.strategy,
@@ -94,6 +136,14 @@ describe('runSimulationDuckdbHandler', () => {
       lookforward_minutes: 1440,
     };
 
+    // Mock workflow to throw ValidationError for missing mint
+    const validationError = new ValidationError('mint is required when batch is false', {
+      mint: undefined,
+      batch: false,
+    });
+    mockRunSimulationDuckdb.mockRejectedValueOnce(validationError);
+    mockRunSimulationDuckdb.mockRejectedValueOnce(validationError);
+
     await expect(runSimulationDuckdbHandler(args as any, mockCtx)).rejects.toThrow(ValidationError);
     await expect(runSimulationDuckdbHandler(args as any, mockCtx)).rejects.toThrow(
       'mint is required'
@@ -102,7 +152,8 @@ describe('runSimulationDuckdbHandler', () => {
 
   it('should propagate service errors', async () => {
     const error = new AppError('Simulation failed', 'SIMULATION_FAILED', 500);
-    vi.mocked(mockService.runSimulation).mockRejectedValue(error);
+    mockRunSimulationDuckdb.mockRejectedValueOnce(error);
+    mockRunSimulationDuckdb.mockRejectedValueOnce(error);
 
     const args = {
       duckdb: '/path/to/tele.duckdb',

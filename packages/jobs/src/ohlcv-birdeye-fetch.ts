@@ -19,7 +19,6 @@
  * NOTE: Storage is handled by the ingestion workflow, not this fetch job.
  */
 
-import { DateTime } from 'luxon';
 import { logger } from '@quantbot/utils';
 import { fetchBirdeyeCandles } from '@quantbot/api-clients';
 import { getCoverage } from '@quantbot/ohlcv';
@@ -136,16 +135,26 @@ export class OhlcvBirdeyeFetch {
         // This ensures we fetch enough data for simulation even if work items have old time ranges
         const MIN_REQUIRED_CANDLES = 5000;
         const hasMinimumCandles = coverage.candleCount >= MIN_REQUIRED_CANDLES;
-        
-        if (coverage.hasData && coverage.coverageRatio >= this.minCoverageToSkip && hasMinimumCandles) {
+
+        if (
+          coverage.hasData &&
+          coverage.coverageRatio >= this.minCoverageToSkip &&
+          hasMinimumCandles
+        ) {
           // Calculate expected candles for the work item time range
           const timeRangeSeconds = Math.floor(
-            (workItem.endTime.toSeconds() - workItem.startTime.toSeconds())
+            workItem.endTime.toSeconds() - workItem.startTime.toSeconds()
           );
           const intervalSeconds =
-            workItem.interval === '1m' ? 60 : workItem.interval === '5m' ? 300 : workItem.interval === '15s' ? 15 : 3600;
+            workItem.interval === '1m'
+              ? 60
+              : workItem.interval === '5m'
+                ? 300
+                : workItem.interval === '15s'
+                  ? 15
+                  : 3600;
           const expectedCandles = Math.floor(timeRangeSeconds / intervalSeconds);
-          
+
           logger.debug('Skipping fetch - sufficient coverage exists', {
             mint: workItem.mint.substring(0, 20),
             chain: workItem.chain,
@@ -249,7 +258,7 @@ export class OhlcvBirdeyeFetch {
       this.failureCount++;
 
       const errorMessage = error instanceof Error ? error.message : String(error);
-      
+
       // Check if this is a retryable error (network, timeout, rate limit)
       const isRetryableError =
         errorMessage.includes('timeout') ||

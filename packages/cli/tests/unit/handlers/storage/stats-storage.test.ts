@@ -11,43 +11,22 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { statsStorageHandler } from '../../../../src/handlers/storage/stats-storage.js';
-import { getPostgresPool, getClickHouseClient } from '@quantbot/storage';
 import { SAFE_TABLES } from '../../../../src/commands/storage.js';
-
-// Mock storage clients
-vi.mock('@quantbot/storage', () => ({
-  getPostgresPool: vi.fn(),
-  getClickHouseClient: vi.fn(),
-}));
 
 describe('statsStorageHandler', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    process.env.CLICKHOUSE_DATABASE = 'quantbot';
   });
 
-  it('returns stats from both Postgres and ClickHouse', async () => {
-    // Mock Postgres pool
-    const mockPostgresQuery = vi.fn();
-    const mockPostgresPool = {
-      query: mockPostgresQuery,
-    };
-    vi.mocked(getPostgresPool).mockReturnValue(mockPostgresPool as any);
-
-    // Mock ClickHouse client
+  it('returns stats from ClickHouse tables', async () => {
+    // Mock ClickHouse client (minimal mock - testing handler's single responsibility)
     const mockClickHouseQuery = vi.fn();
     const mockClickHouseClient = {
       query: mockClickHouseQuery,
     };
-    vi.mocked(getClickHouseClient).mockReturnValue(mockClickHouseClient as any);
 
-    // Setup Postgres mocks
-    for (const table of SAFE_TABLES.postgres) {
-      mockPostgresQuery.mockResolvedValueOnce({
-        rows: [{ count: '100' }],
-      });
-    }
-
-    // Setup ClickHouse mocks
+    // Setup ClickHouse mocks for each table
     for (const table of SAFE_TABLES.clickhouse) {
       const mockResult = {
         json: vi.fn().mockResolvedValue([{ count: '200' }]),
@@ -55,63 +34,84 @@ describe('statsStorageHandler', () => {
       mockClickHouseQuery.mockResolvedValueOnce(mockResult);
     }
 
-    const fakeCtx = {} as any;
+    const fakeCtx = {
+      services: {
+        clickHouseClient: () => mockClickHouseClient,
+      },
+    } as any;
+
     const args = {
       format: 'json' as const,
     };
 
     const result = await statsStorageHandler(args, fakeCtx);
 
-    // Verify Postgres stats
-    expect(result.postgres).toBeDefined();
-    expect(typeof result.postgres).toBe('object');
-    for (const table of SAFE_TABLES.postgres) {
-      expect((result.postgres as Record<string, number>)[table]).toBe(100);
+    // Verify result is an array (handler returns array of rows)
+    expect(Array.isArray(result)).toBe(true);
+    const rows = result as Array<Record<string, unknown>>;
+    
+    // Verify each table has a row
+    expect(rows.length).toBe(SAFE_TABLES.clickhouse.length);
+    for (const table of SAFE_TABLES.clickhouse) {
+      const row = rows.find((r) => r.table === table);
+      expect(row).toBeDefined();
+      expect(row?.count).toBe(200);
+      expect(row?.storage).toBe('clickhouse');
     }
 
-    // Verify ClickHouse stats
-    expect(result.clickhouse).toBeDefined();
-    expect(typeof result.clickhouse).toBe('object');
+    // Verify ClickHouse client was called correctly
+    expect(mockClickHouseQuery).toHaveBeenCalledTimes(SAFE_TABLES.clickhouse.length);
     for (const table of SAFE_TABLES.clickhouse) {
-      expect((result.clickhouse as Record<string, number>)[table]).toBe(200);
+      expect(mockClickHouseQuery).toHaveBeenCalledWith({
+        query: `SELECT COUNT(*) as count FROM quantbot.${table}`,
+        format: 'JSONEachRow',
+      });
     }
   });
 
-  it('handles Postgres errors gracefully', async () => {
-    const mockPostgresQuery = vi.fn().mockRejectedValue(new Error('Connection failed'));
-    const mockPostgresPool = {
-      query: mockPostgresQuery,
-    };
-    vi.mocked(getPostgresPool).mockReturnValue(mockPostgresPool as any);
-
+  it('handles ClickHouse query errors gracefully', async () => {
     const mockClickHouseQuery = vi.fn();
     const mockClickHouseClient = {
       query: mockClickHouseQuery,
     };
-    vi.mocked(getClickHouseClient).mockReturnValue(mockClickHouseClient as any);
 
-    // Setup ClickHouse mocks
-    for (const table of SAFE_TABLES.clickhouse) {
-      const mockResult = {
-        json: vi.fn().mockResolvedValue([{ count: '50' }]),
-      };
-      mockClickHouseQuery.mockResolvedValueOnce(mockResult);
+    // First table succeeds, second fails, third succeeds
+    const tables = SAFE_TABLES.clickhouse;
+    for (let i = 0; i < tables.length; i++) {
+      if (i === 1) {
+        // Second table fails
+        mockClickHouseQuery.mockRejectedValueOnce(new Error('Table query failed'));
+      } else {
+        const mockResult = {
+          json: vi.fn().mockResolvedValue([{ count: '50' }]),
+        };
+        mockClickHouseQuery.mockResolvedValueOnce(mockResult);
+      }
     }
 
-    const fakeCtx = {} as any;
+    const fakeCtx = {
+      services: {
+        clickHouseClient: () => mockClickHouseClient,
+      },
+    } as any;
+
     const args = {
       format: 'table' as const,
     };
 
     const result = await statsStorageHandler(args, fakeCtx);
 
-    // Postgres should have error
-    expect(result.postgres).toBeDefined();
-    expect((result.postgres as { error: string }).error).toBe('Connection failed');
-
-    // ClickHouse should still work
-    expect(result.clickhouse).toBeDefined();
-    expect(typeof result.clickhouse).toBe('object');
+    // Result should be an array
+    expect(Array.isArray(result)).toBe(true);
+    const rows = result as Array<Record<string, unknown>>;
+    
+    // Should have rows for successful queries and error row for failed query
+    expect(rows.length).toBeGreaterThan(0);
+    
+    // Find the error row
+    const errorRow = rows.find((r) => r.error);
+    expect(errorRow).toBeDefined();
+    expect(errorRow?.error).toBe('Table query failed');
   });
 
   it('handles ClickHouse errors gracefully', async () => {

@@ -32,7 +32,7 @@ export class AnalyticsViewerScreen implements Screen {
       if (result.success) {
         this.analytics = result.data;
       }
-    } catch (error) {
+    } catch {
       // Handle error
     }
   }
