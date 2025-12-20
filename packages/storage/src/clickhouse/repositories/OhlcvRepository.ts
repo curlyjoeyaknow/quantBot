@@ -9,6 +9,7 @@ import { DateTime } from 'luxon';
 import { getClickHouseClient } from '../../clickhouse-client.js';
 import { logger } from '@quantbot/utils';
 import type { Candle, DateRange } from '@quantbot/core';
+import { normalizeChain } from '@quantbot/core';
 
 export class OhlcvRepository {
   /**
@@ -28,9 +29,12 @@ export class OhlcvRepository {
     const ch = getClickHouseClient();
     const CLICKHOUSE_DATABASE = process.env.CLICKHOUSE_DATABASE || 'quantbot';
 
+    // Normalize chain name to lowercase canonical form
+    const normalizedChain = normalizeChain(chain);
+
     const rows = candles.map((candle) => ({
       token_address: token, // Full address, case-preserved
-      chain: chain,
+      chain: normalizedChain, // Normalized to lowercase (solana, ethereum, bsc, base, monad, evm)
       timestamp: DateTime.fromSeconds(candle.timestamp).toFormat('yyyy-MM-dd HH:mm:ss'),
       interval: interval,
       open: candle.open,

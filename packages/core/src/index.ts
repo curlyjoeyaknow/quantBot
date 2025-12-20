@@ -18,7 +18,10 @@ import { DateTime } from 'luxon';
  *
  * Note: Standardized to lowercase for consistency. Use 'solana' instead of 'SOL'.
  */
-export type Chain = 'solana' | 'ethereum' | 'bsc' | 'base';
+export type Chain = 'solana' | 'ethereum' | 'bsc' | 'base' | 'monad' | 'evm';
+
+// Export chain utilities
+export { normalizeChain, isNormalizedChain, getChainDisplayName, type NormalizedChain } from './chain-utils.js';
 
 /**
  * Token address (Solana mint address)
