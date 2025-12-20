@@ -16,10 +16,29 @@ except ImportError:
     sys.exit(1)
 
 
+def safe_connect(db_path: str):
+    """Safely connect to DuckDB, handling empty/invalid files"""
+    db_file = Path(db_path)
+    if db_file.exists():
+        # Check if file is empty (0 bytes)
+        if db_file.stat().st_size == 0:
+            db_file.unlink()  # Delete empty file
+        else:
+            # Try to connect to validate it's a valid DuckDB file
+            try:
+                test_con = duckdb.connect(db_path)
+                test_con.close()
+            except Exception:
+                # File exists but is invalid - delete it
+                db_file.unlink()
+    
+    return duckdb.connect(db_path)
+
+
 def init_database(db_path: str) -> dict:
     """Initialize DuckDB database and schema"""
     try:
-        con = duckdb.connect(db_path)
+        con = safe_connect(db_path)
         
         con.execute("""
             CREATE TABLE IF NOT EXISTS callers (
@@ -49,7 +68,7 @@ def init_database(db_path: str) -> dict:
 def get_or_create_caller(db_path: str, source: str, handle: str, display_name: str = None, attributes: str = None) -> dict:
     """Get or create a caller"""
     try:
-        con = duckdb.connect(db_path)
+        con = safe_connect(db_path)
         
         # Try to find existing
         result = con.execute("""
@@ -101,7 +120,7 @@ def get_or_create_caller(db_path: str, source: str, handle: str, display_name: s
 def find_by_name(db_path: str, source: str, handle: str) -> dict:
     """Find caller by name"""
     try:
-        con = duckdb.connect(db_path)
+        con = safe_connect(db_path)
         
         result = con.execute("""
             SELECT id, source, handle, display_name, attributes_json, created_at, updated_at
@@ -130,7 +149,7 @@ def find_by_name(db_path: str, source: str, handle: str) -> dict:
 def find_by_id(db_path: str, caller_id: int) -> dict:
     """Find caller by ID"""
     try:
-        con = duckdb.connect(db_path)
+        con = safe_connect(db_path)
         
         result = con.execute("""
             SELECT id, source, handle, display_name, attributes_json, created_at, updated_at
@@ -159,7 +178,7 @@ def find_by_id(db_path: str, caller_id: int) -> dict:
 def list_callers(db_path: str) -> dict:
     """List all callers"""
     try:
-        con = duckdb.connect(db_path)
+        con = safe_connect(db_path)
         
         results = con.execute("""
             SELECT id, source, handle, display_name, attributes_json, created_at, updated_at
@@ -188,7 +207,7 @@ def list_callers(db_path: str) -> dict:
 def sync_from_calls(db_path: str) -> dict:
     """Sync callers from calls data (user_calls_d and caller_links_d)"""
     try:
-        con = duckdb.connect(db_path)
+        con = safe_connect(db_path)
         
         # Extract unique callers from user_calls_d
         # Note: This assumes the calls database is in the same DuckDB file or accessible
