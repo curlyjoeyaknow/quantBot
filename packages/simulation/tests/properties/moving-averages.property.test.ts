@@ -66,10 +66,10 @@ describe('Moving Averages - Property Tests', () => {
               validIndex + 1
             );
             if (periodCandles.length === 0) return true; // No candles in period
-            
+
             const minPrice = Math.min(...periodCandles.map((c) => c.close));
             const maxPrice = Math.max(...periodCandles.map((c) => c.close));
-            
+
             if (!Number.isFinite(minPrice) || !Number.isFinite(maxPrice)) return true; // Skip invalid prices
 
             return sma >= minPrice && sma <= maxPrice;
@@ -98,10 +98,10 @@ describe('Moving Averages - Property Tests', () => {
               validIndex + 1
             );
             if (periodCandles.length === 0) return true; // No candles in period
-            
+
             const minPrice = Math.min(...periodCandles.map((c) => c.close));
             const maxPrice = Math.max(...periodCandles.map((c) => c.close));
-            
+
             if (!Number.isFinite(minPrice) || !Number.isFinite(maxPrice)) return true; // Skip invalid prices
 
             return ema >= minPrice && ema <= maxPrice;

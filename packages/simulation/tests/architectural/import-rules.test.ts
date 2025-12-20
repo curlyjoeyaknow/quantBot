@@ -72,10 +72,10 @@ describe('Architectural Enforcement - Import Rules', () => {
       // Remove comments and strings to avoid false positives
       // Simple approach: remove single-line comments and multi-line comments
       let codeOnly = content;
-      
+
       // Remove multi-line comments /* ... */
       codeOnly = codeOnly.replace(/\/\*[\s\S]*?\*\//g, '');
-      
+
       // Remove single-line comments // ...
       codeOnly = codeOnly.replace(/\/\/.*$/gm, '');
 
