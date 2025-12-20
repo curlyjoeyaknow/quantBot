@@ -242,13 +242,11 @@ describe('ConfigDrivenSink', () => {
 
       await sink.handle(context);
 
-      const appendCall = vi
-        .mocked(fs.appendFile)
-        .mock.calls.find((call) => {
-          const path = call[0] as string;
-          const content = call[1] as string;
-          return path === '/tmp/test.csv' && content?.includes('TEST');
-        });
+      const appendCall = vi.mocked(fs.appendFile).mock.calls.find((call) => {
+        const path = call[0] as string;
+        const content = call[1] as string;
+        return path === '/tmp/test.csv' && content?.includes('TEST');
+      });
       expect(appendCall).toBeDefined();
     });
   });

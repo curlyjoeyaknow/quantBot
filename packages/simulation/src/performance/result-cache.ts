@@ -153,4 +153,3 @@ export function getResultCache(): ResultCache {
 export function resetResultCache(): void {
   globalResultCache = null;
 }
-
