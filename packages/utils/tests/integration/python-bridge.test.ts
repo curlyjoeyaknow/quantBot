@@ -16,10 +16,27 @@ import { existsSync } from 'fs';
 import { join } from 'path';
 import { PythonEngine, PythonManifestSchema } from '../../src/python/python-engine';
 
+// Find workspace root by looking for pnpm-workspace.yaml or package.json with workspaces
+function findWorkspaceRoot(): string {
+  let current = process.cwd();
+  while (current !== '/') {
+    if (
+      existsSync(join(current, 'pnpm-workspace.yaml')) ||
+      (existsSync(join(current, 'package.json')) &&
+        require(join(current, 'package.json')).workspaces)
+    ) {
+      return current;
+    }
+    current = join(current, '..');
+  }
+  return process.cwd(); // Fallback to current directory
+}
+
 describe('Python Bridge Test - Telegram Ingestion', () => {
-  const pythonToolPath = join(process.cwd(), 'tools/telegram/duckdb_punch_pipeline.py');
-  const testFixturePath = join(process.cwd(), 'tools/telegram/tests/fixtures/sample_telegram.json');
-  const outputDbPath = join(process.cwd(), 'tools/telegram/tests/fixtures/test_output.duckdb');
+  const workspaceRoot = findWorkspaceRoot();
+  const pythonToolPath = join(workspaceRoot, 'tools/telegram/duckdb_punch_pipeline.py');
+  const testFixturePath = join(workspaceRoot, 'tools/telegram/tests/fixtures/sample_telegram.json');
+  const outputDbPath = join(workspaceRoot, 'tools/telegram/tests/fixtures/test_output.duckdb');
 
   it('runs Python tool on tiny fixture and validates output schema', async () => {
     // Skip if Python tool doesn't exist
@@ -48,7 +65,7 @@ describe('Python Bridge Test - Telegram Ingestion', () => {
 
     // Write minimal fixture
     const fs = require('fs');
-    const fixtureDir = join(process.cwd(), 'tools/telegram/tests/fixtures');
+    const fixtureDir = join(workspaceRoot, 'tools/telegram/tests/fixtures');
     if (!existsSync(fixtureDir)) {
       fs.mkdirSync(fixtureDir, { recursive: true });
     }
@@ -65,8 +82,8 @@ describe('Python Bridge Test - Telegram Ingestion', () => {
           rebuild: true,
         },
         {
-          cwd: join(process.cwd(), 'tools/telegram'),
-          env: { PYTHONPATH: join(process.cwd(), 'tools/telegram') },
+          cwd: join(workspaceRoot, 'tools/telegram'),
+          env: { PYTHONPATH: join(workspaceRoot, 'tools/telegram') },
         }
       );
 
@@ -99,26 +116,29 @@ describe('Python Bridge Test - Telegram Ingestion', () => {
 
     const invalidFixture = { invalid: 'data' };
     const fs = require('fs');
-    const invalidPath = join(process.cwd(), 'tools/telegram/tests/fixtures/invalid.json');
+    const invalidPath = join(workspaceRoot, 'tools/telegram/tests/fixtures/invalid.json');
     fs.writeFileSync(invalidPath, JSON.stringify(invalidFixture));
 
     try {
       const engine = new PythonEngine();
-      // Tool should handle invalid input gracefully or throw an error
-      await expect(
-        engine.runTelegramPipeline(
-          {
-            inputFile: invalidPath,
-            outputDb: outputDbPath,
-            chatId: 'test_chat',
-            rebuild: true,
-          },
-          {
-            cwd: join(process.cwd(), 'tools/telegram'),
-            env: { PYTHONPATH: join(process.cwd(), 'tools/telegram') },
-          }
-        )
-      ).rejects.toThrow();
+      // Tool should handle invalid input gracefully by returning empty result
+      const result = await engine.runTelegramPipeline(
+        {
+          inputFile: invalidPath,
+          outputDb: outputDbPath,
+          chatId: 'test_chat',
+          rebuild: true,
+        },
+        {
+          cwd: join(workspaceRoot, 'tools/telegram'),
+          env: { PYTHONPATH: join(workspaceRoot, 'tools/telegram') },
+        }
+      );
+
+      // Tool handles invalid input gracefully by returning empty result
+      expect(result.chat_id).toBe('test_chat');
+      expect(result.tg_rows).toBe(0);
+      expect(result.user_calls_rows).toBe(0);
     } finally {
       if (existsSync(invalidPath)) {
         require('fs').unlinkSync(invalidPath);

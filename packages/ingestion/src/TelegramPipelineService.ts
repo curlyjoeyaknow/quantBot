@@ -27,14 +27,14 @@ export class TelegramPipelineService {
    *
    * @param inputFile - Path to Telegram JSON export file
    * @param outputDb - Path to output DuckDB file
-   * @param chatId - Chat ID to process
+   * @param chatId - Chat ID to process (optional - will be extracted from file if single chat)
    * @param rebuild - Whether to rebuild DuckDB from scratch
    * @returns Validated manifest
    */
   async runPipeline(
     inputFile: string,
     outputDb: string,
-    chatId: string,
+    chatId?: string,
     rebuild?: boolean
   ): Promise<TelegramPipelineResult> {
     try {

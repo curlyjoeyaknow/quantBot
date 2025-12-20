@@ -2,24 +2,36 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { fetchMultiChainMetadata, batchFetchMultiChainMetadata } from '@quantbot/api-clients';
 import { getMetadataCache } from '@quantbot/api-clients';
 
-// Create mock function at module level - must be defined before vi.mock
-const mockGetTokenMetadata = vi.fn();
-
-// Create a single mock client instance that will be reused
-const mockBirdeyeClient = {
-  getTokenMetadata: mockGetTokenMetadata,
+// Create a module-level object to store mocks that can be accessed from both mock factories and tests
+const mocks = {
+  getTokenMetadata: vi.fn(),
+  birdeyeClient: null as { getTokenMetadata: ReturnType<typeof vi.fn> } | null,
+  getBirdeyeClient: null as ReturnType<typeof vi.fn> | null,
 };
 
-// Mock birdeye-client module directly (using relative path from api-clients package)
-// This is needed because fetchMultiChainMetadata imports getBirdeyeClient from ./birdeye-client.js
-vi.mock('@quantbot/api-clients/src/birdeye-client.js', () => {
+// Mock birdeye-client module FIRST - this is imported via relative path in fetchMultiChainMetadata
+// The relative import ./birdeye-client.js from multi-chain-metadata-service.ts resolves to this path
+// when @quantbot/api-clients is resolved to packages/api-clients/src
+vi.mock('../../api-clients/src/birdeye-client.js', () => {
+  // Create mock inside factory since vi.mock is hoisted
+  const mockGetTokenMetadataFn = vi.fn();
+  const mockBirdeyeClientInstance = {
+    getTokenMetadata: mockGetTokenMetadataFn,
+  };
+  const mockGetBirdeyeClientFn = vi.fn(() => mockBirdeyeClientInstance);
+  
+  // Store references for use in tests
+  mocks.getTokenMetadata = mockGetTokenMetadataFn;
+  mocks.birdeyeClient = mockBirdeyeClientInstance;
+  mocks.getBirdeyeClient = mockGetBirdeyeClientFn;
+  
   return {
-    getBirdeyeClient: vi.fn(() => mockBirdeyeClient),
-    BirdeyeClient: vi.fn(), // Stub class for type compatibility
+    getBirdeyeClient: mockGetBirdeyeClientFn,
+    BirdeyeClient: vi.fn(),
   };
 });
 
-// Mock the api-clients module - use importOriginal to get real functions, only mock cache
+// Mock the api-clients module - override getBirdeyeClient AND mock cache
 vi.mock('@quantbot/api-clients', async () => {
   const actual = await vi.importActual('@quantbot/api-clients');
   
@@ -52,6 +64,8 @@ vi.mock('@quantbot/api-clients', async () => {
 
   return {
     ...actual,
+    // Override getBirdeyeClient to return our mock client
+    getBirdeyeClient: () => mocks.getBirdeyeClient?.(),
     getMetadataCache: vi.fn(() => mockCache),
   };
 });
@@ -61,7 +75,10 @@ vi.mock('@quantbot/api-clients', async () => {
 describe('MultiChainMetadataService', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGetTokenMetadata.mockReset();
+    // Reset mock function
+    if (mocks.getTokenMetadata) {
+      mocks.getTokenMetadata.mockReset();
+    }
     // Clear cache between tests
     getMetadataCache().clear();
   });
@@ -70,7 +87,7 @@ describe('MultiChainMetadataService', () => {
     it('should fetch metadata for valid Solana address', async () => {
       const solanaAddress = 'So11111111111111111111111111111111111111112';
 
-      mockGetTokenMetadata.mockResolvedValue({
+      mocks.getTokenMetadata!.mockResolvedValue({
         name: 'Wrapped SOL',
         symbol: 'WSOL',
       });
@@ -78,8 +95,8 @@ describe('MultiChainMetadataService', () => {
       const result = await fetchMultiChainMetadata(solanaAddress);
 
       // Verify mock was called
-      expect(mockGetTokenMetadata).toHaveBeenCalledWith(solanaAddress, 'solana');
-      
+      expect(mocks.getTokenMetadata).toHaveBeenCalledWith(solanaAddress, 'solana');
+
       expect(result.addressKind).toBe('solana');
       expect(result.metadata).toHaveLength(1);
       expect(result.metadata[0].chain).toBe('solana');
@@ -92,7 +109,7 @@ describe('MultiChainMetadataService', () => {
     it('should handle Solana address not found', async () => {
       const solanaAddress = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA';
 
-      mockGetTokenMetadata.mockResolvedValue(null);
+      mocks.getTokenMetadata.mockResolvedValue(null);
 
       const result = await fetchMultiChainMetadata(solanaAddress);
 
@@ -106,7 +123,7 @@ describe('MultiChainMetadataService', () => {
       // Use a valid Solana address (base58, 32-44 chars) - using a known valid format
       const solanaAddress = 'ErrorTestTokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss';
 
-      mockGetTokenMetadata.mockRejectedValue(new Error('API Error'));
+      mocks.getTokenMetadata.mockRejectedValue(new Error('API Error'));
 
       const result = await fetchMultiChainMetadata(solanaAddress);
 
@@ -123,7 +140,7 @@ describe('MultiChainMetadataService', () => {
 
       // All chains are queried in parallel now, but we prioritize the first successful result
       // Ethereum succeeds, base and bsc return null
-      mockGetTokenMetadata
+      mocks.getTokenMetadata
         .mockResolvedValueOnce({
           name: 'USD Coin',
           symbol: 'USDC',
@@ -145,7 +162,7 @@ describe('MultiChainMetadataService', () => {
       const evmAddress = '0x1111111111111111111111111111111111111111';
 
       // All chains queried in parallel: ethereum fails, base succeeds, bsc fails
-      mockGetTokenMetadata
+      mocks.getTokenMetadata
         .mockResolvedValueOnce(null) // ethereum
         .mockResolvedValueOnce({
           name: 'Base Token',
@@ -166,11 +183,11 @@ describe('MultiChainMetadataService', () => {
       const evmAddress = '0x2222222222222222222222222222222222222222';
 
       // First call (ethereum) fails
-      mockGetTokenMetadata.mockResolvedValueOnce(null);
+      mocks.getTokenMetadata.mockResolvedValueOnce(null);
       // Second call (base) fails
-      mockGetTokenMetadata.mockResolvedValueOnce(null);
+      mocks.getTokenMetadata.mockResolvedValueOnce(null);
       // Third call (bsc) succeeds
-      mockGetTokenMetadata.mockResolvedValueOnce({
+      mocks.getTokenMetadata.mockResolvedValueOnce({
         name: 'BSC Token',
         symbol: 'BSC',
       });
@@ -187,7 +204,7 @@ describe('MultiChainMetadataService', () => {
       const evmAddress = '0x3333333333333333333333333333333333333333';
 
       // All calls fail
-      mockGetTokenMetadata.mockResolvedValue(null);
+      mocks.getTokenMetadata.mockResolvedValue(null);
 
       const result = await fetchMultiChainMetadata(evmAddress);
 
@@ -202,7 +219,7 @@ describe('MultiChainMetadataService', () => {
 
       // All chains queried in parallel, but base (hint) is first in array
       // base succeeds, ethereum and bsc return null
-      mockGetTokenMetadata
+      mocks.getTokenMetadata
         .mockResolvedValueOnce({
           name: 'Base Token',
           symbol: 'BASE',
@@ -219,9 +236,9 @@ describe('MultiChainMetadataService', () => {
       expect(result.primaryMetadata?.chain).toBe('base');
 
       // Verify all chains were called (parallel queries)
-      expect(mockGetTokenMetadata).toHaveBeenCalledWith(evmAddress, 'base');
-      expect(mockGetTokenMetadata).toHaveBeenCalledWith(evmAddress, 'ethereum');
-      expect(mockGetTokenMetadata).toHaveBeenCalledWith(evmAddress, 'bsc');
+      expect(mocks.getTokenMetadata).toHaveBeenCalledWith(evmAddress, 'base');
+      expect(mocks.getTokenMetadata).toHaveBeenCalledWith(evmAddress, 'ethereum');
+      expect(mocks.getTokenMetadata).toHaveBeenCalledWith(evmAddress, 'bsc');
     });
   });
 
@@ -233,7 +250,7 @@ describe('MultiChainMetadataService', () => {
         '0xBatchTest1111111111111111111111111111111111', // EVM
       ];
 
-      mockGetTokenMetadata
+      mocks.getTokenMetadata
         .mockResolvedValueOnce({ name: 'Wrapped SOL', symbol: 'WSOL' }) // Solana
         .mockResolvedValueOnce({ name: 'USD Coin', symbol: 'USDC' }) // EVM ethereum
         .mockResolvedValueOnce(null) // EVM base
@@ -259,7 +276,7 @@ describe('MultiChainMetadataService', () => {
       // Since batch processing is parallel, we need to account for all possible calls
       // Solana: 1 call (fails)
       // EVM: 3 calls (ethereum, base, bsc)
-      mockGetTokenMetadata
+      mocks.getTokenMetadata
         .mockRejectedValueOnce(new Error('API Error')) // Solana fails
         .mockResolvedValueOnce({ name: 'USD Coin', symbol: 'USDC' }) // EVM ethereum
         .mockResolvedValueOnce(null) // EVM base
