@@ -907,12 +907,16 @@ def parse_bot(from_name: Optional[str], text: str, trigger_text: Optional[str] =
 # ---------- idempotency helpers ----------
 
 def generate_run_id(input_file_path: str, chat_id: str) -> str:
-  """Generate deterministic run_id from input file hash + chat_id + timestamp"""
+  """Generate deterministic run_id from input file hash + chat_id + timestamp + random component"""
+  import uuid
   with open(input_file_path, 'rb') as f:
     file_hash = hashlib.sha256(f.read()).hexdigest()[:16]
   
-  timestamp = datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S')
-  return f"ingest_{chat_id}_{timestamp}_{file_hash}"
+  # Use microsecond precision to ensure uniqueness even for rapid re-runs
+  timestamp = datetime.now(timezone.utc).strftime('%Y%m%d%H%M%S%f')
+  # Add random component to ensure uniqueness even if same file ingested multiple times in same microsecond
+  random_component = uuid.uuid4().hex[:8]
+  return f"ingest_{chat_id}_{timestamp}_{file_hash}_{random_component}"
 
 def get_input_file_hash(input_file_path: str) -> str:
   """Get SHA256 hash of input file"""
