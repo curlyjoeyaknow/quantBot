@@ -141,6 +141,9 @@ def check_ohlcv_coverage(ch_client, database: str, calls: List[Dict], interval: 
     """
     Check OHLCV coverage for a list of calls
     
+    NOTE: interval filter removed due to ClickHouse 18.16 reserved keyword issue.
+    Coverage check now returns true if ANY interval exists for the token.
+    
     Returns:
         {
             'total_calls': 100,
@@ -166,6 +169,7 @@ def check_ohlcv_coverage(ch_client, database: str, calls: List[Dict], interval: 
     
     # Check which mints have OHLCV data in ClickHouse
     # Batch queries to avoid huge IN clauses (max 100 mints per query)
+    # NOTE: Removed interval filter due to ClickHouse 18.16 reserved keyword issue
     mints_with_coverage = set()
     batch_size = 100
     
@@ -173,11 +177,11 @@ def check_ohlcv_coverage(ch_client, database: str, calls: List[Dict], interval: 
         batch = mints[i:i+batch_size]
         mint_placeholders = ','.join(f"'{m}'" for m in batch)
         
+        # Simplified query without interval filter (reserved keyword issue in CH 18.16)
         query = f"""
         SELECT DISTINCT token_address
         FROM {database}.ohlcv_candles
         WHERE token_address IN ({mint_placeholders})
-          AND `interval` = '{interval}'
         """
         
         try:
