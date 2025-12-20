@@ -40,6 +40,7 @@ def init_database(db_path: str) -> dict:
     try:
         con = safe_connect(db_path)
         
+        # Create table if it doesn't exist
         con.execute("""
             CREATE TABLE IF NOT EXISTS strategies (
                 id INTEGER PRIMARY KEY,
@@ -54,6 +55,25 @@ def init_database(db_path: str) -> dict:
                 UNIQUE (name, version)
             );
         """)
+        
+        # Create sequence for ID generation (if it doesn't exist)
+        try:
+            con.execute("""
+                CREATE SEQUENCE IF NOT EXISTS strategies_id_seq;
+            """)
+            
+            # Initialize sequence to max existing ID + 1 if table has data
+            try:
+                max_id_result = con.execute("SELECT COALESCE(MAX(id), 0) FROM strategies").fetchone()
+                if max_id_result and max_id_result[0] is not None and max_id_result[0] > 0:
+                    # Set sequence to max ID + 1
+                    con.execute(f"SELECT setval('strategies_id_seq', {max_id_result[0] + 1}, false)")
+            except Exception:
+                # If setval fails, sequence will start from 1, which is fine
+                pass
+        except Exception:
+            # Sequence creation failed, we'll handle ID generation manually
+            pass
         
         con.execute("""
             CREATE INDEX IF NOT EXISTS idx_strategies_name_version 
@@ -161,11 +181,21 @@ def create_strategy(db_path: str, data: dict) -> dict:
             con.close()
             raise ValueError(f"Strategy '{name}' version '{version}' already exists")
         
-        # Insert the new strategy
+        # Get next ID from sequence or calculate max + 1
+        try:
+            # Try to use sequence
+            next_id_result = con.execute("SELECT nextval('strategies_id_seq')").fetchone()
+            next_id = next_id_result[0] if next_id_result else None
+        except Exception:
+            # Sequence doesn't exist or failed, calculate max + 1
+            max_id_result = con.execute("SELECT COALESCE(MAX(id), 0) FROM strategies").fetchone()
+            next_id = (max_id_result[0] if max_id_result and max_id_result[0] is not None else 0) + 1
+        
+        # Insert the new strategy with explicit ID
         con.execute("""
-            INSERT INTO strategies (name, version, category, description, config_json, is_active)
-            VALUES (?, ?, ?, ?, ?, ?)
-        """, (name, version, category, description, config_json, is_active))
+            INSERT INTO strategies (id, name, version, category, description, config_json, is_active)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (next_id, name, version, category, description, config_json, is_active))
         
         # Get the created record
         result = con.execute("""
