@@ -66,3 +66,10 @@ export type {
 } from './storage/getTokenStats.js';
 export { createTokenStatsContext } from './context/createTokenStatsContext.js';
 export type { TokenStatsContextConfig } from './context/createTokenStatsContext.js';
+export { resolveEvmChains } from './metadata/resolveEvmChains.js';
+export type {
+  ResolveEvmChainsSpec,
+  ResolveEvmChainsResult,
+  ResolveEvmChainsContext,
+  TokenResolutionResult,
+} from './metadata/resolveEvmChains.js';
