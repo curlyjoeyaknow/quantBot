@@ -95,7 +95,11 @@ describe('Storage Idempotency - Golden Tests', () => {
       await repo.upsertCoverage(updatedData);
 
       // Query to verify record was updated, not duplicated
-      const record = await repo.getCoverage(initialData.mint, initialData.chain, initialData.interval);
+      const record = await repo.getCoverage(
+        initialData.mint,
+        initialData.chain,
+        initialData.interval
+      );
 
       expect(record).not.toBeNull();
       expect(record!.candleCount).toBe(updatedData.candleCount);

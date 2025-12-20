@@ -76,7 +76,7 @@ export class StrategiesRepository {
 
   /**
    * Initialize DuckDB database and schema
-   * 
+   *
    * NOTE: This is intentionally NOT called in constructor to avoid holding database locks.
    * The database schema is created lazily on first use or can be initialized explicitly.
    */

@@ -286,12 +286,25 @@ export async function ingestOhlcv(
     try {
       // Store candles in ClickHouse (ingestion)
       const storeFn = ctx.storeCandles || defaultStoreCandles;
+      ctx.logger.info('Storing candles in ClickHouse', {
+        mint: fetchResult.workItem.mint.substring(0, 20),
+        chain: fetchResult.workItem.chain,
+        interval: fetchResult.workItem.interval,
+        candleCount: fetchResult.candles?.length ?? 0,
+        hasCandles: !!fetchResult.candles && fetchResult.candles.length > 0,
+      });
       await storeFn(
         fetchResult.workItem.mint,
         fetchResult.workItem.chain,
         fetchResult.candles,
         fetchResult.workItem.interval
       );
+      ctx.logger.info('Successfully stored candles in ClickHouse', {
+        mint: fetchResult.workItem.mint.substring(0, 20),
+        chain: fetchResult.workItem.chain,
+        interval: fetchResult.workItem.interval,
+        candleCount: fetchResult.candles?.length ?? 0,
+      });
 
       // Update DuckDB metadata (ingestion)
       if (ctx.duckdbStorage && fetchResult.workItem.alertTime) {
