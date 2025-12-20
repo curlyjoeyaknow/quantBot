@@ -28,9 +28,13 @@ Usage:
 import argparse
 import json
 import sys
+import warnings
 from datetime import datetime, timedelta
 from typing import Dict, List, Any, Optional
 from collections import defaultdict
+
+# Suppress deprecation warnings for cleaner JSON output
+warnings.filterwarnings('ignore', category=DeprecationWarning)
 
 try:
     import duckdb
