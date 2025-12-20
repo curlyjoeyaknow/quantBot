@@ -14,23 +14,7 @@
     "types": ["node"],
     "strict": true,
     "noUncheckedIndexedAccess": true,
-    "skipLibCheck": true,
-    "paths": {
-      "@quantbot/simulation": ["../simulation/dist"],
-      "@quantbot/simulation/*": ["../simulation/dist/*"],
-      "@quantbot/ingestion": ["../ingestion/dist"],
-      "@quantbot/ingestion/*": ["../ingestion/dist/*"],
-      "@quantbot/jobs": ["../jobs/dist"],
-      "@quantbot/jobs/*": ["../jobs/dist/*"],
-      "@quantbot/core": ["../core/dist"],
-      "@quantbot/core/*": ["../core/dist/*"],
-      "@quantbot/utils": ["../utils/dist"],
-      "@quantbot/utils/*": ["../utils/dist/*"],
-      "@quantbot/storage": ["../storage/dist"],
-      "@quantbot/storage/*": ["../storage/dist/*"],
-      "@quantbot/api-clients": ["../api-clients/dist"],
-      "@quantbot/api-clients/*": ["../api-clients/dist/*"]
-    }
+    "skipLibCheck": true
   },
   "include": ["src/**/*.ts"],
   "exclude": ["dist", "node_modules", "tests", "**/*.d.ts", "../jobs/dist"],
