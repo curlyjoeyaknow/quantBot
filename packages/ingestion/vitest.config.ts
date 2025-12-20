@@ -8,13 +8,34 @@ const forceSourceResolution = (): Plugin => {
   return {
     name: 'force-source-resolution',
     enforce: 'pre',
-    resolveId(id) {
+    resolveId(id, importer) {
+      // If trying to load a dist file, redirect to source
+      if (id.includes('/dist/') && id.includes('@quantbot/')) {
+        const distMatch = id.match(/@quantbot\/([^/]+)\/dist\/(.+)$/);
+        if (distMatch) {
+          const [, packageName, distPath] = distMatch;
+          // Convert dist path to source path
+          const sourcePath = path.resolve(__dirname, `../${packageName}/src/${distPath.replace(/\.js$/, '.ts')}`);
+          try {
+            const fs = require('fs');
+            if (fs.existsSync(sourcePath)) {
+              return sourcePath;
+            }
+          } catch {
+            // Ignore
+          }
+        }
+      }
       // If it's a @quantbot package import, force it to use source
       if (id.startsWith('@quantbot/')) {
         const packageName = id.replace('@quantbot/', '').split('/')[0];
         let subPath = id.replace(`@quantbot/${packageName}`, '') || '';
         if (subPath.startsWith('/')) {
           subPath = subPath.slice(1);
+        }
+        // Skip if it's already pointing to dist
+        if (subPath.includes('/dist/')) {
+          subPath = subPath.replace('/dist/', '/src/').replace(/\.js$/, '.ts');
         }
         if (subPath && !subPath.endsWith('.ts') && !subPath.endsWith('.js')) {
           subPath = `${subPath}.ts`;
@@ -27,6 +48,23 @@ const forceSourceResolution = (): Plugin => {
           const fs = require('fs');
           if (fs.existsSync(sourcePath)) {
             return sourcePath;
+          }
+        } catch {
+          // Ignore
+        }
+      }
+      return null;
+    },
+    load(id) {
+      // If trying to load a compiled JS file that uses CommonJS exports, prevent it
+      if (id.includes('/dist/') && id.endsWith('.js') && id.includes('@quantbot/')) {
+        // Try to find the source file instead
+        const sourceId = id.replace('/dist/', '/src/').replace(/\.js$/, '.ts');
+        try {
+          const fs = require('fs');
+          if (fs.existsSync(sourceId)) {
+            // Return null to let Vite handle it, but the resolveId should have caught it
+            return null;
           }
         } catch {
           // Ignore
@@ -67,6 +105,8 @@ export default defineConfig({
     alias: {
       '@quantbot/ingestion': path.resolve(__dirname, './src'),
       '@quantbot/ingestion/*': path.resolve(__dirname, './src/*'),
+      // Prevent loading dist files - always use source
+      '^@quantbot/ingestion/dist/(.*)$': path.resolve(__dirname, './src/$1'),
       '@quantbot/ohlcv': path.resolve(__dirname, '../ohlcv/src'),
       '@quantbot/ohlcv/*': path.resolve(__dirname, '../ohlcv/src/*'),
       '@quantbot/storage': path.resolve(__dirname, '../storage/src'),
