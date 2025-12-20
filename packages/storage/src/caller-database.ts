@@ -140,7 +140,7 @@ export class CallerDatabase {
    * Batch add multiple caller alerts
    */
   async addCallerAlertsBatch(alerts: CallerAlert[]): Promise<number> {
-    const run = promisify(this.db.run.bind(this.db)) as (
+    const _run = promisify(this.db.run.bind(this.db)) as (
       sql: string,
       params?: Array<unknown>
     ) => Promise<{ lastID?: number; changes?: number }>;

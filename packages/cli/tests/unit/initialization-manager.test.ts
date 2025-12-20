@@ -14,6 +14,12 @@ import { logger } from '@quantbot/utils';
 vi.mock('@quantbot/storage', () => ({
   initClickHouse: vi.fn(),
   getClickHouseClient: vi.fn(),
+  ohlcvCache: {
+    get: vi.fn().mockResolvedValue(null),
+    set: vi.fn(),
+    clear: vi.fn(),
+    getStats: vi.fn().mockReturnValue({ hits: 0, misses: 0, size: 0 }),
+  },
 }));
 
 vi.mock('@quantbot/utils', () => ({

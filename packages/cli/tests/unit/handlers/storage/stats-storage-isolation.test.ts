@@ -17,6 +17,13 @@ import { SAFE_TABLES } from '../../../../src/commands/storage.js';
 vi.mock('@quantbot/storage', () => ({
   getPostgresPool: vi.fn(),
   getClickHouseClient: vi.fn(),
+  getStorageEngine: vi.fn(),
+  ohlcvCache: {
+    get: vi.fn().mockResolvedValue(null),
+    set: vi.fn(),
+    clear: vi.fn(),
+    getStats: vi.fn().mockReturnValue({ hits: 0, misses: 0, size: 0 }),
+  },
 }));
 
 describe('statsStorageHandler - Isolation Test', () => {

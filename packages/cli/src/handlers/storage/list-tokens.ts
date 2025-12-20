@@ -90,15 +90,10 @@ export async function listTokensHandler(
       last_seen: row.last_seen,
     }));
   } catch (error) {
-    throw new DatabaseError(
-      `Failed to query tokens: ${(error as Error).message}`,
-      'list_tokens',
-      {
-        source,
-        chain,
-        limit,
-      }
-    );
+    throw new DatabaseError(`Failed to query tokens: ${(error as Error).message}`, 'list_tokens', {
+      source,
+      chain,
+      limit,
+    });
   }
 }
-

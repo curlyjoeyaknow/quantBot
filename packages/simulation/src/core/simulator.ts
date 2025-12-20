@@ -27,7 +27,7 @@ import { calculateIndicatorSeriesOptimized } from '../performance/optimizations.
 import { getPerformanceMonitor } from '../performance/monitor.js';
 import { evaluateSignalGroup } from '../signals/evaluator.js';
 import { getEntryCostMultiplier, getExitCostMultiplier } from '../execution/index.js';
-import { logStep, createProgress } from '../utils/progress.js';
+import { logStep } from '../utils/progress.js';
 import {
   checkStopLossSequential,
   initTrailingStopState,
@@ -124,14 +124,14 @@ export async function simulateStrategy(
   const events: LegacySimulationEvent[] = [];
 
   // Entry tracking
-  let lowestPrice = initialPrice;
-  let lowestPriceTimestamp = candles[0].timestamp;
-  let lowestPriceTimeFromEntry = 0;
+  const _lowestPrice = initialPrice;
+  let _lowestPriceTimestamp = candles[0].timestamp;
+  const _lowestPriceTimeFromEntry = 0;
   let actualEntryPrice = initialPrice;
   let entryDelay = 0;
   let trailingEntryUsed = false;
   let hasEntered = entryCfg.initialEntry === 'none';
-  let initialEntryTriggered = false;
+  const _initialEntryTriggered = false;
 
   // Handle initial entry (wait for drop)
   if (entryCfg.initialEntry !== 'none') {
@@ -146,7 +146,6 @@ export async function simulateStrategy(
     if (result.triggered) {
       actualEntryPrice = result.price;
       entryDelay = result.entryDelay;
-      initialEntryTriggered = true;
       hasEntered = true;
     } else {
       // No trade - price never dropped enough
@@ -171,8 +170,7 @@ export async function simulateStrategy(
       entryDelay = result.entryDelay;
       trailingEntryUsed = true;
       hasEntered = true;
-      lowestPrice = result.lowestPrice;
-      lowestPriceTimestamp = result.lowestPriceTimestamp;
+      _lowestPriceTimestamp = result.lowestPriceTimestamp;
     } else {
       // Fallback to end of wait period
       const maxWaitTimestamp = candles[0].timestamp + maxWaitTime * 60;
@@ -183,8 +181,8 @@ export async function simulateStrategy(
     }
   }
 
-  // Update lowest price tracking
-  lowestPriceTimeFromEntry = (lowestPriceTimestamp - candles[0].timestamp) / 60;
+  // Update lowest price tracking (unused for now)
+  // lowestPriceTimeFromEntry = (lowestPriceTimestamp - candles[0].timestamp) / 60;
 
   // Add entry event if not already added
   if (!trailingEntryUsed && events.length === 0) {

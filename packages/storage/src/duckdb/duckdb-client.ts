@@ -8,7 +8,6 @@
 import { PythonEngine, getPythonEngine } from '@quantbot/utils';
 import { logger } from '@quantbot/utils';
 import { z } from 'zod';
-import { join } from 'path';
 
 /**
  * DuckDB operation result schema

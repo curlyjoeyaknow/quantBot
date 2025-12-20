@@ -377,7 +377,6 @@ const FIFTY_TWO_HOURS_SEC = 52 * 60 * 60; // 52 hours in seconds
 const THREE_MONTHS_SEC = 90 * 24 * 60 * 60; // 90 days in seconds
 const MAX_CANDLES_15S = 5000;
 const MAX_CANDLES_1M = 5000;
-const MAX_CANDLES_5M = 5000;
 const CANDLE_15S_SEC = 15;
 const CANDLE_1M_SEC = 60;
 const CANDLE_5M_SEC = 5 * 60;
@@ -512,12 +511,6 @@ export async function fetchOptimizedCandlesForAlert(
       uniqueCandles.set(candle.timestamp, candle);
     } else {
       // Prefer 15s > 1m > 5m when timestamps overlap
-      const existingInterval =
-        existing.timestamp === candle.timestamp
-          ? allCandles.filter((c) => c.timestamp === existing.timestamp).length > 1
-            ? '15s'
-            : '1m'
-          : '5m';
       // For now, just keep the one with higher volume (better data quality)
       if (candle.volume > existing.volume) {
         uniqueCandles.set(candle.timestamp, candle);

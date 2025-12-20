@@ -39,6 +39,12 @@ vi.mock('@quantbot/storage', () => ({
   TokensRepository: class {},
   AlertsRepository: class {},
   CallsRepository: class {},
+  ohlcvCache: {
+    get: vi.fn().mockResolvedValue(null),
+    set: vi.fn(),
+    clear: vi.fn(),
+    getStats: vi.fn().mockReturnValue({ hits: 0, misses: 0, size: 0 }),
+  },
 }));
 
 describe('Ingestion Commands', () => {

@@ -12,7 +12,6 @@
  * scattered across the codebase.
  */
 
-import { DateTime } from 'luxon';
 import type { Candle } from '@quantbot/core';
 import { logger } from '@quantbot/utils';
 import { BirdeyeClient, getBirdeyeClient, type BirdeyeOHLCVResponse } from './birdeye-client.js';

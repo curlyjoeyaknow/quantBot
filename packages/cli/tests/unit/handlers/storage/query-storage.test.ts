@@ -13,29 +13,39 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { queryStorageHandler } from '../../../../src/handlers/storage/query-storage.js';
 import * as storageCommands from '../../../../src/commands/storage.js';
 
-// Mock the query functions
-vi.mock('../../../../src/commands/storage.js', async () => {
-  const actual = await vi.importActual('../../../../src/commands/storage.js');
-  return {
-    ...actual,
-    queryPostgresTable: vi.fn(),
-    queryClickHouseTable: vi.fn(),
-  };
-});
+// Mock ClickHouse client
+const mockClickHouseClient = {
+  query: vi.fn(),
+};
+
+vi.mock('../../../../src/core/command-context.js', () => ({
+  // Mock CommandContext type
+}));
 
 describe('queryStorageHandler', () => {
   beforeEach(() => {
     vi.clearAllMocks();
   });
 
-  it('calls queryClickHouseTable for ClickHouse tables', async () => {
+  it('calls ClickHouse client for ClickHouse tables', async () => {
     const mockData = [
       { id: 1, name: 'test' },
       { id: 2, name: 'test2' },
     ];
-    vi.mocked(storageCommands.queryClickHouseTable).mockResolvedValue(mockData);
 
-    const fakeCtx = {} as any;
+    const mockQueryResult = {
+      json: vi.fn().mockResolvedValue(mockData),
+    };
+
+    mockClickHouseClient.query.mockResolvedValue(mockQueryResult);
+
+    const fakeCtx = {
+      services: {
+        clickHouseClient: () => mockClickHouseClient,
+      },
+    } as any;
+
+    process.env.CLICKHOUSE_DATABASE = 'quantbot';
 
     const args = {
       table: 'ohlcv_candles',
@@ -45,89 +55,118 @@ describe('queryStorageHandler', () => {
 
     const result = await queryStorageHandler(args, fakeCtx);
 
-    expect(storageCommands.queryClickHouseTable).toHaveBeenCalledTimes(1);
-    expect(storageCommands.queryClickHouseTable).toHaveBeenCalledWith('ohlcv_candles', 100);
-    expect(storageCommands.queryPostgresTable).not.toHaveBeenCalled();
+    expect(mockClickHouseClient.query).toHaveBeenCalledTimes(1);
+    expect(mockClickHouseClient.query).toHaveBeenCalledWith({
+      query: 'SELECT * FROM quantbot.ohlcv_candles LIMIT {limit:UInt32}',
+      query_params: { limit: 100 },
+      format: 'JSONEachRow',
+    });
+    expect(result).toEqual(mockData);
     expect(result).toEqual(mockData);
   });
 
-  it('calls queryPostgresTable for Postgres tables', async () => {
-    const mockData = [
-      { id: 1, name: 'test' },
-      { id: 2, name: 'test2' },
-    ];
-    vi.mocked(storageCommands.queryPostgresTable).mockResolvedValue(mockData);
-
-    const fakeCtx = {} as any;
+  it('throws ValidationError for non-ClickHouse tables (PostgreSQL removed)', async () => {
+    const fakeCtx = {
+      services: {
+        clickHouseClient: () => mockClickHouseClient,
+      },
+    } as any;
 
     const args = {
-      table: 'tokens',
+      table: 'tokens', // Not in SAFE_TABLES.clickhouse
       limit: 50,
       format: 'table' as const,
     };
 
-    const result = await queryStorageHandler(args, fakeCtx);
-
-    expect(storageCommands.queryPostgresTable).toHaveBeenCalledTimes(1);
-    expect(storageCommands.queryPostgresTable).toHaveBeenCalledWith('tokens', 50);
-    expect(storageCommands.queryClickHouseTable).not.toHaveBeenCalled();
-    expect(result).toEqual(mockData);
+    await expect(queryStorageHandler(args, fakeCtx)).rejects.toThrow('PostgreSQL removed');
   });
 
   it('handles case-insensitive table names', async () => {
     const mockData = [{ id: 1 }];
-    vi.mocked(storageCommands.queryPostgresTable).mockResolvedValue(mockData);
+    const mockQueryResult = {
+      json: vi.fn().mockResolvedValue(mockData),
+    };
+    mockClickHouseClient.query.mockResolvedValue(mockQueryResult);
 
-    const fakeCtx = {} as any;
+    const fakeCtx = {
+      services: {
+        clickHouseClient: () => mockClickHouseClient,
+      },
+    } as any;
+
+    process.env.CLICKHOUSE_DATABASE = 'quantbot';
 
     const args = {
-      table: 'TOKENS', // Uppercase
+      table: 'OHLCV_CANDLES', // Uppercase
       limit: 10,
       format: 'json' as const,
     };
 
     const result = await queryStorageHandler(args, fakeCtx);
 
-    expect(storageCommands.queryPostgresTable).toHaveBeenCalledWith('TOKENS', 10);
+    expect(mockClickHouseClient.query).toHaveBeenCalledWith({
+      query: 'SELECT * FROM quantbot.ohlcv_candles LIMIT {limit:UInt32}',
+      query_params: { limit: 10 },
+      format: 'JSONEachRow',
+    });
     expect(result).toEqual(mockData);
   });
 
-  it('propagates errors from query functions', async () => {
+  it('propagates errors from ClickHouse client', async () => {
     const queryError = new Error('Database connection failed');
-    vi.mocked(storageCommands.queryPostgresTable).mockRejectedValue(queryError);
+    mockClickHouseClient.query.mockRejectedValue(queryError);
 
-    const fakeCtx = {} as any;
+    const fakeCtx = {
+      services: {
+        clickHouseClient: () => mockClickHouseClient,
+      },
+    } as any;
+
+    process.env.CLICKHOUSE_DATABASE = 'quantbot';
 
     const args = {
-      table: 'tokens',
+      table: 'ohlcv_candles',
       limit: 10,
       format: 'json' as const,
     };
 
     // Handler should let errors bubble up (no try/catch)
     await expect(queryStorageHandler(args, fakeCtx)).rejects.toThrow('Database connection failed');
-    expect(storageCommands.queryPostgresTable).toHaveBeenCalledTimes(1);
+    expect(mockClickHouseClient.query).toHaveBeenCalledTimes(1);
   });
 
   it('handles different limit values', async () => {
     const mockData = [{ id: 1 }];
-    vi.mocked(storageCommands.queryPostgresTable).mockResolvedValue(mockData);
+    const mockQueryResult = {
+      json: vi.fn().mockResolvedValue(mockData),
+    };
+    mockClickHouseClient.query.mockResolvedValue(mockQueryResult);
 
-    const fakeCtx = {} as any;
+    const fakeCtx = {
+      services: {
+        clickHouseClient: () => mockClickHouseClient,
+      },
+    } as any;
+
+    process.env.CLICKHOUSE_DATABASE = 'quantbot';
 
     const limits = [1, 10, 100, 1000, 10000];
 
     for (const limit of limits) {
       const args = {
-        table: 'tokens',
+        table: 'ohlcv_candles',
         limit,
         format: 'json' as const,
       };
 
       await queryStorageHandler(args, fakeCtx);
-      expect(storageCommands.queryPostgresTable).toHaveBeenCalledWith('tokens', limit);
+      expect(mockClickHouseClient.query).toHaveBeenCalledWith({
+        query: 'SELECT * FROM quantbot.ohlcv_candles LIMIT {limit:UInt32}',
+        query_params: { limit },
+        format: 'JSONEachRow',
+      });
     }
 
-    expect(storageCommands.queryPostgresTable).toHaveBeenCalledTimes(limits.length);
+    expect(mockClickHouseClient.query).toHaveBeenCalledTimes(limits.length);
   });
 });

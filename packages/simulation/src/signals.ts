@@ -160,7 +160,11 @@ function getIndicatorField(
                   : indicators.ichimoku.isBearish
                     ? -1
                     : 0;
+        default:
+          // Additional indicators (RSI, MACD, etc.) can be wired here once added to IndicatorData.
+          return undefined;
       }
+      break;
     default:
       // Additional indicators (RSI, MACD, etc.) can be wired here once added to IndicatorData.
       return undefined;

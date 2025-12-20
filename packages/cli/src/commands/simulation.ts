@@ -355,7 +355,7 @@ const simulationModule: PackageCommandModule = {
       name: 'create-strategy',
       description: '🎯 Interactive strategy creation (guided prompts)',
       schema: createStrategyInteractiveSchema,
-      handler: async (args: unknown, ctx: unknown) => {
+      handler: async (args: unknown, _ctx: unknown) => {
         const typedArgs = args as z.infer<typeof createStrategyInteractiveSchema>;
         await runInteractiveStrategyCreation(typedArgs.duckdb);
         return { success: true };

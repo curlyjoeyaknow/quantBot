@@ -221,8 +221,8 @@ export function createProductionContext(config?: ProductionContextConfig): Workf
 
             // Calculate aggregate metrics
             const pnlMean = run.pnlStats?.mean;
-            const pnlMin = run.pnlStats?.min;
-            const pnlMax = run.pnlStats?.max;
+            const _pnlMin = run.pnlStats?.min;
+            const _pnlMax = run.pnlStats?.max;
             const winRate =
               run.successfulCalls && run.totalCalls
                 ? run.successfulCalls / run.totalCalls

@@ -4,7 +4,7 @@
  * Event types for simulation lifecycle tracking.
  */
 
-import type { EntryReason, ExitReason, TradeSide } from './position.js';
+import type { EntryReason, ExitReason } from './position.js';
 
 /**
  * Base simulation event

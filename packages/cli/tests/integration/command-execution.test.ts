@@ -29,14 +29,19 @@ vi.mock('@quantbot/storage', () => ({
   })),
 }));
 
-vi.mock('@quantbot/utils', () => ({
-  logger: {
-    info: vi.fn(),
-    error: vi.fn(),
-    warn: vi.fn(),
-    debug: vi.fn(),
-  },
-}));
+vi.mock('@quantbot/utils', async () => {
+  const actual = await vi.importActual<typeof import('@quantbot/utils')>('@quantbot/utils');
+  return {
+    ...actual,
+    logger: {
+      info: vi.fn(),
+      error: vi.fn(),
+      warn: vi.fn(),
+      debug: vi.fn(),
+    },
+    ValidationError: actual?.ValidationError || class ValidationError extends Error {},
+  };
+});
 
 describe('Command Execution - Integration Tests', () => {
   let registry: CommandRegistry;

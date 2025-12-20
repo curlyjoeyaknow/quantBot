@@ -17,7 +17,7 @@ for (const pkg of packages) {
       // Delete the dist directory recursively
       fs.rmSync(distPath, { recursive: true, force: true });
       distPaths.push(distPath);
-    } catch (error) {
+    } catch {
       // Ignore errors
     }
   }

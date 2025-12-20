@@ -29,7 +29,22 @@ export async function executeCLICommand(
 
     // Create command context
     const ctx = new CommandContext();
-    await ctx.ensureInitialized();
+
+    // Initialize with timeout to prevent hanging
+    const initPromise = ctx.ensureInitialized();
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error('Initialization timeout')), 10000);
+    });
+
+    try {
+      await Promise.race([initPromise, timeoutPromise]);
+    } catch (error) {
+      // If initialization fails or times out, continue anyway
+      // Some commands may work without full initialization
+      logger.warn('Storage initialization failed or timed out, continuing anyway', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
 
     // Execute command
     const result = await command.handler(parsedArgs, ctx);
@@ -54,7 +69,7 @@ export async function executeCLICommandWithProgress(
   packageName: string,
   commandName: string,
   args: Record<string, unknown>,
-  onProgress?: (progress: { current: number; total: number; label?: string }) => void
+  _onProgress?: (progress: { current: number; total: number; label?: string }) => void
 ): Promise<CLIExecutionResult> {
   // For now, just call executeCLICommand
   // Progress tracking will be added when commands support it

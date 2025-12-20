@@ -129,7 +129,7 @@ export class OHLCVService {
     endTime: DateTime,
     options: OHLCVGetOptions = {}
   ): Promise<Candle[]> {
-    const { interval = '5m', useCache = true, forceRefresh = false, alertTime } = options;
+    const { interval = '5m', useCache = true, forceRefresh = false } = options;
 
     // Check in-memory cache first
     if (useCache && !forceRefresh) {

@@ -184,7 +184,7 @@ export class DefaultTargetResolver implements ScenarioTargetResolver {
         // Rick format: "🐶 Token Name [100K/10%] $SYMBOL"
         if (!tokenName) {
           const nameMatch = messageText.match(
-            /(?:🟣|🐶|🟢|🔷|💊)\s*([^($\[\]]+?)(?:\s*\(|\s*\[|\s*\$)/
+            /(?:🟣|🐶|🟢|🔷|💊)\s*([^($[\]]+?)(?:\s*\(|\s*\[|\s*\$)/
           );
           if (nameMatch) {
             tokenName = nameMatch[1].trim();

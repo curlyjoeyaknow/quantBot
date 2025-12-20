@@ -8,14 +8,14 @@ import type { CommandContext } from '../../core/command-context.js';
 import type { ListStrategiesArgs } from '../../command-defs/simulation.js';
 import { StrategiesRepository } from '@quantbot/storage';
 
-export async function listStrategiesHandler(args: ListStrategiesArgs, ctx: CommandContext) {
+export async function listStrategiesHandler(args: ListStrategiesArgs, _ctx: CommandContext) {
   // Get DuckDB path from args or environment
   const dbPath = args.duckdb || process.env.DUCKDB_PATH || 'data/quantbot.db';
-  
+
   const strategiesRepo = new StrategiesRepository(dbPath);
-  
+
   const strategies = await strategiesRepo.list();
-  
+
   return {
     strategies: strategies.map((s) => ({
       id: s.name, // Use name as identifier (repository doesn't expose id)
@@ -31,4 +31,3 @@ export async function listStrategiesHandler(args: ListStrategiesArgs, ctx: Comma
     count: strategies.length,
   };
 }
-

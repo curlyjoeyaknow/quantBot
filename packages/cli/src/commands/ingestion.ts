@@ -110,7 +110,9 @@ export function registerIngestionCommands(program: Command): void {
         preWindow: options.preWindow ? Number(options.preWindow) : undefined,
         postWindow: options.postWindow ? Number(options.postWindow) : undefined,
         candles: options.candles ? Number(options.candles) : undefined,
-        startOffsetMinutes: options.startOffsetMinutes ? Number(options.startOffsetMinutes) : undefined,
+        startOffsetMinutes: options.startOffsetMinutes
+          ? Number(options.startOffsetMinutes)
+          : undefined,
       };
 
       if (options.tui) {

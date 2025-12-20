@@ -39,7 +39,8 @@ export async function quotasObservabilityHandler(
         limit: quota.limit,
         remaining: quota.remaining,
         percentage: `${percentage}%`,
-        resetAt: quota.resetAt instanceof Date ? quota.resetAt.toISOString() : String(quota.resetAt),
+        resetAt:
+          quota.resetAt instanceof Date ? quota.resetAt.toISOString() : String(quota.resetAt),
       });
     }
   } else {
@@ -52,7 +53,8 @@ export async function quotasObservabilityHandler(
         limit: quota.limit,
         remaining: quota.remaining,
         percentage: `${percentage}%`,
-        resetAt: quota.resetAt instanceof Date ? quota.resetAt.toISOString() : String(quota.resetAt),
+        resetAt:
+          quota.resetAt instanceof Date ? quota.resetAt.toISOString() : String(quota.resetAt),
       });
     });
   }

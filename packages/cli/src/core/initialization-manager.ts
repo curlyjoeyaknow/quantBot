@@ -24,21 +24,29 @@ export async function initializeStorage(): Promise<InitializationStatus> {
     initialized: false,
   };
 
-  const progress = getProgressIndicator();
+  // Only use progress indicator if not in TUI mode (TUI mode is detected by checking if stdout is a TTY)
+  const useProgress = process.stdout.isTTY && !process.env.TUI_MODE;
+  const progress = useProgress ? getProgressIndicator() : null;
 
   try {
     // Initialize ClickHouse
     try {
-      progress.start('Initializing ClickHouse...');
+      if (progress) {
+        progress.start('Initializing ClickHouse...');
+      }
       await initClickHouse();
       const client = getClickHouseClient();
       if (client) {
         status.clickhouse = true;
-        progress.updateMessage('ClickHouse connected');
+        if (progress) {
+          progress.updateMessage('ClickHouse connected');
+        }
         logger.info('ClickHouse initialized');
       }
     } catch (error) {
-      progress.updateMessage('ClickHouse initialization failed (continuing...)');
+      if (progress) {
+        progress.updateMessage('ClickHouse initialization failed (continuing...)');
+      }
       logger.warn('ClickHouse initialization failed', {
         error: error instanceof Error ? error.message : String(error),
       });
@@ -50,15 +58,21 @@ export async function initializeStorage(): Promise<InitializationStatus> {
     status.initialized = status.clickhouse;
 
     if (!status.initialized) {
-      progress.updateMessage('Warning: No storage backends initialized');
+      if (progress) {
+        progress.updateMessage('Warning: No storage backends initialized');
+      }
       logger.warn('No storage backends initialized. Some commands may not work.');
     } else {
-      progress.succeed('Storage initialized');
+      if (progress) {
+        progress.succeed('Storage initialized');
+      }
     }
 
     return status;
   } catch (error) {
-    progress.fail('Storage initialization error');
+    if (progress) {
+      progress.fail('Storage initialization error');
+    }
     logger.error('Storage initialization error', error as Error);
     throw error;
   }

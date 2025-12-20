@@ -162,7 +162,7 @@ describe('BirdeyeClient - Integration Tests', () => {
     it('handles rate limiting with key rotation', async () => {
       // Use the same pattern as unit tests - shared mock instance
       // Create mock instance BEFORE setting up mocks to ensure it's ready
-      const testMockInstance: any = {
+      const testMockInstance: Record<string, unknown> = {
         get: vi.fn(),
         post: vi.fn(),
         request: vi.fn(),

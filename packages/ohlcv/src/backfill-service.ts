@@ -9,7 +9,6 @@ import { DateTime } from 'luxon';
 import { logger } from '@quantbot/utils';
 import { getOhlcvIngestionEngine, type OhlcvIngestionEngine } from '@quantbot/jobs';
 import { queryCallsDuckdb, createProductionContext } from '@quantbot/workflows';
-import type { Chain } from '@quantbot/core';
 
 export interface BackfillOptions {
   /** Maximum alerts to process (default: 1000) */

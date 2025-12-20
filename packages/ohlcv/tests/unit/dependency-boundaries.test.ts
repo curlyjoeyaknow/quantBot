@@ -65,7 +65,7 @@ describe('Dependency Boundaries - @quantbot/ohlcv', () => {
   });
 
   it('should not import network modules in source files', () => {
-    const srcDir = join(process.cwd(), 'src');
+    const srcDir = join(__dirname, '../../src');
     const srcFiles = findTsFiles(srcDir, srcDir);
 
     // Exclude deprecated files that are not exported

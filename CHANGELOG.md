@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **DuckDB Error Database**: Implemented persistent error tracking with DuckDB for better error diagnosis and analysis
+  - `ErrorRepository` in `@quantbot/storage` for DuckDB-based error storage
+  - Python script `tools/storage/duckdb_errors.py` for error operations
+  - Updated `error-tracking.ts` to use persistent storage instead of in-memory (max 1000 errors)
+  - Error tracking now supports querying by severity, service, time range, and error name
+  - Errors persist across restarts and can be analyzed historically
+  - Default database path: `data/databases/errors.db` (configurable via `ERROR_DB_PATH` env var)
+  - Features: error statistics, recent errors, mark as resolved, pattern analysis by error name
+
 - **Offline-Only Architecture**: Refactored `@quantbot/ohlcv` and `@quantbot/ingestion` to be fully offline-only
   - `@quantbot/ohlcv`: Now only queries ClickHouse and stores candles (no API calls)
   - `@quantbot/ingestion`: Now only generates worklists and manages metadata (no API calls)

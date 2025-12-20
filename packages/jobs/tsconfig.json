@@ -10,23 +10,7 @@
     "skipLibCheck": true,
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "target": "ES2022",
-    "paths": {
-      "@quantbot/core": ["../core/src"],
-      "@quantbot/core/*": ["../core/src/*"],
-      "@quantbot/utils": ["../utils/src"],
-      "@quantbot/utils/*": ["../utils/src/*"],
-      "@quantbot/storage": ["../storage/src"],
-      "@quantbot/storage/*": ["../storage/src/*"],
-      "@quantbot/api-clients": ["../api-clients/dist"],
-      "@quantbot/api-clients/*": ["../api-clients/dist/*"],
-      "@quantbot/ohlcv": ["../ohlcv/src"],
-      "@quantbot/ohlcv/*": ["../ohlcv/src/*"],
-      "@quantbot/observability": ["../observability/src"],
-      "@quantbot/observability/*": ["../observability/src/*"],
-      "@quantbot/ingestion": ["../ingestion/dist"],
-      "@quantbot/ingestion/*": ["../ingestion/dist/*"]
-    }
+    "target": "ES2022"
   },
   "include": ["src/**/*.ts"],
   "exclude": ["node_modules", "**/dist/**", "**/*.test.ts", "dist"],

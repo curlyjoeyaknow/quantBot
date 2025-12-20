@@ -8,21 +8,21 @@ import type { Candle } from '@quantbot/core';
 
 export const ohlcvCache = {
   get: (
-    tokenAddress: string,
-    startTime: Date,
-    endTime: Date,
-    interval: string
+    _tokenAddress: string,
+    _startTime: Date,
+    _endTime: Date,
+    _interval: string
   ): Candle[] | null => {
     return null;
   },
 
   set: (
-    tokenAddress: string,
-    startTime: Date,
-    endTime: Date,
-    data: Candle[],
-    interval: string,
-    ttl: number
+    _tokenAddress: string,
+    _startTime: Date,
+    _endTime: Date,
+    _data: Candle[],
+    _interval: string,
+    _ttl: number
   ): void => {
     // No-op stub
   },
@@ -44,10 +44,10 @@ export const ohlcvCache = {
   },
 
   prefetchForSimulation: async (
-    tokens: string[],
-    startTime: Date,
-    endTime: Date,
-    fetchFunction: (token: string, start: Date, end: Date) => Promise<Candle[]>
+    _tokens: string[],
+    _startTime: Date,
+    _endTime: Date,
+    _fetchFunction: (token: string, start: Date, end: Date) => Promise<Candle[]>
   ): Promise<Map<string, Candle[]>> => {
     return new Map();
   },

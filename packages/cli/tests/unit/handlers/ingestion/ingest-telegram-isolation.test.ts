@@ -9,10 +9,43 @@
  * If this test passes, the handler is properly decoupled from CLI infrastructure.
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ingestTelegramHandler } from '../../../../src/handlers/ingestion/ingest-telegram.js';
 
+// Mock workflows
+const mockIngestTelegramJson = vi.fn();
+const mockCreateProductionContext = vi.fn();
+
+vi.mock('@quantbot/workflows', () => ({
+  ingestTelegramJson: (...args: unknown[]) => mockIngestTelegramJson(...args),
+  createProductionContext: () => mockCreateProductionContext(),
+}));
+
+// Mock storage repositories
+vi.mock('@quantbot/storage', () => ({
+  CallersRepository: class {
+    constructor(_dbPath: string) {
+      // Mock constructor
+    }
+  },
+  TokenDataRepository: class {
+    constructor(_dbPath: string) {
+      // Mock constructor
+    }
+  },
+}));
+
 describe('ingestTelegramHandler - Isolation Test', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    process.env.DUCKDB_PATH = '/tmp/test.duckdb';
+    mockCreateProductionContext.mockReturnValue({
+      repos: {},
+      clock: { nowISO: () => new Date().toISOString() },
+      ids: { newRunId: () => 'test-id' },
+      logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn() },
+    });
+  });
   it('can be called with plain objects (no CLI infrastructure)', async () => {
     // Plain object args (as if from a REPL or script)
     const plainArgs = {
@@ -25,26 +58,22 @@ describe('ingestTelegramHandler - Isolation Test', () => {
 
     // Plain object context (minimal mock)
     const plainCtx = {
-      services: {
-        telegramIngestion: () => ({
-          ingestExport: vi.fn().mockResolvedValue({
-            alertsInserted: 10,
-            callsInserted: 8,
-            tokensUpserted: 5,
-          }),
-        }),
-      },
+      services: {},
     } as any;
+
+    const mockResult = {
+      alertsInserted: 10,
+      callsInserted: 8,
+      tokensUpserted: 5,
+    };
+
+    mockIngestTelegramJson.mockResolvedValue(mockResult);
 
     // Call handler directly (no Commander, no execute(), no CLI)
     const result = await ingestTelegramHandler(plainArgs, plainCtx);
 
     // Deterministic result
-    expect(result).toEqual({
-      alertsInserted: 10,
-      callsInserted: 8,
-      tokensUpserted: 5,
-    });
+    expect(result).toEqual(mockResult);
   });
 
   it('returns the same result for the same inputs (deterministic)', async () => {
@@ -63,20 +92,14 @@ describe('ingestTelegramHandler - Isolation Test', () => {
       tokensUpserted: 3,
     };
 
+    mockIngestTelegramJson.mockResolvedValue(mockResult);
+
     const ctx1 = {
-      services: {
-        telegramIngestion: () => ({
-          ingestExport: vi.fn().mockResolvedValue(mockResult),
-        }),
-      },
+      services: {},
     } as any;
 
     const ctx2 = {
-      services: {
-        telegramIngestion: () => ({
-          ingestExport: vi.fn().mockResolvedValue(mockResult),
-        }),
-      },
+      services: {},
     } as any;
 
     const result1 = await ingestTelegramHandler(args1, ctx1);

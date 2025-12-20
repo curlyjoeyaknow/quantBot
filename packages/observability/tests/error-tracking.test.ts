@@ -12,8 +12,10 @@ vi.mock('@quantbot/utils', async () => {
   const { vi } = await import('vitest');
   return {
     logger: {
+      info: vi.fn(),
       error: vi.fn(),
       warn: vi.fn(),
+      debug: vi.fn(),
     },
   };
 });

@@ -6,7 +6,6 @@
 
 import type { CommandContext } from '../../core/command-context.js';
 import type { StoreRunArgs } from '../../command-defs/simulation.js';
-import { ValidationError } from '@quantbot/utils';
 
 export async function storeRunDuckdbHandler(args: StoreRunArgs, ctx: CommandContext) {
   const service = ctx.services.duckdbStorage();

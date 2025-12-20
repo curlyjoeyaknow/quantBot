@@ -317,7 +317,7 @@ export class OhlcvIngestionEngine {
       const baseStartTime5m = getStartOffsetTime(alertTime, '5m', startOffsetPeriods);
       const baseStartTime15s = getStartOffsetTime(alertTime, '15s', startOffsetPeriods);
       const baseStartTime1H = getStartOffsetTime(alertTime, '1H', startOffsetPeriods);
-      
+
       // Fetch 1m candles: 5000 candles = 5000 minutes (skip if skip1mFetch is true)
       let result1m = { candles: [] as Candle[], fromCache: false };
       if (!skip1mFetch) {
