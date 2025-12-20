@@ -182,7 +182,7 @@ export async function getStorageStats(
   // DuckDB stats
   if ((validated.source === 'duckdb' || validated.source === 'all') && ctx.storage.duckdb?.query) {
     try {
-      const dbPath = validated.duckdbPath || process.env.DUCKDB_PATH || 'data/quantbot.db';
+      const dbPath = validated.duckdbPath || process.env.DUCKDB_PATH || 'data/tele.duckdb';
       const tables = ['strategies', 'callers', 'token_data', 'simulation_runs'];
 
       const tableStats: GetStorageStatsResult['duckdb'] = {

@@ -103,7 +103,7 @@ export function registerSimulationCommands(program: Command): void {
     .command('create-strategy')
     .alias('strategy-create')
     .description('🎯 Interactive strategy creation (guided prompts)')
-    .option('--duckdb <path>', 'Path to DuckDB file', process.env.DUCKDB_PATH || 'data/quantbot.db')
+    .option('--duckdb <path>', 'Path to DuckDB file', process.env.DUCKDB_PATH || 'data/tele.duckdb')
     .action(async (options) => {
       await runInteractiveStrategyCreation(options.duckdb);
     });
@@ -348,7 +348,7 @@ const simulationModule: PackageCommandModule = {
       },
       examples: [
         'quantbot simulation list-strategies',
-        'quantbot simulation list-strategies --duckdb data/quantbot.db --format json',
+        'quantbot simulation list-strategies --duckdb data/tele.duckdb --format json',
       ],
     },
     {
@@ -362,7 +362,7 @@ const simulationModule: PackageCommandModule = {
       },
       examples: [
         'quantbot simulation create-strategy',
-        'quantbot simulation create-strategy --duckdb data/quantbot.db',
+        'quantbot simulation create-strategy --duckdb data/tele.duckdb',
       ],
     },
   ],

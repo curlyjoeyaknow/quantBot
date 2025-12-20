@@ -57,6 +57,14 @@ function getErrorRepository(config?: ErrorTrackingConfig): ErrorRepository | nul
 }
 
 /**
+ * Reset the singleton instance (for testing only)
+ * @internal
+ */
+export function _resetErrorRepository(): void {
+  errorRepositoryInstance = null;
+}
+
+/**
  * Track an error event
  */
 export async function trackError(

@@ -24,7 +24,8 @@ export async function queryStorageHandler(
   args: QueryStorageArgs,
   ctx: CommandContext
 ): Promise<unknown[]> {
-  const isClickHouse = SAFE_TABLES.clickhouse.includes(args.table.toLowerCase());
+  const normalizedTable = args.table.toLowerCase();
+  const isClickHouse = SAFE_TABLES.clickhouse.includes(normalizedTable);
 
   if (isClickHouse) {
     // Use factory to get ClickHouse client
@@ -32,16 +33,16 @@ export async function queryStorageHandler(
     const database = process.env.CLICKHOUSE_DATABASE || 'quantbot';
 
     // Validate table name
-    if (!SAFE_TABLES.clickhouse.includes(args.table.toLowerCase())) {
+    if (!SAFE_TABLES.clickhouse.includes(normalizedTable)) {
       throw new ValidationError(
         `Invalid table name: ${args.table}. Allowed tables: ${SAFE_TABLES.clickhouse.join(', ')}`,
         { table: args.table, database: 'clickhouse', allowedTables: SAFE_TABLES.clickhouse }
       );
     }
 
-    // Use parameterized query
+    // Use parameterized query with normalized table name
     const result = await client.query({
-      query: `SELECT * FROM ${database}.${args.table} LIMIT {limit:UInt32}`,
+      query: `SELECT * FROM ${database}.${normalizedTable} LIMIT {limit:UInt32}`,
       query_params: { limit: args.limit },
       format: 'JSONEachRow',
     });

@@ -5,9 +5,10 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { trackError, getErrorStats } from '../src/error-tracking.js';
+import { trackError, getErrorStats, _resetErrorRepository } from '../src/error-tracking.js';
+import { DateTime } from 'luxon';
 
-// Mock logger - must be async to avoid hoisting issues
+// Mock logger and PythonEngine - must be async to avoid hoisting issues
 vi.mock('@quantbot/utils', async () => {
   const { vi } = await import('vitest');
   return {
@@ -17,12 +18,106 @@ vi.mock('@quantbot/utils', async () => {
       warn: vi.fn(),
       debug: vi.fn(),
     },
+    getPythonEngine: vi.fn(() => ({
+      runScript: vi.fn(),
+    })),
+  };
+});
+
+// Mock ErrorRepository to avoid DuckDB dependency in unit tests
+// Use in-memory storage to simulate real behavior
+const mockErrorStore: Array<{
+  timestamp: Date;
+  errorName: string;
+  errorMessage: string;
+  errorStack?: string;
+  severity: string;
+  context?: Record<string, unknown>;
+  service?: string;
+}> = [];
+
+vi.mock('@quantbot/storage', async () => {
+  const { vi } = await import('vitest');
+  return {
+    ErrorRepository: class {
+      constructor(_dbPath: string) {
+        // Mock constructor
+      }
+      async insertError(error: {
+        timestamp: Date;
+        errorName: string;
+        errorMessage: string;
+        errorStack?: string;
+        severity: string;
+        context?: Record<string, unknown>;
+        service?: string;
+      }) {
+        // Store in mock store
+        mockErrorStore.push(error);
+      }
+      async getStats(options: { startDate: Date; endDate: Date; service?: string }) {
+        const filtered = mockErrorStore.filter((e) => {
+          const inRange = e.timestamp >= options.startDate && e.timestamp <= options.endDate;
+          const serviceMatch = !options.service || e.service === options.service;
+          return inRange && serviceMatch;
+        });
+
+        const bySeverity: Record<string, number> = {};
+        for (const error of filtered) {
+          bySeverity[error.severity] = (bySeverity[error.severity] || 0) + 1;
+        }
+
+        return {
+          total: filtered.length,
+          bySeverity: {
+            critical: bySeverity.critical || 0,
+            high: bySeverity.high || 0,
+            medium: bySeverity.medium || 0,
+            low: bySeverity.low || 0,
+          },
+          resolvedCount: 0, // Mock doesn't track resolution
+        };
+      }
+      async getRecentErrors(options: {
+        startDate: Date;
+        endDate: Date;
+        service?: string;
+        limit: number;
+      }) {
+        const filtered = mockErrorStore
+          .filter((e) => {
+            const inRange = e.timestamp >= options.startDate && e.timestamp <= options.endDate;
+            const serviceMatch = !options.service || e.service === options.service;
+            return inRange && serviceMatch;
+          })
+          .sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime())
+          .slice(0, options.limit)
+          .map((e) => ({
+            id: mockErrorStore.indexOf(e) + 1,
+            timestamp: DateTime.fromJSDate(e.timestamp),
+            errorName: e.errorName,
+            errorMessage: e.errorMessage,
+            errorStack: e.errorStack,
+            severity: e.severity as 'low' | 'medium' | 'high' | 'critical',
+            context: e.context,
+            service: e.service,
+            resolved: false,
+            createdAt: DateTime.fromJSDate(e.timestamp),
+          }));
+
+        return filtered;
+      }
+    },
   };
 });
 
 describe('Error Tracking', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Clear mock error store before each test
+    mockErrorStore.length = 0;
+    // Reset singleton to ensure fresh instance for each test
+    _resetErrorRepository();
   });
 
   describe('trackError', () => {
@@ -33,7 +128,10 @@ describe('Error Tracking', () => {
 
       await trackError(error);
 
-      // ErrorRepository is not implemented yet, so it just logs
+      // ErrorRepository is now implemented, so it should be called
+      expect(mockErrorStore.length).toBe(1);
+      expect(mockErrorStore[0].errorName).toBe('Error');
+      expect(mockErrorStore[0].errorMessage).toBe('Test error');
       expect(vi.mocked(logger.error)).toHaveBeenCalledWith(
         'Error tracked',
         error,
@@ -49,7 +147,9 @@ describe('Error Tracking', () => {
 
       await trackError(error, undefined, 'critical');
 
-      // ErrorRepository is not implemented yet, so it just logs
+      // ErrorRepository is now implemented, so it should be called
+      expect(mockErrorStore.length).toBe(1);
+      expect(mockErrorStore[0].severity).toBe('critical');
       expect(vi.mocked(logger.error)).toHaveBeenCalledWith(
         'Error tracked',
         error,
@@ -66,7 +166,9 @@ describe('Error Tracking', () => {
 
       await trackError(error, context);
 
-      // ErrorRepository is not implemented yet, so it just logs
+      // ErrorRepository is now implemented, so it should be called
+      expect(mockErrorStore.length).toBe(1);
+      expect(mockErrorStore[0].context).toEqual(context);
       expect(vi.mocked(logger.error)).toHaveBeenCalledWith(
         'Error tracked',
         error,
@@ -79,7 +181,7 @@ describe('Error Tracking', () => {
     it('should not throw if tracking fails', async () => {
       const error = new Error('Test error');
 
-      // ErrorRepository is not implemented yet, so tracking always succeeds (just logs)
+      // ErrorRepository is now implemented, but tracking should not throw on failure
       await expect(trackError(error)).resolves.not.toThrow();
     });
   });
@@ -100,15 +202,15 @@ describe('Error Tracking', () => {
 
       const stats = await getErrorStats(timeRange);
 
-      // Should return stats from in-memory store
-      expect(stats.total).toBeGreaterThanOrEqual(3);
-      expect(stats.bySeverity.low).toBeGreaterThanOrEqual(1);
-      expect(stats.bySeverity.medium).toBeGreaterThanOrEqual(1);
-      expect(stats.bySeverity.high).toBeGreaterThanOrEqual(1);
-      expect(stats.recent.length).toBeGreaterThanOrEqual(0);
+      // Should return stats from mock repository
+      expect(stats.total).toBe(3);
+      expect(stats.bySeverity.low).toBe(1);
+      expect(stats.bySeverity.medium).toBe(1);
+      expect(stats.bySeverity.high).toBe(1);
+      expect(stats.recent.length).toBe(3);
     });
 
-    it('should return empty stats on error', async () => {
+    it('should return empty stats for time range with no errors', async () => {
       // Use a time range in the past (before any errors were tracked)
       const pastDate = new Date('2020-01-01');
       const stats = await getErrorStats({
@@ -117,11 +219,13 @@ describe('Error Tracking', () => {
       });
 
       // Should return empty stats for time range with no errors
-      expect(stats).toEqual({
-        total: 0,
-        bySeverity: {},
-        recent: [],
-      });
+      // Implementation returns all severity levels with 0 counts
+      expect(stats.total).toBe(0);
+      expect(stats.bySeverity.critical).toBe(0);
+      expect(stats.bySeverity.high).toBe(0);
+      expect(stats.bySeverity.medium).toBe(0);
+      expect(stats.bySeverity.low).toBe(0);
+      expect(stats.recent).toEqual([]);
     });
   });
 });

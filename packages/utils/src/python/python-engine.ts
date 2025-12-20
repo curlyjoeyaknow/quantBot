@@ -246,27 +246,19 @@ export class PythonEngine {
       }
     }
 
-    // Properly escape arguments for shell execution
-    const escapedArgs = argList.map((arg) => {
-      // If the argument contains spaces or special characters, quote it
-      if (arg.includes(' ') || arg.includes('{') || arg.includes('}') || arg.includes('"')) {
-        // Escape quotes and wrap in quotes
-        return `"${arg.replace(/"/g, '\\"')}"`;
-      }
-      return arg;
-    });
-    const command = `${this.pythonCommand} ${escapedArgs.join(' ')}`;
-    logger.debug('Executing Python script', { command, cwd: options?.cwd, args });
+    logger.debug('Executing Python script', { script: scriptPath, args: argList, cwd: options?.cwd });
 
     try {
-      const output = execSync(command, {
-        encoding: 'utf-8',
+      // Use execa instead of execSync for more reliable argument handling
+      // execa passes arguments directly without shell interpretation, avoiding escaping issues
+      const result = await execa(this.pythonCommand, argList, {
         cwd: options?.cwd,
         env: { ...process.env, ...options?.env },
         maxBuffer: 10 * 1024 * 1024, // 10MB buffer
         timeout,
-        shell: '/bin/bash', // Explicitly use bash to avoid ENOENT errors
       });
+      
+      const output = result.stdout;
 
       if (!expectJson) {
         return output as unknown as T;

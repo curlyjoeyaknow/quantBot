@@ -186,6 +186,11 @@ export class TokenDataRepository {
         resultSchema
       );
 
+      // Ensure we always return an array, even if result is null/undefined
+      if (!result || !Array.isArray(result)) {
+        return [];
+      }
+
       return result.map((row) => ({
         mint: row.mint,
         chain: row.chain,

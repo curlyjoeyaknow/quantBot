@@ -567,7 +567,7 @@ function InteractiveStrategyCreationApp({ duckdbPath }: { duckdbPath?: string })
   const { exit } = useApp();
   const [state, setState] = useState<AppState>({
     step: 'loading',
-    duckdbPath: duckdbPath || process.env.DUCKDB_PATH || 'data/quantbot.db',
+    duckdbPath: duckdbPath || process.env.DUCKDB_PATH || 'data/tele.duckdb',
   });
 
   // Global escape handler
@@ -665,7 +665,7 @@ function InteractiveStrategyCreationApp({ duckdbPath }: { duckdbPath?: string })
     setState((s) => ({ ...s, step: 'saving' }));
 
     try {
-      const dbPath = state.duckdbPath || process.env.DUCKDB_PATH || 'data/quantbot.db';
+      const dbPath = state.duckdbPath || process.env.DUCKDB_PATH || 'data/tele.duckdb';
       const repo = new StrategiesRepository(dbPath);
 
       const strategyId = `${state.name}_${state.version || '1'}`.replace(/[^a-zA-Z0-9_]/g, '_');

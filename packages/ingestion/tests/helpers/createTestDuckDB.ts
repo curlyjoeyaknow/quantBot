@@ -39,7 +39,7 @@ export async function createTestDuckDB(
   // Use execa directly for DuckDB creation (setup step)
   const { execa } = await import('execa');
   const { resolve } = await import('path');
-  
+
   // Resolve to absolute path to ensure Python script can find it
   const absoluteDbPath = resolve(dbPath);
 
@@ -152,9 +152,13 @@ print("DuckDB created successfully")
 `;
 
   // Execute Python script directly (setup operation)
-  const result = await execa('python3', ['-c', pythonScript, absoluteDbPath, JSON.stringify(calls)], {
-    cwd: process.cwd(),
-  });
+  const result = await execa(
+    'python3',
+    ['-c', pythonScript, absoluteDbPath, JSON.stringify(calls)],
+    {
+      cwd: process.cwd(),
+    }
+  );
 
   if (result.exitCode !== 0) {
     throw new Error(`Failed to create test DuckDB: ${result.stderr}`);

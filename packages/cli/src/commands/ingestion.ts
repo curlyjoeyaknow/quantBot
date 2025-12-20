@@ -51,7 +51,7 @@ export const ohlcvSchema = z.object({
 export const telegramProcessSchema = z.object({
   file: z.string().min(1),
   outputDb: z.string().min(1),
-  chatId: z.string().min(1),
+  chatId: z.string().optional(), // Optional - will be extracted from file or default to "single_chat"
   rebuild: z.boolean().default(false),
   format: z.enum(['json', 'table', 'csv']).default('table'),
 });
@@ -137,7 +137,7 @@ export function registerIngestionCommands(program: Command): void {
     .description('Process Telegram export using Python DuckDB pipeline')
     .requiredOption('--file <path>', 'Path to Telegram JSON export file')
     .requiredOption('--output-db <path>', 'Output DuckDB file path')
-    .requiredOption('--chat-id <id>', 'Chat ID')
+    .option('--chat-id <id>', 'Chat ID (optional - will be extracted from file if single chat)')
     .option('--rebuild', 'Rebuild database', false)
     .option('--format <format>', 'Output format', 'table')
     .action(async (options) => {

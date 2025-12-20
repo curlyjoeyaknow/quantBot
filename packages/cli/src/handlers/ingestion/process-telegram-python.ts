@@ -21,5 +21,6 @@ export async function processTelegramPythonHandler(
 ): Promise<TelegramPipelineResult> {
   const service = ctx.services.telegramPipeline();
 
+  // chatId is optional - Python script will extract from file or default to "single_chat"
   return await service.runPipeline(args.file, args.outputDb, args.chatId, args.rebuild);
 }

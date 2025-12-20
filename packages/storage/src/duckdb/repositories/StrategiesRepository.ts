@@ -114,6 +114,11 @@ export class StrategiesRepository {
         resultSchema
       );
 
+      // Ensure we always return an array, even if result is null/undefined
+      if (!result || !Array.isArray(result)) {
+        return [];
+      }
+
       return result.map((row) => ({
         name: row.name,
         version: row.version,
@@ -238,6 +243,11 @@ export class StrategiesRepository {
       );
 
       const result = await this.client.execute(this.scriptPath, 'list', {}, resultSchema);
+
+      // Ensure we always return an array, even if result is null/undefined
+      if (!result || !Array.isArray(result)) {
+        return [];
+      }
 
       return result.map((row) => ({
         name: row.name,

@@ -43,7 +43,7 @@ export class CallDataLoader {
    */
   async loadCalls(options: LoadCallsOptions = {}): Promise<CallPerformance[]> {
     // Use queryCallsDuckdb workflow to query calls
-    const duckdbPath = process.env.DUCKDB_PATH || 'data/quantbot.db';
+    const duckdbPath = process.env.DUCKDB_PATH || 'data/tele.duckdb';
     const fromISO = options.from
       ? DateTime.fromJSDate(options.from).toISO()!
       : DateTime.utc().minus({ days: 30 }).toISO()!;

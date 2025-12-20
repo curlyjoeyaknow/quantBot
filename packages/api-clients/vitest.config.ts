@@ -11,6 +11,7 @@ export default defineConfig({
       'tests/integration/**/*.integration.ts',
       'tests/properties/**/*.property.ts',
       'tests/fuzzing/**/*.fuzz.ts',
+      'tests/golden/**/*.test.ts',
       'src/**/*.test.ts',
     ],
     coverage: {

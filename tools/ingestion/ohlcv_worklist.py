@@ -11,13 +11,36 @@ import json
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional
 
 try:
     import duckdb
 except ImportError:
     print("Error: duckdb package not installed. Install with: pip install duckdb", file=sys.stderr)
     sys.exit(1)
+
+
+def normalize_chain(chain: str) -> str:
+    """
+    Normalize chain abbreviations to full canonical names.
+    
+    Maps:
+    - 'eth' -> 'ethereum'
+    - 'sol' -> 'solana'
+    - 'solana' -> 'solana'
+    - 'bsc' -> 'bsc'
+    - 'base' -> 'base'
+    """
+    chain_lower = chain.lower().strip()
+    chain_map = {
+        'eth': 'ethereum',
+        'sol': 'solana',
+        'solana': 'solana',
+        'ethereum': 'ethereum',
+        'bsc': 'bsc',
+        'base': 'base',
+    }
+    return chain_map.get(chain_lower, 'solana')  # Default to solana if unknown
 
 
 def get_ohlcv_worklist(
@@ -63,7 +86,7 @@ def get_ohlcv_worklist(
             token_group_query = """
             SELECT 
                 cl.mint,
-                COALESCE(cl.chain, 'solana') as chain,
+                LOWER(COALESCE(cl.chain, 'solana')) as chain,
                 MIN(cl.trigger_ts_ms) as earliest_ts_ms,
                 COUNT(DISTINCT (cl.trigger_chat_id, cl.trigger_message_id)) as call_count
             FROM caller_links_d cl
@@ -88,7 +111,7 @@ def get_ohlcv_worklist(
             calls_query = """
             SELECT 
                 cl.mint,
-                COALESCE(cl.chain, 'solana') as chain,
+                LOWER(COALESCE(cl.chain, 'solana')) as chain,
                 cl.trigger_ts_ms,
                 cl.trigger_chat_id,
                 cl.trigger_message_id,
@@ -124,7 +147,7 @@ def get_ohlcv_worklist(
                 calls_query += " AND cl.trigger_ts_ms <= ?"
                 params.append(to_ts)
             
-            token_group_query += " GROUP BY cl.mint, cl.chain"
+            token_group_query += " GROUP BY cl.mint, LOWER(COALESCE(cl.chain, 'solana'))"
             calls_query += " ORDER BY cl.trigger_ts_ms"
             
         elif 'user_calls_d' in table_names:
@@ -210,7 +233,8 @@ def get_ohlcv_worklist(
         token_groups_list = []
         for row in token_groups:
             mint = row[0]
-            chain = row[1] or 'solana'
+            chain_raw = row[1] or 'solana'
+            chain = normalize_chain(chain_raw)  # Normalize chain abbreviation to full name
             earliest_ts_ms = row[2]
             call_count = row[3]
             
@@ -230,7 +254,8 @@ def get_ohlcv_worklist(
         calls_list = []
         for row in calls:
             mint = row[0]
-            chain = row[1] or 'solana'
+            chain_raw = row[1] or 'solana'
+            chain = normalize_chain(chain_raw)  # Normalize chain abbreviation to full name
             trigger_ts_ms = row[2]
             trigger_chat_id = row[3]
             trigger_message_id = row[4]

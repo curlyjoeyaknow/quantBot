@@ -124,19 +124,64 @@ describe('OhlcvIngestionService (integration)', () => {
     const { existsSync } = await import('fs');
     expect(existsSync(testDuckDBPath)).toBe(true);
 
-    // Verify PythonEngine can query the real DuckDB
-    // Use absolute path to ensure Python script can find it
+    // Debug: Query DuckDB directly to verify data and schema
     const { resolve } = await import('path');
     const absoluteDuckDBPath = resolve(testDuckDBPath);
-    const worklist = await pythonEngine.runOhlcvWorklist({
-      duckdbPath: absoluteDuckDBPath,
-    });
+    const { execSync } = await import('child_process');
+    try {
+      const directQuery = execSync(
+        `python3 -c "import duckdb; con = duckdb.connect('${absoluteDuckDBPath}'); rows = con.execute('SELECT mint, chain, trigger_ts_ms FROM caller_links_d').fetchall(); print('Direct query result:', rows); valid = con.execute(\\\"SELECT COUNT(*) FROM caller_links_d WHERE mint IS NOT NULL AND mint != '' AND trigger_ts_ms IS NOT NULL\\\").fetchone()[0]; print('Valid rows:', valid); cols = con.execute(\\\"PRAGMA table_info('caller_links_d')\\\").fetchall(); print('Columns:', [c[1] for c in cols]); bot_ts_test = con.execute('SELECT cl.bot_ts_ms FROM caller_links_d cl LIMIT 1').fetchall(); print('bot_ts_ms query succeeded:', bot_ts_test); con.close()"`,
+        { encoding: 'utf-8' }
+      );
+      console.log('Direct DuckDB query:', directQuery);
+    } catch (error) {
+      console.log('Failed direct query:', error);
+    }
+
+    // Debug: Test Python script directly via execa
+    const { execa } = await import('execa');
+    const { join } = await import('path');
+    const workspaceRoot = join(process.cwd(), '../..');
+    try {
+      const directResult = await execa(
+        'python3',
+        [
+          join(workspaceRoot, 'tools/ingestion/ohlcv_worklist.py'),
+          '--duckdb',
+          absoluteDuckDBPath,
+        ],
+        {
+          cwd: join(workspaceRoot, 'tools/ingestion'),
+        }
+      );
+      console.log('Direct Python script stdout:', directResult.stdout);
+      console.log('Direct Python script stderr:', directResult.stderr);
+      const directWorklist = JSON.parse(directResult.stdout);
+      console.log('Direct Python script parsed result:', JSON.stringify(directWorklist, null, 2));
+    } catch (error) {
+      console.log('Direct Python script failed:', error);
+    }
+
+    // Verify PythonEngine can query the real DuckDB
+    let worklist;
+    try {
+      worklist = await pythonEngine.runOhlcvWorklist({
+        duckdbPath: absoluteDuckDBPath,
+      });
+    } catch (error) {
+      console.log('runOhlcvWorklist threw error:', error);
+      throw error;
+    }
 
     // Debug: Log worklist if empty
     if (worklist.tokenGroups.length === 0) {
       console.log('Worklist is empty. DuckDB path:', absoluteDuckDBPath);
       console.log('Worklist result:', JSON.stringify(worklist, null, 2));
-      
+      // Check if there's an error in the result
+      if ('error' in worklist) {
+        console.log('Python script returned error:', (worklist as any).error);
+      }
+
       // Try to verify the DuckDB file has data
       const { execSync } = await import('child_process');
       try {

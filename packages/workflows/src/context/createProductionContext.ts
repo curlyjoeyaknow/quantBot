@@ -67,7 +67,7 @@ export interface ProductionContextConfig {
  */
 export function createProductionContext(config?: ProductionContextConfig): WorkflowContext {
   // DuckDB repositories require dbPath - get from environment or use default
-  const dbPath = process.env.DUCKDB_PATH || 'data/quantbot.db';
+  const dbPath = process.env.DUCKDB_PATH || 'data/tele.duckdb';
   const strategiesRepo = new StrategiesRepository(dbPath); // DuckDB version
   // CallersRepository not used in this context - workflows use services instead
   // PostgreSQL repositories removed - use DuckDB services/workflows for calls/tokens/simulation runs
