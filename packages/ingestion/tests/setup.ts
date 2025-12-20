@@ -1,9 +1,34 @@
 import { vi } from 'vitest';
+import { z } from 'zod';
 
 // Mock @quantbot/utils logger to avoid native binding issues
 // Don't use importActual to avoid module resolution errors
 vi.mock('@quantbot/utils', () => {
   const BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+  
+  // Mock PythonManifestSchema (Zod schema)
+  const PythonManifestSchema = z.object({
+    version: z.string(),
+    calls: z.array(z.any()).optional(),
+    alerts: z.array(z.any()).optional(),
+  });
+  
+  // Mock PythonEngine class
+  class PythonEngine {
+    async runScript() {
+      return { success: true };
+    }
+    async runTelegramPipeline() {
+      return { success: true, calls: [], alerts: [] };
+    }
+    async runDuckDBStorage() {
+      return { success: true };
+    }
+    async runClickHouseEngine() {
+      return { success: true };
+    }
+  }
+  
   return {
     logger: {
       info: vi.fn(),
@@ -32,9 +57,17 @@ vi.mock('@quantbot/utils', () => {
       }
       return true;
     },
-    getPythonEngine: vi.fn(),
+    PythonEngine,
+    getPythonEngine: vi.fn(() => new PythonEngine()),
+    PythonManifestSchema,
     retryWithBackoff: async <T>(fn: () => Promise<T>): Promise<T> => {
       return fn();
+    },
+    ValidationError: class ValidationError extends Error {
+      constructor(message: string) {
+        super(message);
+        this.name = 'ValidationError';
+      }
     },
   };
 });
