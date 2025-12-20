@@ -16,10 +16,29 @@ except ImportError:
     sys.exit(1)
 
 
+def safe_connect(db_path: str):
+    """Safely connect to DuckDB, handling empty/invalid files"""
+    db_file = Path(db_path)
+    if db_file.exists():
+        # Check if file is empty (0 bytes)
+        if db_file.stat().st_size == 0:
+            db_file.unlink()  # Delete empty file
+        else:
+            # Try to connect to validate it's a valid DuckDB file
+            try:
+                test_con = duckdb.connect(db_path)
+                test_con.close()
+            except Exception:
+                # File exists but is invalid - delete it
+                db_file.unlink()
+    
+    return duckdb.connect(db_path)
+
+
 def init_database(db_path: str) -> dict:
     """Initialize DuckDB database and schema"""
     try:
-        con = duckdb.connect(db_path)
+        con = safe_connect(db_path)
         
         con.execute("""
             CREATE TABLE IF NOT EXISTS strategies (
@@ -56,7 +75,7 @@ def init_database(db_path: str) -> dict:
 def find_all_active(db_path: str) -> dict:
     """Find all active strategies"""
     try:
-        con = duckdb.connect(db_path)
+        con = safe_connect(db_path)
         
         results = con.execute("""
             SELECT id, name, version, category, description, config_json, is_active, created_at, updated_at
@@ -88,7 +107,7 @@ def find_all_active(db_path: str) -> dict:
 def find_by_name(db_path: str, name: str, version: str) -> dict:
     """Find strategy by name and version"""
     try:
-        con = duckdb.connect(db_path)
+        con = safe_connect(db_path)
         
         result = con.execute("""
             SELECT id, name, version, category, description, config_json, is_active, created_at, updated_at
@@ -119,7 +138,7 @@ def find_by_name(db_path: str, name: str, version: str) -> dict:
 def create_strategy(db_path: str, data: dict) -> dict:
     """Create a new strategy"""
     try:
-        con = duckdb.connect(db_path)
+        con = safe_connect(db_path)
         
         name = data.get("name")
         if not name:
@@ -168,7 +187,7 @@ def create_strategy(db_path: str, data: dict) -> dict:
 def list_strategies(db_path: str) -> dict:
     """List all strategies"""
     try:
-        con = duckdb.connect(db_path)
+        con = safe_connect(db_path)
         
         results = con.execute("""
             SELECT id, name, version, category, description, config_json, is_active, created_at, updated_at
