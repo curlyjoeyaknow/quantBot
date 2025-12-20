@@ -6,7 +6,8 @@
 
 import { DateTime } from 'luxon';
 import { logger } from '@quantbot/utils';
-import { join } from 'path';
+import { join, dirname } from 'path';
+import { existsSync, readFileSync } from 'fs';
 import { z } from 'zod';
 import type { StrategyConfig } from '@quantbot/core';
 import { DuckDBClient } from '../duckdb-client.js';
@@ -29,8 +30,47 @@ export class StrategiesRepository {
 
   constructor(dbPath: string, client?: DuckDBClient) {
     this.client = client || new DuckDBClient(dbPath);
-    this.scriptPath = join(process.cwd(), 'tools/storage/duckdb_strategies.py');
+    // Resolve script path relative to workspace root (find root by looking for tools/ directory)
+    const workspaceRoot = this.findWorkspaceRoot();
+    this.scriptPath = join(workspaceRoot, 'tools/storage/duckdb_strategies.py');
     this.initializeDatabase();
+  }
+
+  /**
+   * Find workspace root by looking for pnpm-workspace.yaml or package.json with workspace config
+   */
+  private findWorkspaceRoot(): string {
+    let current = process.cwd();
+
+    while (current !== '/' && current !== '') {
+      const workspaceFile = join(current, 'pnpm-workspace.yaml');
+      const packageFile = join(current, 'package.json');
+
+      if (existsSync(workspaceFile)) {
+        return current;
+      }
+
+      if (existsSync(packageFile)) {
+        try {
+          const pkg = JSON.parse(readFileSync(packageFile, 'utf8'));
+          if (pkg.workspaces || pkg.pnpm?.workspace) {
+            return current;
+          }
+        } catch {
+          // Continue searching
+        }
+      }
+
+      const parent = dirname(current);
+      if (parent === current) {
+        // Reached filesystem root
+        break;
+      }
+      current = parent;
+    }
+
+    // Fallback to process.cwd() if workspace root not found
+    return process.cwd();
   }
 
   /**
