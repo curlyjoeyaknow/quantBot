@@ -137,7 +137,7 @@ def get_caller_calls_by_month(duckdb_conn, start_month: Optional[str] = None, en
     return dict(caller_data)
 
 
-def check_ohlcv_coverage(ch_client, database: str, calls: List[Dict], interval: str = '5m') -> Dict[str, Any]:
+def check_ohlcv_coverage(ch_client, database: str, calls: List[Dict], interval: str = '5m', verbose: bool = False) -> Dict[str, Any]:
     """
     Check OHLCV coverage for a list of calls
     
@@ -161,23 +161,33 @@ def check_ohlcv_coverage(ch_client, database: str, calls: List[Dict], interval: 
     # Get unique mints from calls
     mints = list(set(call['mint'] for call in calls))
     
+    if verbose:
+        print(f"Checking coverage for {len(mints)} unique mints...", file=sys.stderr, flush=True)
+    
     # Check which mints have OHLCV data in ClickHouse
-    # Build query to check for each mint
-    mint_placeholders = ','.join(f"'{m}'" for m in mints)
+    # Batch queries to avoid huge IN clauses (max 100 mints per query)
+    mints_with_coverage = set()
+    batch_size = 100
     
-    query = f"""
-    SELECT DISTINCT token_address
-    FROM {database}.ohlcv_candles
-    WHERE token_address IN ({mint_placeholders})
-      AND `interval` = '{interval}'
-    """
-    
-    try:
-        results = ch_client.execute(query)
-        mints_with_coverage = set(row[0] for row in results)
-    except Exception as e:
-        print(f"Warning: ClickHouse query failed: {e}", file=sys.stderr)
-        mints_with_coverage = set()
+    for i in range(0, len(mints), batch_size):
+        batch = mints[i:i+batch_size]
+        mint_placeholders = ','.join(f"'{m}'" for m in batch)
+        
+        query = f"""
+        SELECT DISTINCT token_address
+        FROM {database}.ohlcv_candles
+        WHERE token_address IN ({mint_placeholders})
+          AND `interval` = '{interval}'
+        """
+        
+        try:
+            results = ch_client.execute(query)
+            mints_with_coverage.update(row[0] for row in results)
+            
+            if verbose:
+                print(f"  Batch {i//batch_size + 1}/{(len(mints)-1)//batch_size + 1}: {len(results)} mints found", file=sys.stderr, flush=True)
+        except Exception as e:
+            print(f"Warning: ClickHouse query failed for batch {i//batch_size + 1}: {e}", file=sys.stderr, flush=True)
     
     # Calculate coverage
     calls_with_coverage = sum(1 for call in calls if call['mint'] in mints_with_coverage)
@@ -199,7 +209,8 @@ def build_coverage_matrix(
     interval: str = '5m',
     caller_filter: Optional[str] = None,
     start_month: Optional[str] = None,
-    end_month: Optional[str] = None
+    end_month: Optional[str] = None,
+    verbose: bool = False
 ) -> Dict[str, Any]:
     """
     Build caller × month coverage matrix
@@ -218,12 +229,20 @@ def build_coverage_matrix(
         }
     """
     
+    if verbose:
+        print("Getting calls from DuckDB...", file=sys.stderr, flush=True)
+    
     # Get all calls grouped by caller and month
     caller_calls = get_caller_calls_by_month(duckdb_conn, start_month, end_month)
+    
+    if verbose:
+        print(f"Found {len(caller_calls)} callers", file=sys.stderr, flush=True)
     
     # Filter by caller if specified
     if caller_filter:
         caller_calls = {k: v for k, v in caller_calls.items() if k == caller_filter}
+        if verbose:
+            print(f"Filtered to caller: {caller_filter}", file=sys.stderr, flush=True)
     
     # Get all unique months
     all_months = set()
@@ -231,14 +250,31 @@ def build_coverage_matrix(
         all_months.update(caller_months.keys())
     months = sorted(list(all_months))
     
+    if verbose:
+        print(f"Analyzing {len(months)} months: {months}", file=sys.stderr, flush=True)
+    
     # Build coverage matrix
     matrix = {}
+    total_cells = len(caller_calls) * len(months)
+    current_cell = 0
+    
     for caller, months_data in caller_calls.items():
+        if verbose:
+            print(f"\nProcessing caller: {caller}", file=sys.stderr, flush=True)
+        
         matrix[caller] = {}
         for month in months:
+            current_cell += 1
             calls = months_data.get(month, [])
-            coverage = check_ohlcv_coverage(ch_client, database, calls, interval)
+            
+            if verbose:
+                print(f"  [{current_cell}/{total_cells}] {month}: {len(calls)} calls", file=sys.stderr, flush=True)
+            
+            coverage = check_ohlcv_coverage(ch_client, database, calls, interval, verbose)
             matrix[caller][month] = coverage
+    
+    if verbose:
+        print("\nCoverage matrix complete!", file=sys.stderr, flush=True)
     
     return {
         'callers': sorted(list(caller_calls.keys())),
@@ -410,6 +446,8 @@ def main():
                        help='Minimum coverage threshold for surgical fetch plan (default: 0.8)')
     parser.add_argument('--generate-fetch-plan', action='store_true',
                        help='Generate surgical fetch plan for gaps')
+    parser.add_argument('--verbose', action='store_true',
+                       help='Show verbose progress output to stderr')
     
     args = parser.parse_args()
     
@@ -426,7 +464,8 @@ def main():
             interval=args.interval,
             caller_filter=args.caller,
             start_month=args.start_month,
-            end_month=args.end_month
+            end_month=args.end_month,
+            verbose=args.verbose
         )
         
         # Generate fetch plan if requested

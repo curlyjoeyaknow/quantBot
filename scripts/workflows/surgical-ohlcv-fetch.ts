@@ -50,6 +50,7 @@ async function getCoverageData(
     '--generate-fetch-plan',
     '--min-coverage',
     minCoverage.toString(),
+    '--verbose', // Show progress to stderr
   ];
 
   if (startMonth) args.push('--start-month', startMonth);
@@ -57,59 +58,65 @@ async function getCoverageData(
   if (caller) args.push('--caller', caller);
 
   console.log('   Querying DuckDB and ClickHouse...');
-  console.log(`   Command: python3 ${args.join(' ')}`);
-  console.log('   (This may take 10-30 seconds for large datasets)\n');
+  console.log('   (Progress will be shown below)\n');
 
   try {
-    // Show spinner while waiting
     const startTime = Date.now();
-    let spinnerInterval: NodeJS.Timeout | null = null;
-    const spinnerFrames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
-    let spinnerIndex = 0;
 
-    if (process.stdout.isTTY) {
-      spinnerInterval = setInterval(() => {
-        const elapsed = ((Date.now() - startTime) / 1000).toFixed(0);
-        process.stdout.write(`\r   ${spinnerFrames[spinnerIndex]} Analyzing... (${elapsed}s)`);
-        spinnerIndex = (spinnerIndex + 1) % spinnerFrames.length;
-      }, 100);
-    }
+    // Use spawn to show stderr (verbose output) in real-time
+    const result = await new Promise<string>((resolve, reject) => {
+      const { spawn } = require('child_process');
+      const child = spawn('python3', args, {
+        cwd: process.cwd(),
+        env: process.env,
+      });
 
-    const stdout = execSync(`python3 ${args.join(' ')} 2>&1`, {
-      encoding: 'utf-8',
-      maxBuffer: 50 * 1024 * 1024,
-      timeout: 120000, // 2 minute timeout
+      let stdout = '';
+      let stderr = '';
+
+      child.stdout.on('data', (data: Buffer) => {
+        stdout += data.toString();
+      });
+
+      child.stderr.on('data', (data: Buffer) => {
+        // Show verbose progress in real-time
+        process.stderr.write(data.toString());
+        stderr += data.toString();
+      });
+
+      child.on('close', (code: number) => {
+        if (code === 0) {
+          resolve(stdout);
+        } else {
+          reject(new Error(`Python script exited with code ${code}\nstderr: ${stderr}`));
+        }
+      });
+
+      child.on('error', (err: Error) => {
+        reject(err);
+      });
+
+      // Timeout after 2 minutes
+      setTimeout(() => {
+        child.kill();
+        reject(new Error('Timeout: Analysis took longer than 2 minutes'));
+      }, 120000);
     });
 
-    if (spinnerInterval) {
-      clearInterval(spinnerInterval);
-      const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
-      process.stdout.write(`\r   ✓ Analysis complete (${elapsed}s)\n\n`);
-    }
+    const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+    console.log(`\n   ✓ Analysis complete (${elapsed}s)\n`);
 
     // Check if output contains error
-    if (stdout.includes('ERROR:') || stdout.includes('Traceback')) {
+    if (result.includes('ERROR:') || result.includes('Traceback')) {
       console.error('❌ Python script error:');
-      console.error(stdout);
+      console.error(result);
       throw new Error('Coverage analysis failed');
     }
 
-    return JSON.parse(stdout);
+    return JSON.parse(result);
   } catch (error: any) {
-    process.stdout.write('\r   ✗ Analysis failed\n\n');
-    console.error('❌ Failed to get coverage data');
-    
-    if (error.killed) {
-      console.error('   Timeout: Analysis took longer than 2 minutes');
-    }
-    
-    if (error.stdout) {
-      console.error('Output:', error.stdout.substring(0, 1000));
-    }
-    if (error.stderr) {
-      console.error('Error:', error.stderr.substring(0, 1000));
-    }
-    
+    console.error('\n   ✗ Analysis failed\n');
+    console.error('❌ Failed to get coverage data:', error.message);
     throw error;
   }
 }
