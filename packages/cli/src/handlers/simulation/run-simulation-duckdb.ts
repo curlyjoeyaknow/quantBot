@@ -55,11 +55,17 @@ export async function runSimulationDuckdbHandler(
     callsLimit: 1000,
   };
 
+  // Create OhlcvBirdeyeFetch service for OHLCV ingestion context
+  // Dynamic import to avoid build-time dependency on @quantbot/jobs
+  const { OhlcvBirdeyeFetch } = await import('@quantbot/jobs');
+  const ohlcvBirdeyeFetch = new OhlcvBirdeyeFetch();
+
   // Create workflow context with services from CommandContext
   const workflowContext = createDuckdbSimulationContext({
     simulationService: ctx.services.simulation(),
     duckdbStorageService: ctx.services.duckdbStorage(),
     ohlcvIngestionService: ctx.services.ohlcvIngestion(),
+    ohlcvBirdeyeFetch, // Required for OHLCV ingestion context
   });
 
   // Call workflow (orchestration happens here)
