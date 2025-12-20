@@ -21,7 +21,15 @@
       "@quantbot/ingestion": ["../ingestion/dist"],
       "@quantbot/ingestion/*": ["../ingestion/dist/*"],
       "@quantbot/jobs": ["../jobs/dist"],
-      "@quantbot/jobs/*": ["../jobs/dist/*"]
+      "@quantbot/jobs/*": ["../jobs/dist/*"],
+      "@quantbot/core": ["../core/dist"],
+      "@quantbot/core/*": ["../core/dist/*"],
+      "@quantbot/utils": ["../utils/dist"],
+      "@quantbot/utils/*": ["../utils/dist/*"],
+      "@quantbot/storage": ["../storage/dist"],
+      "@quantbot/storage/*": ["../storage/dist/*"],
+      "@quantbot/api-clients": ["../api-clients/dist"],
+      "@quantbot/api-clients/*": ["../api-clients/dist/*"]
     }
   },
   "include": ["src/**/*.ts"],
