@@ -9,6 +9,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Comprehensive ARCHITECTURE.md**: Created detailed system architecture documentation in `docs/ARCHITECTURE.md`
+  - Package dependency graph with visual diagram
+  - Build order documentation (mandatory sequence)
+  - Layer responsibilities (Foundation → Infrastructure → Service → Orchestration → Application)
+  - Key architectural patterns (Workflow, Handler, Python/DuckDB integration)
+  - Database architecture (DuckDB + ClickHouse)
+  - Testing strategy and crypto backend rules
+  - Critical rules summary (mint addresses, dependency injection, error handling)
+
+- **Project TODO.md**: Created project roadmap and task tracking in `TODO.md`
+  - Active development tasks
+  - Backlog with priority levels
+  - Architecture improvements roadmap
+  - Quality gates and technical debt tracking
+
 - **DuckDB Error Database**: Implemented persistent error tracking with DuckDB for better error diagnosis and analysis
   - `ErrorRepository` in `@quantbot/storage` for DuckDB-based error storage
   - Python script `tools/storage/duckdb_errors.py` for error operations
@@ -32,10 +47,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **README.md Overhaul**: Updated README to reflect current architecture and workflow model
+  - Added three-layer architecture description (Pure Compute, Orchestration, Adapters)
+  - Updated package structure with visual layer diagram
+  - Added build order table with mandatory sequence
+  - Updated database section (DuckDB as primary, ClickHouse for time-series)
+  - Added workflow pattern documentation with code examples
+  - Updated contributing guidelines with architectural rules
+  - Removed outdated PostgreSQL references
+  - Updated documentation links (ARCHITECTURE.md, TODO.md)
+
+- **Surgical OHLCV Fetch Timeout**: Increased default coverage analysis timeout from 2 minutes to 5 minutes
+  - Configurable via `OHLCV_COVERAGE_TIMEOUT_MS` environment variable
+  - Prevents premature timeouts during large coverage analysis operations
+
 - **OHLCV Architecture**: Moved API-calling logic from `@quantbot/ohlcv` to `@quantbot/jobs`
   - `OhlcvIngestionEngine` moved from `@quantbot/ohlcv` to `@quantbot/jobs`
   - `OhlcvFetchJob` refactored to use `fetchBirdeyeCandles` from `@quantbot/api-clients`
   - `storeCandles` remains in `@quantbot/ohlcv` for offline storage operations
+- **Surgical OHLCV Fetch Improvements**: Enhanced surgical OHLCV fetch with progress tracking and better timeout handling
+  - Increased coverage analysis timeout from 2 minutes to 5 minutes (configurable via `OHLCV_COVERAGE_TIMEOUT_MS`)
+  - Added `--verbose` flag for detailed progress output and progress bars
+  - Heartbeat messages every 10 seconds during coverage analysis to prevent appearance of hanging
+  - Real-time progress bars for task execution showing current/total progress
+  - Detailed logging for each task and interval being fetched
 
 - **Ingestion Architecture**: Removed all API client calls from `@quantbot/ingestion`
   - Removed ATH/ATL calculation (moved to simulation layer)
