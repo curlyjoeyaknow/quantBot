@@ -25,6 +25,7 @@ import '../commands/simulation-interactive.js';
 import '../commands/analytics.js';
 import '../commands/api-clients.js';
 import '../commands/telegram.js';
+import '../commands/metadata.js';
 
 // Import register functions to add Commander options
 import { registerObservabilityCommands } from '../commands/observability.js';
@@ -36,6 +37,7 @@ import { registerInteractiveSimulationCommand } from '../commands/simulation-int
 import { registerAnalyticsCommands } from '../commands/analytics.js';
 import { registerApiClientsCommands } from '../commands/api-clients.js';
 import { registerTelegramCommands } from '../commands/telegram.js';
+import { registerMetadataCommands } from '../commands/metadata.js';
 
 // Set up program
 program
@@ -55,6 +57,7 @@ registerInteractiveSimulationCommand(program);
 registerAnalyticsCommands(program);
 registerApiClientsCommands(program);
 registerTelegramCommands(program);
+registerMetadataCommands(program);
 
 // Global error handler
 program.configureOutput({
