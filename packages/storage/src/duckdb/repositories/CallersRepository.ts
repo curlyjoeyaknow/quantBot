@@ -196,6 +196,11 @@ export class CallersRepository {
 
       const result = await this.client.execute(this.scriptPath, 'list', {}, resultSchema);
 
+      // Ensure we always return an array, even if result is null/undefined
+      if (!result || !Array.isArray(result)) {
+        return [];
+      }
+
       return result.map((row) => ({
         id: row.id,
         source: row.source,

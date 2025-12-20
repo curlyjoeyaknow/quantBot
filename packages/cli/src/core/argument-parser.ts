@@ -33,30 +33,65 @@ export function parseArguments<T extends z.ZodSchema>(
 }
 
 /**
+ * Convert camelCase/PascalCase to kebab-case
+ * Preserves keys that already contain underscores or dots
+ */
+function toKebabCase(key: string): string {
+  // Preserve keys with underscores or dots as-is
+  if (key.includes('_') || key.includes('.')) {
+    return key;
+  }
+
+  // Convert camelCase/PascalCase to kebab-case
+  return key
+    .replace(/([a-z])([A-Z])/g, '$1-$2') // Insert dash between lowercase and uppercase
+    .replace(/([A-Z])([A-Z][a-z])/g, '$1-$2') // Insert dash between consecutive capitals
+    .toLowerCase();
+}
+
+/**
  * Normalize Commander.js options to a flat object
  * Handles both --flag value and --flag=value formats
+ *
+ * Key normalization:
+ * - Commander.js already converts --kebab-case to camelCase
+ * - Preserve camelCase keys as-is (Zod schemas expect camelCase)
+ * - Keys with underscores or dots → preserved as-is
+ *
+ * Value normalization:
+ * - String "true"/"false" → boolean
+ * - String numbers → number (if pure numeric)
+ * - All other values → preserved as-is
  */
 export function normalizeOptions(options: Record<string, unknown>): Record<string, unknown> {
   const normalized: Record<string, unknown> = {};
 
   for (const [key, value] of Object.entries(options)) {
-    // Convert camelCase to kebab-case for consistency
-    const normalizedKey = key.replace(/([A-Z])/g, '-$1').toLowerCase();
-
     // Handle undefined/null values
     if (value === undefined || value === null) {
       continue;
     }
 
+    // Preserve camelCase keys as-is (Commander.js already converts --kebab-case to camelCase)
+    // Zod schemas expect camelCase, so don't convert back to kebab-case
+    const normalizedKey = key;
+
     // Handle string values that might be numbers or booleans
     if (typeof value === 'string') {
-      // Try to parse as number
+      // Try to parse as boolean
       if (value === 'true') {
         normalized[normalizedKey] = true;
       } else if (value === 'false') {
         normalized[normalizedKey] = false;
       } else if (!isNaN(Number(value)) && value.trim() !== '') {
-        normalized[normalizedKey] = Number(value);
+        // Try to parse as number (but preserve if it's a file path or other non-numeric string)
+        // Only convert if it's a pure number string
+        const numValue = Number(value);
+        if (String(numValue) === value.trim()) {
+          normalized[normalizedKey] = numValue;
+        } else {
+          normalized[normalizedKey] = value;
+        }
       } else {
         normalized[normalizedKey] = value;
       }

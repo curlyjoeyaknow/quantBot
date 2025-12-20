@@ -171,9 +171,26 @@ export async function getCoverage(
 
     // Calculate coverage ratio
     const totalSeconds = Math.floor((endTime.getTime() - startTime.getTime()) / 1000);
-    const intervalSeconds =
-      interval === '1m' ? 60 : interval === '5m' ? 300 : interval === '15s' ? 15 : 3600;
-    const expectedCandles = Math.floor(totalSeconds / intervalSeconds);
+    
+    // Parse interval to seconds - handle all supported formats
+    let intervalSeconds: number;
+    const normalizedInterval = interval.toLowerCase();
+    if (normalizedInterval === '15s') {
+      intervalSeconds = 15;
+    } else if (normalizedInterval === '1m') {
+      intervalSeconds = 60;
+    } else if (normalizedInterval === '5m') {
+      intervalSeconds = 300;
+    } else if (normalizedInterval === '15m') {
+      intervalSeconds = 900;
+    } else if (normalizedInterval === '1h' || normalizedInterval === '1H') {
+      intervalSeconds = 3600;
+    } else {
+      // Default to 1 hour for unknown intervals
+      intervalSeconds = 3600;
+    }
+    
+    const expectedCandles = intervalSeconds > 0 ? Math.floor(totalSeconds / intervalSeconds) : 0;
 
     // Minimum required candles: 5000 for each interval
     // This ensures we have enough data for simulation

@@ -214,6 +214,11 @@ export class ErrorRepository {
         resultSchema
       );
 
+      // Ensure we always return an array, even if result is null/undefined
+      if (!result || !Array.isArray(result)) {
+        return [];
+      }
+
       return result.map((row) => ({
         id: row.id,
         timestamp: DateTime.fromISO(row.timestamp),
@@ -289,6 +294,11 @@ export class ErrorRepository {
         },
         resultSchema
       );
+
+      // Ensure we always return an array, even if result is null/undefined
+      if (!result || !Array.isArray(result)) {
+        return [];
+      }
 
       return result.map((row) => ({
         id: row.id,

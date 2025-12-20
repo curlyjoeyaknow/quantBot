@@ -104,6 +104,7 @@ describe('queryStorageHandler', () => {
 
     const result = await queryStorageHandler(args, fakeCtx);
 
+    // Handler converts table name to lowercase for query
     expect(mockClickHouseClient.query).toHaveBeenCalledWith({
       query: 'SELECT * FROM quantbot.ohlcv_candles LIMIT {limit:UInt32}',
       query_params: { limit: 10 },

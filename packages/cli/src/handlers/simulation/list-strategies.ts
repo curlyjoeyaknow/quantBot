@@ -10,7 +10,7 @@ import { StrategiesRepository } from '@quantbot/storage';
 
 export async function listStrategiesHandler(args: ListStrategiesArgs, _ctx: CommandContext) {
   // Get DuckDB path from args or environment
-  const dbPath = args.duckdb || process.env.DUCKDB_PATH || 'data/quantbot.db';
+  const dbPath = args.duckdb || process.env.DUCKDB_PATH || 'data/tele.duckdb';
 
   const strategiesRepo = new StrategiesRepository(dbPath);
 

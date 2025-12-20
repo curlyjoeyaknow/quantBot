@@ -11,7 +11,7 @@
 
 import { logger, retryWithBackoff, isEvmAddress, isSolanaAddress } from '@quantbot/utils';
 import type { Chain } from '@quantbot/core';
-import { getBirdeyeClient } from './birdeye-client.js';
+import { getBirdeyeClient, BirdeyeClient } from '@quantbot/api-clients';
 import { getMetadataCache } from './multi-chain-metadata-cache.js';
 
 export interface TokenMetadata {
@@ -38,13 +38,15 @@ export interface MultiChainMetadataResult {
  *
  * @param address - The token address (full, case-preserved)
  * @param chainHint - Optional hint from context (e.g., from Telegram message)
+ * @param getClientFn - Optional function to get BirdeyeClient (for testing/dependency injection)
  * @returns Multi-chain metadata result with all attempted chains
  */
 export async function fetchMultiChainMetadata(
   address: string,
-  chainHint?: Chain
+  chainHint?: Chain,
+  getClientFn?: () => BirdeyeClient
 ): Promise<MultiChainMetadataResult> {
-  const birdeyeClient = getBirdeyeClient();
+  const birdeyeClient = getClientFn ? getClientFn() : getBirdeyeClient();
   const cache = getMetadataCache();
 
   // Determine address kind
@@ -274,12 +276,14 @@ export async function fetchMultiChainMetadata(
  * @param addresses - Array of addresses to fetch
  * @param chainHint - Optional chain hint for all addresses
  * @param batchSize - Number of addresses to process in parallel (default: 5)
+ * @param getClientFn - Optional function to get BirdeyeClient (for testing/dependency injection)
  * @returns Array of metadata results
  */
 export async function batchFetchMultiChainMetadata(
   addresses: string[],
   chainHint?: Chain,
-  batchSize: number = 5
+  batchSize: number = 5,
+  getClientFn?: () => BirdeyeClient
 ): Promise<MultiChainMetadataResult[]> {
   const results: MultiChainMetadataResult[] = [];
 
@@ -291,7 +295,7 @@ export async function batchFetchMultiChainMetadata(
     const batchResults = await Promise.all(
       batch.map(async (address) => {
         try {
-          return await fetchMultiChainMetadata(address, chainHint);
+          return await fetchMultiChainMetadata(address, chainHint, getClientFn);
         } catch (error) {
           logger.error('Failed to fetch metadata for address', error as Error, {
             address: address.substring(0, 20),

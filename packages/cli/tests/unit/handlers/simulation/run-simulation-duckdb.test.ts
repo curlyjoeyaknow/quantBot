@@ -16,9 +16,11 @@ vi.mock('@quantbot/workflows', () => ({
   runSimulationDuckdb: (...args: unknown[]) => mockRunSimulationDuckdb(...args),
 }));
 
-// Mock jobs
+// Mock jobs - OhlcvBirdeyeFetch must be a constructor
 vi.mock('@quantbot/jobs', () => ({
-  OhlcvBirdeyeFetch: vi.fn().mockImplementation(() => ({})),
+  OhlcvBirdeyeFetch: vi.fn().mockImplementation(function OhlcvBirdeyeFetch() {
+    return {};
+  }),
 }));
 
 describe('runSimulationDuckdbHandler', () => {
@@ -116,6 +118,7 @@ describe('runSimulationDuckdbHandler', () => {
       alert_timestamp: '2024-01-01T12:00:00Z',
     });
 
+    // Handler returns result.simulationResults (from workflow)
     expect(result).toHaveProperty('results');
     expect(result.results).toHaveLength(1);
     expect(result.results[0]).toHaveProperty('run_id');
@@ -141,8 +144,7 @@ describe('runSimulationDuckdbHandler', () => {
       mint: undefined,
       batch: false,
     });
-    mockRunSimulationDuckdb.mockRejectedValueOnce(validationError);
-    mockRunSimulationDuckdb.mockRejectedValueOnce(validationError);
+    mockRunSimulationDuckdb.mockRejectedValue(validationError);
 
     await expect(runSimulationDuckdbHandler(args as any, mockCtx)).rejects.toThrow(ValidationError);
     await expect(runSimulationDuckdbHandler(args as any, mockCtx)).rejects.toThrow(
@@ -152,8 +154,7 @@ describe('runSimulationDuckdbHandler', () => {
 
   it('should propagate service errors', async () => {
     const error = new AppError('Simulation failed', 'SIMULATION_FAILED', 500);
-    mockRunSimulationDuckdb.mockRejectedValueOnce(error);
-    mockRunSimulationDuckdb.mockRejectedValueOnce(error);
+    mockRunSimulationDuckdb.mockRejectedValue(error);
 
     const args = {
       duckdb: '/path/to/tele.duckdb',

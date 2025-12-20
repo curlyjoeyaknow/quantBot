@@ -28,6 +28,7 @@ import { isEvmAddress } from '@quantbot/utils';
 import { fetchMultiChainMetadata } from '@quantbot/api-clients';
 import { CallersRepository } from '@quantbot/storage';
 import { TokenDataRepository } from '@quantbot/storage';
+import { createProductionContext } from '../context/createProductionContext.js';
 // PostgreSQL repositories removed - use TelegramPipelineService for DuckDB storage
 
 const IngestSpecSchema = z.object({
@@ -79,11 +80,27 @@ export type TelegramJsonIngestContext = WorkflowContext & {
  */
 
 /**
+ * Create default context (for testing)
+ */
+export function createDefaultTelegramJsonIngestContext(): TelegramJsonIngestContext {
+  const baseContext = createProductionContext();
+  const dbPath = process.env.DUCKDB_PATH || 'data/tele.duckdb';
+  return {
+    ...baseContext,
+    repos: {
+      ...baseContext.repos,
+      callers: new CallersRepository(dbPath),
+      tokenData: new TokenDataRepository(dbPath),
+    },
+  };
+}
+
+/**
  * Ingest Telegram JSON export with normalization
  */
 export async function ingestTelegramJson(
   spec: TelegramJsonIngestSpec,
-  ctx: TelegramJsonIngestContext
+  ctx: TelegramJsonIngestContext = createDefaultTelegramJsonIngestContext()
 ): Promise<TelegramJsonIngestResult> {
   // 1. Validate spec
   const parsed = IngestSpecSchema.safeParse(spec);

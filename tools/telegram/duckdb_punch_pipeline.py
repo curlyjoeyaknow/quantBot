@@ -1410,6 +1410,22 @@ def main():
   # Track row counts for completion
   row_counts = {'tg_norm': 0, 'caller_links': 0, 'user_calls': 0}
 
+  print(f"Starting ingestion for chat_id={chat_id}, run_id={run_id}", flush=True)
+  print(f"Processing messages from {args.in_path}...", flush=True)
+
+  # Ensure run_id column exists before inserting (ensure_idempotent_schema might have failed silently)
+  try:
+    con.execute("SELECT run_id FROM tg_norm_d LIMIT 1")
+    has_run_id = True
+  except Exception:
+    # Column doesn't exist, add it
+    try:
+      con.execute("ALTER TABLE tg_norm_d ADD COLUMN run_id TEXT NOT NULL DEFAULT 'legacy'")
+      con.execute("ALTER TABLE tg_norm_d ADD COLUMN inserted_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP")
+      has_run_id = True
+    except Exception:
+      has_run_id = False
+
   # --- ingest messages streaming ---
   batch = []
   BATCH_N = 5000
@@ -1446,28 +1462,64 @@ def main():
       ))
 
       if len(batch) >= BATCH_N:
-        # Use INSERT OR IGNORE to prevent duplicates
+        if has_run_id:
+          try:
+            result = con.executemany("""
+              INSERT OR IGNORE INTO tg_norm_d 
+              (chat_id, chat_name, message_id, ts_ms, from_name, from_id, type, is_service, 
+               reply_to_message_id, text, links_json, norm_json, run_id)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, batch)
+          except Exception:
+            # If INSERT OR IGNORE fails (no PRIMARY KEYs), use regular INSERT
+            result = con.executemany("""
+              INSERT INTO tg_norm_d 
+              (chat_id, chat_name, message_id, ts_ms, from_name, from_id, type, is_service, 
+               reply_to_message_id, text, links_json, norm_json, run_id)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, batch)
+        else:
+          # Legacy schema without run_id
+          result = con.executemany("""
+            INSERT INTO tg_norm_d 
+            (chat_id, chat_name, message_id, ts_ms, from_name, from_id, type, is_service, 
+             reply_to_message_id, text, links_json, norm_json)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          """, [row[:12] for row in batch])  # Remove run_id from batch
+        row_counts['tg_norm'] += len(batch)
+        batch.clear()
+
+  if batch:
+    if has_run_id:
+      try:
         result = con.executemany("""
           INSERT OR IGNORE INTO tg_norm_d 
           (chat_id, chat_name, message_id, ts_ms, from_name, from_id, type, is_service, 
            reply_to_message_id, text, links_json, norm_json, run_id)
           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, batch)
-        row_counts['tg_norm'] += len(batch)
-        batch.clear()
-
-  if batch:
-    result = con.executemany("""
-      INSERT OR IGNORE INTO tg_norm_d 
-      (chat_id, chat_name, message_id, ts_ms, from_name, from_id, type, is_service, 
-       reply_to_message_id, text, links_json, norm_json, run_id)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """, batch)
+      except Exception:
+        # If INSERT OR IGNORE fails (no PRIMARY KEYs), use regular INSERT
+        result = con.executemany("""
+          INSERT INTO tg_norm_d 
+          (chat_id, chat_name, message_id, ts_ms, from_name, from_id, type, is_service, 
+           reply_to_message_id, text, links_json, norm_json, run_id)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, batch)
+    else:
+      # Legacy schema without run_id
+      result = con.executemany("""
+        INSERT INTO tg_norm_d 
+        (chat_id, chat_name, message_id, ts_ms, from_name, from_id, type, is_service, 
+         reply_to_message_id, text, links_json, norm_json)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      """, [row[:12] for row in batch])  # Remove run_id from batch
     row_counts['tg_norm'] += len(batch)
     batch.clear()
 
   # --- link bot replies by reply_to join + parse in python ---
   # pull candidates (only replies) then parse per row
+  print(f"Linking bot replies for chat_id={chat_id}...", flush=True)
   rows = con.execute("""
     SELECT
       b.chat_id,
@@ -1493,8 +1545,11 @@ def main():
       AND NOT (t.text LIKE '/%')
   """, [chat_id]).fetchall()
 
+  print(f"Found {len(rows)} bot reply candidates, parsing...", flush=True)
   link_rows = []
-  for r in rows:
+  for i, r in enumerate(rows):
+    if i % 1000 == 0 and i > 0:
+      print(f"  Processed {i}/{len(rows)} bot replies...", flush=True)
     (c_id, bot_mid, bot_ts, bot_from, bot_text, trig_mid, trig_ts, trig_from_id, trig_from_name, trig_text) = r
     card = parse_bot(bot_from, bot_text or "", trig_text)
     
@@ -1737,32 +1792,106 @@ def main():
     ))
 
   # replace old links for this run (idempotent: only delete this run's data)
-  con.execute("DELETE FROM caller_links_d WHERE trigger_chat_id = ? AND run_id = ?", [chat_id, run_id])
+  print(f"Inserting {len(link_rows)} caller links...", flush=True)
+  # Ensure run_id column exists in caller_links_d
+  try:
+    con.execute("SELECT run_id FROM caller_links_d LIMIT 1")
+    has_run_id_links = True
+  except Exception:
+    try:
+      con.execute("ALTER TABLE caller_links_d ADD COLUMN run_id TEXT NOT NULL DEFAULT 'legacy'")
+      has_run_id_links = True
+    except Exception:
+      has_run_id_links = False
+  
+  if has_run_id_links:
+    con.execute("DELETE FROM caller_links_d WHERE trigger_chat_id = ? AND run_id = ?", [chat_id, run_id])
+  else:
+    # Legacy schema - delete by chat_id only (less precise but works)
+    con.execute("DELETE FROM caller_links_d WHERE trigger_chat_id = ?", [chat_id])
   if link_rows:
-    # Use INSERT OR IGNORE to prevent duplicates
-    con.executemany("""
-      INSERT OR IGNORE INTO caller_links_d (
-        trigger_chat_id, trigger_message_id, trigger_ts_ms, trigger_from_id, trigger_from_name, trigger_text,
-        bot_message_id, bot_ts_ms, bot_from_name, bot_type,
-        token_name, ticker, mint, mint_raw, mint_validation_status, mint_validation_reason,
-        chain, platform,
-        token_age_s, token_created_ts_ms, views,
-        price_usd, price_move_pct, mcap_usd, mcap_change_pct,
-        vol_usd, liquidity_usd, zero_liquidity,
-        chg_1h_pct, buys_1h, sells_1h,
-        ath_mcap_usd, ath_drawdown_pct, ath_age_s,
-        fresh_1d_pct, fresh_7d_pct, top10_pct, holders_total,
-        top5_holders_pct_json, dev_sold, dex_paid,
-        card_json, validation_passed, run_id
-      ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-    """, link_rows)
+    # Use INSERT OR IGNORE to prevent duplicates (if PRIMARY KEYs exist), otherwise use regular INSERT
+    try:
+      con.executemany("""
+        INSERT OR IGNORE INTO caller_links_d (
+          trigger_chat_id, trigger_message_id, trigger_ts_ms, trigger_from_id, trigger_from_name, trigger_text,
+          bot_message_id, bot_ts_ms, bot_from_name, bot_type,
+          token_name, ticker, mint, mint_raw, mint_validation_status, mint_validation_reason,
+          chain, platform,
+          token_age_s, token_created_ts_ms, views,
+          price_usd, price_move_pct, mcap_usd, mcap_change_pct,
+          vol_usd, liquidity_usd, zero_liquidity,
+          chg_1h_pct, buys_1h, sells_1h,
+          ath_mcap_usd, ath_drawdown_pct, ath_age_s,
+          fresh_1d_pct, fresh_7d_pct, top10_pct, holders_total,
+          top5_holders_pct_json, dev_sold, dex_paid,
+          card_json, validation_passed, run_id
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+      """, link_rows)
+    except Exception:
+      # If INSERT OR IGNORE fails or run_id column doesn't exist, try without run_id
+      if has_run_id_links:
+        # run_id exists but INSERT OR IGNORE failed (no PRIMARY KEYs) - use regular INSERT
+        con.executemany("""
+          INSERT INTO caller_links_d (
+            trigger_chat_id, trigger_message_id, trigger_ts_ms, trigger_from_id, trigger_from_name, trigger_text,
+            bot_message_id, bot_ts_ms, bot_from_name, bot_type,
+            token_name, ticker, mint, mint_raw, mint_validation_status, mint_validation_reason,
+            chain, platform,
+            token_age_s, token_created_ts_ms, views,
+            price_usd, price_move_pct, mcap_usd, mcap_change_pct,
+            vol_usd, liquidity_usd, zero_liquidity,
+            chg_1h_pct, buys_1h, sells_1h,
+            ath_mcap_usd, ath_drawdown_pct, ath_age_s,
+            fresh_1d_pct, fresh_7d_pct, top10_pct, holders_total,
+            top5_holders_pct_json, dev_sold, dex_paid,
+            card_json, validation_passed, run_id
+          ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        """, link_rows)
+      else:
+        # Legacy schema without run_id - remove run_id from batch
+        legacy_link_rows = [row[:-1] for row in link_rows]  # Remove last element (run_id)
+        con.executemany("""
+          INSERT INTO caller_links_d (
+            trigger_chat_id, trigger_message_id, trigger_ts_ms, trigger_from_id, trigger_from_name, trigger_text,
+            bot_message_id, bot_ts_ms, bot_from_name, bot_type,
+            token_name, ticker, mint, mint_raw, mint_validation_status, mint_validation_reason,
+            chain, platform,
+            token_age_s, token_created_ts_ms, views,
+            price_usd, price_move_pct, mcap_usd, mcap_change_pct,
+            vol_usd, liquidity_usd, zero_liquidity,
+            chg_1h_pct, buys_1h, sells_1h,
+            ath_mcap_usd, ath_drawdown_pct, ath_age_s,
+            fresh_1d_pct, fresh_7d_pct, top10_pct, holders_total,
+            top5_holders_pct_json, dev_sold, dex_paid,
+            card_json, validation_passed
+          ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+        """, legacy_link_rows)
     row_counts['caller_links'] = len(link_rows)
 
   # --- build user_calls_d from links (one row per trigger) ---
   # Delete only this run's data (idempotent)
-  con.execute("DELETE FROM user_calls_d WHERE chat_id = ? AND run_id = ?", [chat_id, run_id])
+  print("Building user_calls_d from caller links...", flush=True)
+  # Ensure run_id column exists in user_calls_d
+  try:
+    con.execute("SELECT run_id FROM user_calls_d LIMIT 1")
+    has_run_id_calls = True
+  except Exception:
+    try:
+      con.execute("ALTER TABLE user_calls_d ADD COLUMN run_id TEXT NOT NULL DEFAULT 'legacy'")
+      con.execute("ALTER TABLE user_calls_d ADD COLUMN inserted_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP")
+      has_run_id_calls = True
+    except Exception:
+      has_run_id_calls = False
+  
+  if has_run_id_calls:
+    con.execute("DELETE FROM user_calls_d WHERE chat_id = ? AND run_id = ?", [chat_id, run_id])
+  else:
+    # Legacy schema - delete by chat_id only
+    con.execute("DELETE FROM user_calls_d WHERE chat_id = ?", [chat_id])
   
   # First, create temp table with all potential calls
+  print("Creating temp_user_calls table...", flush=True)
   con.execute("""
     CREATE TEMP TABLE temp_user_calls AS
     SELECT
@@ -1845,26 +1974,28 @@ def main():
   
   # Now filter to only first call per caller per mint
   # Use ROW_NUMBER to handle cases where same caller calls same mint at same timestamp
-  result = con.execute("""
-    INSERT OR IGNORE INTO user_calls_d
-    SELECT
-      chat_id,
-      message_id,
-      call_ts_ms,
-      call_datetime,
-      caller_name,
-      caller_id,
-      trigger_text,
-      bot_reply_id_1,
-      bot_reply_id_2,
-      mint,
-      ticker,
-      mcap_usd,
-      price_usd,
-      FALSE AS first_caller,
-      token_resolution_method,
-      ? AS run_id,
-      CURRENT_TIMESTAMP AS inserted_at
+  print("Inserting user calls...", flush=True)
+  if has_run_id_calls:
+    result = con.execute("""
+      INSERT OR IGNORE INTO user_calls_d
+      SELECT
+        chat_id,
+        message_id,
+        call_ts_ms,
+        call_datetime,
+        caller_name,
+        caller_id,
+        trigger_text,
+        bot_reply_id_1,
+        bot_reply_id_2,
+        mint,
+        ticker,
+        mcap_usd,
+        price_usd,
+        FALSE AS first_caller,
+        token_resolution_method,
+        ? AS run_id,
+        CURRENT_TIMESTAMP AS inserted_at
     FROM (
       SELECT
         t.*,
@@ -1880,10 +2011,47 @@ def main():
     ) ranked
     WHERE rn = 1
   """, [run_id])
+  else:
+    # Legacy schema without run_id and inserted_at
+    # Use regular INSERT (not INSERT OR IGNORE) since table has no PRIMARY KEYs
+    result = con.execute("""
+      INSERT INTO user_calls_d
+      SELECT
+        chat_id,
+        message_id,
+        call_ts_ms,
+        call_datetime,
+        caller_name,
+        caller_id,
+        trigger_text,
+        bot_reply_id_1,
+        bot_reply_id_2,
+        mint,
+        ticker,
+        mcap_usd,
+        price_usd,
+        FALSE AS first_caller,
+        token_resolution_method
+      FROM (
+        SELECT
+          t.*,
+          ROW_NUMBER() OVER (
+            PARTITION BY t.caller_id, COALESCE(t.mint, t.ticker, CAST(t.message_id AS TEXT))
+            ORDER BY 
+              -- Prefer triggers with both bots (Rick + Phanes)
+              CASE WHEN t.bot_reply_id_1 IS NOT NULL AND t.bot_reply_id_2 IS NOT NULL THEN 0 ELSE 1 END,
+              t.call_ts_ms ASC, 
+              t.message_id ASC
+          ) AS rn
+        FROM temp_user_calls t
+      ) ranked
+      WHERE rn = 1
+    """)
   
   # Get row count for user_calls_d
-  user_calls_count = con.execute("""
-    SELECT COUNT(*) FROM user_calls_d WHERE chat_id = ? AND run_id = ?
+  if has_run_id_calls:
+    user_calls_count = con.execute("""
+      SELECT COUNT(*) FROM user_calls_d WHERE chat_id = ? AND run_id = ?
   """, [chat_id, run_id]).fetchone()[0]
   row_counts['user_calls'] = user_calls_count
   

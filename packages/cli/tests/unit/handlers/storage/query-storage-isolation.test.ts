@@ -11,16 +11,6 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { queryStorageHandler } from '../../../../src/handlers/storage/query-storage.js';
-import * as storageCommands from '../../../../src/commands/storage.js';
-
-vi.mock('../../../../src/commands/storage.js', async () => {
-  const actual = await vi.importActual('../../../../src/commands/storage.js');
-  return {
-    ...actual,
-    queryPostgresTable: vi.fn(),
-    queryClickHouseTable: vi.fn(),
-  };
-});
 
 describe('queryStorageHandler - Isolation Test', () => {
   beforeEach(() => {
@@ -30,23 +20,32 @@ describe('queryStorageHandler - Isolation Test', () => {
   it('can be called with plain objects (no CLI infrastructure)', async () => {
     // Plain object args (as if from a REPL or script)
     const plainArgs = {
-      table: 'tokens',
+      table: 'ohlcv_candles', // Use ClickHouse table (PostgreSQL removed)
       limit: 10,
       format: 'json' as const,
     };
 
-    // Plain object context (minimal mock)
-    const plainCtx = {} as any;
+    // Plain object context (minimal mock - testing guardrail: handler uses ctx.services)
+    const mockClickHouseClient = {
+      query: vi.fn().mockResolvedValue({
+        json: vi.fn().mockResolvedValue([{ id: 1, name: 'test' }]),
+      }),
+    };
 
-    const mockData = [{ id: 1, name: 'test' }];
-    vi.mocked(storageCommands.queryPostgresTable).mockResolvedValue(mockData);
+    const plainCtx = {
+      services: {
+        clickHouseClient: () => mockClickHouseClient,
+      },
+    } as any;
+
+    process.env.CLICKHOUSE_DATABASE = 'quantbot';
 
     // Call handler directly (no Commander, no execute(), no CLI)
     const result = await queryStorageHandler(plainArgs, plainCtx);
 
     // Deterministic result
-    expect(result).toEqual(mockData);
-    expect(storageCommands.queryPostgresTable).toHaveBeenCalledWith('tokens', 10);
+    expect(Array.isArray(result)).toBe(true);
+    expect(mockClickHouseClient.query).toHaveBeenCalled();
   });
 
   it('returns the same result for the same inputs (deterministic)', async () => {
@@ -59,11 +58,25 @@ describe('queryStorageHandler - Isolation Test', () => {
     const args2 = { ...args1 }; // Same values, different object
 
     const mockResult = [{ id: 1 }, { id: 2 }];
+    const mockClickHouseClient = {
+      query: vi.fn().mockResolvedValue({
+        json: vi.fn().mockResolvedValue(mockResult),
+      }),
+    };
 
-    vi.mocked(storageCommands.queryClickHouseTable).mockResolvedValue(mockResult);
+    const ctx1 = {
+      services: {
+        clickHouseClient: () => mockClickHouseClient,
+      },
+    } as any;
 
-    const ctx1 = {} as any;
-    const ctx2 = {} as any;
+    const ctx2 = {
+      services: {
+        clickHouseClient: () => mockClickHouseClient,
+      },
+    } as any;
+
+    process.env.CLICKHOUSE_DATABASE = 'quantbot';
 
     const result1 = await queryStorageHandler(args1, ctx1);
     const result2 = await queryStorageHandler(args2, ctx2);

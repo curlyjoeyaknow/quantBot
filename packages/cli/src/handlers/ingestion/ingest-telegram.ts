@@ -25,7 +25,7 @@ export type IngestTelegramArgs = z.infer<typeof telegramSchema>;
  */
 export async function ingestTelegramHandler(args: IngestTelegramArgs, _ctx: CommandContext) {
   // Create workflow context with DuckDB repositories
-  const dbPath = process.env.DUCKDB_PATH || 'data/quantbot.db';
+  const dbPath = process.env.DUCKDB_PATH || 'data/tele.duckdb';
   const workflowContext = createProductionContext();
 
   // Add DuckDB repositories to context

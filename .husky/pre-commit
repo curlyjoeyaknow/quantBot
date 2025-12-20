@@ -18,6 +18,20 @@ npm run typecheck || {
   exit 1
 }
 
+# 4. Verify workflow contracts (fast)
+echo "🔍 Verifying workflow contracts..."
+pnpm tsx scripts/verify-workflow-contract.ts || {
+  echo "❌ Workflow contract verification failed"
+  exit 1
+}
+
+# 5. Verify dependency boundaries (fast)
+echo "🔍 Verifying dependency boundaries..."
+pnpm vitest packages/simulation/tests/architectural/import-rules.test.ts packages/ingestion/tests/unit/dependency-boundaries.test.ts packages/ohlcv/tests/unit/dependency-boundaries.test.ts --run || {
+  echo "❌ Dependency boundary checks failed"
+  exit 1
+}
+
 echo "✅ Pre-commit checks passed!"
-echo "💡 Note: Test requirements and full tests run in CI"
+echo "💡 Note: Full test suite runs in CI"
 

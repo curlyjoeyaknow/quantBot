@@ -330,7 +330,7 @@ const storageModule: PackageCommandModule = {
       examples: [
         'quantbot storage stats-workflow',
         'quantbot storage stats-workflow --source clickhouse',
-        'quantbot storage stats-workflow --source all --duckdb-path data/quantbot.db',
+        'quantbot storage stats-workflow --source all --duckdb-path data/tele.duckdb',
         'quantbot storage stats-workflow --no-include-date-ranges --format json',
       ],
     },

@@ -7,6 +7,7 @@ import type {
   SimulationRunResult,
   SimulationCallResult,
 } from '../types.js';
+import { createProductionContext } from '../context/createProductionContext.js';
 
 const isLuxonDateTime = (v: unknown): v is DateTime => {
   if (typeof v !== 'object' || v === null) return false;
@@ -51,9 +52,16 @@ function median(nums: number[]): number | undefined {
   return (prev + curr) / 2;
 }
 
+/**
+ * Create default context (for testing)
+ */
+export function createDefaultRunSimulationContext(): WorkflowContext {
+  return createProductionContext();
+}
+
 export async function runSimulation(
   spec: SimulationRunSpec,
-  ctx: WorkflowContext
+  ctx: WorkflowContext = createDefaultRunSimulationContext()
 ): Promise<SimulationRunResult> {
   const parsed = SpecSchema.safeParse(spec);
   if (!parsed.success) {

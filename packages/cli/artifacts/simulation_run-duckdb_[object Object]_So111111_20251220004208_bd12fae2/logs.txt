@@ -1,0 +1,13 @@
+{
+  "code": "CONFIGURATION_ERROR",
+  "message": "OhlcvBirdeyeFetch service is required in config - jobs package must be available",
+  "operation": "simulation.run-duckdb",
+  "metadata": {
+    "configKey": "ohlcvBirdeyeFetch",
+    "hasOhlcvBirdeyeFetch": false
+  },
+  "timestamp": "2025-12-20T00:42:08.287Z",
+  "runId": "simulation_run-duckdb_[object Object]_So111111_20251220004208_bd12fae2",
+  "statusCode": 500,
+  "errorType": "ConfigurationError"
+}

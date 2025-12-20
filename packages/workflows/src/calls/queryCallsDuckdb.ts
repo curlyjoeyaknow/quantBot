@@ -60,11 +60,18 @@ export type QueryCallsDuckdbContext = WorkflowContext & {
 };
 
 /**
+ * Create default context (for testing)
+ */
+export function createDefaultQueryCallsDuckdbContext(): QueryCallsDuckdbContext {
+  throw new Error('createDefaultQueryCallsDuckdbContext must be implemented with actual services');
+}
+
+/**
  * Query calls from DuckDB
  */
 export async function queryCallsDuckdb(
   spec: QueryCallsDuckdbSpec,
-  ctx: QueryCallsDuckdbContext
+  ctx: QueryCallsDuckdbContext = createDefaultQueryCallsDuckdbContext()
 ): Promise<QueryCallsDuckdbResult> {
   // Validate spec
   const parsed = QueryCallsDuckdbSpecSchema.safeParse(spec);

@@ -49,7 +49,7 @@ describe('statsStorageHandler', () => {
     // Verify result is an array (handler returns array of rows)
     expect(Array.isArray(result)).toBe(true);
     const rows = result as Array<Record<string, unknown>>;
-    
+
     // Verify each table has a row
     expect(rows.length).toBe(SAFE_TABLES.clickhouse.length);
     for (const table of SAFE_TABLES.clickhouse) {
@@ -104,72 +104,68 @@ describe('statsStorageHandler', () => {
     // Result should be an array
     expect(Array.isArray(result)).toBe(true);
     const rows = result as Array<Record<string, unknown>>;
-    
+
     // Should have rows for successful queries and error row for failed query
     expect(rows.length).toBeGreaterThan(0);
-    
+
     // Find the error row
     const errorRow = rows.find((r) => r.error);
     expect(errorRow).toBeDefined();
     expect(errorRow?.error).toBe('Table query failed');
   });
 
-  it('handles ClickHouse errors gracefully', async () => {
-    const mockPostgresQuery = vi.fn();
-    const mockPostgresPool = {
-      query: mockPostgresQuery,
-    };
-    vi.mocked(getPostgresPool).mockReturnValue(mockPostgresPool as any);
-
-    // Setup Postgres mocks
-    for (const table of SAFE_TABLES.postgres) {
-      mockPostgresQuery.mockResolvedValueOnce({
-        rows: [{ count: '75' }],
-      });
-    }
-
-    const mockClickHouseQuery = vi.fn().mockRejectedValue(new Error('ClickHouse unavailable'));
+  it('skips tables that do not exist', async () => {
+    const mockClickHouseQuery = vi.fn();
     const mockClickHouseClient = {
       query: mockClickHouseQuery,
     };
-    vi.mocked(getClickHouseClient).mockReturnValue(mockClickHouseClient as any);
 
-    const fakeCtx = {} as any;
+    // First table succeeds, second doesn't exist, third succeeds
+    const tables = SAFE_TABLES.clickhouse;
+    for (let i = 0; i < tables.length; i++) {
+      if (i === 1) {
+        // Second table doesn't exist - handler should skip it
+        mockClickHouseQuery.mockRejectedValueOnce(new Error("Table quantbot.ohlcv doesn't exist"));
+      } else {
+        const mockResult = {
+          json: vi.fn().mockResolvedValue([{ count: '75' }]),
+        };
+        mockClickHouseQuery.mockResolvedValueOnce(mockResult);
+      }
+    }
+
+    const fakeCtx = {
+      services: {
+        clickHouseClient: () => mockClickHouseClient,
+      },
+    } as any;
+
     const args = {
       format: 'json' as const,
     };
 
     const result = await statsStorageHandler(args, fakeCtx);
 
-    // Postgres should work
-    expect(result.postgres).toBeDefined();
-    expect(typeof result.postgres).toBe('object');
+    // Result should be an array
+    expect(Array.isArray(result)).toBe(true);
+    const rows = result as Array<Record<string, unknown>>;
 
-    // ClickHouse should have error
-    expect(result.clickhouse).toBeDefined();
-    expect((result.clickhouse as { error: string }).error).toBe('ClickHouse unavailable');
+    // Should not include the non-existent table
+    const nonExistentTable = tables[1];
+    const nonExistentRow = rows.find((r) => r.table === nonExistentTable);
+    expect(nonExistentRow).toBeUndefined();
+
+    // Should include successful tables
+    expect(rows.length).toBe(tables.length - 1);
   });
 
   it('handles missing format parameter', async () => {
-    const mockPostgresQuery = vi.fn();
-    const mockPostgresPool = {
-      query: mockPostgresQuery,
-    };
-    vi.mocked(getPostgresPool).mockReturnValue(mockPostgresPool as any);
-
     const mockClickHouseQuery = vi.fn();
     const mockClickHouseClient = {
       query: mockClickHouseQuery,
     };
-    vi.mocked(getClickHouseClient).mockReturnValue(mockClickHouseClient as any);
 
-    // Setup mocks
-    for (const table of SAFE_TABLES.postgres) {
-      mockPostgresQuery.mockResolvedValueOnce({
-        rows: [{ count: '0' }],
-      });
-    }
-
+    // Setup ClickHouse mocks
     for (const table of SAFE_TABLES.clickhouse) {
       const mockResult = {
         json: vi.fn().mockResolvedValue([{ count: '0' }]),
@@ -177,34 +173,25 @@ describe('statsStorageHandler', () => {
       mockClickHouseQuery.mockResolvedValueOnce(mockResult);
     }
 
-    const fakeCtx = {} as any;
+    const fakeCtx = {
+      services: {
+        clickHouseClient: () => mockClickHouseClient,
+      },
+    } as any;
+
     const args = {}; // No format
 
     const result = await statsStorageHandler(args, fakeCtx);
 
-    expect(result.postgres).toBeDefined();
-    expect(result.clickhouse).toBeDefined();
+    expect(Array.isArray(result)).toBe(true);
+    expect((result as Array<Record<string, unknown>>).length).toBeGreaterThan(0);
   });
 
-  it('returns empty counts when tables have no data', async () => {
-    const mockPostgresQuery = vi.fn();
-    const mockPostgresPool = {
-      query: mockPostgresQuery,
-    };
-    vi.mocked(getPostgresPool).mockReturnValue(mockPostgresPool as any);
-
+  it('returns zero counts when tables have no data', async () => {
     const mockClickHouseQuery = vi.fn();
     const mockClickHouseClient = {
       query: mockClickHouseQuery,
     };
-    vi.mocked(getClickHouseClient).mockReturnValue(mockClickHouseClient as any);
-
-    // Setup Postgres mocks with empty results
-    for (const table of SAFE_TABLES.postgres) {
-      mockPostgresQuery.mockResolvedValueOnce({
-        rows: [{ count: '0' }],
-      });
-    }
 
     // Setup ClickHouse mocks with empty results
     for (const table of SAFE_TABLES.clickhouse) {
@@ -214,7 +201,12 @@ describe('statsStorageHandler', () => {
       mockClickHouseQuery.mockResolvedValueOnce(mockResult);
     }
 
-    const fakeCtx = {} as any;
+    const fakeCtx = {
+      services: {
+        clickHouseClient: () => mockClickHouseClient,
+      },
+    } as any;
+
     const args = {
       format: 'json' as const,
     };
@@ -222,11 +214,10 @@ describe('statsStorageHandler', () => {
     const result = await statsStorageHandler(args, fakeCtx);
 
     // All counts should be 0
-    for (const table of SAFE_TABLES.postgres) {
-      expect((result.postgres as Record<string, number>)[table]).toBe(0);
-    }
+    const rows = result as Array<Record<string, unknown>>;
     for (const table of SAFE_TABLES.clickhouse) {
-      expect((result.clickhouse as Record<string, number>)[table]).toBe(0);
+      const row = rows.find((r) => r.table === table);
+      expect(row?.count).toBe(0);
     }
   });
 });
