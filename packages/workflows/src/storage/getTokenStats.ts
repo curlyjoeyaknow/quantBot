@@ -141,7 +141,7 @@ export async function getTokenStats(
     const firstCallTime = DateTime.fromISO(earliestAlertTime);
 
     // Find last call time for this token
-    const tokenCalls = calls.filter((c) => c.mint === mint && c.chain === chain);
+    const tokenCalls = calls.filter((c: { mint: string; chain: string }) => c.mint === mint && c.chain === chain);
     const lastCallTime =
       tokenCalls.length > 0 && tokenCalls[tokenCalls.length - 1]?.alertTime !== null
         ? DateTime.fromISO(tokenCalls[tokenCalls.length - 1]!.alertTime!)

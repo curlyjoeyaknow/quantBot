@@ -364,14 +364,8 @@ describe('MetricsAggregator', () => {
   });
 
   describe('calculateSystemMetrics', () => {
-    it('should calculate system metrics from database', async () => {
-      mockPool.query
-        .mockResolvedValueOnce({ rows: [{ count: '100' }] }) // totalCalls
-        .mockResolvedValueOnce({ rows: [{ count: '10' }] }) // totalCallers
-        .mockResolvedValueOnce({ rows: [{ count: '50' }] }) // totalTokens
-        .mockResolvedValueOnce({ rows: [{ count: '200' }] }) // simulationsTotal
-        .mockResolvedValueOnce({ rows: [{ count: '5' }] }); // simulationsToday
-
+    it('should calculate system metrics from provided calls', async () => {
+      // Note: calculateSystemMetrics no longer queries database - it calculates from provided calls
       const calls: CallPerformance[] = [
         {
           callId: 1,
@@ -404,22 +398,28 @@ describe('MetricsAggregator', () => {
       const result = await aggregator.calculateSystemMetrics(calls);
 
       expect(result).toMatchObject({
-        totalCalls: 100,
-        totalCallers: 10,
-        totalTokens: 50,
-        simulationsTotal: 200,
-        simulationsToday: 5,
+        totalCalls: 2,
+        totalCallers: 2,
+        totalTokens: 2,
+        simulationsTotal: 0, // Requires DuckDB query - use workflows
+        simulationsToday: 0, // Requires DuckDB query - use workflows
       });
       expect(result.dataRange.start).toBeInstanceOf(Date);
       expect(result.dataRange.end).toBeInstanceOf(Date);
     });
 
-    it('should handle database errors gracefully', async () => {
-      mockPool.query.mockRejectedValueOnce(new Error('Database error'));
-
+    it('should handle empty calls array', async () => {
       const calls: CallPerformance[] = [];
 
-      await expect(aggregator.calculateSystemMetrics(calls)).rejects.toThrow('Database error');
+      const result = await aggregator.calculateSystemMetrics(calls);
+
+      expect(result).toMatchObject({
+        totalCalls: 0,
+        totalCallers: 0,
+        totalTokens: 0,
+        simulationsTotal: 0,
+        simulationsToday: 0,
+      });
     });
 
     it('should handle empty calls array for date range', async () => {
