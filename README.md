@@ -2,15 +2,19 @@
 
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue.svg)](https://www.typescriptlang.org/)
 [![Node.js](https://img.shields.io/badge/Node.js-18+-green.svg)](https://nodejs.org/)
+[![pnpm](https://img.shields.io/badge/pnpm-workspace-orange.svg)](https://pnpm.io/)
 [![License](https://img.shields.io/badge/License-ISC-blue.svg)](LICENSE)
 
-**A clean, focused analytics and backtesting pipeline for Solana token trading strategies.**
+**A modular analytics and backtesting pipeline for Solana token trading strategies.**
 
-This repository is primarily an **analytics & simulation engine**. Live trading execution is handled elsewhere.
+This repository is primarily an **analytics & simulation engine** with a clean three-layer architecture:
+- **Pure Compute** - Deterministic simulation with no I/O
+- **Orchestration** - Workflows that coordinate storage, services, and I/O
+- **Adapters** - CLI/TUI/API that translate user intent to workflow specs
 
 ## 🎯 Golden Path: Analytics Pipeline
 
-The Golden Path is the core focus of this repository - a clean pipeline for:
+The Golden Path is the core focus - a clean pipeline for:
 
 1. **Telegram Export Ingestion** → Parse caller alerts and extract token addresses
 2. **OHLCV Data Collection** → Fetch and store candle data from Birdeye
@@ -19,65 +23,49 @@ The Golden Path is the core focus of this repository - a clean pipeline for:
 
 ### Quick Start
 
-**🚀 Get started in 5 minutes:** See **[docs/QUICK_START.md](docs/QUICK_START.md)**
-
-**📖 Complete workflows:** See **[docs/WORKFLOWS.md](docs/WORKFLOWS.md)**
-
-**CLI Commands:**
-
 ```bash
+# Install dependencies
+pnpm install
+
+# Build all packages (in correct dependency order)
+pnpm build:ordered
+
 # 1. Ingest Telegram export
-pnpm ingest:telegram --file data/raw/messages/brook7/messages.html --caller-name Brook
+pnpm quantbot ingestion telegram --file data/raw/messages.html --caller-name Brook
 
 # 2. Fetch OHLCV for calls
-pnpm ingest:ohlcv --from 2024-01-01 --to 2024-02-01
+pnpm quantbot ingestion ohlcv --from 2024-01-01 --to 2024-02-01
 
 # 3. Run simulation
-pnpm simulate:calls --strategy MyStrategy --caller Brook --from 2024-01-01 --to 2024-02-01
+pnpm quantbot simulation run --strategy MyStrategy --from 2024-01-01 --to 2024-02-01
 ```
 
-**Web Interface:**
-
-- Start web server: `cd packages/web && pnpm dev`
-- Open: `http://localhost:3000/golden-path`
-- Use UI to run all workflows
-
-**API Endpoints:**
-
-The backend API (`@quantbot/api`) provides REST endpoints for all services:
-
-- `GET /api/v1/health` - Health check
-- `GET /api/v1/ohlcv/candles` - Fetch OHLCV candles
-- `GET /api/v1/tokens` - Token metadata and management
-- `GET /api/v1/calls` - Token call history
-- `GET /api/v1/simulations/runs` - Simulation run management
-- `POST /api/v1/ingestion/ohlcv` - Trigger OHLCV ingestion
-- `GET /api/docs` - Interactive API documentation (Swagger UI)
-
-**API Documentation:**
-
-- Interactive Swagger UI: `http://localhost:3000/api/docs`
-- OpenAPI JSON: `http://localhost:3000/api/docs/json`
-
-See **[docs/GOLDEN_PATH.md](docs/GOLDEN_PATH.md)** for complete documentation.
+See **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** for complete architecture documentation.
 
 ## 🎯 Overview
 
-QuantBot's Golden Path provides:
+QuantBot's core capabilities:
 
-- **Telegram Export Parsing** - Extract calls from Telegram HTML exports
-- **OHLCV Ingestion** - Fetch and store candle data from Birdeye API
-- **Pure Simulation Engine** - Deterministic backtesting with no side effects
-- **Postgres + ClickHouse** - Clean separation of OLTP and OLAP data
-- **Typed Repositories** - Type-safe database access layer
+- **Telegram Export Parsing** - Extract calls from Telegram HTML exports (case-preserved mint addresses)
+- **OHLCV Ingestion** - Fetch and store candle data from Birdeye API with ClickHouse caching
+- **Pure Simulation Engine** - Deterministic backtesting with no I/O, clocks, or global config
+- **Workflow Orchestration** - Multi-step flows coordinated through typed WorkflowContext
+- **DuckDB + ClickHouse** - OLAP-optimized storage for analytics and time-series data
+- **Typed Repositories** - Type-safe database access layer with dependency injection
 
-### Secondary Features (Not Golden Path)
+### Architecture Highlights
 
-- **Backend REST API** - Fastify-based API exposing all services (see `packages/api/`)
-- **Real-Time Monitoring** - Live CA drop detection (see `packages/monitoring/`)
-- **Telegram Bot Interface** - Interactive command-driven bot (planned)
-- **Web Dashboard** - Next.js-based analytics UI (planned - `packages/web/`)
-- **Live Trading** - Execution system (planned - `packages/trading/`)
+- **Simulation is pure compute** - No network, no database, no filesystem access
+- **Workflows coordinate I/O** - All multi-step business logic lives in `@quantbot/workflows`
+- **CLI handlers are thin adapters** - Parse args → call workflow → format output
+- **Python integration via PythonEngine** - DuckDB queries, analysis scripts with Zod validation
+
+### Secondary Features (Planned)
+
+- **Backend REST API** - Fastify-based API (`@quantbot/api`)
+- **Real-Time Monitoring** - Live CA drop detection (`@quantbot/monitoring`)
+- **Web Dashboard** - Next.js analytics UI (`@quantbot/web`)
+- **Telegram Bot** - Interactive command-driven bot (`@quantbot/bot`)
 
 ## 🚀 Golden Path Features
 
@@ -142,11 +130,16 @@ QuantBot's Golden Path provides:
 
 ### 💾 Data Storage & Analytics
 
-- **PostgreSQL**: Primary OLTP database for transactions and metadata
-- **ClickHouse**: High-performance time-series database for OHLCV and events
-- **InfluxDB**: Optional real-time monitoring (legacy support)
-- **SQLite**: Legacy support with migration tools
+- **DuckDB**: Primary OLAP database for analytics and simulation results
+- **ClickHouse**: High-performance time-series database for OHLCV data
+- **Python Integration**: DuckDB queries via PythonEngine with Zod validation
 - **Comprehensive Analytics**: Historical analysis, caller performance, token scoring
+
+#### Storage Rules
+
+- **Mint addresses**: Never truncate, preserve exact case (32-44 chars)
+- **Parameterized queries**: Always use `{param:Type}` syntax for ClickHouse
+- **JSON-serializable results**: All workflow results must be serializable
 
 ### 🤖 Telegram Bot Commands
 
@@ -183,28 +176,61 @@ QuantBot's Golden Path provides:
 
 ## 🏗️ Architecture
 
-QuantBot follows a **modular monorepo architecture** with clear separation of concerns:
+QuantBot follows a **modular monorepo architecture** with strict layering:
 
 ```text
-quantBot/
-├── packages/
-│   ├── @quantbot/core/          # Core types and interfaces (Candle, Chain, etc.)
-│   ├── @quantbot/utils/         # Shared utilities (logger, errors, helpers, EventBus)
-│   ├── @quantbot/storage/       # Unified storage layer (Postgres, ClickHouse, InfluxDB, SQLite, Cache)
-│   ├── @quantbot/api-clients/   # External API clients (Birdeye, Helius)
-│   ├── @quantbot/ohlcv/        # OHLCV data services (uses StorageEngine)
-│   ├── @quantbot/simulation/    # Trading simulation engine
-│   ├── @quantbot/token-analysis/# Token analysis services
-│   ├── @quantbot/ingestion/    # Data ingestion (Telegram export, OHLCV)
-│   ├── @quantbot/workflows/    # Workflow orchestration
-│   ├── @quantbot/monitoring/    # Real-time monitoring services
-│   └── @quantbot/api/          # Backend REST API (Fastify) - NEW
-├── scripts/                     # Standalone scripts and tools
-├── docs/                        # Documentation
-└── configs/                     # Configuration files
+┌─────────────────────────────────────────────────────────────┐
+│  APPLICATION LAYER: cli, tui, api (thin adapters)           │
+├─────────────────────────────────────────────────────────────┤
+│  ORCHESTRATION LAYER: workflows (coordinate I/O)            │
+├─────────────────────────────────────────────────────────────┤
+│  SERVICE LAYER: simulation (pure), ohlcv, ingestion,        │
+│                 analytics                                    │
+├─────────────────────────────────────────────────────────────┤
+│  INFRASTRUCTURE LAYER: storage, api-clients, observability  │
+├─────────────────────────────────────────────────────────────┤
+│  FOUNDATION LAYER: core (types), utils (EventBus, logger)   │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-See [ARCHITECTURE.md](docs/ARCHITECTURE.md) for detailed architecture documentation.
+### Package Structure
+
+```text
+packages/
+├── core/           # Foundation types (Candle, Chain, Token, etc.)
+├── utils/          # Shared utilities (logger, EventBus, PythonEngine)
+├── storage/        # Storage layer (DuckDB, ClickHouse)
+├── observability/  # Logging, metrics, error tracking
+├── api-clients/    # External API clients (Birdeye, Helius)
+├── ohlcv/          # OHLCV data services with hybrid fetching
+├── analytics/      # Analytics engine and metrics
+├── ingestion/      # Data ingestion (Telegram parsing)
+├── simulation/     # Pure simulation engine (NO I/O)
+├── workflows/      # Workflow orchestration (coordinates all I/O)
+├── cli/            # Command-line interface (Commander.js)
+├── tui/            # Terminal UI (Ink)
+└── jobs/           # Background job processing
+```
+
+### Build Order
+
+Packages must be built in dependency order:
+
+```bash
+pnpm build:ordered
+```
+
+| Position | Package | Dependencies |
+|----------|---------|--------------|
+| 1 | core | None |
+| 2 | utils | core |
+| 3-5 | storage, observability, api-clients | utils, core |
+| 6-8 | ohlcv, analytics, ingestion | service deps |
+| 9 | simulation | utils, core (pure compute) |
+| 10 | workflows | all services |
+| 11+ | cli, tui, etc. | all packages |
+
+See **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** for detailed architecture documentation.
 
 ## 🔧 Setup & Installation
 
@@ -248,32 +274,15 @@ npm run dev
 Create a `.env` file with the following variables:
 
 ```env
-# Telegram Bot
-BOT_TOKEN=your_telegram_bot_token
-TELEGRAM_BOT_TOKEN=your_telegram_bot_token  # Alternative name
-TELEGRAM_CHAT_ID=your_chat_id
-
-# PostgreSQL (Primary Database)
-POSTGRES_HOST=localhost
-POSTGRES_PORT=5432
-POSTGRES_USER=quantbot
-POSTGRES_PASSWORD=your_secure_password
-POSTGRES_DATABASE=quantbot
-POSTGRES_MAX_CONNECTIONS=10
+# DuckDB (Primary Database - file-based, no config needed)
+DUCKDB_PATH=./data/quantbot.duckdb
 
 # ClickHouse (Time-Series Database)
-USE_CLICKHOUSE=true
 CLICKHOUSE_HOST=localhost
 CLICKHOUSE_PORT=18123
 CLICKHOUSE_USER=default
 CLICKHOUSE_PASSWORD=
 CLICKHOUSE_DATABASE=quantbot
-
-# InfluxDB (Optional - Legacy)
-INFLUX_URL=http://localhost:8086
-INFLUX_TOKEN=your-admin-token
-INFLUX_ORG=quantbot
-INFLUX_BUCKET=ohlcv_data
 
 # Birdeye API (Multiple keys for rate limit handling)
 BIRDEYE_API_KEY=your_primary_key
@@ -283,12 +292,6 @@ BIRDEYE_API_KEY_2=your_second_key
 
 # Helius API
 HELIUS_API_KEY=your_helius_key
-
-# Shyft API (Optional)
-SHYFT_API_KEY=your_shyft_key
-SHYFT_X_TOKEN=your_shyft_x_token
-SHYFT_WS_URL=wss://your-shyft-ws-url
-SHYFT_GRPC_URL=your-shyft-grpc-url
 
 # Logging
 LOG_LEVEL=info  # error, warn, info, debug, trace
@@ -301,44 +304,50 @@ LOG_MAX_SIZE=20m
 # Application
 NODE_ENV=development
 PORT=3000
+
+# Optional: Telegram Bot (for future bot integration)
+# BOT_TOKEN=your_telegram_bot_token
+# TELEGRAM_CHAT_ID=your_chat_id
 ```
 
 ### Database Setup
 
-#### PostgreSQL Setup
+#### DuckDB (Primary Storage)
+
+DuckDB is the primary OLAP database for analytics and simulation results. No setup required - databases are created automatically as single files.
 
 ```bash
-# Start PostgreSQL
-docker-compose up -d postgres
-
-# Initialize schema (auto-initializes on first run, or manually):
-psql -U quantbot -d quantbot -f scripts/migration/postgres/001_init.sql
+# Default database location
+data/quantbot.duckdb
+data/result.duckdb
 ```
 
-#### ClickHouse Setup
+#### ClickHouse (Time-Series)
 
 ```bash
 # Start ClickHouse
 docker-compose up -d clickhouse
 
 # Initialize schema
-npm run clickhouse:setup
+pnpm clickhouse:setup
 ```
 
-#### Migration from SQLite (If Upgrading)
+ClickHouse stores OHLCV candle data with time-based partitioning.
+
+#### Python Tools (DuckDB Integration)
+
+DuckDB queries are executed via Python scripts through `PythonEngine`:
 
 ```bash
-# Backup existing data
-./scripts/migration/backup-sqlite-dbs.sh
+# Ensure Python dependencies
+pip install duckdb pandas
 
-# Run migration
-./scripts/migration/run-migration.sh
-
-# Verify migration
-tsx scripts/migration/verify-migration.ts
+# Python scripts are in tools/
+tools/simulation/duckdb_storage.py
+tools/analysis/duckdb_query.py
 ```
 
-See [Migration Quick Start](scripts/migration/QUICKSTART.md) for detailed instructions.
+See [docs/MIGRATION_POSTGRES_TO_DUCKDB.md](docs/MIGRATION_POSTGRES_TO_DUCKDB.md) for migration details.
 
 ## 📖 Usage
 
@@ -483,36 +492,54 @@ sizePercent: 0.5 (50% of original position)
 
 ```text
 quantBot/
-├── packages/              # Modular packages
-│   ├── core/             # Core types and interfaces
-│   ├── utils/            # Shared utilities (logger, EventBus)
-│   ├── storage/          # Unified storage (Postgres, ClickHouse, Cache)
-│   ├── api-clients/      # External API clients (Birdeye, Helius)
-│   ├── ohlcv/            # OHLCV data services
-│   ├── simulation/       # Simulation engine
-│   ├── token-analysis/   # Token analysis services
-│   ├── ingestion/        # Data ingestion
-│   ├── workflows/        # Workflow orchestration
-│   ├── monitoring/       # Real-time monitoring
-│   └── api/              # Backend REST API (Fastify)
-├── scripts/              # Standalone scripts
-│   ├── analysis/        # Analysis tools
-│   ├── migration/       # Database migrations
-│   └── monitoring/      # Monitoring scripts
-├── docs/                # Documentation
-├── configs/             # Configuration files
-└── tests/               # Test suites
+├── packages/              # Modular packages (see Architecture above)
+├── scripts/               # Standalone scripts and tools
+│   ├── ingest/           # Ingestion scripts
+│   ├── migration/        # Database migrations
+│   └── test/             # Test utilities
+├── tools/                 # Python tools
+│   ├── analysis/         # Analysis scripts (DuckDB)
+│   ├── simulation/       # DuckDB storage scripts
+│   └── telegram/         # Telegram parsing tools
+├── docs/                  # Documentation
+├── configs/               # Configuration files
+├── .cursor/rules/         # Architectural rules (enforced)
+└── tests/                 # Root test setup
 ```
 
 ### Building
 
 ```bash
-# Build all packages
-npm run build:packages
+# Build all packages (in correct dependency order)
+pnpm build:ordered
 
-# Build individual package
-npm run build --workspace=packages/utils
+# Build individual package (ensure deps are built first)
+pnpm --filter @quantbot/utils build
+pnpm --filter @quantbot/storage build
+pnpm --filter @quantbot/ingestion build
 ```
+
+### Workflow Pattern
+
+All multi-step business logic goes through workflows:
+
+```typescript
+// CLI handler (thin adapter)
+async function myHandler(args: Args, ctx: CommandContext) {
+  const service = ctx.services.myService();
+  return service.doSomething(args);  // Returns data, not formatted output
+}
+
+// Workflow (orchestrates I/O)
+async function runMyWorkflow(spec: Spec, ctx: WorkflowContext) {
+  const data = await ctx.repos.calls.findByRange(spec.from, spec.to);
+  const result = await ctx.simulation.run(data, spec.strategy);
+  await ctx.repos.runs.save(result);
+  return { success: true, runId: result.id };  // JSON-serializable
+}
+```
+
+See `.cursor/rules/packages-workflows.mdc` for workflow patterns.
 
 ### Testing
 
@@ -545,11 +572,26 @@ npm run format
 
 ## 📚 Documentation
 
-- **[ARCHITECTURE.md](docs/ARCHITECTURE.md)** - Detailed architecture documentation
-- **[TODO.md](docs/TODO.md)** - Roadmap and task tracking
-- **[Migration Guide](docs/migration/)** - Database migration documentation
-- **[Package Migration](docs/PACKAGE_MIGRATION_SUMMARY.md)** - Package structure guide
-- **[Bot Improvements](docs/bot-improvements.md)** - Bot functionality enhancements
+### Core Documentation
+
+- **[ARCHITECTURE.md](docs/ARCHITECTURE.md)** - System architecture and layer responsibilities
+- **[TODO.md](TODO.md)** - Project roadmap and task tracking
+- **[CHANGELOG.md](CHANGELOG.md)** - Version history and changes
+
+### Architecture Rules (`.cursor/rules/`)
+
+- `build-ordering.mdc` - Package build order enforcement
+- `packages-workflows.mdc` - Workflow orchestration patterns
+- `packages-cli-handlers.mdc` - CLI handler patterns
+- `packages-simulation.mdc` - Simulation rules (pure compute)
+- `testing.mdc` - Testing philosophy and requirements
+
+### Additional Guides
+
+- **[docs/OHLCV_ARCHITECTURE.md](docs/OHLCV_ARCHITECTURE.md)** - OHLCV subsystem details
+- **[docs/WORKFLOW_ENFORCEMENT.md](docs/WORKFLOW_ENFORCEMENT.md)** - Workflow patterns
+- **[docs/MIGRATION_POSTGRES_TO_DUCKDB.md](docs/MIGRATION_POSTGRES_TO_DUCKDB.md)** - DuckDB migration
+- **[docs/guides/](docs/guides/)** - How-to guides
 
 ## 🔒 Security
 
@@ -588,14 +630,37 @@ Archives are stored in `backups/quantbot-backup-<timestamp>.tar.gz`
 
 ## 🤝 Contributing
 
-1. Follow TypeScript best practices (see `.cursorrules`)
-2. Use package imports: `@quantbot/utils`, `@quantbot/storage`, `@quantbot/ohlcv`, etc.
-3. **Storage operations**: Always use `StorageEngine` from `@quantbot/storage` - never direct DB calls
-4. **OHLCV operations**: Use `OHLCVEngine` or `OHLCVService` from `@quantbot/ohlcv`
-5. **API clients**: Use `@quantbot/api-clients` for external API interactions
-6. Write tests for new features
-7. Update documentation
-8. Follow commit message conventions
+### Code Guidelines
+
+1. **Follow architectural rules** - See `.cursor/rules/` for enforced patterns
+2. **Use package imports** - `@quantbot/utils`, `@quantbot/storage`, `@quantbot/workflows`, etc.
+3. **No multi-step logic in CLI** - Move to `@quantbot/workflows`
+4. **Handlers are thin adapters** - Parse args → call service → return data
+5. **Simulation is pure** - No I/O, no clocks, no global config
+6. **Never truncate mint addresses** - Store/pass full 32-44 char addresses
+
+### Workflow Pattern
+
+All multi-step business flows must go through `@quantbot/workflows`:
+
+- ❌ CLI handler that fetches → simulates → persists
+- ✅ CLI handler calls workflow, workflow coordinates all I/O
+
+### Testing Requirements
+
+- Write tests for all new functions (80%+ coverage target)
+- Property tests for financial calculations
+- Handler tests must be REPL-friendly (no CLI infrastructure)
+- See `.cursor/rules/testing.mdc` for testing philosophy
+
+### PR Checklist
+
+- [ ] Unit tests for new functions
+- [ ] No forbidden imports (workflows can't import CLI)
+- [ ] CLI handlers are thin adapters
+- [ ] Workflow results are JSON-serializable
+- [ ] CHANGELOG.md updated
+- [ ] Documentation updated
 
 ## 📝 License
 
