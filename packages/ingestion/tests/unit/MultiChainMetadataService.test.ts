@@ -2,26 +2,56 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { fetchMultiChainMetadata, batchFetchMultiChainMetadata } from '@quantbot/api-clients';
 import { getMetadataCache } from '@quantbot/api-clients';
 
-// Create mock function at module level
+// Create mock function at module level - must be defined before vi.mock
 const mockGetTokenMetadata = vi.fn();
 
-// Mock the api-clients module - use importOriginal to get real functions, only mock Birdeye client
+// Create a single mock client instance that will be reused
+const mockBirdeyeClient = {
+  getTokenMetadata: mockGetTokenMetadata,
+};
+
+// Mock birdeye-client module directly (using relative path from api-clients package)
+// This is needed because fetchMultiChainMetadata imports getBirdeyeClient from ./birdeye-client.js
+vi.mock('@quantbot/api-clients/src/birdeye-client.js', () => {
+  return {
+    getBirdeyeClient: vi.fn(() => mockBirdeyeClient),
+    BirdeyeClient: vi.fn(), // Stub class for type compatibility
+  };
+});
+
+// Mock the api-clients module - use importOriginal to get real functions, only mock cache
 vi.mock('@quantbot/api-clients', async () => {
   const actual = await vi.importActual('@quantbot/api-clients');
-  // Create a mock cache instance
+  
+  // Create a real Map-based cache to simulate actual cache behavior
+  const cacheMap = new Map<string, any>();
   const mockCache = {
-    get: vi.fn(),
-    set: vi.fn(),
-    clear: vi.fn(),
-    getAnyChain: vi.fn(),
-    size: vi.fn(() => 0),
+    get: vi.fn((address: string, chain: string) => {
+      const key = `${chain.toLowerCase()}:${address.toLowerCase()}`;
+      return cacheMap.get(key) || null;
+    }),
+    set: vi.fn((address: string, chain: string, metadata: any) => {
+      const key = `${chain.toLowerCase()}:${address.toLowerCase()}`;
+      cacheMap.set(key, metadata);
+    }),
+    clear: vi.fn(() => {
+      cacheMap.clear();
+    }),
+    getAnyChain: vi.fn((address: string, chains: string[]) => {
+      for (const chain of chains) {
+        const key = `${chain.toLowerCase()}:${address.toLowerCase()}`;
+        const cached = cacheMap.get(key);
+        if (cached && cached.found) {
+          return { chain, metadata: cached };
+        }
+      }
+      return null;
+    }),
+    size: vi.fn(() => cacheMap.size),
   };
 
   return {
     ...actual,
-    getBirdeyeClient: vi.fn(() => ({
-      getTokenMetadata: mockGetTokenMetadata,
-    })),
     getMetadataCache: vi.fn(() => mockCache),
   };
 });
@@ -47,6 +77,9 @@ describe('MultiChainMetadataService', () => {
 
       const result = await fetchMultiChainMetadata(solanaAddress);
 
+      // Verify mock was called
+      expect(mockGetTokenMetadata).toHaveBeenCalledWith(solanaAddress, 'solana');
+      
       expect(result.addressKind).toBe('solana');
       expect(result.metadata).toHaveLength(1);
       expect(result.metadata[0].chain).toBe('solana');
