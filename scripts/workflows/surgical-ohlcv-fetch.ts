@@ -1,10 +1,10 @@
 #!/usr/bin/env tsx
 /**
  * Surgical OHLCV Fetch - Caller-based targeted fetching
- * 
+ *
  * Uses caller coverage matrix to identify and fetch missing OHLCV data
  * for specific callers and time periods with poor coverage.
- * 
+ *
  * Usage:
  *   pnpm tsx scripts/workflows/surgical-ohlcv-fetch.ts --caller Brook --month 2025-07
  *   pnpm tsx scripts/workflows/surgical-ohlcv-fetch.ts --auto --min-coverage 0.8 --limit 10
@@ -41,25 +41,31 @@ async function getCoverageData(
 ): Promise<CoverageData> {
   const args = [
     'tools/analysis/ohlcv_caller_coverage.py',
-    '--duckdb', duckdbPath,
-    '--interval', interval,
-    '--format', 'json',
+    '--duckdb',
+    duckdbPath,
+    '--interval',
+    interval,
+    '--format',
+    'json',
     '--generate-fetch-plan',
-    '--min-coverage', minCoverage.toString()
+    '--min-coverage',
+    minCoverage.toString(),
   ];
 
   if (startMonth) args.push('--start-month', startMonth);
   if (endMonth) args.push('--end-month', endMonth);
   if (caller) args.push('--caller', caller);
 
-  const stdout = execSync(`python3 ${args.join(' ')}`, { encoding: 'utf-8', maxBuffer: 50 * 1024 * 1024 });
+  const stdout = execSync(`python3 ${args.join(' ')}`, {
+    encoding: 'utf-8',
+    maxBuffer: 50 * 1024 * 1024,
+  });
   return JSON.parse(stdout);
 }
 
 async function fetchOhlcvForTask(
   task: FetchTask,
   duckdbPath: string,
-  interval: string,
   dryRun: boolean = false
 ): Promise<void> {
   // Calculate date range for the month
@@ -69,47 +75,79 @@ async function fetchOhlcvForTask(
   const from = monthStart.toISODate();
   const to = monthEnd.toISODate();
 
+  // Check if month is within last 3 months (fetch 15s interval too)
+  const now = DateTime.now();
+  const monthAge = now.diff(monthStart, 'months').months;
+  const isRecent = monthAge < 3;
+
+  // Intervals to fetch: always 1m and 5m, add 15s for recent months
+  const intervals = ['1m', '5m'];
+  if (isRecent) {
+    intervals.push('15s');
+  }
+
   console.log(`\n📊 Fetching OHLCV for ${task.caller} - ${task.month}`);
   console.log(`   Current coverage: ${(task.current_coverage * 100).toFixed(1)}%`);
   console.log(`   Missing mints: ${task.missing_mints.length}`);
   console.log(`   Date range: ${from} to ${to}`);
+  console.log(`   Intervals: ${intervals.join(', ')}${isRecent ? ' (recent - includes 15s)' : ''}`);
+  console.log(`   Window: -52 candles before, +4948 candles after each call`);
 
   if (dryRun) {
-    console.log(`   [DRY RUN] Would run: quantbot ingestion ohlcv --duckdb ${duckdbPath} --from ${from} --to ${to} --interval ${interval}`);
+    for (const interval of intervals) {
+      console.log(
+        `   [DRY RUN] Would run: quantbot ingestion ohlcv --duckdb ${duckdbPath} --from ${from} --to ${to} --interval ${interval} --candles 5000 --start-offset-minutes -52`
+      );
+    }
     return;
   }
 
   try {
-    // Run OHLCV ingestion for this caller's time period
-    const args = [
-      'quantbot',
-      'ingestion',
-      'ohlcv',
-      '--duckdb', duckdbPath,
-      '--from', from!,
-      '--to', to!,
-      '--interval', interval
-    ];
+    // Run OHLCV ingestion for each interval
+    for (const interval of intervals) {
+      const args = [
+        'quantbot',
+        'ingestion',
+        'ohlcv',
+        '--duckdb',
+        duckdbPath,
+        '--from',
+        from!,
+        '--to',
+        to!,
+        '--interval',
+        interval,
+        '--candles',
+        '5000', // Total candles: 52 before + 4948 after = 5000
+        '--start-offset-minutes',
+        '-52', // Start 52 candles before alert
+      ];
 
-    console.log(`   Running: pnpm ${args.join(' ')}`);
+      console.log(`   Running [${interval}]: pnpm ${args.join(' ')}`);
 
-    const stdout = execSync(`pnpm ${args.join(' ')}`, {
-      encoding: 'utf-8',
-      maxBuffer: 50 * 1024 * 1024,
-      env: {
-        ...process.env,
-        DUCKDB_PATH: duckdbPath
+      const stdout = execSync(`pnpm ${args.join(' ')}`, {
+        encoding: 'utf-8',
+        maxBuffer: 50 * 1024 * 1024,
+        env: {
+          ...process.env,
+          DUCKDB_PATH: duckdbPath,
+        },
+      });
+
+      // Parse output for success metrics
+      const lines = stdout.split('\n');
+      const summaryLine = lines.find((line) => line.includes('workItemsSucceeded'));
+
+      if (summaryLine) {
+        console.log(`   ✅ [${interval}] Completed: ${summaryLine}`);
+      } else {
+        console.log(`   ✅ [${interval}] Fetch completed`);
       }
-    });
 
-    // Parse output for success metrics
-    const lines = stdout.split('\n');
-    const summaryLine = lines.find(line => line.includes('workItemsSucceeded'));
-    
-    if (summaryLine) {
-      console.log(`   ✅ Completed: ${summaryLine}`);
-    } else {
-      console.log(`   ✅ Fetch completed`);
+      // Small delay between intervals
+      if (intervals.indexOf(interval) < intervals.length - 1) {
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+      }
     }
   } catch (error: any) {
     console.error(`   ❌ Error: ${error.message}`);
@@ -168,36 +206,38 @@ async function main() {
     } else if (options.caller && options.month) {
       // Specific caller-month
       const task = coverageData.fetch_plan.find(
-        t => t.caller === options.caller && t.month === options.month
+        (t) => t.caller === options.caller && t.month === options.month
       );
-      
+
       if (!task) {
         console.log(`❌ No gaps found for ${options.caller} in ${options.month}`);
         console.log(`   Coverage is already good or no calls exist for this period.`);
         return;
       }
-      
+
       tasksToFetch = [task];
     } else if (options.caller) {
       // All months for specific caller
-      tasksToFetch = coverageData.fetch_plan.filter(t => t.caller === options.caller);
+      tasksToFetch = coverageData.fetch_plan.filter((t) => t.caller === options.caller);
       console.log(`🎯 Fetching all gaps for caller: ${options.caller}\n`);
     } else if (options.month) {
       // All callers for specific month
-      tasksToFetch = coverageData.fetch_plan.filter(t => t.month === options.month);
+      tasksToFetch = coverageData.fetch_plan.filter((t) => t.month === options.month);
       console.log(`🎯 Fetching all gaps for month: ${options.month}\n`);
     } else {
       // Show top 10 by default
       tasksToFetch = coverageData.fetch_plan.slice(0, 10);
       console.log(`🎯 Showing top 10 priority tasks (use --auto to fetch)\n`);
-      
+
       for (const [i, task] of tasksToFetch.entries()) {
         console.log(`${i + 1}. ${task.caller} - ${task.month}`);
-        console.log(`   Coverage: ${(task.current_coverage * 100).toFixed(1)}% (${task.calls_with_coverage}/${task.total_calls} calls)`);
+        console.log(
+          `   Coverage: ${(task.current_coverage * 100).toFixed(1)}% (${task.calls_with_coverage}/${task.total_calls} calls)`
+        );
         console.log(`   Missing mints: ${task.missing_mints.length}`);
         console.log(`   Priority: ${task.priority.toFixed(1)}\n`);
       }
-      
+
       console.log('\nTo fetch, use:');
       console.log('  --auto                    # Fetch top 10');
       console.log('  --caller <name>           # Fetch all gaps for caller');
@@ -216,9 +256,9 @@ async function main() {
 
     for (const [i, task] of tasksToFetch.entries()) {
       console.log(`\n[${i + 1}/${tasksToFetch.length}]`);
-      
+
       try {
-        await fetchOhlcvForTask(task, options.duckdb, options.interval, options.dryRun);
+        await fetchOhlcvForTask(task, options.duckdb, options.dryRun);
         successCount++;
       } catch (error) {
         failCount++;
@@ -228,7 +268,7 @@ async function main() {
       // Add delay between fetches to avoid rate limiting
       if (i < tasksToFetch.length - 1 && !options.dryRun) {
         console.log('\n   ⏳ Waiting 5 seconds before next fetch...');
-        await new Promise(resolve => setTimeout(resolve, 5000));
+        await new Promise((resolve) => setTimeout(resolve, 5000));
       }
     }
 
@@ -239,7 +279,6 @@ async function main() {
     console.log(`❌ Failed: ${failCount}`);
     console.log(`📈 Total: ${tasksToFetch.length}`);
     console.log(`${'='.repeat(80)}\n`);
-
   } catch (error: any) {
     console.error('❌ Error:', error.message);
     if (error.stderr) {
@@ -249,8 +288,7 @@ async function main() {
   }
 }
 
-main().catch(error => {
+main().catch((error) => {
   console.error('Fatal error:', error);
   process.exit(1);
 });
-

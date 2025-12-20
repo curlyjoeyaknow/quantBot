@@ -74,6 +74,12 @@ Rick                    ████     ████     ████     ░�
 
 Automatically fetches OHLCV data for callers with poor coverage, prioritized by impact.
 
+**Fetching Strategy:**
+- **Intervals**: Always fetches `1m` and `5m`
+- **Recent data** (<3 months): Also fetches `15s` interval
+- **Window**: -52 candles before call, +4948 candles after call (total 5000)
+- **Per-call basis**: Fetches around each call's alert time, not entire month
+
 **Usage:**
 ```bash
 # Show top 10 priority gaps (no fetching)
@@ -107,6 +113,16 @@ priority = (1 - coverage_ratio) * total_calls
 ```
 
 Higher priority = more calls with worse coverage.
+
+**Example Output:**
+```
+📊 Fetching OHLCV for Brook - 2025-12
+   Current coverage: 77.6%
+   Missing mints: 12
+   Date range: 2025-12-01 to 2025-12-31
+   Intervals: 1m, 5m, 15s (recent - includes 15s)
+   Window: -52 candles before, +4948 candles after each call
+```
 
 ## Workflow
 

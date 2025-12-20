@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { fetchMultiChainMetadata, batchFetchMultiChainMetadata, getMetadataCache } from '@quantbot/api-clients';
+import {
+  fetchMultiChainMetadata,
+  batchFetchMultiChainMetadata,
+  getMetadataCache,
+} from '@quantbot/api-clients';
 import type { BirdeyeClient } from '@quantbot/api-clients';
 
 // Mock retryWithBackoff is handled in tests/setup.ts
@@ -48,13 +52,13 @@ describe('MultiChainMetadataService', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    
+
     // Create mock client using dependency injection
     mockGetTokenMetadata = vi.fn();
     mockBirdeyeClient = {
       getTokenMetadata: mockGetTokenMetadata,
     } as unknown as BirdeyeClient;
-    
+
     // Clear cache between tests
     getMetadataCache().clear();
   });
@@ -238,7 +242,12 @@ describe('MultiChainMetadataService', () => {
         .mockResolvedValueOnce(null) // EVM base
         .mockResolvedValueOnce(null); // EVM bsc
 
-      const results = await batchFetchMultiChainMetadata(addresses, undefined, 5, createClientFactory());
+      const results = await batchFetchMultiChainMetadata(
+        addresses,
+        undefined,
+        5,
+        createClientFactory()
+      );
 
       expect(results).toHaveLength(2);
       expect(results[0].addressKind).toBe('solana');
@@ -264,7 +273,12 @@ describe('MultiChainMetadataService', () => {
         .mockResolvedValueOnce(null) // EVM base
         .mockResolvedValueOnce(null); // EVM bsc
 
-      const results = await batchFetchMultiChainMetadata(addresses, undefined, 5, createClientFactory());
+      const results = await batchFetchMultiChainMetadata(
+        addresses,
+        undefined,
+        5,
+        createClientFactory()
+      );
 
       expect(results).toHaveLength(2);
       // The Solana address should fail (no primaryMetadata)

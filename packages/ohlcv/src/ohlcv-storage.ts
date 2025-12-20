@@ -171,7 +171,7 @@ export async function getCoverage(
 
     // Calculate coverage ratio
     const totalSeconds = Math.floor((endTime.getTime() - startTime.getTime()) / 1000);
-    
+
     // Parse interval to seconds - handle all supported formats
     let intervalSeconds: number;
     const normalizedInterval = interval.toLowerCase();
@@ -189,7 +189,7 @@ export async function getCoverage(
       // Default to 1 hour for unknown intervals
       intervalSeconds = 3600;
     }
-    
+
     const expectedCandles = intervalSeconds > 0 ? Math.floor(totalSeconds / intervalSeconds) : 0;
 
     // Minimum required candles: 5000 for each interval

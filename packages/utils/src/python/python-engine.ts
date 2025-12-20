@@ -246,7 +246,11 @@ export class PythonEngine {
       }
     }
 
-    logger.debug('Executing Python script', { script: scriptPath, args: argList, cwd: options?.cwd });
+    logger.debug('Executing Python script', {
+      script: scriptPath,
+      args: argList,
+      cwd: options?.cwd,
+    });
 
     try {
       // Use execa instead of execSync for more reliable argument handling
@@ -257,7 +261,7 @@ export class PythonEngine {
         maxBuffer: 10 * 1024 * 1024, // 10MB buffer
         timeout,
       });
-      
+
       const output = result.stdout;
 
       if (!expectJson) {
