@@ -2,8 +2,12 @@
 description: Documentation standards for docs/ directory - structure, content guidelines, formatting
 globs:
   - "docs/**/*.md"
-alwaysApply: true
+alwaysApply: false
 ---
+
+# Documentation Rules (DEPRECATED - See documentation-organization.mdc)
+
+> **⚠️ This file is deprecated. See `documentation-organization.mdc` for comprehensive documentation organization rules including file placement and root directory restrictions.**
 
 # Documentation Rules
 

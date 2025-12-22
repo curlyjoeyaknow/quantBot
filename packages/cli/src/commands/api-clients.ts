@@ -9,9 +9,9 @@ import { commandRegistry } from '../core/command-registry.js';
 import { execute } from '../core/execute.js';
 import type { CommandContext } from '../core/command-context.js';
 import { NotFoundError } from '@quantbot/utils';
-import { testApiClientsHandler } from '../handlers/api-clients/test-api-clients.js';
-import { statusApiClientsHandler } from '../handlers/api-clients/status-api-clients.js';
-import { creditsApiClientsHandler } from '../handlers/api-clients/credits-api-clients.js';
+import { testApiClientsHandler } from './api-clients/test-api-clients.js';
+import { statusApiClientsHandler } from './api-clients/status-api-clients.js';
+import { creditsApiClientsHandler } from './api-clients/credits-api-clients.js';
 import { testSchema, statusSchema, creditsSchema } from '../command-defs/api-clients.js';
 
 /**

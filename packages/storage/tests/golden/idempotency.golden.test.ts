@@ -59,43 +59,45 @@ class MockDuckDBClient extends DuckDBClient {
     if (operation === 'upsert') {
       const data = JSON.parse(params.data as string);
       const key = `${data.mint}:${data.chain}:${data.interval}`;
-      
+
       // Simulate upsert: update if exists, create if not
       const existing = this.storage.get(key);
       const now = DateTime.utc().toISO();
-      
+
       // Preserve existing timestamps if not provided in update
       const record = {
         mint: data.mint,
         chain: data.chain,
         interval: data.interval,
-        earliest_timestamp: data.earliest_timestamp !== undefined 
-          ? data.earliest_timestamp 
-          : (existing?.earliest_timestamp || null),
-        latest_timestamp: data.latest_timestamp !== undefined 
-          ? data.latest_timestamp 
-          : (existing?.latest_timestamp || null),
+        earliest_timestamp:
+          data.earliest_timestamp !== undefined
+            ? data.earliest_timestamp
+            : existing?.earliest_timestamp || null,
+        latest_timestamp:
+          data.latest_timestamp !== undefined
+            ? data.latest_timestamp
+            : existing?.latest_timestamp || null,
         candle_count: data.candle_count,
         coverage_percent: data.coverage_percent,
         last_updated: now,
       };
-      
+
       this.storage.set(key, record);
-      
+
       return resultSchema.parse({ success: true });
     } else if (operation === 'get') {
       const key = `${params.mint}:${params.chain}:${params.interval}`;
       const record = this.storage.get(key);
-      
+
       if (!record) {
         return resultSchema.parse(null);
       }
-      
+
       return resultSchema.parse(record);
     } else if (operation === 'list') {
       const records = Array.from(this.storage.values());
       let filtered = records;
-      
+
       if (params.chain) {
         filtered = filtered.filter((r) => r.chain === params.chain);
       }
@@ -105,10 +107,10 @@ class MockDuckDBClient extends DuckDBClient {
       if (params.min_coverage !== undefined) {
         filtered = filtered.filter((r) => r.coverage_percent >= params.min_coverage);
       }
-      
+
       return resultSchema.parse(filtered);
     }
-    
+
     throw new Error(`Unknown operation: ${operation}`);
   }
 

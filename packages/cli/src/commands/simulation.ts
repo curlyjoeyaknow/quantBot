@@ -9,14 +9,14 @@ import { commandRegistry } from '../core/command-registry.js';
 import { execute } from '../core/execute.js';
 import type { CommandContext } from '../core/command-context.js';
 import { NotFoundError } from '@quantbot/utils';
-import { runSimulationHandler } from '../handlers/simulation/run-simulation.js';
-import { listRunsHandler } from '../handlers/simulation/list-runs.js';
-import { runSimulationDuckdbHandler } from '../handlers/simulation/run-simulation-duckdb.js';
-import { storeStrategyDuckdbHandler } from '../handlers/simulation/store-strategy-duckdb.js';
-import { storeRunDuckdbHandler } from '../handlers/simulation/store-run-duckdb.js';
-import { generateReportDuckdbHandler } from '../handlers/simulation/generate-report-duckdb.js';
-import { clickHouseQueryHandler } from '../handlers/simulation/clickhouse-query.js';
-import { listStrategiesHandler } from '../handlers/simulation/list-strategies.js';
+import { runSimulationHandler } from './simulation/run-simulation.js';
+import { listRunsHandler } from './simulation/list-runs.js';
+import { runSimulationDuckdbHandler } from './simulation/run-simulation-duckdb.js';
+import { storeStrategyDuckdbHandler } from './simulation/store-strategy-duckdb.js';
+import { storeRunDuckdbHandler } from './simulation/store-run-duckdb.js';
+import { generateReportDuckdbHandler } from './simulation/generate-report-duckdb.js';
+import { clickHouseQueryHandler } from './simulation/clickhouse-query.js';
+import { listStrategiesHandler } from './simulation/list-strategies.js';
 import { runInteractiveStrategyCreation } from './simulation-strategy-interactive.js';
 import {
   runSchema,

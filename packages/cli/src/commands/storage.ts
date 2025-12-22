@@ -10,12 +10,12 @@ import type { PackageCommandModule } from '../types/index.js';
 import { commandRegistry } from '../core/command-registry.js';
 import type { CommandContext } from '../core/command-context.js';
 import { NotFoundError, ValidationError } from '@quantbot/utils';
-import { queryStorageHandler } from '../handlers/storage/query-storage.js';
-import { statsStorageHandler } from '../handlers/storage/stats-storage.js';
-import { listTokensHandler } from '../handlers/storage/list-tokens.js';
-import { storageStatsWorkflowHandler } from '../handlers/storage/stats-workflow.js';
-import { ohlcvStatsWorkflowHandler } from '../handlers/storage/ohlcv-stats-workflow.js';
-import { tokenStatsWorkflowHandler } from '../handlers/storage/token-stats-workflow.js';
+import { queryStorageHandler } from './storage/query-storage.js';
+import { statsStorageHandler } from './storage/stats-storage.js';
+import { listTokensHandler } from './storage/list-tokens.js';
+import { storageStatsWorkflowHandler } from './storage/stats-workflow.js';
+import { ohlcvStatsWorkflowHandler } from './storage/ohlcv-stats-workflow.js';
+import { tokenStatsWorkflowHandler } from './storage/token-stats-workflow.js';
 
 /**
  * Query command schema - Only allow safe queries

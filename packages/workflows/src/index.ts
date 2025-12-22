@@ -73,3 +73,29 @@ export type {
   ResolveEvmChainsContext,
   TokenResolutionResult,
 } from './metadata/resolveEvmChains.js';
+export { surgicalOhlcvFetch } from './ohlcv/surgicalOhlcvFetch.js';
+export type {
+  SurgicalOhlcvFetchSpec,
+  SurgicalOhlcvFetchResult,
+  SurgicalOhlcvFetchContext,
+  FetchTask,
+  CoverageData,
+  ProgressCallback,
+} from './ohlcv/surgicalOhlcvFetch.js';
+export { analyzeCoverage } from './ohlcv/analyzeCoverage.js';
+export type {
+  AnalyzeCoverageSpec,
+  AnalyzeCoverageResult,
+  AnalyzeCoverageContext,
+  OverallCoverageResult,
+  CallerCoverageResult,
+} from './ohlcv/analyzeCoverage.js';
+export { createOhlcvIngestionWorkflowAdapter } from './adapters/ohlcvIngestionWorkflowAdapter.js';
+export * from './context/ports.js';
+export * from './context/workflowContextWithPorts.js';
+export { createProductionPorts } from './context/createProductionPorts.js';
+export { createProductionContextWithPorts } from './context/createProductionContext.js';
+export { createTelemetryConsoleAdapter } from './adapters/telemetryConsoleAdapter.js';
+export { createMarketDataBirdeyeAdapter } from './adapters/marketDataBirdeyeAdapter.js';
+export { ingestOhlcvWorkflowPorted } from './ohlcv/ingestOhlcvPorted.js';
+export type { IngestOhlcvWorkflowInput, IngestOhlcvWorkflowOutput } from './ohlcv/ingestOhlcvPorted.js';

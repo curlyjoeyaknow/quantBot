@@ -1,6 +1,6 @@
 /**
  * Metadata Commands
- * 
+ *
  * Commands for managing and resolving token metadata.
  */
 
@@ -8,7 +8,7 @@ import type { Command } from 'commander';
 import { z } from 'zod';
 import type { PackageCommandModule } from '../types/index.js';
 import { commandRegistry } from '../core/command-registry.js';
-import { resolveEvmChainsHandler } from '../handlers/metadata/resolve-evm-chains.js';
+import { resolveEvmChainsHandler } from './metadata/resolve-evm-chains.js';
 import type { CommandContext } from '../core/command-context.js';
 import { NotFoundError } from '@quantbot/utils';
 
@@ -77,4 +77,3 @@ const metadataModule: PackageCommandModule = {
 
 // Register module
 commandRegistry.registerPackage(metadataModule);
-

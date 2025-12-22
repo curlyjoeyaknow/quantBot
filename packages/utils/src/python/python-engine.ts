@@ -87,7 +87,11 @@ export interface DuckDBStorageConfig {
     | 'update_ohlcv_metadata'
     | 'query_ohlcv_metadata'
     | 'add_ohlcv_exclusion'
-    | 'query_ohlcv_exclusions';
+    | 'query_ohlcv_exclusions'
+    | 'get_state'
+    | 'set_state'
+    | 'delete_state'
+    | 'init_state_table';
   data: Record<string, unknown>;
 }
 
@@ -106,6 +110,7 @@ export interface OhlcvWorklistConfig {
   from?: string;
   to?: string;
   side?: 'buy' | 'sell';
+  mints?: string[]; // Optional: filter by specific mint addresses
 }
 
 /**
@@ -260,6 +265,7 @@ export class PythonEngine {
         env: { ...process.env, ...options?.env },
         maxBuffer: 10 * 1024 * 1024, // 10MB buffer
         timeout,
+        encoding: 'utf8', // Ensure stdout/stderr are strings (for error handling)
       });
 
       const output = result.stdout;
@@ -274,21 +280,56 @@ export class PythonEngine {
         typeof output === 'string' ? output : (output as Buffer).toString('utf-8');
 
       // Parse JSON from last line (Python tools typically output JSON on last line)
+      // But also check if entire output is JSON, or if JSON appears anywhere in output
       const lines = outputString.trim().split('\n');
       const jsonLine = lines[lines.length - 1];
 
       let parsed: unknown;
+      let parseError: Error | undefined;
+
+      // Try parsing last line first (most common case)
       try {
         parsed = JSON.parse(jsonLine);
-      } catch {
-        // Try parsing entire output if last line isn't JSON
+      } catch (error) {
+        parseError = error instanceof Error ? error : new Error(String(error));
+
+        // Try parsing entire output (some scripts output only JSON)
         try {
           parsed = JSON.parse(outputString.trim());
         } catch {
-          throw new ValidationError(
-            `Failed to parse JSON output from Python script. Last line: ${jsonLine.substring(0, 200)}`,
-            { script: scriptPath, lastLine: jsonLine.substring(0, 200) }
-          );
+          // Try to find JSON in any line (look for lines starting with { or [)
+          let foundJson = false;
+          for (let i = lines.length - 1; i >= 0; i--) {
+            const line = lines[i].trim();
+            if (
+              (line.startsWith('{') || line.startsWith('[')) &&
+              (line.endsWith('}') || line.endsWith(']'))
+            ) {
+              try {
+                parsed = JSON.parse(line);
+                foundJson = true;
+                break;
+              } catch {
+                // Continue searching
+              }
+            }
+          }
+
+          if (!foundJson) {
+            // Provide detailed error information
+            const lastFewLines = lines.slice(-5).join('\n');
+            const errorDetails = {
+              script: scriptPath,
+              lastLine: jsonLine.substring(0, 200),
+              lastFewLines: lastFewLines.substring(0, 500),
+              outputLength: outputString.length,
+              parseError: parseError.message,
+            };
+            throw new ValidationError(
+              `Failed to parse JSON output from Python script. Last line: ${jsonLine.substring(0, 100)}${jsonLine.length > 100 ? '...' : ''}. Parse error: ${parseError.message}`,
+              errorDetails
+            );
+          }
         }
       }
 
@@ -328,36 +369,135 @@ export class PythonEngine {
 
       return validated;
     } catch (error: unknown) {
-      // Handle subprocess errors
+      // Re-throw if already a custom error (ValidationError, AppError, TimeoutError, etc.)
+      if (
+        error instanceof AppError ||
+        error instanceof ValidationError ||
+        error instanceof TimeoutError
+      ) {
+        throw error;
+      }
+
+      // Handle execa/subprocess errors
+      // execa v9 throws errors with exitCode, stderr, stdout properties
+      // Check if it's an execa error by looking for exitCode, status, or execa-specific properties
       const errorObj = error as {
         signal?: string;
-        status?: number;
-        stderr?: { toString(): string };
-        stdout?: { toString(): string };
+        exitCode?: number;
+        status?: number; // Legacy execa compatibility
+        stderr?: string | Buffer | { toString(): string };
+        stdout?: string | Buffer | { toString(): string };
         message?: string;
+        timedOut?: boolean;
+        shortMessage?: string;
+        command?: string;
+        isMaxBuffer?: boolean;
+        failed?: boolean;
+        isCanceled?: boolean;
+        isGracefullyCanceled?: boolean;
+        isTerminated?: boolean;
+        isForcefullyTerminated?: boolean;
       };
-      if (errorObj.signal === 'SIGTERM' || errorObj.status === 124) {
-        throw new TimeoutError(`Python script timed out after ${timeout}ms`, timeout, {
-          script: scriptPath,
-        });
-      }
-      if (errorObj.status !== undefined && errorObj.status !== 0) {
-        const stderr = errorObj.stderr?.toString() || '';
-        const stdout = errorObj.stdout?.toString() || '';
+
+      // Check if this looks like an execa error (has execa-specific properties)
+      // execa v9 errors have: exitCode, failed, command, stderr, stdout, etc.
+      const isExecaError =
+        errorObj.exitCode !== undefined ||
+        errorObj.status !== undefined ||
+        errorObj.failed === true ||
+        errorObj.command !== undefined ||
+        (error instanceof Error &&
+          (error.constructor.name === 'ExecaError' || error.constructor.name.includes('Execa')));
+
+      // Check for maxBuffer exceeded error (execa throws this before process exits)
+      const errorMessage =
+        errorObj.message ||
+        errorObj.shortMessage ||
+        (error instanceof Error ? error.message : String(error));
+      if (
+        errorObj.isMaxBuffer ||
+        (errorMessage && /maxBuffer|stdout.*exceeded|buffer.*exceeded/i.test(errorMessage))
+      ) {
         throw new AppError(
-          `Python script exited with code ${errorObj.status}: ${stderr || errorObj.message || 'Unknown error'}`,
+          `Python script output exceeded maxBuffer limit (10MB). Output was truncated.`,
           'PYTHON_SCRIPT_ERROR',
           500,
           {
             script: scriptPath,
-            exitCode: errorObj.status,
-            stderr: stderr.substring(0, 1000), // Truncate to prevent huge error messages
-            stdout: stdout.substring(0, 500), // Include some stdout for context
+            errorType: 'maxBufferExceeded',
+            maxBuffer: '10MB',
           }
         );
       }
-      // Re-throw if already a custom error (ValidationError, etc.)
-      throw error;
+
+      // Check for timeout errors
+      if (
+        errorObj.timedOut ||
+        errorObj.signal === 'SIGTERM' ||
+        errorObj.exitCode === 124 ||
+        errorObj.status === 124
+      ) {
+        throw new TimeoutError(`Python script timed out after ${timeout}ms`, timeout, {
+          script: scriptPath,
+        });
+      }
+
+      // Check for non-zero exit code (this is the main path for execa errors)
+      // execa errors have exitCode property, or status for legacy compatibility
+      // Also check if error has 'failed' property (execa sets this)
+      const exitCode = errorObj.exitCode ?? errorObj.status;
+      const isFailed = errorObj.failed ?? false;
+
+      // Catch execa errors: either has exitCode/status, failed=true, or matches execa error pattern
+      if (isExecaError || isFailed || (exitCode !== undefined && exitCode !== 0)) {
+        // Handle stderr/stdout as string, Buffer, or object with toString()
+        const stderr = errorObj.stderr
+          ? typeof errorObj.stderr === 'string'
+            ? errorObj.stderr
+            : errorObj.stderr instanceof Buffer
+              ? errorObj.stderr.toString('utf-8')
+              : typeof errorObj.stderr.toString === 'function'
+                ? errorObj.stderr.toString()
+                : String(errorObj.stderr)
+          : '';
+        const stdout = errorObj.stdout
+          ? typeof errorObj.stdout === 'string'
+            ? errorObj.stdout
+            : errorObj.stdout instanceof Buffer
+              ? errorObj.stdout.toString('utf-8')
+              : typeof errorObj.stdout.toString === 'function'
+                ? errorObj.stdout.toString()
+                : String(errorObj.stdout)
+          : '';
+
+        // Build error message with context
+        const stderrMessage = stderr || errorObj.message || errorMessage || 'Unknown error';
+        const finalExitCode = exitCode ?? (isFailed ? 1 : undefined);
+        throw new AppError(
+          `Python script exited with code ${finalExitCode ?? 'unknown'}: ${stderrMessage}`,
+          'PYTHON_SCRIPT_ERROR',
+          500,
+          {
+            script: scriptPath,
+            exitCode: finalExitCode,
+            stderr: stderr.substring(0, 1000), // Truncate to prevent huge error messages
+            stdout: stdout.substring(0, 500), // Include some stdout for context
+            command: errorObj.command, // Include command for debugging
+          }
+        );
+      }
+
+      // For unknown errors, wrap them in AppError
+      const unknownErrorMessage = error instanceof Error ? error.message : String(error);
+      throw new AppError(
+        `Failed to execute Python script: ${unknownErrorMessage}`,
+        'PYTHON_SCRIPT_ERROR',
+        500,
+        {
+          script: scriptPath,
+          originalError: unknownErrorMessage,
+        }
+      );
     }
   }
 
@@ -542,6 +682,9 @@ export class PythonEngine {
     if (config.side) {
       args.side = config.side;
     }
+    if (config.mints && config.mints.length > 0) {
+      args.mints = config.mints;
+    }
 
     const cwd = options?.cwd ?? join(workspaceRoot, 'tools/ingestion');
     const env = {
@@ -660,21 +803,53 @@ export class PythonEngine {
       }
 
       // Parse JSON from stdout
+      // Try parsing entire output first, then last line, then search for JSON in any line
+      const lines = stdout.trim().split('\n');
+      const jsonLine = lines[lines.length - 1];
+
       let parsed: unknown;
+      let parseError: Error | undefined;
+
       try {
         // Try parsing entire output first
         parsed = JSON.parse(stdout.trim());
-      } catch {
-        // Try parsing last line if entire output isn't JSON
-        const lines = stdout.trim().split('\n');
-        const jsonLine = lines[lines.length - 1];
+      } catch (error) {
+        parseError = error instanceof Error ? error : new Error(String(error));
+
         try {
+          // Try parsing last line
           parsed = JSON.parse(jsonLine);
         } catch {
-          throw new ValidationError(
-            `Failed to parse JSON output from Python script. Output: ${stdout.substring(0, 500)}`,
-            { script: scriptFullPath, output: stdout.substring(0, 500) }
-          );
+          // Try to find JSON in any line (look for lines starting with { or [)
+          let foundJson = false;
+          for (let i = lines.length - 1; i >= 0; i--) {
+            const line = lines[i].trim();
+            if (
+              (line.startsWith('{') || line.startsWith('[')) &&
+              (line.endsWith('}') || line.endsWith(']'))
+            ) {
+              try {
+                parsed = JSON.parse(line);
+                foundJson = true;
+                break;
+              } catch {
+                // Continue searching
+              }
+            }
+          }
+
+          if (!foundJson) {
+            const lastFewLines = lines.slice(-5).join('\n');
+            throw new ValidationError(
+              `Failed to parse JSON output from Python script. Output: ${stdout.substring(0, 500)}${stdout.length > 500 ? '...' : ''}. Parse error: ${parseError.message}`,
+              {
+                script: scriptFullPath,
+                output: stdout.substring(0, 500),
+                lastFewLines: lastFewLines.substring(0, 500),
+                parseError: parseError.message,
+              }
+            );
+          }
         }
       }
 
@@ -708,38 +883,6 @@ export class PythonEngine {
 
       return validated;
     } catch (error: unknown) {
-      // Handle timeout errors
-      const errorObj = error as {
-        timedOut?: boolean;
-        signal?: string;
-        exitCode?: number;
-        stderr?: string;
-        stdout?: string;
-        message?: string;
-      };
-      if (errorObj.timedOut || errorObj.signal === 'SIGTERM') {
-        throw new TimeoutError(`Python script timed out after ${timeout}ms`, timeout, {
-          script: scriptFullPath,
-        });
-      }
-
-      // Handle execa errors
-      if (errorObj.exitCode !== undefined && errorObj.exitCode !== 0) {
-        const stderr = errorObj.stderr || '';
-        const stdout = errorObj.stdout || '';
-        throw new AppError(
-          `Python script exited with code ${errorObj.exitCode}: ${stderr || errorObj.message || 'Unknown error'}`,
-          'PYTHON_SCRIPT_ERROR',
-          500,
-          {
-            script: scriptFullPath,
-            exitCode: errorObj.exitCode,
-            stderr: stderr.substring(0, 1000),
-            stdout: stdout.substring(0, 500),
-          }
-        );
-      }
-
       // Re-throw if already a custom error
       if (
         error instanceof AppError ||
@@ -749,10 +892,74 @@ export class PythonEngine {
         throw error;
       }
 
+      // Handle execa/subprocess errors
+      const errorObj = error as {
+        timedOut?: boolean;
+        signal?: string;
+        exitCode?: number;
+        status?: number;
+        stderr?: string | Buffer | { toString(): string };
+        stdout?: string | Buffer | { toString(): string };
+        message?: string;
+        shortMessage?: string;
+        command?: string;
+      };
+
+      // Check for timeout errors
+      if (
+        errorObj.timedOut ||
+        errorObj.signal === 'SIGTERM' ||
+        errorObj.exitCode === 124 ||
+        errorObj.status === 124
+      ) {
+        throw new TimeoutError(`Python script timed out after ${timeout}ms`, timeout, {
+          script: scriptFullPath,
+        });
+      }
+
+      // Check for non-zero exit code
+      const exitCode = errorObj.exitCode ?? errorObj.status;
+      if (exitCode !== undefined && exitCode !== 0) {
+        const stderr = errorObj.stderr
+          ? typeof errorObj.stderr === 'string'
+            ? errorObj.stderr
+            : errorObj.stderr instanceof Buffer
+              ? errorObj.stderr.toString('utf-8')
+              : typeof errorObj.stderr.toString === 'function'
+                ? errorObj.stderr.toString()
+                : String(errorObj.stderr)
+          : '';
+        const stdout = errorObj.stdout
+          ? typeof errorObj.stdout === 'string'
+            ? errorObj.stdout
+            : errorObj.stdout instanceof Buffer
+              ? errorObj.stdout.toString('utf-8')
+              : typeof errorObj.stdout.toString === 'function'
+                ? errorObj.stdout.toString()
+                : String(errorObj.stdout)
+          : '';
+        const errorMessage =
+          errorObj.message ||
+          errorObj.shortMessage ||
+          (error instanceof Error ? error.message : String(error));
+        throw new AppError(
+          `Python script exited with code ${exitCode}: ${stderr || errorMessage || 'Unknown error'}`,
+          'PYTHON_SCRIPT_ERROR',
+          500,
+          {
+            script: scriptFullPath,
+            exitCode,
+            stderr: stderr.substring(0, 1000),
+            stdout: stdout.substring(0, 500),
+            command: errorObj.command,
+          }
+        );
+      }
+
       // Wrap unknown errors
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const unknownErrorMessage = error instanceof Error ? error.message : String(error);
       throw new AppError(
-        `Failed to execute Python script: ${errorMessage}`,
+        `Failed to execute Python script: ${unknownErrorMessage}`,
         'PYTHON_SCRIPT_ERROR',
         500,
         { script: scriptFullPath }

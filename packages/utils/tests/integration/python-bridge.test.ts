@@ -12,7 +12,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { existsSync } from 'fs';
+import { existsSync, readFileSync } from 'fs';
 import { join } from 'path';
 import { PythonEngine, PythonManifestSchema } from '../../src/python/python-engine';
 
@@ -20,12 +20,19 @@ import { PythonEngine, PythonManifestSchema } from '../../src/python/python-engi
 function findWorkspaceRoot(): string {
   let current = process.cwd();
   while (current !== '/') {
-    if (
-      existsSync(join(current, 'pnpm-workspace.yaml')) ||
-      (existsSync(join(current, 'package.json')) &&
-        require(join(current, 'package.json')).workspaces)
-    ) {
+    if (existsSync(join(current, 'pnpm-workspace.yaml'))) {
       return current;
+    }
+    const packageFile = join(current, 'package.json');
+    if (existsSync(packageFile)) {
+      try {
+        const pkg = JSON.parse(readFileSync(packageFile, 'utf8'));
+        if (pkg.workspaces || pkg.pnpm?.workspace) {
+          return current;
+        }
+      } catch {
+        // Continue searching
+      }
     }
     current = join(current, '..');
   }

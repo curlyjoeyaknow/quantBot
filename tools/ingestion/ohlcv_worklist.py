@@ -47,7 +47,8 @@ def get_ohlcv_worklist(
     duckdb_path: str,
     from_date: Optional[str] = None,
     to_date: Optional[str] = None,
-    side: str = 'buy'
+    side: str = 'buy',
+    mints: Optional[list] = None
 ) -> Dict[str, Any]:
     """
     Query DuckDB for OHLCV worklist (calls + tokens with resolved mints).
@@ -61,6 +62,7 @@ def get_ohlcv_worklist(
         from_date: Optional start date filter (ISO format)
         to_date: Optional end date filter (ISO format)
         side: Call side filter ('buy' or 'sell', default 'buy')
+        mints: Optional list of mint addresses to filter by
     
     Returns:
         Dict with:
@@ -147,6 +149,14 @@ def get_ohlcv_worklist(
                 calls_query += " AND cl.trigger_ts_ms <= ?"
                 params.append(to_ts)
             
+            # Add mint filter if provided
+            if mints and len(mints) > 0:
+                # Use parameterized query with IN clause
+                placeholders = ','.join(['?' for _ in mints])
+                token_group_query += f" AND cl.mint IN ({placeholders})"
+                calls_query += f" AND cl.mint IN ({placeholders})"
+                params.extend(mints)
+            
             token_group_query += " GROUP BY cl.mint, LOWER(COALESCE(cl.chain, 'solana'))"
             calls_query += " ORDER BY cl.trigger_ts_ms"
             
@@ -194,6 +204,14 @@ def get_ohlcv_worklist(
                 token_group_query += " AND uc.call_ts_ms <= ?"
                 calls_query += " AND uc.call_ts_ms <= ?"
                 params.append(to_ts)
+            
+            # Add mint filter if provided
+            if mints and len(mints) > 0:
+                # Use parameterized query with IN clause
+                placeholders = ','.join(['?' for _ in mints])
+                token_group_query += f" AND uc.mint IN ({placeholders})"
+                calls_query += f" AND uc.mint IN ({placeholders})"
+                params.extend(mints)
             
             token_group_query += " GROUP BY uc.mint"
             calls_query += " ORDER BY uc.call_ts_ms"
@@ -295,6 +313,7 @@ def main():
     parser.add_argument('--from', dest='from_date', help='Start date filter (ISO format)')
     parser.add_argument('--to', dest='to_date', help='End date filter (ISO format)')
     parser.add_argument('--side', default='buy', choices=['buy', 'sell'], help='Call side filter')
+    parser.add_argument('--mints', nargs='*', help='Filter by specific mint addresses')
     
     args = parser.parse_args()
     
@@ -303,7 +322,8 @@ def main():
             args.duckdb,
             from_date=args.from_date,
             to_date=args.to_date,
-            side=args.side
+            side=args.side,
+            mints=args.mints
         )
         
         # Output as JSON (for PythonEngine integration)

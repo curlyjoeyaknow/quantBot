@@ -8,6 +8,8 @@ alwaysApply: false
 
 # Workflow Testing Rules
 
+> **See also:** `debugging-regression-tests.mdc` for mandatory regression test creation after bug fixes.
+
 ## Test Structure
 
 - Workflows tests validate orchestration behavior using mocked WorkflowContext

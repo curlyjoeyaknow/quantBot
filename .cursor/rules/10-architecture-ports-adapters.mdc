@@ -1,0 +1,43 @@
+---
+name: Ports & Adapters architecture
+description: Handlers depend on ports; adapters implement ports; composition roots wire everything.
+globs:
+  - "apps/**"
+  - "packages/**"
+---
+
+# Ports & Adapters rules
+
+## Definitions
+- **Domain**: pure types + deterministic logic
+- **Ports**: interfaces the domain/application needs (MarketDataPort, ExecutionPort, StatePort, ClockPort, TelemetryPort, ConfigPort)
+- **Adapters**: concrete implementations of ports (HeliusMarketDataAdapter, JitoExecutionAdapter, RedisStateAdapter, etc.)
+- **Composition Root**: wiring code that binds adapters to ports and invokes handlers (lives in `apps/*`)
+
+## Dependency direction (must hold)
+- `domain/*` depends on nothing outside domain types
+- `handlers/*` may depend on `domain/*` and `ports/*` only
+- `adapters/*` may depend on external libs/SDKs and implement `ports/*`
+- `apps/*` may depend on everything, but ONLY for wiring and I/O
+
+## Forbidden patterns
+- Handlers importing SDK clients directly (RPC, Redis, DB clients, filesystem, process env)
+- Domain importing anything from `apps/` or `adapters/`
+- Hidden globals (singletons used inside handlers)
+
+## Required structure (recommended)
+Within a core package (names flexible):
+- `packages/core/src/domain/**`
+- `packages/core/src/ports/**`
+- `packages/core/src/commands/**`
+- `packages/core/src/handlers/**`
+Adapters in:
+- `packages/adapters-*/src/**` or `packages/infra/*`
+
+## Composition root checklist
+When creating/altering an app entrypoint:
+- resolve config (env/flags)
+- create concrete adapters
+- build a `ports` object
+- call handler(s)
+- emit telemetry/logs from the app layer (not from handlers)

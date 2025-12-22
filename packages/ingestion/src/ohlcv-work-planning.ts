@@ -46,6 +46,7 @@ export interface WorklistOptions {
   interval?: '15s' | '1m' | '5m' | '1H';
   preWindowMinutes?: number; // Minutes before alert to start fetching
   postWindowMinutes?: number; // Minutes after alert to end fetching
+  mints?: string[]; // Optional: filter worklist to only include these mints (filtering happens after DuckDB query)
 }
 
 /**
@@ -93,7 +94,7 @@ export async function generateOhlcvWorklist(
 
   const pythonEngine = getPythonEngine();
 
-  // Query DuckDB for worklist
+  // Query DuckDB for worklist (don't pass mints to Python - filter in TypeScript instead)
   const worklist = await pythonEngine.runOhlcvWorklist({
     duckdbPath: absoluteDuckdbPath,
     from: from?.toISOString(),
@@ -106,10 +107,24 @@ export async function generateOhlcvWorklist(
     calls: worklist.calls.length,
   });
 
+  // Filter token groups by mints if provided (case-sensitive exact match)
+  let filteredTokenGroups = worklist.tokenGroups;
+  if (options.mints !== undefined && options.mints.length > 0) {
+    const mintsSet = new Set(options.mints);
+    filteredTokenGroups = worklist.tokenGroups.filter((group) =>
+      group.mint && mintsSet.has(group.mint)
+    );
+    logger.info('Filtered worklist by mints', {
+      originalCount: worklist.tokenGroups.length,
+      filteredCount: filteredTokenGroups.length,
+      requestedMints: options.mints.length,
+    });
+  }
+
   // Convert worklist to OhlcvWorkItem[]
   const workItems: OhlcvWorkItem[] = [];
 
-  for (const tokenGroup of worklist.tokenGroups) {
+  for (const tokenGroup of filteredTokenGroups) {
     if (!tokenGroup.mint || !tokenGroup.earliestAlertTime) {
       logger.warn('Token group missing required fields', {
         mint: tokenGroup.mint?.substring(0, 20),

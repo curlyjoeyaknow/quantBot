@@ -9,9 +9,10 @@ import type { PackageCommandModule } from '../types/index.js';
 import { commandRegistry } from '../core/command-registry.js';
 import type { CommandContext } from '../core/command-context.js';
 import { NotFoundError } from '@quantbot/utils';
-import { queryOhlcvHandler } from '../handlers/ohlcv/query-ohlcv.js';
-import { backfillOhlcvHandler } from '../handlers/ohlcv/backfill-ohlcv.js';
-import { coverageOhlcvHandler } from '../handlers/ohlcv/coverage-ohlcv.js';
+import { queryOhlcvHandler } from './ohlcv/query-ohlcv.js';
+import { backfillOhlcvHandler } from './ohlcv/backfill-ohlcv.js';
+import { coverageOhlcvHandler } from './ohlcv/coverage-ohlcv.js';
+import { analyzeCoverageHandler } from './ohlcv/analyze-coverage.js';
 
 /**
  * Query command schema
@@ -87,6 +88,30 @@ export const coverageSchema = z.object({
 });
 
 /**
+ * Analyze coverage command schema
+ */
+export const analyzeCoverageSchema = z.object({
+  analysisType: z.enum(['overall', 'caller']).default('overall'),
+  duckdb: z.string().optional(), // For caller analysis
+  chain: z.string().optional(),
+  interval: z.enum(['1m', '5m', '15m', '1h', '1s', '15s']).optional(),
+  startDate: z.string().optional(), // YYYY-MM-DD
+  endDate: z.string().optional(),
+  startMonth: z
+    .string()
+    .regex(/^\d{4}-\d{2}$/)
+    .optional(), // YYYY-MM
+  endMonth: z
+    .string()
+    .regex(/^\d{4}-\d{2}$/)
+    .optional(),
+  caller: z.string().optional(),
+  minCoverage: z.number().min(0).max(1).default(0.8),
+  generateFetchPlan: z.boolean().default(false),
+  format: z.enum(['json', 'table', 'csv']).default('table'),
+});
+
+/**
  * Register OHLCV commands
  */
 export function registerOhlcvCommands(program: Command): void {
@@ -145,6 +170,37 @@ export function registerOhlcvCommands(program: Command): void {
       }
       await execute(commandDef, options);
     });
+
+  // Analyze coverage command
+  ohlcvCmd
+    .command('analyze-coverage')
+    .description('Analyze OHLCV coverage (overall or caller-based)')
+    .option('--type <type>', 'Analysis type: overall or caller', 'overall')
+    .option('--duckdb <path>', 'Path to DuckDB database (for caller analysis)')
+    .option('--chain <chain>', 'Filter by chain')
+    .option('--interval <interval>', 'Filter by interval')
+    .option('--start-date <date>', 'Start date (YYYY-MM-DD, for overall)')
+    .option('--end-date <date>', 'End date (YYYY-MM-DD, for overall)')
+    .option('--start-month <month>', 'Start month (YYYY-MM, for caller)')
+    .option('--end-month <month>', 'End month (YYYY-MM, for caller)')
+    .option('--caller <name>', 'Filter by caller (for caller analysis)')
+    .option('--min-coverage <ratio>', 'Minimum coverage threshold (0-1)', '0.8')
+    .option('--generate-fetch-plan', 'Generate fetch plan (for caller analysis)')
+    .option('--format <format>', 'Output format', 'table')
+    .action(async (options) => {
+      const { execute } = await import('../core/execute.js');
+      const commandDef = commandRegistry.getCommand('ohlcv', 'analyze-coverage');
+      if (!commandDef) {
+        throw new NotFoundError('Command', 'ohlcv.analyze-coverage');
+      }
+      await execute(commandDef, {
+        ...options,
+        analysisType: options.type,
+        generateFetchPlan:
+          options.generateFetchPlan === true || options.generateFetchPlan === 'true',
+        minCoverage: options.minCoverage ? parseFloat(options.minCoverage) : 0.8,
+      });
+    });
 }
 
 /**
@@ -189,6 +245,21 @@ const ohlcvModule: PackageCommandModule = {
         return await coverageOhlcvHandler(typedArgs, typedCtx);
       },
       examples: ['quantbot ohlcv coverage --mint So111...'],
+    },
+    {
+      name: 'analyze-coverage',
+      description: 'Analyze OHLCV coverage (overall or caller-based)',
+      schema: analyzeCoverageSchema,
+      handler: async (args: unknown, ctx: unknown) => {
+        const typedCtx = ctx as CommandContext;
+        const typedArgs = args as z.infer<typeof analyzeCoverageSchema>;
+        return await analyzeCoverageHandler(typedArgs, typedCtx);
+      },
+      examples: [
+        'quantbot ohlcv analyze-coverage --type overall',
+        'quantbot ohlcv analyze-coverage --type caller --duckdb data/tele.duckdb',
+        'quantbot ohlcv analyze-coverage --type caller --caller Brook --generate-fetch-plan',
+      ],
     },
   ],
 };

@@ -54,8 +54,7 @@ function toKebabCase(key: string): string {
  * Handles both --flag value and --flag=value formats
  *
  * Key normalization:
- * - Commander.js already converts --kebab-case to camelCase
- * - Preserve camelCase keys as-is (Zod schemas expect camelCase)
+ * - Convert camelCase/PascalCase to kebab-case
  * - Keys with underscores or dots → preserved as-is
  *
  * Value normalization:
@@ -72,9 +71,8 @@ export function normalizeOptions(options: Record<string, unknown>): Record<strin
       continue;
     }
 
-    // Preserve camelCase keys as-is (Commander.js already converts --kebab-case to camelCase)
-    // Zod schemas expect camelCase, so don't convert back to kebab-case
-    const normalizedKey = key;
+    // Convert camelCase/PascalCase to kebab-case
+    const normalizedKey = toKebabCase(key);
 
     // Handle string values that might be numbers or booleans
     if (typeof value === 'string') {

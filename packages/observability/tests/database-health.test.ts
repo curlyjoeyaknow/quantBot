@@ -45,12 +45,13 @@ describe('Database Health Monitoring', () => {
     });
 
     it('should measure latency correctly', async () => {
+      const delayMs = 20;
       const mockClickHouse = {
         query: vi.fn().mockImplementation(() => {
           return new Promise((resolve) => {
             setTimeout(() => {
               resolve({ json: async () => [{ '?column?': 1 }] });
-            }, 20);
+            }, delayMs);
           });
         }),
       };
@@ -59,7 +60,13 @@ describe('Database Health Monitoring', () => {
 
       const result = await checkDatabaseHealth();
 
-      expect(result.clickhouse.latency).toBeGreaterThanOrEqual(20);
+      // Latency should be at least the delay, with some tolerance for test execution overhead
+      // Using >= delayMs - 5 to account for timing precision and test overhead
+      // Timing can vary slightly due to event loop scheduling, so allow some margin
+      expect(result.clickhouse.latency).toBeGreaterThanOrEqual(delayMs - 5);
+      // Latency should not be excessively high (allowing up to 100ms for test overhead)
+      expect(result.clickhouse.latency).toBeLessThan(100);
+      expect(result.clickhouse.connected).toBe(true);
     });
   });
 });

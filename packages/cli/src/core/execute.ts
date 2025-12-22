@@ -86,25 +86,37 @@ export async function execute(
   const progress = getProgressIndicator();
 
   try {
-    // 1. Normalize options (handles --flag value and --flag=value)
-    progress.start('Parsing arguments...');
+    // Check for verbose flag early to disable spinner
+    const isVerboseMode = (rawOptions as { verbose?: boolean }).verbose === true;
+    if (isVerboseMode) {
+      // Don't start spinner in verbose mode - let verbose output handle it
+    } else {
+      // 1. Normalize options (handles --flag value and --flag=value)
+      progress.start('Parsing arguments...');
+    }
     const normalized = normalizeOptions(rawOptions);
 
     // 2. Parse and validate arguments
     const args = parseArguments(commandDef.schema, normalized) as Record<string, unknown>;
-    progress.updateMessage('Validating configuration...');
+    if (!isVerboseMode) {
+      progress.updateMessage('Validating configuration...');
+    }
 
     // 3. Generate run ID and create artifact directory (if applicable)
     const runIdComponents = extractRunIdComponents(commandDef.name, packageName, args);
     if (runIdComponents) {
       runId = generateRunId(runIdComponents);
       const artifactsDir = process.env.ARTIFACTS_DIR || './artifacts';
-      progress.updateMessage('Creating artifact directory...');
+      if (!isVerboseMode) {
+        progress.updateMessage('Creating artifact directory...');
+      }
       artifactPaths = await createArtifactDirectory(runIdComponents, artifactsDir);
     }
 
     // 4. Create context and ensure initialization
-    progress.updateMessage('Initializing services...');
+    if (!isVerboseMode) {
+      progress.updateMessage('Initializing services...');
+    }
     const ctx = new CommandContext();
     await ctx.ensureInitialized();
 
@@ -117,8 +129,14 @@ export async function execute(
       delete (handlerArgs as { format?: OutputFormat }).format;
     }
 
-    // 6. Call handler (pure use-case function)
-    progress.updateMessage(`Running ${fullCommandName}...`);
+    // 6. Stop spinner if verbose mode is enabled (to avoid interfering with verbose output)
+    if (isVerboseMode) {
+      progress.stop();
+    } else {
+      progress.updateMessage(`Running ${fullCommandName}...`);
+    }
+
+    // 7. Call handler (pure use-case function)
     const result = await commandDef.handler(handlerArgs, ctx);
 
     // 7. Persist artifacts (if applicable)

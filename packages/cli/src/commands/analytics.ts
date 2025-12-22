@@ -8,10 +8,10 @@ import type { PackageCommandModule } from '../types/index.js';
 import { commandRegistry } from '../core/command-registry.js';
 import type { CommandContext } from '../core/command-context.js';
 import { NotFoundError } from '@quantbot/utils';
-import { analyzeAnalyticsHandler } from '../handlers/analytics/analyze-analytics.js';
-import { metricsAnalyticsHandler } from '../handlers/analytics/metrics-analytics.js';
-import { reportAnalyticsHandler } from '../handlers/analytics/report-analytics.js';
-import { analyzeDuckdbHandler } from '../handlers/analytics/analyze-duckdb.js';
+import { analyzeAnalyticsHandler } from './analytics/analyze-analytics.js';
+import { metricsAnalyticsHandler } from './analytics/metrics-analytics.js';
+import { reportAnalyticsHandler } from './analytics/report-analytics.js';
+import { analyzeDuckdbHandler } from './analytics/analyze-duckdb.js';
 import {
   analyzeSchema,
   metricsSchema,

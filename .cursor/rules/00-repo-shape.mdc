@@ -1,0 +1,31 @@
+---
+name: Repo shape and boundaries
+description: Enforce monorepo layout, keep runtime state out of git, and make entrypoints obvious.
+globs:
+  - "**/*"
+---
+
+# Repo shape (non-negotiable)
+
+## The only allowed top-level code directories
+- `apps/` = runnable entrypoints ONLY (CLI, daemons, web server, workers)
+- `packages/` = libraries ONLY (no process wiring, no direct I/O)
+- `docs/` = architecture + status notes (no "trophy" files in root)
+- `tools/` = developer-only tooling (scripts used by developers/CI)
+
+## Runtime state must not live in-repo
+Never create or rely on these folders inside the repo:
+- `logs/`, `data/`, `.pids/`, `backups/`, `cache/`, `tmp/`
+
+If the user asks for persistence or files, implement:
+- configurable external paths (env var / CLI flag)
+- safe defaults that point OUTSIDE the repo (e.g. `$XDG_STATE_HOME`, `~/.local/state/<app>`)
+
+## Entrypoints
+Every runnable app must have a single obvious entrypoint:
+- `apps/<app-name>/src/main.ts` (or `main.rs` for Rust)
+No "mystery" root-level `src/` entrypoints.
+
+## When editing code
+- Prefer moving code into `packages/` and importing from `apps/`.
+- If a change requires new cross-cutting behavior, create a new package (don't add glue in random places).

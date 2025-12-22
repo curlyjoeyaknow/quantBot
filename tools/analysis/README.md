@@ -4,39 +4,71 @@ Tools for analyzing and optimizing OHLCV candle coverage in ClickHouse.
 
 ## Tools
 
-### 1. `ohlcv_coverage_map.py` - Overall Coverage Analysis
+### 1. Overall Coverage Analysis
 
 Analyzes OHLCV coverage across all dimensions (chains, intervals, time periods).
 
-**Usage:**
+**Usage (CLI - Recommended):**
+
+```bash
+# Overall coverage report
+pnpm quantbot ohlcv analyze-coverage --type overall
+
+# Filter by chain
+pnpm quantbot ohlcv analyze-coverage --type overall --chain solana
+
+# Filter by interval
+pnpm quantbot ohlcv analyze-coverage --type overall --interval 5m
+
+# Export to JSON
+pnpm quantbot ohlcv analyze-coverage --type overall --format json
+
+# Date range filtering
+pnpm quantbot ohlcv analyze-coverage --type overall --start-date 2025-11-01 --end-date 2025-12-01
+```
+
+**Direct Python Usage:**
+
 ```bash
 # Overall coverage report
 python3 tools/analysis/ohlcv_coverage_map.py --format table
 
 # Filter by chain
 python3 tools/analysis/ohlcv_coverage_map.py --chain solana --format table
-
-# Filter by interval
-python3 tools/analysis/ohlcv_coverage_map.py --interval 5m --format table
-
-# Export to JSON
-python3 tools/analysis/ohlcv_coverage_map.py --format json --output coverage.json
-
-# Date range filtering
-python3 tools/analysis/ohlcv_coverage_map.py --start-date 2025-11-01 --end-date 2025-12-01
 ```
 
 **Output:**
+
 - Coverage by chain (Solana, Ethereum, BSC, Base, etc.)
 - Coverage by interval (1m, 5m, 15m, 1h)
 - Daily/Weekly/Monthly histograms
 - Total candles and unique tokens
 
-### 2. `ohlcv_caller_coverage.py` - Caller-Based Coverage Matrix
+### 2. Caller-Based Coverage Matrix
 
 Generates a caller × month coverage matrix showing which callers have gaps in their OHLCV data.
 
-**Usage:**
+**Usage (CLI - Recommended):**
+
+```bash
+# Full caller coverage matrix
+pnpm quantbot ohlcv analyze-coverage --type caller
+
+# Specific caller
+pnpm quantbot ohlcv analyze-coverage --type caller --caller Brook
+
+# Generate surgical fetch plan
+pnpm quantbot ohlcv analyze-coverage --type caller --generate-fetch-plan --min-coverage 0.8
+
+# Export to JSON
+pnpm quantbot ohlcv analyze-coverage --type caller --format json
+
+# Custom DuckDB path
+pnpm quantbot ohlcv analyze-coverage --type caller --duckdb data/my-calls.duckdb
+```
+
+**Direct Python Usage:**
+
 ```bash
 # Full caller coverage matrix
 python3 tools/analysis/ohlcv_caller_coverage.py --format table
@@ -55,6 +87,7 @@ python3 tools/analysis/ohlcv_caller_coverage.py --min-coverage 0.9 --generate-fe
 ```
 
 **Output:**
+
 ```
 Caller                 Jul-25   Aug-25   Sep-25   Oct-25   Nov-25   Dec-25
 --------------------------------------------------------------------------
@@ -64,50 +97,57 @@ Rick                    ████     ████     ████     ░�
 ```
 
 **Legend:**
+
 - `████` = 80-100% coverage (good)
 - `███░` = 60-80% coverage (partial)
 - `██░░` = 40-60% coverage (gaps)
 - `█░░░` = 20-40% coverage (poor)
 - `░░░░` = 0-20% coverage (missing)
 
-### 3. `surgical-ohlcv-fetch.ts` - Targeted Fetching
+### 3. Surgical OHLCV Fetch - Targeted Fetching
 
 Automatically fetches OHLCV data for callers with poor coverage, prioritized by impact.
 
 **Fetching Strategy:**
+
 - **Intervals**: Always fetches `1m` and `5m`
 - **Recent data** (<3 months): Also fetches `15s` interval
 - **Window**: -52 candles before call, +4948 candles after call (total 5000)
 - **Per-call basis**: Fetches around each call's alert time, not entire month
 
 **Usage:**
+
 ```bash
 # Show top 10 priority gaps (no fetching)
-pnpm tsx scripts/workflows/surgical-ohlcv-fetch.ts
+pnpm quantbot ingestion surgical-fetch
 
 # Dry run - show what would be fetched
-pnpm tsx scripts/workflows/surgical-ohlcv-fetch.ts --auto --dry-run
+pnpm quantbot ingestion surgical-fetch --auto --dry-run
 
 # Auto mode - fetch top 10 priority gaps
-pnpm tsx scripts/workflows/surgical-ohlcv-fetch.ts --auto
+pnpm quantbot ingestion surgical-fetch --auto
 
-# Auto mode - fetch top 5 gaps
-pnpm tsx scripts/workflows/surgical-ohlcv-fetch.ts --auto --limit 5
+# Auto mode - fetch top 20 gaps
+pnpm quantbot ingestion surgical-fetch --auto --limit 20
 
 # Fetch all gaps for specific caller
-pnpm tsx scripts/workflows/surgical-ohlcv-fetch.ts --caller Brook
+pnpm quantbot ingestion surgical-fetch --caller Brook
 
 # Fetch all gaps for specific month
-pnpm tsx scripts/workflows/surgical-ohlcv-fetch.ts --month 2025-07
+pnpm quantbot ingestion surgical-fetch --month 2025-07
 
 # Fetch specific caller-month
-pnpm tsx scripts/workflows/surgical-ohlcv-fetch.ts --caller Brook --month 2025-07
+pnpm quantbot ingestion surgical-fetch --caller Brook --month 2025-07
 
 # Custom coverage threshold (default 80%)
-pnpm tsx scripts/workflows/surgical-ohlcv-fetch.ts --auto --min-coverage 0.9
+pnpm quantbot ingestion surgical-fetch --auto --min-coverage 0.9
+
+# Specify DuckDB path (defaults to data/tele.duckdb)
+pnpm quantbot ingestion surgical-fetch --auto --duckdb data/my-calls.duckdb
 ```
 
 **Priority Calculation:**
+
 ```
 priority = (1 - coverage_ratio) * total_calls
 ```
@@ -115,6 +155,7 @@ priority = (1 - coverage_ratio) * total_calls
 Higher priority = more calls with worse coverage.
 
 **Example Output:**
+
 ```
 📊 Fetching OHLCV for Brook - 2025-12
    Current coverage: 77.6%
@@ -169,6 +210,7 @@ DuckDB (caller_links_d)  →  Coverage Analysis  →  Fetch Plan  →  OHLCV Ing
 ### Coverage Matrix
 
 The coverage matrix is built by:
+
 1. **DuckDB**: Get all calls grouped by caller and month
 2. **ClickHouse**: Check which mints have OHLCV data
 3. **Calculate**: Coverage ratio per caller-month cell
@@ -177,6 +219,7 @@ The coverage matrix is built by:
 ### Surgical Fetching
 
 Instead of fetching by date range, surgical fetching:
+
 1. Identifies callers with poor coverage
 2. Fetches OHLCV for their specific calls
 3. Prioritizes high-impact gaps (many calls, low coverage)
@@ -185,17 +228,21 @@ Instead of fetching by date range, surgical fetching:
 ## Benefits
 
 ### Traditional Approach (Date-Based)
+
 ```bash
 quantbot ingestion ohlcv --from 2025-07-01 --to 2025-07-31
 ```
+
 - Fetches ALL tokens in date range
 - Redundant fetching for already-covered tokens
 - No prioritization
 
 ### Surgical Approach (Caller-Based)
+
 ```bash
 pnpm tsx scripts/workflows/surgical-ohlcv-fetch.ts --caller Brook --month 2025-07
 ```
+
 - Fetches ONLY missing tokens for specific caller
 - Skips already-covered data
 - Prioritizes high-impact gaps
@@ -250,10 +297,10 @@ python3 tools/analysis/ohlcv_caller_coverage.py --generate-fetch-plan --format j
 ## Configuration
 
 Uses environment variables:
+
 - `CLICKHOUSE_HOST` (default: localhost)
 - `CLICKHOUSE_PORT` (default: 9000)
 - `CLICKHOUSE_DATABASE` (default: quantbot)
 - `CLICKHOUSE_USER` (default: default)
 - `CLICKHOUSE_PASSWORD` (default: empty)
 - `DUCKDB_PATH` (default: data/tele.duckdb)
-

@@ -46,9 +46,24 @@ export interface OhlcvFetchResult {
 export interface OhlcvFetchJobOptions {
   /**
    * Rate limit delay between requests (ms)
+   * Used when parallelWorkers is 1 (sequential mode)
    * @default 100
    */
   rateLimitMs?: number;
+
+  /**
+   * Number of parallel workers for fetching
+   * Each worker makes requests with rateLimitMsPerWorker delay between requests
+   * @default 1 (sequential)
+   */
+  parallelWorkers?: number;
+
+  /**
+   * Rate limit delay per worker in parallel mode (ms)
+   * With 16 workers and 330ms delay, we get ~48.5 RPS (under 50 RPS limit)
+   * @default 330
+   */
+  rateLimitMsPerWorker?: number;
 
   /**
    * Maximum retries on failure
@@ -79,10 +94,29 @@ export interface OhlcvFetchJobOptions {
 /**
  * OHLCV Fetch Job
  *
- * Orchestrates fetching candles from Birdeye API and storing in ClickHouse.
+ * Unit-of-work executor: Fetches candles from Birdeye API and stores in ClickHouse.
+ *
+ * Architecture (Data-plane executor):
+ * - This job performs the effectful unit of work: fetch (online) + store (storage)
+ * - Each work item is processed independently: fetch → upsert → return summary
+ * - Parallel execution: Multiple workers process work items concurrently
+ * - Idempotent: ClickHouse ORDER BY key (token_address, chain, timestamp, interval) ensures
+ *   duplicate inserts are deduplicated (or use ReplacingMergeTree for true upserts)
+ *
+ * Responsibilities:
+ * - Enforce rate limits and circuit breakers (Birdeye API)
+ * - Check coverage to avoid unnecessary fetches
+ * - Fetch from Birdeye API (online boundary)
+ * - Upsert to ClickHouse (storage layer, idempotent)
+ * - Return structured results for workflow aggregation
+ *
+ * Note: This job does NOT update DuckDB metadata - that's handled by the workflow
+ * (control-plane) after all unit-of-work jobs complete.
  */
 export class OhlcvFetchJob {
   private rateLimitMs: number;
+  private parallelWorkers: number;
+  private rateLimitMsPerWorker: number;
   private maxRetries: number;
   private circuitBreakerThreshold: number;
   private checkCoverage: boolean;
@@ -91,6 +125,8 @@ export class OhlcvFetchJob {
 
   constructor(options: OhlcvFetchJobOptions = {}) {
     this.rateLimitMs = options.rateLimitMs ?? 100;
+    this.parallelWorkers = options.parallelWorkers ?? 1;
+    this.rateLimitMsPerWorker = options.rateLimitMsPerWorker ?? 330;
     this.maxRetries = options.maxRetries ?? 3;
     this.circuitBreakerThreshold = options.circuitBreakerThreshold ?? 10;
     this.checkCoverage = options.checkCoverage ?? true;
@@ -237,9 +273,30 @@ export class OhlcvFetchJob {
    * @returns Results for each work item
    */
   async fetchWorkList(workItems: OhlcvWorkItem[]): Promise<OhlcvFetchResult[]> {
-    const results: OhlcvFetchResult[] = [];
+    logger.info(`Starting OHLCV fetch job for ${workItems.length} work items`, {
+      parallelWorkers: this.parallelWorkers,
+      rateLimitMsPerWorker: this.rateLimitMsPerWorker,
+      estimatedRPS: this.parallelWorkers > 1 
+        ? (1000 / this.rateLimitMsPerWorker * this.parallelWorkers).toFixed(2)
+        : (1000 / this.rateLimitMs).toFixed(2),
+    });
 
-    logger.info(`Starting OHLCV fetch job for ${workItems.length} work items`);
+    // Sequential mode (backward compatible)
+    if (this.parallelWorkers === 1) {
+      return this.fetchWorkListSequential(workItems);
+    }
+
+    // Parallel mode with per-worker rate limiting
+    return this.fetchWorkListParallel(workItems);
+  }
+
+  /**
+   * Sequential fetching (original implementation)
+   */
+  private async fetchWorkListSequential(
+    workItems: OhlcvWorkItem[]
+  ): Promise<OhlcvFetchResult[]> {
+    const results: OhlcvFetchResult[] = [];
 
     for (let i = 0; i < workItems.length; i++) {
       const workItem = workItems[i];
@@ -259,14 +316,85 @@ export class OhlcvFetchJob {
       }
     }
 
-    const successCount = results.filter((r) => r.success).length;
-    const totalCandles = results.reduce((sum, r) => sum + r.candlesStored, 0);
+    return results;
+  }
+
+  /**
+   * Parallel fetching with per-worker rate limiting
+   * Each worker processes items with rateLimitMsPerWorker delay between requests
+   */
+  private async fetchWorkListParallel(
+    workItems: OhlcvWorkItem[]
+  ): Promise<OhlcvFetchResult[]> {
+    const results: OhlcvFetchResult[] = new Array(workItems.length);
+    const processedLock = { lock: false }; // Simple lock for progress logging
+
+    /**
+     * Worker function that processes items with rate limiting
+     */
+    const worker = async (workerId: number): Promise<void> => {
+      for (let i = workerId; i < workItems.length; i += this.parallelWorkers) {
+        const workItem = workItems[i];
+
+        // Rate limiting per worker (delay before request)
+        if (i !== workerId) {
+          // First request in worker has no delay, subsequent ones do
+          await new Promise((resolve) => setTimeout(resolve, this.rateLimitMsPerWorker));
+        }
+
+        try {
+          const result = await this.fetchWorkItem(workItem);
+          results[i] = result;
+        } catch (error) {
+          logger.error('Worker failed to fetch work item', error as Error, {
+            workerId,
+            workItemIndex: i,
+            mint: workItem.mint.substring(0, 20),
+          });
+          results[i] = {
+            workItem,
+            success: false,
+            candlesFetched: 0,
+            candlesStored: 0,
+            error: error instanceof Error ? error.message : String(error),
+            durationMs: 0,
+          };
+        }
+
+        // Thread-safe progress counting and logging
+        const currentProcessed = results.filter((r) => r !== undefined).length;
+        
+        // Progress logging every 10 items or at milestones (simple lock to prevent concurrent logs)
+        if (!processedLock.lock && (currentProcessed % 10 === 0 || currentProcessed === workItems.length)) {
+          processedLock.lock = true;
+          try {
+            const currentSuccessCount = results.filter((r) => r?.success).length;
+            logger.info(`Progress: ${currentProcessed}/${workItems.length} (${currentSuccessCount} successful)`, {
+              workers: this.parallelWorkers,
+              workerId,
+            });
+          } finally {
+            processedLock.lock = false;
+          }
+        }
+      }
+    };
+
+    // Start all workers in parallel
+    await Promise.all(
+      Array.from({ length: this.parallelWorkers }, (_, i) => worker(i))
+    );
+
+    const successCount = results.filter((r) => r?.success).length;
+    const totalCandles = results.reduce((sum, r) => sum + (r?.candlesStored || 0), 0);
 
     logger.info('OHLCV fetch job completed', {
       total: workItems.length,
       successful: successCount,
       failed: workItems.length - successCount,
       totalCandlesStored: totalCandles,
+      parallelWorkers: this.parallelWorkers,
+      rateLimitMsPerWorker: this.rateLimitMsPerWorker,
     });
 
     return results;

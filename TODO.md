@@ -226,5 +226,4 @@ Last updated: 2025-12-20
 
 ---
 
-*This TODO is synchronized with the codebase. Update as tasks are completed.*
-
+_This TODO is synchronized with the codebase. Update as tasks are completed._

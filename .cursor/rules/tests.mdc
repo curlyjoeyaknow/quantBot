@@ -4,8 +4,12 @@ globs:
   - "tests/**/*.ts"
   - "**/*.test.ts"
   - "**/*.spec.ts"
-alwaysApply: true
+alwaysApply: false
 ---
+
+# Testing Rules (DEPRECATED - See testing.mdc)
+
+> **⚠️ This file is deprecated. See `testing.mdc` for comprehensive testing rules including property tests, fuzzing, and crypto backend testing.**
 
 # Testing Rules
 
