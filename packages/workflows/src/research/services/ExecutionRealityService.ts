@@ -144,8 +144,8 @@ export class ExecutionRealityService {
       borrowAprBps: 0,
     };
 
-    // Convert to contract format
-    return this.convertToContractCostModel(costModel);
+    // Convert to contract format, preserving baseFee from fees
+    return this.convertToContractCostModel(costModel, fees.baseFee);
   }
 
   /**
@@ -411,9 +411,9 @@ export class ExecutionRealityService {
   /**
    * Helper: Convert Branch C CostModel to contract CostModel
    */
-  private convertToContractCostModel(model: CostModel): ContractCostModel {
+  private convertToContractCostModel(model: CostModel, baseFee?: number): ContractCostModel {
     return ContractCostModelSchema.parse({
-      baseFee: 0, // Base fee is typically 0 for Solana
+      baseFee: baseFee ?? 0, // Use provided baseFee or default to 0 for Solana
       priorityFee: model.priorityFee
         ? {
             base: model.priorityFee.baseMicroLamportsPerCu,
@@ -421,7 +421,7 @@ export class ExecutionRealityService {
           }
         : undefined,
       tradingFee: model.takerFeeBps / 10_000,
-      effectiveCostPerTrade: model.priorityFee?.baseMicroLamportsPerCu ?? 0,
+      effectiveCostPerTrade: (baseFee ?? 0) + (model.priorityFee?.baseMicroLamportsPerCu ?? 0),
     });
   }
 

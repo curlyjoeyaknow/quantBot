@@ -2,101 +2,72 @@
  * Full integration test: Branch A + Branch B + Branch C
  *
  * This test demonstrates how all three branches work together.
- * It uses mocks for Branch B and C since they don't exist yet.
+ * Uses real services for Branch B and C.
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import { runSingleSimulation, type SimulationRequest } from '../../../src/research/index.js';
 import { createExperimentContext } from '../../../src/research/context.js';
 import { createProductionContext } from '../../../src/context/createProductionContext.js';
 import { createHash } from 'crypto';
+import { DataSnapshotService } from '../../../src/research/services/DataSnapshotService.js';
+import { ExecutionRealityService } from '../../../src/research/services/ExecutionRealityService.js';
 
-/**
- * Mock Branch B: Data Snapshot Service
- */
-class MockDataSnapshotService {
-  createSnapshot(params: {
-    timeRange: { fromISO: string; toISO: string };
-    sources: Array<{ venue: string; chain?: string }>;
-  }) {
-    const snapshotData = {
-      timeRange: params.timeRange,
-      sources: params.sources,
-    };
+// Mock storage to avoid requiring real database connections in tests
+vi.mock('@quantbot/storage', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@quantbot/storage')>();
+  return {
+    ...actual,
+    getStorageEngine: vi.fn(() => ({
+      getCandles: vi.fn().mockResolvedValue([
+        {
+          timestamp: new Date('2024-01-01T00:00:00Z').getTime() / 1000,
+          open: 100,
+          high: 110,
+          low: 95,
+          close: 105,
+          volume: 1000,
+        },
+      ]),
+    })),
+  };
+});
 
-    const contentHash = createHash('sha256').update(JSON.stringify(snapshotData)).digest('hex');
-
-    return {
-      snapshotId: `snapshot-${Date.now()}`,
-      contentHash,
-      timeRange: params.timeRange,
-      sources: params.sources,
-      schemaVersion: '1.0.0',
-      createdAtISO: new Date().toISOString(),
-    };
-  }
-}
-
-/**
- * Mock Branch C: Execution/Cost/Risk Model Service
- */
-class MockExecutionRealityService {
-  createExecutionModel() {
-    return {
-      latency: {
-        p50: 100,
-        p90: 200,
-        p99: 500,
-        jitter: 10,
+vi.mock('../../../src/calls/queryCallsDuckdb', () => ({
+  queryCallsDuckdb: vi.fn().mockResolvedValue({
+    calls: [
+      {
+        id: 'call-001',
+        caller: 'test-caller',
+        mint: 'mint-001',
+        createdAt: new Date('2024-01-01T00:00:00Z'),
+        price: 100,
+        volume: 1000,
       },
-      slippage: {
-        base: 0.001,
-        volumeImpact: 0.0001,
-        max: 0.01,
-      },
-      failures: {
-        baseRate: 0.01,
-        congestionMultiplier: 1.5,
-      },
-      partialFills: {
-        probability: 0.1,
-        fillRange: [0.5, 0.9] as [number, number],
-      },
-    };
-  }
-
-  createCostModel() {
-    return {
-      baseFee: 5000,
-      priorityFee: {
-        base: 1000,
-        max: 10000,
-      },
-      tradingFee: 0.01,
-      effectiveCostPerTrade: 6000,
-    };
-  }
-
-  createRiskModel() {
-    return {
-      maxDrawdown: 0.2,
-      maxLossPerDay: 1000,
-      maxConsecutiveLosses: 5,
-      maxPositionSize: 500,
-      maxTotalExposure: 10000,
-    };
-  }
-}
+    ],
+    totalQueried: 1,
+    totalReturned: 1,
+    fromISO: '2024-01-01T00:00:00Z',
+    toISO: '2024-01-02T00:00:00Z',
+  }),
+}));
 
 describe('Full Integration: Branch A + B + C', () => {
-  const mockDataService = new MockDataSnapshotService();
-  const mockExecutionService = new MockExecutionRealityService();
+  let dataService: DataSnapshotService;
+  let executionService: ExecutionRealityService;
+  let ctx: ReturnType<typeof createProductionContext>;
+
+  beforeEach(() => {
+    ctx = createProductionContext();
+    dataService = new DataSnapshotService(ctx);
+    executionService = new ExecutionRealityService(ctx);
+  });
 
   it('runs complete simulation with all branches integrated', async () => {
     // Branch B: Create data snapshot
-    const snapshot = mockDataService.createSnapshot({
+    const snapshot = await dataService.createSnapshot({
       timeRange: {
         fromISO: '2024-01-01T00:00:00Z',
         toISO: '2024-01-02T00:00:00Z',
@@ -105,9 +76,25 @@ describe('Full Integration: Branch A + B + C', () => {
     });
 
     // Branch C: Create execution/cost/risk models
-    const executionModel = mockExecutionService.createExecutionModel();
-    const costModel = mockExecutionService.createCostModel();
-    const riskModel = mockExecutionService.createRiskModel();
+    const executionModel = executionService.createExecutionModelFromCalibration({
+      latencySamples: [50, 100, 150, 200, 250, 300, 350, 400, 450, 500],
+      slippageSamples: [
+        { tradeSize: 100, slippage: 0.001 },
+        { tradeSize: 200, slippage: 0.002 },
+      ],
+      failureRate: 0.01,
+    });
+    const costModel = executionService.createCostModelFromFees({
+      baseFee: 5000,
+      priorityFeeRange: { min: 1000, max: 10000 },
+      tradingFeePercent: 0.01,
+    });
+    const riskModel = executionService.createRiskModelFromConstraints({
+      maxDrawdownPercent: 20,
+      maxLossPerDay: 1000,
+      maxConsecutiveLosses: 5,
+      maxPositionSize: 500,
+    });
 
     // Branch A: Create simulation request
     const request: SimulationRequest = {
@@ -166,9 +153,9 @@ describe('Full Integration: Branch A + B + C', () => {
     expect(loaded!.metadata.runId).toBe(artifact.metadata.runId);
   });
 
-  it('verifies all branch interfaces are compatible', () => {
+  it('verifies all branch interfaces are compatible', async () => {
     // Branch B interface
-    const snapshot = mockDataService.createSnapshot({
+    const snapshot = await dataService.createSnapshot({
       timeRange: {
         fromISO: '2024-01-01T00:00:00Z',
         toISO: '2024-01-02T00:00:00Z',
@@ -177,9 +164,22 @@ describe('Full Integration: Branch A + B + C', () => {
     });
 
     // Branch C interfaces
-    const executionModel = mockExecutionService.createExecutionModel();
-    const costModel = mockExecutionService.createCostModel();
-    const riskModel = mockExecutionService.createRiskModel();
+    const executionModel = executionService.createExecutionModelFromCalibration({
+      latencySamples: [100, 200, 300],
+      slippageSamples: [{ tradeSize: 100, slippage: 0.001 }],
+      failureRate: 0.01,
+    });
+    const costModel = executionService.createCostModelFromFees({
+      baseFee: 5000,
+      priorityFeeRange: { min: 1000, max: 10000 },
+      tradingFeePercent: 0.01,
+    });
+    const riskModel = executionService.createRiskModelFromConstraints({
+      maxDrawdownPercent: 20,
+      maxLossPerDay: 1000,
+      maxConsecutiveLosses: 5,
+      maxPositionSize: 500,
+    });
 
     // Branch A: All interfaces work together
     const request: SimulationRequest = {
@@ -207,12 +207,29 @@ describe('Full Integration: Branch A + B + C', () => {
   });
 
   it('demonstrates replay capability', async () => {
-    const snapshot = mockDataService.createSnapshot({
+    const snapshot = await dataService.createSnapshot({
       timeRange: {
         fromISO: '2024-01-01T00:00:00Z',
         toISO: '2024-01-02T00:00:00Z',
       },
       sources: [{ venue: 'pump.fun' }],
+    });
+
+    const executionModel = executionService.createExecutionModelFromCalibration({
+      latencySamples: [100, 200, 300],
+      slippageSamples: [{ tradeSize: 100, slippage: 0.001 }],
+      failureRate: 0.01,
+    });
+    const costModel = executionService.createCostModelFromFees({
+      baseFee: 5000,
+      priorityFeeRange: { min: 1000, max: 10000 },
+      tradingFeePercent: 0.01,
+    });
+    const riskModel = executionService.createRiskModelFromConstraints({
+      maxDrawdownPercent: 20,
+      maxLossPerDay: 1000,
+      maxConsecutiveLosses: 5,
+      maxPositionSize: 500,
     });
 
     const request: SimulationRequest = {
@@ -223,9 +240,9 @@ describe('Full Integration: Branch A + B + C', () => {
         config: {},
         configHash: 'a'.repeat(64),
       },
-      executionModel: mockExecutionService.createExecutionModel(),
-      costModel: mockExecutionService.createCostModel(),
-      riskModel: mockExecutionService.createRiskModel(),
+      executionModel,
+      costModel,
+      riskModel,
       runConfig: {
         seed: 12345, // Same seed for determinism
       },
