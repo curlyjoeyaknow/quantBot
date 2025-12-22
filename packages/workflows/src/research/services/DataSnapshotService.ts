@@ -1,17 +1,19 @@
 /**
- * Data Snapshot Service (Branch B Implementation)
- * ================================================
+ * Data Snapshot Service (Branch B Integration)
+ * ============================================
  *
- * Real implementation of data snapshot creation and loading.
- * Replaces MockDataSnapshotService with actual data source integration.
+ * Integrated implementation using Branch B's @quantbot/data-observatory package.
+ * This replaces the standalone implementation with Branch B integration.
  */
 
-import { createHash } from 'crypto';
 import { DateTime } from 'luxon';
+import type {
+  DataSnapshotRef as BranchBDataSnapshotRef,
+  SnapshotSpec,
+} from '@quantbot/data-observatory';
+import { createSnapshotManager } from '@quantbot/data-observatory';
 import type { DataSnapshotRef } from '../contract.js';
-import { DataSnapshotRefSchema } from '../contract.js';
-import { queryCallsDuckdb } from '../../calls/queryCallsDuckdb.js';
-import { getStorageEngine } from '@quantbot/storage';
+import { adaptBranchBToBranchA } from '../integration-branch-b.js';
 import type { WorkflowContext } from '../../types.js';
 
 /**
