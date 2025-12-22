@@ -212,9 +212,7 @@ describe('ingestOhlcv Workflow - Golden Path', () => {
       expect(parsed).toEqual(result);
     });
 
-    it(
-      'should handle multiple work items in worklist',
-      async () => {
+    it('should handle multiple work items in worklist', async () => {
       const worklist: OhlcvWorkItem[] = [
         mockWorkItem,
         {
@@ -279,9 +277,7 @@ describe('ingestOhlcv Workflow - Golden Path', () => {
 
       // Assert: Storage called for each item
       expect(storeCandles).toHaveBeenCalledTimes(3);
-    },
-    30000 // 30 second timeout
-    );
+    }, 30000); // 30 second timeout
 
     it('should handle skipped items (sufficient coverage)', async () => {
       const worklist: OhlcvWorkItem[] = [mockWorkItem];
@@ -403,9 +399,7 @@ describe('ingestOhlcv Workflow - Golden Path', () => {
 
       // Assert: Market data port was called for each target mint
       expect(mockContext.ports.marketData.fetchOhlcv).toHaveBeenCalledTimes(2);
-      },
-      15000 // 15 second timeout for workflow with multiple items
-    );
+    }, 15000); // 15 second timeout for workflow with multiple items
 
     it('should handle empty worklist when mints filter returns no results', async () => {
       const targetMints = ['nonexistentMint'];
@@ -738,9 +732,7 @@ describe('ingestOhlcv Workflow - Golden Path', () => {
         expect(result.workItemsSucceeded).toBe(1);
         expect(storeCandles).toHaveBeenCalledWith(TEST_MINT, TEST_CHAIN, mockCandles, interval);
       }
-    },
-    30000 // 30 second timeout
-    );
+    }, 30000); // 30 second timeout
   });
 
   describe('GOLDEN: Result serialization - JSON-safe', () => {

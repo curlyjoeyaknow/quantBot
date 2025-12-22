@@ -271,14 +271,7 @@ describe('Snapshot Integration Tests', () => {
       const from = DateTime.fromISO(spec.from);
       const to = DateTime.fromISO(spec.to);
       const coverages = tokenAddresses.map((tokenAddress) =>
-        coverageCalculator.calculateTokenCoverage(
-          tokenAddress,
-          'solana',
-          events,
-          from,
-          to,
-          5
-        )
+        coverageCalculator.calculateTokenCoverage(tokenAddress, 'solana', events, from, to, 5)
       );
 
       // Calculate aggregate
@@ -354,4 +347,3 @@ describe('Snapshot Integration Tests', () => {
     });
   });
 });
-

@@ -6,8 +6,10 @@ import type { Command } from 'commander';
 import { z } from 'zod';
 import type { PackageCommandModule } from '../types/index.js';
 import { commandRegistry } from '../core/command-registry.js';
+import { defineCommand } from '../core/defineCommand.js';
+import { die } from '../core/cliErrors.js';
+import { coerceBoolean } from '../core/coerce.js';
 import type { CommandContext } from '../core/command-context.js';
-import { NotFoundError } from '@quantbot/utils';
 import { analyzeAnalyticsHandler } from './analytics/analyze-analytics.js';
 import { metricsAnalyticsHandler } from './analytics/metrics-analytics.js';
 import { reportAnalyticsHandler } from './analytics/report-analytics.js';
@@ -28,80 +30,76 @@ export function registerAnalyticsCommands(program: Command): void {
     .description('Analytics and performance metrics');
 
   // Analyze command
-  analyticsCmd
+  const analyzeCmd = analyticsCmd
     .command('analyze')
     .description('Analyze calls with metrics')
     .option('--caller <name>', 'Caller name filter')
     .option('--from <date>', 'Start date (ISO 8601)')
     .option('--to <date>', 'End date (ISO 8601)')
-    .option('--format <format>', 'Output format', 'table')
-    .action(async (options) => {
-      const { execute } = await import('../core/execute.js');
-      const commandDef = commandRegistry.getCommand('analytics', 'analyze');
-      if (!commandDef) {
-        throw new NotFoundError('Command', 'analytics.analyze');
-      }
-      await execute(commandDef, options);
-    });
+    .option('--format <format>', 'Output format', 'table');
+
+  defineCommand(analyzeCmd, {
+    name: 'analyze',
+    packageName: 'analytics',
+    validate: (opts) => analyzeSchema.parse(opts),
+    onError: die,
+  });
 
   // Metrics command
-  analyticsCmd
+  const metricsCmd = analyticsCmd
     .command('metrics')
     .description('Calculate period metrics')
     .option('--caller <name>', 'Caller name filter')
     .option('--from <date>', 'Start date (ISO 8601)')
     .option('--to <date>', 'End date (ISO 8601)')
-    .option('--format <format>', 'Output format', 'table')
-    .action(async (options) => {
-      const { execute } = await import('../core/execute.js');
-      const commandDef = commandRegistry.getCommand('analytics', 'metrics');
-      if (!commandDef) {
-        throw new NotFoundError('Command', 'analytics.metrics');
-      }
-      await execute(commandDef, options);
-    });
+    .option('--format <format>', 'Output format', 'table');
+
+  defineCommand(metricsCmd, {
+    name: 'metrics',
+    packageName: 'analytics',
+    validate: (opts) => metricsSchema.parse(opts),
+    onError: die,
+  });
 
   // Report command
-  analyticsCmd
+  const reportCmd = analyticsCmd
     .command('report')
     .description('Generate analytics report')
     .option('--caller <name>', 'Caller name filter')
     .option('--from <date>', 'Start date (ISO 8601)')
     .option('--to <date>', 'End date (ISO 8601)')
-    .option('--format <format>', 'Output format', 'table')
-    .action(async (options) => {
-      const { execute } = await import('../core/execute.js');
-      const commandDef = commandRegistry.getCommand('analytics', 'report');
-      if (!commandDef) {
-        throw new NotFoundError('Command', 'analytics.report');
-      }
-      await execute(commandDef, options);
-    });
+    .option('--format <format>', 'Output format', 'table');
+
+  defineCommand(reportCmd, {
+    name: 'report',
+    packageName: 'analytics',
+    validate: (opts) => reportSchema.parse(opts),
+    onError: die,
+  });
 
   // DuckDB analysis command
-  analyticsCmd
+  const analyzeDuckdbCmd = analyticsCmd
     .command('analyze-duckdb')
     .description('Statistical analysis using DuckDB Python engine')
     .requiredOption('--duckdb <path>', 'Path to DuckDB file')
     .option('--caller <name>', 'Analyze specific caller')
     .option('--mint <mint>', 'Analyze specific token')
-    .option('--correlation', 'Run correlation analysis', false)
-    .option('--format <format>', 'Output format', 'table')
-    .action(async (options) => {
-      const { execute } = await import('../core/execute.js');
-      const commandDef = commandRegistry.getCommand('analytics', 'analyze-duckdb');
-      if (!commandDef) {
-        throw new NotFoundError('Command', 'analytics.analyze-duckdb');
-      }
-      await execute(commandDef, {
-        duckdb: options.duckdb,
-        caller: options.caller,
-        mint: options.mint,
-        correlation:
-          options.correlation === true || options.correlation === 'true' ? {} : undefined,
-        format: options.format,
-      });
-    });
+    .option('--correlation', 'Run correlation analysis')
+    .option('--format <format>', 'Output format', 'table');
+
+  defineCommand(analyzeDuckdbCmd, {
+    name: 'analyze-duckdb',
+    packageName: 'analytics',
+    coerce: (raw) => ({
+      ...raw,
+      correlation:
+        raw.correlation !== undefined && coerceBoolean(raw.correlation, 'correlation')
+          ? {}
+          : undefined,
+    }),
+    validate: (opts) => analyzeDuckdbSchema.parse(opts),
+    onError: die,
+  });
 }
 
 /**

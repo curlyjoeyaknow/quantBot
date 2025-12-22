@@ -7,24 +7,10 @@
 import { DateTime } from 'luxon';
 import { logger } from '@quantbot/utils';
 import { StorageEngine, getStorageEngine } from '@quantbot/storage';
-// PostgreSQL removed - use DuckDB workflows instead
-// Dynamic imports to avoid build-time dependency on workflows
-// These will be imported at runtime
-type QueryCallsDuckdbSpec = {
-  duckdbPath: string;
-  fromISO: string;
-  toISO: string;
-  callerName?: string;
-  limit?: number;
-};
-
-// WorkflowContext type - using Record to avoid build-time dependency
-type WorkflowContext = {
-  services: Record<string, unknown>;
-  [key: string]: unknown;
-};
 import type { CallPerformance } from '../types.js';
 import { calculateAthFromCandleObjects } from '../utils/ath-calculator.js';
+// Dynamic import to avoid build-time dependency on workflows
+// Types will be imported at runtime
 
 export interface LoadCallsOptions {
   from?: Date;
@@ -49,76 +35,33 @@ export class CallDataLoader {
       : DateTime.utc().minus({ days: 30 }).toISO()!;
     const toISO = options.to ? DateTime.fromJSDate(options.to).toISO()! : DateTime.utc().toISO()!;
 
-    const spec: QueryCallsDuckdbSpec = {
-      duckdbPath,
-      fromISO,
-      toISO,
-      callerName: options.callerNames?.[0], // Use first caller name if provided
-      limit: options.limit || 1000,
-    };
-
     try {
-      // Dynamic imports to avoid build-time dependency
-      // Type assertions needed because packages may not be built yet
-      // Use type assertion on the import path to bypass TypeScript module resolution
-      const workflowsModule = (await import('@quantbot/workflows' as string)) as {
-        queryCallsDuckdb: (
-          spec: QueryCallsDuckdbSpec,
-          ctx: WorkflowContext
-        ) => Promise<{
-          calls: Array<{ mint: string; createdAt: { toJSDate: () => Date }; caller?: string }>;
-        }>;
-        createProductionContext: () => WorkflowContext;
-      };
-      const { queryCallsDuckdb, createProductionContext } = workflowsModule;
-      const ctx = createProductionContext();
-      const workflowCtx: WorkflowContext = {
-        ...ctx,
-        services: {
-          ...(ctx.services as Record<string, unknown>),
-          duckdbStorage: {
-            queryCalls: async (path: string, limit: number) => {
-              // Get DuckDBStorageService from context
-              const simulationModule = (await import('@quantbot/simulation' as string)) as {
-                DuckDBStorageService: new (engine: unknown) => {
-                  queryCalls: (
-                    path: string,
-                    limit: number
-                  ) => Promise<{
-                    success: boolean;
-                    calls?: Array<{ mint: string; alert_timestamp: string }>;
-                    error?: string;
-                  }>;
-                };
-              };
-              const { DuckDBStorageService } = simulationModule;
-              const { PythonEngine } = await import('@quantbot/utils');
-              const storage = new DuckDBStorageService(new PythonEngine());
-              return await storage.queryCalls(path, limit);
-            },
-          },
-        },
-      };
+      // Import workflow and context factory (dynamic import to avoid build-time dependency)
+      const workflowsModule = await import('@quantbot/workflows');
+      const { queryCallsDuckdb, createQueryCallsDuckdbContext } = workflowsModule;
 
-      const result = await queryCallsDuckdb(spec, workflowCtx);
+      // Type assertion for spec (QueryCallsDuckdbSpec is defined in workflows package)
+      const spec = {
+        duckdbPath,
+        fromISO,
+        toISO,
+        callerName: options.callerNames?.[0], // Use first caller name if provided
+        limit: options.limit || 1000,
+      } as Parameters<typeof queryCallsDuckdb>[0];
+
+      const ctx = await createQueryCallsDuckdbContext(duckdbPath);
+      const result = await queryCallsDuckdb(spec, ctx);
 
       // Convert CallRecord[] to CallPerformance[]
       // Note: CallPerformance requires more fields than CallRecord provides
       // We'll need to enrich with additional data or adjust the type
       const callPerformance: CallPerformance[] = result.calls.map(
-        (
-          call: {
-            mint: string;
-            createdAt: { toJSDate: () => Date };
-            caller?: string;
-          },
-          index: number
-        ) => ({
+        (call: { mint: string; caller: string; createdAt: DateTime }, index: number) => ({
           callId: index + 1, // Generate ID since we don't have numeric ID from DuckDB
           tokenAddress: call.mint,
           callerName: call.caller || 'unknown',
           chain: 'solana', // Default to solana, could be enriched later
-          alertTimestamp: call.createdAt.toJSDate(),
+          alertTimestamp: call.createdAt.toJSDate(), // CallRecord.createdAt is a Luxon DateTime
           entryPrice: 0, // Will need to be enriched from alerts table or OHLCV
           athPrice: 0, // Will need to be enriched
           athMultiple: 1, // Default, will be enriched

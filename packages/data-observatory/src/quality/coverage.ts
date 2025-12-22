@@ -73,9 +73,7 @@ export class CoverageCalculator {
     expectedIntervalMinutes: number = 5
   ): TokenCoverage {
     // Filter events for this token
-    const tokenEvents = events.filter(
-      (e) => e.asset === tokenAddress && e.chain === chain
-    );
+    const tokenEvents = events.filter((e) => e.asset === tokenAddress && e.chain === chain);
 
     // Calculate expected count based on interval
     const windowMinutes = to.diff(from, 'minutes').minutes;
@@ -85,8 +83,7 @@ export class CoverageCalculator {
     const actualCount = tokenEvents.length;
 
     // Calculate completeness
-    const completeness =
-      expectedCount > 0 ? (actualCount / expectedCount) * 100 : 0;
+    const completeness = expectedCount > 0 ? (actualCount / expectedCount) * 100 : 0;
 
     // Detect gaps
     const gaps = this.detectGaps(tokenEvents, from, to, expectedIntervalMinutes);
@@ -122,9 +119,7 @@ export class CoverageCalculator {
 
     const gaps: Array<{ from: DateTime; to: DateTime }> = [];
     const sortedEvents = [...events].sort(
-      (a, b) =>
-        DateTime.fromISO(a.timestamp).toMillis() -
-        DateTime.fromISO(b.timestamp).toMillis()
+      (a, b) => DateTime.fromISO(a.timestamp).toMillis() - DateTime.fromISO(b.timestamp).toMillis()
     );
 
     // Check gap at start
@@ -148,9 +143,7 @@ export class CoverageCalculator {
     }
 
     // Check gap at end
-    const lastEventTime = DateTime.fromISO(
-      sortedEvents[sortedEvents.length - 1].timestamp
-    );
+    const lastEventTime = DateTime.fromISO(sortedEvents[sortedEvents.length - 1].timestamp);
     if (to.diff(lastEventTime, 'minutes').minutes > expectedIntervalMinutes * 2) {
       gaps.push({ from: lastEventTime, to });
     }
@@ -178,9 +171,7 @@ export class CoverageCalculator {
     }
 
     // Check for events with null/undefined values
-    const nullValueCount = events.filter(
-      (e) => e.value === null || e.value === undefined
-    ).length;
+    const nullValueCount = events.filter((e) => e.value === null || e.value === undefined).length;
     if (nullValueCount > 0) {
       anomalies.push(`${nullValueCount} events with null/undefined values`);
     }
@@ -191,9 +182,7 @@ export class CoverageCalculator {
   /**
    * Calculate aggregate coverage across multiple tokens
    */
-  calculateAggregateCoverage(
-    coverages: TokenCoverage[]
-  ): {
+  calculateAggregateCoverage(coverages: TokenCoverage[]): {
     averageCompleteness: number;
     totalTokens: number;
     tokensWithFullCoverage: number;
@@ -210,19 +199,14 @@ export class CoverageCalculator {
       };
     }
 
-    const totalCompleteness = coverages.reduce(
-      (sum, c) => sum + c.completeness,
-      0
-    );
+    const totalCompleteness = coverages.reduce((sum, c) => sum + c.completeness, 0);
     const averageCompleteness = totalCompleteness / coverages.length;
 
-    const tokensWithFullCoverage = coverages.filter((c) => c.completeness >= 100)
-      .length;
+    const tokensWithFullCoverage = coverages.filter((c) => c.completeness >= 100).length;
     const tokensWithPartialCoverage = coverages.filter(
       (c) => c.completeness > 0 && c.completeness < 100
     ).length;
-    const tokensWithNoCoverage = coverages.filter((c) => c.completeness === 0)
-      .length;
+    const tokensWithNoCoverage = coverages.filter((c) => c.completeness === 0).length;
 
     return {
       averageCompleteness,
@@ -233,4 +217,3 @@ export class CoverageCalculator {
     };
   }
 }
-

@@ -99,14 +99,14 @@ describe('processTelegramPythonHandler', () => {
       format: 'table' as const,
     };
 
-    await processTelegramPythonHandler(args, mockCtx);
+    await processTelegramPythonHandler(args as any, mockCtx as unknown as CommandContext);
 
-    expect(mockService.runPipeline).toHaveBeenCalledWith(
-      '/path/to/input.json',
-      '/path/to/output.duckdb',
-      'test_chat',
-      undefined
-    );
+    expect(mockService.runPipeline).toHaveBeenCalledWith({
+      inputFile: '/path/to/input.json',
+      outputDb: '/path/to/output.duckdb',
+      chatId: 'test_chat',
+      rebuild: undefined,
+    });
   });
 
   it('should propagate errors from service', async () => {

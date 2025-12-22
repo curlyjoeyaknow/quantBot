@@ -1,16 +1,11 @@
 /**
  * Calibration Tool
  * ================
- * 
+ *
  * Tools for calibrating execution models from live trading data.
  */
 
-import type {
-  ExecutionModel,
-  LatencyDistribution,
-  SlippageModel,
-  FailureModel,
-} from './types.js';
+import type { ExecutionModel, LatencyDistribution, SlippageModel, FailureModel } from './types.js';
 import { z } from 'zod';
 
 /**
@@ -90,9 +85,7 @@ export interface CalibrationResult {
 /**
  * Calibrate latency distribution from live data
  */
-export function calibrateLatencyDistribution(
-  latencies: number[]
-): LatencyDistribution {
+export function calibrateLatencyDistribution(latencies: number[]): LatencyDistribution {
   if (latencies.length === 0) {
     throw new Error('Cannot calibrate latency distribution from empty data');
   }
@@ -121,7 +114,12 @@ export function calibrateLatencyDistribution(
  * Calibrate slippage model from live data
  */
 export function calibrateSlippageModel(
-  records: Array<{ tradeSize: number; expectedPrice: number; actualPrice: number; marketVolume24h?: number }>
+  records: Array<{
+    tradeSize: number;
+    expectedPrice: number;
+    actualPrice: number;
+    marketVolume24h?: number;
+  }>
 ): SlippageModel {
   if (records.length === 0) {
     throw new Error('Cannot calibrate slippage model from empty data');
@@ -145,7 +143,10 @@ export function calibrateSlippageModel(
 
   return {
     type: 'sqrt',
+    fixedBps: 0,
+    linearCoefficient: 0,
     sqrtCoefficient: Math.max(0, sqrtCoefficient || 0),
+    volumeImpactBps: 0,
     minBps: Math.min(...slippages.map((r) => r.slippageBps)),
     maxBps: Math.max(...slippages.map((r) => r.slippageBps)),
   };
@@ -217,52 +218,56 @@ export function calibrateExecutionModel(
     .map((r) => r.confirmationLatencyMs)
     .filter((l): l is number => l !== undefined);
 
-  const networkLatency = networkLatencies.length > 0
-    ? calibrateLatencyDistribution(networkLatencies)
-    : {
-        p50: 50,
-        p90: 150,
-        p99: 500,
-        jitterMs: 20,
-        distribution: 'percentile' as const,
-      };
+  const networkLatency =
+    networkLatencies.length > 0
+      ? calibrateLatencyDistribution(networkLatencies)
+      : {
+          p50: 50,
+          p90: 150,
+          p99: 500,
+          jitterMs: 20,
+          distribution: 'percentile' as const,
+        };
 
-  const confirmationLatency = confirmationLatencies.length > 0
-    ? calibrateLatencyDistribution(confirmationLatencies)
-    : {
-        p50: 400,
-        p90: 800,
-        p99: 2000,
-        jitterMs: 100,
-        distribution: 'percentile' as const,
-      };
+  const confirmationLatency =
+    confirmationLatencies.length > 0
+      ? calibrateLatencyDistribution(confirmationLatencies)
+      : {
+          p50: 400,
+          p90: 800,
+          p99: 2000,
+          jitterMs: 100,
+          distribution: 'percentile' as const,
+        };
 
   // Calibrate slippage
-  const slippageRecords = venueRecords.filter(
-    (r) => !r.failed && r.fillPercentage > 0
-  );
-  const entrySlippage = slippageRecords.length > 0
-    ? calibrateSlippageModel(
-        slippageRecords.map((r) => ({
-          tradeSize: r.tradeSize,
-          expectedPrice: r.expectedPrice,
-          actualPrice: r.actualPrice,
-          marketVolume24h: r.marketVolume24h,
-        }))
-      )
-    : {
-        type: 'fixed' as const,
-        fixedBps: 0,
-        minBps: 0,
-        maxBps: 0,
-      };
+  const slippageRecords = venueRecords.filter((r) => !r.failed && r.fillPercentage > 0);
+  const entrySlippage =
+    slippageRecords.length > 0
+      ? calibrateSlippageModel(
+          slippageRecords.map((r) => ({
+            tradeSize: r.tradeSize,
+            expectedPrice: r.expectedPrice,
+            actualPrice: r.actualPrice,
+            marketVolume24h: r.marketVolume24h,
+          }))
+        )
+      : {
+          type: 'fixed' as const,
+          fixedBps: 0,
+          linearCoefficient: 0,
+          sqrtCoefficient: 0,
+          volumeImpactBps: 0,
+          minBps: 0,
+          maxBps: 0,
+        };
 
   // Calibrate failures
   const failureModel = calibrateFailureModel(
     venueRecords.map((r) => ({
       failed: r.failed,
       congestionLevel: r.congestionLevel,
-      priorityFeeShortfall: r.priorityFeeShortfall,
+      priorityFeeShortfall: undefined, // Not available in LiveTradeRecord
     }))
   );
 
@@ -270,23 +275,25 @@ export function calibrateExecutionModel(
   const entrySlippages = slippageRecords.map((r) => {
     return ((r.actualPrice - r.expectedPrice) / r.expectedPrice) * 10_000;
   });
-  const entryMean = entrySlippages.length > 0
-    ? entrySlippages.reduce((a, b) => a + b, 0) / entrySlippages.length
-    : 0;
-  const entryStddev = entrySlippages.length > 0
-    ? Math.sqrt(
-        entrySlippages.reduce((sum, val) => sum + (val - entryMean) ** 2, 0) /
-          entrySlippages.length
-      )
-    : 0;
+  const entryMean =
+    entrySlippages.length > 0
+      ? entrySlippages.reduce((a, b) => a + b, 0) / entrySlippages.length
+      : 0;
+  const entryStddev =
+    entrySlippages.length > 0
+      ? Math.sqrt(
+          entrySlippages.reduce((sum, val) => sum + (val - entryMean) ** 2, 0) /
+            entrySlippages.length
+        )
+      : 0;
 
   const partialFills = venueRecords.filter((r) => r.fillPercentage < 1);
-  const partialFillProbability = venueRecords.length > 0
-    ? partialFills.length / venueRecords.length
-    : 0;
-  const meanFill = partialFills.length > 0
-    ? partialFills.reduce((sum, r) => sum + r.fillPercentage, 0) / partialFills.length
-    : 1;
+  const partialFillProbability =
+    venueRecords.length > 0 ? partialFills.length / venueRecords.length : 0;
+  const meanFill =
+    partialFills.length > 0
+      ? partialFills.reduce((sum, r) => sum + r.fillPercentage, 0) / partialFills.length
+      : 1;
 
   // Build calibrated model
   const model: ExecutionModel = {
@@ -358,4 +365,3 @@ export function calibrateExecutionModel(
     },
   };
 }
-

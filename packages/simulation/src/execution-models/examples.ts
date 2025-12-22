@@ -1,7 +1,7 @@
 /**
  * Example Execution Model Configurations
  * =======================================
- * 
+ *
  * Pre-configured execution models for common venues and scenarios.
  * These can be used as starting points or references.
  */
@@ -11,8 +11,8 @@ import {
   createPumpfunExecutionModel,
   createPumpswapExecutionModel,
   createMinimalExecutionModel,
-  createDefaultRiskFramework,
 } from './models.js';
+import { createDefaultRiskFramework } from './risk.js';
 
 /**
  * Get a pre-configured execution model by name
@@ -42,7 +42,7 @@ export function getRiskFramework(name: string = 'default'): RiskFramework {
     case 'conservative':
       return {
         circuitBreakers: {
-          maxDrawdown: 0.10, // 10% max drawdown
+          maxDrawdown: 0.1, // 10% max drawdown
           maxDailyLoss: 500,
           maxConsecutiveLosses: 3,
           maxExposurePerStrategy: 2500,
@@ -62,7 +62,7 @@ export function getRiskFramework(name: string = 'default'): RiskFramework {
     case 'aggressive':
       return {
         circuitBreakers: {
-          maxDrawdown: 0.30,
+          maxDrawdown: 0.3,
           maxDailyLoss: 2000,
           maxConsecutiveLosses: 10,
           maxExposurePerStrategy: 10000,
@@ -91,7 +91,7 @@ export function createConservativePumpfunModel(): ExecutionModel {
   const model = createPumpfunExecutionModel();
   // Override with more conservative settings
   if (model.failures) {
-    model.failures.maxFailureRate = 0.20; // Lower max failure rate
+    model.failures.maxFailureRate = 0.2; // Lower max failure rate
   }
   if (model.slippage) {
     model.slippage.entrySlippage.maxBps = 1000; // Higher max slippage
@@ -115,4 +115,3 @@ export function createAggressivePumpswapModel(): ExecutionModel {
   }
   return model;
 }
-

@@ -6,9 +6,11 @@ import type { Command } from 'commander';
 import { z } from 'zod';
 import { parseDate, validateMintAddress } from '../core/argument-parser.js';
 import type { PackageCommandModule } from '../types/index.js';
+import { defineCommand } from '../core/defineCommand.js';
+import { die } from '../core/cliErrors.js';
+import { coerceBoolean, coerceNumber } from '../core/coerce.js';
 import { commandRegistry } from '../core/command-registry.js';
 import type { CommandContext } from '../core/command-context.js';
-import { NotFoundError } from '@quantbot/utils';
 import { queryOhlcvHandler } from './ohlcv/query-ohlcv.js';
 import { backfillOhlcvHandler } from './ohlcv/backfill-ohlcv.js';
 import { coverageOhlcvHandler } from './ohlcv/coverage-ohlcv.js';
@@ -118,7 +120,7 @@ export function registerOhlcvCommands(program: Command): void {
   const ohlcvCmd = program.command('ohlcv').description('OHLCV candle data operations');
 
   // Query command
-  ohlcvCmd
+  const queryCmd = ohlcvCmd
     .command('query')
     .description('Query OHLCV candles for a token')
     .requiredOption('--mint <address>', 'Token mint address (32-44 chars, case-preserved)')
@@ -126,18 +128,17 @@ export function registerOhlcvCommands(program: Command): void {
     .requiredOption('--to <date>', 'End date (ISO 8601: YYYY-MM-DD or YYYY-MM-DDTHH:mm:ssZ)')
     .option('--interval <interval>', 'Candle interval', '5m')
     .option('--format <format>', 'Output format', 'table')
-    .option('--chain <chain>', 'Blockchain', 'solana')
-    .action(async (options) => {
-      const { execute } = await import('../core/execute.js');
-      const commandDef = commandRegistry.getCommand('ohlcv', 'query');
-      if (!commandDef) {
-        throw new NotFoundError('Command', 'ohlcv.query');
-      }
-      await execute(commandDef, options);
-    });
+    .option('--chain <chain>', 'Blockchain', 'solana');
+
+  defineCommand(queryCmd, {
+    name: 'query',
+    packageName: 'ohlcv',
+    validate: (opts) => querySchema.parse(opts),
+    onError: die,
+  });
 
   // Backfill command
-  ohlcvCmd
+  const backfillCmd = ohlcvCmd
     .command('backfill')
     .description('Backfill OHLCV data for a token')
     .requiredOption('--mint <address>', 'Token mint address')
@@ -145,34 +146,32 @@ export function registerOhlcvCommands(program: Command): void {
     .requiredOption('--to <date>', 'End date (ISO 8601)')
     .option('--interval <interval>', 'Candle interval', '5m')
     .option('--format <format>', 'Output format', 'table')
-    .option('--chain <chain>', 'Blockchain', 'solana')
-    .action(async (options) => {
-      const { execute } = await import('../core/execute.js');
-      const commandDef = commandRegistry.getCommand('ohlcv', 'backfill');
-      if (!commandDef) {
-        throw new NotFoundError('Command', 'ohlcv.backfill');
-      }
-      await execute(commandDef, options);
-    });
+    .option('--chain <chain>', 'Blockchain', 'solana');
+
+  defineCommand(backfillCmd, {
+    name: 'backfill',
+    packageName: 'ohlcv',
+    validate: (opts) => backfillSchema.parse(opts),
+    onError: die,
+  });
 
   // Coverage command
-  ohlcvCmd
+  const coverageCmd = ohlcvCmd
     .command('coverage')
     .description('Check data coverage for tokens')
     .option('--mint <address>', 'Token mint address')
     .option('--interval <interval>', 'Candle interval')
-    .option('--format <format>', 'Output format', 'table')
-    .action(async (options) => {
-      const { execute } = await import('../core/execute.js');
-      const commandDef = commandRegistry.getCommand('ohlcv', 'coverage');
-      if (!commandDef) {
-        throw new NotFoundError('Command', 'ohlcv.coverage');
-      }
-      await execute(commandDef, options);
-    });
+    .option('--format <format>', 'Output format', 'table');
+
+  defineCommand(coverageCmd, {
+    name: 'coverage',
+    packageName: 'ohlcv',
+    validate: (opts) => coverageSchema.parse(opts),
+    onError: die,
+  });
 
   // Analyze coverage command
-  ohlcvCmd
+  const analyzeCoverageCmd = ohlcvCmd
     .command('analyze-coverage')
     .description('Analyze OHLCV coverage (overall or caller-based)')
     .option('--type <type>', 'Analysis type: overall or caller', 'overall')
@@ -184,23 +183,25 @@ export function registerOhlcvCommands(program: Command): void {
     .option('--start-month <month>', 'Start month (YYYY-MM, for caller)')
     .option('--end-month <month>', 'End month (YYYY-MM, for caller)')
     .option('--caller <name>', 'Filter by caller (for caller analysis)')
-    .option('--min-coverage <ratio>', 'Minimum coverage threshold (0-1)', '0.8')
+    .option('--min-coverage <ratio>', 'Minimum coverage threshold (0-1)')
     .option('--generate-fetch-plan', 'Generate fetch plan (for caller analysis)')
-    .option('--format <format>', 'Output format', 'table')
-    .action(async (options) => {
-      const { execute } = await import('../core/execute.js');
-      const commandDef = commandRegistry.getCommand('ohlcv', 'analyze-coverage');
-      if (!commandDef) {
-        throw new NotFoundError('Command', 'ohlcv.analyze-coverage');
-      }
-      await execute(commandDef, {
-        ...options,
-        analysisType: options.type,
-        generateFetchPlan:
-          options.generateFetchPlan === true || options.generateFetchPlan === 'true',
-        minCoverage: options.minCoverage ? parseFloat(options.minCoverage) : 0.8,
-      });
-    });
+    .option('--format <format>', 'Output format', 'table');
+
+  defineCommand(analyzeCoverageCmd, {
+    name: 'analyze-coverage',
+    packageName: 'ohlcv',
+    coerce: (raw) => ({
+      ...raw,
+      analysisType: raw.type || 'overall',
+      generateFetchPlan:
+        raw.generateFetchPlan !== undefined
+          ? coerceBoolean(raw.generateFetchPlan, 'generate-fetch-plan')
+          : false,
+      minCoverage: raw.minCoverage ? coerceNumber(raw.minCoverage, 'min-coverage') : 0.8,
+    }),
+    validate: (opts) => analyzeCoverageSchema.parse(opts),
+    onError: die,
+  });
 }
 
 /**

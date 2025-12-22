@@ -34,7 +34,7 @@ export type {
 } from './simulation/runSimulationDuckdb.js';
 export { createDuckdbSimulationContext } from './context/createDuckdbSimulationContext.js';
 export type { DuckdbSimulationContextConfig } from './context/createDuckdbSimulationContext.js';
-export { queryCallsDuckdb } from './calls/queryCallsDuckdb.js';
+export { queryCallsDuckdb, createQueryCallsDuckdbContext } from './calls/queryCallsDuckdb.js';
 export type {
   QueryCallsDuckdbSpec,
   QueryCallsDuckdbResult,
@@ -112,3 +112,8 @@ export type {
   WorkflowContextWithPorts,
 } from './calls/evaluate.js';
 export type { CallBacktestResult, BacktestParams } from './calls/backtest.js';
+
+// Research OS - Experiment Engine
+export * from './research/index.js';
+export { createExperimentContext } from './research/context.js';
+export type { ExperimentContextConfig } from './research/context.js';

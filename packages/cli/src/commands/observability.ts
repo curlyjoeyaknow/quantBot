@@ -5,9 +5,10 @@
 import type { Command } from 'commander';
 import { z } from 'zod';
 import { commandRegistry } from '../core/command-registry.js';
-import { execute } from '../core/execute.js';
+import { defineCommand } from '../core/defineCommand.js';
+import { die } from '../core/cliErrors.js';
+import { coerceNumber } from '../core/coerce.js';
 import type { CommandContext } from '../core/command-context.js';
-import { NotFoundError } from '@quantbot/utils';
 import { healthObservabilityHandler } from './observability/health-observability.js';
 import { quotasObservabilityHandler } from './observability/quotas-observability.js';
 import { errorsObservabilityHandler } from './observability/errors-observability.js';
@@ -23,50 +24,51 @@ export function registerObservabilityCommands(program: Command): void {
     .description('System observability and health checks');
 
   // Health command
-  observabilityCmd
+  const healthCmd = observabilityCmd
     .command('health')
     .description('Check system health (databases, APIs)')
-    .option('--format <format>', 'Output format', 'table')
-    .action(async (options) => {
-      const commandDef = commandRegistry.getCommand('observability', 'health');
-      if (!commandDef) {
-        throw new NotFoundError('Command', 'observability.health');
-      }
-      await execute(commandDef, options);
-    });
+    .option('--format <format>', 'Output format', 'table');
+
+  defineCommand(healthCmd, {
+    name: 'health',
+    packageName: 'observability',
+    validate: (opts) => healthSchema.parse(opts),
+    onError: die,
+  });
 
   // Quotas command
-  observabilityCmd
+  const quotasCmd = observabilityCmd
     .command('quotas')
     .description('Check API quota usage')
     .option('--service <service>', 'Service name (birdeye, helius, all)', 'all')
-    .option('--format <format>', 'Output format', 'table')
-    .action(async (options) => {
-      const commandDef = commandRegistry.getCommand('observability', 'quotas');
-      if (!commandDef) {
-        throw new NotFoundError('Command', 'observability.quotas');
-      }
-      await execute(commandDef, options);
-    });
+    .option('--format <format>', 'Output format', 'table');
+
+  defineCommand(quotasCmd, {
+    name: 'quotas',
+    packageName: 'observability',
+    validate: (opts) => quotasSchema.parse(opts),
+    onError: die,
+  });
 
   // Errors command
-  observabilityCmd
+  const errorsCmd = observabilityCmd
     .command('errors')
     .description('View error statistics')
     .option('--from <date>', 'Start date (ISO 8601)')
     .option('--to <date>', 'End date (ISO 8601)')
-    .option('--limit <limit>', 'Maximum rows', '100')
-    .option('--format <format>', 'Output format', 'table')
-    .action(async (options) => {
-      const commandDef = commandRegistry.getCommand('observability', 'errors');
-      if (!commandDef) {
-        throw new NotFoundError('Command', 'observability.errors');
-      }
-      await execute(commandDef, {
-        ...options,
-        limit: options.limit ? parseInt(options.limit, 10) : 100,
-      });
-    });
+    .option('--limit <limit>', 'Maximum rows')
+    .option('--format <format>', 'Output format', 'table');
+
+  defineCommand(errorsCmd, {
+    name: 'errors',
+    packageName: 'observability',
+    coerce: (raw) => ({
+      ...raw,
+      limit: raw.limit ? coerceNumber(raw.limit, 'limit') : 100,
+    }),
+    validate: (opts) => errorsSchema.parse(opts),
+    onError: die,
+  });
 }
 
 /**

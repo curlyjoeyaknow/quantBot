@@ -1,7 +1,7 @@
 /**
  * Slippage Models
  * ===============
- * 
+ *
  * Models for calculating slippage based on trade size, volume, and market conditions.
  */
 
@@ -85,13 +85,19 @@ export function createPumpfunSlippageConfig(): VenueSlippageConfig {
     venue: 'pumpfun',
     entrySlippage: {
       type: 'sqrt',
+      fixedBps: 0,
+      linearCoefficient: 0,
       sqrtCoefficient: 50, // 50 bps per sqrt(unit)
+      volumeImpactBps: 0,
       minBps: 10,
       maxBps: 500,
     },
     exitSlippage: {
       type: 'sqrt',
+      fixedBps: 0,
+      linearCoefficient: 0,
       sqrtCoefficient: 75, // Higher exit slippage
+      volumeImpactBps: 0,
       minBps: 15,
       maxBps: 750,
     },
@@ -108,17 +114,22 @@ export function createPumpswapSlippageConfig(): VenueSlippageConfig {
     venue: 'pumpswap',
     entrySlippage: {
       type: 'sqrt',
+      fixedBps: 0,
+      linearCoefficient: 0,
       sqrtCoefficient: 30,
+      volumeImpactBps: 0,
       minBps: 5,
       maxBps: 300,
     },
     exitSlippage: {
       type: 'sqrt',
+      fixedBps: 0,
+      linearCoefficient: 0,
       sqrtCoefficient: 40,
+      volumeImpactBps: 0,
       minBps: 8,
       maxBps: 400,
     },
     volatilityMultiplier: 1.3,
   };
 }
-

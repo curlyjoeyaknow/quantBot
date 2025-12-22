@@ -48,13 +48,13 @@ export async function runSimulationDuckdbHandler(
   const handlerArgs: RunSimulationDuckdbHandlerArgs = {
     duckdb: args.duckdb,
     strategy: typeof args.strategy === 'string' ? args.strategy : JSON.stringify(args.strategy),
-    initial_capital: args.initial_capital,
-    lookback_minutes: args.lookback_minutes,
-    lookforward_minutes: args.lookforward_minutes,
+    initial_capital: args.initialCapital,
+    lookback_minutes: args.lookbackMinutes,
+    lookforward_minutes: args.lookforwardMinutes,
     resume: args.resume,
     batch: args.batch ? 1 : undefined, // Convert boolean to number or undefined
     mint: args.mint,
-    alert_timestamp: args.alert_timestamp,
+    alert_timestamp: args.alertTimestamp,
   };
 
   // Store workflow context in command context for the handler

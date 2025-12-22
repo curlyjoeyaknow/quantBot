@@ -1,7 +1,7 @@
 /**
  * Enhanced Cost Models
  * ====================
- * 
+ *
  * Enhanced cost calculations including priority fees, compute units, and effective costs.
  */
 
@@ -10,10 +10,7 @@ import type { CostModel } from './types.js';
 /**
  * Calculate priority fee for a transaction
  */
-export function calculatePriorityFee(
-  model: CostModel,
-  congestionLevel: number = 0
-): number {
+export function calculatePriorityFee(model: CostModel, congestionLevel: number = 0): number {
   if (!model.priorityFee) {
     return 0;
   }
@@ -73,7 +70,12 @@ export function calculateEffectiveCostPerTrade(
   congestionLevel: number = 0
 ): number {
   const slippageCost = (tradeAmount * slippageBps) / 10_000;
-  const transactionCost = calculateTotalTransactionCost(model, tradeAmount, isEntry, congestionLevel);
+  const transactionCost = calculateTotalTransactionCost(
+    model,
+    tradeAmount,
+    isEntry,
+    congestionLevel
+  );
   return slippageCost + transactionCost;
 }
 
@@ -116,4 +118,3 @@ export function createPumpswapCostModel(): CostModel {
     borrowAprBps: 0,
   };
 }
-

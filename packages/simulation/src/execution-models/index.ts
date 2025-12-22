@@ -1,14 +1,14 @@
 /**
  * Execution Reality Models
  * =======================
- * 
+ *
  * Branch C: Execution Reality Models
- * 
+ *
  * This module provides:
  * - Execution models (latency, slippage, failures, costs)
  * - Risk frameworks (circuit breakers, anomaly detection)
  * - Calibration tools (live data → model parameters)
- * 
+ *
  * All models are JSON-serializable and designed to be consumed by Branch A (simulation engine).
  */
 
@@ -97,3 +97,9 @@ export {
 } from './calibration.js';
 export { LiveTradeRecordSchema } from './calibration.js';
 
+// Adapters (for integration with existing simulation engine)
+export {
+  convertCostModelToCostConfig,
+  convertExecutionModelToCostConfig,
+  calculateEffectiveSlippageBps,
+} from './adapters.js';

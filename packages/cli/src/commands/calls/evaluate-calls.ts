@@ -18,15 +18,17 @@ export async function evaluateCallsHandler(args: EvaluateCallsArgs, _ctx: Comman
   try {
     const fileContent = readFileSync(args.callsFile, 'utf-8');
     const parsed = JSON.parse(fileContent);
-    
+
     // Validate it's an array
     if (!Array.isArray(parsed)) {
       throw new Error('Calls file must contain a JSON array of CallSignal objects');
     }
-    
+
     calls = parsed as CallSignal[];
   } catch (error) {
-    throw new Error(`Failed to load calls from ${args.callsFile}: ${error instanceof Error ? error.message : String(error)}`);
+    throw new Error(
+      `Failed to load calls from ${args.callsFile}: ${error instanceof Error ? error.message : String(error)}`
+    );
   }
 
   // Build workflow request
@@ -56,4 +58,3 @@ export async function evaluateCallsHandler(args: EvaluateCallsArgs, _ctx: Comman
   // Run workflow
   return await evaluateCallsWorkflow(request, ctx);
 }
-

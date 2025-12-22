@@ -7,6 +7,8 @@
  */
 
 import { z } from 'zod';
+import type { ExecutionModel } from './execution-model.js';
+import type { RiskModel } from './risk-model.js';
 
 /**
  * Candle schema (canonical format)
@@ -85,6 +87,12 @@ export type CostConfig = z.infer<typeof CostConfigSchema>;
 
 /**
  * Simulation input contract (canonical)
+ *
+ * Includes determinism contract fields for replayability:
+ * - contractVersion: Version of simulation engine/contract
+ * - seed: Random seed for deterministic execution
+ * - dataVersion: Version of input data schema
+ * - strategyVersion: Version of strategy definition
  */
 export const SimInputSchema = z.object({
   run_id: z.string(),
@@ -96,6 +104,24 @@ export const SimInputSchema = z.object({
   exit_config: ExitConfigSchema,
   reentry_config: ReEntryConfigSchema,
   cost_config: CostConfigSchema,
+
+  // Determinism contract fields
+  contractVersion: z.string().default('1.0.0'),
+  seed: z.number().int().optional(),
+  dataVersion: z.string().optional(),
+  strategyVersion: z.string().optional(),
+
+  // Execution model (no perfect fills)
+  executionModel: z.record(z.string(), z.unknown()).optional(),
+
+  // Risk model
+  riskModel: z.record(z.string(), z.unknown()).optional(),
+
+  // Data snapshot hash (for reproducibility)
+  dataSnapshotHash: z.string().optional(),
+
+  // Clock resolution (milliseconds, seconds, minutes, hours)
+  clockResolution: z.enum(['ms', 's', 'm', 'h']).default('m'),
 });
 
 export type SimInput = z.infer<typeof SimInputSchema>;

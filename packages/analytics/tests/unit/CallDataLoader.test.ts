@@ -15,7 +15,7 @@ const mockStorageEngine = {
 };
 
 const mockQueryCallsDuckdb = vi.fn();
-const mockCreateProductionContext = vi.fn();
+const mockCreateQueryCallsDuckdbContext = vi.fn();
 
 vi.mock('@quantbot/storage', () => ({
   getStorageEngine: vi.fn(() => mockStorageEngine),
@@ -23,7 +23,7 @@ vi.mock('@quantbot/storage', () => ({
 
 vi.mock('@quantbot/workflows', () => ({
   queryCallsDuckdb: mockQueryCallsDuckdb,
-  createProductionContext: mockCreateProductionContext,
+  createQueryCallsDuckdbContext: mockCreateQueryCallsDuckdbContext,
 }));
 
 vi.mock('@quantbot/analytics/utils/ath-calculator.js', () => ({

@@ -19,14 +19,14 @@ export type IngestOhlcvWorkflowOutput = {
 
 /**
  * Context type for ingestOhlcvWorkflowPorted (alias for WorkflowContextWithPorts)
- * 
+ *
  * Named with "Context" suffix for workflow contract compliance.
  */
 export type IngestOhlcvWorkflowPortedContext = WorkflowContextWithPorts;
 
 /**
  * Create default context (for testing)
- * 
+ *
  * NOTE: This throws an error because context creation is async.
  * The actual defaulting happens in the function body using ctx ?? (await createOhlcvIngestionContext()).
  */

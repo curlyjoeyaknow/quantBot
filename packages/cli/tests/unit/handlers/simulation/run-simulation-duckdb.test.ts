@@ -153,9 +153,7 @@ describe('runSimulationDuckdbHandler', () => {
     mockRunSimulationDuckdb.mockRejectedValue(validationError);
 
     await expect(runSimulationDuckdbHandler(args, mockCtx)).rejects.toThrow(ValidationError);
-    await expect(runSimulationDuckdbHandler(args, mockCtx)).rejects.toThrow(
-      'mint is required'
-    );
+    await expect(runSimulationDuckdbHandler(args, mockCtx)).rejects.toThrow('mint is required');
   });
 
   it('should propagate service errors', async () => {

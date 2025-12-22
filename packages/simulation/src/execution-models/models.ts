@@ -1,7 +1,7 @@
 /**
  * Execution Model Factory
  * ========================
- * 
+ *
  * Factory functions to create complete execution models for different venues.
  */
 
@@ -92,12 +92,18 @@ export function createMinimalExecutionModel(venue: string = 'minimal'): Executio
       entrySlippage: {
         type: 'fixed',
         fixedBps: 0,
+        linearCoefficient: 0,
+        sqrtCoefficient: 0,
+        volumeImpactBps: 0,
         minBps: 0,
         maxBps: 0,
       },
       exitSlippage: {
         type: 'fixed',
         fixedBps: 0,
+        linearCoefficient: 0,
+        sqrtCoefficient: 0,
+        volumeImpactBps: 0,
         minBps: 0,
         maxBps: 0,
       },
@@ -110,4 +116,3 @@ export function createMinimalExecutionModel(venue: string = 'minimal'): Executio
     },
   };
 }
-

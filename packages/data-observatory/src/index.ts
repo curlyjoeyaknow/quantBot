@@ -17,4 +17,3 @@ export * from './quality/index.js';
 
 // Factory functions
 export * from './factory.js';
-

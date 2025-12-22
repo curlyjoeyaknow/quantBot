@@ -8,8 +8,11 @@ import { z } from 'zod';
 // getClickHouseClient should be accessed through CommandContext factory
 import type { PackageCommandModule } from '../types/index.js';
 import { commandRegistry } from '../core/command-registry.js';
+import { defineCommand } from '../core/defineCommand.js';
+import { die } from '../core/cliErrors.js';
+import { coerceNumber, coerceBoolean } from '../core/coerce.js';
 import type { CommandContext } from '../core/command-context.js';
-import { NotFoundError, ValidationError } from '@quantbot/utils';
+import { ValidationError } from '@quantbot/utils';
 import { queryStorageHandler } from './storage/query-storage.js';
 import { statsStorageHandler } from './storage/stats-storage.js';
 import { listTokensHandler } from './storage/list-tokens.js';
@@ -152,60 +155,60 @@ export function registerStorageCommands(program: Command): void {
     .description('Database storage operations (safe queries only)');
 
   // Query command
-  storageCmd
+  const queryCmd = storageCmd
     .command('query')
     .description('Query database tables (safe, read-only)')
     .requiredOption('--table <table>', 'Table name')
-    .option('--limit <limit>', 'Maximum rows to return', '100')
-    .option('--format <format>', 'Output format', 'table')
-    .action(async (options) => {
-      const { execute } = await import('../core/execute.js');
-      const commandDef = commandRegistry.getCommand('storage', 'query');
-      if (!commandDef) {
-        throw new NotFoundError('Command', 'storage.query');
-      }
-      await execute(commandDef, {
-        ...options,
-        limit: options.limit ? parseInt(options.limit, 10) : undefined,
-      });
-    });
+    .option('--limit <limit>', 'Maximum rows to return')
+    .option('--format <format>', 'Output format', 'table');
+
+  defineCommand(queryCmd, {
+    name: 'query',
+    packageName: 'storage',
+    coerce: (raw) => ({
+      ...raw,
+      limit: raw.limit ? coerceNumber(raw.limit, 'limit') : 100,
+    }),
+    validate: (opts) => querySchema.parse(opts),
+    onError: die,
+  });
 
   // Stats command
-  storageCmd
+  const statsCmd = storageCmd
     .command('stats')
     .description('Show database statistics')
-    .option('--format <format>', 'Output format', 'table')
-    .action(async (options) => {
-      const { execute } = await import('../core/execute.js');
-      const commandDef = commandRegistry.getCommand('storage', 'stats');
-      if (!commandDef) {
-        throw new NotFoundError('Command', 'storage.stats');
-      }
-      await execute(commandDef, options);
-    });
+    .option('--format <format>', 'Output format', 'table');
+
+  defineCommand(statsCmd, {
+    name: 'stats',
+    packageName: 'storage',
+    validate: (opts) =>
+      z.object({ format: z.enum(['json', 'table', 'csv']).default('table') }).parse(opts),
+    onError: die,
+  });
 
   // List tokens command
-  storageCmd
+  const tokensCmd = storageCmd
     .command('tokens')
     .description('List unique tokens from ClickHouse')
     .option('--chain <chain>', 'Blockchain (solana, ethereum, bsc, base)', 'solana')
     .option('--source <source>', 'Data source (ohlcv, metadata)', 'ohlcv')
-    .option('--limit <limit>', 'Maximum tokens to return', '1000')
-    .option('--format <format>', 'Output format', 'table')
-    .action(async (options) => {
-      const { execute } = await import('../core/execute.js');
-      const commandDef = commandRegistry.getCommand('storage', 'tokens');
-      if (!commandDef) {
-        throw new NotFoundError('Command', 'storage.tokens');
-      }
-      await execute(commandDef, {
-        ...options,
-        limit: options.limit ? parseInt(options.limit, 10) : undefined,
-      });
-    });
+    .option('--limit <limit>', 'Maximum tokens to return')
+    .option('--format <format>', 'Output format', 'table');
+
+  defineCommand(tokensCmd, {
+    name: 'tokens',
+    packageName: 'storage',
+    coerce: (raw) => ({
+      ...raw,
+      limit: raw.limit ? coerceNumber(raw.limit, 'limit') : 1000,
+    }),
+    validate: (opts) => listTokensSchema.parse(opts),
+    onError: die,
+  });
 
   // Stats workflow command (comprehensive stats using workflow)
-  storageCmd
+  const statsWorkflowCmd = storageCmd
     .command('stats-workflow')
     .description('Get comprehensive storage statistics using workflow (ClickHouse + DuckDB)')
     .option('--source <source>', 'Data source (clickhouse, duckdb, all)', 'all')
@@ -213,40 +216,40 @@ export function registerStorageCommands(program: Command): void {
     .option('--no-include-row-counts', 'Exclude row counts')
     .option('--no-include-date-ranges', 'Exclude date ranges')
     .option('--duckdb-path <path>', 'DuckDB file path')
-    .option('--format <format>', 'Output format', 'table')
-    .action(async (options) => {
-      const { execute } = await import('../core/execute.js');
-      const commandDef = commandRegistry.getCommand('storage', 'stats-workflow');
-      if (!commandDef) {
-        throw new NotFoundError('Command', 'storage.stats-workflow');
-      }
-      await execute(commandDef, {
-        ...options,
-        includeTableSizes: options.includeTableSizes !== false,
-        includeRowCounts: options.includeRowCounts !== false,
-        includeDateRanges: options.includeDateRanges !== false,
-      });
-    });
+    .option('--format <format>', 'Output format', 'table');
+
+  defineCommand(statsWorkflowCmd, {
+    name: 'stats-workflow',
+    packageName: 'storage',
+    coerce: (raw) => ({
+      ...raw,
+      duckdbPath: raw.duckdbPath,
+      includeTableSizes: raw.includeTableSizes !== false,
+      includeRowCounts: raw.includeRowCounts !== false,
+      includeDateRanges: raw.includeDateRanges !== false,
+    }),
+    validate: (opts) => storageStatsWorkflowSchema.parse(opts),
+    onError: die,
+  });
 
   // OHLCV stats workflow command
-  storageCmd
+  const ohlcvStatsCmd = storageCmd
     .command('ohlcv-stats')
     .description('Get comprehensive OHLCV statistics using workflow')
     .option('--chain <chain>', 'Filter by chain (solana, ethereum, bsc, base)')
     .option('--interval <interval>', 'Filter by interval (1m, 5m, 15m, 1h, 4h, 1d)')
     .option('--mint <address>', 'Filter by token mint address')
-    .option('--format <format>', 'Output format', 'table')
-    .action(async (options) => {
-      const { execute } = await import('../core/execute.js');
-      const commandDef = commandRegistry.getCommand('storage', 'ohlcv-stats');
-      if (!commandDef) {
-        throw new NotFoundError('Command', 'storage.ohlcv-stats');
-      }
-      await execute(commandDef, options);
-    });
+    .option('--format <format>', 'Output format', 'table');
+
+  defineCommand(ohlcvStatsCmd, {
+    name: 'ohlcv-stats',
+    packageName: 'storage',
+    validate: (opts) => ohlcvStatsWorkflowSchema.parse(opts),
+    onError: die,
+  });
 
   // Token stats workflow command
-  storageCmd
+  const tokenStatsCmd = storageCmd
     .command('token-stats')
     .description(
       'Get comprehensive token statistics combining DuckDB calls with ClickHouse OHLCV and simulations'
@@ -255,19 +258,20 @@ export function registerStorageCommands(program: Command): void {
     .option('--to <date>', 'End date (ISO 8601)')
     .option('--chain <chain>', 'Filter by chain (solana, ethereum, bsc, base)')
     .option('--duckdb-path <path>', 'DuckDB file path')
-    .option('--limit <limit>', 'Maximum tokens to return', parseInt)
-    .option('--format <format>', 'Output format', 'table')
-    .action(async (options) => {
-      const { execute } = await import('../core/execute.js');
-      const commandDef = commandRegistry.getCommand('storage', 'token-stats');
-      if (!commandDef) {
-        throw new NotFoundError('Command', 'storage.token-stats');
-      }
-      await execute(commandDef, {
-        ...options,
-        limit: options.limit ? parseInt(options.limit, 10) : undefined,
-      });
-    });
+    .option('--limit <limit>', 'Maximum tokens to return')
+    .option('--format <format>', 'Output format', 'table');
+
+  defineCommand(tokenStatsCmd, {
+    name: 'token-stats',
+    packageName: 'storage',
+    coerce: (raw) => ({
+      ...raw,
+      duckdbPath: raw.duckdbPath,
+      limit: raw.limit ? coerceNumber(raw.limit, 'limit') : undefined,
+    }),
+    validate: (opts) => tokenStatsWorkflowSchema.parse(opts),
+    onError: die,
+  });
 }
 
 /**

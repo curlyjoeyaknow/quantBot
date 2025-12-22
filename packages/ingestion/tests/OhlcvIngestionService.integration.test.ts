@@ -328,12 +328,12 @@ describe('OhlcvIngestionService (integration)', () => {
       duckdbPath: absoluteDuckDBPath,
       side: 'buy', // Explicitly pass side parameter
     });
-    
+
     // Debug: Log worklist if empty
     if (worklist.tokenGroups.length === 0) {
       console.log('Worklist is empty. Full result:', JSON.stringify(worklist, null, 2));
     }
-    
+
     expect(worklist.tokenGroups.length).toBe(1);
     expect(worklist.tokenGroups[0].mint).toBe(validMint);
     expect(worklist.calls.length).toBe(1);
@@ -416,7 +416,7 @@ describe('OhlcvIngestionService (integration)', () => {
     // Use absolute path to ensure Python script can find it
     const { resolve } = await import('path');
     const absoluteDuckDBPath = resolve(testDuckDBPath);
-    
+
     // Debug: Verify data exists in DuckDB before querying
     const { execSync } = await import('child_process');
     try {
@@ -428,17 +428,17 @@ describe('OhlcvIngestionService (integration)', () => {
     } catch (error) {
       console.log('Debug query failed:', error);
     }
-    
+
     const worklistAll = await pythonEngine.runOhlcvWorklist({
       duckdbPath: absoluteDuckDBPath,
       side: 'buy', // Explicitly pass side parameter
     });
-    
+
     // Debug: Log worklist if empty
     if (worklistAll.tokenGroups.length === 0) {
       console.log('Worklist is empty. Full result:', JSON.stringify(worklistAll, null, 2));
     }
-    
+
     expect(worklistAll.tokenGroups.length).toBe(1); // Same mint, grouped together
     expect(worklistAll.tokenGroups[0].callCount).toBe(2); // Both calls
     expect(worklistAll.calls.length).toBe(2); // Both individual calls

@@ -16,13 +16,10 @@ import type { SnapshotManager as ISnapshotManager } from './snapshots/snapshot-m
  * @param duckdbPath - Path to DuckDB database for snapshot storage
  * @returns Configured snapshot manager
  */
-export function createSnapshotManager(
-  duckdbPath: string
-): ISnapshotManager {
+export function createSnapshotManager(duckdbPath: string): ISnapshotManager {
   const storage = getStorageEngine();
   const eventCollector = new StorageEventCollector(storage);
   const snapshotStorage = new DuckDBSnapshotStorage(duckdbPath);
 
   return new SnapshotManager(snapshotStorage, eventCollector);
 }
-
