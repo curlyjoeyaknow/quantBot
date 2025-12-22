@@ -1,0 +1,25 @@
+{
+    "keep": {
+        "days": true,
+        "amount": 14
+    },
+    "auditLog": "/home/memez/quantBot/packages/cli/logs/.c8f99213bbb7846ef13a910be3703875f63d0fb3-audit.json",
+    "files": [
+        {
+            "date": 1765788643710,
+            "name": "/home/memez/quantBot/packages/cli/logs/combined-2025-12-15.log",
+            "hash": "4c6354d9955a3249a6653846d809246fca272036671e079ef31fee7113b5ea3f"
+        },
+        {
+            "date": 1765818343844,
+            "name": "/home/memez/quantBot/packages/cli/logs/combined-2025-12-16.log",
+            "hash": "911313a6372892571a739b16ad3843f4128e4b2f966355dd613c9f32e2aa8ffa"
+        },
+        {
+            "date": 1766190764163,
+            "name": "/home/memez/quantBot/packages/cli/logs/combined-2025-12-20.log",
+            "hash": "2462b25923429cb6f908f51f904bed42914186412a3eb1f4906a0db85b06330a"
+        }
+    ],
+    "hashType": "sha256"
+}

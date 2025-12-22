@@ -1,0 +1,66 @@
+Caller,Strategy,Description,TotalTrades,WinRate,FinalPortfolio,TotalReturn,MaxDrawdown,AvgPnlPerTrade,Performance
+Brook,MultiTrade_20pctTrail_50pctDropRebound_24h,"Multi-trade: 20% trailing stop, re-enter after 50% drop from peak + 20% rebound",685,44.38,2221.14,2121.14,2.35,30.97,Excellent
+Brook 💀🧲,MultiTrade_20pctTrail_50pctDropRebound_24h,"Multi-trade: 20% trailing stop, re-enter after 50% drop from peak + 20% rebound",256,52.34,1573.63,1473.63,1.71,57.56,Excellent
+Brook Giga I verify @BrookCalls,MultiTrade_20pctTrail_50pctDropRebound_24h,"Multi-trade: 20% trailing stop, re-enter after 50% drop from peak + 20% rebound",352,39.77,586.56,486.56,5.23,13.82,Excellent
+Austic,MultiTrade_20pctTrail_50pctDropRebound_24h,"Multi-trade: 20% trailing stop, re-enter after 50% drop from peak + 20% rebound",310,46.45,573.7,473.7,3.31,15.28,Excellent
+Brook,MultiTrade_20pctTrail_RSI_MACD_24h,"Multi-trade: 20% trailing stop, re-enter using RSI/MACD signals",621,33.49,460.73,360.73,14.22,5.81,Excellent
+davinch,MultiTrade_20pctTrail_50pctDropRebound_24h,"Multi-trade: 20% trailing stop, re-enter after 50% drop from peak + 20% rebound",235,37.45,449.46,349.46,4.27,14.87,Excellent
+Brook,MultiTrade_20pctTrail_MA_24h,"Multi-trade: 20% trailing stop, re-enter using MA crossovers",600,31.5,421.46,321.46,12.62,5.36,Excellent
+meta maxist,MultiTrade_20pctTrail_50pctDropRebound_24h,"Multi-trade: 20% trailing stop, re-enter after 50% drop from peak + 20% rebound",279,42.65,398.28,298.28,4.34,10.69,Excellent
+Austic,MultiTrade_20pctTrail_MA_24h,"Multi-trade: 20% trailing stop, re-enter using MA crossovers",273,37.36,364.01,264.01,7.49,9.67,Excellent
+Austic,MultiTrade_20pctTrail_RSI_MACD_24h,"Multi-trade: 20% trailing stop, re-enter using RSI/MACD signals",273,35.16,335.43,235.43,11.5,8.62,Excellent
+Brook,Trailing_6h_20pctSL_25pctTrail_50pctActivate,"Hold 6h, 20% SL, 25% trailing stop (activates at 50% gain)",426,28.4,312.92,212.92,33.39,5,Excellent
+meta maxist,MultiTrade_20pctTrail_RSI_MACD_24h,"Multi-trade: 20% trailing stop, re-enter using RSI/MACD signals",254,34.65,267,167,6.37,6.57,Very Good
+Austic,Trailing_6h_20pctSL_25pctTrail_50pctActivate,"Hold 6h, 20% SL, 25% trailing stop (activates at 50% gain)",182,31.87,261.68,161.68,27.13,8.88,Very Good
+Brook Giga I verify @BrookCalls,MultiTrade_20pctTrail_RSI_MACD_24h,"Multi-trade: 20% trailing stop, re-enter using RSI/MACD signals",332,32.23,251.6,151.6,14.99,4.57,Very Good
+davinch,MultiTrade_20pctTrail_RSI_MACD_24h,"Multi-trade: 20% trailing stop, re-enter using RSI/MACD signals",229,33.62,246.41,146.41,8.13,6.39,Very Good
+meta maxist,MultiTrade_20pctTrail_MA_24h,"Multi-trade: 20% trailing stop, re-enter using MA crossovers",244,31.97,246.16,146.16,6.65,5.99,Very Good
+Brook Giga I verify @BrookCalls,MultiTrade_20pctTrail_MA_24h,"Multi-trade: 20% trailing stop, re-enter using MA crossovers",318,28.93,229.65,129.65,18.65,4.08,Very Good
+Croz,MultiTrade_20pctTrail_50pctDropRebound_24h,"Multi-trade: 20% trailing stop, re-enter after 50% drop from peak + 20% rebound",206,35.44,228.36,128.36,12.84,6.23,Very Good
+Brook Giga I verify @BrookCalls,Trailing_6h_20pctSL_25pctTrail_50pctActivate,"Hold 6h, 20% SL, 25% trailing stop (activates at 50% gain)",235,29.79,226.39,126.39,30.92,5.38,Very Good
+Brook 💀🧲,MultiTrade_20pctTrail_RSI_MACD_24h,"Multi-trade: 20% trailing stop, re-enter using RSI/MACD signals",225,36,225.8,125.8,13.79,5.59,Very Good
+davinch,MultiTrade_20pctTrail_MA_24h,"Multi-trade: 20% trailing stop, re-enter using MA crossovers",216,31.02,224.35,124.35,11.32,5.76,Very Good
+Brook 💀🧲,MultiTrade_20pctTrail_MA_24h,"Multi-trade: 20% trailing stop, re-enter using MA crossovers",219,35.62,215.69,115.69,13.79,5.28,Very Good
+meta maxist,Trailing_6h_20pctSL_25pctTrail_50pctActivate,"Hold 6h, 20% SL, 25% trailing stop (activates at 50% gain)",174,32.18,184.61,84.61,20.16,4.86,Good
+Croz,MultiTrade_20pctTrail_MA_24h,"Multi-trade: 20% trailing stop, re-enter using MA crossovers",189,26.98,153.9,53.9,14.9,2.85,Good
+Croz,MultiTrade_20pctTrail_RSI_MACD_24h,"Multi-trade: 20% trailing stop, re-enter using RSI/MACD signals",193,27.46,153.87,53.87,13.63,2.79,Good
+davinch,Trailing_6h_20pctSL_25pctTrail_50pctActivate,"Hold 6h, 20% SL, 25% trailing stop (activates at 50% gain)",156,25.64,146.21,46.21,26.27,2.96,Positive
+Austic,Trailing_24h_20pctSL_30pctTrail_100pctActivate,"Hold 24h, 20% SL, 30% trailing stop (activates at 100% gain)",182,17.03,138.38,38.38,81.81,2.11,Positive
+Brook 💀🧲,Trailing_6h_20pctSL_25pctTrail_50pctActivate,"Hold 6h, 20% SL, 25% trailing stop (activates at 50% gain)",147,27.89,132.98,32.98,38.36,2.24,Positive
+Croz,Trailing_6h_20pctSL_25pctTrail_50pctActivate,"Hold 6h, 20% SL, 25% trailing stop (activates at 50% gain)",143,27.97,117.51,17.51,22.86,1.22,Positive
+meta maxist,Trailing_24h_20pctSL_30pctTrail_100pctActivate,"Hold 24h, 20% SL, 30% trailing stop (activates at 100% gain)",174,17.82,115.52,15.52,33.31,0.89,Positive
+Brook Giga I verify @BrookCalls,Trailing_24h_20pctSL_30pctTrail_100pctActivate,"Hold 24h, 20% SL, 30% trailing stop (activates at 100% gain)",235,15.32,81.57,-18.43,93.95,-0.78,Negative
+Austic,Basic_6h_20pctSL_30pctClamp,"Hold 6h, 20% SL, 30% loss clamp",182,5.49,80.07,-19.93,112.61,-1.64,Negative
+Austic,Basic_6h_20pctSL_20pctClamp,"Hold 6h, 20% SL, 20% loss clamp",182,5.49,70.11,-29.89,155.64,-1.64,Negative
+Croz,Trailing_24h_20pctSL_30pctTrail_100pctActivate,"Hold 24h, 20% SL, 30% trailing stop (activates at 100% gain)",143,16.78,63.98,-36.02,47.68,-2.52,Negative
+Brook,Trailing_24h_20pctSL_30pctTrail_100pctActivate,"Hold 24h, 20% SL, 30% trailing stop (activates at 100% gain)",426,15.02,53.04,-46.96,134.05,-1.1,Negative
+meta maxist,TP_6h_20pctSL_100pctTP,"Hold 6h, 20% SL, 100% TP",174,16.09,49.2,-50.8,64.03,-2.92,Negative
+Croz,Basic_6h_10pctSL_10pctClamp,"Hold 6h, 10% SL, 10% loss clamp",143,3.5,45.78,-54.22,81.69,-1.9,Negative
+meta maxist,TP_24h_20pctSL_200pctTP,"Hold 24h, 20% SL, 200% TP",174,9.2,45.37,-54.63,83.9,-3.14,Negative
+Croz,TP_6h_20pctSL_100pctTP,"Hold 6h, 20% SL, 100% TP",143,15.38,45.36,-54.64,59.44,-3.82,Negative
+Austic,TP_6h_20pctSL_50pctTP,"Hold 6h, 20% SL, 50% TP",182,25.27,42.34,-57.66,63.58,-3.17,Negative
+Croz,TP_6h_20pctSL_50pctTP,"Hold 6h, 20% SL, 50% TP",143,23.78,40.43,-59.57,67.28,-4.17,Negative
+Croz,TP_24h_20pctSL_200pctTP,"Hold 24h, 20% SL, 200% TP",143,9.09,37.02,-62.98,71.57,-4.4,Negative
+meta maxist,TP_6h_20pctSL_50pctTP,"Hold 6h, 20% SL, 50% TP",174,25.29,35.04,-64.96,72.33,-3.73,Negative
+Austic,TP_24h_20pctSL_200pctTP,"Hold 24h, 20% SL, 200% TP",182,10.44,29.19,-70.81,105.68,-3.89,Negative
+meta maxist,Basic_6h_20pctSL_30pctClamp,"Hold 6h, 20% SL, 30% loss clamp",174,7.47,20.46,-79.54,123.22,-6.86,Negative
+Austic,TP_6h_20pctSL_100pctTP,"Hold 6h, 20% SL, 100% TP",182,14.29,16.92,-83.08,100.47,-4.56,Negative
+Brook Giga I verify @BrookCalls,TP_6h_20pctSL_50pctTP,"Hold 6h, 20% SL, 50% TP",235,25.11,14.63,-85.37,92.82,-3.63,Negative
+Croz,Basic_6h_20pctSL_30pctClamp,"Hold 6h, 20% SL, 30% loss clamp",143,6.29,13.12,-86.88,90.91,-9.11,Negative
+davinch,Trailing_24h_20pctSL_30pctTrail_100pctActivate,"Hold 24h, 20% SL, 30% trailing stop (activates at 100% gain)",156,8.97,10.75,-89.25,131.89,-5.72,Negative
+Brook 💀🧲,Trailing_24h_20pctSL_30pctTrail_100pctActivate,"Hold 24h, 20% SL, 30% trailing stop (activates at 100% gain)",147,10.2,9.42,-90.58,99.56,-6.16,Negative
+davinch,TP_6h_20pctSL_50pctTP,"Hold 6h, 20% SL, 50% TP",156,19.87,-2.11,-102.11,104.86,-6.55,Negative
+Brook 💀🧲,TP_6h_20pctSL_50pctTP,"Hold 6h, 20% SL, 50% TP",147,19.73,-5.24,-105.24,104.44,-7.16,Negative
+meta maxist,Basic_6h_20pctSL_20pctClamp,"Hold 6h, 20% SL, 20% loss clamp",174,7.47,-19.31,-119.31,184.83,-6.86,Negative
+Brook Giga I verify @BrookCalls,TP_6h_20pctSL_100pctTP,"Hold 6h, 20% SL, 100% TP",235,15.32,-26.02,-126.02,123.16,-5.36,Negative
+Croz,Basic_6h_20pctSL_20pctClamp,"Hold 6h, 20% SL, 20% loss clamp",143,6.29,-30.33,-130.33,121.11,-9.11,Negative
+Brook Giga I verify @BrookCalls,TP_24h_20pctSL_200pctTP,"Hold 24h, 20% SL, 200% TP",235,10.21,-31.32,-131.32,124.68,-5.59,Negative
+Croz,Dip_30pctDrop_ReboundToMinus10pct_6h,"Buy dip: Wait for 30% drop, re-enter when price rebounds to -10% of alert, hold 6h",105,1.9,-47.72,-147.72,130.26,-14.07,Negative
+Brook 💀🧲,TP_6h_20pctSL_100pctTP,"Hold 6h, 20% SL, 100% TP",147,10.2,-49.13,-149.13,149.13,-10.14,Negative
+Croz,Dip_20pctDrop_ReboundToAlert_6h,"Buy dip: Wait for 20% drop, re-enter when price rebounds to alert level, hold 6h",112,2.68,-64.46,-164.46,141.83,-14.68,Negative
+Croz,Dip_40pctDrop_ReboundToMinus30pct_24h,"Buy dip: Wait for 40% drop, re-enter when price rebounds to -30% of alert, hold 24h",110,2.73,-66.45,-166.45,147.99,-15.13,Negative
+meta maxist,Dip_10pctDrop_ReboundToAlert_6h,"Buy dip: Wait for 10% drop, re-enter when price rebounds to alert level, hold 6h",163,5.52,-66.9,-166.9,207.25,-10.24,Negative
+Croz,Dip_10pctDrop_ReboundToAlert_6h,"Buy dip: Wait for 10% drop, re-enter when price rebounds to alert level, hold 6h",129,5.43,-69.95,-169.95,146.48,-13.17,Negative
+Brook 💀🧲,Basic_6h_20pctSL_30pctClamp,"Hold 6h, 20% SL, 30% loss clamp",147,5.44,-71.1,-171.1,171.1,-17.46,Negative
+Brook 💀🧲,Dip_20pctDrop_ReboundToAlert_6h,"Buy dip: Wait for 20% drop, re-enter when price rebounds to alert level, hold 6h",124,1.61,-86.07,-186.07,186.07,-15.01,Negative
+davinch,TP_6h_20pctSL_100pctTP,"Hold 6h, 20% SL, 100% TP",156,7.05,-95.44,-195.44,192.95,-12.53,Negative

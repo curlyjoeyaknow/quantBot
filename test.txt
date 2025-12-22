@@ -1,0 +1,240 @@
+
+> quantbot@1.0.3 test /home/memez/quantBot
+> vitest
+
+
+[1m[44m DEV [49m[22m [34mv4.0.15 [39m[90m/home/memez/quantBot[39m
+
+ [31m❯[39m packages/cli/tests/integration/command-execution.test.ts [2m([22m[2m10 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[32m 27[2mms[22m[39m
+       [32m✓[39m should execute a complete command flow[32m 6[2mms[22m[39m
+       [32m✓[39m should handle validation errors in command flow[32m 3[2mms[22m[39m
+       [32m✓[39m should format output in different formats[32m 1[2mms[22m[39m
+       [32m✓[39m should handle and format errors in command execution[32m 5[2mms[22m[39m
+       [32m✓[39m should sanitize sensitive information in errors[32m 1[2mms[22m[39m
+       [32m✓[39m should handle Solana-specific errors[32m 1[2mms[22m[39m
+       [32m✓[39m should register and retrieve multiple packages[32m 1[2mms[22m[39m
+       [32m✓[39m should generate help text for packages[32m 0[2mms[22m[39m
+       [32m✓[39m should parse and validate complex schemas[32m 3[2mms[22m[39m
+[31m       [31m×[31m should provide helpful error messages for invalid arguments[39m[32m 4[2mms[22m[39m
+ [31m❯[39m packages/jobs/tests/unit/ohlcv-birdeye-fetch.test.ts [2m([22m[2m12 tests[22m[2m | [22m[31m2 failed[39m[2m)[22m[32m 95[2mms[22m[39m
+       [32m✓[39m should fetch candles from Birdeye API[32m 4[2mms[22m[39m
+       [32m✓[39m should skip fetch if coverage is sufficient[32m 1[2mms[22m[39m
+[31m       [31m×[31m should fetch if coverage is below threshold[39m[32m 6[2mms[22m[39m
+       [32m✓[39m should handle API errors gracefully[32m 1[2mms[22m[39m
+       [32m✓[39m should open circuit breaker after threshold failures[32m 1[2mms[22m[39m
+       [32m✓[39m should reset circuit breaker on success[32m 0[2mms[22m[39m
+[31m       [31m×[31m should handle empty candle response[39m[32m 2[2mms[22m[39m
+       [32m✓[39m should process multiple work items[32m 14[2mms[22m[39m
+       [32m✓[39m should apply rate limiting between requests[32m 51[2mms[22m[39m
+       [32m✓[39m should handle mixed success and failure[32m 12[2mms[22m[39m
+       [32m✓[39m should reset circuit breaker manually[32m 0[2mms[22m[39m
+       [32m✓[39m should report circuit breaker state correctly[32m 0[2mms[22m[39m
+ [32m✓[39m packages/api-clients/tests/unit/helius-client.test.ts [2m([22m[2m16 tests[22m[2m)[22m[32m 18[2mms[22m[39m
+ [31m❯[39m packages/jobs/tests/golden/ohlcv-birdeye-fetch.golden.test.ts [2m([22m[2m13 tests[22m[2m | [22m[31m2 failed[39m[2m)[22m[32m 163[2mms[22m[39m
+       [32m✓[39m should complete full golden path: work item → coverage check → API fetch → return candles[32m 6[2mms[22m[39m
+       [32m✓[39m should handle large candle responses (5000+ candles - API limit)[32m 8[2mms[22m[39m
+       [32m✓[39m should preserve mint address case exactly (critical for Solana)[32m 1[2mms[22m[39m
+       [32m✓[39m should process worklist with rate limiting and return all results[32m 102[2mms[22m[39m
+       [32m✓[39m should handle mixed success/failure in worklist gracefully[32m 22[2mms[22m[39m
+       [32m✓[39m should skip fetch when coverage is sufficient[32m 1[2mms[22m[39m
+[31m       [31m×[31m should fetch when coverage is below threshold[39m[32m 7[2mms[22m[39m
+       [32m✓[39m should open circuit breaker after threshold failures and block requests[32m 1[2mms[22m[39m
+       [32m✓[39m should reset circuit breaker on successful fetch[32m 0[2mms[22m[39m
+[31m       [31m×[31m should handle empty candle response gracefully[39m[32m 1[2mms[22m[39m
+       [32m✓[39m should handle very large time windows (stress test)[32m 10[2mms[22m[39m
+       [32m✓[39m should handle all supported intervals correctly[32m 1[2mms[22m[39m
+       [32m✓[39m should handle all supported chains correctly[32m 0[2mms[22m[39m
+ [31m❯[39m packages/ohlcv/tests/unit/dependency-boundaries.test.ts [2m([22m[2m4 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[32m 4[2mms[22m[39m
+     [32m✓[39m should not depend on @quantbot/api-clients[32m 1[2mms[22m[39m
+     [32m✓[39m should not depend on axios[32m 0[2mms[22m[39m
+     [32m✓[39m should not depend on dotenv[32m 0[2mms[22m[39m
+[31m     [31m×[31m should not import network modules in source files[39m[32m 2[2mms[22m[39m
+ [31m❯[39m packages/ingestion/tests/unit/dependency-boundaries.test.ts [2m([22m[2m4 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[32m 5[2mms[22m[39m
+     [32m✓[39m should not depend on @quantbot/api-clients[32m 1[2mms[22m[39m
+     [32m✓[39m should not depend on axios[32m 0[2mms[22m[39m
+     [32m✓[39m should not depend on dotenv[32m 0[2mms[22m[39m
+[31m     [31m×[31m should not import network modules in source files[39m[32m 3[2mms[22m[39m
+ [31m❯[39m packages/workflows/tests/golden/runSimulationDuckdb.golden.test.ts [2m([22m[2m6 tests[22m[2m | [22m[31m4 failed[39m[2m)[22m[32m 18[2mms[22m[39m
+[31m       [31m×[31m should complete full golden path: query → check OHLCV → simulate → return results[39m[32m 10[2mms[22m[39m
+[31m       [31m×[31m should handle skipped tokens and trigger OHLCV ingestion[39m[32m 2[2mms[22m[39m
+[31m       [31m×[31m should complete golden path for single call mode[39m[32m 2[2mms[22m[39m
+[31m       [31m×[31m should collect per-call errors and continue processing[39m[32m 1[2mms[22m[39m
+       [32m✓[39m should skip calls without OHLCV in resume mode[32m 1[2mms[22m[39m
+       [32m✓[39m should return JSON-serializable result (no Date objects, no class instances)[32m 1[2mms[22m[39m
+ [31m❯[39m packages/workflows/tests/unit/runSimulation.golden.test.ts [2m([22m[2m10 tests[22m[2m | [22m[31m2 failed[39m[2m)[22m[32m 39[2mms[22m[39m
+     [32m✓[39m GOLDEN: dryRun true => simulates but does not persist[32m 18[2mms[22m[39m
+     [32m✓[39m GOLDEN: dryRun false => persists run + results[32m 3[2mms[22m[39m
+[31m     [31m×[31m GOLDEN: missing strategy => fails fast[39m[32m 8[2mms[22m[39m
+[31m     [31m×[31m GOLDEN: invalid date range (to <= from) => rejects[39m[32m 2[2mms[22m[39m
+     [32m✓[39m GOLDEN: no calls => returns empty result, no persist, no sim[32m 1[2mms[22m[39m
+     [32m✓[39m GOLDEN: per-call error => captured; workflow continues[32m 2[2mms[22m[39m
+     [32m✓[39m GOLDEN: dedupes duplicate call ids[32m 1[2mms[22m[39m
+     [32m✓[39m GOLDEN: stable ordering by createdAt ascending[32m 1[2mms[22m[39m
+     [32m✓[39m GOLDEN: NO_CANDLES must be flagged and must not call simulation.run[32m 1[2mms[22m[39m
+     [32m✓[39m GOLDEN: windowing must be applied to ohlcv.getCandles (pre/post minutes)[32m 1[2mms[22m[39m
+ [31m❯[39m packages/analytics/tests/unit/period-metrics.test.ts [2m([22m[2m12 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[32m 38[2mms[22m[39m
+[31m       [31m×[31m should enrich a call with period metrics[39m[32m 18[2mms[22m[39m
+       [32m✓[39m should use default period of 7 days[32m 3[2mms[22m[39m
+       [32m✓[39m should use custom period days[32m 1[2mms[22m[39m
+       [32m✓[39m should try 5m candles first, then 1m[32m 1[2mms[22m[39m
+       [32m✓[39m should return original call if no candles found[32m 1[2mms[22m[39m
+       [32m✓[39m should handle errors gracefully[32m 1[2mms[22m[39m
+       [32m✓[39m should enrich multiple calls[32m 2[2mms[22m[39m
+       [32m✓[39m should process calls in batches[32m 6[2mms[22m[39m
+       [32m✓[39m should handle empty calls array[32m 1[2mms[22m[39m
+       [32m✓[39m should analyze re-entry opportunities from enriched calls[32m 1[2mms[22m[39m
+       [32m✓[39m should handle calls without re-entry opportunities[32m 0[2mms[22m[39m
+       [32m✓[39m should handle empty calls array[32m 0[2mms[22m[39m
+ [32m✓[39m packages/storage/tests/unit/influxdb-client.test.ts [2m([22m[2m23 tests[22m[2m)[22m[32m 31[2mms[22m[39m
+ [31m❯[39m packages/analytics/tests/unit/AnalyticsEngine.test.ts [2m([22m[2m9 tests[22m[2m | [22m[31m9 failed[39m[2m)[22m[32m 22[2mms[22m[39m
+[31m       [31m×[31m should initialize successfully[39m[32m 13[2mms[22m[39m
+[31m       [31m×[31m should not initialize twice[39m[32m 1[2mms[22m[39m
+[31m       [31m×[31m should analyze calls successfully[39m[32m 1[2mms[22m[39m
+[31m       [31m×[31m should filter by caller names[39m[32m 1[2mms[22m[39m
+[31m       [31m×[31m should filter by date range[39m[32m 1[2mms[22m[39m
+[31m       [31m×[31m should enrich with ATH when requested[39m[32m 1[2mms[22m[39m
+[31m       [31m×[31m should not enrich with ATH when not requested[39m[32m 1[2mms[22m[39m
+[31m       [31m×[31m should get metrics for a specific caller[39m[32m 1[2mms[22m[39m
+[31m       [31m×[31m should return null for non-existent caller[39m[32m 1[2mms[22m[39m
+ [31m❯[39m packages/analytics/tests/unit/CallDataLoader.test.ts [2m([22m[2m14 tests[22m[2m | [22m[31m9 failed[39m[2m)[22m[32m 151[2mms[22m[39m
+[31m       [31m×[31m should load calls without filters[39m[32m 50[2mms[22m[39m
+[31m       [31m×[31m should apply date range filters[39m[32m 16[2mms[22m[39m
+[31m       [31m×[31m should apply caller name filters[39m[32m 19[2mms[22m[39m
+[31m       [31m×[31m should apply chain filters[39m[32m 6[2mms[22m[39m
+[31m       [31m×[31m should apply limit[39m[32m 9[2mms[22m[39m
+[31m       [31m×[31m should use default limit when not specified[39m[32m 5[2mms[22m[39m
+[31m       [31m×[31m should handle calls without caller information[39m[32m 9[2mms[22m[39m
+[31m       [31m×[31m should handle database errors[39m[32m 22[2mms[22m[39m
+       [32m✓[39m should skip enrichment if calls already have ATH data[32m 2[2mms[22m[39m
+       [32m✓[39m should enrich calls without ATH data[32m 2[2mms[22m[39m
+       [32m✓[39m should handle empty calls array[32m 0[2mms[22m[39m
+       [32m✓[39m should process calls in batches[32m 3[2mms[22m[39m
+       [32m✓[39m should handle enrichment errors gracefully[32m 1[2mms[22m[39m
+[31m       [31m×[31m should try 5m candles first, then 1m[39m[32m 4[2mms[22m[39m
+ [31m❯[39m packages/analytics/tests/unit/MetricsAggregator.test.ts [2m([22m[2m12 tests[22m[2m | [22m[31m2 failed[39m[2m)[22m[32m 29[2mms[22m[39m
+       [32m✓[39m should aggregate metrics for a single caller[32m 5[2mms[22m[39m
+       [32m✓[39m should aggregate metrics for multiple callers[32m 1[2mms[22m[39m
+       [32m✓[39m should handle winning and losing calls correctly[32m 1[2mms[22m[39m
+       [32m✓[39m should handle empty calls array[32m 0[2mms[22m[39m
+       [32m✓[39m should calculate correct averages[32m 1[2mms[22m[39m
+       [32m✓[39m should handle calls with zero timeToAth[32m 0[2mms[22m[39m
+       [32m✓[39m should calculate distribution for calls in different buckets[32m 1[2mms[22m[39m
+       [32m✓[39m should handle empty calls array[32m 0[2mms[22m[39m
+       [32m✓[39m should calculate average time to ATH per bucket[32m 1[2mms[22m[39m
+[31m       [31m×[31m should calculate system metrics from database[39m[32m 12[2mms[22m[39m
+[31m       [31m×[31m should handle database errors gracefully[39m[32m 2[2mms[22m[39m
+       [32m✓[39m should handle empty calls array for date range[32m 3[2mms[22m[39m
+ [32m✓[39m packages/api-clients/tests/unit/birdeye-client.test.ts [2m([22m[2m23 tests[22m[2m | [22m[33m1 skipped[39m[2m)[22m[33m 1029[2mms[22m[39m
+       [33m[2m✓[22m[39m should handle rate limit (429) and retry with next key [33m 1003[2mms[22m[39m
+ [31m❯[39m packages/utils/tests/integration/python-bridge.test.ts [2m([22m[2m2 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[33m 1934[2mms[22m[39m
+     [33m[2m✓[22m[39m runs Python tool on tiny fixture and validates output schema [33m 1008[2mms[22m[39m
+[31m     [31m×[31m validates Python tool handles invalid input gracefully[39m[33m 925[2mms[22m[39m
+ [32m✓[39m packages/simulation/tests/edge-cases/comprehensive-stress.test.ts [2m([22m[2m29 tests[22m[2m)[22m[33m 532[2mms[22m[39m
+       [33m[2m✓[22m[39m should handle 100,000 candles with complex strategy [33m 304[2mms[22m[39m
+ [32m✓[39m packages/observability/tests/metrics-collector.test.ts [2m([22m[2m13 tests[22m[2m)[22m[33m 786[2mms[22m[39m
+ [32m✓[39m packages/cli/tests/integration/dual-run-harness.test.ts [2m([22m[2m3 tests[22m[2m)[22m[33m 742[2mms[22m[39m
+     [33m[2m✓[22m[39m should run both TS and Python sims [33m 305[2mms[22m[39m
+ [32m✓[39m packages/utils/tests/EventBus.test.ts [2m([22m[2m31 tests[22m[2m)[22m[33m 462[2mms[22m[39m
+ [32m✓[39m packages/utils/tests/python-artifact-verification.test.ts [2m([22m[2m12 tests[22m[2m)[22m[33m 1079[2mms[22m[39m
+ [32m✓[39m packages/utils/tests/EventMiddleware.test.ts [2m([22m[2m13 tests[22m[2m)[22m[33m 1112[2mms[22m[39m
+       [33m[2m✓[22m[39m should clean up old metrics [33m 1102[2mms[22m[39m
+ [32m✓[39m packages/utils/tests/pumpfun.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 101[2mms[22m[39m
+ [32m✓[39m packages/api-clients/tests/unit/birdeye-ohlcv.test.ts [2m([22m[2m8 tests[22m[2m)[22m[33m 341[2mms[22m[39m
+ [32m✓[39m packages/ingestion/tests/golden/ohlcv-work-planning.golden.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 85[2mms[22m[39m
+ [32m✓[39m packages/storage/tests/unit/ohlcv-cache.test.ts [2m([22m[2m18 tests[22m[2m)[22m[32m 133[2mms[22m[39m
+ [32m✓[39m packages/simulation/tests/performance/benchmarks.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 50[2mms[22m[39m
+ [32m✓[39m packages/cli/tests/unit/core/artifact-manager.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 35[2mms[22m[39m
+ [32m✓[39m packages/cli/tests/fuzzing/argument-parser.test.ts [2m([22m[2m35 tests[22m[2m)[22m[32m 82[2mms[22m[39m
+ [32m✓[39m packages/cli/tests/integration/storage-commands.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 31[2mms[22m[39m
+ [32m✓[39m packages/observability/tests/system-metrics.test.ts [2m([22m[2m2 tests[22m[2m)[22m[33m 2007[2mms[22m[39m
+     [33m[2m✓[22m[39m should collect system metrics [33m 1004[2mms[22m[39m
+     [33m[2m✓[22m[39m should calculate CPU usage [33m 1001[2mms[22m[39m
+ [32m✓[39m packages/simulation/tests/period-metrics-performance.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 18[2mms[22m[39m
+ [32m✓[39m packages/simulation/tests/performance.test.ts [2m([22m[2m9 tests[22m[2m)[22m[33m 308[2mms[22m[39m
+ [32m✓[39m packages/cli/tests/unit/handlers/simulation/run-simulation.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 17[2mms[22m[39m
+ [32m✓[39m packages/utils/tests/repeat-simulation-helper.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 38[2mms[22m[39m
+ [32m✓[39m packages/utils/tests/error-handler.test.ts [2m([22m[2m25 tests[22m[2m)[22m[32m 38[2mms[22m[39m
+ [32m✓[39m packages/ingestion/tests/unit/ohlcv-work-planning.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 26[2mms[22m[39m
+ [32m✓[39m packages/cli/tests/properties/run-id-determinism.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 23[2mms[22m[39m
+ [32m✓[39m packages/cli/tests/unit/handlers/analytics/analyze-analytics.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 20[2mms[22m[39m
+ [32m✓[39m packages/cli/tests/unit/handlers/ohlcv/query-ohlcv.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 22[2mms[22m[39m
+ [32m✓[39m packages/simulation/tests/properties/moving-averages.property.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 29[2mms[22m[39m
+ [32m✓[39m packages/simulation/tests/target-resolver.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 23[2mms[22m[39m
+ [32m✓[39m packages/storage/tests/unit/clickhouse-client.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 28[2mms[22m[39m
+ [32m✓[39m packages/simulation/tests/simulation-engine-class.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 18[2mms[22m[39m
+ [32m✓[39m packages/simulation/tests/period-metrics.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+ [32m✓[39m packages/cli/tests/integration/cli-entry-point.test.ts [2m([22m[2m18 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+ [32m✓[39m packages/ohlcv/tests/candle-transformations.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 18[2mms[22m[39m
+ [32m✓[39m packages/simulation/tests/properties/rsi.property.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 20[2mms[22m[39m
+ [32m✓[39m packages/observability/tests/database-health.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 23[2mms[22m[39m
+ [32m✓[39m packages/jobs/tests/golden/ohlcv-ingestion-engine.golden.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 21[2mms[22m[39m
+ [32m✓[39m packages/cli/tests/unit/handlers/analytics/analyze-analytics-isolation.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 21[2mms[22m[39m
+ [32m✓[39m packages/storage/tests/unit/IndicatorsRepository.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 20[2mms[22m[39m
+ [32m✓[39m packages/cli/tests/unit/commands/ohlcv.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 20[2mms[22m[39m
+ [32m✓[39m packages/cli/tests/unit/handlers/ohlcv/query-ohlcv-isolation.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 19[2mms[22m[39m
+ [32m✓[39m packages/cli/tests/unit/commands/storage.test.ts [2m([22m[2m24 tests[22m[2m)[22m[32m 17[2mms[22m[39m
+ [32m✓[39m packages/cli/tests/integration/ohlcv-commands.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 30[2mms[22m[39m
+ [32m✓[39m packages/utils/tests/RepeatSimulationHelper.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 26[2mms[22m[39m
+ [32m✓[39m packages/storage/tests/unit/repositories/OhlcvRepository.security.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 18[2mms[22m[39m
+ [32m✓[39m packages/storage/tests/unit/StorageEngine.test.ts [2m([22m[2m30 tests[22m[2m)[22m[32m 22[2mms[22m[39m
+ [32m✓[39m packages/simulation/tests/properties/fees.property.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 19[2mms[22m[39m
+ [32m✓[39m packages/cli/tests/unit/commands/observability.test.ts [2m([22m[2m14 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m packages/workflows/tests/golden/ingestOhlcv.golden.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 27[2mms[22m[39m
+ [32m✓[39m packages/simulation/tests/simulation-engine.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 37[2mms[22m[39m
+ [32m✓[39m packages/cli/tests/unit/commands/api-clients.test.ts [2m([22m[2m19 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32m✓[39m packages/simulation/tests/engine/StrategyEngine.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 44[2mms[22m[39m
+ [32m✓[39m packages/storage/tests/unit/TokenMetadataRepository.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 35[2mms[22m[39m
+ [32m✓[39m packages/simulation/tests/unit/data/aggregator.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 3[2mms[22m[39m
+ [32m✓[39m packages/cli/tests/unit/commands/simulation.test.ts [2m([22m[2m16 tests[22m[2m)[22m[32m 17[2mms[22m[39m
+ [32m✓[39m packages/simulation/tests/boundaries/interval-alignment.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 21[2mms[22m[39m
+ [32m✓[39m packages/ohlcv/tests/cache-stub.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32m✓[39m packages/api-clients/tests/unit/base-client.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 18[2mms[22m[39m
+ [32m✓[39m packages/utils/tests/credit-monitor.test.ts [2m([22m[2m32 tests[22m[2m)[22m[32m 22[2mms[22m[39m
+ [32m✓[39m packages/simulation/tests/architectural/import-rules.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 17[2mms[22m[39m
+ [32m✓[39m packages/cli/tests/unit/error-handler.test.ts [2m([22m[2m19 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+ [32m✓[39m packages/cli/tests/unit/core/run-id-manager.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 23[2mms[22m[39m
+ [32m✓[39m packages/ohlcv/tests/historical-candles.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 21[2mms[22m[39m
+ [32m✓[39m packages/jobs/tests/unit/ohlcv-ingestion-engine.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 25[2mms[22m[39m
+ [32m✓[39m packages/cli/tests/unit/handlers/ohlcv/backfill-ohlcv.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 29[2mms[22m[39m
+ [32m✓[39m packages/cli/tests/unit/initialization-manager.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m packages/utils/tests/logging-aggregator.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 18[2mms[22m[39m
+ [32m✓[39m packages/cli/tests/properties/date-parsing.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 29[2mms[22m[39m
+ [32m✓[39m packages/simulation/tests/sinks.test.ts [2m([22m[2m15 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32m✓[39m packages/utils/tests/errors.test.ts [2m([22m[2m20 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32m✓[39m packages/utils/tests/python-engine-failures.test.ts [2m([22m[2m26 tests[22m[2m)[22m[33m 4325[2mms[22m[39m
+       [33m[2m✓[22m[39m kills process and throws TimeoutError when script exceeds timeout [33m 504[2mms[22m[39m
+       [33m[2m✓[22m[39m error message includes timeout duration [33m 504[2mms[22m[39m
+       [33m[2m✓[22m[39m subsequent runs still work after timeout [33m 614[2mms[22m[39m
+ [32m✓[39m packages/cli/tests/unit/argument-parser.test.ts [2m([22m[2m21 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m packages/utils/tests/logging.test.ts [2m([22m[2m20 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32m✓[39m packages/simulation/tests/engine.test.ts [2m([22m[2m15 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m packages/observability/tests/error-tracking.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32m✓[39m packages/cli/tests/unit/command-registry.test.ts [2m([22m[2m14 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32m✓[39m packages/cli/tests/unit/core/error-contracts.test.ts [2m([22m[2m13 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32m✓[39m packages/simulation/tests/unit/position/portfolio.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m packages/utils/tests/python-handler-integration.test.ts [2m([22m[2m17 tests[22m[2m)[22m[33m 4745[2mms[22m[39m
+       [33m[2m✓[22m[39m TimeoutError propagates through handler to executor [33m 1005[2mms[22m[39m
+       [33m[2m✓[22m[39m preserves script path through error chain [33m 1005[2mms[22m[39m
+       [33m[2m✓[22m[39m preserves timeout duration through error chain [33m 1004[2mms[22m[39m
+ [32m✓[39m packages/simulation/tests/strategy-builder-extended.test.ts [2m([22m[2m27 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m packages/cli/tests/integration/observability-commands.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32m✓[39m packages/utils/tests/logging-middleware.test.ts [2m([22m[2m16 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+ [32m✓[39m packages/ohlcv/tests/ohlcv-query.test.ts [2m([22m[2m13 tests[22m[2m)[22m[32m 28[2mms[22m[39m
+ [32m✓[39m packages/cli/tests/unit/commands/ingestion.test.ts [2m([22m[2m17 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32m✓[39m packages/ohlcv/tests/ohlcv-engine.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+[31mCancelling test run. Press CTRL+c again to exit forcefully.
+[39m
+ [2m[90m↓[39m[22m packages/observability/tests/influxdb-metrics-writer.test.ts [2m([22m[2m13 tests[22m[2m)[22m
+ [2m[90m↓[39m[22m packages/utils/tests/logger.test.ts [2m([22m[2m12 tests[22m[2m)[22m
+ [2m[90m↓[39m[22m packages/cli/tests/unit/commands/analytics.test.ts [2m([22m[2m14 tests[22m[2m)[22m
+ [2m[90m↓[39m[22m packages/cli/tests/integration/ingestion-commands.test.ts [2m([22m[2m5 tests[22m[2m)[22m
+ [2m[90m↓[39m[22m packages/ingestion/tests/unit/addressValidation.property.test.ts [2m([22m[2m17 tests[22m[2m)[22m
+ [2m[90m↓[39m[22m packages/simulation/tests/integration/golden-fixtures.test.ts [2m([22m[2m8 tests[22m[2m)[22m
+ [2m[90m↓[39m[22m packages/cli/tests/properties/mint-address.test.ts [2m([22m[2m12 tests[22m[2m)[22m
+ [2m[90m↓[39m[22m packages/cli/tests/properties/address-validation.test.ts [2m([22m[2m25 tests[22m[2m)[22m
+ [32m✓[39m packages/observability/tests/health.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m packages/ingestion/tests/duckdb-idempotency.test.ts [2m([22m[2m10 tests[22m[2m)[22m[33m 6812[2mms[22m[39m
+       [33m[2m✓[22m[39m first run creates rows [33m 998[2mms[22m[39m
+       [33m[2m✓[22m[39m second run with same input produces exact same row counts [33m 2133[2mms[22m[39m
+       [33m[2m✓[22m[39m detects duplicates when they occur (current behavior) [33m 2387[2mms[22m[39m
+       [33m[2m✓[22m[39m documents current schema (no PRIMARY KEYs, no UNIQUE constraints) [33m 1289[2mms[22m[39m

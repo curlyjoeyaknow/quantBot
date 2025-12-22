@@ -1,0 +1,334 @@
+---
+description: "QuantBot Workflows package rules (orchestration layer)."
+globs:
+  - "packages/workflows/**"
+  - "packages/cli/src/commands/**"
+alwaysApply: true
+---
+
+"""
+Workflows are the orchestration layer. They coordinate storage + ohlcv + simulation.
+CLI/TUI are *thin adapters* that parse inputs, call workflows, format output.
+
+Goals:
+
+- No multi-step business flows live inside CLI command handlers.
+- Workflows must be testable in isolation via a mocked WorkflowContext.
+- Simulation remains pure compute (no network/db/fs) — workflows do I/O.
+"""
+
+## Architecture Layers
+
+### Layer Responsibilities
+
+**Workflows = Orchestration (Application Layer)**
+- Use cases that glue together storage + acquisition + simulation
+- Coordinate I/O operations
+- Handle error collection and aggregation
+- Return structured, serializable results
+
+**Simulation = Pure Compute**
+- No I/O, no clocks, no global config
+- Given inputs → deterministic outputs
+- Testable without I/O chaos contaminating results
+- Critical for sniping/latency-sensitive strategies
+
+**CLI/TUI = Adapters**
+- Translate human intent → spec
+- Translate result → presentation
+- No orchestration logic
+
+**Reason**: This separation is especially correct for sniping/latency-sensitive strategies because it lets you test and iterate strategy logic without I/O chaos contaminating results.
+
+## Required layering
+
+### Allowed dependencies for @quantbot/workflows
+
+- ✅ @quantbot/storage (interfaces only, not implementations)
+- ✅ @quantbot/ohlcv (data acquisition, via context)
+- ✅ @quantbot/simulation (pure compute)
+- ✅ @quantbot/utils (logger, config)
+- ✅ zod, luxon (validation/time)
+
+### Dependency injection rule (critical)
+
+**Workflows depend on interfaces, not implementations**
+
+**Required pattern**:
+
+```typescript
+// ✅ CORRECT: Use context methods
+await ctx.ohlcv.fetchCandles(...);
+await ctx.repos.simulationRuns.saveRun(...);
+```
+
+**Forbidden**:
+
+```typescript
+// ❌ WRONG: Direct implementation imports
+import { PostgresRunRepo } from '@quantbot/storage/src/postgres/run-repo';
+import { ClickHouseClient } from '@quantbot/storage/src/clickhouse/client';
+
+// ❌ WRONG: Instantiating implementations
+const repo = new PostgresRunRepo(connection);
+```
+
+**Reason**: Keeps DI real, prevents "just this once" imports that metastasize. All dependencies must come through `WorkflowContext`.
+
+### Forbidden patterns
+
+- ❌ CLI handlers performing multi-step flows (ingest→fetch→simulate→persist)
+- ❌ Workflows importing from @quantbot/cli or @quantbot/tui
+- ❌ Workflows exposing CLI-format output (tables/console formatting belongs to CLI/TUI)
+- ❌ Workflows returning “strings” intended for CLI printing (return structured results)
+
+## Workflow function contract
+
+Every workflow must:
+
+1) Validate `spec` (Zod schema preferred)
+2) Use `WorkflowContext` (DI) for:
+   - repositories (storage)
+   - services (ohlcv)
+   - logger
+   - now()/clock (determinism in tests)
+3) Return a structured result:
+   - summary stats
+   - counts
+   - per-item errors (do not throw for per-call failures unless requested)
+   - metadata (timestamps, run id, strategy name)
+
+### Error policy (required in spec)
+
+Every workflow spec must define error handling behavior explicitly:
+
+```typescript
+type WorkflowSpec = {
+  // ... other fields ...
+  failFast?: boolean; // OR
+  errorMode?: 'collect' | 'failFast';
+}
+```
+
+**Reason**: Prevents different workflows from "feeling" different and callers developing superstition.
+
+- `failFast: true` / `errorMode: 'failFast'`: Throw on first error, stop processing
+- `failFast: false` / `errorMode: 'collect'`: Collect errors, continue processing, return errors in result
+
+### Result serialization (required)
+
+**Result must be JSON-serializable (JSON-safe)**
+
+**Forbidden in results**:
+
+- ❌ Date objects (use ISO strings: `DateTime.toISO()`)
+- ❌ Class instances (use plain objects)
+- ❌ Logger objects
+- ❌ Functions
+- ❌ Circular references
+- ❌ Non-serializable types (Map, Set, etc. - convert to arrays/objects)
+
+**Reason**: Makes it trivial to persist run outputs, diff them in tests, ship them to a UI later, or replay runs.
+
+**Validation**: Use Zod schema that enforces JSON-serializable types.
+
+### Signature pattern (required)
+
+**Always accept ctx (no optional inside function body)**
+
+Prefer default parameter pattern:
+
+```typescript
+export async function runX(
+  spec: XSpec,
+  ctx: WorkflowContext = createDefaultWorkflowContext()
+): Promise<XResult>
+```
+
+**Reason**: Forces defaulting behavior to be explicit and consistent, keeps tests clean.
+
+**Forbidden**:
+
+- ❌ Optional ctx with conditional inside function: `ctx = ctx ?? createDefaultWorkflowContext()`
+- ❌ Creating "hidden singletons" inside the workflow
+- ❌ Accessing global state or environment variables directly
+
+## CLI command handler contract (thin adapter)
+
+CLI commands must:
+
+- parse args
+- build spec
+- call workflow
+- format output
+
+CLI commands must NOT:
+
+- open DB connections
+- call repositories directly for multi-step flows
+- implement orchestration logic (no loops over calls + fetch + simulate + persist)
+
+## Enforcement
+
+### ESLint boundaries
+
+**Forbidden imports, forbidden deps**
+
+Configure ESLint rules to enforce:
+
+- ❌ Workflows cannot import from `@quantbot/cli` or `@quantbot/tui`
+- ❌ Workflows cannot import implementation classes (only interfaces/types)
+- ❌ CLI handlers cannot import workflow internals (only public API)
+
+**Example ESLint config**:
+
+```json
+{
+  "rules": {
+    "no-restricted-imports": [
+      "error",
+      {
+        "paths": [
+          {
+            "name": "@quantbot/storage/src/postgres",
+            "message": "Use WorkflowContext repos, not direct Postgres imports"
+          },
+          {
+            "name": "@quantbot/cli",
+            "message": "Workflows cannot depend on CLI"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+### Code review checklist
+
+**"No orchestration in CLI" rule**
+
+Every PR must verify:
+
+- [ ] CLI handlers are thin adapters (parse → call workflow → format)
+- [ ] No multi-step business logic in CLI handlers
+- [ ] Workflows use WorkflowContext for all dependencies
+- [ ] Workflow results are JSON-serializable
+- [ ] Error policy is explicit in workflow spec
+- [ ] Tests use independent math/constants (not prod helpers)
+
+### Pre-commit hooks
+
+**Verify workflow contract compliance**
+
+- Check workflow signatures use default parameter pattern
+- Verify results are JSON-serializable (Zod schema validation)
+- Ensure no forbidden imports in workflows
+- Verify CLI handlers don't contain orchestration logic
+
+## Testing requirements for workflows
+
+Workflows must have unit tests that:
+
+- mock WorkflowContext fully (repos + ohlcv + clock)
+- assert the workflow steps (calls made with correct args)
+- assert structured result shape
+
+### Test independence (critical)
+
+**Tests must NOT share**:
+
+- fee helpers
+- rounding helpers
+- constants
+from production simulation modules.
+
+**If a test needs fee math**:
+
+- Hard-code expected numeric values, OR
+- Compute independently inside the test file
+
+**Reason**: Prevents "tests pass because they repeat the same mistake as prod."
+
+### Golden tests
+
+**Golden tests should load fixtures, not call prod math**
+
+```typescript
+// ✅ CORRECT: Load fixture data
+const fixture = await loadFixture('simulation-result-001.json');
+expect(result).toEqual(fixture);
+
+// ❌ WRONG: Call production math in test
+const expected = calculateFee(amount); // Uses prod code
+```
+
+**Reason**: Ensures tests validate actual behavior, not just that prod code runs.
+
+### Property tests
+
+**Property tests can exist, but must use independent generators/logic**
+
+```typescript
+// ✅ CORRECT: Independent generator
+function generateTestInput() {
+  return { amount: randomFloat(0, 1000), feeRate: 0.01 };
+}
+
+// ❌ WRONG: Reuse prod constants
+import { DEFAULT_FEE_RATE } from '@quantbot/simulation';
+```
+
+**Reason**: Property tests validate invariants, not implementation details.
+
+### Test harness
+
+**Unit test harness for WorkflowContext (easy mocking)**
+
+Create reusable mock context factory:
+
+```typescript
+export function createMockWorkflowContext(overrides?: Partial<WorkflowContext>): WorkflowContext {
+  return {
+    clock: { now: () => DateTime.now() },
+    ids: { generate: () => 'test-id' },
+    logger: { info: vi.fn(), error: vi.fn() },
+    repos: { /* mock repos */ },
+    ohlcv: { /* mock ohlcv */ },
+    simulation: { /* mock simulation */ },
+    ...overrides,
+  };
+}
+```
+
+**Reason**: Makes tests easy to write and maintain, ensures consistent mocking.
+
+## Enforcement Trio (Practical)
+
+To keep the architecture enforced (not just declared), use these three mechanisms:
+
+### 1. ESLint Boundaries
+
+**Forbidden imports, forbidden deps**
+
+Configure ESLint rules to enforce:
+- ❌ Workflows cannot import from `@quantbot/cli` or `@quantbot/tui`
+- ❌ Workflows cannot import implementation classes (only interfaces/types)
+- ❌ CLI handlers cannot import workflow internals (only public API)
+- ❌ Workflows cannot import storage implementations (PostgresRunRepo, ClickHouseClient, etc.)
+
+### 2. Unit Test Harness for WorkflowContext
+
+**Easy mocking for all workflow tests**
+
+Create reusable mock context factory (see "Test harness" section above). This makes correct patterns easy and incorrect patterns hard.
+
+### 3. "No Orchestration in CLI" Rule
+
+**Lint + code review checklist**
+
+- ESLint rule to detect multi-step flows in CLI handlers
+- Code review checklist (see "Code review checklist" section above)
+- Pre-commit hooks to verify workflow contract compliance
+
+**Why this trio works**: ESLint catches violations at write-time, test harness makes correct patterns easy, code review ensures human oversight. Together they prevent architectural drift.

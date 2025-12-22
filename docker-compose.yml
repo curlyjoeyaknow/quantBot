@@ -1,5 +1,22 @@
 version: '3.8'
 services:
+  postgres:
+    image: postgres:15
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-quantbot}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-quantbot_secure_password}
+      - POSTGRES_DB=${POSTGRES_DATABASE:-quantbot}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-quantbot}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   influxdb:
     image: influxdb:2.7
     ports:
@@ -20,5 +37,31 @@ services:
       timeout: 10s
       retries: 3
 
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest
+    ports:
+      - "18123:8123"  # HTTP interface (mapped to 18123 to avoid conflicts)
+      - "19000:9000"  # Native protocol (mapped to 19000 to avoid conflicts)
+    volumes:
+      - clickhouse-data:/var/lib/clickhouse
+      - clickhouse-logs:/var/log/clickhouse-server
+    environment:
+      - CLICKHOUSE_DB=${CLICKHOUSE_DATABASE:-quantbot}
+      - CLICKHOUSE_USER=${CLICKHOUSE_USER:-default}
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-UxdtDJVj}
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8123/ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
 volumes:
+  postgres-data:
   influxdb-data:
+  clickhouse-data:
+  clickhouse-logs:

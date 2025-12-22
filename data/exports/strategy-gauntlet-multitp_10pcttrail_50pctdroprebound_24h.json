@@ -1,0 +1,21 @@
+{
+  "strategyName": "MultiTP_10pctTrail_50pctDropRebound_24h",
+  "strategyId": "multitp_10pcttrail_50pctdroprebound_24h",
+  "totalTargets": 1676,
+  "successes": 19,
+  "failures": 7,
+  "summary": {
+    "totalPnl": 0,
+    "avgPnl": 0,
+    "winRate": 0,
+    "totalTrades": 0,
+    "profitableTrades": 0,
+    "initialPortfolio": 100,
+    "finalPortfolio": 100,
+    "totalPnlPercent": 0,
+    "positionSizePercent": 10,
+    "trades": []
+  },
+  "tradeHistory": [],
+  "note": "Full simulation results cleared from memory to prevent OOM. Trade history available in summary.trades."
+}

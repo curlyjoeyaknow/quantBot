@@ -1,0 +1,213 @@
+{
+  "summary": {
+    "totalCalls": 448,
+    "uniqueCallers": 9,
+    "uniqueChains": 3,
+    "uniqueTokens": 252,
+    "callsWithPriceData": 0
+  },
+  "topCallers": [
+    {
+      "caller": "Brook Giga I verify @BrookCalls",
+      "count": 198,
+      "chains": [
+        "bsc",
+        "solana",
+        "ethereum"
+      ],
+      "uniqueTokens": 84,
+      "uniqueAddresses": 119
+    },
+    {
+      "caller": "exy",
+      "count": 72,
+      "chains": [
+        "solana",
+        "bsc"
+      ],
+      "uniqueTokens": 52,
+      "uniqueAddresses": 64
+    },
+    {
+      "caller": "davinch",
+      "count": 53,
+      "chains": [
+        "bsc",
+        "solana"
+      ],
+      "uniqueTokens": 42,
+      "uniqueAddresses": 51
+    },
+    {
+      "caller": "Brook",
+      "count": 41,
+      "chains": [
+        "solana",
+        "bsc"
+      ],
+      "uniqueTokens": 30,
+      "uniqueAddresses": 36
+    },
+    {
+      "caller": "meta maxist",
+      "count": 29,
+      "chains": [
+        "solana",
+        "bsc"
+      ],
+      "uniqueTokens": 23,
+      "uniqueAddresses": 28
+    },
+    {
+      "caller": "Croz",
+      "count": 27,
+      "chains": [
+        "solana",
+        "bsc"
+      ],
+      "uniqueTokens": 24,
+      "uniqueAddresses": 27
+    },
+    {
+      "caller": "RektBigHustla | @OurCryptoHood Owner",
+      "count": 22,
+      "chains": [
+        "solana",
+        "bsc"
+      ],
+      "uniqueTokens": 17,
+      "uniqueAddresses": 18
+    },
+    {
+      "caller": "ʟ ᴇ ᴍ ᴏ ɴ ᴄ ʜ ɪ ʟ ᴅ 🍋",
+      "count": 5,
+      "chains": [
+        "bsc",
+        "solana"
+      ],
+      "uniqueTokens": 4,
+      "uniqueAddresses": 5
+    },
+    {
+      "caller": "Wen Presale",
+      "count": 1,
+      "chains": [
+        "solana"
+      ],
+      "uniqueTokens": 1,
+      "uniqueAddresses": 1
+    }
+  ],
+  "chainDistribution": {
+    "bsc": 266,
+    "solana": 178,
+    "ethereum": 4
+  },
+  "topTokens": [
+    [
+      "4",
+      13
+    ],
+    [
+      "AS﻿STER",
+      9
+    ],
+    [
+      "Giggle Fund",
+      8
+    ],
+    [
+      "HELP ME BEAT CANCER",
+      4
+    ],
+    [
+      "BNB SUPER CYCLE",
+      4
+    ],
+    [
+      "高手",
+      4
+    ],
+    [
+      "5",
+      3
+    ],
+    [
+      "asterless",
+      3
+    ],
+    [
+      "EnHeng Fund",
+      3
+    ],
+    [
+      "ASTEROID",
+      3
+    ],
+    [
+      "Cipher DAO",
+      3
+    ],
+    [
+      "Binance yellow robot",
+      3
+    ],
+    [
+      "HODL",
+      3
+    ],
+    [
+      "BinanceUSissuperawesomeandhaszerotradingfeesregisternow",
+      3
+    ],
+    [
+      "SAFE",
+      3
+    ],
+    [
+      "Tensora",
+      3
+    ],
+    [
+      "Default Token",
+      3
+    ],
+    [
+      "SDIYBT",
+      2
+    ],
+    [
+      "CZ Fund",
+      2
+    ],
+    [
+      "intern",
+      2
+    ]
+  ],
+  "timeDistribution": {
+    "0": 16,
+    "1": 7,
+    "3": 5,
+    "4": 6,
+    "5": 3,
+    "6": 12,
+    "7": 14,
+    "8": 18,
+    "9": 15,
+    "10": 14,
+    "11": 24,
+    "12": 18,
+    "13": 43,
+    "14": 26,
+    "15": 37,
+    "16": 16,
+    "17": 34,
+    "18": 28,
+    "19": 24,
+    "20": 41,
+    "21": 15,
+    "22": 4,
+    "23": 28
+  }
+}

@@ -1,29 +1,37 @@
-// Test setup file
-import { config } from 'dotenv';
+/**
+ * Root test setup file
+ * 
+ * This file is run before all tests to set up the test environment.
+ * It mocks native bindings and sets up global test utilities.
+ */
 
-// Load test environment variables
-config({ path: '.env.test' });
+import { vi } from 'vitest';
 
-// Mock console methods to reduce noise in tests
+// Mock native bindings that cause issues in test environments
+vi.mock('@quantbot/utils', async () => {
+  const actual = await vi.importActual('@quantbot/utils');
+  return {
+    ...actual,
+    // Add any specific mocks here if needed
+  };
+});
+
+vi.mock('@quantbot/observability', async () => {
+  const actual = await vi.importActual('@quantbot/observability');
+  return {
+    ...actual,
+    // Add any specific mocks here if needed
+  };
+});
+
+// Set up global test environment
 global.console = {
   ...console,
-  log: jest.fn(),
-  debug: jest.fn(),
-  info: jest.fn(),
-  warn: jest.fn(),
-  error: jest.fn(),
+  // Suppress console output in tests unless needed
+  log: vi.fn(),
+  debug: vi.fn(),
+  info: vi.fn(),
+  warn: vi.fn(),
+  error: vi.fn(),
 };
 
-// Set test timeout
-jest.setTimeout(30000); // Increased timeout for async operations
-
-// Global cleanup after each test
-afterEach(() => {
-  jest.clearAllMocks();
-  jest.clearAllTimers();
-});
-
-// Global cleanup after all tests
-afterAll(() => {
-  jest.restoreAllMocks();
-});

@@ -1,0 +1,31 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "declaration": true,
+    "declarationMap": true,
+    "composite": true,
+    "baseUrl": ".",
+    "skipLibCheck": true,
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "target": "ES2022",
+    "paths": {
+      "@quantbot/utils": ["../utils/dist/index.d.ts"],
+      "@quantbot/utils/*": ["../utils/dist/*"],
+      "@quantbot/cli": ["../cli/dist"],
+      "@quantbot/cli/*": ["../cli/dist/*"],
+      "@quantbot/core": ["../core/src"],
+      "@quantbot/core/*": ["../core/src/*"]
+    }
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "**/*.test.ts"],
+  "references": [
+    { "path": "../utils" },
+    { "path": "../cli" },
+    { "path": "../core" }
+  ]
+}
+

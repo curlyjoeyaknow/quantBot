@@ -1,0 +1,136 @@
+---
+description: Analysis module enforcement rules for analytics package. All new or modified analysis code must comply with these principles for deterministic, validated, and well-documented metrics and analytics.
+globs:
+  - "packages/analytics/**/*.ts"
+alwaysApply: true
+---
+
+# Analysis Module Rules
+
+## Architecture Principles
+
+- Use `ResultAnalyzer` for all analysis operations
+- Keep analysis logic pure and deterministic
+- Validate all analysis inputs using Zod schemas
+- Return structured analysis results
+- Document analysis methodology
+
+## Separation of Analysis by Domain
+
+- Separate analysis by domain (PnL, risk, trades)
+- Use metric calculators for specific metrics
+- Aggregate results appropriately
+- Export results in multiple formats
+- Cache expensive calculations
+
+## Metric Calculation
+
+### Profit/Loss (PnL)
+
+- Use `PnLMetrics` for profit/loss calculations
+- Calculate metrics correctly
+- Handle edge cases appropriately
+- Validate input data
+- Return structured metric results
+
+### Risk
+
+- Use `RiskMetrics` for risk calculations
+
+### Trades
+
+- Use `TradeMetrics` for trade analysis
+- Calculate trade statistics correctly
+- Handle trade data validation
+- Aggregate trade data appropriately
+- Return comprehensive trade metrics
+
+## Result Analysis & Aggregation
+
+### Operations
+
+- Analyze results consistently
+- Use appropriate statistical methods
+- Handle missing data appropriately
+- Validate analysis results
+- Document analysis assumptions
+
+### Aggregation
+
+- Aggregate results correctly
+- Handle aggregation edge cases
+- Validate aggregated data
+- Provide aggregation statistics
+- Export aggregated results
+
+## Data Validation
+
+### Input Validation
+
+- Validate all analysis inputs
+- Use Zod schemas for validation
+- Check data completeness
+- Handle invalid data gracefully
+- Provide validation feedback
+
+### Result Validation
+
+- Validate analysis results
+- Check result consistency
+- Handle calculation errors
+- Verify result ranges
+- Log validation issues
+
+## Performance & Memory
+
+### Calculation Performance
+
+- Optimize calculation algorithms
+- Cache expensive calculations
+- Use appropriate data structures
+- Monitor calculation performance
+- Profile slow calculations
+
+### Memory Management
+
+- Manage memory efficiently
+- Avoid memory leaks
+- Clean up resources properly
+- Monitor memory usage
+- Handle large datasets appropriately
+
+## Testing
+
+### Unit Tests
+
+- Test metric calculators independently
+- Test with various data inputs
+- Test edge cases
+- Test error handling
+- Test calculation accuracy
+
+### Integration Tests
+
+- Test full analysis flows
+- Test with real data
+- Test performance
+- Test result formats
+- Test error scenarios
+
+## Documentation
+
+### Analysis Documentation
+
+- Document all analysis methods
+- Include usage examples
+- Document calculation methodology
+- Include statistical notes
+- Keep documentation current
+
+### Code Documentation
+
+- Document analysis logic
+- Explain calculation methods
+- Document assumptions
+- Include examples
+- Keep comments updated

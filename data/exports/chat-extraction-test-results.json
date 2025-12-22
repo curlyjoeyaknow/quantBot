@@ -1,0 +1,531 @@
+{
+  "testDate": "2025-11-29T22:44:04.667Z",
+  "messagesFile": "messages.html",
+  "totalMessages": 884,
+  "results": [
+    {
+      "token": "GPwGHNDp3n33U3jyGkNFAsbKx1fmdY3MUPwoCFx6pump",
+      "chain": "solana",
+      "source": "validated",
+      "confidence": 0.95,
+      "metadata": {
+        "symbol": "POSTUP",
+        "name": "🅳   └  DEX Paid   🔴"
+      },
+      "candlesFetched": true,
+      "candleCount": 9596
+    },
+    {
+      "token": "3tjcn51dPCVkVcCasf4HZwuCKMJjdXge7bN6WFXupump",
+      "chain": "solana",
+      "source": "bot",
+      "confidence": 0.9,
+      "metadata": {
+        "symbol": "PUMPOEAT",
+        "name": "🅳   └  DEX Paid   🟢"
+      },
+      "candlesFetched": true,
+      "candleCount": 9580
+    },
+    {
+      "token": "ESrREu1pQNwVzJ3WNX5pU6WtMp7nJV4Yoayy8DGCpump",
+      "chain": "solana",
+      "source": "validated",
+      "confidence": 0.95,
+      "metadata": {
+        "symbol": "GOYSLOP",
+        "marketCap": 9000,
+        "volume": 22000
+      },
+      "candlesFetched": true,
+      "candleCount": 9576
+    },
+    {
+      "token": "4SkFDZZ1SxSw3M79ohRPfmdxYKKCd21hxQnhYeWNpump",
+      "chain": "solana",
+      "source": "validated",
+      "confidence": 0.95,
+      "metadata": {
+        "symbol": "AF",
+        "price": 0.0002758,
+        "marketCap": 276000,
+        "volume": 2000000,
+        "liquidity": 28500
+      },
+      "candlesFetched": true,
+      "candleCount": 9460
+    },
+    {
+      "token": "7ifX7okDF3Q5equtyFo5BkwZyeKY1hGcZCmkZQ5upump",
+      "chain": "solana",
+      "source": "validated",
+      "confidence": 0.95,
+      "metadata": {
+        "symbol": "SAME",
+        "price": 0.0016661,
+        "marketCap": 1700000,
+        "volume": 4000000,
+        "liquidity": 73000
+      },
+      "candlesFetched": true,
+      "candleCount": 9340
+    },
+    {
+      "token": "GPqgnQ5xD8oPGT2aN3bZ467EHmDbEt7aRhJuUQGLpump",
+      "chain": "solana",
+      "source": "validated",
+      "confidence": 0.95,
+      "metadata": {
+        "symbol": "SCF",
+        "price": 0.00008491,
+        "marketCap": 84900,
+        "volume": 185000,
+        "liquidity": 14800
+      },
+      "candlesFetched": true,
+      "candleCount": 9012
+    },
+    {
+      "token": "Dcz1AxD7dF665jMBWacqWsu4g1xjSBWstbS5DGLopump",
+      "chain": "solana",
+      "source": "validated",
+      "confidence": 0.95,
+      "metadata": {
+        "symbol": "BOBO",
+        "price": 0.0003737,
+        "marketCap": 374000,
+        "volume": 356000,
+        "liquidity": 31300
+      },
+      "candlesFetched": true,
+      "candleCount": 8880
+    },
+    {
+      "token": "LF2MQESaECAiQRYjSfvkz5nvkF5okJjnthLLaKcpump",
+      "chain": "solana",
+      "source": "validated",
+      "confidence": 0.95,
+      "metadata": {
+        "symbol": "BOA",
+        "price": 0.000305,
+        "marketCap": 305000,
+        "volume": 817000,
+        "liquidity": 28400
+      },
+      "candlesFetched": true,
+      "candleCount": 3906
+    },
+    {
+      "token": "0xcb68744181674cf79554e042625e0507b31a4444",
+      "chain": "base",
+      "source": "validated",
+      "confidence": 0.95,
+      "metadata": {
+        "symbol": "CAT",
+        "name": "cat girl",
+        "price": 0.0001074,
+        "marketCap": 107000,
+        "volume": 458000,
+        "liquidity": 39100
+      },
+      "candlesFetched": false,
+      "candleCount": 0
+    },
+    {
+      "token": "3qf3AkPFKNcr2zVbnxYeYTYHYLmZSyNRTifgg2UMCTTo",
+      "chain": "solana",
+      "source": "validated",
+      "confidence": 0.95,
+      "metadata": {
+        "symbol": "EYELASH",
+        "price": 0.00003664,
+        "marketCap": 36600,
+        "volume": 337000,
+        "liquidity": 9700
+      },
+      "candlesFetched": true,
+      "candleCount": 8716
+    },
+    {
+      "token": "55WZGGCwE66xnCxBcAxKSNT49wzeaHhT9jE2xWSXpump",
+      "chain": "solana",
+      "source": "validated",
+      "confidence": 0.95,
+      "metadata": {
+        "symbol": "MIKA",
+        "price": 0.000139,
+        "marketCap": 139000,
+        "volume": 52000,
+        "liquidity": 23300
+      },
+      "candlesFetched": true,
+      "candleCount": 938
+    },
+    {
+      "token": "AkbvXVZPzrHSpcxNADQ7Uxk6nvjHtpHn4nqNQZY8TJBn",
+      "chain": "solana",
+      "source": "validated",
+      "confidence": 0.95,
+      "metadata": {
+        "symbol": "PPX",
+        "price": 0.077,
+        "marketCap": 7700000,
+        "volume": 2000000,
+        "liquidity": 138000
+      },
+      "candlesFetched": true,
+      "candleCount": 10664
+    },
+    {
+      "token": "6qP288uHwhcAEAphWVhhyETzaxjTCWcabSGH33sSpump",
+      "chain": "solana",
+      "source": "validated",
+      "confidence": 0.95,
+      "metadata": {
+        "symbol": "PENNY",
+        "marketCap": 28500,
+        "volume": 135000
+      },
+      "candlesFetched": true,
+      "candleCount": 8316
+    },
+    {
+      "token": "2UhZSHa5hRV5yY9otDJ5xxRcBpYq8jpMKP4NKe2fpump",
+      "chain": "solana",
+      "source": "validated",
+      "confidence": 0.95,
+      "metadata": {
+        "symbol": "NOTHING",
+        "marketCap": 12900,
+        "volume": 85000
+      },
+      "candlesFetched": true,
+      "candleCount": 8272
+    },
+    {
+      "token": "t3DyoWzHG7kXkb5VzLnE4ryHgri9KNCv5qZuSsFpump",
+      "chain": "solana",
+      "source": "validated",
+      "confidence": 0.95,
+      "metadata": {
+        "symbol": "RACE",
+        "price": 0.00002332,
+        "marketCap": 23300,
+        "volume": 142000,
+        "liquidity": 7600
+      },
+      "candlesFetched": true,
+      "candleCount": 8012
+    },
+    {
+      "token": "6i7N9bij6wxCWpjqAa5vsxSMwov4ZP2pJ1kTNdnxpump",
+      "chain": "solana",
+      "source": "bot",
+      "confidence": 0.9,
+      "metadata": {
+        "symbol": "BUBBAGATE",
+        "name": ""
+      },
+      "candlesFetched": true,
+      "candleCount": 7940
+    },
+    {
+      "token": "Bw5ReHat74Fs67MYiKgvkZWfGZ1qBTCSKYn7c54spump",
+      "chain": "solana",
+      "source": "bot",
+      "confidence": 0.9,
+      "metadata": {
+        "symbol": "LORIA"
+      },
+      "candlesFetched": true,
+      "candleCount": 7808
+    },
+    {
+      "token": "9YPEKLt2nn8jstTG7SiCENToG5Nm875z6DsPhYZopump",
+      "chain": "solana",
+      "source": "validated",
+      "confidence": 0.95,
+      "metadata": {
+        "symbol": "TINK",
+        "name": "🅳   └  DEX Paid   🟢"
+      },
+      "candlesFetched": true,
+      "candleCount": 7784
+    },
+    {
+      "token": "7pXsYxptLKSUV6t66SvCAhhyvCeHjHos4qaSYUv6pump",
+      "chain": "solana",
+      "source": "bot",
+      "confidence": 0.9,
+      "metadata": {
+        "symbol": "COMMENT",
+        "name": "🅳   └  DEX Paid   🟢"
+      },
+      "candlesFetched": true,
+      "candleCount": 7700
+    },
+    {
+      "token": "LL2d4uyRZVjBWKZYvVxJQtWKHNM322PYKC1nm7Xpump",
+      "chain": "solana",
+      "source": "validated",
+      "confidence": 0.95,
+      "metadata": {
+        "symbol": "MEET",
+        "name": "🅳   └  DEX Paid   🟢"
+      },
+      "candlesFetched": true,
+      "candleCount": 7692
+    },
+    {
+      "token": "2JVZ7LF7dPj8EfmKcGe6CPjXZRLRZqe3wE66jR4Bpump",
+      "chain": "solana",
+      "source": "validated",
+      "confidence": 0.95,
+      "metadata": {
+        "symbol": "HOPE",
+        "price": 0.0001398,
+        "marketCap": 140000,
+        "volume": 298000,
+        "liquidity": 19300
+      },
+      "candlesFetched": true,
+      "candleCount": 4259
+    },
+    {
+      "token": "4K3aMpVPggTWAw1jyN5cZJf3kpWjnfTYmxkVbMymhuwj",
+      "chain": "solana",
+      "source": "bot",
+      "confidence": 0.9,
+      "metadata": {
+        "symbol": "ZKE"
+      },
+      "candlesFetched": true,
+      "candleCount": 5000
+    },
+    {
+      "token": "DGCDmQPvPFbKUx7Xkte8XJUW4NrvSKzTK4uhNGk3pump",
+      "chain": "solana",
+      "source": "validated",
+      "confidence": 0.95,
+      "metadata": {
+        "symbol": "CMC20",
+        "price": 0.0000032,
+        "marketCap": 3200,
+        "volume": 93000,
+        "liquidity": 2700
+      },
+      "candlesFetched": true,
+      "candleCount": 7324
+    },
+    {
+      "token": "0x352b850b733ab8bab50aed1dab5d22e3186ce984",
+      "chain": "base",
+      "source": "bot",
+      "confidence": 0.9,
+      "metadata": {
+        "symbol": "1000X"
+      },
+      "candlesFetched": true,
+      "candleCount": 5000
+    },
+    {
+      "token": "9MLZegMaTpitzP3ps9eGUC4GwMLYv8pxTkMFuKhvpump",
+      "chain": "solana",
+      "source": "bot",
+      "confidence": 0.9,
+      "metadata": {
+        "symbol": "FRIEREN",
+        "name": "🅳   └  DEX Paid   🔴"
+      },
+      "candlesFetched": true,
+      "candleCount": 7288
+    },
+    {
+      "token": "CxiR3c9AGqMtE7bg82sLnzpLinXN3kXfcoYeYtGApFoG",
+      "chain": "solana",
+      "source": "validated",
+      "confidence": 0.95,
+      "metadata": {
+        "symbol": "FOG",
+        "name": "FogSwap"
+      },
+      "candlesFetched": true,
+      "candleCount": 12316
+    },
+    {
+      "token": "FRcBs2q4qeuS4LCthCkirfc7ycxS7KfpcB94orL7pump",
+      "chain": "solana",
+      "source": "validated",
+      "confidence": 0.95,
+      "metadata": {
+        "symbol": "POLYROOMS",
+        "marketCap": 32400,
+        "volume": 82000
+      },
+      "candlesFetched": true,
+      "candleCount": 7256
+    },
+    {
+      "token": "F7pB3ZdfBnyFw2LRHydWEn9BmhEa5XihXLjhySFRpump",
+      "chain": "solana",
+      "source": "bot",
+      "confidence": 0.9,
+      "metadata": {
+        "symbol": "NOTHING",
+        "name": ""
+      },
+      "candlesFetched": true,
+      "candleCount": 7112
+    },
+    {
+      "token": "6gcuuFsLg13NaKMkvbYAQVP87QWZjP5vGFbt79ucpump",
+      "chain": "solana",
+      "source": "validated",
+      "confidence": 0.95,
+      "metadata": {
+        "symbol": "VICKTOONY",
+        "marketCap": 3700,
+        "volume": 41000
+      },
+      "candlesFetched": true,
+      "candleCount": 7028
+    },
+    {
+      "token": "xcx7mqx6xpdkeuuAxAvcnsK7iigByu97g9GkoHspump",
+      "chain": "solana",
+      "source": "validated",
+      "confidence": 0.95,
+      "metadata": {
+        "symbol": "EPSTRON",
+        "price": 0.00005521,
+        "marketCap": 55000,
+        "volume": 298000,
+        "liquidity": 11700
+      },
+      "candlesFetched": true,
+      "candleCount": 6784
+    },
+    {
+      "token": "6ZMu4PRVpNMxVHdzMDcGLQf4Qv9x73YHpsHrK6mepump",
+      "chain": "solana",
+      "source": "validated",
+      "confidence": 0.95,
+      "metadata": {
+        "symbol": "ROSE",
+        "price": 0.00001365,
+        "marketCap": 13600,
+        "volume": 4000,
+        "liquidity": 7700
+      },
+      "candlesFetched": true,
+      "candleCount": 6760
+    },
+    {
+      "token": "0xfb31f85a8367210b2e4ed2360d2da9dc2d2ccc95",
+      "chain": "bsc",
+      "source": "validated",
+      "confidence": 0.95,
+      "metadata": {
+        "symbol": "EDEL",
+        "name": ""
+      },
+      "candlesFetched": false,
+      "candleCount": 0
+    },
+    {
+      "token": "4NBzZGEL2GR2VgG5vzWKjeorXuaKp3hHbW6HjoJCpump",
+      "chain": "solana",
+      "source": "bot",
+      "confidence": 0.9,
+      "metadata": {
+        "symbol": "CTO",
+        "name": "🅳   └  DEX Paid   🔴"
+      },
+      "candlesFetched": true,
+      "candleCount": 6424
+    },
+    {
+      "token": "2FdMjeDtXRtPTYk2oq7saAaptgTVMbnSnRADDb3Fpump",
+      "chain": "solana",
+      "source": "bot",
+      "confidence": 0.9,
+      "metadata": {
+        "symbol": "FROREN",
+        "name": "🅳   └  DEX Paid   🟢"
+      },
+      "candlesFetched": true,
+      "candleCount": 3498
+    },
+    {
+      "token": "0x5dc231661c7aa0dcd41d82aded4d29735ebe39ba",
+      "chain": "bsc",
+      "source": "bot",
+      "confidence": 0.9,
+      "candlesFetched": false,
+      "candleCount": 0
+    },
+    {
+      "token": "3DmH9JSSw7mGoKyFe9zekQydbUVWQNvoMSaMXyDxpump",
+      "chain": "solana",
+      "source": "bot",
+      "confidence": 0.9,
+      "metadata": {
+        "symbol": "FREDDIE",
+        "name": "🅳   └  DEX Paid   🟢"
+      },
+      "candlesFetched": true,
+      "candleCount": 6104
+    },
+    {
+      "token": "C8vxprrDPF2GwTg2hAvV3PpK7toKvKdhZ8iFaF8xpump",
+      "chain": "solana",
+      "source": "validated",
+      "confidence": 0.95,
+      "metadata": {
+        "symbol": "RICH",
+        "name": "🅳   └  DEX Paid   🟢"
+      },
+      "candlesFetched": true,
+      "candleCount": 6104
+    },
+    {
+      "token": "VAyJFyPcjVAHWrXCLWCCa7TGhz3cprndLAqZXHApump",
+      "chain": "solana",
+      "source": "validated",
+      "confidence": 0.95,
+      "metadata": {
+        "symbol": "JC",
+        "price": 0.0001207,
+        "marketCap": 121000,
+        "volume": 135000,
+        "liquidity": 17600
+      },
+      "candlesFetched": true,
+      "candleCount": 6048
+    },
+    {
+      "token": "63LfDmNb3MQ8mw9MtZ2To9bEA2M71kZUUGq5tiJxcqj9",
+      "chain": "solana",
+      "source": "bot",
+      "confidence": 0.9,
+      "metadata": {
+        "symbol": "GIGA",
+        "price": 0.004264,
+        "marketCap": 41000000,
+        "volume": 596000,
+        "liquidity": 1100000
+      },
+      "candlesFetched": true,
+      "candleCount": 5000
+    }
+  ],
+  "summary": {
+    "total": 39,
+    "candlesFetched": 36,
+    "successRate": 92.3076923076923,
+    "withMetadata": 38,
+    "metadataRate": 97.43589743589743,
+    "fromBot": 39,
+    "fromOriginal": 0
+  }
+}

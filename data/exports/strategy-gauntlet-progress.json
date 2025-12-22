@@ -1,0 +1,28 @@
+{
+  "lastUpdate": "2025-11-30T06:21:20.592Z",
+  "strategiesCompleted": 1,
+  "totalStrategies": 1,
+  "currentStrategy": "Aggressive_10pctTrail_48h",
+  "currentBatch": "34/34",
+  "results": [
+    {
+      "strategyName": "Aggressive_10pctTrail_48h",
+      "strategyId": "aggressive_10pcttrail_48h",
+      "totalTargets": 1676,
+      "successes": 19,
+      "failures": 7,
+      "summary": {
+        "totalPnl": -12.776331345902776,
+        "avgPnl": -0.6724384918896198,
+        "winRate": 0,
+        "totalTrades": 19,
+        "profitableTrades": 0,
+        "initialPortfolio": 100,
+        "finalPortfolio": 87.22366865409722,
+        "totalPnlPercent": -12.776331345902776,
+        "positionSizePercent": 6.666666666666667,
+        "trades": []
+      }
+    }
+  ]
+}

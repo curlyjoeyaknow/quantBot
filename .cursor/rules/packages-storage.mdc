@@ -1,0 +1,42 @@
+---
+description: Storage package rules - database, ClickHouse, data persistence
+globs:
+  - "packages/storage/**/*.ts"
+  - "packages/storage/**/*.js"
+alwaysApply: false
+---
+
+# Storage Package Rules
+
+## Database Schema
+
+- Use TEXT/VARCHAR(64+) for mint addresses (never truncate)
+- Store full 32-44 char addresses, preserve exact case
+- Use time-based partitioning for ClickHouse
+
+## ClickHouse
+
+- Primary cache layer for candles
+- Query before API calls to reduce quota usage
+- Store candles with intervals: 1m, 5m, 15m, 1h
+- Store full historical data with 52-period lookback
+- **Use parameterized queries** with `{param:Type}` syntax for SQL injection prevention
+- Never embed user input directly in query strings
+
+## Database Fields
+
+- `entry_mcap` (REAL/FLOAT) - Required for all caller records
+- `mint_address` (TEXT) - Full address, case-preserved
+- Use appropriate indexes for time-based queries
+
+## Update Strategy
+
+- Default: Update only if data >24hrs old
+- Exception: Active calls updated via WebSocket (no API fetch needed)
+
+## Testing Guidelines
+
+- Use Luxon `DateTime` objects for date ranges (not JS Date)
+- When testing queries, check `query_params` not query string for parameterized values
+- Mock ClickHouse client with `{ query: vi.fn(), insert: vi.fn() }` pattern
+- Return mock responses with `{ json: () => Promise.resolve([...]) }` structure

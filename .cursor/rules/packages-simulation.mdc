@@ -1,0 +1,255 @@
+---
+description: Simulation package rules - candle fetching, MCAP, Ichimoku calculations, Python/DuckDB services
+globs:
+  - "packages/simulation/**/*.ts"
+  - "packages/simulation/**/*.js"
+alwaysApply: false
+---
+
+# Simulation Package Rules
+
+## Candle Fetching
+
+- **1m candles**: 52 periods lookback, max 5000 candles per call
+- **5m candles**: 52 periods lookback, max 5000 candles, chunk if >17 days
+- Always check ClickHouse first before API calls
+- Update only if data >24hrs old (except active calls via WebSocket)
+
+## MCAP Requirements
+
+- Always fetch/store `entry_mcap` at alert time
+- Fallback chain: Pump.fun detection → Birdeye API → Message extraction → Infer from current
+- Use MCAP for analytics multiples, not raw price
+- Calculate peak MCAP: `peak_mcap = entry_mcap * (peak_price / entry_price)`
+
+## Functions
+
+- `fetchHybridCandles()`: Check ClickHouse, fetch with 52-period lookback
+- `fetchHybridCandlesWithMetadata()`: Same + returns metadata
+- `fetchTokenMetadata()`: Must fetch MCAP, cache results
+
+## Error Handling
+
+- Retry with exponential backoff
+- Return empty array on 404
+- Log warnings for rate limits
+- Continue processing on individual failures
+
+## Python/DuckDB Service Layer
+
+### Service Architecture
+
+**Services wrap PythonEngine calls and provide typed, validated interfaces.**
+
+### Required Pattern
+
+```
+Service → PythonEngine.run() → Python Script → Zod Validation → Typed Result
+```
+
+### Service Rules
+
+**Location**: `packages/simulation/src/{service-name}-service.ts`
+
+**Rules**:
+
+- ✅ Takes PythonEngine as constructor dependency
+- ✅ Wraps PythonEngine calls with domain-specific methods
+- ✅ Validates all outputs with Zod schemas
+- ✅ Handles errors gracefully with typed error responses
+- ✅ Uses logger for error reporting
+- ✅ Returns typed results (not `Record<string, unknown>`)
+- ✅ Can be used outside CLI handlers
+- ❌ NO handler-specific logic
+- ❌ NO output formatting
+- ❌ NO direct subprocess calls
+- ❌ NO business logic (delegate to Python scripts)
+
+### Service Examples
+
+**DuckDBStorageService** (`packages/simulation/src/duckdb-storage-service.ts`):
+
+```typescript
+export class DuckDBStorageService {
+  constructor(private readonly pythonEngine: PythonEngine) {}
+
+  async storeStrategy(
+    duckdbPath: string,
+    strategyId: string,
+    name: string,
+    entryConfig: Record<string, unknown>,
+    exitConfig: Record<string, unknown>,
+    reentryConfig?: Record<string, unknown>,
+    costConfig?: Record<string, unknown>
+  ): Promise<StrategyStorageResult> {
+    try {
+      const result = await this.pythonEngine.runDuckDBStorage({
+        duckdbPath,
+        operation: 'store_strategy',
+        data: { strategy_id, name, entry_config, exit_config, ... },
+      });
+
+      return StrategyStorageResultSchema.parse(result); // ✅ Zod validation
+    } catch (error) {
+      logger.error('Failed to store strategy', error as Error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
+  }
+}
+```
+
+**ClickHouseService** (`packages/simulation/src/clickhouse-service.ts`):
+
+```typescript
+export class ClickHouseService {
+  constructor(
+    private readonly pythonEngine: PythonEngine,
+    private readonly options?: ClickHouseOptions
+  ) {}
+
+  async queryOHLCV(
+    tokenAddress: string,
+    chain: string,
+    startTime: string,
+    endTime: string,
+    interval: string = '5m'
+  ): Promise<OHLCVQueryResult> {
+    try {
+      const result = await this.pythonEngine.runClickHouseEngine({
+        operation: 'query_ohlcv',
+        data: { token_address, chain, start_time, end_time, interval },
+        ...this.options,
+      });
+
+      return OHLCVQueryResultSchema.parse(result); // ✅ Zod validation
+    } catch (error) {
+      logger.error('Failed to query OHLCV', error as Error);
+      return { success: false, error: /* ... */ };
+    }
+  }
+}
+```
+
+### Zod Schema Requirements
+
+**All service methods must:**
+
+- ✅ Define Zod schemas for return types
+- ✅ Export schemas for reuse
+- ✅ Validate PythonEngine output before returning
+- ✅ Handle validation errors gracefully
+
+**Example**:
+
+```typescript
+export const StrategyStorageResultSchema = z.object({
+  success: z.boolean(),
+  strategy_id: z.string().optional(),
+  error: z.string().optional(),
+});
+
+export type StrategyStorageResult = z.infer<typeof StrategyStorageResultSchema>;
+```
+
+### Service Registration
+
+**Services must be registered in CommandContext** (`packages/cli/src/core/command-context.ts`):
+
+```typescript
+export interface CommandServices {
+  // ... other services
+  duckdbStorage(): DuckDBStorageService;
+  clickHouse(): ClickHouseService;
+}
+
+private _createServices(): CommandServices {
+  return {
+    // ... other services
+    duckdbStorage: () => {
+      const engine = this._options.pythonEngineOverride ?? getPythonEngine();
+      return new DuckDBStorageService(engine);
+    },
+    clickHouse: () => {
+      const engine = this._options.pythonEngineOverride ?? getPythonEngine();
+      return new ClickHouseService(engine);
+    },
+  };
+}
+```
+
+### Forbidden Patterns
+
+**❌ Service with handler-specific logic:**
+
+```typescript
+export class BadService {
+  async storeStrategy(args, format: 'json' | 'table') { // ❌ NO format
+    // Format logic // ❌ NO
+  }
+}
+```
+
+**❌ Service with direct subprocess calls:**
+
+```typescript
+export class BadService {
+  async storeStrategy() {
+    execSync('python3 script.py'); // ❌ NO - use PythonEngine
+  }
+}
+```
+
+**❌ Service without Zod validation:**
+
+```typescript
+export class BadService {
+  async storeStrategy() {
+    const result = await this.pythonEngine.runDuckDBStorage({ /* ... */ });
+    return result; // ❌ NO - must validate with Zod
+  }
+}
+```
+
+### Testing Requirements
+
+**Service tests must:**
+
+- ✅ Mock PythonEngine
+- ✅ Test Zod validation (valid and invalid outputs)
+- ✅ Test error handling
+- ✅ Test all service methods
+- ✅ Verify correct PythonEngine calls
+
+**Example**:
+
+```typescript
+describe('DuckDBStorageService', () => {
+  it('validates output with Zod schema', async () => {
+    const mockEngine = {
+      runDuckDBStorage: vi.fn().mockResolvedValue({
+        success: true,
+        strategy_id: 'test',
+      }),
+    };
+    const service = new DuckDBStorageService(mockEngine);
+    const result = await service.storeStrategy(/* ... */);
+    expect(result.success).toBe(true);
+    expect(result.strategy_id).toBe('test');
+  });
+
+  it('handles validation errors', async () => {
+    const mockEngine = {
+      runDuckDBStorage: vi.fn().mockResolvedValue({
+        invalid: 'data', // Missing required fields
+      }),
+    };
+    const service = new DuckDBStorageService(mockEngine);
+    const result = await service.storeStrategy(/* ... */);
+    expect(result.success).toBe(false);
+    expect(result.error).toBeDefined();
+  });
+});
+```

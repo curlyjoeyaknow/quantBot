@@ -1,0 +1,43 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "declaration": true,
+    "declarationMap": true,
+    "composite": true,
+    "baseUrl": ".",
+    "skipLibCheck": true,
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "target": "ES2022",
+    "paths": {
+      "@quantbot/core": ["../core/src"],
+      "@quantbot/core/*": ["../core/src/*"],
+      "@quantbot/utils": ["../utils/src"],
+      "@quantbot/utils/*": ["../utils/src/*"],
+      "@quantbot/storage": ["../storage/src"],
+      "@quantbot/storage/*": ["../storage/src/*"],
+      "@quantbot/api-clients": ["../api-clients/src"],
+      "@quantbot/api-clients/*": ["../api-clients/src/*"],
+      "@quantbot/simulation": ["../simulation/src"],
+      "@quantbot/simulation/*": ["../simulation/src/*"]
+    }
+  },
+  "include": ["src/**/*"],
+  "exclude": [
+    "node_modules",
+    "dist",
+    "tests/**/*",
+    "**/*.test.ts",
+    "src/candles.ts",
+    "src/backfill-service.ts"
+  ],
+  "references": [
+    { "path": "../core" },
+    { "path": "../utils" },
+    { "path": "../storage" },
+    { "path": "../api-clients" }
+  ]
+}
+

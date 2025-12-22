@@ -1,0 +1,40 @@
+---
+name: Hot path sterility
+description: Prevent accidental latency bloat by constraining dependencies and patterns.
+globs:
+  - "packages/**/hotpath/**"
+  - "packages/hotpath/**"
+---
+
+# Hot path rules (latency is a feature)
+
+## Principle
+Code in hot path packages must be dependency-sterile and allocation-conscious.
+Assume p99 matters more than convenience.
+
+## Allowed
+- small, typed utilities
+- pure computation
+- pre-parsed/validated inputs
+- explicit, measured serialization
+
+## Forbidden imports/patterns
+Do not import or use:
+- `fs`, `path`, `os`
+- `process.env` (or dotenv loaders)
+- heavy SDKs or RPC clients
+- JSON parsing on hot path unless unavoidable (prefer pre-validated structs)
+- logging (console / logger)
+- dynamic config reload
+- retries/backoff loops
+
+## Time budget documentation
+Every hot path module must include a header comment:
+- expected worst-case runtime budget (ms)
+- allocation notes (if relevant)
+- what is explicitly NOT allowed here
+
+## Interfaces
+Hot path should speak in narrow, stable interfaces:
+- data in, decision out
+- no side effects
