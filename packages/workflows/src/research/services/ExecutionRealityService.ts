@@ -365,17 +365,30 @@ export class ExecutionRealityService {
    * Helper: Convert Branch C ExecutionModel to contract ExecutionModel
    */
   private convertToContractExecutionModel(model: ExecutionModel): ContractExecutionModel {
+    // Handle optional latency
+    if (!model.latency) {
+      throw new Error('ExecutionModel must have latency configuration');
+    }
+
+    // Extract latency values - model.latency is VenueLatencyConfig
+    const networkLatency = model.latency.networkLatency;
+    const confirmationLatency = model.latency.confirmationLatency;
+
     return ContractExecutionModelSchema.parse({
       latency: {
-        p50: model.latency.networkLatency.p50 + model.latency.confirmationLatency.p50,
-        p90: model.latency.networkLatency.p90 + model.latency.confirmationLatency.p90,
-        p99: model.latency.networkLatency.p99 + model.latency.confirmationLatency.p99,
-        jitter: model.latency.networkLatency.jitterMs + model.latency.confirmationLatency.jitterMs,
+        p50: networkLatency.p50 + confirmationLatency.p50,
+        p90: networkLatency.p90 + confirmationLatency.p90,
+        p99: networkLatency.p99 + confirmationLatency.p99,
+        jitter: (networkLatency.jitterMs || 0) + (confirmationLatency.jitterMs || 0),
       },
       slippage: {
-        base: model.slippage.entrySlippage.minBps / 10_000,
+        base: model.slippage?.entrySlippage?.minBps
+          ? model.slippage.entrySlippage.minBps / 10_000
+          : 0.001, // Default 0.1%
         volumeImpact: 0, // Simplified
-        max: model.slippage.entrySlippage.maxBps / 10_000,
+        max: model.slippage?.entrySlippage?.maxBps
+          ? model.slippage.entrySlippage.maxBps / 10_000
+          : 0.1, // Default 10%
       },
       failures: model.failures
         ? {
@@ -385,7 +398,7 @@ export class ExecutionRealityService {
         : undefined,
       partialFills: model.partialFills
         ? {
-            probability: model.partialFills.probability,
+            probability: model.partialFills.probability || 0,
             fillRange: [
               model.partialFills.fillDistribution?.minFill ?? 0.5,
               model.partialFills.fillDistribution?.maxFill ?? 0.95,
