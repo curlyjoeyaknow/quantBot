@@ -101,7 +101,7 @@ todos:
       - phase4-migrate-state
   - id: phase4-comprehensive-testing
     content: Test ingestOhlcv with real DuckDB/ClickHouse, verify worklist generation, metadata updates, error handling all work
-    status: pending
+    status: completed
     dependencies:
       - phase4-update-context
   - id: phase5-design-executionport
