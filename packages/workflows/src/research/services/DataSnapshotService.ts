@@ -1,7 +1,7 @@
 /**
  * Data Snapshot Service (Branch B Implementation)
  * ================================================
- * 
+ *
  * Real implementation of data snapshot creation and loading.
  * Replaces MockDataSnapshotService with actual data source integration.
  */
@@ -59,7 +59,7 @@ export interface SnapshotData {
 
 /**
  * Data Snapshot Service
- * 
+ *
  * Creates and loads reproducible data snapshots from real data sources.
  */
 export class DataSnapshotService {
@@ -67,7 +67,7 @@ export class DataSnapshotService {
 
   /**
    * Creates a snapshot reference from data sources
-   * 
+   *
    * This queries actual data and creates a content hash from the data itself,
    * not just the parameters. This ensures the hash reflects the actual data content.
    */
@@ -96,7 +96,7 @@ export class DataSnapshotService {
 
   /**
    * Loads data from a snapshot
-   * 
+   *
    * Re-queries the data sources using the snapshot parameters to ensure
    * we get the same data that was used to create the snapshot.
    */
@@ -116,7 +116,7 @@ export class DataSnapshotService {
 
   /**
    * Verifies snapshot integrity
-   * 
+   *
    * Re-computes the content hash and compares it to the stored hash.
    */
   async verifySnapshot(snapshot: DataSnapshotRef): Promise<boolean> {
@@ -165,13 +165,25 @@ export class DataSnapshotService {
         );
 
         for (const call of callsResult.calls) {
+          // Handle both Date and DateTime objects
+          const createdAtISO =
+            call.createdAt instanceof Date
+              ? call.createdAt.toISOString()
+              : typeof call.createdAt === 'object' &&
+                  'toISO' in call.createdAt &&
+                  typeof call.createdAt.toISO === 'function'
+                ? (call.createdAt.toISO() ?? call.createdAt.toJSDate().toISOString())
+                : typeof call.createdAt === 'string'
+                  ? call.createdAt
+                  : new Date(call.createdAt as unknown as string | number).toISOString();
+
           calls.push({
-            id: call.id || `call-${call.mint}-${call.createdAt.toISO() || ''}`,
+            id: call.id || `call-${call.mint}-${createdAtISO}`,
             caller: call.caller || 'unknown',
             mint: call.mint,
-            createdAt: call.createdAt.toISO() || '',
-            // price and volume are optional in SnapshotData, CallRecord doesn't have them
-            // They will be undefined if not available
+            createdAt: createdAtISO,
+            price: (call as any).price,
+            volume: (call as any).volume,
           });
         }
       }
@@ -236,10 +248,7 @@ export class DataSnapshotService {
   /**
    * Computes content hash from data and parameters
    */
-  private computeContentHash(
-    data: SnapshotData,
-    params: CreateSnapshotParams
-  ): string {
+  private computeContentHash(data: SnapshotData, params: CreateSnapshotParams): string {
     // Create deterministic representation of data
     const dataRepr = {
       params: {

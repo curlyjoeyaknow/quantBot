@@ -1,6 +1,6 @@
 /**
  * Isolation test for tag artifact handler
- * 
+ *
  * LITMUS TEST: Verify handler is REPL-friendly
  */
 
@@ -46,4 +46,3 @@ describe('tagArtifactHandler - Isolation Test', () => {
     expect(result.success).toBe(true);
   });
 });
-

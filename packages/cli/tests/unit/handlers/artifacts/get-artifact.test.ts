@@ -55,4 +55,3 @@ describe('getArtifactHandler', () => {
     expect(result.found).toBe(false);
   });
 });
-
