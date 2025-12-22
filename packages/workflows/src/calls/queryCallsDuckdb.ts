@@ -61,7 +61,7 @@ export type QueryCallsDuckdbContext = WorkflowContext & {
 
 /**
  * Create context for queryCallsDuckdb workflow
- * 
+ *
  * This creates a production context with DuckDB storage service.
  * For use in production code (e.g., CallDataLoader).
  */
@@ -71,12 +71,12 @@ export async function createQueryCallsDuckdbContext(
   const { createProductionContext } = await import('../context/createProductionContext.js');
   const { DuckDBStorageService } = await import('@quantbot/simulation');
   const { PythonEngine } = await import('@quantbot/utils');
-  
+
   const baseContext = createProductionContext();
   const dbPath = duckdbPath || process.env.DUCKDB_PATH || 'data/tele.duckdb';
   const pythonEngine = new PythonEngine();
   const duckdbStorage = new DuckDBStorageService(pythonEngine);
-  
+
   return {
     ...baseContext,
     services: {
@@ -98,7 +98,9 @@ export async function createQueryCallsDuckdbContext(
  * Create default context (for testing)
  */
 export function createDefaultQueryCallsDuckdbContext(): QueryCallsDuckdbContext {
-  throw new Error('createDefaultQueryCallsDuckdbContext must be implemented with actual services. Use createQueryCallsDuckdbContext() in production.');
+  throw new Error(
+    'createDefaultQueryCallsDuckdbContext must be implemented with actual services. Use createQueryCallsDuckdbContext() in production.'
+  );
 }
 
 /**

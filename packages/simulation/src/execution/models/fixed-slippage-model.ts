@@ -47,4 +47,3 @@ export class FixedSlippageModel implements ExecutionModelInterface {
     return this.config;
   }
 }
-
