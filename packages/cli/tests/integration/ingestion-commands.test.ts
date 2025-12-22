@@ -57,7 +57,8 @@ describe('Ingestion Commands - Integration', () => {
         '/tmp/input.json',
         '/tmp/test.duckdb',
         'test_chat_123',
-        false
+        false,
+        { timeout: 30 * 60 * 1000 }
       );
       expect(result).toEqual(mockManifest);
     });
@@ -85,7 +86,8 @@ describe('Ingestion Commands - Integration', () => {
         '/tmp/input.json',
         '/tmp/test.duckdb',
         'test_chat_123',
-        true
+        true,
+        { timeout: 30 * 60 * 1000 }
       );
     });
 

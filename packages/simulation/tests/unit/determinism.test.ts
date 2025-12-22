@@ -11,7 +11,7 @@ import {
   createDeterministicRNG,
   seedFromString,
   type DeterministicRNG,
-} from '@quantbot/core/determinism';
+} from '@quantbot/core';
 
 describe('DeterministicRNG', () => {
   describe('same seed produces same sequence', () => {

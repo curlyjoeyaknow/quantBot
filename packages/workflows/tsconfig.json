@@ -17,7 +17,7 @@
     "skipLibCheck": true
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["dist", "node_modules", "tests", "**/*.d.ts", "../jobs/dist", "**/*branch*.ts", "**/*integrated*.ts", "**/integration-*.ts"],
+  "exclude": ["dist", "node_modules", "tests", "**/*.d.ts", "../jobs/dist", "**/*branch*.ts", "**/*branch-*.ts", "**/*integrated*.ts", "**/integration-*.ts", "**/integration-branch-*.ts", "**/services/DataSnapshotService.branch-b-integration.ts", "**/services/DataSnapshotService.ts", "**/services/DataSnapshotService.integrated.ts", "**/research/services/index.ts"],
   "references": [
     { "path": "../core" },
     { "path": "../utils" },
@@ -26,6 +26,7 @@
     { "path": "../simulation" },
     { "path": "../ingestion" },
     { "path": "../api-clients" },
-    { "path": "../jobs" }
+    { "path": "../jobs" },
+    { "path": "../data-observatory" }
   ]
 }

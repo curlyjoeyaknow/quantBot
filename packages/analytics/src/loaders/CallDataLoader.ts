@@ -40,7 +40,7 @@ export class CallDataLoader {
       // Note: This avoids a build-order violation (analytics builds before workflows)
       const workflowsModule = await import('@quantbot/workflows');
       const { queryCallsDuckdb, createQueryCallsDuckdbContext } = workflowsModule;
-      
+
       // Build spec object matching QueryCallsDuckdbSpec structure
       // Using explicit types to avoid requiring workflows types at build time
       const spec = {
@@ -50,29 +50,34 @@ export class CallDataLoader {
         callerName: options.callerNames?.[0], // Use first caller name if provided
         limit: options.limit || 1000,
       };
-      
+
       const ctx = await createQueryCallsDuckdbContext(duckdbPath);
       // Type assertion: spec matches QueryCallsDuckdbSpec from workflows package
       // Using unknown then casting to avoid requiring workflows types at build time
       // This is safe because we've constructed the object to match the expected shape
-      const result = await queryCallsDuckdb(spec as unknown as Parameters<typeof queryCallsDuckdb>[0], ctx);
+      const result = await queryCallsDuckdb(
+        spec as unknown as Parameters<typeof queryCallsDuckdb>[0],
+        ctx
+      );
 
       // Convert CallRecord[] to CallPerformance[]
       // Note: CallPerformance requires more fields than CallRecord provides
       // We'll need to enrich with additional data or adjust the type
-      const callPerformance: CallPerformance[] = result.calls.map((call: { mint: string; caller: string; createdAt: DateTime }, index: number) => ({
-        callId: index + 1, // Generate ID since we don't have numeric ID from DuckDB
-        tokenAddress: call.mint,
-        callerName: call.caller || 'unknown',
-        chain: 'solana', // Default to solana, could be enriched later
-        alertTimestamp: call.createdAt.toJSDate(), // CallRecord.createdAt is a Luxon DateTime
-        entryPrice: 0, // Will need to be enriched from alerts table or OHLCV
-        athPrice: 0, // Will need to be enriched
-        athMultiple: 1, // Default, will be enriched
-        timeToAthMinutes: 0, // Will need to be enriched
-        atlPrice: 0, // Will need to be enriched
-        atlMultiple: 1, // Default, will be enriched
-      }));
+      const callPerformance: CallPerformance[] = result.calls.map(
+        (call: { mint: string; caller: string; createdAt: DateTime }, index: number) => ({
+          callId: index + 1, // Generate ID since we don't have numeric ID from DuckDB
+          tokenAddress: call.mint,
+          callerName: call.caller || 'unknown',
+          chain: 'solana', // Default to solana, could be enriched later
+          alertTimestamp: call.createdAt.toJSDate(), // CallRecord.createdAt is a Luxon DateTime
+          entryPrice: 0, // Will need to be enriched from alerts table or OHLCV
+          athPrice: 0, // Will need to be enriched
+          athMultiple: 1, // Default, will be enriched
+          timeToAthMinutes: 0, // Will need to be enriched
+          atlPrice: 0, // Will need to be enriched
+          atlMultiple: 1, // Default, will be enriched
+        })
+      );
 
       logger.info(`[CallDataLoader] Loaded ${callPerformance.length} calls from DuckDB`, {
         fromISO,
