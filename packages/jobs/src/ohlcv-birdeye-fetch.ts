@@ -324,9 +324,10 @@ export class OhlcvBirdeyeFetch {
     logger.info(`Starting OHLCV Birdeye fetch for ${workItems.length} work items`, {
       parallelWorkers: this.parallelWorkers,
       rateLimitMsPerWorker: this.rateLimitMsPerWorker,
-      estimatedRPS: this.parallelWorkers > 1 
-        ? (1000 / this.rateLimitMsPerWorker * this.parallelWorkers).toFixed(2)
-        : (1000 / this.rateLimitMs).toFixed(2),
+      estimatedRPS:
+        this.parallelWorkers > 1
+          ? ((1000 / this.rateLimitMsPerWorker) * this.parallelWorkers).toFixed(2)
+          : (1000 / this.rateLimitMs).toFixed(2),
     });
 
     // Sequential mode (backward compatible)
@@ -414,16 +415,22 @@ export class OhlcvBirdeyeFetch {
         // Thread-safe progress counting and logging
         processedCount++;
         const currentProcessed = processedCount;
-        
+
         // Progress logging every 10 items or at milestones (simple lock to prevent concurrent logs)
-        if (!processedLock.lock && (currentProcessed % 10 === 0 || currentProcessed === workItems.length)) {
+        if (
+          !processedLock.lock &&
+          (currentProcessed % 10 === 0 || currentProcessed === workItems.length)
+        ) {
           processedLock.lock = true;
           try {
             const currentSuccessCount = results.filter((r) => r?.success).length;
-            logger.info(`Progress: ${currentProcessed}/${workItems.length} (${currentSuccessCount} successful)`, {
-              workers: this.parallelWorkers,
-              workerId,
-            });
+            logger.info(
+              `Progress: ${currentProcessed}/${workItems.length} (${currentSuccessCount} successful)`,
+              {
+                workers: this.parallelWorkers,
+                workerId,
+              }
+            );
           } finally {
             processedLock.lock = false;
           }
@@ -432,9 +439,7 @@ export class OhlcvBirdeyeFetch {
     };
 
     // Start all workers in parallel
-    await Promise.all(
-      Array.from({ length: this.parallelWorkers }, (_, i) => worker(i))
-    );
+    await Promise.all(Array.from({ length: this.parallelWorkers }, (_, i) => worker(i)));
 
     const successCount = results.filter((r) => r?.success).length;
     const totalCandles = results.reduce((sum, r) => sum + (r?.candlesFetched || 0), 0);

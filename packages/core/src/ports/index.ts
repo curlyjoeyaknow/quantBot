@@ -19,11 +19,7 @@ export type {
   HistoricalPriceRequest,
   HistoricalPriceResponse,
 } from './marketDataPort.js';
-export type {
-  ExecutionPort,
-  ExecutionRequest,
-  ExecutionResult,
-} from './executionPort.js';
+export type { ExecutionPort, ExecutionRequest, ExecutionResult } from './executionPort.js';
 export type {
   StatePort,
   StateGetRequest,
@@ -42,4 +38,3 @@ export type {
   SpanEmission,
   MetricType,
 } from './telemetryPort.js';
-

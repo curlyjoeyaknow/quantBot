@@ -14,10 +14,7 @@
 import path from 'node:path';
 import process from 'node:process';
 
-import {
-  ingestOhlcvHandler,
-  type IngestOhlcvCommand,
-} from '@quantbot/core';
+import { ingestOhlcvHandler, type IngestOhlcvCommand } from '@quantbot/core';
 import { createOhlcvIngestionWorkflowAdapter } from '@quantbot/workflows';
 import { createOhlcvIngestionContext } from '@quantbot/workflows';
 import type { ClockPort } from '@quantbot/core';

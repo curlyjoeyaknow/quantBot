@@ -12,4 +12,3 @@ export class SystemClockAdapter implements ClockPort {
     return Date.now();
   }
 }
-

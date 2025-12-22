@@ -35,7 +35,7 @@ export async function queryStorageHandler(
   if (isClickHouse) {
     // Use factory to get ClickHouse client
     const client = ctx.services.clickHouseClient();
-    
+
     // ENV LIVE HERE (composition root)
     const database = process.env.CLICKHOUSE_DATABASE || 'quantbot';
 

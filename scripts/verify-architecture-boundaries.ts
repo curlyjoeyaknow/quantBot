@@ -164,7 +164,7 @@ function findTsFiles(dir: string): string[] {
  */
 function main(): void {
   console.log('🏗️  Architecture Boundary Enforcement Tests\n');
-  console.log('=' .repeat(60));
+  console.log('='.repeat(60));
 
   testForbiddenImportsInHandlers();
   testPublicApiEnforcement();
@@ -182,9 +182,7 @@ function main(): void {
       console.log(`   ${violation.message}\n`);
     });
 
-    console.log(
-      '\n💡 Fix these violations by:'
-    );
+    console.log('\n💡 Fix these violations by:');
     console.log('   - Using public API imports (@quantbot/<pkg>) instead of deep imports');
     console.log('   - Ensuring handlers only import from @quantbot/core');
     console.log('   - Moving shared code to appropriate packages if needed\n');
@@ -194,4 +192,3 @@ function main(): void {
 }
 
 main();
-

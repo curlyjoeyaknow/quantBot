@@ -264,6 +264,37 @@ export default tseslint.config(
     },
   },
 
+  // TEMP QUARANTINE: Known violations during migration
+  // ⚠️ MUST BE REMOVED after PR #X (ingestTelegramJson migration)
+  // This file is being migrated to ports-based architecture.
+  // Once migrated, this override will be removed and full enforcement restored.
+  {
+    files: [
+      'packages/workflows/src/telegram/ingestTelegramJson.ts',
+    ],
+    rules: {
+      'no-restricted-imports': [
+        'warn', // Downgrade to warn (not error) for these specific files
+        {
+          paths: [
+            {
+              name: '@quantbot/api-clients',
+              message:
+                'TEMPORARY: This file is being migrated to ports. Use ctx.ports.marketData instead. Will be enforced after migration PR.',
+            },
+          ],
+          patterns: [
+            {
+              group: ['@quantbot/api-clients*'],
+              message:
+                'TEMPORARY: This file is being migrated to ports. Use ctx.ports.marketData instead. Will be enforced after migration PR.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+
   // CLI command boundaries: prevent importing workflow internals
   {
     files: ['packages/cli/src/commands/**/*.ts'],

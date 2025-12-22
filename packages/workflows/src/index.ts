@@ -98,4 +98,7 @@ export { createProductionContextWithPorts } from './context/createProductionCont
 export { createTelemetryConsoleAdapter } from './adapters/telemetryConsoleAdapter.js';
 export { createMarketDataBirdeyeAdapter } from './adapters/marketDataBirdeyeAdapter.js';
 export { ingestOhlcvWorkflowPorted } from './ohlcv/ingestOhlcvPorted.js';
-export type { IngestOhlcvWorkflowInput, IngestOhlcvWorkflowOutput } from './ohlcv/ingestOhlcvPorted.js';
+export type {
+  IngestOhlcvWorkflowInput,
+  IngestOhlcvWorkflowOutput,
+} from './ohlcv/ingestOhlcvPorted.js';

@@ -15,9 +15,7 @@ function createSystemClock(): ClockPort {
 /**
  * Create production ports with real adapters where available, stubs otherwise
  */
-export async function createProductionPorts(
-  duckdbPath?: string
-): Promise<ProductionPorts> {
+export async function createProductionPorts(duckdbPath?: string): Promise<ProductionPorts> {
   // Wire real Birdeye client
   const birdeye = getBirdeyeClient();
   const marketData = createMarketDataBirdeyeAdapter(birdeye);
@@ -35,7 +33,9 @@ export async function createProductionPorts(
     state,
 
     execution: {
-      async execute(_request: import('@quantbot/core').ExecutionRequest): Promise<import('@quantbot/core').ExecutionResult> {
+      async execute(
+        _request: import('@quantbot/core').ExecutionRequest
+      ): Promise<import('@quantbot/core').ExecutionResult> {
         throw new Error('ExecutionPort adapter not wired yet');
       },
       async isAvailable(): Promise<boolean> {
@@ -46,4 +46,3 @@ export async function createProductionPorts(
 
   return ports;
 }
-

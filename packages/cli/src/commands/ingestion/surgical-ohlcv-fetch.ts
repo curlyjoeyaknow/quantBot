@@ -102,7 +102,7 @@ export async function surgicalOhlcvFetchHandler(args: SurgicalOhlcvFetchArgs, ct
     logger.info('Birdeye fetch and store configuration', {
       parallelWorkers,
       rateLimitMsPerWorker,
-      estimatedRPS: (1000 / rateLimitMsPerWorker * parallelWorkers).toFixed(2),
+      estimatedRPS: ((1000 / rateLimitMsPerWorker) * parallelWorkers).toFixed(2),
       note: 'OhlcvFetchJob handles both fetch AND store in parallel',
     });
   }
@@ -182,9 +182,7 @@ export async function surgicalOhlcvFetchHandler(args: SurgicalOhlcvFetchArgs, ct
 /**
  * Build a cleaner summary format from surgical fetch result
  */
-function buildSummary(
-  result: Awaited<ReturnType<typeof surgicalOhlcvFetch>>
-): unknown {
+function buildSummary(result: Awaited<ReturnType<typeof surgicalOhlcvFetch>>): unknown {
   // Track intervals processed
   const intervalsProcessed = new Set<string>();
   const successfulMints = new Set<string>();
@@ -250,4 +248,3 @@ function buildSummary(
 
   return output;
 }
-

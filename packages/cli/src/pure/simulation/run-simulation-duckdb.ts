@@ -61,7 +61,9 @@ export async function runSimulationDuckdbHandler(
 
   // Get workflow context from command context
   // The context should already be wired with adapters by the composition root
-  const workflowContext = ctx.services.workflowContext?.() as RunSimulationDuckdbContext | undefined;
+  const workflowContext = ctx.services.workflowContext?.() as
+    | RunSimulationDuckdbContext
+    | undefined;
 
   if (!workflowContext) {
     throw new Error(
@@ -77,4 +79,3 @@ export async function runSimulationDuckdbHandler(
     simulationResults: result.simulationResults,
   };
 }
-

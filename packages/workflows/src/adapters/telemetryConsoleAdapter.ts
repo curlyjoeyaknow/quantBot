@@ -1,8 +1,6 @@
 import type { TelemetryPort, EventEmission, MetricEmission } from '@quantbot/core';
 
-export function createTelemetryConsoleAdapter(opts?: {
-  prefix?: string;
-}): TelemetryPort {
+export function createTelemetryConsoleAdapter(opts?: { prefix?: string }): TelemetryPort {
   const prefix = opts?.prefix ?? 'telemetry';
 
   return {
@@ -85,4 +83,3 @@ export function createTelemetryConsoleAdapter(opts?: {
     },
   };
 }
-

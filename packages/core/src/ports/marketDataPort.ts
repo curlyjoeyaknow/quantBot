@@ -77,8 +77,5 @@ export interface MarketDataPort {
   /**
    * Fetch historical price at a specific unix time
    */
-  fetchHistoricalPriceAtTime(
-    request: HistoricalPriceRequest
-  ): Promise<HistoricalPriceResponse>;
+  fetchHistoricalPriceAtTime(request: HistoricalPriceRequest): Promise<HistoricalPriceResponse>;
 }
-

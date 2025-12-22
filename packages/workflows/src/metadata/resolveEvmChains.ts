@@ -18,8 +18,8 @@
 
 import { z } from 'zod';
 import { DateTime } from 'luxon';
-import { ValidationError, logger as utilsLogger } from '@quantbot/utils';
-import type { BirdeyeClient } from '@quantbot/api-clients';
+import { ValidationError } from '@quantbot/utils';
+import type { WorkflowContextWithPorts } from '../context/workflowContextWithPorts.js';
 
 /**
  * Resolve EVM Chains Spec
@@ -75,8 +75,9 @@ export interface ResolveEvmChainsResult {
 
 /**
  * Context for EVM chain resolution
+ * Uses ports for all external dependencies
  */
-export interface ResolveEvmChainsContext {
+export type ResolveEvmChainsContext = WorkflowContextWithPorts & {
   logger: {
     info: (message: string, context?: unknown) => void;
     warn: (message: string, context?: unknown) => void;
@@ -84,14 +85,12 @@ export interface ResolveEvmChainsContext {
     debug?: (message: string, context?: unknown) => void;
   };
 
-  birdeyeClient: BirdeyeClient;
-
   getEvmTokensFromClickHouse?: () => Promise<EvmToken[]>;
   getEvmTokensFromDuckDB?: (duckdbPath: string) => Promise<EvmToken[]>;
 
   updateChainInClickHouse?: (address: string, newChain: string) => Promise<void>;
   updateChainInDuckDB?: (duckdbPath: string, address: string, newChain: string) => Promise<void>;
-}
+};
 
 /**
  * Get EVM tokens from ClickHouse
@@ -138,33 +137,59 @@ async function getEvmTokensFromDuckDB(duckdbPath: string): Promise<EvmToken[]> {
 }
 
 /**
- * Try to resolve EVM token to specific chain
+ * Try to resolve EVM token to specific chain using market data port
  */
 async function resolveTokenChain(
   address: string,
-  birdeyeClient: BirdeyeClient,
-  logger: ResolveEvmChainsContext['logger']
-): Promise<{ chain: string | null; metadata?: any }> {
+  ctx: ResolveEvmChainsContext
+): Promise<{
+  chain: string | null;
+  metadata?: { name?: string; symbol?: string; decimals?: number };
+}> {
   // Try chains in order: ethereum (most common), base, bsc
   const chainsToTry: Array<'ethereum' | 'base' | 'bsc'> = ['ethereum', 'base', 'bsc'];
 
   for (const chain of chainsToTry) {
     try {
-      logger.debug?.(`Trying ${chain} for ${address.substring(0, 20)}...`);
+      workflowCtx.logger.debug?.(`Trying ${chain} for ${address.substring(0, 20)}...`);
 
-      const metadata = await birdeyeClient.getTokenMetadata(address, chain);
+      // Use market data port instead of direct client
+      const metadata = await ctx.ports.marketData.fetchMetadata({
+        tokenAddress: address,
+        chain,
+      });
 
       if (metadata && metadata.symbol) {
-        logger.info(`Resolved ${address.substring(0, 20)}... to ${chain}`, {
+        workflowCtx.logger.info(`Resolved ${address.substring(0, 20)}... to ${chain}`, {
           symbol: metadata.symbol,
           name: metadata.name,
         });
 
-        return { chain, metadata };
+        // Emit telemetry event
+        workflowCtx.ports.telemetry.emitEvent({
+          name: 'evm_chain_resolved',
+          level: 'info',
+          message: `Resolved EVM token to ${chain}`,
+          context: {
+            address: address.substring(0, 20),
+            chain,
+            symbol: metadata.symbol,
+          },
+          timestamp: ctx.ports.clock.nowMs(),
+        });
+
+        return {
+          chain,
+          metadata: {
+            name: metadata.name,
+            symbol: metadata.symbol,
+            decimals: metadata.decimals,
+          },
+        };
       }
     } catch (error) {
       // Continue to next chain
-      logger.debug?.(`${chain} failed for ${address.substring(0, 20)}...`);
+      workflowCtx.logger.debug?.(`${chain} failed for ${address.substring(0, 20)}...`);
     }
   }
 
@@ -192,6 +217,7 @@ async function updateChainInClickHouse(address: string, newChain: string): Promi
   } catch (error) {
     // ClickHouse 18.16 doesn't support UPDATE on partition key
     // Just log - new fetches will use correct chain
+    const { logger: utilsLogger } = await import('@quantbot/utils');
     utilsLogger.warn('Could not update chain in ClickHouse (expected for CH 18.16)', {
       address: address.substring(0, 20),
       newChain,
@@ -229,8 +255,10 @@ async function updateChainInDuckDB(
  */
 export async function resolveEvmChains(
   spec: ResolveEvmChainsSpec,
-  ctx: ResolveEvmChainsContext
+  ctx?: ResolveEvmChainsContext
 ): Promise<ResolveEvmChainsResult> {
+  // Use provided context or create default (for testing convenience)
+  const workflowCtx = ctx || (await createDefaultResolveEvmChainsContext());
   const startedAt = DateTime.utc();
   const startedAtISO = startedAt.toISO()!;
 
@@ -246,7 +274,21 @@ export async function resolveEvmChains(
 
   const validated = parsed.data;
 
-  ctx.logger.info('Starting EVM chain resolution workflow', {
+  // Emit workflow start event
+  workflowCtx.ports.telemetry.emitEvent({
+    name: 'evm_chain_resolution_started',
+    level: 'info',
+    message: 'Starting EVM chain resolution workflow',
+    context: {
+      useClickHouse: validated.useClickHouse,
+      useDuckDB: validated.useDuckDB,
+      limit: validated.limit,
+      dryRun: validated.dryRun,
+    },
+    timestamp: ctx.ports.clock.nowMs(),
+  });
+
+  workflowCtx.logger.info('Starting EVM chain resolution workflow', {
     useClickHouse: validated.useClickHouse,
     useDuckDB: validated.useDuckDB,
     duckdbPath: validated.duckdbPath,
@@ -262,9 +304,9 @@ export async function resolveEvmChains(
       const getTokensFn = ctx.getEvmTokensFromClickHouse || getEvmTokensFromClickHouse;
       const tokens = await getTokensFn();
       evmTokens.push(...tokens);
-      ctx.logger.info(`Found ${tokens.length} EVM tokens in ClickHouse`);
+      workflowCtx.logger.info(`Found ${tokens.length} EVM tokens in ClickHouse`);
     } catch (error) {
-      ctx.logger.error('Failed to get EVM tokens from ClickHouse', {
+      workflowCtx.logger.error('Failed to get EVM tokens from ClickHouse', {
         error: error instanceof Error ? error.message : String(error),
       });
     }
@@ -275,9 +317,9 @@ export async function resolveEvmChains(
       const getTokensFn = ctx.getEvmTokensFromDuckDB || getEvmTokensFromDuckDB;
       const tokens = await getTokensFn(validated.duckdbPath);
       evmTokens.push(...tokens);
-      ctx.logger.info(`Found ${tokens.length} EVM tokens in DuckDB`);
+      workflowCtx.logger.info(`Found ${tokens.length} EVM tokens in DuckDB`);
     } catch (error) {
-      ctx.logger.error('Failed to get EVM tokens from DuckDB', {
+      workflowCtx.logger.error('Failed to get EVM tokens from DuckDB', {
         error: error instanceof Error ? error.message : String(error),
       });
     }
@@ -286,13 +328,13 @@ export async function resolveEvmChains(
   // Deduplicate by address
   const uniqueTokens = Array.from(new Map(evmTokens.map((t) => [t.address, t])).values());
 
-  ctx.logger.info(`Total unique EVM tokens to resolve: ${uniqueTokens.length}`);
+  workflowCtx.logger.info(`Total unique EVM tokens to resolve: ${uniqueTokens.length}`);
 
   // Apply limit if specified
   const tokensToResolve = validated.limit ? uniqueTokens.slice(0, validated.limit) : uniqueTokens;
 
   if (validated.limit && uniqueTokens.length > validated.limit) {
-    ctx.logger.info(`Limited to first ${validated.limit} tokens`);
+    workflowCtx.logger.info(`Limited to first ${validated.limit} tokens`);
   }
 
   // 3. Resolve each token
@@ -302,16 +344,33 @@ export async function resolveEvmChains(
   const skipped = 0;
 
   for (const [index, token] of tokensToResolve.entries()) {
-    ctx.logger.info(
+    workflowCtx.logger.info(
       `[${index + 1}/${tokensToResolve.length}] Resolving ${token.address.substring(0, 20)}...`
     );
 
-    try {
-      const { chain, metadata } = await resolveTokenChain(
-        token.address,
-        ctx.birdeyeClient,
-        ctx.logger
+    // Check idempotency: have we already resolved this token?
+    const idempotencyKey = `evm_chain_resolution:${token.address}`;
+    const cached = await ctx.ports.state.get<{ chain: string; resolvedAt: number }>({
+      key: idempotencyKey,
+      namespace: 'evm_chain_resolution',
+    });
+
+    if (cached.found && cached.value) {
+      workflowCtx.logger.debug(
+        `Skipping ${token.address.substring(0, 20)}... (already resolved to ${cached.value.chain})`
       );
+      results.push({
+        address: token.address,
+        originalChain: 'evm',
+        resolvedChain: cached.value.chain,
+        success: true,
+      });
+      resolved++;
+      continue;
+    }
+
+    try {
+      const { chain, metadata } = await resolveTokenChain(token.address, workflowCtx);
 
       if (chain) {
         results.push({
@@ -328,6 +387,17 @@ export async function resolveEvmChains(
             : undefined,
         });
 
+        // Cache resolution result for idempotency
+        await ctx.ports.state.set({
+          key: idempotencyKey,
+          namespace: 'evm_chain_resolution',
+          value: {
+            chain,
+            resolvedAt: ctx.ports.clock.nowMs(),
+          },
+          ttlSeconds: 86400 * 30, // 30 days TTL
+        });
+
         // Update in databases (unless dry run)
         if (!validated.dryRun) {
           // Update ClickHouse
@@ -336,7 +406,7 @@ export async function resolveEvmChains(
               const updateFn = ctx.updateChainInClickHouse || updateChainInClickHouse;
               await updateFn(token.address, chain);
             } catch (error) {
-              ctx.logger.warn('Failed to update chain in ClickHouse', {
+              workflowCtx.logger.warn('Failed to update chain in ClickHouse', {
                 address: token.address.substring(0, 20),
                 error: error instanceof Error ? error.message : String(error),
               });
@@ -349,7 +419,7 @@ export async function resolveEvmChains(
               const updateFn = ctx.updateChainInDuckDB || updateChainInDuckDB;
               await updateFn(validated.duckdbPath, token.address, chain);
             } catch (error) {
-              ctx.logger.warn('Failed to update chain in DuckDB', {
+              workflowCtx.logger.warn('Failed to update chain in DuckDB', {
                 address: token.address.substring(0, 20),
                 error: error instanceof Error ? error.message : String(error),
               });
@@ -389,7 +459,52 @@ export async function resolveEvmChains(
   const completedAtISO = completedAt.toISO()!;
   const durationMs = completedAt.diff(startedAt, 'milliseconds').milliseconds;
 
-  ctx.logger.info('Completed EVM chain resolution workflow', {
+  // Emit workflow completion event
+  workflowCtx.ports.telemetry.emitEvent({
+    name: 'evm_chain_resolution_completed',
+    level: 'info',
+    message: 'Completed EVM chain resolution workflow',
+    context: {
+      tokensFound: uniqueTokens.length,
+      tokensProcessed: tokensToResolve.length,
+      tokensResolved: resolved,
+      tokensFailed: failed,
+      tokensSkipped: skipped,
+      durationMs,
+    },
+    timestamp: ctx.ports.clock.nowMs(),
+  });
+
+  // Emit summary metrics
+  workflowCtx.ports.telemetry.emitMetric({
+    name: 'evm_chain_resolution_tokens_found',
+    type: 'counter',
+    value: uniqueTokens.length,
+    timestamp: ctx.ports.clock.nowMs(),
+  });
+
+  workflowCtx.ports.telemetry.emitMetric({
+    name: 'evm_chain_resolution_tokens_resolved',
+    type: 'counter',
+    value: resolved,
+    timestamp: ctx.ports.clock.nowMs(),
+  });
+
+  workflowCtx.ports.telemetry.emitMetric({
+    name: 'evm_chain_resolution_tokens_failed',
+    type: 'counter',
+    value: failed,
+    timestamp: ctx.ports.clock.nowMs(),
+  });
+
+  workflowCtx.ports.telemetry.emitMetric({
+    name: 'evm_chain_resolution_duration_ms',
+    type: 'histogram',
+    value: durationMs,
+    timestamp: ctx.ports.clock.nowMs(),
+  });
+
+  workflowCtx.logger.info('Completed EVM chain resolution workflow', {
     tokensFound: uniqueTokens.length,
     tokensProcessed: tokensToResolve.length,
     tokensResolved: resolved,
@@ -412,22 +527,15 @@ export async function resolveEvmChains(
 
 /**
  * Create default context for EVM chain resolution
+ * Uses WorkflowContextWithPorts for all dependencies
  */
-export function createDefaultResolveEvmChainsContext(): ResolveEvmChainsContext {
-  // Dynamic imports to avoid circular dependencies
-  const getBirdeyeClient = async () => {
-    const { getBirdeyeClient: getClient } = await import('@quantbot/api-clients');
-    return getClient();
-  };
+export async function createDefaultResolveEvmChainsContext(): Promise<ResolveEvmChainsContext> {
+  const { createProductionContextWithPorts } =
+    await import('../context/createProductionContext.js');
+  const baseContext = await createProductionContextWithPorts();
 
   return {
-    logger: {
-      info: (msg, ctx) => utilsLogger.info(msg, ctx as Record<string, unknown>),
-      warn: (msg, ctx) => utilsLogger.warn(msg, ctx as Record<string, unknown>),
-      error: (msg, ctx) => utilsLogger.error(msg, ctx as Record<string, unknown>),
-      debug: (msg, ctx) => utilsLogger.debug(msg, ctx as Record<string, unknown>),
-    },
-    birdeyeClient: null as any, // Will be set lazily
+    ...baseContext,
     getEvmTokensFromClickHouse,
     getEvmTokensFromDuckDB,
     updateChainInClickHouse,

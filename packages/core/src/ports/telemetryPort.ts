@@ -88,4 +88,3 @@ export interface TelemetryPort {
    */
   emitSpan(span: SpanEmission): void;
 }
-

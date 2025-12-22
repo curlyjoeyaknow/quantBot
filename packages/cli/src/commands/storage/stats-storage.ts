@@ -30,7 +30,7 @@ export async function statsStorageHandler(
 ): Promise<Record<string, unknown> | Array<Record<string, unknown>>> {
   // ClickHouse stats - use factory to get client
   const client = ctx.services.clickHouseClient();
-  
+
   // ENV LIVE HERE (composition root)
   const database = process.env.CLICKHOUSE_DATABASE || 'quantbot';
   const tables = SAFE_TABLES.clickhouse;
