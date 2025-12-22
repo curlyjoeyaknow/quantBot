@@ -1,6 +1,6 @@
 /**
  * Isolation test for list artifacts handler
- * 
+ *
  * LITMUS TEST: Verify handler is REPL-friendly (can be called directly without CLI infrastructure)
  */
 
@@ -11,7 +11,7 @@ describe('listArtifactsHandler - Isolation Test', () => {
   it('can be imported and called directly with plain objects (REPL-friendly)', async () => {
     // This test verifies the handler can be used outside CLI context
     // Simulates calling from REPL or programmatic usage
-    
+
     const args = {
       type: undefined,
       tags: undefined,
@@ -50,4 +50,3 @@ describe('listArtifactsHandler - Isolation Test', () => {
     expect(result).toBeDefined();
   });
 });
-

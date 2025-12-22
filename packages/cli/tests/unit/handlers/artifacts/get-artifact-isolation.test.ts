@@ -1,6 +1,6 @@
 /**
  * Isolation test for get artifact handler
- * 
+ *
  * LITMUS TEST: Verify handler is REPL-friendly
  */
 
@@ -43,4 +43,3 @@ describe('getArtifactHandler - Isolation Test', () => {
     expect(result).toBeDefined();
   });
 });
-

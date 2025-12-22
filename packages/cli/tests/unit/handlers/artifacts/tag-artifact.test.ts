@@ -57,4 +57,3 @@ describe('tagArtifactHandler', () => {
     expect(result.tags).toEqual(['production', 'tested', 'v2']);
   });
 });
-

@@ -58,4 +58,3 @@ describe('listArtifactsHandler', () => {
     expect(result.filteredBy.tags).toBeUndefined();
   });
 });
-
