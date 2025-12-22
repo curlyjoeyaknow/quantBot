@@ -22,5 +22,12 @@ export async function processTelegramPythonHandler(
   const service = ctx.services.telegramPipeline();
 
   // chatId is optional - Python script will extract from file or default to "single_chat"
-  return await service.runPipeline(args.file, args.outputDb, args.chatId, args.rebuild);
+  // Use a longer timeout (30 minutes) for large Telegram exports that may take time to process
+  return await service.runPipeline(
+    args.file,
+    args.outputDb,
+    args.chatId,
+    args.rebuild,
+    { timeout: 30 * 60 * 1000 } // 30 minutes timeout
+  );
 }

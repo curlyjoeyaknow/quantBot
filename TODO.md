@@ -2,7 +2,7 @@
 
 > **Project roadmap and task tracking**
 
-Last updated: 2025-12-20
+Last updated: 2025-12-23
 
 ---
 
@@ -86,6 +86,21 @@ Last updated: 2025-12-20
 ---
 
 ## ✅ Completed
+
+### 2025-12-23
+
+- [x] **Fixed critical OHLCV ingestion bugs**
+  - StatePort serialization bug (objects now correctly serialized to JSON strings)
+  - DuckDB path propagation bug (correct path now passed to context creator)
+  - Chain normalization bug (BNB now correctly maps to bsc, not solana)
+  - EVM chain detection in surgical fetch (now detects EVM addresses correctly)
+- [x] **Created comprehensive regression tests**
+  - StatePort adapter regression tests (4 tests, all passing)
+  - OHLCV ingestion handler regression tests (2 tests)
+  - Chain normalization regression tests (8 Python tests, all passing)
+  - All tests include CRITICAL markers and documentation
+- [x] Updated CHANGELOG.md with bug fixes and regression tests
+- [x] Updated README.md with regression testing requirements
 
 ### 2025-12-20
 
@@ -178,6 +193,7 @@ Last updated: 2025-12-20
 - [ ] Inconsistent error handling across packages
 - [ ] Missing property tests for financial calculations
 - [ ] Some tests share prod math helpers (should be independent)
+- [ ] Some integration tests failing (OhlcvIngestionService.integration.test.ts, duckdb-idempotency.test.ts) - pre-existing test setup issues, not related to recent bug fixes
 
 ### Cleanup
 

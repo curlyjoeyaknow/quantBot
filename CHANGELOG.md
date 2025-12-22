@@ -7,7 +7,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **CRITICAL: StatePort serialization bug** - Fixed metadata update failures in OHLCV ingestion
+  - StatePort adapter now correctly serializes JavaScript objects to JSON strings before passing to Python
+  - Python scripts now receive properly formatted JSON strings instead of raw objects
+  - Fixes Pydantic validation errors: "Input should be a valid string [type=string_type, input_value={...}, input_type=dict]"
+  - Location: `packages/workflows/src/adapters/stateDuckdbAdapter.ts`
+
+- **CRITICAL: DuckDB path propagation bug** - Fixed incorrect DuckDB path usage in OHLCV ingestion
+  - OHLCV ingestion handler now correctly passes `duckdbPath` to `createOhlcvIngestionContext()`
+  - StatePort adapter now uses the correct DuckDB path specified in workflow spec instead of default path
+  - Fixes "Cannot open file" errors when using custom DuckDB paths (e.g., `data/calls.duckdb`)
+  - Location: `packages/cli/src/commands/ingestion/ingest-ohlcv.ts`, `packages/workflows/src/context/createOhlcvIngestionContext.ts`
+
+- **CRITICAL: Chain normalization bug** - Fixed BNB chain misidentification in OHLCV worklist generation
+  - `normalize_chain()` function now correctly maps 'BNB' to 'bsc' (not defaulting to 'solana')
+  - SQL queries in `ohlcv_worklist.py` now normalize 'BNB' to 'bsc' before grouping tokens
+  - Fixes EVM tokens on BSC being misidentified as Solana tokens, causing "No candles returned" errors
+  - Location: `tools/ingestion/ohlcv_worklist.py`
+
+- **CRITICAL: EVM chain detection in surgical fetch** - Fixed hardcoded 'solana' chain in surgical OHLCV fetch
+  - `surgicalOhlcvFetch` workflow now detects EVM addresses and passes 'ethereum' as chain hint
+  - `OhlcvIngestionEngine` uses `fetchMultiChainMetadata` to determine precise EVM chain (ethereum/base/bsc)
+  - Fixes EVM tokens being incorrectly queried as Solana tokens
+  - Location: `packages/workflows/src/ohlcv/surgicalOhlcvFetch.ts`
+
 ### Added
+
+- **Data Observatory Package** (`@quantbot/data-observatory`) - New package for canonical data models, snapshots, and quality checks
+  - Canonical data model with unified event schemas (calls, trades, OHLCV, metadata, signals)
+  - Snapshot system with content hashing for reproducibility (DataSnapshotRef format)
+  - Data quality tools: coverage calculation, gap detection, anomaly detection
+  - Integration tests for snapshot creation, event collection, and coverage calculation
+  - Factory functions for easy setup
+  - Documentation: README, integration tests guide, merge readiness checklist
+  - Location: `packages/data-observatory/`
+  - Interface contract ready for Branch A (simulation engine) integration
+
+- **Regression Tests for Critical Bugs** - Created comprehensive regression tests to prevent bug recurrence
+  - StatePort serialization tests: Verify objects are serialized/deserialized correctly (`packages/workflows/tests/unit/adapters/stateDuckdbAdapter.regression.test.ts`)
+  - DuckDB path propagation tests: Verify correct path is passed to context creator (`packages/cli/tests/unit/handlers/ingestion/ingest-ohlcv.regression.test.ts`)
+  - Chain normalization tests: Verify BNB→bsc mapping in Python function and SQL queries (`tools/ingestion/tests/test_chain_normalization_regression.py`, `tools/ingestion/tests/test_worklist_sql_normalization_regression.py`)
+  - All tests include CRITICAL markers and documentation explaining what bugs they prevent
+  - Tests follow debugging and regression test rules from `.cursor/rules/debugging-regression-test.mdc`
 
 - **Comprehensive ARCHITECTURE.md**: Created detailed system architecture documentation in `docs/ARCHITECTURE.md`
   - Package dependency graph with visual diagram
