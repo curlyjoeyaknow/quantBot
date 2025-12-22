@@ -123,8 +123,8 @@ export default tseslint.config(
   },
 
   /**
-   * Architectural Import Firewall
-   * Existing rules kept (your current intent).
+   * Architectural Import Firewall - Layer Boundaries
+   * Enforces separation of concerns as documented in docs/ARCHITECTURE_BOUNDARIES.md
    */
   {
     files: ['packages/simulation/src/**/*.ts'],
@@ -132,13 +132,99 @@ export default tseslint.config(
       'no-restricted-imports': [
         'error',
         {
+          paths: [
+            {
+              name: '@quantbot/storage',
+              message:
+                'Simulation (Strategy Logic layer) cannot import Storage (Infrastructure layer). Simulation must remain pure (no I/O). Use ports/interfaces from @quantbot/core instead.',
+            },
+            {
+              name: '@quantbot/api-clients',
+              message:
+                'Simulation (Strategy Logic layer) cannot import API Clients (Data Ingestion layer). Simulation must remain pure (no network I/O). Use ports/interfaces from @quantbot/core instead.',
+            },
+            {
+              name: '@quantbot/ohlcv',
+              message:
+                'Simulation (Strategy Logic layer) cannot directly import OHLCV (Feature Engineering layer). Use candle data via ports/interfaces from @quantbot/core instead.',
+            },
+            {
+              name: '@quantbot/ingestion',
+              message:
+                'Simulation (Strategy Logic layer) cannot import Ingestion (Data Ingestion layer). Simulation must remain pure (no I/O).',
+            },
+            {
+              name: '@quantbot/jobs',
+              message:
+                'Simulation (Strategy Logic layer) cannot import Jobs (Data Ingestion layer). Simulation must remain pure (no I/O).',
+            },
+            {
+              name: '@quantbot/analytics',
+              message:
+                'Simulation (Strategy Logic layer) cannot import Analytics (Feature Engineering layer). Features feed simulation, not vice versa.',
+            },
+          ],
           patterns: [
-            '@quantbot/storage*',
-            '@quantbot/api-clients*',
-            '@quantbot/ohlcv*',
-            '@quantbot/ingestion*',
-            '**/axios',
-            'axios',
+            {
+              group: [
+                '@quantbot/storage*',
+                '@quantbot/api-clients*',
+                '@quantbot/ohlcv*',
+                '@quantbot/ingestion*',
+                '@quantbot/jobs*',
+                '@quantbot/analytics*',
+              ],
+              message:
+                'Simulation must remain pure (no I/O, no feature engineering imports). Use ports/interfaces from @quantbot/core instead.',
+            },
+            {
+              group: ['**/axios', 'axios', 'node-fetch', '**/node-fetch'],
+              message: 'Simulation must remain pure (no network I/O). Use ports/interfaces instead.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ['packages/analytics/src/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: '@quantbot/api-clients',
+              message:
+                'Analytics (Feature Engineering layer) cannot import API Clients (Data Ingestion layer). Feature engineering works on existing data, not fetch new data. Use @quantbot/ohlcv for candle data instead.',
+            },
+            {
+              name: '@quantbot/jobs',
+              message:
+                'Analytics (Feature Engineering layer) cannot import Jobs (Data Ingestion layer). Feature engineering works on existing data, not fetch new data.',
+            },
+            {
+              name: '@quantbot/ingestion',
+              message:
+                'Analytics (Feature Engineering layer) cannot import Ingestion (Data Ingestion layer). Feature engineering works on existing data, not ingest new data.',
+            },
+            {
+              name: '@quantbot/simulation',
+              message:
+                'Analytics (Feature Engineering layer) cannot import Simulation (Strategy Logic layer). Analytics feeds simulation, not vice versa. Only import result types if needed.',
+            },
+          ],
+          patterns: [
+            {
+              group: ['@quantbot/api-clients*', '@quantbot/jobs*', '@quantbot/ingestion*'],
+              message:
+                'Feature Engineering layer cannot import Data Ingestion layer. Feature engineering works on existing data, not fetch/ingest new data.',
+            },
+            {
+              group: ['@quantbot/simulation/src/**'],
+              message:
+                'Analytics cannot import simulation internals. Only import result types from @quantbot/simulation public API if needed.',
+            },
           ],
         },
       ],
@@ -150,7 +236,35 @@ export default tseslint.config(
       'no-restricted-imports': [
         'error',
         {
-          patterns: ['@quantbot/simulation*'],
+          paths: [
+            {
+              name: '@quantbot/simulation',
+              message:
+                'OHLCV (Feature Engineering layer) cannot import Simulation (Strategy Logic layer). OHLCV feeds simulation, not vice versa.',
+            },
+            {
+              name: '@quantbot/api-clients',
+              message:
+                'OHLCV (Feature Engineering layer) cannot import API Clients (Data Ingestion layer). OHLCV can only read data, not fetch new data. Use @quantbot/jobs for online fetching.',
+            },
+            {
+              name: '@quantbot/jobs',
+              message:
+                'OHLCV (Feature Engineering layer) cannot import Jobs (Data Ingestion layer). OHLCV can only read data, not fetch new data. Jobs should use OHLCV, not the other way around.',
+            },
+          ],
+          patterns: [
+            {
+              group: ['@quantbot/simulation*'],
+              message:
+                'OHLCV (Feature Engineering layer) cannot import Simulation (Strategy Logic layer). OHLCV feeds simulation, not vice versa.',
+            },
+            {
+              group: ['@quantbot/api-clients*', '@quantbot/jobs*'],
+              message:
+                'OHLCV (Feature Engineering layer) cannot import Data Ingestion layer. OHLCV can only read data, not fetch new data.',
+            },
+          ],
         },
       ],
     },
