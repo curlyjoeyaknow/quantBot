@@ -104,3 +104,11 @@ export type {
   IngestOhlcvWorkflowInput,
   IngestOhlcvWorkflowOutput,
 } from './ohlcv/ingestOhlcvPorted.js';
+export { evaluateCallsWorkflow } from './calls/evaluate.js';
+export type {
+  EvaluateCallsRequest,
+  EvaluateCallsOutput,
+  CallerSummary,
+  WorkflowContextWithPorts,
+} from './calls/evaluate.js';
+export type { CallBacktestResult, BacktestParams } from './calls/backtest.js';

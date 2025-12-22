@@ -5,7 +5,6 @@
  * This is the boundary layer between TypeScript handlers and Python tools.
  */
 
-import { execSync } from 'child_process';
 import { join, dirname, resolve } from 'path';
 import { z } from 'zod';
 import { existsSync, readFileSync } from 'fs';

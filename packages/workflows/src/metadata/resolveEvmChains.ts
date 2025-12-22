@@ -196,7 +196,9 @@ async function resolveTokenChain(
       }
     } catch (error) {
       // Continue to next chain
-      workflowCtx.logger.debug?.(`${chain} failed for ${address.substring(0, 20)}...: ${error instanceof Error ? error.message : String(error)}`);
+      workflowCtx.logger.debug?.(
+        `${chain} failed for ${address.substring(0, 20)}...: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
   }
 
@@ -419,7 +421,12 @@ export async function resolveEvmChains(
           // Update ClickHouse
           if (validated.useClickHouse) {
             try {
-              await updateChainInClickHouse(token.address, chain, workflowCtx.ports.query, workflowCtx.logger);
+              await updateChainInClickHouse(
+                token.address,
+                chain,
+                workflowCtx.ports.query,
+                workflowCtx.logger
+              );
             } catch (error) {
               workflowCtx.logger.warn('Failed to update chain in ClickHouse', {
                 address: token.address.substring(0, 20),
@@ -555,7 +562,12 @@ export async function createDefaultResolveEvmChainsContext(): Promise<ResolveEvm
     getEvmTokensFromClickHouse: () => getEvmTokensFromClickHouse(baseContext.ports.query),
     getEvmTokensFromDuckDB,
     updateChainInClickHouse: (address: string, newChain: string) =>
-      updateChainInClickHouse(address, newChain, baseContext.ports.query, baseContext.logger as { warn: (msg: string, ctx?: unknown) => void }),
+      updateChainInClickHouse(
+        address,
+        newChain,
+        baseContext.ports.query,
+        baseContext.logger as { warn: (msg: string, ctx?: unknown) => void }
+      ),
     updateChainInDuckDB,
   };
 }

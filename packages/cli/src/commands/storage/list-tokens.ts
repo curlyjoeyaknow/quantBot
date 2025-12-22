@@ -73,7 +73,10 @@ export async function listTokensHandler(
     `;
   }
 
-  const result = await client.query(query);
+  const result = await client.query({
+    query,
+    format: 'JSONEachRow',
+  });
   const rows = (await result.json()) as Array<Record<string, unknown>>;
 
   return rows;

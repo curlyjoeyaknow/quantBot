@@ -44,7 +44,7 @@ interface TokenStatsRow {
  */
 export async function tokenStatsWorkflowHandler(
   args: TokenStatsWorkflowArgs,
-  ctx: CommandContext
+  _ctx: CommandContext
 ): Promise<GetTokenStatsResult | TokenStatsRow[]> {
   // Build workflow spec
   const spec: GetTokenStatsSpec = {

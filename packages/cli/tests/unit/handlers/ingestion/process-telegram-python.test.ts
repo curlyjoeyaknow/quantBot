@@ -93,7 +93,7 @@ describe('processTelegramPythonHandler', () => {
 
     const args = {
       file: '/path/to/input.json',
-      outputDb: '/path/to/output.duckdb',     
+      outputDb: '/path/to/output.duckdb',
       chatId: 'test_chat',
       // rebuild not provided (undefined)
       format: 'table' as const,

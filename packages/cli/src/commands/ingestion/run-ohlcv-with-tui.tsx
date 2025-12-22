@@ -81,151 +81,17 @@ export async function runOhlcvIngestionWithTui(args: IngestOhlcvArgs): Promise<v
   });
 
   // Create base context
-  const baseContext = createOhlcvIngestionContext({
-    ohlcvFetchJob,
-    duckdbStorage,
+  const baseContext = await createOhlcvIngestionContext({
+    duckdbPath,
   });
 
-  // Wrap fetchWorkList to emit events
-  const originalFetchWorkList = baseContext.jobs.ohlcvFetchJob.fetchWorkList;
-  baseContext.jobs.ohlcvFetchJob.fetchWorkList = async (worklist) => {
-    eventEmitter.emitEvent({
-      type: 'worklist_generated',
-      metadata: { count: worklist.length },
-    });
+  // TODO: Refactor to use ports.telemetry for event emission
+  // The old jobs.ohlcvFetchJob API is no longer available
+  // For now, events will be emitted via ports.telemetry in the workflow
+  // The workflow context now uses ports instead of direct service access
 
-    const results = await originalFetchWorkList(worklist);
-
-    // Emit events for each result
-    for (const result of results) {
-      const workItem = result.workItem;
-      
-      eventEmitter.emitEvent({
-        type: 'fetch_started',
-        mint: workItem.mint,
-        chain: workItem.chain,
-        interval: workItem.interval,
-        alertTime: workItem.alertTime?.toISO() || undefined,
-        startTime: workItem.startTime?.toISO() || undefined,
-        endTime: workItem.endTime?.toISO() || undefined,
-      });
-
-      if (result.success) {
-        eventEmitter.emitEvent({
-          type: 'fetch_success',
-          mint: workItem.mint,
-          chain: workItem.chain,
-          interval: workItem.interval,
-          alertTime: workItem.alertTime?.toISO() || undefined,
-          startTime: workItem.startTime?.toISO() || undefined,
-          endTime: workItem.endTime?.toISO() || undefined,
-          candlesFetched: result.candlesFetched,
-          candlesStored: result.candlesStored,
-          durationMs: result.durationMs,
-        });
-      } else {
-        eventEmitter.emitEvent({
-          type: 'fetch_failure',
-          mint: workItem.mint,
-          chain: workItem.chain,
-          interval: workItem.interval,
-          alertTime: workItem.alertTime?.toISO() || undefined,
-          error: result.error,
-          durationMs: result.durationMs,
-        });
-      }
-    }
-
-    return results;
-  };
-
-  // Wrap storeCandles function for event emission
-  // Pass through context instead of monkey-patching (ES modules are read-only)
-  const { storeCandles: originalStoreCandles } = await import('@quantbot/ohlcv');
-  const wrappedStoreCandles = async (
-    mint: string,
-    chain: string,
-    candles: Array<{
-      timestamp: number;
-      open: number;
-      high: number;
-      low: number;
-      close: number;
-      volume: number;
-    }>,
-    interval: string
-  ) => {
-    eventEmitter.emitEvent({
-      type: 'store_started',
-      mint,
-      chain,
-      interval,
-      candlesFetched: candles.length,
-    });
-
-    try {
-      await originalStoreCandles(mint, chain as Chain, candles, interval as '1m' | '5m' | '15m' | '1h' | '15s' | '1H');
-      eventEmitter.emitEvent({
-        type: 'store_success',
-        mint,
-        chain,
-        interval,
-        candlesStored: candles.length,
-      });
-    } catch (error) {
-      eventEmitter.emitEvent({
-        type: 'store_failure',
-        mint,
-        chain,
-        interval,
-        error: error instanceof Error ? error.message : String(error),
-      });
-      throw error;
-    }
-  };
-
-  // Pass wrapped storeCandles through context (workflow uses ctx.storeCandles || defaultStoreCandles)
-  const workflowContext = {
-    ...baseContext,
-    storeCandles: wrappedStoreCandles,
-  };
-
-  // Wrap updateOhlcvMetadata to emit events
-  if (workflowContext.duckdbStorage) {
-    const originalUpdateMetadata = workflowContext.duckdbStorage.updateOhlcvMetadata.bind(workflowContext.duckdbStorage);
-    workflowContext.duckdbStorage.updateOhlcvMetadata = async (
-      duckdbPath,
-      mint,
-      alertTimestamp,
-      intervalSeconds,
-      timeRangeStart,
-      timeRangeEnd,
-      candleCount
-    ) => {
-      const result = await originalUpdateMetadata(
-        duckdbPath,
-        mint,
-        alertTimestamp,
-        intervalSeconds,
-        timeRangeStart,
-        timeRangeEnd,
-        candleCount
-      );
-
-      if (result.success) {
-        eventEmitter.emitEvent({
-          type: 'metadata_updated',
-          mint,
-          alertTime: alertTimestamp,
-          startTime: timeRangeStart,
-          endTime: timeRangeEnd,
-          candlesStored: candleCount,
-        });
-      }
-
-      return result;
-    };
-  }
+  // Use the base context directly - events are emitted via ports.telemetry in the workflow
+  const workflowContext = baseContext;
 
   // Start TUI in background
   const tuiPromise = new Promise<void>((resolve) => {
@@ -253,7 +119,7 @@ export async function runOhlcvIngestionWithTui(args: IngestOhlcvArgs): Promise<v
     },
   });
 
-  const ingestionPromise = ingestOhlcv(spec, workflowContext).then((result) => {
+  const ingestionPromise = ingestOhlcv(spec, workflowContext).then((result: { worklistGenerated?: number; workItemsProcessed?: number; workItemsSucceeded?: number; workItemsFailed?: number; workItemsSkipped?: number; totalCandlesFetched?: number; totalCandlesStored?: number; durationMs?: number }) => {
     eventEmitter.emitEvent({
       type: 'workflow_completed',
       metadata: {

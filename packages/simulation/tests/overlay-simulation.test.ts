@@ -23,7 +23,7 @@ function createTestCandles(
   intervalSeconds: number = 300
 ): Candle[] {
   const candles: Candle[] = [];
-  let timestamp = 1000000000; // Fixed timestamp for determinism
+  const timestamp = 1000000000; // Fixed timestamp for determinism
 
   for (let i = 0; i < pricePath.length; i++) {
     const price = pricePath[i]!;
@@ -276,4 +276,3 @@ describe('Overlay Simulation - Golden Tests', () => {
     });
   });
 });
-

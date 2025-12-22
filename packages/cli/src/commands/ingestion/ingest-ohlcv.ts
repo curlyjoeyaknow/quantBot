@@ -25,7 +25,6 @@ import type { z } from 'zod';
  */
 export type IngestOhlcvArgs = z.infer<typeof ohlcvSchema>;
 
-
 /**
  * CLI handler: composition root (env + fs + wiring)
  *
@@ -48,8 +47,14 @@ export async function ingestOhlcvHandler(args: IngestOhlcvArgs, _ctx: CommandCon
   const duckdbPath = path.resolve(duckdbPathRaw);
 
   // Map interval to workflow format (workflow only accepts '15s', '1m', '5m', '1H')
-  let workflowInterval: '15s' | '1m' | '5m' | '1H' | undefined = args.interval;
-  if (args.interval === '15m') {
+  let workflowInterval: '15s' | '1m' | '5m' | '1H' = '5m'; // Default to 5m
+  if (args.interval === '1s' || args.interval === '15s') {
+    workflowInterval = '15s';
+  } else if (args.interval === '1m') {
+    workflowInterval = '1m';
+  } else if (args.interval === '5m') {
+    workflowInterval = '5m';
+  } else if (args.interval === '15m') {
     workflowInterval = '5m'; // 15m maps to 5m (workflow doesn't support 15m)
   } else if (args.interval === '1h') {
     workflowInterval = '1H'; // 1h maps to 1H (uppercase H)
@@ -57,6 +62,7 @@ export async function ingestOhlcvHandler(args: IngestOhlcvArgs, _ctx: CommandCon
 
   // Build workflow spec (all paths absolute, no env vars)
   const spec: IngestOhlcvSpec = {
+    chain: 'solana',
     duckdbPath,
     from: args.from,
     to: args.to,
@@ -73,7 +79,7 @@ export async function ingestOhlcvHandler(args: IngestOhlcvArgs, _ctx: CommandCon
   };
 
   // Create workflow context with ports
-  const workflowCtx = await createOhlcvIngestionContext();
+      const workflowCtx = await createOhlcvIngestionContext({ duckdbPath });
 
   // Call workflow directly (uses ports internally)
   const output = await ingestOhlcv(spec, workflowCtx);
@@ -111,11 +117,13 @@ function buildSummary(output: Awaited<ReturnType<typeof ingestOhlcv>>): unknown 
       durationMs: output.durationMs ?? 0,
     },
     ...(output.errors && output.errors.length > 0
-      ? output.errors.map((error) => ({
+      ? output.errors.map((err) => ({
           type: 'ERROR',
-          mint: error.mint ? String(error.mint).substring(0, 20) + (String(error.mint).length > 20 ? '...' : '') : 'unknown',
-          chain: error.chain ?? 'unknown',
-          error: error.error,
+          mint: err.mint
+            ? String(err.mint).substring(0, 20) + (String(err.mint).length > 20 ? '...' : '')
+            : 'unknown',
+          chain: err.chain ?? 'unknown',
+          error: err.error,
         }))
       : []),
   ];

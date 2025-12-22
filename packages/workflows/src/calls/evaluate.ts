@@ -13,8 +13,7 @@
  */
 
 import { DateTime } from 'luxon';
-import type { CallSignal } from '@quantbot/core';
-import type { Candle } from '@quantbot/core';
+import type { CallSignal, Chain, TokenAddress } from '@quantbot/core';
 import type { MarketDataPort } from '@quantbot/core';
 import { createTokenAddress } from '@quantbot/core';
 import { alignCallToOhlcvWindow, findEntryCandleIndex, type AlignedCall } from './align.js';
@@ -113,7 +112,7 @@ export async function evaluateCallsWorkflow(
 
     // Skip if not tradeable
     if (!aligned.eligibility.tradeable) {
-      ctx.logger.debug('Skipping non-tradeable call', {
+      ctx.logger.debug?.('Skipping non-tradeable call', {
         caller: call.caller.displayName,
         token: call.token.address.substring(0, 20),
         reason: aligned.eligibility.reason,
@@ -136,7 +135,10 @@ export async function evaluateCallsWorkflow(
       const mappedChain = chainMap[call.token.chain] || 'solana';
 
       // Map interval from align format to MarketDataPort format
-      const intervalMap: Record<AlignParams['interval'], '15s' | '1m' | '5m' | '15m' | '1H' | '4H' | '1D'> = {
+      const intervalMap: Record<
+        AlignParams['interval'],
+        '15s' | '1m' | '5m' | '15m' | '1H' | '4H' | '1D'
+      > = {
         '1s': '15s', // Closest available
         '1m': '1m',
         '5m': '5m',
@@ -148,17 +150,17 @@ export async function evaluateCallsWorkflow(
       // Convert string address to TokenAddress (for EVM addresses, this will fail validation)
       // For now, we'll use a type assertion since CallSignal supports EVM addresses
       // TODO: Consider making TokenAddress support both Solana and EVM addresses
-      let tokenAddress;
+      let tokenAddress: TokenAddress;
       try {
         tokenAddress = createTokenAddress(call.token.address);
       } catch {
         // EVM addresses are shorter, so we'll use type assertion as fallback
-        tokenAddress = call.token.address as any;
+        tokenAddress = call.token.address as TokenAddress;
       }
 
       const candles = await ctx.ports.marketData.fetchOhlcv({
         tokenAddress,
-        chain: mappedChain as any,
+        chain: mappedChain as Chain,
         interval: mappedInterval,
         from: Math.floor(aligned.window.fromMs / 1000),
         to: Math.floor(aligned.window.toMs / 1000),
@@ -179,7 +181,7 @@ export async function evaluateCallsWorkflow(
       const results = await evaluateCallOverlays(alignedWithIndex, candles, req.backtest);
       allResults.push(...results);
 
-      ctx.logger.debug('Backtested call', {
+      ctx.logger.debug?.('Backtested call', {
         caller: call.caller.displayName,
         token: call.token.address.substring(0, 20),
         resultsCount: results.length,
@@ -258,9 +260,7 @@ function aggregateByCaller(
       .sort((a, b) => a - b);
 
     const medianNetReturnPct =
-      netReturns.length > 0
-        ? netReturns[Math.floor(netReturns.length / 2)]
-        : 0;
+      netReturns.length > 0 ? (netReturns[Math.floor(netReturns.length / 2)] ?? 0) : 0;
 
     // Calculate win rate
     const wins = netReturns.filter((r) => r > 0).length;
@@ -284,7 +284,7 @@ function aggregateByCaller(
       if (overlayReturns.length === 0) continue;
 
       const overlayMedian = overlayReturns[Math.floor(overlayReturns.length / 2)];
-      if (overlayMedian > bestMedian) {
+      if (overlayMedian !== undefined && overlayMedian > bestMedian) {
         bestMedian = overlayMedian;
         bestOverlay = overlay;
       }
@@ -303,4 +303,3 @@ function aggregateByCaller(
 
   return summaries;
 }
-

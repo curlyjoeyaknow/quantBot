@@ -25,19 +25,22 @@ def normalize_chain(chain: str) -> str:
     Normalize chain abbreviations to full canonical names.
     
     Maps:
-    - 'eth' -> 'ethereum'
-    - 'sol' -> 'solana'
-    - 'solana' -> 'solana'
-    - 'bsc' -> 'bsc'
+    - 'eth'/'ethereum' -> 'ethereum'
+    - 'sol'/'solana' -> 'solana'
+    - 'bsc'/'bnb' -> 'bsc' (BNB is BSC's native token, same chain)
     - 'base' -> 'base'
     """
+    if not chain:
+        return 'solana'  # Default to solana if empty/None
+    
     chain_lower = chain.lower().strip()
     chain_map = {
         'eth': 'ethereum',
+        'ethereum': 'ethereum',
         'sol': 'solana',
         'solana': 'solana',
-        'ethereum': 'ethereum',
         'bsc': 'bsc',
+        'bnb': 'bsc',  # BNB is BSC's native token, same chain
         'base': 'base',
     }
     return chain_map.get(chain_lower, 'solana')  # Default to solana if unknown
@@ -85,10 +88,14 @@ def get_ohlcv_worklist(
             # Query 1: Token groups (for efficient candle fetching)
             # Note: side parameter is accepted but caller_links_d may not have a side column
             # If side column exists, we'll add it to the WHERE clause
+            # Normalize chain in SQL: BNB -> bsc (BNB is BSC's native token, same chain)
             token_group_query = """
             SELECT 
                 cl.mint,
-                LOWER(COALESCE(cl.chain, 'solana')) as chain,
+                CASE 
+                    WHEN LOWER(COALESCE(cl.chain, 'solana')) = 'bnb' THEN 'bsc'
+                    ELSE LOWER(COALESCE(cl.chain, 'solana'))
+                END as chain,
                 MIN(cl.trigger_ts_ms) as earliest_ts_ms,
                 COUNT(DISTINCT (cl.trigger_chat_id, cl.trigger_message_id)) as call_count
             FROM caller_links_d cl
@@ -110,10 +117,14 @@ def get_ohlcv_worklist(
                 pass
             
             # Query 2: Individual calls with enriched data (for ATH/ATL)
+            # Normalize chain in SQL: BNB -> bsc (BNB is BSC's native token, same chain)
             calls_query = """
             SELECT 
                 cl.mint,
-                LOWER(COALESCE(cl.chain, 'solana')) as chain,
+                CASE 
+                    WHEN LOWER(COALESCE(cl.chain, 'solana')) = 'bnb' THEN 'bsc'
+                    ELSE LOWER(COALESCE(cl.chain, 'solana'))
+                END as chain,
                 cl.trigger_ts_ms,
                 cl.trigger_chat_id,
                 cl.trigger_message_id,
@@ -157,7 +168,10 @@ def get_ohlcv_worklist(
                 calls_query += f" AND cl.mint IN ({placeholders})"
                 params.extend(mints)
             
-            token_group_query += " GROUP BY cl.mint, LOWER(COALESCE(cl.chain, 'solana'))"
+            token_group_query += """ GROUP BY cl.mint, CASE 
+                    WHEN LOWER(COALESCE(cl.chain, 'solana')) = 'bnb' THEN 'bsc'
+                    ELSE LOWER(COALESCE(cl.chain, 'solana'))
+                END"""
             calls_query += " ORDER BY cl.trigger_ts_ms"
             
         elif 'user_calls_d' in table_names:

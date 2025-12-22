@@ -22,9 +22,17 @@ import type { IngestOhlcvContext } from '../ohlcv/ingestOhlcv.js';
 
 /**
  * Create WorkflowContext for OHLCV ingestion with ports
+ * 
+ * Uses REAL port adapters (StatePort, MarketDataPort, etc.) with configurable paths.
+ * For tests, pass duckdbPath to use a temporary file.
  */
 export async function createOhlcvIngestionContext(
-  config?: ProductionContextConfig
+  config?: ProductionContextConfig & {
+    /**
+     * Optional DuckDB path override (for testing - uses temp file)
+     */
+    duckdbPath?: string;
+  }
 ): Promise<IngestOhlcvContext> {
   const baseContext = await createProductionContextWithPorts(config);
 

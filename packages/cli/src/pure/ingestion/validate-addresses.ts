@@ -90,7 +90,7 @@ export async function validateAddressesHandler(
         chain: result.primaryMetadata?.chain,
         name: result.primaryMetadata?.name,
         symbol: result.primaryMetadata?.symbol,
-        chainsAttempted: result.metadata.map((m) => ({
+        chainsAttempted: result.metadata.map((m): { chain: Chain; found: boolean } => ({
           chain: m.chain,
           found: m.found,
         })),

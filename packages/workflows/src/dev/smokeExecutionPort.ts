@@ -99,7 +99,9 @@ export async function smokeExecutionPort(): Promise<void> {
 
     console.log('\n✅ All ExecutionPort smoke tests passed!');
     console.log('\n⚠️  REMINDER: This adapter is in dry-run mode (no real trades executed).');
-    console.log('   To enable real execution, set EXECUTION_DRY_RUN=false (NOT RECOMMENDED in development).');
+    console.log(
+      '   To enable real execution, set EXECUTION_DRY_RUN=false (NOT RECOMMENDED in development).'
+    );
   } catch (error) {
     console.error('❌ ExecutionPort smoke test failed:', error);
     throw error;
@@ -118,4 +120,3 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       process.exit(1);
     });
 }
-

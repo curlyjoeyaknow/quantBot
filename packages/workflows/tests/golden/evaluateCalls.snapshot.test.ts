@@ -107,15 +107,36 @@ describe('evaluateCallsWorkflow - End-to-End Snapshot', () => {
     const entryTime1 = 1000000010; // Call time + 10s lag
     const windowStart1 = entryTime1 - 12 * 3600; // 12 hours before
     // Create enough candles to cover the window (24 hours = 288 5-minute candles, but we'll use fewer)
-    const candles1 = createTestCandles(1.0, Array(50).fill(0).map((_, i) => 1.0 + (i * 0.03)), windowStart1, 300);
+    const candles1 = createTestCandles(
+      1.0,
+      Array(50)
+        .fill(0)
+        .map((_, i) => 1.0 + i * 0.03),
+      windowStart1,
+      300
+    );
     // Call 2: Price drops 20% (stop loss triggers)
     const entryTime2 = 1000001010;
     const windowStart2 = entryTime2 - 12 * 3600;
-    const candles2 = createTestCandles(1.0, Array(50).fill(0).map((_, i) => 1.0 - (i * 0.004)), windowStart2, 300);
+    const candles2 = createTestCandles(
+      1.0,
+      Array(50)
+        .fill(0)
+        .map((_, i) => 1.0 - i * 0.004),
+      windowStart2,
+      300
+    );
     // Call 3: Price goes up 50% then drops (trailing stop)
     const entryTime3 = 1000002010;
     const windowStart3 = entryTime3 - 12 * 3600;
-    const candles3 = createTestCandles(1.0, Array(50).fill(0).map((_, i) => 1.0 + (i < 25 ? i * 0.02 : (25 - (i - 25)) * 0.01)), windowStart3, 300);
+    const candles3 = createTestCandles(
+      1.0,
+      Array(50)
+        .fill(0)
+        .map((_, i) => 1.0 + (i < 25 ? i * 0.02 : (25 - (i - 25)) * 0.01)),
+      windowStart3,
+      300
+    );
 
     const mockMarketData: MarketDataPort = {
       fetchOhlcv: vi.fn(async (req) => {
@@ -128,7 +149,7 @@ describe('evaluateCallsWorkflow - End-to-End Snapshot', () => {
         } else if (req.tokenAddress === '0x3333333333333333333333333333333333333333') {
           candles = candles3;
         }
-        
+
         // Filter candles to requested window
         return candles.filter((c) => c.timestamp >= req.from && c.timestamp <= req.to);
       }),
@@ -245,7 +266,14 @@ describe('evaluateCallsWorkflow - End-to-End Snapshot', () => {
 
   it('GOLDEN: handles non-tradeable calls (unknown chain)', async () => {
     const calls: CallSignal[] = [
-      createCallSignal('0x9999999999999999999999999999999999999999', 'unknown', 'CallerC', 'user3', 1000000000000, 4),
+      createCallSignal(
+        '0x9999999999999999999999999999999999999999',
+        'unknown',
+        'CallerC',
+        'user3',
+        1000000000000,
+        4
+      ),
     ];
 
     const mockMarketData: MarketDataPort = {
@@ -294,7 +322,7 @@ describe('evaluateCallsWorkflow - End-to-End Snapshot', () => {
     // Should skip non-tradeable calls (workflow skips them before creating results)
     // For unknown chain, the workflow should skip early, so results may be empty
     expect(result.results.length).toBeGreaterThanOrEqual(0);
-    
+
     // If there are results, they should all be non-tradeable
     if (result.results.length > 0) {
       const skipped = result.results.filter((r) => !r.diagnostics.tradeable);
@@ -303,4 +331,3 @@ describe('evaluateCallsWorkflow - End-to-End Snapshot', () => {
     }
   });
 });
-

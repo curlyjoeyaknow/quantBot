@@ -92,7 +92,9 @@ describe('OhlcvIngestionService (integration)', () => {
     cleanupTestDuckDB(testDuckDBPath);
   });
 
-  it('queries real DuckDB and processes worklist correctly', async () => {
+  it(
+    'queries real DuckDB and processes worklist correctly',
+    async () => {
     const now = DateTime.utc();
     const validMint = 'So11111111111111111111111111111111111111112'; // WSOL
     const alertTime1 = now.minus({ minutes: 5 });
@@ -240,7 +242,9 @@ describe('OhlcvIngestionService (integration)', () => {
     expect(result.tokensProcessed).toBeGreaterThan(0);
     // The service may skip tokens if API calls fail or other conditions aren't met
     // But we've verified the real DuckDB query worked, which is the integration test goal
-  });
+    },
+    30000 // 30 second timeout for real DuckDB and API calls
+  );
 
   it('calculates ATH/ATL with realistic candle progression', async () => {
     const now = DateTime.utc();

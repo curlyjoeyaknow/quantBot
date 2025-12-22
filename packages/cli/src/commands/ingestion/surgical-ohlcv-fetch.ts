@@ -115,9 +115,9 @@ export async function surgicalOhlcvFetchHandler(args: SurgicalOhlcvFetchArgs, ct
     minCoverageToSkip: args.minCoverage ?? 0.95,
   });
 
-  // Create OHLCV ingestion context with the fetch job service
-  const ohlcvIngestionContext = createOhlcvIngestionContext({
-    ohlcvFetchJob,
+  // Create OHLCV ingestion context
+  const ohlcvIngestionContext = await createOhlcvIngestionContext({
+    duckdbPath: spec.duckdbPath,
   });
 
   // Create progress callback if verbose mode is enabled
@@ -189,16 +189,16 @@ function buildSummary(result: Awaited<ReturnType<typeof surgicalOhlcvFetch>>): u
 
   for (const task of result.taskResults) {
     // Track which intervals were processed
-    task.intervals.forEach((interval) => intervalsProcessed.add(interval));
+    task.intervals.forEach((interval: string) => intervalsProcessed.add(interval));
 
     // Track successful mints
     if (task.success && task.missingMints) {
-      task.missingMints.forEach((mint) => successfulMints.add(mint));
+      task.missingMints.forEach((mint: string) => successfulMints.add(mint));
     }
   }
 
   // Build task summaries (one per task)
-  const taskSummaries = result.taskResults.map((task) => ({
+  const taskSummaries = result.taskResults.map((task: { caller?: string; month?: string; success: boolean; error?: string; missingMints?: string[]; candlesFetched?: number; candlesStored?: number; intervals: string[]; durationMs?: number }) => ({
     caller: task.caller,
     month: task.month,
     status: task.success ? 'success' : task.error ? 'failed' : 'pending',
@@ -213,7 +213,7 @@ function buildSummary(result: Awaited<ReturnType<typeof surgicalOhlcvFetch>>): u
 
   // Calculate coverage stats
   const totalMintsRequested = result.taskResults.reduce(
-    (sum, task) => sum + (task.missingMints?.length || 0),
+    (sum: number, task: { missingMints?: string[] }) => sum + (task.missingMints?.length || 0),
     0
   );
   const totalMintsFetched = successfulMints.size;
@@ -240,7 +240,7 @@ function buildSummary(result: Awaited<ReturnType<typeof surgicalOhlcvFetch>>): u
       clickhouseCandlesStored: result.totalCandlesStored,
       clickhouseCallsCoverage: `${(mintsCoverage * 100).toFixed(1)}%`,
     },
-    ...taskSummaries.map((task) => ({
+    ...taskSummaries.map((task: { type?: string; caller?: string; month?: string; status: string; mintsRequested: number; mintsFetched: number; candlesFetched?: number; candlesStored?: number; intervals: string; error?: string; durationMs?: number }) => ({
       type: 'TASK',
       ...task,
     })),

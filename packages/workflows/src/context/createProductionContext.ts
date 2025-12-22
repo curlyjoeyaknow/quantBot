@@ -72,13 +72,18 @@ export interface ProductionContextConfig {
  * Ports are added incrementally as adapters are created.
  */
 export async function createProductionContextWithPorts(
-  config?: ProductionContextConfig
+  config?: ProductionContextConfig & {
+    /**
+     * Optional DuckDB path override (for testing)
+     */
+    duckdbPath?: string;
+  }
 ): Promise<WorkflowContext & { ports: import('./ports.js').ProductionPorts }> {
   const baseContext = createProductionContext(config);
   const { createProductionPorts } = await import('./createProductionPorts.js');
 
-  // Get DuckDB path from environment or use default (same as base context)
-  const duckdbPath = process.env.DUCKDB_PATH || 'data/tele.duckdb';
+  // Get DuckDB path from config, environment, or use default
+  const duckdbPath = config?.duckdbPath || process.env.DUCKDB_PATH || 'data/tele.duckdb';
   const ports = await createProductionPorts(duckdbPath);
 
   return {

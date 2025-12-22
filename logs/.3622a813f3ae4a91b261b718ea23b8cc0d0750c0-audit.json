@@ -29,6 +29,11 @@
             "date": 1766385515683,
             "name": "/home/memez/quantBot/logs/error-2025-12-22.log",
             "hash": "ccfb2419e4636440db5f1762e8f1d1573488244dc2c685bd9432260b6ef55d45"
+        },
+        {
+            "date": 1766416118867,
+            "name": "/home/memez/quantBot/logs/error-2025-12-23.log",
+            "hash": "bccb14d6b0a436233535f0046f836353c2f0d528094132f93197bf08a5def1fb"
         }
     ],
     "hashType": "sha256"

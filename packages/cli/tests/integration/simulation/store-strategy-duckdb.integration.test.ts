@@ -107,7 +107,9 @@ describe('storeStrategyDuckdbHandler - Integration Tests', () => {
     const result2 = await storeStrategyDuckdbHandler(args, ctx);
     expect(result2.success).toBe(true);
     expect(result2.strategy_id).toBe('DUPLICATE_TEST');
-  });
+  },
+  30000 // 30 second timeout
+  );
 
   it('propagates errors from Python script correctly', async () => {
     const invalidArgs = {

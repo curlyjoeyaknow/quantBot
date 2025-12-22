@@ -42,7 +42,6 @@ import type { SimulationConfig, SimulationOutput } from '@quantbot/simulation';
 //   lookback_minutes?: number;
 //   lookforward_minutes?: number;
 // };
-import type { IngestOhlcvContext } from '../ohlcv/ingestOhlcv.js';
 
 /**
  * DuckDB Simulation Spec

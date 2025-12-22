@@ -56,11 +56,24 @@ export function createStateDuckdbAdapter(duckdbPath: string): StatePort {
           return { found: false };
         }
 
+        // Parse JSON string back to object (Python returns string, we need to deserialize)
+        let parsedValue: T;
+        if (typeof validated.value === 'string') {
+          try {
+            parsedValue = JSON.parse(validated.value) as T;
+          } catch {
+            // If parsing fails, return as-is (might be a plain string value)
+            parsedValue = validated.value as T;
+          }
+        } else {
+          parsedValue = validated.value as T;
+        }
+
         return {
           found: true,
-          value: validated.value as T,
+          value: parsedValue,
         };
-      } catch (error) {
+      } catch {
         // Return not found on error (graceful degradation)
         return { found: false };
       }
@@ -68,12 +81,16 @@ export function createStateDuckdbAdapter(duckdbPath: string): StatePort {
 
     async set(request: StateSetRequest): Promise<{ success: boolean; error?: string }> {
       try {
+        // Serialize value to JSON string (Python expects string, not object)
+        const valueString =
+          typeof request.value === 'string' ? request.value : JSON.stringify(request.value);
+
         const result = await pythonEngine.runDuckDBStorage({
           duckdbPath,
           operation: 'set_state',
           data: {
             key: request.key,
-            value: request.value,
+            value: valueString,
             namespace: request.namespace ?? 'default',
             ttl_seconds: request.ttlSeconds,
           },
@@ -118,7 +135,7 @@ export function createStateDuckdbAdapter(duckdbPath: string): StatePort {
       }
     },
 
-    async query(request: StateQueryRequest): Promise<StateQueryResult> {
+    async query(_request: StateQueryRequest): Promise<StateQueryResult> {
       try {
         // Query operations not yet supported in DuckDB storage - return empty result
         // TODO: Implement query_state operation in Python script
@@ -126,7 +143,7 @@ export function createStateDuckdbAdapter(duckdbPath: string): StatePort {
           rows: [],
           rowCount: 0,
         };
-      } catch (error) {
+      } catch {
         return {
           rows: [],
           rowCount: 0,
@@ -180,7 +197,7 @@ export function createStateDuckdbAdapter(duckdbPath: string): StatePort {
 
         const validated = StateOperationResultSchema.parse(result);
         return validated.success;
-      } catch (error) {
+      } catch {
         return false;
       }
     },

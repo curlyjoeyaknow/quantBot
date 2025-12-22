@@ -100,14 +100,20 @@ export async function getOhlcvStats(
     query: `SELECT COUNT(*) as count FROM ${database}.ohlcv_candles ${whereClause}`,
     format: 'JSONEachRow',
   });
-  const totalCandles = parseInt(String((totalResult.rows[0] as Record<string, unknown>)?.['count'] || 0), 10);
+  const totalCandles = parseInt(
+    String((totalResult.rows[0] as Record<string, unknown>)?.['count'] || 0),
+    10
+  );
 
   // Unique tokens
   const uniqueResult = await ctx.ports.query.query({
     query: `SELECT COUNT(DISTINCT token_address) as count FROM ${database}.ohlcv_candles ${whereClause}`,
     format: 'JSONEachRow',
   });
-  const uniqueTokens = parseInt(String((uniqueResult.rows[0] as Record<string, unknown>)?.['count'] || 0), 10);
+  const uniqueTokens = parseInt(
+    String((uniqueResult.rows[0] as Record<string, unknown>)?.['count'] || 0),
+    10
+  );
 
   // Date range
   const rangeResult = await ctx.ports.query.query({

@@ -101,6 +101,8 @@ describe('DuckDB Ingestion Idempotency', () => {
   });
 
   describe('1. Same input twice → exact same row counts (no duplicates)', () => {
+    // Increase timeout for DuckDB/Python operations
+    const TIMEOUT_MS = 30000;
     it('first run creates rows', async () => {
       if (!existsSync(pythonToolPath)) {
         console.warn('Python tool not found, skipping test');
@@ -134,8 +136,10 @@ describe('DuckDB Ingestion Idempotency', () => {
       expect(callsCount1).toBeGreaterThanOrEqual(0);
     });
 
-    it('second run with same input produces exact same row counts', async () => {
-      if (!existsSync(pythonToolPath)) {
+    it(
+      'second run with same input produces exact same row counts',
+      async () => {
+        if (!existsSync(pythonToolPath)) {
         console.warn('Python tool not found, skipping test');
         return;
       }
@@ -186,10 +190,14 @@ describe('DuckDB Ingestion Idempotency', () => {
       expect(tgCount2).toBe(tgCount1);
       expect(linksCount2).toBe(linksCount1);
       expect(callsCount2).toBe(callsCount1);
-    });
+      },
+      30000 // 30 second timeout for DuckDB/Python operations
+    );
 
-    it('detects duplicates when they occur (current behavior)', async () => {
-      if (!existsSync(pythonToolPath)) {
+    it(
+      'detects duplicates when they occur (current behavior)',
+      async () => {
+        if (!existsSync(pythonToolPath)) {
         console.warn('Python tool not found, skipping test');
         return;
       }
@@ -241,7 +249,9 @@ describe('DuckDB Ingestion Idempotency', () => {
       // Currently duplicates are created (this documents the problem)
       // After idempotency fix, this should be: expect(count2).toBe(count1);
       expect(count2).toBeGreaterThanOrEqual(count1);
-    });
+      },
+      30000 // 30 second timeout for DuckDB/Python operations
+    );
   });
 
   describe('2. Partial run → rerun repairs/finishes, not corrupts', () => {

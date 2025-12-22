@@ -124,12 +124,14 @@ QuantBot's core capabilities:
 **Current State**: Live execution is intentionally isolated behind `ExecutionPort` and a dedicated executor app boundary. This repo currently focuses on ingestion, simulation, and deterministic strategy evaluation.
 
 **Architecture**:
+
 - **ExecutionPort Interface**: Defined in `@quantbot/core` - handlers depend on ports, not implementations
 - **Stub Adapter**: Safety-first stub with dry-run mode, circuit breakers, and idempotency (default enabled)
 - **Executor App Boundary**: Live trading runtime concerns (keys, signing, RPC/Jito submission, risk gates) live in a separate app boundary (`apps/executor` or `packages/executor`)
 - **Reusability**: Pure logic (core handlers + ports + workflows) is reusable for live trading without modification
 
 **Why This Design**:
+
 - **Safety**: Hard-walled separation between research/backtesting and live execution
 - **Reusability**: Same handlers/workflows work for both simulation and live trading
 - **Flexibility**: Can enable live execution when ready without architectural changes

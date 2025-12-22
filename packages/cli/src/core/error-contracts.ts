@@ -98,31 +98,33 @@ export function errorToContract(error: unknown, operation: string, runId?: strin
   }
 
   if (error instanceof ApiError) {
+    const apiError = error as ApiError;
     return {
       code: 'API_ERROR',
-      message: error.message,
+      message: apiError.message,
       operation,
       metadata: {
-        apiName: error.apiName,
-        apiStatusCode: error.apiStatusCode,
-        ...(error.context || {}),
+        apiName: apiError.apiName,
+        apiStatusCode: apiError.apiStatusCode,
+        ...(apiError.context || {}),
       },
       timestamp,
       runId,
-      statusCode: error.statusCode,
+      statusCode: apiError.statusCode,
       errorType: 'ApiError',
     };
   }
 
   if (error instanceof DatabaseError) {
+    const dbError = error as DatabaseError;
     return {
       code: 'DATABASE_ERROR',
-      message: error.message,
+      message: dbError.message,
       operation,
-      metadata: error.context || {},
+      metadata: dbError.context || {},
       timestamp,
       runId,
-      statusCode: error.statusCode,
+      statusCode: dbError.statusCode,
       errorType: 'DatabaseError',
     };
   }

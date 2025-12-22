@@ -327,7 +327,9 @@ export async function ingestOhlcv(
       } catch (error) {
         // Coverage check failure is not fatal, continue with fetch
         if (workflowCtx.logger?.debug) {
-          workflowCtx.logger.debug(`Coverage check failed, continuing with fetch: ${error instanceof Error ? error.message : String(error)}`);
+          workflowCtx.logger.debug(
+            `Coverage check failed, continuing with fetch: ${error instanceof Error ? error.message : String(error)}`
+          );
         }
       }
     }

@@ -30,11 +30,7 @@
  * - Log all execution attempts (even dry-run)
  */
 
-import type {
-  ExecutionPort,
-  ExecutionRequest,
-  ExecutionResult,
-} from '@quantbot/core';
+import type { ExecutionPort, ExecutionRequest, ExecutionResult } from '@quantbot/core';
 
 export type ExecutionStubAdapterConfig = {
   /**
@@ -87,9 +83,7 @@ type IdempotencyRecord = {
  * create a concrete adapter (e.g., executionJitoAdapter.ts) that wraps the client
  * but maintains the same safety features.
  */
-export function createExecutionStubAdapter(
-  config: ExecutionStubAdapterConfig = {}
-): ExecutionPort {
+export function createExecutionStubAdapter(config: ExecutionStubAdapterConfig = {}): ExecutionPort {
   const {
     dryRun = true, // Safety-first: default to dry-run
     maxConsecutiveFailures = 5,
@@ -149,9 +143,9 @@ export function createExecutionStubAdapter(
 
     if (circuitBreaker.consecutiveFailures >= maxConsecutiveFailures) {
       circuitBreaker.isOpen = true;
-        console.warn(
-          `[ExecutionPort] Circuit breaker opened after ${circuitBreaker.consecutiveFailures} consecutive failures`
-        );
+      console.warn(
+        `[ExecutionPort] Circuit breaker opened after ${circuitBreaker.consecutiveFailures} consecutive failures`
+      );
     }
   }
 
@@ -181,9 +175,9 @@ export function createExecutionStubAdapter(
 
         if (existing) {
           // Return cached result (idempotent)
-        console.log(
-          `[ExecutionPort] Idempotency hit: returning cached result for ${idempotencyKey}`
-        );
+          console.log(
+            `[ExecutionPort] Idempotency hit: returning cached result for ${idempotencyKey}`
+          );
           return existing.result;
         }
       }
@@ -227,7 +221,8 @@ export function createExecutionStubAdapter(
 
       // 4. Real execution (not implemented in stub)
       // When replacing with real adapter, implement actual execution here
-      const error = 'Real execution not implemented in stub adapter. Use dry-run mode or replace with concrete adapter.';
+      const error =
+        'Real execution not implemented in stub adapter. Use dry-run mode or replace with concrete adapter.';
       recordFailure();
 
       return {
@@ -243,4 +238,3 @@ export function createExecutionStubAdapter(
     },
   };
 }
-

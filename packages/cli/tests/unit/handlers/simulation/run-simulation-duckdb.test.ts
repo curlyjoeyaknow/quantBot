@@ -9,11 +9,11 @@ import { ValidationError, AppError } from '@quantbot/utils';
 import type { SimulationService } from '@quantbot/simulation';
 
 // Mock workflows
-const mockCreateDuckdbSimulationContext = vi.fn();
 const mockRunSimulationDuckdb = vi.fn();
+const mockCreateDuckdbSimulationContext = vi.fn();
 vi.mock('@quantbot/workflows', () => ({
-  createDuckdbSimulationContext: (...args: unknown[]) => mockCreateDuckdbSimulationContext(...args),
   runSimulationDuckdb: (...args: unknown[]) => mockRunSimulationDuckdb(...args),
+  createDuckdbSimulationContext: (...args: unknown[]) => mockCreateDuckdbSimulationContext(...args),
 }));
 
 // Mock jobs - OhlcvBirdeyeFetch must be a constructor
@@ -32,6 +32,15 @@ describe('runSimulationDuckdbHandler', () => {
       runSimulation: vi.fn(),
     } as unknown as SimulationService;
 
+    const mockWorkflowContext = {
+      simulation: {
+        runSimulation: mockService.runSimulation,
+      },
+    } as any;
+
+    // Mock createDuckdbSimulationContext to return the workflow context
+    mockCreateDuckdbSimulationContext.mockResolvedValue(mockWorkflowContext);
+
     mockCtx = {
       services: {
         simulation: () => mockService,
@@ -43,12 +52,6 @@ describe('runSimulationDuckdbHandler', () => {
         }),
       },
     } as unknown as CommandContext;
-
-    mockCreateDuckdbSimulationContext.mockReturnValue({
-      simulation: {
-        runSimulation: mockService.runSimulation,
-      },
-    } as any);
 
     mockRunSimulationDuckdb.mockImplementation(async (spec, ctx) => {
       // Call the actual service's runSimulation method
@@ -88,15 +91,18 @@ describe('runSimulationDuckdbHandler', () => {
 
     vi.mocked(mockService.runSimulation).mockResolvedValue(mockResult);
 
+    const strategyObj = {
+      strategy_id: 'test_strategy',
+      name: 'Test Strategy',
+      entry_type: 'immediate' as const,
+      profit_targets: [{ target: 2.0, percent: 0.5 }],
+      stop_loss_pct: 0.2,
+    };
+
+    // Command handler expects strategy as object, it will convert to JSON string for pure handler
     const args = {
       duckdb: '/path/to/tele.duckdb',
-      strategy: {
-        strategy_id: 'test_strategy',
-        name: 'Test Strategy',
-        entry_type: 'immediate' as const,
-        profit_targets: [{ target: 2.0, percent: 0.5 }],
-        stop_loss_pct: 0.2,
-      },
+      strategy: strategyObj, // Command handler converts this to JSON string
       mint: 'So11111111111111111111111111111111111111112',
       alert_timestamp: '2024-01-01T12:00:00Z',
       batch: false,
@@ -108,15 +114,12 @@ describe('runSimulationDuckdbHandler', () => {
     const result = await runSimulationDuckdbHandler(args, mockCtx);
 
     expect(mockRunSimulationDuckdb).toHaveBeenCalledTimes(1);
-    expect(mockService.runSimulation).toHaveBeenCalledWith({
-      duckdb_path: '/path/to/tele.duckdb',
-      strategy: 'Test Strategy', // Handler extracts name from strategy object
-      initial_capital: 1000.0,
-      lookback_minutes: 260,
-      lookforward_minutes: 1440,
-      mint: 'So11111111111111111111111111111111111111112',
-      alert_timestamp: '2024-01-01T12:00:00Z',
-    });
+    // Verify the workflow was called with the parsed strategy object
+    const workflowCall = mockRunSimulationDuckdb.mock.calls[0];
+    expect(workflowCall[0].strategy).toEqual(strategyObj);
+    expect(workflowCall[0].duckdbPath).toBe('/path/to/tele.duckdb');
+    expect(workflowCall[0].mint).toBe('So11111111111111111111111111111111111111112');
+    expect(workflowCall[0].alertTimestamp).toBe('2024-01-01T12:00:00Z');
 
     // Handler returns result.simulationResults (from workflow)
     expect(result).toHaveProperty('results');
@@ -125,14 +128,17 @@ describe('runSimulationDuckdbHandler', () => {
   });
 
   it('should throw ValidationError if mint is missing in single mode', async () => {
+    const strategyObj = {
+      strategy_id: 'test_strategy',
+      name: 'Test Strategy',
+      entry_type: 'immediate' as const,
+      profit_targets: [],
+    };
+
+    // Command handler expects strategy as object, it will convert to JSON string for pure handler
     const args = {
       duckdb: '/path/to/tele.duckdb',
-      strategy: {
-        strategy_id: 'test_strategy',
-        name: 'Test Strategy',
-        entry_type: 'immediate' as const,
-        profit_targets: [],
-      },
+      strategy: strategyObj, // Command handler converts this to JSON string
       batch: false,
       initial_capital: 1000.0,
       lookback_minutes: 260,
@@ -146,8 +152,8 @@ describe('runSimulationDuckdbHandler', () => {
     });
     mockRunSimulationDuckdb.mockRejectedValue(validationError);
 
-    await expect(runSimulationDuckdbHandler(args as any, mockCtx)).rejects.toThrow(ValidationError);
-    await expect(runSimulationDuckdbHandler(args as any, mockCtx)).rejects.toThrow(
+    await expect(runSimulationDuckdbHandler(args, mockCtx)).rejects.toThrow(ValidationError);
+    await expect(runSimulationDuckdbHandler(args, mockCtx)).rejects.toThrow(
       'mint is required'
     );
   });
@@ -156,14 +162,17 @@ describe('runSimulationDuckdbHandler', () => {
     const error = new AppError('Simulation failed', 'SIMULATION_FAILED', 500);
     mockRunSimulationDuckdb.mockRejectedValue(error);
 
+    const strategyObj = {
+      strategy_id: 'test_strategy',
+      name: 'Test Strategy',
+      entry_type: 'immediate' as const,
+      profit_targets: [],
+    };
+
+    // Command handler expects strategy as object, it will convert to JSON string for pure handler
     const args = {
       duckdb: '/path/to/tele.duckdb',
-      strategy: {
-        strategy_id: 'test_strategy',
-        name: 'Test Strategy',
-        entry_type: 'immediate' as const,
-        profit_targets: [],
-      },
+      strategy: strategyObj, // Command handler converts this to JSON string
       mint: 'So11111111111111111111111111111111111111112',
       batch: false,
       initial_capital: 1000.0,
