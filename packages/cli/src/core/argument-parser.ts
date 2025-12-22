@@ -87,10 +87,13 @@ export function normalizeOptions(options: Record<string, unknown>): Record<strin
         // - It's a file path (contains / or \)
         // - It's a long numeric string (likely an ID like chatId, messageId)
         // - It doesn't match the number exactly (has leading zeros, etc.)
-        if (String(numValue) === trimmed && 
-            !trimmed.includes('/') && 
-            !trimmed.includes('\\') &&
-            trimmed.length < 10) { // Only convert short numbers (not IDs)
+        if (
+          String(numValue) === trimmed &&
+          !trimmed.includes('/') &&
+          !trimmed.includes('\\') &&
+          trimmed.length < 10
+        ) {
+          // Only convert short numbers (not IDs)
           normalized[normalizedKey] = numValue;
         } else {
           normalized[normalizedKey] = value;

@@ -61,11 +61,13 @@ describe('Latency Models', () => {
   describe('sampleNetworkLatency', () => {
     it('should apply congestion multiplier', () => {
       const config = createPumpfunLatencyConfig();
-      
+
       // Sample many times to get reliable average behavior
       const baseSamples = Array.from({ length: 1000 }, () => sampleNetworkLatency(config, 0));
-      const congestedSamples = Array.from({ length: 1000 }, () => sampleNetworkLatency(config, 1.0));
-      
+      const congestedSamples = Array.from({ length: 1000 }, () =>
+        sampleNetworkLatency(config, 1.0)
+      );
+
       const baseAvg = baseSamples.reduce((a, b) => a + b, 0) / baseSamples.length;
       const congestedAvg = congestedSamples.reduce((a, b) => a + b, 0) / congestedSamples.length;
 
@@ -107,4 +109,3 @@ describe('Latency Models', () => {
     });
   });
 });
-

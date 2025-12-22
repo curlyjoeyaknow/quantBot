@@ -29,6 +29,33 @@ export * from './handlers/index.js';
 // Domain models
 export * from './domain/calls/CallSignal.js';
 
+// ============================================================================
+// Determinism & Reproducibility
+// ============================================================================
+
+export * from './determinism.js';
+export * from './seed-manager.js';
+
+// ============================================================================
+// Artifacts & Versioning
+// ============================================================================
+
+export * from './artifacts.js';
+
+// ============================================================================
+// Canonical Data
+// ============================================================================
+
+export * from './canonical/event-schema.js';
+export * from './canonical/transformers.js';
+
+// ============================================================================
+// Experiment Tracking
+// ============================================================================
+
+export * from './experiment-id-generator.js';
+export * from './parameter-vector.js';
+
 /**
  * Supported blockchain
  *

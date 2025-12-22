@@ -42,6 +42,7 @@
     "ink": "^6.5.1",
     "ink-select-input": "^6.2.0",
     "ink-text-input": "^6.0.0",
+    "js-yaml": "^4.1.0",
     "luxon": "^3.4.4",
     "react": "^19.2.3",
     "zod": "^4.1.13"
@@ -49,6 +50,7 @@
   "devDependencies": {
     "@stryker-mutator/core": "^8.0.0",
     "@stryker-mutator/vitest-runner": "^8.0.0",
+    "@types/js-yaml": "^4.0.9",
     "@types/node": "^24.10.1",
     "@vitest/coverage-v8": "^4.0.15",
     "typescript": "^5.9.3",

@@ -23,14 +23,14 @@ describe('Risk Framework', () => {
 
     it('should trigger on max drawdown', () => {
       const config = {
-        maxDrawdown: 0.20,
+        maxDrawdown: 0.2,
       };
       const state = createCircuitBreakerState();
       const result = checkCircuitBreaker(
         config,
         state,
         -100, // Current PnL
-        500,  // Peak PnL (drawdown = 600/500 = 1.2 > 0.20)
+        500, // Peak PnL (drawdown = 600/500 = 1.2 > 0.20)
         'strategy1',
         100
       );
@@ -106,14 +106,7 @@ describe('Risk Framework', () => {
       const state = createCircuitBreakerState();
       state.lastTradeTime = Date.now() - 2000; // 2 seconds ago
 
-      const result = checkCircuitBreaker(
-        config,
-        state,
-        0,
-        1000,
-        'strategy1',
-        100
-      );
+      const result = checkCircuitBreaker(config, state, 0, 1000, 'strategy1', 100);
 
       expect(result.triggered).toBe(true);
       expect(result.reason).toContain('throttle');
@@ -177,9 +170,8 @@ describe('Risk Framework', () => {
   describe('createDefaultRiskFramework', () => {
     it('should create valid framework', () => {
       const framework = createDefaultRiskFramework();
-      expect(framework.circuitBreakers.maxDrawdown).toBe(0.20);
+      expect(framework.circuitBreakers.maxDrawdown).toBe(0.2);
       expect(framework.anomalyDetection?.enabled).toBe(true);
     });
   });
 });
-

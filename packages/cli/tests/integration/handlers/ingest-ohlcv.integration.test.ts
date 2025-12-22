@@ -15,22 +15,22 @@
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { DateTime } from 'luxon';
-import { ingestOhlcvHandler } from '../../../src/commands/ingestion/ingest-ohlcv.js';
-import { createCommandContext } from '../../../src/core/command-context.js';
+import {
+  IngestOhlcvArgs,
+  ingestOhlcvHandler,
+} from '../../../src/commands/ingestion/ingest-ohlcv.js';
+import { CommandContext, createCommandContext } from '../../../src/core/command-context.js';
 // Use relative path for test helpers (they're not exported from the package)
-import { createTestDuckDB, cleanupTestDuckDB, createTempDuckDBPath } from '../../../../ingestion/tests/helpers/createTestDuckDB.js';
+import {
+  createTestDuckDB,
+  cleanupTestDuckDB,
+  createTempDuckDBPath,
+} from '../../../../ingestion/tests/helpers/createTestDuckDB.js';
 import type { TestCall } from '../../../../ingestion/tests/helpers/createTestDuckDB.js';
 import { initClickHouse, closeClickHouse } from '@quantbot/storage';
-import { shouldRunDbStress } from '@quantbot/utils/test-helpers/test-gating';
 import { vi } from 'vitest';
-import type { Candle } from '@quantbot/core';
-import { ingestOhlcv } from '@quantbot/workflows';
 
-// Gate this test suite behind RUN_DB_STRESS=1
-// These tests require real database connections (ClickHouse, DuckDB)
-const shouldRun = shouldRunDbStress();
-
-describe.skipIf(!shouldRun)('ingestOhlcvHandler - Integration Tests (Real Implementations)', () => {
+describe('ingestOhlcvHandler - Integration Tests (Real Implementations)', () => {
   let testDuckDBPath: string;
   let testCalls: TestCall[];
   const TEST_MINT = '7pXs123456789012345678901234567890pump';
@@ -88,13 +88,18 @@ describe.skipIf(!shouldRun)('ingestOhlcvHandler - Integration Tests (Real Implem
     };
 
     // Execute handler with real context
-    // Note: This will call the real workflow, which will use real DuckDB and ClickHouse
-    // We're testing that the handler correctly orchestrates the workflow call
-    const result = await ingestOhlcvHandler(args, ctx);
+    // Note: This will call the real workflow, which will use real DuckDB and ClickHouse.
+    // We're testing that the handler correctly orchestrates the workflow call.
+    const result = await ingestOhlcvHandler(args as IngestOhlcvArgs, ctx);
 
-    // Assert: Handler called workflow with correct spec
+    // Assert: Handler called workflow with correct arguments
+    expect(workflowSpy).toHaveBeenCalled();
     expect(workflowSpy).toHaveBeenCalledTimes(1);
-    const spec = workflowSpy.mock.calls[0][0];
+
+    // Defensive: Check there is at least one call before trying to access it
+    expect(workflowSpy.mock.calls.length).toBeGreaterThan(0);
+
+    const [spec] = workflowSpy.mock.calls[0] ?? [{}];
     expect(spec.duckdbPath).toBe(testDuckDBPath);
     expect(spec.preWindowMinutes).toBe(260);
     expect(spec.postWindowMinutes).toBe(1440);
@@ -121,8 +126,8 @@ describe.skipIf(!shouldRun)('ingestOhlcvHandler - Integration Tests (Real Implem
     };
 
     // Call handler twice with same inputs
-    const result1 = await ingestOhlcvHandler(args, ctx);
-    const result2 = await ingestOhlcvHandler(args, ctx);
+    const result1 = await ingestOhlcvHandler(args as IngestOhlcvArgs, ctx);
+    const result2 = await ingestOhlcvHandler(args as IngestOhlcvArgs, ctx);
 
     // Assert: Handler called workflow twice (deterministic)
     expect(workflowSpy).toHaveBeenCalledTimes(2);
@@ -150,7 +155,7 @@ describe.skipIf(!shouldRun)('ingestOhlcvHandler - Integration Tests (Real Implem
     };
 
     // Handler should let errors bubble up (no try/catch)
-    await expect(ingestOhlcvHandler(args, ctx)).rejects.toThrow(
+    await expect(ingestOhlcvHandler(args as IngestOhlcvArgs, ctx)).rejects.toThrow(
       'Workflow failed: database connection lost'
     );
     expect(workflowSpy).toHaveBeenCalledTimes(1);

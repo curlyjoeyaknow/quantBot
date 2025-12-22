@@ -68,11 +68,13 @@ export async function runSimulationDuckdbHandler(
 
   // Get workflow context from command context (created by composition root)
   // The command composition root creates and wires the workflow context
-  const workflowContext = (ctx as CommandContext & {
-    services: CommandContext['services'] & {
-      workflowContext?: () => RunSimulationDuckdbContext;
-    };
-  }).services.workflowContext?.();
+  const workflowContext = (
+    ctx as CommandContext & {
+      services: CommandContext['services'] & {
+        workflowContext?: () => RunSimulationDuckdbContext;
+      };
+    }
+  ).services.workflowContext?.();
 
   if (!workflowContext) {
     throw new Error(

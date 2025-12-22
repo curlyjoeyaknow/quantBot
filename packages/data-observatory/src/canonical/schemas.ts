@@ -235,9 +235,7 @@ export type CanonicalEventUnion =
 /**
  * Helper to create a canonical event from various sources
  */
-export function createCanonicalEvent(
-  event: Partial<CanonicalEvent>
-): CanonicalEvent {
+export function createCanonicalEvent(event: Partial<CanonicalEvent>): CanonicalEvent {
   return CanonicalEventSchema.parse({
     isMissing: false,
     ...event,
@@ -250,4 +248,3 @@ export function createCanonicalEvent(
 export function isEventMissing(event: CanonicalEvent): boolean {
   return event.isMissing || event.value === null || event.value === undefined;
 }
-

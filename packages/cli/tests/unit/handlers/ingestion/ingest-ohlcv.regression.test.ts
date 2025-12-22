@@ -145,4 +145,3 @@ describe('ingestOhlcvHandler - Regression Tests', () => {
     delete process.env.DUCKDB_PATH;
   });
 });
-

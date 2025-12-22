@@ -17,14 +17,7 @@ import type { Chain } from '@quantbot/core';
 /**
  * Data source identifier
  */
-export const DataSourceSchema = z.enum([
-  'calls',
-  'trades',
-  'ohlcv',
-  'metadata',
-  'signals',
-  'all',
-]);
+export const DataSourceSchema = z.enum(['calls', 'trades', 'ohlcv', 'metadata', 'signals', 'all']);
 
 export type DataSource = z.infer<typeof DataSourceSchema>;
 
@@ -179,4 +172,3 @@ export const SnapshotQueryOptionsSchema = z.object({
 });
 
 export type SnapshotQueryOptions = z.infer<typeof SnapshotQueryOptionsSchema>;
-

@@ -126,9 +126,7 @@ describe('DuckDB Storage Bridge Test', () => {
     expect(result.error === null).toBe(true);
   });
 
-  it(
-    'queries OHLCV metadata and validates output schema',
-    async () => {
+  it('queries OHLCV metadata and validates output schema', async () => {
     // First update metadata
     await storageService.updateOhlcvMetadata(
       testDbPath,
@@ -156,9 +154,7 @@ describe('DuckDB Storage Bridge Test', () => {
       expect(result.time_range_end).toBeDefined();
       expect(result.candle_count).toBeDefined();
     }
-    },
-    15000 // 15 second timeout for DuckDB queries
-  );
+  }, 15000); // 15 second timeout for DuckDB queries
 
   it('adds OHLCV exclusion and validates output schema', async () => {
     const result = await storageService.addOhlcvExclusion(

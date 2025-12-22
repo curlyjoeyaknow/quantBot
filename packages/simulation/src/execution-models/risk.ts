@@ -1,15 +1,11 @@
 /**
  * Risk Framework and Circuit Breakers
  * ====================================
- * 
+ *
  * Risk management and circuit breaker logic for both simulation and live trading.
  */
 
-import type {
-  CircuitBreakerConfig,
-  AnomalyDetectionConfig,
-  RiskFramework,
-} from './types.js';
+import type { CircuitBreakerConfig, AnomalyDetectionConfig, RiskFramework } from './types.js';
 
 /**
  * Circuit breaker state tracker
@@ -96,7 +92,10 @@ export function checkCircuitBreaker(
   } else {
     state.consecutiveLosses = 0;
   }
-  if (config.maxConsecutiveLosses !== undefined && state.consecutiveLosses >= config.maxConsecutiveLosses) {
+  if (
+    config.maxConsecutiveLosses !== undefined &&
+    state.consecutiveLosses >= config.maxConsecutiveLosses
+  ) {
     return { triggered: true, reason: `Max consecutive losses: ${state.consecutiveLosses}` };
   }
 
@@ -104,7 +103,10 @@ export function checkCircuitBreaker(
   const strategyExposure = (state.strategyExposures.get(strategyId) || 0) + tradeAmount;
   state.strategyExposures.set(strategyId, strategyExposure);
 
-  if (config.maxExposurePerStrategy !== undefined && strategyExposure > config.maxExposurePerStrategy) {
+  if (
+    config.maxExposurePerStrategy !== undefined &&
+    strategyExposure > config.maxExposurePerStrategy
+  ) {
     return { triggered: true, reason: `Max exposure per strategy exceeded: ${strategyExposure}` };
   }
 
@@ -117,7 +119,10 @@ export function checkCircuitBreaker(
   if (config.minTradeIntervalSeconds > 0) {
     const timeSinceLastTrade = (now - state.lastTradeTime) / 1000;
     if (timeSinceLastTrade < config.minTradeIntervalSeconds) {
-      return { triggered: true, reason: `Trade throttle: ${timeSinceLastTrade.toFixed(1)}s < ${config.minTradeIntervalSeconds}s` };
+      return {
+        triggered: true,
+        reason: `Trade throttle: ${timeSinceLastTrade.toFixed(1)}s < ${config.minTradeIntervalSeconds}s`,
+      };
     }
   }
 
@@ -193,12 +198,16 @@ export function checkAnomalies(
 
   // Check latency spike
   if (latency > expectedLatencyP99 * config.latencySpikeThreshold) {
-    anomalies.push(`Latency spike: ${latency}ms > ${expectedLatencyP99 * config.latencySpikeThreshold}ms`);
+    anomalies.push(
+      `Latency spike: ${latency}ms > ${expectedLatencyP99 * config.latencySpikeThreshold}ms`
+    );
   }
 
   // Check slippage spike
   if (slippage > expectedSlippage * config.slippageSpikeThreshold) {
-    anomalies.push(`Slippage spike: ${slippage}bps > ${expectedSlippage * config.slippageSpikeThreshold}bps`);
+    anomalies.push(
+      `Slippage spike: ${slippage}bps > ${expectedSlippage * config.slippageSpikeThreshold}bps`
+    );
   }
 
   // Check failure rate spike (over window)
@@ -206,9 +215,12 @@ export function checkAnomalies(
   if (state.failureHistory.length > 100) {
     state.failureHistory.shift(); // Keep last 100 samples
   }
-  const recentFailureRate = state.failureHistory.filter(Boolean).length / state.failureHistory.length;
+  const recentFailureRate =
+    state.failureHistory.filter(Boolean).length / state.failureHistory.length;
   if (recentFailureRate > expectedFailureRate * config.failureRateSpikeThreshold) {
-    anomalies.push(`Failure rate spike: ${(recentFailureRate * 100).toFixed(2)}% > ${(expectedFailureRate * config.failureRateSpikeThreshold * 100).toFixed(2)}%`);
+    anomalies.push(
+      `Failure rate spike: ${(recentFailureRate * 100).toFixed(2)}% > ${(expectedFailureRate * config.failureRateSpikeThreshold * 100).toFixed(2)}%`
+    );
   }
 
   return {
@@ -223,7 +235,7 @@ export function checkAnomalies(
 export function createDefaultRiskFramework(): RiskFramework {
   return {
     circuitBreakers: {
-      maxDrawdown: 0.20, // 20% max drawdown
+      maxDrawdown: 0.2, // 20% max drawdown
       maxDailyLoss: 1000, // $1000 max daily loss
       maxConsecutiveLosses: 5,
       maxExposurePerStrategy: 5000, // $5000 per strategy
@@ -241,4 +253,3 @@ export function createDefaultRiskFramework(): RiskFramework {
     },
   };
 }
-

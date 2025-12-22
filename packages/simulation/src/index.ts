@@ -197,6 +197,21 @@ export { simulateStrategy } from './core/simulator.js';
 export { simulateFromInput } from './core/contract-adapter.js';
 export type { SimInput, SimResult, SimEvent, SimMetrics } from './types/contracts.js';
 export { SimInputSchema, SimResultSchema } from './types/contracts.js';
+export type {
+  ExecutionModel,
+  LatencyDistribution,
+  SlippageModel,
+  PartialFillModel,
+  FailureModel,
+  FeeRegime,
+} from './types/execution-model.js';
+export type {
+  RiskModel,
+  PositionLimits,
+  DrawdownLimits,
+  ExposureLimits,
+} from './types/risk-model.js';
+export { validateSimulationContract, validateContractVersion } from './core/contract-validator.js';
 export type { SimulationOptions } from './core/simulator.js';
 
 // Orchestrator has been moved to @quantbot/workflows.

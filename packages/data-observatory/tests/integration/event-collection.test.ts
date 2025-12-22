@@ -221,9 +221,7 @@ describe('Event Collection Integration Tests', () => {
         expect(event.asset.length).toBeLessThanOrEqual(44);
 
         expect(event.chain).toBeDefined();
-        expect(['solana', 'ethereum', 'bsc', 'base', 'monad', 'evm']).toContain(
-          event.chain
-        );
+        expect(['solana', 'ethereum', 'bsc', 'base', 'monad', 'evm']).toContain(event.chain);
 
         expect(event.venue).toBeDefined();
         expect(event.timestamp).toBeDefined();
@@ -266,4 +264,3 @@ describe('Event Collection Integration Tests', () => {
     });
   });
 });
-

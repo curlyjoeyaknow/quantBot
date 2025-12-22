@@ -95,27 +95,6 @@ export default tseslint.config(
               message:
                 'Packages must not import from CLI internals. CLI is an app boundary.',
             },
-            // Prevent other packages (excluding TUI) from importing TUI internals
-            {
-              target: [
-                './packages/analytics/src/**',
-                './packages/api-clients/src/**',
-                './packages/cli/src/**',
-                './packages/core/src/**',
-                './packages/events/src/**',
-                './packages/ingestion/src/**',
-                './packages/jobs/src/**',
-                './packages/observability/src/**',
-                './packages/ohlcv/src/**',
-                './packages/simulation/src/**',
-                './packages/storage/src/**',
-                './packages/utils/src/**',
-                './packages/workflows/src/**',
-              ],
-              from: './packages/tui/src',
-              message:
-                'Packages must not import from TUI internals. TUI is an app boundary.',
-            },
             // Prevent packages from importing another package's tests
             {
               target: './packages/*/src/**',
@@ -206,11 +185,6 @@ export default tseslint.config(
                 'Workflows cannot depend on CLI. Use WorkflowContext for all dependencies.',
             },
             {
-              name: '@quantbot/tui',
-              message:
-                'Workflows cannot depend on TUI. Use WorkflowContext for all dependencies.',
-            },
-            {
               name: '@quantbot/api-clients',
               message:
                 'Workflows must use ctx.ports.marketData, not direct API client imports. Use ports for all external dependencies.',
@@ -232,9 +206,9 @@ export default tseslint.config(
           ],
           patterns: [
             {
-              group: ['@quantbot/cli*', '@quantbot/tui*'],
+              group: ['@quantbot/cli*'],
               message:
-                'Workflows cannot import from CLI or TUI packages',
+                'Workflows cannot import from CLI packages',
             },
             {
               group: ['@quantbot/api-clients*'],
@@ -315,12 +289,62 @@ export default tseslint.config(
               message:
                 'CLI commands can only import from @quantbot/workflows public API (index.ts)',
             },
+            {
+              name: '../core/execute',
+              message:
+                'Do not import execute() directly. Use defineCommand() wrapper instead. This ensures consistent normalization, coercion, and error handling.',
+            },
+            {
+              name: '../core/argument-parser',
+              message:
+                'Do not import normalizeOptions directly. All normalization happens inside execute() which is called by defineCommand().',
+            },
           ],
           patterns: [
             {
               group: ['@quantbot/workflows/src/**'],
               message:
                 'CLI commands cannot import workflow internals. Use public API only.',
+            },
+            {
+              group: ['**/core/execute', '**/core/argument-parser'],
+              message:
+                'Do not import execute() or normalizeOptions directly. Use defineCommand() wrapper instead. See packages/cli/src/core/README.md for the standard pattern.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+
+  // Core boundary: prevent importing execute/normalizeOptions outside core (except defineCommand)
+  {
+    files: ['packages/cli/src/**/*.ts'],
+    ignores: [
+      'packages/cli/src/core/**/*.ts', // Core can use these internally
+      'packages/cli/src/commands/**/*.ts', // Commands are handled above
+    ],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: '../core/execute',
+              message:
+                'execute() must only be imported from defineCommand.ts. Use defineCommand() wrapper instead.',
+            },
+            {
+              name: '../core/argument-parser',
+              message:
+                'normalizeOptions() must only be imported from execute.ts. Use defineCommand() wrapper instead.',
+            },
+          ],
+          patterns: [
+            {
+              group: ['**/core/execute', '**/core/argument-parser'],
+              message:
+                'Do not import execute() or normalizeOptions directly. Use defineCommand() wrapper. See packages/cli/src/core/README.md.',
             },
           ],
         },

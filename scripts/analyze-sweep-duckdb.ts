@@ -21,7 +21,8 @@
 
 import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { PythonEngine } from '@quantbot/utils';
+import { PythonEngine } from '../packages/utils/src/python/python-engine.js';
+import { z } from 'zod';
 
 interface PerCallRow {
   sweepId: string;
@@ -318,9 +319,14 @@ print(f"📊 CSV files written to: {analysis_dir}")
 `;
 
   console.log('Running DuckDB analysis...');
-  await engine.runScript(pythonScript, {
-    cwd: sweepDir,
-  });
+  await engine.runScript(
+    pythonScript,
+    {},
+    z.object({
+      success: z.boolean(),
+      error: z.string().nullable().optional(),
+    })
+  );
 
   console.log('\n✅ Analysis complete!');
 }
@@ -336,4 +342,3 @@ analyzeSweep(sweepDir).catch((error) => {
   console.error('Analysis failed:', error);
   process.exit(1);
 });
-

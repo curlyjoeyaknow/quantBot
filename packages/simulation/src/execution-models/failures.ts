@@ -1,7 +1,7 @@
 /**
  * Failure Models
  * ==============
- * 
+ *
  * Models for simulating transaction failures, partial fills, and chain reorganizations.
  */
 
@@ -104,8 +104,8 @@ export function createPumpfunFailureModel(): FailureModel {
   return {
     baseFailureRate: 0.02, // 2% base failure rate
     congestionFailureRate: 0.05, // +5% per unit of congestion
-    feeShortfallFailureRate: 0.10, // +10% per unit of fee shortfall
-    maxFailureRate: 0.30, // Cap at 30%
+    feeShortfallFailureRate: 0.1, // +10% per unit of fee shortfall
+    maxFailureRate: 0.3, // Cap at 30%
   };
 }
 
@@ -134,4 +134,3 @@ export function createSolanaReorgModel(): ReorgModel {
     maxDepth: 2,
   };
 }
-

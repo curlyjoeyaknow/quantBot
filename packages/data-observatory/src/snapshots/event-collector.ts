@@ -173,11 +173,7 @@ export class StorageEventCollector implements EventCollector {
       }
 
       // Venue filter
-      if (
-        filters.venues &&
-        filters.venues.length > 0 &&
-        !filters.venues.includes(event.venue)
-      ) {
+      if (filters.venues && filters.venues.length > 0 && !filters.venues.includes(event.venue)) {
         return false;
       }
 
@@ -194,4 +190,3 @@ export class StorageEventCollector implements EventCollector {
     });
   }
 }
-

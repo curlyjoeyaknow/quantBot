@@ -1,0 +1,43 @@
+# Full Sweep Configuration
+# All options documented with explanations
+
+# Input data
+callsFile: calls.json        # Path to JSON file containing CallSignal[] array
+overlaySetsFile: overlays.json  # Path to JSON file containing array of overlay sets
+# Note: Can use overlaysFile instead of overlaySetsFile (same thing)
+
+# Output directory
+out: out/sweep-full           # All results written here (per_call.jsonl, matrix.json, etc.)
+
+# Grid parameters
+# Total scenarios = intervals × lagsMs × overlay sets
+# Example: 3 × 4 × 2 = 24 scenarios
+intervals:                    # Candle intervals to test
+  - 1m                        # 1 minute candles
+  - 5m                        # 5 minute candles
+  - 1h                        # 1 hour candles
+
+lagsMs:                       # Entry lags in milliseconds
+  - 0                         # Instant entry (no lag)
+  - 10000                     # 10 second lag
+  - 30000                     # 30 second lag
+  - 60000                     # 60 second lag (1 minute)
+
+# Entry and timeframe
+entryRule: next_candle_open   # Entry rule: next_candle_open | next_candle_close | call_time_close
+timeframeMs: 86400000         # Timeframe in milliseconds (default: 24 hours = 86400000ms)
+
+# Trading costs
+takerFeeBps: 30               # Taker fee in basis points (default: 30 = 0.30%)
+slippageBps: 10               # Slippage in basis points (default: 10 = 0.10%)
+
+# Position sizing
+notionalUsd: 1000             # Position size in USD (default: 1000)
+
+# Resume support
+resume: false                 # Resume from previous run (skip completed scenarios)
+                              # Set to true to continue interrupted sweep
+
+# Output format (for CLI display, not file output)
+format: table                 # Display format: json | table | csv (default: table)
+

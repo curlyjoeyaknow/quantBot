@@ -1,7 +1,7 @@
 /**
  * Execution Reality Models - Type Definitions
  * ============================================
- * 
+ *
  * Core types for execution models, cost models, and risk frameworks.
  * These are JSON-serializable and designed to be consumed by Branch A (simulation engine).
  */
@@ -120,21 +120,23 @@ export const PartialFillModelSchema = z.object({
   /** Probability of partial fill (0-1) */
   probability: z.number().min(0).max(1).default(0),
   /** Distribution of fill percentage when partial fill occurs (0-1) */
-  fillDistribution: z.object({
-    type: z.enum(['uniform', 'normal', 'beta']),
-    /** For uniform: min fill percentage */
-    minFill: z.number().min(0).max(1).default(0.5),
-    /** For uniform: max fill percentage */
-    maxFill: z.number().min(0).max(1).default(1),
-    /** For normal: mean fill percentage */
-    meanFill: z.number().min(0).max(1).optional(),
-    /** For normal: stddev fill percentage */
-    stddevFill: z.number().nonnegative().optional(),
-    /** For beta: alpha parameter */
-    alpha: z.number().positive().optional(),
-    /** For beta: beta parameter */
-    beta: z.number().positive().optional(),
-  }).optional(),
+  fillDistribution: z
+    .object({
+      type: z.enum(['uniform', 'normal', 'beta']),
+      /** For uniform: min fill percentage */
+      minFill: z.number().min(0).max(1).default(0.5),
+      /** For uniform: max fill percentage */
+      maxFill: z.number().min(0).max(1).default(1),
+      /** For normal: mean fill percentage */
+      meanFill: z.number().min(0).max(1).optional(),
+      /** For normal: stddev fill percentage */
+      stddevFill: z.number().nonnegative().optional(),
+      /** For beta: alpha parameter */
+      alpha: z.number().positive().optional(),
+      /** For beta: beta parameter */
+      beta: z.number().positive().optional(),
+    })
+    .optional(),
 });
 
 export type PartialFillModel = z.infer<typeof PartialFillModelSchema>;
@@ -166,21 +168,25 @@ export const CostModelSchema = z.object({
   /** Base maker fee in basis points (if applicable) */
   makerFeeBps: z.number().int().min(0).max(10_000).default(0),
   /** Priority fee configuration */
-  priorityFee: z.object({
-    /** Base priority fee in micro-lamports per compute unit */
-    baseMicroLamportsPerCu: z.number().nonnegative().default(0),
-    /** Priority fee multiplier during congestion */
-    congestionMultiplier: z.number().min(1).max(100).default(1),
-    /** Maximum priority fee cap */
-    maxMicroLamportsPerCu: z.number().nonnegative().default(1_000_000),
-  }).optional(),
+  priorityFee: z
+    .object({
+      /** Base priority fee in micro-lamports per compute unit */
+      baseMicroLamportsPerCu: z.number().nonnegative().default(0),
+      /** Priority fee multiplier during congestion */
+      congestionMultiplier: z.number().min(1).max(100).default(1),
+      /** Maximum priority fee cap */
+      maxMicroLamportsPerCu: z.number().nonnegative().default(1_000_000),
+    })
+    .optional(),
   /** Compute unit costs */
-  computeUnits: z.object({
-    /** Average compute units per transaction */
-    averageCu: z.number().positive().default(200_000),
-    /** Compute unit price in lamports per CU (if applicable) */
-    cuPriceLamports: z.number().nonnegative().default(0),
-  }).optional(),
+  computeUnits: z
+    .object({
+      /** Average compute units per transaction */
+      averageCu: z.number().positive().default(200_000),
+      /** Compute unit price in lamports per CU (if applicable) */
+      cuPriceLamports: z.number().nonnegative().default(0),
+    })
+    .optional(),
   /** Borrow APR for short positions in basis points */
   borrowAprBps: z.number().int().min(0).max(100_000).default(0),
 });
@@ -214,14 +220,16 @@ export const ExecutionModelSchema = z.object({
   /** Cost model */
   costs: CostModelSchema,
   /** Optional: metadata for calibration tracking */
-  calibrationMetadata: z.object({
-    /** Calibration timestamp (ISO 8601) */
-    calibratedAt: z.string().datetime().optional(),
-    /** Source of calibration (e.g., 'live-trading', 'paper-trading') */
-    source: z.string().optional(),
-    /** Sample size used for calibration */
-    sampleSize: z.number().int().positive().optional(),
-  }).optional(),
+  calibrationMetadata: z
+    .object({
+      /** Calibration timestamp (ISO 8601) */
+      calibratedAt: z.string().datetime().optional(),
+      /** Source of calibration (e.g., 'live-trading', 'paper-trading') */
+      source: z.string().optional(),
+      /** Sample size used for calibration */
+      sampleSize: z.number().int().positive().optional(),
+    })
+    .optional(),
 });
 
 export type ExecutionModel = z.infer<typeof ExecutionModelSchema>;
@@ -285,4 +293,3 @@ export const RiskFrameworkSchema = z.object({
 });
 
 export type RiskFramework = z.infer<typeof RiskFrameworkSchema>;
-

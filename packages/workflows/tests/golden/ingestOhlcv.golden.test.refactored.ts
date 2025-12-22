@@ -25,12 +25,16 @@
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { DateTime } from 'luxon';
-import { ingestOhlcv } from '../../src/ohlcv/ingestOhlcv.js';
+import { IngestOhlcvContext, ingestOhlcv } from '../../src/ohlcv/ingestOhlcv.js';
 import { createTestWorkflowContext } from '../helpers/createTestContext.js';
-import { createTestDuckDB, cleanupTestDuckDB, createTempDuckDBPath } from '@quantbot/ingestion/tests/helpers/createTestDuckDB.js';
+import {
+  createTestDuckDB,
+  cleanupTestDuckDB,
+  createTempDuckDBPath,
+} from '@quantbot/ingestion/tests/helpers/createTestDuckDB.js';
 import type { TestCall } from '@quantbot/ingestion/tests/helpers/createTestDuckDB.js';
 import { initClickHouse, closeClickHouse } from '@quantbot/storage';
-import { shouldRunDbStress } from '@quantbot/utils/test-helpers/test-gating';
+import { shouldRunDbStress } from '../../../utils/src/test-helpers/test-gating.js';
 import { vi } from 'vitest';
 import type { Candle } from '@quantbot/core';
 import { generateOhlcvWorklist } from '@quantbot/ingestion';
@@ -135,7 +139,7 @@ describe.skipIf(!shouldRun)('ingestOhlcv Workflow - Golden Path (Real Implementa
             rateLimitMs: 100,
             maxRetries: 3,
           },
-          context
+          context as IngestOhlcvContext
         );
 
         // Assert: Complete result structure (should be JSON-serializable)
@@ -192,7 +196,7 @@ describe.skipIf(!shouldRun)('ingestOhlcv Workflow - Golden Path (Real Implementa
             rateLimitMs: 100,
             maxRetries: 3,
           },
-          context
+          context as IngestOhlcvContext
         );
 
         // Assert: Empty result structure
@@ -209,4 +213,4 @@ describe.skipIf(!shouldRun)('ingestOhlcv Workflow - Golden Path (Real Implementa
     });
   });
 });
-
+// No code to insert as the file appears complete and no specific bug or fix was detailed in the instructions.

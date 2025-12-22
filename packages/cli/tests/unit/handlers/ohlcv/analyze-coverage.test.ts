@@ -62,11 +62,12 @@ describe('analyzeCoverageHandler', () => {
         endDate: '2025-12-31',
         minCoverage: 0.8,
         generateFetchPlan: false,
+        format: 'json' as const,
       };
 
       const result = await analyzeCoverageHandler(args, mockContext);
 
-      // Should call workflow with correct spec
+      // Should call analyzeCoverage with the correct spec
       expect(workflows.analyzeCoverage).toHaveBeenCalledWith(
         expect.objectContaining({
           analysisType: 'overall',
@@ -108,6 +109,7 @@ describe('analyzeCoverageHandler', () => {
         duckdb: 'data/test.duckdb', // Should be ignored for overall
         minCoverage: 0.8,
         generateFetchPlan: false,
+        format: 'json' as const,
       };
 
       await analyzeCoverageHandler(args, mockContext);
@@ -142,6 +144,7 @@ describe('analyzeCoverageHandler', () => {
         endMonth: '2025-12',
         minCoverage: 0.9,
         generateFetchPlan: true,
+        format: 'json' as const,
       };
 
       const result = await analyzeCoverageHandler(args, mockContext);
@@ -185,6 +188,7 @@ describe('analyzeCoverageHandler', () => {
         // No duckdb path provided
         minCoverage: 0.8,
         generateFetchPlan: false,
+        format: 'json' as const,
       };
 
       await analyzeCoverageHandler(args, mockContext);
@@ -215,6 +219,7 @@ describe('analyzeCoverageHandler', () => {
         duckdb: 'data/test.duckdb', // Relative path
         minCoverage: 0.8,
         generateFetchPlan: false,
+        format: 'json' as const,
       };
 
       await analyzeCoverageHandler(args, mockContext);
@@ -245,6 +250,7 @@ describe('analyzeCoverageHandler', () => {
         analysisType: 'overall' as const,
         minCoverage: 0.8,
         generateFetchPlan: false,
+        format: 'json' as const,
       };
 
       await analyzeCoverageHandler(args, mockContext);
@@ -276,6 +282,7 @@ describe('analyzeCoverageHandler', () => {
         analysisType: 'overall' as const,
         minCoverage: 0.8,
         generateFetchPlan: false,
+        format: 'json' as const,
       };
 
       await analyzeCoverageHandler(args, mockContext);
@@ -306,6 +313,7 @@ describe('analyzeCoverageHandler', () => {
         analysisType: 'overall' as const,
         minCoverage: 0.8,
         generateFetchPlan: false,
+        format: 'json' as const,
       };
 
       await analyzeCoverageHandler(args, mockContext);
@@ -325,6 +333,7 @@ describe('analyzeCoverageHandler', () => {
         analysisType: 'overall' as const,
         minCoverage: 0.8,
         generateFetchPlan: false,
+        format: 'json' as const,
       };
 
       await expect(analyzeCoverageHandler(args, mockContext)).rejects.toThrow('Workflow failed');
@@ -355,6 +364,7 @@ describe('analyzeCoverageHandler', () => {
         chain: 'solana',
         minCoverage: 0.8,
         generateFetchPlan: false,
+        format: 'json' as const,
       };
 
       const result = await analyzeCoverageHandler(args, mockContext);

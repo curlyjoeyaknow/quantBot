@@ -6,11 +6,7 @@
 
 import { createHash } from 'crypto';
 import { DateTime } from 'luxon';
-import type {
-  SnapshotSpec,
-  DataSnapshotRef,
-  SnapshotQueryOptions,
-} from './types.js';
+import type { SnapshotSpec, DataSnapshotRef, SnapshotQueryOptions } from './types.js';
 import type { CanonicalEvent } from '../canonical/schemas.js';
 import type { EventCollector } from './event-collector.js';
 
@@ -31,18 +27,12 @@ export interface SnapshotStorage {
   /**
    * Store snapshot events
    */
-  storeSnapshotEvents(
-    snapshotId: string,
-    events: CanonicalEvent[]
-  ): Promise<void>;
+  storeSnapshotEvents(snapshotId: string, events: CanonicalEvent[]): Promise<void>;
 
   /**
    * Query snapshot events
    */
-  querySnapshotEvents(
-    snapshotId: string,
-    options: SnapshotQueryOptions
-  ): Promise<CanonicalEvent[]>;
+  querySnapshotEvents(snapshotId: string, options: SnapshotQueryOptions): Promise<CanonicalEvent[]>;
 }
 
 /**
@@ -110,9 +100,7 @@ export class SnapshotManager {
    * Generate snapshot ID from spec
    */
   private generateSnapshotId(spec: SnapshotSpec): string {
-    const specHash = createHash('sha256')
-      .update(JSON.stringify(spec))
-      .digest('hex');
+    const specHash = createHash('sha256').update(JSON.stringify(spec)).digest('hex');
     return `snapshot_${specHash.substring(0, 16)}`;
   }
 
@@ -137,8 +125,7 @@ export class SnapshotManager {
 
     for (const event of events) {
       // Count by type
-      eventCountsByType[event.eventType] =
-        (eventCountsByType[event.eventType] || 0) + 1;
+      eventCountsByType[event.eventType] = (eventCountsByType[event.eventType] || 0) + 1;
 
       // Track tokens
       tokenSet.add(event.asset);
@@ -173,9 +160,6 @@ export class SnapshotManager {
    * Calculate content hash of manifest
    */
   private calculateContentHash(manifest: DataSnapshotRef['manifest']): string {
-    return createHash('sha256')
-      .update(JSON.stringify(manifest))
-      .digest('hex');
+    return createHash('sha256').update(JSON.stringify(manifest)).digest('hex');
   }
 }
-

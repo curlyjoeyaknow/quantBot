@@ -130,4 +130,3 @@ describe('isEventMissing', () => {
     expect(isEventMissing(event)).toBe(false);
   });
 });
-

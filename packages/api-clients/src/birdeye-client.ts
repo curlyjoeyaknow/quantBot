@@ -280,6 +280,22 @@ export class BirdeyeClient extends BaseApiClient {
       try {
         // Use explicit HTTP method calls for better testability
         const axiosInstance = baseClient.getAxiosInstance();
+        // CRITICAL: Verify address is not truncated in params before axios call
+        if (config.params?.address && typeof config.params.address === 'string') {
+          const addressLength = config.params.address.length;
+          if (addressLength < 32) {
+            logger.error('Address is truncated in params before axios call', {
+              address: config.params.address,
+              length: addressLength,
+              expectedMin: 32,
+              url: config.url,
+            });
+            throw new Error(
+              `Address is truncated in params: ${addressLength} chars (expected >= 32)`
+            );
+          }
+        }
+
         let response: AxiosResponse<T>;
 
         if (config.method?.toUpperCase() === 'POST') {
@@ -293,6 +309,24 @@ export class BirdeyeClient extends BaseApiClient {
             headers: config.headers,
             params: config.params,
           });
+        }
+
+        // CRITICAL: Verify address was not truncated in the actual HTTP request
+        // Check the request URL to ensure full address was sent
+        if (config.params?.address && typeof config.params.address === 'string') {
+          const requestUrl = response.config.url || '';
+          if (requestUrl.includes('address=')) {
+            const addressParam = requestUrl.match(/address=([^&]+)/)?.[1];
+            if (addressParam && decodeURIComponent(addressParam).length < 32) {
+              logger.error('Address was truncated in HTTP request URL', {
+                originalAddress: config.params.address,
+                originalLength: config.params.address.length,
+                urlAddress: decodeURIComponent(addressParam),
+                urlAddressLength: decodeURIComponent(addressParam).length,
+                fullUrl: requestUrl,
+              });
+            }
+          }
         }
         return { response, apiKey };
       } catch (error: unknown) {
@@ -386,8 +420,20 @@ export class BirdeyeClient extends BaseApiClient {
 
     logger.debug('Fetching OHLCV', {
       tokenAddress: tokenAddress.substring(0, 20),
+      tokenAddressFull: tokenAddress, // Full address for debugging
+      tokenAddressLength: tokenAddress.length, // Length for debugging
       chain: detectedChain,
     });
+
+    // CRITICAL: Verify address is not truncated before API call
+    if (tokenAddress.length < 32) {
+      logger.error('Address is too short before API call', {
+        tokenAddress,
+        length: tokenAddress.length,
+        expectedMin: 32,
+      });
+      throw new Error(`Address is too short: ${tokenAddress.length} chars (expected >= 32)`);
+    }
 
     try {
       const result = await this.requestWithKeyRotation<BirdeyeOHLCVResponse>({
@@ -397,7 +443,7 @@ export class BirdeyeClient extends BaseApiClient {
           'x-chain': detectedChain,
         },
         params: {
-          address: tokenAddress,
+          address: tokenAddress, // Full address - DO NOT TRUNCATE
           type: interval,
           currency: 'usd',
           time_from: startUnix,

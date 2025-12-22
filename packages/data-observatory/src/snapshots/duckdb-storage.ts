@@ -46,10 +46,7 @@ export class DuckDBSnapshotStorage implements SnapshotStorage {
     return null;
   }
 
-  async storeSnapshotEvents(
-    snapshotId: string,
-    events: CanonicalEvent[]
-  ): Promise<void> {
+  async storeSnapshotEvents(snapshotId: string, events: CanonicalEvent[]): Promise<void> {
     // TODO: Implement DuckDB storage for snapshot events
     // Store events in a table keyed by snapshot_id
     console.log(`Storing ${events.length} events for snapshot ${snapshotId}`);
@@ -64,4 +61,3 @@ export class DuckDBSnapshotStorage implements SnapshotStorage {
     return [];
   }
 }
-

@@ -226,4 +226,3 @@ describe('Coverage Calculation Integration Tests', () => {
     });
   });
 });
-

@@ -1,7 +1,7 @@
 /**
  * Latency Distribution Models
  * ===========================
- * 
+ *
  * Models for simulating network and confirmation latency in trading execution.
  */
 
@@ -16,7 +16,11 @@ export function sampleLatency(distribution: LatencyDistribution): number {
 
   let baseLatency: number;
 
-  if (distType === 'normal' && distribution.meanMs !== undefined && distribution.stddevMs !== undefined) {
+  if (
+    distType === 'normal' &&
+    distribution.meanMs !== undefined &&
+    distribution.stddevMs !== undefined
+  ) {
     // Box-Muller transform for normal distribution
     const u1 = Math.random();
     const u2 = Math.random();
@@ -49,7 +53,10 @@ export function sampleLatency(distribution: LatencyDistribution): number {
 /**
  * Sample network latency for a venue
  */
-export function sampleNetworkLatency(config: VenueLatencyConfig, congestionLevel: number = 0): number {
+export function sampleNetworkLatency(
+  config: VenueLatencyConfig,
+  congestionLevel: number = 0
+): number {
   const baseLatency = sampleLatency(config.networkLatency);
   const congestionMultiplier = 1 + (config.congestionMultiplier - 1) * Math.min(1, congestionLevel);
   return baseLatency * congestionMultiplier;
@@ -58,7 +65,10 @@ export function sampleNetworkLatency(config: VenueLatencyConfig, congestionLevel
 /**
  * Sample confirmation latency for a venue
  */
-export function sampleConfirmationLatency(config: VenueLatencyConfig, congestionLevel: number = 0): number {
+export function sampleConfirmationLatency(
+  config: VenueLatencyConfig,
+  congestionLevel: number = 0
+): number {
   const baseLatency = sampleLatency(config.confirmationLatency);
   const congestionMultiplier = 1 + (config.congestionMultiplier - 1) * Math.min(1, congestionLevel);
   return baseLatency * congestionMultiplier;
@@ -67,7 +77,10 @@ export function sampleConfirmationLatency(config: VenueLatencyConfig, congestion
 /**
  * Sample total execution latency (network + confirmation)
  */
-export function sampleTotalLatency(config: VenueLatencyConfig, congestionLevel: number = 0): number {
+export function sampleTotalLatency(
+  config: VenueLatencyConfig,
+  congestionLevel: number = 0
+): number {
   const network = sampleNetworkLatency(config, congestionLevel);
   const confirmation = sampleConfirmationLatency(config, congestionLevel);
   return network + confirmation;
@@ -81,16 +94,16 @@ export function createPumpfunLatencyConfig(): VenueLatencyConfig {
   return {
     venue: 'pumpfun',
     networkLatency: {
-      p50: 50,   // 50ms median
-      p90: 150,  // 150ms at 90th percentile
-      p99: 500,  // 500ms at 99th percentile
+      p50: 50, // 50ms median
+      p90: 150, // 150ms at 90th percentile
+      p99: 500, // 500ms at 99th percentile
       jitterMs: 20,
       distribution: 'percentile',
     },
     confirmationLatency: {
-      p50: 400,   // 400ms median (Solana ~400ms per slot)
-      p90: 800,   // 800ms at 90th percentile
-      p99: 2000,  // 2s at 99th percentile
+      p50: 400, // 400ms median (Solana ~400ms per slot)
+      p90: 800, // 800ms at 90th percentile
+      p99: 2000, // 2s at 99th percentile
       jitterMs: 100,
       distribution: 'percentile',
     },
@@ -122,4 +135,3 @@ export function createPumpswapLatencyConfig(): VenueLatencyConfig {
     congestionMultiplier: 1.8,
   };
 }
-
