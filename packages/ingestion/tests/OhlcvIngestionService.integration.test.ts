@@ -92,9 +92,7 @@ describe('OhlcvIngestionService (integration)', () => {
     cleanupTestDuckDB(testDuckDBPath);
   });
 
-  it(
-    'queries real DuckDB and processes worklist correctly',
-    async () => {
+  it('queries real DuckDB and processes worklist correctly', async () => {
     const now = DateTime.utc();
     const validMint = 'So11111111111111111111111111111111111111112'; // WSOL
     const alertTime1 = now.minus({ minutes: 5 });
@@ -242,9 +240,7 @@ describe('OhlcvIngestionService (integration)', () => {
     expect(result.tokensProcessed).toBeGreaterThan(0);
     // The service may skip tokens if API calls fail or other conditions aren't met
     // But we've verified the real DuckDB query worked, which is the integration test goal
-    },
-    30000 // 30 second timeout for real DuckDB and API calls
-  );
+  }, 30000); // 30 second timeout for real DuckDB and API calls
 
   it('calculates ATH/ATL with realistic candle progression', async () => {
     const now = DateTime.utc();
@@ -330,7 +326,14 @@ describe('OhlcvIngestionService (integration)', () => {
     const absoluteDuckDBPath = resolve(testDuckDBPath);
     const worklist = await pythonEngine.runOhlcvWorklist({
       duckdbPath: absoluteDuckDBPath,
+      side: 'buy', // Explicitly pass side parameter
     });
+    
+    // Debug: Log worklist if empty
+    if (worklist.tokenGroups.length === 0) {
+      console.log('Worklist is empty. Full result:', JSON.stringify(worklist, null, 2));
+    }
+    
     expect(worklist.tokenGroups.length).toBe(1);
     expect(worklist.tokenGroups[0].mint).toBe(validMint);
     expect(worklist.calls.length).toBe(1);
@@ -413,9 +416,29 @@ describe('OhlcvIngestionService (integration)', () => {
     // Use absolute path to ensure Python script can find it
     const { resolve } = await import('path');
     const absoluteDuckDBPath = resolve(testDuckDBPath);
+    
+    // Debug: Verify data exists in DuckDB before querying
+    const { execSync } = await import('child_process');
+    try {
+      const debugQuery = execSync(
+        `python3 -c "import duckdb; con = duckdb.connect('${absoluteDuckDBPath}'); rows = con.execute('SELECT mint, chain, trigger_ts_ms FROM caller_links_d').fetchall(); print('Rows in DB:', len(rows)); print('Sample rows:', rows[:5] if rows else 'No rows'); valid = con.execute(\\\"SELECT COUNT(*) FROM caller_links_d WHERE mint IS NOT NULL AND mint != '' AND trigger_ts_ms IS NOT NULL\\\").fetchone()[0]; print('Valid rows:', valid); con.close()"`,
+        { encoding: 'utf-8' }
+      );
+      console.log('DuckDB debug query:', debugQuery);
+    } catch (error) {
+      console.log('Debug query failed:', error);
+    }
+    
     const worklistAll = await pythonEngine.runOhlcvWorklist({
       duckdbPath: absoluteDuckDBPath,
+      side: 'buy', // Explicitly pass side parameter
     });
+    
+    // Debug: Log worklist if empty
+    if (worklistAll.tokenGroups.length === 0) {
+      console.log('Worklist is empty. Full result:', JSON.stringify(worklistAll, null, 2));
+    }
+    
     expect(worklistAll.tokenGroups.length).toBe(1); // Same mint, grouped together
     expect(worklistAll.tokenGroups[0].callCount).toBe(2); // Both calls
     expect(worklistAll.calls.length).toBe(2); // Both individual calls
@@ -426,6 +449,7 @@ describe('OhlcvIngestionService (integration)', () => {
     const worklist = await pythonEngine.runOhlcvWorklist({
       duckdbPath: absoluteDuckDBPath,
       from: fromDate,
+      side: 'buy', // Explicitly pass side parameter
     });
 
     // Should only find the recent call (within last day)

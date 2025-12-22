@@ -115,6 +115,11 @@ export type {
 } from './execution/index.js';
 
 // =============================================================================
+// Execution Models - Reality-based execution simulation (Branch C)
+// =============================================================================
+export * from './execution-models/index.js';
+
+// =============================================================================
 // Overlay Simulation - Clean entrypoint for overlay-based backtesting
 // =============================================================================
 // This is the recommended public API for overlay-based simulations
