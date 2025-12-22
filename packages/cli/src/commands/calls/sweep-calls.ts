@@ -234,8 +234,16 @@ export async function sweepCallsHandler(args: SweepCallsArgs, _ctx: CommandConte
   let config: SweepCallsArgs;
   if (args.config) {
     // Load config from file and merge CLI overrides
-    const cliOverrides = { ...args };
-    delete cliOverrides.config; // Remove config path from overrides
+    // Only include non-empty CLI overrides (empty strings/arrays override config values)
+    const cliOverrides: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(args)) {
+      if (key === 'config') continue; // Skip config path itself
+      // Only include non-empty values
+      if (value !== undefined && value !== null && value !== '' && 
+          !(Array.isArray(value) && value.length === 0)) {
+        cliOverrides[key] = value;
+      }
+    }
     config = await loadConfig(args.config, sweepCallsSchema, cliOverrides);
   } else {
     config = args;

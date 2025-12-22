@@ -38,12 +38,15 @@ describe('TelegramPipelineService', () => {
       false
     );
 
-    expect(mockEngine.runTelegramPipeline).toHaveBeenCalledWith({
-      inputFile: '/path/to/input.json',
-      outputDb: '/path/to/output.duckdb',
-      chatId: 'test_chat',
-      rebuild: false,
-    });
+    expect(mockEngine.runTelegramPipeline).toHaveBeenCalledWith(
+      {
+        inputFile: '/path/to/input.json',
+        outputDb: '/path/to/output.duckdb',
+        chatId: 'test_chat',
+        rebuild: false,
+      },
+      undefined
+    );
     expect(result).toEqual(mockManifest);
   });
 
@@ -58,12 +61,15 @@ describe('TelegramPipelineService', () => {
 
     await service.runPipeline('/path/to/input.json', '/path/to/output.duckdb', 'test_chat', true);
 
-    expect(mockEngine.runTelegramPipeline).toHaveBeenCalledWith({
-      inputFile: '/path/to/input.json',
-      outputDb: '/path/to/output.duckdb',
-      chatId: 'test_chat',
-      rebuild: true,
-    });
+    expect(mockEngine.runTelegramPipeline).toHaveBeenCalledWith(
+      {
+        inputFile: '/path/to/input.json',
+        outputDb: '/path/to/output.duckdb',
+        chatId: 'test_chat',
+        rebuild: true,
+      },
+      undefined
+    );
   });
 
   it('should handle optional rebuild parameter', async () => {
@@ -77,12 +83,15 @@ describe('TelegramPipelineService', () => {
 
     await service.runPipeline('/path/to/input.json', '/path/to/output.duckdb', 'test_chat');
 
-    expect(mockEngine.runTelegramPipeline).toHaveBeenCalledWith({
-      inputFile: '/path/to/input.json',
-      outputDb: '/path/to/output.duckdb',
-      chatId: 'test_chat',
-      rebuild: undefined,
-    });
+    expect(mockEngine.runTelegramPipeline).toHaveBeenCalledWith(
+      {
+        inputFile: '/path/to/input.json',
+        outputDb: '/path/to/output.duckdb',
+        chatId: 'test_chat',
+        rebuild: undefined,
+      },
+      undefined
+    );
   });
 
   it('should validate output with Zod schema', async () => {

@@ -41,7 +41,7 @@ interface OhlcvStatsRow {
 export async function ohlcvStatsWorkflowHandler(
   args: OhlcvStatsWorkflowArgs,
   _ctx: CommandContext
-): Promise<GetOhlcvStatsResult | OhlcvStatsRow[]> {
+): Promise<GetOhlcvStatsResult | OhlcvStatsRow[] | Array<Record<string, unknown>>> {
   // Build workflow spec
   const spec: GetOhlcvStatsSpec = {
     chain: args.chain,
@@ -60,52 +60,110 @@ export async function ohlcvStatsWorkflowHandler(
     return result;
   }
 
-  // For table/CSV format, transform to array of rows
-  const rows: OhlcvStatsRow[] = [];
+  // For table/CSV format, transform to array of rows with readable labels
+  const rows: Array<Record<string, unknown>> = [];
 
-  // Add summary row
+  // Add summary section
   rows.push({
-    type: 'summary',
-    candleCount: result.totalCandles,
-    tokenCount: result.uniqueTokens,
-    dateEarliest: result.dateRange.earliest,
-    dateLatest: result.dateRange.latest,
+    section: '📊 SUMMARY',
+    label: 'Total',
+    candleCount: result.totalCandles.toLocaleString(),
+    tokenCount: result.uniqueTokens.toLocaleString(),
+    dateEarliest: result.dateRange.earliest ? new Date(result.dateRange.earliest).toLocaleString() : 'N/A',
+    dateLatest: result.dateRange.latest ? new Date(result.dateRange.latest).toLocaleString() : 'N/A',
   });
 
-  // Add interval rows
+  // Add separator
+  rows.push({
+    section: '',
+    label: '',
+    candleCount: '',
+    tokenCount: '',
+    dateEarliest: '',
+    dateLatest: '',
+  });
+
+  // Add interval breakdown with labels
   if (result.intervals && result.intervals.length > 0) {
+    rows.push({
+      section: '⏱️  BY INTERVAL',
+      label: '',
+      candleCount: '',
+      tokenCount: '',
+      dateEarliest: '',
+      dateLatest: '',
+    });
     for (const interval of result.intervals) {
       rows.push({
-        type: 'interval',
-        interval: interval.interval,
-        candleCount: interval.candleCount,
-        tokenCount: interval.tokenCount,
+        section: '',
+        label: `  ${interval.interval}`,
+        candleCount: interval.candleCount.toLocaleString(),
+        tokenCount: interval.tokenCount.toLocaleString(),
+        dateEarliest: '',
+        dateLatest: '',
       });
     }
+    rows.push({
+      section: '',
+      label: '',
+      candleCount: '',
+      tokenCount: '',
+      dateEarliest: '',
+      dateLatest: '',
+    });
   }
 
-  // Add chain rows
+  // Add chain breakdown with labels
   if (result.chains && result.chains.length > 0) {
+    rows.push({
+      section: '⛓️  BY CHAIN',
+      label: '',
+      candleCount: '',
+      tokenCount: '',
+      dateEarliest: '',
+      dateLatest: '',
+    });
     for (const chain of result.chains) {
       rows.push({
-        type: 'chain',
-        chain: chain.chain,
-        candleCount: chain.candleCount,
-        tokenCount: chain.tokenCount,
+        section: '',
+        label: `  ${chain.chain}`,
+        candleCount: chain.candleCount.toLocaleString(),
+        tokenCount: chain.tokenCount.toLocaleString(),
+        dateEarliest: '',
+        dateLatest: '',
       });
     }
+    rows.push({
+      section: '',
+      label: '',
+      candleCount: '',
+      tokenCount: '',
+      dateEarliest: '',
+      dateLatest: '',
+    });
   }
 
-  // Add top token rows
+  // Add top tokens with labels
   if (result.topTokens && result.topTokens.length > 0) {
+    rows.push({
+      section: '🏆 TOP TOKENS',
+      label: '',
+      candleCount: '',
+      tokenCount: '',
+      dateEarliest: '',
+      dateLatest: '',
+    });
     for (const token of result.topTokens) {
+      const shortAddress = token.token_address.length > 20 
+        ? `${token.token_address.substring(0, 10)}...${token.token_address.substring(token.token_address.length - 8)}`
+        : token.token_address;
       rows.push({
-        type: 'token',
-        token_address: token.token_address,
-        chain: token.chain,
-        candleCount: token.candleCount,
-        firstSeen: token.firstSeen,
-        lastSeen: token.lastSeen,
+        section: '',
+        label: `  ${shortAddress} (${token.chain})`,
+        candleCount: token.candleCount.toLocaleString(),
+        tokenCount: '',
+        dateEarliest: token.firstSeen ? new Date(token.firstSeen).toLocaleDateString() : '',
+        dateLatest: token.lastSeen ? new Date(token.lastSeen).toLocaleDateString() : '',
       });
     }
   }

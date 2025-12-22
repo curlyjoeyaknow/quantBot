@@ -63,15 +63,15 @@ describe('ArgumentParser', () => {
   });
 
   describe('normalizeOptions', () => {
-    it('should normalize camelCase to kebab-case', () => {
+    it('should preserve keys as-is (Commander.js already handles conversion)', () => {
       const options = {
         camelCase: 'value1',
         anotherKey: 'value2',
       };
 
       const result = normalizeOptions(options);
-      expect(result['camel-case']).toBe('value1');
-      expect(result['another-key']).toBe('value2');
+      expect(result['camelCase']).toBe('value1');
+      expect(result['anotherKey']).toBe('value2');
     });
 
     it('should convert string numbers to numbers', () => {
@@ -95,9 +95,9 @@ describe('ArgumentParser', () => {
       };
 
       const result = normalizeOptions(options);
-      expect(result['true-val']).toBe(true);
-      expect(result['false-val']).toBe(false);
-      expect(result['not-bool']).toBe('trueValue');
+      expect(result['trueVal']).toBe(true);
+      expect(result['falseVal']).toBe(false);
+      expect(result['notBool']).toBe('trueValue');
     });
 
     it('should skip null and undefined values', () => {

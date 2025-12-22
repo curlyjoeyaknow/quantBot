@@ -44,19 +44,19 @@ This document outlines the immediate next steps after completing the PostgreSQL 
 
 **Dependencies**: ✅ All dependencies resolved
 
-### 3. Re-implement MetricsAggregator.calculateSystemMetrics()
+### 3. ✅ MetricsAggregator.calculateSystemMetrics() - COMPLETE
 
 **Location**: `packages/analytics/src/aggregators/MetricsAggregator.ts`
 
-**Current State**: Throws error - PostgreSQL removed
+**Status**: ✅ Implemented - calculates from provided calls (no DB queries)
 
-**Actions Needed**:
+**Implementation**:
+- Calculates metrics from provided `CallPerformance[]` array
+- No database queries needed (calculated on-the-fly from calls)
+- Returns system metrics: totalCalls, totalCallers, totalTokens, dateRange
+- Note: For full system metrics requiring DB queries, use DuckDB workflows
 
-- Determine what system metrics are needed
-- Query DuckDB for system-level statistics
-- Calculate metrics from provided calls (if no DB queries needed)
-
-**Note**: May be able to calculate from provided calls without DB queries
+**Dependencies**: ✅ No dependencies - works with provided calls only
 
 ## 🟡 Medium Priority - Workflow Completeness
 
