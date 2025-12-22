@@ -1,0 +1,81 @@
+name: Stress Tests
+
+on:
+  schedule:
+    # Run stress tests weekly on Sundays at 2 AM UTC
+    - cron: '0 2 * * 0'
+  workflow_dispatch:
+    inputs:
+      run_db_stress:
+        description: 'Run database stress tests'
+        required: false
+        default: false
+        type: boolean
+      run_chaos_tests:
+        description: 'Run chaos engineering tests'
+        required: false
+        type: boolean
+      run_integration_stress:
+        description: 'Run integration stress tests'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  stress-tests:
+    name: Run Stress Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    strategy:
+      matrix:
+        node-version: [20.x]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 8
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build packages (ordered)
+        run: pnpm build:ordered
+
+      - name: Run stress tests (offline)
+        run: pnpm test:stress
+        continue-on-error: true
+
+      - name: Run database stress tests
+        if: ${{ github.event.inputs.run_db_stress == 'true' || github.event_name == 'schedule' }}
+        env:
+          RUN_DB_STRESS: 1
+        run: pnpm test:stress:db
+        continue-on-error: true
+
+      - name: Run chaos engineering tests
+        if: ${{ github.event.inputs.run_chaos_tests == 'true' || github.event_name == 'schedule' }}
+        env:
+          RUN_CHAOS_TESTS: 1
+        run: pnpm test:stress:chaos
+        continue-on-error: true
+
+      - name: Upload stress test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stress-test-results-${{ github.run_id }}
+          path: |
+            packages/*/coverage/
+          retention-days: 30
+

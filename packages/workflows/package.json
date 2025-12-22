@@ -30,6 +30,7 @@
     "@quantbot/api-clients": "workspace:*",
     "@quantbot/core": "workspace:*",
     "@quantbot/jobs": "workspace:*",
+    "@quantbot/data-observatory": "workspace:*",
     "luxon": "^3.5.0",
     "uuid": "^11.1.0",
     "zod": "^4.1.13"

@@ -33,11 +33,25 @@ export function parseArguments<T extends z.ZodSchema>(
 }
 
 /**
+ * Convert camelCase to kebab-case
+ * Preserves keys that already contain special characters (dashes, underscores, dots)
+ */
+function camelToKebab(key: string): string {
+  // If key already contains dashes, underscores, or dots, preserve as-is
+  if (key.includes('-') || key.includes('_') || key.includes('.')) {
+    return key;
+  }
+  // Convert camelCase to kebab-case
+  return key.replace(/([a-z0-9])([A-Z])/g, '$1-$2').toLowerCase();
+}
+
+/**
  * Normalize Commander.js options to a flat object
  * Handles both --flag value and --flag=value formats
  *
- * IMPORTANT: Do NOT rename keys. Commander.js already converts --output-db to outputDb.
- * This function only normalizes VALUES (parsing, coercion, defaults).
+ * Key normalization:
+ * - DO NOT rename keys - Commander.js already converts --output-db to outputDb
+ * - Preserve keys exactly as Commander.js provides them (camelCase)
  *
  * Value normalization:
  * - String "true"/"false" → boolean
@@ -54,7 +68,6 @@ export function normalizeOptions(options: Record<string, unknown>): Record<strin
     }
 
     // DO NOT rename keys - Commander.js already handles kebab-case → camelCase conversion
-    // Keep the key as-is (Commander produces camelCase properties)
     const normalizedKey = key;
 
     // Handle string values that might be numbers or booleans
@@ -65,10 +78,22 @@ export function normalizeOptions(options: Record<string, unknown>): Record<strin
       } else if (value === 'false') {
         normalized[normalizedKey] = false;
       } else if (!isNaN(Number(value)) && value.trim() !== '') {
-        // Try to parse as number (but preserve if it's a file path or other non-numeric string)
-        // Only convert if it's a pure number string
+        // Try to parse as number (but preserve if it's a file path, ID, or other non-numeric string)
+        // Only convert if it's a pure number string AND not an ID-like value (long numeric strings)
+        // IDs (chatId, messageId, etc.) should remain strings even if they're numeric
         const numValue = Number(value);
-        if (String(numValue) === value.trim()) {
+        const trimmed = value.trim();
+        // Don't convert if:
+        // - It's a file path (contains / or \)
+        // - It's a long numeric string (likely an ID like chatId, messageId)
+        // - It doesn't match the number exactly (has leading zeros, etc.)
+        if (
+          String(numValue) === trimmed &&
+          !trimmed.includes('/') &&
+          !trimmed.includes('\\') &&
+          trimmed.length < 10
+        ) {
+          // Only convert short numbers (not IDs)
           normalized[normalizedKey] = numValue;
         } else {
           normalized[normalizedKey] = value;

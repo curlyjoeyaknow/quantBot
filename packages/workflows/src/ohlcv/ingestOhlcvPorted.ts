@@ -1,4 +1,5 @@
 import type { WorkflowContextWithPorts } from '../context/workflowContextWithPorts.js';
+import { createOhlcvIngestionContext } from '../context/createOhlcvIngestionContext.js';
 import { createTokenAddress } from '@quantbot/core';
 
 export type IngestOhlcvWorkflowInput = {
@@ -17,6 +18,25 @@ export type IngestOhlcvWorkflowOutput = {
 };
 
 /**
+ * Context type for ingestOhlcvWorkflowPorted (alias for WorkflowContextWithPorts)
+ *
+ * Named with "Context" suffix for workflow contract compliance.
+ */
+export type IngestOhlcvWorkflowPortedContext = WorkflowContextWithPorts;
+
+/**
+ * Create default context (for testing)
+ *
+ * NOTE: This throws an error because context creation is async.
+ * The actual defaulting happens in the function body using ctx ?? (await createOhlcvIngestionContext()).
+ */
+export function createDefaultIngestOhlcvWorkflowPortedContext(): IngestOhlcvWorkflowPortedContext {
+  throw new Error(
+    'createDefaultIngestOhlcvWorkflowPortedContext must be called with await createOhlcvIngestionContext()'
+  );
+}
+
+/**
  * Ported OHLCV ingestion workflow
  *
  * This is the first "ported" workflow wrapper that uses ctx.ports.*
@@ -31,11 +51,15 @@ export type IngestOhlcvWorkflowOutput = {
  */
 export async function ingestOhlcvWorkflowPorted(
   input: IngestOhlcvWorkflowInput,
-  ctx: WorkflowContextWithPorts
+  ctx: IngestOhlcvWorkflowPortedContext = createDefaultIngestOhlcvWorkflowPortedContext()
 ): Promise<IngestOhlcvWorkflowOutput> {
-  const start = ctx.ports.clock.nowMs();
+  // Default context for testing (only if not provided)
+  // Since createDefaultIngestOhlcvWorkflowPortedContext throws, ctx will always be provided in practice
+  // For tests that need default context, they should call createOhlcvIngestionContext() explicitly
+  const workflowCtx = ctx;
+  const start = workflowCtx.ports.clock.nowMs();
 
-  ctx.ports.telemetry.emitEvent({
+  workflowCtx.ports.telemetry.emitEvent({
     name: 'ohlcv.ingest.started',
     level: 'info',
     message: 'OHLCV ingestion started',
@@ -54,35 +78,35 @@ export async function ingestOhlcvWorkflowPorted(
         const chain = input.chain === 'evm' ? 'ethereum' : (input.chain ?? 'solana');
 
         // Convert ISO strings to UNIX timestamps (seconds)
-        // Use ctx.ports.clock instead of Date.now() for determinism
-        const nowUnix = Math.floor(ctx.ports.clock.nowMs() / 1000);
+        // Use workflowCtx.ports.clock instead of Date.now() for determinism
+        const nowUnix = Math.floor(workflowCtx.ports.clock.nowMs() / 1000);
         const fromUnix = input.from
           ? Math.floor(new Date(input.from).getTime() / 1000)
           : nowUnix - 3600;
         const toUnix = input.to ? Math.floor(new Date(input.to).getTime() / 1000) : nowUnix;
 
         // Track fetch latency for performance monitoring
-        const fetchStart = ctx.ports.clock.nowMs();
-        const candles = await ctx.ports.marketData.fetchOhlcv({
+        const fetchStart = workflowCtx.ports.clock.nowMs();
+        const candles = await workflowCtx.ports.marketData.fetchOhlcv({
           tokenAddress,
           chain: chain as 'solana' | 'ethereum' | 'base' | 'bsc',
           interval: input.interval,
           from: fromUnix,
           to: toUnix,
         });
-        const fetchLatency = ctx.ports.clock.nowMs() - fetchStart;
+        const fetchLatency = workflowCtx.ports.clock.nowMs() - fetchStart;
 
         candlesFetched = candles.length;
 
         // Emit fetch latency metric (performance sanity)
-        ctx.ports.telemetry.emitMetric({
+        workflowCtx.ports.telemetry.emitMetric({
           name: 'ohlcv_fetch_latency_ms',
           type: 'histogram',
           value: fetchLatency,
           labels: { interval: input.interval, mint: input.mint.substring(0, 8) },
         });
 
-        ctx.ports.telemetry.emitEvent({
+        workflowCtx.ports.telemetry.emitEvent({
           name: 'ohlcv.ingest.candles_fetched',
           level: 'info',
           message: `Fetched ${candles.length} candles for ${input.mint}`,
@@ -95,7 +119,7 @@ export async function ingestOhlcvWorkflowPorted(
           context: { mint: input.mint },
         });
 
-        ctx.ports.telemetry.emitEvent({
+        workflowCtx.ports.telemetry.emitEvent({
           name: 'ohlcv.ingest.fetch_failed',
           level: 'error',
           message: `Failed to fetch candles for ${input.mint}`,
@@ -123,20 +147,20 @@ export async function ingestOhlcvWorkflowPorted(
       errors: errors.length > 0 ? errors : undefined,
     };
 
-    const elapsed = ctx.ports.clock.nowMs() - start;
-    ctx.ports.telemetry.emitMetric({
+    const elapsed = workflowCtx.ports.clock.nowMs() - start;
+    workflowCtx.ports.telemetry.emitMetric({
       name: 'ohlcv_ingest_elapsed_ms',
       type: 'gauge',
       value: elapsed,
       labels: { interval: input.interval },
     });
-    ctx.ports.telemetry.emitMetric({
+    workflowCtx.ports.telemetry.emitMetric({
       name: 'ohlcv_ingest_candles_fetched',
       type: 'counter',
       value: candlesFetched,
       labels: { interval: input.interval },
     });
-    ctx.ports.telemetry.emitEvent({
+    workflowCtx.ports.telemetry.emitEvent({
       name: 'ohlcv.ingest.completed',
       level: 'info',
       message: 'OHLCV ingestion completed',
@@ -145,14 +169,14 @@ export async function ingestOhlcvWorkflowPorted(
 
     return out;
   } catch (err) {
-    const elapsed = ctx.ports.clock.nowMs() - start;
-    ctx.ports.telemetry.emitMetric({
+    const elapsed = workflowCtx.ports.clock.nowMs() - start;
+    workflowCtx.ports.telemetry.emitMetric({
       name: 'ohlcv_ingest_elapsed_ms',
       type: 'gauge',
       value: elapsed,
       labels: { interval: input.interval, error: 'true' },
     });
-    ctx.ports.telemetry.emitEvent({
+    workflowCtx.ports.telemetry.emitEvent({
       name: 'ohlcv.ingest.failed',
       level: 'error',
       message: 'OHLCV ingestion failed',

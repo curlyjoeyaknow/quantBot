@@ -1973,8 +1973,8 @@ def main():
       AND COUNT(CASE WHEN UPPER(COALESCE(l.chain, '')) IN ('TON', 'SUI', 'PLASMA') THEN 1 END) = 0
   """, [chat_id])
   
-  # Now filter to only first call per caller per mint
-  # Use ROW_NUMBER to handle cases where same caller calls same mint at same timestamp
+  # Insert all calls (no deduplication by caller+mint - each message is a separate call)
+  # Use ROW_NUMBER only to handle true duplicates (same message_id appearing multiple times)
   print("Inserting user calls...", file=sys.stderr, flush=True)
   if has_run_id_calls:
     result = con.execute("""
@@ -2001,12 +2001,12 @@ def main():
       SELECT
         t.*,
         ROW_NUMBER() OVER (
-          PARTITION BY t.caller_id, COALESCE(t.mint, t.ticker, CAST(t.message_id AS TEXT))
+          -- Only deduplicate if the same message_id appears multiple times (shouldn't happen, but safety check)
+          PARTITION BY t.chat_id, t.message_id
           ORDER BY 
             -- Prefer triggers with both bots (Rick + Phanes)
             CASE WHEN t.bot_reply_id_1 IS NOT NULL AND t.bot_reply_id_2 IS NOT NULL THEN 0 ELSE 1 END,
-            t.call_ts_ms ASC, 
-            t.message_id ASC
+            t.call_ts_ms ASC
         ) AS rn
       FROM temp_user_calls t
     ) ranked
@@ -2037,12 +2037,12 @@ def main():
         SELECT
           t.*,
           ROW_NUMBER() OVER (
-            PARTITION BY t.caller_id, COALESCE(t.mint, t.ticker, CAST(t.message_id AS TEXT))
+            -- Only deduplicate if the same message_id appears multiple times (shouldn't happen, but safety check)
+            PARTITION BY t.chat_id, t.message_id
             ORDER BY 
               -- Prefer triggers with both bots (Rick + Phanes)
               CASE WHEN t.bot_reply_id_1 IS NOT NULL AND t.bot_reply_id_2 IS NOT NULL THEN 0 ELSE 1 END,
-              t.call_ts_ms ASC, 
-              t.message_id ASC
+              t.call_ts_ms ASC
           ) AS rn
         FROM temp_user_calls t
       ) ranked

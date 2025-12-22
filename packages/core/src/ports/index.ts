@@ -39,3 +39,4 @@ export type {
   MetricType,
 } from './telemetryPort.js';
 export type { QueryPort, QueryRequest, QueryResult } from './queryPort.js';
+export type { ArtifactRepository, ArtifactQueryFilter } from './artifact-repository-port.js';

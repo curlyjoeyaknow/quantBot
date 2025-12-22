@@ -563,8 +563,11 @@ export class PythonEngine {
     const workspaceRoot = findWorkspaceRoot();
     const scriptPath = join(workspaceRoot, 'tools/simulation/duckdb_storage/main.py');
 
+    // Resolve duckdbPath to absolute path (Python script runs from tools/simulation directory)
+    const absoluteDuckdbPath = resolve(config.duckdbPath);
+
     const args: Record<string, unknown> = {
-      duckdb: config.duckdbPath,
+      duckdb: absoluteDuckdbPath,
       operation: config.operation,
       data: JSON.stringify(config.data),
     };

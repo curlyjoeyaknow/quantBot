@@ -27,6 +27,8 @@ import {
 import { errorToContract } from './error-contracts.js';
 import { commandRegistry } from './command-registry.js';
 import { getProgressIndicator, resetProgressIndicator } from './progress-indicator.js';
+import { closeClickHouse } from '@quantbot/storage';
+import { logger } from '@quantbot/utils';
 
 /**
  * Find package name for a command by searching the registry
@@ -177,7 +179,11 @@ export async function execute(
     console.error(`Error: ${message}`);
     process.exit(1);
   } finally {
-    // Always clean up progress indicator
+    // Always clean up connections and progress indicator to allow process to exit
+    await closeClickHouse().catch((err) => {
+      // Ignore errors during cleanup - we're exiting anyway
+      logger.debug('Error closing ClickHouse during cleanup', { error: err });
+    });
     resetProgressIndicator();
   }
 }

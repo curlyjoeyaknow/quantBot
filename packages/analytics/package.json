@@ -19,6 +19,7 @@
     "@quantbot/core": "workspace:*",
     "@quantbot/utils": "workspace:*",
     "@quantbot/storage": "workspace:*",
+    "@quantbot/workflows": "workspace:*",
     "luxon": "^3.6.1"
   },
   "devDependencies": {

@@ -1,0 +1,89 @@
+{
+  "code": "VALIDATION_ERROR",
+  "message": "Python script output failed schema validation: [\n  {\n    \"expected\": \"number\",\n    \"code\": \"invalid_type\",\n    \"path\": [\n      \"id\"\n    ],\n    \"message\": \"Invalid input: expected number, received undefined\"\n  },\n  {\n    \"expected\": \"string\",\n    \"code\": \"invalid_type\",\n    \"path\": [\n      \"name\"\n    ],\n    \"message\": \"Invalid input: expected string, received undefined\"\n  },\n  {\n    \"expected\": \"string\",\n    \"code\": \"invalid_type\",\n    \"path\": [\n      \"version\"\n    ],\n    \"message\": \"Invalid input: expected string, received undefined\"\n  },\n  {\n    \"expected\": \"string\",\n    \"code\": \"invalid_type\",\n    \"path\": [\n      \"category\"\n    ],\n    \"message\": \"Invalid input: expected string, received undefined\"\n  },\n  {\n    \"expected\": \"string\",\n    \"code\": \"invalid_type\",\n    \"path\": [\n      \"description\"\n    ],\n    \"message\": \"Invalid input: expected string, received undefined\"\n  },\n  {\n    \"expected\": \"record\",\n    \"code\": \"invalid_type\",\n    \"path\": [\n      \"config_json\"\n    ],\n    \"message\": \"Invalid input: expected record, received undefined\"\n  },\n  {\n    \"expected\": \"boolean\",\n    \"code\": \"invalid_type\",\n    \"path\": [\n      \"is_active\"\n    ],\n    \"message\": \"Invalid input: expected boolean, received undefined\"\n  },\n  {\n    \"expected\": \"string\",\n    \"code\": \"invalid_type\",\n    \"path\": [\n      \"created_at\"\n    ],\n    \"message\": \"Invalid input: expected string, received undefined\"\n  },\n  {\n    \"expected\": \"string\",\n    \"code\": \"invalid_type\",\n    \"path\": [\n      \"updated_at\"\n    ],\n    \"message\": \"Invalid input: expected string, received undefined\"\n  }\n]",
+  "operation": "simulation.run",
+  "metadata": {
+    "script": "/home/memez/quantBot/tools/storage/duckdb_strategies.py",
+    "zodError": [
+      {
+        "expected": "number",
+        "code": "invalid_type",
+        "path": [
+          "id"
+        ],
+        "message": "Invalid input: expected number, received undefined"
+      },
+      {
+        "expected": "string",
+        "code": "invalid_type",
+        "path": [
+          "name"
+        ],
+        "message": "Invalid input: expected string, received undefined"
+      },
+      {
+        "expected": "string",
+        "code": "invalid_type",
+        "path": [
+          "version"
+        ],
+        "message": "Invalid input: expected string, received undefined"
+      },
+      {
+        "expected": "string",
+        "code": "invalid_type",
+        "path": [
+          "category"
+        ],
+        "message": "Invalid input: expected string, received undefined"
+      },
+      {
+        "expected": "string",
+        "code": "invalid_type",
+        "path": [
+          "description"
+        ],
+        "message": "Invalid input: expected string, received undefined"
+      },
+      {
+        "expected": "record",
+        "code": "invalid_type",
+        "path": [
+          "config_json"
+        ],
+        "message": "Invalid input: expected record, received undefined"
+      },
+      {
+        "expected": "boolean",
+        "code": "invalid_type",
+        "path": [
+          "is_active"
+        ],
+        "message": "Invalid input: expected boolean, received undefined"
+      },
+      {
+        "expected": "string",
+        "code": "invalid_type",
+        "path": [
+          "created_at"
+        ],
+        "message": "Invalid input: expected string, received undefined"
+      },
+      {
+        "expected": "string",
+        "code": "invalid_type",
+        "path": [
+          "updated_at"
+        ],
+        "message": "Invalid input: expected string, received undefined"
+      }
+    ],
+    "receivedData": {
+      "error": "Catalog Error: Table with name strategies does not exist!\nDid you mean \"strategy_config\"?\n\nLINE 3:             FROM strategies\n                         ^"
+    }
+  },
+  "timestamp": "2025-12-22T20:20:48.214Z",
+  "runId": "simulation_run_PT2_SL25_unknown_20251222202047_42b3926f",
+  "statusCode": 400,
+  "errorType": "ValidationError"
+}

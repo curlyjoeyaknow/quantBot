@@ -190,10 +190,10 @@ export function createTempDuckDBPath(prefix: string = 'test'): string {
 export async function copyRealDuckDB(sourcePath: string, targetPath: string): Promise<void> {
   const { copyFile } = await import('fs/promises');
   const { existsSync } = await import('fs');
-  
+
   if (!existsSync(sourcePath)) {
     throw new Error(`Source DuckDB file does not exist: ${sourcePath}`);
   }
-  
+
   await copyFile(sourcePath, targetPath);
 }

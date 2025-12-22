@@ -50,7 +50,8 @@ describe('processTelegramPythonHandler', () => {
       '/path/to/input.json',
       '/path/to/output.duckdb',
       'test_chat',
-      false
+      false,
+      { timeout: 30 * 60 * 1000 }
     );
     expect(result).toEqual(mockManifest);
   });
@@ -78,7 +79,8 @@ describe('processTelegramPythonHandler', () => {
       '/path/to/input.json',
       '/path/to/output.duckdb',
       'test_chat',
-      true
+      true,
+      { timeout: 30 * 60 * 1000 }
     );
   });
 
@@ -99,13 +101,14 @@ describe('processTelegramPythonHandler', () => {
       format: 'table' as const,
     };
 
-    await processTelegramPythonHandler(args, mockCtx);
+    await processTelegramPythonHandler(args as any, mockCtx as unknown as CommandContext);
 
     expect(mockService.runPipeline).toHaveBeenCalledWith(
       '/path/to/input.json',
       '/path/to/output.duckdb',
       'test_chat',
-      undefined
+      undefined,
+      { timeout: 30 * 60 * 1000 }
     );
   });
 

@@ -11,13 +11,17 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { ingestOhlcv } from '../../src/ohlcv/ingestOhlcv.js';
+import { IngestOhlcvContext, ingestOhlcv } from '../../src/ohlcv/ingestOhlcv.js';
 import { createTestWorkflowContext } from '../helpers/createTestContext.js';
 // Use relative path for test helpers (they're not exported from the package)
-import { createTestDuckDB, cleanupTestDuckDB, createTempDuckDBPath } from '../../../ingestion/tests/helpers/createTestDuckDB.js';
+import {
+  createTestDuckDB,
+  cleanupTestDuckDB,
+  createTempDuckDBPath,
+} from '../../../ingestion/tests/helpers/createTestDuckDB.js';
 import type { TestCall } from '../../../ingestion/tests/helpers/createTestDuckDB.js';
 import { initClickHouse, closeClickHouse } from '@quantbot/storage';
-import { shouldRunDbStress } from '@quantbot/utils/test-helpers/test-gating';
+import { shouldRunDbStress } from '../../../utils/src/test-helpers/test-gating';
 import { DateTime } from 'luxon';
 import { vi } from 'vitest';
 
@@ -105,7 +109,7 @@ describe.skipIf(!shouldRun)('Architecture Boundaries - Real Implementation Tests
           rateLimitMs: 100,
           maxRetries: 3,
         },
-        context
+        context as unknown as IngestOhlcvContext
       );
 
       // Assert: Workflow uses ports (architectural boundary enforced)
@@ -141,7 +145,7 @@ describe.skipIf(!shouldRun)('Architecture Boundaries - Real Implementation Tests
           rateLimitMs: 100,
           maxRetries: 3,
         },
-        context
+        context as unknown as IngestOhlcvContext
       );
 
       // Assert: Result is JSON-serializable
@@ -161,4 +165,3 @@ describe.skipIf(!shouldRun)('Architecture Boundaries - Real Implementation Tests
     }
   });
 });
-

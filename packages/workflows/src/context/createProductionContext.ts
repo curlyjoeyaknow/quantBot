@@ -22,6 +22,9 @@ import type {
   SimulationCallResult,
 } from '../types.js';
 
+// Re-export WorkflowContext for convenience
+export type { WorkflowContext } from '../types.js';
+
 export interface ProductionContextConfig {
   /**
    * Optional logger override (defaults to @quantbot/utils logger)

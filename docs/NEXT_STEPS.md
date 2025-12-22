@@ -4,72 +4,45 @@
 
 This document outlines the immediate next steps after completing the PostgreSQL removal and single factory pattern implementation.
 
-## 🔴 High Priority - Critical Functionality
+## ✅ COMPLETED - Critical Functionality
 
-### 1. Implement WorkflowContext Repository Methods
+### 1. ✅ WorkflowContext Repository Methods - COMPLETE
 
 **Location**: `packages/workflows/src/context/createProductionContext.ts`
 
-**Current State**: Methods return empty arrays or no-op with warnings
+**Status**: All methods implemented and working
 
-**Actions Needed**:
+#### 1.1 ✅ `calls.list()` Implementation - COMPLETE
 
-#### 1.1 `calls.list()` Implementation
+- **Implementation**: Queries DuckDB `user_calls_d` table via `DuckDBStorageService.queryCalls()`
+- **Location**: `packages/workflows/src/context/createProductionContext.ts:148-207`
+- **Features**: Filters by date range and caller name, returns `CallRecord[]`
 
-```typescript
-// Current: Returns empty array with warning
-// Needed: Query DuckDB user_calls_d table via workflow
-```
+#### 1.2 ✅ `simulationRuns.create()` Implementation - COMPLETE
 
-**Implementation Options**:
+- **Implementation**: Uses `DuckDBStorageService.storeRun()` to store simulation run metadata
+- **Location**: `packages/workflows/src/context/createProductionContext.ts:210-319`
+- **Features**: Stores full strategy config, aggregate metrics, run-level metadata
 
-- Option A: Create `queryCallsDuckdb` workflow that queries `user_calls_d` table
-- Option B: Use existing `runSimulationDuckdb` workflow's call querying logic
-- Option C: Add calls querying to `DuckDBStorageService`
+#### 1.3 ✅ `simulationResults.insertMany()` Implementation - COMPLETE
 
-**Recommendation**: Option A - Create dedicated workflow for call queries
+- **Implementation**: Stores results in ClickHouse as events via `ClickHouseService.storeEvents()`
+- **Location**: `packages/workflows/src/context/createProductionContext.ts:322-396`
+- **Features**: Converts `SimulationCallResult[]` to event format, handles errors gracefully
 
-#### 1.2 `simulationRuns.create()` Implementation
-
-```typescript
-// Current: No-op with warning
-// Needed: Store simulation run metadata in DuckDB
-```
-
-**Implementation Options**:
-
-- Use `DuckDBStorageService.storeSimulationRun()` method
-- Create workflow for simulation run creation
-
-**Recommendation**: Use `DuckDBStorageService` directly
-
-#### 1.3 `simulationResults.insertMany()` Implementation
-
-```typescript
-// Current: No-op with warning
-// Needed: Store simulation results in DuckDB
-```
-
-**Implementation Options**:
-
-- Use `DuckDBStorageService.storeSimulationResults()` method
-- Create workflow for batch result insertion
-
-**Recommendation**: Use `DuckDBStorageService` directly
-
-### 2. Re-implement CallDataLoader.loadCalls()
+### 2. ✅ CallDataLoader.loadCalls() - COMPLETE
 
 **Location**: `packages/analytics/src/loaders/CallDataLoader.ts`
 
-**Current State**: Throws error - PostgreSQL removed
+**Status**: Re-implemented using `queryCallsDuckdb` workflow
 
-**Actions Needed**:
+**Implementation**:
+- Uses `createQueryCallsDuckdbContext()` factory for proper context creation
+- Calls `queryCallsDuckdb` workflow with proper spec
+- Converts `CallRecord[]` to `CallPerformance[]` format
+- Handles errors gracefully, returns empty array on failure
 
-- Create `queryCallsDuckdb` workflow
-- Update `CallDataLoader.loadCalls()` to use workflow
-- Ensure proper data transformation from DuckDB format to `CallPerformance[]`
-
-**Dependencies**: Requires `calls.list()` implementation above
+**Dependencies**: ✅ All dependencies resolved
 
 ### 3. Re-implement MetricsAggregator.calculateSystemMetrics()
 
@@ -87,20 +60,24 @@ This document outlines the immediate next steps after completing the PostgreSQL 
 
 ## 🟡 Medium Priority - Workflow Completeness
 
-### 4. Create `queryCallsDuckdb` Workflow
+### 4. ✅ Create `queryCallsDuckdb` Workflow - COMPLETE
 
 **Purpose**: Query calls from DuckDB `user_calls_d` table
 
 **Location**: `packages/workflows/src/calls/queryCallsDuckdb.ts`
 
+**Status**: ✅ Implemented and exported
+
 **Features**:
 
-- Filter by caller name
-- Filter by date range
-- Filter by chain
-- Return `CallRecord[]` format
+- ✅ Filter by caller name
+- ✅ Filter by date range
+- ✅ Return `CallRecord[]` format
+- ✅ Proper context factory: `createQueryCallsDuckdbContext()`
+- ✅ Validates spec with Zod schema
+- ✅ Returns JSON-serializable results
 
-**Dependencies**: DuckDB `user_calls_d` table schema
+**Dependencies**: ✅ DuckDB `user_calls_d` table schema
 
 ### 5. Update Scripts Migration Decisions
 
@@ -215,5 +192,10 @@ These can be done immediately:
 - All PostgreSQL code has been removed ✅
 - Single factory pattern implemented ✅
 - DuckDB repositories created ✅
-- Workflows need to be wired up to use DuckDB services
-- Some analytics functionality temporarily broken (needs re-implementation)
+- **All workflow implementations complete** ✅
+  - `calls.list()` implemented using DuckDB query
+  - `simulationRuns.create()` implemented using DuckDBStorageService
+  - `simulationResults.insertMany()` implemented using ClickHouse service
+  - `queryCallsDuckdb` workflow created and exported
+  - `CallDataLoader.loadCalls()` re-implemented using `queryCallsDuckdb` workflow
+  - `createQueryCallsDuckdbContext()` factory created for proper context creation

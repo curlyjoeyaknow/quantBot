@@ -68,7 +68,9 @@ describe('DuckDB Ingestion Idempotency', () => {
 
   beforeAll(() => {
     engine = new PythonEngine('python3');
-    pythonToolPath = join(process.cwd(), 'tools/telegram/duckdb_punch_pipeline.py');
+    // Resolve to absolute path to ensure it exists
+    const { resolve } = require('path');
+    pythonToolPath = resolve(process.cwd(), 'tools/telegram/duckdb_punch_pipeline.py');
 
     // Create test directory
     if (!existsSync(TEST_DIR)) {
@@ -136,10 +138,8 @@ describe('DuckDB Ingestion Idempotency', () => {
       expect(callsCount1).toBeGreaterThanOrEqual(0);
     });
 
-    it(
-      'second run with same input produces exact same row counts',
-      async () => {
-        if (!existsSync(pythonToolPath)) {
+    it('second run with same input produces exact same row counts', async () => {
+      if (!existsSync(pythonToolPath)) {
         console.warn('Python tool not found, skipping test');
         return;
       }
@@ -190,14 +190,10 @@ describe('DuckDB Ingestion Idempotency', () => {
       expect(tgCount2).toBe(tgCount1);
       expect(linksCount2).toBe(linksCount1);
       expect(callsCount2).toBe(callsCount1);
-      },
-      30000 // 30 second timeout for DuckDB/Python operations
-    );
+    }, 30000); // 30 second timeout for DuckDB/Python operations
 
-    it(
-      'detects duplicates when they occur (current behavior)',
-      async () => {
-        if (!existsSync(pythonToolPath)) {
+    it('detects duplicates when they occur (current behavior)', async () => {
+      if (!existsSync(pythonToolPath)) {
         console.warn('Python tool not found, skipping test');
         return;
       }
@@ -249,9 +245,7 @@ describe('DuckDB Ingestion Idempotency', () => {
       // Currently duplicates are created (this documents the problem)
       // After idempotency fix, this should be: expect(count2).toBe(count1);
       expect(count2).toBeGreaterThanOrEqual(count1);
-      },
-      30000 // 30 second timeout for DuckDB/Python operations
-    );
+    }, 30000); // 30 second timeout for DuckDB/Python operations
   });
 
   describe('2. Partial run → rerun repairs/finishes, not corrupts', () => {

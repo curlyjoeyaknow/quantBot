@@ -22,7 +22,7 @@ import type { IngestOhlcvContext } from '../ohlcv/ingestOhlcv.js';
 
 /**
  * Create WorkflowContext for OHLCV ingestion with ports
- * 
+ *
  * Uses REAL port adapters (StatePort, MarketDataPort, etc.) with configurable paths.
  * For tests, pass duckdbPath to use a temporary file.
  */

@@ -35,6 +35,20 @@ type MarketDataTokenMetadata = {
 export function createMarketDataBirdeyeAdapter(client: BirdeyeClient): MarketDataPort {
   return {
     async fetchOhlcv(request: MarketDataOhlcvRequest): Promise<Candle[]> {
+      // CRITICAL: Verify address is not truncated before passing to Birdeye client
+      if (request.tokenAddress.length < 32) {
+        const { logger } = await import('@quantbot/utils');
+        logger.error('Address is truncated in MarketDataPort adapter', {
+          tokenAddress: request.tokenAddress,
+          length: request.tokenAddress.length,
+          expectedMin: 32,
+          chain: request.chain,
+        });
+        throw new Error(
+          `Address is truncated in adapter: ${request.tokenAddress.length} chars (expected >= 32)`
+        );
+      }
+
       // Convert port request to Birdeye client format
       const startTime = new Date(request.from * 1000); // Convert seconds to milliseconds
       const endTime = new Date(request.to * 1000);
@@ -47,7 +61,7 @@ export function createMarketDataBirdeyeAdapter(client: BirdeyeClient): MarketDat
 
       // Call Birdeye client
       const response = await client.fetchOHLCVData(
-        request.tokenAddress,
+        request.tokenAddress, // Full address - verify it's not truncated
         startTime,
         endTime,
         birdeyeInterval,

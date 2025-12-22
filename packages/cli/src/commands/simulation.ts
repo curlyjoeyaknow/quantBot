@@ -5,10 +5,11 @@
 import type { Command } from 'commander';
 import { z } from 'zod';
 import type { PackageCommandModule } from '../types/index.js';
+import { defineCommand } from '../core/defineCommand.js';
+import { die } from '../core/cliErrors.js';
+import { coerceNumber, coerceBoolean, coerceJson } from '../core/coerce.js';
 import { commandRegistry } from '../core/command-registry.js';
-import { execute } from '../core/execute.js';
 import type { CommandContext } from '../core/command-context.js';
-import { NotFoundError } from '@quantbot/utils';
 import { runSimulationHandler } from './simulation/run-simulation.js';
 import { listRunsHandler } from './simulation/list-runs.js';
 import { runSimulationDuckdbHandler } from './simulation/run-simulation-duckdb.js';
@@ -39,7 +40,7 @@ export function registerSimulationCommands(program: Command): void {
     .description('Trading strategy simulation operations');
 
   // Run command
-  simCmd
+  const runCmd = simCmd
     .command('run')
     .description('Run simulation on calls')
     .requiredOption('--strategy <name>', 'Strategy name')
@@ -47,58 +48,64 @@ export function registerSimulationCommands(program: Command): void {
     .requiredOption('--from <date>', 'Start date (ISO 8601)')
     .requiredOption('--to <date>', 'End date (ISO 8601)')
     .option('--interval <interval>', 'Candle interval (1m, 5m, 15m, 1h)', '1m')
-    .option('--pre-window <minutes>', 'Pre-window minutes', '0')
-    .option('--post-window <minutes>', 'Post-window minutes', '0')
-    .option('--dry-run', 'Do not persist results', false)
-    .option('--concurrency <n>', 'Parallelism limit', '8')
-    .option('--format <format>', 'Output format', 'table')
-    .action(async (options) => {
-      const commandDef = commandRegistry.getCommand('simulation', 'run');
-      if (!commandDef) {
-        throw new NotFoundError('Command', 'simulation.run');
-      }
-      await execute(commandDef, {
-        ...options,
-        preWindow: options.preWindow ? parseInt(options.preWindow, 10) : 0,
-        postWindow: options.postWindow ? parseInt(options.postWindow, 10) : 0,
-        concurrency: options.concurrency ? parseInt(options.concurrency, 10) : 8,
-        dryRun: options.dryRun === true || options.dryRun === 'true',
-      });
-    });
+    .option('--pre-window <minutes>', 'Pre-window minutes')
+    .option('--post-window <minutes>', 'Post-window minutes')
+    .option('--dry-run', 'Do not persist results')
+    .option('--concurrency <n>', 'Parallelism limit')
+    .option('--format <format>', 'Output format', 'table');
+
+  defineCommand(runCmd, {
+    name: 'run',
+    packageName: 'simulation',
+    coerce: (raw) => ({
+      ...raw,
+      preWindow: raw.preWindow ? coerceNumber(raw.preWindow, 'pre-window') : 0,
+      postWindow: raw.postWindow ? coerceNumber(raw.postWindow, 'post-window') : 0,
+      concurrency: raw.concurrency ? coerceNumber(raw.concurrency, 'concurrency') : 8,
+      dryRun: raw.dryRun !== undefined ? coerceBoolean(raw.dryRun, 'dry-run') : false,
+    }),
+    validate: (opts) => runSchema.parse(opts),
+    onError: die,
+  });
 
   // List runs command
-  simCmd
+  const listRunsCmd = simCmd
     .command('list-runs')
     .description('List simulation runs')
     .option('--caller <name>', 'Caller name filter')
     .option('--from <date>', 'Start date (ISO 8601)')
     .option('--to <date>', 'End date (ISO 8601)')
-    .option('--limit <limit>', 'Maximum rows', '100')
-    .option('--format <format>', 'Output format', 'table')
-    .action(async (options) => {
-      const commandDef = commandRegistry.getCommand('simulation', 'list-runs');
-      if (!commandDef) {
-        throw new NotFoundError('Command', 'simulation.list-runs');
-      }
-      await execute(commandDef, {
-        ...options,
-        limit: options.limit ? parseInt(options.limit, 10) : 100,
-      });
-    });
+    .option('--limit <limit>', 'Maximum rows')
+    .option('--format <format>', 'Output format', 'table');
+
+  defineCommand(listRunsCmd, {
+    name: 'list-runs',
+    packageName: 'simulation',
+    coerce: (raw) => ({
+      ...raw,
+      limit: raw.limit ? coerceNumber(raw.limit, 'limit') : 100,
+    }),
+    validate: (opts) => listRunsSchema.parse(opts),
+    onError: die,
+  });
 
   // List strategies command
-  simCmd
+  const listStrategiesCmd = simCmd
     .command('list-strategies')
     .description('List all available strategies')
     .option('--duckdb <path>', 'Path to DuckDB file')
-    .option('--format <format>', 'Output format', 'table')
-    .action(async (options) => {
-      const commandDef = commandRegistry.getCommand('simulation', 'list-strategies');
-      if (!commandDef) throw new NotFoundError('Command', 'simulation.list-strategies');
-      await execute(commandDef, options);
-    });
+    .option('--format <format>', 'Output format', 'table');
+
+  defineCommand(listStrategiesCmd, {
+    name: 'list-strategies',
+    packageName: 'simulation',
+    validate: (opts) => listStrategiesSchema.parse(opts),
+    onError: die,
+  });
 
   // Create strategy (interactive) command
+  // Note: This is an interactive command that doesn't use execute() or the standard handler pattern.
+  // It's kept as-is per the migration plan's guidance for special cases.
   simCmd
     .command('create-strategy')
     .alias('strategy-create')
@@ -109,7 +116,7 @@ export function registerSimulationCommands(program: Command): void {
     });
 
   // Store strategy command
-  simCmd
+  const storeStrategyCmd = simCmd
     .command('store-strategy')
     .description('Store a strategy in DuckDB')
     .requiredOption('--duckdb <path>', 'Path to DuckDB file')
@@ -119,21 +126,32 @@ export function registerSimulationCommands(program: Command): void {
     .requiredOption('--exit-config <json>', 'Exit config (JSON string)')
     .option('--reentry-config <json>', 'Reentry config (JSON string)')
     .option('--cost-config <json>', 'Cost config (JSON string)')
-    .option('--format <format>', 'Output format', 'table')
-    .action(async (options) => {
-      const commandDef = commandRegistry.getCommand('simulation', 'store-strategy');
-      if (!commandDef) throw new NotFoundError('Command', 'simulation.store-strategy');
-      await execute(commandDef, {
-        ...options,
-        entryConfig: JSON.parse(options.entryConfig),
-        exitConfig: JSON.parse(options.exitConfig),
-        reentryConfig: options.reentryConfig ? JSON.parse(options.reentryConfig) : undefined,
-        costConfig: options.costConfig ? JSON.parse(options.costConfig) : undefined,
-      });
-    });
+    .option('--format <format>', 'Output format', 'table');
+
+  defineCommand(storeStrategyCmd, {
+    name: 'store-strategy',
+    packageName: 'simulation',
+    coerce: (raw) => ({
+      ...raw,
+      entryConfig: raw.entryConfig
+        ? coerceJson<Record<string, unknown>>(raw.entryConfig, 'entry-config')
+        : undefined,
+      exitConfig: raw.exitConfig
+        ? coerceJson<Record<string, unknown>>(raw.exitConfig, 'exit-config')
+        : undefined,
+      reentryConfig: raw.reentryConfig
+        ? coerceJson<Record<string, unknown>>(raw.reentryConfig, 'reentry-config')
+        : undefined,
+      costConfig: raw.costConfig
+        ? coerceJson<Record<string, unknown>>(raw.costConfig, 'cost-config')
+        : undefined,
+    }),
+    validate: (opts) => storeStrategySchema.parse(opts),
+    onError: die,
+  });
 
   // Store run command
-  simCmd
+  const storeRunCmd = simCmd
     .command('store-run')
     .description('Store a simulation run in DuckDB')
     .requiredOption('--duckdb <path>', 'Path to DuckDB file')
@@ -143,75 +161,96 @@ export function registerSimulationCommands(program: Command): void {
     .requiredOption('--alert-timestamp <timestamp>', 'Alert timestamp (ISO 8601)')
     .requiredOption('--start-time <time>', 'Start time (ISO 8601)')
     .requiredOption('--end-time <time>', 'End time (ISO 8601)')
-    .option('--initial-capital <amount>', 'Initial capital', '1000.0')
+    .option('--initial-capital <amount>', 'Initial capital')
     .option('--final-capital <amount>', 'Final capital')
     .option('--total-return-pct <pct>', 'Total return percentage')
     .option('--max-drawdown-pct <pct>', 'Max drawdown percentage')
     .option('--sharpe-ratio <ratio>', 'Sharpe ratio')
     .option('--win-rate <rate>', 'Win rate')
-    .option('--total-trades <count>', 'Total trades', '0')
-    .option('--format <format>', 'Output format', 'table')
-    .action(async (options) => {
-      const commandDef = commandRegistry.getCommand('simulation', 'store-run');
-      if (!commandDef) throw new NotFoundError('Command', 'simulation.store-run');
-      await execute(commandDef, {
-        ...options,
-        initialCapital: options.initialCapital ? parseFloat(options.initialCapital) : 1000.0,
-        finalCapital: options.finalCapital ? parseFloat(options.finalCapital) : undefined,
-        totalReturnPct: options.totalReturnPct ? parseFloat(options.totalReturnPct) : undefined,
-        maxDrawdownPct: options.maxDrawdownPct ? parseFloat(options.maxDrawdownPct) : undefined,
-        sharpeRatio: options.sharpeRatio ? parseFloat(options.sharpeRatio) : undefined,
-        winRate: options.winRate ? parseFloat(options.winRate) : undefined,
-        totalTrades: options.totalTrades ? parseInt(options.totalTrades, 10) : 0,
-      });
-    });
+    .option('--total-trades <count>', 'Total trades')
+    .option('--format <format>', 'Output format', 'table');
+
+  defineCommand(storeRunCmd, {
+    name: 'store-run',
+    packageName: 'simulation',
+    coerce: (raw) => ({
+      ...raw,
+      initialCapital: raw.initialCapital
+        ? coerceNumber(raw.initialCapital, 'initial-capital')
+        : 1000.0,
+      finalCapital: raw.finalCapital ? coerceNumber(raw.finalCapital, 'final-capital') : undefined,
+      totalReturnPct: raw.totalReturnPct
+        ? coerceNumber(raw.totalReturnPct, 'total-return-pct')
+        : undefined,
+      maxDrawdownPct: raw.maxDrawdownPct
+        ? coerceNumber(raw.maxDrawdownPct, 'max-drawdown-pct')
+        : undefined,
+      sharpeRatio: raw.sharpeRatio ? coerceNumber(raw.sharpeRatio, 'sharpe-ratio') : undefined,
+      winRate: raw.winRate ? coerceNumber(raw.winRate, 'win-rate') : undefined,
+      totalTrades: raw.totalTrades ? coerceNumber(raw.totalTrades, 'total-trades') : 0,
+    }),
+    validate: (opts) => storeRunSchema.parse(opts),
+    onError: die,
+  });
 
   // Run DuckDB command
-  simCmd
+  const runDuckdbCmd = simCmd
     .command('run-duckdb')
     .description('Run simulation using DuckDB Python engine')
     .requiredOption('--duckdb <path>', 'Path to DuckDB file')
     .requiredOption('--strategy <json>', 'Strategy config (JSON string)')
     .option('--mint <address>', 'Token mint address (for single simulation)')
     .option('--alert-timestamp <timestamp>', 'Alert timestamp (ISO 8601, for single simulation)')
-    .option('--batch', 'Run batch simulation on all calls in DuckDB', false)
-    .option('--initial-capital <amount>', 'Initial capital', '1000.0')
-    .option('--lookback-minutes <minutes>', 'Lookback minutes', '260')
-    .option('--lookforward-minutes <minutes>', 'Lookforward minutes', '1440')
-    .option('--resume', 'Skip tokens with insufficient data and continue', false)
-    .option('--format <format>', 'Output format', 'table')
-    .action(async (options) => {
-      const commandDef = commandRegistry.getCommand('simulation', 'run-duckdb');
-      if (!commandDef) throw new NotFoundError('Command', 'simulation.run-duckdb');
-      await execute(commandDef, {
-        ...options,
-        strategy: JSON.parse(options.strategy),
-        initial_capital: options.initialCapital ? parseFloat(options.initialCapital) : 1000.0,
-        lookback_minutes: options.lookbackMinutes ? parseInt(options.lookbackMinutes, 10) : 260,
-        lookforward_minutes: options.lookforwardMinutes
-          ? parseInt(options.lookforwardMinutes, 10)
-          : 1440,
-        batch: options.batch === true || options.batch === 'true',
-        resume: options.resume === true || options.resume === 'true',
-      });
-    });
+    .option('--batch', 'Run batch simulation on all calls in DuckDB')
+    .option('--initial-capital <amount>', 'Initial capital')
+    .option('--lookback-minutes <minutes>', 'Lookback minutes')
+    .option('--lookforward-minutes <minutes>', 'Lookforward minutes')
+    .option('--resume', 'Skip tokens with insufficient data and continue')
+    .option('--format <format>', 'Output format', 'table');
+
+  defineCommand(runDuckdbCmd, {
+    name: 'run-duckdb',
+    packageName: 'simulation',
+    coerce: (raw) => ({
+      ...raw,
+      strategy: raw.strategy
+        ? coerceJson<Record<string, unknown>>(raw.strategy, 'strategy')
+        : undefined,
+      alertTimestamp: raw.alertTimestamp,
+      initialCapital: raw.initialCapital
+        ? coerceNumber(raw.initialCapital, 'initial-capital')
+        : 1000.0,
+      lookbackMinutes: raw.lookbackMinutes
+        ? coerceNumber(raw.lookbackMinutes, 'lookback-minutes')
+        : 260,
+      lookforwardMinutes: raw.lookforwardMinutes
+        ? coerceNumber(raw.lookforwardMinutes, 'lookforward-minutes')
+        : 1440,
+      batch: raw.batch !== undefined ? coerceBoolean(raw.batch, 'batch') : false,
+      resume: raw.resume !== undefined ? coerceBoolean(raw.resume, 'resume') : false,
+    }),
+    validate: (opts) => runSimulationDuckdbSchema.parse(opts),
+    onError: die,
+  });
 
   // Generate report command
-  simCmd
+  const generateReportCmd = simCmd
     .command('generate-report')
     .description('Generate a report from DuckDB simulation data')
     .requiredOption('--duckdb <path>', 'Path to DuckDB file')
     .requiredOption('--type <type>', 'Report type (summary, strategy_performance)')
     .option('--strategy-id <id>', 'Strategy ID (required for strategy_performance)')
-    .option('--format <format>', 'Output format', 'table')
-    .action(async (options) => {
-      const commandDef = commandRegistry.getCommand('simulation', 'generate-report');
-      if (!commandDef) throw new NotFoundError('Command', 'simulation.generate-report');
-      await execute(commandDef, options);
-    });
+    .option('--format <format>', 'Output format', 'table');
+
+  defineCommand(generateReportCmd, {
+    name: 'generate-report',
+    packageName: 'simulation',
+    validate: (opts) => generateReportSchema.parse(opts),
+    onError: die,
+  });
 
   // ClickHouse query command
-  simCmd
+  const clickhouseQueryCmd = simCmd
     .command('clickhouse-query')
     .description('Query ClickHouse using Python engine')
     .requiredOption('--operation <op>', 'Operation (query_ohlcv, store_events, aggregate_metrics)')
@@ -223,20 +262,23 @@ export function registerSimulationCommands(program: Command): void {
     .option('--run-id <id>', 'Run ID (for store_events, aggregate_metrics)')
     .option('--events <json>', 'Events array (JSON string, for store_events)')
     .option('--host <host>', 'ClickHouse host', 'localhost')
-    .option('--port <port>', 'ClickHouse port', '8123')
+    .option('--port <port>', 'ClickHouse port')
     .option('--database <db>', 'ClickHouse database', 'quantbot')
     .option('--username <user>', 'ClickHouse username')
     .option('--password <pass>', 'ClickHouse password')
-    .option('--format <format>', 'Output format', 'table')
-    .action(async (options) => {
-      const commandDef = commandRegistry.getCommand('simulation', 'clickhouse-query');
-      if (!commandDef) throw new NotFoundError('Command', 'simulation.clickhouse-query');
-      await execute(commandDef, {
-        ...options,
-        port: options.port ? parseInt(options.port, 10) : 8123,
-        events: options.events ? JSON.parse(options.events) : undefined,
-      });
-    });
+    .option('--format <format>', 'Output format', 'table');
+
+  defineCommand(clickhouseQueryCmd, {
+    name: 'clickhouse-query',
+    packageName: 'simulation',
+    coerce: (raw) => ({
+      ...raw,
+      port: raw.port ? coerceNumber(raw.port, 'port') : 8123,
+      events: raw.events ? coerceJson<unknown[]>(raw.events, 'events') : undefined,
+    }),
+    validate: (opts) => clickHouseQuerySchema.parse(opts),
+    onError: die,
+  });
 }
 
 /**

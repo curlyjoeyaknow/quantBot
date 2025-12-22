@@ -5,8 +5,8 @@
  * for use with evaluate/sweep commands.
  */
 
-import { readFileSync } from 'fs';
 import { writeFileSync } from 'fs';
+import { resolve } from 'path';
 import type { CommandContext } from '../../core/command-context.js';
 import type { CallSignal } from '@quantbot/core';
 import type { ExportCallsArgs } from '../../command-defs/calls.js';
@@ -15,7 +15,7 @@ import { DateTime } from 'luxon';
 
 /**
  * Convert DuckDB call to CallSignal
- * 
+ *
  * Note: This is a simplified conversion. Real implementation would:
  * - Map chain from bot reply metadata
  * - Extract enrichment data from bot replies
@@ -48,25 +48,24 @@ function convertToCallSignal(
   };
 }
 
-export async function exportCallsFromDuckdbHandler(
-  args: ExportCallsArgs,
-  _ctx: CommandContext
-) {
+export async function exportCallsFromDuckdbHandler(args: ExportCallsArgs, _ctx: CommandContext) {
   // Query calls from DuckDB
   const workflowCtx = createProductionContext();
-  
+
   // Create context with duckdbStorage service
   const { PythonEngine } = await import('@quantbot/utils');
   const { DuckDBStorageService } = await import('@quantbot/simulation');
   const engine = new PythonEngine();
   const storage = new DuckDBStorageService(engine);
-  
-  const duckdbPath = args['duckdb-path'];
-  const fromISO = args['from-iso'];
-  const toISO = args['to-iso'];
-  const callerName = args['caller-name'];
+
+  // Resolve path to absolute - Python script runs from tools/simulation, so relative paths break
+  const duckdbPathRaw = args.duckdbPath;
+  const duckdbPath = resolve(process.cwd(), duckdbPathRaw);
+  const fromISO = args.fromIso;
+  const toISO = args.toIso;
+  const callerName = args.callerName;
   const limit = args.limit || 200;
-  
+
   const result = await queryCallsDuckdb(
     {
       duckdbPath,
@@ -93,14 +92,15 @@ export async function exportCallsFromDuckdbHandler(
   );
 
   // Convert to CallSignal[]
-  const callSignals: CallSignal[] = result.calls.map((call: { mint: string; createdAt: { toISO: () => string | null } }, index: number) =>
-    convertToCallSignal(
-      {
-        mint: call.mint,
-        alert_timestamp: call.createdAt.toISO()!,
-      },
-      index
-    )
+  const callSignals: CallSignal[] = result.calls.map(
+    (call: { mint: string; createdAt: { toISO: () => string | null } }, index: number) =>
+      convertToCallSignal(
+        {
+          mint: call.mint,
+          alert_timestamp: call.createdAt.toISO()!,
+        },
+        index
+      )
   );
 
   // Write to output file
@@ -113,4 +113,3 @@ export async function exportCallsFromDuckdbHandler(
     toISO,
   };
 }
-
