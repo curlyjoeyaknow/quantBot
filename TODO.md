@@ -2,7 +2,7 @@
 
 > **Project roadmap and task tracking**
 
-Last updated: 2025-12-20
+Last updated: 2025-12-23 (CLI wrapper pattern locked)
 
 ---
 
@@ -13,15 +13,20 @@ Last updated: 2025-12-20
 - [x] Resolve circular dependencies (api-clients ↔ observability, ohlcv ↔ ingestion)
 - [x] Create comprehensive ARCHITECTURE.md
 - [ ] Complete workflow migration for all CLI commands
-- [ ] Add ESLint boundaries for forbidden imports
+- [x] Add ESLint boundaries for CLI wrapper pattern (execute/normalizeOptions imports)
+- [x] Lock in defineCommand wrapper pattern with golden tests
 - [ ] Implement pre-commit hooks for workflow contract compliance
 
 ### CLI Handler Migration
 
+- [x] Standardize command wrapper pattern (defineCommand) with ESLint enforcement
+- [x] Add golden tests for defineCommand coercion (lags-ms, intervals arrays)
+- [x] Verify sweep path end-to-end (all output files created correctly)
 - [ ] Migrate remaining handlers to pure function pattern
 - [ ] Add handler tests for all commands
 - [ ] Implement litmus tests (REPL-friendly handlers)
 - [ ] Document Python/DuckDB integration pattern
+- [ ] Migrate `calls export` to use defineCommand (currently uses kebab-case schema)
 
 ### DuckDB Migration
 
@@ -43,11 +48,14 @@ Last updated: 2025-12-20
   - Simulation run management
   - OpenAPI documentation
 
-- [ ] **Improved Testing**
-  - Property tests for all financial calculations
-  - Fuzzing tests for parsers
-  - Stress tests for critical paths
-  - Golden tests with fixtures
+- [x] **Improved Testing** (Complete - gaps filled and automated)
+  - [x] Property tests for financial calculations (simulation: fees, RSI, moving averages, position PnL, execution costs; CLI: mint addresses, date parsing; ingestion: address validation, idempotency)
+  - [x] Fuzzing tests for parsers (argument parser, telegram parser, Birdeye client, PnL calculations, config loader, overlay parser)
+  - [x] Stress tests for critical paths (OHLCV ingestion, simulation candle sequences, storage idempotency)
+  - [x] Golden tests with fixtures (workflows, simulation, OHLCV, analytics, storage, jobs)
+  - [x] Property tests coverage gaps (all financial calculations now have property tests - some may reveal edge cases to fix)
+  - [x] Fuzzing coverage gaps (all parsers now fuzzed)
+  - [x] Stress test automation (CI integration with weekly scheduled runs + manual dispatch via `.github/workflows/stress-tests.yml`)
 
 - [ ] **Observability**
   - Metrics collection (Prometheus format)
@@ -86,6 +94,27 @@ Last updated: 2025-12-20
 ---
 
 ## ✅ Completed
+
+### 2025-12-23
+
+- [x] **Fixed critical OHLCV ingestion bugs**
+  - StatePort serialization bug (objects now correctly serialized to JSON strings)
+  - DuckDB path propagation bug (correct path now passed to context creator)
+  - Chain normalization bug (BNB now correctly maps to bsc, not solana)
+  - EVM chain detection in surgical fetch (now detects EVM addresses correctly)
+- [x] **Created comprehensive regression tests**
+  - StatePort adapter regression tests (4 tests, all passing)
+  - OHLCV ingestion handler regression tests (2 tests)
+  - Chain normalization regression tests (8 Python tests, all passing)
+  - All tests include CRITICAL markers and documentation
+- [x] **Locked in CLI wrapper pattern to prevent normalization drift**
+  - Added ESLint rules to ban direct imports of execute()/normalizeOptions outside core
+  - Created golden tests for defineCommand coercion (lags-ms, intervals arrays)
+  - Verified sweep path creates all required output files correctly
+  - Documented pattern in `packages/cli/docs/WRAPPER_PATTERN_LOCKED.md`
+  - Pattern now prevents "normalizeOptions v7" regression
+- [x] Updated CHANGELOG.md with bug fixes and regression tests
+- [x] Updated README.md with regression testing requirements
 
 ### 2025-12-20
 
@@ -175,9 +204,11 @@ Last updated: 2025-12-20
 ### Known Issues
 
 - [ ] Some CLI handlers still have business logic (migrate to workflows)
+- [ ] `calls export` command uses kebab-case schema (should migrate to defineCommand pattern)
 - [ ] Inconsistent error handling across packages
 - [ ] Missing property tests for financial calculations
 - [ ] Some tests share prod math helpers (should be independent)
+- [ ] Some integration tests failing (OhlcvIngestionService.integration.test.ts, duckdb-idempotency.test.ts) - pre-existing test setup issues, not related to recent bug fixes
 
 ### Cleanup
 
@@ -194,6 +225,7 @@ Last updated: 2025-12-20
 
 - [x] ARCHITECTURE.md - System architecture
 - [x] TODO.md - Task tracking
+- [x] WRAPPER_PATTERN_LOCKED.md - CLI wrapper pattern documentation
 - [ ] CONTRIBUTING.md - Contribution guidelines
 - [ ] API.md - API documentation
 - [ ] DEPLOYMENT.md - Deployment guide

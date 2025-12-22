@@ -1,0 +1,19 @@
+# Build outputs
+dist/
+*.tsbuildinfo
+
+# Test outputs
+coverage/
+.nyc_output/
+
+# Logs
+logs/
+*.log
+
+# Node modules
+node_modules/
+
+# Environment
+.env
+.env.local
+

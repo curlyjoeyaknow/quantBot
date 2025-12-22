@@ -79,7 +79,7 @@ export async function ingestOhlcvHandler(args: IngestOhlcvArgs, _ctx: CommandCon
   };
 
   // Create workflow context with ports
-      const workflowCtx = await createOhlcvIngestionContext({ duckdbPath });
+  const workflowCtx = await createOhlcvIngestionContext({ duckdbPath });
 
   // Call workflow directly (uses ports internally)
   const output = await ingestOhlcv(spec, workflowCtx);

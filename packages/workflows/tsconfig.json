@@ -17,7 +17,7 @@
     "skipLibCheck": true
   },
   "include": ["src/**/*.ts"],
-  "exclude": ["dist", "node_modules", "tests", "**/*.d.ts", "../jobs/dist"],
+  "exclude": ["dist", "node_modules", "tests", "**/*.d.ts", "../jobs/dist", "**/*branch*.ts", "**/*integrated*.ts", "**/integration-*.ts"],
   "references": [
     { "path": "../core" },
     { "path": "../utils" },

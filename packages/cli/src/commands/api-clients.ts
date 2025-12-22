@@ -5,10 +5,10 @@
 import type { Command } from 'commander';
 import { z } from 'zod';
 import type { PackageCommandModule } from '../types/index.js';
-import { commandRegistry } from '../core/command-registry.js';
-import { execute } from '../core/execute.js';
+import { defineCommand } from '../core/defineCommand.js';
+import { die } from '../core/cliErrors.js';
 import type { CommandContext } from '../core/command-context.js';
-import { NotFoundError } from '@quantbot/utils';
+import { commandRegistry } from '../core/command-registry.js';
 import { testApiClientsHandler } from './api-clients/test-api-clients.js';
 import { statusApiClientsHandler } from './api-clients/status-api-clients.js';
 import { creditsApiClientsHandler } from './api-clients/credits-api-clients.js';
@@ -21,46 +21,46 @@ export function registerApiClientsCommands(program: Command): void {
   const apiCmd = program.command('api-clients').description('API client operations and testing');
 
   // Test command
-  apiCmd
+  const testCmd = apiCmd
     .command('test')
     .description('Test API connection')
     .requiredOption('--service <service>', 'Service name (birdeye, helius)')
-    .option('--format <format>', 'Output format', 'table')
-    .action(async (options) => {
-      const commandDef = commandRegistry.getCommand('api-clients', 'test');
-      if (!commandDef) {
-        throw new NotFoundError('Command', 'api-clients.test');
-      }
-      await execute(commandDef, options);
-    });
+    .option('--format <format>', 'Output format', 'table');
+
+  defineCommand(testCmd, {
+    name: 'test',
+    packageName: 'api-clients',
+    validate: (opts) => testSchema.parse(opts),
+    onError: die,
+  });
 
   // Status command
-  apiCmd
+  const statusCmd = apiCmd
     .command('status')
     .description('Check API status')
     .option('--service <service>', 'Service name', 'all')
-    .option('--format <format>', 'Output format', 'table')
-    .action(async (options) => {
-      const commandDef = commandRegistry.getCommand('api-clients', 'status');
-      if (!commandDef) {
-        throw new NotFoundError('Command', 'api-clients.status');
-      }
-      await execute(commandDef, options);
-    });
+    .option('--format <format>', 'Output format', 'table');
+
+  defineCommand(statusCmd, {
+    name: 'status',
+    packageName: 'api-clients',
+    validate: (opts) => statusSchema.parse(opts),
+    onError: die,
+  });
 
   // Credits command
-  apiCmd
+  const creditsCmd = apiCmd
     .command('credits')
     .description('Check API credits/quota')
     .option('--service <service>', 'Service name', 'all')
-    .option('--format <format>', 'Output format', 'table')
-    .action(async (options) => {
-      const commandDef = commandRegistry.getCommand('api-clients', 'credits');
-      if (!commandDef) {
-        throw new NotFoundError('Command', 'api-clients.credits');
-      }
-      await execute(commandDef, options);
-    });
+    .option('--format <format>', 'Output format', 'table');
+
+  defineCommand(creditsCmd, {
+    name: 'credits',
+    packageName: 'api-clients',
+    validate: (opts) => creditsSchema.parse(opts),
+    onError: die,
+  });
 }
 
 /**

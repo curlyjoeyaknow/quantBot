@@ -29,21 +29,26 @@ export class TelegramPipelineService {
    * @param outputDb - Path to output DuckDB file
    * @param chatId - Chat ID to process (optional - will be extracted from file if single chat)
    * @param rebuild - Whether to rebuild DuckDB from scratch
+   * @param options - Python script execution options (timeout, etc.)
    * @returns Validated manifest
    */
   async runPipeline(
     inputFile: string,
     outputDb: string,
     chatId?: string,
-    rebuild?: boolean
+    rebuild?: boolean,
+    options?: { timeout?: number }
   ): Promise<TelegramPipelineResult> {
     try {
-      const result = await this.pythonEngine.runTelegramPipeline({
-        inputFile,
-        outputDb,
-        chatId,
-        rebuild,
-      });
+      const result = await this.pythonEngine.runTelegramPipeline(
+        {
+          inputFile,
+          outputDb,
+          chatId,
+          rebuild,
+        },
+        options ? { timeout: options.timeout } : undefined
+      );
 
       // PythonEngine already validates with PythonManifestSchema
       // Re-validate here for extra safety

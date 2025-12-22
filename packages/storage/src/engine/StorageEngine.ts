@@ -139,6 +139,16 @@ export interface SimulationRunMetadata {
   startedAt?: DateTime;
   completedAt?: DateTime;
   errorMessage?: string;
+
+  // Experiment tracking fields (Phase IV)
+  experimentId?: string;
+  gitCommitHash?: string;
+  dataSnapshotHash?: string;
+  parameterVectorHash?: string;
+  randomSeed?: number;
+  contractVersion?: string;
+  strategyVersion?: string;
+  dataVersion?: string;
 }
 
 /**

@@ -7,6 +7,7 @@
  * They verify:
  * 1. Forbidden imports test - handlers don't import from outside @quantbot/core
  * 2. Public API enforcement - no deep imports from @quantbot packages
+ * 3. Layer boundary enforcement - research lab layers respect boundaries
  *
  * Run this as part of CI/CD to catch violations before merge.
  */
@@ -131,6 +132,109 @@ function testPublicApiEnforcement(): void {
 }
 
 /**
+ * Test 3: Layer boundary enforcement
+ *
+ * Enforces research lab layer boundaries:
+ * - Simulation cannot import from ingestion/api-clients/ohlcv
+ * - Ingestion cannot import from simulation
+ * - Analytics cannot import from ingestion (feature engineering should use canonical data)
+ */
+function testLayerBoundaries(): void {
+  console.log('\n📋 Testing layer boundaries (research lab architecture)...');
+
+  // Layer 1: Ingestion packages
+  const ingestionPackages = ['ingestion', 'api-clients', 'jobs'];
+
+  // Layer 2: Feature engineering packages
+  const featurePackages = ['analytics', 'ohlcv'];
+
+  // Layer 3: Strategy packages
+  const strategyPackages = ['simulation'];
+
+  // Check: Simulation cannot import from ingestion layer
+  for (const pkg of strategyPackages) {
+    const srcDir = join(PACKAGES_DIR, pkg, 'src');
+    if (!statSync(srcDir, { throwIfNoEntry: false })?.isDirectory()) {
+      continue;
+    }
+
+    const files = findTsFiles(srcDir);
+    for (const file of files) {
+      if (file.includes('.test.') || file.includes('.spec.')) {
+        continue;
+      }
+
+      const content = readFileSync(file, 'utf-8');
+      const lines = content.split('\n');
+
+      lines.forEach((line, index) => {
+        const lineNum = index + 1;
+
+        // Check for imports from ingestion layer
+        for (const ingestionPkg of ingestionPackages) {
+          const importPattern = new RegExp(`from\\s+['"]@quantbot/${ingestionPkg}(?:/.*)?['"]`);
+          if (importPattern.test(line)) {
+            violations.push({
+              file: file.replace(ROOT + '/', ''),
+              line: lineNum,
+              message: `Layer violation: @quantbot/${pkg} (Strategy layer) imports from @quantbot/${ingestionPkg} (Ingestion layer). Strategy layer must not depend on ingestion layer.`,
+            });
+          }
+        }
+
+        // Check for imports from feature layer (simulation should use canonical data, not direct feature imports)
+        // Note: This is stricter - simulation can use ohlcv for candles, but should not import analytics
+        for (const featurePkg of featurePackages) {
+          if (featurePkg === 'analytics') {
+            const importPattern = new RegExp(`from\\s+['"]@quantbot/${featurePkg}(?:/.*)?['"]`);
+            if (importPattern.test(line)) {
+              violations.push({
+                file: file.replace(ROOT + '/', ''),
+                line: lineNum,
+                message: `Layer violation: @quantbot/${pkg} (Strategy layer) imports from @quantbot/${featurePkg} (Feature layer). Strategy should work with canonical data, not feature engineering.`,
+              });
+            }
+          }
+        }
+      });
+    }
+  }
+
+  // Check: Ingestion cannot import from strategy layer
+  for (const pkg of ingestionPackages) {
+    const srcDir = join(PACKAGES_DIR, pkg, 'src');
+    if (!statSync(srcDir, { throwIfNoEntry: false })?.isDirectory()) {
+      continue;
+    }
+
+    const files = findTsFiles(srcDir);
+    for (const file of files) {
+      if (file.includes('.test.') || file.includes('.spec.')) {
+        continue;
+      }
+
+      const content = readFileSync(file, 'utf-8');
+      const lines = content.split('\n');
+
+      lines.forEach((line, index) => {
+        const lineNum = index + 1;
+
+        for (const strategyPkg of strategyPackages) {
+          const importPattern = new RegExp(`from\\s+['"]@quantbot/${strategyPkg}(?:/.*)?['"]`);
+          if (importPattern.test(line)) {
+            violations.push({
+              file: file.replace(ROOT + '/', ''),
+              line: lineNum,
+              message: `Layer violation: @quantbot/${pkg} (Ingestion layer) imports from @quantbot/${strategyPkg} (Strategy layer). Ingestion layer must not depend on strategy layer.`,
+            });
+          }
+        }
+      });
+    }
+  }
+}
+
+/**
  * Find all TypeScript files recursively
  */
 function findTsFiles(dir: string): string[] {
@@ -168,6 +272,7 @@ function main(): void {
 
   testForbiddenImportsInHandlers();
   testPublicApiEnforcement();
+  testLayerBoundaries();
 
   console.log('\n' + '='.repeat(60));
 

@@ -198,18 +198,30 @@ function buildSummary(result: Awaited<ReturnType<typeof surgicalOhlcvFetch>>): u
   }
 
   // Build task summaries (one per task)
-  const taskSummaries = result.taskResults.map((task: { caller?: string; month?: string; success: boolean; error?: string; missingMints?: string[]; candlesFetched?: number; candlesStored?: number; intervals: string[]; durationMs?: number }) => ({
-    caller: task.caller,
-    month: task.month,
-    status: task.success ? 'success' : task.error ? 'failed' : 'pending',
-    mintsRequested: task.missingMints?.length || 0,
-    mintsFetched: task.success ? task.missingMints?.length || 0 : 0,
-    candlesFetched: task.candlesFetched,
-    candlesStored: task.candlesStored,
-    intervals: task.intervals.join(', ') || 'none',
-    error: task.error || undefined,
-    durationMs: task.durationMs,
-  }));
+  const taskSummaries = result.taskResults.map(
+    (task: {
+      caller?: string;
+      month?: string;
+      success: boolean;
+      error?: string;
+      missingMints?: string[];
+      candlesFetched?: number;
+      candlesStored?: number;
+      intervals: string[];
+      durationMs?: number;
+    }) => ({
+      caller: task.caller,
+      month: task.month,
+      status: task.success ? 'success' : task.error ? 'failed' : 'pending',
+      mintsRequested: task.missingMints?.length || 0,
+      mintsFetched: task.success ? task.missingMints?.length || 0 : 0,
+      candlesFetched: task.candlesFetched,
+      candlesStored: task.candlesStored,
+      intervals: task.intervals.join(', ') || 'none',
+      error: task.error || undefined,
+      durationMs: task.durationMs,
+    })
+  );
 
   // Calculate coverage stats
   const totalMintsRequested = result.taskResults.reduce(
@@ -240,10 +252,24 @@ function buildSummary(result: Awaited<ReturnType<typeof surgicalOhlcvFetch>>): u
       clickhouseCandlesStored: result.totalCandlesStored,
       clickhouseCallsCoverage: `${(mintsCoverage * 100).toFixed(1)}%`,
     },
-    ...taskSummaries.map((task: { type?: string; caller?: string; month?: string; status: string; mintsRequested: number; mintsFetched: number; candlesFetched?: number; candlesStored?: number; intervals: string; error?: string; durationMs?: number }) => ({
-      type: 'TASK',
-      ...task,
-    })),
+    ...taskSummaries.map(
+      (task: {
+        type?: string;
+        caller?: string;
+        month?: string;
+        status: string;
+        mintsRequested: number;
+        mintsFetched: number;
+        candlesFetched?: number;
+        candlesStored?: number;
+        intervals: string;
+        error?: string;
+        durationMs?: number;
+      }) => ({
+        type: 'TASK',
+        ...task,
+      })
+    ),
   ];
 
   return output;

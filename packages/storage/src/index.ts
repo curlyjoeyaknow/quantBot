@@ -32,6 +32,9 @@ export { SimulationEventsRepository } from './clickhouse/repositories/Simulation
 // DuckDB client and repositories (new - preferred)
 export { DuckDBClient, getDuckDBClient } from './duckdb/duckdb-client.js';
 export { TokenDataRepository } from './duckdb/repositories/TokenDataRepository.js';
+
+// Artifact repository adapter
+export { ArtifactDuckDBAdapter } from './adapters/artifact-duckdb-adapter.js';
 export type { OHLCVCoverageRecord } from './duckdb/repositories/TokenDataRepository.js';
 export { CallersRepository } from './duckdb/repositories/CallersRepository.js';
 export { StrategiesRepository } from './duckdb/repositories/StrategiesRepository.js';

@@ -34,6 +34,10 @@
       "types": "./dist/execution/index.d.ts",
       "import": "./dist/execution/index.js"
     },
+    "./execution-models": {
+      "types": "./dist/execution-models/index.d.ts",
+      "import": "./dist/execution-models/index.js"
+    },
     "./core": {
       "types": "./dist/core/index.d.ts",
       "import": "./dist/core/index.js"

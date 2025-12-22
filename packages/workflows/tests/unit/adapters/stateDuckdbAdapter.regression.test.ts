@@ -11,15 +11,21 @@ import { createStateDuckdbAdapter } from '../../../src/adapters/stateDuckdbAdapt
 import { getPythonEngine } from '@quantbot/utils';
 import { vi } from 'vitest';
 import path from 'node:path';
-import { existsSync, unlinkSync } from 'node:fs';
+import { existsSync, unlinkSync, mkdirSync } from 'node:fs';
 
 describe('StatePort DuckDB Adapter - Regression Tests', () => {
   let testDbPath: string;
   let statePort: ReturnType<typeof createStateDuckdbAdapter>;
 
   beforeEach(() => {
+    // Ensure data directory exists
+    const dataDir = path.join(process.cwd(), 'data');
+    if (!existsSync(dataDir)) {
+      mkdirSync(dataDir, { recursive: true });
+    }
+
     // Create unique test database path
-    testDbPath = path.join(process.cwd(), 'data', `test_state_${Date.now()}.duckdb`);
+    testDbPath = path.join(dataDir, `test_state_${Date.now()}.duckdb`);
     statePort = createStateDuckdbAdapter(testDbPath);
   });
 
@@ -103,7 +109,13 @@ describe('StatePort DuckDB Adapter - Regression Tests', () => {
      *
      * If this test fails, it means the adapter is using the wrong path.
      */
-    const customDbPath = path.join(process.cwd(), 'data', `custom_test_${Date.now()}.duckdb`);
+    // Ensure data directory exists
+    const dataDir = path.join(process.cwd(), 'data');
+    if (!existsSync(dataDir)) {
+      mkdirSync(dataDir, { recursive: true });
+    }
+
+    const customDbPath = path.join(dataDir, `custom_test_${Date.now()}.duckdb`);
     const customStatePort = createStateDuckdbAdapter(customDbPath);
 
     try {
@@ -171,4 +183,3 @@ describe('StatePort DuckDB Adapter - Regression Tests', () => {
     expect(Array.isArray(getResult.value?.timestamps)).toBe(true);
   });
 });
-

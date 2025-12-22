@@ -147,14 +147,35 @@ export async function evaluateCallsWorkflow(
       };
       const mappedInterval = intervalMap[req.align.interval] || '5m';
 
+      // CRITICAL: Verify address is not truncated before creating TokenAddress
+      if (call.token.address.length < 32) {
+        ctx.logger.error('Address is truncated in evaluate workflow', {
+          tokenAddress: call.token.address,
+          length: call.token.address.length,
+          expectedMin: 32,
+          caller: call.caller.displayName,
+        });
+        throw new Error(
+          `Address is truncated in evaluate: ${call.token.address.length} chars (expected >= 32)`
+        );
+      }
+
       // Convert string address to TokenAddress (for EVM addresses, this will fail validation)
       // For now, we'll use a type assertion since CallSignal supports EVM addresses
       // TODO: Consider making TokenAddress support both Solana and EVM addresses
       let tokenAddress: TokenAddress;
       try {
         tokenAddress = createTokenAddress(call.token.address);
-      } catch {
+      } catch (error) {
         // EVM addresses are shorter, so we'll use type assertion as fallback
+        // But log if it's a Solana address that's too short
+        if (call.token.address.length < 32) {
+          ctx.logger.error('createTokenAddress failed - address too short', {
+            tokenAddress: call.token.address,
+            length: call.token.address.length,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
         tokenAddress = call.token.address as TokenAddress;
       }
 

@@ -662,11 +662,14 @@ All multi-step business flows must go through `@quantbot/workflows`:
 - Write tests for all new functions (80%+ coverage target)
 - Property tests for financial calculations
 - Handler tests must be REPL-friendly (no CLI infrastructure)
+- **Regression tests required for all bug fixes** - Tests must prevent bugs from reoccurring
 - See `.cursor/rules/testing.mdc` for testing philosophy
+- See `.cursor/rules/debugging-regression-test.mdc` for regression test requirements
 
 ### PR Checklist
 
 - [ ] Unit tests for new functions
+- [ ] **Regression tests for bug fixes** (mandatory per `.cursor/rules/debugging-regression-test.mdc`)
 - [ ] No forbidden imports (workflows can't import CLI)
 - [ ] CLI handlers are thin adapters
 - [ ] Workflow results are JSON-serializable

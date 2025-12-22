@@ -6,8 +6,8 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { ingestOhlcvHandler } from '../../../../../src/commands/ingestion/ingest-ohlcv.js';
-import type { CommandContext } from '../../../../../src/core/command-context.js';
+import { ingestOhlcvHandler } from '../../../../src/commands/ingestion/ingest-ohlcv.js';
+import type { CommandContext } from '../../../../src/core/command-context.js';
 import * as workflows from '@quantbot/workflows';
 
 describe('ingestOhlcvHandler - Regression Tests', () => {
@@ -145,4 +145,3 @@ describe('ingestOhlcvHandler - Regression Tests', () => {
     delete process.env.DUCKDB_PATH;
   });
 });
-

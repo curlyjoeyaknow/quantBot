@@ -112,7 +112,7 @@ describe('OHLCV Work Planning - Golden Path', () => {
 
       // Assert: Worklist is returned
       expect(Array.isArray(workItems)).toBe(true);
-      
+
       // Assert: Sorted by priority if items have priority
       if (workItems.length > 1) {
         for (let i = 0; i < workItems.length - 1; i++) {
@@ -136,7 +136,7 @@ describe('OHLCV Work Planning - Golden Path', () => {
         const firstMint = workItems[0].mint;
         expect(firstMint).toBeDefined();
         expect(firstMint.length).toBeGreaterThanOrEqual(32); // Valid address length
-        
+
         // Verify that the mint address matches what comes from the database
         // (case should be preserved exactly as stored)
         const workItemsWithSameMint = workItems.filter((w) => w.mint === firstMint);
@@ -186,11 +186,11 @@ describe('OHLCV Work Planning - Golden Path', () => {
           expect(item.startTime).toBeDefined();
           expect(item.endTime).toBeDefined();
           expect(item.alertTime).toBeDefined();
-          
+
           // Verify time windows are logical
           expect(item.startTime.toMillis()).toBeLessThan(item.alertTime!.toMillis());
           expect(item.alertTime!.toMillis()).toBeLessThan(item.endTime.toMillis());
-          
+
           // Verify pre-window is approximately correct (allow some variance for interval adjustments)
           const actualPreWindow = item.alertTime!.diff(item.startTime, 'minutes').minutes;
           expect(actualPreWindow).toBeGreaterThanOrEqual(preWindow - 100); // Allow some variance
@@ -404,7 +404,7 @@ describe('OHLCV Work Planning - Golden Path', () => {
       if (workItems.length > 0) {
         expect(workItems[0].interval).toBe('1m'); // Default
         expect(workItems[0].chain).toBeDefined(); // Should have a chain (default or from data)
-        
+
         // Assert: Default windows are used (260 pre, 4740 post for 1m interval)
         if (workItems[0].alertTime) {
           const alertTime = workItems[0].alertTime;

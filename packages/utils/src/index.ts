@@ -44,6 +44,9 @@ export type { SimulationEvent } from '@quantbot/core'; // Re-export from core fo
 export * from './errors.js';
 export { handleError, retryWithBackoff } from './error-handler.js';
 
+// Git utilities
+export * from './git.js';
+
 // Pump.fun utilities
 export { PUMP_FUN_PROGRAM_ID, derivePumpfunBondingCurve } from './pumpfun.js';
 

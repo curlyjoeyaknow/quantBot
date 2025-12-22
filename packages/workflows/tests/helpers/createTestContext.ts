@@ -11,7 +11,11 @@ import { DateTime } from 'luxon';
 import { createProductionContextWithPorts } from '../../src/context/createProductionContext.js';
 import type { WorkflowContextWithPorts } from '../../src/context/workflowContextWithPorts.js';
 // Use relative path for test helpers (they're not exported from the package)
-import { createTestDuckDB, createTempDuckDBPath, cleanupTestDuckDB } from '../../../ingestion/tests/helpers/createTestDuckDB.js';
+import {
+  createTestDuckDB,
+  createTempDuckDBPath,
+  cleanupTestDuckDB,
+} from '../../../ingestion/tests/helpers/createTestDuckDB.js';
 import type { TestCall } from '../../../ingestion/tests/helpers/createTestDuckDB.js';
 
 export interface TestContextOptions {
@@ -66,9 +70,7 @@ export interface TestContextOptions {
  *
  * Only external APIs (Birdeye, Helius) are mocked if `mockExternalApis` is true.
  */
-export async function createTestWorkflowContext(
-  options: TestContextOptions = {}
-): Promise<{
+export async function createTestWorkflowContext(options: TestContextOptions = {}): Promise<{
   context: WorkflowContextWithPorts;
   duckdbPath: string;
   cleanup: () => void;
@@ -154,4 +156,3 @@ export async function createMinimalTestContext(
   // Return as WorkflowContextWithPorts (ports are added by createProductionContextWithPorts)
   return baseContext;
 }
-
