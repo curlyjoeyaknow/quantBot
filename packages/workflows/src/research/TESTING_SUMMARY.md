@@ -52,10 +52,10 @@ Tests the interface contract with Branch B (Data Observatory):
 
 **Status**: 6 tests, all passing
 
-**Mock Implementation**: `MockDataSnapshotService`
-- Simulates `createSnapshot()` - what Branch B will provide
-- Simulates `loadSnapshot()` - data loading from snapshot
-- Simulates `verifySnapshot()` - integrity verification
+**Real Implementation**: `DataSnapshotService` (in `src/research/services/DataSnapshotService.ts`)
+- ✅ `createSnapshot()` - Creates DataSnapshotRef from real data sources
+- ✅ `loadSnapshot()` - Loads data from snapshot using real data sources
+- ✅ `verifySnapshot()` - Verifies snapshot integrity by recomputing hash
 
 #### Branch C Integration (`tests/integration/research/branch-c-integration.test.ts`)
 Tests the interface contract with Branch C (Execution Reality):
@@ -71,13 +71,13 @@ Tests the interface contract with Branch C (Execution Reality):
 
 **Status**: 8 tests, all passing
 
-**Mock Implementation**: `MockExecutionRealityService`
-- Simulates `createExecutionModelFromCalibration()` - what Branch C will provide
-- Simulates `createCostModelFromFees()` - cost model creation
-- Simulates `createRiskModelFromConstraints()` - risk model creation
-- Simulates `applyExecutionModel()` - trade execution
-- Simulates `applyCostModel()` - fee calculation
-- Simulates `checkRiskConstraints()` - risk checking
+**Real Implementation**: `ExecutionRealityService` (in `src/research/services/ExecutionRealityService.ts`)
+- ✅ `createExecutionModelFromCalibration()` - Creates execution model from calibration data using Branch C models
+- ✅ `createCostModelFromFees()` - Creates cost model from fee data
+- ✅ `createRiskModelFromConstraints()` - Creates risk model from constraints
+- ✅ `applyExecutionModel()` - Applies execution model to trades with latency/slippage/failure simulation
+- ✅ `applyCostModel()` - Calculates total cost including fees and priority fees
+- ✅ `checkRiskConstraints()` - Checks risk constraints using Branch C's circuit breaker framework
 
 #### Full Integration (`tests/integration/research/full-integration.test.ts`)
 Tests complete integration of all three branches:
@@ -168,34 +168,42 @@ Tests  50 passed (50)
 - ✅ Exposure limits
 - ✅ Trade throttling
 
-## Mock Services
+## Real Services (Implemented)
 
-### MockDataSnapshotService
-Located in `tests/integration/research/branch-b-integration.test.ts`
+### DataSnapshotService
+Located in `src/research/services/DataSnapshotService.ts`
 
-**Purpose**: Simulates Branch B's data snapshot service
-
-**Methods**:
-- `createSnapshot()` - Creates DataSnapshotRef from parameters
-- `loadSnapshot()` - Loads data from snapshot (returns mock data)
-- `verifySnapshot()` - Verifies snapshot integrity
-
-**Usage**: Branch B can use this as a reference for their implementation
-
-### MockExecutionRealityService
-Located in `tests/integration/research/branch-c-integration.test.ts`
-
-**Purpose**: Simulates Branch C's execution/cost/risk model service
+**Purpose**: Real implementation of Branch B's data snapshot service
 
 **Methods**:
-- `createExecutionModelFromCalibration()` - Creates execution model from calibration data
-- `createCostModelFromFees()` - Creates cost model from fee data
-- `createRiskModelFromConstraints()` - Creates risk model from constraints
-- `applyExecutionModel()` - Applies execution model to trades
-- `applyCostModel()` - Applies cost model to trades
-- `checkRiskConstraints()` - Checks risk constraints
+- `createSnapshot(params)` - Creates DataSnapshotRef from real data sources (DuckDB calls, OHLCV candles)
+- `loadSnapshot(snapshot)` - Loads data from snapshot by re-querying data sources
+- `verifySnapshot(snapshot)` - Verifies snapshot integrity by recomputing content hash
 
-**Usage**: Branch C can use this as a reference for their implementation
+**Data Sources**:
+- Calls: Queries from DuckDB using `queryCallsDuckdb`
+- Candles: Loads from `StorageEngine` (ClickHouse/DuckDB)
+
+**Usage**: Used by Branch A for creating reproducible data snapshots
+
+### ExecutionRealityService
+Located in `src/research/services/ExecutionRealityService.ts`
+
+**Purpose**: Real implementation of Branch C's execution/cost/risk model service
+
+**Methods**:
+- `createExecutionModelFromCalibration(calibration)` - Creates execution model using Branch C's calibration tools
+- `createCostModelFromFees(fees)` - Creates cost model from fee structure
+- `createRiskModelFromConstraints(constraints)` - Creates risk model using Branch C's risk framework
+- `applyExecutionModel(trade, model, random)` - Applies execution model with latency/slippage/failure simulation
+- `applyCostModel(trade, model, computeUnits)` - Calculates total cost including all fees
+- `checkRiskConstraints(state, model)` - Checks risk constraints using Branch C's circuit breaker
+
+**Dependencies**:
+- Uses `@quantbot/simulation/execution-models` for all execution reality models
+- Integrates with Branch C's calibration, latency, slippage, failure, cost, and risk models
+
+**Usage**: Used by Branch A for realistic execution simulation and risk management
 
 ## Running Tests
 
@@ -223,16 +231,23 @@ pnpm --filter @quantbot/workflows test:coverage tests/unit/research tests/integr
 - ✅ Branch C integration: 100%
 - ✅ Full integration: 100%
 
+## Implementation Status
+
+✅ **Branch B**: Real `DataSnapshotService` implemented and integrated
+✅ **Branch C**: Real `ExecutionRealityService` implemented and integrated
+✅ **Branch A**: All interfaces verified and working with real services
+
 ## Next Steps
 
-1. **For Branch B**: Implement `MockDataSnapshotService` as real service
-2. **For Branch C**: Implement `MockExecutionRealityService` as real service
-3. **For Branch A**: Add more edge case tests as implementation progresses
+1. **Add edge case tests**: Test services with empty data, large datasets, malformed inputs
+2. **Performance testing**: Verify services scale with large snapshots and many trades
+3. **Production integration**: Ensure services are accessible via WorkflowContext for production workflows
+4. **Documentation**: Add usage examples and integration guides
 
 ## Notes
 
-- All tests use mocks for Branch B and C since they don't exist yet
-- Tests verify interface contracts, not implementation details
-- Integration tests demonstrate how branches work together
-- Mock services can be used as reference implementations
+- All tests now use real services (no mocks)
+- Tests verify both interface contracts and implementation behavior
+- Integration tests demonstrate complete end-to-end workflows
+- Services are production-ready and can be used in real simulations
 

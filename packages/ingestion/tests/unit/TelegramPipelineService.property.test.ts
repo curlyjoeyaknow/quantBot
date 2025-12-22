@@ -34,12 +34,15 @@ describe('TelegramPipelineService - Property/Fuzzing Tests', () => {
 
       const result = await service.runPipeline('', '', '');
 
-      expect(mockEngine.runTelegramPipeline).toHaveBeenCalledWith({
-        inputFile: '',
-        outputDb: '',
-        chatId: '',
-        rebuild: undefined,
-      });
+      expect(mockEngine.runTelegramPipeline).toHaveBeenCalledWith(
+        {
+          inputFile: '',
+          outputDb: '',
+          chatId: '',
+          rebuild: undefined,
+        },
+        undefined
+      );
       expect(result.chat_id).toBe('');
     });
 
@@ -55,12 +58,15 @@ describe('TelegramPipelineService - Property/Fuzzing Tests', () => {
 
       const result = await service.runPipeline(longString, longString, longString);
 
-      expect(mockEngine.runTelegramPipeline).toHaveBeenCalledWith({
-        inputFile: longString,
-        outputDb: longString,
-        chatId: longString,
-        rebuild: undefined,
-      });
+      expect(mockEngine.runTelegramPipeline).toHaveBeenCalledWith(
+        {
+          inputFile: longString,
+          outputDb: longString,
+          chatId: longString,
+          rebuild: undefined,
+        },
+        undefined
+      );
       expect(result.chat_id).toBe(longString);
     });
 
@@ -76,12 +82,15 @@ describe('TelegramPipelineService - Property/Fuzzing Tests', () => {
 
       const result = await service.runPipeline(specialChars, specialChars, specialChars);
 
-      expect(mockEngine.runTelegramPipeline).toHaveBeenCalledWith({
-        inputFile: specialChars,
-        outputDb: specialChars,
-        chatId: specialChars,
-        rebuild: undefined,
-      });
+      expect(mockEngine.runTelegramPipeline).toHaveBeenCalledWith(
+        {
+          inputFile: specialChars,
+          outputDb: specialChars,
+          chatId: specialChars,
+          rebuild: undefined,
+        },
+        undefined
+      );
       expect(result.chat_id).toBe(specialChars);
     });
 
@@ -97,12 +106,15 @@ describe('TelegramPipelineService - Property/Fuzzing Tests', () => {
 
       const result = await service.runPipeline(unicodeString, unicodeString, unicodeString);
 
-      expect(mockEngine.runTelegramPipeline).toHaveBeenCalledWith({
-        inputFile: unicodeString,
-        outputDb: unicodeString,
-        chatId: unicodeString,
-        rebuild: undefined,
-      });
+      expect(mockEngine.runTelegramPipeline).toHaveBeenCalledWith(
+        {
+          inputFile: unicodeString,
+          outputDb: unicodeString,
+          chatId: unicodeString,
+          rebuild: undefined,
+        },
+        undefined
+      );
       expect(result.chat_id).toBe(unicodeString);
     });
 
@@ -126,12 +138,15 @@ describe('TelegramPipelineService - Property/Fuzzing Tests', () => {
 
         const result = await service.runPipeline(path, path, 'test');
 
-        expect(mockEngine.runTelegramPipeline).toHaveBeenCalledWith({
-          inputFile: path,
-          outputDb: path,
-          chatId: 'test',
-          rebuild: undefined,
-        });
+        expect(mockEngine.runTelegramPipeline).toHaveBeenCalledWith(
+          {
+            inputFile: path,
+            outputDb: path,
+            chatId: 'test',
+            rebuild: undefined,
+          },
+          undefined
+        );
         expect(result.duckdb_file).toBe(path);
       }
     });
@@ -300,12 +315,15 @@ describe('TelegramPipelineService - Property/Fuzzing Tests', () => {
 
       await service.runPipeline('/path/to/input.json', '/path/to/output.duckdb', 'test', true);
 
-      expect(mockEngine.runTelegramPipeline).toHaveBeenCalledWith({
-        inputFile: '/path/to/input.json',
-        outputDb: '/path/to/output.duckdb',
-        chatId: 'test',
-        rebuild: true,
-      });
+      expect(mockEngine.runTelegramPipeline).toHaveBeenCalledWith(
+        {
+          inputFile: '/path/to/input.json',
+          outputDb: '/path/to/output.duckdb',
+          chatId: 'test',
+          rebuild: true,
+        },
+        undefined
+      );
     });
 
     it('should handle rebuild flag as false', async () => {
@@ -319,12 +337,15 @@ describe('TelegramPipelineService - Property/Fuzzing Tests', () => {
 
       await service.runPipeline('/path/to/input.json', '/path/to/output.duckdb', 'test', false);
 
-      expect(mockEngine.runTelegramPipeline).toHaveBeenCalledWith({
-        inputFile: '/path/to/input.json',
-        outputDb: '/path/to/output.duckdb',
-        chatId: 'test',
-        rebuild: false,
-      });
+      expect(mockEngine.runTelegramPipeline).toHaveBeenCalledWith(
+        {
+          inputFile: '/path/to/input.json',
+          outputDb: '/path/to/output.duckdb',
+          chatId: 'test',
+          rebuild: false,
+        },
+        undefined
+      );
     });
 
     it('should handle rebuild flag as undefined', async () => {
@@ -338,12 +359,15 @@ describe('TelegramPipelineService - Property/Fuzzing Tests', () => {
 
       await service.runPipeline('/path/to/input.json', '/path/to/output.duckdb', 'test');
 
-      expect(mockEngine.runTelegramPipeline).toHaveBeenCalledWith({
-        inputFile: '/path/to/input.json',
-        outputDb: '/path/to/output.duckdb',
-        chatId: 'test',
-        rebuild: undefined,
-      });
+      expect(mockEngine.runTelegramPipeline).toHaveBeenCalledWith(
+        {
+          inputFile: '/path/to/input.json',
+          outputDb: '/path/to/output.duckdb',
+          chatId: 'test',
+          rebuild: undefined,
+        },
+        undefined
+      );
     });
   });
 });

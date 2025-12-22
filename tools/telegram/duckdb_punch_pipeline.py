@@ -49,6 +49,37 @@ class AddressCandidate:
   message_id: Optional[int] = None  # For audit trail
   checksum_status: Optional[str] = None  # For EVM: "valid_checksummed", "valid_not_checksummed", "invalid_checksum"
 
+
+def normalize_chain(chain: Optional[str]) -> Optional[str]:
+  """
+  Normalize chain name to lowercase canonical form.
+  
+  Maps:
+  - 'eth'/'ethereum'/'Ethereum'/'ETH' -> 'ethereum'
+  - 'sol'/'solana'/'Solana'/'SOL' -> 'solana'
+  - 'bsc'/'bnb'/'BSC'/'BNB'/'Bsc'/'Bnb' -> 'bsc'
+  - 'base'/'Base'/'BASE' -> 'base'
+  - 'evm'/'EVM'/'Evm' -> 'evm'
+  
+  Returns None if chain is None or empty, otherwise returns normalized chain.
+  """
+  if not chain:
+    return None
+  
+  chain_lower = chain.lower().strip()
+  chain_map = {
+    'eth': 'ethereum',
+    'ethereum': 'ethereum',
+    'sol': 'solana',
+    'solana': 'solana',
+    'bsc': 'bsc',
+    'bnb': 'bsc',  # BNB is BSC's native token, same chain
+    'binance': 'bsc',
+    'base': 'base',
+    'evm': 'evm',
+  }
+  return chain_map.get(chain_lower, 'solana')  # Default to solana if unknown
+
 @dataclass
 class MintCandidate:
   """Mint candidate with validation status (backward compatibility)"""
@@ -1652,7 +1683,7 @@ def main():
     mint_raw = None
     mint_validation_status = None
     mint_validation_reason = None
-    final_chain = detected_chain
+    final_chain = normalize_chain(detected_chain)  # Normalize chain from card
     
     # Find first valid address (Pass 1 + Pass 2)
     for candidate in address_candidates:
@@ -1665,7 +1696,7 @@ def main():
             mint_raw = candidate.raw  # Keep original for audit
             mint_validation_status = MintValidationStatus.PASS2_ACCEPTED.value
             if not final_chain:
-              final_chain = "solana"
+              final_chain = normalize_chain("solana")  # Normalize to lowercase
             break
           else:
             # Pass 1 passed but Pass 2 failed
@@ -1680,7 +1711,7 @@ def main():
             mint_raw = candidate.raw  # Keep original (preserves case for checksum)
             mint_validation_status = MintValidationStatus.PASS2_ACCEPTED.value
             if not final_chain:
-              final_chain = "evm"
+              final_chain = normalize_chain("evm")  # Normalize to lowercase
             break
           else:
             mint_raw = candidate.raw
@@ -1776,11 +1807,14 @@ def main():
             zero_liquidity = True
             break
 
+    # Normalize chain before inserting
+    chain_to_insert = normalize_chain(final_chain or card.get("chain"))
+    
     link_rows.append((
       c_id, int(trig_mid), int(trig_ts), trig_from_id, trig_from_name, trig_text,
       int(bot_mid), int(bot_ts), bot_from, card.get("bot_type"),
       token_name, ticker, mint, mint_raw, mint_validation_status, mint_validation_reason,
-      final_chain or card.get("chain"), card.get("platform"),
+      chain_to_insert, card.get("platform"),
       token_age_s, token_created_ts_ms, card.get("views"),
       card.get("price_usd"), card.get("price_move_pct"), card.get("mcap_usd"), card.get("mcap_change_pct"),
       card.get("vol_usd"), liquidity_usd, zero_liquidity,

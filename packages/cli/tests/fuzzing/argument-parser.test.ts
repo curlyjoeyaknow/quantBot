@@ -109,7 +109,7 @@ describe('Argument Parser - Fuzzing Tests', () => {
       expect(result['key-with-dashes']).toBe('value1');
       expect(result['key_with_underscores']).toBe('value2');
       expect(result['key.with.dots']).toBe('value3');
-      expect(result['camel-case-key']).toBe('value4');
+      expect(result['camelCaseKey']).toBe('value4');
     });
 
     it('should convert string numbers to numbers', () => {
@@ -129,9 +129,9 @@ describe('Argument Parser - Fuzzing Tests', () => {
         falseVal: 'false',
         notBool: 'trueValue', // Should stay as string
       });
-      expect(result['true-val']).toBe(true);
-      expect(result['false-val']).toBe(false);
-      expect(result['not-bool']).toBe('trueValue');
+      expect(result['trueVal']).toBe(true);
+      expect(result['falseVal']).toBe(false);
+      expect(result['notBool']).toBe('trueValue');
     });
 
     it('should handle very long strings', () => {

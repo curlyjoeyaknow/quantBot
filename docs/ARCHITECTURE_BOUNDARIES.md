@@ -1,136 +1,155 @@
-# Architecture Boundaries - Research Lab Layers
+# Architecture Boundaries - Layer Separation
 
-**Status**: 📋 ARCHITECTURE  
-**Created**: 2025-01-23  
-**Related**: `.cursor/rules/packages-workflows.mdc`, `docs/ARCHITECTURE.md`
+**Status**: 📋 ARCHITECTURE DOCUMENTATION  
+**Priority**: P0 (Critical Path)  
+**Created**: 2025-01-23
 
 ## Overview
 
-This document maps the Quant Research Lab roadmap layers to existing QuantBot packages and defines hard boundaries that must not be crossed. These boundaries ensure clean separation of concerns and enable the research lab's core principles: determinism, replayability, and automated optimization.
+This document maps the Quant Research Lab Roadmap layers to existing packages and defines hard boundaries that prevent architectural drift. These boundaries ensure:
+
+1. **Separation of Concerns**: Each layer has a single responsibility
+2. **Testability**: Layers can be tested in isolation
+3. **Maintainability**: Changes in one layer don't cascade to others
+4. **Performance**: Hot paths (simulation) remain I/O-free
 
 ## Layer Mapping
 
 ### Layer 1: Data Ingestion (What Happened)
 
-**Purpose**: Capture raw market data and trading signals from external sources.
+**Purpose**: Collect and store raw data from external sources.
 
 **Packages**:
-- `@quantbot/ingestion` - Telegram parsing, alert extraction
-- `@quantbot/api-clients` - External API clients (Birdeye, Helius)
-- `@quantbot/jobs` - Background job processing (OHLCV fetch jobs)
+- `@quantbot/ingestion` - Telegram parsing, address extraction, call ingestion
+- `@quantbot/api-clients` - Birdeye, Helius API clients
+- `@quantbot/jobs` - OHLCV fetch jobs, online data acquisition
 
 **Responsibilities**:
-- Parse raw inputs (Telegram exports, API responses)
-- Extract structured data (calls, alerts, tokens)
-- Store raw data immutably (append-only)
-- Track data provenance (source, timestamp, hash)
+- Parse external data sources (Telegram, APIs)
+- Validate and normalize data
+- Store raw data (immutable, append-only)
+- Extract and validate addresses
 
-**Boundaries**:
-- ✅ Can read from external APIs
-- ✅ Can write to storage (raw data only)
-- ❌ Cannot read from simulation results
-- ❌ Cannot import from `@quantbot/simulation`
-- ❌ Cannot make decisions based on strategy results
+**Forbidden**:
+- ❌ Feature engineering logic
+- ❌ Strategy logic
+- ❌ Simulation logic
+- ❌ Execution logic
 
-**Example Violations**:
-- `@quantbot/ingestion` importing from `@quantbot/simulation` ❌
-- Ingestion logic checking simulation results ❌
+**Allowed Dependencies**:
+- ✅ `@quantbot/core` (types, ports)
+- ✅ `@quantbot/utils` (address validation, logging)
+- ✅ `@quantbot/storage` (repositories)
+
+**Layer Boundary Rules**:
+- Cannot import from `@quantbot/simulation`
+- Cannot import from `@quantbot/analytics`
+- Cannot import from `@quantbot/workflows` (except adapters)
 
 ---
 
 ### Layer 2: Feature Engineering (What It Meant)
 
-**Purpose**: Transform raw/canonical data into features for strategies.
+**Purpose**: Transform raw data into features for strategy analysis.
 
 **Packages**:
-- `@quantbot/analytics` - Feature computation, metrics calculation
-- `@quantbot/ohlcv` - OHLCV data services (candle fetching, resampling)
+- `@quantbot/analytics` - Call performance analysis, metrics calculation, ATH/ATL
+- `@quantbot/ohlcv` - Candle querying, coverage analysis, offline data services
 
 **Responsibilities**:
-- Compute technical indicators (Ichimoku, RSI, moving averages)
-- Normalize data (timestamp alignment, chain-agnostic addresses)
-- Create feature vectors for strategy evaluation
-- Cache expensive computations
+- Calculate technical indicators (RSI, moving averages, etc.)
+- Compute performance metrics (PnL, win rate, etc.)
+- Generate feature vectors for ML/analysis
+- Analyze data coverage and quality
 
-**Boundaries**:
-- ✅ Can read from ingestion layer (via storage)
-- ✅ Can read from canonical data layer
-- ✅ Can compute features from raw/canonical data
-- ❌ Cannot import from `@quantbot/simulation`
-- ❌ Cannot depend on strategy definitions
-- ❌ Cannot make trading decisions
+**Forbidden**:
+- ❌ Strategy logic (how to trade)
+- ❌ Simulation logic (when to execute)
+- ❌ Execution logic (how to execute trades)
+- ❌ Online data fetching (ingestion layer only)
 
-**Example Violations**:
-- `@quantbot/analytics` importing strategy types from `@quantbot/simulation` ❌
-- Feature computation logic depending on specific strategy parameters ❌
+**Allowed Dependencies**:
+- ✅ `@quantbot/core` (types)
+- ✅ `@quantbot/utils` (utilities)
+- ✅ `@quantbot/storage` (read-only queries)
+- ✅ `@quantbot/ohlcv` (candle data)
+
+**Layer Boundary Rules**:
+- Cannot import from `@quantbot/ingestion` (except for address validation utils)
+- Cannot import from `@quantbot/api-clients` (no network in feature engineering)
+- Cannot import from `@quantbot/simulation` (features feed simulation, not vice versa)
+- Cannot import from `@quantbot/jobs` (no online fetching)
+
+**Special Rule - OHLCV Package**:
+- ✅ Can read from storage (ClickHouse, DuckDB)
+- ❌ Cannot write to storage (jobs layer does that)
+- ❌ Cannot call APIs directly (must go through jobs layer)
 
 ---
 
 ### Layer 3: Strategy Logic (What We Did)
 
-**Purpose**: Define trading strategies as data (not code).
+**Purpose**: Define trading strategies and decision rules.
 
 **Packages**:
-- `@quantbot/core` - Strategy DSL, types, interfaces
-- `@quantbot/simulation` - Strategy evaluation engine (pure compute)
+- `@quantbot/simulation` - Strategy engine, entry/exit logic, signal evaluation
 
 **Responsibilities**:
-- Define strategy DSL (entry/exit conditions, position sizing)
-- Evaluate strategies on historical data
-- Generate strategy mutations for optimization
-- Compare strategies (similarity, diff)
+- Define entry conditions (immediate, drop, trailing)
+- Define exit conditions (profit targets, stop loss)
+- Define re-entry rules
+- Calculate position sizing
+- Evaluate trading signals
 
-**Boundaries**:
-- ✅ Can read from feature engineering layer (via canonical data)
-- ✅ Can import from `@quantbot/core` (types, DSL)
-- ✅ Must be pure compute (no I/O, no clocks, no global state)
+**Forbidden** (Critical - Hot Path Performance):
+- ❌ Network I/O (HTTP calls)
+- ❌ Database I/O (queries, writes)
+- ❌ Filesystem I/O (read/write files)
+- ❌ `Date.now()` (use clock port)
+- ❌ `Math.random()` (use seeded random)
+- ❌ Environment variables (`process.env`)
+- ❌ Console output (`console.log`)
+
+**Allowed Dependencies**:
+- ✅ `@quantbot/core` (types, ports)
+- ✅ `@quantbot/utils` (pure utilities - no I/O)
+- ✅ `@quantbot/ohlcv` (read candles - via ports, not direct imports)
+
+**Layer Boundary Rules** (Hard Boundaries):
 - ❌ Cannot import from `@quantbot/ingestion`
-- ❌ Cannot import from `@quantbot/workflows` (orchestration)
-- ❌ Cannot make network calls
-- ❌ Cannot write to storage
+- ❌ Cannot import from `@quantbot/api-clients`
+- ❌ Cannot import from `@quantbot/jobs`
+- ❌ Cannot import from `@quantbot/workflows`
+- ❌ Cannot import from `@quantbot/storage/src/**` (only interfaces from core)
+- ✅ Can only use candle data via ports/interfaces
+- ✅ Must be deterministic (same inputs → same outputs)
 
-**Example Violations**:
-- `@quantbot/simulation` importing from `@quantbot/ingestion` ❌
-- Simulation code making HTTP calls ❌
-- Simulation code writing to database ❌
-- Simulation code using `Date.now()` or `Math.random()` ❌
-
-**Current State**:
-- ✅ Simulation is already pure (no I/O)
-- ✅ ESLint rules enforce these boundaries
-- ✅ See `eslint.config.mjs` for enforcement
+**Why These Boundaries Matter**:
+- Simulation is the **hot path** - must be fast and deterministic
+- I/O operations would add latency and non-determinism
+- Allows testing strategies without network/DB dependencies
+- Enables parallel execution and replayability
 
 ---
 
 ### Layer 4: Execution Logic (How Fast & How Safely)
 
-**Purpose**: Execute trades (simulated or live) with execution models.
+**Purpose**: Execute trades with realistic latency, slippage, and fee models.
 
 **Packages**:
-- `@quantbot/workflows` - Orchestration layer (coordinates I/O)
-- `packages/workflows/src/adapters/` - Execution adapters
+- `@quantbot/simulation/src/execution/` - Execution models, slippage, latency, fees
+- `@quantbot/workflows/src/adapters/executionStubAdapter` - Execution port adapter
 
 **Responsibilities**:
-- Apply execution models (slippage, latency, partial fills)
-- Handle order submission (paper or live)
-- Track positions and PnL
-- Implement safety guards (circuit breakers, kill switches)
+- Model execution latency (network + confirmation)
+- Model slippage (based on volume, liquidity)
+- Model fees (maker/taker, priority fees)
+- Model partial fills
+- Model transaction failures
 
-**Boundaries**:
-- ✅ Can coordinate between layers (ingestion → feature → strategy → execution)
-- ✅ Can import from all layers (as coordinator)
-- ✅ Can make I/O operations (network, storage)
-- ❌ Should not contain business logic (delegate to other layers)
-- ❌ Should not make trading decisions (use strategy layer)
+**Note**: Currently execution models are part of `@quantbot/simulation`. They follow the same purity rules (no I/O).
 
-**Example Violations**:
-- Workflow logic implementing strategy rules directly ❌
-- Execution logic bypassing strategy layer ❌
-
-**Current State**:
-- ✅ Workflows use ports pattern for I/O
-- ✅ Business logic delegated to appropriate layers
-- ✅ See `.cursor/rules/packages-workflows.mdc` for patterns
+**Future Separation**: Execution models may be extracted to `@quantbot/execution` package for clearer separation.
 
 ---
 
@@ -139,148 +158,275 @@ This document maps the Quant Research Lab roadmap layers to existing QuantBot pa
 **Purpose**: Evaluate strategy performance and generate metrics.
 
 **Packages**:
-- `@quantbot/analytics` - Performance metrics, risk calculations
-- `@quantbot/workflows` - Experiment tracking, run orchestration
+- `@quantbot/analytics` - Performance analysis, metrics aggregation
+- `@quantbot/workflows/src/research/metrics.ts` - Research metrics
 
 **Responsibilities**:
-- Calculate performance metrics (PnL, Sharpe ratio, max drawdown)
-- Generate experiment reports
+- Calculate PnL statistics (mean, median, min, max)
+- Calculate risk metrics (drawdown, Sharpe ratio, etc.)
+- Generate performance reports
 - Compare strategy variants
-- Track experiment metadata (git commit, data snapshot hash)
 
-**Boundaries**:
-- ✅ Can read from execution layer (simulation results)
-- ✅ Can read from strategy layer (strategy definitions)
-- ✅ Can compute metrics from results
-- ❌ Cannot modify strategy definitions
-- ❌ Cannot modify execution results
+**Allowed Dependencies**:
+- ✅ `@quantbot/core` (types)
+- ✅ `@quantbot/utils` (utilities)
+- ✅ `@quantbot/simulation` (read results - simulation output, not simulation code)
 
-**Example Violations**:
-- Evaluation logic modifying simulation results ❌
-- Metrics calculation changing strategy parameters ❌
+**Layer Boundary Rules**:
+- ❌ Cannot import simulation internals (only result types)
+- ❌ Cannot modify simulation logic
+- ✅ Can analyze simulation outputs
 
 ---
 
-### Layer 6: Optimization Logic (How to Do Better)
+### Layer 6: Orchestration (Application Layer)
 
-**Purpose**: Automatically search strategy space for better variants.
+**Purpose**: Coordinate multi-step workflows.
 
 **Packages**:
-- `@quantbot/analytics` - Optimization algorithms (grid search, Bayesian, etc.)
-- `@quantbot/workflows` - Optimization job orchestration
+- `@quantbot/workflows` - Workflow orchestration
 
 **Responsibilities**:
-- Generate strategy parameter combinations
-- Run optimization jobs (coordinate simulation + evaluation)
-- Prune bad strategies early
-- Select Pareto-optimal strategies
+- Coordinate I/O operations
+- Call simulation with proper context
+- Handle errors and retries
+- Persist results
+- Return structured outputs
 
-**Boundaries**:
-- ✅ Can use all layers (coordinates ingestion → feature → strategy → execution → evaluation)
-- ✅ Can mutate strategy definitions (generate variants)
-- ✅ Can read evaluation results
-- ❌ Should not contain strategy logic (use strategy layer)
-- ❌ Should not contain evaluation logic (use evaluation layer)
+**Allowed Dependencies**:
+- ✅ All packages (workflows orchestrate everything)
+- ✅ Uses ports/interfaces (not direct implementations)
+- ✅ Composes services from multiple layers
 
-**Example Violations**:
-- Optimization logic implementing strategy rules directly ❌
-- Optimization logic computing metrics directly (should use evaluation layer) ❌
+**Layer Boundary Rules**:
+- ✅ Can import from any package
+- ✅ Must use dependency injection (WorkflowContext)
+- ✅ Cannot contain business logic (delegates to services)
+- ✅ Must return JSON-serializable results
 
 ---
 
-## Cross-Layer Dependencies
+### Layer 7: Adapters & Composition Roots
 
-### Allowed Flow
+**Purpose**: Wire real implementations to ports, handle I/O concerns.
 
-```
-Ingestion → Storage (Raw Data)
-    ↓
-Canonical Data Layer (transforms raw → canonical)
-    ↓
-Feature Engineering (transforms canonical → features)
-    ↓
-Strategy Logic (evaluates features → decisions)
-    ↓
-Execution Logic (applies decisions → trades)
-    ↓
-Evaluation Logic (analyzes trades → metrics)
-    ↓
-Optimization Logic (uses metrics → better strategies)
-```
+**Packages**:
+- `@quantbot/cli` - CLI adapter, command parsing, output formatting
+- `@quantbot/workflows/src/adapters/` - Port adapters
+- `@quantbot/workflows/src/context/` - Context factories
 
-### Forbidden Patterns
+**Responsibilities**:
+- Read environment variables
+- Parse command-line arguments
+- Wire real services to ports
+- Format output for display
+- Handle I/O (filesystem, network setup)
 
-1. **Circular Dependencies**: No layer can depend on a layer that depends on it
-   - ❌ Strategy → Ingestion → Strategy
-   - ❌ Feature → Strategy → Feature
+**Allowed Dependencies**:
+- ✅ All packages (wires everything together)
+- ✅ Can read `process.env`
+- ✅ Can access filesystem
+- ✅ Can format output
 
-2. **Skip Layer Access**: Layers should not skip adjacent layers
-   - ❌ Strategy directly accessing Ingestion (should use canonical data)
-   - ❌ Optimization directly accessing Ingestion (should use workflows)
-
-3. **Bidirectional Dependencies**: Layers should not import from each other
-   - ❌ Feature ↔ Strategy
-   - ❌ Strategy ↔ Execution
+**Layer Boundary Rules**:
+- ✅ Can contain I/O code
+- ✅ Can contain formatting logic
+- ✅ Must wire ports properly (not bypass them)
 
 ---
 
 ## Package-to-Layer Mapping
 
-| Package | Primary Layer | Secondary Layers | Restrictions |
-|---------|--------------|------------------|--------------|
-| `@quantbot/ingestion` | Layer 1: Ingestion | - | No simulation imports |
-| `@quantbot/api-clients` | Layer 1: Ingestion | - | No simulation imports |
-| `@quantbot/jobs` | Layer 1: Ingestion | - | No simulation imports |
-| `@quantbot/ohlcv` | Layer 2: Features | - | No simulation imports |
-| `@quantbot/analytics` | Layer 2: Features<br>Layer 5: Evaluation<br>Layer 6: Optimization | - | No ingestion imports |
-| `@quantbot/core` | Layer 3: Strategy (DSL) | All (types/interfaces) | Pure types only |
-| `@quantbot/simulation` | Layer 3: Strategy | - | Pure compute only (no I/O) |
-| `@quantbot/workflows` | Layer 4: Execution<br>Layer 5: Evaluation | All (orchestration) | No business logic |
-| `@quantbot/storage` | Infrastructure | All (via ports) | Ports/adapters only |
-| `@quantbot/cli` | Adapter Layer | All (orchestration) | Thin adapter only |
+| Package | Primary Layer | Allowed Dependencies | Forbidden Dependencies |
+|---------|---------------|---------------------|------------------------|
+| `@quantbot/core` | Foundation | None (zero dependencies) | N/A |
+| `@quantbot/utils` | Foundation | `@quantbot/core` | All others |
+| `@quantbot/ingestion` | Data Ingestion | `core`, `utils`, `storage` | `simulation`, `analytics`, `workflows` |
+| `@quantbot/api-clients` | Data Ingestion | `core`, `utils`, `observability` | `simulation`, `analytics` |
+| `@quantbot/jobs` | Data Ingestion | `api-clients`, `storage`, `ohlcv` | `simulation`, `analytics` |
+| `@quantbot/ohlcv` | Feature Engineering | `core`, `utils`, `storage` | `api-clients`, `jobs`, `simulation` |
+| `@quantbot/analytics` | Feature Engineering | `core`, `utils`, `storage`, `ohlcv` | `ingestion`, `api-clients`, `simulation` |
+| `@quantbot/simulation` | Strategy Logic | `core`, `utils` only | **ALL I/O packages** |
+| `@quantbot/workflows` | Orchestration | All packages (via ports) | N/A (but must use ports) |
+| `@quantbot/storage` | Infrastructure | `core`, `utils` | `simulation`, `analytics` |
+| `@quantbot/observability` | Infrastructure | `core`, `utils` | `simulation`, `analytics` |
+
+## Critical Boundary Rules
+
+### Rule 1: Simulation Must Be Pure (No I/O)
+
+**Enforced For**:
+- `@quantbot/simulation`
+
+**Checks**:
+- ❌ No `import` from `@quantbot/api-clients`
+- ❌ No `import` from `@quantbot/jobs`
+- ❌ No `import` from `@quantbot/storage/src/**` (only interfaces from core)
+- ❌ No `Date.now()` (use clock port)
+- ❌ No `Math.random()` (use seeded random)
+- ❌ No `process.env` access
+- ❌ No filesystem operations
+- ❌ No HTTP/network code
+
+**Why**: Simulation is the hot path. I/O adds latency and non-determinism.
 
 ---
 
-## Current Violations
+### Rule 2: Feature Engineering Cannot Fetch Data
 
-### Known Violations (To Fix)
+**Enforced For**:
+- `@quantbot/analytics`
+- `@quantbot/ohlcv`
 
-*None identified yet - run `scripts/verify-architecture-boundaries.ts` to check*
+**Checks**:
+- ❌ No `import` from `@quantbot/api-clients`
+- ❌ No `import` from `@quantbot/jobs`
+- ❌ No direct HTTP calls
 
-### ESLint Enforcement
-
-ESLint rules in `eslint.config.mjs` enforce:
-- ✅ No deep imports from `@quantbot/*/src/**`
-- ✅ `@quantbot/simulation` cannot import from ingestion/storage/api-clients/ohlcv
-- ✅ `@quantbot/workflows` must use ports, not direct client imports
-- ✅ Handler purity (no env, no Date.now, no Math.random)
-
-Run `pnpm lint` to verify boundaries.
-
-### Architecture Tests
-
-Run `scripts/verify-architecture-boundaries.ts` to validate:
-- Handlers only import from `@quantbot/core`
-- No deep imports from `@quantbot/*/src/**`
+**Why**: Feature engineering should work on existing data, not fetch new data.
 
 ---
 
-## Migration Path
+### Rule 3: Workflows Must Use Ports
 
-As we implement the research lab roadmap:
+**Enforced For**:
+- `@quantbot/workflows`
 
-1. **Phase I Task 1.1**: Formalize these boundaries (this document) ✅
-2. **Phase I Task 1.1**: Add/enhance ESLint rules ✅ (already exists)
-3. **Phase I Task 1.1**: Fix any violations found
-4. **Phase I Task 1.1**: Add CI checks to prevent regressions
+**Checks**:
+- ❌ No direct `import` from `@quantbot/storage/src/**` (implementations)
+- ❌ No direct `import` from `@quantbot/api-clients/src/**` (implementations)
+- ✅ Must use `ctx.ports.*` or `ctx.services.*`
+- ✅ Must use context factories
+
+**Why**: Workflows should depend on interfaces, not implementations.
 
 ---
 
-## References
+### Rule 4: Handlers Must Be Pure Functions
 
-- `.cursor/rules/packages-workflows.mdc` - Workflow orchestration patterns
-- `.cursor/rules/packages-simulation.mdc` - Simulation purity rules
+**Enforced For**:
+- `packages/cli/src/handlers/**`
+
+**Checks**:
+- ❌ No `console.log` / `console.error`
+- ❌ No `process.exit`
+- ❌ No `process.env` access
+- ❌ No filesystem operations
+- ❌ No Commander.js imports
+- ✅ Must return data (not formatted strings)
+- ✅ Must use context for services
+
+**Why**: Handlers should be testable and REPL-friendly.
+
+---
+
+## Boundary Violations (To Be Fixed)
+
+### Current Violations
+
+These violations need to be refactored:
+
+1. **TBD**: Scan codebase for violations (next step)
+
+### Violation Detection
+
+Use these commands to detect violations:
+
+```bash
+# Check for forbidden imports
+pnpm lint
+
+# Verify architecture boundaries
+pnpm verify:architecture-boundaries
+
+# Type checking (will catch some import issues)
+pnpm typecheck
+```
+
+---
+
+## Enforcement Strategy
+
+### Phase 1: Documentation (Current)
+
+✅ **Status**: This document created
+
+- Maps packages to layers
+- Documents allowed/forbidden dependencies
+- Identifies violations (TBD)
+
+### Phase 2: ESLint Rules (Next)
+
+**Goal**: Prevent violations at write-time
+
+**Rules to Add**:
+1. Block `@quantbot/simulation` from importing I/O packages
+2. Block `@quantbot/analytics` from importing `@quantbot/api-clients`
+3. Block `@quantbot/workflows` from importing storage implementations
+4. Block handlers from using `console.log`, `process.exit`, etc.
+
+**Files**: `eslint.config.mjs`
+
+### Phase 3: Architecture Tests (Future)
+
+**Goal**: Prevent regressions in CI
+
+**Test**: `scripts/verify-architecture-boundaries.ts`
+
+**Checks**:
+- Parse all package.json files
+- Verify no forbidden dependencies
+- Verify import paths (no deep imports)
+- Run in CI on every commit
+
+### Phase 4: Refactor Violations (Future)
+
+**Goal**: Fix existing violations
+
+- Move code to appropriate layers
+- Extract adapters where needed
+- Update imports to use ports/interfaces
+
+---
+
+## Migration Strategy
+
+### Step 1: Identify All Violations
+
+1. Run ESLint with boundary rules (once implemented)
+2. Parse package.json dependencies
+3. Scan import statements
+4. Document all violations
+
+### Step 2: Prioritize Violations
+
+- **P0 (Critical)**: Simulation importing I/O packages
+- **P1 (High)**: Analytics importing API clients
+- **P2 (Medium)**: Workflows importing implementations directly
+- **P3 (Low)**: Other violations
+
+### Step 3: Refactor Incrementally
+
+1. Fix P0 violations first (simulation purity)
+2. Fix P1 violations (feature engineering boundaries)
+3. Fix P2 violations (workflow port usage)
+4. Fix P3 violations (cleanup)
+
+---
+
+## Success Criteria
+
+- ✅ All packages mapped to layers
+- ✅ Boundary rules documented
+- ⏳ ESLint rules block cross-layer imports
+- ⏳ Architecture tests pass in CI
+- ⏳ Zero violations in existing code
+
+---
+
+## Related Documentation
+
 - `docs/ARCHITECTURE.md` - Overall system architecture
-- `eslint.config.mjs` - Boundary enforcement rules
-- `scripts/verify-architecture-boundaries.ts` - Architecture tests
-
+- `docs/OHLCV_ARCHITECTURE.md` - OHLCV-specific boundaries
+- `.cursor/rules/packages-workflows.mdc` - Workflow layer rules
+- `.cursor/rules/build-ordering.mdc` - Build dependency order

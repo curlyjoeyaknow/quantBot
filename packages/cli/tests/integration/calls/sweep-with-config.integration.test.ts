@@ -20,6 +20,43 @@ import type { CommandContext } from '../../../src/core/command-context.js';
 
 const TEST_DIR = join(process.cwd(), '.test-sweep-integration');
 
+// Mock evaluateCallsWorkflow to avoid real API calls (must be at top level due to hoisting)
+vi.mock('@quantbot/workflows', () => ({
+  evaluateCallsWorkflow: vi.fn().mockResolvedValue({
+    results: [
+      {
+        call: {
+          tsMs: Date.now(),
+          caller: { fromId: 'caller-1', displayName: 'Caller 1' },
+          token: { address: 'token-1', chain: 'solana' },
+        },
+        overlay: { kind: 'take_profit', takePct: 100 },
+        entry: { tsMs: Date.now(), px: 1.0 },
+        exit: { tsMs: Date.now() + 1000, px: 2.0, reason: 'take_profit' },
+        pnl: {
+          grossReturnPct: 100,
+          netReturnPct: 99.6,
+          feesUsd: 3,
+          slippageUsd: 1,
+        },
+        diagnostics: { candlesUsed: 10, tradeable: true },
+      },
+    ],
+    summaryByCaller: [
+      {
+        callerFromId: 'caller-1',
+        callerName: 'Caller 1',
+        calls: 1,
+        tradeableCalls: 1,
+        medianNetReturnPct: 99.6,
+        winRate: 1.0,
+        bestOverlay: { kind: 'take_profit', takePct: 100 },
+      },
+    ],
+  }),
+  createProductionContextWithPorts: vi.fn().mockResolvedValue({}),
+}));
+
 // Mock calls data
 const mockCalls = [
   {
@@ -53,39 +90,6 @@ beforeEach(() => {
 
   // Write mock overlays file
   writeFileSync(join(TEST_DIR, 'overlays.json'), JSON.stringify(mockOverlays));
-
-  // Mock evaluateCallsWorkflow to avoid real API calls
-  vi.mock('@quantbot/workflows', () => ({
-    evaluateCallsWorkflow: vi.fn().mockResolvedValue({
-      results: [
-        {
-          call: mockCalls[0],
-          overlay: { kind: 'take_profit', takePct: 100 },
-          entry: { tsMs: Date.now(), px: 1.0 },
-          exit: { tsMs: Date.now() + 1000, px: 2.0, reason: 'take_profit' },
-          pnl: {
-            grossReturnPct: 100,
-            netReturnPct: 99.6,
-            feesUsd: 3,
-            slippageUsd: 1,
-          },
-          diagnostics: { candlesUsed: 10, tradeable: true },
-        },
-      ],
-      summaryByCaller: [
-        {
-          callerFromId: 'caller-1',
-          callerName: 'Caller 1',
-          calls: 1,
-          tradeableCalls: 1,
-          medianNetReturnPct: 99.6,
-          winRate: 1.0,
-          bestOverlay: { kind: 'take_profit', takePct: 100 },
-        },
-      ],
-    }),
-    createProductionContextWithPorts: vi.fn().mockResolvedValue({}),
-  }));
 });
 
 afterEach(() => {
