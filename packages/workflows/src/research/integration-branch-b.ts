@@ -18,14 +18,13 @@ import type { DataSnapshotRef as BranchADataSnapshotRef } from './contract.js';
  *
  * This adapter ensures compatibility between the two formats.
  */
-export function adaptBranchBToBranchA(
-  branchBRef: BranchBDataSnapshotRef
-): BranchADataSnapshotRef {
+export function adaptBranchBToBranchA(branchBRef: BranchBDataSnapshotRef): BranchADataSnapshotRef {
   // Extract sources from Branch B spec
-  const sources = branchBRef.spec.filters?.venues?.map((venue) => ({
-    venue,
-    chain: branchBRef.spec.filters?.chain,
-  })) || [];
+  const sources =
+    branchBRef.spec.filters?.venues?.map((venue) => ({
+      venue,
+      chain: branchBRef.spec.filters?.chain,
+    })) || [];
 
   return {
     snapshotId: branchBRef.snapshotId,
@@ -49,9 +48,12 @@ export function adaptBranchBToBranchA(
  *
  * This is used when we need to query Branch B using Branch A's ref.
  */
-export function adaptBranchAToBranchB(
-  branchARef: BranchADataSnapshotRef
-): { snapshotId: string; from?: string; to?: string; tokenAddresses?: string[] } {
+export function adaptBranchAToBranchB(branchARef: BranchADataSnapshotRef): {
+  snapshotId: string;
+  from?: string;
+  to?: string;
+  tokenAddresses?: string[];
+} {
   return {
     snapshotId: branchARef.snapshotId,
     from: branchARef.timeRange.fromISO,
@@ -68,4 +70,3 @@ export function isBranchBRef(
 ): ref is BranchBDataSnapshotRef {
   return 'spec' in ref && 'manifest' in ref;
 }
-

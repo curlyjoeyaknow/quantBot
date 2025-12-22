@@ -1,15 +1,25 @@
 /**
- * Data Snapshot Service - Branch B Integration
- * ============================================
+ * Data Snapshot Service - Integrated Branch B Implementation
+ * ==========================================================
  *
- * Integration adapter that uses Branch B's data observatory package
- * for snapshot creation and management.
+ * This is the integrated version that uses Branch B's data observatory package.
+ * It replaces the standalone implementation with Branch B integration.
+ *
+ * Usage:
+ * ```typescript
+ * import { createDataSnapshotService } from './DataSnapshotService.integrated';
+ * const service = createDataSnapshotService('data/snapshots.duckdb', ctx);
+ * ```
  */
 
 import { DateTime } from 'luxon';
-import type { DataSnapshotRef as BranchBDataSnapshotRef } from '@quantbot/data-observatory';
+import type {
+  DataSnapshotRef as BranchBDataSnapshotRef,
+  SnapshotSpec,
+} from '@quantbot/data-observatory';
 import { createSnapshotManager } from '@quantbot/data-observatory';
 import type { DataSnapshotRef as BranchADataSnapshotRef } from '../contract.js';
+import { adaptBranchBToBranchA } from '../integration-branch-b.js';
 import type { WorkflowContext } from '../../types.js';
 
 /**
@@ -55,10 +65,9 @@ export interface SnapshotData {
 }
 
 /**
- * Data Snapshot Service (Branch B Integration)
+ * Data Snapshot Service (Integrated with Branch B)
  *
- * Uses Branch B's snapshot manager to create and manage snapshots.
- * Provides adapter methods to convert between Branch A and Branch B formats.
+ * Uses Branch B's snapshot manager for all snapshot operations.
  */
 export class DataSnapshotService {
   private snapshotManager;
@@ -80,8 +89,8 @@ export class DataSnapshotService {
     // Create snapshot using Branch B
     const branchBRef = await this.snapshotManager.createSnapshot(branchBSpec);
 
-    // Convert Branch B ref to Branch A format
-    return this.convertToBranchARef(branchBRef);
+    // Convert Branch B ref to Branch A format using adapter
+    return adaptBranchBToBranchA(branchBRef);
   }
 
   /**
@@ -91,9 +100,6 @@ export class DataSnapshotService {
    * then converts to Branch A's SnapshotData format.
    */
   async loadSnapshot(snapshot: BranchADataSnapshotRef): Promise<SnapshotData> {
-    // First, convert Branch A ref back to Branch B format (if we stored the mapping)
-    // For now, we'll need to query using the snapshot parameters
-
     // Query canonical events from Branch B
     const events = await this.snapshotManager.querySnapshot(snapshot.snapshotId, {
       eventTypes: ['candle', 'call'],
@@ -103,14 +109,83 @@ export class DataSnapshotService {
     });
 
     // Convert canonical events to Branch A SnapshotData format
+    return this.convertEventsToSnapshotData(events);
+  }
+
+  /**
+   * Verifies snapshot integrity using Branch B's verification
+   */
+  async verifySnapshot(snapshot: BranchADataSnapshotRef): Promise<boolean> {
+    // Load the snapshot from Branch B
+    const branchBRef = await this.snapshotManager.getSnapshot(snapshot.snapshotId);
+    if (!branchBRef) {
+      return false;
+    }
+
+    // Verify content hash matches
+    return branchBRef.contentHash === snapshot.contentHash;
+  }
+
+  /**
+   * Convert Branch A CreateSnapshotParams to Branch B SnapshotSpec
+   */
+  private convertToBranchBSpec(params: CreateSnapshotParams): SnapshotSpec {
+    // Determine data sources from Branch A sources
+    const sources: Array<'calls' | 'ohlcv' | 'trades' | 'metadata' | 'signals' | 'all'> = [];
+
+    // Map venues to sources
+    for (const source of params.sources) {
+      if (source.venue === 'birdeye') {
+        if (!sources.includes('ohlcv')) sources.push('ohlcv');
+      }
+      if (source.venue === 'pump.fun' || source.venue === 'telegram') {
+        if (!sources.includes('calls')) sources.push('calls');
+      }
+    }
+
+    // Default to 'all' if no sources determined
+    if (sources.length === 0) {
+      sources.push('all');
+    }
+
+    return {
+      sources: sources as SnapshotSpec['sources'],
+      from: params.timeRange.fromISO,
+      to: params.timeRange.toISO,
+      filters: {
+        chain: params.sources[0]?.chain as
+          | 'solana'
+          | 'ethereum'
+          | 'bsc'
+          | 'base'
+          | 'monad'
+          | 'evm'
+          | undefined,
+        tokenAddresses: params.filters?.mintAddresses,
+        callerNames: params.filters?.callerNames,
+        venues: params.sources.map((s) => s.venue),
+      },
+      name: `snapshot-${DateTime.fromISO(params.timeRange.fromISO).toFormat('yyyy-MM-dd')}`,
+    };
+  }
+
+  /**
+   * Convert canonical events to Branch A SnapshotData format
+   */
+  private convertEventsToSnapshotData(events: any[]): SnapshotData {
     const candles: SnapshotData['candles'] = [];
     const calls: SnapshotData['calls'] = [];
 
     for (const event of events) {
       if (event.eventType === 'candle') {
         const candleValue = event.value as any;
+        const timestamp = DateTime.fromISO(event.timestamp);
+        if (!timestamp.isValid) {
+          continue;
+        }
+
         candles.push({
-          timestamp: DateTime.fromISO(event.timestamp).toSeconds(),
+          timestamp: timestamp.toSeconds(),
           open: candleValue.open,
           high: candleValue.high,
           low: candleValue.low,
@@ -133,93 +208,6 @@ export class DataSnapshotService {
 
     return { candles, calls };
   }
-
-  /**
-   * Verifies snapshot integrity using Branch B's verification
-   */
-  async verifySnapshot(snapshot: BranchADataSnapshotRef): Promise<boolean> {
-    // Load the snapshot from Branch B
-    const branchBRef = await this.snapshotManager.getSnapshot(snapshot.snapshotId);
-    if (!branchBRef) {
-      return false;
-    }
-
-    // Verify content hash matches
-    return branchBRef.contentHash === snapshot.contentHash;
-  }
-
-  /**
-   * Convert Branch A CreateSnapshotParams to Branch B SnapshotSpec
-   */
-  private convertToBranchBSpec(params: CreateSnapshotParams) {
-    // Determine data sources from Branch A sources
-    const sources: Array<'calls' | 'ohlcv' | 'trades' | 'metadata' | 'signals' | 'all'> = [];
-
-    // Map venues to sources (heuristic)
-    for (const source of params.sources) {
-      if (source.venue === 'birdeye' || source.venue === 'pump.fun') {
-        sources.push('ohlcv');
-        sources.push('calls');
-      } else {
-        sources.push('calls');
-      }
-    }
-
-    // Deduplicate sources
-    const uniqueSources = Array.from(new Set(sources));
-    if (uniqueSources.length === 0) {
-      uniqueSources.push('all');
-    }
-
-    return {
-      sources: uniqueSources,
-      from: params.timeRange.fromISO,
-      to: params.timeRange.toISO,
-      filters: {
-        chain: params.sources[0]?.chain as
-          | 'solana'
-          | 'ethereum'
-          | 'bsc'
-          | 'base'
-          | 'monad'
-          | 'evm'
-          | undefined,
-        tokenAddresses: params.filters?.mintAddresses,
-        callerNames: params.filters?.callerNames,
-        venues: params.sources.map((s) => s.venue),
-      },
-      name: `snapshot-${params.timeRange.fromISO}-${params.timeRange.toISO}`,
-    };
-  }
-
-  /**
-   * Convert Branch B DataSnapshotRef to Branch A format
-   */
-  private convertToBranchARef(branchBRef: BranchBDataSnapshotRef): BranchADataSnapshotRef {
-    // Extract sources from Branch B spec
-    const sources =
-      branchBRef.spec.filters?.venues?.map((venue) => ({
-        venue,
-        chain: branchBRef.spec.filters?.chain,
-      })) || [];
-
-    return {
-      snapshotId: branchBRef.snapshotId,
-      contentHash: branchBRef.contentHash,
-      timeRange: {
-        fromISO: branchBRef.spec.from,
-        toISO: branchBRef.spec.to,
-      },
-      sources: sources.length > 0 ? sources : [{ venue: 'unknown' }],
-      filters: {
-        callerNames: branchBRef.spec.filters?.callerNames,
-        mintAddresses: branchBRef.spec.filters?.tokenAddresses,
-        // minVolume not directly mappable from Branch B
-      },
-      schemaVersion: '1.0.0',
-      createdAtISO: branchBRef.createdAt,
-    };
-  }
 }
 
 /**
@@ -231,3 +219,4 @@ export function createDataSnapshotService(
 ): DataSnapshotService {
   return new DataSnapshotService(duckdbPath, ctx);
 }
+

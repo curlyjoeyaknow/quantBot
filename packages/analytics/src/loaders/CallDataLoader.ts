@@ -53,8 +53,9 @@ export class CallDataLoader {
       
       const ctx = await createQueryCallsDuckdbContext(duckdbPath);
       // Type assertion: spec matches QueryCallsDuckdbSpec from workflows package
+      // Using unknown then casting to avoid requiring workflows types at build time
       // This is safe because we've constructed the object to match the expected shape
-      const result = await queryCallsDuckdb(spec as any, ctx);
+      const result = await queryCallsDuckdb(spec as unknown as Parameters<typeof queryCallsDuckdb>[0], ctx);
 
       // Convert CallRecord[] to CallPerformance[]
       // Note: CallPerformance requires more fields than CallRecord provides
