@@ -10,7 +10,10 @@ import { validateAddressesHandler as pureHandler } from '../../pure/ingestion/va
 import type { ValidateAddressesArgs } from '../../pure/ingestion/validate-addresses.js';
 
 // Re-export types for backward compatibility
-export type { ValidateAddressesArgs, ValidateAddressesResult } from '../../pure/ingestion/validate-addresses.js';
+export type {
+  ValidateAddressesArgs,
+  ValidateAddressesResult,
+} from '../../pure/ingestion/validate-addresses.js';
 
 /**
  * CLI composition root for validate-addresses
@@ -22,10 +25,7 @@ export type { ValidateAddressesArgs, ValidateAddressesResult } from '../../pure/
  *
  * It calls the pure handler which does the actual work.
  */
-export async function validateAddressesHandler(
-  args: ValidateAddressesArgs,
-  ctx: CommandContext
-) {
+export async function validateAddressesHandler(args: ValidateAddressesArgs, ctx: CommandContext) {
   // Call pure handler (no I/O, no env, no time globals)
   return await pureHandler(args, ctx);
 }

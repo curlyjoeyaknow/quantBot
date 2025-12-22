@@ -69,9 +69,11 @@ export function createMarketDataBirdeyeAdapter(client: BirdeyeClient): MarketDat
       }));
     },
 
-    async fetchMetadata(request: MarketDataMetadataRequest): Promise<MarketDataTokenMetadata | null> {
+    async fetchMetadata(
+      request: MarketDataMetadataRequest
+    ): Promise<MarketDataTokenMetadata | null> {
       // Normalize chain
-      const chain = request.chain === 'evm' ? 'ethereum' : request.chain ?? 'solana';
+      const chain = request.chain === 'evm' ? 'ethereum' : (request.chain ?? 'solana');
 
       // Call Birdeye client (only returns name and symbol)
       const metadata = await client.getTokenMetadata(request.tokenAddress, chain);
@@ -103,7 +105,7 @@ export function createMarketDataBirdeyeAdapter(client: BirdeyeClient): MarketDat
       request: HistoricalPriceRequest
     ): Promise<HistoricalPriceResponse> {
       // Normalize chain
-      const chain = request.chain === 'evm' ? 'ethereum' : request.chain ?? 'solana';
+      const chain = request.chain === 'evm' ? 'ethereum' : (request.chain ?? 'solana');
 
       // Call Birdeye client (unixTime is in seconds)
       const result = await client.fetchHistoricalPriceAtUnixTime(
@@ -125,4 +127,3 @@ export function createMarketDataBirdeyeAdapter(client: BirdeyeClient): MarketDat
     },
   };
 }
-

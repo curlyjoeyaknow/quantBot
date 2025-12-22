@@ -111,8 +111,8 @@ export async function generateOhlcvWorklist(
   let filteredTokenGroups = worklist.tokenGroups;
   if (options.mints !== undefined && options.mints.length > 0) {
     const mintsSet = new Set(options.mints);
-    filteredTokenGroups = worklist.tokenGroups.filter((group) =>
-      group.mint && mintsSet.has(group.mint)
+    filteredTokenGroups = worklist.tokenGroups.filter(
+      (group) => group.mint && mintsSet.has(group.mint)
     );
     logger.info('Filtered worklist by mints', {
       originalCount: worklist.tokenGroups.length,

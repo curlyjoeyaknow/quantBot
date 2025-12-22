@@ -14,7 +14,7 @@
 import { z } from 'zod';
 import { ValidationError, AppError } from '@quantbot/utils';
 import type { Chain } from '@quantbot/core';
-import type { WorkflowContext } from '../types.js';
+import type { WorkflowContextWithPorts } from '../context/workflowContextWithPorts.js';
 import {
   parseJsonExport,
   type ParseJsonExportResult,
@@ -25,10 +25,9 @@ import {
   type ResolvedCaller,
 } from '@quantbot/ingestion';
 import { isEvmAddress } from '@quantbot/utils';
-import { fetchMultiChainMetadata } from '@quantbot/api-clients';
 import { CallersRepository } from '@quantbot/storage';
 import { TokenDataRepository } from '@quantbot/storage';
-import { createProductionContext } from '../context/createProductionContext.js';
+import { createProductionContextWithPorts } from '../context/createProductionContext.js';
 // PostgreSQL repositories removed - use TelegramPipelineService for DuckDB storage
 
 const IngestSpecSchema = z.object({
@@ -59,8 +58,14 @@ export type TelegramJsonIngestResult = {
   };
 };
 
-export type TelegramJsonIngestContext = WorkflowContext & {
-  repos: WorkflowContext['repos'] & {
+export type TelegramJsonIngestContext = WorkflowContextWithPorts & {
+  logger: {
+    info: (message: string, context?: unknown) => void;
+    warn: (message: string, context?: unknown) => void;
+    error: (message: string, context?: unknown) => void;
+    debug?: (message: string, context?: unknown) => void;
+  };
+  repos: {
     callers: CallersRepository; // DuckDB version
     tokenData: TokenDataRepository; // DuckDB version for token data
   };
@@ -82,13 +87,24 @@ export type TelegramJsonIngestContext = WorkflowContext & {
 /**
  * Create default context (for testing)
  */
-export function createDefaultTelegramJsonIngestContext(): TelegramJsonIngestContext {
-  const baseContext = createProductionContext();
+export async function createDefaultTelegramJsonIngestContext(): Promise<TelegramJsonIngestContext> {
+  const baseContext = await createProductionContextWithPorts();
   const dbPath = process.env.DUCKDB_PATH || 'data/tele.duckdb';
+  const { logger } = await import('@quantbot/utils');
+
   return {
     ...baseContext,
+    logger: {
+      info: (msg: string, ctx?: unknown) =>
+        logger.info(msg, ctx as Record<string, unknown> | undefined),
+      warn: (msg: string, ctx?: unknown) =>
+        logger.warn(msg, ctx as Record<string, unknown> | undefined),
+      error: (msg: string, ctx?: unknown) =>
+        logger.error(msg, ctx as Record<string, unknown> | undefined),
+      debug: (msg: string, ctx?: unknown) =>
+        logger.debug(msg, ctx as Record<string, unknown> | undefined),
+    },
     repos: {
-      ...baseContext.repos,
       callers: new CallersRepository(dbPath),
       tokenData: new TokenDataRepository(dbPath),
     },
@@ -100,8 +116,10 @@ export function createDefaultTelegramJsonIngestContext(): TelegramJsonIngestCont
  */
 export async function ingestTelegramJson(
   spec: TelegramJsonIngestSpec,
-  ctx: TelegramJsonIngestContext = createDefaultTelegramJsonIngestContext()
+  ctx?: TelegramJsonIngestContext
 ): Promise<TelegramJsonIngestResult> {
+  // Create default context if not provided
+  const workflowCtx = ctx ?? (await createDefaultTelegramJsonIngestContext());
   // 1. Validate spec
   const parsed = IngestSpecSchema.safeParse(spec);
   if (!parsed.success) {
@@ -114,7 +132,7 @@ export async function ingestTelegramJson(
 
   const validated = parsed.data;
 
-  ctx.logger.info('Starting Telegram JSON ingestion workflow', {
+  workflowCtx.logger.info('Starting Telegram JSON ingestion workflow', {
     filePath: validated.filePath,
     chatId: validated.chatId,
     callerName: validated.callerName,
@@ -126,7 +144,7 @@ export async function ingestTelegramJson(
   try {
     parseResult = parseJsonExport(validated.filePath, validated.chatId);
   } catch (error) {
-    ctx.logger.error('Failed to parse JSON export', error as Error);
+    workflowCtx.logger.error('Failed to parse JSON export', error as Error);
     throw new AppError(
       `Failed to parse Telegram JSON export: ${error instanceof Error ? error.message : String(error)}`,
       'PARSE_ERROR',
@@ -135,7 +153,7 @@ export async function ingestTelegramJson(
     );
   }
 
-  ctx.logger.info('Normalization complete', {
+  workflowCtx.logger.info('Normalization complete', {
     totalProcessed: parseResult.totalProcessed,
     normalized: parseResult.normalized.length,
     quarantined: parseResult.quarantined.length,
@@ -157,14 +175,14 @@ export async function ingestTelegramJson(
         normalizedPath: ingestResult.streamResult.normalizedPath,
         quarantinePath: ingestResult.streamResult.quarantinePath,
       };
-      ctx.logger.info('Streams written', streamResult);
+      workflowCtx.logger.info('Streams written', streamResult);
     }
   }
 
   // 4. Convert normalized messages to ParsedMessage format
   const parsedMessages = normalizedToParsedBatch(parseResult.normalized);
 
-  ctx.logger.info('Converted to ParsedMessage format', {
+  workflowCtx.logger.info('Converted to ParsedMessage format', {
     count: parsedMessages.length,
   });
 
@@ -183,7 +201,7 @@ export async function ingestTelegramJson(
     (msg: (typeof parseResult.normalized)[0]) =>
       msg.fromId !== null && BOT_IDS.includes(String(msg.fromId))
   );
-  ctx.logger.info('Found bot messages', { count: botNormalizedMessages.length });
+  workflowCtx.logger.info('Found bot messages', { count: botNormalizedMessages.length });
 
   // 6. Process bot messages: extract, resolve caller, validate, store
   const botExtractor = new BotMessageExtractor();
@@ -236,7 +254,7 @@ export async function ingestTelegramJson(
       botData.messageTimestamp = new Date(botMsg.timestampMs);
 
       if (!botData.contractAddress) {
-        ctx.logger.info('Skipping bot message - no contract address', {
+        workflowCtx.logger.info('Skipping bot message - no contract address', {
           messageId: botMsg.messageId,
         });
         continue;
@@ -244,7 +262,7 @@ export async function ingestTelegramJson(
 
       // Resolve caller message using replyToMessageId
       if (!botMsg.replyToMessageId) {
-        ctx.logger.info('Skipping bot message - no reply_to', {
+        workflowCtx.logger.info('Skipping bot message - no reply_to', {
           messageId: botMsg.messageId,
         });
         continue;
@@ -252,7 +270,7 @@ export async function ingestTelegramJson(
 
       const callerMsg = normalizedById.get(botMsg.replyToMessageId);
       if (!callerMsg) {
-        ctx.logger.info('Skipping bot message - caller message not found', {
+        workflowCtx.logger.info('Skipping bot message - caller message not found', {
           messageId: botMsg.messageId,
           replyToMessageId: botMsg.replyToMessageId,
         });
@@ -267,38 +285,73 @@ export async function ingestTelegramJson(
       botData.originalMessageId = String(callerMsg.messageId);
 
       // For EVM addresses, validate and get correct chain using multi-chain metadata
+      // Multi-chain try logic: try chains in order until we find metadata
       if (isEvmAddress(botData.contractAddress)) {
-        const metadataResult = await fetchMultiChainMetadata(
-          botData.contractAddress,
-          chain.toLowerCase() as Chain
-        );
-        if (metadataResult.primaryMetadata) {
+        const chainsToTry: Array<'ethereum' | 'base' | 'bsc'> = ['ethereum', 'base', 'bsc'];
+        let resolvedMetadata: { chain: string; name?: string; symbol?: string } | null = null;
+
+        for (const tryChain of chainsToTry) {
+          try {
+            const metadata = await workflowCtx.ports.marketData.fetchMetadata({
+              tokenAddress: botData.contractAddress as any, // Type assertion for address string
+              chain: tryChain,
+            });
+
+            if (metadata && metadata.symbol) {
+              resolvedMetadata = {
+                chain: tryChain,
+                name: metadata.name,
+                symbol: metadata.symbol,
+              };
+              break;
+            }
+          } catch (error) {
+            // Continue to next chain
+            continue;
+          }
+        }
+
+        if (resolvedMetadata) {
           // Use actual chain from API response
-          chain = metadataResult.primaryMetadata.chain;
+          chain = resolvedMetadata.chain;
           // Update botData with actual metadata if not already set
-          if (!botData.tokenName && metadataResult.primaryMetadata.name) {
-            botData.tokenName = metadataResult.primaryMetadata.name;
+          if (!botData.tokenName && resolvedMetadata.name) {
+            botData.tokenName = resolvedMetadata.name;
           }
-          if (!botData.ticker && metadataResult.primaryMetadata.symbol) {
-            botData.ticker = metadataResult.primaryMetadata.symbol;
+          if (!botData.ticker && resolvedMetadata.symbol) {
+            botData.ticker = resolvedMetadata.symbol;
           }
-          ctx.logger.debug?.('Chain validated via multi-chain metadata', {
-            address: botData.contractAddress.substring(0, 20),
-            chainHint: botData.chain || validated.chain,
-            actualChain: chain,
-            symbol: metadataResult.primaryMetadata.symbol,
+          workflowCtx.ports.telemetry.emitEvent({
+            name: 'telegram.ingest.chain_validated',
+            level: 'debug',
+            message: 'Chain validated via multi-chain metadata',
+            context: {
+              address: botData.contractAddress.substring(0, 20),
+              chainHint: botData.chain || validated.chain,
+              actualChain: chain,
+              symbol: resolvedMetadata.symbol,
+            },
           });
         } else {
-          ctx.logger.warn('No metadata found for EVM address on any chain', {
-            address: botData.contractAddress.substring(0, 20),
-            chainHint: chain,
+          workflowCtx.ports.telemetry.emitEvent({
+            name: 'telegram.ingest.no_metadata',
+            level: 'warn',
+            message: 'No metadata found for EVM address on any chain',
+            context: {
+              address: botData.contractAddress.substring(0, 20),
+              chainHint: chain,
+            },
           });
         }
       }
 
       // Resolve/create caller (DuckDB version)
       // Note: Caller is resolved but not used for storage - TelegramPipelineService handles all storage
-      await ctx.repos.callers.getOrCreateCaller(chain.toLowerCase(), callerName, callerName);
+      await workflowCtx.repos.callers.getOrCreateCaller(
+        chain.toLowerCase(),
+        callerName,
+        callerName
+      );
 
       // Use caller timestamp for alert (when the user originally called the token)
       const alertTime = new Date(callerMsg.timestampMs);
@@ -334,13 +387,13 @@ export async function ingestTelegramJson(
         const chunkIndex = Math.floor((i + 1) / (validated.chunkSize || 10)) - 1;
         const isValid = await chunkValidator.validateChunk(chunkResults, chunkIndex);
         if (!isValid) {
-          ctx.logger.warn('Chunk validation failed', { chunkIndex });
+          workflowCtx.logger.warn('Chunk validation failed', { chunkIndex });
         }
         chunkResults.length = 0; // Clear chunk
       }
     } catch (error) {
       messagesFailed++;
-      ctx.logger.error('Error processing bot message', {
+      workflowCtx.logger.error('Error processing bot message', {
         messageId: botMsg.messageId,
         error: error instanceof Error ? error.message : String(error),
       });
@@ -352,11 +405,11 @@ export async function ingestTelegramJson(
     const finalChunkIndex = Math.floor(botNormalizedMessages.length / (validated.chunkSize || 10));
     const isValid = await chunkValidator.validateChunk(chunkResults, finalChunkIndex);
     if (!isValid) {
-      ctx.logger.warn('Final chunk validation failed', { chunkIndex: finalChunkIndex });
+      workflowCtx.logger.warn('Final chunk validation failed', { chunkIndex: finalChunkIndex });
     }
   }
 
-  ctx.logger.info('Telegram JSON ingestion complete', {
+  workflowCtx.logger.info('Telegram JSON ingestion complete', {
     totalProcessed: parseResult.totalProcessed,
     normalized: parseResult.normalized.length,
     quarantined: parseResult.quarantined.length,

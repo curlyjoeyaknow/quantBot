@@ -12,4 +12,3 @@ export type WorkflowContextWithPorts = {
   // Optional: leave room for safe, non-client config/data
   // config?: Record<string, unknown>;
 };
-

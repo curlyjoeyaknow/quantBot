@@ -6,4 +6,3 @@
  */
 
 export type { IngestOhlcvCommand } from './ingestOhlcvCommand.js';
-

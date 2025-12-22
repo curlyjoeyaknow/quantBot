@@ -96,22 +96,14 @@ export type IngestOhlcvResult = {
 
 /**
  * Extended WorkflowContext for OHLCV ingestion
- * Uses ports for all external dependencies
+ * Uses ports for all external dependencies (no raw clients)
  */
 export type IngestOhlcvContext = WorkflowContextWithPorts & {
-  /**
-   * DuckDB storage service for updating metadata
-   */
-  duckdbStorage?: {
-    updateOhlcvMetadata: (
-      duckdbPath: string,
-      mint: string,
-      alertTimestamp: string,
-      intervalSeconds: number,
-      timeRangeStart: string,
-      timeRangeEnd: string,
-      candleCount: number
-    ) => Promise<{ success: boolean; error?: string }>;
+  logger: {
+    info: (message: string, context?: unknown) => void;
+    warn: (message: string, context?: unknown) => void;
+    error: (message: string, context?: unknown) => void;
+    debug?: (message: string, context?: unknown) => void;
   };
 };
 
@@ -507,8 +499,8 @@ export async function ingestOhlcv(
       continue;
     }
 
-    // Queue metadata update (will execute in batches)
-    if (ctx.duckdbStorage && fetchResult.workItem.alertTime) {
+    // Store metadata using StatePort (replaces duckdbStorage.updateOhlcvMetadata)
+    if (fetchResult.workItem.alertTime) {
       const intervalSeconds = {
         '15s': 15,
         '1m': 60,
@@ -516,24 +508,46 @@ export async function ingestOhlcv(
         '1H': 3600,
       }[fetchResult.workItem.interval];
 
-      const updatePromise = ctx.duckdbStorage
-        .updateOhlcvMetadata(
-          validated.duckdbPath,
-          fetchResult.workItem.mint,
-          fetchResult.workItem.alertTime.toISO()!,
-          intervalSeconds,
-          fetchResult.workItem.startTime.toISO()!,
-          fetchResult.workItem.endTime.toISO()!,
-          fetchResult.candlesStored
-        )
-        .then(() => {
-          // Success - metadata updated
+      const metadataKey = `ohlcv_metadata:${fetchResult.workItem.mint}:${fetchResult.workItem.alertTime.toISO()}`;
+      const updatePromise = ctx.ports.state
+        .set({
+          key: metadataKey,
+          namespace: 'ohlcv_metadata',
+          value: {
+            mint: fetchResult.workItem.mint,
+            alertTimestamp: fetchResult.workItem.alertTime.toISO(),
+            intervalSeconds,
+            timeRangeStart: fetchResult.workItem.startTime.toISO(),
+            timeRangeEnd: fetchResult.workItem.endTime.toISO(),
+            candleCount: fetchResult.candlesStored,
+            updatedAt: DateTime.utc().toISO(),
+          },
+        })
+        .then((result) => {
+          if (!result.success) {
+            ctx.ports.telemetry.emitEvent({
+              name: 'ohlcv_metadata_update_failed',
+              level: 'error',
+              message: 'Failed to update OHLCV metadata',
+              context: {
+                mint: fetchResult.workItem.mint.substring(0, 20),
+                error: result.error,
+              },
+              timestamp: ctx.ports.clock.nowMs(),
+            });
+          }
         })
         .catch((error) => {
           const errorMessage = error instanceof Error ? error.message : String(error);
-          ctx.logger.error('Failed to update OHLCV metadata', {
-            error: errorMessage,
-            mint: fetchResult.workItem.mint.substring(0, 20),
+          ctx.ports.telemetry.emitEvent({
+            name: 'ohlcv_metadata_update_error',
+            level: 'error',
+            message: 'Failed to update OHLCV metadata',
+            context: {
+              mint: fetchResult.workItem.mint.substring(0, 20),
+              error: errorMessage,
+            },
+            timestamp: ctx.ports.clock.nowMs(),
           });
           // Metadata update failure doesn't fail the work item (candles were stored)
         })

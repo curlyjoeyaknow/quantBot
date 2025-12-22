@@ -11,7 +11,7 @@ import type { z } from 'zod';
 import type { CommandContext } from '../../core/command-context.js';
 import { resolveEvmChainsSchema } from '../../commands/metadata.js';
 import { resolveEvmChains } from '@quantbot/workflows';
-import { getBirdeyeClient } from '@quantbot/api-clients';
+import { createProductionContextWithPorts } from '@quantbot/workflows';
 
 export type ResolveEvmChainsArgs = z.infer<typeof resolveEvmChainsSchema>;
 
@@ -24,19 +24,8 @@ export type ResolveEvmChainsArgs = z.infer<typeof resolveEvmChainsSchema>;
  * - Wire adapters ✅
  */
 export async function resolveEvmChainsHandler(args: ResolveEvmChainsArgs, _ctx: CommandContext) {
-  // Create context with Birdeye client
-  const birdeyeClient = getBirdeyeClient();
-
-  // CONSOLE LOGGING ALLOWED HERE (composition root)
-  const context = {
-    logger: {
-      info: (msg: string, ctx?: unknown) => console.log(`[INFO] ${msg}`, ctx || ''),
-      warn: (msg: string, ctx?: unknown) => console.warn(`[WARN] ${msg}`, ctx || ''),
-      error: (msg: string, ctx?: unknown) => console.error(`[ERROR] ${msg}`, ctx || ''),
-      debug: (msg: string, ctx?: unknown) => console.debug(`[DEBUG] ${msg}`, ctx || ''),
-    },
-    birdeyeClient,
-  };
+  // Create workflow context with ports (composition root - allowed to wire adapters)
+  const workflowCtx = await createProductionContextWithPorts();
 
   return await resolveEvmChains(
     {
@@ -47,6 +36,6 @@ export async function resolveEvmChainsHandler(args: ResolveEvmChainsArgs, _ctx: 
       dryRun: args.dryRun,
       errorMode: 'collect', // Default to collect errors
     },
-    context
+    workflowCtx
   );
 }

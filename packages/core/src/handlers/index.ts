@@ -11,4 +11,3 @@ export {
   type IngestOhlcvHandlerPorts,
   type IngestOhlcvHandlerOutput,
 } from './ingestOhlcvHandler.js';
-

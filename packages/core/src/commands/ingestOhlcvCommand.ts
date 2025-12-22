@@ -12,4 +12,3 @@ export type IngestOhlcvCommand = {
   preWindowMinutes?: number;
   postWindowMinutes?: number;
 };
-

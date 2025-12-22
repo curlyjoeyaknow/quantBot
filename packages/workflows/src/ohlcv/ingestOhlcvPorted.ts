@@ -51,14 +51,18 @@ export async function ingestOhlcvWorkflowPorted(
       try {
         // Use ctx.ports.marketData - NO raw BirdeyeClient calls!
         const tokenAddress = createTokenAddress(input.mint);
-        const chain = input.chain === 'evm' ? 'ethereum' : input.chain ?? 'solana';
-        
+        const chain = input.chain === 'evm' ? 'ethereum' : (input.chain ?? 'solana');
+
         // Convert ISO strings to UNIX timestamps (seconds)
         // Use ctx.ports.clock instead of Date.now() for determinism
         const nowUnix = Math.floor(ctx.ports.clock.nowMs() / 1000);
-        const fromUnix = input.from ? Math.floor(new Date(input.from).getTime() / 1000) : nowUnix - 3600;
+        const fromUnix = input.from
+          ? Math.floor(new Date(input.from).getTime() / 1000)
+          : nowUnix - 3600;
         const toUnix = input.to ? Math.floor(new Date(input.to).getTime() / 1000) : nowUnix;
 
+        // Track fetch latency for performance monitoring
+        const fetchStart = ctx.ports.clock.nowMs();
         const candles = await ctx.ports.marketData.fetchOhlcv({
           tokenAddress,
           chain: chain as 'solana' | 'ethereum' | 'base' | 'bsc',
@@ -66,8 +70,17 @@ export async function ingestOhlcvWorkflowPorted(
           from: fromUnix,
           to: toUnix,
         });
+        const fetchLatency = ctx.ports.clock.nowMs() - fetchStart;
 
         candlesFetched = candles.length;
+
+        // Emit fetch latency metric (performance sanity)
+        ctx.ports.telemetry.emitMetric({
+          name: 'ohlcv_fetch_latency_ms',
+          type: 'histogram',
+          value: fetchLatency,
+          labels: { interval: input.interval, mint: input.mint.substring(0, 8) },
+        });
 
         ctx.ports.telemetry.emitEvent({
           name: 'ohlcv.ingest.candles_fetched',
@@ -87,12 +100,13 @@ export async function ingestOhlcvWorkflowPorted(
           level: 'error',
           message: `Failed to fetch candles for ${input.mint}`,
           context: { mint: input.mint, error: errorMessage },
-          error: error instanceof Error
-            ? {
-                message: error.message,
-                stack: error.stack,
-              }
-            : undefined,
+          error:
+            error instanceof Error
+              ? {
+                  message: error.message,
+                  stack: error.stack,
+                }
+              : undefined,
         });
       }
     }
@@ -143,12 +157,13 @@ export async function ingestOhlcvWorkflowPorted(
       level: 'error',
       message: 'OHLCV ingestion failed',
       context: { error: err instanceof Error ? err.message : String(err) },
-      error: err instanceof Error
-        ? {
-            message: err.message,
-            stack: err.stack,
-          }
-        : undefined,
+      error:
+        err instanceof Error
+          ? {
+              message: err.message,
+              stack: err.stack,
+            }
+          : undefined,
     });
 
     return {
@@ -158,4 +173,3 @@ export async function ingestOhlcvWorkflowPorted(
     };
   }
 }
-

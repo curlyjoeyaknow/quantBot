@@ -79,11 +79,12 @@ export async function runSimulationDuckdbHandler(
     };
   };
   // Add workflowContext to services
-  (ctxWithWorkflow.services as typeof ctxWithWorkflow.services & {
-    workflowContext: () => RunSimulationDuckdbContext;
-  }).workflowContext = () => workflowContext;
+  (
+    ctxWithWorkflow.services as typeof ctxWithWorkflow.services & {
+      workflowContext: () => RunSimulationDuckdbContext;
+    }
+  ).workflowContext = () => workflowContext;
 
   // Call pure handler (no I/O, no env, no time globals)
   return await pureHandler(handlerArgs, ctxWithWorkflow);
 }
-

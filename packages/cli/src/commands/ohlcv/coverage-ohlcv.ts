@@ -37,7 +37,7 @@ export async function coverageOhlcvHandler(
 }> {
   // Use factory to get client (no direct singleton access)
   const client = ctx.services.clickHouseClient();
-  
+
   // ENV LIVE HERE (composition root)
   const CLICKHOUSE_DATABASE = process.env.CLICKHOUSE_DATABASE || 'quantbot';
 

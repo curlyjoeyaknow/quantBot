@@ -98,4 +98,3 @@ export interface StatePort {
    */
   isAvailable(): Promise<boolean>;
 }
-

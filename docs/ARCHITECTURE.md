@@ -163,9 +163,33 @@ export async function runIngestOhlcvCommand(
 - Only public API (`@quantbot/<pkg>`) allowed
 - Tests still enforce boundaries (no architecture bypass)
 
+**Workflow Ports Enforcement**:
+
+- Workflows in `packages/workflows/src/**` must use `ctx.ports.*`, not raw clients
+- ESLint blocks: `@quantbot/api-clients`, `@quantbot/storage/src/**`, direct HTTP clients
+- Exceptions: `adapters/**` and `context/**` (composition layer)
+- Temporary quarantine: `resolveEvmChains.ts`, `ingestTelegramJson.ts` (migration in progress)
+
 **WorkflowContext Migration**:
 
 - Workflows migrate from raw clients → ports incrementally
 - `createProductionContextWithPorts()` provides `ctx.ports.*` access
 - Existing `WorkflowContext` remains for backward compatibility during migration
 - See `docs/WORKFLOW_CONTEXT_MIGRATION_PLAN.md` for migration strategy
+
+### How to Verify Ports Migration Locally
+
+Run these commands to verify architecture boundaries:
+
+```bash
+# Verify architecture boundaries (no deep imports, handler purity)
+pnpm verify:architecture-boundaries
+
+# Verify ESLint rules (no raw client imports in workflows)
+pnpm lint
+
+# Verify ports work end-to-end (smoke tests)
+pnpm smoke:ports
+```
+
+All three must pass before merging ports migration PRs.

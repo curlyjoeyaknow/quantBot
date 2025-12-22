@@ -5,11 +5,7 @@
  * This adapter bridges the port interface to the workflow implementation.
  */
 
-import type {
-  OhlcvIngestionPort,
-  IngestOhlcvSpec,
-  IngestOhlcvResult,
-} from '@quantbot/core';
+import type { OhlcvIngestionPort, IngestOhlcvSpec, IngestOhlcvResult } from '@quantbot/core';
 import type { WorkflowContext } from '../types.js';
 import { ingestOhlcv, type IngestOhlcvResult as WorkflowResult } from '../ohlcv/ingestOhlcv.js';
 import { createOhlcvIngestionContext } from '../context/createOhlcvIngestionContext.js';
@@ -83,4 +79,3 @@ export function createOhlcvIngestionWorkflowAdapter(
     },
   };
 }
-

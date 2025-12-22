@@ -13,4 +13,3 @@ export type ProductionPorts = {
   telemetry: TelemetryPort;
   clock: ClockPort;
 };
-

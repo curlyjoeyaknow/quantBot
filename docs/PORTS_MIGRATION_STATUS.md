@@ -15,11 +15,16 @@ This document tracks the migration of workflows from direct client imports to po
   - No direct `@quantbot/api-clients` imports
   - No direct `@quantbot/storage/src/**` imports
 
-### 🚧 In Progress (Expected Lint Errors)
+### ✅ Completed (Recently Migrated)
 
 - **resolveEvmChains.ts** (`packages/workflows/src/metadata/resolveEvmChains.ts`)
-  - Still uses direct `@quantbot/api-clients` imports
-  - **Next to migrate**: Pure mapping logic, mostly MarketDataPort/StatePort
+  - ✅ Uses `ctx.ports.marketData.fetchMetadata()` for chain resolution
+  - ✅ Uses `ctx.ports.state.get/set()` for idempotency caching
+  - ✅ Uses `ctx.ports.telemetry.emitEvent/emitMetric()` for observability
+  - ✅ No direct `@quantbot/api-clients` imports
+  - ✅ Accepts `WorkflowContextWithPorts`
+
+### 🚧 In Progress (Expected Lint Errors)
 
 - **ingestTelegramJson.ts** (`packages/workflows/src/telegram/ingestTelegramJson.ts`)
   - Still uses direct `@quantbot/api-clients` imports
@@ -65,11 +70,12 @@ For each workflow migration:
 
 ## Next Steps
 
-1. Port `resolveEvmChains.ts` workflow
+1. ✅ Port `resolveEvmChains.ts` workflow (COMPLETED)
 2. Port `ingestTelegramJson.ts` workflow
-3. Add workflow template generator
-4. Implement TelemetryPort real sink (OTEL/Prometheus)
-5. Build replay harness v1
+3. Remove ESLint quarantine override (after ingestTelegramJson is ported)
+4. Add workflow template generator
+5. Implement TelemetryPort real sink (OTEL/Prometheus)
+6. Build replay harness v1
 
 ## Testing
 

@@ -31,7 +31,7 @@ export async function listTokensHandler(
   ctx: CommandContext
 ): Promise<Array<Record<string, unknown>>> {
   const client = ctx.services.clickHouseClient();
-  
+
   // ENV LIVE HERE (composition root)
   const database = process.env.CLICKHOUSE_DATABASE || 'quantbot';
   const source = args.source || 'ohlcv';

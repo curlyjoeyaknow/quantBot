@@ -30,4 +30,3 @@ export type IngestOhlcvResult = {
 export interface OhlcvIngestionPort {
   ingest(spec: IngestOhlcvSpec): Promise<IngestOhlcvResult>;
 }
-

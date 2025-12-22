@@ -13,7 +13,7 @@
  * This script is designed to run in CI and can be added to pre-commit hooks.
  */
 
-import { readFileSync, readdirSync, statSync } from 'fs';
+import { readFileSync, readdirSync, statSync, existsSync } from 'fs';
 import { join } from 'path';
 
 interface Violation {
@@ -330,9 +330,11 @@ function verifyWorkflowContracts(): void {
     (f) => !f.includes('/tests/')
   );
 
-  // Find all CLI handler files
+  // Find all CLI handler files (if directory exists)
   const handlerDir = join(process.cwd(), 'packages/cli/src/handlers');
-  const handlerFiles = findTsFiles(handlerDir, ['.test.', '.spec.']);
+  const handlerFiles = existsSync(handlerDir)
+    ? findTsFiles(handlerDir, ['.test.', '.spec.'])
+    : [];
 
   // Check workflow files
   for (const file of workflowFiles) {

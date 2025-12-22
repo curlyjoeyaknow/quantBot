@@ -1,16 +1,3 @@
-/**
- * StatePort adapter backed by DuckDB
- *
- * Persistent state storage for idempotency checks and checkpoints.
- * Uses DuckDB for local, auditable, replay-friendly state management.
- *
- * Features:
- * - Persistent across process restarts
- * - TTL support (expires_at column)
- * - Namespace support for key scoping
- * - JSON value storage
- */
-
 import type {
   StatePort,
   StateGetRequest,
@@ -22,168 +9,180 @@ import type {
   StateTransaction,
   StateTransactionResult,
 } from '@quantbot/core';
-import { PythonEngine } from '@quantbot/utils';
-import { logger } from '@quantbot/utils';
+import { getPythonEngine } from '@quantbot/utils';
 import { z } from 'zod';
 
-const StateGetResultSchema = z.object({
-  success: z.boolean(),
-  found: z.boolean(),
-  value: z.string().nullable().optional(),
-  error: z.string().nullable().optional(),
-});
-
-const StateSetResultSchema = z.object({
-  success: z.boolean(),
-  error: z.string().nullable().optional(),
-});
-
 /**
- * Create a StatePort adapter backed by DuckDB
+ * StatePort adapter wrapping DuckDB storage
  *
- * @param duckdbPath - Path to DuckDB database file
- * @param pythonEngine - Optional PythonEngine instance (creates new one if not provided)
+ * This adapter implements the StatePort interface using DuckDB as the backend.
+ * It uses a dedicated state table for key-value storage with namespace and TTL support.
+ *
+ * Schema:
+ * - key: TEXT (primary key with namespace)
+ * - namespace: TEXT (default: 'default')
+ * - value: TEXT (JSON-serialized)
+ * - created_at: TIMESTAMP
+ * - expires_at: TIMESTAMP (NULL for no expiration)
  */
-export function createStateDuckdbAdapter(
-  duckdbPath: string,
-  pythonEngine?: PythonEngine
-): StatePort {
-  const engine = pythonEngine || new PythonEngine();
+export function createStateDuckdbAdapter(duckdbPath: string): StatePort {
+  const pythonEngine = getPythonEngine();
 
-  // Initialize state table on first use (lazy initialization)
-  let initialized = false;
-  const initPromise = (async () => {
-    if (initialized) return;
-    try {
-      await engine.runDuckDBStorage({
-        duckdbPath,
-        operation: 'init_state_table',
-        data: {},
-      });
-      initialized = true;
-    } catch (error) {
-      // Table might already exist, which is fine
-      logger.debug('State table initialization', {
-        error: error instanceof Error ? error.message : String(error),
-      });
-      initialized = true; // Mark as initialized even on error (table likely exists)
-    }
-  })();
+  // Schema for DuckDB operations
+  const StateOperationResultSchema = z.object({
+    success: z.boolean(),
+    error: z.string().nullable().optional(),
+    value: z.unknown().optional(),
+    found: z.boolean().optional(),
+    rows: z.array(z.unknown()).optional(),
+    rowCount: z.number().optional(),
+  });
 
   return {
     async get<T = unknown>(request: StateGetRequest): Promise<StateGetResult<T>> {
       try {
-        await initPromise;
-
-        const result = await engine.runDuckDBStorage({
+        const result = await pythonEngine.runDuckDBStorage({
           duckdbPath,
           operation: 'get_state',
           data: {
             key: request.key,
-            namespace: request.namespace || 'default',
+            namespace: request.namespace ?? 'default',
           },
         });
 
-        const parsed = StateGetResultSchema.parse(result);
-        
-        if (!parsed.success) {
-          logger.error('StatePort.get operation failed', {
-            key: request.key,
-            error: parsed.error,
-          });
+        const validated = StateOperationResultSchema.parse(result);
+
+        if (!validated.found) {
           return { found: false };
         }
 
-        if (!parsed.found || !parsed.value) {
-          return { found: false };
-        }
-
-        // Parse JSON value
-        try {
-          const parsedValue = JSON.parse(parsed.value) as T;
-          return { found: true, value: parsedValue };
-        } catch {
-          // If not JSON, return as string
-          return { found: true, value: parsed.value as T };
-        }
+        return {
+          found: true,
+          value: validated.value as T,
+        };
       } catch (error) {
-        logger.error('StatePort.get failed', error as Error, { key: request.key });
+        // Return not found on error (graceful degradation)
         return { found: false };
       }
     },
 
     async set(request: StateSetRequest): Promise<{ success: boolean; error?: string }> {
       try {
-        await initPromise;
-
-        const value = typeof request.value === 'string' 
-          ? request.value 
-          : JSON.stringify(request.value);
-
-        const result = await engine.runDuckDBStorage({
+        const result = await pythonEngine.runDuckDBStorage({
           duckdbPath,
           operation: 'set_state',
           data: {
             key: request.key,
-            namespace: request.namespace || 'default',
-            value,
+            value: request.value,
+            namespace: request.namespace ?? 'default',
             ttl_seconds: request.ttlSeconds,
           },
         });
 
-        return StateSetResultSchema.parse(result);
+        const validated = StateOperationResultSchema.parse(result);
+
+        return {
+          success: validated.success,
+          error: validated.error ?? undefined,
+        };
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        logger.error('StatePort.set failed', error as Error, { key: request.key });
-        return { success: false, error: errorMessage };
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : String(error),
+        };
       }
     },
 
     async delete(request: StateDeleteRequest): Promise<{ success: boolean; error?: string }> {
       try {
-        await initPromise;
-
-        const result = await engine.runDuckDBStorage({
+        const result = await pythonEngine.runDuckDBStorage({
           duckdbPath,
           operation: 'delete_state',
           data: {
             key: request.key,
-            namespace: request.namespace || 'default',
+            namespace: request.namespace ?? 'default',
           },
         });
 
-        return StateSetResultSchema.parse(result);
+        const validated = StateOperationResultSchema.parse(result);
+
+        return {
+          success: validated.success,
+          error: validated.error ?? undefined,
+        };
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        logger.error('StatePort.delete failed', error as Error, { key: request.key });
-        return { success: false, error: errorMessage };
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : String(error),
+        };
       }
     },
 
-    async query(_request: StateQueryRequest): Promise<StateQueryResult> {
-      // Not implemented for DuckDB adapter (would require SQL query support)
-      logger.warn('StatePort.query not implemented in DuckDB adapter');
-      return { rows: [], rowCount: 0 };
+    async query(request: StateQueryRequest): Promise<StateQueryResult> {
+      try {
+        // Query operations not yet supported in DuckDB storage - return empty result
+        // TODO: Implement query_state operation in Python script
+        return {
+          rows: [],
+          rowCount: 0,
+        };
+      } catch (error) {
+        return {
+          rows: [],
+          rowCount: 0,
+        };
+      }
     },
 
-    async transaction(_request: StateTransaction): Promise<StateTransactionResult> {
-      // Not implemented for DuckDB adapter (would require transaction support)
-      logger.warn('StatePort.transaction not implemented in DuckDB adapter');
-      return {
-        success: false,
-        results: [],
-        error: 'Transaction not implemented in DuckDB adapter',
-      };
+    async transaction(request: StateTransaction): Promise<StateTransactionResult> {
+      try {
+        // Execute operations sequentially (DuckDB doesn't support true transactions via Python easily)
+        // This is a simplified implementation - real transactions would need BEGIN/COMMIT
+        const results: Array<StateGetResult | { success: boolean } | StateQueryResult> = [];
+
+        for (const op of request.operations) {
+          if (op.type === 'get') {
+            const result = await this.get(op.request);
+            results.push(result);
+          } else if (op.type === 'set') {
+            const result = await this.set(op.request);
+            results.push(result);
+          } else if (op.type === 'delete') {
+            const result = await this.delete(op.request);
+            results.push(result);
+          } else if (op.type === 'query') {
+            const result = await this.query(op.request);
+            results.push(result);
+          }
+        }
+
+        return {
+          success: true,
+          results,
+        };
+      } catch (error) {
+        return {
+          success: false,
+          results: [],
+          error: error instanceof Error ? error.message : String(error),
+        };
+      }
     },
 
     async isAvailable(): Promise<boolean> {
       try {
-        await initPromise;
-        return true;
-      } catch {
+        // Try to initialize state table (idempotent operation)
+        const result = await pythonEngine.runDuckDBStorage({
+          duckdbPath,
+          operation: 'init_state_table',
+          data: {},
+        });
+
+        const validated = StateOperationResultSchema.parse(result);
+        return validated.success;
+      } catch (error) {
         return false;
       }
     },
   };
 }
-
