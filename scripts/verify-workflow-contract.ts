@@ -332,9 +332,7 @@ function verifyWorkflowContracts(): void {
 
   // Find all CLI handler files (if directory exists)
   const handlerDir = join(process.cwd(), 'packages/cli/src/handlers');
-  const handlerFiles = existsSync(handlerDir)
-    ? findTsFiles(handlerDir, ['.test.', '.spec.'])
-    : [];
+  const handlerFiles = existsSync(handlerDir) ? findTsFiles(handlerDir, ['.test.', '.spec.']) : [];
 
   // Check workflow files
   for (const file of workflowFiles) {
