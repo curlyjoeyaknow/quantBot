@@ -1,20 +1,19 @@
 /**
- * Data Snapshot Service (Branch B Integration)
- * ============================================
- *
- * Integrated implementation using Branch B's @quantbot/data-observatory package.
- * This replaces the standalone implementation with Branch B integration.
+ * Data Snapshot Service (Branch B Implementation)
+ * ================================================
+ * 
+ * Real implementation of data snapshot creation and loading.
+ * Replaces MockDataSnapshotService with actual data source integration.
  */
 
+import { createHash } from 'crypto';
 import { DateTime } from 'luxon';
-import type {
-  DataSnapshotRef as BranchBDataSnapshotRef,
-  SnapshotSpec,
-} from '@quantbot/data-observatory';
-import { createSnapshotManager } from '@quantbot/data-observatory';
 import type { DataSnapshotRef } from '../contract.js';
-import { adaptBranchBToBranchA } from '../integration-branch-b.js';
+import { DataSnapshotRefSchema } from '../contract.js';
+import { queryCallsDuckdb } from '../../calls/queryCallsDuckdb.js';
+import { getStorageEngine } from '@quantbot/storage';
 import type { WorkflowContext } from '../../types.js';
+import { createSnapshotManager } from '@quantbot/data-observatory';
 
 /**
  * Snapshot creation parameters
@@ -60,7 +59,7 @@ export interface SnapshotData {
 
 /**
  * Data Snapshot Service
- *
+ * 
  * Creates and loads reproducible data snapshots from real data sources.
  */
 export class DataSnapshotService {
@@ -68,7 +67,7 @@ export class DataSnapshotService {
 
   /**
    * Creates a snapshot reference from data sources
-   *
+   * 
    * This queries actual data and creates a content hash from the data itself,
    * not just the parameters. This ensures the hash reflects the actual data content.
    */
@@ -97,13 +96,13 @@ export class DataSnapshotService {
 
   /**
    * Loads data from a snapshot
-   *
+   * 
    * Re-queries the data sources using the snapshot parameters to ensure
    * we get the same data that was used to create the snapshot.
    */
   async loadSnapshot(snapshot: DataSnapshotRef): Promise<SnapshotData> {
     // Verify snapshot integrity first
-    if (!this.verifySnapshot(snapshot)) {
+    if (!(await this.verifySnapshot(snapshot))) {
       throw new Error(`Snapshot integrity check failed: ${snapshot.snapshotId}`);
     }
 
@@ -117,7 +116,7 @@ export class DataSnapshotService {
 
   /**
    * Verifies snapshot integrity
-   *
+   * 
    * Re-computes the content hash and compares it to the stored hash.
    */
   async verifySnapshot(snapshot: DataSnapshotRef): Promise<boolean> {
@@ -166,31 +165,13 @@ export class DataSnapshotService {
         );
 
         for (const call of callsResult.calls) {
-          // Handle both Date and DateTime objects
-          const createdAtISO =
-            call.createdAt instanceof Date
-              ? call.createdAt.toISOString()
-              : typeof call.createdAt === 'object' &&
-                  'toISO' in call.createdAt &&
-                  typeof call.createdAt.toISO === 'function'
-                ? (call.createdAt.toISO() ?? call.createdAt.toJSDate().toISOString())
-                : typeof call.createdAt === 'string'
-                  ? call.createdAt
-                  : call.createdAt instanceof Date
-                    ? call.createdAt.toISOString()
-                    : new Date(call.createdAt as unknown as string | number).toISOString();
-
-          if (!createdAtISO) {
-            throw new Error(`Failed to convert createdAt to ISO string for call ${call.id}`);
-          }
-
           calls.push({
-            id: call.id || `call-${call.mint}-${createdAtISO}`,
+            id: call.id || `call-${call.mint}-${call.createdAt.toISO() || ''}`,
             caller: call.caller || 'unknown',
             mint: call.mint,
-            createdAt: createdAtISO,
-            price: (call as any).price,
-            volume: (call as any).volume,
+            createdAt: call.createdAt.toISO() || '',
+            // price and volume are optional in SnapshotData, CallRecord doesn't have them
+            // They will be undefined if not available
           });
         }
       }
@@ -224,16 +205,8 @@ export class DataSnapshotService {
         );
 
         for (const candle of mintCandles) {
-          // Ensure timestamp is a number (Unix timestamp in seconds)
-          const timestamp =
-            typeof candle.timestamp === 'number'
-              ? candle.timestamp
-              : (candle.timestamp as any) instanceof Date
-                ? Math.floor((candle.timestamp as any as Date).getTime() / 1000)
-                : parseInt(String(candle.timestamp), 10);
-
           candles.push({
-            timestamp,
+            timestamp: candle.timestamp,
             open: candle.open,
             high: candle.high,
             low: candle.low,
@@ -263,7 +236,10 @@ export class DataSnapshotService {
   /**
    * Computes content hash from data and parameters
    */
-  private computeContentHash(data: SnapshotData, params: CreateSnapshotParams): string {
+  private computeContentHash(
+    data: SnapshotData,
+    params: CreateSnapshotParams
+  ): string {
     // Create deterministic representation of data
     const dataRepr = {
       params: {
@@ -309,6 +285,9 @@ export class DataSnapshotService {
 /**
  * Create default DataSnapshotService instance
  */
-export function createDataSnapshotService(ctx?: WorkflowContext): DataSnapshotService {
-  return new DataSnapshotService(ctx);
+export function createDataSnapshotService(
+  duckdbPath?: string,
+  ctx?: WorkflowContext
+): DataSnapshotService {
+  return new DataSnapshotService(duckdbPath, ctx);
 }

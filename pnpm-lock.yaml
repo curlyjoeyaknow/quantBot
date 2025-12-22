@@ -651,6 +651,9 @@ importers:
       '@quantbot/core':
         specifier: workspace:*
         version: link:../core
+      '@quantbot/data-observatory':
+        specifier: workspace:*
+        version: link:../data-observatory
       '@quantbot/ingestion':
         specifier: workspace:*
         version: link:../ingestion

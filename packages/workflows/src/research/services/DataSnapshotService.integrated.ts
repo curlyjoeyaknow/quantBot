@@ -219,4 +219,3 @@ export function createDataSnapshotService(
 ): DataSnapshotService {
   return new DataSnapshotService(duckdbPath, ctx);
 }
-

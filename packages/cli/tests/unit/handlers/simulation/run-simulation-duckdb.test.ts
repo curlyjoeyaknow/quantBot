@@ -50,6 +50,7 @@ describe('runSimulationDuckdbHandler', () => {
         ohlcvIngestion: () => ({
           ingestForCalls: vi.fn(),
         }),
+        workflowContext: () => mockWorkflowContext,
       },
     } as unknown as CommandContext;
 
@@ -104,11 +105,11 @@ describe('runSimulationDuckdbHandler', () => {
       duckdb: '/path/to/tele.duckdb',
       strategy: strategyObj, // Command handler converts this to JSON string
       mint: 'So11111111111111111111111111111111111111112',
-      alert_timestamp: '2024-01-01T12:00:00Z',
+      alertTimestamp: '2024-01-01T12:00:00Z',
       batch: false,
-      initial_capital: 1000.0,
-      lookback_minutes: 260,
-      lookforward_minutes: 1440,
+      initialCapital: 1000.0,
+      lookbackMinutes: 260,
+      lookforwardMinutes: 1440,
     };
 
     const result = await runSimulationDuckdbHandler(args, mockCtx);
@@ -140,9 +141,9 @@ describe('runSimulationDuckdbHandler', () => {
       duckdb: '/path/to/tele.duckdb',
       strategy: strategyObj, // Command handler converts this to JSON string
       batch: false,
-      initial_capital: 1000.0,
-      lookback_minutes: 260,
-      lookforward_minutes: 1440,
+      initialCapital: 1000.0,
+      lookbackMinutes: 260,
+      lookforwardMinutes: 1440,
     };
 
     // Mock workflow to throw ValidationError for missing mint
@@ -173,9 +174,9 @@ describe('runSimulationDuckdbHandler', () => {
       strategy: strategyObj, // Command handler converts this to JSON string
       mint: 'So11111111111111111111111111111111111111112',
       batch: false,
-      initial_capital: 1000.0,
-      lookback_minutes: 260,
-      lookforward_minutes: 1440,
+      initialCapital: 1000.0,
+      lookbackMinutes: 260,
+      lookforwardMinutes: 1440,
     };
 
     await expect(runSimulationDuckdbHandler(args, mockCtx)).rejects.toThrow(AppError);
