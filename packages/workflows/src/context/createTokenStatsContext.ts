@@ -7,9 +7,8 @@
 import { resolve } from 'path';
 import { DateTime } from 'luxon';
 import { logger as utilsLogger } from '@quantbot/utils';
-import { getClickHouseClient } from '@quantbot/storage';
-import type { ClickHouseClient } from '@clickhouse/client';
 import type { TokenStatsContext } from '../storage/getTokenStats.js';
+import { createProductionContextWithPorts } from './createProductionContext.js';
 
 export interface TokenStatsContextConfig {
   logger?: {
@@ -21,14 +20,15 @@ export interface TokenStatsContextConfig {
   clock?: {
     nowISO: () => string;
   };
-  clickHouseClient?: ClickHouseClient;
   duckdbPath?: string;
 }
 
 /**
- * Create token stats context with ClickHouse and DuckDB access
+ * Create token stats context with ports (QueryPort for ClickHouse) and DuckDB access
  */
-export function createTokenStatsContext(config?: TokenStatsContextConfig): TokenStatsContext {
+export async function createTokenStatsContext(config?: TokenStatsContextConfig): Promise<TokenStatsContext> {
+  const baseContext = await createProductionContextWithPorts();
+
   const logger = config?.logger ?? {
     info: (msg: string, ctx?: unknown) =>
       utilsLogger.info(msg, ctx as Record<string, unknown> | undefined),
@@ -42,40 +42,10 @@ export function createTokenStatsContext(config?: TokenStatsContextConfig): Token
 
   const clock = config?.clock ?? { nowISO: () => DateTime.utc().toISO()! };
 
-  const clickHouseClient = config?.clickHouseClient ?? getClickHouseClient();
-
-  // ClickHouse query helper
-  const clickHouseQuery = async (query: string): Promise<Array<Record<string, unknown>>> => {
-    const result = await clickHouseClient.query({
-      query,
-      format: 'JSONEachRow',
-    });
-    return (await result.json()) as Array<Record<string, unknown>>;
-  };
-
   return {
-    clock,
-    ids: { newRunId: () => `run_${DateTime.utc().toUnixInteger()}` },
+    ...baseContext,
     logger,
-    repos: {
-      strategies: { getByName: async () => null },
-      calls: { list: async () => [] },
-      simulationRuns: { create: async () => {} },
-      simulationResults: { insertMany: async () => {} },
-    },
-    ohlcv: {
-      getCandles: async () => [],
-    },
-    simulation: {
-      run: async () => {
-        throw new Error('Simulation not available in token stats context');
-      },
-    },
-    storage: {
-      clickHouse: {
-        query: clickHouseQuery,
-      },
-    },
+    clock,
     duckdb: {
       path: (() => {
         const rawPath = config?.duckdbPath || process.env.DUCKDB_PATH || 'data/tele.duckdb';

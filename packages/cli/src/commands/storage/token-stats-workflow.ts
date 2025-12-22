@@ -55,9 +55,8 @@ export async function tokenStatsWorkflowHandler(
     limit: args.limit,
   };
 
-  // Create workflow context with ClickHouse client from CommandContext
-  const workflowContext = createTokenStatsContext({
-    clickHouseClient: ctx.services.clickHouseClient(),
+  // Create workflow context (now uses ports, no direct client needed)
+  const workflowContext = await createTokenStatsContext({
     duckdbPath: args.duckdbPath,
   });
 

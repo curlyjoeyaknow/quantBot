@@ -115,8 +115,27 @@ export type {
 } from './execution/index.js';
 
 // =============================================================================
+// Overlay Simulation - Clean entrypoint for overlay-based backtesting
+// =============================================================================
+// This is the recommended public API for overlay-based simulations
+// Use this for all new workflows - it's the single source of truth for overlay-based backtesting
+export {
+  runOverlaySimulation,
+  type ExitOverlay,
+  type FeeModel,
+  type PositionModel,
+  type OverlaySimulationRequest,
+  type OverlaySimulationResult,
+  type TradePoint,
+  type PnlBreakdown,
+  type SimulationDiagnostics,
+} from './overlay-simulation.js';
+
+// =============================================================================
 // Core - Main simulation engine
 // =============================================================================
+// Internal API - use runOverlaySimulation() for overlay-based simulations
+// simulateStrategy() is exported for advanced use cases only
 export * from './core/index.js';
 
 // =============================================================================

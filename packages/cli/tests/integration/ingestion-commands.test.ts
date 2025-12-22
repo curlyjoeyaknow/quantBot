@@ -8,7 +8,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { CommandContext } from '../../src/core/command-context.js';
 import type { TelegramPipelineService } from '@quantbot/ingestion';
 import { PythonManifestSchema } from '@quantbot/utils';
-import { processTelegramPythonHandler } from '../../src/handlers/ingestion/process-telegram-python.js';
+import { processTelegramPythonHandler } from '../../src/commands/ingestion/process-telegram-python.js';
 
 describe('Ingestion Commands - Integration', () => {
   let mockService: TelegramPipelineService;

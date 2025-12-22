@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { healthObservabilityHandler } from '../../../../src/handlers/observability/health-observability.js';
+import { healthObservabilityHandler } from '../../../../src/commands/observability/health-observability.js';
 import type { CommandContext } from '../../../../src/core/command-context.js';
 import { performHealthCheck } from '@quantbot/observability';
 

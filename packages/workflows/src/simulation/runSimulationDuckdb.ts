@@ -163,7 +163,6 @@ export type RunSimulationDuckdbContext = WorkflowContext & {
       }>;
     };
   };
-  ohlcvIngestion: IngestOhlcvContext['jobs']; // For calling ingestOhlcv workflow
 };
 
 /**

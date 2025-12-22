@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { testApiClientsHandler } from '../../../../src/handlers/api-clients/test-api-clients.js';
+import { testApiClientsHandler } from '../../../../src/commands/api-clients/test-api-clients.js';
 import type { CommandContext } from '../../../../src/core/command-context.js';
 import { BirdeyeClient, HeliusClient } from '@quantbot/api-clients';
 import { ValidationError } from '@quantbot/utils';

@@ -11,7 +11,7 @@
 
 import { describe, it, expect, vi } from 'vitest';
 import { DateTime } from 'luxon';
-import { queryOhlcvHandler } from '../../../../src/handlers/ohlcv/query-ohlcv.js';
+import { queryOhlcvHandler } from '../../../../src/commands/ohlcv/query-ohlcv.js';
 
 describe('queryOhlcvHandler', () => {
   it('calls OhlcvRepository.getCandles with converted dates and parameters', async () => {

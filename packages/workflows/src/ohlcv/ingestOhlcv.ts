@@ -49,6 +49,7 @@ import { generateOhlcvWorklist, type OhlcvWorkItem } from '@quantbot/ingestion';
 import { storeCandles } from '@quantbot/ohlcv';
 import { getCoverage } from '@quantbot/ohlcv';
 import { createOhlcvIngestionContext } from '../context/createOhlcvIngestionContext.js';
+import { Candle, createTokenAddress } from '@quantbot/core';
 
 /**
  * OHLCV Ingestion Spec
@@ -121,8 +122,10 @@ export type IngestOhlcvContext = WorkflowContextWithPorts & {
  */
 export async function ingestOhlcv(
   spec: IngestOhlcvSpec,
-  ctx: IngestOhlcvContext = await createOhlcvIngestionContext()
+  ctx?: IngestOhlcvContext
 ): Promise<IngestOhlcvResult> {
+  // Default context for testing (only if not provided)
+  const workflowCtx: IngestOhlcvContext = ctx ?? (await createOhlcvIngestionContext());
   const startedAt = DateTime.utc();
   const startedAtISO = startedAt.toISO()!;
 
@@ -140,7 +143,7 @@ export async function ingestOhlcv(
   const errorMode = validated.errorMode ?? 'collect';
 
   // Emit workflow start event
-  ctx.ports.telemetry.emitEvent({
+  workflowCtx.ports?.telemetry.emitEvent({
     name: 'ohlcv_ingestion_started',
     level: 'info',
     message: 'Starting OHLCV ingestion workflow',
@@ -151,10 +154,9 @@ export async function ingestOhlcv(
       side: validated.side,
       interval: validated.interval,
     },
-    timestamp: ctx.ports.clock.nowMs(),
   });
 
-  ctx.logger.info('Starting OHLCV ingestion workflow', {
+  workflowCtx.logger.info('Starting OHLCV ingestion workflow', {
     duckdbPath: validated.duckdbPath,
     from: validated.from,
     to: validated.to,
@@ -177,7 +179,7 @@ export async function ingestOhlcv(
     });
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    ctx.logger.error('Failed to generate worklist', { error: errorMessage });
+    workflowCtx.logger.error('Failed to generate worklist', { error: errorMessage });
     if (errorMode === 'failFast') {
       throw error;
     }
@@ -197,7 +199,7 @@ export async function ingestOhlcv(
   }
 
   if (worklist.length === 0) {
-    ctx.logger.info('No work items to process');
+    workflowCtx.logger.info('No work items to process');
     return {
       worklistGenerated: 0,
       workItemsProcessed: 0,
@@ -232,7 +234,8 @@ export async function ingestOhlcv(
 
   for (let i = 0; i < worklist.length; i++) {
     const workItem = worklist[i];
-    const startTime = ctx.ports.clock.nowMs();
+    if (!workItem) continue; // Skip undefined items (shouldn't happen, but TypeScript safety)
+    const startTime = workflowCtx.ports.clock.nowMs();
 
     // Rate limiting
     if (i > 0) {
@@ -241,7 +244,7 @@ export async function ingestOhlcv(
 
     // Circuit breaker check
     if (failureCount >= circuitBreakerThreshold) {
-      ctx.ports.telemetry.emitEvent({
+      workflowCtx.ports?.telemetry.emitEvent({
         name: 'ohlcv_ingestion_circuit_breaker_open',
         level: 'warn',
         message: 'Circuit breaker open - too many failures',
@@ -249,7 +252,6 @@ export async function ingestOhlcv(
           failureCount,
           threshold: circuitBreakerThreshold,
         },
-        timestamp: ctx.ports.clock.nowMs(),
       });
 
       fetchResults.push({
@@ -258,20 +260,20 @@ export async function ingestOhlcv(
         candlesFetched: 0,
         candlesStored: 0,
         error: 'Circuit breaker open',
-        durationMs: ctx.ports.clock.nowMs() - startTime,
+        durationMs: workflowCtx.ports?.clock.nowMs() - startTime,
       });
       continue;
     }
 
     // Check idempotency: have we processed this mint for this day?
     const dayKey = `${workItem.mint}:${workItem.startTime.toISODate()}:${workItem.interval}`;
-    const idempotencyCheck = await ctx.ports.state.get({
+    const idempotencyCheck = await workflowCtx.ports?.state.get({
       key: dayKey,
       namespace: 'ohlcv_ingestion',
     });
 
     if (idempotencyCheck.found) {
-      ctx.ports.telemetry.emitEvent({
+      workflowCtx.ports?.telemetry.emitEvent({
         name: 'ohlcv_ingestion_skipped',
         level: 'debug',
         message: 'Skipping already processed work item',
@@ -279,7 +281,6 @@ export async function ingestOhlcv(
           mint: workItem.mint.substring(0, 20),
           day: workItem.startTime.toISODate(),
         },
-        timestamp: ctx.ports.clock.nowMs(),
       });
 
       fetchResults.push({
@@ -287,7 +288,7 @@ export async function ingestOhlcv(
         success: true,
         candlesFetched: 0,
         candlesStored: 0,
-        durationMs: ctx.ports.clock.nowMs() - startTime,
+        durationMs: workflowCtx.ports?.clock.nowMs() - startTime,
       });
       continue;
     }
@@ -304,7 +305,7 @@ export async function ingestOhlcv(
         );
 
         if (coverage.hasData && coverage.coverageRatio >= 0.95) {
-          ctx.ports.telemetry.emitEvent({
+          workflowCtx.ports?.telemetry.emitEvent({
             name: 'ohlcv_ingestion_coverage_skip',
             level: 'debug',
             message: 'Skipping fetch - sufficient coverage exists',
@@ -312,7 +313,6 @@ export async function ingestOhlcv(
               mint: workItem.mint.substring(0, 20),
               coverageRatio: coverage.coverageRatio,
             },
-            timestamp: ctx.ports.clock.nowMs(),
           });
 
           fetchResults.push({
@@ -320,20 +320,20 @@ export async function ingestOhlcv(
             success: true,
             candlesFetched: 0,
             candlesStored: 0,
-            durationMs: ctx.ports.clock.nowMs() - startTime,
+            durationMs: workflowCtx.ports?.clock.nowMs() - startTime,
           });
           continue;
         }
       } catch (error) {
         // Coverage check failure is not fatal, continue with fetch
-        ctx.logger.debug('Coverage check failed, continuing with fetch', {
-          error: error instanceof Error ? error.message : String(error),
-        });
+        if (workflowCtx.logger?.debug) {
+          workflowCtx.logger.debug(`Coverage check failed, continuing with fetch: ${error instanceof Error ? error.message : String(error)}`);
+        }
       }
     }
 
     // Fetch candles using market data port
-    let candles: import('@quantbot/core').Candle[] = [];
+    let candles: Candle[] = [];
     let fetchError: string | undefined;
 
     for (let attempt = 0; attempt < maxRetries; attempt++) {
@@ -341,8 +341,8 @@ export async function ingestOhlcv(
         const from = Math.floor(workItem.startTime.toSeconds());
         const to = Math.floor(workItem.endTime.toSeconds());
 
-        candles = await ctx.ports.marketData.fetchOhlcv({
-          tokenAddress: workItem.mint,
+        candles = await workflowCtx.ports.marketData.fetchOhlcv({
+          tokenAddress: createTokenAddress(workItem.mint),
           chain: workItem.chain,
           interval: workItem.interval,
           from,
@@ -350,7 +350,7 @@ export async function ingestOhlcv(
         });
 
         // Emit metric for candles fetched
-        ctx.ports.telemetry.emitMetric({
+        workflowCtx.ports?.telemetry.emitMetric({
           name: 'ohlcv_candles_fetched',
           type: 'counter',
           value: candles.length,
@@ -358,7 +358,6 @@ export async function ingestOhlcv(
             chain: workItem.chain,
             interval: workItem.interval,
           },
-          timestamp: ctx.ports.clock.nowMs(),
         });
 
         break; // Success, exit retry loop
@@ -373,7 +372,7 @@ export async function ingestOhlcv(
 
     if (fetchError || candles.length === 0) {
       failureCount++;
-      ctx.ports.telemetry.emitEvent({
+      workflowCtx.ports?.telemetry.emitEvent({
         name: 'ohlcv_ingestion_fetch_failed',
         level: 'error',
         message: 'Failed to fetch OHLCV candles',
@@ -382,7 +381,6 @@ export async function ingestOhlcv(
           chain: workItem.chain,
           error: fetchError || 'No candles returned',
         },
-        timestamp: ctx.ports.clock.nowMs(),
       });
 
       if (errorMode === 'failFast') {
@@ -395,7 +393,7 @@ export async function ingestOhlcv(
         candlesFetched: 0,
         candlesStored: 0,
         error: fetchError || 'No candles returned',
-        durationMs: ctx.ports.clock.nowMs() - startTime,
+        durationMs: workflowCtx.ports?.clock.nowMs() - startTime,
       });
       continue;
     }
@@ -407,15 +405,15 @@ export async function ingestOhlcv(
       candlesStored = candles.length;
 
       // Mark as processed for idempotency
-      await ctx.ports.state.set({
+      await workflowCtx.ports?.state.set({
         key: dayKey,
         namespace: 'ohlcv_ingestion',
-        value: { processed: true, timestamp: ctx.ports.clock.nowMs() },
+        value: { processed: true, timestamp: workflowCtx.ports?.clock.nowMs() },
         ttlSeconds: 86400 * 7, // 7 days TTL
       });
 
       // Emit metric for candles stored
-      ctx.ports.telemetry.emitMetric({
+      workflowCtx.ports?.telemetry.emitMetric({
         name: 'ohlcv_candles_stored',
         type: 'counter',
         value: candlesStored,
@@ -423,14 +421,13 @@ export async function ingestOhlcv(
           chain: workItem.chain,
           interval: workItem.interval,
         },
-        timestamp: ctx.ports.clock.nowMs(),
       });
 
       // Reset failure count on success
       failureCount = 0;
     } catch (error) {
       const storeError = error instanceof Error ? error.message : String(error);
-      ctx.ports.telemetry.emitEvent({
+      workflowCtx.ports?.telemetry.emitEvent({
         name: 'ohlcv_ingestion_store_failed',
         level: 'error',
         message: 'Failed to store OHLCV candles',
@@ -438,7 +435,6 @@ export async function ingestOhlcv(
           mint: workItem.mint.substring(0, 20),
           error: storeError,
         },
-        timestamp: ctx.ports.clock.nowMs(),
       });
 
       if (errorMode === 'failFast') {
@@ -451,7 +447,7 @@ export async function ingestOhlcv(
         candlesFetched: candles.length,
         candlesStored: 0,
         error: storeError,
-        durationMs: ctx.ports.clock.nowMs() - startTime,
+        durationMs: workflowCtx.ports?.clock.nowMs() - startTime,
       });
       continue;
     }
@@ -461,13 +457,13 @@ export async function ingestOhlcv(
       success: true,
       candlesFetched: candles.length,
       candlesStored,
-      durationMs: ctx.ports.clock.nowMs() - startTime,
+      durationMs: workflowCtx.ports?.clock.nowMs() - startTime,
     });
 
     // Progress logging every 10 items
     if ((i + 1) % 10 === 0) {
       const successCount = fetchResults.filter((r) => r.success).length;
-      ctx.logger.info(`Progress: ${i + 1}/${worklist.length} (${successCount} successful)`);
+      workflowCtx.logger.info(`Progress: ${i + 1}/${worklist.length} (${successCount} successful)`);
     }
   }
 
@@ -509,7 +505,7 @@ export async function ingestOhlcv(
       }[fetchResult.workItem.interval];
 
       const metadataKey = `ohlcv_metadata:${fetchResult.workItem.mint}:${fetchResult.workItem.alertTime.toISO()}`;
-      const updatePromise = ctx.ports.state
+      const updatePromise = workflowCtx.ports?.state
         .set({
           key: metadataKey,
           namespace: 'ohlcv_metadata',
@@ -525,7 +521,7 @@ export async function ingestOhlcv(
         })
         .then((result) => {
           if (!result.success) {
-            ctx.ports.telemetry.emitEvent({
+            workflowCtx.ports?.telemetry.emitEvent({
               name: 'ohlcv_metadata_update_failed',
               level: 'error',
               message: 'Failed to update OHLCV metadata',
@@ -533,13 +529,12 @@ export async function ingestOhlcv(
                 mint: fetchResult.workItem.mint.substring(0, 20),
                 error: result.error,
               },
-              timestamp: ctx.ports.clock.nowMs(),
             });
           }
         })
         .catch((error) => {
           const errorMessage = error instanceof Error ? error.message : String(error);
-          ctx.ports.telemetry.emitEvent({
+          workflowCtx.ports?.telemetry.emitEvent({
             name: 'ohlcv_metadata_update_error',
             level: 'error',
             message: 'Failed to update OHLCV metadata',
@@ -547,7 +542,6 @@ export async function ingestOhlcv(
               mint: fetchResult.workItem.mint.substring(0, 20),
               error: errorMessage,
             },
-            timestamp: ctx.ports.clock.nowMs(),
           });
           // Metadata update failure doesn't fail the work item (candles were stored)
         })
@@ -568,7 +562,7 @@ export async function ingestOhlcv(
 
   // Execute metadata updates in batches
   if (metadataUpdates.length > 0) {
-    ctx.logger.info(`Executing ${metadataUpdates.length} metadata updates in batches`);
+    workflowCtx.logger.info(`Executing ${metadataUpdates.length} metadata updates in batches`);
     for (let i = 0; i < metadataUpdates.length; i += METADATA_BATCH_SIZE) {
       const batch = metadataUpdates.slice(i, i + METADATA_BATCH_SIZE);
       await Promise.all(batch);
@@ -595,7 +589,7 @@ export async function ingestOhlcv(
   const durationMs = completedAt.diff(startedAt, 'milliseconds').milliseconds;
 
   // Emit workflow completion event
-  ctx.ports.telemetry.emitEvent({
+  workflowCtx.ports?.telemetry.emitEvent({
     name: 'ohlcv_ingestion_completed',
     level: 'info',
     message: 'Completed OHLCV ingestion workflow',
@@ -609,39 +603,38 @@ export async function ingestOhlcv(
       totalCandlesStored,
       durationMs,
     },
-    timestamp: ctx.ports.clock.nowMs(),
   });
 
   // Emit summary metrics
-  ctx.ports.telemetry.emitMetric({
+  workflowCtx.ports?.telemetry.emitMetric({
     name: 'ohlcv_ingestion_work_items_total',
     type: 'counter',
     value: ingestionResults.length,
-    timestamp: ctx.ports.clock.nowMs(),
+    timestamp: workflowCtx.ports?.clock.nowMs(),
   });
 
-  ctx.ports.telemetry.emitMetric({
+  workflowCtx.ports.telemetry.emitMetric({
     name: 'ohlcv_ingestion_work_items_succeeded',
     type: 'counter',
     value: workItemsSucceeded,
-    timestamp: ctx.ports.clock.nowMs(),
+    timestamp: workflowCtx.ports.clock.nowMs(),
   });
 
-  ctx.ports.telemetry.emitMetric({
+  workflowCtx.ports.telemetry.emitMetric({
     name: 'ohlcv_ingestion_work_items_failed',
     type: 'counter',
     value: workItemsFailed,
-    timestamp: ctx.ports.clock.nowMs(),
+    timestamp: workflowCtx.ports.clock.nowMs(),
   });
 
-  ctx.ports.telemetry.emitMetric({
+  workflowCtx.ports.telemetry.emitMetric({
     name: 'ohlcv_ingestion_duration_ms',
     type: 'histogram',
     value: durationMs,
-    timestamp: ctx.ports.clock.nowMs(),
+    timestamp: workflowCtx.ports.clock.nowMs(),
   });
 
-  ctx.logger.info('Completed OHLCV ingestion workflow', {
+  workflowCtx.logger.info('Completed OHLCV ingestion workflow', {
     worklistGenerated: worklist.length,
     workItemsProcessed: ingestionResults.length,
     workItemsSucceeded,

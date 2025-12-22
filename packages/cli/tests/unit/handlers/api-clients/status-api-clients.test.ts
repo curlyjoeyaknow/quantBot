@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { statusApiClientsHandler } from '../../../../src/handlers/api-clients/status-api-clients.js';
+import { statusApiClientsHandler } from '../../../../src/commands/api-clients/status-api-clients.js';
 import type { CommandContext } from '../../../../src/core/command-context.js';
 
 describe('statusApiClientsHandler', () => {

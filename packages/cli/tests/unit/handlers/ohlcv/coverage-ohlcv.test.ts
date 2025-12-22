@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { coverageOhlcvHandler } from '../../../../src/handlers/ohlcv/coverage-ohlcv.js';
+import { coverageOhlcvHandler } from '../../../../src/commands/ohlcv/coverage-ohlcv.js';
 import type { CommandContext } from '../../../../src/core/command-context.js';
 
 describe('coverageOhlcvHandler', () => {
@@ -23,29 +23,17 @@ describe('coverageOhlcvHandler', () => {
   });
 
   it('should return coverage statistics without filters', async () => {
-    // Mock count query
-    mockClient.query.mockResolvedValueOnce({
-      json: async () => [{ count: '1000' }],
-    });
-
-    // Mock date range query
+    // Mock single combined query (handler uses groupArray to get all stats in one query)
     mockClient.query.mockResolvedValueOnce({
       json: async () => [
         {
+          total_candles: 1000,
           earliest: '2024-01-01 00:00:00',
           latest: '2024-01-31 23:59:59',
+          chains: ['solana', 'ethereum'],
+          intervals: ['1m', '5m'],
         },
       ],
-    });
-
-    // Mock chains query
-    mockClient.query.mockResolvedValueOnce({
-      json: async () => [{ chain: 'solana' }, { chain: 'ethereum' }],
-    });
-
-    // Mock intervals query
-    mockClient.query.mockResolvedValueOnce({
-      json: async () => [{ interval: '1m' }, { interval: '5m' }],
     });
 
     const args = {
@@ -68,29 +56,17 @@ describe('coverageOhlcvHandler', () => {
   it('should filter by mint when provided', async () => {
     const mint = 'So11111111111111111111111111111111111111112';
 
-    // Mock count query
-    mockClient.query.mockResolvedValueOnce({
-      json: async () => [{ count: '500' }],
-    });
-
-    // Mock date range query
+    // Mock single combined query with mint filter
     mockClient.query.mockResolvedValueOnce({
       json: async () => [
         {
+          total_candles: 500,
           earliest: '2024-01-01 00:00:00',
           latest: '2024-01-15 23:59:59',
+          chains: ['solana'],
+          intervals: ['5m'],
         },
       ],
-    });
-
-    // Mock chains query
-    mockClient.query.mockResolvedValueOnce({
-      json: async () => [{ chain: 'solana' }],
-    });
-
-    // Mock intervals query
-    mockClient.query.mockResolvedValueOnce({
-      json: async () => [{ interval: '5m' }],
     });
 
     const args = {
@@ -102,33 +78,21 @@ describe('coverageOhlcvHandler', () => {
 
     expect(result.mint).toBe(mint);
     expect(result.totalCandles).toBe(500);
-    expect(mockClient.query).toHaveBeenCalledTimes(4);
+    expect(mockClient.query).toHaveBeenCalledTimes(1);
   });
 
   it('should filter by interval when provided', async () => {
-    // Mock count query
-    mockClient.query.mockResolvedValueOnce({
-      json: async () => [{ count: '200' }],
-    });
-
-    // Mock date range query
+    // Mock single combined query with interval filter
     mockClient.query.mockResolvedValueOnce({
       json: async () => [
         {
+          total_candles: 200,
           earliest: '2024-01-01 00:00:00',
           latest: '2024-01-10 23:59:59',
+          chains: ['solana'],
+          intervals: ['1m'],
         },
       ],
-    });
-
-    // Mock chains query
-    mockClient.query.mockResolvedValueOnce({
-      json: async () => [{ chain: 'solana' }],
-    });
-
-    // Mock intervals query
-    mockClient.query.mockResolvedValueOnce({
-      json: async () => [{ interval: '1m' }],
     });
 
     const args = {

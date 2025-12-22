@@ -10,7 +10,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { statsStorageHandler } from '../../../../src/handlers/storage/stats-storage.js';
+import { statsStorageHandler } from '../../../../src/commands/storage/stats-storage.js';
 import { SAFE_TABLES } from '../../../../src/commands/storage.js';
 
 describe('statsStorageHandler', () => {

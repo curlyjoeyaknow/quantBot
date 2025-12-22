@@ -7,7 +7,7 @@
 
 import { z } from 'zod';
 import { DateTime } from 'luxon';
-import type { WorkflowContext } from '../types.js';
+import type { WorkflowContextWithPorts } from '../context/workflowContextWithPorts.js';
 
 /**
  * Storage stats spec
@@ -57,15 +57,20 @@ export type GetStorageStatsResult = {
 
 /**
  * Extended context for storage stats
+ * Uses ports for all external dependencies
  */
-export type StorageStatsContext = WorkflowContext & {
-  storage: {
-    clickHouse: {
-      query: (query: string) => Promise<Array<Record<string, unknown>>>;
-    };
-    duckdb?: {
-      query: (dbPath: string, query: string) => Promise<Array<Record<string, unknown>>>;
-    };
+export type StorageStatsContext = WorkflowContextWithPorts & {
+  logger: {
+    info: (message: string, context?: unknown) => void;
+    warn: (message: string, context?: unknown) => void;
+    error: (message: string, context?: unknown) => void;
+    debug?: (message: string, context?: unknown) => void;
+  };
+  clock: {
+    nowISO: () => string;
+  };
+  duckdb?: {
+    query: (dbPath: string, query: string) => Promise<Array<Record<string, unknown>>>;
   };
 };
 
@@ -117,10 +122,11 @@ export async function getStorageStats(
 
           // Row count
           if (validated.includeRowCounts) {
-            const countResult = await ctx.storage.clickHouse.query(
-              `SELECT COUNT(*) as count FROM ${database}.${table}`
-            );
-            const count = countResult[0]?.['count'];
+            const countResult = await ctx.ports.query.query({
+              query: `SELECT COUNT(*) as count FROM ${database}.${table}`,
+              format: 'JSONEachRow',
+            });
+            const count = (countResult.rows[0] as Record<string, unknown>)?.['count'];
             if (typeof count === 'string') {
               tableStat.rowCount = parseInt(count, 10);
             } else if (typeof count === 'number') {
@@ -133,11 +139,12 @@ export async function getStorageStats(
             const timestampColumns = ['timestamp', 'event_time', 'created_at'];
             for (const col of timestampColumns) {
               try {
-                const rangeResult = await ctx.storage.clickHouse.query(
-                  `SELECT MIN(${col}) as min, MAX(${col}) as max FROM ${database}.${table} WHERE ${col} IS NOT NULL`
-                );
-                const min = rangeResult[0]?.['min'];
-                const max = rangeResult[0]?.['max'];
+                const rangeResult = await ctx.ports.query.query({
+                  query: `SELECT MIN(${col}) as min, MAX(${col}) as max FROM ${database}.${table} WHERE ${col} IS NOT NULL`,
+                  format: 'JSONEachRow',
+                });
+                const min = (rangeResult.rows[0] as Record<string, unknown>)?.['min'];
+                const max = (rangeResult.rows[0] as Record<string, unknown>)?.['max'];
                 if (min && max) {
                   tableStat.dateRange = {
                     min:
@@ -180,7 +187,7 @@ export async function getStorageStats(
   }
 
   // DuckDB stats
-  if ((validated.source === 'duckdb' || validated.source === 'all') && ctx.storage.duckdb?.query) {
+  if ((validated.source === 'duckdb' || validated.source === 'all') && ctx.duckdb?.query) {
     try {
       const dbPath = validated.duckdbPath || process.env.DUCKDB_PATH || 'data/tele.duckdb';
       const tables = ['strategies', 'callers', 'token_data', 'simulation_runs'];
@@ -194,8 +201,8 @@ export async function getStorageStats(
         try {
           const tableStat: { name: string; rowCount?: number; error?: string } = { name: table };
 
-          if (validated.includeRowCounts && ctx.storage.duckdb) {
-            const countResult = await ctx.storage.duckdb.query(
+          if (validated.includeRowCounts && ctx.duckdb) {
+            const countResult = await ctx.duckdb.query(
               dbPath,
               `SELECT COUNT(*) as count FROM ${table}`
             );

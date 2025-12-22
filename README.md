@@ -119,15 +119,23 @@ QuantBot's core capabilities:
 - **Price Tracking**: WebSocket-based real-time price updates via Helius
 - **Performance Summaries**: Hourly and daily performance reports
 
-### 💰 Live Trading System (Coming Soon) 🔥
+### 💰 Live Execution Architecture
 
-- **Strategy-Based Execution**: Execute trades using user-defined strategies
-- **Alert-Triggered Trading**: Automatic trade execution from alerts
-- **Helius RPC Integration**: Optimized Amsterdam/mainnet endpoints
-- **Relayer Support**: High-speed transaction sending via relayers
-- **Position Management**: Real-time position tracking and PNL
-- **Risk Controls**: Slippage protection, position limits, daily loss limits
-- **Safety Features**: Dry-run mode, trade confirmation, comprehensive logging
+**Current State**: Live execution is intentionally isolated behind `ExecutionPort` and a dedicated executor app boundary. This repo currently focuses on ingestion, simulation, and deterministic strategy evaluation.
+
+**Architecture**:
+- **ExecutionPort Interface**: Defined in `@quantbot/core` - handlers depend on ports, not implementations
+- **Stub Adapter**: Safety-first stub with dry-run mode, circuit breakers, and idempotency (default enabled)
+- **Executor App Boundary**: Live trading runtime concerns (keys, signing, RPC/Jito submission, risk gates) live in a separate app boundary (`apps/executor` or `packages/executor`)
+- **Reusability**: Pure logic (core handlers + ports + workflows) is reusable for live trading without modification
+
+**Why This Design**:
+- **Safety**: Hard-walled separation between research/backtesting and live execution
+- **Reusability**: Same handlers/workflows work for both simulation and live trading
+- **Flexibility**: Can enable live execution when ready without architectural changes
+- **Compliance**: Executor boundary can have different access control, deployment cadence, and security posture
+
+**Execution adapters exist only as stubs/dry-run unless explicitly enabled in the executor app boundary.**
 
 ### 💾 Data Storage & Analytics
 

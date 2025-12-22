@@ -14,11 +14,12 @@
  * Tests use mocked Python engine and validate worklist structure.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { DateTime } from 'luxon';
 import { generateOhlcvWorklist } from '../../src/ohlcv-work-planning.js';
 import { getPythonEngine } from '@quantbot/utils';
 import type { OhlcvWorkItem } from '../../src/ohlcv-work-planning.js';
+import { createTestDuckDB, cleanupTestDuckDB, createTempDuckDBPath } from '../helpers/createTestDuckDB.js';
 
 // Mock dependencies
 vi.mock('@quantbot/utils', () => ({
@@ -34,6 +35,7 @@ vi.mock('@quantbot/utils', () => ({
 describe('OHLCV Work Planning - Golden Path', () => {
   let mockPythonEngine: any;
   const TEST_DUCKDB_PATH = '/path/to/test.duckdb';
+  const tempDbPaths: string[] = [];
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -43,6 +45,14 @@ describe('OHLCV Work Planning - Golden Path', () => {
     };
 
     vi.mocked(getPythonEngine).mockReturnValue(mockPythonEngine as any);
+  });
+
+  afterEach(() => {
+    // Clean up temporary DuckDB files
+    tempDbPaths.forEach((path) => {
+      cleanupTestDuckDB(path);
+    });
+    tempDbPaths.length = 0;
   });
 
   describe('GOLDEN: Complete worklist generation flow', () => {
@@ -345,8 +355,12 @@ describe('OHLCV Work Planning - Golden Path', () => {
         '9pXs123456789012345678901234567890pump',
       ];
 
+      // Use temporary file path for real DuckDB creation
+      const tempDbPath = createTempDuckDBPath('filter_mints_test');
+      tempDbPaths.push(tempDbPath);
+
       // Create test data with multiple mints
-      await createTestDuckDB(TEST_DUCKDB_PATH, [
+      await createTestDuckDB(tempDbPath, [
         {
           mint: targetMints[0],
           chain: 'solana',
@@ -364,7 +378,32 @@ describe('OHLCV Work Planning - Golden Path', () => {
         },
       ]);
 
-      const workItems = await generateOhlcvWorklist(TEST_DUCKDB_PATH, {
+      // Mock Python engine to return data matching the DuckDB file
+      mockPythonEngine.runOhlcvWorklist.mockResolvedValue({
+        tokenGroups: [
+          {
+            mint: targetMints[0],
+            chain: 'solana',
+            earliestAlertTime: '2024-01-01T12:00:00Z',
+            callCount: 1,
+          },
+          {
+            mint: targetMints[1],
+            chain: 'solana',
+            earliestAlertTime: '2024-01-01T14:00:00Z',
+            callCount: 1,
+          },
+          {
+            mint: '7pXs123456789012345678901234567890pump',
+            chain: 'solana',
+            earliestAlertTime: '2024-01-01T16:00:00Z',
+            callCount: 1,
+          },
+        ],
+        calls: [],
+      });
+
+      const workItems = await generateOhlcvWorklist(tempDbPath, {
         mints: targetMints, // Filter by specific mints
       });
 
@@ -382,8 +421,12 @@ describe('OHLCV Work Planning - Golden Path', () => {
       const from = new Date('2024-01-01');
       const to = new Date('2024-01-02');
 
+      // Use temporary file path for real DuckDB creation
+      const tempDbPath = createTempDuckDBPath('filter_mints_date_test');
+      tempDbPaths.push(tempDbPath);
+
       // Create test data with dates in and out of range
-      await createTestDuckDB(TEST_DUCKDB_PATH, [
+      await createTestDuckDB(tempDbPath, [
         {
           mint: targetMint,
           chain: 'solana',
@@ -401,7 +444,28 @@ describe('OHLCV Work Planning - Golden Path', () => {
         },
       ]);
 
-      const workItems = await generateOhlcvWorklist(TEST_DUCKDB_PATH, {
+      // Mock Python engine to return data matching the DuckDB file
+      // Python engine handles date filtering, so mock should only return data within date range
+      mockPythonEngine.runOhlcvWorklist.mockResolvedValue({
+        tokenGroups: [
+          {
+            mint: targetMint,
+            chain: 'solana',
+            earliestAlertTime: '2024-01-01T12:00:00Z', // In range
+            callCount: 1,
+          },
+          {
+            mint: 'otherMint',
+            chain: 'solana',
+            earliestAlertTime: '2024-01-01T12:00:00Z', // In range (will be filtered out by mints)
+            callCount: 1,
+          },
+          // Note: '2024-01-03T12:00:00Z' item is excluded because Python engine filters by date range
+        ],
+        calls: [],
+      });
+
+      const workItems = await generateOhlcvWorklist(tempDbPath, {
         from,
         to,
         mints: [targetMint], // Filter by mint AND date range
@@ -424,7 +488,11 @@ describe('OHLCV Work Planning - Golden Path', () => {
     it('should preserve mint address case exactly when filtering', async () => {
       const mixedCaseMint = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
 
-      await createTestDuckDB(TEST_DUCKDB_PATH, [
+      // Use temporary file path for real DuckDB creation
+      const tempDbPath = createTempDuckDBPath('filter_case_test');
+      tempDbPaths.push(tempDbPath);
+
+      await createTestDuckDB(tempDbPath, [
         {
           mint: mixedCaseMint, // Mixed case
           chain: 'solana',
@@ -432,7 +500,20 @@ describe('OHLCV Work Planning - Golden Path', () => {
         },
       ]);
 
-      const workItems = await generateOhlcvWorklist(TEST_DUCKDB_PATH, {
+      // Mock Python engine to return data matching the DuckDB file (preserve exact case)
+      mockPythonEngine.runOhlcvWorklist.mockResolvedValue({
+        tokenGroups: [
+          {
+            mint: mixedCaseMint, // Exact case preserved
+            chain: 'solana',
+            earliestAlertTime: '2024-01-01T12:00:00Z',
+            callCount: 1,
+          },
+        ],
+        calls: [],
+      });
+
+      const workItems = await generateOhlcvWorklist(tempDbPath, {
         mints: [mixedCaseMint], // Pass exact case
       });
 

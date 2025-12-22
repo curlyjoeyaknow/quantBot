@@ -26,6 +26,9 @@ export * from './handlers/index.js';
 // Core Domain Types
 // ============================================================================
 
+// Domain models
+export * from './domain/calls/CallSignal.js';
+
 /**
  * Supported blockchain
  *

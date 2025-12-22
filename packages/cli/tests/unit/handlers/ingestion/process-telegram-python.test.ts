@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { processTelegramPythonHandler } from '../../../../src/handlers/ingestion/process-telegram-python.js';
+import { processTelegramPythonHandler } from '../../../../src/commands/ingestion/process-telegram-python.js';
 import type { CommandContext } from '../../../../src/core/command-context.js';
 import type { TelegramPipelineService, TelegramPipelineResult } from '@quantbot/ingestion';
 import { PythonManifestSchema } from '@quantbot/utils';
@@ -93,8 +93,9 @@ describe('processTelegramPythonHandler', () => {
 
     const args = {
       file: '/path/to/input.json',
-      outputDb: '/path/to/output.duckdb',
+      outputDb: '/path/to/output.duckdb',     
       chatId: 'test_chat',
+      // rebuild not provided (undefined)
       format: 'table' as const,
     };
 

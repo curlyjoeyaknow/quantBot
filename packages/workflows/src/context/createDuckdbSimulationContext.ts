@@ -43,9 +43,9 @@ export interface DuckdbSimulationContextConfig extends ProductionContextConfig {
 /**
  * Create WorkflowContext for DuckDB simulation with services
  */
-export function createDuckdbSimulationContext(
+export async function createDuckdbSimulationContext(
   config?: DuckdbSimulationContextConfig
-): RunSimulationDuckdbContext {
+): Promise<RunSimulationDuckdbContext> {
   const baseContext: WorkflowContext = createProductionContext(config);
 
   // Get services from config or create defaults
@@ -67,16 +67,9 @@ export function createDuckdbSimulationContext(
     );
   }
 
-  // Get OHLCV ingestion context for workflow calls
-  // Pass ohlcvFetchJob if available in config (for production use)
-  const ohlcvContext = createOhlcvIngestionContext(
-    config?.ohlcvFetchJob
-      ? {
-          ohlcvFetchJob: config.ohlcvFetchJob,
-          duckdbStorage: duckdbStorageService,
-        }
-      : undefined
-  );
+  // Get OHLCV ingestion context for workflow calls (async - uses ports)
+  // Note: ohlcvFetchJob removed - workflow now uses ports directly
+  const ohlcvContext = await createOhlcvIngestionContext();
 
   return {
     ...baseContext,
@@ -135,7 +128,6 @@ export function createDuckdbSimulationContext(
           return ohlcvIngestionService.ingestForCalls(params);
         },
       },
-    },
-    ohlcvIngestion: ohlcvContext.jobs,
+    }
   };
 }

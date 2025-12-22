@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { creditsApiClientsHandler } from '../../../../src/handlers/api-clients/credits-api-clients.js';
+import { creditsApiClientsHandler } from '../../../../src/commands/api-clients/credits-api-clients.js';
 import type { CommandContext } from '../../../../src/core/command-context.js';
 import { checkApiQuotas } from '@quantbot/observability';
 

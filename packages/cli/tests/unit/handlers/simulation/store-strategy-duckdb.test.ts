@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { storeStrategyDuckdbHandler } from '../../../../src/handlers/simulation/store-strategy-duckdb.js';
+import { storeStrategyDuckdbHandler } from '../../../../src/commands/simulation/store-strategy-duckdb.js';
 import type { CommandContext } from '../../../../src/core/command-context.js';
 
 describe('storeStrategyDuckdbHandler', () => {

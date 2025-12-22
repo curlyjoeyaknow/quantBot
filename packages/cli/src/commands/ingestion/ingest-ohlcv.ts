@@ -14,11 +14,8 @@
 import path from 'node:path';
 import process from 'node:process';
 
-import { ingestOhlcvHandler, type IngestOhlcvCommand } from '@quantbot/core';
-import { createOhlcvIngestionWorkflowAdapter } from '@quantbot/workflows';
-import { createOhlcvIngestionContext } from '@quantbot/workflows';
-import type { ClockPort } from '@quantbot/core';
-import { OhlcvFetchJob } from '@quantbot/jobs';
+import { ingestOhlcv, createOhlcvIngestionContext } from '@quantbot/workflows';
+import type { IngestOhlcvSpec } from '@quantbot/workflows';
 import type { CommandContext } from '../../core/command-context.js';
 import { ohlcvSchema } from '../../commands/ingestion.js';
 import type { z } from 'zod';
@@ -28,12 +25,6 @@ import type { z } from 'zod';
  */
 export type IngestOhlcvArgs = z.infer<typeof ohlcvSchema>;
 
-/**
- * System clock adapter (composition root - allowed to use Date.now())
- */
-const systemClock: ClockPort = {
-  nowMs: () => Date.now(),
-};
 
 /**
  * CLI handler: composition root (env + fs + wiring)
@@ -56,42 +47,36 @@ export async function ingestOhlcvHandler(args: IngestOhlcvArgs, _ctx: CommandCon
   }
   const duckdbPath = path.resolve(duckdbPathRaw);
 
-  // Build command (all paths absolute, no env vars)
-  const cmd: IngestOhlcvCommand = {
+  // Map interval to workflow format (workflow only accepts '15s', '1m', '5m', '1H')
+  let workflowInterval: '15s' | '1m' | '5m' | '1H' | undefined = args.interval;
+  if (args.interval === '15m') {
+    workflowInterval = '5m'; // 15m maps to 5m (workflow doesn't support 15m)
+  } else if (args.interval === '1h') {
+    workflowInterval = '1H'; // 1h maps to 1H (uppercase H)
+  }
+
+  // Build workflow spec (all paths absolute, no env vars)
+  const spec: IngestOhlcvSpec = {
     duckdbPath,
     from: args.from,
     to: args.to,
-    interval: args.interval,
+    interval: workflowInterval,
     preWindowMinutes: args.preWindow,
     postWindowMinutes: args.postWindow,
+    side: 'buy', // Default side
+    errorMode: 'collect',
+    checkCoverage: true,
+    rateLimitMs: process.env.BIRDEYE_RATE_LIMIT_MS_PER_WORKER
+      ? parseInt(process.env.BIRDEYE_RATE_LIMIT_MS_PER_WORKER, 10)
+      : 330,
+    maxRetries: 3,
   };
 
-  // Wire adapters (composition root)
-  const parallelWorkers = process.env.BIRDEYE_PARALLEL_WORKERS
-    ? parseInt(process.env.BIRDEYE_PARALLEL_WORKERS, 10)
-    : 16;
-  const rateLimitMsPerWorker = process.env.BIRDEYE_RATE_LIMIT_MS_PER_WORKER
-    ? parseInt(process.env.BIRDEYE_RATE_LIMIT_MS_PER_WORKER, 10)
-    : 330;
+  // Create workflow context with ports
+  const workflowCtx = await createOhlcvIngestionContext();
 
-  const workflowCtx = createOhlcvIngestionContext({
-    ohlcvFetchJob: new OhlcvFetchJob({
-      parallelWorkers,
-      rateLimitMsPerWorker,
-      maxRetries: 3,
-      checkCoverage: true,
-    }),
-  });
-
-  const ports = {
-    ohlcvIngestion: createOhlcvIngestionWorkflowAdapter(workflowCtx),
-    clock: systemClock,
-  };
-
-  // Call pure handler (no I/O, no env, no time globals)
-  const output = await ingestOhlcvHandler(cmd, ports, {
-    correlationId: 'cli:ingest-ohlcv',
-  });
+  // Call workflow directly (uses ports internally)
+  const output = await ingestOhlcv(spec, workflowCtx);
 
   // Presentation belongs here (composition root)
   if (args.format === 'json') {
@@ -105,47 +90,32 @@ export async function ingestOhlcvHandler(args: IngestOhlcvArgs, _ctx: CommandCon
 /**
  * Build summary format for display
  */
-function buildSummary(output: Awaited<ReturnType<typeof ingestOhlcvHandler>>): unknown {
-  const result = output.result;
-  const summary = result.summary as {
-    worklistGenerated?: number;
-    workItemsProcessed?: number;
-    workItemsSucceeded?: number;
-    workItemsFailed?: number;
-    workItemsSkipped?: number;
-    totalCandlesFetched?: number;
-    totalCandlesStored?: number;
-    durationMs?: number;
-  };
-
+function buildSummary(output: Awaited<ReturnType<typeof ingestOhlcv>>): unknown {
   const successRate =
-    (summary.workItemsProcessed ?? 0) > 0
-      ? ((summary.workItemsSucceeded ?? 0) / (summary.workItemsProcessed ?? 1)) * 100
+    (output.workItemsProcessed ?? 0) > 0
+      ? ((output.workItemsSucceeded ?? 0) / (output.workItemsProcessed ?? 1)) * 100
       : 0;
 
   return [
     {
       type: 'SUMMARY',
-      worklistGenerated: summary.worklistGenerated ?? 0,
-      workItemsProcessed: summary.workItemsProcessed ?? 0,
-      workItemsSucceeded: summary.workItemsSucceeded ?? 0,
-      workItemsFailed: summary.workItemsFailed ?? 0,
-      workItemsSkipped: summary.workItemsSkipped ?? 0,
+      worklistGenerated: output.worklistGenerated ?? 0,
+      workItemsProcessed: output.workItemsProcessed ?? 0,
+      workItemsSucceeded: output.workItemsSucceeded ?? 0,
+      workItemsFailed: output.workItemsFailed ?? 0,
+      workItemsSkipped: output.workItemsSkipped ?? 0,
       successRate: `${successRate.toFixed(1)}%`,
-      totalCandlesFetched: summary.totalCandlesFetched ?? 0,
-      totalCandlesStored: summary.totalCandlesStored ?? 0,
-      errors: result.errors?.length ?? 0,
-      durationMs: summary.durationMs ?? 0,
+      totalCandlesFetched: output.totalCandlesFetched ?? 0,
+      totalCandlesStored: output.totalCandlesStored ?? 0,
+      errors: output.errors?.length ?? 0,
+      durationMs: output.durationMs ?? 0,
     },
-    ...(result.errors && result.errors.length > 0
-      ? result.errors.map((error) => ({
+    ...(output.errors && output.errors.length > 0
+      ? output.errors.map((error) => ({
           type: 'ERROR',
-          mint: error.context?.mint
-            ? String(error.context.mint).substring(0, 20) +
-              (String(error.context.mint).length > 20 ? '...' : '')
-            : 'unknown',
-          chain: error.context?.chain ?? 'unknown',
-          error: error.message,
+          mint: error.mint ? String(error.mint).substring(0, 20) + (String(error.mint).length > 20 ? '...' : '') : 'unknown',
+          chain: error.chain ?? 'unknown',
+          error: error.error,
         }))
       : []),
   ];

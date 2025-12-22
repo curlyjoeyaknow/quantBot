@@ -1,6 +1,12 @@
 /**
  * StrategyEngine - Pure simulation engine for Golden Path
  *
+ * @deprecated This module uses the legacy Call model and is not recommended for new code.
+ * Use runOverlaySimulation() from overlay-simulation.ts instead, which works with CallSignal.
+ *
+ * This module is kept for backwards compatibility but should not be used in new workflows.
+ * It will be removed or refactored to use CallSignal in a future version.
+ *
  * Wraps the existing simulateStrategy function to work with Golden Path types.
  * This is a pure function - no DB, no side effects, deterministic.
  */

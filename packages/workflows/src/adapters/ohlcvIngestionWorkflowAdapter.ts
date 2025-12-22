@@ -9,7 +9,7 @@ import type { OhlcvIngestionPort, IngestOhlcvSpec, IngestOhlcvResult } from '@qu
 import type { WorkflowContext } from '../types.js';
 import { ingestOhlcv, type IngestOhlcvResult as WorkflowResult } from '../ohlcv/ingestOhlcv.js';
 import { createOhlcvIngestionContext } from '../context/createOhlcvIngestionContext.js';
-import { OhlcvFetchJob } from '@quantbot/jobs';
+// OhlcvFetchJob removed - workflow now uses ports directly
 
 /**
  * Creates an OHLCV Ingestion adapter that implements the port interface
@@ -30,17 +30,10 @@ export function createOhlcvIngestionWorkflowAdapter(
 ): OhlcvIngestionPort {
   return {
     async ingest(spec: IngestOhlcvSpec): Promise<IngestOhlcvResult> {
-      // Create workflow context with fetch job service if not provided
+      // Create workflow context (async - uses ports, no OhlcvFetchJob needed)
       const workflowCtx = ctx
-        ? createOhlcvIngestionContext({
-            ohlcvFetchJob: new OhlcvFetchJob({
-              parallelWorkers: options?.parallelWorkers ?? 16,
-              rateLimitMsPerWorker: options?.rateLimitMsPerWorker ?? 330,
-              maxRetries: spec.maxRetries ?? options?.maxRetries ?? 3,
-              checkCoverage: spec.checkCoverage ?? options?.checkCoverage ?? true,
-            }),
-          })
-        : createOhlcvIngestionContext();
+        ? await createOhlcvIngestionContext()
+        : await createOhlcvIngestionContext();
 
       // Map port spec to workflow spec (chain: 'evm' -> 'ethereum')
       const workflowSpec = {

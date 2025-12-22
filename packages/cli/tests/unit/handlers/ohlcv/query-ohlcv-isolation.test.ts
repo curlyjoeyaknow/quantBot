@@ -10,7 +10,7 @@
  */
 
 import { describe, it, expect, vi } from 'vitest';
-import { queryOhlcvHandler } from '../../../../src/handlers/ohlcv/query-ohlcv.js';
+import { queryOhlcvHandler } from '../../../../src/commands/ohlcv/query-ohlcv.js';
 
 describe('queryOhlcvHandler - Isolation Test', () => {
   it('can be called with plain objects (no CLI infrastructure)', async () => {

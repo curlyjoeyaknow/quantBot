@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { generateReportDuckdbHandler } from '../../../../src/handlers/simulation/generate-report-duckdb.js';
+import { generateReportDuckdbHandler } from '../../../../src/commands/simulation/generate-report-duckdb.js';
 import type { CommandContext } from '../../../../src/core/command-context.js';
 
 describe('generateReportDuckdbHandler', () => {
