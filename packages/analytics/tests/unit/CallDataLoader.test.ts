@@ -47,7 +47,7 @@ describe('CallDataLoader', () => {
 
   describe('loadCalls', () => {
     beforeEach(() => {
-      mockCreateProductionContext.mockReturnValue({
+      mockCreateQueryCallsDuckdbContext.mockResolvedValue({
         services: {},
         logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() },
       });

@@ -29,4 +29,3 @@ export class PerfectFillModel implements ExecutionModelInterface {
     return this.config;
   }
 }
-

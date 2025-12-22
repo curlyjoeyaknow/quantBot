@@ -103,7 +103,7 @@ export interface ExecutionResult {
 export interface ExecutionModelInterface {
   /**
    * Execute a trade
-   * 
+   *
    * @param trade - Trade request
    * @param rng - Deterministic random number generator
    * @returns Execution result
@@ -115,4 +115,3 @@ export interface ExecutionModelInterface {
    */
   getConfig(): ExecutionModel;
 }
-

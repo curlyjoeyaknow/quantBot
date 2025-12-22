@@ -20,7 +20,10 @@ import * as os from 'os';
  */
 function createTempFile(content: string): string {
   const tmpDir = os.tmpdir();
-  const tmpFile = path.join(tmpDir, `overlay-test-${Date.now()}-${Math.random().toString(36).substring(7)}.json`);
+  const tmpFile = path.join(
+    tmpDir,
+    `overlay-test-${Date.now()}-${Math.random().toString(36).substring(7)}.json`
+  );
   fs.writeFileSync(tmpFile, content, 'utf8');
   return tmpFile;
 }
@@ -139,8 +142,12 @@ describe('Overlay Parser - Fuzzing Tests', () => {
     it('handles special characters in overlay IDs', () => {
       const specialCases = [
         JSON.stringify([{ id: 'set-🚀', overlays: [{ kind: 'take_profit', takePct: 100 }] }]),
-        JSON.stringify([{ id: 'set-with\n-newline', overlays: [{ kind: 'take_profit', takePct: 100 }] }]),
-        JSON.stringify([{ id: 'set-with-unicode-\\u2028', overlays: [{ kind: 'take_profit', takePct: 100 }] }]),
+        JSON.stringify([
+          { id: 'set-with\n-newline', overlays: [{ kind: 'take_profit', takePct: 100 }] },
+        ]),
+        JSON.stringify([
+          { id: 'set-with-unicode-\\u2028', overlays: [{ kind: 'take_profit', takePct: 100 }] },
+        ]),
       ];
 
       specialCases.forEach((json) => {
@@ -158,4 +165,3 @@ describe('Overlay Parser - Fuzzing Tests', () => {
     });
   });
 });
-
