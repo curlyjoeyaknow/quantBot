@@ -1,9 +1,13 @@
 ---
-description: Root-level rules for QuantBot monorepo - global conventions, package structure, critical rules
+description: Root-level rules for QuantBot monorepo - global conventions, package structure, critical rules (DEPRECATED)
 globs:
   - "**/*"
-alwaysApply: true
+alwaysApply: false
 ---
+
+# QuantBot Root Rules (DEPRECATED)
+
+> **⚠️ This file is deprecated. See `60-quantbot-conventions.mdc` for the current QuantBot conventions.**
 
 # QuantBot Root Rules
 

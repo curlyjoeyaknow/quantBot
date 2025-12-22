@@ -8,9 +8,9 @@ import { commandRegistry } from '../core/command-registry.js';
 import { execute } from '../core/execute.js';
 import type { CommandContext } from '../core/command-context.js';
 import { NotFoundError } from '@quantbot/utils';
-import { healthObservabilityHandler } from '../handlers/observability/health-observability.js';
-import { quotasObservabilityHandler } from '../handlers/observability/quotas-observability.js';
-import { errorsObservabilityHandler } from '../handlers/observability/errors-observability.js';
+import { healthObservabilityHandler } from './observability/health-observability.js';
+import { quotasObservabilityHandler } from './observability/quotas-observability.js';
+import { errorsObservabilityHandler } from './observability/errors-observability.js';
 import { healthSchema, quotasSchema, errorsSchema } from '../command-defs/observability.js';
 import type { PackageCommandModule } from '../types/index.js';
 

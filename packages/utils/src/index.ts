@@ -15,15 +15,16 @@
 
 // Logger and logging utilities
 // Centralized logging system
-export { logger, Logger, LogLevel, LogContext, winstonLogger, createLogger } from './logger.js';
+export { logger, Logger, LogLevel, winstonLogger, createLogger } from './logger.js';
+export type { LogContext } from './logger.js';
 export {
   createRequestId,
   logRequest,
   logResponse,
   logError,
   logPerformance,
-  RequestContext,
 } from './logging-middleware.js';
+export type { RequestContext } from './logging-middleware.js';
 
 // Package-aware logging
 export * from './logging/index.js';

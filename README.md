@@ -8,6 +8,7 @@
 **A modular analytics and backtesting pipeline for Solana token trading strategies.**
 
 This repository is primarily an **analytics & simulation engine** with a clean three-layer architecture:
+
 - **Pure Compute** - Deterministic simulation with no I/O
 - **Orchestration** - Workflows that coordinate storage, services, and I/O
 - **Adapters** - CLI/TUI/API that translate user intent to workflow specs
@@ -220,15 +221,15 @@ Packages must be built in dependency order:
 pnpm build:ordered
 ```
 
-| Position | Package | Dependencies |
-|----------|---------|--------------|
-| 1 | core | None |
-| 2 | utils | core |
-| 3-5 | storage, observability, api-clients | utils, core |
-| 6-8 | ohlcv, analytics, ingestion | service deps |
-| 9 | simulation | utils, core (pure compute) |
-| 10 | workflows | all services |
-| 11+ | cli, tui, etc. | all packages |
+| Position | Package                             | Dependencies               |
+| -------- | ----------------------------------- | -------------------------- |
+| 1        | core                                | None                       |
+| 2        | utils                               | core                       |
+| 3-5      | storage, observability, api-clients | utils, core                |
+| 6-8      | ohlcv, analytics, ingestion         | service deps               |
+| 9        | simulation                          | utils, core (pure compute) |
+| 10       | workflows                           | all services               |
+| 11+      | cli, tui, etc.                      | all packages               |
 
 See **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** for detailed architecture documentation.
 
@@ -527,7 +528,7 @@ All multi-step business logic goes through workflows:
 // CLI handler (thin adapter)
 async function myHandler(args: Args, ctx: CommandContext) {
   const service = ctx.services.myService();
-  return service.doSomething(args);  // Returns data, not formatted output
+  return service.doSomething(args); // Returns data, not formatted output
 }
 
 // Workflow (orchestrates I/O)
@@ -535,7 +536,7 @@ async function runMyWorkflow(spec: Spec, ctx: WorkflowContext) {
   const data = await ctx.repos.calls.findByRange(spec.from, spec.to);
   const result = await ctx.simulation.run(data, spec.strategy);
   await ctx.repos.runs.save(result);
-  return { success: true, runId: result.id };  // JSON-serializable
+  return { success: true, runId: result.id }; // JSON-serializable
 }
 ```
 

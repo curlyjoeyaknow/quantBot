@@ -286,5 +286,164 @@ describe('OHLCV Work Planning', () => {
         side: 'sell',
       });
     });
+
+    it('should filter worklist by specific mints when provided', async () => {
+      const duckdbPath = '/path/to/duckdb';
+      const targetMints = [
+        '7pXs123456789012345678901234567890pump',
+        '8pXs123456789012345678901234567890pump',
+      ];
+      const otherMint = '9pXs123456789012345678901234567890pump';
+
+      const mockWorklist = {
+        tokenGroups: [
+          {
+            mint: targetMints[0],
+            chain: 'solana',
+            earliestAlertTime: '2024-01-01T12:00:00Z',
+            callCount: 5,
+          },
+          {
+            mint: targetMints[1],
+            chain: 'solana',
+            earliestAlertTime: '2024-01-01T14:00:00Z',
+            callCount: 3,
+          },
+          {
+            mint: otherMint, // Should be filtered out
+            chain: 'solana',
+            earliestAlertTime: '2024-01-01T16:00:00Z',
+            callCount: 2,
+          },
+        ],
+        calls: [],
+      };
+
+      mockPythonEngine.runOhlcvWorklist.mockResolvedValue(mockWorklist);
+
+      const workItems = await generateOhlcvWorklist(duckdbPath, {
+        mints: targetMints,
+      });
+
+      // Should only return work items for the specified mints (filtering happens in TypeScript)
+      expect(workItems).toHaveLength(2);
+      expect(workItems.map((w) => w.mint)).toEqual(targetMints);
+      expect(workItems.map((w) => w.mint)).not.toContain(otherMint);
+
+      // Verify Python engine was called WITHOUT mints (filtering happens in TypeScript)
+      expect(mockPythonEngine.runOhlcvWorklist).toHaveBeenCalledWith(
+        expect.objectContaining({
+          duckdbPath: expect.stringContaining('duckdb'),
+        })
+      );
+      expect(mockPythonEngine.runOhlcvWorklist).not.toHaveBeenCalledWith(
+        expect.objectContaining({ mints: expect.anything() })
+      );
+    });
+
+    it('should handle empty mint filter (return all mints)', async () => {
+      const mockWorklist = {
+        tokenGroups: [
+          {
+            mint: 'mint1',
+            chain: 'solana',
+            earliestAlertTime: '2024-01-01T12:00:00Z',
+            callCount: 1,
+          },
+          {
+            mint: 'mint2',
+            chain: 'solana',
+            earliestAlertTime: '2024-01-01T14:00:00Z',
+            callCount: 1,
+          },
+        ],
+        calls: [],
+      };
+
+      mockPythonEngine.runOhlcvWorklist.mockResolvedValue(mockWorklist);
+
+      const workItems = await generateOhlcvWorklist('/path/to/duckdb', {
+        mints: [], // Empty array = no filter
+      });
+
+      // Should return all work items when mints array is empty (empty array = no filter)
+      expect(workItems).toHaveLength(2);
+      // Python engine should be called without mints parameter (empty array means no filter)
+      expect(mockPythonEngine.runOhlcvWorklist).toHaveBeenCalledWith(
+        expect.objectContaining({
+          duckdbPath: expect.stringContaining('duckdb'),
+        })
+      );
+      expect(mockPythonEngine.runOhlcvWorklist).not.toHaveBeenCalledWith(
+        expect.objectContaining({ mints: expect.anything() })
+      );
+    });
+
+    it('should handle undefined mints (no filter)', async () => {
+      const mockWorklist = {
+        tokenGroups: [
+          {
+            mint: 'mint1',
+            chain: 'solana',
+            earliestAlertTime: '2024-01-01T12:00:00Z',
+            callCount: 1,
+          },
+        ],
+        calls: [],
+      };
+
+      mockPythonEngine.runOhlcvWorklist.mockResolvedValue(mockWorklist);
+
+      const workItems = await generateOhlcvWorklist('/path/to/duckdb', {});
+
+      // Should return all work items when mints is undefined
+      expect(workItems).toHaveLength(1);
+      expect(mockPythonEngine.runOhlcvWorklist).toHaveBeenCalledWith({
+        duckdbPath: '/path/to/duckdb',
+      });
+      expect(mockPythonEngine.runOhlcvWorklist).not.toHaveBeenCalledWith(
+        expect.objectContaining({ mints: expect.anything() })
+      );
+    });
+
+    it('should preserve mint address case exactly when filtering', async () => {
+      const mixedCaseMint = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
+      const lowerCaseMint = mixedCaseMint.toLowerCase();
+      const upperCaseMint = mixedCaseMint.toUpperCase();
+
+      const mockWorklist = {
+        tokenGroups: [
+          {
+            mint: mixedCaseMint, // Mixed case
+            chain: 'solana',
+            earliestAlertTime: '2024-01-01T12:00:00Z',
+            callCount: 1,
+          },
+        ],
+        calls: [],
+      };
+
+      mockPythonEngine.runOhlcvWorklist.mockResolvedValue(mockWorklist);
+
+      const workItems = await generateOhlcvWorklist('/path/to/duckdb', {
+        mints: [mixedCaseMint], // Pass exact case
+      });
+
+      // Should preserve exact case (filtering happens in TypeScript with exact case match)
+      expect(workItems).toHaveLength(1);
+      expect(workItems[0].mint).toBe(mixedCaseMint);
+      expect(workItems[0].mint).not.toBe(lowerCaseMint);
+      expect(workItems[0].mint).not.toBe(upperCaseMint);
+
+      // Verify Python engine was called without mints (filtering happens in TypeScript)
+      expect(mockPythonEngine.runOhlcvWorklist).toHaveBeenCalledWith(
+        expect.objectContaining({
+          duckdbPath: expect.stringContaining('duckdb'),
+        })
+      );
+      expect(mockPythonEngine.runOhlcvWorklist).not.toHaveBeenCalledWith(
+        expect.objectContaining({ mints: expect.anything() })
+      );
+    });
   });
 });

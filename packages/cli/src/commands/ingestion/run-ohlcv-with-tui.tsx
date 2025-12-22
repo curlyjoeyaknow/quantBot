@@ -10,12 +10,12 @@ import { resolve } from 'path';
 import { ConfigurationError } from '@quantbot/utils';
 import { ingestOhlcv, createOhlcvIngestionContext } from '@quantbot/workflows';
 import type { IngestOhlcvSpec } from '@quantbot/workflows';
-import { OhlcvBirdeyeFetch } from '@quantbot/jobs';
+import { OhlcvFetchJob } from '@quantbot/jobs';
 import { OhlcvRepository } from '@quantbot/storage';
 import { DuckDBStorageService } from '@quantbot/simulation';
 import { PythonEngine } from '@quantbot/utils';
 import { OhlcvIngestionTuiApp, OhlcvIngestionEventEmitter } from './ohlcv-tui.js';
-import type { IngestOhlcvArgs } from '../../handlers/ingestion/ingest-ohlcv.js';
+import type { IngestOhlcvArgs } from '../ingestion/ingest-ohlcv.js';
 import { Chain } from 'src/core/address-validator.js';
 
 /**
@@ -66,21 +66,29 @@ export async function runOhlcvIngestionWithTui(args: IngestOhlcvArgs): Promise<v
   const duckdbStorage = new DuckDBStorageService(pythonEngine);
 
   // Create workflow context with event emitter wrapper
-  const ohlcvBirdeyeFetch = new OhlcvBirdeyeFetch({
-    rateLimitMs: spec.rateLimitMs,
+  const parallelWorkers = process.env.BIRDEYE_PARALLEL_WORKERS
+    ? parseInt(process.env.BIRDEYE_PARALLEL_WORKERS, 10)
+    : 16;
+  const rateLimitMsPerWorker = process.env.BIRDEYE_RATE_LIMIT_MS_PER_WORKER
+    ? parseInt(process.env.BIRDEYE_RATE_LIMIT_MS_PER_WORKER, 10)
+    : 330;
+
+  const ohlcvFetchJob = new OhlcvFetchJob({
+    parallelWorkers,
+    rateLimitMsPerWorker,
     maxRetries: spec.maxRetries,
     checkCoverage: spec.checkCoverage,
   });
 
   // Create base context
   const baseContext = createOhlcvIngestionContext({
-    ohlcvBirdeyeFetch,
+    ohlcvFetchJob,
     duckdbStorage,
   });
 
   // Wrap fetchWorkList to emit events
-  const originalFetchWorkList = baseContext.jobs.ohlcvBirdeyeFetch.fetchWorkList;
-  baseContext.jobs.ohlcvBirdeyeFetch.fetchWorkList = async (worklist) => {
+  const originalFetchWorkList = baseContext.jobs.ohlcvFetchJob.fetchWorkList;
+  baseContext.jobs.ohlcvFetchJob.fetchWorkList = async (worklist) => {
     eventEmitter.emitEvent({
       type: 'worklist_generated',
       metadata: { count: worklist.length },
@@ -102,17 +110,7 @@ export async function runOhlcvIngestionWithTui(args: IngestOhlcvArgs): Promise<v
         endTime: workItem.endTime?.toISO() || undefined,
       });
 
-      if (result.skipped) {
-        eventEmitter.emitEvent({
-          type: 'fetch_skipped',
-          mint: workItem.mint,
-          chain: workItem.chain,
-          interval: workItem.interval,
-          alertTime: workItem.alertTime?.toISO() || undefined,
-          candlesFetched: result.candlesFetched,
-          metadata: { reason: 'coverage' },
-        });
-      } else if (result.success) {
+      if (result.success) {
         eventEmitter.emitEvent({
           type: 'fetch_success',
           mint: workItem.mint,
@@ -121,7 +119,8 @@ export async function runOhlcvIngestionWithTui(args: IngestOhlcvArgs): Promise<v
           alertTime: workItem.alertTime?.toISO() || undefined,
           startTime: workItem.startTime?.toISO() || undefined,
           endTime: workItem.endTime?.toISO() || undefined,
-          candlesFetched: result.candles.length,
+          candlesFetched: result.candlesFetched,
+          candlesStored: result.candlesStored,
           durationMs: result.durationMs,
         });
       } else {

@@ -339,6 +339,110 @@ describe('OHLCV Work Planning - Golden Path', () => {
       expect(workItems[0].mint).toBe('9pXs123456789012345678901234567890pump');
     });
 
+    it('should filter worklist by specific mints when provided', async () => {
+      const targetMints = [
+        '8pXs123456789012345678901234567890pump',
+        '9pXs123456789012345678901234567890pump',
+      ];
+
+      // Create test data with multiple mints
+      await createTestDuckDB(TEST_DUCKDB_PATH, [
+        {
+          mint: targetMints[0],
+          chain: 'solana',
+          triggerTsMs: DateTime.fromISO('2024-01-01T12:00:00Z').toMillis(),
+        },
+        {
+          mint: targetMints[1],
+          chain: 'solana',
+          triggerTsMs: DateTime.fromISO('2024-01-01T14:00:00Z').toMillis(),
+        },
+        {
+          mint: '7pXs123456789012345678901234567890pump', // Should be filtered out
+          chain: 'solana',
+          triggerTsMs: DateTime.fromISO('2024-01-01T16:00:00Z').toMillis(),
+        },
+      ]);
+
+      const workItems = await generateOhlcvWorklist(TEST_DUCKDB_PATH, {
+        mints: targetMints, // Filter by specific mints
+      });
+
+      // Should only return work items for the specified mints
+      expect(workItems.length).toBeGreaterThanOrEqual(2);
+      const workItemMints = workItems.map((w) => w.mint);
+      targetMints.forEach((mint) => {
+        expect(workItemMints).toContain(mint);
+      });
+      expect(workItemMints).not.toContain('7pXs123456789012345678901234567890pump');
+    });
+
+    it('should filter by mints combined with date range', async () => {
+      const targetMint = '8pXs123456789012345678901234567890pump';
+      const from = new Date('2024-01-01');
+      const to = new Date('2024-01-02');
+
+      // Create test data with dates in and out of range
+      await createTestDuckDB(TEST_DUCKDB_PATH, [
+        {
+          mint: targetMint,
+          chain: 'solana',
+          triggerTsMs: DateTime.fromISO('2024-01-01T12:00:00Z').toMillis(), // In range
+        },
+        {
+          mint: targetMint,
+          chain: 'solana',
+          triggerTsMs: DateTime.fromISO('2024-01-03T12:00:00Z').toMillis(), // Out of range
+        },
+        {
+          mint: 'otherMint',
+          chain: 'solana',
+          triggerTsMs: DateTime.fromISO('2024-01-01T12:00:00Z').toMillis(), // In range but different mint
+        },
+      ]);
+
+      const workItems = await generateOhlcvWorklist(TEST_DUCKDB_PATH, {
+        from,
+        to,
+        mints: [targetMint], // Filter by mint AND date range
+      });
+
+      // Should only return work items for target mint within date range
+      expect(workItems.length).toBeGreaterThan(0);
+      workItems.forEach((item) => {
+        expect(item.mint).toBe(targetMint);
+        // Alert time should be within date range
+        const alertTime = item.alertTime.toMillis();
+        expect(alertTime).toBeGreaterThanOrEqual(from.getTime());
+        expect(alertTime).toBeLessThanOrEqual(to.getTime() + 86400000); // Add 1 day margin
+      });
+
+      // Should not include other mint
+      expect(workItems.map((w) => w.mint)).not.toContain('otherMint');
+    });
+
+    it('should preserve mint address case exactly when filtering', async () => {
+      const mixedCaseMint = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
+
+      await createTestDuckDB(TEST_DUCKDB_PATH, [
+        {
+          mint: mixedCaseMint, // Mixed case
+          chain: 'solana',
+          triggerTsMs: DateTime.fromISO('2024-01-01T12:00:00Z').toMillis(),
+        },
+      ]);
+
+      const workItems = await generateOhlcvWorklist(TEST_DUCKDB_PATH, {
+        mints: [mixedCaseMint], // Pass exact case
+      });
+
+      // Should preserve exact case
+      expect(workItems.length).toBeGreaterThan(0);
+      expect(workItems[0].mint).toBe(mixedCaseMint);
+      expect(workItems[0].mint).not.toBe(mixedCaseMint.toLowerCase());
+      expect(workItems[0].mint).not.toBe(mixedCaseMint.toUpperCase());
+    });
+
     it('should handle Python engine errors gracefully', async () => {
       mockPythonEngine.runOhlcvWorklist.mockRejectedValue(new Error('DuckDB connection failed'));
 

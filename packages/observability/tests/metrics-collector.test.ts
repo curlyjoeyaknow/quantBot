@@ -6,7 +6,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { MetricsCollector, getMetricsCollector, startTimer } from '../src/metrics-collector';
-import type { ApplicationEvent } from '@quantbot/utils/src/events/EventTypes';
+import type { ApplicationEvent } from '@quantbot/utils';
 
 // Mock the InfluxDB writer - must return same instance
 const mockWriterSingleton = {

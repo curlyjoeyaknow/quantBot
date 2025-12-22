@@ -13,6 +13,20 @@ from .query_ohlcv_metadata import QueryOhlcvMetadataInput, QueryOhlcvMetadataOut
 from .add_ohlcv_exclusion import AddOhlcvExclusionInput, AddOhlcvExclusionOutput, run as add_ohlcv_exclusion_run
 from .query_ohlcv_exclusions import QueryOhlcvExclusionsInput, QueryOhlcvExclusionsOutput, run as query_ohlcv_exclusions_run
 from .generate_report import GenerateReportInput, GenerateReportOutput, run as generate_report_run
+from .state_ops import (
+    GetStateInput,
+    GetStateOutput,
+    get_state_run,
+    SetStateInput,
+    SetStateOutput,
+    set_state_run,
+    DeleteStateInput,
+    DeleteStateOutput,
+    delete_state_run,
+    InitStateTableInput,
+    InitStateTableOutput,
+    init_state_table_run,
+)
 
 __all__ = [
     # Store strategy
@@ -47,4 +61,17 @@ __all__ = [
     "GenerateReportInput",
     "GenerateReportOutput",
     "generate_report_run",
+    # State operations
+    "GetStateInput",
+    "GetStateOutput",
+    "get_state_run",
+    "SetStateInput",
+    "SetStateOutput",
+    "set_state_run",
+    "DeleteStateInput",
+    "DeleteStateOutput",
+    "delete_state_run",
+    "InitStateTableInput",
+    "InitStateTableOutput",
+    "init_state_table_run",
 ]

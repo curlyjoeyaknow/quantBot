@@ -12,11 +12,12 @@ import type { Command } from 'commander';
 import { z } from 'zod';
 import type { PackageCommandModule } from '../types/index.js';
 import { commandRegistry } from '../core/command-registry.js';
-import { ingestOhlcvHandler } from '../handlers/ingestion/ingest-ohlcv.js';
+import { ingestOhlcvHandler } from './ingestion/ingest-ohlcv.js';
 import type { CommandContext } from '../core/command-context.js';
-import { ingestTelegramHandler } from '../handlers/ingestion/ingest-telegram.js';
-import { processTelegramPythonHandler } from '../handlers/ingestion/process-telegram-python.js';
-import { validateAddressesHandler } from '../handlers/ingestion/validate-addresses.js';
+import { ingestTelegramHandler } from './ingestion/ingest-telegram.js';
+import { processTelegramPythonHandler } from './ingestion/process-telegram-python.js';
+import { validateAddressesHandler } from './ingestion/validate-addresses.js';
+import { surgicalOhlcvFetchHandler } from './ingestion/surgical-ohlcv-fetch.js';
 import { NotFoundError } from '@quantbot/utils';
 
 /**
@@ -43,6 +44,33 @@ export const ohlcvSchema = z.object({
   duckdb: z.string().optional(), // Path to DuckDB database file
   candles: z.number().int().positive().default(5000), // Number of candles to fetch
   startOffsetMinutes: z.number().int().default(-52), // Minutes before alert to start fetching
+});
+
+/**
+ * Surgical OHLCV fetch schema
+ */
+export const surgicalOhlcvFetchSchema = z.object({
+  duckdb: z.string().optional(), // Path to DuckDB database file
+  interval: z.enum(['1m', '5m', '15m', '1h']).default('5m'),
+  caller: z.string().optional(),
+  month: z
+    .string()
+    .regex(/^\d{4}-\d{2}$/)
+    .optional(), // YYYY-MM format
+  startMonth: z
+    .string()
+    .regex(/^\d{4}-\d{2}$/)
+    .optional(),
+  endMonth: z
+    .string()
+    .regex(/^\d{4}-\d{2}$/)
+    .optional(),
+  auto: z.boolean().default(false),
+  limit: z.number().int().positive().default(10),
+  minCoverage: z.number().min(0).max(1).default(0.8),
+  dryRun: z.boolean().default(false),
+  verbose: z.boolean().default(false),
+  format: z.enum(['json', 'table', 'csv']).default('table'),
 });
 
 /**
@@ -167,6 +195,45 @@ export function registerIngestionCommands(program: Command): void {
       }
       await execute(commandDef, { ...options, addresses });
     });
+
+  // Surgical OHLCV fetch
+  ingestionCmd
+    .command('surgical-fetch')
+    .description('Surgical OHLCV fetching based on caller coverage analysis')
+    .option('--duckdb <path>', 'Path to DuckDB database')
+    .option('--interval <interval>', 'OHLCV interval', '5m')
+    .option('--caller <name>', 'Specific caller to fetch for')
+    .option('--month <YYYY-MM>', 'Specific month to fetch for')
+    .option('--start-month <YYYY-MM>', 'Start month for analysis')
+    .option('--end-month <YYYY-MM>', 'End month for analysis')
+    .option('--auto', 'Automatically fetch for top priority gaps')
+    .option('--limit <number>', 'Limit number of tasks in auto mode', '10')
+    .option('--min-coverage <ratio>', 'Minimum coverage threshold (0-1)', '0.8')
+    .option('--dry-run', 'Show what would be fetched without actually fetching')
+    .option('--verbose', 'Show verbose progress output and progress bars')
+    .option('--format <format>', 'Output format', 'table')
+    .action(async (options) => {
+      console.error('[ACTION START] surgical-fetch action called');
+      console.error('[ACTION] options.verbose:', options.verbose, typeof options.verbose);
+      const { execute } = await import('../core/execute.js');
+      const commandDef = commandRegistry.getCommand('ingestion', 'surgical-fetch');
+      if (!commandDef) {
+        throw new NotFoundError('Command', 'ingestion.surgical-fetch');
+      }
+      // Debug: Check verbose flag
+      const verboseFlag = options.verbose === true || options.verbose === 'true';
+      if (verboseFlag) {
+        console.error('[DEBUG] Verbose flag detected in action handler');
+      }
+      await execute(commandDef, {
+        ...options,
+        auto: options.auto === true || options.auto === 'true',
+        dryRun: options.dryRun === true || options.dryRun === 'true',
+        verbose: verboseFlag,
+        limit: options.limit ? parseInt(options.limit) : 10,
+        minCoverage: options.minCoverage ? parseFloat(options.minCoverage) : 0.8,
+      });
+    });
 }
 
 /**
@@ -223,6 +290,22 @@ const ingestionModule: PackageCommandModule = {
       examples: [
         'quantbot ingestion validate-addresses 0x123... So111...',
         'quantbot ingestion validate-addresses 0x123... --chain-hint base',
+      ],
+    },
+    {
+      name: 'surgical-fetch',
+      description: 'Surgical OHLCV fetching based on caller coverage analysis',
+      schema: surgicalOhlcvFetchSchema,
+      handler: async (args: unknown, ctx: unknown) => {
+        const typedCtx = ctx as CommandContext;
+        const typedArgs = args as z.infer<typeof surgicalOhlcvFetchSchema>;
+        return await surgicalOhlcvFetchHandler(typedArgs, typedCtx);
+      },
+      examples: [
+        'quantbot ingestion surgical-fetch --auto --limit 20',
+        'quantbot ingestion surgical-fetch --caller Brook --month 2025-07',
+        'quantbot ingestion surgical-fetch --caller Brook',
+        'quantbot ingestion surgical-fetch --month 2025-07',
       ],
     },
   ],

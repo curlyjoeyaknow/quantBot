@@ -15,10 +15,10 @@ import type { WorkflowContext } from '../types.js';
 import type { SimulationService, DuckDBStorageService } from '@quantbot/simulation';
 import type { OhlcvIngestionService } from '@quantbot/ingestion';
 import { createOhlcvIngestionContext } from './createOhlcvIngestionContext.js';
-// Dynamic import type for OhlcvBirdeyeFetch (jobs package)
+// Dynamic import type for OhlcvFetchJob (jobs package)
 // Using type assertion to bypass module resolution
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-type OhlcvBirdeyeFetch = any;
+type OhlcvFetchJob = any;
 
 export interface DuckdbSimulationContextConfig extends ProductionContextConfig {
   /**
@@ -34,9 +34,10 @@ export interface DuckdbSimulationContextConfig extends ProductionContextConfig {
    */
   ohlcvIngestionService?: OhlcvIngestionService;
   /**
-   * Optional OHLCV Birdeye fetch service (required for OHLCV ingestion)
+   * Optional OHLCV fetch job service (required for OHLCV ingestion)
+   * OhlcvFetchJob handles both fetch AND store in parallel
    */
-  ohlcvBirdeyeFetch?: OhlcvBirdeyeFetch;
+  ohlcvFetchJob?: OhlcvFetchJob;
 }
 
 /**
@@ -67,11 +68,11 @@ export function createDuckdbSimulationContext(
   }
 
   // Get OHLCV ingestion context for workflow calls
-  // Pass ohlcvBirdeyeFetch if available in config (for production use)
+  // Pass ohlcvFetchJob if available in config (for production use)
   const ohlcvContext = createOhlcvIngestionContext(
-    config?.ohlcvBirdeyeFetch
+    config?.ohlcvFetchJob
       ? {
-          ohlcvBirdeyeFetch: config.ohlcvBirdeyeFetch,
+          ohlcvFetchJob: config.ohlcvFetchJob,
           duckdbStorage: duckdbStorageService,
         }
       : undefined

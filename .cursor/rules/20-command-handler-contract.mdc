@@ -1,0 +1,43 @@
+---
+name: Command & Handler contract
+description: Make handlers pure, deterministic, and testable.
+globs:
+  - "packages/**/src/**"
+---
+
+# Commands & Handlers contract
+
+## Commands
+- Commands are plain typed inputs (validated at boundaries).
+- Commands must not contain functions, clients, or runtime handles.
+- Commands must be serializable (JSON-friendly) unless explicitly impossible.
+
+## Handlers
+A handler must:
+- accept `(command, ports, context)` where:
+  - `ports` are interfaces only
+  - `context` contains correlation id / request id / trace context (data only)
+- return a structured output:
+  - `result` (typed)
+  - `events` (domain events as data)
+  - `metrics` (structured counters/timings as data)
+  - `warnings` (structured, not logs)
+
+## Handlers MUST NOT:
+- read env vars
+- read/write filesystem directly
+- do network I/O directly
+- connect to DB/Redis directly
+- call `Date.now()` directly (use ClockPort)
+- log directly (no console/logger usage inside handlers)
+
+## Where logging happens
+- in `apps/*` composition roots, after handler returns
+- adapter-level logs are acceptable for I/O visibility, but keep them structured
+
+## Validation
+- Validate at the edges (apps/adapters).
+- Domain validation functions are ok if they are pure/deterministic.
+
+## Determinism rule
+Given identical `(command, ports stubs, clock)`, handlers must produce identical outputs.

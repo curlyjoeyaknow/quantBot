@@ -72,6 +72,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Real-time progress bars for task execution showing current/total progress
   - Detailed logging for each task and interval being fetched
 
+- **OHLCV Coverage Analysis Timeout Improvements**: Fixed timeout issues in `ohlcv analyze-coverage` command
+  - Increased default timeout from 2 minutes to 5 minutes for both overall and caller-based coverage analysis
+  - Timeout configurable via `OHLCV_COVERAGE_TIMEOUT_MS` environment variable
+  - Prevents premature timeouts during large coverage analysis operations
+
+- **OHLCV Coverage Analysis Performance Improvements**: Added parallel processing to coverage analysis scripts
+  - Parallelized caller-month combination processing using ThreadPoolExecutor (8 workers by default)
+  - Thread-safe caching with locks to prevent race conditions
+  - Each thread uses its own ClickHouse client connection (fixes "Simultaneous queries on single connection" errors)
+  - Configurable worker count via `OHLCV_COVERAGE_WORKERS` environment variable (default: 8)
+  - Significant speedup for large coverage analyses (e.g., multiple callers × multiple months)
+  - I/O-bound ClickHouse queries now execute in parallel instead of sequentially
+
+- **OHLCV Coverage Analysis Process Cleanup**: Added automatic cleanup of hanging processes
+  - Script automatically kills any hanging instances of itself before running (prevents multiple concurrent runs)
+  - Uses SIGTERM for graceful shutdown, falls back to SIGKILL if needed
+  - Disable with `--no-kill-hanging` flag if needed
+  - Works on Linux/macOS systems with `ps` or `pgrep` commands
+
+- **Birdeye OHLCV Fetch Parallel Processing**: Added parallel workers with per-worker rate limiting
+  - `OhlcvFetchJob` now handles both fetch AND store in parallel (replaces fetch-only approach)
+  - New `parallelWorkers` option (default: 1, sequential mode for backward compatibility)
+  - New `rateLimitMsPerWorker` option (default: 330ms)
+  - With 16 workers and 330ms delay: ~48.5 RPS (under 50 RPS limit)
+  - Each worker processes items with independent rate limiting
+  - Improved throughput for large worklists while respecting Birdeye API rate limits
+  - Maintains backward compatibility - sequential mode still works with existing code
+  - Configurable via `BIRDEYE_PARALLEL_WORKERS` and `BIRDEYE_RATE_LIMIT_MS_PER_WORKER` environment variables
+
+- **OHLCV Ingestion Workflow Refactor**: Switched from fetch-only to fetch+store approach
+  - Workflow now uses `OhlcvFetchJob` which handles both fetch AND store in parallel
+  - Removed redundant sequential storage loop (was bottleneck)
+  - Workflow now only handles DuckDB metadata updates after parallel fetch+store completes
+  - Significantly faster ingestion for large worklists
+  - `OhlcvBirdeyeFetch` (fetch-only) still available but no longer used by default workflows
+
 - **Ingestion Architecture**: Removed all API client calls from `@quantbot/ingestion`
   - Removed ATH/ATL calculation (moved to simulation layer)
   - Removed contract validation and chain detection via API

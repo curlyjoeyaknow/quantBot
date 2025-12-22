@@ -24,6 +24,16 @@
             "date": 1766151312571,
             "name": "/home/memez/quantBot/logs/combined-2025-12-20.log",
             "hash": "8196d2c6a1d32954c7705aa94b76bea040f2dd2e3482af71049df60a3ffa62b6"
+        },
+        {
+            "date": 1766246330397,
+            "name": "/home/memez/quantBot/logs/combined-2025-12-21.log",
+            "hash": "a1ef924c3ec457179e3a34d244e1227a12d6e64a4dc6f063ef833a2793dfe544"
+        },
+        {
+            "date": 1766385515684,
+            "name": "/home/memez/quantBot/logs/combined-2025-12-22.log",
+            "hash": "06dfdbea23e159d3e217f8898d2fa333e6bb128ad910f440c4d459f95c41f8ab"
         }
     ],
     "hashType": "sha256"

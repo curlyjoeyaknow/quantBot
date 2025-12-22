@@ -3,6 +3,7 @@
 import argparse
 import json
 import re
+import sys
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional, Tuple, List, Set
 from dataclasses import dataclass
@@ -962,7 +963,7 @@ def check_existing_run(con: duckdb.DuckDBPyConnection, input_file_path: str, cha
       existing_run_id, existing_status, previous_script_version = result
       # If script version changed, allow rerun (extraction logic may have improved)
       if previous_script_version and previous_script_version != script_version:
-        print(f"Script version changed ({previous_script_version} → {script_version}). Allowing rerun to capture improved extractions.")
+        print(f"Script version changed ({previous_script_version} → {script_version}). Allowing rerun to capture improved extractions.", file=sys.stderr)
         return None  # Allow rerun
       return (existing_run_id, existing_status, previous_script_version)
     return None
@@ -1386,20 +1387,20 @@ def main():
           "tg_rows": tg_rows or 0,
           "caller_links_rows": caller_links_rows or 0,
           "user_calls_rows": user_calls_rows or 0,
-        }, indent=2))
+        }))
       else:
-        print(f"Input file already processed successfully (run_id: {existing_run_id}). Skipping.")
+        print(f"Input file already processed successfully (run_id: {existing_run_id}). Skipping.", file=sys.stderr)
         if not args.force:
-          print("Use --force to rerun even if already processed.")
+          print("Use --force to rerun even if already processed.", file=sys.stderr)
       # Return early - already processed
       con.close()
       return
     elif existing_status == 'partial':
-      print(f"Resuming partial run (run_id: {existing_run_id})...")
+      print(f"Resuming partial run (run_id: {existing_run_id})...", file=sys.stderr)
       run_id = existing_run_id
       resume_partial_run(con, run_id)
     elif existing_status == 'running':
-      print(f"Resuming interrupted run (run_id: {existing_run_id})...")
+      print(f"Resuming interrupted run (run_id: {existing_run_id})...", file=sys.stderr)
       run_id = existing_run_id
       resume_partial_run(con, run_id)
   
@@ -1410,8 +1411,8 @@ def main():
   # Track row counts for completion
   row_counts = {'tg_norm': 0, 'caller_links': 0, 'user_calls': 0}
 
-  print(f"Starting ingestion for chat_id={chat_id}, run_id={run_id}", flush=True)
-  print(f"Processing messages from {args.in_path}...", flush=True)
+  print(f"Starting ingestion for chat_id={chat_id}, run_id={run_id}", file=sys.stderr, flush=True)
+  print(f"Processing messages from {args.in_path}...", file=sys.stderr, flush=True)
 
   # Ensure run_id column exists before inserting (ensure_idempotent_schema might have failed silently)
   try:
@@ -1519,7 +1520,7 @@ def main():
 
   # --- link bot replies by reply_to join + parse in python ---
   # pull candidates (only replies) then parse per row
-  print(f"Linking bot replies for chat_id={chat_id}...", flush=True)
+  print(f"Linking bot replies for chat_id={chat_id}...", file=sys.stderr, flush=True)
   rows = con.execute("""
     SELECT
       b.chat_id,
@@ -1545,11 +1546,11 @@ def main():
       AND NOT (t.text LIKE '/%')
   """, [chat_id]).fetchall()
 
-  print(f"Found {len(rows)} bot reply candidates, parsing...", flush=True)
+  print(f"Found {len(rows)} bot reply candidates, parsing...", file=sys.stderr, flush=True)
   link_rows = []
   for i, r in enumerate(rows):
     if i % 1000 == 0 and i > 0:
-      print(f"  Processed {i}/{len(rows)} bot replies...", flush=True)
+      print(f"  Processed {i}/{len(rows)} bot replies...", file=sys.stderr, flush=True)
     (c_id, bot_mid, bot_ts, bot_from, bot_text, trig_mid, trig_ts, trig_from_id, trig_from_name, trig_text) = r
     card = parse_bot(bot_from, bot_text or "", trig_text)
     
@@ -1792,7 +1793,7 @@ def main():
     ))
 
   # replace old links for this run (idempotent: only delete this run's data)
-  print(f"Inserting {len(link_rows)} caller links...", flush=True)
+  print(f"Inserting {len(link_rows)} caller links...", file=sys.stderr, flush=True)
   # Ensure run_id column exists in caller_links_d
   try:
     con.execute("SELECT run_id FROM caller_links_d LIMIT 1")
@@ -1871,7 +1872,7 @@ def main():
 
   # --- build user_calls_d from links (one row per trigger) ---
   # Delete only this run's data (idempotent)
-  print("Building user_calls_d from caller links...", flush=True)
+  print("Building user_calls_d from caller links...", file=sys.stderr, flush=True)
   # Ensure run_id column exists in user_calls_d
   try:
     con.execute("SELECT run_id FROM user_calls_d LIMIT 1")
@@ -1891,7 +1892,7 @@ def main():
     con.execute("DELETE FROM user_calls_d WHERE chat_id = ?", [chat_id])
   
   # First, create temp table with all potential calls
-  print("Creating temp_user_calls table...", flush=True)
+  print("Creating temp_user_calls table...", file=sys.stderr, flush=True)
   con.execute("""
     CREATE TEMP TABLE temp_user_calls AS
     SELECT
@@ -1974,7 +1975,7 @@ def main():
   
   # Now filter to only first call per caller per mint
   # Use ROW_NUMBER to handle cases where same caller calls same mint at same timestamp
-  print("Inserting user calls...", flush=True)
+  print("Inserting user calls...", file=sys.stderr, flush=True)
   if has_run_id_calls:
     result = con.execute("""
       INSERT OR IGNORE INTO user_calls_d
@@ -2340,12 +2341,12 @@ def main():
       "sqlite_file": args.sqlite,
       "counts": {"sqlite_user_calls": int(summary[0]), "duck_user_calls": int(summary[1])},
       "mismatch_rows_sample": len(mismatches)
-    }, indent=2))
+    }))
 
     if mismatches:
-      print("\n--- mismatch sample (first 20) ---")
+      print("\n--- mismatch sample (first 20) ---", file=sys.stderr)
       for row in mismatches[:20]:
-        print(row)
+        print(row, file=sys.stderr)
 
   else:
     # Get final row counts for this run
@@ -2370,7 +2371,7 @@ def main():
       "tg_rows": tg_rows,
       "caller_links_rows": caller_links_rows,
       "user_calls_rows": user_calls_rows,
-    }, indent=2))
+    }))
 
   # --- export to CSV/Parquet if requested ---
   if args.export_csv:

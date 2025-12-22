@@ -335,6 +335,201 @@ describe('ingestOhlcv Workflow - Golden Path', () => {
     });
   });
 
+  describe('GOLDEN: Mint filtering', () => {
+    it('should filter worklist by specific mints when provided', async () => {
+      const targetMints = [
+        '7pXs123456789012345678901234567890pump',
+        '8pXs123456789012345678901234567890pump',
+      ];
+      const otherMint = '9pXs123456789012345678901234567890pump';
+
+      // Mock worklist with all mints (Python will filter)
+      const filteredWorklist: OhlcvWorkItem[] = [
+        {
+          ...mockWorkItem,
+          mint: targetMints[0],
+        },
+        {
+          ...mockWorkItem,
+          mint: targetMints[1],
+        },
+      ];
+
+      vi.mocked(generateOhlcvWorklist).mockResolvedValue(filteredWorklist);
+
+      const mockCandles: Candle[] = [
+        {
+          timestamp: Math.floor(TEST_START_TIME.toSeconds()),
+          open: 1.0,
+          high: 1.1,
+          low: 0.9,
+          close: 1.05,
+          volume: 1000,
+        },
+      ];
+
+      mockContext.jobs.ohlcvBirdeyeFetch.fetchWorkList = vi.fn().mockResolvedValue(
+        filteredWorklist.map((item) => ({
+          workItem: item,
+          success: true,
+          candles: mockCandles,
+          candlesFetched: 1,
+          skipped: false,
+          durationMs: 100,
+        }))
+      );
+
+      vi.mocked(storeCandles).mockResolvedValue(undefined);
+      mockContext.duckdbStorage!.updateOhlcvMetadata = vi.fn().mockResolvedValue({
+        success: true,
+      });
+
+      const result = await ingestOhlcv(
+        {
+          duckdbPath: TEST_DUCKDB_PATH,
+          side: 'buy',
+          chain: TEST_CHAIN,
+          interval: '1m',
+          preWindowMinutes: 260,
+          postWindowMinutes: 1440,
+          errorMode: 'collect',
+          checkCoverage: true,
+          rateLimitMs: 100,
+          maxRetries: 3,
+          mints: targetMints, // Filter by specific mints
+        },
+        mockContext
+      );
+
+      // Assert: Only filtered mints were processed
+      expect(result.worklistGenerated).toBe(2);
+      expect(result.workItemsProcessed).toBe(2);
+      expect(result.workItemsSucceeded).toBe(2);
+
+      // Assert: generateOhlcvWorklist was called with mints parameter
+      expect(generateOhlcvWorklist).toHaveBeenCalledWith(
+        TEST_DUCKDB_PATH,
+        expect.objectContaining({
+          mints: targetMints,
+        })
+      );
+
+      // Assert: Only target mints were fetched
+      const fetchedMints = mockContext.jobs.ohlcvBirdeyeFetch.fetchWorkList.mock.calls[0][0].map(
+        (item: OhlcvWorkItem) => item.mint
+      );
+      expect(fetchedMints).toEqual(targetMints);
+      expect(fetchedMints).not.toContain(otherMint);
+    });
+
+    it('should handle empty worklist when mints filter returns no results', async () => {
+      const targetMints = ['nonexistentMint'];
+
+      // Mock empty worklist (no mints match)
+      vi.mocked(generateOhlcvWorklist).mockResolvedValue([]);
+
+      const result = await ingestOhlcv(
+        {
+          duckdbPath: TEST_DUCKDB_PATH,
+          side: 'buy',
+          chain: TEST_CHAIN,
+          interval: '1m',
+          preWindowMinutes: 260,
+          postWindowMinutes: 1440,
+          errorMode: 'collect',
+          checkCoverage: true,
+          rateLimitMs: 100,
+          maxRetries: 3,
+          mints: targetMints,
+        },
+        mockContext
+      );
+
+      // Assert: Empty result (no items to process)
+      expect(result.worklistGenerated).toBe(0);
+      expect(result.workItemsProcessed).toBe(0);
+      expect(result.workItemsSucceeded).toBe(0);
+      expect(result.totalCandlesFetched).toBe(0);
+      expect(result.totalCandlesStored).toBe(0);
+
+      // Assert: generateOhlcvWorklist was called with mints
+      expect(generateOhlcvWorklist).toHaveBeenCalledWith(
+        TEST_DUCKDB_PATH,
+        expect.objectContaining({
+          mints: targetMints,
+        })
+      );
+
+      // Assert: No fetch or storage calls
+      expect(mockContext.jobs.ohlcvBirdeyeFetch.fetchWorkList).not.toHaveBeenCalled();
+      expect(storeCandles).not.toHaveBeenCalled();
+    });
+
+    it('should preserve mint address case exactly when filtering', async () => {
+      const mixedCaseMint = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v';
+
+      const filteredWorklist: OhlcvWorkItem[] = [
+        {
+          ...mockWorkItem,
+          mint: mixedCaseMint,
+        },
+      ];
+
+      vi.mocked(generateOhlcvWorklist).mockResolvedValue(filteredWorklist);
+
+      const mockCandles: Candle[] = [
+        {
+          timestamp: Math.floor(TEST_START_TIME.toSeconds()),
+          open: 1.0,
+          high: 1.1,
+          low: 0.9,
+          close: 1.05,
+          volume: 1000,
+        },
+      ];
+
+      mockContext.jobs.ohlcvBirdeyeFetch.fetchWorkList = vi.fn().mockResolvedValue([
+        {
+          workItem: filteredWorklist[0],
+          success: true,
+          candles: mockCandles,
+          candlesFetched: 1,
+          skipped: false,
+          durationMs: 100,
+        },
+      ]);
+
+      vi.mocked(storeCandles).mockResolvedValue(undefined);
+      mockContext.duckdbStorage!.updateOhlcvMetadata = vi.fn().mockResolvedValue({
+        success: true,
+      });
+
+      const result = await ingestOhlcv(
+        {
+          duckdbPath: TEST_DUCKDB_PATH,
+          side: 'buy',
+          chain: TEST_CHAIN,
+          interval: '1m',
+          preWindowMinutes: 260,
+          postWindowMinutes: 1440,
+          errorMode: 'collect',
+          checkCoverage: true,
+          rateLimitMs: 100,
+          maxRetries: 3,
+          mints: [mixedCaseMint], // Pass exact case
+        },
+        mockContext
+      );
+
+      // Assert: Mint case preserved
+      expect(result.worklistGenerated).toBe(1);
+      const fetchedMint = mockContext.jobs.ohlcvBirdeyeFetch.fetchWorkList.mock.calls[0][0][0].mint;
+      expect(fetchedMint).toBe(mixedCaseMint);
+      expect(fetchedMint).not.toBe(mixedCaseMint.toLowerCase());
+      expect(fetchedMint).not.toBe(mixedCaseMint.toUpperCase());
+    });
+  });
+
   describe('GOLDEN: Error handling - collect mode', () => {
     it('should collect errors and continue processing (errorMode: collect)', async () => {
       const worklist: OhlcvWorkItem[] = [
