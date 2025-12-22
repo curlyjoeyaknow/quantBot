@@ -38,3 +38,4 @@ export type {
   SpanEmission,
   MetricType,
 } from './telemetryPort.js';
+export type { QueryPort, QueryRequest, QueryResult } from './queryPort.js';

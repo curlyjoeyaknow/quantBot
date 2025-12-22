@@ -399,7 +399,10 @@ describe('OHLCV Work Planning', () => {
       // Should return all work items when mints is undefined
       expect(workItems).toHaveLength(1);
       expect(mockPythonEngine.runOhlcvWorklist).toHaveBeenCalledWith({
-        duckdbPath: '/path/to/duckdb',
+        duckdbPath: expect.stringContaining('/path/to/duckdb'), // Path is resolved to absolute
+        from: undefined,
+        to: undefined,
+        side: 'buy', // Default side
       });
       expect(mockPythonEngine.runOhlcvWorklist).not.toHaveBeenCalledWith(
         expect.objectContaining({ mints: expect.anything() })

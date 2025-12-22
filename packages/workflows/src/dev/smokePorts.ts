@@ -7,6 +7,7 @@
 
 import { smokeMarketDataPort } from './smokeMarketDataPort.js';
 import { smokeStatePort } from './smokeStatePort.js';
+import { smokeExecutionPort } from './smokeExecutionPort.js';
 
 export async function smokeAllPorts(): Promise<void> {
   console.log('🧪 Running all port smoke tests...\n');
@@ -22,10 +23,10 @@ export async function smokeAllPorts(): Promise<void> {
     await smokeStatePort();
     console.log('');
 
-    // TODO: Add ExecutionPort smoke test when created
-    // console.log('⚡ Testing ExecutionPort...');
-    // await smokeExecutionPort();
-    // console.log('');
+    // Test ExecutionPort
+    console.log('⚡ Testing ExecutionPort...');
+    await smokeExecutionPort();
+    console.log('');
 
     console.log('✅ All port smoke tests passed!\n');
   } catch (error) {

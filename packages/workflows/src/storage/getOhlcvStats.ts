@@ -6,7 +6,7 @@
 
 import { z } from 'zod';
 import { DateTime } from 'luxon';
-import type { WorkflowContext } from '../types.js';
+import type { WorkflowContextWithPorts } from '../context/workflowContextWithPorts.js';
 
 /**
  * OHLCV stats spec
@@ -54,12 +54,17 @@ export type GetOhlcvStatsResult = {
 
 /**
  * Extended context for OHLCV stats
+ * Uses ports for all external dependencies
  */
-export type OhlcvStatsContext = WorkflowContext & {
-  storage: {
-    clickHouse: {
-      query: (query: string) => Promise<Array<Record<string, unknown>>>;
-    };
+export type OhlcvStatsContext = WorkflowContextWithPorts & {
+  logger: {
+    info: (message: string, context?: unknown) => void;
+    warn: (message: string, context?: unknown) => void;
+    error: (message: string, context?: unknown) => void;
+    debug?: (message: string, context?: unknown) => void;
+  };
+  clock: {
+    nowISO: () => string;
   };
 };
 
@@ -91,23 +96,26 @@ export async function getOhlcvStats(
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
   // Total candles
-  const totalResult = await ctx.storage.clickHouse.query(
-    `SELECT COUNT(*) as count FROM ${database}.ohlcv_candles ${whereClause}`
-  );
-  const totalCandles = parseInt(String(totalResult[0]?.['count'] || 0), 10);
+  const totalResult = await ctx.ports.query.query({
+    query: `SELECT COUNT(*) as count FROM ${database}.ohlcv_candles ${whereClause}`,
+    format: 'JSONEachRow',
+  });
+  const totalCandles = parseInt(String((totalResult.rows[0] as Record<string, unknown>)?.['count'] || 0), 10);
 
   // Unique tokens
-  const uniqueResult = await ctx.storage.clickHouse.query(
-    `SELECT COUNT(DISTINCT token_address) as count FROM ${database}.ohlcv_candles ${whereClause}`
-  );
-  const uniqueTokens = parseInt(String(uniqueResult[0]?.['count'] || 0), 10);
+  const uniqueResult = await ctx.ports.query.query({
+    query: `SELECT COUNT(DISTINCT token_address) as count FROM ${database}.ohlcv_candles ${whereClause}`,
+    format: 'JSONEachRow',
+  });
+  const uniqueTokens = parseInt(String((uniqueResult.rows[0] as Record<string, unknown>)?.['count'] || 0), 10);
 
   // Date range
-  const rangeResult = await ctx.storage.clickHouse.query(
-    `SELECT MIN(timestamp) as min, MAX(timestamp) as max FROM ${database}.ohlcv_candles ${whereClause}`
-  );
-  const minTs = rangeResult[0]?.['min'];
-  const maxTs = rangeResult[0]?.['max'];
+  const rangeResult = await ctx.ports.query.query({
+    query: `SELECT MIN(timestamp) as min, MAX(timestamp) as max FROM ${database}.ohlcv_candles ${whereClause}`,
+    format: 'JSONEachRow',
+  });
+  const minTs = (rangeResult.rows[0] as Record<string, unknown>)?.['min'];
+  const maxTs = (rangeResult.rows[0] as Record<string, unknown>)?.['max'];
   const earliest = minTs
     ? typeof minTs === 'string'
       ? minTs
@@ -120,42 +128,50 @@ export async function getOhlcvStats(
     : timestamp;
 
   // Intervals breakdown
-  const intervalsResult = await ctx.storage.clickHouse.query(
-    `SELECT 
+  const intervalsResult = await ctx.ports.query.query({
+    query: `SELECT 
       \`interval\`,
       COUNT(*) as candle_count,
       COUNT(DISTINCT token_address) as token_count
     FROM ${database}.ohlcv_candles
     ${whereClause}
     GROUP BY \`interval\`
-    ORDER BY candle_count DESC`
-  );
-  const intervals = intervalsResult.map((row) => ({
-    interval: String(row['interval'] || ''),
-    candleCount: parseInt(String(row['candle_count'] || 0), 10),
-    tokenCount: parseInt(String(row['token_count'] || 0), 10),
-  }));
+    ORDER BY candle_count DESC`,
+    format: 'JSONEachRow',
+  });
+  const intervals = intervalsResult.rows.map((row) => {
+    const r = row as Record<string, unknown>;
+    return {
+      interval: String(r['interval'] || ''),
+      candleCount: parseInt(String(r['candle_count'] || 0), 10),
+      tokenCount: parseInt(String(r['token_count'] || 0), 10),
+    };
+  });
 
   // Chains breakdown
-  const chainsResult = await ctx.storage.clickHouse.query(
-    `SELECT 
+  const chainsResult = await ctx.ports.query.query({
+    query: `SELECT 
       chain,
       COUNT(*) as candle_count,
       COUNT(DISTINCT token_address) as token_count
     FROM ${database}.ohlcv_candles
     ${whereClause}
     GROUP BY chain
-    ORDER BY candle_count DESC`
-  );
-  const chains = chainsResult.map((row) => ({
-    chain: String(row['chain'] || ''),
-    candleCount: parseInt(String(row['candle_count'] || 0), 10),
-    tokenCount: parseInt(String(row['token_count'] || 0), 10),
-  }));
+    ORDER BY candle_count DESC`,
+    format: 'JSONEachRow',
+  });
+  const chains = chainsResult.rows.map((row) => {
+    const r = row as Record<string, unknown>;
+    return {
+      chain: String(r['chain'] || ''),
+      candleCount: parseInt(String(r['candle_count'] || 0), 10),
+      tokenCount: parseInt(String(r['token_count'] || 0), 10),
+    };
+  });
 
   // Top tokens
-  const topTokensResult = await ctx.storage.clickHouse.query(
-    `SELECT 
+  const topTokensResult = await ctx.ports.query.query({
+    query: `SELECT 
       token_address,
       chain,
       COUNT(*) as candle_count,
@@ -165,15 +181,17 @@ export async function getOhlcvStats(
     ${whereClause}
     GROUP BY token_address, chain
     ORDER BY candle_count DESC
-    LIMIT 10`
-  );
-  const topTokens = topTokensResult.map((row) => {
-    const firstSeen = row['first_seen'];
-    const lastSeen = row['last_seen'];
+    LIMIT 10`,
+    format: 'JSONEachRow',
+  });
+  const topTokens = topTokensResult.rows.map((row) => {
+    const r = row as Record<string, unknown>;
+    const firstSeen = r['first_seen'];
+    const lastSeen = r['last_seen'];
     return {
-      token_address: String(row['token_address'] || ''),
-      chain: String(row['chain'] || ''),
-      candleCount: parseInt(String(row['candle_count'] || 0), 10),
+      token_address: String(r['token_address'] || ''),
+      chain: String(r['chain'] || ''),
+      candleCount: parseInt(String(r['candle_count'] || 0), 10),
       firstSeen: firstSeen
         ? typeof firstSeen === 'string'
           ? firstSeen

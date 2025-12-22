@@ -19,7 +19,7 @@ vi.mock('@quantbot/jobs', () => ({
 }));
 
 // Import handler after mocking
-import { backfillOhlcvHandler } from '../../../../src/handlers/ohlcv/backfill-ohlcv.js';
+import { backfillOhlcvHandler } from '../../../../src/commands/ohlcv/backfill-ohlcv.js';
 
 type OhlcvIngestionResult = {
   candles1m: unknown[];

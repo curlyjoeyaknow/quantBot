@@ -8,7 +8,7 @@
 import { z } from 'zod';
 import { DateTime } from 'luxon';
 import { resolve } from 'path';
-import type { WorkflowContext } from '../types.js';
+import type { WorkflowContextWithPorts } from '../context/workflowContextWithPorts.js';
 import { getPythonEngine } from '@quantbot/utils';
 
 /**
@@ -57,12 +57,17 @@ export type GetTokenStatsResult = {
 
 /**
  * Extended context for token stats
+ * Uses ports for all external dependencies
  */
-export type TokenStatsContext = WorkflowContext & {
-  storage: {
-    clickHouse: {
-      query: (query: string) => Promise<Array<Record<string, unknown>>>;
-    };
+export type TokenStatsContext = WorkflowContextWithPorts & {
+  logger: {
+    info: (message: string, context?: unknown) => void;
+    warn: (message: string, context?: unknown) => void;
+    error: (message: string, context?: unknown) => void;
+    debug?: (message: string, context?: unknown) => void;
+  };
+  clock: {
+    nowISO: () => string;
   };
   duckdb: {
     path: string;
@@ -167,7 +172,8 @@ export async function getTokenStats(
     const intervals = ['1m', '5m', '15s', '1H'];
     for (const interval of intervals) {
       try {
-        const intervalResult = await ctx.storage.clickHouse.query(`
+        const intervalResult = await ctx.ports.query.query({
+          query: `
           SELECT COUNT(*) as count
           FROM ${database}.ohlcv_candles
           WHERE (token_address = '${escapedMint}'
@@ -178,9 +184,11 @@ export async function getTokenStats(
             AND \`interval\` = '${interval}'
             AND timestamp >= toDateTime(${startUnix})
             AND timestamp <= toDateTime(${endUnix})
-        `);
+        `,
+          format: 'JSONEachRow',
+        });
 
-        const count = parseInt(String(intervalResult[0]?.['count'] || 0), 10);
+        const count = parseInt(String((intervalResult.rows[0] as Record<string, unknown>)?.['count'] || 0), 10);
         if (count > 0) {
           timeframes.push(interval);
           tokenCandleCount += count;
@@ -200,7 +208,8 @@ export async function getTokenStats(
     // Get total candles for this token (all timeframes, all time)
     let totalTokenCandles = 0;
     try {
-      const totalResult = await ctx.storage.clickHouse.query(`
+      const totalResult = await ctx.ports.query.query({
+        query: `
         SELECT COUNT(*) as count
         FROM ${database}.ohlcv_candles
         WHERE (token_address = '${escapedMint}'
@@ -208,8 +217,10 @@ export async function getTokenStats(
                OR token_address LIKE '${escapedMint}%'
                OR lower(token_address) LIKE lower('${escapedMint}%'))
           AND chain = '${escapedChain}'
-      `);
-      totalTokenCandles = parseInt(String(totalResult[0]?.['count'] || 0), 10);
+      `,
+        format: 'JSONEachRow',
+      });
+      totalTokenCandles = parseInt(String((totalResult.rows[0] as Record<string, unknown>)?.['count'] || 0), 10);
     } catch (error) {
       if (ctx.logger.debug) {
         ctx.logger.debug('Failed to query total candles', {
@@ -222,7 +233,8 @@ export async function getTokenStats(
     // Get date range for candles
     let dateRange: { earliest: string; latest: string } | undefined;
     try {
-      const rangeResult = await ctx.storage.clickHouse.query(`
+      const rangeResult = await ctx.ports.query.query({
+        query: `
         SELECT MIN(timestamp) as min, MAX(timestamp) as max
         FROM ${database}.ohlcv_candles
         WHERE (token_address = '${escapedMint}'
@@ -230,9 +242,11 @@ export async function getTokenStats(
                OR token_address LIKE '${escapedMint}%'
                OR lower(token_address) LIKE lower('${escapedMint}%'))
           AND chain = '${escapedChain}'
-      `);
-      const minTs = rangeResult[0]?.['min'];
-      const maxTs = rangeResult[0]?.['max'];
+      `,
+        format: 'JSONEachRow',
+      });
+      const minTs = (rangeResult.rows[0] as Record<string, unknown>)?.['min'];
+      const maxTs = (rangeResult.rows[0] as Record<string, unknown>)?.['max'];
       if (minTs && maxTs) {
         const earliest =
           typeof minTs === 'string' ? minTs : DateTime.fromSeconds(minTs as number).toISO()!;
@@ -249,13 +263,16 @@ export async function getTokenStats(
     // Check simulation runs for this token
     let simulationsRun = 0;
     try {
-      const simResult = await ctx.storage.clickHouse.query(`
+      const simResult = await ctx.ports.query.query({
+        query: `
         SELECT COUNT(DISTINCT run_id) as count
         FROM ${database}.simulation_events
         WHERE token_address = '${escapedMint}'
           AND chain = '${escapedChain}'
-      `);
-      simulationsRun = parseInt(String(simResult[0]?.['count'] || 0), 10);
+      `,
+        format: 'JSONEachRow',
+      });
+      simulationsRun = parseInt(String((simResult.rows[0] as Record<string, unknown>)?.['count'] || 0), 10);
     } catch (error) {
       if (ctx.logger.debug) {
         ctx.logger.debug('Failed to query simulations', { mint, error: (error as Error).message });

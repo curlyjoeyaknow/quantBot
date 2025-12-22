@@ -10,7 +10,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { ingestOhlcvHandler } from '../../../../src/handlers/ingestion/ingest-ohlcv.js';
+import { ingestOhlcvHandler } from '../../../../src/commands/ingestion/ingest-ohlcv.js';
 
 // Mock workflows
 const mockIngestOhlcv = vi.fn();
@@ -34,7 +34,7 @@ describe('ingestOhlcvHandler - Isolation Test', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     process.env.DUCKDB_PATH = '/tmp/test.duckdb';
-    mockCreateOhlcvIngestionContext.mockReturnValue({} as any);
+    mockCreateOhlcvIngestionContext.mockResolvedValue({} as any);
   });
   it('can be called with plain objects (no CLI infrastructure)', async () => {
     // Plain object args (as if from a REPL or script)

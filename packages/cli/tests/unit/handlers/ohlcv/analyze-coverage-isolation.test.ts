@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, vi } from 'vitest';
-import { analyzeCoverageHandler } from '../../../../src/handlers/ohlcv/analyze-coverage.js';
+import { analyzeCoverageHandler } from '../../../../src/commands/ohlcv/analyze-coverage.js';
 import * as workflows from '@quantbot/workflows';
 
 // Mock the workflow

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { runSimulationHandler } from '../../../../src/handlers/simulation/run-simulation.js';
+import { runSimulationHandler } from '../../../../src/commands/simulation/run-simulation.js';
 import type { CommandContext } from '../../../../src/core/command-context.js';
 import { DateTime } from 'luxon';
 import { runSimulation, createProductionContext } from '@quantbot/workflows';

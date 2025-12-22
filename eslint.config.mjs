@@ -258,6 +258,13 @@ export default tseslint.config(
               message:
                 'Workflows must use ports, not direct HTTP client imports',
             },
+            {
+              group: [
+                '@quantbot/simulation/src/**',
+              ],
+              message:
+                'Workflows must use @quantbot/simulation public API (runOverlaySimulation), not deep imports. Do not bypass overlay-simulation.ts by calling simulateStrategy directly.',
+            },
           ],
         },
       ],

@@ -10,7 +10,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { ingestOhlcvHandler } from '../../../../src/handlers/ingestion/ingest-ohlcv.js';
+import { ingestOhlcvHandler } from '../../../../src/commands/ingestion/ingest-ohlcv.js';
 
 // Mock workflows
 const mockIngestOhlcv = vi.fn();
@@ -52,7 +52,7 @@ describe('ingestOhlcvHandler', () => {
     };
 
     mockIngestOhlcv.mockResolvedValue(mockResult);
-    mockCreateOhlcvIngestionContext.mockReturnValue({} as any);
+    mockCreateOhlcvIngestionContext.mockResolvedValue({} as any);
 
     const fakeCtx = {
       services: {},

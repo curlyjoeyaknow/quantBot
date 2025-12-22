@@ -106,27 +106,27 @@ todos:
       - phase4-update-context
   - id: phase5-design-executionport
     content: Review ExecutionPort interface, identify execution clients (Jito), design adapter interface
-    status: pending
+    status: completed
     dependencies:
       - phase4-comprehensive-testing
   - id: phase5-create-jito-adapter
     content: "Create executionJitoAdapter.ts implementing ExecutionPort with safety-first features: dry-run mode/simulation adapter (required), circuit breaker behavior defined, idempotency key design. Handle slippage, priority fees, retries."
-    status: pending
+    status: completed
     dependencies:
       - phase5-design-executionport
   - id: phase5-wire-executionport
     content: Add execution port to createProductionPorts(), wire Jito adapter (or stub), make ctx.ports.execution available
-    status: pending
+    status: completed
     dependencies:
       - phase5-create-jito-adapter
   - id: phase5-smoke-test
     content: Create smokeExecutionPort.ts to test isAvailable(), execute() with dry-run mode (required), verify circuit breaker and idempotency key handling, verify all safety features
-    status: pending
+    status: completed
     dependencies:
       - phase5-wire-executionport
   - id: phase5-documentation
     content: "Document ExecutionPort usage in workflows with safety-first focus: dry-run mode, circuit breakers, idempotency keys. Document 'real money' warnings and best practices prominently."
-    status: pending
+    status: completed
     dependencies:
       - phase5-smoke-test
 ---

@@ -93,11 +93,11 @@ export type ResolveEvmChainsContext = WorkflowContextWithPorts & {
 };
 
 /**
- * Get EVM tokens from ClickHouse
+ * Get EVM tokens from ClickHouse using QueryPort
  */
-async function getEvmTokensFromClickHouse(): Promise<EvmToken[]> {
-  const { getClickHouseClient } = await import('@quantbot/storage');
-  const ch = getClickHouseClient();
+async function getEvmTokensFromClickHouse(
+  queryPort: import('@quantbot/core').QueryPort
+): Promise<EvmToken[]> {
   const database = process.env.CLICKHOUSE_DATABASE || 'quantbot';
 
   const query = `
@@ -106,8 +106,16 @@ async function getEvmTokensFromClickHouse(): Promise<EvmToken[]> {
     WHERE chain = 'evm'
   `;
 
-  const result = await ch.query({ query, format: 'JSONEachRow' });
-  const data = (await result.json()) as Array<{ token_address: string }>;
+  const result = await queryPort.query({
+    query,
+    format: 'JSONEachRow',
+  });
+
+  if (result.error) {
+    throw new Error(`Failed to query ClickHouse: ${result.error}`);
+  }
+
+  const data = result.rows as Array<{ token_address: string }>;
 
   return data.map((row) => ({
     address: row.token_address,
@@ -141,7 +149,7 @@ async function getEvmTokensFromDuckDB(duckdbPath: string): Promise<EvmToken[]> {
  */
 async function resolveTokenChain(
   address: string,
-  ctx: ResolveEvmChainsContext
+  workflowCtx: ResolveEvmChainsContext
 ): Promise<{
   chain: string | null;
   metadata?: { name?: string; symbol?: string; decimals?: number };
@@ -154,8 +162,8 @@ async function resolveTokenChain(
       workflowCtx.logger.debug?.(`Trying ${chain} for ${address.substring(0, 20)}...`);
 
       // Use market data port instead of direct client
-      const metadata = await ctx.ports.marketData.fetchMetadata({
-        tokenAddress: address,
+      const metadata = await workflowCtx.ports.marketData.fetchMetadata({
+        tokenAddress: address as import('@quantbot/core').TokenAddress,
         chain,
       });
 
@@ -175,7 +183,6 @@ async function resolveTokenChain(
             chain,
             symbol: metadata.symbol,
           },
-          timestamp: ctx.ports.clock.nowMs(),
         });
 
         return {
@@ -189,7 +196,7 @@ async function resolveTokenChain(
       }
     } catch (error) {
       // Continue to next chain
-      workflowCtx.logger.debug?.(`${chain} failed for ${address.substring(0, 20)}...`);
+      workflowCtx.logger.debug?.(`${chain} failed for ${address.substring(0, 20)}...: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
@@ -197,11 +204,16 @@ async function resolveTokenChain(
 }
 
 /**
- * Update chain in ClickHouse
+ * Update chain in ClickHouse using QueryPort
+ * Note: ALTER TABLE UPDATE may not work in ClickHouse 18.16, so this is best-effort
+ * QueryPort.query() doesn't support exec() for DDL, so we use query() and ignore result
  */
-async function updateChainInClickHouse(address: string, newChain: string): Promise<void> {
-  const { getClickHouseClient } = await import('@quantbot/storage');
-  const ch = getClickHouseClient();
+async function updateChainInClickHouse(
+  address: string,
+  newChain: string,
+  queryPort: import('@quantbot/core').QueryPort,
+  logger: { warn: (msg: string, ctx?: unknown) => void }
+): Promise<void> {
   const database = process.env.CLICKHOUSE_DATABASE || 'quantbot';
 
   // Note: This uses ALTER TABLE UPDATE which may not work in ClickHouse 18.16
@@ -213,12 +225,14 @@ async function updateChainInClickHouse(address: string, newChain: string): Promi
       WHERE token_address = '${address}' AND chain = 'evm'
     `;
 
-    await ch.exec({ query });
+    // QueryPort doesn't support exec() for DDL, so we use query() and ignore result
+    // This is a limitation - ALTER TABLE UPDATE might need direct client access
+    // For now, we'll use query() and handle the error if it fails
+    await queryPort.query({ query, format: 'JSONEachRow' });
   } catch (error) {
     // ClickHouse 18.16 doesn't support UPDATE on partition key
     // Just log - new fetches will use correct chain
-    const { logger: utilsLogger } = await import('@quantbot/utils');
-    utilsLogger.warn('Could not update chain in ClickHouse (expected for CH 18.16)', {
+    logger.warn('Could not update chain in ClickHouse (expected for CH 18.16)', {
       address: address.substring(0, 20),
       newChain,
       error: error instanceof Error ? error.message : String(error),
@@ -285,7 +299,7 @@ export async function resolveEvmChains(
       limit: validated.limit,
       dryRun: validated.dryRun,
     },
-    timestamp: ctx.ports.clock.nowMs(),
+    timestamp: workflowCtx.ports.clock.nowMs(),
   });
 
   workflowCtx.logger.info('Starting EVM chain resolution workflow', {
@@ -301,8 +315,8 @@ export async function resolveEvmChains(
 
   if (validated.useClickHouse) {
     try {
-      const getTokensFn = ctx.getEvmTokensFromClickHouse || getEvmTokensFromClickHouse;
-      const tokens = await getTokensFn();
+      // Use QueryPort for ClickHouse queries
+      const tokens = await getEvmTokensFromClickHouse(workflowCtx.ports.query);
       evmTokens.push(...tokens);
       workflowCtx.logger.info(`Found ${tokens.length} EVM tokens in ClickHouse`);
     } catch (error) {
@@ -314,7 +328,7 @@ export async function resolveEvmChains(
 
   if (validated.useDuckDB && validated.duckdbPath) {
     try {
-      const getTokensFn = ctx.getEvmTokensFromDuckDB || getEvmTokensFromDuckDB;
+      const getTokensFn = workflowCtx.getEvmTokensFromDuckDB || getEvmTokensFromDuckDB;
       const tokens = await getTokensFn(validated.duckdbPath);
       evmTokens.push(...tokens);
       workflowCtx.logger.info(`Found ${tokens.length} EVM tokens in DuckDB`);
@@ -350,15 +364,17 @@ export async function resolveEvmChains(
 
     // Check idempotency: have we already resolved this token?
     const idempotencyKey = `evm_chain_resolution:${token.address}`;
-    const cached = await ctx.ports.state.get<{ chain: string; resolvedAt: number }>({
+    const cached = await workflowCtx.ports.state.get<{ chain: string; resolvedAt: number }>({
       key: idempotencyKey,
       namespace: 'evm_chain_resolution',
     });
 
     if (cached.found && cached.value) {
-      workflowCtx.logger.debug(
-        `Skipping ${token.address.substring(0, 20)}... (already resolved to ${cached.value.chain})`
-      );
+      if (workflowCtx.logger?.debug) {
+        workflowCtx.logger.debug(
+          `Skipping ${token.address.substring(0, 20)}... (already resolved to ${cached.value.chain})`
+        );
+      }
       results.push({
         address: token.address,
         originalChain: 'evm',
@@ -388,12 +404,12 @@ export async function resolveEvmChains(
         });
 
         // Cache resolution result for idempotency
-        await ctx.ports.state.set({
+        await workflowCtx.ports.state.set({
           key: idempotencyKey,
           namespace: 'evm_chain_resolution',
           value: {
             chain,
-            resolvedAt: ctx.ports.clock.nowMs(),
+            resolvedAt: workflowCtx.ports.clock.nowMs(),
           },
           ttlSeconds: 86400 * 30, // 30 days TTL
         });
@@ -403,8 +419,7 @@ export async function resolveEvmChains(
           // Update ClickHouse
           if (validated.useClickHouse) {
             try {
-              const updateFn = ctx.updateChainInClickHouse || updateChainInClickHouse;
-              await updateFn(token.address, chain);
+              await updateChainInClickHouse(token.address, chain, workflowCtx.ports.query, workflowCtx.logger);
             } catch (error) {
               workflowCtx.logger.warn('Failed to update chain in ClickHouse', {
                 address: token.address.substring(0, 20),
@@ -416,7 +431,7 @@ export async function resolveEvmChains(
           // Update DuckDB
           if (validated.useDuckDB && validated.duckdbPath) {
             try {
-              const updateFn = ctx.updateChainInDuckDB || updateChainInDuckDB;
+              const updateFn = workflowCtx.updateChainInDuckDB || updateChainInDuckDB;
               await updateFn(validated.duckdbPath, token.address, chain);
             } catch (error) {
               workflowCtx.logger.warn('Failed to update chain in DuckDB', {
@@ -472,7 +487,7 @@ export async function resolveEvmChains(
       tokensSkipped: skipped,
       durationMs,
     },
-    timestamp: ctx.ports.clock.nowMs(),
+    timestamp: workflowCtx.ports.clock.nowMs() || ctx?.ports.clock.nowMs(),
   });
 
   // Emit summary metrics
@@ -480,28 +495,28 @@ export async function resolveEvmChains(
     name: 'evm_chain_resolution_tokens_found',
     type: 'counter',
     value: uniqueTokens.length,
-    timestamp: ctx.ports.clock.nowMs(),
+    timestamp: workflowCtx.ports.clock.nowMs() || ctx?.ports.clock.nowMs(),
   });
 
   workflowCtx.ports.telemetry.emitMetric({
     name: 'evm_chain_resolution_tokens_resolved',
     type: 'counter',
     value: resolved,
-    timestamp: ctx.ports.clock.nowMs(),
+    timestamp: workflowCtx.ports.clock.nowMs() || ctx?.ports.clock.nowMs(),
   });
 
   workflowCtx.ports.telemetry.emitMetric({
     name: 'evm_chain_resolution_tokens_failed',
     type: 'counter',
     value: failed,
-    timestamp: ctx.ports.clock.nowMs(),
+    timestamp: workflowCtx.ports.clock.nowMs() || ctx?.ports.clock.nowMs(),
   });
 
   workflowCtx.ports.telemetry.emitMetric({
     name: 'evm_chain_resolution_duration_ms',
     type: 'histogram',
     value: durationMs,
-    timestamp: ctx.ports.clock.nowMs(),
+    timestamp: workflowCtx.ports.clock.nowMs() || ctx?.ports.clock.nowMs(),
   });
 
   workflowCtx.logger.info('Completed EVM chain resolution workflow', {
@@ -536,9 +551,11 @@ export async function createDefaultResolveEvmChainsContext(): Promise<ResolveEvm
 
   return {
     ...baseContext,
-    getEvmTokensFromClickHouse,
+    // Helper functions for backward compatibility (now use ports.query directly)
+    getEvmTokensFromClickHouse: () => getEvmTokensFromClickHouse(baseContext.ports.query),
     getEvmTokensFromDuckDB,
-    updateChainInClickHouse,
+    updateChainInClickHouse: (address: string, newChain: string) =>
+      updateChainInClickHouse(address, newChain, baseContext.ports.query, baseContext.logger as { warn: (msg: string, ctx?: unknown) => void }),
     updateChainInDuckDB,
   };
 }

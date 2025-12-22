@@ -37,24 +37,12 @@ export async function runSimulationDuckdbHandler(
   ctx: CommandContext
 ) {
   // ENV + ADAPTER WIRING LIVE HERE (composition root)
-  // Create OhlcvFetchJob service for OHLCV ingestion context
-  // Dynamic import to avoid build-time dependency on @quantbot/jobs
-  const { OhlcvFetchJob } = await import('@quantbot/jobs');
-  const ohlcvFetchJob = new OhlcvFetchJob({
-    parallelWorkers: process.env.BIRDEYE_PARALLEL_WORKERS
-      ? parseInt(process.env.BIRDEYE_PARALLEL_WORKERS, 10)
-      : 16,
-    rateLimitMsPerWorker: process.env.BIRDEYE_RATE_LIMIT_MS_PER_WORKER
-      ? parseInt(process.env.BIRDEYE_RATE_LIMIT_MS_PER_WORKER, 10)
-      : 330,
-  });
-
   // Create workflow context with services from CommandContext
-  const workflowContext = createDuckdbSimulationContext({
+  // Note: ohlcvFetchJob removed - workflow now uses ports directly
+  const workflowContext = await createDuckdbSimulationContext({
     simulationService: ctx.services.simulation(),
     duckdbStorageService: ctx.services.duckdbStorage(),
     ohlcvIngestionService: ctx.services.ohlcvIngestion(),
-    ohlcvFetchJob, // Required for OHLCV ingestion context
   });
 
   // Convert args to handler args format

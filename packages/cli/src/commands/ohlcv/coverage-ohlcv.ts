@@ -71,14 +71,24 @@ export async function coverageOhlcvHandler(
     ${whereClause}
   `;
 
-  const statsResult = await client.query(statsQuery);
-  const stats = statsResult.json<{
+  const statsResult = await client.query({
+    query: statsQuery,
+    format: 'JSONEachRow',
+  });
+  const statsArray = (await statsResult.json()) as Array<{
     total_candles: number;
     earliest: string;
     latest: string;
     chains: string[];
     intervals: string[];
-  }>();
+  }>;
+  const stats = statsArray[0] || {
+    total_candles: 0,
+    earliest: null,
+    latest: null,
+    chains: [],
+    intervals: [],
+  };
 
   return {
     mint: args.mint,

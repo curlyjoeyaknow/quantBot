@@ -16,6 +16,7 @@ import {
   type RunSimulationDuckdbSpec,
   type RunSimulationDuckdbContext,
 } from '@quantbot/workflows';
+import type { SimulationOutput } from '@quantbot/simulation';
 
 export type RunSimulationDuckdbHandlerArgs = {
   duckdb: string;
@@ -29,9 +30,7 @@ export type RunSimulationDuckdbHandlerArgs = {
   alert_timestamp?: string;
 };
 
-export type RunSimulationDuckdbHandlerResult = {
-  simulationResults: unknown[]; // Workflow returns structured results
-};
+export type RunSimulationDuckdbHandlerResult = SimulationOutput;
 
 /**
  * Pure handler for DuckDB simulation
@@ -74,8 +73,6 @@ export async function runSimulationDuckdbHandler(
   // Call workflow (orchestration happens here)
   const result = await runSimulationDuckdb(spec, workflowContext);
 
-  // Return result (already JSON-serializable from workflow)
-  return {
-    simulationResults: result.simulationResults,
-  };
+  // Return simulationResults directly (it has results and summary properties)
+  return result.simulationResults;
 }

@@ -10,7 +10,7 @@
  */
 
 import { describe, it, expect, vi } from 'vitest';
-import { analyzeAnalyticsHandler } from '../../../../src/handlers/analytics/analyze-analytics.js';
+import { analyzeAnalyticsHandler } from '../../../../src/commands/analytics/analyze-analytics.js';
 
 describe('analyzeAnalyticsHandler', () => {
   it('calls AnalyticsEngine.analyzeCalls with converted dates and caller filter', async () => {

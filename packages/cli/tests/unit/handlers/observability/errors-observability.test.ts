@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { errorsObservabilityHandler } from '../../../../src/handlers/observability/errors-observability.js';
+import { errorsObservabilityHandler } from '../../../../src/commands/observability/errors-observability.js';
 import type { CommandContext } from '../../../../src/core/command-context.js';
 import { getErrorStats } from '@quantbot/observability';
 

@@ -10,7 +10,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { queryStorageHandler } from '../../../../src/handlers/storage/query-storage.js';
+import { queryStorageHandler } from '../../../../src/commands/storage/query-storage.js';
 import * as storageCommands from '../../../../src/commands/storage.js';
 
 // Mock ClickHouse client
@@ -57,15 +57,14 @@ describe('queryStorageHandler', () => {
 
     expect(mockClickHouseClient.query).toHaveBeenCalledTimes(1);
     expect(mockClickHouseClient.query).toHaveBeenCalledWith({
-      query: 'SELECT * FROM quantbot.ohlcv_candles LIMIT {limit:UInt32}',
-      query_params: { limit: 100 },
+      query: 'SELECT * FROM quantbot.ohlcv_candles LIMIT 100',
       format: 'JSONEachRow',
     });
     expect(result).toEqual(mockData);
     expect(result).toEqual(mockData);
   });
 
-  it('throws ValidationError for non-ClickHouse tables (PostgreSQL removed)', async () => {
+  it('throws ValidationError for non-ClickHouse tables', async () => {
     const fakeCtx = {
       services: {
         clickHouseClient: () => mockClickHouseClient,
@@ -78,7 +77,7 @@ describe('queryStorageHandler', () => {
       format: 'table' as const,
     };
 
-    await expect(queryStorageHandler(args, fakeCtx)).rejects.toThrow('PostgreSQL removed');
+    await expect(queryStorageHandler(args, fakeCtx)).rejects.toThrow('Only ClickHouse tables are supported');
   });
 
   it('handles case-insensitive table names', async () => {
@@ -106,8 +105,7 @@ describe('queryStorageHandler', () => {
 
     // Handler converts table name to lowercase for query
     expect(mockClickHouseClient.query).toHaveBeenCalledWith({
-      query: 'SELECT * FROM quantbot.ohlcv_candles LIMIT {limit:UInt32}',
-      query_params: { limit: 10 },
+      query: 'SELECT * FROM quantbot.ohlcv_candles LIMIT 10',
       format: 'JSONEachRow',
     });
     expect(result).toEqual(mockData);
@@ -162,8 +160,7 @@ describe('queryStorageHandler', () => {
 
       await queryStorageHandler(args, fakeCtx);
       expect(mockClickHouseClient.query).toHaveBeenCalledWith({
-        query: 'SELECT * FROM quantbot.ohlcv_candles LIMIT {limit:UInt32}',
-        query_params: { limit },
+        query: `SELECT * FROM quantbot.ohlcv_candles LIMIT ${limit}`,
         format: 'JSONEachRow',
       });
     }

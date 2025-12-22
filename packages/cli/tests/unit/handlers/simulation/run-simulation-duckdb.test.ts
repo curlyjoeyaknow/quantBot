@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { runSimulationDuckdbHandler } from '../../../../src/handlers/simulation/run-simulation-duckdb.js';
+import { runSimulationDuckdbHandler } from '../../../../src/commands/simulation/run-simulation-duckdb.js';
 import type { CommandContext } from '../../../../src/core/command-context.js';
 import { ValidationError, AppError } from '@quantbot/utils';
 import type { SimulationService } from '@quantbot/simulation';
@@ -110,7 +110,7 @@ describe('runSimulationDuckdbHandler', () => {
     expect(mockRunSimulationDuckdb).toHaveBeenCalledTimes(1);
     expect(mockService.runSimulation).toHaveBeenCalledWith({
       duckdb_path: '/path/to/tele.duckdb',
-      strategy: args.strategy,
+      strategy: 'Test Strategy', // Handler extracts name from strategy object
       initial_capital: 1000.0,
       lookback_minutes: 260,
       lookforward_minutes: 1440,

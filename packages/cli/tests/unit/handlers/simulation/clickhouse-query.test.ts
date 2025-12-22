@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { clickHouseQueryHandler } from '../../../../src/handlers/simulation/clickhouse-query.js';
+import { clickHouseQueryHandler } from '../../../../src/commands/simulation/clickhouse-query.js';
 import type { CommandContext } from '../../../../src/core/command-context.js';
 import { ValidationError } from '@quantbot/utils';
 

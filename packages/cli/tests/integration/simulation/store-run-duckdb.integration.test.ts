@@ -12,7 +12,7 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { existsSync, unlinkSync, mkdirSync } from 'fs';
 import { join, resolve } from 'path';
-import { storeRunDuckdbHandler } from '../../../src/handlers/simulation/store-run-duckdb.js';
+import { storeRunDuckdbHandler } from '../../../src/commands/simulation/store-run-duckdb.js';
 import { getPythonEngine } from '@quantbot/utils';
 import { DuckDBStorageService } from '@quantbot/simulation';
 import { createCommandContext } from '../../../src/core/command-context.js';

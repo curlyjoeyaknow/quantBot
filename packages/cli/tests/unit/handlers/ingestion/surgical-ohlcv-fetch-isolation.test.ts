@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, vi } from 'vitest';
-import { surgicalOhlcvFetchHandler } from '../../../../src/handlers/ingestion/surgical-ohlcv-fetch.js';
+import { surgicalOhlcvFetchHandler } from '../../../../src/commands/ingestion/surgical-ohlcv-fetch.js';
 import * as workflows from '@quantbot/workflows';
 
 // Mock the workflow
@@ -45,6 +45,7 @@ describe('surgicalOhlcvFetchHandler isolation tests', () => {
       limit: 10,
       minCoverage: 0.8,
       dryRun: false,
+      format: 'json' as const, // JSON format returns raw workflow result
     };
 
     const fakeCtx = {
@@ -55,7 +56,7 @@ describe('surgicalOhlcvFetchHandler isolation tests', () => {
 
     const result = await surgicalOhlcvFetchHandler(args, fakeCtx);
 
-    // Should return workflow result
+    // Should return workflow result when format is json
     expect(result).toEqual(mockResult);
 
     // Should have called workflow

@@ -10,7 +10,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { ingestTelegramHandler } from '../../../../src/handlers/ingestion/ingest-telegram.js';
+import { ingestTelegramHandler } from '../../../../src/commands/ingestion/ingest-telegram.js';
 
 // Mock workflows
 const mockIngestTelegramJson = vi.fn();

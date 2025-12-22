@@ -51,10 +51,8 @@ export async function storageStatsWorkflowHandler(
     duckdbPath: args.duckdbPath,
   };
 
-  // Create workflow context with ClickHouse client from CommandContext
-  const workflowContext = createStorageStatsContext({
-    clickHouseClient: ctx.services.clickHouseClient(),
-  });
+  // Create workflow context (now uses ports, no direct client needed)
+  const workflowContext = await createStorageStatsContext();
 
   // Call workflow
   const result = await getStorageStats(spec, workflowContext);

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { reportAnalyticsHandler } from '../../../../src/handlers/analytics/report-analytics.js';
+import { reportAnalyticsHandler } from '../../../../src/commands/analytics/report-analytics.js';
 import type { CommandContext } from '../../../../src/core/command-context.js';
 
 describe('reportAnalyticsHandler', () => {

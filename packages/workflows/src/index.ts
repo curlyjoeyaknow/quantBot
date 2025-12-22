@@ -25,7 +25,6 @@ export type {
   IngestOhlcvContext,
 } from './ohlcv/ingestOhlcv.js';
 export { createOhlcvIngestionContext } from './context/createOhlcvIngestionContext.js';
-export type { OhlcvIngestionContextConfig } from './context/createOhlcvIngestionContext.js';
 export { runSimulationDuckdb } from './simulation/runSimulationDuckdb.js';
 export type {
   RunSimulationDuckdbSpec,
@@ -94,9 +93,12 @@ export { createOhlcvIngestionWorkflowAdapter } from './adapters/ohlcvIngestionWo
 export * from './context/ports.js';
 export * from './context/workflowContextWithPorts.js';
 export { createProductionPorts } from './context/createProductionPorts.js';
+export { createQueryClickhouseAdapter } from './adapters/queryClickhouseAdapter.js';
 export { createProductionContextWithPorts } from './context/createProductionContext.js';
 export { createTelemetryConsoleAdapter } from './adapters/telemetryConsoleAdapter.js';
 export { createMarketDataBirdeyeAdapter } from './adapters/marketDataBirdeyeAdapter.js';
+export { createStateDuckdbAdapter } from './adapters/stateDuckdbAdapter.js';
+export { createExecutionStubAdapter } from './adapters/executionStubAdapter.js';
 export { ingestOhlcvWorkflowPorted } from './ohlcv/ingestOhlcvPorted.js';
 export type {
   IngestOhlcvWorkflowInput,

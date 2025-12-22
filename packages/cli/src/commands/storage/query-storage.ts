@@ -48,7 +48,10 @@ export async function queryStorageHandler(
     }
 
     const query = `SELECT * FROM ${database}.${normalizedTable} LIMIT ${args.limit || 100}`;
-    const result = await client.query(query);
+    const result = await client.query({
+      query,
+      format: 'JSONEachRow',
+    });
     const rows = (await result.json()) as unknown[];
 
     return rows;

@@ -10,7 +10,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { queryStorageHandler } from '../../../../src/handlers/storage/query-storage.js';
+import { queryStorageHandler } from '../../../../src/commands/storage/query-storage.js';
 
 describe('queryStorageHandler - Isolation Test', () => {
   beforeEach(() => {

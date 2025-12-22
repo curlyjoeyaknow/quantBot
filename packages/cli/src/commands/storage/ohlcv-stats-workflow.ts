@@ -49,10 +49,8 @@ export async function ohlcvStatsWorkflowHandler(
     mint: args.mint,
   };
 
-  // Create workflow context with ClickHouse client from CommandContext
-  const workflowContext = createOhlcvStatsContext({
-    clickHouseClient: ctx.services.clickHouseClient(),
-  });
+  // Create workflow context (now uses ports, no direct client needed)
+  const workflowContext = await createOhlcvStatsContext();
 
   // Call workflow
   const result = await getOhlcvStats(spec, workflowContext);

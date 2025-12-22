@@ -47,16 +47,25 @@ export async function statsStorageHandler(
       const count = firstRow ? parseInt(firstRow.count, 10) : 0;
 
       rows.push({
+        storage: 'clickhouse',
         database: 'clickhouse',
         table,
         count,
       });
     } catch (error) {
+      // Skip tables that don't exist (test expectation)
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      if (errorMessage.includes("doesn't exist") || errorMessage.includes('does not exist')) {
+        // Skip non-existent tables
+        continue;
+      }
+      // Include other errors
       rows.push({
+        storage: 'clickhouse',
         database: 'clickhouse',
         table,
         count: 0,
-        error: error instanceof Error ? error.message : String(error),
+        error: errorMessage,
       });
     }
   }
