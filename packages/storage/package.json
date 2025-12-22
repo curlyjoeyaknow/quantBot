@@ -1,0 +1,40 @@
+{
+  "name": "@quantbot/storage",
+  "version": "1.0.0",
+  "description": "Storage layer for QuantBot (ClickHouse, DuckDB, InfluxDB)",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./*": {
+      "import": "./dist/*.js",
+      "types": "./dist/*.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "test": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@clickhouse/client": "^1.14.0",
+    "@influxdata/influxdb-client": "^1.33.2",
+    "@influxdata/influxdb-client-apis": "^1.33.2",
+    "@quantbot/core": "workspace:*",
+    "@quantbot/utils": "workspace:*",
+    "lru-cache": "^11.0.0",
+    "luxon": "^3.4.4",
+    "sqlite3": "^5.1.7"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "@types/sqlite3": "^3.1.11",
+    "@vitest/coverage-v8": "^4.0.15",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.15"
+  }
+}

@@ -1,0 +1,71 @@
+---
+description: Git hooks rules - lightweight pre-commit and pre-push checks
+globs:
+  - ".husky/**/*"
+  - "scripts/git/**/*"
+alwaysApply: false
+---
+
+# Git Hooks Rules
+
+## Pre-Commit Hook
+
+Lightweight checks only - runs on `git commit`:
+
+1. Format check: `npm run format:check` (fast)
+2. Lint check: `npm run lint` (fast)
+3. Type check: `npm run typecheck` (fast)
+
+Note: Test requirements check and test execution run in CI, not pre-commit.
+
+## Pre-Push Hook
+
+Lightweight checks only - runs on `git push`:
+
+1. Type check: `npm run typecheck` (fast, catches type errors before push)
+
+Note: Full test suite, coverage, security audit, and build verification run in CI, not pre-push.
+
+## Test Requirements by Change Type
+
+The `check-test-requirements.ts` script enforces:
+
+- **financial-calculation**: unit + property tests
+- **parser**: unit + fuzzing tests
+- **database**: integration tests
+- **api-endpoint**: integration + unit tests
+- **mint-handling**: unit + property tests
+- **async-operation**: unit + concurrency tests
+- **retry-logic**: unit + integration tests
+- **bugfix**: regression + unit tests
+- **other**: unit tests
+
+## Development Stage Detection
+
+Script detects development stage from file location:
+
+- **Early**: New files, basic structure
+- **Mid**: Unit tests present
+- **Late**: Integration/property/fuzzing tests present
+- **Production**: E2E/load tests present
+
+## Bypassing Hooks
+
+To bypass hooks (use with caution):
+
+```bash
+# Skip pre-commit
+git commit --no-verify
+
+# Skip pre-push
+git push --no-verify
+```
+
+Warning: Only bypass for emergency hotfixes. Always add tests afterward.
+
+## Rationale
+
+- **Pre-commit**: Catches formatting, linting, and type errors early
+- **Pre-push**: Lightweight type check only - prevents pushing broken types
+- **CI**: Full test suite, coverage, security audit, and build verification
+- This approach balances developer velocity with code quality

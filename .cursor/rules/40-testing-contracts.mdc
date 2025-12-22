@@ -1,0 +1,39 @@
+---
+name: Testing contracts
+description: Tests must prove architecture guarantees: handler purity, adapter contracts, replayability.
+globs:
+  - "tests/**"
+  - "packages/**/src/**"
+  - "apps/**/src/**"
+---
+
+# Testing rules
+
+## Handler unit tests (required)
+For every handler:
+- test with in-memory/mock ports
+- no network
+- no filesystem
+- no real clock (use ClockPort stub)
+- assert:
+  - deterministic output
+  - emitted events
+  - metrics shape
+
+## Adapter contract tests (required)
+For each adapter:
+- define a port contract test suite
+- use recorded fixtures or mock servers
+- verify:
+  - request formation
+  - response parsing
+  - retry/timeout policy (adapter-level)
+  - error classification
+
+## Replay tests (strongly recommended)
+- same inputs + recorded adapter outputs => same handler outputs
+- ensures refactors don't alter decision logic silently
+
+## What NOT to test
+- don't unit test composition roots heavily (smoke tests are enough)
+- don't test internal private functions unless they encode tricky edge cases

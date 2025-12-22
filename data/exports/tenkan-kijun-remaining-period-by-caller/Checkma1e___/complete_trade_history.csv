@@ -1,0 +1,2 @@
+TradeNumber,TokenAddress,AlertTime,EntryTime,ExitTime,PnL,PnLPercent,MaxReached,HoldDurationMinutes,IsWin
+1,FkHRbb5EUNEQxCjPySRV2ejWauZYFwC3yXneU83cS6V1,2025-08-05T19:13:02.000Z,2025-08-06T20:00:00.000+10:00,2025-08-06T21:00:00.000+10:00,1.041742,4.17,1.0106,60,Yes

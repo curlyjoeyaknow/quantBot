@@ -1,0 +1,66 @@
+{
+  "name": "@quantbot/simulation",
+  "version": "2.0.0",
+  "description": "Comprehensive trading simulation engine for QuantBot with modular architecture",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./types": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/types/index.js"
+    },
+    "./data": {
+      "types": "./dist/data/index.d.ts",
+      "import": "./dist/data/index.js"
+    },
+    "./indicators": {
+      "types": "./dist/indicators/index.d.ts",
+      "import": "./dist/indicators/index.js"
+    },
+    "./signals": {
+      "types": "./dist/signals/index.d.ts",
+      "import": "./dist/signals/index.js"
+    },
+    "./position": {
+      "types": "./dist/position/index.d.ts",
+      "import": "./dist/position/index.js"
+    },
+    "./execution": {
+      "types": "./dist/execution/index.d.ts",
+      "import": "./dist/execution/index.js"
+    },
+    "./core": {
+      "types": "./dist/core/index.d.ts",
+      "import": "./dist/core/index.js"
+    },
+    "./sinks": {
+      "types": "./dist/sinks/index.d.ts",
+      "import": "./dist/sinks/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "test": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@quantbot/core": "workspace:*",
+    "@quantbot/utils": "workspace:*",
+    "luxon": "^3.7.2",
+    "uuid": "^11.1.0",
+    "zod": "^4.1.13"
+  },
+  "devDependencies": {
+    "@types/luxon": "^3.7.1",
+    "@types/node": "^24.10.1",
+    "@types/uuid": "^10.0.0",
+    "@vitest/coverage-v8": "^4.0.15",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.15"
+  }
+}

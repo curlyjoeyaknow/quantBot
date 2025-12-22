@@ -1,0 +1,24 @@
+---
+name: No root trophies / status files
+description: Keep the repo root clean and truthful.
+globs:
+  - "**/*"
+---
+
+# Root cleanliness
+
+## Do not create
+No more root-level files like:
+- `STATUS_*`, `IMPLEMENTATION_COMPLETE_*`, `SUCCESS_*`, `NEXT_STEPS_*`, `MIGRATION_*`, etc.
+
+## Do instead
+- add notes to `docs/status.md` (chronological)
+- add decisions to `docs/architecture.md` (stable)
+- create ADRs in `docs/adr/NNNN-title.md` for major choices
+
+## Goal
+The root directory should help a new contributor answer in 30 seconds:
+- what are the apps?
+- what are the packages?
+- how do I run tests?
+- where is architecture documented?

@@ -1,0 +1,339 @@
+{
+  "summary": {
+    "totalCallers": 9,
+    "bestPerformer": {
+      "caller": "Croz",
+      "totalCalls": 27,
+      "tradesExecuted": 10,
+      "winningTrades": 6,
+      "losingTrades": 4,
+      "winRate": 60,
+      "totalPnL": 846.27,
+      "totalReturn": 84.63,
+      "maxDrawdown": 26.54,
+      "avgTradeReturn": 69.57,
+      "bestTrade": 200,
+      "worstTrade": -98.75,
+      "sharpeRatio": 0.599,
+      "avgHoldTime": 25.7,
+      "totalVolume": 1384.5
+    },
+    "worstPerformer": {
+      "caller": "Brook Giga I verify @BrookCalls",
+      "totalCalls": 198,
+      "tradesExecuted": 10,
+      "winningTrades": 2,
+      "losingTrades": 8,
+      "winRate": 20,
+      "totalPnL": -268.23,
+      "totalReturn": -26.82,
+      "maxDrawdown": 33.45,
+      "avgTradeReturn": -29.33,
+      "bestTrade": 78.98,
+      "worstTrade": -86.86,
+      "sharpeRatio": -0.547,
+      "avgHoldTime": 30.7,
+      "totalVolume": 847.4
+    },
+    "avgReturn": 22.688888888888886,
+    "avgWinRate": 37.77777777777778
+  },
+  "rankings": {
+    "byReturn": [
+      {
+        "rank": 1,
+        "caller": "Croz",
+        "return": 84.63
+      },
+      {
+        "rank": 2,
+        "caller": "davinch",
+        "return": 56.73
+      },
+      {
+        "rank": 3,
+        "caller": "ʟ ᴇ ᴍ ᴏ ɴ ᴄ ʜ ɪ ʟ ᴅ 🍋",
+        "return": 55.95
+      },
+      {
+        "rank": 4,
+        "caller": "exy",
+        "return": 21.82
+      },
+      {
+        "rank": 5,
+        "caller": "meta maxist",
+        "return": 13.74
+      },
+      {
+        "rank": 6,
+        "caller": "RektBigHustla | @OurCryptoHood Owner",
+        "return": 5.94
+      },
+      {
+        "rank": 7,
+        "caller": "Wen Presale",
+        "return": -3.24
+      },
+      {
+        "rank": 8,
+        "caller": "Brook",
+        "return": -4.55
+      },
+      {
+        "rank": 9,
+        "caller": "Brook Giga I verify @BrookCalls",
+        "return": -26.82
+      }
+    ],
+    "byWinRate": [
+      {
+        "rank": 1,
+        "caller": "Croz",
+        "winRate": 60
+      },
+      {
+        "rank": 2,
+        "caller": "ʟ ᴇ ᴍ ᴏ ɴ ᴄ ʜ ɪ ʟ ᴅ 🍋",
+        "winRate": 60
+      },
+      {
+        "rank": 3,
+        "caller": "davinch",
+        "winRate": 50
+      },
+      {
+        "rank": 4,
+        "caller": "exy",
+        "winRate": 50
+      },
+      {
+        "rank": 5,
+        "caller": "RektBigHustla | @OurCryptoHood Owner",
+        "winRate": 40
+      },
+      {
+        "rank": 6,
+        "caller": "meta maxist",
+        "winRate": 30
+      },
+      {
+        "rank": 7,
+        "caller": "Brook",
+        "winRate": 30
+      },
+      {
+        "rank": 8,
+        "caller": "Brook Giga I verify @BrookCalls",
+        "winRate": 20
+      },
+      {
+        "rank": 9,
+        "caller": "Wen Presale",
+        "winRate": 0
+      }
+    ],
+    "bySharpe": [
+      {
+        "rank": 1,
+        "caller": "ʟ ᴇ ᴍ ᴏ ɴ ᴄ ʜ ɪ ʟ ᴅ 🍋",
+        "sharpe": 0.816
+      },
+      {
+        "rank": 2,
+        "caller": "Croz",
+        "sharpe": 0.599
+      },
+      {
+        "rank": 3,
+        "caller": "davinch",
+        "sharpe": 0.429
+      },
+      {
+        "rank": 4,
+        "caller": "exy",
+        "sharpe": 0.251
+      },
+      {
+        "rank": 5,
+        "caller": "meta maxist",
+        "sharpe": 0.179
+      },
+      {
+        "rank": 6,
+        "caller": "RektBigHustla | @OurCryptoHood Owner",
+        "sharpe": 0.104
+      },
+      {
+        "rank": 7,
+        "caller": "Wen Presale",
+        "sharpe": 0
+      },
+      {
+        "rank": 8,
+        "caller": "Brook",
+        "sharpe": -0.014
+      },
+      {
+        "rank": 9,
+        "caller": "Brook Giga I verify @BrookCalls",
+        "sharpe": -0.547
+      }
+    ]
+  },
+  "detailedResults": [
+    {
+      "caller": "ʟ ᴇ ᴍ ᴏ ɴ ᴄ ʜ ɪ ʟ ᴅ 🍋",
+      "totalCalls": 5,
+      "tradesExecuted": 5,
+      "winningTrades": 3,
+      "losingTrades": 2,
+      "winRate": 60,
+      "totalPnL": 559.52,
+      "totalReturn": 55.95,
+      "maxDrawdown": 16.67,
+      "avgTradeReturn": 100,
+      "bestTrade": 200,
+      "worstTrade": -50,
+      "sharpeRatio": 0.816,
+      "avgHoldTime": 22.2,
+      "totalVolume": 547.26
+    },
+    {
+      "caller": "Croz",
+      "totalCalls": 27,
+      "tradesExecuted": 10,
+      "winningTrades": 6,
+      "losingTrades": 4,
+      "winRate": 60,
+      "totalPnL": 846.27,
+      "totalReturn": 84.63,
+      "maxDrawdown": 26.54,
+      "avgTradeReturn": 69.57,
+      "bestTrade": 200,
+      "worstTrade": -98.75,
+      "sharpeRatio": 0.599,
+      "avgHoldTime": 25.7,
+      "totalVolume": 1384.5
+    },
+    {
+      "caller": "davinch",
+      "totalCalls": 53,
+      "tradesExecuted": 10,
+      "winningTrades": 5,
+      "losingTrades": 5,
+      "winRate": 50,
+      "totalPnL": 567.26,
+      "totalReturn": 56.73,
+      "maxDrawdown": 16.08,
+      "avgTradeReturn": 53.13,
+      "bestTrade": 200,
+      "worstTrade": -95.74,
+      "sharpeRatio": 0.429,
+      "avgHoldTime": 10.3,
+      "totalVolume": 1098.44
+    },
+    {
+      "caller": "exy",
+      "totalCalls": 72,
+      "tradesExecuted": 10,
+      "winningTrades": 5,
+      "losingTrades": 5,
+      "winRate": 50,
+      "totalPnL": 218.17,
+      "totalReturn": 21.82,
+      "maxDrawdown": 31.69,
+      "avgTradeReturn": 24.26,
+      "bestTrade": 200,
+      "worstTrade": -62.57,
+      "sharpeRatio": 0.251,
+      "avgHoldTime": 25.7,
+      "totalVolume": 1248.1
+    },
+    {
+      "caller": "meta maxist",
+      "totalCalls": 29,
+      "tradesExecuted": 10,
+      "winningTrades": 3,
+      "losingTrades": 7,
+      "winRate": 30,
+      "totalPnL": 137.43,
+      "totalReturn": 13.74,
+      "maxDrawdown": 21.67,
+      "avgTradeReturn": 17.2,
+      "bestTrade": 200,
+      "worstTrade": -77.55,
+      "sharpeRatio": 0.179,
+      "avgHoldTime": 25,
+      "totalVolume": 951.63
+    },
+    {
+      "caller": "RektBigHustla | @OurCryptoHood Owner",
+      "totalCalls": 22,
+      "tradesExecuted": 10,
+      "winningTrades": 4,
+      "losingTrades": 6,
+      "winRate": 40,
+      "totalPnL": 59.45,
+      "totalReturn": 5.94,
+      "maxDrawdown": 26.42,
+      "avgTradeReturn": 10.66,
+      "bestTrade": 200,
+      "worstTrade": -85.2,
+      "sharpeRatio": 0.104,
+      "avgHoldTime": 27.7,
+      "totalVolume": 1050.5
+    },
+    {
+      "caller": "Wen Presale",
+      "totalCalls": 1,
+      "tradesExecuted": 1,
+      "winningTrades": 0,
+      "losingTrades": 1,
+      "winRate": 0,
+      "totalPnL": -32.42,
+      "totalReturn": -3.24,
+      "maxDrawdown": 0,
+      "avgTradeReturn": -32.42,
+      "bestTrade": -32.42,
+      "worstTrade": -32.42,
+      "sharpeRatio": 0,
+      "avgHoldTime": 40.5,
+      "totalVolume": 100
+    },
+    {
+      "caller": "Brook",
+      "totalCalls": 41,
+      "tradesExecuted": 10,
+      "winningTrades": 3,
+      "losingTrades": 7,
+      "winRate": 30,
+      "totalPnL": -45.54,
+      "totalReturn": -4.55,
+      "maxDrawdown": 30.41,
+      "avgTradeReturn": -1.18,
+      "bestTrade": 200,
+      "worstTrade": -84.83,
+      "sharpeRatio": -0.014,
+      "avgHoldTime": 24.2,
+      "totalVolume": 979.81
+    },
+    {
+      "caller": "Brook Giga I verify @BrookCalls",
+      "totalCalls": 198,
+      "tradesExecuted": 10,
+      "winningTrades": 2,
+      "losingTrades": 8,
+      "winRate": 20,
+      "totalPnL": -268.23,
+      "totalReturn": -26.82,
+      "maxDrawdown": 33.45,
+      "avgTradeReturn": -29.33,
+      "bestTrade": 78.98,
+      "worstTrade": -86.86,
+      "sharpeRatio": -0.547,
+      "avgHoldTime": 30.7,
+      "totalVolume": 847.4
+    }
+  ]
+}

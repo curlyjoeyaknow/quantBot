@@ -1,0 +1,11 @@
+Rank,Strategy,WinRate,AvgPnlPerTrade,TotalTrades,FilteredOut,FinalPortfolio,CompoundFactor,MaxDrawdown,PositionSize,Filters
+1,BrookGiga_All_6,49.01,5.06,302,0,427.29,4.2729,11.56,10.00,"{""allowedCallers"":[""Brook Giga I verify @BrookCalls""]}"
+2,Solana_Only_3,47.66,3.91,235,67,240.99,2.4099,11.56,10.00,"{""allowedChains"":[""solana""]}"
+3,BrookGiga_Solana_Only_8,47.66,3.91,235,67,240.99,2.4099,11.56,10.00,"{""allowedCallers"":[""Brook Giga I verify @BrookCalls""],""allowedChains"":[""solana""]}"
+4,BSC_Only_4,53.73,9.10,67,235,177.31,1.7731,5.25,10.00,"{""allowedChains"":[""bsc""]}"
+5,BrookGiga_BSC_Only_7,53.73,9.10,67,235,177.31,1.7731,5.25,10.00,"{""allowedCallers"":[""Brook Giga I verify @BrookCalls""],""allowedChains"":[""bsc""]}"
+6,BrookGiga_BSC_Over1M_12,61.29,13.32,31,271,147.17,1.4717,2.06,10.00,"{""allowedCallers"":[""Brook Giga I verify @BrookCalls""],""allowedChains"":[""bsc""],""callerMarketCapFilters"":{""Brook Giga I verify @BrookCalls"":{""minMarketCap"":1000000}}}"
+7,TenkanKijun_1mLead_15,48.48,9.75,33,269,134.24,1.3424,4.50,10.00,"{""useMultiTimeframe"":true,""timeframeSignalPeriod"":15}"
+8,BrookGiga_Over1M_0,44.07,5.37,59,243,133.41,1.3341,9.47,10.00,"{""allowedCallers"":[""Brook Giga I verify @BrookCalls""],""callerMarketCapFilters"":{""Brook Giga I verify @BrookCalls"":{""minMarketCap"":1000000}}}"
+9,MediumCap_1mLead_Ladder_17,25.00,22.40,8,294,116.79,1.1679,4.98,10.00,"{""minMarketCap"":50000,""maxMarketCap"":500000,""useMultiTimeframe"":true,""timeframeSignalPeriod"":10}"
+10,LadderExits_TightStop_16,27.48,-3.50,302,0,22.97,0.2297,79.57,13.33,"{""minStopLoss"":0.1,""maxStopLoss"":0.2}"

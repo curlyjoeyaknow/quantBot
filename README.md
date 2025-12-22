@@ -1,436 +1,683 @@
-# QuantBot - Advanced Trading Simulation & CA Monitoring Bot
+# QuantBot - Solana Analytics & Backtesting Pipeline
 
-A sophisticated Telegram bot that provides PNL simulation for trading strategies and real-time CA (Contract Address) monitoring using Helius WebSockets.
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue.svg)](https://www.typescriptlang.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-18+-green.svg)](https://nodejs.org/)
+[![pnpm](https://img.shields.io/badge/pnpm-workspace-orange.svg)](https://pnpm.io/)
+[![License](https://img.shields.io/badge/License-ISC-blue.svg)](LICENSE)
 
-## 🚀 Features
+**A modular analytics and backtesting pipeline for Solana token trading strategies.**
 
-### 📊 **PNL Simulation**
+This repository is primarily an **analytics & simulation engine** with a clean three-layer architecture:
 
-- Multi-chain support: Solana, Ethereum, BSC, Base
-- **InfluxDB time-series database** for high-performance OHLCV storage
-- Multi-API-key Birdeye integration with retry logic and caching
-- Customizable take-profit strategies
-- Configurable stop-loss (initial + trailing)
-- Detailed simulation events and performance metrics
-- Intelligent caching layer for 10-50x faster queries
+- **Pure Compute** - Deterministic simulation with no I/O
+- **Orchestration** - Workflows that coordinate storage, services, and I/O
+- **Adapters** - CLI/TUI/API that translate user intent to workflow specs
 
-### 🎯 **Real-Time CA Monitoring**
+## 🎯 Golden Path: Analytics Pipeline
 
-- Automatic CA drop detection in chat messages
-- Real-time price monitoring via Helius WebSockets
-- Profit target alerts (2x, 5x, 10x, etc.)
-- Stop-loss notifications
-- **Ichimoku Cloud Analysis** with technical signals
-- Hourly performance summaries
-- Multi-chain CA tracking
+The Golden Path is the core focus - a clean pipeline for:
 
-### 💾 **Persistent Storage**
+1. **Telegram Export Ingestion** → Parse caller alerts and extract token addresses
+2. **OHLCV Data Collection** → Fetch and store candle data from Birdeye
+3. **Strategy Simulation** → Run pure, deterministic backtests on historical calls
+4. **Performance Analytics** → Evaluate strategy performance with detailed metrics
 
-- SQLite database for simulation history
-- **Caller tracking database** for individual caller alert history
-- Custom strategy management
-- CA tracking and performance data
-- Alert history and price updates
-- **InfluxDB time-series database** for OHLCV data
+### Quick Start
 
-## 🔧 Setup
+```bash
+# Install dependencies
+pnpm install
+
+# Build all packages (in correct dependency order)
+pnpm build:ordered
+
+# 1. Ingest Telegram export
+pnpm quantbot ingestion telegram --file data/raw/messages.html --caller-name Brook
+
+# 2. Fetch OHLCV for calls
+pnpm quantbot ingestion ohlcv --from 2024-01-01 --to 2024-02-01
+
+# 3. Run simulation
+pnpm quantbot simulation run --strategy MyStrategy --from 2024-01-01 --to 2024-02-01
+```
+
+See **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** for complete architecture documentation.
+
+## 🎯 Overview
+
+QuantBot's core capabilities:
+
+- **Telegram Export Parsing** - Extract calls from Telegram HTML exports (case-preserved mint addresses)
+- **OHLCV Ingestion** - Fetch and store candle data from Birdeye API with ClickHouse caching
+- **Pure Simulation Engine** - Deterministic backtesting with no I/O, clocks, or global config
+- **Workflow Orchestration** - Multi-step flows coordinated through typed WorkflowContext
+- **DuckDB + ClickHouse** - OLAP-optimized storage for analytics and time-series data
+- **Typed Repositories** - Type-safe database access layer with dependency injection
+
+### Architecture Highlights
+
+- **Simulation is pure compute** - No network, no database, no filesystem access
+- **Workflows coordinate I/O** - All multi-step business logic lives in `@quantbot/workflows`
+- **CLI handlers are thin adapters** - Parse args → call workflow → format output
+- **Python integration via PythonEngine** - DuckDB queries, analysis scripts with Zod validation
+
+### Secondary Features (Planned)
+
+- **Backend REST API** - Fastify-based API (`@quantbot/api`)
+- **Real-Time Monitoring** - Live CA drop detection (`@quantbot/monitoring`)
+- **Web Dashboard** - Next.js analytics UI (`@quantbot/web`)
+- **Telegram Bot** - Interactive command-driven bot (`@quantbot/bot`)
+
+## 🚀 Golden Path Features
+
+### 📥 Telegram Export Ingestion
+
+- Parse HTML exports from Telegram
+- Extract Solana addresses (full, case-preserved)
+- Normalize into callers, alerts, calls, tokens
+- Idempotent processing (no duplicates)
+
+### 📈 OHLCV Data Management
+
+- Fetch candles from Birdeye API
+- Store in ClickHouse for fast queries
+- Automatic caching and deduplication
+- Support for 1m, 5m, 15m, 1h intervals
+
+### 🎯 Strategy Simulation
+
+- Pure simulation engine (deterministic, testable)
+- Config-driven strategies
+- Detailed event traces
+- Comprehensive performance metrics
+
+### 📊 Analytics & Reporting
+
+- Simulation run tracking
+- Aggregated performance metrics
+- Event-level traces for debugging
+- Strategy comparison tools
+
+## Secondary Features (Not Golden Path)
+
+### 📊 Trading Simulation Engine (Legacy)
+
+- **Multi-Chain Support**: Solana, Ethereum, BSC, Base, Arbitrum
+- **Hybrid Candle Fetching**: 5-minute recent + 1-hour historical data
+- **Customizable Strategies**: Take-profit targets, stop-loss (initial + trailing), re-entry logic
+- **Config-Driven**: JSON-based simulation configuration
+- **Performance Metrics**: Detailed PNL, win rates, risk metrics
+- **Strategy Optimization**: Built-in optimization tools and ML-based strategy finder
+- **Batch Execution**: Run multiple scenarios in parallel
+
+### 🎯 Real-Time CA Monitoring
+
+- **Automatic Detection**: Detects CA drops in chat messages
+- **Multi-Source Tracking**: Brook, CurlyJoe, and custom channels
+- **Real-Time Alerts**: Profit targets (2x, 5x, 10x), stop-loss notifications
+- **Ichimoku Cloud Analysis**: Advanced technical indicators with signal alerts
+- **Price Tracking**: WebSocket-based real-time price updates via Helius
+- **Performance Summaries**: Hourly and daily performance reports
+
+### 💰 Live Trading System (Coming Soon) 🔥
+
+- **Strategy-Based Execution**: Execute trades using user-defined strategies
+- **Alert-Triggered Trading**: Automatic trade execution from alerts
+- **Helius RPC Integration**: Optimized Amsterdam/mainnet endpoints
+- **Relayer Support**: High-speed transaction sending via relayers
+- **Position Management**: Real-time position tracking and PNL
+- **Risk Controls**: Slippage protection, position limits, daily loss limits
+- **Safety Features**: Dry-run mode, trade confirmation, comprehensive logging
+
+### 💾 Data Storage & Analytics
+
+- **DuckDB**: Primary OLAP database for analytics and simulation results
+- **ClickHouse**: High-performance time-series database for OHLCV data
+- **Python Integration**: DuckDB queries via PythonEngine with Zod validation
+- **Comprehensive Analytics**: Historical analysis, caller performance, token scoring
+
+#### Storage Rules
+
+- **Mint addresses**: Never truncate, preserve exact case (32-44 chars)
+- **Parameterized queries**: Always use `{param:Type}` syntax for ClickHouse
+- **JSON-serializable results**: All workflow results must be serializable
+
+### 🤖 Telegram Bot Commands
+
+#### Core Commands
+
+- `/backtest` - Start a new PNL simulation
+- `/repeat` - Repeat previous simulation with new strategy
+- `/strategy` - Manage custom trading strategies (save, use, delete, list)
+- `/cancel` - Cancel current simulation session
+- `/ichimoku` - Start Ichimoku Cloud analysis for a token
+
+#### Analysis Commands
+
+- `/analysis` - Run comprehensive historical analysis on CA drops
+- `/calls <token>` - Show all historical calls for a token
+- `/callers` - Show top callers statistics
+- `/recent` - Show recent CA calls (last 15)
+- `/backtest_call` - Backtest a specific historical call
+- `/history` - View simulation history
+
+#### Monitoring Commands
+
+- `/alerts` - View active alerts and monitoring status
+- `/alert` - Check specific alert status
+- `/livetrade` - Manage live trade entry alerts
+- `/watchlist` - View and manage monitored tokens
+- `/addcurlyjoe` - Add recent CurlyJoe calls to monitoring
+
+#### Utility Commands
+
+- `/begin` - Welcome message and bot introduction
+- `/options` - Show all available commands
+- `/extract` - Extract CA drops from HTML chat messages
+
+## 🏗️ Architecture
+
+QuantBot follows a **modular monorepo architecture** with strict layering:
+
+```text
+┌─────────────────────────────────────────────────────────────┐
+│  APPLICATION LAYER: cli, tui, api (thin adapters)           │
+├─────────────────────────────────────────────────────────────┤
+│  ORCHESTRATION LAYER: workflows (coordinate I/O)            │
+├─────────────────────────────────────────────────────────────┤
+│  SERVICE LAYER: simulation (pure), ohlcv, ingestion,        │
+│                 analytics                                    │
+├─────────────────────────────────────────────────────────────┤
+│  INFRASTRUCTURE LAYER: storage, api-clients, observability  │
+├─────────────────────────────────────────────────────────────┤
+│  FOUNDATION LAYER: core (types), utils (EventBus, logger)   │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Package Structure
+
+```text
+packages/
+├── core/           # Foundation types (Candle, Chain, Token, etc.)
+├── utils/          # Shared utilities (logger, EventBus, PythonEngine)
+├── storage/        # Storage layer (DuckDB, ClickHouse)
+├── observability/  # Logging, metrics, error tracking
+├── api-clients/    # External API clients (Birdeye, Helius)
+├── ohlcv/          # OHLCV data services with hybrid fetching
+├── analytics/      # Analytics engine and metrics
+├── ingestion/      # Data ingestion (Telegram parsing)
+├── simulation/     # Pure simulation engine (NO I/O)
+├── workflows/      # Workflow orchestration (coordinates all I/O)
+├── cli/            # Command-line interface (Commander.js)
+├── tui/            # Terminal UI (Ink)
+└── jobs/           # Background job processing
+```
+
+### Build Order
+
+Packages must be built in dependency order:
+
+```bash
+pnpm build:ordered
+```
+
+| Position | Package                             | Dependencies               |
+| -------- | ----------------------------------- | -------------------------- |
+| 1        | core                                | None                       |
+| 2        | utils                               | core                       |
+| 3-5      | storage, observability, api-clients | utils, core                |
+| 6-8      | ohlcv, analytics, ingestion         | service deps               |
+| 9        | simulation                          | utils, core (pure compute) |
+| 10       | workflows                           | all services               |
+| 11+      | cli, tui, etc.                      | all packages               |
+
+See **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** for detailed architecture documentation.
+
+## 🔧 Setup & Installation
 
 ### Prerequisites
 
-- Node.js 18+
-- Docker (for InfluxDB)
-- Telegram Bot Token
-- Birdeye API Keys (3.18M total credits across all keys)
-- Helius API Key (for CA monitoring)
+- **Node.js** 18+ and npm
+- **Docker** and Docker Compose (for databases)
+- **Telegram Bot Token** - Get from [@BotFather](https://t.me/botfather)
+- **Birdeye API Keys** - Multiple keys recommended for rate limit handling
+- **Helius API Key** - For Solana WebSocket monitoring
+- **Shyft API Key** (optional) - For additional Solana data
 
-### Installation
+### Installation & Quick Start
 
 ```bash
-git clone <repository>
+# Clone repository
+git clone <repository-url>
 cd quantBot
+
+# Install dependencies
 npm install
+
+# Copy environment template
+cp env.example .env
+
+# Edit .env with your API keys and configuration
+nano .env
+
+# Start databases (PostgreSQL, ClickHouse, InfluxDB)
+docker-compose up -d
+
+# Initialize databases (first time only)
+npm run clickhouse:setup
+
+# Start the bot
+npm run dev
 ```
 
-### Environment Variables
+### Environment Configuration
 
-Create a `.env` file:
+Create a `.env` file with the following variables:
 
 ```env
-# Telegram Bot
-TELEGRAM_BOT_TOKEN=your_bot_token
-TELEGRAM_CHAT_ID=your_chat_id
+# DuckDB (Primary Database - file-based, no config needed)
+DUCKDB_PATH=./data/quantbot.duckdb
 
-# InfluxDB Configuration
-INFLUX_URL=http://localhost:8086
-INFLUX_TOKEN=your-admin-token
-INFLUX_ORG=quantbot
-INFLUX_BUCKET=ohlcv_data
-INFLUX_USERNAME=admin
-INFLUX_PASSWORD=your-secure-password
+# ClickHouse (Time-Series Database)
+CLICKHOUSE_HOST=localhost
+CLICKHOUSE_PORT=18123
+CLICKHOUSE_USER=default
+CLICKHOUSE_PASSWORD=
+CLICKHOUSE_DATABASE=quantbot
 
-# Birdeye API Keys (3.18M total credits - add as many keys as you have)
+# Birdeye API (Multiple keys for rate limit handling)
+BIRDEYE_API_KEY=your_primary_key
 BIRDEYE_API_KEY_1=your_first_key
 BIRDEYE_API_KEY_2=your_second_key
-BIRDEYE_API_KEY_3=your_third_key
-# Add more keys as needed...
+# Add more as needed...
 
 # Helius API
 HELIUS_API_KEY=your_helius_key
-HELIUS_WS_URL=wss://atlas-mainnet.helius-rpc.com/?api-key=your_helius_key
 
-# Database
-DATABASE_PATH=./quantbot.db
-SIMULATIONS_DB_PATH=./simulations.db
-CALLER_DB_PATH=./caller_alerts.db
+# Logging
+LOG_LEVEL=info  # error, warn, info, debug, trace
+LOG_CONSOLE=true
+LOG_FILE=true
+LOG_DIR=./logs
+LOG_MAX_FILES=14d
+LOG_MAX_SIZE=20m
+
+# Application
+NODE_ENV=development
+PORT=3000
+
+# Optional: Telegram Bot (for future bot integration)
+# BOT_TOKEN=your_telegram_bot_token
+# TELEGRAM_CHAT_ID=your_chat_id
 ```
+
+### Database Setup
+
+#### DuckDB (Primary Storage)
+
+DuckDB is the primary OLAP database for analytics and simulation results. No setup required - databases are created automatically as single files.
+
+```bash
+# Default database location
+data/quantbot.duckdb
+data/result.duckdb
+```
+
+#### ClickHouse (Time-Series)
+
+```bash
+# Start ClickHouse
+docker-compose up -d clickhouse
+
+# Initialize schema
+pnpm clickhouse:setup
+```
+
+ClickHouse stores OHLCV candle data with time-based partitioning.
+
+#### Python Tools (DuckDB Integration)
+
+DuckDB queries are executed via Python scripts through `PythonEngine`:
+
+```bash
+# Ensure Python dependencies
+pip install duckdb pandas
+
+# Python scripts are in tools/
+tools/simulation/duckdb_storage.py
+tools/analysis/duckdb_query.py
+```
+
+See [docs/MIGRATION_POSTGRES_TO_DUCKDB.md](docs/MIGRATION_POSTGRES_TO_DUCKDB.md) for migration details.
+
+## 📖 Usage
 
 ### Running the Bot
 
-#### 1. Start InfluxDB
 ```bash
-npm run influxdb:start
-```
+# Development mode (with hot reload)
+npm run dev
 
-#### 2. Initialize InfluxDB
-- Visit http://localhost:8086
-- Create admin user and organization
-- Copy the admin token to your `.env` file
-
-#### 3. Migrate Existing Data (Optional)
-```bash
-npm run influxdb:migrate
-npm run caller:migrate
-```
-
-#### 4. Test Integration
-```bash
-npm run influxdb:test
-npm run caller:stats
-```
-
-#### 5. Start the Bot
-```bash
+# Production mode
 npm start
 ```
 
-## 📱 Commands
+### Running Simulations
 
-### `/backtest`
+#### Via Telegram Bot
 
-Start a new PNL simulation:
+1. Start a simulation: `/backtest`
+2. Follow the interactive workflow:
+   - Paste token address
+   - Select chain (if EVM)
+   - Enter start datetime
+   - Configure strategy
+   - Set stop-loss parameters
 
-1. Paste token address (Solana or EVM)
-2. Select chain (for EVM addresses)
-3. Enter start datetime (ISO format)
-4. Choose take-profit strategy
-5. Configure stop-loss settings
-
-### `/repeat`
-
-Repeat a previous simulation with new strategy:
-
-- Lists recent simulations
-- Select by number or "last"
-- Reuses token and timeframe
-
-### `/strategy`
-
-Manage custom trading strategies:
-
-- `/strategy` - List all strategies
-- `/strategy save <name> <description> <strategy> <stop_loss>` - Save strategy
-- `/strategy use <name>` - Load strategy for next backtest
-- `/strategy delete <name>` - Delete strategy
-
-### `/cancel`
-
-Cancel current simulation session
-
-### `/extract`
-
-Extract CA drops from HTML chat messages and save to database:
-
-- Processes all HTML files in the `messages/` folder
-- Extracts token addresses with timestamps
-- Fetches metadata for each token
-- Saves to database for analysis
-
-### `/analysis`
-
-Run comprehensive historical analysis on all CA drops:
-
-- Calculates success rates and performance metrics
-- Analyzes performance by time periods and chains
-- Generates strategy recommendations
-- Provides detailed performance insights
-
-## 🎯 Caller Tracking & Analysis
-
-### Caller Database Commands
+#### Via Config Files
 
 ```bash
-# Migrate CA drops to caller database
-npm run caller:migrate
+# Run simulation from config
+npm run simulate:config -- --config=configs/simulations/top-strategies.json
+```
 
-# View caller statistics
+#### Programmatic API
+
+```typescript
+import { simulateStrategy } from '@quantbot/simulation';
+import { fetchHybridCandles } from '@quantbot/ohlcv';
+
+const candles = await fetchHybridCandles(tokenAddress, startTime, endTime, chain);
+const result = await simulateStrategy(candles, strategy, stopLossConfig);
+```
+
+### Monitoring Services
+
+```bash
+# Start Brook channel monitoring
+npm run monitor:brook
+
+# Forward Brook channel messages
+npm run forward:brook
+
+# Monitor API credits
+npm run monitor:credits
+```
+
+### Analysis Scripts
+
+```bash
+# Historical analysis
+npm run analysis
+
+# Caller statistics
 npm run caller:stats
 
-# Generate comprehensive caller analysis
+# Analyze callers
 npm run analyze:callers
 
-# Compare specific callers
-npm run analyze:callers -- --compare "Brook" "Brook Calls" "BrookCalls"
+# Score and analyze unified calls
+npm run score:unified-calls
 ```
 
-### Individual Caller Simulations
+## Strategy Configuration
 
-```bash
-# Simulate strategy for a specific caller
-npm run simulate:caller "Brook" 20
+### Take-Profit Strategy Format
 
-# Simulate multiple callers
-npm run simulate:caller --multi "Brook,Brook Calls,BrookCalls" 15
-```
-
-### Caller Analysis Features
-
-- **Individual Caller History**: Track all alerts from each caller over time
-- **Performance Metrics**: Win rates, success rates, and profitability per caller
-- **Token Diversity**: Analyze which tokens each caller focuses on
-- **Activity Patterns**: Understand caller frequency and consistency
-- **Comparative Analysis**: Compare performance across different callers
-- **Strategy Testing**: Test trading strategies against individual caller histories
-
-### `/ichimoku`
-
-Start Ichimoku Cloud analysis for a token:
-
-1. Paste token address (Solana or EVM)
-2. Select chain (for EVM addresses)
-3. Bot fetches 52 historical 5-minute candles from Birdeye
-4. Calculates Ichimoku Cloud components
-5. Starts real-time price monitoring with leading span alerts
-
-### `/broadcast <message>`
-
-Send message to default chat (admin only)
-
-## 🎯 CA Monitoring
-
-The bot automatically detects CA drops in chat messages containing:
-
-- Token addresses (Solana or EVM format)
-- Trading keywords: "ca", "contract", "address", "buy", "pump", "moon", "gem", "call"
-
-### Real-Time Alerts
-
-- **🎯 Profit Targets**: Notifications when tokens hit 2x, 5x, 10x, etc.
-- **🛑 Stop Loss**: Alerts when stop-loss is triggered
-- **📊 Ichimoku Cloud Signals**: Technical analysis alerts
-- **📊 Hourly Summaries**: Performance reports every hour
-
-### 📈 Ichimoku Cloud Analysis
-
-The bot includes advanced Ichimoku Cloud technical analysis for CA monitoring:
-
-#### **Ichimoku Components**
-
-- **Tenkan-sen (Conversion Line)**: 9-period high/low average
-- **Kijun-sen (Base Line)**: 26-period high/low average  
-- **Senkou Span A**: (Tenkan + Kijun) / 2, plotted 26 periods ahead
-- **Senkou Span B**: 52-period high/low average, plotted 26 periods ahead
-- **Chikou Span**: Current close, plotted 26 periods behind
-
-#### **Trading Signals**
-
-- **🟢 Tenkan-Kijun Cross**: Momentum shift when Tenkan crosses Kijun
-- **🔥 Cloud Cross**: Strong trend change when price crosses cloud
-- **⚡ Cloud Exit**: Price exiting cloud indicates trend continuation
-- **💡 Momentum Shift**: Cloud thickness changes indicate strength changes
-
-#### **Signal Strength**
-
-- **Strong**: Thick cloud (>5% of price) or large Tenkan-Kijun distance (>2%)
-- **Medium**: Moderate cloud thickness (2-5%) or medium distance (1-2%)
-- **Weak**: Thin cloud (<2%) or small distance (<1%)
-
-#### **Alert Format**
-
-```
-🟢 Ichimoku Signal Detected!
-
-🪙 Token Name (SYMBOL)
-📊 Signal: Tenkan crossed above Kijun - Bullish momentum shift
-💰 Price: $0.00012345
-💪 Strength: ⚡ MEDIUM
-
-📊 Ichimoku Analysis:
-• Price: $0.00012345 (above cloud)
-• Tenkan: $0.00012000
-• Kijun: $0.00011800
-• Cloud: $0.00011500 - $0.00012500
-• Thickness: 8.3%
-• Trend: 🟢 Bullish
-```
-
-## 📊 Historical Analysis
-
-The bot includes comprehensive historical analysis capabilities for analyzing past CA drops:
-
-### **Analysis Features**
-
-- **Performance Metrics**: Success rates, average PNL, win/loss ratios
-- **Time-based Analysis**: Performance by 24h, 7d, 30d, and older periods
-- **Chain Analysis**: Success rates and performance by blockchain
-- **Strategy Recommendations**: AI-generated suggestions based on historical data
-- **Best/Worst Performers**: Identification of top and bottom performing tokens
-
-### **Analysis Report Example**
-
-```
-📊 Historical CA Analysis Report
-
-📈 Overall Performance:
-• Total CAs Analyzed: 150
-• Success Rate: 42.7%
-• Average PNL: 1.23x
-• Profitable: 64 (42.7%)
-• Losses: 86 (57.3%)
-
-⏰ Performance by Time Period:
-• Last 24h: 12 CAs, 58.3% success
-• Last 7d: 45 CAs, 44.4% success
-• Last 30d: 78 CAs, 41.0% success
-• Older: 15 CAs, 33.3% success
-
-🔗 Performance by Chain:
-◎ SOLANA: 89 CAs, 45.2% success
-🟡 BSC: 35 CAs, 37.1% success
-⟠ ETHEREUM: 26 CAs, 38.5% success
-
-🏆 Best Performer:
-• TokenName (SYMBOL)
-• PNL: 8.45x
-• Chain: SOLANA
-
-💡 Strategy Recommendations:
-🔴 SUCCESS RATE: Low success rate (42.7%). Consider more conservative entry strategies.
-   💡 Implement stricter token filtering or wait for better market conditions.
-```
-
-### **Usage Workflow**
-
-1. **Extract Data**: `/extract` - Process HTML chat messages
-2. **Run Analysis**: `/analysis` - Generate comprehensive report
-3. **Review Results**: Analyze performance patterns and recommendations
-4. **Optimize Strategy**: Use insights to improve future CA selection
-
-### **Data Sources**
-
-- **Chat Messages**: HTML files from Telegram chat exports
-- **Current Prices**: Real-time data from Birdeye API
-- **Historical Data**: Stored in SQLite database
-- **Performance Tracking**: Continuous monitoring of CA performance
-
-### Supported Chains
-
-- **◎ Solana** - Default for Solana addresses
-- **⟠ Ethereum** - EVM chain (eth/ethereum)
-- **🟡 Binance Smart Chain** - EVM chain (bsc/binance)
-- **🔵 Base** - EVM chain (base)
-
-## 📈 Strategy Format
-
-### Take-Profit Strategy
-
-```
+```text
 Simple: 50@2x,30@5x,20@10x
-JSON: [{"percent":0.5,"target":2},{"percent":0.3,"target":5}]
-Default: yes
+JSON: [{"percent":0.5,"target":2},{"percent":0.3,"target":5},{"percent":0.2,"target":10}]
 ```
 
 ### Stop-Loss Configuration
 
-```
+```text
 Format: initial: -30%, trailing: 50%
 Examples:
 - initial: -20%, trailing: 30%
 - initial: -50%, trailing: 100%
 - initial: -30%, trailing: none
-- default
+- default (uses system defaults)
 ```
 
-## 🗄️ Database Schema
+### Entry Configuration
 
-### Tables
+```text
+initialEntry: none | immediate | trailing
+trailingEntry: none | price | percent
+maxWaitTime: 60 (minutes)
+```
 
-- `strategies` - Custom trading strategies
-- `simulation_runs` - Historical simulation results
-- `simulation_events` - Detailed simulation events
-- `ca_tracking` - Active CA monitoring entries
-- `price_updates` - Real-time price data
-- `alerts_sent` - Alert history
+### Re-Entry Configuration
 
-## 🔌 API Integration
+```text
+trailingReEntry: none | price | percent
+maxReEntries: 0-10
+sizePercent: 0.5 (50% of original position)
+```
+
+## 📊 Supported Chains
+
+- **◎ Solana** - Native support with Helius WebSockets
+- **⟠ Ethereum** - EVM chain support
+- **🟡 Binance Smart Chain (BSC)** - EVM chain support
+- **🔵 Base** - EVM chain support
+- **🔷 Arbitrum** - EVM chain support
+
+## 🔌 API Integrations
 
 ### Birdeye API
 
+- Multi-key rotation for rate limit handling
 - Token metadata fetching
 - OHLCV candle data
 - Multi-chain support
+- Intelligent caching (10-50x faster queries)
 
 ### Helius WebSockets
 
 - Real-time price updates
 - Automatic reconnection
 - Efficient subscription management
+- Solana-specific optimizations
 
-## 📊 Performance Features
+### Shyft API (Optional)
 
-### Caching System
-
-- CSV-based OHLCV caching
-- 24-hour cache expiry
-- Intelligent cache extension
-- Reduced API calls
-
-### Monitoring Efficiency
-
-- WebSocket-based real-time updates
-- Smart alert deduplication
-- Batch processing for summaries
-- Memory-efficient data structures
+- Additional Solana data sources
+- WebSocket and gRPC support
+- Enhanced monitoring capabilities
 
 ## 🛠️ Development
 
 ### Project Structure
 
-```
-src/
-├── bot.ts              # Main bot logic
-├── candles.ts          # OHLCV data fetching
-├── simulate.ts         # PNL simulation engine
-├── database.ts         # Database operations
-├── helius-monitor.ts   # Real-time monitoring
-└── .env               # Environment variables
+```text
+quantBot/
+├── packages/              # Modular packages (see Architecture above)
+├── scripts/               # Standalone scripts and tools
+│   ├── ingest/           # Ingestion scripts
+│   ├── migration/        # Database migrations
+│   └── test/             # Test utilities
+├── tools/                 # Python tools
+│   ├── analysis/         # Analysis scripts (DuckDB)
+│   ├── simulation/       # DuckDB storage scripts
+│   └── telegram/         # Telegram parsing tools
+├── docs/                  # Documentation
+├── configs/               # Configuration files
+├── .cursor/rules/         # Architectural rules (enforced)
+└── tests/                 # Root test setup
 ```
 
-### Key Dependencies
+### Building
 
-- `telegraf` - Telegram Bot API
-- `axios` - HTTP requests
-- `luxon` - Date/time handling
-- `sqlite3` - Database
-- `ws` - WebSocket client
+```bash
+# Build all packages (in correct dependency order)
+pnpm build:ordered
+
+# Build individual package (ensure deps are built first)
+pnpm --filter @quantbot/utils build
+pnpm --filter @quantbot/storage build
+pnpm --filter @quantbot/ingestion build
+```
+
+### Workflow Pattern
+
+All multi-step business logic goes through workflows:
+
+```typescript
+// CLI handler (thin adapter)
+async function myHandler(args: Args, ctx: CommandContext) {
+  const service = ctx.services.myService();
+  return service.doSomething(args); // Returns data, not formatted output
+}
+
+// Workflow (orchestrates I/O)
+async function runMyWorkflow(spec: Spec, ctx: WorkflowContext) {
+  const data = await ctx.repos.calls.findByRange(spec.from, spec.to);
+  const result = await ctx.simulation.run(data, spec.strategy);
+  await ctx.repos.runs.save(result);
+  return { success: true, runId: result.id }; // JSON-serializable
+}
+```
+
+See `.cursor/rules/packages-workflows.mdc` for workflow patterns.
+
+### Testing
+
+```bash
+# Run all tests
+npm test
+
+# Run tests in watch mode
+npm run test:watch
+
+# Run with coverage
+npm run test:coverage
+
+# Test specific package
+npm run test --workspace=packages/cli
+```
+
+### Code Quality
+
+```bash
+# Lint code
+npm run lint
+
+# Fix linting issues
+npm run lint:fix
+
+# Format code
+npm run format
+```
+
+## 📚 Documentation
+
+### Core Documentation
+
+- **[ARCHITECTURE.md](docs/ARCHITECTURE.md)** - System architecture and layer responsibilities
+- **[TODO.md](TODO.md)** - Project roadmap and task tracking
+- **[CHANGELOG.md](CHANGELOG.md)** - Version history and changes
+
+### Architecture Rules (`.cursor/rules/`)
+
+- `build-ordering.mdc` - Package build order enforcement
+- `packages-workflows.mdc` - Workflow orchestration patterns
+- `packages-cli-handlers.mdc` - CLI handler patterns
+- `packages-simulation.mdc` - Simulation rules (pure compute)
+- `testing.mdc` - Testing philosophy and requirements
+
+### Additional Guides
+
+- **[docs/OHLCV_ARCHITECTURE.md](docs/OHLCV_ARCHITECTURE.md)** - OHLCV subsystem details
+- **[docs/WORKFLOW_ENFORCEMENT.md](docs/WORKFLOW_ENFORCEMENT.md)** - Workflow patterns
+- **[docs/MIGRATION_POSTGRES_TO_DUCKDB.md](docs/MIGRATION_POSTGRES_TO_DUCKDB.md)** - DuckDB migration
+- **[docs/guides/](docs/guides/)** - How-to guides
+
+## 🔒 Security
+
+- Input validation and sanitization
+- SQL injection prevention (parameterized queries)
+- Rate limiting on commands
+- Session expiration and cleanup
+- Secure error handling (no sensitive data exposure)
+- Path traversal protection
+
+## 📈 Performance
+
+- **Caching**: CSV-based OHLCV caching with 24-hour expiry
+- **Connection Pooling**: Database connection management
+- **Batch Operations**: Parallel processing where possible
+- **WebSocket Efficiency**: Smart subscription management
+- **Query Optimization**: Indexed database queries
 
 ## 🚨 Error Handling
 
-- Graceful API failure handling
+- Graceful API failure handling with retries
 - Automatic WebSocket reconnection
 - Database transaction safety
 - User-friendly error messages
-- Comprehensive logging
+- Comprehensive logging with context
+
+## 🗂️ Backups
+
+Create project backups (excludes build artifacts):
+
+```bash
+./scripts/backup-project.sh
+```
+
+Archives are stored in `backups/quantbot-backup-<timestamp>.tar.gz`
+
+## 🤝 Contributing
+
+### Code Guidelines
+
+1. **Follow architectural rules** - See `.cursor/rules/` for enforced patterns
+2. **Use package imports** - `@quantbot/utils`, `@quantbot/storage`, `@quantbot/workflows`, etc.
+3. **No multi-step logic in CLI** - Move to `@quantbot/workflows`
+4. **Handlers are thin adapters** - Parse args → call service → return data
+5. **Simulation is pure** - No I/O, no clocks, no global config
+6. **Never truncate mint addresses** - Store/pass full 32-44 char addresses
+
+### Workflow Pattern
+
+All multi-step business flows must go through `@quantbot/workflows`:
+
+- ❌ CLI handler that fetches → simulates → persists
+- ✅ CLI handler calls workflow, workflow coordinates all I/O
+
+### Testing Requirements
+
+- Write tests for all new functions (80%+ coverage target)
+- Property tests for financial calculations
+- Handler tests must be REPL-friendly (no CLI infrastructure)
+- See `.cursor/rules/testing.mdc` for testing philosophy
+
+### PR Checklist
+
+- [ ] Unit tests for new functions
+- [ ] No forbidden imports (workflows can't import CLI)
+- [ ] CLI handlers are thin adapters
+- [ ] Workflow results are JSON-serializable
+- [ ] CHANGELOG.md updated
+- [ ] Documentation updated
 
 ## 📝 License
 
 ISC License - See LICENSE file for details
+
+## 🙏 Acknowledgments
+
+- Birdeye API for market data
+- Helius for Solana WebSocket infrastructure
+- Telegram for bot platform
+- All contributors and users
+
+## Support
+
+For issues, questions, or contributions, please open an issue on GitHub.
+
+---
+
+Built with ❤️ for the crypto trading community

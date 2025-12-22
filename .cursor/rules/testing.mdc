@@ -1,0 +1,167 @@
+---
+description: Testing rules - design tests to fail, use real implementations, test to absolute limits. Property tests, fuzzing, invariants, crypto backend testing.
+globs:
+  - "packages/**/*.test.ts"
+  - "packages/**/*.test.js"
+  - "packages/**/*.spec.ts"
+  - "packages/**/*.spec.js"
+  - "packages/**/tests/**/*.ts"
+  - "tests/**/*.ts"
+alwaysApply: true
+---
+
+# Testing Rules
+
+## Core Philosophy
+
+**Tests are the specification, not validation.**
+
+- Write invariants BEFORE implementation
+- Tests guide development
+- Every PR includes tests
+- Property tests and fuzzing are first-class
+
+## Design Tests to Fail - The Ultimate Challenge
+
+**Design tests to use the real implementation, testing it to its absolute limits. Essentially design the test to fail, by making it so difficult that it's almost impossible to pass. This ensures we improve our implementation.**
+
+### Critical Rules
+
+1. **Use Real Implementations**: Tests must use the actual production code, not simplified mocks or stubs
+2. **Test to Absolute Limits**: Push implementations to their breaking points - edge cases, boundary conditions, extreme inputs
+3. **Design to Fail**: Create tests so challenging they're almost impossible to pass initially
+4. **Fix Implementation, Not Tests**: Unless an error specifically exists in the test file, you CANNOT edit the test file to hack your way through to a passing test
+5. **Improve Through Failure**: When tests fail, it means the implementation needs improvement, not that the test is wrong
+
+### Implementation Requirements
+
+- Use real database connections, real API clients, real file systems where possible
+- Test with production-like data volumes and complexity
+- Simulate real-world stress conditions
+- Test error recovery and resilience, not just happy paths
+- Verify behavior under resource constraints (memory, CPU, network)
+
+### Test Editing Restrictions
+
+**You may only edit a test file if:**
+- There is a specific error in the test logic itself
+- The test has incorrect assertions or expectations
+- The test setup/teardown has bugs
+
+**You may NOT edit a test file to:**
+- Make it pass by lowering standards
+- Skip difficult test cases
+- Mock out complex behavior that should be tested
+- Reduce test coverage or simplify test scenarios
+- Work around implementation limitations
+
+## Testing Lifecycle
+
+1. **Design Phase**: Invariants as executable contracts
+2. **Implementation Phase**: Unit tests with code
+3. **Boundary Phase**: Integration tests start early
+4. **Hardening Phase**: Property tests + fuzzing
+5. **Pre-Release**: Load/soak/chaos tests
+6. **Always-On**: Security + supply chain
+
+## Test Types
+
+- **Unit Tests**: Every function, fast, deterministic (80%+ coverage)
+- **Integration Tests**: API/DB boundaries, realistic (all critical flows)
+- **Property Tests**: Math operations, invariants (all invariants documented)
+- **Fuzzing Tests**: Parsers, external input (all parsers)
+- **E2E Tests**: Critical user flows (happy path + failure modes)
+- **Stress Tests**: Push systems to absolute limits, test failure modes
+
+## Critical Rules for Crypto Backends
+
+### Rule 1: Mint Address Handling
+
+- Never truncate in storage
+- Preserve exact case
+- Property test: storage preserves exact case and length
+
+### Rule 2: Financial Math Must Have Property Tests
+
+- Example-based tests (known inputs/outputs)
+- Property tests (invariants that always hold)
+- Required invariants: monotonicity, bounds checking, conservation laws
+
+### Rule 3: Parsers Must Be Fuzzed
+
+- Never crashes on garbage input
+- Rejects malformed data
+- Handles unicode/special characters gracefully
+
+### Rule 4: Serialization Must Roundtrip
+
+- Encode/decode are inverses
+- Property test for all serializable data
+
+### Rule 5: Idempotency Must Be Tested
+
+- Inserting same data twice produces one record
+- Property test for any input
+
+### Rule 6: Race Conditions Must Be Tested
+
+- Concurrent operations tested for race safety
+- Balance updates, concurrent inserts, etc.
+
+## Property Test Patterns
+
+- **Conservation Laws**: Total supply conserved, balances never negative
+- **Monotonicity**: Higher input = higher output (fees, PnL)
+- **Idempotency**: Applying operation twice = same result
+- **Inverse Operations**: Encode/decode are inverses
+- **Bounds Checking**: Slippage never exceeds 100%, fees never exceed input
+
+## Fuzzing Patterns
+
+- **Parser Robustness**: Never crashes on malformed input
+- **Injection Prevention**: SQL injection, XSS attempts
+- **Resource Exhaustion**: Handles large inputs without OOM
+
+## Test Organization
+
+```text
+packages/[package]/tests/
+├── unit/          # Fast, isolated
+├── integration/   # DB/API boundaries
+├── properties/    # Property-based tests
+├── fuzzing/       # Fuzzing tests
+└── stress/        # Stress and chaos tests
+```
+
+## Common Crypto Invariants
+
+- Balances never go negative
+- Total supply is conserved
+- Fees never exceed input amount
+- PnL calculation is monotonic
+- Mint addresses never truncated
+- Case preserved exactly
+- Idempotency keys prevent double-processing
+- SQL injection impossible
+- Rate limits enforced
+
+## Testing Checklist (Every PR)
+
+- [ ] Unit tests for all new functions
+- [ ] Property tests for math/financial calculations
+- [ ] Integration tests for DB/API boundaries
+- [ ] Fuzzing tests for parsers
+- [ ] Stress tests for critical paths
+- [ ] Regression test for bug fixes (test fails before fix, passes after)
+- [ ] Tests use real implementations where possible
+- [ ] Tests push implementation to limits
+- [ ] All tests pass locally
+- [ ] Coverage doesn't decrease
+- [ ] Linting passes
+- [ ] Type checking passes
+
+## When to Skip Tests (Rarely)
+
+**Can skip**: Trivial getters/setters, pure type definitions, config files, temporary scaffolding
+
+**Cannot skip**: Financial calculations, external input parsing, database operations, API endpoints, security-critical code, anything touching user funds

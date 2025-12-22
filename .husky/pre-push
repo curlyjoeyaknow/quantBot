@@ -1,0 +1,14 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "🔍 Running lightweight pre-push checks..."
+
+# Quick type check only (fast)
+echo "🔍 Type checking..."
+npm run typecheck || {
+  echo "❌ Type check failed"
+  exit 1
+}
+
+echo "✅ Pre-push checks passed!"
+echo "💡 Note: Full tests, coverage, and build run in CI"

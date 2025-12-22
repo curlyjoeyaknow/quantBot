@@ -1,0 +1,281 @@
+{
+  "strategyName": "test_api",
+  "initialBalanceSOL": 100,
+  "finalBalanceSOL": 104.30843866963512,
+  "totalPnLSOL": 4.308438669635127,
+  "totalReturn": 4.308438669635127,
+  "totalTrades": 5,
+  "totalVolumeSOL": 12.5,
+  "reentryRate": 0,
+  "winRate": 20,
+  "successfulTrades": 1,
+  "stopLossTrades": 2,
+  "timeoutTrades": 2,
+  "takeProfitCounts": {
+    "2x": 0,
+    "3x": 0,
+    "5x": 0
+  },
+  "tokensWithData": 5,
+  "tokensWithoutData": 0,
+  "individualTrades": [
+    {
+      "tokenAddress": "AkuXKTbE8rnYCdpnW8eE1xtKfKfQ3uhwXS3dk9cbpump",
+      "alertTimestamp": "2025-08-31T14:43:48.000Z",
+      "entryPrice": 0.00019172999183824524,
+      "positionSizeSOL": 2.5,
+      "netPositionSizeSOL": 2.4125,
+      "totalCostSOL": 0.0875,
+      "stopLossPrice": 0.00016297049306250846,
+      "reentryPrice": 0.00006710549714338583,
+      "reentryStopLossPrice": 0.00004026329828603149,
+      "takeProfitLevels": [
+        {
+          "percentage": 0.5,
+          "multiplier": 2,
+          "price": 0.00038345998367649047
+        },
+        {
+          "percentage": 0.3,
+          "multiplier": 3,
+          "price": 0.0005751899755147357
+        },
+        {
+          "percentage": 0.2,
+          "multiplier": 5,
+          "price": 0.0009586499591912262
+        }
+      ],
+      "trades": [
+        {
+          "type": "initial",
+          "entryPrice": 0.00019172999183824524,
+          "exitPrice": 0.00027011686322262645,
+          "positionSizeSOL": 2.4125,
+          "pnlSOL": 0.9863262674853844,
+          "exitReason": "timeout",
+          "exitTimestamp": 1756654980000,
+          "pricePointIndex": 59,
+          "pricePointTime": "2025-08-31T15:43:00.000Z"
+        }
+      ],
+      "finalPnLSOL": 0.9863262674853844,
+      "totalVolumeSOL": 2.5,
+      "isReentry": false,
+      "exitReason": "timeout",
+      "exitPrice": 0.00027011686322262645,
+      "exitTimestamp": 1756654980000
+    },
+    {
+      "tokenAddress": "EmNFqmSi5DvwGjW57LJ7J5i8R6T155JrNf6GNFaupump",
+      "alertTimestamp": "2025-08-31T16:35:32.000Z",
+      "entryPrice": 0.0005226380709061021,
+      "positionSizeSOL": 2.5,
+      "netPositionSizeSOL": 2.4125,
+      "totalCostSOL": 0.0875,
+      "stopLossPrice": 0.0004442423602701868,
+      "reentryPrice": 0.00018292332481713574,
+      "reentryStopLossPrice": 0.00010975399489028144,
+      "takeProfitLevels": [
+        {
+          "percentage": 0.5,
+          "multiplier": 2,
+          "price": 0.0010452761418122043
+        },
+        {
+          "percentage": 0.3,
+          "multiplier": 3,
+          "price": 0.0015679142127183064
+        },
+        {
+          "percentage": 0.2,
+          "multiplier": 5,
+          "price": 0.0026131903545305105
+        }
+      ],
+      "trades": [
+        {
+          "type": "initial",
+          "entryPrice": 0.0005226380709061021,
+          "exitPrice": 0.0008764856874657284,
+          "positionSizeSOL": 2.4125,
+          "pnlSOL": 1.6333624021497424,
+          "exitReason": "timeout",
+          "exitTimestamp": 1756661700000,
+          "pricePointIndex": 59,
+          "pricePointTime": "2025-08-31T17:35:00.000Z"
+        }
+      ],
+      "finalPnLSOL": 1.6333624021497424,
+      "totalVolumeSOL": 2.5,
+      "isReentry": false,
+      "exitReason": "timeout",
+      "exitPrice": 0.0008764856874657284,
+      "exitTimestamp": 1756661700000
+    },
+    {
+      "tokenAddress": "5CxWcsm9h3NfCM8WPM6eaw8LnnSmnYyEHf8BQQ56YJGK",
+      "alertTimestamp": "2025-08-31T18:01:31.000Z",
+      "entryPrice": 0.00007986159026303833,
+      "positionSizeSOL": 2.5,
+      "netPositionSizeSOL": 2.4125,
+      "totalCostSOL": 0.0875,
+      "stopLossPrice": 0.00006788235172358258,
+      "reentryPrice": 0.000027951556592063414,
+      "reentryStopLossPrice": 0.000016770933955238048,
+      "takeProfitLevels": [
+        {
+          "percentage": 0.5,
+          "multiplier": 2,
+          "price": 0.00015972318052607666
+        },
+        {
+          "percentage": 0.3,
+          "multiplier": 3,
+          "price": 0.00023958477078911498
+        },
+        {
+          "percentage": 0.2,
+          "multiplier": 5,
+          "price": 0.00039930795131519166
+        }
+      ],
+      "trades": [
+        {
+          "type": "initial",
+          "entryPrice": 0.00007986159026303833,
+          "exitPrice": 0.00006788235172358258,
+          "positionSizeSOL": 2.4125,
+          "pnlSOL": -0.36187500000000006,
+          "exitReason": "stop_loss",
+          "exitTimestamp": 1756664160000,
+          "pricePointIndex": 14,
+          "pricePointTime": "2025-08-31T18:16:00.000Z"
+        }
+      ],
+      "finalPnLSOL": -0.36187500000000006,
+      "totalVolumeSOL": 2.5,
+      "isReentry": false,
+      "exitReason": "stop_loss",
+      "exitPrice": 0.00006788235172358258,
+      "exitTimestamp": 1756664160000
+    },
+    {
+      "tokenAddress": "GexgtHFXNCjtRmehxCR2jo85RoKQpmFNoinKFpw2pump",
+      "alertTimestamp": "2025-08-31T22:49:24.000Z",
+      "entryPrice": 0.00002450250726880391,
+      "positionSizeSOL": 2.5,
+      "netPositionSizeSOL": 2.4125,
+      "totalCostSOL": 0.0875,
+      "stopLossPrice": 0.000020827131178483324,
+      "reentryPrice": 0.000008575877544081369,
+      "reentryStopLossPrice": 0.000005145526526448821,
+      "takeProfitLevels": [
+        {
+          "percentage": 0.5,
+          "multiplier": 2,
+          "price": 0.00004900501453760782
+        },
+        {
+          "percentage": 0.3,
+          "multiplier": 3,
+          "price": 0.00007350752180641173
+        },
+        {
+          "percentage": 0.2,
+          "multiplier": 5,
+          "price": 0.00012251253634401957
+        }
+      ],
+      "trades": [
+        {
+          "type": "initial",
+          "entryPrice": 0.00002450250726880391,
+          "exitPrice": 0.000020827131178483324,
+          "positionSizeSOL": 2.4125,
+          "pnlSOL": -0.36187500000000006,
+          "exitReason": "stop_loss",
+          "exitTimestamp": 1756681320000,
+          "pricePointIndex": 12,
+          "pricePointTime": "2025-08-31T23:02:00.000Z"
+        }
+      ],
+      "finalPnLSOL": -0.36187500000000006,
+      "totalVolumeSOL": 2.5,
+      "isReentry": false,
+      "exitReason": "stop_loss",
+      "exitPrice": 0.000020827131178483324,
+      "exitTimestamp": 1756681320000
+    },
+    {
+      "tokenAddress": "ZH4dQL2D7n8biHbxqeYScdmXQ9nYkEPVbHLBQpdVQRu",
+      "alertTimestamp": "2025-09-01T03:45:16.000Z",
+      "entryPrice": 0.00003594267001536946,
+      "positionSizeSOL": 2.5,
+      "netPositionSizeSOL": 2.4125,
+      "totalCostSOL": 0.0875,
+      "stopLossPrice": 0.00003055126951306404,
+      "reentryPrice": 0.00001257993450537931,
+      "reentryStopLossPrice": 0.000007547960703227586,
+      "takeProfitLevels": [
+        {
+          "percentage": 0.5,
+          "multiplier": 2,
+          "price": 0.00007188534003073892
+        },
+        {
+          "percentage": 0.3,
+          "multiplier": 3,
+          "price": 0.0001078280100461084
+        },
+        {
+          "percentage": 0.2,
+          "multiplier": 5,
+          "price": 0.0001797133500768473
+        }
+      ],
+      "trades": [
+        {
+          "type": "initial",
+          "entryPrice": 0.00003594267001536946,
+          "exitPrice": 0.00007188534003073892,
+          "positionSizeSOL": 2.4125,
+          "pnlSOL": 2.4125,
+          "exitReason": "take_profit_2x",
+          "exitTimestamp": 1756701060000,
+          "pricePointIndex": 45,
+          "pricePointTime": "2025-09-01T04:31:00.000Z"
+        }
+      ],
+      "finalPnLSOL": 2.4125,
+      "totalVolumeSOL": 2.5,
+      "isReentry": false,
+      "exitReason": "take_profit_2x",
+      "exitPrice": 0.00007188534003073892,
+      "exitTimestamp": 1756701060000
+    }
+  ],
+  "tradingRules": {
+    "entry": "at_alert",
+    "stopLoss": 0.15,
+    "reentry": {
+      "enabled": true,
+      "reentryPriceFactor": 0.65,
+      "reentryStopLoss": 0.4
+    },
+    "takeProfit": [
+      {
+        "percentage": 0.5,
+        "multiplier": 2
+      },
+      {
+        "percentage": 0.3,
+        "multiplier": 3
+      },
+      {
+        "percentage": 0.2,
+        "multiplier": 5
+      }
+    ]
+  }
+}
