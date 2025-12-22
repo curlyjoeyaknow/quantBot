@@ -40,7 +40,7 @@ interface TableStatsRow {
  */
 export async function storageStatsWorkflowHandler(
   args: StorageStatsWorkflowArgs,
-  ctx: CommandContext
+  _ctx: CommandContext
 ): Promise<GetStorageStatsResult | TableStatsRow[]> {
   // Build workflow spec
   const spec: GetStorageStatsSpec = {

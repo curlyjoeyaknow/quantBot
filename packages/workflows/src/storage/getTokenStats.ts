@@ -188,7 +188,10 @@ export async function getTokenStats(
           format: 'JSONEachRow',
         });
 
-        const count = parseInt(String((intervalResult.rows[0] as Record<string, unknown>)?.['count'] || 0), 10);
+        const count = parseInt(
+          String((intervalResult.rows[0] as Record<string, unknown>)?.['count'] || 0),
+          10
+        );
         if (count > 0) {
           timeframes.push(interval);
           tokenCandleCount += count;
@@ -220,7 +223,10 @@ export async function getTokenStats(
       `,
         format: 'JSONEachRow',
       });
-      totalTokenCandles = parseInt(String((totalResult.rows[0] as Record<string, unknown>)?.['count'] || 0), 10);
+      totalTokenCandles = parseInt(
+        String((totalResult.rows[0] as Record<string, unknown>)?.['count'] || 0),
+        10
+      );
     } catch (error) {
       if (ctx.logger.debug) {
         ctx.logger.debug('Failed to query total candles', {
@@ -272,7 +278,10 @@ export async function getTokenStats(
       `,
         format: 'JSONEachRow',
       });
-      simulationsRun = parseInt(String((simResult.rows[0] as Record<string, unknown>)?.['count'] || 0), 10);
+      simulationsRun = parseInt(
+        String((simResult.rows[0] as Record<string, unknown>)?.['count'] || 0),
+        10
+      );
     } catch (error) {
       if (ctx.logger.debug) {
         ctx.logger.debug('Failed to query simulations', { mint, error: (error as Error).message });

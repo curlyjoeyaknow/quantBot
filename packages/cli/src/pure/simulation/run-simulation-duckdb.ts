@@ -42,15 +42,23 @@ export async function runSimulationDuckdbHandler(
   args: RunSimulationDuckdbHandlerArgs,
   ctx: CommandContext
 ): Promise<RunSimulationDuckdbHandlerResult> {
+  // Parse strategy from JSON string to object
+  let strategyConfig: Record<string, unknown>;
+  try {
+    strategyConfig = JSON.parse(args.strategy) as Record<string, unknown>;
+  } catch {
+    throw new Error(`Invalid strategy JSON: ${args.strategy}`);
+  }
+
   // Build spec from args (pure transformation)
   const spec: RunSimulationDuckdbSpec = {
     duckdbPath: args.duckdb,
-    strategy: args.strategy,
+    strategy: strategyConfig,
     initialCapital: args.initial_capital,
     lookbackMinutes: args.lookback_minutes,
     lookforwardMinutes: args.lookforward_minutes,
-    resume: args.resume,
-    batch: args.batch,
+    resume: args.resume ?? false,
+    batch: typeof args.batch === 'number' ? args.batch > 0 : false,
     mint: args.mint,
     alertTimestamp: args.alert_timestamp,
     errorMode: 'collect', // Collect errors, don't fail fast
@@ -58,11 +66,13 @@ export async function runSimulationDuckdbHandler(
     callsLimit: 1000,
   };
 
-  // Get workflow context from command context
-  // The context should already be wired with adapters by the composition root
-  const workflowContext = ctx.services.workflowContext?.() as
-    | RunSimulationDuckdbContext
-    | undefined;
+  // Get workflow context from command context (created by composition root)
+  // The command composition root creates and wires the workflow context
+  const workflowContext = (ctx as CommandContext & {
+    services: CommandContext['services'] & {
+      workflowContext?: () => RunSimulationDuckdbContext;
+    };
+  }).services.workflowContext?.();
 
   if (!workflowContext) {
     throw new Error(

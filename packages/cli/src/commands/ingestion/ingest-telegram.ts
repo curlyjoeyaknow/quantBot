@@ -12,7 +12,7 @@ import process from 'node:process';
 import type { CommandContext } from '../../core/command-context.js';
 import { telegramSchema } from '../../commands/ingestion.js';
 import { ingestTelegramJson } from '@quantbot/workflows';
-import { createProductionContext } from '@quantbot/workflows';
+import { createProductionContextWithPorts } from '@quantbot/workflows';
 import { CallersRepository, TokenDataRepository } from '@quantbot/storage';
 
 /**
@@ -31,7 +31,7 @@ export type IngestTelegramArgs = z.infer<typeof telegramSchema>;
 export async function ingestTelegramHandler(args: IngestTelegramArgs, _ctx: CommandContext) {
   // ENV + ADAPTER WIRING LIVE HERE (composition root)
   const dbPath = process.env.DUCKDB_PATH || 'data/tele.duckdb';
-  const workflowContext = createProductionContext();
+  const workflowContext = await createProductionContextWithPorts({ duckdbPath: dbPath });
 
   // Add DuckDB repositories to context
   const callersRepo = new CallersRepository(dbPath);

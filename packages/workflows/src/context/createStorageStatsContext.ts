@@ -26,7 +26,9 @@ export interface StorageStatsContextConfig {
 /**
  * Create storage stats context with ports (QueryPort for ClickHouse) and optional DuckDB access
  */
-export async function createStorageStatsContext(config?: StorageStatsContextConfig): Promise<StorageStatsContext> {
+export async function createStorageStatsContext(
+  config?: StorageStatsContextConfig
+): Promise<StorageStatsContext> {
   const baseContext = await createProductionContextWithPorts();
 
   const logger = config?.logger ?? {
@@ -56,7 +58,9 @@ export async function createStorageStatsContext(config?: StorageStatsContextConf
 /**
  * Create OHLCV stats context (simpler, just ClickHouse via QueryPort)
  */
-export async function createOhlcvStatsContext(config?: StorageStatsContextConfig): Promise<OhlcvStatsContext> {
+export async function createOhlcvStatsContext(
+  config?: StorageStatsContextConfig
+): Promise<OhlcvStatsContext> {
   const baseContext = await createStorageStatsContext(config);
   return {
     ...baseContext,

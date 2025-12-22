@@ -51,10 +51,7 @@ export type AlignedCall = {
  * @param params - Alignment parameters (lag, entry rule, timeframe)
  * @returns Aligned call with window and entry information
  */
-export function alignCallToOhlcvWindow(
-  call: CallSignal,
-  params: AlignParams
-): AlignedCall {
+export function alignCallToOhlcvWindow(call: CallSignal, params: AlignParams): AlignedCall {
   const callTimeMs = call.tsMs;
   const lagMs = params.lagMs;
   const timeframeMs = params.timeframeMs;
@@ -121,10 +118,7 @@ export function alignCallToOhlcvWindow(
  * @param candles - Array of candles (must be sorted by timestamp ascending)
  * @returns Updated aligned call with candleIndex set
  */
-export function findEntryCandleIndex(
-  aligned: AlignedCall,
-  candles: Candle[]
-): AlignedCall {
+export function findEntryCandleIndex(aligned: AlignedCall, candles: Candle[]): AlignedCall {
   if (candles.length === 0) {
     return aligned;
   }
@@ -179,4 +173,3 @@ function intervalToMs(interval: AlignParams['interval']): number {
       throw new Error(`Unknown interval: ${interval}`);
   }
 }
-

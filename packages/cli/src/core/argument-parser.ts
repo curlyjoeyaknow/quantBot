@@ -33,29 +33,11 @@ export function parseArguments<T extends z.ZodSchema>(
 }
 
 /**
- * Convert camelCase/PascalCase to kebab-case
- * Preserves keys that already contain underscores or dots
- */
-function toKebabCase(key: string): string {
-  // Preserve keys with underscores or dots as-is
-  if (key.includes('_') || key.includes('.')) {
-    return key;
-  }
-
-  // Convert camelCase/PascalCase to kebab-case
-  return key
-    .replace(/([a-z])([A-Z])/g, '$1-$2') // Insert dash between lowercase and uppercase
-    .replace(/([A-Z])([A-Z][a-z])/g, '$1-$2') // Insert dash between consecutive capitals
-    .toLowerCase();
-}
-
-/**
  * Normalize Commander.js options to a flat object
  * Handles both --flag value and --flag=value formats
  *
- * Key normalization:
- * - Convert camelCase/PascalCase to kebab-case
- * - Keys with underscores or dots → preserved as-is
+ * IMPORTANT: Do NOT rename keys. Commander.js already converts --output-db to outputDb.
+ * This function only normalizes VALUES (parsing, coercion, defaults).
  *
  * Value normalization:
  * - String "true"/"false" → boolean
@@ -71,8 +53,9 @@ export function normalizeOptions(options: Record<string, unknown>): Record<strin
       continue;
     }
 
-    // Convert camelCase/PascalCase to kebab-case
-    const normalizedKey = toKebabCase(key);
+    // DO NOT rename keys - Commander.js already handles kebab-case → camelCase conversion
+    // Keep the key as-is (Commander produces camelCase properties)
+    const normalizedKey = key;
 
     // Handle string values that might be numbers or booleans
     if (typeof value === 'string') {

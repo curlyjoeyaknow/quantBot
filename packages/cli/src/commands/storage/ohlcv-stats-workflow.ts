@@ -40,7 +40,7 @@ interface OhlcvStatsRow {
  */
 export async function ohlcvStatsWorkflowHandler(
   args: OhlcvStatsWorkflowArgs,
-  ctx: CommandContext
+  _ctx: CommandContext
 ): Promise<GetOhlcvStatsResult | OhlcvStatsRow[]> {
   // Build workflow spec
   const spec: GetOhlcvStatsSpec = {

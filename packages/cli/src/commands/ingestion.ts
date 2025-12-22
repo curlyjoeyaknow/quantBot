@@ -174,6 +174,8 @@ export function registerIngestionCommands(program: Command): void {
       if (!commandDef) {
         throw new NotFoundError('Command', 'ingestion.telegram-python');
       }
+      // Commander.js already converts --output-db to outputDb automatically
+      // normalizeOptions only normalizes values, not keys
       await execute(commandDef, {
         ...options,
         rebuild: options.rebuild === true || options.rebuild === 'true',

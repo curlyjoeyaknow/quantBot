@@ -17,10 +17,9 @@
 
 import { z } from 'zod';
 import { DateTime } from 'luxon';
-import { ValidationError } from '@quantbot/utils';
+import { ValidationError, isEvmAddress } from '@quantbot/utils';
 import { ingestOhlcv } from './ingestOhlcv.js';
-import type { IngestOhlcvSpec, IngestOhlcvResult, IngestOhlcvContext } from './ingestOhlcv.js';
-import { createOhlcvIngestionContext } from '../context/createOhlcvIngestionContext.js';
+import type { IngestOhlcvSpec, IngestOhlcvContext } from './ingestOhlcv.js';
 import type { PythonEngine } from '@quantbot/utils';
 import { join, dirname } from 'path';
 import { existsSync } from 'fs';
@@ -117,7 +116,7 @@ export interface FetchTask {
 export interface CoverageData {
   callers: string[];
   months: string[];
-  matrix: Record<string, Record<string, any>>;
+  matrix: Record<string, Record<string, unknown>>;
   fetch_plan: FetchTask[];
 }
 
@@ -292,6 +291,12 @@ async function executeFetchTask(
   let totalCandlesStored = 0;
   const errors: string[] = [];
 
+  // Detect chain from mint addresses
+  // If any mint is EVM (0x...), we can't use 'solana'
+  // The ingestion engine will detect the actual EVM chain (ethereum/base/bsc)
+  const hasEvmAddresses = task.missing_mints.some((mint) => isEvmAddress(mint));
+  const defaultChain: 'solana' | 'ethereum' = hasEvmAddresses ? 'ethereum' : 'solana';
+
   // Run OHLCV ingestion for each interval
   for (const interval of intervals) {
     const intervalMap: Record<string, '15s' | '1m' | '5m' | '1H'> = {
@@ -307,7 +312,7 @@ async function executeFetchTask(
       from,
       to,
       side: 'buy',
-      chain: 'solana',
+      chain: defaultChain, // Use detected chain instead of hardcoded 'solana'
       interval: workflowInterval,
       preWindowMinutes: 52, // -52 candles before
       postWindowMinutes: 4948, // +4948 candles after = 5000 total

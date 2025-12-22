@@ -278,10 +278,7 @@ function mapOverlayToSimulationConfig(
 
   if (overlay.kind === 'time_exit') {
     // For time-based exit, calculate how many candles to use based on interval
-    const maxCandles = Math.min(
-      Math.ceil(overlay.holdMs / candleIntervalMs),
-      maxCandlesAvailable
-    );
+    const maxCandles = Math.min(Math.ceil(overlay.holdMs / candleIntervalMs), maxCandlesAvailable);
 
     return {
       strategy: [], // No profit targets, exit at end of time window
@@ -319,9 +316,7 @@ function mapSimulationResultToOverlayResult(
 
   const exitPrice = exitEvent?.price ?? simResult.finalPrice;
   const exitTsMs = exitEvent ? exitEvent.timestamp * 1000 : requestedEntry.tsMs;
-  const exitReason = exitEvent
-    ? `${exitEvent.type}_${exitEvent.description}`
-    : 'no_exit_event';
+  const exitReason = exitEvent ? `${exitEvent.type}_${exitEvent.description}` : 'no_exit_event';
 
   // Calculate PnL from simulation result
   // finalPnl is already a multiplier (1.0 = break even)
@@ -378,4 +373,3 @@ function createEmptyResult(
     },
   };
 }
-

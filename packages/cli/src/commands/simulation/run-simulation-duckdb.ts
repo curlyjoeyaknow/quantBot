@@ -16,7 +16,6 @@ import {
 } from '@quantbot/workflows';
 import { runSimulationDuckdbHandler as pureHandler } from '../../pure/simulation/run-simulation-duckdb.js';
 import type { RunSimulationDuckdbHandlerArgs } from '../../pure/simulation/run-simulation-duckdb.js';
-import process from 'node:process';
 
 // Re-export schema for convenience
 export { runSimulationDuckdbSchema };
@@ -48,7 +47,7 @@ export async function runSimulationDuckdbHandler(
   // Convert args to handler args format
   const handlerArgs: RunSimulationDuckdbHandlerArgs = {
     duckdb: args.duckdb,
-    strategy: typeof args.strategy === 'string' ? args.strategy : args.strategy.name,
+    strategy: typeof args.strategy === 'string' ? args.strategy : JSON.stringify(args.strategy),
     initial_capital: args.initial_capital,
     lookback_minutes: args.lookback_minutes,
     lookforward_minutes: args.lookforward_minutes,

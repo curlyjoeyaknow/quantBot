@@ -69,7 +69,7 @@ export async function createDuckdbSimulationContext(
 
   // Get OHLCV ingestion context for workflow calls (async - uses ports)
   // Note: ohlcvFetchJob removed - workflow now uses ports directly
-  const ohlcvContext = await createOhlcvIngestionContext();
+  const _ohlcvContext = await createOhlcvIngestionContext();
 
   return {
     ...baseContext,
@@ -128,6 +128,6 @@ export async function createDuckdbSimulationContext(
           return ohlcvIngestionService.ingestForCalls(params);
         },
       },
-    }
+    },
   };
 }

@@ -15,10 +15,12 @@ import { ingestTelegramHandler } from '../../../../src/commands/ingestion/ingest
 // Mock workflows
 const mockIngestTelegramJson = vi.fn();
 const mockCreateProductionContext = vi.fn();
+const mockCreateProductionContextWithPorts = vi.fn();
 
 vi.mock('@quantbot/workflows', () => ({
   ingestTelegramJson: (...args: unknown[]) => mockIngestTelegramJson(...args),
   createProductionContext: () => mockCreateProductionContext(),
+  createProductionContextWithPorts: () => mockCreateProductionContextWithPorts(),
 }));
 
 // Mock storage repositories
@@ -39,12 +41,28 @@ describe('ingestTelegramHandler', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     process.env.DUCKDB_PATH = '/tmp/test.duckdb';
-    mockCreateProductionContext.mockReturnValue({
+    const mockContext = {
       repos: {},
       clock: { nowISO: () => new Date().toISOString() },
       ids: { newRunId: () => 'test-id' },
       logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn() },
-    });
+      ports: {
+        clock: { nowMs: () => Date.now() },
+        telemetry: {
+          emitMetric: vi.fn(),
+          emitEvent: vi.fn(),
+          startSpan: vi.fn(),
+          endSpan: vi.fn(),
+          emitSpan: vi.fn(),
+        },
+        marketData: {} as any,
+        execution: {} as any,
+        state: {} as any,
+        query: {} as any,
+      },
+    };
+    mockCreateProductionContext.mockReturnValue(mockContext);
+    mockCreateProductionContextWithPorts.mockResolvedValue(mockContext);
   });
 
   it('calls ingestTelegramJson workflow with correct parameters', async () => {

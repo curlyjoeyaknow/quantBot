@@ -13,7 +13,7 @@
 
 import { z } from 'zod';
 import { ValidationError, AppError } from '@quantbot/utils';
-import type { Chain } from '@quantbot/core';
+import type { TokenAddress } from '@quantbot/core';
 import type { WorkflowContextWithPorts } from '../context/workflowContextWithPorts.js';
 import {
   parseJsonExport,
@@ -293,7 +293,7 @@ export async function ingestTelegramJson(
         for (const tryChain of chainsToTry) {
           try {
             const metadata = await workflowCtx.ports.marketData.fetchMetadata({
-              tokenAddress: botData.contractAddress as any, // Type assertion for address string
+              tokenAddress: botData.contractAddress as TokenAddress, // Type assertion for address string
               chain: tryChain,
             });
 
@@ -305,7 +305,7 @@ export async function ingestTelegramJson(
               };
               break;
             }
-          } catch (error) {
+          } catch {
             // Continue to next chain
             continue;
           }

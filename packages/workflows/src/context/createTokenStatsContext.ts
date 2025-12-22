@@ -26,7 +26,9 @@ export interface TokenStatsContextConfig {
 /**
  * Create token stats context with ports (QueryPort for ClickHouse) and DuckDB access
  */
-export async function createTokenStatsContext(config?: TokenStatsContextConfig): Promise<TokenStatsContext> {
+export async function createTokenStatsContext(
+  config?: TokenStatsContextConfig
+): Promise<TokenStatsContext> {
   const baseContext = await createProductionContextWithPorts();
 
   const logger = config?.logger ?? {

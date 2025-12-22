@@ -9,6 +9,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./tests/helpers/createTestDuckDB": {
+      "types": "./tests/helpers/createTestDuckDB.ts",
+      "import": "./tests/helpers/createTestDuckDB.ts"
     }
   },
   "scripts": {

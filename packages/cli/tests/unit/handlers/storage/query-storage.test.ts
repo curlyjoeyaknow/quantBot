@@ -77,7 +77,9 @@ describe('queryStorageHandler', () => {
       format: 'table' as const,
     };
 
-    await expect(queryStorageHandler(args, fakeCtx)).rejects.toThrow('Only ClickHouse tables are supported');
+    await expect(queryStorageHandler(args, fakeCtx)).rejects.toThrow(
+      'Only ClickHouse tables are supported'
+    );
   });
 
   it('handles case-insensitive table names', async () => {

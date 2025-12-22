@@ -21,7 +21,9 @@ export function createQueryClickhouseAdapter(): QueryPort {
         const result = await client.query({
           query: request.query,
           format: request.format ?? 'JSONEachRow',
-          query_params: request.params ? (request.params as unknown as Record<string, unknown>) : undefined,
+          query_params: request.params
+            ? (request.params as unknown as Record<string, unknown>)
+            : undefined,
         });
 
         const rows = (await result.json()) as Array<Record<string, unknown>>;
@@ -50,4 +52,3 @@ export function createQueryClickhouseAdapter(): QueryPort {
     },
   };
 }
-

@@ -28,4 +28,3 @@ export interface QueryPort {
    */
   isAvailable(): Promise<boolean>;
 }
-

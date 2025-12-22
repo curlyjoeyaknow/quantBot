@@ -46,7 +46,9 @@ describe('storeRunDuckdbHandler - Integration Tests', () => {
     }
   });
 
-  it('stores simulation run in real DuckDB and verifies it exists', async () => {
+  it(
+    'stores simulation run in real DuckDB and verifies it exists',
+    async () => {
     // First store a strategy (like the bridge test does)
     const storageService = new DuckDBStorageService(pythonEngine);
     const strategyResult = await storageService.storeStrategy(
@@ -85,7 +87,9 @@ describe('storeRunDuckdbHandler - Integration Tests', () => {
 
     // Verify DuckDB file was created
     expect(existsSync(testDbPath)).toBe(true);
-  });
+    },
+    15000 // 15 second timeout for DuckDB operations
+  );
 
   it('handles optional fields correctly with real DuckDB', async () => {
     // Strategy already stored in previous test

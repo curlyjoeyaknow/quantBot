@@ -183,3 +183,17 @@ export function createTempDuckDBPath(prefix: string = 'test'): string {
     `${prefix}_${Date.now()}_${Math.random().toString(36).substring(7)}.duckdb`
   );
 }
+
+/**
+ * Copy the real DuckDB database for testing (protects original data)
+ */
+export async function copyRealDuckDB(sourcePath: string, targetPath: string): Promise<void> {
+  const { copyFile } = await import('fs/promises');
+  const { existsSync } = await import('fs');
+  
+  if (!existsSync(sourcePath)) {
+    throw new Error(`Source DuckDB file does not exist: ${sourcePath}`);
+  }
+  
+  await copyFile(sourcePath, targetPath);
+}
