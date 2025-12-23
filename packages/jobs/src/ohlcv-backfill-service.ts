@@ -6,10 +6,9 @@
  */
 
 import { DateTime } from 'luxon';
-import { logger } from '@quantbot/utils';
+import { logger, PythonEngine } from '@quantbot/utils';
 import { getOhlcvIngestionEngine, type OhlcvIngestionEngine } from './ohlcv-ingestion-engine.js';
-import { DuckDBStorageService } from '@quantbot/simulation';
-import { PythonEngine } from '@quantbot/utils';
+import { z } from 'zod';
 
 export interface BackfillOptions {
   /** Maximum alerts to process (default: 1000) */
@@ -48,36 +47,63 @@ export interface AlertToBackfill {
 }
 
 /**
+ * Schema for calls query result (matches DuckDBStorageService schema)
+ */
+const CallsQueryResultSchema = z.object({
+  success: z.boolean(),
+  calls: z
+    .array(
+      z.object({
+        mint: z.string(),
+        alert_timestamp: z.string(), // ISO format timestamp
+      })
+    )
+    .optional(),
+  error: z.string().nullable().optional(),
+});
+
+type CallsQueryResult = z.infer<typeof CallsQueryResultSchema>;
+
+/**
  * OHLCV Backfill Service
  */
 export class OhlcvBackfillService {
   private engine: OhlcvIngestionEngine;
-  private duckdbStorage: DuckDBStorageService;
+  private pythonEngine: PythonEngine;
 
   constructor() {
     this.engine = getOhlcvIngestionEngine();
-    // Use DuckDBStorageService directly (from @quantbot/simulation) to avoid circular dependency
-    // This is allowed: jobs (Data Ingestion) can import from simulation (infrastructure)
-    const pythonEngine = new PythonEngine();
-    this.duckdbStorage = new DuckDBStorageService(pythonEngine);
+    // Use PythonEngine directly (from @quantbot/utils) to avoid architecture violations
+    // This is allowed: jobs (Data Ingestion) can import from utils (infrastructure)
+    this.pythonEngine = new PythonEngine();
   }
 
   /**
    * Get alerts that need backfilling
-   * Uses DuckDBStorageService directly (no workflow dependency)
+   * Uses PythonEngine directly to query DuckDB (no workflow or simulation dependency)
    */
   async getAlertsToBackfill(options: BackfillOptions = {}): Promise<AlertToBackfill[]> {
     const { limit = 1000, callerNames, fromDate, toDate } = options;
 
     const dbPath = process.env.DUCKDB_PATH || 'data/quantbot.duckdb';
 
-    // Query calls from DuckDB directly (no workflow dependency)
-    const result = await this.duckdbStorage.queryCalls(dbPath, limit);
+    // Query calls from DuckDB using PythonEngine directly (no architecture violations)
+    try {
+      const result = await this.pythonEngine.runDuckDBStorage({
+        duckdbPath: dbPath,
+        operation: 'query_calls',
+        data: {
+          limit: limit || 1000,
+          exclude_unrecoverable: true,
+        },
+      });
 
-    if (!result.success || !result.calls) {
-      logger.warn('[Backfill] Failed to query calls from DuckDB', { error: result.error });
-      return [];
-    }
+      const parsed = CallsQueryResultSchema.parse(result);
+
+      if (!parsed.success || !parsed.calls) {
+        logger.warn('[Backfill] Failed to query calls from DuckDB', { error: parsed.error });
+        return [];
+      }
 
     // Filter by date range and caller name
     const fromISO = fromDate?.toISO() || DateTime.utc().minus({ years: 1 }).toISO()!;
@@ -85,21 +111,25 @@ export class OhlcvBackfillService {
     const fromDateObj = DateTime.fromISO(fromISO, { zone: 'utc' });
     const toDateObj = DateTime.fromISO(toISO, { zone: 'utc' });
 
-    const filtered = result.calls
-      .filter((call) => {
-        const callDate = DateTime.fromISO(call.alert_timestamp, { zone: 'utc' });
-        return callDate >= fromDateObj && callDate <= toDateObj;
-      })
-      .map((call, index) => ({
-        id: index, // Use index as ID since we don't have alert ID in calls
-        tokenAddress: call.mint,
-        tokenSymbol: null, // Not available in calls query
-        chain: 'solana', // Assuming solana for now
-        alertTimestamp: DateTime.fromISO(call.alert_timestamp, { zone: 'utc' }).toJSDate(),
-        callerName: callerNames?.[0] || null, // Use first caller if multiple provided
-      }));
+      const filtered = parsed.calls
+        .filter((call: { mint: string; alert_timestamp: string }) => {
+          const callDate = DateTime.fromISO(call.alert_timestamp, { zone: 'utc' });
+          return callDate >= fromDateObj && callDate <= toDateObj;
+        })
+        .map((call: { mint: string; alert_timestamp: string }, index: number) => ({
+          id: index, // Use index as ID since we don't have alert ID in calls
+          tokenAddress: call.mint,
+          tokenSymbol: null, // Not available in calls query
+          chain: 'solana', // Assuming solana for now
+          alertTimestamp: DateTime.fromISO(call.alert_timestamp, { zone: 'utc' }).toJSDate(),
+          callerName: callerNames?.[0] || null, // Use first caller if multiple provided
+        }));
 
-    return filtered;
+      return filtered;
+    } catch (error) {
+      logger.error('[Backfill] Failed to query calls from DuckDB', error as Error);
+      return [];
+    }
   }
 
   /**

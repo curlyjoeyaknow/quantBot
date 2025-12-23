@@ -16,6 +16,7 @@ import type {
   ReEntryConfig,
   CostConfig,
 } from '../types/index.js';
+import type { ExecutionModel } from '../types/execution-model.js';
 import { simulateStrategy } from './simulator.js';
 
 /**
@@ -89,6 +90,14 @@ export async function simulateFromInput(input: SimInput): Promise<SimResult> {
       }
     : undefined;
 
+  // Extract execution model from input if provided
+  const executionModel: ExecutionModel | undefined = validatedInput.executionModel
+    ? (validatedInput.executionModel as ExecutionModel)
+    : undefined;
+
+  // Extract seed from input if provided
+  const seed = validatedInput.seed;
+
   // Run simulation
   const result = await simulateStrategy(
     candles,
@@ -96,7 +105,11 @@ export async function simulateFromInput(input: SimInput): Promise<SimResult> {
     stopLossConfig,
     entryConfig,
     reEntryConfig,
-    costConfig
+    costConfig,
+    {
+      executionModel,
+      seed,
+    }
   );
 
   // Convert to canonical result
