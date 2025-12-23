@@ -1,6 +1,6 @@
 import axios, { AxiosInstance, AxiosResponse, AxiosRequestConfig, AxiosError } from 'axios';
 import { config } from 'dotenv';
-import { logger, ConfigurationError } from '@quantbot/utils';
+import { logger, ConfigurationError, ValidationError } from '@quantbot/utils';
 import { recordApiUsage } from '@quantbot/observability';
 import { BaseApiClient } from './base-client.js';
 
@@ -290,8 +290,13 @@ export class BirdeyeClient extends BaseApiClient {
               expectedMin: 32,
               url: config.url,
             });
-            throw new Error(
-              `Address is truncated in params: ${addressLength} chars (expected >= 32)`
+            throw new ValidationError(
+              `Address is truncated in params: ${addressLength} chars (expected >= 32)`,
+              {
+                addressLength,
+                expectedMin: 32,
+                url: config.url,
+              }
             );
           }
         }
@@ -432,7 +437,14 @@ export class BirdeyeClient extends BaseApiClient {
         length: tokenAddress.length,
         expectedMin: 32,
       });
-      throw new Error(`Address is too short: ${tokenAddress.length} chars (expected >= 32)`);
+      throw new ValidationError(
+        `Address is too short: ${tokenAddress.length} chars (expected >= 32)`,
+        {
+          addressLength: tokenAddress.length,
+          expectedMin: 32,
+          address: tokenAddress.substring(0, 20) + '...', // Display only
+        }
+      );
     }
 
     try {

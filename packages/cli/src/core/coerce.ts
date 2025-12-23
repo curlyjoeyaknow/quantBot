@@ -5,6 +5,8 @@
  * Use these in defineCommand's coerce() function.
  */
 
+import { ValidationError } from '@quantbot/utils';
+
 function isString(x: unknown): x is string {
   return typeof x === 'string';
 }
@@ -23,8 +25,13 @@ export function coerceJson<T>(v: unknown, name: string): T | undefined {
     return JSON.parse(v) as T;
   } catch (e) {
     const preview = v.length > 80 ? `${v.substring(0, 80)}...` : v;
-    throw new Error(
-      `Invalid JSON for ${name}: ${e instanceof Error ? e.message : String(e)}. Input: ${preview}`
+    throw new ValidationError(
+      `Invalid JSON for ${name}: ${e instanceof Error ? e.message : String(e)}`,
+      {
+        name,
+        input: preview,
+        error: e instanceof Error ? e.message : String(e),
+      }
     );
   }
 }
@@ -41,10 +48,11 @@ export function coerceNumber(v: unknown, name: string): number | undefined {
   if (typeof v === 'number') return v;
   if (isString(v) && v.trim() !== '') {
     const n = Number(v);
-    if (!Number.isFinite(n)) throw new Error(`Invalid number for ${name}: ${v}`);
+    if (!Number.isFinite(n))
+      throw new ValidationError(`Invalid number for ${name}`, { name, value: v });
     return n;
   }
-  throw new Error(`Invalid number for ${name}: ${v}`);
+  throw new ValidationError(`Invalid number for ${name}`, { name, value: v });
 }
 
 /**
@@ -61,7 +69,8 @@ export function coerceNumberArray(v: unknown, name: string): number[] | undefine
     // Already an array - validate all elements are numbers
     return v.map((x) => {
       const num = coerceNumber(x, name);
-      if (num === undefined) throw new Error(`Invalid number in array for ${name}: ${x}`);
+      if (num === undefined)
+        throw new ValidationError(`Invalid number in array for ${name}`, { name, value: x });
       return num;
     });
   }
@@ -70,7 +79,8 @@ export function coerceNumberArray(v: unknown, name: string): number[] | undefine
     if (trimmed.startsWith('[')) {
       // JSON array string
       const parsed = coerceJson<number[]>(v, name);
-      if (parsed === undefined) throw new Error(`Invalid JSON array for ${name}: ${v}`);
+      if (parsed === undefined)
+        throw new ValidationError(`Invalid JSON array for ${name}`, { name, value: v });
       return parsed;
     }
     // Comma-separated string
@@ -80,11 +90,12 @@ export function coerceNumberArray(v: unknown, name: string): number[] | undefine
       .filter(Boolean)
       .map((s) => {
         const num = coerceNumber(s, name);
-        if (num === undefined) throw new Error(`Invalid number in array for ${name}: ${s}`);
+        if (num === undefined)
+          throw new ValidationError(`Invalid number in array for ${name}`, { name, value: s });
         return num;
       });
   }
-  throw new Error(`Invalid array for ${name}: ${v}`);
+  throw new ValidationError(`Invalid array for ${name}`, { name, value: v });
 }
 
 /**
@@ -106,7 +117,8 @@ export function coerceStringArray(v: unknown, name: string): string[] | undefine
     if (trimmed.startsWith('[')) {
       // JSON array string
       const parsed = coerceJson<string[]>(v, name);
-      if (parsed === undefined) throw new Error(`Invalid JSON array for ${name}: ${v}`);
+      if (parsed === undefined)
+        throw new ValidationError(`Invalid JSON array for ${name}`, { name, value: v });
       return parsed;
     }
     // Comma-separated string
@@ -115,7 +127,7 @@ export function coerceStringArray(v: unknown, name: string): string[] | undefine
       .map((s) => s.trim())
       .filter(Boolean);
   }
-  throw new Error(`Invalid array for ${name}: ${v}`);
+  throw new ValidationError(`Invalid array for ${name}`, { name, value: v });
 }
 
 /**
@@ -134,7 +146,7 @@ export function coerceBoolean(v: unknown, name: string): boolean | undefined {
     const lower = v.trim().toLowerCase();
     if (lower === 'true' || lower === '1' || lower === 'yes' || lower === 'on') return true;
     if (lower === 'false' || lower === '0' || lower === 'no' || lower === 'off') return false;
-    throw new Error(`Invalid boolean for ${name}: ${v}`);
+    throw new ValidationError(`Invalid boolean for ${name}`, { name, value: v });
   }
-  throw new Error(`Invalid boolean for ${name}: ${v}`);
+  throw new ValidationError(`Invalid boolean for ${name}`, { name, value: v });
 }

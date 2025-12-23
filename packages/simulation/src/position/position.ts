@@ -81,7 +81,7 @@ function generateId(runId?: string, sequence?: number, timestamp?: number): stri
     return `${runId}-${timestamp}`;
   }
   // Fallback: non-deterministic (for backward compatibility)
-   
+
   return `${timestamp ?? Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
 }
 

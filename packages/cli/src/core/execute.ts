@@ -22,8 +22,14 @@ import {
   createArtifactDirectory,
   writeArtifact,
   writeCsvArtifact,
+  writeNdjsonArtifact,
   type ArtifactPaths,
 } from './artifact-manager.js';
+import {
+  createAndWriteRunManifest,
+  type RunManifestComponents,
+} from './run-manifest-service.js';
+import { seedFromString } from '@quantbot/core';
 import { errorToContract } from './error-contracts.js';
 import { commandRegistry } from './command-registry.js';
 import { getProgressIndicator, resetProgressIndicator } from './progress-indicator.js';
@@ -172,7 +178,11 @@ export async function execute(
     // 9. Log error contract to artifacts (if applicable)
     if (artifactPaths && runId) {
       const contract = errorToContract(error, fullCommandName, runId);
-      await writeArtifact(artifactPaths, 'logsTxt', JSON.stringify(contract, null, 2));
+      await writeArtifact(artifactPaths, 'debugLog', JSON.stringify(contract, null, 2));
+      // Also write to legacy logsTxt for backward compatibility
+      if (artifactPaths.logsTxt) {
+        await writeArtifact(artifactPaths, 'logsTxt', JSON.stringify(contract, null, 2));
+      }
     }
 
     const message = handleError(error);

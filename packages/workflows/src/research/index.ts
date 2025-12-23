@@ -66,3 +66,8 @@ export { FileArtifactStorage } from './artifact-storage.js';
 // Simulation adapter
 export * from './simulation-adapter.js';
 export { ResearchSimulationAdapter, createSimulationAdapter } from './simulation-adapter.js';
+
+// Research Services (Branch B & C)
+export * from './services/index.js';
+export { DataSnapshotService } from './services/DataSnapshotService.js';
+export { ExecutionRealityService } from './services/ExecutionRealityService.js';

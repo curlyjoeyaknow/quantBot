@@ -14,6 +14,7 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import type { CostConfig } from '../../src/types/index.js';
 import { simulateStrategy } from '../../src/core/simulator.js';
 import type { Candle } from '../../src/types/candle.js';
+import { createDeterministicRNG } from '@quantbot/core';
 import {
   createPumpfunExecutionModel,
   createPumpswapExecutionModel,
@@ -199,7 +200,8 @@ describe('Execution Models Integration', () => {
     it('should sample realistic latency values', () => {
       const model = createPumpfunExecutionModel();
 
-      const latencies = Array.from({ length: 100 }, () => sampleTotalLatency(model.latency, 0));
+      const rng = createDeterministicRNG(100);
+      const latencies = Array.from({ length: 100 }, () => sampleTotalLatency(model.latency, rng, 0));
 
       // All latencies should be non-negative
       expect(latencies.every((l) => l >= 0)).toBe(true);
@@ -218,9 +220,11 @@ describe('Execution Models Integration', () => {
     it('should apply congestion multiplier to latency', () => {
       const model = createPumpfunExecutionModel();
 
-      const baseLatencies = Array.from({ length: 100 }, () => sampleTotalLatency(model.latency, 0));
+      const rng1 = createDeterministicRNG(101);
+      const rng2 = createDeterministicRNG(102);
+      const baseLatencies = Array.from({ length: 100 }, () => sampleTotalLatency(model.latency, rng1, 0));
       const congestedLatencies = Array.from({ length: 100 }, () =>
-        sampleTotalLatency(model.latency, 1.0)
+        sampleTotalLatency(model.latency, rng2, 1.0)
       );
 
       const baseAvg = baseLatencies.reduce((a, b) => a + b, 0) / baseLatencies.length;

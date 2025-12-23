@@ -11,6 +11,7 @@ import {
   createPumpswapLatencyConfig,
 } from '../../src/execution-models/latency.js';
 import type { LatencyDistribution } from '../../src/execution-models/types.js';
+import { createDeterministicRNG } from '@quantbot/core';
 
 describe('Latency Models', () => {
   describe('sampleLatency', () => {
@@ -23,7 +24,8 @@ describe('Latency Models', () => {
         distribution: 'percentile',
       };
 
-      const samples = Array.from({ length: 1000 }, () => sampleLatency(dist));
+      const rng = createDeterministicRNG(42);
+      const samples = Array.from({ length: 1000 }, () => sampleLatency(dist, rng));
 
       // All samples should be non-negative
       expect(samples.every((s) => s >= 0)).toBe(true);
@@ -46,7 +48,8 @@ describe('Latency Models', () => {
         stddevMs: 20,
       };
 
-      const samples = Array.from({ length: 1000 }, () => sampleLatency(dist));
+      const rng = createDeterministicRNG(43);
+      const samples = Array.from({ length: 1000 }, () => sampleLatency(dist, rng));
 
       // All samples should be non-negative
       expect(samples.every((s) => s >= 0)).toBe(true);
@@ -62,10 +65,12 @@ describe('Latency Models', () => {
     it('should apply congestion multiplier', () => {
       const config = createPumpfunLatencyConfig();
 
+      const rng1 = createDeterministicRNG(44);
+      const rng2 = createDeterministicRNG(45);
       // Sample many times to get reliable average behavior
-      const baseSamples = Array.from({ length: 1000 }, () => sampleNetworkLatency(config, 0));
+      const baseSamples = Array.from({ length: 1000 }, () => sampleNetworkLatency(config, rng1, 0));
       const congestedSamples = Array.from({ length: 1000 }, () =>
-        sampleNetworkLatency(config, 1.0)
+        sampleNetworkLatency(config, rng2, 1.0)
       );
 
       const baseAvg = baseSamples.reduce((a, b) => a + b, 0) / baseSamples.length;
@@ -82,7 +87,8 @@ describe('Latency Models', () => {
   describe('sampleTotalLatency', () => {
     it('should combine network and confirmation latency', () => {
       const config = createPumpfunLatencyConfig();
-      const total = sampleTotalLatency(config, 0);
+      const rng = createDeterministicRNG(46);
+      const total = sampleTotalLatency(config, rng, 0);
 
       // Total should be at least network latency
       expect(total).toBeGreaterThan(0);

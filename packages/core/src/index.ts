@@ -40,7 +40,8 @@ export * from './seed-manager.js';
 // Artifacts & Versioning
 // ============================================================================
 
-export * from './artifacts.js';
+export * from './artifacts.js'; // Legacy artifact system
+export * from './artifacts/index.js'; // Run manifest and hashing
 
 // ============================================================================
 // Canonical Data

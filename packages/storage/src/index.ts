@@ -35,6 +35,7 @@ export { TokenDataRepository } from './duckdb/repositories/TokenDataRepository.j
 
 // Artifact repository adapter
 export { ArtifactDuckDBAdapter } from './adapters/artifact-duckdb-adapter.js';
+export { ExperimentDuckDBAdapter } from './adapters/experiment-duckdb-adapter.js';
 export type { OHLCVCoverageRecord } from './duckdb/repositories/TokenDataRepository.js';
 export { CallersRepository } from './duckdb/repositories/CallersRepository.js';
 export { StrategiesRepository } from './duckdb/repositories/StrategiesRepository.js';

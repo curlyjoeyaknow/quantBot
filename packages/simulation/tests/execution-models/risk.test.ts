@@ -104,9 +104,10 @@ describe('Risk Framework', () => {
         minTradeIntervalSeconds: 5,
       };
       const state = createCircuitBreakerState();
-      state.lastTradeTime = Date.now() - 2000; // 2 seconds ago
+      const now = Date.now();
+      state.lastTradeTime = now - 2000; // 2 seconds ago
 
-      const result = checkCircuitBreaker(config, state, 0, 1000, 'strategy1', 100);
+      const result = checkCircuitBreaker(config, state, 0, 1000, 'strategy1', 100, now);
 
       expect(result.triggered).toBe(true);
       expect(result.reason).toContain('throttle');

@@ -5,6 +5,7 @@ This guide demonstrates how to use `DataSnapshotService` and `ExecutionRealitySe
 ## Overview
 
 The Research Services provide:
+
 - **DataSnapshotService**: Create reproducible data snapshots for simulations
 - **ExecutionRealityService**: Apply realistic execution models, cost models, and risk constraints
 
@@ -453,4 +454,3 @@ try {
 
 - [Research OS Contract](./SIMULATION_CONTRACT.md) - Full contract specification
 - [Testing Summary](../packages/workflows/src/research/TESTING_SUMMARY.md) - Test coverage and examples
-
