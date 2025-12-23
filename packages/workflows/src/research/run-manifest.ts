@@ -37,16 +37,16 @@ export function fromCLIManifest(cliManifest: RunManifest): CanonicalRunManifest 
  *
  * @deprecated Use createRunManifest from @quantbot/core instead
  */
-export function fromRunArtifact(artifact: RunArtifact): CanonicalRunManifest {
+export async function fromRunArtifact(artifact: RunArtifact): Promise<CanonicalRunManifest> {
   const metadata = artifact.metadata;
-  const { createRunManifest, hashInputs } = await import('@quantbot/core');
+  const { createRunManifest } = await import('@quantbot/core');
 
   return createRunManifest({
     runId: metadata.runId,
     seed: artifact.request.runConfig.seed,
     gitSha: metadata.gitSha,
     gitBranch: metadata.gitBranch,
-    snapshotId: metadata.snapshotId ?? `legacy_${metadata.dataSnapshotHash.substring(0, 16)}`,
+    snapshotId: `legacy_${metadata.dataSnapshotHash.substring(0, 16)}`, // Legacy fallback - no snapshotId in old metadata
     snapshotContentHash: metadata.dataSnapshotHash,
     dataSnapshotHash: metadata.dataSnapshotHash, // backward compatibility
     strategyHash: metadata.strategyConfigHash,
@@ -69,7 +69,7 @@ export function fromRunArtifact(artifact: RunArtifact): CanonicalRunManifest {
  *
  * @deprecated Use createRunManifest from @quantbot/core instead
  */
-export function createCanonicalManifest(components: {
+export async function createCanonicalManifest(components: {
   runId: string;
   seed: number;
   gitSha: string;
@@ -94,7 +94,7 @@ export function createCanonicalManifest(components: {
   errorMessage?: string;
   simulationTimeMs?: number;
   metadata?: Record<string, unknown>;
-}): CanonicalRunManifest {
+}): Promise<CanonicalRunManifest> {
   const { createRunManifest } = await import('@quantbot/core');
   
   return createRunManifest({
