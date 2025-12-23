@@ -7,6 +7,7 @@
 
 import { z } from 'zod';
 import { DateTime } from 'luxon';
+import { ConfigurationError } from '@quantbot/utils';
 import type { WorkflowContextWithPorts } from '../context/workflowContextWithPorts.js';
 
 /**
@@ -246,5 +247,9 @@ export async function getStorageStats(
  * Create default context for testing
  */
 function createDefaultStorageStatsContext(): StorageStatsContext {
-  throw new Error('StorageStatsContext must be provided - no default implementation');
+  throw new ConfigurationError(
+    'StorageStatsContext must be provided - no default implementation',
+    'StorageStatsContext',
+    { operation: 'getStorageStats' }
+  );
 }

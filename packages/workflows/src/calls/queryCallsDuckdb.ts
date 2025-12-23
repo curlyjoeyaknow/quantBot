@@ -13,7 +13,7 @@
 
 import { z } from 'zod';
 import { DateTime } from 'luxon';
-import { ValidationError } from '@quantbot/utils';
+import { ValidationError, ConfigurationError } from '@quantbot/utils';
 import type { WorkflowContext, CallRecord } from '../types.js';
 
 /**
@@ -98,8 +98,10 @@ export async function createQueryCallsDuckdbContext(
  * Create default context (for testing)
  */
 export function createDefaultQueryCallsDuckdbContext(): QueryCallsDuckdbContext {
-  throw new Error(
-    'createDefaultQueryCallsDuckdbContext must be implemented with actual services. Use createQueryCallsDuckdbContext() in production.'
+  throw new ConfigurationError(
+    'createDefaultQueryCallsDuckdbContext must be implemented with actual services. Use createQueryCallsDuckdbContext() in production.',
+    'QueryCallsDuckdbContext',
+    { operation: 'createDefaultQueryCallsDuckdbContext' }
   );
 }
 

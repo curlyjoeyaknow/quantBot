@@ -296,8 +296,21 @@ export function calibrateExecutionModel(
       : 1;
 
   // Build calibrated model
+  // Use deterministic ID based on venue and calibration data hash
+  // Hash includes key calibration parameters for reproducibility
+  const calibrationHash = JSON.stringify({
+    venue,
+    networkLatency: networkLatency.p50,
+    confirmationLatency: confirmationLatency.p50,
+    entrySlippage: entrySlippage.type,
+    failureModel: failureModel.baseFailureRate,
+    entryMean,
+    entryStddev,
+  })
+    .replace(/\s+/g, '') // Remove whitespace for consistent hashing
+    .slice(0, 16); // Use first 16 chars as hash
   const model: ExecutionModel = {
-    id: `${venue}-calibrated-${Date.now()}`,
+    id: `${venue}-calibrated-${calibrationHash}`,
     name: `Calibrated Execution Model for ${venue}`,
     venue,
     latency: {

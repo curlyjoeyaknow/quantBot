@@ -3,15 +3,20 @@
  * ===========================
  *
  * Models for simulating network and confirmation latency in trading execution.
+ * All randomness uses DeterministicRNG for reproducibility.
  */
 
+import type { DeterministicRNG } from '@quantbot/core';
 import type { LatencyDistribution, VenueLatencyConfig } from './types.js';
 
 /**
  * Sample latency from a percentile-based distribution
  * Uses interpolation between p50, p90, p99 based on random value
+ *
+ * @param distribution - Latency distribution configuration
+ * @param rng - Deterministic random number generator (required for determinism)
  */
-export function sampleLatency(distribution: LatencyDistribution): number {
+export function sampleLatency(distribution: LatencyDistribution, rng: DeterministicRNG): number {
   const { distribution: distType, jitterMs } = distribution;
 
   let baseLatency: number;
@@ -22,14 +27,14 @@ export function sampleLatency(distribution: LatencyDistribution): number {
     distribution.stddevMs !== undefined
   ) {
     // Box-Muller transform for normal distribution
-    const u1 = Math.random();
-    const u2 = Math.random();
+    const u1 = rng.next();
+    const u2 = rng.next();
     const z0 = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
     baseLatency = distribution.meanMs + z0 * distribution.stddevMs;
     baseLatency = Math.max(0, baseLatency); // Ensure non-negative
   } else {
     // Percentile-based distribution
-    const r = Math.random();
+    const r = rng.next();
     if (r < 0.5) {
       // 0-50th percentile: linear interpolation from 0 to p50
       baseLatency = (r / 0.5) * distribution.p50;
@@ -45,44 +50,59 @@ export function sampleLatency(distribution: LatencyDistribution): number {
   }
 
   // Add jitter (uniform random)
-  const jitter = jitterMs > 0 ? (Math.random() - 0.5) * 2 * jitterMs : 0;
+  const jitter = jitterMs > 0 ? (rng.next() - 0.5) * 2 * jitterMs : 0;
 
   return Math.max(0, baseLatency + jitter);
 }
 
 /**
  * Sample network latency for a venue
+ *
+ * @param config - Venue latency configuration
+ * @param rng - Deterministic random number generator (required for determinism)
+ * @param congestionLevel - Current congestion level (0-1)
  */
 export function sampleNetworkLatency(
   config: VenueLatencyConfig,
+  rng: DeterministicRNG,
   congestionLevel: number = 0
 ): number {
-  const baseLatency = sampleLatency(config.networkLatency);
+  const baseLatency = sampleLatency(config.networkLatency, rng);
   const congestionMultiplier = 1 + (config.congestionMultiplier - 1) * Math.min(1, congestionLevel);
   return baseLatency * congestionMultiplier;
 }
 
 /**
  * Sample confirmation latency for a venue
+ *
+ * @param config - Venue latency configuration
+ * @param rng - Deterministic random number generator (required for determinism)
+ * @param congestionLevel - Current congestion level (0-1)
  */
 export function sampleConfirmationLatency(
   config: VenueLatencyConfig,
+  rng: DeterministicRNG,
   congestionLevel: number = 0
 ): number {
-  const baseLatency = sampleLatency(config.confirmationLatency);
+  const baseLatency = sampleLatency(config.confirmationLatency, rng);
   const congestionMultiplier = 1 + (config.congestionMultiplier - 1) * Math.min(1, congestionLevel);
   return baseLatency * congestionMultiplier;
 }
 
 /**
  * Sample total execution latency (network + confirmation)
+ *
+ * @param config - Venue latency configuration
+ * @param rng - Deterministic random number generator (required for determinism)
+ * @param congestionLevel - Current congestion level (0-1)
  */
 export function sampleTotalLatency(
   config: VenueLatencyConfig,
+  rng: DeterministicRNG,
   congestionLevel: number = 0
 ): number {
-  const network = sampleNetworkLatency(config, congestionLevel);
-  const confirmation = sampleConfirmationLatency(config, congestionLevel);
+  const network = sampleNetworkLatency(config, rng, congestionLevel);
+  const confirmation = sampleConfirmationLatency(config, rng, congestionLevel);
   return network + confirmation;
 }
 

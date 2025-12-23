@@ -27,12 +27,10 @@
     "@quantbot/core": "workspace:*",
     "@quantbot/utils": "workspace:*",
     "lru-cache": "^11.0.0",
-    "luxon": "^3.4.4",
-    "sqlite3": "^5.1.7"
+    "luxon": "^3.4.4"
   },
   "devDependencies": {
     "@types/node": "^24.10.1",
-    "@types/sqlite3": "^3.1.11",
     "@vitest/coverage-v8": "^4.0.15",
     "typescript": "^5.9.3",
     "vitest": "^4.0.15"

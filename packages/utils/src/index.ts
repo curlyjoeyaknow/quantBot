@@ -80,13 +80,8 @@ export { shouldRunDbStress, TEST_GATES } from './test-helpers/test-gating.js';
 // Database functions in this package are deprecated and will be removed in a future version.
 // Please migrate to @quantbot/storage repositories. See MIGRATION_GUIDE.md for details.
 //
-// Database module NOT exported here to avoid sqlite3 native binding issues.
-// If you need legacy database access (NOT RECOMMENDED), import directly from './database':
-//   import { saveSimulationRun } from '@quantbot/utils/database'; // ⚠️ DEPRECATED
-//
-// Migration mapping:
-// - database.ts → @quantbot/storage repositories (DuckDB repositories, etc.)
-// - caller-database.ts → @quantbot/storage repositories
+// Database module removed - SQLite support has been removed.
+// Use @quantbot/storage repositories (DuckDB repositories, etc.) instead.
 // - live-trade-database.ts → ARCHIVED (see scripts/archive/live-trades/)
 // - monitored-tokens-db.ts → ARCHIVED (see scripts/archive/monitored-tokens/)
 // - live-trade-strategies.ts → ARCHIVED (see scripts/archive/live-trades/)

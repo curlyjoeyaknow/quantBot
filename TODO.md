@@ -2,7 +2,7 @@
 
 > **Project roadmap and task tracking**
 
-Last updated: 2025-01-23 (CLI migration testing complete)
+Last updated: 2025-01-23 (Backlog items completed: SQLite cleanup, API package, Observability)
 
 ---
 
@@ -15,7 +15,7 @@ Last updated: 2025-01-23 (CLI migration testing complete)
 - [x] Complete workflow migration for all CLI commands (all handlers use defineCommand pattern)
 - [x] Add ESLint boundaries for CLI wrapper pattern (execute/normalizeOptions imports)
 - [x] Lock in defineCommand wrapper pattern with golden tests
-- [ ] Implement pre-commit hooks for workflow contract compliance
+- [x] Implement pre-commit hooks for workflow contract compliance (already implemented in .husky/pre-commit)
 
 ### CLI Handler Migration
 
@@ -33,9 +33,9 @@ Last updated: 2025-01-23 (CLI migration testing complete)
 
 - [x] Core DuckDB storage implementation
 - [x] Python engine integration
-- [ ] Complete migration of remaining SQLite data
+- [x] Complete migration of remaining SQLite data (SQLite removed, strategies already in DuckDB)
 - [ ] Add DuckDB stress tests
-- [ ] Document DuckDB schema
+- [x] Document DuckDB schema
 
 ---
 
@@ -43,7 +43,7 @@ Last updated: 2025-01-23 (CLI migration testing complete)
 
 ### High Priority
 
-- [ ] **API Package**: Create `@quantbot/api` with Fastify endpoints
+- [x] **API Package**: Create `@quantbot/api` with Fastify endpoints
   - Health checks
   - OHLCV endpoints
   - Simulation run management
@@ -58,10 +58,10 @@ Last updated: 2025-01-23 (CLI migration testing complete)
   - [x] Fuzzing coverage gaps (all parsers now fuzzed)
   - [x] Stress test automation (CI integration with weekly scheduled runs + manual dispatch via `.github/workflows/stress-tests.yml`)
 
-- [ ] **Observability**
-  - Metrics collection (Prometheus format)
-  - Distributed tracing
-  - Alerting for critical failures
+- [x] **Observability**
+  - Metrics collection (Prometheus format) ✅
+  - Distributed tracing ✅
+  - Alerting for critical failures ✅
 
 ### Medium Priority
 
@@ -225,7 +225,7 @@ Last updated: 2025-01-23 (CLI migration testing complete)
 
 ### Cleanup
 
-- [ ] Remove deprecated SQLite code after full DuckDB migration
+- [x] Remove deprecated SQLite code after full DuckDB migration
 - [ ] Consolidate duplicate type definitions
 - [ ] Standardize logging format across packages
 - [ ] Clean up unused dependencies
@@ -239,7 +239,7 @@ Last updated: 2025-01-23 (CLI migration testing complete)
 - [x] ARCHITECTURE.md - System architecture
 - [x] TODO.md - Task tracking
 - [x] WRAPPER_PATTERN_LOCKED.md - CLI wrapper pattern documentation
-- [ ] CONTRIBUTING.md - Contribution guidelines
+- [x] CONTRIBUTING.md - Contribution guidelines
 - [ ] API.md - API documentation
 - [ ] DEPLOYMENT.md - Deployment guide
 

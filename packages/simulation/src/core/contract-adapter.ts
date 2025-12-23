@@ -99,6 +99,9 @@ export async function simulateFromInput(input: SimInput): Promise<SimResult> {
   // Extract seed from input if provided, otherwise generate from run_id for determinism
   const seed = validatedInput.seed ?? seedFromString(validatedInput.run_id);
 
+  // Extract clock resolution from input (defaults to 'm' for minutes)
+  const clockResolution = validatedInput.clockResolution ?? 'm';
+
   // Run simulation
   const result = await simulateStrategy(
     candles,
@@ -110,6 +113,7 @@ export async function simulateFromInput(input: SimInput): Promise<SimResult> {
     {
       executionModel,
       seed,
+      clockResolution,
     }
   );
 

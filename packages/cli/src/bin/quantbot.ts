@@ -65,6 +65,7 @@ registerApiClientsCommands(program);
 registerTelegramCommands(program);
 registerMetadataCommands(program);
 registerCallsCommands(program);
+registerResearchCommands(program);
 
 // Global error handler
 program.configureOutput({

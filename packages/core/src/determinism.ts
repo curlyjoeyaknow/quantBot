@@ -56,6 +56,8 @@ export class SeededRNG implements DeterministicRNG {
     // Initialize state from seed (use splitmix64-like algorithm)
     // Convert seed to unsigned 64-bit integer to ensure consistent hashing
     let s = BigInt(seed);
+    // Store original seed for fallback
+    const originalSeed = s;
     // Handle negative seeds by converting to unsigned representation
     if (s < 0) {
       // eslint-disable-next-line no-loss-of-precision
@@ -76,12 +78,29 @@ export class SeededRNG implements DeterministicRNG {
     this.state0 = Number(t & BigInt(0xffffffff));
     this.state1 = Number((t >> BigInt(32)) & BigInt(0xffffffff));
 
-    // Ensure state is non-zero - if both are zero, use seed-dependent values
+    // Ensure state is non-zero - if both are zero, use original seed-dependent values
     if (this.state0 === 0 && this.state1 === 0) {
-      // Use seed to generate non-zero state instead of fixed values
-      const fallback = Number(s & BigInt(0xffffffff));
-      this.state0 = fallback || 1;
-      this.state1 = Number((s >> BigInt(32)) & BigInt(0xffffffff)) || 1;
+      // Use original seed (before any transformations) to ensure different seeds produce different states
+      // Normalize original seed to unsigned 64-bit
+      let seedNorm = originalSeed;
+      if (seedNorm < 0) {
+        // eslint-disable-next-line no-loss-of-precision
+        seedNorm = (seedNorm + BigInt(0x10000000000000000)) & BigInt(0xffffffffffffffff);
+      }
+      // Use lower 32 bits for state0 (ensure non-zero)
+      const state0Val = Number(seedNorm & BigInt(0xffffffff));
+      this.state0 = state0Val || 1;
+      // Use upper 32 bits for state1 (ensure non-zero, mix with seed for small seeds)
+      const state1Upper = Number((seedNorm >> BigInt(32)) & BigInt(0xffffffff));
+      // If upper bits are 0 (seed < 2^32), use a mixed value based on the seed
+      this.state1 =
+        state1Upper || Number((seedNorm * BigInt(0x9e3779b9)) & BigInt(0xffffffff)) || 1;
+    }
+
+    // Additional check: ensure both states are never both zero (shouldn't happen after above, but safety check)
+    if (this.state0 === 0 && this.state1 === 0) {
+      this.state0 = 1;
+      this.state1 = 1;
     }
   }
 

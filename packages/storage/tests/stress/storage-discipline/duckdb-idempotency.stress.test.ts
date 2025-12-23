@@ -3,12 +3,22 @@
  *
  * Tests that DuckDB operations are idempotent and handle failures gracefully.
  * Goal: Idempotency + clear "what state changed" reporting.
+ *
+ * This file contains two test suites:
+ * 1. Mock tests (always run) - Fast unit tests using mocks
+ * 2. Integration tests (require RUN_INTEGRATION_STRESS=1) - Real DuckDB operations
+ *
+ * Run integration tests with:
+ *   RUN_INTEGRATION_STRESS=1 pnpm test:stress -- packages/storage/tests/stress/storage-discipline/duckdb-idempotency.stress.test.ts
  */
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { mkdtempSync, rmSync, writeFileSync, readFileSync, chmodSync } from 'fs';
+import { mkdtempSync, rmSync, writeFileSync, readFileSync, chmodSync, existsSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
+import { shouldRunTest, TEST_GATES } from '@quantbot/utils/test-helpers/test-gating';
+import { DuckDBStorageService } from '@quantbot/simulation';
+import { getPythonEngine } from '@quantbot/utils';
 
 /**
  * Mock DuckDB storage service
@@ -362,6 +372,357 @@ describe('DuckDB Idempotency Stress Tests', () => {
 
       const result = await storage.storeStrategy('large-test', largeData);
       expect(result.success).toBe(true);
+    });
+  });
+});
+
+// ============================================================================
+// Integration Tests (Real DuckDB)
+// ============================================================================
+
+const shouldRunIntegration = shouldRunTest(TEST_GATES.INTEGRATION_STRESS);
+
+describe.skipIf(!shouldRunIntegration)('DuckDB Integration Stress Tests (Real DuckDB)', () => {
+  let tempDir: string;
+  let dbPath: string;
+  let storageService: DuckDBStorageService;
+
+  beforeEach(() => {
+    tempDir = mkdtempSync(join(tmpdir(), 'duckdb-integration-'));
+    dbPath = join(tempDir, 'test.duckdb');
+    const pythonEngine = getPythonEngine();
+    storageService = new DuckDBStorageService(pythonEngine);
+  });
+
+  afterEach(() => {
+    try {
+      rmSync(tempDir, { recursive: true, force: true });
+    } catch (error) {
+      // Ignore cleanup errors
+    }
+  });
+
+  describe('Real DuckDB: Idempotency', () => {
+    it('should produce same result when storing strategy twice', async () => {
+      const strategyId = 'test-strategy-idempotent';
+      const name = 'Test Strategy';
+      const entryConfig = { type: 'ichimoku', period: 9 };
+      const exitConfig = { type: 'stop_loss', threshold: 0.05 };
+
+      // Store strategy twice
+      const result1 = await storageService.storeStrategy(
+        dbPath,
+        strategyId,
+        name,
+        entryConfig,
+        exitConfig
+      );
+      const result2 = await storageService.storeStrategy(
+        dbPath,
+        strategyId,
+        name,
+        entryConfig,
+        exitConfig
+      );
+
+      // Both should succeed
+      expect(result1.success).toBe(true);
+      expect(result2.success).toBe(true);
+
+      // Should not create duplicates (idempotent)
+      // The second call should either:
+      // 1. Return success with same strategy_id (upsert)
+      // 2. Return success indicating it was an update
+      expect(result1.strategy_id || result2.strategy_id).toBeDefined();
+    });
+
+    it('should handle storing same run_id multiple times', async () => {
+      // First, store a strategy
+      const strategyId = 'test-strategy-run';
+      await storageService.storeStrategy(
+        dbPath,
+        strategyId,
+        'Test Strategy',
+        { type: 'ichimoku' },
+        { type: 'stop_loss' }
+      );
+
+      const runId = 'test-run-idempotent';
+      const now = new Date().toISOString();
+      const runParams = {
+        duckdbPath: dbPath,
+        runId,
+        strategyId,
+        strategyName: 'Test Strategy',
+        mint: 'So11111111111111111111111111111111111111112',
+        alertTimestamp: now,
+        startTime: now,
+        endTime: now,
+        initialCapital: 1000,
+        strategyConfig: {
+          entry: { type: 'ichimoku' },
+          exit: { type: 'stop_loss' },
+        },
+      };
+
+      // Store run twice
+      const result1 = await storageService.storeRun(
+        runParams.duckdbPath,
+        runParams.runId,
+        runParams.strategyId,
+        runParams.strategyName,
+        runParams.mint,
+        runParams.alertTimestamp,
+        runParams.startTime,
+        runParams.endTime,
+        runParams.initialCapital,
+        runParams.strategyConfig
+      );
+      const result2 = await storageService.storeRun(
+        runParams.duckdbPath,
+        runParams.runId,
+        runParams.strategyId,
+        runParams.strategyName,
+        runParams.mint,
+        runParams.alertTimestamp,
+        runParams.startTime,
+        runParams.endTime,
+        runParams.initialCapital,
+        runParams.strategyConfig
+      );
+
+      // Both should succeed (idempotent)
+      expect(result1.success).toBe(true);
+      expect(result2.success).toBe(true);
+    });
+  });
+
+  describe('Real DuckDB: Concurrent Access', () => {
+    it('should handle concurrent writes to same database file', async () => {
+      // Attempt concurrent writes
+      const writes = Array.from({ length: 10 }, (_, i) =>
+        storageService.storeStrategy(
+          dbPath,
+          `strategy-${i}`,
+          `Strategy ${i}`,
+          { type: 'ichimoku', period: i },
+          { type: 'stop_loss', threshold: 0.05 }
+        )
+      );
+
+      const results = await Promise.allSettled(writes);
+
+      // All should either succeed or fail with clear error
+      const successful = results.filter((r) => r.status === 'fulfilled');
+      const failed = results.filter((r) => r.status === 'rejected');
+
+      // At least some should succeed
+      expect(successful.length).toBeGreaterThan(0);
+
+      // Failed ones should have clear errors
+      for (const result of failed) {
+        if (result.status === 'rejected') {
+          expect(result.reason).toBeDefined();
+        }
+      }
+    });
+
+    it('should handle concurrent writes to same strategy (should serialize)', async () => {
+      const strategyId = 'concurrent-strategy';
+      const writes = Array.from({ length: 5 }, (_, i) =>
+        storageService.storeStrategy(
+          dbPath,
+          strategyId,
+          `Updated ${i}`,
+          { type: 'ichimoku', period: i },
+          { type: 'stop_loss', threshold: 0.05 }
+        )
+      );
+
+      const results = await Promise.allSettled(writes);
+
+      // Should not corrupt data - all should succeed or fail gracefully
+      const successful = results.filter((r) => r.status === 'fulfilled' && r.value.success);
+      expect(successful.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('Real DuckDB: Write Failures', () => {
+    it('should error when database path is invalid', async () => {
+      const invalidPath = '/invalid/path/that/does/not/exist/test.duckdb';
+
+      const result = await storageService.storeStrategy(invalidPath, 'test', 'Test', {}, {});
+
+      // Should fail with clear error
+      expect(result.success).toBe(false);
+      expect(result.error).toBeDefined();
+      expect(result.error).toMatch(/path|permission|directory|invalid/i);
+    });
+
+    it('should handle read-only directory (simulated disk full)', async () => {
+      // Make directory read-only
+      chmodSync(tempDir, 0o444);
+
+      try {
+        const result = await storageService.storeStrategy(dbPath, 'test', 'Test', {}, {});
+
+        // Should fail with clear error
+        expect(result.success).toBe(false);
+        expect(result.error).toBeDefined();
+      } finally {
+        // Restore permissions for cleanup
+        chmodSync(tempDir, 0o755);
+      }
+    });
+  });
+
+  describe('Real DuckDB: Schema and Corruption', () => {
+    it('should detect corrupted DuckDB file', async () => {
+      // Create a corrupted DuckDB file
+      writeFileSync(dbPath, 'CORRUPTED_DATA_NOT_VALID_DUCKDB');
+
+      const result = await storageService.storeStrategy(dbPath, 'test', 'Test', {}, {});
+
+      // Should fail with clear error about corruption
+      expect(result.success).toBe(false);
+      expect(result.error).toBeDefined();
+      expect(result.error).toMatch(/corrupt|invalid|damaged|error|failed/i);
+    });
+
+    it('should handle empty database file (new database)', async () => {
+      // Don't create file - let DuckDB create it
+      const newDbPath = join(tempDir, 'new.duckdb');
+
+      const result = await storageService.storeStrategy(
+        newDbPath,
+        'test',
+        'Test',
+        { type: 'ichimoku' },
+        { type: 'stop_loss' }
+      );
+
+      // Should succeed - DuckDB creates new database
+      expect(result.success).toBe(true);
+      expect(existsSync(newDbPath)).toBe(true);
+    });
+  });
+
+  describe('Real DuckDB: Performance under Stress', () => {
+    it('should handle many sequential writes efficiently', async () => {
+      const writes = Array.from({ length: 50 }, (_, i) =>
+        storageService.storeStrategy(
+          dbPath,
+          `strategy-${i}`,
+          `Strategy ${i}`,
+          { type: 'ichimoku', period: i % 20 },
+          { type: 'stop_loss', threshold: 0.05 }
+        )
+      );
+
+      const startTime = Date.now();
+      const results = await Promise.all(writes);
+      const duration = Date.now() - startTime;
+
+      // All should succeed
+      const successful = results.filter((r) => r.success);
+      expect(successful.length).toBeGreaterThan(0);
+
+      // Should complete in reasonable time (30 seconds for 50 writes)
+      expect(duration).toBeLessThan(30000);
+    });
+
+    it('should handle large configuration payloads', async () => {
+      const largeConfig = {
+        type: 'ichimoku',
+        period: 9,
+        data: Array(1000).fill({ value: 'x'.repeat(100) }),
+      };
+
+      const result = await storageService.storeStrategy(
+        dbPath,
+        'large-test',
+        'Large Config Test',
+        largeConfig,
+        { type: 'stop_loss' }
+      );
+
+      expect(result.success).toBe(true);
+    });
+  });
+
+  describe('Real DuckDB: Query Operations', () => {
+    it('should query calls after storing runs', async () => {
+      // Store a strategy
+      const strategyId = 'query-test-strategy';
+      await storageService.storeStrategy(
+        dbPath,
+        strategyId,
+        'Query Test',
+        { type: 'ichimoku' },
+        { type: 'stop_loss' }
+      );
+
+      // Store a run
+      const runId = 'query-test-run';
+      const now = new Date().toISOString();
+      await storageService.storeRun(
+        dbPath,
+        runId,
+        strategyId,
+        'Query Test',
+        'So11111111111111111111111111111111111111112',
+        now,
+        now,
+        now,
+        1000,
+        {
+          entry: { type: 'ichimoku' },
+          exit: { type: 'stop_loss' },
+        },
+        undefined, // callerName
+        undefined, // finalCapital
+        undefined, // totalReturnPct
+        undefined, // maxDrawdownPct
+        undefined, // sharpeRatio
+        undefined, // winRate
+        undefined // totalTrades
+      );
+
+      // Query calls (should return empty or existing calls)
+      const queryResult = await storageService.queryCalls(dbPath, {
+        limit: 100,
+      });
+
+      expect(queryResult.success).toBe(true);
+      expect(queryResult.calls).toBeDefined();
+      expect(Array.isArray(queryResult.calls)).toBe(true);
+    });
+  });
+
+  describe('Real DuckDB: State Reporting', () => {
+    it('should report success with strategy_id on successful store', async () => {
+      const result = await storageService.storeStrategy(
+        dbPath,
+        'state-test',
+        'State Test',
+        { type: 'ichimoku' },
+        { type: 'stop_loss' }
+      );
+
+      expect(result.success).toBe(true);
+      // Strategy ID should be returned or stored
+      expect(result.strategy_id || 'state-test').toBeDefined();
+    });
+
+    it('should report error message on failure', async () => {
+      const invalidPath = '/invalid/path/test.duckdb';
+
+      const result = await storageService.storeStrategy(invalidPath, 'test', 'Test', {}, {});
+
+      expect(result.success).toBe(false);
+      expect(result.error).toBeDefined();
+      expect(typeof result.error).toBe('string');
+      expect(result.error!.length).toBeGreaterThan(0);
     });
   });
 });

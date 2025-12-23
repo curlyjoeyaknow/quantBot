@@ -105,11 +105,11 @@ export class OhlcvBackfillService {
         return [];
       }
 
-    // Filter by date range and caller name
-    const fromISO = fromDate?.toISO() || DateTime.utc().minus({ years: 1 }).toISO()!;
-    const toISO = toDate?.toISO() || DateTime.utc().toISO()!;
-    const fromDateObj = DateTime.fromISO(fromISO, { zone: 'utc' });
-    const toDateObj = DateTime.fromISO(toISO, { zone: 'utc' });
+      // Filter by date range and caller name
+      const fromISO = fromDate?.toISO() || DateTime.utc().minus({ years: 1 }).toISO()!;
+      const toISO = toDate?.toISO() || DateTime.utc().toISO()!;
+      const fromDateObj = DateTime.fromISO(fromISO, { zone: 'utc' });
+      const toDateObj = DateTime.fromISO(toISO, { zone: 'utc' });
 
       const filtered = parsed.calls
         .filter((call: { mint: string; alert_timestamp: string }) => {

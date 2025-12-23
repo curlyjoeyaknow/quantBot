@@ -1,0 +1,120 @@
+{
+  "metadata": {
+    "runId": "run_3b3d58ef-db50-4a13-93f6-e087f1ad1459",
+    "gitSha": "87888400555615ff2e0924c6503e872cd39907f7",
+    "gitBranch": "main",
+    "createdAtISO": "2025-12-23T03:27:16.296Z",
+    "dataSnapshotHash": "15b646429d33756dcc993ad8fb85d155f20eea1c415a41a1b27b551b77639d8b",
+    "strategyConfigHash": "5645dd671461eab6ac719593f23e4cbeec0e88c1decadb6f6779c121e68101d1",
+    "executionModelHash": "6e67da38cfeb1f57207991c0db520ea6f8bcc84be02592f3b3b65a51f2e1cd78",
+    "costModelHash": "595f8daaa3a14a5678a271b27290b36d72378a67145ad7edead28916075cdfdc",
+    "riskModelHash": "d35cb1d56581780a9b8c7180c12a61680a5daea26d848ea0ae4aac52b5857f52",
+    "runConfigHash": "2f6d797651014c35952ab30798e1b25f429e73b78a5861bc7242b22c160f15e8",
+    "simulationTimeMs": 0,
+    "schemaVersion": "1.0.0"
+  },
+  "request": {
+    "dataSnapshot": {
+      "snapshotId": "snapshot-1766460436293-15b64642",
+      "contentHash": "15b646429d33756dcc993ad8fb85d155f20eea1c415a41a1b27b551b77639d8b",
+      "timeRange": {
+        "fromISO": "2024-01-01T00:00:00Z",
+        "toISO": "2024-01-02T00:00:00Z"
+      },
+      "sources": [
+        {
+          "venue": "pump.fun"
+        }
+      ],
+      "schemaVersion": "1.0.0",
+      "createdAtISO": "2025-12-23T03:27:16.293Z"
+    },
+    "strategy": {
+      "strategyId": "strategy-001",
+      "name": "strategy-1",
+      "config": {
+        "targets": [
+          {
+            "target": 2,
+            "percent": 0.5
+          }
+        ]
+      },
+      "configHash": "5645dd671461eab6ac719593f23e4cbeec0e88c1decadb6f6779c121e68101d1"
+    },
+    "executionModel": {
+      "latency": {
+        "p50": 200,
+        "p90": 300,
+        "p99": 300,
+        "jitter": 81.6496580927726
+      },
+      "slippage": {
+        "base": 0.0009999999999999432,
+        "volumeImpact": 0,
+        "max": 0.0009999999999999432
+      },
+      "failures": {
+        "baseRate": 0,
+        "congestionMultiplier": 2
+      },
+      "partialFills": {
+        "probability": 0,
+        "fillRange": [
+          0.5,
+          0.95
+        ]
+      }
+    },
+    "costModel": {
+      "baseFee": 5000,
+      "priorityFee": {
+        "base": 1000,
+        "max": 10000
+      },
+      "tradingFee": 0.01,
+      "effectiveCostPerTrade": 6000
+    },
+    "riskModel": {
+      "maxDrawdown": 0.2,
+      "maxLossPerDay": 1000,
+      "maxConsecutiveLosses": 5,
+      "maxPositionSize": 500
+    },
+    "runConfig": {
+      "seed": 12345
+    }
+  },
+  "tradeEvents": [],
+  "pnlSeries": [
+    {
+      "timestampISO": "2025-12-23T03:27:16.333Z",
+      "cumulativePnL": 1,
+      "runningTotal": 1,
+      "drawdown": 0
+    }
+  ],
+  "metrics": {
+    "return": {
+      "total": 1
+    },
+    "drawdown": {
+      "max": 0
+    },
+    "hitRate": {
+      "overall": 0
+    },
+    "trades": {
+      "total": 0,
+      "entries": 0,
+      "exits": 0
+    },
+    "tailLoss": {
+      "worstTrade": 0
+    },
+    "feeSensitivity": {
+      "totalFees": 0,
+      "averageFeePerTrade": 0
+    }
+  }
+}

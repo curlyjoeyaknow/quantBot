@@ -23,6 +23,12 @@ export interface CreatePositionParams {
   side?: TradeSide;
   initialSize?: number;
   maxReEntries?: number;
+  /** Run ID for deterministic ID generation (optional) */
+  runId?: string;
+  /** Position sequence number for deterministic ID generation (optional) */
+  positionSequence?: number;
+  /** Timestamp from candle data for deterministic ID generation (optional) */
+  timestamp?: number;
 }
 
 /**
@@ -36,6 +42,10 @@ export interface EntryParams {
   fee?: number;
   slippage?: number;
   metadata?: Record<string, unknown>;
+  /** Run ID for deterministic execution ID generation (optional) */
+  runId?: string;
+  /** Execution sequence number for deterministic ID generation (optional) */
+  executionSequence?: number;
 }
 
 /**
@@ -52,10 +62,27 @@ export interface ExitParams {
 }
 
 /**
- * Simple UUID generator (no dependency)
+ * Generate deterministic ID from run context
+ *
+ * Uses run ID and sequence number to ensure deterministic IDs.
+ * If no run context provided, falls back to timestamp-based ID (non-deterministic).
+ *
+ * @param runId - Run ID for determinism (optional)
+ * @param sequence - Sequence number for uniqueness (optional)
+ * @param timestamp - Timestamp from candle data (optional, for fallback)
  */
-function generateId(): string {
-  return `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+function generateId(runId?: string, sequence?: number, timestamp?: number): string {
+  if (runId !== undefined && sequence !== undefined) {
+    // Deterministic ID: runId-sequence
+    return `${runId}-pos-${sequence}`;
+  }
+  if (runId !== undefined && timestamp !== undefined) {
+    // Deterministic ID: runId-timestamp
+    return `${runId}-${timestamp}`;
+  }
+  // Fallback: non-deterministic (for backward compatibility)
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+  return `${timestamp ?? Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
 }
 
 /**
@@ -63,7 +90,7 @@ function generateId(): string {
  */
 export function createPosition(params: CreatePositionParams): Position {
   return {
-    id: generateId(),
+    id: generateId(params.runId, params.positionSequence, params.timestamp),
     tokenAddress: params.tokenAddress,
     chain: params.chain,
     side: params.side || 'long',
@@ -90,7 +117,7 @@ export function createPosition(params: CreatePositionParams): Position {
  */
 export function executeEntry(position: Position, params: EntryParams): Position {
   const execution: TradeExecution = {
-    id: generateId(),
+    id: generateId(params.runId, params.executionSequence, params.timestamp),
     timestamp: params.timestamp,
     price: params.price,
     size: params.size,
@@ -248,15 +275,27 @@ export function calculatePnlPercent(position: Position, currentPrice: number): n
 
 /**
  * Get position summary
+ *
+ * @param position - Position to summarize
+ * @param currentPrice - Current price (optional, for unrealized PnL)
+ * @param currentTimestamp - Current timestamp (from candle data, required if position is open for hold duration)
  */
-export function getPositionSummary(position: Position, currentPrice?: number): PositionSummary {
+export function getPositionSummary(
+  position: Position,
+  currentPrice?: number,
+  currentTimestamp?: number
+): PositionSummary {
   const exitPrice = position.averageExitPrice ?? currentPrice ?? position.averageEntryPrice;
   const finalPnl =
     position.status === 'closed' ? position.realizedPnl : calculateTotalPnl(position, exitPrice);
 
+  // Calculate hold duration
+  // For closed positions, use closeTimestamp; for open positions, use currentTimestamp
   const holdDuration = position.closeTimestamp
     ? position.closeTimestamp - position.openTimestamp
-    : Date.now() / 1000 - position.openTimestamp;
+    : currentTimestamp
+      ? currentTimestamp - position.openTimestamp
+      : 0; // Cannot calculate if position is open and no current timestamp provided
 
   return {
     tokenAddress: position.tokenAddress,
