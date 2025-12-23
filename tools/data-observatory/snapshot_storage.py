@@ -70,9 +70,15 @@ def init_database(db_path: str) -> dict:
         
         # Snapshot events table
         # Stores canonical events keyed by snapshot_id
+        # Create sequence for auto-incrementing id
+        try:
+            con.execute("CREATE SEQUENCE IF NOT EXISTS snapshot_events_id_seq START 1;")
+        except Exception:
+            pass  # Sequence may already exist
+        
         con.execute("""
             CREATE TABLE IF NOT EXISTS snapshot_events (
-                id INTEGER PRIMARY KEY,
+                id BIGINT PRIMARY KEY DEFAULT nextval('snapshot_events_id_seq'),
                 snapshot_id TEXT NOT NULL,
                 asset TEXT NOT NULL,
                 chain TEXT NOT NULL,
