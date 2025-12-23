@@ -125,7 +125,11 @@ export class DuckDBSnapshotStorage implements SnapshotStorage {
       );
 
       if (!result.success) {
-        throw new DatabaseError(result.error || 'Failed to store snapshot events', { result, snapshotId, eventsCount: events.length });
+        throw new DatabaseError(result.error || 'Failed to store snapshot events', {
+          result,
+          snapshotId,
+          eventsCount: events.length,
+        });
       }
 
       logger.debug('Stored snapshot events', {
