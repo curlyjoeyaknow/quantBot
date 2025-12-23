@@ -11,7 +11,11 @@ import { DateTime } from 'luxon';
 import { logger, ValidationError } from '@quantbot/utils';
 import type { DataSnapshotRef } from '../contract.js';
 import { DataSnapshotRefSchema } from '../contract.js';
-import { queryCallsDuckdb } from '../../calls/queryCallsDuckdb.js';
+import {
+  queryCallsDuckdb,
+  createQueryCallsDuckdbContext,
+  type QueryCallsDuckdbContext,
+} from '../../calls/queryCallsDuckdb.js';
 import { getStorageEngine } from '@quantbot/storage';
 import type { WorkflowContext } from '../../types.js';
 import { createSnapshotManager } from '@quantbot/data-observatory';
@@ -155,6 +159,9 @@ export class DataSnapshotService {
     // Load calls from DuckDB
     const duckdbPath = process.env.DUCKDB_PATH || 'data/tele.duckdb';
 
+    // Create QueryCallsDuckdbContext with services
+    const queryContext = await createQueryCallsDuckdbContext(duckdbPath);
+
     if (filters?.callerNames && filters.callerNames.length > 0) {
       // Query for each caller name (queryCallsDuckdb only supports single callerName)
       for (const callerName of filters.callerNames) {
@@ -166,7 +173,7 @@ export class DataSnapshotService {
             callerName,
             limit: 10000,
           },
-          this.ctx as WorkflowContext // Context should have services
+          queryContext
         );
 
         for (const call of callsResult.calls) {
@@ -204,7 +211,7 @@ export class DataSnapshotService {
             // callerName is optional in the schema, so we can omit it
             limit: 10000,
           },
-          this.ctx as WorkflowContext
+          queryContext
         );
 
         for (const call of callsResult.calls) {

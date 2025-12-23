@@ -32,10 +32,36 @@ export const RunManifestSchema = z.object({
   git_sha: z.string(),
 
   /**
-   * Hash of input data snapshot (candles, calls, etc.)
-   * Format: SHA256 hash of canonical data representation
+   * Data snapshot reference (REQUIRED for reproducible runs)
+   * 
+   * This is the snapshot ID from the data observatory snapshot system.
+   * The snapshot ID can be used to load the full DataSnapshotRef which contains:
+   * - Snapshot spec (sources, time range, filters)
+   * - Snapshot manifest (event counts, coverage, quality metrics)
+   * - Content hash for integrity verification
+   * 
+   * This replaces data_snapshot_hash for new runs (snapshotId + contentHash provide better traceability).
    */
-  data_snapshot_hash: z.string(),
+  snapshot_id: z.string(),
+
+  /**
+   * Data snapshot content hash (SHA-256)
+   * 
+   * This is the contentHash from DataSnapshotRef. Used to verify snapshot integrity
+   * and ensure the snapshot hasn't changed since the run was created.
+   * 
+   * MUST match the contentHash of the DataSnapshotRef loaded by snapshot_id.
+   */
+  snapshot_content_hash: z.string(),
+
+  /**
+   * Hash of input data snapshot (candles, calls, etc.) - DEPRECATED
+   * 
+   * @deprecated Use snapshot_id and snapshot_content_hash instead.
+   * Kept for backward compatibility with older manifests.
+   * For new runs, this should match snapshot_content_hash.
+   */
+  data_snapshot_hash: z.string().optional(),
 
   /**
    * Hash of strategy configuration
@@ -99,8 +125,8 @@ export type RunManifest = z.infer<typeof RunManifestSchema>;
  * Input components for hashing
  */
 export interface RunInputComponents {
-  /** Data snapshot hash */
-  dataSnapshotHash: string;
+  /** Data snapshot content hash (from DataSnapshotRef) */
+  snapshotContentHash: string;
   /** Strategy hash */
   strategyHash: string;
   /** Execution model hash (optional) */
@@ -113,6 +139,10 @@ export interface RunInputComponents {
   seed: number;
   /** Engine version */
   engineVersion?: string;
+  /**
+   * @deprecated Use snapshotContentHash instead
+   */
+  dataSnapshotHash?: string;
 }
 
 /**
@@ -125,9 +155,15 @@ export interface RunInputComponents {
  * @returns SHA256 hash (hex string, 64 chars)
  */
 export function hashInputs(components: RunInputComponents): string {
+  // Use snapshotContentHash if provided, otherwise fall back to dataSnapshotHash (backward compatibility)
+  const snapshotHash = components.snapshotContentHash ?? components.dataSnapshotHash;
+  if (!snapshotHash) {
+    throw new Error('snapshotContentHash is required for run fingerprint generation');
+  }
+
   // Create canonical representation (sorted keys for determinism)
   const canonical = {
-    data_snapshot_hash: components.dataSnapshotHash,
+    snapshot_content_hash: snapshotHash,
     strategy_hash: components.strategyHash,
     execution_model_hash: components.executionModelHash ?? null,
     cost_model_hash: components.costModelHash ?? null,
@@ -179,7 +215,10 @@ export function createRunManifest(components: {
   runId: string;
   seed: number;
   gitSha: string;
-  dataSnapshotHash: string;
+  /** Snapshot ID from data observatory (REQUIRED for new runs) */
+  snapshotId: string;
+  /** Snapshot content hash from DataSnapshotRef (REQUIRED for new runs) */
+  snapshotContentHash: string;
   strategyHash: string;
   executionModelHash?: string;
   costModelHash?: string;
@@ -188,9 +227,14 @@ export function createRunManifest(components: {
   command?: string;
   packageName?: string;
   metadata?: Record<string, unknown>;
+  /**
+   * @deprecated Use snapshotContentHash instead
+   */
+  dataSnapshotHash?: string;
 }): RunManifest {
   const fingerprint = hashInputs({
-    dataSnapshotHash: components.dataSnapshotHash,
+    snapshotContentHash: components.snapshotContentHash,
+    dataSnapshotHash: components.dataSnapshotHash, // backward compatibility
     strategyHash: components.strategyHash,
     executionModelHash: components.executionModelHash,
     costModelHash: components.costModelHash,
@@ -203,7 +247,9 @@ export function createRunManifest(components: {
     run_id: components.runId,
     seed: components.seed,
     git_sha: components.gitSha,
-    data_snapshot_hash: components.dataSnapshotHash,
+    snapshot_id: components.snapshotId,
+    snapshot_content_hash: components.snapshotContentHash,
+    data_snapshot_hash: components.dataSnapshotHash, // backward compatibility
     strategy_hash: components.strategyHash,
     execution_model_hash: components.executionModelHash,
     cost_model_hash: components.costModelHash,

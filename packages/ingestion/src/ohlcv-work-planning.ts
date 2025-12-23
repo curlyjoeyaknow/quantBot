@@ -19,7 +19,8 @@
 import { resolve } from 'path';
 import { DateTime } from 'luxon';
 import type { Chain } from '@quantbot/core';
-import { logger, getPythonEngine } from '@quantbot/utils';
+import { logger } from '@quantbot/utils';
+import { getDuckDBWorklistService } from '@quantbot/storage';
 
 /**
  * Work item for OHLCV fetching
@@ -92,10 +93,10 @@ export async function generateOhlcvWorklist(
     interval,
   });
 
-  const pythonEngine = getPythonEngine();
+  const worklistService = getDuckDBWorklistService();
 
   // Query DuckDB for worklist (don't pass mints to Python - filter in TypeScript instead)
-  const worklist = await pythonEngine.runOhlcvWorklist({
+  const worklist = await worklistService.queryWorklist({
     duckdbPath: absoluteDuckdbPath,
     from: from?.toISOString(),
     to: to?.toISOString(),

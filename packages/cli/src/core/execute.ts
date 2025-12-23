@@ -51,11 +51,11 @@ function extractManifestComponents(
   // Check if result has _manifest property (explicit manifest components)
   if ('_manifest' in obj && typeof obj._manifest === 'object' && obj._manifest !== null) {
     const manifest = obj._manifest as Record<string, unknown>;
-    
+
     // CRITICAL: Prefer snapshotRef over dataSnapshot (snapshotRef is required for new runs)
     const snapshotRef = manifest.snapshotRef as RunManifestComponents['snapshotRef'];
     const dataSnapshot = manifest.dataSnapshot as RunManifestComponents['dataSnapshot'] | undefined;
-    
+
     return {
       runId: defaults.runId,
       seed: (manifest.seed as number) ?? defaults.seed,
@@ -75,7 +75,7 @@ function extractManifestComponents(
   // Try to extract from result structure (for simulation results)
   // Also check for snapshotRef at top level (handlers may include it directly)
   const topLevelSnapshotRef = obj.snapshotRef as DataSnapshotRef | undefined;
-  
+
   if ('strategy' in obj || 'strategyConfig' in obj) {
     const strategyConfig = obj.strategyConfig ?? obj.strategy ?? {};
     const dataSnapshot = {
@@ -99,7 +99,7 @@ function extractManifestComponents(
       packageName: defaults.packageName,
     };
   }
-  
+
   // Check if result has snapshotRef at top level (even without strategy config)
   if (topLevelSnapshotRef) {
     return {

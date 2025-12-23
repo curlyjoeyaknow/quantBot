@@ -2,7 +2,7 @@
 
 > **Project roadmap and task tracking**
 
-Last updated: 2025-01-23 (Backlog items completed: SQLite cleanup, API package, Observability)
+Last updated: 2025-01-24 (Recent: aggregateCandles implementation, API package fixes, DataSnapshotService context fix)
 
 ---
 
@@ -95,6 +95,26 @@ Last updated: 2025-01-23 (Backlog items completed: SQLite cleanup, API package, 
 ---
 
 ## ✅ Completed
+
+### 2025-01-24
+
+- [x] **Fixed API package build errors**
+  - Added missing `@quantbot/observability` dependency
+  - Fixed Fastify type issues with server.start() method
+  - All TypeScript errors resolved, build passes
+- [x] **Implemented aggregateCandles function**
+  - Created `aggregateCandles` in `packages/simulation/src/types/candle.ts`
+  - Supports aggregation to higher timeframes (1H, 4H, 1D, etc.)
+  - Properly sorts candles and groups into time buckets
+  - Calculates correct OHLCV values (open from first, close from last, high/low from max/min, volume summed)
+  - Exported from package index
+- [x] **Enabled and verified aggregateCandles tests**
+  - Removed `describe.skip` from `candles-extended.test.ts`
+  - All 7 tests passing
+  - Tests cover: 1H, 4H, 1D aggregation, empty arrays, sorting, multiple buckets, high/low calculations
+- [x] **Fixed DataSnapshotService context type issues**
+  - Updated to use `createQueryCallsDuckdbContext()` for proper context with services
+  - Resolved TypeScript errors about missing `services` property
 
 ### 2025-01-23
 

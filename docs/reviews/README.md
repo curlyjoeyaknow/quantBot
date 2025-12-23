@@ -2,18 +2,23 @@
 
 This directory contains code review documents, status reports, and completion summaries.
 
-## Status Reports
+## Current Status
 
-- [BUILD_STATUS.md](./BUILD_STATUS.md) - Build system status
-- [PHASE_2_STATUS.md](./PHASE_2_STATUS.md) - Phase 2 implementation status
+- [STATUS_SUMMARY.md](./STATUS_SUMMARY.md) - **Consolidated project status overview**
 - [TECHNICAL_DEBT_STATUS.md](./TECHNICAL_DEBT_STATUS.md) - Technical debt tracking
+- [TESTING_SUMMARY.md](./TESTING_SUMMARY.md) - **Consolidated testing improvements and refactoring**
 
 ## Completion Summaries
 
 - [PORTS_MIGRATION_COMPLETE.md](./PORTS_MIGRATION_COMPLETE.md) - Ports migration completion
-- [PORTS_MIGRATION_STATUS.md](./PORTS_MIGRATION_STATUS.md) - Ports migration status
 - [RESEARCH_SERVICES_COMPLETE.md](./RESEARCH_SERVICES_COMPLETE.md) - Research services completion
 - [CRITICAL_FIXES_SUMMARY.md](./CRITICAL_FIXES_SUMMARY.md) - Critical fixes summary
-- [TESTING_IMPROVEMENTS_SUMMARY.md](./TESTING_IMPROVEMENTS_SUMMARY.md) - Testing improvements summary
-- [TEST_REFACTORING_SUMMARY.md](./TEST_REFACTORING_SUMMARY.md) - Test refactoring summary
+
+## Archived Documents
+
+Historical status reports and summaries have been archived to `docs/archive/`:
+- Build status reports (completed)
+- Phase 2 status (historical)
+- Ports migration status (superseded by COMPLETE doc)
+- Test refactoring summaries (consolidated into TESTING_SUMMARY.md)
 

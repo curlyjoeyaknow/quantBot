@@ -202,6 +202,9 @@ importers:
       '@quantbot/core':
         specifier: workspace:*
         version: link:../core
+      '@quantbot/observability':
+        specifier: workspace:*
+        version: link:../observability
       '@quantbot/storage':
         specifier: workspace:*
         version: link:../storage
@@ -279,6 +282,9 @@ importers:
       '@quantbot/core':
         specifier: workspace:*
         version: link:../core
+      '@quantbot/data-observatory':
+        specifier: workspace:*
+        version: link:../data-observatory
       '@quantbot/ingestion':
         specifier: workspace:*
         version: link:../ingestion

@@ -12,7 +12,9 @@ async function main() {
     enableSwagger: process.env.NODE_ENV !== 'production',
   });
 
-  await server.start();
+  // Type assertion: server has start method added in createApiServer
+  type ServerWithStart = typeof server & { start: () => Promise<void> };
+  await (server as ServerWithStart).start();
 }
 
 main().catch((error) => {

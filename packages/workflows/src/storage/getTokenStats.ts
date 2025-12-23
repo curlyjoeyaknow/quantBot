@@ -9,7 +9,7 @@ import { z } from 'zod';
 import { DateTime } from 'luxon';
 import { resolve } from 'path';
 import type { WorkflowContextWithPorts } from '../context/workflowContextWithPorts.js';
-import { getPythonEngine, ConfigurationError } from '@quantbot/utils';
+import { ConfigurationError } from '@quantbot/utils';
 
 /**
  * Token stats spec
@@ -110,8 +110,9 @@ export async function getTokenStats(
     : resolve(process.cwd(), duckdbPathRaw);
 
   // 1. Query DuckDB for token calls
-  const pythonEngine = getPythonEngine();
-  const worklistResult = await pythonEngine.runOhlcvWorklist({
+  const { getDuckDBWorklistService } = await import('@quantbot/storage');
+  const worklistService = getDuckDBWorklistService();
+  const worklistResult = await worklistService.queryWorklist({
     duckdbPath,
     from: validated.from,
     to: validated.to,
