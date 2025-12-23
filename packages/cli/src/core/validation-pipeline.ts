@@ -15,7 +15,6 @@
 import { z } from 'zod';
 import { normalizeOptions } from './argument-parser.js';
 import { parseArguments } from './argument-parser.js';
-import { ValidationError } from '@quantbot/utils';
 
 /**
  * Unified validation and coercion pipeline
