@@ -44,8 +44,14 @@ export function createMarketDataBirdeyeAdapter(client: BirdeyeClient): MarketDat
           expectedMin: 32,
           chain: request.chain,
         });
-        throw new Error(
-          `Address is truncated in adapter: ${request.tokenAddress.length} chars (expected >= 32)`
+        throw new ValidationError(
+          `Address is truncated in adapter: ${request.tokenAddress.length} chars (expected >= 32)`,
+          {
+            tokenAddress: request.tokenAddress,
+            length: request.tokenAddress.length,
+            expectedMin: 32,
+            chain: request.chain,
+          }
         );
       }
 

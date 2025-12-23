@@ -17,7 +17,7 @@
 
 import { z } from 'zod';
 import { DateTime } from 'luxon';
-import { ValidationError, isEvmAddress } from '@quantbot/utils';
+import { ValidationError, AppError, isEvmAddress } from '@quantbot/utils';
 import { ingestOhlcv } from './ingestOhlcv.js';
 import type { IngestOhlcvSpec, IngestOhlcvContext } from './ingestOhlcv.js';
 import type { PythonEngine } from '@quantbot/utils';
@@ -658,7 +658,10 @@ export async function surgicalOhlcvFetch(
 
         // If failFast mode, throw on first failure
         if (validated.errorMode === 'failFast') {
-          throw new Error(`Task failed for ${task.caller} - ${task.month}: ${result.error}`);
+          throw new AppError(`Task failed for ${task.caller} - ${task.month}: ${result.error}`, 'TASK_FAILED', 500, {
+            task,
+            error: result.error,
+          });
         }
       }
     } catch (error) {

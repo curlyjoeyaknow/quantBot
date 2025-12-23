@@ -13,6 +13,7 @@
  */
 
 import { DateTime } from 'luxon';
+import { ValidationError } from '@quantbot/utils';
 import type { CallSignal, Chain, TokenAddress } from '@quantbot/core';
 import type { MarketDataPort } from '@quantbot/core';
 import { createTokenAddress } from '@quantbot/core';
@@ -155,9 +156,12 @@ export async function evaluateCallsWorkflow(
           expectedMin: 32,
           caller: call.caller.displayName,
         });
-        throw new Error(
-          `Address is truncated in evaluate: ${call.token.address.length} chars (expected >= 32)`
-        );
+        throw new ValidationError('Address is truncated in evaluate', {
+          address: call.token.address,
+          length: call.token.address.length,
+          expectedMin: 32,
+          caller: call.caller.displayName,
+        });
       }
 
       // Convert string address to TokenAddress (for EVM addresses, this will fail validation)

@@ -1,3 +1,4 @@
+import { ConfigurationError } from '@quantbot/utils';
 import type { WorkflowContextWithPorts } from '../context/workflowContextWithPorts.js';
 import { createOhlcvIngestionContext } from '../context/createOhlcvIngestionContext.js';
 import { createTokenAddress } from '@quantbot/core';
@@ -31,8 +32,9 @@ export type IngestOhlcvWorkflowPortedContext = WorkflowContextWithPorts;
  * The actual defaulting happens in the function body using ctx ?? (await createOhlcvIngestionContext()).
  */
 export function createDefaultIngestOhlcvWorkflowPortedContext(): IngestOhlcvWorkflowPortedContext {
-  throw new Error(
-    'createDefaultIngestOhlcvWorkflowPortedContext must be called with await createOhlcvIngestionContext()'
+  throw new ConfigurationError(
+    'createDefaultIngestOhlcvWorkflowPortedContext must be called with await createOhlcvIngestionContext()',
+    'IngestOhlcvWorkflowPortedContext'
   );
 }
 
