@@ -3,20 +3,20 @@
  *
  * Provides a mechanical pattern for CLI commands that makes it hard to screw up:
  * - Commander owns flags & parsing
- * - Wrapper owns: canonical option shape (camelCase), value coercion, schema validation,
- *   error formatting, handler invocation
+ * - Wrapper owns: canonical option shape (camelCase), value coercion (pre-validation)
+ * - Calls execute() which handles validation, context, formatting, artifacts, error handling
  *
- * CRITICAL: Uses commandDef.schema from registry as single source of truth for validation.
- * This ensures no schema duplication or divergence between defineCommand and registry.
+ * CRITICAL: defineCommand() does NOT validate. Validation happens in execute().
+ * This ensures a single validation path for all commands, preventing divergence.
  *
  * Invariant: Normalization never renames keys. Ever.
+ * Invariant: All validation goes through execute() using commandDef.schema from registry.
  */
 
 import type { Command } from 'commander';
-import { executeValidated } from './execute.js';
+import { execute } from './execute.js';
 import { commandRegistry } from './command-registry.js';
-import { NotFoundError, ValidationError } from '@quantbot/utils';
-import { validateAndCoerceArgs } from './validation-pipeline.js';
+import { NotFoundError } from '@quantbot/utils';
 
 type CoerceFn<TIn, TOut> = (raw: TIn) => TOut;
 
@@ -37,12 +37,14 @@ export type DefineCommandArgs<TRawOpts> = {
 /**
  * Standard command wiring:
  * - Commander parses flags -> camelCase properties
- * - Optional coerce() for value parsing only (JSON/numbers)
- * - Validates using commandDef.schema from registry (SINGLE SOURCE OF TRUTH)
- * - Uses executeValidated() which handles context, formatting, artifacts, etc.
+ * - Optional coerce() for value parsing only (JSON/numbers/arrays)
+ * - Calls execute() which handles validation, context, formatting, artifacts, etc.
+ *
+ * CRITICAL: defineCommand() does NOT validate. Validation happens in execute().
+ * This ensures a single validation path for all commands.
  *
  * Invariant: we do NOT rename keys. Ever.
- * Invariant: Validation uses commandDef.schema from registry, not a separate validate function.
+ * Invariant: Validation uses commandDef.schema from registry in execute().
  */
 export function defineCommand<TRawOpts extends Record<string, unknown>>(
   cmd: Command,
@@ -65,25 +67,21 @@ export function defineCommand<TRawOpts extends Record<string, unknown>>(
       const merged = args.argsToOpts ? args.argsToOpts(commanderArgs, rawOpts) : rawOpts;
 
       // Coerce values (JSON/numbers/arrays) - but never rename keys
+      // Note: This is pre-validation coercion only. Actual validation happens in execute().
       const coerced = args.coerce ? args.coerce(merged) : merged;
 
-      // CRITICAL: Use commandDef.schema from registry as single source of truth
-      // This ensures no schema duplication or divergence
-      // Legacy validate function is deprecated - we now use registry schema exclusively
+      // CRITICAL: Do NOT validate here. execute() is the single source of truth for validation.
+      // This ensures all commands go through the same validation path, preventing divergence.
       if (args.validate) {
         console.warn(
           `DEPRECATED: defineCommand validate function for ${args.packageName}.${args.name} is ignored. ` +
-            `Using commandDef.schema from registry instead. Please remove validate parameter.`
+            `Validation happens in execute() using commandDef.schema from registry. Please remove validate parameter.`
         );
       }
-      const validated = validateAndCoerceArgs(
-        commandDef.schema,
-        coerced as Record<string, unknown>
-      );
 
-      // Use executeValidated() since we've already validated here
-      // This avoids double validation in execute()
-      await executeValidated(commandDef, validated as Record<string, unknown>);
+      // Call execute() which handles validation, context, formatting, artifacts, etc.
+      // This is the SINGLE validation path for all commands.
+      await execute(commandDef, coerced as Record<string, unknown>);
     } catch (e) {
       if (args.onError) {
         args.onError(e);

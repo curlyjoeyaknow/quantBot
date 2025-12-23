@@ -30,6 +30,7 @@ import {
 import { createAndWriteRunManifest, type RunManifestComponents } from './run-manifest-service.js';
 import { seedFromString } from '@quantbot/core';
 import { errorToContract } from './error-contracts.js';
+import type { DataSnapshotRef } from '@quantbot/data-observatory';
 
 /**
  * Extract manifest components from handler result
@@ -50,13 +51,17 @@ function extractManifestComponents(
   // Check if result has _manifest property (explicit manifest components)
   if ('_manifest' in obj && typeof obj._manifest === 'object' && obj._manifest !== null) {
     const manifest = obj._manifest as Record<string, unknown>;
+    
+    // CRITICAL: Prefer snapshotRef over dataSnapshot (snapshotRef is required for new runs)
+    const snapshotRef = manifest.snapshotRef as RunManifestComponents['snapshotRef'];
+    const dataSnapshot = manifest.dataSnapshot as RunManifestComponents['dataSnapshot'] | undefined;
+    
     return {
       runId: defaults.runId,
       seed: (manifest.seed as number) ?? defaults.seed,
       strategyConfig: manifest.strategyConfig ?? {},
-      dataSnapshot: (manifest.dataSnapshot as RunManifestComponents['dataSnapshot']) ?? {
-        calls: [],
-      },
+      snapshotRef, // Use snapshotRef if provided (preferred)
+      dataSnapshot: snapshotRef ? undefined : dataSnapshot, // Only use dataSnapshot if snapshotRef not provided
       executionModel: manifest.executionModel,
       costModel: manifest.costModel,
       riskModel: manifest.riskModel,
@@ -68,6 +73,9 @@ function extractManifestComponents(
   }
 
   // Try to extract from result structure (for simulation results)
+  // Also check for snapshotRef at top level (handlers may include it directly)
+  const topLevelSnapshotRef = obj.snapshotRef as DataSnapshotRef | undefined;
+  
   if ('strategy' in obj || 'strategyConfig' in obj) {
     const strategyConfig = obj.strategyConfig ?? obj.strategy ?? {};
     const dataSnapshot = {
@@ -82,7 +90,23 @@ function extractManifestComponents(
       runId: defaults.runId,
       seed: defaults.seed,
       strategyConfig,
-      dataSnapshot,
+      snapshotRef: topLevelSnapshotRef, // Use snapshotRef from top level if available
+      dataSnapshot: topLevelSnapshotRef ? undefined : dataSnapshot, // Only use dataSnapshot if no snapshotRef
+      executionModel: obj.executionModel,
+      costModel: obj.costModel,
+      riskModel: obj.riskModel,
+      command: defaults.command,
+      packageName: defaults.packageName,
+    };
+  }
+  
+  // Check if result has snapshotRef at top level (even without strategy config)
+  if (topLevelSnapshotRef) {
+    return {
+      runId: defaults.runId,
+      seed: defaults.seed,
+      strategyConfig: obj.strategyConfig ?? obj.strategy ?? {},
+      snapshotRef: topLevelSnapshotRef,
       executionModel: obj.executionModel,
       costModel: obj.costModel,
       riskModel: obj.riskModel,
@@ -186,8 +210,14 @@ function extractRunIdComponents(
 /**
  * Execute a command definition with pre-validated arguments
  *
- * Use this when arguments have already been validated (e.g., from defineCommand).
- * Skips normalization and validation steps.
+ * @deprecated For normal CLI commands, use execute() instead. This function is only for:
+ * - Testing scenarios where validation has already been done
+ * - Programmatic calls where validation is handled externally
+ *
+ * CRITICAL: All normal CLI commands should use execute() which validates.
+ * This ensures a single validation path and prevents divergence.
+ *
+ * Skips normalization and validation steps - caller is responsible for validation.
  */
 export async function executeValidated(
   commandDef: CommandDefinition,
@@ -369,10 +399,11 @@ export async function executeValidated(
 /**
  * Execute a command definition with raw options
  *
- * This is the entry point for raw Commander.js options.
+ * This is the SINGLE entry point for all CLI commands.
  * It normalizes and validates arguments before calling the handler.
  *
- * For pre-validated arguments, use executeValidated() instead.
+ * CRITICAL: This is the only validation path for CLI commands.
+ * All commands (via defineCommand() or direct calls) should use this function.
  */
 export async function execute(
   commandDef: CommandDefinition,
