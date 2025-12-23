@@ -191,10 +191,15 @@ export class OhlcvFetchJob {
       // Map '1s' to '15s' since Birdeye API doesn't support '1s'
       // fetchBirdeyeCandles only supports '15s' | '1m' | '5m' | '1H'
       const birdeyeInterval: '15s' | '1m' | '5m' | '1H' =
-        workItem.interval === '1s' ? '15s' :
-        workItem.interval === '1H' ? '1H' :
-        workItem.interval === '15s' ? '15s' :
-        workItem.interval === '1m' ? '1m' : '5m';
+        workItem.interval === '1s'
+          ? '15s'
+          : workItem.interval === '1H'
+            ? '1H'
+            : workItem.interval === '15s'
+              ? '15s'
+              : workItem.interval === '1m'
+                ? '1m'
+                : '5m';
 
       logger.debug('Fetching OHLCV from Birdeye', {
         mint: workItem.mint.substring(0, 20),
