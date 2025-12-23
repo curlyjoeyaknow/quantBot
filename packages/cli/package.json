@@ -27,6 +27,7 @@
     "@quantbot/analytics": "workspace:*",
     "@quantbot/api-clients": "workspace:*",
     "@quantbot/core": "workspace:*",
+    "@quantbot/data-observatory": "workspace:*",
     "@quantbot/ingestion": "workspace:*",
     "@quantbot/jobs": "workspace:*",
     "@quantbot/observability": "workspace:*",

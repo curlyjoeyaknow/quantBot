@@ -14,7 +14,7 @@ import { commandRegistry } from '../../../src/core/command-registry.js';
 // Mock execute to avoid full integration
 vi.mock('../../../src/core/execute.js', () => ({
   execute: vi.fn().mockResolvedValue(undefined),
-  executeValidated: vi.fn().mockResolvedValue(undefined),
+  executeValidated: vi.fn().mockResolvedValue(undefined), // Kept for backward compatibility
 }));
 
 describe('defineCommand argsToOpts', () => {
@@ -83,10 +83,10 @@ describe('defineCommand argsToOpts', () => {
     }
 
     // Verify argsToOpts was called and merged correctly
-    // The executeValidated mock should have been called with merged options
-    const { executeValidated } = await import('../../../src/core/execute.js');
-    expect(executeValidated).toHaveBeenCalled();
-    const callArgs = (executeValidated as ReturnType<typeof vi.fn>).mock.calls[0];
+    // The execute mock should have been called with merged options
+    const { execute } = await import('../../../src/core/execute.js');
+    expect(execute).toHaveBeenCalled();
+    const callArgs = (execute as ReturnType<typeof vi.fn>).mock.calls[0];
     expect(callArgs).toBeDefined();
     const opts = callArgs[1] as Record<string, unknown>;
     expect(opts.addresses).toEqual(['addr1', 'addr2']);

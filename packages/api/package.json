@@ -23,6 +23,7 @@
     "@fastify/swagger": "^9.1.0",
     "@fastify/swagger-ui": "^5.1.0",
     "@quantbot/core": "workspace:*",
+    "@quantbot/observability": "workspace:*",
     "@quantbot/utils": "workspace:*",
     "@quantbot/workflows": "workspace:*",
     "@quantbot/storage": "workspace:*",

@@ -8,7 +8,7 @@ describe('candles-extended', () => {
     vi.clearAllMocks();
   });
 
-  describe.skip('aggregateCandles', () => {
+  describe('aggregateCandles', () => {
     it('should aggregate 5m candles to 1H', () => {
       const candles: Candle[] = [];
       // Create 12 5-minute candles (1 hour total) - align to hour boundary

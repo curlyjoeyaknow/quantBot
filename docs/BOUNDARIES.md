@@ -71,7 +71,34 @@ Banned imports:
 - Keypair loaders
 - Any library that enables transaction signing or submission
 
-**Allowed**: Read-only Solana types for data decoding (e.g., `PublicKey`, address parsing)
+**Allowed**: Read-only Solana types for data decoding:
+- `PublicKey` from `@solana/web3.js` (for address validation/parsing)
+- Other read-only types as needed for data processing
+
+### Why PublicKey is Allowed
+
+`PublicKey` is a **read-only data structure** used for:
+
+1. **Address Validation** - Validating that strings extracted from Telegram messages are actually valid Solana addresses
+   - Base58 decoding → exactly 32 bytes
+   - Prevents storing invalid addresses in the database
+   - Used in: `packages/utils/src/address/validate.ts`, `packages/ingestion/src/extractSolanaAddresses.ts`
+
+2. **PDA Derivation** - Deriving Program Derived Addresses (e.g., Pump.fun bonding curve addresses)
+   - Used for data analysis and simulation
+   - Used in: `packages/utils/src/pumpfun.ts`
+
+3. **Address Normalization** - Converting addresses to canonical form while preserving case
+   - Ensures consistent storage format
+   - Used throughout ingestion pipeline
+
+**PublicKey does NOT enable:**
+- ❌ Transaction signing
+- ❌ Transaction submission  
+- ❌ Private key loading
+- ❌ Any live trading functionality
+
+It's purely a **data validation and transformation tool**, similar to using a JSON parser or regex validator. The CI check allows `PublicKey` imports but will catch actual signing/submission usage.
 
 ### CI Checks
 

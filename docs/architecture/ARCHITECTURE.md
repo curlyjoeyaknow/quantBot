@@ -439,11 +439,13 @@ This is an architectural decision, not a temporary workaround. The rationale:
 ### Implementation Pattern
 
 **DuckDBClient** (`packages/storage/src/duckdb/duckdb-client.ts`):
+
 - Wraps `PythonEngine` calls to Python scripts
 - Provides TypeScript interface for DuckDB operations
 - Maintains separation of concerns (TypeScript orchestration, Python data operations)
 
 **Python Scripts** (`tools/storage/duckdb_*.py`):
+
 - Pure DuckDB operations (no side effects outside DB)
 - Accept JSON input, return JSON output
 - Bridge pattern: Easy integration with TypeScript
@@ -451,12 +453,14 @@ This is an architectural decision, not a temporary workaround. The rationale:
 ### When to Use Python vs Node.js
 
 **Use Python for:**
+
 - ✅ DuckDB operations (schema, queries, data transformations)
 - ✅ Heavy computation (numpy, scipy, sklearn)
 - ✅ Data plane operations (feature engineering, ML)
 - ✅ Offline batch jobs
 
 **Use Node.js for:**
+
 - ✅ Hot paths (latency-sensitive operations)
 - ✅ Real-time trading execution
 - ✅ API clients and network operations
@@ -465,6 +469,7 @@ This is an architectural decision, not a temporary workaround. The rationale:
 ### Isolation Strategy
 
 **Python is isolated to offline jobs only:**
+
 - DuckDB operations are async and non-blocking (via PythonEngine)
 - Python scripts are pure functions (no side effects)
 - TypeScript maintains control flow and error handling
@@ -473,6 +478,7 @@ This is an architectural decision, not a temporary workaround. The rationale:
 ### Future Considerations
 
 If performance becomes an issue:
+
 1. **Option 1**: Keep Python for batch/offline, use Node.js DuckDB bindings for hot paths
 2. **Option 2**: Optimize Python script execution (connection pooling, query batching)
 3. **Option 3**: Move critical hot paths to Node.js DuckDB bindings while keeping Python for heavy computation

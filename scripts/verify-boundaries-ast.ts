@@ -397,25 +397,45 @@ function verifyBoundaries(): void {
   });
 
   for (const pkg of packages) {
+    // Check source files
     const pkgSrcDir = join(packagesDir, pkg, 'src');
-    if (!existsSync(pkgSrcDir)) {
-      continue;
+    if (existsSync(pkgSrcDir)) {
+      const files = findTsFiles(pkgSrcDir, pkgSrcDir);
+
+      for (const file of files) {
+        const fullPath = join(pkgSrcDir, file);
+        const content = readFileSync(fullPath, 'utf-8');
+
+        // Parse imports using TypeScript compiler API
+        const imports = parseImports(fullPath, content);
+
+        // Check boundaries
+        checkPackageBoundaries(fullPath, imports);
+        checkDeepImports(fullPath, imports);
+        checkPathAliasViolations(fullPath, imports);
+        checkStorageImplementationImports(fullPath, imports);
+      }
     }
 
-    const files = findTsFiles(pkgSrcDir, pkgSrcDir);
+    // Check test files (CRITICAL: Tests must also respect boundaries)
+    // Test code violations will metastasize to production if not caught
+    const pkgTestsDir = join(packagesDir, pkg, 'tests');
+    if (existsSync(pkgTestsDir)) {
+      const testFiles = findTsFiles(pkgTestsDir, pkgTestsDir);
 
-    for (const file of files) {
-      const fullPath = join(pkgSrcDir, file);
-      const content = readFileSync(fullPath, 'utf-8');
+      for (const file of testFiles) {
+        const fullPath = join(pkgTestsDir, file);
+        const content = readFileSync(fullPath, 'utf-8');
 
-      // Parse imports using TypeScript compiler API
-      const imports = parseImports(fullPath, content);
+        // Parse imports using TypeScript compiler API
+        const imports = parseImports(fullPath, content);
 
-      // Check boundaries
-      checkPackageBoundaries(fullPath, imports);
-      checkDeepImports(fullPath, imports);
-      checkPathAliasViolations(fullPath, imports);
-      checkStorageImplementationImports(fullPath, imports);
+        // Check boundaries (tests must also respect architectural boundaries)
+        checkPackageBoundaries(fullPath, imports);
+        checkDeepImports(fullPath, imports);
+        checkPathAliasViolations(fullPath, imports);
+        checkStorageImplementationImports(fullPath, imports);
+      }
     }
   }
 

@@ -1,15 +1,15 @@
 # Migration Guides
 
-This directory contains migration guides, deprecation notices, and upgrade instructions.
+This directory contains active migration guides and deprecation notices.
 
-## Migration Guides
+## Active Migrations
 
-- [MIGRATION_POSTGRES_TO_DUCKDB.md](./MIGRATION_POSTGRES_TO_DUCKDB.md) - Postgres to DuckDB migration
-- [MIGRATION_RESOLVEEVMCHAINS.md](./MIGRATION_RESOLVEEVMCHAINS.md) - EVM chains resolution migration
-- [SCRIPTS_WORKFLOW_MIGRATION.md](./SCRIPTS_WORKFLOW_MIGRATION.md) - Scripts workflow migration
-- [TASK_1_3_RUN_MANIFEST.md](./TASK_1_3_RUN_MANIFEST.md) - Run manifest task migration
-
-## Deprecation Notices
-
+- [MIGRATION_POSTGRES_TO_DUCKDB.md](./MIGRATION_POSTGRES_TO_DUCKDB.md) - Postgres to DuckDB migration guide
 - [POSTGRES_DEPRECATION.md](./POSTGRES_DEPRECATION.md) - Postgres deprecation notice
 
+## Archived Migrations
+
+Historical migration documents have been moved to `docs/archive/`:
+- `migration-resolve-evm-chains-archived.md` - EVM chains resolution migration (completed)
+- `scripts-workflow-migration-archived.md` - Scripts workflow migration (completed)
+- `task-1-3-run-manifest-archived.md` - Run manifest task migration (completed)

@@ -7,9 +7,9 @@
  */
 
 import { DateTime } from 'luxon';
-import { logger, getPythonEngine, type PythonEngine, ConfigurationError } from '@quantbot/utils';
+import { logger, ConfigurationError } from '@quantbot/utils';
 import type { Chain } from '@quantbot/core';
-import { getStorageEngine, type StorageEngine } from '@quantbot/storage';
+import { getStorageEngine, type StorageEngine, getDuckDBWorklistService } from '@quantbot/storage';
 // Types imported dynamically to break circular dependency
 type OhlcvIngestionOptions = {
   useCache?: boolean;
@@ -91,8 +91,7 @@ export class OhlcvIngestionService {
 
   constructor(
     ingestionEngine?: OhlcvIngestionEngine,
-    private readonly storageEngine: StorageEngine = getStorageEngine(),
-    private readonly pythonEngine: PythonEngine = getPythonEngine()
+    private readonly storageEngine: StorageEngine = getStorageEngine()
   ) {
     this._ingestionEngine = ingestionEngine ?? null;
   }
@@ -174,7 +173,8 @@ export class OhlcvIngestionService {
       to: to?.toISOString(),
     });
 
-    const worklist = await this.pythonEngine.runOhlcvWorklist({
+    const worklistService = getDuckDBWorklistService();
+    const worklist = await worklistService.queryWorklist({
       duckdbPath,
       from: from?.toISOString(),
       to: to?.toISOString(),

@@ -12,7 +12,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { DateTime } from 'luxon';
 import { generateOhlcvWorklist } from '../../src/ohlcv-work-planning.js';
-import { getPythonEngine } from '@quantbot/utils';
+import { getDuckDBWorklistService } from '@quantbot/storage';
 import type { OhlcvWorkItem } from '../../src/ohlcv-work-planning.js';
 
 // Mock dependencies
@@ -23,20 +23,23 @@ vi.mock('@quantbot/utils', () => ({
     warn: vi.fn(),
     error: vi.fn(),
   },
-  getPythonEngine: vi.fn(),
+}));
+
+vi.mock('@quantbot/storage', () => ({
+  getDuckDBWorklistService: vi.fn(),
 }));
 
 describe('OHLCV Work Planning', () => {
-  let mockPythonEngine: any;
+  let mockWorklistService: any;
 
   beforeEach(() => {
     vi.clearAllMocks();
 
-    mockPythonEngine = {
-      runOhlcvWorklist: vi.fn(),
+    mockWorklistService = {
+      queryWorklist: vi.fn(),
     };
 
-    vi.mocked(getPythonEngine).mockReturnValue(mockPythonEngine as any);
+    vi.mocked(getDuckDBWorklistService).mockReturnValue(mockWorklistService as any);
   });
 
   describe('generateOhlcvWorklist', () => {
@@ -68,7 +71,7 @@ describe('OHLCV Work Planning', () => {
         ],
       };
 
-      mockPythonEngine.runOhlcvWorklist.mockResolvedValue(mockWorklist);
+      mockWorklistService.queryWorklist.mockResolvedValue(mockWorklist);
 
       const workItems = await generateOhlcvWorklist(duckdbPath, {
         from,
@@ -122,7 +125,7 @@ describe('OHLCV Work Planning', () => {
         calls: [],
       };
 
-      mockPythonEngine.runOhlcvWorklist.mockResolvedValue(mockWorklist);
+      mockWorklistService.queryWorklist.mockResolvedValue(mockWorklist);
 
       const workItems = await generateOhlcvWorklist('/path/to/duckdb', {
         side: 'buy',
@@ -153,7 +156,7 @@ describe('OHLCV Work Planning', () => {
         calls: [],
       };
 
-      mockPythonEngine.runOhlcvWorklist.mockResolvedValue(mockWorklist);
+      mockWorklistService.queryWorklist.mockResolvedValue(mockWorklist);
 
       const workItems = await generateOhlcvWorklist('/path/to/duckdb');
 
@@ -196,7 +199,7 @@ describe('OHLCV Work Planning', () => {
         calls: [],
       };
 
-      mockPythonEngine.runOhlcvWorklist.mockResolvedValue(mockWorklist);
+      mockWorklistService.queryWorklist.mockResolvedValue(mockWorklist);
 
       const workItems = await generateOhlcvWorklist('/path/to/duckdb');
 
@@ -224,7 +227,7 @@ describe('OHLCV Work Planning', () => {
         calls: [],
       };
 
-      mockPythonEngine.runOhlcvWorklist.mockResolvedValue(mockWorklist);
+      mockWorklistService.queryWorklist.mockResolvedValue(mockWorklist);
 
       const workItems = await generateOhlcvWorklist('/path/to/duckdb');
 
@@ -252,7 +255,7 @@ describe('OHLCV Work Planning', () => {
         calls: [],
       };
 
-      mockPythonEngine.runOhlcvWorklist.mockResolvedValue(mockWorklist);
+      mockWorklistService.queryWorklist.mockResolvedValue(mockWorklist);
 
       const workItems = await generateOhlcvWorklist('/path/to/duckdb', {
         chain: 'base', // Fallback chain
@@ -279,7 +282,7 @@ describe('OHLCV Work Planning', () => {
         chain: 'ethereum',
       });
 
-      expect(mockPythonEngine.runOhlcvWorklist).toHaveBeenCalledWith({
+      expect(mockWorklistService.queryWorklist).toHaveBeenCalledWith({
         duckdbPath,
         from: from.toISOString(),
         to: to.toISOString(),
@@ -319,7 +322,7 @@ describe('OHLCV Work Planning', () => {
         calls: [],
       };
 
-      mockPythonEngine.runOhlcvWorklist.mockResolvedValue(mockWorklist);
+      mockWorklistService.queryWorklist.mockResolvedValue(mockWorklist);
 
       const workItems = await generateOhlcvWorklist(duckdbPath, {
         mints: targetMints,
@@ -330,13 +333,13 @@ describe('OHLCV Work Planning', () => {
       expect(workItems.map((w) => w.mint)).toEqual(targetMints);
       expect(workItems.map((w) => w.mint)).not.toContain(otherMint);
 
-      // Verify Python engine was called WITHOUT mints (filtering happens in TypeScript)
-      expect(mockPythonEngine.runOhlcvWorklist).toHaveBeenCalledWith(
+      // Verify worklist service was called WITHOUT mints (filtering happens in TypeScript)
+      expect(mockWorklistService.queryWorklist).toHaveBeenCalledWith(
         expect.objectContaining({
           duckdbPath: expect.stringContaining('duckdb'),
         })
       );
-      expect(mockPythonEngine.runOhlcvWorklist).not.toHaveBeenCalledWith(
+      expect(mockWorklistService.queryWorklist).not.toHaveBeenCalledWith(
         expect.objectContaining({ mints: expect.anything() })
       );
     });
@@ -360,7 +363,7 @@ describe('OHLCV Work Planning', () => {
         calls: [],
       };
 
-      mockPythonEngine.runOhlcvWorklist.mockResolvedValue(mockWorklist);
+      mockWorklistService.queryWorklist.mockResolvedValue(mockWorklist);
 
       const workItems = await generateOhlcvWorklist('/path/to/duckdb', {
         mints: [], // Empty array = no filter
@@ -368,13 +371,13 @@ describe('OHLCV Work Planning', () => {
 
       // Should return all work items when mints array is empty (empty array = no filter)
       expect(workItems).toHaveLength(2);
-      // Python engine should be called without mints parameter (empty array means no filter)
-      expect(mockPythonEngine.runOhlcvWorklist).toHaveBeenCalledWith(
+      // Worklist service should be called without mints parameter (empty array means no filter)
+      expect(mockWorklistService.queryWorklist).toHaveBeenCalledWith(
         expect.objectContaining({
           duckdbPath: expect.stringContaining('duckdb'),
         })
       );
-      expect(mockPythonEngine.runOhlcvWorklist).not.toHaveBeenCalledWith(
+      expect(mockWorklistService.queryWorklist).not.toHaveBeenCalledWith(
         expect.objectContaining({ mints: expect.anything() })
       );
     });
@@ -392,19 +395,19 @@ describe('OHLCV Work Planning', () => {
         calls: [],
       };
 
-      mockPythonEngine.runOhlcvWorklist.mockResolvedValue(mockWorklist);
+      mockWorklistService.queryWorklist.mockResolvedValue(mockWorklist);
 
       const workItems = await generateOhlcvWorklist('/path/to/duckdb', {});
 
       // Should return all work items when mints is undefined
       expect(workItems).toHaveLength(1);
-      expect(mockPythonEngine.runOhlcvWorklist).toHaveBeenCalledWith({
+      expect(mockWorklistService.queryWorklist).toHaveBeenCalledWith({
         duckdbPath: expect.stringContaining('/path/to/duckdb'), // Path is resolved to absolute
         from: undefined,
         to: undefined,
         side: 'buy', // Default side
       });
-      expect(mockPythonEngine.runOhlcvWorklist).not.toHaveBeenCalledWith(
+      expect(mockWorklistService.queryWorklist).not.toHaveBeenCalledWith(
         expect.objectContaining({ mints: expect.anything() })
       );
     });
@@ -426,7 +429,7 @@ describe('OHLCV Work Planning', () => {
         calls: [],
       };
 
-      mockPythonEngine.runOhlcvWorklist.mockResolvedValue(mockWorklist);
+      mockWorklistService.queryWorklist.mockResolvedValue(mockWorklist);
 
       const workItems = await generateOhlcvWorklist('/path/to/duckdb', {
         mints: [mixedCaseMint], // Pass exact case
@@ -438,13 +441,13 @@ describe('OHLCV Work Planning', () => {
       expect(workItems[0].mint).not.toBe(lowerCaseMint);
       expect(workItems[0].mint).not.toBe(upperCaseMint);
 
-      // Verify Python engine was called without mints (filtering happens in TypeScript)
-      expect(mockPythonEngine.runOhlcvWorklist).toHaveBeenCalledWith(
+      // Verify worklist service was called without mints (filtering happens in TypeScript)
+      expect(mockWorklistService.queryWorklist).toHaveBeenCalledWith(
         expect.objectContaining({
           duckdbPath: expect.stringContaining('duckdb'),
         })
       );
-      expect(mockPythonEngine.runOhlcvWorklist).not.toHaveBeenCalledWith(
+      expect(mockWorklistService.queryWorklist).not.toHaveBeenCalledWith(
         expect.objectContaining({ mints: expect.anything() })
       );
     });

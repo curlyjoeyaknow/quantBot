@@ -79,21 +79,24 @@ export async function createApiServer(config: ApiServerConfig = {}): Promise<Fas
   });
 
   // Error handler
-  server.setErrorHandler((error, request, reply) => {
-    logger.error('API error', error as Error, {
+  server.setErrorHandler((error: unknown, request, reply) => {
+    const err = error as Error & { statusCode?: number };
+    logger.error('API error', err, {
       method: request.method,
       url: request.url,
     });
 
-    reply.status(error.statusCode || 500).send({
+    reply.status(err.statusCode || 500).send({
       error: {
-        message: error.message || 'Internal server error',
-        code: error.statusCode || 500,
+        message: err.message || 'Internal server error',
+        code: err.statusCode || 500,
       },
     });
   });
 
-  // Start server
+  // Extend server with start method
+  type ServerWithStart = FastifyInstance & { start: () => Promise<void> };
+
   const start = async () => {
     try {
       await server.listen({ port, host });
@@ -104,9 +107,8 @@ export async function createApiServer(config: ApiServerConfig = {}): Promise<Fas
     }
   };
 
-  // Extend server with start method
-  type ServerWithStart = FastifyInstance & { start: () => Promise<void> };
-  (server as ServerWithStart).start = start;
+  // Add start method to server instance
+  Object.assign(server, { start });
 
-  return server as ServerWithStart;
+  return server as unknown as ServerWithStart;
 }

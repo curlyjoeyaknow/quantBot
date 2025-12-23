@@ -34,6 +34,11 @@ export { DuckDBClient, getDuckDBClient } from './duckdb/duckdb-client.js';
 export { connectionManager, ensureConnectionCleanup } from './duckdb/connection-utils.js';
 export type { ConnectionCleanupOptions } from './duckdb/connection-utils.js';
 export { TokenDataRepository } from './duckdb/repositories/TokenDataRepository.js';
+export {
+  DuckDBWorklistService,
+  getDuckDBWorklistService,
+} from './duckdb/duckdb-worklist-service.js';
+export type { OhlcvWorklistConfig, OhlcvWorklistResult } from './duckdb/duckdb-worklist-service.js';
 
 // Artifact repository adapter
 export { ArtifactDuckDBAdapter } from './adapters/artifact-duckdb-adapter.js';
