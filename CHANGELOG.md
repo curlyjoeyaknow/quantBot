@@ -28,6 +28,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - This completes Phase 3: Research OS is now functional end-to-end
   - Location: `packages/workflows/src/research/simulation-adapter.ts`
 
+- **Phase 3: Research OS Leaderboard** - Ranking and comparison of simulation runs
+  - New command: `quantbot research leaderboard`
+  - Ranking criteria: return, winRate, profitFactor, sharpeRatio, maxDrawdown, totalTrades, avgReturnPerTrade
+  - Filtering: by strategy name, snapshot ID, minimum return, minimum win rate
+  - Sort order: ascending or descending
+  - Limit results with `--limit` option
+  - Exports leaderboard functions from `@quantbot/workflows/research`
+  - Location: `packages/workflows/src/research/leaderboard.ts`, `packages/cli/src/handlers/research/leaderboard.ts`
+
 - **DuckDB Stress Tests** - Comprehensive stress tests for DuckDB storage operations
   - Added `duckdb-extreme.stress.test.ts` with real implementations
   - Tests massive concurrent operations (1000+ concurrent writes)

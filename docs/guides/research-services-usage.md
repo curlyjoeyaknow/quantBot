@@ -450,6 +450,85 @@ try {
 - **Execution Model Application**: Very fast (microseconds per trade).
 - **Risk Constraint Checking**: Very fast (microseconds per check).
 
+## Leaderboard
+
+The Research OS includes a leaderboard system for ranking and comparing simulation runs.
+
+### Basic Usage
+
+```bash
+# Show top 10 runs by return
+quantbot research leaderboard --criteria return --limit 10
+
+# Show top runs by win rate
+quantbot research leaderboard --criteria winRate --order desc --limit 20
+
+# Filter by strategy name
+quantbot research leaderboard --criteria profitFactor --strategy-name MyStrategy
+
+# Filter by snapshot ID
+quantbot research leaderboard --criteria return --snapshot-id snapshot-123
+
+# Filter with minimum thresholds
+quantbot research leaderboard --criteria return --min-return 1.1 --min-win-rate 0.6
+```
+
+### Ranking Criteria
+
+Available ranking criteria:
+
+- `return` - Total return (multiplier, e.g., 1.12 = +12%)
+- `winRate` - Overall win rate (0-1)
+- `profitFactor` - Gross profit / gross loss ratio
+- `sharpeRatio` - Risk-adjusted return (simplified calculation)
+- `maxDrawdown` - Maximum drawdown (lower is better)
+- `totalTrades` - Total number of trades
+- `avgReturnPerTrade` - Average return per trade
+
+### Programmatic Usage
+
+```typescript
+import { getLeaderboard, getTopRuns, compareRuns } from '@quantbot/workflows/research';
+import { createExperimentContext } from '@quantbot/workflows/research/context';
+
+const ctx = createExperimentContext({
+  artifactBaseDir: './artifacts',
+});
+
+// Get top 10 runs by return
+const topRuns = await getTopRuns(ctx, 'return', 10);
+
+// Get leaderboard with filters
+const leaderboard = await getLeaderboard(ctx, {
+  criteria: 'winRate',
+  order: 'desc',
+  limit: 20,
+  strategyName: 'momentum-breakout',
+  minReturn: 1.1,
+  minWinRate: 0.6,
+});
+
+// Compare two runs
+const comparison = compareRuns(artifact1, artifact2, 'return');
+console.log(`Winner: ${comparison.winner.metadata.runId}`);
+console.log(`Score difference: ${comparison.scoreDiff}`);
+```
+
+### Leaderboard Entry Structure
+
+Each leaderboard entry contains:
+
+```typescript
+{
+  runId: string;
+  strategyName: string;
+  snapshotId: string;
+  metrics: RunMetrics;
+  rank: number; // 1-based rank
+  score: number; // Score used for ranking
+}
+```
+
 ## See Also
 
 - [Research OS Contract](./SIMULATION_CONTRACT.md) - Full contract specification
