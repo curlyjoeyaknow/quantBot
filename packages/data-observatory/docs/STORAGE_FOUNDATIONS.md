@@ -137,12 +137,12 @@ def operation(db_path: str):
 
 ## Testing Checklist
 
-- [ ] Snapshot creation and storage
-- [ ] Snapshot retrieval by ID
-- [ ] Event storage and querying
-- [ ] Deterministic reader functionality
-- [ ] Connection cleanup (no WAL files)
-- [ ] Content hash verification
+- [x] Snapshot creation and storage ✅ (integration tests)
+- [x] Snapshot retrieval by ID ✅ (integration tests)
+- [x] Event storage and querying ✅ (integration tests)
+- [x] Deterministic reader functionality ✅ (15 unit tests)
+- [x] Connection cleanup (no WAL files) ✅ (Python scripts enforce cleanup)
+- [x] Content hash verification ✅ (integration tests)
 
 ## Future Improvements
 

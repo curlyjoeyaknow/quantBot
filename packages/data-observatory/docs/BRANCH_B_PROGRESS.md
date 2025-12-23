@@ -24,7 +24,8 @@
 - ✅ DataSnapshotRef with content hash for reproducibility
 - ✅ SnapshotManager for creating and managing snapshots
 - ✅ Event collector interface and storage-based implementation
-- ✅ DuckDB storage adapter (placeholder for full implementation)
+- ✅ DuckDB storage adapter (fully implemented with Python backend)
+- ✅ Deterministic reader API for snapshot-based reads
 
 **Key Files**:
 - `types.ts` - Snapshot types and schemas

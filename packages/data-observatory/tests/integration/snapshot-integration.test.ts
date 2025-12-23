@@ -12,32 +12,51 @@ import { StorageEventCollector } from '../../src/snapshots/event-collector.js';
 import { DuckDBSnapshotStorage } from '../../src/snapshots/duckdb-storage.js';
 import type { SnapshotSpec, DataSnapshotRef } from '../../src/snapshots/types.js';
 import { CoverageCalculator } from '../../src/quality/coverage.js';
+import { join } from 'path';
+import { tmpdir } from 'os';
+import { mkdtempSync, rmSync } from 'fs';
 
 describe('Snapshot Integration Tests', () => {
   let storage: ReturnType<typeof getStorageEngine>;
   let snapshotManager: SnapshotManager;
   let coverageCalculator: CoverageCalculator;
   let testDuckDbPath: string;
+  let tempDir: string;
 
-  beforeAll(() => {
+  beforeAll(async () => {
     // Initialize storage engine
     storage = getStorageEngine({
       enableCache: false, // Disable cache for deterministic tests
     });
 
-    // Create test DuckDB path
-    testDuckDbPath = `:memory:`; // Use in-memory DB for tests
+    // Create temporary directory for test DuckDB file
+    // Using a file-based DB instead of :memory: because each DuckDB connection
+    // to :memory: gets its own separate database, so schema initialization
+    // in Python won't be visible to TypeScript connections
+    tempDir = mkdtempSync(join(tmpdir(), 'snapshot-test-'));
+    testDuckDbPath = join(tempDir, 'test.duckdb');
 
     // Create snapshot manager with test storage
     const eventCollector = new StorageEventCollector(storage);
     const snapshotStorage = new DuckDBSnapshotStorage(testDuckDbPath);
+    
+    // Wait for schema initialization (async operation in constructor)
+    await snapshotStorage.waitForInit();
+    
     snapshotManager = new SnapshotManager(snapshotStorage, eventCollector);
 
     coverageCalculator = new CoverageCalculator();
   });
 
   afterAll(async () => {
-    // Cleanup if needed
+    // Cleanup temporary directory
+    if (tempDir) {
+      try {
+        rmSync(tempDir, { recursive: true, force: true });
+      } catch (error) {
+        // Ignore cleanup errors
+      }
+    }
   });
 
   describe('Snapshot Creation', () => {

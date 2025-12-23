@@ -43,11 +43,12 @@ packages/data-observatory/
 
 ### Next Steps (Post-Merge)
 
-1. Complete DuckDB storage implementation
-2. Implement call event collection from DuckDB
-3. Optimize query performance
-4. Create golden dataset snapshot
-5. Integrate with Branch A (simulation engine)
+1. ✅ Complete DuckDB storage implementation (DONE)
+2. ✅ Add deterministic reader API (DONE)
+3. Implement call event collection from DuckDB (partial - TODO in event-collector.ts)
+4. Optimize query performance
+5. Create golden dataset snapshot
+6. Integrate with Branch A (simulation engine)
 
 ### Merge Readiness
 

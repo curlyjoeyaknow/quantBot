@@ -64,7 +64,7 @@ Tests coverage calculation with real and synthetic data:
 - ✅ Content hash generation
 - ✅ Manifest generation
 - ✅ Snapshot querying
-- ✅ Snapshot retrieval (pending storage implementation)
+- ✅ Snapshot retrieval (DuckDB storage fully implemented)
 
 ### Event Collection
 - ✅ OHLCV collection from storage

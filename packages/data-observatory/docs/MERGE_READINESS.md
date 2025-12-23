@@ -45,9 +45,9 @@ pnpm test tests/integration
 
 ## Known Test Limitations
 
-1. **Storage Implementation**: Some tests may return null until DuckDB snapshot storage is fully implemented
+1. ✅ **Storage Implementation**: DuckDB snapshot storage is fully implemented
 2. **Test Data**: Some tests require actual data in storage (may need test fixtures)
-3. **Call Collection**: Call event collection is pending implementation
+3. **Call Collection**: Call event collection is pending implementation (TODO in event-collector.ts)
 
 ## Pre-Merge Checklist
 
