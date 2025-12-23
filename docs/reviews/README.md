@@ -11,7 +11,7 @@ This directory contains code review documents, status reports, and completion su
 ## Completion Summaries
 
 - [PORTS_MIGRATION_COMPLETE.md](./PORTS_MIGRATION_COMPLETE.md) - Ports migration completion
-- [RESEARCH_SERVICES_COMPLETE.md](./RESEARCH_SERVICES_COMPLETE.md) - Research services completion
+- [Research Services Completion](../archive/research-services-complete-archived.md) - Research services completion (archived)
 - [CRITICAL_FIXES_SUMMARY.md](./CRITICAL_FIXES_SUMMARY.md) - Critical fixes summary
 
 ## Archived Documents

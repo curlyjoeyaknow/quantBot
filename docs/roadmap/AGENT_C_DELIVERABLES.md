@@ -219,6 +219,6 @@ All checks run automatically in CI:
 
 ## Related Work
 
-- [CLI Architecture](./packages/cli/docs/CLI_ARCHITECTURE.md)
-- [Workflow Enforcement](./WORKFLOW_ENFORCEMENT.md)
-- [Architecture Boundaries](./ARCHITECTURE_BOUNDARIES.md)
+- [CLI Architecture](../../packages/cli/docs/CLI_ARCHITECTURE.md)
+- [Workflow Enforcement](../architecture/WORKFLOW_ENFORCEMENT.md)
+- [Architecture Boundaries](../architecture/ARCHITECTURE_BOUNDARIES.md)

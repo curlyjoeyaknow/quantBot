@@ -14,7 +14,7 @@ This document consolidates current project status across all areas.
 
 2. **Research Services** - Complete
    - Research OS experiment engine implemented
-   - See [RESEARCH_SERVICES_COMPLETE.md](./RESEARCH_SERVICES_COMPLETE.md) for details
+   - See [archived completion summary](../archive/research-services-complete-archived.md) for details
 
 3. **Architecture Boundaries** - Implemented
    - ESLint enforcement active
