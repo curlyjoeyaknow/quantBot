@@ -112,14 +112,16 @@ describe('DeterministicRNG', () => {
       // Both should produce same sequence initially
       expect(rng1.next()).toBe(rng2.next());
 
-      // But they're independent
+      // But they're independent - advance rng1 multiple times
       const val1 = rng1.next();
-      const val2 = rng2.next();
-      expect(val1).toBe(val2); // Same seed, same position
-
-      // Advance one, other doesn't change
+      const val2 = rng1.next();
       const val3 = rng1.next();
-      expect(rng2.next()).not.toBe(val3); // rng2 is still at previous position
+
+      // rng2 should still be at position 1 (one call behind)
+      // So rng2.next() should equal val1 (what rng1 produced at position 1)
+      expect(rng2.next()).toBe(val1);
+      expect(rng2.next()).toBe(val2);
+      expect(rng2.next()).toBe(val3);
     });
   });
 });

@@ -1,8 +1,7 @@
 /**
  * Test setup for storage package
  *
- * Mocks external dependencies that contain native bindings (sqlite3)
- * to prevent import errors during testing.
+ * Mocks external dependencies to prevent import errors during testing.
  */
 import { vi } from 'vitest';
 

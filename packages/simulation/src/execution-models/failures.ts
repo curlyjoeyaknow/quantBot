@@ -3,15 +3,23 @@
  * ==============
  *
  * Models for simulating transaction failures, partial fills, and chain reorganizations.
+ * All randomness uses DeterministicRNG for reproducibility.
  */
 
+import type { DeterministicRNG } from '@quantbot/core';
 import type { FailureModel, PartialFillModel, ReorgModel } from './types.js';
 
 /**
  * Sample whether a transaction fails based on failure model
+ *
+ * @param model - Failure model configuration
+ * @param rng - Deterministic random number generator (required for determinism)
+ * @param congestionLevel - Current congestion level (0-1)
+ * @param priorityFeeShortfall - Priority fee shortfall (0-1)
  */
 export function sampleFailure(
   model: FailureModel,
+  rng: DeterministicRNG,
   congestionLevel: number = 0,
   priorityFeeShortfall: number = 0
 ): boolean {
@@ -26,14 +34,17 @@ export function sampleFailure(
   // Cap at maximum
   failureRate = Math.min(failureRate, model.maxFailureRate);
 
-  return Math.random() < failureRate;
+  return rng.next() < failureRate;
 }
 
 /**
  * Sample partial fill percentage
+ *
+ * @param model - Partial fill model configuration
+ * @param rng - Deterministic random number generator (required for determinism)
  */
-export function samplePartialFill(model: PartialFillModel): number {
-  if (Math.random() >= model.probability) {
+export function samplePartialFill(model: PartialFillModel, rng: DeterministicRNG): number {
+  if (rng.next() >= model.probability) {
     return 1.0; // Full fill
   }
 
@@ -45,13 +56,13 @@ export function samplePartialFill(model: PartialFillModel): number {
 
   switch (type) {
     case 'uniform':
-      return minFill + Math.random() * (maxFill - minFill);
+      return minFill + rng.next() * (maxFill - minFill);
 
     case 'normal':
       if (meanFill !== undefined && stddevFill !== undefined) {
         // Box-Muller transform
-        const u1 = Math.random();
-        const u2 = Math.random();
+        const u1 = rng.next();
+        const u2 = rng.next();
         const z0 = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
         const fill = meanFill + z0 * stddevFill;
         return Math.max(0, Math.min(1, fill)); // Clamp to [0, 1]
@@ -65,8 +76,8 @@ export function samplePartialFill(model: PartialFillModel): number {
         const mean = alpha / (alpha + beta);
         const variance = (alpha * beta) / ((alpha + beta) ** 2 * (alpha + beta + 1));
         const stddev = Math.sqrt(variance);
-        const u1 = Math.random();
-        const u2 = Math.random();
+        const u1 = rng.next();
+        const u2 = rng.next();
         const z0 = Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2);
         const fill = mean + z0 * stddev;
         return Math.max(0, Math.min(1, fill));
@@ -80,16 +91,22 @@ export function samplePartialFill(model: PartialFillModel): number {
 
 /**
  * Sample whether a reorg affects the transaction
+ *
+ * @param model - Reorg model configuration
+ * @param rng - Deterministic random number generator (required for determinism)
  */
-export function sampleReorg(model: ReorgModel): { affected: boolean; depth: number } {
-  if (Math.random() >= model.probability) {
+export function sampleReorg(
+  model: ReorgModel,
+  rng: DeterministicRNG
+): { affected: boolean; depth: number } {
+  if (rng.next() >= model.probability) {
     return { affected: false, depth: 0 };
   }
 
   // Sample reorg depth (exponential distribution capped at maxDepth)
   const lambda = 1 / model.averageDepth;
   let depth = 1;
-  while (depth < model.maxDepth && Math.random() > Math.exp(-lambda)) {
+  while (depth < model.maxDepth && rng.next() > Math.exp(-lambda)) {
     depth++;
   }
 

@@ -4,6 +4,7 @@
  * Exports core simulation functionality.
  */
 
+export * from './clock.js';
 export * from './events.js';
 export * from './simulator.js';
 // Orchestrator has been moved to @quantbot/workflows.

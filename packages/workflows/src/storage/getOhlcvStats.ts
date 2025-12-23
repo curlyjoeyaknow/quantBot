@@ -6,6 +6,7 @@
 
 import { z } from 'zod';
 import { DateTime } from 'luxon';
+import { ConfigurationError } from '@quantbot/utils';
 import type { WorkflowContextWithPorts } from '../context/workflowContextWithPorts.js';
 
 /**
@@ -232,5 +233,9 @@ export async function getOhlcvStats(
  * Create default context for testing
  */
 function createDefaultOhlcvStatsContext(): OhlcvStatsContext {
-  throw new Error('OhlcvStatsContext must be provided - no default implementation');
+  throw new ConfigurationError(
+    'OhlcvStatsContext must be provided - no default implementation',
+    'OhlcvStatsContext',
+    { operation: 'getOhlcvStats' }
+  );
 }

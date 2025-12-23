@@ -108,13 +108,7 @@ vi.mock('@quantbot/utils', () => {
   };
 });
 
-// Mock sqlite3 to avoid opening real databases during tests
-vi.mock('sqlite3', () => ({
-  Database: vi.fn(),
-  verbose: () => ({ Database: vi.fn() }),
-}));
-
-// Mock @quantbot/storage to avoid loading sqlite-backed modules (caller database)
+// Mock @quantbot/storage to avoid loading database modules during tests
 vi.mock('@quantbot/storage', async () => {
   class BaseRepo {}
   return {

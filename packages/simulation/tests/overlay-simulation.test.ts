@@ -52,8 +52,10 @@ describe('Overlay Simulation - Golden Tests', () => {
     notionalUsd: 1000,
   };
 
+  // Entry timestamp should match first candle timestamp (in milliseconds)
+  // First candle timestamp is 1000000000 seconds = 1000000000000 milliseconds
   const baseEntry = {
-    tsMs: 1000000000000,
+    tsMs: 1000000000 * 1000, // Convert seconds to milliseconds
     px: 1.0,
   };
 

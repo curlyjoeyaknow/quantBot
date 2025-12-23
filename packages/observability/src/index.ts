@@ -28,6 +28,12 @@ export * from './event-log.js';
 // Prometheus metrics (live counters and alerting)
 export * from './prometheus-metrics.js';
 
+// Distributed tracing
+export * from './tracing.js';
+
+// Alerting
+export * from './alerting.js';
+
 // Legacy: Metrics collection and InfluxDB persistence (deprecated)
 export * from './types.js';
 export * from './metrics-collector.js';

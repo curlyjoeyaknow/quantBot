@@ -8,6 +8,7 @@
 
 import { createHash } from 'crypto';
 import { DateTime } from 'luxon';
+import { logger } from '@quantbot/utils';
 import type { DataSnapshotRef } from '../contract.js';
 import { DataSnapshotRefSchema } from '../contract.js';
 import { queryCallsDuckdb } from '../../calls/queryCallsDuckdb.js';
@@ -227,7 +228,9 @@ export class DataSnapshotService {
       } catch (error) {
         // If query fails without callerName, that's okay - we'll just have no calls
         // This allows the test mocks to work properly
-        console.warn('Failed to query calls without callerName filter:', error);
+        logger.warn('Failed to query calls without callerName filter', {
+          error: error instanceof Error ? error.message : String(error),
+        });
       }
     }
 
@@ -271,7 +274,10 @@ export class DataSnapshotService {
         }
       } catch (error) {
         // Log but continue - some mints may not have candles
-        console.warn(`Failed to load candles for mint ${mint.substring(0, 20)}...`, error);
+        logger.warn('Failed to load candles for mint', {
+          mint: mint.substring(0, 20) + '...',
+          error: error instanceof Error ? error.message : String(error),
+        });
       }
     }
 

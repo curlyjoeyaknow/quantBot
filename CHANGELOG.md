@@ -9,6 +9,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Technical Debt: Error Handling Standardization** - Continued fixing inconsistent error handling
+  - Replaced generic `Error` with `ConfigurationError` in `getStorageStats`, `queryCallsDuckdb`, and `getOhlcvStats` workflows
+  - Replaced generic `Error` with `ValidationError` in `OhlcvRepository` for chain/interval validation
+  - Approximately 125 more instances remain to be fixed (see `docs/TECHNICAL_DEBT_STATUS.md` for details)
+
+- **Technical Debt: Logging Standardization** - Started standardizing logging
+  - Replaced `console.warn` with `logger.warn()` in `DataSnapshotService.ts`
+  - User-facing progress output in verbose mode remains as `console.error` (intentional)
+
+- **Technical Debt: Type Consolidation** - Verified types are properly consolidated
+  - All core types are in `@quantbot/core`, `packages/utils/src/types.ts` only re-exports for backward compatibility
+
+- **Technical Debt: Test Independence** - Verified tests follow independence rules
+  - Fee calculation tests are unit tests (correctly import production code to test it)
+  - Golden fixture tests use independent constants and helpers
+  - No issues found - tests are properly isolated
+
 - **CRITICAL: StatePort serialization bug** - Fixed metadata update failures in OHLCV ingestion
   - StatePort adapter now correctly serializes JavaScript objects to JSON strings before passing to Python
   - Python scripts now receive properly formatted JSON strings instead of raw objects

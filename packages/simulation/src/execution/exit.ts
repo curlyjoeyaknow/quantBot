@@ -147,8 +147,15 @@ async function resolveSameCandleConflict(
   provider: CandleProvider
 ): Promise<SequentialCheckResult | null> {
   // Check if within 3 months (timeframe availability constraint)
-  const threeMonthsAgo = Date.now() / 1000 - 90 * 24 * 60 * 60;
-  if (candle.timestamp < threeMonthsAgo) {
+  // Use a fixed reference timestamp (e.g., current time at simulation start) or candle timestamp
+  // For determinism, we'll use the candle's timestamp as reference (relative check)
+  // This ensures the same candle data always produces the same result
+  // Note: This is a relative check - candles older than 3 months from their own timestamp
+  // would fail, but in practice we're checking if sub-candles are available for this specific candle
+  const threeMonthsInSeconds = 90 * 24 * 60 * 60;
+  // Use a reasonable reference point: if candle is very old (before 2020), skip sub-candle resolution
+  const minTimestamp = 1577836800; // 2020-01-01 00:00:00 UTC
+  if (candle.timestamp < minTimestamp) {
     return null; // Too old, use fallback
   }
 

@@ -38,6 +38,11 @@ import type { ExecutionModel } from '../types/execution-model.js';
 import { createDeterministicRNG, type DeterministicRNG } from '@quantbot/core';
 import { logStep } from '../utils/progress.js';
 import {
+  type SimulationClock,
+  type ClockResolution,
+  createClock,
+} from './clock.js';
+import {
   checkStopLossSequential,
   initTrailingStopState,
   updateRollingTrailingStop,
@@ -63,6 +68,8 @@ export interface SimulationOptions {
   executionModel?: ExecutionModel;
   /** Seed for deterministic execution model behavior */
   seed?: number;
+  /** Clock resolution for time-based calculations */
+  clockResolution?: ClockResolution;
 }
 
 /**
@@ -120,11 +127,16 @@ export async function simulateStrategy(
   // If seed is provided, use it; otherwise generate from first candle timestamp (deterministic fallback)
   // Note: For full determinism, always provide a seed. The candle timestamp fallback is deterministic
   // for the same candle data but may vary across different runs with different data.
-  const rng = options?.executionModel && options?.seed !== undefined
-    ? createDeterministicRNG(options.seed)
-    : options?.executionModel
-      ? createDeterministicRNG(candles[0]?.timestamp ?? 0) // Deterministic fallback from candle data
-      : undefined;
+  const rng =
+    options?.executionModel && options?.seed !== undefined
+      ? createDeterministicRNG(options.seed)
+      : options?.executionModel
+        ? createDeterministicRNG(candles[0]?.timestamp ?? 0) // Deterministic fallback from candle data
+        : undefined;
+
+  // Create simulation clock based on resolution
+  const clockResolution: ClockResolution = options?.clockResolution ?? 'm'; // Default to minutes
+  const clock: SimulationClock = createClock(clockResolution, candles[0]?.timestamp ?? 0);
 
   // Precompute indicators (with caching optimization)
   if (candles.length > 100) {
@@ -168,7 +180,8 @@ export async function simulateStrategy(
       indicatorSeries,
       entryCfg.initialEntry as number,
       entrySignal,
-      events
+      events,
+      clock
     );
 
     if (result.triggered) {
@@ -190,7 +203,8 @@ export async function simulateStrategy(
       entryCfg.trailingEntry as number,
       maxWaitTime,
       entrySignal,
-      events
+      events,
+      clock
     );
 
     if (result.triggered) {
@@ -201,11 +215,11 @@ export async function simulateStrategy(
       _lowestPriceTimestamp = result.lowestPriceTimestamp;
     } else {
       // Fallback to end of wait period
-      const maxWaitTimestamp = candles[0].timestamp + maxWaitTime * 60;
+      const maxWaitTimestamp = candles[0].timestamp + clock.toMilliseconds(maxWaitTime);
       const fallback =
         candles.find((c) => c.timestamp <= maxWaitTimestamp) ?? candles[candles.length - 1];
       actualEntryPrice = fallback.close;
-      entryDelay = (fallback.timestamp - candles[0].timestamp) / 60;
+      entryDelay = clock.fromMilliseconds(fallback.timestamp - candles[0].timestamp);
     }
   }
 
@@ -266,7 +280,8 @@ function handleInitialEntry(
   indicators: readonly LegacyIndicatorData[],
   dropPercent: number,
   entrySignal: SignalGroup | undefined,
-  events: LegacySimulationEvent[]
+  events: LegacySimulationEvent[],
+  clock: SimulationClock
 ): { triggered: boolean; price: number; entryDelay: number } {
   const initialPrice = candles[0].open;
   const triggerPrice = initialPrice * (1 + dropPercent);
@@ -296,7 +311,7 @@ function handleInitialEntry(
       return {
         triggered: true,
         price: triggerPrice,
-        entryDelay: (candle.timestamp - candles[0].timestamp) / 60,
+        entryDelay: clock.fromMilliseconds(candle.timestamp - candles[0].timestamp),
       };
     }
   }
@@ -323,7 +338,8 @@ function handleTrailingEntry(
   trailingPercent: number,
   maxWaitTime: number,
   entrySignal: SignalGroup | undefined,
-  events: LegacySimulationEvent[]
+  events: LegacySimulationEvent[],
+  clock: SimulationClock
 ): {
   triggered: boolean;
   price: number;
@@ -331,7 +347,7 @@ function handleTrailingEntry(
   lowestPrice: number;
   lowestPriceTimestamp: number;
 } {
-  const maxWaitTimestamp = candles[0].timestamp + maxWaitTime * 60;
+  const maxWaitTimestamp = candles[0].timestamp + clock.toMilliseconds(maxWaitTime);
   let lowestPrice = candles[0].open;
   let lowestPriceTimestamp = candles[0].timestamp;
 
@@ -373,7 +389,7 @@ function handleTrailingEntry(
       return {
         triggered: true,
         price: trailingTrigger,
-        entryDelay: (candle.timestamp - candles[0].timestamp) / 60,
+        entryDelay: clock.fromMilliseconds(candle.timestamp - candles[0].timestamp),
         lowestPrice,
         lowestPriceTimestamp,
       };
@@ -457,7 +473,8 @@ async function runSimulationLoop(
   events: LegacySimulationEvent[],
   candleProvider?: CandleProvider,
   executionModel?: ExecutionModelInterface,
-  rng?: DeterministicRNG
+  rng?: DeterministicRNG,
+  clock?: SimulationClock
 ): Promise<{
   pnl: number;
   lowestPrice: number;
@@ -465,9 +482,19 @@ async function runSimulationLoop(
   lowestPriceTimeFromEntry: number;
 }> {
   // Calculate entry price with costs (for backward compatibility PnL calculation)
-  const entryPriceWithCosts = executionModel && rng
-    ? executeTrade('buy', entryPrice, 1.0, entryPrice, executionModel, rng, entryCostMultiplier, exitCostMultiplier).executedPrice
-    : entryPrice * entryCostMultiplier;
+  const entryPriceWithCosts =
+    executionModel && rng
+      ? executeTrade(
+          'buy',
+          entryPrice,
+          1.0,
+          entryPrice,
+          executionModel,
+          rng,
+          entryCostMultiplier,
+          exitCostMultiplier
+        ).executedPrice
+      : entryPrice * entryCostMultiplier;
   let stopLoss = entryPrice * (1 + stopCfg.initial);
   let stopMovedToEntry = false;
   const hasTrailing = stopCfg.trailing !== 'none';
@@ -500,7 +527,9 @@ async function runSimulationLoop(
     if (candle.low < lowestPrice) {
       lowestPrice = candle.low;
       lowestPriceTimestamp = candle.timestamp;
-      lowestPriceTimeFromEntry = (candle.timestamp - candles[0].timestamp) / 60;
+      lowestPriceTimeFromEntry = clock
+        ? clock.fromMilliseconds(candle.timestamp - candles[0].timestamp)
+        : (candle.timestamp - candles[0].timestamp) / 60; // Fallback for backward compatibility
     }
     if (candle.high > currentPeakPrice) {
       currentPeakPrice = candle.high;

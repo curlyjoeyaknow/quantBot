@@ -25,9 +25,13 @@ export interface CircuitBreakerState {
 
 /**
  * Initialize circuit breaker state
+ *
+ * @param initialTimestamp - Initial timestamp (from candle data or clock port) for determinism
  */
-export function createCircuitBreakerState(): CircuitBreakerState {
-  const now = Date.now();
+export function createCircuitBreakerState(initialTimestamp?: number): CircuitBreakerState {
+  // Use provided timestamp or 0 (will be set on first trade)
+  // For determinism, always provide timestamp from candle data
+  const now = initialTimestamp ?? 0;
   return {
     currentDrawdown: 0,
     dailyLoss: 0,
@@ -45,6 +49,17 @@ export function createCircuitBreakerState(): CircuitBreakerState {
 /**
  * Check if circuit breaker should trigger
  */
+/**
+ * Check if circuit breaker should trigger
+ *
+ * @param config - Circuit breaker configuration
+ * @param state - Current circuit breaker state
+ * @param currentPnl - Current PnL
+ * @param peakPnl - Peak PnL
+ * @param strategyId - Strategy ID
+ * @param tradeAmount - Trade amount
+ * @param now - Current timestamp (from candle data or clock port, required for determinism)
+ */
 export function checkCircuitBreaker(
   config: CircuitBreakerConfig,
   state: CircuitBreakerState,
@@ -52,7 +67,7 @@ export function checkCircuitBreaker(
   peakPnl: number,
   strategyId: string,
   tradeAmount: number,
-  now: number = Date.now()
+  now: number // Required parameter - no default for determinism
 ): { triggered: boolean; reason?: string } {
   // Update time windows
   const hourElapsed = now - state.hourStartTime >= 3600_000; // 1 hour
@@ -158,18 +173,32 @@ export interface AnomalyState {
 
 /**
  * Initialize anomaly detection state
+ *
+ * @param initialTimestamp - Initial timestamp (from candle data or clock port) for determinism
  */
-export function createAnomalyState(): AnomalyState {
+export function createAnomalyState(initialTimestamp?: number): AnomalyState {
+  // Use provided timestamp or 0 (will be set on first trade)
+  // For determinism, always provide timestamp from candle data
   return {
     latencyHistory: [],
     slippageHistory: [],
     failureHistory: [],
-    windowStartTime: Date.now(),
+    windowStartTime: initialTimestamp ?? 0,
   };
 }
 
 /**
  * Check for anomalies
+ *
+ * @param config - Anomaly detection configuration
+ * @param state - Current anomaly state
+ * @param latency - Recent latency measurement
+ * @param slippage - Recent slippage measurement
+ * @param failed - Whether recent trade failed
+ * @param expectedLatencyP99 - Expected latency at 99th percentile
+ * @param expectedSlippage - Expected slippage
+ * @param expectedFailureRate - Expected failure rate
+ * @param now - Current timestamp (from candle data or clock port, required for determinism)
  */
 export function checkAnomalies(
   config: AnomalyDetectionConfig,
@@ -180,7 +209,7 @@ export function checkAnomalies(
   expectedLatencyP99: number,
   expectedSlippage: number,
   expectedFailureRate: number,
-  now: number = Date.now()
+  now: number // Required parameter - no default for determinism
 ): { detected: boolean; anomalies: string[] } {
   if (!config.enabled) {
     return { detected: false, anomalies: [] };

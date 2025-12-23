@@ -63,7 +63,7 @@ export {
 } from './cache/ohlcv-cache.js';
 
 // Legacy exports (temporary - will be deprecated)
-// Note: CallerDatabase export removed to avoid sqlite3 dependency
+// Note: SQLite CallerDatabase removed - use DuckDB CallersRepository instead
 // Import directly from './caller-database.js' if needed
 
 // InfluxDB exports - types only (implementation not in use)
