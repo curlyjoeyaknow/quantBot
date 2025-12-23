@@ -9,6 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Phase 3: Research OS End-to-End Implementation** - Wired ResearchSimulationAdapter to actually run simulations
+  - Loads data snapshots using DataSnapshotService
+  - Converts StrategyRef, ExecutionModel, CostModel to simulation engine formats
+  - Runs simulations using `simulateStrategy()` for each call in snapshot
+  - Converts simulation events to TradeEvent[] format
+  - Calculates PnL series and metrics
+  - Returns complete RunArtifact with all required data
+  - This completes Phase 3: Research OS is now functional end-to-end
+  - Location: `packages/workflows/src/research/simulation-adapter.ts`
+
 - **DuckDB Stress Tests** - Comprehensive stress tests for DuckDB storage operations
   - Added `duckdb-extreme.stress.test.ts` with real implementations
   - Tests massive concurrent operations (1000+ concurrent writes)

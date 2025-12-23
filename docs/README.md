@@ -1,0 +1,52 @@
+# QuantBot Documentation
+
+Welcome to the QuantBot documentation. This directory contains comprehensive documentation for the QuantBot trading research platform.
+
+## Structure
+
+### 📁 [architecture/](./architecture/)
+Core architecture documentation, design decisions, and system design patterns.
+
+### 📁 [api/](./api/)
+API documentation, endpoint references, and integration guides.
+
+### 📁 [guides/](./guides/)
+User guides, tutorials, and how-to documentation for common tasks.
+
+### 📁 [migration/](./migration/)
+Migration guides, deprecation notices, and upgrade instructions.
+
+### 📁 [reviews/](./reviews/)
+Code review documents, status reports, and completion summaries.
+
+### 📁 [roadmap/](./roadmap/)
+Project roadmap, future plans, and strategic direction.
+
+### 📁 [testing/](./testing/)
+Testing documentation, coverage reports, and test strategy.
+
+## Quick Links
+
+- [Architecture Overview](./architecture/ARCHITECTURE.md)
+- [API Reference](./api/API.md)
+- [CLI Setup Guide](./guides/cli-setup.md)
+- [Research Services Usage](./guides/research-services-usage.md)
+- [Migration Guides](./migration/)
+
+## Contributing
+
+When adding new documentation:
+
+1. **Place files in appropriate subdirectories** - Don't add files to the root `docs/` directory
+2. **Use descriptive names** - Use kebab-case for file names
+3. **Update this README** - Add links to new documentation
+4. **Follow markdown standards** - Use proper heading hierarchy and formatting
+
+## Documentation Standards
+
+- Use clear, concise language
+- Include code examples where helpful
+- Keep documentation up to date with code changes
+- Cross-reference related documents
+- Use proper markdown formatting
+

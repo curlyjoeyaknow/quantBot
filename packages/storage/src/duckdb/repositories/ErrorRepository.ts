@@ -81,9 +81,15 @@ export class ErrorRepository {
       // CRITICAL: Always throw - silent failures give false confidence in results
       // If database initialization fails, subsequent operations will also fail.
       // Better to fail fast and surface the error than silently continue with broken state.
-      throw new DatabaseError('ErrorRepository database initialization failed', error as Error, {
-        dbPath: this.client.getDbPath(),
-      });
+      throw new DatabaseError(
+        'ErrorRepository database initialization failed',
+        'initializeDatabase',
+        {
+          dbPath: this.client.getDbPath(),
+          originalError: error instanceof Error ? error.message : String(error),
+          errorStack: error instanceof Error ? error.stack : undefined,
+        }
+      );
     }
   }
 
@@ -171,7 +177,7 @@ export class ErrorRepository {
       );
 
       if (result.error) {
-        throw new DatabaseError(result.error, { result });
+        throw new DatabaseError(result.error, 'getStats', { result });
       }
 
       return {
@@ -260,7 +266,7 @@ export class ErrorRepository {
       );
 
       if (!result.success && result.error) {
-        throw new DatabaseError(result.error, { result, errorId });
+        throw new DatabaseError(result.error, 'markResolved', { result, errorId });
       }
 
       logger.info('Error marked as resolved', { errorId });

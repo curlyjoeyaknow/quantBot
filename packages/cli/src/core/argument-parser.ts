@@ -70,6 +70,17 @@ export function normalizeOptions(options: Record<string, unknown>): Record<strin
     // DO NOT rename keys - Commander.js already handles kebab-case → camelCase conversion
     const normalizedKey = key;
 
+    // Recursively normalize nested objects
+    if (
+      typeof value === 'object' &&
+      value !== null &&
+      !Array.isArray(value) &&
+      !(value instanceof Date)
+    ) {
+      normalized[normalizedKey] = normalizeOptions(value as Record<string, unknown>);
+      continue;
+    }
+
     // Handle string values that might be numbers or booleans
     if (typeof value === 'string') {
       // Try to parse as boolean

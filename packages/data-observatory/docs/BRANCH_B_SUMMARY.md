@@ -104,11 +104,13 @@ const events = await manager.querySnapshot(snapshot.snapshotId, {
    - Complete OHLCV collection (currently partial)
    - Add trade/metadata/signal collection when storage is available
 
-2. **Complete DuckDB Storage**
-   - Create Python script for snapshot storage
-   - Implement snapshot ref storage
-   - Implement snapshot event storage
-   - Implement querying with filters
+2. **Complete DuckDB Storage** ✅
+   - ✅ Create Python script for snapshot storage (`tools/data-observatory/snapshot_storage.py`)
+   - ✅ Implement snapshot ref storage (`DuckDBSnapshotStorage.storeSnapshotRef`)
+   - ✅ Implement snapshot event storage (`DuckDBSnapshotStorage.storeSnapshotEvents`)
+   - ✅ Implement querying with filters (`DuckDBSnapshotStorage.querySnapshotEvents`)
+   - ✅ Add deterministic data reader API (`DeterministicDataReader`)
+   - ✅ Add connection management utilities to prevent WAL files
 
 3. **Integration Testing**
    - Test with Branch A (simulation engine)
