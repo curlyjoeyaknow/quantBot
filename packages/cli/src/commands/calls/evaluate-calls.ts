@@ -32,14 +32,10 @@ export async function evaluateCallsHandler(args: EvaluateCallsArgs, _ctx: Comman
     if (error instanceof ValidationError) {
       throw error;
     }
-    throw new ConfigurationError(
-      `Failed to load calls from ${args.callsFile}`,
-      'callsFile',
-      {
-        callsFile: args.callsFile,
-        error: error instanceof Error ? error.message : String(error),
-      }
-    );
+    throw new ConfigurationError(`Failed to load calls from ${args.callsFile}`, 'callsFile', {
+      callsFile: args.callsFile,
+      error: error instanceof Error ? error.message : String(error),
+    });
   }
 
   // Build workflow request

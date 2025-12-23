@@ -71,10 +71,7 @@ export class DeterministicDataReader {
     }
 
     // Query events from snapshot
-    const events = await this.storage.querySnapshotEvents(
-      snapshotId,
-      options.queryOptions || {}
-    );
+    const events = await this.storage.querySnapshotEvents(snapshotId, options.queryOptions || {});
 
     return events;
   }
@@ -156,4 +153,3 @@ export function createDeterministicReader(
 ): DeterministicDataReader {
   return new DeterministicDataReader(storage, snapshotId);
 }
-
