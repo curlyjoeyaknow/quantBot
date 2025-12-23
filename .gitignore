@@ -70,6 +70,44 @@ out/
 # TypeScript
 *.tsbuildinfo
 
+# Build artifacts (CRITICAL: never commit these)
+**/*.js.map
+**/*.d.ts.map
+# Stray .d.ts files in src/ (should only be in dist/)
+packages/*/src/**/*.d.ts
+# But allow .d.ts in dist/
+!packages/*/dist/**/*.d.ts
+
+# DuckDB files (WAL, database files)
+**/*.duckdb.wal
+**/*.duckdb-shm
+**/*.duckdb
+# But allow test fixtures if explicitly needed
+!test-data/**/*.duckdb
+
+# Logs directory (runtime state)
+logs/
+*.log.*
+*.log.gz
+
+# Runtime state and artifacts
+.pids/
+artifacts/
+# But allow test artifacts in test directories
+!**/tests/**/artifacts/
+
+# Junk files
+--dbPath
+*--dbPath*
+
+# Test database files at root
+integration_test_*.duckdb
+integration_test_*.duckdb.wal
+*_test_*.duckdb
+*_test_*.duckdb.wal
+chain_detection_test_*.duckdb
+invalid_groups_test_*.duckdb
+
 # Environment
 .env*.local
 
@@ -78,3 +116,7 @@ out/
 venv/
 *.pyc
 __pycache__/
+
+# Research OS artifacts (test outputs)
+artifacts/run_*.json
+packages/workflows/artifacts/run_*.json
