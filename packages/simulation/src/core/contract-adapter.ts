@@ -17,6 +17,7 @@ import type {
   CostConfig,
 } from '../types/index.js';
 import type { ExecutionModel } from '../types/execution-model.js';
+import { seedFromString } from '@quantbot/core';
 import { simulateStrategy } from './simulator.js';
 
 /**
@@ -95,8 +96,8 @@ export async function simulateFromInput(input: SimInput): Promise<SimResult> {
     ? (validatedInput.executionModel as ExecutionModel)
     : undefined;
 
-  // Extract seed from input if provided
-  const seed = validatedInput.seed;
+  // Extract seed from input if provided, otherwise generate from run_id for determinism
+  const seed = validatedInput.seed ?? seedFromString(validatedInput.run_id);
 
   // Run simulation
   const result = await simulateStrategy(
