@@ -4,9 +4,8 @@
   "description": "Mean reversion strategy - buy dips, sell rallies",
   "tags": ["mean-reversion", "dip-buying"],
   "entry": {
-    "type": "trailing_rebound",
+    "type": "price_drop",
     "priceDropPercent": -0.2,
-    "reboundPercent": 0.05,
     "maxWaitMinutes": 120
   },
   "exit": [
