@@ -114,6 +114,49 @@ export const RunManifestSchema = z.object({
   package_name: z.string().optional(),
 
   /**
+   * Git branch name (optional, for development tracking)
+   */
+  git_branch: z.string().optional(),
+
+  /**
+   * Run configuration hash (optional, for run-level config like time resolution)
+   */
+  run_config_hash: z.string().optional(),
+
+  /**
+   * Artifact paths (where artifacts are stored)
+   */
+  artifact_paths: z
+    .object({
+      manifest_json: z.string().optional(),
+      events_ndjson: z.string().optional(),
+      metrics_json: z.string().optional(),
+      positions_ndjson: z.string().optional(),
+      debug_log: z.string().optional(),
+    })
+    .optional(),
+
+  /**
+   * Run status (for tracking run lifecycle)
+   */
+  status: z.enum(['pending', 'running', 'completed', 'failed']).optional(),
+
+  /**
+   * Error message (if status is 'failed')
+   */
+  error_message: z.string().optional(),
+
+  /**
+   * Simulation time in milliseconds (performance tracking)
+   */
+  simulation_time_ms: z.number().nonnegative().optional(),
+
+  /**
+   * Schema version (for evolution and migration)
+   */
+  schema_version: z.string().default('1.0.0'),
+
+  /**
    * Additional metadata (optional)
    */
   metadata: z.record(z.string(), z.unknown()).optional(),
@@ -226,6 +269,18 @@ export function createRunManifest(components: {
   engineVersion?: string;
   command?: string;
   packageName?: string;
+  gitBranch?: string;
+  runConfigHash?: string;
+  artifactPaths?: {
+    manifestJson?: string;
+    eventsNdjson?: string;
+    metricsJson?: string;
+    positionsNdjson?: string;
+    debugLog?: string;
+  };
+  status?: 'pending' | 'running' | 'completed' | 'failed';
+  errorMessage?: string;
+  simulationTimeMs?: number;
   metadata?: Record<string, unknown>;
   /**
    * @deprecated Use snapshotContentHash instead
@@ -247,6 +302,7 @@ export function createRunManifest(components: {
     run_id: components.runId,
     seed: components.seed,
     git_sha: components.gitSha,
+    git_branch: components.gitBranch,
     snapshot_id: components.snapshotId,
     snapshot_content_hash: components.snapshotContentHash,
     data_snapshot_hash: components.dataSnapshotHash, // backward compatibility
@@ -254,11 +310,25 @@ export function createRunManifest(components: {
     execution_model_hash: components.executionModelHash,
     cost_model_hash: components.costModelHash,
     risk_model_hash: components.riskModelHash,
+    run_config_hash: components.runConfigHash,
     engine_version: components.engineVersion ?? '1.0.0',
     fingerprint,
     created_at: new Date().toISOString(),
     command: components.command,
     package_name: components.packageName,
+    artifact_paths: components.artifactPaths
+      ? {
+          manifest_json: components.artifactPaths.manifestJson,
+          events_ndjson: components.artifactPaths.eventsNdjson,
+          metrics_json: components.artifactPaths.metricsJson,
+          positions_ndjson: components.artifactPaths.positionsNdjson,
+          debug_log: components.artifactPaths.debugLog,
+        }
+      : undefined,
+    status: components.status,
+    error_message: components.errorMessage,
+    simulation_time_ms: components.simulationTimeMs,
+    schema_version: '1.0.0',
     metadata: components.metadata,
   };
 
