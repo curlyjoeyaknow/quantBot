@@ -22,26 +22,13 @@ export type OhlcvStatsWorkflowArgs = {
   format?: 'json' | 'table' | 'csv';
 };
 
-interface OhlcvStatsRow {
-  type: 'summary' | 'interval' | 'chain' | 'token';
-  interval?: string;
-  chain?: string;
-  token_address?: string;
-  candleCount?: number;
-  tokenCount?: number;
-  firstSeen?: string;
-  lastSeen?: string;
-  dateEarliest?: string;
-  dateLatest?: string;
-}
-
 /**
  * Handler function: pure use-case orchestration
  */
 export async function ohlcvStatsWorkflowHandler(
   args: OhlcvStatsWorkflowArgs,
   _ctx: CommandContext
-): Promise<GetOhlcvStatsResult | OhlcvStatsRow[] | Array<Record<string, unknown>>> {
+): Promise<GetOhlcvStatsResult | Array<Record<string, unknown>>> {
   // Build workflow spec
   const spec: GetOhlcvStatsSpec = {
     chain: args.chain,

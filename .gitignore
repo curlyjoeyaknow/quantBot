@@ -91,6 +91,7 @@ packages/*/src/**/*.d.ts
 
 # Logs directory (runtime state)
 logs/
+**/logs/
 *.log.*
 *.log.gz
 
