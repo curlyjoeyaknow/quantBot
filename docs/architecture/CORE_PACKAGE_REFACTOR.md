@@ -2,7 +2,8 @@
 
 ## Current State
 
-The `@quantbot/core` package currently exports:
+The `@quantbot/core` package currently exports the following:
+
 - Ports & Adapters interfaces
 - Commands & Handlers types
 - Core domain types (Calls, Tokens, Alerts, Strategies)
@@ -58,7 +59,8 @@ Split `@quantbot/core` into focused packages:
 
 **SEVERITY 2** - Will bite you at scale, but not blocking current work.
 
-The current structure is acceptable for now, but should be refactored when:
+The current structure is acceptable for now, but should be refactored when the following conditions occur:
+
 - Codebase grows beyond current size
 - Circular dependency issues arise
 - Package boundaries become unclear
@@ -66,8 +68,8 @@ The current structure is acceptable for now, but should be refactored when:
 
 ## Enforcement
 
-Until refactored, maintain discipline:
+Until refactored, maintain the following discipline:
+
 - Keep `@quantbot/core` dependency-free (no dependencies on other @quantbot packages)
 - Document what belongs in core vs. what should be extracted
 - Review new exports to core carefully
-

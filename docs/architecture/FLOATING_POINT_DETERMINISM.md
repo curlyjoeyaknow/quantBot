@@ -47,5 +47,4 @@
 
 - Add explicit precision requirements documentation
 - Add cross-platform determinism tests
-- Document all floating-point operations
-
+- Document all floating-point operation

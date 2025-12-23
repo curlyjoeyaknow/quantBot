@@ -67,4 +67,3 @@ Use TypeScript project references to enforce package boundaries (already in plac
 ## Priority
 
 **SEVERITY 3** - Tech debt, not blocking. Can be addressed incrementally.
-
