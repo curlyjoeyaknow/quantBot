@@ -9,6 +9,7 @@
  * Server components should import and call services directly from './services/'
  */
 
+import { ApiError } from '@quantbot/utils';
 import { headers } from 'next/headers';
 
 async function getBaseUrl(): Promise<string> {
@@ -53,7 +54,12 @@ export async function fetchApi<T>(
     const error = await response.json().catch(() => ({
       message: `HTTP error! status: ${response.status}`,
     }));
-    throw new Error(error.message || `HTTP error! status: ${response.status}`);
+    throw new ApiError(
+      error.message || `HTTP error! status: ${response.status}`,
+      url,
+      response.status,
+      error
+    );
   }
 
   return response.json();

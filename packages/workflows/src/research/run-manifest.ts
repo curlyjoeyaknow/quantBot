@@ -13,6 +13,7 @@
  */
 
 import type { RunManifest } from '@quantbot/core';
+import { createRunManifest } from '@quantbot/core';
 import type { RunMetadata, RunArtifact } from './artifacts.js';
 
 /**
@@ -39,7 +40,6 @@ export function fromCLIManifest(cliManifest: RunManifest): CanonicalRunManifest 
  */
 export async function fromRunArtifact(artifact: RunArtifact): Promise<CanonicalRunManifest> {
   const metadata = artifact.metadata;
-  const { createRunManifest } = await import('@quantbot/core');
 
   return createRunManifest({
     runId: metadata.runId,
@@ -95,8 +95,6 @@ export async function createCanonicalManifest(components: {
   simulationTimeMs?: number;
   metadata?: Record<string, unknown>;
 }): Promise<CanonicalRunManifest> {
-  const { createRunManifest } = await import('@quantbot/core');
-  
   return createRunManifest({
     runId: components.runId,
     seed: components.seed,
