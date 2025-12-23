@@ -11,6 +11,7 @@
  * - Run ID generation and artifact management
  */
 
+import { ValidationError, ConfigurationError } from '@quantbot/utils';
 import { validateAndCoerceArgs } from './validation-pipeline.js';
 import { formatOutput } from './output-formatter.js';
 import { handleError } from './error-handler.js';
@@ -18,6 +19,7 @@ import { CommandContext } from './command-context.js';
 import type { CommandDefinition } from '../types/index.js';
 import type { OutputFormat } from '../types/index.js';
 import { generateRunId, shouldGenerateRunId, type RunIdComponents } from './run-id-manager.js';
+import { generateAndValidateRunId } from './run-id-validator.js';
 import {
   createArtifactDirectory,
   writeArtifact,
@@ -154,18 +156,21 @@ function extractRunIdComponents(
 
   // Validate required fields - fail fast if missing (no nondeterministic fallbacks)
   if (!strategyId) {
-    throw new Error(
-      'Run ID generation requires strategyId or strategy. Cannot generate deterministic run ID without it.'
+    throw new ValidationError(
+      'Run ID generation requires strategyId or strategy. Cannot generate deterministic run ID without it.',
+      { args }
     );
   }
   if (!mint) {
-    throw new Error(
-      'Run ID generation requires mint. Cannot generate deterministic run ID without it.'
+    throw new ValidationError(
+      'Run ID generation requires mint. Cannot generate deterministic run ID without it.',
+      { args }
     );
   }
   if (!alertTimestamp) {
-    throw new Error(
-      'Run ID generation requires alertTimestamp or alert_timestamp. Cannot generate deterministic run ID without it.'
+    throw new ValidationError(
+      'Run ID generation requires alertTimestamp or alert_timestamp. Cannot generate deterministic run ID without it.',
+      { args }
     );
   }
 
@@ -382,7 +387,10 @@ export async function execute(
       // Generate and validate run ID (ensures determinism)
       const runIdResult = generateAndValidateRunId(runIdComponents);
       if (!runIdResult.valid) {
-        throw new Error(`Invalid run ID components: ${runIdResult.errors.join(', ')}`);
+        throw new ValidationError(`Invalid run ID components: ${runIdResult.errors.join(', ')}`, {
+          runIdComponents,
+          errors: runIdResult.errors,
+        });
       }
       runId = runIdResult.runId;
       const artifactsDir = process.env.ARTIFACTS_DIR || './artifacts';

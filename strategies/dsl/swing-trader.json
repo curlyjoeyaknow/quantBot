@@ -1,0 +1,44 @@
+{
+  "version": "1.0.0",
+  "name": "Swing_Trader",
+  "description": "Swing trading strategy with multi-day holds",
+  "tags": ["swing", "multi-day"],
+  "entry": {
+    "type": "immediate"
+  },
+  "exit": [
+    {
+      "type": "profit_target",
+      "profitTarget": 3.0,
+      "percentToExit": 0.3
+    },
+    {
+      "type": "profit_target",
+      "profitTarget": 5.0,
+      "percentToExit": 0.4
+    },
+    {
+      "type": "profit_target",
+      "profitTarget": 10.0,
+      "percentToExit": 0.3
+    },
+    {
+      "type": "stop_loss",
+      "stopLossPercent": -0.3,
+      "trailingStopThreshold": 2.0,
+      "trailingStopPercent": 0.25
+    },
+    {
+      "type": "time",
+      "holdHours": 72
+    }
+  ],
+  "reEntry": {
+    "enabled": true,
+    "type": "trailing_retrace",
+    "retracePercent": 0.4,
+    "maxReEntries": 2,
+    "sizePercent": 0.5
+  }
+}
+

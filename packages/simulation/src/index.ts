@@ -241,7 +241,6 @@ export type {
 // Import from @quantbot/workflows/simulation/orchestrator instead.
 
 // Re-export provider types
-// Note: TokenMetadata, CandleFetchRequest, CandleFetchResult moved to @quantbot/ohlcv
 
 // Re-export indicator types
 export type { IchimokuData } from './indicators/ichimoku.js';
@@ -265,7 +264,6 @@ export type { IchimokuSignal } from './ichimoku.js';
 export { evaluateSignalGroup, evaluateLadderLegs } from './signals.js';
 
 // Note: aggregateCandles moved to @quantbot/ohlcv
-
 // Re-export indicator calculation for legacy code
 export {
   calculateIndicators,

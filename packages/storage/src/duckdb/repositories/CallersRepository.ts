@@ -46,11 +46,9 @@ export class CallersRepository {
       // CRITICAL: Always throw - silent failures give false confidence in results
       // If database initialization fails, subsequent operations will also fail.
       // Better to fail fast and surface the error than silently continue with broken state.
-      throw new DatabaseError(
-        'CallersRepository database initialization failed',
-        error as Error,
-        { dbPath: this.client.getDbPath() }
-      );
+      throw new DatabaseError('CallersRepository database initialization failed', error as Error, {
+        dbPath: this.client.getDbPath(),
+      });
     }
   }
 
