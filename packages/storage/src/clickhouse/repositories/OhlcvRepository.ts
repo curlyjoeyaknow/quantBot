@@ -75,7 +75,7 @@ export class OhlcvRepository {
    *
    * @param token Full mint address, case-preserved
    * @param chain Chain identifier
-   * @param interval Candle interval ('1m', '5m', '15m', '1h', '4h', '1d')
+   * @param interval Candle interval ('1s', '15s', '1m', '5m', '15m', '1h', '4h', '1d')
    * @param range Date range for query
    */
   async getCandles(
@@ -100,7 +100,7 @@ export class OhlcvRepository {
     }
 
     // Validate interval to prevent SQL injection (whitelist approach)
-    const validIntervals = ['1m', '5m', '15m', '1h', '4h', '1d'];
+    const validIntervals = ['1s', '15s', '1m', '5m', '15m', '1h', '4h', '1d'];
     if (!validIntervals.includes(interval)) {
       throw new ValidationError(
         `Invalid interval: ${interval}. Must be one of: ${validIntervals.join(', ')}`,

@@ -28,7 +28,7 @@ import { ensureOhlcvCoverageHandler } from '../handlers/ingestion/ensure-ohlcv-c
  */
 export const telegramSchema = z.object({
   file: z.string().min(1),
-  callerName: z.string().min(1),
+  callerName: z.string().optional(), // Optional - caller names are extracted from messages automatically
   chain: z.enum(['solana', 'ethereum', 'bsc', 'base']).default('solana'),
   chatId: z.string().optional(),
   format: z.enum(['json', 'table', 'csv']).default('table'),
@@ -114,9 +114,12 @@ export function registerIngestionCommands(program: Command): void {
   // Telegram ingestion
   const telegramCmd = ingestionCmd
     .command('telegram')
-    .description('Ingest Telegram export file')
+    .description('Ingest Telegram export file (extracts all callers automatically)')
     .requiredOption('--file <path>', 'Path to Telegram HTML export file')
-    .requiredOption('--caller-name <name>', 'Caller name (e.g., Brook, Lsy)')
+    .option(
+      '--caller-name <name>',
+      'Default caller name (optional - caller names are extracted from messages automatically)'
+    )
     .option('--chain <chain>', 'Blockchain', 'solana')
     .option('--chat-id <id>', 'Chat ID (optional)')
     .option('--format <format>', 'Output format', 'table');

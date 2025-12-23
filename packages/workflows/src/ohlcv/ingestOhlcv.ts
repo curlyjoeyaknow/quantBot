@@ -60,7 +60,7 @@ export const IngestOhlcvSpecSchema = z.object({
   to: z.string().optional(), // ISO date string
   side: z.enum(['buy', 'sell']).optional().default('buy'),
   chain: z.enum(['solana', 'ethereum', 'base', 'bsc']).optional().default('solana'),
-  interval: z.enum(['15s', '1m', '5m', '1H']).optional().default('1m'),
+  interval: z.enum(['1s', '15s', '1m', '5m', '1H']).optional().default('1m'),
   preWindowMinutes: z.number().int().min(0).optional().default(260),
   // Default post-window adjusted to ensure 5000 candles for 1m interval
   // Will be automatically adjusted based on interval in work planning
@@ -508,6 +508,7 @@ export async function ingestOhlcv(
     // Store metadata using StatePort (replaces duckdbStorage.updateOhlcvMetadata)
     if (fetchResult.workItem.alertTime) {
       const intervalSeconds = {
+        '1s': 1,
         '15s': 15,
         '1m': 60,
         '5m': 300,

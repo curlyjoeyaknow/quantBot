@@ -39,6 +39,7 @@ export type QueryCallsDuckdbResult = {
   fromISO: string;
   toISO: string;
   callerName?: string;
+  error?: string; // Error message if query failed
 };
 
 /**
@@ -49,10 +50,12 @@ export type QueryCallsDuckdbContext = WorkflowContext & {
     duckdbStorage: {
       queryCalls: (
         path: string,
-        limit: number
+        limit: number,
+        excludeUnrecoverable?: boolean,
+        callerName?: string
       ) => Promise<{
         success: boolean;
-        calls?: Array<{ mint: string; alert_timestamp: string }>;
+        calls?: Array<{ mint: string; alert_timestamp: string; caller_name?: string | null }>;
         error?: string;
       }>;
     };
@@ -81,8 +84,18 @@ export async function createQueryCallsDuckdbContext(
     ...baseContext,
     services: {
       duckdbStorage: {
-        queryCalls: async (path: string, limit: number) => {
-          const result = await duckdbStorage.queryCalls(path, limit);
+        queryCalls: async (
+          path: string,
+          limit: number,
+          excludeUnrecoverable?: boolean,
+          callerName?: string
+        ) => {
+          const result = await duckdbStorage.queryCalls(
+            path,
+            limit,
+            excludeUnrecoverable,
+            callerName
+          );
           // Convert null to undefined for error field to match expected type
           return {
             ...result,
@@ -142,12 +155,18 @@ export async function queryCallsDuckdb(
     limit: validated.limit,
   });
 
-  // Query calls from DuckDB
-  const result = await ctx.services.duckdbStorage.queryCalls(validated.duckdbPath, validated.limit);
+  // Query calls from DuckDB (pass callerName if provided)
+  const result = await ctx.services.duckdbStorage.queryCalls(
+    validated.duckdbPath,
+    validated.limit,
+    true, // excludeUnrecoverable
+    validated.callerName
+  );
 
   if (!result.success || !result.calls) {
+    const errorMsg = result.error || 'Unknown error querying calls';
     ctx.logger.warn('[workflows.queryCallsDuckdb] Failed to query calls', {
-      error: result.error,
+      error: errorMsg,
       duckdbPath: validated.duckdbPath,
     });
     return {
@@ -157,10 +176,11 @@ export async function queryCallsDuckdb(
       fromISO: validated.fromISO,
       toISO: validated.toISO,
       callerName: validated.callerName,
+      error: errorMsg, // Include error in result for better debugging
     };
   }
 
-  // Filter by date range and caller name
+  // Filter by date range (caller name filtering is done in the database query)
   const filtered = result.calls
     .filter((call) => {
       const callDate = DateTime.fromISO(call.alert_timestamp, { zone: 'utc' });
@@ -168,7 +188,7 @@ export async function queryCallsDuckdb(
     })
     .map((call, index) => ({
       id: `call_${call.mint}_${call.alert_timestamp}_${index}`,
-      caller: validated.callerName || 'unknown',
+      caller: call.caller_name || 'unknown', // Use actual caller_name from database
       mint: call.mint,
       createdAt: DateTime.fromISO(call.alert_timestamp, { zone: 'utc' }),
     }));

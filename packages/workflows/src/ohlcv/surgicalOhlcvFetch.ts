@@ -299,7 +299,8 @@ async function executeFetchTask(
 
   // Run OHLCV ingestion for each interval
   for (const interval of intervals) {
-    const intervalMap: Record<string, '15s' | '1m' | '5m' | '1H'> = {
+    const intervalMap: Record<string, '1s' | '15s' | '1m' | '5m' | '1H'> = {
+      '1s': '1s',
       '15s': '15s',
       '1m': '1m',
       '5m': '5m',

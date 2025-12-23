@@ -59,6 +59,14 @@ def extract_mints_and_tickers(text: str) -> Tuple[List[str], List[str]]:
     # Deduplicate while preserving order
     mints = list(dict.fromkeys(mints))
     tickers = find_tickers(text)
+    
+    # Filter out common false positives if there's a mint address in the same message
+    # These will be on a new line, next msg, or with a space from the mint
+    if mints and tickers:
+        # Filter out: "js", "/hm", "/lb", "/last" (case-insensitive)
+        excluded_tickers = {"JS", "HM", "LB", "LAST"}
+        tickers = [t for t in tickers if t.upper() not in excluded_tickers]
+    
     return mints, tickers
 
 

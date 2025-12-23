@@ -10,16 +10,30 @@
  */
 
 // Mock axios and fs before importing the module - this ensures all fs/axios calls are intercepted
-vi.mock('axios');
+// CRITICAL: @quantbot/simulation cannot import network-related modules (axios) directly
+// Mock axios without importing it to respect architectural boundaries
+const mockAxios = {
+  get: vi.fn(),
+  post: vi.fn(),
+  put: vi.fn(),
+  delete: vi.fn(),
+  create: vi.fn(() => mockAxios),
+  defaults: { headers: {} },
+};
+
+vi.mock('axios', () => ({
+  default: mockAxios,
+  __esModule: true,
+}));
+
 vi.mock('fs');
 
 // Import after mocks are set up
 import type { Candle } from '../src/types/candle';
 // fetchHybridCandles has been moved to @quantbot/ohlcv
 import { DateTime } from 'luxon';
-import axios from 'axios';
 import * as fs from 'fs';
-const mockedAxios = axios as jest.Mocked<typeof axios>;
+const mockedAxios = mockAxios as any;
 const mockedFs = fs as jest.Mocked<typeof fs>;
 
 describe('Candle Data Handling', () => {

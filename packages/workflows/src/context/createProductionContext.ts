@@ -153,7 +153,7 @@ export function createProductionContext(config?: ProductionContextConfig): Workf
         }): Promise<CallRecord[]> {
           // Query DuckDB user_calls_d table via DuckDBStorageService
           try {
-            const result = await duckdbStorage.queryCalls(dbPath, 10000); // Large limit for date filtering
+            const result = await duckdbStorage.queryCalls(dbPath, 10000, true); // Large limit for date filtering, exclude unrecoverable
             if (!result.success || !result.calls) {
               logger.warn('[workflows.context] Failed to query calls from DuckDB', {
                 error: result.error,

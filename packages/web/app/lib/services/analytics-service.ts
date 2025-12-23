@@ -10,10 +10,33 @@ import type {
 } from '../types';
 
 export async function getDashboardSummary(): Promise<DashboardSummary> {
-  const engine = getAnalyticsEngine();
-  return await engine.getDashboard({
-    enrichWithAth: false,
-  });
+  try {
+    const engine = getAnalyticsEngine();
+    await engine.initialize();
+    return await engine.getDashboard({
+      enrichWithAth: false,
+    });
+  } catch (error) {
+    console.error('Error in getDashboardSummary:', error);
+    // Return empty dashboard on error
+    return {
+      system: {
+        totalCalls: 0,
+        totalCallers: 0,
+        totalTokens: 0,
+        dataRange: {
+          start: new Date(),
+          end: new Date(),
+        },
+        simulationsTotal: 0,
+        simulationsToday: 0,
+      },
+      topCallers: [],
+      athDistribution: [],
+      recentCalls: [],
+      generatedAt: new Date(),
+    };
+  }
 }
 
 export async function getCallerMetrics(

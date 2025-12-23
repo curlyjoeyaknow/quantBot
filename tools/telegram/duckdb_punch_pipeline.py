@@ -1618,7 +1618,12 @@ def main():
       if bot_text:
         ticker_matches = re.findall(r"\$\$?([A-Za-z0-9_]{2,20})", bot_text)
         if ticker_matches:
-          ticker = ticker_matches[0].upper()
+          candidate_ticker = ticker_matches[0].upper()
+          # Filter out common false positives if there's a mint address in the same text
+          # These will be on a new line, next msg, or with a space from the mint
+          excluded_tickers = {"JS", "HM", "LB", "LAST"}
+          if candidate_ticker not in excluded_tickers or not mint:
+            ticker = candidate_ticker
       
       # Fallback to trigger text if bot text didn't yield results
       if not mint and trig_text:
@@ -1632,7 +1637,12 @@ def main():
       if not ticker and trig_text:
         ticker_matches = re.findall(r"\$\$?([A-Za-z0-9_]{2,20})", trig_text)
         if ticker_matches:
-          ticker = ticker_matches[0].upper()
+          candidate_ticker = ticker_matches[0].upper()
+          # Filter out common false positives if there's a mint address in the same text
+          # These will be on a new line, next msg, or with a space from the mint
+          excluded_tickers = {"JS", "HM", "LB", "LAST"}
+          if candidate_ticker not in excluded_tickers or not mint:
+            ticker = candidate_ticker
       
       # Create minimal card for linking
       # Determine bot_type from bot_from name (more reliable than parsing)
@@ -1925,7 +1935,7 @@ def main():
     # Legacy schema - delete by chat_id only
     con.execute("DELETE FROM user_calls_d WHERE chat_id = ?", [chat_id])
   
-  # First, create temp table with all potential calls
+  # First, create temp table with all potential calls (only from messages with bot replies)
   print("Creating temp_user_calls table...", file=sys.stderr, flush=True)
   con.execute("""
     CREATE TEMP TABLE temp_user_calls AS
@@ -1946,7 +1956,7 @@ def main():
         -- If trigger has $ cashtag, user is calling by ticker - mint must come from bot reply
         CASE 
           -- If trigger has $ cashtag, don't extract from trigger (mint must be in bot reply)
-          WHEN regexp_matches(MAX(l.trigger_text), '\$\$?[A-Za-z0-9_]{2,20}') THEN NULL
+          WHEN regexp_matches(MAX(l.trigger_text), '\\$\\$?[A-Za-z0-9_]{2,20}') THEN NULL
           -- Otherwise, extract from trigger text (Solana Base58 first, then EVM)
           WHEN regexp_matches(MAX(l.trigger_text), '[1-9A-HJ-NP-Za-km-z]{32,44}') THEN
             (regexp_extract(MAX(l.trigger_text), '([1-9A-HJ-NP-Za-km-z]{32,44})', 1))[1]
@@ -1960,8 +1970,8 @@ def main():
         MAX(l.ticker) FILTER (WHERE l.bot_type='phanes'),
         -- Extract from trigger text if bot links don't have ticker
         CASE 
-          WHEN regexp_matches(MAX(l.trigger_text), '\$\$?([A-Za-z0-9_]{2,20})') THEN
-            UPPER((regexp_extract(MAX(l.trigger_text), '\$\$?([A-Za-z0-9_]{2,20})', 1))[1])
+          WHEN regexp_matches(MAX(l.trigger_text), '\\$\\$?([A-Za-z0-9_]{2,20})') THEN
+            UPPER((regexp_extract(MAX(l.trigger_text), '\\$\\$?([A-Za-z0-9_]{2,20})', 1))[1])
           ELSE NULL
         END
       ) AS ticker,
@@ -1979,7 +1989,7 @@ def main():
         WHEN MAX(l.mint) FILTER (WHERE l.bot_type='rick') IS NOT NULL 
           OR MAX(l.mint) FILTER (WHERE l.bot_type='phanes') IS NOT NULL THEN
           CASE
-            WHEN MAX(l.trigger_text) ~ '\$\$?[A-Za-z0-9_]{2,20}' THEN 'resolved_from_bot_reply'
+            WHEN MAX(l.trigger_text) ~ '\\$\\$?[A-Za-z0-9_]{2,20}' THEN 'resolved_from_bot_reply'
             ELSE 'direct_mint_in_user_message'
           END
         -- EVM address in user message
@@ -1999,11 +2009,14 @@ def main():
       l.trigger_chat_id, l.trigger_message_id, l.trigger_ts_ms,
       l.trigger_from_name, l.trigger_from_id, l.trigger_text
     HAVING 
+      -- Only include triggers with at least one bot reply (bot_reply_id_1 or bot_reply_id_2 must be non-NULL)
+      (MIN(l.bot_message_id) FILTER (WHERE l.bot_type = 'rick') IS NOT NULL
+       OR MIN(l.bot_message_id) FILTER (WHERE l.bot_type = 'phanes') IS NOT NULL)
       -- Only include triggers with at least one bot link that has mint or ticker
       -- OR trigger text contains mint/ticker (extracted above)
-      -- AND filter out TON, SUI, PLASMA at the trigger level (exclude if ANY link has these chains)
-      (MAX(CASE WHEN l.mint IS NOT NULL OR l.ticker IS NOT NULL THEN 1 ELSE 0 END) = 1
-       OR MAX(l.trigger_text) IS NOT NULL)
+      AND (MAX(CASE WHEN l.mint IS NOT NULL OR l.ticker IS NOT NULL THEN 1 ELSE 0 END) = 1
+           OR MAX(l.trigger_text) IS NOT NULL)
+      -- Filter out TON, SUI, PLASMA at the trigger level (exclude if ANY link has these chains)
       AND COUNT(CASE WHEN UPPER(COALESCE(l.chain, '')) IN ('TON', 'SUI', 'PLASMA') THEN 1 END) = 0
   """, [chat_id])
   
@@ -2043,6 +2056,8 @@ def main():
             t.call_ts_ms ASC
         ) AS rn
       FROM temp_user_calls t
+      -- Filter out calls without bot replies
+      WHERE t.bot_reply_id_1 IS NOT NULL OR t.bot_reply_id_2 IS NOT NULL
     ) ranked
     WHERE rn = 1
   """, [run_id])
@@ -2079,6 +2094,8 @@ def main():
               t.call_ts_ms ASC
           ) AS rn
         FROM temp_user_calls t
+        -- Filter out calls without bot replies
+        WHERE t.bot_reply_id_1 IS NOT NULL OR t.bot_reply_id_2 IS NOT NULL
       ) ranked
       WHERE rn = 1
     """)
