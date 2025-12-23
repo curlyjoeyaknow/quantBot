@@ -83,10 +83,10 @@ describe('defineCommand argsToOpts', () => {
     }
 
     // Verify argsToOpts was called and merged correctly
-    // The execute mock should have been called with merged options
-    const { execute } = await import('../../../src/core/execute.js');
-    expect(execute).toHaveBeenCalled();
-    const callArgs = (execute as ReturnType<typeof vi.fn>).mock.calls[0];
+    // The executeValidated mock should have been called with merged options
+    const { executeValidated } = await import('../../../src/core/execute.js');
+    expect(executeValidated).toHaveBeenCalled();
+    const callArgs = (executeValidated as ReturnType<typeof vi.fn>).mock.calls[0];
     expect(callArgs).toBeDefined();
     const opts = callArgs[1] as Record<string, unknown>;
     expect(opts.addresses).toEqual(['addr1', 'addr2']);
