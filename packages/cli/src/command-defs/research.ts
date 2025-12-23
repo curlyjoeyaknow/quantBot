@@ -50,7 +50,7 @@ export type ResearchReplayArgs = z.infer<typeof researchReplaySchema>;
  * Replay from manifest command schema - replays a simulation from a manifest file
  */
 export const researchReplayManifestSchema = z.object({
-  manifestPath: z.string().min(1, 'Manifest file path is required'),
+  manifestFile: z.string().min(1, 'Manifest file path is required'),
   format: z.enum(['json', 'table']).default('table'),
 });
 
@@ -147,3 +147,21 @@ export const createRiskModelSchema = z.object({
 });
 
 export type CreateRiskModelArgs = z.infer<typeof createRiskModelSchema>;
+
+/**
+ * Leaderboard command schema
+ */
+export const researchLeaderboardSchema = z.object({
+  criteria: z
+    .enum(['return', 'winRate', 'profitFactor', 'sharpeRatio', 'maxDrawdown', 'totalTrades', 'avgReturnPerTrade'])
+    .default('return'),
+  order: z.enum(['asc', 'desc']).default('desc'),
+  limit: z.number().int().positive().optional(),
+  strategyName: z.string().optional(),
+  snapshotId: z.string().optional(),
+  minReturn: z.number().optional(),
+  minWinRate: z.number().min(0).max(1).optional(),
+  format: z.enum(['json', 'table']).default('table'),
+});
+
+export type ResearchLeaderboardArgs = z.infer<typeof researchLeaderboardSchema>;

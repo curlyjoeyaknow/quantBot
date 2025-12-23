@@ -30,16 +30,16 @@ export type ReplayManifestArgs = z.infer<typeof researchReplayManifestSchema>;
 export async function replayManifestHandler(args: ReplayManifestArgs, ctx: CommandContext) {
   await ctx.ensureInitialized();
 
-  logger.info(`[research.replay-manifest] Loading manifest from ${args.manifestPath}`);
+  logger.info(`[research.replay-manifest] Loading manifest from ${args.manifestFile}`);
 
   // Read and parse manifest
-  const manifestContent = await readFile(args.manifestPath, 'utf-8');
+  const manifestContent = await readFile(args.manifestFile, 'utf-8');
   let manifest;
   try {
     manifest = JSON.parse(manifestContent);
   } catch (error) {
     throw new ValidationError('Invalid manifest file: not valid JSON', {
-      path: args.manifestPath,
+      path: args.manifestFile,
       error: error instanceof Error ? error.message : String(error),
     });
   }
@@ -48,7 +48,7 @@ export async function replayManifestHandler(args: ReplayManifestArgs, ctx: Comma
   const validatedManifest = CanonicalRunManifestSchema.safeParse(manifest);
   if (!validatedManifest.success) {
     throw new ValidationError('Invalid manifest structure', {
-      path: args.manifestPath,
+      path: args.manifestFile,
       issues: validatedManifest.error.issues,
     });
   }
