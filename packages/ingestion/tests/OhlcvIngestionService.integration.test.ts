@@ -466,5 +466,5 @@ describe('OhlcvIngestionService (integration)', () => {
       // The key test is that the real DuckDB query executed without errors
       expect(worklist.calls.length).toBe(0);
     }
-  });
+  }, 30000); // 30 second timeout for real DuckDB and API calls
 });

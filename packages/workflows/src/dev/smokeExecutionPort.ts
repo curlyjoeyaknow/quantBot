@@ -7,6 +7,7 @@
  * **SAFETY**: This test uses dry-run mode by default (no real trades executed).
  */
 
+import { AppError } from '@quantbot/utils';
 import { createProductionPorts } from '../context/createProductionPorts.js';
 import { createTokenAddress } from '@quantbot/core';
 
@@ -18,7 +19,7 @@ export async function smokeExecutionPort(): Promise<void> {
     const available = await ports.execution.isAvailable();
     console.log('✅ ExecutionPort isAvailable works:', { available });
     if (!available) {
-      throw new Error('ExecutionPort is not available');
+      throw new AppError('ExecutionPort is not available', 'EXECUTION_PORT_UNAVAILABLE', 503);
     }
 
     // Test execute with dry-run mode (safety-first)
@@ -44,7 +45,9 @@ export async function smokeExecutionPort(): Promise<void> {
     });
 
     if (!executeResult.success) {
-      throw new Error(`Execution failed: ${executeResult.error}`);
+      throw new AppError(`Execution failed: ${executeResult.error}`, 'EXECUTION_FAILED', 500, {
+        executeResult,
+      });
     }
 
     // Verify dry-run mode (should have simulated txSignature)

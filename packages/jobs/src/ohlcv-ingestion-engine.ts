@@ -435,9 +435,14 @@ export class OhlcvIngestionEngine {
                 symbol: chainResult.primaryMetadata.symbol,
                 error: errorMessage,
               });
-              throw new Error(
-                `OHLCV fetch failed: Token ${mint.substring(0, 20)}... is on ${chainResult.primaryMetadata.chain}, not ${chain}. ` +
-                  `Please retry with the correct chain.`
+              throw new ValidationError(
+                `OHLCV fetch failed: Token ${mint.substring(0, 20)}... is on ${chainResult.primaryMetadata.chain}, not ${chain}. Please retry with the correct chain.`,
+                {
+                  mint: mint.substring(0, 20),
+                  attemptedChain: chain,
+                  correctChain: chainResult.primaryMetadata.chain,
+                  symbol: chainResult.primaryMetadata.symbol,
+                }
               );
             }
           } catch (chainError) {
@@ -1316,9 +1321,14 @@ export class OhlcvIngestionEngine {
                 interval,
                 error: errorMessage,
               });
-              throw new Error(
-                `OHLCV fetch failed: Token ${mint.substring(0, 20)}... is on ${chainResult.primaryMetadata.chain}, not ${chain}. ` +
-                  `Please retry with the correct chain.`
+              throw new ValidationError(
+                `OHLCV fetch failed: Token ${mint.substring(0, 20)}... is on ${chainResult.primaryMetadata.chain}, not ${chain}. Please retry with the correct chain.`,
+                {
+                  mint: mint.substring(0, 20),
+                  attemptedChain: chain,
+                  correctChain: chainResult.primaryMetadata.chain,
+                  symbol: chainResult.primaryMetadata.symbol,
+                }
               );
             }
           } catch (chainError) {

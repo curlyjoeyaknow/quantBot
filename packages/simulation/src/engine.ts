@@ -203,12 +203,14 @@ export class SimulationEngine {
       const batchPromises = batch.map(async (target) => {
         try {
           // Get candles from the provided map
+          // CRITICAL: Never use JSON.stringify for lookup keys - it's nondeterministic
+          // Object property order affects JSON.stringify output, breaking reproducibility
           let candles: Candle[] | undefined;
           if (request.candlesMap instanceof Map) {
             candles = request.candlesMap.get(target);
           } else {
-            // Try mint address first, then fallback to target object key
-            candles = request.candlesMap[target.mint] ?? request.candlesMap[JSON.stringify(target)];
+            // Only use mint address as key - no fallback to JSON.stringify
+            candles = request.candlesMap[target.mint];
           }
 
           if (!candles || !candles.length) {

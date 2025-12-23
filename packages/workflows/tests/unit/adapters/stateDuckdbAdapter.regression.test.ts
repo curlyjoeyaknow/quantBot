@@ -73,9 +73,7 @@ describe('StatePort DuckDB Adapter - Regression Tests', () => {
 
     expect(getResult.found).toBe(true);
     expect(getResult.value).toEqual(metadata);
-    },
-    30000 // 30 second timeout for DuckDB operations
-  );
+  }, 30000); // 30 second timeout for DuckDB operations
 
   it('CRITICAL: should handle string values correctly (no double-serialization)', async () => {
     /**

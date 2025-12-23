@@ -658,10 +658,15 @@ export async function surgicalOhlcvFetch(
 
         // If failFast mode, throw on first failure
         if (validated.errorMode === 'failFast') {
-          throw new AppError(`Task failed for ${task.caller} - ${task.month}: ${result.error}`, 'TASK_FAILED', 500, {
-            task,
-            error: result.error,
-          });
+          throw new AppError(
+            `Task failed for ${task.caller} - ${task.month}: ${result.error}`,
+            'TASK_FAILED',
+            500,
+            {
+              task,
+              error: result.error,
+            }
+          );
         }
       }
     } catch (error) {
