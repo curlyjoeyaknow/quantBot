@@ -202,10 +202,7 @@ describe('ResearchSimulationAdapter - Real Implementation Verification', () => {
     const { fileURLToPath } = await import('url');
     const __filename = fileURLToPath(import.meta.url);
     const __dirname = dirname(__filename);
-    const adapterPath = join(
-      __dirname,
-      '../../../src/research/simulation-adapter.ts'
-    );
+    const adapterPath = join(__dirname, '../../../src/research/simulation-adapter.ts');
     const adapterCode = readFileSync(adapterPath, 'utf-8');
 
     // Check for stub indicators (case-insensitive)
@@ -228,9 +225,8 @@ describe('ResearchSimulationAdapter - Real Implementation Verification', () => {
 
         // Only fail if TODO is about stub/implementation
         if (todoLines.length > 0) {
-          const problematicTodos = todoLines.filter(
-            ({ line }) =>
-              /stub|not implemented|placeholder|implement.*simulation/i.test(line)
+          const problematicTodos = todoLines.filter(({ line }) =>
+            /stub|not implemented|placeholder|implement.*simulation/i.test(line)
           );
           if (problematicTodos.length > 0) {
             throw new Error(
@@ -312,4 +308,3 @@ describe('ResearchSimulationAdapter - Real Implementation Verification', () => {
     expect(result.metadata.simulationTimeMs).toBeGreaterThanOrEqual(0);
   });
 });
-

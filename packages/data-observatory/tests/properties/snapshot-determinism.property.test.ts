@@ -155,13 +155,11 @@ describe('Snapshot Determinism - Property Tests', () => {
         { timestamp: 1000, open: 1.0, high: 1.1, low: 0.9, close: 1.05, volume: 1000, mint: 'A' },
         { timestamp: 2000, open: 1.05, high: 1.2, low: 1.0, close: 1.15, volume: 1200, mint: 'A' },
       ],
-      calls: [
-        { id: 'call1', caller: 'test', mint: 'A', createdAt: '2024-01-01T00:00:00.000Z' },
-      ],
+      calls: [{ id: 'call1', caller: 'test', mint: 'A', createdAt: '2024-01-01T00:00:00.000Z' }],
     };
 
     const hash1 = computeContentHash(testData);
-    
+
     // Same data should produce same hash
     const hash2 = computeContentHash(testData);
     expect(hash1).toBe(hash2);
@@ -178,4 +176,3 @@ describe('Snapshot Determinism - Property Tests', () => {
     expect(hash3).not.toBe(hash1);
   });
 });
-

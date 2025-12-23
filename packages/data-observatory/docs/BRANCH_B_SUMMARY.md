@@ -99,9 +99,9 @@ const events = await manager.querySnapshot(snapshot.snapshotId, {
 
 ### High Priority
 
-1. **Complete Event Collection**
-   - Implement call collection from DuckDB `user_calls_d` table
-   - Complete OHLCV collection (currently partial)
+1. **Complete Event Collection** ✅
+   - ✅ Implement call collection from DuckDB `user_calls_d` table
+   - ✅ Complete OHLCV collection (queries all tokens when no filter specified)
    - Add trade/metadata/signal collection when storage is available
 
 2. **Complete DuckDB Storage** ✅

@@ -415,4 +415,3 @@ describe('StorageEventCollector Unit Tests', () => {
     });
   });
 });
-

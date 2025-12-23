@@ -213,9 +213,29 @@ export async function executeValidated(
     const args = validatedArgs;
 
     // Generate run ID and create artifact directory (if applicable)
-    const runIdComponents = extractRunIdComponents(commandDef.name, packageName, args);
-    if (runIdComponents) {
-      runId = generateRunId(runIdComponents);
+    // CRITICAL: If a command requires run ID generation, it MUST fail if components are missing
+    if (shouldGenerateRunId(fullCommandName)) {
+      const runIdComponents = extractRunIdComponents(commandDef.name, packageName, args);
+      if (!runIdComponents) {
+        throw new ValidationError(
+          `Command ${fullCommandName} requires a run ID but run ID components are missing. ` +
+            `Required: strategyId, mint, alertTimestamp. Cannot proceed without deterministic run ID.`,
+          {
+            command: fullCommandName,
+            args: Object.keys(args),
+          }
+        );
+      }
+
+      // Generate and validate run ID (ensures determinism)
+      const runIdResult = generateAndValidateRunId(runIdComponents);
+      if (!runIdResult.valid) {
+        throw new ValidationError(`Invalid run ID components: ${runIdResult.errors.join(', ')}`, {
+          runIdComponents,
+          errors: runIdResult.errors,
+        });
+      }
+      runId = runIdResult.runId;
       const artifactsDir = process.env.ARTIFACTS_DIR || './artifacts';
       if (!isVerboseMode) {
         progress.updateMessage('Creating artifact directory...');
@@ -382,8 +402,23 @@ export async function execute(
     }
 
     // 3. Generate run ID and create artifact directory (if applicable)
-    const runIdComponents = extractRunIdComponents(commandDef.name, packageName, args);
-    if (runIdComponents) {
+    // CRITICAL: If a command requires run ID generation, it MUST fail if components are missing
+    // This ensures determinism - no runs proceed without proper run IDs
+    if (shouldGenerateRunId(fullCommandName)) {
+      const runIdComponents = extractRunIdComponents(commandDef.name, packageName, args);
+      if (!runIdComponents) {
+        // This should not happen if extractRunIdComponents properly throws on missing fields
+        // But we add this as a safety check
+        throw new ValidationError(
+          `Command ${fullCommandName} requires a run ID but run ID components are missing. ` +
+            `Required: strategyId, mint, alertTimestamp. Cannot proceed without deterministic run ID.`,
+          {
+            command: fullCommandName,
+            args: Object.keys(args),
+          }
+        );
+      }
+
       // Generate and validate run ID (ensures determinism)
       const runIdResult = generateAndValidateRunId(runIdComponents);
       if (!runIdResult.valid) {
@@ -398,12 +433,6 @@ export async function execute(
         progress.updateMessage('Creating artifact directory...');
       }
       artifactPaths = await createArtifactDirectory(runIdComponents, artifactsDir);
-    } else if (shouldGenerateRunId(fullCommandName)) {
-      // Command should generate run ID but components are missing (likely missing alertTimestamp)
-      logger.warn(
-        `Run ID generation skipped for ${fullCommandName}: missing required components (alertTimestamp required for deterministic run IDs)`,
-        { args: Object.keys(args) }
-      );
     }
 
     // 4. Create context and ensure initialization

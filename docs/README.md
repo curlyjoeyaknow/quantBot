@@ -31,11 +31,23 @@ Practical examples, code samples, and workflow demonstrations.
 ## Quick Links
 
 - [Architecture Overview](./architecture/ARCHITECTURE.md)
+- [Boundaries & Policy](./BOUNDARIES.md) - **Simulation lab only - no live trading**
 - [API Reference](./api/API.md)
 - [CLI Setup Guide](./guides/cli-setup.md)
 - [Research Services Usage](./guides/research-services-usage.md)
 - [Research Workflow Examples](./examples/research-workflow-examples.md)
 - [Migration Guides](./migration/)
+
+## Important: Simulation Lab Only
+
+**QuantBot is a simulation lab only. It does not execute live trades.**
+
+- ✅ **Allowed**: Data ingestion, simulations, sweeps, artifact generation
+- ❌ **Forbidden**: Transaction signing, submission, private keys, live execution
+
+The `ExecutionPort` interface in this repository is **simulation-only**. It models execution behavior; it does not execute real trades.
+
+See [BOUNDARIES.md](./BOUNDARIES.md) for the complete policy and enforcement mechanisms.
 
 ## Contributing
 

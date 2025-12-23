@@ -47,6 +47,9 @@ jobs:
       - name: Build packages (ordered)
         run: pnpm build:ordered
 
+      - name: Check for live trading code (simulation lab only)
+        run: pnpm check:no-live-trading
+
       - name: Verify architecture boundaries (AST)
         run: pnpm verify:boundaries-ast
 

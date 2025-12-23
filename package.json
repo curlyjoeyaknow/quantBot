@@ -48,6 +48,8 @@
     "verify:boundaries-ast": "tsx scripts/verify-boundaries-ast.ts",
     "check:no-build-artifacts": "tsx scripts/ci/check-no-build-artifacts.ts",
     "check:hygiene": "tsx scripts/ci/hygiene-checks.ts",
+    "check:no-live-trading": "tsx scripts/ci/check-no-live-trading.ts",
+    "verify:python-engine": "tsx scripts/ci/verify-python-engine-usage.ts",
     "smoke:ports": "tsx packages/workflows/src/dev/smokePorts.ts",
     "audit": "npm audit --audit-level=moderate",
     "audit:fix": "npm audit fix",

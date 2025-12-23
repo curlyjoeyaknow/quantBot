@@ -14,6 +14,9 @@
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { generateRunId } from '../../packages/cli/src/core/run-id-manager.js';
+import { verifyRunIdDeterminism } from '../../packages/cli/src/core/run-id-validator.js';
+import type { RunIdComponents } from '../../packages/cli/src/core/run-id-manager.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = join(__filename, '..', '..');
@@ -212,6 +215,98 @@ function checkPackageJson(): void {
 }
 
 /**
+ * Check 5: Run ID determinism
+ *
+ * Verifies that run ID generation is deterministic by:
+ * 1. Generating the same run ID twice with identical inputs
+ * 2. Ensuring the results match
+ */
+function checkRunIdDeterminism(): void {
+  console.log('🔍 Checking run ID determinism...');
+
+  // Test case 1: Standard simulation run
+  const testComponents1: RunIdComponents = {
+    command: 'simulation.run',
+    strategyId: 'test-strategy-1',
+    mint: 'So11111111111111111111111111111111111111112',
+    alertTimestamp: '2024-01-15T10:30:00.000Z',
+    callerName: 'TestCaller',
+  };
+
+  try {
+    const isDeterministic = verifyRunIdDeterminism(testComponents1);
+    if (!isDeterministic) {
+      violations.push({
+        file: 'packages/cli/src/core/run-id-manager.ts',
+        reason: 'Run ID generation is not deterministic (same inputs produce different IDs)',
+        severity: 'error',
+      });
+    }
+  } catch (error) {
+    violations.push({
+      file: 'packages/cli/src/core/run-id-manager.ts',
+      reason: `Run ID determinism check failed: ${error instanceof Error ? error.message : String(error)}`,
+      severity: 'error',
+    });
+  }
+
+  // Test case 2: Without caller name
+  const testComponents2: RunIdComponents = {
+    command: 'simulation.run',
+    strategyId: 'test-strategy-2',
+    mint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+    alertTimestamp: '2024-02-20T15:45:00.000Z',
+  };
+
+  try {
+    const isDeterministic = verifyRunIdDeterminism(testComponents2);
+    if (!isDeterministic) {
+      violations.push({
+        file: 'packages/cli/src/core/run-id-manager.ts',
+        reason: 'Run ID generation is not deterministic for runs without caller name',
+        severity: 'error',
+      });
+    }
+  } catch (error) {
+    violations.push({
+      file: 'packages/cli/src/core/run-id-manager.ts',
+      reason: `Run ID determinism check failed (no caller): ${error instanceof Error ? error.message : String(error)}`,
+      severity: 'error',
+    });
+  }
+
+  // Test case 3: Verify no timestamp fallback (should fail if alertTimestamp is missing)
+  // Note: generateRunId doesn't validate - it will generate an ID even with missing fields
+  // The validation happens in execute.ts, so we just verify that the function doesn't
+  // use Date.now() or similar non-deterministic sources
+  const testComponents3: RunIdComponents = {
+    command: 'simulation.run',
+    strategyId: 'test-strategy-3',
+    mint: 'So11111111111111111111111111111111111111112',
+    alertTimestamp: '2024-03-10T20:00:00.000Z',
+  };
+
+  try {
+    // Generate twice to ensure determinism even with edge cases
+    const runId1 = generateRunId(testComponents3);
+    const runId2 = generateRunId(testComponents3);
+    if (runId1 !== runId2) {
+      violations.push({
+        file: 'packages/cli/src/core/run-id-manager.ts',
+        reason: 'Run ID generation is not deterministic for edge case inputs',
+        severity: 'error',
+      });
+    }
+  } catch (error) {
+    violations.push({
+      file: 'packages/cli/src/core/run-id-manager.ts',
+      reason: `Run ID generation failed unexpectedly: ${error instanceof Error ? error.message : String(error)}`,
+      severity: 'error',
+    });
+  }
+}
+
+/**
  * Find files matching patterns recursively
  */
 function findFiles(
@@ -250,6 +345,7 @@ function main(): void {
   checkRuntimeState();
   checkRootFiles();
   checkPackageJson();
+  checkRunIdDeterminism();
 
   // Separate errors and warnings
   const errors = violations.filter((v) => v.severity === 'error');

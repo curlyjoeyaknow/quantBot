@@ -79,9 +79,7 @@ const NETWORK_IMPORTS = ['axios', 'node-fetch', 'got', 'http', 'https', 'node:ht
  * Forbidden storage implementation imports (for workflows)
  * Workflows must use WorkflowContext repos, not direct storage implementations
  */
-const FORBIDDEN_STORAGE_IMPORTS = [
-  /@quantbot\/storage\/src\/(postgres|clickhouse|duckdb)/,
-];
+const FORBIDDEN_STORAGE_IMPORTS = [/@quantbot\/storage\/src\/(postgres|clickhouse|duckdb)/];
 
 /**
  * Find all TypeScript files in a directory

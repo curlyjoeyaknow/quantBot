@@ -100,6 +100,72 @@ export function deduplicateCandles(candles: readonly Candle[]): Candle[] {
 }
 
 /**
+ * Aggregate candles to a higher timeframe
+ * @param candles - Array of candles to aggregate (should be sorted by timestamp)
+ * @param interval - Target interval ('1H', '4H', '1D', etc.)
+ * @returns Array of aggregated candles
+ */
+export function aggregateCandles(candles: Candle[], interval: string): Candle[] {
+  if (candles.length === 0) {
+    return [];
+  }
+
+  // Sort candles by timestamp
+  const sorted = sortCandles(candles);
+
+  // Get interval in seconds
+  const intervalSeconds = getIntervalSeconds(interval as CandleInterval);
+  if (intervalSeconds === undefined || intervalSeconds === 0) {
+    throw new Error(`Unsupported interval: ${interval}`);
+  }
+
+  const aggregated: Candle[] = [];
+  let currentBucket: Candle[] = [];
+  let bucketStart = Math.floor(sorted[0].timestamp / intervalSeconds) * intervalSeconds;
+
+  for (const candle of sorted) {
+    const candleBucketStart = Math.floor(candle.timestamp / intervalSeconds) * intervalSeconds;
+
+    if (candleBucketStart >= bucketStart + intervalSeconds) {
+      // Process current bucket
+      if (currentBucket.length > 0) {
+        aggregated.push(createAggregatedCandle(currentBucket));
+      }
+
+      // Start new bucket
+      currentBucket = [candle];
+      bucketStart = candleBucketStart;
+    } else {
+      currentBucket.push(candle);
+    }
+  }
+
+  // Process last bucket
+  if (currentBucket.length > 0) {
+    aggregated.push(createAggregatedCandle(currentBucket));
+  }
+
+  return aggregated;
+}
+
+/**
+ * Create aggregated candle from multiple candles
+ */
+function createAggregatedCandle(candles: Candle[]): Candle {
+  const firstCandle = candles[0];
+  const lastCandle = candles[candles.length - 1];
+
+  return {
+    timestamp: firstCandle.timestamp,
+    open: firstCandle.open,
+    close: lastCandle.close,
+    high: Math.max(...candles.map((c) => c.high)),
+    low: Math.min(...candles.map((c) => c.low)),
+    volume: candles.reduce((sum, c) => sum + c.volume, 0),
+  };
+}
+
+/**
  * Candle provider interface for fetching high-resolution candles
  * Used for sub-candle conflict resolution
  * Note: This is different from the CandleProvider in './data/provider'
