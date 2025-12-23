@@ -189,9 +189,6 @@ export async function runBatchSimulation(
     const batchSlice = batch.variations.slice(i, i + maxConcurrency);
 
     const promises = batchSlice.map(async (variation) => {
-      const runId = ctx.ids.newRunId();
-      runIds.push(runId);
-
       try {
         // Merge base request with overrides
         const request: SimulationRequest = {
@@ -218,13 +215,20 @@ export async function runBatchSimulation(
           runConfig: {
             ...batch.baseRequest.runConfig,
             ...variation.overrides.runConfig,
+            // Make seed deterministic from variation ID
+            seed:
+              variation.overrides.runConfig?.seed ??
+              seedFromVariationId(variation.variationId, batch.baseRequest.runConfig.seed),
           },
         };
 
         const artifact = await ctx.simulation.run(request);
         await ctx.artifacts.save(artifact);
 
+        const runId = artifact.metadata.runId;
+        runIds.push(runId);
         successful.push(runId);
+
         if (ctx.logger.debug) {
           ctx.logger.debug('[experiment.runBatch] variation completed', {
             variationId: variation.variationId,
@@ -233,6 +237,8 @@ export async function runBatchSimulation(
         }
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
+        const runId = ctx.ids.newRunId(); // Generate run ID even for failures
+        runIds.push(runId);
         failed.push({
           variationId: variation.variationId,
           runId,
@@ -362,7 +368,7 @@ export async function runParameterSweep(
   sweep: ParameterSweepRequest,
   ctx: ExperimentContext = createExperimentContext()
 ): Promise<BatchSimulationResult> {
-  // Generate all parameter combinations
+  // Generate all parameter combinations (deterministic order)
   const combinations = generateParameterCombinations(sweep.parameters);
 
   ctx.logger.info('[experiment.runSweep] generated combinations', {
@@ -370,7 +376,7 @@ export async function runParameterSweep(
     parameters: sweep.parameters.length,
   });
 
-  // Convert to batch format
+  // Convert to batch format with deterministic variation IDs
   const variations = combinations.map((combo, index) => {
     const overrides: Partial<SimulationRequest> = {};
 
@@ -379,8 +385,12 @@ export async function runParameterSweep(
       setNestedProperty(overrides, path, value);
     }
 
+    // Create deterministic variation ID from parameter combination
+    const comboHash = hashValue(combo);
+    const variationId = `sweep-${comboHash.substring(0, 8)}-${index}`;
+
     return {
-      variationId: `sweep-${index}`,
+      variationId,
       overrides,
     };
   });

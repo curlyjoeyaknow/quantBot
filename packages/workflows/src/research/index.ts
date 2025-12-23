@@ -67,6 +67,11 @@ export { FileArtifactStorage } from './artifact-storage.js';
 export * from './simulation-adapter.js';
 export { ResearchSimulationAdapter, createSimulationAdapter } from './simulation-adapter.js';
 
+// Canonical RunManifest
+export * from './run-manifest.js';
+export type { CanonicalRunManifest } from './run-manifest.js';
+export { fromCLIManifest, fromRunArtifact, createCanonicalManifest } from './run-manifest.js';
+
 // Research Services (Branch B & C)
 export * from './services/index.js';
 export { DataSnapshotService } from './services/DataSnapshotService.js';
