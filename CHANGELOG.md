@@ -9,6 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Storage Foundations - Snapshot System Implementation** - Complete snapshot and deterministic read system
+  - DuckDB snapshot storage backend (`tools/data-observatory/snapshot_storage.py`)
+  - Complete `DuckDBSnapshotStorage` implementation with full CRUD operations
+  - `DeterministicDataReader` API for snapshot-based reads with filtering support
+  - Connection management utilities to prevent WAL files
+  - Comprehensive unit tests (15 tests) for deterministic reader
+  - Documentation: `SNAPSHOT_USAGE.md`, `STORAGE_FOUNDATIONS.md`
+  - Location: `packages/data-observatory/src/snapshots/`, `packages/storage/src/duckdb/connection-utils.ts`
+
 - **Phase 3: Research OS End-to-End Implementation** - Wired ResearchSimulationAdapter to actually run simulations
   - Loads data snapshots using DataSnapshotService
   - Converts StrategyRef, ExecutionModel, CostModel to simulation engine formats
@@ -31,6 +40,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Location: `packages/storage/tests/stress/storage-discipline/duckdb-extreme.stress.test.ts`
 
 ### Fixed
+
+- **Repo Hygiene - Cleanup of Test Artifacts and Temp Files** - Removed temporary test files and updated .gitignore
+  - Removed root-level test artifacts: `run-ohlcv-*.mjs`, `run-ohlcv-*.sh`, `calls-test*.json`, `test.json`
+  - Removed WAL files from filesystem: `data/test_state_*.duckdb.wal`, `golden_path_test_*.duckdb`
+  - Updated `.gitignore` to prevent future commits of test database files and temp scripts
+  - Updated documentation to reflect completed DuckDB storage implementation
+  - Updated integration tests to reflect storage completion (removed placeholder comments)
+  - Location: Root directory, `.gitignore`, `packages/data-observatory/docs/`
 
 - **CRITICAL: Repo Hygiene - Build Artifacts in Source** - Removed all build artifacts from src/ directories
   - Removed all `.js.map` and `.d.ts.map` files from `packages/*/src/`

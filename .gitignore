@@ -58,6 +58,10 @@ tmp/
 temp/
 *.tmp
 
+# Temporary test scripts (root level)
+run-ohlcv*.mjs
+run-ohlcv*.sh
+
 # OS files
 Thumbs.db
 .Spotlight-V100
@@ -107,6 +111,9 @@ integration_test_*.duckdb.wal
 *_test_*.duckdb.wal
 chain_detection_test_*.duckdb
 invalid_groups_test_*.duckdb
+golden_path_test_*.duckdb
+test_state_*.duckdb
+test_state_*.duckdb.wal
 
 # Environment
 .env*.local
