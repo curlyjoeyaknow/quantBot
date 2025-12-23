@@ -21,6 +21,7 @@ import { createSnapshotHandler } from '../handlers/research/create-snapshot.js';
 import { createExecutionModelHandler } from '../handlers/research/create-execution-model.js';
 import { createCostModelHandler } from '../handlers/research/create-cost-model.js';
 import { createRiskModelHandler } from '../handlers/research/create-risk-model.js';
+import { leaderboardHandler } from '../handlers/research/leaderboard.js';
 import {
   researchListSchema,
   researchShowSchema,
@@ -33,6 +34,7 @@ import {
   createExecutionModelSchema,
   createCostModelSchema,
   createRiskModelSchema,
+  researchLeaderboardSchema,
 } from '../command-defs/research.js';
 
 /**
@@ -72,6 +74,32 @@ export function registerResearchCommands(program: Command): void {
     name: 'show',
     packageName: 'research',
     validate: (opts) => researchShowSchema.parse(opts),
+    onError: die,
+  });
+
+  // Leaderboard command
+  const leaderboardCmd = researchCmd
+    .command('leaderboard')
+    .description('Show leaderboard of simulation runs ranked by metrics')
+    .option('--criteria <criteria>', 'Ranking criteria', 'return')
+    .option('--order <order>', 'Sort order (asc/desc)', 'desc')
+    .option('--limit <n>', 'Maximum number of results')
+    .option('--strategy-name <name>', 'Filter by strategy name')
+    .option('--snapshot-id <id>', 'Filter by snapshot ID')
+    .option('--min-return <n>', 'Minimum return threshold')
+    .option('--min-win-rate <n>', 'Minimum win rate threshold (0-1)')
+    .option('--format <format>', 'Output format', 'table');
+
+  defineCommand(leaderboardCmd, {
+    name: 'leaderboard',
+    packageName: 'research',
+    coerce: (raw) => ({
+      ...raw,
+      limit: raw.limit ? coerceNumber(raw.limit, 'limit') : undefined,
+      minReturn: raw.minReturn ? coerceNumber(raw.minReturn, 'minReturn') : undefined,
+      minWinRate: raw.minWinRate ? coerceNumber(raw.minWinRate, 'minWinRate') : undefined,
+    }),
+    validate: (opts) => researchLeaderboardSchema.parse(opts),
     onError: die,
   });
 
@@ -293,6 +321,21 @@ const researchModule: PackageCommandModule = {
         return await showRunHandler(typedArgs, typedCtx);
       },
       examples: ['quantbot research show --run-id run_abc123'],
+    },
+    {
+      name: 'leaderboard',
+      description: 'Show leaderboard of simulation runs ranked by metrics',
+      schema: researchLeaderboardSchema,
+      handler: async (args: unknown, ctx: unknown): Promise<unknown> => {
+        const typedCtx = ctx as CommandContext;
+        const typedArgs = args as z.infer<typeof researchLeaderboardSchema>;
+        return await leaderboardHandler(typedArgs, typedCtx);
+      },
+      examples: [
+        'quantbot research leaderboard',
+        'quantbot research leaderboard --criteria return --limit 10',
+        'quantbot research leaderboard --criteria winRate --strategy-name MyStrategy',
+      ],
     },
     {
       name: 'run',

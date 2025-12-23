@@ -76,3 +76,8 @@ export { fromCLIManifest, fromRunArtifact, createCanonicalManifest } from './run
 export * from './services/index.js';
 export { DataSnapshotService } from './services/DataSnapshotService.js';
 export { ExecutionRealityService } from './services/ExecutionRealityService.js';
+
+// Leaderboard
+export * from './leaderboard.js';
+export { getLeaderboard, getTopRuns, compareRuns } from './leaderboard.js';
+export type { RankingCriteria, LeaderboardEntry, LeaderboardOptions } from './leaderboard.js';
