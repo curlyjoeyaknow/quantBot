@@ -47,8 +47,8 @@ jobs:
       - name: Build packages (ordered)
         run: pnpm build:ordered
 
-      - name: Verify architecture boundaries
-        run: pnpm verify:architecture-boundaries
+      - name: Verify architecture boundaries (AST)
+        run: pnpm verify:boundaries-ast
 
       - name: Run unit tests
         run: pnpm test:unit

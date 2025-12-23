@@ -114,6 +114,7 @@ QuantBot's core capabilities:
   ```
 
 - **Risk Models** - Risk constraints and circuit breakers for safe trading
+
   ```bash
   quantbot research create-risk-model --max-drawdown-percent 20 --max-loss-per-day 1000
   ```

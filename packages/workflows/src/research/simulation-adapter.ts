@@ -9,29 +9,26 @@
  */
 
 import type { SimulationRequest } from './contract.js';
-import type { RunArtifact, RunMetadata, TradeEvent, PnLSeries } from './artifacts.js';
+import type { RunArtifact, RunMetadata, TradeEvent } from './artifacts.js';
 import { calculateMetrics, calculatePnLSeries } from './metrics.js';
 import { getGitSha, getGitBranch, hashValue } from './experiment-runner.js';
 import type { WorkflowContext } from '../types.js';
 import { DataSnapshotService } from './services/DataSnapshotService.js';
-import { simulateStrategy } from '@quantbot/simulation/core/simulator.js';
-import type { StrategyConfig, StrategyLeg } from '@quantbot/simulation/strategies/types.js';
-import { buildStrategy, buildStopLossConfig } from '@quantbot/simulation/strategies/builder.js';
-import type { Candle as SimCandle } from '@quantbot/simulation/types/candle.js';
+import {
+  simulateStrategy,
+  type StrategyConfig,
+  type Candle as SimCandle,
+  type LegacySimulationEvent,
+  type EntryConfig,
+  type ReEntryConfig,
+  type CostConfig,
+  type ExecutionModel as SimExecutionModel,
+  calculateTradeFee,
+  buildStrategy,
+  buildStopLossConfig,
+} from '@quantbot/simulation';
 import { DateTime } from 'luxon';
 import { logger, ValidationError } from '@quantbot/utils';
-import type { LegacySimulationEvent } from '@quantbot/simulation/types/events.js';
-import type {
-  EntryConfig,
-  ReEntryConfig,
-  CostConfig,
-} from '@quantbot/simulation/strategies/types.js';
-import type { ExecutionModel as SimExecutionModel } from '@quantbot/simulation/types/execution-model.js';
-import {
-  createExecutionModel,
-  createDefaultExecutionModel,
-} from '@quantbot/simulation/execution/index.js';
-import { calculateTradeFee } from '@quantbot/simulation/execution/fees.js';
 
 /**
  * Adapter that converts Research OS contract to existing workflow system
@@ -74,7 +71,7 @@ export class ResearchSimulationAdapter {
       const strategyConfig = this.convertStrategyRefToConfig(request.strategy);
 
       // 3. Convert ExecutionModel, CostModel, RiskModel to simulation engine formats
-      const executionModelInterface = this.convertExecutionModel(request.executionModel);
+      const executionModelConfig = this.convertExecutionModel(request.executionModel);
       const costConfig = this.convertCostModel(request.costModel);
       const entryConfig = this.extractEntryConfig(strategyConfig);
       const reEntryConfig = this.extractReEntryConfig(strategyConfig);
@@ -83,9 +80,6 @@ export class ResearchSimulationAdapter {
       // 4. Run simulation for each call in the snapshot
       const allTradeEvents: TradeEvent[] = [];
       const strategy = buildStrategy(strategyConfig);
-      
-      // Store costConfig for fee calculation in event conversion
-      this.currentCostConfig = costConfig;
 
       for (const call of snapshotData.calls) {
         // Get candles for this mint
@@ -120,7 +114,7 @@ export class ResearchSimulationAdapter {
           reEntryConfig,
           costConfig,
           {
-            executionModel: executionModelInterface,
+            executionModel: executionModelConfig,
             seed: request.runConfig.seed,
             clockResolution: 'm', // Default to minutes
           }
@@ -199,11 +193,11 @@ export class ResearchSimulationAdapter {
   }
 
   /**
-   * Convert Research OS ExecutionModel to simulation engine ExecutionModel
+   * Convert Research OS ExecutionModel to simulation engine ExecutionModel config
    */
   private convertExecutionModel(
     contractModel: SimulationRequest['executionModel']
-  ): ReturnType<typeof createExecutionModel> {
+  ): SimExecutionModel {
     // Convert contract ExecutionModel to simulation engine ExecutionModel format
     // Contract model has: latency {p50, p90, p99, jitter}, slippage {base, volumeImpact, max}, failures, partialFills
     // Simulation engine model has: latency {type, params}, slippage {type, params}, partialFills {type, params}, failures {failureProbability, retry}, fees
@@ -243,7 +237,7 @@ export class ResearchSimulationAdapter {
         : undefined,
     };
 
-    return createExecutionModel(simModel);
+    return simModel;
   }
 
   /**
@@ -251,19 +245,15 @@ export class ResearchSimulationAdapter {
    */
   private convertCostModel(contractModel: SimulationRequest['costModel']): CostConfig {
     // Convert contract CostModel to simulation engine CostConfig
-    return {
-      entrySlippageBps: contractModel.tradingFee
-        ? Math.round(contractModel.tradingFee * 10000)
-        : undefined,
-      exitSlippageBps: contractModel.tradingFee
-        ? Math.round(contractModel.tradingFee * 10000)
-        : undefined,
-      takerFeeBps: contractModel.tradingFee
-        ? Math.round(contractModel.tradingFee * 10000)
-        : undefined,
-      makerFeeBps: contractModel.tradingFee
-        ? Math.round(contractModel.tradingFee * 10000)
-        : undefined,
+    const tradingFeeBps = contractModel.tradingFee
+      ? Math.round(contractModel.tradingFee * 10000)
+      : 0;
+    
+    return {    
+      entrySlippageBps: tradingFeeBps,
+      exitSlippageBps: tradingFeeBps,
+      takerFeeBps: tradingFeeBps,
+      borrowAprBps: 0,
     };
   }
 
@@ -322,9 +312,10 @@ export class ResearchSimulationAdapter {
         // Calculate quantity from remainingPosition (simplified)
         const quantity = event.remainingPosition || 1.0;
         const value = event.price * quantity;
-        
+
         // Calculate fees from cost model
-        const isEntry = event.type === 'entry' || event.type === 'ladder_entry' || event.type === 're_entry';
+        const isEntry =
+          event.type === 'entry' || event.type === 'ladder_entry' || event.type === 're_entry';
         const fees = costConfig ? calculateTradeFee(value, isEntry, costConfig) : 0;
 
         tradeEvents.push({

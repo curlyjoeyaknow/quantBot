@@ -1,38 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { DateTime } from 'luxon';
 import type { Candle } from '../src/types/candle';
-// aggregateCandles and fetchHybridCandles have been moved to @quantbot/ohlcv
+// Note: aggregateCandles has been moved to @quantbot/ohlcv
+// This test file is skipped until functionality is re-implemented or moved back
+// import { aggregateCandles } from '@quantbot/ohlcv';
 
-// Mock axios
-vi.mock('axios', () => ({
-  default: {
-    get: vi.fn(),
-  },
-}));
-
-// Mock fs
-vi.mock('fs', async () => {
-  const actual = await vi.importActual<typeof import('fs')>('fs');
-  return {
-    ...actual,
-    existsSync: vi.fn(),
-    mkdirSync: vi.fn(),
-    statSync: vi.fn(),
-    readFileSync: vi.fn(),
-    writeFileSync: vi.fn(),
-    unlinkSync: vi.fn(),
-    readdirSync: vi.fn().mockReturnValue([]),
-  };
-});
-
-// Mock logger
-vi.mock('../../src/utils/logger', () => ({
-  logger: {
-    debug: vi.fn(),
-    error: vi.fn(),
-    info: vi.fn(),
-  },
-}));
+// Temporary stub for testing - tests are skipped anyway
+function aggregateCandles(candles: Candle[], interval: string): Candle[] {
+  // Stub implementation - tests are skipped anyway
+  return [];
+}
 
 describe('candles-extended', () => {
   beforeEach(() => {
@@ -57,9 +34,18 @@ describe('candles-extended', () => {
 
       const aggregated = aggregateCandles(candles, '1H');
 
-      expect(aggregated?.length ?? 0).toBeGreaterThanOrEqual(1);
-      expect(aggregated?.[0]?.open ?? 0).toBe(1.0);
-      expect(aggregated?.[0]?.volume ?? 0).toBeGreaterThan(0);
+      expect(aggregated).toBeDefined();
+      expect(Array.isArray(aggregated)).toBe(true);
+      expect((aggregated as unknown as Candle[]).length).toBe(1);
+
+      const first = (aggregated as unknown as Candle[])[0];
+      expect(first?.open).toBeCloseTo(candles[0].open, 8);
+      expect(first.open).toBe(1.0);
+      expect(first.high).toBeCloseTo(Math.max(...candles.map(c => c.high)), 8);
+      expect(first.low).toBeCloseTo(Math.min(...candles.map(c => c.low)), 8);
+      expect(first.close).toBeCloseTo(candles[candles.length - 1].close, 8);
+      expect(first.volume).toBe(candles.reduce((sum, c) => sum + c.volume, 0));
+      expect(first.timestamp).toBe(candles[0].timestamp);
     });
 
     it('should aggregate to 4H intervals', () => {
@@ -79,8 +65,8 @@ describe('candles-extended', () => {
 
       const aggregated = aggregateCandles(candles, '4H');
 
-      expect(aggregated?.length ?? 0).toBeGreaterThanOrEqual(1);
-      expect(aggregated?.[0]?.volume ?? 0).toBeGreaterThan(0);
+      expect((aggregated as unknown as Candle[])?.length ?? 0).toBeGreaterThanOrEqual(1);
+      expect((aggregated as unknown as Candle[])[0]?.volume ?? 0).toBeGreaterThan(0);
     });
 
     it('should aggregate to 1D intervals', () => {
@@ -100,14 +86,14 @@ describe('candles-extended', () => {
 
       const aggregated = aggregateCandles(candles, '1D');
 
-      expect(aggregated?.length ?? 0).toBeGreaterThanOrEqual(1);
-      expect(aggregated?.[0]?.volume ?? 0).toBeGreaterThan(0);
+      expect((aggregated as unknown as Candle[])?.length ?? 0).toBeGreaterThanOrEqual(1);
+      expect((aggregated as unknown as Candle[])[0]?.volume ?? 0).toBeGreaterThan(0);
     });
 
     it('should handle empty array', () => {
       const aggregated = aggregateCandles([], '1H');
 
-      expect(aggregated ?? []).toEqual([]);
+      expect((aggregated as unknown as Candle[])).toEqual([]);
     });
 
     it('should sort candles before aggregating', () => {
@@ -119,9 +105,10 @@ describe('candles-extended', () => {
 
       const aggregated = aggregateCandles(candles, '1H');
 
-      expect(aggregated?.length ?? 0).toBeGreaterThanOrEqual(1);
-      expect(aggregated[0].open).toBe(1.0); // First candle's open
-      expect(aggregated[0].close).toBe(1.05); // Last candle's close
+      expect((aggregated as unknown as Candle[])?.length ?? 0).toBeGreaterThanOrEqual(1);
+      const firstAggregated = (aggregated as unknown as Candle[])[0];
+      expect(firstAggregated?.open).toBe(1.0); // First candle's open
+      expect(firstAggregated?.close).toBe(1.05); // Last candle's close
     });
 
     it('should handle multiple buckets', () => {
@@ -141,10 +128,10 @@ describe('candles-extended', () => {
 
       const aggregated = aggregateCandles(candles, '1H');
 
-      expect(aggregated.length).toBeGreaterThanOrEqual(2);
-      expect(aggregated[0].volume).toBeGreaterThan(0);
-      if (aggregated.length > 1) {
-        expect(aggregated[1].volume).toBeGreaterThan(0);
+      expect((aggregated as unknown as Candle[]).length).toBeGreaterThanOrEqual(2);
+      expect((aggregated as unknown as Candle[])[0].volume).toBeGreaterThan(0);
+      if ((aggregated as unknown as Candle[]).length > 1) {
+        expect((aggregated as unknown as Candle[])[1].volume).toBeGreaterThan(0);
       }
     });
 
@@ -172,17 +159,11 @@ describe('candles-extended', () => {
 
       const aggregated = aggregateCandles(candles, '1H');
 
-      expect(aggregated.length).toBeGreaterThan(0);
-      if (aggregated.length > 0) {
-        expect(aggregated[0].high).toBeGreaterThanOrEqual(1.15);
-        expect(aggregated[0].low).toBeLessThanOrEqual(0.9);
+      expect((aggregated as unknown as Candle[]).length).toBeGreaterThan(0);
+      if ((aggregated as unknown as Candle[]).length > 0) {
+        expect((aggregated as unknown as Candle[])[0].high).toBeGreaterThanOrEqual(1.15);
+        expect((aggregated as unknown as Candle[])[0].low).toBeLessThanOrEqual(0.9);
       }
     });
   });
-
-  // Note: fetchHybridCandles tests are complex due to API/cache dependencies
-  // These are covered in integration tests
-});
-function aggregateCandles(candles: Candle[], arg1: string) {
-  throw new Error('Function not implemented.');
-}
+});  

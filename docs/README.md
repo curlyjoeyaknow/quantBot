@@ -25,12 +25,16 @@ Project roadmap, future plans, and strategic direction.
 ### 📁 [testing/](./testing/)
 Testing documentation, coverage reports, and test strategy.
 
+### 📁 [examples/](./examples/)
+Practical examples, code samples, and workflow demonstrations.
+
 ## Quick Links
 
 - [Architecture Overview](./architecture/ARCHITECTURE.md)
 - [API Reference](./api/API.md)
 - [CLI Setup Guide](./guides/cli-setup.md)
 - [Research Services Usage](./guides/research-services-usage.md)
+- [Research Workflow Examples](./examples/research-workflow-examples.md)
 - [Migration Guides](./migration/)
 
 ## Contributing

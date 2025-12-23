@@ -237,6 +237,12 @@ export type {
   LadderLeg,
 } from './types/index.js';
 
+// Re-export strategy builders (needed by workflows)
+export { buildStrategy, buildStopLossConfig } from './strategies/builder.js';
+
+// Re-export execution model factory (needed by workflows)
+export { createExecutionModel, createDefaultExecutionModel } from './execution/execution-model-factory.js';
+
 // Orchestrator types have been moved to @quantbot/workflows.
 // Import from @quantbot/workflows/simulation/orchestrator instead.
 

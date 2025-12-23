@@ -19,6 +19,8 @@ describe('Event Collection Integration Tests', () => {
     storage = getStorageEngine({
       enableCache: false,
     });
+    // Create event collector without DuckDB path for call collection
+    // (will only test OHLCV collection in integration tests)
     eventCollector = new StorageEventCollector(storage);
   });
 

@@ -3,6 +3,13 @@
 /**
  * Architecture Boundary Enforcement Tests
  *
+ * @deprecated This script uses regex-based checks which are brittle.
+ * Use `scripts/verify-boundaries-ast.ts` instead, which uses TypeScript compiler API
+ * for accurate, reliable boundary enforcement.
+ *
+ * This script is kept for backward compatibility but will be removed in a future version.
+ * All CI/CD should use `pnpm verify:boundaries-ast` instead.
+ *
  * These are structural tests that catch architectural drift early.
  * They verify:
  * 1. Forbidden imports test - handlers don't import from outside @quantbot/core

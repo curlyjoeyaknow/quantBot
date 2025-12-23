@@ -422,3 +422,59 @@ Split to separate codebase if you hit:
 
 **Documentation Statement**:
 > "This repo contains research/backtesting/ingestion + shared core. Live execution is implemented in executor app boundary (not enabled by default). Execution adapters exist only as stubs/dry-run unless explicitly enabled."
+
+## Python as Database Driver (DuckDB)
+
+### Architectural Decision
+
+**Python is intentionally used as the database driver for DuckDB operations.**
+
+This is an architectural decision, not a temporary workaround. The rationale:
+
+1. **Better DuckDB Bindings**: Python's `duckdb` package provides mature, well-maintained bindings with full feature support
+2. **Heavy Computation**: Python ecosystem (numpy, scipy, pandas, sklearn) is used for data plane operations
+3. **Performance**: Python's DuckDB bindings are optimized for analytical workloads
+4. **Ecosystem**: Leverages existing Python data science tooling for feature engineering and ML
+
+### Implementation Pattern
+
+**DuckDBClient** (`packages/storage/src/duckdb/duckdb-client.ts`):
+- Wraps `PythonEngine` calls to Python scripts
+- Provides TypeScript interface for DuckDB operations
+- Maintains separation of concerns (TypeScript orchestration, Python data operations)
+
+**Python Scripts** (`tools/storage/duckdb_*.py`):
+- Pure DuckDB operations (no side effects outside DB)
+- Accept JSON input, return JSON output
+- Bridge pattern: Easy integration with TypeScript
+
+### When to Use Python vs Node.js
+
+**Use Python for:**
+- ✅ DuckDB operations (schema, queries, data transformations)
+- ✅ Heavy computation (numpy, scipy, sklearn)
+- ✅ Data plane operations (feature engineering, ML)
+- ✅ Offline batch jobs
+
+**Use Node.js for:**
+- ✅ Hot paths (latency-sensitive operations)
+- ✅ Real-time trading execution
+- ✅ API clients and network operations
+- ✅ Orchestration and workflow management
+
+### Isolation Strategy
+
+**Python is isolated to offline jobs only:**
+- DuckDB operations are async and non-blocking (via PythonEngine)
+- Python scripts are pure functions (no side effects)
+- TypeScript maintains control flow and error handling
+- Hot paths (trading execution) use Node.js only
+
+### Future Considerations
+
+If performance becomes an issue:
+1. **Option 1**: Keep Python for batch/offline, use Node.js DuckDB bindings for hot paths
+2. **Option 2**: Optimize Python script execution (connection pooling, query batching)
+3. **Option 3**: Move critical hot paths to Node.js DuckDB bindings while keeping Python for heavy computation
+
+**Current Status**: Python as DB driver is intentional and documented. No immediate refactoring needed.

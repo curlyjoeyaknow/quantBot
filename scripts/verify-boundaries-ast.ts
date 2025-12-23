@@ -35,6 +35,12 @@ const violations: Violation[] = [];
 
 /**
  * Package boundary rules
+ *
+ * Enforces layer boundaries:
+ * - Simulation (Strategy Logic) cannot import from ingestion/api-clients/ohlcv/storage
+ * - Analytics (Feature Engineering) cannot import from api-clients/ingestion
+ * - OHLCV (Feature Engineering) cannot import from api-clients/ingestion/simulation
+ * - Workflows cannot import from CLI/TUI
  */
 const PACKAGE_BOUNDARIES: Record<string, { forbidden: string[]; allowed?: string[] }> = {
   '@quantbot/simulation': {
@@ -49,6 +55,9 @@ const PACKAGE_BOUNDARIES: Record<string, { forbidden: string[]; allowed?: string
     forbidden: ['@quantbot/cli', '@quantbot/tui'],
   },
   '@quantbot/ohlcv': {
+    forbidden: ['@quantbot/api-clients', '@quantbot/ingestion', '@quantbot/simulation'],
+  },
+  '@quantbot/analytics': {
     forbidden: ['@quantbot/api-clients', '@quantbot/ingestion'],
   },
 };
@@ -65,6 +74,14 @@ const FORBIDDEN_DEEP_IMPORTS = [
  * Network-related imports (forbidden in simulation)
  */
 const NETWORK_IMPORTS = ['axios', 'node-fetch', 'got', 'http', 'https', 'node:http', 'node:https'];
+
+/**
+ * Forbidden storage implementation imports (for workflows)
+ * Workflows must use WorkflowContext repos, not direct storage implementations
+ */
+const FORBIDDEN_STORAGE_IMPORTS = [
+  /@quantbot\/storage\/src\/(postgres|clickhouse|duckdb)/,
+];
 
 /**
  * Find all TypeScript files in a directory
@@ -273,6 +290,97 @@ function checkDeepImports(
 }
 
 /**
+ * Check path alias violations
+ *
+ * Path aliases in tsconfig.json point to src/ directories for development,
+ * but imports from OTHER packages should use package public APIs (package index) at runtime.
+ * This check ensures cross-package imports don't bypass package boundaries via path aliases.
+ *
+ * Note: Same-package deep imports are allowed (internal to the package).
+ */
+function checkPathAliasViolations(
+  filePath: string,
+  imports: Array<{ moduleSpecifier: string; line: number; column: number }>
+): void {
+  const currentPackage = getPackageName(filePath);
+  if (!currentPackage) {
+    return; // Can't determine package, skip check
+  }
+
+  for (const imp of imports) {
+    const moduleSpecifier = imp.moduleSpecifier;
+
+    // Check for path alias imports that bypass package index
+    // Pattern: @quantbot/package-name/... (with subpath)
+    // Allowed: @quantbot/package-name (package index)
+    // Allowed: Same-package deep imports (internal)
+    // Forbidden: Cross-package deep imports (bypasses package exports)
+    const pathAliasMatch = moduleSpecifier.match(/^@quantbot\/(\w+)(\/(.+))?$/);
+    if (pathAliasMatch) {
+      const importedPackage = `@quantbot/${pathAliasMatch[1]}`;
+      const subpath = pathAliasMatch[3]; // Everything after package name
+
+      // Skip if importing from same package (internal imports are allowed)
+      if (importedPackage === currentPackage) {
+        continue;
+      }
+
+      // If there's a subpath and it's a different package, it's a cross-package deep import
+      if (subpath && subpath !== 'index' && !subpath.endsWith('/index')) {
+        // Check if it's importing from a known internal path
+        const internalPaths = ['src/', 'dist/', 'core/', 'types/', 'strategies/', 'execution/'];
+        const isInternalPath = internalPaths.some((path) => subpath.startsWith(path));
+
+        if (isInternalPath) {
+          violations.push({
+            file: filePath,
+            line: imp.line,
+            column: imp.column,
+            violation: `Path alias bypasses package exports: ${moduleSpecifier}. Use ${importedPackage} (package index) instead, or export the needed function from ${importedPackage}/index.ts.`,
+            severity: 'error',
+            importPath: moduleSpecifier,
+          });
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Check for storage implementation imports in workflows
+ *
+ * Workflows must use WorkflowContext repos, not direct storage implementations.
+ * This prevents workflows from depending on storage implementation details.
+ */
+function checkStorageImplementationImports(
+  filePath: string,
+  imports: Array<{ moduleSpecifier: string; line: number; column: number }>
+): void {
+  const currentPackage = getPackageName(filePath);
+  if (currentPackage !== '@quantbot/workflows') {
+    return; // Only check workflows package
+  }
+
+  for (const imp of imports) {
+    const moduleSpecifier = imp.moduleSpecifier;
+
+    // Check for storage implementation imports
+    for (const pattern of FORBIDDEN_STORAGE_IMPORTS) {
+      if (pattern.test(moduleSpecifier)) {
+        violations.push({
+          file: filePath,
+          line: imp.line,
+          column: imp.column,
+          violation: `Workflows cannot import storage implementations: ${moduleSpecifier}. Use WorkflowContext repos instead.`,
+          severity: 'error',
+          importPath: moduleSpecifier,
+        });
+      }
+    }
+  }
+}
+
+/**
  * Main verification function
  */
 function verifyBoundaries(): void {
@@ -308,6 +416,8 @@ function verifyBoundaries(): void {
       // Check boundaries
       checkPackageBoundaries(fullPath, imports);
       checkDeepImports(fullPath, imports);
+      checkPathAliasViolations(fullPath, imports);
+      checkStorageImplementationImports(fullPath, imports);
     }
   }
 
