@@ -26,7 +26,7 @@ import {
   type ArtifactPaths,
 } from './artifact-manager.js';
 import { createAndWriteRunManifest, type RunManifestComponents } from './run-manifest-service.js';
-import { seedFromString, hashObject } from '@quantbot/core';
+import { seedFromString } from '@quantbot/core';
 import { errorToContract } from './error-contracts.js';
 
 /**
