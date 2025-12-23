@@ -12,6 +12,7 @@ import random
 from pathlib import Path
 
 # Weekly targets: (week_start_date, num_trades, weekly_pnl_percent, cumulative_pnl_percent)
+# Total should be 1465 trades
 WEEKLY_TARGETS = [
     ("2025-08-25", 130, 18.40, 18.40),
     ("2025-09-01", 135, 17.11, 35.51),
@@ -29,11 +30,23 @@ WEEKLY_TARGETS = [
     ("2025-11-24", 81, 4.83, 96.01),
     ("2025-12-01", 115, 9.34, 105.35),
     ("2025-12-08", 123, 15.49, 120.84),
-    ("2025-12-15", 151, 12.20, 133.04),
+    ("2025-12-15", 69, 12.20, 133.04),  # Adjusted to get exactly 1465 total (1396 + 69 = 1465)
 ]
 
-def query_calls_from_db(duckdb_path: str, limit: int = 2000) -> List[Dict[str, Any]]:
-    """Query calls from tele.duckdb database."""
+def is_solana_mint(mint: str) -> bool:
+    """Check if mint is a Solana mint (base58, no 0x prefix)."""
+    mint_str = str(mint).strip()
+    # Solana mints: base58 encoded, typically 32-44 chars, no 0x prefix
+    # EVM mints: hex with 0x prefix, exactly 42 chars
+    return not mint_str.startswith('0x') and len(mint_str) >= 32
+
+
+def query_calls_from_db(duckdb_path: str, limit: int = 5000) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+    """Query calls from tele.duckdb database, separated by Solana and EVM mints.
+    
+    Returns:
+        Tuple of (solana_calls, evm_calls)
+    """
     con = duckdb.connect(duckdb_path, read_only=True)
     
     try:
@@ -42,7 +55,7 @@ def query_calls_from_db(duckdb_path: str, limit: int = 2000) -> List[Dict[str, A
         
         if 'user_calls_d' not in table_names:
             print(f"Warning: user_calls_d not found. Available tables: {', '.join(table_names)}")
-            return []
+            return [], []
         
         query = """
             SELECT DISTINCT
@@ -59,7 +72,9 @@ def query_calls_from_db(duckdb_path: str, limit: int = 2000) -> List[Dict[str, A
         
         result = con.execute(query, [limit]).fetchall()
         
-        calls = []
+        solana_calls = []
+        evm_calls = []
+        
         for row in result:
             mint = str(row[0])
             call_datetime = row[1]
@@ -72,13 +87,18 @@ def query_calls_from_db(duckdb_path: str, limit: int = 2000) -> List[Dict[str, A
             else:
                 continue
             
-            calls.append({
+            call_data = {
                 'mint': mint,
                 'alert_timestamp': alert_timestamp,
                 'caller_name': caller_name
-            })
+            }
+            
+            if is_solana_mint(mint):
+                solana_calls.append(call_data)
+            else:
+                evm_calls.append(call_data)
         
-        return calls
+        return solana_calls, evm_calls
     finally:
         con.close()
 
@@ -91,7 +111,8 @@ def get_week_start(date: datetime) -> datetime:
 
 
 def generate_trades_for_week(week_start: str, num_trades: int, target_pnl_percent: float,
-                            calls: List[Dict[str, Any]], 
+                            solana_calls: List[Dict[str, Any]], 
+                            evm_calls: List[Dict[str, Any]],
                             start_trade_num: int) -> Tuple[List[Dict[str, Any]], float]:
     """Generate trades for a specific week to meet the target PnL."""
     
@@ -101,24 +122,97 @@ def generate_trades_for_week(week_start: str, num_trades: int, target_pnl_percen
     if needed_trades <= 0:
         return [], 0.0
     
-    avg_pnl_per_trade = needed_pnl_percent / needed_trades if needed_trades > 0 else 0
+    # Calculate target average PnL per trade
+    # Account for win rate: if 60% win, 40% loss, we need to scale up wins
+    win_rate = 0.6
+    loss_rate = 0.4
+    avg_loss = -10.0  # Average loss of -10%
+    
+    # Calculate required average win to hit target
+    # total_pnl = (wins * avg_win) + (losses * avg_loss)
+    # needed_pnl = (num_trades * win_rate * avg_win) + (num_trades * loss_rate * avg_loss)
+    # avg_win = (needed_pnl - num_trades * loss_rate * avg_loss) / (num_trades * win_rate)
+    num_wins = int(needed_trades * win_rate)
+    num_losses = needed_trades - num_wins
+    
+    if num_wins > 0:
+        required_total_win_pnl = needed_pnl_percent - (num_losses * avg_loss)
+        required_avg_win = required_total_win_pnl / num_wins
+    else:
+        required_avg_win = 0
     
     new_trades = []
     week_start_date = datetime.fromisoformat(week_start)
+    running_pnl = 0.0
+    
+    # Determine mint type based on month
+    # November: EXCLUSIVELY Solana only
+    # December: Both Solana and EVM (prefer Solana)
+    # Other months: Prefer Solana but allow EVM
+    month = week_start_date.month
+    if month == 11:  # November - Solana only
+        available_calls = solana_calls
+        if len(available_calls) == 0:
+            raise ValueError(f"No Solana mints available for November week {week_start}")
+    elif month == 12:  # December - Both, prefer Solana (70% Solana, 30% EVM)
+        if len(solana_calls) > 0 and len(evm_calls) > 0:
+            # Mix: prefer Solana
+            available_calls = solana_calls * 7 + evm_calls * 3  # 70% Solana, 30% EVM
+            random.shuffle(available_calls)
+        elif len(solana_calls) > 0:
+            available_calls = solana_calls
+        elif len(evm_calls) > 0:
+            available_calls = evm_calls
+        else:
+            raise ValueError(f"No mints available for December week {week_start}")
+    else:  # Other months - Prefer Solana (80% Solana, 20% EVM)
+        if len(solana_calls) > 0 and len(evm_calls) > 0:
+            available_calls = solana_calls * 8 + evm_calls * 2  # 80% Solana, 20% EVM
+            random.shuffle(available_calls)
+        elif len(solana_calls) > 0:
+            available_calls = solana_calls
+        elif len(evm_calls) > 0:
+            available_calls = evm_calls
+        else:
+            raise ValueError(f"No mints available for week {week_start}")
+    
+    # Pre-allocate wins and losses
+    trade_types = ['win'] * num_wins + ['loss'] * num_losses
+    random.shuffle(trade_types)
     
     for i in range(needed_trades):
         day_offset = (i * 7) // needed_trades
         trade_date = week_start_date + timedelta(days=day_offset, hours=random.randint(0, 23))
         
-        call = calls[i % len(calls)]
+        call = available_calls[i % len(available_calls)]
         
-        if random.random() < 0.6:  # Win
-            base_pnl = 1.0 + (avg_pnl_per_trade / 100.0) * 1.5
-            pnl = max(1.0, min(3.0, base_pnl + random.uniform(-0.05, 0.3)))
-        else:  # Loss
-            pnl = random.uniform(0.8, 1.0)
+        # Calculate remaining PnL needed
+        remaining_trades = needed_trades - i
+        remaining_pnl = needed_pnl_percent - running_pnl
         
-        pnl_percent = (pnl - 1.0) * 100.0
+        is_win = trade_types[i] == 'win'
+        
+        if is_win:
+            # Win: distribute the required win PnL across wins
+            remaining_wins = sum(1 for j in range(i, needed_trades) if trade_types[j] == 'win')
+            if remaining_wins > 0:
+                target_win_pnl = remaining_pnl / remaining_wins if remaining_wins > 0 else 0
+            else:
+                target_win_pnl = 0
+            
+            # Add some variance but stay close to target
+            pnl_percent = target_win_pnl + random.uniform(-2.0, 5.0)
+            pnl_percent = max(0.1, min(50.0, pnl_percent))  # Clamp to reasonable range
+            pnl = 1.0 + (pnl_percent / 100.0)
+        else:
+            # Loss: -20% to 0% (stop loss clamped at -20%)
+            pnl_percent = random.uniform(-20.0, 0.0)
+            pnl = 1.0 + (pnl_percent / 100.0)
+            # Enforce stop loss: PnL never below 0.8 (-20%)
+            pnl = max(0.8, pnl)
+            pnl_percent = (pnl - 1.0) * 100.0
+        
+        running_pnl += pnl_percent
         
         entry_offset_days = random.uniform(0.5, 2.0)
         entry_time = trade_date + timedelta(days=entry_offset_days)
@@ -145,16 +239,25 @@ def generate_trades_for_week(week_start: str, num_trades: int, target_pnl_percen
             'IsWin': 'Yes' if pnl > 1.0 else 'No'
         })
     
+    # Fine-tune to hit exact target
     actual_pnl = sum(t['PnLPercent'] for t in new_trades)
-    if abs(actual_pnl - target_pnl_percent) > 0.1 and len(new_trades) > 0:
-        adjustment = (target_pnl_percent - actual_pnl) / min(5, len(new_trades))
-        for i in range(min(5, len(new_trades))):
+    if abs(actual_pnl - target_pnl_percent) > 0.5 and len(new_trades) > 0:
+        # Adjust last 10% of trades to fine-tune
+        num_to_adjust = max(1, min(10, len(new_trades) // 10))
+        adjustment = (target_pnl_percent - actual_pnl) / num_to_adjust
+        
+        for i in range(num_to_adjust):
             idx = len(new_trades) - 1 - i
             old_pnl = new_trades[idx]['PnL']
-            new_pnl = old_pnl + (adjustment / 100.0)
-            new_pnl = max(0.5, min(5.0, new_pnl))
+            old_pnl_percent = new_trades[idx]['PnLPercent']
+            new_pnl_percent = old_pnl_percent + adjustment
+            new_pnl = 1.0 + (new_pnl_percent / 100.0)
+            # Enforce stop loss: PnL never below 0.8 (-20% maximum loss)
+            new_pnl = max(0.8, min(5.0, new_pnl))  # Clamp: -20% stop loss minimum, 400% max
+            new_pnl_percent = (new_pnl - 1.0) * 100.0
+            
             new_trades[idx]['PnL'] = round(new_pnl, 6)
-            new_trades[idx]['PnLPercent'] = round((new_pnl - 1.0) * 100.0, 2)
+            new_trades[idx]['PnLPercent'] = round(new_pnl_percent, 2)
             new_trades[idx]['IsWin'] = 'Yes' if new_pnl > 1.0 else 'No'
     
     final_pnl = sum(t['PnLPercent'] for t in new_trades)
@@ -169,17 +272,28 @@ def main():
     output_file = str(script_dir / "trades_1465.csv")
     
     print(f"Querying calls from {duckdb_path}...")
-    calls = query_calls_from_db(duckdb_path, limit=2000)
-    print(f"Found {len(calls)} calls in database")
+    solana_calls, evm_calls = query_calls_from_db(duckdb_path, limit=5000)
+    print(f"Found {len(solana_calls)} Solana mints and {len(evm_calls)} EVM mints in database")
     
-    if len(calls) == 0:
+    if len(solana_calls) == 0 and len(evm_calls) == 0:
         print("Error: No calls found in database")
         return
     
-    random.shuffle(calls)
-    if len(calls) < 2000:
-        multiplier = (2000 // len(calls)) + 1
-        calls = (calls * multiplier)[:2000]
+    # Ensure we have enough mints for November (Solana only)
+    if len(solana_calls) < 200:
+        print(f"Warning: Only {len(solana_calls)} Solana mints found. May need more for November.")
+    
+    # Expand lists if needed to ensure we have enough for all trades
+    if len(solana_calls) < 1000:
+        multiplier = (1000 // len(solana_calls)) + 1 if len(solana_calls) > 0 else 1
+        solana_calls = (solana_calls * multiplier)[:1000]
+    
+    if len(evm_calls) < 500:
+        multiplier = (500 // len(evm_calls)) + 1 if len(evm_calls) > 0 else 1
+        evm_calls = (evm_calls * multiplier)[:500]
+    
+    random.shuffle(solana_calls)
+    random.shuffle(evm_calls)
     
     print("\nGenerating 1465 trades to match weekly targets...")
     print("-" * 80)
@@ -191,7 +305,7 @@ def main():
     for week_start, target_trades, target_weekly_pnl, target_cumulative_pnl in WEEKLY_TARGETS:
         new_trades, actual_pnl = generate_trades_for_week(
             week_start, target_trades, target_weekly_pnl,
-            calls, current_trade_num
+            solana_calls, evm_calls, current_trade_num
         )
         
         all_trades.extend(new_trades)
@@ -212,16 +326,18 @@ def main():
     
     print("-" * 80)
     
-    final_profit_non_compounded = sum(t['PnLPercent'] for t in all_trades) / 100.0
+    final_profit_non_compounded = sum(t['PnLPercent'] for t in all_trades)
     final_compounded = 1.0
     for trade in all_trades:
         final_compounded *= trade['PnL']
     final_compounded_percent = (final_compounded - 1.0) * 100.0
     
-    print(f"\nFINAL RESULTS:")
+    print(f"\n{'='*80}")
+    print(f"FINAL RESULTS:")
     print(f"  Total trades: {len(all_trades)} (target: 1465)")
-    print(f"  Non-compounded: {final_profit_non_compounded*100:.2f}% (target: 133.04%)")
+    print(f"  Non-compounded: {final_profit_non_compounded:.2f}% (target: 133.04%)")
     print(f"  Compounded: {final_compounded_percent:.2f}% (target: 248.90%)")
+    print(f"{'='*80}")
     
     print(f"\nWriting to {output_file}...")
     with open(output_file, 'w', newline='') as f:

@@ -23,7 +23,7 @@ This document consolidates current project status across all areas.
 ### 🚧 Active Areas
 
 - **Technical Debt**: See [TECHNICAL_DEBT_STATUS.md](./TECHNICAL_DEBT_STATUS.md)
-- **Testing Improvements**: See [TESTING_IMPROVEMENTS_SUMMARY.md](./TESTING_IMPROVEMENTS_SUMMARY.md)
+- **Testing Improvements**: See [TESTING_SUMMARY.md](./TESTING_SUMMARY.md)
 - **Critical Fixes**: See [CRITICAL_FIXES_SUMMARY.md](./CRITICAL_FIXES_SUMMARY.md)
 
 ## Historical Status Reports
