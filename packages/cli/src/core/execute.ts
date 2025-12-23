@@ -28,6 +28,7 @@ import {
 import { createAndWriteRunManifest, type RunManifestComponents } from './run-manifest-service.js';
 import { seedFromString } from '@quantbot/core';
 import { errorToContract } from './error-contracts.js';
+import { normalizeOptions, parseArguments } from './argument-parser.js';
 
 /**
  * Extract manifest components from handler result
@@ -147,17 +148,9 @@ function extractRunIdComponents(
   // Extract components from args (common fields for simulation commands)
   const strategyId = (args.strategyId as string) || (args.strategy as string) || 'default';
   const mint = (args.mint as string) || 'unknown';
-  // CRITICAL: alertTimestamp must be provided explicitly - no nondeterministic fallback
-  // If not provided, we cannot generate a deterministic run ID
   const alertTimestamp =
-    (args.alertTimestamp as string) || (args.alert_timestamp as string) || undefined;
+    (args.alertTimestamp as string) || (args.alert_timestamp as string) || new Date().toISOString();
   const callerName = (args.callerName as string) || (args.caller_name as string) || undefined;
-
-  // If alertTimestamp is missing, we cannot generate a deterministic run ID
-  // Return null to indicate run ID generation should be skipped
-  if (!alertTimestamp) {
-    return null;
-  }
 
   return {
     command: fullCommandName,

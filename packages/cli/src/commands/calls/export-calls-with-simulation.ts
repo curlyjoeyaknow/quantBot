@@ -82,7 +82,11 @@ function convertToCallSignal(
  * Calculate max reached multiplier from entry price and candles
  * This is a simplified calculation - in a full implementation, we'd track peak during simulation
  */
-function calculateMaxReached(entryPrice: number, exitPrice: number, pnlPercent: number): number {
+function calculateMaxReached(
+  entryPrice: number,
+  exitPrice: number,
+  pnlPercent: number
+): number {
   // Estimate max reached as a multiplier of entry price
   // If PnL is positive, max was likely higher than exit
   // If PnL is negative, max was likely close to entry
@@ -141,15 +145,15 @@ export async function exportCallsWithSimulationHandler(
   );
 
   if (queryResult.calls.length === 0) {
-    throw new Error(`No calls found in date range ${fromISO} to ${toISO}`);
+    throw new NotFoundError('Calls', `date range ${fromISO} to ${toISO}`, {
+      fromISO,
+      toISO,
+    });
   }
 
   // 2. Convert to CallSignal[]
   const callSignals: CallSignal[] = queryResult.calls.map(
-    (
-      call: { mint: string; createdAt: { toISO: () => string | null }; caller?: string },
-      index: number
-    ) =>
+    (call: { mint: string; createdAt: { toISO: () => string | null }; caller?: string }, index: number) =>
       convertToCallSignal(
         {
           mint: call.mint,
@@ -161,7 +165,9 @@ export async function exportCallsWithSimulationHandler(
   );
 
   // 3. Run simulation workflow
-  const defaultOverlays = args.overlays || [{ kind: 'take_profit' as const, takePct: 100 }];
+  const defaultOverlays = args.overlays || [
+    { kind: 'take_profit' as const, takePct: 100 },
+  ];
 
   const evaluateRequest: EvaluateCallsRequest = {
     calls: callSignals,
@@ -194,7 +200,9 @@ export async function exportCallsWithSimulationHandler(
       const entryTime = DateTime.fromMillis(result.entry.tsMs, { zone: 'utc' });
       const exitTime = DateTime.fromMillis(result.exit.tsMs, { zone: 'utc' });
 
-      const holdDurationMinutes = Math.round((result.exit.tsMs - result.entry.tsMs) / (1000 * 60));
+      const holdDurationMinutes = Math.round(
+        (result.exit.tsMs - result.entry.tsMs) / (1000 * 60)
+      );
 
       // Calculate PnL in USD (simplified - uses notional * return)
       const notionalUsd = args.notionalUsd || 1000;
@@ -246,3 +254,4 @@ export async function exportCallsWithSimulationHandler(
     tradeableCalls: csvRows.length,
   };
 }
+

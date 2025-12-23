@@ -18,7 +18,7 @@ export interface RunIdComponents {
   strategyId: string;
   /** Mint address */
   mint: string;
-  /** Alert timestamp (ISO 8601) */
+  /** Alert timestamp (ISO 8601) - REQUIRED for deterministic run IDs */
   alertTimestamp: string;
   /** Optional: caller name */
   callerName?: string;

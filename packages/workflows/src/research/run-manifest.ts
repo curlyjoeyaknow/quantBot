@@ -291,4 +291,3 @@ export function createCanonicalManifest(components: {
     metadata: components.metadata,
   });
 }
-
