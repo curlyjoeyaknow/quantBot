@@ -6,6 +6,7 @@
  * Replaces MockExecutionRealityService with actual Branch C models.
  */
 
+import { ValidationError } from '@quantbot/utils';
 import type {
   ExecutionModel as ContractExecutionModel,
   CostModel as ContractCostModel,
@@ -94,9 +95,10 @@ export class ExecutionRealityService {
     const records: LiveTradeRecord[] = calibration.latencySamples.map((latency, idx) => {
       const slippageSample = calibration.slippageSamples[idx % calibration.slippageSamples.length];
       if (!slippageSample) {
-        throw new Error(
-          `Missing slippage sample at index ${idx % calibration.slippageSamples.length}`
-        );
+        throw new ValidationError('Missing slippage sample', {
+          index: idx % calibration.slippageSamples.length,
+          calibrationLength: calibration.slippageSamples.length,
+        });
       }
       return {
         timestamp: Date.now() - (calibration.latencySamples.length - idx) * 1000,
@@ -367,7 +369,9 @@ export class ExecutionRealityService {
   private convertToContractExecutionModel(model: ExecutionModel): ContractExecutionModel {
     // Handle optional latency
     if (!model.latency) {
-      throw new Error('ExecutionModel must have latency configuration');
+      throw new ValidationError('ExecutionModel must have latency configuration', {
+        model,
+      });
     }
 
     // Extract latency values - model.latency is VenueLatencyConfig

@@ -15,7 +15,10 @@
 
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { DateTime } from 'luxon';
-import { IngestOhlcvArgs, ingestOhlcvHandler } from '../../../src/commands/ingestion/ingest-ohlcv.js';
+import {
+  IngestOhlcvArgs,
+  ingestOhlcvHandler,
+} from '../../../src/commands/ingestion/ingest-ohlcv.js';
 import { CommandContext, createCommandContext } from '../../../src/core/command-context.js';
 // Use relative path for test helpers (they're not exported from the package)
 import {
@@ -67,9 +70,7 @@ describe('ingestOhlcvHandler - Integration Tests (Real Implementations)', () => 
     vi.clearAllMocks();
   });
 
-  it(
-    'INTEGRATION: handler calls workflow with real implementations',
-    async () => {
+  it('INTEGRATION: handler calls workflow with real implementations', async () => {
     // Create real command context with real services
     const ctx = createCommandContext();
 
@@ -110,11 +111,9 @@ describe('ingestOhlcvHandler - Integration Tests (Real Implementations)', () => 
     expect(result).toHaveProperty('workItemsSucceeded');
   });
 
-  it(
-    'INTEGRATION: handler is pure function (no side effects, deterministic)',
-    async () => {
-      // This test verifies handler purity - same inputs = same outputs
-      const ctx = createCommandContext();
+  it('INTEGRATION: handler is pure function (no side effects, deterministic)', async () => {
+    // This test verifies handler purity - same inputs = same outputs
+    const ctx = createCommandContext();
 
     const workflowSpy = vi.spyOn(await import('@quantbot/workflows'), 'ingestOhlcv');
 
@@ -137,9 +136,7 @@ describe('ingestOhlcvHandler - Integration Tests (Real Implementations)', () => 
     const spec1 = workflowSpy.mock.calls[0][0];
     const spec2 = workflowSpy.mock.calls[1][0];
     expect(spec1).toEqual(spec2);
-    },
-    30000 // 30 second timeout for integration test with real DuckDB
-  );
+  }, 30000); // 30 second timeout for integration test with real DuckDB
 
   it('INTEGRATION: handler propagates workflow errors (no try/catch)', async () => {
     // This test verifies handler doesn't catch errors (pure function contract)
