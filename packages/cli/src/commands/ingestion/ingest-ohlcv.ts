@@ -13,6 +13,7 @@
 
 import path from 'node:path';
 import process from 'node:process';
+import { ConfigurationError } from '@quantbot/utils';
 
 import { ingestOhlcv, createOhlcvIngestionContext } from '@quantbot/workflows';
 import type { IngestOhlcvSpec } from '@quantbot/workflows';
@@ -40,8 +41,10 @@ export async function ingestOhlcvHandler(args: IngestOhlcvArgs, _ctx: CommandCon
   // ENV + FS LIVE HERE (and ONLY here)
   const duckdbPathRaw = args.duckdb || process.env.DUCKDB_PATH;
   if (!duckdbPathRaw) {
-    throw new Error(
-      'DuckDB path is required. Provide --duckdb or set DUCKDB_PATH environment variable.'
+    throw new ConfigurationError(
+      'DuckDB path is required. Provide --duckdb or set DUCKDB_PATH environment variable.',
+      'duckdbPath',
+      { args, env: { DUCKDB_PATH: process.env.DUCKDB_PATH } }
     );
   }
   const duckdbPath = path.resolve(duckdbPathRaw);

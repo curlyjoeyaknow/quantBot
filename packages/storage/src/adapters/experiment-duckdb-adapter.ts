@@ -146,10 +146,11 @@ export class ExperimentDuckDBAdapter implements ExperimentRepository {
   async list(filter?: ExperimentQueryFilter): Promise<ExperimentQueryResult> {
     try {
       const filterData: Record<string, unknown> = {};
-      
+
       if (filter?.experimentId) filterData.experiment_id = filter.experimentId;
       if (filter?.strategyId) filterData.strategy_id = filter.strategyId;
-      if (filter?.parameterVectorHash) filterData.parameter_vector_hash = filter.parameterVectorHash;
+      if (filter?.parameterVectorHash)
+        filterData.parameter_vector_hash = filter.parameterVectorHash;
       if (filter?.gitCommitHash) filterData.git_commit_hash = filter.gitCommitHash;
       if (filter?.dataSnapshotHash) filterData.data_snapshot_hash = filter.dataSnapshotHash;
       if (filter?.status) filterData.status = filter.status;
@@ -202,10 +203,7 @@ export class ExperimentDuckDBAdapter implements ExperimentRepository {
     return result.experiments;
   }
 
-  async getByDataSnapshot(
-    dataSnapshotHash: string,
-    limit?: number
-  ): Promise<ExperimentMetadata[]> {
+  async getByDataSnapshot(dataSnapshotHash: string, limit?: number): Promise<ExperimentMetadata[]> {
     const result = await this.list({
       dataSnapshotHash,
       limit,
@@ -213,4 +211,3 @@ export class ExperimentDuckDBAdapter implements ExperimentRepository {
     return result.experiments;
   }
 }
-

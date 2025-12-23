@@ -39,4 +39,3 @@ export const findExperimentsByParameterSchema = z.object({
   limit: z.number().int().positive().optional(),
   format: z.enum(['json', 'table', 'csv']).default('table'),
 });
-

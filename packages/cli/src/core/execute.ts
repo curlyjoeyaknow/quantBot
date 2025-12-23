@@ -25,12 +25,93 @@ import {
   writeNdjsonArtifact,
   type ArtifactPaths,
 } from './artifact-manager.js';
-import {
-  createAndWriteRunManifest,
-  type RunManifestComponents,
-} from './run-manifest-service.js';
-import { seedFromString } from '@quantbot/core';
+import { createAndWriteRunManifest, type RunManifestComponents } from './run-manifest-service.js';
+import { seedFromString, hashObject } from '@quantbot/core';
 import { errorToContract } from './error-contracts.js';
+
+/**
+ * Extract manifest components from handler result
+ *
+ * Handlers can return a result with `_manifest` property containing manifest components.
+ * This allows workflows to provide full manifest information.
+ */
+function extractManifestComponents(
+  result: unknown,
+  defaults: { runId: string; command: string; packageName?: string; seed: number }
+): RunManifestComponents | null {
+  if (!result || typeof result !== 'object') {
+    return null;
+  }
+
+  const obj = result as Record<string, unknown>;
+
+  // Check if result has _manifest property (explicit manifest components)
+  if ('_manifest' in obj && typeof obj._manifest === 'object' && obj._manifest !== null) {
+    const manifest = obj._manifest as Record<string, unknown>;
+    return {
+      runId: defaults.runId,
+      seed: (manifest.seed as number) ?? defaults.seed,
+      strategyConfig: manifest.strategyConfig ?? {},
+      dataSnapshot: (manifest.dataSnapshot as RunManifestComponents['dataSnapshot']) ?? {
+        calls: [],
+      },
+      executionModel: manifest.executionModel,
+      costModel: manifest.costModel,
+      riskModel: manifest.riskModel,
+      engineVersion: (manifest.engineVersion as string) ?? '1.0.0',
+      command: defaults.command,
+      packageName: defaults.packageName,
+      metadata: manifest.metadata as Record<string, unknown> | undefined,
+    };
+  }
+
+  // Try to extract from result structure (for simulation results)
+  if ('strategy' in obj || 'strategyConfig' in obj) {
+    const strategyConfig = obj.strategyConfig ?? obj.strategy ?? {};
+    const dataSnapshot = {
+      calls: (obj.calls as Array<{ mint: string; alertTimestamp: string }>) ?? [],
+      candles:
+        'candles' in obj && Array.isArray(obj.candles)
+          ? (obj.candles as Array<{ mint: string; fromISO: string; toISO: string }>)
+          : undefined,
+    };
+
+    return {
+      runId: defaults.runId,
+      seed: defaults.seed,
+      strategyConfig,
+      dataSnapshot,
+      executionModel: obj.executionModel,
+      costModel: obj.costModel,
+      riskModel: obj.riskModel,
+      command: defaults.command,
+      packageName: defaults.packageName,
+    };
+  }
+
+  return null;
+}
+
+/**
+ * Extract seed from result (if available)
+ */
+function extractSeedFromResult(result: unknown): number | null {
+  if (!result || typeof result !== 'object') {
+    return null;
+  }
+
+  const obj = result as Record<string, unknown>;
+  if ('seed' in obj && typeof obj.seed === 'number') {
+    return obj.seed;
+  }
+  if ('_manifest' in obj && typeof obj._manifest === 'object' && obj._manifest !== null) {
+    const manifest = obj._manifest as Record<string, unknown>;
+    if ('seed' in manifest && typeof manifest.seed === 'number') {
+      return manifest.seed;
+    }
+  }
+  return null;
+}
 import { commandRegistry } from './command-registry.js';
 import { getProgressIndicator, resetProgressIndicator } from './progress-indicator.js';
 import { closeClickHouse } from '@quantbot/storage';
@@ -150,7 +231,34 @@ export async function execute(
     // 7. Persist artifacts (if applicable)
     if (artifactPaths && runId) {
       progress.updateMessage('Saving artifacts...');
+
+      // Extract manifest components from result (if available)
+      const manifestComponents = extractManifestComponents(result, {
+        runId,
+        command: fullCommandName,
+        packageName,
+        seed: extractSeedFromResult(result) ?? seedFromString(runId),
+      });
+
+      // Create and write manifest (required for all runs)
+      if (manifestComponents) {
+        await createAndWriteRunManifest(artifactPaths, manifestComponents);
+      } else {
+        // Fallback: create minimal manifest if components not available
+        await createAndWriteRunManifest(artifactPaths, {
+          runId,
+          seed: seedFromString(runId),
+          strategyConfig: {},
+          dataSnapshot: { calls: [] },
+          command: fullCommandName,
+          packageName,
+        });
+      }
+
+      // Write legacy results.json (for backward compatibility)
       await writeArtifact(artifactPaths, 'resultsJson', result);
+
+      // Write metrics.json
       await writeArtifact(artifactPaths, 'metricsJson', {
         runId,
         timestamp: new Date().toISOString(),
@@ -159,11 +267,30 @@ export async function execute(
         commandName: commandDef.name,
       });
 
-      // If result has events, write them as CSV
+      // If result has events, write them as NDJSON (new format) and CSV (legacy)
       if (result && typeof result === 'object' && 'events' in result) {
         const events = (result as { events?: unknown[] }).events;
         if (Array.isArray(events) && events.length > 0) {
+          // Write NDJSON (new format)
+          await writeNdjsonArtifact(
+            artifactPaths,
+            'eventsNdjson',
+            events as Array<Record<string, unknown>>
+          );
+          // Write CSV (legacy format, for backward compatibility)
           await writeCsvArtifact(artifactPaths, events as Array<Record<string, unknown>>);
+        }
+      }
+
+      // If result has positions, write them as NDJSON
+      if (result && typeof result === 'object' && 'positions' in result) {
+        const positions = (result as { positions?: unknown[] }).positions;
+        if (Array.isArray(positions) && positions.length > 0) {
+          await writeNdjsonArtifact(
+            artifactPaths,
+            'positionsNdjson',
+            positions as Array<Record<string, unknown>>
+          );
         }
       }
     }

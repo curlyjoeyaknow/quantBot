@@ -10,6 +10,7 @@
  * - Pure orchestration: get workflow from context, call workflow, return result
  */
 
+import { ValidationError, ConfigurationError } from '@quantbot/utils';
 import type { CommandContext } from '../../core/command-context.js';
 import {
   runSimulationDuckdb,
@@ -46,8 +47,11 @@ export async function runSimulationDuckdbHandler(
   let strategyConfig: Record<string, unknown>;
   try {
     strategyConfig = JSON.parse(args.strategy) as Record<string, unknown>;
-  } catch {
-    throw new Error(`Invalid strategy JSON: ${args.strategy}`);
+  } catch (error) {
+    throw new ValidationError('Invalid strategy JSON', {
+      strategy: args.strategy,
+      error: error instanceof Error ? error.message : String(error),
+    });
   }
 
   // Build spec from args (pure transformation)
@@ -77,8 +81,10 @@ export async function runSimulationDuckdbHandler(
   ).services.workflowContext?.();
 
   if (!workflowContext) {
-    throw new Error(
-      'WorkflowContext not available. This handler requires a wired WorkflowContext from the composition root.'
+    throw new ConfigurationError(
+      'WorkflowContext not available. This handler requires a wired WorkflowContext from the composition root.',
+      'WorkflowContext',
+      { operation: 'runSimulationDuckdbHandler' }
     );
   }
 

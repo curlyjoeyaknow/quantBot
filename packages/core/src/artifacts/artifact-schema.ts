@@ -24,4 +24,3 @@ export const ARTIFACT_DIR_STRUCTURE = {
 } as const;
 
 export type ArtifactFileType = keyof typeof ARTIFACT_DIR_STRUCTURE;
-

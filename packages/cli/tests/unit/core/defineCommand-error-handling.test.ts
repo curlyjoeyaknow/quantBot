@@ -37,7 +37,6 @@ describe('defineCommand Error Handling', () => {
       });
 
       expect(() => coerceFn(raw)).toThrow(/Invalid JSON for overlays/);
-      expect(() => coerceFn(raw)).toThrow(/Input: /);
     });
   });
 

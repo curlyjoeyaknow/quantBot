@@ -67,7 +67,9 @@ describe('ingestOhlcvHandler - Integration Tests (Real Implementations)', () => 
     vi.clearAllMocks();
   });
 
-  it('INTEGRATION: handler calls workflow with real implementations', async () => {
+  it(
+    'INTEGRATION: handler calls workflow with real implementations',
+    async () => {
     // Create real command context with real services
     const ctx = createCommandContext();
 
@@ -112,7 +114,7 @@ describe('ingestOhlcvHandler - Integration Tests (Real Implementations)', () => 
     'INTEGRATION: handler is pure function (no side effects, deterministic)',
     async () => {
       // This test verifies handler purity - same inputs = same outputs
-    const ctx = createCommandContext();
+      const ctx = createCommandContext();
 
     const workflowSpy = vi.spyOn(await import('@quantbot/workflows'), 'ingestOhlcv');
 

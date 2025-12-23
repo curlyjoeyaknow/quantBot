@@ -382,7 +382,7 @@ describe('OhlcvIngestionService (integration)', () => {
 
     // ATH/ATL calculation happens in calculateAndStoreAthAtl which uses Postgres mock
     // The fact that the service processed the worklist means the integration worked
-  });
+  }, 30000); // 30 second timeout for real DuckDB and API calls
 
   it('handles date filtering correctly with real DuckDB queries', async () => {
     const now = DateTime.utc();

@@ -7,6 +7,7 @@
 
 import { mkdir, writeFile } from 'fs/promises';
 import { join } from 'path';
+import { NotFoundError } from '@quantbot/utils';
 import type { RunIdComponents } from './run-id-manager.js';
 import { generateRunId } from './run-id-manager.js';
 
@@ -81,7 +82,10 @@ export async function writeArtifact(
 ): Promise<void> {
   const path = paths[artifactName];
   if (!path) {
-    throw new Error(`Artifact path not found: ${artifactName}`);
+    throw new NotFoundError('Artifact path', artifactName, {
+      artifactName,
+      availablePaths: Object.keys(paths),
+    });
   }
   const content = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
   await writeFile(path, content, 'utf8');
@@ -101,7 +105,10 @@ export async function writeNdjsonArtifact(
 ): Promise<void> {
   const path = paths[artifactName];
   if (!path) {
-    throw new Error(`Artifact path not found: ${artifactName}`);
+    throw new NotFoundError('Artifact path', artifactName, {
+      artifactName,
+      availablePaths: Object.keys(paths),
+    });
   }
 
   // Write each item as a JSON line (no trailing newline after last item)
@@ -122,7 +129,9 @@ export async function writeCsvArtifact(
   headers?: string[]
 ): Promise<void> {
   if (rows.length === 0) {
-    await writeFile(paths.eventsCsv, '', 'utf8');
+    if (paths.eventsCsv) {
+      await writeFile(paths.eventsCsv, '', 'utf8');
+    }
     return;
   }
 
@@ -150,5 +159,7 @@ export async function writeCsvArtifact(
     lines.push(values.join(','));
   }
 
-  await writeFile(paths.eventsCsv, lines.join('\n'), 'utf8');
+  if (paths.eventsCsv) {
+    await writeFile(paths.eventsCsv, lines.join('\n'), 'utf8');
+  }
 }

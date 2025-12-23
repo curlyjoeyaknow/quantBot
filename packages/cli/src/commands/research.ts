@@ -173,10 +173,14 @@ export function registerResearchCommands(program: Command): void {
     coerce: (raw) => ({
       ...raw,
       latencySamples: raw.latencySamples
-        ? (raw.latencySamples as string).split(',').map((s) => coerceNumber(s.trim(), 'latency-sample'))
+        ? (raw.latencySamples as string)
+            .split(',')
+            .map((s) => coerceNumber(s.trim(), 'latency-sample'))
         : undefined,
       failureRate: raw.failureRate ? coerceNumber(raw.failureRate, 'failure-rate') : undefined,
-      partialFillRate: raw.partialFillRate ? coerceNumber(raw.partialFillRate, 'partial-fill-rate') : undefined,
+      partialFillRate: raw.partialFillRate
+        ? coerceNumber(raw.partialFillRate, 'partial-fill-rate')
+        : undefined,
     }),
     validate: (opts) => createExecutionModelSchema.parse(opts),
     onError: die,
@@ -198,9 +202,15 @@ export function registerResearchCommands(program: Command): void {
     coerce: (raw) => ({
       ...raw,
       baseFee: raw.baseFee ? coerceNumber(raw.baseFee, 'base-fee') : undefined,
-      priorityFeeMin: raw.priorityFeeMin ? coerceNumber(raw.priorityFeeMin, 'priority-fee-min') : undefined,
-      priorityFeeMax: raw.priorityFeeMax ? coerceNumber(raw.priorityFeeMax, 'priority-fee-max') : undefined,
-      tradingFeePercent: raw.tradingFeePercent ? coerceNumber(raw.tradingFeePercent, 'trading-fee-percent') : undefined,
+      priorityFeeMin: raw.priorityFeeMin
+        ? coerceNumber(raw.priorityFeeMin, 'priority-fee-min')
+        : undefined,
+      priorityFeeMax: raw.priorityFeeMax
+        ? coerceNumber(raw.priorityFeeMax, 'priority-fee-max')
+        : undefined,
+      tradingFeePercent: raw.tradingFeePercent
+        ? coerceNumber(raw.tradingFeePercent, 'trading-fee-percent')
+        : undefined,
     }),
     validate: (opts) => createCostModelSchema.parse(opts),
     onError: die,
@@ -221,10 +231,18 @@ export function registerResearchCommands(program: Command): void {
     packageName: 'research',
     coerce: (raw) => ({
       ...raw,
-      maxDrawdownPercent: raw.maxDrawdownPercent ? coerceNumber(raw.maxDrawdownPercent, 'max-drawdown-percent') : undefined,
-      maxLossPerDay: raw.maxLossPerDay ? coerceNumber(raw.maxLossPerDay, 'max-loss-per-day') : undefined,
-      maxConsecutiveLosses: raw.maxConsecutiveLosses ? coerceNumber(raw.maxConsecutiveLosses, 'max-consecutive-losses') : undefined,
-      maxPositionSize: raw.maxPositionSize ? coerceNumber(raw.maxPositionSize, 'max-position-size') : undefined,
+      maxDrawdownPercent: raw.maxDrawdownPercent
+        ? coerceNumber(raw.maxDrawdownPercent, 'max-drawdown-percent')
+        : undefined,
+      maxLossPerDay: raw.maxLossPerDay
+        ? coerceNumber(raw.maxLossPerDay, 'max-loss-per-day')
+        : undefined,
+      maxConsecutiveLosses: raw.maxConsecutiveLosses
+        ? coerceNumber(raw.maxConsecutiveLosses, 'max-consecutive-losses')
+        : undefined,
+      maxPositionSize: raw.maxPositionSize
+        ? coerceNumber(raw.maxPositionSize, 'max-position-size')
+        : undefined,
     }),
     validate: (opts) => createRiskModelSchema.parse(opts),
     onError: die,
@@ -340,9 +358,7 @@ const researchModule: PackageCommandModule = {
         const typedArgs = args as z.infer<typeof createCostModelSchema>;
         return await createCostModelHandler(typedArgs, typedCtx);
       },
-      examples: [
-        'quantbot research create-cost-model --base-fee 5000 --trading-fee-percent 0.01',
-      ],
+      examples: ['quantbot research create-cost-model --base-fee 5000 --trading-fee-percent 0.01'],
     },
     {
       name: 'create-risk-model',

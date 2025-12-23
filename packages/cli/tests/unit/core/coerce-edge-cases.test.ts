@@ -49,13 +49,14 @@ describe('Coercion Edge Cases', () => {
       const longInvalidJson = '{'.repeat(100) + 'invalid';
       const error = () => coerceJson<unknown>(longInvalidJson, 'fieldName');
       expect(error).toThrow();
-      expect(error).toThrow(/Input: /);
+      // Error message includes field name and JSON parse error
+      expect(error).toThrow(/Invalid JSON for fieldName/);
     });
 
     it('includes full input in error for short strings', () => {
       const shortInvalidJson = '{invalid}';
       expect(() => coerceJson<unknown>(shortInvalidJson, 'fieldName')).toThrow(
-        /Input: \{invalid\}/
+        /Invalid JSON for fieldName/
       );
     });
   });

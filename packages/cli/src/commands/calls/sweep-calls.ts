@@ -37,6 +37,7 @@ import {
   loadCompletedIds,
 } from '../../core/scenario-generator.js';
 import { join } from 'path';
+import { ValidationError, ConfigurationError } from '@quantbot/utils';
 
 /**
  * Per-call JSONL row (one per call × overlay × lag × interval)
@@ -255,16 +256,24 @@ export async function sweepCallsHandler(args: SweepCallsArgs, _ctx: CommandConte
 
   // 2. Validate that all required fields are present (after config loading)
   if (!config.callsFile) {
-    throw new Error('callsFile is required (from config or --calls-file)');
+    throw new ValidationError('callsFile is required (from config or --calls-file)', {
+      config,
+    });
   }
   if (!config.intervals || config.intervals.length === 0) {
-    throw new Error('intervals is required (from config or --intervals)');
+    throw new ValidationError('intervals is required (from config or --intervals)', {
+      config,
+    });
   }
   if (!config.lagsMs || config.lagsMs.length === 0) {
-    throw new Error('lagsMs is required (from config or --lags-ms)');
+    throw new ValidationError('lagsMs is required (from config or --lags-ms)', {
+      config,
+    });
   }
   if (!config.out) {
-    throw new Error('out is required (from config or --out)');
+    throw new ValidationError('out is required (from config or --out)', {
+      config,
+    });
   }
 
   // 3. Load calls from file
@@ -273,31 +282,45 @@ export async function sweepCallsHandler(args: SweepCallsArgs, _ctx: CommandConte
     const fileContent = readFileSync(config.callsFile, 'utf-8');
     const parsed = JSON.parse(fileContent);
     if (!Array.isArray(parsed)) {
-      throw new Error('Calls file must contain a JSON array of CallSignal objects');
+      throw new ValidationError('Calls file must contain a JSON array of CallSignal objects', {
+        callsFile: config.callsFile,
+      });
     }
     calls = parsed as CallSignal[];
   } catch (error) {
-    throw new Error(
-      `Failed to load calls from ${config.callsFile}: ${error instanceof Error ? error.message : String(error)}`
-    );
+    if (error instanceof ValidationError) {
+      throw error;
+    }
+    throw new ConfigurationError(`Failed to load calls from ${config.callsFile}`, 'callsFile', {
+      callsFile: config.callsFile,
+      error: error instanceof Error ? error.message : String(error),
+    });
   }
 
   // 4. Load overlay sets
   const overlayFile = config.overlaysFile || config.overlaySetsFile;
   if (!overlayFile) {
-    throw new Error('Either overlaysFile or overlaySetsFile is required');
+    throw new ValidationError('Either overlaysFile or overlaySetsFile is required', {
+      config,
+    });
   }
 
   let overlaySets: OverlaySet[];
   try {
     overlaySets = loadOverlaySetsFromFile(overlayFile);
     if (overlaySets.length === 0) {
-      throw new Error('Overlay sets file must contain at least one overlay set');
+      throw new ValidationError('Overlay sets file must contain at least one overlay set', {
+        overlayFile,
+      });
     }
   } catch (error) {
-    throw new Error(
-      `Failed to load overlays from ${overlayFile}: ${error instanceof Error ? error.message : String(error)}`
-    );
+    if (error instanceof ValidationError) {
+      throw error;
+    }
+    throw new ConfigurationError(`Failed to load overlays from ${overlayFile}`, 'overlayFile', {
+      overlayFile,
+      error: error instanceof Error ? error.message : String(error),
+    });
   }
 
   // 5. Generate scenarios (deterministic)

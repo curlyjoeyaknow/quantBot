@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { ValidationError } from '@quantbot/utils';
 import type { ExitOverlay } from '@quantbot/simulation';
 
 type Overlay = ExitOverlay;
@@ -32,8 +33,9 @@ export function loadOverlaySetsFromFile(filePath: string): OverlaySet[] {
   if (parsed && typeof parsed === 'object' && Array.isArray((parsed as any).sets)) {
     const sets = (parsed as any).sets;
     if (!isOverlaySetArray(sets)) {
-      throw new Error(
-        `Invalid overlays file shape: { sets: ... } but sets are not valid overlay sets`
+      throw new ValidationError(
+        `Invalid overlays file shape: { sets: ... } but sets are not valid overlay sets`,
+        { filePath, parsedType: typeof parsed }
       );
     }
     return sets;
@@ -49,7 +51,8 @@ export function loadOverlaySetsFromFile(filePath: string): OverlaySet[] {
     return [{ id: 'set-0', overlays: parsed as Overlay[] }];
   }
 
-  throw new Error(
-    `Invalid overlays file shape. Expected one of: Overlay[], OverlaySet[], or { sets: OverlaySet[] }`
+  throw new ValidationError(
+    `Invalid overlays file shape. Expected one of: Overlay[], OverlaySet[], or { sets: OverlaySet[] }`,
+    { filePath, parsedType: typeof parsed }
   );
 }

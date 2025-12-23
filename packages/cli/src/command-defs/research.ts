@@ -73,10 +73,14 @@ export type ResearchShowArgs = z.infer<typeof researchShowSchema>;
 export const createSnapshotSchema = z.object({
   from: z.string().min(1, 'Start date (ISO 8601) is required'),
   to: z.string().min(1, 'End date (ISO 8601) is required'),
-  sources: z.array(z.object({
-    venue: z.string(),
-    chain: z.string().optional(),
-  })).optional(),
+  sources: z
+    .array(
+      z.object({
+        venue: z.string(),
+        chain: z.string().optional(),
+      })
+    )
+    .optional(),
   callerNames: z.array(z.string()).optional(),
   mintAddresses: z.array(z.string()).optional(),
   minVolume: z.number().nonnegative().optional(),
@@ -90,12 +94,16 @@ export type CreateSnapshotArgs = z.infer<typeof createSnapshotSchema>;
  */
 export const createExecutionModelSchema = z.object({
   latencySamples: z.array(z.number().nonnegative()).optional(),
-  slippageSamples: z.array(z.object({
-    tradeSize: z.number().nonnegative(),
-    expectedPrice: z.number().nonnegative(),
-    actualPrice: z.number().nonnegative(),
-    marketVolume24h: z.number().nonnegative().optional(),
-  })).optional(),
+  slippageSamples: z
+    .array(
+      z.object({
+        tradeSize: z.number().nonnegative(),
+        expectedPrice: z.number().nonnegative(),
+        actualPrice: z.number().nonnegative(),
+        marketVolume24h: z.number().nonnegative().optional(),
+      })
+    )
+    .optional(),
   failureRate: z.number().min(0).max(1).optional(),
   partialFillRate: z.number().min(0).max(1).optional(),
   venue: z.string().optional(),

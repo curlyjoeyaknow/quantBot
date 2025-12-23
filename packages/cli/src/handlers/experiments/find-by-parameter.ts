@@ -18,4 +18,3 @@ export async function findExperimentsByParameterHandler(
 
   return experiments;
 }
-

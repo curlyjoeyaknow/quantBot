@@ -6,6 +6,7 @@
 
 import { readFileSync } from 'fs';
 import { DateTime } from 'luxon';
+import { ValidationError, ConfigurationError } from '@quantbot/utils';
 import type { CommandContext } from '../../core/command-context.js';
 import { evaluateCallsWorkflow, createProductionContextWithPorts } from '@quantbot/workflows';
 import type { EvaluateCallsRequest } from '@quantbot/workflows';
@@ -21,14 +22,20 @@ export async function evaluateCallsHandler(args: EvaluateCallsArgs, _ctx: Comman
 
     // Validate it's an array
     if (!Array.isArray(parsed)) {
-      throw new Error('Calls file must contain a JSON array of CallSignal objects');
+      throw new ValidationError('Calls file must contain a JSON array of CallSignal objects', {
+        callsFile: args.callsFile,
+      });
     }
 
     calls = parsed as CallSignal[];
   } catch (error) {
-    throw new Error(
-      `Failed to load calls from ${args.callsFile}: ${error instanceof Error ? error.message : String(error)}`
-    );
+    if (error instanceof ValidationError) {
+      throw error;
+    }
+    throw new ConfigurationError(`Failed to load calls from ${args.callsFile}`, 'callsFile', {
+      callsFile: args.callsFile,
+      error: error instanceof Error ? error.message : String(error),
+    });
   }
 
   // Build workflow request
