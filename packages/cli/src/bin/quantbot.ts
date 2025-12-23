@@ -27,6 +27,7 @@ import '../commands/api-clients.js';
 import '../commands/telegram.js';
 import '../commands/metadata.js';
 import '../commands/calls.js';
+import '../commands/research.js';
 
 // Import register functions to add Commander options
 import { registerObservabilityCommands } from '../commands/observability.js';
@@ -41,6 +42,7 @@ import { registerApiClientsCommands } from '../commands/api-clients.js';
 import { registerTelegramCommands } from '../commands/telegram.js';
 import { registerMetadataCommands } from '../commands/metadata.js';
 import { registerCallsCommands } from '../commands/calls.js';
+import { registerResearchCommands } from '../commands/research.js';
 
 // Set up program
 program

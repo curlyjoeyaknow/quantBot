@@ -26,7 +26,17 @@ import { calculateIndicatorSeries, type LegacyIndicatorData } from '../indicator
 import { calculateIndicatorSeriesOptimized } from '../performance/optimizations.js';
 import { getPerformanceMonitor } from '../performance/monitor.js';
 import { evaluateSignalGroup } from '../signals/evaluator.js';
-import { getEntryCostMultiplier, getExitCostMultiplier } from '../execution/index.js';
+import {
+  getEntryCostMultiplier,
+  getExitCostMultiplier,
+  type ExecutionModelInterface,
+  createExecutionModel,
+  createDefaultExecutionModel,
+  type TradeRequest,
+} from '../execution/index.js';
+import type { ExecutionModel } from '../types/execution-model.js';
+import { createDeterministicRNG, type DeterministicRNG } from '@quantbot/core';
+import { SeedManager } from '@quantbot/core';
 import { logStep } from '../utils/progress.js';
 import {
   checkStopLossSequential,
@@ -50,6 +60,10 @@ export interface SimulationOptions {
   exitLadder?: LadderConfig;
   /** Candle provider for sub-candle resolution */
   candleProvider?: CandleProvider;
+  /** Execution model for realistic trade execution */
+  executionModel?: ExecutionModel;
+  /** Seed for deterministic execution model behavior */
+  seed?: number;
 }
 
 /**

@@ -324,14 +324,12 @@ This document maps the Quant Research Lab Roadmap layers to existing packages an
 
 ### Current Violations
 
-These violations have been detected and need to be refactored:
+✅ **All violations fixed!**
 
-1. **P1 (High)**: `packages/ohlcv/src/backfill-service.ts`
-   - **Violation**: Imports from `@quantbot/jobs` (Data Ingestion layer)
-   - **Issue**: OHLCV (Feature Engineering layer) should not import Jobs (Data Ingestion layer)
-   - **Impact**: Violates layer separation - OHLCV can only read data, not fetch new data
-   - **Fix**: Extract backfill logic to `@quantbot/jobs` or create a port/adapter pattern
-   - **Status**: ⏳ Pending refactoring
+1. **✅ FIXED**: `packages/ohlcv/src/backfill-service.ts`
+   - **Original Violation**: Imports from `@quantbot/jobs` (Data Ingestion layer)
+   - **Fix Applied**: Moved `backfill-service.ts` to `packages/jobs/src/ohlcv-backfill-service.ts`
+   - **Status**: ✅ Fixed - backfill service now lives in the correct layer (Data Ingestion)
 
 ### Violation Detection
 

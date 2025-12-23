@@ -51,9 +51,9 @@ describe('Position PnL Calculations - Property Tests', () => {
     it('unrealized PnL is always finite for valid inputs', () => {
       fc.assert(
         fc.property(
-          fc.float({ min: 0.0001, max: 1000 }),
-          fc.float({ min: 0.0001, max: 1000 }),
-          fc.float({ min: 0.0001, max: 100 }),
+          fc.float({ min: Math.fround(0.0001), max: Math.fround(1000) }),
+          fc.float({ min: Math.fround(0.0001), max: Math.fround(1000) }),
+          fc.float({ min: Math.fround(0.0001), max: Math.fround(100) }),
           (entryPrice, currentPrice, size) => {
             // Filter out invalid inputs that would cause NaN
             if (

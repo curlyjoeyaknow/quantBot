@@ -30,8 +30,7 @@
     "dist",
     "tests/**/*",
     "**/*.test.ts",
-    "src/candles.ts",
-    "src/backfill-service.ts"
+    "src/candles.ts"
   ],
   "references": [
     { "path": "../core" },

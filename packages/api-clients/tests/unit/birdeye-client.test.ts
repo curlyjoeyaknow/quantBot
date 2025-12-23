@@ -528,8 +528,8 @@ describe('BirdeyeClient', () => {
 
       mockAxiosInstance.get.mockResolvedValue(mockResponse);
 
-      await client.fetchOHLCVData('token1', new Date(), new Date());
-      await client.fetchOHLCVData('token2', new Date(), new Date());
+      await client.fetchOHLCVData('So11111111111111111111111111111111111111112', new Date(), new Date());
+      await client.fetchOHLCVData('EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', new Date(), new Date());
 
       expect(mockAxiosInstance.get).toHaveBeenCalledTimes(2);
     });
@@ -576,7 +576,7 @@ describe('BirdeyeClient', () => {
 
       mockAxiosInstance.get.mockResolvedValue(mockResponse);
 
-      await client.fetchOHLCVData('token1', new Date(), new Date());
+      await client.fetchOHLCVData('So11111111111111111111111111111111111111112', new Date(), new Date());
 
       const totalCredits = client.getTotalCreditsUsed();
       expect(totalCredits).toBe(60);
@@ -648,7 +648,7 @@ describe('BirdeyeClient', () => {
         .mockRejectedValueOnce(serverError)
         .mockResolvedValueOnce(successResponse);
 
-      const result = await client.fetchOHLCVData('token1', new Date(), new Date());
+      const result = await client.fetchOHLCVData('So11111111111111111111111111111111111111112', new Date(), new Date());
 
       // Server errors don't trigger key rotation, so only 1 call is made
       // The retry logic is handled by BaseApiClient, not by key rotation
@@ -672,7 +672,7 @@ describe('BirdeyeClient', () => {
 
       mockAxiosInstance.get.mockResolvedValue(badRequestResponse);
 
-      const result = await client.fetchOHLCVData('token1', new Date(), new Date());
+      const result = await client.fetchOHLCVData('So11111111111111111111111111111111111111112', new Date(), new Date());
 
       expect(result).toBeNull();
       expect(mockAxiosInstance.get).toHaveBeenCalledTimes(1);
