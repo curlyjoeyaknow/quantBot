@@ -16,7 +16,7 @@ export class FixedSlippageModel implements ExecutionModelInterface {
   constructor(config: ExecutionModel = {}, slippageBps?: number) {
     // Validate and store config
     this.config = ExecutionModelSchema.parse(config);
-
+    
     // Extract slippage from config or use provided value or default
     const slippageParams = this.config.slippage?.params;
     this.slippageBps = slippageBps ?? (slippageParams?.bps as number) ?? 10; // Default 0.1%

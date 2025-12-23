@@ -117,11 +117,13 @@ export async function simulateStrategy(
     : undefined;
 
   // Create RNG for execution model (deterministic if seed provided)
-  // If seed is provided, use it; otherwise create one from timestamp (non-deterministic fallback)
+  // If seed is provided, use it; otherwise generate from first candle timestamp (deterministic fallback)
+  // Note: For full determinism, always provide a seed. The candle timestamp fallback is deterministic
+  // for the same candle data but may vary across different runs with different data.
   const rng = options?.executionModel && options?.seed !== undefined
     ? createDeterministicRNG(options.seed)
     : options?.executionModel
-      ? createDeterministicRNG(Date.now()) // Non-deterministic fallback
+      ? createDeterministicRNG(candles[0]?.timestamp ?? 0) // Deterministic fallback from candle data
       : undefined;
 
   // Precompute indicators (with caching optimization)
