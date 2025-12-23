@@ -153,7 +153,15 @@ export type CreateRiskModelArgs = z.infer<typeof createRiskModelSchema>;
  */
 export const researchLeaderboardSchema = z.object({
   criteria: z
-    .enum(['return', 'winRate', 'profitFactor', 'sharpeRatio', 'maxDrawdown', 'totalTrades', 'avgReturnPerTrade'])
+    .enum([
+      'return',
+      'winRate',
+      'profitFactor',
+      'sharpeRatio',
+      'maxDrawdown',
+      'totalTrades',
+      'avgReturnPerTrade',
+    ])
     .default('return'),
   order: z.enum(['asc', 'desc']).default('desc'),
   limit: z.number().int().positive().optional(),

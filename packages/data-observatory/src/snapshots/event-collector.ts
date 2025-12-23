@@ -189,20 +189,36 @@ export class StorageEventCollector implements EventCollector {
     to: DateTime
   ): Promise<CandleEvent[]> {
     const events: CandleEvent[] = [];
+    const chain = spec.filters?.chain || 'solana';
 
-    // Get token addresses from filters or query all
-    const tokenAddresses = spec.filters?.tokenAddresses || [];
+    // Get token addresses from filters or query all tokens with data in time range
+    let tokenAddresses = spec.filters?.tokenAddresses || [];
 
     if (tokenAddresses.length === 0) {
-      // TODO: Query all tokens with data in time range
-      // For now, return empty if no tokens specified
-      return [];
+      // Query all tokens with OHLCV data in the time range
+      try {
+        tokenAddresses = await this.getAllTokensWithOhlcvInRange(chain, from, to);
+        if (tokenAddresses.length === 0) {
+          logger.info('No tokens with OHLCV data found in time range', {
+            chain,
+            from: from.toISO(),
+            to: to.toISO(),
+          });
+          return [];
+        }
+      } catch (error) {
+        logger.warn('Failed to query all tokens with OHLCV data, returning empty', {
+          error: error instanceof Error ? error.message : String(error),
+          chain,
+          from: from.toISO(),
+          to: to.toISO(),
+        });
+        return [];
+      }
     }
 
     // Collect candles for each token
     for (const tokenAddress of tokenAddresses) {
-      const chain = spec.filters?.chain || 'solana';
-
       try {
         // Query candles from storage
         const candles = await this.storage.getCandles(
@@ -246,6 +262,58 @@ export class StorageEventCollector implements EventCollector {
     }
 
     return events;
+  }
+
+  /**
+   * Get all token addresses that have OHLCV data in the specified time range
+   * Queries ClickHouse directly to find distinct token addresses
+   */
+  private async getAllTokensWithOhlcvInRange(
+    chain: string,
+    from: DateTime,
+    to: DateTime
+  ): Promise<string[]> {
+    try {
+      // Import ClickHouse client dynamically to avoid circular dependencies
+      const { getClickHouseClient } = await import('@quantbot/storage');
+      const ch = getClickHouseClient();
+      const CLICKHOUSE_DATABASE = process.env.CLICKHOUSE_DATABASE || 'quantbot';
+
+      const startUnix = Math.floor(from.toSeconds());
+      const endUnix = Math.floor(to.toSeconds());
+      const escapedChain = chain.replace(/'/g, "''");
+
+      // Query for distinct token addresses with candles in the time range
+      const result = await ch.query({
+        query: `
+          SELECT DISTINCT token_address
+          FROM ${CLICKHOUSE_DATABASE}.ohlcv_candles
+          WHERE chain = '${escapedChain}'
+            AND timestamp >= toDateTime(${startUnix})
+            AND timestamp <= toDateTime(${endUnix})
+          ORDER BY token_address ASC
+        `,
+        format: 'JSONEachRow',
+        clickhouse_settings: {
+          max_execution_time: 30,
+        },
+      });
+
+      const data = (await result.json()) as Array<{ token_address: string }>;
+
+      if (!Array.isArray(data)) {
+        return [];
+      }
+
+      return data.map((row) => row.token_address);
+    } catch (error) {
+      logger.error('Failed to query tokens with OHLCV data', error as Error, {
+        chain,
+        from: from.toISO(),
+        to: to.toISO(),
+      });
+      throw error;
+    }
   }
 
   /**

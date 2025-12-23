@@ -141,6 +141,10 @@ export function registerResearchCommands(program: Command): void {
   defineCommand(replayManifestCmd, {
     name: 'replay-manifest',
     packageName: 'research',
+    coerce: (raw) => ({
+      ...raw,
+      manifestFile: raw.manifest, // Map --manifest to manifestFile
+    }),
     validate: (opts) => researchReplayManifestSchema.parse(opts),
     onError: die,
   });

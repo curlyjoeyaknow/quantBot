@@ -162,10 +162,11 @@ export type DataSnapshotArtifact = z.infer<typeof DataSnapshotArtifactSchema>;
  *
  * Creates SHA256 hash of JSON-serialized content for deduplication
  */
+import { createHash } from 'crypto';
+
 export function generateArtifactHash(content: Record<string, unknown>): string {
-  const crypto = require('crypto');
   const json = JSON.stringify(content, Object.keys(content).sort());
-  return crypto.createHash('sha256').update(json).digest('hex');
+  return createHash('sha256').update(json).digest('hex');
 }
 
 /**

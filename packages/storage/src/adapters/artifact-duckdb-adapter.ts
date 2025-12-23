@@ -37,7 +37,6 @@ export class ArtifactDuckDBAdapter implements ArtifactRepository {
    */
   private findWorkspaceRoot(): string {
     let current = process.cwd();
-    const path = require('path');
 
     while (current !== '/' && current !== '') {
       const workspaceFile = join(current, 'pnpm-workspace.yaml');

@@ -66,10 +66,10 @@ describe('DuckDB Ingestion Idempotency', () => {
   let engine: PythonEngine;
   let pythonToolPath: string;
 
-  beforeAll(() => {
+  beforeAll(async () => {
     engine = new PythonEngine('python3');
     // Resolve to absolute path to ensure it exists
-    const { resolve } = require('path');
+    const { resolve } = await import('path');
     pythonToolPath = resolve(process.cwd(), 'tools/telegram/duckdb_punch_pipeline.py');
 
     // Create test directory

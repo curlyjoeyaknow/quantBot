@@ -45,7 +45,7 @@
     "check:test-requirements": "ts-node scripts/git/check-test-requirements.ts",
     "verify:workflow-contracts": "tsx scripts/verify-workflow-contract.ts",
     "verify:architecture-boundaries": "tsx scripts/verify-architecture-boundaries.ts",
-    "verify:boundaries-ast": "tsx scripts/ci/verify-boundaries-ast.ts",
+    "verify:boundaries-ast": "tsx scripts/verify-boundaries-ast.ts",
     "check:no-build-artifacts": "tsx scripts/ci/check-no-build-artifacts.ts",
     "check:hygiene": "tsx scripts/ci/hygiene-checks.ts",
     "smoke:ports": "tsx packages/workflows/src/dev/smokePorts.ts",

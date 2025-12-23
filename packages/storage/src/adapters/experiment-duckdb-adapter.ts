@@ -78,7 +78,6 @@ export class ExperimentDuckDBAdapter implements ExperimentRepository {
    */
   private findWorkspaceRoot(): string {
     let current = process.cwd();
-    const path = require('path');
 
     while (current !== '/' && current !== '') {
       const workspaceFile = join(current, 'pnpm-workspace.yaml');
