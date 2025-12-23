@@ -43,6 +43,9 @@ from duckdb_storage.ops import (
     QueryOhlcvExclusionsInput,
     QueryOhlcvExclusionsOutput,
     query_ohlcv_exclusions_run,
+    QueryTokensRecentInput,
+    QueryTokensRecentOutput,
+    query_tokens_recent_run,
     GenerateReportInput,
     GenerateReportOutput,
     generate_report_run,
@@ -86,6 +89,11 @@ OP_MAP = {
         QueryOhlcvExclusionsInput,
         QueryOhlcvExclusionsOutput,
         query_ohlcv_exclusions_run,
+    ),
+    "query_tokens_recent": (
+        QueryTokensRecentInput,
+        QueryTokensRecentOutput,
+        query_tokens_recent_run,
     ),
     "generate_report": (GenerateReportInput, GenerateReportOutput, generate_report_run),
     # State operations
