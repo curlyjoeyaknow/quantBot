@@ -71,7 +71,7 @@ export interface StorageEngineConfig {
  */
 export interface OHLCVQueryOptions {
   /**
-   * Candle interval (1m, 5m, 15m, 1h, etc.)
+   * Candle interval (1s, 15s, 1m, 5m, 15m, 1h, 4h, 1d)
    * @default '5m'
    */
   interval?: string;
@@ -229,7 +229,7 @@ export class StorageEngine {
    * Retrieve OHLCV candles for a token in a time range
    * CRITICAL: Uses full mint address, case-preserved
    *
-   * Supports multiple intervals: '1m', '5m', '15m', '1h', '4h', '1d'
+   * Supports multiple intervals: '1s', '15s', '1m', '5m', '15m', '1h', '4h', '1d'
    */
   async getCandles(
     tokenAddress: string,
@@ -241,7 +241,7 @@ export class StorageEngine {
     const { interval = '5m', useCache = true, forceRefresh = false } = options;
 
     // Validate interval
-    const validIntervals = ['1m', '5m', '15m', '1h', '4h', '1d'];
+    const validIntervals = ['1s', '15s', '1m', '5m', '15m', '1h', '4h', '1d'];
     if (!validIntervals.includes(interval)) {
       throw new ValidationError(
         `Invalid interval: ${interval}. Must be one of: ${validIntervals.join(', ')}`,

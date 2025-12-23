@@ -28,7 +28,7 @@ import { getDuckDBWorklistService } from '@quantbot/storage';
 export interface OhlcvWorkItem {
   mint: string;
   chain: Chain;
-  interval: '15s' | '1m' | '5m' | '1H';
+  interval: '1s' | '15s' | '1m' | '5m' | '1H';
   startTime: DateTime;
   endTime: DateTime;
   priority?: number;
@@ -44,7 +44,7 @@ export interface WorklistOptions {
   to?: Date;
   side?: 'buy' | 'sell';
   chain?: Chain;
-  interval?: '15s' | '1m' | '5m' | '1H';
+  interval?: '1s' | '15s' | '1m' | '5m' | '1H';
   preWindowMinutes?: number; // Minutes before alert to start fetching
   postWindowMinutes?: number; // Minutes after alert to end fetching
   mints?: string[]; // Optional: filter worklist to only include these mints (filtering happens after DuckDB query)
@@ -150,7 +150,9 @@ export async function generateOhlcvWorklist(
     // For 15s: 5000 candles = 75000 seconds = 1250 minutes total, so postWindow = 1250 - preWindow
     // For 1H: 5000 candles = 5000 hours total, so postWindow = 5000 * 60 - preWindow
     let adjustedPostWindow = postWindowMinutes;
-    if (interval === '1m') {
+    if (interval === '1s') {
+      adjustedPostWindow = Math.ceil(5000 / 60) - preWindowMinutes; // 5000 candles for 1s (~83.3 minutes)
+    } else if (interval === '1m') {
       adjustedPostWindow = 5000 - preWindowMinutes; // 5000 candles for 1m
     } else if (interval === '5m') {
       adjustedPostWindow = 25000 - preWindowMinutes; // 5000 candles for 5m

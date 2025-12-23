@@ -26,6 +26,7 @@ export const VenueSchema = z.enum([
   'jupiter',
   'birdeye',
   'telegram',
+  'simulation',
   'unknown',
 ]);
 

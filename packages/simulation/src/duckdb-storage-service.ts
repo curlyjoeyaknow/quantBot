@@ -65,6 +65,7 @@ export const CallsQueryResultSchema = z.object({
       z.object({
         mint: z.string(),
         alert_timestamp: z.string(), // ISO format timestamp
+        caller_name: z.string().nullish(), // Can be string, null, or undefined
       })
     )
     .optional(),
@@ -286,7 +287,8 @@ export class DuckDBStorageService {
   async queryCalls(
     duckdbPath: string,
     limit?: number,
-    excludeUnrecoverable?: boolean
+    excludeUnrecoverable?: boolean,
+    callerName?: string
   ): Promise<CallsQueryResult> {
     try {
       const result = await this.pythonEngine.runDuckDBStorage({
@@ -295,6 +297,7 @@ export class DuckDBStorageService {
         data: {
           limit: limit || 1000, // Default limit
           exclude_unrecoverable: excludeUnrecoverable !== false, // Default to true
+          caller_name: callerName || undefined, // Pass caller_name if provided
         },
       });
 

@@ -60,6 +60,25 @@ export class CallDataLoader {
         ctx
       );
 
+      // Check if query failed with a helpful error message
+      if (result.calls.length === 0 && result.totalQueried === 0) {
+        // Type assertion: result has error property (optional) from QueryCallsDuckdbResult
+        const resultWithError = result as { error?: string };
+        const errorMsg = resultWithError.error || 'No calls found in database';
+        logger.warn('[CallDataLoader] Query returned no calls', {
+          error: errorMsg,
+          duckdbPath,
+        });
+
+        // If the error mentions missing table, log it prominently
+        if (errorMsg.includes('not found') || errorMsg.includes('Table')) {
+          logger.error('[CallDataLoader] Database table missing - ingestion required', {
+            error: errorMsg,
+            duckdbPath,
+          });
+        }
+      }
+
       // Convert CallRecord[] to CallPerformance[]
       // Note: CallPerformance requires more fields than CallRecord provides
       // We'll need to enrich with additional data or adjust the type

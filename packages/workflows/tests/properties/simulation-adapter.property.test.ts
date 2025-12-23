@@ -25,7 +25,7 @@ import type {
   StrategyRef,
 } from '../../src/research/contract.js';
 import type { WorkflowContext } from '../../src/types.js';
-import type { StrategyConfig } from '@quantbot/simulation/strategies/types.js';
+import type { StrategyConfig } from '@quantbot/simulation';
 import { DataSnapshotService } from '../../src/research/services/DataSnapshotService.js';
 import type { SnapshotData } from '../../src/research/services/DataSnapshotService.js';
 

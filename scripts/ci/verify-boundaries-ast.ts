@@ -143,11 +143,12 @@ function extractImports(
 
 /**
  * Check a single file for boundary violations
+ *
+ * CRITICAL: Tests are NOT excluded from boundary checks.
+ * Test code must follow the same architectural boundaries as production code.
+ * Use public APIs and mocks (vi.mock('@quantbot/<pkg>')) instead of deep imports.
  */
 function checkFile(filePath: string): void {
-  // Skip test files for some checks (they may need deep imports for testing)
-  const isTestFile = filePath.includes('.test.') || filePath.includes('.spec.');
-
   const content = readFileSync(filePath, 'utf-8');
 
   // Create TypeScript source file
@@ -165,11 +166,6 @@ function checkFile(filePath: string): void {
     for (const importInfo of imports) {
       for (const forbidden of pattern.forbidden) {
         if (forbidden.pattern.test(importInfo.path)) {
-          // Skip test files for some patterns (allow deep imports in tests)
-          if (isTestFile && forbidden.pattern.source.includes('/src/')) {
-            continue;
-          }
-
           violations.push({
             file: filePath.replace(ROOT + '/', ''),
             line: importInfo.line,

@@ -56,7 +56,7 @@ export async function storeCandles(
   tokenAddress: string,
   chain: Chain,
   candles: Candle[],
-  interval: '1m' | '5m' | '15m' | '1h' | '15s' | '1H' = '5m',
+  interval: '1s' | '15s' | '1m' | '5m' | '15m' | '1h' | '1H' = '5m',
   options: StoreCandlesOptions = {}
 ): Promise<void> {
   if (candles.length === 0) {
@@ -105,7 +105,7 @@ export async function storeCandles(
 export async function storeCandlesMultiInterval(
   tokenAddress: string,
   chain: Chain,
-  candleSets: Map<'1m' | '5m' | '15m' | '1h' | '15s' | '1H', Candle[]>,
+  candleSets: Map<'1s' | '15s' | '1m' | '5m' | '15m' | '1h' | '1H', Candle[]>,
   options: StoreCandlesOptions = {}
 ): Promise<void> {
   const promises: Promise<void>[] = [];
@@ -156,8 +156,16 @@ export async function getCoverage(
   try {
     const startDateTime = DateTime.fromJSDate(startTime);
     const endDateTime = DateTime.fromJSDate(endTime);
+
+    // Normalize interval to lowercase for consistency
+    const normalizedInterval = interval.toLowerCase();
+    const storageInterval: '1s' | '15s' | '1m' | '5m' | '15m' | '1h' | '4h' | '1d' =
+      normalizedInterval === '1h' || normalizedInterval === '1H'
+        ? '1h'
+        : (normalizedInterval as '1s' | '15s' | '1m' | '5m' | '15m' | '1h' | '4h' | '1d');
+
     const candles = await storageEngine.getCandles(mint, chain, startDateTime, endDateTime, {
-      interval,
+      interval: storageInterval,
     });
 
     if (candles.length === 0) {
@@ -173,9 +181,11 @@ export async function getCoverage(
     const totalSeconds = Math.floor((endTime.getTime() - startTime.getTime()) / 1000);
 
     // Parse interval to seconds - handle all supported formats
+    // Reuse normalizedInterval from above
     let intervalSeconds: number;
-    const normalizedInterval = interval.toLowerCase();
-    if (normalizedInterval === '15s') {
+    if (normalizedInterval === '1s') {
+      intervalSeconds = 1;
+    } else if (normalizedInterval === '15s') {
       intervalSeconds = 15;
     } else if (normalizedInterval === '1m') {
       intervalSeconds = 60;
@@ -183,8 +193,12 @@ export async function getCoverage(
       intervalSeconds = 300;
     } else if (normalizedInterval === '15m') {
       intervalSeconds = 900;
-    } else if (normalizedInterval === '1h' || normalizedInterval === '1H') {
+    } else if (normalizedInterval === '1h') {
       intervalSeconds = 3600;
+    } else if (normalizedInterval === '4h') {
+      intervalSeconds = 14400;
+    } else if (normalizedInterval === '1d') {
+      intervalSeconds = 86400;
     } else {
       // Default to 1 hour for unknown intervals
       intervalSeconds = 3600;

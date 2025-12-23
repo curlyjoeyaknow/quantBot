@@ -80,8 +80,18 @@ export async function createDuckdbSimulationContext(
         },
       },
       duckdbStorage: {
-        async queryCalls(path, limit) {
-          return await duckdbStorageService.queryCalls(path, limit);
+        async queryCalls(
+          path: string,
+          limit: number,
+          excludeUnrecoverable?: boolean,
+          callerName?: string
+        ) {
+          return await duckdbStorageService.queryCalls(
+            path,
+            limit,
+            excludeUnrecoverable,
+            callerName
+          );
         },
         async checkOhlcvAvailability(
           path,

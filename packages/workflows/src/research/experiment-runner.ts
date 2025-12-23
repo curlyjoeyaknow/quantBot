@@ -147,6 +147,12 @@ export interface BatchSimulationRequest {
    * Maximum concurrent simulations
    */
   maxConcurrency?: number;
+
+  /**
+   * Early-abort configuration
+   * If provided, batch will stop early if criteria are met
+   */
+  earlyAbort?: EarlyAbortConfig;
 }
 
 export interface BatchSimulationResult {
@@ -168,6 +174,96 @@ export interface BatchSimulationResult {
     runId?: string;
     error: string;
   }>;
+
+  /**
+   * Whether the batch was aborted early
+   */
+  aborted?: {
+    reason: string;
+    afterRuns: number;
+    metrics: {
+      winRate?: number;
+      avgReturn?: number;
+      maxDrawdown?: number;
+      profitableRuns?: number;
+    };
+  };
+}
+
+/**
+ * Check early-abort criteria
+ */
+function checkEarlyAbort(
+  config: EarlyAbortConfig,
+  completedRuns: number,
+  artifacts: RunArtifact[]
+): { shouldAbort: boolean; reason?: string; metrics?: Record<string, number> } {
+  if (completedRuns === 0) {
+    return { shouldAbort: false };
+  }
+
+  const metrics: Record<string, number> = {};
+
+  // Calculate aggregate metrics
+  const returns = artifacts.map((a) => a.metrics.return.total);
+  const drawdowns = artifacts.map((a) => a.metrics.drawdown.max);
+  const winRates = artifacts.map((a) => a.metrics.hitRate.overall);
+  const profitableRuns = artifacts.filter((a) => a.metrics.return.total > 1.0).length;
+
+  const avgReturn = returns.reduce((sum, r) => sum + r, 0) / returns.length;
+  const maxDrawdown = Math.max(...drawdowns);
+  const avgWinRate = winRates.reduce((sum, r) => sum + r, 0) / winRates.length;
+
+  metrics.avgReturn = avgReturn;
+  metrics.maxDrawdown = maxDrawdown;
+  metrics.winRate = avgWinRate;
+  metrics.profitableRuns = profitableRuns;
+
+  // Check min win rate
+  if (config.minWinRate && completedRuns >= config.minWinRate.afterRuns) {
+    if (avgWinRate < config.minWinRate.threshold) {
+      return {
+        shouldAbort: true,
+        reason: `Win rate ${avgWinRate.toFixed(3)} below threshold ${config.minWinRate.threshold} after ${completedRuns} runs`,
+        metrics,
+      };
+    }
+  }
+
+  // Check min average return
+  if (config.minAvgReturn && completedRuns >= config.minAvgReturn.afterRuns) {
+    if (avgReturn < config.minAvgReturn.threshold) {
+      return {
+        shouldAbort: true,
+        reason: `Average return ${avgReturn.toFixed(3)} below threshold ${config.minAvgReturn.threshold} after ${completedRuns} runs`,
+        metrics,
+      };
+    }
+  }
+
+  // Check max drawdown
+  if (config.maxDrawdown && completedRuns >= config.maxDrawdown.afterRuns) {
+    if (maxDrawdown > config.maxDrawdown.threshold) {
+      return {
+        shouldAbort: true,
+        reason: `Max drawdown ${maxDrawdown.toFixed(3)} exceeds threshold ${config.maxDrawdown.threshold} after ${completedRuns} runs`,
+        metrics,
+      };
+    }
+  }
+
+  // Check min profitable runs
+  if (config.minProfitableRuns && completedRuns >= config.minProfitableRuns.afterRuns) {
+    if (profitableRuns < config.minProfitableRuns.count) {
+      return {
+        shouldAbort: true,
+        reason: `Only ${profitableRuns} profitable runs (required ${config.minProfitableRuns.count}) after ${completedRuns} runs`,
+        metrics,
+      };
+    }
+  }
+
+  return { shouldAbort: false, metrics };
 }
 
 export async function runBatchSimulation(
@@ -178,10 +274,12 @@ export async function runBatchSimulation(
   const runIds: string[] = [];
   const successful: string[] = [];
   const failed: Array<{ variationId: string; runId?: string; error: string }> = [];
+  const artifacts: RunArtifact[] = [];
 
   ctx.logger.info('[experiment.runBatch] starting', {
     variations: batch.variations.length,
     maxConcurrency,
+    earlyAbort: batch.earlyAbort ? 'enabled' : 'disabled',
   });
 
   // Process in batches
@@ -228,6 +326,7 @@ export async function runBatchSimulation(
         const runId = artifact.metadata.runId;
         runIds.push(runId);
         successful.push(runId);
+        artifacts.push(artifact);
 
         if (ctx.logger.debug) {
           ctx.logger.debug('[experiment.runBatch] variation completed', {
@@ -235,6 +334,8 @@ export async function runBatchSimulation(
             runId,
           });
         }
+
+        return artifact;
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
         const runId = ctx.ids.newRunId(); // Generate run ID even for failures
@@ -249,19 +350,94 @@ export async function runBatchSimulation(
           runId,
           error: errorMsg,
         });
+        return null;
       }
     });
 
-    await Promise.all(promises);
+    const batchResults = await Promise.all(promises);
+    const completedArtifacts = batchResults.filter((a): a is RunArtifact => a !== null);
+    artifacts.push(...completedArtifacts);
+
+    // Check early-abort criteria after each batch
+    if (batch.earlyAbort && artifacts.length > 0) {
+      const abortCheck = checkEarlyAbort(batch.earlyAbort, artifacts.length, artifacts);
+      if (abortCheck.shouldAbort) {
+        ctx.logger.warn('[experiment.runBatch] early abort triggered', {
+          reason: abortCheck.reason,
+          completedRuns: artifacts.length,
+          totalVariations: batch.variations.length,
+          metrics: abortCheck.metrics,
+        });
+
+        return {
+          runIds,
+          successful,
+          failed,
+          aborted: {
+            reason: abortCheck.reason!,
+            afterRuns: artifacts.length,
+            metrics: abortCheck.metrics || {},
+          },
+        };
+      }
+    }
   }
 
   ctx.logger.info('[experiment.runBatch] completed', {
     total: batch.variations.length,
     successful: successful.length,
     failed: failed.length,
+    aborted: false,
   });
 
   return { runIds, successful, failed };
+}
+
+/**
+ * Early-abort configuration
+ *
+ * Allows sweep runners to stop early if strategy is clearly failing
+ */
+export interface EarlyAbortConfig {
+  /**
+   * Stop if win rate below threshold after N runs
+   */
+  minWinRate?: {
+    /** Minimum win rate threshold (0-1) */
+    threshold: number;
+    /** Number of runs to evaluate before checking */
+    afterRuns: number;
+  };
+
+  /**
+   * Stop if average return below threshold after N runs
+   */
+  minAvgReturn?: {
+    /** Minimum average return threshold (as multiplier, e.g., 0.95 = -5%) */
+    threshold: number;
+    /** Number of runs to evaluate before checking */
+    afterRuns: number;
+  };
+
+  /**
+   * Stop if max drawdown exceeds threshold
+   */
+  maxDrawdown?: {
+    /** Maximum drawdown threshold (as fraction, e.g., 0.2 = -20%) */
+    threshold: number;
+    /** Number of runs to evaluate before checking */
+    afterRuns: number;
+  };
+
+  /**
+   * Stop if no profitable runs after N attempts
+   */
+  minProfitableRuns?: {
+    /** Minimum number of profitable runs required */
+    count: number;
+    /** Number of runs to evaluate before checking */
+    afterRuns: number;
+  };
 }
 
 /**
@@ -295,6 +471,12 @@ export interface ParameterSweepRequest {
    * Maximum concurrent simulations
    */
   maxConcurrency?: number;
+
+  /**
+   * Early-abort configuration
+   * If provided, sweep will stop early if criteria are met
+   */
+  earlyAbort?: EarlyAbortConfig;
 }
 
 /**
@@ -400,6 +582,7 @@ export async function runParameterSweep(
       baseRequest: sweep.baseRequest,
       variations,
       maxConcurrency: sweep.maxConcurrency,
+      earlyAbort: sweep.earlyAbort,
     },
     ctx
   );

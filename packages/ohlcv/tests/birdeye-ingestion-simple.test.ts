@@ -13,15 +13,17 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { DateTime } from 'luxon';
-import { birdeyeClient } from '@quantbot/api-clients';
 import type { Candle } from '@quantbot/core';
 
-// Mock the birdeye client
+// Mock the birdeye client (without importing it to respect boundaries)
+// @quantbot/ohlcv should not depend on @quantbot/api-clients
+const mockBirdeyeClient = {
+  fetchOHLCVData: vi.fn(),
+  getTokenMetadata: vi.fn(),
+};
+
 vi.mock('@quantbot/api-clients', () => ({
-  birdeyeClient: {
-    fetchOHLCVData: vi.fn(),
-    getTokenMetadata: vi.fn(),
-  },
+  birdeyeClient: mockBirdeyeClient,
 }));
 
 describe('Birdeye API Ingestion Scenarios', () => {
@@ -31,7 +33,7 @@ describe('Birdeye API Ingestion Scenarios', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(birdeyeClient.getTokenMetadata).mockResolvedValue({
+    mockBirdeyeClient.getTokenMetadata.mockResolvedValue({
       name: 'Test Token',
       symbol: 'TEST',
     });
@@ -52,7 +54,7 @@ describe('Birdeye API Ingestion Scenarios', () => {
         ],
       };
 
-      vi.mocked(birdeyeClient.fetchOHLCVData).mockResolvedValue(mockResponse as any);
+      mockBirdeyeClient.fetchOHLCVData.mockResolvedValue(mockResponse as any);
 
       const result = await birdeyeClient.fetchOHLCVData(
         TEST_MINT,
@@ -72,7 +74,7 @@ describe('Birdeye API Ingestion Scenarios', () => {
         items: [],
       };
 
-      vi.mocked(birdeyeClient.fetchOHLCVData).mockResolvedValue(mockResponse as any);
+      mockBirdeyeClient.fetchOHLCVData.mockResolvedValue(mockResponse as any);
 
       const result = await birdeyeClient.fetchOHLCVData(
         TEST_MINT,
@@ -87,9 +89,9 @@ describe('Birdeye API Ingestion Scenarios', () => {
     });
 
     it('should handle null response (invalid token)', async () => {
-      vi.mocked(birdeyeClient.fetchOHLCVData).mockResolvedValue(null);
+      mockBirdeyeClient.fetchOHLCVData.mockResolvedValue(null);
 
-      const result = await birdeyeClient.fetchOHLCVData(
+      const result = await mockBirdeyeClient.fetchOHLCVData(
         TEST_MINT,
         TEST_ALERT_TIME.minus({ minutes: 52 }).toJSDate(),
         TEST_ALERT_TIME.toJSDate(),
@@ -187,10 +189,10 @@ describe('Birdeye API Ingestion Scenarios', () => {
     it('should handle 400 Bad Request (invalid token)', async () => {
       const error = new Error('Bad Request') as any;
       error.response = { status: 400 };
-      vi.mocked(birdeyeClient.fetchOHLCVData).mockRejectedValue(error);
+      mockBirdeyeClient.fetchOHLCVData.mockRejectedValue(error);
 
       await expect(
-        birdeyeClient.fetchOHLCVData(
+        mockBirdeyeClient.fetchOHLCVData(
           TEST_MINT,
           TEST_ALERT_TIME.minus({ minutes: 52 }).toJSDate(),
           TEST_ALERT_TIME.toJSDate(),
@@ -203,10 +205,10 @@ describe('Birdeye API Ingestion Scenarios', () => {
     it('should handle 404 Not Found (token does not exist)', async () => {
       const error = new Error('Not Found') as any;
       error.response = { status: 404 };
-      vi.mocked(birdeyeClient.fetchOHLCVData).mockRejectedValue(error);
+      mockBirdeyeClient.fetchOHLCVData.mockRejectedValue(error);
 
       await expect(
-        birdeyeClient.fetchOHLCVData(
+        mockBirdeyeClient.fetchOHLCVData(
           TEST_MINT,
           TEST_ALERT_TIME.minus({ minutes: 52 }).toJSDate(),
           TEST_ALERT_TIME.toJSDate(),
@@ -219,10 +221,10 @@ describe('Birdeye API Ingestion Scenarios', () => {
     it('should handle network timeout', async () => {
       const error = new Error('timeout of 30000ms exceeded');
       error.name = 'ECONNABORTED';
-      vi.mocked(birdeyeClient.fetchOHLCVData).mockRejectedValue(error);
+      mockBirdeyeClient.fetchOHLCVData.mockRejectedValue(error);
 
       await expect(
-        birdeyeClient.fetchOHLCVData(
+        mockBirdeyeClient.fetchOHLCVData(
           TEST_MINT,
           TEST_ALERT_TIME.minus({ minutes: 52 }).toJSDate(),
           TEST_ALERT_TIME.toJSDate(),
@@ -235,10 +237,10 @@ describe('Birdeye API Ingestion Scenarios', () => {
     it('should handle 429 Too Many Requests (rate limiting)', async () => {
       const error = new Error('Too Many Requests') as any;
       error.response = { status: 429, headers: { 'retry-after': '60' } };
-      vi.mocked(birdeyeClient.fetchOHLCVData).mockRejectedValue(error);
+      mockBirdeyeClient.fetchOHLCVData.mockRejectedValue(error);
 
       await expect(
-        birdeyeClient.fetchOHLCVData(
+        mockBirdeyeClient.fetchOHLCVData(
           TEST_MINT,
           TEST_ALERT_TIME.minus({ minutes: 52 }).toJSDate(),
           TEST_ALERT_TIME.toJSDate(),
@@ -251,10 +253,10 @@ describe('Birdeye API Ingestion Scenarios', () => {
     it('should handle 500 Internal Server Error', async () => {
       const error = new Error('Internal Server Error') as any;
       error.response = { status: 500 };
-      vi.mocked(birdeyeClient.fetchOHLCVData).mockRejectedValue(error);
+      mockBirdeyeClient.fetchOHLCVData.mockRejectedValue(error);
 
       await expect(
-        birdeyeClient.fetchOHLCVData(
+        mockBirdeyeClient.fetchOHLCVData(
           TEST_MINT,
           TEST_ALERT_TIME.minus({ minutes: 52 }).toJSDate(),
           TEST_ALERT_TIME.toJSDate(),

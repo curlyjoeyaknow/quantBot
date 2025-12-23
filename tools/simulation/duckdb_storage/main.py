@@ -135,7 +135,9 @@ def main():
         output = output_model.model_validate(result.model_dump())
 
         # Output JSON to stdout (single object)
-        print(json.dumps(output.model_dump(), default=str))
+        # Use exclude_none=False to ensure None values are included as null in JSON
+        # This is important for TypeScript Zod schemas that expect nullable optional fields
+        print(json.dumps(output.model_dump(exclude_none=False), default=str))
 
         # Close connection
         con.close()

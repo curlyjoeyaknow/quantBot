@@ -13,7 +13,7 @@ import type { Candle, TokenAddress, Chain } from '../index.js';
 export type MarketDataOhlcvRequest = {
   tokenAddress: TokenAddress;
   chain: Chain;
-  interval: '15s' | '1m' | '5m' | '15m' | '1H' | '4H' | '1D';
+  interval: '1s' | '15s' | '1m' | '5m' | '15m' | '1H' | '4H' | '1D';
   from: number; // UNIX timestamp (seconds)
   to: number; // UNIX timestamp (seconds)
 };
