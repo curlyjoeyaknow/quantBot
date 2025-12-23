@@ -5,7 +5,7 @@
  * Uses DuckDB for efficient storage and querying via Python engine.
  */
 
-import { logger, PythonEngine } from '@quantbot/utils';
+import { logger, PythonEngine, AppError, ConfigurationError } from '@quantbot/utils';
 import { z } from 'zod';
 import { DateTime } from 'luxon';
 import { join } from 'path';
@@ -137,8 +137,15 @@ export class EventLogService {
           endpoint: entry.endpoint,
           trippedAt: this.circuitState.trippedAt,
         });
-        throw new Error(
-          `Circuit breaker tripped: Credits exceeded threshold (${this.circuitBreaker.threshold}) in last ${this.circuitBreaker.windowMinutes} minutes`
+        throw new AppError(
+          `Circuit breaker tripped: Credits exceeded threshold (${this.circuitBreaker.threshold}) in last ${this.circuitBreaker.windowMinutes} minutes`,
+          'CIRCUIT_BREAKER_TRIPPED',
+          503,
+          {
+            threshold: this.circuitBreaker.threshold,
+            windowMinutes: this.circuitBreaker.windowMinutes,
+            entry,
+          }
         );
       }
     }
@@ -355,7 +362,10 @@ let eventLogInstance: EventLogService | null = null;
 export function getEventLogService(config?: EventLogConfig): EventLogService {
   if (!eventLogInstance) {
     if (!config) {
-      throw new Error('EventLogService config required for first initialization');
+      throw new ConfigurationError(
+        'EventLogService config required for first initialization',
+        'EventLogService'
+      );
     }
     eventLogInstance = new EventLogService(config);
   }

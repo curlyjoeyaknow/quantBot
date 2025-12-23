@@ -18,7 +18,7 @@
 
 import { z } from 'zod';
 import { DateTime } from 'luxon';
-import { ValidationError } from '@quantbot/utils';
+import { ValidationError, DatabaseError } from '@quantbot/utils';
 import type { WorkflowContextWithPorts } from '../context/workflowContextWithPorts.js';
 
 /**
@@ -112,7 +112,7 @@ async function getEvmTokensFromClickHouse(
   });
 
   if (result.error) {
-    throw new Error(`Failed to query ClickHouse: ${result.error}`);
+    throw new DatabaseError(`Failed to query ClickHouse: ${result.error}`);
   }
 
   const data = result.rows as Array<{ token_address: string }>;

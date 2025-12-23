@@ -9,6 +9,8 @@
  * - Hours (for longer-term strategies)
  */
 
+import { ValidationError } from '@quantbot/utils';
+
 /**
  * Time resolution type
  */
@@ -195,6 +197,6 @@ export function createClock(resolution: ClockResolution, startTime: number = 0):
     case 'h':
       return new HourClock(startTime);
     default:
-      throw new Error(`Unsupported clock resolution: ${resolution}`);
+      throw new ValidationError(`Unsupported clock resolution: ${resolution}`, { resolution });
   }
 }

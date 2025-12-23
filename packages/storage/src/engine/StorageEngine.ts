@@ -16,7 +16,7 @@
  */
 
 import { DateTime } from 'luxon';
-import { logger, ValidationError, AppError } from '@quantbot/utils';
+import { logger, ValidationError, AppError, ServiceUnavailableError } from '@quantbot/utils';
 import type {
   Candle,
   Call,
@@ -395,7 +395,7 @@ export class StorageEngine {
       }
     >
   > {
-    throw new Error(
+    throw new ServiceUnavailableError(
       'getCallerAlerts is not available. PostgreSQL has been removed. Use DuckDB repositories directly.'
     );
   }
@@ -409,7 +409,7 @@ export class StorageEngine {
    * @deprecated PostgreSQL removed. Use DuckDB repositories directly.
    */
   async storeCall(_call: Omit<Call, 'id' | 'createdAt'>): Promise<number> {
-    throw new Error(
+    throw new ServiceUnavailableError(
       'storeCall is not available. PostgreSQL has been removed. Use DuckDB repositories directly.'
     );
   }
@@ -422,7 +422,7 @@ export class StorageEngine {
     _tokenId: number,
     _options?: { from?: DateTime; to?: DateTime; limit?: number }
   ): Promise<Call[]> {
-    throw new Error(
+    throw new ServiceUnavailableError(
       'getCallsByToken is not available. PostgreSQL has been removed. Use DuckDB repositories directly.'
     );
   }
@@ -435,7 +435,7 @@ export class StorageEngine {
     _callerId: number,
     _options?: { from?: DateTime; to?: DateTime; limit?: number }
   ): Promise<Call[]> {
-    throw new Error(
+    throw new ServiceUnavailableError(
       'getCallsByCaller is not available. PostgreSQL has been removed. Use DuckDB repositories directly.'
     );
   }
@@ -449,7 +449,7 @@ export class StorageEngine {
    * @deprecated PostgreSQL removed. Use DuckDB StrategiesRepository directly.
    */
   async storeStrategy(_strategy: Omit<StrategyConfig, 'createdAt' | 'updatedAt'>): Promise<number> {
-    throw new Error(
+    throw new ServiceUnavailableError(
       'storeStrategy is not available. PostgreSQL has been removed. Use DuckDB StrategiesRepository directly.'
     );
   }
@@ -459,7 +459,7 @@ export class StorageEngine {
    * @deprecated PostgreSQL removed. Use DuckDB StrategiesRepository directly.
    */
   async getActiveStrategies(): Promise<StrategyConfig[]> {
-    throw new Error(
+    throw new ServiceUnavailableError(
       'getActiveStrategies is not available. PostgreSQL has been removed. Use DuckDB StrategiesRepository directly.'
     );
   }
@@ -469,7 +469,7 @@ export class StorageEngine {
    * @deprecated PostgreSQL removed. Use DuckDB StrategiesRepository directly.
    */
   async getStrategy(_name: string, _version?: string): Promise<StrategyConfig | null> {
-    throw new Error(
+    throw new ServiceUnavailableError(
       'getStrategy is not available. PostgreSQL has been removed. Use DuckDB StrategiesRepository directly.'
     );
   }

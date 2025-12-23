@@ -8,6 +8,7 @@ import type {
   Chain,
 } from '@quantbot/core';
 import type { BirdeyeClient } from '@quantbot/api-clients';
+import { ValidationError } from '@quantbot/utils';
 
 // TokenMetadata from MarketDataPort (has chain field)
 type MarketDataTokenMetadata = {

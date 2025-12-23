@@ -9,7 +9,7 @@ import { z } from 'zod';
 import { DateTime } from 'luxon';
 import { resolve } from 'path';
 import type { WorkflowContextWithPorts } from '../context/workflowContextWithPorts.js';
-import { getPythonEngine } from '@quantbot/utils';
+import { getPythonEngine, ConfigurationError } from '@quantbot/utils';
 
 /**
  * Token stats spec
@@ -78,7 +78,10 @@ export type TokenStatsContext = WorkflowContextWithPorts & {
  * Create default context (for testing)
  */
 export function createDefaultTokenStatsContext(): TokenStatsContext {
-  throw new Error('createDefaultTokenStatsContext must be implemented with actual services');
+  throw new ConfigurationError(
+    'createDefaultTokenStatsContext must be implemented with actual services',
+    'TokenStatsContext'
+  );
 }
 
 /**
@@ -94,8 +97,10 @@ export async function getTokenStats(
   const duckdbPathRaw = validated.duckdbPath || ctx.duckdb?.path || process.env.DUCKDB_PATH;
 
   if (!duckdbPathRaw) {
-    throw new Error(
-      'DuckDB path is required. Provide duckdbPath in spec or set DUCKDB_PATH environment variable.'
+    throw new ConfigurationError(
+      'DuckDB path is required. Provide duckdbPath in spec or set DUCKDB_PATH environment variable.',
+      'duckdbPath',
+      { spec: validated, env: { DUCKDB_PATH: process.env.DUCKDB_PATH } }
     );
   }
 

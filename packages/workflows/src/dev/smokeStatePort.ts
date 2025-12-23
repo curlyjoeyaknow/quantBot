@@ -5,6 +5,7 @@
  * Run this to ensure the DuckDB state adapter is properly wired.
  */
 
+import { AppError } from '@quantbot/utils';
 import { createProductionPorts } from '../context/createProductionPorts.js';
 
 export async function smokeStatePort(): Promise<void> {
@@ -32,7 +33,9 @@ export async function smokeStatePort(): Promise<void> {
 
     if (!setResult.success) {
       console.error('❌ StatePort set failed:', setResult.error);
-      throw new Error(`StatePort set failed: ${setResult.error}`);
+      throw new AppError(`StatePort set failed: ${setResult.error}`, 'STATE_PORT_SET_FAILED', 500, {
+        setResult,
+      });
     }
 
     // Test get
@@ -47,7 +50,14 @@ export async function smokeStatePort(): Promise<void> {
     });
 
     if (!getResult.found) {
-      throw new Error('StatePort get failed: value not found after set');
+      throw new AppError(
+        'StatePort get failed: value not found after set',
+        'STATE_PORT_GET_FAILED',
+        500,
+        {
+          getResult,
+        }
+      );
     }
 
     // Test delete

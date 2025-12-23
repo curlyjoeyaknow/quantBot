@@ -45,6 +45,7 @@
     "check:test-requirements": "ts-node scripts/git/check-test-requirements.ts",
     "verify:workflow-contracts": "tsx scripts/verify-workflow-contract.ts",
     "verify:architecture-boundaries": "tsx scripts/verify-architecture-boundaries.ts",
+    "check:no-build-artifacts": "tsx scripts/ci/check-no-build-artifacts.ts",
     "smoke:ports": "tsx packages/workflows/src/dev/smokePorts.ts",
     "audit": "npm audit --audit-level=moderate",
     "audit:fix": "npm audit fix",

@@ -5,6 +5,7 @@
  * Tools for calibrating execution models from live trading data.
  */
 
+import { ValidationError } from '@quantbot/utils';
 import type { ExecutionModel, LatencyDistribution, SlippageModel, FailureModel } from './types.js';
 import { z } from 'zod';
 
@@ -87,7 +88,9 @@ export interface CalibrationResult {
  */
 export function calibrateLatencyDistribution(latencies: number[]): LatencyDistribution {
   if (latencies.length === 0) {
-    throw new Error('Cannot calibrate latency distribution from empty data');
+    throw new ValidationError('Cannot calibrate latency distribution from empty data', {
+      latenciesLength: latencies.length,
+    });
   }
 
   const sorted = [...latencies].sort((a, b) => a - b);
@@ -122,7 +125,9 @@ export function calibrateSlippageModel(
   }>
 ): SlippageModel {
   if (records.length === 0) {
-    throw new Error('Cannot calibrate slippage model from empty data');
+    throw new ValidationError('Cannot calibrate slippage model from empty data', {
+      recordsLength: records.length,
+    });
   }
 
   // Calculate slippage in bps for each trade

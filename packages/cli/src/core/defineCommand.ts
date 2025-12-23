@@ -10,7 +10,7 @@
  */
 
 import type { Command } from 'commander';
-import { execute } from './execute.js';
+import { executeValidated } from './execute.js';
 import { commandRegistry } from './command-registry.js';
 import { NotFoundError } from '@quantbot/utils';
 
@@ -54,7 +54,7 @@ export function defineCommand<TRawOpts extends Record<string, unknown>, TOpts>(
       // Coerce values (JSON/numbers/arrays) - but never rename keys
       const coerced = args.coerce ? args.coerce(merged) : merged;
 
-      // Validate with schema
+      // Validate with schema (single source of truth for validation)
       const opts = args.validate(coerced);
 
       // Get command definition from registry
@@ -63,8 +63,9 @@ export function defineCommand<TRawOpts extends Record<string, unknown>, TOpts>(
         throw new NotFoundError('Command', `${args.packageName}.${args.name}`);
       }
 
-      // Use execute() which handles context, formatting, artifacts, etc.
-      await execute(commandDef, opts as Record<string, unknown>);
+      // Use executeValidated() since we've already validated here
+      // This avoids double validation in execute()
+      await executeValidated(commandDef, opts as Record<string, unknown>);
     } catch (e) {
       if (args.onError) {
         args.onError(e);
