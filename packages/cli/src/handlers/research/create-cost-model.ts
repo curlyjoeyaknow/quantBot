@@ -1,6 +1,6 @@
 /**
  * Create Cost Model Handler
- * 
+ *
  * Creates a cost model from fee data using ExecutionRealityService.
  */
 
@@ -9,15 +9,14 @@ import { ExecutionRealityService } from '@quantbot/workflows';
 import { createProductionContext } from '@quantbot/workflows';
 import type { z } from 'zod';
 
-export type CreateCostModelArgs = z.infer<typeof import('../../command-defs/research.js').createCostModelSchema>;
+export type CreateCostModelArgs = z.infer<
+  typeof import('../../command-defs/research.js').createCostModelSchema
+>;
 
-export async function createCostModelHandler(
-  args: CreateCostModelArgs,
-  ctx: CommandContext
-) {
+export async function createCostModelHandler(args: CreateCostModelArgs, ctx: CommandContext) {
   // Create service (doesn't require context)
   const executionService = new ExecutionRealityService();
-  
+
   // Create cost model
   const model = executionService.createCostModelFromFees({
     baseFee: args.baseFee || 5000,
@@ -27,7 +26,6 @@ export async function createCostModelHandler(
     },
     tradingFeePercent: args.tradingFeePercent || 0.01,
   });
-  
+
   return model;
 }
-

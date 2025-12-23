@@ -12,6 +12,7 @@
 import { z } from 'zod';
 import { createHash } from 'crypto';
 import { execSync } from 'child_process';
+import { ValidationError, NotFoundError } from '@quantbot/utils';
 import type { SimulationRequest } from './contract.js';
 import type { RunArtifact } from './artifacts.js';
 import { SimulationRequestSchema } from './contract.js';
@@ -89,7 +90,10 @@ export async function runSingleSimulation(
   const parsed = SimulationRequestSchema.safeParse(request);
   if (!parsed.success) {
     const msg = parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ');
-    throw new Error(`Invalid simulation request: ${msg}`);
+    throw new ValidationError(`Invalid simulation request: ${msg}`, {
+      request,
+      issues: parsed.error.issues,
+    });
   }
 
   ctx.logger.info('[experiment.runSingle] starting', {
@@ -385,7 +389,7 @@ export async function replaySimulation(
   // Load original artifact
   const original = await ctx.artifacts.load(runId);
   if (!original) {
-    throw new Error(`Run not found: ${runId}`);
+    throw new NotFoundError('Run', runId, { runId });
   }
 
   // Extract original request

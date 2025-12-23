@@ -56,6 +56,9 @@ export * from './canonical/transformers.js';
 
 export * from './experiment-id-generator.js';
 export * from './parameter-vector.js';
+export * from './strategy/dsl-schema.js';
+export * from './strategy/dsl-validator.js';
+export * from './strategy/dsl-to-sim-input.js';
 
 /**
  * Supported blockchain

@@ -4,6 +4,7 @@
 
 import type { Command } from 'commander';
 import { z } from 'zod';
+import { ValidationError } from '@quantbot/utils';
 import { defineCommand } from '../core/defineCommand.js';
 import { die } from '../core/cliErrors.js';
 import { commandRegistry } from '../core/command-registry.js';
@@ -22,9 +23,7 @@ import type { PackageCommandModule } from '../types/index.js';
  * Register experiment commands
  */
 export function registerExperimentsCommands(program: Command): void {
-  const experimentsCmd = program
-    .command('experiments')
-    .description('Query and manage experiments');
+  const experimentsCmd = program.command('experiments').description('Query and manage experiments');
 
   // List experiments
   const listCmd = experimentsCmd
@@ -79,7 +78,7 @@ export function registerExperimentsCommands(program: Command): void {
     packageName: 'experiments',
     validate: (opts) => {
       if (!opts.parameterHash) {
-        throw new Error('--parameter-hash is required');
+        throw new ValidationError('--parameter-hash is required', { opts });
       }
       return findExperimentsByParameterSchema.parse(opts);
     },
@@ -142,4 +141,3 @@ const experimentsModule: PackageCommandModule = {
 
 // Register the module
 commandRegistry.registerPackage(experimentsModule);
-

@@ -26,7 +26,7 @@ export function coerceJson<T>(v: unknown, name: string): T | undefined {
   } catch (e) {
     const preview = v.length > 80 ? `${v.substring(0, 80)}...` : v;
     throw new ValidationError(
-      `Invalid JSON for ${name}: ${e instanceof Error ? e.message : String(e)}`,
+      `Invalid JSON for ${name}: ${e instanceof Error ? e.message : String(e)}. Input: ${preview}`,
       {
         name,
         input: preview,

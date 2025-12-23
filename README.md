@@ -91,6 +91,35 @@ QuantBot's core capabilities:
 - Detailed event traces
 - Comprehensive performance metrics
 
+### 🔬 Research OS - Self-Evolving Trading Lab
+
+**NEW**: Production-ready research services for reproducible experiments:
+
+- **Data Snapshots** - Create reproducible data snapshots with content hashing
+
+  ```bash
+  quantbot research create-snapshot --from 2024-01-01T00:00:00Z --to 2024-01-02T00:00:00Z
+  ```
+
+- **Execution Models** - Realistic execution models with latency, slippage, and failure simulation
+
+  ```bash
+  quantbot research create-execution-model --latency-samples "100,200,300" --failure-rate 0.01
+  ```
+
+- **Cost Models** - Comprehensive cost models including fees, priority fees, and trading costs
+
+  ```bash
+  quantbot research create-cost-model --base-fee 5000 --trading-fee-percent 0.01
+  ```
+
+- **Risk Models** - Risk constraints and circuit breakers for safe trading
+  ```bash
+  quantbot research create-risk-model --max-drawdown-percent 20 --max-loss-per-day 1000
+  ```
+
+See **[docs/guides/research-services-usage.md](docs/guides/research-services-usage.md)** for complete usage guide.
+
 ### 📊 Analytics & Reporting
 
 - Simulation run tracking
@@ -603,6 +632,8 @@ npm run format
 - **[docs/WORKFLOW_ENFORCEMENT.md](docs/WORKFLOW_ENFORCEMENT.md)** - Workflow patterns
 - **[docs/MIGRATION_POSTGRES_TO_DUCKDB.md](docs/MIGRATION_POSTGRES_TO_DUCKDB.md)** - DuckDB migration
 - **[docs/guides/](docs/guides/)** - How-to guides
+  - **[Research Services Usage](docs/guides/research-services-usage.md)** - Complete guide to DataSnapshotService and ExecutionRealityService
+  - **[Research Services Integration](docs/guides/research-services-integration.md)** - Integration patterns and best practices
 
 ## 🔒 Security
 

@@ -13,7 +13,13 @@ import type { CommandContext } from '../core/command-context.js';
 import { evaluateCallsHandler } from './calls/evaluate-calls.js';
 import { sweepCallsHandler } from './calls/sweep-calls.js';
 import { exportCallsFromDuckdbHandler } from './calls/export-calls-from-duckdb.js';
-import { evaluateCallsSchema, sweepCallsSchema, exportCallsSchema } from '../command-defs/calls.js';
+import { exportCallsWithSimulationHandler } from './calls/export-calls-with-simulation.js';
+import {
+  evaluateCallsSchema,
+  sweepCallsSchema,
+  exportCallsSchema,
+  exportCallsWithSimulationSchema,
+} from '../command-defs/calls.js';
 import type { ExitOverlay } from '@quantbot/simulation';
 
 /**
@@ -85,6 +91,56 @@ export function registerCallsCommands(program: Command): void {
       limit: raw.limit ? coerceNumber(raw.limit, 'limit') : 200,
     }),
     validate: (opts) => exportCallsSchema.parse(opts),
+    onError: die,
+  });
+
+  // Export with simulation command
+  const exportSimCmd = callsCmd
+    .command('export-simulation')
+    .description('Export calls from DuckDB with simulation results to CSV')
+    .requiredOption('--duckdb <path>', 'Path to DuckDB file')
+    .requiredOption('--from-iso <iso>', 'Start date (ISO 8601)')
+    .requiredOption('--to-iso <iso>', 'End date (ISO 8601)')
+    .option('--caller-name <name>', 'Filter by caller name')
+    .option('--limit <n>', 'Maximum calls to export', '1000')
+    .requiredOption('--out <path>', 'Output CSV file path')
+    .option('--lag-ms <ms>', 'Entry lag in milliseconds', '10000')
+    .option(
+      '--entry-rule <rule>',
+      'Entry rule: next_candle_open, next_candle_close, call_time_close',
+      'next_candle_open'
+    )
+    .option('--timeframe-ms <ms>', 'Timeframe in milliseconds', String(24 * 60 * 60 * 1000))
+    .option('--interval <interval>', 'Candle interval: 1s, 1m, 5m, 15m, 1h', '5m')
+    .option('--taker-fee-bps <bps>', 'Taker fee in basis points', '30')
+    .option('--slippage-bps <bps>', 'Slippage in basis points', '10')
+    .option('--notional-usd <amount>', 'Position size in USD', '1000')
+    .option(
+      '--overlays <json>',
+      'JSON array of exit overlays',
+      '[{"kind":"take_profit","takePct":100}]'
+    );
+
+  defineCommand(exportSimCmd, {
+    name: 'export-simulation',
+    packageName: 'calls',
+    coerce: (raw) => ({
+      ...raw,
+      duckdbPath: raw.duckdb,
+      fromIso: raw.fromIso,
+      toIso: raw.toIso,
+      callerName: raw.callerName,
+      limit: raw.limit ? coerceNumber(raw.limit, 'limit') : 1000,
+      lagMs: raw.lagMs ? coerceNumber(raw.lagMs, 'lag-ms') : 10_000,
+      timeframeMs: raw.timeframeMs
+        ? coerceNumber(raw.timeframeMs, 'timeframe-ms')
+        : 24 * 60 * 60 * 1000,
+      takerFeeBps: raw.takerFeeBps ? coerceNumber(raw.takerFeeBps, 'taker-fee-bps') : 30,
+      slippageBps: raw.slippageBps ? coerceNumber(raw.slippageBps, 'slippage-bps') : 10,
+      notionalUsd: raw.notionalUsd ? coerceNumber(raw.notionalUsd, 'notional-usd') : 1000,
+      overlays: raw.overlays ? coerceJson(raw.overlays, 'overlays') : undefined,
+    }),
+    validate: (opts) => exportCallsWithSimulationSchema.parse(opts),
     onError: die,
   });
 
@@ -174,6 +230,19 @@ const callsModule: PackageCommandModule = {
       },
       examples: [
         'quantbot calls export --duckdb data/tele.duckdb --from-iso 2024-01-01T00:00:00Z --to-iso 2024-01-02T00:00:00Z --out calls.json',
+      ],
+    },
+    {
+      name: 'export-simulation',
+      description: 'Export calls from DuckDB with simulation results to CSV',
+      schema: exportCallsWithSimulationSchema,
+      handler: async (args: unknown, ctx: unknown) => {
+        const typedArgs = args as z.infer<typeof exportCallsWithSimulationSchema>;
+        const typedCtx = ctx as CommandContext;
+        return await exportCallsWithSimulationHandler(typedArgs, typedCtx);
+      },
+      examples: [
+        'quantbot calls export-simulation --duckdb data/tele.duckdb --from-iso 2025-11-02T00:00:00Z --to-iso 2025-12-20T23:59:59Z --out results.csv',
       ],
     },
   ],

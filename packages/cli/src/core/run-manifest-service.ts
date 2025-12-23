@@ -6,12 +6,7 @@
  */
 
 import { getCurrentGitCommitHash } from '@quantbot/utils';
-import {
-  createRunManifest,
-  hashObject,
-  type RunInputComponents,
-  type RunManifest,
-} from '@quantbot/core';
+import { createRunManifest, hashObject, type RunManifest } from '@quantbot/core';
 import type { ArtifactPaths } from './artifact-manager.js';
 import { writeArtifact } from './artifact-manager.js';
 
@@ -116,4 +111,3 @@ export async function readRunManifest(paths: ArtifactPaths): Promise<RunManifest
     return null;
   }
 }
-

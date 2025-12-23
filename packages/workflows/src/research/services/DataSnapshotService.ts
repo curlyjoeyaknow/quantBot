@@ -8,7 +8,7 @@
 
 import { createHash } from 'crypto';
 import { DateTime } from 'luxon';
-import { logger } from '@quantbot/utils';
+import { logger, ValidationError } from '@quantbot/utils';
 import type { DataSnapshotRef } from '../contract.js';
 import { DataSnapshotRefSchema } from '../contract.js';
 import { queryCallsDuckdb } from '../../calls/queryCallsDuckdb.js';
@@ -104,7 +104,10 @@ export class DataSnapshotService {
   async loadSnapshot(snapshot: DataSnapshotRef): Promise<SnapshotData> {
     // Verify snapshot integrity first
     if (!(await this.verifySnapshot(snapshot))) {
-      throw new Error(`Snapshot integrity check failed: ${snapshot.snapshotId}`);
+      throw new ValidationError('Snapshot integrity check failed', {
+        snapshotId: snapshot.snapshotId,
+        snapshot,
+      });
     }
 
     // Load data using snapshot parameters
@@ -342,9 +345,6 @@ export class DataSnapshotService {
 /**
  * Create default DataSnapshotService instance
  */
-export function createDataSnapshotService(
-  duckdbPath?: string,
-  ctx?: WorkflowContext
-): DataSnapshotService {
-  return new DataSnapshotService(duckdbPath, ctx);
+export function createDataSnapshotService(ctx?: WorkflowContext): DataSnapshotService {
+  return new DataSnapshotService(ctx);
 }

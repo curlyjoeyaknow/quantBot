@@ -115,3 +115,32 @@ export const exportCallsSchema = z.object({
 });
 
 export type ExportCallsArgs = z.infer<typeof exportCallsSchema>;
+
+export const exportCallsWithSimulationSchema = z.object({
+  duckdbPath: z.string().min(1, 'DuckDB path is required'),
+  fromIso: z.string().min(1, 'from-iso is required'),
+  toIso: z.string().min(1, 'to-iso is required'),
+  callerName: z.string().optional(),
+  limit: z.coerce.number().int().min(1).max(10000).default(1000),
+  out: z.string().min(1, 'Output CSV file path is required'),
+  // Simulation parameters
+  lagMs: z.coerce.number().int().min(0).default(10_000),
+  entryRule: z
+    .enum(['next_candle_open', 'next_candle_close', 'call_time_close'])
+    .default('next_candle_open'),
+  timeframeMs: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(24 * 60 * 60 * 1000),
+  interval: z.enum(['1s', '1m', '5m', '15m', '1h']).default('5m'),
+  takerFeeBps: z.coerce.number().int().min(0).max(10000).default(30),
+  slippageBps: z.coerce.number().int().min(0).max(10000).default(10),
+  notionalUsd: z.coerce.number().positive().default(1000),
+  overlays: z
+    .string()
+    .optional()
+    .transform((val) => (val ? JSON.parse(val) : undefined)),
+});
+
+export type ExportCallsWithSimulationArgs = z.infer<typeof exportCallsWithSimulationSchema>;

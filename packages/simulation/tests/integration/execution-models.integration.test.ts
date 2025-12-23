@@ -201,7 +201,9 @@ describe('Execution Models Integration', () => {
       const model = createPumpfunExecutionModel();
 
       const rng = createDeterministicRNG(100);
-      const latencies = Array.from({ length: 100 }, () => sampleTotalLatency(model.latency, rng, 0));
+      const latencies = Array.from({ length: 100 }, () =>
+        sampleTotalLatency(model.latency, rng, 0)
+      );
 
       // All latencies should be non-negative
       expect(latencies.every((l) => l >= 0)).toBe(true);
@@ -222,7 +224,9 @@ describe('Execution Models Integration', () => {
 
       const rng1 = createDeterministicRNG(101);
       const rng2 = createDeterministicRNG(102);
-      const baseLatencies = Array.from({ length: 100 }, () => sampleTotalLatency(model.latency, rng1, 0));
+      const baseLatencies = Array.from({ length: 100 }, () =>
+        sampleTotalLatency(model.latency, rng1, 0)
+      );
       const congestedLatencies = Array.from({ length: 100 }, () =>
         sampleTotalLatency(model.latency, rng2, 1.0)
       );
