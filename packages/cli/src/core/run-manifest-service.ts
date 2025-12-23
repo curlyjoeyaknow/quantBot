@@ -5,7 +5,7 @@
  * Integrates with artifact manager to write manifest.json.
  */
 
-import { getCurrentGitCommitHash } from '@quantbot/utils';
+import { getCurrentGitCommitHash, ValidationError } from '@quantbot/utils';
 import { createRunManifest, hashObject, type RunManifest } from '@quantbot/core';
 import type { ArtifactPaths } from './artifact-manager.js';
 import { writeArtifact } from './artifact-manager.js';
@@ -99,9 +99,9 @@ export async function createAndWriteRunManifest(
         `Please migrate to using snapshotRef for reproducible runs. Run ID: ${components.runId}`
     );
   } else {
-    throw new Error(
-      'Either snapshotRef or dataSnapshot must be provided to create run manifest. ' +
-        'For new runs, snapshotRef is required.'
+    throw new ValidationError(
+      'Either snapshotRef or dataSnapshot must be provided to create run manifest. For new runs, snapshotRef is required.',
+      { runId: components.runId }
     );
   }
 
