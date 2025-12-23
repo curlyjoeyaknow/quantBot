@@ -396,8 +396,8 @@ importers:
         specifier: ^3.7.2
         version: 3.7.2
       zod:
-        specifier: ^3.24.1
-        version: 3.25.76
+        specifier: ^4.1.13
+        version: 4.1.13
     devDependencies:
       '@types/luxon':
         specifier: ^3.7.1

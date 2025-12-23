@@ -19,6 +19,7 @@ import {
   createProductionContextWithPorts,
 } from '@quantbot/workflows';
 import type { EvaluateCallsRequest } from '@quantbot/workflows';
+import type { ExitOverlay } from '@quantbot/simulation';
 import { formatCSV } from '../../core/output-formatter.js';
 
 /**
@@ -180,7 +181,7 @@ export async function exportCallsWithSimulationHandler(
         takerFeeBps: args.takerFeeBps || 30,
         slippageBps: args.slippageBps || 10,
       },
-      overlays: defaultOverlays as any,
+      overlays: defaultOverlays as ExitOverlay[],
       position: {
         notionalUsd: args.notionalUsd || 1000,
       },

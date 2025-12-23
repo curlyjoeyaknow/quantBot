@@ -48,10 +48,27 @@ export default tseslint.config(
        * Use their public API (package entry / index.ts) or relative imports inside same package.
        *
        * This makes boundaries physical, not aspirational.
+       *
+       * Also enforces "No Live Trading" policy - QuantBot is simulation-only.
+       * See docs/BOUNDARIES.md for the complete policy.
        */
       'no-restricted-imports': [
         'error',
         {
+          paths: [
+            {
+              name: '@solana/web3.js',
+              importNames: [
+                'Keypair',
+                'sendTransaction',
+                'sendRawTransaction',
+                'signTransaction',
+                'signAllTransactions',
+              ],
+              message:
+                'QuantBot is simulation-only. Do not import Solana signing/submission APIs. Use ExecutionPort for simulation instead. See docs/BOUNDARIES.md',
+            },
+          ],
           patterns: [
             {
               group: [
@@ -63,6 +80,17 @@ export default tseslint.config(
               message:
                 "Do not deep-import another package's internals. Import from its public API (e.g., @quantbot/<pkg>) instead.",
             },
+            {
+              group: [
+                '@jito-*/**',
+                'jito-*/**',
+              ],
+              message:
+                'Jito clients enable live trading. QuantBot is simulation-only. See docs/BOUNDARIES.md',
+            },
+            // Note: We allow read-only imports like PublicKey for address validation
+            // The CI check will catch actual signing/submission usage
+            // If you need Solana types, prefer importing from @quantbot/core if available
           ],
         },
       ],
@@ -607,6 +635,144 @@ export default tseslint.config(
         { object: 'process', property: 'env' },
         { object: 'Date', property: 'now' },
         { object: 'Math', property: 'random' },
+      ],
+    },
+  },
+
+  /**
+   * PythonEngine usage restriction
+   *
+   * PythonEngine may only be imported in:
+   * - packages/storage/** (storage layer implementations)
+   * - tools/storage/** (storage tooling scripts)
+   * - packages/utils/** (PythonEngine is defined here)
+   *
+   * All other packages must use storage ports/services instead.
+   * See docs/architecture/PYTHON_DB_DRIVER_DECISION.md for details.
+   *
+   * Note: ESLint cannot easily restrict specific named exports, so we rely on
+   * the CI check (pnpm verify:python-engine) for enforcement. This rule
+   * serves as a reminder/warning.
+   */
+  {
+    files: [
+      'packages/**/src/**/*.ts',
+      'packages/**/tests/**/*.ts',
+      'tools/**/*.ts',
+    ],
+    ignores: [
+      'packages/storage/**', // Storage can use PythonEngine
+      'tools/storage/**', // Storage tools can use PythonEngine
+      'packages/utils/**', // PythonEngine is defined here
+    ],
+    rules: {
+      // Note: We can't easily restrict specific named exports with ESLint,
+      // so the CI check (verify:python-engine) is the primary enforcement.
+      // This rule is kept as a reminder but won't catch all cases.
+      'no-restricted-imports': [
+        'warn', // Warning only - CI check is the real enforcement
+        {
+          patterns: [
+            {
+              group: [
+                '@quantbot/utils/python/**',
+                '**/python/python-engine',
+              ],
+              message:
+                'PythonEngine may only be imported in packages/storage and tools/storage. Use storage ports/services instead. See docs/architecture/PYTHON_DB_DRIVER_DECISION.md. CI check will fail on violations.',
+            },
+          ],
+        },
+      ],
+    },
+  },
+
+  /**
+   * Live Trading Prevention: Simulation Lab Only
+   *
+   * QuantBot is a simulation lab only. It must never sign transactions or submit to networks.
+   * These rules ban imports of live trading libraries and patterns.
+   *
+   * See docs/BOUNDARIES.md for the complete policy.
+   *
+   * Note: @solana/web3.js is NOT fully banned - only PublicKey (read-only) imports are allowed.
+   * The CI check (check-no-live-trading) enforces PublicKey-only imports precisely.
+   */
+  {
+    files: ['**/*.ts', '**/*.tsx'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: '@solana/spl-token',
+              message:
+                '@solana/spl-token may contain signing functions. QuantBot is simulation-only. Use read-only alternatives if needed.',
+            },
+            {
+              name: '@jito-foundation/block-engine-client',
+              message:
+                '@jito-foundation/block-engine-client is for live trading. QuantBot is simulation-only.',
+            },
+            {
+              name: '@solana/wallet-adapter',
+              message:
+                '@solana/wallet-adapter is for live trading. QuantBot is simulation-only.',
+            },
+            {
+              name: '@solana/wallet-adapter-base',
+              message:
+                '@solana/wallet-adapter-base is for live trading. QuantBot is simulation-only.',
+            },
+            {
+              name: '@solana/wallet-adapter-wallets',
+              message:
+                '@solana/wallet-adapter-wallets is for live trading. QuantBot is simulation-only.',
+            },
+          ],
+          patterns: [
+            {
+              group: ['@solana/spl-token', '@jito-foundation/**', '@solana/wallet-adapter*'],
+              message:
+                'Live trading libraries are forbidden. QuantBot is simulation-only. See docs/BOUNDARIES.md',
+            },
+          ],
+        },
+      ],
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'CallExpression[callee.property.name="fromSecretKey"]',
+          message:
+            'Keypair.fromSecretKey() is forbidden. QuantBot does not load private keys. See docs/BOUNDARIES.md',
+        },
+        {
+          selector: 'CallExpression[callee.property.name="sendTransaction"]',
+          message:
+            'sendTransaction() is forbidden. QuantBot does not submit transactions. See docs/BOUNDARIES.md',
+        },
+        {
+          selector: 'CallExpression[callee.property.name="sendRawTransaction"]',
+          message:
+            'sendRawTransaction() is forbidden. QuantBot does not submit transactions. See docs/BOUNDARIES.md',
+        },
+        {
+          selector: 'CallExpression[callee.property.name="signTransaction"]',
+          message:
+            'signTransaction() is forbidden. QuantBot does not sign transactions. See docs/BOUNDARIES.md',
+        },
+        {
+          selector: 'CallExpression[callee.property.name="signAllTransactions"]',
+          message:
+            'signAllTransactions() is forbidden. QuantBot does not sign transactions. See docs/BOUNDARIES.md',
+        },
+        {
+          selector:
+            'MemberExpression[object.name="process"][property.name="env"] > Identifier[name=/PRIVATE|SECRET|MNEMONIC/i]',
+          message:
+            'Accessing process.env.*PRIVATE*, *SECRET*, or *MNEMONIC* is forbidden. QuantBot does not store private keys. See docs/BOUNDARIES.md',
+        },
       ],
     },
   },

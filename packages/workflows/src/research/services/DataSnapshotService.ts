@@ -166,7 +166,7 @@ export class DataSnapshotService {
             callerName,
             limit: 10000,
           },
-          this.ctx as any // Type assertion needed - context should have services
+          this.ctx as WorkflowContext // Context should have services
         );
 
         for (const call of callsResult.calls) {
@@ -187,8 +187,8 @@ export class DataSnapshotService {
             caller: call.caller || 'unknown',
             mint: call.mint,
             createdAt: createdAtISO,
-            price: (call as any).price,
-            volume: (call as any).volume,
+            price: 'price' in call && typeof call.price === 'number' ? call.price : undefined,
+            volume: 'volume' in call && typeof call.volume === 'number' ? call.volume : undefined,
           });
         }
       }
@@ -204,7 +204,7 @@ export class DataSnapshotService {
             // callerName is optional in the schema, so we can omit it
             limit: 10000,
           },
-          this.ctx as any
+          this.ctx as WorkflowContext
         );
 
         for (const call of callsResult.calls) {
@@ -224,8 +224,8 @@ export class DataSnapshotService {
             caller: call.caller || 'unknown',
             mint: call.mint,
             createdAt: createdAtISO,
-            price: (call as any).price,
-            volume: (call as any).volume,
+            price: 'price' in call && typeof call.price === 'number' ? call.price : undefined,
+            volume: 'volume' in call && typeof call.volume === 'number' ? call.volume : undefined,
           });
         }
       } catch (error) {

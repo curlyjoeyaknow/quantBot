@@ -65,6 +65,12 @@ jobs:
       - name: CI hygiene checks
         run: pnpm check:hygiene
 
+      - name: Verify PythonEngine usage
+        run: pnpm verify:python-engine
+
+      - name: Check for live trading code
+        run: pnpm check:no-live-trading
+
       - name: Build packages (ordered)
         run: pnpm build:ordered
 

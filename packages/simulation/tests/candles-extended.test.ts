@@ -1,15 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { DateTime } from 'luxon';
 import type { Candle } from '../src/types/candle';
-// Note: aggregateCandles has been moved to @quantbot/ohlcv
-// This test file is skipped until functionality is re-implemented or moved back
-// import { aggregateCandles } from '@quantbot/ohlcv';
-
-// Temporary stub for testing - tests are skipped anyway
-function aggregateCandles(candles: Candle[], interval: string): Candle[] {
-  // Stub implementation - tests are skipped anyway
-  return [];
-}
+import { aggregateCandles } from '../src/types/candle';
 
 describe('candles-extended', () => {
   beforeEach(() => {
@@ -41,8 +33,8 @@ describe('candles-extended', () => {
       const first = (aggregated as unknown as Candle[])[0];
       expect(first?.open).toBeCloseTo(candles[0].open, 8);
       expect(first.open).toBe(1.0);
-      expect(first.high).toBeCloseTo(Math.max(...candles.map(c => c.high)), 8);
-      expect(first.low).toBeCloseTo(Math.min(...candles.map(c => c.low)), 8);
+      expect(first.high).toBeCloseTo(Math.max(...candles.map((c) => c.high)), 8);
+      expect(first.low).toBeCloseTo(Math.min(...candles.map((c) => c.low)), 8);
       expect(first.close).toBeCloseTo(candles[candles.length - 1].close, 8);
       expect(first.volume).toBe(candles.reduce((sum, c) => sum + c.volume, 0));
       expect(first.timestamp).toBe(candles[0].timestamp);
@@ -93,7 +85,7 @@ describe('candles-extended', () => {
     it('should handle empty array', () => {
       const aggregated = aggregateCandles([], '1H');
 
-      expect((aggregated as unknown as Candle[])).toEqual([]);
+      expect(aggregated as unknown as Candle[]).toEqual([]);
     });
 
     it('should sort candles before aggregating', () => {
@@ -166,4 +158,4 @@ describe('candles-extended', () => {
       }
     });
   });
-});  
+});

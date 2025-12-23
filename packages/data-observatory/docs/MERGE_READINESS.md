@@ -47,7 +47,7 @@ pnpm test tests/integration
 
 1. ✅ **Storage Implementation**: DuckDB snapshot storage is fully implemented
 2. **Test Data**: Some tests require actual data in storage (may need test fixtures)
-3. **Call Collection**: Call event collection is pending implementation (TODO in event-collector.ts)
+3. ✅ **Call Collection**: Call event collection is fully implemented with DuckDB integration
 
 ## Pre-Merge Checklist
 

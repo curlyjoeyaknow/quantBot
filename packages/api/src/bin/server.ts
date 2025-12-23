@@ -12,7 +12,7 @@ async function main() {
     enableSwagger: process.env.NODE_ENV !== 'production',
   });
 
-  await (server as any).start();
+  await server.start();
 }
 
 main().catch((error) => {

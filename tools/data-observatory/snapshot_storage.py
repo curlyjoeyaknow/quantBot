@@ -167,12 +167,66 @@ def get_snapshot_ref(db_path: str, snapshot_id: str) -> dict:
         if not result:
             return None
         
+        # Convert datetime to ISO string with Z suffix (UTC)
+        created_at = result[2]
+        if isinstance(created_at, datetime):
+            # Ensure UTC and add Z suffix for Zod datetime format
+            if created_at.tzinfo is None:
+                # Assume UTC if no timezone
+                created_at = created_at.replace(tzinfo=None).isoformat() + 'Z'
+            else:
+                created_at = created_at.astimezone(datetime.timezone.utc).replace(tzinfo=None).isoformat() + 'Z'
+        elif hasattr(created_at, 'isoformat'):
+            # Handle DuckDB timestamp objects
+            iso_str = created_at.isoformat()
+            if not iso_str.endswith('Z'):
+                iso_str += 'Z'
+            created_at = iso_str
+        elif created_at is not None:
+            # Ensure it's a string and has Z suffix
+            created_at_str = str(created_at)
+            if not created_at_str.endswith('Z'):
+                created_at_str += 'Z'
+            created_at = created_at_str
+        
+        # Parse spec and manifest JSON
+        spec = json.loads(result[3])
+        manifest = json.loads(result[4])
+        
+        # Ensure manifest datetime strings have Z suffix for Zod validation
+        # Simple approach: remove timezone offset and add Z (assumes stored times are already UTC)
+        if isinstance(manifest, dict):
+            if 'actualFrom' in manifest and manifest['actualFrom']:
+                actual_from = manifest['actualFrom']
+                if isinstance(actual_from, str) and not actual_from.endswith('Z'):
+                    # Remove timezone offset if present
+                    if '+' in actual_from:
+                        actual_from = actual_from.split('+')[0]
+                    elif actual_from.count('-') > 2:
+                        # Check if last part looks like timezone offset (e.g., -05:00)
+                        parts = actual_from.rsplit('-', 1)
+                        if len(parts) == 2 and ':' in parts[1]:
+                            actual_from = parts[0]
+                    manifest['actualFrom'] = actual_from + 'Z'
+            
+            if 'actualTo' in manifest and manifest['actualTo']:
+                actual_to = manifest['actualTo']
+                if isinstance(actual_to, str) and not actual_to.endswith('Z'):
+                    # Remove timezone offset if present
+                    if '+' in actual_to:
+                        actual_to = actual_to.split('+')[0]
+                    elif actual_to.count('-') > 2:
+                        parts = actual_to.rsplit('-', 1)
+                        if len(parts) == 2 and ':' in parts[1]:
+                            actual_to = parts[0]
+                    manifest['actualTo'] = actual_to + 'Z'
+        
         return {
             "snapshotId": result[0],
             "contentHash": result[1],
-            "createdAt": result[2],
-            "spec": json.loads(result[3]),
-            "manifest": json.loads(result[4]),
+            "createdAt": created_at,
+            "spec": spec,
+            "manifest": manifest,
         }
     except Exception as e:
         return None
@@ -278,14 +332,24 @@ def list_snapshot_refs(db_path: str, limit: int = None) -> dict:
         
         con.close()
         
-        return [
-            {
+        # Convert datetime objects to ISO strings
+        refs = []
+        for row in results:
+            created_at = row[2]
+            if isinstance(created_at, datetime):
+                created_at = created_at.isoformat()
+            elif hasattr(created_at, 'isoformat'):
+                created_at = created_at.isoformat()
+            elif created_at is not None:
+                created_at = str(created_at)
+            
+            refs.append({
                 "snapshotId": row[0],
                 "contentHash": row[1],
-                "createdAt": row[2],
-            }
-            for row in results
-        ]
+                "createdAt": created_at,
+            })
+        
+        return refs
     except Exception as e:
         return []
 

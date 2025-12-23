@@ -248,8 +248,8 @@ export class ResearchSimulationAdapter {
     const tradingFeeBps = contractModel.tradingFee
       ? Math.round(contractModel.tradingFee * 10000)
       : 0;
-    
-    return {    
+
+    return {
       entrySlippageBps: tradingFeeBps,
       exitSlippageBps: tradingFeeBps,
       takerFeeBps: tradingFeeBps,

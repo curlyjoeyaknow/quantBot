@@ -26,9 +26,12 @@ vi.mock('../../../src/research/services/DataSnapshotService.js', () => ({
     async loadSnapshot(snapshot: any) {
       // Verify snapshot has contentHash (proves it's a snapshot ref, not live data)
       if (!snapshot || !snapshot.contentHash) {
-        throw new ValidationError('Simulations must use snapshot refs with contentHash, not live data', {
-          snapshot,
-        });
+        throw new ValidationError(
+          'Simulations must use snapshot refs with contentHash, not live data',
+          {
+            snapshot,
+          }
+        );
       }
       return mockLoadSnapshot(snapshot);
     }
@@ -205,4 +208,3 @@ describe('Snapshot-Only Input Enforcement', () => {
     await expect(adapter.run(request)).rejects.toThrow(ValidationError);
   });
 });
-

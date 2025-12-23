@@ -241,7 +241,10 @@ export type {
 export { buildStrategy, buildStopLossConfig } from './strategies/builder.js';
 
 // Re-export execution model factory (needed by workflows)
-export { createExecutionModel, createDefaultExecutionModel } from './execution/execution-model-factory.js';
+export {
+  createExecutionModel,
+  createDefaultExecutionModel,
+} from './execution/execution-model-factory.js';
 
 // Orchestrator types have been moved to @quantbot/workflows.
 // Import from @quantbot/workflows/simulation/orchestrator instead.
@@ -269,7 +272,14 @@ export type { IchimokuSignal } from './ichimoku.js';
 // Re-export signal evaluation at top level
 export { evaluateSignalGroup, evaluateLadderLegs } from './signals.js';
 
-// Note: aggregateCandles moved to @quantbot/ohlcv
+// Re-export candle aggregation utilities
+export {
+  aggregateCandles,
+  sortCandles,
+  deduplicateCandles,
+  isValidCandle,
+} from './types/candle.js';
+
 // Re-export indicator calculation for legacy code
 export {
   calculateIndicators,

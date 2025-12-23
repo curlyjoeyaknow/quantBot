@@ -15,7 +15,11 @@ function isOverlaySetArray(x: unknown): x is OverlaySet[] {
   return (
     Array.isArray(x) &&
     x.length > 0 &&
-    x.every((s) => s && typeof s === 'object' && Array.isArray((s as any).overlays))
+    x.every((s) => {
+      if (!s || typeof s !== 'object') return false;
+      const obj = s as Record<string, unknown>;
+      return Array.isArray(obj.overlays);
+    })
   );
 }
 
@@ -30,15 +34,18 @@ export function loadOverlaySetsFromFile(filePath: string): OverlaySet[] {
   const parsed: unknown = JSON.parse(raw);
 
   // Wrapper: { sets: [...] }
-  if (parsed && typeof parsed === 'object' && Array.isArray((parsed as any).sets)) {
-    const sets = (parsed as any).sets;
-    if (!isOverlaySetArray(sets)) {
-      throw new ValidationError(
-        `Invalid overlays file shape: { sets: ... } but sets are not valid overlay sets`,
-        { filePath, parsedType: typeof parsed }
-      );
+  if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+    const obj = parsed as Record<string, unknown>;
+    if (Array.isArray(obj.sets)) {
+      const sets = obj.sets;
+      if (!isOverlaySetArray(sets)) {
+        throw new ValidationError(
+          `Invalid overlays file shape: { sets: ... } but sets are not valid overlay sets`,
+          { filePath, parsedType: typeof parsed }
+        );
+      }
+      return sets;
     }
-    return sets;
   }
 
   // Array of overlay sets

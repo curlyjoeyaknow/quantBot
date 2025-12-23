@@ -1,8 +1,22 @@
 /**
  * Execution Port
  *
- * Port interface for trade execution (Jito bundles, RPC send, etc.).
- * Adapters implement this port to provide execution capabilities.
+ * Port interface for trade execution (SIMULATION-ONLY).
+ *
+ * ⚠️ CRITICAL: This port is simulation-only in this repository.
+ * It models execution behavior (latency, slippage, failures) but does NOT execute real trades.
+ *
+ * **QuantBot = simulation lab only.**
+ * - ExecutionPort models execution; it does not execute.
+ * - It simulates latency, slippage, and failure scenarios.
+ * - It does NOT sign transactions.
+ * - It does NOT submit to RPC/Jito/TPU.
+ * - It does NOT hold private keys.
+ *
+ * Adapters implement this port to provide SIMULATION capabilities only.
+ * Live trading adapters belong in a separate repository/fork that imports strategy bundles.
+ *
+ * See docs/BOUNDARIES.md for the complete policy.
  */
 
 import type { TokenAddress, Chain } from '../index.js';

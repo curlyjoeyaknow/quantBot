@@ -104,8 +104,9 @@ export async function createApiServer(config: ApiServerConfig = {}): Promise<Fas
     }
   };
 
-  // Expose start method
-  (server as any).start = start;
+  // Extend server with start method
+  type ServerWithStart = FastifyInstance & { start: () => Promise<void> };
+  (server as ServerWithStart).start = start;
 
-  return server;
+  return server as ServerWithStart;
 }
