@@ -36,7 +36,6 @@ import {
 } from '../execution/index.js';
 import type { ExecutionModel } from '../types/execution-model.js';
 import { createDeterministicRNG, type DeterministicRNG } from '@quantbot/core';
-import { SeedManager } from '@quantbot/core';
 import { logStep } from '../utils/progress.js';
 import {
   checkStopLossSequential,
@@ -118,10 +117,12 @@ export async function simulateStrategy(
     : undefined;
 
   // Create RNG for execution model (deterministic if seed provided)
-  const seedManager = options?.seed
-    ? new SeedManager(options.seed.toString())
-    : new SeedManager(`run-${Date.now()}`);
-  const rng = createDeterministicRNG(seedManager.generateSeed(0));
+  // If seed is provided, use it; otherwise create one from timestamp (non-deterministic fallback)
+  const rng = options?.executionModel && options?.seed !== undefined
+    ? createDeterministicRNG(options.seed)
+    : options?.executionModel
+      ? createDeterministicRNG(Date.now()) // Non-deterministic fallback
+      : undefined;
 
   // Precompute indicators (with caching optimization)
   if (candles.length > 100) {
@@ -679,7 +680,18 @@ async function runSimulationLoop(
       );
 
       if (result.satisfied) {
-        const exitComponent = (candle.close * exitCostMultiplier) / entryPriceWithCosts;
+        // Execute signal-based exit using execution model or cost multiplier
+        const exitExecution = executeTrade(
+          'sell',
+          candle.close,
+          remaining,
+          candle.close,
+          executionModel,
+          rng,
+          entryCostMultiplier,
+          exitCostMultiplier
+        );
+        const exitComponent = exitExecution.executedPrice / entryPriceWithCosts;
         const finalComponent = remaining * exitComponent;
         pnl += finalComponent;
 
@@ -700,7 +712,18 @@ async function runSimulationLoop(
   // Final exit if position remains
   if (remaining > 0) {
     const finalPrice = candles[candles.length - 1].close;
-    const exitComponent = (finalPrice * exitCostMultiplier) / entryPriceWithCosts;
+    // Execute final exit using execution model or cost multiplier
+    const finalExitExecution = executeTrade(
+      'sell',
+      finalPrice,
+      remaining,
+      finalPrice,
+      executionModel,
+      rng,
+      entryCostMultiplier,
+      exitCostMultiplier
+    );
+    const exitComponent = finalExitExecution.executedPrice / entryPriceWithCosts;
     const finalComponent = remaining * exitComponent;
     pnl += finalComponent;
 
