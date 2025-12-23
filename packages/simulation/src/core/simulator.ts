@@ -112,6 +112,17 @@ export async function simulateStrategy(
   const entrySignal = options?.entrySignal;
   const exitSignal = options?.exitSignal;
 
+  // Create execution model if provided, otherwise use cost multipliers (backward compatibility)
+  const executionModel: ExecutionModelInterface | undefined = options?.executionModel
+    ? createExecutionModel(options.executionModel)
+    : undefined;
+
+  // Create RNG for execution model (deterministic if seed provided)
+  const seedManager = options?.seed
+    ? new SeedManager(options.seed.toString())
+    : new SeedManager(`run-${Date.now()}`);
+  const rng = createDeterministicRNG(seedManager.generateSeed(0));
+
   // Precompute indicators (with caching optimization)
   if (candles.length > 100) {
     logStep(`Calculating indicators for ${candles.length} candles`);
@@ -376,6 +387,57 @@ function handleTrailingEntry(
 }
 
 /**
+ * Execute a trade using execution model or cost multiplier (fallback)
+ *
+ * @param side - Trade side ('buy' or 'sell')
+ * @param price - Requested price
+ * @param quantity - Trade quantity
+ * @param marketPrice - Current market price (for execution model)
+ * @param executionModel - Optional execution model
+ * @param rng - Deterministic RNG (required if executionModel is provided)
+ * @param entryCostMultiplier - Fallback cost multiplier for entry
+ * @param exitCostMultiplier - Fallback cost multiplier for exit
+ * @returns Executed price and fees
+ */
+function executeTrade(
+  side: 'buy' | 'sell',
+  price: number,
+  quantity: number,
+  marketPrice: number,
+  executionModel: ExecutionModelInterface | undefined,
+  rng: DeterministicRNG | undefined,
+  entryCostMultiplier: number,
+  exitCostMultiplier: number
+): { executedPrice: number; fees: number } {
+  if (executionModel && rng) {
+    // Use execution model
+    const tradeRequest: TradeRequest = {
+      side,
+      quantity,
+      price,
+      marketState: {
+        price: marketPrice,
+      },
+    };
+    const result = executionModel.execute(tradeRequest, rng);
+    return {
+      executedPrice: result.executedPrice,
+      fees: result.fees,
+    };
+  } else {
+    // Fallback to cost multiplier
+    const costMultiplier = side === 'buy' ? entryCostMultiplier : exitCostMultiplier;
+    const executedPrice = price * costMultiplier;
+    // Fees are included in the multiplier, so we return 0 here
+    // (fees are already baked into the price via multiplier)
+    return {
+      executedPrice,
+      fees: 0,
+    };
+  }
+}
+
+/**
  * Main simulation loop with sequential detection and rolling trailing stop
  */
 async function runSimulationLoop(
@@ -390,14 +452,19 @@ async function runSimulationLoop(
   exitCostMultiplier: number,
   exitSignal: SignalGroup | undefined,
   events: LegacySimulationEvent[],
-  candleProvider?: CandleProvider
+  candleProvider?: CandleProvider,
+  executionModel?: ExecutionModelInterface,
+  rng?: DeterministicRNG
 ): Promise<{
   pnl: number;
   lowestPrice: number;
   lowestPriceTimestamp: number;
   lowestPriceTimeFromEntry: number;
 }> {
-  const entryPriceWithCosts = entryPrice * entryCostMultiplier;
+  // Calculate entry price with costs (for backward compatibility PnL calculation)
+  const entryPriceWithCosts = executionModel && rng
+    ? executeTrade('buy', entryPrice, 1.0, entryPrice, executionModel, rng, entryCostMultiplier, exitCostMultiplier).executedPrice
+    : entryPrice * entryCostMultiplier;
   let stopLoss = entryPrice * (1 + stopCfg.initial);
   let stopMovedToEntry = false;
   const hasTrailing = stopCfg.trailing !== 'none';
@@ -515,7 +582,18 @@ async function runSimulationLoop(
       );
 
       if (sequentialResult.outcome === 'stop_loss') {
-        const stopComponent = (stopLoss * exitCostMultiplier) / entryPriceWithCosts;
+        // Execute stop loss trade using execution model or cost multiplier
+        const stopExecution = executeTrade(
+          'sell',
+          stopLoss,
+          remaining,
+          candle.close,
+          executionModel,
+          rng,
+          entryCostMultiplier,
+          exitCostMultiplier
+        );
+        const stopComponent = stopExecution.executedPrice / entryPriceWithCosts;
         const stopPnl = remaining * stopComponent;
         pnl += stopPnl;
 
@@ -547,7 +625,18 @@ async function runSimulationLoop(
       const targetPrice = entryPrice * target;
 
       if (candle.high >= targetPrice) {
-        const realizedPrice = targetPrice * exitCostMultiplier;
+        // Execute profit target trade using execution model or cost multiplier
+        const targetExecution = executeTrade(
+          'sell',
+          targetPrice,
+          percent,
+          candle.close,
+          executionModel,
+          rng,
+          entryCostMultiplier,
+          exitCostMultiplier
+        );
+        const realizedPrice = targetExecution.executedPrice;
         const targetPnl = percent * (realizedPrice / entryPriceWithCosts);
         pnl += targetPnl;
         remaining = Math.max(0, remaining - percent);

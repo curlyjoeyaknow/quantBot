@@ -5,7 +5,7 @@
 import type { z } from 'zod';
 import type { CommandContext } from '../../core/command-context.js';
 import { researchReplaySchema } from '../../command-defs/research.js';
-import { replaySimulation, createExperimentContext } from '@quantbot/workflows/research';
+import { replaySimulation, createExperimentContext } from '@quantbot/workflows';
 import { logger } from '@quantbot/utils';
 
 export type ReplaySimulationArgs = z.infer<typeof researchReplaySchema>;
