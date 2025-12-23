@@ -1,3 +1,0 @@
-Strategy,TotalPnL_Percent,TotalTrades,WinRate_Percent,WinningTrades,LosingTrades,AvgWin_Percent,AvgLoss_Percent,ProfitFactor,SharpeRatio,MaxDrawdown_Percent,AvgHoldDuration_Minutes,AvgTimeToAth_Minutes
-"Strategy A: 40% Stop Loss, 30% @ 2x, Trailing 40% @ 3x",1.24,980,40.41,396,584,60.10,38.67,1.05,0.00,99.36,10040,683
-"Strategy B: 30% Stop Loss, 50% @ 2x, 20% @ 5x, 20% @ 10x, Trailing 30% @ 10x",23.35,980,40.41,396,584,100.99,29.30,2.34,0.24,14.30,9564,651

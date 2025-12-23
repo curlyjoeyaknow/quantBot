@@ -47,6 +47,16 @@ export const researchReplaySchema = z.object({
 export type ResearchReplayArgs = z.infer<typeof researchReplaySchema>;
 
 /**
+ * Replay from manifest command schema - replays a simulation from a manifest file
+ */
+export const researchReplayManifestSchema = z.object({
+  manifestPath: z.string().min(1, 'Manifest file path is required'),
+  format: z.enum(['json', 'table']).default('table'),
+});
+
+export type ResearchReplayManifestArgs = z.infer<typeof researchReplayManifestSchema>;
+
+/**
  * List command schema - lists all simulation runs
  */
 export const researchListSchema = z.object({

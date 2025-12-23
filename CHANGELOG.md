@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **DuckDB Stress Tests** - Comprehensive stress tests for DuckDB storage operations
+  - Added `duckdb-extreme.stress.test.ts` with real implementations
+  - Tests massive concurrent operations (1000+ concurrent writes)
+  - Tests large data volumes (10,000+ strategies/runs)
+  - Tests resource exhaustion scenarios (memory pressure, disk space, corruption)
+  - Tests all DuckDB operations comprehensively (store_strategy, store_run, query_calls, OHLCV metadata, exclusions, reports)
+  - Tests performance degradation under load
+  - Tests idempotency under stress
+  - Tests error recovery scenarios
+  - Location: `packages/storage/tests/stress/storage-discipline/duckdb-extreme.stress.test.ts`
+
 ### Fixed
 
 - **CRITICAL: Repo Hygiene - Build Artifacts in Source** - Removed all build artifacts from src/ directories
@@ -36,6 +49,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Commands that should generate run IDs but are missing `alertTimestamp` now log a warning
   - This ensures run IDs are reproducible from manifest inputs (required for research lab)
   - Location: `packages/cli/src/core/execute.ts` (line 150-151)
+
+### Added
+
+- **Phase 2: Re-run from Manifest Command** - First-class command to replay simulations from manifest files
+  - New command: `quantbot research replay-manifest --manifest <path>`
+  - Loads manifest file, extracts run ID, and replays simulation
+  - Validates manifest structure using `CanonicalRunManifestSchema`
+  - Makes RunManifest the spine of the research lab (Phase 2 requirement)
+  - Location: `packages/cli/src/handlers/research/replay-manifest.ts`, `packages/cli/src/commands/research.ts`
 
 ### Fixed
 

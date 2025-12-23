@@ -51,7 +51,7 @@ export * from './simulation-service.js';
 // =============================================================================
 // Data - Candle providers and aggregation
 // =============================================================================
-export * from './data/index.js';
+// Note: Data exports moved to @quantbot/ohlcv package
 
 // =============================================================================
 // Indicators - Technical analysis
@@ -241,7 +241,7 @@ export type {
 // Import from @quantbot/workflows/simulation/orchestrator instead.
 
 // Re-export provider types
-export type { TokenMetadata, CandleFetchRequest, CandleFetchResult } from './data/provider.js';
+// Note: TokenMetadata, CandleFetchRequest, CandleFetchResult moved to @quantbot/ohlcv
 
 // Re-export indicator types
 export type { IchimokuData } from './indicators/ichimoku.js';
@@ -264,8 +264,7 @@ export type { IchimokuSignal } from './ichimoku.js';
 // Re-export signal evaluation at top level
 export { evaluateSignalGroup, evaluateLadderLegs } from './signals.js';
 
-// Re-export candle aggregation
-export { aggregateCandles } from './data/aggregator.js';
+// Note: aggregateCandles moved to @quantbot/ohlcv
 
 // Re-export indicator calculation for legacy code
 export {

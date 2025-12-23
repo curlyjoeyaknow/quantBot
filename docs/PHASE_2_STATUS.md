@@ -48,8 +48,27 @@ Make RunManifest + SnapshotRef the spine of the research lab:
 - Migrate `simulation run` to use snapshots
 - This is a bigger change and can be done later
 
-## Next Steps
+## Implementation Status
+
+### ✅ Re-run from Manifest Command (COMPLETED)
+- Created `research replay-manifest` command
+- Takes a manifest file path and replays the simulation
+- Uses existing replay infrastructure
+- Validates manifest structure
+- Location: `packages/cli/src/handlers/research/replay-manifest.ts`
+
+### ⚠️ Snapshot Refs as Required (PARTIAL)
+- Infrastructure exists (`DataSnapshotService`, `DataSnapshotRef` contract)
+- Research commands use `SimulationRequest` which includes `DataSnapshotRef`
+- BUT: `ResearchSimulationAdapter` is still a stub (Phase 3 work)
+- Current simulation commands (`simulation run`, `simulation run-duckdb`) don't use snapshots
+
+### ✅ Manifest + Metrics + Events (ALREADY DONE)
+- `execute.ts` writes all required artifacts
+- This was already working correctly
+
+## Next Steps (Phase 3)
 1. Implement `ResearchSimulationAdapter.run()` to actually use snapshots
-2. Create `research replay` command
-3. Add snapshot validation to ensure data integrity
+2. Add snapshot validation to ensure data integrity
+3. Migrate legacy simulation commands to use snapshots (optional)
 

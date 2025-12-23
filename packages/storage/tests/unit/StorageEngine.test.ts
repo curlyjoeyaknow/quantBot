@@ -141,14 +141,21 @@ vi.mock('../../src/postgres/repositories/CallersRepository', () => ({
     }
   },
 }));
-vi.mock('@quantbot/utils', () => ({
-  logger: {
-    debug: vi.fn(),
-    info: vi.fn(),
-    error: vi.fn(),
-    warn: vi.fn(),
-  },
-}));
+vi.mock('@quantbot/utils', async () => {
+  const actual = await vi.importActual<typeof import('@quantbot/utils')>('@quantbot/utils');
+  return {
+    ...actual,
+    logger: {
+      debug: vi.fn(),
+      info: vi.fn(),
+      error: vi.fn(),
+      warn: vi.fn(),
+    },
+    ValidationError: actual.ValidationError,
+    ServiceUnavailableError: actual.ServiceUnavailableError,
+    AppError: actual.AppError,
+  };
+});
 
 // Mock Postgres client to avoid real DB connections
 const mockPgPool = {

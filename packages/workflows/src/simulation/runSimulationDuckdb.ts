@@ -25,7 +25,7 @@
 
 import { z } from 'zod';
 import { DateTime } from 'luxon';
-import { ValidationError } from '@quantbot/utils';
+import { ValidationError, ConfigurationError } from '@quantbot/utils';
 import type { WorkflowContext } from '../types.js';
 import type { SimulationConfig, SimulationOutput } from '@quantbot/simulation';
 
@@ -168,8 +168,9 @@ export type RunSimulationDuckdbContext = WorkflowContext & {
  * Create default context (for testing)
  */
 export function createDefaultRunSimulationDuckdbContext(): RunSimulationDuckdbContext {
-  throw new Error(
-    'createDefaultRunSimulationDuckdbContext must be implemented with actual services'
+  throw new ConfigurationError(
+    'createDefaultRunSimulationDuckdbContext must be implemented with actual services',
+    'RunSimulationDuckdbContext'
   );
 }
 
