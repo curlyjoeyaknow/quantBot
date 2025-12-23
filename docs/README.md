@@ -5,27 +5,35 @@ Welcome to the QuantBot documentation. This directory contains comprehensive doc
 ## Structure
 
 ### 📁 [architecture/](./architecture/)
+
 Core architecture documentation, design decisions, and system design patterns.
 
 ### 📁 [api/](./api/)
+
 API documentation, endpoint references, and integration guides.
 
 ### 📁 [guides/](./guides/)
+
 User guides, tutorials, and how-to documentation for common tasks.
 
 ### 📁 [migration/](./migration/)
+
 Migration guides, deprecation notices, and upgrade instructions.
 
 ### 📁 [reviews/](./reviews/)
+
 Code review documents, status reports, and completion summaries.
 
 ### 📁 [roadmap/](./roadmap/)
+
 Project roadmap, future plans, and strategic direction.
 
 ### 📁 [testing/](./testing/)
+
 Testing documentation, coverage reports, and test strategy.
 
 ### 📁 [examples/](./examples/)
+
 Practical examples, code samples, and workflow demonstrations.
 
 ## Quick Links
@@ -65,4 +73,3 @@ When adding new documentation:
 - Keep documentation up to date with code changes
 - Cross-reference related documents
 - Use proper markdown formatting
-

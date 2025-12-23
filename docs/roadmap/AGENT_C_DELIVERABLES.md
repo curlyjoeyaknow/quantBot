@@ -6,6 +6,7 @@
 ## Overview
 
 AGENT C is responsible for making the system safe to operate through:
+
 - Single coercion/validation path
 - Deterministic run-id handling
 - AST-based boundary enforcement
@@ -18,11 +19,13 @@ AGENT C is responsible for making the system safe to operate through:
 **File**: `packages/cli/src/core/validation-pipeline.ts`
 
 **Implementation**:
+
 - Created unified `validateAndCoerceArgs()` function
 - All CLI arguments pass through this single path
 - Combines normalization and validation in one step
 
 **Changes**:
+
 - Updated `execute.ts` to use unified pipeline
 - Removed direct calls to `normalizeOptions()` and `parseArguments()`
 - All commands now use `validateAndCoerceArgs()`
@@ -32,16 +35,19 @@ AGENT C is responsible for making the system safe to operate through:
 ### ✅ 2. Deterministic Run-ID Handling
 
 **Files**:
+
 - `packages/cli/src/core/run-id-validator.ts` - Validation utilities
 - `packages/cli/src/core/run-id-manager.ts` - Generation (existing, enhanced)
 
 **Implementation**:
+
 - `validateRunIdComponents()` - Validates components before generation
 - `verifyRunIdDeterminism()` - Ensures same inputs produce same ID
 - `validateRunId()` - Validates generated run ID structure
 - `generateAndValidateRunId()` - Convenience function
 
 **Changes**:
+
 - Updated `execute.ts` to validate run IDs before use
 - Added comprehensive validation checks
 - Ensures determinism is verified
@@ -53,17 +59,20 @@ AGENT C is responsible for making the system safe to operate through:
 **File**: `scripts/ci/verify-boundaries-ast.ts`
 
 **Implementation**:
+
 - Uses TypeScript compiler API to parse source files
 - Extracts import statements from AST
 - Detects forbidden imports more accurately than regex
 
 **Features**:
+
 - Detects workflow → CLI/TUI imports
 - Detects workflow → storage implementation imports
 - Detects CLI handler → workflow internals imports
 - Detects deep imports from @quantbot packages
 
 **Integration**:
+
 - Added to `package.json` as `verify:boundaries-ast`
 - Added to CI workflow (`.github/workflows/build.yml`)
 
@@ -72,12 +81,14 @@ AGENT C is responsible for making the system safe to operate through:
 **File**: `scripts/ci/hygiene-checks.ts`
 
 **Implementation**:
+
 - Checks for build artifacts in source directories
 - Checks for runtime state files (DuckDB WAL, test databases)
 - Checks for forbidden files in root
 - Validates package.json hygiene
 
 **Integration**:
+
 - Added to `package.json` as `check:hygiene`
 - Added to CI workflow (`.github/workflows/build.yml`)
 
@@ -88,10 +99,12 @@ AGENT C is responsible for making the system safe to operate through:
 **File**: `.github/workflows/build.yml`
 
 **Added Steps**:
+
 1. Verify architecture boundaries (AST)
 2. CI hygiene checks
 
 **Order**:
+
 1. Verify build order
 2. Verify workflow contracts
 3. **Verify architecture boundaries (AST)** ← NEW
@@ -184,6 +197,7 @@ pnpm verify:boundaries-ast && pnpm check:hygiene
 ### CI
 
 All checks run automatically in CI:
+
 - Boundary checks run before build
 - Hygiene checks run before build
 - Build fails if any check fails
@@ -208,4 +222,3 @@ All checks run automatically in CI:
 - [CLI Architecture](./packages/cli/docs/CLI_ARCHITECTURE.md)
 - [Workflow Enforcement](./WORKFLOW_ENFORCEMENT.md)
 - [Architecture Boundaries](./ARCHITECTURE_BOUNDARIES.md)
-

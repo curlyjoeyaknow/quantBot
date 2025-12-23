@@ -11,14 +11,9 @@ import { DateTime } from 'luxon';
 import { logger, ValidationError } from '@quantbot/utils';
 import type { DataSnapshotRef } from '../contract.js';
 import { DataSnapshotRefSchema } from '../contract.js';
-import {
-  queryCallsDuckdb,
-  createQueryCallsDuckdbContext,
-  type QueryCallsDuckdbContext,
-} from '../../calls/queryCallsDuckdb.js';
+import { queryCallsDuckdb, createQueryCallsDuckdbContext } from '../../calls/queryCallsDuckdb.js';
 import { getStorageEngine } from '@quantbot/storage';
 import type { WorkflowContext } from '../../types.js';
-import { createSnapshotManager } from '@quantbot/data-observatory';
 
 /**
  * Snapshot creation parameters

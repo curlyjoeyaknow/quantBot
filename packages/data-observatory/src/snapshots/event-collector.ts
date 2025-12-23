@@ -74,14 +74,26 @@ export class StorageEventCollector implements EventCollector {
           events.push(...(await this.collectOhlcv(spec, from, to)));
           break;
         case 'trades':
-          // TODO: Implement trade collection when trade storage is available
-          break;
+          // Trade collection not yet implemented - trade storage not available
+          // Fail fast to ensure experiments have stable data inputs
+          throw new Error(
+            'Trade collection is not yet implemented. Trade storage is not available. ' +
+              'Please use "calls" or "ohlcv" sources instead, or implement trade storage first.'
+          );
         case 'metadata':
-          // TODO: Implement metadata collection
-          break;
+          // Metadata collection not yet implemented
+          // Fail fast to ensure experiments have stable data inputs
+          throw new Error(
+            'Metadata collection is not yet implemented. ' +
+              'Please use "calls" or "ohlcv" sources instead, or implement metadata storage first.'
+          );
         case 'signals':
-          // TODO: Implement signal collection
-          break;
+          // Signal collection not yet implemented
+          // Fail fast to ensure experiments have stable data inputs
+          throw new Error(
+            'Signal collection is not yet implemented. ' +
+              'Please use "calls" or "ohlcv" sources instead, or implement signal storage first.'
+          );
         case 'all':
           events.push(...(await this.collectCalls(spec, from, to)));
           events.push(...(await this.collectOhlcv(spec, from, to)));
@@ -114,7 +126,7 @@ export class StorageEventCollector implements EventCollector {
     try {
       // Use PythonEngine directly to query calls from DuckDB
       // This avoids dependency on @quantbot/simulation package
-      const { PythonEngine, getPythonEngine } = await import('@quantbot/utils');
+      const { getPythonEngine } = await import('@quantbot/utils');
       const pythonEngine = getPythonEngine();
 
       // Query calls using PythonEngine.runDuckDBStorage

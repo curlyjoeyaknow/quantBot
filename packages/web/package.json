@@ -1,0 +1,48 @@
+{
+  "name": "@quantbot/web",
+  "version": "1.0.0",
+  "description": "Next.js-based analytics dashboard for QuantBot",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@quantbot/analytics": "workspace:*",
+    "@quantbot/core": "workspace:*",
+    "@quantbot/simulation": "workspace:*",
+    "@quantbot/storage": "workspace:*",
+    "@quantbot/utils": "workspace:*",
+    "clsx": "^2.1.1",
+    "date-fns": "4.1.0",
+    "lucide-react": "^0.454.0",
+    "next": "16.0.7",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "recharts": "latest",
+    "tailwind-merge": "^2.5.5",
+    "zod": "^4.1.13"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.18",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.1.0",
+    "@types/node": "^24.10.1",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "autoprefixer": "^10.4.20",
+    "eslint": "^9.39.2",
+    "jsdom": "^25.0.1",
+    "postcss": "^8.5",
+    "tailwindcss": "^4.1.9",
+    "typescript": "^5.9.3",
+    "vitest": "^2.1.8"
+  }
+}

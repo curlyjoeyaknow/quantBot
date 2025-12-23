@@ -21,6 +21,7 @@ import { ingestTelegramHandler } from './ingestion/ingest-telegram.js';
 import { processTelegramPythonHandler } from './ingestion/process-telegram-python.js';
 import { validateAddressesHandler } from './ingestion/validate-addresses.js';
 import { surgicalOhlcvFetchHandler } from './ingestion/surgical-ohlcv-fetch.js';
+import { ensureOhlcvCoverageHandler } from '../handlers/ingestion/ensure-ohlcv-coverage.js';
 
 /**
  * Telegram ingestion schema
@@ -92,6 +93,15 @@ export const telegramProcessSchema = z.object({
 export const validateAddressesSchema = z.object({
   addresses: z.array(z.string().min(1)).min(1),
   chainHint: z.enum(['solana', 'ethereum', 'base', 'bsc']).optional(),
+  format: z.enum(['json', 'table', 'csv']).default('table'),
+});
+
+/**
+ * Ensure OHLCV coverage schema
+ */
+export const ensureOhlcvCoverageSchema = z.object({
+  duckdb: z.string().optional(), // Path to DuckDB database file
+  maxAgeDays: z.number().int().positive().default(90), // Maximum age in days (default 3 months)
   format: z.enum(['json', 'table', 'csv']).default('table'),
 });
 
@@ -219,6 +229,27 @@ export function registerIngestionCommands(program: Command): void {
     validate: (opts) => surgicalOhlcvFetchSchema.parse(opts),
     onError: die,
   });
+
+  // Ensure OHLCV coverage
+  const ensureCoverageCmd = ingestionCmd
+    .command('ensure-coverage')
+    .description(
+      'Ensure OHLCV coverage for all tokens <3 months old (5000 15s, 10k 1m, 10k 5m candles)'
+    )
+    .option('--duckdb <path>', 'Path to DuckDB database file (or set DUCKDB_PATH env var)')
+    .option('--max-age-days <days>', 'Maximum age in days (default: 90)', '90')
+    .option('--format <format>', 'Output format', 'table');
+
+  defineCommand(ensureCoverageCmd, {
+    name: 'ensure-coverage',
+    packageName: 'ingestion',
+    coerce: (raw) => ({
+      ...raw,
+      maxAgeDays: raw.maxAgeDays ? coerceNumber(raw.maxAgeDays, 'max-age-days') : 90,
+    }),
+    validate: (opts) => ensureOhlcvCoverageSchema.parse(opts),
+    onError: die,
+  });
 }
 
 /**
@@ -291,6 +322,21 @@ const ingestionModule: PackageCommandModule = {
         'quantbot ingestion surgical-fetch --caller Brook --month 2025-07',
         'quantbot ingestion surgical-fetch --caller Brook',
         'quantbot ingestion surgical-fetch --month 2025-07',
+      ],
+    },
+    {
+      name: 'ensure-coverage',
+      description: 'Ensure OHLCV coverage for all tokens <3 months old',
+      schema: ensureOhlcvCoverageSchema,
+      handler: async (args: unknown, ctx: unknown) => {
+        const typedCtx = ctx as CommandContext;
+        const typedArgs = args as z.infer<typeof ensureOhlcvCoverageSchema>;
+        return await ensureOhlcvCoverageHandler(typedArgs, typedCtx);
+      },
+      examples: [
+        'quantbot ingestion ensure-coverage',
+        'quantbot ingestion ensure-coverage --max-age-days 60',
+        'quantbot ingestion ensure-coverage --duckdb data/tele.duckdb',
       ],
     },
   ],

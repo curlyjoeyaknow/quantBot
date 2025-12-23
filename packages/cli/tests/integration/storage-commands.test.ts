@@ -5,6 +5,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { z } from 'zod';
 import { CommandRegistry } from '../../src/core/command-registry';
 import { getPostgresPool, getClickHouseClient } from '@quantbot/storage';
 
@@ -43,9 +44,6 @@ describe('Storage Commands - Integration', () => {
 
     vi.mocked(getPostgresPool).mockReturnValue(mockPostgresPool as never);
     vi.mocked(getClickHouseClient).mockReturnValue(mockClickHouseClient as never);
-
-    // Register the storage module manually
-    const { z } = require('zod');
 
     const SAFE_TABLES = {
       postgres: [

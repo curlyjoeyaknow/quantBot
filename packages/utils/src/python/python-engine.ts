@@ -563,8 +563,11 @@ export class PythonEngine {
     const workspaceRoot = findWorkspaceRoot();
     const scriptPath = join(workspaceRoot, 'tools/simulation/duckdb_storage/main.py');
 
-    // Resolve duckdbPath to absolute path (Python script runs from tools/simulation directory)
-    const absoluteDuckdbPath = resolve(config.duckdbPath);
+    // Resolve duckdbPath to absolute path relative to workspace root
+    // If path is already absolute, use as-is; otherwise resolve from workspace root
+    const absoluteDuckdbPath = config.duckdbPath.startsWith('/')
+      ? config.duckdbPath
+      : join(workspaceRoot, config.duckdbPath);
 
     const args: Record<string, unknown> = {
       duckdb: absoluteDuckdbPath,
@@ -668,8 +671,11 @@ export class PythonEngine {
     const workspaceRoot = findWorkspaceRoot();
     const scriptPath = join(workspaceRoot, 'tools/ingestion/ohlcv_worklist.py');
 
-    // Resolve duckdbPath to absolute path (Python script runs from tools/ingestion directory)
-    const absoluteDuckdbPath = resolve(config.duckdbPath);
+    // Resolve duckdbPath to absolute path relative to workspace root
+    // If path is already absolute, use as-is; otherwise resolve from workspace root
+    const absoluteDuckdbPath = config.duckdbPath.startsWith('/')
+      ? config.duckdbPath
+      : join(workspaceRoot, config.duckdbPath);
 
     const args: Record<string, unknown> = {
       duckdb: absoluteDuckdbPath,
