@@ -43,7 +43,7 @@
 
 import { z } from 'zod';
 import { DateTime } from 'luxon';
-import { ValidationError } from '@quantbot/utils';
+import { ValidationError, AppError } from '@quantbot/utils';
 import type { WorkflowContextWithPorts } from '../context/workflowContextWithPorts.js';
 import { generateOhlcvWorklist, type OhlcvWorkItem } from '@quantbot/ingestion';
 import { storeCandles } from '@quantbot/ohlcv';
@@ -327,9 +327,7 @@ export async function ingestOhlcv(
       } catch (error) {
         // Coverage check failure is not fatal, continue with fetch
         if (workflowCtx.logger?.debug) {
-          workflowCtx.logger.debug(
-            `Coverage check failed, continuing with fetch: ${error instanceof Error ? error.message : String(error)}`
-          );
+          workflowCtx.logger.debug(`Coverage check failed, continuing with fetch: ${error instanceof Error ? error.message : String(error)}`);
         }
       }
     }
@@ -386,7 +384,10 @@ export async function ingestOhlcv(
       });
 
       if (errorMode === 'failFast') {
-        throw new Error(fetchError || 'Failed to fetch OHLCV candles');
+        throw new AppError(fetchError || 'Failed to fetch OHLCV candles', 'OHLCV_FETCH_FAILED', 500, {
+          workItem,
+          fetchError,
+        });
       }
 
       fetchResults.push({

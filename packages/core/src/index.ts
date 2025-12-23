@@ -60,6 +60,21 @@ export * from './strategy/dsl-schema.js';
 export * from './strategy/dsl-validator.js';
 export * from './strategy/dsl-to-sim-input.js';
 
+// Re-export types for convenience
+export type {
+  StrategyDSL,
+  EntryCondition,
+  ExitCondition,
+  ReEntryCondition,
+  PositionSizing,
+  RiskConstraints,
+  CostConfig as DSLCostConfig,
+  SignalCondition,
+  SignalGroup,
+  IndicatorName,
+  ComparisonOperator,
+} from './strategy/dsl-schema.js';
+
 /**
  * Supported blockchain
  *

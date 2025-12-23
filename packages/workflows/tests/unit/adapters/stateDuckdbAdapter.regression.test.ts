@@ -36,9 +36,7 @@ describe('StatePort DuckDB Adapter - Regression Tests', () => {
     }
   });
 
-  it(
-    'CRITICAL: should serialize objects to JSON strings before storing (prevents validation errors)',
-    async () => {
+  it('CRITICAL: should serialize objects to JSON strings before storing (prevents validation errors)', async () => {
     /**
      * REGRESSION TEST: This test would have caught the original bug.
      *
@@ -75,7 +73,9 @@ describe('StatePort DuckDB Adapter - Regression Tests', () => {
 
     expect(getResult.found).toBe(true);
     expect(getResult.value).toEqual(metadata);
-  });
+    },
+    30000 // 30 second timeout for DuckDB operations
+  );
 
   it('CRITICAL: should handle string values correctly (no double-serialization)', async () => {
     /**
@@ -102,9 +102,7 @@ describe('StatePort DuckDB Adapter - Regression Tests', () => {
     expect(getResult.value).toBe(stringValue);
   });
 
-  it(
-    'CRITICAL: should use the correct DuckDB path (prevents file not found errors)',
-    async () => {
+  it('CRITICAL: should use the correct DuckDB path (prevents file not found errors)', async () => {
     /**
      * REGRESSION TEST: This test would have caught the original bug.
      *

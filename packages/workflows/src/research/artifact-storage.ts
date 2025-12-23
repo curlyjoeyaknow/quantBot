@@ -102,7 +102,10 @@ export class FileArtifactStorage {
       // Validate artifact
       const parsed = RunArtifactSchema.safeParse(artifact);
       if (!parsed.success) {
-        throw new Error(`Invalid artifact format: ${JSON.stringify(parsed.error.issues)}`);
+        throw new ValidationError('Invalid artifact format', {
+          issues: parsed.error.issues,
+          runId,
+        });
       }
 
       return parsed.data;

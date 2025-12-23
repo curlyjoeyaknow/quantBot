@@ -9,6 +9,7 @@
  * No ports here. Pure. Deterministic.
  */
 
+import { ValidationError } from '@quantbot/utils';
 import type { CallSignal } from '@quantbot/core';
 import type { Candle } from '@quantbot/core';
 
@@ -170,6 +171,6 @@ function intervalToMs(interval: AlignParams['interval']): number {
     case '1h':
       return 60 * 60 * 1000;
     default:
-      throw new Error(`Unknown interval: ${interval}`);
+      throw new ValidationError(`Unknown interval: ${interval}`, { interval });
   }
 }
