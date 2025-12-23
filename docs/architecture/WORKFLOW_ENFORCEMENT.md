@@ -159,7 +159,7 @@ Added configuration to prevent workflows from importing forbidden dependencies:
 
 ## Workflow Candidates
 
-See [WORKFLOW_CANDIDATES.md](./WORKFLOW_CANDIDATES.md) for analysis of packages and handlers that need workflows.
+Workflow candidate analysis has been completed. See archived documentation in `docs/archive/workflow-candidates-archived.md` for historical reference.
 
 ## Related Documentation
 
