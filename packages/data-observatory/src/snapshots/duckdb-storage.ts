@@ -120,7 +120,7 @@ export class DuckDBSnapshotStorage implements SnapshotStorage {
         {
           data: JSON.stringify(ref),
         },
-        SnapshotRefResultSchema as any
+        SnapshotRefResultSchema
       );
 
       if (!result.success) {
@@ -151,7 +151,7 @@ export class DuckDBSnapshotStorage implements SnapshotStorage {
         {
           'snapshot-id': snapshotId,
         },
-        SnapshotRefResponseSchema as any
+        SnapshotRefResponseSchema
       );
 
       return result;
@@ -173,7 +173,7 @@ export class DuckDBSnapshotStorage implements SnapshotStorage {
           'snapshot-id': snapshotId,
           data: JSON.stringify(events),
         },
-        SnapshotRefResultSchema as any
+        SnapshotRefResultSchema
       );
 
       if (!result.success) {
@@ -216,7 +216,7 @@ export class DuckDBSnapshotStorage implements SnapshotStorage {
           'snapshot-id': snapshotId,
           options: JSON.stringify(options),
         },
-        EventsArraySchema as any
+        EventsArraySchema
       );
 
       // Validate events against CanonicalEvent schema

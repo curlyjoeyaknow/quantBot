@@ -108,7 +108,7 @@ export const CanonicalEventSchema = z.object({
   /**
    * Additional metadata (type-specific)
    */
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
 });
 
 export type CanonicalEvent = z.infer<typeof CanonicalEventSchema>;
@@ -192,7 +192,7 @@ export const SignalEventSchema = CanonicalEventSchema.extend({
   value: z.object({
     indicatorName: z.string(),
     indicatorValue: z.number(),
-    indicatorParams: z.record(z.unknown()).optional(),
+    indicatorParams: z.record(z.string(), z.unknown()).optional(),
   }),
 });
 
