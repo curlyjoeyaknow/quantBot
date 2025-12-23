@@ -163,12 +163,11 @@ export class ArtifactDuckDBAdapter implements ArtifactRepository {
 
   async delete(id: string, version: string): Promise<void> {
     // TODO: Implement delete operation in Python script
-    throw new AppError(
-      'Delete operation not yet implemented',
-      'NOT_IMPLEMENTED',
-      501,
-      { operation: 'delete', id, version }
-    );
+    throw new AppError('Delete operation not yet implemented', 'NOT_IMPLEMENTED', 501, {
+      operation: 'delete',
+      id,
+      version,
+    });
   }
 
   async isAvailable(): Promise<boolean> {

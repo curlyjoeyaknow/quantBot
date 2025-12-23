@@ -521,8 +521,13 @@ describe('ExecutionRealityService Edge Cases', () => {
           consecutiveLosses: 6, // Exceeds 5
           currentExposure: 600, // Exceeds 500
           tradesToday: 0,
+          peakPnl: 1000, // Peak PnL for drawdown calculation
+          currentPnl: 750, // Current PnL (25% drawdown: (1000-750)/1000 = 0.25)
         },
-        model
+        model,
+        'test-strategy',
+        0, // tradeAmount
+        Date.now() // now
       );
 
       expect(check.allowed).toBe(false);

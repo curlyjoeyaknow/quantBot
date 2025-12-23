@@ -16,7 +16,7 @@
  */
 
 import { DateTime } from 'luxon';
-import { logger, ValidationError } from '@quantbot/utils';
+import { logger, ValidationError, AppError } from '@quantbot/utils';
 import type {
   Candle,
   Call,
@@ -347,8 +347,11 @@ export class StorageEngine {
       rawPayload?: Record<string, unknown>;
     }
   ): Promise<number> {
-    throw new Error(
-      'storeCallerAlert is not available. PostgreSQL has been removed. Use DuckDB repositories directly.'
+    throw new AppError(
+      'storeCallerAlert is not available. PostgreSQL has been removed. Use DuckDB repositories directly.',
+      'DEPRECATED_METHOD',
+      410, // 410 Gone - resource no longer available
+      { method: 'storeCallerAlert', alternative: 'Use DuckDB CallersRepository directly' }
     );
   }
 
@@ -365,8 +368,11 @@ export class StorageEngine {
       athTimestamp?: DateTime;
     }
   ): Promise<void> {
-    throw new Error(
-      'updateCallerAlertMetrics is not available. PostgreSQL has been removed. Use DuckDB repositories directly.'
+    throw new AppError(
+      'updateCallerAlertMetrics is not available. PostgreSQL has been removed. Use DuckDB repositories directly.',
+      'DEPRECATED_METHOD',
+      410, // 410 Gone - resource no longer available
+      { method: 'updateCallerAlertMetrics', alternative: 'Use DuckDB repositories directly' }
     );
   }
 

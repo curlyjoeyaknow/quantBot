@@ -25,8 +25,8 @@ vi.mock('../../../src/clickhouse-client.js', () => ({
   getClickHouseClient: vi.fn(() => mockClickHouseClient),
 }));
 
-vi.mock('@quantbot/utils', () => {
-  const actual = vi.importActual('@quantbot/utils');
+vi.mock('@quantbot/utils', async () => {
+  const actual = await vi.importActual<typeof import('@quantbot/utils')>('@quantbot/utils');
   return {
     ...actual,
     logger: {
@@ -35,6 +35,7 @@ vi.mock('@quantbot/utils', () => {
       warn: vi.fn(),
       error: vi.fn(),
     },
+    ValidationError: actual.ValidationError,
   };
 });
 

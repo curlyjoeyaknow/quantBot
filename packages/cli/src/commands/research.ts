@@ -16,6 +16,10 @@ import { runSimulationHandler } from '../handlers/research/run-simulation.js';
 import { replaySimulationHandler } from '../handlers/research/replay-simulation.js';
 import { batchSimulationHandler } from '../handlers/research/batch-simulation.js';
 import { sweepSimulationHandler } from '../handlers/research/sweep-simulation.js';
+import { createSnapshotHandler } from '../handlers/research/create-snapshot.js';
+import { createExecutionModelHandler } from '../handlers/research/create-execution-model.js';
+import { createCostModelHandler } from '../handlers/research/create-cost-model.js';
+import { createRiskModelHandler } from '../handlers/research/create-risk-model.js';
 import {
   researchListSchema,
   researchShowSchema,
@@ -23,6 +27,10 @@ import {
   researchReplaySchema,
   researchBatchSchema,
   researchSweepSchema,
+  createSnapshotSchema,
+  createExecutionModelSchema,
+  createCostModelSchema,
+  createRiskModelSchema,
 } from '../command-defs/research.js';
 
 /**
@@ -120,6 +128,107 @@ export function registerResearchCommands(program: Command): void {
     validate: (opts) => researchSweepSchema.parse(opts),
     onError: die,
   });
+
+  // Create snapshot command
+  const createSnapshotCmd = researchCmd
+    .command('create-snapshot')
+    .description('Create a data snapshot for simulations')
+    .requiredOption('--from <date>', 'Start date (ISO 8601)')
+    .requiredOption('--to <date>', 'End date (ISO 8601)')
+    .option('--venue <venue>', 'Data source venue', 'pump.fun')
+    .option('--chain <chain>', 'Blockchain', 'solana')
+    .option('--caller <caller>', 'Caller name filter (can specify multiple)')
+    .option('--mint <mint>', 'Mint address filter (can specify multiple)')
+    .option('--min-volume <volume>', 'Minimum volume filter')
+    .option('--format <format>', 'Output format', 'table');
+
+  defineCommand(createSnapshotCmd, {
+    name: 'create-snapshot',
+    packageName: 'research',
+    coerce: (raw) => ({
+      ...raw,
+      sources: raw.venue ? [{ venue: raw.venue, chain: raw.chain }] : undefined,
+      callerNames: raw.caller ? (Array.isArray(raw.caller) ? raw.caller : [raw.caller]) : undefined,
+      mintAddresses: raw.mint ? (Array.isArray(raw.mint) ? raw.mint : [raw.mint]) : undefined,
+      minVolume: raw.minVolume ? coerceNumber(raw.minVolume, 'min-volume') : undefined,
+    }),
+    validate: (opts) => createSnapshotSchema.parse(opts),
+    onError: die,
+  });
+
+  // Create execution model command
+  const createExecutionModelCmd = researchCmd
+    .command('create-execution-model')
+    .description('Create an execution model from calibration data')
+    .option('--latency-samples <samples>', 'Comma-separated latency samples (ms)')
+    .option('--slippage-file <path>', 'Path to slippage samples JSON file')
+    .option('--failure-rate <rate>', 'Failure rate (0-1)', '0.01')
+    .option('--partial-fill-rate <rate>', 'Partial fill rate (0-1)')
+    .option('--venue <venue>', 'Trading venue', 'pumpfun')
+    .option('--format <format>', 'Output format', 'table');
+
+  defineCommand(createExecutionModelCmd, {
+    name: 'create-execution-model',
+    packageName: 'research',
+    coerce: (raw) => ({
+      ...raw,
+      latencySamples: raw.latencySamples
+        ? (raw.latencySamples as string).split(',').map((s) => coerceNumber(s.trim(), 'latency-sample'))
+        : undefined,
+      failureRate: raw.failureRate ? coerceNumber(raw.failureRate, 'failure-rate') : undefined,
+      partialFillRate: raw.partialFillRate ? coerceNumber(raw.partialFillRate, 'partial-fill-rate') : undefined,
+    }),
+    validate: (opts) => createExecutionModelSchema.parse(opts),
+    onError: die,
+  });
+
+  // Create cost model command
+  const createCostModelCmd = researchCmd
+    .command('create-cost-model')
+    .description('Create a cost model from fee data')
+    .option('--base-fee <fee>', 'Base transaction fee (lamports)', '5000')
+    .option('--priority-fee-min <fee>', 'Minimum priority fee (micro-lamports/CU)', '1000')
+    .option('--priority-fee-max <fee>', 'Maximum priority fee (micro-lamports/CU)', '10000')
+    .option('--trading-fee-percent <percent>', 'Trading fee percentage (0-1)', '0.01')
+    .option('--format <format>', 'Output format', 'table');
+
+  defineCommand(createCostModelCmd, {
+    name: 'create-cost-model',
+    packageName: 'research',
+    coerce: (raw) => ({
+      ...raw,
+      baseFee: raw.baseFee ? coerceNumber(raw.baseFee, 'base-fee') : undefined,
+      priorityFeeMin: raw.priorityFeeMin ? coerceNumber(raw.priorityFeeMin, 'priority-fee-min') : undefined,
+      priorityFeeMax: raw.priorityFeeMax ? coerceNumber(raw.priorityFeeMax, 'priority-fee-max') : undefined,
+      tradingFeePercent: raw.tradingFeePercent ? coerceNumber(raw.tradingFeePercent, 'trading-fee-percent') : undefined,
+    }),
+    validate: (opts) => createCostModelSchema.parse(opts),
+    onError: die,
+  });
+
+  // Create risk model command
+  const createRiskModelCmd = researchCmd
+    .command('create-risk-model')
+    .description('Create a risk model from constraints')
+    .option('--max-drawdown-percent <percent>', 'Maximum drawdown percentage (0-100)', '20')
+    .option('--max-loss-per-day <amount>', 'Maximum loss per day (USD)', '1000')
+    .option('--max-consecutive-losses <n>', 'Maximum consecutive losses', '5')
+    .option('--max-position-size <size>', 'Maximum position size (USD)', '500')
+    .option('--format <format>', 'Output format', 'table');
+
+  defineCommand(createRiskModelCmd, {
+    name: 'create-risk-model',
+    packageName: 'research',
+    coerce: (raw) => ({
+      ...raw,
+      maxDrawdownPercent: raw.maxDrawdownPercent ? coerceNumber(raw.maxDrawdownPercent, 'max-drawdown-percent') : undefined,
+      maxLossPerDay: raw.maxLossPerDay ? coerceNumber(raw.maxLossPerDay, 'max-loss-per-day') : undefined,
+      maxConsecutiveLosses: raw.maxConsecutiveLosses ? coerceNumber(raw.maxConsecutiveLosses, 'max-consecutive-losses') : undefined,
+      maxPositionSize: raw.maxPositionSize ? coerceNumber(raw.maxPositionSize, 'max-position-size') : undefined,
+    }),
+    validate: (opts) => createRiskModelSchema.parse(opts),
+    onError: die,
+  });
 }
 
 /**
@@ -194,6 +303,59 @@ const researchModule: PackageCommandModule = {
         return await sweepSimulationHandler(typedArgs, typedCtx);
       },
       examples: ['quantbot research sweep --sweep-file sweep.json'],
+    },
+    {
+      name: 'create-snapshot',
+      description: 'Create a data snapshot for simulations',
+      schema: createSnapshotSchema,
+      handler: async (args: unknown, ctx: unknown): Promise<unknown> => {
+        const typedCtx = ctx as CommandContext;
+        const typedArgs = args as z.infer<typeof createSnapshotSchema>;
+        return await createSnapshotHandler(typedArgs, typedCtx);
+      },
+      examples: [
+        'quantbot research create-snapshot --from 2024-01-01T00:00:00Z --to 2024-01-02T00:00:00Z',
+        'quantbot research create-snapshot --from 2024-01-01T00:00:00Z --to 2024-01-02T00:00:00Z --caller alpha-caller --min-volume 1000',
+      ],
+    },
+    {
+      name: 'create-execution-model',
+      description: 'Create an execution model from calibration data',
+      schema: createExecutionModelSchema,
+      handler: async (args: unknown, ctx: unknown): Promise<unknown> => {
+        const typedCtx = ctx as CommandContext;
+        const typedArgs = args as z.infer<typeof createExecutionModelSchema>;
+        return await createExecutionModelHandler(typedArgs, typedCtx);
+      },
+      examples: [
+        'quantbot research create-execution-model --latency-samples "100,200,300" --failure-rate 0.01',
+      ],
+    },
+    {
+      name: 'create-cost-model',
+      description: 'Create a cost model from fee data',
+      schema: createCostModelSchema,
+      handler: async (args: unknown, ctx: unknown): Promise<unknown> => {
+        const typedCtx = ctx as CommandContext;
+        const typedArgs = args as z.infer<typeof createCostModelSchema>;
+        return await createCostModelHandler(typedArgs, typedCtx);
+      },
+      examples: [
+        'quantbot research create-cost-model --base-fee 5000 --trading-fee-percent 0.01',
+      ],
+    },
+    {
+      name: 'create-risk-model',
+      description: 'Create a risk model from constraints',
+      schema: createRiskModelSchema,
+      handler: async (args: unknown, ctx: unknown): Promise<unknown> => {
+        const typedCtx = ctx as CommandContext;
+        const typedArgs = args as z.infer<typeof createRiskModelSchema>;
+        return await createRiskModelHandler(typedArgs, typedCtx);
+      },
+      examples: [
+        'quantbot research create-risk-model --max-drawdown-percent 20 --max-loss-per-day 1000',
+      ],
     },
   ],
 };

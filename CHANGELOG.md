@@ -10,9 +10,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **Technical Debt: Error Handling Standardization** - Continued fixing inconsistent error handling
-  - Replaced generic `Error` with `ConfigurationError` in `getStorageStats`, `queryCallsDuckdb`, and `getOhlcvStats` workflows
+  - Replaced generic `Error` with `ConfigurationError` in `getStorageStats`, `queryCallsDuckdb`, `getOhlcvStats` workflows, and `ResultsWriter`
   - Replaced generic `Error` with `ValidationError` in `OhlcvRepository` for chain/interval validation
-  - Approximately 125 more instances remain to be fixed (see `docs/TECHNICAL_DEBT_STATUS.md` for details)
+  - Replaced generic `Error` with `NotFoundError` in `ArtifactDuckDBAdapter` for missing artifacts
+  - Replaced generic `Error` with `AppError` for not-yet-implemented operations
+  - Fixed 15+ files total, including:
+    - `birdeye-client.ts` - Address validation (2 instances)
+    - `config-loader.ts` - Config format validation (2 instances)
+    - `coerce.ts` - Value coercion validation (13 instances - all fixed)
+  - Approximately 100 more instances remain (see `docs/TECHNICAL_DEBT_STATUS.md` for details)
 
 - **Technical Debt: Logging Standardization** - Started standardizing logging
   - Replaced `console.warn` with `logger.warn()` in `DataSnapshotService.ts`

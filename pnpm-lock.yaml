@@ -475,9 +475,6 @@ importers:
       '@quantbot/utils':
         specifier: workspace:*
         version: link:../utils
-      '@quantbot/workflows':
-        specifier: workspace:*
-        version: link:../workflows
       luxon:
         specifier: ^3.4.4
         version: 3.7.2

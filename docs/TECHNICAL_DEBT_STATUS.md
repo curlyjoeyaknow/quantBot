@@ -6,11 +6,11 @@ This document tracks the status of technical debt items and their remediation.
 
 | Item | Status | Priority | Notes |
 |------|--------|----------|-------|
-| Error Handling | 🔄 In Progress | High | Examples fixed, ~130 instances remain |
+| Error Handling | 🔄 In Progress | High | 15+ files fixed, ~100 instances remain |
 | Test Math Helpers | ✅ Verified | Medium | Tests are properly isolated |
-| SQLite Code Removal | 📋 Planned | Medium | Deprecated, unused, safe to remove |
+| SQLite Code Removal | ✅ Complete | Medium | Files already removed |
 | Type Consolidation | ✅ Complete | Low | Already consolidated in @quantbot/core |
-| Logging Standardization | 📋 Planned | Medium | 57 files need updates |
+| Logging Standardization | 🔄 In Progress | Medium | 1 file fixed, many remaining are intentional (user-facing) |
 | Dependency Cleanup | 📋 Pending | Low | Requires audit |
 
 Legend: ✅ Complete | 🔄 In Progress | 📋 Planned | ⚠️ Blocked
@@ -31,10 +31,24 @@ Legend: ✅ Complete | 🔄 In Progress | 📋 Planned | ⚠️ Blocked
   - Replaced `throw new Error()` with `ConfigurationError` for missing context
 - Fixed error handling in `packages/workflows/src/storage/getOhlcvStats.ts`
   - Replaced `throw new Error()` with `ConfigurationError` for missing context
+- Fixed error handling in `packages/cli/src/core/results-writer.ts`
+  - Replaced 5 instances of `throw new Error()` with `ConfigurationError` for uninitialized state
+- Fixed error handling in `packages/storage/src/adapters/artifact-duckdb-adapter.ts`
+  - Replaced `throw new Error()` with `NotFoundError` for missing artifacts
+  - Replaced `throw new Error()` with `AppError` for not-yet-implemented operations
+- Fixed error handling in `packages/storage/src/engine/StorageEngine.ts`
+  - Replaced `throw new Error()` with `AppError` for deprecated methods (removed PostgreSQL support)
+- Fixed error handling in `packages/api-clients/src/birdeye-client.ts`
+  - Replaced 2 instances of `throw new Error()` with `ValidationError` for address validation
+- Fixed error handling in `packages/cli/src/core/config-loader.ts`
+  - Replaced 2 instances of `throw new Error()` with `ValidationError` for config validation
+- Fixed error handling in `packages/cli/src/core/coerce.ts`
+  - Replaced 13 instances of `throw new Error()` with `ValidationError` for value coercion validation
+  - All error handling in this file is now standardized
 
 ### What Remains
 
-Approximately **125 instances** of `throw new Error()` remain across the codebase that should be replaced with appropriate `AppError` subclasses:
+Approximately **100 instances** of `throw new Error()` remain across the codebase that should be replaced with appropriate `AppError` subclasses:
 
 - **packages/workflows/src/** - 18 files with generic errors
 - **packages/storage/src/** - 4 files with generic errors

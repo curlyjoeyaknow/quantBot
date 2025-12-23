@@ -18,14 +18,22 @@ export interface ArtifactPaths {
   baseDir: string;
   /** Run-specific directory */
   runDir: string;
-  /** Path to simulation results JSON */
-  resultsJson: string;
-  /** Path to simulation events CSV */
-  eventsCsv: string;
+  /** Path to run manifest JSON (required) */
+  manifestJson: string;
+  /** Path to simulation events NDJSON */
+  eventsNdjson: string;
   /** Path to metrics JSON */
   metricsJson: string;
-  /** Path to logs */
-  logsTxt: string;
+  /** Path to positions NDJSON */
+  positionsNdjson: string;
+  /** Path to debug logs (optional) */
+  debugLog: string;
+  /** Legacy: Path to simulation results JSON (deprecated, use manifest) */
+  resultsJson?: string;
+  /** Legacy: Path to simulation events CSV (deprecated, use events.ndjson) */
+  eventsCsv?: string;
+  /** Legacy: Path to logs (deprecated, use debug.log) */
+  logsTxt?: string;
 }
 
 /**
@@ -47,9 +55,14 @@ export async function createArtifactDirectory(
   return {
     baseDir,
     runDir,
+    manifestJson: join(runDir, 'manifest.json'),
+    eventsNdjson: join(runDir, 'events.ndjson'),
+    metricsJson: join(runDir, 'metrics.json'),
+    positionsNdjson: join(runDir, 'positions.ndjson'),
+    debugLog: join(runDir, 'debug.log'),
+    // Legacy paths (for backward compatibility)
     resultsJson: join(runDir, 'results.json'),
     eventsCsv: join(runDir, 'events.csv'),
-    metricsJson: join(runDir, 'metrics.json'),
     logsTxt: join(runDir, 'logs.txt'),
   };
 }
@@ -67,8 +80,33 @@ export async function writeArtifact(
   data: unknown
 ): Promise<void> {
   const path = paths[artifactName];
+  if (!path) {
+    throw new Error(`Artifact path not found: ${artifactName}`);
+  }
   const content = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
   await writeFile(path, content, 'utf8');
+}
+
+/**
+ * Write NDJSON artifact (one JSON object per line)
+ *
+ * @param paths - Artifact paths
+ * @param artifactName - Name of artifact ('eventsNdjson' or 'positionsNdjson')
+ * @param items - Array of objects to write (one per line)
+ */
+export async function writeNdjsonArtifact(
+  paths: ArtifactPaths,
+  artifactName: 'eventsNdjson' | 'positionsNdjson',
+  items: Array<Record<string, unknown>>
+): Promise<void> {
+  const path = paths[artifactName];
+  if (!path) {
+    throw new Error(`Artifact path not found: ${artifactName}`);
+  }
+
+  // Write each item as a JSON line (no trailing newline after last item)
+  const lines = items.map((item) => JSON.stringify(item));
+  await writeFile(path, lines.join('\n') + (lines.length > 0 ? '\n' : ''), 'utf8');
 }
 
 /**

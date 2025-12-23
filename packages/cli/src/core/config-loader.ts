@@ -111,13 +111,19 @@ export async function loadConfig<T>(
     if (format === 'yaml') {
       const parsed = yaml.load(fileContent);
       if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-        throw new Error('YAML config must be an object');
+        throw new ValidationError('YAML config must be an object', {
+          configPath,
+          format: 'yaml',
+        });
       }
       configData = parsed as Record<string, unknown>;
     } else {
       const parsed = JSON.parse(fileContent);
       if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
-        throw new Error('JSON config must be an object');
+        throw new ValidationError('JSON config must be an object', {
+          configPath,
+          format: 'json',
+        });
       }
       configData = parsed as Record<string, unknown>;
     }

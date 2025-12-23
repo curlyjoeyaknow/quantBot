@@ -66,3 +66,66 @@ export const researchShowSchema = z.object({
 });
 
 export type ResearchShowArgs = z.infer<typeof researchShowSchema>;
+
+/**
+ * Create snapshot command schema
+ */
+export const createSnapshotSchema = z.object({
+  from: z.string().min(1, 'Start date (ISO 8601) is required'),
+  to: z.string().min(1, 'End date (ISO 8601) is required'),
+  sources: z.array(z.object({
+    venue: z.string(),
+    chain: z.string().optional(),
+  })).optional(),
+  callerNames: z.array(z.string()).optional(),
+  mintAddresses: z.array(z.string()).optional(),
+  minVolume: z.number().nonnegative().optional(),
+  format: z.enum(['json', 'table']).default('table'),
+});
+
+export type CreateSnapshotArgs = z.infer<typeof createSnapshotSchema>;
+
+/**
+ * Create execution model command schema
+ */
+export const createExecutionModelSchema = z.object({
+  latencySamples: z.array(z.number().nonnegative()).optional(),
+  slippageSamples: z.array(z.object({
+    tradeSize: z.number().nonnegative(),
+    expectedPrice: z.number().nonnegative(),
+    actualPrice: z.number().nonnegative(),
+    marketVolume24h: z.number().nonnegative().optional(),
+  })).optional(),
+  failureRate: z.number().min(0).max(1).optional(),
+  partialFillRate: z.number().min(0).max(1).optional(),
+  venue: z.string().optional(),
+  format: z.enum(['json', 'table']).default('table'),
+});
+
+export type CreateExecutionModelArgs = z.infer<typeof createExecutionModelSchema>;
+
+/**
+ * Create cost model command schema
+ */
+export const createCostModelSchema = z.object({
+  baseFee: z.number().nonnegative().optional(),
+  priorityFeeMin: z.number().nonnegative().optional(),
+  priorityFeeMax: z.number().nonnegative().optional(),
+  tradingFeePercent: z.number().min(0).max(1).optional(),
+  format: z.enum(['json', 'table']).default('table'),
+});
+
+export type CreateCostModelArgs = z.infer<typeof createCostModelSchema>;
+
+/**
+ * Create risk model command schema
+ */
+export const createRiskModelSchema = z.object({
+  maxDrawdownPercent: z.number().min(0).max(100).optional(),
+  maxLossPerDay: z.number().nonnegative().optional(),
+  maxConsecutiveLosses: z.number().int().nonnegative().optional(),
+  maxPositionSize: z.number().nonnegative().optional(),
+  format: z.enum(['json', 'table']).default('table'),
+});
+
+export type CreateRiskModelArgs = z.infer<typeof createRiskModelSchema>;

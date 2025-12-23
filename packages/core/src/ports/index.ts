@@ -46,3 +46,9 @@ export type {
   RawDataRecord,
   RawDataSourceType,
 } from './raw-data-repository-port.js';
+export type {
+  ExperimentRepository,
+  ExperimentMetadata,
+  ExperimentQueryFilter,
+  ExperimentQueryResult,
+} from './experiment-repository-port.js';

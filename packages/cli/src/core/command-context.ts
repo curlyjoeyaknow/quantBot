@@ -8,9 +8,11 @@
 import {
   CallersRepository,
   OhlcvRepository,
+  ExperimentDuckDBAdapter,
   // PostgreSQL repositories removed - use DuckDB equivalents
   // CallsRepository, TokensRepository, AlertsRepository, SimulationRunsRepository
 } from '@quantbot/storage';
+import type { ExperimentRepository } from '@quantbot/core';
 import { OhlcvIngestionService } from '@quantbot/ingestion';
 // TelegramAlertIngestionService temporarily commented out - needs repository refactoring
 // import { TelegramAlertIngestionService } from '@quantbot/ingestion';
@@ -45,6 +47,7 @@ export interface CommandServices {
   analytics(): AnalyticsService;
   // simulationRunsRepository(): SimulationRunsRepository; // PostgreSQL removed
   callersRepository(): CallersRepository; // DuckDB version
+  experimentRepository(): ExperimentRepository; // Experiment tracking
   // Add more services as needed
 }
 
@@ -166,6 +169,11 @@ export class CommandContext {
         // Use DuckDB CallersRepository - requires dbPath
         const dbPath = process.env.DUCKDB_PATH || 'data/quantbot.duckdb';
         return new CallersRepository(dbPath);
+      },
+      experimentRepository: () => {
+        // Use DuckDB ExperimentRepository - requires dbPath
+        const dbPath = process.env.DUCKDB_PATH || 'data/quantbot.duckdb';
+        return new ExperimentDuckDBAdapter(dbPath);
       },
     };
   }

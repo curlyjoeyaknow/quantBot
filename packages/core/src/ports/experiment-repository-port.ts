@@ -4,7 +4,36 @@
  * Interface for querying experiment data.
  */
 
-import type { SimulationRunMetadata } from '@quantbot/storage';
+import { DateTime } from 'luxon';
+
+/**
+ * Experiment metadata (subset of SimulationRunMetadata with experiment tracking fields)
+ */
+export interface ExperimentMetadata {
+  id?: number;
+  strategyId?: number;
+  tokenId?: number;
+  callerId?: number;
+  runType: 'backtest' | 'optimization' | 'live';
+  engineVersion: string;
+  configHash: string;
+  config: Record<string, unknown>;
+  dataSelection: Record<string, unknown>;
+  status: 'pending' | 'running' | 'completed' | 'failed';
+  startedAt?: DateTime;
+  completedAt?: DateTime;
+  errorMessage?: string;
+
+  // Experiment tracking fields
+  experimentId?: string;
+  gitCommitHash?: string;
+  dataSnapshotHash?: string;
+  parameterVectorHash?: string;
+  randomSeed?: number;
+  contractVersion?: string;
+  strategyVersion?: string;
+  dataVersion?: string;
+}
 
 /**
  * Experiment query filter
@@ -37,7 +66,7 @@ export interface ExperimentQueryFilter {
  */
 export interface ExperimentQueryResult {
   /** List of experiments matching the filter */
-  experiments: SimulationRunMetadata[];
+  experiments: ExperimentMetadata[];
   /** Total count (before limit/offset) */
   total: number;
 }
@@ -54,7 +83,7 @@ export interface ExperimentRepository {
    * @param experimentId - Experiment ID
    * @returns Experiment metadata or null if not found
    */
-  get(experimentId: string): Promise<SimulationRunMetadata | null>;
+  get(experimentId: string): Promise<ExperimentMetadata | null>;
 
   /**
    * List experiments matching filter
@@ -71,10 +100,7 @@ export interface ExperimentRepository {
    * @param limit - Maximum number of results
    * @returns List of experiments with same parameters
    */
-  getByParameterHash(
-    parameterVectorHash: string,
-    limit?: number
-  ): Promise<SimulationRunMetadata[]>;
+  getByParameterHash(parameterVectorHash: string, limit?: number): Promise<ExperimentMetadata[]>;
 
   /**
    * Find experiments by git commit hash
@@ -83,7 +109,7 @@ export interface ExperimentRepository {
    * @param limit - Maximum number of results
    * @returns List of experiments from same code version
    */
-  getByGitCommit(gitCommitHash: string, limit?: number): Promise<SimulationRunMetadata[]>;
+  getByGitCommit(gitCommitHash: string, limit?: number): Promise<ExperimentMetadata[]>;
 
   /**
    * Find experiments by data snapshot hash
@@ -92,6 +118,5 @@ export interface ExperimentRepository {
    * @param limit - Maximum number of results
    * @returns List of experiments using same data
    */
-  getByDataSnapshot(dataSnapshotHash: string, limit?: number): Promise<SimulationRunMetadata[]>;
+  getByDataSnapshot(dataSnapshotHash: string, limit?: number): Promise<ExperimentMetadata[]>;
 }
-
