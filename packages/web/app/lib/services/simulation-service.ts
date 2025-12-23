@@ -5,6 +5,7 @@
  */
 
 import { getDuckDBClient } from '@quantbot/storage';
+import { NotFoundError, ApiError } from '@quantbot/utils';
 import { join } from 'path';
 import { z } from 'zod';
 
@@ -124,7 +125,7 @@ export async function getSimulationRun(runId: string): Promise<SimulationRunDeta
     );
 
     if (!run || !Array.isArray(run) || run.length === 0) {
-      throw new Error(`Simulation run ${runId} not found`);
+      throw new NotFoundError('Simulation run', runId);
     }
 
     return run[0] as SimulationRunDetail;
@@ -160,7 +161,11 @@ export async function getSimulationEvents(
     });
 
     if (!response.ok) {
-      throw new Error(`Failed to fetch simulation events: ${response.statusText}`);
+      throw new ApiError(
+        `Failed to fetch simulation events: ${response.statusText}`,
+        'simulation-events-api',
+        response.status
+      );
     }
 
     const result = await response.json();

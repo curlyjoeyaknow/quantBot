@@ -4,6 +4,8 @@
  * Core OHLCV candle types for the simulation engine.
  */
 
+import { ValidationError } from '@quantbot/utils';
+
 /**
  * OHLCV candle data structure
  */
@@ -116,7 +118,7 @@ export function aggregateCandles(candles: Candle[], interval: string): Candle[] 
   // Get interval in seconds
   const intervalSeconds = getIntervalSeconds(interval as CandleInterval);
   if (intervalSeconds === undefined || intervalSeconds === 0) {
-    throw new Error(`Unsupported interval: ${interval}`);
+    throw new ValidationError(`Unsupported interval: ${interval}`, { interval });
   }
 
   const aggregated: Candle[] = [];
