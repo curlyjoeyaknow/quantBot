@@ -29,7 +29,9 @@ import {
  * Register research commands
  */
 export function registerResearchCommands(program: Command): void {
-  const researchCmd = program.command('research').description('Research OS experiment management');
+  const researchCmd = program
+    .command('research')
+    .description('Research OS experiment management');
 
   // List command
   const listCmd = researchCmd
@@ -138,7 +140,10 @@ const researchModule: PackageCommandModule = {
         const typedArgs = args as z.infer<typeof researchListSchema>;
         return await listRunsHandler(typedArgs, typedCtx);
       },
-      examples: ['quantbot research list', 'quantbot research list --limit 10 --offset 0'],
+      examples: [
+        'quantbot research list',
+        'quantbot research list --limit 10 --offset 0',
+      ],
     },
     {
       name: 'show',
