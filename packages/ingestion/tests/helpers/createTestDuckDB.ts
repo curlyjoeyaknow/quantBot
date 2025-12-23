@@ -186,14 +186,97 @@ export function createTempDuckDBPath(prefix: string = 'test'): string {
 
 /**
  * Copy the real DuckDB database for testing (protects original data)
+ * Also ensures the schema exists (creates tables if they don't exist)
  */
 export async function copyRealDuckDB(sourcePath: string, targetPath: string): Promise<void> {
   const { copyFile } = await import('fs/promises');
   const { existsSync } = await import('fs');
+  const { execa } = await import('execa');
+  const { resolve } = await import('path');
 
-  if (!existsSync(sourcePath)) {
-    throw new Error(`Source DuckDB file does not exist: ${sourcePath}`);
+  if (existsSync(sourcePath)) {
+    // Copy existing database
+    await copyFile(sourcePath, targetPath);
   }
 
-  await copyFile(sourcePath, targetPath);
+  // Ensure schema exists (create tables if they don't exist)
+  // This ensures tests work even if the source DB doesn't have the schema
+  const absoluteDbPath = resolve(targetPath);
+  const pythonScript = `
+import duckdb
+import sys
+import os
+
+db_path = os.path.abspath(sys.argv[1])
+con = duckdb.connect(db_path)
+
+# Create caller_links_d table if it doesn't exist
+con.execute("""
+CREATE TABLE IF NOT EXISTS caller_links_d (
+  trigger_chat_id TEXT,
+  trigger_message_id BIGINT,
+  trigger_ts_ms BIGINT,
+  trigger_from_id TEXT,
+  trigger_from_name TEXT,
+  trigger_text TEXT,
+  bot_message_id BIGINT,
+  bot_ts_ms BIGINT,
+  bot_from_name TEXT,
+  bot_type TEXT,
+  token_name TEXT,
+  ticker TEXT,
+  mint TEXT,
+  mint_raw TEXT,
+  mint_validation_status TEXT,
+  mint_validation_reason TEXT,
+  chain TEXT,
+  platform TEXT,
+  token_age_s BIGINT,
+  token_created_ts_ms BIGINT,
+  views BIGINT,
+  price_usd DOUBLE,
+  price_move_pct DOUBLE,
+  mcap_usd DOUBLE,
+  mcap_change_pct DOUBLE,
+  vol_usd DOUBLE,
+  liquidity_usd DOUBLE,
+  zero_liquidity BOOLEAN DEFAULT FALSE,
+  chg_1h_pct DOUBLE,
+  buys_1h BIGINT,
+  sells_1h BIGINT,
+  ath_mcap_usd DOUBLE,
+  ath_drawdown_pct DOUBLE,
+  ath_age_s BIGINT,
+  fresh_1d_pct DOUBLE,
+  fresh_7d_pct DOUBLE,
+  top10_pct DOUBLE,
+  holders_total BIGINT,
+  top5_holders_pct_json TEXT,
+  dev_sold BOOLEAN,
+  dex_paid BOOLEAN,
+  card_json TEXT,
+  validation_passed BOOLEAN,
+  run_id TEXT NOT NULL DEFAULT 'test',
+  inserted_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+""")
+
+# Create user_calls_d table as fallback
+con.execute("""
+CREATE TABLE IF NOT EXISTS user_calls_d (
+  chat_id TEXT,
+  message_id BIGINT,
+  trigger_ts_ms BIGINT,
+  mint TEXT,
+  chain TEXT,
+  price_usd DOUBLE,
+  mcap_usd DOUBLE
+);
+""")
+
+con.close()
+print("Schema ensured")
+`;
+
+  await execa('python3', ['-c', pythonScript, absoluteDbPath]);
 }

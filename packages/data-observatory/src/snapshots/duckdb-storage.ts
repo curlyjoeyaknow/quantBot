@@ -72,11 +72,15 @@ export class DuckDBSnapshotStorage implements SnapshotStorage {
         {
           data: JSON.stringify(ref),
         },
-        SnapshotRefResultSchema
+        SnapshotRefResultSchema as z.ZodSchema<{ success: boolean; error?: string }>
       );
 
       if (!result.success) {
-        throw new DatabaseError(result.error || 'Failed to store snapshot ref', { result, ref });
+        throw new DatabaseError(
+          result.error || 'Failed to store snapshot ref',
+          'storeSnapshotRef',
+          { result, ref }
+        );
       }
 
       logger.debug('Stored snapshot ref', { snapshotId: ref.snapshotId });
@@ -99,7 +103,7 @@ export class DuckDBSnapshotStorage implements SnapshotStorage {
         {
           'snapshot-id': snapshotId,
         },
-        SnapshotRefResponseSchema
+        SnapshotRefResponseSchema as z.ZodSchema<DataSnapshotRef | null>
       );
 
       return result;
@@ -121,15 +125,19 @@ export class DuckDBSnapshotStorage implements SnapshotStorage {
           'snapshot-id': snapshotId,
           data: JSON.stringify(events),
         },
-        SnapshotRefResultSchema
+        SnapshotRefResultSchema as z.ZodSchema<{ success: boolean; error?: string }>
       );
 
       if (!result.success) {
-        throw new DatabaseError(result.error || 'Failed to store snapshot events', {
-          result,
-          snapshotId,
-          eventsCount: events.length,
-        });
+        throw new DatabaseError(
+          result.error || 'Failed to store snapshot events',
+          'storeSnapshotEvents',
+          {
+            result,
+            snapshotId,
+            eventsCount: events.length,
+          }
+        );
       }
 
       logger.debug('Stored snapshot events', {
@@ -160,7 +168,7 @@ export class DuckDBSnapshotStorage implements SnapshotStorage {
           'snapshot-id': snapshotId,
           options: JSON.stringify(options),
         },
-        EventsArraySchema
+        EventsArraySchema as z.ZodSchema<unknown[]>
       );
 
       // Validate events against CanonicalEvent schema
