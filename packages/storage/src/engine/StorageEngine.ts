@@ -686,7 +686,7 @@ export class StorageEngine {
    * @deprecated PostgreSQL removed. Use DuckDB storage service directly.
    */
   async storeSimulationRun(_metadata: SimulationRunMetadata): Promise<number> {
-    throw new Error(
+    throw new ServiceUnavailableError(
       'storeSimulationRun is not available. PostgreSQL has been removed. Use DuckDB storage service directly.'
     );
   }

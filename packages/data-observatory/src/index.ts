@@ -11,6 +11,7 @@ export * from './canonical/index.js';
 export * from './snapshots/index.js';
 export * from './snapshots/event-collector.js';
 export * from './snapshots/duckdb-storage.js';
+export * from './snapshots/deterministic-reader.js';
 
 // Quality tools
 export * from './quality/index.js';

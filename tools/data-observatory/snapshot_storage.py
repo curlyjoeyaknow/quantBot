@@ -58,8 +58,15 @@ def init_database(db_path: str) -> dict:
         """)
         
         # Create indexes separately (DuckDB syntax)
-        con.execute("CREATE INDEX IF NOT EXISTS idx_snapshot_content_hash ON snapshot_refs(content_hash);")
-        con.execute("CREATE INDEX IF NOT EXISTS idx_snapshot_created_at ON snapshot_refs(created_at);")
+        try:
+            con.execute("CREATE INDEX IF NOT EXISTS idx_snapshot_content_hash ON snapshot_refs(content_hash);")
+        except Exception:
+            pass  # Index may already exist
+        
+        try:
+            con.execute("CREATE INDEX IF NOT EXISTS idx_snapshot_created_at ON snapshot_refs(created_at);")
+        except Exception:
+            pass
         
         # Snapshot events table
         # Stores canonical events keyed by snapshot_id
@@ -77,11 +84,27 @@ def init_database(db_path: str) -> dict:
         """)
         
         # Create indexes separately (DuckDB syntax)
-        con.execute("CREATE INDEX IF NOT EXISTS idx_snapshot_events_snapshot_id ON snapshot_events(snapshot_id);")
-        con.execute("CREATE INDEX IF NOT EXISTS idx_snapshot_events_asset ON snapshot_events(asset);")
-        con.execute("CREATE INDEX IF NOT EXISTS idx_snapshot_events_timestamp ON snapshot_events(timestamp);")
-        con.execute("CREATE INDEX IF NOT EXISTS idx_snapshot_events_event_type ON snapshot_events(event_type);")
+        try:
+            con.execute("CREATE INDEX IF NOT EXISTS idx_snapshot_events_snapshot_id ON snapshot_events(snapshot_id);")
+        except Exception:
+            pass
         
+        try:
+            con.execute("CREATE INDEX IF NOT EXISTS idx_snapshot_events_asset ON snapshot_events(asset);")
+        except Exception:
+            pass
+        
+        try:
+            con.execute("CREATE INDEX IF NOT EXISTS idx_snapshot_events_timestamp ON snapshot_events(timestamp);")
+        except Exception:
+            pass
+        
+        try:
+            con.execute("CREATE INDEX IF NOT EXISTS idx_snapshot_events_event_type ON snapshot_events(event_type);")
+        except Exception:
+            pass
+        
+        # Ensure connection is closed to prevent WAL files
         con.close()
         
         return {"success": True}

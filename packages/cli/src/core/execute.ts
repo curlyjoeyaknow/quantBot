@@ -28,7 +28,6 @@ import {
 import { createAndWriteRunManifest, type RunManifestComponents } from './run-manifest-service.js';
 import { seedFromString } from '@quantbot/core';
 import { errorToContract } from './error-contracts.js';
-import { normalizeOptions, parseArguments } from './argument-parser.js';
 
 /**
  * Extract manifest components from handler result
@@ -146,11 +145,29 @@ function extractRunIdComponents(
   }
 
   // Extract components from args (common fields for simulation commands)
-  const strategyId = (args.strategyId as string) || (args.strategy as string) || 'default';
-  const mint = (args.mint as string) || 'unknown';
-  const alertTimestamp =
-    (args.alertTimestamp as string) || (args.alert_timestamp as string) || new Date().toISOString();
+  // CRITICAL: All components must be provided - no nondeterministic fallbacks
+  // Missing required fields will cause validation to fail, ensuring deterministic run IDs
+  const strategyId = (args.strategyId as string) || (args.strategy as string);
+  const mint = args.mint as string;
+  const alertTimestamp = (args.alertTimestamp as string) || (args.alert_timestamp as string);
   const callerName = (args.callerName as string) || (args.caller_name as string) || undefined;
+
+  // Validate required fields - fail fast if missing (no nondeterministic fallbacks)
+  if (!strategyId) {
+    throw new Error(
+      'Run ID generation requires strategyId or strategy. Cannot generate deterministic run ID without it.'
+    );
+  }
+  if (!mint) {
+    throw new Error(
+      'Run ID generation requires mint. Cannot generate deterministic run ID without it.'
+    );
+  }
+  if (!alertTimestamp) {
+    throw new Error(
+      'Run ID generation requires alertTimestamp or alert_timestamp. Cannot generate deterministic run ID without it.'
+    );
+  }
 
   return {
     command: fullCommandName,
@@ -349,13 +366,12 @@ export async function execute(
     if (isVerboseMode) {
       // Don't start spinner in verbose mode - let verbose output handle it
     } else {
-      // 1. Normalize options (handles --flag value and --flag=value)
       progress.start('Parsing arguments...');
     }
-    const normalized = normalizeOptions(rawOptions);
 
-    // 2. Parse and validate arguments
-    const args = parseArguments(commandDef.schema, normalized) as Record<string, unknown>;
+    // 1. Single validation path: normalize + validate + coerce
+    // This is the ONLY place where raw options are processed
+    const args = validateAndCoerceArgs(commandDef.schema, rawOptions) as Record<string, unknown>;
     if (!isVerboseMode) {
       progress.updateMessage('Validating configuration...');
     }
