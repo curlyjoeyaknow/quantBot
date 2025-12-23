@@ -39,10 +39,10 @@ describe('Snapshot Integration Tests', () => {
     // Create snapshot manager with test storage
     const eventCollector = new StorageEventCollector(storage);
     const snapshotStorage = new DuckDBSnapshotStorage(testDuckDbPath);
-    
+
     // Wait for schema initialization (async operation in constructor)
     await snapshotStorage.waitForInit();
-    
+
     snapshotManager = new SnapshotManager(snapshotStorage, eventCollector);
 
     coverageCalculator = new CoverageCalculator();

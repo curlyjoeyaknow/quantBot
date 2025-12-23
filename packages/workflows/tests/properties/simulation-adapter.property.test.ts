@@ -19,7 +19,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import fc from 'fast-check';
 import { DateTime } from 'luxon';
 import { ResearchSimulationAdapter } from '../../src/research/simulation-adapter.js';
-import type { SimulationRequest, DataSnapshotRef, StrategyRef } from '../../src/research/contract.js';
+import type {
+  SimulationRequest,
+  DataSnapshotRef,
+  StrategyRef,
+} from '../../src/research/contract.js';
 import type { WorkflowContext } from '../../src/types.js';
 import type { StrategyConfig } from '@quantbot/simulation/strategies/types.js';
 import { DataSnapshotService } from '../../src/research/services/DataSnapshotService.js';
@@ -349,25 +353,25 @@ describe('ResearchSimulationAdapter - Property Tests', () => {
 
               // Check bounds - metrics structure may vary based on trades
               const metrics = result.metrics;
-              
+
               // Always check that metrics object exists
               if (!metrics) return false;
-              
+
               // Check trades count (always present)
               if (metrics.trades?.total !== undefined) {
                 if (metrics.trades.total < 0) return false;
               }
-              
+
               // Check drawdown (always present) - can be > 1 for extreme losses
               if (metrics.drawdown?.max !== undefined) {
                 if (metrics.drawdown.max < 0) return false;
               }
-              
+
               // Check hit rate if present
               if (metrics.hitRate?.overall !== undefined) {
                 if (metrics.hitRate.overall < 0 || metrics.hitRate.overall > 1) return false;
               }
-              
+
               // Check return is finite
               if (metrics.return?.total !== undefined) {
                 if (!Number.isFinite(metrics.return.total)) return false;
@@ -606,7 +610,7 @@ describe('ResearchSimulationAdapter - Property Tests', () => {
 
               // Should not throw
               const result = await adapter.run(request);
-              
+
               // Check that result is valid
               if (!result || !result.metadata || !result.metadata.costModelHash) {
                 return false;
@@ -760,4 +764,3 @@ describe('ResearchSimulationAdapter - Property Tests', () => {
     });
   });
 });
-

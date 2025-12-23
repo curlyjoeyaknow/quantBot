@@ -79,7 +79,7 @@ describe('candles-extended', () => {
 
       const aggregated = aggregateCandles(candles, '4H');
 
-      expect(aggregated?.length ?? 0  ).toBeGreaterThanOrEqual(1);
+      expect(aggregated?.length ?? 0).toBeGreaterThanOrEqual(1);
       expect(aggregated?.[0]?.volume ?? 0).toBeGreaterThan(0);
     });
 
@@ -186,4 +186,3 @@ describe('candles-extended', () => {
 function aggregateCandles(candles: Candle[], arg1: string) {
   throw new Error('Function not implemented.');
 }
-

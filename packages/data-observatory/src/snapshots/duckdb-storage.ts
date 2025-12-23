@@ -75,7 +75,7 @@ export class DuckDBSnapshotStorage implements SnapshotStorage {
    */
   async storeSnapshotRef(ref: DataSnapshotRef): Promise<void> {
     try {
-      const result = await this.client.execute(
+      const result: { success: boolean; error?: string } = await this.client.execute(
         this.scriptPath,
         'store_ref',
         {
@@ -90,14 +90,14 @@ export class DuckDBSnapshotStorage implements SnapshotStorage {
           'created-at': ref.createdAt,
           'content-hash': ref.contentHash,
         },
-        SnapshotRefResultSchema as unknown as   z.ZodSchema<{ success: boolean; error?: string }>
+        SnapshotRefResultSchema as any
       );
 
-      if (!result?.success) {
+      if (!result.success) {
         throw new DatabaseError(
-          result?.error || 'Failed to store snapshot ref',
+          result.error || 'Failed to store snapshot ref',
           'storeSnapshotRef',
-          { result: result as { success: boolean; error?: string } | undefined, ref }
+          { result, ref }
         );
       }
 
@@ -121,7 +121,7 @@ export class DuckDBSnapshotStorage implements SnapshotStorage {
         {
           'snapshot-id': snapshotId,
         },
-        SnapshotRefResponseSchema
+        SnapshotRefResponseSchema as any
       );
 
       return result;
@@ -143,7 +143,7 @@ export class DuckDBSnapshotStorage implements SnapshotStorage {
           'snapshot-id': snapshotId,
           data: JSON.stringify(events),
         },
-        SnapshotRefResultSchema
+        SnapshotRefResultSchema as any
       );
 
       if (!result.success) {
@@ -179,14 +179,14 @@ export class DuckDBSnapshotStorage implements SnapshotStorage {
     options: SnapshotQueryOptions
   ): Promise<CanonicalEvent[]> {
     try {
-      const result = await this.client.execute(
+      const result: unknown[] = await this.client.execute(
         this.scriptPath,
         'query_events',
         {
           'snapshot-id': snapshotId,
           options: JSON.stringify(options),
         },
-        EventsArraySchema as z.ZodSchema<unknown[]>
+        EventsArraySchema as any
       );
 
       // Validate events against CanonicalEvent schema
