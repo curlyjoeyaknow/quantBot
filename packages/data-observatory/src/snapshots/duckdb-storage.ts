@@ -38,10 +38,19 @@ export class DuckDBSnapshotStorage implements SnapshotStorage {
   private client: DuckDBClient;
   private scriptPath: string;
 
+  private initPromise: Promise<void>;
+
   constructor(dbPath: string, client?: DuckDBClient) {
     this.client = client || new DuckDBClient(dbPath);
     this.scriptPath = join(process.cwd(), 'tools/data-observatory/snapshot_storage.py');
-    this.initializeDatabase();
+    this.initPromise = this.initializeDatabase();
+  }
+
+  /**
+   * Wait for database initialization to complete
+   */
+  async waitForInit(): Promise<void> {
+    await this.initPromise;
   }
 
   /**
@@ -97,13 +106,13 @@ export class DuckDBSnapshotStorage implements SnapshotStorage {
    */
   async getSnapshotRef(snapshotId: string): Promise<DataSnapshotRef | null> {
     try {
-      const result = await this.client.execute(
+      const result: DataSnapshotRef | null = await this.client.execute(
         this.scriptPath,
         'get_ref',
         {
           'snapshot-id': snapshotId,
         },
-        SnapshotRefResponseSchema as z.ZodSchema<DataSnapshotRef | null>
+        SnapshotRefResponseSchema
       );
 
       return result;
@@ -118,14 +127,14 @@ export class DuckDBSnapshotStorage implements SnapshotStorage {
    */
   async storeSnapshotEvents(snapshotId: string, events: CanonicalEvent[]): Promise<void> {
     try {
-      const result = await this.client.execute(
+      const result: { success: boolean; error?: string } = await this.client.execute(
         this.scriptPath,
         'store_events',
         {
           'snapshot-id': snapshotId,
           data: JSON.stringify(events),
         },
-        SnapshotRefResultSchema as z.ZodSchema<{ success: boolean; error?: string }>
+        SnapshotRefResultSchema
       );
 
       if (!result.success) {
