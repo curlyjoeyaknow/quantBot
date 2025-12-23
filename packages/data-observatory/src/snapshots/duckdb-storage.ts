@@ -6,9 +6,30 @@
 
 import { join } from 'path';
 import { DuckDBClient } from '@quantbot/storage';
+import { logger } from '@quantbot/utils';
+import { z } from 'zod';
 import type { DataSnapshotRef, SnapshotQueryOptions } from './types.js';
+import { DataSnapshotRefSchema } from './types.js';
 import type { CanonicalEvent } from '../canonical/schemas.js';
 import type { SnapshotStorage } from './snapshot-manager.js';
+
+/**
+ * Result schema for snapshot ref operations
+ */
+const SnapshotRefResultSchema = z.object({
+  success: z.boolean(),
+  error: z.string().optional(),
+});
+
+/**
+ * Snapshot ref response schema
+ */
+const SnapshotRefResponseSchema = DataSnapshotRefSchema.nullable();
+
+/**
+ * Events array schema
+ */
+const EventsArraySchema = z.array(z.unknown());
 
 /**
  * DuckDB-based snapshot storage
@@ -29,35 +50,125 @@ export class DuckDBSnapshotStorage implements SnapshotStorage {
   private async initializeDatabase(): Promise<void> {
     try {
       await this.client.initSchema(this.scriptPath);
+      logger.info('DuckDBSnapshotStorage database initialized', {
+        dbPath: this.client.getDbPath(),
+      });
     } catch (error) {
-      // If script doesn't exist yet, that's okay - it will be created
-      console.warn('Snapshot storage script not found, will be created on first use');
+      logger.error('Failed to initialize DuckDBSnapshotStorage database', error as Error, {
+        dbPath: this.client.getDbPath(),
+      });
+      // Don't throw - allow service to continue with degraded functionality
     }
   }
 
+  /**
+   * Store snapshot reference
+   */
   async storeSnapshotRef(ref: DataSnapshotRef): Promise<void> {
-    // TODO: Implement DuckDB storage for snapshot refs
-    // For now, this is a placeholder
-    console.log('Storing snapshot ref:', ref.snapshotId);
+    try {
+      const result = await this.client.execute(
+        this.scriptPath,
+        'store_ref',
+        {
+          data: JSON.stringify(ref),
+        },
+        SnapshotRefResultSchema
+      );
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to store snapshot ref');
+      }
+
+      logger.debug('Stored snapshot ref', { snapshotId: ref.snapshotId });
+    } catch (error) {
+      logger.error('Failed to store snapshot ref', error as Error, {
+        snapshotId: ref.snapshotId,
+      });
+      throw error;
+    }
   }
 
+  /**
+   * Retrieve snapshot reference by ID
+   */
   async getSnapshotRef(snapshotId: string): Promise<DataSnapshotRef | null> {
-    // TODO: Implement DuckDB retrieval for snapshot refs
-    return null;
+    try {
+      const result = await this.client.execute(
+        this.scriptPath,
+        'get_ref',
+        {
+          'snapshot-id': snapshotId,
+        },
+        SnapshotRefResponseSchema
+      );
+
+      return result;
+    } catch (error) {
+      logger.error('Failed to get snapshot ref', error as Error, { snapshotId });
+      throw error;
+    }
   }
 
+  /**
+   * Store snapshot events
+   */
   async storeSnapshotEvents(snapshotId: string, events: CanonicalEvent[]): Promise<void> {
-    // TODO: Implement DuckDB storage for snapshot events
-    // Store events in a table keyed by snapshot_id
-    console.log(`Storing ${events.length} events for snapshot ${snapshotId}`);
+    try {
+      const result = await this.client.execute(
+        this.scriptPath,
+        'store_events',
+        {
+          'snapshot-id': snapshotId,
+          data: JSON.stringify(events),
+        },
+        SnapshotRefResultSchema
+      );
+
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to store snapshot events');
+      }
+
+      logger.debug('Stored snapshot events', {
+        snapshotId,
+        count: events.length,
+      });
+    } catch (error) {
+      logger.error('Failed to store snapshot events', error as Error, {
+        snapshotId,
+        eventCount: events.length,
+      });
+      throw error;
+    }
   }
 
+  /**
+   * Query snapshot events with filters
+   */
   async querySnapshotEvents(
     snapshotId: string,
     options: SnapshotQueryOptions
   ): Promise<CanonicalEvent[]> {
-    // TODO: Implement DuckDB query for snapshot events
-    // Query events filtered by snapshot_id and options
-    return [];
+    try {
+      const result = await this.client.execute(
+        this.scriptPath,
+        'query_events',
+        {
+          'snapshot-id': snapshotId,
+          options: JSON.stringify(options),
+        },
+        EventsArraySchema
+      );
+
+      // Validate events against CanonicalEvent schema
+      // Note: We accept z.unknown() in the schema above for flexibility,
+      // but should validate here if needed
+      return result as CanonicalEvent[];
+    } catch (error) {
+      logger.error('Failed to query snapshot events', error as Error, {
+        snapshotId,
+        options,
+      });
+      throw error;
+    }
   }
 }

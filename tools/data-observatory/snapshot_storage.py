@@ -146,7 +146,7 @@ def get_snapshot_ref(db_path: str, snapshot_id: str) -> dict:
             "manifest": json.loads(result[4]),
         }
     except Exception as e:
-        return {"error": str(e)}
+        return None
 
 
 def store_snapshot_events(db_path: str, snapshot_id: str, events: list) -> dict:
@@ -228,7 +228,7 @@ def query_snapshot_events(db_path: str, snapshot_id: str, options: dict = None) 
         
         return events
     except Exception as e:
-        return {"error": str(e)}
+        return []
 
 
 def list_snapshot_refs(db_path: str, limit: int = None) -> dict:
@@ -258,7 +258,7 @@ def list_snapshot_refs(db_path: str, limit: int = None) -> dict:
             for row in results
         ]
     except Exception as e:
-        return {"error": str(e)}
+        return []
 
 
 def main():

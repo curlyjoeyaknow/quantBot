@@ -9,6 +9,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **CRITICAL: Repo Hygiene - Build Artifacts in Source** - Removed all build artifacts from src/ directories
+  - Removed all `.js.map` and `.d.ts.map` files from `packages/*/src/`
+  - Removed stray `.d.ts` files from src/ (should only be in dist/)
+  - Updated `.gitignore` to prevent future commits of build artifacts
+  - Added CI check script `check:no-build-artifacts` to fail builds if artifacts appear in src/
+  - Location: `.gitignore`, `scripts/ci/check-no-build-artifacts.ts`
+
+- **CRITICAL: Repo Hygiene - Runtime State Files** - Removed all runtime state files from repo
+  - Removed DuckDB WAL files from repo root (`integration_test_*.duckdb.wal`)
+  - Removed `logs/` directory (6.9MB of versioned logs)
+  - Removed junk files like `--dbPath` and test database files from root
+  - Updated `.gitignore` to exclude all runtime state files
+  - Location: `.gitignore`, root directory cleanup
+
+- **CRITICAL: CLI Double Validation Bug** - Fixed duplicate validation in command execution
+  - `defineCommand()` was validating with schema, then `execute()` was validating again
+  - Created `executeValidated()` for pre-validated args to avoid double validation
+  - `defineCommand()` now calls `executeValidated()` after its own validation
+  - This eliminates the bug where two different validation paths could diverge
+  - Location: `packages/cli/src/core/execute.ts`, `packages/cli/src/core/defineCommand.ts`
+
+- **CRITICAL: Nondeterministic Run IDs** - Fixed nondeterministic run ID generation
+  - Removed `new Date().toISOString()` fallback in `extractRunIdComponents()`
+  - Run IDs now require explicit `alertTimestamp` - no automatic fallback
+  - Commands that should generate run IDs but are missing `alertTimestamp` now log a warning
+  - This ensures run IDs are reproducible from manifest inputs (required for research lab)
+  - Location: `packages/cli/src/core/execute.ts` (line 150-151)
+
+### Fixed
+
 - **Technical Debt: Error Handling Standardization** - Continued fixing inconsistent error handling
   - Replaced generic `Error` with `ConfigurationError` in `getStorageStats`, `queryCallsDuckdb`, `getOhlcvStats` workflows, and `ResultsWriter`
   - Replaced generic `Error` with `ValidationError` in `OhlcvRepository` for chain/interval validation

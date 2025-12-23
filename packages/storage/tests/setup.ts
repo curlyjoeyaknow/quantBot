@@ -12,12 +12,19 @@ vi.mock('@quantbot/observability', () => ({
   getSystemMetrics: vi.fn().mockResolvedValue({}),
 }));
 
-// Mock @quantbot/utils logger
-vi.mock('@quantbot/utils', () => ({
-  logger: {
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-    debug: vi.fn(),
-  },
-}));
+// Mock @quantbot/utils logger and errors
+vi.mock('@quantbot/utils', async () => {
+  const actual = await vi.importActual<typeof import('@quantbot/utils')>('@quantbot/utils');
+  return {
+    ...actual,
+    logger: {
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+      debug: vi.fn(),
+    },
+    ValidationError: actual.ValidationError,
+    ServiceUnavailableError: actual.ServiceUnavailableError,
+    AppError: actual.AppError,
+  };
+});

@@ -40,29 +40,44 @@ const FORBIDDEN_PATTERNS = [
   {
     target: 'packages/workflows/src/**/*.ts',
     forbidden: [
-      { pattern: /^@quantbot\/cli/, message: 'Workflows cannot depend on CLI. Use WorkflowContext for all dependencies.' },
-      { pattern: /^@quantbot\/tui/, message: 'Workflows cannot depend on TUI. Use WorkflowContext for all dependencies.' },
+      {
+        pattern: /^@quantbot\/cli/,
+        message: 'Workflows cannot depend on CLI. Use WorkflowContext for all dependencies.',
+      },
+      {
+        pattern: /^@quantbot\/tui/,
+        message: 'Workflows cannot depend on TUI. Use WorkflowContext for all dependencies.',
+      },
     ],
   },
   // Workflows cannot import storage implementations
   {
     target: 'packages/workflows/src/**/*.ts',
     forbidden: [
-      { pattern: /@quantbot\/storage\/src\/(postgres|clickhouse|duckdb)/, message: 'Use WorkflowContext repos, not direct storage implementation imports' },
+      {
+        pattern: /@quantbot\/storage\/src\/(postgres|clickhouse|duckdb)/,
+        message: 'Use WorkflowContext repos, not direct storage implementation imports',
+      },
     ],
   },
   // CLI handlers cannot import workflow internals
   {
     target: 'packages/cli/src/handlers/**/*.ts',
     forbidden: [
-      { pattern: /@quantbot\/workflows\/src/, message: 'CLI handlers cannot import workflow internals. Use public API only.' },
+      {
+        pattern: /@quantbot\/workflows\/src/,
+        message: 'CLI handlers cannot import workflow internals. Use public API only.',
+      },
     ],
   },
   // No deep imports from any @quantbot package
   {
     target: 'packages/**/src/**/*.ts',
     forbidden: [
-      { pattern: /@quantbot\/[^/]+\/src\//, message: 'Deep import detected. Use public API (@quantbot/<pkg>) instead.' },
+      {
+        pattern: /@quantbot\/[^/]+\/src\//,
+        message: 'Deep import detected. Use public API (@quantbot/<pkg>) instead.',
+      },
     ],
   },
 ];
@@ -72,10 +87,7 @@ const FORBIDDEN_PATTERNS = [
  */
 function matchesTarget(filePath: string, target: string): boolean {
   // Convert glob pattern to regex
-  const pattern = target
-    .replace(/\*\*/g, '.*')
-    .replace(/\*/g, '[^/]*')
-    .replace(/\//g, '\\/');
+  const pattern = target.replace(/\*\*/g, '.*').replace(/\*/g, '[^/]*').replace(/\//g, '\\/');
   const regex = new RegExp(`^${pattern}$`);
   return regex.test(filePath);
 }
@@ -83,12 +95,18 @@ function matchesTarget(filePath: string, target: string): boolean {
 /**
  * Extract import statements from TypeScript source using AST
  */
-function extractImports(sourceFile: ts.SourceFile): Array<{ path: string; line: number; column: number }> {
+function extractImports(
+  sourceFile: ts.SourceFile
+): Array<{ path: string; line: number; column: number }> {
   const imports: Array<{ path: string; line: number; column: number }> = [];
 
   function visit(node: ts.Node): void {
     // Check for import declarations
-    if (ts.isImportDeclaration(node) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) {
+    if (
+      ts.isImportDeclaration(node) &&
+      node.moduleSpecifier &&
+      ts.isStringLiteral(node.moduleSpecifier)
+    ) {
       const importPath = node.moduleSpecifier.text;
       const { line, character } = sourceFile.getLineAndCharacterOfPosition(node.getStart());
       imports.push({
@@ -99,7 +117,11 @@ function extractImports(sourceFile: ts.SourceFile): Array<{ path: string; line: 
     }
 
     // Check for require() calls (CommonJS)
-    if (ts.isCallExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === 'require') {
+    if (
+      ts.isCallExpression(node) &&
+      ts.isIdentifier(node.expression) &&
+      node.expression.text === 'require'
+    ) {
       const firstArg = node.arguments[0];
       if (firstArg && ts.isStringLiteral(firstArg)) {
         const importPath = firstArg.text;
@@ -129,12 +151,7 @@ function checkFile(filePath: string): void {
   const content = readFileSync(filePath, 'utf-8');
 
   // Create TypeScript source file
-  const sourceFile = ts.createSourceFile(
-    filePath,
-    content,
-    ts.ScriptTarget.Latest,
-    true
-  );
+  const sourceFile = ts.createSourceFile(filePath, content, ts.ScriptTarget.Latest, true);
 
   // Extract all imports
   const imports = extractImports(sourceFile);
@@ -246,4 +263,3 @@ function main(): void {
 }
 
 main();
-

@@ -62,7 +62,7 @@ function convertToCallSignal(
     tsMs,
     token: {
       address: call.mint,
-      chain: 'solana', // Default - could be enhanced to detect from metadata
+      chain: 'sol', // Default - could be enhanced to detect from metadata
     },
     caller: {
       displayName: call.caller_name || 'Unknown',
@@ -145,10 +145,7 @@ export async function exportCallsWithSimulationHandler(
   );
 
   if (queryResult.calls.length === 0) {
-    throw new NotFoundError('Calls', `date range ${fromISO} to ${toISO}`, {
-      fromISO,
-      toISO,
-    });
+    throw new Error(`No calls found in date range ${fromISO} to ${toISO}`);
   }
 
   // 2. Convert to CallSignal[]
