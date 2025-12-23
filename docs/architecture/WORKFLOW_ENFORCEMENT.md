@@ -1,6 +1,6 @@
 # Workflow Contract Enforcement
 
-This document summarizes how the workflow rules are enforced in the refactored OHLCV ingestion code.
+This document describes how workflow rules are enforced and the current implementation status.
 
 ## Workflow Contract Compliance
 
@@ -39,43 +39,51 @@ export type IngestOhlcvContext = WorkflowContext & {
 - No direct imports of implementation classes (PostgresRunRepo, ClickHouseClient, etc.)
 - Jobs service is accessed via `ctx.jobs.ohlcvFetch.fetchWorkList()`
 
-### ✅ 3. JSON-Serializable Results
+### ✅ 3. Structured Results (JSON-Serializable)
 
 **Location**: `packages/workflows/src/ohlcv/ingestOhlcv.ts`
 
 ```typescript
 export type IngestOhlcvResult = {
-  worklistGenerated: number;
-  workItemsProcessed: number;
-  // ... all fields are primitives or plain objects
-  startedAtISO: string;  // ISO string, not Date object
-  completedAtISO: string; // ISO string, not Date object
-  durationMs: number;
-  errors: Array<{ mint: string; chain: string; error: string }>;
+  summary: {
+    totalWorkItems: number;
+    successful: number;
+    failed: number;
+    skipped: number;
+  };
+  errors: Array<{
+    workItem: string;
+    error: string;
+  }>;
+  metadata: {
+    runId: string;
+    startedAt: string; // ISO string
+    completedAt: string; // ISO string
+    durationMs: number;
+  };
 };
 ```
 
-**Enforcement**:
-- All timestamps use ISO strings (`DateTime.toISO()`)
-- No Date objects in results
-- No class instances
-- All types are JSON-serializable
+**Enforcement**: 
+- All timestamps use ISO strings (not Date objects)
+- Results are plain objects (no class instances)
+- Results can be serialized to JSON without loss
 
-### ✅ 4. Explicit Error Policy
+### ✅ 4. Error Policy (Explicit in Spec)
 
 **Location**: `packages/workflows/src/ohlcv/ingestOhlcv.ts`
 
 ```typescript
-const errorMode = validated.errorMode ?? 'collect';
-
-// In error handling:
-if (errorMode === 'failFast') {
-  throw error;
-}
-// Otherwise, collect errors and continue
+export type IngestOhlcvSpec = {
+  // ... other fields
+  errorMode?: 'collect' | 'failFast';
+};
 ```
 
-**Enforcement**: Error policy is explicit in spec (`errorMode: 'collect' | 'failFast'`)
+**Enforcement**: 
+- `errorMode: 'failFast'` → throws on first error, stops processing
+- `errorMode: 'collect'` → collects errors, continues processing, returns errors in result
+- Default is `'collect'` for backward compatibility
 
 ### ✅ 5. Default Parameter Pattern
 
@@ -84,116 +92,76 @@ if (errorMode === 'failFast') {
 ```typescript
 export async function ingestOhlcv(
   spec: IngestOhlcvSpec,
-  ctx: IngestOhlcvContext = createOhlcvIngestionContext()
-): Promise<IngestOhlcvResult>
-```
-
-**Enforcement**: Uses default parameter pattern (not optional inside function body)
-
-## CLI Handler Compliance
-
-### ✅ Thin Adapter Pattern
-
-**Location**: `packages/cli/src/handlers/ingestion/ingest-ohlcv.ts`
-
-```typescript
-export async function ingestOhlcvHandler(args: IngestOhlcvArgs, ctx: CommandContext) {
-  // 1. Parse args → build spec
-  const spec: IngestOhlcvSpec = { ... };
-  
-  // 2. Create workflow context
-  const workflowContext = createOhlcvIngestionContext({ ... });
-  
-  // 3. Call workflow (orchestration happens here)
-  const result = await ingestOhlcv(spec, workflowContext);
-  
-  // 4. Return result (already JSON-serializable)
-  return result;
+  ctx: IngestOhlcvContext = createDefaultIngestOhlcvContext()
+): Promise<IngestOhlcvResult> {
+  // ...
 }
 ```
 
-**Enforcement**:
-- ✅ Parses args → builds spec
-- ✅ Creates context
-- ✅ Calls workflow
-- ✅ Returns structured result
-- ❌ NO orchestration logic (moved to workflow)
-- ❌ NO multi-step business flows
-- ❌ NO direct repository calls
+**Enforcement**: 
+- Context uses default parameter pattern (not optional with conditional inside function)
+- Default context creation is explicit and consistent
 
-## Architecture Boundaries
+## Enforcement Mechanisms
 
-### ✅ Workflows Use Interfaces, Not Implementations
+### ✅ ESLint Boundaries
 
-**Checked**: No imports of:
-- `PostgresRunRepo` from `@quantbot/storage/src/postgres`
-- `ClickHouseClient` from `@quantbot/storage/src/clickhouse`
-- Direct instantiation of implementation classes
+**Location**: `eslint.config.mjs`
 
-**Enforcement**: All dependencies come through `WorkflowContext`
+**Rules**:
+- Workflows cannot import from `@quantbot/cli` or `@quantbot/tui`
+- Workflows cannot import implementation classes (only interfaces/types)
+- CLI handlers cannot import workflow internals (only public API)
 
-### ✅ CLI Handlers Are Thin Adapters
+**Status**: ✅ Implemented and enforced
 
-**Checked**: `ingest-ohlcv.ts` handler:
-- ✅ Parses args
-- ✅ Builds spec
-- ✅ Calls workflow
-- ✅ Returns result
-- ❌ No orchestration logic
+### ✅ Test Harness
 
-## Testing Requirements
+**Location**: `packages/workflows/tests/helpers/createTestContext.ts`
 
-### ✅ Test Independence
+**Features**:
+- Creates mock WorkflowContext with all dependencies
+- Supports real implementations (DuckDB, ClickHouse) for integration tests
+- Configurable mocking of external APIs
 
-**Required**: Tests must NOT share:
-- Fee helpers from production
-- Rounding helpers from production
-- Constants from production
+**Status**: ✅ Implemented
 
-**Status**: Tests should be created following this pattern (not yet implemented)
+### ⚠️ Workflow Contract Verification Script
 
-### ✅ Golden Tests
+**Location**: `scripts/verify-workflow-contract.ts`
 
-**Required**: Load fixtures, not call prod math
+**Status**: ✅ Implemented - Verifies workflow contract compliance
 
-**Status**: Tests should be created following this pattern (not yet implemented)
+### ✅ Pre-Commit Hooks
 
-### ✅ Mock Context Factory
+**Status**: ✅ Implemented - Workflow contract checks run in pre-commit
 
-**Location**: `packages/workflows/src/context/createOhlcvIngestionContext.ts`
+## Next Steps (Completed)
 
-```typescript
-export function createOhlcvIngestionContext(
-  config?: OhlcvIngestionContextConfig
-): IngestOhlcvContext {
-  const baseContext: WorkflowContext = createProductionContext(config);
-  const fetchJob = config?.ohlcvFetchJob ?? new OhlcvFetchJob();
-  return {
-    ...baseContext,
-    jobs: { ohlcvFetch: { fetchWorkList: (worklist) => fetchJob.fetchWorkList(worklist) } },
-  };
-}
-```
+### ✅ ESLint Boundaries for Workflows Package
 
-**Enforcement**: Easy to mock for testing
+**File**: `eslint.config.mjs`
 
-## Summary
+Added configuration to prevent workflows from importing forbidden dependencies:
+- Workflows cannot import from CLI/TUI
+- Workflows cannot import storage implementations
+- CLI handlers cannot import workflow internals
 
-The refactored OHLCV ingestion code follows all workflow contract rules:
+**Status**: ✅ Completed
 
-1. ✅ Spec validation with Zod
-2. ✅ WorkflowContext for all dependencies
-3. ✅ JSON-serializable results
-4. ✅ Explicit error policy
-5. ✅ Default parameter pattern
-6. ✅ CLI handler is thin adapter
-7. ✅ No orchestration in CLI
-8. ✅ Workflows use interfaces, not implementations
+### ✅ Test Harness
 
-## Next Steps
+**Status**: ✅ Completed - `createMockContext` exists and is used in tests
 
-1. Create unit tests for `ingestOhlcv` workflow
-2. Create mock context factory for testing
-3. Add ESLint rules to enforce boundaries
-4. Update other workflows to follow the same pattern
+### ✅ Workflow Contract Compliance Verification
 
+**Status**: ✅ Completed - `scripts/verify-workflow-contract.ts` exists
+
+## Workflow Candidates
+
+See [WORKFLOW_CANDIDATES.md](./WORKFLOW_CANDIDATES.md) for analysis of packages and handlers that need workflows.
+
+## Related Documentation
+
+- [ARCHITECTURE_BOUNDARIES.md](./ARCHITECTURE_BOUNDARIES.md) - Architecture boundary enforcement
+- [SIMULATION_CONTRACT.md](./SIMULATION_CONTRACT.md) - Simulation engine contract

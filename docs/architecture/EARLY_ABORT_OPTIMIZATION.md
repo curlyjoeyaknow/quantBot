@@ -2,7 +2,7 @@
 
 ## Current Status
 
-**Partial implementation**: Early-abort exists in OHLCV ingestion but not in sweep runners.
+**✅ FULLY IMPLEMENTED**: Early-abort exists in both OHLCV ingestion and sweep runners.
 
 ### Implemented
 
@@ -11,12 +11,11 @@
 - Saves ~12 API calls per token when no data exists
 - Only applies to recent alerts (< 3 months)
 
-### Missing
-
-**Sweep Runners**:
-- No early-abort when strategy is clearly failing
-- Sweeps continue even if strategy shows consistent losses
-- No performance-based stopping criteria
+**Sweep Runners** (`packages/workflows/src/research/experiment-runner.ts`):
+- ✅ Early-abort when strategy is clearly failing
+- ✅ Performance-based stopping criteria
+- ✅ Configurable thresholds for win rate, average return, max drawdown, profitable runs
+- ✅ Metrics tracking for abort decisions
 
 ## Proposed Implementation
 
@@ -43,14 +42,32 @@ interface EarlyAbortConfig {
 - Reduced compute costs
 - Better resource utilization
 
-## Implementation Plan
+## Implementation
 
-1. **Phase 1**: Add early-abort config to sweep runner spec
-2. **Phase 2**: Implement early-abort logic in sweep runner
-3. **Phase 3**: Add metrics tracking for abort decisions
-4. **Phase 4**: Document abort criteria and thresholds
+**Location**: `packages/workflows/src/research/experiment-runner.ts`
 
-## Priority
+**Features**:
+- `EarlyAbortConfig` interface with configurable thresholds
+- Integrated into `ParameterSweepRequest` and `BatchSimulationRequest`
+- `checkEarlyAbort()` function evaluates metrics after each batch
+- Aborts early if any criteria are met
+- Returns abort reason and metrics in `BatchSimulationResult`
 
-**SEVERITY 3** - Performance optimization, not blocking. Can be added incrementally.
+**Usage Example**:
+```typescript
+const sweep: ParameterSweepRequest = {
+  baseRequest: { /* ... */ },
+  parameters: [ /* ... */ ],
+  earlyAbort: {
+    minWinRate: { threshold: 0.3, afterRuns: 10 },
+    minAvgReturn: { threshold: 0.95, afterRuns: 10 },
+    maxDrawdown: { threshold: 0.2, afterRuns: 5 },
+    minProfitableRuns: { count: 2, afterRuns: 10 },
+  },
+};
+```
+
+## Status
+
+**✅ COMPLETE** - Early-abort optimization is fully implemented and ready for use.
 

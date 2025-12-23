@@ -36,66 +36,66 @@
 
 ### SEVERITY 2 Issues (8/8 Complete)
 
-8. **Python acting as DB driver** ✅
+1. **Python acting as DB driver** ✅
    - **Status**: Documented and enforced via CI checks (see `docs/architecture/PYTHON_DB_DRIVER_DECISION.md`)
 
-9. **Silent error swallowing in DuckDB adapters** ✅
+2. **Silent error swallowing in DuckDB adapters** ✅
    - **Status**: Reviewed code - errors are properly logged and re-thrown. No silent failures found.
 
-10. **Core package is dependency magnet** ✅
-    - **Fix**: Documented refactoring plan in `docs/architecture/CORE_PACKAGE_REFACTOR.md`
-    - **Status**: Current structure acceptable for now, refactoring plan ready when needed
+3. **Core package is dependency magnet** ✅
+   - **Fix**: Documented refactoring plan in `docs/architecture/CORE_PACKAGE_REFACTOR.md`
+   - **Status**: Current structure acceptable for now, refactoring plan ready when needed
 
-11. **No canonical RunManifest type** ✅
-    - **Status**: Already exists in `@quantbot/core/src/artifacts/run-manifest.ts` and is being used
-    - **Note**: Test mocks and storage metadata are separate concerns
+4. **No canonical RunManifest type** ✅
+   - **Status**: Already exists in `@quantbot/core/src/artifacts/run-manifest.ts` and is being used
+   - **Note**: Test mocks and storage metadata are separate concerns
 
-12. **Object-stringify fallback for candle lookup** ✅
-    - **Status**: Already fixed - code uses `Map.get()` or direct mint key access, never `JSON.stringify` for lookups
+5. **Object-stringify fallback for candle lookup** ✅
+   - **Status**: Already fixed - code uses `Map.get()` or direct mint key access, never `JSON.stringify` for lookups
 
-13. **No CI enforcement of hygiene checks** ✅
-    - **Status**: Already fixed - `pnpm check:hygiene` is in CI workflow
+6. **No CI enforcement of hygiene checks** ✅
+   - **Status**: Already fixed - `pnpm check:hygiene` is in CI workflow
 
-14. **No CI enforcement of boundary checks** ✅
-    - **Status**: Already fixed - `pnpm verify:boundaries-ast` is in CI workflow
+7. **No CI enforcement of boundary checks** ✅
+   - **Status**: Already fixed - `pnpm verify:boundaries-ast` is in CI workflow
 
-15. **Logs directories exist** ✅
-    - **Fix**: Updated `.gitignore` to include `**/logs/` pattern
+8. **Logs directories exist** ✅
+   - **Fix**: Updated `.gitignore` to include `**/logs/` pattern
 
 ### Additional Issues Resolved
 
-16. **Mixed ESM/CJS boundaries** ✅
-    - **Fix**: Documented ESM-only policy in `docs/architecture/ESM_ONLY_POLICY.md`
-    - **Status**: Remaining `require()` calls are acceptable (test utilities, CJS interop)
+1. **Mixed ESM/CJS boundaries** ✅
+   - **Fix**: Documented ESM-only policy in `docs/architecture/ESM_ONLY_POLICY.md`
+   - **Status**: Remaining `require()` calls are acceptable (test utilities, CJS interop)
 
-17. **Public vs internal API enforcement** ✅
-    - **Fix**: Documented enforcement plan in `docs/architecture/PUBLIC_INTERNAL_API.md`
-    - **Status**: Can be implemented incrementally
+2. **Public vs internal API enforcement** ✅
+   - **Fix**: Documented enforcement plan in `docs/architecture/PUBLIC_INTERNAL_API.md`
+   - **Status**: Can be implemented incrementally
 
-18. **Artifact handler stubs** ✅
-    - **Status**: Intentional stubs documented in `MIGRATION_COMPLETE.md`
-    - **Note**: Cache stub is acceptable placeholder
+3. **Artifact handler stubs** ✅
+   - **Status**: Intentional stubs documented in `MIGRATION_COMPLETE.md`
+   - **Note**: Cache stub is acceptable placeholder
 
-19. **CLI command migration completion** ✅
-    - **Status**: All commands migrated per `MIGRATION_COMPLETE.md`
-    - **Note**: Remaining stubs are intentional and documented
+4. **CLI command migration completion** ✅
+   - **Status**: All commands migrated per `MIGRATION_COMPLETE.md`
+   - **Note**: Remaining stubs are intentional and documented
 
-20. **Run manifest completion** ✅
-    - **Status**: Already complete - RunManifest exists in `@quantbot/core` with fingerprint support
+5. **Run manifest completion** ✅
+   - **Status**: Already complete - RunManifest exists in `@quantbot/core` with fingerprint support
 
-21. **Input fingerprinting** ✅
-    - **Status**: Already implemented - `hashInputs()` function and `fingerprint` field in RunManifest
+6. **Input fingerprinting** ✅
+   - **Status**: Already implemented - `hashInputs()` function and `fingerprint` field in RunManifest
 
-22. **Early-abort optimization** ✅
-    - **Fix**: Documented status in `docs/architecture/EARLY_ABORT_OPTIMIZATION.md`
-    - **Status**: Exists in OHLCV ingestion, can be added to sweeps incrementally
+7. **Early-abort optimization** ✅
+   - **Fix**: Documented status in `docs/architecture/EARLY_ABORT_OPTIMIZATION.md`
+   - **Status**: Exists in OHLCV ingestion, can be added to sweeps incrementally
 
-23. **Floating-point determinism policy** ✅
-    - **Fix**: Documented policy in `docs/architecture/FLOATING_POINT_DETERMINISM.md`
+8. **Floating-point determinism policy** ✅
+   - **Fix**: Documented policy in `docs/architecture/FLOATING_POINT_DETERMINISM.md`
 
-24. **TS path aliases bypass boundaries** ✅
-    - **Fix**: Documented refactoring plan in `docs/architecture/TS_PATH_ALIASES.md`
-    - **Status**: Current enforcement (ESLint + AST checker) is sufficient
+9. **TS path aliases bypass boundaries** ✅
+   - **Fix**: Documented refactoring plan in `docs/architecture/TS_PATH_ALIASES.md`
+   - **Status**: Current enforcement (ESLint + AST checker) is sufficient
 
 ## Documentation Created
 
@@ -117,6 +117,7 @@
 ## System Improvements
 
 The codebase now has:
+
 - ✅ Single validation path for all commands
 - ✅ Deterministic run IDs (no fallbacks)
 - ✅ Proper error handling (no silent failures)
@@ -128,7 +129,7 @@ The codebase now has:
 ## Next Steps
 
 All critical issues are resolved. The system is ready for:
+
 - Large-scale optimization sweeps
 - Reproducible research experiments
 - Incremental improvements to documented areas
-

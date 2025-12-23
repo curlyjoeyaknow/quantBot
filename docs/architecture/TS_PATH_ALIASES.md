@@ -15,6 +15,7 @@ TypeScript path aliases in `tsconfig.json` point directly to `src/` directories:
 ```
 
 **Problem**: This allows deep imports that bypass package boundaries:
+
 - `@quantbot/storage/src/postgres/repo.ts` - bypasses package exports
 - `@quantbot/utils/src/logger.ts` - bypasses package index
 
@@ -86,7 +87,7 @@ Remove path aliases entirely, rely on TypeScript project references:
 **SEVERITY 3** - Tech debt. Current enforcement (ESLint + AST checker) is sufficient for now.
 
 The path aliases are convenient for development. The real enforcement is through:
+
 - ESLint rules (catch violations)
 - AST boundary checker (CI enforcement)
 - Code review (human oversight)
-

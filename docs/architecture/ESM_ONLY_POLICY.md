@@ -7,6 +7,7 @@
 ## Allowed Exceptions
 
 1. **ESM interop with CJS packages** - Using `createRequire()` for importing CommonJS-only packages:
+
    ```typescript
    import { createRequire } from 'module';
    const require = createRequire(import.meta.url);
@@ -14,6 +15,7 @@
    ```
 
 2. **Test utilities** - Test files may use `require()` for Node.js built-ins when needed for dynamic file operations:
+
    ```typescript
    const fs = require('fs'); // Acceptable in test utilities
    ```
@@ -33,7 +35,7 @@
 ## Migration Status
 
 Most codebase is ESM. Remaining `require()` calls are:
+
 - Test utilities (acceptable)
 - ESM interop with CJS packages (acceptable)
 - Legacy code (to be migrated)
-
