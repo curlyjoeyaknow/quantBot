@@ -14,11 +14,20 @@ import { commandRegistry } from '../../../src/core/command-registry.js';
 // Mock execute to avoid full integration
 vi.mock('../../../src/core/execute.js', () => ({
   execute: vi.fn().mockResolvedValue(undefined),
+  executeValidated: vi.fn().mockResolvedValue(undefined),
 }));
 
 describe('defineCommand argsToOpts', () => {
+  let exitSpy: ReturnType<typeof vi.spyOn>;
+
   beforeEach(() => {
     vi.clearAllMocks();
+    // Mock process.exit to prevent test from exiting
+    exitSpy = vi.spyOn(process, 'exit').mockImplementation((() => {}) as never);
+  });
+
+  afterEach(() => {
+    exitSpy.mockRestore();
   });
 
   it('merges arguments into options before coercion', async () => {
@@ -32,6 +41,11 @@ describe('defineCommand argsToOpts', () => {
       format: z.enum(['json', 'table', 'csv']).default('table'),
     });
 
+    // Mock die to capture errors instead of exiting
+    const mockDie = vi.fn((error: unknown) => {
+      throw error;
+    });
+
     defineCommand(cmd, {
       name: 'validate-addresses',
       packageName: 'test-package',
@@ -40,7 +54,7 @@ describe('defineCommand argsToOpts', () => {
         addresses: args[0] as string[],
       }),
       validate: (opts) => schema.parse(opts),
-      onError: die,
+      onError: mockDie,
     });
 
     // Register command
@@ -57,8 +71,16 @@ describe('defineCommand argsToOpts', () => {
       ],
     });
 
-    // Parse with arguments
-    await cmd.parseAsync(['addr1', 'addr2', '--chain-hint', 'solana'], { from: 'user' });
+    // Parse with arguments - catch any errors
+    try {
+      await cmd.parseAsync(['addr1', 'addr2', '--chain-hint', 'solana'], { from: 'user' });
+    } catch (error) {
+      // If validation fails, check what the error is
+      if (mockDie.mock.calls.length > 0) {
+        throw mockDie.mock.calls[0][0];
+      }
+      throw error;
+    }
 
     // Verify argsToOpts was called and merged correctly
     // The execute mock should have been called with merged options

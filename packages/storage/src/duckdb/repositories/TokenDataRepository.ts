@@ -61,8 +61,12 @@ export class TokenDataRepository {
       // Better to fail fast and surface the error than silently continue with broken state.
       throw new DatabaseError(
         'TokenDataRepository database initialization failed',
-        error as Error,
-        { dbPath: this.client.getDbPath() }
+        'initializeDatabase',
+        {
+          dbPath: this.client.getDbPath(),
+          originalError: error instanceof Error ? error.message : String(error),
+          errorStack: error instanceof Error ? error.stack : undefined,
+        }
       );
     }
   }

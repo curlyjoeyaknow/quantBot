@@ -77,7 +77,14 @@ describe('verifyRunIdDeterminism', () => {
 
 describe('validateRunId', () => {
   it('should validate a properly formatted run ID', () => {
-    const runId = 'simulation_run_duckdb_PT2_So11111_20240101120000_a3f2b1c9';
+    // Generate a valid run ID using the actual generator
+    const components: RunIdComponents = {
+      command: 'simulation.run-duckdb',
+      strategyId: 'PT2',
+      mint: 'So11111111111111111111111111111111111111112',
+      alertTimestamp: '2024-01-01T12:00:00Z',
+    };
+    const runId = generateRunId(components);
     const result = validateRunId(runId);
 
     expect(result.valid).toBe(true);
