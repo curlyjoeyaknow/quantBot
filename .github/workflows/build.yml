@@ -59,6 +59,12 @@ jobs:
       - name: Verify workflow contracts
         run: pnpm tsx scripts/verify-workflow-contract.ts
 
+      - name: Verify architecture boundaries (AST)
+        run: pnpm verify:boundaries-ast
+
+      - name: CI hygiene checks
+        run: pnpm check:hygiene
+
       - name: Build packages (ordered)
         run: pnpm build:ordered
 

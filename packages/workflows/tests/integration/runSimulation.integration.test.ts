@@ -3,7 +3,7 @@ import { DateTime } from 'luxon';
 import { runSimulation } from '../../src/simulation/runSimulation.js';
 import { createProductionContext } from '../../src/context/createProductionContext.js';
 import { initClickHouse, closeClickHouse, StrategiesRepository } from '@quantbot/storage';
-import { shouldRunDbStress, TEST_GATES } from '@quantbot/utils/test-helpers/test-gating';
+import { shouldRunDbStress } from '@quantbot/utils/test-helpers/test-gating';
 
 // Gate this test suite behind RUN_DB_STRESS=1
 // These tests require real database connections (ClickHouse, Postgres)

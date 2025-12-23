@@ -1,6 +1,0 @@
-Rank,Strategy,WinRate,AvgPnlPerTrade,TotalTrades,WinningTrades,LosingTrades,ProfitFactor,EntryConditions,ExitConditions
-1,Tenkan_Kijun_Cross_3,48.07,4.85,285,137,148,2.21,{},{}
-2,Golden_Cross_Entry_1,12.63,-7.68,285,36,249,0.17,"{""goldenCross"":true}","{""deathCross"":true}"
-3,Ichimoku_Cloud_Entry_0,7.02,-10.93,285,20,265,0.11,"{""ichimokuBullish"":true,""cloudCross"":true}","{""cloudCrossDown"":true}"
-4,Ichimoku_MA_Combined_2,6.67,-10.87,285,19,266,0.10,"{""ichimokuBullish"":true}","{""cloudCrossDown"":true}"
-5,Conservative_Ichimoku_4,6.67,-8.32,285,19,266,0.09,"{""ichimokuBullish"":true,""cloudCross"":true}","{""cloudCrossDown"":true}"

@@ -5,7 +5,7 @@
  */
 
 import { DateTime } from 'luxon';
-import { logger } from '@quantbot/utils';
+import { logger, DatabaseError } from '@quantbot/utils';
 import { join, dirname } from 'path';
 import { existsSync, readFileSync } from 'fs';
 import { z } from 'zod';
@@ -88,7 +88,14 @@ export class StrategiesRepository {
       logger.error('Failed to initialize StrategiesRepository database', error as Error, {
         dbPath: this.client.getDbPath(),
       });
-      // Don't throw - allow service to continue with degraded functionality
+      // CRITICAL: Always throw - silent failures give false confidence in results
+      // If database initialization fails, subsequent operations will also fail.
+      // Better to fail fast and surface the error than silently continue with broken state.
+      throw new DatabaseError(
+        'StrategiesRepository database initialization failed',
+        error as Error,
+        { dbPath: this.client.getDbPath() }
+      );
     }
   }
 

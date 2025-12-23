@@ -14,6 +14,7 @@ import { listRunsHandler } from '../handlers/research/list-runs.js';
 import { showRunHandler } from '../handlers/research/show-run.js';
 import { runSimulationHandler } from '../handlers/research/run-simulation.js';
 import { replaySimulationHandler } from '../handlers/research/replay-simulation.js';
+import { replayManifestHandler } from '../handlers/research/replay-manifest.js';
 import { batchSimulationHandler } from '../handlers/research/batch-simulation.js';
 import { sweepSimulationHandler } from '../handlers/research/sweep-simulation.js';
 import { createSnapshotHandler } from '../handlers/research/create-snapshot.js';
@@ -25,6 +26,7 @@ import {
   researchShowSchema,
   researchRunSchema,
   researchReplaySchema,
+  researchReplayManifestSchema,
   researchBatchSchema,
   researchSweepSchema,
   createSnapshotSchema,
@@ -98,6 +100,20 @@ export function registerResearchCommands(program: Command): void {
     name: 'replay',
     packageName: 'research',
     validate: (opts) => researchReplaySchema.parse(opts),
+    onError: die,
+  });
+
+  // Replay from manifest command
+  const replayManifestCmd = researchCmd
+    .command('replay-manifest')
+    .description('Replay a simulation from a manifest file (first-class re-run command)')
+    .requiredOption('--manifest <path>', 'Path to manifest.json file')
+    .option('--format <format>', 'Output format', 'table');
+
+  defineCommand(replayManifestCmd, {
+    name: 'replay-manifest',
+    packageName: 'research',
+    validate: (opts) => researchReplayManifestSchema.parse(opts),
     onError: die,
   });
 
@@ -299,6 +315,17 @@ const researchModule: PackageCommandModule = {
         return await replaySimulationHandler(typedArgs, typedCtx);
       },
       examples: ['quantbot research replay --run-id run_abc123'],
+    },
+    {
+      name: 'replay-manifest',
+      description: 'Replay a simulation from a manifest file (first-class re-run command)',
+      schema: researchReplayManifestSchema,
+      handler: async (args: unknown, ctx: unknown): Promise<unknown> => {
+        const typedCtx = ctx as CommandContext;
+        const typedArgs = args as z.infer<typeof researchReplayManifestSchema>;
+        return await replayManifestHandler(typedArgs, typedCtx);
+      },
+      examples: ['quantbot research replay-manifest --manifest artifacts/run_abc123/manifest.json'],
     },
     {
       name: 'batch',

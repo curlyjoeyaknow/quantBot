@@ -6,6 +6,7 @@
  * These can be used as starting points or references.
  */
 
+import { ValidationError } from '@quantbot/utils';
 import type { ExecutionModel, RiskFramework } from './types.js';
 import {
   createPumpfunExecutionModel,
@@ -28,7 +29,7 @@ export function getExecutionModel(name: string): ExecutionModel {
     case 'minimal':
       return createMinimalExecutionModel();
     default:
-      throw new Error(`Unknown execution model: ${name}`);
+      throw new ValidationError(`Unknown execution model: ${name}`, { name });
   }
 }
 

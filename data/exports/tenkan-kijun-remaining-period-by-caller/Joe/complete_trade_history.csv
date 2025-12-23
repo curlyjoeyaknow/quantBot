@@ -1,2 +1,0 @@
-TradeNumber,TokenAddress,AlertTime,EntryTime,ExitTime,PnL,PnLPercent,MaxReached,HoldDurationMinutes,IsWin
-1,8tsmCE4xLopzTVBSgGPYkUayDKMVV3MsCozBntxgpump,2025-08-23T07:02:05.000Z,2025-08-24T12:00:00.000+10:00,2025-08-24T15:00:00.000+10:00,1.012141,1.21,1.0302,180,Yes

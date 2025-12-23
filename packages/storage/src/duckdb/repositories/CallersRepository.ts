@@ -6,7 +6,7 @@
  */
 
 import { DateTime } from 'luxon';
-import { logger } from '@quantbot/utils';
+import { logger, DatabaseError } from '@quantbot/utils';
 import { join } from 'path';
 import { z } from 'zod';
 import type { Caller } from '@quantbot/core';
@@ -43,7 +43,14 @@ export class CallersRepository {
       logger.error('Failed to initialize CallersRepository database', error as Error, {
         dbPath: this.client.getDbPath(),
       });
-      // Don't throw - allow service to continue with degraded functionality
+      // CRITICAL: Always throw - silent failures give false confidence in results
+      // If database initialization fails, subsequent operations will also fail.
+      // Better to fail fast and surface the error than silently continue with broken state.
+      throw new DatabaseError(
+        'CallersRepository database initialization failed',
+        error as Error,
+        { dbPath: this.client.getDbPath() }
+      );
     }
   }
 

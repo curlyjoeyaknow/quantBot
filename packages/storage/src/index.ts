@@ -31,6 +31,8 @@ export { SimulationEventsRepository } from './clickhouse/repositories/Simulation
 
 // DuckDB client and repositories (new - preferred)
 export { DuckDBClient, getDuckDBClient } from './duckdb/duckdb-client.js';
+export { connectionManager, ensureConnectionCleanup } from './duckdb/connection-utils.js';
+export type { ConnectionCleanupOptions } from './duckdb/connection-utils.js';
 export { TokenDataRepository } from './duckdb/repositories/TokenDataRepository.js';
 
 // Artifact repository adapter

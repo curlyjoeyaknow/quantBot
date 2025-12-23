@@ -34,7 +34,7 @@ Last updated: 2025-01-23 (Backlog items completed: SQLite cleanup, API package, 
 - [x] Core DuckDB storage implementation
 - [x] Python engine integration
 - [x] Complete migration of remaining SQLite data (SQLite removed, strategies already in DuckDB)
-- [ ] Add DuckDB stress tests
+- [x] Add DuckDB stress tests
 - [x] Document DuckDB schema
 
 ---
