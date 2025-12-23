@@ -73,9 +73,10 @@
 - [ ] Integration with canonical data layer
 
 ### Branch C (Execution Reality)
-- [ ] Execution model application in simulation
-- [ ] Cost model application in simulation
-- [ ] Risk model application in simulation
+- [x] Execution model application in simulation ✅
+- [x] Cost model application in simulation ✅
+- [x] Risk model application in simulation ✅
+- [x] Integration tests enabled and passing ✅
 
 ## Interface Contracts (Published)
 
@@ -110,14 +111,17 @@ See `contract.ts` for full Zod schemas.
    - `quantbot research list [--limit N] [--offset N]`
    - `quantbot research show <run-id>`
 
-3. **Wait for Branch B**
-   - Data snapshot creation
-   - Integration with canonical data
+3. **Branch B** ✅
+   - Data snapshot creation ✅
+   - Integration with canonical data ✅
+   - `@quantbot/data-observatory` package integrated ✅
 
-4. **Wait for Branch C**
-   - Execution model implementations
-   - Cost model implementations
-   - Risk model implementations
+4. **Branch C** ✅
+   - Execution model implementations ✅
+   - Cost model implementations ✅
+   - Risk model implementations ✅
+   - Integration tests passing ✅
+   - `ExecutionRealityService` fully functional ✅
 
 ## Testing Status
 
@@ -152,11 +156,11 @@ packages/workflows/src/research/
 ✅ **Completeness**: All required metrics are always present  
 ✅ **JSON-serializable**: All artifacts can be stored/transmitted
 
-## Branch Status: **READY FOR INTEGRATION**
+## Branch Status: **INTEGRATION COMPLETE** ✅
 
-The core Research OS infrastructure is complete and ready for:
-1. Integration with existing simulation engine
-2. CLI command implementation
-3. Waiting for Branch B (data snapshots)
-4. Waiting for Branch C (execution/cost/risk models)
+The core Research OS infrastructure is complete:
+1. ✅ Integration with existing simulation engine
+2. ✅ Branch B integration (data snapshots via `@quantbot/data-observatory`)
+3. ✅ Branch C integration (execution/cost/risk models via `@quantbot/simulation/execution-models`)
+4. ⏳ CLI command implementation (next priority)
 

@@ -17,10 +17,22 @@ export function calculatePriorityFee(model: CostModel, congestionLevel: number =
 
   const { baseMicroLamportsPerCu, congestionMultiplier, maxMicroLamportsPerCu } = model.priorityFee;
 
-  const multiplier = 1 + (congestionMultiplier - 1) * Math.min(1, congestionLevel);
+  // Validate inputs to prevent NaN
+  if (!Number.isFinite(congestionLevel) || !Number.isFinite(baseMicroLamportsPerCu) || !Number.isFinite(congestionMultiplier) || !Number.isFinite(maxMicroLamportsPerCu)) {
+    return 0;
+  }
+
+  // Ensure non-negative congestion level
+  const safeCongestionLevel = Math.max(0, congestionLevel);
+  const multiplier = 1 + (congestionMultiplier - 1) * Math.min(1, safeCongestionLevel);
   const fee = baseMicroLamportsPerCu * multiplier;
 
-  return Math.min(fee, maxMicroLamportsPerCu);
+  // Ensure result is finite and bounded
+  if (!Number.isFinite(fee) || fee < 0) {
+    return 0;
+  }
+
+  return Math.min(fee, maxMicroLamportsPerCu || 1_000_000);
 }
 
 /**
@@ -44,8 +56,17 @@ export function calculateTotalTransactionCost(
   isEntry: boolean,
   congestionLevel: number = 0
 ): number {
+  // Validate inputs to prevent NaN
+  if (!Number.isFinite(tradeAmount) || tradeAmount < 0 || !Number.isFinite(congestionLevel)) {
+    return 0;
+  }
+
   // Base trading fee
   const feeBps = isEntry ? model.takerFeeBps : model.takerFeeBps;
+  if (!Number.isFinite(feeBps) || feeBps < 0) {
+    return 0;
+  }
+
   const tradingFee = (tradeAmount * feeBps) / 10_000;
 
   // Priority fee (if applicable)
@@ -56,7 +77,14 @@ export function calculateTotalTransactionCost(
   // Assuming 1 SOL = 1_000_000_000 lamports, and we're working in SOL units
   const priorityFeeLamports = priorityFee / 1_000_000; // Convert to lamports, then to SOL if needed
 
-  return tradingFee + priorityFeeLamports + cuCost;
+  const total = tradingFee + priorityFeeLamports + cuCost;
+
+  // Ensure result is finite and non-negative
+  if (!Number.isFinite(total) || total < 0) {
+    return 0;
+  }
+
+  return total;
 }
 
 /**
@@ -69,6 +97,17 @@ export function calculateEffectiveCostPerTrade(
   isEntry: boolean,
   congestionLevel: number = 0
 ): number {
+  // Validate inputs to prevent NaN
+  if (
+    !Number.isFinite(tradeAmount) ||
+    tradeAmount < 0 ||
+    !Number.isFinite(slippageBps) ||
+    slippageBps < 0 ||
+    !Number.isFinite(congestionLevel)
+  ) {
+    return 0;
+  }
+
   const slippageCost = (tradeAmount * slippageBps) / 10_000;
   const transactionCost = calculateTotalTransactionCost(
     model,
@@ -76,7 +115,15 @@ export function calculateEffectiveCostPerTrade(
     isEntry,
     congestionLevel
   );
-  return slippageCost + transactionCost;
+
+  const total = slippageCost + transactionCost;
+
+  // Ensure result is finite and non-negative
+  if (!Number.isFinite(total) || total < 0) {
+    return 0;
+  }
+
+  return total;
 }
 
 /**

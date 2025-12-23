@@ -22,6 +22,8 @@
     { "path": "../ohlcv" },
     { "path": "../observability" },
     { "path": "../ingestion" }
+    // Removed ../workflows to break circular dependency
+    // workflows depends on jobs, so jobs cannot depend on workflows
   ]
 }
 

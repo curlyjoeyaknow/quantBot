@@ -239,8 +239,12 @@ export async function sweepCallsHandler(args: SweepCallsArgs, _ctx: CommandConte
     for (const [key, value] of Object.entries(args)) {
       if (key === 'config') continue; // Skip config path itself
       // Only include non-empty values
-      if (value !== undefined && value !== null && value !== '' && 
-          !(Array.isArray(value) && value.length === 0)) {
+      if (
+        value !== undefined &&
+        value !== null &&
+        value !== '' &&
+        !(Array.isArray(value) && value.length === 0)
+      ) {
         cliOverrides[key] = value;
       }
     }

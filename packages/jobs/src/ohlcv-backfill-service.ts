@@ -7,8 +7,10 @@
 
 import { DateTime } from 'luxon';
 import { logger } from '@quantbot/utils';
-import { getOhlcvIngestionEngine, type OhlcvIngestionEngine } from '@quantbot/jobs';
-import { queryCallsDuckdb, createProductionContext } from '@quantbot/workflows';
+import { getOhlcvIngestionEngine, type OhlcvIngestionEngine } from './ohlcv-ingestion-engine.js';
+// NOTE: Removed @quantbot/workflows import to break circular dependency
+// This service is deprecated - use DuckDB workflows via @quantbot/workflows instead
+// import { queryCallsDuckdb, createProductionContext } from '@quantbot/workflows';
 
 export interface BackfillOptions {
   /** Maximum alerts to process (default: 1000) */
@@ -58,42 +60,14 @@ export class OhlcvBackfillService {
 
   /**
    * Get alerts that need backfilling
-   * Uses DuckDB workflow to query calls
+   * @deprecated Use DuckDB workflows via @quantbot/workflows instead
    */
-  async getAlertsToBackfill(options: BackfillOptions = {}): Promise<AlertToBackfill[]> {
-    const { limit = 1000, callerNames, fromDate, toDate } = options;
-
-    const ctx = createProductionContext();
-    const dbPath = process.env.DUCKDB_PATH || 'data/quantbot.duckdb';
-
-    const fromISO = fromDate?.toISO() || DateTime.utc().minus({ years: 1 }).toISO()!;
-    const toISO = toDate?.toISO() || DateTime.utc().toISO()!;
-
-    const result = await queryCallsDuckdb(
-      {
-        duckdbPath: dbPath,
-        fromISO,
-        toISO,
-        callerName: callerNames?.[0], // Use first caller if multiple provided
-        limit,
-      },
-      ctx
+  async getAlertsToBackfill(_options: BackfillOptions = {}): Promise<AlertToBackfill[]> {
+    throw new Error(
+      'This function is deprecated. Use DuckDB workflows via @quantbot/workflows instead.'
     );
-
-    if (!result.success || !result.calls) {
-      logger.warn('[Backfill] Failed to query calls from DuckDB', { error: result.error });
-      return [];
-    }
-
-    // Map to AlertToBackfill format
-    return result.calls.map((call, index) => ({
-      id: index, // Use index as ID since we don't have alert ID in calls
-      tokenAddress: call.mint,
-      tokenSymbol: null, // Not available in calls query
-      chain: 'solana', // Assuming solana for now
-      alertTimestamp: call.createdAt.toJSDate(),
-      callerName: call.caller || null,
-    }));
+    // Original implementation removed to break circular dependency with @quantbot/workflows
+    // If needed, use queryCallsDuckdb from @quantbot/workflows directly
   }
 
   /**

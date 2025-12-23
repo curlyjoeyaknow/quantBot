@@ -24,6 +24,7 @@
     "@quantbot/ohlcv": "workspace:*",
     "@quantbot/observability": "workspace:*",
     "@quantbot/ingestion": "workspace:*",
+    "@quantbot/workflows": "workspace:*",
     "luxon": "^3.4.4"
   },
   "devDependencies": {

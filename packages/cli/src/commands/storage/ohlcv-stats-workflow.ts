@@ -69,8 +69,12 @@ export async function ohlcvStatsWorkflowHandler(
     label: 'Total',
     candleCount: result.totalCandles.toLocaleString(),
     tokenCount: result.uniqueTokens.toLocaleString(),
-    dateEarliest: result.dateRange.earliest ? new Date(result.dateRange.earliest).toLocaleString() : 'N/A',
-    dateLatest: result.dateRange.latest ? new Date(result.dateRange.latest).toLocaleString() : 'N/A',
+    dateEarliest: result.dateRange.earliest
+      ? new Date(result.dateRange.earliest).toLocaleString()
+      : 'N/A',
+    dateLatest: result.dateRange.latest
+      ? new Date(result.dateRange.latest).toLocaleString()
+      : 'N/A',
   });
 
   // Add separator
@@ -154,9 +158,10 @@ export async function ohlcvStatsWorkflowHandler(
       dateLatest: '',
     });
     for (const token of result.topTokens) {
-      const shortAddress = token.token_address.length > 20 
-        ? `${token.token_address.substring(0, 10)}...${token.token_address.substring(token.token_address.length - 8)}`
-        : token.token_address;
+      const shortAddress =
+        token.token_address.length > 20
+          ? `${token.token_address.substring(0, 10)}...${token.token_address.substring(token.token_address.length - 8)}`
+          : token.token_address;
       rows.push({
         section: '',
         label: `  ${shortAddress} (${token.chain})`,

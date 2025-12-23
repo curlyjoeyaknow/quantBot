@@ -8,9 +8,15 @@
 import type { ExecutionModelInterface, TradeRequest, ExecutionResult } from '../execution-model.js';
 import type { ExecutionModel } from '../../types/execution-model.js';
 import type { DeterministicRNG } from '@quantbot/core';
+import { ExecutionModelSchema } from '../../types/execution-model.js';
 
 export class PerfectFillModel implements ExecutionModelInterface {
-  constructor(private readonly config: ExecutionModel) {}
+  private readonly config: ExecutionModel;
+
+  constructor(config: ExecutionModel = {}) {
+    // Validate and store config
+    this.config = ExecutionModelSchema.parse(config);
+  }
 
   execute(trade: TradeRequest, _rng: DeterministicRNG): ExecutionResult {
     // Perfect execution: no slippage, no latency, no fees, full fill

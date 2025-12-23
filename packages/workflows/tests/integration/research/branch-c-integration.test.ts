@@ -187,9 +187,8 @@ describe('Branch C Integration (Execution Reality)', () => {
       failureRate: 0.01,
     };
 
-    const executionModel: ContractExecutionModel = service.createExecutionModelFromCalibration(
-      calibration
-    );
+    const executionModel: ContractExecutionModel =
+      service.createExecutionModelFromCalibration(calibration);
     const costModel: ContractCostModel = service.createCostModelFromFees({
       baseFee: 5000,
       priorityFeeRange: { min: 1000, max: 10000 },

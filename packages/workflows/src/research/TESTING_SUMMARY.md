@@ -239,10 +239,12 @@ pnpm --filter @quantbot/workflows test:coverage tests/unit/research tests/integr
 
 ## Next Steps
 
-1. **Add edge case tests**: Test services with empty data, large datasets, malformed inputs
-2. **Performance testing**: Verify services scale with large snapshots and many trades
-3. **Production integration**: Ensure services are accessible via WorkflowContext for production workflows
-4. **Documentation**: Add usage examples and integration guides
+1. ✅ **Branch C integration tests** - Complete (8 tests passing)
+2. ⏳ **Add edge case tests**: Test services with empty data, large datasets, malformed inputs
+3. ⏳ **Performance testing**: Verify services scale with large snapshots and many trades
+4. ⏳ **Production integration**: Ensure services are accessible via WorkflowContext for production workflows
+5. ⏳ **CLI commands**: Add `quantbot research` commands for experiment management
+6. ⏳ **Documentation**: Add usage examples and integration guides
 
 ## Notes
 

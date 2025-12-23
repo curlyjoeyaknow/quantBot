@@ -134,25 +134,79 @@ function testPublicApiEnforcement(): void {
 /**
  * Test 3: Layer boundary enforcement
  *
- * Enforces research lab layer boundaries:
- * - Simulation cannot import from ingestion/api-clients/ohlcv
- * - Ingestion cannot import from simulation
- * - Analytics cannot import from ingestion (feature engineering should use canonical data)
+ * Enforces research lab layer boundaries as documented in docs/ARCHITECTURE_BOUNDARIES.md:
+ * - Simulation (Strategy Logic) cannot import from ingestion/api-clients/jobs/ohlcv/analytics
+ * - Analytics (Feature Engineering) cannot import from api-clients/jobs/ingestion
+ * - OHLCV (Feature Engineering) cannot import from api-clients/jobs/simulation
  */
 function testLayerBoundaries(): void {
   console.log('\n📋 Testing layer boundaries (research lab architecture)...');
 
-  // Layer 1: Ingestion packages
+  // Layer 1: Data Ingestion packages
   const ingestionPackages = ['ingestion', 'api-clients', 'jobs'];
 
-  // Layer 2: Feature engineering packages
+  // Layer 2: Feature Engineering packages
   const featurePackages = ['analytics', 'ohlcv'];
 
-  // Layer 3: Strategy packages
+  // Layer 3: Strategy Logic packages
   const strategyPackages = ['simulation'];
 
-  // Check: Simulation cannot import from ingestion layer
+  // Check: Simulation (Strategy Logic) cannot import from any I/O packages
   for (const pkg of strategyPackages) {
+    const srcDir = join(PACKAGES_DIR, pkg, 'src');
+    if (!statSync(srcDir, { throwIfNoEntry: false })?.isDirectory()) {
+      continue;
+    }
+
+    const files = findTsFiles(srcDir);
+    for (const file of files) {
+      if (file.includes('.test.') || file.includes('.spec.')) {
+        continue;
+      }
+
+      const content = readFileSync(file, 'utf-8');
+      const lines = content.split('\n');
+
+      lines.forEach((line, index) => {
+        const lineNum = index + 1;
+
+        // Skip comments and documentation examples
+        const trimmed = line.trim();
+        if (trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('```')) {
+          return;
+        }
+
+        // Check for imports from ingestion layer
+        for (const ingestionPkg of ingestionPackages) {
+          const importPattern = new RegExp(`from\\s+['"]@quantbot/${ingestionPkg}(?:/.*)?['"]`);
+          if (importPattern.test(line)) {
+            violations.push({
+              file: file.replace(ROOT + '/', ''),
+              line: lineNum,
+              message: `Layer violation: @quantbot/${pkg} (Strategy Logic layer) imports from @quantbot/${ingestionPkg} (Data Ingestion layer). Simulation must remain pure (no I/O). Use ports/interfaces from @quantbot/core instead.`,
+            });
+          }
+        }
+
+        // Check for imports from feature layer (simulation should use canonical data via ports, not direct imports)
+        for (const featurePkg of featurePackages) {
+          const importPattern = new RegExp(`from\\s+['"]@quantbot/${featurePkg}(?:/.*)?['"]`);
+          if (importPattern.test(line)) {
+            violations.push({
+              file: file.replace(ROOT + '/', ''),
+              line: lineNum,
+              message: `Layer violation: @quantbot/${pkg} (Strategy Logic layer) imports from @quantbot/${featurePkg} (Feature Engineering layer). Simulation should use candle data via ports/interfaces, not direct imports.`,
+            });
+          }
+        }
+      });
+    }
+  }
+
+  // Check: Analytics (Feature Engineering) cannot import from Data Ingestion layer
+  for (const pkg of featurePackages) {
+    if (pkg !== 'analytics') continue; // Only check analytics for now
+
     const srcDir = join(PACKAGES_DIR, pkg, 'src');
     if (!statSync(srcDir, { throwIfNoEntry: false })?.isDirectory()) {
       continue;
@@ -177,31 +231,18 @@ function testLayerBoundaries(): void {
             violations.push({
               file: file.replace(ROOT + '/', ''),
               line: lineNum,
-              message: `Layer violation: @quantbot/${pkg} (Strategy layer) imports from @quantbot/${ingestionPkg} (Ingestion layer). Strategy layer must not depend on ingestion layer.`,
+              message: `Layer violation: @quantbot/${pkg} (Feature Engineering layer) imports from @quantbot/${ingestionPkg} (Data Ingestion layer). Feature engineering works on existing data, not fetch new data.`,
             });
-          }
-        }
-
-        // Check for imports from feature layer (simulation should use canonical data, not direct feature imports)
-        // Note: This is stricter - simulation can use ohlcv for candles, but should not import analytics
-        for (const featurePkg of featurePackages) {
-          if (featurePkg === 'analytics') {
-            const importPattern = new RegExp(`from\\s+['"]@quantbot/${featurePkg}(?:/.*)?['"]`);
-            if (importPattern.test(line)) {
-              violations.push({
-                file: file.replace(ROOT + '/', ''),
-                line: lineNum,
-                message: `Layer violation: @quantbot/${pkg} (Strategy layer) imports from @quantbot/${featurePkg} (Feature layer). Strategy should work with canonical data, not feature engineering.`,
-              });
-            }
           }
         }
       });
     }
   }
 
-  // Check: Ingestion cannot import from strategy layer
-  for (const pkg of ingestionPackages) {
+  // Check: OHLCV (Feature Engineering) cannot import from Data Ingestion layer
+  for (const pkg of featurePackages) {
+    if (pkg !== 'ohlcv') continue; // Only check ohlcv
+
     const srcDir = join(PACKAGES_DIR, pkg, 'src');
     if (!statSync(srcDir, { throwIfNoEntry: false })?.isDirectory()) {
       continue;
@@ -219,13 +260,26 @@ function testLayerBoundaries(): void {
       lines.forEach((line, index) => {
         const lineNum = index + 1;
 
+        // Check for imports from ingestion layer
+        for (const ingestionPkg of ingestionPackages) {
+          const importPattern = new RegExp(`from\\s+['"]@quantbot/${ingestionPkg}(?:/.*)?['"]`);
+          if (importPattern.test(line)) {
+            violations.push({
+              file: file.replace(ROOT + '/', ''),
+              line: lineNum,
+              message: `Layer violation: @quantbot/${pkg} (Feature Engineering layer) imports from @quantbot/${ingestionPkg} (Data Ingestion layer). OHLCV can only read data, not fetch new data.`,
+            });
+          }
+        }
+
+        // Check for imports from strategy layer
         for (const strategyPkg of strategyPackages) {
           const importPattern = new RegExp(`from\\s+['"]@quantbot/${strategyPkg}(?:/.*)?['"]`);
           if (importPattern.test(line)) {
             violations.push({
               file: file.replace(ROOT + '/', ''),
               line: lineNum,
-              message: `Layer violation: @quantbot/${pkg} (Ingestion layer) imports from @quantbot/${strategyPkg} (Strategy layer). Ingestion layer must not depend on strategy layer.`,
+              message: `Layer violation: @quantbot/${pkg} (Feature Engineering layer) imports from @quantbot/${strategyPkg} (Strategy Logic layer). OHLCV feeds simulation, not vice versa.`,
             });
           }
         }

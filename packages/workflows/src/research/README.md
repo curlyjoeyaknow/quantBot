@@ -190,16 +190,17 @@ The index file tracks all run IDs for fast listing.
 
 ### 🚧 In Progress
 
-- [ ] Full simulation adapter implementation
-- [ ] Integration with existing simulation engine
-- [ ] CLI commands for experiments
+- [ ] CLI commands for experiments (next priority)
 
-### 📋 Pending (Depends on Branch B/C)
+### ✅ Completed
 
-- [ ] Data snapshot loading (Branch B)
-- [ ] Execution model application (Branch C)
-- [ ] Cost model application (Branch C)
-- [ ] Risk model application (Branch C)
+- [x] Full simulation adapter implementation
+- [x] Integration with existing simulation engine
+- [x] Data snapshot loading (Branch B) - `@quantbot/data-observatory` integrated
+- [x] Execution model application (Branch C) - `@quantbot/simulation/execution-models` integrated
+- [x] Cost model application (Branch C)
+- [x] Risk model application (Branch C)
+- [x] Integration tests for all branches (Branch A + B + C)
 
 ## Interface Contracts
 
@@ -223,10 +224,12 @@ See `contract.ts` for full schemas.
 
 ## Next Steps
 
-1. **Implement full simulation adapter** - Connect to existing simulation engine
-2. **Add CLI commands** - `quantbot research run`, `quantbot research sweep`, etc.
-3. **Wait for Branch B** - Data snapshot loading
-4. **Wait for Branch C** - Execution/cost/risk model implementations
+1. ✅ **Implement full simulation adapter** - Complete
+2. ✅ **Branch B integration** - Complete (`@quantbot/data-observatory`)
+3. ✅ **Branch C integration** - Complete (`@quantbot/simulation/execution-models`)
+4. ⏳ **Add CLI commands** - `quantbot research run`, `quantbot research sweep`, etc. (next priority)
+5. ⏳ **Production integration verification** - Ensure services accessible via WorkflowContext
+6. ⏳ **Edge case testing** - Empty data, large datasets, malformed inputs
 
 ## Guarantees
 
