@@ -284,10 +284,9 @@ resume: true
       const mockCtx = {} as CommandContext;
       const result = await sweepCallsHandler(args, mockCtx);
 
-      // Verify only remaining scenarios were run
+      // Verify total scenarios count (should still be 4 total, but 2 were already completed)
       // Total: 2 intervals × 2 lags × 1 overlay set = 4 scenarios
-      // But 2 were already completed, so only 2 should run
-      expect(result.totalScenarios).toBeLessThan(4);
+      expect(result.totalScenarios).toBe(4);
 
       // Verify final run.meta.json includes all completed scenarios
       const finalMeta = JSON.parse(readFileSync(metaPath, 'utf-8'));

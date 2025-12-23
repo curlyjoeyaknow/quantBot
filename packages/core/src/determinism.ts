@@ -54,7 +54,12 @@ export class SeededRNG implements DeterministicRNG {
 
   constructor(seed: number) {
     // Initialize state from seed (use splitmix64-like algorithm)
+    // Convert seed to unsigned 64-bit integer to ensure consistent hashing
     let s = BigInt(seed);
+    // Handle negative seeds by converting to unsigned representation
+    if (s < 0) {
+      s = (s + BigInt(0x10000000000000000)) & BigInt(0xffffffffffffffff);
+    }
     // eslint-disable-next-line no-loss-of-precision
     s = (s + BigInt(0x9e3779b97f4a7c15)) & BigInt(0xffffffffffffffff);
     let t = s;
@@ -63,14 +68,18 @@ export class SeededRNG implements DeterministicRNG {
     // eslint-disable-next-line no-loss-of-precision
     t = (t ^ (t >> BigInt(27))) * BigInt(0x94d049bb133111eb);
     t = t ^ (t >> BigInt(31));
+    // Ensure t is positive (mask to 64 bits)
+    t = t & BigInt(0xffffffffffffffff);
 
     this.state0 = Number(t & BigInt(0xffffffff));
     this.state1 = Number((t >> BigInt(32)) & BigInt(0xffffffff));
 
-    // Ensure state is non-zero
+    // Ensure state is non-zero - if both are zero, use seed-dependent values
     if (this.state0 === 0 && this.state1 === 0) {
-      this.state0 = 1;
-      this.state1 = 1;
+      // Use seed to generate non-zero state instead of fixed values
+      const fallback = Number(s & BigInt(0xffffffff));
+      this.state0 = fallback || 1;
+      this.state1 = Number((s >> BigInt(32)) & BigInt(0xffffffff)) || 1;
     }
   }
 

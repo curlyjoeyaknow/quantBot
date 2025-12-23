@@ -197,6 +197,18 @@ describe('Execution Cost Models - Property Tests', () => {
           fc.boolean(),
           fc.float({ min: Math.fround(0), max: Math.fround(1) }),
           (tradeAmount, slippageBps, isEntry, congestionLevel) => {
+            // Filter out invalid inputs that would cause NaN
+            if (
+              !Number.isFinite(tradeAmount) ||
+              tradeAmount < 0 ||
+              !Number.isFinite(slippageBps) ||
+              slippageBps < 0 ||
+              !Number.isFinite(congestionLevel) ||
+              congestionLevel < 0
+            ) {
+              return true; // Skip invalid inputs
+            }
+
             const model = createCostModel();
 
             const cost = calculateEffectiveCostPerTrade(

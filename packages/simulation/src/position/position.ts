@@ -201,12 +201,30 @@ export function updatePosition(position: Position, params: UpdatePositionParams)
  * Calculate unrealized PnL at current price
  */
 export function calculateUnrealizedPnl(position: Position, currentPrice: number): number {
+  // Validate inputs to prevent NaN
+  if (
+    !Number.isFinite(currentPrice) ||
+    currentPrice < 0 ||
+    !Number.isFinite(position.size) ||
+    !Number.isFinite(position.averageEntryPrice) ||
+    position.averageEntryPrice < 0
+  ) {
+    return 0;
+  }
+
   if (position.size === 0) return 0;
 
   const currentValue = currentPrice * position.size;
   const entryValue = position.averageEntryPrice * position.size;
 
-  return position.side === 'long' ? currentValue - entryValue : entryValue - currentValue;
+  const pnl = position.side === 'long' ? currentValue - entryValue : entryValue - currentValue;
+
+  // Ensure result is finite
+  if (!Number.isFinite(pnl)) {
+    return 0;
+  }
+
+  return pnl;
 }
 
 /**

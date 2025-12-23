@@ -8,9 +8,8 @@
 import { DateTime } from 'luxon';
 import { logger } from '@quantbot/utils';
 import { getOhlcvIngestionEngine, type OhlcvIngestionEngine } from './ohlcv-ingestion-engine.js';
-// NOTE: Removed @quantbot/workflows import to break circular dependency
-// This service is deprecated - use DuckDB workflows via @quantbot/workflows instead
-// import { queryCallsDuckdb, createProductionContext } from '@quantbot/workflows';
+import { DuckDBStorageService } from '@quantbot/simulation';
+import { PythonEngine } from '@quantbot/utils';
 
 export interface BackfillOptions {
   /** Maximum alerts to process (default: 1000) */
@@ -53,34 +52,100 @@ export interface AlertToBackfill {
  */
 export class OhlcvBackfillService {
   private engine: OhlcvIngestionEngine;
+  private duckdbStorage: DuckDBStorageService;
 
   constructor() {
     this.engine = getOhlcvIngestionEngine();
+    // Use DuckDBStorageService directly (from @quantbot/simulation) to avoid circular dependency
+    // This is allowed: jobs (Data Ingestion) can import from simulation (infrastructure)
+    const pythonEngine = new PythonEngine();
+    this.duckdbStorage = new DuckDBStorageService(pythonEngine);
   }
 
   /**
    * Get alerts that need backfilling
-   * @deprecated Use DuckDB workflows via @quantbot/workflows instead
+   * Uses DuckDBStorageService directly (no workflow dependency)
    */
-  async getAlertsToBackfill(_options: BackfillOptions = {}): Promise<AlertToBackfill[]> {
-    throw new Error(
-      'This function is deprecated. Use DuckDB workflows via @quantbot/workflows instead.'
-    );
-    // Original implementation removed to break circular dependency with @quantbot/workflows
-    // If needed, use queryCallsDuckdb from @quantbot/workflows directly
+  async getAlertsToBackfill(options: BackfillOptions = {}): Promise<AlertToBackfill[]> {
+    const { limit = 1000, callerNames, fromDate, toDate } = options;
+
+    const dbPath = process.env.DUCKDB_PATH || 'data/quantbot.duckdb';
+
+    // Query calls from DuckDB directly (no workflow dependency)
+    const result = await this.duckdbStorage.queryCalls(dbPath, limit);
+
+    if (!result.success || !result.calls) {
+      logger.warn('[Backfill] Failed to query calls from DuckDB', { error: result.error });
+      return [];
+    }
+
+    // Filter by date range and caller name
+    const fromISO = fromDate?.toISO() || DateTime.utc().minus({ years: 1 }).toISO()!;
+    const toISO = toDate?.toISO() || DateTime.utc().toISO()!;
+    const fromDateObj = DateTime.fromISO(fromISO, { zone: 'utc' });
+    const toDateObj = DateTime.fromISO(toISO, { zone: 'utc' });
+
+    const filtered = result.calls
+      .filter((call) => {
+        const callDate = DateTime.fromISO(call.alert_timestamp, { zone: 'utc' });
+        return callDate >= fromDateObj && callDate <= toDateObj;
+      })
+      .map((call, index) => ({
+        id: index, // Use index as ID since we don't have alert ID in calls
+        tokenAddress: call.mint,
+        tokenSymbol: null, // Not available in calls query
+        chain: 'solana', // Assuming solana for now
+        alertTimestamp: DateTime.fromISO(call.alert_timestamp, { zone: 'utc' }).toJSDate(),
+        callerName: callerNames?.[0] || null, // Use first caller if multiple provided
+      }));
+
+    return filtered;
   }
 
   /**
    * Backfill OHLCV data for a single alert
-   * @deprecated Use DuckDB workflows via @quantbot/workflows instead
    */
   async backfillAlert(
-    _alert: AlertToBackfill,
-    _options: BackfillOptions = {}
+    alert: AlertToBackfill,
+    options: BackfillOptions = {}
   ): Promise<{ success: boolean; candles1m: number; candles5m: number; error?: string }> {
-    throw new Error(
-      'This function is deprecated. Use DuckDB workflows via @quantbot/workflows instead.'
-    );
+    const { forceRefresh = false, dryRun = false } = options;
+
+    if (dryRun) {
+      logger.info(`[Backfill] DRY RUN: Would backfill alert ${alert.id} for ${alert.tokenAddress}`);
+      return { success: true, candles1m: 0, candles5m: 0 };
+    }
+
+    try {
+      // Use ingestion engine to fetch candles
+      await this.engine.initialize();
+
+      const alertTime = DateTime.fromJSDate(alert.alertTimestamp);
+      const result = await this.engine.fetchCandles(
+        alert.tokenAddress,
+        alert.chain as 'solana' | 'bsc' | 'ethereum',
+        alertTime,
+        {
+          useCache: !forceRefresh,
+          forceRefresh,
+        }
+      );
+
+      return {
+        success: true,
+        candles1m: result.metadata.total1mCandles,
+        candles5m: result.metadata.total5mCandles,
+      };
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logger.error(`[Backfill] Failed to backfill alert ${alert.id}`, { error: errorMessage });
+      return {
+        success: false,
+        candles1m: 0,
+        candles5m: 0,
+        error: errorMessage,
+      };
+    }
   }
 
   /**

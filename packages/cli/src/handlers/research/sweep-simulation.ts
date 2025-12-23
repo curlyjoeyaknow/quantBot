@@ -6,8 +6,8 @@ import { readFile } from 'fs/promises';
 import type { z } from 'zod';
 import type { CommandContext } from '../../core/command-context.js';
 import { researchSweepSchema } from '../../command-defs/research.js';
-import { runParameterSweep, createExperimentContext } from '@quantbot/workflows/research';
-import type { ParameterSweepRequest } from '@quantbot/workflows/research';
+import { runParameterSweep, createExperimentContext } from '@quantbot/workflows';
+import type { ParameterSweepRequest } from '@quantbot/workflows';
 import { logger } from '@quantbot/utils';
 
 export type SweepSimulationArgs = z.infer<typeof researchSweepSchema>;
@@ -32,7 +32,7 @@ export async function sweepSimulationHandler(args: SweepSimulationArgs, ctx: Com
   // Run parameter sweep
   const result = await runParameterSweep(sweepRequest, experimentCtx);
 
-  logger.info(`[research.sweep] Completed parameter sweep with ${result.runs.length} runs`);
+  logger.info(`[research.sweep] Completed parameter sweep with ${result.runIds.length} runs`);
 
   return result;
 }

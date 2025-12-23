@@ -49,4 +49,3 @@ export function createDefaultExecutionModel(): ExecutionModelInterface {
   };
   return new PerfectFillModel(defaultConfig);
 }
-

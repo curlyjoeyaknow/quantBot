@@ -6,8 +6,8 @@ import { readFile } from 'fs/promises';
 import type { z } from 'zod';
 import type { CommandContext } from '../../core/command-context.js';
 import { researchBatchSchema } from '../../command-defs/research.js';
-import { runBatchSimulation, createExperimentContext } from '@quantbot/workflows/research';
-import type { BatchSimulationRequest } from '@quantbot/workflows/research';
+import { runBatchSimulation, createExperimentContext } from '@quantbot/workflows';
+import type { BatchSimulationRequest } from '@quantbot/workflows';
 import { logger } from '@quantbot/utils';
 
 export type BatchSimulationArgs = z.infer<typeof researchBatchSchema>;
@@ -32,7 +32,7 @@ export async function batchSimulationHandler(args: BatchSimulationArgs, ctx: Com
   // Run batch simulation
   const result = await runBatchSimulation(batchRequest, experimentCtx);
 
-  logger.info(`[research.batch] Completed batch simulation with ${result.runs.length} runs`);
+  logger.info(`[research.batch] Completed batch simulation with ${result.runIds.length} runs`);
 
   return result;
 }

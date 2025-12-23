@@ -18,7 +18,12 @@ export function calculatePriorityFee(model: CostModel, congestionLevel: number =
   const { baseMicroLamportsPerCu, congestionMultiplier, maxMicroLamportsPerCu } = model.priorityFee;
 
   // Validate inputs to prevent NaN
-  if (!Number.isFinite(congestionLevel) || !Number.isFinite(baseMicroLamportsPerCu) || !Number.isFinite(congestionMultiplier) || !Number.isFinite(maxMicroLamportsPerCu)) {
+  if (
+    !Number.isFinite(congestionLevel) ||
+    !Number.isFinite(baseMicroLamportsPerCu) ||
+    !Number.isFinite(congestionMultiplier) ||
+    !Number.isFinite(maxMicroLamportsPerCu)
+  ) {
     return 0;
   }
 

@@ -12,18 +12,11 @@
 import { z } from 'zod';
 import { createHash } from 'crypto';
 import { execSync } from 'child_process';
-import type {
-  SimulationRequest,
-  DataSnapshotRef,
-  StrategyRef,
-  ExecutionModel,
-  CostModel,
-  RiskModel,
-  RunConfig,
-} from './contract.js';
-import type { RunArtifact, RunMetadata, RunMetrics, TradeEvent, PnLSeries } from './artifacts.js';
-import { SimulationRequestSchema, RunConfigSchema } from './contract.js';
+import type { SimulationRequest } from './contract.js';
+import type { RunArtifact } from './artifacts.js';
+import { SimulationRequestSchema } from './contract.js';
 import { RunArtifactSchema } from './artifacts.js';
+import { createExperimentContext } from './context.js';
 
 /**
  * Context for experiment runner
@@ -90,7 +83,7 @@ export interface ExperimentContext {
  */
 export async function runSingleSimulation(
   request: SimulationRequest,
-  ctx: ExperimentContext
+  ctx: ExperimentContext = createExperimentContext()
 ): Promise<RunArtifact> {
   // Validate request
   const parsed = SimulationRequestSchema.safeParse(request);
@@ -175,7 +168,7 @@ export interface BatchSimulationResult {
 
 export async function runBatchSimulation(
   batch: BatchSimulationRequest,
-  ctx: ExperimentContext
+  ctx: ExperimentContext = createExperimentContext()
 ): Promise<BatchSimulationResult> {
   const maxConcurrency = batch.maxConcurrency ?? 4;
   const runIds: string[] = [];
@@ -343,7 +336,7 @@ function generateParameterCombinations(
 
 export async function runParameterSweep(
   sweep: ParameterSweepRequest,
-  ctx: ExperimentContext
+  ctx: ExperimentContext = createExperimentContext()
 ): Promise<BatchSimulationResult> {
   // Generate all parameter combinations
   const combinations = generateParameterCombinations(sweep.parameters);

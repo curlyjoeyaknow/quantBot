@@ -33,6 +33,10 @@ export type {
   RunArtifact,
 } from './artifacts.js';
 
+// Experiment context
+export { createExperimentContext } from './context.js';
+export type { ExperimentContextConfig } from './context.js';
+
 // Experiment runner
 export * from './experiment-runner.js';
 export type {

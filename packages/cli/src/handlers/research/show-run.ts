@@ -5,7 +5,7 @@
 import type { z } from 'zod';
 import type { CommandContext } from '../../core/command-context.js';
 import { researchShowSchema } from '../../command-defs/research.js';
-import { createExperimentContext } from '@quantbot/workflows/research';
+import { createExperimentContext } from '@quantbot/workflows';
 import { logger } from '@quantbot/utils';
 
 export type ShowRunArgs = z.infer<typeof researchShowSchema>;
