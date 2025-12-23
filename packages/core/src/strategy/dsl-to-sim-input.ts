@@ -62,7 +62,14 @@ export function convertDSLToSimInput(
   strategyId: string,
   mint: string,
   alertTimestamp: string,
-  candles: Array<{ timestamp: number; open: number; high: number; low: number; close: number; volume: number }>
+  candles: Array<{
+    timestamp: number;
+    open: number;
+    high: number;
+    low: number;
+    close: number;
+    volume: number;
+  }>
 ): {
   run_id: string;
   strategy_id: string;
@@ -87,9 +94,7 @@ export function convertDSLToSimInput(
     : undefined;
 
   // Convert cost configuration
-  const cost_config: CostConfig | undefined = dsl.costs
-    ? convertCostConfig(dsl.costs)
-    : undefined;
+  const cost_config: CostConfig | undefined = dsl.costs ? convertCostConfig(dsl.costs) : undefined;
 
   return {
     run_id: runId,
@@ -108,9 +113,7 @@ export function convertDSLToSimInput(
 /**
  * Convert DSL entry condition to EntryConfig
  */
-function convertEntryCondition(
-  entry: StrategyDSL['entry']
-): EntryConfig {
+function convertEntryCondition(entry: StrategyDSL['entry']): EntryConfig {
   switch (entry.type) {
     case 'immediate':
       return {
@@ -216,9 +219,7 @@ function convertExitConditions(exits: StrategyDSL['exit']): ExitConfig {
 /**
  * Convert DSL re-entry condition to ReEntryConfig
  */
-function convertReEntryCondition(
-  reEntry: NonNullable<StrategyDSL['reEntry']>
-): ReEntryConfig {
+function convertReEntryCondition(reEntry: NonNullable<StrategyDSL['reEntry']>): ReEntryConfig {
   if (!reEntry.enabled) {
     return {
       trailingReEntry: 'none',
@@ -265,4 +266,3 @@ function convertCostConfig(costs: NonNullable<StrategyDSL['costs']>): CostConfig
     // Would need to be converted to a percentage-based fee
   };
 }
-

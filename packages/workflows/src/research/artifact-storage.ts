@@ -9,6 +9,7 @@
 
 import { promises as fs } from 'fs';
 import { join } from 'path';
+import { ValidationError } from '@quantbot/utils';
 import type { RunArtifact } from './artifacts.js';
 import { RunArtifactSchema } from './artifacts.js';
 
@@ -71,7 +72,10 @@ export class FileArtifactStorage {
     // Validate artifact
     const parsed = RunArtifactSchema.safeParse(artifact);
     if (!parsed.success) {
-      throw new Error(`Invalid artifact: ${JSON.stringify(parsed.error.issues)}`);
+      throw new ValidationError('Invalid artifact', {
+        issues: parsed.error.issues,
+        runId: artifact.metadata?.runId,
+      });
     }
 
     // Save artifact file
