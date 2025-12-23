@@ -24,7 +24,7 @@ import { fetchBirdeyeCandles } from '@quantbot/api-clients';
 import { getStorageEngine, initClickHouse } from '@quantbot/storage';
 // TokensRepository removed (PostgreSQL) - metadata storage not critical for OHLCV ingestion
 import type { Candle, Chain } from '@quantbot/core';
-import { logger } from '@quantbot/utils';
+import { logger, ValidationError } from '@quantbot/utils';
 import { LRUCache } from 'lru-cache';
 import { isEvmAddress } from '@quantbot/utils';
 import { storeCandles } from '@quantbot/ohlcv';

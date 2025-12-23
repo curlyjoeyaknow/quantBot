@@ -311,12 +311,12 @@ function setNestedProperty(obj: Record<string, unknown>, path: string, value: un
 
 /**
  * Generate all combinations of parameter values
+ *
+ * Deterministic: Same parameters → same order of combinations
  */
 function generateParameterCombinations(
   parameters: ParameterSweepRequest['parameters']
 ): Array<Record<string, unknown>> {
-  if (parameters.length === 0) return [{}];
-
   if (parameters.length === 0) return [{}];
 
   const [first, ...rest] = parameters;
@@ -326,16 +326,36 @@ function generateParameterCombinations(
 
   const combinations: Array<Record<string, unknown>> = [];
 
-  for (const value of first!.values) {
+  // Sort values for determinism (if they're comparable)
+  const sortedValues = [...first.values].sort((a, b) => {
+    if (typeof a === 'number' && typeof b === 'number') return a - b;
+    if (typeof a === 'string' && typeof b === 'string') return a.localeCompare(b);
+    return String(a).localeCompare(String(b));
+  });
+
+  for (const value of sortedValues) {
     for (const restCombo of restCombinations) {
       combinations.push({
-        [first!.path]: value,
+        [first.path]: value,
         ...restCombo,
       });
     }
   }
 
   return combinations;
+}
+
+/**
+ * Generate deterministic seed from variation ID
+ *
+ * Same variation ID → same seed
+ */
+function seedFromVariationId(variationId: string, baseSeed: number): number {
+  // Hash variation ID to get a deterministic offset
+  const hash = hashValue(variationId);
+  // Use first 8 hex chars as offset (max 2^32)
+  const offset = parseInt(hash.substring(0, 8), 16) % 1_000_000;
+  return baseSeed + offset;
 }
 
 export async function runParameterSweep(

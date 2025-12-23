@@ -100,15 +100,13 @@ def store_snapshot_ref(db_path: str, ref: dict) -> dict:
         spec = ref.get("spec", {})
         manifest = ref.get("manifest", {})
         
+        # Delete existing ref (idempotent replacement)
+        con.execute("DELETE FROM snapshot_refs WHERE snapshot_id = ?", (snapshot_id,))
+        
         con.execute("""
             INSERT INTO snapshot_refs (
                 snapshot_id, content_hash, created_at, spec_json, manifest_json
             ) VALUES (?, ?, ?, ?, ?)
-            ON CONFLICT (snapshot_id) DO UPDATE SET
-                content_hash = EXCLUDED.content_hash,
-                created_at = EXCLUDED.created_at,
-                spec_json = EXCLUDED.spec_json,
-                manifest_json = EXCLUDED.manifest_json
         """, (
             snapshot_id,
             content_hash,
