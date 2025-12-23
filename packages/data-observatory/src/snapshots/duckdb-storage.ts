@@ -6,7 +6,7 @@
 
 import { join } from 'path';
 import { DuckDBClient } from '@quantbot/storage';
-import { logger } from '@quantbot/utils';
+import { logger, DatabaseError } from '@quantbot/utils';
 import { z } from 'zod';
 import type { DataSnapshotRef, SnapshotQueryOptions } from './types.js';
 import { DataSnapshotRefSchema } from './types.js';
@@ -76,7 +76,7 @@ export class DuckDBSnapshotStorage implements SnapshotStorage {
       );
 
       if (!result.success) {
-        throw new Error(result.error || 'Failed to store snapshot ref');
+        throw new DatabaseError(result.error || 'Failed to store snapshot ref', { result, ref });
       }
 
       logger.debug('Stored snapshot ref', { snapshotId: ref.snapshotId });
@@ -125,7 +125,7 @@ export class DuckDBSnapshotStorage implements SnapshotStorage {
       );
 
       if (!result.success) {
-        throw new Error(result.error || 'Failed to store snapshot events');
+        throw new DatabaseError(result.error || 'Failed to store snapshot events', { result, snapshotId, eventsCount: events.length });
       }
 
       logger.debug('Stored snapshot events', {

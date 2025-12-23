@@ -262,7 +262,7 @@ export class ErrorRepository {
       );
 
       if (!result.success && result.error) {
-        throw new Error(result.error);
+        throw new DatabaseError(result.error, { result, errorId });
       }
 
       logger.info('Error marked as resolved', { errorId });

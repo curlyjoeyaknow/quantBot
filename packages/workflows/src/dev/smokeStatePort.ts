@@ -70,7 +70,14 @@ export async function smokeStatePort(): Promise<void> {
 
     if (!deleteResult.success) {
       console.error('❌ StatePort delete failed:', deleteResult.error);
-      throw new Error(`StatePort delete failed: ${deleteResult.error}`);
+      throw new AppError(
+        `StatePort delete failed: ${deleteResult.error}`,
+        'STATE_PORT_DELETE_FAILED',
+        500,
+        {
+          deleteResult,
+        }
+      );
     }
 
     // Verify deleted
@@ -82,7 +89,14 @@ export async function smokeStatePort(): Promise<void> {
     console.log('✅ StatePort delete verified:', { found: getAfterDelete.found });
 
     if (getAfterDelete.found) {
-      throw new Error('StatePort delete failed: value still exists after delete');
+      throw new AppError(
+        'StatePort delete failed: value still exists after delete',
+        'STATE_PORT_DELETE_VERIFY_FAILED',
+        500,
+        {
+          getAfterDelete,
+        }
+      );
     }
 
     console.log('✅ All StatePort core operations smoke tests passed!');

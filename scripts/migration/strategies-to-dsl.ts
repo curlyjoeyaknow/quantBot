@@ -8,7 +8,15 @@
 import { writeFileSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { getPreset, listPresets } from '@quantbot/simulation';
-import type { StrategyConfig, StrategyLeg, StopLossConfig, EntryConfig, ReEntryConfig, SignalGroup, LadderConfig } from '@quantbot/simulation';
+import type {
+  StrategyConfig,
+  StrategyLeg,
+  StopLossConfig,
+  EntryConfig,
+  ReEntryConfig,
+  SignalGroup,
+  LadderConfig,
+} from '@quantbot/simulation';
 import type { StrategyDSL } from '@quantbot/core';
 import { validateFull } from '@quantbot/core';
 
@@ -205,7 +213,9 @@ function convertExitConditions(
 /**
  * Convert re-entry config to DSL re-entry condition
  */
-function convertReEntryConfig(reEntryConfig: ReEntryConfig | undefined): StrategyDSL['reEntry'] | undefined {
+function convertReEntryConfig(
+  reEntryConfig: ReEntryConfig | undefined
+): StrategyDSL['reEntry'] | undefined {
   if (!reEntryConfig) {
     return undefined;
   }
@@ -219,7 +229,8 @@ function convertReEntryConfig(reEntryConfig: ReEntryConfig | undefined): Strateg
   return {
     enabled: true,
     type: 'trailing_retrace',
-    retracePercent: typeof reEntryConfig.trailingReEntry === 'number' ? reEntryConfig.trailingReEntry : undefined,
+    retracePercent:
+      typeof reEntryConfig.trailingReEntry === 'number' ? reEntryConfig.trailingReEntry : undefined,
     maxReEntries: reEntryConfig.maxReEntries,
     sizePercent: reEntryConfig.sizePercent,
   };
@@ -453,13 +464,13 @@ function createAdditionalStrategies(): void {
  */
 function main(): void {
   console.log('Migrating strategies to DSL format...\n');
-  
+
   ensureOutputDir();
 
   // Convert existing presets
   const presets = listPresets();
   console.log(`Found ${presets.length} existing presets\n`);
-  
+
   for (const presetName of presets) {
     convertAndSavePreset(presetName);
   }

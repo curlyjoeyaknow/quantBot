@@ -59,7 +59,6 @@ export * from './parameter-vector.js';
 export * from './strategy/dsl-schema.js';
 export * from './strategy/dsl-validator.js';
 export * from './strategy/dsl-to-sim-input.js';
-export * from './strategy/strategy-config-to-dsl.js';
 
 // Re-export types for convenience
 export type {

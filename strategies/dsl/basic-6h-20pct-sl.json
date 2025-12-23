@@ -1,0 +1,19 @@
+{
+  "version": "1.0.0",
+  "name": "Basic_6h_20pctSL",
+  "tags": [],
+  "entry": {
+    "type": "immediate"
+  },
+  "exit": [
+    {
+      "type": "time",
+      "holdHours": 6
+    },
+    {
+      "type": "stop_loss",
+      "stopLossPercent": -0.2
+    }
+  ]
+}
+

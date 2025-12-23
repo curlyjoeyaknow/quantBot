@@ -1,0 +1,45 @@
+{
+  "version": "1.0.0",
+  "name": "Conservative_LongHold",
+  "description": "Conservative strategy with long holds and tight risk",
+  "tags": ["conservative", "long-hold"],
+  "entry": {
+    "type": "immediate"
+  },
+  "exit": [
+    {
+      "type": "profit_target",
+      "profitTarget": 2.0,
+      "percentToExit": 0.25
+    },
+    {
+      "type": "profit_target",
+      "profitTarget": 3.0,
+      "percentToExit": 0.25
+    },
+    {
+      "type": "profit_target",
+      "profitTarget": 5.0,
+      "percentToExit": 0.25
+    },
+    {
+      "type": "profit_target",
+      "profitTarget": 10.0,
+      "percentToExit": 0.25
+    },
+    {
+      "type": "stop_loss",
+      "stopLossPercent": -0.2,
+      "trailingStopThreshold": 1.5,
+      "trailingStopPercent": 0.15
+    },
+    {
+      "type": "time",
+      "holdHours": 168
+    }
+  ],
+  "risk": {
+    "maxLossPercent": -0.15
+  }
+}
+

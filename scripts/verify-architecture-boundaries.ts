@@ -159,9 +159,9 @@ function testLayerBoundaries(): void {
 
     const files = findTsFiles(srcDir);
     for (const file of files) {
-      if (file.includes('.test.') || file.includes('.spec.')) {
-        continue;
-      }
+      // NOTE: Test files are now included in boundary checks
+      // Tests should follow the same architectural boundaries as production code
+      // If tests need to test internals, use explicit test utilities rather than violating boundaries
 
       const content = readFileSync(file, 'utf-8');
       const lines = content.split('\n');
@@ -213,9 +213,9 @@ function testLayerBoundaries(): void {
 
     const files = findTsFiles(srcDir);
     for (const file of files) {
-      if (file.includes('.test.') || file.includes('.spec.')) {
-        continue;
-      }
+      // NOTE: Test files are now included in boundary checks
+      // Tests should follow the same architectural boundaries as production code
+      // If tests need to test internals, use explicit test utilities rather than violating boundaries
 
       const content = readFileSync(file, 'utf-8');
       const lines = content.split('\n');
@@ -249,9 +249,9 @@ function testLayerBoundaries(): void {
 
     const files = findTsFiles(srcDir);
     for (const file of files) {
-      if (file.includes('.test.') || file.includes('.spec.')) {
-        continue;
-      }
+      // NOTE: Test files are now included in boundary checks
+      // Tests should follow the same architectural boundaries as production code
+      // If tests need to test internals, use explicit test utilities rather than violating boundaries
 
       const content = readFileSync(file, 'utf-8');
       const lines = content.split('\n');

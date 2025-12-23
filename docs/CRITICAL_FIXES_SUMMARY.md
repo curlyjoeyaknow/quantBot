@@ -108,17 +108,28 @@ This document summarizes the fixes applied to address the top 25 concrete issues
 
 **Status**: Identified but not yet improved. The script works but could be more robust.
 
-### ⚠️ TODO: Tests Excluded from Boundary Checks
+### ✅ Fixed: Tests Excluded from Boundary Checks
 
-**Issue**: Test code is excluded from boundary checks, allowing architecture rot to accumulate in tests.
+**Issue**: Test code was excluded from boundary checks, allowing architecture rot to accumulate in tests.
 
-**Status**: Identified. The boundary check script currently skips test files (`if (file.includes('.test.') || file.includes('.spec.'))`).
+**Fix**:
+- Removed test file exclusion from `scripts/verify-architecture-boundaries.ts`
+- Tests now follow the same architectural boundaries as production code
+- Added comments explaining that if tests need to test internals, they should use explicit test utilities rather than violating boundaries
 
-### ⚠️ TODO: Core Package is a Dependency Magnet
+**Files Changed**:
+- `scripts/verify-architecture-boundaries.ts` - Removed `.test.` and `.spec.` file exclusions in all three boundary check functions
 
-**Issue**: `packages/core/src/index.ts` exports everything, making it a dependency magnet.
+### ✅ Documented: Core Package is a Dependency Magnet
 
-**Status**: Identified but requires refactoring. Core package should be minimal and focused.
+**Issue**: `packages/core/src/index.ts` exports everything via `export *`, making it a dependency magnet.
+
+**Fix**: 
+- Created refactoring proposal document: `docs/CORE_PACKAGE_REFACTOR_PROPOSAL.md`
+- Documented current state and proposed solutions (split into focused packages or explicit exports)
+- Identified as requiring larger architectural refactoring to avoid breaking changes
+
+**Status**: Documented for future refactoring. This requires careful planning to avoid breaking changes across all packages.
 
 ### ⚠️ TODO: Python Acting as DB Driver
 
@@ -126,17 +137,28 @@ This document summarizes the fixes applied to address the top 25 concrete issues
 
 **Status**: Identified but requires architectural decision. This may be intentional for performance reasons.
 
-### ⚠️ TODO: Silent Error Swallowing in DuckDB Adapters
+### ✅ Fixed: Silent Error Swallowing in DuckDB Adapters
 
-**Issue**: DuckDB adapters silently swallow errors, providing false confidence in results.
+**Issue**: DuckDB adapters silently swallowed errors in `initializeDatabase()` methods, providing false confidence in results.
 
-**Status**: Identified but requires investigation and fixes across DuckDB adapter code.
+**Fix**: 
+- Changed all `initializeDatabase()` methods to throw `DatabaseError` instead of silently logging
+- Added proper error propagation in: `CallersRepository`, `ErrorRepository`, `TokenDataRepository`, `StrategiesRepository`
+- Added `DatabaseError` imports where needed
 
-### ⚠️ TODO: Logs Committed to Repo
+**Rationale**: If database initialization fails, subsequent operations will also fail. Better to fail fast and surface the error than silently continue with broken state.
+
+**Files Changed**:
+- `packages/storage/src/duckdb/repositories/CallersRepository.ts`
+- `packages/storage/src/duckdb/repositories/ErrorRepository.ts`
+- `packages/storage/src/duckdb/repositories/TokenDataRepository.ts`
+- `packages/storage/src/duckdb/repositories/StrategiesRepository.ts`
+
+### ✅ Verified: Logs Committed to Repo
 
 **Issue**: `logs/` directory contains committed log files.
 
-**Status**: Need to verify if logs are actually committed and remove them. `.gitignore` already excludes `logs/`.
+**Status**: ✅ Verified - Log files (`.log`, `.log.gz`) are NOT committed to git. Only audit JSON files are tracked, which may be intentional for auditing purposes. `.gitignore` properly excludes runtime log files.
 
 ## Severity 3 - Tech Debt Accrual
 
@@ -151,11 +173,41 @@ All Severity 3 issues are identified but not yet addressed. These include:
 - Early-abort optimization
 - Floating-point determinism policy
 
+## Summary
+
+### ✅ Fixed Issues (9 total)
+
+**Severity 1 (5 fixed)**:
+1. Build artifacts in src/ ✅
+2. DuckDB WAL files ✅
+3. Double validation pipeline ✅
+4. Nondeterministic run-id fallback ✅
+5. Object-stringify fallback ✅
+
+**Severity 2 (4 fixed)**:
+6. Silent error swallowing in DuckDB adapters ✅
+7. Test exclusions from boundary checks ✅
+8. Core package dependency magnet (documented) ✅
+9. Logs committed (verified - not an issue) ✅
+
+### ⚠️ Remaining Issues
+
+**Severity 1 (3 remaining)**:
+- ResearchSimulationAdapter stub (requires implementation)
+- Data snapshot system incomplete (requires implementation)
+- TS path aliases bypass boundaries (requires refactoring)
+
+**Severity 2 (2 remaining)**:
+- Regex-based boundary enforcement (could be improved)
+- Python acting as DB driver (requires architectural decision)
+
+**Severity 3 (10 remaining)**:
+- All tech debt items identified but not yet addressed
+
 ## Next Steps
 
 1. **Immediate Priority**: Complete ResearchSimulationAdapter implementation
 2. **High Priority**: Complete data snapshot system
 3. **Architecture**: Address TS path aliases and boundary enforcement improvements
-4. **Quality**: Fix silent error swallowing and improve test boundary checks
-5. **CI/CD**: Add checks for determinism and repo hygiene
+4. **Remaining**: Address Severity 2 and 3 issues as time permits
 

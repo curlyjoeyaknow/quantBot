@@ -6,6 +6,7 @@
  */
 
 import { DateTime } from 'luxon';
+import { ConfigurationError } from '@quantbot/utils';
 import type { DataSnapshotRef, SnapshotQueryOptions } from './types.js';
 import type { CanonicalEvent } from '../canonical/schemas.js';
 import type { SnapshotStorage } from './snapshot-manager.js';
@@ -62,16 +63,15 @@ export class DeterministicDataReader {
     } else if (this.defaultSnapshotId) {
       snapshotId = this.defaultSnapshotId;
     } else {
-      throw new Error(
-        'No snapshot specified. Provide snapshotRef, snapshotId, or set defaultSnapshotId.'
+      throw new ConfigurationError(
+        'No snapshot specified. Provide snapshotRef, snapshotId, or set defaultSnapshotId.',
+        'DeterministicDataReader',
+        { options, defaultSnapshotId: this.defaultSnapshotId }
       );
     }
 
     // Query events from snapshot
-    const events = await this.storage.querySnapshotEvents(
-      snapshotId,
-      options.queryOptions || {}
-    );
+    const events = await this.storage.querySnapshotEvents(snapshotId, options.queryOptions || {});
 
     return events;
   }
@@ -153,4 +153,3 @@ export function createDeterministicReader(
 ): DeterministicDataReader {
   return new DeterministicDataReader(storage, snapshotId);
 }
-
