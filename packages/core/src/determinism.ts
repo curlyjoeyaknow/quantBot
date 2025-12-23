@@ -58,6 +58,7 @@ export class SeededRNG implements DeterministicRNG {
     let s = BigInt(seed);
     // Handle negative seeds by converting to unsigned representation
     if (s < 0) {
+      // eslint-disable-next-line no-loss-of-precision
       s = (s + BigInt(0x10000000000000000)) & BigInt(0xffffffffffffffff);
     }
     // eslint-disable-next-line no-loss-of-precision
@@ -69,6 +70,7 @@ export class SeededRNG implements DeterministicRNG {
     t = (t ^ (t >> BigInt(27))) * BigInt(0x94d049bb133111eb);
     t = t ^ (t >> BigInt(31));
     // Ensure t is positive (mask to 64 bits)
+    // eslint-disable-next-line no-loss-of-precision
     t = t & BigInt(0xffffffffffffffff);
 
     this.state0 = Number(t & BigInt(0xffffffff));
