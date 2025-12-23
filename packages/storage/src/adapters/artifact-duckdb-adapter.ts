@@ -10,7 +10,7 @@ import { z } from 'zod';
 import type { ArtifactRepository, ArtifactQueryFilter } from '@quantbot/core';
 import type { Artifact, ArtifactMetadata } from '@quantbot/core';
 import { DuckDBClient } from '../duckdb/duckdb-client.js';
-import { logger } from '@quantbot/utils';
+import { logger, NotFoundError, AppError } from '@quantbot/utils';
 
 const ArtifactResultSchema = z.object({
   metadata: z.record(z.string(), z.unknown()),
@@ -144,7 +144,7 @@ export class ArtifactDuckDBAdapter implements ArtifactRepository {
     // Get artifact, update tags, store again
     const artifact = await this.get(id, version);
     if (!artifact) {
-      throw new Error(`Artifact not found: ${id}@${version}`);
+      throw new NotFoundError('Artifact', `${id}@${version}`, { id, version });
     }
 
     artifact.metadata.tags = tags;
@@ -163,7 +163,12 @@ export class ArtifactDuckDBAdapter implements ArtifactRepository {
 
   async delete(id: string, version: string): Promise<void> {
     // TODO: Implement delete operation in Python script
-    throw new Error('Delete not yet implemented');
+    throw new AppError(
+      'Delete operation not yet implemented',
+      'NOT_IMPLEMENTED',
+      501,
+      { operation: 'delete', id, version }
+    );
   }
 
   async isAvailable(): Promise<boolean> {

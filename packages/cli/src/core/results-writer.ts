@@ -15,6 +15,7 @@ import { writeFileSync } from 'fs';
 import { promises as fs } from 'node:fs';
 import * as path from 'node:path';
 import { DateTime } from 'luxon';
+import { ConfigurationError } from '@quantbot/utils';
 import type { RunMetadata } from './run-meta.js';
 import { getGitSha, generateConfigHash, generateSweepId } from './run-meta.js';
 
@@ -142,7 +143,11 @@ export class ResultsWriter {
    */
   async writePerCall(row: unknown): Promise<void> {
     if (!this.paths) {
-      throw new Error('ResultsWriter not initialized. Call initialize() first.');
+      throw new ConfigurationError(
+        'ResultsWriter not initialized. Call initialize() first.',
+        'ResultsWriter.paths',
+        { operation: 'writePerCall' }
+      );
     }
     const line = JSON.stringify(row) + '\n';
     await fs.appendFile(this.paths.perCall, line, 'utf8');
@@ -154,7 +159,11 @@ export class ResultsWriter {
    */
   async writePerCaller(row: unknown): Promise<void> {
     if (!this.paths) {
-      throw new Error('ResultsWriter not initialized. Call initialize() first.');
+      throw new ConfigurationError(
+        'ResultsWriter not initialized. Call initialize() first.',
+        'ResultsWriter.paths',
+        { operation: 'writePerCaller' }
+      );
     }
     const line = JSON.stringify(row) + '\n';
     await fs.appendFile(this.paths.perCaller, line, 'utf8');
@@ -166,7 +175,11 @@ export class ResultsWriter {
    */
   async writeError(error: unknown): Promise<void> {
     if (!this.paths) {
-      throw new Error('ResultsWriter not initialized. Call initialize() first.');
+      throw new ConfigurationError(
+        'ResultsWriter not initialized. Call initialize() first.',
+        'ResultsWriter.paths',
+        { operation: 'writeError' }
+      );
     }
     const errorRow = {
       kind: 'error',
@@ -183,7 +196,11 @@ export class ResultsWriter {
    */
   async writeMatrix(matrix: Record<string, unknown>): Promise<void> {
     if (!this.paths) {
-      throw new Error('ResultsWriter not initialized. Call initialize() first.');
+      throw new ConfigurationError(
+        'ResultsWriter not initialized. Call initialize() first.',
+        'ResultsWriter.paths',
+        { operation: 'writeMatrix' }
+      );
     }
     writeFileSync(this.paths.matrix, JSON.stringify(matrix, null, 2), 'utf-8');
   }
@@ -215,7 +232,11 @@ export class ResultsWriter {
       !this.configHash ||
       !this.config
     ) {
-      throw new Error('ResultsWriter not initialized. Call initialize() first.');
+      throw new ConfigurationError(
+        'ResultsWriter not initialized. Call initialize() first.',
+        'ResultsWriter',
+        { operation: 'finalize' }
+      );
     }
 
     const completedAt = DateTime.utc();

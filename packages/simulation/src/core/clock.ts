@@ -198,4 +198,3 @@ export function createClock(resolution: ClockResolution, startTime: number = 0):
       throw new Error(`Unsupported clock resolution: ${resolution}`);
   }
 }
-
