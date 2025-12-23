@@ -37,11 +37,7 @@ import {
 import type { ExecutionModel } from '../types/execution-model.js';
 import { createDeterministicRNG, type DeterministicRNG } from '@quantbot/core';
 import { logStep } from '../utils/progress.js';
-import {
-  type SimulationClock,
-  type ClockResolution,
-  createClock,
-} from './clock.js';
+import { type SimulationClock, type ClockResolution, createClock } from './clock.js';
 import {
   checkStopLossSequential,
   initTrailingStopState,

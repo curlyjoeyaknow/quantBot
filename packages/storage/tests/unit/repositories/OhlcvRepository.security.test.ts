@@ -25,14 +25,18 @@ vi.mock('../../../src/clickhouse-client.js', () => ({
   getClickHouseClient: vi.fn(() => mockClickHouseClient),
 }));
 
-vi.mock('@quantbot/utils', () => ({
-  logger: {
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-  },
-}));
+vi.mock('@quantbot/utils', () => {
+  const actual = vi.importActual('@quantbot/utils');
+  return {
+    ...actual,
+    logger: {
+      debug: vi.fn(),
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+    },
+  };
+});
 
 describe('OhlcvRepository Security', () => {
   let repository: OhlcvRepository;

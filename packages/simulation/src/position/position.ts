@@ -81,7 +81,7 @@ function generateId(runId?: string, sequence?: number, timestamp?: number): stri
     return `${runId}-${timestamp}`;
   }
   // Fallback: non-deterministic (for backward compatibility)
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-call
+   
   return `${timestamp ?? Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
 }
 
