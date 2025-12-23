@@ -6,7 +6,7 @@
  */
 
 import { DateTime } from 'luxon';
-import { logger } from '@quantbot/utils';
+import { logger, DatabaseError } from '@quantbot/utils';
 import { join } from 'path';
 import { z } from 'zod';
 import { DuckDBClient } from '../duckdb-client.js';

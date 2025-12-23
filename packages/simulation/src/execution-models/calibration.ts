@@ -164,7 +164,9 @@ export function calibrateFailureModel(
   records: Array<{ failed: boolean; congestionLevel?: number; priorityFeeShortfall?: number }>
 ): FailureModel {
   if (records.length === 0) {
-    throw new Error('Cannot calibrate failure model from empty data');
+    throw new ValidationError('Cannot calibrate failure model from empty data', {
+      recordsLength: records.length,
+    });
   }
 
   const total = records.length;
@@ -206,13 +208,18 @@ export function calibrateExecutionModel(
   source: string = 'live-trading'
 ): CalibrationResult {
   if (records.length === 0) {
-    throw new Error('Cannot calibrate execution model from empty records');
+    throw new ValidationError('Cannot calibrate execution model from empty records', {
+      recordsLength: records.length,
+    });
   }
 
   // Filter by venue
   const venueRecords = records.filter((r) => r.venue === venue);
   if (venueRecords.length === 0) {
-    throw new Error(`No records found for venue: ${venue}`);
+    throw new ValidationError(`No records found for venue: ${venue}`, {
+      venue,
+      recordsLength: records.length,
+    });
   }
 
   // Calibrate latency

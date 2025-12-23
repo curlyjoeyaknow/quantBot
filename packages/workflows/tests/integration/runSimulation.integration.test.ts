@@ -2,12 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { DateTime } from 'luxon';
 import { runSimulation } from '../../src/simulation/runSimulation.js';
 import { createProductionContext } from '../../src/context/createProductionContext.js';
-import {
-  initClickHouse,
-  closeClickHouse,
-  StrategiesRepository,
-  closePostgresPool,
-} from '@quantbot/storage';
+import { initClickHouse, closeClickHouse, StrategiesRepository } from '@quantbot/storage';
 import { shouldRunDbStress, TEST_GATES } from '@quantbot/utils/test-helpers/test-gating';
 
 // Gate this test suite behind RUN_DB_STRESS=1
@@ -18,10 +13,11 @@ describe.skipIf(!shouldRun)('workflows.runSimulation - integration tests', () =>
   beforeAll(async () => {
     // Initialize database connections
     await initClickHouse();
-    // Postgres pool initializes lazily
 
     // Ensure IchimokuV1 strategy exists for tests
-    const strategiesRepo = new StrategiesRepository();
+    // Use default DuckDB path from environment or temp file
+    const dbPath = process.env.DUCKDB_PATH || '/tmp/test_strategies.duckdb';
+    const strategiesRepo = new StrategiesRepository(dbPath);
     const existing = await strategiesRepo.findByName('IchimokuV1', '1');
     if (!existing) {
       await strategiesRepo.create({
@@ -56,7 +52,6 @@ describe.skipIf(!shouldRun)('workflows.runSimulation - integration tests', () =>
   afterAll(async () => {
     // Clean up connections
     await closeClickHouse();
-    await closePostgresPool();
   });
 
   it.skip('INTEGRATION: runs simulation with real database and OHLCV', async () => {
