@@ -76,9 +76,7 @@ describe.skipIf(!shouldRun)('DuckDB Extreme Stress Tests (Real DuckDB)', () => {
       const duration = Date.now() - startTime;
 
       // Count successes and failures
-      const successful = results.filter(
-        (r) => r.status === 'fulfilled' && r.value.success
-      );
+      const successful = results.filter((r) => r.status === 'fulfilled' && r.value.success);
       const failed = results.filter(
         (r) => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.success)
       );
@@ -145,9 +143,7 @@ describe.skipIf(!shouldRun)('DuckDB Extreme Stress Tests (Real DuckDB)', () => {
       const results = await Promise.allSettled(writes);
       const duration = Date.now() - startTime;
 
-      const successful = results.filter(
-        (r) => r.status === 'fulfilled' && r.value.success
-      );
+      const successful = results.filter((r) => r.status === 'fulfilled' && r.value.success);
 
       // At least 90% should succeed
       expect(successful.length).toBeGreaterThan(450);
@@ -409,9 +405,7 @@ describe.skipIf(!shouldRun)('DuckDB Extreme Stress Tests (Real DuckDB)', () => {
       const results = await Promise.allSettled(operations);
 
       // At least 90% should succeed
-      const successful = results.filter(
-        (r) => r.status === 'fulfilled' && r.value.success
-      );
+      const successful = results.filter((r) => r.status === 'fulfilled' && r.value.success);
       expect(successful.length).toBeGreaterThan(90);
 
       // Verify database is still valid
@@ -551,12 +545,7 @@ describe.skipIf(!shouldRun)('DuckDB Extreme Stress Tests (Real DuckDB)', () => {
 
       // Add many exclusions
       const exclusions = mints.map((mint, i) =>
-        storageService.addOhlcvExclusion(
-          dbPath,
-          mint,
-          now,
-          `Reason ${i}: Test exclusion`
-        )
+        storageService.addOhlcvExclusion(dbPath, mint, now, `Reason ${i}: Test exclusion`)
       );
 
       const exclusionResults = await Promise.all(exclusions);
@@ -641,10 +630,7 @@ describe.skipIf(!shouldRun)('DuckDB Extreme Stress Tests (Real DuckDB)', () => {
       await Promise.all(runs);
 
       // Generate summary report
-      const summaryResult = await storageService.generateReport(
-        dbPath,
-        'summary'
-      );
+      const summaryResult = await storageService.generateReport(dbPath, 'summary');
 
       expect(summaryResult.success).toBe(true);
       expect(summaryResult.data).toBeDefined();
@@ -688,9 +674,7 @@ describe.skipIf(!shouldRun)('DuckDB Extreme Stress Tests (Real DuckDB)', () => {
       expect(successful.length).toBe(100);
 
       // All should return same strategy_id
-      const strategyIds = successful
-        .map((r) => r.strategy_id)
-        .filter((id) => id !== undefined);
+      const strategyIds = successful.map((r) => r.strategy_id).filter((id) => id !== undefined);
       if (strategyIds.length > 0) {
         const uniqueIds = new Set(strategyIds);
         // Should have at most 1 unique ID (all point to same strategy)
@@ -747,9 +731,7 @@ describe.skipIf(!shouldRun)('DuckDB Extreme Stress Tests (Real DuckDB)', () => {
       expect(successful.length).toBe(50);
 
       // All should return same run_id
-      const runIds = successful
-        .map((r) => r.run_id)
-        .filter((id) => id !== undefined);
+      const runIds = successful.map((r) => r.run_id).filter((id) => id !== undefined);
       if (runIds.length > 0) {
         const uniqueIds = new Set(runIds);
         // Should have at most 1 unique ID (all point to same run)
@@ -831,9 +813,7 @@ describe.skipIf(!shouldRun)('DuckDB Extreme Stress Tests (Real DuckDB)', () => {
       const results = await Promise.allSettled(operations);
 
       // Count successes and failures
-      const successful = results.filter(
-        (r) => r.status === 'fulfilled' && r.value.success
-      );
+      const successful = results.filter((r) => r.status === 'fulfilled' && r.value.success);
       const failed = results.filter(
         (r) => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.success)
       );
@@ -855,4 +835,3 @@ describe.skipIf(!shouldRun)('DuckDB Extreme Stress Tests (Real DuckDB)', () => {
     }, 60000);
   });
 });
-

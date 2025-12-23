@@ -128,7 +128,11 @@ export const exportCallsWithSimulationSchema = z.object({
   entryRule: z
     .enum(['next_candle_open', 'next_candle_close', 'call_time_close'])
     .default('next_candle_open'),
-  timeframeMs: z.coerce.number().int().positive().default(24 * 60 * 60 * 1000),
+  timeframeMs: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(24 * 60 * 60 * 1000),
   interval: z.enum(['1s', '1m', '5m', '15m', '1h']).default('5m'),
   takerFeeBps: z.coerce.number().int().min(0).max(10000).default(30),
   slippageBps: z.coerce.number().int().min(0).max(10000).default(10),

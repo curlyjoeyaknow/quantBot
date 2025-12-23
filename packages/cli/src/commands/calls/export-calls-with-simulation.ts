@@ -142,7 +142,10 @@ export async function exportCallsWithSimulationHandler(
   );
 
   if (queryResult.calls.length === 0) {
-    throw new Error(`No calls found in date range ${fromISO} to ${toISO}`);
+    throw new NotFoundError('Calls', `date range ${fromISO} to ${toISO}`, {
+      fromISO,
+      toISO,
+    });
   }
 
   // 2. Convert to CallSignal[]
