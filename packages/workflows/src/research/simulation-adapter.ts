@@ -31,6 +31,7 @@ import {
   createExecutionModel,
   createDefaultExecutionModel,
 } from '@quantbot/simulation/execution/index.js';
+import { calculateTradeFee } from '@quantbot/simulation/execution/fees.js';
 
 /**
  * Adapter that converts Research OS contract to existing workflow system
@@ -82,6 +83,9 @@ export class ResearchSimulationAdapter {
       // 4. Run simulation for each call in the snapshot
       const allTradeEvents: TradeEvent[] = [];
       const strategy = buildStrategy(strategyConfig);
+      
+      // Store costConfig for fee calculation in event conversion
+      this.currentCostConfig = costConfig;
 
       for (const call of snapshotData.calls) {
         // Get candles for this mint
@@ -126,7 +130,8 @@ export class ResearchSimulationAdapter {
         const tradeEvents = this.convertEventsToTradeEvents(
           result.events,
           call.mint,
-          request.runConfig.seed
+          request.runConfig.seed,
+          costConfig
         );
         allTradeEvents.push(...tradeEvents);
       }
@@ -229,7 +234,9 @@ export class ResearchSimulationAdapter {
         ? {
             failureProbability: contractModel.failures.baseRate,
             retry: {
-              maxRetries: 0, // TODO: Extract from contract model if available
+              // Retry configuration not available in contract ExecutionModel
+              // Default to no retries for now (can be extended if contract adds retry config)
+              maxRetries: 0,
               backoffMs: 1000,
             },
           }
@@ -280,7 +287,8 @@ export class ResearchSimulationAdapter {
   private convertEventsToTradeEvents(
     events: LegacySimulationEvent[],
     mint: string,
-    _seed: number
+    _seed: number,
+    costConfig?: CostConfig
   ): TradeEvent[] {
     const tradeEvents: TradeEvent[] = [];
 
@@ -314,7 +322,10 @@ export class ResearchSimulationAdapter {
         // Calculate quantity from remainingPosition (simplified)
         const quantity = event.remainingPosition || 1.0;
         const value = event.price * quantity;
-        const fees = 0; // TODO: Calculate from cost model
+        
+        // Calculate fees from cost model
+        const isEntry = event.type === 'entry' || event.type === 'ladder_entry' || event.type === 're_entry';
+        const fees = costConfig ? calculateTradeFee(value, isEntry, costConfig) : 0;
 
         tradeEvents.push({
           timestampISO,

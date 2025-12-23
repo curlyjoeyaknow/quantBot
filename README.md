@@ -118,6 +118,12 @@ QuantBot's core capabilities:
   quantbot research create-risk-model --max-drawdown-percent 20 --max-loss-per-day 1000
   ```
 
+- **Leaderboard** - Rank and compare simulation runs by metrics
+  ```bash
+  quantbot research leaderboard --criteria return --limit 10
+  quantbot research leaderboard --criteria winRate --strategy-name MyStrategy
+  ```
+
 See **[docs/guides/research-services-usage.md](docs/guides/research-services-usage.md)** for complete usage guide.
 
 ### 📊 Analytics & Reporting
