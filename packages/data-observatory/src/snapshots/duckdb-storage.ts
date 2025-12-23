@@ -79,16 +79,25 @@ export class DuckDBSnapshotStorage implements SnapshotStorage {
         this.scriptPath,
         'store_ref',
         {
-          data: JSON.stringify(ref),
+          // Fix parameter keys to use kebab-case as expected by the script
+          'snapshot-id': ref.snapshotId,
+          'source': ref.spec.sources.join(','),
+          'from': ref.spec.from,
+          'to': ref.spec.to,
+          'filters': JSON.stringify(ref.spec.filters ?? {}),
+          'manifest': JSON.stringify(ref.manifest ?? {}),
+          'description': ref.spec.description ?? '',
+          'created-at': ref.createdAt,
+          'content-hash': ref.contentHash,
         },
-        SnapshotRefResultSchema as z.ZodSchema<{ success: boolean; error?: string }>
+        SnapshotRefResultSchema as unknown as   z.ZodSchema<{ success: boolean; error?: string }>
       );
 
-      if (!result.success) {
+      if (!result?.success) {
         throw new DatabaseError(
-          result.error || 'Failed to store snapshot ref',
+          result?.error || 'Failed to store snapshot ref',
           'storeSnapshotRef',
-          { result, ref }
+          { result: result as { success: boolean; error?: string } | undefined, ref }
         );
       }
 

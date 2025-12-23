@@ -38,20 +38,30 @@ Generates `DataSnapshotRef` with content hash.
 ## Usage
 
 ```typescript
-import { createSnapshot, querySnapshot } from '@quantbot/data-observatory';
+import { createSnapshotManager, createDeterministicReader, DuckDBSnapshotStorage } from '@quantbot/data-observatory';
+import { DateTime } from 'luxon';
+
+// Create a snapshot manager
+const manager = createSnapshotManager('./data/snapshots.duckdb');
 
 // Create a snapshot
-const snapshot = await createSnapshot({
+const snapshot = await manager.createSnapshot({
   sources: ['calls', 'ohlcv'],
-  from: DateTime.fromISO('2024-01-01'),
-  to: DateTime.fromISO('2024-01-31'),
+  from: DateTime.utc().minus({ days: 30 }).toISO()!,
+  to: DateTime.utc().toISO()!,
   filters: { chain: 'solana' },
 });
 
+// Read deterministically from snapshot
+const storage = new DuckDBSnapshotStorage('./data/snapshots.duckdb');
+const reader = createDeterministicReader(storage, snapshot.snapshotId);
+
 // Query snapshot data
-const data = await querySnapshot(snapshot.ref, {
-  eventType: 'call',
-  tokenAddress: 'So11111111111111111111111111111111111111112',
+const events = await reader.readEvents({
+  queryOptions: {
+    eventTypes: ['call'],
+    tokenAddresses: ['So11111111111111111111111111111111111111112'],
+  },
 });
 ```
 
