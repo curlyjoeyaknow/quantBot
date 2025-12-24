@@ -145,25 +145,39 @@ export async function generateOhlcvWorklist(
 
     // Calculate fetch window based on alert time
     // Adjust post-window based on interval to ensure 5000 candles
+    // For 1s: 5000 candles = 5000 seconds = ~83.3 minutes total
+    //   - preWindowMinutes is in minutes, convert to seconds: preWindowSeconds = preWindowMinutes * 60
+    //   - postWindowSeconds = 5000 - preWindowSeconds
     // For 1m: 5000 candles = 5000 minutes total, so postWindow = 5000 - preWindow
     // For 5m: 5000 candles = 25000 minutes total, so postWindow = 25000 - preWindow
     // For 15s: 5000 candles = 75000 seconds = 1250 minutes total, so postWindow = 1250 - preWindow
     // For 1H: 5000 candles = 5000 hours total, so postWindow = 5000 * 60 - preWindow
-    let adjustedPostWindow = postWindowMinutes;
-    if (interval === '1s') {
-      adjustedPostWindow = Math.ceil(5000 / 60) - preWindowMinutes; // 5000 candles for 1s (~83.3 minutes)
-    } else if (interval === '1m') {
-      adjustedPostWindow = 5000 - preWindowMinutes; // 5000 candles for 1m
-    } else if (interval === '5m') {
-      adjustedPostWindow = 25000 - preWindowMinutes; // 5000 candles for 5m
-    } else if (interval === '15s') {
-      adjustedPostWindow = 1250 - preWindowMinutes; // 5000 candles for 15s (1250 minutes)
-    } else if (interval === '1H') {
-      adjustedPostWindow = 5000 * 60 - preWindowMinutes; // 5000 candles for 1H (5000 hours = 300000 minutes)
-    }
+    let startTime: DateTime;
+    let endTime: DateTime;
 
-    const startTime = alertTime.minus({ minutes: preWindowMinutes });
-    const endTime = alertTime.plus({ minutes: adjustedPostWindow });
+    if (interval === '1s') {
+      // For 1s intervals, preWindowMinutes is actually treated as seconds offset
+      // Default: 52 seconds before alert (standard offset)
+      const preWindowSeconds =
+        preWindowMinutes >= 0 ? preWindowMinutes : Math.abs(preWindowMinutes);
+      const postWindowSeconds = 5000 - preWindowSeconds; // 5000 candles total
+      startTime = alertTime.minus({ seconds: preWindowSeconds });
+      endTime = alertTime.plus({ seconds: postWindowSeconds });
+    } else {
+      // For other intervals, use minutes
+      let adjustedPostWindow = postWindowMinutes;
+      if (interval === '1m') {
+        adjustedPostWindow = 5000 - preWindowMinutes; // 5000 candles for 1m
+      } else if (interval === '5m') {
+        adjustedPostWindow = 25000 - preWindowMinutes; // 5000 candles for 5m
+      } else if (interval === '15s') {
+        adjustedPostWindow = 1250 - preWindowMinutes; // 5000 candles for 15s (1250 minutes)
+      } else if (interval === '1H') {
+        adjustedPostWindow = 5000 * 60 - preWindowMinutes; // 5000 candles for 1H (5000 hours = 300000 minutes)
+      }
+      startTime = alertTime.minus({ minutes: preWindowMinutes });
+      endTime = alertTime.plus({ minutes: adjustedPostWindow });
+    }
 
     // Use chain from token group, or fallback to options.chain
     const tokenChain = (tokenGroup.chain as Chain) || chain;
