@@ -78,13 +78,13 @@ export class IndicatorsRepository {
       });
 
       logger.debug('Upserted indicator values', {
-        token: tokenAddress.substring(0, 20) + '...', // Display only
+        token: tokenAddress,
         chain,
         count: indicators.length,
       });
     } catch (error: unknown) {
       logger.error('Error upserting indicator values', error as Error, {
-        token: tokenAddress.substring(0, 20) + '...', // Display only
+        token: tokenAddress,
       });
       throw error;
     }
@@ -171,7 +171,7 @@ export class IndicatorsRepository {
       return indicatorsByTimestamp;
     } catch (error: unknown) {
       logger.error('Error querying indicator values', error as Error, {
-        token: tokenAddress.substring(0, 20) + '...', // Display only
+        token: tokenAddress,
       });
       return new Map();
     }
@@ -237,7 +237,7 @@ export class IndicatorsRepository {
       }));
     } catch (error: unknown) {
       logger.error('Error querying latest indicator values', error as Error, {
-        token: tokenAddress.substring(0, 20) + '...', // Display only
+        token: tokenAddress,
       });
       return [];
     }

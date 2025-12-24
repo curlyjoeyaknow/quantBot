@@ -11,6 +11,7 @@ vi.mock('@quantbot/storage', async () => {
   return {
     ...actual,
     getPostgresPool: vi.fn(),
+    getDuckDBWorklistService: vi.fn(),
   };
 });
 
@@ -36,6 +37,7 @@ describe('OhlcvIngestionService', () => {
   };
 
   let service: OhlcvIngestionService;
+  let mockWorklistService: any;
 
   const mockCall = (tokenId: number, timestamp: DateTime) => ({
     id: 1,
@@ -45,10 +47,17 @@ describe('OhlcvIngestionService', () => {
     side: 'buy',
   });
 
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
     ingestionEngine.initialize.mockResolvedValue(undefined);
     mockPythonEngine.runOhlcvWorklist.mockReset();
+
+    // Mock the worklist service to use our mocked Python engine
+    const { getDuckDBWorklistService } = await import('@quantbot/storage');
+    mockWorklistService = {
+      queryWorklist: vi.fn(),
+    };
+    vi.mocked(getDuckDBWorklistService).mockReturnValue(mockWorklistService as any);
 
     // Pass both engines to constructor
     service = new OhlcvIngestionService(
@@ -63,17 +72,19 @@ describe('OhlcvIngestionService', () => {
     const now = DateTime.utc();
 
     // Mock worklist from DuckDB
-    mockPythonEngine.runOhlcvWorklist.mockResolvedValue({
+    mockWorklistService.queryWorklist.mockResolvedValue({
       tokenGroups: [
         {
           mint: 'Mint1',
           earliestAlertTime: now.minus({ minutes: 10 }).toISO() || '',
           chain: 'solana',
+          callCount: 2,
         },
         {
           mint: 'Mint2',
           earliestAlertTime: now.minus({ minutes: 20 }).toISO() || '',
           chain: 'solana',
+          callCount: 1,
         },
       ],
       calls: [
@@ -92,7 +103,7 @@ describe('OhlcvIngestionService', () => {
     const result = await service.ingestForCalls({ duckdbPath: '/tmp/test.duckdb' });
 
     expect(ingestionEngine.initialize).toHaveBeenCalled();
-    expect(mockPythonEngine.runOhlcvWorklist).toHaveBeenCalled();
+    expect(mockWorklistService.queryWorklist).toHaveBeenCalled();
     expect(ingestionEngine.fetchCandles).toHaveBeenCalledTimes(2);
     expect(result.tokensProcessed).toBe(2);
     expect(result.tokensSucceeded).toBe(2);
@@ -104,12 +115,13 @@ describe('OhlcvIngestionService', () => {
     const now = DateTime.utc();
 
     // Mock worklist with token that has no mint (missing mint)
-    mockPythonEngine.runOhlcvWorklist.mockResolvedValue({
+    mockWorklistService.queryWorklist.mockResolvedValue({
       tokenGroups: [
         {
           mint: '', // Empty mint - should fail
           earliestAlertTime: now.toISO() || '',
           chain: 'solana',
+          callCount: 1,
         },
       ],
       calls: [{ id: 1, tokenId: 99, signalTimestamp: now, alertId: 1 }],
@@ -124,12 +136,13 @@ describe('OhlcvIngestionService', () => {
   it('continues on engine errors', async () => {
     const now = DateTime.utc();
 
-    mockPythonEngine.runOhlcvWorklist.mockResolvedValue({
+    mockWorklistService.queryWorklist.mockResolvedValue({
       tokenGroups: [
         {
           mint: 'Mint1',
           earliestAlertTime: now.toISO() || '',
           chain: 'solana',
+          callCount: 1,
         },
       ],
       calls: [{ id: 1, tokenId: 1, signalTimestamp: now, alertId: 1 }],
@@ -193,12 +206,13 @@ describe('OhlcvIngestionService', () => {
       },
     ];
 
-    mockPythonEngine.runOhlcvWorklist.mockResolvedValue({
+    mockWorklistService.queryWorklist.mockResolvedValue({
       tokenGroups: [
         {
           mint: 'Mint1',
           earliestAlertTime: now.minus({ minutes: 5 }).toISO() || '',
           chain: 'solana',
+          callCount: 1,
         },
       ],
       calls: [

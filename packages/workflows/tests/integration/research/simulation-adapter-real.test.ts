@@ -185,7 +185,12 @@ describe('ResearchSimulationAdapter - Real Implementation Verification', () => {
     expect(result.metrics).toBeDefined();
 
     // 2. Verify snapshot was loaded (proves adapter is working)
-    expect(mockLoadSnapshot).toHaveBeenCalledWith(request.dataSnapshot);
+    // The adapter calls loadSnapshot with the full DataSnapshotRef object
+    expect(mockLoadSnapshot).toHaveBeenCalled();
+    const loadSnapshotCall = mockLoadSnapshot.mock.calls[0]?.[0];
+    expect(loadSnapshotCall).toBeDefined();
+    expect(loadSnapshotCall.snapshotId).toBe(request.dataSnapshot.snapshotId);
+    expect(loadSnapshotCall.contentHash).toBe(request.dataSnapshot.contentHash);
 
     // 3. Verify metadata has correct hashes (proves adapter processed the request)
     expect(result.metadata.dataSnapshotHash).toBe(request.dataSnapshot.contentHash);

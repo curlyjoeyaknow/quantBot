@@ -82,7 +82,7 @@ program
       if (result.errors.length > 0) {
         console.log(`\n⚠️  Errors: ${result.errors.length}`);
         result.errors.slice(0, 5).forEach((error) => {
-          console.log(`   ${error.mint.substring(0, 20)}...: ${error.error}`);
+          console.log(`   ${error.mint}...: ${error.error}`);
         });
         if (result.errors.length > 5) {
           console.log(`   ... and ${result.errors.length - 5} more`);

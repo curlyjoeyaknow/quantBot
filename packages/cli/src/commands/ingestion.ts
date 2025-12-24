@@ -102,6 +102,7 @@ export const validateAddressesSchema = z.object({
 export const ensureOhlcvCoverageSchema = z.object({
   duckdb: z.string().optional(), // Path to DuckDB database file
   maxAgeDays: z.number().int().positive().default(90), // Maximum age in days (default 3 months)
+  limit: z.number().int().positive().optional(), // Limit number of tokens to process (default: 200)
   format: z.enum(['json', 'table', 'csv']).default('table'),
 });
 
@@ -241,6 +242,7 @@ export function registerIngestionCommands(program: Command): void {
     )
     .option('--duckdb <path>', 'Path to DuckDB database file (or set DUCKDB_PATH env var)')
     .option('--max-age-days <days>', 'Maximum age in days (default: 90)', '90')
+    .option('--limit <number>', 'Limit number of tokens to process (default: 200)', '200')
     .option('--format <format>', 'Output format', 'table');
 
   defineCommand(ensureCoverageCmd, {
@@ -249,6 +251,7 @@ export function registerIngestionCommands(program: Command): void {
     coerce: (raw) => ({
       ...raw,
       maxAgeDays: raw.maxAgeDays ? coerceNumber(raw.maxAgeDays, 'max-age-days') : 90,
+      limit: raw.limit ? coerceNumber(raw.limit, 'limit') : 200,
     }),
     validate: (opts) => ensureOhlcvCoverageSchema.parse(opts),
     onError: die,

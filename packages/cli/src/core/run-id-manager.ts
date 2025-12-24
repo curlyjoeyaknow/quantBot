@@ -29,9 +29,9 @@ export interface RunIdComponents {
 /**
  * Generate deterministic run ID from components
  *
- * Format: {command}_{strategyId}_{mint_short}_{timestamp}_{hash8}[_{suffix}]
+ * Format: {command}_{strategyId}_{mint_full}_{timestamp}_{hash8}[_{suffix}]
  *
- * Example: sim_PT2_So1111_20240101120000_a3f2b1c9
+ * Example: sim_PT2_So11111111111111111111111111111111111111112_20240101120000_a3f2b1c9
  *
  * @param components - Components to generate ID from
  * @returns Deterministic run ID
@@ -47,7 +47,6 @@ export function generateRunId(components: RunIdComponents): string {
   ].join('|');
 
   const hash = createHash('sha256').update(hashInput).digest('hex').substring(0, 8);
-  const mintShort = components.mint.substring(0, 8);
   const timestamp = DateTime.fromISO(components.alertTimestamp, { zone: 'utc' }).toFormat(
     'yyyyMMddHHmmss'
   );
@@ -55,7 +54,7 @@ export function generateRunId(components: RunIdComponents): string {
   const parts = [
     components.command.replace(/\./g, '_'),
     components.strategyId,
-    mintShort,
+    components.mint,
     timestamp,
     hash,
   ];
@@ -83,7 +82,7 @@ export interface ParsedRunId {
  * Parse run ID to extract components (for debugging/tracing)
  *
  * Note: This is best-effort parsing. The exact format may vary.
- * Format: command_strategyId_mintShort_timestamp_hash[_suffix]
+ * Format: command_strategyId_mintFull_timestamp_hash[_suffix]
  * We parse from the end since command name can have variable parts.
  *
  * @param runId - Run ID to parse
@@ -96,11 +95,11 @@ export function parseRunId(runId: string): ParsedRunId {
     return {};
   }
 
-  // Parse from the end: hash, timestamp, mintShort, strategyId, then command (rest)
-  // Format: command_strategyId_mintShort_timestamp_hash[_suffix]
+  // Parse from the end: hash, timestamp, mintFull, strategyId, then command (rest)
+  // Format: command_strategyId_mintFull_timestamp_hash[_suffix]
   const hash = parts[parts.length - 1];
   const timestamp = parts[parts.length - 2];
-  const mintShort = parts[parts.length - 3];
+  const mintShort = parts[parts.length - 3]; // Note: This is now the full mint, kept as mintShort for backward compatibility
   const strategyId = parts[parts.length - 4];
   const command = parts.slice(0, parts.length - 4).join('_');
 

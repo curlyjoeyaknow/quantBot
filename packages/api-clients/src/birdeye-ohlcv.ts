@@ -74,7 +74,7 @@ export async function fetchBirdeyeCandles(
   // If we need more than 5000 candles, chunk the requests
   if (estimatedCandles > MAX_CANDLES_PER_REQUEST) {
     logger.debug(
-      `Chunking request for ${mint.substring(0, 20)}... (${estimatedCandles} candles estimated, ${Math.ceil(estimatedCandles / MAX_CANDLES_PER_REQUEST)} chunks needed)`
+      `Chunking request for ${mint}... (${estimatedCandles} candles estimated, ${Math.ceil(estimatedCandles / MAX_CANDLES_PER_REQUEST)} chunks needed)`
     );
 
     const allCandles: Candle[] = [];

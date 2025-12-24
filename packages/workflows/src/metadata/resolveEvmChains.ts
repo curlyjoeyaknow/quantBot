@@ -159,7 +159,7 @@ async function resolveTokenChain(
 
   for (const chain of chainsToTry) {
     try {
-      workflowCtx.logger.debug?.(`Trying ${chain} for ${address.substring(0, 20)}...`);
+      workflowCtx.logger.debug?.(`Trying ${chain} for ${address}...`);
 
       // Use market data port instead of direct client
       const metadata = await workflowCtx.ports.marketData.fetchMetadata({
@@ -168,7 +168,7 @@ async function resolveTokenChain(
       });
 
       if (metadata && metadata.symbol) {
-        workflowCtx.logger.info(`Resolved ${address.substring(0, 20)}... to ${chain}`, {
+        workflowCtx.logger.info(`Resolved ${address}... to ${chain}`, {
           symbol: metadata.symbol,
           name: metadata.name,
         });
@@ -179,7 +179,7 @@ async function resolveTokenChain(
           level: 'info',
           message: `Resolved EVM token to ${chain}`,
           context: {
-            address: address.substring(0, 20),
+            address: address,
             chain,
             symbol: metadata.symbol,
           },
@@ -197,7 +197,7 @@ async function resolveTokenChain(
     } catch (error) {
       // Continue to next chain
       workflowCtx.logger.debug?.(
-        `${chain} failed for ${address.substring(0, 20)}...: ${error instanceof Error ? error.message : String(error)}`
+        `${chain} failed for ${address}...: ${error instanceof Error ? error.message : String(error)}`
       );
     }
   }
@@ -235,7 +235,7 @@ async function updateChainInClickHouse(
     // ClickHouse 18.16 doesn't support UPDATE on partition key
     // Just log - new fetches will use correct chain
     logger.warn('Could not update chain in ClickHouse (expected for CH 18.16)', {
-      address: address.substring(0, 20),
+      address: address,
       newChain,
       error: error instanceof Error ? error.message : String(error),
     });
@@ -361,7 +361,7 @@ export async function resolveEvmChains(
 
   for (const [index, token] of tokensToResolve.entries()) {
     workflowCtx.logger.info(
-      `[${index + 1}/${tokensToResolve.length}] Resolving ${token.address.substring(0, 20)}...`
+      `[${index + 1}/${tokensToResolve.length}] Resolving ${token.address}...`
     );
 
     // Check idempotency: have we already resolved this token?
@@ -374,7 +374,7 @@ export async function resolveEvmChains(
     if (cached.found && cached.value) {
       if (workflowCtx.logger?.debug) {
         workflowCtx.logger.debug(
-          `Skipping ${token.address.substring(0, 20)}... (already resolved to ${cached.value.chain})`
+          `Skipping ${token.address}... (already resolved to ${cached.value.chain})`
         );
       }
       results.push({
@@ -429,7 +429,7 @@ export async function resolveEvmChains(
               );
             } catch (error) {
               workflowCtx.logger.warn('Failed to update chain in ClickHouse', {
-                address: token.address.substring(0, 20),
+                address: token.address,
                 error: error instanceof Error ? error.message : String(error),
               });
             }
@@ -442,7 +442,7 @@ export async function resolveEvmChains(
               await updateFn(validated.duckdbPath, token.address, chain);
             } catch (error) {
               workflowCtx.logger.warn('Failed to update chain in DuckDB', {
-                address: token.address.substring(0, 20),
+                address: token.address,
                 error: error instanceof Error ? error.message : String(error),
               });
             }

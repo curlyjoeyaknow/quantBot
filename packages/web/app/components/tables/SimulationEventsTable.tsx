@@ -51,7 +51,7 @@ export function SimulationEventsTable({ events }: SimulationEventsTableProps) {
                 </span>
               </td>
               <td className="p-2 font-mono text-xs">
-                {event.token_address.substring(0, 8)}...
+                {event.token_address}...
               </td>
               <td className="text-right p-2">{formatNumber(event.price)}</td>
               <td className="text-right p-2">{formatNumber(event.size)}</td>

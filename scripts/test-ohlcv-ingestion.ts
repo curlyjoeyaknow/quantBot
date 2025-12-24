@@ -63,7 +63,7 @@ async function main() {
     if (result.errors.length > 0) {
       console.log('\n=== Errors ===');
       result.errors.forEach((error) => {
-        console.log(`${error.mint.substring(0, 20)}... (${error.chain}): ${error.error}`);
+        console.log(`${error.mint}... (${error.chain}): ${error.error}`);
       });
     }
   } catch (error) {

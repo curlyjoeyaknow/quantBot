@@ -94,7 +94,7 @@ export class HeliusRestClient extends BaseApiClient {
     } catch (error: unknown) {
       logger.error('Helius REST call failed', {
         error: error instanceof Error ? error.message : String(error),
-        address: address.substring(0, 20),
+        address: address,
       });
       throw error;
     }

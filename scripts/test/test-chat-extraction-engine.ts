@@ -187,7 +187,7 @@ async function main() {
           ? ` | ${result.metadata.symbol || 'N/A'} | ${result.metadata.name || 'N/A'}`
           : ' | No metadata';
         console.log(
-          `  ${status} ${token.address.substring(0, 30)}... | ${result.candleCount} candles${metadata}`
+          `  ${status} ${token.address}... | ${result.candleCount} candles${metadata}`
         );
       } catch (error: any) {
         const result: TestResult = {
@@ -201,7 +201,7 @@ async function main() {
         testResults.push(result);
         uniqueTokens.set(key, result);
 
-        console.log(`  ❌ ${token.address.substring(0, 30)}... | Error: ${result.error}`);
+        console.log(`  ❌ ${token.address}... | Error: ${result.error}`);
       }
     }
 

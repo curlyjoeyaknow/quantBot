@@ -30,15 +30,22 @@ export class UserEventHandlers {
     const { userId } = event.data;
 
     switch (event.type) {
-      case 'user.session.started':
+      case 'user.session.started': {
         logger.info('User started new session', { userId });
         break;
-      case 'user.session.updated':
+      }
+      case 'user.session.updated': {
         logger.info('User updated session', { userId });
         break;
-      case 'user.session.cleared':
+      }
+      case 'user.session.cleared': {
         logger.info('User cleared session', { userId });
         break;
+      }
+      default: {
+        // No action for other event types
+        break;
+      }
     }
   };
 
@@ -65,15 +72,22 @@ export class UserEventHandlers {
     const { userId, strategyName } = event.data;
 
     switch (event.type) {
-      case 'user.strategy.saved':
+      case 'user.strategy.saved': {
         logger.info('User saved strategy', { userId, strategyName });
         break;
-      case 'user.strategy.deleted':
+      }
+      case 'user.strategy.deleted': {
         logger.info('User deleted strategy', { userId, strategyName });
         break;
-      case 'user.strategy.used':
+      }
+      case 'user.strategy.used': {
         logger.info('User activated strategy', { userId, strategyName });
         break;
+      }
+      default: {
+        // No action for other event types
+        break;
+      }
     }
   };
 }
@@ -122,12 +136,14 @@ export class WebSocketEventHandlers {
     const { url, reconnectAttempts, error } = event.data;
 
     switch (event.type) {
-      case 'websocket.connected':
+      case 'websocket.connected': {
         logger.info('WebSocket connected', { url });
         break;
-      case 'websocket.disconnected':
+      }
+      case 'websocket.disconnected': {
         logger.info('WebSocket disconnected', { url });
         break;
+      }
       case 'websocket.error': {
         const wsError = error
           ? typeof error === 'string'
@@ -137,9 +153,14 @@ export class WebSocketEventHandlers {
         logger.error('WebSocket error', wsError, { url });
         break;
       }
-      case 'websocket.reconnecting':
+      case 'websocket.reconnecting': {
         logger.info('WebSocket reconnecting', { url, attempt: reconnectAttempts });
         break;
+      }
+      default: {
+        // No action for other event types
+        break;
+      }
     }
   };
 }
@@ -189,12 +210,14 @@ export class SystemEventHandlers {
     const { component, message, error } = event.data;
 
     switch (event.type) {
-      case 'system.startup':
+      case 'system.startup': {
         logger.info('System startup', { component, message });
         break;
-      case 'system.shutdown':
+      }
+      case 'system.shutdown': {
         logger.info('System shutdown', { component, message });
         break;
+      }
       case 'system.error': {
         const sysError = error
           ? error instanceof Error
@@ -214,18 +237,25 @@ export class SystemEventHandlers {
     const { serviceName, error } = event.data;
 
     switch (event.type) {
-      case 'service.initialized':
+      case 'service.initialized': {
         logger.info('Service initialized', { serviceName });
         break;
-      case 'service.started':
+      }
+      case 'service.started': {
         logger.info('Service started', { serviceName });
         break;
-      case 'service.stopped':
+      }
+      case 'service.stopped': {
         logger.info('Service stopped', { serviceName });
         break;
+      }
       case 'service.error': {
         const svcError = error ? new Error(error) : new Error('Unknown service error');
         logger.error('Service error', svcError, { serviceName });
+        break;
+      }
+      default: {
+        // No action for other event types
         break;
       }
     }

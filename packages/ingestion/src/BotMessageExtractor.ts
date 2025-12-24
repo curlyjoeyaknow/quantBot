@@ -91,13 +91,13 @@ export class BotMessageExtractor {
             // If case differs, log warning but use validated address
             if (result.contractAddress !== extractedAddress) {
               logger.warn('Solana address case mismatch', {
-                extracted: extractedAddress.substring(0, 20) + '...',
-                validated: result.contractAddress.substring(0, 20) + '...',
+                extracted: extractedAddress + '...',
+                validated: result.contractAddress + '...',
               });
             }
           } catch (error) {
             logger.warn('Invalid Solana address extracted', {
-              address: extractedAddress.substring(0, 20) + '...',
+              address: extractedAddress + '...',
               error: error instanceof Error ? error.message : String(error),
             });
             // Still set it, but it will fail validation later

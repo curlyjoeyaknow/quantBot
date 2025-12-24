@@ -16,3 +16,4 @@ pnpm --filter @quantbot/utils build > /dev/null 2>&1 || true
 exec pnpm exec tsx --tsconfig tsconfig.json "$ROOT/scripts/analyze-sweep-duckdb.ts" "$@"
 
 
+

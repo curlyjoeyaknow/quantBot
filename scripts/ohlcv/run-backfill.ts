@@ -84,7 +84,7 @@ async function fetchBirdeyeCandles(
       }))
       .sort((a: any, b: any) => a.timestamp - b.timestamp);
   } catch (error: any) {
-    logger.warn(`Failed to fetch ${interval} candles for ${mint.substring(0, 20)}...`, {
+    logger.warn(`Failed to fetch ${interval} candles for ${mint}...`, {
       error: error.message,
     });
     return [];
@@ -123,7 +123,7 @@ async function backfillAlert(
 
   if (dryRun) {
     console.log(
-      `   DRY: ${alert.tokenAddress.substring(0, 20)}... (${alert.tokenSymbol || 'unknown'})`
+      `   DRY: ${alert.tokenAddress}... (${alert.tokenSymbol || 'unknown'})`
     );
     return { success: true, candles1m: 0, candles5m: 0 };
   }
@@ -163,14 +163,14 @@ async function backfillAlert(
       candles5m += data5m_c2.length;
     }
 
-    logger.info(`Backfilled ${alert.tokenAddress.substring(0, 20)}...`, {
+    logger.info(`Backfilled ${alert.tokenAddress}...`, {
       '1m': candles1m,
       '5m': candles5m,
     });
 
     return { success: true, candles1m, candles5m };
   } catch (error: any) {
-    logger.error(`Failed to backfill ${alert.tokenAddress.substring(0, 20)}...`, error);
+    logger.error(`Failed to backfill ${alert.tokenAddress}...`, error);
     return { success: false, candles1m, candles5m };
   }
 }

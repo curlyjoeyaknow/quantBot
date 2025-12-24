@@ -108,6 +108,99 @@ export const OhlcvExclusionResultSchema = z.object({
 export type OhlcvExclusionResult = z.infer<typeof OhlcvExclusionResultSchema>;
 
 /**
+ * Schema for tokens query result
+ */
+export const TokensQueryResultSchema = z.object({
+  success: z.boolean(),
+  tokens: z
+    .array(
+      z.object({
+        mint: z.string(),
+        chain: z.string(),
+        earliest_call_timestamp: z.string(), // ISO format timestamp
+        call_count: z.number(),
+      })
+    )
+    .optional(),
+  error: z.string().nullable().optional(),
+});
+
+export type TokensQueryResult = z.infer<typeof TokensQueryResultSchema>;
+
+/**
+ * Schema for address validation result
+ */
+export const ValidateAddressesResultSchema = z.object({
+  success: z.boolean(),
+  total_addresses: z.number(),
+  valid_addresses: z.number(),
+  faulty_addresses: z.number(),
+  faulty: z
+    .array(
+      z.object({
+        mint: z.string(),
+        table_name: z.string(),
+        row_count: z.number(),
+        error: z.string(),
+        address_length: z.number(),
+        address_type: z.string(), // 'solana', 'evm', or 'unknown'
+      })
+    )
+    .optional(),
+  error: z.string().nullable().optional(),
+});
+
+export type ValidateAddressesResult = z.infer<typeof ValidateAddressesResultSchema>;
+
+/**
+ * Schema for remove faulty addresses result
+ */
+export const RemoveFaultyAddressesResultSchema = z.object({
+  success: z.boolean(),
+  dry_run: z.boolean(),
+  total_rows_deleted: z.number(),
+  tables_affected: z.array(z.string()),
+  removals: z
+    .array(
+      z.object({
+        mint: z.string(),
+        table_name: z.string(),
+        rows_deleted: z.number(),
+        error: z.string().nullable().optional(),
+      })
+    )
+    .optional(),
+  error: z.string().nullable().optional(),
+});
+
+export type RemoveFaultyAddressesResult = z.infer<typeof RemoveFaultyAddressesResultSchema>;
+
+/**
+ * Schema for move invalid tokens result
+ */
+export const MoveInvalidTokensResultSchema = z.object({
+  success: z.boolean(),
+  dry_run: z.boolean(),
+  total_calls_moved: z.number(),
+  total_links_moved: z.number(),
+  total_callers_affected: z.number(),
+  moves: z
+    .array(
+      z.object({
+        mint: z.string(),
+        calls_moved: z.number(),
+        links_moved: z.number(),
+        callers_affected: z.array(z.string()),
+        error: z.string().nullable().optional(),
+      })
+    )
+    .optional(),
+  error: z.string().nullable().optional(),
+});
+
+export type MoveInvalidTokensResult = z.infer<typeof MoveInvalidTokensResultSchema>;
+
+/**
  * DuckDB Storage Service
  */
 export class DuckDBStorageService {
@@ -460,6 +553,121 @@ export class DuckDBStorageService {
       logger.error('Failed to query OHLCV exclusions', error as Error);
       return {
         success: false,
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
+  }
+
+  /**
+   * Query recent tokens from DuckDB (< maxAgeDays old)
+   * Returns unique tokens with their earliest call timestamp
+   */
+  async queryTokensRecent(
+    duckdbPath: string,
+    maxAgeDays?: number
+  ): Promise<TokensQueryResult> {
+    try {
+      const result = await this.pythonEngine.runDuckDBStorage({
+        duckdbPath,
+        operation: 'query_tokens_recent',
+        data: {
+          max_age_days: maxAgeDays || 90,
+        },
+      });
+
+      return TokensQueryResultSchema.parse(result);
+    } catch (error) {
+      logger.error('Failed to query recent tokens from DuckDB', error as Error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
+  }
+
+  /**
+   * Validate all addresses in DuckDB database
+   * Checks for truncated addresses, invalid formats, etc.
+   */
+  async validateAddresses(duckdbPath: string): Promise<ValidateAddressesResult> {
+    try {
+      const result = await this.pythonEngine.runDuckDBStorage({
+        duckdbPath,
+        operation: 'validate_addresses',
+        data: {},
+      });
+
+      return ValidateAddressesResultSchema.parse(result);
+    } catch (error) {
+      logger.error('Failed to validate addresses in DuckDB', error as Error);
+      return {
+        success: false,
+        total_addresses: 0,
+        valid_addresses: 0,
+        faulty_addresses: 0,
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
+  }
+
+  /**
+   * Remove faulty addresses from DuckDB database
+   * Deletes rows containing invalid/truncated addresses
+   */
+  async removeFaultyAddresses(
+    duckdbPath: string,
+    dryRun: boolean = false
+  ): Promise<RemoveFaultyAddressesResult> {
+    try {
+      const result = await this.pythonEngine.runDuckDBStorage({
+        duckdbPath,
+        operation: 'remove_faulty_addresses',
+        data: {
+          dry_run: dryRun,
+        },
+      });
+
+      return RemoveFaultyAddressesResultSchema.parse(result);
+    } catch (error) {
+      logger.error('Failed to remove faulty addresses from DuckDB', error as Error);
+      return {
+        success: false,
+        dry_run: dryRun,
+        total_rows_deleted: 0,
+        tables_affected: [],
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
+  }
+
+  /**
+   * Move invalid tokens to separate table and update caller statistics
+   * Moves calls from user_calls_d and caller_links_d to invalid_tokens_d
+   */
+  async moveInvalidTokens(
+    duckdbPath: string,
+    mints: string[],
+    dryRun: boolean = false
+  ): Promise<MoveInvalidTokensResult> {
+    try {
+      const result = await this.pythonEngine.runDuckDBStorage({
+        duckdbPath,
+        operation: 'move_invalid_tokens',
+        data: {
+          mints,
+          dry_run: dryRun,
+        },
+      });
+
+      return MoveInvalidTokensResultSchema.parse(result);
+    } catch (error) {
+      logger.error('Failed to move invalid tokens in DuckDB', error as Error);
+      return {
+        success: false,
+        dry_run: dryRun,
+        total_calls_moved: 0,
+        total_links_moved: 0,
+        total_callers_affected: 0,
         error: error instanceof Error ? error.message : String(error),
       };
     }

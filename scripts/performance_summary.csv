@@ -1,0 +1,98 @@
+Metric,Value
+=== HISTORICAL PERFORMANCE ===,
+Total Trades,1465
+Total Wins,874
+Total Losses,591
+Strike Rate (%),59.66
+Biggest Win (%),50.00
+Biggest Win Trade #,130
+Biggest Loss (%),-24.99
+Biggest Loss Trade #,1333
+Max Drawdown (%),-20.91
+Max Drawdown Value,1.1175
+Max Drawdown Trade #,365
+Highest PNL (%),245.92
+Highest PNL Value,3.4592
+Highest PNL Trade #,1463
+Final PNL (%),235.85
+Final Portfolio Value,3.3585
+Average Win (%),9.49
+Average Loss (%),-11.79
+Average Trade (%),0.91
+Win/Loss Ratio,0.81
+Expectancy (%),0.91
+Best Win Streak,16
+Best Loss Streak,6
+Average Trading Costs (%),3.05
+Sharpe Ratio,0.0714
+,
+=== FORWARD PROJECTION (2025-12-15 to 2026-12-15) ===,
+Projected Weeks,52
+Projected Trades,4481
+Monte Carlo Simulations,10000
+,
+=== PROJECTION METHODOLOGY ===,
+Method,Bootstrap Trade-Level Monte Carlo (Empirical Distribution)
+Compounding,Yes (individual trade returns compound multiplicatively)
+Data Source,Full Performance History - Individual Trade Outcomes
+,
+=== BOOTSTRAP MODEL PARAMETERS ===,
+Total Weeks Sampled,17
+Average Weekly Return,7.83%
+Std Dev Weekly Return,6.76%
+Weekly Return Trend,-0.7875% per week
+Average Trades Per Week,86.18
+Trade Frequency Trend,-3.59 trades/week change
+,
+=== BOOTSTRAP MODEL FEATURES ===,
+Empirical Distribution,Samples directly from actual weekly returns (no parametric assumptions)
+Preserves Correlation,Maintains actual correlation structure of trades within weeks
+Week-End Compounding,Compounds only at the end of each week (not per trade)
+Time-Varying Returns,Weekly returns may improve or degrade over time based on historical trend (70% trend effect)
+Conservative Adjustments,Accounts for small sample size (17 weeks) with aggressive performance decay penalty (up to 70%)
+Worst-Case Scenarios,25% chance of worse-than-historical weeks to account for unseen outcomes
+Increased Variability,Adds 40% of historical std dev (increasing over time) for realistic variability
+Mean Reversion,5% chance of significant negative corrections (mean reversion effects)
+Uncertainty Escalation,Variability increases up to 50% more in later weeks (uncertainty compounds)
+Outcome Capping,Returns capped at -15% to +25% per week (allows more negative than historical minimum)
+No Distributional Assumptions,Uses actual weekly return distribution (not normal/parametric)
+,
+=== IMPORTANT CAVEATS ===,
+Small Sample Size,Projection based on only 17 weeks of historical data - results may still be optimistic
+All Positive Weeks,Historical sample contains only positive weekly returns - negative weeks not observed
+Extrapolation Risk,Projecting 52 weeks forward from 17 weeks of data involves significant uncertainty
+Conservative Model,Model includes aggressive conservative adjustments - actual results may vary significantly
+,
+=== EXPECTED OUTCOME (50th Percentile) ===,
+Expected Portfolio Value,9.6236
+Expected PNL (%),186.55%
+Expected Return Multiplier,2.87x
+,
+=== CONFIDENCE INTERVALS ===,
+Percentile,Portfolio Value,PNL (%),Return Multiplier
+99th,1.8011,-46.37%,0.54x
+95th,2.9664,-11.67%,0.88x
+75th,6.0411,79.88%,1.80x
+50th,9.6236,186.55%,2.87x
+25th,15.3699,357.65%,4.58x
+5th,28.9572,762.22%,8.62x
+1st,44.3886,1221.70%,13.22x
+,
+=== PROBABILITY ANALYSIS ===,
+Probability of Positive Return,93.08%
+Probability of 2x or More,69.99%
+Probability of 10x or More,3.01%
+Probability of Loss,6.92%
+,
+=== STRESS TEST (Worst Case Scenarios) ===,
+Starting Portfolio Value,3.3585
+,
+Worst 5% Case,
+  Portfolio Value,2.9664
+  Return Multiplier,0.88x
+  PNL (%),-11.67%
+,
+Worst 1% Case,
+  Portfolio Value,1.8011
+  Return Multiplier,0.54x
+  PNL (%),-46.37%

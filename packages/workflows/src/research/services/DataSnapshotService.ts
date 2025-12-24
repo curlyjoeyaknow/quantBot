@@ -280,7 +280,7 @@ export class DataSnapshotService {
       } catch (error) {
         // Log but continue - some mints may not have candles
         logger.warn('Failed to load candles for mint', {
-          mint: mint.substring(0, 20) + '...',
+          mint: mint,
           error: error instanceof Error ? error.message : String(error),
         });
       }

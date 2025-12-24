@@ -61,7 +61,7 @@ export async function storeCandles(
 ): Promise<void> {
   if (candles.length === 0) {
     logger.debug('No candles to store', {
-      token: tokenAddress.substring(0, 20) + '...',
+      token: tokenAddress,
       chain,
       interval,
     });
@@ -75,7 +75,7 @@ export async function storeCandles(
     await storageEngine.storeCandles(tokenAddress, chain, candles, interval);
 
     logger.debug('Stored candles (offline)', {
-      token: tokenAddress.substring(0, 20) + '...',
+      token: tokenAddress,
       chain,
       interval,
       count: candles.length,
@@ -83,7 +83,7 @@ export async function storeCandles(
     });
   } catch (error) {
     logger.error('Failed to store candles (offline)', error as Error, {
-      token: tokenAddress.substring(0, 20) + '...',
+      token: tokenAddress,
       chain,
       interval,
       count: candles.length,
@@ -119,7 +119,7 @@ export async function storeCandlesMultiInterval(
   await Promise.all(promises);
 
   logger.debug('Stored candles for multiple intervals (offline)', {
-    token: tokenAddress.substring(0, 20) + '...',
+    token: tokenAddress,
     chain,
     intervals: Array.from(candleSets.keys()),
     totalCandles: Array.from(candleSets.values()).reduce((sum, candles) => sum + candles.length, 0),
@@ -269,7 +269,7 @@ export async function getCoverage(
       // This ensures coverageRatio is always < 0.95 (below skip threshold) if we don't have 5000 candles
       coverageRatio = candles.length / MIN_REQUIRED_CANDLES; // Will be < 1.0 if candles.length < 5000
       logger.debug('Insufficient candles - below minimum requirement of 5000', {
-        mint: mint.substring(0, 20),
+        mint: mint,
         actualCandles: candles.length,
         minRequired: MIN_REQUIRED_CANDLES,
         coverageRatio,
@@ -281,7 +281,7 @@ export async function getCoverage(
       // If time range coverage is less than 95%, reduce ratio
       if (coverageRatio < 0.95) {
         logger.debug('Have 5000+ candles but time range coverage is insufficient', {
-          mint: mint.substring(0, 20),
+          mint: mint,
           actualCandles: candles.length,
           coverageRatio,
           expectedCandles,
@@ -299,7 +299,7 @@ export async function getCoverage(
       // Candles exist but don't cover the full range - reduce coverage ratio
       const adjustedRatio = Math.min(actualCandlesInRange / expectedCandles, 0.95); // Cap at 95% if range not covered
       logger.debug("Candles exist but don't cover full time range", {
-        mint: mint.substring(0, 20),
+        mint: mint,
         expectedCandles,
         actualCandles: candles.length,
         actualCandlesInRange,
@@ -330,7 +330,7 @@ export async function getCoverage(
 
     // Log coverage details for debugging
     logger.debug('Coverage calculation', {
-      mint: mint.substring(0, 20),
+      mint: mint,
       chain,
       interval,
       startTime: startTime.toISOString(),
@@ -372,7 +372,7 @@ export async function getCoverage(
     };
   } catch (error) {
     logger.error('Failed to check coverage', error as Error, {
-      mint: mint.substring(0, 20),
+      mint: mint,
       chain,
       interval,
     });

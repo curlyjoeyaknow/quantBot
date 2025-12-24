@@ -149,7 +149,7 @@ program
           const startTime = alertTime.minus({ minutes: preWindow });
           const endTime = alertTime.plus({ minutes: postWindow });
 
-          logger.debug(`Fetching OHLCV for ${token.symbol || token.address.substring(0, 8)}`, {
+          logger.debug(`Fetching OHLCV for ${token.symbol || token.address}`, {
             index: i + 1,
             total: tokens.length,
             startTime: startTime.toISO(),
@@ -166,10 +166,10 @@ program
 
           if (candles.length > 0) {
             await insertCandles(token.address, token.chain || 'solana', candles, interval);
-            logger.debug(`Stored ${candles.length} candles for ${token.address.substring(0, 8)}`);
+            logger.debug(`Stored ${candles.length} candles for ${token.address}`);
             success++;
           } else {
-            logger.debug(`No candles to store for ${token.address.substring(0, 8)}`);
+            logger.debug(`No candles to store for ${token.address}`);
             success++; // Not an error, just no data
           }
 
@@ -181,10 +181,10 @@ program
           failed++;
           const errorMsg = error instanceof Error ? error.message : String(error);
           errors.push({
-            token: token.address.substring(0, 20),
+            token: token.address,
             error: errorMsg,
           });
-          logger.error(`Failed to process token ${token.address.substring(0, 8)}`, error as Error);
+          logger.error(`Failed to process token ${token.address}`, error as Error);
         }
 
         // Progress update every 10 items

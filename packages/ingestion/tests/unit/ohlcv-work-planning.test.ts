@@ -270,7 +270,7 @@ describe('OHLCV Work Planning', () => {
       const from = new Date('2024-01-01');
       const to = new Date('2024-01-02');
 
-      mockPythonEngine.runOhlcvWorklist.mockResolvedValue({
+      mockWorklistService.queryWorklist.mockResolvedValue({
         tokenGroups: [],
         calls: [],
       });

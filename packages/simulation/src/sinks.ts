@@ -63,7 +63,7 @@ export class ConfigDrivenSink implements SimulationResultSink {
 
   private writeStdout(config: StdoutSinkConfig, context: SimulationRunContext): void {
     const tokenSymbol =
-      (context.target.metadata?.tokenSymbol as string) || context.target.mint.substring(0, 8);
+      (context.target.metadata?.tokenSymbol as string) || context.target.mint;
     const tokenName = (context.target.metadata?.tokenName as string) || undefined;
     const displayName = tokenName ? `${tokenName} (${tokenSymbol})` : tokenSymbol;
 

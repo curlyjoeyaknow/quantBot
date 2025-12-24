@@ -198,14 +198,14 @@ export class OhlcvIngestionEngine {
         if (cachedChain) {
           actualChain = cachedChain;
           logger.debug(
-            `[OhlcvIngestionEngine] Using cached chain for ${mint.substring(0, 20)}...`,
+            `[OhlcvIngestionEngine] Using cached chain for ${mint}...`,
             {
               chain: actualChain,
             }
           );
         } else {
           logger.info(
-            `[OhlcvIngestionEngine] Detecting chain for EVM address ${mint.substring(0, 20)}...`,
+            `[OhlcvIngestionEngine] Detecting chain for EVM address ${mint}...`,
             {
               chainHint: chain,
             }
@@ -214,14 +214,14 @@ export class OhlcvIngestionEngine {
           if (metadataResult.primaryMetadata) {
             actualChain = metadataResult.primaryMetadata.chain;
             this.chainCache.set(mint, actualChain);
-            logger.info(`[OhlcvIngestionEngine] Chain detected for ${mint.substring(0, 20)}...`, {
+            logger.info(`[OhlcvIngestionEngine] Chain detected for ${mint}...`, {
               chainHint: chain,
               actualChain,
               symbol: metadataResult.primaryMetadata.symbol,
             });
           } else {
             logger.warn(
-              `[OhlcvIngestionEngine] No metadata found for ${mint.substring(0, 20)}... on any chain, using hint`,
+              `[OhlcvIngestionEngine] No metadata found for ${mint}... on any chain, using hint`,
               {
                 chainHint: chain,
               }
@@ -232,7 +232,7 @@ export class OhlcvIngestionEngine {
       }
 
       // Step 1: Fetch and store metadata first (enrich token details)
-      logger.info(`[OhlcvIngestionEngine] Fetching metadata for ${mint.substring(0, 20)}...`);
+      logger.info(`[OhlcvIngestionEngine] Fetching metadata for ${mint}...`);
       metadata.tokenStored = await this._fetchAndStoreMetadata(mint, actualChain);
 
       const now = DateTime.utc();
@@ -256,7 +256,7 @@ export class OhlcvIngestionEngine {
         if (oneMinuteProbe.hasData === false && oneMinuteProbe.fromAPI) {
           // API returned 0 candles - no data exists for this token, skip everything
           logger.warn(
-            `[OhlcvIngestionEngine] No 1m data from API for ${mint.substring(0, 20)}..., skipping all intervals`
+            `[OhlcvIngestionEngine] No 1m data from API for ${mint}..., skipping all intervals`
           );
           return {
             '1m': [],
@@ -277,14 +277,14 @@ export class OhlcvIngestionEngine {
         if (oneMinuteProbe.hasData === false && oneMinuteProbe.fromAPI) {
           // For older alerts, try 5m probe before giving up
           logger.info(
-            `[OhlcvIngestionEngine] No 1m data for older alert, trying 5m probe for ${mint.substring(0, 20)}...`
+            `[OhlcvIngestionEngine] No 1m data for older alert, trying 5m probe for ${mint}...`
           );
           const fiveMinuteProbe = await this._probe5mData(mint, actualChain, alertTime, options);
 
           if (fiveMinuteProbe.hasData === false && fiveMinuteProbe.fromAPI) {
             // No 1m or 5m data - skip everything
             logger.warn(
-              `[OhlcvIngestionEngine] No 1m or 5m data from API for ${mint.substring(0, 20)}..., skipping all intervals`
+              `[OhlcvIngestionEngine] No 1m or 5m data from API for ${mint}..., skipping all intervals`
             );
             return {
               '1m': [],
@@ -296,7 +296,7 @@ export class OhlcvIngestionEngine {
           } else {
             // 5m data exists, skip 1m but fetch 5m, 15s, 1H
             logger.info(
-              `[OhlcvIngestionEngine] 5m data available for ${mint.substring(0, 20)}..., skipping 1m but fetching other intervals`
+              `[OhlcvIngestionEngine] 5m data available for ${mint}..., skipping 1m but fetching other intervals`
             );
             // Continue to fetch 5m, 15s, 1H (skip 1m)
             skip1mFetch = true;
@@ -339,7 +339,7 @@ export class OhlcvIngestionEngine {
         }
       } else {
         logger.info(
-          `[OhlcvIngestionEngine] Skipping 1m fetch for ${mint.substring(0, 20)}... (5m probe succeeded, 1m probe failed)`
+          `[OhlcvIngestionEngine] Skipping 1m fetch for ${mint}... (5m probe succeeded, 1m probe failed)`
         );
         metadata.total1mCandles = 0;
       }
@@ -399,7 +399,7 @@ export class OhlcvIngestionEngine {
         metadata.chunksFromAPI += 1;
       }
 
-      logger.info(`[OhlcvIngestionEngine] Completed fetch for ${mint.substring(0, 20)}...`, {
+      logger.info(`[OhlcvIngestionEngine] Completed fetch for ${mint}...`, {
         '1m': metadata.total1mCandles,
         '5m': metadata.total5mCandles,
         '15s': metadata.total15sCandles,
@@ -429,16 +429,16 @@ export class OhlcvIngestionEngine {
             const chainResult = await fetchMultiChainMetadata(mint, chain);
             if (chainResult.primaryMetadata && chainResult.primaryMetadata.chain !== chain) {
               logger.error('OHLCV fetch failed - wrong chain detected', {
-                mint: mint.substring(0, 20),
+                mint: mint,
                 attemptedChain: chain,
                 correctChain: chainResult.primaryMetadata.chain,
                 symbol: chainResult.primaryMetadata.symbol,
                 error: errorMessage,
               });
               throw new ValidationError(
-                `OHLCV fetch failed: Token ${mint.substring(0, 20)}... is on ${chainResult.primaryMetadata.chain}, not ${chain}. Please retry with the correct chain.`,
+                `OHLCV fetch failed: Token ${mint}... is on ${chainResult.primaryMetadata.chain}, not ${chain}. Please retry with the correct chain.`,
                 {
-                  mint: mint.substring(0, 20),
+                  mint: mint,
                   attemptedChain: chain,
                   correctChain: chainResult.primaryMetadata.chain,
                   symbol: chainResult.primaryMetadata.symbol,
@@ -448,7 +448,7 @@ export class OhlcvIngestionEngine {
           } catch (chainError) {
             // If chain detection also fails, log but don't override original error
             logger.debug('Chain detection failed during error handling', {
-              mint: mint.substring(0, 20),
+              mint: mint,
               error: chainError instanceof Error ? chainError.message : String(chainError),
             });
           }
@@ -456,7 +456,7 @@ export class OhlcvIngestionEngine {
       }
 
       logger.error(
-        `[OhlcvIngestionEngine] Failed to fetch candles for ${mint.substring(0, 20)}...`,
+        `[OhlcvIngestionEngine] Failed to fetch candles for ${mint}...`,
         error as Error
       );
       throw error;
@@ -488,7 +488,7 @@ export class OhlcvIngestionEngine {
         );
         if (cachedCandles.length > 0) {
           logger.debug(
-            `[OhlcvIngestionEngine] Probe: Found cached candles for ${mint.substring(0, 20)}...`
+            `[OhlcvIngestionEngine] Probe: Found cached candles for ${mint}...`
           );
           return { hasData: true, fromAPI: false };
         }
@@ -515,19 +515,19 @@ export class OhlcvIngestionEngine {
         historicalPrice.value !== undefined
       ) {
         logger.debug(
-          `[OhlcvIngestionEngine] Probe: Historical price found for ${mint.substring(0, 20)}... (10 credits)`
+          `[OhlcvIngestionEngine] Probe: Historical price found for ${mint}... (10 credits)`
         );
         return { hasData: true, fromAPI: true };
       } else {
         logger.debug(
-          `[OhlcvIngestionEngine] Probe: No historical price for ${mint.substring(0, 20)}... (10 credits)`
+          `[OhlcvIngestionEngine] Probe: No historical price for ${mint}... (10 credits)`
         );
         return { hasData: false, fromAPI: true };
       }
     } catch (error) {
       logger.warn('Probe: Historical price check failed, assuming data exists', {
         error: (error as Error).message,
-        mint: mint.substring(0, 20),
+        mint: mint,
       });
       // If probe fails, assume data exists (safer to try than skip)
       return { hasData: true, fromAPI: false };
@@ -559,7 +559,7 @@ export class OhlcvIngestionEngine {
         );
         if (cachedCandles.length > 0) {
           logger.debug(
-            `[OhlcvIngestionEngine] Probe: Found cached 5m candles for ${mint.substring(0, 20)}...`
+            `[OhlcvIngestionEngine] Probe: Found cached 5m candles for ${mint}...`
           );
           return { hasData: true, fromAPI: false };
         }
@@ -586,19 +586,19 @@ export class OhlcvIngestionEngine {
         historicalPrice.value !== undefined
       ) {
         logger.debug(
-          `[OhlcvIngestionEngine] Probe: Historical price found for 5m check ${mint.substring(0, 20)}... (10 credits)`
+          `[OhlcvIngestionEngine] Probe: Historical price found for 5m check ${mint}... (10 credits)`
         );
         return { hasData: true, fromAPI: true };
       } else {
         logger.debug(
-          `[OhlcvIngestionEngine] Probe: No historical price for 5m check ${mint.substring(0, 20)}... (10 credits)`
+          `[OhlcvIngestionEngine] Probe: No historical price for 5m check ${mint}... (10 credits)`
         );
         return { hasData: false, fromAPI: true };
       }
     } catch (error) {
       logger.warn('Probe: Historical price check failed for 5m, assuming data exists', {
         error: (error as Error).message,
-        mint: mint.substring(0, 20),
+        mint: mint,
       });
       // If probe fails, assume data exists (safer to try than skip)
       return { hasData: true, fromAPI: false };
@@ -627,7 +627,7 @@ export class OhlcvIngestionEngine {
           if (actualChain !== chain) {
             this.chainCache.set(mint, actualChain);
             logger.debug(
-              `[OhlcvIngestionEngine] Chain corrected during metadata fetch for ${mint.substring(0, 20)}...`,
+              `[OhlcvIngestionEngine] Chain corrected during metadata fetch for ${mint}...`,
               {
                 chainHint: chain,
                 actualChain,
@@ -635,14 +635,14 @@ export class OhlcvIngestionEngine {
             );
           }
 
-          logger.debug(`[OhlcvIngestionEngine] Metadata stored for ${mint.substring(0, 20)}...`, {
+          logger.debug(`[OhlcvIngestionEngine] Metadata stored for ${mint}...`, {
             chain: actualChain,
             symbol: metadata.symbol,
           });
           return true;
         }
         logger.warn(
-          `[OhlcvIngestionEngine] No metadata returned for ${mint.substring(0, 20)}... on any chain`
+          `[OhlcvIngestionEngine] No metadata returned for ${mint}... on any chain`
         );
         return false;
       }
@@ -652,14 +652,14 @@ export class OhlcvIngestionEngine {
       if (metadata) {
         // TokensRepository removed (PostgreSQL) - metadata storage not critical for OHLCV ingestion
         // Metadata is still fetched and used, just not persisted to database
-        logger.debug(`[OhlcvIngestionEngine] Metadata stored for ${mint.substring(0, 20)}...`);
+        logger.debug(`[OhlcvIngestionEngine] Metadata stored for ${mint}...`);
         return true;
       }
-      logger.warn(`[OhlcvIngestionEngine] No metadata returned for ${mint.substring(0, 20)}...`);
+      logger.warn(`[OhlcvIngestionEngine] No metadata returned for ${mint}...`);
       return false;
     } catch (error) {
       logger.error(
-        `[OhlcvIngestionEngine] Failed to fetch or store metadata for ${mint.substring(0, 20)}...`,
+        `[OhlcvIngestionEngine] Failed to fetch or store metadata for ${mint}...`,
         error as Error
       );
       // Don't throw - metadata fetch failure shouldn't block candle fetching
@@ -1017,7 +1017,7 @@ export class OhlcvIngestionEngine {
       // Safety check: if we've fetched too many chunks, break
       if (chunksFetched > 100) {
         logger.warn(
-          `[OhlcvIngestionEngine] Too many chunks fetched for ${mint.substring(0, 20)}..., stopping`
+          `[OhlcvIngestionEngine] Too many chunks fetched for ${mint}..., stopping`
         );
         break;
       }
@@ -1053,7 +1053,7 @@ export class OhlcvIngestionEngine {
       const cachedCandles = cache.get(cacheKey);
       if (cachedCandles && cachedCandles.length > 0) {
         logger.debug(
-          `[OhlcvIngestionEngine] In-memory cache hit for ${mint.substring(0, 20)}... (${interval})`
+          `[OhlcvIngestionEngine] In-memory cache hit for ${mint}... (${interval})`
         );
         return { candles: cachedCandles, fromCache: true };
       }
@@ -1067,7 +1067,7 @@ export class OhlcvIngestionEngine {
         });
         if (dbCandles.length > 0) {
           logger.debug(
-            `[OhlcvIngestionEngine] ClickHouse cache hit for ${mint.substring(0, 20)}... (${interval}, ${dbCandles.length} candles)`
+            `[OhlcvIngestionEngine] ClickHouse cache hit for ${mint}... (${interval}, ${dbCandles.length} candles)`
           );
           // Store in in-memory cache for faster subsequent access
           cache.set(cacheKey, dbCandles);
@@ -1076,14 +1076,14 @@ export class OhlcvIngestionEngine {
       } catch (error) {
         logger.warn(`[OhlcvIngestionEngine] ClickHouse query failed, falling back to API`, {
           error: (error as Error).message,
-          mint: mint.substring(0, 20),
+          mint: mint,
         });
       }
     }
 
     // Step 3: Fetch from Birdeye API using fetchBirdeyeCandles (from api-clients)
     logger.info(
-      `[OhlcvIngestionEngine] Fetching ${interval} candles from Birdeye for ${mint.substring(0, 20)}...`,
+      `[OhlcvIngestionEngine] Fetching ${interval} candles from Birdeye for ${mint}...`,
       {
         startTime: startTime.toISO(),
         endTime: endTime.toISO(),
@@ -1103,7 +1103,7 @@ export class OhlcvIngestionEngine {
 
       if (candles.length === 0) {
         logger.debug(
-          `[OhlcvIngestionEngine] No data returned from Birdeye for ${mint.substring(0, 20)}...`
+          `[OhlcvIngestionEngine] No data returned from Birdeye for ${mint}...`
         );
         return { candles: [], fromCache: false };
       }
@@ -1184,7 +1184,7 @@ export class OhlcvIngestionEngine {
         invalidCandles.length > 0 ||
         (missingTimestamps.length > 0 && missingTimestamps.length > candles.length * 0.5)
       ) {
-        logger.warn(`[OhlcvIngestionEngine] Found data issues for ${mint.substring(0, 20)}...`, {
+        logger.warn(`[OhlcvIngestionEngine] Found data issues for ${mint}...`, {
           invalidCandles: invalidCandles.length,
           missingCandles: missingTimestamps.length,
           totalCandles: candles.length,
@@ -1193,7 +1193,7 @@ export class OhlcvIngestionEngine {
 
         // Try a repeat fetch first
         logger.debug(
-          `[OhlcvIngestionEngine] Attempting repeat OHLCV fetch for ${mint.substring(0, 20)}...`
+          `[OhlcvIngestionEngine] Attempting repeat OHLCV fetch for ${mint}...`
         );
         try {
           const retryCandles = await fetchBirdeyeCandles(mint, interval, from, to, chain);
@@ -1215,13 +1215,13 @@ export class OhlcvIngestionEngine {
 
             if (retryInvalid.length === 0) {
               logger.info(
-                `[OhlcvIngestionEngine] Repeat fetch fixed data issues for ${mint.substring(0, 20)}...`
+                `[OhlcvIngestionEngine] Repeat fetch fixed data issues for ${mint}...`
               );
               candles = retryCandles;
             } else {
               // Retry also has issues, use historical price fallback for invalid/missing candles
               logger.warn(
-                `[OhlcvIngestionEngine] Repeat fetch still has issues, using historical price fallback for ${mint.substring(0, 20)}...`
+                `[OhlcvIngestionEngine] Repeat fetch still has issues, using historical price fallback for ${mint}...`
               );
               candles = await this._fixCandlesWithHistoricalPrice(
                 mint,
@@ -1235,7 +1235,7 @@ export class OhlcvIngestionEngine {
           } else {
             // Retry returned no data, use historical price fallback
             logger.warn(
-              `[OhlcvIngestionEngine] Repeat fetch returned no data, using historical price fallback for ${mint.substring(0, 20)}...`
+              `[OhlcvIngestionEngine] Repeat fetch returned no data, using historical price fallback for ${mint}...`
             );
             candles = await this._fixCandlesWithHistoricalPrice(
               mint,
@@ -1249,7 +1249,7 @@ export class OhlcvIngestionEngine {
         } catch (retryError) {
           // Retry failed, use historical price fallback
           logger.warn(
-            `[OhlcvIngestionEngine] Repeat fetch failed, using historical price fallback for ${mint.substring(0, 20)}...`,
+            `[OhlcvIngestionEngine] Repeat fetch failed, using historical price fallback for ${mint}...`,
             { error: retryError instanceof Error ? retryError.message : String(retryError) }
           );
           candles = await this._fixCandlesWithHistoricalPrice(
@@ -1265,7 +1265,7 @@ export class OhlcvIngestionEngine {
 
       if (candles.length === 0) {
         logger.debug(
-          `[OhlcvIngestionEngine] No candles in time range for ${mint.substring(0, 20)}...`
+          `[OhlcvIngestionEngine] No candles in time range for ${mint}...`
         );
         return { candles: [], fromCache: false };
       }
@@ -1278,14 +1278,14 @@ export class OhlcvIngestionEngine {
           interval === '1H' ? '1H' : interval === '15s' ? '15s' : interval === '1m' ? '1m' : '5m';
         await storeCandles(mint, chain, candles, storeInterval);
         logger.debug(
-          `[OhlcvIngestionEngine] Stored ${candles.length} ${interval} candles to ClickHouse for ${mint.substring(0, 20)}...`
+          `[OhlcvIngestionEngine] Stored ${candles.length} ${interval} candles to ClickHouse for ${mint}...`
         );
       } catch (error) {
         logger.error(
           `[OhlcvIngestionEngine] Failed to store candles to ClickHouse`,
           error as Error,
           {
-            mint: mint.substring(0, 20),
+            mint: mint,
             interval,
             candleCount: candles.length,
           }
@@ -1297,7 +1297,7 @@ export class OhlcvIngestionEngine {
       cache.set(cacheKey, candles);
 
       logger.info(
-        `[OhlcvIngestionEngine] Fetched and stored ${candles.length} ${interval} candles for ${mint.substring(0, 20)}...`
+        `[OhlcvIngestionEngine] Fetched and stored ${candles.length} ${interval} candles for ${mint}...`
       );
       return { candles, fromCache: false };
     } catch (error) {
@@ -1314,7 +1314,7 @@ export class OhlcvIngestionEngine {
             const chainResult = await fetchMultiChainMetadata(mint, chain);
             if (chainResult.primaryMetadata && chainResult.primaryMetadata.chain !== chain) {
               logger.error('OHLCV fetch failed - wrong chain detected in _fetchAndStoreChunk', {
-                mint: mint.substring(0, 20),
+                mint: mint,
                 attemptedChain: chain,
                 correctChain: chainResult.primaryMetadata.chain,
                 symbol: chainResult.primaryMetadata.symbol,
@@ -1322,9 +1322,9 @@ export class OhlcvIngestionEngine {
                 error: errorMessage,
               });
               throw new ValidationError(
-                `OHLCV fetch failed: Token ${mint.substring(0, 20)}... is on ${chainResult.primaryMetadata.chain}, not ${chain}. Please retry with the correct chain.`,
+                `OHLCV fetch failed: Token ${mint}... is on ${chainResult.primaryMetadata.chain}, not ${chain}. Please retry with the correct chain.`,
                 {
-                  mint: mint.substring(0, 20),
+                  mint: mint,
                   attemptedChain: chain,
                   correctChain: chainResult.primaryMetadata.chain,
                   symbol: chainResult.primaryMetadata.symbol,
@@ -1334,7 +1334,7 @@ export class OhlcvIngestionEngine {
           } catch (chainError) {
             // If chain detection also fails, log but don't override original error
             logger.debug('Chain detection failed during error handling in _fetchAndStoreChunk', {
-              mint: mint.substring(0, 20),
+              mint: mint,
               error: chainError instanceof Error ? chainError.message : String(chainError),
             });
           }
@@ -1342,7 +1342,7 @@ export class OhlcvIngestionEngine {
       }
 
       logger.error(`[OhlcvIngestionEngine] Failed to fetch candles from Birdeye`, error as Error, {
-        mint: mint.substring(0, 20),
+        mint: mint,
         interval,
         startTime: startTime.toISO(),
         endTime: endTime.toISO(),
@@ -1393,7 +1393,7 @@ export class OhlcvIngestionEngine {
 
     // Fix invalid/missing candles using historical price API
     logger.debug(
-      `[OhlcvIngestionEngine] Fixing ${timestampsToFix.size} candles using historical price API for ${mint.substring(0, 20)}...`
+      `[OhlcvIngestionEngine] Fixing ${timestampsToFix.size} candles using historical price API for ${mint}...`
     );
 
     for (const timestamp of timestampsToFix) {

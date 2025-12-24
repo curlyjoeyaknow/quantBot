@@ -65,7 +65,7 @@ export async function fetchMultiChainMetadata(
     const cached = cache.get(address, 'solana');
     if (cached) {
       logger.debug('Using cached Solana metadata', {
-        address: address.substring(0, 20),
+        address: address,
         cacheHit: true,
       });
       result.metadata.push(cached);
@@ -76,7 +76,7 @@ export async function fetchMultiChainMetadata(
     }
 
     logger.debug('Fetching Solana metadata', {
-      address: address.substring(0, 20),
+      address: address,
     });
 
     try {
@@ -84,7 +84,7 @@ export async function fetchMultiChainMetadata(
         () => birdeyeClient.getTokenMetadata(address, 'solana'),
         3, // maxRetries
         1000, // initialDelayMs (1 second)
-        { address: address.substring(0, 20), chain: 'solana' }
+        { address: address, chain: 'solana' }
       );
 
       const tokenMetadata: TokenMetadata = {
@@ -106,7 +106,7 @@ export async function fetchMultiChainMetadata(
     } catch (error) {
       logger.warn('Failed to fetch Solana metadata', {
         error: error instanceof Error ? error.message : String(error),
-        address: address.substring(0, 20),
+        address: address,
       });
 
       const tokenMetadata: TokenMetadata = {
@@ -129,7 +129,7 @@ export async function fetchMultiChainMetadata(
     const cachedAny = cache.getAnyChain(address, chains);
     if (cachedAny) {
       logger.debug('Using cached EVM metadata', {
-        address: address.substring(0, 20),
+        address: address,
         chain: cachedAny.chain,
         cacheHit: true,
       });
@@ -139,7 +139,7 @@ export async function fetchMultiChainMetadata(
     }
 
     logger.debug('Fetching EVM metadata across chains', {
-      address: address.substring(0, 20),
+      address: address,
       chains,
       chainHint,
     });
@@ -176,7 +176,7 @@ export async function fetchMultiChainMetadata(
             () => birdeyeClient.getTokenMetadata(address, chain),
             3, // maxRetries
             1000, // initialDelayMs (1 second)
-            { address: address.substring(0, 20), chain }
+            { address: address, chain }
           );
 
           const tokenMetadata: TokenMetadata = {
@@ -192,7 +192,7 @@ export async function fetchMultiChainMetadata(
 
           const chainDuration = Date.now() - chainStartTime;
           logger.debug('Metadata API call completed', {
-            address: address.substring(0, 20),
+            address: address,
             chain,
             found: !!metadata,
             fromCache: false,
@@ -203,7 +203,7 @@ export async function fetchMultiChainMetadata(
         } catch (error) {
           logger.warn('Failed to fetch EVM metadata', {
             error: error instanceof Error ? error.message : String(error),
-            address: address.substring(0, 20),
+            address: address,
             chain,
           });
 
@@ -233,7 +233,7 @@ export async function fetchMultiChainMetadata(
       const hintCorrect = chainHint && result.primaryMetadata?.chain === chainHint;
 
       logger.debug('Parallel EVM queries completed', {
-        address: address.substring(0, 20),
+        address: address,
         durationMs: totalDuration,
         chainsQueried: chainsToFetch.length,
         chainsFound: foundCount,
@@ -253,7 +253,7 @@ export async function fetchMultiChainMetadata(
           if (queryResult.tokenMetadata.found && !result.primaryMetadata) {
             result.primaryMetadata = queryResult.tokenMetadata;
             logger.info('Found token metadata', {
-              address: address.substring(0, 20),
+              address: address,
               chain: queryResult.tokenMetadata.chain,
               symbol: queryResult.tokenMetadata.symbol,
               name: queryResult.tokenMetadata.name,
@@ -298,7 +298,7 @@ export async function batchFetchMultiChainMetadata(
           return await fetchMultiChainMetadata(address, chainHint, getClientFn);
         } catch (error) {
           logger.error('Failed to fetch metadata for address', error as Error, {
-            address: address.substring(0, 20),
+            address: address,
           });
 
           // Add failed result

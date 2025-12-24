@@ -18,18 +18,21 @@ export function calculateMetrics(tradeEvents: TradeEvent[], pnlSeries: PnLSeries
 
   // Return metrics
   const finalPnL = pnlSeries[pnlSeries.length - 1]!.cumulativePnL;
-  const totalReturn = finalPnL;
+  // Ensure totalReturn is finite and valid
+  const totalReturn = Number.isFinite(finalPnL) ? finalPnL : 1.0;
 
   // Drawdown metrics
-  const drawdowns = pnlSeries.map((p) => p.drawdown);
-  const maxDrawdown = Math.max(...drawdowns);
-  const avgDrawdown = drawdowns.reduce((sum, d) => sum + d, 0) / drawdowns.length;
+  const drawdowns = pnlSeries.map((p) => p.drawdown).filter((d) => Number.isFinite(d));
+  const maxDrawdown = drawdowns.length > 0 ? Math.max(...drawdowns, 0) : 0;
+  const avgDrawdown = drawdowns.length > 0 ? drawdowns.reduce((sum, d) => sum + d, 0) / drawdowns.length : 0;
 
   // Hit rate
   const entries = tradeEvents.filter((t) => t.type === 'entry');
   const exits = tradeEvents.filter((t) => t.type === 'exit');
   const successfulExits = exits.filter((t) => !t.failed && t.value > 0);
-  const overallHitRate = exits.length > 0 ? successfulExits.length / exits.length : 0;
+  // Ensure hit rate is always between 0 and 1, and finite
+  const rawHitRate = exits.length > 0 ? successfulExits.length / exits.length : 0;
+  const overallHitRate = Number.isFinite(rawHitRate) ? Math.max(0, Math.min(1, rawHitRate)) : 0;
 
   // Trade counts
   const totalTrades = tradeEvents.length;
@@ -70,43 +73,50 @@ export function calculateMetrics(tradeEvents: TradeEvent[], pnlSeries: PnLSeries
   const p99LatencyMs =
     sortedLatencies.length > 0 && p99Index >= 0 ? sortedLatencies[p99Index] : undefined;
 
+  // Ensure all required fields are present and valid
   return {
     return: {
-      total: totalReturn,
-      perTrade: totalTrades > 0 ? totalReturn / totalTrades : undefined,
+      total: Number.isFinite(totalReturn) ? totalReturn : 1.0,
+      perTrade: totalTrades > 0 && Number.isFinite(totalReturn) ? totalReturn / totalTrades : undefined,
     },
     drawdown: {
-      max: maxDrawdown,
-      average: avgDrawdown,
+      max: Number.isFinite(maxDrawdown) ? Math.max(0, maxDrawdown) : 0,
+      average: Number.isFinite(avgDrawdown) ? Math.max(0, avgDrawdown) : 0,
     },
     hitRate: {
-      overall: overallHitRate,
-      entries: entries.length > 0 ? successfulExits.length / entries.length : undefined,
-      exits: exitCount > 0 ? successfulExits.length / exitCount : undefined,
+      overall: Number.isFinite(overallHitRate) ? Math.max(0, Math.min(1, overallHitRate)) : 0,
+      entries: entries.length > 0 && Number.isFinite(successfulExits.length / entries.length)
+        ? Math.max(0, Math.min(1, successfulExits.length / entries.length))
+        : undefined,
+      exits: exitCount > 0 && Number.isFinite(successfulExits.length / exitCount)
+        ? Math.max(0, Math.min(1, successfulExits.length / exitCount))
+        : undefined,
     },
     trades: {
-      total: totalTrades,
-      entries: entryCount,
-      exits: exitCount,
+      total: Math.max(0, totalTrades),
+      entries: Math.max(0, entryCount),
+      exits: Math.max(0, exitCount),
       reentries: reentryCount > 0 ? reentryCount : undefined,
       failed: failedCount > 0 ? failedCount : undefined,
     },
     tailLoss: {
-      worstTrade,
-      p5,
-      p1,
+      worstTrade: Number.isFinite(worstTrade) ? worstTrade : 0,
+      p5: p5 !== undefined && Number.isFinite(p5) ? p5 : undefined,
+      p1: p1 !== undefined && Number.isFinite(p1) ? p1 : undefined,
     },
     feeSensitivity: {
-      totalFees,
-      feesAsPercentOfReturn,
-      averageFeePerTrade,
+      totalFees: Number.isFinite(totalFees) ? Math.max(0, totalFees) : 0,
+      feesAsPercentOfReturn: feesAsPercentOfReturn !== undefined && Number.isFinite(feesAsPercentOfReturn)
+        ? Math.max(0, feesAsPercentOfReturn)
+        : undefined,
+      averageFeePerTrade: Number.isFinite(averageFeePerTrade) ? Math.max(0, averageFeePerTrade) : 0,
     },
     latencySensitivity:
       latencies.length > 0
         ? {
-            averageLatencyMs,
-            p90LatencyMs,
-            p99LatencyMs,
+            averageLatencyMs: Number.isFinite(averageLatencyMs) ? Math.max(0, averageLatencyMs) : 0,
+            p90LatencyMs: p90LatencyMs !== undefined && Number.isFinite(p90LatencyMs) ? Math.max(0, p90LatencyMs) : undefined,
+            p99LatencyMs: p99LatencyMs !== undefined && Number.isFinite(p99LatencyMs) ? Math.max(0, p99LatencyMs) : undefined,
           }
         : undefined,
   };

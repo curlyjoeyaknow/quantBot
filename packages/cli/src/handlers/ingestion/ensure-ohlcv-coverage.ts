@@ -10,15 +10,16 @@
 
 import path from 'node:path';
 import { DateTime } from 'luxon';
-import { ConfigurationError } from '@quantbot/utils';
+import { ConfigurationError, PythonEngine, isSolanaAddress, isEvmAddress } from '@quantbot/utils';
 import { ingestOhlcv, createOhlcvIngestionContext } from '@quantbot/workflows';
 import type { IngestOhlcvSpec } from '@quantbot/workflows';
 import { getCoverage } from '@quantbot/ohlcv';
-import { createQueryCallsDuckdbContext, queryCallsDuckdb } from '@quantbot/workflows';
 import type { CommandContext } from '../../core/command-context.js';
 import { ensureOhlcvCoverageSchema } from '../../commands/ingestion.js';
 import type { z } from 'zod';
 import { logger } from '@quantbot/utils';
+import { DuckDBStorageService } from '@quantbot/simulation';
+import { fetchMultiChainMetadata, getBirdeyeClient, heliusRestClient } from '@quantbot/api-clients';
 
 export type EnsureOhlcvCoverageArgs = z.infer<typeof ensureOhlcvCoverageSchema>;
 
@@ -28,52 +29,285 @@ interface TokenInfo {
   earliestCall: DateTime;
 }
 
+interface ValidatedTokenInfo {
+  mint: string;
+  chain: string;
+  earliestCall: DateTime;
+  validated: boolean;
+  error?: string;
+}
+
 /**
  * Query all unique tokens from calls database <3 months old
+ * Uses efficient DuckDB query via Python script
  */
 async function queryRecentTokens(
   duckdbPath: string,
   maxAgeDays: number = 90
 ): Promise<TokenInfo[]> {
-  const cutoffDate = DateTime.utc().minus({ days: maxAgeDays });
-  const fromISO = cutoffDate.toISO()!;
-  const toISO = DateTime.utc().toISO()!;
+  const pythonEngine = new PythonEngine();
+  const duckdbStorage = new DuckDBStorageService(pythonEngine);
 
-  const queryContext = await createQueryCallsDuckdbContext(duckdbPath);
+  const result = await duckdbStorage.queryTokensRecent(duckdbPath, maxAgeDays);
 
-  // Query calls in the date range
-  const result = await queryCallsDuckdb(
-    {
-      duckdbPath,
-      fromISO,
-      toISO,
-      limit: 100000, // Large limit to get all calls
-    },
-    queryContext
-  );
+  if (!result.success || !result.tokens) {
+    throw new Error(
+      `Failed to query recent tokens: ${result.error || 'Unknown error'}`
+    );
+  }
 
-  // Group by mint to get earliest call per token
-  const tokenMap = new Map<string, TokenInfo>();
+  return result.tokens.map((token) => ({
+    mint: token.mint,
+    chain: token.chain,
+    earliestCall: DateTime.fromISO(token.earliest_call_timestamp),
+  }));
+}
 
-  for (const call of result.calls) {
-    const mint = call.mint;
-    // CallRecord.createdAt is always DateTime (from packages/workflows/src/types.ts)
-    const callTime = call.createdAt;
+/**
+ * Check if address looks like EVM (even if truncated)
+ * This helps detect EVM addresses that are incorrectly marked as solana
+ */
+function looksLikeEvmAddress(address: string): boolean {
+  if (!address || typeof address !== 'string') {
+    return false;
+  }
+  const trimmed = address.trim();
+  // EVM addresses start with 0x and contain only hex characters
+  // Even if truncated, we can detect the pattern
+  return trimmed.startsWith('0x') && /^0x[a-fA-F0-9]+$/.test(trimmed);
+}
 
-    if (!tokenMap.has(mint) || callTime < tokenMap.get(mint)!.earliestCall) {
-      tokenMap.set(mint, {
-        mint,
-        chain: 'solana', // Default, will be detected during fetch
-        earliestCall: callTime,
+/**
+ * Check if address is truncated (incomplete)
+ */
+function isTruncatedAddress(address: string): { truncated: boolean; reason?: string } {
+  if (!address || typeof address !== 'string') {
+    return { truncated: false };
+  }
+
+  const trimmed = address.trim();
+  if (trimmed.length === 0) {
+    return { truncated: false };
+  }
+
+  // Check for truncated EVM address (starts with 0x but less than 42 chars)
+  if (trimmed.startsWith('0x') && /^0x[a-fA-F0-9]+$/.test(trimmed)) {
+    if (trimmed.length < 42) {
+      return { truncated: true, reason: `EVM address truncated: ${trimmed.length} chars (expected 42)` };
+    }
+  }
+
+  // Check for truncated Solana address (looks like base58 but too short)
+  if (isSolanaAddress(trimmed)) {
+    if (trimmed.length < 32) {
+      return { truncated: true, reason: `Solana address truncated: ${trimmed.length} chars (expected 32-44)` };
+    }
+  }
+
+  return { truncated: false };
+}
+
+/**
+ * Validate address format and length (prevent truncated addresses)
+ */
+function isValidAddress(address: string): boolean {
+  if (!address || typeof address !== 'string') {
+    return false;
+  }
+
+  const trimmed = address.trim();
+  if (trimmed.length === 0) {
+    return false;
+  }
+
+  // Check for truncation first
+  const truncationCheck = isTruncatedAddress(trimmed);
+  if (truncationCheck.truncated) {
+    return false; // Truncated addresses are invalid
+  }
+
+  // Solana addresses: 32-44 characters (Base58)
+  if (isSolanaAddress(trimmed)) {
+    return trimmed.length >= 32 && trimmed.length <= 44;
+  }
+
+  // EVM addresses: exactly 42 characters (0x + 40 hex chars)
+  if (isEvmAddress(trimmed)) {
+    return trimmed.length === 42;
+  }
+
+  // Unknown format - reject
+  return false;
+}
+
+/**
+ * Validate token and resolve correct chain using multiple fallback methods:
+ * 1. Metadata lookup (primary)
+ * 2. Historical price lookup at alert time (fallback 1)
+ * 3. Helius getTransactions call (fallback 2, Solana only)
+ * This prevents fetching OHLCV for invalid/truncated addresses
+ */
+async function validateAndResolveToken(
+  token: TokenInfo
+): Promise<ValidatedTokenInfo> {
+  // Step 1: Check for truncated addresses first (these should be moved to invalid_tokens_d)
+  const truncationCheck = isTruncatedAddress(token.mint);
+  if (truncationCheck.truncated) {
+    logger.warn(`Truncated address detected: ${token.mint}`, {
+      reason: truncationCheck.reason,
+      length: token.mint.length,
+    });
+    return {
+      ...token,
+      validated: false,
+      error: truncationCheck.reason || `Truncated address: ${token.mint.length} chars`,
+    };
+  }
+
+  // Step 2: Validate address format/length
+  if (!isValidAddress(token.mint)) {
+    return {
+      ...token,
+      validated: false,
+      error: `Invalid address format or length: ${token.mint.length} chars`,
+    };
+  }
+
+  // Step 1.5: Detect and correct EVM addresses incorrectly marked as "solana"
+  // Check for EVM pattern (even if truncated) to prevent calling Helius
+  let correctedChain = token.chain;
+  if (looksLikeEvmAddress(token.mint) && token.chain === 'solana') {
+    logger.warn(`EVM address incorrectly marked as solana, correcting chain: ${token.mint}`, {
+      originalChain: token.chain,
+      addressFormat: 'EVM',
+      addressLength: token.mint.length,
+    });
+    // For EVM addresses, we'll determine the specific chain via metadata lookup
+    // For now, mark as 'ethereum' placeholder - metadata lookup will resolve the actual chain
+    correctedChain = 'ethereum'; // Default to ethereum, metadata will correct if needed
+  }
+
+  // Step 2: Try metadata lookup first (cheapest and most accurate)
+  try {
+    const metadataResult = await fetchMultiChainMetadata(
+      token.mint,
+      correctedChain as 'solana' | 'ethereum' | 'base' | 'bsc' | undefined
+    );
+
+    if (metadataResult.primaryMetadata && metadataResult.primaryMetadata.found) {
+      // Use the resolved chain from metadata (more accurate than DB chain)
+      const resolvedChain = metadataResult.primaryMetadata.chain;
+
+      logger.debug(`Validated token ${token.mint} via metadata`, {
+        originalChain: token.chain,
+        resolvedChain,
+        symbol: metadataResult.primaryMetadata.symbol,
+      });
+
+      return {
+        mint: token.mint,
+        chain: resolvedChain,
+        earliestCall: token.earliestCall,
+        validated: true,
+      };
+    }
+  } catch (error) {
+    logger.debug(`Metadata lookup failed for ${token.mint}`, {
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+
+  // Step 3: Fallback 1 - Try historical price lookup at alert time
+  try {
+    const birdeyeClient = getBirdeyeClient();
+    const alertUnixTime = Math.floor(token.earliestCall.toSeconds());
+    // Use corrected chain, but if it's EVM and we don't know which chain yet, try ethereum first
+    const chainForPrice = correctedChain || 'solana';
+
+    logger.debug(`Trying historical price lookup for ${token.mint}`, {
+      alertTime: token.earliestCall.toISO(),
+      unixTime: alertUnixTime,
+      chain: chainForPrice,
+    });
+
+    const historicalPrice = await birdeyeClient.fetchHistoricalPriceAtUnixTime(
+      token.mint,
+      alertUnixTime,
+      chainForPrice
+    );
+
+    if (historicalPrice && historicalPrice.value > 0) {
+      logger.debug(`Validated token ${token.mint} via historical price`, {
+        chain: chainForPrice,
+        price: historicalPrice.value,
+        unixTime: historicalPrice.unixTime,
+      });
+
+      return {
+        mint: token.mint,
+        chain: chainForPrice,
+        earliestCall: token.earliestCall,
+        validated: true,
+      };
+    }
+  } catch (error) {
+    logger.debug(`Historical price lookup failed for ${token.mint}`, {
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+
+  // Step 4: Fallback 2 - Try Helius getTransactions (Solana only)
+  // Only call Helius for actual Solana addresses, not EVM addresses (even truncated ones)
+  // Never call Helius for anything that looks like EVM (starts with 0x)
+  if (isSolanaAddress(token.mint) && !isEvmAddress(token.mint) && !looksLikeEvmAddress(token.mint)) {
+    try {
+      // Check if Helius API key is available
+      if (!process.env.HELIUS_API_KEY) {
+        logger.debug(`Skipping Helius validation - HELIUS_API_KEY not set`);
+      } else {
+        logger.debug(`Trying Helius transactions lookup for ${token.mint}`);
+
+        const transactions = await heliusRestClient.getTransactionsForAddress(token.mint, {
+          limit: 1, // Just check if any transactions exist
+        });
+
+        if (transactions && transactions.length > 0) {
+          logger.debug(`Validated token ${token.mint} via Helius transactions`, {
+            chain: 'solana',
+            transactionCount: transactions.length,
+          });
+
+          return {
+            mint: token.mint,
+            chain: 'solana',
+            earliestCall: token.earliestCall,
+            validated: true,
+          };
+        }
+      }
+    } catch (error) {
+      // Don't fail validation if Helius is unavailable - just log and continue
+      logger.debug(`Helius transactions lookup failed for ${token.mint}`, {
+        error: error instanceof Error ? error.message : String(error),
       });
     }
   }
 
-  return Array.from(tokenMap.values());
+  // All validation methods failed
+  logger.warn(`All validation methods failed for ${token.mint}`, {
+    chain: token.chain,
+  });
+
+  return {
+    ...token,
+    validated: false,
+    error: 'All validation methods failed (metadata, historical price, transactions)',
+  };
 }
 
 /**
  * Check coverage for a token and interval
+ * Checks from alert time minus appropriate window to now
  */
 async function checkTokenCoverage(
   mint: string,
@@ -82,8 +316,21 @@ async function checkTokenCoverage(
   interval: '15s' | '1m' | '5m',
   minCandles: number
 ): Promise<{ hasEnough: boolean; candleCount: number }> {
-  // Calculate time range: from 3 days before alert to now
-  const fromTime = alertTime.minus({ days: 3 });
+  // Calculate time range based on interval requirements
+  // For 15s: 5000 candles = ~20.8 hours, check from 1 day before alert to now
+  // For 1m: 10,000 candles = ~6.94 days, check from 1 week before alert to now
+  // For 5m: 10,000 candles = ~34.7 days, check from 1 month before alert to now
+  let daysBefore: number;
+  if (interval === '15s') {
+    daysBefore = 1; // 1 day
+  } else if (interval === '1m') {
+    daysBefore = 7; // 1 week
+  } else {
+    // 5m
+    daysBefore = 30; // 1 month
+  }
+
+  const fromTime = alertTime.minus({ days: daysBefore });
   const toTime = DateTime.utc();
 
   try {
@@ -100,7 +347,7 @@ async function checkTokenCoverage(
       candleCount: coverage.candleCount,
     };
   } catch (error) {
-    logger.warn(`Failed to check coverage for ${mint.substring(0, 20)}...`, {
+    logger.warn(`Failed to check coverage for ${mint}`, {
       interval,
       error: error instanceof Error ? error.message : String(error),
     });
@@ -203,12 +450,81 @@ export async function ensureOhlcvCoverageHandler(
   });
 
   // Query all tokens <3 months old
-  const tokens = await queryRecentTokens(duckdbPath, maxAgeDays);
+  const allTokens = await queryRecentTokens(duckdbPath, maxAgeDays);
+  
+  // Limit to first N tokens for this run (default: 200)
+  const limit = args.limit || 200;
+  const tokens = allTokens.slice(0, limit);
 
-  logger.info(`Found ${tokens.length} tokens to check`);
+  logger.info(`Found ${allTokens.length} total tokens, processing first ${tokens.length} tokens`);
+
+  // Step 1: Validate addresses and resolve chains (cheap metadata lookup first)
+  logger.info('Validating addresses and resolving chains...');
+  const validatedTokens: ValidatedTokenInfo[] = [];
+  const invalidTokens: ValidatedTokenInfo[] = [];
+
+  for (let i = 0; i < tokens.length; i++) {
+    const token = tokens[i]!;
+    if ((i + 1) % 50 === 0) {
+      logger.info(`Validating ${i + 1}/${tokens.length} tokens...`);
+    }
+
+    const validated = await validateAndResolveToken(token);
+    if (validated.validated) {
+      validatedTokens.push(validated);
+    } else {
+      invalidTokens.push(validated);
+      logger.warn(`Skipping invalid token ${token.mint}`, {
+        error: validated.error,
+      });
+    }
+
+    // Rate limiting for metadata lookups (cheap but still need to be respectful)
+    if (i < tokens.length - 1) {
+      await new Promise((resolve) => setTimeout(resolve, 100)); // 100ms between metadata calls
+    }
+  }
+
+  logger.info(`Validation complete: ${validatedTokens.length} valid, ${invalidTokens.length} invalid`);
+
+  // Step 1.5: Move invalid tokens (including truncated addresses) to separate table
+  let moveResult: {
+    calls_moved: number;
+    links_moved: number;
+    callers_affected: number;
+  } | null = null;
+
+  if (invalidTokens.length > 0) {
+    const invalidMints = invalidTokens.map((t) => t.mint);
+    logger.info(`Moving ${invalidTokens.length} invalid tokens (including truncated addresses) to invalid_tokens_d table...`);
+    
+    const pythonEngine = new PythonEngine();
+    const duckdbStorage = new DuckDBStorageService(pythonEngine);
+    
+    const moveResultData = await duckdbStorage.moveInvalidTokens(duckdbPath, invalidMints, false);
+    
+    if (moveResultData.success) {
+      logger.info(`Moved invalid tokens to invalid_tokens_d table`, {
+        calls_moved: moveResultData.total_calls_moved,
+        links_moved: moveResultData.total_links_moved,
+        callers_affected: moveResultData.total_callers_affected,
+      });
+      moveResult = {
+        calls_moved: moveResultData.total_calls_moved,
+        links_moved: moveResultData.total_links_moved,
+        callers_affected: moveResultData.total_callers_affected,
+      };
+    } else {
+      logger.error(`Failed to move invalid tokens`, {
+        error: moveResultData.error,
+      });
+    }
+  }
 
   const results = {
     totalTokens: tokens.length,
+    validTokens: validatedTokens.length,
+    invalidTokens: invalidTokens.length,
     tokensChecked: 0,
     tokensFetched: 0,
     intervalsFetched: {
@@ -217,14 +533,19 @@ export async function ensureOhlcvCoverageHandler(
       '5m': 0,
     },
     errors: [] as Array<{ mint: string; interval: string; error: string }>,
+    invalidAddresses: invalidTokens.map((t) => ({
+      mint: t.mint,
+      error: t.error || 'Unknown validation error',
+    })),
+    invalidTokensMoved: moveResult,
   };
 
-  // Process each token
-  for (let i = 0; i < tokens.length; i++) {
-    const token = tokens[i]!;
+  // Step 2: Process validated tokens for OHLCV coverage
+  for (let i = 0; i < validatedTokens.length; i++) {
+    const token = validatedTokens[i]!;
     results.tokensChecked++;
 
-    logger.info(`Processing token ${i + 1}/${tokens.length}: ${token.mint.substring(0, 20)}...`, {
+    logger.info(`Processing token ${i + 1}/${tokens.length}: ${token.mint}`, {
       earliestCall: token.earliestCall.toISO(),
     });
 
@@ -247,7 +568,7 @@ export async function ensureOhlcvCoverageHandler(
 
       if (!coverage.hasEnough) {
         logger.info(
-          `Fetching ${interval} candles for ${token.mint.substring(0, 20)}... (has ${coverage.candleCount}, needs ${minCandles})`
+          `Fetching ${interval} candles for ${token.mint} (has ${coverage.candleCount}, needs ${minCandles})`
         );
 
         const fetchResult = await fetchCandlesForToken(
@@ -261,7 +582,7 @@ export async function ensureOhlcvCoverageHandler(
         if (fetchResult.success) {
           results.intervalsFetched[interval]++;
           logger.info(
-            `Fetched ${fetchResult.candlesFetched} ${interval} candles for ${token.mint.substring(0, 20)}...`
+            `Fetched ${fetchResult.candlesFetched} ${interval} candles for ${token.mint}`
           );
         } else {
           results.errors.push({
@@ -270,7 +591,7 @@ export async function ensureOhlcvCoverageHandler(
             error: fetchResult.error || 'Unknown error',
           });
           logger.error(
-            `Failed to fetch ${interval} candles for ${token.mint.substring(0, 20)}...`,
+            `Failed to fetch ${interval} candles for ${token.mint}`,
             { error: fetchResult.error }
           );
         }
@@ -279,7 +600,7 @@ export async function ensureOhlcvCoverageHandler(
         await new Promise((resolve) => setTimeout(resolve, 1000));
       } else {
         logger.debug(
-          `Token ${token.mint.substring(0, 20)}... has sufficient ${interval} coverage (${coverage.candleCount} candles)`
+          `Token ${token.mint} has sufficient ${interval} coverage (${coverage.candleCount} candles)`
         );
       }
     }
@@ -311,7 +632,7 @@ export async function ensureOhlcvCoverageHandler(
     ...(results.errors.length > 0
       ? results.errors.map((err) => ({
           type: 'ERROR',
-          mint: err.mint.substring(0, 20) + (err.mint.length > 20 ? '...' : ''),
+          mint: err.mint,
           interval: err.interval,
           error: err.error,
         }))

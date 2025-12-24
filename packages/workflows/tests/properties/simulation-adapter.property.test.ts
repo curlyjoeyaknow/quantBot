@@ -202,6 +202,7 @@ describe('ResearchSimulationAdapter - Property Tests', () => {
     ctx = createMockWorkflowContext();
     mockSnapshotServiceInstance = {
       loadSnapshot: vi.fn(),
+      verifySnapshot: vi.fn().mockResolvedValue(true), // Default to valid snapshot
     };
     mockDataSnapshotService.mockReturnValue(mockSnapshotServiceInstance);
 

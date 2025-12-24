@@ -301,7 +301,7 @@ export class OhlcvIngestionService {
 
             if (!mint || !earliestAlertTime) {
               logger.warn('Token group missing required fields', {
-                mint: mint?.substring(0, 20),
+                mint: mint,
                 hasEarliestAlertTime: !!earliestAlertTime,
               });
               tokensFailed++;
@@ -331,7 +331,7 @@ export class OhlcvIngestionService {
 
               if (alreadyProcessed) {
                 logger.debug('Token already processed, skipping (resume mode)', {
-                  mint: mint.substring(0, 20) + '...',
+                  mint: mint,
                   alertTime: alertTime.toISO(),
                   chain: storedChain,
                 });
@@ -341,7 +341,7 @@ export class OhlcvIngestionService {
             }
 
             logger.debug('Fetching candles for token', {
-              mint: mint.substring(0, 20) + '...',
+              mint: mint,
               callsForToken: callsForToken.length,
               earliestCallTime: alertTime.toISO(),
               chain: tokenChain || chain,
@@ -385,7 +385,7 @@ export class OhlcvIngestionService {
               // This is different from an error (which would be counted as failed)
               tokensNoData++;
               logger.debug('Token processed but no candles available (early exit)', {
-                mint: mint.substring(0, 20) + '...',
+                mint: mint,
               });
 
               // If this was from queue (simulation failure), mark as unrecoverable
@@ -412,7 +412,7 @@ export class OhlcvIngestionService {
               error: errorMessage,
             });
             logger.error('Failed to ingest OHLCV for token', error as Error, {
-              mint: tokenGroup.mint?.substring(0, 20),
+              mint: tokenGroup.mint,
             });
 
             // If this was from queue (simulation failure), mark as unrecoverable
@@ -520,7 +520,7 @@ export class OhlcvIngestionService {
     } catch (error) {
       // If check fails, assume not processed (safer to re-process than skip)
       logger.debug('Error checking if token already processed', {
-        mint: mint.substring(0, 20) + '...',
+        mint: mint,
         error: error instanceof Error ? error.message : String(error),
       });
       return false;

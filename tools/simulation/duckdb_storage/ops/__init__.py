@@ -13,6 +13,9 @@ from .query_ohlcv_metadata import QueryOhlcvMetadataInput, QueryOhlcvMetadataOut
 from .add_ohlcv_exclusion import AddOhlcvExclusionInput, AddOhlcvExclusionOutput, run as add_ohlcv_exclusion_run
 from .query_ohlcv_exclusions import QueryOhlcvExclusionsInput, QueryOhlcvExclusionsOutput, run as query_ohlcv_exclusions_run
 from .query_tokens_recent import QueryTokensRecentInput, QueryTokensRecentOutput, run as query_tokens_recent_run
+from .validate_addresses import ValidateAddressesInput, ValidateAddressesOutput, run as validate_addresses_run
+from .remove_faulty_addresses import RemoveFaultyAddressesInput, RemoveFaultyAddressesOutput, run as remove_faulty_addresses_run
+from .move_invalid_tokens import MoveInvalidTokensInput, MoveInvalidTokensOutput, run as move_invalid_tokens_run
 from .generate_report import GenerateReportInput, GenerateReportOutput, run as generate_report_run
 from .state_ops import (
     GetStateInput,
@@ -62,6 +65,18 @@ __all__ = [
     "QueryTokensRecentInput",
     "QueryTokensRecentOutput",
     "query_tokens_recent_run",
+    # Validate addresses
+    "ValidateAddressesInput",
+    "ValidateAddressesOutput",
+    "validate_addresses_run",
+    # Remove faulty addresses
+    "RemoveFaultyAddressesInput",
+    "RemoveFaultyAddressesOutput",
+    "remove_faulty_addresses_run",
+    # Move invalid tokens
+    "MoveInvalidTokensInput",
+    "MoveInvalidTokensOutput",
+    "move_invalid_tokens_run",
     # Generate report
     "GenerateReportInput",
     "GenerateReportOutput",

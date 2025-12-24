@@ -12,8 +12,10 @@
  * - workflow: fetching candles + emitting telemetry + persistence of outputs
  */
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { DateTime } from 'luxon';
 import { ValidationError } from '@quantbot/utils';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import type { CallSignal, Chain, TokenAddress } from '@quantbot/core';
 import type { MarketDataPort } from '@quantbot/core';
 import { createTokenAddress } from '@quantbot/core';
@@ -115,7 +117,7 @@ export async function evaluateCallsWorkflow(
     if (!aligned.eligibility.tradeable) {
       ctx.logger.debug?.('Skipping non-tradeable call', {
         caller: call.caller.displayName,
-        token: call.token.address.substring(0, 20),
+        token: call.token.address,
         reason: aligned.eligibility.reason,
       });
       continue;
@@ -194,7 +196,7 @@ export async function evaluateCallsWorkflow(
       if (candles.length === 0) {
         ctx.logger.warn('No candles fetched for call', {
           caller: call.caller.displayName,
-          token: call.token.address.substring(0, 20),
+          token: call.token.address,
         });
         continue;
       }
@@ -208,13 +210,13 @@ export async function evaluateCallsWorkflow(
 
       ctx.logger.debug?.('Backtested call', {
         caller: call.caller.displayName,
-        token: call.token.address.substring(0, 20),
+        token: call.token.address,
         resultsCount: results.length,
       });
     } catch (error) {
       ctx.logger.error('Failed to evaluate call', {
         caller: call.caller.displayName,
-        token: call.token.address.substring(0, 20),
+        token: call.token.address,
         error: error instanceof Error ? error.message : String(error),
       });
       // Continue with next call

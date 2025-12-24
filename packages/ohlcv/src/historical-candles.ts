@@ -32,7 +32,7 @@ export async function fetchHistoricalCandlesForMonitoring(
     return candles.slice(-5000);
   } catch (error) {
     logger.warn('Failed to fetch historical candles for monitoring from ClickHouse', {
-      mint: mint.substring(0, 20),
+      mint: mint,
       chain,
       error: error instanceof Error ? error.message : String(error),
     });

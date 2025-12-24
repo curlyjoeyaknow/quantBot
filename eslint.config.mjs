@@ -345,6 +345,14 @@ export default tseslint.config(
               name: '@quantbot/storage/src/duckdb',
               message: 'Use WorkflowContext repos, not direct DuckDB imports',
             },
+            {
+              name: 'fs',
+              message: 'Handlers must not import fs. Use adapters for file I/O.',
+            },
+            {
+              name: 'node:fs',
+              message: 'Handlers must not import fs. Use adapters for file I/O.',
+            },
           ],
           patterns: [
             {
@@ -380,6 +388,18 @@ export default tseslint.config(
               ],
               message:
                 'Workflows must use @quantbot/simulation public API (runOverlaySimulation), not deep imports. Do not bypass overlay-simulation.ts by calling simulateStrategy directly.',
+            },
+            {
+              group: ['fs', 'node:fs'],
+              message: 'Workflow handlers must not import fs. Use adapters for file I/O.',
+            },
+            {
+              group: [
+                '@quantbot/storage/src/duckdb',
+                '@quantbot/storage/src/clickhouse',
+              ],
+              message:
+                'Workflow handlers must not import DuckDB/ClickHouse clients directly. Use SliceExporter/SliceAnalyzer ports.',
             },
           ],
         },

@@ -117,3 +117,9 @@ export type { CallBacktestResult, BacktestParams } from './calls/backtest.js';
 export * from './research/index.js';
 export { createExperimentContext } from './research/context.js';
 export type { ExperimentContextConfig } from './research/context.js';
+
+// Slice Export and Analysis
+export * from './slices/types.js';
+export * from './slices/ports.js';
+export { exportAndAnalyzeSlice } from './slices/exportAndAnalyzeSlice.js';
+export type { SliceValidator } from './slices/ports.js';

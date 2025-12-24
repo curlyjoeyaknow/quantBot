@@ -161,7 +161,7 @@ async function fetchBirdeyeCandles(
     // If we need more than 5000 candles, chunk the requests
     if (estimatedCandles > MAX_CANDLES_PER_REQUEST) {
       logger.debug(
-        `Chunking request for ${mint.substring(0, 20)}... (${estimatedCandles} candles estimated, ${Math.ceil(estimatedCandles / MAX_CANDLES_PER_REQUEST)} chunks needed)`
+        `Chunking request for ${mint}... (${estimatedCandles} candles estimated, ${Math.ceil(estimatedCandles / MAX_CANDLES_PER_REQUEST)} chunks needed)`
       );
 
       const allCandles: Candle[] = [];
@@ -306,7 +306,7 @@ async function fetchBirdeyeCandlesChunk(
     // If date range returned no items, try fetching by limit (latest 5000)
     if (items.length === 0) {
       logger.debug(
-        `No candles found for date range, trying limit approach for ${mint.substring(0, 20)}...`
+        `No candles found for date range, trying limit approach for ${mint}...`
       );
 
       const limitResponse = await axios.get(BIRDEYE_ENDPOINT, {
@@ -329,7 +329,7 @@ async function fetchBirdeyeCandlesChunk(
         items = limitResponse.data?.data?.items ?? [];
         if (items.length > 0) {
           logger.debug(
-            `Fetched ${items.length} candles using limit approach for ${mint.substring(0, 20)}...`
+            `Fetched ${items.length} candles using limit approach for ${mint}...`
           );
           // Filter to only include candles within the requested time range
           items = items.filter((item) => {
@@ -417,7 +417,7 @@ export async function fetchOptimizedCandlesForAlert(
   }
 
   logger.debug('Fetching optimized candles for alert', {
-    mint: mint.substring(0, 20),
+    mint: mint,
     alertTime: alertTime.toISO(),
     endTime: endTime.toISO(),
   });
@@ -521,7 +521,7 @@ export async function fetchOptimizedCandlesForAlert(
   const sorted = Array.from(uniqueCandles.values()).sort((a, b) => a.timestamp - b.timestamp);
 
   logger.debug('Optimized fetch complete', {
-    mint: mint.substring(0, 20),
+    mint: mint,
     totalCandles: sorted.length,
     timeRange:
       sorted.length > 0
@@ -594,7 +594,7 @@ async function fetchTokenMetadata(
     ) {
       const data = overviewResponse.data.data;
       return {
-        name: data.name || `Token ${mint.substring(0, 8)}`,
+        name: data.name || `Token ${mint}`,
         symbol: data.symbol || mint.substring(0, 4).toUpperCase(),
         marketCap: data.marketCap || data.mc || data.marketCapUsd,
         price: data.price || data.priceUsd,
@@ -617,7 +617,7 @@ async function fetchTokenMetadata(
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     logger.debug('Token overview endpoint failed, trying metadata endpoint', {
-      token: mint.substring(0, 20),
+      token: mint,
       error: errorMessage,
     });
   }
@@ -641,7 +641,7 @@ async function fetchTokenMetadata(
     ) {
       const data = metadataResponse.data.data;
       return {
-        name: data.name || `Token ${mint.substring(0, 8)}`,
+        name: data.name || `Token ${mint}`,
         symbol: data.symbol || mint.substring(0, 4).toUpperCase(),
         marketCap: data.marketCap || data.mc,
         price: data.price,
@@ -663,7 +663,7 @@ async function fetchTokenMetadata(
     }
   } catch (error: unknown) {
     logger.debug('Failed to fetch token metadata from Birdeye', {
-      token: mint.substring(0, 20),
+      token: mint,
       error: error instanceof Error ? error.message : String(error),
     });
   }
@@ -921,10 +921,10 @@ export async function fetchHybridCandles(
             );
           }
         }
-        logger.debug(`✅ Saved candles to ClickHouse for ${mint.substring(0, 20)}...`);
+        logger.debug(`✅ Saved candles to ClickHouse for ${mint}...`);
       } catch (error: unknown) {
         logger.error('Failed to save to ClickHouse', error as Error, {
-          mint: mint.substring(0, 20),
+          mint: mint,
         });
         // Don't throw - continue processing other tokens
       }
@@ -933,7 +933,7 @@ export async function fetchHybridCandles(
     // Log when no candles are returned (for debugging)
     if (process.env.DEBUG_CANDLES === 'true') {
       logger.debug(
-        `⚠️ No candles returned for ${mint.substring(0, 20)}... (token may not exist or have no data)`
+        `⚠️ No candles returned for ${mint}... (token may not exist or have no data)`
       );
     }
   }
@@ -943,7 +943,7 @@ export async function fetchHybridCandles(
     .then((metadata) => {
       if (metadata) {
         logger.info('Token metadata enriched', {
-          mint: mint.substring(0, 20),
+          mint: mint,
           name: metadata.name,
           symbol: metadata.symbol,
           marketCap: metadata.marketCap,

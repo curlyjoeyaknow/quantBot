@@ -145,7 +145,7 @@ export async function storeMonitoredToken(token: MonitoredToken): Promise<number
     });
 
     logger.info('Stored monitored token in Postgres', {
-      tokenAddress: token.tokenAddress.substring(0, 20),
+      tokenAddress: token.tokenAddress,
       callerName: token.callerName,
       id: result,
     });
@@ -153,7 +153,7 @@ export async function storeMonitoredToken(token: MonitoredToken): Promise<number
     return result;
   } catch (error) {
     logger.error('Failed to store monitored token', error as Error, {
-      tokenAddress: token.tokenAddress.substring(0, 20),
+      tokenAddress: token.tokenAddress,
     });
     throw error;
   }

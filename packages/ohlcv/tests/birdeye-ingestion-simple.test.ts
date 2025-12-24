@@ -56,7 +56,7 @@ describe('Birdeye API Ingestion Scenarios', () => {
 
       mockBirdeyeClient.fetchOHLCVData.mockResolvedValue(mockResponse as any);
 
-      const result = await birdeyeClient.fetchOHLCVData(
+      const result = await mockBirdeyeClient.fetchOHLCVData(
         TEST_MINT,
         TEST_ALERT_TIME.minus({ minutes: 52 }).toJSDate(),
         TEST_ALERT_TIME.toJSDate(),
@@ -76,7 +76,7 @@ describe('Birdeye API Ingestion Scenarios', () => {
 
       mockBirdeyeClient.fetchOHLCVData.mockResolvedValue(mockResponse as any);
 
-      const result = await birdeyeClient.fetchOHLCVData(
+      const result = await mockBirdeyeClient.fetchOHLCVData(
         TEST_MINT,
         TEST_ALERT_TIME.minus({ minutes: 52 }).toJSDate(),
         TEST_ALERT_TIME.toJSDate(),

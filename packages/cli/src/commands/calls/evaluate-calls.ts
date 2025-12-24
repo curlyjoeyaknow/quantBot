@@ -13,7 +13,7 @@ import type { EvaluateCallsRequest } from '@quantbot/workflows';
 import type { CallSignal } from '@quantbot/core';
 import type { EvaluateCallsArgs } from '../../command-defs/calls.js';
 
-export async function evaluateCallsHandler(args: EvaluateCallsArgs, _ctx: CommandContext) {
+export async function evaluateCallsHandler(_args: EvaluateCallsArgs, _ctx: CommandContext) {
   // Load CallSignal[] from JSON file
   let calls: CallSignal[];
   try {

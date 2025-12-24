@@ -416,7 +416,7 @@ export class BirdeyeClient extends BaseApiClient {
       detectedChain = 'solana';
       logger.debug('Invalid chain input', {
         status: 422,
-        tokenAddress: tokenAddress.substring(0, 20),
+        tokenAddress: tokenAddress,
         originalChain: chain,
         normalizedChain,
         usingDefault: 'solana',
@@ -424,9 +424,8 @@ export class BirdeyeClient extends BaseApiClient {
     }
 
     logger.debug('Fetching OHLCV', {
-      tokenAddress: tokenAddress.substring(0, 20),
-      tokenAddressFull: tokenAddress, // Full address for debugging
-      tokenAddressLength: tokenAddress.length, // Length for debugging
+      tokenAddress: tokenAddress,
+      tokenAddressLength: tokenAddress.length,
       chain: detectedChain,
     });
 
@@ -442,7 +441,7 @@ export class BirdeyeClient extends BaseApiClient {
         {
           addressLength: tokenAddress.length,
           expectedMin: 32,
-          address: tokenAddress.substring(0, 20) + '...', // Display only
+          address: tokenAddress,
         }
       );
     }
@@ -480,7 +479,7 @@ export class BirdeyeClient extends BaseApiClient {
         logger.debug('Birdeye API error response', {
           status: response.status,
           message: typeof errorMessage === 'string' ? errorMessage : String(errorMessage),
-          tokenAddress: tokenAddress.substring(0, 20),
+          tokenAddress: tokenAddress,
         });
         return null;
       }
@@ -494,7 +493,7 @@ export class BirdeyeClient extends BaseApiClient {
           logger.debug('Birdeye API error response (success: false)', {
             status: response.status,
             message: typeof errorMessage === 'string' ? errorMessage : String(errorMessage),
-            tokenAddress: tokenAddress.substring(0, 20),
+            tokenAddress: tokenAddress,
           });
           return null;
         }
@@ -512,7 +511,7 @@ export class BirdeyeClient extends BaseApiClient {
           logger.debug('Birdeye API error response (success: false)', {
             status: response.status,
             message: typeof errorMessage === 'string' ? errorMessage : String(errorMessage),
-            tokenAddress: tokenAddress.substring(0, 20),
+            tokenAddress: tokenAddress,
           });
           return null;
         }
@@ -523,7 +522,7 @@ export class BirdeyeClient extends BaseApiClient {
           logger.debug('Birdeye API error response (message without data)', {
             status: response.status,
             message: typeof errorMessage === 'string' ? errorMessage : String(errorMessage),
-            tokenAddress: tokenAddress.substring(0, 20),
+            tokenAddress: tokenAddress,
           });
           return null;
         }
@@ -535,7 +534,7 @@ export class BirdeyeClient extends BaseApiClient {
         if (!items) {
           // No items field - might be different response structure
           logger.debug('No items in response', {
-            tokenAddress: tokenAddress.substring(0, 20),
+            tokenAddress: tokenAddress,
             responseKeys: Object.keys(responseData),
           });
           return null;
@@ -575,17 +574,17 @@ export class BirdeyeClient extends BaseApiClient {
 
           logger.debug('Successfully fetched OHLCV records from API', {
             recordCount: candleCount,
-            tokenAddress: tokenAddress.substring(0, 20),
+            tokenAddress: tokenAddress,
             chain: detectedChain,
           });
           return { items: formattedItems } as BirdeyeOHLCVResponse;
         } else if (Array.isArray(items) && items.length === 0) {
           // Empty array - token exists but no data
-          logger.debug('No candle data available', { tokenAddress: tokenAddress.substring(0, 20) });
+          logger.debug('No candle data available', { tokenAddress: tokenAddress });
           return null;
         } else {
           logger.debug('Items is not an array', {
-            tokenAddress: tokenAddress.substring(0, 20),
+            tokenAddress: tokenAddress,
             itemsType: typeof items,
             itemsValue: items,
           });
@@ -598,21 +597,13 @@ export class BirdeyeClient extends BaseApiClient {
         status: response.status,
         hasData: !!response.data,
         dataKeys: response.data ? Object.keys(response.data) : [],
-        tokenAddress: tokenAddress, // Full address for debugging
-        tokenAddressDisplay:
-          tokenAddress.length > 40
-            ? `${tokenAddress.substring(0, 8)}...${tokenAddress.substring(tokenAddress.length - 8)}`
-            : tokenAddress,
+        tokenAddress: tokenAddress,
       });
       return null;
     } catch (error: unknown) {
       logger.error('Failed to fetch OHLCV data', {
         error: error instanceof Error ? error.message : String(error),
-        tokenAddress: tokenAddress, // Full address for debugging
-        tokenAddressDisplay:
-          tokenAddress.length > 40
-            ? `${tokenAddress.substring(0, 8)}...${tokenAddress.substring(tokenAddress.length - 8)}`
-            : tokenAddress,
+        tokenAddress: tokenAddress,
       });
       return null;
     }
@@ -807,7 +798,7 @@ export class BirdeyeClient extends BaseApiClient {
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       logger.warn('Failed to fetch historical price at unix time', {
-        token: tokenAddress.substring(0, 20) + '...',
+        token: tokenAddress,
         error: errorMessage,
       });
       return null;
@@ -895,7 +886,7 @@ export class BirdeyeClient extends BaseApiClient {
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       logger.warn('Failed to fetch historical price', {
-        token: tokenAddress.substring(0, 20) + '...',
+        token: tokenAddress,
         error: errorMessage,
       });
       return null;
@@ -944,13 +935,13 @@ export class BirdeyeClient extends BaseApiClient {
 
         const data = response.data.data;
         return {
-          name: data.name || `Token ${tokenAddress.substring(0, 8)}`,
+          name: data.name || `Token ${tokenAddress}`,
           symbol: data.symbol || tokenAddress.substring(0, 4).toUpperCase(),
         };
       }
 
       if (response.status === 404) {
-        logger.debug('Token not found in Birdeye', { tokenAddress: tokenAddress.substring(0, 20) });
+        logger.debug('Token not found in Birdeye', { tokenAddress: tokenAddress });
         return null;
       }
 
@@ -958,7 +949,7 @@ export class BirdeyeClient extends BaseApiClient {
     } catch (error: unknown) {
       logger.error('Failed to fetch token metadata', {
         error: error instanceof Error ? error.message : String(error),
-        tokenAddress: tokenAddress.substring(0, 20),
+        tokenAddress: tokenAddress,
       });
       return null;
     }

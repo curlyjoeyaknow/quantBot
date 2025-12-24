@@ -22,15 +22,19 @@ vi.mock('@quantbot/storage', async (importOriginal) => {
   };
 });
 
-vi.mock('../../../src/calls/queryCallsDuckdb', () => ({
-  queryCallsDuckdb: vi.fn().mockResolvedValue({
-    calls: [],
-    totalQueried: 0,
-    totalReturned: 0,
-    fromISO: '2024-01-01T00:00:00Z',
-    toISO: '2024-01-02T00:00:00Z',
-  }),
-}));
+vi.mock('../../../src/calls/queryCallsDuckdb', async () => {
+  const actual = await vi.importActual('../../../src/calls/queryCallsDuckdb');
+  return {
+    ...actual,
+    queryCallsDuckdb: vi.fn().mockResolvedValue({
+      calls: [],
+      totalQueried: 0,
+      totalReturned: 0,
+      fromISO: '2024-01-01T00:00:00Z',
+      toISO: '2024-01-02T00:00:00Z',
+    }),
+  };
+});
 
 describe('DataSnapshotService Edge Cases', () => {
   let dataService: DataSnapshotService;

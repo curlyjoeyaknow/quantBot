@@ -11,35 +11,47 @@ import { SimulationRequestSchema } from '../../../src/research/contract.js';
 import { DataSnapshotService } from '../../../src/research/services/DataSnapshotService.js';
 
 // Mock storage to avoid requiring real database connections in tests
-vi.mock('@quantbot/storage', () => ({
-  getStorageEngine: vi.fn(() => ({
-    getCandles: vi.fn().mockResolvedValue([
-      {
-        timestamp: new Date('2024-01-01T00:00:00Z').getTime() / 1000,
-        open: 100,
-        high: 110,
-        low: 95,
-        close: 105,
-        volume: 1000,
-      },
-    ]),
-  })),
-}));
+vi.mock('@quantbot/storage', async () => {
+  const actual = await vi.importActual('@quantbot/storage');
+  return {
+    ...actual,
+    getStorageEngine: vi.fn(() => ({
+      getCandles: vi.fn().mockResolvedValue([
+        {
+          timestamp: new Date('2024-01-01T00:00:00Z').getTime() / 1000,
+          open: 100,
+          high: 110,
+          low: 95,
+          close: 105,
+          volume: 1000,
+        },
+      ]),
+    })),
+  };
+});
 
-vi.mock('../../../src/calls/queryCallsDuckdb', () => ({
-  queryCallsDuckdb: vi.fn().mockResolvedValue({
-    calls: [
-      {
-        id: 'call-001',
-        caller: 'test-caller',
-        mint: 'mint-001',
-        createdAt: new Date('2024-01-01T00:00:00Z'),
-        price: 100,
-        volume: 1000,
-      },
-    ],
-  }),
-}));
+vi.mock('../../../src/calls/queryCallsDuckdb', async () => {
+  const actual = await vi.importActual('../../../src/calls/queryCallsDuckdb');
+  return {
+    ...actual,
+    queryCallsDuckdb: vi.fn().mockResolvedValue({
+      calls: [
+        {
+          id: 'call-001',
+          caller: 'test-caller',
+          mint: 'mint-001',
+          createdAt: new Date('2024-01-01T00:00:00Z'),
+          price: 100,
+          volume: 1000,
+        },
+      ],
+      totalQueried: 1,
+      totalReturned: 1,
+      fromISO: '2024-01-01T00:00:00Z',
+      toISO: '2024-01-02T00:00:00Z',
+    }),
+  };
+});
 
 /**
  * Real Branch B: Data Snapshot Service

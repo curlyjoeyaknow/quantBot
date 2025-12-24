@@ -19,6 +19,8 @@ import { listTokensHandler } from './storage/list-tokens.js';
 import { storageStatsWorkflowHandler } from './storage/stats-workflow.js';
 import { ohlcvStatsWorkflowHandler } from './storage/ohlcv-stats-workflow.js';
 import { tokenStatsWorkflowHandler } from './storage/token-stats-workflow.js';
+import { validateAddressesHandler } from '../handlers/storage/validate-addresses.js';
+import { removeFaultyAddressesHandler } from '../handlers/storage/remove-faulty-addresses.js';
 
 /**
  * Query command schema - Only allow safe queries
@@ -39,6 +41,23 @@ export const listTokensSchema = z.object({
   source: z.enum(['ohlcv', 'metadata']).default('ohlcv'),
   format: z.enum(['json', 'table', 'csv']).default('table'),
   limit: z.number().int().positive().max(10000).default(1000),
+});
+
+/**
+ * Validate addresses schema
+ */
+export const validateAddressesSchema = z.object({
+  duckdb: z.string().optional(), // Path to DuckDB database file
+  format: z.enum(['json', 'table', 'csv']).default('table'),
+});
+
+/**
+ * Remove faulty addresses schema
+ */
+export const removeFaultyAddressesSchema = z.object({
+  duckdb: z.string().optional(), // Path to DuckDB database file
+  dryRun: z.boolean().default(false), // If true, only report what would be deleted
+  format: z.enum(['json', 'table', 'csv']).default('table'),
 });
 
 /**
@@ -272,6 +291,20 @@ export function registerStorageCommands(program: Command): void {
     validate: (opts) => tokenStatsWorkflowSchema.parse(opts),
     onError: die,
   });
+
+  // Validate addresses command
+  const validateAddressesCmd = storageCmd
+    .command('validate-addresses')
+    .description('Validate all addresses in DuckDB database (check for truncated/invalid addresses)')
+    .option('--duckdb <path>', 'Path to DuckDB database file (or set DUCKDB_PATH env var)')
+    .option('--format <format>', 'Output format', 'table');
+
+  defineCommand(validateAddressesCmd, {
+    name: 'validate-addresses',
+    packageName: 'storage',
+    validate: (opts) => validateAddressesSchema.parse(opts),
+    onError: die,
+  });
 }
 
 /**
@@ -369,6 +402,34 @@ const storageModule: PackageCommandModule = {
         'quantbot storage token-stats --from 2024-01-01 --to 2024-12-31',
         'quantbot storage token-stats --chain solana --limit 100',
         'quantbot storage token-stats --duckdb-path data/tele.duckdb --format json',
+      ],
+    },
+    {
+      name: 'validate-addresses',
+      description: 'Validate all addresses in DuckDB database (check for truncated/invalid addresses)',
+      schema: validateAddressesSchema,
+      handler: async (args: unknown, ctx: unknown) => {
+        const typedCtx = ctx as CommandContext;
+        const typedArgs = args as z.infer<typeof validateAddressesSchema>;
+        return await validateAddressesHandler(typedArgs, typedCtx);
+      },
+      examples: [
+        'quantbot storage validate-addresses --duckdb data/tele.duckdb',
+        'quantbot storage validate-addresses --duckdb data/tele.duckdb --format json',
+      ],
+    },
+    {
+      name: 'remove-faulty-addresses',
+      description: 'Remove faulty addresses from DuckDB database (truncated/invalid addresses)',
+      schema: removeFaultyAddressesSchema,
+      handler: async (args: unknown, ctx: unknown) => {
+        const typedCtx = ctx as CommandContext;
+        const typedArgs = args as z.infer<typeof removeFaultyAddressesSchema>;
+        return await removeFaultyAddressesHandler(typedArgs, typedCtx);
+      },
+      examples: [
+        'quantbot storage remove-faulty-addresses --duckdb data/tele.duckdb --dry-run',
+        'quantbot storage remove-faulty-addresses --duckdb data/tele.duckdb',
       ],
     },
   ],
