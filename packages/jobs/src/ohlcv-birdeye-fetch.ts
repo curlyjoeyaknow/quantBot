@@ -165,13 +165,17 @@ export class OhlcvBirdeyeFetch {
             workItem.endTime.toSeconds() - workItem.startTime.toSeconds()
           );
           const intervalSeconds =
-            workItem.interval === '1m'
-              ? 60
-              : workItem.interval === '5m'
-                ? 300
-                : workItem.interval === '15s'
-                  ? 15
-                  : 3600;
+            workItem.interval === '1s'
+              ? 1
+              : workItem.interval === '15s'
+                ? 15
+                : workItem.interval === '1m'
+                  ? 60
+                  : workItem.interval === '5m'
+                    ? 300
+                    : workItem.interval === '1H'
+                      ? 3600
+                      : 3600; // Default to 1 hour for unknown intervals
           const expectedCandles = Math.floor(timeRangeSeconds / intervalSeconds);
 
           logger.debug('Skipping fetch - sufficient coverage exists', {

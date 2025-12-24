@@ -119,25 +119,33 @@ describe('ingestOhlcvHandler', () => {
 
   it('handles interval option and maps to workflow format', async () => {
     mockIngestOhlcv.mockResolvedValue({
-      tokensProcessed: 1,
-      tokensSucceeded: 1,
-      tokensFailed: 0,
-      tokensSkipped: 0,
-      tokensNoData: 0,
-      candlesFetched1m: 50,
-      candlesFetched5m: 200,
-      chunksFromCache: 2,
-      chunksFromAPI: 5,
+      worklistGenerated: 1,
+      workItemsProcessed: 1,
+      workItemsSucceeded: 1,
+      workItemsFailed: 0,
+      workItemsSkipped: 0,
+      totalCandlesFetched: 50,
+      totalCandlesStored: 50,
       errors: [],
+      startedAtISO: '2025-01-01T00:00:00.000Z',
+      completedAtISO: '2025-01-01T00:01:00.000Z',
+      durationMs: 60000,
     });
 
     const fakeCtx = {
       services: {},
     } as any;
 
-    // Test with different interval values
-    const intervals: Array<'1m' | '5m' | '15m' | '1h'> = ['1m', '5m', '15m', '1h'];
-    const expectedWorkflowIntervals = ['1m', '5m', '5m', '1H']; // 15m maps to 5m
+    // Test with different interval values including 1s
+    const intervals: Array<'1s' | '15s' | '1m' | '5m' | '15m' | '1h'> = [
+      '1s',
+      '15s',
+      '1m',
+      '5m',
+      '15m',
+      '1h',
+    ];
+    const expectedWorkflowIntervals = ['1s', '15s', '1m', '5m', '5m', '1H']; // 15m maps to 5m, 1s passes through
 
     for (let i = 0; i < intervals.length; i++) {
       const interval = intervals[i];
@@ -156,6 +164,40 @@ describe('ingestOhlcvHandler', () => {
     }
 
     expect(mockIngestOhlcv).toHaveBeenCalledTimes(intervals.length);
+  });
+
+  it('passes 1s interval through to workflow (not mapped to 15s)', async () => {
+    mockIngestOhlcv.mockResolvedValue({
+      worklistGenerated: 1,
+      workItemsProcessed: 1,
+      workItemsSucceeded: 1,
+      workItemsFailed: 0,
+      workItemsSkipped: 0,
+      totalCandlesFetched: 5000,
+      totalCandlesStored: 5000,
+      errors: [],
+      startedAtISO: '2025-01-01T00:00:00.000Z',
+      completedAtISO: '2025-01-01T00:01:00.000Z',
+      durationMs: 60000,
+    });
+
+    const fakeCtx = {
+      services: {},
+    } as any;
+
+    const args = {
+      preWindow: 52, // For 1s, this is treated as seconds
+      postWindow: 5000,
+      interval: '1s' as const,
+      format: 'json' as const,
+      duckdb: '/tmp/test.duckdb',
+    };
+
+    await ingestOhlcvHandler(args, fakeCtx);
+
+    const spec = mockIngestOhlcv.mock.calls[0][0];
+    // CRITICAL: 1s should pass through, not be mapped to 15s
+    expect(spec.interval).toBe('1s');
   });
 
   it('propagates workflow errors without catching them', async () => {

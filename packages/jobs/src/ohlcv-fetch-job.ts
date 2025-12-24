@@ -188,12 +188,48 @@ export class OhlcvFetchJob {
       const from = Math.floor(workItem.startTime.toSeconds());
       const to = Math.floor(workItem.endTime.toSeconds());
 
-      // Map '1s' to '15s' since Birdeye API doesn't support '1s'
-      // fetchBirdeyeCandles only supports '15s' | '1m' | '5m' | '1H'
-      const birdeyeInterval: '15s' | '1m' | '5m' | '1H' =
-        workItem.interval === '1s'
-          ? '15s'
-          : workItem.interval === '1H'
+      // For '1s' interval, call Birdeye client directly (fetchBirdeyeCandles doesn't support '1s')
+      // For other intervals, use fetchBirdeyeCandles wrapper
+      let candles: Candle[];
+
+      if (workItem.interval === '1s') {
+        // Call Birdeye client directly for 1s intervals
+        const { getBirdeyeClient } = await import('@quantbot/api-clients');
+        const birdeyeClient = getBirdeyeClient();
+
+        logger.debug('Fetching 1s OHLCV from Birdeye (direct call)', {
+          mint: workItem.mint,
+          chain: workItem.chain,
+          interval: '1s',
+          from: workItem.startTime.toISO(),
+          to: workItem.endTime.toISO(),
+        });
+
+        const response = await birdeyeClient.fetchOHLCVData(
+          workItem.mint,
+          workItem.startTime.toJSDate(),
+          workItem.endTime.toJSDate(),
+          '1s',
+          workItem.chain
+        );
+
+        if (!response || !response.items) {
+          candles = [];
+        } else {
+          candles = response.items.map((item) => ({
+            timestamp: item.unixTime,
+            open: item.open,
+            high: item.high,
+            low: item.low,
+            close: item.close,
+            volume: item.volume,
+          }));
+        }
+      } else {
+        // Map other intervals to supported Birdeye intervals
+        // fetchBirdeyeCandles only supports '15s' | '1m' | '5m' | '1H'
+        const birdeyeInterval: '15s' | '1m' | '5m' | '1H' =
+          workItem.interval === '1H'
             ? '1H'
             : workItem.interval === '15s'
               ? '15s'
@@ -201,22 +237,23 @@ export class OhlcvFetchJob {
                 ? '1m'
                 : '5m';
 
-      logger.debug('Fetching OHLCV from Birdeye', {
-        mint: workItem.mint,
-        chain: workItem.chain,
-        interval: workItem.interval,
-        birdeyeInterval, // Log the mapped interval
-        from: workItem.startTime.toISO(),
-        to: workItem.endTime.toISO(),
-      });
+        logger.debug('Fetching OHLCV from Birdeye', {
+          mint: workItem.mint,
+          chain: workItem.chain,
+          interval: workItem.interval,
+          birdeyeInterval,
+          from: workItem.startTime.toISO(),
+          to: workItem.endTime.toISO(),
+        });
 
-      const candles = await fetchBirdeyeCandles(
-        workItem.mint,
-        birdeyeInterval,
-        from,
-        to,
-        workItem.chain
-      );
+        candles = await fetchBirdeyeCandles(
+          workItem.mint,
+          birdeyeInterval,
+          from,
+          to,
+          workItem.chain
+        );
+      }
 
       if (candles.length === 0) {
         logger.debug('No candles returned from Birdeye', {
