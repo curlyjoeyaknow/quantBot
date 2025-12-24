@@ -13,7 +13,12 @@ import { createClickHouseSliceExporterAdapterImpl } from '@quantbot/storage';
 import { createDuckDbSliceAnalyzerAdapterImpl } from '@quantbot/storage';
 import { createSliceValidatorAdapter } from '@quantbot/storage';
 import { generateTestRunId, getTestOutputDir } from './helpers/test-fixtures.js';
-import type { SliceSpec, ParquetLayoutSpec, RunContext, AnalysisSpec } from '../../src/slices/types.js';
+import type {
+  SliceSpec,
+  ParquetLayoutSpec,
+  RunContext,
+  AnalysisSpec,
+} from '../../src/slices/types.js';
 
 describe('Slice Export Integration Tests', () => {
   const outputDir = getTestOutputDir();
@@ -82,7 +87,10 @@ describe('Slice Export Integration Tests', () => {
     // Verify Parquet file exists
     const firstFile = result.manifest.parquetFiles[0];
     const filePath = firstFile.path.replace(/^file:\/\//, '');
-    const fileExists = await fs.access(filePath).then(() => true).catch(() => false);
+    const fileExists = await fs
+      .access(filePath)
+      .then(() => true)
+      .catch(() => false);
     expect(fileExists).toBe(true);
 
     // Verify manifest via validator
@@ -260,4 +268,3 @@ describe('Slice Export Integration Tests', () => {
     ).rejects.toThrow(/tokenId must be 32-44 characters/);
   });
 });
-

@@ -3,11 +3,11 @@
  * No DB clients, no fs, no env. Just data contracts.
  */
 
-export type Chain = "sol" | "eth" | "base" | "bsc" | "unknown";
+export type Chain = 'sol' | 'eth' | 'base' | 'bsc' | 'unknown';
 
-export type SliceGranularity = "raw" | "1s" | "1m" | "5m" | "1h" | "1d";
+export type SliceGranularity = 'raw' | '1s' | '1m' | '5m' | '1h' | '1d';
 
-export type Compression = "zstd" | "snappy" | "gzip" | "none";
+export type Compression = 'zstd' | 'snappy' | 'gzip' | 'none';
 
 export type ParquetPath = string; // adapter decides local path or s3-like uri
 
@@ -76,7 +76,7 @@ export interface ParquetLayoutSpec {
    * Partition keys are reflected in the path, not necessarily parquet partitioning.
    * Keep it sparse to avoid file explosion.
    */
-  partitionKeys?: Array<"dt" | "chain" | "dataset" | "runId" | "strategyId">;
+  partitionKeys?: Array<'dt' | 'chain' | 'dataset' | 'runId' | 'strategyId'>;
 }
 
 export interface SliceManifestV1 {
@@ -130,14 +130,14 @@ export interface SliceManifestV1 {
  * Keep it simple: either SQL text or a named plan id.
  */
 export type AnalysisSpec =
-  | { kind: "sql"; sql: string }
-  | { kind: "plan"; planId: string; params?: Record<string, string | number | boolean | null> };
+  | { kind: 'sql'; sql: string }
+  | { kind: 'plan'; planId: string; params?: Record<string, string | number | boolean | null> };
 
 export interface AnalysisResult {
   /**
    * Minimal "what happened" signal.
    */
-  status: "ok" | "skipped" | "failed";
+  status: 'ok' | 'skipped' | 'failed';
 
   /**
    * A stable, small summary you can put into ClickHouse for dashboards.
@@ -149,7 +149,7 @@ export interface AnalysisResult {
    * Adapters decide actual path.
    */
   artifacts?: Array<{
-    kind: "parquet" | "csv" | "json";
+    kind: 'parquet' | 'csv' | 'json';
     path: string;
     description?: string;
   }>;
@@ -164,4 +164,3 @@ export interface ExportAndAnalyzeResult {
   manifest: SliceManifestV1;
   analysis: AnalysisResult;
 }
-

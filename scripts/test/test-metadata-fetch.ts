@@ -180,9 +180,7 @@ async function fetchTokenMetadata(
   }
 
   // Fallback to default
-  console.log(
-    `   ⚠️  Using fallback: Token ${tokenAddress} (${tokenAddress.toUpperCase()})`
-  );
+  console.log(`   ⚠️  Using fallback: Token ${tokenAddress} (${tokenAddress.toUpperCase()})`);
   return {
     name: `Token ${tokenAddress}`,
     symbol: tokenAddress.toUpperCase(),

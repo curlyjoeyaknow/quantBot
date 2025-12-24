@@ -11,7 +11,12 @@ import { createHash } from 'crypto';
 import { getClickHouseClient } from '../clickhouse-client.js';
 import { logger } from '@quantbot/utils';
 import type { SliceExporter } from '@quantbot/workflows';
-import type { ParquetLayoutSpec, RunContext, SliceManifestV1, SliceSpec } from '@quantbot/workflows';
+import type {
+  ParquetLayoutSpec,
+  RunContext,
+  SliceManifestV1,
+  SliceSpec,
+} from '@quantbot/workflows';
 
 /**
  * Simple template expander
@@ -40,12 +45,18 @@ function hash(input: string): string {
  * - Single Parquet file output
  */
 export class ClickHouseSliceExporterAdapterImpl implements SliceExporter {
-  async exportSlice(args: { run: RunContext; spec: SliceSpec; layout: ParquetLayoutSpec }): Promise<SliceManifestV1> {
+  async exportSlice(args: {
+    run: RunContext;
+    spec: SliceSpec;
+    layout: ParquetLayoutSpec;
+  }): Promise<SliceManifestV1> {
     const { run, spec, layout } = args;
 
     // Validate dataset (start simple)
     if (spec.dataset !== 'candles_1m') {
-      throw new Error(`Unsupported dataset: ${spec.dataset}. Currently only 'candles_1m' is supported.`);
+      throw new Error(
+        `Unsupported dataset: ${spec.dataset}. Currently only 'candles_1m' is supported.`
+      );
     }
 
     // Build output directory from template
@@ -96,9 +107,10 @@ export class ClickHouseSliceExporterAdapterImpl implements SliceExporter {
     const whereClause = conditions.join(' AND ');
 
     // Select columns (or all if not specified)
-    const columns = spec.columns && spec.columns.length > 0
-      ? spec.columns.join(', ')
-      : 'token_address, chain, timestamp, interval, open, high, low, close, volume';
+    const columns =
+      spec.columns && spec.columns.length > 0
+        ? spec.columns.join(', ')
+        : 'token_address, chain, timestamp, interval, open, high, low, close, volume';
 
     // Query ClickHouse and export to Parquet
     const query = `
@@ -184,13 +196,17 @@ export class ClickHouseSliceExporterAdapterImpl implements SliceExporter {
       query: timeRangeQuery,
       format: 'JSONEachRow',
     });
-    const timeRangeData = (await timeRangeResult.json()) as Array<{ min_ts: string; max_ts: string }>;
-    const timeRangeObserved = timeRangeData.length > 0
-      ? {
-          startIso: timeRangeData[0].min_ts,
-          endIso: timeRangeData[0].max_ts,
-        }
-      : undefined;
+    const timeRangeData = (await timeRangeResult.json()) as Array<{
+      min_ts: string;
+      max_ts: string;
+    }>;
+    const timeRangeObserved =
+      timeRangeData.length > 0
+        ? {
+            startIso: timeRangeData[0].min_ts,
+            endIso: timeRangeData[0].max_ts,
+          }
+        : undefined;
 
     // Generate manifest
     const createdAtIso = new Date().toISOString();
@@ -244,4 +260,3 @@ export class ClickHouseSliceExporterAdapterImpl implements SliceExporter {
 export function createClickHouseSliceExporterAdapterImpl(): SliceExporter {
   return new ClickHouseSliceExporterAdapterImpl();
 }
-

@@ -305,9 +305,7 @@ async function fetchBirdeyeCandlesChunk(
 
     // If date range returned no items, try fetching by limit (latest 5000)
     if (items.length === 0) {
-      logger.debug(
-        `No candles found for date range, trying limit approach for ${mint}...`
-      );
+      logger.debug(`No candles found for date range, trying limit approach for ${mint}...`);
 
       const limitResponse = await axios.get(BIRDEYE_ENDPOINT, {
         headers: {
@@ -328,9 +326,7 @@ async function fetchBirdeyeCandlesChunk(
       if (limitResponse.status === 200) {
         items = limitResponse.data?.data?.items ?? [];
         if (items.length > 0) {
-          logger.debug(
-            `Fetched ${items.length} candles using limit approach for ${mint}...`
-          );
+          logger.debug(`Fetched ${items.length} candles using limit approach for ${mint}...`);
           // Filter to only include candles within the requested time range
           items = items.filter((item) => {
             const timestamp = item.unix_time;
@@ -932,9 +928,7 @@ export async function fetchHybridCandles(
   } else {
     // Log when no candles are returned (for debugging)
     if (process.env.DEBUG_CANDLES === 'true') {
-      logger.debug(
-        `⚠️ No candles returned for ${mint}... (token may not exist or have no data)`
-      );
+      logger.debug(`⚠️ No candles returned for ${mint}... (token may not exist or have no data)`);
     }
   }
 

@@ -51,9 +51,7 @@ async function queryRecentTokens(
   const result = await duckdbStorage.queryTokensRecent(duckdbPath, maxAgeDays);
 
   if (!result.success || !result.tokens) {
-    throw new Error(
-      `Failed to query recent tokens: ${result.error || 'Unknown error'}`
-    );
+    throw new Error(`Failed to query recent tokens: ${result.error || 'Unknown error'}`);
   }
 
   return result.tokens.map((token) => ({
@@ -93,14 +91,20 @@ function isTruncatedAddress(address: string): { truncated: boolean; reason?: str
   // Check for truncated EVM address (starts with 0x but less than 42 chars)
   if (trimmed.startsWith('0x') && /^0x[a-fA-F0-9]+$/.test(trimmed)) {
     if (trimmed.length < 42) {
-      return { truncated: true, reason: `EVM address truncated: ${trimmed.length} chars (expected 42)` };
+      return {
+        truncated: true,
+        reason: `EVM address truncated: ${trimmed.length} chars (expected 42)`,
+      };
     }
   }
 
   // Check for truncated Solana address (looks like base58 but too short)
   if (isSolanaAddress(trimmed)) {
     if (trimmed.length < 32) {
-      return { truncated: true, reason: `Solana address truncated: ${trimmed.length} chars (expected 32-44)` };
+      return {
+        truncated: true,
+        reason: `Solana address truncated: ${trimmed.length} chars (expected 32-44)`,
+      };
     }
   }
 
@@ -147,9 +151,7 @@ function isValidAddress(address: string): boolean {
  * 3. Helius getTransactions call (fallback 2, Solana only)
  * This prevents fetching OHLCV for invalid/truncated addresses
  */
-async function validateAndResolveToken(
-  token: TokenInfo
-): Promise<ValidatedTokenInfo> {
+async function validateAndResolveToken(token: TokenInfo): Promise<ValidatedTokenInfo> {
   // Step 1: Check for truncated addresses first (these should be moved to invalid_tokens_d)
   const truncationCheck = isTruncatedAddress(token.mint);
   if (truncationCheck.truncated) {
@@ -259,7 +261,11 @@ async function validateAndResolveToken(
   // Step 4: Fallback 2 - Try Helius getTransactions (Solana only)
   // Only call Helius for actual Solana addresses, not EVM addresses (even truncated ones)
   // Never call Helius for anything that looks like EVM (starts with 0x)
-  if (isSolanaAddress(token.mint) && !isEvmAddress(token.mint) && !looksLikeEvmAddress(token.mint)) {
+  if (
+    isSolanaAddress(token.mint) &&
+    !isEvmAddress(token.mint) &&
+    !looksLikeEvmAddress(token.mint)
+  ) {
     try {
       // Check if Helius API key is available
       if (!process.env.HELIUS_API_KEY) {
@@ -451,7 +457,7 @@ export async function ensureOhlcvCoverageHandler(
 
   // Query all tokens <3 months old
   const allTokens = await queryRecentTokens(duckdbPath, maxAgeDays);
-  
+
   // Limit to first N tokens for this run (default: 200)
   const limit = args.limit || 200;
   const tokens = allTokens.slice(0, limit);
@@ -485,7 +491,9 @@ export async function ensureOhlcvCoverageHandler(
     }
   }
 
-  logger.info(`Validation complete: ${validatedTokens.length} valid, ${invalidTokens.length} invalid`);
+  logger.info(
+    `Validation complete: ${validatedTokens.length} valid, ${invalidTokens.length} invalid`
+  );
 
   // Step 1.5: Move invalid tokens (including truncated addresses) to separate table
   let moveResult: {
@@ -496,13 +504,15 @@ export async function ensureOhlcvCoverageHandler(
 
   if (invalidTokens.length > 0) {
     const invalidMints = invalidTokens.map((t) => t.mint);
-    logger.info(`Moving ${invalidTokens.length} invalid tokens (including truncated addresses) to invalid_tokens_d table...`);
-    
+    logger.info(
+      `Moving ${invalidTokens.length} invalid tokens (including truncated addresses) to invalid_tokens_d table...`
+    );
+
     const pythonEngine = new PythonEngine();
     const duckdbStorage = new DuckDBStorageService(pythonEngine);
-    
+
     const moveResultData = await duckdbStorage.moveInvalidTokens(duckdbPath, invalidMints, false);
-    
+
     if (moveResultData.success) {
       logger.info(`Moved invalid tokens to invalid_tokens_d table`, {
         calls_moved: moveResultData.total_calls_moved,
@@ -590,10 +600,9 @@ export async function ensureOhlcvCoverageHandler(
             interval,
             error: fetchResult.error || 'Unknown error',
           });
-          logger.error(
-            `Failed to fetch ${interval} candles for ${token.mint}`,
-            { error: fetchResult.error }
-          );
+          logger.error(`Failed to fetch ${interval} candles for ${token.mint}`, {
+            error: fetchResult.error,
+          });
         }
 
         // Rate limiting between fetches

@@ -122,9 +122,7 @@ function buildSummary(output: Awaited<ReturnType<typeof ingestOhlcv>>): unknown 
     ...(output.errors && output.errors.length > 0
       ? output.errors.map((err) => ({
           type: 'ERROR',
-          mint: err.mint
-            ? String(err.mint)
-            : 'unknown',
+          mint: err.mint ? String(err.mint) : 'unknown',
           chain: err.chain ?? 'unknown',
           error: err.error,
         }))

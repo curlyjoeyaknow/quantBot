@@ -11,13 +11,22 @@
 import { DuckDBClient } from '../duckdb/duckdb-client.js';
 import { logger } from '@quantbot/utils';
 import type { SliceAnalyzer } from '@quantbot/workflows';
-import type { AnalysisResult, AnalysisSpec, RunContext, SliceManifestV1 } from '@quantbot/workflows';
+import type {
+  AnalysisResult,
+  AnalysisSpec,
+  RunContext,
+  SliceManifestV1,
+} from '@quantbot/workflows';
 
 /**
  * DuckDB Slice Analyzer Adapter - Implementation
  */
 export class DuckDbSliceAnalyzerAdapterImpl implements SliceAnalyzer {
-  async analyze(args: { run: RunContext; manifest: SliceManifestV1; analysis: AnalysisSpec }): Promise<AnalysisResult> {
+  async analyze(args: {
+    run: RunContext;
+    manifest: SliceManifestV1;
+    analysis: AnalysisSpec;
+  }): Promise<AnalysisResult> {
     const { manifest, analysis } = args;
 
     // Manifest version gate: fail loud on unknown versions
@@ -137,4 +146,3 @@ export class DuckDbSliceAnalyzerAdapterImpl implements SliceAnalyzer {
 export function createDuckDbSliceAnalyzerAdapterImpl(): SliceAnalyzer {
   return new DuckDbSliceAnalyzerAdapterImpl();
 }
-

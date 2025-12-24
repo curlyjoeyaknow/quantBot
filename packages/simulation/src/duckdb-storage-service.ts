@@ -562,10 +562,7 @@ export class DuckDBStorageService {
    * Query recent tokens from DuckDB (< maxAgeDays old)
    * Returns unique tokens with their earliest call timestamp
    */
-  async queryTokensRecent(
-    duckdbPath: string,
-    maxAgeDays?: number
-  ): Promise<TokensQueryResult> {
+  async queryTokensRecent(duckdbPath: string, maxAgeDays?: number): Promise<TokensQueryResult> {
     try {
       const result = await this.pythonEngine.runDuckDBStorage({
         duckdbPath,

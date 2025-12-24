@@ -1,5 +1,11 @@
-import type { ExportAndAnalyzeResult, ParquetLayoutSpec, RunContext, SliceSpec, AnalysisSpec } from "./types.js";
-import type { SliceAnalyzer, SliceExporter } from "./ports.js";
+import type {
+  ExportAndAnalyzeResult,
+  ParquetLayoutSpec,
+  RunContext,
+  SliceSpec,
+  AnalysisSpec,
+} from './types.js';
+import type { SliceAnalyzer, SliceExporter } from './ports.js';
 
 /**
  * Pure workflow handler:
@@ -26,24 +32,28 @@ export async function exportAndAnalyzeSlice(args: {
   const { run, spec, layout, analysis, exporter, analyzer, limits } = args;
 
   // Basic validation (pure)
-  if (!run?.runId) throw new Error("exportAndAnalyzeSlice: run.runId is required");
-  if (!run?.createdAtIso) throw new Error("exportAndAnalyzeSlice: run.createdAtIso is required");
-  if (!spec?.dataset) throw new Error("exportAndAnalyzeSlice: spec.dataset is required");
+  if (!run?.runId) throw new Error('exportAndAnalyzeSlice: run.runId is required');
+  if (!run?.createdAtIso) throw new Error('exportAndAnalyzeSlice: run.createdAtIso is required');
+  if (!spec?.dataset) throw new Error('exportAndAnalyzeSlice: spec.dataset is required');
   if (!spec?.timeRange?.startIso || !spec?.timeRange?.endIso) {
-    throw new Error("exportAndAnalyzeSlice: spec.timeRange.startIso/endIso are required");
+    throw new Error('exportAndAnalyzeSlice: spec.timeRange.startIso/endIso are required');
   }
   if (!layout?.baseUri || !layout?.subdirTemplate) {
-    throw new Error("exportAndAnalyzeSlice: layout.baseUri and layout.subdirTemplate are required");
+    throw new Error('exportAndAnalyzeSlice: layout.baseUri and layout.subdirTemplate are required');
   }
 
   // Input validation: time range
   const startDate = new Date(spec.timeRange.startIso);
   const endDate = new Date(spec.timeRange.endIso);
   if (isNaN(startDate.getTime())) {
-    throw new Error(`exportAndAnalyzeSlice: spec.timeRange.startIso is not a valid ISO date: ${spec.timeRange.startIso}`);
+    throw new Error(
+      `exportAndAnalyzeSlice: spec.timeRange.startIso is not a valid ISO date: ${spec.timeRange.startIso}`
+    );
   }
   if (isNaN(endDate.getTime())) {
-    throw new Error(`exportAndAnalyzeSlice: spec.timeRange.endIso is not a valid ISO date: ${spec.timeRange.endIso}`);
+    throw new Error(
+      `exportAndAnalyzeSlice: spec.timeRange.endIso is not a valid ISO date: ${spec.timeRange.endIso}`
+    );
   }
   if (startDate >= endDate) {
     throw new Error(
@@ -92,4 +102,3 @@ export async function exportAndAnalyzeSlice(args: {
 
   return { manifest, analysis: analysisResult };
 }
-

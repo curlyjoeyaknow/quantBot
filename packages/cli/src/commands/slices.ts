@@ -63,9 +63,7 @@ const slicesModule: PackageCommandModule = {
         const typedArgs = args as z.infer<typeof validateSliceSchema>;
         return await validateSliceHandler(typedArgs, ctx);
       },
-      examples: [
-        'quantbot slices validate slice.manifest.json',
-      ],
+      examples: ['quantbot slices validate slice.manifest.json'],
     },
   ],
 };
@@ -77,9 +75,7 @@ commandRegistry.registerPackage(slicesModule);
  * Register Commander.js commands
  */
 export function registerSlicesCommands(program: Command): void {
-  const slicesCmd = program
-    .command('slices')
-    .description('Slice export and analysis operations');
+  const slicesCmd = program.command('slices').description('Slice export and analysis operations');
 
   // Export command
   slicesCmd
@@ -117,4 +113,3 @@ export function registerSlicesCommands(program: Command): void {
       await execute(commandDef, options);
     });
 }
-

@@ -78,4 +78,3 @@ export interface SliceAnalyzerPort {
    */
   analyze(manifest: SliceManifest, analysisSpec: AnalysisQueryPlan): Promise<AnalysisResult>;
 }
-
