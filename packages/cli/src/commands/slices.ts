@@ -46,9 +46,10 @@ const slicesModule: PackageCommandModule = {
       name: 'export',
       description: 'Export data slice from ClickHouse to Parquet and analyze',
       schema: exportSliceSchema,
-      handler: async (args: unknown, ctx: CommandContext) => {
+      handler: async (args: unknown, ctx: CommandContext | unknown) => {
+        const typedCtx = ctx as CommandContext;
         const typedArgs = args as z.infer<typeof exportSliceSchema>;
-        return await exportSliceHandler(typedArgs, ctx);
+        return await exportSliceHandler(typedArgs, typedCtx);
       },
       examples: [
         'quantbot slices export --dataset candles_1m --chain sol --from 2025-12-01 --to 2025-12-02',
@@ -59,9 +60,10 @@ const slicesModule: PackageCommandModule = {
       name: 'validate',
       description: 'Validate a slice manifest',
       schema: validateSliceSchema,
-      handler: async (args: unknown, ctx: CommandContext) => {
+      handler: async (args: unknown, ctx: CommandContext | unknown) => {
+        const typedCtx = ctx as CommandContext;
         const typedArgs = args as z.infer<typeof validateSliceSchema>;
-        return await validateSliceHandler(typedArgs, ctx);
+        return await validateSliceHandler(typedArgs, typedCtx);
       },
       examples: ['quantbot slices validate slice.manifest.json'],
     },
