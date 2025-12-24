@@ -22,7 +22,14 @@ const __filename = fileURLToPath(import.meta.url);
 // From packages/storage/src/adapters/slice-validator-adapter.ts
 // Go up to workspace root: ../../../
 const workspaceRoot = join(__filename, '..', '..', '..', '..', '..');
-const manifestSchemaPath = join(workspaceRoot, 'packages', 'workflows', 'src', 'slices', 'manifest.schema.v1.json');
+const manifestSchemaPath = join(
+  workspaceRoot,
+  'packages',
+  'workflows',
+  'src',
+  'slices',
+  'manifest.schema.v1.json'
+);
 const manifestSchema = JSON.parse(readFileSync(manifestSchemaPath, 'utf-8'));
 
 export interface ValidationResult {
@@ -87,7 +94,8 @@ export class SliceValidatorAdapter implements SliceValidator {
 
     if (!valid) {
       const errors = (this.validateFn.errors || []).map(
-        (err: { instancePath?: string; message?: string }) => `${err.instancePath || '/'}: ${err.message || 'validation error'}`
+        (err: { instancePath?: string; message?: string }) =>
+          `${err.instancePath || '/'}: ${err.message || 'validation error'}`
       );
       return { ok: false, errors, warnings: [] };
     }
@@ -111,14 +119,15 @@ export class SliceValidatorAdapter implements SliceValidator {
         const path = file.path.replace(/^file:\/\//, '');
         try {
           // Count rows in Parquet file
-          const result = await db.query(
-            `SELECT COUNT(*) as count FROM read_parquet('${path}')`
-          );
+          const result = await db.query(`SELECT COUNT(*) as count FROM read_parquet('${path}')`);
 
           // DuckDBQueryResult has rows array, first row first column is the count
-          const actualCount = result.rows.length > 0 && result.rows[0].length > 0
-            ? (typeof result.rows[0][0] === 'number' ? result.rows[0][0] : Number(result.rows[0][0]))
-            : 0;
+          const actualCount =
+            result.rows.length > 0 && result.rows[0].length > 0
+              ? typeof result.rows[0][0] === 'number'
+                ? result.rows[0][0]
+                : Number(result.rows[0][0])
+              : 0;
           const expectedCount = file.rowCount;
 
           if (expectedCount !== undefined && actualCount !== expectedCount) {
@@ -127,11 +136,15 @@ export class SliceValidatorAdapter implements SliceValidator {
             );
           }
         } catch (error) {
-          warnings.push(`Could not verify row count for ${file.path}: ${error instanceof Error ? error.message : String(error)}`);
+          warnings.push(
+            `Could not verify row count for ${file.path}: ${error instanceof Error ? error.message : String(error)}`
+          );
         }
       }
     } catch (error) {
-      warnings.push(`Row count verification failed: ${error instanceof Error ? error.message : String(error)}`);
+      warnings.push(
+        `Row count verification failed: ${error instanceof Error ? error.message : String(error)}`
+      );
     } finally {
       if (db) {
         await db.close();
@@ -148,4 +161,3 @@ export class SliceValidatorAdapter implements SliceValidator {
 export function createSliceValidatorAdapter(): SliceValidator {
   return new SliceValidatorAdapter();
 }
-

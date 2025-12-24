@@ -114,9 +114,7 @@ export class OHLCVEngine {
     }
 
     // No candles found (offline-only mode - no API calls)
-    logger.debug(
-      `OHLCV Engine: No candles found for ${tokenAddress}... (offline-only mode)`
-    );
+    logger.debug(`OHLCV Engine: No candles found for ${tokenAddress}... (offline-only mode)`);
     return {
       candles: [],
       fromCache: false,

@@ -49,9 +49,7 @@ export {
   ClickHouseSliceExporterAdapterImpl,
   createClickHouseSliceExporterAdapterImpl,
 } from './adapters/clickhouse-slice-exporter-adapter-impl.js';
-export {
-  createClickHouseSliceExporterAdapter,
-} from './adapters/clickhouse-slice-exporter-adapter.js';
+export { createClickHouseSliceExporterAdapter } from './adapters/clickhouse-slice-exporter-adapter.js';
 export {
   DuckDbSliceAnalyzerAdapter,
   createDuckDbSliceAnalyzerAdapter,

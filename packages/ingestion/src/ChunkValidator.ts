@@ -79,9 +79,7 @@ export class ChunkValidator {
           this.validationCount++;
           // Note: Birdeye validation would be implemented here if needed
           // For now, we just log that validation would happen
-          logger.debug(
-            `Would validate address ${result.botData.contractAddress}... via Birdeye`
-          );
+          logger.debug(`Would validate address ${result.botData.contractAddress}... via Birdeye`);
         }
 
         validCount++;

@@ -295,7 +295,9 @@ export function registerStorageCommands(program: Command): void {
   // Validate addresses command
   const validateAddressesCmd = storageCmd
     .command('validate-addresses')
-    .description('Validate all addresses in DuckDB database (check for truncated/invalid addresses)')
+    .description(
+      'Validate all addresses in DuckDB database (check for truncated/invalid addresses)'
+    )
     .option('--duckdb <path>', 'Path to DuckDB database file (or set DUCKDB_PATH env var)')
     .option('--format <format>', 'Output format', 'table');
 
@@ -406,7 +408,8 @@ const storageModule: PackageCommandModule = {
     },
     {
       name: 'validate-addresses',
-      description: 'Validate all addresses in DuckDB database (check for truncated/invalid addresses)',
+      description:
+        'Validate all addresses in DuckDB database (check for truncated/invalid addresses)',
       schema: validateAddressesSchema,
       handler: async (args: unknown, ctx: unknown) => {
         const typedCtx = ctx as CommandContext;

@@ -126,7 +126,10 @@ export class DuckDBClient {
       );
       return result;
     } catch (error) {
-      logger.error('DuckDB operation failed', error as Error, { operation, scriptPath: scriptPathOrSql });
+      logger.error('DuckDB operation failed', error as Error, {
+        operation,
+        scriptPath: scriptPathOrSql,
+      });
       throw error;
     }
   }

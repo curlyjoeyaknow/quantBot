@@ -294,9 +294,10 @@ export class ResearchSimulationAdapter {
     // Convert contract CostModel to simulation engine CostConfig
     // Handle very small fees by ensuring minimum 1 bps (0.01%) to avoid rounding to 0
     const tradingFee = contractModel.tradingFee ?? 0;
-    const tradingFeeBps = tradingFee > 0
-      ? Math.max(1, Math.round(tradingFee * 10000)) // Ensure at least 1 bps
-      : 0;
+    const tradingFeeBps =
+      tradingFee > 0
+        ? Math.max(1, Math.round(tradingFee * 10000)) // Ensure at least 1 bps
+        : 0;
 
     return {
       entrySlippageBps: tradingFeeBps,

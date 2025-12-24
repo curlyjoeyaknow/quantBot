@@ -24,4 +24,3 @@ export function getClickHouseUrl(): string {
 export function getTestOutputDir(): string {
   return process.env.TEST_OUTPUT_DIR || '/tmp/quantbot_test_slices';
 }
-

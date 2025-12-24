@@ -39,4 +39,3 @@ export async function validateSliceHandler(
     manifestId: manifest.manifestId,
   };
 }
-

@@ -15,10 +15,7 @@ import { logger } from '@quantbot/utils';
 
 export type ValidateAddressesArgs = z.infer<typeof validateAddressesSchema>;
 
-export async function validateAddressesHandler(
-  args: ValidateAddressesArgs,
-  _ctx: CommandContext
-) {
+export async function validateAddressesHandler(args: ValidateAddressesArgs, _ctx: CommandContext) {
   const duckdbPathRaw = args.duckdb || process.env.DUCKDB_PATH;
   if (!duckdbPathRaw) {
     throw new ConfigurationError(
@@ -48,7 +45,7 @@ export async function validateAddressesHandler(
 
   if (result.faulty && result.faulty.length > 0) {
     logger.warn(`Found ${result.faulty.length} faulty addresses`);
-    
+
     // Group by error type for summary
     const errorGroups = new Map<string, number>();
     for (const faulty of result.faulty) {
@@ -86,4 +83,3 @@ export async function validateAddressesHandler(
     faulty: result.faulty,
   };
 }
-

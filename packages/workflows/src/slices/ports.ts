@@ -1,4 +1,11 @@
-import type { AnalysisResult, AnalysisSpec, ParquetLayoutSpec, RunContext, SliceManifestV1, SliceSpec } from "./types.js";
+import type {
+  AnalysisResult,
+  AnalysisSpec,
+  ParquetLayoutSpec,
+  RunContext,
+  SliceManifestV1,
+  SliceSpec,
+} from './types.js';
 
 /**
  * Ports (interfaces) used by the pure workflow handler.
@@ -28,4 +35,3 @@ export interface SliceValidator {
     warnings: string[];
   }>;
 }
-

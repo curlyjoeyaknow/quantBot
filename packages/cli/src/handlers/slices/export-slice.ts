@@ -7,7 +7,10 @@
 
 import { exportAndAnalyzeSlice } from '@quantbot/workflows';
 import type { CommandContext } from '../../core/command-context.js';
-import { createClickHouseSliceExporterAdapterImpl, createDuckDbSliceAnalyzerAdapterImpl } from '@quantbot/storage';
+import {
+  createClickHouseSliceExporterAdapterImpl,
+  createDuckDbSliceAnalyzerAdapterImpl,
+} from '@quantbot/storage';
 import type { z } from 'zod';
 import { exportSliceSchema } from '../../commands/slices.js';
 
@@ -69,4 +72,3 @@ export async function exportSliceHandler(
 
   return result;
 }
-

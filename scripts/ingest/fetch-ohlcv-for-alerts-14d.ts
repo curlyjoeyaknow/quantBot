@@ -330,10 +330,7 @@ async function fetch15sCandles(
     return { candles: allCandles, success: true };
   } catch (error: any) {
     const errorMsg = error?.message || String(error);
-    logger.error(
-      `[15s] Failed to fetch 15s candles for ${mint}...`,
-      error as Error
-    );
+    logger.error(`[15s] Failed to fetch 15s candles for ${mint}...`, error as Error);
     return { candles: [], success: false, error: errorMsg };
   }
 }
@@ -678,9 +675,7 @@ async function main() {
         console.log(`  📌 Mint: ${mint} (${chain}) [${mint.length} chars]`);
 
         // Log full address to verify it's not truncated
-        logger.debug(
-          `Using full address for API: ${mint} (${mint.length} chars)`
-        );
+        logger.debug(`Using full address for API: ${mint} (${mint.length} chars)`);
 
         const result: FetchResult = {
           alertId: alert.id,
