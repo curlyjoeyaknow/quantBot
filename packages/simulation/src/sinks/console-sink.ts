@@ -32,7 +32,7 @@ export class ConsoleSink implements ResultSink {
 
   async handle(context: SimulationRunContext): Promise<void> {
     const metadata = context.target.metadata as { symbol?: string; name?: string } | undefined;
-    const tokenSymbol = (metadata?.symbol as string) || context.target.mint.substring(0, 8);
+    const tokenSymbol = (metadata?.symbol as string) || context.target.mint;
     const tokenName = (metadata?.name as string) || undefined;
     const displayName = tokenName ? `${tokenName} (${tokenSymbol})` : tokenSymbol;
 

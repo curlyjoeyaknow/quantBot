@@ -21,7 +21,7 @@ import { createOhlcvIngestionContext } from '../context/createOhlcvIngestionCont
  */
 export function createOhlcvIngestionWorkflowAdapter(
   ctx?: WorkflowContext,
-  options?: {
+  _options?: {
     parallelWorkers?: number;
     rateLimitMsPerWorker?: number;
     maxRetries?: number;

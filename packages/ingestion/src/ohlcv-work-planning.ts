@@ -128,7 +128,7 @@ export async function generateOhlcvWorklist(
   for (const tokenGroup of filteredTokenGroups) {
     if (!tokenGroup.mint || !tokenGroup.earliestAlertTime) {
       logger.warn('Token group missing required fields', {
-        mint: tokenGroup.mint?.substring(0, 20),
+        mint: tokenGroup.mint,
         hasEarliestAlertTime: !!tokenGroup.earliestAlertTime,
       });
       continue;
@@ -137,7 +137,7 @@ export async function generateOhlcvWorklist(
     const alertTime = DateTime.fromISO(tokenGroup.earliestAlertTime);
     if (!alertTime.isValid) {
       logger.warn('Invalid alert time in token group', {
-        mint: tokenGroup.mint.substring(0, 20),
+        mint: tokenGroup.mint,
         earliestAlertTime: tokenGroup.earliestAlertTime,
       });
       continue;

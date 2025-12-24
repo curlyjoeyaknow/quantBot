@@ -27,12 +27,12 @@ import type {
 } from '@quantbot/simulation/execution-models';
 import {
   createPumpfunExecutionModel,
-  createPumpswapExecutionModel,
   calibrateExecutionModel,
-  convertExecutionModelToCostConfig,
   checkCircuitBreaker,
   createCircuitBreakerState,
 } from '@quantbot/simulation/execution-models';
+// createPumpswapExecutionModel and convertExecutionModelToCostConfig are imported but not used
+// They may be needed for future implementations
 
 /**
  * Calibration data for execution model

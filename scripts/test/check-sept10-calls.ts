@@ -42,7 +42,7 @@ async function checkSept10Calls() {
     const endDate = alertDate.plus({ days: 60 });
 
     console.log(`\n${token.name} - ${alertDate.toFormat('yyyy-MM-dd HH:mm')}`);
-    console.log(`Token: ${token.address.substring(0, 30)}...`);
+    console.log(`Token: ${token.address}...`);
 
     try {
       const candles = await fetchHybridCandles(token.address, alertDate, endDate, token.chain);

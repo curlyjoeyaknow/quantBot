@@ -33,8 +33,8 @@ async function fetchTokenMetadata(
 ): Promise<{ name: string; symbol: string }> {
   if (chain !== 'solana') {
     return {
-      name: `Token ${tokenAddress.substring(0, 8)}`,
-      symbol: tokenAddress.substring(0, 4).toUpperCase(),
+      name: `Token ${tokenAddress}`,
+      symbol: tokenAddress.toUpperCase(),
     };
   }
 
@@ -101,7 +101,7 @@ async function fetchTokenMetadata(
         const name = match.tokenName || match.token_name || symbol;
         console.log(`   ✅ Found in CSV: ${name} (${symbol})`);
         return {
-          name: name || `Token ${tokenAddress.substring(0, 8)}`,
+          name: name || `Token ${tokenAddress}`,
           symbol: symbol,
         };
       } else {
@@ -137,8 +137,8 @@ async function fetchTokenMetadata(
       if (data && (data.name || data.symbol)) {
         console.log(`   ✅ Found in Solscan: ${data.name || 'N/A'} (${data.symbol || 'N/A'})`);
         return {
-          name: data.name || `Token ${tokenAddress.substring(0, 8)}`,
-          symbol: data.symbol || tokenAddress.substring(0, 4).toUpperCase(),
+          name: data.name || `Token ${tokenAddress}`,
+          symbol: data.symbol || tokenAddress.toUpperCase(),
         };
       }
     }
@@ -169,8 +169,8 @@ async function fetchTokenMetadata(
         const data = response.data.data;
         console.log(`   ✅ Found in Birdeye: ${data.name || 'N/A'} (${data.symbol || 'N/A'})`);
         return {
-          name: data.name || `Token ${tokenAddress.substring(0, 8)}`,
-          symbol: data.symbol || tokenAddress.substring(0, 4).toUpperCase(),
+          name: data.name || `Token ${tokenAddress}`,
+          symbol: data.symbol || tokenAddress.toUpperCase(),
         };
       }
       console.log(`   ❌ Not found in Birdeye`);
@@ -181,11 +181,11 @@ async function fetchTokenMetadata(
 
   // Fallback to default
   console.log(
-    `   ⚠️  Using fallback: Token ${tokenAddress.substring(0, 8)} (${tokenAddress.substring(0, 4).toUpperCase()})`
+    `   ⚠️  Using fallback: Token ${tokenAddress} (${tokenAddress.toUpperCase()})`
   );
   return {
-    name: `Token ${tokenAddress.substring(0, 8)}`,
-    symbol: tokenAddress.substring(0, 4).toUpperCase(),
+    name: `Token ${tokenAddress}`,
+    symbol: tokenAddress.toUpperCase(),
   };
 }
 

@@ -175,7 +175,7 @@ export class OhlcvBirdeyeFetch {
           const expectedCandles = Math.floor(timeRangeSeconds / intervalSeconds);
 
           logger.debug('Skipping fetch - sufficient coverage exists', {
-            mint: workItem.mint.substring(0, 20),
+            mint: workItem.mint,
             chain: workItem.chain,
             interval: workItem.interval,
             coverageRatio: coverage.coverageRatio,
@@ -190,7 +190,7 @@ export class OhlcvBirdeyeFetch {
           });
         } else if (coverage.hasData && !hasMinimumCandles) {
           logger.debug('Not skipping - insufficient candles (below 5000 minimum)', {
-            mint: workItem.mint.substring(0, 20),
+            mint: workItem.mint,
             chain: workItem.chain,
             interval: workItem.interval,
             coverageRatio: coverage.coverageRatio,
@@ -227,7 +227,7 @@ export class OhlcvBirdeyeFetch {
                 : '5m';
 
       logger.debug('Fetching OHLCV from Birdeye', {
-        mint: workItem.mint.substring(0, 20),
+        mint: workItem.mint,
         chain: workItem.chain,
         interval: workItem.interval,
         birdeyeInterval, // Log the mapped interval
@@ -250,7 +250,7 @@ export class OhlcvBirdeyeFetch {
       // 3. Actual API/system error - retryable, would throw exception
       if (candles.length === 0) {
         logger.debug('No candles returned from Birdeye (likely invalid token or no data)', {
-          mint: workItem.mint.substring(0, 20),
+          mint: workItem.mint,
           chain: workItem.chain,
           interval: workItem.interval,
         });
@@ -271,7 +271,7 @@ export class OhlcvBirdeyeFetch {
       this.failureCount = 0;
 
       logger.info('Successfully fetched OHLCV from Birdeye', {
-        mint: workItem.mint.substring(0, 20),
+        mint: workItem.mint,
         chain: workItem.chain,
         interval: workItem.interval,
         candlesFetched: candles.length,
@@ -302,7 +302,7 @@ export class OhlcvBirdeyeFetch {
         errorMessage.includes('429');
 
       logger.error('Failed to fetch OHLCV from Birdeye', error as Error, {
-        mint: workItem.mint.substring(0, 20),
+        mint: workItem.mint,
         chain: workItem.chain,
         interval: workItem.interval,
         failureCount: this.failureCount,
@@ -413,7 +413,7 @@ export class OhlcvBirdeyeFetch {
           logger.error('Worker failed to fetch work item', error as Error, {
             workerId,
             workItemIndex: i,
-            mint: workItem.mint.substring(0, 20),
+            mint: workItem.mint,
           });
           results[i] = {
             workItem,

@@ -21,7 +21,11 @@ import { DataSnapshotRefSchema } from '../../src/snapshots/types.js';
  * Create a deterministic content hash from data
  */
 function computeContentHash(data: unknown): string {
-  const json = JSON.stringify(data, Object.keys(data as Record<string, unknown>).sort());
+  // For arrays, JSON.stringify already produces deterministic output
+  // For objects, sort keys for determinism
+  const json = Array.isArray(data)
+    ? JSON.stringify(data)
+    : JSON.stringify(data, Object.keys(data as Record<string, unknown>).sort());
   return createHash('sha256').update(json).digest('hex');
 }
 
@@ -32,11 +36,11 @@ describe('Snapshot Determinism - Property Tests', () => {
         fc.array(
           fc.record({
             timestamp: fc.integer({ min: 0, max: 2 ** 31 - 1 }),
-            open: fc.float({ min: 0.0001, max: 1000 }),
-            high: fc.float({ min: 0.0001, max: 1000 }),
-            low: fc.float({ min: 0.0001, max: 1000 }),
-            close: fc.float({ min: 0.0001, max: 1000 }),
-            volume: fc.float({ min: 0, max: 1_000_000 }),
+            open: fc.float({ min: Math.fround(0.0001), max: Math.fround(1000) }),
+            high: fc.float({ min: Math.fround(0.0001), max: Math.fround(1000) }),
+            low: fc.float({ min: Math.fround(0.0001), max: Math.fround(1000) }),
+            close: fc.float({ min: Math.fround(0.0001), max: Math.fround(1000) }),
+            volume: fc.float({ min: Math.fround(0), max: Math.fround(1_000_000) }),
             mint: fc.string({ minLength: 32, maxLength: 44 }),
           }),
           { minLength: 1, maxLength: 100 }
@@ -66,8 +70,8 @@ describe('Snapshot Determinism - Property Tests', () => {
         fc.array(
           fc.record({
             timestamp: fc.integer({ min: 0, max: 2 ** 31 - 1 }),
-            open: fc.float({ min: 0.0001, max: 1000 }),
-            close: fc.float({ min: 0.0001, max: 1000 }),
+            open: fc.float({ min: Math.fround(0.0001), max: Math.fround(1000) }),
+            close: fc.float({ min: Math.fround(0.0001), max: Math.fround(1000) }),
             mint: fc.string({ minLength: 32, maxLength: 44 }),
           }),
           { minLength: 1, maxLength: 10 }
@@ -75,8 +79,8 @@ describe('Snapshot Determinism - Property Tests', () => {
         fc.array(
           fc.record({
             timestamp: fc.integer({ min: 0, max: 2 ** 31 - 1 }),
-            open: fc.float({ min: 0.0001, max: 1000 }),
-            close: fc.float({ min: 0.0001, max: 1000 }),
+            open: fc.float({ min: Math.fround(0.0001), max: Math.fround(1000) }),
+            close: fc.float({ min: Math.fround(0.0001), max: Math.fround(1000) }),
             mint: fc.string({ minLength: 32, maxLength: 44 }),
           }),
           { minLength: 1, maxLength: 10 }
@@ -108,7 +112,7 @@ describe('Snapshot Determinism - Property Tests', () => {
       fc.property(
         fc.string({ minLength: 1 }),
         fc.string({ minLength: 1 }),
-        fc.string().datetime(),
+        fc.date({ min: new Date('2020-01-01'), max: new Date('2030-12-31') }).map((d) => d.toISOString()),
         (snapshotId, contentHash, createdAt) => {
           // Only test valid SHA-256 hashes
           if (!/^[a-f0-9]{64}$/.test(contentHash)) {

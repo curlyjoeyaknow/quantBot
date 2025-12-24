@@ -24,7 +24,9 @@
  */
 
 import { z } from 'zod';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { DateTime } from 'luxon';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { ValidationError, ConfigurationError } from '@quantbot/utils';
 import type { WorkflowContext } from '../types.js';
 import type { SimulationConfig, SimulationOutput } from '@quantbot/simulation';
@@ -274,7 +276,7 @@ export async function runSimulationDuckdb(
         const alertTime = DateTime.fromISO(call.alert_timestamp);
         if (!alertTime.isValid) {
           ctx.logger.warn('Invalid alert timestamp in call', {
-            mint: call.mint.substring(0, 20),
+            mint: call.mint,
             alertTimestamp: call.alert_timestamp,
           });
           continue;

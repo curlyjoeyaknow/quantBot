@@ -291,7 +291,7 @@ export async function insertCandles(
     // Silently fail if USE_CACHE_ONLY is set (insertions not needed in cache-only mode)
     if (process.env.USE_CACHE_ONLY !== 'true') {
       const displayAddr =
-        tokenAddress.length > 30 ? tokenAddress.substring(0, 30) + '...' : tokenAddress;
+        tokenAddress.length > 30 ? tokenAddress + '...' : tokenAddress;
       logger.error('Error inserting candles', error as Error, { tokenAddress: displayAddr });
     }
     // Don't throw in cache-only mode - just skip insertion
@@ -332,7 +332,7 @@ export async function insertTicks(
     });
   } catch (error: unknown) {
     logger.error('Error inserting ticks', error as Error, {
-      tokenAddress: tokenAddress.substring(0, 20),
+      tokenAddress: tokenAddress,
     });
     throw error;
   }
@@ -403,7 +403,7 @@ export async function queryCandles(
       // Debug logging (display only - use full address in query)
       if (process.env.DEBUG_CLICKHOUSE === 'true') {
         logger.debug('ClickHouse query', {
-          tokenAddress: tokenAddress.substring(0, 20),
+          tokenAddress: tokenAddress,
           chain,
           startUnix,
           endUnix,

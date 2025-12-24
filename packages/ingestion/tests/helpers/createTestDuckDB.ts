@@ -6,8 +6,12 @@
  */
 
 import { join } from 'path';
-import { existsSync, unlinkSync, writeFileSync, rmSync } from 'fs';
+import { existsSync, unlinkSync } from 'fs';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+import { writeFileSync, rmSync } from 'fs';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { tmpdir } from 'os';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { getPythonEngine } from '@quantbot/utils';
 import type { PythonEngine } from '@quantbot/utils';
 import { z } from 'zod';
@@ -34,7 +38,7 @@ const CreateDuckDBResultSchema = z.object({
 export async function createTestDuckDB(
   dbPath: string,
   calls: TestCall[],
-  pythonEngine?: PythonEngine
+  _pythonEngine?: PythonEngine
 ): Promise<void> {
   // Use execa directly for DuckDB creation (setup step)
   const { execa } = await import('execa');

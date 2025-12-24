@@ -28,7 +28,7 @@ export function RecentCallsTable({ calls }: RecentCallsTableProps) {
           {calls.map((call) => (
             <tr key={call.callId} className="border-b">
               <td className="p-2 font-mono text-xs">
-                {call.tokenAddress.substring(0, 8)}...
+                {call.tokenAddress}...
               </td>
               <td className="p-2">{call.callerName}</td>
               <td className="p-2">{formatDate(call.alertTimestamp)}</td>

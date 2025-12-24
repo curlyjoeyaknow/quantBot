@@ -105,7 +105,7 @@ export async function ingestOhlcvWorkflowPorted(
           name: 'ohlcv_fetch_latency_ms',
           type: 'histogram',
           value: fetchLatency,
-          labels: { interval: input.interval, mint: input.mint.substring(0, 8) },
+          labels: { interval: input.interval, mint: input.mint },
         });
 
         workflowCtx.ports.telemetry.emitEvent({

@@ -64,7 +64,7 @@ export class ChunkValidator {
 
         // Log extracted data for validation
         logger.debug(`Item ${itemIndex} extracted:`, {
-          contractAddress: result.botData.contractAddress.substring(0, 20) + '...',
+          contractAddress: result.botData.contractAddress + '...',
           chain: result.botData.chain,
           tokenName: result.botData.tokenName,
           ticker: result.botData.ticker,
@@ -80,7 +80,7 @@ export class ChunkValidator {
           // Note: Birdeye validation would be implemented here if needed
           // For now, we just log that validation would happen
           logger.debug(
-            `Would validate address ${result.botData.contractAddress.substring(0, 20)}... via Birdeye`
+            `Would validate address ${result.botData.contractAddress}... via Birdeye`
           );
         }
 

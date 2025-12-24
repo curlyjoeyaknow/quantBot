@@ -212,14 +212,14 @@ export class StorageEngine {
       }
 
       logger.debug('Stored candles', {
-        token: tokenAddress.substring(0, 20) + '...',
+        token: tokenAddress,
         chain,
         interval,
         count: candles.length,
       });
     } catch (error) {
       logger.error('Error storing candles', error as Error, {
-        token: tokenAddress.substring(0, 20) + '...',
+        token: tokenAddress,
       });
       throw error;
     }
@@ -256,7 +256,7 @@ export class StorageEngine {
       const cached = this.cache.get(cacheKey);
       if (cached && Date.now() - cached.timestamp < this.config.cacheTTL) {
         logger.debug('Using cached candles', {
-          token: tokenAddress.substring(0, 20) + '...',
+          token: tokenAddress,
           interval,
         });
         return cached.data as Candle[];
@@ -277,7 +277,7 @@ export class StorageEngine {
       return candles;
     } catch (error) {
       logger.error('Error retrieving candles', error as Error, {
-        token: tokenAddress.substring(0, 20) + '...',
+        token: tokenAddress,
         interval,
       });
       throw error;
@@ -308,7 +308,7 @@ export class StorageEngine {
         return { interval, candles };
       } catch (error) {
         logger.error('Error fetching candles for interval', error as Error, {
-          token: tokenAddress.substring(0, 20) + '...',
+          token: tokenAddress,
           interval,
         });
         return { interval, candles: [] };
@@ -498,7 +498,7 @@ export class StorageEngine {
       }
 
       logger.debug('Stored indicators', {
-        token: tokenAddress.substring(0, 20) + '...',
+        token: tokenAddress,
         count: indicators.length,
       });
     } catch (error) {
@@ -570,13 +570,13 @@ export class StorageEngine {
       }
 
       logger.debug('Stored token metadata', {
-        token: tokenAddress.substring(0, 20) + '...',
+        token: tokenAddress,
         chain,
         timestamp,
       });
     } catch (error) {
       logger.error('Error storing token metadata', error as Error, {
-        token: tokenAddress.substring(0, 20) + '...',
+        token: tokenAddress,
       });
       throw error;
     }
@@ -630,7 +630,7 @@ export class StorageEngine {
       return metadata;
     } catch (error) {
       logger.error('Error retrieving token metadata', error as Error, {
-        token: tokenAddress.substring(0, 20) + '...',
+        token: tokenAddress,
       });
       throw error;
     }
@@ -671,7 +671,7 @@ export class StorageEngine {
       });
     } catch (error) {
       logger.error('Error retrieving token metadata history', error as Error, {
-        token: tokenAddress.substring(0, 20) + '...',
+        token: tokenAddress,
       });
       throw error;
     }

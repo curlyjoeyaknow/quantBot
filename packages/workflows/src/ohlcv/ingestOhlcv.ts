@@ -278,7 +278,7 @@ export async function ingestOhlcv(
         level: 'debug',
         message: 'Skipping already processed work item',
         context: {
-          mint: workItem.mint.substring(0, 20),
+          mint: workItem.mint,
           day: workItem.startTime.toISODate(),
         },
       });
@@ -310,7 +310,7 @@ export async function ingestOhlcv(
             level: 'debug',
             message: 'Skipping fetch - sufficient coverage exists',
             context: {
-              mint: workItem.mint.substring(0, 20),
+              mint: workItem.mint,
               coverageRatio: coverage.coverageRatio,
             },
           });
@@ -379,7 +379,7 @@ export async function ingestOhlcv(
         level: 'error',
         message: 'Failed to fetch OHLCV candles',
         context: {
-          mint: workItem.mint.substring(0, 20),
+          mint: workItem.mint,
           chain: workItem.chain,
           error: fetchError || 'No candles returned',
         },
@@ -442,7 +442,7 @@ export async function ingestOhlcv(
         level: 'error',
         message: 'Failed to store OHLCV candles',
         context: {
-          mint: workItem.mint.substring(0, 20),
+          mint: workItem.mint,
           error: storeError,
         },
       });
@@ -537,7 +537,7 @@ export async function ingestOhlcv(
               level: 'error',
               message: 'Failed to update OHLCV metadata',
               context: {
-                mint: fetchResult.workItem.mint.substring(0, 20),
+                mint: fetchResult.workItem.mint,
                 error: result.error,
               },
             });
@@ -550,7 +550,7 @@ export async function ingestOhlcv(
             level: 'error',
             message: 'Failed to update OHLCV metadata',
             context: {
-              mint: fetchResult.workItem.mint.substring(0, 20),
+              mint: fetchResult.workItem.mint,
               error: errorMessage,
             },
           });

@@ -36,7 +36,8 @@ vi.mock('@quantbot/storage', async (importOriginal) => {
   };
 });
 
-vi.mock('../../../src/calls/queryCallsDuckdb', () => {
+vi.mock('../../../src/calls/queryCallsDuckdb', async () => {
+  const actual = await vi.importActual('../../../src/calls/queryCallsDuckdb');
   // Generate mock calls for performance testing
   const generateCalls = (count: number) => {
     return Array.from({ length: count }, (_, i) => ({
@@ -50,6 +51,7 @@ vi.mock('../../../src/calls/queryCallsDuckdb', () => {
   };
 
   return {
+    ...actual,
     queryCallsDuckdb: vi.fn().mockResolvedValue({
       calls: generateCalls(1000), // 1000 calls
       totalQueried: 1000,

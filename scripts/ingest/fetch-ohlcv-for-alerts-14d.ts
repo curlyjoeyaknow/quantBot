@@ -183,7 +183,7 @@ async function fetch1sCandles(
 
     if (!birdeyeData || !birdeyeData.items || birdeyeData.items.length === 0) {
       logger.warn(
-        `[1s] No 1s data returned from Birdeye for ${mint.substring(0, 20)}... (may not support 1s interval)`
+        `[1s] No 1s data returned from Birdeye for ${mint}... (may not support 1s interval)`
       );
       return { candles: [], success: false, error: 'No data returned (1s may not be supported)' };
     }
@@ -213,7 +213,7 @@ async function fetch1sCandles(
     return { candles, success: true };
   } catch (error: any) {
     const errorMsg = error?.message || String(error);
-    logger.error(`[1s] Failed to fetch 1s candles for ${mint.substring(0, 20)}...`, error as Error);
+    logger.error(`[1s] Failed to fetch 1s candles for ${mint}...`, error as Error);
     return { candles: [], success: false, error: errorMsg };
   }
 }
@@ -331,7 +331,7 @@ async function fetch15sCandles(
   } catch (error: any) {
     const errorMsg = error?.message || String(error);
     logger.error(
-      `[15s] Failed to fetch 15s candles for ${mint.substring(0, 20)}...`,
+      `[15s] Failed to fetch 15s candles for ${mint}...`,
       error as Error
     );
     return { candles: [], success: false, error: errorMsg };
@@ -454,7 +454,7 @@ async function fetch1mCandles(
     return { candles: allCandles, success: true };
   } catch (error: any) {
     const errorMsg = error?.message || String(error);
-    logger.error(`[1m] Failed to fetch 1m candles for ${mint.substring(0, 20)}...`, error as Error);
+    logger.error(`[1m] Failed to fetch 1m candles for ${mint}...`, error as Error);
     return { candles: [], success: false, error: errorMsg };
   }
 }
@@ -575,7 +575,7 @@ async function fetch5mCandles(
     return { candles: allCandles, success: true };
   } catch (error: any) {
     const errorMsg = error?.message || String(error);
-    logger.error(`[5m] Failed to fetch 5m candles for ${mint.substring(0, 20)}...`, error as Error);
+    logger.error(`[5m] Failed to fetch 5m candles for ${mint}...`, error as Error);
     return { candles: [], success: false, error: errorMsg };
   }
 }
@@ -675,11 +675,11 @@ async function main() {
           logger.error(`Invalid address length: ${mint.length} for tokenId ${alert.tokenId}`);
         }
 
-        console.log(`  📌 Mint: ${mint.substring(0, 32)}... (${chain}) [${mint.length} chars]`);
+        console.log(`  📌 Mint: ${mint} (${chain}) [${mint.length} chars]`);
 
-        // Log first few characters of full address to verify it's not truncated
+        // Log full address to verify it's not truncated
         logger.debug(
-          `Using full address for API: ${mint.substring(0, 8)}...${mint.substring(mint.length - 8)} (${mint.length} chars)`
+          `Using full address for API: ${mint} (${mint.length} chars)`
         );
 
         const result: FetchResult = {
@@ -803,7 +803,7 @@ async function main() {
           .filter(([_, i]) => i?.success === false)
           .map(([interval, i]) => `${interval}: ${i?.error || 'unknown'}`)
           .join(', ');
-        logger.warn(`  Alert ${r.alertId} (${r.mint.substring(0, 20)}...): ${errorIntervals}`);
+        logger.warn(`  Alert ${r.alertId} (${r.mint}...): ${errorIntervals}`);
       });
       if (errors.length > 10) {
         logger.warn(`  ... and ${errors.length - 10} more`);

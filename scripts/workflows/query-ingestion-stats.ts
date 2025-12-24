@@ -69,7 +69,7 @@ async function queryStats() {
     for (const row of sampleAlerts.rows) {
       console.log(`\n[${row.id}] ${row.ticker || row.symbol} - ${row.token_name || 'N/A'}`);
       console.log(`   Caller: ${row.caller_name}`);
-      console.log(`   Address: ${row.address.substring(0, 20)}...`);
+      console.log(`   Address: ${row.address}...`);
       console.log(`   Alert Time: ${row.alert_timestamp}`);
       console.log(`   Price: $${row.initial_price}`);
       console.log(`   MCap: $${row.initial_mcap?.toLocaleString()}`);
@@ -105,7 +105,7 @@ async function queryStats() {
     `);
 
     for (const row of sampleTokenData.rows) {
-      console.log(`\n[${row.id}] ${row.symbol} - ${row.address.substring(0, 20)}...`);
+      console.log(`\n[${row.id}] ${row.symbol} - ${row.address}...`);
       console.log(`   Recorded: ${row.recorded_at}`);
       console.log(`   Price: $${row.price}`);
       console.log(`   MCap: $${row.market_cap?.toLocaleString()}`);

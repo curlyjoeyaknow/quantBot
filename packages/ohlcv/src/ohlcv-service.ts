@@ -94,7 +94,7 @@ export class OHLCVService {
 
         if (existing.length > 0) {
           logger.debug('Candles already exist in ClickHouse, skipping', {
-            mint: mint.substring(0, 20),
+            mint: mint,
             count: candles.length,
           });
           return { ingested: 0, skipped: candles.length };
@@ -104,7 +104,7 @@ export class OHLCVService {
       await this.storageEngine.storeCandles(mint, chain, candles, interval);
 
       logger.info('Ingested candles into ClickHouse', {
-        mint: mint.substring(0, 20),
+        mint: mint,
         count: candles.length,
         interval,
       });
@@ -112,7 +112,7 @@ export class OHLCVService {
       return { ingested: candles.length, skipped: 0 };
     } catch (error: unknown) {
       logger.error('Failed to ingest candles', error as Error, {
-        mint: mint.substring(0, 20),
+        mint: mint,
       });
       throw error;
     }
@@ -137,7 +137,7 @@ export class OHLCVService {
       const cached = this.inMemoryCache.get(cacheKey);
 
       if (cached && Date.now() - cached.timestamp < this.cacheTTL) {
-        logger.debug('Using in-memory cache', { mint: mint.substring(0, 20) });
+        logger.debug('Using in-memory cache', { mint: mint });
         return cached.candles;
       }
     }
@@ -154,7 +154,7 @@ export class OHLCVService {
         );
         if (clickhouseCandles.length > 0) {
           logger.debug('Using ClickHouse cache', {
-            mint: mint.substring(0, 20),
+            mint: mint,
             count: clickhouseCandles.length,
           });
 
@@ -171,7 +171,7 @@ export class OHLCVService {
         const errorMessage = error instanceof Error ? error.message : String(error);
         logger.warn('ClickHouse query failed, falling back to API', {
           error: errorMessage,
-          mint: mint.substring(0, 20),
+          mint: mint,
         });
       }
     }
@@ -179,7 +179,7 @@ export class OHLCVService {
     // Offline-only: Return empty if not in cache
     // Candles must be fetched via @quantbot/api-clients and stored via storeCandles()
     logger.debug('No candles found in cache (offline-only mode)', {
-      mint: mint.substring(0, 20),
+      mint: mint,
       chain,
       interval,
     });

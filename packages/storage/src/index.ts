@@ -43,6 +43,27 @@ export type { OhlcvWorklistConfig, OhlcvWorklistResult } from './duckdb/duckdb-w
 // Artifact repository adapter
 export { ArtifactDuckDBAdapter } from './adapters/artifact-duckdb-adapter.js';
 export { ExperimentDuckDBAdapter } from './adapters/experiment-duckdb-adapter.js';
+
+// Slice export and analysis adapters
+export {
+  ClickHouseSliceExporterAdapterImpl,
+  createClickHouseSliceExporterAdapterImpl,
+} from './adapters/clickhouse-slice-exporter-adapter-impl.js';
+export {
+  createClickHouseSliceExporterAdapter,
+} from './adapters/clickhouse-slice-exporter-adapter.js';
+export {
+  DuckDbSliceAnalyzerAdapter,
+  createDuckDbSliceAnalyzerAdapter,
+} from './adapters/duckdb-slice-analyzer-adapter.js';
+export {
+  DuckDbSliceAnalyzerAdapterImpl,
+  createDuckDbSliceAnalyzerAdapterImpl,
+} from './adapters/duckdb-slice-analyzer-adapter-impl.js';
+export {
+  SliceValidatorAdapter,
+  createSliceValidatorAdapter,
+} from './adapters/slice-validator-adapter.js';
 export type { OHLCVCoverageRecord } from './duckdb/repositories/TokenDataRepository.js';
 export { CallersRepository } from './duckdb/repositories/CallersRepository.js';
 export { StrategiesRepository } from './duckdb/repositories/StrategiesRepository.js';

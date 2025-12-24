@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "QuantBot Slice Manifest V1",
+  "type": "object",
+  "required": ["version", "manifestId", "createdAtIso", "run", "spec", "layout", "parquetFiles", "summary"],
+  "properties": {
+    "version": { "const": 1 },
+    "manifestId": { "type": "string", "minLength": 1 },
+    "createdAtIso": { "type": "string", "minLength": 1 },
+    "run": {
+      "type": "object",
+      "required": ["runId", "createdAtIso"],
+      "properties": {
+        "runId": { "type": "string" },
+        "strategyId": { "type": "string" },
+        "seed": { "type": "string" },
+        "createdAtIso": { "type": "string" },
+        "note": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "spec": {
+      "type": "object",
+      "required": ["dataset", "chain", "timeRange"],
+      "properties": {
+        "dataset": { "type": "string" },
+        "chain": { "type": "string" },
+        "timeRange": {
+          "type": "object",
+          "required": ["startIso", "endIso"],
+          "properties": {
+            "startIso": { "type": "string" },
+            "endIso": { "type": "string" }
+          },
+          "additionalProperties": false
+        },
+        "tokenIds": { "type": "array", "items": { "type": "string" } },
+        "columns": { "type": "array", "items": { "type": "string" } },
+        "granularity": { "type": "string" },
+        "tags": {
+          "type": "object",
+          "additionalProperties": { "type": "string" }
+        }
+      },
+      "additionalProperties": false
+    },
+    "layout": {
+      "type": "object",
+      "required": ["baseUri", "subdirTemplate"],
+      "properties": {
+        "baseUri": { "type": "string" },
+        "subdirTemplate": { "type": "string" },
+        "maxRowsPerFile": { "type": "number" },
+        "compression": { "type": "string" },
+        "partitionKeys": { "type": "array", "items": { "type": "string" } }
+      },
+      "additionalProperties": false
+    },
+    "parquetFiles": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path"],
+        "properties": {
+          "path": { "type": "string" },
+          "rowCount": { "type": "number" },
+          "byteSize": { "type": "number" },
+          "dt": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "summary": {
+      "type": "object",
+      "required": ["totalFiles"],
+      "properties": {
+        "totalFiles": { "type": "number" },
+        "totalRows": { "type": "number" },
+        "totalBytes": { "type": "number" },
+        "timeRangeObserved": {
+          "type": "object",
+          "required": ["startIso", "endIso"],
+          "properties": {
+            "startIso": { "type": "string" },
+            "endIso": { "type": "string" }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "integrity": {
+      "type": "object",
+      "properties": {
+        "specHash": { "type": "string" },
+        "contentHash": { "type": "string" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
+

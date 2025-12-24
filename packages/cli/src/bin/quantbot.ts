@@ -29,6 +29,7 @@ import '../commands/metadata.js';
 import '../commands/calls.js';
 import '../commands/research.js';
 import '../commands/experiments.js';
+import '../commands/slices.js';
 
 // Import register functions to add Commander options
 import { registerObservabilityCommands } from '../commands/observability.js';
@@ -45,6 +46,7 @@ import { registerMetadataCommands } from '../commands/metadata.js';
 import { registerCallsCommands } from '../commands/calls.js';
 import { registerResearchCommands } from '../commands/research.js';
 import { registerExperimentsCommands } from '../commands/experiments.js';
+import { registerSlicesCommands } from '../commands/slices.js';
 
 // Set up program
 program
@@ -69,6 +71,7 @@ registerMetadataCommands(program);
 registerCallsCommands(program);
 registerResearchCommands(program);
 registerExperimentsCommands(program);
+registerSlicesCommands(program);
 
 // Global error handler
 program.configureOutput({

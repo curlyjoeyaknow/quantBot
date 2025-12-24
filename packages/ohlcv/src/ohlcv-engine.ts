@@ -95,7 +95,7 @@ export class OHLCVEngine {
       });
       if (candles.length > 0) {
         logger.debug(
-          `OHLCV Engine: Found ${candles.length} candles in ClickHouse for ${tokenAddress.substring(0, 20)}...`
+          `OHLCV Engine: Found ${candles.length} candles in ClickHouse for ${tokenAddress}...`
         );
         return {
           candles,
@@ -108,14 +108,14 @@ export class OHLCVEngine {
       const errorMessage = error instanceof Error ? error.message : String(error);
       logger.warn('OHLCV Engine: ClickHouse query failed', {
         error: errorMessage,
-        tokenAddress: tokenAddress.substring(0, 20),
+        tokenAddress: tokenAddress,
       });
       // Continue to return empty result (offline-only mode)
     }
 
     // No candles found (offline-only mode - no API calls)
     logger.debug(
-      `OHLCV Engine: No candles found for ${tokenAddress.substring(0, 20)}... (offline-only mode)`
+      `OHLCV Engine: No candles found for ${tokenAddress}... (offline-only mode)`
     );
     return {
       candles: [],
@@ -184,7 +184,7 @@ export class OHLCVEngine {
         const result = await this.fetch(token, startTime, endTime, chain, options);
         results.set(token, result);
       } catch (error: unknown) {
-        logger.error(`OHLCV Engine: Failed to fetch ${token.substring(0, 20)}...`, error as Error);
+        logger.error(`OHLCV Engine: Failed to fetch ${token}...`, error as Error);
         results.set(token, {
           candles: [],
           fromCache: false,

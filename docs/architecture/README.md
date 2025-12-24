@@ -19,6 +19,7 @@ This directory contains core architecture documentation, design decisions, and s
 - [OHLCV_ARCHITECTURE.md](./OHLCV_ARCHITECTURE.md) - OHLCV data architecture
 - [OHLCV_TERMINOLOGY.md](./OHLCV_TERMINOLOGY.md) - OHLCV terminology reference
 - [DUCKDB_SCHEMA.md](./DUCKDB_SCHEMA.md) - DuckDB database schema
+- [STORAGE_STRATEGY.md](./STORAGE_STRATEGY.md) - ClickHouse, DuckDB, and materialized view patterns
 - [BUILD_SYSTEM.md](./BUILD_SYSTEM.md) - Build system architecture
 
 ## Implementation Plans

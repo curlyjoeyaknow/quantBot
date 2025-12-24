@@ -168,7 +168,7 @@ export class OhlcvFetchJob {
 
         if (coverage.hasData && coverage.coverageRatio >= this.minCoverageToSkip) {
           logger.debug('Skipping fetch - sufficient coverage exists', {
-            mint: workItem.mint.substring(0, 20),
+            mint: workItem.mint,
             chain: workItem.chain,
             interval: workItem.interval,
             coverageRatio: coverage.coverageRatio,
@@ -202,7 +202,7 @@ export class OhlcvFetchJob {
                 : '5m';
 
       logger.debug('Fetching OHLCV from Birdeye', {
-        mint: workItem.mint.substring(0, 20),
+        mint: workItem.mint,
         chain: workItem.chain,
         interval: workItem.interval,
         birdeyeInterval, // Log the mapped interval
@@ -220,7 +220,7 @@ export class OhlcvFetchJob {
 
       if (candles.length === 0) {
         logger.debug('No candles returned from Birdeye', {
-          mint: workItem.mint.substring(0, 20),
+          mint: workItem.mint,
         });
         return {
           workItem,
@@ -238,7 +238,7 @@ export class OhlcvFetchJob {
       this.failureCount = 0;
 
       logger.info('Successfully fetched and stored OHLCV', {
-        mint: workItem.mint.substring(0, 20),
+        mint: workItem.mint,
         chain: workItem.chain,
         interval: workItem.interval,
         candlesFetched: candles.length,
@@ -257,7 +257,7 @@ export class OhlcvFetchJob {
 
       const errorMessage = error instanceof Error ? error.message : String(error);
       logger.error('Failed to fetch OHLCV', error as Error, {
-        mint: workItem.mint.substring(0, 20),
+        mint: workItem.mint,
         chain: workItem.chain,
         interval: workItem.interval,
         failureCount: this.failureCount,
@@ -360,7 +360,7 @@ export class OhlcvFetchJob {
           logger.error('Worker failed to fetch work item', error as Error, {
             workerId,
             workItemIndex: i,
-            mint: workItem.mint.substring(0, 20),
+            mint: workItem.mint,
           });
           results[i] = {
             workItem,

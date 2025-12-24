@@ -32,6 +32,12 @@ importers:
       '@types/ws':
         specifier: ^8.18.1
         version: 8.18.1
+      ajv:
+        specifier: ^8.17.1
+        version: 8.17.1
+      ajv-formats:
+        specifier: ^3.0.1
+        version: 3.0.1(ajv@8.17.1)
       axios:
         specifier: ^1.13.2
         version: 1.13.2
@@ -617,6 +623,15 @@ importers:
       '@quantbot/utils':
         specifier: workspace:*
         version: link:../utils
+      '@quantbot/workflows':
+        specifier: workspace:*
+        version: link:../workflows
+      ajv:
+        specifier: ^8.17.1
+        version: 8.17.1
+      ajv-formats:
+        specifier: ^3.0.1
+        version: 3.0.1(ajv@8.17.1)
       lru-cache:
         specifier: ^11.0.0
         version: 11.2.4

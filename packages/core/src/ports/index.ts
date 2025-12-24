@@ -52,3 +52,16 @@ export type {
   ExperimentQueryFilter,
   ExperimentQueryResult,
 } from './experiment-repository-port.js';
+export type {
+  SliceExporterPort,
+  SliceExportSpec,
+  SliceManifest,
+  SliceExportResult,
+  ParquetFileMetadata,
+} from './slice-exporter-port.js';
+export type {
+  SliceAnalyzerPort,
+  AnalysisQueryPlan,
+  AnalysisResult,
+  AnalysisResultMetadata,
+} from './slice-analyzer-port.js';

@@ -99,13 +99,13 @@ export class TokenDataRepository {
       );
 
       logger.debug('Upserted OHLCV coverage', {
-        mint: data.mint.substring(0, 20),
+        mint: data.mint,
         interval: data.interval,
         candleCount: data.candleCount,
       });
     } catch (error) {
       logger.error('Failed to upsert OHLCV coverage', error as Error, {
-        mint: data.mint.substring(0, 20),
+        mint: data.mint,
       });
       throw error;
     }
@@ -158,7 +158,7 @@ export class TokenDataRepository {
       };
     } catch (error) {
       logger.error('Failed to get OHLCV coverage', error as Error, {
-        mint: mint.substring(0, 20),
+        mint: mint,
       });
       throw error;
     }
@@ -226,7 +226,7 @@ export class TokenDataRepository {
     // This would query ClickHouse to get actual candle counts and date ranges
     // For now, this is a placeholder - implementation would need ClickHouse client
     logger.debug('Update coverage from ClickHouse not yet implemented', {
-      mint: mint.substring(0, 20),
+      mint: mint,
       chain,
       interval,
     });

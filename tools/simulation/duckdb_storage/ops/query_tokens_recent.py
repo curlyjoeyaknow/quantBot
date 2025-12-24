@@ -18,7 +18,6 @@ class TokenItem(BaseModel):
 
 
 class QueryTokensRecentInput(BaseModel):
-    duckdb_path: str
     max_age_days: int = 90  # Default to 3 months
 
 

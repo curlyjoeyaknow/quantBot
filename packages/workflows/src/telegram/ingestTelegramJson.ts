@@ -326,7 +326,7 @@ export async function ingestTelegramJson(
             level: 'debug',
             message: 'Chain validated via multi-chain metadata',
             context: {
-              address: botData.contractAddress.substring(0, 20),
+              address: botData.contractAddress,
               chainHint: botData.chain || validated.chain,
               actualChain: chain,
               symbol: resolvedMetadata.symbol,
@@ -338,7 +338,7 @@ export async function ingestTelegramJson(
             level: 'warn',
             message: 'No metadata found for EVM address on any chain',
             context: {
-              address: botData.contractAddress.substring(0, 20),
+              address: botData.contractAddress,
               chainHint: chain,
             },
           });

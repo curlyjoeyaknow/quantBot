@@ -53,7 +53,7 @@ export class OhlcvRepository {
       });
 
       logger.debug('Upserted candles', {
-        token: token.substring(0, 20) + '...', // Display only
+        token: token,
         chain,
         interval,
         count: candles.length,
@@ -61,7 +61,7 @@ export class OhlcvRepository {
     } catch (error: unknown) {
       if (process.env.USE_CACHE_ONLY !== 'true') {
         logger.error('Error upserting candles', error as Error, {
-          token: token.substring(0, 20) + '...', // Display only
+          token: token,
         });
         throw error;
       }
@@ -178,7 +178,7 @@ export class OhlcvRepository {
     } catch (error: unknown) {
       if (process.env.USE_CACHE_ONLY !== 'true') {
         logger.error('Error querying candles', error as Error, {
-          token: token.substring(0, 20) + '...', // Display only
+          token: token,
         });
       }
       return [];
@@ -232,7 +232,7 @@ export class OhlcvRepository {
       return data[0]?.count > 0 || false;
     } catch (error: unknown) {
       logger.error('Error checking candles', error as Error, {
-        token: token.substring(0, 20) + '...', // Display only
+        token: token,
       });
       return false;
     }

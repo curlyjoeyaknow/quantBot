@@ -216,7 +216,7 @@ export class CallDataLoader {
       // If still no candles, skip enrichment
       if (candles.length === 0) {
         logger.debug(
-          `[CallDataLoader] No candles found for ${call.tokenAddress.substring(0, 20)}...`
+          `[CallDataLoader] No candles found for ${call.tokenAddress}...`
         );
         return call;
       }

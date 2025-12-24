@@ -12,6 +12,7 @@ export default defineConfig({
     exclude: [
       'node_modules/',
       '.next/',
+      '**/.next/**',
       'dist/',
       'build/',
     ],

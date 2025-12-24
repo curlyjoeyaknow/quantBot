@@ -29,6 +29,8 @@ export default defineConfig({
       'dist',
       '**/node_modules/**',
       '**/dist/**',
+      '**/.next/**',
+      '.next',
       // Exclude stress tests (they have their own config)
       '**/tests/stress/**',
       '**/*.stress.test.ts',

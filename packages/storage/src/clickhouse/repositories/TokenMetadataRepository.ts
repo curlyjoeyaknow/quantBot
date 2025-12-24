@@ -101,13 +101,13 @@ export class TokenMetadataRepository {
       });
 
       logger.debug('Upserted token metadata', {
-        token: tokenAddress.substring(0, 20) + '...', // Display only
+        token: tokenAddress,
         chain,
         timestamp,
       });
     } catch (error: unknown) {
       logger.error('Error upserting token metadata', error as Error, {
-        token: tokenAddress.substring(0, 20) + '...', // Display only
+        token: tokenAddress,
       });
       throw error;
     }
@@ -205,7 +205,7 @@ export class TokenMetadataRepository {
       };
     } catch (error: unknown) {
       logger.error('Error querying token metadata', error as Error, {
-        token: tokenAddress.substring(0, 20) + '...', // Display only
+        token: tokenAddress,
       });
       return null;
     }
@@ -309,7 +309,7 @@ export class TokenMetadataRepository {
       });
     } catch (error: unknown) {
       logger.error('Error querying token metadata history', error as Error, {
-        token: tokenAddress.substring(0, 20) + '...', // Display only
+        token: tokenAddress,
       });
       return [];
     }

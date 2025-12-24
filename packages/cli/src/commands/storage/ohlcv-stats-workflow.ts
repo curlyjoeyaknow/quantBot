@@ -145,10 +145,7 @@ export async function ohlcvStatsWorkflowHandler(
       dateLatest: '',
     });
     for (const token of result.topTokens) {
-      const shortAddress =
-        token.token_address.length > 20
-          ? `${token.token_address.substring(0, 10)}...${token.token_address.substring(token.token_address.length - 8)}`
-          : token.token_address;
+      const shortAddress = token.token_address;
       rows.push({
         section: '',
         label: `  ${shortAddress} (${token.chain})`,

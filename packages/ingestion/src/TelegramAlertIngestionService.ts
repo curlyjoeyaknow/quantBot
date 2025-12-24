@@ -301,7 +301,7 @@ export class TelegramAlertIngestionService {
         if (processedBotMessages < 10) {
           logger.debug('Extracted bot data', {
             hasAddress: !!botData.caAddress,
-            address: botData.caAddress?.substring(0, 20),
+            address: botData.caAddress,
             chain: botData.chain,
             ticker: botData.ticker,
             name: botData.name,
@@ -387,7 +387,7 @@ export class TelegramAlertIngestionService {
         if (processedBotMessages <= 10) {
           logger.info('✅ Extracted alert from bot response', {
             caller: callerName,
-            token: botData.caAddress.substring(0, 20),
+            token: botData.caAddress,
             chain: detectedChain,
             ticker: botData.ticker,
             name: botData.name,
@@ -398,7 +398,7 @@ export class TelegramAlertIngestionService {
         } else {
           logger.debug('Extracted alert from bot response', {
             caller: callerName,
-            token: botData.caAddress.substring(0, 20),
+            token: botData.caAddress,
             ticker: botData.ticker,
             name: botData.name,
           });

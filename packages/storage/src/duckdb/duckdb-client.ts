@@ -8,6 +8,7 @@
 import { PythonEngine, getPythonEngine } from '@quantbot/utils';
 import { logger } from '@quantbot/utils';
 import { z } from 'zod';
+import { join } from 'path';
 
 /**
  * DuckDB operation result schema
@@ -20,10 +21,32 @@ const DuckDBResultSchema = z
   .passthrough();
 
 /**
+ * DuckDB query result schema
+ */
+const DuckDBQueryResultSchema = z.object({
+  columns: z.array(
+    z.object({
+      name: z.string(),
+      type: z.string(),
+    })
+  ),
+  rows: z.array(z.array(z.unknown())),
+});
+
+/**
+ * DuckDB query result type
+ */
+export interface DuckDBQueryResult {
+  columns: Array<{ name: string; type: string }>;
+  rows: unknown[][];
+}
+
+/**
  * DuckDB Client
  * Provides repository-like interface for DuckDB operations
  */
 export class DuckDBClient {
+  [x: string]: unknown;
   private pythonEngine: PythonEngine;
   private dbPath: string;
 
@@ -59,22 +82,100 @@ export class DuckDBClient {
     operation: string,
     params: Record<string, unknown>,
     resultSchema: z.ZodSchema<T>
-  ): Promise<T> {
+  ): Promise<T>;
+  /**
+   * Execute SQL directly (for in-memory or simple operations)
+   */
+  async execute(sql: string): Promise<void>;
+  async execute<T>(
+    scriptPathOrSql: string,
+    operation?: string,
+    params?: Record<string, unknown>,
+    resultSchema?: z.ZodSchema<T>
+  ): Promise<T | void> {
+    // Overload: Direct SQL execution
+    if (operation === undefined) {
+      const sql = scriptPathOrSql;
+      try {
+        await this.pythonEngine.runScript(
+          this.getDirectSqlScriptPath(),
+          {
+            operation: 'execute_sql',
+            'db-path': this.dbPath,
+            sql,
+          },
+          DuckDBResultSchema
+        );
+        return;
+      } catch (error) {
+        logger.error('DuckDB SQL execution failed', error as Error, { sql });
+        throw error;
+      }
+    }
+
+    // Original method: Execute via Python script
     try {
       const result = await this.pythonEngine.runScript(
-        scriptPath,
+        scriptPathOrSql,
         {
-          operation,
+          operation: operation!,
           'db-path': this.dbPath,
-          ...params,
+          ...params!,
         },
-        resultSchema
+        resultSchema!
       );
       return result;
     } catch (error) {
-      logger.error('DuckDB operation failed', error as Error, { operation, scriptPath });
+      logger.error('DuckDB operation failed', error as Error, { operation, scriptPath: scriptPathOrSql });
       throw error;
     }
+  }
+
+  /**
+   * Execute SQL query and return results
+   */
+  async query(sql: string): Promise<DuckDBQueryResult> {
+    try {
+      const result = await this.pythonEngine.runScript(
+        this.getDirectSqlScriptPath(),
+        {
+          operation: 'query_sql',
+          'db-path': this.dbPath,
+          sql,
+        },
+        DuckDBQueryResultSchema
+      );
+      return result;
+    } catch (error) {
+      logger.error('DuckDB query failed', error as Error, { sql });
+      throw error;
+    }
+  }
+
+  /**
+   * Close the database connection
+   */
+  async close(): Promise<void> {
+    try {
+      await this.pythonEngine.runScript(
+        this.getDirectSqlScriptPath(),
+        {
+          operation: 'close',
+          'db-path': this.dbPath,
+        },
+        DuckDBResultSchema
+      );
+    } catch (error) {
+      logger.error('Failed to close DuckDB connection', error as Error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get path to direct SQL execution script
+   */
+  private getDirectSqlScriptPath(): string {
+    return join(process.cwd(), 'tools/storage/duckdb_direct_sql.py');
   }
 
   /**
