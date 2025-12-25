@@ -3,9 +3,10 @@ import type {
   ParquetLayoutSpec,
   RunContext,
   SliceSpec,
-  AnalysisSpec,
-} from './types.js';
-import type { SliceAnalyzer, SliceExporter } from './ports.js';
+  SliceAnalysisSpec,
+  SliceAnalyzer,
+  SliceExporter,
+} from '@quantbot/core';
 
 /**
  * Pure workflow handler:
@@ -17,7 +18,7 @@ export async function exportAndAnalyzeSlice(args: {
   run: RunContext;
   spec: SliceSpec;
   layout: ParquetLayoutSpec;
-  analysis: AnalysisSpec;
+  analysis: SliceAnalysisSpec;
 
   exporter: SliceExporter;
   analyzer: SliceAnalyzer;

@@ -87,7 +87,7 @@ export const SignalConditionSchema = z.object({
    * (e.g., fast EMA vs slow EMA).
    */
   secondaryIndicator: IndicatorNameSchema.optional(),
-  field: z.string().default('value'),
+  field: z.string().optional().default('value'),
   operator: ComparisonOperatorSchema,
   /**
    * Threshold or comparison value. For cross conditions this can be omitted

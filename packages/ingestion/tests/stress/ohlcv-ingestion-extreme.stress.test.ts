@@ -33,9 +33,22 @@ import { join } from 'path';
 import { tmpdir } from 'os';
 import { initClickHouse, closeClickHouse } from '@quantbot/storage';
 import { OhlcvIngestionService } from '../../src/OhlcvIngestionService';
-import { AlertsRepository } from '@quantbot/storage';
 // Import test helpers directly (not exported from main package)
 import { shouldRunTest, TEST_GATES } from '../../../utils/src/test-helpers/test-gating';
+
+// Mock API quota tracking to prevent PostgreSQL connection attempts
+vi.mock('@quantbot/observability', async () => {
+  const actual = await vi.importActual('@quantbot/observability');
+  return {
+    ...actual,
+    recordApiUsage: vi.fn().mockResolvedValue(undefined),
+    checkApiQuotas: vi.fn().mockResolvedValue({
+      birdeye: { service: 'birdeye', limit: 100000, used: 0, remaining: 100000, resetAt: new Date(), warningThreshold: 0.2 },
+      helius: { service: 'helius', limit: 5000000, used: 0, remaining: 5000000, resetAt: new Date(), warningThreshold: 0.2 },
+    }),
+    hasQuotaAvailable: vi.fn().mockResolvedValue(true),
+  };
+});
 
 // Valid mint for testing (Solana wrapped SOL)
 const VALID_MINT = 'So11111111111111111111111111111111111111112';
@@ -267,7 +280,6 @@ describe.skipIf(!shouldRun)(
   'OHLCV Ingestion EXTREME E2E Stress Tests (DuckDB → Birdeye → ClickHouse)',
   () => {
     let service: OhlcvIngestionService;
-    let alertsRepo: AlertsRepository;
     let tempDir: string;
     let testDbPath: string;
     // Track test data for cleanup
@@ -285,9 +297,8 @@ describe.skipIf(!shouldRun)(
         );
       }
 
-      // Initialize service (requires AlertsRepository for constructor)
-      alertsRepo = new AlertsRepository();
-      service = new OhlcvIngestionService(alertsRepo);
+      // Initialize service (no dependencies needed - uses DuckDB for worklist)
+      service = new OhlcvIngestionService();
 
       // Create temp directory for test DuckDB files
       tempDir = mkdtempSync(join(tmpdir(), 'ohlcv-stress-'));

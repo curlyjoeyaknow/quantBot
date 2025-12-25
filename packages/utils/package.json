@@ -29,12 +29,14 @@
     "bs58": "^5.0.0",
     "dotenv": "^17.2.3",
     "execa": "^9.4.0",
+    "js-yaml": "^4.1.1",
     "luxon": "^3.7.2",
     "winston": "^3.18.3",
     "winston-daily-rotate-file": "^5.0.0",
     "zod": "^4.1.13"
   },
   "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
     "@types/luxon": "^3.7.1",
     "@types/node": "^24.10.1",
     "@vitest/coverage-v8": "^4.0.15",
@@ -43,4 +45,3 @@
     "vitest": "^4.0.15"
   }
 }
-

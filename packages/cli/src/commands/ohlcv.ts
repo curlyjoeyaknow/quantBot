@@ -111,6 +111,7 @@ export const analyzeCoverageSchema = z.object({
   minCoverage: z.number().min(0).max(1).default(0.8),
   generateFetchPlan: z.boolean().default(false),
   format: z.enum(['json', 'table', 'csv']).default('table'),
+  timeout: z.number().int().positive().optional(), // Timeout in milliseconds
 });
 
 /**
@@ -133,7 +134,6 @@ export function registerOhlcvCommands(program: Command): void {
   defineCommand(queryCmd, {
     name: 'query',
     packageName: 'ohlcv',
-    validate: (opts) => querySchema.parse(opts),
     onError: die,
   });
 
@@ -151,7 +151,6 @@ export function registerOhlcvCommands(program: Command): void {
   defineCommand(backfillCmd, {
     name: 'backfill',
     packageName: 'ohlcv',
-    validate: (opts) => backfillSchema.parse(opts),
     onError: die,
   });
 
@@ -161,12 +160,12 @@ export function registerOhlcvCommands(program: Command): void {
     .description('Check data coverage for tokens')
     .option('--mint <address>', 'Token mint address')
     .option('--interval <interval>', 'Candle interval')
-    .option('--format <format>', 'Output format', 'table');
+    .option('--format <format>', 'Output format', 'table')
+    .option('--output-file <path>', 'Write output to file (JSON/CSV/table format)');
 
   defineCommand(coverageCmd, {
     name: 'coverage',
     packageName: 'ohlcv',
-    validate: (opts) => coverageSchema.parse(opts),
     onError: die,
   });
 
@@ -185,7 +184,9 @@ export function registerOhlcvCommands(program: Command): void {
     .option('--caller <name>', 'Filter by caller (for caller analysis)')
     .option('--min-coverage <ratio>', 'Minimum coverage threshold (0-1)')
     .option('--generate-fetch-plan', 'Generate fetch plan (for caller analysis)')
-    .option('--format <format>', 'Output format', 'table');
+    .option('--format <format>', 'Output format', 'table')
+    .option('--output-file <path>', 'Write output to file (JSON/CSV/table format)')
+    .option('--timeout <ms>', 'Timeout in milliseconds (default: 900000 = 15 minutes)');
 
   defineCommand(analyzeCoverageCmd, {
     name: 'analyze-coverage',
@@ -198,8 +199,8 @@ export function registerOhlcvCommands(program: Command): void {
           ? coerceBoolean(raw.generateFetchPlan, 'generate-fetch-plan')
           : false,
       minCoverage: raw.minCoverage ? coerceNumber(raw.minCoverage, 'min-coverage') : 0.8,
+      timeout: raw.timeout ? coerceNumber(raw.timeout, 'timeout') : undefined,
     }),
-    validate: (opts) => analyzeCoverageSchema.parse(opts),
     onError: die,
   });
 }

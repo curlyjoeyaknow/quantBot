@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getDuckDBClient } from '@quantbot/storage';
+import { getDuckDBPath } from '@quantbot/utils';
 import { join } from 'path';
 import { z } from 'zod';
 
@@ -38,9 +39,10 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '50', 10);
     const offset = parseInt(searchParams.get('offset') || '0', 10);
 
-    const dbPath = process.env.DUCKDB_PATH || 'data/result.duckdb';
+    const dbPath = getDuckDBPath('data/tele.duckdb');
     const client = getDuckDBClient(dbPath);
-    const scriptPath = join(process.cwd(), 'tools/storage/duckdb_simulation_runs.py');
+    // Use relative path - PythonEngine will resolve from workspace root
+    const scriptPath = 'tools/storage/duckdb_simulation_runs.py';
 
     // Build query parameters
     const params: Record<string, unknown> = {

@@ -121,9 +121,14 @@ export class BirdeyeClient extends BaseApiClient {
       );
     }
 
+    // All keys share the same account, so total credits = 20M (shared pool)
+    const totalCreditsFormatted = this.TOTAL_CREDITS >= 1_000_000
+      ? `~${(this.TOTAL_CREDITS / 1_000_000).toFixed(2)}M`
+      : `~${(this.TOTAL_CREDITS / 1_000).toFixed(2)}K`;
+
     logger.info('Loaded Birdeye API keys', {
       keyCount: keys.length,
-      totalCredits: '~3.18M',
+      totalCredits: totalCreditsFormatted,
       keysFound: keys.length > 0 ? `${keys.length} key(s)` : 'none',
     });
     if (keys.length > 0) {

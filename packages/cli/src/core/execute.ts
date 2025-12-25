@@ -14,6 +14,8 @@
 import { ValidationError, ConfigurationError } from '@quantbot/utils';
 import { validateAndCoerceArgs } from './validation-pipeline.js';
 import { formatOutput } from './output-formatter.js';
+import { writeFile, mkdir } from 'fs/promises';
+import { dirname } from 'path';
 import { handleError } from './error-handler.js';
 import { CommandContext } from './command-context.js';
 import type { CommandDefinition } from '../types/index.js';
@@ -473,13 +475,21 @@ export async function execute(
     const ctx = new CommandContext();
     await ctx.ensureInitialized();
 
-    // 5. Extract format (if present) before calling handler
-    // Format is CLI concern, not handler concern
+    // 5. Extract format and output file (if present) before calling handler
+    // Format and output file are CLI concerns, not handler concerns
     const format = (args as { format?: OutputFormat }).format ?? 'table';
+    const outputFile = (args as { outputFile?: string; 'output-file'?: string }).outputFile ?? 
+                      (args as { outputFile?: string; 'output-file'?: string })['output-file'];
     const handlerArgs = { ...(args as Record<string, unknown>) };
-    // Remove format from handler args if it exists
+    // Remove format and outputFile from handler args if they exist
     if ('format' in handlerArgs) {
       delete (handlerArgs as { format?: OutputFormat }).format;
+    }
+    if ('outputFile' in handlerArgs) {
+      delete (handlerArgs as { outputFile?: string }).outputFile;
+    }
+    if ('output-file' in handlerArgs) {
+      delete (handlerArgs as { 'output-file'?: string })['output-file'];
     }
 
     // 6. Stop spinner if verbose mode is enabled (to avoid interfering with verbose output)
@@ -563,7 +573,21 @@ export async function execute(
     progress.updateMessage('Formatting output...');
     const output = formatOutput(result, format);
     progress.stop(); // Stop spinner before printing output
-    console.log(output);
+    
+    // 9. Write to file if --output-file is specified
+    if (outputFile) {
+      // Ensure output directory exists
+      const outputDir = dirname(outputFile);
+      if (outputDir !== '.') {
+        await mkdir(outputDir, { recursive: true });
+      }
+      
+      // Write output to file
+      await writeFile(outputFile, output, 'utf-8');
+      console.log(`Output written to: ${outputFile}`);
+    } else {
+      console.log(output);
+    }
   } catch (error) {
     progress.fail('Error occurred');
     // 9. Log error contract to artifacts (if applicable)

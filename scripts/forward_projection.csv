@@ -15,36 +15,36 @@ Average Trades Per Week,86.18
 Trade Frequency Trend,-3.59 trades/week change
 ,
 EXPECTED OUTCOME (50th Percentile),
-Expected Portfolio Value,9.6236
-Expected PNL (%),186.55%
-Expected Return Multiplier,2.87x
+Expected Portfolio Value,9.6910
+Expected PNL (%),188.56%
+Expected Return Multiplier,2.89x
 ,
 CONFIDENCE INTERVALS,
 Percentile,Portfolio Value,PNL (%),Return Multiplier
-99th,1.8011,-46.37%,0.54x
-95th,2.9664,-11.67%,0.88x
-75th,6.0411,79.88%,1.80x
-50th,9.6236,186.55%,2.87x
-25th,15.3699,357.65%,4.58x
-5th,28.9572,762.22%,8.62x
-1th,44.3886,1221.70%,13.22x
+99th,1.7606,-47.58%,0.52x
+95th,3.0217,-10.03%,0.90x
+75th,6.0583,80.39%,1.80x
+50th,9.6910,188.56%,2.89x
+25th,15.4129,358.93%,4.59x
+5th,28.8362,758.61%,8.59x
+1th,45.5012,1254.82%,13.55x
 ,
 PROBABILITY ANALYSIS,
-Probability of Positive Return,93.08%
-Probability of 2x or More,69.99%
-Probability of 10x or More,3.01%
-Probability of Loss,6.92%
+Probability of Positive Return,93.38%
+Probability of 2x or More,69.92%
+Probability of 10x or More,3.08%
+Probability of Loss,6.62%
 ,
 STRESS TEST (Worst Case Scenarios),
 Starting Portfolio Value,3.3585
 ,
 Worst 5% Case,
-  Portfolio Value,2.9664
-  Return Multiplier,0.88x
-  PNL (%),-11.67%
+  Portfolio Value,3.0217
+  Return Multiplier,0.90x
+  PNL (%),-10.03%
 ,
 Worst 1% Case,
-  Portfolio Value,1.8011
-  Return Multiplier,0.54x
-  PNL (%),-46.37%
+  Portfolio Value,1.7606
+  Return Multiplier,0.52x
+  PNL (%),-47.58%
 Starting Portfolio Value,3.3585

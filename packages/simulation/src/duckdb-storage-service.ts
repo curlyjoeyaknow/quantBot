@@ -66,6 +66,7 @@ export const CallsQueryResultSchema = z.object({
         mint: z.string(),
         alert_timestamp: z.string(), // ISO format timestamp
         caller_name: z.string().nullish(), // Can be string, null, or undefined
+        price_usd: z.number().positive().nullable().optional(), // Entry price from user_calls_d
       })
     )
     .optional(),

@@ -1,6 +1,6 @@
 /**
  * Lab Handler Edge Cases Tests
- * 
+ *
  * Tests edge cases and error scenarios for runLabHandler:
  * - Invalid preset names
  * - Missing presets
@@ -34,7 +34,7 @@ describe('runLabHandler - Edge Cases', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    
+
     // Create a minimal mock context
     mockCtx = {
       ensureInitialized: vi.fn().mockResolvedValue(undefined),
@@ -314,10 +314,10 @@ describe('runLabHandler - Edge Cases', () => {
             queryCalls: vi.fn().mockResolvedValue({
               success: true,
               calls: [
-                { 
-                  mint: 'test', 
-                  alert_timestamp: DateTime.now().toISO() // Use current date to pass date filter
-                }
+                {
+                  mint: 'test',
+                  alert_timestamp: DateTime.now().toISO(), // Use current date to pass date filter
+                },
               ],
             }),
           }),
@@ -345,7 +345,9 @@ describe('runLabHandler - Edge Cases', () => {
       const failedResults = result.results.filter((r: any) => !r.ok);
       expect(failedResults.length).toBeGreaterThan(0);
       // Check that at least one has an error message (the error from getCandles)
-      expect(failedResults.some((r: any) => r.errorMessage && r.errorCode === 'SIMULATION_ERROR')).toBe(true);
+      expect(
+        failedResults.some((r: any) => r.errorMessage && r.errorCode === 'SIMULATION_ERROR')
+      ).toBe(true);
     });
   });
 
@@ -411,4 +413,3 @@ describe('runLabHandler - Edge Cases', () => {
     });
   });
 });
-

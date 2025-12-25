@@ -1,6 +1,6 @@
 /**
  * Slice Commands Handler Signature Tests
- * 
+ *
  * Tests that handler signatures match the CommandDefinition interface:
  * - Handler accepts CommandContext | unknown
  * - Handler can be called with plain objects (REPL-friendly)
@@ -45,7 +45,7 @@ describe('Slice Commands - Handler Signature', () => {
 
     it('should allow handlers to be called with plain objects (REPL-friendly)', async () => {
       const exportCommand = commandRegistry.getCommand('slices', 'export');
-      
+
       if (!exportCommand) {
         throw new Error('Export command not found');
       }
@@ -63,9 +63,7 @@ describe('Slice Commands - Handler Signature', () => {
       };
 
       // Should be callable with plain objects
-      await expect(
-        exportCommand.handler(mockArgs, mockCtx)
-      ).resolves.toBeDefined();
+      await expect(exportCommand.handler(mockArgs, mockCtx)).resolves.toBeDefined();
     });
   });
 
@@ -73,7 +71,8 @@ describe('Slice Commands - Handler Signature', () => {
     it('should allow handlers to be imported and called directly', async () => {
       // This test verifies handlers can be used outside CLI infrastructure
       const { exportSliceHandler } = await import('../../../src/handlers/slices/export-slice.js');
-      const { validateSliceHandler } = await import('../../../src/handlers/slices/validate-slice.js');
+      const { validateSliceHandler } =
+        await import('../../../src/handlers/slices/validate-slice.js');
 
       const mockCtx = {
         ensureInitialized: vi.fn().mockResolvedValue(undefined),

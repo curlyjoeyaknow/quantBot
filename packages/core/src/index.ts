@@ -44,6 +44,26 @@ export * from './artifacts.js'; // Legacy artifact system
 export * from './artifacts/index.js'; // Run manifest and hashing
 
 // ============================================================================
+// Slice Types (moved from workflows to break circular dependency)
+// ============================================================================
+
+// Export slice types with explicit names to avoid conflicts with ports
+export type {
+  SliceChain,
+  SliceGranularity,
+  Compression,
+  ParquetPath,
+  RunContext,
+  SliceSpec,
+  ParquetLayoutSpec,
+  SliceManifestV1,
+  SliceAnalysisSpec,
+  SliceAnalysisResult,
+  ExportAndAnalyzeResult,
+} from './slices/types.js';
+export type { SliceExporter, SliceAnalyzer, SliceValidator } from './slices/ports.js';
+
+// ============================================================================
 // Canonical Data
 // ============================================================================
 

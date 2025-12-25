@@ -1,6 +1,6 @@
 /**
  * Validate Slice Handler Edge Cases Tests
- * 
+ *
  * Tests edge cases and error scenarios for validateSliceHandler:
  * - Invalid file paths
  * - Malformed JSON
@@ -31,7 +31,7 @@ describe('validateSliceHandler - Edge Cases', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    
+
     mockValidator = {
       validate: vi.fn().mockResolvedValue({
         ok: true,
@@ -157,7 +157,7 @@ describe('validateSliceHandler - Edge Cases', () => {
         manifest: '/path/manifest.json',
       };
 
-      const result = await validateSliceHandler(args, mockCtx) as any;
+      const result = (await validateSliceHandler(args, mockCtx)) as any;
       expect(result.ok).toBe(false);
       expect(result.errors).toContain('Missing required field: version');
     });
@@ -179,7 +179,7 @@ describe('validateSliceHandler - Edge Cases', () => {
         manifest: '/path/manifest.json',
       };
 
-      const result = await validateSliceHandler(args, mockCtx) as any;
+      const result = (await validateSliceHandler(args, mockCtx)) as any;
       expect(result.ok).toBe(true);
       expect(result.warnings).toContain('Deprecated field: oldField');
     });
@@ -254,7 +254,7 @@ describe('validateSliceHandler - Edge Cases', () => {
         manifest: '/path/manifest.json',
       };
 
-      const result = await validateSliceHandler(args, mockCtx) as any;
+      const result = (await validateSliceHandler(args, mockCtx)) as any;
       expect(result.ok).toBe(false);
       expect(result.errors).toEqual(['Error 1', 'Error 2']);
     });
@@ -294,4 +294,3 @@ describe('validateSliceHandler - Edge Cases', () => {
     });
   });
 });
-

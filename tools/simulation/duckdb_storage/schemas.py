@@ -60,6 +60,7 @@ class QueryCallsInput(BaseModel):
 class CallItem(BaseModel):
     mint: str
     alert_timestamp: str
+    price_usd: Optional[float] = None  # Entry price from user_calls_d
 
 
 class QueryCallsOutput(BaseResponse):

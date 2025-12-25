@@ -13,8 +13,7 @@ import AjvClass from 'ajv';
 import addFormats from 'ajv-formats';
 import { logger } from '@quantbot/utils';
 import { DuckDBClient } from '../duckdb/duckdb-client.js';
-import type { SliceValidator } from '@quantbot/workflows';
-import type { SliceManifestV1 } from '@quantbot/workflows';
+import type { SliceValidator, SliceManifestV1 } from '@quantbot/core';
 
 // Load manifest schema from workflows package
 // Using import.meta.url to get current file location, then navigate to workspace root

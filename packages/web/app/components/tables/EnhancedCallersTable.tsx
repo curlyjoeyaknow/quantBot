@@ -118,11 +118,31 @@ export function EnhancedCallersTable({ callers, isLoading = false }: EnhancedCal
   }
 
   if (callers.length === 0) {
-    return <p className="text-muted-foreground">No caller data available</p>;
+    return (
+      <div className="text-center py-8">
+        <p className="text-muted-foreground">No caller data available</p>
+        <p className="text-sm text-muted-foreground mt-2">
+          Make sure you have ingested call data using the CLI ingestion commands.
+        </p>
+      </div>
+    );
   }
+
+  // Check if all callers have the same avgMultiple (likely data issue)
+  const uniqueMultiples = new Set(callers.map(c => c.avgMultiple.toFixed(2)));
+  const hasDataIssue = uniqueMultiples.size === 1 && callers.length > 1;
 
   return (
     <div className="space-y-4">
+      {hasDataIssue && (
+        <div className="rounded-lg border border-yellow-500/50 bg-yellow-500/10 p-4">
+          <p className="text-sm text-yellow-800 dark:text-yellow-200">
+            ⚠️ Warning: All callers show the same average multiple ({callers[0]?.avgMultiple.toFixed(2)}x). 
+            This may indicate missing or incomplete data. Check that calls have been properly ingested with ATH data.
+          </p>
+        </div>
+      )}
+      
       <div className="flex items-center justify-between gap-4">
         <div className="flex-1 max-w-md">
           <SearchInput
@@ -247,4 +267,3 @@ export function EnhancedCallersTable({ callers, isLoading = false }: EnhancedCal
     </div>
   );
 }
-

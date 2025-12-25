@@ -5,8 +5,7 @@
  */
 
 import { getDuckDBClient } from '@quantbot/storage';
-import { NotFoundError, ApiError } from '@quantbot/utils';
-import { join } from 'path';
+import { NotFoundError, ApiError, getDuckDBPath } from '@quantbot/utils';
 import { z } from 'zod';
 
 const SimulationRunSchema = z.object({
@@ -77,9 +76,10 @@ export async function getSimulationRuns(
   }
 ): Promise<SimulationRun[]> {
   try {
-    const dbPath = process.env.DUCKDB_PATH || 'data/result.duckdb';
+    const dbPath = getDuckDBPath('data/tele.duckdb');
     const client = getDuckDBClient(dbPath);
-    const scriptPath = join(process.cwd(), 'tools/storage/duckdb_simulation_runs.py');
+    // Use relative path - PythonEngine will resolve from workspace root
+    const scriptPath = 'tools/storage/duckdb_simulation_runs.py';
 
     const params: Record<string, unknown> = {
       limit: options?.limit || 50,
@@ -109,9 +109,10 @@ export async function getSimulationRuns(
 
 export async function getSimulationRun(runId: string): Promise<SimulationRunDetail> {
   try {
-    const dbPath = process.env.DUCKDB_PATH || 'data/result.duckdb';
+    const dbPath = getDuckDBPath('data/tele.duckdb');
     const client = getDuckDBClient(dbPath);
-    const scriptPath = join(process.cwd(), 'tools/storage/duckdb_simulation_runs.py');
+    // Use relative path - PythonEngine will resolve from workspace root
+    const scriptPath = 'tools/storage/duckdb_simulation_runs.py';
 
     const RunDetailSchema = SimulationRunSchema.extend({
       strategy_config: z.record(z.string(), z.unknown()),

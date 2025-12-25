@@ -1,6 +1,6 @@
 /**
  * Export Slice Handler Edge Cases Tests
- * 
+ *
  * Tests edge cases and error scenarios for exportSliceHandler:
  * - Invalid context
  * - Missing required args
@@ -29,7 +29,7 @@ describe('exportSliceHandler - Edge Cases', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    
+
     mockCtx = {
       ensureInitialized: vi.fn().mockResolvedValue(undefined),
     } as unknown as CommandContext;
@@ -81,7 +81,7 @@ describe('exportSliceHandler - Edge Cases', () => {
       };
 
       await exportSliceHandler(args, mockCtx);
-      
+
       const callArgs = vi.mocked(exportAndAnalyzeSlice).mock.calls[0]?.[0];
       expect(callArgs?.spec.tokenIds).toBeUndefined();
     });
@@ -97,7 +97,7 @@ describe('exportSliceHandler - Edge Cases', () => {
       };
 
       await exportSliceHandler(args, mockCtx);
-      
+
       const callArgs = vi.mocked(exportAndAnalyzeSlice).mock.calls[0]?.[0];
       expect(callArgs?.spec.tokenIds).toEqual(['So11111111111111111111111111111111111111112']);
     });
@@ -108,12 +108,13 @@ describe('exportSliceHandler - Edge Cases', () => {
         chain: 'sol',
         from: '2025-12-01',
         to: '2025-12-02',
-        tokens: 'So11111111111111111111111111111111111111112, EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+        tokens:
+          'So11111111111111111111111111111111111111112, EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
         outputDir: './slices',
       };
 
       await exportSliceHandler(args, mockCtx);
-      
+
       const callArgs = vi.mocked(exportAndAnalyzeSlice).mock.calls[0]?.[0];
       expect(callArgs?.spec.tokenIds).toEqual([
         'So11111111111111111111111111111111111111112',
@@ -132,7 +133,7 @@ describe('exportSliceHandler - Edge Cases', () => {
       };
 
       await exportSliceHandler(args, mockCtx);
-      
+
       const callArgs = vi.mocked(exportAndAnalyzeSlice).mock.calls[0]?.[0];
       expect(callArgs?.spec.tokenIds).toEqual(['token1', 'token2', 'token3']);
     });
@@ -149,7 +150,7 @@ describe('exportSliceHandler - Edge Cases', () => {
       };
 
       await exportSliceHandler(args, mockCtx);
-      
+
       const callArgs = vi.mocked(exportAndAnalyzeSlice).mock.calls[0]?.[0];
       expect(callArgs?.analysis.sql).toBe('SELECT COUNT(*) as total_rows FROM slice');
     });
@@ -166,7 +167,7 @@ describe('exportSliceHandler - Edge Cases', () => {
       };
 
       await exportSliceHandler(args, mockCtx);
-      
+
       const callArgs = vi.mocked(exportAndAnalyzeSlice).mock.calls[0]?.[0];
       expect(callArgs?.analysis.sql).toBe(customSQL);
     });
@@ -183,7 +184,7 @@ describe('exportSliceHandler - Edge Cases', () => {
       };
 
       await exportSliceHandler(args, mockCtx);
-      
+
       const callArgs = vi.mocked(exportAndAnalyzeSlice).mock.calls[0]?.[0];
       expect(callArgs?.spec.timeRange.startIso).toBe('2025-12-01T00:00:00Z');
       expect(callArgs?.spec.timeRange.endIso).toBe('2025-12-02T23:59:59Z');
@@ -201,7 +202,7 @@ describe('exportSliceHandler - Edge Cases', () => {
       };
 
       await exportSliceHandler(args, mockCtx);
-      
+
       const callArgs = vi.mocked(exportAndAnalyzeSlice).mock.calls[0]?.[0];
       expect(callArgs?.layout.baseUri).toBe('file://./slices');
     });
@@ -216,7 +217,7 @@ describe('exportSliceHandler - Edge Cases', () => {
       };
 
       await exportSliceHandler(args, mockCtx);
-      
+
       const callArgs = vi.mocked(exportAndAnalyzeSlice).mock.calls[0]?.[0];
       expect(callArgs?.layout.baseUri).toBe('file:///tmp/slices');
     });
@@ -234,10 +235,10 @@ describe('exportSliceHandler - Edge Cases', () => {
 
       await exportSliceHandler(args, mockCtx);
       await exportSliceHandler(args, mockCtx);
-      
+
       const call1 = vi.mocked(exportAndAnalyzeSlice).mock.calls[0]?.[0];
       const call2 = vi.mocked(exportAndAnalyzeSlice).mock.calls[1]?.[0];
-      
+
       expect(call1?.run.runId).not.toBe(call2?.run.runId);
     });
 
@@ -251,7 +252,7 @@ describe('exportSliceHandler - Edge Cases', () => {
       };
 
       await exportSliceHandler(args, mockCtx);
-      
+
       const callArgs = vi.mocked(exportAndAnalyzeSlice).mock.calls[0]?.[0];
       expect(callArgs?.run.runId).toMatch(/^slice_\d+_[a-z0-9]+$/);
     });
