@@ -24,9 +24,9 @@
  */
 
 import { z } from 'zod';
- 
+
 import { DateTime } from 'luxon';
- 
+
 import { ValidationError, ConfigurationError } from '@quantbot/utils';
 import type { WorkflowContext } from '../types.js';
 import type { SimulationConfig, SimulationOutput } from '@quantbot/simulation';

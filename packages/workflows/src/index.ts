@@ -119,7 +119,11 @@ export { createExperimentContext } from './research/context.js';
 export type { ExperimentContextConfig } from './research/context.js';
 
 // Slice Export and Analysis
+// Types moved to @quantbot/core - re-export for backward compatibility
 export * from './slices/types.js';
 export * from './slices/ports.js';
 export { exportAndAnalyzeSlice } from './slices/exportAndAnalyzeSlice.js';
-export type { SliceValidator } from './slices/ports.js';
+export { exportSlicesForAlerts } from './slices/exportSlicesForAlerts.js';
+export type { ExportSlicesForAlertsSpec } from './slices/exportSlicesForAlerts.js';
+// Ports are also in core, but we keep local definitions for now
+export type { SliceExporter, SliceAnalyzer, SliceValidator } from './slices/ports.js';

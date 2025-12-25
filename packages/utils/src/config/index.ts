@@ -107,3 +107,7 @@ export function getBirdeyeConfig(): BirdeyeConfig {
     baseUrl: BIRDEYE_BASE_URL || 'https://public-api.birdeye.so',
   };
 }
+
+// Re-export YAML config utilities
+export { loadConfigFromYaml, getDuckDBPath, clearConfigCache } from './yaml-config.js';
+export type { AppConfig } from './yaml-config.js';

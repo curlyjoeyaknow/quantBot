@@ -2,11 +2,55 @@
 
 > **Project roadmap and task tracking**
 
-Last updated: 2025-01-24 (Recent: aggregateCandles implementation, API package fixes, DataSnapshotService context fix)
+Last updated: 2025-01-24 (Recent: Slice Export & Analyze workflow implementation, aggregateCandles implementation, API package fixes)
 
 ---
 
 ## 🔥 Active Development
+
+### Slice Export & Analyze Workflow
+
+- [x] **Phase 0: Foundation**
+  - [x] SliceValidator port interface (`packages/workflows/src/slices/ports.ts`)
+  - [x] Handler purity ESLint rules (forbid fs/duckdb/clickhouse imports in workflows)
+  - [x] Manifest version gate in analyzer (fail loud on unknown versions)
+  - [x] SliceValidator adapter implementation (AJV schema validation + file checks)
+
+- [x] **Phase 1: Core Implementation**
+  - [x] Pure workflow handler (`exportAndAnalyzeSlice`)
+  - [x] ClickHouse → Parquet exporter adapter (`candles_1m` dataset)
+  - [x] DuckDB → Analysis adapter (SQL queries)
+  - [x] Integration tests with real ClickHouse data
+  - [x] Input validation (time range, max 90 days, token format)
+
+- [x] **Phase 2: CLI Integration**
+  - [x] CLI command definition (`quantbot slices export`)
+  - [x] CLI handler implementation
+  - [x] Command registration
+  - [x] CLI validation command (`quantbot slices validate`)
+
+- [ ] **Phase 3: Error Handling & Robustness**
+  - [ ] Comprehensive error handling (ClickHouse retries, timeouts, empty results)
+  - [ ] End-to-end test for full export+analyze pipeline
+  - [ ] Empty result set handling improvements
+
+- [ ] **Phase 4: Dataset Expansion**
+  - [ ] Dataset mapping registry for multiple datasets
+  - [ ] `candles_5m` dataset support
+  - [ ] Conditional `indicators_1m` support (if canonical in ClickHouse)
+
+- [ ] **Phase 5: Analysis Enhancements**
+  - [ ] Analysis result storage (Parquet/CSV output)
+  - [ ] Named analysis plans registry
+
+- [ ] **Phase 6: Performance & Scaling**
+  - [ ] Date-based partitioning (one Parquet file per day)
+  - [ ] Chunking within day if single day is too big (token buckets or time sub-windows)
+  - [ ] Compression support (snappy, zstd, gzip) - after file splitting proven
+
+- [ ] **Phase 7: Developer Experience**
+  - [ ] Slice comparison tool CLI command
+  - [ ] Comprehensive documentation (README, guides, architecture)
 
 ### Architecture Enforcement
 
@@ -103,6 +147,19 @@ Last updated: 2025-01-24 (Recent: aggregateCandles implementation, API package f
 ## ✅ Completed
 
 ### 2025-01-24
+
+- [x] **Slice Export & Analyze Workflow - Phase 0-2 Complete**
+  - [x] Implemented pure workflow handler `exportAndAnalyzeSlice` with clean architecture
+  - [x] Created ClickHouse → Parquet exporter adapter for `candles_1m` dataset
+  - [x] Created DuckDB analyzer adapter with SQL query support
+  - [x] Added SliceValidator port and adapter (AJV schema validation + file checks)
+  - [x] Implemented handler purity ESLint rules (forbid fs/duckdb/clickhouse imports)
+  - [x] Added manifest version gate in analyzer
+  - [x] Created integration tests with real ClickHouse data
+  - [x] Added input validation (time range, max 90 days, token format)
+  - [x] Implemented CLI commands: `quantbot slices export` and `quantbot slices validate`
+  - [x] All core functionality working, committed to `feature/slice-export-analyze` branch
+  - [ ] Next: Error handling, E2E tests, dataset registry, multi-file partitioning
 
 - [x] **Fixed API package build errors**
   - Added missing `@quantbot/observability` dependency

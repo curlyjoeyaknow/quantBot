@@ -12,9 +12,9 @@
  */
 
 import { z } from 'zod';
- 
+
 import { DateTime } from 'luxon';
- 
+
 import { ValidationError, ConfigurationError } from '@quantbot/utils';
 import type { WorkflowContext, CallRecord } from '../types.js';
 
@@ -78,7 +78,8 @@ export async function createQueryCallsDuckdbContext(
   const { PythonEngine } = await import('@quantbot/utils');
 
   const baseContext = createProductionContext();
-  const dbPath = duckdbPath || process.env.DUCKDB_PATH || 'data/tele.duckdb';
+  const { getDuckDBPath } = await import('@quantbot/utils');
+  const dbPath = duckdbPath || getDuckDBPath('data/tele.duckdb');
   const pythonEngine = new PythonEngine();
   const duckdbStorage = new DuckDBStorageService(pythonEngine);
 

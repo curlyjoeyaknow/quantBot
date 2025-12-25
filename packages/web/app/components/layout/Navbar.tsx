@@ -35,11 +35,20 @@ export function Navbar() {
               <Link href="/callers" className={navLinkClass('/callers')}>
                 Callers
               </Link>
+              <Link href="/tokens" className={navLinkClass('/tokens')}>
+                Tokens
+              </Link>
               <Link href="/simulations" className={navLinkClass('/simulations')}>
                 Simulations
               </Link>
               <Link href="/analytics" className={navLinkClass('/analytics')}>
                 Analytics
+              </Link>
+              <Link href="/storage" className={navLinkClass('/storage')}>
+                Storage
+              </Link>
+              <Link href="/lab" className={navLinkClass('/lab')}>
+                Lab
               </Link>
             </div>
           </div>

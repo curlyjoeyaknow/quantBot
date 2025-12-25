@@ -37,6 +37,10 @@ export interface LabRunResult {
     maxPnl?: number;
     totalTrades: number;
     winRate?: number;
+    successRate?: number;
+    failureRate?: number;
+    profitableCalls?: number;
+    losingCalls?: number;
   };
 }
 
@@ -50,14 +54,20 @@ export interface LabRunResult {
  * - undefined groups → defaults to undefined (not [] to avoid type issues)
  * - nested groups are recursively normalized
  */
-function normalizeSignalGroup(group: { logic?: 'AND' | 'OR'; conditions?: unknown[]; groups?: unknown[]; id?: string }): SignalGroup {
+function normalizeSignalGroup(group: {
+  logic?: 'AND' | 'OR';
+  conditions?: unknown[];
+  groups?: unknown[];
+  id?: string;
+}): SignalGroup {
   return {
     ...group,
     logic: (group.logic ?? 'AND') as 'AND' | 'OR',
     conditions: group.conditions ?? [],
-    groups: group.groups && group.groups.length > 0 
-      ? group.groups.map((g) => normalizeSignalGroup(g as typeof group))
-      : undefined,
+    groups:
+      group.groups && group.groups.length > 0
+        ? group.groups.map((g) => normalizeSignalGroup(g as typeof group))
+        : undefined,
   } as SignalGroup;
 }
 
@@ -187,13 +197,9 @@ export async function runLabHandler(args: LabRunArgs, ctx: CommandContext): Prom
       const fromWindow = callDate.minus({ minutes: args.preWindow });
       const toWindow = callDate.plus({ minutes: args.postWindow });
 
-      const candles = await storageEngine.getCandles(
-        call.mint,
-        'solana',
-        fromWindow,
-        toWindow,
-        { interval: '5m' }
-      );
+      const candles = await storageEngine.getCandles(call.mint, 'solana', fromWindow, toWindow, {
+        interval: '5m',
+      });
 
       if (candles.length === 0) {
         results.push({
@@ -226,7 +232,13 @@ export async function runLabHandler(args: LabRunArgs, ctx: CommandContext): Prom
 
       // Calculate PnL multiplier (finalPnl is already a multiplier where 1 = break even)
       const pnlMultiplier = simResult.finalPnl;
-      const trades = simResult.events.filter((e) => e.type === 'entry' || e.type === 'stop_loss' || e.type === 'target_hit' || e.type === 'final_exit').length;
+      const trades = simResult.events.filter(
+        (e) =>
+          e.type === 'entry' ||
+          e.type === 'stop_loss' ||
+          e.type === 'target_hit' ||
+          e.type === 'final_exit'
+      ).length;
 
       callsSucceeded++;
       pnlValues.push(pnlMultiplier);
@@ -266,19 +278,26 @@ export async function runLabHandler(args: LabRunArgs, ctx: CommandContext): Prom
         successfulResults.length
       : undefined;
 
+  // For table format, return a more compact structure
+  // The executor will handle formatting based on the format option
   return {
     success: true,
     callsSimulated: calls.length,
     callsSucceeded,
     callsFailed,
-    results,
+    results, // Full results array (can be large)
     summary: {
       avgPnl,
       minPnl,
       maxPnl,
       totalTrades,
       winRate,
+      // Add percentage stats for better readability
+      successRate: callsSucceeded / calls.length,
+      failureRate: callsFailed / calls.length,
+      // Add PnL distribution stats
+      profitableCalls: successfulResults.filter((r) => (r.pnlMultiplier ?? 0) > 1).length,
+      losingCalls: successfulResults.filter((r) => (r.pnlMultiplier ?? 0) <= 1).length,
     },
   };
 }
-

@@ -21,6 +21,7 @@ export type CallRecord = {
   caller: string;
   mint: string;
   createdAt: DateTime;
+  price_usd?: number; // Entry price from user_calls_d table (optional, may not be available for all calls)
 };
 
 export type SimulationEngineResult = {

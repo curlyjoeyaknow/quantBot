@@ -16,6 +16,7 @@
     "test": "vitest"
   },
   "dependencies": {
+    "@quantbot/api-clients": "workspace:*",
     "@quantbot/core": "workspace:*",
     "@quantbot/utils": "workspace:*",
     "@quantbot/storage": "workspace:*",

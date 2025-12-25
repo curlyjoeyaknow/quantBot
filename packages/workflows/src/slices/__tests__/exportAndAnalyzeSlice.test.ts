@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { exportAndAnalyzeSlice } from '../exportAndAnalyzeSlice.js';
-import type { SliceExporter, SliceAnalyzer } from '../ports.js';
-import type { SliceManifestV1 } from '../types.js';
+import type { SliceExporter, SliceAnalyzer, SliceManifestV1 } from '@quantbot/core';
 
 function makeStubManifest(overrides: Partial<SliceManifestV1> = {}): SliceManifestV1 {
   const base: SliceManifestV1 = {

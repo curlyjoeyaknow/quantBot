@@ -26,6 +26,8 @@ export { OhlcvRepository } from './clickhouse/repositories/OhlcvRepository.js';
 export { IndicatorsRepository } from './clickhouse/repositories/IndicatorsRepository.js';
 export { TokenMetadataRepository } from './clickhouse/repositories/TokenMetadataRepository.js';
 export { SimulationEventsRepository } from './clickhouse/repositories/SimulationEventsRepository.js';
+export { LeaderboardRepository } from './clickhouse/repositories/LeaderboardRepository.js';
+export type { LeaderboardEntry } from './clickhouse/repositories/LeaderboardRepository.js';
 
 // PostgreSQL repositories removed - use DuckDB repositories instead
 
@@ -49,6 +51,11 @@ export {
   ClickHouseSliceExporterAdapterImpl,
   createClickHouseSliceExporterAdapterImpl,
 } from './adapters/clickhouse-slice-exporter-adapter-impl.js';
+export {
+  insertSqlForParquet,
+  type InsertMode,
+  type InsertParquetOptions,
+} from './adapters/clickhouse-slice-importer.js';
 export { createClickHouseSliceExporterAdapter } from './adapters/clickhouse-slice-exporter-adapter.js';
 export {
   DuckDbSliceAnalyzerAdapter,

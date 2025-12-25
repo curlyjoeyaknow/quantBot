@@ -1,6 +1,6 @@
 /**
  * Normalize SignalGroup Tests
- * 
+ *
  * Tests the normalizeSignalGroup function edge cases:
  * - Missing logic field
  * - Nested groups with missing logic
@@ -66,12 +66,13 @@ describe('normalizeSignalGroup - Edge Cases', () => {
         ],
       };
 
-      const normalize = (g: any): SignalGroup => ({
-        ...g,
-        logic: g.logic ?? 'AND',
-        conditions: g.conditions ?? [],
-        groups: g.groups?.map(normalize),
-      } as SignalGroup);
+      const normalize = (g: any): SignalGroup =>
+        ({
+          ...g,
+          logic: g.logic ?? 'AND',
+          conditions: g.conditions ?? [],
+          groups: g.groups?.map(normalize),
+        }) as SignalGroup;
 
       const normalized = normalize(groupWithNested);
 
@@ -95,12 +96,13 @@ describe('normalizeSignalGroup - Edge Cases', () => {
         ],
       };
 
-      const normalize = (g: any): SignalGroup => ({
-        ...g,
-        logic: g.logic ?? 'AND',
-        conditions: g.conditions ?? [],
-        groups: g.groups?.map(normalize),
-      } as SignalGroup);
+      const normalize = (g: any): SignalGroup =>
+        ({
+          ...g,
+          logic: g.logic ?? 'AND',
+          conditions: g.conditions ?? [],
+          groups: g.groups?.map(normalize),
+        }) as SignalGroup;
 
       const normalized = normalize(deeplyNested);
 
@@ -176,12 +178,13 @@ describe('normalizeSignalGroup - Edge Cases', () => {
         ],
       };
 
-      const normalize = (g: any): SignalGroup => ({
-        ...g,
-        logic: g.logic ?? 'AND',
-        conditions: g.conditions ?? [],
-        groups: g.groups?.map(normalize),
-      } as SignalGroup);
+      const normalize = (g: any): SignalGroup =>
+        ({
+          ...g,
+          logic: g.logic ?? 'AND',
+          conditions: g.conditions ?? [],
+          groups: g.groups?.map(normalize),
+        }) as SignalGroup;
 
       const normalized = normalize(mixedStructure);
 

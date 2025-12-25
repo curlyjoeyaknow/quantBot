@@ -62,6 +62,14 @@ export * from './indicators.js';
 // Signals - Signal evaluation
 // =============================================================================
 export * from './signals.js';
+// Export signal presets separately to avoid conflicts
+export {
+  getSignalPreset,
+  listSignalPresets,
+  getSignalPresetsByCategory,
+  registerSignalPreset,
+  combineSignalPresets,
+} from './signals/presets.js';
 
 // =============================================================================
 // Position - Position/portfolio management
@@ -239,6 +247,9 @@ export type {
 
 // Re-export strategy builders (needed by workflows)
 export { buildStrategy, buildStopLossConfig } from './strategies/builder.js';
+
+// Re-export strategy presets
+export { getPreset, listPresets, registerPreset } from './strategies/presets.js';
 
 // Re-export execution model factory (needed by workflows)
 export {

@@ -5,7 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getDuckDBClient } from '@quantbot/storage';
-import { join } from 'path';
+import { getDuckDBPath } from '@quantbot/utils';
 import { z } from 'zod';
 
 const SimulationRunDetailSchema = z.object({
@@ -34,9 +34,10 @@ export async function GET(
   try {
     const { runId } = await params;
 
-    const dbPath = process.env.DUCKDB_PATH || 'data/result.duckdb';
+    const dbPath = getDuckDBPath('data/tele.duckdb');
     const client = getDuckDBClient(dbPath);
-    const scriptPath = join(process.cwd(), 'tools/storage/duckdb_simulation_runs.py');
+    // Use relative path - PythonEngine will resolve from workspace root
+    const scriptPath = 'tools/storage/duckdb_simulation_runs.py';
 
     const run = await client.execute(
       scriptPath,

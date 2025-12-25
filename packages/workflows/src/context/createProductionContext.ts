@@ -12,7 +12,7 @@ import {
   type SignalGroup,
 } from '@quantbot/simulation';
 import { DuckDBStorageService, ClickHouseService } from '@quantbot/simulation';
-import { PythonEngine } from '@quantbot/utils';
+import { PythonEngine, getDuckDBPath } from '@quantbot/utils';
 import type {
   WorkflowContext,
   StrategyRecord,
@@ -86,7 +86,8 @@ export async function createProductionContextWithPorts(
   const { createProductionPorts } = await import('./createProductionPorts.js');
 
   // Get DuckDB path from config, environment, or use default
-  const duckdbPath = config?.duckdbPath || process.env.DUCKDB_PATH || 'data/tele.duckdb';
+  const { getDuckDBPath } = await import('@quantbot/utils');
+  const duckdbPath = config?.duckdbPath || getDuckDBPath('data/tele.duckdb');
   const ports = await createProductionPorts(duckdbPath);
 
   return {
@@ -96,8 +97,8 @@ export async function createProductionContextWithPorts(
 }
 
 export function createProductionContext(config?: ProductionContextConfig): WorkflowContext {
-  // DuckDB repositories require dbPath - get from environment or use default
-  const dbPath = process.env.DUCKDB_PATH || 'data/tele.duckdb';
+  // DuckDB repositories require dbPath - get from config.yaml, environment, or use default
+  const dbPath = getDuckDBPath('data/tele.duckdb');
   const strategiesRepo = new StrategiesRepository(dbPath); // DuckDB version
   // CallersRepository not used in this context - workflows use services instead
   // PostgreSQL repositories removed - use DuckDB services/workflows for calls/tokens/simulation runs

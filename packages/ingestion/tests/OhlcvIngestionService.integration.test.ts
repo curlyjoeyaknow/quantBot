@@ -129,7 +129,6 @@ describe('OhlcvIngestionService (integration)', () => {
     const absoluteDuckDBPath = resolve(testDuckDBPath);
     const { execSync } = await import('child_process');
     try {
-       
       const directQuery = execSync(
         `python3 -c "import duckdb; con = duckdb.connect('${absoluteDuckDBPath}'); rows = con.execute('SELECT mint, chain, trigger_ts_ms FROM caller_links_d').fetchall(); print('Direct query result:', rows); valid = con.execute(\\\"SELECT COUNT(*) FROM caller_links_d WHERE mint IS NOT NULL AND mint != '' AND trigger_ts_ms IS NOT NULL\\\").fetchone()[0]; print('Valid rows:', valid); cols = con.execute(\\\"PRAGMA table_info('caller_links_d')\\\").fetchall(); print('Columns:', [c[1] for c in cols]); bot_ts_test = con.execute('SELECT cl.bot_ts_ms FROM caller_links_d cl LIMIT 1').fetchall(); print('bot_ts_ms query succeeded:', bot_ts_test); con.close()"`,
         { encoding: 'utf-8' }
