@@ -1376,10 +1376,10 @@ import type { RunContext } from "@quantbot/storage/ports/CandleSlicePort";
 import { runLabPreset } from "@quantbot/workflows/src/lab/runLabPreset";
 
 // Adapters (stubs for now)
-import { CandleSliceExporter } from "@quantbot/storage/src/adapters/clickhouse/CandleSliceExporter";
-import { FeatureComputer } from "@quantbot/storage/src/adapters/duckdb/FeatureComputer";
-import { SimulationExecutor } from "@quantbot/storage/src/adapters/duckdb/SimulationExecutor";
-import { LeaderboardRepository } from "@quantbot/storage/src/clickhouse/repositories/LeaderboardRepository";
+import { CandleSliceExporter } from "@quantbot/storage/adapters/clickhouse/CandleSliceExporter";
+import { FeatureComputer } from "@quantbot/storage/adapters/duckdb/FeatureComputer";
+import { SimulationExecutor } from "@quantbot/storage/adapters/duckdb/SimulationExecutor";
+import { LeaderboardRepository } from "@quantbot/storage";
 
 export async function runSelectedPresets(args: {
   runId: string;

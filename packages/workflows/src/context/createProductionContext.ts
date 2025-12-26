@@ -100,6 +100,7 @@ export async function createProductionContextWithPorts(
 
 export function createProductionContext(config?: ProductionContextConfig): WorkflowContext {
   // DuckDB repositories require dbPath - get from config.yaml, environment, or use default
+  // NOTE: Direct instantiation is acceptable here - this is a context factory (composition root)
   const dbPath = getDuckDBPath('data/tele.duckdb');
   const strategiesRepo = new StrategiesRepository(dbPath); // DuckDB version
   // CallersRepository not used in this context - workflows use services instead

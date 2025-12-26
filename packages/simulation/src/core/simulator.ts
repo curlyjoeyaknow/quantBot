@@ -15,7 +15,11 @@ import type {
   SimulationResult,
   LegacySimulationEvent,
 } from '../types/index.js';
-import type { Candle, SubCandleProvider as CandleProvider, CandleInterval } from '../types/candle.js';
+import type {
+  Candle,
+  SubCandleProvider as CandleProvider,
+  CandleInterval,
+} from '../types/candle.js';
 import { getIntervalSeconds } from '../types/candle.js';
 import type { CausalCandleAccessor } from '../types/causal-accessor.js';
 import {
@@ -951,7 +955,11 @@ export async function simulateStrategyWithCausalAccessor(
         );
         if (newCandles.length > candles.length) {
           const _newCandleSlice = newCandles.slice(candles.length);
-          indicatorSeries = updateIndicatorsIncremental(indicatorSeries, _newCandleSlice, newCandles);
+          indicatorSeries = updateIndicatorsIncremental(
+            indicatorSeries,
+            _newCandleSlice,
+            newCandles
+          );
           candles = newCandles;
         }
       }
@@ -997,7 +1005,11 @@ export async function simulateStrategyWithCausalAccessor(
         );
         if (newCandles.length > candles.length) {
           const _newCandleSlice = newCandles.slice(candles.length);
-          indicatorSeries = updateIndicatorsIncremental(indicatorSeries, _newCandleSlice, newCandles);
+          indicatorSeries = updateIndicatorsIncremental(
+            indicatorSeries,
+            _newCandleSlice,
+            newCandles
+          );
           candles = newCandles;
         }
       }
@@ -1045,7 +1057,8 @@ export async function simulateStrategyWithCausalAccessor(
 
   // Get final price
   const finalCandle = await candleAccessor.getLastClosedCandle(mint, endTime, interval);
-  const finalPrice = finalCandle?.close ?? (candles.length > 0 ? candles[candles.length - 1].close : initialPrice);
+  const finalPrice =
+    finalCandle?.close ?? (candles.length > 0 ? candles[candles.length - 1].close : initialPrice);
 
   return {
     finalPnl: loopResult.pnl,
@@ -1198,7 +1211,8 @@ async function handleTrailingEntryWithCausalAccessor(
   currentTime: number;
 }> {
   const maxWaitTimestamp = startTime + clock.toMilliseconds(maxWaitTime);
-  let lowestPrice = (await candleAccessor.getLastClosedCandle(mint, startTime, interval))?.open ?? 0;
+  let lowestPrice =
+    (await candleAccessor.getLastClosedCandle(mint, startTime, interval))?.open ?? 0;
   let lowestPriceTimestamp = startTime;
   let currentTime = startTime;
 
@@ -1604,7 +1618,8 @@ async function runSimulationLoopWithCausalAccessor(
   // Final exit if position remains
   if (remaining > 0) {
     const finalCandle = await candleAccessor.getLastClosedCandle(mint, endTime, interval);
-    const finalPrice = finalCandle?.close ?? (candles.length > 0 ? candles[candles.length - 1].close : entryPrice);
+    const finalPrice =
+      finalCandle?.close ?? (candles.length > 0 ? candles[candles.length - 1].close : entryPrice);
     const finalExitExecution = executeTrade(
       'sell',
       finalPrice,

@@ -1,6 +1,6 @@
 /**
  * Command Context Wiring Verification Tests
- * 
+ *
  * Verifies that services are properly wired through CommandContext
  */
 
@@ -13,7 +13,7 @@ describe('CommandContext Wiring', () => {
     it('should provide StrategiesRepository through context', () => {
       const ctx = new CommandContext();
       const repo = ctx.services.strategiesRepository();
-      
+
       // Verify it's an instance of StrategiesRepository
       expect(repo).toBeInstanceOf(StrategiesRepository);
     });
@@ -22,7 +22,7 @@ describe('CommandContext Wiring', () => {
       const ctx = new CommandContext();
       const repo1 = ctx.services.strategiesRepository();
       const repo2 = ctx.services.strategiesRepository();
-      
+
       // Should be different instances (not singletons)
       expect(repo1).not.toBe(repo2);
     });
@@ -30,13 +30,13 @@ describe('CommandContext Wiring', () => {
     it('should use default DuckDB path from environment', () => {
       const originalPath = process.env.DUCKDB_PATH;
       delete process.env.DUCKDB_PATH;
-      
+
       const ctx = new CommandContext();
       const repo = ctx.services.strategiesRepository();
-      
+
       // Repository should be created (path is internal to repository)
       expect(repo).toBeInstanceOf(StrategiesRepository);
-      
+
       // Restore original path
       if (originalPath) {
         process.env.DUCKDB_PATH = originalPath;
@@ -48,7 +48,7 @@ describe('CommandContext Wiring', () => {
     it('should provide all expected services', () => {
       const ctx = new CommandContext();
       const services = ctx.services;
-      
+
       // Verify all services are accessible
       expect(services.ohlcvIngestion).toBeDefined();
       expect(services.ohlcvRepository).toBeDefined();
@@ -72,10 +72,9 @@ describe('CommandContext Wiring', () => {
         // Note: strategiesRepository override not yet supported in options
         // This test documents the pattern for future enhancement
       });
-      
+
       const repo = ctx.services.strategiesRepository();
       expect(repo).toBeInstanceOf(StrategiesRepository);
     });
   });
 });
-

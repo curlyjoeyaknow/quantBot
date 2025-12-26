@@ -8,11 +8,7 @@
 import { DateTime } from 'luxon';
 import type { ClockPort } from '@quantbot/core';
 import type { StorageEngine } from '@quantbot/storage';
-import type {
-  CausalCandleAccessor,
-  Candle,
-  CandleInterval,
-} from '@quantbot/simulation';
+import type { CausalCandleAccessor, Candle, CandleInterval } from '@quantbot/simulation';
 import {
   filterCandlesByCloseTimeInterval,
   getLastClosedCandleInterval,
@@ -84,11 +80,7 @@ export class StorageCausalCandleAccessor implements CausalCandleAccessor {
     );
 
     // Filter by close time (causal gate)
-    const closedCandles = filterCandlesByCloseTimeInterval(
-      allCandles,
-      simulationTime,
-      interval
-    );
+    const closedCandles = filterCandlesByCloseTimeInterval(allCandles, simulationTime, interval);
 
     // Update cache
     this.cache.set(cacheKey, {
@@ -146,10 +138,7 @@ export class StorageCausalCandleAccessor implements CausalCandleAccessor {
     }
 
     // Cache is valid if simulationTime is within cached window
-    return (
-      simulationTime >= entry.timeWindow.start &&
-      simulationTime <= entry.timeWindow.end
-    );
+    return simulationTime >= entry.timeWindow.start && simulationTime <= entry.timeWindow.end;
   }
 
   /**
@@ -171,4 +160,3 @@ export class StorageCausalCandleAccessor implements CausalCandleAccessor {
     this.cache.clear();
   }
 }
-

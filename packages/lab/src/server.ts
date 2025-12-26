@@ -106,7 +106,7 @@ fastify.get('/api/strategies', async (request: FastifyRequest, reply: FastifyRep
     const duckdbPath = process.env.DUCKDB_PATH || 'data/tele.duckdb';
     // Direct instantiation in composition root (server) is acceptable
     const repo = new StrategiesRepository(duckdbPath);
-    
+
     const strategies = await repo.list();
     return { strategies };
   } catch (error) {
