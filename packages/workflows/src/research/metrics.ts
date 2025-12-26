@@ -167,14 +167,23 @@ function createEmptyMetrics(): RunMetrics {
  *
  * This builds a time series of cumulative PnL and drawdown.
  */
+/**
+ * Calculate PnL series from trade events
+ *
+ * @param tradeEvents - Array of trade events
+ * @param initialCapital - Starting capital (default: 1.0)
+ * @param timestampISO - Optional timestamp for empty series (defaults to first event timestamp)
+ */
 export function calculatePnLSeries(
   tradeEvents: TradeEvent[],
-  initialCapital: number = 1.0
+  initialCapital: number = 1.0,
+  timestampISO?: string
 ): PnLSeries[] {
   if (tradeEvents.length === 0) {
+    // Use provided timestamp or empty string (caller should provide if needed)
     return [
       {
-        timestampISO: new Date().toISOString(),
+        timestampISO: timestampISO ?? '',
         cumulativePnL: 1.0,
         runningTotal: initialCapital,
         drawdown: 0,

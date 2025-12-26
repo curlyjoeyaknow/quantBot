@@ -13,6 +13,7 @@ import {
 } from '@quantbot/simulation';
 import { DuckDBStorageService, ClickHouseService } from '@quantbot/simulation';
 import { PythonEngine, getDuckDBPath } from '@quantbot/utils';
+import type { ClockPort } from '@quantbot/core';
 import type {
   WorkflowContext,
   StrategyRecord,
@@ -21,6 +22,7 @@ import type {
   SimulationEngineResult,
   SimulationCallResult,
 } from '../types.js';
+import { StorageCausalCandleAccessor } from './causal-candle-accessor.js';
 
 // Re-export WorkflowContext for convenience
 export type { WorkflowContext } from '../types.js';
@@ -123,6 +125,18 @@ export function createProductionContext(config?: ProductionContextConfig): Workf
   };
   const clock = config?.clock ?? { nowISO: () => DateTime.utc().toISO()! };
   const ids = config?.ids ?? { newRunId: () => `run_${uuidv4()}` };
+
+  // Create causal candle accessor (wraps storage engine for Gate 2 compliance)
+  // Convert WorkflowContext clock (nowISO) to ClockPort (nowMs) format
+  const causalAccessorClock: ClockPort = {
+    nowMs: () => new Date(clock.nowISO()).getTime(),
+  };
+  const causalAccessor = new StorageCausalCandleAccessor(
+    storageEngine,
+    causalAccessorClock,
+    '5m',
+    'solana'
+  );
 
   return {
     clock,
@@ -399,6 +413,9 @@ export function createProductionContext(config?: ProductionContextConfig): Workf
     },
 
     ohlcv: {
+      // New: Causal accessor (primary) - ensures Gate 2 compliance
+      causalAccessor,
+      // Legacy: Keep for migration period (backward compatibility)
       async getCandles(q: { mint: string; fromISO: string; toISO: string }): Promise<Candle[]> {
         const startTime = DateTime.fromISO(q.fromISO, { zone: 'utc' });
         const endTime = DateTime.fromISO(q.toISO, { zone: 'utc' });
@@ -414,11 +431,22 @@ export function createProductionContext(config?: ProductionContextConfig): Workf
     },
 
     simulation: {
-      async run(q: {
-        candles: Candle[];
-        strategy: StrategyRecord;
-        call: CallRecord;
-      }): Promise<SimulationEngineResult> {
+      async run(
+        q:
+          | {
+              candleAccessor: import('@quantbot/simulation').CausalCandleAccessor;
+              mint: string;
+              startTime: number;
+              endTime: number;
+              strategy: StrategyRecord;
+              call: CallRecord;
+            }
+          | {
+              candles: Candle[];
+              strategy: StrategyRecord;
+              call: CallRecord;
+            }
+      ): Promise<SimulationEngineResult> {
         // Extract strategy legs from config
         const config = q.strategy.config as Record<string, unknown>;
         const strategyLegs = (
@@ -436,27 +464,55 @@ export function createProductionContext(config?: ProductionContextConfig): Workf
           });
         }
 
-        // Run simulation - cast config types to match simulation engine expectations
-        // Config comes from database as unknown, so we cast to expected types
-        const result = await simulateStrategy(
-          q.candles,
-          strategyLegs,
-          config.stopLoss as StopLossConfig | undefined,
-          config.entry as EntryConfig | undefined,
-          config.reEntry as ReEntryConfig | undefined,
-          config.costs as CostConfig | undefined,
-          {
-            entrySignal: config.entrySignal as SignalGroup | undefined,
-            exitSignal: config.exitSignal as SignalGroup | undefined,
-          }
-        );
+        // Check if using new causal accessor signature or legacy candles array
+        if ('candleAccessor' in q) {
+          // New signature: use causal accessor (Gate 2 compliant)
+          const { simulateStrategyWithCausalAccessor } = await import('@quantbot/simulation');
+          const result = await simulateStrategyWithCausalAccessor(
+            q.candleAccessor,
+            q.mint,
+            q.startTime,
+            q.endTime,
+            strategyLegs,
+            config.stopLoss as StopLossConfig | undefined,
+            config.entry as EntryConfig | undefined,
+            config.reEntry as ReEntryConfig | undefined,
+            config.costs as CostConfig | undefined,
+            {
+              entrySignal: config.entrySignal as SignalGroup | undefined,
+              exitSignal: config.exitSignal as SignalGroup | undefined,
+              interval: '5m',
+            }
+          );
 
-        return {
-          pnlMultiplier: result.finalPnl,
-          trades: result.events.filter((e: { type?: string }) => {
-            return e.type === 'entry' || e.type === 'exit';
-          }).length,
-        };
+          return {
+            pnlMultiplier: result.finalPnl,
+            trades: result.events.filter((e: { type?: string }) => {
+              return e.type === 'entry' || e.type === 'exit';
+            }).length,
+          };
+        } else {
+          // Legacy signature: use candles array (backward compatibility)
+          const result = await simulateStrategy(
+            q.candles,
+            strategyLegs,
+            config.stopLoss as StopLossConfig | undefined,
+            config.entry as EntryConfig | undefined,
+            config.reEntry as ReEntryConfig | undefined,
+            config.costs as CostConfig | undefined,
+            {
+              entrySignal: config.entrySignal as SignalGroup | undefined,
+              exitSignal: config.exitSignal as SignalGroup | undefined,
+            }
+          );
+
+          return {
+            pnlMultiplier: result.finalPnl,
+            trades: result.events.filter((e: { type?: string }) => {
+              return e.type === 'entry' || e.type === 'exit';
+            }).length,
+          };
+        }
       },
     },
   };

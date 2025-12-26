@@ -25,6 +25,7 @@ import type {
   SimulationEvent,
   Alert,
   TokenMetadata,
+  ClockPort,
 } from '@quantbot/core';
 
 // Import repositories
@@ -64,6 +65,13 @@ export interface StorageEngineConfig {
    * @default true
    */
   autoComputeIndicators?: boolean;
+
+  /**
+   * Clock port for deterministic time access (for testing)
+   * If not provided, uses system clock (Date.now())
+   * @default system clock
+   */
+  clock?: ClockPort;
 }
 
 /**
@@ -160,7 +168,8 @@ export class StorageEngine {
   private readonly tokenMetadataRepo: TokenMetadataRepository;
   private readonly simulationEventsRepo: SimulationEventsRepository;
 
-  private readonly config: Required<StorageEngineConfig>;
+  private readonly config: Required<Omit<StorageEngineConfig, 'clock'>>;
+  private readonly clock: ClockPort;
   private readonly cache: Map<string, { data: unknown; timestamp: number }>;
   private cacheCleanupInterval?: NodeJS.Timeout;
 
@@ -171,6 +180,9 @@ export class StorageEngine {
       maxCacheSize: config.maxCacheSize ?? 1000,
       autoComputeIndicators: config.autoComputeIndicators ?? true,
     };
+
+    // Use injected clock or default to system clock for backward compatibility
+    this.clock = config.clock ?? { nowMs: () => Date.now() };
 
     // Initialize repositories
     this.ohlcvRepo = new OhlcvRepository();
@@ -254,7 +266,7 @@ export class StorageEngine {
     // Check cache first
     if (useCache && !forceRefresh && this.config.enableCache) {
       const cached = this.cache.get(cacheKey);
-      if (cached && Date.now() - cached.timestamp < this.config.cacheTTL) {
+      if (cached && this.clock.nowMs() - cached.timestamp < this.config.cacheTTL) {
         logger.debug('Using cached candles', {
           token: tokenAddress,
           interval,
@@ -522,7 +534,7 @@ export class StorageEngine {
 
     if (useCache && !forceRecompute && this.config.enableCache) {
       const cached = this.cache.get(cacheKey);
-      if (cached && Date.now() - cached.timestamp < this.config.cacheTTL) {
+      if (cached && this.clock.nowMs() - cached.timestamp < this.config.cacheTTL) {
         return cached.data as Map<number, IndicatorValue[]>;
       }
     }
@@ -596,7 +608,7 @@ export class StorageEngine {
     // Check cache first
     if (useCache && this.config.enableCache) {
       const cached = this.cache.get(cacheKey);
-      if (cached && Date.now() - cached.timestamp < this.config.cacheTTL) {
+      if (cached && this.clock.nowMs() - cached.timestamp < this.config.cacheTTL) {
         return cached.data as TokenMetadata | null;
       }
     }
@@ -750,7 +762,7 @@ export class StorageEngine {
 
     this.cache.set(key, {
       data,
-      timestamp: Date.now(),
+      timestamp: this.clock.nowMs(),
     });
   }
 
@@ -768,7 +780,7 @@ export class StorageEngine {
   private cleanupCache(): void {
     if (!this.config.enableCache) return;
 
-    const now = Date.now();
+    const now = this.clock.nowMs();
     for (const [key, entry] of this.cache.entries()) {
       if (now - entry.timestamp >= this.config.cacheTTL) {
         this.cache.delete(key);

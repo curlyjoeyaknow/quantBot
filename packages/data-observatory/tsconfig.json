@@ -6,8 +6,8 @@
     "composite": true,
     "declaration": true,
     "declarationMap": true,
-    "module": "ES2022",
-    "moduleResolution": "bundler"
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext"
   },
   "include": ["src/**/*"],
   "references": [

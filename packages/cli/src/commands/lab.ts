@@ -2,7 +2,7 @@
  * Lab Commands
  * ============
  * Quick overlay backtesting for exit strategy experimentation
- * 
+ *
  * Lab is designed for quick experimentation with exit strategies using overlay backtesting.
  * It assumes immediate entry at call time and tests different exit overlays.
  */
@@ -36,9 +36,16 @@ export function registerLabCommands(program: Command): void {
     .option('--caller <name>', 'Filter by caller name')
     .option('--mint <address>', 'Single mint address')
     .option('--limit <n>', 'Maximum calls to simulate', '100')
-    .requiredOption('--overlays <json>', 'JSON array of exit overlays (e.g., \'[{"kind":"take_profit","takePct":100}]\')')
+    .requiredOption(
+      '--overlays <json>',
+      'JSON array of exit overlays (e.g., \'[{"kind":"take_profit","takePct":100}]\')'
+    )
     .option('--lag-ms <ms>', 'Entry lag in milliseconds', '10000')
-    .option('--entry-rule <rule>', 'Entry rule: next_candle_open, next_candle_close, call_time_close', 'next_candle_open')
+    .option(
+      '--entry-rule <rule>',
+      'Entry rule: next_candle_open, next_candle_close, call_time_close',
+      'next_candle_open'
+    )
     .option('--timeframe-ms <ms>', 'Timeframe in milliseconds', String(24 * 60 * 60 * 1000))
     .option('--interval <interval>', 'Candle interval: 1m, 5m, 15m, 1h', '5m')
     .option('--taker-fee-bps <bps>', 'Taker fee in basis points', '30')
@@ -64,7 +71,6 @@ export function registerLabCommands(program: Command): void {
     validate: (opts) => labRunSchema.parse(opts),
     onError: die,
   });
-
 }
 
 /**

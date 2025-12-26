@@ -208,5 +208,3 @@ describe('SignalGroup Normalization Edge Cases', () => {
     expect(normalized.conditions).toHaveLength(1);
   });
 });
-
-

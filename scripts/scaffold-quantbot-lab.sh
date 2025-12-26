@@ -1065,8 +1065,8 @@ TS
 ########################################
 
 cat > packages/workflows/src/lab/types.ts <<'TS'
-import type { FeatureSpecV1 } from "@quantbot/storage/src/ports/FeatureComputePort";
-import type { StrategySpecV1, RiskSpecV1 } from "@quantbot/storage/src/ports/SimulationPort";
+import type { FeatureSpecV1 } from "@quantbot/storage/ports/FeatureComputePort";
+import type { StrategySpecV1, RiskSpecV1 } from "@quantbot/storage/ports/SimulationPort";
 
 export interface SimPresetV1 {
   kind: "sim_preset_v1";
@@ -1085,13 +1085,13 @@ export interface SimPresetV1 {
 }
 
 export interface LabPorts {
-  slice: import("@quantbot/storage/src/ports/CandleSlicePort").CandleSlicePort;
-  features: import("@quantbot/storage/src/ports/FeatureComputePort").FeatureComputePort;
-  simulation: import("@quantbot/storage/src/ports/SimulationPort").SimulationPort;
-  leaderboard: import("@quantbot/storage/src/ports/LeaderboardPort").LeaderboardPort;
+  slice: import("@quantbot/storage/ports/CandleSlicePort").CandleSlicePort;
+  features: import("@quantbot/storage/ports/FeatureComputePort").FeatureComputePort;
+  simulation: import("@quantbot/storage/ports/SimulationPort").SimulationPort;
+  leaderboard: import("@quantbot/storage/ports/LeaderboardPort").LeaderboardPort;
 }
 
-export type RunContext = import("@quantbot/storage/src/ports/CandleSlicePort").RunContext;
+export type RunContext = import("@quantbot/storage/ports/CandleSlicePort").RunContext;
 TS
 
 cat > packages/workflows/src/lab/runLabPreset.ts <<'TS'
@@ -1372,7 +1372,7 @@ cat > scripts/lab-sim.wiring.ts <<'TS'
  * Keep workflows pure; keep the rest of the repo sane.
  */
 import type { SimPresetV1, LabPorts } from "@quantbot/workflows/src/lab/types";
-import type { RunContext } from "@quantbot/storage/src/ports/CandleSlicePort";
+import type { RunContext } from "@quantbot/storage/ports/CandleSlicePort";
 import { runLabPreset } from "@quantbot/workflows/src/lab/runLabPreset";
 
 // Adapters (stubs for now)

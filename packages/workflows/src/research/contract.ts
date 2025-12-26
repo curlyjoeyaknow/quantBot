@@ -78,7 +78,7 @@ export const DataSnapshotRefSchema = z.object({
 
   /**
    * Optional: Slice manifest IDs that this snapshot references
-   * 
+   *
    * If provided, the snapshot data is loaded from these slice manifests (parquet files)
    * instead of querying databases directly. This is the preferred approach.
    */

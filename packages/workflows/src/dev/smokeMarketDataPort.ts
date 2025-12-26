@@ -33,7 +33,9 @@ export async function smokeMarketDataPort(): Promise<void> {
     }
 
     // Test OHLCV fetch (small window)
-    const now = Math.floor(DateTime.now().toSeconds());
+    // Use clock from ports for deterministic testing
+    const nowMs = ports.clock.nowMs();
+    const now = Math.floor(nowMs / 1000);
     const oneHourAgo = now - 3600;
 
     const candles = await ports.marketData.fetchOhlcv({

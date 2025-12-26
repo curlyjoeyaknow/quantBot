@@ -87,4 +87,3 @@ export interface CatalogPort {
   // Sim runs
   upsertSimRun(r: SimRunRecord): Promise<void>;
 }
-

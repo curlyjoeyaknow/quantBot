@@ -157,10 +157,11 @@ export class ResearchSimulationAdapter {
       }
 
       // 6. Calculate PnL series and metrics
-      const pnlSeries = calculatePnLSeries(allTradeEvents);
+      const pnlSeries = calculatePnLSeries(allTradeEvents, 1.0, nowISO);
       const metrics = calculateMetrics(allTradeEvents, pnlSeries);
 
-      const simulationTimeMs = DateTime.fromISO(this.workflowContext.clock.nowISO()).toMillis() - startTime;
+      const simulationTimeMs =
+        DateTime.fromISO(this.workflowContext.clock.nowISO()).toMillis() - startTime;
 
       // 7. Build metadata
       const metadata: RunMetadata = {
@@ -198,7 +199,7 @@ export class ResearchSimulationAdapter {
       });
       // Even on error, return valid empty result rather than throwing
       // This ensures property tests can validate error handling
-      const emptyPnLSeries = calculatePnLSeries([]);
+      const emptyPnLSeries = calculatePnLSeries([], 1.0, nowISO);
       return {
         metadata: {
           runId,
@@ -211,7 +212,8 @@ export class ResearchSimulationAdapter {
           costModelHash: hashValue(request.costModel),
           riskModelHash: request.riskModel ? hashValue(request.riskModel) : undefined,
           runConfigHash: hashValue(request.runConfig),
-          simulationTimeMs: DateTime.fromISO(this.workflowContext.clock.nowISO()).toMillis() - startTime,
+          simulationTimeMs:
+            DateTime.fromISO(this.workflowContext.clock.nowISO()).toMillis() - startTime,
           schemaVersion: '1.0.0',
         },
         request,

@@ -2,7 +2,7 @@
  * Lab Overlay Backtesting Handler
  * ================================
  * Quick overlay backtesting for exit strategy experimentation
- * 
+ *
  * Queries calls from DuckDB and runs overlay backtesting to evaluate exit strategies.
  */
 
@@ -59,14 +59,14 @@ function convertDuckDBCallToCallSignal(call: {
 }): CallSignal {
   const alertTimestamp = DateTime.fromISO(call.alert_timestamp);
   const tsMs = alertTimestamp.toMillis();
-  
+
   // Determine chain from mint address format (simplified - assumes Solana)
   const chain: CallSignal['token']['chain'] = 'sol';
-  
+
   // Generate caller identity from caller_name
   const callerName = call.caller_name || 'unknown';
   const fromId = callerName.toLowerCase().replace(/\s+/g, '-');
-  
+
   return {
     kind: 'token_call',
     tsMs,
@@ -178,7 +178,7 @@ export async function runLabHandler(args: LabRunArgs, ctx: CommandContext): Prom
   // Lab uses DuckDB/ClickHouse instead of API calls
   const baseContext = await createProductionContextWithPorts();
   const { createMarketDataStorageAdapter } = await import('@quantbot/workflows');
-  
+
   // Override market data port to use storage instead of API
   const workflowCtx = {
     ...baseContext,
@@ -212,7 +212,7 @@ export async function runLabHandler(args: LabRunArgs, ctx: CommandContext): Prom
 
     // Convert tsMs to ISO string
     const createdAtISO = DateTime.fromMillis(result.call.tsMs).toISO()!;
-    
+
     // Add result
     results.push({
       callId: `${result.call.token.address}_${createdAtISO}`,
@@ -233,9 +233,7 @@ export async function runLabHandler(args: LabRunArgs, ctx: CommandContext): Prom
   for (const [overlayKey, stats] of overlayStats.entries()) {
     const sortedReturns = [...stats.returns].sort((a, b) => a - b);
     const medianNetReturnPct =
-      sortedReturns.length > 0
-        ? sortedReturns[Math.floor(sortedReturns.length / 2)]
-        : 0;
+      sortedReturns.length > 0 ? sortedReturns[Math.floor(sortedReturns.length / 2)] : 0;
     const winRate = stats.total > 0 ? stats.wins / stats.total : 0;
 
     byOverlay.push({
@@ -257,7 +255,8 @@ export async function runLabHandler(args: LabRunArgs, ctx: CommandContext): Prom
   const failedResults = results.filter((r) => !r.ok);
 
   const overall = {
-    avgNetReturnPct: allReturns.length > 0 ? allReturns.reduce((a, b) => a + b, 0) / allReturns.length : undefined,
+    avgNetReturnPct:
+      allReturns.length > 0 ? allReturns.reduce((a, b) => a + b, 0) / allReturns.length : undefined,
     minNetReturnPct: allReturns.length > 0 ? Math.min(...allReturns) : undefined,
     maxNetReturnPct: allReturns.length > 0 ? Math.max(...allReturns) : undefined,
     winRate: allTotal > 0 ? allWins / allTotal : undefined,

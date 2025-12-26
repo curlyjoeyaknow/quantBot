@@ -75,12 +75,28 @@ describe('Look-Ahead Detection', () => {
     it('produces same results for same candle sequence', async () => {
       const candles = generateCandles(20, 1000);
 
-      const result1 = await simulateStrategy(candles, testStrategy, undefined, undefined, undefined, undefined, {
-        seed: 42,
-      });
-      const result2 = await simulateStrategy(candles, testStrategy, undefined, undefined, undefined, undefined, {
-        seed: 42,
-      });
+      const result1 = await simulateStrategy(
+        candles,
+        testStrategy,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        {
+          seed: 42,
+        }
+      );
+      const result2 = await simulateStrategy(
+        candles,
+        testStrategy,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        {
+          seed: 42,
+        }
+      );
 
       // Same inputs + same seed → same outputs
       expect(result1.finalPnl).toBe(result2.finalPnl);
@@ -182,7 +198,9 @@ describe('Look-Ahead Detection', () => {
       });
 
       // Find first entry event
-      const entryEvent = result.events.find((e) => e.type === 'entry' || e.type === 'trailing_entry_triggered');
+      const entryEvent = result.events.find(
+        (e) => e.type === 'entry' || e.type === 'trailing_entry_triggered'
+      );
 
       if (entryEvent && 'timestamp' in entryEvent) {
         // Find which candle this entry corresponds to
@@ -220,9 +238,17 @@ describe('Look-Ahead Detection', () => {
       const baseCandles = generateCandles(60, 1000); // 60 minutes = 1 hour
 
       // Simulate with 1-minute resolution
-      const result1m = await simulateStrategy(baseCandles, testStrategy, undefined, undefined, undefined, undefined, {
-        clockResolution: 'm',
-      });
+      const result1m = await simulateStrategy(
+        baseCandles,
+        testStrategy,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        {
+          clockResolution: 'm',
+        }
+      );
 
       // Create 5-minute aggregated candles (every 5 base candles)
       const aggregated5m: Candle[] = [];
@@ -241,9 +267,17 @@ describe('Look-Ahead Detection', () => {
       }
 
       // Simulate with 5-minute candles
-      const result5m = await simulateStrategy(aggregated5m, testStrategy, undefined, undefined, undefined, undefined, {
-        clockResolution: 'm',
-      });
+      const result5m = await simulateStrategy(
+        aggregated5m,
+        testStrategy,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        {
+          clockResolution: 'm',
+        }
+      );
 
       // Results should be different because:
       // - 1m resolution sees more granular price movements
@@ -360,4 +394,3 @@ describe('Look-Ahead Detection', () => {
     });
   });
 });
-

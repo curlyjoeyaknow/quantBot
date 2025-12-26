@@ -1,7 +1,11 @@
-import type { TelemetryPort, EventEmission, MetricEmission } from '@quantbot/core';
+import type { ClockPort, TelemetryPort, EventEmission, MetricEmission } from '@quantbot/core';
 
-export function createTelemetryConsoleAdapter(opts?: { prefix?: string }): TelemetryPort {
-  const prefix = opts?.prefix ?? 'telemetry';
+export function createTelemetryConsoleAdapter(opts: {
+  prefix?: string;
+  clock: ClockPort;
+}): TelemetryPort {
+  const prefix = opts.prefix ?? 'telemetry';
+  const clock = opts.clock;
 
   return {
     emitMetric(metric: MetricEmission) {
@@ -44,7 +48,7 @@ export function createTelemetryConsoleAdapter(opts?: { prefix?: string }): Telem
     },
 
     startSpan(name: string, operation: string): import('@quantbot/core').SpanEmission {
-      const now = Date.now();
+      const now = clock.nowMs();
       return {
         name,
         operation,
@@ -54,7 +58,7 @@ export function createTelemetryConsoleAdapter(opts?: { prefix?: string }): Telem
     },
 
     endSpan(span: import('@quantbot/core').SpanEmission): void {
-      const endTime = Date.now();
+      const endTime = clock.nowMs();
       const durationMs = endTime - (span.startTime ?? endTime);
       span.endTime = endTime;
       span.durationMs = durationMs;

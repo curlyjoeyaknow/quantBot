@@ -345,7 +345,7 @@ export class BirdeyeClient extends BaseApiClient {
     if (usage) {
       usage.consecutiveFailures++;
     }
-    
+
     // Account-level failure tracking (all keys share same account)
     this.consecutiveFailures++;
 
@@ -358,7 +358,7 @@ export class BirdeyeClient extends BaseApiClient {
         pauseDuration: '1 minute',
         note: 'All keys share the same account rate limit',
       });
-      
+
       // Auto-resume after 1 minute
       setTimeout(() => {
         if (this.rateLimitPaused && this.consecutiveFailures >= this.RATE_LIMIT_THRESHOLD) {

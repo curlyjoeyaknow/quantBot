@@ -58,7 +58,8 @@ export async function exportSlicesForAlertsHandler(
   // Create query context
   const queryContext = await createQueryCallsDuckdbContext(duckdbPath);
 
-  // Create exporter
+  // Create exporter - direct instantiation is acceptable in handlers (composition roots)
+  // This is the boundary between infrastructure and application
   const exporter = new ClickHouseSliceExporterAdapterImpl();
 
   // Create workflow context

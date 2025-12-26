@@ -124,6 +124,7 @@ export type RunSimPresetsSpec = {
   simulator: Simulator;
   summaryIngester: SummaryIngester;
   runNote?: string;
+  clock?: { nowISO: () => string }; // Optional clock for deterministic timestamps
 };
 
 export type RunSimPresetsResult = {
@@ -148,7 +149,11 @@ export async function runSimPresets(spec: RunSimPresetsSpec): Promise<RunSimPres
     runNote,
   } = spec;
 
-  const createdAtIso = new Date().toISOString();
+  // Use provided clock or fall back to DateTime (for backward compatibility)
+  // Note: For determinism, always provide a clock in production code
+  const createdAtIso = spec.clock
+    ? spec.clock.nowISO()
+    : (await import('luxon')).DateTime.utc().toISO()!;
   const summaries: SimSummary[] = [];
   const allArtifacts: LabArtifactRef[] = [];
 

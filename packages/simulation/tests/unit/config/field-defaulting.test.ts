@@ -82,5 +82,3 @@ describe('SignalCondition field defaulting', () => {
     expect(condition.field).toBe('isBullish');
   });
 });
-
-
