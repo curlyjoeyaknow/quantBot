@@ -11,8 +11,17 @@ import {
   calculateTradeFee,
   calculateEntryPriceWithCosts,
   calculateExitPriceWithCosts,
-  DEFAULT_COST_CONFIG,
 } from '../../src/execution/fees';
+import type { CostConfig } from '../../src/types/index.js';
+
+// Test constant - independent from production DEFAULT_COST_CONFIG
+// This ensures tests don't break if production default changes
+const TEST_COST_CONFIG: CostConfig = {
+  entrySlippageBps: 0,
+  exitSlippageBps: 0,
+  takerFeeBps: 25, // 0.25% typical DEX fee
+  borrowAprBps: 0,
+};
 
 describe('Fee Rounding Boundaries', () => {
   describe('Rounding Direction', () => {
@@ -20,7 +29,7 @@ describe('Fee Rounding Boundaries', () => {
       const amount = 100.0;
       const feeBps = 25; // 0.25%
       const config = {
-        ...DEFAULT_COST_CONFIG,
+        ...TEST_COST_CONFIG,
         takerFeeBps: feeBps,
       };
 
@@ -38,7 +47,7 @@ describe('Fee Rounding Boundaries', () => {
       const amount = 0.0001; // Very small amount
       const feeBps = 25; // 0.25%
       const config = {
-        ...DEFAULT_COST_CONFIG,
+        ...TEST_COST_CONFIG,
         takerFeeBps: feeBps,
       };
 
@@ -55,7 +64,7 @@ describe('Fee Rounding Boundaries', () => {
     it('should round entry price with costs consistently', () => {
       const price = 1.0;
       const config = {
-        ...DEFAULT_COST_CONFIG,
+        ...TEST_COST_CONFIG,
         entrySlippageBps: 125, // 1.25%
         takerFeeBps: 25, // 0.25%
       };
@@ -72,7 +81,7 @@ describe('Fee Rounding Boundaries', () => {
     it('should round exit price with costs consistently', () => {
       const price = 2.0;
       const config = {
-        ...DEFAULT_COST_CONFIG,
+        ...TEST_COST_CONFIG,
         exitSlippageBps: 125, // 1.25%
         takerFeeBps: 25, // 0.25%
       };
