@@ -2,7 +2,11 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
-import type { FeatureComputePort, FeatureSpecV1, FeatureComputeResult } from '../../ports/FeatureComputePort.js';
+import type {
+  FeatureComputePort,
+  FeatureSpecV1,
+  FeatureComputeResult,
+} from '../../ports/FeatureComputePort.js';
 import type { RunContext } from '../../ports/CandleSlicePort.js';
 import type { DuckDbConnection } from './duckdbClient.js';
 
@@ -30,7 +34,9 @@ function normalizeFeatureSpec(spec: FeatureSpecV1): string {
   return JSON.stringify(spec);
 }
 
-function parseIndicators(spec: FeatureSpecV1): Array<{ kind: string; params: Record<string, any> }> {
+function parseIndicators(
+  spec: FeatureSpecV1
+): Array<{ kind: string; params: Record<string, any> }> {
   const out: Array<{ kind: string; params: Record<string, any> }> = [];
   for (const g of spec.groups ?? []) {
     for (const item of g.indicators ?? []) {
@@ -51,7 +57,9 @@ function parseIndicators(spec: FeatureSpecV1): Array<{ kind: string; params: Rec
 // - ATR (true range + SMA)
 // EMA support is stubbed in SQL plan and can be upgraded in Phase 1.2.
 
-function sqlForIndicators(indicators: Array<{ kind: string; params: Record<string, any> }>): { selectCols: string[] } {
+function sqlForIndicators(indicators: Array<{ kind: string; params: Record<string, any> }>): {
+  selectCols: string[];
+} {
   const cols: string[] = [];
 
   for (const ind of indicators) {
@@ -75,7 +83,8 @@ function sqlForIndicators(indicators: Array<{ kind: string; params: Record<strin
         throw new Error(`RSI source '${src}' not supported in MVP (only 'close' is supported)`);
       }
       // Gains/losses based on delta of close
-      cols.push(`
+      cols.push(
+        `
         (
           CASE
             WHEN AVG(CASE WHEN d_close > 0 THEN d_close ELSE 0 END)
@@ -90,13 +99,16 @@ function sqlForIndicators(indicators: Array<{ kind: string; params: Record<strin
             )))
           END
         ) AS rsi_${period}
-      `.trim());
+      `.trim()
+      );
     } else if (ind.kind === 'atr') {
       const period = Number(ind.params.period ?? 14);
       // TR = max(high-low, abs(high-prev_close), abs(low-prev_close))
-      cols.push(`
+      cols.push(
+        `
         AVG(tr) OVER (PARTITION BY token_id ORDER BY ts ROWS BETWEEN ${period - 1} PRECEDING AND CURRENT ROW) AS atr_${period}
-      `.trim());
+      `.trim()
+      );
     } else {
       throw new Error(`Unsupported indicator kind: ${ind.kind}`);
     }
@@ -115,12 +127,16 @@ export class FeatureComputer implements FeatureComputePort {
     featureSpec: FeatureSpecV1;
     artifactDir: string;
   }): Promise<FeatureComputeResult> {
-    if (!this.db) throw new Error('FeatureComputer: missing DuckDB connection (inject in wiring/composition root)');
+    if (!this.db)
+      throw new Error(
+        'FeatureComputer: missing DuckDB connection (inject in wiring/composition root)'
+      );
 
     ensureDir(args.artifactDir);
 
     const sliceManifest = readJson<SliceManifestV1>(args.sliceManifestPath);
-    if (!sliceManifest.files?.length) throw new Error(`Slice manifest has no files: ${args.sliceManifestPath}`);
+    if (!sliceManifest.files?.length)
+      throw new Error(`Slice manifest has no files: ${args.sliceManifestPath}`);
 
     const featureSetId = sha(normalizeFeatureSpec(args.featureSpec));
     const outParquet = path.join(args.artifactDir, 'features.parquet');
@@ -164,7 +180,7 @@ export class FeatureComputer implements FeatureComputePort {
 
     const sql = `
       SELECT
-        ${selectCols.join(",\n        ")}
+        ${selectCols.join(',\n        ')}
       FROM candles_enriched
       ORDER BY token_id, ts
     `.trim();

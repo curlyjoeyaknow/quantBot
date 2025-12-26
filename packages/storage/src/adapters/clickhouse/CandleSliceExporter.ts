@@ -45,7 +45,10 @@ function writeJson(p: string, obj: JsonValue) {
   fs.writeFileSync(p, JSON.stringify(obj, null, 2), 'utf8');
 }
 
-async function streamToFile(stream: ReadableStream<Uint8Array> | AsyncIterable<Uint8Array>, outPath: string): Promise<void> {
+async function streamToFile(
+  stream: ReadableStream<Uint8Array> | AsyncIterable<Uint8Array>,
+  outPath: string
+): Promise<void> {
   ensureDir(path.dirname(outPath));
   const w = fs.createWriteStream(outPath);
 
@@ -89,7 +92,10 @@ export class CandleSliceExporter implements CandleSlicePort {
   }): Promise<SliceExportResult> {
     const { spec } = args;
 
-    if (!this.ch) throw new Error('CandleSliceExporter: missing ClickHouse client (inject in wiring/composition root)');
+    if (!this.ch)
+      throw new Error(
+        'CandleSliceExporter: missing ClickHouse client (inject in wiring/composition root)'
+      );
     if (spec.tokenIds.length === 0)
       throw new Error('CandleSliceExporter: tokenIds empty (refuse to export empty slice)');
     assertIsoOrder(spec.startIso, spec.endIso);

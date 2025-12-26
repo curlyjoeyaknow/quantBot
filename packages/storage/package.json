@@ -31,7 +31,7 @@
       "import": "./dist/ports/LeaderboardPort.js",
       "require": "./dist/ports/LeaderboardPort.js"
     },
-    "./src/ports/CatalogPort": {
+    "./ports/CatalogPort": {
       "types": "./dist/ports/CatalogPort.d.ts",
       "import": "./dist/ports/CatalogPort.js",
       "require": "./dist/ports/CatalogPort.js"

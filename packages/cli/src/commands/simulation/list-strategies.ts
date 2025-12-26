@@ -17,12 +17,17 @@ import process from 'node:process';
  * This function can:
  * - Read process.env ✅
  * - Do I/O ✅
+ * 
+ * Uses strategiesRepository() from CommandContext when no custom duckdb path is provided.
+ * Direct instantiation is acceptable when a custom path is needed (composition root).
  */
-export async function listStrategiesHandler(args: ListStrategiesArgs, _ctx: CommandContext) {
-  // ENV LIVE HERE (composition root)
-  const dbPath = args.duckdb || process.env.DUCKDB_PATH || 'data/tele.duckdb';
-
-  const strategiesRepo = new StrategiesRepository(dbPath);
+export async function listStrategiesHandler(args: ListStrategiesArgs, ctx: CommandContext) {
+  // Use repository from context (proper wiring)
+  // If duckdb path is provided, we still need to create a new instance with that path
+  // This is acceptable - the handler is a composition root
+  const strategiesRepo = args.duckdb 
+    ? new StrategiesRepository(args.duckdb) 
+    : ctx.services.strategiesRepository();
 
   const strategies = await strategiesRepo.list();
 

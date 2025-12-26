@@ -170,7 +170,9 @@ export class DataSnapshotService {
       sources,
       filters,
       schemaVersion: '1.0.0',
-      createdAtISO: new Date().toISOString(),
+      createdAtISO: this.ctx?.clock
+        ? this.ctx.clock.nowISO()
+        : DateTime.utc().toISO()!,
       sliceManifestIds: createdSliceManifestIds,
     });
   }

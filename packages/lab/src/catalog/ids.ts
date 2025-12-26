@@ -33,4 +33,3 @@ export function simId(args: {
 }): string {
   return sha(args);
 }
-

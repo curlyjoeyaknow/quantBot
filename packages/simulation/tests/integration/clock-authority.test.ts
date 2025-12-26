@@ -44,9 +44,17 @@ describe('Clock Authority Integration', () => {
       const startTimestamp = candles[0].timestamp;
 
       // Run simulation with explicit clock resolution
-      const result = await simulateStrategy(candles, testStrategy, undefined, undefined, undefined, undefined, {
-        clockResolution: 'm',
-      });
+      const result = await simulateStrategy(
+        candles,
+        testStrategy,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        {
+          clockResolution: 'm',
+        }
+      );
 
       // Verify simulation completed (clock was created and used)
       expect(result).toBeDefined();
@@ -68,9 +76,17 @@ describe('Clock Authority Integration', () => {
       const resolutions: ClockResolution[] = ['ms', 's', 'm', 'h'];
 
       for (const resolution of resolutions) {
-        const result = await simulateStrategy(candles, testStrategy, undefined, undefined, undefined, undefined, {
-          clockResolution: resolution,
-        });
+        const result = await simulateStrategy(
+          candles,
+          testStrategy,
+          undefined,
+          undefined,
+          undefined,
+          undefined,
+          {
+            clockResolution: resolution,
+          }
+        );
 
         // All resolutions should produce valid results
         expect(result).toBeDefined();
@@ -84,15 +100,31 @@ describe('Clock Authority Integration', () => {
       const candles = generateCandles(20, 1000);
 
       // Run simulation twice with same inputs
-      const result1 = await simulateStrategy(candles, testStrategy, undefined, undefined, undefined, undefined, {
-        clockResolution: 'm',
-        seed: 42,
-      });
+      const result1 = await simulateStrategy(
+        candles,
+        testStrategy,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        {
+          clockResolution: 'm',
+          seed: 42,
+        }
+      );
 
-      const result2 = await simulateStrategy(candles, testStrategy, undefined, undefined, undefined, undefined, {
-        clockResolution: 'm',
-        seed: 42,
-      });
+      const result2 = await simulateStrategy(
+        candles,
+        testStrategy,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        {
+          clockResolution: 'm',
+          seed: 42,
+        }
+      );
 
       // Results should be identical (including time-based calculations)
       expect(result1.finalPnl).toBe(result2.finalPnl);
@@ -112,15 +144,31 @@ describe('Clock Authority Integration', () => {
     it('different clock resolutions → different time calculations', async () => {
       const candles = generateCandles(20, 1000);
 
-      const result1 = await simulateStrategy(candles, testStrategy, undefined, undefined, undefined, undefined, {
-        clockResolution: 's',
-        seed: 42,
-      });
+      const result1 = await simulateStrategy(
+        candles,
+        testStrategy,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        {
+          clockResolution: 's',
+          seed: 42,
+        }
+      );
 
-      const result2 = await simulateStrategy(candles, testStrategy, undefined, undefined, undefined, undefined, {
-        clockResolution: 'm',
-        seed: 42,
-      });
+      const result2 = await simulateStrategy(
+        candles,
+        testStrategy,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        {
+          clockResolution: 'm',
+          seed: 42,
+        }
+      );
 
       // Different resolutions may produce different results due to rounding
       // But both should be deterministic
@@ -164,9 +212,17 @@ describe('Clock Authority Integration', () => {
     it('clock is used for time-from-entry calculations', async () => {
       const candles = generateCandles(20, 1000);
 
-      const result = await simulateStrategy(candles, testStrategy, undefined, undefined, undefined, undefined, {
-        clockResolution: 'm',
-      });
+      const result = await simulateStrategy(
+        candles,
+        testStrategy,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        {
+          clockResolution: 'm',
+        }
+      );
 
       // Verify that events have timestamps that align with candle timestamps
       // (clock was used to convert time units)
@@ -175,7 +231,8 @@ describe('Clock Authority Integration', () => {
           // Event timestamp should match a candle timestamp (or be between candles)
           const matchingCandle = candles.find((c) => c.timestamp === event.timestamp);
           const betweenCandles = candles.some(
-            (c, i) => i > 0 && c.timestamp >= event.timestamp && candles[i - 1].timestamp <= event.timestamp
+            (c, i) =>
+              i > 0 && c.timestamp >= event.timestamp && candles[i - 1].timestamp <= event.timestamp
           );
 
           expect(matchingCandle !== undefined || betweenCandles).toBe(true);
@@ -193,9 +250,17 @@ describe('Clock Authority Integration', () => {
       // Capture current wall-clock time
       const wallClockBefore = Date.now();
 
-      const result = await simulateStrategy(candles, testStrategy, undefined, undefined, undefined, undefined, {
-        clockResolution: 'm',
-      });
+      const result = await simulateStrategy(
+        candles,
+        testStrategy,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        {
+          clockResolution: 'm',
+        }
+      );
 
       const wallClockAfter = Date.now();
 
@@ -225,18 +290,34 @@ describe('Clock Authority Integration', () => {
       const candles = generateCandles(10, 1000);
 
       // Run simulation at different wall-clock times
-      const result1 = await simulateStrategy(candles, testStrategy, undefined, undefined, undefined, undefined, {
-        clockResolution: 'm',
-        seed: 42,
-      });
+      const result1 = await simulateStrategy(
+        candles,
+        testStrategy,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        {
+          clockResolution: 'm',
+          seed: 42,
+        }
+      );
 
       // Wait a bit (simulate different wall-clock time)
       await new Promise((resolve) => setTimeout(resolve, 100));
 
-      const result2 = await simulateStrategy(candles, testStrategy, undefined, undefined, undefined, undefined, {
-        clockResolution: 'm',
-        seed: 42,
-      });
+      const result2 = await simulateStrategy(
+        candles,
+        testStrategy,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        {
+          clockResolution: 'm',
+          seed: 42,
+        }
+      );
 
       // Results should be identical (not affected by wall-clock time)
       expect(result1.finalPnl).toBe(result2.finalPnl);
@@ -248,9 +329,17 @@ describe('Clock Authority Integration', () => {
     it('millisecond resolution provides highest precision', async () => {
       const candles = generateCandles(10, 1000);
 
-      const result = await simulateStrategy(candles, testStrategy, undefined, undefined, undefined, undefined, {
-        clockResolution: 'ms',
-      });
+      const result = await simulateStrategy(
+        candles,
+        testStrategy,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        {
+          clockResolution: 'ms',
+        }
+      );
 
       expect(result).toBeDefined();
       // Millisecond resolution should work correctly
@@ -259,13 +348,20 @@ describe('Clock Authority Integration', () => {
     it('minute resolution rounds time appropriately', async () => {
       const candles = generateCandles(10, 1000);
 
-      const result = await simulateStrategy(candles, testStrategy, undefined, undefined, undefined, undefined, {
-        clockResolution: 'm',
-      });
+      const result = await simulateStrategy(
+        candles,
+        testStrategy,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        {
+          clockResolution: 'm',
+        }
+      );
 
       expect(result).toBeDefined();
       // Minute resolution should round time to minutes
     });
   });
 });
-

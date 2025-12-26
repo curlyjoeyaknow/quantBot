@@ -201,7 +201,7 @@ export * from './sinks.js';
 // =============================================================================
 
 // Re-export the main simulation function directly for convenience
-export { simulateStrategy } from './core/simulator.js';
+export { simulateStrategy, simulateStrategyWithCausalAccessor } from './core/simulator.js';
 export { simulateFromInput } from './core/contract-adapter.js';
 export type { SimInput, SimResult, SimEvent, SimMetrics } from './types/contracts.js';
 export { SimInputSchema, SimResultSchema } from './types/contracts.js';

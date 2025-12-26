@@ -1,6 +1,6 @@
 /**
  * Causal Candle Accessor
- * 
+ *
  * Gate 2: At simulation time t, it must be impossible to fetch candles with close_time > t.
  * This ensures causal correctness - simulations cannot see future data.
  */
@@ -10,10 +10,10 @@ import { getIntervalSeconds, type CandleInterval } from './candle.js';
 
 /**
  * Get the close time of a candle
- * 
+ *
  * A candle's close time is timestamp + intervalSeconds.
  * The candle is only available after it closes.
- * 
+ *
  * @param candle - The candle
  * @param intervalSeconds - The candle interval in seconds (default: 300 for 5m)
  * @returns The close time in seconds (Unix timestamp)
@@ -24,7 +24,7 @@ export function getCandleCloseTime(candle: Candle, intervalSeconds: number = 300
 
 /**
  * Get the close time of a candle from an interval string
- * 
+ *
  * @param candle - The candle
  * @param interval - The candle interval string (e.g., '5m', '1h')
  * @returns The close time in seconds (Unix timestamp)
@@ -36,7 +36,7 @@ export function getCandleCloseTimeFromInterval(candle: Candle, interval: CandleI
 
 /**
  * Filter candles to only include those closed at or before the given time
- * 
+ *
  * @param candles - Array of candles to filter
  * @param simulationTime - Current simulation time (Unix timestamp in seconds)
  * @param intervalSeconds - The candle interval in seconds (default: 300 for 5m)
@@ -55,7 +55,7 @@ export function filterCandlesByCloseTime(
 
 /**
  * Filter candles using interval string
- * 
+ *
  * @param candles - Array of candles to filter
  * @param simulationTime - Current simulation time (Unix timestamp in seconds)
  * @param interval - The candle interval string (e.g., '5m', '1h')
@@ -72,7 +72,7 @@ export function filterCandlesByCloseTimeInterval(
 
 /**
  * Get the last closed candle at a given simulation time
- * 
+ *
  * @param candles - Array of candles (should be sorted by timestamp)
  * @param simulationTime - Current simulation time (Unix timestamp in seconds)
  * @param intervalSeconds - The candle interval in seconds (default: 300 for 5m)
@@ -93,7 +93,7 @@ export function getLastClosedCandle(
 
 /**
  * Get the last closed candle using interval string
- * 
+ *
  * @param candles - Array of candles (should be sorted by timestamp)
  * @param simulationTime - Current simulation time (Unix timestamp in seconds)
  * @param interval - The candle interval string (e.g., '5m', '1h')
@@ -110,7 +110,7 @@ export function getLastClosedCandleInterval(
 
 /**
  * Causal candle accessor interface
- * 
+ *
  * Provides access to candles that respects causality:
  * - Only candles closed at or before simulation time are accessible
  * - Multi-timeframe candles expose last-closed-only
@@ -119,7 +119,7 @@ export interface CausalCandleAccessor {
   /**
    * Get candles available at simulation time t
    * Only returns candles where closeTime <= t
-   * 
+   *
    * @param mint - Token mint address
    * @param simulationTime - Current simulation time (Unix timestamp in seconds)
    * @param lookback - How far back to look (seconds)
@@ -132,10 +132,10 @@ export interface CausalCandleAccessor {
     lookback: number,
     interval: CandleInterval
   ): Promise<Candle[]>;
-  
+
   /**
    * Get the last closed candle at simulation time t
-   * 
+   *
    * @param mint - Token mint address
    * @param simulationTime - Current simulation time (Unix timestamp in seconds)
    * @param interval - Candle interval
@@ -150,19 +150,19 @@ export interface CausalCandleAccessor {
 
 /**
  * Causal candle wrapper
- * 
+ *
  * Wraps a pre-fetched array of candles and provides causal access.
  * This is useful when candles are already available but need causal filtering.
  */
 export class CausalCandleWrapper implements CausalCandleAccessor {
   private readonly candles: readonly Candle[];
   private readonly interval: CandleInterval;
-  
+
   constructor(candles: readonly Candle[], interval: CandleInterval = '5m') {
     this.candles = candles;
     this.interval = interval;
   }
-  
+
   async getCandlesAtTime(
     _mint: string,
     simulationTime: number,
@@ -170,17 +170,13 @@ export class CausalCandleWrapper implements CausalCandleAccessor {
     interval: CandleInterval
   ): Promise<Candle[]> {
     // Filter by close time
-    const closedCandles = filterCandlesByCloseTimeInterval(
-      this.candles,
-      simulationTime,
-      interval
-    );
-    
+    const closedCandles = filterCandlesByCloseTimeInterval(this.candles, simulationTime, interval);
+
     // Filter by lookback window
     const lookbackStart = simulationTime - lookback;
     return closedCandles.filter((candle) => candle.timestamp >= lookbackStart);
   }
-  
+
   async getLastClosedCandle(
     _mint: string,
     simulationTime: number,
@@ -189,4 +185,3 @@ export class CausalCandleWrapper implements CausalCandleAccessor {
     return getLastClosedCandleInterval(this.candles, simulationTime, interval);
   }
 }
-

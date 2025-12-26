@@ -1,8 +1,8 @@
 /**
  * LeaderboardRepository
- * 
+ *
  * ClickHouse repository for strategy leaderboard.
- * 
+ *
  * Stores simulation results for ranking and comparison.
  */
 

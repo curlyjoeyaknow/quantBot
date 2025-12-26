@@ -1,6 +1,6 @@
 /**
  * Lab Server - Self-contained Fastify UI
- * 
+ *
  * Provides a simple web UI for the lab package without depending on Next.js/web package.
  */
 
@@ -96,10 +96,15 @@ fastify.get('/api/leaderboard', async (request: FastifyRequest, reply: FastifyRe
 });
 
 // API: Get strategies
+// NOTE: Direct repository instantiation is acceptable here because:
+// 1. This is a standalone server (composition root)
+// 2. Lab server is infrastructure, not application logic
+// 3. It's the boundary between HTTP and domain
 fastify.get('/api/strategies', async (request: FastifyRequest, reply: FastifyReply) => {
   try {
     const { StrategiesRepository } = await import('@quantbot/storage');
     const duckdbPath = process.env.DUCKDB_PATH || 'data/tele.duckdb';
+    // Direct instantiation in composition root (server) is acceptable
     const repo = new StrategiesRepository(duckdbPath);
     
     const strategies = await repo.list();
@@ -119,7 +124,7 @@ fastify.get('/api/simulation-runs', async (request: FastifyRequest, reply: Fasti
   try {
     const query = request.query as { limit?: string; strategy?: string };
     const limit = parseInt(query.limit || '50', 10);
-    
+
     // TODO: Implement simulation runs query from storage
     // For now, return empty array
     return { runs: [] };
@@ -170,7 +175,7 @@ fastify.get('/api/slices', async (request: FastifyRequest, reply: FastifyReply) 
   try {
     const query = request.query as { limit?: string };
     const limit = parseInt(query.limit || '50', 10);
-    
+
     // TODO: Implement slices query from catalog
     // For now, return empty array
     return { slices: [] };
@@ -207,4 +212,3 @@ if (import.meta.url === `file://${process.argv[1]}` || process.argv[1]?.includes
     process.exit(1);
   });
 }
-

@@ -347,7 +347,9 @@ export default tseslint.config(
     files: ['packages/workflows/src/**/*.ts'],
     ignores: [
       'packages/workflows/src/**/context/**/*.ts',
-      'packages/workflows/src/**/adapters/**/*.ts',
+      // Note: adapters should use clock from ports, but for now we allow Date.now() 
+      // in adapters since they're composition roots. This will be tightened in the future.
+      // 'packages/workflows/src/**/adapters/**/*.ts',
     ],
     rules: {
       'no-restricted-imports': [
@@ -437,20 +439,66 @@ export default tseslint.config(
           ],
         },
       ],
-      // Determinism enforcement: ban Date.now() and Math.random() in workflows
+      // Determinism enforcement: ban Date.now(), new Date(), and Math.random() in workflows
       'no-restricted-properties': [
         'error',
         {
           object: 'Date',
           property: 'now',
           message:
-            'Workflows must not use Date.now(). Use ctx.clock.nowISO() or SimulationClock for deterministic time.',
+            'Workflows must not use Date.now(). Use ctx.clock.nowISO() or ports.clock.nowMs() for deterministic time. Only composition roots (context/adapters) may use Date.now() to create clock adapters.',
         },
         {
           object: 'Math',
           property: 'random',
           message:
             'Workflows must not use Math.random(). Use DeterministicRNG from @quantbot/core for seeded randomness.',
+        },
+      ],
+      // Ban new Date() constructor (non-deterministic)
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'NewExpression[callee.name="Date"]',
+          message:
+            'Workflows must not use new Date(). Use ctx.clock.nowISO() or ports.clock.nowMs() for deterministic time. Only composition roots may use new Date() to create clock adapters.',
+        },
+      ],
+    },
+  },
+
+  // Adapter-specific rules: adapters should use clock from ports, not Date.now()
+  // However, since adapters are created by composition roots, we allow Date.now() 
+  // only in the factory functions that create clock adapters.
+  {
+    files: ['packages/workflows/src/**/adapters/**/*.ts'],
+    ignores: [
+      // Allow Date.now() only in composition root files that create clock adapters
+      'packages/workflows/src/context/createProductionPorts.ts',
+    ],
+    rules: {
+      'no-restricted-properties': [
+        'error',
+        {
+          object: 'Date',
+          property: 'now',
+          message:
+            'Adapters must not use Date.now(). Accept a ClockPort dependency and use clock.nowMs() instead. Only composition roots (createProductionPorts.ts) may use Date.now() to create clock adapters.',
+        },
+        {
+          object: 'Math',
+          property: 'random',
+          message:
+            'Adapters must not use Math.random(). Use DeterministicRNG from @quantbot/core for seeded randomness.',
+        },
+      ],
+      // Ban new Date() constructor in adapters
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'NewExpression[callee.name="Date"]',
+          message:
+            'Adapters must not use new Date(). Accept a ClockPort dependency and use clock.nowMs() instead. Only composition roots may use new Date() to create clock adapters.',
         },
       ],
     },

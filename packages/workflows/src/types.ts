@@ -1,4 +1,5 @@
 import type { DateTime } from 'luxon';
+import type { CausalCandleAccessor } from '@quantbot/simulation';
 
 export type Candle = {
   timestamp: number;
@@ -121,8 +122,10 @@ export type WorkflowContext = {
   };
 
   ohlcv: {
-    // workflows decide the window; ohlcv decides how to source (cache/db/api)
-    getCandles: (q: { mint: string; fromISO: string; toISO: string }) => Promise<Candle[]>;
+    // New: Causal accessor (primary) - ensures Gate 2 compliance
+    causalAccessor: CausalCandleAccessor;
+    // Legacy: Keep for migration period (backward compatibility)
+    getCandles?: (q: { mint: string; fromISO: string; toISO: string }) => Promise<Candle[]>;
   };
 
   simulation: {

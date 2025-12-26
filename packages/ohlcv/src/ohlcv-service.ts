@@ -11,7 +11,7 @@
 
 import { DateTime } from 'luxon';
 import { getStorageEngine, initClickHouse } from '@quantbot/storage';
-import type { Candle, Chain } from '@quantbot/core';
+import type { Candle, Chain, ClockPort } from '@quantbot/core';
 import { logger } from '@quantbot/utils';
 import { storeCandles as storeCandlesOffline } from './ohlcv-storage.js';
 
@@ -39,6 +39,12 @@ export class OHLCVService {
   private storageEngine = getStorageEngine();
   private inMemoryCache: Map<string, { candles: Candle[]; timestamp: number }> = new Map();
   private readonly cacheTTL = 5 * 60 * 1000; // 5 minutes
+  private readonly clock: ClockPort;
+
+  constructor(clock?: ClockPort) {
+    // Use injected clock or default to system clock for backward compatibility
+    this.clock = clock ?? { nowMs: () => Date.now() };
+  }
 
   /**
    * Initialize the service (ensure ClickHouse is ready)
@@ -136,7 +142,7 @@ export class OHLCVService {
       const cacheKey = this.getCacheKey(mint, chain, startTime, endTime, interval);
       const cached = this.inMemoryCache.get(cacheKey);
 
-      if (cached && Date.now() - cached.timestamp < this.cacheTTL) {
+      if (cached && this.clock.nowMs() - cached.timestamp < this.cacheTTL) {
         logger.debug('Using in-memory cache', { mint: mint });
         return cached.candles;
       }
@@ -162,7 +168,7 @@ export class OHLCVService {
           const cacheKey = this.getCacheKey(mint, chain, startTime, endTime, interval);
           this.inMemoryCache.set(cacheKey, {
             candles: clickhouseCandles,
-            timestamp: Date.now(),
+            timestamp: this.clock.nowMs(),
           });
 
           return clickhouseCandles;
@@ -241,5 +247,7 @@ export class OHLCVService {
   }
 }
 
-// Export singleton instance
+// Export singleton instance (uses system clock by default)
+// For deterministic testing, create a new instance with a clock:
+// const service = new OHLCVService({ nowMs: () => fixedTime });
 export const ohlcvService = new OHLCVService();

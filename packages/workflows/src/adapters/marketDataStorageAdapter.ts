@@ -1,6 +1,6 @@
 /**
  * MarketDataPort adapter using Storage Engine (DuckDB/ClickHouse)
- * 
+ *
  * This adapter fetches candles from DuckDB/ClickHouse instead of API.
  * Used for lab command and other offline workflows.
  */
@@ -83,9 +83,7 @@ export function createMarketDataStorageAdapter(): MarketDataPort {
       }
     },
 
-    async fetchMetadata(
-      request: MarketDataMetadataRequest
-    ): Promise<{
+    async fetchMetadata(request: MarketDataMetadataRequest): Promise<{
       address: string;
       chain: Chain;
       name?: string;
@@ -155,4 +153,3 @@ export function createMarketDataStorageAdapter(): MarketDataPort {
     },
   };
 }
-

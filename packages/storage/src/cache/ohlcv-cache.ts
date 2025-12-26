@@ -1,5 +1,6 @@
 import { LRUCache } from 'lru-cache';
 import { logger } from '@quantbot/utils';
+import type { ClockPort } from '@quantbot/core';
 
 /**
  * Candle type for caching OHLCV data.
@@ -36,14 +37,18 @@ export interface CacheStats {
 export class OHLCVCache {
   private cache: LRUCache<string, CacheEntry>;
   private stats: CacheStats;
+  private readonly clock: ClockPort;
 
-  constructor(maxSize: number = 2000) {
+  constructor(maxSize: number = 2000, clock?: ClockPort) {
     this.cache = new LRUCache<string, CacheEntry>({
       max: maxSize,
       ttl: 1000 * 60 * 30, // 30 minutes default TTL
       updateAgeOnGet: true,
       updateAgeOnHas: true,
     });
+
+    // Use injected clock or default to system clock for backward compatibility
+    this.clock = clock ?? { nowMs: () => Date.now() };
 
     this.stats = {
       hits: 0,
@@ -77,7 +82,7 @@ export class OHLCVCache {
     const entry = this.cache.get(key);
 
     if (entry) {
-      const now = Date.now();
+      const now = this.clock.nowMs();
       if (now - entry.timestamp < entry.ttl) {
         this.stats.hits++;
         this.updateHitRate();
@@ -116,7 +121,7 @@ export class OHLCVCache {
 
     const entry: CacheEntry = {
       data,
-      timestamp: Date.now(),
+      timestamp: this.clock.nowMs(),
       ttl,
     };
 
@@ -229,5 +234,8 @@ export class OHLCVCache {
   }
 }
 
+// Export singleton instance (uses system clock by default)
+// For deterministic testing, create a new instance with a clock:
+// const cache = new OHLCVCache(2000, { nowMs: () => fixedTime });
 export const ohlcvCache = new OHLCVCache();
 

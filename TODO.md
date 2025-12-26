@@ -8,6 +8,44 @@ Last updated: 2025-01-24 (Recent: Slice Export & Analyze workflow implementation
 
 ## 🔥 Active Development
 
+### Wiring Improvements & Verification
+
+- [x] **Phase 1: Verify Wiring Improvements** ✅
+  - [x] Test `StrategiesRepository` through `CommandContext` in list-strategies command
+  - [x] Run type checking to ensure no TypeScript errors from wiring changes
+  - [x] Verify all handlers can access services through context
+  - [x] Test that workflows use `WorkflowContext` (no direct instantiation)
+  - [x] Document any issues found during verification
+  - [x] Created verification test: `command-context-wiring.test.ts` (5 tests passing)
+  - [x] Created verification status document: `wiring-verification-status.md`
+
+- [x] **Phase 2: Complete Stub Port Migration** ✅
+  - [x] Review `ExecutionStubAdapter` implementation and requirements
+  - [x] Document migration path for replacing stub with real execution adapter
+  - [x] Plan real execution client integration (Jito, RPC) when ready
+  - [x] Update `createProductionPorts.ts` with migration notes
+  - [x] Keep stub for safety (dry-run by default) until real adapter is ready
+  - [x] Created migration guide: `docs/architecture/execution-port-migration.md`
+
+- [ ] **Phase 3: Add Wiring Pattern Tests**
+  - [ ] Create tests that verify handlers use `CommandContext` services
+  - [ ] Create tests that verify workflows use `WorkflowContext` (no direct instantiation)
+  - [ ] Add integration tests for wiring paths
+  - [ ] Add tests for context factory functions
+  - [ ] Verify composition root patterns in tests
+
+- [ ] **Phase 4: Architectural Improvements**
+  - [ ] Review remaining direct instantiations in non-composition-root files
+  - [ ] Ensure all handlers follow wiring patterns
+  - [ ] Add ESLint rules to enforce wiring patterns (if needed)
+  - [ ] Document any exceptions to wiring patterns
+
+- [ ] **Phase 5: Documentation Updates**
+  - [ ] Update CHANGELOG.md with wiring improvements
+  - [ ] Add wiring examples to architecture docs
+  - [ ] Create wiring migration guide for future changes
+  - [ ] Update README with wiring pattern references
+
 ### Slice Export & Analyze Workflow
 
 - [x] **Phase 0: Foundation**
