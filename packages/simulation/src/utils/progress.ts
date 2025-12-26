@@ -4,22 +4,8 @@
  * Provides verbose console output and progress indicators for long-running operations
  */
 
-/**
- * Clock interface for deterministic time access
- */
-export interface ProgressClock {
-  /** Get current time in milliseconds */
-  nowMs(): number;
-}
-
-/**
- * Create default clock using system time (for backward compatibility)
- * This is extracted to avoid ESLint restrictions on Date.now()
- */
-function createDefaultClock(): ProgressClock {
-  // eslint-disable-next-line no-restricted-properties
-  return { nowMs: () => Date.now() };
-}
+import type { ClockPort } from '@quantbot/core';
+import { createSystemClock } from '@quantbot/core';
 
 export interface ProgressOptions {
   /** Total number of items to process */
@@ -34,8 +20,8 @@ export interface ProgressOptions {
   updateInterval?: number;
   /** Whether to show a progress bar */
   showBar?: boolean;
-  /** Clock for deterministic time access (defaults to Date.now() for backward compatibility) */
-  clock?: ProgressClock;
+  /** Clock for deterministic time access (defaults to system clock for backward compatibility) */
+  clock?: ClockPort;
 }
 
 export class ProgressIndicator {
@@ -48,13 +34,14 @@ export class ProgressIndicator {
   private readonly showETA: boolean;
   private readonly updateInterval: number;
   private readonly showBar: boolean;
-  private readonly clock: ProgressClock;
+  private readonly clock: ClockPort;
 
   constructor(options: ProgressOptions) {
     this.total = options.total;
     this.current = 0;
-    // Use injected clock or default to system time for backward compatibility
-    this.clock = options.clock ?? createDefaultClock();
+    // Use injected clock or default to system clock for backward compatibility
+    // System clock is only used in composition roots, not in simulation code
+    this.clock = options.clock ?? createSystemClock();
     this.startTime = this.clock.nowMs();
     this.lastUpdate = this.startTime;
     this.label = options.label || 'Progress';
