@@ -102,8 +102,10 @@ export class OhlcvIngestionService {
     }
     if (!this.ingestionEnginePromise) {
       this.ingestionEnginePromise = (async () => {
-        // Dynamic import to break circular dependency - use string to avoid type checking
-        const jobsModule = await import('@quantbot/jobs' as string);
+        // Dynamic import to break circular dependency
+        // Use runtime string construction to prevent Next.js from analyzing at build time
+        const modulePath = '@quantbot/' + 'jobs';
+        const jobsModule = await import(modulePath);
         const getOhlcvIngestionEngine = (
           jobsModule as { getOhlcvIngestionEngine: () => OhlcvIngestionEngine }
         ).getOhlcvIngestionEngine;
@@ -267,8 +269,9 @@ export class OhlcvIngestionService {
     // Very conservative concurrency to stay well under 50 RPS:
     // - Each token makes ~3-4 API calls on average (1m probe + early exit, or full fetch)
     // - 50 RPS / 4 calls per token = ~12 tokens/sec max
-    // - Use 5 concurrent tokens to leave significant headroom and avoid long queues
-    const CONCURRENT_TOKENS = 5;
+    // - Use 2 concurrent tokens to leave quota for other endpoints (metadata, price)
+    // - This ensures ~40% of rate limit (1200 req/min) is available for non-OHLCV calls
+    const CONCURRENT_TOKENS = 2;
     let tokensProcessed = 0;
     let tokensSucceeded = 0;
     let tokensFailed = 0;

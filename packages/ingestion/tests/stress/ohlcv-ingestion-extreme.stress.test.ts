@@ -43,8 +43,22 @@ vi.mock('@quantbot/observability', async () => {
     ...actual,
     recordApiUsage: vi.fn().mockResolvedValue(undefined),
     checkApiQuotas: vi.fn().mockResolvedValue({
-      birdeye: { service: 'birdeye', limit: 100000, used: 0, remaining: 100000, resetAt: new Date(), warningThreshold: 0.2 },
-      helius: { service: 'helius', limit: 5000000, used: 0, remaining: 5000000, resetAt: new Date(), warningThreshold: 0.2 },
+      birdeye: {
+        service: 'birdeye',
+        limit: 100000,
+        used: 0,
+        remaining: 100000,
+        resetAt: new Date(),
+        warningThreshold: 0.2,
+      },
+      helius: {
+        service: 'helius',
+        limit: 5000000,
+        used: 0,
+        remaining: 5000000,
+        resetAt: new Date(),
+        warningThreshold: 0.2,
+      },
     }),
     hasQuotaAvailable: vi.fn().mockResolvedValue(true),
   };

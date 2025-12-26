@@ -1,0 +1,13 @@
+kind: optimize_preset_v1
+name: momo_rsi_atr_opt
+base_preset: momo_rsi_atr
+
+optimize:
+  ema_fast: [5, 9, 12]
+  ema_slow: [21, 34, 55]
+  rsi_thresh: [50, 55, 60]
+  atr_mult: [1.5, 2.0, 2.5]
+
+search:
+  mode: grid
+  max_runs: 200

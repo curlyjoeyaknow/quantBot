@@ -7,12 +7,59 @@
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "require": "./dist/index.js"
     },
-    "./*": {
-      "import": "./dist/*.js",
-      "types": "./dist/*.d.ts"
+    "./ports/CandleSlicePort": {
+      "types": "./dist/ports/CandleSlicePort.d.ts",
+      "import": "./dist/ports/CandleSlicePort.js",
+      "require": "./dist/ports/CandleSlicePort.js"
+    },
+    "./ports/FeatureComputePort": {
+      "types": "./dist/ports/FeatureComputePort.d.ts",
+      "import": "./dist/ports/FeatureComputePort.js",
+      "require": "./dist/ports/FeatureComputePort.js"
+    },
+    "./ports/SimulationPort": {
+      "types": "./dist/ports/SimulationPort.d.ts",
+      "import": "./dist/ports/SimulationPort.js",
+      "require": "./dist/ports/SimulationPort.js"
+    },
+    "./ports/LeaderboardPort": {
+      "types": "./dist/ports/LeaderboardPort.d.ts",
+      "import": "./dist/ports/LeaderboardPort.js",
+      "require": "./dist/ports/LeaderboardPort.js"
+    },
+    "./src/ports/CatalogPort": {
+      "types": "./dist/ports/CatalogPort.d.ts",
+      "import": "./dist/ports/CatalogPort.js",
+      "require": "./dist/ports/CatalogPort.js"
+    },
+    "./src/adapters/clickhouse/CandleSliceExporter": {
+      "types": "./dist/adapters/clickhouse/CandleSliceExporter.d.ts",
+      "import": "./dist/adapters/clickhouse/CandleSliceExporter.js",
+      "require": "./dist/adapters/clickhouse/CandleSliceExporter.js"
+    },
+    "./src/adapters/duckdb/FeatureComputer": {
+      "types": "./dist/adapters/duckdb/FeatureComputer.d.ts",
+      "import": "./dist/adapters/duckdb/FeatureComputer.js",
+      "require": "./dist/adapters/duckdb/FeatureComputer.js"
+    },
+    "./src/adapters/duckdb/SimulationExecutor": {
+      "types": "./dist/adapters/duckdb/SimulationExecutor.d.ts",
+      "import": "./dist/adapters/duckdb/SimulationExecutor.js",
+      "require": "./dist/adapters/duckdb/SimulationExecutor.js"
+    },
+    "./src/adapters/duckdb/duckdbClient": {
+      "types": "./dist/adapters/duckdb/duckdbClient.d.ts",
+      "import": "./dist/adapters/duckdb/duckdbClient.js",
+      "require": "./dist/adapters/duckdb/duckdbClient.js"
+    },
+    "./src/adapters/duckdb/DuckDbCatalogAdapter": {
+      "types": "./dist/adapters/duckdb/DuckDbCatalogAdapter.d.ts",
+      "import": "./dist/adapters/duckdb/DuckDbCatalogAdapter.js",
+      "require": "./dist/adapters/duckdb/DuckDbCatalogAdapter.js"
     }
   },
   "scripts": {
@@ -28,6 +75,7 @@
     "@quantbot/utils": "workspace:*",
     "ajv": "^8.17.1",
     "ajv-formats": "^3.0.1",
+    "duckdb": "^1.0.0",
     "lru-cache": "^11.0.0",
     "luxon": "^3.4.4"
   },

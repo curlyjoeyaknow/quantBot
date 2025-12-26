@@ -631,3 +631,24 @@ export interface LastSimulation {
   metadata: TokenMetadata;
   candles: Candle[];
 }
+
+// ============================================================================
+// OHLCV Work Planning Types (moved from ingestion to break circular dependency)
+// ============================================================================
+
+/**
+ * Work item for OHLCV fetching
+ *
+ * Moved from @quantbot/ingestion to @quantbot/core to break circular dependency
+ * between @quantbot/ingestion and @quantbot/jobs.
+ */
+export interface OhlcvWorkItem {
+  mint: string;
+  chain: Chain;
+  interval: '1s' | '15s' | '1m' | '5m' | '1H';
+  startTime: DateTime;
+  endTime: DateTime;
+  priority?: number;
+  alertTime?: DateTime; // Original alert time for context
+  callCount?: number; // Number of calls for this mint
+}

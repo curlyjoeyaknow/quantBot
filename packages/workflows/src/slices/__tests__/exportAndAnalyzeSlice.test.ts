@@ -42,7 +42,10 @@ describe('exportAndAnalyzeSlice', () => {
         dataset: 'trades',
         chain: 'sol',
         timeRange: { startIso: '2025-12-01T00:00:00.000Z', endIso: '2025-12-02T00:00:00.000Z' },
-        tokenIds: ['mintA', 'mintB'],
+        tokenIds: [
+          'So11111111111111111111111111111111111111112', // Valid Solana mint (44 chars)
+          'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', // Valid Solana mint (44 chars)
+        ],
         columns: ['ts', 'token_id', 'price', 'size'],
         tags: { purpose: 'feature_eng' },
       },

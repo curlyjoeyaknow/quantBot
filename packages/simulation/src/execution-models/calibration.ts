@@ -201,11 +201,17 @@ export function calibrateFailureModel(
 
 /**
  * Calibrate execution model from live trade records
+ *
+ * @param records - Live trade records to calibrate from
+ * @param venue - Venue identifier
+ * @param source - Source of the records (default: 'live-trading')
+ * @param calibratedAt - Timestamp for calibration metadata (optional, for determinism)
  */
 export function calibrateExecutionModel(
   records: LiveTradeRecord[],
   venue: string,
-  source: string = 'live-trading'
+  source: string = 'live-trading',
+  calibratedAt?: string
 ): CalibrationResult {
   if (records.length === 0) {
     throw new ValidationError('Cannot calibrate execution model from empty records', {
@@ -352,7 +358,7 @@ export function calibrateExecutionModel(
       borrowAprBps: 0,
     },
     calibrationMetadata: {
-      calibratedAt: new Date().toISOString(),
+      calibratedAt: calibratedAt ?? 'unknown',
       source,
       sampleSize: venueRecords.length,
     },
@@ -361,7 +367,7 @@ export function calibrateExecutionModel(
   return {
     model,
     sampleSize: venueRecords.length,
-    calibratedAt: new Date().toISOString(),
+    calibratedAt: calibratedAt ?? 'unknown',
     source,
     statistics: {
       latency: {

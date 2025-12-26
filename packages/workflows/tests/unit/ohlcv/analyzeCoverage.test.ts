@@ -225,7 +225,7 @@ describe('analyzeCoverage workflow', () => {
       await analyzeCoverage(spec, mockContext);
 
       expect(mockPythonEngine.runScript).toHaveBeenCalledWith(
-        expect.stringMatching(/ohlcv_caller_coverage\.py$/),
+        expect.stringContaining('ohlcv_caller_coverage.py'),
         {
           duckdb: 'data/test.duckdb',
           interval: '5m',

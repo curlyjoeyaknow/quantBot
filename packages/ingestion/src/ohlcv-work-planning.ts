@@ -18,23 +18,12 @@
 
 import { resolve } from 'path';
 import { DateTime } from 'luxon';
-import type { Chain } from '@quantbot/core';
+import type { Chain, OhlcvWorkItem } from '@quantbot/core';
 import { logger } from '@quantbot/utils';
 import { getDuckDBWorklistService } from '@quantbot/storage';
 
-/**
- * Work item for OHLCV fetching
- */
-export interface OhlcvWorkItem {
-  mint: string;
-  chain: Chain;
-  interval: '1s' | '15s' | '1m' | '5m' | '1H';
-  startTime: DateTime;
-  endTime: DateTime;
-  priority?: number;
-  alertTime?: DateTime; // Original alert time for context
-  callCount?: number; // Number of calls for this mint
-}
+// Re-export OhlcvWorkItem from core for backward compatibility
+export type { OhlcvWorkItem } from '@quantbot/core';
 
 /**
  * Options for generating worklist

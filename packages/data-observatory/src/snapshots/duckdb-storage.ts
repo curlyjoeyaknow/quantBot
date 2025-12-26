@@ -115,7 +115,7 @@ export class DuckDBSnapshotStorage implements SnapshotStorage {
   async storeSnapshotRef(ref: DataSnapshotRef): Promise<void> {
     // Ensure database is initialized before storing
     await this.waitForInit();
-    
+
     try {
       const result: { success: boolean; error?: string } = await this.client.execute(
         this.scriptPath,
@@ -149,7 +149,7 @@ export class DuckDBSnapshotStorage implements SnapshotStorage {
   async getSnapshotRef(snapshotId: string): Promise<DataSnapshotRef | null> {
     // Ensure database is initialized before querying
     await this.waitForInit();
-    
+
     try {
       const result: DataSnapshotRef | null = await this.client.execute(
         this.scriptPath,
@@ -173,7 +173,7 @@ export class DuckDBSnapshotStorage implements SnapshotStorage {
   async storeSnapshotEvents(snapshotId: string, events: CanonicalEvent[]): Promise<void> {
     // Ensure database is initialized before storing
     await this.waitForInit();
-    
+
     try {
       const result: { success: boolean; error?: string } = await this.client.execute(
         this.scriptPath,
@@ -219,7 +219,7 @@ export class DuckDBSnapshotStorage implements SnapshotStorage {
   ): Promise<CanonicalEvent[]> {
     // Ensure database is initialized before querying
     await this.waitForInit();
-    
+
     try {
       const result: unknown[] = await this.client.execute(
         this.scriptPath,

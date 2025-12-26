@@ -1,23 +1,20 @@
 /**
- * Lab Simulation Handler
- * =======================
- * Runs simulations on existing candles using preset indicator signals
+ * Lab Overlay Backtesting Handler
+ * ================================
+ * Quick overlay backtesting for exit strategy experimentation
+ * 
+ * Queries calls from DuckDB and runs overlay backtesting to evaluate exit strategies.
  */
 
+import { DateTime } from 'luxon';
 import type { CommandContext } from '../../core/command-context.js';
 import type { LabRunArgs } from '../../command-defs/lab.js';
-import {
-  getSignalPreset,
-  combineSignalPresets,
-  getPreset,
-  simulateStrategy,
-} from '@quantbot/simulation';
-import { DateTime } from 'luxon';
-import type { StrategyConfig, StrategyLeg, SignalGroup } from '@quantbot/simulation';
+import { evaluateCallsWorkflow, createProductionContextWithPorts } from '@quantbot/workflows';
+import type { EvaluateCallsRequest } from '@quantbot/workflows';
+import type { CallSignal } from '@quantbot/core';
 
 export interface LabRunResult {
   success: boolean;
-  runId?: string;
   callsSimulated: number;
   callsSucceeded: number;
   callsFailed: number;
@@ -25,111 +22,85 @@ export interface LabRunResult {
     callId: string;
     mint: string;
     createdAtISO: string;
+    overlay: string;
     ok: boolean;
-    pnlMultiplier?: number;
-    trades?: number;
+    netReturnPct?: number;
+    grossReturnPct?: number;
+    exitReason?: string;
     errorCode?: string;
     errorMessage?: string;
   }>;
   summary: {
-    avgPnl?: number;
-    minPnl?: number;
-    maxPnl?: number;
-    totalTrades: number;
-    winRate?: number;
-    successRate?: number;
-    failureRate?: number;
-    profitableCalls?: number;
-    losingCalls?: number;
+    byOverlay: Array<{
+      overlay: string;
+      calls: number;
+      medianNetReturnPct: number;
+      winRate: number;
+    }>;
+    overall: {
+      avgNetReturnPct?: number;
+      minNetReturnPct?: number;
+      maxNetReturnPct?: number;
+      winRate?: number;
+      successRate?: number;
+      failureRate?: number;
+    };
   };
 }
 
 /**
- * Normalize SignalGroup to ensure logic is set (required by types/signals.ts)
- * Handles the type mismatch between config.ts SignalGroup (optional logic) and types/signals.ts SignalGroup (required logic)
- *
- * Edge cases handled:
- * - undefined logic → defaults to 'AND'
- * - undefined conditions → defaults to []
- * - undefined groups → defaults to undefined (not [] to avoid type issues)
- * - nested groups are recursively normalized
+ * Convert DuckDB call to CallSignal format
  */
-function normalizeSignalGroup(group: {
-  logic?: 'AND' | 'OR';
-  conditions?: unknown[];
-  groups?: unknown[];
-  id?: string;
-}): SignalGroup {
+function convertDuckDBCallToCallSignal(call: {
+  mint: string;
+  alert_timestamp: string;
+  caller_name?: string | null;
+  price_usd?: number | null;
+}): CallSignal {
+  const alertTimestamp = DateTime.fromISO(call.alert_timestamp);
+  const tsMs = alertTimestamp.toMillis();
+  
+  // Determine chain from mint address format (simplified - assumes Solana)
+  const chain: CallSignal['token']['chain'] = 'sol';
+  
+  // Generate caller identity from caller_name
+  const callerName = call.caller_name || 'unknown';
+  const fromId = callerName.toLowerCase().replace(/\s+/g, '-');
+  
   return {
-    ...group,
-    logic: (group.logic ?? 'AND') as 'AND' | 'OR',
-    conditions: group.conditions ?? [],
-    groups:
-      group.groups && group.groups.length > 0
-        ? group.groups.map((g) => normalizeSignalGroup(g as typeof group))
-        : undefined,
-  } as SignalGroup;
+    kind: 'token_call',
+    tsMs,
+    token: {
+      address: call.mint,
+      chain,
+    },
+    caller: {
+      displayName: callerName,
+      fromId,
+    },
+    source: {
+      callerMessageId: 0, // Not available from DuckDB
+    },
+    enrichment: call.price_usd
+      ? {
+          tsMs,
+          enricher: {
+            displayName: 'DuckDB',
+            fromId: 'duckdb',
+          },
+          snapshot: {
+            priceUsd: call.price_usd,
+          },
+        }
+      : undefined,
+    parse: {
+      confidence: 1.0,
+      reasons: ['from_duckdb'],
+    },
+  };
 }
 
 export async function runLabHandler(args: LabRunArgs, ctx: CommandContext): Promise<LabRunResult> {
-  // Get entry signal preset(s)
-  let entrySignal: SignalGroup | undefined;
-  if (args.entryPresets && args.entryPresets.length > 0) {
-    const combined = combineSignalPresets(args.entryPresets, 'AND');
-    if (!combined) {
-      throw new Error(`Invalid entry preset(s): ${args.entryPresets.join(', ')}`);
-    }
-    entrySignal = normalizeSignalGroup(combined);
-  } else if (args.entryPreset) {
-    const preset = getSignalPreset(args.entryPreset);
-    if (!preset) {
-      throw new Error(`Invalid entry preset: ${args.entryPreset}`);
-    }
-    entrySignal = normalizeSignalGroup(preset);
-  }
-
-  // Get exit signal preset(s)
-  let exitSignal: SignalGroup | undefined;
-  if (args.exitPresets && args.exitPresets.length > 0) {
-    const combined = combineSignalPresets(args.exitPresets, 'AND');
-    if (!combined) {
-      throw new Error(`Invalid exit preset(s): ${args.exitPresets.join(', ')}`);
-    }
-    exitSignal = normalizeSignalGroup(combined);
-  } else if (args.exitPreset) {
-    const preset = getSignalPreset(args.exitPreset);
-    if (!preset) {
-      throw new Error(`Invalid exit preset: ${args.exitPreset}`);
-    }
-    exitSignal = normalizeSignalGroup(preset);
-  }
-
-  // Get strategy config (from preset or custom)
-  let strategyConfig: StrategyConfig;
-  if (args.strategyPreset) {
-    const preset = getPreset(args.strategyPreset);
-    if (!preset) {
-      throw new Error(`Invalid strategy preset: ${args.strategyPreset}`);
-    }
-    strategyConfig = preset;
-  } else {
-    // Build custom strategy config
-    strategyConfig = {
-      name: 'Lab_Custom',
-      profitTargets: args.profitTargets || [],
-      stopLoss: args.stopLoss,
-      holdHours: args.holdHours,
-    };
-  }
-
-  // Add signals to strategy config
-  if (entrySignal) {
-    strategyConfig.entrySignal = entrySignal;
-  }
-  if (exitSignal) {
-    strategyConfig.exitSignal = exitSignal;
-  }
-
   // Get calls from DuckDB storage
   const duckdbStorage = ctx.services.duckdbStorage();
   const dbPath = process.env.DUCKDB_PATH || 'data/tele.duckdb';
@@ -139,7 +110,7 @@ export async function runLabHandler(args: LabRunArgs, ctx: CommandContext): Prom
   // Query calls from DuckDB
   const callsResult = await duckdbStorage.queryCalls(
     dbPath,
-    args.limit,
+    args.limit * 2, // Get more to account for filtering
     false, // excludeUnrecoverable
     args.caller
   );
@@ -173,131 +144,136 @@ export async function runLabHandler(args: LabRunArgs, ctx: CommandContext): Prom
       callsFailed: 0,
       results: [],
       summary: {
-        totalTrades: 0,
+        byOverlay: [],
+        overall: {},
       },
     };
   }
 
-  // Run simulations using core simulator
-  const storageEngine = ctx.services.storageEngine();
+  // Convert DuckDB calls to CallSignal format
+  const callSignals: CallSignal[] = calls.map(convertDuckDBCallToCallSignal);
 
+  // Build workflow request
+  const request: EvaluateCallsRequest = {
+    calls: callSignals,
+    align: {
+      lagMs: args.lagMs,
+      entryRule: args.entryRule,
+      timeframeMs: args.timeframeMs,
+      interval: args.interval,
+    },
+    backtest: {
+      fee: {
+        takerFeeBps: args.takerFeeBps,
+        slippageBps: args.slippageBps,
+      },
+      overlays: args.overlays,
+      position: {
+        notionalUsd: args.notionalUsd,
+      },
+    },
+  };
+
+  // Create production context with storage-based market data adapter (for lab)
+  // Lab uses DuckDB/ClickHouse instead of API calls
+  const baseContext = await createProductionContextWithPorts();
+  const { createMarketDataStorageAdapter } = await import('@quantbot/workflows');
+  
+  // Override market data port to use storage instead of API
+  const workflowCtx = {
+    ...baseContext,
+    ports: {
+      ...baseContext.ports,
+      marketData: createMarketDataStorageAdapter(),
+    },
+  };
+
+  // Run overlay backtesting workflow
+  const workflowResult = await evaluateCallsWorkflow(request, workflowCtx);
+
+  // Transform workflow results to lab format
   const results: LabRunResult['results'] = [];
-  let callsSucceeded = 0;
-  let callsFailed = 0;
-  const pnlValues: number[] = [];
-  let totalTrades = 0;
+  const overlayStats = new Map<string, { returns: number[]; wins: number; total: number }>();
 
-  // Convert strategy config to strategy legs
-  const strategyLegs: StrategyLeg[] = strategyConfig.profitTargets || [];
+  for (const result of workflowResult.results) {
+    const overlayKey = JSON.stringify(result.overlay);
+    const netReturnPct = result.pnl.netReturnPct;
+    const grossReturnPct = result.pnl.grossReturnPct;
+    const isWin = netReturnPct > 0;
 
-  for (const call of calls) {
-    try {
-      // Get candles for this call using storage engine
-      const callDate = DateTime.fromISO(call.alert_timestamp);
-      const fromWindow = callDate.minus({ minutes: args.preWindow });
-      const toWindow = callDate.plus({ minutes: args.postWindow });
-
-      const candles = await storageEngine.getCandles(call.mint, 'solana', fromWindow, toWindow, {
-        interval: '5m',
-      });
-
-      if (candles.length === 0) {
-        results.push({
-          callId: call.mint + '_' + call.alert_timestamp,
-          mint: call.mint,
-          createdAtISO: callDate.toISO()!,
-          ok: false,
-          errorCode: 'NO_CANDLES',
-          errorMessage: 'No candles available for this call',
-        });
-        callsFailed++;
-        continue;
-      }
-
-      // Run simulation using core simulator
-      const simResult = await simulateStrategy(
-        candles,
-        strategyLegs,
-        strategyConfig.stopLoss,
-        strategyConfig.entry,
-        strategyConfig.reEntry,
-        strategyConfig.costs,
-        {
-          entrySignal: strategyConfig.entrySignal,
-          exitSignal: strategyConfig.exitSignal,
-          entryLadder: strategyConfig.entryLadder,
-          exitLadder: strategyConfig.exitLadder,
-        }
-      );
-
-      // Calculate PnL multiplier (finalPnl is already a multiplier where 1 = break even)
-      const pnlMultiplier = simResult.finalPnl;
-      const trades = simResult.events.filter(
-        (e) =>
-          e.type === 'entry' ||
-          e.type === 'stop_loss' ||
-          e.type === 'target_hit' ||
-          e.type === 'final_exit'
-      ).length;
-
-      callsSucceeded++;
-      pnlValues.push(pnlMultiplier);
-      totalTrades += trades;
-
-      results.push({
-        callId: call.mint + '_' + call.alert_timestamp,
-        mint: call.mint,
-        createdAtISO: callDate.toISO()!,
-        ok: true,
-        pnlMultiplier,
-        trades,
-      });
-    } catch (error) {
-      callsFailed++;
-      const callDate = DateTime.fromISO(call.alert_timestamp);
-      results.push({
-        callId: call.mint + '_' + call.alert_timestamp,
-        mint: call.mint,
-        createdAtISO: callDate.toISO()!,
-        ok: false,
-        errorCode: 'SIMULATION_ERROR',
-        errorMessage: error instanceof Error ? error.message : String(error),
-      });
+    // Update overlay stats
+    if (!overlayStats.has(overlayKey)) {
+      overlayStats.set(overlayKey, { returns: [], wins: 0, total: 0 });
     }
+    const stats = overlayStats.get(overlayKey)!;
+    stats.returns.push(netReturnPct);
+    stats.total++;
+    if (isWin) stats.wins++;
+
+    // Convert tsMs to ISO string
+    const createdAtISO = DateTime.fromMillis(result.call.tsMs).toISO()!;
+    
+    // Add result
+    results.push({
+      callId: `${result.call.token.address}_${createdAtISO}`,
+      mint: result.call.token.address,
+      createdAtISO,
+      overlay: overlayKey,
+      ok: result.diagnostics.tradeable,
+      netReturnPct,
+      grossReturnPct,
+      exitReason: result.exit.reason,
+      errorCode: result.diagnostics.tradeable ? undefined : 'NOT_TRADEABLE',
+      errorMessage: result.diagnostics.skippedReason,
+    });
   }
 
-  // Calculate summary
-  const successfulResults = results.filter((r) => r.ok && r.pnlMultiplier !== undefined);
-  const avgPnl =
-    pnlValues.length > 0 ? pnlValues.reduce((a, b) => a + b, 0) / pnlValues.length : undefined;
-  const minPnl = pnlValues.length > 0 ? Math.min(...pnlValues) : undefined;
-  const maxPnl = pnlValues.length > 0 ? Math.max(...pnlValues) : undefined;
-  const winRate =
-    successfulResults.length > 0
-      ? successfulResults.filter((r) => (r.pnlMultiplier ?? 0) > 1).length /
-        successfulResults.length
-      : undefined;
+  // Build summary
+  const byOverlay: LabRunResult['summary']['byOverlay'] = [];
+  for (const [overlayKey, stats] of overlayStats.entries()) {
+    const sortedReturns = [...stats.returns].sort((a, b) => a - b);
+    const medianNetReturnPct =
+      sortedReturns.length > 0
+        ? sortedReturns[Math.floor(sortedReturns.length / 2)]
+        : 0;
+    const winRate = stats.total > 0 ? stats.wins / stats.total : 0;
 
-  // For table format, return a more compact structure
-  // The executor will handle formatting based on the format option
+    byOverlay.push({
+      overlay: overlayKey,
+      calls: stats.total,
+      medianNetReturnPct,
+      winRate,
+    });
+  }
+
+  // Sort by median return (descending)
+  byOverlay.sort((a, b) => b.medianNetReturnPct - a.medianNetReturnPct);
+
+  // Calculate overall stats
+  const allReturns = Array.from(overlayStats.values()).flatMap((s) => s.returns);
+  const allWins = Array.from(overlayStats.values()).reduce((sum, s) => sum + s.wins, 0);
+  const allTotal = Array.from(overlayStats.values()).reduce((sum, s) => sum + s.total, 0);
+  const successfulResults = results.filter((r) => r.ok);
+  const failedResults = results.filter((r) => !r.ok);
+
+  const overall = {
+    avgNetReturnPct: allReturns.length > 0 ? allReturns.reduce((a, b) => a + b, 0) / allReturns.length : undefined,
+    minNetReturnPct: allReturns.length > 0 ? Math.min(...allReturns) : undefined,
+    maxNetReturnPct: allReturns.length > 0 ? Math.max(...allReturns) : undefined,
+    winRate: allTotal > 0 ? allWins / allTotal : undefined,
+    successRate: results.length > 0 ? successfulResults.length / results.length : undefined,
+    failureRate: results.length > 0 ? failedResults.length / results.length : undefined,
+  };
+
   return {
     success: true,
     callsSimulated: calls.length,
-    callsSucceeded,
-    callsFailed,
-    results, // Full results array (can be large)
+    callsSucceeded: successfulResults.length,
+    callsFailed: failedResults.length,
+    results,
     summary: {
-      avgPnl,
-      minPnl,
-      maxPnl,
-      totalTrades,
-      winRate,
-      // Add percentage stats for better readability
-      successRate: callsSucceeded / calls.length,
-      failureRate: callsFailed / calls.length,
-      // Add PnL distribution stats
-      profitableCalls: successfulResults.filter((r) => (r.pnlMultiplier ?? 0) > 1).length,
-      losingCalls: successfulResults.filter((r) => (r.pnlMultiplier ?? 0) <= 1).length,
+      byOverlay,
+      overall,
     },
   };
 }

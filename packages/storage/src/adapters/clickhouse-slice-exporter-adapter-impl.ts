@@ -6,7 +6,7 @@
  */
 
 import { promises as fs } from 'fs';
-import { join, dirname } from 'path';
+import { join } from 'path';
 import { createHash } from 'crypto';
 import { getClickHouseClient } from '../clickhouse-client.js';
 import { logger } from '@quantbot/utils';
@@ -232,9 +232,7 @@ export class ClickHouseSliceExporterAdapterImpl implements SliceExporter {
         timeRange: spec.timeRange,
         query: query.substring(0, 200), // Log first 200 chars of query
       });
-      throw new Error(
-        `ClickHouse export failed after ${MAX_RETRIES} retries: ${errorMessage}`
-      );
+      throw new Error(`ClickHouse export failed after ${MAX_RETRIES} retries: ${errorMessage}`);
     }
 
     // Read Parquet data from stream with error handling

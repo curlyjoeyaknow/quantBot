@@ -131,14 +131,15 @@ export class CallDataLoader {
         10 // Batch size - process 10 calls at a time to avoid rate limiting
       );
 
-      const successRate = callsForPriceLookup.length > 0 
-        ? ((historicalPrices.size / callsForPriceLookup.length) * 100).toFixed(1)
-        : '0.0';
-      
+      const successRate =
+        callsForPriceLookup.length > 0
+          ? ((historicalPrices.size / callsForPriceLookup.length) * 100).toFixed(1)
+          : '0.0';
+
       logger.info(
         `[CallDataLoader] Loaded ${historicalPrices.size}/${callsForPriceLookup.length} historical prices from Birdeye (${successRate}% success rate)`
       );
-      
+
       if (historicalPrices.size < callsForPriceLookup.length * 0.5) {
         logger.warn(
           `[CallDataLoader] Low Birdeye price fetch success rate (${successRate}%). Some tokens may not be available in Birdeye at those timestamps, or may use unsupported formats (e.g., Sui tokens).`
@@ -146,35 +147,33 @@ export class CallDataLoader {
       }
 
       // Map to CallPerformance with historical prices
-      const callPerformance: CallPerformance[] = callsForPriceLookup.map(
-        (callInfo, index) => {
-          const tokenAddress = callInfo.tokenAddress;
-          const alertTimestamp = callInfo.alertTimestamp;
+      const callPerformance: CallPerformance[] = callsForPriceLookup.map((callInfo, index) => {
+        const tokenAddress = callInfo.tokenAddress;
+        const alertTimestamp = callInfo.alertTimestamp;
 
-          // Get historical price from Birdeye at exact alert time (by call index)
-          const entryPrice = historicalPrices.get(index) || 0;
+        // Get historical price from Birdeye at exact alert time (by call index)
+        const entryPrice = historicalPrices.get(index) || 0;
 
-          // Validate and normalize caller name
-          const callerName =
-            callInfo.caller && String(callInfo.caller).trim()
-              ? String(callInfo.caller).trim()
-              : 'unknown';
+        // Validate and normalize caller name
+        const callerName =
+          callInfo.caller && String(callInfo.caller).trim()
+            ? String(callInfo.caller).trim()
+            : 'unknown';
 
-          return {
-            callId: index + 1, // Generate ID since we don't have numeric ID from DuckDB
-            tokenAddress,
-            callerName,
-            chain: 'solana', // Default to solana, could be enriched later
-            alertTimestamp,
-            entryPrice, // Use historical price from Birdeye at exact alert time
-            athPrice: entryPrice, // Default to entry price, will be enriched if OHLCV data available
-            athMultiple: 1, // Default, will be enriched if OHLCV data available
-            timeToAthMinutes: 0, // Will need to be enriched
-            atlPrice: entryPrice, // Default to entry price, will be enriched if OHLCV data available
-            atlMultiple: 1, // Default, will be enriched if OHLCV data available
-          };
-        }
-      );
+        return {
+          callId: index + 1, // Generate ID since we don't have numeric ID from DuckDB
+          tokenAddress,
+          callerName,
+          chain: 'solana', // Default to solana, could be enriched later
+          alertTimestamp,
+          entryPrice, // Use historical price from Birdeye at exact alert time
+          athPrice: entryPrice, // Default to entry price, will be enriched if OHLCV data available
+          athMultiple: 1, // Default, will be enriched if OHLCV data available
+          timeToAthMinutes: 0, // Will need to be enriched
+          atlPrice: entryPrice, // Default to entry price, will be enriched if OHLCV data available
+          atlMultiple: 1, // Default, will be enriched if OHLCV data available
+        };
+      });
 
       logger.info(`[CallDataLoader] Loaded ${callPerformance.length} calls from DuckDB`, {
         fromISO,
