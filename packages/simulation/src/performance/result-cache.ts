@@ -6,9 +6,12 @@
 
 import type { SimulationResult } from '../types/index.js';
 import { createHash } from 'crypto';
+import type { ClockPort } from '@quantbot/core';
+import { createSystemClock } from '@quantbot/core';
 
 /**
  * Clock interface for deterministic time access
+ * @deprecated Use ClockPort from @quantbot/core instead
  */
 export interface CacheClock {
   /** Get current time in milliseconds */
@@ -27,8 +30,8 @@ function createDefaultClock(): CacheClock {
 export interface ResultCacheOptions {
   maxSize?: number;
   ttl?: number; // Time to live in milliseconds
-  /** Clock for deterministic time access (defaults to Date.now() for backward compatibility) */
-  clock?: CacheClock;
+  /** Clock for deterministic time access (defaults to system clock for backward compatibility) */
+  clock?: ClockPort;
 }
 
 interface CacheEntry {
@@ -45,13 +48,14 @@ export class ResultCache {
   private readonly maxSize: number;
   private readonly ttl?: number;
   private accessOrder: string[]; // Track access order for FIFO eviction
-  private readonly clock: CacheClock;
+  private readonly clock: ClockPort;
 
   constructor(options: ResultCacheOptions = {}) {
     this.maxSize = options.maxSize ?? 1000;
     this.ttl = options.ttl;
-    // Use injected clock or default to system time for backward compatibility
-    this.clock = options.clock ?? createDefaultClock();
+    // Use injected clock or default to system clock for backward compatibility
+    // System clock is only used in composition roots, not in simulation code
+    this.clock = options.clock ?? createSystemClock();
     this.cache = new Map();
     this.accessOrder = [];
   }
