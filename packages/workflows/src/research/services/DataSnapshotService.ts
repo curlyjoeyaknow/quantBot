@@ -95,6 +95,7 @@ export class DataSnapshotService {
     catalogBasePath: string = './catalog'
   ) {
     // Initialize catalog for slice access
+    // NOTE: Direct instantiation is acceptable here - this is a service (composition root)
     const adapter = new FileSystemCatalogAdapter(catalogBasePath);
     this.catalog = new Catalog(adapter, catalogBasePath);
   }
@@ -170,9 +171,7 @@ export class DataSnapshotService {
       sources,
       filters,
       schemaVersion: '1.0.0',
-      createdAtISO: this.ctx?.clock
-        ? this.ctx.clock.nowISO()
-        : DateTime.utc().toISO()!,
+      createdAtISO: this.ctx?.clock ? this.ctx.clock.nowISO() : DateTime.utc().toISO()!,
       sliceManifestIds: createdSliceManifestIds,
     });
   }

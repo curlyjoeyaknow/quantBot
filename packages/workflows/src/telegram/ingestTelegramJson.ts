@@ -105,6 +105,7 @@ export async function createDefaultTelegramJsonIngestContext(): Promise<Telegram
         logger.debug(msg, ctx as Record<string, unknown> | undefined),
     },
     repos: {
+      // NOTE: Direct instantiation is acceptable here - this is a context factory (composition root)
       callers: new CallersRepository(dbPath),
       tokenData: new TokenDataRepository(dbPath),
     },

@@ -116,7 +116,10 @@ export function createExecutionStubAdapter(config: ExecutionStubAdapterConfig): 
     const rng = createDeterministicRNG(seed);
     // Generate a random number and convert to base36 string
     const randomNum = rng.next(); // Returns a number between 0 and 1
-    return Math.floor(randomNum * 36 ** 7).toString(36).padStart(7, '0').substring(0, 7);
+    return Math.floor(randomNum * 36 ** 7)
+      .toString(36)
+      .padStart(7, '0')
+      .substring(0, 7);
   };
 
   /**

@@ -36,27 +36,27 @@
       "import": "./dist/ports/CatalogPort.js",
       "require": "./dist/ports/CatalogPort.js"
     },
-    "./src/adapters/clickhouse/CandleSliceExporter": {
+    "./adapters/clickhouse/CandleSliceExporter": {
       "types": "./dist/adapters/clickhouse/CandleSliceExporter.d.ts",
       "import": "./dist/adapters/clickhouse/CandleSliceExporter.js",
       "require": "./dist/adapters/clickhouse/CandleSliceExporter.js"
     },
-    "./src/adapters/duckdb/FeatureComputer": {
+    "./adapters/duckdb/FeatureComputer": {
       "types": "./dist/adapters/duckdb/FeatureComputer.d.ts",
       "import": "./dist/adapters/duckdb/FeatureComputer.js",
       "require": "./dist/adapters/duckdb/FeatureComputer.js"
     },
-    "./src/adapters/duckdb/SimulationExecutor": {
+    "./adapters/duckdb/SimulationExecutor": {
       "types": "./dist/adapters/duckdb/SimulationExecutor.d.ts",
       "import": "./dist/adapters/duckdb/SimulationExecutor.js",
       "require": "./dist/adapters/duckdb/SimulationExecutor.js"
     },
-    "./src/adapters/duckdb/duckdbClient": {
+    "./adapters/duckdb/duckdbClient": {
       "types": "./dist/adapters/duckdb/duckdbClient.d.ts",
       "import": "./dist/adapters/duckdb/duckdbClient.js",
       "require": "./dist/adapters/duckdb/duckdbClient.js"
     },
-    "./src/adapters/duckdb/DuckDbCatalogAdapter": {
+    "./adapters/duckdb/DuckDbCatalogAdapter": {
       "types": "./dist/adapters/duckdb/DuckDbCatalogAdapter.d.ts",
       "import": "./dist/adapters/duckdb/DuckDbCatalogAdapter.js",
       "require": "./dist/adapters/duckdb/DuckDbCatalogAdapter.js"

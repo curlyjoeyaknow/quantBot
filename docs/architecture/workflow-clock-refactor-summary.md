@@ -120,10 +120,16 @@ All adapters comply with architecture boundaries:
 7. `packages/workflows/src/adapters/telemetryConsoleAdapter.ts` - Require clock parameter
 8. `packages/workflows/src/dev/smokeMarketDataPort.ts` - Use ports.clock
 
+### Storage Layer Changes (Future Work - Completed)
+
+- `packages/storage/src/engine/StorageEngine.ts` - Added ClockPort injection for cache TTL checks
+- `packages/ohlcv/src/ohlcv-service.ts` - Added ClockPort injection for in-memory cache
+- `packages/storage/src/cache/ohlcv-cache.ts` - Added ClockPort injection for cache TTL checks
+
 ### Configuration
 
-9. `eslint.config.mjs` - Enhanced rules for `new Date()` and `Math.random()` bans
-2. `docs/architecture/date-now-usage-policy.md` - Comprehensive usage policy document
+- `eslint.config.mjs` - Enhanced rules for `new Date()` and `Math.random()` bans
+- `docs/architecture/date-now-usage-policy.md` - Comprehensive usage policy document with clock mocking examples
 
 ## Testing Impact
 
@@ -138,6 +144,7 @@ All adapters comply with architecture boundaries:
 - Tests that mock adapters must provide `ClockPort` in config
 - Tests that check timestamps can use deterministic clocks
 - Property tests can verify deterministic behavior
+- Storage layer tests can now use deterministic clocks for cache TTL testing
 
 ## Backward Compatibility
 
@@ -193,8 +200,16 @@ const pnlSeries = calculatePnLSeries(tradeEvents, 1.0, ctx.clock.nowISO());
    - Backward compatible: defaults to system clock if not provided
 
 2. **More Deterministic Tests**: Update all tests to use deterministic clocks
-3. **Documentation**: Add examples showing clock mocking patterns
+   - Tests can now use deterministic clocks for `StorageEngine`, `OHLCVService`, and `OHLCVCache`
+   - See [Date.now() Usage Policy](./date-now-usage-policy.md) for clock mocking examples
+
+3. ✅ **Documentation**: Add examples showing clock mocking patterns
+   - ✅ Added comprehensive clock mocking examples to `date-now-usage-policy.md`
+   - ✅ Examples include: basic mocks, fixed time clocks, advancing clocks, storage layer mocks
+
 4. **Type Safety**: Consider adding TypeScript types that prevent accidental `Date` usage
+   - Could add branded types or lint rules to prevent `Date` constructor usage
+   - Current ESLint rules catch most violations
 
 ## Related Documentation
 

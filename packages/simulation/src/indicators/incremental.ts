@@ -6,10 +6,7 @@
  */
 
 import type { Candle } from '../types/candle.js';
-import {
-  calculateIndicators,
-  type LegacyIndicatorData,
-} from './registry.js';
+import { calculateIndicators, type LegacyIndicatorData } from './registry.js';
 import type { MACDState } from './macd.js';
 import { calculateMACD } from './macd.js';
 
@@ -77,4 +74,3 @@ export function updateIndicatorsIncremental(
 
   return series;
 }
-
