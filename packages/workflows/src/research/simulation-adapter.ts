@@ -397,5 +397,6 @@ export class ResearchSimulationAdapter {
 export function createSimulationAdapter(
   workflowContext: WorkflowContext
 ): ResearchSimulationAdapter {
+  // NOTE: Direct instantiation is acceptable here - this is a factory function (composition root)
   return new ResearchSimulationAdapter(workflowContext);
 }

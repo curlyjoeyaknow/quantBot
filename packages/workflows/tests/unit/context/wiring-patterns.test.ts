@@ -1,6 +1,6 @@
 /**
  * Wiring Pattern Tests
- * 
+ *
  * Verifies that workflows use WorkflowContext (no direct instantiation)
  * and that context factories properly wire dependencies
  */
@@ -114,4 +114,3 @@ describe('Workflow Context Wiring Patterns', () => {
     });
   });
 });
-

@@ -1,6 +1,6 @@
 /**
  * Wiring Integration Tests
- * 
+ *
  * Tests that verify wiring paths work end-to-end
  */
 
@@ -90,4 +90,3 @@ describe('Context Factory Integration', () => {
     });
   });
 });
-
