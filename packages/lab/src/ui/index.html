@@ -20,7 +20,7 @@
     }
     
     .container {
-      max-width: 1200px;
+      max-width: 1400px;
       margin: 0 auto;
     }
     
@@ -39,6 +39,43 @@
     .subtitle {
       color: #888;
       font-size: 0.9rem;
+    }
+    
+    .tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      border-bottom: 1px solid #333;
+      flex-wrap: wrap;
+    }
+    
+    .tab {
+      padding: 12px 20px;
+      background: transparent;
+      border: none;
+      color: #888;
+      cursor: pointer;
+      font-size: 14px;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+    }
+    
+    .tab:hover {
+      color: #fff;
+      background: #1a1a1a;
+    }
+    
+    .tab.active {
+      color: #0066ff;
+      border-bottom-color: #0066ff;
+    }
+    
+    .tab-content {
+      display: none;
+    }
+    
+    .tab-content.active {
+      display: block;
     }
     
     .controls {
@@ -125,60 +162,289 @@
       border-radius: 6px;
       margin-bottom: 20px;
     }
+    
+    .badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+    
+    .badge-active {
+      background: #1a3a1a;
+      color: #4ade80;
+    }
+    
+    .badge-inactive {
+      background: #3a1a1a;
+      color: #888;
+    }
+    
+    .badge-pending {
+      background: #3a3a1a;
+      color: #fbbf24;
+    }
+    
+    .badge-completed {
+      background: #1a3a1a;
+      color: #4ade80;
+    }
+    
+    .badge-failed {
+      background: #3a1a1a;
+      color: #f87171;
+    }
+    
+    .code {
+      font-family: 'Courier New', monospace;
+      background: #0a0a0a;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 12px;
+      color: #888;
+    }
   </style>
 </head>
 <body>
   <div class="container">
     <header>
       <h1>QuantBot Lab</h1>
-      <p class="subtitle">Research Lab Dashboard</p>
+      <p class="subtitle">Research Lab Dashboard - Strategies, Simulations, Features & More</p>
     </header>
     
-    <div class="controls">
-      <select id="sort">
-        <option value="pnl">Sort by PnL</option>
-        <option value="stability">Sort by Stability</option>
-        <option value="pareto">Sort by Pareto</option>
-      </select>
-      <select id="limit">
-        <option value="10">Top 10</option>
-        <option value="25">Top 25</option>
-        <option value="50" selected>Top 50</option>
-        <option value="100">Top 100</option>
-      </select>
-      <button onclick="loadLeaderboard()">Refresh</button>
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('leaderboard')">Leaderboard</button>
+      <button class="tab" onclick="switchTab('strategies')">Strategies</button>
+      <button class="tab" onclick="switchTab('simulations')">Simulations</button>
+      <button class="tab" onclick="switchTab('features')">Feature Sets</button>
+      <button class="tab" onclick="switchTab('optimization')">Optimization</button>
+      <button class="tab" onclick="switchTab('slices')">Data Slices</button>
     </div>
     
-    <div id="error" style="display: none;"></div>
+    <!-- Leaderboard Tab -->
+    <div id="leaderboard-tab" class="tab-content active">
+      <div class="controls">
+        <select id="sort">
+          <option value="pnl">Sort by PnL</option>
+          <option value="stability">Sort by Stability</option>
+          <option value="pareto">Sort by Pareto</option>
+        </select>
+        <select id="limit">
+          <option value="10">Top 10</option>
+          <option value="25">Top 25</option>
+          <option value="50" selected>Top 50</option>
+          <option value="100">Top 100</option>
+        </select>
+        <button onclick="loadLeaderboard()">Refresh</button>
+      </div>
+      
+      <div id="error-leaderboard" style="display: none;"></div>
+      
+      <div class="table-container">
+        <div id="loading-leaderboard" class="loading">Loading...</div>
+        <table id="leaderboard-table" style="display: none;">
+          <thead>
+            <tr>
+              <th>Rank</th>
+              <th>Strategy</th>
+              <th>PnL</th>
+              <th>Stability</th>
+              <th>Trades</th>
+              <th>Win Rate</th>
+              <th>Max Drawdown</th>
+            </tr>
+          </thead>
+          <tbody id="leaderboard-tbody">
+          </tbody>
+        </table>
+      </div>
+    </div>
     
-    <div class="table-container">
-      <div id="loading" class="loading">Loading...</div>
-      <table id="leaderboard" style="display: none;">
-        <thead>
-          <tr>
-            <th>Rank</th>
-            <th>Strategy</th>
-            <th>PnL</th>
-            <th>Stability</th>
-            <th>Trades</th>
-            <th>Win Rate</th>
-            <th>Max Drawdown</th>
-          </tr>
-        </thead>
-        <tbody id="tbody">
-        </tbody>
-      </table>
+    <!-- Strategies Tab -->
+    <div id="strategies-tab" class="tab-content">
+      <div class="controls">
+        <button onclick="loadStrategies()">Refresh</button>
+      </div>
+      
+      <div id="error-strategies" style="display: none;"></div>
+      
+      <div class="table-container">
+        <div id="loading-strategies" class="loading">Loading...</div>
+        <table id="strategies-table" style="display: none;">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Version</th>
+              <th>Category</th>
+              <th>Status</th>
+              <th>Description</th>
+              <th>Created</th>
+            </tr>
+          </thead>
+          <tbody id="strategies-tbody">
+          </tbody>
+        </table>
+      </div>
+    </div>
+    
+    <!-- Simulations Tab -->
+    <div id="simulations-tab" class="tab-content">
+      <div class="controls">
+        <input type="text" id="sim-strategy-filter" placeholder="Filter by strategy..." style="padding: 10px 15px; background: #1a1a1a; border: 1px solid #333; color: #e0e0e0; border-radius: 6px; font-size: 14px; width: 200px;">
+        <select id="sim-limit">
+          <option value="25">25 runs</option>
+          <option value="50" selected>50 runs</option>
+          <option value="100">100 runs</option>
+        </select>
+        <button onclick="loadSimulations()">Refresh</button>
+      </div>
+      
+      <div id="error-simulations" style="display: none;"></div>
+      
+      <div class="table-container">
+        <div id="loading-simulations" class="loading">Loading...</div>
+        <table id="simulations-table" style="display: none;">
+          <thead>
+            <tr>
+              <th>Strategy</th>
+              <th>Run Type</th>
+              <th>Status</th>
+              <th>Engine Version</th>
+              <th>Started</th>
+              <th>Completed</th>
+            </tr>
+          </thead>
+          <tbody id="simulations-tbody">
+          </tbody>
+        </table>
+      </div>
+    </div>
+    
+    <!-- Feature Sets Tab -->
+    <div id="features-tab" class="tab-content">
+      <div class="controls">
+        <button onclick="loadFeatureSets()">Refresh</button>
+      </div>
+      
+      <div id="error-features" style="display: none;"></div>
+      
+      <div class="table-container">
+        <div id="loading-features" class="loading">Loading...</div>
+        <table id="features-table" style="display: none;">
+          <thead>
+            <tr>
+              <th>Feature Set ID</th>
+              <th>Slice ID</th>
+              <th>Indicators</th>
+              <th>Created</th>
+            </tr>
+          </thead>
+          <tbody id="features-tbody">
+          </tbody>
+        </table>
+      </div>
+    </div>
+    
+    <!-- Optimization Tab -->
+    <div id="optimization-tab" class="tab-content">
+      <div class="controls">
+        <button onclick="loadOptimization()">Refresh</button>
+      </div>
+      
+      <div id="error-optimization" style="display: none;"></div>
+      
+      <div class="table-container">
+        <div id="loading-optimization" class="loading">Loading...</div>
+        <table id="optimization-table" style="display: none;">
+          <thead>
+            <tr>
+              <th>Job ID</th>
+              <th>Base Strategy</th>
+              <th>Status</th>
+              <th>Candidates</th>
+              <th>Best Result</th>
+              <th>Started</th>
+            </tr>
+          </thead>
+          <tbody id="optimization-tbody">
+          </tbody>
+        </table>
+      </div>
+    </div>
+    
+    <!-- Slices Tab -->
+    <div id="slices-tab" class="tab-content">
+      <div class="controls">
+        <select id="slices-limit">
+          <option value="25">25 slices</option>
+          <option value="50" selected>50 slices</option>
+          <option value="100">100 slices</option>
+        </select>
+        <button onclick="loadSlices()">Refresh</button>
+      </div>
+      
+      <div id="error-slices" style="display: none;"></div>
+      
+      <div class="table-container">
+        <div id="loading-slices" class="loading">Loading...</div>
+        <table id="slices-table" style="display: none;">
+          <thead>
+            <tr>
+              <th>Slice ID</th>
+              <th>Dataset</th>
+              <th>Chain</th>
+              <th>Interval</th>
+              <th>Time Range</th>
+              <th>Token Count</th>
+            </tr>
+          </thead>
+          <tbody id="slices-tbody">
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
   
   <script>
+    // Tab switching
+    function switchTab(tabName) {
+      // Hide all tabs
+      document.querySelectorAll('.tab-content').forEach(content => {
+        content.classList.remove('active');
+      });
+      document.querySelectorAll('.tab').forEach(tab => {
+        tab.classList.remove('active');
+      });
+      
+      // Show selected tab
+      document.getElementById(`${tabName}-tab`).classList.add('active');
+      event.target.classList.add('active');
+      
+      // Load data for the tab
+      if (tabName === 'leaderboard') {
+        loadLeaderboard();
+      } else if (tabName === 'strategies') {
+        loadStrategies();
+      } else if (tabName === 'simulations') {
+        loadSimulations();
+      } else if (tabName === 'features') {
+        loadFeatureSets();
+      } else if (tabName === 'optimization') {
+        loadOptimization();
+      } else if (tabName === 'slices') {
+        loadSlices();
+      }
+    }
+    
+    // Leaderboard
     async function loadLeaderboard() {
       const sort = document.getElementById('sort').value;
       const limit = document.getElementById('limit').value;
-      const loading = document.getElementById('loading');
-      const table = document.getElementById('leaderboard');
-      const tbody = document.getElementById('tbody');
-      const errorDiv = document.getElementById('error');
+      const loading = document.getElementById('loading-leaderboard');
+      const table = document.getElementById('leaderboard-table');
+      const tbody = document.getElementById('leaderboard-tbody');
+      const errorDiv = document.getElementById('error-leaderboard');
       
       loading.style.display = 'block';
       table.style.display = 'none';
@@ -226,12 +492,267 @@
       }
     }
     
-    // Load on page load
+    // Strategies
+    async function loadStrategies() {
+      const loading = document.getElementById('loading-strategies');
+      const table = document.getElementById('strategies-table');
+      const tbody = document.getElementById('strategies-tbody');
+      const errorDiv = document.getElementById('error-strategies');
+      
+      loading.style.display = 'block';
+      table.style.display = 'none';
+      errorDiv.style.display = 'none';
+      tbody.innerHTML = '';
+      
+      try {
+        const response = await fetch('/api/strategies');
+        const data = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to fetch strategies');
+        }
+        
+        const strategies = data.strategies || [];
+        
+        if (strategies.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 40px; color: #888;">No strategies found</td></tr>';
+        } else {
+          strategies.forEach((strategy) => {
+            const row = document.createElement('tr');
+            const statusClass = strategy.is_active ? 'badge-active' : 'badge-inactive';
+            const statusText = strategy.is_active ? 'Active' : 'Inactive';
+            row.innerHTML = `
+              <td><strong>${strategy.name || 'N/A'}</strong></td>
+              <td><span class="code">${strategy.version || '1'}</span></td>
+              <td>${strategy.category || 'N/A'}</td>
+              <td><span class="badge ${statusClass}">${statusText}</span></td>
+              <td>${strategy.description || 'No description'}</td>
+              <td>${strategy.created_at ? new Date(strategy.created_at).toLocaleDateString() : 'N/A'}</td>
+            `;
+            tbody.appendChild(row);
+          });
+        }
+        
+        loading.style.display = 'none';
+        table.style.display = 'table';
+      } catch (error) {
+        loading.style.display = 'none';
+        errorDiv.style.display = 'block';
+        errorDiv.textContent = `Error: ${error.message}`;
+      }
+    }
+    
+    // Simulations
+    async function loadSimulations() {
+      const limit = document.getElementById('sim-limit').value;
+      const strategyFilter = document.getElementById('sim-strategy-filter').value;
+      const loading = document.getElementById('loading-simulations');
+      const table = document.getElementById('simulations-table');
+      const tbody = document.getElementById('simulations-tbody');
+      const errorDiv = document.getElementById('error-simulations');
+      
+      loading.style.display = 'block';
+      table.style.display = 'none';
+      errorDiv.style.display = 'none';
+      tbody.innerHTML = '';
+      
+      try {
+        const url = `/api/simulation-runs?limit=${limit}${strategyFilter ? `&strategy=${encodeURIComponent(strategyFilter)}` : ''}`;
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to fetch simulation runs');
+        }
+        
+        const runs = data.runs || [];
+        
+        if (runs.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 40px; color: #888;">No simulation runs found</td></tr>';
+        } else {
+          runs.forEach((run) => {
+            const row = document.createElement('tr');
+            const statusClass = run.status === 'completed' ? 'badge-completed' : 
+                               run.status === 'failed' ? 'badge-failed' : 'badge-pending';
+            row.innerHTML = `
+              <td>${run.strategy_name || run.strategy_id || 'N/A'}</td>
+              <td><span class="code">${run.run_type || 'backtest'}</span></td>
+              <td><span class="badge ${statusClass}">${run.status || 'pending'}</span></td>
+              <td><span class="code">${run.engine_version || 'N/A'}</span></td>
+              <td>${run.started_at ? new Date(run.started_at).toLocaleString() : 'N/A'}</td>
+              <td>${run.completed_at ? new Date(run.completed_at).toLocaleString() : 'N/A'}</td>
+            `;
+            tbody.appendChild(row);
+          });
+        }
+        
+        loading.style.display = 'none';
+        table.style.display = 'table';
+      } catch (error) {
+        loading.style.display = 'none';
+        errorDiv.style.display = 'block';
+        errorDiv.textContent = `Error: ${error.message}`;
+      }
+    }
+    
+    // Feature Sets
+    async function loadFeatureSets() {
+      const loading = document.getElementById('loading-features');
+      const table = document.getElementById('features-table');
+      const tbody = document.getElementById('features-tbody');
+      const errorDiv = document.getElementById('error-features');
+      
+      loading.style.display = 'block';
+      table.style.display = 'none';
+      errorDiv.style.display = 'none';
+      tbody.innerHTML = '';
+      
+      try {
+        const response = await fetch('/api/feature-sets');
+        const data = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to fetch feature sets');
+        }
+        
+        const featureSets = data.featureSets || [];
+        
+        if (featureSets.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 40px; color: #888;">No feature sets found</td></tr>';
+        } else {
+          featureSets.forEach((fs) => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+              <td><span class="code">${fs.featureSetId || 'N/A'}</span></td>
+              <td><span class="code">${fs.sliceId || 'N/A'}</span></td>
+              <td>${fs.indicatorCount || 0} indicators</td>
+              <td>${fs.created_at ? new Date(fs.created_at).toLocaleString() : 'N/A'}</td>
+            `;
+            tbody.appendChild(row);
+          });
+        }
+        
+        loading.style.display = 'none';
+        table.style.display = 'table';
+      } catch (error) {
+        loading.style.display = 'none';
+        errorDiv.style.display = 'block';
+        errorDiv.textContent = `Error: ${error.message}`;
+      }
+    }
+    
+    // Optimization
+    async function loadOptimization() {
+      const loading = document.getElementById('loading-optimization');
+      const table = document.getElementById('optimization-table');
+      const tbody = document.getElementById('optimization-tbody');
+      const errorDiv = document.getElementById('error-optimization');
+      
+      loading.style.display = 'block';
+      table.style.display = 'none';
+      errorDiv.style.display = 'none';
+      tbody.innerHTML = '';
+      
+      try {
+        const response = await fetch('/api/optimization-jobs');
+        const data = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to fetch optimization jobs');
+        }
+        
+        const jobs = data.jobs || [];
+        
+        if (jobs.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 40px; color: #888;">No optimization jobs found</td></tr>';
+        } else {
+          jobs.forEach((job) => {
+            const row = document.createElement('tr');
+            const statusClass = job.status === 'completed' ? 'badge-completed' : 
+                               job.status === 'failed' ? 'badge-failed' : 'badge-pending';
+            row.innerHTML = `
+              <td><span class="code">${job.id || 'N/A'}</span></td>
+              <td>${job.base_strategy || 'N/A'}</td>
+              <td><span class="badge ${statusClass}">${job.status || 'pending'}</span></td>
+              <td>${job.candidate_count || 0}</td>
+              <td class="${job.best_pnl >= 0 ? 'positive' : 'negative'}">
+                ${job.best_pnl !== undefined ? (job.best_pnl >= 0 ? '+' : '') + job.best_pnl.toFixed(2) + '%' : 'N/A'}
+              </td>
+              <td>${job.started_at ? new Date(job.started_at).toLocaleString() : 'N/A'}</td>
+            `;
+            tbody.appendChild(row);
+          });
+        }
+        
+        loading.style.display = 'none';
+        table.style.display = 'table';
+      } catch (error) {
+        loading.style.display = 'none';
+        errorDiv.style.display = 'block';
+        errorDiv.textContent = `Error: ${error.message}`;
+      }
+    }
+    
+    // Slices
+    async function loadSlices() {
+      const limit = document.getElementById('slices-limit').value;
+      const loading = document.getElementById('loading-slices');
+      const table = document.getElementById('slices-table');
+      const tbody = document.getElementById('slices-tbody');
+      const errorDiv = document.getElementById('error-slices');
+      
+      loading.style.display = 'block';
+      table.style.display = 'none';
+      errorDiv.style.display = 'none';
+      tbody.innerHTML = '';
+      
+      try {
+        const response = await fetch(`/api/slices?limit=${limit}`);
+        const data = await response.json();
+        
+        if (!response.ok) {
+          throw new Error(data.error || 'Failed to fetch slices');
+        }
+        
+        const slices = data.slices || [];
+        
+        if (slices.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; padding: 40px; color: #888;">No slices found</td></tr>';
+        } else {
+          slices.forEach((slice) => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+              <td><span class="code">${slice.sliceId || slice.id || 'N/A'}</span></td>
+              <td>${slice.dataset || 'N/A'}</td>
+              <td>${slice.chain || 'N/A'}</td>
+              <td><span class="code">${slice.interval || 'N/A'}</span></td>
+              <td>${slice.startIso && slice.endIso ? 
+                `${new Date(slice.startIso).toLocaleDateString()} - ${new Date(slice.endIso).toLocaleDateString()}` : 
+                'N/A'}</td>
+              <td>${slice.tokenCount || 0}</td>
+            `;
+            tbody.appendChild(row);
+          });
+        }
+        
+        loading.style.display = 'none';
+        table.style.display = 'table';
+      } catch (error) {
+        loading.style.display = 'none';
+        errorDiv.style.display = 'block';
+        errorDiv.textContent = `Error: ${error.message}`;
+      }
+    }
+    
+    // Load leaderboard on page load
     loadLeaderboard();
     
-    // Auto-refresh every 30 seconds
-    setInterval(loadLeaderboard, 30000);
+    // Auto-refresh leaderboard every 30 seconds
+    setInterval(() => {
+      if (document.getElementById('leaderboard-tab').classList.contains('active')) {
+        loadLeaderboard();
+      }
+    }, 30000);
   </script>
 </body>
 </html>
-

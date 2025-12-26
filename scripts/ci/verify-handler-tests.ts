@@ -46,8 +46,8 @@ function getAllHandlers(): string[] {
 }
 
 function getHandlerTestPath(handlerPath: string): string {
-  // Convert: ingestion/ingest-ohlcv.ts -> ingestion/ingest-ohlcv.test.ts
-  const relativePath = handlerPath.replace('packages/cli/src/handlers/', '');
+  // Convert full path to relative path from handlersDir
+  const relativePath = handlerPath.replace(handlersDir + '/', '');
   return join(testsDir, relativePath.replace('.ts', '.test.ts'));
 }
 
@@ -138,7 +138,7 @@ for (const handler of handlers) {
   issues.push(...testIssues);
 
   if (issues.length > 0) {
-    handlerIssues.push({ handler, issues });
+    handlerIssues.push({ handler: handler.replace(/^packages\/cli\/src\/handlers\//, ''), issues });
     totalIssues += issues.length;
   }
 }

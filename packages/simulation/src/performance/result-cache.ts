@@ -6,7 +6,8 @@
 
 import type { SimulationResult } from '../types/index.js';
 import { createHash } from 'crypto';
-import type { ClockPort, createSystemClock } from '@quantbot/core';
+import type { ClockPort } from '@quantbot/core';
+import { createSystemClock } from '@quantbot/core';
 
 export interface ResultCacheOptions {
   maxSize?: number;

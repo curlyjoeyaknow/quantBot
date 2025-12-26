@@ -63,10 +63,14 @@ These are **non-negotiable gates** that must be implemented before QuantBot can 
    - Fixed violations in `progress.ts` and `result-cache.ts` by using `createSystemClock()` from `@quantbot/core`
    - Created `createSystemClock()` factory in `@quantbot/core` for composition roots
 
-4. **Add deterministic RNG injection (TODO):**
+4. **✅ Add deterministic RNG injection (COMPLETED):**
 
-   - Ensure all simulation functions that need randomness accept RNG from context
-   - Remove all `Math.random()` calls in simulation paths (test files are acceptable)
+   ✅ **COMPLETED**: Deterministic RNG injection is implemented:
+   - `position.ts` - Uses deterministic RNG for ID generation (throws error if no deterministic inputs)
+   - `executeTrade()` - Accepts `rng: DeterministicRNG` parameter for execution model randomness
+   - `simulateStrategy()` - Accepts `seed` option for deterministic execution model behavior
+   - No `Math.random()` calls in simulation code (ESLint enforces this)
+   - Test files may use `Math.random()` for test data generation (acceptable)
 
 ## Gate 2: Causal Candle Accessor
 

@@ -4,11 +4,25 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **Gate 2: Causal Candle Accessor Implementation** - Enforces causality in simulation candle access
+  - `CausalCandleAccessor` interface and `CausalCandleWrapper` class for causal candle filtering
+  - `StorageCausalCandleAccessor` implementation wrapping `StorageEngine` with causal filtering
+  - `simulateStrategyWithCausalAccessor()` function for time-based simulation loop
+  - `updateIndicatorsIncremental()` for incremental indicator calculations
+  - Integration into `WorkflowContext` via `ohlcv.causalAccessor`
+  - Comprehensive tests: `causal-accessor.test.ts`, `causal-vs-upfront.test.ts`, updated `future-scramble.test.ts`
+  - Location: `packages/simulation/src/types/causal-accessor.ts`, `packages/workflows/src/context/causal-candle-accessor.ts`
+  - Ensures at simulation time `t`, it is impossible to fetch candles with `close_time > t`
+
 ### Changed
 
 - Deprecated `@quantbot/utils/types.ts` - types should now be imported directly from `@quantbot/core`
 - Migrated test files to use independent math helpers instead of importing production constants (fee-rounding.test.ts, fees.property.test.ts)
 - Migrated console logging to logger in executionStubAdapter (workflows package)
+- Simulation workflow now uses `CausalCandleAccessor` for incremental candle fetching instead of upfront fetching
+- `WorkflowContext.ohlcv.getCandles()` marked as optional legacy method (use `causalAccessor` instead)
 
 ### Fixed
 

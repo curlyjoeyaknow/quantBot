@@ -82,6 +82,14 @@ export type {
   ProgressCallback,
 } from './ohlcv/surgicalOhlcvFetch.js';
 export { analyzeCoverage } from './ohlcv/analyzeCoverage.js';
+export { analyzeDetailedCoverage } from './ohlcv/analyzeDetailedCoverage.js';
+export type {
+  AnalyzeDetailedCoverageSpec,
+  AnalyzeDetailedCoverageResult,
+  DetailedCoverageRecord,
+  DetailedCoverageSummary,
+  IntervalCoverageResult,
+} from './ohlcv/analyzeDetailedCoverage.js';
 export type {
   AnalyzeCoverageSpec,
   AnalyzeCoverageResult,

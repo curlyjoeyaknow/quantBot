@@ -15,6 +15,7 @@ import { queryOhlcvHandler } from './ohlcv/query-ohlcv.js';
 import { backfillOhlcvHandler } from './ohlcv/backfill-ohlcv.js';
 import { coverageOhlcvHandler } from './ohlcv/coverage-ohlcv.js';
 import { analyzeCoverageHandler } from './ohlcv/analyze-coverage.js';
+import { analyzeDetailedCoverageHandler } from './ohlcv/analyze-detailed-coverage.js';
 
 /**
  * Query command schema
@@ -115,6 +116,24 @@ export const analyzeCoverageSchema = z.object({
 });
 
 /**
+ * Analyze detailed coverage command schema
+ */
+export const analyzeDetailedCoverageSchema = z.object({
+  duckdb: z.string(),
+  startMonth: z
+    .string()
+    .regex(/^\d{4}-\d{2}$/)
+    .optional(), // YYYY-MM
+  endMonth: z
+    .string()
+    .regex(/^\d{4}-\d{2}$/)
+    .optional(), // YYYY-MM
+  caller: z.string().optional(),
+  format: z.enum(['json', 'csv']).default('json'),
+  timeout: z.number().int().positive().optional(), // Timeout in milliseconds
+});
+
+/**
  * Register OHLCV commands
  */
 export function registerOhlcvCommands(program: Command): void {
@@ -203,6 +222,27 @@ export function registerOhlcvCommands(program: Command): void {
     }),
     onError: die,
   });
+
+  // Analyze detailed coverage command
+  const analyzeDetailedCoverageCmd = ohlcvCmd
+    .command('analyze-detailed-coverage')
+    .description('Generate detailed OHLCV coverage report (by mint, caller, day, month)')
+    .requiredOption('--duckdb <path>', 'Path to DuckDB database')
+    .option('--start-month <month>', 'Start month (YYYY-MM format)')
+    .option('--end-month <month>', 'End month (YYYY-MM format)')
+    .option('--caller <name>', 'Filter by specific caller')
+    .option('--format <format>', 'Output format (json or csv)', 'json')
+    .option('--timeout <ms>', 'Timeout in milliseconds (default: 1800000 = 30 minutes)');
+
+  defineCommand(analyzeDetailedCoverageCmd, {
+    name: 'analyze-detailed-coverage',
+    packageName: 'ohlcv',
+    coerce: (raw) => ({
+      ...raw,
+      timeout: raw.timeout ? coerceNumber(raw.timeout, 'timeout') : undefined,
+    }),
+    onError: die,
+  });
 }
 
 /**
@@ -261,6 +301,21 @@ const ohlcvModule: PackageCommandModule = {
         'quantbot ohlcv analyze-coverage --type overall',
         'quantbot ohlcv analyze-coverage --type caller --duckdb data/tele.duckdb',
         'quantbot ohlcv analyze-coverage --type caller --caller Brook --generate-fetch-plan',
+      ],
+    },
+    {
+      name: 'analyze-detailed-coverage',
+      description: 'Generate detailed OHLCV coverage report (by mint, caller, day, month)',
+      schema: analyzeDetailedCoverageSchema,
+      handler: async (args: unknown, ctx: unknown) => {
+        const typedCtx = ctx as CommandContext;
+        const typedArgs = args as z.infer<typeof analyzeDetailedCoverageSchema>;
+        return await analyzeDetailedCoverageHandler(typedArgs, typedCtx);
+      },
+      examples: [
+        'quantbot ohlcv analyze-detailed-coverage --duckdb data/tele.duckdb',
+        'quantbot ohlcv analyze-detailed-coverage --duckdb data/tele.duckdb --start-month 2025-12',
+        'quantbot ohlcv analyze-detailed-coverage --duckdb data/tele.duckdb --caller Brook --format csv',
       ],
     },
   ],

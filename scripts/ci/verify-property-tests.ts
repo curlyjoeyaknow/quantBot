@@ -40,15 +40,52 @@ const FINANCIAL_PATTERNS = [
 
 /**
  * Function name patterns that indicate financial calculations
+ * Must start with calculate/compute/get/estimate and contain financial terms
  */
 const FUNCTION_NAME_PATTERNS = [
   /^(calculate|compute|get|estimate)(PnL|Fee|Slippage|Profit|Loss|Price|Cost|Revenue|Return|Roi|Yield|Balance|Amount)/i,
-  /^(calculate|compute|get|estimate).*[Pp]rice/i,
-  /^(calculate|compute|get|estimate).*[Cc]ost/i,
-  /^(calculate|compute|get|estimate).*[Rr]evenue/i,
-  /slippage/i,
-  /pnl/i,
-  /profit.*loss/i,
+  /^(calculate|compute|get|estimate)(.*[Pp]rice|.*[Cc]ost|.*[Rr]evenue|.*[Rr]eturn|.*[Rr]oi)/i,
+];
+
+/**
+ * Common non-financial function names to exclude
+ */
+const EXCLUDED_NAMES = [
+  'if',
+  'map',
+  'filter',
+  'reduce',
+  'forEach',
+  'find',
+  'some',
+  'every',
+  'async',
+  'parse',
+  'stringify',
+  'format',
+  'toString',
+  'toISOString',
+  'get',
+  'set',
+  'has',
+  'delete',
+  'clear',
+  'keys',
+  'values',
+  'entries',
+  'then',
+  'catch',
+  'finally',
+  'resolve',
+  'reject',
+  'all',
+  'race',
+  'log',
+  'error',
+  'warn',
+  'info',
+  'debug',
+  'trace',
 ];
 
 /**
@@ -108,33 +145,8 @@ function extractFunctions(filePath: string): Array<{ name: string; line: number 
         continue;
       }
 
-      // Match method definitions: name(...) { or name: (...) => or name: function(...)
-      const methodMatch = line.match(/(\w+)\s*(?:\(|:\s*(?:\(|function\s*\())/);
-      if (methodMatch) {
-        const functionName = methodMatch[1];
-        // Check if it's likely a method (not a type, interface, etc.)
-        if (
-          ![
-            'interface',
-            'type',
-            'class',
-            'enum',
-            'const',
-            'let',
-            'var',
-            'import',
-            'export',
-          ].includes(functionName)
-        ) {
-          // Check if previous line suggests it's a method
-          if (i > 0) {
-            const prevLine = lines[i - 1].trim();
-            if (prevLine.endsWith(',') || prevLine.endsWith('{') || prevLine.includes(':')) {
-              functions.push({ name: functionName, line: lineNum });
-            }
-          }
-        }
-      }
+      // Skip method definitions - they're too noisy and not reliable
+      // Only match explicit function declarations and arrow function assignments
     }
 
     return functions;
