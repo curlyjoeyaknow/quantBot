@@ -14,6 +14,9 @@ import { DateTime } from 'luxon';
 // ============================================================================
 
 export * from './ports/index.js';
+// Explicit re-export for better TypeScript resolution
+export { createSystemClock } from './ports/clockPort.js';
+export type { ClockPort } from './ports/clockPort.js';
 
 // ============================================================================
 // Commands & Handlers

@@ -53,6 +53,26 @@ jobs:
       - name: Verify architecture boundaries (AST)
         run: pnpm verify:boundaries-ast
 
+      - name: Verify handler tests
+        run: pnpm verify:handler-tests
+        continue-on-error: true
+
+      - name: Verify property tests
+        run: pnpm verify:property-tests
+        continue-on-error: true
+
+      - name: Verify CHANGELOG
+        run: pnpm verify:changelog
+        continue-on-error: true
+
+      - name: Verify documentation
+        run: pnpm verify:documentation
+        continue-on-error: true
+
+      - name: Run smoke tests
+        run: pnpm test:smoke
+        continue-on-error: true
+
       - name: Run unit tests
         run: pnpm test:unit
 
@@ -72,10 +92,14 @@ jobs:
         run: pnpm test:coverage
         continue-on-error: true
 
+      - name: Check coverage decrease
+        run: pnpm check:coverage-decrease
+        continue-on-error: true
+
       - name: Upload coverage reports
         uses: codecov/codecov-action@v4
         if: always()
         with:
-          token: ${{ secrets.CODECOV_TOKEN }}-  
+          token: ${{ secrets.CODECOV_TOKEN }}
           files: ./coverage/coverage-final.json
           fail_ci_if_error: false

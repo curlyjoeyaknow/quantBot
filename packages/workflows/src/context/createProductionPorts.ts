@@ -1,4 +1,5 @@
 import type { ClockPort } from '@quantbot/core';
+import { createSystemClock } from '@quantbot/core';
 import type { ProductionPorts } from './ports.js';
 import { createTelemetryConsoleAdapter } from '../adapters/telemetryConsoleAdapter.js';
 import { createMarketDataBirdeyeAdapter } from '../adapters/marketDataBirdeyeAdapter.js';
@@ -12,10 +13,6 @@ import { getBirdeyeClient } from '@quantbot/api-clients';
 // - Future: Real execution adapter when live trading is needed
 // - Migration guide: docs/architecture/execution-port-migration.md
 // - All safety features (dry-run, circuit breaker, idempotency) must be preserved
-
-// Use createSystemClock from @quantbot/core instead of local implementation
-  return { nowMs: () => Date.now() };
-}
 
 /**
  * Create production ports with real adapters where available, stubs otherwise

@@ -36,6 +36,22 @@ vi.mock('@quantbot/simulation', async (importOriginal) => {
   };
 });
 
+// Mock the workflows package
+vi.mock('@quantbot/workflows', () => ({
+  evaluateCallsWorkflow: vi.fn().mockResolvedValue({
+    results: [],
+  }),
+  createProductionContextWithPorts: vi.fn().mockResolvedValue({
+    ports: {},
+    clock: { nowISO: () => new Date().toISOString() },
+    ids: { newRunId: () => 'test-run-id' },
+    logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn() },
+  }),
+  createMarketDataStorageAdapter: vi.fn().mockReturnValue({
+    getCandles: vi.fn().mockResolvedValue([]),
+  }),
+}));
+
 describe('runLabHandler - Edge Cases', () => {
   let mockCtx: CommandContext;
 
