@@ -125,8 +125,9 @@ export function createMarketDataStorageAdapter(): MarketDataPort {
         }
 
         // Find closest candle to target time
+        // TypeScript: candles.length > 0 check above ensures candles[0] exists
         const targetTimestamp = request.unixTime;
-        let closestCandle = candles[0];
+        let closestCandle: (typeof candles)[0] = candles[0]!;
         let minDiff = Math.abs(closestCandle.timestamp - targetTimestamp);
 
         for (const candle of candles) {

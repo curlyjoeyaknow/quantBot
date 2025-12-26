@@ -147,6 +147,10 @@ export default tseslint.config(
       // KEEP no-restricted-imports ON so tests don't become an architecture bypass.
       // Tests can still use any, unused vars, console, etc., but must respect package boundaries.
       // 'no-restricted-imports': 'off',
+      // Note: Test files inherit base no-restricted-imports rules.
+      // Additional restriction: Tests must not import production constants (DEFAULT_COST_CONFIG, etc.)
+      // Tests should define their own constants to ensure independence.
+      // See .cursor/rules/testing-workflows.mdc and .cursor/rules/packages-workflows.mdc
     },
   },
 
@@ -159,11 +163,6 @@ export default tseslint.config(
    */
   {
     files: ['packages/simulation/src/**/*.ts'],
-    ignores: [
-      // Allow Date.now() in progress/cache utilities (not simulation logic)
-      'packages/simulation/src/utils/progress.ts',
-      'packages/simulation/src/performance/result-cache.ts',
-    ],
     rules: {
       'no-restricted-imports': [
         'error',

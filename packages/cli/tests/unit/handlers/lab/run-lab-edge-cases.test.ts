@@ -22,12 +22,17 @@ import {
 } from '@quantbot/simulation';
 
 // Mock the simulation package
-vi.mock('@quantbot/simulation', () => ({
-  getSignalPreset: vi.fn(),
-  combineSignalPresets: vi.fn(),
-  getPreset: vi.fn(),
-  simulateStrategy: vi.fn(),
-}));
+vi.mock('@quantbot/simulation', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@quantbot/simulation')>();
+  return {
+    ...actual,
+    getSignalPreset: vi.fn(),
+    combineSignalPresets: vi.fn(),
+    getPreset: vi.fn(),
+    simulateStrategy: vi.fn(),
+    DuckDBStorageService: actual.DuckDBStorageService, // Export the actual class for instantiation
+  };
+});
 
 describe('runLabHandler - Edge Cases', () => {
   let mockCtx: CommandContext;

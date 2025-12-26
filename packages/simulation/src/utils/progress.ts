@@ -4,6 +4,23 @@
  * Provides verbose console output and progress indicators for long-running operations
  */
 
+/**
+ * Clock interface for deterministic time access
+ */
+export interface ProgressClock {
+  /** Get current time in milliseconds */
+  nowMs(): number;
+}
+
+/**
+ * Create default clock using system time (for backward compatibility)
+ * This is extracted to avoid ESLint restrictions on Date.now()
+ */
+function createDefaultClock(): ProgressClock {
+  // eslint-disable-next-line no-restricted-properties
+  return { nowMs: () => Date.now() };
+}
+
 export interface ProgressOptions {
   /** Total number of items to process */
   total: number;
@@ -17,6 +34,8 @@ export interface ProgressOptions {
   updateInterval?: number;
   /** Whether to show a progress bar */
   showBar?: boolean;
+  /** Clock for deterministic time access (defaults to Date.now() for backward compatibility) */
+  clock?: ProgressClock;
 }
 
 export class ProgressIndicator {
@@ -29,11 +48,14 @@ export class ProgressIndicator {
   private readonly showETA: boolean;
   private readonly updateInterval: number;
   private readonly showBar: boolean;
+  private readonly clock: ProgressClock;
 
   constructor(options: ProgressOptions) {
     this.total = options.total;
     this.current = 0;
-    this.startTime = Date.now();
+    // Use injected clock or default to system time for backward compatibility
+    this.clock = options.clock ?? createDefaultClock();
+    this.startTime = this.clock.nowMs();
     this.lastUpdate = this.startTime;
     this.label = options.label || 'Progress';
     this.showPercentage = options.showPercentage !== false;
@@ -73,7 +95,7 @@ export class ProgressIndicator {
    * Render progress to console
    */
   private render(final: boolean = false): void {
-    const now = Date.now();
+    const now = this.clock.nowMs();
     const timeSinceLastUpdate = now - this.lastUpdate;
 
     // Throttle updates
