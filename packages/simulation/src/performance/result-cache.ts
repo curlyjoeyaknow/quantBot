@@ -7,9 +7,28 @@
 import type { SimulationResult } from '../types/index.js';
 import { createHash } from 'crypto';
 
+/**
+ * Clock interface for deterministic time access
+ */
+export interface CacheClock {
+  /** Get current time in milliseconds */
+  nowMs(): number;
+}
+
+/**
+ * Create default clock using system time (for backward compatibility)
+ * This is extracted to avoid ESLint restrictions on Date.now()
+ */
+function createDefaultClock(): CacheClock {
+  // eslint-disable-next-line no-restricted-properties
+  return { nowMs: () => Date.now() };
+}
+
 export interface ResultCacheOptions {
   maxSize?: number;
   ttl?: number; // Time to live in milliseconds
+  /** Clock for deterministic time access (defaults to Date.now() for backward compatibility) */
+  clock?: CacheClock;
 }
 
 interface CacheEntry {
@@ -26,10 +45,13 @@ export class ResultCache {
   private readonly maxSize: number;
   private readonly ttl?: number;
   private accessOrder: string[]; // Track access order for FIFO eviction
+  private readonly clock: CacheClock;
 
   constructor(options: ResultCacheOptions = {}) {
     this.maxSize = options.maxSize ?? 1000;
     this.ttl = options.ttl;
+    // Use injected clock or default to system time for backward compatibility
+    this.clock = options.clock ?? createDefaultClock();
     this.cache = new Map();
     this.accessOrder = [];
   }
@@ -46,7 +68,7 @@ export class ResultCache {
 
     // Check TTL
     if (this.ttl && entry.ttl) {
-      const now = Date.now();
+      const now = this.clock.nowMs();
       if (now - entry.timestamp > entry.ttl) {
         this.cache.delete(key);
         this.accessOrder = this.accessOrder.filter((k) => k !== key);
@@ -76,7 +98,7 @@ export class ResultCache {
 
     const entry: CacheEntry = {
       result,
-      timestamp: Date.now(),
+      timestamp: this.clock.nowMs(),
       ttl: this.ttl,
     };
 

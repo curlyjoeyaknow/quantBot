@@ -9,6 +9,7 @@ This document outlines the migration path from the `ExecutionStubAdapter` to a r
 ### ExecutionStubAdapter
 
 The current stub adapter (`packages/workflows/src/adapters/executionStubAdapter.ts`) provides:
+
 - ✅ Safety-first features (dry-run mode, circuit breaker, idempotency)
 - ✅ Complete `ExecutionPort` interface implementation
 - ✅ Deterministic behavior for testing
@@ -47,6 +48,7 @@ When ready for live trading, create a new adapter:
 **Location**: `packages/executor/src/adapters/executionAdapter.ts` (or similar)
 
 **Requirements**:
+
 1. Implement `ExecutionPort` interface from `@quantbot/core`
 2. Preserve all safety features from stub:
    - Dry-run mode support
@@ -61,6 +63,7 @@ When ready for live trading, create a new adapter:
    - Transaction confirmation tracking
 
 **Example Structure**:
+
 ```typescript
 import type { ExecutionPort, ExecutionRequest, ExecutionResult } from '@quantbot/core';
 
@@ -98,6 +101,7 @@ const executionAdapterFactory = process.env.EXECUTION_ADAPTER === 'real'
 ### Phase 3: Testing & Validation
 
 Before switching to real execution:
+
 1. ✅ Verify all safety features work in real adapter
 2. ✅ Test with dry-run mode enabled
 3. ✅ Test circuit breaker behavior
@@ -151,6 +155,7 @@ Before switching to real execution:
 ## Current Usage
 
 The stub adapter is used in:
+
 - `createProductionPorts()` - Production port creation
 - Workflow testing - Safe execution simulation
 - Development - No real execution risk
@@ -166,4 +171,3 @@ The stub adapter is used in:
 **Status**: Stub adapter is production-ready for testing/development. Real adapter implementation is deferred until live trading requirements are defined.
 
 **Last Updated**: 2025-01-25
-

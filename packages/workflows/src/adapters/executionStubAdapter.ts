@@ -32,6 +32,7 @@
 
 import type { ClockPort, ExecutionPort, ExecutionRequest, ExecutionResult } from '@quantbot/core';
 import { createDeterministicRNG, seedFromString } from '@quantbot/core';
+import { logger } from '@quantbot/utils';
 
 export type ExecutionStubAdapterConfig = {
   /**
@@ -165,9 +166,9 @@ export function createExecutionStubAdapter(config: ExecutionStubAdapterConfig): 
 
     if (circuitBreaker.consecutiveFailures >= maxConsecutiveFailures) {
       circuitBreaker.isOpen = true;
-      console.warn(
-        `[ExecutionPort] Circuit breaker opened after ${circuitBreaker.consecutiveFailures} consecutive failures`
-      );
+      logger.warn('Circuit breaker opened', {
+        consecutiveFailures: circuitBreaker.consecutiveFailures,
+      });
     }
   }
 
@@ -197,9 +198,9 @@ export function createExecutionStubAdapter(config: ExecutionStubAdapterConfig): 
 
         if (existing) {
           // Return cached result (idempotent)
-          console.log(
-            `[ExecutionPort] Idempotency hit: returning cached result for ${idempotencyKey}`
-          );
+          logger.debug('Idempotency hit: returning cached result', {
+            idempotencyKey,
+          });
           return existing.result;
         }
       }
@@ -237,9 +238,11 @@ export function createExecutionStubAdapter(config: ExecutionStubAdapterConfig): 
 
         recordSuccess();
 
-        console.log(
-          `[ExecutionPort] DRY-RUN: Simulated ${request.side} of ${request.amount} ${request.tokenAddress}`
-        );
+        logger.info('DRY-RUN: Simulated execution', {
+          side: request.side,
+          amount: request.amount,
+          tokenAddress: request.tokenAddress,
+        });
 
         return simulatedResult;
       }

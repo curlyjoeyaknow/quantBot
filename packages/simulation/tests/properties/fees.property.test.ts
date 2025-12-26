@@ -22,8 +22,17 @@ import {
   calculateTradeFee,
   calculateNetPnl,
   calculatePnlMultiplier,
-  DEFAULT_COST_CONFIG,
 } from '../../src/execution/fees';
+import type { CostConfig } from '../../src/types/index.js';
+
+// Test constant - independent from production DEFAULT_COST_CONFIG
+// This ensures tests don't break if production default changes
+const TEST_COST_CONFIG: CostConfig = {
+  entrySlippageBps: 0,
+  exitSlippageBps: 0,
+  takerFeeBps: 25, // 0.25% typical DEX fee
+  borrowAprBps: 0,
+};
 
 describe('Fee Calculations - Property Tests', () => {
   describe('Entry Cost Multiplier (Critical Invariant)', () => {
@@ -166,22 +175,8 @@ describe('Fee Calculations - Property Tests', () => {
               return true;
             }
             if (exitPrice1 >= exitPrice2) {
-              const pnl1 = calculateNetPnl(
-                entryPrice,
-                exitPrice1,
-                size,
-                0,
-                DEFAULT_COST_CONFIG,
-                true
-              );
-              const pnl2 = calculateNetPnl(
-                entryPrice,
-                exitPrice2,
-                size,
-                0,
-                DEFAULT_COST_CONFIG,
-                true
-              );
+              const pnl1 = calculateNetPnl(entryPrice, exitPrice1, size, 0, TEST_COST_CONFIG, true);
+              const pnl2 = calculateNetPnl(entryPrice, exitPrice2, size, 0, TEST_COST_CONFIG, true);
               // Both should be finite numbers
               if (!Number.isFinite(pnl1) || !Number.isFinite(pnl2)) {
                 return true; // Skip invalid results
@@ -214,18 +209,8 @@ describe('Fee Calculations - Property Tests', () => {
               return true;
             }
             if (exitPrice1 >= exitPrice2) {
-              const mult1 = calculatePnlMultiplier(
-                entryPrice,
-                exitPrice1,
-                DEFAULT_COST_CONFIG,
-                true
-              );
-              const mult2 = calculatePnlMultiplier(
-                entryPrice,
-                exitPrice2,
-                DEFAULT_COST_CONFIG,
-                true
-              );
+              const mult1 = calculatePnlMultiplier(entryPrice, exitPrice1, TEST_COST_CONFIG, true);
+              const mult2 = calculatePnlMultiplier(entryPrice, exitPrice2, TEST_COST_CONFIG, true);
               // Both should be finite numbers
               if (!Number.isFinite(mult1) || !Number.isFinite(mult2)) {
                 return true; // Skip invalid results

@@ -130,10 +130,21 @@ export type WorkflowContext = {
 
   simulation: {
     // pure compute. if it throws, workflow captures per-call error and continues.
-    run: (q: {
-      candles: Candle[];
-      strategy: StrategyRecord;
-      call: CallRecord;
-    }) => Promise<SimulationEngineResult>;
+    run: (
+      q:
+        | {
+            candleAccessor: CausalCandleAccessor;
+            mint: string;
+            startTime: number;
+            endTime: number;
+            strategy: StrategyRecord;
+            call: CallRecord;
+          }
+        | {
+            candles: Candle[];
+            strategy: StrategyRecord;
+            call: CallRecord;
+          }
+    ) => Promise<SimulationEngineResult>;
   };
 };
