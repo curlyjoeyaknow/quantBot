@@ -120,6 +120,7 @@ QuantBot's core capabilities:
   ```
 
 - **Leaderboard** - Rank and compare simulation runs by metrics
+
   ```bash
   quantbot research leaderboard --criteria return --limit 10
   quantbot research leaderboard --criteria winRate --strategy-name MyStrategy
@@ -588,6 +589,37 @@ async function runMyWorkflow(spec: Spec, ctx: WorkflowContext) {
 
 See `.cursor/rules/packages-workflows.mdc` for workflow patterns.
 
+### Wiring Patterns
+
+**CommandContext** - Primary composition root for CLI commands:
+
+```typescript
+// ✅ Handler uses services from context
+export async function myHandler(args: Args, ctx: CommandContext) {
+  const repo = ctx.services.strategiesRepository();
+  return await repo.list();
+}
+```
+
+**WorkflowContext** - Primary composition root for workflows:
+
+```typescript
+// ✅ Workflow uses dependencies from context
+export async function myWorkflow(spec: Spec, ctx: WorkflowContext) {
+  const strategy = await ctx.repos.strategies.getByName(spec.name);
+  const candles = await ctx.ohlcv.causalAccessor.getCandles(...);
+  const result = await ctx.simulation.run(...);
+  return result;
+}
+```
+
+**Key Rules**:
+- ✅ Composition roots (handlers, context factories) can instantiate directly
+- ❌ Workflows and domain logic must use contexts
+- ❌ No direct instantiation of repositories/services outside composition roots
+
+See [docs/architecture/wiring-patterns.md](docs/architecture/wiring-patterns.md) for complete wiring documentation.
+
 ### Testing
 
 ```bash
@@ -635,6 +667,7 @@ npm run format
 
 ### Additional Guides
 
+- **[docs/quality-gates.md](docs/quality-gates.md)** - Quality gates, enforcement, and troubleshooting
 - **[docs/OHLCV_ARCHITECTURE.md](docs/OHLCV_ARCHITECTURE.md)** - OHLCV subsystem details
 - **[docs/WORKFLOW_ENFORCEMENT.md](docs/WORKFLOW_ENFORCEMENT.md)** - Workflow patterns
 - **[docs/MIGRATION_POSTGRES_TO_DUCKDB.md](docs/MIGRATION_POSTGRES_TO_DUCKDB.md)** - DuckDB migration
@@ -704,10 +737,54 @@ All multi-step business flows must go through `@quantbot/workflows`:
 - See `.cursor/rules/testing.mdc` for testing philosophy
 - See `.cursor/rules/debugging-regression-test.mdc` for regression test requirements
 
+### Quality Gates
+
+QuantBot enforces comprehensive quality gates on all PRs and releases:
+
+**Per PR**:
+
+- ✅ Unit tests for all new functions
+- ✅ Property tests for math/financial calculations
+- ✅ Handler tests for CLI commands
+- ✅ Documentation updates
+- ✅ CHANGELOG entry
+- ✅ No forbidden imports
+- ✅ Build passes
+
+**Per Release**:
+
+- ✅ All tests pass
+- ✅ Coverage doesn't decrease
+- ✅ Stress tests pass
+- ✅ Documentation reviewed
+- ✅ Breaking changes documented
+
+See **[docs/quality-gates.md](docs/quality-gates.md)** for complete quality gate documentation, troubleshooting guide, and enforcement details.
+
+**Quick Commands**:
+
+```bash
+# Run all PR quality gates
+pnpm quality-gates:pr
+
+# Run release quality gates (includes stress tests)
+pnpm quality-gates:release
+
+# Individual checks
+pnpm verify:handler-tests      # Verify handler tests
+pnpm verify:property-tests     # Verify property tests
+pnpm verify:changelog          # Verify CHANGELOG
+pnpm verify:documentation      # Verify documentation
+pnpm check:coverage-decrease   # Check coverage
+pnpm test:smoke                # Run smoke tests
+```
+
 ### PR Checklist
 
 - [ ] Unit tests for new functions
 - [ ] **Regression tests for bug fixes** (mandatory per `.cursor/rules/debugging-regression-test.mdc`)
+- [ ] Property tests for financial calculations
+- [ ] Handler tests for CLI commands
 - [ ] No forbidden imports (workflows can't import CLI)
 - [ ] CLI handlers are thin adapters
 - [ ] Workflow results are JSON-serializable

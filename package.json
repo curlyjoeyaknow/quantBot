@@ -56,7 +56,7 @@
     "verify:changelog": "tsx scripts/ci/verify-changelog.ts",
     "verify:documentation": "tsx scripts/ci/verify-documentation.ts",
     "check:coverage-decrease": "tsx scripts/ci/check-coverage-decrease.ts",
-    "test:smoke": "vitest run tests/smoke/**/*.test.ts",
+    "test:smoke": "vitest run tests/smoke",
     "quality-gates:pr": "pnpm verify:handler-tests && pnpm verify:property-tests && pnpm verify:changelog && pnpm verify:documentation && pnpm test:smoke",
     "quality-gates:release": "pnpm quality-gates:pr && pnpm test:stress && pnpm check:coverage-decrease",
     "smoke:ports": "tsx packages/workflows/src/dev/smokePorts.ts",
