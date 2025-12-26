@@ -18,7 +18,7 @@ import {
 export type TokenStatsWorkflowArgs = {
   from?: string;
   to?: string;
-  chain?: 'solana' | 'ethereum' | 'bsc' | 'base';
+  chain?: 'solana' | 'ethereum' | 'bsc' | 'base' | 'evm';
   duckdbPath?: string;
   limit?: number;
   format?: 'json' | 'table' | 'csv';

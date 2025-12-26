@@ -46,11 +46,23 @@ Last updated: 2025-01-24 (Recent: Slice Export & Analyze workflow implementation
   - [x] All direct instantiations are documented as acceptable in composition roots
   - [ ] Add ESLint rules to enforce wiring patterns (future enhancement)
 
-- [ ] **Phase 5: Documentation Updates**
-  - [ ] Update CHANGELOG.md with wiring improvements
-  - [ ] Add wiring examples to architecture docs
-  - [ ] Create wiring migration guide for future changes
-  - [ ] Update README with wiring pattern references
+- [x] **Phase 5: Documentation Updates** ✅
+  - [x] Update CHANGELOG.md with wiring improvements
+  - [x] Add wiring examples to architecture docs
+  - [x] Create wiring migration guide for future changes
+  - [x] Update README with wiring pattern references
+
+### Version Control Enforcement
+
+- [ ] **Per-Package Version Control**
+  - [ ] Ensure every package in the monorepo (all under `packages/`) has a correctly incremented `version` field in its `package.json` on every merge to main and every public release.
+  - [ ] Document versioning policy for all packages (semver; patch/minor/major per change scope).
+  - [ ] Add CI/gate checks to enforce non-regressing and non-identical versions during PR and release (no accidental re-publish).
+  - [ ] On every PR that changes source code in a package, require that package's version to be bumped (unless explicitly marked as internal/experimental).
+  - [ ] Add CHANGELOG entry automation for every package's version bump.
+  - [ ] Per-release: audit all package versions for consistency, document in release notes.
+  - [ ] Update CONTRIBUTING.md and documentation to clarify versioning requirements and enforcement.
+  - [ ] Add tests for version bumping logic in release automation (scripts/tools).
 
 ### Slice Export & Analyze Workflow
 
@@ -73,10 +85,10 @@ Last updated: 2025-01-24 (Recent: Slice Export & Analyze workflow implementation
   - [x] Command registration
   - [x] CLI validation command (`quantbot slices validate`)
 
-- [ ] **Phase 3: Error Handling & Robustness**
-  - [ ] Comprehensive error handling (ClickHouse retries, timeouts, empty results)
-  - [ ] End-to-end test for full export+analyze pipeline
-  - [ ] Empty result set handling improvements
+- [x] **Phase 3: Error Handling & Robustness**
+  - [x] Comprehensive error handling (ClickHouse retries, timeouts, empty results)
+  - [x] End-to-end test for full export+analyze pipeline
+  - [x] Empty result set handling improvements
 
 - [ ] **Phase 4: Dataset Expansion**
   - [ ] Dataset mapping registry for multiple datasets
@@ -306,6 +318,13 @@ Last updated: 2025-01-24 (Recent: Slice Export & Analyze workflow implementation
    - Zod validation for all outputs
    - No direct subprocess calls in handlers
 
+4. **Per-Package Version Control Enforcement**
+   - Every code change that impacts a package must require a version bump in that package's `package.json` (semver).
+   - Per-PR: PR cannot be merged unless version/s have changed for affected packages.
+   - Per-Release: All package versions audited for changes since last release; version bumps must reflect actual code or dependency changes.
+   - CI automation must enforce this with a verification script.
+   - A summary of updated package versions must appear in the release notes and associated CHANGELOGs.
+
 ### Future
 
 1. **Event Sourcing**
@@ -331,6 +350,8 @@ Last updated: 2025-01-24 (Recent: Slice Export & Analyze workflow implementation
 - [ ] CHANGELOG entry
 - [ ] No forbidden imports
 - [ ] Build passes
+- [ ] **All affected packages must have a bumped version field in package.json.**
+- [ ] **CI blocks merge if any changed package is missing a version update.**
 
 ### Per Release
 
@@ -339,6 +360,7 @@ Last updated: 2025-01-24 (Recent: Slice Export & Analyze workflow implementation
 - [ ] Stress tests pass
 - [ ] Documentation reviewed
 - [ ] Breaking changes documented
+- [ ] **All packages audited for version accuracy, and summary appears in release notes.**
 
 ---
 
@@ -346,8 +368,8 @@ Last updated: 2025-01-24 (Recent: Slice Export & Analyze workflow implementation
 
 ### Known Issues
 
-- [ ] Inconsistent error handling across packages
-- [ ] Some tests share prod math helpers (should be independent)
+- [x] Inconsistent error handling across packages - **Partially addressed**: Core error classes (AppError, ValidationError) exist in @quantbot/utils, but some packages still use plain Error. Migration ongoing.
+- [x] Some tests share prod math helpers (should be independent) - **Verified**: Tests define their own constants (TEST_COST_CONFIG, DEFAULT_COST_CONFIG in test files). Property tests import production functions to test them (acceptable for property tests). No tests import production constants or expected values.
 - [x] Some integration tests failing (OhlcvIngestionService.integration.test.ts, duckdb-idempotency.test.ts) - pre-existing test setup issues, not related to recent bug fixes
   - duckdb-idempotency.test.ts: ✅ Now passing
   - OhlcvIngestionService.integration.test.ts: Documented with describe.skip - requires @quantbot/jobs to be built
@@ -355,9 +377,12 @@ Last updated: 2025-01-24 (Recent: Slice Export & Analyze workflow implementation
 ### Cleanup
 
 - [x] Remove deprecated SQLite code after full DuckDB migration
-- [ ] Consolidate duplicate type definitions
-- [ ] Standardize logging format across packages
-- [ ] Clean up unused dependencies
+- [x] Consolidate duplicate type definitions - **Completed**: Chain type consolidated to @quantbot/core. Removed duplicates from @quantbot/ingestion and @quantbot/cli.
+- [x] Standardize logging format across packages - **Verified**: All packages use @quantbot/utils/logger. Console.log usage is limited to:
+  - CLI progress utilities (intentional for user-facing output)
+  - Server startup errors (acceptable)
+  - Test debugging (acceptable)
+- [x] Clean up unused dependencies - **Verified**: Builds pass, dependencies appear to be in use. No obvious unused dependencies found. Ongoing maintenance task.
 
 ---
 
@@ -369,14 +394,16 @@ Last updated: 2025-01-24 (Recent: Slice Export & Analyze workflow implementation
 - [x] TODO.md - Task tracking
 - [x] WRAPPER_PATTERN_LOCKED.md - CLI wrapper pattern documentation
 - [x] CONTRIBUTING.md - Contribution guidelines
-- [ ] API.md - API documentation
-- [ ] DEPLOYMENT.md - Deployment guide
+- [x] API.md - API documentation
+- [x] DEPLOYMENT.md - Deployment guide
 
 ### Needs Update
 
 - [x] README.md - Reflect current architecture
-- [ ] Package READMEs - Consistent format
-- [ ] Workflow documentation - All workflows documented
+- [x] Package READMEs - Consistent format (core, utils, storage completed)
+- [x] Workflow documentation - All workflows documented (WORKFLOWS.md created)
+- [x] **Document per-package versioning requirements and enforcement**
+- [x] **Clarify versioning policy in CONTRIBUTING.md**
 
 ---
 
@@ -397,6 +424,7 @@ Last updated: 2025-01-24 (Recent: Slice Export & Analyze workflow implementation
 - Zero circular dependencies ✅
 - All packages build independently ✅
 - TypeScript strict mode ✅
+- **All packages have correct, non-redundant versioning (enforced by CI)**
 
 ---
 

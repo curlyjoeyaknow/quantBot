@@ -30,6 +30,27 @@ import csv
 # Suppress deprecation warnings
 warnings.filterwarnings('ignore', category=DeprecationWarning)
 
+
+class DateTimeEncoder(json.JSONEncoder):
+    """Custom JSON encoder that handles datetime objects recursively"""
+    def default(self, obj):
+        if isinstance(obj, datetime):
+            return obj.isoformat()
+        # Also handle duckdb datetime types if they exist
+        if hasattr(obj, 'isoformat') and not isinstance(obj, str):
+            try:
+                return obj.isoformat()
+            except (AttributeError, TypeError):
+                pass
+        return super().default(obj)
+
+# Try to import tqdm for progress bars, fall back to simple progress messages
+try:
+    from tqdm import tqdm
+    HAS_TQDM = True
+except ImportError:
+    HAS_TQDM = False
+
 try:
     import duckdb
 except ImportError:
@@ -94,7 +115,7 @@ def get_calls_by_mint_caller_day(duckdb_conn, start_month: Optional[str] = None,
         - call_ts_ms
         - year_month (YYYY-MM)
         - day (YYYY-MM-DD)
-        - chain
+        - chain (defaults to 'solana' since user_calls_d doesn't have chain column)
     """
     where_clauses = []
     params = []
@@ -130,7 +151,6 @@ def get_calls_by_mint_caller_day(duckdb_conn, start_month: Optional[str] = None,
         caller_name,
         call_datetime,
         call_ts_ms,
-        chain,
         strftime(to_timestamp(call_ts_ms / 1000), '%Y-%m') as year_month,
         strftime(to_timestamp(call_ts_ms / 1000), '%Y-%m-%d') as day
     FROM user_calls_d
@@ -147,13 +167,31 @@ def get_calls_by_mint_caller_day(duckdb_conn, start_month: Optional[str] = None,
     
     calls = []
     for row in results:
-        mint, caller_name, call_datetime, call_ts_ms, chain, year_month, day = row
+        mint, caller_name, call_datetime, call_ts_ms, year_month, day = row
+        # user_calls_d doesn't have chain column, default to 'solana' (most tokens are Solana)
+        # Convert datetime to ISO string for JSON serialization
+        # DuckDB returns Python datetime objects
+        if call_datetime is None:
+            call_datetime_str = None
+        elif isinstance(call_datetime, datetime):
+            # Python datetime object
+            call_datetime_str = call_datetime.isoformat()
+        elif hasattr(call_datetime, 'isoformat'):
+            # datetime-like object (fallback for other datetime types)
+            try:
+                call_datetime_str = call_datetime.isoformat()
+            except (AttributeError, TypeError):
+                call_datetime_str = str(call_datetime)
+        else:
+            # Already a string or other type
+            call_datetime_str = str(call_datetime) if call_datetime is not None else None
+        
         calls.append({
             'mint': mint,
             'caller_name': caller_name,
-            'call_datetime': call_datetime,
-            'call_ts_ms': call_ts_ms,
-            'chain': chain or 'solana',
+            'call_datetime': call_datetime_str,
+            'call_ts_ms': int(call_ts_ms) if call_ts_ms is not None else None,
+            'chain': 'solana',  # Default to solana since user_calls_d doesn't have chain column
             'year_month': year_month,
             'day': day
         })
@@ -184,7 +222,8 @@ def calculate_coverage_for_interval(
     alert_ts_ms: int,
     interval: str,
     periods_before: int,
-    periods_after: int
+    periods_after: int,
+    verbose: bool = False
 ) -> Dict[str, Any]:
     """
     Calculate coverage percentage for a specific interval.
@@ -268,7 +307,8 @@ def calculate_coverage_for_call(
     ch_client: ClickHouseClient,
     database: str,
     call: Dict,
-    token_created_ts_ms: Optional[int] = None
+    token_created_ts_ms: Optional[int] = None,
+    verbose: bool = False
 ) -> Dict[str, Any]:
     """
     Calculate coverage for a single call.
@@ -309,7 +349,7 @@ def calculate_coverage_for_call(
     for interval, periods_before, periods_after in intervals_to_check:
         interval_coverage = calculate_coverage_for_interval(
             ch_client, database, mint, chain, alert_ts_ms,
-            interval, periods_before, periods_after
+            interval, periods_before, periods_after, verbose
         )
         coverage['intervals'][interval] = interval_coverage
     
@@ -359,33 +399,74 @@ def generate_coverage_report(
     duckdb_conn = duckdb.connect(duckdb_path, read_only=True)
     
     try:
-        if verbose:
-            print("Fetching calls from DuckDB...", file=sys.stderr, flush=True)
+        print("Fetching calls from DuckDB...", file=sys.stderr, flush=True)
         
         calls = get_calls_by_mint_caller_day(
             duckdb_conn, start_month, end_month, caller_filter
         )
         
-        if verbose:
-            print(f"Found {len(calls)} calls", file=sys.stderr, flush=True)
+        print(f"Found {len(calls)} calls", file=sys.stderr, flush=True)
+        
+        if len(calls) == 0:
+            print("No calls found matching criteria. Exiting.", file=sys.stderr, flush=True)
+            return {
+                'summary': {
+                    'total_calls': 0,
+                    'young_tokens': 0,
+                    'by_interval': {},
+                    'by_month': {}
+                },
+                'by_mint_caller_day': [],
+                'metadata': {
+                    'generated_at': datetime.utcnow().isoformat(),
+                    'duckdb_path': duckdb_path,
+                    'start_month': start_month,
+                    'end_month': end_month,
+                    'caller_filter': caller_filter,
+                    'total_calls_analyzed': 0
+                }
+            }
         
         # Get token creation timestamps
+        print("Loading token creation timestamps...", file=sys.stderr, flush=True)
         token_created_map = get_token_created_timestamps(duckdb_conn)
         
-        if verbose:
-            print(f"Found creation timestamps for {len(token_created_map)} tokens", file=sys.stderr, flush=True)
+        print(f"Found creation timestamps for {len(token_created_map)} tokens", file=sys.stderr, flush=True)
+        print(f"Starting coverage calculation for {len(calls)} calls...", file=sys.stderr, flush=True)
         
-        # Calculate coverage for each call
+        # Calculate coverage for each call with progress indicator
         coverage_results = []
-        for i, call in enumerate(calls):
-            if verbose and (i + 1) % 100 == 0:
-                print(f"Processing call {i + 1}/{len(calls)}...", file=sys.stderr, flush=True)
-            
-            token_created_ts_ms = token_created_map.get(call['mint'])
-            coverage = calculate_coverage_for_call(
-                ch_client, database, call, token_created_ts_ms
-            )
-            coverage_results.append(coverage)
+        
+        # Create progress indicator
+        if HAS_TQDM:
+            progress_bar = tqdm(total=len(calls), desc="Calculating coverage", unit="call", file=sys.stderr)
+        else:
+            print(f"Processing {len(calls)} calls...", file=sys.stderr, flush=True)
+            last_progress = 0
+        
+        try:
+            for i, call in enumerate(calls):
+                if HAS_TQDM:
+                    progress_bar.update(1)
+                    progress_bar.set_postfix({'mint': call['mint'][:10] + '...' if len(call['mint']) > 10 else call['mint']})
+                else:
+                    # Print progress every 10% or every 100 calls, whichever is more frequent
+                    progress = i + 1
+                    if progress % 100 == 0 or (len(calls) > 0 and progress % max(1, len(calls) // 10) == 0):
+                        pct = (progress / len(calls) * 100) if len(calls) > 0 else 0
+                        print(f"  Progress: {progress}/{len(calls)} ({pct:.1f}%) - Processing {call['mint'][:20]}...", file=sys.stderr, flush=True)
+                        last_progress = progress
+                
+                token_created_ts_ms = token_created_map.get(call['mint'])
+                coverage = calculate_coverage_for_call(
+                    ch_client, database, call, token_created_ts_ms, verbose
+                )
+                coverage_results.append(coverage)
+        finally:
+            if HAS_TQDM:
+                progress_bar.close()
+            else:
+                print(f"  Completed: {len(coverage_results)}/{len(calls)} calls processed", file=sys.stderr, flush=True)
         
         # Generate summary statistics
         summary = calculate_summary_statistics(coverage_results)
@@ -514,8 +595,8 @@ def main():
                        help='Path to DuckDB database (default: data/tele.duckdb)')
     parser.add_argument('--format', choices=['json', 'csv'], default='json',
                        help='Output format (default: json)')
-    parser.add_argument('--output', 
-                       help='Output file path (required for CSV format)')
+    parser.add_argument('--output',
+                       help='Output file path (optional for JSON, required for CSV format)')
     parser.add_argument('--caller', help='Filter by specific caller')
     parser.add_argument('--start-month', help='Start month (YYYY-MM format)')
     parser.add_argument('--end-month', help='End month (YYYY-MM format)')
@@ -527,13 +608,12 @@ def main():
     ch_client = None
     
     try:
-        if args.verbose:
-            print("Connecting to ClickHouse...", file=sys.stderr, flush=True)
+        print("Connecting to ClickHouse...", file=sys.stderr, flush=True)
         
         ch_client, database = get_clickhouse_client()
         
-        if args.verbose:
-            print("Generating coverage report...", file=sys.stderr, flush=True)
+        print("Connected to ClickHouse successfully", file=sys.stderr, flush=True)
+        print("Generating coverage report...", file=sys.stderr, flush=True)
         
         report = generate_coverage_report(
             args.duckdb,
@@ -545,10 +625,13 @@ def main():
             args.verbose
         )
         
+        print("Coverage calculation complete!", file=sys.stderr, flush=True)
+        print(f"Summary: {report['summary']['total_calls']} calls analyzed", file=sys.stderr, flush=True)
+        
         # Output results
         if args.format == 'json':
             # For JSON, output to stdout so TypeScript can parse it
-            output_json = json.dumps(report, indent=2)
+            output_json = json.dumps(report, indent=2, cls=DateTimeEncoder)
             print(output_json, flush=True)
         elif args.format == 'csv':
             if not args.output:
@@ -557,7 +640,7 @@ def main():
             export_to_csv(report['by_mint_caller_day'], args.output)
             print(f"Coverage report written to {args.output}", file=sys.stderr, flush=True)
             # Also output summary as JSON to stdout for TypeScript
-            print(json.dumps({'summary': report['summary'], 'metadata': report['metadata']}, indent=2), flush=True)
+            print(json.dumps({'summary': report['summary'], 'metadata': report['metadata']}, indent=2, cls=DateTimeEncoder), flush=True)
         
         return 0
         

@@ -133,9 +133,9 @@ export interface AnalyzeDetailedCoverageResult {
   metadata: {
     generated_at: string;
     duckdb_path: string;
-    start_month?: string;
-    end_month?: string;
-    caller_filter?: string;
+    start_month?: string | null;
+    end_month?: string | null;
+    caller_filter?: string | null;
     total_calls_analyzed: number;
   };
 }
@@ -248,9 +248,9 @@ export async function analyzeDetailedCoverage(
       metadata: z.object({
         generated_at: z.string(),
         duckdb_path: z.string(),
-        start_month: z.string().optional(),
-        end_month: z.string().optional(),
-        caller_filter: z.string().optional(),
+        start_month: z.string().nullable().optional(),
+        end_month: z.string().nullable().optional(),
+        caller_filter: z.string().nullable().optional(),
         total_calls_analyzed: z.number(),
       }),
     });

@@ -36,17 +36,61 @@ The server will start on `http://localhost:3001` (or the port specified in `PORT
 
 Open your browser to `http://localhost:3001` to view the lab dashboard.
 
-### API Endpoints
+### UI Features
 
-- `GET /` - Web UI (HTML dashboard)
-- `GET /api/leaderboard?sort=pnl&limit=50` - Get leaderboard entries
+The lab dashboard includes multiple tabs:
+
+1. **Leaderboard** - Top performing strategies ranked by PnL, stability, or Pareto frontier
+2. **Strategies** - View all registered strategies with their versions, categories, and status
+3. **Simulations** - Browse simulation runs with status, engine versions, and timestamps
+4. **Feature Sets** - View compiled feature sets and their associated data slices
+5. **Optimization** - Monitor optimization jobs and their candidate exploration results
+6. **Data Slices** - Browse available data slices (Parquet files) used for research
+
+### API Endpoints (Resource Model)
+
+The API follows a resource-based model where URLs reflect actual resources:
+
+#### Backtest Endpoints
+- `POST /backtest` - Start a backtest (returns `{ runId }` immediately, runs asynchronously)
+- `POST /backtest/dry-run` - Validate backtest config and get estimated cost/time
+
+#### Runs Endpoints
+- `GET /runs` - List runs with cursor pagination (filters: status, strategyId, timeframe, from, to)
+- `GET /runs/:runId` - Get run details and summary
+- `GET /runs/:runId/logs` - Get run-scoped logs (cursor paginated)
+- `GET /runs/:runId/artifacts` - Get artifact references (parquet, CSV, JSON)
+- `GET /runs/:runId/metrics` - Get time-series metrics (drawdown, exposure, fills)
+
+#### Leaderboard Endpoints
+- `GET /leaderboard` - Ranked view over runs (query: metric, timeframe, strategyId, window, limit)
+- `GET /leaderboard/strategies` - Strategy-level aggregated leaderboard
+
+#### Strategies Endpoints
+- `GET /strategies` - List all strategies
+- `GET /strategies/:id` - Get strategy details (with optional `?version=` query param)
+- `POST /strategies` - Create new strategy version
+- `PATCH /strategies/:id` - Update strategy metadata
+- `POST /strategies/:id/validate` - Validate strategy config schema
+
+#### Statistics Endpoints
+- `GET /statistics/overview` - Overview totals (runs, tokens, avg PnL, win rate)
+- `GET /statistics/pnl` - PnL statistics (groupBy: day/week/token/caller/strategy)
+- `GET /statistics/distribution` - Distribution histograms
+- `GET /statistics/correlation` - Feature correlations
+
+#### Legacy Endpoints (Backward Compatibility)
+- `GET /api/leaderboard` - Redirects to `/leaderboard`
+- `GET /api/strategies` - Redirects to `/strategies`
+- `GET /api/simulation-runs` - Redirects to `/runs`
 - `GET /api/health` - Health check
 
-### Leaderboard Sorting
+### Features
 
-- `sort=pnl` - Sort by profit and loss (default)
-- `sort=stability` - Sort by stability score
-- `sort=pareto` - Sort by Pareto frontier
+- **Cursor-Based Pagination** - All list endpoints use `cursor` and return `nextCursor`
+- **Run-Scoped Logging** - Each run has its own log stream accessible via `/runs/:runId/logs`
+- **Async Execution** - Backtests run asynchronously, status tracked via run endpoints
+- **Resource Semantics** - URLs reflect actual resources (runs, strategies, etc.)
 
 ## Architecture
 

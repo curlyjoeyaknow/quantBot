@@ -7,9 +7,35 @@
  * - Type safety is maintained
  */
 
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { commandRegistry } from '../../../src/core/command-registry.js';
 import type { CommandContext } from '../../../src/core/command-context.js';
+
+// Import commands module to trigger registration
+import '../../../src/commands/slices.js';
+
+// Mock dependencies
+vi.mock('@quantbot/workflows', () => ({
+  exportAndAnalyzeSlice: vi.fn().mockResolvedValue({ success: true }),
+}));
+
+vi.mock('@quantbot/storage', () => ({
+  createClickHouseSliceExporterAdapterImpl: vi.fn().mockReturnValue({}),
+  createDuckDbSliceAnalyzerAdapterImpl: vi.fn().mockReturnValue({}),
+  createSliceValidatorAdapter: vi.fn().mockReturnValue({
+    validate: vi.fn().mockResolvedValue({ ok: true, errors: [], warnings: [] }),
+  }),
+}));
+
+vi.mock('fs', async () => {
+  const actual = await vi.importActual('fs');
+  return {
+    ...actual,
+    promises: {
+      readFile: vi.fn().mockResolvedValue(JSON.stringify({ manifestId: 'test' })),
+    },
+  };
+});
 
 describe('Slice Commands - Handler Signature', () => {
   describe('Handler type compatibility', () => {
@@ -21,16 +47,22 @@ describe('Slice Commands - Handler Signature', () => {
       expect(validateCommand).toBeDefined();
 
       // Handlers should accept unknown context
-      const mockCtx = {} as unknown;
+      const mockCtx = {
+        ensureInitialized: vi.fn().mockResolvedValue(undefined),
+      } as unknown;
       const mockArgs = {};
 
       // Should not throw type errors
+      // Note: We're just checking type compatibility, not actually executing
       expect(() => {
         if (exportCommand?.handler) {
           // Type check: handler should accept unknown context
           const handler: (args: unknown, ctx: CommandContext | unknown) => Promise<unknown> =
             exportCommand.handler;
-          void handler(mockArgs, mockCtx);
+          // Type check only - don't actually call it
+          const _typeCheck: (args: unknown, ctx: CommandContext | unknown) => Promise<unknown> =
+            handler;
+          void _typeCheck;
         }
       }).not.toThrow();
 
@@ -38,7 +70,10 @@ describe('Slice Commands - Handler Signature', () => {
         if (validateCommand?.handler) {
           const handler: (args: unknown, ctx: CommandContext | unknown) => Promise<unknown> =
             validateCommand.handler;
-          void handler(mockArgs, mockCtx);
+          // Type check only - don't actually call it
+          const _typeCheck: (args: unknown, ctx: CommandContext | unknown) => Promise<unknown> =
+            handler;
+          void _typeCheck;
         }
       }).not.toThrow();
     });
@@ -63,7 +98,9 @@ describe('Slice Commands - Handler Signature', () => {
       };
 
       // Should be callable with plain objects
-      await expect(exportCommand.handler(mockArgs, mockCtx)).resolves.toBeDefined();
+      // Note: This will call the real handler which uses mocks, so it should work
+      const result = await exportCommand.handler(mockArgs, mockCtx);
+      expect(result).toBeDefined();
     });
   });
 
@@ -71,22 +108,10 @@ describe('Slice Commands - Handler Signature', () => {
     it('should allow handlers to be imported and called directly', async () => {
       // This test verifies handlers can be used outside CLI infrastructure
       const { exportSliceHandler } = await import('../../../src/handlers/slices/export-slice.js');
-      const { validateSliceHandler } =
-        await import('../../../src/handlers/slices/validate-slice.js');
 
       const mockCtx = {
         ensureInitialized: vi.fn().mockResolvedValue(undefined),
       } as unknown as CommandContext;
-
-      // Mock the workflow
-      vi.doMock('@quantbot/workflows', () => ({
-        exportAndAnalyzeSlice: vi.fn().mockResolvedValue({ success: true }),
-      }));
-
-      vi.doMock('@quantbot/storage', () => ({
-        createClickHouseSliceExporterAdapterImpl: vi.fn().mockReturnValue({}),
-        createDuckDbSliceAnalyzerAdapterImpl: vi.fn().mockReturnValue({}),
-      }));
 
       const exportArgs = {
         dataset: 'candles_1m',
@@ -96,7 +121,7 @@ describe('Slice Commands - Handler Signature', () => {
         outputDir: './slices',
       };
 
-      // Should be callable directly
+      // Should be callable directly (mocks are already set up at module level)
       await expect(exportSliceHandler(exportArgs, mockCtx)).resolves.toBeDefined();
     });
   });

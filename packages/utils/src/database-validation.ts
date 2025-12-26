@@ -10,9 +10,9 @@ import { createTokenAddress } from '@quantbot/core';
 import { ValidationError } from './errors.js';
 
 /**
- * Validates a Chain value
+ * Validates a Chain value (normalized to lowercase)
  */
-const chainSchema = z.enum(['solana', 'ethereum', 'bsc', 'base']);
+const chainSchema = z.enum(['solana', 'ethereum', 'bsc', 'base', 'evm']);
 
 /**
  * Validates a TokenAddress (mint address)

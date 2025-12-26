@@ -145,8 +145,33 @@ export async function exportSlicesForAlerts(
     ctx
   );
 
-  if (callsResult.error || !callsResult.calls || callsResult.calls.length === 0) {
-    throw new Error(`Failed to query calls: ${callsResult.error || 'No calls found'}`);
+  // Handle errors
+  if (callsResult.error) {
+    throw new Error(`Failed to query calls: ${callsResult.error}`);
+  }
+
+  // Handle no calls found - return empty result instead of throwing
+  if (!callsResult.calls || callsResult.calls.length === 0) {
+    logger.info('[exportSlicesForAlerts] No calls found in time range', {
+      runId,
+      fromISO: validated.fromISO,
+      toISO: validated.toISO,
+    });
+
+    return {
+      success: true,
+      runId,
+      totalAlerts: 0,
+      processedAlerts: 0,
+      successfulExports: 0,
+      failedExports: 0,
+      exports: [],
+      summary: {
+        totalFiles: 0,
+        totalRows: 0,
+        totalBytes: 0,
+      },
+    };
   }
 
   const calls = callsResult.calls;

@@ -3,6 +3,9 @@
  * 
  * This file is run before all tests to set up the test environment.
  * It mocks native bindings and sets up global test utilities.
+ * 
+ * For integration tests requiring ClickHouse, the test suite will
+ * automatically spin up ClickHouse via the setup script.
  */
 
 import { vi } from 'vitest';
@@ -34,4 +37,8 @@ global.console = {
   warn: vi.fn(),
   error: vi.fn(),
 };
+
+// Note: ClickHouse setup is handled via a pre-test script
+// Run `pnpm test:setup` before tests, or use `RUN_DB_STRESS=1 pnpm test:coverage`
+// which will automatically run the setup script
 

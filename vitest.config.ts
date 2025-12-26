@@ -23,6 +23,9 @@ export default defineConfig({
       // Legacy: tests at package root (migrate to tests/unit)
       'packages/**/*.test.ts',
       'packages/**/*.spec.ts',
+      // Root-level smoke tests
+      'tests/smoke/**/*.test.ts',
+      'tests/smoke/**/*.spec.ts',
     ],
     exclude: [
       'node_modules',
@@ -67,6 +70,8 @@ export default defineConfig({
   },
   resolve: {
     alias: {
+      '@quantbot/core': resolveFromRoot('packages/core/src'),
+      '@quantbot/core/*': resolveFromRoot('packages/core/src/*'),
       '@quantbot/api-clients': resolveFromRoot('packages/api-clients/src'),
       '@quantbot/api-clients/*': resolveFromRoot('packages/api-clients/src/*'),
       '@quantbot/utils': resolveFromRoot('packages/utils/src'),
@@ -83,6 +88,8 @@ export default defineConfig({
       '@quantbot/ingestion/*': resolveFromRoot('packages/ingestion/src/*'),
       '@quantbot/analytics': resolveFromRoot('packages/analytics/src'),
       '@quantbot/analytics/*': resolveFromRoot('packages/analytics/src/*'),
+      '@quantbot/workflows': resolveFromRoot('packages/workflows/src'),
+      '@quantbot/workflows/*': resolveFromRoot('packages/workflows/src/*'),
     },
   },
   optimizeDeps: {

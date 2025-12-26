@@ -15,7 +15,7 @@ import { queryOhlcvHandler } from './ohlcv/query-ohlcv.js';
 import { backfillOhlcvHandler } from './ohlcv/backfill-ohlcv.js';
 import { coverageOhlcvHandler } from './ohlcv/coverage-ohlcv.js';
 import { analyzeCoverageHandler } from './ohlcv/analyze-coverage.js';
-import { analyzeDetailedCoverageHandler } from './ohlcv/analyze-detailed-coverage.js';
+import { analyzeDetailedCoverageHandler } from '../handlers/ohlcv/analyze-detailed-coverage.js';
 
 /**
  * Query command schema
@@ -56,7 +56,7 @@ export const querySchema = z.object({
   ),
   interval: z.enum(['1m', '5m', '15m', '1h', '4h', '1d']).default('5m'),
   format: z.enum(['json', 'table', 'csv']).default('table'),
-  chain: z.enum(['solana', 'ethereum', 'bsc', 'base']).default('solana'),
+  chain: z.enum(['solana', 'ethereum', 'bsc', 'base', 'evm']).default('solana'),
 });
 
 /**
@@ -78,7 +78,7 @@ export const backfillSchema = z.object({
   to: z.string(),
   interval: z.enum(['1m', '5m', '15m', '1h', '4h', '1d']).default('5m'),
   format: z.enum(['json', 'table', 'csv']).default('table'),
-  chain: z.enum(['solana', 'ethereum', 'bsc', 'base']).default('solana'),
+  chain: z.enum(['solana', 'ethereum', 'bsc', 'base', 'evm']).default('solana'),
 });
 
 /**

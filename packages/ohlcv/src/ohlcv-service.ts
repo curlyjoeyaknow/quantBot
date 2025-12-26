@@ -12,6 +12,7 @@
 import { DateTime } from 'luxon';
 import { getStorageEngine, initClickHouse } from '@quantbot/storage';
 import type { Candle, Chain, ClockPort } from '@quantbot/core';
+import { normalizeChain } from '@quantbot/core';
 import { logger } from '@quantbot/utils';
 import { storeCandles as storeCandlesOffline } from './ohlcv-storage.js';
 
@@ -83,6 +84,8 @@ export class OHLCVService {
     candles: Candle[],
     options: OHLCVIngestOptions = {}
   ): Promise<{ ingested: number; skipped: number }> {
+    // Normalize chain to lowercase
+    const normalizedChain = normalizeChain(chain);
     const { interval = '5m', skipDuplicates = true } = options;
 
     if (candles.length === 0) {
@@ -94,7 +97,7 @@ export class OHLCVService {
       if (skipDuplicates && candles.length > 0) {
         const firstCandle = DateTime.fromSeconds(candles[0].timestamp);
         const lastCandle = DateTime.fromSeconds(candles[candles.length - 1].timestamp);
-        const existing = await this.storageEngine.getCandles(mint, chain, firstCandle, lastCandle, {
+        const existing = await this.storageEngine.getCandles(mint, normalizedChain, firstCandle, lastCandle, {
           interval,
         });
 
@@ -107,7 +110,7 @@ export class OHLCVService {
         }
       }
 
-      await this.storageEngine.storeCandles(mint, chain, candles, interval);
+      await this.storageEngine.storeCandles(mint, normalizedChain, candles, interval);
 
       logger.info('Ingested candles into ClickHouse', {
         mint: mint,
@@ -135,11 +138,13 @@ export class OHLCVService {
     endTime: DateTime,
     options: OHLCVGetOptions = {}
   ): Promise<Candle[]> {
+    // Normalize chain to lowercase
+    const normalizedChain = normalizeChain(chain);
     const { interval = '5m', useCache = true, forceRefresh = false } = options;
 
     // Check in-memory cache first
     if (useCache && !forceRefresh) {
-      const cacheKey = this.getCacheKey(mint, chain, startTime, endTime, interval);
+      const cacheKey = this.getCacheKey(mint, normalizedChain, startTime, endTime, interval);
       const cached = this.inMemoryCache.get(cacheKey);
 
       if (cached && this.clock.nowMs() - cached.timestamp < this.cacheTTL) {
@@ -153,7 +158,7 @@ export class OHLCVService {
       try {
         const clickhouseCandles = await this.storageEngine.getCandles(
           mint,
-          chain,
+          normalizedChain,
           startTime,
           endTime,
           { interval }
@@ -165,7 +170,7 @@ export class OHLCVService {
           });
 
           // Store in in-memory cache
-          const cacheKey = this.getCacheKey(mint, chain, startTime, endTime, interval);
+          const cacheKey = this.getCacheKey(mint, normalizedChain, startTime, endTime, interval);
           this.inMemoryCache.set(cacheKey, {
             candles: clickhouseCandles,
             timestamp: this.clock.nowMs(),

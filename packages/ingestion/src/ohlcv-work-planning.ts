@@ -19,6 +19,7 @@
 import { resolve } from 'path';
 import { DateTime } from 'luxon';
 import type { Chain, OhlcvWorkItem } from '@quantbot/core';
+import { normalizeChain } from '@quantbot/core';
 import { logger } from '@quantbot/utils';
 import { getDuckDBWorklistService } from '@quantbot/storage';
 
@@ -57,7 +58,7 @@ export async function generateOhlcvWorklist(
     from,
     to,
     side = 'buy',
-    chain = 'solana',
+    chain: rawChain = 'solana',
     interval = '1m',
     // Default windows to ensure 5000 candles are fetched for each interval
     // For 1m: 5000 candles = 5000 minutes = ~83.3 hours
@@ -69,6 +70,9 @@ export async function generateOhlcvWorklist(
     // Default to 1m calculation (4740), but this should be adjusted based on interval
     postWindowMinutes = 4740, // Default: 4740 minutes to get 5000 candles for 1m interval
   } = options;
+
+  // Normalize chain to lowercase
+  const chain = normalizeChain(rawChain) as Chain;
 
   // Convert relative paths to absolute paths (Python scripts run from different working directories)
   const absoluteDuckdbPath = resolve(process.cwd(), duckdbPath);
@@ -169,7 +173,8 @@ export async function generateOhlcvWorklist(
     }
 
     // Use chain from token group, or fallback to options.chain
-    const tokenChain = (tokenGroup.chain as Chain) || chain;
+    // Normalize chain to lowercase
+    const tokenChain = tokenGroup.chain ? (normalizeChain(tokenGroup.chain) as Chain) : chain;
 
     workItems.push({
       mint: tokenGroup.mint,

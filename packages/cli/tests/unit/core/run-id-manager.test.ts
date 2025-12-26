@@ -93,7 +93,7 @@ describe('Run ID Manager', () => {
       expect(id).not.toContain('.');
     });
 
-    it('should truncate mint to 8 characters', () => {
+    it('should include full mint address in run ID', () => {
       const components: RunIdComponents = {
         command: 'simulation.run-duckdb',
         strategyId: 'PT2_SL25',
@@ -102,13 +102,13 @@ describe('Run ID Manager', () => {
       };
 
       const id = generateRunId(components);
-      // Format: command_strategyId_mintShort_timestamp_hash
-      // Mint is truncated to 8 characters: So111111 (8 chars)
-      expect(id).toContain('So11111');
+      // Format: command_strategyId_mintFull_timestamp_hash
+      // Mint is included in full (not truncated) for traceability
+      expect(id).toContain('So11111111111111111111111111111111111111112');
       const parts = id.split('_');
-      // Find the part that starts with 'So' and is 8 chars
-      const mintPart = parts.find((p) => p.startsWith('So') && p.length === 8);
-      expect(mintPart).toBe('So111111'); // 8 characters
+      // Find the part that starts with 'So' and contains the full mint
+      const mintPart = parts.find((p) => p.startsWith('So') && p.length > 8);
+      expect(mintPart).toBe('So11111111111111111111111111111111111111112'); // Full mint address
     });
   });
 
@@ -128,9 +128,9 @@ describe('Run ID Manager', () => {
       // Command may have multiple parts, so strategyId might not be at index 1
       // Instead, check that the ID contains the strategy ID
       expect(id).toContain('PT2_SL25');
-      // Find mint part (8 chars starting with So)
-      const mintPart = id.split('_').find((p) => p.startsWith('So') && p.length === 8);
-      expect(mintPart).toBe('So111111');
+      // Find mint part (full mint address starting with So)
+      const mintPart = id.split('_').find((p) => p.startsWith('So') && p.length > 8);
+      expect(mintPart).toBe('So11111111111111111111111111111111111111112'); // Full mint address
       // Find timestamp (14 digits)
       const timestampPart = id.split('_').find((p) => /^\d{14}$/.test(p));
       expect(timestampPart).toBeDefined();

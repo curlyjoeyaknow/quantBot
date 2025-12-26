@@ -95,6 +95,16 @@ export class CallDataLoader {
         return true;
       });
 
+      // Helper function to validate price_usd
+      const isValidPrice = (price: unknown): price is number => {
+        if (price === null || price === undefined) return false;
+        if (typeof price !== 'number') return false;
+        if (Number.isNaN(price)) return false;
+        if (!Number.isFinite(price)) return false;
+        if (price <= 0) return false;
+        return true;
+      };
+
       // Prepare calls for historical price lookup
       const callsForPriceLookup = validCalls.map((call, index) => {
         const tokenAddress = String(call.mint || '').trim();
@@ -109,41 +119,66 @@ export class CallDataLoader {
           alertTimestamp = new Date();
         }
 
+        // Check if price_usd is valid - if invalid, we'll use 0 and skip Birdeye lookup
+        const priceUsd = (call as { price_usd?: unknown }).price_usd;
+        const hasValidPriceUsd = isValidPrice(priceUsd);
+
         return {
           index,
           tokenAddress,
           alertTimestamp,
           caller: call.caller,
           createdAt: call.createdAt,
+          priceUsd: hasValidPriceUsd ? priceUsd : undefined, // Only include valid prices
+          hasValidPriceUsd,
         };
       });
 
-      // Load historical prices from Birdeye API at exact alert timestamps
-      logger.info(
-        `[CallDataLoader] Fetching historical prices from Birdeye for ${callsForPriceLookup.length} calls`
-      );
-      const historicalPrices = await loadHistoricalPricesBatch(
-        callsForPriceLookup.map((c) => ({
-          tokenAddress: c.tokenAddress,
-          alertTimestamp: c.alertTimestamp,
-          // Chain will be auto-detected from address format
-        })),
-        10 // Batch size - process 10 calls at a time to avoid rate limiting
-      );
+      // Filter calls that need Birdeye lookup (those without valid price_usd)
+      const callsNeedingBirdeye = callsForPriceLookup.filter((c) => !c.hasValidPriceUsd);
 
-      const successRate =
-        callsForPriceLookup.length > 0
-          ? ((historicalPrices.size / callsForPriceLookup.length) * 100).toFixed(1)
-          : '0.0';
-
-      logger.info(
-        `[CallDataLoader] Loaded ${historicalPrices.size}/${callsForPriceLookup.length} historical prices from Birdeye (${successRate}% success rate)`
-      );
-
-      if (historicalPrices.size < callsForPriceLookup.length * 0.5) {
-        logger.warn(
-          `[CallDataLoader] Low Birdeye price fetch success rate (${successRate}%). Some tokens may not be available in Birdeye at those timestamps, or may use unsupported formats (e.g., Sui tokens).`
+      // Load historical prices from Birdeye API only for calls without valid price_usd
+      let historicalPrices = new Map<number, number>();
+      if (callsNeedingBirdeye.length > 0) {
+        logger.info(
+          `[CallDataLoader] Fetching historical prices from Birdeye for ${callsNeedingBirdeye.length} calls (${callsForPriceLookup.length - callsNeedingBirdeye.length} calls already have valid price_usd)`
         );
+        historicalPrices = await loadHistoricalPricesBatch(
+          callsNeedingBirdeye.map((c) => ({
+            tokenAddress: c.tokenAddress,
+            alertTimestamp: c.alertTimestamp,
+            // Chain will be auto-detected from address format
+          })),
+          10 // Batch size - process 10 calls at a time to avoid rate limiting
+        );
+
+        const successRate =
+          callsNeedingBirdeye.length > 0
+            ? ((historicalPrices.size / callsNeedingBirdeye.length) * 100).toFixed(1)
+            : '0.0';
+
+        logger.info(
+          `[CallDataLoader] Loaded ${historicalPrices.size}/${callsNeedingBirdeye.length} historical prices from Birdeye (${successRate}% success rate)`
+        );
+
+        if (historicalPrices.size < callsNeedingBirdeye.length * 0.5) {
+          logger.warn(
+            `[CallDataLoader] Low Birdeye price fetch success rate (${successRate}%). Some tokens may not be available in Birdeye at those timestamps, or may use unsupported formats (e.g., Sui tokens).`
+          );
+        }
+      } else {
+        logger.info(
+          `[CallDataLoader] All ${callsForPriceLookup.length} calls have valid price_usd, skipping Birdeye lookup`
+        );
+      }
+
+      // Create a map from original index to Birdeye result index for calls needing Birdeye
+      const birdeyeIndexMap = new Map<number, number>();
+      let birdeyeIndex = 0;
+      for (let i = 0; i < callsForPriceLookup.length; i++) {
+        if (!callsForPriceLookup[i].hasValidPriceUsd) {
+          birdeyeIndexMap.set(i, birdeyeIndex++);
+        }
       }
 
       // Map to CallPerformance with historical prices
@@ -151,8 +186,18 @@ export class CallDataLoader {
         const tokenAddress = callInfo.tokenAddress;
         const alertTimestamp = callInfo.alertTimestamp;
 
-        // Get historical price from Birdeye at exact alert time (by call index)
-        const entryPrice = historicalPrices.get(index) || 0;
+        // Determine entry price:
+        // 1. Use valid price_usd if available
+        // 2. Otherwise, use Birdeye price if available
+        // 3. Otherwise, use 0 (invalid price_usd means we should return 0, not fetch from Birdeye)
+        let entryPrice: number;
+        if (callInfo.hasValidPriceUsd && callInfo.priceUsd !== undefined) {
+          entryPrice = callInfo.priceUsd;
+        } else {
+          // Try to get from Birdeye (only if we attempted lookup)
+          const birdeyeIdx = birdeyeIndexMap.get(index);
+          entryPrice = birdeyeIdx !== undefined ? historicalPrices.get(birdeyeIdx) || 0 : 0;
+        }
 
         // Validate and normalize caller name
         const callerName =

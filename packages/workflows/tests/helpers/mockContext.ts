@@ -8,6 +8,7 @@ import type {
   SimulationEngineResult,
   SimulationCallResult,
 } from '../../src/types.js';
+import { CausalCandleWrapper } from '@quantbot/simulation';
 
 export function candleSeries(): Candle[] {
   return [
@@ -58,6 +59,22 @@ export function createMockContext(opts?: {
       getCandles: vi.fn(async ({ mint }: { mint: string; fromISO: string; toISO: string }) => {
         return candlesByMint[mint] ?? candleSeries();
       }),
+      causalAccessor: {
+        // Create a causal accessor that uses candlesByMint
+        // For each mint, wrap its candles in a CausalCandleWrapper
+        getCandlesAtTime: vi.fn(async (mint: string, simulationTime: number, lookback: number, interval: string) => {
+          const candles = candlesByMint[mint] ?? candleSeries();
+          const wrapper = new CausalCandleWrapper(candles, interval as any);
+          return wrapper.getCandlesAtTime(mint, simulationTime, lookback, interval as any);
+        }),
+        getLastClosedCandle: vi.fn(async (mint: string, simulationTime: number, interval: string) => {
+          const candles = candlesByMint[mint] ?? candleSeries();
+          // Return null if no candles, otherwise return the last one that would be closed
+          if (candles.length === 0) return null;
+          const wrapper = new CausalCandleWrapper(candles, interval as any);
+          return wrapper.getLastClosedCandle(mint, simulationTime, interval as any);
+        }),
+      },
     },
 
     simulation: {

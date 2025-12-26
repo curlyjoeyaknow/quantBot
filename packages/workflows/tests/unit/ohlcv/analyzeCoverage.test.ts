@@ -142,7 +142,7 @@ describe('analyzeCoverage workflow', () => {
           'end-date': '2025-12-31',
         },
         expect.any(Object),
-        { timeout: 300000 }
+        { timeout: 900000 } // Default timeout is 15 minutes (900000ms)
       );
     });
 
@@ -238,7 +238,7 @@ describe('analyzeCoverage workflow', () => {
           'generate-fetch-plan': true,
         },
         expect.any(Object),
-        { timeout: 300000 }
+        { timeout: 900000 } // Default timeout is 15 minutes (900000ms)
       );
     });
 

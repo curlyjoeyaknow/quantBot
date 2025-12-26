@@ -60,7 +60,7 @@ export const IngestOhlcvSpecSchema = z.object({
   from: z.string().optional(), // ISO date string
   to: z.string().optional(), // ISO date string
   side: z.enum(['buy', 'sell']).optional().default('buy'),
-  chain: z.enum(['solana', 'ethereum', 'base', 'bsc']).optional().default('solana'),
+  chain: z.enum(['solana', 'ethereum', 'bsc', 'base', 'evm']).optional().default('solana'),
   interval: z.enum(['1s', '15s', '1m', '5m', '1H']).optional().default('1m'),
   preWindowMinutes: z.number().int().min(0).optional().default(260),
   // Default post-window adjusted to ensure 5000 candles for 1m interval

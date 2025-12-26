@@ -86,6 +86,7 @@ export { analyzeDetailedCoverage } from './ohlcv/analyzeDetailedCoverage.js';
 export type {
   AnalyzeDetailedCoverageSpec,
   AnalyzeDetailedCoverageResult,
+  AnalyzeDetailedCoverageContext,
   DetailedCoverageRecord,
   DetailedCoverageSummary,
   IntervalCoverageResult,
