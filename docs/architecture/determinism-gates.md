@@ -21,8 +21,8 @@ These are **non-negotiable gates** that must be implemented before QuantBot can 
 - Simulation core uses clock interface
 - **All violations fixed:**
   - ✅ `position.ts` - Fixed (no longer uses `Date.now()` or `Math.random()`)
-  - ✅ `progress.ts` - Fixed (uses injected `ProgressClock` interface)
-  - ✅ `result-cache.ts` - Fixed (uses injected `CacheClock` interface)
+  - ✅ `progress.ts` - Fixed (uses `createSystemClock()` from `@quantbot/core` for fallback)
+  - ✅ `result-cache.ts` - Fixed (uses `createSystemClock()` from `@quantbot/core` for fallback)
 - ESLint rules enforce ban on `Date.now()`, `new Date()`, and `Math.random()` in simulation code
 - ESLint exceptions removed (no longer needed)
 
@@ -54,10 +54,14 @@ These are **non-negotiable gates** that must be implemented before QuantBot can 
    - ✅ ESLint exceptions removed (no longer needed)
    - ✅ Tests updated to use deterministic clocks (OHLCVCache and StorageEngine TTL tests)
 
-3. **Enforce in CI (TODO):**
+3. **✅ Enforce in CI (COMPLETED):**
 
-   - Add ESLint check to build pipeline
-   - Fail build if violations found
+   ✅ **COMPLETED**: ESLint rules are enforced in CI:
+   - CI build pipeline runs `pnpm lint` (see `.github/workflows/build.yml`)
+   - ESLint rules ban `Date.now()`, `new Date()`, and `Math.random()` in simulation code
+   - Build fails if violations are found
+   - Fixed violations in `progress.ts` and `result-cache.ts` by using `createSystemClock()` from `@quantbot/core`
+   - Created `createSystemClock()` factory in `@quantbot/core` for composition roots
 
 4. **Add deterministic RNG injection (TODO):**
 

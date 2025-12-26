@@ -13,7 +13,7 @@ import { getBirdeyeClient } from '@quantbot/api-clients';
 // - Migration guide: docs/architecture/execution-port-migration.md
 // - All safety features (dry-run, circuit breaker, idempotency) must be preserved
 
-function createSystemClock(): ClockPort {
+// Use createSystemClock from @quantbot/core instead of local implementation
   return { nowMs: () => Date.now() };
 }
 
