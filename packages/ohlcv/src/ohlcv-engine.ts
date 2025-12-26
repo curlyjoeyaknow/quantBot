@@ -14,6 +14,7 @@
 
 import { DateTime } from 'luxon';
 import type { Candle, Chain } from '@quantbot/core';
+import { normalizeChain } from '@quantbot/core';
 import { logger } from '@quantbot/utils';
 import { getStorageEngine, initClickHouse } from '@quantbot/storage';
 import { storeCandles as storeCandlesOffline } from './ohlcv-storage.js';
@@ -88,9 +89,12 @@ export class OHLCVEngine {
   ): Promise<OHLCVFetchResult> {
     const { interval = '5m' } = options;
 
+    // Normalize chain to lowercase
+    const normalizedChain = normalizeChain(chain);
+
     // Query ClickHouse (storage engine handles availability)
     try {
-      const candles = await this.storageEngine.getCandles(tokenAddress, chain, startTime, endTime, {
+      const candles = await this.storageEngine.getCandles(tokenAddress, normalizedChain, startTime, endTime, {
         interval,
       });
       if (candles.length > 0) {
@@ -153,7 +157,9 @@ export class OHLCVEngine {
     chain: string = 'solana',
     options: OHLCVEngineFetchOptions = {}
   ): Promise<OHLCVFetchResult> {
-    return this.query(tokenAddress, startTime, endTime, chain, options);
+    // Normalize chain to lowercase
+    const normalizedChain = normalizeChain(chain);
+    return this.query(tokenAddress, startTime, endTime, normalizedChain, options);
   }
 
   /**
@@ -173,13 +179,15 @@ export class OHLCVEngine {
     chain: string = 'solana',
     options: OHLCVEngineFetchOptions = {}
   ): Promise<Map<string, OHLCVFetchResult>> {
+    // Normalize chain to lowercase
+    const normalizedChain = normalizeChain(chain);
     const results = new Map<string, OHLCVFetchResult>();
 
     logger.info(`OHLCV Engine: Batch fetching ${tokens.length} tokens`);
 
     for (const token of tokens) {
       try {
-        const result = await this.fetch(token, startTime, endTime, chain, options);
+        const result = await this.fetch(token, startTime, endTime, normalizedChain, options);
         results.set(token, result);
       } catch (error: unknown) {
         logger.error(`OHLCV Engine: Failed to fetch ${token}...`, error as Error);

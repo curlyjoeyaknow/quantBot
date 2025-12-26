@@ -8,6 +8,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { CallDataLoader } from '@quantbot/analytics/loaders/CallDataLoader.js';
 import type { CallPerformance } from '@quantbot/analytics/types.js';
 import { DateTime } from 'luxon';
+import { loadHistoricalPricesBatch } from '@quantbot/analytics/loaders/HistoricalPriceLoader.js';
 
 // Mock dependencies
 const mockStorageEngine = {
@@ -26,18 +27,42 @@ vi.mock('@quantbot/workflows', () => ({
   createQueryCallsDuckdbContext: mockCreateQueryCallsDuckdbContext,
 }));
 
+vi.mock('@quantbot/utils', async () => {
+  const actual = await vi.importActual('@quantbot/utils');
+  return {
+    ...actual,
+    logger: {
+      debug: vi.fn(),
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+    },
+    getDuckDBPath: vi.fn((path: string) => path),
+  };
+});
+
+vi.mock('@quantbot/analytics/loaders/HistoricalPriceLoader.js', () => ({
+  loadHistoricalPricesBatch: vi.fn(),
+}));
+
 describe('CallDataLoader Edge Cases', () => {
   let loader: CallDataLoader;
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // Default mock: return empty map (no prices from Birdeye)
+    vi.mocked(loadHistoricalPricesBatch).mockResolvedValue(new Map());
+    // Default context mock with logger
+    mockCreateQueryCallsDuckdbContext.mockResolvedValue({
+      logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn(), trace: vi.fn() },
+    });
     loader = new CallDataLoader();
   });
 
   describe('loadCalls - Invalid Entry Prices', () => {
     it('should handle null price_usd', async () => {
       mockCreateQueryCallsDuckdbContext.mockResolvedValue({
-        logger: { info: vi.fn(), error: vi.fn() },
+        logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn(), trace: vi.fn() },
       });
       mockQueryCallsDuckdb.mockResolvedValue({
         calls: [

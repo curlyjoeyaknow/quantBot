@@ -7,12 +7,12 @@
 
 import { describe, it, expect } from 'vitest';
 import { readdirSync, readFileSync, existsSync, statSync } from 'node:fs';
-import { join, extname } from 'node:path';
+import { join, extname, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = join(__filename, '..', '..');
-const ROOT = __dirname;
+const __dirname = dirname(__filename);
+const ROOT = join(__dirname, '../..');
 
 /**
  * Find all handler files

@@ -98,19 +98,34 @@ export class DuckDBClient {
     if (operation === undefined) {
       const sql = scriptPathOrSql;
       try {
+        // Basic SQL validation
+        const trimmedSql = sql.trim();
+        if (!trimmedSql || trimmedSql.length === 0) {
+          throw new Error('SQL query is empty');
+        }
+
         await this.pythonEngine.runScript(
           this.getDirectSqlScriptPath(),
           {
             operation: 'execute_sql',
             'db-path': this.dbPath,
-            sql,
+            sql: trimmedSql,
           },
           DuckDBResultSchema
         );
         return;
       } catch (error) {
-        logger.error('DuckDB SQL execution failed', error as Error, { sql });
-        throw error;
+        const errorInfo = this.classifyError(error);
+        logger.error('DuckDB SQL execution failed', error as Error, {
+          category: errorInfo.category,
+          sql: sql.substring(0, 200),
+          dbPath: this.dbPath,
+        });
+
+        // Enhance error with user-friendly message
+        const enhancedError = new Error(errorInfo.userMessage);
+        enhancedError.cause = error;
+        throw enhancedError;
       }
     }
 
@@ -127,12 +142,66 @@ export class DuckDBClient {
       );
       return result;
     } catch (error) {
+      const errorInfo = this.classifyError(error);
       logger.error('DuckDB operation failed', error as Error, {
+        category: errorInfo.category,
         operation,
         scriptPath: scriptPathOrSql,
+        dbPath: this.dbPath,
       });
-      throw error;
+
+      // Enhance error with user-friendly message
+      const enhancedError = new Error(errorInfo.userMessage);
+      enhancedError.cause = error;
+      throw enhancedError;
     }
+  }
+
+  /**
+   * Classify DuckDB error for better error handling
+   */
+  private classifyError(error: unknown): {
+    category: 'syntax' | 'type' | 'missing' | 'connection' | 'unknown';
+    userMessage: string;
+  } {
+    if (!(error instanceof Error)) {
+      return {
+        category: 'unknown',
+        userMessage: 'Unknown error occurred',
+      };
+    }
+
+    const message = error.message.toLowerCase();
+    let category: 'syntax' | 'type' | 'missing' | 'connection' | 'unknown';
+    let userMessage: string;
+
+    if (message.includes('syntax error') || message.includes('syntax')) {
+      category = 'syntax';
+      userMessage = `SQL syntax error: ${error.message}. Please check your query syntax.`;
+    } else if (message.includes('type') || message.includes('cannot convert')) {
+      category = 'type';
+      userMessage = `Type error: ${error.message}. Check that column types match your query.`;
+    } else if (
+      message.includes('does not exist') ||
+      message.includes('not found') ||
+      message.includes('no such table') ||
+      message.includes('no such column')
+    ) {
+      category = 'missing';
+      userMessage = `Table or column not found: ${error.message}. Ensure the database schema matches your query.`;
+    } else if (
+      message.includes('cannot connect') ||
+      message.includes('connection') ||
+      message.includes('database')
+    ) {
+      category = 'connection';
+      userMessage = `Database connection error: ${error.message}. Check that the database file exists and is accessible.`;
+    } else {
+      category = 'unknown';
+      userMessage = `DuckDB error: ${error.message}`;
+    }
+
+    return { category, userMessage };
   }
 
   /**
@@ -140,19 +209,34 @@ export class DuckDBClient {
    */
   async query(sql: string): Promise<DuckDBQueryResult> {
     try {
+      // Basic SQL validation
+      const trimmedSql = sql.trim();
+      if (!trimmedSql || trimmedSql.length === 0) {
+        throw new Error('SQL query is empty');
+      }
+
       const result = await this.pythonEngine.runScript(
         this.getDirectSqlScriptPath(),
         {
           operation: 'query_sql',
           'db-path': this.dbPath,
-          sql,
+          sql: trimmedSql,
         },
         DuckDBQueryResultSchema
       );
       return result;
     } catch (error) {
-      logger.error('DuckDB query failed', error as Error, { sql });
-      throw error;
+      const errorInfo = this.classifyError(error);
+      logger.error('DuckDB query failed', error as Error, {
+        category: errorInfo.category,
+        sql: sql.substring(0, 200), // Log first 200 chars
+        dbPath: this.dbPath,
+      });
+
+      // Enhance error with user-friendly message
+      const enhancedError = new Error(errorInfo.userMessage);
+      enhancedError.cause = error;
+      throw enhancedError;
     }
   }
 
@@ -170,8 +254,12 @@ export class DuckDBClient {
         DuckDBResultSchema
       );
     } catch (error) {
-      logger.error('Failed to close DuckDB connection', error as Error);
-      throw error;
+      // Log warning instead of error for close failures (connection may already be closed)
+      logger.warn('Failed to close DuckDB connection', {
+        error: error instanceof Error ? error.message : String(error),
+        dbPath: this.dbPath,
+      });
+      // Don't throw - connection cleanup failures are usually non-critical
     }
   }
 

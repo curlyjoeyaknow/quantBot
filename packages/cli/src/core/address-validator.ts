@@ -8,8 +8,7 @@
 
 import bs58 from 'bs58';
 import { ValidationError } from '@quantbot/utils';
-
-export type Chain = 'solana' | 'ethereum' | 'bsc' | 'base';
+import type { Chain } from '@quantbot/core';
 
 /**
  * Validation result with detailed error information

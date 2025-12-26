@@ -13,7 +13,7 @@ import process from 'node:process';
  * Input arguments (already validated by Zod)
  */
 export type ListTokensArgs = {
-  chain?: 'solana' | 'ethereum' | 'bsc' | 'base';
+  chain?: 'solana' | 'ethereum' | 'bsc' | 'base' | 'evm';
   source?: 'ohlcv' | 'metadata';
   format?: 'json' | 'table' | 'csv';
   limit?: number;

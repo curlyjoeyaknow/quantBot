@@ -44,6 +44,7 @@ Practical examples, code samples, and workflow demonstrations.
 - [CLI Setup Guide](./guides/cli-setup.md)
 - [Research Services Usage](./guides/research-services-usage.md)
 - [Research Workflow Examples](./examples/research-workflow-examples.md)
+- [ClickHouse Storage Statistics](./guides/clickhouse-storage-stats.md)
 - [Migration Guides](./migration/)
 
 ## Important: Simulation Lab Only

@@ -365,11 +365,182 @@ describe('Slice Export & Analyze E2E Tests', () => {
       analyzer,
       limits: {
         maxFiles: 1, // Should pass for single-file export
-        maxTimeRangeDays: 90,
       },
     });
 
     expect(result.manifest).toBeDefined();
     expect(result.manifest.parquetFiles.length).toBeLessThanOrEqual(1);
+  }, 120000);
+
+  it('E2E: should handle empty result sets with improved diagnostics', async () => {
+    const exporter = createClickHouseSliceExporterAdapterImpl();
+    const analyzer = createDuckDbSliceAnalyzerAdapterImpl();
+
+    const run: RunContext = {
+      runId: generateTestRunId('e2e-empty-diagnostics'),
+      createdAtIso: new Date().toISOString(),
+    };
+
+    // Use a time range that likely has no data (far future)
+    const spec: SliceSpec = {
+      dataset: 'candles_1m',
+      chain: 'sol',
+      timeRange: {
+        startIso: '2030-01-01T00:00:00.000Z',
+        endIso: '2030-01-02T00:00:00.000Z',
+      },
+    };
+
+    const layout: ParquetLayoutSpec = {
+      baseUri: `file://${outputDir}`,
+      subdirTemplate: '{dataset}/chain={chain}/dt={yyyy}-{mm}-{dd}/run_id={runId}',
+    };
+
+    const analysis: AnalysisSpec = {
+      kind: 'sql',
+      sql: 'SELECT COUNT(*) as total_rows FROM slice',
+    };
+
+    const result = await exportAndAnalyzeSlice({
+      run,
+      spec,
+      layout,
+      analysis,
+      exporter,
+      analyzer,
+    });
+
+    // Should handle empty result gracefully
+    expect(result.manifest).toBeDefined();
+    expect(result.manifest.summary.totalRows).toBe(0);
+
+    // Check that manifest includes diagnostic information if available
+    const summary = result.manifest.summary as any;
+    if (summary._diagnostics) {
+      expect(summary._diagnostics).toHaveProperty('hasDataInTable');
+      expect(summary._diagnostics).toHaveProperty('hasDataInTimeRange');
+      expect(summary._diagnostics).toHaveProperty('message');
+    }
+
+    // Analysis should still work (even with empty data)
+    expect(result.analysis.status).toBe('ok');
+    expect(result.analysis.summary).toBeDefined();
+
+    // Empty result should have 0 rows
+    const analysisSummary = result.analysis.summary!;
+    if (analysisSummary.total_rows !== undefined) {
+      expect(analysisSummary.total_rows as number).toBe(0);
+    }
+  }, 120000);
+
+  it('E2E: should handle DuckDB analysis errors gracefully', async () => {
+    const exporter = createClickHouseSliceExporterAdapterImpl();
+    const analyzer = createDuckDbSliceAnalyzerAdapterImpl();
+
+    const run: RunContext = {
+      runId: generateTestRunId('e2e-analysis-error'),
+      createdAtIso: new Date().toISOString(),
+    };
+
+    const spec: SliceSpec = {
+      dataset: 'candles_1m',
+      chain: 'sol',
+      timeRange: {
+        startIso: '2025-12-01T00:00:00.000Z',
+        endIso: '2025-12-02T00:00:00.000Z',
+      },
+    };
+
+    const layout: ParquetLayoutSpec = {
+      baseUri: `file://${outputDir}`,
+      subdirTemplate: '{dataset}/chain={chain}/dt={yyyy}-{mm}-{dd}/run_id={runId}',
+    };
+
+    // Invalid SQL query that should fail
+    const analysis: AnalysisSpec = {
+      kind: 'sql',
+      sql: 'SELECT * FROM non_existent_table WHERE invalid_column = 123',
+    };
+
+    const result = await exportAndAnalyzeSlice({
+      run,
+      spec,
+      layout,
+      analysis,
+      exporter,
+      analyzer,
+    });
+
+    // Export should succeed
+    expect(result.manifest).toBeDefined();
+    expect(result.manifest.parquetFiles.length).toBeGreaterThan(0);
+
+    // Analysis should fail gracefully with error message
+    expect(result.analysis.status).toBe('failed');
+    expect(result.analysis.warnings).toBeDefined();
+    expect(result.analysis.warnings!.length).toBeGreaterThan(0);
+    expect(result.analysis.warnings![0]).toContain('error');
+  }, 120000);
+
+  it('E2E: should handle missing Parquet files gracefully', async () => {
+    const exporter = createClickHouseSliceExporterAdapterImpl();
+    const analyzer = createDuckDbSliceAnalyzerAdapterImpl();
+
+    const run: RunContext = {
+      runId: generateTestRunId('e2e-missing-files'),
+      createdAtIso: new Date().toISOString(),
+    };
+
+    // First, export to create manifest
+    const spec: SliceSpec = {
+      dataset: 'candles_1m',
+      chain: 'sol',
+      timeRange: {
+        startIso: '2025-12-01T00:00:00.000Z',
+        endIso: '2025-12-02T00:00:00.000Z',
+      },
+    };
+
+    const layout: ParquetLayoutSpec = {
+      baseUri: `file://${outputDir}`,
+      subdirTemplate: '{dataset}/chain={chain}/dt={yyyy}-{mm}-{dd}/run_id={runId}',
+    };
+
+    const exportResult = await exportAndAnalyzeSlice({
+      run,
+      spec,
+      layout,
+      analysis: { kind: 'sql', sql: 'SELECT 1' },
+      exporter,
+      analyzer,
+    });
+
+    // Delete Parquet files to simulate missing files
+    for (const file of exportResult.manifest.parquetFiles) {
+      const filePath = file.path.replace(/^file:\/\//, '');
+      try {
+        await fs.unlink(filePath);
+      } catch {
+        // Ignore if file doesn't exist
+      }
+    }
+
+    // Try to analyze with missing files
+    const analysis: AnalysisSpec = {
+      kind: 'sql',
+      sql: 'SELECT COUNT(*) as total_rows FROM slice',
+    };
+
+    const analyzeResult = await analyzer.analyze({
+      run,
+      manifest: exportResult.manifest,
+      analysis,
+    });
+
+    // Should handle missing files gracefully
+    expect(analyzeResult.status).toBe('failed');
+    expect(analyzeResult.warnings).toBeDefined();
+    expect(analyzeResult.warnings!.length).toBeGreaterThan(0);
+    expect(analyzeResult.warnings![0]).toContain('Missing files');
   }, 120000);
 });

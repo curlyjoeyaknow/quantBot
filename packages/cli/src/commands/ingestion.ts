@@ -29,7 +29,7 @@ import { ensureOhlcvCoverageHandler } from '../handlers/ingestion/ensure-ohlcv-c
 export const telegramSchema = z.object({
   file: z.string().min(1),
   callerName: z.string().optional(), // Optional - caller names are extracted from messages automatically
-  chain: z.enum(['solana', 'ethereum', 'bsc', 'base']).default('solana'),
+  chain: z.enum(['solana', 'ethereum', 'bsc', 'base', 'evm']).default('solana'),
   chatId: z.string().optional(),
   format: z.enum(['json', 'table', 'csv']).default('table'),
 });
@@ -92,7 +92,7 @@ export const telegramProcessSchema = z.object({
  */
 export const validateAddressesSchema = z.object({
   addresses: z.array(z.string().min(1)).min(1),
-  chainHint: z.enum(['solana', 'ethereum', 'base', 'bsc']).optional(),
+  chainHint: z.enum(['solana', 'ethereum', 'bsc', 'base', 'evm']).optional(),
   format: z.enum(['json', 'table', 'csv']).default('table'),
 });
 

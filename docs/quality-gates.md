@@ -39,9 +39,17 @@ The following additional checks are enforced before release:
 
 Verifies that all CLI handlers have corresponding test files and follow the handler contract:
 
-- Handlers must not use: `console.log`, `process.exit`, `try/catch`, output formatting
-- Tests must verify: parameter conversion, error propagation, service calls
-- Handlers must be REPL-friendly (can be called with plain objects)
+- **Handler violations**: Checks for forbidden patterns:
+  - `console.log`, `console.error`, `console.warn`, `console.info`
+  - `process.exit`
+  - `try/catch` blocks (errors should bubble up)
+  - Output formatting functions (`formatOutput`, `formatTable`, `formatJson`)
+  - Direct repository/service instantiation (must use context)
+- **Test requirements**: Verifies test files exist and include:
+  - Service call verification
+  - Parameter conversion tests (e.g., string dates → Date objects)
+  - Error propagation tests
+  - Isolation tests (REPL-friendly, can be called with plain objects)
 
 ### Property Test Verification
 
@@ -50,9 +58,16 @@ Verifies that all CLI handlers have corresponding test files and follow the hand
 
 Verifies that financial calculations have property tests:
 
-- Detects functions matching financial patterns (calculatePnL, calculateFee, slippage, etc.)
-- Checks for corresponding property tests in `packages/**/tests/properties/**/*.test.ts`
-- Ensures financial invariants are tested (monotonicity, bounds, conservation laws)
+- **Detection**: Scans for functions matching financial patterns:
+  - `calculatePnL`, `calculateFee`, `calculateSlippage`, `calculateProfit`, `calculateLoss`
+  - `calculatePrice`, `calculateCost`, `calculateRevenue`, `calculateReturn`, `calculateRoi`
+  - Functions containing `slippage`, `pnl`, `profit`, `loss` in name or context
+- **Exclusions**: Filters out common non-financial functions (if, map, filter, async, parse, etc.)
+- **Verification**: Checks for corresponding property tests in `packages/**/tests/properties/**/*.test.ts`
+- **Requirements**: Ensures financial invariants are tested:
+  - Monotonicity (higher input = higher output)
+  - Bounds checking (slippage never exceeds 100%, fees never exceed input)
+  - Conservation laws (total supply conserved, balances never negative)
 
 ### CHANGELOG Verification
 
@@ -61,10 +76,18 @@ Verifies that financial calculations have property tests:
 
 Verifies that CHANGELOG.md is updated for functional changes:
 
-- Analyzes git diff for functional changes (features, bug fixes, breaking changes)
-- Checks for `[Unreleased]` section with relevant entries
-- Validates Keep a Changelog format
-- Verifies severity indicators for security/bug fixes
+- **Change detection**: Analyzes git diff (staged or unstaged) for:
+  - New features (exported functions, classes, interfaces)
+  - Bug fixes (fix, bug, issue keywords)
+  - Breaking changes (BREAKING, deprecated keywords)
+  - Security fixes (security, vulnerability, CVE keywords)
+  - Performance improvements (performance, optimize, speed keywords)
+- **Skip patterns**: Ignores test files, config files, documentation-only changes
+- **Validation**:
+  - Checks for `[Unreleased]` section at the top
+  - Validates Keep a Changelog format (Security, Fixed, Added, Changed, Deprecated, Removed)
+  - Verifies severity indicators for Security/Fixed sections (**CRITICAL**, **HIGH**, **MEDIUM**)
+- **Behavior**: Skips check if no functional changes detected
 
 ### Documentation Verification
 
@@ -73,9 +96,16 @@ Verifies that CHANGELOG.md is updated for functional changes:
 
 Verifies that documentation is updated when code changes:
 
-- Checks for `DOCS:` comments in changed files
-- Verifies referenced documentation files exist and were updated
-- Detects new features/APIs that might need documentation
+- **DOCS comments**: Scans for `// DOCS: path/to/doc.md` comments in changed files
+  - Resolves paths relative to file or project root
+  - Verifies referenced documentation files exist
+  - Checks if documentation files were updated in the same PR
+- **New features**: Detects new exported functions/classes/interfaces that might need documentation
+- **Package docs**: Checks for package-level documentation (README.md, docs/{package}/)
+- **Behavior**: 
+  - Missing docs → Error (blocks PR)
+  - Docs not updated → Warning (doesn't block)
+  - New features → Warning (suggestion only)
 
 ### Coverage Decrease Prevention
 
@@ -84,9 +114,21 @@ Verifies that documentation is updated when code changes:
 
 Prevents coverage from decreasing below baseline:
 
-- Compares current coverage against baseline stored in `coverage/.baseline.json`
-- Fails if any threshold (lines, functions, branches, statements) decreases
-- Updates baseline with `--update-baseline` flag
+- **Baseline management**: 
+  - Baseline stored in `coverage/.baseline.json`
+  - Created automatically on first run if missing
+  - Updated with `--update-baseline` or `-u` flag
+- **Coverage sources**: Reads from:
+  - `coverage/coverage-summary.json` (preferred, generated by vitest)
+  - `coverage/lcov.info` (fallback)
+  - Runs `pnpm test:coverage` if no report found
+- **Comparison**: Compares current vs baseline for:
+  - Lines coverage
+  - Functions coverage
+  - Branches coverage
+  - Statements coverage
+- **Tolerance**: Allows 0.01% tolerance for floating-point differences
+- **Failure**: Fails if any metric decreases below baseline (after tolerance)
 
 ## Smoke Tests
 
@@ -94,10 +136,23 @@ Prevents coverage from decreasing below baseline:
 
 Quick validation that critical paths work (< 30 seconds):
 
-- **Build Smoke Test** - All packages build successfully
-- **Import Smoke Test** - All public APIs can be imported
-- **Handler Smoke Test** - All CLI handlers are callable
-- **Quality Gates Smoke Test** - Quality gate infrastructure is functional
+- **Build Smoke Test** (`tests/smoke/build-smoke.test.ts`) - Verifies:
+  - All packages build successfully
+  - TypeScript config files exist
+  - Required scripts in package.json
+- **Import Smoke Test** (`tests/smoke/import-smoke.test.ts`) - Verifies:
+  - All public APIs can be imported (`@quantbot/core`, `@quantbot/utils`, `@quantbot/workflows`, etc.)
+  - Package exports are correctly configured
+- **Handler Smoke Test** (`tests/smoke/handler-smoke.test.ts`) - Verifies:
+  - Handler files exist in correct locations
+  - Handlers have valid exports
+  - Handler structure is correct
+- **Quality Gates Smoke Test** (`tests/smoke/quality-gates-smoke.test.ts`) - Verifies:
+  - Verification scripts exist
+  - ESLint config exists
+  - Vitest config exists
+  - CHANGELOG.md exists
+  - Quality gate scripts in package.json
 
 ## GitHub Workflows
 

@@ -64,8 +64,9 @@ export function getSliceFilePath(
   const tokenDir = join(barsDir, sanitizedToken);
 
   // Format dates as compact ISO (YYYYMMDDTHHMMSS)
-  const startDate = DateTime.fromISO(startIso);
-  const endDate = DateTime.fromISO(endIso);
+  // Use UTC to avoid timezone issues
+  const startDate = DateTime.fromISO(startIso, { zone: 'utc' });
+  const endDate = DateTime.fromISO(endIso, { zone: 'utc' });
   const startStr = startDate.toFormat("yyyyMMdd'T'HHmmss");
   const endStr = endDate.toFormat("yyyyMMdd'T'HHmmss");
 

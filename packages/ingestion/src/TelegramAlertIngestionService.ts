@@ -55,6 +55,7 @@ function isBot(sender: string | undefined): boolean {
 
 /**
  * Detect chain from bot response text or address format
+ * Returns normalized lowercase chain name: solana, ethereum, bsc, base, or evm
  */
 function detectChain(botText: string, address?: string): Chain {
   // Check for explicit chain mentions in bot text
@@ -75,9 +76,8 @@ function detectChain(botText: string, address?: string): Chain {
   // Detect from address format
   if (address) {
     if (address.startsWith('0x') && address.length === 42) {
-      // EVM address - try to determine which chain
-      // Default to base for now, but could be enhanced with more context
-      return 'base';
+      // EVM address - use 'evm' until we know which specific chain
+      return 'evm';
     }
     // Solana addresses are base58, 32-44 chars
     try {

@@ -66,6 +66,16 @@ export class ResearchSimulationAdapter {
       strategyId: request.strategy.strategyId,
     });
 
+    // 0. Validate that contentHash exists (required for snapshot refs, not live data)
+    if (!request.dataSnapshot.contentHash) {
+      throw new ValidationError(
+        'Simulations must use snapshot refs with contentHash, not live data',
+        {
+          snapshotId: request.dataSnapshot.snapshotId,
+        }
+      );
+    }
+
     try {
       // 1. Verify snapshot integrity before loading
       const isValid = await this.snapshotService.verifySnapshot(request.dataSnapshot);
@@ -193,11 +203,21 @@ export class ResearchSimulationAdapter {
         metrics,
       };
     } catch (error) {
+      // Validation errors should be thrown, not caught
+      if (error instanceof ValidationError) {
+        logger.error('[ResearchSimulationAdapter] Validation error', {
+          runId,
+          error: error.message,
+        });
+        throw error;
+      }
+
+      // Other errors (simulation failures, etc.) can be handled gracefully
       logger.error('[ResearchSimulationAdapter] Simulation failed', {
         runId,
         error: error instanceof Error ? error.message : String(error),
       });
-      // Even on error, return valid empty result rather than throwing
+      // Return valid empty result for non-validation errors
       // This ensures property tests can validate error handling
       const emptyPnLSeries = calculatePnLSeries([], 1.0, nowISO);
       return {

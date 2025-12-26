@@ -60,13 +60,20 @@ QuantBot's core capabilities:
 - **Workflows coordinate I/O** - All multi-step business logic lives in `@quantbot/workflows`
 - **CLI handlers are thin adapters** - Parse args → call workflow → format output
 - **Python integration via PythonEngine** - DuckDB queries, analysis scripts with Zod validation
+- **Ports & Adapters pattern** - Clean separation between interfaces and implementations
+- **Causal Candle Accessor** - Gate 2 compliance prevents future data leakage in simulations
+- **Offline-only architecture** - Clear separation between offline data operations and online orchestration
 
-### Secondary Features (Planned)
+### Secondary Features
 
-- **Backend REST API** - Fastify-based API (`@quantbot/api`)
-- **Real-Time Monitoring** - Live CA drop detection (`@quantbot/monitoring`)
-- **Web Dashboard** - Next.js analytics UI (`@quantbot/web`)
-- **Telegram Bot** - Interactive command-driven bot (`@quantbot/bot`)
+- **Backend REST API** - Fastify-based API (`@quantbot/api`) ✅ **IMPLEMENTED**
+  - Health checks, OHLCV statistics, simulation run management
+  - OpenAPI/Swagger documentation
+  - See **[docs/api/API.md](docs/api/API.md)** for complete API documentation
+
+- **Real-Time Monitoring** - Live CA drop detection (`@quantbot/monitoring`) - Planned
+- **Web Dashboard** - Next.js analytics UI (`@quantbot/web`) - Planned
+- **Telegram Bot** - Interactive command-driven bot (`@quantbot/bot`) - Planned
 
 ## 🚀 Golden Path Features
 
@@ -79,10 +86,13 @@ QuantBot's core capabilities:
 
 ### 📈 OHLCV Data Management
 
-- Fetch candles from Birdeye API
+- **Offline-only architecture** - `@quantbot/ohlcv` queries ClickHouse and stores candles (no API calls)
+- **Online orchestration** - `@quantbot/jobs` handles API calls, rate limiting, and metrics
 - Store in ClickHouse for fast queries
 - Automatic caching and deduplication
 - Support for 1m, 5m, 15m, 1h intervals
+- **Causal Candle Accessor** - Ensures simulations can't access future data (Gate 2 compliance)
+- Surgical OHLCV fetch with coverage analysis
 
 ### 🎯 Strategy Simulation
 
@@ -134,6 +144,24 @@ See **[docs/guides/research-services-usage.md](docs/guides/research-services-usa
 - Aggregated performance metrics
 - Event-level traces for debugging
 - Strategy comparison tools
+- OHLCV coverage analysis (overall and detailed)
+- Token statistics and performance analysis
+
+### 📦 Slice Export & Analysis
+
+**NEW**: Export candle slices from ClickHouse and analyze with DuckDB:
+
+- **Slice Export** - Export candles to Parquet format for analysis
+- **Slice Analysis** - Run SQL queries on exported slices
+- **Manifest Validation** - Schema validation for slice manifests
+- **Multi-dataset Support** - `candles_1m`, `candles_5m` (expandable)
+
+```bash
+quantbot slices export --dataset candles_1m --tokens token1,token2 --from 2024-01-01 --to 2024-12-31
+quantbot slices validate --slice-path ./slices/slice.parquet
+```
+
+See **[packages/workflows/src/slices/README.md](packages/workflows/src/slices/README.md)** for complete documentation.
 
 ## Secondary Features (Not Golden Path)
 
@@ -178,16 +206,19 @@ See **[docs/guides/research-services-usage.md](docs/guides/research-services-usa
 
 ### 💾 Data Storage & Analytics
 
-- **DuckDB**: Primary OLAP database for analytics and simulation results
+- **DuckDB**: Primary OLAP database for analytics and simulation results (file-based, no server)
 - **ClickHouse**: High-performance time-series database for OHLCV data
-- **Python Integration**: DuckDB queries via PythonEngine with Zod validation
+- **Python Integration**: DuckDB queries via PythonEngine with Zod validation (intentional architectural decision)
 - **Comprehensive Analytics**: Historical analysis, caller performance, token scoring
+- **Offline-Only Packages**: `@quantbot/ohlcv` and `@quantbot/ingestion` are offline-only (no API calls)
+- **Online Orchestration**: `@quantbot/jobs` handles all API calls, rate limiting, and metrics
 
 #### Storage Rules
 
 - **Mint addresses**: Never truncate, preserve exact case (32-44 chars)
 - **Parameterized queries**: Always use `{param:Type}` syntax for ClickHouse
 - **JSON-serializable results**: All workflow results must be serializable
+- **Idempotency**: All storage operations are idempotent (no duplicates)
 
 ### 🤖 Telegram Bot Commands
 
@@ -224,40 +255,83 @@ See **[docs/guides/research-services-usage.md](docs/guides/research-services-usa
 
 ## 🏗️ Architecture
 
-QuantBot follows a **modular monorepo architecture** with strict layering:
+QuantBot follows a **modular monorepo architecture** with strict layering and clear boundaries:
 
 ```text
 ┌─────────────────────────────────────────────────────────────┐
 │  APPLICATION LAYER: cli, tui, api (thin adapters)           │
+│  - Parse user input → workflow spec                         │
+│  - Format workflow result → user output                     │
+│  - No business logic                                        │
 ├─────────────────────────────────────────────────────────────┤
 │  ORCHESTRATION LAYER: workflows (coordinate I/O)            │
+│  - Multi-step business flows                                │
+│  - Use WorkflowContext for all dependencies                 │
+│  - Return JSON-serializable results                         │
 ├─────────────────────────────────────────────────────────────┤
 │  SERVICE LAYER: simulation (pure), ohlcv, ingestion,        │
-│                 analytics                                    │
+│                 analytics, jobs                             │
+│  - simulation: Pure compute (NO I/O)                         │
+│  - ohlcv/ingestion: Offline-only (no API calls)            │
+│  - jobs: Online orchestration (API calls, rate limiting)    │
 ├─────────────────────────────────────────────────────────────┤
 │  INFRASTRUCTURE LAYER: storage, api-clients, observability  │
+│  - Storage: DuckDB, ClickHouse adapters                    │
+│  - API Clients: Birdeye, Helius clients                    │
+│  - Observability: Logging, metrics, error tracking         │
 ├─────────────────────────────────────────────────────────────┤
-│  FOUNDATION LAYER: core (types), utils (EventBus, logger)   │
+│  FOUNDATION LAYER: core (types), utils (EventBus, logger)  │
+│  - core: Domain types, port interfaces (zero deps)         │
+│  - utils: Shared utilities (logger, EventBus, PythonEngine)│
 └─────────────────────────────────────────────────────────────┘
 ```
+
+### Key Architectural Patterns
+
+**Ports & Adapters**:
+
+- **Ports** (`@quantbot/core`): Interfaces that handlers/workflows depend on
+- **Adapters** (`@quantbot/workflows/src/adapters/`): Implementations of ports
+- **Composition Roots**: Wire adapters to ports (handlers, context factories)
+
+**Causal Candle Accessor (Gate 2 Compliance)**:
+
+- Ensures simulations can't access future data
+- At simulation time `t`, impossible to fetch candles with `close_time > t`
+- Integrated into `WorkflowContext` via `ctx.ohlcv.causalAccessor`
+
+**Offline-Only Architecture**:
+
+- `@quantbot/ohlcv`: Query ClickHouse, store candles (offline)
+- `@quantbot/ingestion`: Parse exports, generate worklists (offline)
+- `@quantbot/jobs`: Orchestrate API calls, rate limiting (online)
+
+**Wiring Patterns**:
+
+- **CommandContext**: Primary composition root for CLI commands
+- **WorkflowContext**: Primary composition root for workflows
+- No direct instantiation outside composition roots
 
 ### Package Structure
 
 ```text
 packages/
-├── core/           # Foundation types (Candle, Chain, Token, etc.)
+├── core/           # Foundation types, port interfaces (zero deps on @quantbot/*)
 ├── utils/          # Shared utilities (logger, EventBus, PythonEngine)
-├── storage/        # Storage layer (DuckDB, ClickHouse)
+├── storage/        # Storage layer (DuckDB, ClickHouse adapters)
 ├── observability/  # Logging, metrics, error tracking
 ├── api-clients/    # External API clients (Birdeye, Helius)
-├── ohlcv/          # OHLCV data services with hybrid fetching
+├── ohlcv/          # OHLCV data services (offline-only: query/store)
 ├── analytics/      # Analytics engine and metrics
-├── ingestion/      # Data ingestion (Telegram parsing)
-├── simulation/     # Pure simulation engine (NO I/O)
+├── ingestion/      # Data ingestion (offline-only: parse, generate worklists)
+├── jobs/           # Online orchestration (API calls, rate limiting)
+├── simulation/     # Pure simulation engine (NO I/O, deterministic)
 ├── workflows/      # Workflow orchestration (coordinates all I/O)
-├── cli/            # Command-line interface (Commander.js)
+├── cli/            # Command-line interface (thin adapters)
 ├── tui/            # Terminal UI (Ink)
-└── jobs/           # Background job processing
+├── api/            # REST API (Fastify-based) ✅
+├── data-observatory/ # Research OS services (snapshots, execution models)
+└── lab/            # Lab simulation presets and optimization
 ```
 
 ### Build Order
@@ -278,7 +352,35 @@ pnpm build:ordered
 | 10       | workflows                           | all services               |
 | 11+      | cli, tui, etc.                      | all packages               |
 
-See **[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)** for detailed architecture documentation.
+See **[docs/architecture/ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md)** for detailed architecture documentation.
+
+### Ports & Adapters Pattern
+
+QuantBot uses the **Ports & Adapters** (Hexagonal Architecture) pattern:
+
+**Ports** (interfaces in `@quantbot/core`):
+
+- `ClockPort` - Time source (for deterministic testing)
+- `TelemetryPort` - Event/metrics emission
+- `MarketDataPort` - OHLCV data fetching
+- `ExecutionPort` - Trade execution (safety-first stub by default)
+- `StatePort` - State persistence (idempotency, caching)
+
+**Adapters** (implementations in `@quantbot/workflows/src/adapters/`):
+
+- `telemetryConsoleAdapter` - Console logging
+- `marketDataBirdeyeAdapter` - Birdeye API client
+- `stateDuckdbAdapter` - DuckDB-backed state
+- `executionStubAdapter` - Safety-first execution stub (dry-run by default)
+
+**Benefits**:
+
+- Testable with stubbed ports (no real I/O)
+- Easy to swap providers (Birdeye → Helius)
+- Clear boundaries between interfaces and implementations
+- Handlers/workflows depend on ports, not implementations
+
+See **[docs/architecture/ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md)** for complete ports & adapters documentation.
 
 ## 🔧 Setup & Installation
 
@@ -614,6 +716,7 @@ export async function myWorkflow(spec: Spec, ctx: WorkflowContext) {
 ```
 
 **Key Rules**:
+
 - ✅ Composition roots (handlers, context factories) can instantiate directly
 - ❌ Workflows and domain logic must use contexts
 - ❌ No direct instantiation of repositories/services outside composition roots
@@ -653,9 +756,24 @@ npm run format
 
 ### Core Documentation
 
-- **[ARCHITECTURE.md](docs/ARCHITECTURE.md)** - System architecture and layer responsibilities
+- **[docs/architecture/ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md)** - System architecture and layer responsibilities
+- **[docs/architecture/WORKFLOWS.md](docs/architecture/WORKFLOWS.md)** - Complete workflow reference
+- **[docs/architecture/WORKFLOW_ARCHITECTURE.md](docs/architecture/WORKFLOW_ARCHITECTURE.md)** - Workflow patterns and best practices
+- **[docs/api/API.md](docs/api/API.md)** - REST API documentation
+- **[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)** - Production deployment guide
 - **[TODO.md](TODO.md)** - Project roadmap and task tracking
 - **[CHANGELOG.md](CHANGELOG.md)** - Version history and changes
+
+### Architecture Documentation
+
+- **[docs/architecture/ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md)** - Complete system architecture
+- **[docs/architecture/WORKFLOWS.md](docs/architecture/WORKFLOWS.md)** - All workflows documented
+- **[docs/architecture/WORKFLOW_ARCHITECTURE.md](docs/architecture/WORKFLOW_ARCHITECTURE.md)** - Workflow patterns
+- **[docs/architecture/WORKFLOW_ENFORCEMENT.md](docs/architecture/WORKFLOW_ENFORCEMENT.md)** - Workflow contract enforcement
+- **[docs/architecture/wiring-patterns.md](docs/architecture/wiring-patterns.md)** - Wiring patterns and best practices
+- **[docs/architecture/wiring-migration-guide.md](docs/architecture/wiring-migration-guide.md)** - Guide for migrating to wiring patterns
+- **[docs/architecture/wiring-exceptions.md](docs/architecture/wiring-exceptions.md)** - Exceptions to wiring patterns
+- **[docs/architecture/execution-port-migration.md](docs/architecture/execution-port-migration.md)** - Execution port migration guide
 
 ### Architecture Rules (`.cursor/rules/`)
 
@@ -668,12 +786,19 @@ npm run format
 ### Additional Guides
 
 - **[docs/quality-gates.md](docs/quality-gates.md)** - Quality gates, enforcement, and troubleshooting
-- **[docs/OHLCV_ARCHITECTURE.md](docs/OHLCV_ARCHITECTURE.md)** - OHLCV subsystem details
-- **[docs/WORKFLOW_ENFORCEMENT.md](docs/WORKFLOW_ENFORCEMENT.md)** - Workflow patterns
-- **[docs/MIGRATION_POSTGRES_TO_DUCKDB.md](docs/MIGRATION_POSTGRES_TO_DUCKDB.md)** - DuckDB migration
+- **[docs/architecture/OHLCV_ARCHITECTURE.md](docs/architecture/OHLCV_ARCHITECTURE.md)** - OHLCV subsystem details
+- **[docs/migration/MIGRATION_POSTGRES_TO_DUCKDB.md](docs/migration/MIGRATION_POSTGRES_TO_DUCKDB.md)** - DuckDB migration
 - **[docs/guides/](docs/guides/)** - How-to guides
   - **[Research Services Usage](docs/guides/research-services-usage.md)** - Complete guide to DataSnapshotService and ExecutionRealityService
   - **[Research Services Integration](docs/guides/research-services-integration.md)** - Integration patterns and best practices
+
+### Package Documentation
+
+- **[packages/core/README.md](packages/core/README.md)** - Core package (foundation types)
+- **[packages/utils/README.md](packages/utils/README.md)** - Utils package (shared utilities)
+- **[packages/storage/README.md](packages/storage/README.md)** - Storage package (DuckDB, ClickHouse)
+- **[packages/workflows/README.md](packages/workflows/README.md)** - Workflows package (orchestration)
+- **[packages/api/README.md](packages/api/README.md)** - API package (REST API)
 
 ## 🔒 Security
 
@@ -721,7 +846,7 @@ Archives are stored in `backups/quantbot-backup-<timestamp>.tar.gz`
 5. **Simulation is pure** - No I/O, no clocks, no global config
 6. **Never truncate mint addresses** - Store/pass full 32-44 char addresses
 
-### Workflow Pattern
+### Workflow Architecture
 
 All multi-step business flows must go through `@quantbot/workflows`:
 
@@ -771,12 +896,12 @@ pnpm quality-gates:pr
 pnpm quality-gates:release
 
 # Individual checks
-pnpm verify:handler-tests      # Verify handler tests
-pnpm verify:property-tests     # Verify property tests
-pnpm verify:changelog          # Verify CHANGELOG
-pnpm verify:documentation      # Verify documentation
-pnpm check:coverage-decrease   # Check coverage
-pnpm test:smoke                # Run smoke tests
+pnpm verify:handler-tests      # Verify CLI handlers have tests and follow contract
+pnpm verify:property-tests     # Verify financial calculations have property tests
+pnpm verify:changelog          # Verify CHANGELOG.md is updated for functional changes
+pnpm verify:documentation      # Verify documentation is updated when code changes
+pnpm check:coverage-decrease   # Prevent coverage from decreasing below baseline
+pnpm test:smoke               # Run smoke tests (build, imports, handlers, quality gates)
 ```
 
 ### PR Checklist

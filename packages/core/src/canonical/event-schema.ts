@@ -19,9 +19,9 @@ export const AssetSchema = z.object({
   address: z.string(),
 
   /**
-   * Chain identifier (normalized)
+   * Chain identifier (normalized to lowercase)
    */
-  chain: z.enum(['solana', 'ethereum', 'bsc', 'base', 'arbitrum', 'monad']),
+  chain: z.enum(['solana', 'ethereum', 'bsc', 'base', 'evm']),
 
   /**
    * Optional symbol/ticker

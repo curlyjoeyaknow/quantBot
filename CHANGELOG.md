@@ -6,6 +6,16 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Wiring Improvements & Verification** - Comprehensive wiring pattern implementation and verification
+  - Verified `StrategiesRepository` through `CommandContext` in list-strategies command
+  - Created verification tests: `command-context-wiring.test.ts` (5 tests passing)
+  - Created verification status document: `wiring-verification-status.md`
+  - Created wiring pattern tests: `handler-wiring-patterns.test.ts`, `wiring-patterns.test.ts`, `wiring-integration.test.ts`
+  - Documented wiring exceptions: `wiring-exceptions.md` with comprehensive documentation
+  - All direct instantiations are documented as acceptable in composition roots
+  - Location: `packages/cli/tests/unit/core/`, `docs/architecture/wiring-*.md`
+  - Ensures handlers use `CommandContext` services and workflows use `WorkflowContext` (no direct instantiation)
+
 - **Gate 2: Causal Candle Accessor Implementation** - Enforces causality in simulation candle access
   - `CausalCandleAccessor` interface and `CausalCandleWrapper` class for causal candle filtering
   - `StorageCausalCandleAccessor` implementation wrapping `StorageEngine` with causal filtering

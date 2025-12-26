@@ -61,6 +61,8 @@ export class BirdeyeClient extends BaseApiClient {
   private readonly CIRCUIT_BREAKER_THRESHOLD = 20; // Account-level: stop all processing after 20 consecutive failures
   private circuitBreakerOpen: boolean = false;
   private rateLimitPaused: boolean = false; // Account-level rate limit pause
+  private circuitBreakerOpenedAt: number | null = null; // Timestamp when circuit breaker opened
+  private readonly CIRCUIT_BREAKER_RESET_TIMEOUT_MS = 5 * 60 * 1000; // Auto-reset after 5 minutes
 
   constructor(config: BirdeyeClientConfig = {}) {
     const baseURL = config.baseURL ?? 'https://public-api.birdeye.so';
@@ -374,10 +376,12 @@ export class BirdeyeClient extends BaseApiClient {
     // Circuit breaker: Stop all processing after 20 consecutive failures
     if (this.consecutiveFailures >= this.CIRCUIT_BREAKER_THRESHOLD && !this.circuitBreakerOpen) {
       this.circuitBreakerOpen = true;
+      this.circuitBreakerOpenedAt = Date.now();
       logger.error('Circuit breaker OPEN - too many consecutive failures', {
         consecutiveFailures: this.consecutiveFailures,
         threshold: this.CIRCUIT_BREAKER_THRESHOLD,
         note: 'All keys share the same account - circuit breaker applies to entire account',
+        autoResetAfterMs: this.CIRCUIT_BREAKER_RESET_TIMEOUT_MS,
       });
     }
   }
@@ -393,6 +397,7 @@ export class BirdeyeClient extends BaseApiClient {
     // Reset account-level counters on any success (all keys share same account)
     this.consecutiveFailures = 0;
     this.circuitBreakerOpen = false;
+    this.circuitBreakerOpenedAt = null;
     this.rateLimitPaused = false;
   }
 
@@ -413,14 +418,35 @@ export class BirdeyeClient extends BaseApiClient {
     maxAttempts: number = 5
   ): Promise<{ response: AxiosResponse<T>; apiKey: string } | null> {
     // Circuit breaker check (account-level - all keys share same account)
+    // Auto-reset if enough time has passed
+    if (this.circuitBreakerOpen && this.circuitBreakerOpenedAt) {
+      const timeSinceOpen = Date.now() - this.circuitBreakerOpenedAt;
+      if (timeSinceOpen >= this.CIRCUIT_BREAKER_RESET_TIMEOUT_MS) {
+        logger.info('Circuit breaker auto-reset after timeout', {
+          timeSinceOpenMs: timeSinceOpen,
+          timeoutMs: this.CIRCUIT_BREAKER_RESET_TIMEOUT_MS,
+        });
+        this.circuitBreakerOpen = false;
+        this.circuitBreakerOpenedAt = null;
+        this.consecutiveFailures = 0; // Reset counter on auto-reset
+        this.rateLimitPaused = false;
+      }
+    }
+
     if (this.circuitBreakerOpen) {
+      const timeSinceOpen = this.circuitBreakerOpenedAt
+        ? Date.now() - this.circuitBreakerOpenedAt
+        : 0;
+      const timeUntilReset = Math.max(0, this.CIRCUIT_BREAKER_RESET_TIMEOUT_MS - timeSinceOpen);
       logger.error('Circuit breaker is OPEN - refusing all requests', {
         consecutiveFailures: this.consecutiveFailures,
         threshold: this.CIRCUIT_BREAKER_THRESHOLD,
+        timeSinceOpenMs: timeSinceOpen,
+        timeUntilResetMs: timeUntilReset,
         note: 'All keys share the same account rate limit',
       });
       throw new Error(
-        `Circuit breaker is OPEN: ${this.consecutiveFailures} consecutive failures (threshold: ${this.CIRCUIT_BREAKER_THRESHOLD}). All keys share the same account.`
+        `Circuit breaker is OPEN: ${this.consecutiveFailures} consecutive failures (threshold: ${this.CIRCUIT_BREAKER_THRESHOLD}). Auto-reset in ${Math.ceil(timeUntilReset / 1000)}s. All keys share the same account.`
       );
     }
 

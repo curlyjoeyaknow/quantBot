@@ -507,7 +507,7 @@ describe('StorageEngine', () => {
       expect(stats.maxSize).toBe(10);
     });
 
-    it('should expire cache entries after TTL using deterministic clock', () => {
+    it('should expire cache entries after TTL using deterministic clock', async () => {
       // Use deterministic clock for predictable TTL testing
       let currentTime = 1000000; // Fixed starting time
       const testClock = {
@@ -536,19 +536,19 @@ describe('StorageEngine', () => {
       mockOhlcvRepoInstance.getCandles.mockResolvedValue(mockCandles);
 
       // First call - should cache
-      engineWithClock.getCandles(FULL_MINT, 'solana', startTime, endTime);
+      await engineWithClock.getCandles(FULL_MINT, 'solana', startTime, endTime);
       expect(mockOhlcvRepoInstance.getCandles).toHaveBeenCalledTimes(1);
 
       // Second call - should use cache
       mockOhlcvRepoInstance.getCandles.mockClear();
-      engineWithClock.getCandles(FULL_MINT, 'solana', startTime, endTime);
+      await engineWithClock.getCandles(FULL_MINT, 'solana', startTime, endTime);
       expect(mockOhlcvRepoInstance.getCandles).not.toHaveBeenCalled();
 
       // Advance clock past TTL
       currentTime += 101; // 101ms > 100ms TTL
 
       // Third call - cache should be expired, should call repository again
-      engineWithClock.getCandles(FULL_MINT, 'solana', startTime, endTime);
+      await engineWithClock.getCandles(FULL_MINT, 'solana', startTime, endTime);
       expect(mockOhlcvRepoInstance.getCandles).toHaveBeenCalledTimes(1);
     });
 

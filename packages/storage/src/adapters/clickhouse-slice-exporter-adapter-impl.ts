@@ -8,7 +8,9 @@
 import { promises as fs } from 'fs';
 import { join } from 'path';
 import { createHash } from 'crypto';
+import { tmpdir } from 'os';
 import { getClickHouseClient } from '../clickhouse-client.js';
+import { DuckDBClient } from '../duckdb/duckdb-client.js';
 import { logger } from '@quantbot/utils';
 import type {
   SliceExporter,
@@ -42,52 +44,134 @@ function hash(input: string): string {
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 1000; // Start with 1 second
 const QUERY_TIMEOUT_SECONDS = 60; // 60 seconds for large queries
+const CONNECTION_TIMEOUT_MS = 10000; // 10 seconds for connection establishment
+
+/**
+ * Error classification for better error handling
+ */
+export interface ClickHouseErrorInfo {
+  isRetryable: boolean;
+  isTimeout: boolean;
+  isConnectionError: boolean;
+  isQueryError: boolean;
+  category: 'network' | 'timeout' | 'query' | 'unknown';
+  userMessage: string;
+}
+
+/**
+ * Classify ClickHouse error for appropriate handling
+ */
+function classifyError(error: unknown): ClickHouseErrorInfo {
+  if (!(error instanceof Error)) {
+    return {
+      isRetryable: false,
+      isTimeout: false,
+      isConnectionError: false,
+      isQueryError: false,
+      category: 'unknown',
+      userMessage: 'Unknown error occurred',
+    };
+  }
+
+  const message = error.message.toLowerCase();
+  const isSocketError =
+    message.includes('socket hang up') ||
+    message.includes('econnreset') ||
+    message.includes('econnrefused') ||
+    message.includes('connection') ||
+    message.includes('network');
+  const isTimeout =
+    message.includes('timeout') ||
+    message.includes('etimedout') ||
+    message.includes('max_execution_time') ||
+    message.includes('timed out');
+  const isQueryError =
+    message.includes('syntax') ||
+    message.includes('parse') ||
+    message.includes('invalid') ||
+    message.includes('table') ||
+    message.includes('column') ||
+    message.includes('database');
+
+  const isRetryable = (isSocketError || isTimeout) && !isQueryError;
+
+  let category: 'network' | 'timeout' | 'query' | 'unknown';
+  let userMessage: string;
+
+  if (isQueryError) {
+    category = 'query';
+    userMessage = `Query error: ${error.message}. Please check your query syntax and table/column names.`;
+  } else if (isTimeout) {
+    category = 'timeout';
+    userMessage = `Query timed out after ${QUERY_TIMEOUT_SECONDS} seconds. The query may be too large or the server is overloaded.`;
+  } else if (isSocketError) {
+    category = 'network';
+    userMessage = `Network error: ${error.message}. Please check your ClickHouse connection.`;
+  } else {
+    category = 'unknown';
+    userMessage = `Unexpected error: ${error.message}`;
+  }
+
+  return {
+    isRetryable,
+    isTimeout,
+    isConnectionError: isSocketError,
+    isQueryError,
+    category,
+    userMessage,
+  };
+}
 
 /**
  * Check if error is retryable (transient network/connection errors)
  */
 function isRetryableError(error: unknown): boolean {
-  if (!(error instanceof Error)) {
-    return false;
-  }
-  const message = error.message.toLowerCase();
-  return (
-    message.includes('socket hang up') ||
-    message.includes('econnreset') ||
-    message.includes('etimedout') ||
-    message.includes('timeout') ||
-    message.includes('econnrefused') ||
-    message.includes('network') ||
-    message.includes('connection')
-  );
+  return classifyError(error).isRetryable;
 }
 
 /**
- * Execute ClickHouse query with retry logic
+ * Execute ClickHouse query with retry logic and comprehensive error handling
  */
 async function executeQueryWithRetry<T>(
   queryFn: () => Promise<T>,
-  queryDescription: string
+  queryDescription: string,
+  context?: Record<string, unknown>
 ): Promise<T> {
   let lastError: Error | null = null;
+  let lastErrorInfo: ClickHouseErrorInfo | null = null;
 
   for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
     try {
       return await queryFn();
     } catch (error: unknown) {
       lastError = error instanceof Error ? error : new Error(String(error));
+      lastErrorInfo = classifyError(error);
+
+      // Log error with context
+      logger.warn(`ClickHouse query failed (attempt ${attempt + 1}/${MAX_RETRIES})`, {
+        query: queryDescription,
+        error: lastError.message,
+        category: lastErrorInfo.category,
+        isRetryable: lastErrorInfo.isRetryable,
+        ...context,
+      });
 
       // Check if error is retryable
-      if (!isRetryableError(error) || attempt === MAX_RETRIES - 1) {
-        // Not retryable or last attempt - throw immediately
-        throw lastError;
+      if (!lastErrorInfo.isRetryable || attempt === MAX_RETRIES - 1) {
+        // Not retryable or last attempt - throw with enhanced error message
+        const enhancedError = new Error(
+          `${lastErrorInfo.userMessage} (after ${attempt + 1} attempt${attempt > 0 ? 's' : ''})`
+        );
+        enhancedError.cause = lastError;
+        throw enhancedError;
       }
 
       // Calculate exponential backoff delay
       const delay = RETRY_DELAY_MS * Math.pow(2, attempt);
-      logger.warn(`ClickHouse query failed (attempt ${attempt + 1}/${MAX_RETRIES}), retrying...`, {
+      logger.info(`Retrying ClickHouse query after ${delay}ms...`, {
         query: queryDescription,
-        error: lastError.message,
+        attempt: attempt + 1,
+        maxRetries: MAX_RETRIES,
         delayMs: delay,
       });
 
@@ -97,6 +181,13 @@ async function executeQueryWithRetry<T>(
   }
 
   // Should never reach here, but TypeScript needs it
+  if (lastErrorInfo) {
+    const enhancedError = new Error(
+      `${lastErrorInfo.userMessage} (exhausted ${MAX_RETRIES} retries)`
+    );
+    enhancedError.cause = lastError;
+    throw enhancedError;
+  }
   throw lastError || new Error('Query failed after retries');
 }
 
@@ -166,9 +257,9 @@ export class ClickHouseSliceExporterAdapterImpl implements SliceExporter {
     // Build WHERE clause
     const conditions: string[] = [];
 
-    // Time range
-    conditions.push(`timestamp >= '${spec.timeRange.startIso}'`);
-    conditions.push(`timestamp < '${spec.timeRange.endIso}'`);
+    // Time range - use parseDateTimeBestEffort to handle ISO format with milliseconds
+    conditions.push(`timestamp >= parseDateTimeBestEffort('${spec.timeRange.startIso}')`);
+    conditions.push(`timestamp < parseDateTimeBestEffort('${spec.timeRange.endIso}')`);
 
     // Chain
     conditions.push(`chain = '${spec.chain}'`);
@@ -192,13 +283,13 @@ export class ClickHouseSliceExporterAdapterImpl implements SliceExporter {
         ? spec.columns.map((col) => (col === 'interval' ? '`interval`' : col)).join(', ')
         : 'token_address, chain, timestamp, `interval`, open, high, low, close, volume';
 
-    // Query ClickHouse and export to Parquet
+    // Query ClickHouse and export to CSV (ClickHouse doesn't support Parquet format)
+    // We'll convert CSV to Parquet using DuckDB after export
     const query = `
       SELECT ${columns}
       FROM ${tableName}
       WHERE ${whereClause}
       ORDER BY token_address, timestamp
-      FORMAT Parquet
     `;
 
     logger.info('Exporting slice from ClickHouse', {
@@ -211,28 +302,37 @@ export class ClickHouseSliceExporterAdapterImpl implements SliceExporter {
 
     // Execute query with retry logic and timeout
     let result;
-    let parquetData: Buffer;
     try {
       result = await executeQueryWithRetry(
         () =>
           ch.query({
             query,
-            format: 'Parquet',
+            format: 'CSVWithNames', // CSV with header row (ClickHouse doesn't support Parquet)
             clickhouse_settings: {
               max_execution_time: QUERY_TIMEOUT_SECONDS,
+              connect_timeout: CONNECTION_TIMEOUT_MS / 1000, // Convert to seconds
             },
           }),
-        'Parquet export query'
+        'Parquet export query',
+        {
+          dataset: spec.dataset,
+          chain: spec.chain,
+          timeRange: spec.timeRange,
+          tokenCount: spec.tokenIds?.length ?? 0,
+        }
       );
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      const errorInfo = classifyError(error);
       logger.error('Failed to execute ClickHouse Parquet export query', error as Error, {
         dataset: spec.dataset,
         chain: spec.chain,
         timeRange: spec.timeRange,
+        category: errorInfo.category,
+        isRetryable: errorInfo.isRetryable,
         query: query.substring(0, 200), // Log first 200 chars of query
       });
-      throw new Error(`ClickHouse export failed after ${MAX_RETRIES} retries: ${errorMessage}`);
+      // Re-throw with enhanced error message
+      throw error;
     }
 
     // Read Parquet data from stream with error handling
@@ -271,24 +371,102 @@ export class ClickHouseSliceExporterAdapterImpl implements SliceExporter {
       );
     }
 
-    parquetData = Buffer.concat(chunks);
+    const csvData = Buffer.concat(chunks);
 
-    // Handle empty result set
+    // Convert CSV to Parquet using DuckDB
+    // ClickHouse doesn't support Parquet format, so we export CSV and convert
+    let parquetData: Buffer;
+    if (csvData.length === 0) {
+      parquetData = Buffer.alloc(0);
+    } else {
+      // Write CSV to temp file
+      const tempCsvPath = join(tmpdir(), `slice-export-${Date.now()}-${Math.random().toString(36).slice(2)}.csv`);
+      const tempParquetPath = join(tmpdir(), `slice-export-${Date.now()}-${Math.random().toString(36).slice(2)}.parquet`);
+      
+      try {
+        await fs.writeFile(tempCsvPath, csvData);
+        
+        // Use DuckDB to convert CSV to Parquet
+        const duckdb = new DuckDBClient(':memory:');
+        await duckdb.execute(`
+          CREATE TABLE temp_csv AS SELECT * FROM read_csv_auto('${tempCsvPath.replace(/'/g, "''")}');
+          COPY temp_csv TO '${tempParquetPath.replace(/'/g, "''")}' (FORMAT PARQUET);
+        `);
+        await duckdb.close();
+        
+        // Read Parquet file
+        parquetData = await fs.readFile(tempParquetPath);
+        
+        // Cleanup temp files
+        await fs.unlink(tempCsvPath).catch(() => {});
+        await fs.unlink(tempParquetPath).catch(() => {});
+      } catch (error) {
+        // Cleanup on error
+        await fs.unlink(tempCsvPath).catch(() => {});
+        await fs.unlink(tempParquetPath).catch(() => {});
+        logger.error('Failed to convert CSV to Parquet', error as Error);
+        throw new Error(`Failed to convert CSV to Parquet: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
+
+    // Handle empty result set with improved validation and user feedback
     if (parquetData.length === 0) {
-      logger.info('Empty result set from ClickHouse query', {
+      logger.warn('Empty result set from ClickHouse query', {
         dataset: spec.dataset,
         chain: spec.chain,
         timeRange: spec.timeRange,
         runId: run.runId,
+        tokenCount: spec.tokenIds?.length ?? 0,
+        message:
+          'No data found matching the query criteria. This may indicate: 1) No data exists for the time range, 2) Token addresses are incorrect, 3) Data has not been ingested yet.',
       });
-      // Still create manifest with empty file list (or create empty Parquet file)
-      // For now, we'll create an empty Parquet file to maintain consistency
-      const parquetPath = join(outDir, 'part-000.parquet');
-      await fs.writeFile(parquetPath, Buffer.alloc(0)); // Empty file
 
-      // Get row count (will be 0 for empty result)
+      // Validate that the query itself is valid by checking if table exists and has data
       let rowCount = 0;
+      let hasDataInTable = false;
+      let hasDataInTimeRange = false;
       try {
+        // First, check if table has any data at all
+        const tableCheckQuery = `SELECT count(*) as cnt FROM ${tableName} LIMIT 1`;
+        const tableCheckResult = await executeQueryWithRetry(
+          () =>
+            ch.query({
+              query: tableCheckQuery,
+              format: 'JSONEachRow',
+              clickhouse_settings: {
+                max_execution_time: 30,
+              },
+            }),
+          'Table existence check',
+          { dataset: spec.dataset }
+        );
+        const tableCheckData = (await tableCheckResult.json()) as Array<{ cnt: string }>;
+        hasDataInTable =
+          tableCheckData.length > 0 && parseInt(tableCheckData[0].cnt || '0', 10) > 0;
+
+        // Then check if data exists in the time range
+        const timeRangeCheckQuery = `
+          SELECT count(*) as cnt
+          FROM ${tableName}
+          WHERE timestamp >= parseDateTimeBestEffort('${spec.timeRange.startIso}') AND timestamp < parseDateTimeBestEffort('${spec.timeRange.endIso}')
+        `;
+        const timeRangeCheckResult = await executeQueryWithRetry(
+          () =>
+            ch.query({
+              query: timeRangeCheckQuery,
+              format: 'JSONEachRow',
+              clickhouse_settings: {
+                max_execution_time: 30,
+              },
+            }),
+          'Time range check',
+          { timeRange: spec.timeRange }
+        );
+        const timeRangeCheckData = (await timeRangeCheckResult.json()) as Array<{ cnt: string }>;
+        hasDataInTimeRange =
+          timeRangeCheckData.length > 0 && parseInt(timeRangeCheckData[0].cnt || '0', 10) > 0;
+
+        // Get exact row count for the full query
         const countQuery = `
           SELECT count(*) as cnt
           FROM ${tableName}
@@ -303,18 +481,33 @@ export class ClickHouseSliceExporterAdapterImpl implements SliceExporter {
                 max_execution_time: 30,
               },
             }),
-          'Row count query'
+          'Row count query',
+          { whereClause: whereClause.substring(0, 200) }
         );
         const countData = (await countResult.json()) as Array<{ cnt: string }>;
         rowCount = countData.length > 0 ? parseInt(countData[0].cnt || '0', 10) : 0;
+
+        // Log diagnostic information
+        logger.info('Empty result set diagnostics', {
+          hasDataInTable,
+          hasDataInTimeRange,
+          rowCount,
+          tokenFilter: spec.tokenIds ? `${spec.tokenIds.length} tokens` : 'none',
+          interval,
+          chain: spec.chain,
+        });
       } catch (error: unknown) {
-        logger.warn('Failed to get row count for empty result', {
+        logger.warn('Failed to get diagnostic information for empty result', {
           error: error instanceof Error ? error.message : String(error),
         });
         // Continue with rowCount = 0
       }
 
-      // Create manifest for empty result
+      // Create empty Parquet file to maintain consistency
+      const parquetPath = join(outDir, 'part-000.parquet');
+      await fs.writeFile(parquetPath, Buffer.alloc(0)); // Empty file
+
+      // Create manifest for empty result with diagnostic metadata
       const createdAtIso = new Date().toISOString();
       const specHash = hash(JSON.stringify({ run, spec, layout }));
 
@@ -337,6 +530,19 @@ export class ClickHouseSliceExporterAdapterImpl implements SliceExporter {
           totalFiles: 1,
           totalRows: 0,
           totalBytes: 0,
+          // Include diagnostic info in summary for better user feedback
+          // Note: This is a non-standard field, but useful for debugging
+          ...(hasDataInTable !== undefined && {
+            _diagnostics: {
+              hasDataInTable,
+              hasDataInTimeRange,
+              message: hasDataInTable
+                ? hasDataInTimeRange
+                  ? 'No data matches the token/chain/interval filters'
+                  : 'No data in the specified time range'
+                : 'Table is empty or does not exist',
+            },
+          }),
         },
         integrity: {
           specHash,
@@ -352,6 +558,8 @@ export class ClickHouseSliceExporterAdapterImpl implements SliceExporter {
         dataset: spec.dataset,
         parquetFiles: 1,
         totalRows: 0,
+        hasDataInTable,
+        hasDataInTimeRange,
       });
 
       return emptyManifest;

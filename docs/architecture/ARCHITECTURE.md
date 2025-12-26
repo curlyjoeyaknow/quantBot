@@ -147,6 +147,96 @@ export async function runIngestOhlcvCommand(
 - Call pure handlers with wired ports
 - Resolve environment variables and pass as data to handlers
 
+### Wiring Patterns
+
+**CommandContext Pattern** (`packages/cli/src/core/command-context.ts`):
+
+- Primary composition root for CLI commands
+- Provides lazy service creation via `ctx.services.serviceName()`
+- Handles storage initialization
+- All CLI handlers receive `CommandContext` and use services from it
+
+**Example - CLI Handler Using CommandContext**:
+
+```typescript
+export async function listStrategiesHandler(
+  args: ListStrategiesArgs,
+  ctx: CommandContext
+) {
+  // ✅ Use service from context (preferred)
+  const repo = ctx.services.strategiesRepository();
+  const strategies = await repo.list();
+  return strategies;
+}
+```
+
+**WorkflowContext Pattern** (`packages/workflows/src/context/`):
+
+- Primary composition root for workflows
+- Provides repositories, OHLCV access, simulation engine
+- Created via context factories: `createProductionContext()`, `createProductionContextWithPorts()`
+- Workflows receive `WorkflowContext` and use dependencies from it
+
+**Example - Workflow Using WorkflowContext**:
+
+```typescript
+export async function runSimulation(
+  spec: SimulationRunSpec,
+  ctx: WorkflowContext = createDefaultRunSimulationContext()
+): Promise<SimulationRunResult> {
+  // ✅ Use repository from context
+  const strategy = await ctx.repos.strategies.getByName(spec.strategyName);
+  const calls = await ctx.repos.calls.list({
+    callerName: spec.callerName,
+    fromISO: spec.from.toISO(),
+    toISO: spec.to.toISO(),
+  });
+  
+  // ✅ Use OHLCV from context (causal accessor for Gate 2 compliance)
+  const candles = await ctx.ohlcv.causalAccessor.getCandles({
+    mint: call.mint,
+    fromISO: windowStart.toISO(),
+    toISO: currentTime.toISO(),
+  });
+  
+  // ✅ Use simulation from context
+  const result = await ctx.simulation.run({
+    candleAccessor: ctx.ohlcv.causalAccessor,
+    strategy: strategy.config,
+    // ...
+  });
+  
+  return result;
+}
+```
+
+**Wiring Rules**:
+
+1. **Composition Roots Only**: Direct instantiation only in composition roots (handlers, context factories, servers)
+2. **Dependency Injection**: Services provided through contexts (`CommandContext`, `WorkflowContext`)
+3. **No Direct Instantiation in Workflows**: Workflows must use `WorkflowContext`, never instantiate repositories directly
+4. **No Direct Instantiation in Domain Logic**: Domain services must receive dependencies via constructor or context
+
+**Anti-Patterns**:
+
+```typescript
+// ❌ BAD: Workflow directly instantiating repository
+export async function badWorkflow(spec: Spec, ctx: WorkflowContext) {
+  const repo = new StrategiesRepository(dbPath); // ❌ NO
+  // ...
+}
+
+// ❌ BAD: Domain service directly instantiating repository
+export class BadService {
+  async doSomething() {
+    const repo = new StrategiesRepository(dbPath); // ❌ NO
+    // ...
+  }
+}
+```
+
+See [wiring-patterns.md](./wiring-patterns.md) and [wiring-exceptions.md](./wiring-exceptions.md) for complete wiring documentation.
+
 ### Benefits
 
 1. **Testability**: Handlers can be tested with fake ports (no real I/O)
@@ -484,3 +574,116 @@ If performance becomes an issue:
 3. **Option 3**: Move critical hot paths to Node.js DuckDB bindings while keeping Python for heavy computation
 
 **Current Status**: Python as DB driver is intentional and documented. No immediate refactoring needed.
+
+## Causal Candle Accessor (Gate 2 Compliance)
+
+### Overview
+
+The **Causal Candle Accessor** enforces causality in simulation candle access, ensuring that at simulation time `t`, it is impossible to fetch candles with `close_time > t`. This prevents "future leakage" bugs where simulations accidentally use future data.
+
+### Architecture
+
+**CausalCandleAccessor Interface** (`packages/core/src/types/causal-accessor.ts`):
+
+- `getCandles(query)`: Returns candles up to (but not after) the current simulation time
+- `getCandleAtTime(time)`: Returns the candle at a specific time
+- Enforces temporal causality: no future data access
+
+**CausalCandleWrapper** (`packages/simulation/src/types/causal-accessor.ts`):
+
+- Wraps any candle accessor with causal filtering
+- Filters out candles with `close_time > currentSimulationTime`
+- Provides incremental indicator updates
+
+**StorageCausalCandleAccessor** (`packages/workflows/src/context/causal-candle-accessor.ts`):
+
+- Implements `CausalCandleAccessor` using `StorageEngine`
+- Wraps ClickHouse/DuckDB queries with causal filtering
+- Integrated into `WorkflowContext` via `ctx.ohlcv.causalAccessor`
+
+### Usage in Workflows
+
+```typescript
+// Workflow uses causal accessor (primary method)
+const candles = await ctx.ohlcv.causalAccessor.getCandles({
+  mint: call.mint,
+  fromISO: windowStart.toISO(),
+  toISO: currentTime.toISO(), // Current simulation time
+});
+
+// Legacy method (deprecated, kept for backward compatibility)
+const legacyCandles = await ctx.ohlcv.getCandles?.({
+  mint: call.mint,
+  fromISO: windowStart.toISO(),
+  toISO: windowEnd.toISO(),
+});
+```
+
+### Benefits
+
+1. **Prevents Future Leakage**: Impossible to access future data in simulation
+2. **Deterministic**: Same inputs → same outputs (no accidental future data)
+3. **Testable**: Can test causality enforcement with time-based queries
+4. **Incremental Updates**: Supports incremental indicator calculations
+
+### Migration Status
+
+- ✅ `CausalCandleAccessor` interface defined in `@quantbot/core`
+- ✅ `CausalCandleWrapper` implementation complete
+- ✅ `StorageCausalCandleAccessor` integrated into workflows
+- ✅ Simulation workflows use `causalAccessor` (primary method)
+- ⚠️ Legacy `getCandles()` method marked as optional (backward compatibility)
+
+## Offline-Only Architecture Refactoring
+
+### Overview
+
+The codebase has been refactored to separate **offline** (data plane) and **online** (control plane) concerns:
+
+- **Offline packages** (`@quantbot/ohlcv`, `@quantbot/ingestion`): Query storage, generate worklists, manage metadata (no API calls)
+- **Online package** (`@quantbot/jobs`): Orchestrates API calls, rate limiting, metrics collection
+
+### Package Responsibilities
+
+**@quantbot/ohlcv** (Offline-Only):
+
+- ✅ Query ClickHouse for candles
+- ✅ Store candles in ClickHouse (idempotent upserts)
+- ✅ Generate OHLCV worklists from DuckDB
+- ❌ No API calls (moved to `@quantbot/jobs`)
+
+**@quantbot/ingestion** (Offline-Only):
+
+- ✅ Parse Telegram exports
+- ✅ Generate ingestion worklists
+- ✅ Manage metadata (callers, alerts, calls, tokens)
+- ❌ No API calls (moved to `@quantbot/jobs`)
+
+**@quantbot/jobs** (Online Orchestration):
+
+- ✅ `OhlcvIngestionEngine`: Orchestrates OHLCV fetching with rate limiting
+- ✅ `OhlcvFetchJob`: Fetches candles from Birdeye API and stores them
+- ✅ Rate limiting and metrics collection
+- ✅ API client coordination
+
+### Dependency Boundaries
+
+**Enforced via tests**:
+
+- `@quantbot/ohlcv` must not depend on `@quantbot/api-clients`, `axios`, or `dotenv`
+- `@quantbot/ingestion` must not depend on `@quantbot/api-clients`, `axios`, or `dotenv`
+- Tests fail if forbidden dependencies are added
+
+### Benefits
+
+1. **Clear Separation**: Offline packages are pure data operations
+2. **Testability**: Offline packages can be tested without network dependencies
+3. **Reusability**: Offline packages can be used in different contexts (CLI, API, jobs)
+4. **Rate Limiting**: Centralized in `@quantbot/jobs` (single point of control)
+
+### Migration Status
+
+- ✅ `OhlcvIngestionEngine` moved from `@quantbot/ohlcv` to `@quantbot/jobs`
+- ✅ `OhlcvFetchJob` refactored to use `fetchBirdeyeCandles` from `@quantbot/api-clients`
+- ✅ `storeCandles` remains in `@quantbot/ohlcv` (offline storage operation)
+- ✅ Dependency boundary tests enforce offline-only constraints

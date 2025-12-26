@@ -13,6 +13,7 @@ import { createClickHouseSliceExporterAdapterImpl } from '@quantbot/storage';
 import { createDuckDbSliceAnalyzerAdapterImpl } from '@quantbot/storage';
 import { createSliceValidatorAdapter } from '@quantbot/storage';
 import { generateTestRunId, getTestOutputDir } from './helpers/test-fixtures.js';
+import { shouldRunDbStress } from '@quantbot/utils/test-helpers/test-gating';
 import type {
   SliceSpec,
   ParquetLayoutSpec,
@@ -20,7 +21,10 @@ import type {
   AnalysisSpec,
 } from '../../src/slices/types.js';
 
-describe('Slice Export Integration Tests', () => {
+// Gate these tests behind RUN_DB_STRESS=1 - they require ClickHouse with real data
+const shouldRun = shouldRunDbStress();
+
+describe.skipIf(!shouldRun)('Slice Export Integration Tests', () => {
   const outputDir = getTestOutputDir();
   let testRunId: string;
 

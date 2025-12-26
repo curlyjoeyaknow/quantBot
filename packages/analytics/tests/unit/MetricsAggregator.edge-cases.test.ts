@@ -281,7 +281,7 @@ describe('MetricsAggregator Edge Cases', () => {
           tokenAddress: 'So11111111111111111111111111111111111111112',
           callerName: 'test_caller',
           chain: 'solana',
-          alertTimestamp: new Date('invalid'),
+          alertTimestamp: new Date('invalid'), // Invalid date
           entryPrice: 1.0,
           athPrice: 2.0,
           athMultiple: 2.0,
@@ -292,8 +292,9 @@ describe('MetricsAggregator Edge Cases', () => {
       ];
 
       const result = await aggregator.calculateSystemMetrics(calls);
-      expect(result.totalCalls).toBe(1);
-      // Should handle invalid dates gracefully
+      // Invalid dates are filtered out (line 169-171 in MetricsAggregator.ts)
+      expect(result.totalCalls).toBe(0);
+      // Should handle invalid dates gracefully by filtering them out
     });
   });
 });

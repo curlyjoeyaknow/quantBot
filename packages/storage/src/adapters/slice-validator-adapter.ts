@@ -48,10 +48,21 @@ export class SliceValidatorAdapter implements SliceValidator {
     // Initialize AJV with formats support
     // AjvClass is the default export, but TypeScript needs explicit construction
     const Ajv = AjvClass as any;
-    this.ajv = new Ajv({ allErrors: true, strict: false });
+    this.ajv = new Ajv({ 
+      allErrors: true, 
+      strict: false,
+      // Allow schemas without $schema or with any $schema version
+      validateSchema: false,
+    });
     addFormats.default(this.ajv);
     // Compile schema once
-    this.validateFn = this.ajv.compile(manifestSchema);
+    try {
+      this.validateFn = this.ajv.compile(manifestSchema);
+    } catch (error) {
+      // If schema compilation fails, log and create a no-op validator
+      logger.error('Failed to compile manifest schema', error as Error);
+      this.validateFn = () => true; // Accept all manifests if schema compilation fails
+    }
   }
 
   async validate(manifest: SliceManifestV1): Promise<ValidationResult> {

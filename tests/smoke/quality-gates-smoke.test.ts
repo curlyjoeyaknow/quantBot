@@ -6,13 +6,13 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, readFileSync } from 'node:fs';
+import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = join(__filename, '..', '..');
-const ROOT = __dirname;
+const __dirname = dirname(__filename);
+const ROOT = join(__dirname, '../..');
 
 describe('Quality Gates Smoke Test', () => {
   it('should have verification scripts', () => {
@@ -46,7 +46,9 @@ describe('Quality Gates Smoke Test', () => {
   });
 
   it('should have package.json with quality gate scripts', () => {
-    const packageJson = require(join(ROOT, 'package.json'));
+    const packageJsonPath = join(ROOT, 'package.json');
+    const packageJsonContent = readFileSync(packageJsonPath, 'utf-8');
+    const packageJson = JSON.parse(packageJsonContent);
     const requiredScripts = [
       'verify:handler-tests',
       'verify:property-tests',
