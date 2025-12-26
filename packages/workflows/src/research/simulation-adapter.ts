@@ -53,7 +53,10 @@ export class ResearchSimulationAdapter {
    * 7. Builds RunArtifact
    */
   async run(request: SimulationRequest): Promise<RunArtifact> {
-    const startTime = Date.now();
+    // Use clock for deterministic timing (can be mocked in tests)
+    // Convert ISO string to milliseconds for performance measurement
+    const startTimeISO = this.workflowContext.clock.nowISO();
+    const startTime = new Date(startTimeISO).getTime();
     const runId = this.workflowContext.ids.newRunId();
     const nowISO = this.workflowContext.clock.nowISO();
 
@@ -157,7 +160,7 @@ export class ResearchSimulationAdapter {
       const pnlSeries = calculatePnLSeries(allTradeEvents);
       const metrics = calculateMetrics(allTradeEvents, pnlSeries);
 
-      const simulationTimeMs = Date.now() - startTime;
+      const simulationTimeMs = DateTime.fromISO(this.workflowContext.clock.nowISO()).toMillis() - startTime;
 
       // 7. Build metadata
       const metadata: RunMetadata = {
@@ -208,7 +211,7 @@ export class ResearchSimulationAdapter {
           costModelHash: hashValue(request.costModel),
           riskModelHash: request.riskModel ? hashValue(request.riskModel) : undefined,
           runConfigHash: hashValue(request.runConfig),
-          simulationTimeMs: Date.now() - startTime,
+          simulationTimeMs: DateTime.fromISO(this.workflowContext.clock.nowISO()).toMillis() - startTime,
           schemaVersion: '1.0.0',
         },
         request,

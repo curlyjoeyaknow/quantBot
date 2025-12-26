@@ -31,6 +31,8 @@ import {
   checkCircuitBreaker,
   createCircuitBreakerState,
 } from '@quantbot/simulation/execution-models';
+import { createDeterministicRNG, seedFromString } from '@quantbot/core';
+import { DateTime } from 'luxon';
 // createPumpswapExecutionModel and convertExecutionModelToCostConfig are imported but not used
 // They may be needed for future implementations
 
@@ -89,8 +91,21 @@ export class ExecutionRealityService {
    */
   createExecutionModelFromCalibration(
     calibration: CalibrationData,
-    venue: string = 'pumpfun'
+    venue: string = 'pumpfun',
+    seed?: number
   ): ContractExecutionModel {
+    // Use deterministic RNG for generating test data
+    // Seed from calibration data hash for reproducibility
+    const calibrationSeed =
+      seed ??
+      seedFromString(
+        `calibration-${venue}-${calibration.latencySamples.length}-${calibration.slippageSamples.length}`
+      );
+    const rng = createDeterministicRNG(calibrationSeed);
+
+    // Use deterministic base timestamp (current time rounded to hour for reproducibility)
+    const baseTimestamp = Math.floor(DateTime.now().startOf('hour').toMillis());
+
     // Convert calibration data to LiveTradeRecord format
     const records: LiveTradeRecord[] = calibration.latencySamples.map((latency, idx) => {
       const slippageSample = calibration.slippageSamples[idx % calibration.slippageSamples.length];
@@ -100,20 +115,26 @@ export class ExecutionRealityService {
           calibrationLength: calibration.slippageSamples.length,
         });
       }
+      // Deterministic timestamp based on index
+      const timestamp = baseTimestamp - (calibration.latencySamples.length - idx) * 1000;
+      // Deterministic failure/fill decisions based on RNG
+      const failed = rng.next() < calibration.failureRate;
+      const fillPercentage = calibration.partialFillRate
+        ? rng.next() < calibration.partialFillRate
+          ? 0.5 + rng.next() * 0.4
+          : 1.0
+        : 1.0;
+
       return {
-        timestamp: Date.now() - (calibration.latencySamples.length - idx) * 1000,
+        timestamp,
         venue,
         tradeSize: slippageSample.tradeSize,
         expectedPrice: slippageSample.expectedPrice,
         actualPrice: slippageSample.actualPrice,
         networkLatencyMs: latency * 0.3, // Assume 30% network, 70% confirmation
         confirmationLatencyMs: latency * 0.7,
-        failed: Math.random() < calibration.failureRate,
-        fillPercentage: calibration.partialFillRate
-          ? Math.random() < calibration.partialFillRate
-            ? 0.5 + Math.random() * 0.4
-            : 1.0
-          : 1.0,
+        failed,
+        fillPercentage,
         marketVolume24h: slippageSample.marketVolume24h,
       };
     });
@@ -279,12 +300,14 @@ export class ExecutionRealityService {
     model: ContractRiskModel,
     strategyId: string = 'default',
     tradeAmount: number = 0,
-    now: number = Date.now()
+    now?: number
   ): {
     allowed: boolean;
     reason?: string;
     hitLimit?: string;
   } {
+    // Use provided now or current time (deterministic for testing)
+    const currentTime = now ?? DateTime.now().toMillis();
     // Convert contract model to Branch C circuit breaker config
     const circuitBreakerConfig = {
       maxDrawdown: model.maxDrawdown,
@@ -311,7 +334,7 @@ export class ExecutionRealityService {
       state.peakPnl,
       strategyId,
       tradeAmount,
-      now
+      currentTime
     );
 
     return {

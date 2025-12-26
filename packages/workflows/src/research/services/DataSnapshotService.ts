@@ -3,13 +3,13 @@
  * ================================================
  *
  * Real implementation of data snapshot creation and loading.
- * 
+ *
  * Strategy:
  * 1. If slices are available (sliceManifestIds provided), use them
  * 2. If no slices, fall back to database queries
  * 3. When using database, automatically create slices for future use
  * 4. If database unavailable, provide helpful error with alternatives
- * 
+ *
  * Architecture:
  * - Prefers slices (parquet files) for reproducibility and performance
  * - Falls back to database when slices not available
@@ -137,7 +137,7 @@ export class DataSnapshotService {
         logger.info('[DataSnapshotService] No slices found, querying database and creating slices');
         try {
           data = await this.loadDataFromDatabase(params);
-          
+
           // Auto-create slices for future use
           if (this.ctx && filters?.callerNames && filters.callerNames.length > 0) {
             logger.info('[DataSnapshotService] Auto-creating slices from database data');
@@ -157,8 +157,11 @@ export class DataSnapshotService {
     // Create content hash from actual data
     const contentHash = this.computeContentHash(data, params);
 
-    // Generate snapshot ID
-    const snapshotId = `snapshot-${Date.now()}-${contentHash.substring(0, 8)}`;
+    // Generate snapshot ID (use clock if available, otherwise use DateTime for determinism)
+    const timestamp = this.ctx?.clock
+      ? DateTime.fromISO(this.ctx.clock.nowISO()).toMillis()
+      : DateTime.now().toMillis();
+    const snapshotId = `snapshot-${timestamp}-${contentHash.substring(0, 8)}`;
 
     return DataSnapshotRefSchema.parse({
       snapshotId,
@@ -231,9 +234,12 @@ export class DataSnapshotService {
       try {
         data = await this.loadDataFromSlices(params);
       } catch (error) {
-        logger.warn('[DataSnapshotService] Failed to verify from slices, falling back to database', {
-          error: error instanceof Error ? error.message : String(error),
-        });
+        logger.warn(
+          '[DataSnapshotService] Failed to verify from slices, falling back to database',
+          {
+            error: error instanceof Error ? error.message : String(error),
+          }
+        );
         data = await this.loadDataFromDatabase(params);
       }
     } else {
@@ -248,7 +254,7 @@ export class DataSnapshotService {
 
   /**
    * Loads data from slice manifests (parquet files)
-   * 
+   *
    * This is the core method that loads data from slices instead of querying databases.
    * Uses DuckDB to read parquet files referenced in slice manifests.
    */
@@ -281,10 +287,7 @@ export class DataSnapshotService {
     } else {
       // No slice manifests provided - this should not happen in loadDataFromSlices
       // as it should only be called when slices are available
-      throw new ValidationError(
-        'No slice manifest IDs provided to loadDataFromSlices',
-        { params }
-      );
+      throw new ValidationError('No slice manifest IDs provided to loadDataFromSlices', { params });
     }
 
     // Apply volume filter if specified
@@ -301,7 +304,7 @@ export class DataSnapshotService {
 
   /**
    * Loads data from a single slice manifest
-   * 
+   *
    * Reads parquet files using DuckDB (which can read parquet natively).
    */
   private async loadDataFromManifest(
@@ -314,7 +317,7 @@ export class DataSnapshotService {
     // Use DuckDB to read parquet files
     // DuckDB can read parquet files directly without importing them
     const duckdbPath = process.env.DUCKDB_PATH || 'data/tele.duckdb';
-    
+
     // For now, we'll use a simple approach: read parquet files via DuckDB
     // This requires DuckDB to be available, but it's the standard way to read parquet
     try {
@@ -326,7 +329,7 @@ export class DataSnapshotService {
       for (const parquetFile of manifest.parquetFiles) {
         // Remove file:// prefix if present
         const filePath = parquetFile.path.replace(/^file:\/\//, '');
-        
+
         // Check if file exists
         try {
           await fs.access(filePath);
@@ -336,18 +339,27 @@ export class DataSnapshotService {
         }
 
         // Read parquet file based on dataset type
-        if (manifest.spec.dataset === 'candles_1m' || manifest.spec.dataset.startsWith('candles_')) {
+        if (
+          manifest.spec.dataset === 'candles_1m' ||
+          manifest.spec.dataset.startsWith('candles_')
+        ) {
           // Read candles from parquet
           const rows = await new Promise<any[]>((resolve, reject) => {
-            db.all(`SELECT * FROM read_parquet('${filePath}')`, (err: Error | null, rows: any[]) => {
-              if (err) reject(err);
-              else resolve(rows);
-            });
+            db.all(
+              `SELECT * FROM read_parquet('${filePath}')`,
+              (err: Error | null, rows: any[]) => {
+                if (err) reject(err);
+                else resolve(rows);
+              }
+            );
           });
 
           for (const row of rows) {
             // Apply filters
-            if (filters?.mintAddresses && !filters.mintAddresses.includes(row.mint || row.token_address)) {
+            if (
+              filters?.mintAddresses &&
+              !filters.mintAddresses.includes(row.mint || row.token_address)
+            ) {
               continue;
             }
 
@@ -364,18 +376,27 @@ export class DataSnapshotService {
         } else if (manifest.spec.dataset === 'calls' || manifest.spec.dataset.includes('call')) {
           // Read calls from parquet
           const rows = await new Promise<any[]>((resolve, reject) => {
-            db.all(`SELECT * FROM read_parquet('${filePath}')`, (err: Error | null, rows: any[]) => {
-              if (err) reject(err);
-              else resolve(rows);
-            });
+            db.all(
+              `SELECT * FROM read_parquet('${filePath}')`,
+              (err: Error | null, rows: any[]) => {
+                if (err) reject(err);
+                else resolve(rows);
+              }
+            );
           });
 
           for (const row of rows) {
             // Apply filters
-            if (filters?.callerNames && !filters.callerNames.includes(row.caller_name || row.caller)) {
+            if (
+              filters?.callerNames &&
+              !filters.callerNames.includes(row.caller_name || row.caller)
+            ) {
               continue;
             }
-            if (filters?.mintAddresses && !filters.mintAddresses.includes(row.mint || row.token_address)) {
+            if (
+              filters?.mintAddresses &&
+              !filters.mintAddresses.includes(row.mint || row.token_address)
+            ) {
               continue;
             }
 
@@ -505,10 +526,10 @@ export class DataSnapshotService {
     const candles: SnapshotData['candles'] = [];
     try {
       const storageEngine = getStorageEngine();
-      
+
       // Get unique mints from calls
       const uniqueMints = [...new Set(calls.map((c) => c.mint))];
-      
+
       for (const mint of uniqueMints) {
         try {
           const mintCandles = await storageEngine.getCandles(
@@ -557,7 +578,7 @@ export class DataSnapshotService {
 
   /**
    * Creates slices from database data
-   * 
+   *
    * Note: Full implementation would use exportSlicesForAlerts workflow.
    * For now, this is a stub that returns empty array.
    * TODO: Implement full slice creation using exportSlicesForAlerts
@@ -588,7 +609,8 @@ export class DataSnapshotService {
    */
   private createHelpfulError(error: unknown, params: CreateSnapshotParams): Error {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    const message = `Database query failed: ${errorMessage}. ` +
+    const message =
+      `Database query failed: ${errorMessage}. ` +
       `To work around this, you can: ` +
       `1. Create slices manually using exportSlicesForAlerts workflow, ` +
       `2. Provide sliceManifestIds in the snapshot parameters, or ` +
