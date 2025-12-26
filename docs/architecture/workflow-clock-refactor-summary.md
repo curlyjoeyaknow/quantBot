@@ -209,9 +209,11 @@ const pnlSeries = calculatePnLSeries(tradeEvents, 1.0, ctx.clock.nowISO());
    - ✅ Added comprehensive clock mocking examples to `date-now-usage-policy.md`
    - ✅ Examples include: basic mocks, fixed time clocks, advancing clocks, storage layer mocks
 
-4. **Type Safety**: Consider adding TypeScript types that prevent accidental `Date` usage
-   - Could add branded types or lint rules to prevent `Date` constructor usage
-   - Current ESLint rules catch most violations
+4. **Type Safety**: ✅ ESLint rules provide strong protection
+   - ✅ `no-restricted-properties` bans `Date.now()` in workflows and simulation
+   - ✅ `no-restricted-syntax` bans `new Date()` in workflows and simulation
+   - ✅ Rules are enforced at compile time with clear error messages
+   - Optional future enhancement: Could add branded types for additional compile-time safety, but ESLint rules are sufficient
 
 ## Related Documentation
 

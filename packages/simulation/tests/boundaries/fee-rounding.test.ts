@@ -99,7 +99,7 @@ describe('Fee Rounding Boundaries', () => {
     it('should handle zero fees correctly', () => {
       const amount = 100.0;
       const config = {
-        ...DEFAULT_COST_CONFIG,
+        ...TEST_COST_CONFIG,
         entrySlippageBps: 0,
         exitSlippageBps: 0,
         takerFeeBps: 0,
@@ -115,7 +115,7 @@ describe('Fee Rounding Boundaries', () => {
     it('should handle very small amounts without rounding to zero', () => {
       const amount = 0.000001; // Extremely small
       const config = {
-        ...DEFAULT_COST_CONFIG,
+        ...TEST_COST_CONFIG,
         takerFeeBps: 25,
       };
 
@@ -129,7 +129,7 @@ describe('Fee Rounding Boundaries', () => {
     it('should handle very large amounts without overflow', () => {
       const amount = 1e15; // Very large
       const config = {
-        ...DEFAULT_COST_CONFIG,
+        ...TEST_COST_CONFIG,
         takerFeeBps: 25,
       };
 
@@ -145,7 +145,7 @@ describe('Fee Rounding Boundaries', () => {
   describe('Precision Boundaries', () => {
     it('should maintain precision for common price ranges', () => {
       const prices = [0.0001, 0.001, 0.01, 0.1, 1.0, 10.0, 100.0, 1000.0];
-      const config = DEFAULT_COST_CONFIG;
+      const config = TEST_COST_CONFIG;
 
       prices.forEach((price) => {
         const entryPrice = calculateEntryPriceWithCosts(price, config);
