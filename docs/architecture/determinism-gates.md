@@ -200,10 +200,12 @@ The new `simulateStrategyWithCausalAccessor()` function:
 
 ### Current State
 
-#### ❌ Not Implemented
+#### ✅ Implemented
 
-- No future-scramble test exists
-- No verification that past decisions are unchanged by future data
+- Future-scramble test exists and passes (`packages/simulation/tests/determinism/future-scramble.test.ts`)
+- Test uses `simulateStrategyWithCausalAccessor` with `CausalCandleWrapper` to ensure causality
+- Verifies that decisions before time T are byte-identical when candles after T are modified
+- Tests multiple scenarios: different split points, scramble patterns, and strategies
 
 ### Implementation Tasks
 

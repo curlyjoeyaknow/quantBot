@@ -163,11 +163,22 @@ function isFinancialCalculation(
   fileContent: string,
   lineNum: number
 ): boolean {
-  // Check function name patterns
+  // Exclude common non-financial function names
+  if (EXCLUDED_NAMES.includes(functionName.toLowerCase())) {
+    return false;
+  }
+
+  // Check function name patterns (must match start pattern)
+  let matchesPattern = false;
   for (const pattern of FUNCTION_NAME_PATTERNS) {
     if (pattern.test(functionName)) {
-      return true;
+      matchesPattern = true;
+      break;
     }
+  }
+
+  if (!matchesPattern) {
+    return false;
   }
 
   // Check content around the function for financial patterns
@@ -182,7 +193,8 @@ function isFinancialCalculation(
     }
   }
 
-  return false;
+  // If function name matches pattern, consider it financial even without context match
+  return matchesPattern;
 }
 
 /**
