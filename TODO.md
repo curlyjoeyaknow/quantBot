@@ -27,12 +27,16 @@ Last updated: 2025-01-24 (Recent: Slice Export & Analyze workflow implementation
   - [x] Keep stub for safety (dry-run by default) until real adapter is ready
   - [x] Created migration guide: `docs/architecture/execution-port-migration.md`
 
-- [ ] **Phase 3: Add Wiring Pattern Tests**
-  - [ ] Create tests that verify handlers use `CommandContext` services
-  - [ ] Create tests that verify workflows use `WorkflowContext` (no direct instantiation)
-  - [ ] Add integration tests for wiring paths
-  - [ ] Add tests for context factory functions
-  - [ ] Verify composition root patterns in tests
+- [x] **Phase 3: Add Wiring Pattern Tests** ✅
+  - [x] Create tests that verify handlers use `CommandContext` services
+  - [x] Create tests that verify workflows use `WorkflowContext` (no direct instantiation)
+  - [x] Add integration tests for wiring paths
+  - [x] Add tests for context factory functions
+  - [x] Verify composition root patterns in tests
+  - [x] Document acceptable direct instantiation in composition roots
+  - [x] Created handler-wiring-patterns.test.ts
+  - [x] Created wiring-patterns.test.ts (workflow context)
+  - [x] Created wiring-integration.test.ts (integration tests)
 
 - [ ] **Phase 4: Architectural Improvements**
   - [ ] Review remaining direct instantiations in non-composition-root files
