@@ -200,6 +200,8 @@ const pnlSeries = calculatePnLSeries(tradeEvents, 1.0, ctx.clock.nowISO());
    - Backward compatible: defaults to system clock if not provided
 
 2. **More Deterministic Tests**: Update all tests to use deterministic clocks
+   - ✅ Updated `OHLCVCache` TTL expiration test to use deterministic clock (no more `setTimeout`)
+   - ✅ Added `StorageEngine` cache TTL expiration test with deterministic clock
    - Tests can now use deterministic clocks for `StorageEngine`, `OHLCVService`, and `OHLCVCache`
    - See [Date.now() Usage Policy](./date-now-usage-policy.md) for clock mocking examples
 
