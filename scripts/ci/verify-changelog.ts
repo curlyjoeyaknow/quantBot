@@ -9,12 +9,12 @@
 
 import { readFileSync, existsSync } from 'node:fs';
 import { execSync } from 'node:child_process';
-import { join, relative } from 'node:path';
+import { join, relative, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = join(__filename, '..', '..');
-const ROOT = __dirname;
+const __dirname = dirname(__filename);
+const ROOT = join(__dirname, '../..');
 
 interface ChangeInfo {
   file: string;
