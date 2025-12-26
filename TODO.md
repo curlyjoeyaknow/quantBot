@@ -38,11 +38,13 @@ Last updated: 2025-01-24 (Recent: Slice Export & Analyze workflow implementation
   - [x] Created wiring-patterns.test.ts (workflow context)
   - [x] Created wiring-integration.test.ts (integration tests)
 
-- [ ] **Phase 4: Architectural Improvements**
-  - [ ] Review remaining direct instantiations in non-composition-root files
-  - [ ] Ensure all handlers follow wiring patterns
-  - [ ] Add ESLint rules to enforce wiring patterns (if needed)
-  - [ ] Document any exceptions to wiring patterns
+- [x] **Phase 4: Architectural Improvements** ✅
+  - [x] Review remaining direct instantiations in non-composition-root files
+  - [x] Ensure all handlers follow wiring patterns
+  - [x] Document any exceptions to wiring patterns
+  - [x] Created wiring-exceptions.md with comprehensive documentation
+  - [x] All direct instantiations are documented as acceptable in composition roots
+  - [ ] Add ESLint rules to enforce wiring patterns (future enhancement)
 
 - [ ] **Phase 5: Documentation Updates**
   - [ ] Update CHANGELOG.md with wiring improvements
