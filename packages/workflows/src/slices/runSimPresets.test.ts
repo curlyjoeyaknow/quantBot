@@ -19,6 +19,12 @@ import type {
   SummaryIngester,
 } from './runSimPresets.js';
 
+function createTestClock(initialTime: string = '2024-01-01T00:00:00.000Z') {
+  return {
+    nowISO: () => initialTime,
+  };
+}
+
 describe('runSimPresets - Edge Cases', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -39,6 +45,8 @@ describe('runSimPresets - Edge Cases', () => {
         ingest: vi.fn(),
       };
 
+      const clock = createTestClock();
+
       const result = await runSimPresets({
         presets: [],
         tokenSets: {},
@@ -47,6 +55,7 @@ describe('runSimPresets - Edge Cases', () => {
         featureComputer,
         simulator,
         summaryIngester,
+        clock,
       });
 
       expect(result.summaries).toEqual([]);
@@ -78,6 +87,8 @@ describe('runSimPresets - Edge Cases', () => {
         getCandleSlice: vi.fn(),
       };
 
+      const clock = createTestClock();
+
       const result = await runSimPresets({
         presets: [preset],
         tokenSets: { 'empty.txt': [] }, // Empty token set
@@ -86,6 +97,7 @@ describe('runSimPresets - Edge Cases', () => {
         featureComputer: { computeFeatures: vi.fn() },
         simulator: { simulate: vi.fn() },
         summaryIngester: { ingest: vi.fn() },
+        clock,
       });
 
       expect(result.summaries).toEqual([]);
@@ -116,6 +128,8 @@ describe('runSimPresets - Edge Cases', () => {
         getCandleSlice: vi.fn(),
       };
 
+      const clock = createTestClock();
+
       const result = await runSimPresets({
         presets: [preset],
         tokenSets: {}, // Missing token set
@@ -124,6 +138,7 @@ describe('runSimPresets - Edge Cases', () => {
         featureComputer: { computeFeatures: vi.fn() },
         simulator: { simulate: vi.fn() },
         summaryIngester: { ingest: vi.fn() },
+        clock,
       });
 
       expect(result.summaries).toEqual([]);
@@ -197,6 +212,8 @@ describe('runSimPresets - Edge Cases', () => {
         }),
       };
 
+      const clock = createTestClock();
+
       const result = await runSimPresets({
         presets: [preset1, preset2],
         tokenSets: { 'tokens.txt': ['So11111111111111111111111111111111111111112'] },
@@ -205,6 +222,7 @@ describe('runSimPresets - Edge Cases', () => {
         featureComputer,
         simulator,
         summaryIngester: { ingest: vi.fn() },
+        clock,
       });
 
       // Should have one summary (preset2 succeeded)
@@ -244,6 +262,8 @@ describe('runSimPresets - Edge Cases', () => {
         computeFeatures: vi.fn().mockRejectedValue(new Error('Feature computer failed')),
       };
 
+      const clock = createTestClock();
+
       const result = await runSimPresets({
         presets: [preset],
         tokenSets: { 'tokens.txt': ['So11111111111111111111111111111111111111112'] },
@@ -252,6 +272,7 @@ describe('runSimPresets - Edge Cases', () => {
         featureComputer,
         simulator: { simulate: vi.fn() },
         summaryIngester: { ingest: vi.fn() },
+        clock,
       });
 
       expect(result.summaries).toEqual([]);
@@ -297,6 +318,8 @@ describe('runSimPresets - Edge Cases', () => {
         simulate: vi.fn().mockRejectedValue(new Error('Simulator failed')),
       };
 
+      const clock = createTestClock();
+
       const result = await runSimPresets({
         presets: [preset],
         tokenSets: { 'tokens.txt': ['So11111111111111111111111111111111111111112'] },
@@ -305,6 +328,7 @@ describe('runSimPresets - Edge Cases', () => {
         featureComputer,
         simulator,
         summaryIngester: { ingest: vi.fn() },
+        clock,
       });
 
       expect(result.summaries).toEqual([]);
@@ -318,6 +342,8 @@ describe('runSimPresets - Edge Cases', () => {
         ingest: vi.fn(),
       };
 
+      const clock = createTestClock();
+
       await runSimPresets({
         presets: [],
         tokenSets: {},
@@ -326,6 +352,7 @@ describe('runSimPresets - Edge Cases', () => {
         featureComputer: { computeFeatures: vi.fn() },
         simulator: { simulate: vi.fn() },
         summaryIngester,
+        clock,
       });
 
       expect(summaryIngester.ingest).not.toHaveBeenCalled();
@@ -372,6 +399,8 @@ describe('runSimPresets - Edge Cases', () => {
         ingest: vi.fn(),
       };
 
+      const clock = createTestClock();
+
       await runSimPresets({
         presets: [preset],
         tokenSets: { 'tokens.txt': ['So11111111111111111111111111111111111111112'] },
@@ -396,6 +425,7 @@ describe('runSimPresets - Edge Cases', () => {
           }),
         },
         summaryIngester,
+        clock,
       });
 
       expect(summaryIngester.ingest).toHaveBeenCalledWith(
@@ -430,6 +460,8 @@ describe('runSimPresets - Edge Cases', () => {
       const sliceArtifacts = [{ kind: 'manifest_json' as const, path: '/manifest.json' }];
       const featureArtifacts = [{ kind: 'parquet' as const, path: '/features.parquet' }];
       const simArtifacts = [{ kind: 'json' as const, path: '/summary.json' }];
+
+      const clock = createTestClock();
 
       const result = await runSimPresets({
         presets: [preset],
@@ -470,6 +502,7 @@ describe('runSimPresets - Edge Cases', () => {
           }),
         },
         summaryIngester: { ingest: vi.fn() },
+        clock,
       });
 
       expect(result.artifacts).toEqual([...sliceArtifacts, ...featureArtifacts, ...simArtifacts]);

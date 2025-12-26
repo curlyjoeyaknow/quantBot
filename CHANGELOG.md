@@ -2,6 +2,31 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Changed
+
+- Deprecated `@quantbot/utils/types.ts` - types should now be imported directly from `@quantbot/core`
+- Migrated test files to use independent math helpers instead of importing production constants (fee-rounding.test.ts, fees.property.test.ts)
+- Migrated console logging to logger in executionStubAdapter (workflows package)
+
+### Fixed
+
+- Test independence: Tests no longer import DEFAULT_COST_CONFIG from production code
+- Integration test status documented (duckdb-idempotency.test.ts now passing, OhlcvIngestionService.integration.test.ts documented with known issue)
+
+### Added
+
+- Added depcheck tool for dependency auditing
+- Added ESLint rule to discourage console usage in workflow code (warn level)
+- Added documentation for test independence requirements
+
+### Technical Debt
+
+- Completed Phase 1 cleanup: dependency management, type consolidation
+- Completed Phase 2 cleanup: test independence, logging standardization
+- Phase 3 (error handling standardization) in progress
+
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 

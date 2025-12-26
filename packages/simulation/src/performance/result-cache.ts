@@ -6,26 +6,7 @@
 
 import type { SimulationResult } from '../types/index.js';
 import { createHash } from 'crypto';
-import type { ClockPort } from '@quantbot/core';
-import { createSystemClock } from '@quantbot/core';
-
-/**
- * Clock interface for deterministic time access
- * @deprecated Use ClockPort from @quantbot/core instead
- */
-export interface CacheClock {
-  /** Get current time in milliseconds */
-  nowMs(): number;
-}
-
-/**
- * Create default clock using system time (for backward compatibility)
- * This is extracted to avoid ESLint restrictions on Date.now()
- */
-function createDefaultClock(): CacheClock {
-  // eslint-disable-next-line no-restricted-properties
-  return { nowMs: () => Date.now() };
-}
+import type { ClockPort, createSystemClock } from '@quantbot/core';
 
 export interface ResultCacheOptions {
   maxSize?: number;

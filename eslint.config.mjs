@@ -34,6 +34,11 @@ export default tseslint.config(
 
       // Code quality
       'no-console': 'off', // Allow globally for now; we will enforce for handlers/hotpath
+      // Note: Console usage is discouraged in services/adapters/workflows.
+      // Use logger from @quantbot/utils instead. Console is acceptable for:
+      // - CLI user-facing output (packages/cli/src/bin, packages/cli/src/commands)
+      // - Console adapters (telemetryConsoleAdapter, etc.)
+      // - Example files and dev/smoke test files
       'no-useless-escape': 'warn',
       'no-fallthrough': 'warn',
       'no-case-declarations': 'warn',
@@ -346,11 +351,17 @@ export default tseslint.config(
     files: ['packages/workflows/src/**/*.ts'],
     ignores: [
       'packages/workflows/src/**/context/**/*.ts',
+      'packages/workflows/src/**/adapters/telemetryConsoleAdapter.ts', // Console adapter intentionally uses console
+      'packages/workflows/src/**/dev/**/*.ts', // Dev/smoke files can use console
+      'packages/workflows/src/**/slices/example*.ts', // Example files can use console
       // Note: adapters should use clock from ports, but for now we allow Date.now() 
       // in adapters since they're composition roots. This will be tightened in the future.
       // 'packages/workflows/src/**/adapters/**/*.ts',
     ],
     rules: {
+      // Discourage console usage in workflows - use logger instead
+      // Console adapters and dev/example files are excluded above
+      'no-console': 'warn', // Warn on console usage in workflow code
       'no-restricted-imports': [
         'error',
         {
