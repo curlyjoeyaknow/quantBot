@@ -6,8 +6,4 @@
  * Re-export from core for backward compatibility.
  */
 
-export type {
-  SliceExporter,
-  SliceAnalyzer,
-  SliceValidator,
-} from '@quantbot/core';
+export type { SliceExporter, SliceAnalyzer, SliceValidator } from '@quantbot/core';

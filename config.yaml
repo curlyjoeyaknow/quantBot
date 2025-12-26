@@ -1,0 +1,11 @@
+# QuantBot Configuration
+# ======================
+# This file configures database paths and other settings
+# Priority: config.yaml > DUCKDB_PATH env var > default
+
+# DuckDB Database Configuration
+duckdb:
+  # Path to DuckDB database file (default: data/tele.duckdb)
+  # This is the primary database containing user_calls_d table
+  path: data/tele.duckdb
+

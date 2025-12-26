@@ -75,6 +75,14 @@ export const DataSnapshotRefSchema = z.object({
    * When this snapshot was created
    */
   createdAtISO: z.string(),
+
+  /**
+   * Optional: Slice manifest IDs that this snapshot references
+   * 
+   * If provided, the snapshot data is loaded from these slice manifests (parquet files)
+   * instead of querying databases directly. This is the preferred approach.
+   */
+  sliceManifestIds: z.array(z.string()).optional(),
 });
 
 export type DataSnapshotRef = z.infer<typeof DataSnapshotRefSchema>;

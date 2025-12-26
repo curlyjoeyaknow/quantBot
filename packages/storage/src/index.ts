@@ -69,6 +69,41 @@ export {
   SliceValidatorAdapter,
   createSliceValidatorAdapter,
 } from './adapters/slice-validator-adapter.js';
+
+// Lab workflow adapters (for composition roots/wiring)
+export { CandleSliceExporter } from './adapters/clickhouse/CandleSliceExporter.js';
+export { FeatureComputer } from './adapters/duckdb/FeatureComputer.js';
+export { SimulationExecutor } from './adapters/duckdb/SimulationExecutor.js';
+export { DuckDbCatalogAdapter } from './adapters/duckdb/DuckDbCatalogAdapter.js';
+export { openDuckDb, runSqlFile } from './adapters/duckdb/duckdbClient.js';
+export type { DuckDbConnection } from './adapters/duckdb/duckdbClient.js';
+
+// Export port types for convenience (also available via /ports/* subpath exports)
+export type {
+  CandleSlicePort,
+  CandleSliceSpec,
+  SliceExportResult,
+  RunContext,
+} from './ports/CandleSlicePort.js';
+export type {
+  FeatureComputePort,
+  FeatureSpecV1,
+  FeatureComputeResult,
+} from './ports/FeatureComputePort.js';
+export type {
+  SimulationPort,
+  StrategySpecV1,
+  RiskSpecV1,
+  SimulationResult,
+} from './ports/SimulationPort.js';
+export type {
+  CatalogPort,
+  TokenSetRecord,
+  SliceRecord,
+  FeatureSetRecord,
+  FeaturesRecord,
+  SimRunRecord,
+} from './ports/CatalogPort.js';
 export type { OHLCVCoverageRecord } from './duckdb/repositories/TokenDataRepository.js';
 export { CallersRepository } from './duckdb/repositories/CallersRepository.js';
 export { StrategiesRepository } from './duckdb/repositories/StrategiesRepository.js';

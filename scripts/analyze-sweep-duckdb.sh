@@ -18,3 +18,5 @@ exec pnpm exec tsx --tsconfig tsconfig.json "$ROOT/scripts/analyze-sweep-duckdb.
 
 
 
+
+

@@ -478,8 +478,9 @@ export async function execute(
     // 5. Extract format and output file (if present) before calling handler
     // Format and output file are CLI concerns, not handler concerns
     const format = (args as { format?: OutputFormat }).format ?? 'table';
-    const outputFile = (args as { outputFile?: string; 'output-file'?: string }).outputFile ?? 
-                      (args as { outputFile?: string; 'output-file'?: string })['output-file'];
+    const outputFile =
+      (args as { outputFile?: string; 'output-file'?: string }).outputFile ??
+      (args as { outputFile?: string; 'output-file'?: string })['output-file'];
     const handlerArgs = { ...(args as Record<string, unknown>) };
     // Remove format and outputFile from handler args if they exist
     if ('format' in handlerArgs) {
@@ -573,7 +574,7 @@ export async function execute(
     progress.updateMessage('Formatting output...');
     const output = formatOutput(result, format);
     progress.stop(); // Stop spinner before printing output
-    
+
     // 9. Write to file if --output-file is specified
     if (outputFile) {
       // Ensure output directory exists
@@ -581,7 +582,7 @@ export async function execute(
       if (outputDir !== '.') {
         await mkdir(outputDir, { recursive: true });
       }
-      
+
       // Write output to file
       await writeFile(outputFile, output, 'utf-8');
       console.log(`Output written to: ${outputFile}`);

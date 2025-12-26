@@ -153,9 +153,17 @@ export default tseslint.config(
   /**
    * Architectural Import Firewall - Layer Boundaries
    * Enforces separation of concerns as documented in docs/ARCHITECTURE_BOUNDARIES.md
+   *
+   * CRITICAL: Simulation must be deterministic. No Date.now(), new Date(), or Math.random() allowed.
+   * Gate 1: Hard ban on nondeterminism - all time access must use SimulationClock, all randomness must use DeterministicRNG.
    */
   {
     files: ['packages/simulation/src/**/*.ts'],
+    ignores: [
+      // Allow Date.now() in progress/cache utilities (not simulation logic)
+      'packages/simulation/src/utils/progress.ts',
+      'packages/simulation/src/performance/result-cache.ts',
+    ],
     rules: {
       'no-restricted-imports': [
         'error',
@@ -210,6 +218,31 @@ export default tseslint.config(
               message: 'Simulation must remain pure (no network I/O). Use ports/interfaces instead.',
             },
           ],
+        },
+      ],
+      // Gate 1: Determinism enforcement - ban all non-deterministic time and randomness
+      'no-restricted-properties': [
+        'error',
+        {
+          object: 'Date',
+          property: 'now',
+          message:
+            'Simulation must not use Date.now(). Use SimulationClock or injected clock for deterministic time. See packages/simulation/src/core/clock.ts',
+        },
+        {
+          object: 'Math',
+          property: 'random',
+          message:
+            'Simulation must not use Math.random(). Use DeterministicRNG from @quantbot/core for seeded randomness. See packages/core/src/determinism.ts',
+        },
+      ],
+      // Ban new Date() constructor (non-deterministic)
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'NewExpression[callee.name="Date"]',
+          message:
+            'Simulation must not use new Date(). Use SimulationClock or injected clock for deterministic time. See packages/simulation/src/core/clock.ts',
         },
       ],
     },
@@ -402,6 +435,22 @@ export default tseslint.config(
                 'Workflow handlers must not import DuckDB/ClickHouse clients directly. Use SliceExporter/SliceAnalyzer ports.',
             },
           ],
+        },
+      ],
+      // Determinism enforcement: ban Date.now() and Math.random() in workflows
+      'no-restricted-properties': [
+        'error',
+        {
+          object: 'Date',
+          property: 'now',
+          message:
+            'Workflows must not use Date.now(). Use ctx.clock.nowISO() or SimulationClock for deterministic time.',
+        },
+        {
+          object: 'Math',
+          property: 'random',
+          message:
+            'Workflows must not use Math.random(). Use DeterministicRNG from @quantbot/core for seeded randomness.',
         },
       ],
     },

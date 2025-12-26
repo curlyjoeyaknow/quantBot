@@ -97,6 +97,7 @@ export { createQueryClickhouseAdapter } from './adapters/queryClickhouseAdapter.
 export { createProductionContextWithPorts } from './context/createProductionContext.js';
 export { createTelemetryConsoleAdapter } from './adapters/telemetryConsoleAdapter.js';
 export { createMarketDataBirdeyeAdapter } from './adapters/marketDataBirdeyeAdapter.js';
+export { createMarketDataStorageAdapter } from './adapters/marketDataStorageAdapter.js';
 export { createStateDuckdbAdapter } from './adapters/stateDuckdbAdapter.js';
 export { createExecutionStubAdapter } from './adapters/executionStubAdapter.js';
 export { ingestOhlcvWorkflowPorted } from './ohlcv/ingestOhlcvPorted.js';
@@ -127,3 +128,7 @@ export { exportSlicesForAlerts } from './slices/exportSlicesForAlerts.js';
 export type { ExportSlicesForAlertsSpec } from './slices/exportSlicesForAlerts.js';
 // Ports are also in core, but we keep local definitions for now
 export type { SliceExporter, SliceAnalyzer, SliceValidator } from './slices/ports.js';
+
+// Lab Simulation Presets
+export type { SimPresetV1, LabPorts, RunContext } from './lab/types.js';
+export { runLabPreset } from './lab/runLabPreset.js';

@@ -141,20 +141,24 @@ function formatLabResults(data: unknown, format: OutputFormat): string | null {
   }
 
   const obj = data as Record<string, unknown>;
-  
+
   // Check if this looks like a lab result
   if ('callsSimulated' in obj && 'summary' in obj && 'results' in obj) {
     const summary = obj.summary as Record<string, unknown>;
     const results = obj.results as Array<Record<string, unknown>>;
-    
+
     if (format === 'table') {
       // Show compact summary for table format
       const lines: string[] = [];
       lines.push('=== Lab Simulation Summary ===');
       lines.push('');
       lines.push(`Calls Simulated: ${obj.callsSimulated}`);
-      lines.push(`Calls Succeeded: ${obj.callsSucceeded} (${((obj.callsSucceeded as number) / (obj.callsSimulated as number) * 100).toFixed(1)}%)`);
-      lines.push(`Calls Failed: ${obj.callsFailed} (${((obj.callsFailed as number) / (obj.callsSimulated as number) * 100).toFixed(1)}%)`);
+      lines.push(
+        `Calls Succeeded: ${obj.callsSucceeded} (${(((obj.callsSucceeded as number) / (obj.callsSimulated as number)) * 100).toFixed(1)}%)`
+      );
+      lines.push(
+        `Calls Failed: ${obj.callsFailed} (${(((obj.callsFailed as number) / (obj.callsSimulated as number)) * 100).toFixed(1)}%)`
+      );
       lines.push('');
       lines.push('=== Performance Metrics ===');
       if (summary.avgPnl !== undefined) {
@@ -183,13 +187,13 @@ function formatLabResults(data: unknown, format: OutputFormat): string | null {
       }
       lines.push('');
       lines.push(`=== Top 10 Results (by PnL) ===`);
-      
+
       // Show top 10 results sorted by PnL
       const successfulResults = results
         .filter((r) => r.ok && r.pnlMultiplier !== undefined)
         .sort((a, b) => ((b.pnlMultiplier as number) ?? 0) - ((a.pnlMultiplier as number) ?? 0))
         .slice(0, 10);
-      
+
       if (successfulResults.length > 0) {
         lines.push('Mint (truncated) | PnL Multiplier | Trades');
         lines.push('-----------------|----------------|--------');
@@ -203,14 +207,14 @@ function formatLabResults(data: unknown, format: OutputFormat): string | null {
       } else {
         lines.push('No successful results to display');
       }
-      
+
       return lines.join('\n');
     }
-    
+
     // For JSON/CSV, return null to use default formatting
     return null;
   }
-  
+
   // Not a lab result
   return null;
 }
@@ -224,7 +228,7 @@ export function formatOutput(data: unknown, format: OutputFormat = 'table'): str
   if (labFormatted !== null) {
     return labFormatted;
   }
-  
+
   // Handle arrays
   if (Array.isArray(data)) {
     switch (format) {

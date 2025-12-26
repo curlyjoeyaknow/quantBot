@@ -77,7 +77,7 @@ export class MetricsAggregator {
       const validTimestamps = callerCalls
         .filter((c) => c && c.alertTimestamp && !isNaN(c.alertTimestamp.getTime()))
         .map((c) => c.alertTimestamp.getTime());
-      
+
       if (validTimestamps.length === 0) {
         logger.warn(`[MetricsAggregator] No valid timestamps for caller ${callerName}`);
       }
@@ -167,10 +167,7 @@ export class MetricsAggregator {
 
     // Filter valid calls (with valid timestamps)
     const validCalls = calls.filter(
-      (c) =>
-        c &&
-        c.alertTimestamp &&
-        !isNaN(c.alertTimestamp.getTime())
+      (c) => c && c.alertTimestamp && !isNaN(c.alertTimestamp.getTime())
     );
 
     // Extract unique callers and tokens
@@ -196,14 +193,8 @@ export class MetricsAggregator {
       totalCallers: uniqueCallers.size,
       totalTokens: uniqueTokens.size,
       dataRange: {
-        start:
-          validTimestamps.length > 0
-            ? new Date(Math.min(...validTimestamps))
-            : new Date(),
-        end:
-          validTimestamps.length > 0
-            ? new Date(Math.max(...validTimestamps))
-            : new Date(),
+        start: validTimestamps.length > 0 ? new Date(Math.min(...validTimestamps)) : new Date(),
+        end: validTimestamps.length > 0 ? new Date(Math.max(...validTimestamps)) : new Date(),
       },
       simulationsTotal: 0, // Requires DuckDB query - use workflows
       simulationsToday: 0, // Requires DuckDB query - use workflows

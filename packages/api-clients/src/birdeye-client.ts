@@ -23,6 +23,9 @@ export interface APIKeyUsage {
   lastUsed: Date;
   isActive: boolean;
   estimatedCreditsUsed: number;
+  consecutiveFailures: number; // Track consecutive failures for rate limiting
+  isValidated: boolean; // Whether key has been validated
+  lastValidationTime?: Date; // When key was last validated
 }
 
 /** Factory function type for creating axios instances */
@@ -53,6 +56,11 @@ export class BirdeyeClient extends BaseApiClient {
   private readonly CREDITS_FOR_LESS_THAN_1000: number = 60;
   private totalCreditsUsed: number = 0; // Running total across all keys
   private axiosFactory: AxiosFactory;
+  private consecutiveFailures: number = 0; // Account-level consecutive failures (all keys share same account)
+  private readonly RATE_LIMIT_THRESHOLD = 10; // Account-level: pause after 10 consecutive failures
+  private readonly CIRCUIT_BREAKER_THRESHOLD = 20; // Account-level: stop all processing after 20 consecutive failures
+  private circuitBreakerOpen: boolean = false;
+  private rateLimitPaused: boolean = false; // Account-level rate limit pause
 
   constructor(config: BirdeyeClientConfig = {}) {
     const baseURL = config.baseURL ?? 'https://public-api.birdeye.so';
@@ -74,7 +82,7 @@ export class BirdeyeClient extends BaseApiClient {
       baseURL,
       apiName: 'Birdeye',
       rateLimiter: {
-        maxRequests: 3000, // 50 req/s = 3000 req/min (upgraded account)
+        maxRequests: 3000, // 3000 req/min TOTAL for entire account (all 7 keys share this limit)
         windowMs: 60000, // 1 minute
       },
       retry: {
@@ -122,9 +130,10 @@ export class BirdeyeClient extends BaseApiClient {
     }
 
     // All keys share the same account, so total credits = 20M (shared pool)
-    const totalCreditsFormatted = this.TOTAL_CREDITS >= 1_000_000
-      ? `~${(this.TOTAL_CREDITS / 1_000_000).toFixed(2)}M`
-      : `~${(this.TOTAL_CREDITS / 1_000).toFixed(2)}K`;
+    const totalCreditsFormatted =
+      this.TOTAL_CREDITS >= 1_000_000
+        ? `~${(this.TOTAL_CREDITS / 1_000_000).toFixed(2)}M`
+        : `~${(this.TOTAL_CREDITS / 1_000).toFixed(2)}K`;
 
     logger.info('Loaded Birdeye API keys', {
       keyCount: keys.length,
@@ -153,6 +162,8 @@ export class BirdeyeClient extends BaseApiClient {
         lastUsed: new Date(),
         isActive: true,
         estimatedCreditsUsed: 0,
+        consecutiveFailures: 0,
+        isValidated: false,
       });
 
       // Create BaseApiClient instance for each API key
@@ -166,13 +177,13 @@ export class BirdeyeClient extends BaseApiClient {
         validateStatus: (status: number) => status < 500, // Don't throw on 4xx errors
       });
 
+      // Create BaseApiClient without rate limiter - all keys share same account limit
+      // Rate limiting is handled at account level in the main client
       const baseClient = new BaseApiClient({
         baseURL: this.axiosInstance.defaults.baseURL || 'https://public-api.birdeye.so',
         apiName: 'Birdeye',
-        rateLimiter: {
-          maxRequests: 100,
-          windowMs: 60000,
-        },
+        // No rate limiter here - all keys share same account (3000 rpm total)
+        // Account-level rate limiting is handled by the main client's rate limiter
         retry: {
           maxRetries: 5,
           initialDelayMs: 1000,
@@ -247,14 +258,142 @@ export class BirdeyeClient extends BaseApiClient {
   }
 
   /**
-   * Handle API key deactivation on rate limit
+   * Validate API key by making a lightweight test request
    */
-  private deactivateKey(key: string): void {
+  private async validateAPIKey(key: string): Promise<boolean> {
+    const usage = this.keyUsage.get(key);
+    if (!usage) return false;
+
+    // Skip validation if recently validated (within last 5 minutes)
+    if (usage.isValidated && usage.lastValidationTime) {
+      const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
+      if (usage.lastValidationTime.getTime() > fiveMinutesAgo) {
+        return usage.isActive;
+      }
+    }
+
+    try {
+      // Make a lightweight test request to validate key
+      // Using price endpoint with a well-known token (SOL) - very lightweight
+      const axiosInstance = this.axiosFactory({
+        baseURL: this.axiosInstance.defaults.baseURL || 'https://public-api.birdeye.so',
+        timeout: 5000, // Short timeout for validation
+        headers: {
+          'X-API-KEY': key,
+          accept: 'application/json',
+        },
+        validateStatus: (status: number) => status < 500,
+      });
+
+      // Test with price endpoint for SOL (well-known token, minimal cost)
+      const testResponse = await axiosInstance.get('/defi/price', {
+        params: { address: 'So11111111111111111111111111111111111111112' }, // SOL mint
+        timeout: 5000,
+      });
+
+      const isValid = testResponse.status === 200;
+      usage.isValidated = true;
+      usage.lastValidationTime = new Date();
+      usage.isActive = isValid;
+
+      if (!isValid) {
+        logger.warn('API key validation failed', {
+          keyPrefix: key.substring(0, 8),
+          status: testResponse.status,
+        });
+      } else {
+        logger.debug('API key validated successfully', { keyPrefix: key.substring(0, 8) });
+      }
+
+      return isValid;
+    } catch (error) {
+      // Validation failed - mark key as inactive
+      usage.isValidated = true;
+      usage.lastValidationTime = new Date();
+      usage.isActive = false;
+
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      logger.warn('API key validation error', {
+        keyPrefix: key.substring(0, 8),
+        error: errorMessage,
+      });
+
+      return false;
+    }
+  }
+
+  /**
+   * Handle API key deactivation on rate limit or validation failure
+   */
+  private deactivateKey(key: string, reason: string = 'rate limit'): void {
     const usage = this.keyUsage.get(key);
     if (usage) {
       usage.isActive = false;
-      logger.warn('API key deactivated due to rate limit', { keyPrefix: key.substring(0, 8) });
+      logger.warn('API key deactivated', {
+        keyPrefix: key.substring(0, 8),
+        reason,
+        consecutiveFailures: usage.consecutiveFailures,
+      });
     }
+  }
+
+  /**
+   * Record a failure at account level (all keys share same account/rate limit)
+   */
+  private recordFailure(key: string): void {
+    const usage = this.keyUsage.get(key);
+    if (usage) {
+      usage.consecutiveFailures++;
+    }
+    
+    // Account-level failure tracking (all keys share same account)
+    this.consecutiveFailures++;
+
+    // Rate limit pause: After 10 consecutive failures, pause for 1 minute
+    if (this.consecutiveFailures >= this.RATE_LIMIT_THRESHOLD && !this.rateLimitPaused) {
+      this.rateLimitPaused = true;
+      logger.warn('Account rate limit PAUSED - too many consecutive failures', {
+        consecutiveFailures: this.consecutiveFailures,
+        threshold: this.RATE_LIMIT_THRESHOLD,
+        pauseDuration: '1 minute',
+        note: 'All keys share the same account rate limit',
+      });
+      
+      // Auto-resume after 1 minute
+      setTimeout(() => {
+        if (this.rateLimitPaused && this.consecutiveFailures >= this.RATE_LIMIT_THRESHOLD) {
+          this.rateLimitPaused = false;
+          this.consecutiveFailures = 0; // Reset counter on resume
+          logger.info('Account rate limit resumed after pause', {
+            pauseDuration: '1 minute',
+          });
+        }
+      }, 60 * 1000); // 1 minute
+    }
+
+    // Circuit breaker: Stop all processing after 20 consecutive failures
+    if (this.consecutiveFailures >= this.CIRCUIT_BREAKER_THRESHOLD && !this.circuitBreakerOpen) {
+      this.circuitBreakerOpen = true;
+      logger.error('Circuit breaker OPEN - too many consecutive failures', {
+        consecutiveFailures: this.consecutiveFailures,
+        threshold: this.CIRCUIT_BREAKER_THRESHOLD,
+        note: 'All keys share the same account - circuit breaker applies to entire account',
+      });
+    }
+  }
+
+  /**
+   * Record a success (reset account-level failure counters)
+   */
+  private recordSuccess(key: string): void {
+    const usage = this.keyUsage.get(key);
+    if (usage) {
+      usage.consecutiveFailures = 0;
+    }
+    // Reset account-level counters on any success (all keys share same account)
+    this.consecutiveFailures = 0;
+    this.circuitBreakerOpen = false;
+    this.rateLimitPaused = false;
   }
 
   /**
@@ -273,6 +412,33 @@ export class BirdeyeClient extends BaseApiClient {
     config: AxiosRequestConfig,
     maxAttempts: number = 5
   ): Promise<{ response: AxiosResponse<T>; apiKey: string } | null> {
+    // Circuit breaker check (account-level - all keys share same account)
+    if (this.circuitBreakerOpen) {
+      logger.error('Circuit breaker is OPEN - refusing all requests', {
+        consecutiveFailures: this.consecutiveFailures,
+        threshold: this.CIRCUIT_BREAKER_THRESHOLD,
+        note: 'All keys share the same account rate limit',
+      });
+      throw new Error(
+        `Circuit breaker is OPEN: ${this.consecutiveFailures} consecutive failures (threshold: ${this.CIRCUIT_BREAKER_THRESHOLD}). All keys share the same account.`
+      );
+    }
+
+    // Rate limit pause check (account-level)
+    if (this.rateLimitPaused) {
+      logger.warn('Account rate limit is PAUSED - waiting before retry', {
+        consecutiveFailures: this.consecutiveFailures,
+        threshold: this.RATE_LIMIT_THRESHOLD,
+        note: 'All keys share the same account rate limit',
+      });
+      // Wait 1 minute before retrying
+      await this.sleep(60 * 1000);
+      // Reset pause if we've waited
+      if (this.consecutiveFailures < this.RATE_LIMIT_THRESHOLD) {
+        this.rateLimitPaused = false;
+      }
+    }
+
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       const apiKey = this.getNextAPIKey();
       const baseClient = this.baseApiClients.get(apiKey);
@@ -280,6 +446,16 @@ export class BirdeyeClient extends BaseApiClient {
       if (!baseClient) {
         logger.error('No BaseApiClient found for API key', { keyPrefix: apiKey.substring(0, 8) });
         continue;
+      }
+
+      // Validate key before use if not recently validated
+      const usage = this.keyUsage.get(apiKey);
+      if (usage && (!usage.isValidated || !usage.isActive)) {
+        const isValid = await this.validateAPIKey(apiKey);
+        if (!isValid) {
+          this.recordFailure(apiKey);
+          continue; // Try next key
+        }
       }
 
       try {
@@ -338,11 +514,25 @@ export class BirdeyeClient extends BaseApiClient {
             }
           }
         }
-        return { response, apiKey };
+
+        // Check if response is successful before recording success
+        if (response.status >= 200 && response.status < 300) {
+          this.recordSuccess(apiKey);
+          return { response, apiKey };
+        } else {
+          // Non-2xx response - record as failure
+          this.recordFailure(apiKey);
+          // Continue to try next key
+        }
       } catch (error: unknown) {
+        // Record failure for this key
+        this.recordFailure(apiKey);
+
         logger.warn('Request attempt failed', {
           attempt: attempt + 1,
           keyPrefix: apiKey.substring(0, 8),
+          consecutiveFailures: this.keyUsage.get(apiKey)?.consecutiveFailures || 0,
+          globalConsecutiveFailures: this.consecutiveFailures,
         });
 
         // Type guard for AxiosError
@@ -362,7 +552,26 @@ export class BirdeyeClient extends BaseApiClient {
 
         // Handle rate limiting - deactivate key and try next one
         if (error.response?.status === 429) {
-          this.deactivateKey(apiKey);
+          this.recordFailure(apiKey); // Record failure for rate limit
+          this.deactivateKey(apiKey, 'rate limit (429)');
+          if (attempt < maxAttempts - 1) {
+            await this.sleep(1000);
+          }
+          continue;
+        }
+
+        // Handle 403 (Forbidden) - might be rate limiting or access denied
+        // Try next key instead of failing immediately
+        if (error.response?.status === 403) {
+          this.recordFailure(apiKey); // Record failure for 403
+          logger.warn('403 Forbidden - deactivating key and trying next', {
+            keyPrefix: apiKey.substring(0, 8),
+            attempt: attempt + 1,
+            maxAttempts,
+            url: config.url,
+            consecutiveFailures: this.keyUsage.get(apiKey)?.consecutiveFailures || 0,
+          });
+          this.deactivateKey(apiKey, 'forbidden (403)');
           if (attempt < maxAttempts - 1) {
             await this.sleep(1000);
           }
@@ -370,12 +579,14 @@ export class BirdeyeClient extends BaseApiClient {
         }
 
         // For other errors, let BaseApiClient's retry logic handle it
-        // But if it's a 400/401/403, don't retry
-        if (
-          error.response?.status === 400 ||
-          error.response?.status === 401 ||
-          error.response?.status === 403
-        ) {
+        // But if it's a 400/401, don't retry (these are permanent failures)
+        if (error.response?.status === 400 || error.response?.status === 401) {
+          this.recordFailure(apiKey); // Record failure for permanent errors
+          logger.warn('Permanent error - not retrying', {
+            status: error.response.status,
+            url: config.url,
+            consecutiveFailures: this.keyUsage.get(apiKey)?.consecutiveFailures || 0,
+          });
           return null;
         }
 
