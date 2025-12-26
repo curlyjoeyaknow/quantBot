@@ -1,6 +1,6 @@
 /**
  * Handler Wiring Pattern Tests
- * 
+ *
  * Verifies that handlers use CommandContext services (no direct instantiation)
  */
 
@@ -75,4 +75,3 @@ describe('Handler Wiring Patterns', () => {
     });
   });
 });
-
