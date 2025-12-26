@@ -3,6 +3,7 @@
 ## Critical Timestamp Convention
 
 **ClickHouse OHLCV Schema:**
+
 ```sql
 CREATE TABLE ohlcv_candles (
   token_address String,
@@ -18,11 +19,13 @@ CREATE TABLE ohlcv_candles (
 ```
 
 **Convention:**
+
 - **`timestamp` = OPEN time** (when the bar period starts)
 - **Bar represents**: `[timestamp, timestamp + interval)`
 - **Example**: A 5m candle at `2024-01-01 10:00:00` contains data from `10:00:00` to `10:04:59.999`
 
 This is the **standard convention** and prevents look-ahead bias:
+
 - A bar at timestamp T contains data from [T, T+interval)
 - You cannot use data from T+interval when processing bar T
 - Jesse expects this same convention
@@ -32,6 +35,7 @@ This is the **standard convention** and prevents look-ahead bias:
 ### Why Warmup?
 
 Indicators need historical data to initialize:
+
 - **Ichimoku**: 52 periods lookback
 - **RSI**: 14 periods lookback
 - **Moving averages**: Variable (20, 50, 200 periods)
@@ -65,6 +69,7 @@ function calculateWarmupCandles(
 ```
 
 **Example (5m candles, Ichimoku + RSI):**
+
 - Max lookback: 52 (Ichimoku) + 14 (RSI) = 66 periods
 - Safety pad: 50 candles
 - Total warmup: 116 candles = 580 minutes = ~9.7 hours
@@ -85,6 +90,7 @@ research.store_candles(exchange="Binance", symbol="SOL-USDT", candles=candles)
 ```
 
 **Conversion:**
+
 - ClickHouse: `timestamp` (DateTime) → Unix seconds
 - Jesse: Unix **milliseconds** (multiply by 1000)
 - Column order: `[timestamp, open, close, high, low, volume]`
@@ -106,6 +112,7 @@ The "no bullshit" check that catches leakage:
 ### Why It Works
 
 If decisions before T change when data after T is scrambled, there's look-ahead leakage:
+
 - Strategy is using future data
 - Indicators are peeking ahead
 - Data pipeline has a bug
@@ -200,18 +207,21 @@ exporter.run_tripwire_test(
 ## Common Pitfalls
 
 ### ❌ Wrong: Using close time as timestamp
+
 ```sql
 -- BAD: This creates look-ahead bias
 timestamp = close_time  -- You can't know close until bar ends!
 ```
 
 ### ✅ Correct: Using open time as timestamp
+
 ```sql
 -- GOOD: Standard convention
 timestamp = open_time  -- Bar period start
 ```
 
 ### ❌ Wrong: No warmup buffer
+
 ```python
 # BAD: Indicators undefined at start
 candles = export(start='2024-01-01', end='2024-01-31')
@@ -219,6 +229,7 @@ candles = export(start='2024-01-01', end='2024-01-31')
 ```
 
 ### ✅ Correct: Warmup buffer included
+
 ```python
 # GOOD: Indicators initialized
 candles = export(start='2024-01-01', end='2024-01-31', warmup=250)
@@ -234,4 +245,3 @@ candles = export(start='2024-01-01', end='2024-01-31', warmup=250)
 - [ ] Jesse import format correct (milliseconds, column order)
 - [ ] Tripwire test passes (no look-ahead leakage)
 - [ ] All indicators initialized before first trade
-
