@@ -54,7 +54,7 @@ Last updated: 2025-01-24 (Recent: Slice Export & Analyze workflow implementation
 
 ### Version Control Enforcement
 
-- [x] **Per-Package Version Control** - **In Progress**
+- [x] **Per-Package Version Control** - **Completed** ✅
   - [x] Ensure every package in the monorepo (all under `packages/`) has a correctly incremented `version` field in its `package.json` on every merge to main and every public release.
   - [x] Document versioning policy for all packages (semver; patch/minor/major per change scope). - **Completed**: Added to CONTRIBUTING.md
   - [x] Add CI/gate checks to enforce non-regressing and non-identical versions during PR and release (no accidental re-publish). - **Completed**: Added `verify:package-versions` script and CI step
