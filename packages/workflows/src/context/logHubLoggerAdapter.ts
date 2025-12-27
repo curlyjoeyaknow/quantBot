@@ -17,7 +17,7 @@ import type { WorkflowContext } from '../types.js';
 
 /**
  * Creates a logger adapter that emits filtered events to LogHub instead of verbose console logs.
- * 
+ *
  * Only emits important events (info/warn/error), filters out debug-level logs.
  * Uses structured scopes like 'simulation', 'ingestion', 'workflow'.
  */
@@ -35,9 +35,9 @@ export function createLogHubLoggerAdapter(
 
     // Extract context as record
     const context = ctx
-      ? (typeof ctx === 'object' && ctx !== null && !Array.isArray(ctx)
-          ? (ctx as Record<string, unknown>)
-          : { data: ctx })
+      ? typeof ctx === 'object' && ctx !== null && !Array.isArray(ctx)
+        ? (ctx as Record<string, unknown>)
+        : { data: ctx }
       : undefined;
 
     logHub.emit({
@@ -66,4 +66,3 @@ export function createLogHubLoggerAdapter(
     },
   };
 }
-
