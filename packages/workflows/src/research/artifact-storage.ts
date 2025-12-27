@@ -92,12 +92,14 @@ export class FileArtifactStorage {
       logger.error('Artifact validation failed', {
         runId: artifact.metadata?.runId,
         issueCount: parsed.error.issues.length,
-        firstIssue: firstIssue ? {
-          path: firstIssue.path,
-          message: firstIssue.message,
-          code: firstIssue.code,
-        } : null,
-        allIssues: parsed.error.issues.map(issue => ({
+        firstIssue: firstIssue
+          ? {
+              path: firstIssue.path,
+              message: firstIssue.message,
+              code: firstIssue.code,
+            }
+          : null,
+        allIssues: parsed.error.issues.map((issue) => ({
           path: issue.path,
           message: issue.message,
           code: issue.code,

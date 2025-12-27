@@ -157,7 +157,7 @@ export async function ingestOhlcv(
     },
   });
 
-  workflowCtx.logger.info('Starting OHLCV ingestion workflow', {
+  workflowCtx.logger.info('OHLCV ingestion started', {
     duckdbPath: validated.duckdbPath,
     from: validated.from,
     to: validated.to,
@@ -200,7 +200,7 @@ export async function ingestOhlcv(
   }
 
   if (worklist.length === 0) {
-    workflowCtx.logger.info('No work items to process');
+    workflowCtx.logger.info('No work items to process', { worklistLength: 0 });
     return {
       worklistGenerated: 0,
       workItemsProcessed: 0,
@@ -471,10 +471,14 @@ export async function ingestOhlcv(
       durationMs: workflowCtx.ports?.clock.nowMs() - startTime,
     });
 
-    // Progress logging every 10 items
-    if ((i + 1) % 10 === 0) {
+    // Progress logging every 50 items (reduced frequency for event-based logging)
+    if ((i + 1) % 50 === 0) {
       const successCount = fetchResults.filter((r) => r.success).length;
-      workflowCtx.logger.info(`Progress: ${i + 1}/${worklist.length} (${successCount} successful)`);
+      workflowCtx.logger.info('OHLCV ingestion progress', {
+        processed: i + 1,
+        total: worklist.length,
+        successful: successCount,
+      });
     }
   }
 
@@ -574,7 +578,7 @@ export async function ingestOhlcv(
 
   // Execute metadata updates in batches
   if (metadataUpdates.length > 0) {
-    workflowCtx.logger.info(`Executing ${metadataUpdates.length} metadata updates in batches`);
+    workflowCtx.logger.info('Executing metadata updates', { count: metadataUpdates.length });
     for (let i = 0; i < metadataUpdates.length; i += METADATA_BATCH_SIZE) {
       const batch = metadataUpdates.slice(i, i + METADATA_BATCH_SIZE);
       await Promise.all(batch);
@@ -646,7 +650,7 @@ export async function ingestOhlcv(
     timestamp: workflowCtx.ports.clock.nowMs(),
   });
 
-  workflowCtx.logger.info('Completed OHLCV ingestion workflow', {
+  workflowCtx.logger.info('OHLCV ingestion completed', {
     worklistGenerated: worklist.length,
     workItemsProcessed: ingestionResults.length,
     workItemsSucceeded,
