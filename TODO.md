@@ -44,7 +44,7 @@ Last updated: 2025-01-24 (Recent: Slice Export & Analyze workflow implementation
   - [x] Document any exceptions to wiring patterns
   - [x] Created wiring-exceptions.md with comprehensive documentation
   - [x] All direct instantiations are documented as acceptable in composition roots
-  - [ ] Add ESLint rules to enforce wiring patterns (future enhancement)
+  - [x] Add ESLint rules to enforce wiring patterns - **Completed**: Added rules to forbid console.log and process.exit in handlers
 
 - [x] **Phase 5: Documentation Updates** ✅
   - [x] Update CHANGELOG.md with wiring improvements
@@ -60,7 +60,7 @@ Last updated: 2025-01-24 (Recent: Slice Export & Analyze workflow implementation
   - [x] Add CI/gate checks to enforce non-regressing and non-identical versions during PR and release (no accidental re-publish). - **Completed**: Added `verify:package-versions` script and CI step
   - [x] On every PR that changes source code in a package, require that package's version to be bumped (unless explicitly marked as internal/experimental). - **Completed**: CI checks enforce this
   - [x] Add CHANGELOG entry automation for every package's version bump. - **Completed**: Version bump script automatically updates CHANGELOG.md
-  - [ ] Per-release: audit all package versions for consistency, document in release notes. - **Pending**: Requires full release automation workflow
+  - [x] Per-release: audit all package versions for consistency, document in release notes. - **Completed**: Created `release:audit-versions` script that generates version summary for release notes
   - [x] Update CONTRIBUTING.md and documentation to clarify versioning requirements and enforcement. - **Completed**: Added comprehensive versioning section with examples
   - [x] Add tests for version bumping logic in release automation (scripts/tools). - **Completed**: Test scaffold created at `scripts/version/__tests__/bump-package-version.test.ts`
 
