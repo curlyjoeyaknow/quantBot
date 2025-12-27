@@ -14,7 +14,10 @@ import type { CommandContext } from '../core/command-context.js';
 import { queryOhlcvHandler } from './ohlcv/query-ohlcv.js';
 import { backfillOhlcvHandler } from './ohlcv/backfill-ohlcv.js';
 import { fetchOhlcvHandler, fetchOhlcvSchema } from '../handlers/ohlcv/fetch-ohlcv.js';
-import { fetchFromDuckdbHandler, fetchFromDuckdbSchema } from '../handlers/ohlcv/fetch-from-duckdb.js';
+import {
+  fetchFromDuckdbHandler,
+  fetchFromDuckdbSchema,
+} from '../handlers/ohlcv/fetch-from-duckdb.js';
 import { coverageOhlcvHandler } from './ohlcv/coverage-ohlcv.js';
 import { analyzeCoverageHandler } from './ohlcv/analyze-coverage.js';
 import { analyzeDetailedCoverageHandler } from '../handlers/ohlcv/analyze-detailed-coverage.js';

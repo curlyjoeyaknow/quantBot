@@ -214,4 +214,3 @@ export async function fetchFromDuckdbHandler(args: FetchFromDuckdbArgs, ctx: Com
 
   return results;
 }
-
