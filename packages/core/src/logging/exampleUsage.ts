@@ -19,12 +19,12 @@ async function main() {
 
   await logger.close();
 
-  // eslint-disable-next-line no-console
+   
   console.log('Wrote:', logger.path());
 }
 
 main().catch((e) => {
-  // eslint-disable-next-line no-console
+   
   console.error(e);
   process.exit(1);
 });
