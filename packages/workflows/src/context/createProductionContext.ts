@@ -23,6 +23,20 @@ import type {
   SimulationCallResult,
 } from '../types.js';
 import { StorageCausalCandleAccessor } from './causal-candle-accessor.js';
+import { createLogHubLoggerAdapter } from './logHubLoggerAdapter.js';
+
+// LogHub type definition (to avoid dependency on @quantbot/lab)
+type LogHub = {
+  emit: (event: {
+    level: 'debug' | 'info' | 'warn' | 'error';
+    scope: string;
+    msg: string;
+    ctx?: Record<string, unknown>;
+    requestId?: string;
+    runId?: string;
+    ts?: string;
+  }) => void;
+};
 
 // Re-export WorkflowContext for convenience
 export type { WorkflowContext } from '../types.js';
@@ -36,6 +50,17 @@ export interface ProductionContextConfig {
     warn: (...args: unknown[]) => void;
     error: (...args: unknown[]) => void;
     debug?: (...args: unknown[]) => void;
+  };
+
+  /**
+   * Optional LogHub for structured event logging (replaces verbose console logs)
+   * When provided, logger will emit filtered events to LogHub instead of console
+   */
+  logHub?: {
+    hub: LogHub;
+    scope: string; // e.g. 'simulation', 'ingestion', 'workflow'
+    runId?: string;
+    requestId?: string;
   };
 
   /**
@@ -114,16 +139,24 @@ export function createProductionContext(config?: ProductionContextConfig): Workf
   const duckdbStorage = new DuckDBStorageService(pythonEngine);
   const clickHouse = new ClickHouseService(pythonEngine);
 
-  const logger = config?.logger ?? {
-    info: (...args: unknown[]) =>
-      utilsLogger.info(String(args[0] || ''), args[1] as Record<string, unknown> | undefined),
-    warn: (...args: unknown[]) =>
-      utilsLogger.warn(String(args[0] || ''), args[1] as Record<string, unknown> | undefined),
-    error: (...args: unknown[]) =>
-      utilsLogger.error(String(args[0] || ''), args[1] as Record<string, unknown> | undefined),
-    debug: (...args: unknown[]) =>
-      utilsLogger.debug(String(args[0] || ''), args[1] as Record<string, unknown> | undefined),
-  };
+  // Use LogHub logger adapter if LogHub is provided, otherwise use default logger
+  const logger = config?.logHub
+    ? createLogHubLoggerAdapter(
+        config.logHub.hub,
+        config.logHub.scope,
+        config.logHub.runId,
+        config.logHub.requestId
+      )
+    : (config?.logger ?? {
+        info: (...args: unknown[]) =>
+          utilsLogger.info(String(args[0] || ''), args[1] as Record<string, unknown> | undefined),
+        warn: (...args: unknown[]) =>
+          utilsLogger.warn(String(args[0] || ''), args[1] as Record<string, unknown> | undefined),
+        error: (...args: unknown[]) =>
+          utilsLogger.error(String(args[0] || ''), args[1] as Record<string, unknown> | undefined),
+        debug: (...args: unknown[]) =>
+          utilsLogger.debug(String(args[0] || ''), args[1] as Record<string, unknown> | undefined),
+      });
   const clock = config?.clock ?? { nowISO: () => DateTime.utc().toISO()! };
   const ids = config?.ids ?? { newRunId: () => `run_${uuidv4()}` };
 

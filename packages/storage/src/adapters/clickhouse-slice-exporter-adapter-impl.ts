@@ -335,11 +335,12 @@ export class ClickHouseSliceExporterAdapterImpl implements SliceExporter {
     let csvData: Buffer;
     try {
       // Fix call site: handle result.stream as function or property
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const streamSource = typeof (result as any).stream === 'function'
-        ? await (result as any).stream()
-        : (result as any).stream ?? (result as any).body ?? result;
-      
+       
+      const streamSource =
+        typeof (result as any).stream === 'function'
+          ? await (result as any).stream()
+          : ((result as any).stream ?? (result as any).body ?? result);
+
       const streamBytes = await readAllBytes(streamSource);
       csvData = Buffer.from(streamBytes);
     } catch (error: unknown) {
@@ -515,7 +516,7 @@ export class ClickHouseSliceExporterAdapterImpl implements SliceExporter {
         layout,
         parquetFiles: [
           {
-          path: `file://${absoluteParquetPath}`,
+            path: `file://${absoluteParquetPath}`,
             rowCount: 0,
             byteSize: 0,
             dt: day,
