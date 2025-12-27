@@ -525,8 +525,11 @@ async function executeFetchTask(
           });
 
           const data = (await result.json()) as Array<{ chain: string }> | undefined;
-          if (data && data.length > 0 && data[0]) {
-            return { mint, chain: data[0].chain };
+          if (data && data.length > 0) {
+            const firstItem = data[0];
+            if (firstItem) {
+              return { mint, chain: firstItem.chain };
+            }
           }
         } catch (error) {
           ctx.logger.debug('Failed to query ClickHouse for chain', {
