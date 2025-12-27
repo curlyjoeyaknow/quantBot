@@ -122,29 +122,39 @@ export type WorkflowContext = {
   };
 
   ohlcv: {
-    // New: Causal accessor (primary) - ensures Gate 2 compliance
+    /**
+     * Causal candle accessor - ensures Gate 2 compliance (no look-ahead).
+     *
+     * This is the ONLY way to access candles in simulations.
+     * Legacy getCandles() method removed - all candle access must go through causalAccessor.
+     *
+     * The accessor enforces:
+     * - Closed-bar semantics (ts_close <= t_decision)
+     * - No future candles accessible
+     * - Monotonic time progression
+     */
     causalAccessor: CausalCandleAccessor;
-    // Legacy: Keep for migration period (backward compatibility)
-    getCandles?: (q: { mint: string; fromISO: string; toISO: string }) => Promise<Candle[]>;
   };
 
   simulation: {
-    // pure compute. if it throws, workflow captures per-call error and continues.
+    /**
+     * Run a simulation with causal candle access.
+     *
+     * CRITICAL: candleAccessor is mandatory - it is structurally impossible to pass raw candles.
+     * This enforces Gate 2 compliance: only candles with closeTime <= simulationTime are accessible.
+     *
+     * Pure compute. If it throws, workflow captures per-call error and continues.
+     * Legacy { candles: Candle[] } signature removed - enforce causal accessor usage.
+     */
     run: (
-      q:
-        | {
-            candleAccessor: CausalCandleAccessor;
-            mint: string;
-            startTime: number;
-            endTime: number;
-            strategy: StrategyRecord;
-            call: CallRecord;
-          }
-        | {
-            candles: Candle[];
-            strategy: StrategyRecord;
-            call: CallRecord;
-          }
+      q: {
+        candleAccessor: CausalCandleAccessor; // Mandatory - no raw candles allowed
+        mint: string;
+        startTime: number;
+        endTime: number;
+        strategy: StrategyRecord;
+        call: CallRecord;
+      }
     ) => Promise<SimulationEngineResult>;
   };
 };

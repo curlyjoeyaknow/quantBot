@@ -8,7 +8,7 @@ import type {
   SimulationEngineResult,
   SimulationCallResult,
 } from '../../src/types.js';
-import { CausalCandleWrapper } from '@quantbot/simulation';
+import { CausalCandleWrapper, type CausalCandleAccessor } from '@quantbot/simulation';
 
 export function candleSeries(): Candle[] {
   return [
@@ -56,12 +56,18 @@ export function createMockContext(opts?: {
     },
 
     ohlcv: {
-      getCandles: vi.fn(async ({ mint }: { mint: string; fromISO: string; toISO: string }) => {
-        return candlesByMint[mint] ?? candleSeries();
-      }),
+      /**
+       * Mock causal accessor for testing.
+       *
+       * NOTE: Even in tests, we wrap raw candles in CausalCandleWrapper to maintain
+       * the causal accessor contract. This ensures tests exercise the same causal
+       * semantics as production code.
+       *
+       * Legacy getCandles removed - all access must go through causalAccessor.
+       */
       causalAccessor: {
         // Create a causal accessor that uses candlesByMint
-        // For each mint, wrap its candles in a CausalCandleWrapper
+        // For each mint, wrap its candles in a CausalCandleWrapper to enforce causal semantics
         getCandlesAtTime: vi.fn(
           async (mint: string, simulationTime: number, lookback: number, interval: string) => {
             const candles = candlesByMint[mint] ?? candleSeries();
@@ -83,7 +89,16 @@ export function createMockContext(opts?: {
 
     simulation: {
       run: vi.fn(
-        async ({ call }: { candles: Candle[]; strategy: StrategyRecord; call: CallRecord }) => {
+        async ({
+          call,
+        }: {
+          candleAccessor: CausalCandleAccessor;
+          mint: string;
+          startTime: number;
+          endTime: number;
+          strategy: StrategyRecord;
+          call: CallRecord;
+        }) => {
           const v = simByCallId[call.id];
           if (v instanceof Error) throw v;
           if (v) return v;

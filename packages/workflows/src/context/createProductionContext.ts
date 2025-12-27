@@ -447,39 +447,43 @@ export function createProductionContext(config?: ProductionContextConfig): Workf
     },
 
     ohlcv: {
-      // New: Causal accessor (primary) - ensures Gate 2 compliance
+      /**
+       * Causal candle accessor - ensures Gate 2 compliance (no look-ahead).
+       *
+       * This is the ONLY way to access candles in simulations.
+       * Legacy getCandles() method removed - all candle access must go through causalAccessor.
+       *
+       * The accessor enforces:
+       * - Closed-bar semantics (ts_close <= t_decision)
+       * - No future candles accessible
+       * - Monotonic time progression
+       */
       causalAccessor,
-      // Legacy: Keep for migration period (backward compatibility)
-      async getCandles(q: { mint: string; fromISO: string; toISO: string }): Promise<Candle[]> {
-        const startTime = DateTime.fromISO(q.fromISO, { zone: 'utc' });
-        const endTime = DateTime.fromISO(q.toISO, { zone: 'utc' });
-
-        // Use storage engine to query candles (offline-only)
-        // Storage engine created fresh per context (no singleton)
-        const candles = await storageEngine.getCandles(q.mint, 'solana', startTime, endTime, {
-          interval: '5m',
-        });
-
-        return candles;
-      },
     },
 
     simulation: {
+      /**
+       * Run a simulation with causal candle access.
+       *
+       * CRITICAL: This function ONLY accepts a CausalCandleAccessor.
+       * It is structurally impossible to pass raw candles into a simulation.
+       *
+       * The causal accessor enforces:
+       * - Closed-bar semantics (only candles with closeTime <= simulationTime are accessible)
+       * - No future candles (look-ahead bias is impossible)
+       * - Monotonic time progression
+       *
+       * This is the lock that prevents accidental cheating in simulations.
+       */
       async run(
-        q:
-          | {
-              candleAccessor: import('@quantbot/simulation').CausalCandleAccessor;
-              mint: string;
-              startTime: number;
-              endTime: number;
-              strategy: StrategyRecord;
-              call: CallRecord;
-            }
-          | {
-              candles: Candle[];
-              strategy: StrategyRecord;
-              call: CallRecord;
-            }
+        q: {
+          candleAccessor: import('@quantbot/simulation').CausalCandleAccessor;
+          mint: string;
+          startTime: number;
+          endTime: number;
+          strategy: StrategyRecord;
+          call: CallRecord;
+        }
       ): Promise<SimulationEngineResult> {
         // Extract strategy legs from config
         const config = q.strategy.config as Record<string, unknown>;
@@ -498,55 +502,32 @@ export function createProductionContext(config?: ProductionContextConfig): Workf
           });
         }
 
-        // Check if using new causal accessor signature or legacy candles array
-        if ('candleAccessor' in q) {
-          // New signature: use causal accessor (Gate 2 compliant)
-          const { simulateStrategyWithCausalAccessor } = await import('@quantbot/simulation');
-          const result = await simulateStrategyWithCausalAccessor(
-            q.candleAccessor,
-            q.mint,
-            q.startTime,
-            q.endTime,
-            strategyLegs,
-            config.stopLoss as StopLossConfig | undefined,
-            config.entry as EntryConfig | undefined,
-            config.reEntry as ReEntryConfig | undefined,
-            config.costs as CostConfig | undefined,
-            {
-              entrySignal: config.entrySignal as SignalGroup | undefined,
-              exitSignal: config.exitSignal as SignalGroup | undefined,
-              interval: '5m',
-            }
-          );
+        // Use causal accessor - this is the ONLY path.
+        // Legacy { candles: Candle[] } signature removed - impossible to pass raw candles.
+        const { simulateStrategyWithCausalAccessor } = await import('@quantbot/simulation');
+        const result = await simulateStrategyWithCausalAccessor(
+          q.candleAccessor,
+          q.mint,
+          q.startTime,
+          q.endTime,
+          strategyLegs,
+          config.stopLoss as StopLossConfig | undefined,
+          config.entry as EntryConfig | undefined,
+          config.reEntry as ReEntryConfig | undefined,
+          config.costs as CostConfig | undefined,
+          {
+            entrySignal: config.entrySignal as SignalGroup | undefined,
+            exitSignal: config.exitSignal as SignalGroup | undefined,
+            interval: '5m',
+          }
+        );
 
-          return {
-            pnlMultiplier: result.finalPnl,
-            trades: result.events.filter((e: { type?: string }) => {
-              return e.type === 'entry' || e.type === 'exit';
-            }).length,
-          };
-        } else {
-          // Legacy signature: use candles array (backward compatibility)
-          const result = await simulateStrategy(
-            q.candles,
-            strategyLegs,
-            config.stopLoss as StopLossConfig | undefined,
-            config.entry as EntryConfig | undefined,
-            config.reEntry as ReEntryConfig | undefined,
-            config.costs as CostConfig | undefined,
-            {
-              entrySignal: config.entrySignal as SignalGroup | undefined,
-              exitSignal: config.exitSignal as SignalGroup | undefined,
-            }
-          );
-
-          return {
-            pnlMultiplier: result.finalPnl,
-            trades: result.events.filter((e: { type?: string }) => {
-              return e.type === 'entry' || e.type === 'exit';
-            }).length,
-          };
-        }
+        return {
+          pnlMultiplier: result.finalPnl,
+          trades: result.events.filter((e: { type?: string }) => {
+            return e.type === 'entry' || e.type === 'exit';
+          }).length,
+        };
       },
     },
   };
