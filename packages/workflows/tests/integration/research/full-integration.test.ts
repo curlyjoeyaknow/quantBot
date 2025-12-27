@@ -107,10 +107,11 @@ describe('Full Integration: Branch A + B + C', () => {
         strategyId: 'strategy-001',
         name: 'test-strategy',
         config: {
-          targets: [{ target: 2, percent: 0.5 }],
+          name: 'test-strategy',
+          profitTargets: [{ target: 2, percent: 0.5 }],
         },
         configHash: createHash('sha256')
-          .update(JSON.stringify({ targets: [{ target: 2, percent: 0.5 }] }))
+          .update(JSON.stringify({ name: 'test-strategy', profitTargets: [{ target: 2, percent: 0.5 }] }))
           .digest('hex'),
       },
       executionModel,
@@ -191,7 +192,10 @@ describe('Full Integration: Branch A + B + C', () => {
       strategy: {
         strategyId: 'strategy-001',
         name: 'test',
-        config: {},
+        config: {
+          name: 'test',
+          profitTargets: [{ target: 2.0, percent: 1.0 }],
+        },
         configHash: 'a'.repeat(64),
       },
       executionModel,
@@ -241,7 +245,10 @@ describe('Full Integration: Branch A + B + C', () => {
       strategy: {
         strategyId: 'strategy-001',
         name: 'test',
-        config: {},
+        config: {
+          name: 'test',
+          profitTargets: [{ target: 2.0, percent: 1.0 }],
+        },
         configHash: 'a'.repeat(64),
       },
       executionModel,

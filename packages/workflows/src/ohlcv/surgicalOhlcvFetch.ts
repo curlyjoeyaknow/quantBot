@@ -237,6 +237,177 @@ async function getCoverageData(
 /**
  * Execute OHLCV fetch for a specific task
  */
+/**
+ * Retry failed mints across all chains and add to exclusions if all fail
+ */
+async function retryFailedMintsAcrossAllChains(
+  failedMintsForInterval: Map<string, Set<string>>,
+  interval: string,
+  from: string,
+  to: string,
+  spec: SurgicalOhlcvFetchSpec,
+  ctx: SurgicalOhlcvFetchContext
+): Promise<{
+  succeeded: string[];
+  excluded: Array<{ tokenAddress: string; chain: string; reason: string }>;
+}> {
+  const succeeded: string[] = [];
+  const excluded: Array<{ tokenAddress: string; chain: string; reason: string }> = [];
+  const allChains: Array<'solana' | 'ethereum' | 'bsc' | 'base'> = ['solana', 'ethereum', 'bsc', 'base'];
+  
+  const intervalMap: Record<string, '1s' | '15s' | '1m' | '5m' | '1H'> = {
+    '1s': '1s',
+    '15s': '15s',
+    '1m': '1m',
+    '5m': '5m',
+    '1h': '1H',
+  };
+  const workflowInterval = intervalMap[interval] || '1m';
+
+  // Only retry 5m and 1m intervals for exclusion
+  const shouldExcludeOnAllFailure = interval === '5m' || interval === '1m';
+
+  ctx.logger.debug(`Starting retry for ${failedMintsForInterval.size} mints on ${interval}`, {
+    interval,
+    shouldExcludeOnAllFailure,
+    totalMints: failedMintsForInterval.size,
+  });
+
+  // Try each mint across all chains
+  for (const [mint, failedChains] of failedMintsForInterval.entries()) {
+    ctx.logger.debug(`Retrying mint ${mint} for ${interval}`, {
+      mint,
+      interval,
+      previouslyFailedChains: Array.from(failedChains),
+      willTryAllChains: true,
+    });
+    let foundChain = false;
+    const triedChains: string[] = [];
+
+    // Try all chains that haven't been tried yet
+    for (const chain of allChains) {
+      if (failedChains.has(chain)) {
+        triedChains.push(chain);
+        continue; // Already tried this chain
+      }
+
+      triedChains.push(chain);
+
+      try {
+        const ingestSpec: IngestOhlcvSpec = {
+          duckdbPath: spec.duckdbPath,
+          from,
+          to,
+          side: 'buy',
+          chain,
+          interval: workflowInterval,
+          preWindowMinutes: 52,
+          postWindowMinutes: 4948,
+          errorMode: 'collect',
+          checkCoverage: false,
+          rateLimitMs: 100,
+          maxRetries: 3,
+          mints: [mint], // Try single mint
+        };
+
+        ctx.logger.debug(`Retrying ${mint} on ${chain} for ${interval}`, {
+          mint,
+          chain,
+          interval,
+        });
+
+        const result = await ingestOhlcv(ingestSpec, ctx.ohlcvIngestionContext);
+
+        if (result.totalCandlesFetched > 0) {
+          succeeded.push(mint);
+          foundChain = true;
+          ctx.logger.info(`Retry succeeded: ${mint} on ${chain} for ${interval}`, {
+            mint,
+            chain,
+            interval,
+            candlesFetched: result.totalCandlesFetched,
+          });
+          break; // Found the right chain
+        }
+      } catch (error) {
+        ctx.logger.debug(`Retry failed: ${mint} on ${chain} for ${interval}`, {
+          mint,
+          chain,
+          interval,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+
+    // If all chains failed and this is 5m/1m, add to exclusions
+    if (!foundChain && shouldExcludeOnAllFailure) {
+      ctx.logger.info(`All chains failed for ${mint} on ${interval} - adding to exclusions`, {
+        mint,
+        interval,
+        triedChains,
+        shouldExclude: true,
+      });
+
+      // Add exclusion for each chain that was tried
+      const { DuckDBStorageService } = await import('@quantbot/simulation');
+      const storageService = new DuckDBStorageService(ctx.pythonEngine);
+
+      for (const chain of triedChains) {
+        try {
+          ctx.logger.debug(`Adding exclusion: ${mint} on ${chain} for ${interval}`, {
+            mint,
+            chain,
+            interval,
+          });
+          
+          const exclusionResult = await storageService.addOhlcvExclusion(
+            spec.duckdbPath,
+            mint,
+            chain,
+            interval,
+            `Failed to fetch OHLCV on all chains (solana, ethereum, bsc, base) for ${interval} interval`
+          );
+          
+          if (exclusionResult.success) {
+            excluded.push({
+              tokenAddress: mint,
+              chain,
+              reason: `Failed on all chains for ${interval}`,
+            });
+            ctx.logger.debug(`Successfully added exclusion: ${mint} on ${chain} for ${interval}`);
+          } else {
+            ctx.logger.warn(`Failed to add exclusion: ${mint} on ${chain} for ${interval}`, {
+              error: exclusionResult.error,
+            });
+          }
+        } catch (error) {
+          ctx.logger.error(`Exception adding exclusion for ${mint}`, {
+            mint,
+            chain,
+            interval,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+      }
+
+      ctx.logger.info(`Added ${excluded.length} exclusion entries for ${mint} on ${interval}`, {
+        mint,
+        interval,
+        excludedCount: excluded.length,
+        triedChains,
+      });
+    } else if (!foundChain) {
+      ctx.logger.debug(`All chains failed for ${mint} on ${interval}, but skipping exclusion (only exclude 5m/1m)`, {
+        mint,
+        interval,
+        shouldExcludeOnAllFailure,
+      });
+    }
+  }
+
+  return { succeeded, excluded };
+}
+
 async function executeFetchTask(
   task: FetchTask,
   spec: SurgicalOhlcvFetchSpec,
@@ -291,6 +462,7 @@ async function executeFetchTask(
   let totalCandlesStored = 0;
   const errors: string[] = [];
 
+<<<<<<< HEAD
   // Detect chain from mint addresses
   // If any mint is EVM (0x...), use 'evm' until specific chain is known
   // The ingestion engine will detect the actual EVM chain (ethereum/base/bsc)
@@ -298,8 +470,114 @@ async function executeFetchTask(
   const defaultChain: 'solana' | 'ethereum' | 'bsc' | 'base' | 'evm' = hasEvmAddresses
     ? 'evm'
     : 'solana';
+=======
+  // Get actual chains for mints from multiple sources:
+  // 1. DuckDB worklist (has chain from call data)
+  // 2. ClickHouse token_metadata (has chain from previous fetches)
+  // 3. Fallback to trying all EVM chains for unknown EVM addresses
+  const { getDuckDBWorklistService, getClickHouseClient } = await import('@quantbot/storage');
+  
+  // First, try DuckDB worklist
+  const worklistService = getDuckDBWorklistService();
+  const worklist = await worklistService.queryWorklist({
+    duckdbPath: spec.duckdbPath,
+    from,
+    to,
+    side: 'buy',
+  });
+>>>>>>> 26d20190 (Fix test failures: addOhlcvExclusion params, artifact validation, slice analyzer)
 
-  // Run OHLCV ingestion for each interval
+  // Build mint -> chain map from worklist
+  const mintChainMap = new Map<string, string>();
+  for (const group of worklist.tokenGroups) {
+    if (group.mint && task.missing_mints.includes(group.mint)) {
+      // Use chain from worklist, or default based on address format
+      const chain = group.chain || (isEvmAddress(group.mint) ? 'evm' : 'solana');
+      mintChainMap.set(group.mint, chain);
+    }
+  }
+
+  // For mints not found in worklist, query ClickHouse token_metadata
+  const missingMints = task.missing_mints.filter((mint) => !mintChainMap.has(mint));
+  if (missingMints.length > 0) {
+    ctx.logger.debug('Querying ClickHouse for chains', { missingMints: missingMints.length });
+    
+    try {
+      const ch = getClickHouseClient();
+      const CLICKHOUSE_DATABASE = process.env.CLICKHOUSE_DATABASE || 'quantbot';
+
+      // Query all missing mints in parallel (one query per mint to get all chains)
+      const chainPromises = missingMints.map(async (mint) => {
+        const escapedMint = mint.replace(/'/g, "''");
+        try {
+          const result = await ch.query({
+            query: `
+              SELECT DISTINCT chain
+              FROM ${CLICKHOUSE_DATABASE}.token_metadata
+              WHERE (token_address = '${escapedMint}' 
+                     OR lower(token_address) = lower('${escapedMint}'))
+              ORDER BY chain
+              LIMIT 1
+            `,
+            format: 'JSONEachRow',
+            clickhouse_settings: {
+              max_execution_time: 10,
+            },
+          });
+
+          const data = (await result.json()) as Array<{ chain: string }>;
+          if (data && data.length > 0) {
+            return { mint, chain: data[0].chain };
+          }
+        } catch (error) {
+          ctx.logger.debug('Failed to query ClickHouse for chain', {
+            mint,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+        return null;
+      });
+
+      const chainResults = await Promise.all(chainPromises);
+      for (const result of chainResults) {
+        if (result) {
+          mintChainMap.set(result.mint, result.chain);
+        }
+      }
+
+      ctx.logger.debug('Found chains from ClickHouse', {
+        found: chainResults.filter((r) => r !== null).length,
+        total: missingMints.length,
+      });
+    } catch (error) {
+      ctx.logger.warn('Failed to query ClickHouse for chains', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  // Group mints by chain
+  const mintsByChain = new Map<string, string[]>();
+  for (const mint of task.missing_mints) {
+    const chain = mintChainMap.get(mint) || (isEvmAddress(mint) ? 'evm' : 'solana');
+    if (!mintsByChain.has(chain)) {
+      mintsByChain.set(chain, []);
+    }
+    mintsByChain.get(chain)!.push(mint);
+  }
+
+  ctx.logger.info('Grouped mints by chain', {
+    chains: Array.from(mintsByChain.keys()),
+    counts: Object.fromEntries(
+      Array.from(mintsByChain.entries()).map(([chain, mints]) => [chain, mints.length])
+    ),
+  });
+
+  // Track failed mints per interval for retry and exclusion
+  // Format: failedMints[interval][mint] = Set of chains that failed
+  const failedMints = new Map<string, Map<string, Set<string>>>();
+
+  // Run OHLCV ingestion for each interval and each chain
   for (const interval of intervals) {
     const intervalMap: Record<string, '1s' | '15s' | '1m' | '5m' | '1H'> = {
       '1s': '1s',
@@ -310,79 +588,335 @@ async function executeFetchTask(
     };
     const workflowInterval = intervalMap[interval] || '1m';
 
-    const ingestSpec: IngestOhlcvSpec = {
-      duckdbPath: spec.duckdbPath,
-      from,
-      to,
-      side: 'buy',
-      chain: defaultChain, // Use detected chain instead of hardcoded 'solana'
-      interval: workflowInterval,
-      preWindowMinutes: 52, // -52 candles before
-      postWindowMinutes: 4948, // +4948 candles after = 5000 total
-      errorMode: 'collect',
-      checkCoverage: true,
-      rateLimitMs: 100,
-      maxRetries: 3,
-      mints: task.missing_mints, // Filter to only fetch OHLCV for missing mints
-    };
+    // Process each chain group separately
+    for (const [chain, mints] of mintsByChain.entries()) {
+      // Skip 'evm' - we need to try all EVM chains or get actual chain from worklist
+      if (chain === 'evm') {
+        // For EVM addresses without chain info, try all EVM chains
+        const evmChains: Array<'ethereum' | 'bsc' | 'base'> = ['ethereum', 'bsc', 'base'];
+        for (const evmChain of evmChains) {
+          const ingestSpec: IngestOhlcvSpec = {
+            duckdbPath: spec.duckdbPath,
+            from,
+            to,
+            side: 'buy',
+            chain: evmChain,
+            interval: workflowInterval,
+            preWindowMinutes: 52, // -52 candles before
+            postWindowMinutes: 4948, // +4948 candles after = 5000 total
+            errorMode: 'collect',
+            checkCoverage: false, // Disable coverage check for surgical fetch - we know these mints need data
+            rateLimitMs: 100,
+            maxRetries: 3,
+            mints, // Filter to only fetch OHLCV for missing mints in this chain
+          };
 
-    try {
-      if (spec.verbose) {
-        ctx.logger.info(`  Fetching ${interval} interval for ${task.caller} - ${task.month}...`, {
-          task,
-          interval,
-        });
-      } else {
-        ctx.logger.debug(`Fetching ${interval} interval`, { task, interval });
-      }
+          try {
+            if (spec.verbose) {
+              ctx.logger.info(
+                `  Fetching ${interval} interval for ${task.caller} - ${task.month} (${evmChain})...`,
+                {
+                  task,
+                  interval,
+                  chain: evmChain,
+                  mints: mints.length,
+                }
+              );
+            }
 
-      const result = await ingestOhlcv(ingestSpec, ctx.ohlcvIngestionContext);
+            const result = await ingestOhlcv(ingestSpec, ctx.ohlcvIngestionContext);
 
-      totalCandlesFetched += result.totalCandlesFetched;
-      totalCandlesStored += result.totalCandlesStored;
+            // Track which mints succeeded vs failed
+            if (result.totalCandlesFetched > 0) {
+              totalCandlesFetched += result.totalCandlesFetched;
+              totalCandlesStored += result.totalCandlesStored;
+              // Log success and break (found the right chain)
+              if (spec.verbose) {
+                ctx.logger.info(`  ✓ ${interval} interval complete for ${evmChain}`, {
+                  task,
+                  interval,
+                  chain: evmChain,
+                  candlesFetched: result.totalCandlesFetched,
+                  candlesStored: result.totalCandlesStored,
+                });
+              }
+              // Note: We found candles, but we don't know which specific mints succeeded
+              // If some mints still need data, they'll be caught in a future coverage analysis
+              break; // Found the right chain, don't try others
+            } else {
+              // No candles - track failure for all mints on this chain
+              ctx.logger.debug(`No candles fetched for ${mints.length} mints on ${evmChain}`, {
+                interval,
+                chain: evmChain,
+                mints: mints.length,
+              });
+              
+              for (const mint of mints) {
+                if (!failedMints.has(interval)) {
+                  failedMints.set(interval, new Map());
+                }
+                if (!failedMints.get(interval)!.has(mint)) {
+                  failedMints.get(interval)!.set(mint, new Set());
+                }
+                failedMints.get(interval)!.get(mint)!.add(evmChain);
+              }
+              
+              // No candles - might be wrong chain, continue to next EVM chain
+              if (spec.verbose) {
+                ctx.logger.debug(`  No candles for ${evmChain}, trying next chain...`, {
+                  task,
+                  interval,
+                  chain: evmChain,
+                });
+              }
+            }
 
-      if (result.errors.length > 0) {
-        errors.push(`${interval}: ${result.errors.length} errors`);
-      }
+            if (result.errors.length > 0) {
+              errors.push(`${interval} (${evmChain}): ${result.errors.length} errors`);
+            }
+          } catch (error) {
+            // Track failure for all mints on this chain
+            for (const mint of mints) {
+              if (!failedMints.has(interval)) {
+                failedMints.set(interval, new Map());
+              }
+              if (!failedMints.get(interval)!.has(mint)) {
+                failedMints.get(interval)!.set(mint, new Set());
+              }
+              failedMints.get(interval)!.get(mint)!.add(evmChain);
+            }
 
-      if (spec.verbose) {
-        ctx.logger.info(`  ✓ ${interval} interval complete`, {
-          task,
-          interval,
-          candlesFetched: result.totalCandlesFetched,
-          candlesStored: result.totalCandlesStored,
-        });
-      } else {
-        ctx.logger.debug(`Completed ${interval} interval`, {
-          task,
-          interval,
-          candlesFetched: result.totalCandlesFetched,
-          candlesStored: result.totalCandlesStored,
-        });
-      }
-    } catch (error) {
-      // Sanitize error message to prevent leaking sensitive information
-      const rawErrorMessage = error instanceof Error ? error.message : String(error);
-      const sanitizedMessage = sanitizeErrorMessage(rawErrorMessage);
-
-      errors.push(`${interval}: ${sanitizedMessage}`);
-      ctx.logger.error(`Failed to fetch ${interval} interval`, {
-        task,
-        interval,
-        error: sanitizedMessage,
-      });
-
-      if (spec.errorMode === 'failFast') {
-        // Create a new error with sanitized message to prevent leaking sensitive info
-        const sanitizedError =
-          error instanceof Error ? new Error(sanitizedMessage) : new Error(sanitizedMessage);
-        // Preserve stack trace if available
-        if (error instanceof Error && error.stack) {
-          sanitizedError.stack = error.stack;
+            // Continue to next chain on error
+            const rawErrorMessage = error instanceof Error ? error.message : String(error);
+            const sanitizedMessage = sanitizeErrorMessage(rawErrorMessage);
+            errors.push(`${interval} (${evmChain}): ${sanitizedMessage}`);
+            ctx.logger.debug(`Failed to fetch ${interval} for ${evmChain}, trying next chain`, {
+              task,
+              interval,
+              chain: evmChain,
+              error: sanitizedMessage,
+            });
+          }
         }
-        throw sanitizedError;
+      } else {
+        // Non-EVM or known chain - use directly
+        const ingestSpec: IngestOhlcvSpec = {
+          duckdbPath: spec.duckdbPath,
+          from,
+          to,
+          side: 'buy',
+          chain: chain as 'solana' | 'ethereum' | 'bsc' | 'base',
+          interval: workflowInterval,
+          preWindowMinutes: 52, // -52 candles before
+          postWindowMinutes: 4948, // +4948 candles after = 5000 total
+          errorMode: 'collect',
+          checkCoverage: false, // Disable coverage check for surgical fetch - we know these mints need data
+          rateLimitMs: 100,
+          maxRetries: 3,
+          mints, // Filter to only fetch OHLCV for missing mints in this chain
+        };
+
+        try {
+          if (spec.verbose) {
+            ctx.logger.info(
+              `  Fetching ${interval} interval for ${task.caller} - ${task.month} (${chain})...`,
+              {
+                task,
+                interval,
+                chain,
+                mints: mints.length,
+              }
+            );
+          } else {
+            ctx.logger.debug(`Fetching ${interval} interval for ${chain}`, {
+              task,
+              interval,
+              chain,
+            });
+          }
+
+          const result = await ingestOhlcv(ingestSpec, ctx.ohlcvIngestionContext);
+
+          // Track which mints succeeded vs failed
+          if (result.totalCandlesFetched === 0) {
+            // No candles fetched - track failure for all mints on this chain
+            ctx.logger.debug(`No candles fetched for ${mints.length} mints on ${chain}`, {
+              interval,
+              chain,
+              mints: mints.length,
+            });
+            
+            for (const mint of mints) {
+              if (!failedMints.has(interval)) {
+                failedMints.set(interval, new Map());
+              }
+              if (!failedMints.get(interval)!.has(mint)) {
+                failedMints.get(interval)!.set(mint, new Set());
+              }
+              failedMints.get(interval)!.get(mint)!.add(chain);
+            }
+          }
+
+          // Log worklist generation results for debugging
+          if (spec.verbose || result.worklistGenerated === 0) {
+            ctx.logger.info(`Worklist generation result for ${interval} (${chain})`, {
+              interval,
+              chain,
+              worklistGenerated: result.worklistGenerated,
+              workItemsProcessed: result.workItemsProcessed,
+              workItemsSucceeded: result.workItemsSucceeded,
+              workItemsFailed: result.workItemsFailed,
+              workItemsSkipped: result.workItemsSkipped,
+              totalCandlesFetched: result.totalCandlesFetched,
+              totalCandlesStored: result.totalCandlesStored,
+              errors: result.errors.length,
+              mints: mints.length,
+              dateRange: { from, to },
+            });
+          }
+
+          totalCandlesFetched += result.totalCandlesFetched;
+          totalCandlesStored += result.totalCandlesStored;
+
+          if (result.errors.length > 0) {
+            errors.push(`${interval} (${chain}): ${result.errors.length} errors`);
+            // Log first few errors for debugging
+            if (spec.verbose) {
+              ctx.logger.warn(`Errors for ${interval} interval (${chain}):`, {
+                errors: result.errors.slice(0, 5),
+              });
+            }
+          }
+
+          if (spec.verbose) {
+            ctx.logger.info(`  ✓ ${interval} interval complete for ${chain}`, {
+              task,
+              interval,
+              chain,
+              candlesFetched: result.totalCandlesFetched,
+              candlesStored: result.totalCandlesStored,
+            });
+          } else {
+            ctx.logger.debug(`Completed ${interval} interval for ${chain}`, {
+              task,
+              interval,
+              chain,
+              candlesFetched: result.totalCandlesFetched,
+              candlesStored: result.totalCandlesStored,
+            });
+          }
+        } catch (error) {
+          // Track failure for all mints on this chain
+          for (const mint of mints) {
+            if (!failedMints.has(interval)) {
+              failedMints.set(interval, new Map());
+            }
+            if (!failedMints.get(interval)!.has(mint)) {
+              failedMints.get(interval)!.set(mint, new Set());
+            }
+            failedMints.get(interval)!.get(mint)!.add(chain);
+          }
+
+          // Sanitize error message to prevent leaking sensitive information
+          const rawErrorMessage = error instanceof Error ? error.message : String(error);
+          const sanitizedMessage = sanitizeErrorMessage(rawErrorMessage);
+
+          errors.push(`${interval} (${chain}): ${sanitizedMessage}`);
+          ctx.logger.error(`Failed to fetch ${interval} interval for ${chain}`, {
+            task,
+            interval,
+            chain,
+            error: sanitizedMessage,
+          });
+
+          if (spec.errorMode === 'failFast') {
+            // Create a new error with sanitized message to prevent leaking sensitive info
+            const sanitizedError =
+              error instanceof Error ? new Error(sanitizedMessage) : new Error(sanitizedMessage);
+            // Preserve stack trace if available
+            if (error instanceof Error && error.stack) {
+              sanitizedError.stack = error.stack;
+            }
+            throw sanitizedError;
+          }
+        }
       }
     }
+  }
+
+  // Log failure tracking summary
+  ctx.logger.debug('Failure tracking summary', {
+    failedMintsSize: failedMints.size,
+    failedMintsDetails: Array.from(failedMints.entries()).map(([interval, map]) => ({
+      interval,
+      count: map.size,
+      mints: Array.from(map.keys()).slice(0, 5), // First 5 mints for logging
+    })),
+  });
+
+  // Retry failed mints across all chains and add to exclusions if all fail
+  if (failedMints.size > 0) {
+    const totalFailedMints = Array.from(failedMints.values()).reduce(
+      (sum, map) => sum + map.size,
+      0
+    );
+
+    ctx.logger.info('Retrying failed mints across all chains', {
+      intervalsWithFailures: Array.from(failedMints.keys()),
+      totalFailedMints,
+    });
+
+    if (spec.verbose) {
+      console.error(`\nRetrying ${totalFailedMints} failed mints across all chains...`);
+    }
+
+    for (const [interval, failedMintsForInterval] of failedMints.entries()) {
+      if (failedMintsForInterval.size === 0) continue;
+
+      ctx.logger.info(`Retrying ${failedMintsForInterval.size} failed mints for ${interval}`, {
+        interval,
+        failedMints: Array.from(failedMintsForInterval.keys()),
+      });
+
+      if (spec.verbose) {
+        console.error(`  Retrying ${interval} interval: ${failedMintsForInterval.size} mints`);
+      }
+
+      const retryResult = await retryFailedMintsAcrossAllChains(
+        failedMintsForInterval,
+        interval,
+        from,
+        to,
+        spec,
+        ctx
+      );
+
+      if (retryResult.succeeded.length > 0) {
+        totalCandlesFetched += retryResult.succeeded.length; // Approximate count
+        ctx.logger.info(`Retry succeeded for ${retryResult.succeeded.length} mints`, {
+          interval,
+          succeeded: retryResult.succeeded,
+        });
+        if (spec.verbose) {
+          console.error(`  ✓ ${retryResult.succeeded.length} mints succeeded on retry`);
+        }
+      }
+
+      if (retryResult.excluded.length > 0) {
+        ctx.logger.info(`Added ${retryResult.excluded.length} exclusion entries to DuckDB`, {
+          interval,
+          excluded: retryResult.excluded.map((e) => ({
+            mint: e.tokenAddress,
+            chain: e.chain,
+          })),
+        });
+        if (spec.verbose) {
+          console.error(`  ✗ Added ${retryResult.excluded.length} mints to exclusions (failed on all chains)`);
+        }
+      }
+    }
+  } else {
+    ctx.logger.debug('No failed mints to retry - all fetches succeeded or no failures tracked');
   }
 
   const durationMs = ctx.clock.now().diff(startTime, 'milliseconds').milliseconds;

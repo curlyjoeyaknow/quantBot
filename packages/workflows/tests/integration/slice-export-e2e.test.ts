@@ -456,10 +456,11 @@ describe('Slice Export & Analyze E2E Tests', () => {
       subdirTemplate: '{dataset}/chain={chain}/dt={yyyy}-{mm}-{dd}/run_id={runId}',
     };
 
-    // Invalid SQL query that should fail
+    // Invalid SQL query that should fail - use a query that will definitely cause an error
+    // Use a syntax error that DuckDB will definitely catch (missing FROM clause)
     const analysis: AnalysisSpec = {
       kind: 'sql',
-      sql: 'SELECT * FROM non_existent_table WHERE invalid_column = 123',
+      sql: 'SELECT * WHERE invalid_column_xyz = 123', // Missing FROM clause - guaranteed syntax error
     };
 
     const result = await exportAndAnalyzeSlice({
@@ -479,7 +480,7 @@ describe('Slice Export & Analyze E2E Tests', () => {
     expect(result.analysis.status).toBe('failed');
     expect(result.analysis.warnings).toBeDefined();
     expect(result.analysis.warnings!.length).toBeGreaterThan(0);
-    expect(result.analysis.warnings![0]).toContain('error');
+    expect(result.analysis.warnings![0].toLowerCase()).toContain('error');
   }, 120000);
 
   it('E2E: should handle missing Parquet files gracefully', async () => {

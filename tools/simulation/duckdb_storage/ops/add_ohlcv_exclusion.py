@@ -12,8 +12,9 @@ from ..utils import setup_ohlcv_exclusions_schema
 
 
 class AddOhlcvExclusionInput(BaseModel):
-    mint: str
-    alert_timestamp: str
+    token_address: str
+    chain: str
+    interval: str
     reason: str
 
 
@@ -23,17 +24,18 @@ class AddOhlcvExclusionOutput(BaseModel):
 
 
 def run(con: duckdb.DuckDBPyConnection, input: AddOhlcvExclusionInput) -> AddOhlcvExclusionOutput:
-    """Add token to OHLCV exclusions table."""
+    """Add token to OHLCV exclusions table - matches ClickHouse ohlcv_candles structure."""
     try:
         setup_ohlcv_exclusions_schema(con)
 
         con.execute("""
             INSERT OR REPLACE INTO ohlcv_exclusions_d
-            (mint, alert_timestamp, reason, excluded_at)
-            VALUES (?, ?, ?, ?)
+            (token_address, chain, interval, reason, excluded_at)
+            VALUES (?, ?, ?, ?, ?)
         """, [
-            input.mint,
-            input.alert_timestamp,
+            input.token_address,
+            input.chain,
+            input.interval,
             input.reason,
             datetime.now(),
         ])
