@@ -112,10 +112,11 @@ export function loadTemplates(templates: unknown[]): void {
   for (const templateData of templates) {
     const validation = StrategyTemplateSchema.safeParse(templateData);
     if (!validation.success) {
-      console.warn(`Skipping invalid template: ${validation.error.issues.map((e) => e.message).join(', ')}`);
+      console.warn(
+        `Skipping invalid template: ${validation.error.issues.map((e) => e.message).join(', ')}`
+      );
       continue;
     }
     registerTemplate(validation.data);
   }
 }
-
