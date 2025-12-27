@@ -263,16 +263,4 @@ export function formatOutput(data: unknown, format: OutputFormat = 'table'): str
   return String(data);
 }
 
-/**
- * Create a progress indicator (simple text-based)
- * @deprecated Use progress-indicator.ts instead
- */
-export function createProgressIndicator(current: number, total: number, label?: string): string {
-  const percent = total > 0 ? Math.round((current / total) * 100) : 0;
-  const barLength = 20;
-  const filled = Math.round((percent / 100) * barLength);
-  const bar = '='.repeat(filled) + '-'.repeat(barLength - filled);
-
-  const labelText = label ? `${label}: ` : '';
-  return `${labelText}[${bar}] ${percent}% (${current}/${total})`;
-}
+// createProgressIndicator removed - use progress-indicator.ts instead
