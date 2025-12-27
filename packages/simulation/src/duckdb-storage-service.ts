@@ -97,9 +97,11 @@ export const OhlcvExclusionResultSchema = z.object({
   excluded: z
     .array(
       z.object({
-        mint: z.string(),
-        alert_timestamp: z.string(),
+        token_address: z.string(),
+        chain: z.string(),
+        interval: z.string(),
         reason: z.string(),
+        excluded_at: z.string(),
       })
     )
     .optional(),
@@ -506,8 +508,9 @@ export class DuckDBStorageService {
    */
   async addOhlcvExclusion(
     duckdbPath: string,
-    mint: string,
-    alertTimestamp: string,
+    tokenAddress: string,
+    chain: string,
+    interval: string,
     reason: string
   ): Promise<{ success: boolean; error?: string }> {
     try {
@@ -515,8 +518,9 @@ export class DuckDBStorageService {
         duckdbPath,
         operation: 'add_ohlcv_exclusion',
         data: {
-          mint,
-          alert_timestamp: alertTimestamp,
+          token_address: tokenAddress,
+          chain,
+          interval,
           reason,
         },
       });
@@ -533,19 +537,24 @@ export class DuckDBStorageService {
 
   /**
    * Query OHLCV exclusions to filter out excluded tokens
+   * Matches ClickHouse ohlcv_candles structure: token_address, chain, interval
    */
   async queryOhlcvExclusions(
     duckdbPath: string,
-    mints: string[],
-    alertTimestamps: string[]
+    options?: {
+      tokenAddresses?: string[];
+      chains?: string[];
+      intervals?: string[];
+    }
   ): Promise<OhlcvExclusionResult> {
     try {
       const result = await this.pythonEngine.runDuckDBStorage({
         duckdbPath,
         operation: 'query_ohlcv_exclusions',
         data: {
-          mints,
-          alert_timestamps: alertTimestamps,
+          token_addresses: options?.tokenAddresses,
+          chains: options?.chains,
+          intervals: options?.intervals,
         },
       });
 

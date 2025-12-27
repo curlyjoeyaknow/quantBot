@@ -8,6 +8,7 @@ import type {
   SliceExportResult,
   RunContext,
 } from '../../ports/CandleSlicePort.js';
+import { readAllBytes } from '../../utils/readAllBytes.js';
 
 function sha(s: string): string {
   return crypto.createHash('sha256').update(s).digest('hex');
@@ -46,39 +47,16 @@ function writeJson(p: string, obj: JsonValue) {
 }
 
 async function streamToFile(
-  stream: ReadableStream<Uint8Array> | AsyncIterable<Uint8Array>,
+  stream: ReadableStream<Uint8Array> | AsyncIterable<Uint8Array> | any,
   outPath: string
 ): Promise<void> {
   ensureDir(path.dirname(outPath));
-  const w = fs.createWriteStream(outPath);
-
+  
   try {
-    if (Symbol.asyncIterator in stream) {
-      // AsyncIterable
-      for await (const chunk of stream as AsyncIterable<Uint8Array>) {
-        w.write(Buffer.from(chunk));
-      }
-    } else {
-      // ReadableStream
-      const reader = (stream as ReadableStream<Uint8Array>).getReader();
-      try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          w.write(Buffer.from(value));
-        }
-      } finally {
-        reader.releaseLock();
-      }
-    }
-    w.end();
-    await new Promise<void>((resolve, reject) => {
-      w.on('error', reject);
-      w.on('finish', resolve);
-    });
+    const bytes = await readAllBytes(stream);
+    fs.writeFileSync(outPath, bytes);
   } catch (error) {
-    w.destroy();
-    throw error;
+    throw new Error(`Failed to write stream to file: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
@@ -137,8 +115,12 @@ export class CandleSliceExporter implements CandleSlicePort {
     `.trim();
 
     const res = await this.ch.query({ query, format: 'Parquet' });
-    // ClickHouse Parquet stream - cast through unknown to handle type mismatch
-    await streamToFile(res.stream as unknown as AsyncIterable<Uint8Array>, outParquet);
+    // ClickHouse Parquet stream - handle as function or property
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const streamSource = typeof (res as any).stream === 'function'
+      ? await (res as any).stream()
+      : (res as any).stream ?? (res as any).body ?? res;
+    await streamToFile(streamSource, outParquet);
 
     const tokenSetHash = stableTokenSetHash(spec.tokenIds);
 

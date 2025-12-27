@@ -3,6 +3,7 @@ import { join, dirname } from 'path';
 import { createHash } from 'crypto';
 import { getClickHouseClient } from '../clickhouse-client.js';
 import { logger } from '@quantbot/utils';
+import { readAllBytes } from '../utils/readAllBytes.js';
 import type {
   SliceExporterPort,
   SliceExportSpec,
@@ -113,7 +114,7 @@ export class ClickHouseSliceExporterAdapter implements SliceExporterPort {
     }
 
     if (spec.tokenAddresses && spec.tokenAddresses.length > 0) {
-      const tokenList = spec.tokenAddresses.map((t) => `'${t}'`).join(', ');
+      const tokenList = spec.tokenAddresses.map((t: string) => `'${t}'`).join(', ');
       whereConditions.push(`token_address IN (${tokenList})`);
     }
 
@@ -148,33 +149,27 @@ export class ClickHouseSliceExporterAdapter implements SliceExporterPort {
     });
 
     // Read Parquet data from stream
-    // ClickHouse client returns a stream that can be read as async iterable
-    const stream = result.stream;
-    const chunks: Buffer[] = [];
-
-    // Try to read as async iterable (if supported)
-    if (Symbol.asyncIterator in stream) {
-      for await (const chunk of stream as AsyncIterable<Uint8Array>) {
-        chunks.push(Buffer.from(chunk));
-      }
-    } else {
-      // Fallback: read as ReadableStream (cast through unknown to avoid type errors)
-      const readableStream = stream as unknown as ReadableStream<Uint8Array>;
-      const reader = readableStream.getReader();
-      try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          if (value) {
-            chunks.push(Buffer.from(value));
-          }
-        }
-      } finally {
-        reader.releaseLock();
-      }
+    // ClickHouse client returns a stream that can be read as async iterable or Web ReadableStream
+    // result.stream may be a function that returns the actual stream
+    let parquetData: Buffer;
+    try {
+      // Fix call site: handle result.stream as function or property
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const streamSource = typeof (result as any).stream === 'function'
+        ? await (result as any).stream()
+        : (result as any).stream ?? (result as any).body ?? result;
+      
+      const streamBytes = await readAllBytes(streamSource);
+      parquetData = Buffer.from(streamBytes);
+    } catch (error: unknown) {
+      logger.error('Failed to read Parquet stream from ClickHouse', {
+        error: error instanceof Error ? error.message : String(error),
+        table: tableSpec.tableName,
+      });
+      throw new Error(
+        `Failed to read Parquet stream: ${error instanceof Error ? error.message : String(error)}`
+      );
     }
-
-    const parquetData = Buffer.concat(chunks);
 
     // Determine output path
     const fileName = `${tableSpec.tableName}_${spec.exportId}.parquet`;
