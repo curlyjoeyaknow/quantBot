@@ -160,7 +160,8 @@ describe('DuckDB Storage Bridge Test', () => {
     const result = await storageService.addOhlcvExclusion(
       testDbPath,
       'So11111111111111111111111111111111111111112',
-      '2024-01-01T12:00:00',
+      'solana',
+      '5m',
       'No data available'
     );
 
@@ -173,23 +174,26 @@ describe('DuckDB Storage Bridge Test', () => {
     await storageService.addOhlcvExclusion(
       testDbPath,
       'So11111111111111111111111111111111111111112',
-      '2024-01-01T12:00:00',
+      'solana',
+      '5m',
       'No data available'
     );
 
-    const result = await storageService.queryOhlcvExclusions(
-      testDbPath,
-      ['So11111111111111111111111111111111111111112'],
-      ['2024-01-01T12:00:00']
-    );
+    const result = await storageService.queryOhlcvExclusions(testDbPath, {
+      tokenAddresses: ['So11111111111111111111111111111111111111112'],
+      chains: ['solana'],
+      intervals: ['5m'],
+    });
 
     expect(result.success).toBe(true);
     if (result.excluded) {
       expect(Array.isArray(result.excluded)).toBe(true);
       result.excluded.forEach((item) => {
-        expect(item.mint).toBeDefined();
-        expect(item.alert_timestamp).toBeDefined();
+        expect(item.token_address).toBeDefined();
+        expect(item.chain).toBeDefined();
+        expect(item.interval).toBeDefined();
         expect(item.reason).toBeDefined();
+        expect(item.excluded_at).toBeDefined();
       });
     }
   });

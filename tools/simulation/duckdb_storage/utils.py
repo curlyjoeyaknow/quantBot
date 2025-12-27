@@ -35,14 +35,31 @@ def setup_ohlcv_metadata_schema(con: duckdb.DuckDBPyConnection) -> None:
 
 
 def setup_ohlcv_exclusions_schema(con: duckdb.DuckDBPyConnection) -> None:
-    """Setup OHLCV exclusions table schema."""
+    """Setup OHLCV exclusions table schema - matches ClickHouse ohlcv_candles structure."""
     con.execute("""
         CREATE TABLE IF NOT EXISTS ohlcv_exclusions_d (
-            mint VARCHAR NOT NULL,
-            alert_timestamp TIMESTAMP NOT NULL,
+            token_address VARCHAR NOT NULL,
+            chain VARCHAR NOT NULL,
+            interval VARCHAR NOT NULL,
+            excluded_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
             reason VARCHAR NOT NULL,
-            excluded_at TIMESTAMP NOT NULL,
-            PRIMARY KEY (mint, alert_timestamp)
+            PRIMARY KEY (token_address, chain, interval)
         )
+    """)
+    
+    # Create indexes for efficient queries
+    con.execute("""
+        CREATE INDEX IF NOT EXISTS idx_ohlcv_exclusions_token_address 
+        ON ohlcv_exclusions_d(token_address)
+    """)
+    
+    con.execute("""
+        CREATE INDEX IF NOT EXISTS idx_ohlcv_exclusions_chain 
+        ON ohlcv_exclusions_d(chain)
+    """)
+    
+    con.execute("""
+        CREATE INDEX IF NOT EXISTS idx_ohlcv_exclusions_interval 
+        ON ohlcv_exclusions_d(interval)
     """)
 

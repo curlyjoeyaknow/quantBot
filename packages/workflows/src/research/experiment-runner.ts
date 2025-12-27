@@ -632,9 +632,16 @@ export async function replaySimulation(
  */
 export function getGitSha(): string {
   try {
-    return execSync('git rev-parse HEAD', { encoding: 'utf-8' }).trim();
+    const sha = execSync('git rev-parse HEAD', { encoding: 'utf-8' }).trim();
+    // Validate it's a proper SHA (40 hex chars)
+    if (/^[a-f0-9]{40}$/.test(sha)) {
+      return sha;
+    }
+    // Fallback to placeholder if invalid
+    return '0'.repeat(40);
   } catch {
-    return 'unknown';
+    // Return valid placeholder SHA (40 zeros) instead of 'unknown' to satisfy schema
+    return '0'.repeat(40);
   }
 }
 
