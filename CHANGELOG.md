@@ -36,17 +36,14 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
-- Test independence: Tests no longer import DEFAULT_COST_CONFIG from production code
-- Integration test status documented (duckdb-idempotency.test.ts now passing, OhlcvIngestionService.integration.test.ts documented with known issue)
+- **MEDIUM**: Test independence: Tests no longer import DEFAULT_COST_CONFIG from production code
+- **MEDIUM**: Integration test status documented (duckdb-idempotency.test.ts now passing, OhlcvIngestionService.integration.test.ts documented with known issue)
 
 ### Added
 
 - Added depcheck tool for dependency auditing
 - Added ESLint rule to discourage console usage in workflow code (warn level)
 - Added documentation for test independence requirements
-
-### Technical Debt
-
 - Completed Phase 1 cleanup: dependency management, type consolidation
 - Completed Phase 2 cleanup: test independence, logging standardization
 - Phase 3 (error handling standardization) in progress

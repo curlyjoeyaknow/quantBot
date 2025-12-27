@@ -58,6 +58,7 @@
     "verify:property-tests": "tsx scripts/ci/verify-property-tests.ts",
     "verify:changelog": "tsx scripts/ci/verify-changelog.ts",
     "verify:documentation": "tsx scripts/ci/verify-documentation.ts",
+    "verify:package-versions": "tsx scripts/ci/verify-package-versions.ts",
     "check:coverage-decrease": "tsx scripts/ci/check-coverage-decrease.ts",
     "test:smoke": "vitest run tests/smoke",
     "quality-gates:pr": "pnpm verify:handler-tests && pnpm verify:property-tests && pnpm verify:changelog && pnpm verify:documentation && pnpm test:smoke",
