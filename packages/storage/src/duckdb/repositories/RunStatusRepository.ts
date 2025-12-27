@@ -221,8 +221,7 @@ export class RunStatusRepository {
         error: row.error || undefined,
       }));
 
-      const nextCursor =
-        hasMore && runs.length > 0 ? runs[runs.length - 1]!.createdAt : null;
+      const nextCursor = hasMore && runs.length > 0 ? runs[runs.length - 1]!.createdAt : null;
 
       return { runs, nextCursor };
     } catch (error) {
@@ -265,14 +264,10 @@ export class RunStatusRepository {
 
       params.push(runId);
 
-      await this.db.run(
-        `UPDATE run_status SET ${updates.join(', ')} WHERE run_id = ?`,
-        params
-      );
+      await this.db.run(`UPDATE run_status SET ${updates.join(', ')} WHERE run_id = ?`, params);
     } catch (error) {
       logger.error('Failed to update run status', error as Error, { runId, status });
       throw error;
     }
   }
 }
-

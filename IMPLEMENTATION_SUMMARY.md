@@ -9,10 +9,12 @@ All high and medium priority optional enhancements have been successfully implem
 ### 1. Persist Run Status/Logs to Database ✅
 
 **Repositories Created:**
+
 - `RunStatusRepository` (DuckDB) - 273 lines
 - `RunLogRepository` (ClickHouse) - 246 lines
 
 **Features:**
+
 - Run status persisted to `run_status` table in DuckDB
 - Logs persisted to `run_logs` table in ClickHouse (time-series optimized)
 - Automatic schema initialization
@@ -20,6 +22,7 @@ All high and medium priority optional enhancements have been successfully implem
 - Fallback to legacy `simulation_runs` table for backward compatibility
 
 **Server Integration:**
+
 - `POST /backtest` - Persists initial status immediately
 - Run execution - Updates status at each stage (queued → running → completed/failed)
 - `GET /runs/:runId` - Reads from `run_status` first, falls back to `simulation_runs`
@@ -28,19 +31,23 @@ All high and medium priority optional enhancements have been successfully implem
 ### 2. Implement Artifact Storage and Retrieval ✅
 
 **Repository Created:**
+
 - `ArtifactRepository` (File System) - 78 lines
 
 **Features:**
+
 - Scans artifact directories for common files (Parquet, CSV, JSON, NDJSON, logs)
 - Returns artifact metadata (type, path, size, createdAt)
 - Configurable base directory via `ARTIFACTS_DIR` environment variable
 
 **Server Integration:**
+
 - `GET /runs/:runId/artifacts` - Returns real artifact metadata from file system
 
 ### 3. Implement Metrics Time-Series Queries ✅
 
 **Features:**
+
 - Queries ClickHouse `simulation_events` table for time-series data
 - Returns drawdown (cumulative PnL over time)
 - Returns exposure (position size over time)
@@ -48,6 +55,7 @@ All high and medium priority optional enhancements have been successfully implem
 - Graceful error handling (returns empty arrays if table doesn't exist)
 
 **Server Integration:**
+
 - `GET /runs/:runId/metrics` - Queries ClickHouse with proper error handling
 
 ### 4. Complete Statistics Endpoints ✅
@@ -83,6 +91,7 @@ All high and medium priority optional enhancements have been successfully implem
 ## Database Schemas
 
 ### DuckDB: `run_status` table
+
 ```sql
 CREATE TABLE run_status (
   run_id TEXT PRIMARY KEY,
@@ -99,6 +108,7 @@ CREATE TABLE run_status (
 ```
 
 ### ClickHouse: `run_logs` table
+
 ```sql
 CREATE TABLE run_logs (
   run_id String,
@@ -138,11 +148,13 @@ The only remaining enhancement from the original list is:
 **Status:** ⏸️ Deferred (not critical for current use case)
 
 **Rationale:** Current `setImmediate` approach works well for single-server deployments. Job queue would be beneficial for:
+
 - Multi-server deployments
 - High-volume scenarios
 - Better job cancellation and retry logic
 
 **When to Implement:**
+
 - When scaling to multiple servers
 - When backtest volume exceeds single-server capacity
 - When job cancellation/retry becomes critical
@@ -171,4 +183,3 @@ The only remaining enhancement from the original list is:
 - Error handling is graceful (returns empty arrays/objects on failure)
 - Database schemas are auto-initialized on first use
 - All code follows existing patterns and architecture rules
-

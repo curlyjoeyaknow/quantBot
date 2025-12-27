@@ -218,17 +218,13 @@ fastify.post('/backtest', async (request: FastifyRequest, reply: FastifyReply) =
         });
 
         // Update status with results
-        await statusRepo.updateStatus(
-          runId,
-          'completed',
-          {
-            runId: result.runId,
-            callsFound: result.totals.callsFound,
-            callsSucceeded: result.totals.callsSucceeded,
-            callsFailed: result.totals.callsFailed,
-            trades: result.totals.tradesTotal,
-          }
-        );
+        await statusRepo.updateStatus(runId, 'completed', {
+          runId: result.runId,
+          callsFound: result.totals.callsFound,
+          callsSucceeded: result.totals.callsSucceeded,
+          callsFailed: result.totals.callsFailed,
+          trades: result.totals.tradesTotal,
+        });
 
         await logForRun(runId, 'info', 'Backtest completed successfully');
       } catch (error) {
@@ -387,36 +383,37 @@ fastify.get('/runs', async (request: FastifyRequest, reply: FastifyReply) => {
 
       const rows = await db.all<any>(sql, params as any[]);
 
-      const legacyRuns = rows.map((row: {
-        run_id: string;
-        strategy_id: string;
-        total_return_pct: number | null;
-        max_drawdown_pct: number | null;
-        sharpe_ratio: number | null;
-        win_rate: number | null;
-        total_trades: number | null;
-        created_at: string | null;
-      }) => ({
-        runId: row.run_id,
-        strategyId: row.strategy_id,
-        status: 'completed' as const,
-        summary: {
-          totalPnl: row.total_return_pct || 0,
-          maxDrawdown: row.max_drawdown_pct || 0,
-          sharpeRatio: row.sharpe_ratio || 0,
-          winRate: row.win_rate || 0,
-          trades: row.total_trades || 0,
-        },
-        createdAt: row.created_at ? new Date(row.created_at).toISOString() : '',
-        startedAt: undefined,
-        completedAt: row.created_at ? new Date(row.created_at).toISOString() : undefined,
-      }));
+      const legacyRuns = rows.map(
+        (row: {
+          run_id: string;
+          strategy_id: string;
+          total_return_pct: number | null;
+          max_drawdown_pct: number | null;
+          sharpe_ratio: number | null;
+          win_rate: number | null;
+          total_trades: number | null;
+          created_at: string | null;
+        }) => ({
+          runId: row.run_id,
+          strategyId: row.strategy_id,
+          status: 'completed' as const,
+          summary: {
+            totalPnl: row.total_return_pct || 0,
+            maxDrawdown: row.max_drawdown_pct || 0,
+            sharpeRatio: row.sharpe_ratio || 0,
+            winRate: row.win_rate || 0,
+            trades: row.total_trades || 0,
+          },
+          createdAt: row.created_at ? new Date(row.created_at).toISOString() : '',
+          startedAt: undefined,
+          completedAt: row.created_at ? new Date(row.created_at).toISOString() : undefined,
+        })
+      );
 
       runs.push(...legacyRuns);
     }
 
-    const nextCursor =
-      statusResult.nextCursor ? encodeCursor(statusResult.nextCursor) : null;
+    const nextCursor = statusResult.nextCursor ? encodeCursor(statusResult.nextCursor) : null;
 
     return {
       runs,
@@ -624,7 +621,10 @@ fastify.get(
             : [];
         const exposure =
           exposureResult.status === 'fulfilled'
-            ? ((await exposureResult.value.json()) as Array<{ timestamp: number; exposure: number }>)
+            ? ((await exposureResult.value.json()) as Array<{
+                timestamp: number;
+                exposure: number;
+              }>)
             : [];
         const fills =
           fillsResult.status === 'fulfilled'
@@ -857,9 +857,7 @@ fastify.get('/statistics/overview', async (request: FastifyRequest, reply: Fasti
     const db = await openDuckDb(duckdbPath);
 
     // Query run_status table
-    const statusStats = await db.all<{ count: number }>(
-      `SELECT COUNT(*) as count FROM run_status`
-    );
+    const statusStats = await db.all<{ count: number }>(`SELECT COUNT(*) as count FROM run_status`);
     const totalRunsFromStatus = statusStats[0]?.count || 0;
 
     // Query simulation_runs table
@@ -962,21 +960,23 @@ fastify.get('/statistics/pnl', async (request: FastifyRequest, reply: FastifyRep
     }>(sql, params);
 
     return {
-      pnl: rows.map((row: {
-        period: string;
-        run_count: number;
-        avg_pnl: number;
-        total_pnl: number;
-        min_pnl: number;
-        max_pnl: number;
-      }) => ({
-        period: String(row.period),
-        runCount: row.run_count,
-        avgPnl: row.avg_pnl || 0,
-        totalPnl: row.total_pnl || 0,
-        minPnl: row.min_pnl || 0,
-        maxPnl: row.max_pnl || 0,
-      })),
+      pnl: rows.map(
+        (row: {
+          period: string;
+          run_count: number;
+          avg_pnl: number;
+          total_pnl: number;
+          min_pnl: number;
+          max_pnl: number;
+        }) => ({
+          period: String(row.period),
+          runCount: row.run_count,
+          avgPnl: row.avg_pnl || 0,
+          totalPnl: row.total_pnl || 0,
+          minPnl: row.min_pnl || 0,
+          maxPnl: row.max_pnl || 0,
+        })
+      ),
     };
   } catch (error) {
     fastify.log.error(error);
@@ -1090,15 +1090,13 @@ fastify.get('/statistics/correlation', async (request: FastifyRequest, reply: Fa
     `);
 
     return {
-      correlations: correlations.map((row: {
-        metric1: string;
-        metric2: string;
-        correlation: number;
-      }) => ({
-        metric1: row.metric1,
-        metric2: row.metric2,
-        correlation: row.correlation || 0,
-      })),
+      correlations: correlations.map(
+        (row: { metric1: string; metric2: string; correlation: number }) => ({
+          metric1: row.metric1,
+          metric2: row.metric2,
+          correlation: row.correlation || 0,
+        })
+      ),
     };
   } catch (error) {
     fastify.log.error(error);
