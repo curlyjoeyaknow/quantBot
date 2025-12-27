@@ -1,14 +1,14 @@
 /**
  * Repeat Simulation Helper
  * Utility functions for repeating simulations from previous runs.
- *
+ * 
  * @deprecated This helper is deprecated and kept only for test coverage.
  * SessionService no longer exists in the codebase.
- *
+ * 
  * This code should be removed when:
  * - Tests are migrated to use new session management
  * - Or tests are removed if functionality is no longer needed
- *
+ * 
  * TODO: Remove this file and associated tests when session management is refactored.
  */
 
