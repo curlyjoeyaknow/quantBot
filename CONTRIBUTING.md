@@ -448,6 +448,33 @@ pnpm test packages/cli/tests/unit/handlers/ingestion/ingest-ohlcv.test.ts
 
 ---
 
+## Release Process
+
+### Pre-Release Checklist
+
+1. **Audit package versions** - Run `pnpm release:audit-versions` to check all package versions
+2. **Review version changes** - Ensure all version bumps are appropriate (patch/minor/major)
+3. **Update CHANGELOG.md** - Move `[Unreleased]` entries to versioned section with date
+4. **Generate release notes** - Include package version summary from audit script
+5. **Run quality gates** - `pnpm quality-gates:release`
+6. **Create release tag** - Tag commit with version (e.g., `v1.0.0`)
+
+### Package Version Audit
+
+Before each release, audit all package versions:
+
+```bash
+# Audit versions against latest release tag
+pnpm release:audit-versions
+
+# Or audit against a specific git ref
+pnpm release:audit-versions v1.0.0
+```
+
+**Include the generated summary in release notes** to document all package version changes.
+
+---
+
 ## Pull Request Process
 
 ### Before Submitting
@@ -457,6 +484,7 @@ pnpm test packages/cli/tests/unit/handlers/ingestion/ingest-ohlcv.test.ts
 3. **Run linting** - `pnpm lint:fix`
 4. **Run type checking** - `pnpm typecheck`
 5. **Verify build** - `pnpm build:ordered`
+6. **Bump package version** - Use `pnpm version:bump` if you changed source code
 
 ### PR Checklist
 
@@ -635,6 +663,27 @@ The CI automatically verifies:
 ```bash
 pnpm verify:package-versions
 ```
+
+### Release Process
+
+**Before each release**, audit all package versions:
+
+```bash
+# Audit versions against latest release tag
+pnpm release:audit-versions
+
+# Or audit against a specific git ref
+pnpm release:audit-versions v1.0.0
+```
+
+This generates a summary of:
+- New packages
+- Major version updates (breaking changes)
+- Minor version updates (new features)
+- Patch version updates (bug fixes)
+- Unchanged packages
+
+**Include this summary in release notes** to document all package version changes.
 
 ### Version Bump Helper Script
 

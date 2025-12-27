@@ -585,6 +585,36 @@ export default tseslint.config(
     },
   },
 
+  // CLI Handler Wiring Pattern Enforcement
+  // Handlers should use CommandContext for services, but can create services directly when needed (composition roots)
+  // See docs/architecture/wiring-exceptions.md for documented exceptions
+  {
+    files: ['packages/cli/src/handlers/**/*.ts'],
+    rules: {
+      // Forbid console.log/error in handlers (use logger from context or return structured data)
+      // Note: console.warn/error are allowed for critical errors, but prefer logger
+      'no-console': [
+        'warn', // Warning, not error, to allow gradual migration
+        {
+          allow: ['warn', 'error'], // Allow console.warn/error for critical errors only
+        },
+      ],
+      // Forbid process.exit in handlers (let errors bubble up to executor)
+      'no-restricted-properties': [
+        'error',
+        {
+          object: 'process',
+          property: 'exit',
+          message:
+            'Handlers must not call process.exit(). Let errors bubble up to the executor. The executor handles process.exit.',
+        },
+      ],
+      // Note: We cannot easily detect direct service instantiation with ESLint syntax selectors
+      // This is documented in wiring-exceptions.md and enforced via code review
+      // The pattern is: prefer ctx.services when available, but direct instantiation is acceptable for composition roots
+    },
+  },
+
   // Core boundary: prevent importing execute/normalizeOptions outside core (except defineCommand)
   {
     files: ['packages/cli/src/**/*.ts'],
