@@ -163,7 +163,6 @@ export type SurgicalOhlcvFetchContext = {
   ohlcvIngestionContext: IngestOhlcvContext;
   logger: {
     info: (message: string, meta?: Record<string, unknown>) => void;
-    warn: (message: string, meta?: Record<string, unknown>) => void;
     error: (message: string, meta?: Record<string, unknown>) => void;
     debug: (message: string, meta?: Record<string, unknown>) => void;
   };
@@ -254,13 +253,8 @@ async function retryFailedMintsAcrossAllChains(
 }> {
   const succeeded: string[] = [];
   const excluded: Array<{ tokenAddress: string; chain: string; reason: string }> = [];
-  const allChains: Array<'solana' | 'ethereum' | 'bsc' | 'base'> = [
-    'solana',
-    'ethereum',
-    'bsc',
-    'base',
-  ];
-
+  const allChains: Array<'solana' | 'ethereum' | 'bsc' | 'base'> = ['solana', 'ethereum', 'bsc', 'base'];
+  
   const intervalMap: Record<string, '1s' | '15s' | '1m' | '5m' | '1H'> = {
     '1s': '1s',
     '15s': '15s',
@@ -365,7 +359,7 @@ async function retryFailedMintsAcrossAllChains(
             chain,
             interval,
           });
-
+          
           const exclusionResult = await storageService.addOhlcvExclusion(
             spec.duckdbPath,
             mint,
@@ -373,7 +367,7 @@ async function retryFailedMintsAcrossAllChains(
             interval,
             `Failed to fetch OHLCV on all chains (solana, ethereum, bsc, base) for ${interval} interval`
           );
-
+          
           if (exclusionResult.success) {
             excluded.push({
               tokenAddress: mint,
@@ -403,14 +397,11 @@ async function retryFailedMintsAcrossAllChains(
         triedChains,
       });
     } else if (!foundChain) {
-      ctx.logger.debug(
-        `All chains failed for ${mint} on ${interval}, but skipping exclusion (only exclude 5m/1m)`,
-        {
-          mint,
-          interval,
-          shouldExcludeOnAllFailure,
-        }
-      );
+      ctx.logger.debug(`All chains failed for ${mint} on ${interval}, but skipping exclusion (only exclude 5m/1m)`, {
+        mint,
+        interval,
+        shouldExcludeOnAllFailure,
+      });
     }
   }
 
@@ -476,7 +467,7 @@ async function executeFetchTask(
   // 2. ClickHouse token_metadata (has chain from previous fetches)
   // 3. Fallback to trying all EVM chains for unknown EVM addresses
   const { getDuckDBWorklistService, getClickHouseClient } = await import('@quantbot/storage');
-
+  
   // First, try DuckDB worklist
   const worklistService = getDuckDBWorklistService();
   const worklist = await worklistService.queryWorklist({
@@ -500,7 +491,7 @@ async function executeFetchTask(
   const missingMints = task.missing_mints.filter((mint) => !mintChainMap.has(mint));
   if (missingMints.length > 0) {
     ctx.logger.debug('Querying ClickHouse for chains', { missingMints: missingMints.length });
-
+    
     try {
       const ch = getClickHouseClient();
       const CLICKHOUSE_DATABASE = process.env.CLICKHOUSE_DATABASE || 'quantbot';
@@ -524,12 +515,9 @@ async function executeFetchTask(
             },
           });
 
-          const data = (await result.json()) as Array<{ chain: string }> | undefined;
+          const data = (await result.json()) as Array<{ chain: string }>;
           if (data && data.length > 0) {
-            const firstItem = data[0];
-            if (firstItem) {
-              return { mint, chain: firstItem.chain };
-            }
+            return { mint, chain: data[0].chain };
           }
         } catch (error) {
           ctx.logger.debug('Failed to query ClickHouse for chain', {
@@ -652,7 +640,7 @@ async function executeFetchTask(
                 chain: evmChain,
                 mints: mints.length,
               });
-
+              
               for (const mint of mints) {
                 if (!failedMints.has(interval)) {
                   failedMints.set(interval, new Map());
@@ -662,7 +650,7 @@ async function executeFetchTask(
                 }
                 failedMints.get(interval)!.get(mint)!.add(evmChain);
               }
-
+              
               // No candles - might be wrong chain, continue to next EVM chain
               if (spec.verbose) {
                 ctx.logger.debug(`  No candles for ${evmChain}, trying next chain...`, {
@@ -747,7 +735,7 @@ async function executeFetchTask(
               chain,
               mints: mints.length,
             });
-
+            
             for (const mint of mints) {
               if (!failedMints.has(interval)) {
                 failedMints.set(interval, new Map());
@@ -846,32 +834,15 @@ async function executeFetchTask(
     }
   }
 
-  // Log failure tracking summary (always log this - critical for debugging)
-  const totalFailedMintsCount = Array.from(failedMints.values()).reduce(
-    (sum, map) => sum + map.size,
-    0
-  );
-
-  if (totalFailedMintsCount > 0) {
-    ctx.logger.info(
-      `Failure tracking: ${totalFailedMintsCount} mints failed across all intervals`,
-      {
-        failedMintsSize: failedMints.size,
-        intervalsWithFailures: Array.from(failedMints.keys()),
-        failedMintsDetails: Array.from(failedMints.entries()).map(([interval, map]) => {
-          const firstValue = Array.from(map.values())[0];
-          return {
-            interval,
-            count: map.size,
-            sampleMints: Array.from(map.keys()).slice(0, 2),
-            sampleChains: firstValue ? Array.from(firstValue).slice(0, 4) : [],
-          };
-        }),
-      }
-    );
-  } else {
-    ctx.logger.debug('No failed mints to retry - all fetches succeeded');
-  }
+  // Log failure tracking summary
+  ctx.logger.debug('Failure tracking summary', {
+    failedMintsSize: failedMints.size,
+    failedMintsDetails: Array.from(failedMints.entries()).map(([interval, map]) => ({
+      interval,
+      count: map.size,
+      mints: Array.from(map.keys()).slice(0, 5), // First 5 mints for logging
+    })),
+  });
 
   // Retry failed mints across all chains and add to exclusions if all fail
   if (failedMints.size > 0) {
@@ -930,9 +901,7 @@ async function executeFetchTask(
           })),
         });
         if (spec.verbose) {
-          console.error(
-            `  ✗ Added ${retryResult.excluded.length} mints to exclusions (failed on all chains)`
-          );
+          console.error(`  ✗ Added ${retryResult.excluded.length} mints to exclusions (failed on all chains)`);
         }
       }
     }

@@ -111,9 +111,7 @@ describe('Full Integration: Branch A + B + C', () => {
           profitTargets: [{ target: 2, percent: 0.5 }],
         },
         configHash: createHash('sha256')
-          .update(
-            JSON.stringify({ name: 'test-strategy', profitTargets: [{ target: 2, percent: 0.5 }] })
-          )
+          .update(JSON.stringify({ name: 'test-strategy', profitTargets: [{ target: 2, percent: 0.5 }] }))
           .digest('hex'),
       },
       executionModel,

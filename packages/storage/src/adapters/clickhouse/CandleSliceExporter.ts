@@ -51,14 +51,12 @@ async function streamToFile(
   outPath: string
 ): Promise<void> {
   ensureDir(path.dirname(outPath));
-
+  
   try {
     const bytes = await readAllBytes(stream);
     fs.writeFileSync(outPath, bytes);
   } catch (error) {
-    throw new Error(
-      `Failed to write stream to file: ${error instanceof Error ? error.message : String(error)}`
-    );
+    throw new Error(`Failed to write stream to file: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
@@ -118,11 +116,10 @@ export class CandleSliceExporter implements CandleSlicePort {
 
     const res = await this.ch.query({ query, format: 'Parquet' });
     // ClickHouse Parquet stream - handle as function or property
-
-    const streamSource =
-      typeof (res as any).stream === 'function'
-        ? await (res as any).stream()
-        : ((res as any).stream ?? (res as any).body ?? res);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const streamSource = typeof (res as any).stream === 'function'
+      ? await (res as any).stream()
+      : (res as any).stream ?? (res as any).body ?? res;
     await streamToFile(streamSource, outParquet);
 
     const tokenSetHash = stableTokenSetHash(spec.tokenIds);

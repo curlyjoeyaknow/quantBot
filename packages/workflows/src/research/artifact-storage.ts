@@ -86,17 +86,18 @@ export class FileArtifactStorage {
     if (!parsed.success) {
       // Log validation errors for debugging
       const firstIssue = parsed.error.issues[0];
+      const issueMessage = firstIssue
+        ? `${firstIssue.path.join('.')}: ${firstIssue.message}`
+        : 'Unknown validation error';
       logger.error('Artifact validation failed', {
         runId: artifact.metadata?.runId,
         issueCount: parsed.error.issues.length,
-        firstIssue: firstIssue
-          ? {
-              path: firstIssue.path,
-              message: firstIssue.message,
-              code: firstIssue.code,
-            }
-          : null,
-        allIssues: parsed.error.issues.map((issue) => ({
+        firstIssue: firstIssue ? {
+          path: firstIssue.path,
+          message: firstIssue.message,
+          code: firstIssue.code,
+        } : null,
+        allIssues: parsed.error.issues.map(issue => ({
           path: issue.path,
           message: issue.message,
           code: issue.code,
@@ -106,7 +107,7 @@ export class FileArtifactStorage {
         metadataGitSha: artifact.metadata?.gitSha,
         metadataCreatedAtISO: artifact.metadata?.createdAtISO,
       });
-      throw new ValidationError('Invalid artifact', {
+      throw new ValidationError(`Invalid artifact: ${issueMessage}`, {
         issues: parsed.error.issues,
         runId: artifact.metadata?.runId,
       });
