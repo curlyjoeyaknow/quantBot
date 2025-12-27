@@ -220,7 +220,8 @@ export class DuckDbSliceAnalyzerAdapterImpl implements SliceAnalyzer {
         let summary: Record<string, string | number | boolean | null | string[]> = {};
 
         if (result.rows.length === 0) {
-          // Handle empty result sets
+          // Aggregate queries (COUNT, SUM, etc.) should ALWAYS return at least 1 row
+          // If we get 0 rows, it likely means the query failed or the view wasn't created correctly
           const columnNames = result.columns.map((col) => col.name);
           const isAggregateQuery = /COUNT|SUM|AVG|MIN|MAX/i.test(sql);
           const hasGroupBy = /GROUP\s+BY/i.test(sql);
@@ -272,22 +273,22 @@ export class DuckDbSliceAnalyzerAdapterImpl implements SliceAnalyzer {
             return {
               status: 'failed',
               warnings: [
-                'Aggregate query returned no rows and no column metadata. This may indicate the query failed or the Parquet files could not be read.',
+                'Aggregate query returned no rows. This may indicate the view was not created correctly or the query failed silently.',
               ],
             };
-          } else {
-            // For non-aggregate queries, 0 rows is valid
-            summary = {
-              rows: 0,
-              columns: columnNames,
-            };
-            logger.warn('SQL query returned no rows (but has column metadata)', {
-              runId: manifest.run.runId,
-              sql: sql.substring(0, 100),
-              columnCount: result.columns.length,
-              columnNames,
-            });
           }
+
+          // For non-aggregate queries, 0 rows is valid
+          summary = {
+            rows: 0,
+            columns: columnNames,
+          };
+          logger.warn('SQL query returned no rows (but has column metadata)', {
+            runId: manifest.run.runId,
+            sql: sql.substring(0, 100),
+            columnCount: result.columns.length,
+            columnNames,
+          });
         } else if (result.rows.length === 1) {
           // Single row result - use it directly as summary, but also include columns array
           const row = result.rows[0];
