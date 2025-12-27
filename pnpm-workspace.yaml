@@ -1,5 +1,9 @@
 packages:
   - packages/*
 
+ignoredBuiltDependencies:
+  - duckdb
+
 onlyBuiltDependencies:
   - esbuild
+  - sharp

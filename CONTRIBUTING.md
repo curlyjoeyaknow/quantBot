@@ -6,11 +6,12 @@ Thank you for your interest in contributing to QuantBot! This guide will help yo
 
 1. [Getting Started](#getting-started)
 2. [Development Setup](#development-setup)
-3. [Code Style & Architecture](#code-style--architecture)
-4. [Testing Requirements](#testing-requirements)
-5. [Pull Request Process](#pull-request-process)
-6. [Architecture Rules](#architecture-rules)
-7. [Common Patterns](#common-patterns)
+3. [Git Workflow & Branching Strategy](#git-workflow--branching-strategy)
+4. [Code Style & Architecture](#code-style--architecture)
+5. [Testing Requirements](#testing-requirements)
+6. [Pull Request Process](#pull-request-process)
+7. [Architecture Rules](#architecture-rules)
+8. [Common Patterns](#common-patterns)
 
 ---
 
@@ -124,6 +125,178 @@ To skip hooks (use with caution):
 ```bash
 git commit --no-verify
 ```
+
+### Git Workflow & Branching Strategy
+
+QuantBot uses an **integration branch** workflow designed for worktrees and feature development.
+
+#### The One Rule That Makes This Work
+
+**⚠️ Never develop directly on `integration`.**
+
+`integration` is a **merge target, not a workbench**.
+
+- ✅ Work happens on `feature/*` worktrees
+- ✅ Merges land in `integration`
+- ✅ Only after tests does `integration` merge to `main`
+- ❌ **NEVER** commit directly to `integration`
+- ❌ **NEVER** use `integration` as a development branch
+
+#### Branch Structure
+
+- **`main`** - Production-ready code (sacred, protected)
+- **`integration`** - Battle arena where feature branches merge and get tested
+- **Feature branches** - `feature/*`, `refactor/*`, `fix/*`, etc. (gladiators)
+
+#### Branch Naming Conventions
+
+- **`feature/*`** - New capabilities
+- **`refactor/*`** - Structural changes
+- **`fix/*`** - Bug fixes
+- **`chore/*`** - Dependencies, tooling, config
+- **`spike/*`** - Experiments you might trash later
+
+#### Complete Workflow (Feature → Integration → Main)
+
+##### 1) Create Feature Worktree
+
+**Always branch from `integration` by default** to keep feature work aligned with what's about to be merged:
+
+```bash
+# Fetch latest
+git fetch origin
+
+# Create branch + worktree in one command (prevents mistakes)
+git worktree add -b feature/my-feature ../quantBot-feature integration
+cd ../quantBot-feature
+```
+
+This one-liner:
+
+- Creates branch `feature/my-feature`
+- Creates worktree folder `../quantBot-feature`
+- Bases it off `integration` (keeps you aligned)
+
+##### 2) Work + Commit Normally
+
+```bash
+# Make your changes
+pnpm test
+git add -A
+git commit -m "feat: my feature"
+git push -u origin feature/my-feature
+```
+
+##### 3) Merge to Integration
+
+```bash
+# From your main repo (or the same worktree)
+git checkout integration
+git pull origin integration
+git merge --no-ff feature/my-feature  # --no-ff keeps feature boundaries visible
+git push origin integration
+```
+
+**Why `--no-ff`?** Keeps feature boundaries visible in history. Given you're using worktrees and doing big refactors, this is the sweet spot.
+
+##### 4) Run Integration Tests
+
+```bash
+# Verify integration is green
+pnpm test
+# or your full CI-equivalent command
+```
+
+##### 5) Merge Integration → Main (Only After Green)
+
+```bash
+git checkout main
+git pull origin main
+git merge --no-ff integration
+git push origin main
+```
+
+**Only merge `integration` → `main` when:**
+
+- ✅ Integration CI is green
+- ✅ Integration tests pass
+- ✅ You're confident the changes are production-ready
+
+#### Branch Hygiene
+
+**Always branch from `integration` by default:**
+
+- Keeps feature work aligned with what's about to be merged
+- Reduces surprise conflicts
+- Prevents divergence
+
+**Keep integration linear-ish:**
+
+- Prefer `--no-ff` merges into `integration` (keeps feature boundaries visible)
+- Alternative: squash merges (keeps it tidy, but feature branch history won't matter)
+- For worktrees and big refactors: `--no-ff` is the sweet spot
+
+#### Ripwires (Prevents Integration from Rotting)
+
+**Ripwire 1: Branch Protections (Minimum Viable)**
+
+- Protect `main`: PR required, CI required
+- Protect `integration`: CI required
+- Disallow direct pushes to `main` (and ideally `integration` too, unless via PR)
+
+**Ripwire 2: "Integration Must Be Green" Rule**
+
+- No merge into `main` unless `integration` CI is green on the merge commit
+- Integration is the gatekeeper
+
+**Ripwire 3: Keep Integration Synced with Main (Optional but Good)**
+
+If you hotfix `main`, bring it back into `integration` immediately after:
+
+```bash
+git checkout integration
+git pull origin integration
+git merge --no-ff main
+git push origin integration
+```
+
+This prevents "main diverged and integration is lying to you."
+
+#### Worktree Management
+
+**List worktrees:**
+
+```bash
+git worktree list
+```
+
+**Remove worktree:**
+
+```bash
+# From the worktree directory
+cd ../quantBot-feature
+git worktree remove .
+# Or from main repo
+git worktree remove ../quantBot-feature
+```
+
+**Clean up after merging:**
+
+```bash
+# After feature is merged and no longer needed
+git branch -d feature/my-feature  # Delete local branch
+git push origin --delete feature/my-feature  # Delete remote branch
+```
+
+#### Example: Momentum Pattern
+
+For multiple small fixes:
+
+- `fix/manifest-file-uri`
+- `fix/analysis-summary-columns`
+- `fix/artifact-storage-logger`
+
+Three tiny branches, three merges into `integration`, one clean "integration goes green" moment, then ship to `main`.
 
 ---
 

@@ -58,6 +58,7 @@ export const AnalyzeCoverageSpecSchema = z.object({
   caller: z.string().optional(), // For caller-specific analysis
   minCoverage: z.number().min(0).max(1).default(0.8), // For caller analysis
   generateFetchPlan: z.boolean().default(false), // For caller analysis
+  timeoutMs: z.number().int().positive().optional(), // Timeout in milliseconds
 });
 
 export type AnalyzeCoverageSpec = z.infer<typeof AnalyzeCoverageSpecSchema>;
@@ -204,11 +205,12 @@ async function analyzeOverallCoverage(
   const workspaceRoot = findWorkspaceRoot();
   const scriptPath = join(workspaceRoot, 'tools/analysis/ohlcv_coverage_map.py');
 
-  // Allow callers to extend the Python coverage timeout via env; default to 5 minutes
+  // Allow callers to extend the Python coverage timeout via spec, env, or default to 15 minutes
   const coverageTimeoutMs =
-    Number(process.env.OHLCV_COVERAGE_TIMEOUT_MS) > 0
+    spec.timeoutMs ??
+    (Number(process.env.OHLCV_COVERAGE_TIMEOUT_MS) > 0
       ? Number(process.env.OHLCV_COVERAGE_TIMEOUT_MS)
-      : 300_000;
+      : 900_000); // 15 minutes default
 
   const result = await pythonEngine.runScript(scriptPath, args, resultSchema, {
     timeout: coverageTimeoutMs,
@@ -289,11 +291,12 @@ async function analyzeCallerCoverage(
   const workspaceRoot = findWorkspaceRoot();
   const scriptPath = join(workspaceRoot, 'tools/analysis/ohlcv_caller_coverage.py');
 
-  // Allow callers to extend the Python coverage timeout via env; default to 5 minutes
+  // Allow callers to extend the Python coverage timeout via spec, env, or default to 15 minutes
   const coverageTimeoutMs =
-    Number(process.env.OHLCV_COVERAGE_TIMEOUT_MS) > 0
+    spec.timeoutMs ??
+    (Number(process.env.OHLCV_COVERAGE_TIMEOUT_MS) > 0
       ? Number(process.env.OHLCV_COVERAGE_TIMEOUT_MS)
-      : 300_000;
+      : 900_000); // 15 minutes default
 
   const result = await pythonEngine.runScript(scriptPath, args, resultSchema, {
     timeout: coverageTimeoutMs,

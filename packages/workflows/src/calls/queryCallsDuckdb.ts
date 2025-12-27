@@ -9,12 +9,19 @@
  * - Validates spec with Zod
  * - Uses WorkflowContext for all dependencies
  * - Returns JSON-serializable results
+ *
+ * TODO: Future Port Migration
+ * ===========================
+ * This workflow currently uses `ctx.services.duckdbStorage.queryCalls()` which is not a port.
+ * Future work: Move query logic to `packages/storage/src/duckdb/repositories/CallsRepository.ts`
+ * as a repository interface, or add a `CallsPort` to `@quantbot/core/src/ports/` if calls
+ * querying becomes a first-class port.
  */
 
 import { z } from 'zod';
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+
 import { DateTime } from 'luxon';
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+
 import { ValidationError, ConfigurationError } from '@quantbot/utils';
 import type { WorkflowContext, CallRecord } from '../types.js';
 
@@ -78,7 +85,8 @@ export async function createQueryCallsDuckdbContext(
   const { PythonEngine } = await import('@quantbot/utils');
 
   const baseContext = createProductionContext();
-  const dbPath = duckdbPath || process.env.DUCKDB_PATH || 'data/tele.duckdb';
+  const { getDuckDBPath } = await import('@quantbot/utils');
+  const dbPath = duckdbPath || getDuckDBPath('data/tele.duckdb');
   const pythonEngine = new PythonEngine();
   const duckdbStorage = new DuckDBStorageService(pythonEngine);
 

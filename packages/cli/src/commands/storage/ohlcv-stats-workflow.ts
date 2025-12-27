@@ -16,7 +16,7 @@ import {
  * Input arguments (already validated by Zod)
  */
 export type OhlcvStatsWorkflowArgs = {
-  chain?: 'solana' | 'ethereum' | 'bsc' | 'base';
+  chain?: 'solana' | 'ethereum' | 'bsc' | 'base' | 'evm';
   interval?: '1m' | '5m' | '15m' | '1h' | '4h' | '1d';
   mint?: string;
   format?: 'json' | 'table' | 'csv';

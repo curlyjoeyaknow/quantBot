@@ -17,13 +17,13 @@ export async function evaluateCallsHandler(_args: EvaluateCallsArgs, _ctx: Comma
   // Load CallSignal[] from JSON file
   let calls: CallSignal[];
   try {
-    const fileContent = readFileSync(args.callsFile, 'utf-8');
+    const fileContent = readFileSync(_args.callsFile, 'utf-8');
     const parsed = JSON.parse(fileContent);
 
     // Validate it's an array
     if (!Array.isArray(parsed)) {
       throw new ValidationError('Calls file must contain a JSON array of CallSignal objects', {
-        callsFile: args.callsFile,
+        callsFile: _args.callsFile,
       });
     }
 
@@ -32,8 +32,8 @@ export async function evaluateCallsHandler(_args: EvaluateCallsArgs, _ctx: Comma
     if (error instanceof ValidationError) {
       throw error;
     }
-    throw new ConfigurationError(`Failed to load calls from ${args.callsFile}`, 'callsFile', {
-      callsFile: args.callsFile,
+    throw new ConfigurationError(`Failed to load calls from ${_args.callsFile}`, 'callsFile', {
+      callsFile: _args.callsFile,
       error: error instanceof Error ? error.message : String(error),
     });
   }
@@ -42,19 +42,19 @@ export async function evaluateCallsHandler(_args: EvaluateCallsArgs, _ctx: Comma
   const request: EvaluateCallsRequest = {
     calls,
     align: {
-      lagMs: args.lagMs,
-      entryRule: args.entryRule,
-      timeframeMs: args.timeframeMs,
-      interval: args.interval,
+      lagMs: _args.lagMs,
+      entryRule: _args.entryRule,
+      timeframeMs: _args.timeframeMs,
+      interval: _args.interval,
     },
     backtest: {
       fee: {
-        takerFeeBps: args.takerFeeBps,
-        slippageBps: args.slippageBps,
+        takerFeeBps: _args.takerFeeBps,
+        slippageBps: _args.slippageBps,
       },
-      overlays: args.overlays,
+      overlays: _args.overlays,
       position: {
-        notionalUsd: args.notionalUsd,
+        notionalUsd: _args.notionalUsd,
       },
     },
   };

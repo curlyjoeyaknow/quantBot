@@ -24,7 +24,8 @@ export function calculateMetrics(tradeEvents: TradeEvent[], pnlSeries: PnLSeries
   // Drawdown metrics
   const drawdowns = pnlSeries.map((p) => p.drawdown).filter((d) => Number.isFinite(d));
   const maxDrawdown = drawdowns.length > 0 ? Math.max(...drawdowns, 0) : 0;
-  const avgDrawdown = drawdowns.length > 0 ? drawdowns.reduce((sum, d) => sum + d, 0) / drawdowns.length : 0;
+  const avgDrawdown =
+    drawdowns.length > 0 ? drawdowns.reduce((sum, d) => sum + d, 0) / drawdowns.length : 0;
 
   // Hit rate
   const entries = tradeEvents.filter((t) => t.type === 'entry');
@@ -77,7 +78,8 @@ export function calculateMetrics(tradeEvents: TradeEvent[], pnlSeries: PnLSeries
   return {
     return: {
       total: Number.isFinite(totalReturn) ? totalReturn : 1.0,
-      perTrade: totalTrades > 0 && Number.isFinite(totalReturn) ? totalReturn / totalTrades : undefined,
+      perTrade:
+        totalTrades > 0 && Number.isFinite(totalReturn) ? totalReturn / totalTrades : undefined,
     },
     drawdown: {
       max: Number.isFinite(maxDrawdown) ? Math.max(0, maxDrawdown) : 0,
@@ -85,12 +87,14 @@ export function calculateMetrics(tradeEvents: TradeEvent[], pnlSeries: PnLSeries
     },
     hitRate: {
       overall: Number.isFinite(overallHitRate) ? Math.max(0, Math.min(1, overallHitRate)) : 0,
-      entries: entries.length > 0 && Number.isFinite(successfulExits.length / entries.length)
-        ? Math.max(0, Math.min(1, successfulExits.length / entries.length))
-        : undefined,
-      exits: exitCount > 0 && Number.isFinite(successfulExits.length / exitCount)
-        ? Math.max(0, Math.min(1, successfulExits.length / exitCount))
-        : undefined,
+      entries:
+        entries.length > 0 && Number.isFinite(successfulExits.length / entries.length)
+          ? Math.max(0, Math.min(1, successfulExits.length / entries.length))
+          : undefined,
+      exits:
+        exitCount > 0 && Number.isFinite(successfulExits.length / exitCount)
+          ? Math.max(0, Math.min(1, successfulExits.length / exitCount))
+          : undefined,
     },
     trades: {
       total: Math.max(0, totalTrades),
@@ -106,17 +110,24 @@ export function calculateMetrics(tradeEvents: TradeEvent[], pnlSeries: PnLSeries
     },
     feeSensitivity: {
       totalFees: Number.isFinite(totalFees) ? Math.max(0, totalFees) : 0,
-      feesAsPercentOfReturn: feesAsPercentOfReturn !== undefined && Number.isFinite(feesAsPercentOfReturn)
-        ? Math.max(0, feesAsPercentOfReturn)
-        : undefined,
+      feesAsPercentOfReturn:
+        feesAsPercentOfReturn !== undefined && Number.isFinite(feesAsPercentOfReturn)
+          ? Math.max(0, feesAsPercentOfReturn)
+          : undefined,
       averageFeePerTrade: Number.isFinite(averageFeePerTrade) ? Math.max(0, averageFeePerTrade) : 0,
     },
     latencySensitivity:
       latencies.length > 0
         ? {
             averageLatencyMs: Number.isFinite(averageLatencyMs) ? Math.max(0, averageLatencyMs) : 0,
-            p90LatencyMs: p90LatencyMs !== undefined && Number.isFinite(p90LatencyMs) ? Math.max(0, p90LatencyMs) : undefined,
-            p99LatencyMs: p99LatencyMs !== undefined && Number.isFinite(p99LatencyMs) ? Math.max(0, p99LatencyMs) : undefined,
+            p90LatencyMs:
+              p90LatencyMs !== undefined && Number.isFinite(p90LatencyMs)
+                ? Math.max(0, p90LatencyMs)
+                : undefined,
+            p99LatencyMs:
+              p99LatencyMs !== undefined && Number.isFinite(p99LatencyMs)
+                ? Math.max(0, p99LatencyMs)
+                : undefined,
           }
         : undefined,
   };
@@ -156,14 +167,23 @@ function createEmptyMetrics(): RunMetrics {
  *
  * This builds a time series of cumulative PnL and drawdown.
  */
+/**
+ * Calculate PnL series from trade events
+ *
+ * @param tradeEvents - Array of trade events
+ * @param initialCapital - Starting capital (default: 1.0)
+ * @param timestampISO - Optional timestamp for empty series (defaults to first event timestamp)
+ */
 export function calculatePnLSeries(
   tradeEvents: TradeEvent[],
-  initialCapital: number = 1.0
+  initialCapital: number = 1.0,
+  timestampISO?: string
 ): PnLSeries[] {
   if (tradeEvents.length === 0) {
+    // Use provided timestamp or empty string (caller should provide if needed)
     return [
       {
-        timestampISO: new Date().toISOString(),
+        timestampISO: timestampISO ?? '',
         cumulativePnL: 1.0,
         runningTotal: initialCapital,
         drawdown: 0,

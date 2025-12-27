@@ -24,7 +24,7 @@ export async function smokeStatePort(): Promise<void> {
     // Test set
     const setResult = await ports.state.set({
       key: 'smoke_test',
-      value: { test: true, timestamp: Date.now() },
+      value: { test: true, timestamp: ports.clock.nowMs() },
       namespace: 'smoke_tests',
       ttlSeconds: 60,
     });

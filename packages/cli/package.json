@@ -5,6 +5,7 @@
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "_comment": "No 'exports' field - CLI is an application, not a library. It should not be imported by other packages.",
   "bin": {
     "quantbot": "./dist/bin/quantbot.js"
   },

@@ -49,9 +49,11 @@ export async function ingestOhlcvHandler(args: IngestOhlcvArgs, _ctx: CommandCon
   }
   const duckdbPath = path.resolve(duckdbPathRaw);
 
-  // Map interval to workflow format (workflow only accepts '15s', '1m', '5m', '1H')
-  let workflowInterval: '15s' | '1m' | '5m' | '1H' = '5m'; // Default to 5m
-  if (args.interval === '1s' || args.interval === '15s') {
+  // Map interval to workflow format (workflow accepts '1s', '15s', '1m', '5m', '1H')
+  let workflowInterval: '1s' | '15s' | '1m' | '5m' | '1H' = '5m'; // Default to 5m
+  if (args.interval === '1s') {
+    workflowInterval = '1s'; // Pass 1s through to workflow
+  } else if (args.interval === '15s') {
     workflowInterval = '15s';
   } else if (args.interval === '1m') {
     workflowInterval = '1m';
@@ -122,9 +124,7 @@ function buildSummary(output: Awaited<ReturnType<typeof ingestOhlcv>>): unknown 
     ...(output.errors && output.errors.length > 0
       ? output.errors.map((err) => ({
           type: 'ERROR',
-          mint: err.mint
-            ? String(err.mint)
-            : 'unknown',
+          mint: err.mint ? String(err.mint) : 'unknown',
           chain: err.chain ?? 'unknown',
           error: err.error,
         }))

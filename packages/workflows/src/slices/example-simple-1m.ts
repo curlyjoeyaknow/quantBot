@@ -80,4 +80,3 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 }
 
 export { exampleExport1mCandles };
-

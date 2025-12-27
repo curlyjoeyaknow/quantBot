@@ -75,7 +75,14 @@ describe('OHLCVCache', () => {
       expect(cache.get(tokenAddress, startTime, endTime, '5m')).toEqual(data5m);
     });
 
-    it('should respect TTL and expire entries', async () => {
+    it('should respect TTL and expire entries', () => {
+      // Use deterministic clock for predictable TTL testing
+      let currentTime = 1000000; // Fixed starting time
+      const testClock = {
+        nowMs: () => currentTime,
+      };
+
+      const cacheWithClock = new OHLCVCache(100, testClock);
       const tokenAddress = 'token1';
       const startTime = DateTime.fromISO('2024-01-01T00:00:00Z').toJSDate();
       const endTime = DateTime.fromISO('2024-01-02T00:00:00Z').toJSDate();
@@ -90,16 +97,17 @@ describe('OHLCVCache', () => {
         },
       ];
 
-      cache.set(tokenAddress, startTime, endTime, data, '1m', 0.001); // Very short TTL (0.001 minutes = 60ms)
+      // Set cache entry with 60ms TTL
+      cacheWithClock.set(tokenAddress, startTime, endTime, data, '1m', 0.001); // 0.001 minutes = 60ms
 
       // Should be available immediately
-      expect(cache.get(tokenAddress, startTime, endTime, '1m')).toEqual(data);
+      expect(cacheWithClock.get(tokenAddress, startTime, endTime, '1m')).toEqual(data);
 
-      // Wait for TTL to expire
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      // Advance clock past TTL (60ms)
+      currentTime += 61; // 61ms > 60ms TTL
 
       // Should be expired
-      expect(cache.get(tokenAddress, startTime, endTime, '1m')).toBeNull();
+      expect(cacheWithClock.get(tokenAddress, startTime, endTime, '1m')).toBeNull();
     });
   });
 

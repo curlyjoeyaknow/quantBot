@@ -1,7 +1,7 @@
 import { ConfigurationError } from '@quantbot/utils';
 import type { WorkflowContextWithPorts } from '../context/workflowContextWithPorts.js';
 import { createOhlcvIngestionContext } from '../context/createOhlcvIngestionContext.js';
-import { createTokenAddress } from '@quantbot/core';
+import { createTokenAddress, normalizeChain } from '@quantbot/core';
 
 export type IngestOhlcvWorkflowInput = {
   mint?: string;
@@ -9,7 +9,7 @@ export type IngestOhlcvWorkflowInput = {
   to?: string;
   interval: '15s' | '1m' | '5m' | '15m' | '1H' | '4H' | '1D';
   duckdbPath: string;
-  chain?: 'solana' | 'evm';
+  chain?: 'solana' | 'ethereum' | 'bsc' | 'base' | 'evm';
 };
 
 export type IngestOhlcvWorkflowOutput = {
@@ -77,7 +77,9 @@ export async function ingestOhlcvWorkflowPorted(
       try {
         // Use ctx.ports.marketData - NO raw BirdeyeClient calls!
         const tokenAddress = createTokenAddress(input.mint);
-        const chain = input.chain === 'evm' ? 'ethereum' : (input.chain ?? 'solana');
+        // Normalize chain to lowercase - if 'evm', use 'ethereum' as default for API calls
+        const normalizedChain = normalizeChain(input.chain ?? 'solana');
+        const chain = normalizedChain === 'evm' ? 'ethereum' : normalizedChain;
 
         // Convert ISO strings to UNIX timestamps (seconds)
         // Use workflowCtx.ports.clock instead of Date.now() for determinism

@@ -2,6 +2,55 @@
 
 All notable changes to this project will be documented in this file.
 
+## [Unreleased]
+
+### Added
+
+- **Wiring Improvements & Verification** - Comprehensive wiring pattern implementation and verification
+  - Verified `StrategiesRepository` through `CommandContext` in list-strategies command
+  - Created verification tests: `command-context-wiring.test.ts` (5 tests passing)
+  - Created verification status document: `wiring-verification-status.md`
+  - Created wiring pattern tests: `handler-wiring-patterns.test.ts`, `wiring-patterns.test.ts`, `wiring-integration.test.ts`
+  - Documented wiring exceptions: `wiring-exceptions.md` with comprehensive documentation
+  - All direct instantiations are documented as acceptable in composition roots
+  - Location: `packages/cli/tests/unit/core/`, `docs/architecture/wiring-*.md`
+  - Ensures handlers use `CommandContext` services and workflows use `WorkflowContext` (no direct instantiation)
+
+- **Gate 2: Causal Candle Accessor Implementation** - Enforces causality in simulation candle access
+  - `CausalCandleAccessor` interface and `CausalCandleWrapper` class for causal candle filtering
+  - `StorageCausalCandleAccessor` implementation wrapping `StorageEngine` with causal filtering
+  - `simulateStrategyWithCausalAccessor()` function for time-based simulation loop
+  - `updateIndicatorsIncremental()` for incremental indicator calculations
+  - Integration into `WorkflowContext` via `ohlcv.causalAccessor`
+  - Comprehensive tests: `causal-accessor.test.ts`, `causal-vs-upfront.test.ts`, updated `future-scramble.test.ts`
+  - Location: `packages/simulation/src/types/causal-accessor.ts`, `packages/workflows/src/context/causal-candle-accessor.ts`
+  - Ensures at simulation time `t`, it is impossible to fetch candles with `close_time > t`
+
+### Changed
+
+- Deprecated `@quantbot/utils/types.ts` - types should now be imported directly from `@quantbot/core`
+- Migrated test files to use independent math helpers instead of importing production constants (fee-rounding.test.ts, fees.property.test.ts)
+- Migrated console logging to logger in executionStubAdapter (workflows package)
+- Simulation workflow now uses `CausalCandleAccessor` for incremental candle fetching instead of upfront fetching
+- `WorkflowContext.ohlcv.getCandles()` marked as optional legacy method (use `causalAccessor` instead)
+
+### Fixed
+
+- Test independence: Tests no longer import DEFAULT_COST_CONFIG from production code
+- Integration test status documented (duckdb-idempotency.test.ts now passing, OhlcvIngestionService.integration.test.ts documented with known issue)
+
+### Added
+
+- Added depcheck tool for dependency auditing
+- Added ESLint rule to discourage console usage in workflow code (warn level)
+- Added documentation for test independence requirements
+
+### Technical Debt
+
+- Completed Phase 1 cleanup: dependency management, type consolidation
+- Completed Phase 2 cleanup: test independence, logging standardization
+- Phase 3 (error handling standardization) in progress
+
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 

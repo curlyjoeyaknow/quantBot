@@ -1,0 +1,151 @@
+---
+title: Live Monitoring E2E Flow
+description: Complete flow for live monitoring from Telegram channel messages through CA drop detection, price tracking, to alerts
+---
+
+# Live Monitoring E2E Flow
+
+## Overview
+
+This diagram shows the proposed end-to-end flow for live monitoring, including CA drop detection from Telegram channels, real-time price tracking via WebSocket/Yellowstone streams, alert evaluation, and notifications.
+
+## Key Concepts
+
+- **CA Drop Detection**: Parse Telegram channel messages for token addresses
+- **Watchlist Management**: Track monitored tokens with cooldown logic
+- **Real-Time Price Tracking**: WebSocket streams from Helius/Shyft
+- **Alert Evaluation**: Check profit targets, stop-loss conditions
+- **Performance Summaries**: Hourly and daily reports
+
+## Diagram
+
+```mermaid
+flowchart TD
+    subgraph telegram[Telegram Channels]
+        channel1[Brook Channel]
+        channel2[CurlyJoe Channel]
+        channel3[Custom Channels]
+    end
+
+    subgraph detection[CA Drop Detection]
+        messageParser[Message Parser<br/>Extract mint addresses]
+        tokenExtractor[Token Extractor<br/>Validate Solana addresses]
+        deduplication[Deduplication<br/>Prevent duplicate alerts]
+    end
+
+    subgraph watchlist[Watchlist Management]
+        registerToken[Register Token<br/>Add to watchlist]
+        cooldownCheck[Cooldown Check<br/>Prevent spam alerts]
+        watchlistDb[Watchlist Storage<br/>DuckDB]
+    end
+
+    subgraph priceTracking[Real-Time Price Tracking]
+        websocket[WebSocket Stream<br/>Helius/Shyft]
+        yellowstone[Yellowstone gRPC<br/>Account updates]
+        priceUpdates[Price Updates<br/>Real-time]
+    end
+
+    subgraph alertEvaluation[Alert Evaluation]
+        profitTargets[Profit Targets<br/>2x, 5x, 10x]
+        stopLoss[Stop-Loss<br/>Price drop threshold]
+        ichimoku[Ichimoku Cloud<br/>Technical indicators]
+    end
+
+    subgraph notifications[Notification Service]
+        telegramBot[Telegram Bot<br/>Send alerts]
+        alertFormatting[Format Alert<br/>Token, price, change]
+        cooldownEnforcement[Enforce Cooldown<br/>Per token, per alert type]
+    end
+
+    subgraph summaries[Performance Summaries]
+        hourlySummary[Hourly Summary<br/>Aggregate performance]
+        dailySummary[Daily Summary<br/>Daily report]
+        summaryFormatting[Format Summary<br/>Markdown table]
+    end
+
+    channel1 --> messageParser
+    channel2 --> messageParser
+    channel3 --> messageParser
+
+    messageParser --> tokenExtractor
+    tokenExtractor --> deduplication
+    deduplication --> registerToken
+
+    registerToken --> cooldownCheck
+    cooldownCheck -->|new token| watchlistDb
+    cooldownCheck -->|in cooldown| skip[Skip registration]
+
+    watchlistDb --> websocket
+    watchlistDb --> yellowstone
+
+    websocket --> priceUpdates
+    yellowstone --> priceUpdates
+
+    priceUpdates --> profitTargets
+    priceUpdates --> stopLoss
+    priceUpdates --> ichimoku
+
+    profitTargets -->|target hit| alertEvaluation
+    stopLoss -->|stop hit| alertEvaluation
+    ichimoku -->|signal| alertEvaluation
+
+    alertEvaluation --> cooldownEnforcement
+    cooldownEnforcement -->|cooldown passed| alertFormatting
+    cooldownEnforcement -->|in cooldown| skipAlert[Skip alert]
+
+    alertFormatting --> telegramBot
+    telegramBot --> channel1
+    telegramBot --> channel2
+
+    priceUpdates --> hourlySummary
+    priceUpdates --> dailySummary
+    hourlySummary --> summaryFormatting
+    dailySummary --> summaryFormatting
+    summaryFormatting --> telegramBot
+
+    style channel1 fill:#e1f5ff
+    style priceUpdates fill:#fff3cd
+    style alertEvaluation fill:#f8d7da
+    style telegramBot fill:#d4edda
+```
+
+## Price Update Flow
+
+```mermaid
+sequenceDiagram
+    participant Stream as WebSocket/Yellowstone
+    participant Monitor as Monitoring Service
+    participant Watchlist as Watchlist DB
+    participant Evaluator as Alert Evaluator
+    participant Cooldown as Cooldown Manager
+    participant Bot as Telegram Bot
+
+    Stream->>Monitor: Price update event
+    Monitor->>Watchlist: Get active tokens
+    Watchlist-->>Monitor: Return token list
+    
+    loop For each token
+        Monitor->>Evaluator: Evaluate alerts<br/>profit targets, stop-loss
+        Evaluator->>Evaluator: Check conditions
+        Evaluator-->>Monitor: Alert triggered or not
+        
+        alt Alert triggered
+            Monitor->>Cooldown: Check cooldown<br/>token + alert type
+            Cooldown-->>Monitor: Cooldown status
+            
+            alt Cooldown passed
+                Monitor->>Bot: Send alert
+                Bot->>Cooldown: Record alert time
+            else In cooldown
+                Monitor->>Monitor: Skip alert
+            end
+        end
+    end
+```
+
+## Related Documentation
+
+- [Monitoring Package Rules](../../.cursor/rules/packages-monitoring.mdc)
+- [README.md](../../README.md) - Real-Time CA Monitoring
+- [WORKFLOW_ARCHITECTURE.md](../WORKFLOW_ARCHITECTURE.md)
+

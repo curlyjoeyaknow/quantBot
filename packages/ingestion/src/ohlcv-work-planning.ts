@@ -18,23 +18,13 @@
 
 import { resolve } from 'path';
 import { DateTime } from 'luxon';
-import type { Chain } from '@quantbot/core';
+import type { Chain, OhlcvWorkItem } from '@quantbot/core';
+import { normalizeChain } from '@quantbot/core';
 import { logger } from '@quantbot/utils';
 import { getDuckDBWorklistService } from '@quantbot/storage';
 
-/**
- * Work item for OHLCV fetching
- */
-export interface OhlcvWorkItem {
-  mint: string;
-  chain: Chain;
-  interval: '1s' | '15s' | '1m' | '5m' | '1H';
-  startTime: DateTime;
-  endTime: DateTime;
-  priority?: number;
-  alertTime?: DateTime; // Original alert time for context
-  callCount?: number; // Number of calls for this mint
-}
+// Re-export OhlcvWorkItem from core for backward compatibility
+export type { OhlcvWorkItem } from '@quantbot/core';
 
 /**
  * Options for generating worklist
@@ -68,7 +58,7 @@ export async function generateOhlcvWorklist(
     from,
     to,
     side = 'buy',
-    chain = 'solana',
+    chain: rawChain = 'solana',
     interval = '1m',
     // Default windows to ensure 5000 candles are fetched for each interval
     // For 1m: 5000 candles = 5000 minutes = ~83.3 hours
@@ -80,6 +70,9 @@ export async function generateOhlcvWorklist(
     // Default to 1m calculation (4740), but this should be adjusted based on interval
     postWindowMinutes = 4740, // Default: 4740 minutes to get 5000 candles for 1m interval
   } = options;
+
+  // Normalize chain to lowercase
+  const chain = normalizeChain(rawChain) as Chain;
 
   // Convert relative paths to absolute paths (Python scripts run from different working directories)
   const absoluteDuckdbPath = resolve(process.cwd(), duckdbPath);
@@ -145,28 +138,43 @@ export async function generateOhlcvWorklist(
 
     // Calculate fetch window based on alert time
     // Adjust post-window based on interval to ensure 5000 candles
+    // For 1s: 5000 candles = 5000 seconds = ~83.3 minutes total
+    //   - preWindowMinutes is in minutes, convert to seconds: preWindowSeconds = preWindowMinutes * 60
+    //   - postWindowSeconds = 5000 - preWindowSeconds
     // For 1m: 5000 candles = 5000 minutes total, so postWindow = 5000 - preWindow
     // For 5m: 5000 candles = 25000 minutes total, so postWindow = 25000 - preWindow
     // For 15s: 5000 candles = 75000 seconds = 1250 minutes total, so postWindow = 1250 - preWindow
     // For 1H: 5000 candles = 5000 hours total, so postWindow = 5000 * 60 - preWindow
-    let adjustedPostWindow = postWindowMinutes;
+    let startTime: DateTime;
+    let endTime: DateTime;
+
     if (interval === '1s') {
-      adjustedPostWindow = Math.ceil(5000 / 60) - preWindowMinutes; // 5000 candles for 1s (~83.3 minutes)
-    } else if (interval === '1m') {
-      adjustedPostWindow = 5000 - preWindowMinutes; // 5000 candles for 1m
-    } else if (interval === '5m') {
-      adjustedPostWindow = 25000 - preWindowMinutes; // 5000 candles for 5m
-    } else if (interval === '15s') {
-      adjustedPostWindow = 1250 - preWindowMinutes; // 5000 candles for 15s (1250 minutes)
-    } else if (interval === '1H') {
-      adjustedPostWindow = 5000 * 60 - preWindowMinutes; // 5000 candles for 1H (5000 hours = 300000 minutes)
+      // For 1s intervals, preWindowMinutes is actually treated as seconds offset
+      // Default: 52 seconds before alert (standard offset)
+      const preWindowSeconds =
+        preWindowMinutes >= 0 ? preWindowMinutes : Math.abs(preWindowMinutes);
+      const postWindowSeconds = 5000 - preWindowSeconds; // 5000 candles total
+      startTime = alertTime.minus({ seconds: preWindowSeconds });
+      endTime = alertTime.plus({ seconds: postWindowSeconds });
+    } else {
+      // For other intervals, use minutes
+      let adjustedPostWindow = postWindowMinutes;
+      if (interval === '1m') {
+        adjustedPostWindow = 5000 - preWindowMinutes; // 5000 candles for 1m
+      } else if (interval === '5m') {
+        adjustedPostWindow = 25000 - preWindowMinutes; // 5000 candles for 5m
+      } else if (interval === '15s') {
+        adjustedPostWindow = 1250 - preWindowMinutes; // 5000 candles for 15s (1250 minutes)
+      } else if (interval === '1H') {
+        adjustedPostWindow = 5000 * 60 - preWindowMinutes; // 5000 candles for 1H (5000 hours = 300000 minutes)
+      }
+      startTime = alertTime.minus({ minutes: preWindowMinutes });
+      endTime = alertTime.plus({ minutes: adjustedPostWindow });
     }
 
-    const startTime = alertTime.minus({ minutes: preWindowMinutes });
-    const endTime = alertTime.plus({ minutes: adjustedPostWindow });
-
     // Use chain from token group, or fallback to options.chain
-    const tokenChain = (tokenGroup.chain as Chain) || chain;
+    // Normalize chain to lowercase
+    const tokenChain = tokenGroup.chain ? (normalizeChain(tokenGroup.chain) as Chain) : chain;
 
     workItems.push({
       mint: tokenGroup.mint,

@@ -46,6 +46,7 @@ export async function analyzeCoverageHandler(args: AnalyzeCoverageArgs, ctx: Com
     caller: args.caller,
     minCoverage: args.minCoverage,
     generateFetchPlan: args.generateFetchPlan,
+    timeoutMs: args.timeout,
   };
 
   // ENV + FS LIVE HERE (composition root)

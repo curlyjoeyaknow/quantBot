@@ -21,6 +21,7 @@ class CallItem(BaseModel):
     mint: str
     alert_timestamp: str
     caller_name: Optional[str] = None
+    price_usd: Optional[float] = None  # Entry price from user_calls_d
 
 
 class QueryCallsOutput(BaseModel):
@@ -46,12 +47,13 @@ def run(con: duckdb.DuckDBPyConnection, input: QueryCallsInput) -> QueryCallsOut
         if input.exclude_unrecoverable:
             setup_ohlcv_exclusions_schema(con)
 
-        # Query user_calls_d table for mint addresses, alert timestamps, and caller names
+        # Query user_calls_d table for mint addresses, alert timestamps, caller names, and entry price
         base_query = """
             SELECT DISTINCT
                 mint,
                 call_datetime,
-                caller_name
+                caller_name,
+                price_usd
             FROM user_calls_d
             WHERE mint IS NOT NULL 
               AND TRIM(CAST(mint AS VARCHAR)) != ''
@@ -92,6 +94,7 @@ def run(con: duckdb.DuckDBPyConnection, input: QueryCallsInput) -> QueryCallsOut
             mint = row[0]
             call_datetime = row[1]
             caller_name_raw = row[2] if len(row) > 2 else None
+            price_usd_raw = row[3] if len(row) > 3 else None
             
             # Normalize caller_name: convert None, empty string, or whitespace to None
             caller_name = None
@@ -99,6 +102,17 @@ def run(con: duckdb.DuckDBPyConnection, input: QueryCallsInput) -> QueryCallsOut
                 caller_name_str = str(caller_name_raw).strip()
                 if caller_name_str:
                     caller_name = caller_name_str
+
+            # Normalize price_usd: convert to float or None
+            price_usd = None
+            if price_usd_raw is not None:
+                try:
+                    price_usd = float(price_usd_raw)
+                    # Validate price is positive and finite
+                    if price_usd <= 0 or not (price_usd > 0 and price_usd < 1e20):
+                        price_usd = None
+                except (ValueError, TypeError):
+                    price_usd = None
 
             # Convert datetime to ISO format string
             if isinstance(call_datetime, datetime):
@@ -116,7 +130,8 @@ def run(con: duckdb.DuckDBPyConnection, input: QueryCallsInput) -> QueryCallsOut
             calls.append(CallItem(
                 mint=str(mint),
                 alert_timestamp=alert_timestamp,
-                caller_name=caller_name
+                caller_name=caller_name,
+                price_usd=price_usd
             ))
 
         return QueryCallsOutput(success=True, calls=calls)

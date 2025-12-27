@@ -186,9 +186,7 @@ async function main() {
         const metadata = result.metadata
           ? ` | ${result.metadata.symbol || 'N/A'} | ${result.metadata.name || 'N/A'}`
           : ' | No metadata';
-        console.log(
-          `  ${status} ${token.address}... | ${result.candleCount} candles${metadata}`
-        );
+        console.log(`  ${status} ${token.address}... | ${result.candleCount} candles${metadata}`);
       } catch (error: any) {
         const result: TestResult = {
           token: token.address,

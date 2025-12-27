@@ -6,8 +6,13 @@
  * - your actual ClickHouse client + parquet writer is implementation detail
  */
 
-import type { SliceExporter } from "@quantbot/workflows";
-import type { ParquetLayoutSpec, RunContext, SliceManifestV1, SliceSpec } from "@quantbot/workflows";
+import type { SliceExporter } from '@quantbot/workflows';
+import type {
+  ParquetLayoutSpec,
+  RunContext,
+  SliceManifestV1,
+  SliceSpec,
+} from '@quantbot/workflows';
 
 export interface ClickHouseClient {
   // Define the minimal client surface you need.
@@ -39,7 +44,11 @@ export class ClickHouseSliceExporterAdapter implements SliceExporter {
     }
   ) {}
 
-  async exportSlice(args: { run: RunContext; spec: SliceSpec; layout: ParquetLayoutSpec }): Promise<SliceManifestV1> {
+  async exportSlice(args: {
+    run: RunContext;
+    spec: SliceSpec;
+    layout: ParquetLayoutSpec;
+  }): Promise<SliceManifestV1> {
     const { run, spec, layout } = args;
 
     // 1) Build deterministic output directory from template
@@ -48,15 +57,15 @@ export class ClickHouseSliceExporterAdapter implements SliceExporter {
       dataset: spec.dataset,
       chain: spec.chain,
       runId: run.runId,
-      strategyId: run.strategyId ?? "none",
+      strategyId: run.strategyId ?? 'none',
       yyyy: day.slice(0, 4),
       mm: day.slice(5, 7),
       dd: day.slice(8, 10),
     };
 
     const subdir = this.deps.expandTemplate(layout.subdirTemplate, vars);
-    const base = layout.baseUri.replace(/\/+$/, "");
-    const outDir = `${base}/${subdir}`.replace(/\/+/g, "/");
+    const base = layout.baseUri.replace(/\/+$/, '');
+    const outDir = `${base}/${subdir}`.replace(/\/+/g, '/');
 
     // 2) Export logic (placeholder)
     // In reality, you would:
@@ -89,4 +98,3 @@ export class ClickHouseSliceExporterAdapter implements SliceExporter {
     return manifest;
   }
 }
-

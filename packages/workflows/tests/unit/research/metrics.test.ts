@@ -6,13 +6,16 @@ import { describe, it, expect } from 'vitest';
 import { calculateMetrics, calculatePnLSeries } from '../../../src/research/metrics.js';
 import type { TradeEvent, PnLSeries } from '../../../src/research/artifacts.js';
 
+const TEST_TIMESTAMP = '2024-01-01T00:00:00.000Z';
+
 describe('Metrics Calculator', () => {
   describe('calculatePnLSeries', () => {
     it('returns default series for empty events', () => {
-      const series = calculatePnLSeries([]);
+      const series = calculatePnLSeries([], 1.0, TEST_TIMESTAMP);
       expect(series.length).toBe(1);
       expect(series[0]!.cumulativePnL).toBe(1.0);
       expect(series[0]!.drawdown).toBe(0);
+      expect(series[0]!.timestampISO).toBe(TEST_TIMESTAMP);
     });
 
     it('calculates PnL series from trade events', () => {
@@ -64,7 +67,7 @@ describe('Metrics Calculator', () => {
         },
       ];
 
-      const series = calculatePnLSeries(events, 1000);
+      const series = calculatePnLSeries(events, 1000, TEST_TIMESTAMP);
       expect(series.length).toBe(2);
       expect(series[0]!.runningTotal).toBeLessThan(1000); // After entry
       expect(series[1]!.runningTotal).toBeGreaterThan(series[0]!.runningTotal); // After exit
@@ -94,7 +97,7 @@ describe('Metrics Calculator', () => {
         },
       ];
 
-      const series = calculatePnLSeries(events);
+      const series = calculatePnLSeries(events, 1.0, TEST_TIMESTAMP);
       expect(series.length).toBe(2);
     });
   });
@@ -152,7 +155,7 @@ describe('Metrics Calculator', () => {
         },
       ];
 
-      const pnlSeries: PnLSeries[] = calculatePnLSeries(events, 1000);
+      const pnlSeries: PnLSeries[] = calculatePnLSeries(events, 1000, TEST_TIMESTAMP);
       const metrics = calculateMetrics(events, pnlSeries);
 
       expect(metrics.trades.total).toBe(4);
@@ -205,7 +208,7 @@ describe('Metrics Calculator', () => {
         },
       ];
 
-      const pnlSeries: PnLSeries[] = calculatePnLSeries(events, 1000);
+      const pnlSeries: PnLSeries[] = calculatePnLSeries(events, 1000, TEST_TIMESTAMP);
       const metrics = calculateMetrics(events, pnlSeries);
 
       expect(metrics.trades.failed).toBe(1);
@@ -239,7 +242,7 @@ describe('Metrics Calculator', () => {
         },
       ];
 
-      const pnlSeries: PnLSeries[] = calculatePnLSeries(events);
+      const pnlSeries: PnLSeries[] = calculatePnLSeries(events, 1.0, TEST_TIMESTAMP);
       const metrics = calculateMetrics(events, pnlSeries);
 
       expect(metrics.latencySensitivity).toBeDefined();
@@ -270,7 +273,7 @@ describe('Metrics Calculator', () => {
         },
       ];
 
-      const pnlSeries: PnLSeries[] = calculatePnLSeries(events);
+      const pnlSeries: PnLSeries[] = calculatePnLSeries(events, 1.0, TEST_TIMESTAMP);
       const metrics = calculateMetrics(events, pnlSeries);
 
       // Tail loss worstTrade is the minimum exit value (which could be positive or negative)

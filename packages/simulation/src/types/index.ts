@@ -7,6 +7,9 @@
 // Candle types
 export * from './candle.js';
 
+// Causal accessor (Gate 2: Causal candle accessor)
+export * from './causal-accessor.js';
+
 // Position types
 export * from './position.js';
 

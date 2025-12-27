@@ -1,0 +1,14 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "FeatureManifestV1",
+  "type": "object",
+  "required": ["kind", "featureSetId", "sliceHash", "createdAtIso", "featuresParquetPath", "columns"],
+  "properties": {
+    "kind": { "const": "feature_manifest_v1" },
+    "featureSetId": { "type": "string" },
+    "sliceHash": { "type": "string" },
+    "createdAtIso": { "type": "string" },
+    "featuresParquetPath": { "type": "string" },
+    "columns": { "type": "array", "items": { "type": "string" } }
+  }
+}

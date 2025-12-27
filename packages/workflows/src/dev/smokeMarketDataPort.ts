@@ -7,6 +7,7 @@
 
 import { createProductionPorts } from '../context/createProductionPorts.js';
 import { createTokenAddress } from '@quantbot/core';
+import { DateTime } from 'luxon';
 
 export async function smokeMarketDataPort(): Promise<void> {
   const ports = await createProductionPorts();
@@ -32,7 +33,9 @@ export async function smokeMarketDataPort(): Promise<void> {
     }
 
     // Test OHLCV fetch (small window)
-    const now = Math.floor(Date.now() / 1000);
+    // Use clock from ports for deterministic testing
+    const nowMs = ports.clock.nowMs();
+    const now = Math.floor(nowMs / 1000);
     const oneHourAgo = now - 3600;
 
     const candles = await ports.marketData.fetchOhlcv({

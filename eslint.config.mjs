@@ -34,6 +34,11 @@ export default tseslint.config(
 
       // Code quality
       'no-console': 'off', // Allow globally for now; we will enforce for handlers/hotpath
+      // Note: Console usage is discouraged in services/adapters/workflows.
+      // Use logger from @quantbot/utils instead. Console is acceptable for:
+      // - CLI user-facing output (packages/cli/src/bin, packages/cli/src/commands)
+      // - Console adapters (telemetryConsoleAdapter, etc.)
+      // - Example files and dev/smoke test files
       'no-useless-escape': 'warn',
       'no-fallthrough': 'warn',
       'no-case-declarations': 'warn',
@@ -109,7 +114,6 @@ export default tseslint.config(
                 './packages/analytics/src/**',
                 './packages/api-clients/src/**',
                 './packages/core/src/**',
-                './packages/events/src/**',
                 './packages/ingestion/src/**',
                 './packages/jobs/src/**',
                 './packages/observability/src/**',
@@ -147,12 +151,19 @@ export default tseslint.config(
       // KEEP no-restricted-imports ON so tests don't become an architecture bypass.
       // Tests can still use any, unused vars, console, etc., but must respect package boundaries.
       // 'no-restricted-imports': 'off',
+      // Note: Test files inherit base no-restricted-imports rules.
+      // Additional restriction: Tests must not import production constants (DEFAULT_COST_CONFIG, etc.)
+      // Tests should define their own constants to ensure independence.
+      // See .cursor/rules/testing-workflows.mdc and .cursor/rules/packages-workflows.mdc
     },
   },
 
   /**
    * Architectural Import Firewall - Layer Boundaries
    * Enforces separation of concerns as documented in docs/ARCHITECTURE_BOUNDARIES.md
+   *
+   * CRITICAL: Simulation must be deterministic. No Date.now(), new Date(), or Math.random() allowed.
+   * Gate 1: Hard ban on nondeterminism - all time access must use SimulationClock, all randomness must use DeterministicRNG.
    */
   {
     files: ['packages/simulation/src/**/*.ts'],
@@ -210,6 +221,31 @@ export default tseslint.config(
               message: 'Simulation must remain pure (no network I/O). Use ports/interfaces instead.',
             },
           ],
+        },
+      ],
+      // Gate 1: Determinism enforcement - ban all non-deterministic time and randomness
+      'no-restricted-properties': [
+        'error',
+        {
+          object: 'Date',
+          property: 'now',
+          message:
+            'Simulation must not use Date.now(). Use SimulationClock or injected clock for deterministic time. See packages/simulation/src/core/clock.ts',
+        },
+        {
+          object: 'Math',
+          property: 'random',
+          message:
+            'Simulation must not use Math.random(). Use DeterministicRNG from @quantbot/core for seeded randomness. See packages/core/src/determinism.ts',
+        },
+      ],
+      // Ban new Date() constructor (non-deterministic)
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'NewExpression[callee.name="Date"]',
+          message:
+            'Simulation must not use new Date(). Use SimulationClock or injected clock for deterministic time. See packages/simulation/src/core/clock.ts',
         },
       ],
     },
@@ -314,9 +350,17 @@ export default tseslint.config(
     files: ['packages/workflows/src/**/*.ts'],
     ignores: [
       'packages/workflows/src/**/context/**/*.ts',
-      'packages/workflows/src/**/adapters/**/*.ts',
+      'packages/workflows/src/**/adapters/telemetryConsoleAdapter.ts', // Console adapter intentionally uses console
+      'packages/workflows/src/**/dev/**/*.ts', // Dev/smoke files can use console
+      'packages/workflows/src/**/slices/example*.ts', // Example files can use console
+      // Note: adapters should use clock from ports, but for now we allow Date.now() 
+      // in adapters since they're composition roots. This will be tightened in the future.
+      // 'packages/workflows/src/**/adapters/**/*.ts',
     ],
     rules: {
+      // Discourage console usage in workflows - use logger instead
+      // Console adapters and dev/example files are excluded above
+      'no-console': 'warn', // Warn on console usage in workflow code
       'no-restricted-imports': [
         'error',
         {
@@ -402,6 +446,68 @@ export default tseslint.config(
                 'Workflow handlers must not import DuckDB/ClickHouse clients directly. Use SliceExporter/SliceAnalyzer ports.',
             },
           ],
+        },
+      ],
+      // Determinism enforcement: ban Date.now(), new Date(), and Math.random() in workflows
+      'no-restricted-properties': [
+        'error',
+        {
+          object: 'Date',
+          property: 'now',
+          message:
+            'Workflows must not use Date.now(). Use ctx.clock.nowISO() or ports.clock.nowMs() for deterministic time. Only composition roots (context/adapters) may use Date.now() to create clock adapters.',
+        },
+        {
+          object: 'Math',
+          property: 'random',
+          message:
+            'Workflows must not use Math.random(). Use DeterministicRNG from @quantbot/core for seeded randomness.',
+        },
+      ],
+      // Ban new Date() constructor (non-deterministic)
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'NewExpression[callee.name="Date"]',
+          message:
+            'Workflows must not use new Date(). Use ctx.clock.nowISO() or ports.clock.nowMs() for deterministic time. Only composition roots may use new Date() to create clock adapters.',
+        },
+      ],
+    },
+  },
+
+  // Adapter-specific rules: adapters should use clock from ports, not Date.now()
+  // However, since adapters are created by composition roots, we allow Date.now() 
+  // only in the factory functions that create clock adapters.
+  {
+    files: ['packages/workflows/src/**/adapters/**/*.ts'],
+    ignores: [
+      // Allow Date.now() only in composition root files that create clock adapters
+      'packages/workflows/src/context/createProductionPorts.ts',
+    ],
+    rules: {
+      'no-restricted-properties': [
+        'error',
+        {
+          object: 'Date',
+          property: 'now',
+          message:
+            'Adapters must not use Date.now(). Accept a ClockPort dependency and use clock.nowMs() instead. Only composition roots (createProductionPorts.ts) may use Date.now() to create clock adapters.',
+        },
+        {
+          object: 'Math',
+          property: 'random',
+          message:
+            'Adapters must not use Math.random(). Use DeterministicRNG from @quantbot/core for seeded randomness.',
+        },
+      ],
+      // Ban new Date() constructor in adapters
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'NewExpression[callee.name="Date"]',
+          message:
+            'Adapters must not use new Date(). Accept a ClockPort dependency and use clock.nowMs() instead. Only composition roots may use new Date() to create clock adapters.',
         },
       ],
     },

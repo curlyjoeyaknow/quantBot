@@ -6,6 +6,7 @@
  */
 
 export type { ClockPort } from './clockPort.js';
+export { createSystemClock } from './clockPort.js';
 export type {
   OhlcvIngestionPort,
   IngestOhlcvSpec,

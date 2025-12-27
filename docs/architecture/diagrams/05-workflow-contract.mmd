@@ -1,0 +1,120 @@
+---
+title: Workflow Contract
+description: Shows workflow signature pattern, WorkflowContext structure, and result contract
+---
+
+# Workflow Contract
+
+## Overview
+
+Every workflow must follow a strict contract: validate spec with Zod, use WorkflowContext for all dependencies, return JSON-serializable results, and have explicit error policy.
+
+## Key Concepts
+
+- **Spec Validation**: All inputs validated with Zod schemas
+- **WorkflowContext**: Dependency injection through context
+- **Default Parameter Pattern**: Context uses default parameter, not optional
+- **JSON-Serializable Results**: All results must be serializable
+- **Error Policy**: Explicit collect vs fail-fast in spec
+
+## Diagram
+
+```mermaid
+graph TB
+    subgraph workflow[Workflow Function]
+        workflowSignature[workflow spec, ctx = createDefaultContext]
+        specValidation[Validate spec with Zod]
+        contextUsage[Use ctx.repos, ctx.ohlcv, ctx.simulation]
+        errorHandling[Error policy: collect or failFast]
+        resultReturn[Return JSON-serializable result]
+    end
+
+    subgraph context[WorkflowContext Structure]
+        clock[clock: nowISO]
+        ids[ids: newRunId]
+        logger[logger: info, warn, error]
+        repos[repos: strategies, calls, simulationRuns, simulationResults]
+        ohlcv[ohlcv: causalAccessor]
+        simulation[simulation: run]
+    end
+
+    subgraph result[Result Contract]
+        jsonSerializable[JSON-serializable types only]
+        isoStrings[ISO strings for dates]
+        plainObjects[Plain objects, no class instances]
+        errorArray[Errors array if collect mode]
+        metadata[Metadata: runId, timestamps, duration]
+    end
+
+    subgraph spec[Spec Schema]
+        zodSchema[Zod schema validation]
+        errorMode[errorMode: collect or failFast]
+        otherFields[Other spec fields]
+    end
+
+    workflowSignature --> specValidation
+    specValidation --> zodSchema
+    workflowSignature --> contextUsage
+    contextUsage --> clock
+    contextUsage --> ids
+    contextUsage --> logger
+    contextUsage --> repos
+    contextUsage --> ohlcv
+    contextUsage --> simulation
+    workflowSignature --> errorHandling
+    errorHandling --> errorMode
+    workflowSignature --> resultReturn
+    resultReturn --> jsonSerializable
+    resultReturn --> isoStrings
+    resultReturn --> plainObjects
+    resultReturn --> errorArray
+    resultReturn --> metadata
+```
+
+## Workflow Signature Pattern
+
+```typescript
+// ✅ CORRECT: Default parameter pattern
+export async function myWorkflow(
+  spec: MySpec,
+  ctx: WorkflowContext = createDefaultWorkflowContext()
+): Promise<MyResult> {
+  // Validate spec
+  const validated = MySpecSchema.parse(spec);
+  
+  // Use context for all dependencies
+  const calls = await ctx.repos.calls.list({ ... });
+  const candles = await ctx.ohlcv.causalAccessor.getCandles(...);
+  
+  // Handle errors based on policy
+  const errors: Error[] = [];
+  for (const item of items) {
+    try {
+      await processItem(item);
+    } catch (error) {
+      if (spec.errorMode === 'failFast') {
+        throw error;
+      }
+      errors.push(error);
+    }
+  }
+  
+  // Return JSON-serializable result
+  return {
+    success: errors.length === 0,
+    errors: errors.map(e => e.message),
+    metadata: {
+      runId: ctx.ids.newRunId(),
+      startedAt: ctx.clock.nowISO(),
+      completedAt: ctx.clock.nowISO(),
+    },
+  };
+}
+```
+
+## Related Documentation
+
+- [WORKFLOW_ARCHITECTURE.md](../WORKFLOW_ARCHITECTURE.md)
+- [WORKFLOW_ENFORCEMENT.md](../WORKFLOW_ENFORCEMENT.md)
+- [ARCHITECTURE.md](../ARCHITECTURE.md)
+
