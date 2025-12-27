@@ -118,7 +118,7 @@ export class CandleSliceExporter implements CandleSlicePort {
 
     const res = await this.ch.query({ query, format: 'Parquet' });
     // ClickHouse Parquet stream - handle as function or property
-
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const streamSource =
       typeof (res as any).stream === 'function'
         ? await (res as any).stream()
