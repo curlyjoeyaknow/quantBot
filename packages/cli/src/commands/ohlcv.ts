@@ -15,6 +15,7 @@ import { queryOhlcvHandler } from './ohlcv/query-ohlcv.js';
 import { backfillOhlcvHandler } from './ohlcv/backfill-ohlcv.js';
 import { coverageOhlcvHandler } from './ohlcv/coverage-ohlcv.js';
 import { analyzeCoverageHandler } from './ohlcv/analyze-coverage.js';
+import { analyzeDetailedCoverageHandler } from '../handlers/ohlcv/analyze-detailed-coverage.js';
 
 /**
  * Query command schema
@@ -55,7 +56,7 @@ export const querySchema = z.object({
   ),
   interval: z.enum(['1m', '5m', '15m', '1h', '4h', '1d']).default('5m'),
   format: z.enum(['json', 'table', 'csv']).default('table'),
-  chain: z.enum(['solana', 'ethereum', 'bsc', 'base']).default('solana'),
+  chain: z.enum(['solana', 'ethereum', 'bsc', 'base', 'evm']).default('solana'),
 });
 
 /**
@@ -77,7 +78,7 @@ export const backfillSchema = z.object({
   to: z.string(),
   interval: z.enum(['1m', '5m', '15m', '1h', '4h', '1d']).default('5m'),
   format: z.enum(['json', 'table', 'csv']).default('table'),
-  chain: z.enum(['solana', 'ethereum', 'bsc', 'base']).default('solana'),
+  chain: z.enum(['solana', 'ethereum', 'bsc', 'base', 'evm']).default('solana'),
 });
 
 /**
@@ -111,6 +112,25 @@ export const analyzeCoverageSchema = z.object({
   minCoverage: z.number().min(0).max(1).default(0.8),
   generateFetchPlan: z.boolean().default(false),
   format: z.enum(['json', 'table', 'csv']).default('table'),
+  timeout: z.number().int().positive().optional(), // Timeout in milliseconds
+});
+
+/**
+ * Analyze detailed coverage command schema
+ */
+export const analyzeDetailedCoverageSchema = z.object({
+  duckdb: z.string(),
+  startMonth: z
+    .string()
+    .regex(/^\d{4}-\d{2}$/)
+    .optional(), // YYYY-MM
+  endMonth: z
+    .string()
+    .regex(/^\d{4}-\d{2}$/)
+    .optional(), // YYYY-MM
+  caller: z.string().optional(),
+  format: z.enum(['json', 'csv']).default('json'),
+  timeout: z.number().int().positive().optional(), // Timeout in milliseconds
 });
 
 /**
@@ -133,7 +153,6 @@ export function registerOhlcvCommands(program: Command): void {
   defineCommand(queryCmd, {
     name: 'query',
     packageName: 'ohlcv',
-    validate: (opts) => querySchema.parse(opts),
     onError: die,
   });
 
@@ -151,7 +170,6 @@ export function registerOhlcvCommands(program: Command): void {
   defineCommand(backfillCmd, {
     name: 'backfill',
     packageName: 'ohlcv',
-    validate: (opts) => backfillSchema.parse(opts),
     onError: die,
   });
 
@@ -161,12 +179,12 @@ export function registerOhlcvCommands(program: Command): void {
     .description('Check data coverage for tokens')
     .option('--mint <address>', 'Token mint address')
     .option('--interval <interval>', 'Candle interval')
-    .option('--format <format>', 'Output format', 'table');
+    .option('--format <format>', 'Output format', 'table')
+    .option('--output-file <path>', 'Write output to file (JSON/CSV/table format)');
 
   defineCommand(coverageCmd, {
     name: 'coverage',
     packageName: 'ohlcv',
-    validate: (opts) => coverageSchema.parse(opts),
     onError: die,
   });
 
@@ -185,7 +203,9 @@ export function registerOhlcvCommands(program: Command): void {
     .option('--caller <name>', 'Filter by caller (for caller analysis)')
     .option('--min-coverage <ratio>', 'Minimum coverage threshold (0-1)')
     .option('--generate-fetch-plan', 'Generate fetch plan (for caller analysis)')
-    .option('--format <format>', 'Output format', 'table');
+    .option('--format <format>', 'Output format', 'table')
+    .option('--output-file <path>', 'Write output to file (JSON/CSV/table format)')
+    .option('--timeout <ms>', 'Timeout in milliseconds (default: 900000 = 15 minutes)');
 
   defineCommand(analyzeCoverageCmd, {
     name: 'analyze-coverage',
@@ -198,8 +218,29 @@ export function registerOhlcvCommands(program: Command): void {
           ? coerceBoolean(raw.generateFetchPlan, 'generate-fetch-plan')
           : false,
       minCoverage: raw.minCoverage ? coerceNumber(raw.minCoverage, 'min-coverage') : 0.8,
+      timeout: raw.timeout ? coerceNumber(raw.timeout, 'timeout') : undefined,
     }),
-    validate: (opts) => analyzeCoverageSchema.parse(opts),
+    onError: die,
+  });
+
+  // Analyze detailed coverage command
+  const analyzeDetailedCoverageCmd = ohlcvCmd
+    .command('analyze-detailed-coverage')
+    .description('Generate detailed OHLCV coverage report (by mint, caller, day, month)')
+    .requiredOption('--duckdb <path>', 'Path to DuckDB database')
+    .option('--start-month <month>', 'Start month (YYYY-MM format)')
+    .option('--end-month <month>', 'End month (YYYY-MM format)')
+    .option('--caller <name>', 'Filter by specific caller')
+    .option('--format <format>', 'Output format (json or csv)', 'json')
+    .option('--timeout <ms>', 'Timeout in milliseconds (default: 1800000 = 30 minutes)');
+
+  defineCommand(analyzeDetailedCoverageCmd, {
+    name: 'analyze-detailed-coverage',
+    packageName: 'ohlcv',
+    coerce: (raw) => ({
+      ...raw,
+      timeout: raw.timeout ? coerceNumber(raw.timeout, 'timeout') : undefined,
+    }),
     onError: die,
   });
 }
@@ -260,6 +301,21 @@ const ohlcvModule: PackageCommandModule = {
         'quantbot ohlcv analyze-coverage --type overall',
         'quantbot ohlcv analyze-coverage --type caller --duckdb data/tele.duckdb',
         'quantbot ohlcv analyze-coverage --type caller --caller Brook --generate-fetch-plan',
+      ],
+    },
+    {
+      name: 'analyze-detailed-coverage',
+      description: 'Generate detailed OHLCV coverage report (by mint, caller, day, month)',
+      schema: analyzeDetailedCoverageSchema,
+      handler: async (args: unknown, ctx: unknown) => {
+        const typedCtx = ctx as CommandContext;
+        const typedArgs = args as z.infer<typeof analyzeDetailedCoverageSchema>;
+        return await analyzeDetailedCoverageHandler(typedArgs, typedCtx);
+      },
+      examples: [
+        'quantbot ohlcv analyze-detailed-coverage --duckdb data/tele.duckdb',
+        'quantbot ohlcv analyze-detailed-coverage --duckdb data/tele.duckdb --start-month 2025-12',
+        'quantbot ohlcv analyze-detailed-coverage --duckdb data/tele.duckdb --caller Brook --format csv',
       ],
     },
   ],

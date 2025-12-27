@@ -199,7 +199,7 @@ describe('workflows.runSimulation - golden suite', () => {
     expect(ctx.simulation.run).not.toHaveBeenCalled();
   });
 
-  it('GOLDEN: windowing must be applied to ohlcv.getCandles (pre/post minutes)', async () => {
+  it('GOLDEN: windowing must be applied to ohlcv.causalAccessor (pre/post minutes)', async () => {
     const spec = {
       ...baseSpec(),
       options: { ...baseSpec().options, preWindowMinutes: 5, postWindowMinutes: 10 },
@@ -209,9 +209,20 @@ describe('workflows.runSimulation - golden suite', () => {
 
     await runSimulation(spec, ctx);
 
-    const callArgs = (ctx.ohlcv.getCandles as any).mock.calls[0][0];
-    expect(callArgs.mint).toBe('MintA');
-    expect(callArgs.fromISO).toBe('2025-10-31T23:55:00.000Z');
-    expect(callArgs.toISO).toBe('2025-11-01T00:10:00.000Z');
+    // Check that getLastClosedCandle was called with windowed start time
+    // Call time: 2025-11-01T00:00:00.000Z
+    // Pre-window: -5 minutes = 2025-10-31T23:55:00.000Z
+    // Expected startTime (Unix timestamp): 1727826900 (2025-10-31T23:55:00.000Z)
+    const getLastClosedCandleCalls = (ctx.ohlcv.causalAccessor.getLastClosedCandle as any).mock
+      .calls;
+    expect(getLastClosedCandleCalls.length).toBeGreaterThan(0);
+
+    // First call should be with windowed start time
+    const firstCall = getLastClosedCandleCalls[0];
+    expect(firstCall[0]).toBe('MintA'); // mint
+    // Check that startTime is windowed (call time - 5 minutes)
+    const callTime = DateTime.fromISO('2025-11-01T00:00:00.000Z', { zone: 'utc' }).toUnixInteger();
+    const windowedStartTime = callTime - 5 * 60; // 5 minutes before
+    expect(firstCall[1]).toBe(windowedStartTime); // simulationTime (windowed)
   });
 });

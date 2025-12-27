@@ -18,11 +18,15 @@ import type { StrategyConfig } from '@quantbot/simulation';
 
 // Mock DataSnapshotService - we'll verify it's called
 const mockLoadSnapshot = vi.fn();
+const mockVerifySnapshot = vi.fn();
 vi.mock('../../../src/research/services/DataSnapshotService.js', () => ({
   DataSnapshotService: class {
     constructor() {}
-    async loadSnapshot() {
-      return mockLoadSnapshot();
+    async loadSnapshot(snapshot: any) {
+      return mockLoadSnapshot(snapshot);
+    }
+    async verifySnapshot(snapshot: any) {
+      return mockVerifySnapshot(snapshot);
     }
   },
 }));
@@ -55,6 +59,8 @@ describe('ResearchSimulationAdapter - Real Implementation Verification', () => {
 
     adapter = new ResearchSimulationAdapter(ctx);
     mockLoadSnapshot.mockClear();
+    mockVerifySnapshot.mockClear();
+    mockVerifySnapshot.mockResolvedValue(true); // Default to valid snapshot
   });
 
   it('CRITICAL: calls real simulateStrategy function (not a stub)', async () => {
@@ -128,6 +134,7 @@ describe('ResearchSimulationAdapter - Real Implementation Verification', () => {
     const baseTimestamp = 1704067200; // 2024-01-01T00:00:00Z
     const mint = 'So11111111111111111111111111111111111111112';
 
+    mockVerifySnapshot.mockResolvedValue(true); // Snapshot is valid
     mockLoadSnapshot.mockResolvedValue({
       candles: [
         {

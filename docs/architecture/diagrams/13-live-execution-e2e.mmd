@@ -1,0 +1,146 @@
+---
+title: Live Trading Execution E2E Flow
+description: Complete flow for live trading execution from alert trigger through risk gates, ExecutionPort, to transaction submission
+---
+
+# Live Trading Execution E2E Flow
+
+## Overview
+
+This diagram shows the proposed end-to-end flow for live trading execution, highlighting the ExecutionPort interface, executor app boundary, safety features, and transaction building/submission.
+
+## Key Concepts
+
+- **ExecutionPort Interface**: Handlers depend on ports, not implementations
+- **Executor App Boundary**: Live trading concerns isolated in separate boundary
+- **Safety Features**: Dry-run mode, circuit breaker, idempotency
+- **Risk Gates**: Position limits, drawdown checks, daily loss limits
+- **Transaction Building**: Solana transaction construction with Jito/RPC submission
+
+## Diagram
+
+```mermaid
+flowchart TD
+    start[Alert Trigger<br/>Profit target or signal] --> strategyEval[Strategy Evaluation<br/>Check entry conditions]
+    strategyEval -->|conditions met| riskGates[Risk Gates<br/>Position limits<br/>Drawdown checks<br/>Daily loss limits]
+    strategyEval -->|conditions not met| skip[Skip execution]
+    
+    riskGates -->|passed| executionPort[ExecutionPort<br/>Interface call]
+    riskGates -->|failed| reject[Reject execution<br/>Log reason]
+    
+    executionPort --> adapterCheck{Adapter Type?}
+    adapterCheck -->|stub| stubAdapter[ExecutionStubAdapter<br/>Dry-run mode<br/>Simulate execution]
+    adapterCheck -->|real| realAdapter[Real Execution Adapter<br/>Live trading]
+    
+    stubAdapter --> safetyCheck[Safety Checks<br/>Dry-run enabled?<br/>Circuit breaker OK?<br/>Idempotency check]
+    realAdapter --> safetyCheck
+    
+    safetyCheck -->|dry-run| simulate[Simulate Transaction<br/>Return mock result]
+    safetyCheck -->|circuit breaker| circuitOpen[Circuit Open<br/>Reject execution]
+    safetyCheck -->|idempotency| checkIdempotency[Check Idempotency Key<br/>Prevent double execution]
+    
+    checkIdempotency -->|already executed| skipExecution[Skip execution<br/>Return cached result]
+    checkIdempotency -->|new execution| executorApp[Executor App Boundary<br/>Keys, signing, RPC]
+    
+    executorApp --> keyManagement[Key Management<br/>Load keypair<br/>Secure storage]
+    keyManagement --> transactionBuild[Transaction Building<br/>Solana instructions<br/>Compute budget<br/>Priority fees]
+    
+    transactionBuild --> jitoCheck{Use Jito?}
+    jitoCheck -->|yes| jitoSubmit[Jito Bundle Submission<br/>MEV protection]
+    jitoCheck -->|no| rpcSubmit[RPC Submission<br/>Direct to validator]
+    
+    jitoSubmit --> confirmTracking[Confirmation Tracking<br/>Monitor transaction status]
+    rpcSubmit --> confirmTracking
+    
+    confirmTracking -->|confirmed| updatePosition[Update Position<br/>Store in database]
+    confirmTracking -->|failed| handleFailure[Handle Failure<br/>Log error<br/>Update circuit breaker]
+    
+    updatePosition --> monitoringUpdate[Update Monitoring<br/>Position tracking]
+    monitoringUpdate --> complete[Complete]
+    
+    simulate --> complete
+    skipExecution --> complete
+    circuitOpen --> complete
+    reject --> complete
+    skip --> complete
+    
+    style start fill:#e1f5ff
+    style riskGates fill:#fff3cd
+    style safetyCheck fill:#f8d7da
+    style executorApp fill:#d1ecf1
+    style complete fill:#d4edda
+```
+
+## ExecutionPort Interface
+
+```mermaid
+graph TB
+    subgraph interface[ExecutionPort Interface<br/>@quantbot/core]
+        executeTrade[executeTrade request]
+        getStatus[getStatus executionId]
+        cancelTrade[cancelTrade executionId]
+    end
+
+    subgraph stubAdapter[ExecutionStubAdapter<br/>Default - Safe]
+        stubImpl[Stub Implementation<br/>Dry-run mode<br/>Circuit breaker<br/>Idempotency]
+    end
+
+    subgraph realAdapter[Real Execution Adapter<br/>Future - Live Trading]
+        realImpl[Real Implementation<br/>Keypair management<br/>Transaction building<br/>Jito/RPC submission]
+    end
+
+    subgraph executorApp[Executor App Boundary<br/>apps/executor]
+        keyStorage[Secure key storage]
+        signing[Transaction signing]
+        submission[Transaction submission]
+        monitoring[Position monitoring]
+    end
+
+    executeTrade -.->|implements| stubImpl
+    executeTrade -.->|implements| realImpl
+    getStatus -.->|implements| stubImpl
+    getStatus -.->|implements| realImpl
+    cancelTrade -.->|implements| stubImpl
+    cancelTrade -.->|implements| realImpl
+
+    realImpl --> keyStorage
+    realImpl --> signing
+    realImpl --> submission
+    realImpl --> monitoring
+```
+
+## Safety Features
+
+```mermaid
+graph TD
+    subgraph safety[Safety Features]
+        dryRun[Dry-Run Mode<br/>Default: enabled<br/>Prevents accidental execution]
+        circuitBreaker[Circuit Breaker<br/>Max 5 consecutive failures<br/>Prevents cascading failures]
+        idempotency[Idempotency<br/>Idempotency keys<br/>Prevent double execution]
+        errorHandling[Error Handling<br/>Structured errors<br/>Consistent format]
+    end
+
+    subgraph checks[Safety Checks]
+        checkDryRun{Is dry-run enabled?}
+        checkCircuit{Is circuit open?}
+        checkIdempotency{Already executed?}
+    end
+
+    dryRun --> checkDryRun
+    circuitBreaker --> checkCircuit
+    idempotency --> checkIdempotency
+
+    checkDryRun -->|yes| simulate[Simulate execution]
+    checkDryRun -->|no| checkCircuit
+    checkCircuit -->|open| reject[Reject execution]
+    checkCircuit -->|closed| checkIdempotency
+    checkIdempotency -->|yes| returnCached[Return cached result]
+    checkIdempotency -->|no| proceed[Proceed with execution]
+```
+
+## Related Documentation
+
+- [Execution Port Migration](../execution-port-migration.md)
+- [ARCHITECTURE.md](../ARCHITECTURE.md) - Live Execution Architecture
+- [README.md](../../README.md) - Live Execution Architecture
+

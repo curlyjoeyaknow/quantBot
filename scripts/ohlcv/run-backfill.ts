@@ -122,9 +122,7 @@ async function backfillAlert(
   const end5m_c2 = start5m_c2.plus({ minutes: 5000 * 5 });
 
   if (dryRun) {
-    console.log(
-      `   DRY: ${alert.tokenAddress}... (${alert.tokenSymbol || 'unknown'})`
-    );
+    console.log(`   DRY: ${alert.tokenAddress}... (${alert.tokenSymbol || 'unknown'})`);
     return { success: true, candles1m: 0, candles5m: 0 };
   }
 

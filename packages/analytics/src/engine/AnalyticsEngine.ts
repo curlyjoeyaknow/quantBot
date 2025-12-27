@@ -188,11 +188,17 @@ export class AnalyticsEngine {
 
   /**
    * Get dashboard summary
+   *
+   * Note: By default, does NOT enrich with ATH to avoid expensive ClickHouse queries on every page load.
+   * Set enrichWithAth: true explicitly if you need ATH data.
    */
   async getDashboard(options: AnalyticsOptions = {}): Promise<DashboardSummary> {
+    // Respect the enrichWithAth option - don't force it to true
+    // Dashboard loads should be fast, so default to false unless explicitly requested
     const result = await this.analyzeCalls({
       ...options,
-      enrichWithAth: true,
+      enrichWithAth: options.enrichWithAth ?? false, // Default to false for performance
+      limit: options.limit ?? 1000, // Limit calls for dashboard to avoid loading too much
     });
 
     return result.dashboard;

@@ -140,7 +140,7 @@ describe('CallDataLoader', () => {
 
       expect(mockQueryCallsDuckdb).toHaveBeenCalledWith(
         expect.objectContaining({
-          limit: 1000, // Default limit
+          limit: 10000, // Default limit (increased from 1000)
         }),
         expect.any(Object)
       );

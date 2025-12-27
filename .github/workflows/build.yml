@@ -71,6 +71,18 @@ jobs:
       - name: Check for live trading code
         run: pnpm check:no-live-trading
 
+      - name: Verify handler tests
+        run: pnpm verify:handler-tests
+        continue-on-error: true
+
+      - name: Verify property tests
+        run: pnpm verify:property-tests
+        continue-on-error: true
+
+      - name: Verify CHANGELOG (warn only)
+        run: pnpm verify:changelog
+        continue-on-error: true
+
       - name: Build packages (ordered)
         run: pnpm build:ordered
 

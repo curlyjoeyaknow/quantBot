@@ -4,7 +4,7 @@
  * Entry detection and execution logic.
  */
 
-import type { EntryConfig, SignalGroup } from '../types/index.js';
+import type { EntryConfig, SignalGroup, IndicatorName } from '../types/index.js';
 import type { Candle } from '../types/candle.js';
 import type { LegacyIndicatorData } from '../indicators/registry.js';
 import { evaluateSignalGroup } from '../signals/evaluator.js';
@@ -268,9 +268,18 @@ function detectSignalEntry(
 ): EntryDetectionResult {
   const startCandle = candles[startIndex];
 
+  // Determine minimum candles needed for indicators in the signal
+  // EMA20 needs 20 candles, SMA20 needs 20, etc.
+  const minCandlesNeeded = getMinCandlesForSignal(entrySignal);
+
   for (let i = startIndex; i < candles.length; i++) {
     const candle = candles[i];
     if (candle.timestamp > maxWaitTimestamp) break;
+
+    // Skip if we don't have enough candles for indicators
+    if (i < minCandlesNeeded - 1) {
+      continue;
+    }
 
     const indicator = indicators[i];
     const prevIndicator = i > 0 ? indicators[i - 1] : undefined;
@@ -301,6 +310,57 @@ function detectSignalEntry(
     type: 'signal',
     description: 'Entry signal not triggered',
   };
+}
+
+/**
+ * Get minimum candles needed for signal evaluation
+ * Returns the maximum period required by any indicator in the signal
+ */
+function getMinCandlesForSignal(signal: SignalGroup): number {
+  let maxPeriod = 0;
+
+  // Check conditions
+  for (const condition of signal.conditions ?? []) {
+    const period = getMinCandlesForIndicator(condition.indicator);
+    maxPeriod = Math.max(maxPeriod, period);
+  }
+
+  // Check nested groups
+  for (const group of signal.groups ?? []) {
+    const period = getMinCandlesForSignal(group);
+    maxPeriod = Math.max(maxPeriod, period);
+  }
+
+  return maxPeriod;
+}
+
+/**
+ * Get minimum candles needed for an indicator
+ */
+function getMinCandlesForIndicator(indicator: IndicatorName): number {
+  switch (indicator) {
+    case 'ema':
+      return 20; // EMA20 is the default
+    case 'sma':
+      return 20; // SMA20 is the default
+    case 'rsi':
+      return 14; // Default RSI period
+    case 'macd':
+      return 26; // Slow EMA period
+    case 'ichimoku_cloud':
+      return 52; // Maximum of tenkan (9), kijun (26), senkou span B (52)
+    case 'bbands':
+      return 20; // Default period
+    case 'atr':
+      return 14; // Default ATR period
+    case 'vwma':
+      return 20; // Default period
+    case 'price_change':
+    case 'volume_change':
+      return 1; // No warm-up needed
+    default:
+      return 20; // Conservative default
+  }
 }
 
 /**

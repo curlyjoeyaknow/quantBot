@@ -34,7 +34,7 @@ const IngestSpecSchema = z.object({
   filePath: z.string().min(1, 'filePath is required'),
   chatId: z.string().optional(),
   callerName: z.string().optional(),
-  chain: z.enum(['solana', 'ethereum', 'base', 'bsc']).optional(),
+  chain: z.enum(['solana', 'ethereum', 'bsc', 'base', 'evm']).optional(),
   chunkSize: z.number().int().min(1).max(100).optional(),
   writeStreams: z.boolean().optional(), // Whether to write NDJSON streams
   outputDir: z.string().optional(), // Output directory for streams
@@ -105,6 +105,7 @@ export async function createDefaultTelegramJsonIngestContext(): Promise<Telegram
         logger.debug(msg, ctx as Record<string, unknown> | undefined),
     },
     repos: {
+      // NOTE: Direct instantiation is acceptable here - this is a context factory (composition root)
       callers: new CallersRepository(dbPath),
       tokenData: new TokenDataRepository(dbPath),
     },

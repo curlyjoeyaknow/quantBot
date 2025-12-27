@@ -6,7 +6,7 @@
  */
 
 import { z } from 'zod';
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+
 import { DateTime } from 'luxon';
 import { resolve } from 'path';
 import type { WorkflowContextWithPorts } from '../context/workflowContextWithPorts.js';
@@ -18,7 +18,7 @@ import { ConfigurationError } from '@quantbot/utils';
 export const GetTokenStatsSpecSchema = z.object({
   from: z.string().optional(), // ISO date string
   to: z.string().optional(), // ISO date string
-  chain: z.enum(['solana', 'ethereum', 'bsc', 'base']).optional(),
+  chain: z.enum(['solana', 'ethereum', 'bsc', 'base', 'evm']).optional(),
   duckdbPath: z.string().optional(),
   limit: z.number().int().positive().optional(),
 });

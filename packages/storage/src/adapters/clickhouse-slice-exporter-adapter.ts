@@ -36,12 +36,7 @@ export class ClickHouseSliceExporterAdapter implements SliceExporterPort {
 
       // Export each table
       for (const tableSpec of spec.tables) {
-        const tableResult = await this.exportTable(
-          client,
-          tableSpec,
-          spec,
-          spec.output.basePath
-        );
+        const tableResult = await this.exportTable(client, tableSpec, spec, spec.output.basePath);
 
         parquetFiles.push(...tableResult.files);
         rowCounts[tableSpec.tableName] = tableResult.totalRows;
@@ -137,8 +132,7 @@ export class ClickHouseSliceExporterAdapter implements SliceExporterPort {
       }
     }
 
-    const whereClause =
-      whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
+    const whereClause = whereConditions.length > 0 ? `WHERE ${whereConditions.join(' AND ')}` : '';
 
     // Query ClickHouse
     const query = `SELECT ${columnList} FROM ${tableSpec.tableName} ${whereClause} FORMAT Parquet`;
@@ -239,4 +233,3 @@ export class ClickHouseSliceExporterAdapter implements SliceExporterPort {
 export function createClickHouseSliceExporterAdapter(): SliceExporterPort {
   return new ClickHouseSliceExporterAdapter();
 }
-

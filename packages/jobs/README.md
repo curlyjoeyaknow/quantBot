@@ -1,8 +1,24 @@
 # @quantbot/jobs
 
-**Online orchestration jobs for OHLCV fetching from Birdeye API.**
+**Worker/Scheduler App Layer** - Runtime scheduling and orchestration for background jobs.
 
-This package is the **only** place allowed to make network calls for OHLCV data.
+This package provides:
+- **Queue consumers** - Process work items from queues
+- **Cron runners** - Scheduled task execution
+- **Retry/backoff logic** - Resilient job execution
+- **Concurrency limits** - Resource management
+- **Online boundary** - The only place allowed to make network calls for OHLCV data
+
+## Package Identity
+
+**This package is a worker/scheduler app layer**, not a business logic layer.
+
+- ✅ **Can contain:** Queue consumers, cron runners, retry/backoff, concurrency limits
+- ✅ **Can call:** Workflows and handlers (future: via ports)
+- ❌ **Should NOT contain:** Core business logic (that belongs in workflows/handlers)
+- ❌ **Should NOT contain:** Domain models or types (that belongs in @quantbot/core)
+
+**Future direction:** Migrate jobs to call workflows via `ctx.ports.*` instead of direct imports.
 
 ## Terminology
 
@@ -130,14 +146,27 @@ This package **can**:
 - Make HTTP requests to Birdeye API
 - Enforce rate limits
 - Emit metrics
+- Orchestrate workflows and handlers
+- Manage job queues and scheduling
 
 This package **does NOT**:
 - Store candles (that's handled by the ingestion workflow)
 - Update DuckDB metadata (that's handled by the ingestion workflow)
+- Contain business logic (that belongs in workflows/handlers)
 
 This package **must not** be imported by:
 - `@quantbot/simulation` (simulation must be offline-only)
 - `@quantbot/ohlcv` (ohlcv must be offline-only)
+
+## Current Usage (Temporary)
+
+**Note:** Current usage patterns are temporary and will be migrated:
+
+- `packages/workflows/src/adapters/ohlcvIngestionWorkflowAdapter.ts` - Uses `OhlcvFetchJob`
+- `packages/cli/src/commands/ingestion/*.ts` - Uses `OhlcvFetchJob`
+- `packages/ohlcv/src/backfill-service.ts` - Uses `OhlcvIngestionEngine`
+
+**Future:** Workflows should use ports, CLI should call workflows directly.
 
 ## Dependencies
 

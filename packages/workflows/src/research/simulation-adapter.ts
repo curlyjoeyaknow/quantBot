@@ -53,7 +53,10 @@ export class ResearchSimulationAdapter {
    * 7. Builds RunArtifact
    */
   async run(request: SimulationRequest): Promise<RunArtifact> {
-    const startTime = Date.now();
+    // Use clock for deterministic timing (can be mocked in tests)
+    // Convert ISO string to milliseconds for performance measurement
+    const startTimeISO = this.workflowContext.clock.nowISO();
+    const startTime = new Date(startTimeISO).getTime();
     const runId = this.workflowContext.ids.newRunId();
     const nowISO = this.workflowContext.clock.nowISO();
 
@@ -62,6 +65,16 @@ export class ResearchSimulationAdapter {
       snapshotId: request.dataSnapshot.snapshotId,
       strategyId: request.strategy.strategyId,
     });
+
+    // 0. Validate that contentHash exists (required for snapshot refs, not live data)
+    if (!request.dataSnapshot.contentHash) {
+      throw new ValidationError(
+        'Simulations must use snapshot refs with contentHash, not live data',
+        {
+          snapshotId: request.dataSnapshot.snapshotId,
+        }
+      );
+    }
 
     try {
       // 1. Verify snapshot integrity before loading
@@ -154,10 +167,11 @@ export class ResearchSimulationAdapter {
       }
 
       // 6. Calculate PnL series and metrics
-      const pnlSeries = calculatePnLSeries(allTradeEvents);
+      const pnlSeries = calculatePnLSeries(allTradeEvents, 1.0, nowISO);
       const metrics = calculateMetrics(allTradeEvents, pnlSeries);
 
-      const simulationTimeMs = Date.now() - startTime;
+      const simulationTimeMs =
+        DateTime.fromISO(this.workflowContext.clock.nowISO()).toMillis() - startTime;
 
       // 7. Build metadata
       const metadata: RunMetadata = {
@@ -189,13 +203,23 @@ export class ResearchSimulationAdapter {
         metrics,
       };
     } catch (error) {
+      // Validation errors should be thrown, not caught
+      if (error instanceof ValidationError) {
+        logger.error('[ResearchSimulationAdapter] Validation error', {
+          runId,
+          error: error.message,
+        });
+        throw error;
+      }
+
+      // Other errors (simulation failures, etc.) can be handled gracefully
       logger.error('[ResearchSimulationAdapter] Simulation failed', {
         runId,
         error: error instanceof Error ? error.message : String(error),
       });
-      // Even on error, return valid empty result rather than throwing
+      // Return valid empty result for non-validation errors
       // This ensures property tests can validate error handling
-      const emptyPnLSeries = calculatePnLSeries([]);
+      const emptyPnLSeries = calculatePnLSeries([], 1.0, nowISO);
       return {
         metadata: {
           runId,
@@ -208,7 +232,8 @@ export class ResearchSimulationAdapter {
           costModelHash: hashValue(request.costModel),
           riskModelHash: request.riskModel ? hashValue(request.riskModel) : undefined,
           runConfigHash: hashValue(request.runConfig),
-          simulationTimeMs: Date.now() - startTime,
+          simulationTimeMs:
+            DateTime.fromISO(this.workflowContext.clock.nowISO()).toMillis() - startTime,
           schemaVersion: '1.0.0',
         },
         request,
@@ -294,9 +319,10 @@ export class ResearchSimulationAdapter {
     // Convert contract CostModel to simulation engine CostConfig
     // Handle very small fees by ensuring minimum 1 bps (0.01%) to avoid rounding to 0
     const tradingFee = contractModel.tradingFee ?? 0;
-    const tradingFeeBps = tradingFee > 0
-      ? Math.max(1, Math.round(tradingFee * 10000)) // Ensure at least 1 bps
-      : 0;
+    const tradingFeeBps =
+      tradingFee > 0
+        ? Math.max(1, Math.round(tradingFee * 10000)) // Ensure at least 1 bps
+        : 0;
 
     return {
       entrySlippageBps: tradingFeeBps,
@@ -391,5 +417,6 @@ export class ResearchSimulationAdapter {
 export function createSimulationAdapter(
   workflowContext: WorkflowContext
 ): ResearchSimulationAdapter {
+  // NOTE: Direct instantiation is acceptable here - this is a factory function (composition root)
   return new ResearchSimulationAdapter(workflowContext);
 }

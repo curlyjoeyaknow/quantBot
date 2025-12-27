@@ -30,10 +30,7 @@ export class DuckDbSliceAnalyzerAdapter implements SliceAnalyzerPort {
    * @param manifest - Slice manifest (passed as data, not read from disk)
    * @param queryPlan - Analysis query plan
    */
-  async analyze(
-    manifest: SliceManifest,
-    queryPlan: AnalysisQueryPlan
-  ): Promise<AnalysisResult> {
+  async analyze(manifest: SliceManifest, queryPlan: AnalysisQueryPlan): Promise<AnalysisResult> {
     const startTime = Date.now();
     let client: DuckDBClient | null = null;
 
@@ -92,10 +89,7 @@ export class DuckDbSliceAnalyzerAdapter implements SliceAnalyzerPort {
   /**
    * Attach Parquet files as external tables in DuckDB
    */
-  private async attachParquetFiles(
-    client: DuckDBClient,
-    manifest: SliceManifest
-  ): Promise<void> {
+  private async attachParquetFiles(client: DuckDBClient, manifest: SliceManifest): Promise<void> {
     // Install and load Parquet extension
     await client.execute('INSTALL parquet');
     await client.execute('LOAD parquet');
@@ -224,9 +218,7 @@ export class DuckDbSliceAnalyzerAdapter implements SliceAnalyzerPort {
     await fs.mkdir(dirname(outputPath), { recursive: true });
 
     // Execute query and write to CSV
-    await client.execute(
-      `COPY (${sql}) TO '${outputPath}' (FORMAT CSV, HEADER, DELIMITER ',')`
-    );
+    await client.execute(`COPY (${sql}) TO '${outputPath}' (FORMAT CSV, HEADER, DELIMITER ',')`);
 
     // Get row count and columns
     const result = await client.query(`SELECT * FROM (${sql}) LIMIT 0`);
@@ -292,4 +284,3 @@ export class DuckDbSliceAnalyzerAdapter implements SliceAnalyzerPort {
 export function createDuckDbSliceAnalyzerAdapter(): SliceAnalyzerPort {
   return new DuckDbSliceAnalyzerAdapter();
 }
-

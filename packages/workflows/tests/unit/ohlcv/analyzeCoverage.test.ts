@@ -142,7 +142,7 @@ describe('analyzeCoverage workflow', () => {
           'end-date': '2025-12-31',
         },
         expect.any(Object),
-        { timeout: 300000 }
+        { timeout: 900000 } // Default timeout is 15 minutes (900000ms)
       );
     });
 
@@ -225,7 +225,7 @@ describe('analyzeCoverage workflow', () => {
       await analyzeCoverage(spec, mockContext);
 
       expect(mockPythonEngine.runScript).toHaveBeenCalledWith(
-        expect.stringMatching(/ohlcv_caller_coverage\.py$/),
+        expect.stringContaining('ohlcv_caller_coverage.py'),
         {
           duckdb: 'data/test.duckdb',
           interval: '5m',
@@ -238,7 +238,7 @@ describe('analyzeCoverage workflow', () => {
           'generate-fetch-plan': true,
         },
         expect.any(Object),
-        { timeout: 300000 }
+        { timeout: 900000 } // Default timeout is 15 minutes (900000ms)
       );
     });
 

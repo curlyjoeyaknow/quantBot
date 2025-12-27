@@ -44,20 +44,43 @@ export class MetricsAggregator {
     const metrics: CallerMetrics[] = [];
 
     for (const [callerName, callerCalls] of byCaller.entries()) {
-      // Filter out NaN values for valid calculations, but count them as losing calls
-      const validCalls = callerCalls.filter((c) => !Number.isNaN(c.athMultiple));
-      const nanCalls = callerCalls.filter((c) => Number.isNaN(c.athMultiple));
+      // Filter out invalid calls (NaN, Infinity, negative, zero entry price)
+      const validCalls = callerCalls.filter(
+        (c) =>
+          c &&
+          !Number.isNaN(c.athMultiple) &&
+          Number.isFinite(c.athMultiple) &&
+          c.athMultiple > 0 &&
+          c.entryPrice > 0 &&
+          Number.isFinite(c.entryPrice)
+      );
+      const invalidCalls = callerCalls.filter(
+        (c) =>
+          !c ||
+          Number.isNaN(c.athMultiple) ||
+          !Number.isFinite(c.athMultiple) ||
+          c.athMultiple <= 0 ||
+          c.entryPrice <= 0 ||
+          !Number.isFinite(c.entryPrice)
+      );
 
       const winningCalls = validCalls.filter((c) => c.athMultiple > 1);
       const losingCalls = validCalls.filter((c) => c.athMultiple <= 1);
-      // Include NaN calls as losing calls for conservation law
-      const totalLosingCalls = losingCalls.length + nanCalls.length;
+      // Include invalid calls as losing calls for conservation law
+      const totalLosingCalls = losingCalls.length + invalidCalls.length;
       const multiples = validCalls.map((c) => c.athMultiple);
       const timesToAth = callerCalls
-        .filter((c) => c.timeToAthMinutes > 0)
+        .filter((c) => c && c.timeToAthMinutes > 0 && Number.isFinite(c.timeToAthMinutes))
         .map((c) => c.timeToAthMinutes);
 
-      const timestamps = callerCalls.map((c) => c.alertTimestamp.getTime());
+      // Filter out invalid timestamps
+      const validTimestamps = callerCalls
+        .filter((c) => c && c.alertTimestamp && !isNaN(c.alertTimestamp.getTime()))
+        .map((c) => c.alertTimestamp.getTime());
+
+      if (validTimestamps.length === 0) {
+        logger.warn(`[MetricsAggregator] No valid timestamps for caller ${callerName}`);
+      }
 
       metrics.push({
         callerName,
@@ -71,8 +94,8 @@ export class MetricsAggregator {
         worstMultiple: multiples.length > 0 ? Math.min(...multiples) : 0,
         avgTimeToAth:
           timesToAth.length > 0 ? timesToAth.reduce((a, b) => a + b, 0) / timesToAth.length : 0,
-        firstCall: new Date(Math.min(...timestamps)),
-        lastCall: new Date(Math.max(...timestamps)),
+        firstCall: validTimestamps.length > 0 ? new Date(Math.min(...validTimestamps)) : new Date(),
+        lastCall: validTimestamps.length > 0 ? new Date(Math.max(...validTimestamps)) : new Date(),
       });
     }
 
@@ -87,7 +110,7 @@ export class MetricsAggregator {
    * Calculate ATH distribution
    */
   calculateAthDistribution(calls: CallPerformance[]): AthDistribution[] {
-    if (calls.length === 0) {
+    if (!calls || calls.length === 0) {
       return ATH_BUCKETS.map((b) => ({
         bucket: b.label,
         count: 0,
@@ -142,19 +165,37 @@ export class MetricsAggregator {
     // PostgreSQL removed - calculate metrics from provided calls only
     // For full system metrics, use DuckDB workflows
 
-    // Calculate date range from calls
-    const timestamps = calls.map((c) => c.alertTimestamp.getTime());
-    const dataRange = {
-      start: timestamps.length > 0 ? new Date(Math.min(...timestamps)) : new Date(),
-      end: timestamps.length > 0 ? new Date(Math.max(...timestamps)) : new Date(),
-    };
+    // Filter valid calls (with valid timestamps)
+    const validCalls = calls.filter(
+      (c) => c && c.alertTimestamp && !isNaN(c.alertTimestamp.getTime())
+    );
+
+    // Extract unique callers and tokens
+    const uniqueCallers = new Set<string>();
+    const uniqueTokens = new Set<string>();
+    const validTimestamps: number[] = [];
+
+    for (const call of validCalls) {
+      if (call.callerName) {
+        uniqueCallers.add(call.callerName);
+      }
+      if (call.tokenAddress) {
+        uniqueTokens.add(call.tokenAddress);
+      }
+      if (call.alertTimestamp && !isNaN(call.alertTimestamp.getTime())) {
+        validTimestamps.push(call.alertTimestamp.getTime());
+      }
+    }
 
     // Return metrics based on provided calls (no DB queries)
     return {
-      totalCalls: calls.length,
-      totalCallers: new Set(calls.map((c) => c.callerName)).size,
-      totalTokens: new Set(calls.map((c) => c.tokenAddress)).size,
-      dataRange,
+      totalCalls: validCalls.length,
+      totalCallers: uniqueCallers.size,
+      totalTokens: uniqueTokens.size,
+      dataRange: {
+        start: validTimestamps.length > 0 ? new Date(Math.min(...validTimestamps)) : new Date(),
+        end: validTimestamps.length > 0 ? new Date(Math.max(...validTimestamps)) : new Date(),
+      },
       simulationsTotal: 0, // Requires DuckDB query - use workflows
       simulationsToday: 0, // Requires DuckDB query - use workflows
     };

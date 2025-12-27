@@ -9,6 +9,7 @@ import { logger } from '@quantbot/utils';
 import { StorageEngine, getStorageEngine } from '@quantbot/storage';
 import type { CallPerformance } from '../types.js';
 import { calculateAthFromCandleObjects } from '../utils/ath-calculator.js';
+import { loadHistoricalPricesBatch } from './HistoricalPriceLoader.js';
 // Dynamic import to avoid build-time dependency on workflows
 // Types will be imported at runtime
 
@@ -29,10 +30,14 @@ export class CallDataLoader {
    */
   async loadCalls(options: LoadCallsOptions = {}): Promise<CallPerformance[]> {
     // Use queryCallsDuckdb workflow to query calls
-    const duckdbPath = process.env.DUCKDB_PATH || 'data/tele.duckdb';
+    // Default to tele.duckdb which contains user_calls_d table
+    const { getDuckDBPath } = await import('@quantbot/utils');
+    const duckdbPath = getDuckDBPath('data/tele.duckdb');
+    // Use a wide date range by default to get all calls (last 5 years)
+    // Only restrict if explicitly provided
     const fromISO = options.from
       ? DateTime.fromJSDate(options.from).toISO()!
-      : DateTime.utc().minus({ days: 30 }).toISO()!;
+      : DateTime.utc().minus({ years: 5 }).toISO()!; // Wide range to get all calls
     const toISO = options.to ? DateTime.fromJSDate(options.to).toISO()! : DateTime.utc().toISO()!;
 
     try {
@@ -48,7 +53,7 @@ export class CallDataLoader {
         fromISO,
         toISO,
         callerName: options.callerNames?.[0], // Use first caller name if provided
-        limit: options.limit || 1000,
+        limit: options.limit || 10000, // Increased limit to handle more calls (was 1000)
       };
 
       const ctx = await createQueryCallsDuckdbContext(duckdbPath);
@@ -80,23 +85,140 @@ export class CallDataLoader {
       }
 
       // Convert CallRecord[] to CallPerformance[]
-      // Note: CallPerformance requires more fields than CallRecord provides
-      // We'll need to enrich with additional data or adjust the type
-      const callPerformance: CallPerformance[] = result.calls.map(
-        (call: { mint: string; caller: string; createdAt: DateTime }, index: number) => ({
+      // Filter out invalid calls and validate data
+      const validCalls = (result.calls || []).filter((call) => {
+        // Filter out calls with missing required fields
+        if (!call || !call.mint || !call.createdAt) {
+          logger.warn('[CallDataLoader] Skipping call with missing required fields', { call });
+          return false;
+        }
+        return true;
+      });
+
+      // Helper function to validate price_usd
+      const isValidPrice = (price: unknown): price is number => {
+        if (price === null || price === undefined) return false;
+        if (typeof price !== 'number') return false;
+        if (Number.isNaN(price)) return false;
+        if (!Number.isFinite(price)) return false;
+        if (price <= 0) return false;
+        return true;
+      };
+
+      // Prepare calls for historical price lookup
+      const callsForPriceLookup = validCalls.map((call, index) => {
+        const tokenAddress = String(call.mint || '').trim();
+        let alertTimestamp: Date;
+        try {
+          if (call.createdAt instanceof DateTime && call.createdAt.isValid) {
+            alertTimestamp = call.createdAt.toJSDate();
+          } else {
+            alertTimestamp = new Date();
+          }
+        } catch {
+          alertTimestamp = new Date();
+        }
+
+        // Check if price_usd is valid - if invalid, we'll use 0 and skip Birdeye lookup
+        const priceUsd = (call as { price_usd?: unknown }).price_usd;
+        const hasValidPriceUsd = isValidPrice(priceUsd);
+
+        return {
+          index,
+          tokenAddress,
+          alertTimestamp,
+          caller: call.caller,
+          createdAt: call.createdAt,
+          priceUsd: hasValidPriceUsd ? priceUsd : undefined, // Only include valid prices
+          hasValidPriceUsd,
+        };
+      });
+
+      // Filter calls that need Birdeye lookup (those without valid price_usd)
+      const callsNeedingBirdeye = callsForPriceLookup.filter((c) => !c.hasValidPriceUsd);
+
+      // Load historical prices from Birdeye API only for calls without valid price_usd
+      let historicalPrices = new Map<number, number>();
+      if (callsNeedingBirdeye.length > 0) {
+        logger.info(
+          `[CallDataLoader] Fetching historical prices from Birdeye for ${callsNeedingBirdeye.length} calls (${callsForPriceLookup.length - callsNeedingBirdeye.length} calls already have valid price_usd)`
+        );
+        historicalPrices = await loadHistoricalPricesBatch(
+          callsNeedingBirdeye.map((c) => ({
+            tokenAddress: c.tokenAddress,
+            alertTimestamp: c.alertTimestamp,
+            // Chain will be auto-detected from address format
+          })),
+          10 // Batch size - process 10 calls at a time to avoid rate limiting
+        );
+
+        const successRate =
+          callsNeedingBirdeye.length > 0
+            ? ((historicalPrices.size / callsNeedingBirdeye.length) * 100).toFixed(1)
+            : '0.0';
+
+        logger.info(
+          `[CallDataLoader] Loaded ${historicalPrices.size}/${callsNeedingBirdeye.length} historical prices from Birdeye (${successRate}% success rate)`
+        );
+
+        if (historicalPrices.size < callsNeedingBirdeye.length * 0.5) {
+          logger.warn(
+            `[CallDataLoader] Low Birdeye price fetch success rate (${successRate}%). Some tokens may not be available in Birdeye at those timestamps, or may use unsupported formats (e.g., Sui tokens).`
+          );
+        }
+      } else {
+        logger.info(
+          `[CallDataLoader] All ${callsForPriceLookup.length} calls have valid price_usd, skipping Birdeye lookup`
+        );
+      }
+
+      // Create a map from original index to Birdeye result index for calls needing Birdeye
+      const birdeyeIndexMap = new Map<number, number>();
+      let birdeyeIndex = 0;
+      for (let i = 0; i < callsForPriceLookup.length; i++) {
+        if (!callsForPriceLookup[i].hasValidPriceUsd) {
+          birdeyeIndexMap.set(i, birdeyeIndex++);
+        }
+      }
+
+      // Map to CallPerformance with historical prices
+      const callPerformance: CallPerformance[] = callsForPriceLookup.map((callInfo, index) => {
+        const tokenAddress = callInfo.tokenAddress;
+        const alertTimestamp = callInfo.alertTimestamp;
+
+        // Determine entry price:
+        // 1. Use valid price_usd if available
+        // 2. Otherwise, use Birdeye price if available
+        // 3. Otherwise, use 0 (invalid price_usd means we should return 0, not fetch from Birdeye)
+        let entryPrice: number;
+        if (callInfo.hasValidPriceUsd && callInfo.priceUsd !== undefined) {
+          entryPrice = callInfo.priceUsd;
+        } else {
+          // Try to get from Birdeye (only if we attempted lookup)
+          const birdeyeIdx = birdeyeIndexMap.get(index);
+          entryPrice = birdeyeIdx !== undefined ? historicalPrices.get(birdeyeIdx) || 0 : 0;
+        }
+
+        // Validate and normalize caller name
+        const callerName =
+          callInfo.caller && String(callInfo.caller).trim()
+            ? String(callInfo.caller).trim()
+            : 'unknown';
+
+        return {
           callId: index + 1, // Generate ID since we don't have numeric ID from DuckDB
-          tokenAddress: call.mint,
-          callerName: call.caller || 'unknown',
+          tokenAddress,
+          callerName,
           chain: 'solana', // Default to solana, could be enriched later
-          alertTimestamp: call.createdAt.toJSDate(), // CallRecord.createdAt is a Luxon DateTime
-          entryPrice: 0, // Will need to be enriched from alerts table or OHLCV
-          athPrice: 0, // Will need to be enriched
-          athMultiple: 1, // Default, will be enriched
+          alertTimestamp,
+          entryPrice, // Use historical price from Birdeye at exact alert time
+          athPrice: entryPrice, // Default to entry price, will be enriched if OHLCV data available
+          athMultiple: 1, // Default, will be enriched if OHLCV data available
           timeToAthMinutes: 0, // Will need to be enriched
-          atlPrice: 0, // Will need to be enriched
-          atlMultiple: 1, // Default, will be enriched
-        })
-      );
+          atlPrice: entryPrice, // Default to entry price, will be enriched if OHLCV data available
+          atlMultiple: 1, // Default, will be enriched if OHLCV data available
+        };
+      });
 
       logger.info(`[CallDataLoader] Loaded ${callPerformance.length} calls from DuckDB`, {
         fromISO,
@@ -142,6 +264,8 @@ export class CallDataLoader {
     const enriched: CallPerformance[] = [];
     let enrichedCount = 0;
     let skippedCount = 0;
+    let alreadyEnrichedCount = 0;
+    const missingCandlesTokens = new Set<string>();
 
     // Process in batches of 10 to avoid overwhelming the database
     const batchSize = 10;
@@ -152,6 +276,7 @@ export class CallDataLoader {
         batch.map((call) => {
           // Only enrich if not already enriched
           if (call.athMultiple !== 1 || call.athPrice !== call.entryPrice) {
+            alreadyEnrichedCount++;
             return Promise.resolve(call); // Already enriched, return as-is
           }
           return this.enrichSingleCall(call, storageEngine);
@@ -160,64 +285,124 @@ export class CallDataLoader {
 
       for (const result of results) {
         if (result.status === 'fulfilled' && result.value) {
-          enriched.push(result.value);
-          enrichedCount++;
+          const call = result.value;
+          enriched.push(call);
+
+          // Check if enrichment actually happened (ATH changed from default)
+          if (call.athMultiple === 1 && call.athPrice === call.entryPrice) {
+            skippedCount++;
+            if (call.tokenAddress) {
+              missingCandlesTokens.add(call.tokenAddress);
+            }
+          } else {
+            enrichedCount++;
+          }
         } else {
           // If enrichment failed, keep the original call
           const originalCall = batch[results.indexOf(result)];
           if (originalCall) {
             enriched.push(originalCall);
             skippedCount++;
+            if (originalCall.tokenAddress) {
+              missingCandlesTokens.add(originalCall.tokenAddress);
+            }
           }
         }
       }
     }
 
+    const totalCalls = calls.length;
+    const enrichmentRate = totalCalls > 0 ? (enrichedCount / totalCalls) * 100 : 0;
+    const uniqueTokensMissingData = missingCandlesTokens.size;
+
     logger.info(
-      `[CallDataLoader] Enriched ${enrichedCount} calls, skipped ${skippedCount} (no data or errors)`
+      `[CallDataLoader] ATH enrichment complete: ${enrichedCount}/${totalCalls} enriched (${enrichmentRate.toFixed(1)}%), ${alreadyEnrichedCount} already had data, ${skippedCount} skipped (no OHLCV data for ${uniqueTokensMissingData} unique tokens)`
     );
+
+    if (enrichmentRate < 50 && totalCalls > 10) {
+      logger.warn(
+        `[CallDataLoader] Low ATH enrichment rate (${enrichmentRate.toFixed(1)}%). ${uniqueTokensMissingData} unique tokens are missing OHLCV data. Consider running: quantbot ingestion ohlcv --duckdb data/tele.duckdb`
+      );
+    }
+
+    // Only log individual missing candles at trace level to reduce noise
+    if (uniqueTokensMissingData > 0) {
+      logger.debug(
+        `[CallDataLoader] Tokens missing OHLCV data: ${Array.from(missingCandlesTokens).slice(0, 10).join(', ')}${uniqueTokensMissingData > 10 ? ` ... and ${uniqueTokensMissingData - 10} more` : ''}`
+      );
+    }
+
     return enriched;
   }
 
   /**
    * Enrich a single call with ATH data
+   *
+   * Note: This queries ClickHouse for OHLCV candles, which can be slow.
+   * Use with caution in high-volume scenarios.
    */
   private async enrichSingleCall(
     call: CallPerformance,
     storageEngine: StorageEngine
   ): Promise<CallPerformance | null> {
     try {
+      // Skip enrichment if entry price is missing or invalid
+      if (!call.entryPrice || call.entryPrice <= 0 || !Number.isFinite(call.entryPrice)) {
+        logger.trace(
+          `[CallDataLoader] Skipping enrichment for call ${call.callId} - invalid entry price: ${call.entryPrice}`
+        );
+        return call;
+      }
+
       const alertTime = DateTime.fromJSDate(call.alertTimestamp);
       const entryTimestamp = Math.floor(alertTime.toSeconds());
 
-      // Fetch candles from alert time forward (up to 30 days)
-      const endTime = alertTime.plus({ days: 30 });
+      // Fetch candles from alert time forward (up to 7 days for performance)
+      // Reduced from 30 days to avoid timeouts and reduce query load
+      const endTime = alertTime.plus({ days: 7 });
 
-      // Try 5m candles first (more accurate), fallback to 1m if available
-      let candles = await storageEngine.getCandles(
-        call.tokenAddress,
-        call.chain,
-        alertTime,
-        endTime,
-        { interval: '5m', useCache: true }
-      );
-
-      // If no 5m candles, try 1m
-      if (candles.length === 0) {
+      // Fetch candles with error handling (ClickHouse can be slow or timeout)
+      let candles;
+      try {
         candles = await storageEngine.getCandles(
           call.tokenAddress,
           call.chain,
           alertTime,
           endTime,
-          { interval: '1m', useCache: true }
+          { interval: '5m', useCache: true }
         );
+      } catch (error) {
+        // ClickHouse error (timeout, connection issue, etc.) - skip enrichment for this call
+        logger.trace(
+          `[CallDataLoader] Candle fetch failed for ${call.tokenAddress}: ${error instanceof Error ? error.message : String(error)}`
+        );
+        return call;
+      }
+
+      // If no 5m candles, try 1m
+      if (candles.length === 0) {
+        try {
+          candles = await storageEngine.getCandles(
+            call.tokenAddress,
+            call.chain,
+            alertTime,
+            endTime,
+            { interval: '1m', useCache: true }
+          );
+        } catch (error) {
+          // Skip if 1m also fails
+          logger.trace(`[CallDataLoader] 1m candle fetch failed for ${call.tokenAddress}`);
+          return call;
+        }
       }
 
       // If still no candles, skip enrichment
       if (candles.length === 0) {
+        // Only log at debug level - this is expected for tokens without OHLCV data
         logger.debug(
-          `[CallDataLoader] No candles found for ${call.tokenAddress}...`
+          `[CallDataLoader] No candles found for ${call.tokenAddress}::${call.chain}::${call.tokenSymbol || 'N/A'}`
         );
+        // Return call with default ATH values (1x) - this is expected behavior
         return call;
       }
 

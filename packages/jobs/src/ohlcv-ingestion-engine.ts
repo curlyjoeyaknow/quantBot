@@ -197,19 +197,13 @@ export class OhlcvIngestionEngine {
         const cachedChain = this.chainCache.get(mint);
         if (cachedChain) {
           actualChain = cachedChain;
-          logger.debug(
-            `[OhlcvIngestionEngine] Using cached chain for ${mint}...`,
-            {
-              chain: actualChain,
-            }
-          );
+          logger.debug(`[OhlcvIngestionEngine] Using cached chain for ${mint}...`, {
+            chain: actualChain,
+          });
         } else {
-          logger.info(
-            `[OhlcvIngestionEngine] Detecting chain for EVM address ${mint}...`,
-            {
-              chainHint: chain,
-            }
-          );
+          logger.info(`[OhlcvIngestionEngine] Detecting chain for EVM address ${mint}...`, {
+            chainHint: chain,
+          });
           const metadataResult = await fetchMultiChainMetadata(mint, chain);
           if (metadataResult.primaryMetadata) {
             actualChain = metadataResult.primaryMetadata.chain;
@@ -455,10 +449,7 @@ export class OhlcvIngestionEngine {
         }
       }
 
-      logger.error(
-        `[OhlcvIngestionEngine] Failed to fetch candles for ${mint}...`,
-        error as Error
-      );
+      logger.error(`[OhlcvIngestionEngine] Failed to fetch candles for ${mint}...`, error as Error);
       throw error;
     }
   }
@@ -487,9 +478,7 @@ export class OhlcvIngestionEngine {
           { interval: '1m' }
         );
         if (cachedCandles.length > 0) {
-          logger.debug(
-            `[OhlcvIngestionEngine] Probe: Found cached candles for ${mint}...`
-          );
+          logger.debug(`[OhlcvIngestionEngine] Probe: Found cached candles for ${mint}...`);
           return { hasData: true, fromAPI: false };
         }
       } catch (error) {
@@ -558,9 +547,7 @@ export class OhlcvIngestionEngine {
           { interval: '5m' }
         );
         if (cachedCandles.length > 0) {
-          logger.debug(
-            `[OhlcvIngestionEngine] Probe: Found cached 5m candles for ${mint}...`
-          );
+          logger.debug(`[OhlcvIngestionEngine] Probe: Found cached 5m candles for ${mint}...`);
           return { hasData: true, fromAPI: false };
         }
       } catch (error) {
@@ -641,9 +628,7 @@ export class OhlcvIngestionEngine {
           });
           return true;
         }
-        logger.warn(
-          `[OhlcvIngestionEngine] No metadata returned for ${mint}... on any chain`
-        );
+        logger.warn(`[OhlcvIngestionEngine] No metadata returned for ${mint}... on any chain`);
         return false;
       }
 
@@ -1016,9 +1001,7 @@ export class OhlcvIngestionEngine {
 
       // Safety check: if we've fetched too many chunks, break
       if (chunksFetched > 100) {
-        logger.warn(
-          `[OhlcvIngestionEngine] Too many chunks fetched for ${mint}..., stopping`
-        );
+        logger.warn(`[OhlcvIngestionEngine] Too many chunks fetched for ${mint}..., stopping`);
         break;
       }
     }
@@ -1052,9 +1035,7 @@ export class OhlcvIngestionEngine {
     if (useCache && !forceRefresh) {
       const cachedCandles = cache.get(cacheKey);
       if (cachedCandles && cachedCandles.length > 0) {
-        logger.debug(
-          `[OhlcvIngestionEngine] In-memory cache hit for ${mint}... (${interval})`
-        );
+        logger.debug(`[OhlcvIngestionEngine] In-memory cache hit for ${mint}... (${interval})`);
         return { candles: cachedCandles, fromCache: true };
       }
     }
@@ -1082,13 +1063,10 @@ export class OhlcvIngestionEngine {
     }
 
     // Step 3: Fetch from Birdeye API using fetchBirdeyeCandles (from api-clients)
-    logger.info(
-      `[OhlcvIngestionEngine] Fetching ${interval} candles from Birdeye for ${mint}...`,
-      {
-        startTime: startTime.toISO(),
-        endTime: endTime.toISO(),
-      }
-    );
+    logger.info(`[OhlcvIngestionEngine] Fetching ${interval} candles from Birdeye for ${mint}...`, {
+      startTime: startTime.toISO(),
+      endTime: endTime.toISO(),
+    });
 
     try {
       const from = Math.floor(startTime.toSeconds());
@@ -1102,9 +1080,7 @@ export class OhlcvIngestionEngine {
       let candles = await fetchBirdeyeCandles(mint, birdeyeInterval, from, to, chain);
 
       if (candles.length === 0) {
-        logger.debug(
-          `[OhlcvIngestionEngine] No data returned from Birdeye for ${mint}...`
-        );
+        logger.debug(`[OhlcvIngestionEngine] No data returned from Birdeye for ${mint}...`);
         return { candles: [], fromCache: false };
       }
 
@@ -1192,9 +1168,7 @@ export class OhlcvIngestionEngine {
         });
 
         // Try a repeat fetch first
-        logger.debug(
-          `[OhlcvIngestionEngine] Attempting repeat OHLCV fetch for ${mint}...`
-        );
+        logger.debug(`[OhlcvIngestionEngine] Attempting repeat OHLCV fetch for ${mint}...`);
         try {
           const retryCandles = await fetchBirdeyeCandles(mint, interval, from, to, chain);
 
@@ -1214,9 +1188,7 @@ export class OhlcvIngestionEngine {
             );
 
             if (retryInvalid.length === 0) {
-              logger.info(
-                `[OhlcvIngestionEngine] Repeat fetch fixed data issues for ${mint}...`
-              );
+              logger.info(`[OhlcvIngestionEngine] Repeat fetch fixed data issues for ${mint}...`);
               candles = retryCandles;
             } else {
               // Retry also has issues, use historical price fallback for invalid/missing candles
@@ -1264,9 +1236,7 @@ export class OhlcvIngestionEngine {
       }
 
       if (candles.length === 0) {
-        logger.debug(
-          `[OhlcvIngestionEngine] No candles in time range for ${mint}...`
-        );
+        logger.debug(`[OhlcvIngestionEngine] No candles in time range for ${mint}...`);
         return { candles: [], fromCache: false };
       }
 

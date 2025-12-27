@@ -290,8 +290,7 @@ export async function insertCandles(
   } catch (error: unknown) {
     // Silently fail if USE_CACHE_ONLY is set (insertions not needed in cache-only mode)
     if (process.env.USE_CACHE_ONLY !== 'true') {
-      const displayAddr =
-        tokenAddress.length > 30 ? tokenAddress + '...' : tokenAddress;
+      const displayAddr = tokenAddress.length > 30 ? tokenAddress + '...' : tokenAddress;
       logger.error('Error inserting candles', error as Error, { tokenAddress: displayAddr });
     }
     // Don't throw in cache-only mode - just skip insertion

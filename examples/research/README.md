@@ -1,6 +1,64 @@
 # Research Services Examples
 
-This directory contains example scripts demonstrating how to use the Research Services CLI commands.
+This directory contains example scripts demonstrating how to use the Research Services CLI commands and programmatic API.
+
+## Quick Start
+
+### Code Example (TypeScript)
+
+See `simple-example.ts` for a minimal example that doesn't require database connections:
+
+```typescript
+import { createExecutionRealityService } from '@quantbot/workflows/research/services/index.js';
+
+const service = createExecutionRealityService();
+
+// Create execution model
+const executionModel = service.createExecutionModelFromCalibration({
+  latencySamples: [100, 150, 200, 250, 300],
+  slippageSamples: [
+    { tradeSize: 100, expectedPrice: 100.0, actualPrice: 100.1 },
+  ],
+  failureRate: 0.02,
+}, 'pumpfun');
+
+// Create cost model
+const costModel = service.createCostModelFromFees({
+  baseFee: 5000,
+  priorityFee: { base: 1000, max: 10000 },
+  tradingFee: 0.01,
+});
+
+// Create risk model
+const riskModel = service.createRiskModelFromConstraints({
+  maxDrawdown: 0.2,
+  maxLossPerDay: 1000,
+  maxConsecutiveLosses: 5,
+  maxPositionSize: 500,
+});
+```
+
+### CLI Example
+
+```bash
+# Create an execution model
+quantbot research create-execution-model \
+  --latency-samples "100,150,200,250,300" \
+  --failure-rate "0.02" \
+  --format json
+
+# Create a cost model
+quantbot research create-cost-model \
+  --base-fee "5000" \
+  --trading-fee-percent "0.01" \
+  --format json
+
+# Create a risk model
+quantbot research create-risk-model \
+  --max-drawdown-percent "20" \
+  --max-loss-per-day "1000" \
+  --format json
+```
 
 ## Available Examples
 
@@ -98,6 +156,33 @@ Edit the scripts to customize:
 - Fee structures for cost models
 - Risk constraints for risk models
 
+## Code Examples
+
+### Simple Example (`simple-example.ts`)
+
+A minimal example that demonstrates creating and using execution, cost, and risk models without requiring database connections:
+
+```bash
+# Run with tsx (if available)
+pnpm tsx examples/research/simple-example.ts
+
+# Or compile and run
+pnpm build
+node dist/examples/research/simple-example.js
+```
+
+### Full Example (`code-example.ts`)
+
+A complete example showing:
+- Creating data snapshots (requires database)
+- Creating execution/cost/risk models
+- Applying models to trades
+- Complete workflow integration
+
+```bash
+pnpm tsx examples/research/code-example.ts
+```
+
 ## Next Steps
 
 After creating snapshots and models, you can:
@@ -108,4 +193,56 @@ After creating snapshots and models, you can:
 
 See the [Research Services Usage Guide](../../docs/guides/research-services-usage.md) for more details.
 
+## Example Output
 
+### Execution Model
+
+```json
+{
+  "latency": {
+    "p50": 200,
+    "p95": 350,
+    "p99": 400,
+    "mean": 235.7,
+    "stdDev": 98.2
+  },
+  "slippage": {
+    "p50": 0.003,
+    "p95": 0.005,
+    "p99": 0.006
+  },
+  "failures": {
+    "rate": 0.02,
+    "retryable": 0.015,
+    "permanent": 0.005
+  }
+}
+```
+
+### Cost Model
+
+```json
+{
+  "baseFee": 5000,
+  "priorityFee": {
+    "base": 1000,
+    "max": 10000
+  },
+  "tradingFee": 0.01
+}
+```
+
+### Risk Model
+
+```json
+{
+  "maxDrawdown": 0.2,
+  "maxLossPerDay": 1000,
+  "maxConsecutiveLosses": 5,
+  "maxPositionSize": 500,
+  "tradeThrottle": {
+    "maxTradesPerMinute": 10,
+    "maxTradesPerHour": 100
+  }
+}
+```

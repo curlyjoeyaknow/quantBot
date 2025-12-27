@@ -15,12 +15,14 @@ The simulation workflow follows the canonical pipeline architecture:
 ### Separation of Concerns
 
 **OHLCV Ingestion Job** (separate workflow):
+
 - Fetches OHLCV data from Birdeye API
 - Stores in DuckDB `ohlcv_candles_d` and ClickHouse
 - Handles all external API calls, rate limiting, retries
 - Should be run before simulation to ensure data availability
 
 **Simulation Workflow** (read-only):
+
 - Reads OHLCV data from DuckDB `ohlcv_candles_d` table
 - Falls back to `user_calls_d` for price data if candles not found
 - **Does NOT fetch from Birdeye API** (that's the ingestion job's responsibility)
@@ -28,7 +30,30 @@ The simulation workflow follows the canonical pipeline architecture:
 
 ### Current Implementation
 
-The Python simulator (`tools/simulation/simulator.py`) is **read-only** and fetches OHLCV data in this order:
+**TypeScript Simulation** (primary):
+
+The simulation workflow uses a **Causal Candle Accessor** to ensure Gate 2 compliance:
+
+1. **Causal Candle Accessor** (`StorageCausalCandleAccessor`)
+   - Wraps `StorageEngine` and provides causal access
+   - Filters candles by `closeTime <= simulationTime`
+   - Implements caching to reduce repeated queries
+   - Ensures simulations cannot access future candles
+
+2. **Incremental Candle Fetching**
+   - Simulation iterates by time steps (e.g., 5 minutes for 5m candles)
+   - Fetches candles incrementally using `candleAccessor.getCandlesAtTime()`
+   - Updates indicators incrementally as new candles arrive
+   - Never accesses candles with `closeTime > currentSimulationTime`
+
+3. **Storage Engine** (via `StorageCausalCandleAccessor`)
+   - Queries DuckDB `ohlcv_candles_d` table (primary source)
+   - Returns OHLCV data filtered by causality
+   - This table is populated by the OHLCV ingestion job
+
+**Python Simulator** (`tools/simulation/simulator.py`) - legacy:
+
+The Python simulator is **read-only** and fetches OHLCV data in this order:
 
 1. **DuckDB `ohlcv_candles_d` table** (primary source)
    - Queries for candles in the simulation time window
@@ -44,17 +69,21 @@ The Python simulator (`tools/simulation/simulator.py`) is **read-only** and fetc
    - Simulation will fail with "No candles available" error
    - This is expected behavior - data should be pre-ingested
 
-**Important**: The simulation layer **never** makes external API calls. All OHLCV data must be pre-ingested by the OHLCV ingestion job before running simulations.
+**Important**: 
+- The simulation layer **never** makes external API calls. All OHLCV data must be pre-ingested by the OHLCV ingestion job before running simulations.
+- The TypeScript simulation uses **causal candle access** (Gate 2) to ensure simulations cannot access future candles.
 
 ### Handler Flow Verification
 
 ✅ **Command Layer** (`commands/simulation.ts`)
+
 - Defines options and help text
 - Parses argv
 - Calls `execute(handler, input, ctx)`
 - Does NOT hit DB, call Python, format tables, or decide business logic
 
 ✅ **execute() Layer** (`core/execute.ts`)
+
 - Validates input with Zod schema
 - Creates CommandContext (services, logger, run_id, artifact dir)
 - Calls handler
@@ -62,6 +91,7 @@ The Python simulator (`tools/simulation/simulator.py`) is **read-only** and fetc
 - Formats output
 
 ✅ **Handler Layer** (`handlers/simulation/run-simulation-duckdb.ts`)
+
 - Normalizes types (ISO strings → Date)
 - Chooses defaults
 - Calls domain services (`ctx.services.simulation()`, `ctx.services.duckdbStorage()`)
@@ -69,12 +99,14 @@ The Python simulator (`tools/simulation/simulator.py`) is **read-only** and fetc
 - Does NOT parse argv, read env directly, access DB clients directly, or spawn subprocesses
 
 ✅ **Services Layer** (`SimulationService`, `DuckDBStorageService`)
+
 - Does IO (DuckDB read/write, Python tool calls)
 - Injectable (mockable)
 - Deterministic when given same inputs
 - Idempotent for writes
 
 ✅ **Python Simulator** (`tools/simulation/simulator.py`)
+
 - Queries DuckDB directly (acceptable for Python tools)
 - Reads from `ohlcv_candles_d` table (pre-populated by OHLCV ingestion)
 - Falls back to `user_calls_d` for price if candles not found
@@ -83,18 +115,22 @@ The Python simulator (`tools/simulation/simulator.py`) is **read-only** and fetc
 ## Workflow Integration
 
 **Before running simulation:**
+
 1. Run OHLCV ingestion job to fetch and store data:
+
    ```bash
    quantbot ingestion ohlcv --from 2025-12-01 --to 2025-12-19
    ```
+
 2. This populates DuckDB `ohlcv_candles_d` and ClickHouse with OHLCV data
 3. Then run simulation:
+
    ```bash
    quantbot simulation run-duckdb --duckdb path/to/db.duckdb --strategy {...}
    ```
 
 **Handler could optionally pre-check:**
+
 - The handler could check if required OHLCV data exists before simulation
 - If missing, it could call `OhlcvIngestionService` to fetch it
 - But this should be explicit, not a silent fallback in the simulator
-

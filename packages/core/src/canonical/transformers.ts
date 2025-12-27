@@ -11,15 +11,19 @@ import type { Candle } from '../index.js';
 
 /**
  * Map CallSignal chain to Asset chain format
+ * OHLCV only supports: solana, ethereum, bsc, base, evm
  */
 function mapChainToAssetChain(chain: CallSignal['token']['chain']): Asset['chain'] {
-  const chainMap: Record<CallSignal['token']['chain'], Asset['chain']> = {
+  // Use mapped type to ensure all chain values are mapped correctly
+  const chainMap: {
+    [K in CallSignal['token']['chain']]: Asset['chain'];
+  } = {
     sol: 'solana',
     eth: 'ethereum',
     bsc: 'bsc',
     base: 'base',
-    arb: 'arbitrum',
-    op: 'arbitrum', // Arbitrum for now, or add 'optimism' to Asset if needed
+    arb: 'evm', // Arbitrum is an EVM chain, use 'evm' until specific chain is known
+    op: 'evm', // Optimism is an EVM chain, use 'evm' until specific chain is known
     unknown: 'solana', // Default fallback
   };
   return chainMap[chain] || 'solana';

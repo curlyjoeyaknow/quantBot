@@ -121,4 +121,3 @@ export interface SliceExporterPort {
    */
   exportSlice(spec: SliceExportSpec): Promise<SliceExportResult>;
 }
-

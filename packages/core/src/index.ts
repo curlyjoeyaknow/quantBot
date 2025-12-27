@@ -14,6 +14,9 @@ import { DateTime } from 'luxon';
 // ============================================================================
 
 export * from './ports/index.js';
+// Explicit re-export for better TypeScript resolution
+export { createSystemClock } from './ports/clockPort.js';
+export type { ClockPort } from './ports/clockPort.js';
 
 // ============================================================================
 // Commands & Handlers
@@ -25,6 +28,9 @@ export * from './handlers/index.js';
 // ============================================================================
 // Core Domain Types
 // ============================================================================
+
+// Domain module (chain, telemetry, etc.)
+export * from './domain/index.js';
 
 // Domain models
 export * from './domain/calls/CallSignal.js';
@@ -42,6 +48,26 @@ export * from './seed-manager.js';
 
 export * from './artifacts.js'; // Legacy artifact system
 export * from './artifacts/index.js'; // Run manifest and hashing
+
+// ============================================================================
+// Slice Types (moved from workflows to break circular dependency)
+// ============================================================================
+
+// Export slice types with explicit names to avoid conflicts with ports
+export type {
+  SliceChain,
+  SliceGranularity,
+  Compression,
+  ParquetPath,
+  RunContext,
+  SliceSpec,
+  ParquetLayoutSpec,
+  SliceManifestV1,
+  SliceAnalysisSpec,
+  SliceAnalysisResult,
+  ExportAndAnalyzeResult,
+} from './slices/types.js';
+export type { SliceExporter, SliceAnalyzer, SliceValidator } from './slices/ports.js';
 
 // ============================================================================
 // Canonical Data
@@ -82,13 +108,8 @@ export type {
  */
 export type Chain = 'solana' | 'ethereum' | 'bsc' | 'base' | 'monad' | 'evm';
 
-// Export chain utilities
-export {
-  normalizeChain,
-  isNormalizedChain,
-  getChainDisplayName,
-  type NormalizedChain,
-} from './chain-utils.js';
+// Chain utilities are now exported from domain/index.js
+// Keep this comment for reference - exports are handled above via domain/index.js
 
 /**
  * Token address (Solana mint address)
@@ -610,4 +631,25 @@ export interface LastSimulation {
   datetime: DateTime;
   metadata: TokenMetadata;
   candles: Candle[];
+}
+
+// ============================================================================
+// OHLCV Work Planning Types (moved from ingestion to break circular dependency)
+// ============================================================================
+
+/**
+ * Work item for OHLCV fetching
+ *
+ * Moved from @quantbot/ingestion to @quantbot/core to break circular dependency
+ * between @quantbot/ingestion and @quantbot/jobs.
+ */
+export interface OhlcvWorkItem {
+  mint: string;
+  chain: Chain;
+  interval: '1s' | '15s' | '1m' | '5m' | '1H';
+  startTime: DateTime;
+  endTime: DateTime;
+  priority?: number;
+  alertTime?: DateTime; // Original alert time for context
+  callCount?: number; // Number of calls for this mint
 }

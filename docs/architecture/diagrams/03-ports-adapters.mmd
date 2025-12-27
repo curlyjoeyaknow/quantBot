@@ -1,0 +1,98 @@
+---
+title: Ports & Adapters Pattern
+description: Shows how handlers depend on ports, adapters implement ports, and composition roots wire everything
+---
+
+# Ports & Adapters Pattern
+
+## Overview
+
+The Ports & Adapters pattern (Hexagonal Architecture) ensures handlers remain pure and testable by depending only on interfaces (ports), while adapters provide concrete implementations. Composition roots wire adapters to handlers.
+
+## Key Concepts
+
+- **Ports**: Interfaces defined in `@quantbot/core` that handlers depend on
+- **Adapters**: Concrete implementations of ports in `packages/workflows/src/adapters/`
+- **Handlers**: Pure business logic that depends only on ports
+- **Composition Roots**: Wire adapters to handlers (CLI commands, workflow context)
+
+## Diagram
+
+```mermaid
+graph TB
+    subgraph core[@quantbot/core - Ports]
+        clockPort[ClockPort<br/>nowMs, nowISO]
+        telemetryPort[TelemetryPort<br/>emitEvent]
+        marketDataPort[MarketDataPort<br/>fetchOhlcv]
+        executionPort[ExecutionPort<br/>executeTrade]
+        statePort[StatePort<br/>get, set]
+    end
+
+    subgraph handlers[Handlers - Pure Logic]
+        handler1[Handler 1<br/>Depends on ports only]
+        handler2[Handler 2<br/>Depends on ports only]
+        handler3[Handler 3<br/>Depends on ports only]
+    end
+
+    subgraph adapters[Adapters - Implementations]
+        clockAdapter[SystemClockAdapter<br/>Implements ClockPort]
+        telemetryAdapter[ConsoleTelemetryAdapter<br/>Implements TelemetryPort]
+        marketDataAdapter[BirdeyeMarketDataAdapter<br/>Implements MarketDataPort]
+        executionAdapter[ExecutionStubAdapter<br/>Implements ExecutionPort]
+        stateAdapter[DuckDBStateAdapter<br/>Implements StatePort]
+    end
+
+    subgraph composition[Composition Roots]
+        cliCommand[CLI Command<br/>Wires adapters to handlers]
+        workflowContext[WorkflowContext<br/>Provides ports to workflows]
+    end
+
+    handler1 -.->|depends on| clockPort
+    handler1 -.->|depends on| telemetryPort
+    handler2 -.->|depends on| marketDataPort
+    handler3 -.->|depends on| executionPort
+    handler3 -.->|depends on| statePort
+
+    clockAdapter -.->|implements| clockPort
+    telemetryAdapter -.->|implements| telemetryPort
+    marketDataAdapter -.->|implements| marketDataPort
+    executionAdapter -.->|implements| executionPort
+    stateAdapter -.->|implements| statePort
+
+    cliCommand -->|wires| clockAdapter
+    cliCommand -->|wires| telemetryAdapter
+    cliCommand -->|wires| marketDataAdapter
+    cliCommand -->|wires| executionAdapter
+    cliCommand -->|wires| stateAdapter
+
+    workflowContext -->|provides| clockAdapter
+    workflowContext -->|provides| telemetryAdapter
+    workflowContext -->|provides| marketDataAdapter
+    workflowContext -->|provides| executionAdapter
+    workflowContext -->|provides| stateAdapter
+
+    cliCommand -->|calls| handler1
+    cliCommand -->|calls| handler2
+    workflowContext -->|calls| handler3
+```
+
+## Dependency Direction
+
+- **Handlers** → **Ports**: Handlers depend on port interfaces (one-way)
+- **Adapters** → **Ports**: Adapters implement port interfaces (one-way)
+- **Composition Roots** → **Adapters**: Wire concrete adapters
+- **Composition Roots** → **Handlers**: Call handlers with wired ports
+
+## Benefits
+
+- **Testability**: Handlers can be tested with stub adapters
+- **Flexibility**: Easy to swap implementations (Birdeye → Helius)
+- **Clear Boundaries**: Explicit separation between business logic and I/O
+- **No Hidden Dependencies**: All dependencies are explicit through ports
+
+## Related Documentation
+
+- [Ports & Adapters Rules](../../.cursor/rules/10-architecture-ports-adapters.mdc)
+- [ARCHITECTURE.md](../ARCHITECTURE.md)
+- [WORKFLOW_ARCHITECTURE.md](../WORKFLOW_ARCHITECTURE.md)
+

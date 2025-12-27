@@ -13,7 +13,7 @@ import type { WorkflowContextWithPorts } from '../context/workflowContextWithPor
  * OHLCV stats spec
  */
 export const GetOhlcvStatsSpecSchema = z.object({
-  chain: z.enum(['solana', 'ethereum', 'bsc', 'base']).optional(),
+  chain: z.enum(['solana', 'ethereum', 'bsc', 'base', 'evm']).optional(),
   interval: z.enum(['1m', '5m', '15m', '1h', '4h', '1d']).optional(),
   mint: z.string().optional(),
 });

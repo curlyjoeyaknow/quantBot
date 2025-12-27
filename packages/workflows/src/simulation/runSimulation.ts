@@ -122,16 +122,21 @@ export async function runSimulation(
     const callISO = call.createdAt.toISO()!;
     try {
       // Workflow-controlled time window (conservative: window around call timestamp)
-      const fromWindow = call.createdAt.minus({ minutes: preMin }).toISO()!;
-      const toWindow = call.createdAt.plus({ minutes: postMin }).toISO()!;
+      const fromWindow = call.createdAt.minus({ minutes: preMin });
+      const toWindow = call.createdAt.plus({ minutes: postMin });
 
-      const candles = await ctx.ohlcv.getCandles({
-        mint: call.mint,
-        fromISO: fromWindow,
-        toISO: toWindow,
-      });
+      // Use causal accessor instead of upfront fetching (Gate 2 compliance)
+      const startTime = fromWindow.toUnixInteger();
+      const endTime = toWindow.toUnixInteger();
 
-      if (candles.length === 0) {
+      // Check if candles are available (quick check)
+      const initialCandle = await ctx.ohlcv.causalAccessor.getLastClosedCandle(
+        call.mint,
+        startTime,
+        '5m'
+      );
+
+      if (!initialCandle) {
         results.push({
           callId: call.id,
           mint: call.mint,
@@ -143,7 +148,14 @@ export async function runSimulation(
         continue;
       }
 
-      const sim = await ctx.simulation.run({ candles, strategy, call });
+      const sim = await ctx.simulation.run({
+        candleAccessor: ctx.ohlcv.causalAccessor,
+        mint: call.mint,
+        startTime,
+        endTime,
+        strategy,
+        call,
+      });
 
       pnlOk.push(sim.pnlMultiplier);
       tradesTotal += sim.trades;

@@ -37,7 +37,7 @@ export const querySchema = z.object({
  * List tokens command schema
  */
 export const listTokensSchema = z.object({
-  chain: z.enum(['solana', 'ethereum', 'bsc', 'base']).optional(),
+  chain: z.enum(['solana', 'ethereum', 'bsc', 'base', 'evm']).optional(),
   source: z.enum(['ohlcv', 'metadata']).default('ohlcv'),
   format: z.enum(['json', 'table', 'csv']).default('table'),
   limit: z.number().int().positive().max(10000).default(1000),
@@ -76,7 +76,7 @@ export const storageStatsWorkflowSchema = z.object({
  * OHLCV stats workflow schema
  */
 export const ohlcvStatsWorkflowSchema = z.object({
-  chain: z.enum(['solana', 'ethereum', 'bsc', 'base']).optional(),
+  chain: z.enum(['solana', 'ethereum', 'bsc', 'base', 'evm']).optional(),
   interval: z.enum(['1m', '5m', '15m', '1h', '4h', '1d']).optional(),
   mint: z.string().optional(),
   format: z.enum(['json', 'table', 'csv']).default('table'),
@@ -88,7 +88,7 @@ export const ohlcvStatsWorkflowSchema = z.object({
 export const tokenStatsWorkflowSchema = z.object({
   from: z.string().optional(),
   to: z.string().optional(),
-  chain: z.enum(['solana', 'ethereum', 'bsc', 'base']).optional(),
+  chain: z.enum(['solana', 'ethereum', 'bsc', 'base', 'evm']).optional(),
   duckdbPath: z.string().optional(),
   limit: z.number().int().positive().optional(),
   format: z.enum(['json', 'table', 'csv']).default('table'),
@@ -295,7 +295,9 @@ export function registerStorageCommands(program: Command): void {
   // Validate addresses command
   const validateAddressesCmd = storageCmd
     .command('validate-addresses')
-    .description('Validate all addresses in DuckDB database (check for truncated/invalid addresses)')
+    .description(
+      'Validate all addresses in DuckDB database (check for truncated/invalid addresses)'
+    )
     .option('--duckdb <path>', 'Path to DuckDB database file (or set DUCKDB_PATH env var)')
     .option('--format <format>', 'Output format', 'table');
 
@@ -406,7 +408,8 @@ const storageModule: PackageCommandModule = {
     },
     {
       name: 'validate-addresses',
-      description: 'Validate all addresses in DuckDB database (check for truncated/invalid addresses)',
+      description:
+        'Validate all addresses in DuckDB database (check for truncated/invalid addresses)',
       schema: validateAddressesSchema,
       handler: async (args: unknown, ctx: unknown) => {
         const typedCtx = ctx as CommandContext;

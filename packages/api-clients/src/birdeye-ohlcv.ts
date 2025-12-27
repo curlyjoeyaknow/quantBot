@@ -41,7 +41,8 @@ function convertBirdeyeResponseToCandles(response: BirdeyeOHLCVResponse | null):
  * into multiple API calls. Returns all candles sorted by timestamp.
  *
  * @param mint - Token address (Solana mint or EVM address)
- * @param interval - Candle interval: '15s', '1m', '5m', or '1H'
+ * @param interval - Candle interval: '1s', '15s', '1m', '5m', or '1H'
+ *   Note: '1s' may not be supported by Birdeye for all tokens/time ranges
  * @param from - Start time (UNIX seconds)
  * @param to - End time (UNIX seconds)
  * @param chain - Blockchain name, e.g. 'solana' (default: 'solana')
@@ -50,7 +51,7 @@ function convertBirdeyeResponseToCandles(response: BirdeyeOHLCVResponse | null):
  */
 export async function fetchBirdeyeCandles(
   mint: string,
-  interval: '15s' | '1m' | '5m' | '1H',
+  interval: '1s' | '15s' | '1m' | '5m' | '1H',
   from: number,
   to: number,
   chain: string = 'solana',
@@ -63,7 +64,15 @@ export async function fetchBirdeyeCandles(
 
   // Calculate interval seconds and max candles per request (5000 limit)
   const intervalSeconds =
-    interval === '15s' ? 15 : interval === '1m' ? 60 : interval === '5m' ? 300 : 3600;
+    interval === '1s'
+      ? 1
+      : interval === '15s'
+        ? 15
+        : interval === '1m'
+          ? 60
+          : interval === '5m'
+            ? 300
+            : 3600; // 1H
   const MAX_CANDLES_PER_REQUEST = 5000;
   const maxWindowSeconds = MAX_CANDLES_PER_REQUEST * intervalSeconds;
 

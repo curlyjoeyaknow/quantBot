@@ -21,8 +21,6 @@
     "@quantbot/core": "workspace:*",
     "@quantbot/utils": "workspace:*",
     "@quantbot/storage": "workspace:*",
-    "@quantbot/jobs": "workspace:*",
-    "@quantbot/workflows": "workspace:*",
     "lru-cache": "^11.0.0",
     "luxon": "^3.4.4"
   },

@@ -133,9 +133,102 @@ export function formatCSV(data: unknown[], columns?: string[]): string {
 }
 
 /**
+ * Format lab simulation results with compact summary
+ */
+function formatLabResults(data: unknown, format: OutputFormat): string | null {
+  if (typeof data !== 'object' || data === null) {
+    return null;
+  }
+
+  const obj = data as Record<string, unknown>;
+
+  // Check if this looks like a lab result
+  if ('callsSimulated' in obj && 'summary' in obj && 'results' in obj) {
+    const summary = obj.summary as Record<string, unknown>;
+    const results = obj.results as Array<Record<string, unknown>>;
+
+    if (format === 'table') {
+      // Show compact summary for table format
+      const lines: string[] = [];
+      lines.push('=== Lab Simulation Summary ===');
+      lines.push('');
+      lines.push(`Calls Simulated: ${obj.callsSimulated}`);
+      lines.push(
+        `Calls Succeeded: ${obj.callsSucceeded} (${(((obj.callsSucceeded as number) / (obj.callsSimulated as number)) * 100).toFixed(1)}%)`
+      );
+      lines.push(
+        `Calls Failed: ${obj.callsFailed} (${(((obj.callsFailed as number) / (obj.callsSimulated as number)) * 100).toFixed(1)}%)`
+      );
+      lines.push('');
+      lines.push('=== Performance Metrics ===');
+      if (summary.avgPnl !== undefined) {
+        lines.push(`Average PnL: ${(summary.avgPnl as number).toFixed(4)}x`);
+      }
+      if (summary.minPnl !== undefined) {
+        lines.push(`Min PnL: ${(summary.minPnl as number).toFixed(4)}x`);
+      }
+      if (summary.maxPnl !== undefined) {
+        lines.push(`Max PnL: ${(summary.maxPnl as number).toFixed(4)}x`);
+      }
+      if (summary.winRate !== undefined) {
+        lines.push(`Win Rate: ${((summary.winRate as number) * 100).toFixed(1)}%`);
+      }
+      if (summary.totalTrades !== undefined) {
+        lines.push(`Total Trades: ${summary.totalTrades}`);
+      }
+      if (summary.successRate !== undefined) {
+        lines.push(`Success Rate: ${((summary.successRate as number) * 100).toFixed(1)}%`);
+      }
+      if (summary.profitableCalls !== undefined) {
+        lines.push(`Profitable Calls: ${summary.profitableCalls}`);
+      }
+      if (summary.losingCalls !== undefined) {
+        lines.push(`Losing Calls: ${summary.losingCalls}`);
+      }
+      lines.push('');
+      lines.push(`=== Top 10 Results (by PnL) ===`);
+
+      // Show top 10 results sorted by PnL
+      const successfulResults = results
+        .filter((r) => r.ok && r.pnlMultiplier !== undefined)
+        .sort((a, b) => ((b.pnlMultiplier as number) ?? 0) - ((a.pnlMultiplier as number) ?? 0))
+        .slice(0, 10);
+
+      if (successfulResults.length > 0) {
+        lines.push('Mint (truncated) | PnL Multiplier | Trades');
+        lines.push('-----------------|----------------|--------');
+        for (const result of successfulResults) {
+          const mint = (result.mint as string) || '';
+          const truncatedMint = mint.length > 20 ? mint.slice(0, 17) + '...' : mint.padEnd(20);
+          const pnl = (result.pnlMultiplier as number) ?? 0;
+          const trades = (result.trades as number) ?? 0;
+          lines.push(`${truncatedMint} | ${pnl.toFixed(4).padStart(14)} | ${trades}`);
+        }
+      } else {
+        lines.push('No successful results to display');
+      }
+
+      return lines.join('\n');
+    }
+
+    // For JSON/CSV, return null to use default formatting
+    return null;
+  }
+
+  // Not a lab result
+  return null;
+}
+
+/**
  * Format output based on format type
  */
 export function formatOutput(data: unknown, format: OutputFormat = 'table'): string {
+  // Try lab-specific formatting first
+  const labFormatted = formatLabResults(data, format);
+  if (labFormatted !== null) {
+    return labFormatted;
+  }
+
   // Handle arrays
   if (Array.isArray(data)) {
     switch (format) {

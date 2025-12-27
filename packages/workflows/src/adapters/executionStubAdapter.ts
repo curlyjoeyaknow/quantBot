@@ -30,9 +30,16 @@
  * - Log all execution attempts (even dry-run)
  */
 
-import type { ExecutionPort, ExecutionRequest, ExecutionResult } from '@quantbot/core';
+import type { ClockPort, ExecutionPort, ExecutionRequest, ExecutionResult } from '@quantbot/core';
+import { createDeterministicRNG, seedFromString } from '@quantbot/core';
+import { logger } from '@quantbot/utils';
 
 export type ExecutionStubAdapterConfig = {
+  /**
+   * Clock for deterministic time access (required for circuit breaker and idempotency)
+   */
+  clock: ClockPort;
+
   /**
    * Dry-run mode: if true, never execute real trades (always simulate)
    * Default: true (safety-first)
@@ -83,8 +90,9 @@ type IdempotencyRecord = {
  * create a concrete adapter (e.g., executionJitoAdapter.ts) that wraps the client
  * but maintains the same safety features.
  */
-export function createExecutionStubAdapter(config: ExecutionStubAdapterConfig = {}): ExecutionPort {
+export function createExecutionStubAdapter(config: ExecutionStubAdapterConfig): ExecutionPort {
   const {
+    clock,
     dryRun = true, // Safety-first: default to dry-run
     maxConsecutiveFailures = 5,
     enableIdempotency = true,
@@ -99,6 +107,21 @@ export function createExecutionStubAdapter(config: ExecutionStubAdapterConfig = 
 
   // Idempotency store (in-memory for stub; real adapter should use StatePort)
   const idempotencyStore = new Map<string, IdempotencyRecord>();
+
+  // Create deterministic RNG for tx signature generation
+  // Seed from request to ensure reproducibility for same request
+  const getRandomSuffix = (request: ExecutionRequest): string => {
+    const seed = seedFromString(
+      `${request.tokenAddress}-${request.side}-${request.amount}-${clock.nowMs()}`
+    );
+    const rng = createDeterministicRNG(seed);
+    // Generate a random number and convert to base36 string
+    const randomNum = rng.next(); // Returns a number between 0 and 1
+    return Math.floor(randomNum * 36 ** 7)
+      .toString(36)
+      .padStart(7, '0')
+      .substring(0, 7);
+  };
 
   /**
    * Generate idempotency key from request
@@ -119,7 +142,7 @@ export function createExecutionStubAdapter(config: ExecutionStubAdapterConfig = 
       const resetAfterMs = 60_000;
       if (
         circuitBreaker.lastFailureTime &&
-        Date.now() - circuitBreaker.lastFailureTime > resetAfterMs
+        clock.nowMs() - circuitBreaker.lastFailureTime > resetAfterMs
       ) {
         // Reset circuit breaker
         circuitBreaker.isOpen = false;
@@ -139,13 +162,13 @@ export function createExecutionStubAdapter(config: ExecutionStubAdapterConfig = 
    */
   function recordFailure(): void {
     circuitBreaker.consecutiveFailures += 1;
-    circuitBreaker.lastFailureTime = Date.now();
+    circuitBreaker.lastFailureTime = clock.nowMs();
 
     if (circuitBreaker.consecutiveFailures >= maxConsecutiveFailures) {
       circuitBreaker.isOpen = true;
-      console.warn(
-        `[ExecutionPort] Circuit breaker opened after ${circuitBreaker.consecutiveFailures} consecutive failures`
-      );
+      logger.warn('Circuit breaker opened', {
+        consecutiveFailures: circuitBreaker.consecutiveFailures,
+      });
     }
   }
 
@@ -175,9 +198,9 @@ export function createExecutionStubAdapter(config: ExecutionStubAdapterConfig = 
 
         if (existing) {
           // Return cached result (idempotent)
-          console.log(
-            `[ExecutionPort] Idempotency hit: returning cached result for ${idempotencyKey}`
-          );
+          logger.debug('Idempotency hit: returning cached result', {
+            idempotencyKey,
+          });
           return existing.result;
         }
       }
@@ -188,9 +211,12 @@ export function createExecutionStubAdapter(config: ExecutionStubAdapterConfig = 
         await new Promise((resolve) => setTimeout(resolve, simulatedDelayMs));
 
         // Simulate successful execution (dry-run)
+        // Use deterministic RNG for reproducible signatures (deterministic per request)
+        const nowMs = clock.nowMs();
+        const randomSuffix = getRandomSuffix(request);
         const simulatedResult: ExecutionResult = {
           success: true,
-          txSignature: `dry-run-${Date.now()}-${Math.random().toString(36).substring(7)}`,
+          txSignature: `dry-run-${nowMs}-${randomSuffix}`,
           executedPrice: 0.001, // Simulated price
           executedAmount: request.amount,
           fees: {
@@ -206,15 +232,17 @@ export function createExecutionStubAdapter(config: ExecutionStubAdapterConfig = 
           idempotencyStore.set(idempotencyKey, {
             request,
             result: simulatedResult,
-            timestamp: Date.now(),
+            timestamp: nowMs,
           });
         }
 
         recordSuccess();
 
-        console.log(
-          `[ExecutionPort] DRY-RUN: Simulated ${request.side} of ${request.amount} ${request.tokenAddress}`
-        );
+        logger.info('DRY-RUN: Simulated execution', {
+          side: request.side,
+          amount: request.amount,
+          tokenAddress: request.tokenAddress,
+        });
 
         return simulatedResult;
       }
