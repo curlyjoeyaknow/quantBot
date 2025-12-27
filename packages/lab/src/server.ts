@@ -15,8 +15,14 @@ import { dirname, join } from 'path';
 import { readFile } from 'fs/promises';
 import { DateTime } from 'luxon';
 import { z } from 'zod';
-import { LeaderboardRepository } from '@quantbot/storage';
-import { getClickHouseClient } from '@quantbot/storage';
+import {
+  LeaderboardRepository,
+  RunStatusRepository,
+  RunLogRepository,
+  ArtifactRepository,
+  openDuckDb,
+} from '@quantbot/storage';
+import type { RunStatusInsertData } from '@quantbot/storage';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -39,40 +45,49 @@ function decodeCursor(cursor: string): string {
   return Buffer.from(cursor, 'base64url').toString('utf-8');
 }
 
-// Run status tracking (in-memory for now, should be in DB)
-const runStatuses = new Map<
-  string,
-  {
-    status: 'queued' | 'running' | 'completed' | 'failed';
-    createdAt: string;
-    startedAt?: string;
-    completedAt?: string;
-    config?: unknown;
-    summary?: unknown;
-    error?: string;
-  }
->();
+// Initialize repositories (lazy initialization)
+let runStatusRepo: RunStatusRepository | null = null;
+let runLogRepo: RunLogRepository | null = null;
+let artifactRepo: ArtifactRepository | null = null;
+let duckdbConnection: Awaited<ReturnType<typeof openDuckDb>> | null = null;
 
-// Run-scoped logging (in-memory for now)
-const runLogs = new Map<
-  string,
-  Array<{ timestamp: string; level: string; message: string; data?: unknown }>
->();
-
-function logForRun(runId: string, level: string, message: string, data?: unknown): void {
-  if (!runLogs.has(runId)) {
-    runLogs.set(runId, []);
+async function getRunStatusRepo(): Promise<RunStatusRepository> {
+  if (!runStatusRepo) {
+    const duckdbPath = process.env.DUCKDB_PATH || 'data/tele.duckdb';
+    duckdbConnection = await openDuckDb(duckdbPath);
+    runStatusRepo = new RunStatusRepository(duckdbConnection);
   }
-  const logs = runLogs.get(runId)!;
-  logs.push({
-    timestamp: DateTime.utc().toISO()!,
-    level,
-    message,
-    data,
-  });
-  // Keep last 1000 logs per run
-  if (logs.length > 1000) {
-    logs.shift();
+  return runStatusRepo;
+}
+
+async function getRunLogRepo(): Promise<RunLogRepository> {
+  if (!runLogRepo) {
+    runLogRepo = new RunLogRepository();
+    await runLogRepo.initializeSchema();
+  }
+  return runLogRepo;
+}
+
+function getArtifactRepo(): ArtifactRepository {
+  if (!artifactRepo) {
+    const baseDir = process.env.ARTIFACTS_DIR || './artifacts';
+    artifactRepo = new ArtifactRepository(baseDir);
+  }
+  return artifactRepo;
+}
+
+async function logForRun(
+  runId: string,
+  level: 'info' | 'warn' | 'error' | 'debug',
+  message: string,
+  data?: unknown
+): Promise<void> {
+  try {
+    const repo = await getRunLogRepo();
+    await repo.insert({ runId, level, message, data });
+  } catch (error) {
+    // Log to console as fallback if database logging fails
+    fastify.log.error({ runId, level, message, data, error }, 'Failed to log to database');
   }
 }
 
@@ -133,28 +148,25 @@ fastify.post('/backtest', async (request: FastifyRequest, reply: FastifyReply) =
     const body = BacktestRequestSchema.parse(request.body);
     const runId = generateRunId();
 
-    // Store run status
-    runStatuses.set(runId, {
+    // Store run status in database
+    const statusRepo = await getRunStatusRepo();
+    await statusRepo.upsert({
+      runId,
       status: 'queued',
-      createdAt: DateTime.utc().toISO()!,
+      strategyId: body.strategyId,
+      strategyVersion: body.strategyVersion,
       config: body,
     });
 
-    logForRun(runId, 'info', 'Backtest queued', { strategyId: body.strategyId });
+    await logForRun(runId, 'info', 'Backtest queued', { strategyId: body.strategyId });
 
     // Start backtest asynchronously
     setImmediate(async () => {
       try {
-        const status = runStatuses.get(runId);
-        if (!status) return;
+        const statusRepo = await getRunStatusRepo();
+        await statusRepo.updateStatus(runId, 'running');
 
-        runStatuses.set(runId, {
-          ...status,
-          status: 'running',
-          startedAt: DateTime.utc().toISO()!,
-        });
-
-        logForRun(runId, 'info', 'Backtest started', { strategyId: body.strategyId });
+        await logForRun(runId, 'info', 'Backtest started', { strategyId: body.strategyId });
 
         // Import workflows
         const { runSimulation, createProductionContext } = await import('@quantbot/workflows');
@@ -187,43 +199,40 @@ fastify.post('/backtest', async (request: FastifyRequest, reply: FastifyReply) =
           },
         };
 
-        logForRun(runId, 'info', 'Running simulation workflow', { spec });
+        await logForRun(runId, 'info', 'Running simulation workflow', { spec });
 
         // Run the simulation
         const result = await runSimulation(spec, ctx);
 
-        logForRun(runId, 'info', 'Simulation completed', {
+        await logForRun(runId, 'info', 'Simulation completed', {
           runId: result.runId,
           callsSucceeded: result.totals.callsSucceeded,
           trades: result.totals.tradesTotal,
         });
 
         // Update status with results
-        runStatuses.set(runId, {
-          ...status,
-          status: 'completed',
-          completedAt: DateTime.utc().toISO()!,
-          summary: {
+        await statusRepo.updateStatus(
+          runId,
+          'completed',
+          {
             runId: result.runId,
             callsFound: result.totals.callsFound,
             callsSucceeded: result.totals.callsSucceeded,
             callsFailed: result.totals.callsFailed,
             trades: result.totals.tradesTotal,
-          },
-        });
+          }
+        );
 
-        logForRun(runId, 'info', 'Backtest completed successfully');
+        await logForRun(runId, 'info', 'Backtest completed successfully');
       } catch (error) {
-        const status = runStatuses.get(runId);
-        if (status) {
-          runStatuses.set(runId, {
-            ...status,
-            status: 'failed',
-            completedAt: DateTime.utc().toISO()!,
-            error: error instanceof Error ? error.message : String(error),
-          });
-        }
-        logForRun(runId, 'error', 'Backtest failed', {
+        const statusRepo = await getRunStatusRepo();
+        await statusRepo.updateStatus(
+          runId,
+          'failed',
+          undefined,
+          error instanceof Error ? error.message : String(error)
+        );
+        await logForRun(runId, 'error', 'Backtest failed', {
           error: error instanceof Error ? error.message : String(error),
           stack: error instanceof Error ? error.stack : undefined,
         });
@@ -306,69 +315,101 @@ fastify.get('/runs', async (request: FastifyRequest, reply: FastifyReply) => {
     const limit = Math.min(parseInt(query.limit || '50', 10), 100);
     const cursor = query.cursor ? decodeCursor(query.cursor) : null;
 
-    // Query DuckDB simulation_runs
-    const { openDuckDb } = await import('@quantbot/storage');
-    const duckdbPath = process.env.DUCKDB_PATH || 'data/tele.duckdb';
-    const db = await openDuckDb(duckdbPath);
+    // Query run_status table first (for lab API runs)
+    const statusRepo = await getRunStatusRepo();
+    const statusResult = await statusRepo.list({
+      status: query.status as 'queued' | 'running' | 'completed' | 'failed' | undefined,
+      strategyId: query.strategyId,
+      limit,
+      cursor: cursor || undefined,
+    });
 
-    let sql = `
-      SELECT 
-        run_id,
-        strategy_id,
-        mint,
-        alert_timestamp,
-        start_time,
-        end_time,
-        caller_name,
-        total_return_pct,
-        max_drawdown_pct,
-        sharpe_ratio,
-        win_rate,
-        total_trades,
-        created_at
-      FROM simulation_runs
-      WHERE 1=1
-    `;
-    const params: unknown[] = [];
-
-    if (query.strategyId) {
-      sql += ` AND strategy_id LIKE ?`;
-      params.push(`%${query.strategyId}%`);
-    }
-
-    if (cursor) {
-      sql += ` AND created_at < ?`;
-      params.push(cursor);
-    }
-
-    sql += ` ORDER BY created_at DESC LIMIT ?`;
-    params.push(limit + 1); // Fetch one extra to check if there's more
-
-    const rows = await db.all<any>(sql, params as any[]);
-
-    const hasMore = rows.length > limit;
-    const runs = (hasMore ? rows.slice(0, limit) : rows).map((row: any) => ({
-      runId: row.run_id,
-      strategyId: row.strategy_id,
-      mint: row.mint,
-      status: 'completed' as const,
-      timeframe: '5m',
-      range: {
-        start: row.start_time ? new Date(row.start_time).toISOString() : null,
-        end: row.end_time ? new Date(row.end_time).toISOString() : null,
-      },
-      summary: {
-        totalPnl: row.total_return_pct || 0,
-        maxDrawdown: row.max_drawdown_pct || 0,
-        sharpeRatio: row.sharpe_ratio || 0,
-        winRate: row.win_rate || 0,
-        trades: row.total_trades || 0,
-      },
-      createdAt: row.created_at ? new Date(row.created_at).toISOString() : null,
+    // Map to API response format
+    const runs = statusResult.runs.map((status) => ({
+      runId: status.runId,
+      strategyId: status.strategyId,
+      status: status.status,
+      summary: status.summary,
+      createdAt: status.createdAt,
+      startedAt: status.startedAt,
+      completedAt: status.completedAt,
     }));
 
+    // If we need more results or no results from run_status, also query simulation_runs
+    if (runs.length < limit) {
+      const duckdbPath = process.env.DUCKDB_PATH || 'data/tele.duckdb';
+      const db = await openDuckDb(duckdbPath);
+
+      let sql = `
+        SELECT 
+          run_id,
+          strategy_id,
+          mint,
+          start_time,
+          end_time,
+          total_return_pct,
+          max_drawdown_pct,
+          sharpe_ratio,
+          win_rate,
+          total_trades,
+          created_at
+        FROM simulation_runs
+        WHERE 1=1
+      `;
+      const params: unknown[] = [];
+
+      if (query.strategyId) {
+        sql += ` AND strategy_id LIKE ?`;
+        params.push(`%${query.strategyId}%`);
+      }
+
+      if (cursor) {
+        sql += ` AND created_at < ?`;
+        params.push(cursor);
+      }
+
+      // Exclude runs already in run_status
+      if (runs.length > 0) {
+        const runIds = runs.map((r) => r.runId);
+        sql += ` AND run_id NOT IN (${runIds.map(() => '?').join(',')})`;
+        params.push(...runIds);
+      }
+
+      sql += ` ORDER BY created_at DESC LIMIT ?`;
+      params.push(limit - runs.length + 1);
+
+      const rows = await db.all<any>(sql, params as any[]);
+
+      const legacyRuns = rows.map((row: {
+        run_id: string;
+        strategy_id: string;
+        total_return_pct: number | null;
+        max_drawdown_pct: number | null;
+        sharpe_ratio: number | null;
+        win_rate: number | null;
+        total_trades: number | null;
+        created_at: string | null;
+      }) => ({
+        runId: row.run_id,
+        strategyId: row.strategy_id,
+        status: 'completed' as const,
+        summary: {
+          totalPnl: row.total_return_pct || 0,
+          maxDrawdown: row.max_drawdown_pct || 0,
+          sharpeRatio: row.sharpe_ratio || 0,
+          winRate: row.win_rate || 0,
+          trades: row.total_trades || 0,
+        },
+        createdAt: row.created_at ? new Date(row.created_at).toISOString() : '',
+        startedAt: undefined,
+        completedAt: row.created_at ? new Date(row.created_at).toISOString() : undefined,
+      }));
+
+      runs.push(...legacyRuns);
+    }
+
     const nextCursor =
-      hasMore && runs.length > 0 ? encodeCursor(runs[runs.length - 1]!.createdAt || '') : null;
+      statusResult.nextCursor ? encodeCursor(statusResult.nextCursor) : null;
 
     return {
       runs,
@@ -392,11 +433,13 @@ fastify.get(
     try {
       const { runId } = request.params;
 
-      // Check in-memory status first
-      const status = runStatuses.get(runId);
+      // Get from run_status table first
+      const statusRepo = await getRunStatusRepo();
+      const status = await statusRepo.getById(runId);
+
       if (status) {
         return {
-          runId,
+          runId: status.runId,
           status: status.status,
           config: status.config,
           summary: status.summary,
@@ -407,8 +450,7 @@ fastify.get(
         };
       }
 
-      // Fallback to DuckDB
-      const { openDuckDb } = await import('@quantbot/storage');
+      // Fallback to simulation_runs table (for legacy runs)
       const duckdbPath = process.env.DUCKDB_PATH || 'data/tele.duckdb';
       const db = await openDuckDb(duckdbPath);
 
@@ -457,26 +499,15 @@ fastify.get(
       const limit = Math.min(parseInt(query.limit || '100', 10), 1000);
       const cursor = query.cursor ? decodeCursor(query.cursor) : null;
 
-      const logs = runLogs.get(runId) || [];
-
-      // Simple cursor pagination (by timestamp)
-      let filteredLogs = logs;
-      if (cursor) {
-        const cursorIndex = logs.findIndex((log) => log.timestamp === cursor);
-        if (cursorIndex >= 0) {
-          filteredLogs = logs.slice(cursorIndex + 1);
-        }
-      }
-
-      const paginatedLogs = filteredLogs.slice(0, limit);
-      const nextCursor =
-        filteredLogs.length > limit
-          ? encodeCursor(paginatedLogs[paginatedLogs.length - 1]!.timestamp)
-          : null;
+      const logRepo = await getRunLogRepo();
+      const result = await logRepo.getByRunId(runId, {
+        limit,
+        cursor: cursor || undefined,
+      });
 
       return {
-        logs: paginatedLogs,
-        nextCursor,
+        logs: result.logs,
+        nextCursor: result.nextCursor ? encodeCursor(result.nextCursor) : null,
       };
     } catch (error) {
       fastify.log.error(error);
@@ -497,22 +528,10 @@ fastify.get(
     try {
       const { runId } = request.params;
 
-      // TODO: Query actual artifacts from storage
-      // For now, return stub
-      return {
-        artifacts: [
-          {
-            type: 'parquet',
-            path: `/artifacts/${runId}/events.parquet`,
-            size: 0,
-          },
-          {
-            type: 'csv',
-            path: `/artifacts/${runId}/summary.csv`,
-            size: 0,
-          },
-        ],
-      };
+      const artifactRepo = getArtifactRepo();
+      const artifacts = await artifactRepo.getByRunId(runId);
+
+      return { artifacts };
     } catch (error) {
       fastify.log.error(error);
       reply.code(500);
@@ -532,15 +551,103 @@ fastify.get(
       const { runId } = request.params;
       const query = request.query as { type?: string };
 
-      // TODO: Query actual metrics from ClickHouse/events
-      // For now, return stub
-      return {
-        metrics: {
-          drawdown: [],
-          exposure: [],
-          fills: [],
-        },
-      };
+      // Query metrics from ClickHouse simulation_events
+      // Note: ClickHouse uses numeric simulation_run_id, but we use string runId
+      // For now, we'll query by run_id string if it exists in the events table
+      const { getClickHouseClient } = await import('@quantbot/storage');
+      const ch = getClickHouseClient();
+      const database = process.env.CLICKHOUSE_DATABASE || 'quantbot';
+
+      try {
+        // Query drawdown (cumulative PnL over time)
+        const drawdownQuery = `
+          SELECT 
+            toUnixTimestamp(event_time) as timestamp,
+            pnl_so_far as pnl
+          FROM ${database}.simulation_events
+          WHERE run_id = {runId:String}
+          ORDER BY timestamp ASC
+        `;
+
+        // Query exposure (position size over time)
+        const exposureQuery = `
+          SELECT 
+            toUnixTimestamp(event_time) as timestamp,
+            remaining_position as exposure
+          FROM ${database}.simulation_events
+          WHERE run_id = {runId:String}
+          ORDER BY timestamp ASC
+        `;
+
+        // Query fills (trade events)
+        const fillsQuery = `
+          SELECT 
+            toUnixTimestamp(event_time) as timestamp,
+            event_type,
+            price,
+            size,
+            pnl_so_far as pnl
+          FROM ${database}.simulation_events
+          WHERE run_id = {runId:String} AND event_type IN ('entry', 'exit')
+          ORDER BY timestamp ASC
+        `;
+
+        // Try to query (may fail if table doesn't exist or runId not found)
+        const [drawdownResult, exposureResult, fillsResult] = await Promise.allSettled([
+          ch.query({
+            query: drawdownQuery,
+            query_params: { runId },
+            format: 'JSONEachRow',
+          }),
+          ch.query({
+            query: exposureQuery,
+            query_params: { runId },
+            format: 'JSONEachRow',
+          }),
+          ch.query({
+            query: fillsQuery,
+            query_params: { runId },
+            format: 'JSONEachRow',
+          }),
+        ]);
+
+        const drawdown =
+          drawdownResult.status === 'fulfilled'
+            ? ((await drawdownResult.value.json()) as Array<{ timestamp: number; pnl: number }>)
+            : [];
+        const exposure =
+          exposureResult.status === 'fulfilled'
+            ? ((await exposureResult.value.json()) as Array<{ timestamp: number; exposure: number }>)
+            : [];
+        const fills =
+          fillsResult.status === 'fulfilled'
+            ? ((await fillsResult.value.json()) as Array<{
+                timestamp: number;
+                event_type: string;
+                price: number;
+                size: number;
+                pnl: number;
+              }>)
+            : [];
+
+        return {
+          metrics: {
+            drawdown,
+            exposure,
+            fills,
+          },
+        };
+      } catch (error) {
+        // If query fails (table doesn't exist, etc.), return empty metrics
+        fastify.log.warn({ runId, error }, 'Failed to query metrics from ClickHouse');
+        return {
+          metrics: {
+            drawdown: [],
+            exposure: [],
+            fills: [],
+          },
+        };
+      }
     } catch (error) {
       fastify.log.error(error);
       reply.code(500);
@@ -739,28 +846,43 @@ fastify.post(
 // GET /statistics/overview - Overview statistics
 fastify.get('/statistics/overview', async (request: FastifyRequest, reply: FastifyReply) => {
   try {
-    const { openDuckDb } = await import('@quantbot/storage');
     const duckdbPath = process.env.DUCKDB_PATH || 'data/tele.duckdb';
     const db = await openDuckDb(duckdbPath);
 
-    const stats = await db.all<any>(`
+    // Query run_status table
+    const statusStats = await db.all<{ count: number }>(
+      `SELECT COUNT(*) as count FROM run_status`
+    );
+    const totalRunsFromStatus = statusStats[0]?.count || 0;
+
+    // Query simulation_runs table
+    const runStats = await db.all<{
+      total_runs: number;
+      total_tokens: number;
+      avg_pnl: number;
+      win_rate: number;
+    }>(`
       SELECT 
         COUNT(*) as total_runs,
-        COUNT(DISTINCT strategy_id) as unique_strategies,
-        COUNT(DISTINCT mint) as unique_tokens,
+        COUNT(DISTINCT mint) as total_tokens,
         AVG(total_return_pct) as avg_pnl,
-        AVG(win_rate) as avg_win_rate
+        AVG(CASE WHEN total_return_pct > 0 THEN 1.0 ELSE 0.0 END) as win_rate
       FROM simulation_runs
+      WHERE total_return_pct IS NOT NULL
     `);
 
+    const stats = runStats[0] || {
+      total_runs: 0,
+      total_tokens: 0,
+      avg_pnl: 0,
+      win_rate: 0,
+    };
+
     return {
-      totals: stats[0] || {
-        total_runs: 0,
-        unique_strategies: 0,
-        unique_tokens: 0,
-        avg_pnl: 0,
-        avg_win_rate: 0,
-      },
+      totalRuns: totalRunsFromStatus + stats.total_runs,
+      totalTokens: stats.total_tokens,
+      avgPnl: stats.avg_pnl || 0,
+      winRate: stats.win_rate || 0,
     };
   } catch (error) {
     fastify.log.error(error);
@@ -780,8 +902,75 @@ fastify.get('/statistics/pnl', async (request: FastifyRequest, reply: FastifyRep
       to?: string;
       timeframe?: string;
     };
-    // TODO: Implement grouped PnL statistics
-    return { pnl: [] };
+
+    const duckdbPath = process.env.DUCKDB_PATH || 'data/tele.duckdb';
+    const db = await openDuckDb(duckdbPath);
+    const groupBy = query.groupBy || 'day';
+    let groupByClause = 'DATE(created_at)';
+    if (groupBy === 'week') {
+      groupByClause = "DATE_TRUNC('week', created_at)";
+    } else if (groupBy === 'month') {
+      groupByClause = "DATE_TRUNC('month', created_at)";
+    } else if (groupBy === 'strategy') {
+      groupByClause = 'strategy_id';
+    } else if (groupBy === 'token') {
+      groupByClause = 'mint';
+    } else if (groupBy === 'caller') {
+      groupByClause = 'caller_name';
+    }
+
+    let sql = `
+      SELECT 
+        ${groupByClause} as period,
+        COUNT(*) as run_count,
+        AVG(total_return_pct) as avg_pnl,
+        SUM(total_return_pct) as total_pnl,
+        MIN(total_return_pct) as min_pnl,
+        MAX(total_return_pct) as max_pnl
+      FROM simulation_runs
+      WHERE total_return_pct IS NOT NULL
+    `;
+
+    const params: unknown[] = [];
+
+    if (query.from) {
+      sql += ' AND created_at >= ?';
+      params.push(query.from);
+    }
+
+    if (query.to) {
+      sql += ' AND created_at <= ?';
+      params.push(query.to);
+    }
+
+    sql += ` GROUP BY ${groupByClause} ORDER BY period DESC LIMIT 100`;
+
+    const rows = await db.all<{
+      period: string;
+      run_count: number;
+      avg_pnl: number;
+      total_pnl: number;
+      min_pnl: number;
+      max_pnl: number;
+    }>(sql, params);
+
+    return {
+      pnl: rows.map((row: {
+        period: string;
+        run_count: number;
+        avg_pnl: number;
+        total_pnl: number;
+        min_pnl: number;
+        max_pnl: number;
+      }) => ({
+        period: String(row.period),
+        runCount: row.run_count,
+        avgPnl: row.avg_pnl || 0,
+        totalPnl: row.total_pnl || 0,
+        minPnl: row.min_pnl || 0,
+        maxPnl: row.max_pnl || 0,
+      })),
+    };
   } catch (error) {
     fastify.log.error(error);
     reply.code(500);
@@ -794,8 +983,59 @@ fastify.get('/statistics/pnl', async (request: FastifyRequest, reply: FastifyRep
 // GET /statistics/distribution - Distribution statistics
 fastify.get('/statistics/distribution', async (request: FastifyRequest, reply: FastifyReply) => {
   try {
-    // TODO: Implement distribution histograms
-    return { distributions: {} };
+    const duckdbPath = process.env.DUCKDB_PATH || 'data/tele.duckdb';
+    const db = await openDuckDb(duckdbPath);
+    // Create PnL distribution histogram (buckets)
+    const pnlHistogram = await db.all<{ bucket: string; count: number }>(`
+      SELECT 
+        CASE
+          WHEN total_return_pct < -50 THEN '<-50%'
+          WHEN total_return_pct < -25 THEN '-50% to -25%'
+          WHEN total_return_pct < -10 THEN '-25% to -10%'
+          WHEN total_return_pct < 0 THEN '-10% to 0%'
+          WHEN total_return_pct < 10 THEN '0% to 10%'
+          WHEN total_return_pct < 25 THEN '10% to 25%'
+          WHEN total_return_pct < 50 THEN '25% to 50%'
+          WHEN total_return_pct < 100 THEN '50% to 100%'
+          ELSE '>100%'
+        END as bucket,
+        COUNT(*) as count
+      FROM simulation_runs
+      WHERE total_return_pct IS NOT NULL
+      GROUP BY bucket
+      ORDER BY MIN(total_return_pct)
+    `);
+
+    // Create trades distribution
+    const tradesHistogram = await db.all<{ bucket: string; count: number }>(`
+      SELECT 
+        CASE
+          WHEN total_trades = 0 THEN '0'
+          WHEN total_trades < 5 THEN '1-4'
+          WHEN total_trades < 10 THEN '5-9'
+          WHEN total_trades < 20 THEN '10-19'
+          WHEN total_trades < 50 THEN '20-49'
+          ELSE '50+'
+        END as bucket,
+        COUNT(*) as count
+      FROM simulation_runs
+      WHERE total_trades IS NOT NULL
+      GROUP BY bucket
+      ORDER BY MIN(total_trades)
+    `);
+
+    return {
+      distributions: {
+        pnl: pnlHistogram.map((row: { bucket: string; count: number }) => ({
+          bucket: row.bucket,
+          count: row.count,
+        })),
+        trades: tradesHistogram.map((row: { bucket: string; count: number }) => ({
+          bucket: row.bucket,
+          count: row.count,
+        })),
+      },
+    };
   } catch (error) {
     fastify.log.error(error);
     reply.code(500);
@@ -808,8 +1048,51 @@ fastify.get('/statistics/distribution', async (request: FastifyRequest, reply: F
 // GET /statistics/correlation - Correlation statistics
 fastify.get('/statistics/correlation', async (request: FastifyRequest, reply: FastifyReply) => {
   try {
-    // TODO: Implement feature correlations
-    return { correlations: {} };
+    const duckdbPath = process.env.DUCKDB_PATH || 'data/tele.duckdb';
+    const db = await openDuckDb(duckdbPath);
+    // Calculate correlations between metrics
+    const correlations = await db.all<{
+      metric1: string;
+      metric2: string;
+      correlation: number;
+    }>(`
+      SELECT 
+        'total_return_pct' as metric1,
+        'total_trades' as metric2,
+        CORR(total_return_pct, total_trades) as correlation
+      FROM simulation_runs
+      WHERE total_return_pct IS NOT NULL AND total_trades IS NOT NULL
+      
+      UNION ALL
+      
+      SELECT 
+        'total_return_pct' as metric1,
+        'win_rate' as metric2,
+        CORR(total_return_pct, win_rate) as correlation
+      FROM simulation_runs
+      WHERE total_return_pct IS NOT NULL AND win_rate IS NOT NULL
+      
+      UNION ALL
+      
+      SELECT 
+        'total_trades' as metric1,
+        'win_rate' as metric2,
+        CORR(total_trades, win_rate) as correlation
+      FROM simulation_runs
+      WHERE total_trades IS NOT NULL AND win_rate IS NOT NULL
+    `);
+
+    return {
+      correlations: correlations.map((row: {
+        metric1: string;
+        metric2: string;
+        correlation: number;
+      }) => ({
+        metric1: row.metric1,
+        metric2: row.metric2,
+        correlation: row.correlation || 0,
+      })),
+    };
   } catch (error) {
     fastify.log.error(error);
     reply.code(500);

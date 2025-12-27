@@ -28,6 +28,8 @@ export { TokenMetadataRepository } from './clickhouse/repositories/TokenMetadata
 export { SimulationEventsRepository } from './clickhouse/repositories/SimulationEventsRepository.js';
 export { LeaderboardRepository } from './clickhouse/repositories/LeaderboardRepository.js';
 export type { LeaderboardEntry } from './clickhouse/repositories/LeaderboardRepository.js';
+export { RunLogRepository } from './clickhouse/repositories/RunLogRepository.js';
+export type { RunLog, RunLogInsertData } from './clickhouse/repositories/RunLogRepository.js';
 
 // PostgreSQL repositories removed - use DuckDB repositories instead
 
@@ -36,6 +38,13 @@ export { DuckDBClient, getDuckDBClient } from './duckdb/duckdb-client.js';
 export { connectionManager, ensureConnectionCleanup } from './duckdb/connection-utils.js';
 export type { ConnectionCleanupOptions } from './duckdb/connection-utils.js';
 export { TokenDataRepository } from './duckdb/repositories/TokenDataRepository.js';
+export { RunStatusRepository } from './duckdb/repositories/RunStatusRepository.js';
+export type {
+  RunStatus,
+  RunStatusInsertData,
+} from './duckdb/repositories/RunStatusRepository.js';
+export { ArtifactRepository } from './duckdb/repositories/ArtifactRepository.js';
+export type { Artifact } from './duckdb/repositories/ArtifactRepository.js';
 export {
   DuckDBWorklistService,
   getDuckDBWorklistService,
