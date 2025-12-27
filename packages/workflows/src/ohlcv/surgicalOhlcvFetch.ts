@@ -462,15 +462,6 @@ async function executeFetchTask(
   let totalCandlesStored = 0;
   const errors: string[] = [];
 
-<<<<<<< HEAD
-  // Detect chain from mint addresses
-  // If any mint is EVM (0x...), use 'evm' until specific chain is known
-  // The ingestion engine will detect the actual EVM chain (ethereum/base/bsc)
-  const hasEvmAddresses = task.missing_mints.some((mint) => isEvmAddress(mint));
-  const defaultChain: 'solana' | 'ethereum' | 'bsc' | 'base' | 'evm' = hasEvmAddresses
-    ? 'evm'
-    : 'solana';
-=======
   // Get actual chains for mints from multiple sources:
   // 1. DuckDB worklist (has chain from call data)
   // 2. ClickHouse token_metadata (has chain from previous fetches)
@@ -485,7 +476,6 @@ async function executeFetchTask(
     to,
     side: 'buy',
   });
->>>>>>> 26d20190 (Fix test failures: addOhlcvExclusion params, artifact validation, slice analyzer)
 
   // Build mint -> chain map from worklist
   const mintChainMap = new Map<string, string>();
