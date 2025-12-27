@@ -47,7 +47,9 @@ export class LogHub {
         (x) =>
           x.msg.toLowerCase().includes(q) ||
           x.scope.toLowerCase().includes(q) ||
-          JSON.stringify(x.ctx ?? {}).toLowerCase().includes(q)
+          JSON.stringify(x.ctx ?? {})
+            .toLowerCase()
+            .includes(q)
       );
     }
 
@@ -59,4 +61,3 @@ export class LogHub {
     return () => this.subs.delete(fn);
   }
 }
-

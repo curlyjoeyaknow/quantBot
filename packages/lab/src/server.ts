@@ -54,7 +54,10 @@ const runStatuses = new Map<
 >();
 
 // Run-scoped logging (in-memory for now)
-const runLogs = new Map<string, Array<{ timestamp: string; level: string; message: string; data?: unknown }>>();
+const runLogs = new Map<
+  string,
+  Array<{ timestamp: string; level: string; message: string; data?: unknown }>
+>();
 
 function logForRun(runId: string, level: string, message: string, data?: unknown): void {
   if (!runLogs.has(runId)) {
@@ -167,9 +170,10 @@ fastify.post('/backtest', async (request: FastifyRequest, reply: FastifyReply) =
 
         // For now, use first mint as caller (or extract caller from universe)
         // TODO: Support proper caller selection
-        const callerName = body.universe.type === 'tokens' && body.universe.mints.length > 0 
-          ? undefined // Will query all callers for these mints
-          : undefined;
+        const callerName =
+          body.universe.type === 'tokens' && body.universe.mints.length > 0
+            ? undefined // Will query all callers for these mints
+            : undefined;
 
         const spec = {
           strategyName: body.strategyId,
@@ -247,7 +251,9 @@ fastify.post('/backtest/dry-run', async (request: FastifyRequest, reply: Fastify
     const duckdbPath = process.env.DUCKDB_PATH || 'data/tele.duckdb';
     const strategiesRepo = new StrategiesRepository(duckdbPath);
     const strategies = await strategiesRepo.list();
-    const strategy = strategies.find((s) => s.name === body.strategyId && s.version === body.strategyVersion);
+    const strategy = strategies.find(
+      (s) => s.name === body.strategyId && s.version === body.strategyVersion
+    );
 
     if (!strategy) {
       reply.code(404);
@@ -361,7 +367,8 @@ fastify.get('/runs', async (request: FastifyRequest, reply: FastifyReply) => {
       createdAt: row.created_at ? new Date(row.created_at).toISOString() : null,
     }));
 
-    const nextCursor = hasMore && runs.length > 0 ? encodeCursor(runs[runs.length - 1]!.createdAt || '') : null;
+    const nextCursor =
+      hasMore && runs.length > 0 ? encodeCursor(runs[runs.length - 1]!.createdAt || '') : null;
 
     return {
       runs,
@@ -379,154 +386,171 @@ fastify.get('/runs', async (request: FastifyRequest, reply: FastifyReply) => {
 });
 
 // GET /runs/:runId - Get run details
-fastify.get('/runs/:runId', async (request: FastifyRequest<{ Params: { runId: string } }>, reply: FastifyReply) => {
-  try {
-    const { runId } = request.params;
+fastify.get(
+  '/runs/:runId',
+  async (request: FastifyRequest<{ Params: { runId: string } }>, reply: FastifyReply) => {
+    try {
+      const { runId } = request.params;
 
-    // Check in-memory status first
-    const status = runStatuses.get(runId);
-    if (status) {
-      return {
+      // Check in-memory status first
+      const status = runStatuses.get(runId);
+      if (status) {
+        return {
+          runId,
+          status: status.status,
+          config: status.config,
+          summary: status.summary,
+          error: status.error,
+          createdAt: status.createdAt,
+          startedAt: status.startedAt,
+          completedAt: status.completedAt,
+        };
+      }
+
+      // Fallback to DuckDB
+      const { openDuckDb } = await import('@quantbot/storage');
+      const duckdbPath = process.env.DUCKDB_PATH || 'data/tele.duckdb';
+      const db = await openDuckDb(duckdbPath);
+
+      const rows = await db.all<any>(`SELECT * FROM simulation_runs WHERE run_id = ? LIMIT 1`, [
         runId,
-        status: status.status,
-        config: status.config,
-        summary: status.summary,
-        error: status.error,
-        createdAt: status.createdAt,
-        startedAt: status.startedAt,
-        completedAt: status.completedAt,
+      ]);
+
+      if (rows.length === 0) {
+        reply.code(404);
+        return { error: `Run ${runId} not found` };
+      }
+
+      const row = rows[0]!;
+      return {
+        runId: row.run_id,
+        status: 'completed' as const,
+        strategyId: row.strategy_id,
+        mint: row.mint,
+        summary: {
+          totalPnl: row.total_return_pct || 0,
+          maxDrawdown: row.max_drawdown_pct || 0,
+          sharpeRatio: row.sharpe_ratio || 0,
+          winRate: row.win_rate || 0,
+          trades: row.total_trades || 0,
+        },
+        createdAt: row.created_at ? new Date(row.created_at).toISOString() : null,
+      };
+    } catch (error) {
+      fastify.log.error(error);
+      reply.code(500);
+      return {
+        error: error instanceof Error ? error.message : 'Failed to fetch run',
       };
     }
-
-    // Fallback to DuckDB
-    const { openDuckDb } = await import('@quantbot/storage');
-    const duckdbPath = process.env.DUCKDB_PATH || 'data/tele.duckdb';
-    const db = await openDuckDb(duckdbPath);
-
-    const rows = await db.all<any>(`SELECT * FROM simulation_runs WHERE run_id = ? LIMIT 1`, [runId]);
-
-    if (rows.length === 0) {
-      reply.code(404);
-      return { error: `Run ${runId} not found` };
-    }
-
-    const row = rows[0]!;
-    return {
-      runId: row.run_id,
-      status: 'completed' as const,
-      strategyId: row.strategy_id,
-      mint: row.mint,
-      summary: {
-        totalPnl: row.total_return_pct || 0,
-        maxDrawdown: row.max_drawdown_pct || 0,
-        sharpeRatio: row.sharpe_ratio || 0,
-        winRate: row.win_rate || 0,
-        trades: row.total_trades || 0,
-      },
-      createdAt: row.created_at ? new Date(row.created_at).toISOString() : null,
-    };
-  } catch (error) {
-    fastify.log.error(error);
-    reply.code(500);
-    return {
-      error: error instanceof Error ? error.message : 'Failed to fetch run',
-    };
   }
-});
+);
 
 // GET /runs/:runId/logs - Get run logs
-fastify.get('/runs/:runId/logs', async (request: FastifyRequest<{ Params: { runId: string } }>, reply: FastifyReply) => {
-  try {
-    const { runId } = request.params;
-    const query = request.query as { limit?: string; cursor?: string };
+fastify.get(
+  '/runs/:runId/logs',
+  async (request: FastifyRequest<{ Params: { runId: string } }>, reply: FastifyReply) => {
+    try {
+      const { runId } = request.params;
+      const query = request.query as { limit?: string; cursor?: string };
 
-    const limit = Math.min(parseInt(query.limit || '100', 10), 1000);
-    const cursor = query.cursor ? decodeCursor(query.cursor) : null;
+      const limit = Math.min(parseInt(query.limit || '100', 10), 1000);
+      const cursor = query.cursor ? decodeCursor(query.cursor) : null;
 
-    const logs = runLogs.get(runId) || [];
+      const logs = runLogs.get(runId) || [];
 
-    // Simple cursor pagination (by timestamp)
-    let filteredLogs = logs;
-    if (cursor) {
-      const cursorIndex = logs.findIndex((log) => log.timestamp === cursor);
-      if (cursorIndex >= 0) {
-        filteredLogs = logs.slice(cursorIndex + 1);
+      // Simple cursor pagination (by timestamp)
+      let filteredLogs = logs;
+      if (cursor) {
+        const cursorIndex = logs.findIndex((log) => log.timestamp === cursor);
+        if (cursorIndex >= 0) {
+          filteredLogs = logs.slice(cursorIndex + 1);
+        }
       }
+
+      const paginatedLogs = filteredLogs.slice(0, limit);
+      const nextCursor =
+        filteredLogs.length > limit
+          ? encodeCursor(paginatedLogs[paginatedLogs.length - 1]!.timestamp)
+          : null;
+
+      return {
+        logs: paginatedLogs,
+        nextCursor,
+      };
+    } catch (error) {
+      fastify.log.error(error);
+      reply.code(500);
+      return {
+        error: error instanceof Error ? error.message : 'Failed to fetch logs',
+        logs: [],
+        nextCursor: null,
+      };
     }
-
-    const paginatedLogs = filteredLogs.slice(0, limit);
-    const nextCursor = filteredLogs.length > limit ? encodeCursor(paginatedLogs[paginatedLogs.length - 1]!.timestamp) : null;
-
-    return {
-      logs: paginatedLogs,
-      nextCursor,
-    };
-  } catch (error) {
-    fastify.log.error(error);
-    reply.code(500);
-    return {
-      error: error instanceof Error ? error.message : 'Failed to fetch logs',
-      logs: [],
-      nextCursor: null,
-    };
   }
-});
+);
 
 // GET /runs/:runId/artifacts - Get run artifacts
-fastify.get('/runs/:runId/artifacts', async (request: FastifyRequest<{ Params: { runId: string } }>, reply: FastifyReply) => {
-  try {
-    const { runId } = request.params;
+fastify.get(
+  '/runs/:runId/artifacts',
+  async (request: FastifyRequest<{ Params: { runId: string } }>, reply: FastifyReply) => {
+    try {
+      const { runId } = request.params;
 
-    // TODO: Query actual artifacts from storage
-    // For now, return stub
-    return {
-      artifacts: [
-        {
-          type: 'parquet',
-          path: `/artifacts/${runId}/events.parquet`,
-          size: 0,
-        },
-        {
-          type: 'csv',
-          path: `/artifacts/${runId}/summary.csv`,
-          size: 0,
-        },
-      ],
-    };
-  } catch (error) {
-    fastify.log.error(error);
-    reply.code(500);
-    return {
-      error: error instanceof Error ? error.message : 'Failed to fetch artifacts',
-      artifacts: [],
-    };
+      // TODO: Query actual artifacts from storage
+      // For now, return stub
+      return {
+        artifacts: [
+          {
+            type: 'parquet',
+            path: `/artifacts/${runId}/events.parquet`,
+            size: 0,
+          },
+          {
+            type: 'csv',
+            path: `/artifacts/${runId}/summary.csv`,
+            size: 0,
+          },
+        ],
+      };
+    } catch (error) {
+      fastify.log.error(error);
+      reply.code(500);
+      return {
+        error: error instanceof Error ? error.message : 'Failed to fetch artifacts',
+        artifacts: [],
+      };
+    }
   }
-});
+);
 
 // GET /runs/:runId/metrics - Get run metrics
-fastify.get('/runs/:runId/metrics', async (request: FastifyRequest<{ Params: { runId: string } }>, reply: FastifyReply) => {
-  try {
-    const { runId } = request.params;
-    const query = request.query as { type?: string };
+fastify.get(
+  '/runs/:runId/metrics',
+  async (request: FastifyRequest<{ Params: { runId: string } }>, reply: FastifyReply) => {
+    try {
+      const { runId } = request.params;
+      const query = request.query as { type?: string };
 
-    // TODO: Query actual metrics from ClickHouse/events
-    // For now, return stub
-    return {
-      metrics: {
-        drawdown: [],
-        exposure: [],
-        fills: [],
-      },
-    };
-  } catch (error) {
-    fastify.log.error(error);
-    reply.code(500);
-    return {
-      error: error instanceof Error ? error.message : 'Failed to fetch metrics',
-      metrics: {},
-    };
+      // TODO: Query actual metrics from ClickHouse/events
+      // For now, return stub
+      return {
+        metrics: {
+          drawdown: [],
+          exposure: [],
+          fills: [],
+        },
+      };
+    } catch (error) {
+      fastify.log.error(error);
+      reply.code(500);
+      return {
+        error: error instanceof Error ? error.message : 'Failed to fetch metrics',
+        metrics: {},
+      };
+    }
   }
-});
+);
 
 // ============================================================================
 // Leaderboard Endpoints
@@ -627,33 +651,36 @@ fastify.get('/strategies', async (request: FastifyRequest, reply: FastifyReply) 
 });
 
 // GET /strategies/:id - Get strategy details
-fastify.get('/strategies/:id', async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
-  try {
-    const { id } = request.params;
-    const query = request.query as { version?: string };
-    const version = query.version || '1';
+fastify.get(
+  '/strategies/:id',
+  async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+    try {
+      const { id } = request.params;
+      const query = request.query as { version?: string };
+      const version = query.version || '1';
 
-    const { StrategiesRepository } = await import('@quantbot/storage');
-    const duckdbPath = process.env.DUCKDB_PATH || 'data/tele.duckdb';
-    const repo = new StrategiesRepository(duckdbPath);
+      const { StrategiesRepository } = await import('@quantbot/storage');
+      const duckdbPath = process.env.DUCKDB_PATH || 'data/tele.duckdb';
+      const repo = new StrategiesRepository(duckdbPath);
 
-    const strategies = await repo.list();
-    const strategy = strategies.find((s) => s.name === id && s.version === version);
+      const strategies = await repo.list();
+      const strategy = strategies.find((s) => s.name === id && s.version === version);
 
-    if (!strategy) {
-      reply.code(404);
-      return { error: `Strategy ${id} v${version} not found` };
+      if (!strategy) {
+        reply.code(404);
+        return { error: `Strategy ${id} v${version} not found` };
+      }
+
+      return { strategy };
+    } catch (error) {
+      fastify.log.error(error);
+      reply.code(500);
+      return {
+        error: error instanceof Error ? error.message : 'Failed to fetch strategy',
+      };
     }
-
-    return { strategy };
-  } catch (error) {
-    fastify.log.error(error);
-    reply.code(500);
-    return {
-      error: error instanceof Error ? error.message : 'Failed to fetch strategy',
-    };
   }
-});
+);
 
 // POST /strategies - Create new strategy version
 fastify.post('/strategies', async (request: FastifyRequest, reply: FastifyReply) => {
@@ -671,33 +698,39 @@ fastify.post('/strategies', async (request: FastifyRequest, reply: FastifyReply)
 });
 
 // PATCH /strategies/:id - Update strategy metadata
-fastify.patch('/strategies/:id', async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
-  try {
-    // TODO: Implement strategy metadata update
-    reply.code(501);
-    return { error: 'Not implemented yet' };
-  } catch (error) {
-    fastify.log.error(error);
-    reply.code(500);
-    return {
-      error: error instanceof Error ? error.message : 'Failed to update strategy',
-    };
+fastify.patch(
+  '/strategies/:id',
+  async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+    try {
+      // TODO: Implement strategy metadata update
+      reply.code(501);
+      return { error: 'Not implemented yet' };
+    } catch (error) {
+      fastify.log.error(error);
+      reply.code(500);
+      return {
+        error: error instanceof Error ? error.message : 'Failed to update strategy',
+      };
+    }
   }
-});
+);
 
 // POST /strategies/:id/validate - Validate strategy config
-fastify.post('/strategies/:id/validate', async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
-  try {
-    // TODO: Validate strategy config schema
-    return { valid: true };
-  } catch (error) {
-    fastify.log.error(error);
-    reply.code(500);
-    return {
-      error: error instanceof Error ? error.message : 'Failed to validate strategy',
-    };
+fastify.post(
+  '/strategies/:id/validate',
+  async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+    try {
+      // TODO: Validate strategy config schema
+      return { valid: true };
+    } catch (error) {
+      fastify.log.error(error);
+      reply.code(500);
+      return {
+        error: error instanceof Error ? error.message : 'Failed to validate strategy',
+      };
+    }
   }
-});
+);
 
 // ============================================================================
 // Statistics Endpoints
@@ -741,7 +774,12 @@ fastify.get('/statistics/overview', async (request: FastifyRequest, reply: Fasti
 // GET /statistics/pnl - PnL statistics
 fastify.get('/statistics/pnl', async (request: FastifyRequest, reply: FastifyReply) => {
   try {
-    const query = request.query as { groupBy?: string; from?: string; to?: string; timeframe?: string };
+    const query = request.query as {
+      groupBy?: string;
+      from?: string;
+      to?: string;
+      timeframe?: string;
+    };
     // TODO: Implement grouped PnL statistics
     return { pnl: [] };
   } catch (error) {
@@ -793,14 +831,15 @@ fastify.get('/api/health', async () => {
 // Legacy endpoints (for backward compatibility with existing UI)
 fastify.get('/api/leaderboard', async (request: FastifyRequest, reply: FastifyReply) => {
   const query = request.query as { sort?: string; limit?: string };
-  const metric = query.sort === 'stability' ? 'stability' : query.sort === 'pareto' ? 'pareto' : 'pnl';
+  const metric =
+    query.sort === 'stability' ? 'stability' : query.sort === 'pareto' ? 'pareto' : 'pnl';
   const limit = query.limit || '50';
-  
+
   const response = await fastify.inject({
     method: 'GET',
     url: `/leaderboard?metric=${metric}&limit=${limit}`,
   });
-  
+
   reply.code(response.statusCode).send(response.json());
 });
 
@@ -809,7 +848,7 @@ fastify.get('/api/strategies', async (request: FastifyRequest, reply: FastifyRep
     method: 'GET',
     url: '/strategies',
   });
-  
+
   reply.code(response.statusCode).send(response.json());
 });
 
@@ -817,13 +856,13 @@ fastify.get('/api/simulation-runs', async (request: FastifyRequest, reply: Fasti
   const query = request.query as { limit?: string; strategy?: string };
   const limit = query.limit || '50';
   const strategyId = query.strategy;
-  
+
   const url = `/runs?limit=${limit}${strategyId ? `&strategyId=${encodeURIComponent(strategyId)}` : ''}`;
   const response = await fastify.inject({
     method: 'GET',
     url,
   });
-  
+
   reply.code(response.statusCode).send(response.json());
 });
 

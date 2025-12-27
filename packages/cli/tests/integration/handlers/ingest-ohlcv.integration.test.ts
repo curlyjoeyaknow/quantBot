@@ -164,14 +164,14 @@ describe('ingestOhlcvHandler - Integration Tests (Real Implementations)', () => 
 
     // Call handler twice with same inputs (with timeout protection)
     const handlerCall = async () => ingestOhlcvHandler(args as IngestOhlcvArgs, ctx);
-    
+
     const result1 = await Promise.race([
       handlerCall(),
       new Promise((_, reject) =>
         setTimeout(() => reject(new Error('Handler call 1 timeout')), 10000)
       ),
     ]);
-    
+
     const result2 = await Promise.race([
       handlerCall(),
       new Promise((_, reject) =>

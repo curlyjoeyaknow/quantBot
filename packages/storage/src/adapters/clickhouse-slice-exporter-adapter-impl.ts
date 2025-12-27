@@ -380,12 +380,18 @@ export class ClickHouseSliceExporterAdapterImpl implements SliceExporter {
       parquetData = Buffer.alloc(0);
     } else {
       // Write CSV to temp file
-      const tempCsvPath = join(tmpdir(), `slice-export-${Date.now()}-${Math.random().toString(36).slice(2)}.csv`);
-      const tempParquetPath = join(tmpdir(), `slice-export-${Date.now()}-${Math.random().toString(36).slice(2)}.parquet`);
-      
+      const tempCsvPath = join(
+        tmpdir(),
+        `slice-export-${Date.now()}-${Math.random().toString(36).slice(2)}.csv`
+      );
+      const tempParquetPath = join(
+        tmpdir(),
+        `slice-export-${Date.now()}-${Math.random().toString(36).slice(2)}.parquet`
+      );
+
       try {
         await fs.writeFile(tempCsvPath, csvData);
-        
+
         // Use DuckDB to convert CSV to Parquet
         const duckdb = new DuckDBClient(':memory:');
         await duckdb.execute(`
@@ -393,10 +399,10 @@ export class ClickHouseSliceExporterAdapterImpl implements SliceExporter {
           COPY temp_csv TO '${tempParquetPath.replace(/'/g, "''")}' (FORMAT PARQUET);
         `);
         await duckdb.close();
-        
+
         // Read Parquet file
         parquetData = await fs.readFile(tempParquetPath);
-        
+
         // Cleanup temp files
         await fs.unlink(tempCsvPath).catch(() => {});
         await fs.unlink(tempParquetPath).catch(() => {});
@@ -405,7 +411,9 @@ export class ClickHouseSliceExporterAdapterImpl implements SliceExporter {
         await fs.unlink(tempCsvPath).catch(() => {});
         await fs.unlink(tempParquetPath).catch(() => {});
         logger.error('Failed to convert CSV to Parquet', error as Error);
-        throw new Error(`Failed to convert CSV to Parquet: ${error instanceof Error ? error.message : String(error)}`);
+        throw new Error(
+          `Failed to convert CSV to Parquet: ${error instanceof Error ? error.message : String(error)}`
+        );
       }
     }
 

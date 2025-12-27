@@ -172,6 +172,7 @@ cd ../quantBot-feature
 ```
 
 This one-liner:
+
 - Creates branch `feature/my-feature`
 - Creates worktree folder `../quantBot-feature`
 - Bases it off `integration` (keeps you aligned)
@@ -216,6 +217,7 @@ git push origin main
 ```
 
 **Only merge `integration` → `main` when:**
+
 - ✅ Integration CI is green
 - ✅ Integration tests pass
 - ✅ You're confident the changes are production-ready
@@ -223,6 +225,7 @@ git push origin main
 #### Branch Hygiene
 
 **Always branch from `integration` by default:**
+
 - Keeps feature work aligned with what's about to be merged
 - Reduces surprise conflicts
 - Prevents divergence

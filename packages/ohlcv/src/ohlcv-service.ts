@@ -97,9 +97,15 @@ export class OHLCVService {
       if (skipDuplicates && candles.length > 0) {
         const firstCandle = DateTime.fromSeconds(candles[0].timestamp);
         const lastCandle = DateTime.fromSeconds(candles[candles.length - 1].timestamp);
-        const existing = await this.storageEngine.getCandles(mint, normalizedChain, firstCandle, lastCandle, {
-          interval,
-        });
+        const existing = await this.storageEngine.getCandles(
+          mint,
+          normalizedChain,
+          firstCandle,
+          lastCandle,
+          {
+            interval,
+          }
+        );
 
         if (existing.length > 0) {
           logger.debug('Candles already exist in ClickHouse, skipping', {

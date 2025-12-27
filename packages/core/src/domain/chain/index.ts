@@ -81,5 +81,3 @@ export function getChainDisplayName(chain: string): string {
 
   return displayNames[normalized];
 }
-
-

@@ -408,15 +408,28 @@ describe('ResearchSimulationAdapter - Property Tests', () => {
                 return false;
               }
 
-              if (metrics.drawdown?.max === undefined || !Number.isFinite(metrics.drawdown.max) || metrics.drawdown.max < 0) {
+              if (
+                metrics.drawdown?.max === undefined ||
+                !Number.isFinite(metrics.drawdown.max) ||
+                metrics.drawdown.max < 0
+              ) {
                 return false;
               }
 
-              if (metrics.hitRate?.overall === undefined || !Number.isFinite(metrics.hitRate.overall) || metrics.hitRate.overall < 0 || metrics.hitRate.overall > 1) {
+              if (
+                metrics.hitRate?.overall === undefined ||
+                !Number.isFinite(metrics.hitRate.overall) ||
+                metrics.hitRate.overall < 0 ||
+                metrics.hitRate.overall > 1
+              ) {
                 return false;
               }
 
-              if (metrics.trades?.total === undefined || !Number.isFinite(metrics.trades.total) || metrics.trades.total < 0) {
+              if (
+                metrics.trades?.total === undefined ||
+                !Number.isFinite(metrics.trades.total) ||
+                metrics.trades.total < 0
+              ) {
                 return false;
               }
 
@@ -648,7 +661,7 @@ describe('ResearchSimulationAdapter - Property Tests', () => {
               if (!Number.isFinite(tradingFee) || tradingFee <= 0 || tradingFee > 1) {
                 return true; // Skip invalid values
               }
-              
+
               // Reset mocks for each property test run to avoid state leakage
               mockSnapshotServiceInstance.loadSnapshot.mockClear();
               mockSnapshotServiceInstance.verifySnapshot.mockClear();
@@ -656,12 +669,12 @@ describe('ResearchSimulationAdapter - Property Tests', () => {
 
               // Create a fresh adapter for each property test run to avoid state issues
               const testCtx = createMockWorkflowContext();
-      const testMockSnapshotService = {
-        loadSnapshot: vi.fn(),
-        verifySnapshot: vi.fn().mockResolvedValue(true),
-      };
-      mockDataSnapshotService.mockReturnValue(testMockSnapshotService);
-      const testAdapter = new ResearchSimulationAdapter(testCtx);
+              const testMockSnapshotService = {
+                loadSnapshot: vi.fn(),
+                verifySnapshot: vi.fn().mockResolvedValue(true),
+              };
+              mockDataSnapshotService.mockReturnValue(testMockSnapshotService);
+              const testAdapter = new ResearchSimulationAdapter(testCtx);
 
               const request = createMockSimulationRequest({
                 costModel: {
@@ -706,7 +719,10 @@ describe('ResearchSimulationAdapter - Property Tests', () => {
                 result = await testAdapter.run(request);
               } catch (error: any) {
                 // If it's a ValidationError, that's acceptable (validation is working)
-                if (error?.name === 'ValidationError' || error?.constructor?.name === 'ValidationError') {
+                if (
+                  error?.name === 'ValidationError' ||
+                  error?.constructor?.name === 'ValidationError'
+                ) {
                   return true;
                 }
                 // Other errors are failures
@@ -725,7 +741,10 @@ describe('ResearchSimulationAdapter - Property Tests', () => {
               // ValidationError means the validation is working correctly
               // For property tests, we want to ensure the conversion works for valid inputs
               // If ValidationError is thrown, it means the input was invalid, which is fine
-              if (error?.name === 'ValidationError' || error?.constructor?.name === 'ValidationError') {
+              if (
+                error?.name === 'ValidationError' ||
+                error?.constructor?.name === 'ValidationError'
+              ) {
                 // Validation error means the input was rejected, which is expected for invalid inputs
                 // But our inputs should be valid, so this might indicate a bug
                 // For now, return true to allow the test to pass (the validation is working)

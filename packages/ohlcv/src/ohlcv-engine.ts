@@ -94,9 +94,15 @@ export class OHLCVEngine {
 
     // Query ClickHouse (storage engine handles availability)
     try {
-      const candles = await this.storageEngine.getCandles(tokenAddress, normalizedChain, startTime, endTime, {
-        interval,
-      });
+      const candles = await this.storageEngine.getCandles(
+        tokenAddress,
+        normalizedChain,
+        startTime,
+        endTime,
+        {
+          interval,
+        }
+      );
       if (candles.length > 0) {
         logger.debug(
           `OHLCV Engine: Found ${candles.length} candles in ClickHouse for ${tokenAddress}...`

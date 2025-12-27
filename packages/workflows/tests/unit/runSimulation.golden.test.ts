@@ -213,9 +213,10 @@ describe('workflows.runSimulation - golden suite', () => {
     // Call time: 2025-11-01T00:00:00.000Z
     // Pre-window: -5 minutes = 2025-10-31T23:55:00.000Z
     // Expected startTime (Unix timestamp): 1727826900 (2025-10-31T23:55:00.000Z)
-    const getLastClosedCandleCalls = (ctx.ohlcv.causalAccessor.getLastClosedCandle as any).mock.calls;
+    const getLastClosedCandleCalls = (ctx.ohlcv.causalAccessor.getLastClosedCandle as any).mock
+      .calls;
     expect(getLastClosedCandleCalls.length).toBeGreaterThan(0);
-    
+
     // First call should be with windowed start time
     const firstCall = getLastClosedCandleCalls[0];
     expect(firstCall[0]).toBe('MintA'); // mint
