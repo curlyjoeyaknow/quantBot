@@ -62,10 +62,9 @@ export async function fetchOhlcvHandler(args: FetchOhlcvArgs, ctx: CommandContex
   // If --to is provided, use that instead
   const defaultForwardCandles = 4 * 5000; // 20000 candles
   const defaultForwardSeconds = defaultForwardCandles * intervalSeconds;
-  const toUTC =
-    specifiedTo && specifiedTo.isValid
-      ? specifiedTo.toUTC()
-      : specifiedFromUTC.plus({ seconds: defaultForwardSeconds });
+  const toUTC = specifiedTo && specifiedTo.isValid
+    ? specifiedTo.toUTC()
+    : specifiedFromUTC.plus({ seconds: defaultForwardSeconds });
 
   if (!toUTC.isValid) {
     throw new Error(`Invalid 'to' date: ${args.to}`);
