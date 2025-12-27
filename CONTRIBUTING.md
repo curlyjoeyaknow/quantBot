@@ -637,6 +637,7 @@ QuantBot uses **Semantic Versioning (Semver)** for all packages in the monorepo:
 ### Version Bump Requirements
 
 **Every PR that changes source code in a package MUST bump that package's version**, unless:
+
 - The package is marked as `"private": true` (internal packages)
 - The package is marked as `"experimental": true` (experimental packages)
 - Only documentation or test files are changed (no source code changes)
@@ -654,12 +655,14 @@ QuantBot uses **Semantic Versioning (Semver)** for all packages in the monorepo:
 ### Version Verification
 
 The CI automatically verifies:
+
 - ✅ All packages have valid semver versions
 - ✅ Changed packages have version bumps
 - ✅ No version regressions (versions don't decrease)
 - ⚠️ Warns about duplicate versions (informational)
 
 **Run locally**:
+
 ```bash
 pnpm verify:package-versions
 ```
@@ -677,6 +680,7 @@ pnpm release:audit-versions v1.0.0
 ```
 
 This generates a summary of:
+
 - New packages
 - Major version updates (breaking changes)
 - Minor version updates (new features)
@@ -688,6 +692,7 @@ This generates a summary of:
 ### Version Bump Helper Script
 
 A helper script is available to bump versions and automatically update CHANGELOG.md:
+
 ```bash
 # Bump patch version for a package (automatically updates CHANGELOG.md)
 pnpm version:bump @quantbot/utils patch
@@ -703,6 +708,7 @@ pnpm version:bump @quantbot/utils patch --no-changelog
 ```
 
 The script will:
+
 1. ✅ Update `package.json` version field
 2. ✅ Automatically add entry to `CHANGELOG.md` under `[Unreleased]` section
 3. ✅ Place entry in appropriate section (Added/Changed/Fixed based on bump type)
@@ -710,29 +716,32 @@ The script will:
 ### Examples
 
 **Example 1: Bug Fix**
+
 ```json
 // packages/utils/package.json
 {
   "name": "@quantbot/utils",
-  "version": "1.0.1"  // ← Bumped from 1.0.0 (PATCH)
+  "version": "1.0.1" // ← Bumped from 1.0.0 (PATCH)
 }
 ```
 
 **Example 2: New Feature**
+
 ```json
 // packages/storage/package.json
 {
   "name": "@quantbot/storage",
-  "version": "1.1.0"  // ← Bumped from 1.0.5 (MINOR)
+  "version": "1.1.0" // ← Bumped from 1.0.5 (MINOR)
 }
 ```
 
 **Example 3: Breaking Change**
+
 ```json
 // packages/core/package.json
 {
   "name": "@quantbot/core",
-  "version": "2.0.0"  // ← Bumped from 1.5.0 (MAJOR)
+  "version": "2.0.0" // ← Bumped from 1.5.0 (MAJOR)
 }
 ```
 
