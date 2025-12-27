@@ -19,12 +19,10 @@ async function main() {
 
   await logger.close();
 
-   
   console.log('Wrote:', logger.path());
 }
 
 main().catch((e) => {
-   
   console.error(e);
   process.exit(1);
 });
