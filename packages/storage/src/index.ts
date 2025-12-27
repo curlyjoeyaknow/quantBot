@@ -39,10 +39,7 @@ export { connectionManager, ensureConnectionCleanup } from './duckdb/connection-
 export type { ConnectionCleanupOptions } from './duckdb/connection-utils.js';
 export { TokenDataRepository } from './duckdb/repositories/TokenDataRepository.js';
 export { RunStatusRepository } from './duckdb/repositories/RunStatusRepository.js';
-export type {
-  RunStatus,
-  RunStatusInsertData,
-} from './duckdb/repositories/RunStatusRepository.js';
+export type { RunStatus, RunStatusInsertData } from './duckdb/repositories/RunStatusRepository.js';
 export { ArtifactRepository } from './duckdb/repositories/ArtifactRepository.js';
 export type { Artifact } from './duckdb/repositories/ArtifactRepository.js';
 export {

@@ -360,12 +360,15 @@ export class ClickHouseSliceExporterAdapterImpl implements SliceExporter {
     // Convert CSV to Parquet using DuckDB
     // ClickHouse doesn't support Parquet format, so we export CSV and convert
     let parquetData: Buffer;
-    
+
     // Check if CSV is empty or only has header row (no data)
     const csvString = csvData.toString();
-    const csvLines = csvString.trim().split('\n').filter((line) => line.trim().length > 0);
+    const csvLines = csvString
+      .trim()
+      .split('\n')
+      .filter((line) => line.trim().length > 0);
     const hasOnlyHeaders = csvLines.length <= 1;
-    
+
     if (csvData.length === 0 || hasOnlyHeaders) {
       // Create empty Parquet file with correct schema (0 rows) so DuckDB can read it
       // This ensures the schema is preserved even when there's no data
