@@ -295,7 +295,9 @@ async function executeFetchTask(
   // If any mint is EVM (0x...), use 'evm' until specific chain is known
   // The ingestion engine will detect the actual EVM chain (ethereum/base/bsc)
   const hasEvmAddresses = task.missing_mints.some((mint) => isEvmAddress(mint));
-  const defaultChain: 'solana' | 'ethereum' | 'bsc' | 'base' | 'evm' = hasEvmAddresses ? 'evm' : 'solana';
+  const defaultChain: 'solana' | 'ethereum' | 'bsc' | 'base' | 'evm' = hasEvmAddresses
+    ? 'evm'
+    : 'solana';
 
   // Run OHLCV ingestion for each interval
   for (const interval of intervals) {

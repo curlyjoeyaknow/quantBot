@@ -227,16 +227,15 @@ export async function simulateStrategy(
   }
 
   // Handle signal-only entry (when entrySignal is provided but no other entry method)
-  if (!hasEntered && entrySignal && entryCfg.initialEntry === 'none' && entryCfg.trailingEntry === 'none') {
+  if (
+    !hasEntered &&
+    entrySignal &&
+    entryCfg.initialEntry === 'none' &&
+    entryCfg.trailingEntry === 'none'
+  ) {
     const maxWaitTime = entryCfg.maxWaitTime ?? DEFAULT_ENTRY.maxWaitTime ?? 60;
     const maxWaitTimestamp = candles[0].timestamp + clock.toMilliseconds(maxWaitTime);
-    const result = detectEntry(
-      candles,
-      0,
-      entryCfg,
-      indicatorSeries,
-      entrySignal
-    );
+    const result = detectEntry(candles, 0, entryCfg, indicatorSeries, entrySignal);
 
     if (result.shouldEnter && result.timestamp <= maxWaitTimestamp) {
       actualEntryPrice = result.price;
@@ -260,7 +259,11 @@ export async function simulateStrategy(
   // lowestPriceTimeFromEntry = (lowestPriceTimestamp - candles[0].timestamp) / 60;
 
   // Add entry event if not already added (only if no signal-only entry was attempted)
-  if (!trailingEntryUsed && events.length === 0 && !(entrySignal && entryCfg.initialEntry === 'none' && entryCfg.trailingEntry === 'none')) {
+  if (
+    !trailingEntryUsed &&
+    events.length === 0 &&
+    !(entrySignal && entryCfg.initialEntry === 'none' && entryCfg.trailingEntry === 'none')
+  ) {
     events.push({
       type: 'entry',
       timestamp: candles[0].timestamp,

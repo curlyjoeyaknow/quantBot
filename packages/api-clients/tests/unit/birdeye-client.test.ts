@@ -219,13 +219,7 @@ describe('BirdeyeClient', () => {
       // Set up mock - use mockResolvedValue to handle potential retries
       mockAxiosInstance.get.mockResolvedValue(mockResponse);
 
-      const result = await client.fetchOHLCVData(
-        tokenAddress,
-        startTime,
-        endTime,
-        '1m',
-        'solana'
-      );
+      const result = await client.fetchOHLCVData(tokenAddress, startTime, endTime, '1m', 'solana');
 
       expect(mockAxiosInstance.get).toHaveBeenCalled();
       expect(result).toBeDefined();

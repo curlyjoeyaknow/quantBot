@@ -48,8 +48,8 @@ export class SliceValidatorAdapter implements SliceValidator {
     // Initialize AJV with formats support
     // AjvClass is the default export, but TypeScript needs explicit construction
     const Ajv = AjvClass as any;
-    this.ajv = new Ajv({ 
-      allErrors: true, 
+    this.ajv = new Ajv({
+      allErrors: true,
       strict: false,
       // Allow schemas without $schema or with any $schema version
       validateSchema: false,
