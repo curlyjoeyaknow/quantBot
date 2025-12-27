@@ -24,7 +24,19 @@ import type {
 } from '../types.js';
 import { StorageCausalCandleAccessor } from './causal-candle-accessor.js';
 import { createLogHubLoggerAdapter } from './logHubLoggerAdapter.js';
-import type { LogHub } from '@quantbot/lab/src/logHub.js';
+
+// LogHub type definition (to avoid dependency on @quantbot/lab)
+type LogHub = {
+  emit: (event: {
+    level: 'debug' | 'info' | 'warn' | 'error';
+    scope: string;
+    msg: string;
+    ctx?: Record<string, unknown>;
+    requestId?: string;
+    runId?: string;
+    ts?: string;
+  }) => void;
+};
 
 // Re-export WorkflowContext for convenience
 export type { WorkflowContext } from '../types.js';
@@ -135,7 +147,7 @@ export function createProductionContext(config?: ProductionContextConfig): Workf
         config.logHub.runId,
         config.logHub.requestId
       )
-    : config?.logger ?? {
+    : (config?.logger ?? {
         info: (...args: unknown[]) =>
           utilsLogger.info(String(args[0] || ''), args[1] as Record<string, unknown> | undefined),
         warn: (...args: unknown[]) =>
@@ -144,7 +156,7 @@ export function createProductionContext(config?: ProductionContextConfig): Workf
           utilsLogger.error(String(args[0] || ''), args[1] as Record<string, unknown> | undefined),
         debug: (...args: unknown[]) =>
           utilsLogger.debug(String(args[0] || ''), args[1] as Record<string, unknown> | undefined),
-      };
+      });
   const clock = config?.clock ?? { nowISO: () => DateTime.utc().toISO()! };
   const ids = config?.ids ?? { newRunId: () => `run_${uuidv4()}` };
 
