@@ -9,6 +9,9 @@
  * NOTE: These types are now defined in @quantbot/core.
  * This file re-exports them for backward compatibility only.
  * New code should import directly from @quantbot/core.
+ *
+ * STATUS: No active imports found - safe to remove in next major version.
+ * Last checked: 2025-12-26
  */
 
 // Re-export all types from @quantbot/core for backward compatibility
