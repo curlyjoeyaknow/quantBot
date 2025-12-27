@@ -5,7 +5,7 @@
  * Uses ClockPort instead of Date.now() for determinism.
  */
 
-import type { ClockPort } from '../ports/clockPort.js';
+import type { ClockPort } from '../../ports/clockPort.js';
 
 export type ErrorEvent = {
   message: string;
@@ -37,3 +37,4 @@ export function toErrorEvent(
     tags,
   };
 }
+

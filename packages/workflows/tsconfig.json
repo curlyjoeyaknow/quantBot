@@ -27,6 +27,7 @@
     { "path": "../ingestion" },
     { "path": "../api-clients" },
     { "path": "../jobs" },
-    { "path": "../data-observatory" }
+    { "path": "../data-observatory" },
+    { "path": "../labcatalog" }
   ]
 }
