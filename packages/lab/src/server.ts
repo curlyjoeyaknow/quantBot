@@ -171,12 +171,7 @@ fastify.post('/backtest', async (request: FastifyRequest, reply: FastifyReply) =
         // Import workflows
         const { runSimulation, createProductionContext } = await import('@quantbot/workflows');
         const ctx = createProductionContext({
-          logHub: {
-            hub: logHub,
-            scope: 'simulation',
-            runId,
-            requestId,
-          },
+          // logHub is optional - omit if not available
         });
 
         // Convert backtest request to simulation spec

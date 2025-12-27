@@ -1,0 +1,8 @@
+=== Performance Comparison: CSV vs Parquet ===
+Date: Sat Dec 27 18:16:56 AEDT 2025
+
+=== CSV Export (Old Method) ===
+docker-compose exec -T clickhouse clickhouse-client --query  > /dev/null 2>&1  0.79s user 0.04s system 89% cpu 0.927 total
+
+=== Parquet Export (New Method) ===
+docker-compose exec -T clickhouse clickhouse-client --query  > /dev/null 2>&1  0.83s user 0.04s system 93% cpu 0.928 total
