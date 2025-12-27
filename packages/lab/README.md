@@ -49,41 +49,45 @@ The lab dashboard includes multiple tabs:
 
 ### API Endpoints (Resource Model)
 
-The API follows a resource-based model where URLs reflect actual resources:
+The API follows a resource-based model where URLs reflect actual resources. See [API.md](./API.md) for complete documentation.
 
-#### Backtest Endpoints
+#### Quick Reference
+
+**Backtest Endpoints:**
 - `POST /backtest` - Start a backtest (returns `{ runId }` immediately, runs asynchronously)
 - `POST /backtest/dry-run` - Validate backtest config and get estimated cost/time
 
-#### Runs Endpoints
+**Runs Endpoints:**
 - `GET /runs` - List runs with cursor pagination (filters: status, strategyId, timeframe, from, to)
 - `GET /runs/:runId` - Get run details and summary
 - `GET /runs/:runId/logs` - Get run-scoped logs (cursor paginated)
 - `GET /runs/:runId/artifacts` - Get artifact references (parquet, CSV, JSON)
 - `GET /runs/:runId/metrics` - Get time-series metrics (drawdown, exposure, fills)
 
-#### Leaderboard Endpoints
+**Leaderboard Endpoints:**
 - `GET /leaderboard` - Ranked view over runs (query: metric, timeframe, strategyId, window, limit)
 - `GET /leaderboard/strategies` - Strategy-level aggregated leaderboard
 
-#### Strategies Endpoints
+**Strategies Endpoints:**
 - `GET /strategies` - List all strategies
 - `GET /strategies/:id` - Get strategy details (with optional `?version=` query param)
 - `POST /strategies` - Create new strategy version
 - `PATCH /strategies/:id` - Update strategy metadata
 - `POST /strategies/:id/validate` - Validate strategy config schema
 
-#### Statistics Endpoints
+**Statistics Endpoints:**
 - `GET /statistics/overview` - Overview totals (runs, tokens, avg PnL, win rate)
 - `GET /statistics/pnl` - PnL statistics (groupBy: day/week/token/caller/strategy)
 - `GET /statistics/distribution` - Distribution histograms
 - `GET /statistics/correlation` - Feature correlations
 
-#### Legacy Endpoints (Backward Compatibility)
+**Legacy Endpoints (Backward Compatibility):**
 - `GET /api/leaderboard` - Redirects to `/leaderboard`
 - `GET /api/strategies` - Redirects to `/strategies`
 - `GET /api/simulation-runs` - Redirects to `/runs`
 - `GET /api/health` - Health check
+
+For detailed API documentation including request/response formats, examples, and error handling, see [API.md](./API.md).
 
 ### Features
 
