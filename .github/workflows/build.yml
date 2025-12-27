@@ -83,6 +83,9 @@ jobs:
         run: pnpm verify:changelog
         continue-on-error: true
 
+      - name: Verify package versions
+        run: pnpm verify:package-versions
+
       - name: Build packages (ordered)
         run: pnpm build:ordered
 

@@ -596,6 +596,103 @@ export async function badHandler(args, ctx) {
 
 ---
 
+## Package Versioning
+
+### Versioning Policy
+
+QuantBot uses **Semantic Versioning (Semver)** for all packages in the monorepo:
+
+- **MAJOR** (x.0.0): Breaking changes (API changes, removed exports, incompatible changes)
+- **MINOR** (x.y.0): New features (backward-compatible additions)
+- **PATCH** (x.y.z): Bug fixes (backward-compatible fixes)
+
+### Version Bump Requirements
+
+**Every PR that changes source code in a package MUST bump that package's version**, unless:
+- The package is marked as `"private": true` (internal packages)
+- The package is marked as `"experimental": true` (experimental packages)
+- Only documentation or test files are changed (no source code changes)
+
+### How to Bump Versions
+
+1. **Identify changed packages**: The CI will automatically detect which packages have changed
+2. **Determine version increment**:
+   - **PATCH**: Bug fixes, typo corrections, internal refactoring
+   - **MINOR**: New features, new exports, new functionality
+   - **MAJOR**: Breaking changes, removed APIs, incompatible changes
+3. **Update package.json**: Edit the `version` field in the package's `package.json`
+4. **Update CHANGELOG.md**: Add an entry for the version bump (see [CHANGELOG Enforcement](.cursor/rules/changelog-enforcement.mdc))
+
+### Version Verification
+
+The CI automatically verifies:
+- ✅ All packages have valid semver versions
+- ✅ Changed packages have version bumps
+- ✅ No version regressions (versions don't decrease)
+- ⚠️ Warns about duplicate versions (informational)
+
+**Run locally**:
+```bash
+pnpm verify:package-versions
+```
+
+### Version Bump Helper Script
+
+A helper script is available to bump versions and automatically update CHANGELOG.md:
+```bash
+# Bump patch version for a package (automatically updates CHANGELOG.md)
+pnpm version:bump @quantbot/utils patch
+
+# Bump minor version
+pnpm version:bump @quantbot/utils minor
+
+# Bump major version
+pnpm version:bump @quantbot/utils major
+
+# Skip CHANGELOG update (if you want to write it manually)
+pnpm version:bump @quantbot/utils patch --no-changelog
+```
+
+The script will:
+1. ✅ Update `package.json` version field
+2. ✅ Automatically add entry to `CHANGELOG.md` under `[Unreleased]` section
+3. ✅ Place entry in appropriate section (Added/Changed/Fixed based on bump type)
+
+### Examples
+
+**Example 1: Bug Fix**
+```json
+// packages/utils/package.json
+{
+  "name": "@quantbot/utils",
+  "version": "1.0.1"  // ← Bumped from 1.0.0 (PATCH)
+}
+```
+
+**Example 2: New Feature**
+```json
+// packages/storage/package.json
+{
+  "name": "@quantbot/storage",
+  "version": "1.1.0"  // ← Bumped from 1.0.5 (MINOR)
+}
+```
+
+**Example 3: Breaking Change**
+```json
+// packages/core/package.json
+{
+  "name": "@quantbot/core",
+  "version": "2.0.0"  // ← Bumped from 1.5.0 (MAJOR)
+}
+```
+
+### Internal/Experimental Packages
+
+Packages marked as `"private": true` or `"experimental": true` are exempt from version bump requirements, but version bumps are still recommended for tracking purposes.
+
+---
+
 ## Common Patterns
 
 ### Creating a New CLI Command
