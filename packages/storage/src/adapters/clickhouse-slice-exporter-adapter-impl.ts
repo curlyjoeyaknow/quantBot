@@ -335,7 +335,7 @@ export class ClickHouseSliceExporterAdapterImpl implements SliceExporter {
     let csvData: Buffer;
     try {
       // Fix call site: handle result.stream as function or property
-
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const streamSource =
         typeof (result as any).stream === 'function'
           ? await (result as any).stream()
@@ -360,52 +360,8 @@ export class ClickHouseSliceExporterAdapterImpl implements SliceExporter {
     // Convert CSV to Parquet using DuckDB
     // ClickHouse doesn't support Parquet format, so we export CSV and convert
     let parquetData: Buffer;
-
-    // Check if CSV is empty or only has header row (no data)
-    const csvString = csvData.toString();
-    const csvLines = csvString
-      .trim()
-      .split('\n')
-      .filter((line) => line.trim().length > 0);
-    const hasOnlyHeaders = csvLines.length <= 1;
-
-    if (csvData.length === 0 || hasOnlyHeaders) {
-      // Create empty Parquet file with correct schema (0 rows) so DuckDB can read it
-      // This ensures the schema is preserved even when there's no data
-      const tempParquetPath = join(
-        tmpdir(),
-        `slice-export-empty-${Date.now()}-${Math.random().toString(36).slice(2)}.parquet`
-      );
-
-      try {
-        const duckdb = new DuckDBClient(':memory:');
-        // Create table with correct schema matching the expected columns
-        // Default columns: token_address, chain, timestamp, interval, open, high, low, close, volume
-        await duckdb.execute(`
-          CREATE TABLE temp_empty (
-            token_address VARCHAR,
-            chain VARCHAR,
-            timestamp TIMESTAMP,
-            interval VARCHAR,
-            open DOUBLE,
-            high DOUBLE,
-            low DOUBLE,
-            close DOUBLE,
-            volume DOUBLE
-          );
-          COPY temp_empty TO '${tempParquetPath.replace(/'/g, "''")}' (FORMAT PARQUET);
-        `);
-        await duckdb.close();
-
-        // Read empty Parquet file
-        parquetData = await fs.readFile(tempParquetPath);
-        await fs.unlink(tempParquetPath).catch(() => {});
-        logger.info('Created empty Parquet file with schema for empty CSV result');
-      } catch (error) {
-        logger.error('Failed to create empty Parquet file with schema', error as Error);
-        // Fallback: return empty buffer (will be handled by analyzer)
-        parquetData = Buffer.alloc(0);
-      }
+    if (csvData.length === 0) {
+      parquetData = Buffer.alloc(0);
     } else {
       // Write CSV to temp file
       const tempCsvPath = join(
