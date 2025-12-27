@@ -32,6 +32,7 @@ const DuckDBQueryResultSchema = z.object({
     })
   ),
   rows: z.array(z.array(z.unknown())),
+  error: z.string().optional(), // Python script may return errors in result
 });
 
 /**
@@ -40,6 +41,7 @@ const DuckDBQueryResultSchema = z.object({
 export interface DuckDBQueryResult {
   columns: Array<{ name: string; type: string }>;
   rows: unknown[][];
+  error?: string; // Python script may return errors in result
 }
 
 /**
