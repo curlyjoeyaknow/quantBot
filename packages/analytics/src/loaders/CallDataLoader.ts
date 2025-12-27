@@ -86,7 +86,9 @@ export class CallDataLoader {
 
       // Convert CallRecord[] to CallPerformance[]
       // Filter out invalid calls and validate data
-      const validCalls = (result.calls || []).filter((call) => {
+      // Type assertion: result.calls is an array of call objects with mint and createdAt
+      const callsArray = (result.calls || []) as Array<{ mint?: string; createdAt?: unknown; caller?: string }>;
+      const validCalls = callsArray.filter((call) => {
         // Filter out calls with missing required fields
         if (!call || !call.mint || !call.createdAt) {
           logger.warn('[CallDataLoader] Skipping call with missing required fields', { call });
@@ -106,7 +108,7 @@ export class CallDataLoader {
       };
 
       // Prepare calls for historical price lookup
-      const callsForPriceLookup = validCalls.map((call, index) => {
+      const callsForPriceLookup = validCalls.map((call: typeof validCalls[0], index: number) => {
         const tokenAddress = String(call.mint || '').trim();
         let alertTimestamp: Date;
         try {
@@ -135,7 +137,7 @@ export class CallDataLoader {
       });
 
       // Filter calls that need Birdeye lookup (those without valid price_usd)
-      const callsNeedingBirdeye = callsForPriceLookup.filter((c) => !c.hasValidPriceUsd);
+      const callsNeedingBirdeye = callsForPriceLookup.filter((c: typeof callsForPriceLookup[0]) => !c.hasValidPriceUsd);
 
       // Load historical prices from Birdeye API only for calls without valid price_usd
       let historicalPrices = new Map<number, number>();
@@ -144,7 +146,7 @@ export class CallDataLoader {
           `[CallDataLoader] Fetching historical prices from Birdeye for ${callsNeedingBirdeye.length} calls (${callsForPriceLookup.length - callsNeedingBirdeye.length} calls already have valid price_usd)`
         );
         historicalPrices = await loadHistoricalPricesBatch(
-          callsNeedingBirdeye.map((c) => ({
+          callsNeedingBirdeye.map((c: typeof callsForPriceLookup[0]) => ({
             tokenAddress: c.tokenAddress,
             alertTimestamp: c.alertTimestamp,
             // Chain will be auto-detected from address format
@@ -182,7 +184,7 @@ export class CallDataLoader {
       }
 
       // Map to CallPerformance with historical prices
-      const callPerformance: CallPerformance[] = callsForPriceLookup.map((callInfo, index) => {
+      const callPerformance: CallPerformance[] = callsForPriceLookup.map((callInfo: typeof callsForPriceLookup[0], index: number) => {
         const tokenAddress = callInfo.tokenAddress;
         const alertTimestamp = callInfo.alertTimestamp;
 
