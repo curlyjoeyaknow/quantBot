@@ -15,10 +15,10 @@ if [[ ! -f "$COV_JSON" ]]; then
   exit 1
 fi
 
-node <<'NODE'
+COV_JSON="$COV_JSON" node <<'NODE'
 const fs = require("fs");
 
-const path = process.argv[1];
+const path = process.env.COV_JSON;
 const raw = fs.readFileSync(path, "utf8");
 const json = JSON.parse(raw);
 
@@ -65,4 +65,4 @@ console.log(`Coverage (Lines): ${pct.toFixed(2)}%`);
 console.log(`${color}${bar}${reset}  ${pct.toFixed(2)}%`);
 console.log(`Covered: ${covered}/${total}  Skipped: ${skipped}`);
 console.log("");
-NODE "$COV_JSON"
+NODE
