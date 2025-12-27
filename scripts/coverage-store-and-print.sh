@@ -28,14 +28,14 @@ STORE_DIR="$CACHE_ROOT/quantbot/coverage"
 BY_BRANCH_DIR="$STORE_DIR/by-branch"
 mkdir -p "$STORE_DIR" "$BY_BRANCH_DIR"
 
-node <<'NODE' "$COV_JSON" "$STORE_DIR" "$BY_BRANCH_DIR"
+COV_JSON="$COV_JSON" STORE_DIR="$STORE_DIR" BY_BRANCH_DIR="$BY_BRANCH_DIR" node <<'NODE'
 const fs = require("fs");
 const path = require("path");
 const cp = require("child_process");
 
-const covPath = process.argv[1];
-const storeDir = process.argv[2];
-const byBranchDir = process.argv[3];
+const covPath = process.env.COV_JSON;
+const storeDir = process.env.STORE_DIR;
+const byBranchDir = process.env.BY_BRANCH_DIR;
 
 const raw = fs.readFileSync(covPath, "utf8");
 const json = JSON.parse(raw);
