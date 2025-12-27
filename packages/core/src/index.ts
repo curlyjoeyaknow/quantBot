@@ -29,6 +29,9 @@ export * from './handlers/index.js';
 // Core Domain Types
 // ============================================================================
 
+// Domain module (chain, telemetry, etc.)
+export * from './domain/index.js';
+
 // Domain models
 export * from './domain/calls/CallSignal.js';
 
@@ -105,13 +108,8 @@ export type {
  */
 export type Chain = 'solana' | 'ethereum' | 'bsc' | 'base' | 'monad' | 'evm';
 
-// Export chain utilities
-export {
-  normalizeChain,
-  isNormalizedChain,
-  getChainDisplayName,
-  type NormalizedChain,
-} from './chain-utils.js';
+// Chain utilities are now exported from domain/index.js
+// Keep this comment for reference - exports are handled above via domain/index.js
 
 /**
  * Token address (Solana mint address)

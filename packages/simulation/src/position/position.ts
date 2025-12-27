@@ -122,8 +122,8 @@ function generateId(
   if (typeof process !== 'undefined' && (process.env?.NODE_ENV === 'test' || process.env?.VITEST)) {
     // Use a simple counter for uniqueness in tests (non-deterministic but acceptable for test-only code)
     // eslint-disable-next-line no-restricted-properties -- Test-only fallback, not used in production
-    const testCounter = (globalThis as { __testCounter?: number }).__testCounter ?? 0;
-    (globalThis as { __testCounter: number }).__testCounter = testCounter + 1;
+    const testCounter = (globalThis as unknown as { __testCounter?: number }).__testCounter ?? 0;
+    (globalThis as unknown as { __testCounter: number }).__testCounter = testCounter + 1;
     return `test-${testCounter}`;
   }
 

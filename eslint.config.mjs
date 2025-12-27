@@ -114,7 +114,6 @@ export default tseslint.config(
                 './packages/analytics/src/**',
                 './packages/api-clients/src/**',
                 './packages/core/src/**',
-                './packages/events/src/**',
                 './packages/ingestion/src/**',
                 './packages/jobs/src/**',
                 './packages/observability/src/**',
