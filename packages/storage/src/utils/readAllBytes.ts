@@ -90,4 +90,3 @@ export async function readAllBytes(input: any): Promise<Uint8Array> {
 
   throw new Error(`Unsupported stream/body type: ${Object.prototype.toString.call(input)}`);
 }
-

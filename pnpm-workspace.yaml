@@ -5,5 +5,9 @@ ignoredBuiltDependencies:
   - duckdb
 
 onlyBuiltDependencies:
+  - bufferutil
   - esbuild
+  - protobufjs
   - sharp
+  - unrs-resolver
+  - utf-8-validate
