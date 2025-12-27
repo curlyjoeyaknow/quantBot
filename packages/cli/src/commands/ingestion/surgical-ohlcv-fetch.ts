@@ -153,6 +153,9 @@ export async function surgicalOhlcvFetchHandler(args: SurgicalOhlcvFetchArgs, ct
       info: (message: string, meta?: Record<string, unknown>) => {
         logger.info(message, { service: 'quantbot', namespace: 'quantbot', ...meta });
       },
+      warn: (message: string, meta?: Record<string, unknown>) => {
+        logger.warn(message, { service: 'quantbot', namespace: 'quantbot', ...meta });
+      },
       error: (message: string, meta?: Record<string, unknown>) => {
         logger.error(message, { service: 'quantbot', namespace: 'quantbot', ...meta });
       },
