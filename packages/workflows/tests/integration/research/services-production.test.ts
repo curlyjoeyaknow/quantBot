@@ -142,10 +142,11 @@ describe('Production Integration', () => {
         strategyId: 'strategy-001',
         name: 'test-strategy',
         config: {
-          targets: [{ target: 2, percent: 0.5 }],
+          name: 'test-strategy',
+          profitTargets: [{ target: 2, percent: 0.5 }],
         },
         configHash: createHash('sha256')
-          .update(JSON.stringify({ targets: [{ target: 2, percent: 0.5 }] }))
+          .update(JSON.stringify({ name: 'test-strategy', profitTargets: [{ target: 2, percent: 0.5 }] }))
           .digest('hex'),
       };
 
@@ -221,17 +222,23 @@ describe('Production Integration', () => {
         {
           strategyId: 'strategy-001',
           name: 'strategy-1',
-          config: { targets: [{ target: 2, percent: 0.5 }] },
+          config: {
+            name: 'strategy-1',
+            profitTargets: [{ target: 2, percent: 0.5 }],
+          },
           configHash: createHash('sha256')
-            .update(JSON.stringify({ targets: [{ target: 2, percent: 0.5 }] }))
+            .update(JSON.stringify({ name: 'strategy-1', profitTargets: [{ target: 2, percent: 0.5 }] }))
             .digest('hex'),
         },
         {
           strategyId: 'strategy-002',
           name: 'strategy-2',
-          config: { targets: [{ target: 3, percent: 0.3 }] },
+          config: {
+            name: 'strategy-2',
+            profitTargets: [{ target: 3, percent: 0.3 }],
+          },
           configHash: createHash('sha256')
-            .update(JSON.stringify({ targets: [{ target: 3, percent: 0.3 }] }))
+            .update(JSON.stringify({ name: 'strategy-2', profitTargets: [{ target: 3, percent: 0.3 }] }))
             .digest('hex'),
         },
       ];

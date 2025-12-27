@@ -130,7 +130,9 @@ export async function createDuckdbSimulationContext(
           );
         },
         async addOhlcvExclusion(path, mint, alertTimestamp, reason) {
-          await duckdbStorageService.addOhlcvExclusion(path, mint, alertTimestamp, reason);
+          // Convert to storage service signature: (path, tokenAddress, chain, interval, reason)
+          // Default to solana chain and 5m interval for exclusions
+          await duckdbStorageService.addOhlcvExclusion(path, mint, 'solana', '5m', reason);
         },
       },
       ohlcvIngestion: {

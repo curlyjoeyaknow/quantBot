@@ -109,8 +109,8 @@ describe('Performance Tests', () => {
         sources: snapshot.sources,
         filters: snapshot.filters,
       };
-      // Access private method via type assertion for testing
-      const data = await (dataService as any).loadDataForSnapshot(params);
+      // Use public method for loading snapshot data
+      const data = await dataService.loadSnapshotData(params);
       const duration = Date.now() - startTime;
 
       expect(data.candles.length).toBeGreaterThan(0);
@@ -298,9 +298,9 @@ describe('Performance Tests', () => {
         )
       );
 
-      // Load all snapshots (using loadDataForSnapshot to bypass integrity check in tests)
+      // Load all snapshots (using loadSnapshotData to bypass integrity check in tests)
       const dataPromises = snapshots.map((snapshot) =>
-        (dataService as any).loadDataForSnapshot({
+        dataService.loadSnapshotData({
           timeRange: snapshot.timeRange,
           sources: snapshot.sources,
           filters: snapshot.filters,

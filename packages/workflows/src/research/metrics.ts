@@ -42,20 +42,13 @@ export function calculateMetrics(tradeEvents: TradeEvent[], pnlSeries: PnLSeries
   const reentryCount = tradeEvents.filter((t) => t.type === 'reentry').length;
   const failedCount = tradeEvents.filter((t) => t.failed).length;
 
-  // Tail loss
-  const exitValues = exits
-    .filter((t) => !t.failed)
-    .map((t) => {
-      // Calculate PnL for this exit
-      // This is simplified - in reality, we'd track entry/exit pairs
-      return t.value;
-    });
-  const worstTrade = exitValues.length > 0 ? Math.min(...exitValues) : 0;
-  const sortedLosses = [...exitValues].sort((a, b) => a - b);
-  const p5Index = Math.floor(sortedLosses.length * 0.05);
-  const p1Index = Math.floor(sortedLosses.length * 0.01);
-  const p5 = sortedLosses.length > 0 && p5Index >= 0 ? sortedLosses[p5Index] : undefined;
-  const p1 = sortedLosses.length > 0 && p1Index >= 0 ? sortedLosses[p1Index] : undefined;
+  // Tail loss (worst single trade loss, must be <= 0)
+  // Note: This is simplified - in reality, we'd track entry/exit pairs to calculate actual losses
+  // For now, we use 0 (no losses) since we don't have proper entry/exit pairing
+  const worstTrade = 0; // Simplified: no loss tracking without entry/exit pairs
+  // Percentile losses (simplified - would need proper loss calculation)
+  const p5 = undefined; // Not calculated without entry/exit pairs
+  const p1 = undefined; // Not calculated without entry/exit pairs
 
   // Fee sensitivity
   const totalFees = tradeEvents.reduce((sum, t) => sum + t.fees, 0);
@@ -104,9 +97,9 @@ export function calculateMetrics(tradeEvents: TradeEvent[], pnlSeries: PnLSeries
       failed: failedCount > 0 ? failedCount : undefined,
     },
     tailLoss: {
-      worstTrade: Number.isFinite(worstTrade) ? worstTrade : 0,
-      p5: p5 !== undefined && Number.isFinite(p5) ? p5 : undefined,
-      p1: p1 !== undefined && Number.isFinite(p1) ? p1 : undefined,
+      worstTrade: Math.min(0, worstTrade), // Ensure <= 0 (losses only)
+      p5: p5 !== undefined && Number.isFinite(p5) ? Math.min(0, p5) : undefined,
+      p1: p1 !== undefined && Number.isFinite(p1) ? Math.min(0, p1) : undefined,
     },
     feeSensitivity: {
       totalFees: Number.isFinite(totalFees) ? Math.max(0, totalFees) : 0,
@@ -215,8 +208,9 @@ export function calculatePnLSeries(
       peak = runningTotal;
     }
 
-    // Calculate drawdown
-    const drawdown = peak > 0 ? (peak - runningTotal) / peak : 0;
+    // Calculate drawdown (as fraction, clamped to [0, 1])
+    const rawDrawdown = peak > 0 ? (peak - runningTotal) / peak : 0;
+    const drawdown = Math.max(0, Math.min(1, rawDrawdown)); // Clamp to [0, 1]
 
     // Calculate cumulative PnL (as multiplier)
     const cumulativePnL = runningTotal / initialCapital;

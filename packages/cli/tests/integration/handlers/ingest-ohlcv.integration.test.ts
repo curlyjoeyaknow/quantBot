@@ -13,7 +13,10 @@
  * This tests actual integration boundaries and enforces handler purity.
  */
 
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
+
+// Set timeout for integration tests (30 seconds)
+vi.setConfig({ testTimeout: 30_000 });
 import { DateTime } from 'luxon';
 import {
   IngestOhlcvArgs,

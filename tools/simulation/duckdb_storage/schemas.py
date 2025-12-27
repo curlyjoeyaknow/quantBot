@@ -98,8 +98,9 @@ class QueryOhlcvMetadataOutput(BaseResponse):
 
 # OHLCV exclusions
 class AddOhlcvExclusionInput(BaseModel):
-    mint: str
-    alert_timestamp: str
+    token_address: str
+    chain: str
+    interval: str
     reason: str
 
 
@@ -108,14 +109,17 @@ class AddOhlcvExclusionOutput(BaseResponse):
 
 
 class QueryOhlcvExclusionsInput(BaseModel):
-    mints: List[str]
-    alert_timestamps: List[str]
+    token_addresses: Optional[List[str]] = None
+    chains: Optional[List[str]] = None
+    intervals: Optional[List[str]] = None
 
 
 class ExcludedItem(BaseModel):
-    mint: str
-    alert_timestamp: str
+    token_address: str
+    chain: str
+    interval: str
     reason: str
+    excluded_at: str
 
 
 class QueryOhlcvExclusionsOutput(BaseResponse):

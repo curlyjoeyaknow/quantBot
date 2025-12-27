@@ -215,6 +215,28 @@ export class DataSnapshotService {
   }
 
   /**
+   * Loads snapshot data from parameters (for testing/performance testing)
+   *
+   * This method bypasses integrity checking and loads data directly.
+   * Use loadSnapshot() for production code that requires integrity verification.
+   */
+  async loadSnapshotData(params: CreateSnapshotParams): Promise<SnapshotData> {
+    // Try slices first, fall back to database
+    if (params.sliceManifestIds && params.sliceManifestIds.length > 0) {
+      try {
+        return await this.loadDataFromSlices(params);
+      } catch (error) {
+        logger.warn('[DataSnapshotService] Failed to load from slices, falling back to database', {
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    }
+
+    // Fall back to database
+    return await this.loadDataFromDatabase(params);
+  }
+
+  /**
    * Verifies snapshot integrity
    *
    * Re-computes the content hash and compares it to the stored hash.

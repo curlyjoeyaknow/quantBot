@@ -150,8 +150,9 @@ export interface SliceAnalysisResult {
 
   /**
    * A stable, small summary you can put into ClickHouse for dashboards.
+   * Can contain arrays (e.g., for column names) in addition to primitives.
    */
-  summary?: Record<string, string | number | boolean | null>;
+  summary?: Record<string, string | number | boolean | null | string[]>;
 
   /**
    * Optional produced artifacts (parquet/csv/json).
