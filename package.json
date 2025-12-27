@@ -59,9 +59,13 @@
     "verify:changelog": "tsx scripts/ci/verify-changelog.ts",
     "verify:documentation": "tsx scripts/ci/verify-documentation.ts",
     "verify:package-versions": "tsx scripts/ci/verify-package-versions.ts",
+<<<<<<< HEAD
+=======
+    "version:bump": "tsx scripts/version/bump-package-version.ts",
+>>>>>>> 843968bc (feat: implement per-package version control system)
     "check:coverage-decrease": "tsx scripts/ci/check-coverage-decrease.ts",
     "test:smoke": "vitest run tests/smoke",
-    "quality-gates:pr": "pnpm verify:handler-tests && pnpm verify:property-tests && pnpm verify:changelog && pnpm verify:documentation && pnpm test:smoke",
+    "quality-gates:pr": "pnpm verify:package-versions && pnpm verify:handler-tests && pnpm verify:property-tests && pnpm verify:changelog && pnpm verify:documentation && pnpm test:smoke",
     "quality-gates:release": "pnpm quality-gates:pr && pnpm test:stress && pnpm check:coverage-decrease",
     "smoke:ports": "tsx packages/workflows/src/dev/smokePorts.ts",
     "audit": "npm audit --audit-level=moderate",
