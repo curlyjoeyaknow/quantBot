@@ -6,6 +6,7 @@
  */
 
 import { join } from 'path';
+import { getArtifactsDir } from '@quantbot/core';
 import type { ExperimentContext } from './experiment-runner.js';
 import { FileArtifactStorage } from './artifact-storage.js';
 import { createSimulationAdapter } from './simulation-adapter.js';
@@ -33,7 +34,7 @@ export interface ExperimentContextConfig {
  */
 export function createExperimentContext(config: ExperimentContextConfig = {}): ExperimentContext {
   const workflowContext = config.workflowContext ?? createProductionContext();
-  const artifactBaseDir = config.artifactBaseDir ?? process.cwd();
+  const artifactBaseDir = config.artifactBaseDir ?? getArtifactsDir();
 
   const artifactStorage = new FileArtifactStorage(artifactBaseDir);
   const simulationAdapter = createSimulationAdapter(workflowContext);

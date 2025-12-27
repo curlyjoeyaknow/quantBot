@@ -9,6 +9,7 @@
 import { readFile, writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import { existsSync } from 'fs';
+import { getArtifactsDir } from '@quantbot/core';
 
 /**
  * Queue item: token and date that needs OHLCV data
@@ -27,7 +28,7 @@ export interface OhlcvQueueItem {
  * Queue file path (in artifacts directory)
  */
 function getQueuePath(): string {
-  const queueDir = process.env.OHLCV_QUEUE_DIR || './artifacts/ohlcv-queue';
+  const queueDir = process.env.OHLCV_QUEUE_DIR || join(getArtifactsDir(), 'ohlcv-queue');
   return join(queueDir, 'queue.json');
 }
 

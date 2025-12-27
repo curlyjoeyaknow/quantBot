@@ -12,6 +12,7 @@
  */
 
 import { ValidationError, ConfigurationError } from '@quantbot/utils';
+import { getArtifactsDir } from '@quantbot/core';
 import { validateAndCoerceArgs } from './validation-pipeline.js';
 import { formatOutput } from './output-formatter.js';
 import { writeFile, mkdir } from 'fs/promises';
@@ -268,7 +269,7 @@ export async function executeValidated(
         });
       }
       runId = runIdResult.runId;
-      const artifactsDir = process.env.ARTIFACTS_DIR || './artifacts';
+      const artifactsDir = process.env.ARTIFACTS_DIR || getArtifactsDir();
       if (!isVerboseMode) {
         progress.updateMessage('Creating artifact directory...');
       }
@@ -461,7 +462,7 @@ export async function execute(
         });
       }
       runId = runIdResult.runId;
-      const artifactsDir = process.env.ARTIFACTS_DIR || './artifacts';
+      const artifactsDir = process.env.ARTIFACTS_DIR || getArtifactsDir();
       if (!isVerboseMode) {
         progress.updateMessage('Creating artifact directory...');
       }

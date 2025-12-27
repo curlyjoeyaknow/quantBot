@@ -1,7 +1,7 @@
 #!/usr/bin/env tsx
 /**
  * Bump Package Version
- * 
+ *
  * Helper script to bump package versions following semver.
  * Updates package.json and optionally updates CHANGELOG.md.
  */
@@ -91,48 +91,59 @@ function getChangelogSection(bumpType: VersionBump): string {
 /**
  * Add changelog entry for package version bump
  */
-function addChangelogEntry(packageName: string, oldVersion: string, newVersion: string, bumpType: VersionBump): void {
+function addChangelogEntry(
+  packageName: string,
+  oldVersion: string,
+  newVersion: string,
+  bumpType: VersionBump
+): void {
   try {
     const changelog = readFileSync(CHANGELOG_PATH, 'utf-8');
-    
+
     // Find the [Unreleased] section
     const unreleasedMatch = changelog.match(/## \[Unreleased\]\s*\n/);
     if (!unreleasedMatch) {
       console.warn('⚠️  Could not find [Unreleased] section in CHANGELOG.md');
       return;
     }
-    
+
     const unreleasedIndex = unreleasedMatch.index! + unreleasedMatch[0].length;
     const section = getChangelogSection(bumpType);
-    
+
     // Find the section (Added, Changed, Fixed, etc.)
-    const sectionRegex = new RegExp(`(${section.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})\\s*\\n`, 'g');
+    const sectionRegex = new RegExp(
+      `(${section.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})\\s*\\n`,
+      'g'
+    );
     let sectionIndex = -1;
     let match;
-    
+
     // Search from [Unreleased] onwards
     const afterUnreleased = changelog.substring(unreleasedIndex);
     sectionRegex.lastIndex = 0;
     match = sectionRegex.exec(afterUnreleased);
-    
+
     if (match) {
       sectionIndex = unreleasedIndex + match.index + match[0].length;
     } else {
       // Section doesn't exist, add it after [Unreleased]
       sectionIndex = unreleasedIndex;
     }
-    
+
     // Create changelog entry
     // Map bump type to more descriptive text
-    const bumpDescription = bumpType === 'major' ? 'major version bump (breaking changes)' 
-      : bumpType === 'minor' ? 'minor version bump (new features)'
-      : 'patch version bump (bug fixes)';
+    const bumpDescription =
+      bumpType === 'major'
+        ? 'major version bump (breaking changes)'
+        : bumpType === 'minor'
+          ? 'minor version bump (new features)'
+          : 'patch version bump (bug fixes)';
     const entry = `- **${packageName}**: Version ${newVersion} - ${bumpDescription}\n`;
-    
+
     // Insert entry
     const before = changelog.substring(0, sectionIndex);
     const after = changelog.substring(sectionIndex);
-    
+
     // If section doesn't exist, add it
     let newContent: string;
     if (sectionIndex === unreleasedIndex) {
@@ -140,7 +151,7 @@ function addChangelogEntry(packageName: string, oldVersion: string, newVersion: 
     } else {
       newContent = before + entry + after;
     }
-    
+
     writeFileSync(CHANGELOG_PATH, newContent);
     console.log(`✅ Added CHANGELOG.md entry for ${packageName} ${newVersion}`);
   } catch (error) {
@@ -152,7 +163,11 @@ function addChangelogEntry(packageName: string, oldVersion: string, newVersion: 
 /**
  * Bump package version
  */
-function bumpPackageVersion(packageName: string, bumpType: VersionBump, updateChangelog: boolean = true): void {
+function bumpPackageVersion(
+  packageName: string,
+  bumpType: VersionBump,
+  updateChangelog: boolean = true
+): void {
   console.log(`🔄 Bumping ${packageName} version (${bumpType})...\n`);
 
   // Find package.json
@@ -181,7 +196,7 @@ function bumpPackageVersion(packageName: string, bumpType: VersionBump, updateCh
   writeFileSync(fullPath, JSON.stringify(packageJson, null, 2) + '\n');
 
   console.log(`✅ Updated ${packageJsonPath}`);
-  
+
   // Update CHANGELOG.md if requested
   if (updateChangelog) {
     addChangelogEntry(packageName, currentVersion, newVersion, bumpType);
@@ -197,12 +212,16 @@ function bumpPackageVersion(packageName: string, bumpType: VersionBump, updateCh
 const args = process.argv.slice(2);
 
 if (args.length < 2 || args.length > 3) {
-  console.error('Usage: tsx scripts/version/bump-package-version.ts <package-name> <patch|minor|major> [--no-changelog]');
+  console.error(
+    'Usage: tsx scripts/version/bump-package-version.ts <package-name> <patch|minor|major> [--no-changelog]'
+  );
   console.error('\nExamples:');
   console.error('  tsx scripts/version/bump-package-version.ts @quantbot/utils patch');
   console.error('  tsx scripts/version/bump-package-version.ts @quantbot/storage minor');
   console.error('  tsx scripts/version/bump-package-version.ts @quantbot/core major');
-  console.error('  tsx scripts/version/bump-package-version.ts @quantbot/utils patch --no-changelog');
+  console.error(
+    '  tsx scripts/version/bump-package-version.ts @quantbot/utils patch --no-changelog'
+  );
   process.exit(1);
 }
 
@@ -215,4 +234,3 @@ if (!['patch', 'minor', 'major'].includes(bumpType)) {
 }
 
 bumpPackageVersion(packageName, bumpType as VersionBump, updateChangelog);
-

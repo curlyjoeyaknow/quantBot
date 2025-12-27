@@ -86,7 +86,13 @@ export class CallDataLoader {
 
       // Convert CallRecord[] to CallPerformance[]
       // Filter out invalid calls and validate data
-      const validCalls = (result.calls || []).filter((call) => {
+      // Type assertion: result.calls is an array of call objects with mint and createdAt
+      const callsArray = (result.calls || []) as Array<{
+        mint?: string;
+        createdAt?: unknown;
+        caller?: string;
+      }>;
+      const validCalls = callsArray.filter((call) => {
         // Filter out calls with missing required fields
         if (!call || !call.mint || !call.createdAt) {
           logger.warn('[CallDataLoader] Skipping call with missing required fields', { call });
@@ -106,7 +112,7 @@ export class CallDataLoader {
       };
 
       // Prepare calls for historical price lookup
-      const callsForPriceLookup = validCalls.map((call, index) => {
+      const callsForPriceLookup = validCalls.map((call: (typeof validCalls)[0], index: number) => {
         const tokenAddress = String(call.mint || '').trim();
         let alertTimestamp: Date;
         try {
@@ -135,7 +141,9 @@ export class CallDataLoader {
       });
 
       // Filter calls that need Birdeye lookup (those without valid price_usd)
-      const callsNeedingBirdeye = callsForPriceLookup.filter((c) => !c.hasValidPriceUsd);
+      const callsNeedingBirdeye = callsForPriceLookup.filter(
+        (c: (typeof callsForPriceLookup)[0]) => !c.hasValidPriceUsd
+      );
 
       // Load historical prices from Birdeye API only for calls without valid price_usd
       let historicalPrices = new Map<number, number>();
@@ -144,7 +152,7 @@ export class CallDataLoader {
           `[CallDataLoader] Fetching historical prices from Birdeye for ${callsNeedingBirdeye.length} calls (${callsForPriceLookup.length - callsNeedingBirdeye.length} calls already have valid price_usd)`
         );
         historicalPrices = await loadHistoricalPricesBatch(
-          callsNeedingBirdeye.map((c) => ({
+          callsNeedingBirdeye.map((c: (typeof callsForPriceLookup)[0]) => ({
             tokenAddress: c.tokenAddress,
             alertTimestamp: c.alertTimestamp,
             // Chain will be auto-detected from address format
@@ -182,43 +190,45 @@ export class CallDataLoader {
       }
 
       // Map to CallPerformance with historical prices
-      const callPerformance: CallPerformance[] = callsForPriceLookup.map((callInfo, index) => {
-        const tokenAddress = callInfo.tokenAddress;
-        const alertTimestamp = callInfo.alertTimestamp;
+      const callPerformance: CallPerformance[] = callsForPriceLookup.map(
+        (callInfo: (typeof callsForPriceLookup)[0], index: number) => {
+          const tokenAddress = callInfo.tokenAddress;
+          const alertTimestamp = callInfo.alertTimestamp;
 
-        // Determine entry price:
-        // 1. Use valid price_usd if available
-        // 2. Otherwise, use Birdeye price if available
-        // 3. Otherwise, use 0 (invalid price_usd means we should return 0, not fetch from Birdeye)
-        let entryPrice: number;
-        if (callInfo.hasValidPriceUsd && callInfo.priceUsd !== undefined) {
-          entryPrice = callInfo.priceUsd;
-        } else {
-          // Try to get from Birdeye (only if we attempted lookup)
-          const birdeyeIdx = birdeyeIndexMap.get(index);
-          entryPrice = birdeyeIdx !== undefined ? historicalPrices.get(birdeyeIdx) || 0 : 0;
+          // Determine entry price:
+          // 1. Use valid price_usd if available
+          // 2. Otherwise, use Birdeye price if available
+          // 3. Otherwise, use 0 (invalid price_usd means we should return 0, not fetch from Birdeye)
+          let entryPrice: number;
+          if (callInfo.hasValidPriceUsd && callInfo.priceUsd !== undefined) {
+            entryPrice = callInfo.priceUsd;
+          } else {
+            // Try to get from Birdeye (only if we attempted lookup)
+            const birdeyeIdx = birdeyeIndexMap.get(index);
+            entryPrice = birdeyeIdx !== undefined ? historicalPrices.get(birdeyeIdx) || 0 : 0;
+          }
+
+          // Validate and normalize caller name
+          const callerName =
+            callInfo.caller && String(callInfo.caller).trim()
+              ? String(callInfo.caller).trim()
+              : 'unknown';
+
+          return {
+            callId: index + 1, // Generate ID since we don't have numeric ID from DuckDB
+            tokenAddress,
+            callerName,
+            chain: 'solana', // Default to solana, could be enriched later
+            alertTimestamp,
+            entryPrice, // Use historical price from Birdeye at exact alert time
+            athPrice: entryPrice, // Default to entry price, will be enriched if OHLCV data available
+            athMultiple: 1, // Default, will be enriched if OHLCV data available
+            timeToAthMinutes: 0, // Will need to be enriched
+            atlPrice: entryPrice, // Default to entry price, will be enriched if OHLCV data available
+            atlMultiple: 1, // Default, will be enriched if OHLCV data available
+          };
         }
-
-        // Validate and normalize caller name
-        const callerName =
-          callInfo.caller && String(callInfo.caller).trim()
-            ? String(callInfo.caller).trim()
-            : 'unknown';
-
-        return {
-          callId: index + 1, // Generate ID since we don't have numeric ID from DuckDB
-          tokenAddress,
-          callerName,
-          chain: 'solana', // Default to solana, could be enriched later
-          alertTimestamp,
-          entryPrice, // Use historical price from Birdeye at exact alert time
-          athPrice: entryPrice, // Default to entry price, will be enriched if OHLCV data available
-          athMultiple: 1, // Default, will be enriched if OHLCV data available
-          timeToAthMinutes: 0, // Will need to be enriched
-          atlPrice: entryPrice, // Default to entry price, will be enriched if OHLCV data available
-          atlMultiple: 1, // Default, will be enriched if OHLCV data available
-        };
-      });
+      );
 
       logger.info(`[CallDataLoader] Loaded ${callPerformance.length} calls from DuckDB`, {
         fromISO,
