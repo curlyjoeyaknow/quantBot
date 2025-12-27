@@ -113,7 +113,10 @@ export class DuckDbSliceAnalyzerAdapterImpl implements SliceAnalyzer {
         // Note: parquetPaths already contains quoted strings (added above with '${path.replace(/'/g, "''")}')
         const parquetTable = `read_parquet([${parquetPaths.join(', ')}])`;
         // Replace FROM slice (case-insensitive, with or without quotes) with FROM read_parquet(...)
-        const modifiedSql = sql.replace(/FROM\s+(?:"slice"|'slice'|slice)/i, `FROM ${parquetTable}`);
+        const modifiedSql = sql.replace(
+          /FROM\s+(?:"slice"|'slice'|slice)/i,
+          `FROM ${parquetTable}`
+        );
 
         logger.info('Executing SQL query with inline read_parquet', {
           exportId: manifest.run.runId,
@@ -244,17 +247,22 @@ export class DuckDbSliceAnalyzerAdapterImpl implements SliceAnalyzer {
               rows: 0,
               columns: columnNames,
               // Set aggregate values to 0 or null
-              ...Object.fromEntries(columnNames.map((name) => {
-                if (name.toLowerCase().includes('count')) return [name, 0];
-                return [name, null];
-              })),
+              ...Object.fromEntries(
+                columnNames.map((name) => {
+                  if (name.toLowerCase().includes('count')) return [name, 0];
+                  return [name, null];
+                })
+              ),
             };
-            logger.info('Aggregate query returned 0 rows with column metadata (treating as valid empty result)', {
-              runId: manifest.run.runId,
-              sql: sql.substring(0, 100),
-              columnCount: result.columns.length,
-              columnNames,
-            });
+            logger.info(
+              'Aggregate query returned 0 rows with column metadata (treating as valid empty result)',
+              {
+                runId: manifest.run.runId,
+                sql: sql.substring(0, 100),
+                columnCount: result.columns.length,
+                columnNames,
+              }
+            );
           } else if (isAggregateQuery && result.columns.length === 0) {
             // No column metadata means the query actually failed
             logger.error('Aggregate query returned 0 rows with no column metadata - query failed', {

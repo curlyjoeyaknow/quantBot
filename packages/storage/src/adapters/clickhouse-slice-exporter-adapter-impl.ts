@@ -335,7 +335,7 @@ export class ClickHouseSliceExporterAdapterImpl implements SliceExporter {
     let csvData: Buffer;
     try {
       // Fix call site: handle result.stream as function or property
-       
+
       const streamSource =
         typeof (result as any).stream === 'function'
           ? await (result as any).stream()
