@@ -111,7 +111,8 @@ export async function runSimulation(
   const pnlOk: number[] = [];
   let tradesTotal = 0;
 
-  ctx.logger.info('[workflows.runSimulation] start', {
+  // Emit structured event instead of verbose debug log
+  ctx.logger.info('Simulation run started', {
     runId,
     strategy: strategy.name,
     calls: uniqueCalls.length,
@@ -179,11 +180,12 @@ export async function runSimulation(
         errorMessage: msg,
       });
       // Continue (per-call errors should not kill the run)
-      ctx.logger.warn('[workflows.runSimulation] per-call error', {
+      // Only log errors, not warnings for per-call failures (too verbose)
+      ctx.logger.error('Simulation call failed', {
         runId,
         callId: call.id,
         mint: call.mint,
-        msg,
+        error: msg,
       });
     }
   }
@@ -221,7 +223,8 @@ export async function runSimulation(
     await ctx.repos.simulationResults.insertMany(runId, results);
   }
 
-  ctx.logger.info('[workflows.runSimulation] done', {
+  // Emit structured completion event
+  ctx.logger.info('Simulation run completed', {
     runId,
     callsFound: calls.length,
     callsUnique: uniqueCalls.length,

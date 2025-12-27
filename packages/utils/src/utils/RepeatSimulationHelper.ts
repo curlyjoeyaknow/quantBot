@@ -1,15 +1,22 @@
 /**
  * Repeat Simulation Helper
  * Utility functions for repeating simulations from previous runs.
- * NOTE: Extracted from bot-specific code; kept here for test coverage.
+ *
+ * @deprecated This helper is deprecated and kept only for test coverage.
+ * SessionService no longer exists in the codebase.
+ *
+ * This code should be removed when:
+ * - Tests are migrated to use new session management
+ * - Or tests are removed if functionality is no longer needed
+ *
+ * TODO: Remove this file and associated tests when session management is refactored.
  */
 
 import type { Context } from 'telegraf';
 import { DateTime } from 'luxon';
 
 /**
- * @deprecated SessionService no longer exists. This helper is kept for test coverage only.
- * TODO: Remove or refactor to use a different service interface.
+ * @deprecated SessionService no longer exists. This interface is kept for test compatibility only.
  */
 export interface SessionService {
   setSession(userId: number, session: unknown): void;
