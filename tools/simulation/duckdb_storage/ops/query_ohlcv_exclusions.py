@@ -12,14 +12,17 @@ from ..utils import setup_ohlcv_exclusions_schema
 
 
 class QueryOhlcvExclusionsInput(BaseModel):
-    mints: List[str]
-    alert_timestamps: List[str]
+    token_addresses: Optional[List[str]] = None
+    chains: Optional[List[str]] = None
+    intervals: Optional[List[str]] = None
 
 
 class ExcludedItem(BaseModel):
-    mint: str
-    alert_timestamp: str
+    token_address: str
+    chain: str
+    interval: str
     reason: str
+    excluded_at: str
 
 
 class QueryOhlcvExclusionsOutput(BaseModel):
@@ -29,39 +32,48 @@ class QueryOhlcvExclusionsOutput(BaseModel):
 
 
 def run(con: duckdb.DuckDBPyConnection, input: QueryOhlcvExclusionsInput) -> QueryOhlcvExclusionsOutput:
-    """Query OHLCV exclusions to filter out excluded tokens."""
+    """Query OHLCV exclusions - matches ClickHouse ohlcv_candles structure."""
     try:
         setup_ohlcv_exclusions_schema(con)
 
-        if (
-            not input.mints
-            or not input.alert_timestamps
-            or len(input.mints) != len(input.alert_timestamps)
-        ):
-            return QueryOhlcvExclusionsOutput(success=True, excluded=[])
-
-        # Build query to check exclusions
+        # Build query with optional filters
         conditions = []
         params = []
-        for mint, alert_ts in zip(input.mints, input.alert_timestamps):
-            conditions.append("(mint = ? AND alert_timestamp = ?)")
-            params.extend([mint, alert_ts])
+
+        if input.token_addresses and len(input.token_addresses) > 0:
+            placeholders = ','.join(['?' for _ in input.token_addresses])
+            conditions.append(f"token_address IN ({placeholders})")
+            params.extend(input.token_addresses)
+
+        if input.chains and len(input.chains) > 0:
+            placeholders = ','.join(['?' for _ in input.chains])
+            conditions.append(f"chain IN ({placeholders})")
+            params.extend(input.chains)
+
+        if input.intervals and len(input.intervals) > 0:
+            placeholders = ','.join(['?' for _ in input.intervals])
+            conditions.append(f"interval IN ({placeholders})")
+            params.extend(input.intervals)
+
+        where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
 
         query = f"""
-            SELECT mint, alert_timestamp, reason
+            SELECT token_address, chain, interval, reason, excluded_at
             FROM ohlcv_exclusions_d
-            WHERE {' OR '.join(conditions)}
+            {where_clause}
         """
 
         result = con.execute(query, params).fetchall()
 
         excluded = [
             ExcludedItem(
-                mint=row[0],
-                alert_timestamp=row[1].isoformat()
-                if isinstance(row[1], datetime)
-                else str(row[1]),
-                reason=row[2],
+                token_address=row[0],
+                chain=row[1],
+                interval=row[2],
+                reason=row[3],
+                excluded_at=row[4].isoformat()
+                if isinstance(row[4], datetime)
+                else str(row[4]),
             )
             for row in result
         ]

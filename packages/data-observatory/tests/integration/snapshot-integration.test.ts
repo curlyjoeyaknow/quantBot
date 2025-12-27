@@ -4,7 +4,10 @@
  * Tests the snapshot system with real storage integration.
  */
 
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll, vi } from 'vitest';
+
+// Set timeout for integration tests (30 seconds)
+vi.setConfig({ testTimeout: 30_000 });
 import { DateTime } from 'luxon';
 import { getStorageEngine } from '@quantbot/storage';
 import { SnapshotManager } from '../../src/snapshots/snapshot-manager.js';

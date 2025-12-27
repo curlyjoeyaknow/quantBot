@@ -9,7 +9,7 @@
 
 import { promises as fs } from 'fs';
 import { join } from 'path';
-import { ValidationError } from '@quantbot/utils';
+import { ValidationError, logger } from '@quantbot/utils';
 import type { RunArtifact } from './artifacts.js';
 import { RunArtifactSchema } from './artifacts.js';
 
@@ -69,10 +69,45 @@ export class FileArtifactStorage {
   async save(artifact: RunArtifact): Promise<void> {
     await this.ensureDir();
 
+    // Defensive check: log artifact structure before validation
+    logger.debug('Saving artifact', {
+      runId: artifact.metadata?.runId,
+      hasMetadata: !!artifact.metadata,
+      metadataType: typeof artifact.metadata,
+      metadataKeys: artifact.metadata ? Object.keys(artifact.metadata) : null,
+      metadataGitSha: artifact.metadata?.gitSha,
+      metadataCreatedAtISO: artifact.metadata?.createdAtISO,
+      artifactKeys: Object.keys(artifact),
+      artifactStringified: JSON.stringify(artifact, null, 2).substring(0, 500),
+    });
+
     // Validate artifact
     const parsed = RunArtifactSchema.safeParse(artifact);
     if (!parsed.success) {
-      throw new ValidationError('Invalid artifact', {
+      // Log validation errors for debugging
+      const firstIssue = parsed.error.issues[0];
+      const issueMessage = firstIssue
+        ? `${firstIssue.path.join('.')}: ${firstIssue.message}`
+        : 'Unknown validation error';
+      logger.error('Artifact validation failed', {
+        runId: artifact.metadata?.runId,
+        issueCount: parsed.error.issues.length,
+        firstIssue: firstIssue ? {
+          path: firstIssue.path,
+          message: firstIssue.message,
+          code: firstIssue.code,
+        } : null,
+        allIssues: parsed.error.issues.map(issue => ({
+          path: issue.path,
+          message: issue.message,
+          code: issue.code,
+        })),
+        artifactKeys: Object.keys(artifact),
+        metadataKeys: artifact.metadata ? Object.keys(artifact.metadata) : null,
+        metadataGitSha: artifact.metadata?.gitSha,
+        metadataCreatedAtISO: artifact.metadata?.createdAtISO,
+      });
+      throw new ValidationError(`Invalid artifact: ${issueMessage}`, {
         issues: parsed.error.issues,
         runId: artifact.metadata?.runId,
       });

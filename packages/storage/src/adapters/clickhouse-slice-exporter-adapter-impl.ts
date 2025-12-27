@@ -6,12 +6,13 @@
  */
 
 import { promises as fs } from 'fs';
-import { join } from 'path';
+import { join, resolve } from 'path';
 import { createHash } from 'crypto';
 import { tmpdir } from 'os';
 import { getClickHouseClient } from '../clickhouse-client.js';
 import { DuckDBClient } from '../duckdb/duckdb-client.js';
 import { logger } from '@quantbot/utils';
+import { readAllBytes } from '../utils/readAllBytes.js';
 import type {
   SliceExporter,
   ParquetLayoutSpec,
@@ -120,13 +121,6 @@ function classifyError(error: unknown): ClickHouseErrorInfo {
     category,
     userMessage,
   };
-}
-
-/**
- * Check if error is retryable (transient network/connection errors)
- */
-function isRetryableError(error: unknown): boolean {
-  return classifyError(error).isRetryable;
 }
 
 /**
@@ -280,7 +274,7 @@ export class ClickHouseSliceExporterAdapterImpl implements SliceExporter {
     // Note: interval is a reserved keyword in ClickHouse, must be escaped with backticks
     const columns =
       spec.columns && spec.columns.length > 0
-        ? spec.columns.map((col) => (col === 'interval' ? '`interval`' : col)).join(', ')
+        ? spec.columns.map((col: string) => (col === 'interval' ? '`interval`' : col)).join(', ')
         : 'token_address, chain, timestamp, `interval`, open, high, low, close, volume';
 
     // Query ClickHouse and export to CSV (ClickHouse doesn't support Parquet format)
@@ -335,43 +329,32 @@ export class ClickHouseSliceExporterAdapterImpl implements SliceExporter {
       throw error;
     }
 
-    // Read Parquet data from stream with error handling
-    const stream = result.stream;
-    const chunks: Buffer[] = [];
-
+    // Read CSV data from stream with error handling
+    // ClickHouse client returns different structures depending on format
+    // For CSVWithNames, result.stream may be a function that returns the actual stream
+    let csvData: Buffer;
     try {
-      // Try to read as async iterable (if supported)
-      if (Symbol.asyncIterator in stream) {
-        for await (const chunk of stream as AsyncIterable<Uint8Array>) {
-          chunks.push(Buffer.from(chunk));
-        }
-      } else {
-        // Fallback: read as ReadableStream (cast through unknown to avoid type errors)
-        const readableStream = stream as unknown as ReadableStream<Uint8Array>;
-        const reader = readableStream.getReader();
-        try {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            if (value) {
-              chunks.push(Buffer.from(value));
-            }
-          }
-        } finally {
-          reader.releaseLock();
-        }
-      }
+      // Fix call site: handle result.stream as function or property
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const streamSource = typeof (result as any).stream === 'function'
+        ? await (result as any).stream()
+        : (result as any).stream ?? (result as any).body ?? result;
+      
+      const streamBytes = await readAllBytes(streamSource);
+      csvData = Buffer.from(streamBytes);
     } catch (error: unknown) {
-      logger.error('Failed to read Parquet stream from ClickHouse', error as Error, {
+      logger.error('Failed to read CSV stream from ClickHouse', error as Error, {
         dataset: spec.dataset,
         runId: run.runId,
+        // Debug info
+        resultKeys: result ? Object.keys(result) : [],
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        streamType: typeof (result as any)?.stream,
       });
       throw new Error(
-        `Failed to read Parquet stream: ${error instanceof Error ? error.message : String(error)}`
+        `Failed to read CSV stream: ${error instanceof Error ? error.message : String(error)}`
       );
     }
-
-    const csvData = Buffer.concat(chunks);
 
     // Convert CSV to Parquet using DuckDB
     // ClickHouse doesn't support Parquet format, so we export CSV and convert
@@ -519,6 +502,10 @@ export class ClickHouseSliceExporterAdapterImpl implements SliceExporter {
       const createdAtIso = new Date().toISOString();
       const specHash = hash(JSON.stringify({ run, spec, layout }));
 
+      // Ensure path is absolute before adding file:// prefix
+      // Use resolve to ensure absolute path, then normalize
+      const absoluteParquetPath = resolve(parquetPath).replace(/\\/g, '/');
+
       const emptyManifest: SliceManifestV1 = {
         version: 1,
         manifestId: hash(`manifest:${specHash}:${createdAtIso}`),
@@ -528,7 +515,7 @@ export class ClickHouseSliceExporterAdapterImpl implements SliceExporter {
         layout,
         parquetFiles: [
           {
-            path: parquetPath,
+          path: `file://${absoluteParquetPath}`,
             rowCount: 0,
             byteSize: 0,
             dt: day,
@@ -586,6 +573,10 @@ export class ClickHouseSliceExporterAdapterImpl implements SliceExporter {
         `Failed to write Parquet file: ${error instanceof Error ? error.message : String(error)}`
       );
     }
+
+    // Ensure path is absolute before adding file:// prefix
+    // Use resolve to ensure absolute path, then normalize
+    const absoluteParquetPath = resolve(parquetPath).replace(/\\/g, '/');
 
     // Get row count (query separately since Parquet format doesn't include it)
     let rowCount = 0;
@@ -681,7 +672,7 @@ export class ClickHouseSliceExporterAdapterImpl implements SliceExporter {
       layout,
       parquetFiles: [
         {
-          path: parquetPath,
+          path: `file://${absoluteParquetPath}`,
           rowCount,
           byteSize,
           dt: day,
