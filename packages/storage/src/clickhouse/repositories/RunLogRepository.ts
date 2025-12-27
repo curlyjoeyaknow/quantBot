@@ -172,8 +172,7 @@ export class RunLogRepository {
         }))
         .reverse(); // Reverse to get chronological order (oldest first)
 
-      const nextCursor =
-        hasMore && logs.length > 0 ? logs[logs.length - 1]!.timestamp : null;
+      const nextCursor = hasMore && logs.length > 0 ? logs[logs.length - 1]!.timestamp : null;
 
       return { logs, nextCursor };
     } catch (error) {
@@ -245,4 +244,3 @@ export class RunLogRepository {
     }
   }
 }
-

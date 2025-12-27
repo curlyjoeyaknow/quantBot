@@ -76,4 +76,3 @@ export class ArtifactRepository {
     return existsSync(runDir);
   }
 }
-

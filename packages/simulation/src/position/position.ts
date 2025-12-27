@@ -121,7 +121,7 @@ function generateId(
   // In production, this should not be reached as all calls should provide deterministic inputs
   if (typeof process !== 'undefined' && (process.env?.NODE_ENV === 'test' || process.env?.VITEST)) {
     // Use a simple counter for uniqueness in tests (non-deterministic but acceptable for test-only code)
-     
+
     const testCounter = (globalThis as unknown as { __testCounter?: number }).__testCounter ?? 0;
     (globalThis as unknown as { __testCounter: number }).__testCounter = testCounter + 1;
     return `test-${testCounter}`;
