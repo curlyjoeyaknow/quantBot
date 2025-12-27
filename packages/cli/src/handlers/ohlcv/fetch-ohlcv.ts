@@ -33,20 +33,16 @@ export async function fetchOhlcvHandler(args: FetchOhlcvArgs, ctx: CommandContex
   const specifiedFrom = args.from
     ? DateTime.fromISO(args.from, { zone: 'utc' })
     : now.startOf('day');
-  const to = args.to ? DateTime.fromISO(args.to, { zone: 'utc' }) : now;
+  const specifiedTo = args.to ? DateTime.fromISO(args.to, { zone: 'utc' }) : null;
 
   // Ensure dates are in UTC (convert if they weren't already)
   const specifiedFromUTC = specifiedFrom.isValid ? specifiedFrom.toUTC() : null;
-  const toUTC = to.isValid ? to.toUTC() : null;
 
   if (!specifiedFromUTC || !specifiedFromUTC.isValid) {
     throw new Error(`Invalid 'from' date: ${args.from}`);
   }
-  if (!toUTC || !toUTC.isValid) {
-    throw new Error(`Invalid 'to' date: ${args.to}`);
-  }
 
-  // Calculate interval seconds for -52 candles lookback
+  // Calculate interval seconds for -52 candles lookback and 4 sets of 5000 candles forward
   const intervalSeconds =
     args.interval === '1s'
       ? 1
@@ -62,10 +58,22 @@ export async function fetchOhlcvHandler(args: FetchOhlcvArgs, ctx: CommandContex
   const lookbackSeconds = 52 * intervalSeconds;
   const from = specifiedFromUTC.minus({ seconds: lookbackSeconds });
 
+  // By default, fetch 4 sets of 5000 candles (20000 candles) after the specified from date
+  // If --to is provided, use that instead
+  const defaultForwardCandles = 4 * 5000; // 20000 candles
+  const defaultForwardSeconds = defaultForwardCandles * intervalSeconds;
+  const toUTC = specifiedTo && specifiedTo.isValid
+    ? specifiedTo.toUTC()
+    : specifiedFromUTC.plus({ seconds: defaultForwardSeconds });
+
+  if (!toUTC.isValid) {
+    throw new Error(`Invalid 'to' date: ${args.to}`);
+  }
+
   const fromUnix = Math.floor(from.toSeconds());
   const toUnix = Math.floor(toUTC.toSeconds());
 
-  logger.info('Fetching OHLCV with -52 candle lookback', {
+  logger.info('Fetching OHLCV with -52 candle lookback and 4 sets of 5000 candles forward', {
     mint: args.mint,
     chain: args.chain,
     interval: args.interval,
@@ -73,18 +81,14 @@ export async function fetchOhlcvHandler(args: FetchOhlcvArgs, ctx: CommandContex
     actualFrom: from.toISO()!,
     to: toUTC.toISO()!,
     lookbackCandles: 52,
+    forwardCandles: args.to ? 'custom' : defaultForwardCandles,
     lookbackSeconds,
+    forwardSeconds: args.to ? undefined : defaultForwardSeconds,
   });
 
   // Fetch candles directly from Birdeye
   const fetchStart = Date.now();
-  const candles = await fetchBirdeyeCandles(
-    args.mint,
-    args.interval,
-    fromUnix,
-    toUnix,
-    args.chain
-  );
+  const candles = await fetchBirdeyeCandles(args.mint, args.interval, fromUnix, toUnix, args.chain);
   const fetchDuration = Date.now() - fetchStart;
 
   logger.info('Fetched candles from Birdeye', {
@@ -117,17 +121,20 @@ export async function fetchOhlcvHandler(args: FetchOhlcvArgs, ctx: CommandContex
     mint: args.mint,
     chain: args.chain,
     interval: args.interval,
-    specifiedFrom: specifiedFrom.toISO()!, // User-specified from date
-    actualFrom: from.toISO()!, // Actual from date (includes -52 candles lookback)
-    to: to.toISO()!,
+    specifiedFrom: specifiedFromUTC.toISO()!, // User-specified from date (UTC)
+    actualFrom: from.toISO()!, // Actual from date (includes -52 candles lookback, UTC)
+    to: toUTC.toISO()!, // To date (4 sets of 5000 candles forward, or custom if --to provided)
     lookbackCandles: 52,
+    forwardCandles: args.to ? undefined : defaultForwardCandles, // 20000 candles (4 × 5000)
     candlesFetched: candles.length,
     candlesStored: candles.length,
-    firstCandle: candles.length > 0 ? DateTime.fromSeconds(candles[0].timestamp).toISO()! : null,
+    firstCandle:
+      candles.length > 0
+        ? DateTime.fromSeconds(candles[0].timestamp, { zone: 'utc' }).toISO()!
+        : null,
     lastCandle:
       candles.length > 0
-        ? DateTime.fromSeconds(candles[candles.length - 1].timestamp).toISO()!
+        ? DateTime.fromSeconds(candles[candles.length - 1].timestamp, { zone: 'utc' }).toISO()!
         : null,
   };
 }
-

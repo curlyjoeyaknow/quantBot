@@ -14,6 +14,7 @@ import type { CommandContext } from '../core/command-context.js';
 import { queryOhlcvHandler } from './ohlcv/query-ohlcv.js';
 import { backfillOhlcvHandler } from './ohlcv/backfill-ohlcv.js';
 import { fetchOhlcvHandler, fetchOhlcvSchema } from '../handlers/ohlcv/fetch-ohlcv.js';
+import { fetchFromDuckdbHandler, fetchFromDuckdbSchema } from '../handlers/ohlcv/fetch-from-duckdb.js';
 import { coverageOhlcvHandler } from './ohlcv/coverage-ohlcv.js';
 import { analyzeCoverageHandler } from './ohlcv/analyze-coverage.js';
 import { analyzeDetailedCoverageHandler } from '../handlers/ohlcv/analyze-detailed-coverage.js';
@@ -180,6 +181,25 @@ export function registerOhlcvCommands(program: Command): void {
     onError: die,
   });
 
+  // Fetch from DuckDB alerts command
+  const fetchFromDuckdbCmd = ohlcvCmd
+    .command('fetch-from-duckdb')
+    .description('Fetch OHLCV candles for all alerts/calls in DuckDB (groups by mint)')
+    .requiredOption('--duckdb <path>', 'Path to DuckDB database file')
+    .option('--interval <interval>', 'Candle interval', '5m')
+    .option('--from <date>', 'Filter alerts from this date (ISO 8601)')
+    .option('--to <date>', 'Filter alerts to this date, and fetch until this date (ISO 8601)')
+    .option('--side <side>', 'Filter by side (buy/sell)', 'buy')
+    .option('--chain <chain>', 'Filter by chain (solana, ethereum, bsc, base)')
+    .option('--format <format>', 'Output format', 'table');
+
+  defineCommand(fetchFromDuckdbCmd, {
+    name: 'fetch-from-duckdb',
+    packageName: 'ohlcv',
+    validate: (opts) => fetchFromDuckdbSchema.parse(opts),
+    onError: die,
+  });
+
   // Backfill command
   const backfillCmd = ohlcvCmd
     .command('backfill')
@@ -302,6 +322,20 @@ const ohlcvModule: PackageCommandModule = {
       examples: [
         'quantbot ohlcv fetch --mint AbeDBXvqGnmcvX8NtQg5qgREFTw7HynkCc4u97xcpump --interval 15s',
         'quantbot ohlcv fetch --mint AbeDBXvqGnmcvX8NtQg5qgREFTw7HynkCc4u97xcpump --interval 15s --chain solana --from 2024-12-27T00:00:00Z',
+      ],
+    },
+    {
+      name: 'fetch-from-duckdb',
+      description: 'Fetch OHLCV candles for all alerts/calls in DuckDB (groups by mint)',
+      schema: fetchFromDuckdbSchema,
+      handler: async (args: unknown, ctx: unknown) => {
+        const typedCtx = ctx as CommandContext;
+        const typedArgs = args as z.infer<typeof fetchFromDuckdbSchema>;
+        return await fetchFromDuckdbHandler(typedArgs, typedCtx);
+      },
+      examples: [
+        'quantbot ohlcv fetch-from-duckdb --duckdb data/tele.duckdb --interval 5m',
+        'quantbot ohlcv fetch-from-duckdb --duckdb data/tele.duckdb --interval 1m --from 2024-12-01 --to 2024-12-31',
       ],
     },
     {
