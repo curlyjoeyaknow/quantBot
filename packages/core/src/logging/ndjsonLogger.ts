@@ -44,7 +44,7 @@ export class NdjsonLogger {
 
     // Don't let stream errors become silent unhandled rejections.
     this.stream.on('error', (err) => {
-      // eslint-disable-next-line no-console
+       
       console.error('[NdjsonLogger] stream error:', err);
     });
   }
