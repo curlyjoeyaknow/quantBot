@@ -335,11 +335,12 @@ export class ClickHouseSliceExporterAdapterImpl implements SliceExporter {
     let csvData: Buffer;
     try {
       // Fix call site: handle result.stream as function or property
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const streamSource = typeof (result as any).stream === 'function'
-        ? await (result as any).stream()
-        : (result as any).stream ?? (result as any).body ?? result;
-      
+       
+      const streamSource =
+        typeof (result as any).stream === 'function'
+          ? await (result as any).stream()
+          : ((result as any).stream ?? (result as any).body ?? result);
+
       const streamBytes = await readAllBytes(streamSource);
       csvData = Buffer.from(streamBytes);
     } catch (error: unknown) {
@@ -359,12 +360,15 @@ export class ClickHouseSliceExporterAdapterImpl implements SliceExporter {
     // Convert CSV to Parquet using DuckDB
     // ClickHouse doesn't support Parquet format, so we export CSV and convert
     let parquetData: Buffer;
-    
+
     // Check if CSV is empty or only has header row (no data)
     const csvString = csvData.toString();
-    const csvLines = csvString.trim().split('\n').filter((line) => line.trim().length > 0);
+    const csvLines = csvString
+      .trim()
+      .split('\n')
+      .filter((line) => line.trim().length > 0);
     const hasOnlyHeaders = csvLines.length <= 1;
-    
+
     if (csvData.length === 0 || hasOnlyHeaders) {
       // Create empty Parquet file with correct schema (0 rows) so DuckDB can read it
       // This ensures the schema is preserved even when there's no data
@@ -556,7 +560,7 @@ export class ClickHouseSliceExporterAdapterImpl implements SliceExporter {
         layout,
         parquetFiles: [
           {
-          path: `file://${absoluteParquetPath}`,
+            path: `file://${absoluteParquetPath}`,
             rowCount: 0,
             byteSize: 0,
             dt: day,
