@@ -383,6 +383,10 @@ Last updated: 2025-01-24 (Recent: Slice Export & Analyze workflow implementation
   - Server startup errors (acceptable)
   - Test debugging (acceptable)
 - [x] Clean up unused dependencies - **Verified**: Builds pass, dependencies appear to be in use. No obvious unused dependencies found. Ongoing maintenance task.
+- [x] Remove deprecated code - **Completed**: 
+  - Removed deprecated `createProgressIndicator` from output-formatter.ts (replaced by progress-indicator.ts)
+  - Updated deprecation notices for RepeatSimulationHelper and types.ts
+  - Marked types.ts for removal (no active imports found)
 
 ---
 

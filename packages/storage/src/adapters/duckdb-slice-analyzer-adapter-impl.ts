@@ -175,63 +175,6 @@ export class DuckDbSliceAnalyzerAdapterImpl implements SliceAnalyzer {
           }
         } catch (error: unknown) {
           const message = error instanceof Error ? error.message : String(error);
-          const lowerMessage = message.toLowerCase();
-          
-          // Check if this is an "empty result" type error that we should handle gracefully
-          // Some databases return errors for aggregate queries on empty tables, but we want to treat this as valid
-          const isAggregateQuery = /COUNT|SUM|AVG|MIN|MAX|GROUP\s+BY/i.test(sql);
-          const isEmptyResultError = 
-            lowerMessage.includes('no rows') ||
-            lowerMessage.includes('empty') ||
-            (isAggregateQuery && (
-              lowerMessage.includes('division by zero') ||
-              lowerMessage.includes('null')
-            ));
-          
-          if (isEmptyResultError && isAggregateQuery) {
-            // For aggregate queries on empty data, return a valid empty result
-            logger.info('Query returned empty result (empty dataset), treating as valid', {
-              runId: manifest.run.runId,
-              sql: sql.substring(0, 100),
-              error: message,
-            });
-            
-            // Create a summary with 0 values for aggregate queries
-            // We need to infer column names from the SQL query
-            const columnMatch = sql.match(/SELECT\s+(.+?)\s+FROM/i);
-            if (columnMatch) {
-              const selectClause = columnMatch[1];
-              // Extract column aliases (simple heuristic: look for "as alias" patterns)
-              const columnAliases: string[] = [];
-              const aliasMatches = selectClause.matchAll(/(?:COUNT|SUM|AVG|MIN|MAX)\([^)]+\)\s+AS\s+(\w+)/gi);
-              for (const match of aliasMatches) {
-                columnAliases.push(match[1]);
-              }
-              
-              if (columnAliases.length > 0) {
-                const summary: Record<string, string | number | boolean | null | string[]> = {};
-                columnAliases.forEach((alias) => {
-                  summary[alias] = 0;
-                });
-                summary.columns = columnAliases;
-                
-                return {
-                  status: 'ok',
-                  summary,
-                };
-              }
-            }
-            
-            // Fallback: return generic empty result
-            return {
-              status: 'ok',
-              summary: {
-                rows: 0,
-                columns: [],
-              },
-            };
-          }
-          
           logger.error('SQL query execution failed', {
             runId: manifest.run.runId,
             error: message,
@@ -240,6 +183,7 @@ export class DuckDbSliceAnalyzerAdapterImpl implements SliceAnalyzer {
 
           // Provide user-friendly error messages for common errors
           let userMessage = message;
+          const lowerMessage = message.toLowerCase();
           if (lowerMessage.includes('syntax error') || lowerMessage.includes('syntax')) {
             userMessage = `SQL syntax error: ${message}. Please check your query syntax.`;
           } else if (
@@ -286,55 +230,36 @@ export class DuckDbSliceAnalyzerAdapterImpl implements SliceAnalyzer {
 
         if (result.rows.length === 0) {
           // Aggregate queries (COUNT, SUM, etc.) should ALWAYS return at least 1 row
-          // However, if we have column metadata but 0 rows, treat it as empty result (not a failure)
+          // If we get 0 rows, it likely means the query failed or the view wasn't created correctly
           const columnNames = result.columns.map((col) => col.name);
           const isAggregateQuery = /COUNT|SUM|AVG|MIN|MAX|GROUP\s+BY/i.test(sql);
           
-          if (isAggregateQuery && result.columns.length > 0) {
-            // If we have column metadata for an aggregate query but 0 rows,
-            // treat it as an empty result (view exists but has no data)
-            // Create a summary with all values as 0 or null
-            summary = Object.fromEntries(
-              result.columns.map((col) => {
-                // For COUNT, return 0; for other aggregates, return 0 or null
-                if (col.name.toLowerCase().includes('count')) {
-                  return [col.name, 0];
-                }
-                return [col.name, 0]; // Default to 0 for numeric aggregates
-              })
-            );
-            summary.columns = columnNames;
-            logger.info('Aggregate query returned 0 rows (empty dataset), treating as valid empty result', {
-              runId: manifest.run.runId,
-              sql: sql.substring(0, 100),
-              columnCount: result.columns.length,
-              columnNames,
-            });
-          } else if (isAggregateQuery && result.columns.length === 0) {
-            // No column metadata means the query/view actually failed
-            logger.error('Aggregate query returned 0 rows with no column metadata - this indicates a query or view issue', {
+          if (isAggregateQuery) {
+            logger.error('Aggregate query returned 0 rows - this indicates a query or view issue', {
               runId: manifest.run.runId,
               sql: sql.substring(0, 200),
+              columnCount: result.columns.length,
+              columnNames,
             });
             return {
               status: 'failed',
               warnings: [
-                'Aggregate query returned no rows and no column metadata. This may indicate the view was not created correctly or the query failed silently.',
+                'Aggregate query returned no rows. This may indicate the view was not created correctly or the query failed silently.',
               ],
             };
-          } else {
-            // For non-aggregate queries, 0 rows is valid
-            summary = {
-              rows: 0,
-              columns: columnNames,
-            };
-            logger.warn('SQL query returned no rows (but has column metadata)', {
-              runId: manifest.run.runId,
-              sql: sql.substring(0, 100),
-              columnCount: result.columns.length,
-              columnNames,
-            });
           }
+          
+          // For non-aggregate queries, 0 rows is valid
+          summary = {
+            rows: 0,
+            columns: columnNames,
+          };
+          logger.warn('SQL query returned no rows (but has column metadata)', {
+            runId: manifest.run.runId,
+            sql: sql.substring(0, 100),
+            columnCount: result.columns.length,
+            columnNames,
+          });
         } else if (result.rows.length === 1) {
           // Single row result - use it directly as summary, but also include columns array
           const row = result.rows[0];
