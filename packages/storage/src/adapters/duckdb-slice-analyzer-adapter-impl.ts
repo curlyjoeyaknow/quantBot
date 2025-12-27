@@ -240,6 +240,7 @@ export class DuckDbSliceAnalyzerAdapterImpl implements SliceAnalyzer {
 
           // Provide user-friendly error messages for common errors
           let userMessage = message;
+          const lowerMessage = message.toLowerCase();
           if (lowerMessage.includes('syntax error') || lowerMessage.includes('syntax')) {
             userMessage = `SQL syntax error: ${message}. Please check your query syntax.`;
           } else if (
