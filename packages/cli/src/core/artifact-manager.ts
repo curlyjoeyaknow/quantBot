@@ -8,6 +8,7 @@
 import { mkdir, writeFile } from 'fs/promises';
 import { join } from 'path';
 import { NotFoundError } from '@quantbot/utils';
+import { getArtifactsDir } from '@quantbot/core';
 import type { RunIdComponents } from './run-id-manager.js';
 import { generateRunId } from './run-id-manager.js';
 
@@ -41,20 +42,21 @@ export interface ArtifactPaths {
  * Create artifact directory structure for a run
  *
  * @param components - Run ID components
- * @param baseDir - Base directory for artifacts (default: './artifacts')
+ * @param baseDir - Base directory for artifacts (defaults to getArtifactsDir())
  * @returns Artifact paths
  */
 export async function createArtifactDirectory(
   components: RunIdComponents,
-  baseDir: string = './artifacts'
+  baseDir?: string
 ): Promise<ArtifactPaths> {
+  const artifactsBaseDir = baseDir ?? getArtifactsDir();
   const runId = generateRunId(components);
-  const runDir = join(baseDir, runId);
+  const runDir = join(artifactsBaseDir, runId);
 
   await mkdir(runDir, { recursive: true });
 
   return {
-    baseDir,
+    baseDir: artifactsBaseDir,
     runDir,
     manifestJson: join(runDir, 'manifest.json'),
     eventsNdjson: join(runDir, 'events.ndjson'),
