@@ -1,7 +1,7 @@
 #!/usr/bin/env tsx
 /**
  * Release Package Version Audit
- * 
+ *
  * Audits all package versions for a release and generates a summary
  * for release notes. Compares current versions with the previous release.
  */
@@ -33,15 +33,12 @@ interface VersionChange {
  */
 function getAllPackages(): PackageVersion[] {
   const packages: PackageVersion[] = [];
-  
+
   try {
-    const result = execSync(
-      `find packages -name package.json -type f`,
-      {
-        cwd: ROOT_DIR,
-        encoding: 'utf-8',
-      }
-    );
+    const result = execSync(`find packages -name package.json -type f`, {
+      cwd: ROOT_DIR,
+      encoding: 'utf-8',
+    });
 
     for (const packageJsonPath of result.trim().split('\n').filter(Boolean)) {
       const fullPath = join(ROOT_DIR, packageJsonPath);
@@ -70,13 +67,10 @@ function getAllPackages(): PackageVersion[] {
  */
 function getPackageVersionFromGit(packagePath: string, ref: string): string | null {
   try {
-    const result = execSync(
-      `git show ${ref}:${packagePath} 2>/dev/null`,
-      {
-        cwd: ROOT_DIR,
-        encoding: 'utf-8',
-      }
-    );
+    const result = execSync(`git show ${ref}:${packagePath} 2>/dev/null`, {
+      cwd: ROOT_DIR,
+      encoding: 'utf-8',
+    });
     const packageJson = JSON.parse(result);
     return packageJson.version || null;
   } catch {
@@ -273,4 +267,3 @@ function main() {
 }
 
 main();
-
