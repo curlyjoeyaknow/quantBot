@@ -4,9 +4,10 @@
  * Manages artifact metadata and file paths for simulation runs.
  */
 
-import { existsSync, statSync } from 'fs';
+import { existsSync, statSync, mkdirSync } from 'fs';
 import { join } from 'path';
 import { logger } from '@quantbot/utils';
+import { getArtifactsDir } from '@quantbot/core';
 
 export interface Artifact {
   type: 'parquet' | 'csv' | 'json' | 'ndjson' | 'log';
@@ -21,8 +22,10 @@ export interface Artifact {
 export class ArtifactRepository {
   private baseDir: string;
 
-  constructor(baseDir: string = './artifacts') {
-    this.baseDir = baseDir;
+  constructor(baseDir?: string) {
+    this.baseDir = baseDir ?? getArtifactsDir();
+    // Ensure directory exists
+    mkdirSync(this.baseDir, { recursive: true });
   }
 
   /**

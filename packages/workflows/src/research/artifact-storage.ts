@@ -10,6 +10,7 @@
 import { promises as fs } from 'fs';
 import { join } from 'path';
 import { ValidationError, logger } from '@quantbot/utils';
+import { getArtifactsDir } from '@quantbot/core';
 import type { RunArtifact } from './artifacts.js';
 import { RunArtifactSchema } from './artifacts.js';
 
@@ -17,28 +18,31 @@ import { RunArtifactSchema } from './artifacts.js';
  * File-based artifact storage
  */
 export class FileArtifactStorage {
-  constructor(private readonly baseDir: string) {}
+  private readonly baseDir: string;
+
+  constructor(baseDir?: string) {
+    this.baseDir = baseDir ?? getArtifactsDir();
+  }
 
   /**
    * Get path for a run artifact
    */
   private getArtifactPath(runId: string): string {
-    return join(this.baseDir, 'artifacts', `${runId}.json`);
+    return join(this.baseDir, `${runId}.json`);
   }
 
   /**
    * Get path for the index file
    */
   private getIndexPath(): string {
-    return join(this.baseDir, 'artifacts', 'index.json');
+    return join(this.baseDir, 'index.json');
   }
 
   /**
    * Ensure directory exists
    */
   private async ensureDir(): Promise<void> {
-    const artifactsDir = join(this.baseDir, 'artifacts');
-    await fs.mkdir(artifactsDir, { recursive: true });
+    await fs.mkdir(this.baseDir, { recursive: true });
   }
 
   /**

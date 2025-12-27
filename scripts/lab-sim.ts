@@ -5,6 +5,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { getArtifactsDir } from '@quantbot/core';
 
 let YAML: any;
 try {
@@ -102,7 +103,7 @@ async function main() {
     createdAtIso,
     presets: selected,
     tokenSets,
-    artifactRootDir: 'artifacts/lab',
+    artifactRootDir: path.join(getArtifactsDir(), 'lab'),
   });
 
   if (res.length === 0) {
