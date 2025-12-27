@@ -146,9 +146,7 @@ describe('Production Integration', () => {
           profitTargets: [{ target: 2, percent: 0.5 }],
         },
         configHash: createHash('sha256')
-          .update(
-            JSON.stringify({ name: 'test-strategy', profitTargets: [{ target: 2, percent: 0.5 }] })
-          )
+          .update(JSON.stringify({ name: 'test-strategy', profitTargets: [{ target: 2, percent: 0.5 }] }))
           .digest('hex'),
       };
 
@@ -229,9 +227,7 @@ describe('Production Integration', () => {
             profitTargets: [{ target: 2, percent: 0.5 }],
           },
           configHash: createHash('sha256')
-            .update(
-              JSON.stringify({ name: 'strategy-1', profitTargets: [{ target: 2, percent: 0.5 }] })
-            )
+            .update(JSON.stringify({ name: 'strategy-1', profitTargets: [{ target: 2, percent: 0.5 }] }))
             .digest('hex'),
         },
         {
@@ -242,9 +238,7 @@ describe('Production Integration', () => {
             profitTargets: [{ target: 3, percent: 0.3 }],
           },
           configHash: createHash('sha256')
-            .update(
-              JSON.stringify({ name: 'strategy-2', profitTargets: [{ target: 3, percent: 0.3 }] })
-            )
+            .update(JSON.stringify({ name: 'strategy-2', profitTargets: [{ target: 3, percent: 0.3 }] }))
             .digest('hex'),
         },
       ];
