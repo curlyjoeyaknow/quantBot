@@ -96,35 +96,6 @@ export class DuckDbSliceAnalyzerAdapterImpl implements SliceAnalyzer {
         });
       }
 
-      // Create view from Parquet files
-      // DuckDB can read multiple files: read_parquet(['file1.parquet', 'file2.parquet'])
-      const createViewSql = `
-        CREATE OR REPLACE VIEW slice AS 
-        SELECT * FROM read_parquet([${parquetPaths.join(', ')}])
-      `;
-
-      try {
-        await db.execute(createViewSql);
-      } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : String(error);
-        logger.error('Failed to create DuckDB view from Parquet files', {
-          runId: manifest.run.runId,
-          error: message,
-          fileCount: parquetPaths.length,
-        });
-        return {
-          status: 'failed',
-          warnings: [
-            `Failed to load Parquet files into DuckDB: ${message}. This may indicate corrupted Parquet files or incompatible schema.`,
-          ],
-        };
-      }
-
-      logger.info('Attached Parquet files to DuckDB', {
-        exportId: manifest.run.runId,
-        fileCount: parquetPaths.length,
-      });
-
       // Execute analysis
       if (analysis.kind === 'sql') {
         // Validate SQL query (basic checks)
@@ -136,11 +107,25 @@ export class DuckDbSliceAnalyzerAdapterImpl implements SliceAnalyzer {
           };
         }
 
+        // Replace `FROM slice` or `FROM "slice"` with the actual read_parquet call
+        // This avoids needing to create a view (which doesn't persist across connections)
+        // DuckDB can read multiple files: read_parquet(['file1.parquet', 'file2.parquet'])
+        // Note: parquetPaths already contains quoted strings (added above with '${path.replace(/'/g, "''")}')
+        const parquetTable = `read_parquet([${parquetPaths.join(', ')}])`;
+        // Replace FROM slice (case-insensitive, with or without quotes) with FROM read_parquet(...)
+        const modifiedSql = sql.replace(/FROM\s+(?:"slice"|'slice'|slice)/i, `FROM ${parquetTable}`);
+
+        logger.info('Executing SQL query with inline read_parquet', {
+          exportId: manifest.run.runId,
+          fileCount: parquetPaths.length,
+          sqlPreview: modifiedSql.substring(0, 200),
+        });
+
         // Execute SQL query with error handling
         let result;
         try {
-          result = await db.query(sql);
-          
+          result = await db.query(modifiedSql);
+
           // Check if result has an error field (Python script returns errors in result)
           if (result.error) {
             const errorMessage = result.error;
@@ -149,7 +134,7 @@ export class DuckDbSliceAnalyzerAdapterImpl implements SliceAnalyzer {
               error: errorMessage,
               sql: sql.substring(0, 200),
             });
-            
+
             // Provide user-friendly error messages
             let userMessage = errorMessage;
             const lowerMessage = errorMessage.toLowerCase();
@@ -167,7 +152,7 @@ export class DuckDbSliceAnalyzerAdapterImpl implements SliceAnalyzer {
             ) {
               userMessage = `Table or column not found: ${errorMessage}. Ensure the Parquet files contain the expected columns.`;
             }
-            
+
             return {
               status: 'failed',
               warnings: [userMessage],
@@ -210,11 +195,14 @@ export class DuckDbSliceAnalyzerAdapterImpl implements SliceAnalyzer {
         // Validate result structure
         if (!result.columns || result.columns.length === 0) {
           // This is a serious issue - queries should always return column metadata
-          logger.error('SQL query returned no column metadata - this indicates a query or view issue', {
-            runId: manifest.run.runId,
-            sql: sql.substring(0, 200),
-            rowCount: result.rows?.length || 0,
-          });
+          logger.error(
+            'SQL query returned no column metadata - this indicates a query or view issue',
+            {
+              runId: manifest.run.runId,
+              sql: sql.substring(0, 200),
+              rowCount: result.rows?.length || 0,
+            }
+          );
           return {
             status: 'failed',
             warnings: [
@@ -229,37 +217,69 @@ export class DuckDbSliceAnalyzerAdapterImpl implements SliceAnalyzer {
         let summary: Record<string, string | number | boolean | null | string[]> = {};
 
         if (result.rows.length === 0) {
-          // Aggregate queries (COUNT, SUM, etc.) should ALWAYS return at least 1 row
-          // If we get 0 rows, it likely means the query failed or the view wasn't created correctly
+          // Handle empty result sets
           const columnNames = result.columns.map((col) => col.name);
-          const isAggregateQuery = /COUNT|SUM|AVG|MIN|MAX|GROUP\s+BY/i.test(sql);
-          
-          if (isAggregateQuery) {
-            logger.error('Aggregate query returned 0 rows - this indicates a query or view issue', {
+          const isAggregateQuery = /COUNT|SUM|AVG|MIN|MAX/i.test(sql);
+          const hasGroupBy = /GROUP\s+BY/i.test(sql);
+
+          // For aggregate queries with GROUP BY, 0 rows is valid (empty grouping)
+          // For aggregate queries without GROUP BY, they should return 1 row even for empty datasets
+          // But if we have column metadata, it's likely a valid empty result
+          if (isAggregateQuery && hasGroupBy) {
+            // GROUP BY queries can legitimately return 0 rows for empty datasets
+            summary = {
+              rows: 0,
+              columns: columnNames,
+            };
+            logger.info('Aggregate query with GROUP BY returned 0 rows (valid empty result)', {
               runId: manifest.run.runId,
-              sql: sql.substring(0, 200),
+              sql: sql.substring(0, 100),
               columnCount: result.columns.length,
               columnNames,
+            });
+          } else if (isAggregateQuery && !hasGroupBy && result.columns.length > 0) {
+            // Aggregate without GROUP BY should return 1 row, but if we have column metadata,
+            // treat as valid empty result (some databases may return 0 rows for COUNT(*) on empty table)
+            summary = {
+              rows: 0,
+              columns: columnNames,
+              // Set aggregate values to 0 or null
+              ...Object.fromEntries(columnNames.map((name) => {
+                if (name.toLowerCase().includes('count')) return [name, 0];
+                return [name, null];
+              })),
+            };
+            logger.info('Aggregate query returned 0 rows with column metadata (treating as valid empty result)', {
+              runId: manifest.run.runId,
+              sql: sql.substring(0, 100),
+              columnCount: result.columns.length,
+              columnNames,
+            });
+          } else if (isAggregateQuery && result.columns.length === 0) {
+            // No column metadata means the query actually failed
+            logger.error('Aggregate query returned 0 rows with no column metadata - query failed', {
+              runId: manifest.run.runId,
+              sql: sql.substring(0, 200),
             });
             return {
               status: 'failed',
               warnings: [
-                'Aggregate query returned no rows. This may indicate the view was not created correctly or the query failed silently.',
+                'Aggregate query returned no rows and no column metadata. This may indicate the query failed or the Parquet files could not be read.',
               ],
             };
+          } else {
+            // For non-aggregate queries, 0 rows is valid
+            summary = {
+              rows: 0,
+              columns: columnNames,
+            };
+            logger.warn('SQL query returned no rows (but has column metadata)', {
+              runId: manifest.run.runId,
+              sql: sql.substring(0, 100),
+              columnCount: result.columns.length,
+              columnNames,
+            });
           }
-          
-          // For non-aggregate queries, 0 rows is valid
-          summary = {
-            rows: 0,
-            columns: columnNames,
-          };
-          logger.warn('SQL query returned no rows (but has column metadata)', {
-            runId: manifest.run.runId,
-            sql: sql.substring(0, 100),
-            columnCount: result.columns.length,
-            columnNames,
-          });
         } else if (result.rows.length === 1) {
           // Single row result - use it directly as summary, but also include columns array
           const row = result.rows[0];

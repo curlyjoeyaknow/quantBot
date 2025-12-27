@@ -64,7 +64,9 @@ def query_sql(db_path: str, sql: str) -> dict:
             for col in result.description:
                 col_name = col[0] if len(col) > 0 else ""
                 col_type = col[1] if len(col) > 1 else ""
-                columns.append({"name": col_name, "type": col_type})
+                # Convert type to string if it's a DuckDBPyType object
+                col_type_str = str(col_type) if col_type else ""
+                columns.append({"name": col_name, "type": col_type_str})
         
         # Fetch all rows
         rows = result.fetchall()

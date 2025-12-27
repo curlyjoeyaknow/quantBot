@@ -381,7 +381,7 @@ async function retryFailedMintsAcrossAllChains(
             });
             ctx.logger.debug(`Successfully added exclusion: ${mint} on ${chain} for ${interval}`);
           } else {
-            ctx.logger.warn(`Failed to add exclusion: ${mint} on ${chain} for ${interval}`, {
+            ctx.logger.error(`Failed to add exclusion: ${mint} on ${chain} for ${interval}`, {
               error: exclusionResult.error,
             });
           }
@@ -524,7 +524,7 @@ async function executeFetchTask(
           });
 
           const data = (await result.json()) as Array<{ chain: string }>;
-          if (data && data.length > 0) {
+          if (data && data.length > 0 && data[0]) {
             return { mint, chain: data[0].chain };
           }
         } catch (error) {
@@ -548,7 +548,7 @@ async function executeFetchTask(
         total: missingMints.length,
       });
     } catch (error) {
-      ctx.logger.warn('Failed to query ClickHouse for chains', {
+      ctx.logger.error('Failed to query ClickHouse for chains', {
         error: error instanceof Error ? error.message : String(error),
       });
     }
@@ -780,7 +780,7 @@ async function executeFetchTask(
             errors.push(`${interval} (${chain}): ${result.errors.length} errors`);
             // Log first few errors for debugging
             if (spec.verbose) {
-              ctx.logger.warn(`Errors for ${interval} interval (${chain}):`, {
+              ctx.logger.error(`Errors for ${interval} interval (${chain}):`, {
                 errors: result.errors.slice(0, 5),
               });
             }
@@ -847,18 +847,24 @@ async function executeFetchTask(
     (sum, map) => sum + map.size,
     0
   );
-  
+
   if (totalFailedMintsCount > 0) {
-    ctx.logger.info(`Failure tracking: ${totalFailedMintsCount} mints failed across all intervals`, {
-      failedMintsSize: failedMints.size,
-      intervalsWithFailures: Array.from(failedMints.keys()),
-      failedMintsDetails: Array.from(failedMints.entries()).map(([interval, map]) => ({
-        interval,
-        count: map.size,
-        sampleMints: Array.from(map.keys()).slice(0, 2),
-        sampleChains: Array.from(map.values())[0] ? Array.from(Array.from(map.values())[0]).slice(0, 4) : [],
-      })),
-    });
+    ctx.logger.info(
+      `Failure tracking: ${totalFailedMintsCount} mints failed across all intervals`,
+      {
+        failedMintsSize: failedMints.size,
+        intervalsWithFailures: Array.from(failedMints.keys()),
+        failedMintsDetails: Array.from(failedMints.entries()).map(([interval, map]) => ({
+          interval,
+          count: map.size,
+          sampleMints: Array.from(map.keys()).slice(0, 2),
+          sampleChains: (() => {
+            const firstValue = Array.from(map.values())[0];
+            return firstValue ? Array.from(firstValue).slice(0, 4) : [];
+          })(),
+        })),
+      }
+    );
   } else {
     ctx.logger.debug('No failed mints to retry - all fetches succeeded');
   }
