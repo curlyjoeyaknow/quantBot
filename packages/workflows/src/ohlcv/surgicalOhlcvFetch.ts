@@ -851,18 +851,23 @@ async function executeFetchTask(
     (sum, map) => sum + map.size,
     0
   );
-  
+
   if (totalFailedMintsCount > 0) {
-    ctx.logger.info(`Failure tracking: ${totalFailedMintsCount} mints failed across all intervals`, {
-      failedMintsSize: failedMints.size,
-      intervalsWithFailures: Array.from(failedMints.keys()),
-      failedMintsDetails: Array.from(failedMints.entries()).map(([interval, map]) => ({
-        interval,
-        count: map.size,
-        sampleMints: Array.from(map.keys()).slice(0, 2),
-        sampleChains: Array.from(map.values())[0] ? Array.from(Array.from(map.values())[0]).slice(0, 4) : [],
-      })),
-    });
+    ctx.logger.info(
+      `Failure tracking: ${totalFailedMintsCount} mints failed across all intervals`,
+      {
+        failedMintsSize: failedMints.size,
+        intervalsWithFailures: Array.from(failedMints.keys()),
+        failedMintsDetails: Array.from(failedMints.entries()).map(([interval, map]) => ({
+          interval,
+          count: map.size,
+          sampleMints: Array.from(map.keys()).slice(0, 2),
+          sampleChains: Array.from(map.values())[0]
+            ? Array.from(Array.from(map.values())[0]).slice(0, 4)
+            : [],
+        })),
+      }
+    );
   } else {
     ctx.logger.debug('No failed mints to retry - all fetches succeeded');
   }

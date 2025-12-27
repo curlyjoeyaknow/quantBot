@@ -332,7 +332,7 @@ export class DuckDbSliceAnalyzerAdapterImpl implements SliceAnalyzer {
               ],
             };
           }
-          
+
           // For non-aggregate queries, 0 rows is valid
           summary = {
             rows: 0,
