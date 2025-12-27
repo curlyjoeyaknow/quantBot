@@ -155,10 +155,11 @@ export class ClickHouseSliceExporterAdapter implements SliceExporterPort {
     try {
       // Fix call site: handle result.stream as function or property
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const streamSource = typeof (result as any).stream === 'function'
-        ? await (result as any).stream()
-        : (result as any).stream ?? (result as any).body ?? result;
-      
+      const streamSource =
+        typeof (result as any).stream === 'function'
+          ? await (result as any).stream()
+          : ((result as any).stream ?? (result as any).body ?? result);
+
       const streamBytes = await readAllBytes(streamSource);
       parquetData = Buffer.from(streamBytes);
     } catch (error: unknown) {
