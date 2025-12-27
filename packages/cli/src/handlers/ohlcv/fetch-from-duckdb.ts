@@ -61,7 +61,7 @@ export type FetchFromDuckdbArgs = z.infer<typeof fetchFromDuckdbSchema>;
 /**
  * Fetch OHLCV for all alerts in DuckDB
  */
-export async function fetchFromDuckdbHandler(args: FetchFromDuckdbArgs, ctx: CommandContext) {
+export async function fetchFromDuckdbHandler(args: FetchFromDuckdbArgs, _ctx: CommandContext) {
   const { resolve } = await import('path');
   const duckdbPath = resolve(process.cwd(), args.duckdb);
 
