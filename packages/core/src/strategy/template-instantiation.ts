@@ -86,4 +86,3 @@ export function getDefaultParameters(template: StrategyTemplate): TemplateParame
   }
   return defaults;
 }
-

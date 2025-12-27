@@ -147,10 +147,7 @@ export function extractPlaceholders(value: unknown): Set<string> {
  *
  * Recursively replaces ${param_name} placeholders with actual values.
  */
-export function replacePlaceholders(
-  value: unknown,
-  parameters: TemplateParameters
-): unknown {
+export function replacePlaceholders(value: unknown, parameters: TemplateParameters): unknown {
   if (typeof value === 'string') {
     let result = value;
     for (const [paramName, paramValue] of Object.entries(parameters)) {
@@ -237,4 +234,3 @@ export function validateTemplateParameters(
     errors,
   };
 }
-
