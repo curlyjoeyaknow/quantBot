@@ -21,8 +21,19 @@ export const listRunsSchema = z.object({
   format: z.enum(['json', 'table', 'csv']).default('table'),
 });
 
+export const leaderboardSchema = z.object({
+  strategy_id: z.string().optional(),
+  interval_sec: z.coerce.number().int().positive().optional(),
+  from: z.string().optional(),
+  to: z.string().optional(),
+  min_trades: z.coerce.number().int().min(0).optional(),
+  limit: z.number().int().positive().max(1000).default(50),
+  format: z.enum(['json', 'table', 'csv']).default('table'),
+});
+
 export type RunSimulationArgs = z.infer<typeof runSchema>;
 export type ListRunsArgs = z.infer<typeof listRunsSchema>;
+export type LeaderboardArgs = z.infer<typeof leaderboardSchema>;
 
 export const runSimulationDuckdbSchema = z.object({
   duckdb: z.string(),
