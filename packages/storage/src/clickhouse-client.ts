@@ -99,6 +99,7 @@ export async function initClickHouse(): Promise<void> {
     await ensureSimulationTables(ch);
     await ensureIndicatorsTable(ch);
     await ensureTokenMetadataTable(ch);
+    await ensureRunLedgerTables(ch);
 
     logger.info('ClickHouse database and tables initialized');
   } catch (error: unknown) {
@@ -249,6 +250,87 @@ async function ensureTokenMetadataTable(ch: ClickHouseClient): Promise<void> {
       PARTITION BY (chain, toYYYYMM(timestamp))
       ORDER BY (token_address, chain, timestamp)
       SETTINGS index_granularity = 8192
+    `,
+  });
+}
+
+async function ensureRunLedgerTables(ch: ClickHouseClient): Promise<void> {
+  const CLICKHOUSE_DATABASE = process.env.CLICKHOUSE_DATABASE || 'quantbot';
+
+  // Run ledger: one row per simulation run
+  await ch.exec({
+    query: `
+      CREATE TABLE IF NOT EXISTS ${CLICKHOUSE_DATABASE}.sim_runs
+      (
+        run_id UUID,
+        created_at DateTime64(3, 'UTC') DEFAULT now64(3),
+        finished_at DateTime64(3, 'UTC') DEFAULT toDateTime64(0, 3, 'UTC'),
+        status LowCardinality(String) DEFAULT 'running', -- running|success|failed
+
+        git_sha LowCardinality(String) DEFAULT '',
+        engine_version LowCardinality(String) DEFAULT '',
+
+        strategy_id LowCardinality(String),
+        params_json String DEFAULT '{}',
+
+        interval_sec UInt32,
+        time_from DateTime64(3, 'UTC'),
+        time_to   DateTime64(3, 'UTC'),
+
+        universe_ref String DEFAULT '', -- e.g. "token_set:topN" or "mint_list:hash"
+        notes String DEFAULT ''
+      )
+      ENGINE = MergeTree
+      ORDER BY (created_at, strategy_id, interval_sec, run_id)
+    `,
+  });
+
+  // Metrics: one row per run (keep it wide-ish, evolve as needed)
+  await ch.exec({
+    query: `
+      CREATE TABLE IF NOT EXISTS ${CLICKHOUSE_DATABASE}.sim_run_metrics
+      (
+        run_id UUID,
+        created_at DateTime64(3, 'UTC') DEFAULT now64(3),
+
+        roi Float64,
+        pnl_quote Float64,
+        max_drawdown Float64,
+
+        trades UInt32,
+        win_rate Float64,
+
+        avg_hold_sec Float64,
+        fees_paid_quote Float64,
+        slippage_paid_quote Float64 DEFAULT 0
+      )
+      ENGINE = MergeTree
+      ORDER BY (created_at, run_id)
+    `,
+  });
+
+  // Input slice audit: one row per run (so you can trust results)
+  await ch.exec({
+    query: `
+      CREATE TABLE IF NOT EXISTS ${CLICKHOUSE_DATABASE}.sim_run_slice_audit
+      (
+        run_id UUID,
+        created_at DateTime64(3, 'UTC') DEFAULT now64(3),
+
+        token_count UInt32 DEFAULT 0,
+
+        fetched_count UInt32,
+        expected_count UInt32,
+
+        min_ts DateTime64(3, 'UTC'),
+        max_ts DateTime64(3, 'UTC'),
+
+        dup_count UInt32,
+        gap_count UInt32,
+        alignment_ok UInt8
+      )
+      ENGINE = MergeTree
+      ORDER BY (created_at, run_id)
     `,
   });
 }
