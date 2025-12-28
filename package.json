@@ -17,7 +17,7 @@
     "build:ingestion": "pnpm --filter @quantbot/ingestion build",
     "build:packages": "pnpm --filter './packages/*' build",
     "build:watch": "tsc --watch",
-    "clean": "rm -rf dist/ packages/*/dist/",
+    "clean": "./scripts/clean-build.sh",
     "test": "vitest",
     "test:watch": "vitest --watch",
     "test:setup": "tsx scripts/test/setup-clickhouse.ts",
