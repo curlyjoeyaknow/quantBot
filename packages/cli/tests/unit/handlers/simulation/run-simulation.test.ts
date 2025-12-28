@@ -87,7 +87,7 @@ describe('runSimulationHandler', () => {
     // Verify run record was created
     expect(mockRunRepo.createRun).toHaveBeenCalledOnce();
     const createRunCall = vi.mocked(mockRunRepo.createRun).mock.calls[0]![0];
-    expect(createRunCall.run_id).toBe('test-run-uuid-123');
+    expect(createRunCall.run_id).toBe('test-uuid-123');
     expect(createRunCall.strategy_id).toBe('PT2_SL25');
     expect(createRunCall.interval_sec).toBe(60); // 1m = 60s
     expect(createRunCall.universe_ref).toBe('caller:Brook');
