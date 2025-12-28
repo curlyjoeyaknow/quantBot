@@ -96,6 +96,6 @@ describe('exportAndAnalyzeSlice', () => {
         analyzer,
         limits: { maxFiles: 2 },
       })
-    ).rejects.toThrow(/export produced 3 files/);
+    ).rejects.toThrow(/Export produced too many files/);
   });
 });

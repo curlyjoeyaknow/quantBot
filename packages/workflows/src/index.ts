@@ -107,6 +107,10 @@ export { createProductionContextWithPorts } from './context/createProductionCont
 export { createTelemetryConsoleAdapter } from './adapters/telemetryConsoleAdapter.js';
 export { createMarketDataBirdeyeAdapter } from './adapters/marketDataBirdeyeAdapter.js';
 export { createMarketDataStorageAdapter } from './adapters/marketDataStorageAdapter.js';
+export {
+  fetchHistoricalPriceAtTime,
+  fetchHistoricalPricesBatch,
+} from './market-data/fetchHistoricalPrices.js';
 export { createStateDuckdbAdapter } from './adapters/stateDuckdbAdapter.js';
 export { createExecutionStubAdapter } from './adapters/executionStubAdapter.js';
 export { ingestOhlcvWorkflowPorted } from './ohlcv/ingestOhlcvPorted.js';
