@@ -21,11 +21,17 @@ import {
 import { coverageOhlcvHandler } from './ohlcv/coverage-ohlcv.js';
 import { analyzeCoverageHandler } from './ohlcv/analyze-coverage.js';
 import { analyzeDetailedCoverageHandler } from '../handlers/ohlcv/analyze-detailed-coverage.js';
+import { auditGapsHandler, auditGapsSchema } from '../handlers/ohlcv/audit-gaps.js';
 
 /**
  * Fetch command schema (re-exported from handler)
  */
 export { fetchOhlcvSchema };
+
+/**
+ * Audit gaps command schema (re-exported from handler)
+ */
+export { auditGapsSchema };
 
 /**
  * Query command schema
@@ -142,6 +148,7 @@ export const analyzeDetailedCoverageSchema = z.object({
   format: z.enum(['json', 'csv']).default('json'),
   timeout: z.number().int().positive().optional(), // Timeout in milliseconds
 });
+
 
 /**
  * Register OHLCV commands
@@ -290,6 +297,19 @@ export function registerOhlcvCommands(program: Command): void {
     }),
     onError: die,
   });
+
+  // Audit gaps command
+  const auditGapsCmd = ohlcvCmd
+    .command('audit-gaps')
+    .description('Audit OHLCV data for gaps, duplicates, and completeness (per token+interval)')
+    .option('--chain <chain>', 'Filter by chain (solana, ethereum, bsc, base, evm)')
+    .option('--format <format>', 'Output format', 'table');
+
+  defineCommand(auditGapsCmd, {
+    name: 'audit-gaps',
+    packageName: 'ohlcv',
+    onError: die,
+  });
 }
 
 /**
@@ -391,6 +411,21 @@ const ohlcvModule: PackageCommandModule = {
         'quantbot ohlcv analyze-detailed-coverage --duckdb data/tele.duckdb',
         'quantbot ohlcv analyze-detailed-coverage --duckdb data/tele.duckdb --start-month 2025-12',
         'quantbot ohlcv analyze-detailed-coverage --duckdb data/tele.duckdb --caller Brook --format csv',
+      ],
+    },
+    {
+      name: 'audit-gaps',
+      description: 'Audit OHLCV data for gaps, duplicates, and completeness (per token+interval)',
+      schema: auditGapsSchema,
+      handler: async (args: unknown, ctx: unknown) => {
+        const typedCtx = ctx as CommandContext;
+        const typedArgs = args as z.infer<typeof auditGapsSchema>;
+        return await auditGapsHandler(typedArgs, typedCtx);
+      },
+      examples: [
+        'quantbot ohlcv audit-gaps',
+        'quantbot ohlcv audit-gaps --chain solana',
+        'quantbot ohlcv audit-gaps --format json',
       ],
     },
   ],
