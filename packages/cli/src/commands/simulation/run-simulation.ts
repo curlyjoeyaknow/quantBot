@@ -63,6 +63,9 @@ export async function runSimulationHandler(args: RunSimulationArgs, ctx: Command
 
   await runRepo.createRun(run);
 
+  // Print run_id (always)
+  console.log(`Run ID: ${runId}`);
+
   // Create production context with our runId
   const baseCtx = createProductionContext();
   const workflowCtx: WorkflowContext = {
