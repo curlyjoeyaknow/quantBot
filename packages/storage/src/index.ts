@@ -30,6 +30,8 @@ export { LeaderboardRepository } from './clickhouse/repositories/LeaderboardRepo
 export type { LeaderboardEntry } from './clickhouse/repositories/LeaderboardRepository.js';
 export { RunLogRepository } from './clickhouse/repositories/RunLogRepository.js';
 export type { RunLog, RunLogInsertData } from './clickhouse/repositories/RunLogRepository.js';
+export { RunRepository } from './clickhouse/repositories/RunRepository.js';
+export type { RunRepository as IRunRepository } from './ports/RunRepositoryPort.js';
 
 // PostgreSQL repositories removed - use DuckDB repositories instead
 

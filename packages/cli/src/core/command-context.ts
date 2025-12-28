@@ -10,6 +10,7 @@ import {
   OhlcvRepository,
   StrategiesRepository,
   ExperimentDuckDBAdapter,
+  RunRepository,
   // PostgreSQL repositories removed - use DuckDB equivalents
   // CallsRepository, TokensRepository, AlertsRepository, SimulationRunsRepository
 } from '@quantbot/storage';
@@ -50,6 +51,7 @@ export interface CommandServices {
   callersRepository(): CallersRepository; // DuckDB version
   strategiesRepository(): StrategiesRepository; // DuckDB version
   experimentRepository(): ExperimentRepository; // Experiment tracking
+  runRepository(): RunRepository; // ClickHouse run ledger
   // Add more services as needed
 }
 
@@ -181,6 +183,10 @@ export class CommandContext {
         // Use DuckDB ExperimentRepository - requires dbPath
         const dbPath = process.env.DUCKDB_PATH || 'data/quantbot.duckdb';
         return new ExperimentDuckDBAdapter(dbPath);
+      },
+      runRepository: () => {
+        // ClickHouse RunRepository (singleton pattern via getClickHouseClient)
+        return new RunRepository();
       },
     };
   }
