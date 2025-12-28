@@ -207,12 +207,12 @@ export class RunRepository implements IRunRepository {
       }
 
       if (filters?.from) {
-        sql += ' AND created_at >= {from:DateTime64(3, \'UTC\')}';
+        sql += " AND created_at >= {from:DateTime64(3, 'UTC')}";
         params.from = filters.from.toISO();
       }
 
       if (filters?.to) {
-        sql += ' AND created_at <= {to:DateTime64(3, \'UTC\')}';
+        sql += " AND created_at <= {to:DateTime64(3, 'UTC')}";
         params.to = filters.to.toISO();
       }
 
@@ -299,12 +299,12 @@ export class RunRepository implements IRunRepository {
       }
 
       if (filters?.from) {
-        sql += ' AND r.created_at >= {from:DateTime64(3, \'UTC\')}';
+        sql += " AND r.created_at >= {from:DateTime64(3, 'UTC')}";
         params.from = filters.from.toISO();
       }
 
       if (filters?.to) {
-        sql += ' AND r.created_at <= {to:DateTime64(3, \'UTC\')}';
+        sql += " AND r.created_at <= {to:DateTime64(3, 'UTC')}";
         params.to = filters.to.toISO();
       }
 
