@@ -86,13 +86,14 @@ describe('leaderboardHandler', () => {
 
     await leaderboardHandler(args, mockCtx);
 
+    // Schema defaults limit to 50 when not provided
     expect(mockRunRepo.leaderboard).toHaveBeenCalledWith({
       strategy_id: undefined,
       interval_sec: undefined,
       from: undefined,
       to: undefined,
       min_trades: undefined,
-      limit: undefined,
+      limit: 50, // Default from schema
     });
   });
 
