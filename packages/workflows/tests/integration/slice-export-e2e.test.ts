@@ -9,6 +9,8 @@
  * 4. Validation of results
  *
  * Uses real ClickHouse data and verifies the entire pipeline works correctly.
+ *
+ * These tests require ClickHouse to be running. Set RUN_DB_STRESS=1 to enable.
  */
 
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
@@ -19,6 +21,7 @@ import { createClickHouseSliceExporterAdapterImpl } from '@quantbot/storage';
 import { createDuckDbSliceAnalyzerAdapterImpl } from '@quantbot/storage';
 import { createSliceValidatorAdapter } from '@quantbot/storage';
 import { generateTestRunId, getTestOutputDir } from './helpers/test-fixtures.js';
+import { shouldRunDbStress } from '@quantbot/utils/test-helpers/test-gating';
 import type {
   SliceSpec,
   ParquetLayoutSpec,
@@ -27,7 +30,10 @@ import type {
   ExportAndAnalyzeResult,
 } from '../../src/slices/types.js';
 
-describe('Slice Export & Analyze E2E Tests', () => {
+// Gate these tests behind RUN_DB_STRESS=1 - they require ClickHouse with real data
+const shouldRun = shouldRunDbStress();
+
+describe.skipIf(!shouldRun)('Slice Export & Analyze E2E Tests', () => {
   const outputDir = getTestOutputDir();
   let testRunId: string;
 

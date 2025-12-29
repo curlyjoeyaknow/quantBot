@@ -259,8 +259,9 @@ export class ClickHouseSliceExporterAdapterImpl implements SliceExporter {
     conditions.push(`chain = '${spec.chain}'`);
 
     // Interval (from dataset mapping)
+    // Use toString() to ensure string comparison (ClickHouse may try to coerce types)
     const escapedInterval = interval.replace(/'/g, "''");
-    conditions.push(`\`interval\` = '${escapedInterval}'`);
+    conditions.push(`toString(\`interval\`) = '${escapedInterval}'`);
 
     // Token filter
     if (spec.tokenIds && spec.tokenIds.length > 0) {

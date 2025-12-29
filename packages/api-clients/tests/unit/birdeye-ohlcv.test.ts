@@ -82,7 +82,15 @@ describe('birdeye-ohlcv', () => {
 
       mockFetchOHLCVData.mockResolvedValue(mockResponse);
 
-      const candles = await fetchBirdeyeCandles(mint, '1m', from, to, 'solana');
+      // Pass the mock client directly to avoid getBirdeyeClient() calls
+      const candles = await fetchBirdeyeCandles(
+        mint,
+        '1m',
+        from,
+        to,
+        'solana',
+        mockClient as BirdeyeClient
+      );
 
       expect(candles).toHaveLength(2);
       expect(candles[0]).toEqual({
@@ -234,7 +242,15 @@ describe('birdeye-ohlcv', () => {
       };
 
       mockFetchOHLCVData.mockResolvedValue(mockResponse);
-      const candles = await fetchBirdeyeCandles(mint, '1m', from, to, 'solana');
+      // Pass the mock client directly to avoid getBirdeyeClient() calls
+      const candles = await fetchBirdeyeCandles(
+        mint,
+        '1m',
+        from,
+        to,
+        'solana',
+        mockClient as BirdeyeClient
+      );
       expect(candles).toHaveLength(1);
       expect(mockFetchOHLCVData).toHaveBeenCalledTimes(1);
     });
@@ -280,7 +296,15 @@ describe('birdeye-ohlcv', () => {
 
       mockFetchOHLCVData.mockResolvedValue(mockResponse);
 
-      const candles = await fetchBirdeyeCandlesDirect(mint, '1m', from, to, 'solana');
+      // Pass the mock client directly to avoid getBirdeyeClient() calls
+      const candles = await fetchBirdeyeCandlesDirect(
+        mint,
+        '1m',
+        from,
+        to,
+        'solana',
+        mockClient as BirdeyeClient
+      );
 
       expect(candles).toHaveLength(1);
       expect(mockFetchOHLCVData).toHaveBeenCalledTimes(1);

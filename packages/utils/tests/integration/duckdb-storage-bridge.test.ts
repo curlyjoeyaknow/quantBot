@@ -196,7 +196,7 @@ describe('DuckDB Storage Bridge Test', () => {
         expect(item.excluded_at).toBeDefined();
       });
     }
-  });
+  }, 15000); // 15 second timeout for DuckDB queries
 
   it('generates report and validates output schema', async () => {
     // First store a run

@@ -1,0 +1,1 @@
+CREATE TABLE quantbot.tick_events\n(\n    `token_address` String,\n    `chain` String,\n    `timestamp` DateTime,\n    `price` Float64,\n    `size` Float64,\n    `signature` String,\n    `slot` UInt64,\n    `source` String\n)\nENGINE = MergeTree\nPARTITION BY (chain, toYYYYMM(timestamp))\nORDER BY (token_address, timestamp, signature)\nSETTINGS index_granularity = 8192

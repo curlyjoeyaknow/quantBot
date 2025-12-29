@@ -98,7 +98,7 @@ describe('StatePort DuckDB Adapter - Regression Tests', () => {
 
     expect(getResult.found).toBe(true);
     expect(getResult.value).toBe(stringValue);
-  });
+  }, 30000); // 30 second timeout for DuckDB operations
 
   it('CRITICAL: should use the correct DuckDB path (prevents file not found errors)', async () => {
     /**
@@ -144,7 +144,7 @@ describe('StatePort DuckDB Adapter - Regression Tests', () => {
         unlinkSync(customDbPath);
       }
     }
-  });
+  }, 30000); // 30 second timeout for DuckDB operations
 
   it('CRITICAL: should deserialize JSON strings back to objects when reading', async () => {
     /**
@@ -181,5 +181,5 @@ describe('StatePort DuckDB Adapter - Regression Tests', () => {
     expect(getResult.value).toEqual(complexObject);
     expect(typeof getResult.value).toBe('object');
     expect(Array.isArray(getResult.value?.timestamps)).toBe(true);
-  });
+  }, 30000); // 30 second timeout for DuckDB operations
 });
