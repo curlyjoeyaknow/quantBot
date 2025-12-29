@@ -23,7 +23,7 @@ describe('Context Factory Integration', () => {
       expect(typeof ctx.repos.calls.list).toBe('function');
       expect(typeof ctx.repos.simulationRuns.create).toBe('function');
       expect(typeof ctx.repos.simulationResults.insertMany).toBe('function');
-      expect(typeof ctx.ohlcv.getCandles).toBe('function');
+      expect(typeof ctx.ohlcv.causalAccessor.getCandlesAtTime).toBe('function');
       expect(typeof ctx.simulation.run).toBe('function');
     });
 

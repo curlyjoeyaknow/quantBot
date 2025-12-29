@@ -63,7 +63,9 @@ describe('Artifact Manager', () => {
 
       const paths = await createArtifactDirectory(components);
 
-      expect(paths.baseDir).toBe('./artifacts');
+      // Default uses getArtifactsDir() which returns ~/.cache/quantbot/artifacts
+      expect(paths.baseDir).toBeTruthy();
+      expect(paths.baseDir).toContain('artifacts');
       expect(existsSync(paths.runDir)).toBe(true);
     });
 

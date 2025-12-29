@@ -102,8 +102,8 @@ describe('Workflow Context Wiring Patterns', () => {
     it('should use context.ohlcv instead of direct instantiation', () => {
       const ctx = createProductionContext();
 
-      // Workflows should use ctx.ohlcv, not new OhlcvRepository()
-      expect(ctx.ohlcv.getCandles).toBeDefined();
+      // Workflows should use ctx.ohlcv.causalAccessor, not new OhlcvRepository()
+      expect(ctx.ohlcv.causalAccessor.getCandlesAtTime).toBeDefined();
     });
 
     it('should use context.simulation instead of direct instantiation', () => {

@@ -74,7 +74,7 @@ describe('workflows.runSimulation - golden suite', () => {
     await expect(runSimulation(spec, ctx)).rejects.toThrow(/Strategy.*not found/);
 
     expect(ctx.repos.calls.list).not.toHaveBeenCalled();
-    expect(ctx.ohlcv.getCandles).not.toHaveBeenCalled();
+    expect(ctx.ohlcv.causalAccessor.getCandlesAtTime).not.toHaveBeenCalled();
     expect(ctx.simulation.run).not.toHaveBeenCalled();
   });
 
@@ -103,7 +103,7 @@ describe('workflows.runSimulation - golden suite', () => {
 
     expect(res.pnl.mean).toBeUndefined();
 
-    expect(ctx.ohlcv.getCandles).not.toHaveBeenCalled();
+    expect(ctx.ohlcv.causalAccessor.getCandlesAtTime).not.toHaveBeenCalled();
     expect(ctx.simulation.run).not.toHaveBeenCalled();
     expect(ctx.repos.simulationRuns.create).not.toHaveBeenCalled();
     expect(ctx.repos.simulationResults.insertMany).not.toHaveBeenCalled();

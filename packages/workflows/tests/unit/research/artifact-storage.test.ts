@@ -118,11 +118,13 @@ describe('FileArtifactStorage', () => {
   });
 
   it('validates artifacts on load', async () => {
-    // Create a corrupted artifact file
-    const artifactPath = join(testDir, 'artifacts', 'run-001.json');
-    await fs.mkdir(join(testDir, 'artifacts'), { recursive: true });
+    // Create a corrupted artifact file at the correct path
+    // Storage uses getArtifactPath(runId) which is join(baseDir, `${runId}.json`)
+    await fs.mkdir(testDir, { recursive: true });
+    const artifactPath = join(testDir, 'run-001.json');
     await fs.writeFile(artifactPath, 'invalid json', 'utf-8');
 
+    // JSON.parse will throw SyntaxError, which should be re-thrown (not ENOENT)
     await expect(storage.load('run-001')).rejects.toThrow();
   });
 });
