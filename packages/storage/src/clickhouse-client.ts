@@ -495,7 +495,7 @@ export async function hasCandles(
                OR lower(token_address) LIKE lower({tokenPatternSuffix:String}))
           AND chain = {chain:String}
           AND timestamp >= toDateTime({startUnix:UInt32})
-          AND timestamp < toDateTime({endUnix:UInt32})
+          AND timestamp <= toDateTime({endUnix:UInt32})
       `,
       query_params: {
         tokenAddress,
