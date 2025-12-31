@@ -50,7 +50,7 @@ export type ExportSlicesForAlertsArgs = {
  */
 export async function exportSlicesForAlertsHandler(
   args: ExportSlicesForAlertsArgs,
-  ctx: CommandContext
+  _ctx: CommandContext
 ): Promise<ReturnType<typeof exportSlicesForAlerts>> {
   // Get DuckDB path
   const duckdbPath = args.duckdb || getDuckDBPath('data/tele.duckdb');
