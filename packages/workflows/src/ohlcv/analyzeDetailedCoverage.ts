@@ -21,26 +21,9 @@
 
 import { z } from 'zod';
 import { DateTime } from 'luxon';
-import { ValidationError } from '@quantbot/utils';
+import { ValidationError, findWorkspaceRoot } from '@quantbot/utils';
 import type { PythonEngine } from '@quantbot/utils';
-import { join, dirname } from 'path';
-import { existsSync } from 'fs';
-
-/**
- * Find workspace root by walking up from current directory
- */
-function findWorkspaceRoot(startDir: string = process.cwd()): string {
-  let current = startDir;
-  while (current !== '/' && current !== '') {
-    if (existsSync(join(current, 'pnpm-workspace.yaml'))) {
-      return current;
-    }
-    const parent = dirname(current);
-    if (parent === current) break;
-    current = parent;
-  }
-  return startDir;
-}
+import { join } from 'path';
 
 /**
  * Detailed Coverage Analysis Spec

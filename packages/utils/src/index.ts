@@ -47,6 +47,9 @@ export { handleError, retryWithBackoff } from './error-handler.js';
 // Git utilities
 export * from './git.js';
 
+// Filesystem utilities
+export { findWorkspaceRoot, clearWorkspaceRootCache } from './fs/workspace-root.js';
+
 // Pump.fun utilities
 export { PUMP_FUN_PROGRAM_ID, derivePumpfunBondingCurve } from './pumpfun.js';
 
