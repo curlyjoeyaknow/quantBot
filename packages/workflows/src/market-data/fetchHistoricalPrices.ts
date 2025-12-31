@@ -1,7 +1,11 @@
 /**
- * Historical Price Loader
- * =======================
- * Loads historical prices from Birdeye API at exact timestamps
+ * Fetch Historical Prices Workflow
+ * =================================
+ * Fetches historical prices from Birdeye API at exact timestamps.
+ *
+ * This is a workflow function (orchestration) that belongs in workflows
+ * because it coordinates external API calls. Analytics should only read
+ * from storage, not fetch from APIs.
  */
 
 import { logger } from '@quantbot/utils';
@@ -38,17 +42,17 @@ function normalizeTokenAddress(address: string): string {
   // Note: Birdeye likely doesn't support Sui, but we try anyway
   if (address.includes('::')) {
     const parts = address.split('::');
-    return parts[0].trim();
+    return parts[0]?.trim() ?? address.trim();
   }
 
   return address.trim();
 }
 
 /**
- * Load historical price at exact timestamp using Birdeye API
+ * Fetch historical price at exact timestamp using Birdeye API
  * Automatically detects chain from address format
  */
-export async function loadHistoricalPriceAtTime(
+export async function fetchHistoricalPriceAtTime(
   tokenAddress: string,
   timestamp: Date | DateTime,
   chain?: string
@@ -68,8 +72,8 @@ export async function loadHistoricalPriceAtTime(
       detectedChain
     );
 
-    if (result && result.value && result.value > 0 && Number.isFinite(result.value)) {
-      logger.trace('[HistoricalPriceLoader] Fetched price from Birdeye', {
+    if (result?.value && result.value > 0 && Number.isFinite(result.value)) {
+      logger.trace('[fetchHistoricalPrices] Fetched price from Birdeye', {
         token: normalizedAddress,
         chain: detectedChain,
         timestamp: unixTimestamp,
@@ -83,7 +87,7 @@ export async function loadHistoricalPriceAtTime(
     return null;
   } catch (error) {
     // Log errors but don't spam logs with trace messages
-    logger.debug('[HistoricalPriceLoader] Error fetching historical price', {
+    logger.debug('[fetchHistoricalPrices] Error fetching historical price', {
       token: tokenAddress,
       error: error instanceof Error ? error.message : String(error),
     });
@@ -92,11 +96,11 @@ export async function loadHistoricalPriceAtTime(
 }
 
 /**
- * Load historical prices for multiple calls in batches
+ * Fetch historical prices for multiple calls in batches
  * Returns a map of call index -> price
  * Each call gets its price at its exact alert timestamp
  */
-export async function loadHistoricalPricesBatch(
+export async function fetchHistoricalPricesBatch(
   calls: Array<{
     tokenAddress: string;
     alertTimestamp: Date;
@@ -115,7 +119,7 @@ export async function loadHistoricalPricesBatch(
 
         // Fetch price at exact alert timestamp from Birdeye API
         // Chain is auto-detected from address format if not provided
-        const price = await loadHistoricalPriceAtTime(
+        const price = await fetchHistoricalPriceAtTime(
           call.tokenAddress,
           call.alertTimestamp,
           call.chain

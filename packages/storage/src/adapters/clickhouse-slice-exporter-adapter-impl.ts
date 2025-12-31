@@ -540,6 +540,8 @@ export class ClickHouseSliceExporterAdapterImpl implements SliceExporter {
       }
 
       // Create empty Parquet file to maintain consistency
+      // Ensure directory exists before writing (defensive check)
+      await fs.mkdir(outDir, { recursive: true });
       const parquetPath = join(outDir, 'part-000.parquet');
       await fs.writeFile(parquetPath, Buffer.alloc(0)); // Empty file
 
@@ -606,6 +608,8 @@ export class ClickHouseSliceExporterAdapterImpl implements SliceExporter {
     }
 
     // Write Parquet file for non-empty result
+    // Ensure directory exists before writing (defensive check)
+    await fs.mkdir(outDir, { recursive: true });
     const parquetPath = join(outDir, 'part-000.parquet');
     try {
       await fs.writeFile(parquetPath, parquetData);

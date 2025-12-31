@@ -855,15 +855,15 @@ async function executeFetchTask(
       {
         failedMintsSize: failedMints.size,
         intervalsWithFailures: Array.from(failedMints.keys()),
-        failedMintsDetails: Array.from(failedMints.entries()).map(([interval, map]) => ({
-          interval,
-          count: map.size,
-          sampleMints: Array.from(map.keys()).slice(0, 2),
-          sampleChains: (() => {
-            const firstValue = Array.from(map.values())[0];
-            return firstValue ? Array.from(firstValue).slice(0, 4) : [];
-          })(),
-        })),
+        failedMintsDetails: Array.from(failedMints.entries()).map(([interval, map]) => {
+          const firstValue = Array.from(map.values())[0];
+          return {
+            interval,
+            count: map.size,
+            sampleMints: Array.from(map.keys()).slice(0, 2),
+            sampleChains: firstValue ? Array.from(firstValue).slice(0, 4) : [],
+          };
+        }),
       }
     );
   } else {
