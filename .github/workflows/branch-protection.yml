@@ -1,0 +1,105 @@
+name: Branch Protection - PR Flow Enforcement
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+
+jobs:
+  validate-pr-flow:
+    name: Validate PR Branch Flow
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate PR source and target branches
+        run: |
+          PR_BASE="${{ github.event.pull_request.base.ref }}"
+          PR_HEAD="${{ github.event.pull_request.head.ref }}"
+          
+          echo "PR from: $PR_HEAD → to: $PR_BASE"
+          
+          # Define allowed PR flows
+          case "$PR_BASE" in
+            main)
+              # main only accepts PRs from integration
+              if [ "$PR_HEAD" != "integration" ]; then
+                echo "❌ ERROR: main branch only accepts PRs from 'integration' branch"
+                echo "   Current PR is from: $PR_HEAD"
+                echo "   Please create PR from integration → main"
+                exit 1
+              fi
+              echo "✅ Valid: integration → main"
+              ;;
+            
+            integration)
+              # integration only accepts PRs from:
+              # - codex/* branches (small micro branches)
+              # - staging/* branches (phase aggregates)
+              # - staging branch itself
+              # 
+              # refactor/phase* branches are NOT allowed to PR directly to integration
+              
+              # Check if it's a refactor/phase* branch (blocked)
+              if [[ "$PR_HEAD" =~ ^refactor/phase ]]; then
+                echo "❌ ERROR: refactor/phase* branches cannot PR directly to integration"
+                echo "   Current PR is from: $PR_HEAD"
+                echo "   refactor/phase* branches must first PR to staging, then staging → integration"
+                echo "   Please create PR: $PR_HEAD → staging"
+                exit 1
+              fi
+              
+              # Check if it's an allowed branch type
+              if [[ "$PR_HEAD" =~ ^codex/ ]] || \
+                 [[ "$PR_HEAD" =~ ^staging/ ]] || \
+                 [ "$PR_HEAD" = "staging" ]; then
+                echo "✅ Valid: $PR_HEAD → integration"
+                if [[ "$PR_HEAD" =~ ^codex/ ]]; then
+                  echo "   (codex/* micro branch)"
+                elif [[ "$PR_HEAD" =~ ^staging/ ]]; then
+                  echo "   (staging/* phase aggregate)"
+                else
+                  echo "   (staging branch)"
+                fi
+              else
+                echo "❌ ERROR: integration branch only accepts PRs from:"
+                echo "   - codex/* branches (small micro branches)"
+                echo "   - staging/* branches (phase aggregates)"
+                echo "   - staging branch"
+                echo ""
+                echo "   Current PR is from: $PR_HEAD"
+                echo "   Please create PR: $PR_HEAD → staging, then staging → integration"
+                exit 1
+              fi
+              ;;
+            
+            staging)
+              # staging accepts PRs from any branch (feature/refactor/etc)
+              # This includes refactor/phase* branches
+              echo "✅ Valid: $PR_HEAD → staging (any branch allowed)"
+              if [[ "$PR_HEAD" =~ ^refactor/phase ]]; then
+                echo "   (refactor/phase* branches must go through staging before integration)"
+              fi
+              ;;
+            
+            *)
+              # For other branches, allow any PR (flexibility for hotfixes, etc.)
+              echo "⚠️  WARNING: PR to non-standard branch: $PR_BASE"
+              echo "   Allowing PR from: $PR_HEAD → $PR_BASE"
+              echo "   Consider using the standard flow:"
+              echo "     - codex/* → integration"
+              echo "     - staging/* → integration"
+              echo "     - refactor/phase* → staging → integration"
+              echo "     - other branches → staging → integration → main"
+              ;;
+          esac
+          
+          echo ""
+          echo "Branch Flow Summary:"
+          echo "  codex/* → integration → main"
+          echo "  staging/* → integration → main"
+          echo "  refactor/phase* → staging → integration → main"
+          echo "  other branches → staging → integration → main"
