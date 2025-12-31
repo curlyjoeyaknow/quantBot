@@ -1243,9 +1243,13 @@ export class OhlcvIngestionEngine {
       // Step 4: Store immediately to prevent data loss on script failure
       // CRITICAL: Store to ClickHouse using ohlcv storage service (offline operation)
       try {
-        // Map interval to storeCandles format (accepts '1m' | '5m' | '15m' | '1h' | '15s' | '1H')
-        const storeInterval: '1m' | '5m' | '15m' | '1h' | '15s' | '1H' =
-          interval === '1H' ? '1H' : interval === '15s' ? '15s' : interval === '1m' ? '1m' : '5m';
+        // Map interval to storeCandles format (accepts '1s' | '15s' | '1m' | '5m' | '15m' | '1h' | '1H')
+        const storeInterval: '1s' | '15s' | '1m' | '5m' | '15m' | '1h' | '1H' =
+          interval === '1H' ? '1H' 
+          : interval === '15s' ? '15s' 
+          : interval === '1m' ? '1m' 
+          : interval === '1s' ? '1s'
+          : '5m';
         await storeCandles(mint, chain, candles, storeInterval);
         logger.debug(
           `[OhlcvIngestionEngine] Stored ${candles.length} ${interval} candles to ClickHouse for ${mint}...`
