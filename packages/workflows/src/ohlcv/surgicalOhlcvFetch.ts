@@ -23,6 +23,7 @@ import type { IngestOhlcvSpec, IngestOhlcvContext } from './ingestOhlcv.js';
 import type { PythonEngine } from '@quantbot/utils';
 import { join } from 'path';
 import { getSurgicalCoverageTimeoutMs } from './coverageTimeouts.js';
+
 /**
  * Sanitize error messages to prevent leaking sensitive information
  */
