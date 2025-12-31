@@ -22,7 +22,7 @@ import { ingestOhlcv } from './ingestOhlcv.js';
 import type { IngestOhlcvSpec, IngestOhlcvContext } from './ingestOhlcv.js';
 import type { PythonEngine } from '@quantbot/utils';
 import { join } from 'path';
-
+import { getSurgicalCoverageTimeoutMs } from './coverageTimeouts.js';
 /**
  * Sanitize error messages to prevent leaking sensitive information
  */
@@ -186,10 +186,7 @@ async function getCoverageData(
   }
 
   // Allow callers to extend the Python coverage timeout via env; default to 5 minutes
-  const coverageTimeoutMs =
-    Number(process.env.OHLCV_COVERAGE_TIMEOUT_MS) > 0
-      ? Number(process.env.OHLCV_COVERAGE_TIMEOUT_MS)
-      : 300_000;
+  const coverageTimeoutMs = getSurgicalCoverageTimeoutMs();
 
   const resultSchema = z.object({
     callers: z.array(z.string()),
@@ -838,15 +835,15 @@ async function executeFetchTask(
       {
         failedMintsSize: failedMints.size,
         intervalsWithFailures: Array.from(failedMints.keys()),
-        failedMintsDetails: Array.from(failedMints.entries()).map(([interval, map]) => ({
-          interval,
-          count: map.size,
-          sampleMints: Array.from(map.keys()).slice(0, 2),
-          sampleChains: (() => {
-            const firstValue = Array.from(map.values())[0];
-            return firstValue ? Array.from(firstValue).slice(0, 4) : [];
-          })(),
-        })),
+        failedMintsDetails: Array.from(failedMints.entries()).map(([interval, map]) => {
+          const firstValue = Array.from(map.values())[0];
+          return {
+            interval,
+            count: map.size,
+            sampleMints: Array.from(map.keys()).slice(0, 2),
+            sampleChains: firstValue ? Array.from(firstValue).slice(0, 4) : [],
+          };
+        }),
       }
     );
   } else {

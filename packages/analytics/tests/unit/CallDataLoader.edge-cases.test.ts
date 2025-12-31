@@ -8,7 +8,6 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { CallDataLoader } from '@quantbot/analytics/loaders/CallDataLoader.js';
 import type { CallPerformance } from '@quantbot/analytics/types.js';
 import { DateTime } from 'luxon';
-import { loadHistoricalPricesBatch } from '@quantbot/analytics/loaders/HistoricalPriceLoader.js';
 
 // Mock dependencies
 const mockStorageEngine = {
@@ -41,17 +40,14 @@ vi.mock('@quantbot/utils', async () => {
   };
 });
 
-vi.mock('@quantbot/analytics/loaders/HistoricalPriceLoader.js', () => ({
-  loadHistoricalPricesBatch: vi.fn(),
-}));
+// HistoricalPriceLoader moved to workflows - no longer needed in analytics
 
 describe('CallDataLoader Edge Cases', () => {
   let loader: CallDataLoader;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    // Default mock: return empty map (no prices from Birdeye)
-    vi.mocked(loadHistoricalPricesBatch).mockResolvedValue(new Map());
+    // HistoricalPriceLoader moved to workflows - prices now passed via options.historicalPrices
     // Default context mock with logger
     mockCreateQueryCallsDuckdbContext.mockResolvedValue({
       logger: { info: vi.fn(), error: vi.fn(), warn: vi.fn(), debug: vi.fn(), trace: vi.fn() },

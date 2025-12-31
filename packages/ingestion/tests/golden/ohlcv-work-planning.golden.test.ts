@@ -40,6 +40,9 @@ vi.mock('@quantbot/utils', async () => {
   };
 });
 
+// Unmock @quantbot/storage for golden tests (use real implementation)
+vi.unmock('@quantbot/storage');
+
 describe('OHLCV Work Planning - Golden Path', () => {
   const tempDbPaths: string[] = [];
   const REAL_DB_PATH = join(process.cwd(), 'data', 'result.duckdb');
