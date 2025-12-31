@@ -1,8 +1,10 @@
 /**
- * Simulator Artifact Contract Schemas
+ * Backtest Artifact Contract Schemas
  *
  * Zod schemas for RunPlanV1, CoverageReportV1, SliceManifestV1, and ReplayFrameV1
- * as defined in the Simulator Architecture Plan.
+ * as defined in the Backtest Architecture Plan.
+ *
+ * These artifacts are used for deterministic backtests (replay over historical data).
  */
 
 import { z } from 'zod';
@@ -10,7 +12,7 @@ import { z } from 'zod';
 /**
  * RunPlanV1 Schema
  *
- * Preflight artifact that defines candle requirements for a simulation run.
+ * Preflight artifact that defines candle requirements for a backtest run.
  */
 export const RunPlanV1Schema = z.object({
   schema_version: z.literal(1),
@@ -122,4 +124,3 @@ export const ReplayFrameV1Schema = z.object({
 });
 
 export type ReplayFrameV1 = z.infer<typeof ReplayFrameV1Schema>;
-

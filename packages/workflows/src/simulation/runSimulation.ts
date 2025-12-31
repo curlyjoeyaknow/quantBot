@@ -3,9 +3,9 @@ import type { DateTime } from 'luxon';
 import { ValidationError, NotFoundError } from '@quantbot/utils';
 import type {
   WorkflowContext,
-  SimulationRunSpec,
-  SimulationRunResult,
-  SimulationCallResult,
+  BacktestRunSpec,
+  BacktestRunResult,
+  BacktestCallResult,
 } from '../types.js';
 import { createProductionContext } from '../context/createProductionContext.js';
 
@@ -60,13 +60,13 @@ export function createDefaultRunSimulationContext(): WorkflowContext {
 }
 
 export async function runSimulation(
-  spec: SimulationRunSpec,
+  spec: BacktestRunSpec,
   ctx: WorkflowContext = createDefaultRunSimulationContext()
-): Promise<SimulationRunResult> {
+): Promise<BacktestRunResult> {
   const parsed = SpecSchema.safeParse(spec);
   if (!parsed.success) {
     const msg = parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ');
-    throw new ValidationError(`Invalid simulation spec: ${msg}`, {
+    throw new ValidationError(`Invalid backtest spec: ${msg}`, {
       spec,
       issues: parsed.error.issues,
     });
@@ -107,12 +107,12 @@ export async function runSimulation(
     (a, b) => a.createdAt.toMillis() - b.createdAt.toMillis()
   );
 
-  const results: SimulationCallResult[] = [];
+  const results: BacktestCallResult[] = [];
   const pnlOk: number[] = [];
   let tradesTotal = 0;
 
   // Emit structured event instead of verbose debug log
-  ctx.logger.info('Simulation run started', {
+  ctx.logger.info('Backtest run started', {
     runId,
     strategy: strategy.name,
     calls: uniqueCalls.length,
@@ -150,8 +150,8 @@ export async function runSimulation(
         continue;
       }
 
-      // Run simulation with causal accessor (mandatory - no raw candles allowed)
-      const sim = await ctx.simulation.run({
+      // Run backtest with causal accessor (mandatory - no raw candles allowed)
+      const sim = await ctx.backtest.run({
         candleAccessor: ctx.ohlcv.causalAccessor, // Only path - enforced by type system
         mint: call.mint,
         startTime,
@@ -178,12 +178,12 @@ export async function runSimulation(
         mint: call.mint,
         createdAtISO: callISO,
         ok: false,
-        errorCode: 'SIMULATION_ERROR',
+        errorCode: 'BACKTEST_ERROR',
         errorMessage: msg,
       });
       // Continue (per-call errors should not kill the run)
       // Only log errors, not warnings for per-call failures (too verbose)
-      ctx.logger.error('Simulation call failed', {
+      ctx.logger.error('Backtest call failed', {
         runId,
         callId: call.id,
         mint: call.mint,
@@ -202,7 +202,7 @@ export async function runSimulation(
   const pnlMedian = median(pnlOk);
 
   if (!dryRun) {
-    await ctx.repos.simulationRuns.create({
+    await ctx.repos.backtestRuns.create({
       runId,
       strategyId: strategy.id,
       strategyName: strategy.name,
@@ -222,7 +222,7 @@ export async function runSimulation(
       },
     });
 
-    await ctx.repos.simulationResults.insertMany(runId, results);
+    await ctx.repos.backtestResults.insertMany(runId, results);
   }
 
   // Emit structured completion event

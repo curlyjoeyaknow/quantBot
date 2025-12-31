@@ -1,7 +1,10 @@
 /**
- * SimulationEventsRepository - ClickHouse repository for simulation events and aggregates
+ * SimulationEventsRepository - ClickHouse repository for backtest events and aggregates
  *
- * Handles all database operations for simulation_events and simulation_aggregates tables.
+ * Handles all database operations for backtest events and aggregates.
+ * Uses simulation_* table names for backward compatibility (views exist as backtest_*).
+ * 
+ * Note: These tables store deterministic backtest results, not stochastic simulations.
  */
 
 import { DateTime } from 'luxon';
@@ -11,7 +14,7 @@ import type { SimulationEvent, SimulationAggregate } from '@quantbot/core';
 
 export class SimulationEventsRepository {
   /**
-   * Insert simulation events for a run
+   * Insert backtest events for a run (deterministic replay results)
    * CRITICAL: Preserves full token address and exact case
    */
   async insertEvents(
@@ -50,15 +53,15 @@ export class SimulationEventsRepository {
         format: 'JSONEachRow',
       });
 
-      logger.debug('Inserted simulation events', { runId, count: events.length });
+      logger.debug('Inserted backtest events', { runId, count: events.length });
     } catch (error: unknown) {
-      logger.error('Error inserting simulation events', error as Error, { runId });
+      logger.error('Error inserting backtest events', error as Error, { runId });
       throw error;
     }
   }
 
   /**
-   * Insert simulation aggregates for a run
+   * Insert backtest aggregates for a run (deterministic replay results)
    */
   async insertAggregates(runId: number, aggregates: SimulationAggregate): Promise<void> {
     const ch = getClickHouseClient();
@@ -88,9 +91,9 @@ export class SimulationEventsRepository {
         format: 'JSONEachRow',
       });
 
-      logger.debug('Inserted simulation aggregates', { runId });
+      logger.debug('Inserted backtest aggregates', { runId });
     } catch (error: unknown) {
-      logger.error('Error inserting simulation aggregates', error as Error, { runId });
+      logger.error('Error inserting backtest aggregates', error as Error, { runId });
       throw error;
     }
   }

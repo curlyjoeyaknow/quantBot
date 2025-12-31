@@ -10,6 +10,7 @@ import { getClickHouseClient } from '../../clickhouse-client.js';
 import { getClickHouseDatabaseName, logger, ValidationError } from '@quantbot/utils';
 import type { Candle, DateRange } from '@quantbot/core';
 import { normalizeChain } from '@quantbot/core';
+import { intervalToSeconds } from '../../utils/interval-converter.js';
 
 export class OhlcvRepository {
   /**

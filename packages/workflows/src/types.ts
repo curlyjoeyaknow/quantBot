@@ -25,12 +25,19 @@ export type CallRecord = {
   price_usd?: number; // Entry price from user_calls_d table (optional, may not be available for all calls)
 };
 
-export type SimulationEngineResult = {
+/**
+ * Backtest engine result - deterministic replay result for a single token.
+ * Same inputs → same outputs, no randomness.
+ */
+export type BacktestEngineResult = {
   pnlMultiplier: number; // e.g. 1.12 means +12%
   trades: number;
 };
 
-export type SimulationCallResult = {
+/**
+ * Backtest call result - result for a single call in a backtest run.
+ */
+export type BacktestCallResult = {
   callId: string;
   mint: string;
   createdAtISO: string;
@@ -41,7 +48,11 @@ export type SimulationCallResult = {
   errorMessage?: string;
 };
 
-export type SimulationRunSpec = {
+/**
+ * Backtest run specification - parameters for a deterministic backtest.
+ * Uses actual historical candles, produces auditable trades + events + replay.
+ */
+export type BacktestRunSpec = {
   strategyName: string;
   callerName?: string;
   from: DateTime;
@@ -53,7 +64,10 @@ export type SimulationRunSpec = {
   };
 };
 
-export type SimulationRunResult = {
+/**
+ * Backtest run result - complete results from a deterministic backtest run.
+ */
+export type BacktestRunResult = {
   runId: string;
   strategyName: string;
   callerName?: string;
@@ -76,8 +90,28 @@ export type SimulationRunResult = {
     median?: number;
   };
 
-  results: SimulationCallResult[];
+  results: BacktestCallResult[];
 };
+
+/**
+ * @deprecated Use BacktestEngineResult instead. This alias will be removed in a future version.
+ */
+export type SimulationEngineResult = BacktestEngineResult;
+
+/**
+ * @deprecated Use BacktestCallResult instead. This alias will be removed in a future version.
+ */
+export type SimulationCallResult = BacktestCallResult;
+
+/**
+ * @deprecated Use BacktestRunSpec instead. This alias will be removed in a future version.
+ */
+export type SimulationRunSpec = BacktestRunSpec;
+
+/**
+ * @deprecated Use BacktestRunResult instead. This alias will be removed in a future version.
+ */
+export type SimulationRunResult = BacktestRunResult;
 
 export type WorkflowContext = {
   clock: { nowISO(): string };
@@ -94,7 +128,7 @@ export type WorkflowContext = {
     calls: {
       list: (q: { callerName?: string; fromISO: string; toISO: string }) => Promise<CallRecord[]>;
     };
-    simulationRuns: {
+    backtestRuns: {
       create: (run: {
         runId: string;
         strategyId: string;
@@ -116,8 +150,38 @@ export type WorkflowContext = {
         };
       }) => Promise<void>;
     };
+    backtestResults: {
+      insertMany: (runId: string, rows: BacktestCallResult[]) => Promise<void>;
+    };
+    /**
+     * @deprecated Use backtestRuns instead. This alias will be removed in a future version.
+     */
+    simulationRuns: {
+      create: (run: {
+        runId: string;
+        strategyId: string;
+        strategyName: string;
+        strategyConfig: unknown;
+        fromISO: string;
+        toISO: string;
+        callerName?: string;
+        totalCalls?: number;
+        successfulCalls?: number;
+        failedCalls?: number;
+        totalTrades?: number;
+        pnlStats?: {
+          min?: number;
+          max?: number;
+          mean?: number;
+          median?: number;
+        };
+      }) => Promise<void>;
+    };
+    /**
+     * @deprecated Use backtestResults instead. This alias will be removed in a future version.
+     */
     simulationResults: {
-      insertMany: (runId: string, rows: SimulationCallResult[]) => Promise<void>;
+      insertMany: (runId: string, rows: BacktestCallResult[]) => Promise<void>;
     };
   };
 
@@ -136,12 +200,15 @@ export type WorkflowContext = {
     causalAccessor: CausalCandleAccessor;
   };
 
-  simulation: {
+  backtest: {
     /**
-     * Run a simulation with causal candle access.
+     * Run a backtest with causal candle access.
+     *
+     * Deterministic replay over historical data.
+     * Same inputs → same outputs, no randomness.
      *
      * CRITICAL: candleAccessor is mandatory - it is structurally impossible to pass raw candles.
-     * This enforces Gate 2 compliance: only candles with closeTime <= simulationTime are accessible.
+     * This enforces Gate 2 compliance: only candles with closeTime <= backtestTime are accessible.
      *
      * Pure compute. If it throws, workflow captures per-call error and continues.
      * Legacy { candles: Candle[] } signature removed - enforce causal accessor usage.
@@ -153,6 +220,22 @@ export type WorkflowContext = {
       endTime: number;
       strategy: StrategyRecord;
       call: CallRecord;
-    }) => Promise<SimulationEngineResult>;
+    }) => Promise<BacktestEngineResult>;
+  };
+  /**
+   * @deprecated Use backtest instead. This alias will be removed in a future version.
+   */
+  simulation: {
+    /**
+     * @deprecated Use backtest.run instead.
+     */
+    run: (q: {
+      candleAccessor: CausalCandleAccessor;
+      mint: string;
+      startTime: number;
+      endTime: number;
+      strategy: StrategyRecord;
+      call: CallRecord;
+    }) => Promise<BacktestEngineResult>;
   };
 };

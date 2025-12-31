@@ -19,6 +19,9 @@ import type {
   StrategyRecord,
   CallRecord,
   Candle,
+  BacktestEngineResult,
+  BacktestCallResult,
+  // Deprecated aliases
   SimulationEngineResult,
   SimulationCallResult,
 } from '../types.js';
@@ -256,7 +259,7 @@ export function createProductionContext(config?: ProductionContextConfig): Workf
         },
       },
 
-      simulationRuns: {
+      backtestRuns: {
         async create(run: {
           runId: string;
           strategyId: string;
@@ -276,7 +279,7 @@ export function createProductionContext(config?: ProductionContextConfig): Workf
             median?: number;
           };
         }): Promise<void> {
-          // Store simulation run metadata in DuckDB with strategy configuration
+          // Store backtest run metadata in DuckDB with strategy configuration
           // This stores run-level metadata (not per-call) for performance viewing and reproducibility
           try {
             const config = run.strategyConfig as Record<string, unknown>;
@@ -341,12 +344,12 @@ export function createProductionContext(config?: ProductionContextConfig): Workf
             );
 
             if (!result.success) {
-              logger.error('[workflows.context] Failed to store simulation run', {
+              logger.error('[workflows.context] Failed to store backtest run', {
                 runId: run.runId,
                 error: result.error,
               });
             } else {
-              logger.info('[workflows.context] Stored simulation run with strategy config', {
+              logger.info('[workflows.context] Stored backtest run with strategy config', {
                 runId: run.runId,
                 strategyId: run.strategyId,
                 strategyName: run.strategyName,
@@ -359,7 +362,7 @@ export function createProductionContext(config?: ProductionContextConfig): Workf
               });
             }
           } catch (error) {
-            logger.error('[workflows.context] Error storing simulation run', {
+            logger.error('[workflows.context] Error storing backtest run', {
               error: error instanceof Error ? error.message : String(error),
               runId: run.runId,
             });
@@ -368,10 +371,93 @@ export function createProductionContext(config?: ProductionContextConfig): Workf
         },
       },
 
-      simulationResults: {
-        async insertMany(runId: string, rows: SimulationCallResult[]): Promise<void> {
-          // Store simulation results in ClickHouse as events
-          // Convert SimulationCallResult[] to SimulationEvent[] format
+      // Deprecated alias for backward compatibility - delegates to backtestRuns
+      simulationRuns: {
+        async create(run: {
+          runId: string;
+          strategyId: string;
+          strategyName: string;
+          strategyConfig: unknown;
+          fromISO: string;
+          toISO: string;
+          callerName?: string;
+          totalCalls?: number;
+          successfulCalls?: number;
+          failedCalls?: number;
+          totalTrades?: number;
+          pnlStats?: {
+            min?: number;
+            max?: number;
+            mean?: number;
+            median?: number;
+          };
+        }): Promise<void> {
+          // Delegate to backtestRuns implementation (defined above)
+          // We can't reference it directly, so we duplicate the call
+          // This is temporary - simulationRuns will be removed in a future version
+          const config = run.strategyConfig as Record<string, unknown>;
+          const entryConfig = (config.entry || {}) as Record<string, unknown>;
+          const exitConfig = (config.exit || {}) as Record<string, unknown>;
+          const reEntryConfig = (config.reEntry || config.reentry) as
+            | Record<string, unknown>
+            | undefined;
+          const costConfig = (config.costs || config.cost) as Record<string, unknown> | undefined;
+          const stopLossConfig = (config.stopLoss || config.stop_loss) as
+            | Record<string, unknown>
+            | undefined;
+          const entrySignalConfig = (config.entrySignal || config.entry_signal) as
+            | Record<string, unknown>
+            | undefined;
+          const exitSignalConfig = (config.exitSignal || config.exit_signal) as
+            | Record<string, unknown>
+            | undefined;
+          const pnlMean = run.pnlStats?.mean;
+          const winRate =
+            run.successfulCalls && run.totalCalls
+              ? run.successfulCalls / run.totalCalls
+              : undefined;
+          const syntheticMint = `run_${run.runId}`;
+          const syntheticAlertTimestamp = run.fromISO;
+          const result = await duckdbStorage.storeRun(
+            dbPath,
+            run.runId,
+            run.strategyId,
+            run.strategyName,
+            syntheticMint,
+            syntheticAlertTimestamp,
+            run.fromISO,
+            run.toISO,
+            1000.0,
+            {
+              entry: entryConfig,
+              exit: exitConfig,
+              reEntry: reEntryConfig,
+              costs: costConfig,
+              stopLoss: stopLossConfig,
+              entrySignal: entrySignalConfig,
+              exitSignal: exitSignalConfig,
+            },
+            run.callerName,
+            undefined,
+            pnlMean,
+            undefined,
+            undefined,
+            winRate,
+            run.totalTrades || 0
+          );
+          if (!result.success) {
+            logger.error('[workflows.context] Failed to store backtest run (via simulationRuns)', {
+              runId: run.runId,
+              error: result.error,
+            });
+          }
+        },
+      },
+
+      backtestResults: {
+        async insertMany(runId: string, rows: BacktestCallResult[]): Promise<void> {
+          // Store backtest results in ClickHouse as events
+          // Convert BacktestCallResult[] to BacktestEvent[] format
           try {
             const events = rows.flatMap((result) => {
               const events: Array<{
@@ -388,7 +474,7 @@ export function createProductionContext(config?: ProductionContextConfig): Workf
                 // Create a summary event for successful simulation
                 const createdAt = DateTime.fromISO(result.createdAtISO, { zone: 'utc' });
                 events.push({
-                  event_type: 'simulation_complete',
+                  event_type: 'backtest_complete',
                   timestamp: Math.floor(createdAt.toSeconds()),
                   price: 0, // Not applicable for summary
                   quantity: result.trades || 0,
@@ -404,7 +490,7 @@ export function createProductionContext(config?: ProductionContextConfig): Workf
                 // Create an error event for failed simulation
                 const createdAt = DateTime.fromISO(result.createdAtISO, { zone: 'utc' });
                 events.push({
-                  event_type: 'simulation_error',
+                  event_type: 'backtest_error',
                   timestamp: Math.floor(createdAt.toSeconds()),
                   price: 0,
                   pnl_usd: 0,
@@ -422,25 +508,94 @@ export function createProductionContext(config?: ProductionContextConfig): Workf
 
             const result = await clickHouse.storeEvents(runId, events);
             if (!result.success) {
-              logger.error('[workflows.context] Failed to store simulation results in ClickHouse', {
+              logger.error('[workflows.context] Failed to store backtest results in ClickHouse', {
                 runId,
                 count: rows.length,
                 error: result.error,
               });
             } else {
-              logger.info('[workflows.context] Stored simulation results in ClickHouse', {
+              logger.info('[workflows.context] Stored backtest results in ClickHouse', {
                 runId,
                 count: rows.length,
                 eventsStored: events.length,
               });
             }
           } catch (error) {
-            logger.error('[workflows.context] Error storing simulation results', {
+            logger.error('[workflows.context] Error storing backtest results', {
               error: error instanceof Error ? error.message : String(error),
               runId,
               count: rows.length,
             });
             // Don't throw - workflow should continue even if storage fails
+          }
+        },
+      },
+
+      // Deprecated alias for backward compatibility - delegates to backtestResults
+      simulationResults: {
+        async insertMany(runId: string, rows: BacktestCallResult[]): Promise<void> {
+          // Duplicate backtestResults implementation (can't reference directly in object literal)
+          // This is temporary - simulationResults will be removed in a future version
+          try {
+            const events = rows.flatMap((result) => {
+              const events: Array<{
+                event_type: string;
+                timestamp: number;
+                price: number;
+                quantity?: number;
+                value_usd?: number;
+                pnl_usd?: number;
+                metadata?: Record<string, unknown>;
+              }> = [];
+
+              if (result.ok && result.pnlMultiplier !== undefined) {
+                const createdAt = DateTime.fromISO(result.createdAtISO, { zone: 'utc' });
+                events.push({
+                  event_type: 'backtest_complete',
+                  timestamp: Math.floor(createdAt.toSeconds()),
+                  price: 0,
+                  quantity: result.trades || 0,
+                  pnl_usd: result.pnlMultiplier,
+                  metadata: {
+                    callId: result.callId,
+                    mint: result.mint,
+                    pnlMultiplier: result.pnlMultiplier,
+                    trades: result.trades,
+                  },
+                });
+              } else {
+                const createdAt = DateTime.fromISO(result.createdAtISO, { zone: 'utc' });
+                events.push({
+                  event_type: 'backtest_error',
+                  timestamp: Math.floor(createdAt.toSeconds()),
+                  price: 0,
+                  pnl_usd: 0,
+                  metadata: {
+                    callId: result.callId,
+                    mint: result.mint,
+                    errorCode: result.errorCode,
+                    errorMessage: result.errorMessage,
+                  },
+                });
+              }
+
+              return events;
+            });
+
+            const result = await clickHouse.storeEvents(runId, events);
+            if (!result.success) {
+              logger.error('[workflows.context] Failed to store backtest results (via simulationResults)', {
+                runId,
+                count: rows.length,
+                error: result.error,
+              });
+            }
+          } catch (error) {
+            logger.error('[workflows.context] Error storing backtest results (via simulationResults)', {
+              error: error instanceof Error ? error.message : String(error),
+              runId,
+              count: rows.length,
+            });
           }
         },
       },
@@ -478,19 +633,22 @@ export function createProductionContext(config?: ProductionContextConfig): Workf
       },
     },
 
-    simulation: {
+    backtest: {
       /**
-       * Run a simulation with causal candle access.
+       * Run a backtest with causal candle access.
+       *
+       * Deterministic replay over historical data.
+       * Same inputs → same outputs, no randomness.
        *
        * CRITICAL: This function ONLY accepts a CausalCandleAccessor.
-       * It is structurally impossible to pass raw candles into a simulation.
+       * It is structurally impossible to pass raw candles into a backtest.
        *
        * The causal accessor enforces:
-       * - Closed-bar semantics (only candles with closeTime <= simulationTime are accessible)
+       * - Closed-bar semantics (only candles with closeTime <= backtestTime are accessible)
        * - No future candles (look-ahead bias is impossible)
        * - Monotonic time progression
        *
-       * This is the lock that prevents accidental cheating in simulations.
+       * This is the lock that prevents accidental cheating in backtests.
        */
       async run(q: {
         candleAccessor: import('@quantbot/simulation').CausalCandleAccessor;
@@ -499,7 +657,7 @@ export function createProductionContext(config?: ProductionContextConfig): Workf
         endTime: number;
         strategy: StrategyRecord;
         call: CallRecord;
-      }): Promise<SimulationEngineResult> {
+      }): Promise<BacktestEngineResult> {
         // Extract strategy legs from config
         const config = q.strategy.config as Record<string, unknown>;
         const strategyLegs = (
@@ -519,6 +677,63 @@ export function createProductionContext(config?: ProductionContextConfig): Workf
 
         // Use causal accessor - this is the ONLY path.
         // Legacy { candles: Candle[] } signature removed - impossible to pass raw candles.
+        const { simulateStrategyWithCausalAccessor } = await import('@quantbot/simulation');
+        const result = await simulateStrategyWithCausalAccessor(
+          q.candleAccessor,
+          q.mint,
+          q.startTime,
+          q.endTime,
+          strategyLegs,
+          config.stopLoss as StopLossConfig | undefined,
+          config.entry as EntryConfig | undefined,
+          config.reEntry as ReEntryConfig | undefined,
+          config.costs as CostConfig | undefined,
+          {
+            entrySignal: config.entrySignal as SignalGroup | undefined,
+            exitSignal: config.exitSignal as SignalGroup | undefined,
+            interval: '5m',
+          }
+        );
+
+        return {
+          pnlMultiplier: result.finalPnl,
+          trades: result.events.filter((e: { type?: string }) => {
+            return e.type === 'entry' || e.type === 'exit';
+          }).length,
+        };
+      },
+    },
+
+    // Deprecated alias for backward compatibility - duplicates backtest.run implementation
+    simulation: {
+      /**
+       * @deprecated Use backtest.run instead.
+       */
+      async run(q: {
+        candleAccessor: import('@quantbot/simulation').CausalCandleAccessor;
+        mint: string;
+        startTime: number;
+        endTime: number;
+        strategy: StrategyRecord;
+        call: CallRecord;
+      }): Promise<BacktestEngineResult> {
+        // Duplicate backtest.run implementation (can't reference directly in object literal)
+        const config = q.strategy.config as Record<string, unknown>;
+        const strategyLegs = (
+          Array.isArray(config.legs)
+            ? config.legs
+            : Array.isArray(config.strategy)
+              ? config.strategy
+              : []
+        ) as Array<{ target: number; percent: number }>;
+
+        if (!Array.isArray(strategyLegs) || strategyLegs.length === 0) {
+          throw new ValidationError('Invalid strategy config: missing legs array', {
+            strategyId: q.strategy.id,
+            config: q.strategy.config,
+          });
+        }
+
         const { simulateStrategyWithCausalAccessor } = await import('@quantbot/simulation');
         const result = await simulateStrategyWithCausalAccessor(
           q.candleAccessor,

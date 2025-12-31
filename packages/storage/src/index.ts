@@ -116,6 +116,16 @@ export type { OHLCVCoverageRecord } from './duckdb/repositories/TokenDataReposit
 export { CallersRepository } from './duckdb/repositories/CallersRepository.js';
 export { StrategiesRepository } from './duckdb/repositories/StrategiesRepository.js';
 export { ErrorRepository } from './duckdb/repositories/ErrorRepository.js';
+export { FiltersRepository } from './duckdb/repositories/FiltersRepository.js';
+export { RunsRepository } from './duckdb/repositories/RunsRepository.js';
+export type {
+  SimulatorRunStatus,
+  RunRecord,
+  RunInsertData,
+  RunUpdateData,
+} from './duckdb/repositories/RunsRepository.js';
+export { RunTradesRepository } from './duckdb/repositories/RunTradesRepository.js';
+export { RunReplayIndexRepository } from './duckdb/repositories/RunReplayIndexRepository.js';
 export type {
   ErrorEvent,
   ErrorInsertData,

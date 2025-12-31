@@ -1,9 +1,9 @@
 /**
- * Interactive Simulation Commands using Ink
+ * Interactive Backtest Commands using Ink
  * ==========================================
- * Provides beautiful, React-based interactive prompts for running simulations.
+ * Provides beautiful, React-based interactive prompts for running backtests.
  *
- * This module is the main entry point for the guided simulation CLI workflow.
+ * This module is the main entry point for the guided backtest CLI workflow.
  *
  * Maintainer Notes:
  * - Uses Ink (React for CLI) for UI.
@@ -63,7 +63,7 @@ type Step =
   | 'error';
 
 /**
- * Application state for the top-level interactive simulation.
+ * Application state for the top-level interactive backtest.
  */
 interface AppState {
   step: Step;
@@ -384,7 +384,7 @@ function SummaryScreen({
   return (
     <Box flexDirection="column" padding={1}>
       <Text color="cyan" bold>
-        📋 Simulation Summary
+        📋 Backtest Summary
       </Text>
       <Box marginTop={1} flexDirection="column">
         <Text>  Strategy:     {state.selectedStrategy}</Text>
@@ -397,7 +397,7 @@ function SummaryScreen({
       <Box marginTop={2} flexDirection="column">
         <Text color={selected === 0 ? 'green' : undefined}>
           {selected === 0 ? '❯ ' : '  '}
-          Proceed with simulation
+          Proceed with backtest
         </Text>
         <Text color={selected === 1 ? 'red' : undefined}>
           {selected === 1 ? '❯ ' : '  '}
@@ -419,14 +419,14 @@ function SummaryScreen({
 function RunningScreen() {
   return (
     <Box flexDirection="column" padding={1}>
-      <Text color="yellow">⚙️  Running simulation...</Text>
+      <Text color="yellow">⚙️  Running backtest...</Text>
       <Text dimColor>Please wait...</Text>
     </Box>
   );
 }
 
 /**
- * Simulation result type returned from workflow.
+ * Backtest result type returned from workflow.
  */
 interface SimulationResult {
   runId: string;
@@ -451,14 +451,14 @@ interface SimulationResult {
 }
 
 /**
- * UI Component: Render simulation results in summary table.
- * @param result The completed simulation result object
+ * UI Component: Render backtest results in summary table.
+ * @param result The completed backtest result object
  */
 function ResultsScreen({ result }: { result: SimulationResult }) {
   return (
     <Box flexDirection="column" padding={1}>
       <Text color="green" bold>
-        ✅ Simulation complete!
+        ✅ Backtest complete!
       </Text>
       <Box marginTop={1} flexDirection="column">
         <Text bold>📈 SUMMARY</Text>
@@ -510,7 +510,7 @@ function ErrorScreen({ error }: { error: string }) {
 }
 
 /**
- * The main React component for interactive simulation workflow.
+ * The main React component for interactive backtest workflow.
  *
  * Advances through a series of state transitions and renders the relevant UI component for each step.
  */
@@ -782,15 +782,31 @@ export async function runInteractiveSimulation(): Promise<void> {
 }
 
 /**
- * Registers the interactive simulation command (sim/simulate) on a Commander program.
+ * Registers the interactive backtest command (backtest) on a Commander program.
  * 
  * @param program Commander program instance to attach to
  */
 export function registerInteractiveSimulationCommand(program: Command): void {
   program
+    .command('backtest-interactive')
+    .alias('backtest-i')
+    .description('🎯 Interactive backtest workflow (guided prompts)')
+    .action(async () => {
+      await runInteractiveSimulation();
+    });
+  
+  // Deprecated aliases for backward compatibility
+  program
     .command('sim')
     .alias('simulate')
-    .description('🎯 Interactive simulation workflow (guided prompts)')
+    .description('🎯 Interactive backtest workflow (deprecated: use "backtest-interactive")')
+    .hook('preAction', () => {
+      console.warn(
+        '\n⚠️  DEPRECATION WARNING:\n' +
+          '   The "sim" / "simulate" command is deprecated.\n' +
+          '   Please use "backtest-interactive" instead.\n\n'
+      );
+    })
     .action(async () => {
       await runInteractiveSimulation();
     });

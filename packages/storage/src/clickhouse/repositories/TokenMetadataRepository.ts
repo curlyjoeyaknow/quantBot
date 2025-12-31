@@ -132,7 +132,7 @@ export class TokenMetadataRepository {
     const database = getClickHouseDatabaseName();
 
     // Build query using query builder utilities (prevents SQL injection)
-    const escapedToken = escapeSqlString(tokenAddress);
+    const escapedTokenAddress = escapeSqlString(tokenAddress);
 
     try {
       const result = await ch.query({
@@ -235,7 +235,7 @@ export class TokenMetadataRepository {
     const startUnix = Math.floor(startTime.toSeconds());
     const endUnix = Math.floor(endTime.toSeconds());
     // Build query using query builder utilities (prevents SQL injection)
-    const escapedToken = escapeSqlString(tokenAddress);
+    const escapedTokenAddress = escapeSqlString(tokenAddress);
 
     try {
       const result = await ch.query({

@@ -75,9 +75,9 @@ function toSimulatorCandle(candle: {
 
 /**
  * Materialize slices for eligible tokens
- * 
+ *
  * Fetches candles from ClickHouse and writes them to slice files (JSON or Parquet).
- * 
+ *
  * @param plan - Run plan with token requirements
  * @param eligibleTokens - Array of eligible token addresses
  * @param ctx - Workflow context
@@ -256,15 +256,15 @@ export async function materializeSlices(
 
 /**
  * Load candles from a slice file
- * 
+ *
  * Automatically detects format (JSON or Parquet) based on file extension.
- * 
+ *
  * @param slicePath - Path to slice file (JSON or Parquet)
  * @returns Array of candles
  */
 export async function loadSlice(slicePath: string): Promise<Candle[]> {
   const { readFile } = await import('fs/promises');
-  
+
   // Detect format from file extension
   if (slicePath.endsWith('.parquet')) {
     // Parquet support - placeholder for future implementation

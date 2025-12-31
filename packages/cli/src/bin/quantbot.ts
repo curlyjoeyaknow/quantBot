@@ -19,7 +19,8 @@ import '../commands/observability.js';
 import '../commands/storage.js';
 import '../commands/ohlcv.js';
 import '../commands/ingestion.js';
-import '../commands/simulation.js';
+import '../commands/backtest.js';
+import '../commands/simulation.js'; // Deprecated alias
 import '../commands/simulation-interactive.js';
 // import '../commands/monitoring.js'; // Archived
 import '../commands/analytics.js';
@@ -37,7 +38,8 @@ import { registerObservabilityCommands } from '../commands/observability.js';
 import { registerStorageCommands } from '../commands/storage.js';
 import { registerOhlcvCommands } from '../commands/ohlcv.js';
 import { registerIngestionCommands } from '../commands/ingestion.js';
-import { registerSimulationCommands } from '../commands/simulation.js';
+import { registerBacktestCommands } from '../commands/backtest.js';
+import { registerSimulationCommands } from '../commands/simulation.js'; // Deprecated alias
 import { registerArtifactCommands } from '../commands/artifacts.js';
 import { registerInteractiveSimulationCommand } from '../commands/simulation-interactive.js';
 import { registerAnalyticsCommands } from '../commands/analytics.js';
@@ -63,7 +65,8 @@ registerObservabilityCommands(program);
 registerStorageCommands(program);
 registerOhlcvCommands(program);
 registerIngestionCommands(program);
-registerSimulationCommands(program);
+registerBacktestCommands(program);
+registerSimulationCommands(program); // Deprecated alias - shows warning
 registerArtifactCommands(program);
 registerInteractiveSimulationCommand(program);
 registerAnalyticsCommands(program);

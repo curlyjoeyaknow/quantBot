@@ -154,8 +154,16 @@ async function ensureTickTable(ch: ClickHouseClient): Promise<void> {
   });
 }
 
+/**
+ * Ensures backtest tables exist in ClickHouse.
+ * 
+ * Creates simulation_* tables (for backward compatibility) and backtest_* views (new naming).
+ * The views point to the simulation_* tables, so both names work.
+ */
 async function ensureSimulationTables(ch: ClickHouseClient): Promise<void> {
   const database = getClickHouseDatabaseName();
+  
+  // Create simulation_events table (kept for backward compatibility)
   await ch.exec({
     query: `
       CREATE TABLE IF NOT EXISTS ${database}.simulation_events (
@@ -180,6 +188,7 @@ async function ensureSimulationTables(ch: ClickHouseClient): Promise<void> {
     `,
   });
 
+  // Create simulation_aggregates table (kept for backward compatibility)
   await ch.exec({
     query: `
       CREATE TABLE IF NOT EXISTS ${database}.simulation_aggregates (
@@ -203,6 +212,56 @@ async function ensureSimulationTables(ch: ClickHouseClient): Promise<void> {
       ORDER BY (simulation_run_id)
       SETTINGS index_granularity = 8192
     `,
+  });
+
+  // Create backtest_events view (alias for simulation_events)
+  // This provides backtest_* naming while maintaining backward compatibility
+  await ch.exec({
+    query: `
+      CREATE VIEW IF NOT EXISTS ${database}.backtest_events AS
+      SELECT 
+        simulation_run_id AS backtest_run_id,
+        token_address,
+        chain,
+        event_time,
+        seq,
+        event_type,
+        price,
+        size,
+        remaining_position,
+        pnl_so_far,
+        indicators_json,
+        position_state_json,
+        metadata_json
+      FROM ${database}.simulation_events
+    `,
+  }).catch(() => {
+    // View might already exist or creation might fail, ignore error
+  });
+
+  // Create backtest_aggregates view (alias for simulation_aggregates)
+  await ch.exec({
+    query: `
+      CREATE VIEW IF NOT EXISTS ${database}.backtest_aggregates AS
+      SELECT 
+        simulation_run_id AS backtest_run_id,
+        token_address,
+        chain,
+        final_pnl,
+        max_drawdown,
+        volatility,
+        sharpe_ratio,
+        sortino_ratio,
+        win_rate,
+        trade_count,
+        reentry_count,
+        ladder_entries_used,
+        ladder_exits_used,
+        created_at
+      FROM ${database}.simulation_aggregates
+    `,
+  }).catch(() => {
+    // View might already exist or creation might fail, ignore error
   });
 }
 
@@ -576,6 +635,9 @@ export async function hasCandles(
   const tokenPatternSuffix = `%${tokenAddress}`;
   const escapedTokenPattern = tokenPattern.replace(/'/g, "''");
   const escapedTokenPatternSuffix = tokenPatternSuffix.replace(/'/g, "''");
+
+  // Get database name
+  const database = getClickHouseDatabaseName();
 
   // Build query with string interpolation (properly escaped to prevent SQL injection)
   try {

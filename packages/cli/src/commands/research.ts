@@ -134,7 +134,9 @@ export function registerResearchCommands(program: Command): void {
   // Replay from manifest command
   const replayManifestCmd = researchCmd
     .command('replay-manifest')
-    .description('Replay a backtest from a manifest file (first-class re-run command, deterministic)')
+    .description(
+      'Replay a backtest from a manifest file (first-class re-run command, deterministic)'
+    )
     .requiredOption('--manifest <path>', 'Path to manifest.json file')
     .option('--format <format>', 'Output format', 'table');
 
@@ -365,7 +367,8 @@ const researchModule: PackageCommandModule = {
     },
     {
       name: 'replay-manifest',
-      description: 'Replay a backtest from a manifest file (first-class re-run command, deterministic)',
+      description:
+        'Replay a backtest from a manifest file (first-class re-run command, deterministic)',
       schema: researchReplayManifestSchema,
       handler: async (args: unknown, ctx: unknown): Promise<unknown> => {
         const typedCtx = ctx as CommandContext;

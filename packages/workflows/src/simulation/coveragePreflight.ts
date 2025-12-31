@@ -37,9 +37,9 @@ const CHAIN = 'solana' as const;
 
 /**
  * Coverage preflight check
- * 
+ *
  * Validates candle availability for all tokens in the run plan.
- * 
+ *
  * @param plan - Run plan with token requirements
  * @param ctx - Workflow context (for logging)
  * @param runId - Optional run ID for writing coverage artifact
@@ -174,7 +174,14 @@ export async function coveragePreflight(
       eligible: eligibleTokens,
       excluded: excludedTokens.map((t) => ({
         token: t.token,
-        reason: t.reason === 'insufficient' ? 'insufficient_range' : t.reason === 'too_new' ? 'too_new' : t.reason === 'missing_interval' ? 'missing_interval' : 'no_data',
+        reason:
+          t.reason === 'insufficient'
+            ? 'insufficient_range'
+            : t.reason === 'too_new'
+              ? 'too_new'
+              : t.reason === 'missing_interval'
+                ? 'missing_interval'
+                : 'no_data',
         details: t.details,
       })),
       stats: {

@@ -98,7 +98,10 @@ export function registerCallsCommands(program: Command): void {
   const exportSimCmd = callsCmd
     .command('export-simulation')
     .description('Export calls from DuckDB with backtest results to CSV (deterministic replay)')
-    .addHelpText('after', '\n⚠️  Note: Command name "export-simulation" is kept for backward compatibility. Results are from deterministic backtests.')
+    .addHelpText(
+      'after',
+      '\n⚠️  Note: Command name "export-simulation" is kept for backward compatibility. Results are from deterministic backtests.'
+    )
     .requiredOption('--duckdb <path>', 'Path to DuckDB file')
     .requiredOption('--from-iso <iso>', 'Start date (ISO 8601)')
     .requiredOption('--to-iso <iso>', 'End date (ISO 8601)')
