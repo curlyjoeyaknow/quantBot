@@ -146,15 +146,13 @@ export type WorkflowContext = {
      * Pure compute. If it throws, workflow captures per-call error and continues.
      * Legacy { candles: Candle[] } signature removed - enforce causal accessor usage.
      */
-    run: (
-      q: {
-        candleAccessor: CausalCandleAccessor; // Mandatory - no raw candles allowed
-        mint: string;
-        startTime: number;
-        endTime: number;
-        strategy: StrategyRecord;
-        call: CallRecord;
-      }
-    ) => Promise<SimulationEngineResult>;
+    run: (q: {
+      candleAccessor: CausalCandleAccessor; // Mandatory - no raw candles allowed
+      mint: string;
+      startTime: number;
+      endTime: number;
+      strategy: StrategyRecord;
+      call: CallRecord;
+    }) => Promise<SimulationEngineResult>;
   };
 };

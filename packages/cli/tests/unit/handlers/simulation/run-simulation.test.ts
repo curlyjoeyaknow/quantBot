@@ -147,11 +147,7 @@ describe('runSimulationHandler', () => {
     );
 
     // Verify marked as failed
-    expect(mockRunRepo.finishRun).toHaveBeenCalledWith(
-      'test-uuid-123',
-      'failed',
-      expect.any(Date)
-    );
+    expect(mockRunRepo.finishRun).toHaveBeenCalledWith('test-uuid-123', 'failed', expect.any(Date));
 
     // Verify metrics were NOT inserted (workflow failed)
     expect(mockRunRepo.insertMetrics).not.toHaveBeenCalled();
@@ -164,7 +160,13 @@ describe('runSimulationHandler', () => {
       fromISO: '2024-01-01T00:00:00.000Z',
       toISO: '2024-02-01T00:00:00.000Z',
       dryRun: false,
-      totals: { callsFound: 0, callsAttempted: 0, callsSucceeded: 0, callsFailed: 0, tradesTotal: 0 },
+      totals: {
+        callsFound: 0,
+        callsAttempted: 0,
+        callsSucceeded: 0,
+        callsFailed: 0,
+        tradesTotal: 0,
+      },
       pnl: {},
     };
 
