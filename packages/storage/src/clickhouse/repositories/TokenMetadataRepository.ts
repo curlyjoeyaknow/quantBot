@@ -11,6 +11,11 @@ import { DateTime } from 'luxon';
 import { getClickHouseClient } from '../../clickhouse-client.js';
 import { logger } from '@quantbot/utils';
 import type { TokenMetadata } from '@quantbot/core';
+import {
+  buildDateRangeWhereClauseUnix,
+  buildChainWhereClause,
+  escapeSqlString,
+} from '../../utils/query-builder.js';
 
 export interface TokenMetadataSnapshot extends TokenMetadata {
   timestamp: number; // Unix timestamp in seconds

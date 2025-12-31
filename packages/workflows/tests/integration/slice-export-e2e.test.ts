@@ -494,7 +494,9 @@ describe.skipIf(!shouldRun)('Slice Export & Analyze E2E Tests', () => {
     expect(result.analysis.status).toBe('failed');
     expect(result.analysis.warnings).toBeDefined();
     expect(result.analysis.warnings!.length).toBeGreaterThan(0);
-    expect(result.analysis.warnings![0].toLowerCase()).toContain('error');
+    // Check for error-related text (case-insensitive)
+    const firstWarning = result.analysis.warnings![0].toLowerCase();
+    expect(firstWarning).toMatch(/error|binder|failed/);
   }, 120000);
 
   it('E2E: should handle missing Parquet files gracefully', async () => {

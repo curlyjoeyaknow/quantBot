@@ -1,17 +1,20 @@
+import { DateTime } from 'luxon';
 import type { CommandContext } from '../../core/command-context.js';
 import type { ListRunsArgs } from '../../command-defs/simulation.js';
+import type { RunWithStatus } from '@quantbot/core';
 
 export async function listRunsHandler(
-  _args: ListRunsArgs,
-  _ctx: CommandContext
-): Promise<unknown[]> {
-  // TODO: Implement DuckDB-based simulation runs listing
-  // PostgreSQL SimulationRunsRepository was removed - need to implement DuckDB equivalent
-  // For now, return empty array
-  return [];
+  args: ListRunsArgs,
+  ctx: CommandContext
+): Promise<RunWithStatus[]> {
+  await ctx.ensureInitialized();
+  const runRepo = ctx.services.runRepository();
 
-  // const callersRepo = ctx.services.callersRepository();
+  const filters = {
+    from: args.from ? DateTime.fromISO(args.from, { zone: 'utc' }) : undefined,
+    to: args.to ? DateTime.fromISO(args.to, { zone: 'utc' }) : undefined,
+    limit: args.limit,
+  };
 
-  // TODO: Re-implement using DuckDB when simulation runs storage is available
-  // Previous implementation used PostgreSQL SimulationRunsRepository which was removed
+  return await runRepo.listRuns(filters);
 }

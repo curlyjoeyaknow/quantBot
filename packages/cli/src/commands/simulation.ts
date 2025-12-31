@@ -12,6 +12,8 @@ import { commandRegistry } from '../core/command-registry.js';
 import type { CommandContext } from '../core/command-context.js';
 import { runSimulationHandler } from './simulation/run-simulation.js';
 import { listRunsHandler } from './simulation/list-runs.js';
+import { runsHandler } from './simulation/runs.js';
+import { leaderboardHandler } from './simulation/leaderboard.js';
 import { runSimulationDuckdbHandler } from './simulation/run-simulation-duckdb.js';
 import { storeStrategyDuckdbHandler } from './simulation/store-strategy-duckdb.js';
 import { storeRunDuckdbHandler } from './simulation/store-run-duckdb.js';
@@ -22,6 +24,7 @@ import { runInteractiveStrategyCreation } from './simulation-strategy-interactiv
 import {
   runSchema,
   listRunsSchema,
+  leaderboardSchema,
   runSimulationDuckdbSchema,
   storeStrategySchema,
   storeRunSchema,
@@ -86,6 +89,42 @@ export function registerSimulationCommands(program: Command): void {
       limit: raw.limit ? coerceNumber(raw.limit, 'limit') : 100,
     }),
     validate: (opts) => listRunsSchema.parse(opts),
+    onError: die,
+  });
+
+  // Runs command (simple, last 20)
+  const runsCmd = simCmd.command('runs').description('List last 20 simulation runs');
+
+  defineCommand(runsCmd, {
+    name: 'runs',
+    packageName: 'simulation',
+    coerce: () => ({}),
+    validate: () => ({}),
+    onError: die,
+  });
+
+  // Leaderboard command
+  const leaderboardCmd = simCmd
+    .command('leaderboard')
+    .description('Show simulation leaderboard (ranked by ROI)')
+    .option('--strategy-id <id>', 'Strategy ID filter')
+    .option('--interval-sec <seconds>', 'Interval in seconds filter')
+    .option('--from <date>', 'Start date (ISO 8601)')
+    .option('--to <date>', 'End date (ISO 8601)')
+    .option('--min-trades <count>', 'Minimum trades filter')
+    .option('--limit <limit>', 'Maximum rows', '50')
+    .option('--format <format>', 'Output format', 'table');
+
+  defineCommand(leaderboardCmd, {
+    name: 'leaderboard',
+    packageName: 'simulation',
+    coerce: (raw) => ({
+      ...raw,
+      limit: raw.limit ? coerceNumber(raw.limit, 'limit') : 50,
+      interval_sec: raw.intervalSec ? coerceNumber(raw.intervalSec, 'interval-sec') : undefined,
+      min_trades: raw.minTrades ? coerceNumber(raw.minTrades, 'min-trades') : undefined,
+    }),
+    validate: (opts) => leaderboardSchema.parse(opts),
     onError: die,
   });
 
@@ -311,6 +350,30 @@ const simulationModule: PackageCommandModule = {
         return await listRunsHandler(typedArgs, typedCtx);
       },
       examples: ['quantbot simulation list-runs --limit 50'],
+    },
+    {
+      name: 'runs',
+      description: 'List last 20 simulation runs',
+      schema: z.object({}),
+      handler: async (_args: unknown, ctx: unknown) => {
+        const typedCtx = ctx as CommandContext;
+        return await runsHandler(typedCtx);
+      },
+      examples: ['quantbot simulation runs'],
+    },
+    {
+      name: 'leaderboard',
+      description: 'Show simulation leaderboard (ranked by ROI)',
+      schema: leaderboardSchema,
+      handler: async (args: unknown, ctx: unknown) => {
+        const typedCtx = ctx as CommandContext;
+        const typedArgs = args as z.infer<typeof leaderboardSchema>;
+        return await leaderboardHandler(typedArgs, typedCtx);
+      },
+      examples: [
+        'quantbot simulation leaderboard',
+        'quantbot simulation leaderboard --strategy-id PT2_SL25 --limit 20',
+      ],
     },
     {
       name: 'run-duckdb',

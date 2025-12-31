@@ -10,6 +10,13 @@ import { getClickHouseClient } from '../../clickhouse-client.js';
 import { logger, ValidationError } from '@quantbot/utils';
 import type { Candle, DateRange } from '@quantbot/core';
 import { normalizeChain } from '@quantbot/core';
+import { intervalToSeconds } from '../../utils/interval-converter.js';
+import {
+  buildTokenAddressWhereClause,
+  buildDateRangeWhereClauseUnix,
+  buildChainWhereClause,
+  buildIntervalWhereClause,
+} from '../../utils/query-builder.js';
 
 export class OhlcvRepository {
   /**
@@ -32,17 +39,19 @@ export class OhlcvRepository {
     // Normalize chain name to lowercase canonical form
     const normalizedChain = normalizeChain(chain);
 
+    // Convert interval string to seconds (UInt32) for storage
+    const intervalSeconds = intervalToSeconds(interval);
+
     const rows = candles.map((candle) => ({
       token_address: token, // Full address, case-preserved
       chain: normalizedChain, // Normalized to lowercase (solana, ethereum, bsc, base, monad, evm)
       timestamp: DateTime.fromSeconds(candle.timestamp).toFormat('yyyy-MM-dd HH:mm:ss'),
-      interval: interval,
+      interval_seconds: intervalSeconds, // Store as UInt32 seconds (e.g., 300 for '5m', 1 for '1s')
       open: candle.open,
       high: candle.high,
       low: candle.low,
       close: candle.close,
       volume: candle.volume,
-      // Note: is_backfill column removed - table doesn't have this column
     }));
 
     try {
@@ -112,17 +121,10 @@ export class OhlcvRepository {
     const startUnix = range.from.toUnixInteger();
     const endUnix = range.to.toUnixInteger();
 
-    // Escape values for SQL injection prevention
-    const escapedToken = token.replace(/'/g, "''");
-    const escapedChain = chain.replace(/'/g, "''");
-    const escapedInterval = interval.replace(/'/g, "''");
-    const tokenPattern = `${token}%`;
-    const tokenPatternSuffix = `%${token}`;
-    const escapedTokenPattern = tokenPattern.replace(/'/g, "''");
-    const escapedTokenPatternSuffix = tokenPatternSuffix.replace(/'/g, "''");
+    // Convert interval string to seconds (UInt32) for query comparison
+    const intervalSeconds = intervalToSeconds(interval);
 
-    // Build query with string interpolation (properly escaped to prevent SQL injection)
-    // Using string interpolation instead of parameterized queries to avoid "Unknown setting param_*" error
+    // Build query using query builder utilities (prevents SQL injection)
     const query = `
       SELECT 
         toUnixTimestamp(timestamp) as timestamp,
@@ -132,16 +134,10 @@ export class OhlcvRepository {
         close,
         volume
       FROM ${CLICKHOUSE_DATABASE}.ohlcv_candles
-      WHERE (token_address = '${escapedToken}'
-             OR lower(token_address) = lower('${escapedToken}')
-             OR token_address LIKE '${escapedTokenPattern}'
-             OR lower(token_address) LIKE lower('${escapedTokenPattern}')
-             OR token_address LIKE '${escapedTokenPatternSuffix}'
-             OR lower(token_address) LIKE lower('${escapedTokenPatternSuffix}'))
-        AND chain = '${escapedChain}'
-        AND \`interval\` = '${escapedInterval}'
-        AND timestamp >= toDateTime(${startUnix})
-        AND timestamp <= toDateTime(${endUnix})
+      WHERE ${buildTokenAddressWhereClause(token)}
+        AND ${buildChainWhereClause(chain)}
+        AND ${buildIntervalWhereClause(intervalSeconds)}
+        AND ${buildDateRangeWhereClauseUnix(startUnix, endUnix)}
       ORDER BY timestamp ASC
     `;
 
@@ -196,29 +192,15 @@ export class OhlcvRepository {
     const startUnix = range.from.toUnixInteger();
     const endUnix = range.to.toUnixInteger();
 
-    // Escape values for SQL injection prevention
-    const escapedToken = token.replace(/'/g, "''");
-    const escapedChain = chain.replace(/'/g, "''");
-    const tokenPattern = `${token}%`;
-    const tokenPatternSuffix = `%${token}`;
-    const escapedTokenPattern = tokenPattern.replace(/'/g, "''");
-    const escapedTokenPatternSuffix = tokenPatternSuffix.replace(/'/g, "''");
-
-    // Build query with string interpolation (properly escaped to prevent SQL injection)
+    // Build query using query builder utilities (prevents SQL injection)
     try {
       const result = await ch.query({
         query: `
           SELECT count() as count
           FROM ${CLICKHOUSE_DATABASE}.ohlcv_candles
-          WHERE (token_address = '${escapedToken}'
-                 OR lower(token_address) = lower('${escapedToken}')
-                 OR token_address LIKE '${escapedTokenPattern}'
-                 OR lower(token_address) LIKE lower('${escapedTokenPattern}')
-                 OR token_address LIKE '${escapedTokenPatternSuffix}'
-                 OR lower(token_address) LIKE lower('${escapedTokenPatternSuffix}'))
-            AND chain = '${escapedChain}'
-            AND timestamp >= toDateTime(${startUnix})
-            AND timestamp <= toDateTime(${endUnix})
+          WHERE ${buildTokenAddressWhereClause(token)}
+            AND ${buildChainWhereClause(chain)}
+            AND ${buildDateRangeWhereClauseUnix(startUnix, endUnix)}
         `,
         format: 'JSONEachRow',
       });

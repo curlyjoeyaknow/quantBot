@@ -17,12 +17,11 @@
 
 import { z } from 'zod';
 import { DateTime } from 'luxon';
-import { ValidationError, AppError, isEvmAddress } from '@quantbot/utils';
+import { ValidationError, AppError, isEvmAddress, findWorkspaceRoot } from '@quantbot/utils';
 import { ingestOhlcv } from './ingestOhlcv.js';
 import type { IngestOhlcvSpec, IngestOhlcvContext } from './ingestOhlcv.js';
 import type { PythonEngine } from '@quantbot/utils';
-import { join, dirname } from 'path';
-import { existsSync } from 'fs';
+import { join } from 'path';
 
 /**
  * Sanitize error messages to prevent leaking sensitive information
@@ -50,22 +49,6 @@ function formatElapsedTime(ms: number): string {
   const minutes = Math.floor(ms / 60000);
   const seconds = Math.floor((ms % 60000) / 1000);
   return `${minutes}m ${seconds}s`;
-}
-
-/**
- * Find workspace root by walking up from current directory
- */
-function findWorkspaceRoot(startDir: string = process.cwd()): string {
-  let current = startDir;
-  while (current !== '/' && current !== '') {
-    if (existsSync(join(current, 'pnpm-workspace.yaml'))) {
-      return current;
-    }
-    const parent = dirname(current);
-    if (parent === current) break;
-    current = parent;
-  }
-  return startDir;
 }
 
 /**
@@ -855,15 +838,15 @@ async function executeFetchTask(
       {
         failedMintsSize: failedMints.size,
         intervalsWithFailures: Array.from(failedMints.keys()),
-        failedMintsDetails: Array.from(failedMints.entries()).map(([interval, map]) => ({
-          interval,
-          count: map.size,
-          sampleMints: Array.from(map.keys()).slice(0, 2),
-          sampleChains: (() => {
-            const firstValue = Array.from(map.values())[0];
-            return firstValue ? Array.from(firstValue).slice(0, 4) : [];
-          })(),
-        })),
+        failedMintsDetails: Array.from(failedMints.entries()).map(([interval, map]) => {
+          const firstValue = Array.from(map.values())[0];
+          return {
+            interval,
+            count: map.size,
+            sampleMints: Array.from(map.keys()).slice(0, 2),
+            sampleChains: firstValue ? Array.from(firstValue).slice(0, 4) : [],
+          };
+        }),
       }
     );
   } else {

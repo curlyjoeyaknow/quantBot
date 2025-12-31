@@ -12,7 +12,7 @@ export type CreateRiskModelArgs = z.infer<
   typeof import('../../command-defs/research.js').createRiskModelSchema
 >;
 
-export async function createRiskModelHandler(args: CreateRiskModelArgs, ctx: CommandContext) {
+export async function createRiskModelHandler(args: CreateRiskModelArgs, _ctx: CommandContext) {
   // Create service (doesn't require context)
   const executionService = new ExecutionRealityService();
 
