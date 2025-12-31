@@ -9,8 +9,7 @@ import { join } from 'path';
 import { z } from 'zod';
 import { existsSync } from 'fs';
 import { execa } from 'execa';
-import { logger, ValidationError, TimeoutError, AppError } from '../index.js';
-import { findWorkspaceRoot } from '../fs/workspace-root.js';
+import { logger, ValidationError, TimeoutError, AppError, findWorkspaceRoot } from '../index.js';
 
 export interface PythonScriptOptions {
   /**
