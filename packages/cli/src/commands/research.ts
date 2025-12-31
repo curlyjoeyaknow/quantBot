@@ -46,7 +46,7 @@ export function registerResearchCommands(program: Command): void {
   // List command
   const listCmd = researchCmd
     .command('list')
-    .description('List all simulation runs')
+    .description('List all backtest runs')
     .option('--limit <n>', 'Maximum number of runs to list')
     .option('--offset <n>', 'Offset for pagination')
     .option('--format <format>', 'Output format', 'table');
@@ -66,7 +66,7 @@ export function registerResearchCommands(program: Command): void {
   // Show command
   const showCmd = researchCmd
     .command('show')
-    .description('Show details of a specific simulation run')
+    .description('Show details of a specific backtest run')
     .requiredOption('--run-id <id>', 'Run ID to show')
     .option('--format <format>', 'Output format', 'table');
 
@@ -80,7 +80,7 @@ export function registerResearchCommands(program: Command): void {
   // Leaderboard command
   const leaderboardCmd = researchCmd
     .command('leaderboard')
-    .description('Show leaderboard of simulation runs ranked by metrics')
+    .description('Show leaderboard of backtest runs ranked by metrics')
     .option('--criteria <criteria>', 'Ranking criteria', 'return')
     .option('--order <order>', 'Sort order (asc/desc)', 'desc')
     .option('--limit <n>', 'Maximum number of results')
@@ -106,8 +106,8 @@ export function registerResearchCommands(program: Command): void {
   // Run command
   const runCmd = researchCmd
     .command('run')
-    .description('Run a single simulation from a request JSON file')
-    .requiredOption('--request-file <path>', 'Path to SimulationRequest JSON file')
+    .description('Run a single backtest from a request JSON file (deterministic replay)')
+    .requiredOption('--request-file <path>', 'Path to BacktestRequest JSON file')
     .option('--format <format>', 'Output format', 'table');
 
   defineCommand(runCmd, {
@@ -120,7 +120,7 @@ export function registerResearchCommands(program: Command): void {
   // Replay command
   const replayCmd = researchCmd
     .command('replay')
-    .description('Replay a simulation by run ID')
+    .description('Replay a backtest by run ID (deterministic replay)')
     .requiredOption('--run-id <id>', 'Run ID to replay')
     .option('--format <format>', 'Output format', 'table');
 
@@ -134,7 +134,7 @@ export function registerResearchCommands(program: Command): void {
   // Replay from manifest command
   const replayManifestCmd = researchCmd
     .command('replay-manifest')
-    .description('Replay a simulation from a manifest file (first-class re-run command)')
+    .description('Replay a backtest from a manifest file (first-class re-run command, deterministic)')
     .requiredOption('--manifest <path>', 'Path to manifest.json file')
     .option('--format <format>', 'Output format', 'table');
 
@@ -152,8 +152,8 @@ export function registerResearchCommands(program: Command): void {
   // Batch command
   const batchCmd = researchCmd
     .command('batch')
-    .description('Run batch simulations from a batch JSON file')
-    .requiredOption('--batch-file <path>', 'Path to BatchSimulationRequest JSON file')
+    .description('Run batch backtests from a batch JSON file (deterministic replay)')
+    .requiredOption('--batch-file <path>', 'Path to BatchBacktestRequest JSON file')
     .option('--format <format>', 'Output format', 'table');
 
   defineCommand(batchCmd, {
@@ -180,7 +180,7 @@ export function registerResearchCommands(program: Command): void {
   // Create snapshot command
   const createSnapshotCmd = researchCmd
     .command('create-snapshot')
-    .description('Create a data snapshot for simulations')
+    .description('Create a data snapshot for backtests')
     .requiredOption('--from <date>', 'Start date (ISO 8601)')
     .requiredOption('--to <date>', 'End date (ISO 8601)')
     .option('--venue <venue>', 'Data source venue', 'pump.fun')
@@ -306,7 +306,7 @@ const researchModule: PackageCommandModule = {
   commands: [
     {
       name: 'list',
-      description: 'List all simulation runs',
+      description: 'List all backtest runs',
       schema: researchListSchema,
       handler: async (args: unknown, ctx: unknown): Promise<unknown> => {
         const typedCtx = ctx as CommandContext;
@@ -317,7 +317,7 @@ const researchModule: PackageCommandModule = {
     },
     {
       name: 'show',
-      description: 'Show details of a specific simulation run',
+      description: 'Show details of a specific backtest run',
       schema: researchShowSchema,
       handler: async (args: unknown, ctx: unknown): Promise<unknown> => {
         const typedCtx = ctx as CommandContext;
@@ -328,7 +328,7 @@ const researchModule: PackageCommandModule = {
     },
     {
       name: 'leaderboard',
-      description: 'Show leaderboard of simulation runs ranked by metrics',
+      description: 'Show leaderboard of backtest runs ranked by metrics',
       schema: researchLeaderboardSchema,
       handler: async (args: unknown, ctx: unknown): Promise<unknown> => {
         const typedCtx = ctx as CommandContext;
@@ -343,7 +343,7 @@ const researchModule: PackageCommandModule = {
     },
     {
       name: 'run',
-      description: 'Run a single simulation from a request JSON file',
+      description: 'Run a single backtest from a request JSON file (deterministic replay)',
       schema: researchRunSchema,
       handler: async (args: unknown, ctx: unknown): Promise<unknown> => {
         const typedCtx = ctx as CommandContext;
@@ -354,7 +354,7 @@ const researchModule: PackageCommandModule = {
     },
     {
       name: 'replay',
-      description: 'Replay a simulation by run ID',
+      description: 'Replay a backtest by run ID (deterministic replay)',
       schema: researchReplaySchema,
       handler: async (args: unknown, ctx: unknown): Promise<unknown> => {
         const typedCtx = ctx as CommandContext;
@@ -365,7 +365,7 @@ const researchModule: PackageCommandModule = {
     },
     {
       name: 'replay-manifest',
-      description: 'Replay a simulation from a manifest file (first-class re-run command)',
+      description: 'Replay a backtest from a manifest file (first-class re-run command, deterministic)',
       schema: researchReplayManifestSchema,
       handler: async (args: unknown, ctx: unknown): Promise<unknown> => {
         const typedCtx = ctx as CommandContext;
@@ -376,7 +376,7 @@ const researchModule: PackageCommandModule = {
     },
     {
       name: 'batch',
-      description: 'Run batch simulations from a batch JSON file',
+      description: 'Run batch backtests from a batch JSON file (deterministic replay)',
       schema: researchBatchSchema,
       handler: async (args: unknown, ctx: unknown): Promise<unknown> => {
         const typedCtx = ctx as CommandContext;
@@ -398,7 +398,7 @@ const researchModule: PackageCommandModule = {
     },
     {
       name: 'create-snapshot',
-      description: 'Create a data snapshot for simulations',
+      description: 'Create a data snapshot for backtests',
       schema: createSnapshotSchema,
       handler: async (args: unknown, ctx: unknown): Promise<unknown> => {
         const typedCtx = ctx as CommandContext;

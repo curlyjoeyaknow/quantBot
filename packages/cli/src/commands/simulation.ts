@@ -1,5 +1,8 @@
 /**
- * Simulation Commands
+ * Backtest Commands
+ * 
+ * Note: These commands perform deterministic backtests over historical data.
+ * For future stochastic simulations, see the simulation module.
  */
 
 import type { Command } from 'commander';
@@ -35,17 +38,31 @@ import {
 } from '../command-defs/simulation.js';
 
 /**
- * Register simulation commands
+ * Register backtest commands
+ * 
+ * Also registers deprecated 'simulation' alias with warning.
  */
 export function registerSimulationCommands(program: Command): void {
+  // Main backtest command
+  const backtestCmd = program
+    .command('backtest')
+    .description('Trading strategy backtest operations (deterministic replay over historical data)');
+
+  // Deprecated simulation alias
   const simCmd = program
     .command('simulation')
-    .description('Trading strategy simulation operations');
+    .description('⚠️  DEPRECATED: Use "backtest" instead. This alias will be removed in a future version.')
+    .action(() => {
+      console.warn('⚠️  Warning: "simulation" command is deprecated. Use "backtest" instead.');
+    });
+
+  // Use backtestCmd for all subcommands
+  const cmd = backtestCmd;
 
   // Run command
-  const runCmd = simCmd
+  const runCmd = cmd
     .command('run')
-    .description('Run simulation on calls')
+    .description('Run backtest on calls (deterministic replay over historical data)')
     .requiredOption('--strategy <name>', 'Strategy name')
     .option('--caller <name>', 'Caller name filter')
     .requiredOption('--from <date>', 'Start date (ISO 8601)')
@@ -72,9 +89,9 @@ export function registerSimulationCommands(program: Command): void {
   });
 
   // List runs command
-  const listRunsCmd = simCmd
+  const listRunsCmd = cmd
     .command('list-runs')
-    .description('List simulation runs')
+    .description('List backtest runs')
     .option('--caller <name>', 'Caller name filter')
     .option('--from <date>', 'Start date (ISO 8601)')
     .option('--to <date>', 'End date (ISO 8601)')
@@ -93,7 +110,7 @@ export function registerSimulationCommands(program: Command): void {
   });
 
   // Runs command (simple, last 20)
-  const runsCmd = simCmd.command('runs').description('List last 20 simulation runs');
+  const runsCmd = cmd.command('runs').description('List last 20 backtest runs');
 
   defineCommand(runsCmd, {
     name: 'runs',
@@ -104,9 +121,9 @@ export function registerSimulationCommands(program: Command): void {
   });
 
   // Leaderboard command
-  const leaderboardCmd = simCmd
+  const leaderboardCmd = cmd
     .command('leaderboard')
-    .description('Show simulation leaderboard (ranked by ROI)')
+    .description('Show backtest leaderboard (ranked by ROI)')
     .option('--strategy-id <id>', 'Strategy ID filter')
     .option('--interval-sec <seconds>', 'Interval in seconds filter')
     .option('--from <date>', 'Start date (ISO 8601)')
@@ -129,7 +146,7 @@ export function registerSimulationCommands(program: Command): void {
   });
 
   // List strategies command
-  const listStrategiesCmd = simCmd
+  const listStrategiesCmd = cmd
     .command('list-strategies')
     .description('List all available strategies')
     .option('--duckdb <path>', 'Path to DuckDB file')
@@ -145,7 +162,7 @@ export function registerSimulationCommands(program: Command): void {
   // Create strategy (interactive) command
   // Note: This is an interactive command that doesn't use execute() or the standard handler pattern.
   // It's kept as-is per the migration plan's guidance for special cases.
-  simCmd
+  cmd
     .command('create-strategy')
     .alias('strategy-create')
     .description('🎯 Interactive strategy creation (guided prompts)')
@@ -155,7 +172,7 @@ export function registerSimulationCommands(program: Command): void {
     });
 
   // Store strategy command
-  const storeStrategyCmd = simCmd
+  const storeStrategyCmd = cmd
     .command('store-strategy')
     .description('Store a strategy in DuckDB')
     .requiredOption('--duckdb <path>', 'Path to DuckDB file')
@@ -190,9 +207,9 @@ export function registerSimulationCommands(program: Command): void {
   });
 
   // Store run command
-  const storeRunCmd = simCmd
+  const storeRunCmd = cmd
     .command('store-run')
-    .description('Store a simulation run in DuckDB')
+    .description('Store a backtest run in DuckDB')
     .requiredOption('--duckdb <path>', 'Path to DuckDB file')
     .requiredOption('--run-id <id>', 'Run ID')
     .requiredOption('--strategy-id <id>', 'Strategy ID')
@@ -233,14 +250,14 @@ export function registerSimulationCommands(program: Command): void {
   });
 
   // Run DuckDB command
-  const runDuckdbCmd = simCmd
+  const runDuckdbCmd = cmd
     .command('run-duckdb')
-    .description('Run simulation using DuckDB Python engine')
+    .description('Run backtest using DuckDB Python engine (deterministic replay)')
     .requiredOption('--duckdb <path>', 'Path to DuckDB file')
     .requiredOption('--strategy <json>', 'Strategy config (JSON string)')
-    .option('--mint <address>', 'Token mint address (for single simulation)')
-    .option('--alert-timestamp <timestamp>', 'Alert timestamp (ISO 8601, for single simulation)')
-    .option('--batch', 'Run batch simulation on all calls in DuckDB')
+    .option('--mint <address>', 'Token mint address (for single backtest)')
+    .option('--alert-timestamp <timestamp>', 'Alert timestamp (ISO 8601, for single backtest)')
+    .option('--batch', 'Run batch backtest on all calls in DuckDB')
     .option('--initial-capital <amount>', 'Initial capital')
     .option('--lookback-minutes <minutes>', 'Lookback minutes')
     .option('--lookforward-minutes <minutes>', 'Lookforward minutes')
@@ -273,9 +290,9 @@ export function registerSimulationCommands(program: Command): void {
   });
 
   // Generate report command
-  const generateReportCmd = simCmd
+  const generateReportCmd = cmd
     .command('generate-report')
-    .description('Generate a report from DuckDB simulation data')
+    .description('Generate a report from DuckDB backtest data')
     .requiredOption('--duckdb <path>', 'Path to DuckDB file')
     .requiredOption('--type <type>', 'Report type (summary, strategy_performance)')
     .option('--strategy-id <id>', 'Strategy ID (required for strategy_performance)')
@@ -289,7 +306,7 @@ export function registerSimulationCommands(program: Command): void {
   });
 
   // ClickHouse query command
-  const clickhouseQueryCmd = simCmd
+  const clickhouseQueryCmd = cmd
     .command('clickhouse-query')
     .description('Query ClickHouse using Python engine')
     .requiredOption('--operation <op>', 'Operation (query_ohlcv, store_events, aggregate_metrics)')
@@ -324,12 +341,12 @@ export function registerSimulationCommands(program: Command): void {
  * Register as package command module
  */
 const simulationModule: PackageCommandModule = {
-  packageName: 'simulation',
-  description: 'Trading strategy simulation operations',
+  packageName: 'simulation', // Keep internal package name as 'simulation' for now
+  description: 'Trading strategy backtest operations (deterministic replay over historical data)',
   commands: [
     {
       name: 'run',
-      description: 'Run simulation on calls',
+      description: 'Run backtest on calls (deterministic replay over historical data)',
       schema: runSchema,
       handler: async (args: unknown, ctx: unknown) => {
         const typedArgs = args as z.infer<typeof runSchema>;
@@ -337,33 +354,33 @@ const simulationModule: PackageCommandModule = {
         return await runSimulationHandler(typedArgs, typedCtx);
       },
       examples: [
-        'quantbot simulation run --strategy PT2_SL25 --caller Brook --from 2024-01-01 --to 2024-02-01',
+        'quantbot backtest run --strategy PT2_SL25 --caller Brook --from 2024-01-01 --to 2024-02-01',
       ],
     },
     {
       name: 'list-runs',
-      description: 'List simulation runs',
+      description: 'List backtest runs',
       schema: listRunsSchema,
       handler: async (args: unknown, ctx: unknown) => {
         const typedCtx = ctx as CommandContext;
         const typedArgs = args as z.infer<typeof listRunsSchema>;
         return await listRunsHandler(typedArgs, typedCtx);
       },
-      examples: ['quantbot simulation list-runs --limit 50'],
+      examples: ['quantbot backtest list-runs --limit 50'],
     },
     {
       name: 'runs',
-      description: 'List last 20 simulation runs',
+      description: 'List last 20 backtest runs',
       schema: z.object({}),
       handler: async (_args: unknown, ctx: unknown) => {
         const typedCtx = ctx as CommandContext;
         return await runsHandler(typedCtx);
       },
-      examples: ['quantbot simulation runs'],
+      examples: ['quantbot backtest runs'],
     },
     {
       name: 'leaderboard',
-      description: 'Show simulation leaderboard (ranked by ROI)',
+      description: 'Show backtest leaderboard (ranked by ROI)',
       schema: leaderboardSchema,
       handler: async (args: unknown, ctx: unknown) => {
         const typedCtx = ctx as CommandContext;
@@ -371,13 +388,13 @@ const simulationModule: PackageCommandModule = {
         return await leaderboardHandler(typedArgs, typedCtx);
       },
       examples: [
-        'quantbot simulation leaderboard',
-        'quantbot simulation leaderboard --strategy-id PT2_SL25 --limit 20',
+        'quantbot backtest leaderboard',
+        'quantbot backtest leaderboard --strategy-id PT2_SL25 --limit 20',
       ],
     },
     {
       name: 'run-duckdb',
-      description: 'Run simulation using DuckDB Python engine',
+      description: 'Run backtest using DuckDB Python engine (deterministic replay)',
       schema: runSimulationDuckdbSchema,
       handler: async (args: unknown, ctx: unknown) => {
         const typedCtx = ctx as CommandContext;
@@ -385,7 +402,7 @@ const simulationModule: PackageCommandModule = {
         return await runSimulationDuckdbHandler(typedArgs, typedCtx);
       },
       examples: [
-        'quantbot simulation run-duckdb --duckdb tele.duckdb --strategy strategy.json --mint So111...',
+        'quantbot backtest run-duckdb --duckdb tele.duckdb --strategy strategy.json --mint So111...',
       ],
     },
     {
@@ -398,12 +415,12 @@ const simulationModule: PackageCommandModule = {
         return await storeStrategyDuckdbHandler(typedArgs, typedCtx);
       },
       examples: [
-        'quantbot simulation store-strategy --duckdb sim.duckdb --strategy-id PT2_SL25 --name "PT2 SL25" --entry-config \'{"type":"immediate"}\' --exit-config \'{"targets":[{"target":2.0,"percent":0.5}]}\'',
+        'quantbot backtest store-strategy --duckdb sim.duckdb --strategy-id PT2_SL25 --name "PT2 SL25" --entry-config \'{"type":"immediate"}\' --exit-config \'{"targets":[{"target":2.0,"percent":0.5}]}\'',
       ],
     },
     {
       name: 'store-run',
-      description: 'Store a simulation run in DuckDB',
+      description: 'Store a backtest run in DuckDB',
       schema: storeRunSchema,
       handler: async (args: unknown, ctx: unknown) => {
         const typedCtx = ctx as CommandContext;
@@ -411,12 +428,12 @@ const simulationModule: PackageCommandModule = {
         return await storeRunDuckdbHandler(typedArgs, typedCtx);
       },
       examples: [
-        'quantbot simulation store-run --duckdb sim.duckdb --run-id run123 --strategy-id PT2_SL25 --mint So111... --alert-timestamp 2024-01-01T00:00:00Z --start-time 2024-01-01T00:00:00Z --end-time 2024-01-02T00:00:00Z',
+        'quantbot backtest store-run --duckdb sim.duckdb --run-id run123 --strategy-id PT2_SL25 --mint So111... --alert-timestamp 2024-01-01T00:00:00Z --start-time 2024-01-01T00:00:00Z --end-time 2024-01-02T00:00:00Z',
       ],
     },
     {
       name: 'generate-report',
-      description: 'Generate a report from DuckDB simulation data',
+      description: 'Generate a report from DuckDB backtest data',
       schema: generateReportSchema,
       handler: async (args: unknown, ctx: unknown) => {
         const typedCtx = ctx as CommandContext;
@@ -424,8 +441,8 @@ const simulationModule: PackageCommandModule = {
         return await generateReportDuckdbHandler(typedArgs, typedCtx);
       },
       examples: [
-        'quantbot simulation generate-report --duckdb sim.duckdb --type summary',
-        'quantbot simulation generate-report --duckdb sim.duckdb --type strategy_performance --strategy-id PT2_SL25',
+        'quantbot backtest generate-report --duckdb sim.duckdb --type summary',
+        'quantbot backtest generate-report --duckdb sim.duckdb --type strategy_performance --strategy-id PT2_SL25',
       ],
     },
     {
@@ -438,8 +455,8 @@ const simulationModule: PackageCommandModule = {
         return await clickHouseQueryHandler(typedArgs, typedCtx);
       },
       examples: [
-        'quantbot simulation clickhouse-query --operation query_ohlcv --token-address So111... --chain solana --start-time 2024-01-01T00:00:00Z --end-time 2024-01-02T00:00:00Z',
-        'quantbot simulation clickhouse-query --operation aggregate_metrics --run-id run123',
+        'quantbot backtest clickhouse-query --operation query_ohlcv --token-address So111... --chain solana --start-time 2024-01-01T00:00:00Z --end-time 2024-01-02T00:00:00Z',
+        'quantbot backtest clickhouse-query --operation aggregate_metrics --run-id run123',
       ],
     },
     {
@@ -452,8 +469,8 @@ const simulationModule: PackageCommandModule = {
         return await listStrategiesHandler(typedArgs, typedCtx);
       },
       examples: [
-        'quantbot simulation list-strategies',
-        'quantbot simulation list-strategies --duckdb data/tele.duckdb --format json',
+        'quantbot backtest list-strategies',
+        'quantbot backtest list-strategies --duckdb data/tele.duckdb --format json',
       ],
     },
     {
@@ -466,8 +483,8 @@ const simulationModule: PackageCommandModule = {
         return { success: true };
       },
       examples: [
-        'quantbot simulation create-strategy',
-        'quantbot simulation create-strategy --duckdb data/tele.duckdb',
+        'quantbot backtest create-strategy',
+        'quantbot backtest create-strategy --duckdb data/tele.duckdb',
       ],
     },
   ],
