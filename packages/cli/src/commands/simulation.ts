@@ -12,6 +12,7 @@ import { commandRegistry } from '../core/command-registry.js';
 import type { CommandContext } from '../core/command-context.js';
 import { runSimulationHandler } from './simulation/run-simulation.js';
 import { listRunsHandler } from './simulation/list-runs.js';
+import { runsHandler } from './simulation/runs.js';
 import { leaderboardHandler } from './simulation/leaderboard.js';
 import { runSimulationDuckdbHandler } from './simulation/run-simulation-duckdb.js';
 import { storeStrategyDuckdbHandler } from './simulation/store-strategy-duckdb.js';
@@ -88,6 +89,17 @@ export function registerSimulationCommands(program: Command): void {
       limit: raw.limit ? coerceNumber(raw.limit, 'limit') : 100,
     }),
     validate: (opts) => listRunsSchema.parse(opts),
+    onError: die,
+  });
+
+  // Runs command (simple, last 20)
+  const runsCmd = simCmd.command('runs').description('List last 20 simulation runs');
+
+  defineCommand(runsCmd, {
+    name: 'runs',
+    packageName: 'simulation',
+    coerce: () => ({}),
+    validate: () => ({}),
     onError: die,
   });
 
@@ -338,6 +350,16 @@ const simulationModule: PackageCommandModule = {
         return await listRunsHandler(typedArgs, typedCtx);
       },
       examples: ['quantbot simulation list-runs --limit 50'],
+    },
+    {
+      name: 'runs',
+      description: 'List last 20 simulation runs',
+      schema: z.object({}),
+      handler: async (_args: unknown, ctx: unknown) => {
+        const typedCtx = ctx as CommandContext;
+        return await runsHandler(typedCtx);
+      },
+      examples: ['quantbot simulation runs'],
     },
     {
       name: 'leaderboard',
