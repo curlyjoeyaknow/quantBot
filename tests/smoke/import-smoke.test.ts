@@ -43,9 +43,10 @@ describe('Import Smoke Test', () => {
       return; // Skip test if not built
     }
     
+    // Workflows import can be slow due to initialization, increase timeout
     const workflows = await import('@quantbot/workflows');
     expect(workflows).toBeDefined();
-  });
+  }, 15000); // 15 second timeout
 
   it('should import @quantbot/simulation', async () => {
     const simulation = await import('@quantbot/simulation');

@@ -131,7 +131,8 @@ export class TokenMetadataRepository {
     const ch = getClickHouseClient();
     const CLICKHOUSE_DATABASE = process.env.CLICKHOUSE_DATABASE || 'quantbot';
 
-    const escapedTokenAddress = tokenAddress.replace(/'/g, "''");
+    // Build query using query builder utilities (prevents SQL injection)
+    const escapedToken = escapeSqlString(tokenAddress);
 
     try {
       const result = await ch.query({
@@ -153,9 +154,9 @@ export class TokenMetadataRepository {
             top_wallet_holdings,
             metadata_json
           FROM ${CLICKHOUSE_DATABASE}.token_metadata
-          WHERE (token_address = '${escapedTokenAddress}' 
-                 OR lower(token_address) = lower('${escapedTokenAddress}'))
-            AND chain = '${chain.replace(/'/g, "''")}'
+          WHERE (token_address = '${escapedToken}' 
+                 OR lower(token_address) = lower('${escapedToken}'))
+            AND ${buildChainWhereClause(chain)}
           ORDER BY timestamp DESC
           LIMIT 1
         `,
@@ -233,7 +234,8 @@ export class TokenMetadataRepository {
 
     const startUnix = Math.floor(startTime.toSeconds());
     const endUnix = Math.floor(endTime.toSeconds());
-    const escapedTokenAddress = tokenAddress.replace(/'/g, "''");
+    // Build query using query builder utilities (prevents SQL injection)
+    const escapedToken = escapeSqlString(tokenAddress);
 
     try {
       const result = await ch.query({
@@ -255,11 +257,10 @@ export class TokenMetadataRepository {
             top_wallet_holdings,
             metadata_json
           FROM ${CLICKHOUSE_DATABASE}.token_metadata
-          WHERE (token_address = '${escapedTokenAddress}' 
-                 OR lower(token_address) = lower('${escapedTokenAddress}'))
-            AND chain = '${chain.replace(/'/g, "''")}'
-            AND timestamp >= toDateTime(${startUnix})
-            AND timestamp <= toDateTime(${endUnix})
+          WHERE (token_address = '${escapedToken}' 
+                 OR lower(token_address) = lower('${escapedToken}'))
+            AND ${buildChainWhereClause(chain)}
+            AND ${buildDateRangeWhereClauseUnix(startUnix, endUnix)}
           ORDER BY timestamp ASC
         `,
         format: 'JSONEachRow',

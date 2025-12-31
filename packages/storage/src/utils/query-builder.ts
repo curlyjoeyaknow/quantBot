@@ -1,10 +1,10 @@
 /**
  * Query Builder Utilities
  * =======================
- * 
+ *
  * Consolidated SQL query building utilities to eliminate duplication
  * and prevent SQL injection.
- * 
+ *
  * @module @quantbot/storage/utils
  */
 
@@ -13,7 +13,7 @@ import { DateTime } from 'luxon';
 /**
  * Escape a string for use in SQL queries
  * Prevents SQL injection by escaping single quotes
- * 
+ *
  * @param value - String value to escape
  * @returns Escaped string safe for SQL interpolation
  */
@@ -23,14 +23,14 @@ export function escapeSqlString(value: string): string {
 
 /**
  * Build WHERE clause for token address matching
- * 
+ *
  * Handles:
  * - Exact match (case-sensitive)
  * - Case-insensitive match
  * - LIKE pattern matching (prefix and suffix)
- * 
+ *
  * CRITICAL: Preserves full address and exact case matching
- * 
+ *
  * @param tokenAddress - Full mint address (case-preserved)
  * @param columnName - Column name to match against (default: 'token_address')
  * @returns SQL WHERE clause fragment
@@ -55,7 +55,7 @@ export function buildTokenAddressWhereClause(
 
 /**
  * Build WHERE clause for date range queries
- * 
+ *
  * @param from - Start date (DateTime)
  * @param to - End date (DateTime)
  * @param columnName - Column name to match against (default: 'timestamp')
@@ -75,7 +75,7 @@ export function buildDateRangeWhereClause(
 
 /**
  * Build WHERE clause for date range queries (Unix timestamp format)
- * 
+ *
  * @param fromUnix - Start Unix timestamp (seconds)
  * @param toUnix - End Unix timestamp (seconds)
  * @param columnName - Column name to match against (default: 'timestamp')
@@ -92,22 +92,19 @@ export function buildDateRangeWhereClauseUnix(
 
 /**
  * Build WHERE clause for chain matching
- * 
+ *
  * @param chain - Chain identifier
  * @param columnName - Column name to match against (default: 'chain')
  * @returns SQL WHERE clause fragment
  */
-export function buildChainWhereClause(
-  chain: string,
-  columnName: string = 'chain'
-): string {
+export function buildChainWhereClause(chain: string, columnName: string = 'chain'): string {
   const escapedChain = escapeSqlString(chain);
   return `${columnName} = '${escapedChain}'`;
 }
 
 /**
  * Build WHERE clause for interval matching
- * 
+ *
  * @param intervalSeconds - Interval in seconds
  * @param columnName - Column name to match against (default: 'interval_seconds')
  * @returns SQL WHERE clause fragment
@@ -121,9 +118,9 @@ export function buildIntervalWhereClause(
 
 /**
  * Build WHERE clause for interval string matching
- * 
+ *
  * Handles reserved keyword 'interval' by escaping with backticks
- * 
+ *
  * @param interval - Interval string (e.g., '5m', '1h')
  * @param columnName - Column name to match against (default: 'interval')
  * @returns SQL WHERE clause fragment
@@ -140,17 +137,14 @@ export function buildIntervalStringWhereClause(
 
 /**
  * Build WHERE clause for IN operator with string values
- * 
+ *
  * Escapes all values to prevent SQL injection
- * 
+ *
  * @param values - Array of string values
  * @param columnName - Column name to match against
  * @returns SQL WHERE clause fragment (e.g., "column IN ('value1', 'value2')")
  */
-export function buildInWhereClause(
-  values: string[],
-  columnName: string
-): string {
+export function buildInWhereClause(values: string[], columnName: string): string {
   if (values.length === 0) {
     return '1 = 0'; // Always false, matches nothing
   }
