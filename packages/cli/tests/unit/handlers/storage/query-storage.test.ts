@@ -13,6 +13,14 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { queryStorageHandler } from '../../../../src/commands/storage/query-storage.js';
 import * as storageCommands from '../../../../src/commands/storage.js';
 
+vi.mock('@quantbot/utils', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@quantbot/utils')>();
+  return {
+    ...actual,
+    getClickHouseDatabaseName: () => 'test_db',
+  };
+});
+
 // Mock ClickHouse client
 const mockClickHouseClient = {
   query: vi.fn(),
@@ -45,8 +53,6 @@ describe('queryStorageHandler', () => {
       },
     } as any;
 
-    process.env.CLICKHOUSE_DATABASE = 'quantbot';
-
     const args = {
       table: 'ohlcv_candles',
       limit: 100,
@@ -57,7 +63,7 @@ describe('queryStorageHandler', () => {
 
     expect(mockClickHouseClient.query).toHaveBeenCalledTimes(1);
     expect(mockClickHouseClient.query).toHaveBeenCalledWith({
-      query: 'SELECT * FROM quantbot.ohlcv_candles LIMIT 100',
+      query: 'SELECT * FROM test_db.ohlcv_candles LIMIT 100',
       format: 'JSONEachRow',
     });
     expect(result).toEqual(mockData);
@@ -95,8 +101,6 @@ describe('queryStorageHandler', () => {
       },
     } as any;
 
-    process.env.CLICKHOUSE_DATABASE = 'quantbot';
-
     const args = {
       table: 'OHLCV_CANDLES', // Uppercase
       limit: 10,
@@ -107,7 +111,7 @@ describe('queryStorageHandler', () => {
 
     // Handler converts table name to lowercase for query
     expect(mockClickHouseClient.query).toHaveBeenCalledWith({
-      query: 'SELECT * FROM quantbot.ohlcv_candles LIMIT 10',
+      query: 'SELECT * FROM test_db.ohlcv_candles LIMIT 10',
       format: 'JSONEachRow',
     });
     expect(result).toEqual(mockData);
@@ -122,8 +126,6 @@ describe('queryStorageHandler', () => {
         clickHouseClient: () => mockClickHouseClient,
       },
     } as any;
-
-    process.env.CLICKHOUSE_DATABASE = 'quantbot';
 
     const args = {
       table: 'ohlcv_candles',
@@ -149,8 +151,6 @@ describe('queryStorageHandler', () => {
       },
     } as any;
 
-    process.env.CLICKHOUSE_DATABASE = 'quantbot';
-
     const limits = [1, 10, 100, 1000, 10000];
 
     for (const limit of limits) {
@@ -162,7 +162,7 @@ describe('queryStorageHandler', () => {
 
       await queryStorageHandler(args, fakeCtx);
       expect(mockClickHouseClient.query).toHaveBeenCalledWith({
-        query: `SELECT * FROM quantbot.ohlcv_candles LIMIT ${limit}`,
+        query: `SELECT * FROM test_db.ohlcv_candles LIMIT ${limit}`,
         format: 'JSONEachRow',
       });
     }
