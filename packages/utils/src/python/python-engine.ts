@@ -5,49 +5,12 @@
  * This is the boundary layer between TypeScript handlers and Python tools.
  */
 
-import { join, dirname, resolve } from 'path';
+import { join } from 'path';
 import { z } from 'zod';
-import { existsSync, readFileSync } from 'fs';
+import { existsSync } from 'fs';
 import { execa } from 'execa';
 import { logger, ValidationError, TimeoutError, AppError } from '../index.js';
-
-/**
- * Find workspace root by walking up from current directory
- * looking for pnpm-workspace.yaml or package.json with workspace config
- */
-function findWorkspaceRoot(startDir: string = process.cwd()): string {
-  let current = startDir;
-
-  while (current !== '/' && current !== '') {
-    const workspaceFile = join(current, 'pnpm-workspace.yaml');
-    const packageFile = join(current, 'package.json');
-
-    if (existsSync(workspaceFile)) {
-      return current;
-    }
-
-    if (existsSync(packageFile)) {
-      try {
-        const pkg = JSON.parse(readFileSync(packageFile, 'utf8'));
-        if (pkg.workspaces || pkg.pnpm?.workspace) {
-          return current;
-        }
-      } catch {
-        // Continue searching
-      }
-    }
-
-    const parent = dirname(current);
-    if (parent === current) {
-      // Reached filesystem root
-      break;
-    }
-    current = parent;
-  }
-
-  // Fallback to start directory if workspace root not found
-  return startDir;
-}
+import { findWorkspaceRoot } from '../fs/workspace-root.js';
 
 export interface PythonScriptOptions {
   /**

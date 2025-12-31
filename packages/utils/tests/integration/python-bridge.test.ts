@@ -12,32 +12,10 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { existsSync, readFileSync } from 'fs';
+import { existsSync } from 'fs';
 import { join } from 'path';
 import { PythonEngine, PythonManifestSchema } from '../../src/python/python-engine';
-
-// Find workspace root by looking for pnpm-workspace.yaml or package.json with workspaces
-function findWorkspaceRoot(): string {
-  let current = process.cwd();
-  while (current !== '/') {
-    if (existsSync(join(current, 'pnpm-workspace.yaml'))) {
-      return current;
-    }
-    const packageFile = join(current, 'package.json');
-    if (existsSync(packageFile)) {
-      try {
-        const pkg = JSON.parse(readFileSync(packageFile, 'utf8'));
-        if (pkg.workspaces || pkg.pnpm?.workspace) {
-          return current;
-        }
-      } catch {
-        // Continue searching
-      }
-    }
-    current = join(current, '..');
-  }
-  return process.cwd(); // Fallback to current directory
-}
+import { findWorkspaceRoot } from '../../src/fs/workspace-root';
 
 describe('Python Bridge Test - Telegram Ingestion', () => {
   const workspaceRoot = findWorkspaceRoot();
