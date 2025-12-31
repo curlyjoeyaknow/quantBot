@@ -560,10 +560,15 @@ export async function ensureOhlcvCoverageHandler(
     });
 
     // Check and fetch for each interval
-    const intervals: Array<{ interval: '15s' | '1m' | '5m'; minCandles: number }> = [
-      { interval: '15s', minCandles: 5000 },
-      { interval: '1m', minCandles: 10000 },
-      { interval: '5m', minCandles: 10000 },
+    // Updated requirements: 1000 candles before, 3000 candles after
+    const intervals: Array<{
+      interval: '1s' | '1m' | '5m';
+      minCandlesBefore: number;
+      minCandlesAfter: number;
+    }> = [
+      { interval: '1s', minCandlesBefore: 1000, minCandlesAfter: 3000 },
+      { interval: '1m', minCandlesBefore: 1000, minCandlesAfter: 3000 },
+      { interval: '5m', minCandlesBefore: 1000, minCandlesAfter: 3000 },
     ];
 
     for (const { interval, minCandles } of intervals) {

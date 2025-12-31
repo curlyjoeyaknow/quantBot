@@ -11,6 +11,7 @@ export default defineConfig({
       'tests/integration/**/*.integration.ts',
       'tests/fuzzing/**/*.fuzz.ts',
       'tests/golden/**/*.test.ts',
+      'tests/security/**/*.test.ts',
       'src/**/*.test.ts',
     ],
     setupFiles: ['./tests/setup.ts'],

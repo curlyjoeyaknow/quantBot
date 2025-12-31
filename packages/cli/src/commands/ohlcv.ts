@@ -149,7 +149,6 @@ export const analyzeDetailedCoverageSchema = z.object({
   timeout: z.number().int().positive().optional(), // Timeout in milliseconds
 });
 
-
 /**
  * Register OHLCV commands
  */

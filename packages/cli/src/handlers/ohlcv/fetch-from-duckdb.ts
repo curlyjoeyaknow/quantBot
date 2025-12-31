@@ -144,16 +144,19 @@ export async function fetchFromDuckdbHandler(args: FetchFromDuckdbArgs, ctx: Com
       const fromUnix = Math.floor(fromUTC.toSeconds());
       const toUnix = Math.floor(toUTC.toSeconds());
 
-      logger.info(`[${alertNum}/${alertsToProcess.length}] Processing alert for ${mint.substring(0, 20)}...`, {
-        mint,
-        chain,
-        interval: args.interval,
-        alertTime: alertTime.toISO()!,
-        caller: callerName,
-        from: fromUTC.toISO()!,
-        to: toUTC.toISO()!,
-        requiredCandles: MIN_CANDLES,
-      });
+      logger.info(
+        `[${alertNum}/${alertsToProcess.length}] Processing alert for ${mint.substring(0, 20)}...`,
+        {
+          mint,
+          chain,
+          interval: args.interval,
+          alertTime: alertTime.toISO()!,
+          caller: callerName,
+          from: fromUTC.toISO()!,
+          to: toUTC.toISO()!,
+          requiredCandles: MIN_CANDLES,
+        }
+      );
 
       // Keep fetching until we have full coverage
       let hasFullCoverage = false;
@@ -260,13 +263,16 @@ export async function fetchFromDuckdbHandler(args: FetchFromDuckdbArgs, ctx: Com
           toUTC.toJSDate(),
           args.interval
         );
-        logger.warn(`❌ Incomplete coverage after ${fetchAttempts} attempts for ${mint} (alert ${alertNum})`, {
-          mint,
-          finalCandles: finalCoverage.candleCount,
-          requiredCandles: MIN_CANDLES,
-          finalRatio: finalCoverage.coverageRatio,
-          requiredRatio: MIN_COVERAGE_RATIO,
-        });
+        logger.warn(
+          `❌ Incomplete coverage after ${fetchAttempts} attempts for ${mint} (alert ${alertNum})`,
+          {
+            mint,
+            finalCandles: finalCoverage.candleCount,
+            requiredCandles: MIN_CANDLES,
+            finalRatio: finalCoverage.coverageRatio,
+            requiredRatio: MIN_COVERAGE_RATIO,
+          }
+        );
       }
     } catch (error) {
       results.fetchesFailed++;

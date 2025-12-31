@@ -40,7 +40,9 @@ export interface GapAuditResult {
 /**
  * Get all distinct token_address + interval combinations from ClickHouse
  */
-async function getAllTokenIntervals(chain?: string): Promise<Array<{ token_address: string; chain: string; interval: string }>> {
+async function getAllTokenIntervals(
+  chain?: string
+): Promise<Array<{ token_address: string; chain: string; interval: string }>> {
   const ch = getClickHouseClient();
 
   let query = `
@@ -75,14 +77,20 @@ async function getAllTokenIntervals(chain?: string): Promise<Array<{ token_addre
 
     return data || [];
   } catch (error) {
-    throw new Error(`Failed to query token intervals: ${error instanceof Error ? error.message : String(error)}`);
+    throw new Error(
+      `Failed to query token intervals: ${error instanceof Error ? error.message : String(error)}`
+    );
   }
 }
 
 /**
  * Get all candles for a token+interval combination
  */
-async function getAllCandles(tokenAddress: string, chain: string, interval: string): Promise<Candle[]> {
+async function getAllCandles(
+  tokenAddress: string,
+  chain: string,
+  interval: string
+): Promise<Candle[]> {
   const ch = getClickHouseClient();
 
   const escapedTokenAddress = tokenAddress.replace(/'/g, "''");
@@ -188,7 +196,10 @@ function getIntervalSecondsSafe(interval: string): number {
 /**
  * Calculate gap and duplicate counts for candles
  */
-function calculateGapsAndDups(candles: Candle[], interval: string): { gapCount: number; dupCount: number; expectedCount: number } {
+function calculateGapsAndDups(
+  candles: Candle[],
+  interval: string
+): { gapCount: number; dupCount: number; expectedCount: number } {
   if (candles.length === 0) {
     return { gapCount: 0, dupCount: 0, expectedCount: 0 };
   }
@@ -211,7 +222,10 @@ function calculateGapsAndDups(candles: Candle[], interval: string): { gapCount: 
   for (const candle of sorted) {
     timestampCounts.set(candle.timestamp, (timestampCounts.get(candle.timestamp) || 0) + 1);
   }
-  const dupCount = Array.from(timestampCounts.values()).reduce((sum, count) => sum + (count > 1 ? count - 1 : 0), 0);
+  const dupCount = Array.from(timestampCounts.values()).reduce(
+    (sum, count) => sum + (count > 1 ? count - 1 : 0),
+    0
+  );
 
   // Count gaps
   let gapCount = 0;
@@ -234,7 +248,10 @@ function calculateGapsAndDups(candles: Candle[], interval: string): { gapCount: 
 /**
  * Audit handler - audits all token+interval combinations for gaps
  */
-export async function auditGapsHandler(args: AuditGapsArgs, _ctx: CommandContext): Promise<GapAuditResult[]> {
+export async function auditGapsHandler(
+  args: AuditGapsArgs,
+  _ctx: CommandContext
+): Promise<GapAuditResult[]> {
   // Get all token+interval combinations
   const tokenIntervals = await getAllTokenIntervals(args.chain);
 
@@ -276,7 +293,8 @@ export async function auditGapsHandler(args: AuditGapsArgs, _ctx: CommandContext
       // SAFE = no gaps, no duplicates, actual_count matches expected_count (within 1% tolerance)
       const tolerance = Math.max(1, Math.floor(expectedCount * 0.01)); // 1% tolerance, minimum 1
       const countMatch = Math.abs(candles.length - expectedCount) <= tolerance;
-      const status: 'SAFE' | 'UNSAFE' = gapCount === 0 && dupCount === 0 && countMatch ? 'SAFE' : 'UNSAFE';
+      const status: 'SAFE' | 'UNSAFE' =
+        gapCount === 0 && dupCount === 0 && countMatch ? 'SAFE' : 'UNSAFE';
 
       results.push({
         token_address,

@@ -9,6 +9,12 @@ import { createClient, type ClickHouseClient } from '@clickhouse/client';
 import { DateTime } from 'luxon';
 import { logger } from '@quantbot/utils';
 import type { Candle } from '@quantbot/core';
+import {
+  buildTokenAddressWhereClause,
+  buildDateRangeWhereClauseUnix,
+  buildChainWhereClause,
+  buildIntervalStringWhereClause,
+} from './utils/query-builder.js';
 
 // ClickHouse connection configuration
 const CLICKHOUSE_HOST = process.env.CLICKHOUSE_HOST || 'localhost';
@@ -435,19 +441,7 @@ export async function queryCandles(
   const startUnix = Math.floor(startTime.toSeconds());
   const endUnix = Math.floor(endTime.toSeconds());
 
-  // Use parameterized queries to prevent SQL injection
-  // Note: ClickHouse stores full addresses (e.g., with "pump" suffix), so we use LIKE to match
-  const tokenPattern = `${tokenAddress}%`;
-  const tokenPatternSuffix = `%${tokenAddress}`;
-
-  // Escape values for SQL injection prevention
-  const escapedTokenAddress = tokenAddress.replace(/'/g, "''");
-  const escapedChain = chain.replace(/'/g, "''");
-  const escapedTokenPattern = tokenPattern.replace(/'/g, "''");
-  const escapedTokenPatternSuffix = tokenPatternSuffix.replace(/'/g, "''");
-
-  // Build query with string interpolation (properly escaped to prevent SQL injection)
-  // Using string interpolation instead of parameterized queries to avoid "Unknown setting param_*" error
+  // Build query using query builder utilities (prevents SQL injection)
   let query = `
     SELECT 
       toUnixTimestamp(timestamp) as timestamp,
@@ -457,21 +451,13 @@ export async function queryCandles(
       close,
       volume
     FROM ${CLICKHOUSE_DATABASE}.ohlcv_candles
-    WHERE (token_address = '${escapedTokenAddress}'
-           OR lower(token_address) = lower('${escapedTokenAddress}')
-           OR token_address LIKE '${escapedTokenPattern}'
-           OR lower(token_address) LIKE lower('${escapedTokenPattern}')
-           OR token_address LIKE '${escapedTokenPatternSuffix}'
-           OR lower(token_address) LIKE lower('${escapedTokenPatternSuffix}'))
-      AND chain = '${escapedChain}'
-      AND timestamp >= toDateTime(${startUnix})
-      AND timestamp <= toDateTime(${endUnix})
+    WHERE ${buildTokenAddressWhereClause(tokenAddress)}
+      AND ${buildChainWhereClause(chain)}
+      AND ${buildDateRangeWhereClauseUnix(startUnix, endUnix)}
   `;
 
   if (interval) {
-    // interval is a reserved keyword in ClickHouse, need to escape with backticks
-    const escapedInterval = interval.replace(/'/g, "''");
-    query += ` AND \`interval\` = '${escapedInterval}'`;
+    query += ` AND ${buildIntervalStringWhereClause(interval)}`;
   }
 
   query += ` ORDER BY timestamp ASC`;
@@ -563,29 +549,15 @@ export async function hasCandles(
   const startUnix = Math.floor(startTime.toSeconds());
   const endUnix = Math.floor(endTime.toSeconds());
 
-  // Escape values for SQL injection prevention
-  const escapedTokenAddress = tokenAddress.replace(/'/g, "''");
-  const escapedChain = chain.replace(/'/g, "''");
-  const tokenPattern = `${tokenAddress}%`;
-  const tokenPatternSuffix = `%${tokenAddress}`;
-  const escapedTokenPattern = tokenPattern.replace(/'/g, "''");
-  const escapedTokenPatternSuffix = tokenPatternSuffix.replace(/'/g, "''");
-
-  // Build query with string interpolation (properly escaped to prevent SQL injection)
+  // Build query using query builder utilities (prevents SQL injection)
   try {
     const result = await ch.query({
       query: `
         SELECT count() as count
         FROM ${CLICKHOUSE_DATABASE}.ohlcv_candles
-        WHERE (token_address = '${escapedTokenAddress}'
-               OR lower(token_address) = lower('${escapedTokenAddress}')
-               OR token_address LIKE '${escapedTokenPattern}'
-               OR lower(token_address) LIKE lower('${escapedTokenPattern}')
-               OR token_address LIKE '${escapedTokenPatternSuffix}'
-               OR lower(token_address) LIKE lower('${escapedTokenPatternSuffix}'))
-          AND chain = '${escapedChain}'
-          AND timestamp >= toDateTime(${startUnix})
-          AND timestamp <= toDateTime(${endUnix})
+        WHERE ${buildTokenAddressWhereClause(tokenAddress)}
+          AND ${buildChainWhereClause(chain)}
+          AND ${buildDateRangeWhereClauseUnix(startUnix, endUnix)}
       `,
       format: 'JSONEachRow',
     });

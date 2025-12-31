@@ -90,7 +90,13 @@ export function createMockContext(opts?: {
        * @deprecated Use causalAccessor instead.
        */
       getCandles: vi.fn(
-        async (mint: string, _chain: string, _startTime: number, _endTime: number, _interval: string = '5m') => {
+        async (
+          mint: string,
+          _chain: string,
+          _startTime: number,
+          _endTime: number,
+          _interval: string = '5m'
+        ) => {
           return candlesByMint[mint] ?? candleSeries();
         }
       ),
