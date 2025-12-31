@@ -118,9 +118,9 @@ describe('FileArtifactStorage', () => {
   });
 
   it('validates artifacts on load', async () => {
-    // Create a corrupted artifact file
-    const artifactPath = join(testDir, 'artifacts', 'run-001.json');
-    await fs.mkdir(join(testDir, 'artifacts'), { recursive: true });
+    // Create a corrupted artifact file (directly in baseDir, not in a subdirectory)
+    const artifactPath = join(testDir, 'run-001.json');
+    await fs.mkdir(testDir, { recursive: true });
     await fs.writeFile(artifactPath, 'invalid json', 'utf-8');
 
     await expect(storage.load('run-001')).rejects.toThrow();

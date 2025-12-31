@@ -31,6 +31,8 @@ export * from './handlers/index.js';
 
 // Domain module (chain, telemetry, etc.)
 export * from './domain/index.js';
+// Run ledger domain
+export * from './domain/runs/index.js';
 
 // Domain models
 export * from './domain/calls/CallSignal.js';

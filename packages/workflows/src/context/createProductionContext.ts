@@ -475,16 +475,14 @@ export function createProductionContext(config?: ProductionContextConfig): Workf
        *
        * This is the lock that prevents accidental cheating in simulations.
        */
-      async run(
-        q: {
-          candleAccessor: import('@quantbot/simulation').CausalCandleAccessor;
-          mint: string;
-          startTime: number;
-          endTime: number;
-          strategy: StrategyRecord;
-          call: CallRecord;
-        }
-      ): Promise<SimulationEngineResult> {
+      async run(q: {
+        candleAccessor: import('@quantbot/simulation').CausalCandleAccessor;
+        mint: string;
+        startTime: number;
+        endTime: number;
+        strategy: StrategyRecord;
+        call: CallRecord;
+      }): Promise<SimulationEngineResult> {
         // Extract strategy legs from config
         const config = q.strategy.config as Record<string, unknown>;
         const strategyLegs = (

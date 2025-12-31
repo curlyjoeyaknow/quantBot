@@ -13,7 +13,7 @@ export type CreateSnapshotArgs = z.infer<
   typeof import('../../command-defs/research.js').createSnapshotSchema
 >;
 
-export async function createSnapshotHandler(args: CreateSnapshotArgs, ctx: CommandContext) {
+export async function createSnapshotHandler(args: CreateSnapshotArgs, _ctx: CommandContext) {
   // Create workflow context from command context
   const workflowCtx = createProductionContext();
 

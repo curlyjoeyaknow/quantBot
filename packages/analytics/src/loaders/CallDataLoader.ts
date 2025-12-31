@@ -9,7 +9,6 @@ import { logger } from '@quantbot/utils';
 import { StorageEngine, getStorageEngine } from '@quantbot/storage';
 import type { CallPerformance } from '../types.js';
 import { calculateAthFromCandleObjects } from '../utils/ath-calculator.js';
-import { loadHistoricalPricesBatch } from './HistoricalPriceLoader.js';
 // Dynamic import to avoid build-time dependency on workflows
 // Types will be imported at runtime
 
@@ -19,6 +18,12 @@ export interface LoadCallsOptions {
   callerNames?: string[];
   chains?: string[];
   limit?: number;
+  /**
+   * Optional map of call index -> historical price.
+   * If provided, these prices will be used instead of fetching from storage.
+   * Callers should use fetchHistoricalPricesBatch from @quantbot/workflows to fetch prices if needed.
+   */
+  historicalPrices?: Map<number, number>;
 }
 
 /**
@@ -140,72 +145,46 @@ export class CallDataLoader {
         };
       });
 
-      // Filter calls that need Birdeye lookup (those without valid price_usd)
+      // Use provided historical prices, or empty map if not provided
+      // Analytics should only read from storage - fetching is done by callers (workflows)
+      const historicalPrices = options.historicalPrices || new Map<number, number>();
+
+      // Log if we have prices provided vs calls needing prices
       const callsNeedingBirdeye = callsForPriceLookup.filter(
         (c: (typeof callsForPriceLookup)[0]) => !c.hasValidPriceUsd
       );
-
-      // Load historical prices from Birdeye API only for calls without valid price_usd
-      let historicalPrices = new Map<number, number>();
-      if (callsNeedingBirdeye.length > 0) {
+      if (callsNeedingBirdeye.length > 0 && historicalPrices.size === 0) {
         logger.info(
-          `[CallDataLoader] Fetching historical prices from Birdeye for ${callsNeedingBirdeye.length} calls (${callsForPriceLookup.length - callsNeedingBirdeye.length} calls already have valid price_usd)`
+          `[CallDataLoader] ${callsNeedingBirdeye.length} calls need historical prices but none provided. ` +
+            `Callers should use fetchHistoricalPricesBatch from @quantbot/workflows to fetch prices before calling loadCalls.`
         );
-        historicalPrices = await loadHistoricalPricesBatch(
-          callsNeedingBirdeye.map((c: (typeof callsForPriceLookup)[0]) => ({
-            tokenAddress: c.tokenAddress,
-            alertTimestamp: c.alertTimestamp,
-            // Chain will be auto-detected from address format
-          })),
-          10 // Batch size - process 10 calls at a time to avoid rate limiting
-        );
-
-        const successRate =
-          callsNeedingBirdeye.length > 0
-            ? ((historicalPrices.size / callsNeedingBirdeye.length) * 100).toFixed(1)
-            : '0.0';
-
+      } else if (historicalPrices.size > 0) {
         logger.info(
-          `[CallDataLoader] Loaded ${historicalPrices.size}/${callsNeedingBirdeye.length} historical prices from Birdeye (${successRate}% success rate)`
+          `[CallDataLoader] Using ${historicalPrices.size} provided historical prices for ${callsNeedingBirdeye.length} calls needing prices`
         );
-
-        if (historicalPrices.size < callsNeedingBirdeye.length * 0.5) {
-          logger.warn(
-            `[CallDataLoader] Low Birdeye price fetch success rate (${successRate}%). Some tokens may not be available in Birdeye at those timestamps, or may use unsupported formats (e.g., Sui tokens).`
-          );
-        }
       } else {
         logger.info(
-          `[CallDataLoader] All ${callsForPriceLookup.length} calls have valid price_usd, skipping Birdeye lookup`
+          `[CallDataLoader] All ${callsForPriceLookup.length} calls have valid price_usd from storage`
         );
-      }
-
-      // Create a map from original index to Birdeye result index for calls needing Birdeye
-      const birdeyeIndexMap = new Map<number, number>();
-      let birdeyeIndex = 0;
-      for (let i = 0; i < callsForPriceLookup.length; i++) {
-        if (!callsForPriceLookup[i].hasValidPriceUsd) {
-          birdeyeIndexMap.set(i, birdeyeIndex++);
-        }
       }
 
       // Map to CallPerformance with historical prices
+      // historicalPrices map should map call index -> price (provided by caller via workflows)
       const callPerformance: CallPerformance[] = callsForPriceLookup.map(
         (callInfo: (typeof callsForPriceLookup)[0], index: number) => {
           const tokenAddress = callInfo.tokenAddress;
           const alertTimestamp = callInfo.alertTimestamp;
 
           // Determine entry price:
-          // 1. Use valid price_usd if available
-          // 2. Otherwise, use Birdeye price if available
-          // 3. Otherwise, use 0 (invalid price_usd means we should return 0, not fetch from Birdeye)
+          // 1. Use valid price_usd if available from storage
+          // 2. Otherwise, use provided historical price if available
+          // 3. Otherwise, use 0
           let entryPrice: number;
           if (callInfo.hasValidPriceUsd && callInfo.priceUsd !== undefined) {
             entryPrice = callInfo.priceUsd;
           } else {
-            // Try to get from Birdeye (only if we attempted lookup)
-            const birdeyeIdx = birdeyeIndexMap.get(index);
-            entryPrice = birdeyeIdx !== undefined ? historicalPrices.get(birdeyeIdx) || 0 : 0;
+            // Use provided historical price (map is call index -> price)
+            entryPrice = historicalPrices.get(index) || 0;
           }
 
           // Validate and normalize caller name

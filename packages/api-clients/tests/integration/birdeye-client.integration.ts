@@ -212,10 +212,22 @@ describe('BirdeyeClient - Integration Tests', () => {
         config: {} as InternalAxiosRequestConfig,
       };
 
-      // Setup mocks BEFORE creating factory: first call fails with 429, second call succeeds
+      // Validation response (used by validateAPIKey for both keys)
+      const validationResponse: AxiosResponse = {
+        status: 200,
+        data: { success: true, data: { value: 1.0 } },
+        statusText: 'OK',
+        headers: {},
+        config: {} as InternalAxiosRequestConfig,
+      };
+
+      // Setup mocks: validation calls succeed, then key1 request fails with 429, key2 request succeeds
+      // Flow: validate key1 -> request with key1 (fails) -> validate key2 -> request with key2 (succeeds)
       testMockInstance.get
-        .mockRejectedValueOnce(rateLimitError)
-        .mockResolvedValueOnce(successResponse);
+        .mockResolvedValueOnce(validationResponse) // Validation for key1
+        .mockRejectedValueOnce(rateLimitError) // Actual request with key1 (fails)
+        .mockResolvedValueOnce(validationResponse) // Validation for key2
+        .mockResolvedValueOnce(successResponse); // Actual request with key2 (succeeds)
 
       // Factory returns the same instance for all keys (critical for test to work)
       const testFactory: AxiosFactory = vi.fn(() => testMockInstance);
@@ -238,8 +250,10 @@ describe('BirdeyeClient - Integration Tests', () => {
         new Date('2024-01-02')
       );
 
-      // Verify both calls were made (key1 first, then key2 after rotation)
-      expect(testMockInstance.get).toHaveBeenCalledTimes(2);
+      // Verify calls were made: 2 validation calls + 2 actual requests = 4 total
+      // But we only care about the 2 actual requests for the test assertion
+      // The validation calls are implementation details
+      expect(testMockInstance.get).toHaveBeenCalledTimes(4);
 
       // Verify key1 is now deactivated
       expect(client.isKeyActive('key1')).toBe(false);
