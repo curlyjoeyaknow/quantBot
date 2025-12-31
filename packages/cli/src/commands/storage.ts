@@ -271,7 +271,7 @@ export function registerStorageCommands(program: Command): void {
   const tokenStatsCmd = storageCmd
     .command('token-stats')
     .description(
-      'Get comprehensive token statistics combining DuckDB calls with ClickHouse OHLCV and simulations'
+      'Get comprehensive token statistics combining DuckDB calls with ClickHouse OHLCV and backtests'
     )
     .option('--from <date>', 'Start date (ISO 8601)')
     .option('--to <date>', 'End date (ISO 8601)')
@@ -392,7 +392,7 @@ const storageModule: PackageCommandModule = {
     {
       name: 'token-stats',
       description:
-        'Get comprehensive token statistics combining DuckDB calls with ClickHouse OHLCV and simulations',
+        'Get comprehensive token statistics combining DuckDB calls with ClickHouse OHLCV and backtests',
       schema: tokenStatsWorkflowSchema,
       handler: async (args: unknown, ctx: unknown) => {
         const typedCtx = ctx as CommandContext;

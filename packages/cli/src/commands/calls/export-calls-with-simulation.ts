@@ -1,7 +1,7 @@
 /**
- * Export Calls with Simulation Results to CSV
+ * Export Calls with Backtest Results to CSV
  *
- * Exports calls from DuckDB with simulation results in the specified CSV format:
+ * Exports calls from DuckDB with backtest results (deterministic replay) in the specified CSV format:
  * - TokenAddress, AlertTime, EntryTime, ExitTime, PnL, PnLPercent, MaxReached,
  *   HoldDurationMinutes, EntryPrice, ExitPrice
  */
@@ -23,7 +23,7 @@ import type { ExitOverlay } from '@quantbot/simulation';
 import { formatCSV } from '../../core/output-formatter.js';
 
 /**
- * Export calls with simulation results schema
+ * Export calls with backtest results schema
  */
 export type ExportCallsWithSimulationArgs = {
   duckdbPath: string;
@@ -98,7 +98,7 @@ function calculateMaxReached(entryPrice: number, exitPrice: number, pnlPercent: 
 }
 
 /**
- * Export calls with simulation results to CSV
+ * Export calls with backtest results to CSV (deterministic replay)
  */
 export async function exportCallsWithSimulationHandler(
   args: ExportCallsWithSimulationArgs,
