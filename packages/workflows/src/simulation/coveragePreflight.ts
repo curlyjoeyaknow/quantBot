@@ -7,8 +7,11 @@
 
 import { DateTime } from 'luxon';
 import { getCoverage } from '@quantbot/ohlcv';
+import { writeFile, mkdir } from 'fs/promises';
+import { join } from 'path';
 import type { RunPlan, TokenRequirement } from './planRun.js';
 import type { WorkflowContext } from '../types.js';
+import { getArtifactsDir, CoverageReportV1Schema, type CoverageReportV1 } from '@quantbot/core';
 
 export type ExclusionReason = 'too_new' | 'insufficient' | 'missing_interval' | 'no_data';
 
@@ -34,16 +37,18 @@ const CHAIN = 'solana' as const;
 
 /**
  * Coverage preflight check
- *
+ * 
  * Validates candle availability for all tokens in the run plan.
- *
+ * 
  * @param plan - Run plan with token requirements
  * @param ctx - Workflow context (for logging)
+ * @param runId - Optional run ID for writing coverage artifact
  * @returns Coverage result with eligible and excluded tokens
  */
 export async function coveragePreflight(
   plan: RunPlan,
-  ctx: WorkflowContext
+  ctx: WorkflowContext,
+  runId?: string
 ): Promise<CoverageResult> {
   const eligibleTokens: string[] = [];
   const excludedTokens: ExcludedToken[] = [];
@@ -146,6 +151,57 @@ export async function coveragePreflight(
     excluded,
     byReason,
   });
+
+  // Write coverage artifact if runId is provided
+  if (runId) {
+    const intervalSeconds = (() => {
+      const normalized = plan.interval.toLowerCase();
+      if (normalized === '1s') return 1;
+      if (normalized === '15s') return 15;
+      if (normalized === '1m') return 60;
+      if (normalized === '5m') return 300;
+      if (normalized === '15m') return 900;
+      if (normalized === '1h') return 3600;
+      if (normalized === '4h') return 14400;
+      if (normalized === '1d') return 86400;
+      return 300; // default to 5m
+    })();
+
+    const coverageReport: CoverageReportV1 = {
+      schema_version: 1,
+      run_id: runId,
+      interval_seconds: intervalSeconds,
+      eligible: eligibleTokens,
+      excluded: excludedTokens.map((t) => ({
+        token: t.token,
+        reason: t.reason === 'insufficient' ? 'insufficient_range' : t.reason === 'too_new' ? 'too_new' : t.reason === 'missing_interval' ? 'missing_interval' : 'no_data',
+        details: t.details,
+      })),
+      stats: {
+        requested: total,
+        eligible,
+        excluded,
+        eligible_pct: total > 0 ? eligible / total : 0,
+      },
+    };
+
+    // Validate report before writing
+    const validatedReport = CoverageReportV1Schema.parse(coverageReport);
+
+    // Write report to artifacts directory
+    const artifactsDir = getArtifactsDir();
+    const runArtifactsDir = join(artifactsDir, runId);
+    await mkdir(runArtifactsDir, { recursive: true });
+    const reportPath = join(runArtifactsDir, 'coverage.json');
+    await writeFile(reportPath, JSON.stringify(validatedReport, null, 2), 'utf8');
+
+    ctx.logger.info('Coverage report written', {
+      runId,
+      reportPath,
+      eligible,
+      excluded,
+    });
+  }
 
   return {
     eligibleTokens,

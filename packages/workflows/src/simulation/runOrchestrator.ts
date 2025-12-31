@@ -7,6 +7,8 @@
 
 import { DateTime } from 'luxon';
 import { NotFoundError, ValidationError, getDuckDBPath } from '@quantbot/utils';
+import { writeFile, mkdir } from 'fs/promises';
+import { join } from 'path';
 import type { WorkflowContext } from '../types.js';
 import type {
   RunOrchestrator,
@@ -29,6 +31,7 @@ import {
   type SimulatorRunStatus,
 } from '@quantbot/storage';
 import { getStorageEngine } from '@quantbot/storage';
+import { getArtifactsDir, RunPlanV1Schema, type RunPlanV1 } from '@quantbot/core';
 
 /**
  * Create Run Orchestrator instance
@@ -164,8 +167,69 @@ export function createRunOrchestrator(ctx: WorkflowContext): RunOrchestrator {
         const interval = '5m'; // Default - should come from run params
         const plan = planRun(strategyConfig, uniqueCalls, interval, 0, 0);
 
-        // Coverage preflight
-        const coverage = await coveragePreflight(plan, ctx);
+        // Write plan artifact
+        const intervalSeconds = (() => {
+          const normalized = interval.toLowerCase();
+          if (normalized === '1s') return 1;
+          if (normalized === '15s') return 15;
+          if (normalized === '1m') return 60;
+          if (normalized === '5m') return 300;
+          if (normalized === '15m') return 900;
+          if (normalized === '1h') return 3600;
+          if (normalized === '4h') return 14400;
+          if (normalized === '1d') return 86400;
+          return 300; // default to 5m
+        })();
+
+        // Find earliest and latest call times for requested range
+        const callTimes = uniqueCalls.map((c) => c.createdAt);
+        const earliestCall = callTimes.length > 0 ? DateTime.min(...callTimes) : DateTime.utc();
+        const latestCall = callTimes.length > 0 ? DateTime.max(...callTimes) : DateTime.utc();
+
+        const runPlan: RunPlanV1 = {
+          schema_version: 1,
+          run_id: runId,
+          interval_seconds: intervalSeconds,
+          requested_range: {
+            from_ts: earliestCall.toISO()!,
+            to_ts: latestCall.toISO()!,
+          },
+          requirements: {
+            indicator_warmup_candles: plan.requiredWarmupCandles,
+            entry_delay_candles: plan.requiredDelay,
+            max_hold_candles: plan.maxHoldingCandles,
+            pre_entry_context_candles: 50, // Default padding
+            total_required_candles: plan.tokenRequirements.reduce(
+              (max, req) => Math.max(max, req.requiredCandleCount),
+              0
+            ),
+          },
+          per_token_windows: plan.tokenRequirements.map((req) => ({
+            token: req.token,
+            from_ts: req.requiredFromTs.toISO()!,
+            to_ts: req.requiredToTs.toISO()!,
+            required_candles: req.requiredCandleCount,
+          })),
+        };
+
+        // Validate plan before writing
+        const validatedPlan = RunPlanV1Schema.parse(runPlan);
+
+        // Write plan to artifacts directory
+        const artifactsDir = getArtifactsDir();
+        const runArtifactsDir = join(artifactsDir, runId);
+        await mkdir(runArtifactsDir, { recursive: true });
+        const planPath = join(runArtifactsDir, 'plan.json');
+        await writeFile(planPath, JSON.stringify(validatedPlan, null, 2), 'utf8');
+
+        ctx.logger.info('Run plan written', {
+          runId,
+          planPath,
+          tokenCount: validatedPlan.per_token_windows.length,
+        });
+
+        // Coverage preflight (pass runId to write coverage artifact)
+        const coverage = await coveragePreflight(plan, ctx, runId);
 
         if (coverage.eligibleTokens.length === 0) {
           await runsRepo.update(runId, {
@@ -336,4 +400,3 @@ export function createRunOrchestrator(ctx: WorkflowContext): RunOrchestrator {
     },
   };
 }
-

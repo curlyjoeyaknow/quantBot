@@ -27,7 +27,7 @@ type Candle = {
   c: number; // close
   v: number; // volume
 };
-import { getArtifactsDir } from '@quantbot/core';
+import { getArtifactsDir, SliceManifestV1Schema, type SliceManifestV1 } from '@quantbot/core';
 
 export interface SliceMetadata {
   token: string;
@@ -75,20 +75,22 @@ function toSimulatorCandle(candle: {
 
 /**
  * Materialize slices for eligible tokens
- *
- * Fetches candles from ClickHouse and writes them to JSON slice files.
- *
+ * 
+ * Fetches candles from ClickHouse and writes them to slice files (JSON or Parquet).
+ * 
  * @param plan - Run plan with token requirements
  * @param eligibleTokens - Array of eligible token addresses
  * @param ctx - Workflow context
  * @param runId - Run ID for organizing slices
+ * @param format - Slice format: 'json' (default) or 'parquet' (when available)
  * @returns Slice plan with paths and metadata
  */
 export async function materializeSlices(
   plan: RunPlan,
   eligibleTokens: string[],
   ctx: WorkflowContext,
-  runId: string
+  runId: string,
+  format: 'json' | 'parquet' = 'json'
 ): Promise<SlicePlan> {
   const storageEngine = getStorageEngine();
   const artifactsDir = getArtifactsDir();
@@ -143,11 +145,25 @@ export async function materializeSlices(
       // Convert to simulator candle format
       const simulatorCandles = candles.map(toSimulatorCandle);
 
-      // Write slice file (JSON format)
-      const sliceFileName = `slice_${token.slice(0, 8)}_${plan.interval}.json`;
-      const slicePath = join(slicesDir, sliceFileName);
-
-      await writeFile(slicePath, JSON.stringify(simulatorCandles, null, 2), 'utf8');
+      // Write slice file (format: JSON or Parquet)
+      let slicePath: string;
+      if (format === 'parquet') {
+        // Parquet support - placeholder for future implementation
+        // TODO: Implement Parquet writing when apache-arrow or parquet-wasm is available
+        ctx.logger.warn('Parquet format not yet implemented, falling back to JSON', {
+          token,
+          runId,
+        });
+        // Fall back to JSON for now
+        const sliceFileName = `slice_${token.slice(0, 8)}_${plan.interval}.json`;
+        slicePath = join(slicesDir, sliceFileName);
+        await writeFile(slicePath, JSON.stringify(simulatorCandles, null, 2), 'utf8');
+      } else {
+        // JSON format (default)
+        const sliceFileName = `slice_${token.slice(0, 8)}_${plan.interval}.json`;
+        slicePath = join(slicesDir, sliceFileName);
+        await writeFile(slicePath, JSON.stringify(simulatorCandles, null, 2), 'utf8');
+      }
 
       slicePaths.set(token, slicePath);
 
@@ -189,6 +205,48 @@ export async function materializeSlices(
     slicesCreated: slicePaths.size,
   });
 
+  // Write slice manifest artifact
+  const intervalSeconds = (() => {
+    const normalized = plan.interval.toLowerCase();
+    if (normalized === '1s') return 1;
+    if (normalized === '15s') return 15;
+    if (normalized === '1m') return 60;
+    if (normalized === '5m') return 300;
+    if (normalized === '15m') return 900;
+    if (normalized === '1h') return 3600;
+    if (normalized === '4h') return 14400;
+    if (normalized === '1d') return 86400;
+    return 300; // default to 5m
+  })();
+
+  const sliceManifest: SliceManifestV1 = {
+    schema_version: 1,
+    run_id: runId,
+    interval_seconds: intervalSeconds,
+    format: format === 'parquet' ? 'parquet' : 'json',
+    slices: sliceMetadata.map((meta, index) => ({
+      slice_id: `slice_${String(index + 1).padStart(3, '0')}`,
+      path: meta.slicePath,
+      tokens: [meta.token],
+      from_ts: meta.from,
+      to_ts: meta.to,
+      candle_count_est: meta.candleCount,
+    })),
+  };
+
+  // Validate manifest before writing
+  const validatedManifest = SliceManifestV1Schema.parse(sliceManifest);
+
+  // Write manifest to artifacts directory
+  const manifestPath = join(artifactsDir, runId, 'slices.json');
+  await writeFile(manifestPath, JSON.stringify(validatedManifest, null, 2), 'utf8');
+
+  ctx.logger.info('Slice manifest written', {
+    runId,
+    manifestPath,
+    sliceCount: validatedManifest.slices.length,
+  });
+
   return {
     slicePaths,
     sliceMetadata,
@@ -198,12 +256,23 @@ export async function materializeSlices(
 
 /**
  * Load candles from a slice file
- *
- * @param slicePath - Path to slice JSON file
+ * 
+ * Automatically detects format (JSON or Parquet) based on file extension.
+ * 
+ * @param slicePath - Path to slice file (JSON or Parquet)
  * @returns Array of candles
  */
 export async function loadSlice(slicePath: string): Promise<Candle[]> {
   const { readFile } = await import('fs/promises');
-  const content = await readFile(slicePath, 'utf8');
-  return JSON.parse(content) as Candle[];
+  
+  // Detect format from file extension
+  if (slicePath.endsWith('.parquet')) {
+    // Parquet support - placeholder for future implementation
+    // TODO: Implement Parquet reading when apache-arrow or parquet-wasm is available
+    throw new Error('Parquet format not yet implemented. Use JSON format for now.');
+  } else {
+    // JSON format (default)
+    const content = await readFile(slicePath, 'utf8');
+    return JSON.parse(content) as Candle[];
+  }
 }
