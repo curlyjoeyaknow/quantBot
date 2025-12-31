@@ -7,9 +7,8 @@
 
 import { z } from 'zod';
 import type { PythonEngine } from '@quantbot/utils';
-import { logger, AppError, TimeoutError } from '@quantbot/utils';
-import { join, dirname } from 'path';
-import { existsSync, readFileSync } from 'fs';
+import { logger, AppError, TimeoutError, findWorkspaceRoot } from '@quantbot/utils';
+import { join } from 'path';
 
 /**
  * Schema for simulation result
@@ -67,43 +66,6 @@ export class SimulationService {
   constructor(private readonly pythonEngine: PythonEngine) {}
 
   /**
-   * Find workspace root by looking for pnpm-workspace.yaml or package.json with workspace config
-   */
-  private findWorkspaceRoot(): string {
-    let current = process.cwd();
-    const maxDepth = 10;
-    let depth = 0;
-
-    while (depth < maxDepth) {
-      // Check for pnpm-workspace.yaml
-      if (existsSync(join(current, 'pnpm-workspace.yaml'))) {
-        return current;
-      }
-
-      // Check for package.json with workspace config
-      const packageJsonPath = join(current, 'package.json');
-      if (existsSync(packageJsonPath)) {
-        try {
-          const packageJson = JSON.parse(readFileSync(packageJsonPath, 'utf-8'));
-          if (packageJson.workspaces || packageJson.pnpm?.workspaces) {
-            return current;
-          }
-        } catch {
-          // Continue searching
-        }
-      }
-
-      const parent = dirname(current);
-      if (parent === current) break; // Reached filesystem root
-      current = parent;
-      depth++;
-    }
-
-    // Fallback to process.cwd() if workspace root not found
-    return process.cwd();
-  }
-
-  /**
    * Run a single simulation
    *
    * @param config - Simulation configuration
@@ -112,7 +74,7 @@ export class SimulationService {
   async runSimulation(config: SimulationConfig): Promise<SimulationOutput> {
     // Use relative path - PythonEngine will resolve it from workspace root
     const scriptPath = 'tools/simulation/run_simulation.py';
-    const workspaceRoot = this.findWorkspaceRoot();
+    const workspaceRoot = findWorkspaceRoot();
 
     try {
       const result = await this.pythonEngine.runScriptWithStdin(
