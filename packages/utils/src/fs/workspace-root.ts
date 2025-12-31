@@ -31,9 +31,8 @@ function hasWorkspaceConfig(dir: string): boolean {
  */
 export function findWorkspaceRoot(startDir: string = process.cwd()): string {
   const normalizedStart = resolve(startDir);
-  const cached = workspaceRootCache.get(normalizedStart);
-  if (cached) {
-    return cached;
+  if (workspaceRootCache.has(normalizedStart)) {
+    return workspaceRootCache.get(normalizedStart)!;
   }
 
   const visited: string[] = [];
