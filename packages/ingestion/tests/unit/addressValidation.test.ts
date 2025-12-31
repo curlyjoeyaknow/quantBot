@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { isEvmAddress, isSolanaAddress } from '@quantbot/utils';
-import { extractAddresses } from '../../src/addressValidation';
+import { extractAddresses } from '@quantbot/utils';
 
 /**
  * Test vectors
@@ -113,11 +113,13 @@ describe('extractAddresses - Telegram text extraction', () => {
       BSC: 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48
     `;
     const out = extractAddresses(text);
+    // Zero address is correctly rejected by consolidated extractor
     expect(out.evm).toEqual([
       '0x1111111111111111111111111111111111111111',
-      '0x0000000000000000000000000000000000000000',
       '0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48',
     ]);
+    // Zero address should not be extracted
+    expect(out.evm).not.toContain('0x0000000000000000000000000000000000000000');
   });
 
   it('does not treat 0X prefix as EVM address', () => {

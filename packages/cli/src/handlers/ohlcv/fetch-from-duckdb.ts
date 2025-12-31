@@ -22,6 +22,7 @@ export const fetchFromDuckdbSchema = z.object({
   side: z.enum(['buy', 'sell']).default('buy'),
   format: z.enum(['json', 'table', 'csv']).default('table'),
   chain: z.enum(['solana', 'ethereum', 'bsc', 'base']).optional(), // Filter by chain if provided
+  concurrent: z.number().int().positive().default(2), // Number of alerts to process in parallel
 });
 
 export type FetchFromDuckdbArgs = z.infer<typeof fetchFromDuckdbSchema>;
@@ -74,17 +75,20 @@ export async function fetchFromDuckdbHandler(args: FetchFromDuckdbArgs, ctx: Com
   // We want full coverage for each alert
   const alertsToProcess = worklist.calls
     .filter((call) => {
-      if (!call.mint || !call.trigger_ts_ms) return false;
+      if (!call.mint || !call.alertTime) return false;
       if (args.chain && call.chain && call.chain !== args.chain) return false;
       return true;
     })
     .map((call) => {
-      const alertTime = DateTime.fromMillis(call.trigger_ts_ms, { zone: 'utc' });
+      const alertTime = DateTime.fromISO(call.alertTime!, { zone: 'utc' });
+      if (!alertTime.isValid) {
+        throw new Error(`Invalid alert time: ${call.alertTime}`);
+      }
       return {
         mint: call.mint!,
         chain: (call.chain as Chain) || 'solana',
         alertTime,
-        callerName: call.trigger_from_name || 'unknown',
+        callerName: 'unknown', // Not available in worklist.calls structure
       };
     });
 
@@ -129,10 +133,16 @@ export async function fetchFromDuckdbHandler(args: FetchFromDuckdbArgs, ctx: Com
     errors: [] as Array<{ mint: string; alertTime: string; error: string }>,
   };
 
-  // Process each alert individually
-  for (let i = 0; i < alertsToProcess.length; i++) {
-    const { mint, chain, alertTime, callerName } = alertsToProcess[i];
-    const alertNum = i + 1;
+   // Process alerts in parallel batches
+   const CONCURRENT_ALERTS = args.concurrent;
+   logger.info(`Processing ${alertsToProcess.length} alerts with concurrency of ${CONCURRENT_ALERTS}`);
+
+   for (let i = 0; i < alertsToProcess.length; i += CONCURRENT_ALERTS) {
+     const batch = alertsToProcess.slice(i, i + CONCURRENT_ALERTS);
+     
+     const batchResults = await Promise.allSettled(
+       batch.map(async ({ mint, chain, alertTime, callerName }, batchIndex) => {
+         const alertNum = i + batchIndex + 1;
 
     try {
       // Calculate required time window for this alert
@@ -287,9 +297,33 @@ export async function fetchFromDuckdbHandler(args: FetchFromDuckdbArgs, ctx: Com
         chain,
         alertTime: alertTime.toISO()!,
         error: errorMsg,
-      });
-    }
-  }
+       });
+     }
+       })
+     );
+
+     // Aggregate batch results
+     for (const result of batchResults) {
+       if (result.status === 'rejected') {
+         results.fetchesFailed++;
+         const errorMsg = result.reason instanceof Error ? result.reason.message : String(result.reason);
+         results.errors.push({
+           mint: 'unknown',
+           alertTime: 'unknown',
+           error: errorMsg,
+         });
+         logger.error('Unexpected error in batch processing', result.reason as Error);
+       }
+     }
+
+     // Log batch progress
+     const batchNum = Math.floor(i / CONCURRENT_ALERTS) + 1;
+     const totalBatches = Math.ceil(alertsToProcess.length / CONCURRENT_ALERTS);
+     logger.info(`Batch ${batchNum}/${totalBatches} complete`, {
+       batchSize: batch.length,
+       progress: `${Math.min(i + batch.length, alertsToProcess.length)}/${alertsToProcess.length}`,
+     });
+   }
 
   logger.info('Completed fetching OHLCV for all alerts', {
     alertsProcessed: results.alertsProcessed,

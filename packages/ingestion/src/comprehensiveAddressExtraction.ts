@@ -13,8 +13,7 @@
  */
 
 import { PublicKey } from '@solana/web3.js';
-import { extractAddresses } from './addressValidation.js';
-import { extractSolanaAddresses } from './extractSolanaAddresses.js';
+import { extractAddresses, extractSolanaAddresses } from '@quantbot/utils';
 
 export interface ExtractionResult {
   valid: Array<{
@@ -650,6 +649,17 @@ export function extractAndValidateAddresses(input: string): ExtractionResult {
   }
 
   // Note: EVM addresses without prefix are already checked above (before extraction)
+
+  // Check for zero address explicitly (consolidated extractor correctly rejects it, but we need to add to rejected)
+  const zeroAddressPattern = /\b0x0{40}\b/i;
+  const zeroAddressMatch = input.match(zeroAddressPattern);
+  if (zeroAddressMatch && !extracted.evm.includes(zeroAddressMatch[0])) {
+    rejected.push({
+      raw: zeroAddressMatch[0],
+      reason: 'zero_address',
+      category: 'validation',
+    });
+  }
 
   // Check for addresses that are too short or too long (before extraction)
   // This ensures we catch them even if extraction doesn't find them

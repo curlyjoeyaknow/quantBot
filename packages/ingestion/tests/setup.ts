@@ -2,8 +2,9 @@ import { vi } from 'vitest';
 import { z } from 'zod';
 
 // Mock @quantbot/utils logger to avoid native binding issues
-// Don't use importActual to avoid module resolution errors
-vi.mock('@quantbot/utils', () => {
+// Use importOriginal to get real address extraction functions
+vi.mock('@quantbot/utils', async () => {
+  const actual = await vi.importActual<typeof import('@quantbot/utils')>('@quantbot/utils');
   const BASE58_ALPHABET = '123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
 
   // Mock PythonManifestSchema (Zod schema) - matches actual schema structure
@@ -39,6 +40,7 @@ vi.mock('@quantbot/utils', () => {
   }
 
   return {
+    ...actual,
     logger: {
       info: vi.fn(),
       error: vi.fn(),

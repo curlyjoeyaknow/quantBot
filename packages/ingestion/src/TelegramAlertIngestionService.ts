@@ -17,7 +17,7 @@ import { createTokenAddress } from '@quantbot/core';
 import { CallersRepository } from '@quantbot/storage';
 import { parseExport, type ParsedMessage } from './TelegramExportParser.js';
 import { PublicKey } from '@solana/web3.js';
-import { extractAddresses } from './addressValidation.js';
+import { extractAddresses } from '@quantbot/utils';
 
 export interface IngestExportParams {
   filePath: string;

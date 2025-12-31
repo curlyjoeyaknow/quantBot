@@ -13,7 +13,7 @@ import * as cheerio from 'cheerio';
 import { PublicKey } from '@solana/web3.js';
 import type { Chain } from '@quantbot/core';
 import { logger } from '@quantbot/utils';
-import { extractAddresses } from './addressValidation.js';
+import { extractAddresses } from '@quantbot/utils';
 
 export interface ExtractedBotData {
   contractAddress: string; // Case-sensitive, full address

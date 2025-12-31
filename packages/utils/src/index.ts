@@ -56,6 +56,16 @@ export { PUMP_FUN_PROGRAM_ID, derivePumpfunBondingCurve } from './pumpfun.js';
 // Address validation
 export { isBase58, isSolanaAddress, isEvmAddress } from './addressValidation.js';
 
+// Address extraction (consolidated)
+export {
+  extractAddresses,
+  extractSolanaAddresses,
+  extractEvmAddresses,
+  ADDRESS_PATTERNS,
+  getAddressPatternStrings,
+} from './address/extract.js';
+export type { ExtractResult } from './address/extract.js';
+
 // Credit monitoring
 export { creditMonitor } from './credit-monitor.js';
 

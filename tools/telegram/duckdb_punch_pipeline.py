@@ -90,10 +90,13 @@ class MintCandidate:
   message_id: Optional[int] = None  # For audit trail
 
 # Base58 character set: 1-9, A-H, J-N, P-Z, a-k, m-z (excludes 0, O, I, l)
+# NOTE: These patterns should match packages/utils/src/address/patterns.py
+# and packages/utils/src/address/extract.ts for consistency
 BASE58_CHARS = set("123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz")
 BASE58_RE = re.compile(r"\b[1-9A-HJ-NP-Za-km-z]{32,44}\b")
 
 # EVM address regex: 0x + 40 hex chars
+# NOTE: Pattern matches TypeScript consolidated extractor in @quantbot/utils
 EVM_ADDRESS_RE = re.compile(r"\b0x[a-fA-F0-9]{40}\b")
 ZERO_ADDRESS = "0x0000000000000000000000000000000000000000"
 

@@ -9,3 +9,11 @@
 
 export * from './extract-candidates.js';
 export * from './validate.js';
+export {
+  extractAddresses,
+  extractSolanaAddresses,
+  extractEvmAddresses,
+  ADDRESS_PATTERNS,
+  getAddressPatternStrings,
+  type ExtractResult,
+} from './extract.js';

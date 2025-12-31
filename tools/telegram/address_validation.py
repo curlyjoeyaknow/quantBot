@@ -11,6 +11,8 @@ from enum import Enum
 
 # Base58 character set: 1-9, A-H, J-N, P-Z, a-k, m-z (excludes 0, O, I, l)
 BASE58_CHARS = set("123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz")
+# NOTE: Patterns match TypeScript consolidated extractor in @quantbot/utils
+# See packages/utils/src/address/patterns.py for shared patterns
 BASE58_RE = re.compile(r"\b[1-9A-HJ-NP-Za-km-z]{32,44}\b")
 
 # EVM address regex: 0x + 40 hex chars

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { isEvmAddress, isSolanaAddress } from '@quantbot/utils';
-import { extractAddresses } from '../../src/addressValidation';
+import { extractAddresses } from '@quantbot/utils';
 
 /**
  * Property tests for address validation

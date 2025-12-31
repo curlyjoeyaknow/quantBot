@@ -193,18 +193,23 @@ export function registerOhlcvCommands(program: Command): void {
   // Fetch from DuckDB alerts command
   const fetchFromDuckdbCmd = ohlcvCmd
     .command('fetch-from-duckdb')
-    .description('Fetch OHLCV candles for all alerts/calls in DuckDB (groups by mint)')
+    .description('Fetch OHLCV candles for all alerts/calls in DuckDB (processes every alert individually)')
     .requiredOption('--duckdb <path>', 'Path to DuckDB database file')
     .option('--interval <interval>', 'Candle interval', '5m')
     .option('--from <date>', 'Filter alerts from this date (ISO 8601)')
     .option('--to <date>', 'Filter alerts to this date, and fetch until this date (ISO 8601)')
     .option('--side <side>', 'Filter by side (buy/sell)', 'buy')
     .option('--chain <chain>', 'Filter by chain (solana, ethereum, bsc, base)')
+    .option('--concurrent <number>', 'Number of alerts to process in parallel', '2')
     .option('--format <format>', 'Output format', 'table');
 
   defineCommand(fetchFromDuckdbCmd, {
     name: 'fetch-from-duckdb',
     packageName: 'ohlcv',
+    coerce: (raw) => ({
+      ...raw,
+      concurrent: raw.concurrent ? coerceNumber(raw.concurrent, 'concurrent') : 2,
+    }),
     validate: (opts) => fetchFromDuckdbSchema.parse(opts),
     onError: die,
   });

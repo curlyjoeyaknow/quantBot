@@ -459,23 +459,6 @@ export function createProductionContext(config?: ProductionContextConfig): Workf
        * - Monotonic time progression
        */
       causalAccessor,
-      /**
-       * Legacy getCandles method for backward compatibility with tests.
-       * @deprecated Use causalAccessor instead. This method wraps storageEngine for compatibility.
-       */
-      async getCandles(
-        mint: string,
-        chain: string,
-        startTime: number,
-        endTime: number,
-        interval: string = '5m'
-      ): Promise<Candle[]> {
-        // Use storage engine directly for backward compatibility
-        // Convert Unix timestamps to DateTime objects
-        const startDateTime = DateTime.fromSeconds(startTime);
-        const endDateTime = DateTime.fromSeconds(endTime);
-        return storageEngine.getCandles(mint, chain, startDateTime, endDateTime, { interval });
-      },
     },
 
     simulation: {

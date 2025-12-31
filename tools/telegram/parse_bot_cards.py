@@ -8,6 +8,8 @@ from typing import Optional, List, Dict, Any, Tuple
 
 
 
+# NOTE: Pattern matches TypeScript consolidated extractor in @quantbot/utils
+# See packages/utils/src/address/patterns.py for shared patterns
 BASE58_RE = re.compile(r"\b[1-9A-HJ-NP-Za-km-z]{32,44}\b")
 
 WS = r"[ \t\u00A0]*"  # include nbsp

@@ -561,17 +561,21 @@ export async function ensureOhlcvCoverageHandler(
 
     // Check and fetch for each interval
     // Updated requirements: 1000 candles before, 3000 candles after
+    // Note: '1s' interval is not supported by checkTokenCoverage/fetchCandlesForToken, using '15s' instead
     const intervals: Array<{
-      interval: '1s' | '1m' | '5m';
+      interval: '15s' | '1m' | '5m';
       minCandlesBefore: number;
       minCandlesAfter: number;
     }> = [
-      { interval: '1s', minCandlesBefore: 1000, minCandlesAfter: 3000 },
+      { interval: '15s', minCandlesBefore: 1000, minCandlesAfter: 3000 },
       { interval: '1m', minCandlesBefore: 1000, minCandlesAfter: 3000 },
       { interval: '5m', minCandlesBefore: 1000, minCandlesAfter: 3000 },
     ];
 
-    for (const { interval, minCandles } of intervals) {
+    for (const { interval, minCandlesBefore, minCandlesAfter } of intervals) {
+      // Total minimum candles needed
+      const minCandles = minCandlesBefore + minCandlesAfter;
+      
       // Check coverage
       const coverage = await checkTokenCoverage(
         token.mint,

@@ -27,9 +27,10 @@ export {
   normalizedToParsed,
   normalizedToParsedBatch,
 } from './telegram/normalizedToParsedConverter.js';
-export { extractSolanaAddresses } from './extractSolanaAddresses.js';
-
-// Address validation and extraction (isEvmAddress, isSolanaAddress moved to @quantbot/utils)
+// Address validation and extraction
+// DEPRECATED: Use @quantbot/utils for address extraction
+// Kept for backward compatibility
+export { extractSolanaAddresses } from '@quantbot/utils';
 export { isBase58, extractAddresses } from './addressValidation.js';
 
 // NOTE: Multi-chain metadata fetching has been moved to @quantbot/api-clients
