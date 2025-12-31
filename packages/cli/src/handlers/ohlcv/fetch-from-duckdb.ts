@@ -1,8 +1,8 @@
 /**
  * Fetch OHLCV from DuckDB Alerts Handler
  *
- * Reads alerts/calls from DuckDB and runs direct fetch for each unique mint.
- * Groups by mint to avoid duplicate fetches.
+ * Reads alerts/calls from DuckDB and fetches OHLCV for EVERY alert.
+ * Keeps fetching until full coverage is achieved for each alert.
  */
 
 import { z } from 'zod';
@@ -11,7 +11,7 @@ import { DateTime } from 'luxon';
 import { logger } from '@quantbot/utils';
 import { getDuckDBWorklistService } from '@quantbot/storage';
 import { fetchBirdeyeCandles } from '@quantbot/api-clients';
-import { storeCandles } from '@quantbot/ohlcv';
+import { storeCandles, getCoverage } from '@quantbot/ohlcv';
 import type { Chain } from '@quantbot/core';
 
 export const fetchFromDuckdbSchema = z.object({
@@ -55,7 +55,7 @@ export async function fetchFromDuckdbHandler(args: FetchFromDuckdbArgs, ctx: Com
     calls: worklist.calls.length,
   });
 
-  if (worklist.tokenGroups.length === 0) {
+  if (worklist.calls.length === 0) {
     return {
       alertsProcessed: 0,
       uniqueMints: 0,
@@ -64,49 +64,36 @@ export async function fetchFromDuckdbHandler(args: FetchFromDuckdbArgs, ctx: Com
       fetchesFailed: 0,
       totalCandlesFetched: 0,
       totalCandlesStored: 0,
+      alertsWithFullCoverage: 0,
+      alertsWithIncompleteCoverage: 0,
       errors: [],
     };
   }
 
-  // Group by mint to get unique mints with earliest alert time
-  const mintMap = new Map<
-    string,
-    {
-      mint: string;
-      chain: string;
-      earliestAlertTime: DateTime;
-      callCount: number;
-    }
-  >();
+  // Process EVERY alert individually - no grouping, no deduplication
+  // We want full coverage for each alert
+  const alertsToProcess = worklist.calls
+    .filter((call) => {
+      if (!call.mint || !call.trigger_ts_ms) return false;
+      if (args.chain && call.chain && call.chain !== args.chain) return false;
+      return true;
+    })
+    .map((call) => {
+      const alertTime = DateTime.fromMillis(call.trigger_ts_ms, { zone: 'utc' });
+      return {
+        mint: call.mint!,
+        chain: (call.chain as Chain) || 'solana',
+        alertTime,
+        callerName: call.trigger_from_name || 'unknown',
+      };
+    });
 
-  for (const group of worklist.tokenGroups) {
-    if (!group.mint || !group.earliestAlertTime) continue;
-
-    // Filter by chain if provided
-    if (args.chain && group.chain && group.chain !== args.chain) {
-      continue;
-    }
-
-    const alertTime = DateTime.fromISO(group.earliestAlertTime, { zone: 'utc' });
-    if (!alertTime.isValid) continue;
-
-    const existing = mintMap.get(group.mint);
-    if (!existing || alertTime < existing.earliestAlertTime) {
-      mintMap.set(group.mint, {
-        mint: group.mint,
-        chain: group.chain || 'solana', // Default to solana if not specified
-        earliestAlertTime: alertTime,
-        callCount: group.callCount || 0,
-      });
-    }
-  }
-
-  const uniqueMints = Array.from(mintMap.values());
-  logger.info(`Processing ${uniqueMints.length} unique mints`, {
-    uniqueMints: uniqueMints.length,
+  logger.info(`Processing ${alertsToProcess.length} alerts individually (no grouping)`, {
+    totalAlerts: alertsToProcess.length,
+    interval: args.interval,
   });
 
-  // Calculate interval seconds for -52 candles lookback
+  // Calculate interval seconds
   const intervalSeconds =
     args.interval === '1s'
       ? 1
@@ -118,98 +105,197 @@ export async function fetchFromDuckdbHandler(args: FetchFromDuckdbArgs, ctx: Com
             ? 300
             : 3600; // 1H
 
-  const lookbackSeconds = 52 * intervalSeconds;
+  // Coverage requirements: -5 intervals before alert, +4000 candles after alert
+  const lookbackIntervals = 5;
+  const forwardCandles = 4000;
+  const lookbackSeconds = lookbackIntervals * intervalSeconds;
+  const forwardSeconds = forwardCandles * intervalSeconds;
 
-  // Fetch candles for each unique mint
+  // Minimum coverage threshold (95% = full coverage)
+  const MIN_COVERAGE_RATIO = 0.95;
+  const MIN_CANDLES = forwardCandles + lookbackIntervals; // At least 4005 candles total
+
   const results = {
-    alertsProcessed: worklist.calls.length,
-    uniqueMints: uniqueMints.length,
+    alertsProcessed: alertsToProcess.length,
+    uniqueMints: new Set(alertsToProcess.map((a) => a.mint)).size,
     fetchesAttempted: 0,
     fetchesSucceeded: 0,
     fetchesFailed: 0,
     totalCandlesFetched: 0,
     totalCandlesStored: 0,
-    errors: [] as Array<{ mint: string; error: string }>,
+    alertsWithFullCoverage: 0,
+    alertsWithIncompleteCoverage: 0,
+    retries: 0,
+    errors: [] as Array<{ mint: string; alertTime: string; error: string }>,
   };
 
-  for (const { mint, chain, earliestAlertTime } of uniqueMints) {
-    try {
-      results.fetchesAttempted++;
+  // Process each alert individually
+  for (let i = 0; i < alertsToProcess.length; i++) {
+    const { mint, chain, alertTime, callerName } = alertsToProcess[i];
+    const alertNum = i + 1;
 
-      // Calculate fetch window: -52 candles before alert, and 4 sets of 5000 candles (20000) after alert
-      // If --to is provided, use that instead of the default 20000 candles
-      const defaultForwardCandles = 4 * 5000; // 20000 candles
-      const defaultForwardSeconds = defaultForwardCandles * intervalSeconds;
+    try {
+      // Calculate required time window for this alert
+      const fromUTC = alertTime.minus({ seconds: lookbackSeconds });
       const toUTC = args.to
         ? DateTime.fromISO(args.to, { zone: 'utc' }).toUTC()
-        : earliestAlertTime.plus({ seconds: defaultForwardSeconds });
-      const fromUTC = earliestAlertTime.minus({ seconds: lookbackSeconds });
-
-      logger.info(`Fetching OHLCV for mint ${mint.substring(0, 20)}...`, {
-        mint,
-        chain,
-        interval: args.interval,
-        alertTime: earliestAlertTime.toISO()!,
-        from: fromUTC.toISO()!,
-        to: toUTC.toISO()!,
-        lookbackCandles: 52,
-        forwardCandles: args.to ? 'custom' : defaultForwardCandles, // 20000 candles (4 × 5000)
-      });
+        : alertTime.plus({ seconds: forwardSeconds });
 
       const fromUnix = Math.floor(fromUTC.toSeconds());
       const toUnix = Math.floor(toUTC.toSeconds());
 
-      // Fetch candles
-      const fetchStart = Date.now();
-      const candles = await fetchBirdeyeCandles(mint, args.interval, fromUnix, toUnix, chain);
-      const fetchDuration = Date.now() - fetchStart;
+      logger.info(`[${alertNum}/${alertsToProcess.length}] Processing alert for ${mint.substring(0, 20)}...`, {
+        mint,
+        chain,
+        interval: args.interval,
+        alertTime: alertTime.toISO()!,
+        caller: callerName,
+        from: fromUTC.toISO()!,
+        to: toUTC.toISO()!,
+        requiredCandles: MIN_CANDLES,
+      });
 
-      if (candles.length > 0) {
-        // Store candles
-        const storeStart = Date.now();
-        await storeCandles(mint, chain as Chain, candles, args.interval);
-        const storeDuration = Date.now() - storeStart;
+      // Keep fetching until we have full coverage
+      let hasFullCoverage = false;
+      let fetchAttempts = 0;
+      const MAX_FETCH_ATTEMPTS = 10; // Prevent infinite loops
 
-        results.fetchesSucceeded++;
-        results.totalCandlesFetched += candles.length;
-        results.totalCandlesStored += candles.length;
+      while (!hasFullCoverage && fetchAttempts < MAX_FETCH_ATTEMPTS) {
+        fetchAttempts++;
+        results.fetchesAttempted++;
 
-        logger.info(`Successfully fetched and stored ${candles.length} candles for ${mint}`, {
-          mint,
-          candlesFetched: candles.length,
-          fetchDurationMs: fetchDuration,
-          storeDurationMs: storeDuration,
-        });
-      } else {
-        results.fetchesFailed++;
-        const errorMsg = `No candles available for mint ${mint} on ${chain}`;
-        results.errors.push({ mint, error: errorMsg });
-        logger.info(`No candles found for ${mint}`, {
+        // Check current coverage
+        const coverage = await getCoverage(
           mint,
           chain,
-          interval: args.interval,
-          from: fromUTC.toISO()!,
-          to: toUTC.toISO()!,
+          fromUTC.toJSDate(),
+          toUTC.toJSDate(),
+          args.interval
+        );
+
+        logger.debug(`Coverage check for ${mint}`, {
+          mint,
+          hasData: coverage.hasData,
+          candleCount: coverage.candleCount,
+          coverageRatio: coverage.coverageRatio,
+          requiredCandles: MIN_CANDLES,
+          requiredRatio: MIN_COVERAGE_RATIO,
+        });
+
+        // Check if we have full coverage
+        const hasEnoughCandles = coverage.candleCount >= MIN_CANDLES;
+        const hasEnoughRatio = coverage.coverageRatio >= MIN_COVERAGE_RATIO;
+
+        if (hasEnoughCandles && hasEnoughRatio) {
+          hasFullCoverage = true;
+          results.alertsWithFullCoverage++;
+          logger.info(`✅ Full coverage achieved for ${mint} (alert ${alertNum})`, {
+            mint,
+            candleCount: coverage.candleCount,
+            coverageRatio: coverage.coverageRatio,
+            fetchAttempts,
+          });
+          break;
+        }
+
+        // Need to fetch more data
+        logger.info(`⚠️  Incomplete coverage for ${mint} (alert ${alertNum}) - fetching...`, {
+          mint,
+          currentCandles: coverage.candleCount,
+          requiredCandles: MIN_CANDLES,
+          currentRatio: coverage.coverageRatio,
+          requiredRatio: MIN_COVERAGE_RATIO,
+          fetchAttempt: fetchAttempts,
+          maxAttempts: MAX_FETCH_ATTEMPTS,
+        });
+
+        // Fetch candles
+        const fetchStart = Date.now();
+        const candles = await fetchBirdeyeCandles(mint, args.interval, fromUnix, toUnix, chain);
+        const fetchDuration = Date.now() - fetchStart;
+
+        if (candles.length > 0) {
+          // Store candles
+          const storeStart = Date.now();
+          await storeCandles(mint, chain, candles, args.interval);
+          const storeDuration = Date.now() - storeStart;
+
+          results.fetchesSucceeded++;
+          results.totalCandlesFetched += candles.length;
+          results.totalCandlesStored += candles.length;
+
+          logger.info(`Fetched and stored ${candles.length} candles for ${mint}`, {
+            mint,
+            candlesFetched: candles.length,
+            fetchDurationMs: fetchDuration,
+            storeDurationMs: storeDuration,
+            fetchAttempt: fetchAttempts,
+          });
+
+          // Small delay before checking coverage again
+          await new Promise((resolve) => setTimeout(resolve, 100));
+        } else {
+          // No more data available from API
+          logger.warn(`No candles available from API for ${mint} (alert ${alertNum})`, {
+            mint,
+            chain,
+            interval: args.interval,
+            from: fromUTC.toISO()!,
+            to: toUTC.toISO()!,
+          });
+          break; // Can't get more data, exit retry loop
+        }
+
+        if (fetchAttempts > 1) {
+          results.retries++;
+        }
+      }
+
+      if (!hasFullCoverage) {
+        results.alertsWithIncompleteCoverage++;
+        const finalCoverage = await getCoverage(
+          mint,
+          chain,
+          fromUTC.toJSDate(),
+          toUTC.toJSDate(),
+          args.interval
+        );
+        logger.warn(`❌ Incomplete coverage after ${fetchAttempts} attempts for ${mint} (alert ${alertNum})`, {
+          mint,
+          finalCandles: finalCoverage.candleCount,
+          requiredCandles: MIN_CANDLES,
+          finalRatio: finalCoverage.coverageRatio,
+          requiredRatio: MIN_COVERAGE_RATIO,
         });
       }
     } catch (error) {
       results.fetchesFailed++;
       const errorMsg = error instanceof Error ? error.message : String(error);
-      results.errors.push({ mint, error: errorMsg });
-      logger.error(`Failed to fetch OHLCV for ${mint}`, {
+      results.errors.push({
+        mint,
+        alertTime: alertTime.toISO()!,
+        error: errorMsg,
+      });
+      logger.error(`Failed to fetch OHLCV for ${mint} (alert ${alertNum})`, {
         mint,
         chain,
+        alertTime: alertTime.toISO()!,
         error: errorMsg,
       });
     }
   }
 
   logger.info('Completed fetching OHLCV for all alerts', {
+    alertsProcessed: results.alertsProcessed,
+    alertsWithFullCoverage: results.alertsWithFullCoverage,
+    alertsWithIncompleteCoverage: results.alertsWithIncompleteCoverage,
     fetchesAttempted: results.fetchesAttempted,
     fetchesSucceeded: results.fetchesSucceeded,
     fetchesFailed: results.fetchesFailed,
+    retries: results.retries,
     totalCandlesFetched: results.totalCandlesFetched,
     totalCandlesStored: results.totalCandlesStored,
+    coverageSuccessRate: `${((results.alertsWithFullCoverage / results.alertsProcessed) * 100).toFixed(1)}%`,
   });
 
   return results;
