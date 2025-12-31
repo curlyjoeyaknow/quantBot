@@ -1,7 +1,8 @@
 /**
- * RunsRepository - DuckDB repository for simulation runs
+ * RunsRepository - DuckDB repository for backtest runs
  *
  * Handles all database operations for runs table.
+ * These runs represent deterministic backtests (replay over historical data).
  */
 
 import { DateTime } from 'luxon';

@@ -10,14 +10,56 @@ import { NotFoundError, ValidationError, getDuckDBPath } from '@quantbot/utils';
 import { writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
 import type { WorkflowContext } from '../types.js';
-import type {
-  RunOrchestrator,
-  CreateRunParams,
-  RunSummary,
-  TradeFilters,
-  Trade,
-  Page,
-} from './RunOrchestrator.js';
+// Types defined inline since RunOrchestrator.ts was removed
+export interface CreateRunParams {
+  strategy_id: string;
+  filter_id: string;
+  from_ts: DateTime;
+  to_ts: DateTime;
+}
+
+export interface RunSummary {
+  run_id: string;
+  strategy_id: string;
+  filter_id: string;
+  status: string;
+  summary_json: Record<string, unknown> | null;
+  created_at: DateTime;
+  finished_at: DateTime | null;
+}
+
+export interface TradeFilters {
+  token?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface Trade {
+  run_id: string;
+  token: string;
+  trade_id: string;
+  entry_ts: DateTime;
+  exit_ts: DateTime;
+  entry_price: number;
+  exit_price: number;
+  pnl_pct: number;
+  exit_reason: string;
+}
+
+export interface Page<T> {
+  items: T[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface RunOrchestrator {
+  createRun(params: CreateRunParams): Promise<string>;
+  executeRun(runId: string): Promise<any>;
+  getRunSummary(runId: string): Promise<RunSummary | null>;
+  listRuns(options?: any): Promise<Page<RunSummary>>;
+  getTrades(runId: string, filters?: TradeFilters): Promise<Page<Trade>>;
+}
 import { planRun } from './planRun.js';
 import { coveragePreflight } from './coveragePreflight.js';
 import { materializeSlices } from './materializeSlices.js';
@@ -79,7 +121,7 @@ export function createRunOrchestrator(ctx: WorkflowContext): RunOrchestrator {
 
       // Generate run ID
       const runId = ctx.ids.newRunId();
-      const interval = params.interval || '5m';
+      const interval = '5m'; // Default interval - can be added to CreateRunParams later
 
       // Create run record with 'pending' status
       await runsRepo.create({
