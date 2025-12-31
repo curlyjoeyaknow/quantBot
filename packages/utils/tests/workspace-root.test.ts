@@ -32,4 +32,20 @@ describe('findWorkspaceRoot', () => {
     const cached = findWorkspaceRoot(nestedDir);
     expect(cached).toBe(rootDir);
   });
+
+  it('detects the workspace root using package.json workspaces and caches the result', () => {
+    const packageFile = join(rootDir, 'package.json');
+    writeFileSync(
+      packageFile,
+      JSON.stringify({ name: 'workspace-root-test', workspaces: ['packages/*'] }, null, 2),
+    );
+
+    const detected = findWorkspaceRoot(nestedDir);
+    expect(detected).toBe(rootDir);
+
+    rmSync(packageFile, { force: true });
+
+    const cached = findWorkspaceRoot(nestedDir);
+    expect(cached).toBe(rootDir);
+  });
 });
