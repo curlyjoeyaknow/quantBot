@@ -30,7 +30,7 @@ export function isBase58(s: string): boolean {
 /**
  * Extract potential addresses from text (Telegram chat blobs).
  * Returns de-duplicated addresses preserving first-seen order.
- * 
+ *
  * @deprecated Use extractAddresses from @quantbot/utils instead
  */
 export function extractAddresses(text: string): {

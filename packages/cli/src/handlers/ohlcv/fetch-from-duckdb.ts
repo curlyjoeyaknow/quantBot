@@ -133,197 +133,200 @@ export async function fetchFromDuckdbHandler(args: FetchFromDuckdbArgs, ctx: Com
     errors: [] as Array<{ mint: string; alertTime: string; error: string }>,
   };
 
-   // Process alerts in parallel batches
-   const CONCURRENT_ALERTS = args.concurrent;
-   logger.info(`Processing ${alertsToProcess.length} alerts with concurrency of ${CONCURRENT_ALERTS}`);
+  // Process alerts in parallel batches
+  const CONCURRENT_ALERTS = args.concurrent;
+  logger.info(
+    `Processing ${alertsToProcess.length} alerts with concurrency of ${CONCURRENT_ALERTS}`
+  );
 
-   for (let i = 0; i < alertsToProcess.length; i += CONCURRENT_ALERTS) {
-     const batch = alertsToProcess.slice(i, i + CONCURRENT_ALERTS);
-     
-     const batchResults = await Promise.allSettled(
-       batch.map(async ({ mint, chain, alertTime, callerName }, batchIndex) => {
-         const alertNum = i + batchIndex + 1;
+  for (let i = 0; i < alertsToProcess.length; i += CONCURRENT_ALERTS) {
+    const batch = alertsToProcess.slice(i, i + CONCURRENT_ALERTS);
 
-    try {
-      // Calculate required time window for this alert
-      const fromUTC = alertTime.minus({ seconds: lookbackSeconds });
-      const toUTC = args.to
-        ? DateTime.fromISO(args.to, { zone: 'utc' }).toUTC()
-        : alertTime.plus({ seconds: forwardSeconds });
+    const batchResults = await Promise.allSettled(
+      batch.map(async ({ mint, chain, alertTime, callerName }, batchIndex) => {
+        const alertNum = i + batchIndex + 1;
 
-      const fromUnix = Math.floor(fromUTC.toSeconds());
-      const toUnix = Math.floor(toUTC.toSeconds());
+        try {
+          // Calculate required time window for this alert
+          const fromUTC = alertTime.minus({ seconds: lookbackSeconds });
+          const toUTC = args.to
+            ? DateTime.fromISO(args.to, { zone: 'utc' }).toUTC()
+            : alertTime.plus({ seconds: forwardSeconds });
 
-      logger.info(
-        `[${alertNum}/${alertsToProcess.length}] Processing alert for ${mint.substring(0, 20)}...`,
-        {
-          mint,
-          chain,
-          interval: args.interval,
-          alertTime: alertTime.toISO()!,
-          caller: callerName,
-          from: fromUTC.toISO()!,
-          to: toUTC.toISO()!,
-          requiredCandles: MIN_CANDLES,
-        }
-      );
+          const fromUnix = Math.floor(fromUTC.toSeconds());
+          const toUnix = Math.floor(toUTC.toSeconds());
 
-      // Keep fetching until we have full coverage
-      let hasFullCoverage = false;
-      let fetchAttempts = 0;
-      const MAX_FETCH_ATTEMPTS = 10; // Prevent infinite loops
+          logger.info(
+            `[${alertNum}/${alertsToProcess.length}] Processing alert for ${mint.substring(0, 20)}...`,
+            {
+              mint,
+              chain,
+              interval: args.interval,
+              alertTime: alertTime.toISO()!,
+              caller: callerName,
+              from: fromUTC.toISO()!,
+              to: toUTC.toISO()!,
+              requiredCandles: MIN_CANDLES,
+            }
+          );
 
-      while (!hasFullCoverage && fetchAttempts < MAX_FETCH_ATTEMPTS) {
-        fetchAttempts++;
-        results.fetchesAttempted++;
+          // Keep fetching until we have full coverage
+          let hasFullCoverage = false;
+          let fetchAttempts = 0;
+          const MAX_FETCH_ATTEMPTS = 10; // Prevent infinite loops
 
-        // Check current coverage
-        const coverage = await getCoverage(
-          mint,
-          chain,
-          fromUTC.toJSDate(),
-          toUTC.toJSDate(),
-          args.interval
-        );
+          while (!hasFullCoverage && fetchAttempts < MAX_FETCH_ATTEMPTS) {
+            fetchAttempts++;
+            results.fetchesAttempted++;
 
-        logger.debug(`Coverage check for ${mint}`, {
-          mint,
-          hasData: coverage.hasData,
-          candleCount: coverage.candleCount,
-          coverageRatio: coverage.coverageRatio,
-          requiredCandles: MIN_CANDLES,
-          requiredRatio: MIN_COVERAGE_RATIO,
-        });
+            // Check current coverage
+            const coverage = await getCoverage(
+              mint,
+              chain,
+              fromUTC.toJSDate(),
+              toUTC.toJSDate(),
+              args.interval
+            );
 
-        // Check if we have full coverage
-        const hasEnoughCandles = coverage.candleCount >= MIN_CANDLES;
-        const hasEnoughRatio = coverage.coverageRatio >= MIN_COVERAGE_RATIO;
+            logger.debug(`Coverage check for ${mint}`, {
+              mint,
+              hasData: coverage.hasData,
+              candleCount: coverage.candleCount,
+              coverageRatio: coverage.coverageRatio,
+              requiredCandles: MIN_CANDLES,
+              requiredRatio: MIN_COVERAGE_RATIO,
+            });
 
-        if (hasEnoughCandles && hasEnoughRatio) {
-          hasFullCoverage = true;
-          results.alertsWithFullCoverage++;
-          logger.info(`✅ Full coverage achieved for ${mint} (alert ${alertNum})`, {
+            // Check if we have full coverage
+            const hasEnoughCandles = coverage.candleCount >= MIN_CANDLES;
+            const hasEnoughRatio = coverage.coverageRatio >= MIN_COVERAGE_RATIO;
+
+            if (hasEnoughCandles && hasEnoughRatio) {
+              hasFullCoverage = true;
+              results.alertsWithFullCoverage++;
+              logger.info(`✅ Full coverage achieved for ${mint} (alert ${alertNum})`, {
+                mint,
+                candleCount: coverage.candleCount,
+                coverageRatio: coverage.coverageRatio,
+                fetchAttempts,
+              });
+              break;
+            }
+
+            // Need to fetch more data
+            logger.info(`⚠️  Incomplete coverage for ${mint} (alert ${alertNum}) - fetching...`, {
+              mint,
+              currentCandles: coverage.candleCount,
+              requiredCandles: MIN_CANDLES,
+              currentRatio: coverage.coverageRatio,
+              requiredRatio: MIN_COVERAGE_RATIO,
+              fetchAttempt: fetchAttempts,
+              maxAttempts: MAX_FETCH_ATTEMPTS,
+            });
+
+            // Fetch candles
+            const fetchStart = Date.now();
+            const candles = await fetchBirdeyeCandles(mint, args.interval, fromUnix, toUnix, chain);
+            const fetchDuration = Date.now() - fetchStart;
+
+            if (candles.length > 0) {
+              // Store candles
+              const storeStart = Date.now();
+              await storeCandles(mint, chain, candles, args.interval);
+              const storeDuration = Date.now() - storeStart;
+
+              results.fetchesSucceeded++;
+              results.totalCandlesFetched += candles.length;
+              results.totalCandlesStored += candles.length;
+
+              logger.info(`Fetched and stored ${candles.length} candles for ${mint}`, {
+                mint,
+                candlesFetched: candles.length,
+                fetchDurationMs: fetchDuration,
+                storeDurationMs: storeDuration,
+                fetchAttempt: fetchAttempts,
+              });
+
+              // Small delay before checking coverage again
+              await new Promise((resolve) => setTimeout(resolve, 100));
+            } else {
+              // No more data available from API
+              logger.warn(`No candles available from API for ${mint} (alert ${alertNum})`, {
+                mint,
+                chain,
+                interval: args.interval,
+                from: fromUTC.toISO()!,
+                to: toUTC.toISO()!,
+              });
+              break; // Can't get more data, exit retry loop
+            }
+
+            if (fetchAttempts > 1) {
+              results.retries++;
+            }
+          }
+
+          if (!hasFullCoverage) {
+            results.alertsWithIncompleteCoverage++;
+            const finalCoverage = await getCoverage(
+              mint,
+              chain,
+              fromUTC.toJSDate(),
+              toUTC.toJSDate(),
+              args.interval
+            );
+            logger.warn(
+              `❌ Incomplete coverage after ${fetchAttempts} attempts for ${mint} (alert ${alertNum})`,
+              {
+                mint,
+                finalCandles: finalCoverage.candleCount,
+                requiredCandles: MIN_CANDLES,
+                finalRatio: finalCoverage.coverageRatio,
+                requiredRatio: MIN_COVERAGE_RATIO,
+              }
+            );
+          }
+        } catch (error) {
+          results.fetchesFailed++;
+          const errorMsg = error instanceof Error ? error.message : String(error);
+          results.errors.push({
             mint,
-            candleCount: coverage.candleCount,
-            coverageRatio: coverage.coverageRatio,
-            fetchAttempts,
+            alertTime: alertTime.toISO()!,
+            error: errorMsg,
           });
-          break;
-        }
-
-        // Need to fetch more data
-        logger.info(`⚠️  Incomplete coverage for ${mint} (alert ${alertNum}) - fetching...`, {
-          mint,
-          currentCandles: coverage.candleCount,
-          requiredCandles: MIN_CANDLES,
-          currentRatio: coverage.coverageRatio,
-          requiredRatio: MIN_COVERAGE_RATIO,
-          fetchAttempt: fetchAttempts,
-          maxAttempts: MAX_FETCH_ATTEMPTS,
-        });
-
-        // Fetch candles
-        const fetchStart = Date.now();
-        const candles = await fetchBirdeyeCandles(mint, args.interval, fromUnix, toUnix, chain);
-        const fetchDuration = Date.now() - fetchStart;
-
-        if (candles.length > 0) {
-          // Store candles
-          const storeStart = Date.now();
-          await storeCandles(mint, chain, candles, args.interval);
-          const storeDuration = Date.now() - storeStart;
-
-          results.fetchesSucceeded++;
-          results.totalCandlesFetched += candles.length;
-          results.totalCandlesStored += candles.length;
-
-          logger.info(`Fetched and stored ${candles.length} candles for ${mint}`, {
-            mint,
-            candlesFetched: candles.length,
-            fetchDurationMs: fetchDuration,
-            storeDurationMs: storeDuration,
-            fetchAttempt: fetchAttempts,
-          });
-
-          // Small delay before checking coverage again
-          await new Promise((resolve) => setTimeout(resolve, 100));
-        } else {
-          // No more data available from API
-          logger.warn(`No candles available from API for ${mint} (alert ${alertNum})`, {
+          logger.error(`Failed to fetch OHLCV for ${mint} (alert ${alertNum})`, {
             mint,
             chain,
-            interval: args.interval,
-            from: fromUTC.toISO()!,
-            to: toUTC.toISO()!,
+            alertTime: alertTime.toISO()!,
+            error: errorMsg,
           });
-          break; // Can't get more data, exit retry loop
         }
+      })
+    );
 
-        if (fetchAttempts > 1) {
-          results.retries++;
-        }
+    // Aggregate batch results
+    for (const result of batchResults) {
+      if (result.status === 'rejected') {
+        results.fetchesFailed++;
+        const errorMsg =
+          result.reason instanceof Error ? result.reason.message : String(result.reason);
+        results.errors.push({
+          mint: 'unknown',
+          alertTime: 'unknown',
+          error: errorMsg,
+        });
+        logger.error('Unexpected error in batch processing', result.reason as Error);
       }
+    }
 
-      if (!hasFullCoverage) {
-        results.alertsWithIncompleteCoverage++;
-        const finalCoverage = await getCoverage(
-          mint,
-          chain,
-          fromUTC.toJSDate(),
-          toUTC.toJSDate(),
-          args.interval
-        );
-        logger.warn(
-          `❌ Incomplete coverage after ${fetchAttempts} attempts for ${mint} (alert ${alertNum})`,
-          {
-            mint,
-            finalCandles: finalCoverage.candleCount,
-            requiredCandles: MIN_CANDLES,
-            finalRatio: finalCoverage.coverageRatio,
-            requiredRatio: MIN_COVERAGE_RATIO,
-          }
-        );
-      }
-    } catch (error) {
-      results.fetchesFailed++;
-      const errorMsg = error instanceof Error ? error.message : String(error);
-      results.errors.push({
-        mint,
-        alertTime: alertTime.toISO()!,
-        error: errorMsg,
-      });
-      logger.error(`Failed to fetch OHLCV for ${mint} (alert ${alertNum})`, {
-        mint,
-        chain,
-        alertTime: alertTime.toISO()!,
-        error: errorMsg,
-       });
-     }
-       })
-     );
-
-     // Aggregate batch results
-     for (const result of batchResults) {
-       if (result.status === 'rejected') {
-         results.fetchesFailed++;
-         const errorMsg = result.reason instanceof Error ? result.reason.message : String(result.reason);
-         results.errors.push({
-           mint: 'unknown',
-           alertTime: 'unknown',
-           error: errorMsg,
-         });
-         logger.error('Unexpected error in batch processing', result.reason as Error);
-       }
-     }
-
-     // Log batch progress
-     const batchNum = Math.floor(i / CONCURRENT_ALERTS) + 1;
-     const totalBatches = Math.ceil(alertsToProcess.length / CONCURRENT_ALERTS);
-     logger.info(`Batch ${batchNum}/${totalBatches} complete`, {
-       batchSize: batch.length,
-       progress: `${Math.min(i + batch.length, alertsToProcess.length)}/${alertsToProcess.length}`,
-     });
-   }
+    // Log batch progress
+    const batchNum = Math.floor(i / CONCURRENT_ALERTS) + 1;
+    const totalBatches = Math.ceil(alertsToProcess.length / CONCURRENT_ALERTS);
+    logger.info(`Batch ${batchNum}/${totalBatches} complete`, {
+      batchSize: batch.length,
+      progress: `${Math.min(i + batch.length, alertsToProcess.length)}/${alertsToProcess.length}`,
+    });
+  }
 
   logger.info('Completed fetching OHLCV for all alerts', {
     alertsProcessed: results.alertsProcessed,

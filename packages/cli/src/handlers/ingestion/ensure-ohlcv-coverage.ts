@@ -575,7 +575,7 @@ export async function ensureOhlcvCoverageHandler(
     for (const { interval, minCandlesBefore, minCandlesAfter } of intervals) {
       // Total minimum candles needed
       const minCandles = minCandlesBefore + minCandlesAfter;
-      
+
       // Check coverage
       const coverage = await checkTokenCoverage(
         token.mint,

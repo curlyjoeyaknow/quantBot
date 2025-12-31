@@ -6,6 +6,33 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Phase 2: Database Query Consolidation** - Consolidated SQL query building and eliminated duplicate logic
+  - Created `packages/storage/src/utils/query-builder.ts` with SQL escaping and WHERE clause builders
+  - Created `packages/storage/src/utils/interval-converter.ts` for interval string conversion
+  - Migrated all ClickHouse repositories to use query builder utilities
+  - Created comprehensive SQL injection test suite (32 tests)
+  - Location: `packages/storage/src/utils/query-builder.ts`, `packages/storage/tests/security/sql-injection.test.ts`
+  - Results: ~300 lines of duplicate SQL logic eliminated, SQL injection prevention verified
+
+- **Phase 3: Mint Address Consolidation** - Single source of truth for address extraction
+  - Created `packages/utils/src/address/extract.ts` with unified extraction functions
+  - Created `packages/utils/src/address/patterns.py` for Python/TypeScript pattern sharing
+  - Migrated all TypeScript files to use consolidated extractor
+  - Updated Python scripts with pattern references for consistency
+  - Created comprehensive fuzzing tests for address extraction (23 tests)
+  - Location: `packages/utils/src/address/extract.ts`, `packages/utils/tests/fuzzing/address-extraction.fuzz.test.ts`
+  - Results: ~150 lines of duplicate extraction logic eliminated, consistent patterns across languages
+
+- **Phase 4: Performance Tightening** - Connection pooling, caching, and performance guardrails
+  - Created connection pooling tests (6 tests)
+  - Created cache hit rate tests (4 tests)
+  - Created query complexity guardrail tests (7 tests)
+  - Created hot path performance tests (2 tests)
+  - Created memory leak detection tests (3 tests)
+  - Documented ClickHouse parameterized query support
+  - Location: `packages/storage/tests/performance/`, `packages/storage/docs/clickhouse-parameterized-queries.md`
+  - Results: Connection pooling verified, cache usage optimized, performance guardrails in place
+
 - **Wiring Improvements & Verification** - Comprehensive wiring pattern implementation and verification
   - Verified `StrategiesRepository` through `CommandContext` in list-strategies command
   - Created verification tests: `command-context-wiring.test.ts` (5 tests passing)

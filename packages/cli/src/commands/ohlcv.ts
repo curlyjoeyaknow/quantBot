@@ -193,7 +193,9 @@ export function registerOhlcvCommands(program: Command): void {
   // Fetch from DuckDB alerts command
   const fetchFromDuckdbCmd = ohlcvCmd
     .command('fetch-from-duckdb')
-    .description('Fetch OHLCV candles for all alerts/calls in DuckDB (processes every alert individually)')
+    .description(
+      'Fetch OHLCV candles for all alerts/calls in DuckDB (processes every alert individually)'
+    )
     .requiredOption('--duckdb <path>', 'Path to DuckDB database file')
     .option('--interval <interval>', 'Candle interval', '5m')
     .option('--from <date>', 'Filter alerts from this date (ISO 8601)')

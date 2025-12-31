@@ -1,9 +1,9 @@
 /**
  * Fuzzing Tests for Address Extraction
- * 
+ *
  * Tests address extraction with random, malformed, and edge case inputs
  * to ensure robustness and prevent crashes.
- * 
+ *
  * CRITICAL: These tests verify that extraction never crashes on malformed input.
  */
 
@@ -17,7 +17,10 @@ import {
 /**
  * Generate random string of given length
  */
-function randomString(length: number, charset: string = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'): string {
+function randomString(
+  length: number,
+  charset: string = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+): string {
   let result = '';
   for (let i = 0; i < length; i++) {
     result += charset.charAt(Math.floor(Math.random() * charset.length));
@@ -46,7 +49,7 @@ describe('Address Extraction Fuzzing', () => {
       for (let i = 0; i < 100; i++) {
         const randomLength = Math.floor(Math.random() * 1000) + 1;
         const randomInput = randomString(randomLength);
-        
+
         expect(() => {
           const result = extractAddresses(randomInput);
           expect(result).toHaveProperty('solana');
@@ -59,7 +62,7 @@ describe('Address Extraction Fuzzing', () => {
 
     it('should never crash on very long strings', () => {
       const longString = randomString(10000);
-      
+
       expect(() => {
         const result = extractAddresses(longString);
         expect(result).toHaveProperty('solana');
@@ -69,7 +72,7 @@ describe('Address Extraction Fuzzing', () => {
 
     it('should never crash on empty or whitespace-only strings', () => {
       const cases = ['', ' ', '   ', '\n', '\t', '\r\n', '   \n   '];
-      
+
       for (const input of cases) {
         expect(() => {
           const result = extractAddresses(input);
@@ -82,7 +85,7 @@ describe('Address Extraction Fuzzing', () => {
     it('should never crash on strings with only special characters', () => {
       const specialChars = '!@#$%^&*()_+-=[]{}|;:,.<>?/~`';
       const randomSpecial = randomString(100, specialChars);
-      
+
       expect(() => {
         const result = extractAddresses(randomSpecial);
         expect(result).toHaveProperty('solana');
@@ -98,7 +101,7 @@ describe('Address Extraction Fuzzing', () => {
         'مرحبا بالعالم',
         '🎯 Check out So11111111111111111111111111111111111111112',
       ];
-      
+
       for (const input of unicodeStrings) {
         expect(() => {
           const result = extractAddresses(input);
@@ -110,7 +113,7 @@ describe('Address Extraction Fuzzing', () => {
 
     it('should never crash on strings with null bytes', () => {
       const inputWithNulls = 'Hello\0World\0So11111111111111111111111111111111111111112';
-      
+
       expect(() => {
         const result = extractAddresses(inputWithNulls);
         expect(result).toHaveProperty('solana');
@@ -121,7 +124,7 @@ describe('Address Extraction Fuzzing', () => {
     it('should never crash on strings with control characters', () => {
       const controlChars = '\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x0A\x0B\x0C\x0D\x0E\x0F';
       const input = `Address${controlChars}So11111111111111111111111111111111111111112${controlChars}End`;
-      
+
       expect(() => {
         const result = extractAddresses(input);
         expect(result).toHaveProperty('solana');
@@ -142,7 +145,7 @@ describe('Address Extraction Fuzzing', () => {
         'So1111111111111111111111111111111111111111 ', // Has space
         'So1111111111111111111111111111111111111111\n', // Has newline
       ];
-      
+
       for (const input of cases) {
         expect(() => {
           const result = extractAddresses(input);
@@ -164,7 +167,7 @@ describe('Address Extraction Fuzzing', () => {
         '0x742d35cc6634c0532925a3b844bc9e7595f0beb\n', // Has newline
         '742d35cc6634c0532925a3b844bc9e7595f0beb0', // Missing 0x prefix
       ];
-      
+
       for (const input of cases) {
         expect(() => {
           const result = extractAddresses(input);
@@ -179,7 +182,7 @@ describe('Address Extraction Fuzzing', () => {
 
     it('should handle zero address correctly', () => {
       const input = '0x0000000000000000000000000000000000000000';
-      
+
       expect(() => {
         const result = extractAddresses(input);
         // Zero address should be rejected
@@ -192,7 +195,7 @@ describe('Address Extraction Fuzzing', () => {
     it('should handle addresses at string boundaries', () => {
       const validSolana = 'So11111111111111111111111111111111111111112';
       const validEvm = '0x742d35cc6634c0532925a3b844bc9e7595f0beb0';
-      
+
       const cases = [
         validSolana, // Start
         `Text before ${validSolana}`, // Middle
@@ -204,7 +207,7 @@ describe('Address Extraction Fuzzing', () => {
         `[${validSolana}]`, // In brackets
         `{${validSolana}}`, // In braces
       ];
-      
+
       for (const input of cases) {
         expect(() => {
           const result = extractAddresses(input);
@@ -215,8 +218,9 @@ describe('Address Extraction Fuzzing', () => {
     });
 
     it('should handle multiple addresses in same string', () => {
-      const input = 'So11111111111111111111111111111111111111112 and 0x742d35cc6634c0532925a3b844bc9e7595f0beb0 and So11111111111111111111111111111111111111113';
-      
+      const input =
+        'So11111111111111111111111111111111111111112 and 0x742d35cc6634c0532925a3b844bc9e7595f0beb0 and So11111111111111111111111111111111111111113';
+
       expect(() => {
         const result = extractAddresses(input);
         expect(result.solana.length).toBeGreaterThan(0);
@@ -231,7 +235,7 @@ describe('Address Extraction Fuzzing', () => {
         'https://solscan.io/So11111111111111111111111111111111111111112',
         'https://etherscan.io/address/0x742d35cc6634c0532925a3b844bc9e7595f0beb0',
       ];
-      
+
       for (const input of cases) {
         expect(() => {
           const result = extractAddresses(input);
@@ -247,7 +251,7 @@ describe('Address Extraction Fuzzing', () => {
         '```So11111111111111111111111111111111111111112```',
         '`0x742d35cc6634c0532925a3b844bc9e7595f0beb0`',
       ];
-      
+
       for (const input of cases) {
         expect(() => {
           const result = extractAddresses(input);
@@ -262,7 +266,7 @@ describe('Address Extraction Fuzzing', () => {
     it('should never crash on random inputs', () => {
       for (let i = 0; i < 50; i++) {
         const randomInput = randomString(Math.floor(Math.random() * 500) + 1);
-        
+
         expect(() => {
           const result = extractSolanaAddresses(randomInput);
           expect(Array.isArray(result)).toBe(true);
@@ -273,7 +277,7 @@ describe('Address Extraction Fuzzing', () => {
     it('should handle base58-like strings of various lengths', () => {
       for (let length = 1; length <= 100; length += 10) {
         const base58Like = randomBase58String(length);
-        
+
         expect(() => {
           const result = extractSolanaAddresses(base58Like);
           expect(Array.isArray(result)).toBe(true);
@@ -286,7 +290,7 @@ describe('Address Extraction Fuzzing', () => {
     it('should never crash on random inputs', () => {
       for (let i = 0; i < 50; i++) {
         const randomInput = randomString(Math.floor(Math.random() * 500) + 1);
-        
+
         expect(() => {
           const result = extractEvmAddresses(randomInput);
           expect(Array.isArray(result)).toBe(true);
@@ -297,7 +301,7 @@ describe('Address Extraction Fuzzing', () => {
     it('should handle hex-like strings', () => {
       for (let length = 1; length <= 100; length += 10) {
         const hexLike = `0x${randomHexString(length)}`;
-        
+
         expect(() => {
           const result = extractEvmAddresses(hexLike);
           expect(Array.isArray(result)).toBe(true);
@@ -311,7 +315,7 @@ describe('Address Extraction Fuzzing', () => {
       for (let i = 0; i < 100; i++) {
         const randomInput = randomString(Math.floor(Math.random() * 1000) + 1);
         const result = extractAddresses(randomInput);
-        
+
         expect(result).toBeDefined();
         expect(result.solana).toBeDefined();
         expect(result.evm).toBeDefined();
@@ -323,15 +327,15 @@ describe('Address Extraction Fuzzing', () => {
     it('should preserve case for extracted addresses', () => {
       const mixedCaseSolana = 'So11111111111111111111111111111111111111112';
       const mixedCaseEvm = '0x742d35Cc6634C0532925a3b844Bc9e7595f0bEb0';
-      
+
       const result1 = extractAddresses(mixedCaseSolana);
       const result2 = extractAddresses(mixedCaseEvm);
-      
+
       if (result1.solana.length > 0) {
         // Case should be preserved (exact match or normalized but case-aware)
         expect(result1.solana[0]).toBeTruthy();
       }
-      
+
       if (result2.evm.length > 0) {
         // EVM addresses should preserve case
         expect(result2.evm[0]).toBeTruthy();
@@ -339,10 +343,11 @@ describe('Address Extraction Fuzzing', () => {
     });
 
     it('should deduplicate addresses within same extraction', () => {
-      const input = 'So11111111111111111111111111111111111111112 So11111111111111111111111111111111111111112 So11111111111111111111111111111111111111112';
-      
+      const input =
+        'So11111111111111111111111111111111111111112 So11111111111111111111111111111111111111112 So11111111111111111111111111111111111111112';
+
       const result = extractAddresses(input);
-      
+
       // Should only have one unique address
       const unique = new Set(result.solana);
       expect(unique.size).toBeLessThanOrEqual(result.solana.length);
@@ -352,7 +357,7 @@ describe('Address Extraction Fuzzing', () => {
   describe('Stress Tests', () => {
     it('should handle very large inputs efficiently', () => {
       const largeInput = randomString(100000);
-      
+
       const start = Date.now();
       expect(() => {
         const result = extractAddresses(largeInput);
@@ -360,7 +365,7 @@ describe('Address Extraction Fuzzing', () => {
         expect(result).toHaveProperty('evm');
       }).not.toThrow();
       const duration = Date.now() - start;
-      
+
       // Should complete in reasonable time (< 5 seconds)
       expect(duration).toBeLessThan(5000);
     });
@@ -368,10 +373,12 @@ describe('Address Extraction Fuzzing', () => {
     it('should handle many addresses in single string', () => {
       const addresses: string[] = [];
       for (let i = 0; i < 100; i++) {
-        addresses.push(`So1111111111111111111111111111111111111111${i.toString().padStart(1, '0')}`);
+        addresses.push(
+          `So1111111111111111111111111111111111111111${i.toString().padStart(1, '0')}`
+        );
       }
       const input = addresses.join(' ');
-      
+
       expect(() => {
         const result = extractAddresses(input);
         expect(result.solana.length).toBeGreaterThan(0);
@@ -379,4 +386,3 @@ describe('Address Extraction Fuzzing', () => {
     });
   });
 });
-
