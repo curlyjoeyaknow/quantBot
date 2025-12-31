@@ -10,6 +10,8 @@ export type {
 } from './types.js';
 
 export { runSimulation } from './simulation/runSimulation.js';
+export { createRunOrchestrator } from './simulation/runOrchestrator.js';
+export type { RunOrchestrator, CreateRunParams, RunSummary, TradeFilters, Trade, Page } from './simulation/RunOrchestrator.js';
 export { createProductionContext } from './context/createProductionContext.js';
 export type { ProductionContextConfig } from './context/createProductionContext.js';
 export { ingestTelegramJson } from './telegram/ingestTelegramJson.js';

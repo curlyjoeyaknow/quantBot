@@ -32,9 +32,6 @@ export class OhlcvRepository {
     // Normalize chain name to lowercase canonical form
     const normalizedChain = normalizeChain(chain);
 
-    // Normalize chain name to lowercase canonical form
-    const normalizedChain = normalizeChain(chain);
-
     // Convert interval string to seconds (UInt32) for storage
     const intervalSeconds = intervalToSeconds(interval);
 
@@ -91,27 +88,6 @@ export class OhlcvRepository {
   ): Promise<Candle[]> {
     const ch = getClickHouseClient();
     const database = getClickHouseDatabaseName();
-
-    // Validate chain to prevent SQL injection (whitelist approach)
-    const validChains = ['solana', 'ethereum', 'bsc', 'base'];
-    if (!validChains.includes(chain)) {
-      throw new ValidationError(
-        `Invalid chain: ${chain}. Must be one of: ${validChains.join(', ')}`,
-        {
-          chain,
-          validChains,
-        }
-      );
-    }
-
-    // Validate interval to prevent SQL injection (whitelist approach)
-    const validIntervals = ['1s', '15s', '1m', '5m', '15m', '1h', '4h', '1d'];
-    if (!validIntervals.includes(interval)) {
-      throw new ValidationError(
-        `Invalid interval: ${interval}. Must be one of: ${validIntervals.join(', ')}`,
-        { interval, validIntervals }
-      );
-    }
 
     // Validate chain to prevent SQL injection (whitelist approach)
     const validChains = ['solana', 'ethereum', 'bsc', 'base'];
