@@ -6,7 +6,7 @@
 
 import { DateTime } from 'luxon';
 import { getClickHouseClient } from '../../clickhouse-client.js';
-import { logger } from '@quantbot/utils';
+import { getClickHouseDatabaseName, logger } from '@quantbot/utils';
 import type { SimulationEvent, SimulationAggregate } from '@quantbot/core';
 
 export class SimulationEventsRepository {
@@ -25,7 +25,7 @@ export class SimulationEventsRepository {
     }
 
     const ch = getClickHouseClient();
-    const CLICKHOUSE_DATABASE = process.env.CLICKHOUSE_DATABASE || 'quantbot';
+    const database = getClickHouseDatabaseName();
 
     const rows = events.map((event, index) => ({
       simulation_run_id: runId,
@@ -45,7 +45,7 @@ export class SimulationEventsRepository {
 
     try {
       await ch.insert({
-        table: `${CLICKHOUSE_DATABASE}.simulation_events`,
+        table: `${database}.simulation_events`,
         values: rows,
         format: 'JSONEachRow',
       });
@@ -62,7 +62,7 @@ export class SimulationEventsRepository {
    */
   async insertAggregates(runId: number, aggregates: SimulationAggregate): Promise<void> {
     const ch = getClickHouseClient();
-    const CLICKHOUSE_DATABASE = process.env.CLICKHOUSE_DATABASE || 'quantbot';
+    const database = getClickHouseDatabaseName();
 
     const row = {
       simulation_run_id: runId,
@@ -83,7 +83,7 @@ export class SimulationEventsRepository {
 
     try {
       await ch.insert({
-        table: `${CLICKHOUSE_DATABASE}.simulation_aggregates`,
+        table: `${database}.simulation_aggregates`,
         values: [row],
         format: 'JSONEachRow',
       });

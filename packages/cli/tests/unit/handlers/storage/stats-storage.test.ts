@@ -12,11 +12,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { statsStorageHandler } from '../../../../src/commands/storage/stats-storage.js';
 import { SAFE_TABLES } from '../../../../src/commands/storage.js';
+import { getClickHouseDatabaseName } from '@quantbot/utils';
 
 describe('statsStorageHandler', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    process.env.CLICKHOUSE_DATABASE = 'quantbot';
+    process.env.CLICKHOUSE_DATABASE = getClickHouseDatabaseName();
   });
 
   it('returns stats from ClickHouse tables', async () => {
@@ -63,7 +64,7 @@ describe('statsStorageHandler', () => {
     expect(mockClickHouseQuery).toHaveBeenCalledTimes(SAFE_TABLES.clickhouse.length);
     for (const table of SAFE_TABLES.clickhouse) {
       expect(mockClickHouseQuery).toHaveBeenCalledWith({
-        query: `SELECT COUNT(*) as count FROM quantbot.${table}`,
+        query: `SELECT COUNT(*) as count FROM ${getClickHouseDatabaseName()}.${table}`,
         format: 'JSONEachRow',
       });
     }

@@ -7,7 +7,7 @@
 
 import { DateTime } from 'luxon';
 import { getClickHouseClient } from '../../clickhouse-client.js';
-import { logger, ValidationError } from '@quantbot/utils';
+import { getClickHouseDatabaseName, logger, ValidationError } from '@quantbot/utils';
 import type { Candle, DateRange } from '@quantbot/core';
 import { normalizeChain } from '@quantbot/core';
 
@@ -27,7 +27,7 @@ export class OhlcvRepository {
     }
 
     const ch = getClickHouseClient();
-    const CLICKHOUSE_DATABASE = process.env.CLICKHOUSE_DATABASE || 'quantbot';
+    const database = getClickHouseDatabaseName();
 
     // Normalize chain name to lowercase canonical form
     const normalizedChain = normalizeChain(chain);
@@ -47,7 +47,7 @@ export class OhlcvRepository {
 
     try {
       await ch.insert({
-        table: `${CLICKHOUSE_DATABASE}.ohlcv_candles`,
+        table: `${database}.ohlcv_candles`,
         values: rows,
         format: 'JSONEachRow',
       });
@@ -85,7 +85,7 @@ export class OhlcvRepository {
     range: DateRange
   ): Promise<Candle[]> {
     const ch = getClickHouseClient();
-    const CLICKHOUSE_DATABASE = process.env.CLICKHOUSE_DATABASE || 'quantbot';
+    const database = getClickHouseDatabaseName();
 
     // Validate chain to prevent SQL injection (whitelist approach)
     const validChains = ['solana', 'ethereum', 'bsc', 'base'];
@@ -131,7 +131,7 @@ export class OhlcvRepository {
         low,
         close,
         volume
-      FROM ${CLICKHOUSE_DATABASE}.ohlcv_candles
+      FROM ${database}.ohlcv_candles
       WHERE (token_address = '${escapedToken}'
              OR lower(token_address) = lower('${escapedToken}')
              OR token_address LIKE '${escapedTokenPattern}'
@@ -190,7 +190,7 @@ export class OhlcvRepository {
    */
   async hasCandles(token: string, chain: string, range: DateRange): Promise<boolean> {
     const ch = getClickHouseClient();
-    const CLICKHOUSE_DATABASE = process.env.CLICKHOUSE_DATABASE || 'quantbot';
+    const database = getClickHouseDatabaseName();
 
     // Convert DateTime to Unix timestamp (seconds)
     const startUnix = range.from.toUnixInteger();
@@ -209,7 +209,7 @@ export class OhlcvRepository {
       const result = await ch.query({
         query: `
           SELECT count() as count
-          FROM ${CLICKHOUSE_DATABASE}.ohlcv_candles
+          FROM ${database}.ohlcv_candles
           WHERE (token_address = '${escapedToken}'
                  OR lower(token_address) = lower('${escapedToken}')
                  OR token_address LIKE '${escapedTokenPattern}'

@@ -9,7 +9,7 @@
 
 import { DateTime } from 'luxon';
 import { getClickHouseClient } from '../../clickhouse-client.js';
-import { logger } from '@quantbot/utils';
+import { getClickHouseDatabaseName, logger } from '@quantbot/utils';
 
 export interface IndicatorValue {
   indicatorType: string;
@@ -24,11 +24,11 @@ export class IndicatorsRepository {
    */
   async ensureTable(): Promise<void> {
     const ch = getClickHouseClient();
-    const CLICKHOUSE_DATABASE = process.env.CLICKHOUSE_DATABASE || 'quantbot';
+    const database = getClickHouseDatabaseName();
 
     await ch.exec({
       query: `
-        CREATE TABLE IF NOT EXISTS ${CLICKHOUSE_DATABASE}.indicator_values (
+        CREATE TABLE IF NOT EXISTS ${database}.indicator_values (
           token_address String,
           chain String,
           timestamp DateTime,
@@ -59,7 +59,7 @@ export class IndicatorsRepository {
     await this.ensureTable();
 
     const ch = getClickHouseClient();
-    const CLICKHOUSE_DATABASE = process.env.CLICKHOUSE_DATABASE || 'quantbot';
+    const database = getClickHouseDatabaseName();
 
     const rows = indicators.map((indicator) => ({
       token_address: tokenAddress, // Full address, case-preserved
@@ -72,7 +72,7 @@ export class IndicatorsRepository {
 
     try {
       await ch.insert({
-        table: `${CLICKHOUSE_DATABASE}.indicator_values`,
+        table: `${database}.indicator_values`,
         values: rows,
         format: 'JSONEachRow',
       });
@@ -106,7 +106,7 @@ export class IndicatorsRepository {
     await this.ensureTable();
 
     const ch = getClickHouseClient();
-    const CLICKHOUSE_DATABASE = process.env.CLICKHOUSE_DATABASE || 'quantbot';
+    const database = getClickHouseDatabaseName();
 
     const startUnix = Math.floor(startTime.toSeconds());
     const endUnix = Math.floor(endTime.toSeconds());
@@ -119,7 +119,7 @@ export class IndicatorsRepository {
         indicator_type,
         value_json,
         metadata_json
-      FROM ${CLICKHOUSE_DATABASE}.indicator_values
+      FROM ${database}.indicator_values
       WHERE (token_address = '${escapedTokenAddress}' 
              OR lower(token_address) = lower('${escapedTokenAddress}'))
         AND chain = '${chain.replace(/'/g, "''")}'
@@ -188,7 +188,7 @@ export class IndicatorsRepository {
     await this.ensureTable();
 
     const ch = getClickHouseClient();
-    const CLICKHOUSE_DATABASE = process.env.CLICKHOUSE_DATABASE || 'quantbot';
+    const database = getClickHouseDatabaseName();
 
     const escapedTokenAddress = tokenAddress.replace(/'/g, "''");
     let query = `
@@ -197,7 +197,7 @@ export class IndicatorsRepository {
         indicator_type,
         value_json,
         metadata_json
-      FROM ${CLICKHOUSE_DATABASE}.indicator_values
+      FROM ${database}.indicator_values
       WHERE (token_address = '${escapedTokenAddress}' 
              OR lower(token_address) = lower('${escapedTokenAddress}'))
         AND chain = '${chain.replace(/'/g, "''")}'
@@ -250,12 +250,12 @@ export class IndicatorsRepository {
     await this.ensureTable();
 
     const ch = getClickHouseClient();
-    const CLICKHOUSE_DATABASE = process.env.CLICKHOUSE_DATABASE || 'quantbot';
+    const database = getClickHouseDatabaseName();
 
     const beforeUnix = Math.floor(beforeTimestamp.toSeconds());
 
     let query = `
-      ALTER TABLE ${CLICKHOUSE_DATABASE}.indicator_values
+      ALTER TABLE ${database}.indicator_values
       DELETE WHERE timestamp < toDateTime(${beforeUnix})
     `;
 

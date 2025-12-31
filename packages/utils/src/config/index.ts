@@ -61,21 +61,26 @@ export function getPostgresConfig(): PostgresConfig {
  * Load ClickHouse configuration from environment variables
  */
 export function getClickHouseConfig(): ClickHouseConfig {
-  const {
-    CLICKHOUSE_HOST,
-    CLICKHOUSE_PORT,
-    CLICKHOUSE_USER,
-    CLICKHOUSE_PASSWORD,
-    CLICKHOUSE_DATABASE,
-  } = process.env;
+  const { CLICKHOUSE_HOST, CLICKHOUSE_PORT, CLICKHOUSE_USER, CLICKHOUSE_PASSWORD } = process.env;
 
   return {
     host: CLICKHOUSE_HOST || 'localhost',
     port: CLICKHOUSE_PORT ? Number(CLICKHOUSE_PORT) : 8123,
     user: CLICKHOUSE_USER || 'default',
     password: CLICKHOUSE_PASSWORD || '',
-    database: CLICKHOUSE_DATABASE || 'quantbot',
+    database: getClickHouseDatabaseName(),
   };
+}
+
+/**
+ * Derive ClickHouse database name from environment variables
+ */
+export function getClickHouseDatabaseName(): string {
+  const { CLICKHOUSE_DATABASE } = process.env;
+  if (CLICKHOUSE_DATABASE && CLICKHOUSE_DATABASE.trim() !== '') {
+    return CLICKHOUSE_DATABASE;
+  }
+  return 'quantbot';
 }
 
 /**

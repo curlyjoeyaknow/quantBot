@@ -11,6 +11,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { queryStorageHandler } from '../../../../src/commands/storage/query-storage.js';
+import { getClickHouseDatabaseName } from '@quantbot/utils';
 
 describe('queryStorageHandler - Isolation Test', () => {
   beforeEach(() => {
@@ -38,7 +39,7 @@ describe('queryStorageHandler - Isolation Test', () => {
       },
     } as any;
 
-    process.env.CLICKHOUSE_DATABASE = 'quantbot';
+    process.env.CLICKHOUSE_DATABASE = getClickHouseDatabaseName();
 
     // Call handler directly (no Commander, no execute(), no CLI)
     const result = await queryStorageHandler(plainArgs, plainCtx);
@@ -76,7 +77,7 @@ describe('queryStorageHandler - Isolation Test', () => {
       },
     } as any;
 
-    process.env.CLICKHOUSE_DATABASE = 'quantbot';
+    process.env.CLICKHOUSE_DATABASE = getClickHouseDatabaseName();
 
     const result1 = await queryStorageHandler(args1, ctx1);
     const result2 = await queryStorageHandler(args2, ctx2);

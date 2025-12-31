@@ -7,7 +7,7 @@
  */
 
 import { getClickHouseClient } from '../../clickhouse-client.js';
-import { logger } from '@quantbot/utils';
+import { getClickHouseDatabaseName, logger } from '@quantbot/utils';
 
 // Optional lab types - use any if lab package not available
 type SimulationMetrics = {
@@ -74,7 +74,7 @@ export class LeaderboardRepository implements LeaderboardPort {
    */
   async insertEntry(entry: LeaderboardEntry): Promise<void> {
     const ch = getClickHouseClient();
-    const CLICKHOUSE_DATABASE = process.env.CLICKHOUSE_DATABASE || 'quantbot';
+    const database = getClickHouseDatabaseName();
 
     const row = {
       strategy_id: entry.strategyId,
@@ -97,7 +97,7 @@ export class LeaderboardRepository implements LeaderboardPort {
 
     try {
       await ch.insert({
-        table: `${CLICKHOUSE_DATABASE}.strategy_leaderboard`,
+        table: `${database}.strategy_leaderboard`,
         values: [row],
         format: 'JSONEachRow',
       });
@@ -120,7 +120,7 @@ export class LeaderboardRepository implements LeaderboardPort {
    */
   async getTopByPnl(limit: number = 10): Promise<LeaderboardEntry[]> {
     const ch = getClickHouseClient();
-    const CLICKHOUSE_DATABASE = process.env.CLICKHOUSE_DATABASE || 'quantbot';
+    const database = getClickHouseDatabaseName();
 
     try {
       const result = await ch.query({
@@ -133,7 +133,7 @@ export class LeaderboardRepository implements LeaderboardPort {
             max_pnl_percent,
             avg_pnl_percent,
             run_count
-          FROM ${CLICKHOUSE_DATABASE}.mv_leaderboard_top_pnl
+          FROM ${database}.mv_leaderboard_top_pnl
           ORDER BY max_pnl_percent DESC
           LIMIT ${limit}
         `,
@@ -172,7 +172,7 @@ export class LeaderboardRepository implements LeaderboardPort {
    */
   async getTopByStability(limit: number = 10): Promise<LeaderboardEntry[]> {
     const ch = getClickHouseClient();
-    const CLICKHOUSE_DATABASE = process.env.CLICKHOUSE_DATABASE || 'quantbot';
+    const database = getClickHouseDatabaseName();
 
     try {
       const result = await ch.query({
@@ -186,7 +186,7 @@ export class LeaderboardRepository implements LeaderboardPort {
             avg_stability,
             avg_pnl_percent,
             run_count
-          FROM ${CLICKHOUSE_DATABASE}.mv_leaderboard_top_stability
+          FROM ${database}.mv_leaderboard_top_stability
           ORDER BY max_stability DESC
           LIMIT ${limit}
         `,
@@ -228,7 +228,7 @@ export class LeaderboardRepository implements LeaderboardPort {
    */
   async getParetoFrontier(): Promise<LeaderboardEntry[]> {
     const ch = getClickHouseClient();
-    const CLICKHOUSE_DATABASE = process.env.CLICKHOUSE_DATABASE || 'quantbot';
+    const database = getClickHouseDatabaseName();
 
     try {
       const result = await ch.query({
@@ -241,7 +241,7 @@ export class LeaderboardRepository implements LeaderboardPort {
             preset_name,
             max_pnl_percent,
             avg_stability
-          FROM ${CLICKHOUSE_DATABASE}.mv_leaderboard_pareto
+          FROM ${database}.mv_leaderboard_pareto
           ORDER BY stability_bucket DESC, max_pnl_percent DESC
         `,
         format: 'JSONEachRow',
