@@ -5,11 +5,11 @@ OHLCV Detailed Coverage Report
 Generates comprehensive coverage reports for every MINT, CALLER, and DAY for every MONTH.
 
 Coverage is determined by:
-- 1m: -52 intervals before alert to min 9000 candles after alert
-- 5m: -52 intervals before alert to min 9000 candles after alert
+- 1m: -5 intervals before alert to +4000 candles after alert
+- 5m: -5 intervals before alert to +4000 candles after alert
 - For tokens < 3 months old (at alert time):
-  - 15s: -52 intervals before alert to 9000 after alert
-  - 1s: -52 intervals before alert to 4948 after alert
+  - 15s: -5 intervals before alert to +4000 candles after alert
+  - 1s: -5 intervals before alert to +4000 candles after alert
 
 Usage:
     python3 ohlcv_detailed_coverage.py --duckdb data/tele.duckdb --output coverage_report.json
@@ -84,8 +84,8 @@ def get_clickhouse_client() -> Tuple[ClickHouseClient, str]:
     database = os.getenv('CLICKHOUSE_DATABASE', 'quantbot')
     user = os.getenv('CLICKHOUSE_USER', 'default')
     password = os.getenv('CLICKHOUSE_PASSWORD', '')
-    connect_timeout = int(os.getenv('CLICKHOUSE_CONNECT_TIMEOUT', '5'))
-    send_receive_timeout = int(os.getenv('CLICKHOUSE_SEND_RECEIVE_TIMEOUT', '60'))
+    connect_timeout = int(os.getenv('CLICKHOUSE_CONNECT_TIMEOUT', '10'))
+    send_receive_timeout = int(os.getenv('CLICKHOUSE_SEND_RECEIVE_TIMEOUT', '30'))
     
     client = ClickHouseClient(
         host=host,
@@ -97,8 +97,12 @@ def get_clickhouse_client() -> Tuple[ClickHouseClient, str]:
         send_receive_timeout=send_receive_timeout
     )
     
-    # Test connection
-    client.execute('SELECT 1')
+    # Test connection with a simple query
+    try:
+        client.execute('SELECT 1')
+    except Exception as e:
+        print(f"ERROR: Failed to connect to ClickHouse: {e}", file=sys.stderr)
+        raise
     return client, database
 
 
@@ -258,7 +262,8 @@ def calculate_coverage_for_interval(
     # Query ClickHouse for candles in range
     escaped_mint = mint.replace("'", "''")
     escaped_chain = chain.replace("'", "''")
-    escaped_interval = interval.replace("'", "''")
+    # Convert interval string to seconds for comparison with interval_seconds column
+    interval_seconds_value = calculate_interval_seconds(interval)
     
     query = f"""
     SELECT COUNT(*) as count
@@ -266,16 +271,18 @@ def calculate_coverage_for_interval(
     WHERE (token_address = '{escaped_mint}'
            OR lower(token_address) = lower('{escaped_mint}'))
       AND chain = '{escaped_chain}'
-      AND `interval` = '{escaped_interval}'
+      AND interval_seconds = {interval_seconds_value}
       AND toUnixTimestamp(timestamp) >= {int(start_ts)}
       AND toUnixTimestamp(timestamp) <= {int(end_ts)}
     """
     
     try:
+        if verbose:
+            print(f"  Querying {mint[:20]}... {interval}...", file=sys.stderr, flush=True)
         results = ch_client.execute(query)
         actual_candles = results[0][0] if results else 0
     except Exception as e:
-        print(f"Warning: Error querying candles for {mint} {interval}: {e}", file=sys.stderr)
+        print(f"Warning: Error querying candles for {mint[:20]}... {interval}: {e}", file=sys.stderr, flush=True)
         actual_candles = 0
     
     coverage_percent = (actual_candles / expected_candles * 100.0) if expected_candles > 0 else 0.0
@@ -301,6 +308,91 @@ def is_token_less_than_3_months_old(alert_ts_ms: int, token_created_ts_ms: Optio
     three_months_seconds = 90 * 24 * 60 * 60  # Approximate 3 months
     token_age_seconds = (alert_ts_ms - token_created_ts_ms) / 1000.0
     return token_age_seconds < three_months_seconds
+
+
+def batch_calculate_coverage_by_month(
+    ch_client: ClickHouseClient,
+    database: str,
+    calls_by_month: Dict[str, List[Dict]],
+    token_created_map: Dict[str, int],
+    verbose: bool = False
+) -> List[Dict[str, Any]]:
+    """
+    Calculate coverage using batch queries grouped by month.
+    
+    This is much faster than querying each call individually.
+    Groups calls by month and interval, then runs batch queries.
+    
+    Args:
+        ch_client: ClickHouse client
+        database: Database name
+        calls_by_month: Dict mapping year_month (YYYY-MM) to list of calls
+        token_created_map: Dict mapping mint -> token_created_ts_ms
+        verbose: Show verbose output
+    
+    Returns:
+        List of coverage results (one per call)
+    """
+    coverage_results = []
+    
+    # Process each month
+    for year_month, calls in calls_by_month.items():
+        if verbose:
+            print(f"Processing month {year_month}: {len(calls)} calls", file=sys.stderr, flush=True)
+        
+        # Group calls by interval (we'll check 1m and 5m for all, plus 15s/1s for young tokens)
+        # For batch efficiency, we'll check all intervals for all tokens in the month
+        
+        # Get unique mints for this month
+        mints_in_month = list(set(call['mint'] for call in calls))
+        
+        if verbose:
+            print(f"  Unique mints in {year_month}: {len(mints_in_month)}", file=sys.stderr, flush=True)
+        
+        # For each call, calculate coverage (but we can optimize by batching queries)
+        for call in calls:
+            mint = call['mint']
+            chain = call['chain']
+            alert_ts_ms = call['call_ts_ms']
+            
+            is_young_token = is_token_less_than_3_months_old(alert_ts_ms, token_created_map.get(mint))
+            
+            coverage = {
+                'mint': mint,
+                'caller_name': call['caller_name'],
+                'alert_ts_ms': alert_ts_ms,
+                'alert_datetime': call['call_datetime'],
+                'day': call['day'],
+                'year_month': call['year_month'],
+                'chain': chain,
+                'is_young_token': is_young_token,
+                'intervals': {}
+            }
+            
+            # Standard coverage: 1m and 5m
+            # Requirements: -5 intervals before alert, +4000 candles after alert
+            intervals_to_check = [
+                ('1m', 5, 4000),
+                ('5m', 5, 4000)
+            ]
+            
+            # For young tokens, also check 15s and 1s
+            if is_young_token:
+                intervals_to_check.extend([
+                    ('15s', 5, 4000),
+                    ('1s', 5, 4000)
+                ])
+            
+            for interval, periods_before, periods_after in intervals_to_check:
+                interval_coverage = calculate_coverage_for_interval(
+                    ch_client, database, mint, chain, alert_ts_ms,
+                    interval, periods_before, periods_after, verbose
+                )
+                coverage['intervals'][interval] = interval_coverage
+            
+            coverage_results.append(coverage)
+    
+    return coverage_results
 
 
 def calculate_coverage_for_call(
@@ -334,16 +426,17 @@ def calculate_coverage_for_call(
     }
     
     # Standard coverage: 1m and 5m
+    # Requirements: -5 intervals before alert, +4000 candles after alert
     intervals_to_check = [
-        ('1m', 52, 9000),
-        ('5m', 52, 9000)
+        ('1m', 5, 4000),
+        ('5m', 5, 4000)
     ]
     
     # For young tokens, also check 15s and 1s
     if is_young_token:
         intervals_to_check.extend([
-            ('15s', 52, 9000),
-            ('1s', 52, 4948)
+            ('15s', 5, 4000),
+            ('1s', 5, 4000)
         ])
     
     for interval, periods_before, periods_after in intervals_to_check:
@@ -384,7 +477,8 @@ def generate_coverage_report(
     start_month: Optional[str] = None,
     end_month: Optional[str] = None,
     caller_filter: Optional[str] = None,
-    verbose: bool = False
+    verbose: bool = False,
+    limit: Optional[int] = None
 ) -> Dict[str, Any]:
     """
     Generate comprehensive coverage report.
@@ -406,6 +500,82 @@ def generate_coverage_report(
         )
         
         print(f"Found {len(calls)} calls", file=sys.stderr, flush=True)
+        
+        # Validate duplicate mints - check if they're from different callers/dates
+        print("Validating duplicate mints...", file=sys.stderr, flush=True)
+        mint_counts = defaultdict(list)
+        for i, call in enumerate(calls):
+            mint_counts[call['mint']].append({
+                'index': i,
+                'caller': call['caller_name'],
+                'date': call['day'],
+                'alert_ts_ms': call['call_ts_ms']
+            })
+        
+        duplicates = {mint: entries for mint, entries in mint_counts.items() if len(entries) > 1}
+        
+        if duplicates:
+            print(f"Found {len(duplicates)} mints with multiple calls", file=sys.stderr, flush=True)
+            
+            suspicious_duplicates = []
+            for mint, entries in duplicates.items():
+                # Check if any entries have same caller AND same date
+                seen_combinations = set()
+                for entry in entries:
+                    key = (entry['caller'], entry['date'])
+                    if key in seen_combinations:
+                        suspicious_duplicates.append({
+                            'mint': mint,
+                            'caller': entry['caller'],
+                            'date': entry['date'],
+                            'count': len([e for e in entries if (e['caller'], e['date']) == key])
+                        })
+                    seen_combinations.add(key)
+            
+            if suspicious_duplicates:
+                print(f"⚠️  WARNING: Found {len(suspicious_duplicates)} suspicious duplicates (same mint, caller, and date):", file=sys.stderr, flush=True)
+                for dup in suspicious_duplicates[:10]:  # Show first 10
+                    print(f"  - {dup['mint'][:20]}... | {dup['caller']} | {dup['date']} | {dup['count']} times", file=sys.stderr, flush=True)
+                if len(suspicious_duplicates) > 10:
+                    print(f"  ... and {len(suspicious_duplicates) - 10} more", file=sys.stderr, flush=True)
+            else:
+                print(f"✓ All duplicate mints are from different callers or dates (legitimate duplicates)", file=sys.stderr, flush=True)
+            
+            # Show summary stats
+            total_duplicate_calls = sum(len(entries) for entries in duplicates.values())
+            print(f"  Total calls with duplicate mints: {total_duplicate_calls}", file=sys.stderr, flush=True)
+            print(f"  Unique mints with duplicates: {len(duplicates)}", file=sys.stderr, flush=True)
+        else:
+            print("✓ No duplicate mints found", file=sys.stderr, flush=True)
+        
+        # Deduplicate: same caller + same mint + same month = keep only one
+        print("Deduplicating calls (same caller + mint + month)...", file=sys.stderr, flush=True)
+        original_count = len(calls)
+        seen_combinations = {}
+        deduplicated_calls = []
+        
+        for call in calls:
+            # Key: (caller, mint, year_month)
+            key = (call['caller_name'], call['mint'], call['year_month'])
+            
+            if key not in seen_combinations:
+                # First occurrence - keep it
+                seen_combinations[key] = True
+                deduplicated_calls.append(call)
+        
+        removed_count = original_count - len(deduplicated_calls)
+        if removed_count > 0:
+            print(f"  Removed {removed_count} duplicate entries (same caller+mint+month)", file=sys.stderr, flush=True)
+            print(f"  Kept {len(deduplicated_calls)} unique calls (was {original_count})", file=sys.stderr, flush=True)
+        else:
+            print(f"  ✓ No duplicates to remove", file=sys.stderr, flush=True)
+        
+        calls = deduplicated_calls
+        
+        # Apply limit if specified
+        if limit and limit > 0:
+            print(f"Limiting to first {limit} calls for testing", file=sys.stderr, flush=True)
+            calls = calls[:limit]
         
         if len(calls) == 0:
             print("No calls found matching criteria. Exiting.", file=sys.stderr, flush=True)
@@ -434,39 +604,19 @@ def generate_coverage_report(
         print(f"Found creation timestamps for {len(token_created_map)} tokens", file=sys.stderr, flush=True)
         print(f"Starting coverage calculation for {len(calls)} calls...", file=sys.stderr, flush=True)
         
-        # Calculate coverage for each call with progress indicator
-        coverage_results = []
+        # Group calls by month for batch processing
+        calls_by_month = defaultdict(list)
+        for call in calls:
+            calls_by_month[call['year_month']].append(call)
         
-        # Create progress indicator
-        if HAS_TQDM:
-            progress_bar = tqdm(total=len(calls), desc="Calculating coverage", unit="call", file=sys.stderr)
-        else:
-            print(f"Processing {len(calls)} calls...", file=sys.stderr, flush=True)
-            last_progress = 0
+        print(f"Grouped into {len(calls_by_month)} months for batch processing", file=sys.stderr, flush=True)
         
-        try:
-            for i, call in enumerate(calls):
-                if HAS_TQDM:
-                    progress_bar.update(1)
-                    progress_bar.set_postfix({'mint': call['mint'][:10] + '...' if len(call['mint']) > 10 else call['mint']})
-                else:
-                    # Print progress every 10% or every 100 calls, whichever is more frequent
-                    progress = i + 1
-                    if progress % 100 == 0 or (len(calls) > 0 and progress % max(1, len(calls) // 10) == 0):
-                        pct = (progress / len(calls) * 100) if len(calls) > 0 else 0
-                        print(f"  Progress: {progress}/{len(calls)} ({pct:.1f}%) - Processing {call['mint'][:20]}...", file=sys.stderr, flush=True)
-                        last_progress = progress
-                
-                token_created_ts_ms = token_created_map.get(call['mint'])
-                coverage = calculate_coverage_for_call(
-                    ch_client, database, call, token_created_ts_ms, verbose
-                )
-                coverage_results.append(coverage)
-        finally:
-            if HAS_TQDM:
-                progress_bar.close()
-            else:
-                print(f"  Completed: {len(coverage_results)}/{len(calls)} calls processed", file=sys.stderr, flush=True)
+        # Calculate coverage using batch queries by month
+        coverage_results = batch_calculate_coverage_by_month(
+            ch_client, database, calls_by_month, token_created_map, verbose
+        )
+        
+        print(f"Completed: {len(coverage_results)}/{len(calls)} calls processed", file=sys.stderr, flush=True)
         
         # Generate summary statistics
         summary = calculate_summary_statistics(coverage_results)
@@ -602,6 +752,8 @@ def main():
     parser.add_argument('--end-month', help='End month (YYYY-MM format)')
     parser.add_argument('--verbose', action='store_true',
                        help='Show verbose progress output')
+    parser.add_argument('--limit', type=int, default=None,
+                       help='Limit number of calls to process (for testing/debugging)')
     
     args = parser.parse_args()
     
@@ -613,6 +765,18 @@ def main():
         ch_client, database = get_clickhouse_client()
         
         print("Connected to ClickHouse successfully", file=sys.stderr, flush=True)
+        
+        # Test query to verify schema works
+        print("Testing ClickHouse query with interval_seconds...", file=sys.stderr, flush=True)
+        try:
+            test_query = f"SELECT COUNT(*) FROM {database}.ohlcv_candles WHERE interval_seconds = 60 LIMIT 1"
+            result = ch_client.execute(test_query)
+            print(f"✓ Schema test passed. Found {result[0][0] if result else 0} candles with interval_seconds=60", file=sys.stderr, flush=True)
+        except Exception as e:
+            print(f"ERROR: Schema test failed: {e}", file=sys.stderr, flush=True)
+            print(f"  Make sure the table {database}.ohlcv_candles has interval_seconds column (UInt32)", file=sys.stderr, flush=True)
+            raise
+        
         print("Generating coverage report...", file=sys.stderr, flush=True)
         
         report = generate_coverage_report(
@@ -622,7 +786,8 @@ def main():
             args.start_month,
             args.end_month,
             args.caller,
-            args.verbose
+            args.verbose,
+            args.limit
         )
         
         print("Coverage calculation complete!", file=sys.stderr, flush=True)

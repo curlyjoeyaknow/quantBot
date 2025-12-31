@@ -4,10 +4,9 @@
  * Stores snapshot references and events in DuckDB for fast querying.
  */
 
-import { join, dirname } from 'path';
-import { existsSync, readFileSync } from 'fs';
+import { join } from 'path';
 import { DuckDBClient } from '@quantbot/storage';
-import { logger, DatabaseError } from '@quantbot/utils';
+import { logger, DatabaseError, findWorkspaceRoot } from '@quantbot/utils';
 import { z } from 'zod';
 import type { DataSnapshotRef, SnapshotQueryOptions } from './types.js';
 import { DataSnapshotRefSchema } from './types.js';
@@ -43,46 +42,9 @@ export class DuckDBSnapshotStorage implements SnapshotStorage {
 
   constructor(dbPath: string, client?: DuckDBClient) {
     this.client = client || new DuckDBClient(dbPath);
-    const workspaceRoot = this.findWorkspaceRoot();
+    const workspaceRoot = findWorkspaceRoot();
     this.scriptPath = join(workspaceRoot, 'tools', 'data-observatory', 'snapshot_storage.py');
     this.initPromise = this.initializeDatabase();
-  }
-
-  /**
-   * Find workspace root by looking for pnpm-workspace.yaml or package.json with workspace config
-   */
-  private findWorkspaceRoot(): string {
-    let current = process.cwd();
-
-    while (current !== '/' && current !== '') {
-      const workspaceFile = join(current, 'pnpm-workspace.yaml');
-      const packageFile = join(current, 'package.json');
-
-      if (existsSync(workspaceFile)) {
-        return current;
-      }
-
-      if (existsSync(packageFile)) {
-        try {
-          const pkg = JSON.parse(readFileSync(packageFile, 'utf8'));
-          if (pkg.workspaces || pkg.pnpm?.workspace) {
-            return current;
-          }
-        } catch {
-          // Continue searching
-        }
-      }
-
-      const parent = dirname(current);
-      if (parent === current) {
-        // Reached filesystem root
-        break;
-      }
-      current = parent;
-    }
-
-    // Fallback to process.cwd() if workspace root not found
-    return process.cwd();
   }
 
   /**

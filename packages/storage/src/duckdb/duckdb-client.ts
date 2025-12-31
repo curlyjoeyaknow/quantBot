@@ -5,11 +5,9 @@
  * Wraps PythonEngine calls to maintain separation of concerns.
  */
 
-import { PythonEngine, getPythonEngine } from '@quantbot/utils';
-import { logger } from '@quantbot/utils';
+import { PythonEngine, getPythonEngine, findWorkspaceRoot, logger } from '@quantbot/utils';
 import { z } from 'zod';
-import { join, dirname } from 'path';
-import { existsSync, readFileSync } from 'fs';
+import { join } from 'path';
 
 /**
  * DuckDB operation result schema
@@ -266,47 +264,10 @@ export class DuckDBClient {
   }
 
   /**
-   * Find workspace root by looking for pnpm-workspace.yaml or package.json with workspace config
-   */
-  private findWorkspaceRoot(): string {
-    let current = process.cwd();
-
-    while (current !== '/' && current !== '') {
-      const workspaceFile = join(current, 'pnpm-workspace.yaml');
-      const packageFile = join(current, 'package.json');
-
-      if (existsSync(workspaceFile)) {
-        return current;
-      }
-
-      if (existsSync(packageFile)) {
-        try {
-          const pkg = JSON.parse(readFileSync(packageFile, 'utf8'));
-          if (pkg.workspaces || pkg.pnpm?.workspace) {
-            return current;
-          }
-        } catch {
-          // Continue searching
-        }
-      }
-
-      const parent = dirname(current);
-      if (parent === current) {
-        // Reached filesystem root
-        break;
-      }
-      current = parent;
-    }
-
-    // Fallback to process.cwd() if workspace root not found
-    return process.cwd();
-  }
-
-  /**
    * Get path to direct SQL execution script
    */
   private getDirectSqlScriptPath(): string {
-    const workspaceRoot = this.findWorkspaceRoot();
+    const workspaceRoot = findWorkspaceRoot();
     return join(workspaceRoot, 'tools/storage/duckdb_direct_sql.py');
   }
 

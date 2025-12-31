@@ -21,26 +21,10 @@
 
 import { z } from 'zod';
 import { DateTime } from 'luxon';
-import { ValidationError } from '@quantbot/utils';
+import { ValidationError, findWorkspaceRoot } from '@quantbot/utils';
 import type { PythonEngine } from '@quantbot/utils';
-import { join, dirname } from 'path';
-import { existsSync } from 'fs';
-
-/**
- * Find workspace root by walking up from current directory
- */
-function findWorkspaceRoot(startDir: string = process.cwd()): string {
-  let current = startDir;
-  while (current !== '/' && current !== '') {
-    if (existsSync(join(current, 'pnpm-workspace.yaml'))) {
-      return current;
-    }
-    const parent = dirname(current);
-    if (parent === current) break;
-    current = parent;
-  }
-  return startDir;
-}
+import { join } from 'path';
+import { getDetailedCoverageTimeoutMs } from './coverageTimeouts.js';
 
 /**
  * Detailed Coverage Analysis Spec
@@ -260,11 +244,7 @@ export async function analyzeDetailedCoverage(
 
     // Allow callers to extend the Python coverage timeout via spec, env, or default to 30 minutes
     // Detailed coverage analysis can take longer due to per-call queries
-    const coverageTimeoutMs =
-      validated.timeoutMs ??
-      (Number(process.env.OHLCV_DETAILED_COVERAGE_TIMEOUT_MS) > 0
-        ? Number(process.env.OHLCV_DETAILED_COVERAGE_TIMEOUT_MS)
-        : 1_800_000); // 30 minutes default
+    const coverageTimeoutMs = getDetailedCoverageTimeoutMs(validated.timeoutMs);
 
     ctx.logger.info('Running Python coverage analysis script', {
       scriptPath,

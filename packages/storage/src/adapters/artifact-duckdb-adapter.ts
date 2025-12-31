@@ -4,13 +4,12 @@
  * Implements ArtifactRepository port using DuckDB for storage.
  */
 
-import { join, dirname } from 'path';
-import { existsSync } from 'fs';
+import { join } from 'path';
 import { z } from 'zod';
 import type { ArtifactRepository, ArtifactQueryFilter } from '@quantbot/core';
 import type { Artifact, ArtifactMetadata } from '@quantbot/core';
 import { DuckDBClient } from '../duckdb/duckdb-client.js';
-import { logger, NotFoundError, AppError } from '@quantbot/utils';
+import { logger, NotFoundError, AppError, findWorkspaceRoot } from '@quantbot/utils';
 
 const ArtifactResultSchema = z.object({
   metadata: z.record(z.string(), z.unknown()),
@@ -28,27 +27,8 @@ export class ArtifactDuckDBAdapter implements ArtifactRepository {
 
   constructor(dbPath: string, client?: DuckDBClient) {
     this.client = client || new DuckDBClient(dbPath);
-    const workspaceRoot = this.findWorkspaceRoot();
+    const workspaceRoot = findWorkspaceRoot();
     this.scriptPath = join(workspaceRoot, 'tools/storage/duckdb_artifacts.py');
-  }
-
-  /**
-   * Find workspace root
-   */
-  private findWorkspaceRoot(): string {
-    let current = process.cwd();
-
-    while (current !== '/' && current !== '') {
-      const workspaceFile = join(current, 'pnpm-workspace.yaml');
-      if (existsSync(workspaceFile)) {
-        return current;
-      }
-      const parent = dirname(current);
-      if (parent === current) break;
-      current = parent;
-    }
-
-    return process.cwd();
   }
 
   async store(artifact: Artifact): Promise<void> {

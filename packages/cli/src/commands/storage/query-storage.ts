@@ -10,8 +10,7 @@ import type { z } from 'zod';
 import type { CommandContext } from '../../core/command-context.js';
 import { querySchema } from '../../commands/storage.js';
 import { SAFE_TABLES } from '../../commands/storage.js';
-import { ValidationError } from '@quantbot/utils';
-import process from 'node:process';
+import { getClickHouseDatabaseName, ValidationError } from '@quantbot/utils';
 
 /**
  * Input arguments (already validated by Zod)
@@ -37,7 +36,7 @@ export async function queryStorageHandler(
     const client = ctx.services.clickHouseClient();
 
     // ENV LIVE HERE (composition root)
-    const database = process.env.CLICKHOUSE_DATABASE || 'quantbot';
+    const database = getClickHouseDatabaseName();
 
     // Validate table name
     if (!SAFE_TABLES.clickhouse.includes(normalizedTable)) {

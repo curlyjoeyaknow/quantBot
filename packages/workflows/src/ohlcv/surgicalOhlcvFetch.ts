@@ -17,13 +17,12 @@
 
 import { z } from 'zod';
 import { DateTime } from 'luxon';
-import { ValidationError, AppError, isEvmAddress } from '@quantbot/utils';
+import { ValidationError, AppError, isEvmAddress, findWorkspaceRoot } from '@quantbot/utils';
 import { ingestOhlcv } from './ingestOhlcv.js';
 import type { IngestOhlcvSpec, IngestOhlcvContext } from './ingestOhlcv.js';
 import type { PythonEngine } from '@quantbot/utils';
-import { join, dirname } from 'path';
-import { existsSync } from 'fs';
-
+import { join } from 'path';
+import { getSurgicalCoverageTimeoutMs } from './coverageTimeouts.js';
 /**
  * Sanitize error messages to prevent leaking sensitive information
  */
@@ -50,22 +49,6 @@ function formatElapsedTime(ms: number): string {
   const minutes = Math.floor(ms / 60000);
   const seconds = Math.floor((ms % 60000) / 1000);
   return `${minutes}m ${seconds}s`;
-}
-
-/**
- * Find workspace root by walking up from current directory
- */
-function findWorkspaceRoot(startDir: string = process.cwd()): string {
-  let current = startDir;
-  while (current !== '/' && current !== '') {
-    if (existsSync(join(current, 'pnpm-workspace.yaml'))) {
-      return current;
-    }
-    const parent = dirname(current);
-    if (parent === current) break;
-    current = parent;
-  }
-  return startDir;
 }
 
 /**
@@ -203,10 +186,7 @@ async function getCoverageData(
   }
 
   // Allow callers to extend the Python coverage timeout via env; default to 5 minutes
-  const coverageTimeoutMs =
-    Number(process.env.OHLCV_COVERAGE_TIMEOUT_MS) > 0
-      ? Number(process.env.OHLCV_COVERAGE_TIMEOUT_MS)
-      : 300_000;
+  const coverageTimeoutMs = getSurgicalCoverageTimeoutMs();
 
   const resultSchema = z.object({
     callers: z.array(z.string()),

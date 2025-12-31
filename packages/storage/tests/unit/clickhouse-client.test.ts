@@ -38,6 +38,7 @@ vi.mock('@quantbot/utils', () => ({
     warn: vi.fn(),
     error: vi.fn(),
   },
+  getClickHouseDatabaseName: () => 'quantbot',
 }));
 
 describe('ClickHouse Client', () => {
@@ -102,49 +103,30 @@ describe('ClickHouse Client', () => {
     });
 
     it('should use environment variables for configuration', async () => {
-      const originalHost = process.env.CLICKHOUSE_HOST;
-      const originalPort = process.env.CLICKHOUSE_PORT;
-      const originalUser = process.env.CLICKHOUSE_USER;
-      const originalPassword = process.env.CLICKHOUSE_PASSWORD;
-      const originalDatabase = process.env.CLICKHOUSE_DATABASE;
+      vi.stubEnv('CLICKHOUSE_HOST', 'test-host');
+      vi.stubEnv('CLICKHOUSE_PORT', '9000');
+      vi.stubEnv('CLICKHOUSE_USER', 'test-user');
+      vi.stubEnv('CLICKHOUSE_PASSWORD', 'test-password');
+      vi.stubEnv('CLICKHOUSE_DATABASE', 'test-db');
 
-      try {
-        process.env.CLICKHOUSE_HOST = 'test-host';
-        process.env.CLICKHOUSE_PORT = '9000';
-        process.env.CLICKHOUSE_USER = 'test-user';
-        process.env.CLICKHOUSE_PASSWORD = 'test-password';
-        process.env.CLICKHOUSE_DATABASE = 'test-db';
+      // Reset modules to reload with new env vars
+      vi.resetModules();
+      await loadModule();
+      mockCreateClientFn.mockClear();
+      getClickHouseClient();
 
-        // Reset modules to reload with new env vars
-        vi.resetModules();
-        await loadModule();
-        mockCreateClientFn.mockClear();
-        getClickHouseClient();
+      expect(mockCreateClientFn).toHaveBeenCalledWith(
+        expect.objectContaining({
+          url: 'http://test-host:9000',
+          username: 'test-user',
+          password: 'test-password',
+          database: 'test-db',
+        })
+      );
 
-        expect(mockCreateClientFn).toHaveBeenCalledWith(
-          expect.objectContaining({
-            url: 'http://test-host:9000',
-            username: 'test-user',
-            password: 'test-password',
-            database: 'test-db',
-          })
-        );
-      } finally {
-        // Restore original values
-        if (originalHost) process.env.CLICKHOUSE_HOST = originalHost;
-        else delete process.env.CLICKHOUSE_HOST;
-        if (originalPort) process.env.CLICKHOUSE_PORT = originalPort;
-        else delete process.env.CLICKHOUSE_PORT;
-        if (originalUser) process.env.CLICKHOUSE_USER = originalUser;
-        else delete process.env.CLICKHOUSE_USER;
-        if (originalPassword) process.env.CLICKHOUSE_PASSWORD = originalPassword;
-        else delete process.env.CLICKHOUSE_PASSWORD;
-        if (originalDatabase) process.env.CLICKHOUSE_DATABASE = originalDatabase;
-        else delete process.env.CLICKHOUSE_DATABASE;
-        // Reload module with original env vars
-        vi.resetModules();
-        await loadModule();
-      }
+      vi.unstubAllEnvs();
+      vi.resetModules();
+      await loadModule();
     });
   });
 

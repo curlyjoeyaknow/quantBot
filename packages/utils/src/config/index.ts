@@ -79,6 +79,13 @@ export function getClickHouseConfig(): ClickHouseConfig {
 }
 
 /**
+ * Convenience accessor for the configured ClickHouse database name.
+ */
+export function getClickHouseDatabaseName(): string {
+  return getClickHouseConfig().database;
+}
+
+/**
  * Load database configuration (Postgres + ClickHouse)
  */
 export function getDatabaseConfig(): DatabaseConfig {

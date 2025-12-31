@@ -126,11 +126,12 @@ export async function runSimulation(
       const fromWindow = call.createdAt.minus({ minutes: preMin });
       const toWindow = call.createdAt.plus({ minutes: postMin });
 
-      // Use causal accessor instead of upfront fetching (Gate 2 compliance)
+      // Use causal accessor - this is the ONLY path (Gate 2 compliance).
+      // It is structurally impossible to pass raw candles into simulation.run().
       const startTime = fromWindow.toUnixInteger();
       const endTime = toWindow.toUnixInteger();
 
-      // Check if candles are available (quick check)
+      // Check if candles are available (quick check via causal accessor)
       const initialCandle = await ctx.ohlcv.causalAccessor.getLastClosedCandle(
         call.mint,
         startTime,
@@ -149,8 +150,9 @@ export async function runSimulation(
         continue;
       }
 
+      // Run simulation with causal accessor (mandatory - no raw candles allowed)
       const sim = await ctx.simulation.run({
-        candleAccessor: ctx.ohlcv.causalAccessor,
+        candleAccessor: ctx.ohlcv.causalAccessor, // Only path - enforced by type system
         mint: call.mint,
         startTime,
         endTime,

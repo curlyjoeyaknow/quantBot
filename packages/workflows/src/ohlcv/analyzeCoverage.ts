@@ -16,27 +16,9 @@
 
 import { z } from 'zod';
 import { DateTime } from 'luxon';
-import { ValidationError } from '@quantbot/utils';
+import { ValidationError, findWorkspaceRoot } from '@quantbot/utils';
 import type { PythonEngine } from '@quantbot/utils';
-import { join, dirname } from 'path';
-import { existsSync } from 'fs';
-
-/**
- * Find workspace root by walking up from current directory
- */
-function findWorkspaceRoot(startDir: string = process.cwd()): string {
-  let current = startDir;
-  while (current !== '/' && current !== '') {
-    if (existsSync(join(current, 'pnpm-workspace.yaml'))) {
-      return current;
-    }
-    const parent = dirname(current);
-    if (parent === current) break;
-    current = parent;
-  }
-  return startDir;
-}
-
+import { join } from 'path';
 /**
  * Coverage Analysis Spec
  */
@@ -206,11 +188,7 @@ async function analyzeOverallCoverage(
   const scriptPath = join(workspaceRoot, 'tools/analysis/ohlcv_coverage_map.py');
 
   // Allow callers to extend the Python coverage timeout via spec, env, or default to 15 minutes
-  const coverageTimeoutMs =
-    spec.timeoutMs ??
-    (Number(process.env.OHLCV_COVERAGE_TIMEOUT_MS) > 0
-      ? Number(process.env.OHLCV_COVERAGE_TIMEOUT_MS)
-      : 900_000); // 15 minutes default
+  const coverageTimeoutMs = getCoverageTimeoutMs(spec.timeoutMs);
 
   const result = await pythonEngine.runScript(scriptPath, args, resultSchema, {
     timeout: coverageTimeoutMs,
@@ -292,11 +270,7 @@ async function analyzeCallerCoverage(
   const scriptPath = join(workspaceRoot, 'tools/analysis/ohlcv_caller_coverage.py');
 
   // Allow callers to extend the Python coverage timeout via spec, env, or default to 15 minutes
-  const coverageTimeoutMs =
-    spec.timeoutMs ??
-    (Number(process.env.OHLCV_COVERAGE_TIMEOUT_MS) > 0
-      ? Number(process.env.OHLCV_COVERAGE_TIMEOUT_MS)
-      : 900_000); // 15 minutes default
+  const coverageTimeoutMs = getCoverageTimeoutMs(spec.timeoutMs);
 
   const result = await pythonEngine.runScript(scriptPath, args, resultSchema, {
     timeout: coverageTimeoutMs,

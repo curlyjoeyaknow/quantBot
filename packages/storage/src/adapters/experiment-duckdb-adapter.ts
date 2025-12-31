@@ -4,8 +4,7 @@
  * Implements ExperimentRepository port using DuckDB for storage.
  */
 
-import { join, dirname } from 'path';
-import { existsSync } from 'fs';
+import { join } from 'path';
 import { z } from 'zod';
 import type {
   ExperimentRepository,
@@ -15,7 +14,7 @@ import type {
 } from '@quantbot/core';
 import { DateTime } from 'luxon';
 import { DuckDBClient } from '../duckdb/duckdb-client.js';
-import { logger, NotFoundError, AppError } from '@quantbot/utils';
+import { logger, NotFoundError, AppError, findWorkspaceRoot } from '@quantbot/utils';
 
 const ExperimentSchema = z.object({
   run_id: z.string(),
@@ -69,27 +68,8 @@ export class ExperimentDuckDBAdapter implements ExperimentRepository {
 
   constructor(dbPath: string, client?: DuckDBClient) {
     this.client = client || new DuckDBClient(dbPath);
-    const workspaceRoot = this.findWorkspaceRoot();
+    const workspaceRoot = findWorkspaceRoot();
     this.scriptPath = join(workspaceRoot, 'tools/storage/duckdb_experiments.py');
-  }
-
-  /**
-   * Find workspace root
-   */
-  private findWorkspaceRoot(): string {
-    let current = process.cwd();
-
-    while (current !== '/' && current !== '') {
-      const workspaceFile = join(current, 'pnpm-workspace.yaml');
-      if (existsSync(workspaceFile)) {
-        return current;
-      }
-      const parent = dirname(current);
-      if (parent === current) break;
-      current = parent;
-    }
-
-    return process.cwd();
   }
 
   /**
