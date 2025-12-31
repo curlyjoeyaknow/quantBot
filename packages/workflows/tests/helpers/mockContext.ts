@@ -85,6 +85,15 @@ export function createMockContext(opts?: {
           }
         ),
       },
+      /**
+       * Legacy getCandles method for backward compatibility with tests.
+       * @deprecated Use causalAccessor instead.
+       */
+      getCandles: vi.fn(
+        async (mint: string, _chain: string, _startTime: number, _endTime: number, _interval: string = '5m') => {
+          return candlesByMint[mint] ?? candleSeries();
+        }
+      ),
     },
 
     simulation: {
