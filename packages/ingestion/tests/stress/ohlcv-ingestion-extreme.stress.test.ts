@@ -32,6 +32,7 @@ import { mkdtempSync, rmSync, writeFileSync, existsSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { initClickHouse, closeClickHouse } from '@quantbot/storage';
+import { getClickHouseDatabaseName } from '@quantbot/utils';
 import { OhlcvIngestionService } from '../../src/OhlcvIngestionService';
 // Import test helpers directly (not exported from main package)
 import { shouldRunTest, TEST_GATES } from '../../../utils/src/test-helpers/test-gating';
@@ -207,7 +208,7 @@ async function verifyClickHouseCandles(
   try {
     const { getClickHouseClient } = await import('@quantbot/storage');
     const client = getClickHouseClient();
-    const database = process.env.CLICKHOUSE_DATABASE || 'quantbot';
+    const database = getClickHouseDatabaseName();
 
     const fromTimeStr = DateTime.fromJSDate(fromTime).toFormat('yyyy-MM-dd HH:mm:ss');
     const toTimeStr = DateTime.fromJSDate(toTime).toFormat('yyyy-MM-dd HH:mm:ss');
@@ -252,7 +253,7 @@ async function cleanupClickHouseTestData(
   try {
     const { getClickHouseClient } = await import('@quantbot/storage');
     const client = getClickHouseClient();
-    const database = process.env.CLICKHOUSE_DATABASE || 'quantbot';
+    const database = getClickHouseDatabaseName();
 
     const fromTimeStr = DateTime.fromJSDate(fromTime).toFormat('yyyy-MM-dd HH:mm:ss');
     const toTimeStr = DateTime.fromJSDate(toTime).toFormat('yyyy-MM-dd HH:mm:ss');

@@ -12,6 +12,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { statsStorageHandler } from '../../../../src/commands/storage/stats-storage.js';
 import { SAFE_TABLES } from '../../../../src/commands/storage.js';
+import { getClickHouseDatabaseName } from '@quantbot/utils';
 
 describe('statsStorageHandler - Isolation Test', () => {
   beforeEach(() => {
@@ -43,7 +44,7 @@ describe('statsStorageHandler - Isolation Test', () => {
       },
     } as any;
 
-    process.env.CLICKHOUSE_DATABASE = 'quantbot';
+    process.env.CLICKHOUSE_DATABASE = getClickHouseDatabaseName();
 
     // Call handler directly (no Commander, no execute(), no CLI)
     const result = await statsStorageHandler(plainArgs, plainCtx);
@@ -85,7 +86,7 @@ describe('statsStorageHandler - Isolation Test', () => {
       },
     } as any;
 
-    process.env.CLICKHOUSE_DATABASE = 'quantbot';
+    process.env.CLICKHOUSE_DATABASE = getClickHouseDatabaseName();
 
     const result1 = await statsStorageHandler(args1, ctx1);
     const result2 = await statsStorageHandler(args2, ctx2);

@@ -7,21 +7,8 @@
 
 import { createClient, type ClickHouseClient } from '@clickhouse/client';
 import { DateTime } from 'luxon';
-import { logger } from '@quantbot/utils';
+import { getClickHouseConfig, getClickHouseDatabaseName, logger } from '@quantbot/utils';
 import type { Candle } from '@quantbot/core';
-import {
-  buildTokenAddressWhereClause,
-  buildDateRangeWhereClauseUnix,
-  buildChainWhereClause,
-  buildIntervalStringWhereClause,
-} from './utils/query-builder.js';
-
-// ClickHouse connection configuration
-const CLICKHOUSE_HOST = process.env.CLICKHOUSE_HOST || 'localhost';
-const CLICKHOUSE_PORT = process.env.CLICKHOUSE_PORT ? parseInt(process.env.CLICKHOUSE_PORT) : 8123;
-const CLICKHOUSE_USER = process.env.CLICKHOUSE_USER || 'default';
-const CLICKHOUSE_PASSWORD = process.env.CLICKHOUSE_PASSWORD || '';
-const CLICKHOUSE_DATABASE = process.env.CLICKHOUSE_DATABASE || 'quantbot';
 
 // Singleton client instance
 let client: ClickHouseClient | null = null;
@@ -45,7 +32,8 @@ export function getClickHouseClient(): ClickHouseClient {
   }
 
   // Create new client only if it doesn't exist
-  const url = `http://${CLICKHOUSE_HOST}:${CLICKHOUSE_PORT}`;
+  const { host, port, user, password, database } = getClickHouseConfig();
+  const url = `http://${host}:${port}`;
   const config: {
     url: string;
     username: string;
@@ -54,16 +42,15 @@ export function getClickHouseClient(): ClickHouseClient {
     max_open_connections?: number;
     password?: string;
   } = {
-    url: url,
-    username: CLICKHOUSE_USER,
-    database: CLICKHOUSE_DATABASE,
+    url,
+    username: user,
+    database,
     // Connection settings to prevent socket hang ups
     request_timeout: 60000, // 60 seconds
     max_open_connections: 10, // Limit concurrent connections
   };
   // Use password only if explicitly set and not empty
   // Default ClickHouse user often has no password
-  const password = process.env.CLICKHOUSE_PASSWORD;
   if (password && password.trim() !== '') {
     config.password = password;
   }
@@ -76,25 +63,26 @@ export function getClickHouseClient(): ClickHouseClient {
  * Initialize ClickHouse database and create tables
  */
 export async function initClickHouse(): Promise<void> {
-  const url = `http://${CLICKHOUSE_HOST}:${CLICKHOUSE_PORT}`;
+  const { host, port, user, password, database } = getClickHouseConfig();
+  const url = `http://${host}:${port}`;
   const tempConfig: {
     url: string;
     username: string;
     password?: string;
   } = {
     url,
-    username: CLICKHOUSE_USER,
+    username: user,
   };
 
-  if (CLICKHOUSE_PASSWORD !== undefined && CLICKHOUSE_PASSWORD !== '') {
-    tempConfig.password = CLICKHOUSE_PASSWORD;
+  if (password && password.trim() !== '') {
+    tempConfig.password = password;
   }
 
   const tempClient = createClient(tempConfig);
 
   try {
     await tempClient.exec({
-      query: `CREATE DATABASE IF NOT EXISTS ${CLICKHOUSE_DATABASE}`,
+      query: `CREATE DATABASE IF NOT EXISTS ${database}`,
     });
 
     await tempClient.close();
@@ -105,7 +93,6 @@ export async function initClickHouse(): Promise<void> {
     await ensureSimulationTables(ch);
     await ensureIndicatorsTable(ch);
     await ensureTokenMetadataTable(ch);
-    await ensureRunLedgerTables(ch);
 
     logger.info('ClickHouse database and tables initialized');
   } catch (error: unknown) {
@@ -116,9 +103,10 @@ export async function initClickHouse(): Promise<void> {
 }
 
 async function ensureOhlcvTable(ch: ClickHouseClient): Promise<void> {
+  const database = getClickHouseDatabaseName();
   await ch.exec({
     query: `
-      CREATE TABLE IF NOT EXISTS ${CLICKHOUSE_DATABASE}.ohlcv_candles (
+      CREATE TABLE IF NOT EXISTS ${database}.ohlcv_candles (
         token_address String,
         chain String,
         timestamp DateTime,
@@ -138,9 +126,10 @@ async function ensureOhlcvTable(ch: ClickHouseClient): Promise<void> {
 }
 
 async function ensureTickTable(ch: ClickHouseClient): Promise<void> {
+  const database = getClickHouseDatabaseName();
   await ch.exec({
     query: `
-      CREATE TABLE IF NOT EXISTS ${CLICKHOUSE_DATABASE}.tick_events (
+      CREATE TABLE IF NOT EXISTS ${database}.tick_events (
         token_address String,
         chain String,
         timestamp DateTime,
@@ -159,9 +148,10 @@ async function ensureTickTable(ch: ClickHouseClient): Promise<void> {
 }
 
 async function ensureSimulationTables(ch: ClickHouseClient): Promise<void> {
+  const database = getClickHouseDatabaseName();
   await ch.exec({
     query: `
-      CREATE TABLE IF NOT EXISTS ${CLICKHOUSE_DATABASE}.simulation_events (
+      CREATE TABLE IF NOT EXISTS ${database}.simulation_events (
         simulation_run_id UInt64,
         token_address String,
         chain String,
@@ -185,7 +175,7 @@ async function ensureSimulationTables(ch: ClickHouseClient): Promise<void> {
 
   await ch.exec({
     query: `
-      CREATE TABLE IF NOT EXISTS ${CLICKHOUSE_DATABASE}.simulation_aggregates (
+      CREATE TABLE IF NOT EXISTS ${database}.simulation_aggregates (
         simulation_run_id UInt64,
         token_address String,
         chain String,
@@ -210,11 +200,11 @@ async function ensureSimulationTables(ch: ClickHouseClient): Promise<void> {
 }
 
 async function ensureIndicatorsTable(ch: ClickHouseClient): Promise<void> {
-  const CLICKHOUSE_DATABASE = process.env.CLICKHOUSE_DATABASE || 'quantbot';
+  const database = getClickHouseDatabaseName();
 
   await ch.exec({
     query: `
-      CREATE TABLE IF NOT EXISTS ${CLICKHOUSE_DATABASE}.indicator_values (
+      CREATE TABLE IF NOT EXISTS ${database}.indicator_values (
         token_address String,
         chain String,
         timestamp DateTime,
@@ -231,11 +221,11 @@ async function ensureIndicatorsTable(ch: ClickHouseClient): Promise<void> {
 }
 
 async function ensureTokenMetadataTable(ch: ClickHouseClient): Promise<void> {
-  const CLICKHOUSE_DATABASE = process.env.CLICKHOUSE_DATABASE || 'quantbot';
+  const database = getClickHouseDatabaseName();
 
   await ch.exec({
     query: `
-      CREATE TABLE IF NOT EXISTS ${CLICKHOUSE_DATABASE}.token_metadata (
+      CREATE TABLE IF NOT EXISTS ${database}.token_metadata (
         token_address String,
         chain String,
         timestamp DateTime,
@@ -260,87 +250,6 @@ async function ensureTokenMetadataTable(ch: ClickHouseClient): Promise<void> {
   });
 }
 
-async function ensureRunLedgerTables(ch: ClickHouseClient): Promise<void> {
-  const CLICKHOUSE_DATABASE = process.env.CLICKHOUSE_DATABASE || 'quantbot';
-
-  // Run ledger: one row per simulation run
-  await ch.exec({
-    query: `
-      CREATE TABLE IF NOT EXISTS ${CLICKHOUSE_DATABASE}.sim_runs
-      (
-        run_id UUID,
-        created_at DateTime64(3, 'UTC') DEFAULT now64(3),
-        finished_at DateTime64(3, 'UTC') DEFAULT toDateTime64(0, 3, 'UTC'),
-        status LowCardinality(String) DEFAULT 'running', -- running|success|failed
-
-        git_sha LowCardinality(String) DEFAULT '',
-        engine_version LowCardinality(String) DEFAULT '',
-
-        strategy_id LowCardinality(String),
-        params_json String DEFAULT '{}',
-
-        interval_sec UInt32,
-        time_from DateTime64(3, 'UTC'),
-        time_to   DateTime64(3, 'UTC'),
-
-        universe_ref String DEFAULT '', -- e.g. "token_set:topN" or "mint_list:hash"
-        notes String DEFAULT ''
-      )
-      ENGINE = MergeTree
-      ORDER BY (created_at, strategy_id, interval_sec, run_id)
-    `,
-  });
-
-  // Metrics: one row per run (keep it wide-ish, evolve as needed)
-  await ch.exec({
-    query: `
-      CREATE TABLE IF NOT EXISTS ${CLICKHOUSE_DATABASE}.sim_run_metrics
-      (
-        run_id UUID,
-        created_at DateTime64(3, 'UTC') DEFAULT now64(3),
-
-        roi Float64,
-        pnl_quote Float64,
-        max_drawdown Float64,
-
-        trades UInt32,
-        win_rate Float64,
-
-        avg_hold_sec Float64,
-        fees_paid_quote Float64,
-        slippage_paid_quote Float64 DEFAULT 0
-      )
-      ENGINE = MergeTree
-      ORDER BY (created_at, run_id)
-    `,
-  });
-
-  // Input slice audit: one row per run (so you can trust results)
-  await ch.exec({
-    query: `
-      CREATE TABLE IF NOT EXISTS ${CLICKHOUSE_DATABASE}.sim_run_slice_audit
-      (
-        run_id UUID,
-        created_at DateTime64(3, 'UTC') DEFAULT now64(3),
-
-        token_count UInt32 DEFAULT 0,
-
-        fetched_count UInt32,
-        expected_count UInt32,
-
-        min_ts DateTime64(3, 'UTC'),
-        max_ts DateTime64(3, 'UTC'),
-
-        dup_count UInt32,
-        gap_count UInt32,
-        alignment_ok UInt8
-      )
-      ENGINE = MergeTree
-      ORDER BY (created_at, run_id)
-    `,
-  });
-}
-
 /**
  * Insert candles into ClickHouse
  */
@@ -354,6 +263,7 @@ export async function insertCandles(
   if (candles.length === 0) return;
 
   const ch = getClickHouseClient();
+  const database = getClickHouseDatabaseName();
 
   const rows = candles.map((candle) => ({
     token_address: tokenAddress,
@@ -371,7 +281,7 @@ export async function insertCandles(
 
   try {
     await ch.insert({
-      table: `${CLICKHOUSE_DATABASE}.ohlcv_candles`,
+      table: `${database}.ohlcv_candles`,
       values: rows,
       format: 'JSONEachRow',
     });
@@ -400,6 +310,7 @@ export async function insertTicks(
   if (ticks.length === 0) return;
 
   const ch = getClickHouseClient();
+  const database = getClickHouseDatabaseName();
   const values = ticks.map((tick) => ({
     token_address: tokenAddress,
     chain,
@@ -413,7 +324,7 @@ export async function insertTicks(
 
   try {
     await ch.insert({
-      table: `${CLICKHOUSE_DATABASE}.tick_events`,
+      table: `${database}.tick_events`,
       values,
       format: 'JSONEachRow',
     });
@@ -437,11 +348,24 @@ export async function queryCandles(
 ): Promise<Candle[]> {
   // Reuse the singleton client - don't create new one each time
   const ch = getClickHouseClient();
+  const database = getClickHouseDatabaseName();
 
   const startUnix = Math.floor(startTime.toSeconds());
   const endUnix = Math.floor(endTime.toSeconds());
 
-  // Build query using query builder utilities (prevents SQL injection)
+  // Use parameterized queries to prevent SQL injection
+  // Note: ClickHouse stores full addresses (e.g., with "pump" suffix), so we use LIKE to match
+  const tokenPattern = `${tokenAddress}%`;
+  const tokenPatternSuffix = `%${tokenAddress}`;
+
+  // Escape values for SQL injection prevention
+  const escapedTokenAddress = tokenAddress.replace(/'/g, "''");
+  const escapedChain = chain.replace(/'/g, "''");
+  const escapedTokenPattern = tokenPattern.replace(/'/g, "''");
+  const escapedTokenPatternSuffix = tokenPatternSuffix.replace(/'/g, "''");
+
+  // Build query with string interpolation (properly escaped to prevent SQL injection)
+  // Using string interpolation instead of parameterized queries to avoid "Unknown setting param_*" error
   let query = `
     SELECT 
       toUnixTimestamp(timestamp) as timestamp,
@@ -450,14 +374,22 @@ export async function queryCandles(
       low,
       close,
       volume
-    FROM ${CLICKHOUSE_DATABASE}.ohlcv_candles
-    WHERE ${buildTokenAddressWhereClause(tokenAddress)}
-      AND ${buildChainWhereClause(chain)}
-      AND ${buildDateRangeWhereClauseUnix(startUnix, endUnix)}
+    FROM ${database}.ohlcv_candles
+    WHERE (token_address = '${escapedTokenAddress}'
+           OR lower(token_address) = lower('${escapedTokenAddress}')
+           OR token_address LIKE '${escapedTokenPattern}'
+           OR lower(token_address) LIKE lower('${escapedTokenPattern}')
+           OR token_address LIKE '${escapedTokenPatternSuffix}'
+           OR lower(token_address) LIKE lower('${escapedTokenPatternSuffix}'))
+      AND chain = '${escapedChain}'
+      AND timestamp >= toDateTime(${startUnix})
+      AND timestamp <= toDateTime(${endUnix})
   `;
 
   if (interval) {
-    query += ` AND ${buildIntervalStringWhereClause(interval)}`;
+    // interval is a reserved keyword in ClickHouse, need to escape with backticks
+    const escapedInterval = interval.replace(/'/g, "''");
+    query += ` AND \`interval\` = '${escapedInterval}'`;
   }
 
   query += ` ORDER BY timestamp ASC`;
@@ -549,15 +481,29 @@ export async function hasCandles(
   const startUnix = Math.floor(startTime.toSeconds());
   const endUnix = Math.floor(endTime.toSeconds());
 
-  // Build query using query builder utilities (prevents SQL injection)
+  // Escape values for SQL injection prevention
+  const escapedTokenAddress = tokenAddress.replace(/'/g, "''");
+  const escapedChain = chain.replace(/'/g, "''");
+  const tokenPattern = `${tokenAddress}%`;
+  const tokenPatternSuffix = `%${tokenAddress}`;
+  const escapedTokenPattern = tokenPattern.replace(/'/g, "''");
+  const escapedTokenPatternSuffix = tokenPatternSuffix.replace(/'/g, "''");
+
+  // Build query with string interpolation (properly escaped to prevent SQL injection)
   try {
     const result = await ch.query({
       query: `
         SELECT count() as count
-        FROM ${CLICKHOUSE_DATABASE}.ohlcv_candles
-        WHERE ${buildTokenAddressWhereClause(tokenAddress)}
-          AND ${buildChainWhereClause(chain)}
-          AND ${buildDateRangeWhereClauseUnix(startUnix, endUnix)}
+        FROM ${database}.ohlcv_candles
+        WHERE (token_address = '${escapedTokenAddress}'
+               OR lower(token_address) = lower('${escapedTokenAddress}')
+               OR token_address LIKE '${escapedTokenPattern}'
+               OR lower(token_address) LIKE lower('${escapedTokenPattern}')
+               OR token_address LIKE '${escapedTokenPatternSuffix}'
+               OR lower(token_address) LIKE lower('${escapedTokenPatternSuffix}'))
+          AND chain = '${escapedChain}'
+          AND timestamp >= toDateTime(${startUnix})
+          AND timestamp <= toDateTime(${endUnix})
       `,
       format: 'JSONEachRow',
     });
