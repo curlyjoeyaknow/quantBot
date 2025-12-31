@@ -9,6 +9,7 @@ import type {
   RunContext,
 } from '../../ports/CandleSlicePort.js';
 import { readAllBytes } from '../../utils/readAllBytes.js';
+import { getClickHouseDatabaseName } from '@quantbot/utils';
 
 function sha(s: string): string {
   return crypto.createHash('sha256').update(s).digest('hex');
@@ -91,7 +92,7 @@ export class CandleSliceExporter implements CandleSlicePort {
     // ClickHouse schema uses token_address and timestamp, but we output token_id and ts for consistency.
     const tokenListSql = spec.tokenIds.map((t) => `'${t.replace(/'/g, "''")}'`).join(',');
 
-    const CLICKHOUSE_DATABASE = process.env.CLICKHOUSE_DATABASE || 'quantbot';
+    const database = getClickHouseDatabaseName();
 
     // Query ClickHouse ohlcv_candles table and output as Parquet
     // Map token_address -> token_id, timestamp -> ts for output schema
@@ -106,7 +107,7 @@ export class CandleSliceExporter implements CandleSlicePort {
         low,
         close,
         volume
-      FROM ${CLICKHOUSE_DATABASE}.ohlcv_candles
+      FROM ${database}.ohlcv_candles
       WHERE chain = '${spec.chain}'
         AND interval = '${spec.interval}'
         AND timestamp >= parseDateTimeBestEffort('${spec.startIso}')

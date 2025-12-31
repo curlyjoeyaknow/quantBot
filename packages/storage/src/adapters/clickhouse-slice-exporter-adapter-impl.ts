@@ -11,7 +11,7 @@ import { createHash } from 'crypto';
 import { tmpdir } from 'os';
 import { getClickHouseClient } from '../clickhouse-client.js';
 import { DuckDBClient } from '../duckdb/duckdb-client.js';
-import { logger } from '@quantbot/utils';
+import { getClickHouseDatabaseName, logger } from '@quantbot/utils';
 import { readAllBytes } from '../utils/readAllBytes.js';
 import type {
   SliceExporter,
@@ -243,10 +243,10 @@ export class ClickHouseSliceExporterAdapterImpl implements SliceExporter {
 
     // Build ClickHouse query
     const ch = getClickHouseClient();
-    const CLICKHOUSE_DATABASE = process.env.CLICKHOUSE_DATABASE || 'quantbot';
+    const database = getClickHouseDatabaseName();
 
     // Map dataset to table
-    const tableName = `${CLICKHOUSE_DATABASE}.ohlcv_candles`;
+    const tableName = `${database}.ohlcv_candles`;
 
     // Build WHERE clause
     const conditions: string[] = [];

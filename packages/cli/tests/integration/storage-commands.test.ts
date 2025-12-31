@@ -8,6 +8,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { z } from 'zod';
 import { CommandRegistry } from '../../src/core/command-registry';
 import { getPostgresPool, getClickHouseClient } from '@quantbot/storage';
+import { getClickHouseDatabaseName } from '@quantbot/utils';
 
 // Mock storage package
 vi.mock('@quantbot/storage', () => ({
@@ -78,7 +79,7 @@ describe('Storage Commands - Integration', () => {
         throw new Error(`Invalid table name: ${table}`);
       }
       const client = getClickHouseClient();
-      const database = process.env.CLICKHOUSE_DATABASE || 'quantbot';
+      const database = getClickHouseDatabaseName();
       const result = await client.query({
         query: `SELECT * FROM ${database}.${table} LIMIT {limit:UInt32}`,
         query_params: { limit },

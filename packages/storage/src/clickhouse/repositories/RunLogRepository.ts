@@ -6,7 +6,7 @@
 
 import { DateTime } from 'luxon';
 import { getClickHouseClient } from '../../clickhouse-client.js';
-import { logger } from '@quantbot/utils';
+import { getClickHouseDatabaseName, logger } from '@quantbot/utils';
 
 export interface RunLog {
   runId: string;
@@ -28,7 +28,7 @@ export interface RunLogInsertData {
  */
 export class RunLogRepository {
   private ch = getClickHouseClient();
-  private database = process.env.CLICKHOUSE_DATABASE || 'quantbot';
+  private database = getClickHouseDatabaseName();
 
   /**
    * Initialize schema for run_logs table

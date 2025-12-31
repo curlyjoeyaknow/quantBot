@@ -9,7 +9,7 @@
 
 import { DateTime } from 'luxon';
 import { getClickHouseClient } from '../../clickhouse-client.js';
-import { logger } from '@quantbot/utils';
+import { getClickHouseDatabaseName, logger } from '@quantbot/utils';
 import type { TokenMetadata } from '@quantbot/core';
 
 export interface TokenMetadataSnapshot extends TokenMetadata {
@@ -24,11 +24,11 @@ export class TokenMetadataRepository {
    */
   async ensureTable(): Promise<void> {
     const ch = getClickHouseClient();
-    const CLICKHOUSE_DATABASE = process.env.CLICKHOUSE_DATABASE || 'quantbot';
+    const database = getClickHouseDatabaseName();
 
     await ch.exec({
       query: `
-        CREATE TABLE IF NOT EXISTS ${CLICKHOUSE_DATABASE}.token_metadata (
+        CREATE TABLE IF NOT EXISTS ${database}.token_metadata (
           token_address String,
           chain String,
           timestamp DateTime,
@@ -66,7 +66,7 @@ export class TokenMetadataRepository {
     await this.ensureTable();
 
     const ch = getClickHouseClient();
-    const CLICKHOUSE_DATABASE = process.env.CLICKHOUSE_DATABASE || 'quantbot';
+    const database = getClickHouseDatabaseName();
 
     const metadataObj = metadata as unknown as Record<string, unknown>;
     const socials = (metadataObj.socials as Record<string, unknown>) || {};
@@ -95,7 +95,7 @@ export class TokenMetadataRepository {
 
     try {
       await ch.insert({
-        table: `${CLICKHOUSE_DATABASE}.token_metadata`,
+        table: `${database}.token_metadata`,
         values: [row],
         format: 'JSONEachRow',
       });
@@ -124,7 +124,7 @@ export class TokenMetadataRepository {
     await this.ensureTable();
 
     const ch = getClickHouseClient();
-    const CLICKHOUSE_DATABASE = process.env.CLICKHOUSE_DATABASE || 'quantbot';
+    const database = getClickHouseDatabaseName();
 
     const escapedTokenAddress = tokenAddress.replace(/'/g, "''");
 
@@ -147,7 +147,7 @@ export class TokenMetadataRepository {
             creator,
             top_wallet_holdings,
             metadata_json
-          FROM ${CLICKHOUSE_DATABASE}.token_metadata
+          FROM ${database}.token_metadata
           WHERE (token_address = '${escapedTokenAddress}' 
                  OR lower(token_address) = lower('${escapedTokenAddress}'))
             AND chain = '${chain.replace(/'/g, "''")}'
@@ -224,7 +224,7 @@ export class TokenMetadataRepository {
     await this.ensureTable();
 
     const ch = getClickHouseClient();
-    const CLICKHOUSE_DATABASE = process.env.CLICKHOUSE_DATABASE || 'quantbot';
+    const database = getClickHouseDatabaseName();
 
     const startUnix = Math.floor(startTime.toSeconds());
     const endUnix = Math.floor(endTime.toSeconds());
@@ -249,7 +249,7 @@ export class TokenMetadataRepository {
             creator,
             top_wallet_holdings,
             metadata_json
-          FROM ${CLICKHOUSE_DATABASE}.token_metadata
+          FROM ${database}.token_metadata
           WHERE (token_address = '${escapedTokenAddress}' 
                  OR lower(token_address) = lower('${escapedTokenAddress}'))
             AND chain = '${chain.replace(/'/g, "''")}'
