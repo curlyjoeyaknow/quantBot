@@ -32,17 +32,22 @@ export class OhlcvRepository {
     // Normalize chain name to lowercase canonical form
     const normalizedChain = normalizeChain(chain);
 
+    // Normalize chain name to lowercase canonical form
+    const normalizedChain = normalizeChain(chain);
+
+    // Convert interval string to seconds (UInt32) for storage
+    const intervalSeconds = intervalToSeconds(interval);
+
     const rows = candles.map((candle) => ({
       token_address: token, // Full address, case-preserved
       chain: normalizedChain, // Normalized to lowercase (solana, ethereum, bsc, base, monad, evm)
       timestamp: DateTime.fromSeconds(candle.timestamp).toFormat('yyyy-MM-dd HH:mm:ss'),
-      interval: interval,
+      interval_seconds: intervalSeconds, // Store as UInt32 seconds (e.g., 300 for '5m', 1 for '1s')
       open: candle.open,
       high: candle.high,
       low: candle.low,
       close: candle.close,
       volume: candle.volume,
-      // Note: is_backfill column removed - table doesn't have this column
     }));
 
     try {
@@ -86,6 +91,27 @@ export class OhlcvRepository {
   ): Promise<Candle[]> {
     const ch = getClickHouseClient();
     const database = getClickHouseDatabaseName();
+
+    // Validate chain to prevent SQL injection (whitelist approach)
+    const validChains = ['solana', 'ethereum', 'bsc', 'base'];
+    if (!validChains.includes(chain)) {
+      throw new ValidationError(
+        `Invalid chain: ${chain}. Must be one of: ${validChains.join(', ')}`,
+        {
+          chain,
+          validChains,
+        }
+      );
+    }
+
+    // Validate interval to prevent SQL injection (whitelist approach)
+    const validIntervals = ['1s', '15s', '1m', '5m', '15m', '1h', '4h', '1d'];
+    if (!validIntervals.includes(interval)) {
+      throw new ValidationError(
+        `Invalid interval: ${interval}. Must be one of: ${validIntervals.join(', ')}`,
+        { interval, validIntervals }
+      );
+    }
 
     // Validate chain to prevent SQL injection (whitelist approach)
     const validChains = ['solana', 'ethereum', 'bsc', 'base'];

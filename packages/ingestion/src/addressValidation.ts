@@ -2,6 +2,9 @@
  * Address validation & extraction
  * ===============================
  *
+ * DEPRECATED: Use @quantbot/utils address extraction instead.
+ * This file is kept for backward compatibility but delegates to the consolidated extractor.
+ *
  * Important: EVM addresses are identical across Ethereum, Base, and BSC.
  * You can validate "EVM-ness" but you cannot infer chain from the address alone.
  *
@@ -27,6 +30,8 @@ export function isBase58(s: string): boolean {
 /**
  * Extract potential addresses from text (Telegram chat blobs).
  * Returns de-duplicated addresses preserving first-seen order.
+ *
+ * @deprecated Use extractAddresses from @quantbot/utils instead
  */
 export function extractAddresses(text: string): {
   solana: string[];

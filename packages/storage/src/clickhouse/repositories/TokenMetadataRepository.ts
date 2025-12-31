@@ -11,6 +11,11 @@ import { DateTime } from 'luxon';
 import { getClickHouseClient } from '../../clickhouse-client.js';
 import { getClickHouseDatabaseName, logger } from '@quantbot/utils';
 import type { TokenMetadata } from '@quantbot/core';
+import {
+  buildDateRangeWhereClauseUnix,
+  buildChainWhereClause,
+  escapeSqlString,
+} from '../../utils/query-builder.js';
 
 export interface TokenMetadataSnapshot extends TokenMetadata {
   timestamp: number; // Unix timestamp in seconds
@@ -126,7 +131,8 @@ export class TokenMetadataRepository {
     const ch = getClickHouseClient();
     const database = getClickHouseDatabaseName();
 
-    const escapedTokenAddress = tokenAddress.replace(/'/g, "''");
+    // Build query using query builder utilities (prevents SQL injection)
+    const escapedToken = escapeSqlString(tokenAddress);
 
     try {
       const result = await ch.query({
@@ -228,7 +234,8 @@ export class TokenMetadataRepository {
 
     const startUnix = Math.floor(startTime.toSeconds());
     const endUnix = Math.floor(endTime.toSeconds());
-    const escapedTokenAddress = tokenAddress.replace(/'/g, "''");
+    // Build query using query builder utilities (prevents SQL injection)
+    const escapedToken = escapeSqlString(tokenAddress);
 
     try {
       const result = await ch.query({

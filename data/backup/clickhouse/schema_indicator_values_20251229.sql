@@ -1,0 +1,1 @@
+CREATE TABLE quantbot.indicator_values\n(\n    `token_address` String,\n    `chain` String,\n    `timestamp` DateTime,\n    `indicator_type` String,\n    `value_json` String,\n    `metadata_json` String\n)\nENGINE = MergeTree\nPARTITION BY (chain, toYYYYMM(timestamp))\nORDER BY (token_address, chain, timestamp, indicator_type)\nSETTINGS index_granularity = 8192
