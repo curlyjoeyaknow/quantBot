@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>New Strategy</h2>
+<form hx-post="/api/strategies" hx-target="body">
+  <label>Name <input name="name" required></label><br><br>
+  <label>Strategy JSON:<br>
+  <textarea name="json_str" rows="20" cols="80" required>{
+  "entry": {},
+  "exits": {},
+  "stops": {},
+  "execution": {}
+}</textarea></label><br>
+  <button type="submit">Save</button>
+</form>
+{% endblock %}
+

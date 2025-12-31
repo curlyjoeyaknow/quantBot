@@ -1,0 +1,21 @@
+<!doctype html>
+<html>
+<head>
+  <title>Strategy Simulator</title>
+  <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+  <style>
+    body { font-family: sans-serif; margin: 40px; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { border: 1px solid #ddd; padding: 8px; }
+  </style>
+</head>
+<body>
+  <h1>Strategy Simulator</h1>
+  <nav>
+    <a href="/">Strategies</a> | <a href="/runs">Runs</a>
+  </nav>
+  <hr>
+  {% block content %}{% endblock %}
+</body>
+</html>
+

@@ -1,6 +1,6 @@
 /**
  * Query Complexity Guardrails
- * 
+ *
  * Ensures database queries don't become too complex or slow:
  * - Query execution time limits
  * - Result set size limits
@@ -21,9 +21,9 @@ describe('Query Complexity Guardrails', () => {
     it('should handle reasonable date ranges without performance issues', () => {
       const startUnix = 1000000;
       const endUnix = 2000000; // 1 million seconds = ~11.5 days
-      
+
       const clause = buildDateRangeWhereClauseUnix(startUnix, endUnix);
-      
+
       // Should generate simple WHERE clause
       expect(clause).toContain('timestamp >=');
       expect(clause).toContain('timestamp <=');
@@ -32,14 +32,14 @@ describe('Query Complexity Guardrails', () => {
 
     it('should handle large IN clauses efficiently', () => {
       const largeList = Array.from({ length: 1000 }, (_, i) => `item-${i}`);
-      
+
       const startTime = Date.now();
       const clause = buildInWhereClause(largeList, 'column_name');
       const endTime = Date.now();
-      
+
       // Should complete quickly (< 100ms)
       expect(endTime - startTime).toBeLessThan(100);
-      
+
       // Should generate valid SQL
       expect(clause).toContain('IN (');
       expect(clause).toContain('item-0');
@@ -49,9 +49,9 @@ describe('Query Complexity Guardrails', () => {
     it('should prevent extremely long token addresses', () => {
       const normalAddress = 'So11111111111111111111111111111111111111112';
       const extremelyLongAddress = 'A'.repeat(10000) + normalAddress;
-      
+
       const clause = buildTokenAddressWhereClause(extremelyLongAddress);
-      
+
       // Should still generate valid SQL (escaped properly)
       expect(clause).toContain('token_address');
       // Should handle long strings without crashing
@@ -64,16 +64,16 @@ describe('Query Complexity Guardrails', () => {
       const startUnix = 1000000;
       const endUnix = 2000000;
       const interval = 300;
-      
+
       const clauses = [
         buildTokenAddressWhereClause(token),
         buildChainWhereClause(chain),
         buildDateRangeWhereClauseUnix(startUnix, endUnix),
         buildIntervalWhereClause(interval),
       ];
-      
+
       const combined = clauses.join(' AND ');
-      
+
       // Combined query should be reasonable length
       expect(combined.length).toBeLessThan(1000);
       // Should contain all expected parts
@@ -88,7 +88,7 @@ describe('Query Complexity Guardrails', () => {
     it('should generate queries with proper escaping', () => {
       const malicious = "'; DROP TABLE ohlcv_candles; --";
       const clause = buildTokenAddressWhereClause(malicious);
-      
+
       // Should escape properly (all quotes are doubled)
       // The escaped string will contain "''" (doubled quotes), not "';"
       expect(clause).toContain("''");
@@ -99,7 +99,7 @@ describe('Query Complexity Guardrails', () => {
 
     it('should handle edge case intervals', () => {
       const intervals = [1, 60, 300, 3600, 86400];
-      
+
       for (const interval of intervals) {
         const clause = buildIntervalWhereClause(interval);
         // Column name is interval_seconds, not interval
@@ -110,7 +110,7 @@ describe('Query Complexity Guardrails', () => {
 
     it('should handle empty IN clause gracefully', () => {
       const clause = buildInWhereClause([], 'column_name');
-      
+
       // Should generate a clause that evaluates to false (no matches)
       // Empty IN clause returns '1 = 0' which is correct
       expect(clause).toBe('1 = 0');
@@ -118,4 +118,3 @@ describe('Query Complexity Guardrails', () => {
     });
   });
 });
-

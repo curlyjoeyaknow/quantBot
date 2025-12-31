@@ -1,0 +1,46 @@
+{
+  "name": "Example Strategy - EMA Cross Entry",
+  "entry": {
+    "mode": "signal",
+    "signal": {
+      "type": "ema_cross",
+      "fast": 9,
+      "slow": 21,
+      "direction": "bull"
+    },
+    "delay": {
+      "mode": "candles",
+      "n": 1
+    }
+  },
+  "exits": {
+    "targets": [
+      {
+        "size_pct": 50,
+        "profit_pct": 10
+      },
+      {
+        "size_pct": 50,
+        "profit_pct": 20
+      }
+    ],
+    "trailing": {
+      "enabled": true,
+      "trail_pct": 5,
+      "activate_profit_pct": 10
+    },
+    "time_exit": {
+      "enabled": false
+    }
+  },
+  "stops": {
+    "stop_loss_pct": 8,
+    "break_even_after_first_target": true
+  },
+  "execution": {
+    "fill_model": "open",
+    "fee_bps": 25,
+    "slippage_bps": 15
+  }
+}
+

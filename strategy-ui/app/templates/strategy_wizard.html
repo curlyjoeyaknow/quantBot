@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+
+{% block title %}Strategy Wizard{% endblock %}
+
+{% block content %}
+<div class="container mx-auto px-4 py-8">
+  <h1 class="text-3xl font-bold mb-6">Strategy Builder Wizard</h1>
+  
+  <form id="strategy-wizard" method="POST" action="/api/strategies" class="space-y-8">
+    <input type="hidden" name="name" id="strategy-name" value="Untitled Strategy">
+    
+    <!-- Step 1: Entry Signal -->
+    <div class="step bg-white p-6 rounded-lg shadow">
+      <h2 class="text-2xl font-semibold mb-4">1. Entry Signal</h2>
+      
+      <div class="mb-4">
+        <label class="block text-sm font-medium mb-2">Entry Mode</label>
+        <select name="entry_mode" id="entry-mode" class="w-full p-2 border rounded" required>
+          <option value="immediate">Immediate</option>
+          <option value="signal">Signal-based</option>
+        </select>
+      </div>
+      
+      <div id="signal-config" class="hidden">
+        <div class="mb-4">
+          <label class="block text-sm font-medium mb-2">Signal Type</label>
+          <select name="signal_type" id="signal-type" class="w-full p-2 border rounded">
+            <option value="rsi_below">RSI Below</option>
+            <option value="ema_cross">EMA Cross</option>
+          </select>
+        </div>
+        
+        <div id="rsi-config" class="hidden">
+          <div class="mb-4">
+            <label class="block text-sm font-medium mb-2">RSI Period</label>
+            <input type="number" name="rsi_period" id="rsi-period" min="1" max="100" value="14" class="w-full p-2 border rounded">
+          </div>
+          <div class="mb-4">
+            <label class="block text-sm font-medium mb-2">RSI Threshold</label>
+            <input type="number" name="rsi_value" id="rsi-value" min="0" max="100" value="30" step="0.1" class="w-full p-2 border rounded">
+          </div>
+        </div>
+        
+        <div id="ema-config" class="hidden">
+          <div class="mb-4">
+            <label class="block text-sm font-medium mb-2">Fast EMA Period</label>
+            <input type="number" name="ema_fast" id="ema-fast" min="1" max="200" value="12" class="w-full p-2 border rounded">
+          </div>
+          <div class="mb-4">
+            <label class="block text-sm font-medium mb-2">Slow EMA Period</label>
+            <input type="number" name="ema_slow" id="ema-slow" min="1" max="200" value="26" class="w-full p-2 border rounded">
+          </div>
+          <div class="mb-4">
+            <label class="block text-sm font-medium mb-2">Direction</label>
+            <select name="ema_direction" id="ema-direction" class="w-full p-2 border rounded">
+              <option value="bull">Bullish (Fast crosses above Slow)</option>
+              <option value="bear">Bearish (Fast crosses below Slow)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      
+      <div class="mb-4">
+        <label class="block text-sm font-medium mb-2">Entry Delay</label>
+        <select name="delay_mode" id="delay-mode" class="w-full p-2 border rounded">
+          <option value="none">None</option>
+          <option value="candles">Wait N Candles</option>
+        </select>
+      </div>
+      
+      <div id="delay-config" class="hidden">
+        <label class="block text-sm font-medium mb-2">Delay (candles)</label>
+        <input type="number" name="delay_n" id="delay-n" min="0" value="0" class="w-full p-2 border rounded">
+      </div>
+    </div>
+    
+    <!-- Step 2: Risk Management -->
+    <div class="step bg-white p-6 rounded-lg shadow">
+      <h2 class="text-2xl font-semibold mb-4">2. Risk Management</h2>
+      
+      <div class="mb-4">
+        <label class="block text-sm font-medium mb-2">Stop Loss (%)</label>
+        <input type="number" name="stop_loss_pct" id="stop-loss-pct" min="0" max="100" value="12" step="0.1" class="w-full p-2 border rounded" required>
+        <p class="text-sm text-gray-500 mt-1">Hard stop loss percentage (e.g., 12 = -12%)</p>
+      </div>
+      
+      <div class="mb-4">
+        <label class="flex items-center">
+          <input type="checkbox" name="break_even_after_first" id="break-even-after-first" class="mr-2">
+          <span>Move to break-even after first target</span>
+        </label>
+      </div>
+    </div>
+    
+    <!-- Step 3: Profit Taking -->
+    <div class="step bg-white p-6 rounded-lg shadow">
+      <h2 class="text-2xl font-semibold mb-4">3. Profit Taking</h2>
+      
+      <div id="targets-container">
+        <div class="target-row mb-4 p-4 border rounded">
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium mb-2">Size (%)</label>
+              <input type="number" name="target_size[]" class="target-size w-full p-2 border rounded" min="0" max="100" value="25" step="0.1" required>
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-2">Profit (%)</label>
+              <input type="number" name="target_profit[]" class="target-profit w-full p-2 border rounded" min="0" value="10" step="0.1" required>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <button type="button" id="add-target" class="text-blue-600 hover:underline">+ Add Target</button>
+      <div id="targets-sum-error" class="text-red-600 text-sm mt-2 hidden"></div>
+      
+      <div class="mt-6">
+        <h3 class="text-lg font-semibold mb-4">Trailing Stop (Optional)</h3>
+        <div class="mb-4">
+          <label class="flex items-center">
+            <input type="checkbox" name="trailing_enabled" id="trailing-enabled" class="mr-2">
+            <span>Enable trailing stop</span>
+          </label>
+        </div>
+        
+        <div id="trailing-config" class="hidden">
+          <div class="mb-4">
+            <label class="block text-sm font-medium mb-2">Trail (%)</label>
+            <input type="number" name="trail_pct" id="trail-pct" min="0" max="100" value="6" step="0.1" class="w-full p-2 border rounded">
+          </div>
+          <div class="mb-4">
+            <label class="block text-sm font-medium mb-2">Activate at Profit (%)</label>
+            <input type="number" name="trail_activate" id="trail-activate" min="0" value="12" step="0.1" class="w-full p-2 border rounded">
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Step 4: Time Constraints -->
+    <div class="step bg-white p-6 rounded-lg shadow">
+      <h2 class="text-2xl font-semibold mb-4">4. Time Constraints</h2>
+      
+      <div class="mb-4">
+        <label class="flex items-center">
+          <input type="checkbox" name="time_exit_enabled" id="time-exit-enabled" class="mr-2">
+          <span>Exit after N candles</span>
+        </label>
+      </div>
+      
+      <div id="time-exit-config" class="hidden">
+        <label class="block text-sm font-medium mb-2">Max Candles in Trade</label>
+        <input type="number" name="max_candles_in_trade" id="max-candles-in-trade" min="1" value="100" class="w-full p-2 border rounded">
+      </div>
+    </div>
+    
+    <!-- Step 5: Execution -->
+    <div class="step bg-white p-6 rounded-lg shadow">
+      <h2 class="text-2xl font-semibold mb-4">5. Execution</h2>
+      
+      <div class="mb-4">
+        <label class="block text-sm font-medium mb-2">Fill Model</label>
+        <select name="fill_model" id="fill-model" class="w-full p-2 border rounded" required>
+          <option value="close">Close</option>
+          <option value="open">Open</option>
+        </select>
+      </div>
+      
+      <div class="mb-4">
+        <label class="block text-sm font-medium mb-2">Fee (bps)</label>
+        <input type="number" name="fee_bps" id="fee-bps" min="0" value="10" class="w-full p-2 border rounded" required>
+      </div>
+      
+      <div class="mb-4">
+        <label class="block text-sm font-medium mb-2">Slippage (bps)</label>
+        <input type="number" name="slippage_bps" id="slippage-bps" min="0" value="30" class="w-full p-2 border rounded" required>
+      </div>
+    </div>
+    
+    <!-- Strategy Summary & JSON Preview -->
+    <div class="step bg-white p-6 rounded-lg shadow">
+      <h2 class="text-2xl font-semibold mb-4">Strategy Summary</h2>
+      
+      <div id="strategy-summary" class="mb-4 p-4 bg-gray-50 rounded">
+        <p class="text-gray-600">Fill out the form above to see strategy summary</p>
+      </div>
+      
+      <div class="mb-4">
+        <label class="flex items-center">
+          <input type="checkbox" id="show-json" class="mr-2">
+          <span>Show Advanced (JSON)</span>
+        </label>
+      </div>
+      
+      <div id="json-preview" class="hidden">
+        <label class="block text-sm font-medium mb-2">Strategy JSON</label>
+        <textarea name="json_str" id="json-str" rows="20" class="w-full p-2 border rounded font-mono text-sm" readonly></textarea>
+      </div>
+      <!-- Hidden JSON field for form submission -->
+      <textarea name="json_str" id="json-str-hidden" style="display: none;"></textarea>
+      
+      <div class="mb-4">
+        <label class="block text-sm font-medium mb-2">Strategy Name</label>
+        <input type="text" name="strategy_name" id="strategy-name-input" value="Untitled Strategy" class="w-full p-2 border rounded" required>
+      </div>
+    </div>
+    
+    <div class="flex gap-4">
+      <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded hover:bg-blue-700">Save Strategy</button>
+      <button type="button" id="preview-btn" class="bg-gray-600 text-white px-6 py-2 rounded hover:bg-gray-700">Preview</button>
+    </div>
+  </form>
+</div>
+
+<script src="/static/wizard.js"></script>
+{% endblock %}
+

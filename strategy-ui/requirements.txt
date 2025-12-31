@@ -1,0 +1,8 @@
+fastapi
+uvicorn
+duckdb
+jinja2
+pydantic
+pytest
+clickhouse-connect
+

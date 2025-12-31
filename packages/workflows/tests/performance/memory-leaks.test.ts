@@ -1,6 +1,6 @@
 /**
  * Memory Leak Detection Tests
- * 
+ *
  * Ensures workflows don't leak memory:
  * - Event listeners are cleaned up
  * - Large result sets don't accumulate
@@ -57,19 +57,18 @@ describe('Workflow Memory Leak Prevention', () => {
     it('should not accumulate event listeners', () => {
       // Simulate event listener pattern
       const listeners: Array<() => void> = [];
-      
+
       // Add listeners
       for (let i = 0; i < 100; i++) {
         const listener = () => {};
         listeners.push(listener);
       }
-      
+
       // Remove listeners (cleanup)
       listeners.length = 0;
-      
+
       // Should not accumulate
       expect(listeners.length).toBe(0);
     });
   });
 });
-

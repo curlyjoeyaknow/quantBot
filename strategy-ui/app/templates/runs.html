@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Simulation Runs</h2>
+<table>
+<tr><th>Run ID</th><th>Status</th><th>Created</th></tr>
+{% for r in runs %}
+<tr>
+  <td>{{ r[0] }}</td>
+  <td>{{ r[1] }}</td>
+  <td>{{ r[2] }}</td>
+</tr>
+{% endfor %}
+</table>
+{% endblock %}
+

@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Strategies</h2>
+<a href="/strategies/new">+ New Strategy</a>
+<table>
+<tr><th>Name</th></tr>
+{% for s in strategies %}
+<tr><td>{{ s[1] }}</td></tr>
+{% endfor %}
+</table>
+{% endblock %}
+

@@ -1,6 +1,6 @@
 /**
  * Cache Hit Rate Tests
- * 
+ *
  * Verifies that OHLCV cache is being used effectively:
  * - Cache hits reduce database queries
  * - Cache TTL is respected
@@ -40,10 +40,10 @@ describe('OHLCV Cache Hit Rate', () => {
 
     // First request - cache miss, set cache
     cache.set(tokenAddress, startTime, endTime, candles, interval, 60);
-    
+
     // Second request - should be cache hit
     const cached = cache.get(tokenAddress, startTime, endTime, interval);
-    
+
     expect(cached).not.toBeNull();
     expect(cached).toEqual(candles);
   });
@@ -146,4 +146,3 @@ describe('OHLCV Cache Hit Rate', () => {
     expect(info.size).toBeLessThanOrEqual(maxSize);
   });
 });
-

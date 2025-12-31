@@ -1,0 +1,37 @@
+{
+  "name": "Example Strategy - Simple Take Profit",
+  "entry": {
+    "mode": "immediate",
+    "delay": {
+      "mode": "none"
+    }
+  },
+  "exits": {
+    "targets": [
+      {
+        "size_pct": 50,
+        "profit_pct": 10
+      },
+      {
+        "size_pct": 50,
+        "profit_pct": 20
+      }
+    ],
+    "trailing": {
+      "enabled": false
+    },
+    "time_exit": {
+      "enabled": false
+    }
+  },
+  "stops": {
+    "stop_loss_pct": 5,
+    "break_even_after_first_target": false
+  },
+  "execution": {
+    "fill_model": "close",
+    "fee_bps": 25,
+    "slippage_bps": 10
+  }
+}
+

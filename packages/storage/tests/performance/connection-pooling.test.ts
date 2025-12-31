@@ -1,6 +1,6 @@
 /**
  * Connection Pooling Tests
- * 
+ *
  * Verifies that ClickHouse connection pooling is working correctly:
  * - Singleton pattern ensures single client instance
  * - Connection limits are respected
@@ -54,7 +54,7 @@ describe('ClickHouse Connection Pooling', () => {
 
   it('should have connection pool configuration', () => {
     const client = getClickHouseClient();
-    
+
     // Verify client exists and is configured
     expect(client).toBeDefined();
     // The @clickhouse/client library manages connection pooling internally
@@ -63,7 +63,7 @@ describe('ClickHouse Connection Pooling', () => {
 
   it('should handle multiple close calls gracefully', async () => {
     getClickHouseClient();
-    
+
     // Multiple close calls should not throw
     await expect(closeClickHouse()).resolves.not.toThrow();
     await expect(closeClickHouse()).resolves.not.toThrow();
@@ -72,12 +72,11 @@ describe('ClickHouse Connection Pooling', () => {
 
   it('should maintain singleton after errors', async () => {
     const client1 = getClickHouseClient();
-    
+
     // Simulate an error scenario (client should still be the same)
     // In real scenarios, the client library handles reconnection
     const client2 = getClickHouseClient();
-    
+
     expect(client1).toBe(client2);
   });
 });
-
