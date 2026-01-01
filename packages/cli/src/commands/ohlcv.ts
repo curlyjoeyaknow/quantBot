@@ -140,6 +140,8 @@ export const analyzeDetailedCoverageSchema = z.object({
     .optional(), // YYYY-MM
   caller: z.string().optional(),
   format: z.enum(['json', 'csv']).default('json'),
+  limit: z.number().int().positive().optional(),
+  summaryOnly: z.boolean().default(false),
   timeout: z.number().int().positive().optional(), // Timeout in milliseconds
 });
 
@@ -279,6 +281,8 @@ export function registerOhlcvCommands(program: Command): void {
     .option('--end-month <month>', 'End month (YYYY-MM format)')
     .option('--caller <name>', 'Filter by specific caller')
     .option('--format <format>', 'Output format (json or csv)', 'json')
+    .option('--limit <count>', 'Limit number of calls to process (for debugging)')
+    .option('--summary-only', 'Return summary and metadata only (omit per-call details)')
     .option('--timeout <ms>', 'Timeout in milliseconds (default: 1800000 = 30 minutes)');
 
   defineCommand(analyzeDetailedCoverageCmd, {
@@ -286,6 +290,9 @@ export function registerOhlcvCommands(program: Command): void {
     packageName: 'ohlcv',
     coerce: (raw) => ({
       ...raw,
+      limit: raw.limit ? coerceNumber(raw.limit, 'limit') : undefined,
+      summaryOnly:
+        raw.summaryOnly !== undefined ? coerceBoolean(raw.summaryOnly, 'summary-only') : false,
       timeout: raw.timeout ? coerceNumber(raw.timeout, 'timeout') : undefined,
     }),
     onError: die,

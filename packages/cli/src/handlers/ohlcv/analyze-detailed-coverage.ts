@@ -44,6 +44,8 @@ export async function analyzeDetailedCoverageHandler(
     endMonth: args.endMonth,
     caller: args.caller,
     format: args.format || 'json',
+    limit: args.limit,
+    summaryOnly: args.summaryOnly,
     timeoutMs: args.timeout,
   };
 
