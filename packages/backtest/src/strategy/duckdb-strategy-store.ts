@@ -1,0 +1,66 @@
+import duckdb from "duckdb";
+
+export type DuckDb = duckdb.Database;
+
+function run(db: DuckDb, sql: string, params: any[] = []) {
+  return new Promise<void>((resolve, reject) => {
+    const conn = db.connect();
+    conn.run(sql, params, (err: any) => (err ? reject(err) : resolve()));
+  });
+}
+
+function all<T>(db: DuckDb, sql: string, params: any[] = []) {
+  return new Promise<T[]>((resolve, reject) => {
+    const conn = db.connect();
+    (conn.all as any)(sql, params, (err: any, rows: any) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(rows as T[]);
+      }
+    });
+  });
+}
+
+export function openDuckDbFromEnv(): DuckDb {
+  const path = process.env.DUCKDB_PATH;
+  if (!path) throw new Error("DUCKDB_PATH env var is required (same file used by calls + UI).");
+  return new duckdb.Database(path);
+}
+
+export async function ensureBacktestStrategyTables(db: DuckDb) {
+  await run(
+    db,
+    `
+    CREATE TABLE IF NOT EXISTS backtest_strategies (
+      strategy_id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      config_json TEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT now()
+    );
+
+    CREATE TABLE IF NOT EXISTS backtest_runs (
+      run_id TEXT PRIMARY KEY,
+      strategy_id TEXT NOT NULL,
+      status TEXT NOT NULL,
+      params_json TEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT now(),
+      started_at TIMESTAMP,
+      finished_at TIMESTAMP,
+      error_text TEXT
+    );
+    `
+  );
+}
+
+export async function loadStrategyConfigJson(db: DuckDb, strategyId: string): Promise<string> {
+  await ensureBacktestStrategyTables(db);
+  const rows = await all<{ config_json: string }>(
+    db,
+    `SELECT config_json FROM backtest_strategies WHERE strategy_id=$1`,
+    [strategyId]
+  );
+  if (rows.length === 0) throw new Error(`Strategy not found: ${strategyId}`);
+  return rows[0].config_json;
+}
+
