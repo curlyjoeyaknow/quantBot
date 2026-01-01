@@ -12,6 +12,7 @@ import { ExecutionModelSchema } from '../../types/execution-model.js';
 export class FixedSlippageModel implements ExecutionModelInterface {
   private readonly config: ExecutionModel;
   private slippageBps: number;
+  private jitterBps: number;
 
   constructor(config: ExecutionModel = {}, slippageBps?: number) {
     // Validate and store config
@@ -20,11 +21,14 @@ export class FixedSlippageModel implements ExecutionModelInterface {
     // Extract slippage from config or use provided value or default
     const slippageParams = this.config.slippage?.params;
     this.slippageBps = slippageBps ?? (slippageParams?.bps as number) ?? 10; // Default 0.1%
+    this.jitterBps = (slippageParams?.jitterBps as number) ?? 0;
   }
 
-  execute(trade: TradeRequest, _rng: DeterministicRNG): ExecutionResult {
+  execute(trade: TradeRequest, rng: DeterministicRNG): ExecutionResult {
+    const jitter = this.jitterBps > 0 ? (rng.next() * 2 - 1) * this.jitterBps : 0;
+    const effectiveSlippageBps = Math.max(0, this.slippageBps + jitter);
     // Apply fixed slippage
-    const slippageMultiplier = 1 + this.slippageBps / 10000;
+    const slippageMultiplier = 1 + effectiveSlippageBps / 10000;
     const executedPrice =
       trade.side === 'buy'
         ? trade.price * slippageMultiplier // Pay more when buying
@@ -38,7 +42,7 @@ export class FixedSlippageModel implements ExecutionModelInterface {
       success: true,
       executedPrice,
       executedQuantity: trade.quantity,
-      slippageBps: this.slippageBps,
+      slippageBps: effectiveSlippageBps,
       fees,
       latencyMs: 0, // TODO: Add latency from config
       partialFill: false,

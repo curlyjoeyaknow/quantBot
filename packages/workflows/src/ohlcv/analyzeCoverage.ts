@@ -19,6 +19,8 @@ import { DateTime } from 'luxon';
 import { ValidationError, findWorkspaceRoot } from '@quantbot/utils';
 import type { PythonEngine } from '@quantbot/utils';
 import { join } from 'path';
+import { getCoverageTimeoutMs } from './coverageTimeouts.js';
+
 /**
  * Coverage Analysis Spec
  */
