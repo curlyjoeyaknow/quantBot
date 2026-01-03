@@ -13,9 +13,15 @@ import { normalizeChain } from '@quantbot/core';
 import { intervalToSeconds } from '../../utils/interval-converter.js';
 
 export class OhlcvRepository {
+  // Maximum candles per INSERT to prevent EPIPE errors from oversized payloads
+  private static readonly BATCH_SIZE = 10000;
+
   /**
    * Upsert candles for a token
    * CRITICAL: Preserves full address and exact case
+   *
+   * Large candle arrays are automatically batched to prevent ClickHouse
+   * connection issues (EPIPE errors) from oversized INSERT statements.
    */
   async upsertCandles(
     token: string, // Full mint address, case-preserved
@@ -36,7 +42,8 @@ export class OhlcvRepository {
     // Convert interval string to seconds (UInt32) for storage
     const intervalSeconds = intervalToSeconds(interval);
 
-    const rows = candles.map((candle) => ({
+    // Convert all candles to row format
+    const allRows = candles.map((candle) => ({
       token_address: token, // Full address, case-preserved
       chain: normalizedChain, // Normalized to lowercase (solana, ethereum, bsc, base, monad, evm)
       timestamp: DateTime.fromSeconds(candle.timestamp).toFormat('yyyy-MM-dd HH:mm:ss'),
@@ -48,23 +55,43 @@ export class OhlcvRepository {
       volume: candle.volume,
     }));
 
+    // Batch inserts to prevent EPIPE errors from oversized payloads
+    const totalBatches = Math.ceil(allRows.length / OhlcvRepository.BATCH_SIZE);
+
     try {
-      await ch.insert({
-        table: `${CLICKHOUSE_DATABASE}.ohlcv_candles`,
-        values: rows,
-        format: 'JSONEachRow',
-      });
+      for (let i = 0; i < allRows.length; i += OhlcvRepository.BATCH_SIZE) {
+        const batchRows = allRows.slice(i, i + OhlcvRepository.BATCH_SIZE);
+        const batchNum = Math.floor(i / OhlcvRepository.BATCH_SIZE) + 1;
+
+        await ch.insert({
+          table: `${CLICKHOUSE_DATABASE}.ohlcv_candles`,
+          values: batchRows,
+          format: 'JSONEachRow',
+        });
+
+        if (totalBatches > 1) {
+          logger.debug(`Upserted candle batch ${batchNum}/${totalBatches}`, {
+            token: token,
+            chain,
+            interval,
+            batchSize: batchRows.length,
+            totalCandles: candles.length,
+          });
+        }
+      }
 
       logger.debug('Upserted candles', {
         token: token,
         chain,
         interval,
         count: candles.length,
+        batches: totalBatches,
       });
     } catch (error: unknown) {
       if (process.env.USE_CACHE_ONLY !== 'true') {
         logger.error('Error upserting candles', error as Error, {
           token: token,
+          count: candles.length,
         });
         throw error;
       }

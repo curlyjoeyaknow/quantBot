@@ -9,9 +9,12 @@ Returns a worklist of unique tokens with their earliest alert time.
 import argparse
 import json
 import sys
-from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, Optional
+
+# Add tools/shared to path for datetime_controller
+sys.path.insert(0, str(Path(__file__).parent.parent / 'shared'))
+from datetime_controller import dt
 
 try:
     import duckdb
@@ -149,13 +152,13 @@ def get_ohlcv_worklist(
             params = []
             
             if from_date:
-                from_ts = int(datetime.fromisoformat(from_date.replace('Z', '+00:00')).timestamp() * 1000)
+                from_ts = dt.to_timestamp_ms(dt.from_iso(from_date))
                 token_group_query += " AND cl.trigger_ts_ms >= ?"
                 calls_query += " AND cl.trigger_ts_ms >= ?"
                 params.append(from_ts)
             
             if to_date:
-                to_ts = int(datetime.fromisoformat(to_date.replace('Z', '+00:00')).timestamp() * 1000)
+                to_ts = dt.to_timestamp_ms(dt.from_iso(to_date))
                 token_group_query += " AND cl.trigger_ts_ms <= ?"
                 calls_query += " AND cl.trigger_ts_ms <= ?"
                 params.append(to_ts)
@@ -208,13 +211,13 @@ def get_ohlcv_worklist(
             params = []
             
             if from_date:
-                from_ts = int(datetime.fromisoformat(from_date.replace('Z', '+00:00')).timestamp() * 1000)
+                from_ts = dt.to_timestamp_ms(dt.from_iso(from_date))
                 token_group_query += " AND uc.call_ts_ms >= ?"
                 calls_query += " AND uc.call_ts_ms >= ?"
                 params.append(from_ts)
             
             if to_date:
-                to_ts = int(datetime.fromisoformat(to_date.replace('Z', '+00:00')).timestamp() * 1000)
+                to_ts = dt.to_timestamp_ms(dt.from_iso(to_date))
                 token_group_query += " AND uc.call_ts_ms <= ?"
                 calls_query += " AND uc.call_ts_ms <= ?"
                 params.append(to_ts)
@@ -271,7 +274,8 @@ def get_ohlcv_worklist(
             call_count = row[3]
             
             if earliest_ts_ms:
-                earliest_alert_time = datetime.fromtimestamp(earliest_ts_ms / 1000.0).isoformat() + 'Z'
+                # Use DateTimeController for proper UTC handling
+                earliest_alert_time = dt.to_iso(dt.from_timestamp_ms(earliest_ts_ms))
             else:
                 earliest_alert_time = None
             
@@ -296,7 +300,8 @@ def get_ohlcv_worklist(
             bot_ts_ms = row[7] if len(row) > 7 else None
             
             if trigger_ts_ms:
-                alert_time = datetime.fromtimestamp(trigger_ts_ms / 1000.0).isoformat() + 'Z'
+                # Use DateTimeController for proper UTC handling
+                alert_time = dt.to_iso(dt.from_timestamp_ms(trigger_ts_ms))
             else:
                 alert_time = None
             
