@@ -190,16 +190,17 @@ export class OhlcvIngestionService {
     });
 
     // 1.5. Merge queue items with worklist (prioritize queue items)
-    // Convert queue items to worklist format and prepend to tokenGroups
+    // Convert queue items to worklist format (normalize to milliseconds)
     const queueTokenGroups: Array<{
       mint: string;
       chain: string;
-      earliestAlertTime: string;
+      earliestAlertTsMs: number;
       isFromQueue: boolean; // Flag to track queue items
     }> = queueItems.map((item) => ({
       mint: item.mint,
       chain: chain, // Default chain, will be resolved during processing
-      earliestAlertTime: item.alertTimestamp,
+      // Queue items use ISO string, convert to milliseconds
+      earliestAlertTsMs: DateTime.fromISO(item.alertTimestamp, { zone: 'utc' }).toMillis(),
       isFromQueue: true,
     }));
 
@@ -207,13 +208,13 @@ export class OhlcvIngestionService {
     // Deduplicate: if a mint+timestamp exists in both, prefer queue item
     const worklistMap = new Map<string, (typeof worklist.tokenGroups)[0]>();
     for (const group of worklist.tokenGroups) {
-      const key = `${group.mint}:${group.earliestAlertTime}`;
+      const key = `${group.mint}:${group.earliestAlertTsMs}`;
       worklistMap.set(key, group);
     }
 
     // Remove worklist items that are in queue (queue takes priority)
     for (const queueItem of queueTokenGroups) {
-      const key = `${queueItem.mint}:${queueItem.earliestAlertTime}`;
+      const key = `${queueItem.mint}:${queueItem.earliestAlertTsMs}`;
       worklistMap.delete(key);
     }
 
@@ -300,17 +301,17 @@ export class OhlcvIngestionService {
           const isFromQueue = (tokenGroup as { isFromQueue?: boolean }).isFromQueue ?? false;
 
           try {
-            const { mint, chain: tokenChain, earliestAlertTime } = tokenGroup;
+            const { mint, chain: tokenChain, earliestAlertTsMs } = tokenGroup;
 
-            if (!mint || !earliestAlertTime) {
+            if (!mint || earliestAlertTsMs === null || earliestAlertTsMs === undefined) {
               logger.warn('Token group missing required fields', {
                 mint: mint,
-                hasEarliestAlertTime: !!earliestAlertTime,
+                hasEarliestAlertTsMs: earliestAlertTsMs !== null && earliestAlertTsMs !== undefined,
               });
               tokensFailed++;
               errors.push({
                 tokenId,
-                error: 'Missing mint or earliestAlertTime',
+                error: 'Missing mint or earliestAlertTsMs',
               });
               return null;
             }
@@ -318,8 +319,8 @@ export class OhlcvIngestionService {
             // Get all calls for this mint
             const callsForToken = callsByMint.get(mint) || [];
 
-            // Parse alert time from ISO string
-            const alertTime = DateTime.fromISO(earliestAlertTime);
+            // Use raw milliseconds directly
+            const alertTime = DateTime.fromMillis(earliestAlertTsMs, { zone: 'utc' });
 
             // Resume mode: Check if token already has sufficient data
             if (resume) {
@@ -380,7 +381,7 @@ export class OhlcvIngestionService {
               if (isFromQueue) {
                 queueItemsProcessed.push({
                   mint,
-                  alertTimestamp: earliestAlertTime,
+                  alertTimestamp: alertTime.toISO()!,
                 });
               }
             } else {
@@ -395,7 +396,7 @@ export class OhlcvIngestionService {
               if (isFromQueue) {
                 tokensUnrecoverable.push({
                   mint,
-                  alertTimestamp: earliestAlertTime,
+                  alertTimestamp: alertTime.toISO()!,
                   reason: 'No OHLCV data available from API after all retries',
                 });
               }
@@ -420,9 +421,13 @@ export class OhlcvIngestionService {
 
             // If this was from queue (simulation failure), mark as unrecoverable
             if (isFromQueue) {
+              const tsMs = tokenGroup.earliestAlertTsMs;
               tokensUnrecoverable.push({
                 mint: tokenGroup.mint || '',
-                alertTimestamp: tokenGroup.earliestAlertTime || '',
+                alertTimestamp:
+                  tsMs !== null && tsMs !== undefined
+                    ? DateTime.fromMillis(tsMs, { zone: 'utc' }).toISO()!
+                    : '',
                 reason: `Persistent error: ${errorMessage}`,
               });
             }

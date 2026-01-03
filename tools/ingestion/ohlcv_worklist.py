@@ -273,16 +273,12 @@ def get_ohlcv_worklist(
             earliest_ts_ms = row[2]
             call_count = row[3]
             
-            if earliest_ts_ms:
-                # Use DateTimeController for proper UTC handling
-                earliest_alert_time = dt.to_iso(dt.from_timestamp_ms(earliest_ts_ms))
-            else:
-                earliest_alert_time = None
-            
+            # Return raw earliestAlertTsMs directly - let TypeScript handle conversion
+            # This avoids all timezone/datetime parsing issues
             token_groups_list.append({
                 'mint': mint,
                 'chain': chain,
-                'earliestAlertTime': earliest_alert_time,
+                'earliestAlertTsMs': int(earliest_ts_ms) if earliest_ts_ms is not None else None,
                 'callCount': call_count,
             })
         
@@ -299,16 +295,12 @@ def get_ohlcv_worklist(
             mcap_usd = row[6]
             bot_ts_ms = row[7] if len(row) > 7 else None
             
-            if trigger_ts_ms:
-                # Use DateTimeController for proper UTC handling
-                alert_time = dt.to_iso(dt.from_timestamp_ms(trigger_ts_ms))
-            else:
-                alert_time = None
-            
+            # Return raw alertTsMs directly - let TypeScript convert to unix seconds
+            # This avoids all timezone/datetime parsing issues
             calls_list.append({
                 'mint': mint,
                 'chain': chain,
-                'alertTime': alert_time,
+                'alertTsMs': int(trigger_ts_ms) if trigger_ts_ms is not None else None,
                 'chatId': trigger_chat_id,
                 'messageId': str(trigger_message_id) if trigger_message_id else None,
                 'priceUsd': float(price_usd) if price_usd is not None else None,
