@@ -30,6 +30,10 @@ import {
   coverageDashboardHandler,
   coverageDashboardSchema,
 } from '../handlers/ohlcv/coverage-dashboard.js';
+import {
+  tokenLifespanHandler,
+  tokenLifespanSchema,
+} from '../handlers/ohlcv/token-lifespan.js';
 
 /**
  * Fetch command schema (re-exported from handler)
@@ -358,6 +362,30 @@ export function registerOhlcvCommands(program: Command): void {
     packageName: 'ohlcv',
     onError: die,
   });
+
+  // Token lifespan analysis command
+  const tokenLifespanCmd = ohlcvCmd
+    .command('token-lifespan')
+    .description(
+      'Analyze token lifespans to determine effective coverage (dead tokens with full lifespan = full coverage)'
+    )
+    .requiredOption('--duckdb <path>', 'Path to DuckDB database file')
+    .option('--from <date>', 'Filter alerts from date (ISO 8601: YYYY-MM-DD)')
+    .option('--to <date>', 'Filter alerts to date (ISO 8601: YYYY-MM-DD)')
+    .option('--interval <interval>', 'Candle interval (1m or 5m)', '1m')
+    .option(
+      '--min-coverage-seconds <seconds>',
+      'Minimum coverage threshold in seconds (default: 150000)',
+      '150000'
+    )
+    .option('--concurrency <n>', 'Number of concurrent Birdeye API calls (default: 5)', '5')
+    .option('--format <format>', 'Output format', 'table');
+
+  defineCommand(tokenLifespanCmd, {
+    name: 'token-lifespan',
+    packageName: 'ohlcv',
+    onError: die,
+  });
 }
 
 /**
@@ -505,6 +533,22 @@ const ohlcvModule: PackageCommandModule = {
         'quantbot ohlcv coverage-dashboard --duckdb ~/alerts.duckdb --from 2025-05-01',
         'quantbot ohlcv coverage-dashboard --duckdb ~/alerts.duckdb --from 2025-05-01 --to 2025-06-01',
         'quantbot ohlcv coverage-dashboard --duckdb ~/alerts.duckdb --refresh-interval 10',
+      ],
+    },
+    {
+      name: 'token-lifespan',
+      description:
+        'Analyze token lifespans to determine effective coverage (dead tokens with full lifespan = full coverage)',
+      schema: tokenLifespanSchema,
+      handler: async (args: unknown, ctx: unknown) => {
+        const typedCtx = ctx as CommandContext;
+        const typedArgs = args as z.infer<typeof tokenLifespanSchema>;
+        return await tokenLifespanHandler(typedArgs, typedCtx);
+      },
+      examples: [
+        'quantbot ohlcv token-lifespan --duckdb ~/alerts.duckdb --interval 1m',
+        'quantbot ohlcv token-lifespan --duckdb ~/alerts.duckdb --from 2025-05-01 --interval 1m',
+        'quantbot ohlcv token-lifespan --duckdb ~/alerts.duckdb --min-coverage-seconds 150000',
       ],
     },
   ],

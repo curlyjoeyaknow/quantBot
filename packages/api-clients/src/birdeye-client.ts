@@ -1136,6 +1136,104 @@ export class BirdeyeClient extends BaseApiClient {
   }
 
   /**
+   * Search for token info including creation_time and last_trade_unix_time
+   * Uses the /defi/v3/search endpoint
+   *
+   * @param tokenAddress Token address to search for
+   * @param chain Chain identifier (default: 'solana')
+   * @returns Token info including creation and last trade times, or null if not found
+   */
+  async searchToken(
+    tokenAddress: string,
+    chain: string = 'solana'
+  ): Promise<{
+    address: string;
+    name: string;
+    symbol: string;
+    creationTime: string | null; // ISO string
+    lastTradeUnixTime: number | null;
+    lastTradeHumanTime: string | null;
+    liquidity: number | null;
+    price: number | null;
+  } | null> {
+    try {
+      const result = await this.requestWithKeyRotation<{
+        success: boolean;
+        data?: {
+          items?: Array<{
+            type: string;
+            result: Array<{
+              name?: string;
+              symbol?: string;
+              address?: string;
+              network?: string;
+              creation_time?: string;
+              last_trade_unix_time?: number;
+              last_trade_human_time?: string;
+              liquidity?: number;
+              price?: number;
+            }>;
+          }>;
+        };
+      }>(
+        {
+          method: 'GET',
+          url: '/defi/v3/search',
+          params: {
+            keyword: tokenAddress,
+            target: 'token',
+            sort_by: 'liquidity',
+            sort_type: 'desc',
+            offset: 0,
+            limit: 1,
+          },
+          headers: {
+            'x-chain': chain,
+          },
+        },
+        3
+      );
+
+      if (!result) {
+        return null;
+      }
+
+      const { response, apiKey } = result;
+
+      if (response.status === 200 && response.data?.success && response.data?.data?.items) {
+        this.updateKeyUsage(apiKey);
+        recordApiUsage('birdeye', 1);
+
+        // Find the token result
+        const tokenItem = response.data.data.items.find((item) => item.type === 'token');
+        if (!tokenItem || !tokenItem.result || tokenItem.result.length === 0) {
+          return null;
+        }
+
+        const token = tokenItem.result[0];
+        return {
+          address: token.address || tokenAddress,
+          name: token.name || '',
+          symbol: token.symbol || '',
+          creationTime: token.creation_time || null,
+          lastTradeUnixTime: token.last_trade_unix_time || null,
+          lastTradeHumanTime: token.last_trade_human_time || null,
+          liquidity: token.liquidity || null,
+          price: token.price || null,
+        };
+      }
+
+      return null;
+    } catch (error: unknown) {
+      logger.warn('Failed to search token', {
+        token: tokenAddress,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return null;
+    }
+  }
+
+  /**
    * Fetch token metadata (name, symbol, etc.)
    */
   async getTokenMetadata(
