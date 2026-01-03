@@ -14,14 +14,42 @@ import { fetchBirdeyeCandles } from '@quantbot/api-clients';
 import { storeCandles, getCoverage } from '@quantbot/ohlcv';
 import type { Chain } from '@quantbot/core';
 
+// Console colors for filtered output
+const c = {
+  reset: '\x1b[0m',
+  bold: '\x1b[1m',
+  dim: '\x1b[2m',
+  red: '\x1b[31m',
+  green: '\x1b[32m',
+  yellow: '\x1b[33m',
+  blue: '\x1b[34m',
+  cyan: '\x1b[36m',
+  gray: '\x1b[90m',
+};
+
+// Print colored progress to console (filtered, human-readable)
+function print(msg: string) {
+  process.stdout.write(msg + '\n');
+}
+
+// Progress indicator (optional, for future use)
+function _printProgress(current: number, total: number, mint: string, status: string) {
+  const pct = ((current / total) * 100).toFixed(0).padStart(3);
+  const shortMint = mint.substring(0, 8) + '...' + mint.substring(mint.length - 4);
+  process.stdout.write(`\r${c.gray}[${pct}%]${c.reset} ${c.cyan}${current}/${total}${c.reset} ${shortMint} ${status}`.padEnd(80));
+}
+
 export const fetchFromDuckdbSchema = z.object({
   duckdb: z.string().min(1, 'DuckDB path is required'),
-  interval: z.enum(['1s', '15s', '1m', '5m', '1H']).default('5m'),
+  interval: z.enum(['1s', '15s', '1m', '5m']).default('5m'),
   from: z.string().optional(), // ISO date string - filter alerts by date
   to: z.string().optional(), // ISO date string - filter alerts by date
   side: z.enum(['buy', 'sell']).default('buy'),
   format: z.enum(['json', 'table', 'csv']).default('table'),
   chain: z.enum(['solana', 'ethereum', 'bsc', 'base']).optional(), // Filter by chain if provided
+  concurrency: z.coerce.number().int().min(1).max(50).default(2), // Parallel fetch limit (max 50 to stay under API rate limits)
+  delayMs: z.coerce.number().int().min(0).max(5000).default(200), // Delay between batch requests in milliseconds
+  horizonSeconds: z.coerce.number().int().min(60).max(604800).default(7200), // Minimum forward time window in seconds (default: 2 hours, max: 7 days)
 });
 
 export type FetchFromDuckdbArgs = z.infer<typeof fetchFromDuckdbSchema>;
@@ -29,9 +57,13 @@ export type FetchFromDuckdbArgs = z.infer<typeof fetchFromDuckdbSchema>;
 /**
  * Fetch OHLCV for all alerts in DuckDB
  */
-export async function fetchFromDuckdbHandler(args: FetchFromDuckdbArgs, ctx: CommandContext) {
+export async function fetchFromDuckdbHandler(args: FetchFromDuckdbArgs, _ctx: CommandContext) {
   const { resolve } = await import('path');
   const duckdbPath = resolve(process.cwd(), args.duckdb);
+
+  const concurrency = args.concurrency ?? 2;
+  const delayMs = args.delayMs ?? 200;
+  const horizonSeconds = args.horizonSeconds ?? Number(process.env.OHLCV_HORIZON_SECONDS ?? 7200);
 
   logger.info('Fetching OHLCV for alerts from DuckDB', {
     duckdbPath,
@@ -39,7 +71,17 @@ export async function fetchFromDuckdbHandler(args: FetchFromDuckdbArgs, ctx: Com
     side: args.side,
     from: args.from,
     to: args.to,
+    concurrency,
+    delayMs,
+    horizonSeconds,
   });
+
+  // Console header
+  print('');
+  print(`${c.bold}${c.cyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${c.reset}`);
+  print(`${c.bold}${c.cyan}  OHLCV Fetch${c.reset} ${c.gray}interval=${args.interval} concurrency=${concurrency}${c.reset}`);
+  print(`${c.gray}  ${args.from || 'all'} → ${args.to || 'now'}${c.reset}`);
+  print(`${c.bold}${c.cyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${c.reset}`);
 
   // Query DuckDB for worklist (alerts/calls)
   const worklistService = getDuckDBWorklistService();
@@ -54,6 +96,9 @@ export async function fetchFromDuckdbHandler(args: FetchFromDuckdbArgs, ctx: Com
     tokenGroups: worklist.tokenGroups.length,
     calls: worklist.calls.length,
   });
+
+  print(`${c.blue}📋 Found ${c.bold}${worklist.calls.length}${c.reset}${c.blue} alerts to process${c.reset}`);
+  print('');
 
   if (worklist.calls.length === 0) {
     return {
@@ -74,17 +119,17 @@ export async function fetchFromDuckdbHandler(args: FetchFromDuckdbArgs, ctx: Com
   // We want full coverage for each alert
   const alertsToProcess = worklist.calls
     .filter((call) => {
-      if (!call.mint || !call.trigger_ts_ms) return false;
+      if (!call.mint || !call.alertTime) return false;
       if (args.chain && call.chain && call.chain !== args.chain) return false;
       return true;
     })
     .map((call) => {
-      const alertTime = DateTime.fromMillis(call.trigger_ts_ms, { zone: 'utc' });
+      const alertTime = DateTime.fromISO(call.alertTime!, { zone: 'utc' });
       return {
         mint: call.mint!,
         chain: (call.chain as Chain) || 'solana',
         alertTime,
-        callerName: call.trigger_from_name || 'unknown',
+        callerName: 'unknown', // Worklist doesn't include caller name
       };
     });
 
@@ -101,15 +146,34 @@ export async function fetchFromDuckdbHandler(args: FetchFromDuckdbArgs, ctx: Com
         ? 15
         : args.interval === '1m'
           ? 60
-          : args.interval === '5m'
-            ? 300
-            : 3600; // 1H
+          : 300; // 5m
 
-  // Coverage requirements: -5 intervals before alert, +4000 candles after alert
+  // Coverage requirements: -5 intervals before alert, +forwardCandles after alert
+  // Conservative base: 5000 candles (1 API request) per interval
+  // horizonSeconds can override this if a larger time window is needed
+  // Time coverage per interval at 5000 candles:
+  // - 1s: ~1.4 hours
+  // - 15s: ~20.8 hours
+  // - 1m: ~3.5 days
+  // - 5m: ~17.4 days
   const lookbackIntervals = 5;
-  const forwardCandles = 4000;
+  const baseForwardCandles = 5000; // Conservative: 1 API request per token
+  const horizonCandles = Math.ceil(horizonSeconds / intervalSeconds);
+  const forwardCandles = Math.max(baseForwardCandles, horizonCandles);
   const lookbackSeconds = lookbackIntervals * intervalSeconds;
   const forwardSeconds = forwardCandles * intervalSeconds;
+
+  logger.debug('Forward window calculation', {
+    interval: args.interval,
+    intervalSeconds,
+    horizonSeconds,
+    baseForwardCandles,
+    horizonCandles,
+    forwardCandles,
+    forwardSeconds,
+    forwardHours: (forwardSeconds / 3600).toFixed(2),
+    estimatedApiRequests: Math.ceil(forwardCandles / 5000),
+  });
 
   // Minimum coverage threshold (95% = full coverage)
   const MIN_COVERAGE_RATIO = 0.95;
@@ -129,17 +193,40 @@ export async function fetchFromDuckdbHandler(args: FetchFromDuckdbArgs, ctx: Com
     errors: [] as Array<{ mint: string; alertTime: string; error: string }>,
   };
 
-  // Process each alert individually
-  for (let i = 0; i < alertsToProcess.length; i++) {
-    const { mint, chain, alertTime, callerName } = alertsToProcess[i];
-    const alertNum = i + 1;
+  // Helper function to process a single alert
+  async function processAlert(
+    alertData: (typeof alertsToProcess)[0],
+    alertNum: number
+  ): Promise<{
+    fetchesAttempted: number;
+    fetchesSucceeded: number;
+    fetchesFailed: number;
+    totalCandlesFetched: number;
+    totalCandlesStored: number;
+    alertsWithFullCoverage: number;
+    alertsWithIncompleteCoverage: number;
+    retries: number;
+    error?: { mint: string; alertTime: string; error: string };
+  }> {
+    const { mint, chain, alertTime, callerName } = alertData;
+    const localResults = {
+      fetchesAttempted: 0,
+      fetchesSucceeded: 0,
+      fetchesFailed: 0,
+      totalCandlesFetched: 0,
+      totalCandlesStored: 0,
+      alertsWithFullCoverage: 0,
+      alertsWithIncompleteCoverage: 0,
+      retries: 0,
+      error: undefined as { mint: string; alertTime: string; error: string } | undefined,
+    };
 
     try {
       // Calculate required time window for this alert
+      // Note: --from/--to filter ALERTS, not candle window
+      // Each alert gets exactly forwardCandles (e.g., 5000) from its alert time
       const fromUTC = alertTime.minus({ seconds: lookbackSeconds });
-      const toUTC = args.to
-        ? DateTime.fromISO(args.to, { zone: 'utc' }).toUTC()
-        : alertTime.plus({ seconds: forwardSeconds });
+      const toUTC = alertTime.plus({ seconds: forwardSeconds });
 
       const fromUnix = Math.floor(fromUTC.toSeconds());
       const toUnix = Math.floor(toUTC.toSeconds());
@@ -158,61 +245,48 @@ export async function fetchFromDuckdbHandler(args: FetchFromDuckdbArgs, ctx: Com
         }
       );
 
-      // Keep fetching until we have full coverage
-      let hasFullCoverage = false;
-      let fetchAttempts = 0;
-      const MAX_FETCH_ATTEMPTS = 10; // Prevent infinite loops
+      // Check current coverage first
+      localResults.fetchesAttempted++;
+      const coverage = await getCoverage(
+        mint,
+        chain,
+        fromUTC.toJSDate(),
+        toUTC.toJSDate(),
+        args.interval
+      );
 
-      while (!hasFullCoverage && fetchAttempts < MAX_FETCH_ATTEMPTS) {
-        fetchAttempts++;
-        results.fetchesAttempted++;
+      logger.debug(`Coverage check for ${mint}`, {
+        mint,
+        hasData: coverage.hasData,
+        candleCount: coverage.candleCount,
+        coverageRatio: coverage.coverageRatio,
+        requiredCandles: MIN_CANDLES,
+        requiredRatio: MIN_COVERAGE_RATIO,
+      });
 
-        // Check current coverage
-        const coverage = await getCoverage(
+      // Check if we already have enough coverage (skip fetch)
+      const hasEnoughCandles = coverage.candleCount >= MIN_CANDLES;
+      const hasEnoughRatio = coverage.coverageRatio >= MIN_COVERAGE_RATIO;
+      const shortMint = mint.substring(0, 8) + '...' + mint.substring(mint.length - 4);
+
+      if (hasEnoughCandles && hasEnoughRatio) {
+        localResults.alertsWithFullCoverage++;
+        logger.info(`✅ Full coverage achieved for ${mint} (alert ${alertNum})`, {
           mint,
-          chain,
-          fromUTC.toJSDate(),
-          toUTC.toJSDate(),
-          args.interval
-        );
-
-        logger.debug(`Coverage check for ${mint}`, {
-          mint,
-          hasData: coverage.hasData,
           candleCount: coverage.candleCount,
           coverageRatio: coverage.coverageRatio,
-          requiredCandles: MIN_CANDLES,
-          requiredRatio: MIN_COVERAGE_RATIO,
         });
-
-        // Check if we have full coverage
-        const hasEnoughCandles = coverage.candleCount >= MIN_CANDLES;
-        const hasEnoughRatio = coverage.coverageRatio >= MIN_COVERAGE_RATIO;
-
-        if (hasEnoughCandles && hasEnoughRatio) {
-          hasFullCoverage = true;
-          results.alertsWithFullCoverage++;
-          logger.info(`✅ Full coverage achieved for ${mint} (alert ${alertNum})`, {
-            mint,
-            candleCount: coverage.candleCount,
-            coverageRatio: coverage.coverageRatio,
-            fetchAttempts,
-          });
-          break;
-        }
-
-        // Need to fetch more data
-        logger.info(`⚠️  Incomplete coverage for ${mint} (alert ${alertNum}) - fetching...`, {
+        // Console: coverage already exists
+        print(`${c.green}✓${c.reset} ${c.gray}[${alertNum}/${alertsToProcess.length}]${c.reset} ${shortMint} ${c.dim}cached (${coverage.candleCount} candles)${c.reset}`);
+      } else {
+        // Need to fetch data (single attempt, no retry loop)
+        logger.debug(`Fetching candles for ${mint} (alert ${alertNum})`, {
           mint,
           currentCandles: coverage.candleCount,
           requiredCandles: MIN_CANDLES,
-          currentRatio: coverage.coverageRatio,
-          requiredRatio: MIN_COVERAGE_RATIO,
-          fetchAttempt: fetchAttempts,
-          maxAttempts: MAX_FETCH_ATTEMPTS,
         });
 
-        // Fetch candles
+        // Fetch candles (single attempt, no retry loop)
         const fetchStart = Date.now();
         const candles = await fetchBirdeyeCandles(mint, args.interval, fromUnix, toUnix, chain);
         const fetchDuration = Date.now() - fetchStart;
@@ -223,22 +297,23 @@ export async function fetchFromDuckdbHandler(args: FetchFromDuckdbArgs, ctx: Com
           await storeCandles(mint, chain, candles, args.interval);
           const storeDuration = Date.now() - storeStart;
 
-          results.fetchesSucceeded++;
-          results.totalCandlesFetched += candles.length;
-          results.totalCandlesStored += candles.length;
+          localResults.fetchesSucceeded++;
+          localResults.totalCandlesFetched += candles.length;
+          localResults.totalCandlesStored += candles.length;
+          localResults.alertsWithFullCoverage++;
 
           logger.info(`Fetched and stored ${candles.length} candles for ${mint}`, {
             mint,
             candlesFetched: candles.length,
             fetchDurationMs: fetchDuration,
             storeDurationMs: storeDuration,
-            fetchAttempt: fetchAttempts,
           });
 
-          // Small delay before checking coverage again
-          await new Promise((resolve) => setTimeout(resolve, 100));
+          // Console: fetched and stored
+          print(`${c.green}✓${c.reset} ${c.gray}[${alertNum}/${alertsToProcess.length}]${c.reset} ${shortMint} ${c.bold}${candles.length}${c.reset} candles ${c.dim}(${fetchDuration}ms)${c.reset}`);
         } else {
-          // No more data available from API
+          // No data available from API
+          localResults.alertsWithIncompleteCoverage++;
           logger.warn(`No candles available from API for ${mint} (alert ${alertNum})`, {
             mint,
             chain,
@@ -246,48 +321,68 @@ export async function fetchFromDuckdbHandler(args: FetchFromDuckdbArgs, ctx: Com
             from: fromUTC.toISO()!,
             to: toUTC.toISO()!,
           });
-          break; // Can't get more data, exit retry loop
+          print(`${c.yellow}⚠${c.reset} ${c.gray}[${alertNum}/${alertsToProcess.length}]${c.reset} ${shortMint} ${c.dim}no data${c.reset}`);
         }
-
-        if (fetchAttempts > 1) {
-          results.retries++;
-        }
-      }
-
-      if (!hasFullCoverage) {
-        results.alertsWithIncompleteCoverage++;
-        const finalCoverage = await getCoverage(
-          mint,
-          chain,
-          fromUTC.toJSDate(),
-          toUTC.toJSDate(),
-          args.interval
-        );
-        logger.warn(
-          `❌ Incomplete coverage after ${fetchAttempts} attempts for ${mint} (alert ${alertNum})`,
-          {
-            mint,
-            finalCandles: finalCoverage.candleCount,
-            requiredCandles: MIN_CANDLES,
-            finalRatio: finalCoverage.coverageRatio,
-            requiredRatio: MIN_COVERAGE_RATIO,
-          }
-        );
       }
     } catch (error) {
-      results.fetchesFailed++;
+      localResults.fetchesFailed++;
       const errorMsg = error instanceof Error ? error.message : String(error);
-      results.errors.push({
+      localResults.error = {
         mint,
         alertTime: alertTime.toISO()!,
         error: errorMsg,
-      });
+      };
       logger.error(`Failed to fetch OHLCV for ${mint} (alert ${alertNum})`, {
         mint,
         chain,
         alertTime: alertTime.toISO()!,
         error: errorMsg,
       });
+
+      // Console: error
+      const shortMint = mint.substring(0, 8) + '...' + mint.substring(mint.length - 4);
+      const shortError = errorMsg.length > 40 ? errorMsg.substring(0, 40) + '...' : errorMsg;
+      print(`${c.red}✗${c.reset} ${c.gray}[${alertNum}/${alertsToProcess.length}]${c.reset} ${shortMint} ${c.red}${shortError}${c.reset}`);
+    }
+
+    return localResults;
+  }
+
+  // Process alerts in parallel batches (controlled by concurrency param)
+  for (let i = 0; i < alertsToProcess.length; i += concurrency) {
+    const batch = alertsToProcess.slice(i, i + concurrency);
+    const batchStartNum = i + 1;
+    const isLastBatch = i + concurrency >= alertsToProcess.length;
+
+    logger.debug(`Processing batch of ${batch.length} alerts (starting at ${batchStartNum})`, {
+      batchSize: batch.length,
+      concurrency,
+      totalAlerts: alertsToProcess.length,
+      progress: `${i + batch.length}/${alertsToProcess.length}`,
+    });
+
+    const batchResults = await Promise.all(
+      batch.map((alert, batchIndex) => processAlert(alert, i + batchIndex + 1))
+    );
+
+    // Aggregate batch results
+    for (const localResult of batchResults) {
+      results.fetchesAttempted += localResult.fetchesAttempted;
+      results.fetchesSucceeded += localResult.fetchesSucceeded;
+      results.fetchesFailed += localResult.fetchesFailed;
+      results.totalCandlesFetched += localResult.totalCandlesFetched;
+      results.totalCandlesStored += localResult.totalCandlesStored;
+      results.alertsWithFullCoverage += localResult.alertsWithFullCoverage;
+      results.alertsWithIncompleteCoverage += localResult.alertsWithIncompleteCoverage;
+      results.retries += localResult.retries;
+      if (localResult.error) {
+        results.errors.push(localResult.error);
+      }
+    }
+
+    // Rate limiting delay between batches (skip after last batch)
+    if (!isLastBatch && delayMs > 0) {
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
     }
   }
 
@@ -303,6 +398,17 @@ export async function fetchFromDuckdbHandler(args: FetchFromDuckdbArgs, ctx: Com
     totalCandlesStored: results.totalCandlesStored,
     coverageSuccessRate: `${((results.alertsWithFullCoverage / results.alertsProcessed) * 100).toFixed(1)}%`,
   });
+
+  // Console: completion summary
+  const successRate = ((results.alertsWithFullCoverage / results.alertsProcessed) * 100).toFixed(1);
+  print('');
+  print(`${c.bold}${c.cyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${c.reset}`);
+  print(`${c.bold}${c.green}✓ COMPLETE${c.reset}`);
+  print(`  Alerts: ${c.bold}${results.alertsProcessed}${c.reset} processed, ${c.green}${results.alertsWithFullCoverage}${c.reset} success, ${c.red}${results.fetchesFailed}${c.reset} failed`);
+  print(`  Candles: ${c.bold}${results.totalCandlesFetched.toLocaleString()}${c.reset} fetched, ${c.bold}${results.totalCandlesStored.toLocaleString()}${c.reset} stored`);
+  print(`  Success rate: ${c.bold}${successRate}%${c.reset}`);
+  print(`${c.bold}${c.cyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${c.reset}`);
+  print('');
 
   return results;
 }

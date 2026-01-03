@@ -21,6 +21,14 @@ import {
 import { coverageOhlcvHandler } from './ohlcv/coverage-ohlcv.js';
 import { analyzeCoverageHandler } from './ohlcv/analyze-coverage.js';
 import { analyzeDetailedCoverageHandler } from '../handlers/ohlcv/analyze-detailed-coverage.js';
+import {
+  coverageMapHandler,
+  coverageMapSchema,
+} from '../handlers/ohlcv/coverage-map.js';
+import {
+  alertCoverageMapHandler,
+  alertCoverageMapSchema,
+} from '../handlers/ohlcv/alert-coverage-map.js';
 
 /**
  * Fetch command schema (re-exported from handler)
@@ -194,6 +202,9 @@ export function registerOhlcvCommands(program: Command): void {
     .option('--to <date>', 'Filter alerts to this date, and fetch until this date (ISO 8601)')
     .option('--side <side>', 'Filter by side (buy/sell)', 'buy')
     .option('--chain <chain>', 'Filter by chain (solana, ethereum, bsc, base)')
+    .option('--concurrency <n>', 'Number of parallel fetches (1-50)', '2')
+    .option('--delay-ms <ms>', 'Delay between batch requests in milliseconds', '200')
+    .option('--horizon-seconds <seconds>', 'Minimum forward time window in seconds (default: 7200 = 2 hours)', '7200')
     .option('--format <format>', 'Output format', 'table');
 
   defineCommand(fetchFromDuckdbCmd, {
@@ -290,6 +301,38 @@ export function registerOhlcvCommands(program: Command): void {
     }),
     onError: die,
   });
+
+  // Coverage map command (precise coverage statistics with colored output)
+  const coverageMapCmd = ohlcvCmd
+    .command('coverage-map')
+    .description('Show precise OHLCV coverage statistics by interval with colored output')
+    .option('--from <date>', 'Filter from date (ISO 8601: YYYY-MM-DD)')
+    .option('--to <date>', 'Filter to date (ISO 8601: YYYY-MM-DD)')
+    .option('--format <format>', 'Output format', 'table');
+
+  defineCommand(coverageMapCmd, {
+    name: 'coverage-map',
+    packageName: 'ohlcv',
+    onError: die,
+  });
+
+  // Alert coverage map command (per-alert coverage analysis)
+  const alertCoverageMapCmd = ohlcvCmd
+    .command('alert-coverage-map')
+    .description('Check OHLCV coverage for each alert from DuckDB (per-alert, per-interval)')
+    .requiredOption('--duckdb <path>', 'Path to DuckDB database file')
+    .option('--from <date>', 'Filter alerts from date (ISO 8601: YYYY-MM-DD)')
+    .option('--to <date>', 'Filter alerts to date (ISO 8601: YYYY-MM-DD)')
+    .option('--horizon-seconds <seconds>', 'Required forward coverage in seconds (default: 7200 = 2 hours)', '7200')
+    .option('--interval <interval>', 'Check specific interval only (1s, 15s, 1m, 5m)')
+    .option('--min-coverage <ratio>', 'Minimum coverage threshold 0-1 (default: 0.95)', '0.95')
+    .option('--format <format>', 'Output format', 'table');
+
+  defineCommand(alertCoverageMapCmd, {
+    name: 'alert-coverage-map',
+    packageName: 'ohlcv',
+    onError: die,
+  });
 }
 
 /**
@@ -339,6 +382,7 @@ const ohlcvModule: PackageCommandModule = {
       examples: [
         'quantbot ohlcv fetch-from-duckdb --duckdb data/tele.duckdb --interval 5m',
         'quantbot ohlcv fetch-from-duckdb --duckdb data/tele.duckdb --interval 1m --from 2024-12-01 --to 2024-12-31',
+        'quantbot ohlcv fetch-from-duckdb --duckdb data/tele.duckdb --interval 5m --concurrency 4',
       ],
     },
     {
@@ -391,6 +435,36 @@ const ohlcvModule: PackageCommandModule = {
         'quantbot ohlcv analyze-detailed-coverage --duckdb data/tele.duckdb',
         'quantbot ohlcv analyze-detailed-coverage --duckdb data/tele.duckdb --start-month 2025-12',
         'quantbot ohlcv analyze-detailed-coverage --duckdb data/tele.duckdb --caller Brook --format csv',
+      ],
+    },
+    {
+      name: 'coverage-map',
+      description: 'Show precise OHLCV coverage statistics by interval with colored output',
+      schema: coverageMapSchema,
+      handler: async (args: unknown, ctx: unknown) => {
+        const typedCtx = ctx as CommandContext;
+        const typedArgs = args as z.infer<typeof coverageMapSchema>;
+        return await coverageMapHandler(typedArgs, typedCtx);
+      },
+      examples: [
+        'quantbot ohlcv coverage-map',
+        'quantbot ohlcv coverage-map --from 2025-05-01 --to 2025-06-01',
+        'quantbot ohlcv coverage-map --format json',
+      ],
+    },
+    {
+      name: 'alert-coverage-map',
+      description: 'Check OHLCV coverage for each alert from DuckDB (per-alert, per-interval)',
+      schema: alertCoverageMapSchema,
+      handler: async (args: unknown, ctx: unknown) => {
+        const typedCtx = ctx as CommandContext;
+        const typedArgs = args as z.infer<typeof alertCoverageMapSchema>;
+        return await alertCoverageMapHandler(typedArgs, typedCtx);
+      },
+      examples: [
+        'quantbot ohlcv alert-coverage-map --duckdb ~/tele.duckdb',
+        'quantbot ohlcv alert-coverage-map --duckdb ~/tele.duckdb --from 2025-05-01 --to 2025-06-01',
+        'quantbot ohlcv alert-coverage-map --duckdb ~/tele.duckdb --horizon-seconds 3600 --interval 1m',
       ],
     },
   ],

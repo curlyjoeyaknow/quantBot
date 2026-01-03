@@ -59,6 +59,16 @@ export { isBase58, isSolanaAddress, isEvmAddress } from './addressValidation.js'
 // Credit monitoring
 export { creditMonitor } from './credit-monitor.js';
 
+// DateTime Controller - ALWAYS use this for datetime operations
+// NEVER use Date.now() or new Date() directly - use dt.now() or dt.fromTimestampMs()
+export {
+  DateTimeController,
+  dt,
+  isValidTimestampMs,
+  isValidTimestampS,
+  assertTimestampMs,
+} from './datetime-controller.js';
+
 // Events (kept for backward compatibility, but consider moving to services)
 export * from './events/index.js';
 

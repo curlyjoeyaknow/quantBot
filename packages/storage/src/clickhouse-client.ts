@@ -12,7 +12,12 @@ import type { Candle } from '@quantbot/core';
 
 // ClickHouse connection configuration
 const CLICKHOUSE_HOST = process.env.CLICKHOUSE_HOST || 'localhost';
-const CLICKHOUSE_PORT = process.env.CLICKHOUSE_PORT ? parseInt(process.env.CLICKHOUSE_PORT) : 8123;
+// Prefer CLICKHOUSE_HTTP_PORT (explicit HTTP) over CLICKHOUSE_PORT (may be native TCP)
+const CLICKHOUSE_PORT = process.env.CLICKHOUSE_HTTP_PORT
+  ? parseInt(process.env.CLICKHOUSE_HTTP_PORT)
+  : process.env.CLICKHOUSE_PORT
+    ? parseInt(process.env.CLICKHOUSE_PORT)
+    : 8123;
 const CLICKHOUSE_USER = process.env.CLICKHOUSE_USER || 'default';
 const CLICKHOUSE_PASSWORD = process.env.CLICKHOUSE_PASSWORD || '';
 const CLICKHOUSE_DATABASE = process.env.CLICKHOUSE_DATABASE || 'quantbot';
