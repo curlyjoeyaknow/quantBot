@@ -8,9 +8,8 @@ export async function openDuckDb(): Promise<DuckDb> {
   const dbPath = process.env.DUCKDB_PATH ?? './data/tele.duckdb';
 
   if (process.env.LAB_UI_DEBUG_DB) {
-     
     console.log(`[lab-ui] DuckDB path: ${dbPath}`);
-     
+
     console.log(`[lab-ui] Node: ${process.version}`);
   }
 
