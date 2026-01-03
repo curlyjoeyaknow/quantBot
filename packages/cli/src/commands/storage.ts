@@ -21,6 +21,7 @@ import { ohlcvStatsWorkflowHandler } from './storage/ohlcv-stats-workflow.js';
 import { tokenStatsWorkflowHandler } from './storage/token-stats-workflow.js';
 import { validateAddressesHandler } from '../handlers/storage/validate-addresses.js';
 import { removeFaultyAddressesHandler } from '../handlers/storage/remove-faulty-addresses.js';
+import { migrateDuckdbHandler, migrateDuckdbSchema } from '../handlers/storage/migrate-duckdb.js';
 
 /**
  * Query command schema - Only allow safe queries
@@ -307,6 +308,28 @@ export function registerStorageCommands(program: Command): void {
     validate: (opts) => validateAddressesSchema.parse(opts),
     onError: die,
   });
+
+  // Migrate DuckDB command
+  const migrateDuckdbCmd = storageCmd
+    .command('migrate-duckdb')
+    .description('Run DuckDB schema migrations')
+    .requiredOption('--duckdb <path>', 'Path to DuckDB database file')
+    .option(
+      '--migration <file>',
+      'Specific migration file to run (e.g., 006_create_backtest_tables.sql)'
+    )
+    .option('--all', 'Run all migrations in order');
+
+  defineCommand(migrateDuckdbCmd, {
+    name: 'migrate-duckdb',
+    packageName: 'storage',
+    coerce: (raw) => ({
+      ...raw,
+      all: raw.all !== undefined ? coerceBoolean(raw.all, 'all') : false,
+    }),
+    validate: (opts) => migrateDuckdbSchema.parse(opts),
+    onError: die,
+  });
 }
 
 /**
@@ -419,6 +442,21 @@ const storageModule: PackageCommandModule = {
       examples: [
         'quantbot storage validate-addresses --duckdb data/tele.duckdb',
         'quantbot storage validate-addresses --duckdb data/tele.duckdb --format json',
+      ],
+    },
+    {
+      name: 'migrate-duckdb',
+      description: 'Run DuckDB schema migrations',
+      schema: migrateDuckdbSchema,
+      handler: async (args: unknown, ctx: unknown) => {
+        const typedCtx = ctx as CommandContext;
+        const typedArgs = args as z.infer<typeof migrateDuckdbSchema>;
+        return await migrateDuckdbHandler(typedArgs, typedCtx);
+      },
+      examples: [
+        'quantbot storage migrate-duckdb --duckdb data/tele.duckdb',
+        'quantbot storage migrate-duckdb --duckdb data/tele.duckdb --migration 006_create_backtest_tables.sql',
+        'quantbot storage migrate-duckdb --duckdb data/tele.duckdb --all',
       ],
     },
     {

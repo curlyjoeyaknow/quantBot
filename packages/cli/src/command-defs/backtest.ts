@@ -1,17 +1,29 @@
 import { z } from 'zod';
 
+/**
+ * Backtest run schema
+ *
+ * Strategy modes:
+ * - path-only: Guardrail 2 - compute path metrics only, no trades
+ * - exit-optimizer: Original mode with exit overlays
+ * - exit-stack: Exit stack mode with strategy_id from DuckDB
+ */
 export const backtestRunSchema = z.object({
-  strategy: z.string().min(1), // Mode: exit-optimizer or exit-stack
+  // Strategy mode: path-only (truth layer), exit-optimizer, or exit-stack
+  strategy: z.enum(['path-only', 'exit-optimizer', 'exit-stack']),
   strategyId: z.string().optional(), // DuckDB strategy_id (required for exit-stack)
   runId: z.string().optional(), // Run ID (provided by Lab UI, optional for backward compat)
   filter: z.string().optional(),
   interval: z.string().min(1),
   from: z.string(),
   to: z.string(),
+  // Fees/position only needed for non-path-only modes
   takerFeeBps: z.coerce.number().int().min(0).max(10000).default(30),
   slippageBps: z.coerce.number().int().min(0).max(10000).default(10),
   positionUsd: z.coerce.number().positive().default(1000),
   includeReplay: z.boolean().default(false),
+  // Path-only specific options
+  activityMovePct: z.coerce.number().min(0).max(1).default(0.1), // Default 10%
 });
 
 export type BacktestRunArgs = z.infer<typeof backtestRunSchema>;
@@ -49,3 +61,60 @@ export const backtestLeaderboardSchema = z.object({
 });
 
 export type BacktestLeaderboardArgs = z.infer<typeof backtestLeaderboardSchema>;
+
+/**
+ * Truth leaderboard schema (Phase 3 - MVP 1)
+ * Shows caller leaderboard from path metrics only (no policy data)
+ */
+export const backtestTruthLeaderboardSchema = z.object({
+  runId: z.string().min(1),
+  minCalls: z.coerce.number().int().min(0).default(0),
+  format: z.enum(['json', 'table', 'csv']).optional().default('table'),
+});
+
+export type BacktestTruthLeaderboardArgs = z.infer<typeof backtestTruthLeaderboardSchema>;
+
+/**
+ * Policy backtest schema (Phase 4 - MVP 2)
+ * Execute a risk policy against calls with candle replay
+ */
+export const backtestPolicySchema = z.object({
+  policyJson: z.string().min(1), // JSON string of RiskPolicy
+  policyId: z.string().optional(), // Will be auto-generated if not provided
+  filter: z.string().optional(), // Caller name filter
+  interval: z.string().min(1),
+  from: z.string(),
+  to: z.string(),
+  takerFeeBps: z.coerce.number().int().min(0).max(10000).default(30),
+  slippageBps: z.coerce.number().int().min(0).max(10000).default(10),
+  runId: z.string().optional(), // Optional existing run ID
+  format: z.enum(['json', 'table', 'csv']).optional().default('json'),
+});
+
+export type BacktestPolicyArgs = z.infer<typeof backtestPolicySchema>;
+
+/**
+ * Optimize schema (Phase 5 - MVP 3)
+ * Grid search to find optimal policy for a caller
+ */
+export const backtestOptimizeSchema = z.object({
+  caller: z.string().optional(), // Optional caller filter (if not provided, optimize for all)
+  interval: z.string().min(1),
+  from: z.string(),
+  to: z.string(),
+  // Constraints
+  maxStopOutRate: z.coerce.number().min(0).max(1).default(0.3),
+  maxP95DrawdownBps: z.coerce.number().max(0).default(-3000),
+  maxTimeExposedMs: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(4 * 60 * 60 * 1000),
+  // Fees
+  takerFeeBps: z.coerce.number().int().min(0).max(10000).default(30),
+  slippageBps: z.coerce.number().int().min(0).max(10000).default(10),
+  // Output
+  format: z.enum(['json', 'table', 'csv']).optional().default('table'),
+});
+
+export type BacktestOptimizeArgs = z.infer<typeof backtestOptimizeSchema>;

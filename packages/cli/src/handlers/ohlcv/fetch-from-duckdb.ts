@@ -36,7 +36,11 @@ function print(msg: string) {
 function _printProgress(current: number, total: number, mint: string, status: string) {
   const pct = ((current / total) * 100).toFixed(0).padStart(3);
   const shortMint = mint.substring(0, 8) + '...' + mint.substring(mint.length - 4);
-  process.stdout.write(`\r${c.gray}[${pct}%]${c.reset} ${c.cyan}${current}/${total}${c.reset} ${shortMint} ${status}`.padEnd(80));
+  process.stdout.write(
+    `\r${c.gray}[${pct}%]${c.reset} ${c.cyan}${current}/${total}${c.reset} ${shortMint} ${status}`.padEnd(
+      80
+    )
+  );
 }
 
 export const fetchFromDuckdbSchema = z.object({
@@ -78,10 +82,16 @@ export async function fetchFromDuckdbHandler(args: FetchFromDuckdbArgs, _ctx: Co
 
   // Console header
   print('');
-  print(`${c.bold}${c.cyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${c.reset}`);
-  print(`${c.bold}${c.cyan}  OHLCV Fetch${c.reset} ${c.gray}interval=${args.interval} concurrency=${concurrency}${c.reset}`);
+  print(
+    `${c.bold}${c.cyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${c.reset}`
+  );
+  print(
+    `${c.bold}${c.cyan}  OHLCV Fetch${c.reset} ${c.gray}interval=${args.interval} concurrency=${concurrency}${c.reset}`
+  );
   print(`${c.gray}  ${args.from || 'all'} → ${args.to || 'now'}${c.reset}`);
-  print(`${c.bold}${c.cyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${c.reset}`);
+  print(
+    `${c.bold}${c.cyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${c.reset}`
+  );
 
   // Query DuckDB for worklist (alerts/calls)
   const worklistService = getDuckDBWorklistService();
@@ -97,7 +107,9 @@ export async function fetchFromDuckdbHandler(args: FetchFromDuckdbArgs, _ctx: Co
     calls: worklist.calls.length,
   });
 
-  print(`${c.blue}📋 Found ${c.bold}${worklist.calls.length}${c.reset}${c.blue} alerts to process${c.reset}`);
+  print(
+    `${c.blue}📋 Found ${c.bold}${worklist.calls.length}${c.reset}${c.blue} alerts to process${c.reset}`
+  );
   print('');
 
   if (worklist.calls.length === 0) {
@@ -140,13 +152,7 @@ export async function fetchFromDuckdbHandler(args: FetchFromDuckdbArgs, _ctx: Co
 
   // Calculate interval seconds
   const intervalSeconds =
-    args.interval === '1s'
-      ? 1
-      : args.interval === '15s'
-        ? 15
-        : args.interval === '1m'
-          ? 60
-          : 300; // 5m
+    args.interval === '1s' ? 1 : args.interval === '15s' ? 15 : args.interval === '1m' ? 60 : 300; // 5m
 
   // Coverage requirements: -5 intervals before alert, +forwardCandles after alert
   // Conservative base: 5000 candles (1 API request) per interval
@@ -277,7 +283,9 @@ export async function fetchFromDuckdbHandler(args: FetchFromDuckdbArgs, _ctx: Co
           coverageRatio: coverage.coverageRatio,
         });
         // Console: coverage already exists
-        print(`${c.green}✓${c.reset} ${c.gray}[${alertNum}/${alertsToProcess.length}]${c.reset} ${shortMint} ${c.dim}cached (${coverage.candleCount} candles)${c.reset}`);
+        print(
+          `${c.green}✓${c.reset} ${c.gray}[${alertNum}/${alertsToProcess.length}]${c.reset} ${shortMint} ${c.dim}cached (${coverage.candleCount} candles)${c.reset}`
+        );
       } else {
         // Need to fetch data (single attempt, no retry loop)
         logger.debug(`Fetching candles for ${mint} (alert ${alertNum})`, {
@@ -310,7 +318,9 @@ export async function fetchFromDuckdbHandler(args: FetchFromDuckdbArgs, _ctx: Co
           });
 
           // Console: fetched and stored
-          print(`${c.green}✓${c.reset} ${c.gray}[${alertNum}/${alertsToProcess.length}]${c.reset} ${shortMint} ${c.bold}${candles.length}${c.reset} candles ${c.dim}(${fetchDuration}ms)${c.reset}`);
+          print(
+            `${c.green}✓${c.reset} ${c.gray}[${alertNum}/${alertsToProcess.length}]${c.reset} ${shortMint} ${c.bold}${candles.length}${c.reset} candles ${c.dim}(${fetchDuration}ms)${c.reset}`
+          );
         } else {
           // No data available from API
           localResults.alertsWithIncompleteCoverage++;
@@ -321,7 +331,9 @@ export async function fetchFromDuckdbHandler(args: FetchFromDuckdbArgs, _ctx: Co
             from: fromUTC.toISO()!,
             to: toUTC.toISO()!,
           });
-          print(`${c.yellow}⚠${c.reset} ${c.gray}[${alertNum}/${alertsToProcess.length}]${c.reset} ${shortMint} ${c.dim}no data${c.reset}`);
+          print(
+            `${c.yellow}⚠${c.reset} ${c.gray}[${alertNum}/${alertsToProcess.length}]${c.reset} ${shortMint} ${c.dim}no data${c.reset}`
+          );
         }
       }
     } catch (error) {
@@ -342,7 +354,9 @@ export async function fetchFromDuckdbHandler(args: FetchFromDuckdbArgs, _ctx: Co
       // Console: error
       const shortMint = mint.substring(0, 8) + '...' + mint.substring(mint.length - 4);
       const shortError = errorMsg.length > 40 ? errorMsg.substring(0, 40) + '...' : errorMsg;
-      print(`${c.red}✗${c.reset} ${c.gray}[${alertNum}/${alertsToProcess.length}]${c.reset} ${shortMint} ${c.red}${shortError}${c.reset}`);
+      print(
+        `${c.red}✗${c.reset} ${c.gray}[${alertNum}/${alertsToProcess.length}]${c.reset} ${shortMint} ${c.red}${shortError}${c.reset}`
+      );
     }
 
     return localResults;
@@ -402,12 +416,20 @@ export async function fetchFromDuckdbHandler(args: FetchFromDuckdbArgs, _ctx: Co
   // Console: completion summary
   const successRate = ((results.alertsWithFullCoverage / results.alertsProcessed) * 100).toFixed(1);
   print('');
-  print(`${c.bold}${c.cyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${c.reset}`);
+  print(
+    `${c.bold}${c.cyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${c.reset}`
+  );
   print(`${c.bold}${c.green}✓ COMPLETE${c.reset}`);
-  print(`  Alerts: ${c.bold}${results.alertsProcessed}${c.reset} processed, ${c.green}${results.alertsWithFullCoverage}${c.reset} success, ${c.red}${results.fetchesFailed}${c.reset} failed`);
-  print(`  Candles: ${c.bold}${results.totalCandlesFetched.toLocaleString()}${c.reset} fetched, ${c.bold}${results.totalCandlesStored.toLocaleString()}${c.reset} stored`);
+  print(
+    `  Alerts: ${c.bold}${results.alertsProcessed}${c.reset} processed, ${c.green}${results.alertsWithFullCoverage}${c.reset} success, ${c.red}${results.fetchesFailed}${c.reset} failed`
+  );
+  print(
+    `  Candles: ${c.bold}${results.totalCandlesFetched.toLocaleString()}${c.reset} fetched, ${c.bold}${results.totalCandlesStored.toLocaleString()}${c.reset} stored`
+  );
   print(`  Success rate: ${c.bold}${successRate}%${c.reset}`);
-  print(`${c.bold}${c.cyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${c.reset}`);
+  print(
+    `${c.bold}${c.cyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${c.reset}`
+  );
   print('');
 
   return results;

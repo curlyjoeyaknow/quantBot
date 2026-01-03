@@ -21,10 +21,7 @@ import {
 import { coverageOhlcvHandler } from './ohlcv/coverage-ohlcv.js';
 import { analyzeCoverageHandler } from './ohlcv/analyze-coverage.js';
 import { analyzeDetailedCoverageHandler } from '../handlers/ohlcv/analyze-detailed-coverage.js';
-import {
-  coverageMapHandler,
-  coverageMapSchema,
-} from '../handlers/ohlcv/coverage-map.js';
+import { coverageMapHandler, coverageMapSchema } from '../handlers/ohlcv/coverage-map.js';
 import {
   alertCoverageMapHandler,
   alertCoverageMapSchema,
@@ -204,7 +201,11 @@ export function registerOhlcvCommands(program: Command): void {
     .option('--chain <chain>', 'Filter by chain (solana, ethereum, bsc, base)')
     .option('--concurrency <n>', 'Number of parallel fetches (1-50)', '2')
     .option('--delay-ms <ms>', 'Delay between batch requests in milliseconds', '200')
-    .option('--horizon-seconds <seconds>', 'Minimum forward time window in seconds (default: 7200 = 2 hours)', '7200')
+    .option(
+      '--horizon-seconds <seconds>',
+      'Minimum forward time window in seconds (default: 7200 = 2 hours)',
+      '7200'
+    )
     .option('--format <format>', 'Output format', 'table');
 
   defineCommand(fetchFromDuckdbCmd, {
@@ -323,7 +324,11 @@ export function registerOhlcvCommands(program: Command): void {
     .requiredOption('--duckdb <path>', 'Path to DuckDB database file')
     .option('--from <date>', 'Filter alerts from date (ISO 8601: YYYY-MM-DD)')
     .option('--to <date>', 'Filter alerts to date (ISO 8601: YYYY-MM-DD)')
-    .option('--horizon-seconds <seconds>', 'Required forward coverage in seconds (default: 7200 = 2 hours)', '7200')
+    .option(
+      '--horizon-seconds <seconds>',
+      'Required forward coverage in seconds (default: 7200 = 2 hours)',
+      '7200'
+    )
     .option('--interval <interval>', 'Check specific interval only (1s, 15s, 1m, 5m)')
     .option('--min-coverage <ratio>', 'Minimum coverage threshold 0-1 (default: 0.95)', '0.95')
     .option('--format <format>', 'Output format', 'table');

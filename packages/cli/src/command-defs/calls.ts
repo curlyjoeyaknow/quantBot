@@ -148,3 +148,14 @@ export const exportCallsWithSimulationSchema = z.object({
 });
 
 export type ExportCallsWithSimulationArgs = z.infer<typeof exportCallsWithSimulationSchema>;
+
+export const listCallsSchema = z.object({
+  duckdb: z.string().min(1, 'DuckDB path is required'),
+  fromIso: z.string().optional(),
+  toIso: z.string().optional(),
+  callerName: z.string().optional(),
+  limit: z.coerce.number().int().positive().max(10000).optional(),
+  format: z.enum(['json', 'table', 'csv']).default('table'),
+});
+
+export type ListCallsArgs = z.infer<typeof listCallsSchema>;

@@ -14,11 +14,13 @@ import { evaluateCallsHandler } from './calls/evaluate-calls.js';
 import { sweepCallsHandler } from './calls/sweep-calls.js';
 import { exportCallsFromDuckdbHandler } from './calls/export-calls-from-duckdb.js';
 import { exportCallsWithSimulationHandler } from './calls/export-calls-with-simulation.js';
+import { listCallsHandler } from '../handlers/calls/list-calls.js';
 import {
   evaluateCallsSchema,
   sweepCallsSchema,
   exportCallsSchema,
   exportCallsWithSimulationSchema,
+  listCallsSchema,
 } from '../command-defs/calls.js';
 import type { ExitOverlay } from '@quantbot/simulation';
 
@@ -64,6 +66,32 @@ export function registerCallsCommands(program: Command): void {
       notionalUsd: raw.notionalUsd ? coerceNumber(raw.notionalUsd, 'notional-usd') : 1000,
     }),
     validate: (opts) => evaluateCallsSchema.parse(opts),
+    onError: die,
+  });
+
+  // List command
+  const listCmd = callsCmd
+    .command('list')
+    .description('List calls from DuckDB')
+    .requiredOption('--duckdb <path>', 'Path to DuckDB file')
+    .option('--from-iso <iso>', 'Start date (ISO 8601) - optional, defaults to all calls')
+    .option('--to-iso <iso>', 'End date (ISO 8601) - optional, defaults to all calls')
+    .option('--caller-name <name>', 'Filter by caller name')
+    .option('--limit <n>', 'Maximum calls to list', '1000')
+    .option('--format <format>', 'Output format', 'table');
+
+  defineCommand(listCmd, {
+    name: 'list',
+    packageName: 'calls',
+    coerce: (raw) => ({
+      ...raw,
+      duckdb: raw.duckdb,
+      fromIso: raw.fromIso,
+      toIso: raw.toIso,
+      callerName: raw.callerName,
+      limit: raw.limit ? coerceNumber(raw.limit, 'limit') : 1000,
+    }),
+    validate: (opts) => listCallsSchema.parse(opts),
     onError: die,
   });
 
@@ -230,6 +258,22 @@ const callsModule: PackageCommandModule = {
       },
       examples: [
         'quantbot calls export --duckdb data/tele.duckdb --from-iso 2024-01-01T00:00:00Z --to-iso 2024-01-02T00:00:00Z --out calls.json',
+      ],
+    },
+    {
+      name: 'list',
+      description: 'List calls from DuckDB',
+      schema: listCallsSchema,
+      handler: async (args: unknown, ctx: unknown) => {
+        const typedArgs = args as z.infer<typeof listCallsSchema>;
+        const typedCtx = ctx as CommandContext;
+        return await listCallsHandler(typedArgs, typedCtx);
+      },
+      examples: [
+        'quantbot calls list --duckdb data/tele.duckdb',
+        'quantbot calls list --duckdb data/tele.duckdb --limit 100',
+        'quantbot calls list --duckdb data/tele.duckdb --from-iso 2024-01-01 --to-iso 2024-01-31',
+        'quantbot calls list --duckdb data/tele.duckdb --caller-name "CallerName"',
       ],
     },
     {

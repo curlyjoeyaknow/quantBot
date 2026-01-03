@@ -42,6 +42,10 @@
       "types": "./dist/core/index.d.ts",
       "import": "./dist/core/index.js"
     },
+    "./engine": {
+      "types": "./dist/engine/index.d.ts",
+      "import": "./dist/engine/index.js"
+    },
     "./sinks": {
       "types": "./dist/sinks/index.d.ts",
       "import": "./dist/sinks/index.js"

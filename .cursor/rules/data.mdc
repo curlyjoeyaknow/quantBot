@@ -2,7 +2,7 @@
 description: QuantBot Data Access and Loader Best Practices
 globs:
   - "packages/data/**/*.ts"
-alwaysApply: true
+alwaysApply: false
 ---
 
 # QuantBot Data Access and Loader Best Practices

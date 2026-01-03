@@ -1,9 +1,9 @@
-import type { Candle } from "@quantbot/core";
-import type duckdb from "duckdb";
-import { resolveExitPlanFromDuckDb } from "../strategy/resolve-exit-plan.js";
-import { backtestExitStack } from "../engine/backtest-exit-stack.js";
-import { insertCallResults } from "../reporting/backtest-results-duckdb.js";
-import { computePathMetrics } from "../metrics/path-metrics.js";
+import type { Candle } from '@quantbot/core';
+import type duckdb from 'duckdb';
+import { resolveExitPlanFromDuckDb } from '../strategy/resolve-exit-plan.js';
+import { backtestExitStack } from '../engine/backtest-exit-stack.js';
+import { insertCallResults } from '../reporting/backtest-results-duckdb.js';
+import { computePathMetrics } from '../metrics/path-metrics.js';
 
 export type CallRecord = {
   callId: string;
@@ -58,7 +58,7 @@ export async function runExitStack(db: duckdb.Database, args: ExitStackRunArgs) 
 
     // Caller quality metrics anchored at ALERT time (call timestamp).
     // If you later want "actionable" entry-anchored metrics, compute a second set with entryTsMs.
-    const path = computePathMetrics(candles, call.callTsMs, { activity_move_pct: 0.10 });
+    const path = computePathMetrics(candles, call.callTsMs, { activity_move_pct: 0.1 });
 
     const return_bps = trade.pnl.netReturnPct * 100; // pct -> bps
     const pnl_usd = (trade.pnl.netReturnPct / 100) * args.positionUsd;

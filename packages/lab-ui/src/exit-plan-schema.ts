@@ -1,8 +1,12 @@
-import { z } from "zod";
+import { z } from 'zod';
 
 const LadderLevel = z.union([
-  z.object({ kind: z.literal("multiple"), multiple: z.number().positive(), fraction: z.number().min(0).max(1) }),
-  z.object({ kind: z.literal("pct"), pct: z.number(), fraction: z.number().min(0).max(1) }),
+  z.object({
+    kind: z.literal('multiple'),
+    multiple: z.number().positive(),
+    fraction: z.number().min(0).max(1),
+  }),
+  z.object({ kind: z.literal('pct'), pct: z.number(), fraction: z.number().min(0).max(1) }),
 ]);
 
 const LadderExitSpec = z.object({
@@ -11,8 +15,8 @@ const LadderExitSpec = z.object({
 });
 
 const TrailingActivation = z.union([
-  z.object({ kind: z.literal("multiple"), multiple: z.number().positive() }),
-  z.object({ kind: z.literal("pct"), pct: z.number() }),
+  z.object({ kind: z.literal('multiple'), multiple: z.number().positive() }),
+  z.object({ kind: z.literal('pct'), pct: z.number() }),
 ]);
 
 const TrailingStopSpec = z.object({
@@ -20,33 +24,33 @@ const TrailingStopSpec = z.object({
   trail_bps: z.number().positive(),
   activation: TrailingActivation.optional(),
   hard_stop_bps: z.number().positive().optional(),
-  intrabar_policy: z.enum(["STOP_FIRST", "TP_FIRST", "HIGH_THEN_LOW", "LOW_THEN_HIGH"]).optional(),
+  intrabar_policy: z.enum(['STOP_FIRST', 'TP_FIRST', 'HIGH_THEN_LOW', 'LOW_THEN_HIGH']).optional(),
 });
 
 const IndicatorRule = z.union([
   z.object({
-    type: z.literal("ichimoku_cross"),
+    type: z.literal('ichimoku_cross'),
     tenkan: z.number().int().positive(),
     kijun: z.number().int().positive(),
-    direction: z.enum(["bearish", "bullish"]),
-    source: z.enum(["close", "hl2"]).optional(),
+    direction: z.enum(['bearish', 'bullish']),
+    source: z.enum(['close', 'hl2']).optional(),
   }),
   z.object({
-    type: z.literal("ema_cross"),
+    type: z.literal('ema_cross'),
     fast: z.number().int().positive(),
     slow: z.number().int().positive(),
-    direction: z.enum(["bearish", "bullish"]),
-    source: z.enum(["close"]).optional(),
+    direction: z.enum(['bearish', 'bullish']),
+    source: z.enum(['close']).optional(),
   }),
   z.object({
-    type: z.literal("rsi_cross"),
+    type: z.literal('rsi_cross'),
     period: z.number().int().positive(),
     level: z.number(),
-    direction: z.enum(["down", "up"]),
-    source: z.enum(["close"]).optional(),
+    direction: z.enum(['down', 'up']),
+    source: z.enum(['close']).optional(),
   }),
   z.object({
-    type: z.literal("volume_spike"),
+    type: z.literal('volume_spike'),
     window: z.number().int().positive(),
     z: z.number().positive(),
   }),
@@ -55,7 +59,7 @@ const IndicatorRule = z.union([
 const IndicatorExitSpec = z.object({
   enabled: z.boolean(),
   rules: z.array(IndicatorRule).default([]),
-  mode: z.enum(["ANY", "ALL"]).optional(),
+  mode: z.enum(['ANY', 'ALL']).optional(),
 });
 
 export const ExitPlanZ = z.object({
@@ -68,7 +72,9 @@ export const ExitPlanZ = z.object({
 
 export type ExitPlan = z.infer<typeof ExitPlanZ>;
 
-export function validateExitPlanJson(config_json: string): { ok: true } | { ok: false; error: string } {
+export function validateExitPlanJson(
+  config_json: string
+): { ok: true } | { ok: false; error: string } {
   try {
     const obj = JSON.parse(config_json);
     ExitPlanZ.parse(obj);
@@ -77,4 +83,3 @@ export function validateExitPlanJson(config_json: string): { ok: true } | { ok: 
     return { ok: false, error: String(e?.message ?? e) };
   }
 }
-

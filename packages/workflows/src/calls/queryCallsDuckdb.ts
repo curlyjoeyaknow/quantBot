@@ -85,8 +85,6 @@ export async function createQueryCallsDuckdbContext(
   const { PythonEngine } = await import('@quantbot/utils');
 
   const baseContext = createProductionContext();
-  const { getDuckDBPath } = await import('@quantbot/utils');
-  const dbPath = duckdbPath || getDuckDBPath('data/tele.duckdb');
   const pythonEngine = new PythonEngine();
   const duckdbStorage = new DuckDBStorageService(pythonEngine);
 
@@ -202,6 +200,25 @@ export async function queryCallsDuckdb(
       mint: call.mint,
       createdAt: DateTime.fromISO(call.alert_timestamp, { zone: 'utc' }),
     }));
+
+  // Log date range info for debugging
+  if (result.calls.length > 0 && filtered.length === 0) {
+    const dates = result.calls.map((c) => DateTime.fromISO(c.alert_timestamp, { zone: 'utc' }));
+    if (dates.length > 0) {
+      const minDate = DateTime.min(...dates);
+      const maxDate = DateTime.max(...dates);
+      if (minDate && maxDate) {
+        ctx.logger.warn('[workflows.queryCallsDuckdb] No calls in date range', {
+          requestedRange: { from: validated.fromISO, to: validated.toISO },
+          actualRange: {
+            earliest: minDate.toISO(),
+            latest: maxDate.toISO(),
+          },
+          totalQueried: result.calls.length,
+        });
+      }
+    }
+  }
 
   ctx.logger.info('[workflows.queryCallsDuckdb] Query complete', {
     totalQueried: result.calls.length,

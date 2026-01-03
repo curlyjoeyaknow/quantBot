@@ -1,55 +1,54 @@
 ---
-description: Root-level rules for QuantBot monorepo - global conventions, package structure, critical rules
+description: QuantBot global invariants (caller-centric backtesting) — mint safety, time units, determinism, native-dep sanity.
 globs:
   - "**/*"
 alwaysApply: true
 ---
 
-# QuantBot Root Rules
+# QuantBot conventions (global)
 
-## Package Structure
+QuantBot is a **caller-centric backtesting lab**:
+- quantify which callers are worth following
+- learn optimal post-alert trade management (stops + exits) under explicit downside constraints
+- produce reproducible results (truth → policy → optimize)
 
-Monorepo with package-specific rules. See `.cursor/rules/` for package-specific guidance.
+**No live trading package lives in this repo.**
 
-## Critical Global Rules
+## Mint address handling (hard rule)
 
-### Mint Address Handling
+⚠️ NEVER MODIFY MINT ADDRESSES
+- no truncation, case changes, or string manipulation
+- store/pass full 32–44 char addresses, preserve exact case
+- truncate ONLY for display/logging, never for storage/API calls
 
-⚠️ **NEVER MODIFY MINT ADDRESSES**
+## Time & units (hard rule)
 
-- No truncation, case changes, or string manipulation
-- Store/pass full 32-44 char addresses, preserve exact case
-- Truncate ONLY for display/logging, never for storage/API calls
+- Domain logic uses **milliseconds** for timestamps/durations.
+- Normalize upstream inputs at the boundary (adapters/apps):
+  - `Candle.timestamp` seconds → convert to ms BEFORE domain/handlers.
+- Commands must not contain JS `Date` objects.
 
-### Code Style
+## Determinism (hard rule)
 
-- TypeScript strict mode
-- Use async/await, avoid callbacks
-- Prefer functional patterns where appropriate
-- Follow existing package conventions
+Given identical `(command, ports stubs, clock, id generator, random source)`, outputs must match.
 
-### Testing
+- no `Date.now()` outside ClockPort
+- no `Math.random()` outside RandomPort
+- no hidden globals/singletons inside domain/handlers
 
-- Use vitest for unit tests
-- Write tests for new features
-- Integration tests in `tests/` directory
+## Node + native deps (practical rule)
 
-#### Vitest Patterns
+Native bindings (duckdb/sqlite/etc.) are brittle across Node versions:
+- prefer Node LTS for dev/CI (pin in toolchain)
+- don’t export native-binding modules from package index barrels
+- use lazy initialization for native deps
+- mock native deps in test setup for unit tests
 
-- Use `vi.mock()` for module mocking - mocks are hoisted
-- For Zod 4.x: use `result.error.issues` not `result.error.errors`
-- Use Luxon `DateTime` objects, not JS `Date` objects for date ranges
-- Mock external packages in `tests/setup.ts` to avoid native binding issues
-- For async handlers in EventEmitter patterns, use `Promise.all()` with `listeners()`
+## Worktrees (practical rule)
 
-#### Native Binding Avoidance
+Don’t rely on a globally-installed `quantbot` command pointing at the right checkout.
+Prefer workspace execution (`pnpm -C <root> exec -- ...`) or explicit `QUANTBOT_CLI` overrides.
 
-- Don't export modules with native bindings (sqlite3) from package index
-- Use lazy initialization for singletons with native deps
-- Mock `@quantbot/utils` and `@quantbot/observability` in test setup files
+## Testing pointer
 
-#### Schema/Validation Testing
-
-- Match test data to Zod schemas exactly (required fields, correct types)
-- Use `vi.mock()` to bypass validation when testing database operations
-- Test validation separately from business logic
+Testing contracts (purity, replay, regression requirements) live in `40-testing-contracts.mdc`.

@@ -1,8 +1,8 @@
-import type { Candle } from "@quantbot/core";
-import type { Chain, TokenAddress } from "@quantbot/core";
-import type { ExitPlan } from "../strategy/exit-plan-validate.js";
-import { simulateExitPlan } from "../exits/simulate-exit-plan.js";
-import { fillsToNetReturnPct } from "../exits/fills-to-trade.js";
+import type { Candle } from '@quantbot/core';
+import type { Chain, TokenAddress } from '@quantbot/core';
+import type { ExitPlan } from '../strategy/exit-plan-validate.js';
+import { simulateExitPlan } from '../exits/simulate-exit-plan.js';
+import { fillsToNetReturnPct } from '../exits/fills-to-trade.js';
 
 export type ExitStackInputs = {
   callId: string;
@@ -10,9 +10,9 @@ export type ExitStackInputs = {
   tokenAddress: TokenAddress;
   chain: Chain;
 
-  candles: Candle[];      // chronologically sorted
-  entryTsMs: number;      // ms
-  entryDelayMs: number;   // ms (optional, but pass 0 if already applied)
+  candles: Candle[]; // chronologically sorted
+  entryTsMs: number; // ms
+  entryDelayMs: number; // ms (optional, but pass 0 if already applied)
 
   plan: ExitPlan;
 
@@ -49,14 +49,20 @@ export type Trade = {
   };
 };
 
-export function backtestExitStack(input: ExitStackInputs): { trade: Trade | null; events: BacktestEvent[] } {
+export function backtestExitStack(input: ExitStackInputs): {
+  trade: Trade | null;
+  events: BacktestEvent[];
+} {
   const { candles, entryTsMs, callId, caller, tokenAddress, chain } = input;
 
   // Find entry candle (first >= entryTsMs)
   let entryIdx = -1;
   for (let i = 0; i < candles.length; i++) {
     const tsMs = candles[i].timestamp * 1000;
-    if (tsMs >= entryTsMs) { entryIdx = i; break; }
+    if (tsMs >= entryTsMs) {
+      entryIdx = i;
+      break;
+    }
   }
   if (entryIdx === -1) return { trade: null, events: [] };
 
@@ -91,7 +97,7 @@ export function backtestExitStack(input: ExitStackInputs): { trade: Trade | null
       callId,
       tokenAddress,
       price: entryPx,
-      event: "entry",
+      event: 'entry',
     },
     ...exitSim.fills.map((f: any) => ({
       timestamp: f.tsMs,
@@ -114,4 +120,3 @@ export function backtestExitStack(input: ExitStackInputs): { trade: Trade | null
 
   return { trade, events };
 }
-

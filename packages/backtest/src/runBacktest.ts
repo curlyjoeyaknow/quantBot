@@ -45,7 +45,7 @@ export async function loadCandlesFromExistingParquet(
   const files: string[] = [];
   let current = from.startOf('day');
   const end = to.endOf('day');
-  
+
   while (current <= end) {
     const dateStr = current.toFormat('yyyy-MM-dd');
     const filePath = `${parquetBasePath}/ohlcv_candles_${dateStr}.parquet`;
@@ -79,7 +79,7 @@ export async function loadCandlesFromExistingParquet(
   const intervalSec = intervalSeconds[interval] || 60;
 
   // Read all parquet files and filter by interval and time range
-  const fileList = files.map(f => `'${f.replace(/'/g, "''")}'`).join(', ');
+  const fileList = files.map((f) => `'${f.replace(/'/g, "''")}'`).join(', ');
   const fromUnix = Math.floor(from.toSeconds());
   const toUnix = Math.floor(to.toSeconds());
 
@@ -136,7 +136,9 @@ export async function loadCandlesFromExistingParquet(
  * Load candles from slice (grouped by call_id)
  * Supports both single parquet file (with call_id) and existing day-partitioned files (without call_id)
  */
-export async function loadCandlesFromSlice(slicePath: string | string[]): Promise<Map<string, Candle[]>> {
+export async function loadCandlesFromSlice(
+  slicePath: string | string[]
+): Promise<Map<string, Candle[]>> {
   // Use storage's DuckDB adapter
   const { openDuckDb } = await import('@quantbot/storage');
   const conn = await openDuckDb(':memory:');
@@ -146,7 +148,7 @@ export async function loadCandlesFromSlice(slicePath: string | string[]): Promis
   let parquetQuery: string;
   if (Array.isArray(slicePath)) {
     // Multiple files: use UNION ALL or list of files
-    const fileList = slicePath.map(p => `'${p.replace(/'/g, "''")}'`).join(', ');
+    const fileList = slicePath.map((p) => `'${p.replace(/'/g, "''")}'`).join(', ');
     parquetQuery = `SELECT * FROM read_parquet([${fileList}])`;
   } else if (slicePath.includes('*') || slicePath.includes('?')) {
     // Glob pattern: DuckDB supports glob in read_parquet
@@ -177,11 +179,12 @@ export async function loadCandlesFromSlice(slicePath: string | string[]): Promis
       if (!candlesByCall.has(row.call_id)) {
         candlesByCall.set(row.call_id, []);
       }
-      
-      const timestamp = typeof row.timestamp === 'string' 
-        ? Math.floor(DateTime.fromISO(row.timestamp).toSeconds())
-        : row.timestamp;
-        
+
+      const timestamp =
+        typeof row.timestamp === 'string'
+          ? Math.floor(DateTime.fromISO(row.timestamp).toSeconds())
+          : row.timestamp;
+
       candlesByCall.get(row.call_id)!.push({
         timestamp,
         open: row.open,
@@ -197,11 +200,12 @@ export async function loadCandlesFromSlice(slicePath: string | string[]): Promis
       if (!candlesByCall.has(key)) {
         candlesByCall.set(key, []);
       }
-      
-      const timestamp = typeof row.timestamp === 'string'
-        ? Math.floor(DateTime.fromISO(row.timestamp).toSeconds())
-        : row.timestamp;
-        
+
+      const timestamp =
+        typeof row.timestamp === 'string'
+          ? Math.floor(DateTime.fromISO(row.timestamp).toSeconds())
+          : row.timestamp;
+
       candlesByCall.get(key)!.push({
         timestamp,
         open: row.open,

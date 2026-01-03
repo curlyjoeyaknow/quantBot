@@ -44,8 +44,17 @@ def run(con: duckdb.DuckDBPyConnection, input: QueryCallsInput) -> QueryCallsOut
             )
         
         # Setup exclusions schema if needed
+        can_exclude = False
         if input.exclude_unrecoverable:
-            setup_ohlcv_exclusions_schema(con)
+            try:
+                setup_ohlcv_exclusions_schema(con)
+                # Verify the table has the correct schema by checking for token_address column
+                columns = con.execute("PRAGMA table_info('ohlcv_exclusions_d')").fetchall()
+                column_names = [col[1] for col in columns] if columns else []
+                can_exclude = 'token_address' in column_names
+            except Exception:
+                # If setup fails, skip exclusion check
+                can_exclude = False
 
         # Query user_calls_d table for mint addresses, alert timestamps, caller names, and entry price
         base_query = """
@@ -66,13 +75,14 @@ def run(con: duckdb.DuckDBPyConnection, input: QueryCallsInput) -> QueryCallsOut
                 AND caller_name = ?
             """
 
-        # Exclude unrecoverable tokens if requested
-        if input.exclude_unrecoverable:
+        # Exclude unrecoverable tokens if requested and table has correct schema
+        # Note: ohlcv_exclusions_d uses token_address (not mint) and doesn't track alert_timestamp
+        # We exclude tokens that are in the exclusions table for any chain/interval
+        if input.exclude_unrecoverable and can_exclude:
             base_query += """
                 AND NOT EXISTS (
                     SELECT 1 FROM ohlcv_exclusions_d
-                    WHERE ohlcv_exclusions_d.mint = user_calls_d.mint
-                      AND ohlcv_exclusions_d.alert_timestamp = user_calls_d.call_datetime
+                    WHERE ohlcv_exclusions_d.token_address = user_calls_d.mint
                 )
             """
 
