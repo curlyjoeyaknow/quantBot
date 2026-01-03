@@ -136,7 +136,7 @@ export async function getTokenStats(
   for (const group of limitedGroups) {
     const mint = group.mint;
     const chain = group.chain || 'solana';
-    const earliestAlertTime = group.earliestAlertTime;
+    const earliestAlertTsMs = group.earliestAlertTsMs;
     const callCount = group.callCount || 0;
 
     // Skip if chain filter doesn't match
@@ -145,20 +145,20 @@ export async function getTokenStats(
     }
 
     // Skip if no alert time
-    if (!earliestAlertTime) {
+    if (earliestAlertTsMs === null) {
       continue;
     }
 
-    // Convert timestamp to DateTime
-    const firstCallTime = DateTime.fromISO(earliestAlertTime);
+    // Convert timestamp to DateTime using raw milliseconds
+    const firstCallTime = DateTime.fromMillis(earliestAlertTsMs, { zone: 'utc' });
 
     // Find last call time for this token
     const tokenCalls = calls.filter(
       (c: { mint: string; chain: string }) => c.mint === mint && c.chain === chain
     );
     const lastCallTime =
-      tokenCalls.length > 0 && tokenCalls[tokenCalls.length - 1]?.alertTime !== null
-        ? DateTime.fromISO(tokenCalls[tokenCalls.length - 1]!.alertTime!)
+      tokenCalls.length > 0 && tokenCalls[tokenCalls.length - 1]?.alertTsMs !== null
+        ? DateTime.fromMillis(tokenCalls[tokenCalls.length - 1]!.alertTsMs!, { zone: 'utc' })
         : firstCallTime;
 
     // Check OHLCV data availability (check for candles around alert time ± 24h)

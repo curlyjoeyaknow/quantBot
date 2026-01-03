@@ -7,7 +7,6 @@
 
 import { z } from 'zod';
 import type { CommandContext } from '../../core/command-context.js';
-import { DateTime } from 'luxon';
 import { logger } from '@quantbot/utils';
 import { getDuckDBWorklistService } from '@quantbot/storage';
 import { fetchBirdeyeCandles } from '@quantbot/api-clients';
@@ -131,16 +130,18 @@ export async function fetchFromDuckdbHandler(args: FetchFromDuckdbArgs, _ctx: Co
   // We want full coverage for each alert
   const alertsToProcess = worklist.calls
     .filter((call) => {
-      if (!call.mint || !call.alertTime) return false;
+      if (!call.mint || call.alertTsMs === null || call.alertTsMs === undefined) return false;
       if (args.chain && call.chain && call.chain !== args.chain) return false;
       return true;
     })
     .map((call) => {
-      const alertTime = DateTime.fromISO(call.alertTime!, { zone: 'utc' });
+      // Use raw alertTsMs (milliseconds) directly from DuckDB
+      // Convert to Unix seconds for Birdeye API (time_from parameter)
+      const alertTsSeconds = Math.floor(call.alertTsMs! / 1000);
       return {
         mint: call.mint!,
         chain: (call.chain as Chain) || 'solana',
-        alertTime,
+        alertTsSeconds,
         callerName: 'unknown', // Worklist doesn't include caller name
       };
     });
@@ -196,7 +197,7 @@ export async function fetchFromDuckdbHandler(args: FetchFromDuckdbArgs, _ctx: Co
     alertsWithFullCoverage: 0,
     alertsWithIncompleteCoverage: 0,
     retries: 0,
-    errors: [] as Array<{ mint: string; alertTime: string; error: string }>,
+    errors: [] as Array<{ mint: string; alertTsSeconds: number; error: string }>,
   };
 
   // Helper function to process a single alert
@@ -212,9 +213,9 @@ export async function fetchFromDuckdbHandler(args: FetchFromDuckdbArgs, _ctx: Co
     alertsWithFullCoverage: number;
     alertsWithIncompleteCoverage: number;
     retries: number;
-    error?: { mint: string; alertTime: string; error: string };
+    error?: { mint: string; alertTsSeconds: number; error: string };
   }> {
-    const { mint, chain, alertTime, callerName } = alertData;
+    const { mint, chain, alertTsSeconds, callerName } = alertData;
     const localResults = {
       fetchesAttempted: 0,
       fetchesSucceeded: 0,
@@ -224,18 +225,16 @@ export async function fetchFromDuckdbHandler(args: FetchFromDuckdbArgs, _ctx: Co
       alertsWithFullCoverage: 0,
       alertsWithIncompleteCoverage: 0,
       retries: 0,
-      error: undefined as { mint: string; alertTime: string; error: string } | undefined,
+      error: undefined as { mint: string; alertTsSeconds: number; error: string } | undefined,
     };
 
     try {
       // Calculate required time window for this alert
+      // Use raw Unix seconds directly - no datetime parsing needed!
       // Note: --from/--to filter ALERTS, not candle window
       // Each alert gets exactly forwardCandles (e.g., 5000) from its alert time
-      const fromUTC = alertTime.minus({ seconds: lookbackSeconds });
-      const toUTC = alertTime.plus({ seconds: forwardSeconds });
-
-      const fromUnix = Math.floor(fromUTC.toSeconds());
-      const toUnix = Math.floor(toUTC.toSeconds());
+      const fromUnix = alertTsSeconds - lookbackSeconds;
+      const toUnix = alertTsSeconds + forwardSeconds;
 
       logger.info(
         `[${alertNum}/${alertsToProcess.length}] Processing alert for ${mint.substring(0, 20)}...`,
@@ -243,10 +242,10 @@ export async function fetchFromDuckdbHandler(args: FetchFromDuckdbArgs, _ctx: Co
           mint,
           chain,
           interval: args.interval,
-          alertTime: alertTime.toISO()!,
+          alertTsSeconds,
           caller: callerName,
-          from: fromUTC.toISO()!,
-          to: toUTC.toISO()!,
+          fromUnix,
+          toUnix,
           requiredCandles: MIN_CANDLES,
         }
       );
@@ -256,8 +255,8 @@ export async function fetchFromDuckdbHandler(args: FetchFromDuckdbArgs, _ctx: Co
       const coverage = await getCoverage(
         mint,
         chain,
-        fromUTC.toJSDate(),
-        toUTC.toJSDate(),
+        new Date(fromUnix * 1000),
+        new Date(toUnix * 1000),
         args.interval
       );
 
@@ -328,8 +327,8 @@ export async function fetchFromDuckdbHandler(args: FetchFromDuckdbArgs, _ctx: Co
             mint,
             chain,
             interval: args.interval,
-            from: fromUTC.toISO()!,
-            to: toUTC.toISO()!,
+            fromUnix,
+            toUnix,
           });
           print(
             `${c.yellow}⚠${c.reset} ${c.gray}[${alertNum}/${alertsToProcess.length}]${c.reset} ${shortMint} ${c.dim}no data${c.reset}`
@@ -341,13 +340,13 @@ export async function fetchFromDuckdbHandler(args: FetchFromDuckdbArgs, _ctx: Co
       const errorMsg = error instanceof Error ? error.message : String(error);
       localResults.error = {
         mint,
-        alertTime: alertTime.toISO()!,
+        alertTsSeconds,
         error: errorMsg,
       };
       logger.error(`Failed to fetch OHLCV for ${mint} (alert ${alertNum})`, {
         mint,
         chain,
-        alertTime: alertTime.toISO()!,
+        alertTsSeconds,
         error: errorMsg,
       });
 

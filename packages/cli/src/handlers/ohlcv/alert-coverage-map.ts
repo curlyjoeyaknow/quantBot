@@ -6,7 +6,6 @@
  */
 
 import { z } from 'zod';
-import { DateTime } from 'luxon';
 import type { CommandContext } from '../../core/command-context.js';
 import { getDuckDBWorklistService } from '@quantbot/storage';
 
@@ -61,7 +60,7 @@ interface AlertCoverageMapResult {
   byInterval: IntervalCoverage[];
   worstTokens: Array<{
     token: string;
-    alertTime: string;
+    alertTsSeconds: number;
     interval: string;
     actualCandles: number;
     expectedCandles: number;
@@ -132,7 +131,7 @@ export async function alertCoverageMapHandler(
   const byInterval: IntervalCoverage[] = [];
   const worstTokens: Array<{
     token: string;
-    alertTime: string;
+    alertTsSeconds: number;
     interval: string;
     actualCandles: number;
     expectedCandles: number;
@@ -158,13 +157,16 @@ export async function alertCoverageMapHandler(
 
       // Build a query to check all alerts in the batch at once
       const conditions = batch
-        .map((alert: { mint: string; alertTime: string | null }) => {
-          if (!alert.alertTime) return null;
-          const alertDateTime = DateTime.fromISO(alert.alertTime).toUTC();
-          const endTime = alertDateTime.plus({ seconds: horizonSeconds });
-          // Format as YYYY-MM-DD HH:mm:ss for ClickHouse compatibility
-          const startStr = alertDateTime.toFormat('yyyy-MM-dd HH:mm:ss');
-          const endStr = endTime.toFormat('yyyy-MM-dd HH:mm:ss');
+        .map((alert: { mint: string; alertTsMs: number | null }) => {
+          if (alert.alertTsMs === null || alert.alertTsMs === undefined) return null;
+          // Use raw alertTsMs directly - convert to ClickHouse timestamp format
+          const alertTsSeconds = Math.floor(alert.alertTsMs / 1000);
+          const endTsSeconds = alertTsSeconds + horizonSeconds;
+          // Convert to Date then format for ClickHouse (YYYY-MM-DD HH:mm:ss)
+          const startDate = new Date(alertTsSeconds * 1000);
+          const endDate = new Date(endTsSeconds * 1000);
+          const startStr = startDate.toISOString().replace('T', ' ').slice(0, 19);
+          const endStr = endDate.toISOString().replace('T', ' ').slice(0, 19);
           return `(token_address = '${alert.mint}' AND timestamp >= '${startStr}' AND timestamp < '${endStr}')`;
         })
         .filter((c): c is string => c !== null);
@@ -195,9 +197,10 @@ export async function alertCoverageMapHandler(
 
       // Check each alert in the batch
       for (const alert of batch) {
-        const typedAlert = alert as { mint: string; alertTime: string | null };
-        if (!typedAlert.alertTime) continue;
+        const typedAlert = alert as { mint: string; alertTsMs: number | null };
+        if (typedAlert.alertTsMs === null || typedAlert.alertTsMs === undefined) continue;
 
+        const alertTsSeconds = Math.floor(typedAlert.alertTsMs / 1000);
         const actualCandles = coverageMap.get(typedAlert.mint) || 0;
         const coverageRatio = actualCandles / expectedCandles;
 
@@ -209,7 +212,7 @@ export async function alertCoverageMapHandler(
           if (worstTokens.length < 20) {
             worstTokens.push({
               token: typedAlert.mint,
-              alertTime: typedAlert.alertTime,
+              alertTsSeconds,
               interval,
               actualCandles,
               expectedCandles,
@@ -222,7 +225,7 @@ export async function alertCoverageMapHandler(
           if (worstTokens.length < 20) {
             worstTokens.push({
               token: typedAlert.mint,
-              alertTime: typedAlert.alertTime,
+              alertTsSeconds,
               interval,
               actualCandles: 0,
               expectedCandles,

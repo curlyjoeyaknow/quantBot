@@ -621,13 +621,15 @@ export class PythonEngine {
     tokenGroups: Array<{
       mint: string;
       chain: string;
-      earliestAlertTime: string | null;
+      /** Raw Unix timestamp in milliseconds from DuckDB */
+      earliestAlertTsMs: number | null;
       callCount: number;
     }>;
     calls: Array<{
       mint: string;
       chain: string;
-      alertTime: string | null;
+      /** Raw Unix timestamp in milliseconds from DuckDB - use directly for API calls */
+      alertTsMs: number | null;
       chatId: string | null;
       messageId: string | null;
       priceUsd: number | null;
@@ -670,14 +672,14 @@ export class PythonEngine {
     const tokenGroupSchema = z.object({
       mint: z.string(),
       chain: z.string(),
-      earliestAlertTime: z.string().nullable(),
+      earliestAlertTsMs: z.number().nullable(),
       callCount: z.number(),
     });
 
     const callSchema = z.object({
       mint: z.string(),
       chain: z.string(),
-      alertTime: z.string().nullable(),
+      alertTsMs: z.number().nullable(),
       chatId: z.string().nullable(),
       messageId: z.string().nullable(),
       priceUsd: z.number().nullable(),
@@ -718,13 +720,13 @@ export class PythonEngine {
       tokenGroups: Array<{
         mint: string;
         chain: string;
-        earliestAlertTime: string | null;
+        earliestAlertTsMs: number | null;
         callCount: number;
       }>;
       calls: Array<{
         mint: string;
         chain: string;
-        alertTime: string | null;
+        alertTsMs: number | null;
         chatId: string | null;
         messageId: string | null;
         priceUsd: number | null;

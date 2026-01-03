@@ -119,19 +119,20 @@ export async function generateOhlcvWorklist(
   const workItems: OhlcvWorkItem[] = [];
 
   for (const tokenGroup of filteredTokenGroups) {
-    if (!tokenGroup.mint || !tokenGroup.earliestAlertTime) {
+    if (!tokenGroup.mint || tokenGroup.earliestAlertTsMs === null) {
       logger.warn('Token group missing required fields', {
         mint: tokenGroup.mint,
-        hasEarliestAlertTime: !!tokenGroup.earliestAlertTime,
+        hasEarliestAlertTsMs: tokenGroup.earliestAlertTsMs !== null,
       });
       continue;
     }
 
-    const alertTime = DateTime.fromISO(tokenGroup.earliestAlertTime);
+    // Use raw milliseconds directly - no datetime parsing needed
+    const alertTime = DateTime.fromMillis(tokenGroup.earliestAlertTsMs, { zone: 'utc' });
     if (!alertTime.isValid) {
       logger.warn('Invalid alert time in token group', {
         mint: tokenGroup.mint,
-        earliestAlertTime: tokenGroup.earliestAlertTime,
+        earliestAlertTsMs: tokenGroup.earliestAlertTsMs,
       });
       continue;
     }

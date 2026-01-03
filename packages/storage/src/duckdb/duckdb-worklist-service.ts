@@ -23,13 +23,15 @@ export interface OhlcvWorklistResult {
   tokenGroups: Array<{
     mint: string;
     chain: string;
-    earliestAlertTime: string | null;
+    /** Raw Unix timestamp in milliseconds from DuckDB */
+    earliestAlertTsMs: number | null;
     callCount: number;
   }>;
   calls: Array<{
     mint: string;
     chain: string;
-    alertTime: string | null;
+    /** Raw Unix timestamp in milliseconds from DuckDB - use directly for API calls */
+    alertTsMs: number | null;
     chatId: string | null;
     messageId: string | null;
     priceUsd: number | null;
