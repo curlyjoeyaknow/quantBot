@@ -26,6 +26,10 @@ import {
   alertCoverageMapHandler,
   alertCoverageMapSchema,
 } from '../handlers/ohlcv/alert-coverage-map.js';
+import {
+  coverageDashboardHandler,
+  coverageDashboardSchema,
+} from '../handlers/ohlcv/coverage-dashboard.js';
 
 /**
  * Fetch command schema (re-exported from handler)
@@ -338,6 +342,22 @@ export function registerOhlcvCommands(program: Command): void {
     packageName: 'ohlcv',
     onError: die,
   });
+
+  // Coverage dashboard command (real-time monitoring)
+  const coverageDashboardCmd = ohlcvCmd
+    .command('coverage-dashboard')
+    .description('Real-time OHLCV coverage dashboard for alerts (refreshes every 5s)')
+    .requiredOption('--duckdb <path>', 'Path to DuckDB database file')
+    .option('--from <date>', 'Filter alerts from date (ISO 8601: YYYY-MM-DD)')
+    .option('--to <date>', 'Filter alerts to date (ISO 8601: YYYY-MM-DD)')
+    .option('--refresh-interval <seconds>', 'Refresh interval in seconds (default: 5)', '5')
+    .option('--format <format>', 'Output format', 'table');
+
+  defineCommand(coverageDashboardCmd, {
+    name: 'coverage-dashboard',
+    packageName: 'ohlcv',
+    onError: die,
+  });
 }
 
 /**
@@ -470,6 +490,21 @@ const ohlcvModule: PackageCommandModule = {
         'quantbot ohlcv alert-coverage-map --duckdb ~/tele.duckdb',
         'quantbot ohlcv alert-coverage-map --duckdb ~/tele.duckdb --from 2025-05-01 --to 2025-06-01',
         'quantbot ohlcv alert-coverage-map --duckdb ~/tele.duckdb --horizon-seconds 3600 --interval 1m',
+      ],
+    },
+    {
+      name: 'coverage-dashboard',
+      description: 'Real-time OHLCV coverage dashboard for alerts (refreshes every 5s)',
+      schema: coverageDashboardSchema,
+      handler: async (args: unknown, ctx: unknown) => {
+        const typedCtx = ctx as CommandContext;
+        const typedArgs = args as z.infer<typeof coverageDashboardSchema>;
+        return await coverageDashboardHandler(typedArgs, typedCtx);
+      },
+      examples: [
+        'quantbot ohlcv coverage-dashboard --duckdb ~/alerts.duckdb --from 2025-05-01',
+        'quantbot ohlcv coverage-dashboard --duckdb ~/alerts.duckdb --from 2025-05-01 --to 2025-06-01',
+        'quantbot ohlcv coverage-dashboard --duckdb ~/alerts.duckdb --refresh-interval 10',
       ],
     },
   ],
