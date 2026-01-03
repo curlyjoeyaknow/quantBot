@@ -1,4 +1,4 @@
-import duckdb from "duckdb";
+import duckdb from 'duckdb';
 
 export type DuckDb = duckdb.Database;
 
@@ -24,7 +24,7 @@ function all<T>(db: DuckDb, sql: string, params: any[] = []) {
 
 export function openDuckDbFromEnv(): DuckDb {
   const path = process.env.DUCKDB_PATH;
-  if (!path) throw new Error("DUCKDB_PATH env var is required (same file used by calls + UI).");
+  if (!path) throw new Error('DUCKDB_PATH env var is required (same file used by calls + UI).');
   return new duckdb.Database(path);
 }
 
@@ -63,4 +63,3 @@ export async function loadStrategyConfigJson(db: DuckDb, strategyId: string): Pr
   if (rows.length === 0) throw new Error(`Strategy not found: ${strategyId}`);
   return rows[0].config_json;
 }
-

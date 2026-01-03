@@ -2,6 +2,11 @@
  * @quantbot/backtest - Minimum Viable Backtester
  *
  * Golden path implementation with deterministic execution.
+ *
+ * Architecture (Guardrails):
+ * 1. Truth Layer: path metrics for every eligible call (backtest_call_path_metrics)
+ * 2. Policy Layer: trade outcomes when policies execute (backtest_policy_results)
+ * 3. Path-only mode: compute truth without trades (--strategy path-only)
  */
 
 export * from './types.js';
@@ -11,10 +16,101 @@ export * from './slice.js';
 export * from './engine/index.js';
 export * from './report.js';
 export * from './runBacktest.js';
+
+// Path-only mode (Guardrail 2)
+export { runPathOnly } from './runPathOnly.js';
+
+// Reporting
 export * from './reporting/caller-path-report.js';
 export * from './reporting/run-list.js';
 export * from './reporting/caller-leaderboard.js';
 export * from './reporting/list-runs.js';
+
+// Schema and insert functions (Phase 1 - split truth from policy)
+export {
+  ensureBacktestSchema,
+  insertCallResults,
+  ensurePathMetricsSchema,
+  insertPathMetrics,
+  getPathMetricsByRun,
+  ensurePolicyResultsSchema,
+  insertPolicyResults,
+  getPolicyResultsByRun,
+  type CallResultRow,
+} from './reporting/backtest-results-duckdb.js';
+
+// Path metrics query service (Phase 2-3)
+export {
+  getPathMetricsByCaller,
+  getPathMetricsByCall,
+  aggregatePathMetricsByCaller,
+  getRunSummary,
+} from './reporting/path-metrics-query.js';
+
+// Caller truth leaderboard (Phase 3 - MVP 1)
+export {
+  getCallerTruthLeaderboard,
+  getCallerTruthLeaderboardAllRuns,
+  getTruthRunSummary,
+  formatLeaderboardForDisplay,
+} from './reporting/caller-truth-leaderboard.js';
+
+// Risk policy system (Phase 4 - MVP 2)
+export type {
+  RiskPolicy,
+  FixedStopPolicy,
+  TimeStopPolicy,
+  TrailingStopPolicy,
+  LadderPolicy,
+  ComboPolicy,
+  PolicyExecutionResult,
+} from './policies/risk-policy.js';
+
+export {
+  parseRiskPolicy,
+  riskPolicySchema,
+  DEFAULT_FIXED_STOP,
+  DEFAULT_TIME_STOP,
+  DEFAULT_TRAILING_STOP,
+  DEFAULT_LADDER,
+  POLICY_GRID,
+} from './policies/risk-policy.js';
+
+export { executePolicy } from './policies/policy-executor.js';
+
+// Policy backtest workflow (Phase 4 - MVP 2)
+export {
+  runPolicyBacktest,
+  type PolicyBacktestRequest,
+  type PolicyBacktestSummary,
+} from './runPolicyBacktest.js';
+
+// Policy optimization (Phase 5 - MVP 3)
+export {
+  scorePolicy,
+  comparePolicyScores,
+  DEFAULT_CONSTRAINTS,
+  type OptimizationConstraints,
+  type PolicyScore,
+} from './optimization/scoring.js';
+
+export {
+  optimizePolicy,
+  optimizePolicyPerCaller,
+  policyToId,
+  type OptimizeRequest,
+  type OptimalPolicy,
+  type OptimizationResult,
+} from './optimization/policy-optimizer.js';
+
+export {
+  generateCallerFollowPlan,
+  generateCallerFollowPlanReport,
+  formatFollowPlanForDisplay,
+  formatReportForDisplay,
+  type CallerFollowPlan,
+  type CallerFollowPlanReport,
+} from './optimization/caller-follow-plan.js';
 
 // Exit plan system
 // Note: exit-plan.js exports ExitPlan type, which conflicts with exit-plan-validate.js

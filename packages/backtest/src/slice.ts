@@ -60,14 +60,14 @@ export async function materialiseSlice(
   // OPTIMIZATION: Single bulk ClickHouse query instead of N queries
   // Collect all unique tokens and time windows
   const tokenWindows = new Map<string, { minFrom: DateTime; maxTo: DateTime; callIds: string[] }>();
-  
+
   for (const eligible of coverage.eligible) {
     const window = plan.perCallWindow.find((w) => w.callId === eligible.callId);
     if (!window) continue;
-    
+
     const key = `${eligible.tokenAddress}:${eligible.chain}`;
     const existing = tokenWindows.get(key);
-    
+
     if (existing) {
       existing.minFrom = window.from < existing.minFrom ? window.from : existing.minFrom;
       existing.maxTo = window.to > existing.maxTo ? window.to : existing.maxTo;
@@ -84,7 +84,7 @@ export async function materialiseSlice(
   // Single bulk query per token (much faster than N queries)
   for (const [key, { minFrom, maxTo, callIds }] of tokenWindows.entries()) {
     const [tokenAddress, chain] = key.split(':');
-    
+
     try {
       const candles = await ohlcvRepo.getCandles(tokenAddress, chain, interval, {
         from: minFrom,
@@ -95,7 +95,7 @@ export async function materialiseSlice(
       for (const callId of callIds) {
         const window = plan.perCallWindow.find((w) => w.callId === callId);
         if (!window) continue;
-        
+
         for (const candle of candles) {
           const candleTime = DateTime.fromSeconds(candle.timestamp);
           if (candleTime >= window.from && candleTime <= window.to) {

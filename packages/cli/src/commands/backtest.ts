@@ -19,6 +19,12 @@ import {
   type BacktestListArgs,
   backtestLeaderboardSchema,
   type BacktestLeaderboardArgs,
+  backtestTruthLeaderboardSchema,
+  type BacktestTruthLeaderboardArgs,
+  backtestPolicySchema,
+  type BacktestPolicyArgs,
+  backtestOptimizeSchema,
+  type BacktestOptimizeArgs,
 } from '../command-defs/backtest.js';
 import { join } from 'path';
 import { existsSync } from 'fs';
@@ -56,7 +62,10 @@ export function registerBacktestCommands(program: Command): void {
     .description('Run backtest on strategy')
     .option('--run-id <id>', 'Run ID (provided by Lab UI, optional for backward compat)')
     .option('--strategy-id <id>', 'Strategy ID from DuckDB (required for exit-stack mode)')
-    .requiredOption('--strategy <mode>', 'Strategy mode: exit-optimizer or exit-stack')
+    .requiredOption(
+      '--strategy <mode>',
+      'Strategy mode: path-only (truth layer), exit-optimizer, or exit-stack'
+    )
     .option('--filter <id>', 'Filter ID')
     .requiredOption('--interval <interval>', 'Candle interval (1m, 5m, etc.)')
     .requiredOption('--from <date>', 'Start date (ISO 8601)')
@@ -64,7 +73,8 @@ export function registerBacktestCommands(program: Command): void {
     .option('--taker-fee-bps <number>', 'Taker fee in basis points', '30')
     .option('--slippage-bps <number>', 'Slippage in basis points', '10')
     .option('--position-usd <number>', 'Position size in USD', '1000')
-    .option('--include-replay', 'Include replay frames');
+    .option('--include-replay', 'Include replay frames')
+    .option('--activity-move-pct <number>', 'Activity move threshold (default: 0.1 = 10%)', '0.1');
 
   defineCommand(runCmd, {
     name: 'run',
@@ -80,6 +90,9 @@ export function registerBacktestCommands(program: Command): void {
         raw.includeReplay !== undefined
           ? coerceBoolean(raw.includeReplay, 'include-replay')
           : false,
+      activityMovePct: raw.activityMovePct
+        ? coerceNumber(raw.activityMovePct, 'activity-move-pct')
+        : 0.1,
     }),
     validate: (opts) => backtestRunSchema.parse(opts),
     onError: die,
@@ -135,6 +148,98 @@ export function registerBacktestCommands(program: Command): void {
     validate: (opts) => backtestLeaderboardSchema.parse(opts),
     onError: die,
   });
+
+  // Truth leaderboard command (Phase 3 - MVP 1: Caller Worth Leaderboard)
+  const truthLeaderboardCmd = backtestCmd
+    .command('truth-leaderboard')
+    .description('Show caller leaderboard from path metrics only (truth layer)')
+    .requiredOption('--run-id <id>', 'Backtest run ID')
+    .option('--min-calls <number>', 'Minimum number of calls required (default: 0)', '0')
+    .option('--format <format>', 'Output format (json, table, csv)', 'table');
+
+  defineCommand(truthLeaderboardCmd, {
+    name: 'truth-leaderboard',
+    packageName: 'backtest',
+    coerce: (raw) => ({
+      ...raw,
+      minCalls: raw.minCalls ? coerceNumber(raw.minCalls, 'min-calls') : 0,
+    }),
+    validate: (opts) => backtestTruthLeaderboardSchema.parse(opts),
+    onError: die,
+  });
+
+  // Policy command (Phase 4 - MVP 2: Risk Policy Primitives)
+  const policyCmd = backtestCmd
+    .command('policy')
+    .description('Execute a risk policy against calls with candle replay')
+    .requiredOption('--policy-json <json>', 'Risk policy as JSON string')
+    .option('--policy-id <id>', 'Policy ID (auto-generated if not provided)')
+    .option('--filter <caller>', 'Filter by caller name')
+    .requiredOption('--interval <interval>', 'Candle interval (1m, 5m, etc.)')
+    .requiredOption('--from <date>', 'Start date (ISO 8601)')
+    .requiredOption('--to <date>', 'End date (ISO 8601)')
+    .option('--taker-fee-bps <number>', 'Taker fee in basis points', '30')
+    .option('--slippage-bps <number>', 'Slippage in basis points', '10')
+    .option('--run-id <id>', 'Existing run ID to use')
+    .option('--format <format>', 'Output format (json, table, csv)', 'json');
+
+  defineCommand(policyCmd, {
+    name: 'policy',
+    packageName: 'backtest',
+    coerce: (raw) => ({
+      ...raw,
+      policyId: raw.policyId || undefined,
+      takerFeeBps: raw.takerFeeBps ? coerceNumber(raw.takerFeeBps, 'taker-fee-bps') : 30,
+      slippageBps: raw.slippageBps ? coerceNumber(raw.slippageBps, 'slippage-bps') : 10,
+    }),
+    validate: (opts) => backtestPolicySchema.parse(opts),
+    onError: die,
+  });
+
+  // Optimize command (Phase 5 - MVP 3: Policy Optimizer)
+  const optimizeCmd = backtestCmd
+    .command('optimize')
+    .description('Grid search to find optimal policy for callers')
+    .option('--caller <name>', 'Caller name to optimize for (if omitted, optimizes for all)')
+    .requiredOption('--interval <interval>', 'Candle interval (1m, 5m, etc.)')
+    .requiredOption('--from <date>', 'Start date (ISO 8601)')
+    .requiredOption('--to <date>', 'End date (ISO 8601)')
+    .option('--max-stop-out-rate <rate>', 'Max stop-out rate constraint (default: 0.3)', '0.3')
+    .option(
+      '--max-p95-drawdown-bps <bps>',
+      'Max p95 drawdown constraint in bps (default: -3000)',
+      '-3000'
+    )
+    .option(
+      '--max-time-exposed-ms <ms>',
+      'Max time exposed constraint in ms (default: 4h)',
+      String(4 * 60 * 60 * 1000)
+    )
+    .option('--taker-fee-bps <number>', 'Taker fee in basis points', '30')
+    .option('--slippage-bps <number>', 'Slippage in basis points', '10')
+    .option('--format <format>', 'Output format (json, table, csv)', 'table');
+
+  defineCommand(optimizeCmd, {
+    name: 'optimize',
+    packageName: 'backtest',
+    coerce: (raw) => ({
+      ...raw,
+      caller: raw.caller || undefined,
+      maxStopOutRate: raw.maxStopOutRate
+        ? coerceNumber(raw.maxStopOutRate, 'max-stop-out-rate')
+        : 0.3,
+      maxP95DrawdownBps: raw.maxP95DrawdownBps
+        ? coerceNumber(raw.maxP95DrawdownBps, 'max-p95-drawdown-bps')
+        : -3000,
+      maxTimeExposedMs: raw.maxTimeExposedMs
+        ? coerceNumber(raw.maxTimeExposedMs, 'max-time-exposed-ms')
+        : 4 * 60 * 60 * 1000,
+      takerFeeBps: raw.takerFeeBps ? coerceNumber(raw.takerFeeBps, 'taker-fee-bps') : 30,
+      slippageBps: raw.slippageBps ? coerceNumber(raw.slippageBps, 'slippage-bps') : 10,
+    }),
+    validate: (opts) => backtestOptimizeSchema.parse(opts),
+    onError: die,
+  });
 }
 
 // Register command module (side effect)
@@ -184,7 +289,32 @@ const backtestModule: PackageCommandModule = {
         }
 
         // Route based on strategy mode
-        if (opts.strategy === 'exit-stack') {
+        if (opts.strategy === 'path-only') {
+          // Path-only mode (Guardrail 2): Truth layer only
+          // Compute and persist path metrics without policy execution
+          const { runPathOnly } = await import('@quantbot/backtest');
+
+          const summary = await runPathOnly({
+            calls: callsResult.calls.map((call) => ({
+              id: call.id,
+              caller: call.caller,
+              mint: call.mint as import('@quantbot/core').TokenAddress,
+              createdAt: call.createdAt,
+            })),
+            interval: opts.interval as import('@quantbot/backtest').Interval,
+            from,
+            to,
+            activityMovePct: opts.activityMovePct,
+          });
+
+          return {
+            runId: summary.runId,
+            mode: 'path-only',
+            callsProcessed: summary.callsProcessed,
+            callsExcluded: summary.callsExcluded,
+            pathMetricsWritten: summary.pathMetricsWritten,
+          };
+        } else if (opts.strategy === 'exit-stack') {
           // Exit-stack mode: use runExitStack()
           if (!opts.strategyId) {
             throw new Error('--strategy-id is required when --strategy exit-stack');
@@ -236,9 +366,10 @@ const backtestModule: PackageCommandModule = {
           }
 
           // Try to load from existing parquet files first (much faster)
-          const parquetBasePath = process.env.PARQUET_BASE_PATH || '/home/memez/backups/quantbot/daily-2025-12-30';
+          const parquetBasePath =
+            process.env.PARQUET_BASE_PATH || '/home/memez/backups/quantbot/daily-2025-12-30';
           const { loadCandlesFromExistingParquet } = await import('@quantbot/backtest');
-          
+
           let candlesByCallId: Map<string, import('@quantbot/core').Candle[]>;
           try {
             // Load from existing day-partitioned parquet files
@@ -257,7 +388,7 @@ const backtestModule: PackageCommandModule = {
 
               const tokenKey = `${eligible.tokenAddress}:${eligible.chain}`;
               const tokenCandles = candlesByToken.get(tokenKey) || [];
-              
+
               // Filter candles to call's time window
               const callCandles = tokenCandles.filter((c: import('@quantbot/core').Candle) => {
                 const candleTime = DateTime.fromSeconds(c.timestamp);
@@ -282,7 +413,7 @@ const backtestModule: PackageCommandModule = {
 
           // Filter calls to only eligible ones
           const eligibleCalls = callsResult.calls.filter((c: any) =>
-            coverage.eligible.some(e => e.callId === c.id)
+            coverage.eligible.some((e) => e.callId === c.id)
           );
 
           // Extract chain info from calls (default to solana since CallRecord doesn't have chain)
@@ -725,6 +856,366 @@ const backtestModule: PackageCommandModule = {
           }));
 
           return formatted;
+        }
+      },
+    },
+    {
+      name: 'truth-leaderboard',
+      description: 'Show caller leaderboard from path metrics only (truth layer)',
+      schema: backtestTruthLeaderboardSchema,
+      handler: async (args: unknown, _ctx: unknown) => {
+        const opts = args as BacktestTruthLeaderboardArgs;
+
+        // Find the DuckDB file for this run
+        const duckdbPath = join(
+          process.cwd(),
+          'artifacts',
+          'backtest',
+          opts.runId,
+          'results.duckdb'
+        );
+
+        if (!existsSync(duckdbPath)) {
+          throw new Error(
+            `Backtest results not found for run ID: ${opts.runId}\nExpected path: ${duckdbPath}`
+          );
+        }
+
+        const duckdb = await import('duckdb');
+        const database = new duckdb.Database(duckdbPath);
+        const db = database.connect();
+
+        try {
+          const { aggregatePathMetricsByCaller } = await import('@quantbot/backtest');
+
+          const adapter = {
+            run(sql: string, params: unknown[], callback: (err: unknown) => void): void {
+              db.run(sql, params, callback);
+            },
+            all<T = unknown>(
+              sql: string,
+              params: unknown[],
+              callback: (err: unknown, rows: T[]) => void
+            ): void {
+              (
+                db.all as (
+                  sql: string,
+                  params: unknown[],
+                  cb: (err: unknown, rows: unknown) => void
+                ) => void
+              )(sql, params, (err: unknown, rows: unknown) => {
+                if (err) {
+                  callback(err, []);
+                } else {
+                  callback(null, rows as T[]);
+                }
+              });
+            },
+          };
+
+          const rows = await aggregatePathMetricsByCaller(adapter, opts.runId, opts.minCalls || 0);
+
+          if (rows.length === 0) {
+            return {
+              message: `No caller data found for run ${opts.runId} (min calls: ${opts.minCalls || 0})`,
+            };
+          }
+
+          // Format for display
+          type CallerRow = (typeof rows)[0];
+          const formatted = rows.map((row: CallerRow) => ({
+            caller_name: row.caller_name,
+            calls: row.calls,
+            // Hit rates as percentages
+            p_hit_2x: (row.p_hit_2x * 100).toFixed(1) + '%',
+            p_hit_3x: (row.p_hit_3x * 100).toFixed(1) + '%',
+            p_hit_4x: (row.p_hit_4x * 100).toFixed(1) + '%',
+            // Counts
+            count_2x: row.count_2x,
+            count_3x: row.count_3x,
+            count_4x: row.count_4x,
+            failures_2x: row.failures_2x,
+            // Time metrics (already in minutes/seconds)
+            median_t2x_min: row.median_t2x_min?.toFixed(1) ?? '-',
+            median_t3x_min: row.median_t3x_min?.toFixed(1) ?? '-',
+            median_t4x_min: row.median_t4x_min?.toFixed(1) ?? '-',
+            median_activity_s: row.median_alert_to_activity_s?.toFixed(0) ?? '-',
+            // Peak metrics
+            median_peak: row.median_peak_multiple?.toFixed(2) ?? '-',
+            avg_peak: row.avg_peak_multiple?.toFixed(2) ?? '-',
+            // Drawdown metrics (bps)
+            median_dd_bps: row.median_dd_bps?.toFixed(0) ?? '-',
+            p95_dd_bps: row.p95_dd_bps?.toFixed(0) ?? '-',
+            // Slow activity rate
+            slow_rate: ((row.slow_activity_rate ?? 0) * 100).toFixed(1) + '%',
+          }));
+
+          return formatted;
+        } finally {
+          database.close();
+        }
+      },
+    },
+    {
+      name: 'policy',
+      description: 'Execute a risk policy against calls with candle replay',
+      schema: backtestPolicySchema,
+      handler: async (args: unknown, _ctx: unknown) => {
+        const opts = args as BacktestPolicyArgs;
+
+        // Parse dates
+        const from = DateTime.fromISO(opts.from);
+        const to = DateTime.fromISO(opts.to);
+
+        if (!from.isValid) {
+          throw new Error(`Invalid from date: ${opts.from}`);
+        }
+        if (!to.isValid) {
+          throw new Error(`Invalid to date: ${opts.to}`);
+        }
+
+        // Parse policy JSON
+        let policy: import('@quantbot/backtest').RiskPolicy;
+        try {
+          const { parseRiskPolicy } = await import('@quantbot/backtest');
+          policy = parseRiskPolicy(JSON.parse(opts.policyJson));
+        } catch (err) {
+          throw new Error(
+            `Invalid policy JSON: ${err instanceof Error ? err.message : String(err)}`
+          );
+        }
+
+        // Generate policy ID if not provided
+        const policyId = opts.policyId || `${policy.kind}-${Date.now()}`;
+
+        // Load calls from DuckDB
+        const { queryCallsDuckdb, createQueryCallsDuckdbContext } =
+          await import('@quantbot/workflows');
+        const { getDuckDBPath } = await import('@quantbot/utils');
+
+        const duckdbPath = getDuckDBPath('data/tele.duckdb');
+        const ctx = await createQueryCallsDuckdbContext(duckdbPath);
+
+        const callsResult = await queryCallsDuckdb(
+          {
+            duckdbPath,
+            fromISO: opts.from,
+            toISO: opts.to,
+            callerName: opts.filter,
+            limit: 1000,
+          },
+          ctx
+        );
+
+        if (callsResult.calls.length === 0) {
+          throw new Error('No calls found in the specified date range');
+        }
+
+        // Run policy backtest
+        const { runPolicyBacktest } = await import('@quantbot/backtest');
+
+        const summary = await runPolicyBacktest({
+          policy,
+          policyId,
+          calls: callsResult.calls.map((call) => ({
+            id: call.id,
+            caller: call.caller,
+            mint: call.mint as import('@quantbot/core').TokenAddress,
+            createdAt: call.createdAt,
+          })),
+          interval: opts.interval as import('@quantbot/backtest').Interval,
+          from,
+          to,
+          fees: {
+            takerFeeBps: opts.takerFeeBps,
+            slippageBps: opts.slippageBps,
+          },
+          runId: opts.runId,
+        });
+
+        return {
+          runId: summary.runId,
+          policyId: summary.policyId,
+          policyKind: policy.kind,
+          callsProcessed: summary.callsProcessed,
+          callsExcluded: summary.callsExcluded,
+          policyResultsWritten: summary.policyResultsWritten,
+          metrics: {
+            avgReturnBps: summary.metrics.avgReturnBps.toFixed(2),
+            medianReturnBps: summary.metrics.medianReturnBps.toFixed(2),
+            stopOutRate: (summary.metrics.stopOutRate * 100).toFixed(1) + '%',
+            avgTimeExposedMin: (summary.metrics.avgTimeExposedMs / 60000).toFixed(1),
+            avgTailCapture: summary.metrics.avgTailCapture?.toFixed(2) ?? 'N/A',
+            avgMaxAdverseExcursionBps: summary.metrics.avgMaxAdverseExcursionBps.toFixed(0),
+          },
+        };
+      },
+    },
+    {
+      name: 'optimize',
+      description: 'Grid search to find optimal policy for callers',
+      schema: backtestOptimizeSchema,
+      handler: async (args: unknown, _ctx: unknown) => {
+        const opts = args as BacktestOptimizeArgs;
+
+        // Parse dates
+        const from = DateTime.fromISO(opts.from);
+        const to = DateTime.fromISO(opts.to);
+
+        if (!from.isValid) {
+          throw new Error(`Invalid from date: ${opts.from}`);
+        }
+        if (!to.isValid) {
+          throw new Error(`Invalid to date: ${opts.to}`);
+        }
+
+        // Load calls from DuckDB
+        const { queryCallsDuckdb, createQueryCallsDuckdbContext } =
+          await import('@quantbot/workflows');
+        const { getDuckDBPath } = await import('@quantbot/utils');
+
+        const duckdbPath = getDuckDBPath('data/tele.duckdb');
+        const ctx = await createQueryCallsDuckdbContext(duckdbPath);
+
+        const callsResult = await queryCallsDuckdb(
+          {
+            duckdbPath,
+            fromISO: opts.from,
+            toISO: opts.to,
+            callerName: opts.caller,
+            limit: 1000,
+          },
+          ctx
+        );
+
+        if (callsResult.calls.length === 0) {
+          throw new Error('No calls found in the specified date range');
+        }
+
+        // Import optimization functions
+        const { optimizePolicy, optimizePolicyPerCaller, formatFollowPlanForDisplay } =
+          await import('@quantbot/backtest');
+
+        // Import candle loading and plan/coverage functions
+        const { planBacktest, checkCoverage, materialiseSlice, loadCandlesFromSlice } =
+          await import('@quantbot/backtest');
+
+        // Build request for planning
+        const planReq = {
+          strategy: {
+            id: 'optimizer',
+            name: 'optimizer',
+            overlays: [],
+            fees: { takerFeeBps: opts.takerFeeBps, slippageBps: opts.slippageBps },
+            position: { notionalUsd: 1000 },
+            indicatorWarmup: 0,
+            entryDelay: 0,
+            maxHold: 1440,
+          },
+          calls: callsResult.calls.map((call) => ({
+            id: call.id,
+            caller: call.caller,
+            mint: call.mint as import('@quantbot/core').TokenAddress,
+            createdAt: call.createdAt,
+          })),
+          interval: opts.interval as import('@quantbot/backtest').Interval,
+          from,
+          to,
+        };
+
+        // Plan and coverage
+        const plan = planBacktest(planReq);
+        const coverage = await checkCoverage(plan);
+
+        if (coverage.eligible.length === 0) {
+          throw new Error('No eligible calls after coverage check');
+        }
+
+        // Materialise slice and load candles
+        const slice = await materialiseSlice(plan, coverage);
+        const candlesByCallId = await loadCandlesFromSlice(slice.path);
+
+        // Build constraints
+        const constraints = {
+          maxStopOutRate: opts.maxStopOutRate,
+          maxP95DrawdownBps: opts.maxP95DrawdownBps,
+          maxTimeExposedMs: opts.maxTimeExposedMs,
+        };
+
+        const fees = {
+          takerFeeBps: opts.takerFeeBps,
+          slippageBps: opts.slippageBps,
+        };
+
+        // Run optimization
+        if (opts.caller) {
+          // Single caller optimization
+          const result = optimizePolicy({
+            calls: planReq.calls,
+            candlesByCallId,
+            constraints,
+            fees,
+          });
+
+          if (!result.bestPolicy) {
+            return {
+              message: 'No feasible policy found within constraints',
+              policiesEvaluated: result.policiesEvaluated,
+              constraints,
+            };
+          }
+
+          return {
+            caller: opts.caller,
+            bestPolicy: result.bestPolicy.policyId,
+            score: result.bestPolicy.score.score.toFixed(2),
+            medianReturnBps: result.bestPolicy.score.metrics.medianReturnBps.toFixed(0),
+            stopOutRate: (result.bestPolicy.score.metrics.stopOutRate * 100).toFixed(1) + '%',
+            tailCapture: (result.bestPolicy.score.metrics.avgTailCapture * 100).toFixed(0) + '%',
+            policiesEvaluated: result.policiesEvaluated,
+            feasiblePolicies: result.feasiblePolicies,
+            policyJson: JSON.stringify(result.bestPolicy.policy),
+          };
+        } else {
+          // Per-caller optimization
+          const perCallerResults = optimizePolicyPerCaller(
+            planReq.calls,
+            candlesByCallId,
+            constraints,
+            fees
+          );
+
+          const results = [];
+          for (const [caller, optimalPolicy] of perCallerResults) {
+            if (optimalPolicy) {
+              results.push({
+                caller,
+                policyId: optimalPolicy.policyId,
+                score: optimalPolicy.score.score.toFixed(2),
+                medianReturnBps: optimalPolicy.score.metrics.medianReturnBps.toFixed(0),
+                stopOutRate: (optimalPolicy.score.metrics.stopOutRate * 100).toFixed(1) + '%',
+                count: optimalPolicy.score.metrics.count,
+              });
+            } else {
+              results.push({
+                caller,
+                policyId: 'none',
+                score: '-',
+                medianReturnBps: '-',
+                stopOutRate: '-',
+                count: 0,
+              });
+            }
+          }
+
+          // Sort by score descending
+          results.sort((a, b) => {
+            const aScore = a.score === '-' ? -Infinity : parseFloat(a.score);
+            const bScore = b.score === '-' ? -Infinity : parseFloat(b.score);
+            return bScore - aScore;
+          });
+
+          return results;
         }
       },
     },

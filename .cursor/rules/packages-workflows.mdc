@@ -3,7 +3,7 @@ description: "QuantBot Workflows package rules (orchestration layer)."
 globs:
   - "packages/workflows/**"
   - "packages/cli/src/commands/**"
-alwaysApply: true
+alwaysApply: False
 ---
 
 """

@@ -136,7 +136,9 @@ export async function coverageMapHandler(
   const issues: string[] = [];
   const zeroInterval = byInterval.find((i) => i.intervalSeconds === 0);
   if (zeroInterval) {
-    issues.push(`${zeroInterval.candles.toLocaleString()} candles with interval_seconds=0 (invalid)`);
+    issues.push(
+      `${zeroInterval.candles.toLocaleString()} candles with interval_seconds=0 (invalid)`
+    );
   }
 
   const result: CoverageMapResult = {
@@ -152,14 +154,17 @@ export async function coverageMapHandler(
 
   // Print formatted output for table format
   if (args.format === 'table') {
-    const dateRange = args.from || args.to 
-      ? `${args.from || 'start'} → ${args.to || 'now'}`
-      : 'All Time';
+    const dateRange =
+      args.from || args.to ? `${args.from || 'start'} → ${args.to || 'now'}` : 'All Time';
 
     print('');
-    print(`${c.bold}${c.cyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${c.reset}`);
+    print(
+      `${c.bold}${c.cyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${c.reset}`
+    );
     print(`${c.bold}${c.cyan}  📊 OHLCV Coverage Map${c.reset} ${c.gray}(${dateRange})${c.reset}`);
-    print(`${c.bold}${c.cyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${c.reset}`);
+    print(
+      `${c.bold}${c.cyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${c.reset}`
+    );
     print('');
 
     // Overall stats
@@ -171,15 +176,21 @@ export async function coverageMapHandler(
 
     // By interval table
     print(`${c.bold}By Interval:${c.reset}`);
-    print(`${c.gray}  ${'Interval'.padEnd(10)} ${'Candles'.padStart(15)} ${'Tokens'.padStart(10)} ${'Earliest'.padStart(12)} ${'Latest'.padStart(12)}${c.reset}`);
-    print(`${c.gray}  ${'─'.repeat(10)} ${'─'.repeat(15)} ${'─'.repeat(10)} ${'─'.repeat(12)} ${'─'.repeat(12)}${c.reset}`);
+    print(
+      `${c.gray}  ${'Interval'.padEnd(10)} ${'Candles'.padStart(15)} ${'Tokens'.padStart(10)} ${'Earliest'.padStart(12)} ${'Latest'.padStart(12)}${c.reset}`
+    );
+    print(
+      `${c.gray}  ${'─'.repeat(10)} ${'─'.repeat(15)} ${'─'.repeat(10)} ${'─'.repeat(12)} ${'─'.repeat(12)}${c.reset}`
+    );
 
     for (const interval of byInterval) {
       const color = interval.intervalSeconds === 0 ? c.red : c.reset;
       const label = interval.intervalSeconds === 0 ? `${interval.interval} ⚠` : interval.interval;
       const earliest = interval.earliest.substring(0, 10);
       const latest = interval.latest.substring(0, 10);
-      print(`  ${color}${label.padEnd(10)} ${interval.candles.toLocaleString().padStart(15)} ${interval.tokens.toString().padStart(10)} ${earliest.padStart(12)} ${latest.padStart(12)}${c.reset}`);
+      print(
+        `  ${color}${label.padEnd(10)} ${interval.candles.toLocaleString().padStart(15)} ${interval.tokens.toString().padStart(10)} ${earliest.padStart(12)} ${latest.padStart(12)}${c.reset}`
+      );
     }
     print('');
 
@@ -192,10 +203,11 @@ export async function coverageMapHandler(
       print('');
     }
 
-    print(`${c.bold}${c.cyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${c.reset}`);
+    print(
+      `${c.bold}${c.cyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${c.reset}`
+    );
     print('');
   }
 
   return result;
 }
-

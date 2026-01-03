@@ -6,14 +6,14 @@ export type DuckDb = DuckDbConnection;
 
 export async function openDuckDb(): Promise<DuckDb> {
   const dbPath = process.env.DUCKDB_PATH ?? './data/tele.duckdb';
-  
+
   if (process.env.LAB_UI_DEBUG_DB) {
-    // eslint-disable-next-line no-console
+     
     console.log(`[lab-ui] DuckDB path: ${dbPath}`);
-    // eslint-disable-next-line no-console
+     
     console.log(`[lab-ui] Node: ${process.version}`);
   }
-  
+
   return await storageOpenDuckDb(dbPath);
 }
 

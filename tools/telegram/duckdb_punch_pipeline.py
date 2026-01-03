@@ -2105,31 +2105,57 @@ def main():
     user_calls_count = con.execute("""
       SELECT COUNT(*) FROM user_calls_d WHERE chat_id = ? AND run_id = ?
   """, [chat_id, run_id]).fetchone()[0]
+  else:
+    # If run_id column doesn't exist, count all calls for this chat_id
+    user_calls_count = con.execute("""
+      SELECT COUNT(*) FROM user_calls_d WHERE chat_id = ?
+  """, [chat_id]).fetchone()[0]
   row_counts['user_calls'] = user_calls_count
   
   con.execute("DROP TABLE IF EXISTS temp_user_calls")
 
   # mark first_caller per mint (first caller overall, not per caller)
-  # Only update for this run_id
-  con.execute("""
-    UPDATE user_calls_d
-    SET first_caller = FALSE
-    WHERE chat_id = ? AND run_id = ?
-  """, [chat_id, run_id])
-  con.execute("""
-    UPDATE user_calls_d u
-    SET first_caller = TRUE
-    FROM (
-      SELECT mint, MIN(call_ts_ms) AS first_ts
-      FROM user_calls_d
-      WHERE chat_id = ? AND run_id = ? AND mint IS NOT NULL
-      GROUP BY mint
-    ) f
-    WHERE u.chat_id = ?
-      AND u.run_id = ?
-      AND u.mint = f.mint
-      AND u.call_ts_ms = f.first_ts
-  """, [chat_id, run_id, chat_id, run_id])
+  # Only update for this run_id if the column exists
+  if has_run_id_calls:
+    con.execute("""
+      UPDATE user_calls_d
+      SET first_caller = FALSE
+      WHERE chat_id = ? AND run_id = ?
+    """, [chat_id, run_id])
+    con.execute("""
+      UPDATE user_calls_d u
+      SET first_caller = TRUE
+      FROM (
+        SELECT mint, MIN(call_ts_ms) AS first_ts
+        FROM user_calls_d
+        WHERE chat_id = ? AND run_id = ? AND mint IS NOT NULL
+        GROUP BY mint
+      ) f
+      WHERE u.chat_id = ?
+        AND u.run_id = ?
+        AND u.mint = f.mint
+        AND u.call_ts_ms = f.first_ts
+    """, [chat_id, run_id, chat_id, run_id])
+  else:
+    # Legacy schema - update all calls for this chat_id
+    con.execute("""
+      UPDATE user_calls_d
+      SET first_caller = FALSE
+      WHERE chat_id = ?
+    """, [chat_id])
+    con.execute("""
+      UPDATE user_calls_d u
+      SET first_caller = TRUE
+      FROM (
+        SELECT mint, MIN(call_ts_ms) AS first_ts
+        FROM user_calls_d
+        WHERE chat_id = ? AND mint IS NOT NULL
+        GROUP BY mint
+      ) f
+      WHERE u.chat_id = ?
+        AND u.mint = f.mint
+        AND u.call_ts_ms = f.first_ts
+    """, [chat_id, chat_id])
 
   # --- time views (the "time setup" you asked for) ---
   con.execute(f"""
@@ -2401,9 +2427,20 @@ def main():
 
   else:
     # Get final row counts for this run
-    tg_rows = con.execute("SELECT COUNT(*) FROM tg_norm_d WHERE chat_id=? AND run_id=?", [chat_id, run_id]).fetchone()[0]
-    caller_links_rows = con.execute("SELECT COUNT(*) FROM caller_links_d WHERE trigger_chat_id=? AND run_id=?", [chat_id, run_id]).fetchone()[0]
-    user_calls_rows = con.execute("SELECT COUNT(*) FROM user_calls_d WHERE chat_id=? AND run_id=?", [chat_id, run_id]).fetchone()[0]
+    if has_run_id:
+      tg_rows = con.execute("SELECT COUNT(*) FROM tg_norm_d WHERE chat_id=? AND run_id=?", [chat_id, run_id]).fetchone()[0]
+    else:
+      tg_rows = con.execute("SELECT COUNT(*) FROM tg_norm_d WHERE chat_id=?", [chat_id]).fetchone()[0]
+    
+    if has_run_id_links:
+      caller_links_rows = con.execute("SELECT COUNT(*) FROM caller_links_d WHERE trigger_chat_id=? AND run_id=?", [chat_id, run_id]).fetchone()[0]
+    else:
+      caller_links_rows = con.execute("SELECT COUNT(*) FROM caller_links_d WHERE trigger_chat_id=?", [chat_id]).fetchone()[0]
+    
+    if has_run_id_calls:
+      user_calls_rows = con.execute("SELECT COUNT(*) FROM user_calls_d WHERE chat_id=? AND run_id=?", [chat_id, run_id]).fetchone()[0]
+    else:
+      user_calls_rows = con.execute("SELECT COUNT(*) FROM user_calls_d WHERE chat_id=?", [chat_id]).fetchone()[0]
     
     # Update row counts
     row_counts['tg_norm'] = tg_rows

@@ -79,10 +79,16 @@ export async function alertCoverageMapHandler(
 
   // Get alerts from DuckDB
   print('');
-  print(`${c.bold}${c.cyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${c.reset}`);
+  print(
+    `${c.bold}${c.cyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${c.reset}`
+  );
   print(`${c.bold}${c.cyan}  📊 Alert Coverage Map${c.reset}`);
-  print(`${c.gray}  Horizon: ${horizonSeconds}s | Min Coverage: ${(minCoverage * 100).toFixed(0)}%${c.reset}`);
-  print(`${c.bold}${c.cyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${c.reset}`);
+  print(
+    `${c.gray}  Horizon: ${horizonSeconds}s | Min Coverage: ${(minCoverage * 100).toFixed(0)}%${c.reset}`
+  );
+  print(
+    `${c.bold}${c.cyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${c.reset}`
+  );
   print('');
 
   print(`${c.blue}📋 Fetching alerts from DuckDB...${c.reset}`);
@@ -114,9 +120,7 @@ export async function alertCoverageMapHandler(
   print('');
 
   // Intervals to check
-  const intervalsToCheck = args.interval
-    ? [args.interval]
-    : ['1s', '15s', '1m', '5m'];
+  const intervalsToCheck = args.interval ? [args.interval] : ['1s', '15s', '1m', '5m'];
 
   const intervalSecondsMap: Record<string, number> = {
     '1s': 1,
@@ -139,7 +143,9 @@ export async function alertCoverageMapHandler(
     const intervalSec = intervalSecondsMap[interval];
     const expectedCandles = Math.ceil(horizonSeconds / intervalSec);
 
-    print(`${c.blue}Checking ${interval} coverage (expecting ${expectedCandles} candles per alert)...${c.reset}`);
+    print(
+      `${c.blue}Checking ${interval} coverage (expecting ${expectedCandles} candles per alert)...${c.reset}`
+    );
 
     let fullCoverage = 0;
     let partialCoverage = 0;
@@ -151,15 +157,17 @@ export async function alertCoverageMapHandler(
       const batch = worklist.calls.slice(i, i + batchSize);
 
       // Build a query to check all alerts in the batch at once
-      const conditions = batch.map((alert: { mint: string; alertTime: string | null }) => {
-        if (!alert.alertTime) return null;
-        const alertDateTime = DateTime.fromISO(alert.alertTime).toUTC();
-        const endTime = alertDateTime.plus({ seconds: horizonSeconds });
-        // Format as YYYY-MM-DD HH:mm:ss for ClickHouse compatibility
-        const startStr = alertDateTime.toFormat('yyyy-MM-dd HH:mm:ss');
-        const endStr = endTime.toFormat('yyyy-MM-dd HH:mm:ss');
-        return `(token_address = '${alert.mint}' AND timestamp >= '${startStr}' AND timestamp < '${endStr}')`;
-      }).filter((c): c is string => c !== null);
+      const conditions = batch
+        .map((alert: { mint: string; alertTime: string | null }) => {
+          if (!alert.alertTime) return null;
+          const alertDateTime = DateTime.fromISO(alert.alertTime).toUTC();
+          const endTime = alertDateTime.plus({ seconds: horizonSeconds });
+          // Format as YYYY-MM-DD HH:mm:ss for ClickHouse compatibility
+          const startStr = alertDateTime.toFormat('yyyy-MM-dd HH:mm:ss');
+          const endStr = endTime.toFormat('yyyy-MM-dd HH:mm:ss');
+          return `(token_address = '${alert.mint}' AND timestamp >= '${startStr}' AND timestamp < '${endStr}')`;
+        })
+        .filter((c): c is string => c !== null);
 
       const query = `
         SELECT 
@@ -189,7 +197,7 @@ export async function alertCoverageMapHandler(
       for (const alert of batch) {
         const typedAlert = alert as { mint: string; alertTime: string | null };
         if (!typedAlert.alertTime) continue;
-        
+
         const actualCandles = coverageMap.get(typedAlert.mint) || 0;
         const coverageRatio = actualCandles / expectedCandles;
 
@@ -242,7 +250,9 @@ export async function alertCoverageMapHandler(
     // Print interval result
     const statusColor = coveragePercent >= 90 ? c.green : coveragePercent >= 50 ? c.yellow : c.red;
     const statusIcon = coveragePercent >= 90 ? '✓' : coveragePercent >= 50 ? '⚠' : '✗';
-    print(`  ${statusColor}${statusIcon} ${interval}: ${fullCoverage}/${total} alerts (${coveragePercent.toFixed(1)}%) have full coverage${c.reset}`);
+    print(
+      `  ${statusColor}${statusIcon} ${interval}: ${fullCoverage}/${total} alerts (${coveragePercent.toFixed(1)}%) have full coverage${c.reset}`
+    );
     if (partialCoverage > 0) {
       print(`    ${c.yellow}${partialCoverage} partial${c.reset}`);
     }
@@ -258,16 +268,25 @@ export async function alertCoverageMapHandler(
 
   // Print summary table
   print(`${c.bold}Summary:${c.reset}`);
-  print(`${c.gray}  ${'Interval'.padEnd(10)} ${'Full'.padStart(8)} ${'Partial'.padStart(8)} ${'None'.padStart(8)} ${'Coverage'.padStart(10)}${c.reset}`);
-  print(`${c.gray}  ${'─'.repeat(10)} ${'─'.repeat(8)} ${'─'.repeat(8)} ${'─'.repeat(8)} ${'─'.repeat(10)}${c.reset}`);
+  print(
+    `${c.gray}  ${'Interval'.padEnd(10)} ${'Full'.padStart(8)} ${'Partial'.padStart(8)} ${'None'.padStart(8)} ${'Coverage'.padStart(10)}${c.reset}`
+  );
+  print(
+    `${c.gray}  ${'─'.repeat(10)} ${'─'.repeat(8)} ${'─'.repeat(8)} ${'─'.repeat(8)} ${'─'.repeat(10)}${c.reset}`
+  );
 
   for (const iv of byInterval) {
-    const statusColor = iv.coveragePercent >= 90 ? c.green : iv.coveragePercent >= 50 ? c.yellow : c.red;
-    print(`  ${iv.interval.padEnd(10)} ${iv.alertsWithFullCoverage.toString().padStart(8)} ${iv.alertsWithPartialCoverage.toString().padStart(8)} ${iv.alertsWithNoCoverage.toString().padStart(8)} ${statusColor}${iv.coveragePercent.toFixed(1).padStart(9)}%${c.reset}`);
+    const statusColor =
+      iv.coveragePercent >= 90 ? c.green : iv.coveragePercent >= 50 ? c.yellow : c.red;
+    print(
+      `  ${iv.interval.padEnd(10)} ${iv.alertsWithFullCoverage.toString().padStart(8)} ${iv.alertsWithPartialCoverage.toString().padStart(8)} ${iv.alertsWithNoCoverage.toString().padStart(8)} ${statusColor}${iv.coveragePercent.toFixed(1).padStart(9)}%${c.reset}`
+    );
   }
 
   print('');
-  print(`${c.bold}${c.cyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${c.reset}`);
+  print(
+    `${c.bold}${c.cyan}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${c.reset}`
+  );
   print('');
 
   const uniqueTokens = new Set(worklist.calls.map((a: { mint: string }) => a.mint)).size;
@@ -284,4 +303,3 @@ export async function alertCoverageMapHandler(
     worstTokens: worstTokens.slice(0, 10),
   };
 }
-

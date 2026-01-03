@@ -182,3 +182,132 @@ export interface BacktestSummary {
   winRate: number;
   avgReturnPct: number;
 }
+
+// =============================================================================
+// Path Metrics Types (Truth Layer - Guardrail 1)
+// =============================================================================
+
+/**
+ * Path metrics row for DuckDB (1 row per eligible call, always)
+ * This is the TRUTH LAYER - split from policy outcomes
+ */
+export interface PathMetricsRow {
+  run_id: string;
+  call_id: string;
+  caller_name: string;
+  mint: string;
+  chain: string;
+  interval: string;
+
+  // Anchor
+  alert_ts_ms: number; // t0_ms
+  p0: number; // anchor price
+
+  // Multiples
+  hit_2x: boolean;
+  t_2x_ms: number | null;
+  hit_3x: boolean;
+  t_3x_ms: number | null;
+  hit_4x: boolean;
+  t_4x_ms: number | null;
+
+  // Drawdown (bps, negative = bad)
+  dd_bps: number | null;
+  dd_to_2x_bps: number | null;
+
+  // Activity
+  alert_to_activity_ms: number | null;
+
+  // Summary
+  peak_multiple: number | null;
+}
+
+/**
+ * Policy result row for DuckDB (policy execution outcomes)
+ * This is the POLICY LAYER - only written when trades execute
+ */
+export interface PolicyResultRow {
+  run_id: string;
+  policy_id: string;
+  call_id: string;
+
+  // Policy execution outcomes
+  realized_return_bps: number;
+  stop_out: boolean;
+  max_adverse_excursion_bps: number;
+  time_exposed_ms: number;
+  tail_capture: number | null; // realized / peak_multiple
+
+  // Entry/exit details
+  entry_ts_ms: number;
+  exit_ts_ms: number;
+  entry_px: number;
+  exit_px: number;
+  exit_reason: string | null;
+}
+
+// =============================================================================
+// Path-Only Mode Types (Guardrail 2)
+// =============================================================================
+
+/**
+ * Path-only backtest request
+ * Used for computing path metrics without policy execution
+ */
+export interface PathOnlyRequest {
+  calls: CallRecord[];
+  interval: Interval;
+  from: DateTime;
+  to: DateTime;
+  activityMovePct?: number; // default 0.1 (10%)
+}
+
+/**
+ * Path-only backtest summary
+ */
+export interface PathOnlySummary {
+  runId: string;
+  callsProcessed: number;
+  callsExcluded: number;
+  pathMetricsWritten: number;
+}
+
+// =============================================================================
+// Caller Truth Leaderboard Types (Phase 3)
+// =============================================================================
+
+/**
+ * Caller truth leaderboard row (from path metrics only)
+ */
+export interface CallerTruthLeaderboardRow {
+  caller_name: string;
+  calls: number;
+
+  // Hit rates
+  p_hit_2x: number;
+  p_hit_3x: number;
+  p_hit_4x: number;
+  count_2x: number;
+  count_3x: number;
+  count_4x: number;
+  failures_2x: number; // never hit 2x
+
+  // Time metrics (in minutes for display)
+  median_t2x_min: number | null;
+  median_t3x_min: number | null;
+  median_t4x_min: number | null;
+  median_alert_to_activity_s: number | null;
+
+  // Peak metrics
+  median_peak_multiple: number | null;
+  avg_peak_multiple: number | null;
+
+  // Drawdown metrics
+  median_dd_bps: number | null;
+  p95_dd_bps: number | null;
+  median_dd_to_2x_bps: number | null;
+  p95_dd_to_2x_bps: number | null;
+
+  // Slow/no activity rate
+  slow_activity_rate: number; // % with alert_to_activity_ms > threshold
+}

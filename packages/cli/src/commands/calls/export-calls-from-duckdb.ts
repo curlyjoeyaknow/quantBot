@@ -91,6 +91,25 @@ export async function exportCallsFromDuckdbHandler(args: ExportCallsArgs, _ctx: 
     }
   );
 
+  // Check for errors
+  if (result.error) {
+    throw new Error(
+      `Failed to query calls from DuckDB: ${result.error}\n\n` +
+        `The 'user_calls_d' table is missing. Please ingest Telegram data first using:\n` +
+        `  quantbot ingestion telegram --duckdb ${duckdbPath} <telegram-export.json>`
+    );
+  }
+
+  if (result.calls.length === 0) {
+    return {
+      exported: 0,
+      outputFile: args.out,
+      fromISO,
+      toISO,
+      message: `No calls found in date range ${fromISO} to ${toISO}`,
+    };
+  }
+
   // Convert to CallSignal[]
   const callSignals: CallSignal[] = result.calls.map(
     (call: { mint: string; createdAt: { toISO: () => string | null } }, index: number) =>

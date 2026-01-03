@@ -1,0 +1,236 @@
+/**
+ * Run Path-Only Backtest - Truth Layer Orchestrator
+ *
+ * Guardrail 2: Path-Only Mode
+ * - First-class mode: --strategy path-only
+ * - Flow: slices candles → computes path metrics → writes 1 row per call → stops
+ * - No exit plans, no trades, no "continue if trades.length==0" footguns
+ *
+ * This is the TRUTH LAYER - the keel of the ship.
+ * Everything else bolts onto it.
+ */
+
+import { randomUUID } from 'crypto';
+import { join } from 'path';
+import { mkdir } from 'fs/promises';
+import type { PathOnlyRequest, PathOnlySummary, PathMetricsRow, BacktestPlan } from './types.js';
+import { planBacktest } from './plan.js';
+import { checkCoverage } from './coverage.js';
+import { materialiseSlice } from './slice.js';
+import { loadCandlesFromSlice } from './runBacktest.js';
+import { computePathMetrics } from './metrics/path-metrics.js';
+import { insertPathMetrics, type DuckDbConnection } from './reporting/backtest-results-duckdb.js';
+import { logger, type LogContext } from '@quantbot/utils';
+
+/**
+ * Create a DuckDB connection adapter for use with insert functions
+ */
+function createDuckDbAdapter(db: DuckDbConnection): DuckDbConnection {
+  return {
+    run(sql: string, params: any[], callback: (err: any) => void): void {
+      db.run(sql, params, callback);
+    },
+    all<T = any>(sql: string, params: any[], callback: (err: any, rows: T[]) => void): void {
+      (db.all as (sql: string, params: any[], cb: (err: any, rows: any) => void) => void)(
+        sql,
+        params,
+        (err: any, rows: any) => {
+          if (err) {
+            callback(err, []);
+          } else {
+            callback(null, rows as T[]);
+          }
+        }
+      );
+    },
+    prepare(sql: string, callback: (err: any, stmt: any) => void): void {
+      db.prepare(sql, callback);
+    },
+  };
+}
+
+/**
+ * Run path-only backtest
+ *
+ * This is the TRUTH LAYER - computes and persists path metrics for EVERY eligible call.
+ * No trades, no policy execution, no footguns.
+ *
+ * Flow:
+ * 1. Plan: compute requirements per call (reuse existing)
+ * 2. Coverage: verify data exists for calls (reuse existing)
+ * 3. Slice: materialise candle dataset for calls (reuse existing)
+ * 4. Load candles: from slice (reuse existing)
+ * 5. Compute path metrics: for EVERY eligible call (reuse existing)
+ * 6. Persist: to backtest_call_path_metrics table (new)
+ * 7. Stop (no trades, no policy execution)
+ */
+export async function runPathOnly(req: PathOnlyRequest): Promise<PathOnlySummary> {
+  const runId = randomUUID();
+  const activityMovePct = req.activityMovePct ?? 0.1;
+
+  logger.info('Starting path-only backtest', {
+    runId,
+    calls: req.calls.length,
+    interval: req.interval,
+  });
+
+  // Step 1: Plan (reuse existing)
+  // Create a minimal strategy for planning purposes (no overlays needed for path-only)
+  const planReq = {
+    strategy: {
+      id: 'path-only',
+      name: 'path-only',
+      overlays: [],
+      fees: { takerFeeBps: 0, slippageBps: 0 },
+      position: { notionalUsd: 0 },
+      indicatorWarmup: 0,
+      entryDelay: 0,
+      maxHold: 1440, // 24h default for path metrics window
+    },
+    calls: req.calls,
+    interval: req.interval,
+    from: req.from,
+    to: req.to,
+  };
+
+  const plan: BacktestPlan = planBacktest(planReq);
+  logger.info('Planning complete', {
+    totalRequiredCandles: plan.totalRequiredCandles,
+    calls: req.calls.length,
+  });
+
+  // Step 2: Coverage gate (reuse existing)
+  const coverage = await checkCoverage(plan);
+  if (coverage.eligible.length === 0) {
+    logger.warn('No eligible calls after coverage check', {
+      runId,
+      excluded: coverage.excluded.length,
+    });
+
+    return {
+      runId,
+      callsProcessed: 0,
+      callsExcluded: coverage.excluded.length,
+      pathMetricsWritten: 0,
+    };
+  }
+
+  logger.info('Coverage check complete', {
+    eligible: coverage.eligible.length,
+    excluded: coverage.excluded.length,
+  });
+
+  // Step 3: Slice materialisation (reuse existing)
+  const slice = await materialiseSlice(plan, coverage);
+  logger.info('Slice materialised', {
+    path: slice.path,
+    calls: slice.callIds.length,
+  });
+
+  // Step 4: Load candles from slice (reuse existing)
+  const candlesByCall = await loadCandlesFromSlice(slice.path);
+
+  // Create call lookup map
+  const callsById = new Map(req.calls.map((call) => [call.id, call]));
+
+  // Step 5: Compute path metrics for EVERY eligible call
+  const pathMetricsRows: PathMetricsRow[] = [];
+
+  for (const eligible of coverage.eligible) {
+    const call = callsById.get(eligible.callId);
+    if (!call) {
+      logger.warn('Call not found in lookup', { callId: eligible.callId });
+      continue;
+    }
+
+    const candles = candlesByCall.get(eligible.callId) || [];
+
+    if (candles.length === 0) {
+      logger.warn('No candles found for call', { callId: eligible.callId });
+      continue;
+    }
+
+    // Anchor time: ALERT timestamp (ms)
+    const t0_ms = call.createdAt.toMillis();
+
+    // Compute path metrics
+    const path = computePathMetrics(candles, t0_ms, {
+      activity_move_pct: activityMovePct,
+    });
+
+    // Skip if anchor price is invalid (no valid candles at/after alert)
+    if (!isFinite(path.p0) || path.p0 <= 0) {
+      logger.warn('Invalid anchor price for call', {
+        callId: eligible.callId,
+        p0: path.p0,
+      });
+      continue;
+    }
+
+    // Build path metrics row - ALWAYS written (Guardrail 2)
+    pathMetricsRows.push({
+      run_id: runId,
+      call_id: eligible.callId,
+      caller_name: call.caller,
+      mint: call.mint,
+      chain: eligible.chain,
+      interval: req.interval,
+
+      alert_ts_ms: t0_ms,
+      p0: path.p0,
+
+      hit_2x: path.hit_2x,
+      t_2x_ms: path.t_2x_ms,
+      hit_3x: path.hit_3x,
+      t_3x_ms: path.t_3x_ms,
+      hit_4x: path.hit_4x,
+      t_4x_ms: path.t_4x_ms,
+
+      dd_bps: path.dd_bps,
+      dd_to_2x_bps: path.dd_to_2x_bps,
+      alert_to_activity_ms: path.alert_to_activity_ms,
+      peak_multiple: path.peak_multiple,
+    });
+  }
+
+  logger.info('Path metrics computed', {
+    computed: pathMetricsRows.length,
+    eligible: coverage.eligible.length,
+  });
+
+  // Step 6: Persist to backtest_call_path_metrics table
+  const artifactsDir = join(process.cwd(), 'artifacts', 'backtest', runId);
+  await mkdir(artifactsDir, { recursive: true });
+
+  const duckdbPath = join(artifactsDir, 'results.duckdb');
+  const duckdb = await import('duckdb');
+  const database = new duckdb.Database(duckdbPath);
+  const db = database.connect();
+
+  try {
+    if (pathMetricsRows.length > 0) {
+      const adapter = createDuckDbAdapter(db as DuckDbConnection);
+      await insertPathMetrics(adapter as Parameters<typeof insertPathMetrics>[0], pathMetricsRows);
+      logger.info('Path metrics persisted', {
+        rows: pathMetricsRows.length,
+        duckdbPath,
+      });
+    }
+  } finally {
+    database.close();
+  }
+
+  // Step 7: Stop (no trades, no policy execution)
+  // That's it! Path-only mode is complete.
+
+  const summary: PathOnlySummary = {
+    runId,
+    callsProcessed: coverage.eligible.length,
+    callsExcluded: coverage.excluded.length,
+    pathMetricsWritten: pathMetricsRows.length,
+  };
+
+  logger.info('Path-only backtest complete', summary as unknown as LogContext);
+
+  return summary;
+}

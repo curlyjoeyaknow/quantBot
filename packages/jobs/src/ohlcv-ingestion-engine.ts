@@ -1244,16 +1244,9 @@ export class OhlcvIngestionEngine {
       // CRITICAL: Store to ClickHouse using ohlcv storage service (offline operation)
       try {
         // Map interval to storeCandles format (accepts '1s' | '15s' | '1m' | '5m' | '15m' | '1h' | '1H')
+        // Note: interval is typed as '1m' | '5m' | '15s' | '1H', so '1s' is not possible here
         const storeInterval: '1s' | '15s' | '1m' | '5m' | '15m' | '1h' | '1H' =
-          interval === '1H'
-            ? '1H'
-            : interval === '15s'
-              ? '15s'
-              : interval === '1m'
-                ? '1m'
-                : interval === '1s'
-                  ? '1s'
-                  : '5m';
+          interval === '1H' ? '1H' : interval === '15s' ? '15s' : interval === '1m' ? '1m' : '5m';
         await storeCandles(mint, chain, candles, storeInterval);
         logger.debug(
           `[OhlcvIngestionEngine] Stored ${candles.length} ${interval} candles to ClickHouse for ${mint}...`

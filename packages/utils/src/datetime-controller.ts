@@ -143,7 +143,7 @@ export class DateTimeController {
     }
 
     // Parse with explicit UTC zone
-    let dt = DateTime.fromISO(isoString, { zone: 'utc' });
+    const dt = DateTime.fromISO(isoString, { zone: 'utc' });
 
     if (!dt.isValid) {
       throw new Error(`Invalid ISO string: ${isoString} - ${dt.invalidReason}`);
@@ -255,4 +255,3 @@ export function assertTimestampMs(value: number, context?: string): void {
     );
   }
 }
-
