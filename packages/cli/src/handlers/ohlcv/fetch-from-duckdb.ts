@@ -155,36 +155,34 @@ export async function fetchFromDuckdbHandler(args: FetchFromDuckdbArgs, _ctx: Co
   const intervalSeconds =
     args.interval === '1s' ? 1 : args.interval === '15s' ? 15 : args.interval === '1m' ? 60 : 300; // 5m
 
-  // Coverage requirements: -5 intervals before alert, +forwardCandles after alert
-  // Conservative base: 5000 candles (1 API request) per interval
+  // Coverage requirements: 5000 candles total starting from alert time
+  // Birdeye API limit is 5000 candles per request
   // horizonSeconds can override this if a larger time window is needed
   // Time coverage per interval at 5000 candles:
   // - 1s: ~1.4 hours
   // - 15s: ~20.8 hours
   // - 1m: ~3.5 days
   // - 5m: ~17.4 days
-  const lookbackIntervals = 5;
-  const baseForwardCandles = 5000; // Conservative: 1 API request per token
+  const baseTotalCandles = 5000; // 5000 candles total (1 API request)
   const horizonCandles = Math.ceil(horizonSeconds / intervalSeconds);
-  const forwardCandles = Math.max(baseForwardCandles, horizonCandles);
-  const lookbackSeconds = lookbackIntervals * intervalSeconds;
-  const forwardSeconds = forwardCandles * intervalSeconds;
+  const totalCandles = Math.max(baseTotalCandles, horizonCandles);
+  const forwardSeconds = totalCandles * intervalSeconds;
 
   logger.debug('Forward window calculation', {
     interval: args.interval,
     intervalSeconds,
     horizonSeconds,
-    baseForwardCandles,
+    baseTotalCandles,
     horizonCandles,
-    forwardCandles,
+    totalCandles,
     forwardSeconds,
     forwardHours: (forwardSeconds / 3600).toFixed(2),
-    estimatedApiRequests: Math.ceil(forwardCandles / 5000),
+    estimatedApiRequests: Math.ceil(totalCandles / 5000),
   });
 
   // Minimum coverage threshold (95% = full coverage)
   const MIN_COVERAGE_RATIO = 0.95;
-  const MIN_CANDLES = forwardCandles + lookbackIntervals; // At least 4005 candles total
+  const MIN_CANDLES = totalCandles; // 5000 candles total
 
   const results = {
     alertsProcessed: alertsToProcess.length,
@@ -232,8 +230,8 @@ export async function fetchFromDuckdbHandler(args: FetchFromDuckdbArgs, _ctx: Co
       // Calculate required time window for this alert
       // Use raw Unix seconds directly - no datetime parsing needed!
       // Note: --from/--to filter ALERTS, not candle window
-      // Each alert gets exactly forwardCandles (e.g., 5000) from its alert time
-      const fromUnix = alertTsSeconds - lookbackSeconds;
+      // Each alert gets exactly 5000 candles starting from its alert time
+      const fromUnix = alertTsSeconds;
       const toUnix = alertTsSeconds + forwardSeconds;
 
       logger.info(
