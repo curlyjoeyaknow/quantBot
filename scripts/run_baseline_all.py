@@ -919,6 +919,18 @@ def ensure_baseline_schema(con: duckdb.DuckDBPyConnection) -> None:
         );
     """)
 
+    # Check if schema needs to be recreated (count columns)
+    try:
+        col_count = con.execute("""
+            SELECT count(*) FROM information_schema.columns 
+            WHERE table_schema = 'baseline' AND table_name = 'alert_results_f'
+        """).fetchone()[0]
+        # We expect 32 columns now; if different, recreate
+        if col_count != 32 and col_count > 0:
+            con.execute("DROP TABLE baseline.alert_results_f;")
+    except Exception:
+        pass  # Table doesn't exist yet
+
     con.execute("""
         CREATE TABLE IF NOT EXISTS baseline.alert_results_f (
             run_id TEXT,
