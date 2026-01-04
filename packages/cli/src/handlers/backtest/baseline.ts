@@ -188,8 +188,8 @@ export async function baselineBacktestHandler(args: BacktestBaselineArgs, ctx: C
         ? `${summary.median_ret_end_pct.toFixed(2)}%`
         : null,
       pctHit2x: `${summary.pct_hit_2x.toFixed(2)}%`,
-      medianTpSlRetPct: summary.median_tp_sl_ret_pct
-        ? `${summary.median_tp_sl_ret_pct.toFixed(2)}%`
+      medianDdInitialPct: summary.median_dd_initial_pct
+        ? `${summary.median_dd_initial_pct.toFixed(2)}%`
         : null,
     },
   };
