@@ -28,12 +28,13 @@ import math
 import os
 import sys
 import hashlib
+import uuid
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from statistics import median
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, List, Optional, Set, Tuple
 from threading import Lock
 
 import duckdb
@@ -233,6 +234,27 @@ def load_alerts(
             if mint:
                 alerts.append(Alert(mint=mint, ts_ms=int(ts_ms), caller=caller or ""))
 
+    # Fallback: try core.alert_mints_f + core.alerts_d (new schema)
+    if not alerts:
+        try:
+            sql = """
+            SELECT DISTINCT
+              am.mint::TEXT AS mint,
+              a.alert_ts_ms::BIGINT AS ts_ms,
+              COALESCE(a.caller_name, '')::TEXT AS caller
+            FROM core.alert_mints_f am
+            JOIN core.alerts_d a USING (source_system, chat_id, message_id)
+            WHERE am.mint IS NOT NULL
+              AND a.alert_ts_ms >= ?
+              AND a.alert_ts_ms < ?
+            """
+            rows = conn.execute(sql, [from_ms, to_ms_excl]).fetchall()
+            for mint, ts_ms, caller in rows:
+                if mint:
+                    alerts.append(Alert(mint=mint, ts_ms=int(ts_ms), caller=caller or ""))
+        except Exception:
+            pass  # Table doesn't exist or query failed
+
     conn.close()
     alerts.sort(key=lambda a: (a.ts_ms, a.mint))
     return alerts
@@ -287,14 +309,13 @@ def query_coverage(
 ) -> Dict[str, int]:
     """
     Query ClickHouse ONCE to get candle counts per token.
-    Returns {mint: candle_count} for tokens meeting minimum coverage.
+    Returns {mint: candle_count} for tokens with ANY candles in the range.
+    
+    NOTE: This is a GLOBAL coverage check. For per-alert coverage,
+    use query_coverage_per_alert() instead.
     """
     if not mints:
         return {}
-
-    # Calculate required candles for coverage
-    horizon_seconds = (date_to - date_from).total_seconds() + 86400  # +1 day inclusive
-    required_candles = int((horizon_seconds / interval_seconds) * min_coverage_pct)
 
     chain_q = safe_sql_string(chain)
 
@@ -312,11 +333,70 @@ WHERE chain = '{chain_q}'
   AND timestamp >= toDateTime('{dt_to_ch(date_from)}')
   AND timestamp <  toDateTime('{dt_to_ch(date_to + timedelta(days=1))}')
 GROUP BY token_address
-HAVING candle_count >= {required_candles}
 """.strip()
 
     rows = ch_query_rows(cfg, sql)
     return {row["token_address"]: int(row["candle_count"]) for row in rows}
+
+
+def query_coverage_per_alert(
+    cfg: ClickHouseCfg,
+    chain: str,
+    alerts: List["Alert"],
+    interval_seconds: int,
+    horizon: timedelta,
+    min_coverage_pct: float = 0.8,
+) -> Set[Tuple[str, int]]:
+    """
+    Per-alert coverage check: for each (mint, ts_ms), check if there are
+    enough candles from alert_ts to alert_ts + horizon.
+    
+    Returns set of (mint, ts_ms) tuples that have sufficient coverage.
+    """
+    if not alerts:
+        return set()
+    
+    # Required candles per alert (based on horizon)
+    horizon_seconds = horizon.total_seconds()
+    required_candles = int((horizon_seconds / interval_seconds) * min_coverage_pct)
+    
+    chain_q = safe_sql_string(chain)
+    
+    # Build a UNION ALL query to check each alert's coverage
+    # This is more efficient than N queries
+    subqueries = []
+    for a in alerts:
+        mint_q = safe_sql_string(a.mint)
+        alert_ts = datetime.fromtimestamp(a.ts_ms / 1000.0, tz=UTC)
+        end_ts = alert_ts + horizon
+        
+        subqueries.append(f"""
+SELECT
+  '{mint_q}' AS mint,
+  {a.ts_ms} AS ts_ms,
+  count() AS candle_count
+FROM {cfg.database}.{cfg.table}
+WHERE chain = '{chain_q}'
+  AND token_address = '{mint_q}'
+  AND interval_seconds = {int(interval_seconds)}
+  AND timestamp >= toDateTime('{dt_to_ch(alert_ts)}')
+  AND timestamp <  toDateTime('{dt_to_ch(end_ts)}')
+""")
+    
+    # Batch subqueries to avoid huge queries (max 100 per batch)
+    covered_alerts = set()
+    batch_size = 100
+    
+    for i in range(0, len(subqueries), batch_size):
+        batch = subqueries[i:i + batch_size]
+        sql = " UNION ALL ".join(batch)
+        
+        rows = ch_query_rows(cfg, sql)
+        for row in rows:
+            if int(row["candle_count"]) >= required_candles:
+                covered_alerts.add((row["mint"], int(row["ts_ms"])))
+    
+    return covered_alerts
 
 
 def query_coverage_detailed(
@@ -705,6 +785,85 @@ def simulate_tp_sl(
     }
 
 
+def simulate_time_gate_tp_sl(
+    entry_price: float,
+    candles: List[Candle],
+    entry_ts: datetime,
+    tp_mult: float,
+    sl_mult: float,
+    time_gate_minutes: int,
+    min_gain_pct: float,  # e.g., 0.50 for +50%
+    intrabar_order: str,
+    fee_bps: float,
+    slippage_bps: float,
+) -> Dict[str, Any]:
+    """
+    Time-gated TP/SL strategy:
+    - If price is not at least +min_gain_pct by time_gate_minutes, exit at market
+    - Otherwise, hold for TP/SL exit
+    
+    Example: "sell if <+50% by 45min, else hold for TP"
+    """
+    tp_price = entry_price * tp_mult
+    sl_price = entry_price * sl_mult
+    min_gain_price = entry_price * (1.0 + min_gain_pct)
+    time_gate_delta = timedelta(minutes=time_gate_minutes)
+    time_gate_ts = entry_ts + time_gate_delta
+    
+    exit_reason = "horizon"
+    exit_price = candles[-1].c
+    exit_ts: Optional[datetime] = None
+    
+    # Track if we've passed the time gate check
+    passed_time_gate = False
+    time_gate_checked = False
+    
+    for i, c in enumerate(candles[1:], start=1):
+        current_ts = c.ts
+        hit_tp = c.h >= tp_price
+        hit_sl = c.l <= sl_price
+        
+        # Check stop loss first (always active)
+        if hit_sl:
+            if hit_tp and intrabar_order == "tp_first":
+                exit_reason, exit_price = "tp", tp_price
+            else:
+                exit_reason, exit_price = "sl", sl_price
+            exit_ts = current_ts
+            break
+        
+        # Time gate check: at or after 45min, check if we're at +50%
+        if not time_gate_checked and current_ts >= time_gate_ts:
+            time_gate_checked = True
+            # Check current price at this candle
+            current_high = c.h
+            if current_high >= min_gain_price:
+                passed_time_gate = True
+            else:
+                # Exit at market - didn't meet minimum gain
+                exit_reason = "time_gate_exit"
+                exit_price = c.c  # Exit at close of this candle
+                exit_ts = current_ts
+                break
+        
+        # After passing time gate, continue checking for TP
+        if passed_time_gate and hit_tp:
+            exit_reason, exit_price = "tp", tp_price
+            exit_ts = current_ts
+            break
+    
+    cost_mult = 1.0 - (fee_bps + slippage_bps) / 10000.0
+    entry_eff = entry_price * (1.0 + (slippage_bps / 10000.0))
+    exit_eff = exit_price * cost_mult
+    ret = (exit_eff / entry_eff) - 1.0
+    
+    return {
+        "tg_exit_reason": exit_reason,
+        "tg_ret": ret,
+        "tg_passed_gate": passed_time_gate,
+    }
+
+
 # -----------------------------
 # TUI Dashboard (rich-based) with file-based logging
 # -----------------------------
@@ -779,13 +938,13 @@ class BacktestTUI:
                 self.hit_2x_count += 1
             t2x_h = result.get("time_to_2x_s", 0) / 3600.0 if result.get("time_to_2x_s") else None
             t2x_str = f"2x@{t2x_h:.1f}h" if t2x_h else "no 2x"
-            self.log(f"✓ {result.get('caller', '?')[:12]:12} | {result.get('mint', '?')[:8]}... | ATH {result.get('ath_mult', 0):.2f}x | {t2x_str}")
+            self.log(f"✓ {result.get('caller', '?'):20} | {result.get('mint', '?')} | ATH {result.get('ath_mult', 0):.2f}x | {t2x_str}")
         elif status == "no_coverage":
             self.skip_count += 1
-            self.log(f"○ {result.get('caller', '?')[:12]:12} | {result.get('mint', '?')[:8]}... | skipped (no coverage)")
+            self.log(f"○ {result.get('caller', '?'):20} | {result.get('mint', '?')} | skipped (no coverage)")
         else:
             self.error_count += 1
-            self.log(f"✗ {result.get('caller', '?')[:12]:12} | {result.get('mint', '?')[:8]}... | {status}")
+            self.log(f"✗ {result.get('caller', '?'):20} | {result.get('mint', '?')} | {status}")
 
     def _make_metrics_table(self) -> Table:
         """Create the metrics table for the dashboard."""
@@ -902,7 +1061,35 @@ def summarize(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
         hit = sum(1 for r in ok if r.get("time_to_2x_s") is not None)
         return hit / len(ok)
 
-    return {
+    # TP/SL policy metrics
+    tp_sl_returns = take("tp_sl_ret")
+    tp_exits = [r for r in ok if r.get("tp_sl_exit_reason") == "tp"]
+    sl_exits = [r for r in ok if r.get("tp_sl_exit_reason") == "sl"]
+    horizon_exits = [r for r in ok if r.get("tp_sl_exit_reason") == "horizon"]
+    
+    # PNL accounting (assuming equal position sizing per trade)
+    total_trades = len(ok)
+    wins = [r for r in ok if r.get("tp_sl_ret", 0) > 0]
+    losses = [r for r in ok if r.get("tp_sl_ret", 0) < 0]
+    
+    # Aggregate returns (sum of all trade returns as % of bankroll per trade)
+    total_return_pct = sum(tp_sl_returns) * 100 if tp_sl_returns else 0.0
+    avg_return_pct = (sum(tp_sl_returns) / len(tp_sl_returns) * 100) if tp_sl_returns else 0.0
+    
+    # Win/loss stats
+    win_rate = len(wins) / total_trades if total_trades > 0 else 0.0
+    avg_win = (sum(r.get("tp_sl_ret", 0) for r in wins) / len(wins) * 100) if wins else 0.0
+    avg_loss = (sum(r.get("tp_sl_ret", 0) for r in losses) / len(losses) * 100) if losses else 0.0
+    
+    # Profit factor = gross profit / gross loss
+    gross_profit = sum(r.get("tp_sl_ret", 0) for r in wins)
+    gross_loss = abs(sum(r.get("tp_sl_ret", 0) for r in losses))
+    profit_factor = gross_profit / gross_loss if gross_loss > 0 else float("inf") if gross_profit > 0 else 0.0
+    
+    # Expectancy = (win_rate * avg_win) + ((1 - win_rate) * avg_loss)
+    expectancy_pct = (win_rate * avg_win) + ((1 - win_rate) * avg_loss)
+
+    result = {
         "alerts_total": len(rows),
         "alerts_ok": len(ok),
         "alerts_missing": len(missing),
@@ -917,7 +1104,358 @@ def summarize(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
         "median_peak_pnl_pct": fmt_med(peak_pnl),
         "median_ret_end": fmt_med(ret_end),
         "pct_hit_2x": fmt_pct_hit_2x(),
+        # TP/SL policy metrics
+        "tp_sl_total_return_pct": total_return_pct,
+        "tp_sl_avg_return_pct": avg_return_pct,
+        "tp_sl_median_return_pct": fmt_med(tp_sl_returns) * 100 if fmt_med(tp_sl_returns) else None,
+        "tp_sl_win_rate": win_rate,
+        "tp_sl_avg_win_pct": avg_win,
+        "tp_sl_avg_loss_pct": avg_loss,
+        "tp_sl_profit_factor": profit_factor,
+        "tp_sl_expectancy_pct": expectancy_pct,
+        "tp_sl_tp_exits": len(tp_exits),
+        "tp_sl_sl_exits": len(sl_exits),
+        "tp_sl_horizon_exits": len(horizon_exits),
+        # Time-gate policy metrics (if enabled) - populated below if data exists
+        "tg_total_return_pct": None,
+        "tg_avg_return_pct": None,
+        "tg_win_rate": None,
+        "tg_profit_factor": None,
+        "tg_expectancy_pct": None,
+        "tg_tp_exits": None,
+        "tg_sl_exits": None,
+        "tg_time_gate_exits": None,
+        "tg_horizon_exits": None,
+        "tg_passed_gate_count": None,
     }
+    
+    # Calculate time-gate metrics if available
+    tg_returns = take("tg_ret")
+    if tg_returns:
+        tg_tp_exits = [r for r in ok if r.get("tg_exit_reason") == "tp"]
+        tg_sl_exits = [r for r in ok if r.get("tg_exit_reason") == "sl"]
+        tg_time_gate_exits = [r for r in ok if r.get("tg_exit_reason") == "time_gate_exit"]
+        tg_horizon_exits = [r for r in ok if r.get("tg_exit_reason") == "horizon"]
+        tg_passed = [r for r in ok if r.get("tg_passed_gate") == True]
+        
+        tg_total_trades = len(ok)
+        tg_wins = [r for r in ok if r.get("tg_ret", 0) > 0]
+        tg_losses = [r for r in ok if r.get("tg_ret", 0) < 0]
+        
+        tg_total_return_pct = sum(tg_returns) * 100 if tg_returns else 0.0
+        tg_avg_return_pct = (sum(tg_returns) / len(tg_returns) * 100) if tg_returns else 0.0
+        tg_win_rate = len(tg_wins) / tg_total_trades if tg_total_trades > 0 else 0.0
+        
+        tg_gross_profit = sum(r.get("tg_ret", 0) for r in tg_wins)
+        tg_gross_loss = abs(sum(r.get("tg_ret", 0) for r in tg_losses))
+        tg_profit_factor = tg_gross_profit / tg_gross_loss if tg_gross_loss > 0 else float("inf") if tg_gross_profit > 0 else 0.0
+        
+        tg_avg_win = (sum(r.get("tg_ret", 0) for r in tg_wins) / len(tg_wins) * 100) if tg_wins else 0.0
+        tg_avg_loss = (sum(r.get("tg_ret", 0) for r in tg_losses) / len(tg_losses) * 100) if tg_losses else 0.0
+        tg_expectancy_pct = (tg_win_rate * tg_avg_win) + ((1 - tg_win_rate) * tg_avg_loss)
+        
+        result["tg_total_return_pct"] = tg_total_return_pct
+        result["tg_avg_return_pct"] = tg_avg_return_pct
+        result["tg_win_rate"] = tg_win_rate
+        result["tg_profit_factor"] = tg_profit_factor
+        result["tg_expectancy_pct"] = tg_expectancy_pct
+        result["tg_tp_exits"] = len(tg_tp_exits)
+        result["tg_sl_exits"] = len(tg_sl_exits)
+        result["tg_time_gate_exits"] = len(tg_time_gate_exits)
+        result["tg_horizon_exits"] = len(tg_horizon_exits)
+        result["tg_passed_gate_count"] = len(tg_passed)
+    
+    return result
+
+
+# -----------------------------
+# DuckDB Storage (bt.* schema)
+# -----------------------------
+
+
+def store_run_to_duckdb(
+    duckdb_path: str,
+    run_id: str,
+    run_name: str,
+    config: Dict[str, Any],
+    rows_out: List[Dict[str, Any]],
+    summary: Dict[str, Any],
+) -> None:
+    """
+    Store backtest run results to bt.* schema in DuckDB.
+    
+    Tables written:
+    - bt.runs_d: Run metadata (1 row)
+    - bt.alert_scenarios_d: Per-alert scenario (1 row per covered alert)
+    - bt.alert_outcomes_f: Per-alert path metrics (1 row per ok alert)
+    - bt.metrics_f: Aggregate summary metrics (multiple rows)
+    """
+    conn = duckdb.connect(duckdb_path)
+    
+    try:
+        # Ensure bt schema exists
+        conn.execute("CREATE SCHEMA IF NOT EXISTS bt")
+        
+        # -----------------------------
+        # 1. Insert run metadata into bt.runs_d
+        # -----------------------------
+        run_uuid = run_id  # Already a valid UUID string
+        created_at = datetime.now(UTC)
+        
+        # Check if runs_d table exists, if not create it
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS bt.runs_d (
+                run_id UUID PRIMARY KEY,
+                created_at TIMESTAMP,
+                run_name VARCHAR,
+                strategy_name VARCHAR,
+                strategy_version VARCHAR,
+                candle_interval_s INTEGER,
+                window_from_ts_ms BIGINT,
+                window_to_ts_ms BIGINT,
+                entry_rule VARCHAR,
+                exit_rule VARCHAR,
+                config_json JSON,
+                notes VARCHAR
+            )
+        """)
+        
+        # Parse dates for window bounds
+        date_from = datetime.strptime(config.get("date_from", ""), "%Y-%m-%d").replace(tzinfo=UTC) if config.get("date_from") else None
+        date_to = datetime.strptime(config.get("date_to", ""), "%Y-%m-%d").replace(tzinfo=UTC) if config.get("date_to") else None
+        window_from_ms = int(date_from.timestamp() * 1000) if date_from else None
+        window_to_ms = int(date_to.timestamp() * 1000) if date_to else None
+        
+        conn.execute("""
+            INSERT INTO bt.runs_d (
+                run_id, created_at, run_name, strategy_name, strategy_version,
+                candle_interval_s, window_from_ts_ms, window_to_ts_ms,
+                entry_rule, exit_rule, config_json, notes
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, [
+            run_uuid,
+            created_at,
+            run_name,
+            "baseline",  # strategy_name
+            "1.0",  # strategy_version
+            config.get("interval_seconds", 60),
+            window_from_ms,
+            window_to_ms,
+            f"tp={config.get('tp_mult', 2.0)}x",  # entry_rule (simplified)
+            f"sl={config.get('sl_mult', 0.5)}x",  # exit_rule (simplified)
+            json.dumps(config),
+            f"Baseline backtest: {config.get('date_from')} to {config.get('date_to')}"
+        ])
+        
+        # -----------------------------
+        # 2. Insert alert scenarios into bt.alert_scenarios_d
+        # -----------------------------
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS bt.alert_scenarios_d (
+                scenario_id UUID PRIMARY KEY,
+                created_at TIMESTAMP,
+                run_id UUID,
+                alert_id UUID,
+                mint VARCHAR,
+                alert_ts_ms BIGINT,
+                interval_seconds INTEGER,
+                eval_window_s INTEGER,
+                entry_delay_s INTEGER,
+                price_source VARCHAR,
+                caller_name VARCHAR,
+                source_system VARCHAR,
+                scenario_json JSON
+            )
+        """)
+        
+        # Insert one scenario per covered alert
+        ok_rows = [r for r in rows_out if r.get("status") == "ok"]
+        for row in ok_rows:
+            scenario_id = str(uuid.uuid4())
+            alert_id = str(uuid.uuid4())  # Generate alert_id (could be derived from mint+ts)
+            
+            # Parse alert_ts_utc to milliseconds
+            alert_ts_str = row.get("alert_ts_utc", "")
+            try:
+                alert_ts = datetime.strptime(alert_ts_str, "%Y-%m-%d %H:%M:%S").replace(tzinfo=UTC)
+                alert_ts_ms = int(alert_ts.timestamp() * 1000)
+            except:
+                alert_ts_ms = 0
+            
+            conn.execute("""
+                INSERT INTO bt.alert_scenarios_d (
+                    scenario_id, created_at, run_id, alert_id, mint, alert_ts_ms,
+                    interval_seconds, eval_window_s, entry_delay_s, price_source,
+                    caller_name, source_system, scenario_json
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, [
+                scenario_id,
+                created_at,
+                run_uuid,
+                alert_id,
+                row.get("mint", ""),
+                alert_ts_ms,
+                row.get("interval_seconds", 60),
+                row.get("horizon_hours", 48) * 3600,  # eval_window_s
+                0,  # entry_delay_s
+                "candle_open",  # price_source
+                row.get("caller", ""),
+                "telegram",  # source_system
+                json.dumps(row)  # Full row as scenario_json
+            ])
+            
+            # -----------------------------
+            # 3. Insert alert outcome into bt.alert_outcomes_f
+            # -----------------------------
+            conn.execute("""
+                CREATE TABLE IF NOT EXISTS bt.alert_outcomes_f (
+                    scenario_id UUID PRIMARY KEY,
+                    computed_at TIMESTAMP,
+                    alert_price_usd DOUBLE,
+                    entry_price_usd DOUBLE,
+                    entry_ts_ms BIGINT,
+                    ath_price_usd DOUBLE,
+                    ath_multiple DOUBLE,
+                    ath_ts_ms BIGINT,
+                    min_price_usd DOUBLE,
+                    min_ts_ms BIGINT,
+                    max_drawdown_pct DOUBLE,
+                    hit_2x BOOLEAN,
+                    ts_2x_ms BIGINT,
+                    time_to_2x_s INTEGER,
+                    min_price_before_2x_usd DOUBLE,
+                    min_ts_before_2x_ms BIGINT,
+                    max_dd_before_2x_pct DOUBLE,
+                    candles_seen INTEGER,
+                    notes VARCHAR,
+                    details_json JSON
+                )
+            """)
+            
+            # Calculate outcome metrics from row
+            entry_price = row.get("entry_price", 0.0)
+            ath_mult = row.get("ath_mult")
+            ath_price = entry_price * ath_mult if ath_mult and entry_price else None
+            
+            # Parse entry timestamp
+            entry_ts_str = row.get("entry_ts_utc", "")
+            try:
+                entry_ts = datetime.strptime(entry_ts_str, "%Y-%m-%d %H:%M:%S").replace(tzinfo=UTC)
+                entry_ts_ms = int(entry_ts.timestamp() * 1000)
+            except:
+                entry_ts_ms = 0
+            
+            # Calculate ATH timestamp from time_to_ath_s
+            time_to_ath_s = row.get("time_to_ath_s")
+            ath_ts_ms = entry_ts_ms + (time_to_ath_s * 1000) if time_to_ath_s else None
+            
+            # Calculate 2x timestamp from time_to_2x_s  
+            time_to_2x_s = row.get("time_to_2x_s")
+            ts_2x_ms = entry_ts_ms + (time_to_2x_s * 1000) if time_to_2x_s else None
+            
+            # Drawdown metrics (convert from ratio to percentage)
+            dd_overall = row.get("dd_overall")
+            max_drawdown_pct = dd_overall * 100 if dd_overall is not None else None
+            
+            dd_pre2x = row.get("dd_pre2x")
+            max_dd_before_2x_pct = dd_pre2x * 100 if dd_pre2x is not None else None
+            
+            conn.execute("""
+                INSERT INTO bt.alert_outcomes_f (
+                    scenario_id, computed_at, alert_price_usd, entry_price_usd, entry_ts_ms,
+                    ath_price_usd, ath_multiple, ath_ts_ms, min_price_usd, min_ts_ms,
+                    max_drawdown_pct, hit_2x, ts_2x_ms, time_to_2x_s,
+                    min_price_before_2x_usd, min_ts_before_2x_ms, max_dd_before_2x_pct,
+                    candles_seen, notes, details_json
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, [
+                scenario_id,
+                created_at,
+                entry_price,  # alert_price_usd (same as entry for baseline)
+                entry_price,
+                entry_ts_ms,
+                ath_price,
+                ath_mult,
+                ath_ts_ms,
+                None,  # min_price_usd (would need to track)
+                None,  # min_ts_ms
+                max_drawdown_pct,
+                time_to_2x_s is not None,  # hit_2x
+                ts_2x_ms,
+                time_to_2x_s,
+                None,  # min_price_before_2x_usd
+                None,  # min_ts_before_2x_ms
+                max_dd_before_2x_pct,
+                row.get("candles", 0),
+                None,  # notes
+                json.dumps({
+                    "peak_pnl_pct": row.get("peak_pnl_pct"),
+                    "ret_end": row.get("ret_end"),
+                    "time_to_3x_s": row.get("time_to_3x_s"),
+                    "time_to_4x_s": row.get("time_to_4x_s"),
+                    "dd_after_2x": row.get("dd_after_2x"),
+                    "dd_after_3x": row.get("dd_after_3x"),
+                    "dd_after_4x": row.get("dd_after_4x"),
+                    "tp_sl_exit_reason": row.get("tp_sl_exit_reason"),
+                    "tp_sl_ret": row.get("tp_sl_ret"),
+                })
+            ])
+        
+        # -----------------------------
+        # 4. Insert aggregate metrics into bt.metrics_f
+        # -----------------------------
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS bt.metrics_f (
+                run_id UUID,
+                mint VARCHAR,
+                metric_name VARCHAR,
+                metric_value DOUBLE,
+                metric_json JSON,
+                computed_at TIMESTAMP
+            )
+        """)
+        
+        # Insert summary metrics as rows
+        metrics = [
+            ("alerts_total", summary.get("alerts_total")),
+            ("alerts_ok", summary.get("alerts_ok")),
+            ("alerts_missing", summary.get("alerts_missing")),
+            ("median_ath_mult", summary.get("median_ath_mult")),
+            ("median_time_to_ath_s", summary.get("median_time_to_ath_s")),
+            ("median_time_to_2x_s", summary.get("median_time_to_2x_s")),
+            ("median_time_to_3x_s", summary.get("median_time_to_3x_s")),
+            ("median_dd_initial", summary.get("median_dd_initial")),
+            ("median_dd_overall", summary.get("median_dd_overall")),
+            ("median_dd_after_2x", summary.get("median_dd_after_2x")),
+            ("median_dd_after_3x", summary.get("median_dd_after_3x")),
+            ("median_peak_pnl_pct", summary.get("median_peak_pnl_pct")),
+            ("median_ret_end", summary.get("median_ret_end")),
+            ("pct_hit_2x", summary.get("pct_hit_2x")),
+            ("tp_sl_total_return_pct", summary.get("tp_sl_total_return_pct")),
+            ("tp_sl_avg_return_pct", summary.get("tp_sl_avg_return_pct")),
+            ("tp_sl_win_rate", summary.get("tp_sl_win_rate")),
+            ("tp_sl_profit_factor", summary.get("tp_sl_profit_factor")),
+            ("tp_sl_expectancy_pct", summary.get("tp_sl_expectancy_pct")),
+        ]
+        
+        for metric_name, metric_value in metrics:
+            if metric_value is not None:
+                conn.execute("""
+                    INSERT INTO bt.metrics_f (run_id, mint, metric_name, metric_value, metric_json, computed_at)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                """, [
+                    run_uuid,
+                    None,  # mint (null for run-level aggregates)
+                    metric_name,
+                    float(metric_value) if not math.isnan(float(metric_value)) else None,
+                    None,
+                    created_at
+                ])
+        
+        conn.commit()
+        
+    finally:
+        conn.close()
 
 
 # -----------------------------
@@ -1011,6 +1549,30 @@ def main() -> None:
         "--slippage-bps", type=float, default=50.0,
         help="Slippage in basis points (default: 50)"
     )
+    
+    # Time-gate strategy arguments
+    ap.add_argument(
+        "--time-gate", action="store_true",
+        help="Enable time-gate strategy (sell if <min-gain by gate-minutes, else hold for TP)"
+    )
+    ap.add_argument(
+        "--gate-minutes", type=int, default=45,
+        help="Time gate in minutes (default: 45)"
+    )
+    ap.add_argument(
+        "--min-gain-pct", type=float, default=0.50,
+        help="Minimum gain required at time gate as decimal (default: 0.50 = +50%%)"
+    )
+    
+    # DuckDB storage
+    ap.add_argument(
+        "--store-duckdb", action="store_true",
+        help="Store results to bt.* schema in DuckDB (in addition to CSV)"
+    )
+    ap.add_argument(
+        "--run-name",
+        help="Optional name for the backtest run (default: auto-generated)"
+    )
 
     args = ap.parse_args()
 
@@ -1089,23 +1651,27 @@ def main() -> None:
 
     if args.reuse_slice and slice_path.exists():
         log(f"[2/5] Reusing existing slice: {slice_path}")
-        # Load covered mints from slice
+        # Load covered mints from slice - assume all alerts with data in slice are covered
         conn = duckdb.connect(":memory:")
         covered_mints_rows = conn.execute(
             f"SELECT DISTINCT token_address FROM '{slice_path}'"
         ).fetchall()
         conn.close()
-        coverage = {row[0]: -1 for row in covered_mints_rows}  # -1 = unknown count
+        covered_mints_set = {row[0] for row in covered_mints_rows}
+        # For reuse mode, filter by mint presence (can't check per-alert without re-querying)
+        covered_alerts = [a for a in alerts if a.mint in covered_mints_set]
+        skipped_alerts = [a for a in alerts if a.mint not in covered_mints_set]
+        log(f"    Tokens in slice: {len(covered_mints_set)}")
     else:
-        log(f"[2/5] Querying coverage from ClickHouse...")
+        log(f"[2/5] Querying per-alert coverage from ClickHouse...")
         try:
-            coverage = query_coverage(
+            # Use per-alert coverage check: each alert needs coverage from alert_ts to alert_ts + horizon
+            covered_alert_keys = query_coverage_per_alert(
                 cfg,
                 args.chain,
-                unique_mints,
+                alerts,
                 args.interval_seconds,
-                date_from,
-                date_to + horizon,  # Need coverage through horizon
+                horizon,
                 args.min_coverage_pct,
             )
         except Exception as e:
@@ -1114,15 +1680,16 @@ def main() -> None:
                 sys.exit(1)
             raise
 
-        log(f"    Tokens with sufficient coverage: {len(coverage)} / {len(unique_mints)}")
+        log(f"    Alerts with sufficient coverage: {len(covered_alert_keys)} / {len(alerts)}")
+        
+        # Filter alerts by (mint, ts_ms) key
+        covered_alerts = [a for a in alerts if (a.mint, a.ts_ms) in covered_alert_keys]
+        skipped_alerts = [a for a in alerts if (a.mint, a.ts_ms) not in covered_alert_keys]
 
     # ─────────────────────────────────────────────────────────────
-    # STEP 3: Filter alerts to only covered tokens
+    # STEP 3: Summary of coverage filtering
     # ─────────────────────────────────────────────────────────────
     log(f"[3/5] Filtering alerts to covered tokens...")
-    covered_alerts = [a for a in alerts if a.mint in coverage]
-    skipped_alerts = [a for a in alerts if a.mint not in coverage]
-
     log(f"    Covered alerts: {len(covered_alerts)}")
     log(f"    Skipped (no coverage): {len(skipped_alerts)}")
 
@@ -1148,14 +1715,21 @@ def main() -> None:
     if not (args.reuse_slice and slice_path.exists()):
         log(f"[4/5] Exporting slice to {slice_path}...")
         covered_mints = set(a.mint for a in covered_alerts)
+        
+        # Calculate export range based on actual covered alerts
+        earliest_alert_ts = min(a.ts_ms for a in covered_alerts)
+        latest_alert_ts = max(a.ts_ms for a in covered_alerts)
+        export_from = datetime.fromtimestamp(earliest_alert_ts / 1000.0, tz=UTC)
+        export_to = datetime.fromtimestamp(latest_alert_ts / 1000.0, tz=UTC) + horizon
+        
         try:
             row_count = export_slice_to_parquet(
                 cfg,
                 args.chain,
                 covered_mints,
                 args.interval_seconds,
-                date_from,
-                date_to + horizon,
+                export_from,
+                export_to,
                 slice_path,
             )
             log(f"    Exported {row_count} candles to Parquet")
@@ -1198,6 +1772,11 @@ def main() -> None:
         "dd_after_ath",
         "peak_pnl_pct",
         "ret_end",
+        "tp_sl_exit_reason",
+        "tp_sl_ret",
+        "tg_exit_reason",
+        "tg_ret",
+        "tg_passed_gate",
     ]
 
     rows_out: List[Dict[str, Any]] = []
@@ -1339,12 +1918,42 @@ def main() -> None:
                 }
 
             core = compute_core_metrics(entry_price, candles)
+            
+            # Simulate TP/SL policy
+            tp_sl = simulate_tp_sl(
+                entry_price,
+                candles,
+                args.tp_mult,
+                args.sl_mult,
+                args.intrabar_order,
+                args.fee_bps,
+                args.slippage_bps,
+            )
+            
+            # Simulate time-gate TP/SL policy (if enabled)
+            tg_results = {}
+            if args.time_gate:
+                tg_results = simulate_time_gate_tp_sl(
+                    entry_price,
+                    candles,
+                    entry_ts,
+                    args.tp_mult,
+                    args.sl_mult,
+                    args.gate_minutes,
+                    args.min_gain_pct,
+                    args.intrabar_order,
+                    args.fee_bps,
+                    args.slippage_bps,
+                )
+            
             return {
                 **base,
                 "status": "ok",
                 "candles": len(candles),
                 "entry_price": entry_price,
                 **core,
+                **tp_sl,
+                **tg_results,
             }
         except Exception as e:
             return {**base, "status": "error", "error": str(e)}
@@ -1465,14 +2074,43 @@ def main() -> None:
     # Compute summary
     s = summarize(rows_out)
 
+    # Generate run_id (always, even if not storing to DuckDB)
+    run_id = str(uuid.uuid4())
+    
+    # Store to DuckDB if requested
+    if args.store_duckdb:
+        run_name = args.run_name or f"baseline_{date_from.strftime('%Y%m%d')}_{date_to.strftime('%Y%m%d')}_{args.interval_seconds}s"
+        config_dict = {
+            "date_from": date_from.strftime("%Y-%m-%d"),
+            "date_to": date_to.strftime("%Y-%m-%d"),
+            "interval_seconds": args.interval_seconds,
+            "horizon_hours": args.horizon_hours,
+            "chain": args.chain,
+            "tp_mult": args.tp_mult,
+            "sl_mult": args.sl_mult,
+            "fee_bps": args.fee_bps,
+            "slippage_bps": args.slippage_bps,
+            "min_coverage_pct": args.min_coverage_pct,
+        }
+        try:
+            store_run_to_duckdb(args.duckdb, run_id, run_name, config_dict, rows_out, s)
+            if args.output_format != "json":
+                print(f"[DuckDB] Stored run to bt.* schema: run_id={run_id}")
+        except Exception as e:
+            if args.output_format != "json":
+                print(f"[DuckDB] Warning: Failed to store run: {e}", file=sys.stderr)
+            # Don't fail the whole backtest if DuckDB storage fails
+
     if args.output_format == "json":
         result = {
             "success": True,
             "error": None,
+            "run_id": run_id,
             "csv_path": out_csv,
             "slice_path": str(slice_path),
             "log_path": str(log_file_path),
             "worklist_path": str(worklist_path) if worklist else None,
+            "stored_to_duckdb": args.store_duckdb,
             "summary": {
                 "alerts_total": s["alerts_total"],
                 "alerts_ok": s["alerts_ok"],
@@ -1525,6 +2163,18 @@ def main() -> None:
                 ),
                 "pct_hit_2x": pct(s["pct_hit_2x"]),
                 "median_peak_pnl_pct": s["median_peak_pnl_pct"],
+                # TP/SL policy metrics
+                "tp_sl_total_return_pct": s.get("tp_sl_total_return_pct"),
+                "tp_sl_avg_return_pct": s.get("tp_sl_avg_return_pct"),
+                "tp_sl_median_return_pct": s.get("tp_sl_median_return_pct"),
+                "tp_sl_win_rate": s.get("tp_sl_win_rate"),
+                "tp_sl_avg_win_pct": s.get("tp_sl_avg_win_pct"),
+                "tp_sl_avg_loss_pct": s.get("tp_sl_avg_loss_pct"),
+                "tp_sl_profit_factor": s.get("tp_sl_profit_factor"),
+                "tp_sl_expectancy_pct": s.get("tp_sl_expectancy_pct"),
+                "tp_sl_tp_exits": s.get("tp_sl_tp_exits"),
+                "tp_sl_sl_exits": s.get("tp_sl_sl_exits"),
+                "tp_sl_horizon_exits": s.get("tp_sl_horizon_exits"),
             },
             "config": {
                 "date_from": date_from.strftime("%Y-%m-%d"),
@@ -1569,6 +2219,21 @@ def main() -> None:
         print(f"% that hit 2x: {pct(s['pct_hit_2x']):.2f}%")
         if s["median_peak_pnl_pct"] is not None:
             print(f"Median peak PnL: {s['median_peak_pnl_pct']:.2f}%")
+        
+        # TP/SL Policy Results
+        print()
+        print("-" * 40)
+        print(f"TP/SL POLICY: TP={args.tp_mult}x, SL={args.sl_mult}x")
+        print("-" * 40)
+        print(f"Exit breakdown: TP={s.get('tp_sl_tp_exits', 0)}, SL={s.get('tp_sl_sl_exits', 0)}, Horizon={s.get('tp_sl_horizon_exits', 0)}")
+        print(f"Win rate: {pct(s.get('tp_sl_win_rate', 0)):.1f}%")
+        print(f"Avg win: +{s.get('tp_sl_avg_win_pct', 0):.2f}%  |  Avg loss: {s.get('tp_sl_avg_loss_pct', 0):.2f}%")
+        print(f"Profit factor: {s.get('tp_sl_profit_factor', 0):.2f}")
+        print(f"Expectancy per trade: {s.get('tp_sl_expectancy_pct', 0):.2f}%")
+        print(f"Total return (equal sizing): {s.get('tp_sl_total_return_pct', 0):.1f}%")
+        print(f"Median trade return: {s.get('tp_sl_median_return_pct', 0):.2f}%")
+        print("-" * 40)
+        
         print(f"\nResults: {out_csv}")
 
 
