@@ -5,19 +5,13 @@ Combined fast backtest workflow:
 1. Load alerts from DuckDB
 2. Partition the input slice by token_address (if not already partitioned)
 3. Run vectorized backtest with predicate pushdown
-
-This combines token_slicer.py and alert_baseline_backtest_fast.py into one workflow.
+4. (Optional) Store run + outcomes into DuckDB bt.* schema
 
 Usage:
-  # Basic usage - will auto-partition if needed
   python3 run_fast_backtest.py --from 2025-12-01 --to 2025-12-24 --slice slices/slice_abc.parquet
 
-  # Skip partitioning if already done
-  python3 run_fast_backtest.py --from 2025-12-01 --to 2025-12-24 --slice slices/slice_abc_part/ --no-partition
-
-  # Custom output
   python3 run_fast_backtest.py --from 2025-12-01 --to 2025-12-24 --slice slices/slice_abc.parquet \
-    --out results/my_backtest.csv --partition-dir slices/my_partitioned/
+    --store-duckdb --run-name "dec_fast_baseline"
 """
 
 from __future__ import annotations
@@ -62,6 +56,10 @@ def _sql_escape(s: str) -> str:
     return s.replace("'", "''")
 
 
+def _dt_utc_str(ts: datetime) -> str:
+    return ts.astimezone(UTC).strftime("%Y-%m-%d %H:%M:%S")
+
+
 # =============================================================================
 # Alert Loading
 # =============================================================================
@@ -102,9 +100,13 @@ def load_alerts(duckdb_path: str, chain: str, date_from: datetime, date_to: date
     if has_caller_links:
         cols = [r[1].lower() for r in conn.execute("PRAGMA table_info('caller_links_d')").fetchall()]
         has_chain = "chain" in cols
-        caller_expr = "COALESCE(trigger_from_name, caller_name, '')::TEXT AS caller" if (
-            "trigger_from_name" in cols or "caller_name" in cols
-        ) else "''::TEXT AS caller"
+        # Prefer caller_name if present (your backfill v4 populated this)
+        if "caller_name" in cols:
+            caller_expr = "COALESCE(caller_name, trigger_from_name, caller_name, '')::TEXT AS caller"
+        else:
+            caller_expr = "COALESCE(trigger_from_name, caller_name, '')::TEXT AS caller" if (
+                "trigger_from_name" in cols or "caller_name" in cols
+            ) else "''::TEXT AS caller"
 
         sql = f"""
         SELECT DISTINCT
@@ -123,7 +125,7 @@ def load_alerts(duckdb_path: str, chain: str, date_from: datetime, date_to: date
 
         for mint, ts_ms, caller in conn.execute(sql, params).fetchall():
             if mint:
-                alerts.append(Alert(mint=mint, ts_ms=int(ts_ms), caller=caller or ""))
+                alerts.append(Alert(mint=mint, ts_ms=int(ts_ms), caller=(caller or "").strip()))
 
     if (not alerts) and has_user_calls:
         cols = [r[1].lower() for r in conn.execute("PRAGMA table_info('user_calls_d')").fetchall()]
@@ -153,9 +155,9 @@ def load_alerts(duckdb_path: str, chain: str, date_from: datetime, date_to: date
 
         for mint, ts_ms, caller in conn.execute(sql, params).fetchall():
             if mint:
-                alerts.append(Alert(mint=mint, ts_ms=int(ts_ms), caller=caller or ""))
+                alerts.append(Alert(mint=mint, ts_ms=int(ts_ms), caller=(caller or "").strip()))
 
-    # Fallback: try core.alert_mints_f + core.alerts_d (new schema)
+    # Fallback: new schema
     if not alerts:
         try:
             sql = """
@@ -172,7 +174,7 @@ def load_alerts(duckdb_path: str, chain: str, date_from: datetime, date_to: date
             rows = conn.execute(sql, [from_ms, to_ms_excl]).fetchall()
             for mint, ts_ms, caller in rows:
                 if mint:
-                    alerts.append(Alert(mint=mint, ts_ms=int(ts_ms), caller=caller or ""))
+                    alerts.append(Alert(mint=mint, ts_ms=int(ts_ms), caller=(caller or "").strip()))
         except Exception:
             pass
 
@@ -192,7 +194,6 @@ def partition_slice(
     compression: str = "zstd",
     verbose: bool = False,
 ) -> None:
-    """Partition a Parquet slice by token_address using Hive-style partitioning."""
     out_dir.mkdir(parents=True, exist_ok=True)
 
     con = duckdb.connect(":memory:")
@@ -217,7 +218,7 @@ TO '{_sql_escape(out_dir.as_posix())}'
 
     if verbose:
         print(f"[partition] {in_path} -> {out_dir}", file=sys.stderr)
-    
+
     con.execute(sql)
     con.close()
 
@@ -265,67 +266,288 @@ def summarize(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
     dd = take("dd_overall")
     ret_end = take("ret_end")
     peak_pnl = take("peak_pnl_pct")
-    t_ath = [float(r["time_to_ath_s"]) for r in ok if r.get("time_to_ath_s") is not None]
     t2x = [float(r["time_to_2x_s"]) for r in ok if r.get("time_to_2x_s") is not None]
-    t3x = [float(r["time_to_3x_s"]) for r in ok if r.get("time_to_3x_s") is not None]
+    t4x = [float(r["time_to_4x_s"]) for r in ok if r.get("time_to_4x_s") is not None]
     dd_after_2x = take("dd_after_2x")
     dd_after_3x = take("dd_after_3x")
 
-    def fmt_pct_hit_2x() -> float:
+    def fmt_pct_hit(field: str) -> float:
         if not ok:
             return 0.0
-        hit = sum(1 for r in ok if r.get("time_to_2x_s") is not None)
+        hit = sum(1 for r in ok if r.get(field) is not None)
         return hit / len(ok)
 
     tp_sl_returns = take("tp_sl_ret")
-    tp_exits = [r for r in ok if r.get("tp_sl_exit_reason") == "tp"]
-    sl_exits = [r for r in ok if r.get("tp_sl_exit_reason") == "sl"]
-    horizon_exits = [r for r in ok if r.get("tp_sl_exit_reason") == "horizon"]
-
-    total_trades = len(ok)
     wins = [r for r in ok if r.get("tp_sl_ret", 0) > 0]
     losses = [r for r in ok if r.get("tp_sl_ret", 0) < 0]
 
     total_return_pct = sum(tp_sl_returns) * 100 if tp_sl_returns else 0.0
     avg_return_pct = (sum(tp_sl_returns) / len(tp_sl_returns) * 100) if tp_sl_returns else 0.0
 
-    win_rate = len(wins) / total_trades if total_trades > 0 else 0.0
+    win_rate = len(wins) / len(ok) if ok else 0.0
     avg_win = (sum(r.get("tp_sl_ret", 0) for r in wins) / len(wins) * 100) if wins else 0.0
     avg_loss = (sum(r.get("tp_sl_ret", 0) for r in losses) / len(losses) * 100) if losses else 0.0
 
     gross_profit = sum(r.get("tp_sl_ret", 0) for r in wins)
     gross_loss = abs(sum(r.get("tp_sl_ret", 0) for r in losses))
-    profit_factor = gross_profit / gross_loss if gross_loss > 0 else float("inf") if gross_profit > 0 else 0.0
+    profit_factor = gross_profit / gross_loss if gross_loss > 0 else (float("inf") if gross_profit > 0 else 0.0)
 
-    expectancy_pct = (win_rate * avg_win) + ((1 - win_rate) * avg_loss)
+    expectancy_pct = avg_return_pct
 
     return {
         "alerts_total": len(rows),
         "alerts_ok": len(ok),
         "alerts_missing": len(missing),
         "median_ath_mult": fmt_med(ath),
-        "median_time_to_ath_s": fmt_med(t_ath),
         "median_time_to_2x_s": fmt_med(t2x),
-        "median_time_to_3x_s": fmt_med(t3x),
+        "median_time_to_4x_s": fmt_med(t4x),
         "median_dd_initial": fmt_med(dd_initial),
         "median_dd_overall": fmt_med(dd),
         "median_dd_after_2x": fmt_med(dd_after_2x),
         "median_dd_after_3x": fmt_med(dd_after_3x),
         "median_peak_pnl_pct": fmt_med(peak_pnl),
         "median_ret_end": fmt_med(ret_end),
-        "pct_hit_2x": fmt_pct_hit_2x(),
+        "pct_hit_2x": fmt_pct_hit("time_to_2x_s"),
+        "pct_hit_4x": fmt_pct_hit("time_to_4x_s"),
         "tp_sl_total_return_pct": total_return_pct,
         "tp_sl_avg_return_pct": avg_return_pct,
-        "tp_sl_median_return_pct": fmt_med(tp_sl_returns) * 100 if fmt_med(tp_sl_returns) else None,
         "tp_sl_win_rate": win_rate,
         "tp_sl_avg_win_pct": avg_win,
         "tp_sl_avg_loss_pct": avg_loss,
         "tp_sl_profit_factor": profit_factor,
         "tp_sl_expectancy_pct": expectancy_pct,
-        "tp_sl_tp_exits": len(tp_exits),
-        "tp_sl_sl_exits": len(sl_exits),
-        "tp_sl_horizon_exits": len(horizon_exits),
     }
+
+
+# =============================================================================
+# DuckDB Storage (bt.* schema)
+# =============================================================================
+
+def store_run_to_duckdb_fast(
+    duckdb_path: str,
+    run_id: str,
+    run_name: str,
+    config: Dict[str, Any],
+    rows_out: List[Dict[str, Any]],
+    summary: Dict[str, Any],
+) -> None:
+    """
+    Minimal bt.* writer for FAST backtest outputs.
+
+    Writes:
+      - bt.runs_d (1 row)
+      - bt.alert_scenarios_d (1 per row, including missing)
+      - bt.alert_outcomes_f (only where status='ok')
+      - bt.metrics_f (summary metrics)
+    """
+    con = duckdb.connect(duckdb_path)
+    try:
+        con.execute("CREATE SCHEMA IF NOT EXISTS bt")
+
+        con.execute("""
+            CREATE TABLE IF NOT EXISTS bt.runs_d (
+                run_id UUID PRIMARY KEY,
+                created_at TIMESTAMP,
+                run_name VARCHAR,
+                strategy_name VARCHAR,
+                strategy_version VARCHAR,
+                candle_interval_s INTEGER,
+                window_from_ts_ms BIGINT,
+                window_to_ts_ms BIGINT,
+                entry_rule VARCHAR,
+                exit_rule VARCHAR,
+                config_json JSON,
+                notes VARCHAR
+            )
+        """)
+
+        created_at = datetime.now(UTC)
+        date_from = config.get("date_from")
+        date_to = config.get("date_to")
+        window_from_ms = int(parse_yyyy_mm_dd(date_from).timestamp() * 1000) if date_from else None
+        window_to_ms = int(parse_yyyy_mm_dd(date_to).timestamp() * 1000) if date_to else None
+
+        con.execute("""
+            INSERT INTO bt.runs_d (
+                run_id, created_at, run_name, strategy_name, strategy_version,
+                candle_interval_s, window_from_ts_ms, window_to_ts_ms,
+                entry_rule, exit_rule, config_json, notes
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, [
+            run_id,
+            created_at,
+            run_name,
+            "baseline_fast",
+            "1.0",
+            int(config.get("interval_seconds", 60)),
+            window_from_ms,
+            window_to_ms,
+            f"tp={config.get('tp_mult', 2.0)}x",
+            f"sl={config.get('sl_mult', 0.5)}x",
+            json.dumps(config),
+            f"FAST baseline backtest: {date_from} to {date_to}",
+        ])
+
+        con.execute("""
+            CREATE TABLE IF NOT EXISTS bt.alert_scenarios_d (
+                scenario_id UUID PRIMARY KEY,
+                created_at TIMESTAMP,
+                run_id UUID,
+                alert_id BIGINT,
+                mint VARCHAR,
+                alert_ts_ms BIGINT,
+                entry_ts_ms BIGINT,
+                end_ts_ms BIGINT,
+                interval_seconds INTEGER,
+                eval_window_s INTEGER,
+                caller_name VARCHAR,
+                scenario_json JSON
+            )
+        """)
+
+        con.execute("""
+            CREATE TABLE IF NOT EXISTS bt.alert_outcomes_f (
+                scenario_id UUID PRIMARY KEY,
+                computed_at TIMESTAMP,
+                entry_price_usd DOUBLE,
+                entry_ts_ms BIGINT,
+                ath_multiple DOUBLE,
+                time_to_2x_s INTEGER,
+                time_to_3x_s INTEGER,
+                time_to_4x_s INTEGER,
+                max_drawdown_pct DOUBLE,
+                hit_2x BOOLEAN,
+                candles_seen INTEGER,
+                details_json JSON
+            )
+        """)
+
+        horizon_hours = int(config.get("horizon_hours", 48))
+        eval_window_s = horizon_hours * 3600
+
+        # scenarios + outcomes
+        for r in rows_out:
+            scenario_id = str(uuid.uuid4())
+
+            # reconstruct ms from strings
+            alert_ts_utc = r.get("alert_ts_utc") or ""
+            entry_ts_utc = r.get("entry_ts_utc") or ""
+
+            def parse_ts_ms(s: str) -> int:
+                if not s:
+                    return 0
+                dt = datetime.strptime(s, "%Y-%m-%d %H:%M:%S").replace(tzinfo=UTC)
+                return int(dt.timestamp() * 1000)
+
+            alert_ts_ms = parse_ts_ms(alert_ts_utc)
+            entry_ts_ms = parse_ts_ms(entry_ts_utc)
+            end_ts_ms = entry_ts_ms + eval_window_s * 1000 if entry_ts_ms else 0
+
+            alert_id = int(r.get("alert_id") or 0)
+
+            con.execute("""
+                INSERT INTO bt.alert_scenarios_d (
+                    scenario_id, created_at, run_id, alert_id, mint, alert_ts_ms, entry_ts_ms, end_ts_ms,
+                    interval_seconds, eval_window_s, caller_name, scenario_json
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, [
+                scenario_id,
+                created_at,
+                run_id,
+                alert_id,
+                r.get("mint") or "",
+                alert_ts_ms,
+                entry_ts_ms,
+                end_ts_ms,
+                int(r.get("interval_seconds") or config.get("interval_seconds", 60)),
+                eval_window_s,
+                (r.get("caller") or "").strip(),
+                json.dumps(r),
+            ])
+
+            if r.get("status") != "ok":
+                continue
+
+            dd_overall = r.get("dd_overall")
+            max_dd_pct = (float(dd_overall) * 100.0) if dd_overall is not None else None
+
+            details = {
+                "peak_pnl_pct": r.get("peak_pnl_pct"),
+                "ret_end": r.get("ret_end"),
+                "dd_initial": r.get("dd_initial"),
+                "dd_pre2x": r.get("dd_pre2x"),
+                "dd_after_2x": r.get("dd_after_2x"),
+                "dd_after_3x": r.get("dd_after_3x"),
+                "dd_after_4x": r.get("dd_after_4x"),
+                "dd_after_ath": r.get("dd_after_ath"),
+                "tp_sl_exit_reason": r.get("tp_sl_exit_reason"),
+                "tp_sl_ret": r.get("tp_sl_ret"),
+                "time_to_3x_s": r.get("time_to_3x_s"),
+                "time_to_4x_s": r.get("time_to_4x_s"),
+            }
+
+            con.execute("""
+                INSERT INTO bt.alert_outcomes_f (
+                    scenario_id, computed_at, entry_price_usd, entry_ts_ms, ath_multiple,
+                    time_to_2x_s, time_to_3x_s, time_to_4x_s,
+                    max_drawdown_pct, hit_2x, candles_seen, details_json
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, [
+                scenario_id,
+                created_at,
+                float(r.get("entry_price") or 0.0),
+                entry_ts_ms,
+                float(r.get("ath_mult") or 0.0),
+                int(r["time_to_2x_s"]) if r.get("time_to_2x_s") is not None else None,
+                int(r["time_to_3x_s"]) if r.get("time_to_3x_s") is not None else None,
+                int(r["time_to_4x_s"]) if r.get("time_to_4x_s") is not None else None,
+                max_dd_pct,
+                (r.get("time_to_2x_s") is not None),
+                int(r.get("candles") or 0),
+                json.dumps(details),
+            ])
+
+        con.execute("""
+            CREATE TABLE IF NOT EXISTS bt.metrics_f (
+                run_id UUID,
+                metric_name VARCHAR,
+                metric_value DOUBLE,
+                computed_at TIMESTAMP
+            )
+        """)
+
+        metric_pairs = [
+            ("alerts_total", summary.get("alerts_total")),
+            ("alerts_ok", summary.get("alerts_ok")),
+            ("alerts_missing", summary.get("alerts_missing")),
+            ("median_ath_mult", summary.get("median_ath_mult")),
+            ("median_time_to_2x_s", summary.get("median_time_to_2x_s")),
+            ("median_time_to_4x_s", summary.get("median_time_to_4x_s")),
+            ("median_dd_initial", summary.get("median_dd_initial")),
+            ("median_dd_overall", summary.get("median_dd_overall")),
+            ("median_peak_pnl_pct", summary.get("median_peak_pnl_pct")),
+            ("pct_hit_2x", summary.get("pct_hit_2x")),
+            ("pct_hit_4x", summary.get("pct_hit_4x")),
+            ("tp_sl_total_return_pct", summary.get("tp_sl_total_return_pct")),
+            ("tp_sl_avg_return_pct", summary.get("tp_sl_avg_return_pct")),
+            ("tp_sl_win_rate", summary.get("tp_sl_win_rate")),
+            ("tp_sl_profit_factor", summary.get("tp_sl_profit_factor")),
+            ("tp_sl_expectancy_pct", summary.get("tp_sl_expectancy_pct")),
+        ]
+        for name, val in metric_pairs:
+            if val is None:
+                continue
+            fv = float(val)
+            if isinstance(fv, float) and (math.isnan(fv) or math.isinf(fv)):
+                continue
+            con.execute(
+                "INSERT INTO bt.metrics_f(run_id, metric_name, metric_value, computed_at) VALUES (?, ?, ?, ?)",
+                [run_id, name, fv, created_at],
+            )
+
+        con.commit()
+    finally:
+        con.close()
 
 
 # =============================================================================
@@ -346,10 +568,8 @@ def run_vectorized_backtest(
     threads: int,
     verbose: bool,
 ) -> List[Dict[str, Any]]:
-    """Run the vectorized backtest query."""
     horizon_s = horizon_hours * 3600
 
-    # Build alerts table
     alert_rows: List[Tuple[int, str, str, int, int, int]] = []
     for i, a in enumerate(alerts, start=1):
         entry_ts_ms = ceil_ms_to_interval_ts_ms(a.ts_ms, interval_seconds)
@@ -371,7 +591,6 @@ def run_vectorized_backtest(
         """)
         con.executemany("INSERT INTO alerts_tmp VALUES (?, ?, ?, ?, ?, ?)", alert_rows)
 
-        # Create view over Parquet
         if is_partitioned:
             parquet_glob = f"{slice_path.as_posix()}/**/*.parquet"
             con.execute(f"""
@@ -529,9 +748,7 @@ ORDER BY a.alert_id
 # =============================================================================
 
 def main() -> None:
-    ap = argparse.ArgumentParser(
-        description="Combined fast backtest: partition slice + run vectorized backtest"
-    )
+    ap = argparse.ArgumentParser(description="FAST backtest: partition slice + vectorized DuckDB query + optional bt.* storage")
     ap.add_argument("--duckdb", default=os.getenv("DUCKDB_PATH", "data/alerts.duckdb"))
     ap.add_argument("--chain", default="solana")
     ap.add_argument("--from", dest="date_from", required=True)
@@ -540,10 +757,8 @@ def main() -> None:
     ap.add_argument("--horizon-hours", type=int, default=48)
 
     ap.add_argument("--slice", required=True, help="Input Parquet slice (file or partitioned directory)")
-    ap.add_argument("--partition-dir", default=None,
-                    help="Output directory for partitioned slice (auto-generated if not specified)")
-    ap.add_argument("--no-partition", action="store_true",
-                    help="Skip partitioning (use if slice is already partitioned or you want single-file mode)")
+    ap.add_argument("--partition-dir", default=None)
+    ap.add_argument("--no-partition", action="store_true")
     ap.add_argument("--out", default="results/backtest_fast.csv")
 
     ap.add_argument("--tp-mult", type=float, default=2.0)
@@ -555,6 +770,10 @@ def main() -> None:
     ap.add_argument("--threads", type=int, default=8)
     ap.add_argument("--output-format", choices=["console", "json"], default="console")
     ap.add_argument("--verbose", action="store_true")
+
+    ap.add_argument("--store-duckdb", action="store_true", help="Write bt.* tables in DuckDB")
+    ap.add_argument("--run-name", default=None, help="Optional run name (bt.runs_d)")
+
     args = ap.parse_args()
 
     date_from = parse_yyyy_mm_dd(args.date_from)
@@ -565,36 +784,25 @@ def main() -> None:
     if not slice_path.exists():
         raise SystemExit(f"Slice not found: {slice_path}")
 
-    # Step 1: Load alerts
     if verbose:
         print(f"[1/3] Loading alerts from {args.duckdb}...", file=sys.stderr)
 
     alerts = load_alerts(args.duckdb, args.chain, date_from, date_to)
     if not alerts:
         raise SystemExit("No alerts found for that date range.")
-
     if verbose:
         print(f"      Found {len(alerts)} alerts", file=sys.stderr)
 
-    # Step 2: Partition slice if needed
     is_partitioned = slice_path.is_dir()
 
     if not args.no_partition and not is_partitioned:
         if verbose:
             print(f"[2/3] Partitioning slice by token_address...", file=sys.stderr)
-
-        if args.partition_dir:
-            partition_path = Path(args.partition_dir)
-        else:
-            partition_path = slice_path.parent / f"{slice_path.stem}_part"
-
-        start_time = time.time()
+        partition_path = Path(args.partition_dir) if args.partition_dir else (slice_path.parent / f"{slice_path.stem}_part")
+        t0 = time.time()
         partition_slice(slice_path, partition_path, args.threads, verbose=verbose)
-        elapsed = time.time() - start_time
-
         if verbose:
-            print(f"      Partitioned in {elapsed:.1f}s -> {partition_path}", file=sys.stderr)
-
+            print(f"      Partitioned in {time.time() - t0:.1f}s -> {partition_path}", file=sys.stderr)
         slice_path = partition_path
         is_partitioned = True
     else:
@@ -602,11 +810,10 @@ def main() -> None:
             mode = "partitioned directory" if is_partitioned else "single file"
             print(f"[2/3] Using existing slice ({mode}): {slice_path}", file=sys.stderr)
 
-    # Step 3: Run vectorized backtest
     if verbose:
         print(f"[3/3] Running vectorized backtest...", file=sys.stderr)
 
-    start_time = time.time()
+    t0 = time.time()
     out_rows = run_vectorized_backtest(
         alerts=alerts,
         slice_path=slice_path,
@@ -621,14 +828,11 @@ def main() -> None:
         threads=args.threads,
         verbose=verbose,
     )
-    elapsed = time.time() - start_time
-
     if verbose:
-        print(f"      Query completed in {elapsed:.1f}s", file=sys.stderr)
+        print(f"      Query completed in {time.time() - t0:.1f}s", file=sys.stderr)
 
-    # Write CSV
     fieldnames = [
-        "mint", "caller", "alert_ts_utc", "entry_ts_utc", "interval_seconds", "horizon_hours",
+        "alert_id", "mint", "caller", "alert_ts_utc", "entry_ts_utc", "interval_seconds", "horizon_hours",
         "status", "candles", "entry_price", "ath_mult", "time_to_ath_s", "time_to_2x_s",
         "time_to_3x_s", "time_to_4x_s", "dd_initial", "dd_overall", "dd_pre2x", "dd_after_2x",
         "dd_after_3x", "dd_after_4x", "dd_after_ath", "peak_pnl_pct", "ret_end",
@@ -636,42 +840,43 @@ def main() -> None:
     ]
     write_csv(args.out, fieldnames, out_rows)
 
-    # Compute summary
     s = summarize(out_rows)
     run_id = str(uuid.uuid4())
 
+    stored = False
+    if args.store_duckdb:
+        run_name = args.run_name or f"fast_baseline_{date_from.strftime('%Y%m%d')}_{date_to.strftime('%Y%m%d')}_{args.interval_seconds}s"
+        cfg = {
+            "date_from": date_from.strftime("%Y-%m-%d"),
+            "date_to": date_to.strftime("%Y-%m-%d"),
+            "interval_seconds": args.interval_seconds,
+            "horizon_hours": args.horizon_hours,
+            "chain": args.chain,
+            "tp_mult": args.tp_mult,
+            "sl_mult": args.sl_mult,
+            "fee_bps": args.fee_bps,
+            "slippage_bps": args.slippage_bps,
+            "slice_path": str(slice_path),
+            "partitioned": bool(is_partitioned),
+            "csv_path": args.out,
+        }
+        store_run_to_duckdb_fast(args.duckdb, run_id, run_name, cfg, out_rows, s)
+        stored = True
+        if verbose:
+            print(f"[DuckDB] stored bt.* run_id={run_id}  run_name={run_name}", file=sys.stderr)
+
     if args.output_format == "json":
-        result = {
+        print(json.dumps({
             "success": True,
             "run_id": run_id,
+            "stored_to_duckdb": stored,
             "csv_path": args.out,
             "slice_path": str(slice_path),
-            "partitioned": is_partitioned,
-            "summary": {
-                "alerts_total": s["alerts_total"],
-                "alerts_ok": s["alerts_ok"],
-                "alerts_missing": s["alerts_missing"],
-                "median_ath_mult": s["median_ath_mult"],
-                "median_time_to_2x_hours": s["median_time_to_2x_s"] / 3600.0 if s["median_time_to_2x_s"] else None,
-                "pct_hit_2x": pct(s["pct_hit_2x"]),
-                "median_peak_pnl_pct": s["median_peak_pnl_pct"],
-                "tp_sl_win_rate": s["tp_sl_win_rate"],
-                "tp_sl_profit_factor": s["tp_sl_profit_factor"],
-                "tp_sl_total_return_pct": s["tp_sl_total_return_pct"],
-            },
-            "config": {
-                "date_from": date_from.strftime("%Y-%m-%d"),
-                "date_to": date_to.strftime("%Y-%m-%d"),
-                "interval_seconds": args.interval_seconds,
-                "horizon_hours": args.horizon_hours,
-                "tp_mult": args.tp_mult,
-                "sl_mult": args.sl_mult,
-            },
-        }
-        print(json.dumps(result))
+            "partitioned": bool(is_partitioned),
+            "summary": s,
+        }))
         return
 
-    # Console output
     ok = [x for x in out_rows if x.get("status") == "ok"]
     print()
     print("=" * 60)
@@ -680,28 +885,17 @@ def main() -> None:
     print(f"Date range: {date_from.strftime('%Y-%m-%d')} to {date_to.strftime('%Y-%m-%d')}")
     print(f"Slice: {slice_path} (partitioned: {is_partitioned})")
     print(f"Alerts: {s['alerts_total']} total, {s['alerts_ok']} ok, {s['alerts_missing']} missing")
+    print(f"Run ID: {run_id} (stored: {stored})")
     print()
-
     if s["median_ath_mult"] is not None:
         print(f"Median ATH: {s['median_ath_mult']:.3f}x")
     if s["median_time_to_2x_s"] is not None:
         print(f"Median time-to-2x: {s['median_time_to_2x_s']/3600.0:.2f} hours")
-    if s["median_peak_pnl_pct"] is not None:
-        print(f"Median peak PNL: {s['median_peak_pnl_pct']:.2f}%")
     print(f"% hit 2x: {pct(s['pct_hit_2x']):.2f}%")
-    print()
-
-    print("-" * 40)
-    print(f"TP/SL POLICY: TP={args.tp_mult}x, SL={args.sl_mult}x")
-    print("-" * 40)
-    print(f"Exit breakdown: TP={s['tp_sl_tp_exits']}, SL={s['tp_sl_sl_exits']}, Horizon={s['tp_sl_horizon_exits']}")
-    print(f"Win rate: {pct(s['tp_sl_win_rate']):.1f}%")
-    print(f"Profit factor: {s['tp_sl_profit_factor']:.2f}")
-    print(f"Total return (equal sizing): {s['tp_sl_total_return_pct']:.1f}%")
-    print("-" * 40)
-    print(f"\nResults: {args.out}")
+    print(f"% hit 4x: {pct(s['pct_hit_4x']):.2f}%")
+    print(f"Total return (equal sizing): {s.get('tp_sl_total_return_pct', 0):.1f}%")
+    print(f"Results: {args.out}")
 
 
 if __name__ == "__main__":
     main()
-
