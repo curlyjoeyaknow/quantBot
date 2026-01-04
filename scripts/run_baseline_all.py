@@ -1215,6 +1215,7 @@ def print_caller_leaderboard(callers: List[Dict[str, Any]], limit: int = 30) -> 
         ("median_t3x_m", "mins"),
         ("median_t_ath_m", "mins"),
         ("median_dd_initial_pct", "pct"),
+        ("median_dd_pre2x_pct", "pct"),
         ("median_dd_pre2x_or_horizon_pct", "pct"),
     ]
 
