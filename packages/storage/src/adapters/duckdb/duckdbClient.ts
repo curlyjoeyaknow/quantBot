@@ -7,29 +7,55 @@ export type DuckDbConnection = {
 };
 
 export async function openDuckDb(dbPath: string): Promise<DuckDbConnection> {
-  const duckdb = await import('duckdb');
+  const duckdbModule = await import('duckdb');
+  // Handle both ESM default export and CommonJS module.exports
+  const duckdb = duckdbModule.default || duckdbModule;
   fs.mkdirSync(path.dirname(dbPath), { recursive: true });
 
   const db = new duckdb.Database(dbPath);
   const conn = db.connect();
 
-  const run = (sql: string, params: any[] = []) =>
+  const run = (sql: string, params?: any[]) =>
     new Promise<void>((resolve, reject) => {
-      conn.run(sql, params, (err: any) => (err ? reject(err) : resolve()));
+      if (params && params.length > 0) {
+        // DuckDB Node.js requires prepared statements for parameterized queries
+        // Parameters must be passed as individual arguments, not as an array
+        const stmt = conn.prepare(sql);
+        stmt.run(...params, (err: any) => {
+          stmt.finalize(() => {
+            if (err) reject(err);
+            else resolve();
+          });
+        });
+      } else {
+        // No params - run directly
+        conn.run(sql, (err: any) => (err ? reject(err) : resolve()));
+      }
     });
 
-  const all = <T = any>(sql: string, params: any[] = []) =>
+  const all = <T = any>(sql: string, params?: any[]) =>
     new Promise<T[]>((resolve, reject) => {
       // DuckDB's all method callback signature: (err, rows) where rows is TableData
       // We cast to T[] since we know the structure matches
       // Type assertion needed because DuckDB's callback types don't match our generic Promise interface
-      (conn.all as any)(sql, params, (err: any, rows: any) => {
-        if (err) {
-          reject(err);
-        } else {
-          resolve(rows as T[]);
-        }
-      });
+      if (params && params.length > 0) {
+        (conn.all as any)(sql, params, (err: any, rows: any) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve(rows as T[]);
+          }
+        });
+      } else {
+        // Don't pass params if empty - DuckDB doesn't like empty param arrays
+        (conn.all as any)(sql, (err: any, rows: any) => {
+          if (err) {
+            reject(err);
+          } else {
+            resolve(rows as T[]);
+          }
+        });
+      }
     });
 
   return { run, all };
