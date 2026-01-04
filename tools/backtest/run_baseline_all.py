@@ -154,9 +154,14 @@ def load_alerts(duckdb_path: str, chain: str, date_from: datetime, date_to: date
         has_chain = "chain" in cols
 
         # Prefer caller_name over trigger_from_name
-        if "caller_name" in cols:
+        has_caller_name = "caller_name" in cols
+        has_trigger_from_name = "trigger_from_name" in cols
+        
+        if has_caller_name and has_trigger_from_name:
             caller_expr = "COALESCE(caller_name, trigger_from_name, '')::TEXT AS caller"
-        elif "trigger_from_name" in cols:
+        elif has_caller_name:
+            caller_expr = "COALESCE(caller_name, '')::TEXT AS caller"
+        elif has_trigger_from_name:
             caller_expr = "COALESCE(trigger_from_name, '')::TEXT AS caller"
         else:
             caller_expr = "''::TEXT AS caller"
@@ -187,9 +192,14 @@ def load_alerts(duckdb_path: str, chain: str, date_from: datetime, date_to: date
         if ts_col is None:
             raise SystemExit(f"No timestamp column found in user_calls_d: {cols}")
 
-        if "caller_name" in cols:
+        has_caller_name = "caller_name" in cols
+        has_trigger_from_name = "trigger_from_name" in cols
+        
+        if has_caller_name and has_trigger_from_name:
             caller_expr = "COALESCE(caller_name, trigger_from_name, '')::TEXT AS caller"
-        elif "trigger_from_name" in cols:
+        elif has_caller_name:
+            caller_expr = "COALESCE(caller_name, '')::TEXT AS caller"
+        elif has_trigger_from_name:
             caller_expr = "COALESCE(trigger_from_name, '')::TEXT AS caller"
         else:
             caller_expr = "''::TEXT AS caller"
