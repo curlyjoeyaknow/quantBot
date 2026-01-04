@@ -135,7 +135,11 @@ export const backtestBaselineSchema = z.object({
   chain: z.string().default('solana'),
   from: z.string().optional(), // YYYY-MM-DD, defaults to 30 days ago
   to: z.string().optional(), // YYYY-MM-DD, defaults to today
-  intervalSeconds: z.coerce.number().int().refine((v) => v === 60 || v === 300).default(60),
+  intervalSeconds: z.coerce
+    .number()
+    .int()
+    .refine((v) => v === 60 || v === 300)
+    .default(60),
   horizonHours: z.coerce.number().int().positive().default(48),
   threads: z.coerce.number().int().positive().default(16),
 
@@ -159,12 +163,7 @@ export const backtestBaselineSchema = z.object({
   chConnectTimeout: z.coerce.number().int().positive().optional(),
   chTimeoutS: z.coerce.number().int().positive().optional(),
 
-  // TP/SL policy
-  tpMult: z.coerce.number().positive().default(2.0),
-  slMult: z.coerce.number().positive().max(1).default(0.5),
-  intrabarOrder: z.enum(['sl_first', 'tp_first']).default('sl_first'),
-  feeBps: z.coerce.number().min(0).default(30),
-  slippageBps: z.coerce.number().min(0).default(50),
+  // (TP/SL policy removed - pure path metrics only)
 
   // TUI mode
   tui: z.boolean().optional().default(false),
