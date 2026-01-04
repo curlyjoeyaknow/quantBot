@@ -1016,6 +1016,7 @@ def ensure_baseline_schema(con: duckdb.DuckDBPyConnection) -> None:
             median_ath DOUBLE,
             p25_ath DOUBLE,
             p75_ath DOUBLE,
+            p95_ath DOUBLE,
             hit2x_pct DOUBLE,
             hit3x_pct DOUBLE,
             hit4x_pct DOUBLE,
@@ -1043,12 +1044,19 @@ def ensure_baseline_schema(con: duckdb.DuckDBPyConnection) -> None:
           caller,
           n,
           median_ath,
+          p75_ath,
+          p95_ath,
           hit2x_pct,
           hit3x_pct,
           hit4x_pct,
+          hit5x_pct,
           median_t2x_hrs,
           median_dd_initial_pct,
           median_dd_overall_pct,
+          median_dd_pre2x_pct,
+          median_dd_pre2x_or_horizon_pct,
+          median_dd_after_2x_pct,
+          median_dd_after_ath_pct,
           median_peak_pnl_pct,
           median_ret_end_pct
         FROM baseline.caller_stats_f
@@ -1066,6 +1074,50 @@ def ensure_baseline_schema(con: duckdb.DuckDBPyConnection) -> None:
           json_extract_string(summary_json, '$.median_peak_pnl_pct') AS median_peak_pnl_pct
         FROM baseline.runs_d
         ORDER BY created_at DESC;
+    """)
+
+    # Caller scoring view v2: rewards fast 2x with controlled pre-2x pain
+    con.execute("""
+        CREATE OR REPLACE VIEW baseline.caller_scored_v2 AS
+        WITH src AS (
+          SELECT
+            run_id, caller, n, median_ath, p75_ath, p95_ath,
+            hit2x_pct, hit3x_pct, hit4x_pct, hit5x_pct, median_t2x_hrs,
+            COALESCE(median_dd_pre2x_or_horizon_pct, median_dd_pre2x_pct, median_dd_overall_pct) AS risk_dd_pct,
+            median_dd_pre2x_pct, median_dd_pre2x_or_horizon_pct
+          FROM baseline.caller_stats_f
+        ),
+        feat AS (
+          SELECT *,
+            GREATEST(0.0, -COALESCE(risk_dd_pct, 0.0) / 100.0) AS risk_mag,
+            CASE WHEN median_t2x_hrs IS NULL THEN NULL ELSE median_t2x_hrs * 60.0 END AS median_t2x_min,
+            (GREATEST(COALESCE(median_ath, 1.0) - 1.0, 0.0) * (COALESCE(hit2x_pct, 0.0) / 100.0)) AS base_upside,
+            (0.15 * GREATEST(COALESCE(p75_ath, median_ath) - COALESCE(median_ath, 1.0), 0.0))
+            + (0.10 * GREATEST(COALESCE(p95_ath, p75_ath) - COALESCE(p75_ath, median_ath), 0.0)) AS tail_bonus,
+            CASE WHEN median_t2x_hrs IS NULL THEN 0.0 ELSE exp(-(median_t2x_hrs * 60.0) / 60.0) END AS fast2x_signal,
+            sqrt(n * 1.0 / (n + 50.0)) AS confidence
+          FROM src
+        ),
+        pen AS (
+          SELECT *,
+            CASE WHEN risk_mag <= 0.30 THEN 0.0 ELSE exp(15.0 * (risk_mag - 0.30)) - 1.0 END AS risk_penalty,
+            CASE WHEN COALESCE(hit2x_pct, 0.0) >= 50.0 AND risk_mag <= 0.30 THEN 0.60 ELSE 0.0 END AS discipline_bonus
+          FROM feat
+        ),
+        score AS (
+          SELECT *,
+            (1.0 + 0.80 * fast2x_signal) AS timing_mult,
+            confidence * (((base_upside + tail_bonus) * (1.0 + 0.80 * fast2x_signal)) + discipline_bonus - (1.00 * risk_penalty)) AS score_v2
+          FROM pen
+        )
+        SELECT
+          run_id, caller, n, median_ath, p75_ath, p95_ath,
+          hit2x_pct, hit3x_pct, hit4x_pct, hit5x_pct,
+          median_t2x_hrs, median_t2x_min,
+          median_dd_pre2x_pct, median_dd_pre2x_or_horizon_pct, risk_dd_pct, risk_mag,
+          base_upside, tail_bonus, fast2x_signal, discipline_bonus, risk_penalty, confidence,
+          score_v2
+        FROM score;
     """)
 
 
@@ -1163,6 +1215,7 @@ def store_baseline_to_duckdb(
                 c.get("median_ath"),
                 c.get("p25_ath"),
                 c.get("p75_ath"),
+                c.get("p95_ath"),
                 c.get("hit2x_pct"),
                 c.get("hit3x_pct"),
                 c.get("hit4x_pct"),
@@ -1182,7 +1235,7 @@ def store_baseline_to_duckdb(
             ))
 
         con.executemany("""
-            INSERT INTO baseline.caller_stats_f VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            INSERT INTO baseline.caller_stats_f VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, caller_rows)
 
         con.execute("COMMIT;")

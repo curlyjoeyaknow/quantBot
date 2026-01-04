@@ -725,11 +725,26 @@ def aggregate_by_caller(rows: List[Dict[str, Any]], min_trades: int = 5) -> List
         ath = take(rlist, "ath_mult")
         dd_initial = take(rlist, "dd_initial")
         dd_overall = take(rlist, "dd_overall")
+        dd_pre2x = take(rlist, "dd_pre2x")
         dd_after_2x = take(rlist, "dd_after_2x")
+        dd_after_3x = take(rlist, "dd_after_3x")
         dd_after_ath = take(rlist, "dd_after_ath")
         peak_pnl = take(rlist, "peak_pnl_pct")
         ret_end = take(rlist, "ret_end_pct")
         t2x = take(rlist, "time_to_2x_s")
+
+        # Compute dd_pre2x_or_horizon: for each alert, use dd_pre2x if 2x was hit,
+        # otherwise use dd_overall (the horizon DD). This ensures all alerts contribute.
+        dd_pre2x_or_horizon: List[float] = []
+        for r in rlist:
+            if r.get("dd_pre2x") is not None:
+                v = r.get("dd_pre2x")
+                if isinstance(v, (int, float)) and not math.isnan(v):
+                    dd_pre2x_or_horizon.append(float(v))
+            elif r.get("dd_overall") is not None:
+                v = r.get("dd_overall")
+                if isinstance(v, (int, float)) and not math.isnan(v):
+                    dd_pre2x_or_horizon.append(float(v))
 
         results.append({
             "caller": caller,
@@ -737,6 +752,7 @@ def aggregate_by_caller(rows: List[Dict[str, Any]], min_trades: int = 5) -> List
             "median_ath": med(ath),
             "p25_ath": percentile(ath, 0.25),
             "p75_ath": percentile(ath, 0.75),
+            "p95_ath": percentile(ath, 0.95),
             "hit2x_pct": pct_hit(rlist, "time_to_2x_s") * 100,
             "hit3x_pct": pct_hit(rlist, "time_to_3x_s") * 100,
             "hit4x_pct": pct_hit(rlist, "time_to_4x_s") * 100,
@@ -745,7 +761,10 @@ def aggregate_by_caller(rows: List[Dict[str, Any]], min_trades: int = 5) -> List
             "median_t2x_hrs": (med(t2x) / 3600.0) if med(t2x) is not None else None,
             "median_dd_initial_pct": (med(dd_initial) * 100.0) if med(dd_initial) is not None else None,
             "median_dd_overall_pct": (med(dd_overall) * 100.0) if med(dd_overall) is not None else None,
+            "median_dd_pre2x_pct": (med(dd_pre2x) * 100.0) if med(dd_pre2x) is not None else None,
+            "median_dd_pre2x_or_horizon_pct": (med(dd_pre2x_or_horizon) * 100.0) if med(dd_pre2x_or_horizon) is not None else None,
             "median_dd_after_2x_pct": (med(dd_after_2x) * 100.0) if med(dd_after_2x) is not None else None,
+            "median_dd_after_3x_pct": (med(dd_after_3x) * 100.0) if med(dd_after_3x) is not None else None,
             "median_dd_after_ath_pct": (med(dd_after_ath) * 100.0) if med(dd_after_ath) is not None else None,
             "worst_dd_pct": (min(dd_overall) * 100.0) if dd_overall else None,
             "median_peak_pnl_pct": med(peak_pnl),
@@ -871,6 +890,7 @@ def ensure_baseline_schema(con: duckdb.DuckDBPyConnection) -> None:
             median_ath DOUBLE,
             p25_ath DOUBLE,
             p75_ath DOUBLE,
+            p95_ath DOUBLE,
             hit2x_pct DOUBLE,
             hit3x_pct DOUBLE,
             hit4x_pct DOUBLE,
@@ -879,7 +899,10 @@ def ensure_baseline_schema(con: duckdb.DuckDBPyConnection) -> None:
             median_t2x_hrs DOUBLE,
             median_dd_initial_pct DOUBLE,
             median_dd_overall_pct DOUBLE,
+            median_dd_pre2x_pct DOUBLE,
+            median_dd_pre2x_or_horizon_pct DOUBLE,
             median_dd_after_2x_pct DOUBLE,
+            median_dd_after_3x_pct DOUBLE,
             median_dd_after_ath_pct DOUBLE,
             worst_dd_pct DOUBLE,
             median_peak_pnl_pct DOUBLE,
@@ -895,12 +918,19 @@ def ensure_baseline_schema(con: duckdb.DuckDBPyConnection) -> None:
           caller,
           n,
           median_ath,
+          p75_ath,
+          p95_ath,
           hit2x_pct,
           hit3x_pct,
           hit4x_pct,
+          hit5x_pct,
           median_t2x_hrs,
           median_dd_initial_pct,
           median_dd_overall_pct,
+          median_dd_pre2x_pct,
+          median_dd_pre2x_or_horizon_pct,
+          median_dd_after_2x_pct,
+          median_dd_after_ath_pct,
           median_peak_pnl_pct,
           median_ret_end_pct
         FROM baseline.caller_stats_f
@@ -919,6 +949,51 @@ def ensure_baseline_schema(con: duckdb.DuckDBPyConnection) -> None:
         FROM baseline.runs_d
         ORDER BY created_at DESC;
     """)
+
+    # Caller scoring view v2: rewards fast 2x with controlled pre-2x pain
+    con.execute("""
+        CREATE OR REPLACE VIEW baseline.caller_scored_v2 AS
+        WITH src AS (
+          SELECT
+            run_id, caller, n, median_ath, p75_ath, p95_ath,
+            hit2x_pct, hit3x_pct, hit4x_pct, hit5x_pct, median_t2x_hrs,
+            COALESCE(median_dd_pre2x_or_horizon_pct, median_dd_pre2x_pct, median_dd_overall_pct) AS risk_dd_pct,
+            median_dd_pre2x_pct, median_dd_pre2x_or_horizon_pct
+          FROM baseline.caller_stats_f
+        ),
+        feat AS (
+          SELECT *,
+            GREATEST(0.0, -COALESCE(risk_dd_pct, 0.0) / 100.0) AS risk_mag,
+            CASE WHEN median_t2x_hrs IS NULL THEN NULL ELSE median_t2x_hrs * 60.0 END AS median_t2x_min,
+            (GREATEST(COALESCE(median_ath, 1.0) - 1.0, 0.0) * (COALESCE(hit2x_pct, 0.0) / 100.0)) AS base_upside,
+            (0.15 * GREATEST(COALESCE(p75_ath, median_ath) - COALESCE(median_ath, 1.0), 0.0))
+            + (0.10 * GREATEST(COALESCE(p95_ath, p75_ath) - COALESCE(p75_ath, median_ath), 0.0)) AS tail_bonus,
+            CASE WHEN median_t2x_hrs IS NULL THEN 0.0 ELSE exp(-(median_t2x_hrs * 60.0) / 60.0) END AS fast2x_signal,
+            sqrt(n * 1.0 / (n + 50.0)) AS confidence
+          FROM src
+        ),
+        pen AS (
+          SELECT *,
+            CASE WHEN risk_mag <= 0.30 THEN 0.0 ELSE exp(15.0 * (risk_mag - 0.30)) - 1.0 END AS risk_penalty,
+            CASE WHEN COALESCE(hit2x_pct, 0.0) >= 50.0 AND risk_mag <= 0.30 THEN 0.60 ELSE 0.0 END AS discipline_bonus
+          FROM feat
+        ),
+        score AS (
+          SELECT *,
+            (1.0 + 0.80 * fast2x_signal) AS timing_mult,
+            confidence * (((base_upside + tail_bonus) * (1.0 + 0.80 * fast2x_signal)) + discipline_bonus - (1.00 * risk_penalty)) AS score_v2
+          FROM pen
+        )
+        SELECT
+          run_id, caller, n, median_ath, p75_ath, p95_ath,
+          hit2x_pct, hit3x_pct, hit4x_pct, hit5x_pct,
+          median_t2x_hrs, median_t2x_min,
+          median_dd_pre2x_pct, median_dd_pre2x_or_horizon_pct, risk_dd_pct, risk_mag,
+          base_upside, tail_bonus, fast2x_signal, discipline_bonus, risk_penalty, confidence,
+          score_v2
+        FROM score;
+    """)
+
 
 def store_baseline_to_duckdb(
     duckdb_path: str,
@@ -1020,6 +1095,7 @@ def store_baseline_to_duckdb(
                 c.get("median_ath"),
                 c.get("p25_ath"),
                 c.get("p75_ath"),
+                c.get("p95_ath"),
                 c.get("hit2x_pct"),
                 c.get("hit3x_pct"),
                 c.get("hit4x_pct"),
@@ -1028,7 +1104,10 @@ def store_baseline_to_duckdb(
                 c.get("median_t2x_hrs"),
                 c.get("median_dd_initial_pct"),
                 c.get("median_dd_overall_pct"),
+                c.get("median_dd_pre2x_pct"),
+                c.get("median_dd_pre2x_or_horizon_pct"),
                 c.get("median_dd_after_2x_pct"),
+                c.get("median_dd_after_3x_pct"),
                 c.get("median_dd_after_ath_pct"),
                 c.get("worst_dd_pct"),
                 c.get("median_peak_pnl_pct"),
@@ -1036,7 +1115,7 @@ def store_baseline_to_duckdb(
             ))
 
         con.executemany("""
-            INSERT INTO baseline.caller_stats_f VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            INSERT INTO baseline.caller_stats_f VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, caller_rows)
 
         con.execute("COMMIT;")
