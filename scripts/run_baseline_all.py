@@ -446,16 +446,25 @@ ath_cte AS (
 mins AS (
   SELECT
     -- Lowest low BEFORE first time price exceeds entry (recovery_ts)
-    min(CASE WHEN a.recovery_ts IS NOT NULL AND c.ts < a.recovery_ts THEN c.l END) AS min_pre_recovery,
+    -- Clamp at entry_price so dd is always <= 0
+    min(CASE WHEN a.recovery_ts IS NOT NULL AND c.ts < a.recovery_ts 
+             THEN LEAST(c.l, a.entry_price) END) AS min_pre_recovery,
     -- Lowest low from entry UNTIL we hit 2x (measures dip on the way to 2x)
-    min(CASE WHEN a.ts_2x IS NOT NULL AND c.ts < a.ts_2x THEN c.l END) AS min_pre2x,
-    -- Lowest low AFTER hitting 2x (how far does it fall from 2x)
-    min(CASE WHEN a.ts_2x IS NOT NULL AND c.ts > a.ts_2x THEN c.l END) AS min_post2x,
-    min(CASE WHEN a.ts_3x IS NOT NULL AND c.ts > a.ts_3x THEN c.l END) AS min_post3x,
-    min(CASE WHEN a.ts_4x IS NOT NULL AND c.ts > a.ts_4x THEN c.l END) AS min_post4x,
-    min(CASE WHEN a.ts_5x IS NOT NULL AND c.ts > a.ts_5x THEN c.l END) AS min_post5x,
-    min(CASE WHEN a.ts_10x IS NOT NULL AND c.ts > a.ts_10x THEN c.l END) AS min_post10x,
-    min(CASE WHEN ath.ath_ts IS NOT NULL AND c.ts > ath.ath_ts THEN c.l END) AS min_postath
+    min(CASE WHEN a.ts_2x IS NOT NULL AND c.ts < a.ts_2x 
+             THEN LEAST(c.l, a.entry_price) END) AS min_pre2x,
+    -- Lowest low AFTER hitting 2x (how far does it fall from 2x level)
+    min(CASE WHEN a.ts_2x IS NOT NULL AND c.ts > a.ts_2x 
+             THEN LEAST(c.l, a.entry_price * 2.0) END) AS min_post2x,
+    min(CASE WHEN a.ts_3x IS NOT NULL AND c.ts > a.ts_3x 
+             THEN LEAST(c.l, a.entry_price * 3.0) END) AS min_post3x,
+    min(CASE WHEN a.ts_4x IS NOT NULL AND c.ts > a.ts_4x 
+             THEN LEAST(c.l, a.entry_price * 4.0) END) AS min_post4x,
+    min(CASE WHEN a.ts_5x IS NOT NULL AND c.ts > a.ts_5x 
+             THEN LEAST(c.l, a.entry_price * 5.0) END) AS min_post5x,
+    min(CASE WHEN a.ts_10x IS NOT NULL AND c.ts > a.ts_10x 
+             THEN LEAST(c.l, a.entry_price * 10.0) END) AS min_post10x,
+    min(CASE WHEN ath.ath_ts IS NOT NULL AND c.ts > ath.ath_ts 
+             THEN LEAST(c.l, a.max_high) END) AS min_postath
   FROM candles c, agg a, ath_cte ath
 )
 SELECT
@@ -469,14 +478,15 @@ SELECT
   EXTRACT(EPOCH FROM (a.ts_5x - a.first_ts))::BIGINT AS time_to_5x_s,
   EXTRACT(EPOCH FROM (a.ts_10x - a.first_ts))::BIGINT AS time_to_10x_s,
   -- dd_initial: how far below entry before FIRST time price exceeds entry
-  -- NULL if it never dipped before recovering (immediate recovery)
+  -- NULL if it never dipped before recovering (immediate recovery), 0 if never below entry
   CASE
-    WHEN a.recovery_ts IS NULL THEN (a.min_low / a.entry_price) - 1.0
-    WHEN m.min_pre_recovery IS NULL THEN NULL
+    WHEN a.recovery_ts IS NULL THEN LEAST(0.0, (a.min_low / a.entry_price) - 1.0)
+    WHEN m.min_pre_recovery IS NULL THEN 0.0
     ELSE (m.min_pre_recovery / a.entry_price) - 1.0
   END AS dd_initial,
-  (a.min_low / a.entry_price) - 1.0 AS dd_overall,
+  LEAST(0.0, (a.min_low / a.entry_price) - 1.0) AS dd_overall,
   -- dd_pre2x: how far below entry on the journey to 2x (only for tokens that hit 2x)
+  -- 0 if never dipped below entry before hitting 2x
   CASE WHEN a.ts_2x IS NULL THEN NULL
        WHEN m.min_pre2x IS NULL THEN 0.0
        ELSE (m.min_pre2x / a.entry_price) - 1.0 END AS dd_pre2x,
