@@ -25,6 +25,8 @@ import {
   type BacktestPolicyArgs,
   backtestOptimizeSchema,
   type BacktestOptimizeArgs,
+  backtestBaselineSchema,
+  type BacktestBaselineArgs,
 } from '../command-defs/backtest.js';
 import { join } from 'path';
 import { existsSync } from 'fs';
@@ -238,6 +240,67 @@ export function registerBacktestCommands(program: Command): void {
       slippageBps: raw.slippageBps ? coerceNumber(raw.slippageBps, 'slippage-bps') : 10,
     }),
     validate: (opts) => backtestOptimizeSchema.parse(opts),
+    onError: die,
+  });
+
+  // Baseline command - per-alert backtest with ATH, drawdowns, time-to-2x, TP/SL
+  const baselineCmd = backtestCmd
+    .command('baseline')
+    .description('Run baseline per-alert backtest (ATH, drawdowns, time-to-2x, TP/SL)')
+    .option('--duckdb <path>', 'Path to DuckDB with alerts', 'data/alerts.duckdb')
+    .option('--chain <chain>', 'Chain to filter (default: solana)', 'solana')
+    .option('--from <date>', 'Start date YYYY-MM-DD (default: 30 days ago)')
+    .option('--to <date>', 'End date YYYY-MM-DD (default: today)')
+    .option('--interval-seconds <seconds>', 'Candle interval (60 or 300)', '60')
+    .option('--horizon-hours <hours>', 'Horizon in hours', '48')
+    .option('--threads <n>', 'Number of threads', '16')
+    // Slice management (offline backtest)
+    .option('--slice-dir <dir>', 'Directory for Parquet slice files', 'slices')
+    .option('--reuse-slice', 'Reuse existing slice if available')
+    .option('--min-coverage-pct <pct>', 'Minimum coverage percentage (0.0-1.0)', '0.8')
+    // Output
+    .option('--out-dir <dir>', 'Output directory for results', 'results')
+    .option('--out-csv <path>', 'Explicit output CSV path')
+    // ClickHouse (native protocol)
+    .option('--ch-host <host>', 'ClickHouse host')
+    .option('--ch-port <port>', 'ClickHouse native port')
+    .option('--ch-db <db>', 'ClickHouse database')
+    .option('--ch-table <table>', 'ClickHouse table')
+    .option('--ch-user <user>', 'ClickHouse user')
+    .option('--ch-pass <password>', 'ClickHouse password')
+    .option('--ch-connect-timeout <seconds>', 'ClickHouse connect timeout')
+    .option('--ch-timeout-s <seconds>', 'ClickHouse query timeout')
+    // TP/SL policy
+    .option('--tp-mult <mult>', 'Take profit multiplier', '2.0')
+    .option('--sl-mult <mult>', 'Stop loss multiplier', '0.5')
+    .option('--intrabar-order <order>', 'Intrabar order (sl_first or tp_first)', 'sl_first')
+    .option('--fee-bps <bps>', 'Fee in basis points', '30')
+    .option('--slippage-bps <bps>', 'Slippage in basis points', '50')
+    .option('--format <format>', 'Output format (json, table, csv)', 'table')
+    .option('--tui', 'Enable live TUI dashboard (runs Python script directly)');
+
+  defineCommand(baselineCmd, {
+    name: 'baseline',
+    packageName: 'backtest',
+    coerce: (raw) => ({
+      ...raw,
+      intervalSeconds: raw.intervalSeconds ? coerceNumber(raw.intervalSeconds, 'interval-seconds') : 60,
+      horizonHours: raw.horizonHours ? coerceNumber(raw.horizonHours, 'horizon-hours') : 48,
+      threads: raw.threads ? coerceNumber(raw.threads, 'threads') : 16,
+      // Slice management
+      reuseSlice: raw.reuseSlice !== undefined ? coerceBoolean(raw.reuseSlice, 'reuse-slice') : false,
+      minCoveragePct: raw.minCoveragePct ? coerceNumber(raw.minCoveragePct, 'min-coverage-pct') : 0.8,
+      // ClickHouse (native protocol)
+      chPort: raw.chPort ? coerceNumber(raw.chPort, 'ch-port') : undefined,
+      chConnectTimeout: raw.chConnectTimeout ? coerceNumber(raw.chConnectTimeout, 'ch-connect-timeout') : undefined,
+      chTimeoutS: raw.chTimeoutS ? coerceNumber(raw.chTimeoutS, 'ch-timeout-s') : undefined,
+      // TP/SL policy
+      tpMult: raw.tpMult ? coerceNumber(raw.tpMult, 'tp-mult') : 2.0,
+      slMult: raw.slMult ? coerceNumber(raw.slMult, 'sl-mult') : 0.5,
+      feeBps: raw.feeBps ? coerceNumber(raw.feeBps, 'fee-bps') : 30,
+      slippageBps: raw.slippageBps ? coerceNumber(raw.slippageBps, 'slippage-bps') : 50,
+    }),
+    validate: (opts) => backtestBaselineSchema.parse(opts),
     onError: die,
   });
 }
@@ -1218,6 +1281,22 @@ const backtestModule: PackageCommandModule = {
           return results;
         }
       },
+    },
+    {
+      name: 'baseline',
+      description: 'Run baseline per-alert backtest (ATH, drawdowns, time-to-2x, TP/SL)',
+      schema: backtestBaselineSchema,
+      handler: async (args: unknown, ctx: unknown) => {
+        const { baselineBacktestHandler } = await import('../handlers/backtest/baseline.js');
+        const { CommandContext } = await import('../core/command-context.js');
+        return baselineBacktestHandler(args as BacktestBaselineArgs, ctx as InstanceType<typeof CommandContext>);
+      },
+      examples: [
+        'quantbot backtest baseline',
+        'quantbot backtest baseline --from 2025-05-01 --to 2025-05-31',
+        'quantbot backtest baseline --horizon-hours 120',
+        'quantbot backtest baseline --tp-mult 3.0 --sl-mult 0.3',
+      ],
     },
   ],
 };

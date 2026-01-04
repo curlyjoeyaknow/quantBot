@@ -23,7 +23,12 @@ import { AnalyticsEngine } from '@quantbot/analytics';
 import type { AnalyticsEngine as AnalyticsEngineType } from '@quantbot/analytics';
 import { PythonEngine, type PythonEngine as PythonEngineType } from '@quantbot/utils';
 import { StorageEngine } from '@quantbot/storage';
-import { DuckDBStorageService, ClickHouseService, SimulationService } from '@quantbot/simulation';
+import {
+  DuckDBStorageService,
+  ClickHouseService,
+  SimulationService,
+  BacktestBaselineService,
+} from '@quantbot/simulation';
 import { TelegramPipelineService } from '@quantbot/ingestion';
 import { AnalyticsService } from '@quantbot/analytics';
 import { getClickHouseClient } from '@quantbot/storage';
@@ -47,6 +52,7 @@ export interface CommandServices {
   telegramPipeline(): TelegramPipelineService;
   simulation(): SimulationService;
   analytics(): AnalyticsService;
+  backtestBaseline(): BacktestBaselineService; // Baseline alert backtest
   // simulationRunsRepository(): SimulationRunsRepository; // PostgreSQL removed
   callersRepository(): CallersRepository; // DuckDB version
   strategiesRepository(): StrategiesRepository; // DuckDB version
@@ -167,6 +173,9 @@ export class CommandContext {
       },
       analytics: () => {
         return new AnalyticsService(pythonEngine);
+      },
+      backtestBaseline: () => {
+        return new BacktestBaselineService(pythonEngine);
       },
       // simulationRunsRepository removed (PostgreSQL)
       callersRepository: () => {
