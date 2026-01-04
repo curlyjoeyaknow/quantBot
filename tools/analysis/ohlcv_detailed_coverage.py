@@ -478,7 +478,8 @@ def generate_coverage_report(
     end_month: Optional[str] = None,
     caller_filter: Optional[str] = None,
     verbose: bool = False,
-    limit: Optional[int] = None
+    limit: Optional[int] = None,
+    summary_only: bool = False
 ) -> Dict[str, Any]:
     """
     Generate comprehensive coverage report.
@@ -621,9 +622,9 @@ def generate_coverage_report(
         # Generate summary statistics
         summary = calculate_summary_statistics(coverage_results)
         
-        return {
+        report = {
             'summary': summary,
-            'by_mint_caller_day': coverage_results,
+            'by_mint_caller_day': [] if summary_only else coverage_results,
             'metadata': {
                 'generated_at': datetime.utcnow().isoformat(),
                 'duckdb_path': duckdb_path,
@@ -633,6 +634,7 @@ def generate_coverage_report(
                 'total_calls_analyzed': len(coverage_results)
             }
         }
+        return report
     
     finally:
         duckdb_conn.close()
@@ -754,6 +756,8 @@ def main():
                        help='Show verbose progress output')
     parser.add_argument('--limit', type=int, default=None,
                        help='Limit number of calls to process (for testing/debugging)')
+    parser.add_argument('--summary-only', action='store_true',
+                       help='Return summary and metadata only (omit per-call details)')
     
     args = parser.parse_args()
     
@@ -787,7 +791,8 @@ def main():
             args.end_month,
             args.caller,
             args.verbose,
-            args.limit
+            args.limit,
+            args.summary_only
         )
         
         print("Coverage calculation complete!", file=sys.stderr, flush=True)
@@ -826,4 +831,3 @@ def main():
 
 if __name__ == '__main__':
     sys.exit(main())
-
