@@ -1,28 +1,39 @@
 #!/usr/bin/env python3
 """
-Baseline Backtest Runner - Pure Path Metrics Only
+Complete Baseline Backtest Pipeline
 
-Runs a baseline backtest across ALL alerts in a date range, computing:
+End-to-end workflow:
+1. Load alerts from DuckDB
+2. Query ClickHouse for coverage (which tokens have candles)
+3. Export candle slice to Parquet
+4. Run vectorized baseline backtest (pure path metrics)
+5. Aggregate results by caller for leaderboard
+6. Optionally store to DuckDB
+
+This computes:
 - ATH multiple within horizon
-- Time to 2x, 3x, 4x, ATH
+- Time to 2x, 3x, 4x, 5x, 10x, ATH
 - Drawdown metrics (initial, overall, after milestones)
 - Peak PnL, return at horizon
 
 NO trading strategies. NO TP/SL. Just pure price path analysis.
 
-After computing per-alert metrics, aggregates by caller to produce a leaderboard.
-
 Usage:
-  python3 run_baseline_all.py --from 2025-12-01 --to 2025-12-24 --slice slices/slice.parquet
+  # Full pipeline (query ClickHouse, export slice, run backtest)
+  python3 run_baseline_all.py --from 2025-12-01 --to 2025-12-24
+
+  # Reuse existing slice (skip ClickHouse query + export)
+  python3 run_baseline_all.py --from 2025-12-01 --to 2025-12-24 --reuse-slice
 
   # With DuckDB storage
-  python3 run_baseline_all.py --from 2025-12-01 --to 2025-12-24 --slice slices/slice.parquet --store-duckdb
+  python3 run_baseline_all.py --from 2025-12-01 --to 2025-12-24 --store-duckdb
 """
 
 from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import json
 import math
 import os
@@ -33,9 +44,14 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from statistics import median
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 import duckdb
+
+try:
+    from clickhouse_driver import Client as ClickHouseClient
+except ImportError:
+    ClickHouseClient = None
 
 UTC = timezone.utc
 
@@ -61,6 +77,10 @@ def _sql_escape(s: str) -> str:
     return s.replace("'", "''")
 
 
+def dt_to_ch(dt: datetime) -> str:
+    return dt.astimezone(UTC).strftime("%Y-%m-%d %H:%M:%S")
+
+
 def _fmt(x: Any, kind: str = "num") -> str:
     if x is None:
         return "-"
@@ -77,6 +97,19 @@ def _fmt(x: Any, kind: str = "num") -> str:
     if kind == "num":
         return f"{x:8.4f}"
     return str(x)
+
+
+def compute_slice_fingerprint(
+    mints: Set[str],
+    chain: str,
+    date_from: datetime,
+    date_to: datetime,
+    interval_seconds: int,
+) -> str:
+    """Compute a stable fingerprint for slice caching."""
+    sorted_mints = sorted(mints)
+    data = f"{chain}|{date_from.isoformat()}|{date_to.isoformat()}|{interval_seconds}|{','.join(sorted_mints)}"
+    return hashlib.sha256(data.encode()).hexdigest()[:16]
 
 
 # =============================================================================
@@ -120,6 +153,7 @@ def load_alerts(duckdb_path: str, chain: str, date_from: datetime, date_to: date
         cols = [r[1].lower() for r in conn.execute("PRAGMA table_info('caller_links_d')").fetchall()]
         has_chain = "chain" in cols
 
+        # Prefer caller_name over trigger_from_name
         if "caller_name" in cols:
             caller_expr = "COALESCE(caller_name, trigger_from_name, '')::TEXT AS caller"
         elif "trigger_from_name" in cols:
@@ -185,6 +219,158 @@ def load_alerts(duckdb_path: str, chain: str, date_from: datetime, date_to: date
 
 
 # =============================================================================
+# ClickHouse: Coverage Check & Slice Export
+# =============================================================================
+
+@dataclass(frozen=True)
+class ClickHouseCfg:
+    host: str
+    port: int
+    database: str
+    table: str
+    user: str
+    password: str
+    connect_timeout: int = 10
+    send_receive_timeout: int = 300
+
+    def get_client(self):
+        if ClickHouseClient is None:
+            raise SystemExit("clickhouse-driver not installed. Run: pip install clickhouse-driver")
+        return ClickHouseClient(
+            host=self.host,
+            port=self.port,
+            database=self.database,
+            user=self.user,
+            password=self.password,
+            connect_timeout=self.connect_timeout,
+            send_receive_timeout=self.send_receive_timeout,
+        )
+
+
+def ch_query_rows(cfg: ClickHouseCfg, sql: str) -> List[Dict[str, Any]]:
+    client = cfg.get_client()
+    result = client.execute(sql, with_column_types=True)
+    rows_data, columns = result
+    col_names = [col[0] for col in columns]
+    return [dict(zip(col_names, row)) for row in rows_data]
+
+
+def query_coverage(
+    cfg: ClickHouseCfg,
+    chain: str,
+    mints: Set[str],
+    interval_seconds: int,
+    date_from: datetime,
+    date_to: datetime,
+) -> Dict[str, int]:
+    """Query ClickHouse for candle counts per token."""
+    if not mints:
+        return {}
+
+    chain_q = _sql_escape(chain)
+    mint_list = ", ".join(f"'{_sql_escape(m)}'" for m in mints)
+
+    sql = f"""
+SELECT
+  token_address,
+  count() as candle_count
+FROM {cfg.database}.{cfg.table}
+WHERE chain = '{chain_q}'
+  AND token_address IN ({mint_list})
+  AND interval_seconds = {int(interval_seconds)}
+  AND timestamp >= toDateTime('{dt_to_ch(date_from)}')
+  AND timestamp <  toDateTime('{dt_to_ch(date_to + timedelta(days=1))}')
+GROUP BY token_address
+""".strip()
+
+    rows = ch_query_rows(cfg, sql)
+    return {row["token_address"]: int(row["candle_count"]) for row in rows}
+
+
+def export_slice_to_parquet(
+    cfg: ClickHouseCfg,
+    chain: str,
+    mints: Set[str],
+    interval_seconds: int,
+    date_from: datetime,
+    date_to: datetime,
+    output_path: Path,
+    pre_window_minutes: int = 60,
+    post_window_hours: int = 72,
+    verbose: bool = False,
+) -> int:
+    """Export candles for specified mints to Parquet file."""
+    if not mints:
+        return 0
+
+    chain_q = _sql_escape(chain)
+    mint_list = ", ".join(f"'{_sql_escape(m)}'" for m in mints)
+
+    # Expand time range for pre/post window
+    expanded_from = date_from - timedelta(minutes=pre_window_minutes)
+    expanded_to = date_to + timedelta(hours=post_window_hours)
+
+    sql = f"""
+SELECT
+  token_address,
+  timestamp,
+  open,
+  high,
+  low,
+  close,
+  volume
+FROM {cfg.database}.{cfg.table}
+WHERE chain = '{chain_q}'
+  AND token_address IN ({mint_list})
+  AND interval_seconds = {int(interval_seconds)}
+  AND timestamp >= toDateTime('{dt_to_ch(expanded_from)}')
+  AND timestamp <  toDateTime('{dt_to_ch(expanded_to)}')
+ORDER BY token_address, timestamp
+""".strip()
+
+    if verbose:
+        print(f"[clickhouse] querying {len(mints)} tokens...", file=sys.stderr)
+
+    client = cfg.get_client()
+    result = client.execute(sql, with_column_types=True)
+    rows_data, columns = result
+
+    if not rows_data:
+        return 0
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Write to Parquet using DuckDB
+    conn = duckdb.connect(":memory:")
+    conn.execute("""
+        CREATE TABLE candles (
+            token_address VARCHAR,
+            timestamp TIMESTAMP,
+            open DOUBLE,
+            high DOUBLE,
+            low DOUBLE,
+            close DOUBLE,
+            volume DOUBLE
+        )
+    """)
+
+    # Insert in batches
+    batch_size = 50000
+    for i in range(0, len(rows_data), batch_size):
+        batch = rows_data[i:i + batch_size]
+        conn.executemany("INSERT INTO candles VALUES (?, ?, ?, ?, ?, ?, ?)", batch)
+
+    conn.execute(f"COPY candles TO '{output_path}' (FORMAT PARQUET, COMPRESSION 'zstd')")
+    count = conn.execute("SELECT count(*) FROM candles").fetchone()[0]
+    conn.close()
+
+    if verbose:
+        print(f"[clickhouse] exported {count:,} candles to {output_path}", file=sys.stderr)
+
+    return count
+
+
+# =============================================================================
 # Partitioning
 # =============================================================================
 
@@ -245,10 +431,7 @@ def run_baseline_backtest(
     threads: int,
     verbose: bool,
 ) -> List[Dict[str, Any]]:
-    """
-    Pure baseline backtest - computes path metrics only.
-    NO trading strategies, NO TP/SL simulation.
-    """
+    """Pure baseline backtest - computes path metrics only. NO trading strategies."""
     horizon_s = horizon_hours * 3600
 
     alert_rows: List[Tuple[int, str, str, int, int, int]] = []
@@ -353,7 +536,6 @@ SELECT
   {interval_seconds}::INT AS interval_seconds,
   {horizon_hours}::INT AS horizon_hours,
 
-  -- Status
   CASE
     WHEN ag.candles IS NULL OR ag.candles < 2 THEN 'missing'
     WHEN ag.entry_price IS NULL OR ag.entry_price <= 0 THEN 'bad_entry'
@@ -363,18 +545,15 @@ SELECT
   coalesce(ag.candles, 0)::BIGINT AS candles,
   ag.entry_price AS entry_price,
 
-  -- ATH metrics
   (ag.max_high / ag.entry_price) AS ath_mult,
   datediff('second', a.entry_ts, ath_cte.ath_ts) AS time_to_ath_s,
 
-  -- Time to multiples
   datediff('second', a.entry_ts, ag.ts_2x) AS time_to_2x_s,
   datediff('second', a.entry_ts, ag.ts_3x) AS time_to_3x_s,
   datediff('second', a.entry_ts, ag.ts_4x) AS time_to_4x_s,
   datediff('second', a.entry_ts, ag.ts_5x) AS time_to_5x_s,
   datediff('second', a.entry_ts, ag.ts_10x) AS time_to_10x_s,
 
-  -- Drawdown metrics
   CASE
     WHEN ag.recovery_ts IS NULL THEN (ag.min_low / ag.entry_price) - 1.0
     WHEN mi.min_pre_recovery IS NULL THEN (ag.min_low / ag.entry_price) - 1.0
@@ -404,7 +583,6 @@ SELECT
   CASE WHEN ath_cte.ath_ts IS NULL OR mi.min_postath IS NULL THEN NULL
        ELSE (mi.min_postath / ag.max_high) - 1.0 END AS dd_after_ath,
 
-  -- Peak and end metrics
   ((ag.max_high / ag.entry_price) - 1.0) * 100.0 AS peak_pnl_pct,
   ((ag.end_close / ag.entry_price) - 1.0) * 100.0 AS ret_end_pct
 
@@ -454,19 +632,21 @@ def summarize_overall(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
             return 0.0
         return sum(1 for r in ok if r.get(field) is not None) / len(ok)
 
+    def percentile(xs: List[float], p: float) -> Optional[float]:
+        if not xs:
+            return None
+        s = sorted(xs)
+        idx = int(len(s) * p)
+        return s[min(idx, len(s) - 1)]
+
     ath = take("ath_mult")
     t2x = take("time_to_2x_s")
     t3x = take("time_to_3x_s")
     t4x = take("time_to_4x_s")
-    t5x = take("time_to_5x_s")
-    t10x = take("time_to_10x_s")
-    t_ath = take("time_to_ath_s")
 
     dd_initial = take("dd_initial")
     dd_overall = take("dd_overall")
-    dd_pre2x = take("dd_pre2x")
     dd_after_2x = take("dd_after_2x")
-    dd_after_3x = take("dd_after_3x")
     dd_after_ath = take("dd_after_ath")
 
     peak_pnl = take("peak_pnl_pct")
@@ -478,8 +658,8 @@ def summarize_overall(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
         "alerts_missing": len(rows) - len(ok),
 
         "median_ath_mult": med(ath),
-        "p25_ath_mult": sorted(ath)[len(ath) // 4] if len(ath) >= 4 else med(ath),
-        "p75_ath_mult": sorted(ath)[3 * len(ath) // 4] if len(ath) >= 4 else med(ath),
+        "p25_ath_mult": percentile(ath, 0.25),
+        "p75_ath_mult": percentile(ath, 0.75),
 
         "pct_hit_2x": pct_hit("time_to_2x_s"),
         "pct_hit_3x": pct_hit("time_to_3x_s"),
@@ -490,13 +670,10 @@ def summarize_overall(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
         "median_time_to_2x_s": med(t2x),
         "median_time_to_3x_s": med(t3x),
         "median_time_to_4x_s": med(t4x),
-        "median_time_to_ath_s": med(t_ath),
 
         "median_dd_initial": med(dd_initial),
         "median_dd_overall": med(dd_overall),
-        "median_dd_pre2x": med(dd_pre2x),
         "median_dd_after_2x": med(dd_after_2x),
-        "median_dd_after_3x": med(dd_after_3x),
         "median_dd_after_ath": med(dd_after_ath),
 
         "median_peak_pnl_pct": med(peak_pnl),
@@ -505,14 +682,12 @@ def summarize_overall(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
 
 
 # =============================================================================
-# Caller Aggregation (Leaderboard)
+# Caller Aggregation
 # =============================================================================
 
 def aggregate_by_caller(rows: List[Dict[str, Any]], min_trades: int = 5) -> List[Dict[str, Any]]:
-    """Aggregate baseline metrics by caller."""
     ok = [r for r in rows if r.get("status") == "ok" and r.get("caller")]
 
-    # Group by caller
     by_caller: Dict[str, List[Dict[str, Any]]] = {}
     for r in ok:
         caller = r.get("caller", "").strip()
@@ -533,15 +708,12 @@ def aggregate_by_caller(rows: List[Dict[str, Any]], min_trades: int = 5) -> List
     def med(xs: List[float]) -> Optional[float]:
         return median(xs) if xs else None
 
-    def pct_25(xs: List[float]) -> Optional[float]:
-        if len(xs) < 4:
-            return med(xs)
-        return sorted(xs)[len(xs) // 4]
-
-    def pct_75(xs: List[float]) -> Optional[float]:
-        if len(xs) < 4:
-            return med(xs)
-        return sorted(xs)[3 * len(xs) // 4]
+    def percentile(xs: List[float], p: float) -> Optional[float]:
+        if not xs:
+            return None
+        s = sorted(xs)
+        idx = int(len(s) * p)
+        return s[min(idx, len(s) - 1)]
 
     def pct_hit(rlist: List[Dict[str, Any]], field: str) -> float:
         if not rlist:
@@ -561,46 +733,29 @@ def aggregate_by_caller(rows: List[Dict[str, Any]], min_trades: int = 5) -> List
         peak_pnl = take(rlist, "peak_pnl_pct")
         ret_end = take(rlist, "ret_end_pct")
         t2x = take(rlist, "time_to_2x_s")
-        t3x = take(rlist, "time_to_3x_s")
-        t4x = take(rlist, "time_to_4x_s")
 
         results.append({
             "caller": caller,
             "n": len(rlist),
-
-            # ATH
             "median_ath": med(ath),
-            "p25_ath": pct_25(ath),
-            "p75_ath": pct_75(ath),
-
-            # Hit rates
+            "p25_ath": percentile(ath, 0.25),
+            "p75_ath": percentile(ath, 0.75),
             "hit2x_pct": pct_hit(rlist, "time_to_2x_s") * 100,
             "hit3x_pct": pct_hit(rlist, "time_to_3x_s") * 100,
             "hit4x_pct": pct_hit(rlist, "time_to_4x_s") * 100,
             "hit5x_pct": pct_hit(rlist, "time_to_5x_s") * 100,
             "hit10x_pct": pct_hit(rlist, "time_to_10x_s") * 100,
-
-            # Time to multiples (hours)
             "median_t2x_hrs": med(t2x) / 3600 if med(t2x) else None,
-            "median_t3x_hrs": med(t3x) / 3600 if med(t3x) else None,
-            "median_t4x_hrs": med(t4x) / 3600 if med(t4x) else None,
-
-            # Drawdowns
             "median_dd_initial_pct": med(dd_initial) * 100 if med(dd_initial) else None,
             "median_dd_overall_pct": med(dd_overall) * 100 if med(dd_overall) else None,
             "median_dd_after_2x_pct": med(dd_after_2x) * 100 if med(dd_after_2x) else None,
             "median_dd_after_ath_pct": med(dd_after_ath) * 100 if med(dd_after_ath) else None,
             "worst_dd_pct": min(dd_overall) * 100 if dd_overall else None,
-
-            # PnL
             "median_peak_pnl_pct": med(peak_pnl),
             "median_ret_end_pct": med(ret_end),
         })
 
-    # Sort by median ATH descending
     results.sort(key=lambda x: (x.get("median_ath") or 0), reverse=True)
-
-    # Add rank
     for i, r in enumerate(results, start=1):
         r["rank"] = i
 
@@ -634,8 +789,7 @@ def print_caller_leaderboard(callers: List[Dict[str, Any]], limit: int = 30) -> 
                 v = (r.get("caller") or "-").strip()
                 col_widths[key] = max(col_widths[key], min(24, len(v)))
             else:
-                v = r.get(key)
-                txt = _fmt(v, kind)
+                txt = _fmt(r.get(key), kind)
                 col_widths[key] = max(col_widths[key], len(txt))
 
     line = "  ".join(k.ljust(col_widths[k]) for k, _ in headers)
@@ -649,8 +803,7 @@ def print_caller_leaderboard(callers: List[Dict[str, Any]], limit: int = 30) -> 
                 v = (r.get("caller") or "-").strip()[: col_widths[key]]
                 parts.append(v.ljust(col_widths[key]))
             else:
-                v = r.get(key)
-                txt = _fmt(v, kind)
+                txt = _fmt(r.get(key), kind)
                 parts.append(txt.rjust(col_widths[key]))
         print("  ".join(parts))
 
@@ -672,7 +825,6 @@ def store_baseline_to_duckdb(
     try:
         con.execute("CREATE SCHEMA IF NOT EXISTS baseline")
 
-        # Runs table
         con.execute("""
             CREATE TABLE IF NOT EXISTS baseline.runs_d (
                 run_id UUID PRIMARY KEY,
@@ -708,7 +860,6 @@ def store_baseline_to_duckdb(
             json.dumps(summary),
         ])
 
-        # Alert results table
         con.execute("""
             CREATE TABLE IF NOT EXISTS baseline.alert_results_f (
                 run_id UUID,
@@ -778,7 +929,6 @@ def store_baseline_to_duckdb(
                 r.get("ret_end_pct"),
             ])
 
-        # Caller aggregation table
         con.execute("""
             CREATE TABLE IF NOT EXISTS baseline.caller_stats_f (
                 run_id UUID,
@@ -793,8 +943,6 @@ def store_baseline_to_duckdb(
                 hit5x_pct DOUBLE,
                 hit10x_pct DOUBLE,
                 median_t2x_hrs DOUBLE,
-                median_t3x_hrs DOUBLE,
-                median_t4x_hrs DOUBLE,
                 median_dd_initial_pct DOUBLE,
                 median_dd_overall_pct DOUBLE,
                 median_dd_after_2x_pct DOUBLE,
@@ -809,7 +957,7 @@ def store_baseline_to_duckdb(
             con.execute("""
                 INSERT INTO baseline.caller_stats_f VALUES (
                     ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                    ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+                    ?, ?, ?, ?, ?, ?, ?, ?, ?
                 )
             """, [
                 run_id,
@@ -824,8 +972,6 @@ def store_baseline_to_duckdb(
                 c.get("hit5x_pct"),
                 c.get("hit10x_pct"),
                 c.get("median_t2x_hrs"),
-                c.get("median_t3x_hrs"),
-                c.get("median_t4x_hrs"),
                 c.get("median_dd_initial_pct"),
                 c.get("median_dd_overall_pct"),
                 c.get("median_dd_after_2x_pct"),
@@ -846,45 +992,59 @@ def store_baseline_to_duckdb(
 
 def main() -> None:
     ap = argparse.ArgumentParser(
-        description="Baseline Backtest - Pure path metrics (ATH, time-to-Nx, drawdowns). NO trading strategies."
+        description="Complete Baseline Backtest Pipeline - ClickHouse export + vectorized DuckDB analysis"
     )
+    
+    # Date range
+    ap.add_argument("--from", dest="date_from", required=True, help="Start date (YYYY-MM-DD)")
+    ap.add_argument("--to", dest="date_to", required=True, help="End date (YYYY-MM-DD)")
+    
+    # DuckDB alerts source
     ap.add_argument("--duckdb", default=os.getenv("DUCKDB_PATH", "data/alerts.duckdb"))
     ap.add_argument("--chain", default="solana")
-    ap.add_argument("--from", dest="date_from", required=True)
-    ap.add_argument("--to", dest="date_to", required=True)
+    
+    # ClickHouse config
+    ap.add_argument("--ch-host", default=os.getenv("CLICKHOUSE_HOST", "localhost"))
+    ap.add_argument("--ch-port", type=int, default=int(os.getenv("CLICKHOUSE_PORT", "9000")))
+    ap.add_argument("--ch-database", default=os.getenv("CLICKHOUSE_DATABASE", "default"))
+    ap.add_argument("--ch-table", default=os.getenv("CLICKHOUSE_TABLE", "ohlcv_1m"))
+    ap.add_argument("--ch-user", default=os.getenv("CLICKHOUSE_USER", "default"))
+    ap.add_argument("--ch-password", default=os.getenv("CLICKHOUSE_PASSWORD", ""))
+    
+    # Backtest params
     ap.add_argument("--interval-seconds", type=int, choices=[60, 300], default=60)
     ap.add_argument("--horizon-hours", type=int, default=48)
-
-    ap.add_argument("--slice", required=True, help="Input Parquet slice (file or partitioned directory)")
-    ap.add_argument("--partition-dir", default=None)
-    ap.add_argument("--no-partition", action="store_true")
-
+    
+    # Slice handling
+    ap.add_argument("--slice-dir", default="slices", help="Directory for Parquet slices")
+    ap.add_argument("--reuse-slice", action="store_true", help="Reuse existing slice if fingerprint matches")
+    ap.add_argument("--slice", default=None, help="Use specific slice file (skip ClickHouse)")
+    ap.add_argument("--partition", action="store_true", help="Partition slice by token_address")
+    
+    # Output
     ap.add_argument("--out-alerts", default="results/baseline_alerts.csv")
     ap.add_argument("--out-callers", default="results/baseline_callers.csv")
-
-    ap.add_argument("--min-trades", type=int, default=10, help="Min trades per caller for leaderboard")
-    ap.add_argument("--top", type=int, default=50, help="Top N callers to display")
-
+    ap.add_argument("--min-trades", type=int, default=10)
+    ap.add_argument("--top", type=int, default=50)
+    
+    # Execution
     ap.add_argument("--threads", type=int, default=8)
     ap.add_argument("--output-format", choices=["console", "json"], default="console")
     ap.add_argument("--verbose", action="store_true")
-
-    ap.add_argument("--store-duckdb", action="store_true", help="Store results in baseline.* schema")
+    
+    # Storage
+    ap.add_argument("--store-duckdb", action="store_true")
     ap.add_argument("--run-name", default=None)
 
     args = ap.parse_args()
 
     date_from = parse_yyyy_mm_dd(args.date_from)
     date_to = parse_yyyy_mm_dd(args.date_to)
-    slice_path = Path(args.slice)
     verbose = args.verbose or args.output_format != "json"
-
-    if not slice_path.exists():
-        raise SystemExit(f"Slice not found: {slice_path}")
 
     # Step 1: Load alerts
     if verbose:
-        print(f"[1/4] Loading alerts from {args.duckdb}...", file=sys.stderr)
+        print(f"[1/5] Loading alerts from {args.duckdb}...", file=sys.stderr)
 
     alerts = load_alerts(args.duckdb, args.chain, date_from, date_to)
     if not alerts:
@@ -892,27 +1052,86 @@ def main() -> None:
     if verbose:
         print(f"      Found {len(alerts)} alerts", file=sys.stderr)
 
-    # Step 2: Partition if needed
+    mints = set(a.mint for a in alerts)
+
+    # Step 2: Determine slice path
+    if args.slice:
+        # Use provided slice
+        slice_path = Path(args.slice)
+        if not slice_path.exists():
+            raise SystemExit(f"Slice not found: {slice_path}")
+        if verbose:
+            print(f"[2/5] Using provided slice: {slice_path}", file=sys.stderr)
+    else:
+        # Export from ClickHouse
+        if ClickHouseClient is None:
+            raise SystemExit("clickhouse-driver not installed. Run: pip install clickhouse-driver")
+
+        ch_cfg = ClickHouseCfg(
+            host=args.ch_host,
+            port=args.ch_port,
+            database=args.ch_database,
+            table=args.ch_table,
+            user=args.ch_user,
+            password=args.ch_password,
+        )
+
+        # Compute slice fingerprint for caching
+        fingerprint = compute_slice_fingerprint(mints, args.chain, date_from, date_to, args.interval_seconds)
+        slice_path = Path(args.slice_dir) / f"slice_{date_from.strftime('%Y%m%d')}_{date_to.strftime('%Y%m%d')}_{fingerprint}.parquet"
+
+        if args.reuse_slice and slice_path.exists():
+            if verbose:
+                print(f"[2/5] Reusing cached slice: {slice_path}", file=sys.stderr)
+        else:
+            if verbose:
+                print(f"[2/5] Querying ClickHouse for coverage...", file=sys.stderr)
+
+            t0 = time.time()
+            coverage = query_coverage(ch_cfg, args.chain, mints, args.interval_seconds, date_from, date_to)
+            covered_mints = set(m for m, cnt in coverage.items() if cnt > 0)
+
+            if verbose:
+                print(f"      Coverage: {len(covered_mints)}/{len(mints)} tokens have candles ({time.time()-t0:.1f}s)", file=sys.stderr)
+
+            if not covered_mints:
+                raise SystemExit("No tokens have candle data in ClickHouse for this period.")
+
+            if verbose:
+                print(f"[3/5] Exporting slice to Parquet...", file=sys.stderr)
+
+            t0 = time.time()
+            row_count = export_slice_to_parquet(
+                ch_cfg, args.chain, covered_mints, args.interval_seconds,
+                date_from, date_to, slice_path,
+                pre_window_minutes=60,
+                post_window_hours=args.horizon_hours + 24,
+                verbose=verbose,
+            )
+            if verbose:
+                print(f"      Exported {row_count:,} candles in {time.time()-t0:.1f}s", file=sys.stderr)
+
+    # Step 3: Partition if requested
     is_partitioned = slice_path.is_dir()
 
-    if not args.no_partition and not is_partitioned:
+    if args.partition and not is_partitioned:
         if verbose:
-            print(f"[2/4] Partitioning slice by token_address...", file=sys.stderr)
-        partition_path = Path(args.partition_dir) if args.partition_dir else (slice_path.parent / f"{slice_path.stem}_part")
+            print(f"[4/5] Partitioning slice by token_address...", file=sys.stderr)
+        partition_path = slice_path.parent / f"{slice_path.stem}_part"
         t0 = time.time()
         partition_slice(slice_path, partition_path, args.threads, verbose=verbose)
         if verbose:
-            print(f"      Partitioned in {time.time() - t0:.1f}s -> {partition_path}", file=sys.stderr)
+            print(f"      Partitioned in {time.time()-t0:.1f}s", file=sys.stderr)
         slice_path = partition_path
         is_partitioned = True
-    else:
-        if verbose:
-            mode = "partitioned directory" if is_partitioned else "single file"
-            print(f"[2/4] Using existing slice ({mode}): {slice_path}", file=sys.stderr)
+    elif verbose:
+        step = "4/5" if not args.slice else "3/5"
+        mode = "partitioned" if is_partitioned else "single file"
+        print(f"[{step}] Using slice ({mode}): {slice_path}", file=sys.stderr)
 
-    # Step 3: Run baseline backtest
+    # Step 4: Run baseline backtest
     if verbose:
-        print(f"[3/4] Running baseline backtest (pure path metrics)...", file=sys.stderr)
+        print(f"[5/5] Running baseline backtest (pure path metrics)...", file=sys.stderr)
 
     t0 = time.time()
     out_rows = run_baseline_backtest(
@@ -925,12 +1144,9 @@ def main() -> None:
         verbose=verbose,
     )
     if verbose:
-        print(f"      Query completed in {time.time() - t0:.1f}s", file=sys.stderr)
+        print(f"      Query completed in {time.time()-t0:.1f}s", file=sys.stderr)
 
-    # Step 4: Aggregate and summarize
-    if verbose:
-        print(f"[4/4] Aggregating results by caller...", file=sys.stderr)
-
+    # Step 5: Aggregate and summarize
     summary = summarize_overall(out_rows)
     caller_agg = aggregate_by_caller(out_rows, min_trades=args.min_trades)
 
@@ -949,7 +1165,7 @@ def main() -> None:
     caller_fields = [
         "rank", "caller", "n", "median_ath", "p25_ath", "p75_ath",
         "hit2x_pct", "hit3x_pct", "hit4x_pct", "hit5x_pct", "hit10x_pct",
-        "median_t2x_hrs", "median_t3x_hrs", "median_t4x_hrs",
+        "median_t2x_hrs",
         "median_dd_initial_pct", "median_dd_overall_pct",
         "median_dd_after_2x_pct", "median_dd_after_ath_pct", "worst_dd_pct",
         "median_peak_pnl_pct", "median_ret_end_pct"
@@ -974,7 +1190,7 @@ def main() -> None:
         store_baseline_to_duckdb(args.duckdb, run_id, run_name, config, out_rows, summary, caller_agg)
         stored = True
         if verbose:
-            print(f"[DuckDB] stored baseline.* run_id={run_id}", file=sys.stderr)
+            print(f"[stored] baseline.* run_id={run_id}", file=sys.stderr)
 
     # Output
     if args.output_format == "json":
@@ -982,6 +1198,7 @@ def main() -> None:
             "success": True,
             "run_id": run_id,
             "stored": stored,
+            "slice_path": str(slice_path),
             "out_alerts": args.out_alerts,
             "out_callers": args.out_callers,
             "summary": summary,
@@ -996,13 +1213,14 @@ def main() -> None:
     print("=" * 70)
     print(f"Date range: {date_from.strftime('%Y-%m-%d')} to {date_to.strftime('%Y-%m-%d')}")
     print(f"Horizon: {args.horizon_hours} hours | Interval: {args.interval_seconds}s")
+    print(f"Slice: {slice_path}")
     print(f"Alerts: {summary['alerts_total']} total, {summary['alerts_ok']} ok, {summary['alerts_missing']} missing")
     print(f"Run ID: {run_id} (stored: {stored})")
     print()
 
     print("--- OVERALL METRICS ---")
     if summary["median_ath_mult"]:
-        print(f"Median ATH: {summary['median_ath_mult']:.2f}x (p25={summary.get('p25_ath_mult', 0):.2f}x, p75={summary.get('p75_ath_mult', 0):.2f}x)")
+        print(f"Median ATH: {summary['median_ath_mult']:.2f}x (p25={summary.get('p25_ath_mult') or 0:.2f}x, p75={summary.get('p75_ath_mult') or 0:.2f}x)")
     print(f"% hit 2x: {pct(summary['pct_hit_2x']):.1f}%")
     print(f"% hit 3x: {pct(summary['pct_hit_3x']):.1f}%")
     print(f"% hit 4x: {pct(summary['pct_hit_4x']):.1f}%")
@@ -1028,4 +1246,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
