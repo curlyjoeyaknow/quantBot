@@ -41,6 +41,8 @@ export const AnalyzeDetailedCoverageSpecSchema = z.object({
     .optional(), // YYYY-MM format
   caller: z.string().optional(), // Filter by specific caller
   format: z.enum(['json', 'csv']).default('json'),
+  limit: z.number().int().positive().optional(),
+  summaryOnly: z.boolean().default(false),
   timeoutMs: z.number().int().positive().optional(), // Timeout in milliseconds
 });
 
@@ -178,6 +180,8 @@ export async function analyzeDetailedCoverage(
     if (validated.startMonth) args['start-month'] = validated.startMonth;
     if (validated.endMonth) args['end-month'] = validated.endMonth;
     if (validated.caller) args.caller = validated.caller;
+    if (validated.limit) args.limit = validated.limit;
+    if (validated.summaryOnly) args['summary-only'] = true;
 
     const resultSchema = z.object({
       summary: z.object({
@@ -264,9 +268,22 @@ export async function analyzeDetailedCoverage(
       timeout: coverageTimeoutMs,
     });
 
+    const detailedResults = validated.summaryOnly
+      ? []
+      : validated.limit && result.by_mint_caller_day.length > validated.limit
+        ? result.by_mint_caller_day.slice(0, validated.limit)
+        : result.by_mint_caller_day;
+
     ctx.logger.info('Detailed coverage analysis complete', {
       totalCalls: result.metadata.total_calls_analyzed,
     });
+
+    if (detailedResults !== result.by_mint_caller_day) {
+      return {
+        ...result,
+        by_mint_caller_day: detailedResults,
+      };
+    }
 
     return result;
   } catch (error) {
