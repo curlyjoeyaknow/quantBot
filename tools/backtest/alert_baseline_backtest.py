@@ -513,6 +513,7 @@ def compute_core_metrics(entry_price: float, candles: List[Candle]) -> Dict[str,
             "time_to_2x_s": None,
             "time_to_3x_s": None,
             "time_to_4x_s": None,
+            "dd_initial": None,
             "dd_overall": float("nan"),
             "dd_pre2x": None,
             "dd_after_2x": None,
@@ -648,6 +649,7 @@ def compute_core_metrics(entry_price: float, candles: List[Candle]) -> Dict[str,
         "time_to_2x_s": t2x_s,
         "time_to_3x_s": t3x_s,
         "time_to_4x_s": t4x_s,
+        "dd_initial": dd_initial,  # Max dip before price goes above entry
         "dd_overall": dd_overall,
         "dd_pre2x": dd_pre2x,
         "dd_after_2x": dd_after_2x,
@@ -881,6 +883,7 @@ def summarize(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
         return xs
 
     ath = take("ath_mult")
+    dd_initial = take("dd_initial")  # Max dip before recovery above entry
     dd = take("dd_overall")
     ret_end = take("ret_end")
     peak_pnl = take("peak_pnl_pct")
@@ -907,6 +910,7 @@ def summarize(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
         "median_time_to_ath_s": fmt_med(t_ath),
         "median_time_to_2x_s": fmt_med(t2x),
         "median_time_to_3x_s": fmt_med(t3x),
+        "median_dd_initial": fmt_med(dd_initial),  # Max dip before recovery
         "median_dd_overall": fmt_med(dd),
         "median_dd_after_2x": fmt_med(dd_after_2x),
         "median_dd_after_3x": fmt_med(dd_after_3x),
@@ -1185,6 +1189,7 @@ def main() -> None:
         "time_to_2x_s",
         "time_to_3x_s",
         "time_to_4x_s",
+        "dd_initial",
         "dd_overall",
         "dd_pre2x",
         "dd_after_2x",
@@ -1488,6 +1493,11 @@ def main() -> None:
                     if s["median_time_to_3x_s"] is not None
                     else None
                 ),
+                "median_dd_initial_pct": (
+                    pct(s["median_dd_initial"])
+                    if s.get("median_dd_initial") is not None
+                    else None
+                ),
                 "median_dd_overall_pct": (
                     pct(s["median_dd_overall"])
                     if s["median_dd_overall"] is not None
@@ -1544,8 +1554,10 @@ def main() -> None:
             print(f"Median time-to-2x: {s['median_time_to_2x_s']/3600.0:.2f} hours")
         if s["median_time_to_3x_s"] is not None:
             print(f"Median time-to-3x: {s['median_time_to_3x_s']/3600.0:.2f} hours")
+        if s.get("median_dd_initial") is not None:
+            print(f"Median initial dip (before recovery): {pct(s['median_dd_initial']):.2f}%")
         if s["median_dd_overall"] is not None:
-            print(f"Median max drawdown: {pct(s['median_dd_overall']):.2f}%")
+            print(f"Median max drawdown (overall): {pct(s['median_dd_overall']):.2f}%")
         if s["median_dd_after_2x"] is not None:
             print(f"Median drawdown after 2x: {pct(s['median_dd_after_2x']):.2f}%")
         if s["median_dd_after_3x"] is not None:
