@@ -270,6 +270,8 @@ def process_single_alert(
     pre_window_minutes: int,
     slice_dir: Path,
     reuse_slice: bool,
+    entry_mode: str = "next_open",
+    slippage_bps: float = 0.0,
 ) -> TokenResult:
     """
     Export candles for one token and compute path metrics.
@@ -325,7 +327,8 @@ def process_single_alert(
 
     # Run backtest on the slice
     return run_single_token_backtest(
-        alert_id, alert, slice_path, interval_seconds, entry_ts_ms, end_ts_ms
+        alert_id, alert, slice_path, interval_seconds, entry_ts_ms, end_ts_ms,
+        entry_mode, slippage_bps
     )
 
 
@@ -397,8 +400,18 @@ def run_single_token_backtest(
     interval_seconds: int,
     entry_ts_ms: int,
     end_ts_ms: int,
+    entry_mode: str = "next_open",
+    slippage_bps: float = 0.0,
 ) -> TokenResult:
-    """Run path metrics on a single token slice."""
+    """Run path metrics on a single token slice.
+    
+    Entry modes:
+    - next_open: Open of first candle after alert (default, clean)
+    - close: Close of first candle (different entry time semantics)
+    - worst_high: High of first candle (worst-case stress test)
+    
+    Slippage is applied as: entry_price * (1 + slippage_bps / 10000)
+    """
     if not slice_path.exists():
         return TokenResult(
             alert_id=alert_id, mint=alert.mint, caller=alert.caller,
@@ -419,6 +432,21 @@ def run_single_token_backtest(
         entry_ts = ms_to_dt(entry_ts_ms)
         end_ts = ms_to_dt(end_ts_ms)
 
+        # Entry price expression based on mode
+        # next_open: arg_min(o, ts) - open of first candle (default, clean)
+        # close: arg_min(cl, ts) - close of first candle  
+        # worst_high: arg_min(h, ts) - high of first candle (stress test)
+        if entry_mode == "close":
+            raw_entry_expr = "arg_min(cl, ts)"
+        elif entry_mode == "worst_high":
+            raw_entry_expr = "arg_min(h, ts)"
+        else:  # next_open (default)
+            raw_entry_expr = "arg_min(o, ts)"
+        
+        # Apply slippage: entry_price * (1 + slippage_bps / 10000)
+        slippage_mult = 1.0 + (slippage_bps / 10000.0)
+        entry_expr = f"({raw_entry_expr}) * {slippage_mult}"
+
         sql = f"""
 WITH
 candles AS (
@@ -429,7 +457,7 @@ candles AS (
   ORDER BY timestamp
 ),
 entry AS (
-  SELECT arg_min(o, ts) AS entry_price, count(*)::BIGINT AS candles, min(ts) AS first_ts
+  SELECT {entry_expr} AS entry_price, count(*)::BIGINT AS candles, min(ts) AS first_ts
   FROM candles
 ),
 agg AS (
@@ -621,6 +649,8 @@ def run_parallel_backtest(
     reuse_slice: bool,
     threads: int,
     verbose: bool,
+    entry_mode: str = "next_open",
+    slippage_bps: float = 0.0,
 ) -> List[TokenResult]:
     """Run backtest on all alerts in parallel."""
     slice_dir.mkdir(parents=True, exist_ok=True)
@@ -635,7 +665,7 @@ def run_parallel_backtest(
             future = executor.submit(
                 process_single_alert,
                 i, alert, ch_cfg, chain, interval_seconds, horizon_hours,
-                pre_window_minutes, slice_dir, reuse_slice,
+                pre_window_minutes, slice_dir, reuse_slice, entry_mode, slippage_bps,
             )
             futures[future] = (i, alert)
 
@@ -649,9 +679,10 @@ def run_parallel_backtest(
                     alert_id=alert_id, mint=alert.mint, caller=alert.caller,
                     alert_ts_ms=alert.ts_ms, entry_ts_ms=0,
                     status=f"error:{str(e)[:50]}", candles=0, entry_price=None,
-                    ath_mult=None, time_to_ath_s=None,
+                    ath_mult=None, time_to_ath_s=None, time_to_recovery_s=None,
                     time_to_2x_s=None, time_to_3x_s=None, time_to_4x_s=None,
                     time_to_5x_s=None, time_to_10x_s=None,
+                    time_to_dd_pre2x_s=None, time_to_dd_after_2x_s=None, time_to_dd_after_3x_s=None,
                     dd_initial=None, dd_overall=None, dd_pre2x=None, dd_pre2x_or_horizon=None,
                     dd_after_2x=None, dd_after_3x=None, dd_after_4x=None,
                     dd_after_5x=None, dd_after_10x=None, dd_after_ath=None,
@@ -1183,6 +1214,11 @@ def main() -> None:
     ap.add_argument("--horizon-hours", type=int, default=48)
     ap.add_argument("--pre-window-minutes", type=int, default=5)
 
+    ap.add_argument("--entry-mode", choices=["next_open", "close", "worst_high"], default="next_open",
+                    help="Entry price mode: next_open (default, clean), close (candle close), worst_high (stress test)")
+    ap.add_argument("--slippage-bps", type=float, default=0.0,
+                    help="Slippage in basis points to add to entry price (e.g., 50 = 0.5%%)")
+
     ap.add_argument("--slice-dir", default="slices/per_token")
     ap.add_argument("--reuse-slice", action="store_true", help="Skip export if slice exists")
 
@@ -1229,6 +1265,10 @@ def main() -> None:
     if verbose:
         print(f"[2/3] Running parallel backtest ({args.threads} threads)...", file=sys.stderr)
         print(f"      Horizon: {args.horizon_hours}h | Interval: {args.interval_seconds}s", file=sys.stderr)
+        entry_desc = args.entry_mode
+        if args.slippage_bps > 0:
+            entry_desc += f" +{args.slippage_bps}bps"
+        print(f"      Entry mode: {entry_desc}", file=sys.stderr)
         print(f"      Slice dir: {slice_dir}", file=sys.stderr)
 
     t0 = time.time()
@@ -1243,6 +1283,8 @@ def main() -> None:
         reuse_slice=args.reuse_slice,
         threads=args.threads,
         verbose=verbose,
+        entry_mode=args.entry_mode,
+        slippage_bps=args.slippage_bps,
     )
 
     if verbose:
@@ -1292,6 +1334,8 @@ def main() -> None:
             "horizon_hours": int(args.horizon_hours),
             "chain": args.chain,
             "min_trades": int(args.min_trades),
+            "entry_mode": args.entry_mode,
+            "slippage_bps": args.slippage_bps,
         }
         store_baseline_to_duckdb(
             args.duckdb,
@@ -1324,7 +1368,10 @@ def main() -> None:
     print("BASELINE BACKTEST COMPLETE (Per-Token Parallel)")
     print("=" * 70)
     print(f"Date range: {date_from.strftime('%Y-%m-%d')} to {date_to.strftime('%Y-%m-%d')}")
-    print(f"Horizon: {args.horizon_hours} hours | Interval: {args.interval_seconds}s")
+    entry_desc = args.entry_mode
+    if args.slippage_bps > 0:
+        entry_desc += f" +{args.slippage_bps}bps"
+    print(f"Horizon: {args.horizon_hours} hours | Interval: {args.interval_seconds}s | Entry: {entry_desc}")
     print(f"Threads: {args.threads}")
     print(f"Alerts: {summary['alerts_total']} total, {summary['alerts_ok']} ok, {summary['alerts_missing']} missing")
     print(f"Run ID: {run_id} (stored: {stored})")
