@@ -75,6 +75,11 @@ def _fmt(x: Any, kind: str = "num") -> str:
         return f"{int(x):6d}"
     if kind == "hrs":
         return f"{x:6.2f}h"
+    if kind == "mins":
+        # Format as hours if >= 60 mins, otherwise mins
+        if x >= 60:
+            return f"{x/60:.1f}h"
+        return f"{x:.0f}m"
     if kind == "num":
         return f"{x:8.4f}"
     return str(x)
@@ -868,7 +873,16 @@ def aggregate_by_caller(results: List[TokenResult], min_trades: int = 5) -> List
         dd_after_ath = take(rlist, "dd_after_ath")
         peak_pnl = take(rlist, "peak_pnl_pct")
         ret_end = take(rlist, "ret_end_pct")
+        # Timing metrics
+        t_recovery = take(rlist, "time_to_recovery_s")
         t2x = take(rlist, "time_to_2x_s")
+        t3x = take(rlist, "time_to_3x_s")
+        t_ath = take(rlist, "time_to_ath_s")
+        t_dd_pre2x = take(rlist, "time_to_dd_pre2x_s")
+
+        def to_mins(xs: List[float]) -> Optional[float]:
+            m = med(xs)
+            return (m / 60.0) if m else None
 
         out.append({
             "caller": caller,
@@ -882,7 +896,14 @@ def aggregate_by_caller(results: List[TokenResult], min_trades: int = 5) -> List
             "hit4x_pct": pct_hit(rlist, "time_to_4x_s") * 100,
             "hit5x_pct": pct_hit(rlist, "time_to_5x_s") * 100,
             "hit10x_pct": pct_hit(rlist, "time_to_10x_s") * 100,
-            "median_t2x_hrs": (med(t2x) / 3600.0) if med(t2x) else None,
+            # Timing metrics (in minutes)
+            "median_t_recovery_m": to_mins(t_recovery),
+            "median_t2x_m": to_mins(t2x),
+            "median_t3x_m": to_mins(t3x),
+            "median_t_ath_m": to_mins(t_ath),
+            "median_t_dd_pre2x_m": to_mins(t_dd_pre2x),
+            "median_t2x_hrs": (med(t2x) / 3600.0) if med(t2x) else None,  # Keep for backwards compat
+            # Drawdown metrics
             "median_dd_initial_pct": (med(dd_initial) * 100.0) if med(dd_initial) else None,
             "median_dd_overall_pct": (med(dd_overall) * 100.0) if med(dd_overall) else None,
             "median_dd_pre2x_pct": (med(dd_pre2x) * 100.0) if med(dd_pre2x) else None,
@@ -1189,10 +1210,12 @@ def print_caller_leaderboard(callers: List[Dict[str, Any]], limit: int = 30) -> 
         ("hit3x_pct", "pct"),
         ("hit4x_pct", "pct"),
         ("hit5x_pct", "pct"),
+        ("median_t_recovery_m", "mins"),
+        ("median_t2x_m", "mins"),
+        ("median_t3x_m", "mins"),
+        ("median_t_ath_m", "mins"),
         ("median_dd_initial_pct", "pct"),
-        ("median_dd_pre2x_pct", "pct"),
         ("median_dd_pre2x_or_horizon_pct", "pct"),
-        ("median_dd_after_2x_pct", "pct"),
     ]
 
     col_widths: Dict[str, int] = {k: max(len(k), 8) for k, _ in headers}
@@ -1346,6 +1369,7 @@ def main() -> None:
     caller_fields = [
         "rank", "caller", "n", "median_ath", "p25_ath", "p75_ath", "p95_ath",
         "hit2x_pct", "hit3x_pct", "hit4x_pct", "hit5x_pct", "hit10x_pct",
+        "median_t_recovery_m", "median_t2x_m", "median_t3x_m", "median_t_ath_m", "median_t_dd_pre2x_m",
         "median_t2x_hrs",
         "median_dd_initial_pct", "median_dd_overall_pct", "median_dd_pre2x_pct", "median_dd_pre2x_or_horizon_pct",
         "median_dd_after_2x_pct", "median_dd_after_3x_pct", "median_dd_after_ath_pct",
