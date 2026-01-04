@@ -3,6 +3,7 @@ ClickHouse slice exporter.
 
 Streams candle data from ClickHouse to Parquet with:
 - Batched IN() queries to avoid query string explosions
+- Parallel batch fetching with ThreadPoolExecutor
 - Streaming row iteration to avoid RAM exhaustion
 - Batched DuckDB inserts for speed
 """
@@ -10,10 +11,13 @@ Streams candle data from ClickHouse to Parquet with:
 from __future__ import annotations
 
 import sys
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Dict, List, Set, Tuple
+from queue import Queue
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 import duckdb
 
@@ -64,11 +68,13 @@ def query_coverage_batched(
     date_from: datetime,
     date_to: datetime,
     ch_batch: int = 1000,
+    parallel: int = 4,
 ) -> Dict[str, int]:
     """
     Query candle counts per token from ClickHouse.
 
     Uses batched IN() lists to avoid query string explosions.
+    Runs batches in parallel for speed.
 
     Args:
         cfg: ClickHouse configuration
@@ -78,6 +84,7 @@ def query_coverage_batched(
         date_from: Start date
         date_to: End date (exclusive of next day)
         ch_batch: Max mints per IN() clause
+        parallel: Number of parallel workers
 
     Returns:
         Dict mapping mint address to candle count
@@ -87,10 +94,10 @@ def query_coverage_batched(
 
     chain_q = sql_escape(chain)
     mints_list = sorted(mints)
-    out: Dict[str, int] = {}
+    chunks = list(batched(mints_list, ch_batch))
 
-    client = cfg.get_client()
-    for chunk in batched(mints_list, ch_batch):
+    def fetch_chunk(chunk: List[str]) -> List[Tuple[str, int]]:
+        client = cfg.get_client()
         mint_list = ", ".join(f"'{sql_escape(m)}'" for m in chunk)
         sql = f"""
 SELECT
@@ -104,11 +111,74 @@ WHERE chain = '{chain_q}'
   AND timestamp <  toDateTime('{dt_to_ch(date_to + timedelta(days=1))}')
 GROUP BY token_address
 """.strip()
-        rows = client.execute(sql)
-        for token_address, candle_count in rows:
-            out[str(token_address)] = int(candle_count)
+        return client.execute(sql)
+
+    out: Dict[str, int] = {}
+
+    if len(chunks) == 1 or parallel <= 1:
+        # Single-threaded for small datasets
+        for chunk in chunks:
+            rows = fetch_chunk(chunk)
+            for token_address, candle_count in rows:
+                out[str(token_address)] = int(candle_count)
+    else:
+        # Parallel execution
+        with ThreadPoolExecutor(max_workers=min(parallel, len(chunks))) as executor:
+            futures = {executor.submit(fetch_chunk, chunk): i for i, chunk in enumerate(chunks)}
+            for future in as_completed(futures):
+                rows = future.result()
+                for token_address, candle_count in rows:
+                    out[str(token_address)] = int(candle_count)
 
     return out
+
+
+def _fetch_chunk_streaming(
+    cfg: ClickHouseCfg,
+    chain_q: str,
+    chunk: List[str],
+    interval_seconds: int,
+    expanded_from: datetime,
+    expanded_to: datetime,
+    queue: Queue,
+    chunk_idx: int,
+) -> int:
+    """Fetch a chunk of mints from ClickHouse and put rows in queue."""
+    client = cfg.get_client()
+    mint_list = ", ".join(f"'{sql_escape(m)}'" for m in chunk)
+    sql = f"""
+SELECT
+  token_address,
+  timestamp,
+  open,
+  high,
+  low,
+  close,
+  volume
+FROM {cfg.database}.{cfg.table}
+WHERE chain = '{chain_q}'
+  AND token_address IN ({mint_list})
+  AND interval_seconds = {int(interval_seconds)}
+  AND timestamp >= toDateTime('{dt_to_ch(expanded_from)}')
+  AND timestamp <  toDateTime('{dt_to_ch(expanded_to)}')
+ORDER BY token_address, timestamp
+""".strip()
+
+    count = 0
+    batch: List[Tuple[Any, ...]] = []
+    batch_size = 10_000
+
+    for row in client.execute_iter(sql):
+        batch.append(row)
+        count += 1
+        if len(batch) >= batch_size:
+            queue.put(batch)
+            batch = []
+
+    if batch:
+        queue.put(batch)
+
+    return count
 
 
 def export_slice_streaming(
@@ -122,12 +192,13 @@ def export_slice_streaming(
     ch_batch: int = 1000,
     pre_window_minutes: int = 60,
     post_window_hours: int = 72,
+    parallel: int = 4,
     verbose: bool = False,
 ) -> int:
     """
     Stream candles from ClickHouse to a Parquet file.
 
-    Uses streaming iteration and batched DuckDB inserts to avoid RAM exhaustion.
+    Uses parallel batch fetching and streaming DuckDB inserts.
 
     IMPORTANT: date_to is treated as the start of that day (midnight).
     To include the full end day, we add 1 day before adding post_window_hours.
@@ -143,6 +214,7 @@ def export_slice_streaming(
         ch_batch: Max mints per query
         pre_window_minutes: Minutes before date_from to include
         post_window_hours: Hours after date_to to include
+        parallel: Number of parallel CH fetch workers
         verbose: Print progress
 
     Returns:
@@ -158,9 +230,38 @@ def export_slice_streaming(
     # IMPORTANT: date_to is midnight-start; include the whole end day, then post window
     expanded_to = (date_to + timedelta(days=1)) + timedelta(hours=post_window_hours)
 
-    client = cfg.get_client()
-
     output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    mints_list = sorted(mints)
+    chunks = list(batched(mints_list, ch_batch))
+
+    if verbose:
+        print(f"[clickhouse] exporting {len(mints)} tokens in {len(chunks)} chunks (parallel={parallel})", file=sys.stderr)
+
+    # For small datasets or single worker, use simple sequential approach
+    if len(chunks) <= 2 or parallel <= 1:
+        return _export_sequential(
+            cfg, chain_q, chunks, interval_seconds, expanded_from, expanded_to, output_path, verbose
+        )
+
+    # For larger datasets, use parallel fetching with queue-based DuckDB insertion
+    return _export_parallel(
+        cfg, chain_q, chunks, interval_seconds, expanded_from, expanded_to, output_path, parallel, verbose
+    )
+
+
+def _export_sequential(
+    cfg: ClickHouseCfg,
+    chain_q: str,
+    chunks: List[List[str]],
+    interval_seconds: int,
+    expanded_from: datetime,
+    expanded_to: datetime,
+    output_path: Path,
+    verbose: bool,
+) -> int:
+    """Sequential export for small datasets."""
+    client = cfg.get_client()
     con = duckdb.connect(":memory:")
     try:
         con.execute("""
@@ -179,8 +280,7 @@ def export_slice_streaming(
         row_batch: List[Tuple[Any, ...]] = []
         row_batch_size = 50_000
 
-        mints_list = sorted(mints)
-        for chunk in batched(mints_list, ch_batch):
+        for i, chunk in enumerate(chunks):
             mint_list = ", ".join(f"'{sql_escape(m)}'" for m in chunk)
             sql = f"""
 SELECT
@@ -201,9 +301,8 @@ ORDER BY token_address, timestamp
 """.strip()
 
             if verbose:
-                print(f"[clickhouse] stream chunk tokens={len(chunk)} ...", file=sys.stderr)
+                print(f"[clickhouse] chunk {i+1}/{len(chunks)} tokens={len(chunk)}", file=sys.stderr)
 
-            # execute_iter streams rows without collecting everything in memory
             for row in client.execute_iter(sql):
                 row_batch.append(row)
                 if len(row_batch) >= row_batch_size:
@@ -220,9 +319,98 @@ ORDER BY token_address, timestamp
         count = int(con.execute("SELECT count(*) FROM candles").fetchone()[0])
 
         if verbose:
-            print(f"[clickhouse] inserted={inserted:,} parquet_rows={count:,} -> {output_path}", file=sys.stderr)
+            print(f"[clickhouse] exported {count:,} candles -> {output_path}", file=sys.stderr)
 
         return count
     finally:
         con.close()
 
+
+def _export_parallel(
+    cfg: ClickHouseCfg,
+    chain_q: str,
+    chunks: List[List[str]],
+    interval_seconds: int,
+    expanded_from: datetime,
+    expanded_to: datetime,
+    output_path: Path,
+    parallel: int,
+    verbose: bool,
+) -> int:
+    """Parallel export with producer-consumer pattern."""
+    queue: Queue = Queue(maxsize=100)  # Limit memory usage
+    done_event = threading.Event()
+    total_fetched = [0]  # Use list for mutable capture
+    fetch_errors: List[Exception] = []
+
+    def producer():
+        """Fetch chunks in parallel and put batches in queue."""
+        try:
+            with ThreadPoolExecutor(max_workers=min(parallel, len(chunks))) as executor:
+                futures = {
+                    executor.submit(
+                        _fetch_chunk_streaming,
+                        cfg, chain_q, chunk, interval_seconds, expanded_from, expanded_to, queue, i
+                    ): i
+                    for i, chunk in enumerate(chunks)
+                }
+                for future in as_completed(futures):
+                    try:
+                        count = future.result()
+                        total_fetched[0] += count
+                        if verbose:
+                            chunk_idx = futures[future]
+                            print(f"[clickhouse] chunk {chunk_idx+1}/{len(chunks)} fetched {count:,} rows", file=sys.stderr)
+                    except Exception as e:
+                        fetch_errors.append(e)
+        finally:
+            done_event.set()
+
+    # Start producer thread
+    producer_thread = threading.Thread(target=producer, daemon=True)
+    producer_thread.start()
+
+    # Consumer: insert into DuckDB
+    con = duckdb.connect(":memory:")
+    try:
+        con.execute("""
+            CREATE TABLE candles (
+                token_address VARCHAR,
+                timestamp TIMESTAMP,
+                open DOUBLE,
+                high DOUBLE,
+                low DOUBLE,
+                close DOUBLE,
+                volume DOUBLE
+            )
+        """)
+
+        inserted = 0
+        while not (done_event.is_set() and queue.empty()):
+            try:
+                batch = queue.get(timeout=0.1)
+                con.executemany("INSERT INTO candles VALUES (?, ?, ?, ?, ?, ?, ?)", batch)
+                inserted += len(batch)
+            except:
+                continue
+
+        # Drain any remaining items
+        while not queue.empty():
+            batch = queue.get_nowait()
+            con.executemany("INSERT INTO candles VALUES (?, ?, ?, ?, ?, ?, ?)", batch)
+            inserted += len(batch)
+
+        producer_thread.join()
+
+        if fetch_errors:
+            raise fetch_errors[0]
+
+        con.execute(f"COPY candles TO '{sql_escape(str(output_path))}' (FORMAT PARQUET, COMPRESSION 'zstd')")
+        count = int(con.execute("SELECT count(*) FROM candles").fetchone()[0])
+
+        if verbose:
+            print(f"[clickhouse] exported {count:,} candles (parallel) -> {output_path}", file=sys.stderr)
+
+        return count
+    finally:
+        con.close()

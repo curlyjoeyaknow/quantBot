@@ -67,6 +67,7 @@ def main() -> None:
     ap.add_argument("--ch-user", default=os.getenv("CLICKHOUSE_USER", "default"))
     ap.add_argument("--ch-password", default=os.getenv("CLICKHOUSE_PASSWORD", ""))
     ap.add_argument("--ch-batch", type=int, default=1000, help="Max mints per ClickHouse IN() chunk")
+    ap.add_argument("--ch-parallel", type=int, default=4, help="Parallel ClickHouse fetch workers")
 
     # Backtest params
     ap.add_argument("--interval-seconds", type=int, choices=[60, 300], default=60)
@@ -144,7 +145,8 @@ def main() -> None:
                 print("[2/5] Querying ClickHouse coverage (batched)...", file=sys.stderr)
             t0 = time.time()
             coverage = query_coverage_batched(
-                ch_cfg, args.chain, mints, args.interval_seconds, date_from, date_to, ch_batch=args.ch_batch
+                ch_cfg, args.chain, mints, args.interval_seconds, date_from, date_to,
+                ch_batch=args.ch_batch, parallel=args.ch_parallel
             )
             covered_mints = {m for m, cnt in coverage.items() if cnt > 0}
             if verbose:
@@ -166,6 +168,7 @@ def main() -> None:
                 ch_batch=args.ch_batch,
                 pre_window_minutes=60,
                 post_window_hours=int(args.horizon_hours) + 24,
+                parallel=args.ch_parallel,
                 verbose=verbose,
             )
             if verbose:
