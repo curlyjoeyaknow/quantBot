@@ -782,10 +782,16 @@ def summarize_overall(results: List[TokenResult]) -> Dict[str, Any]:
         return s[min(idx, len(s) - 1)]
 
     ath = take("ath_mult")
+    t_recovery = take("time_to_recovery_s")
     t2x = take("time_to_2x_s")
+    t3x = take("time_to_3x_s")
+    t_ath = take("time_to_ath_s")
+    t_dd_pre2x = take("time_to_dd_pre2x_s")
+    t_dd_after_2x = take("time_to_dd_after_2x_s")
 
     dd_initial = take("dd_initial")
     dd_overall = take("dd_overall")
+    dd_pre2x_or_horizon = take("dd_pre2x_or_horizon")
     peak_pnl = take("peak_pnl_pct")
 
     return {
@@ -800,9 +806,17 @@ def summarize_overall(results: List[TokenResult]) -> Dict[str, Any]:
         "pct_hit_4x": pct_hit("time_to_4x_s"),
         "pct_hit_5x": pct_hit("time_to_5x_s"),
         "pct_hit_10x": pct_hit("time_to_10x_s"),
+        # Timing metrics
+        "median_time_to_recovery_s": med(t_recovery),
         "median_time_to_2x_s": med(t2x),
+        "median_time_to_3x_s": med(t3x),
+        "median_time_to_ath_s": med(t_ath),
+        "median_time_to_dd_pre2x_s": med(t_dd_pre2x),
+        "median_time_to_dd_after_2x_s": med(t_dd_after_2x),
+        # Drawdown metrics
         "median_dd_initial": med(dd_initial),
         "median_dd_overall": med(dd_overall),
+        "median_dd_pre2x_or_horizon": med(dd_pre2x_or_horizon),
         "median_peak_pnl_pct": med(peak_pnl),
     }
 
@@ -1399,14 +1413,44 @@ def main() -> None:
     print(f"% hit 4x: {pct(summary['pct_hit_4x']):.1f}%")
     print(f"% hit 5x: {pct(summary['pct_hit_5x']):.1f}%")
     print(f"% hit 10x: {pct(summary['pct_hit_10x']):.1f}%")
-    if summary["median_time_to_2x_s"] is not None:
-        print(f"Median time-to-2x: {summary['median_time_to_2x_s']/3600:.2f} hours")
+    
+    # Timing metrics
+    print()
+    print("--- TIMING (median, in minutes) ---")
+    def fmt_time(s: Optional[float]) -> str:
+        if s is None:
+            return "-"
+        mins = s / 60
+        if mins >= 60:
+            return f"{mins/60:.1f}h"
+        return f"{mins:.1f}m"
+    
+    t_recovery = summary.get("median_time_to_recovery_s")
+    t_2x = summary.get("median_time_to_2x_s")
+    t_3x = summary.get("median_time_to_3x_s")
+    t_ath = summary.get("median_time_to_ath_s")
+    t_dd_pre2x = summary.get("median_time_to_dd_pre2x_s")
+    t_dd_after_2x = summary.get("median_time_to_dd_after_2x_s")
+    
+    print(f"Time to recovery (above entry): {fmt_time(t_recovery)}")
+    print(f"Time to 2x: {fmt_time(t_2x)}")
+    print(f"Time to 3x: {fmt_time(t_3x)}")
+    print(f"Time to ATH: {fmt_time(t_ath)}")
+    print(f"Time to max DD (pre-2x or horizon): {fmt_time(t_dd_pre2x)}")
+    print(f"Time to max DD (after 2x): {fmt_time(t_dd_after_2x)}")
+    
+    # Drawdown metrics
+    print()
+    print("--- DRAWDOWNS (median) ---")
     if summary["median_dd_initial"] is not None:
-        print(f"Median initial DD: {summary['median_dd_initial']*100:.1f}%")
+        print(f"Initial DD (before recovery): {summary['median_dd_initial']*100:.1f}%")
+    dd_pre2x_h = summary.get("median_dd_pre2x_or_horizon")
+    if dd_pre2x_h is not None:
+        print(f"DD pre-2x or horizon: {dd_pre2x_h*100:.1f}%")
     if summary["median_dd_overall"] is not None:
-        print(f"Median overall DD: {summary['median_dd_overall']*100:.1f}%")
+        print(f"Overall DD (worst): {summary['median_dd_overall']*100:.1f}%")
     if summary["median_peak_pnl_pct"] is not None:
-        print(f"Median peak PnL: {summary['median_peak_pnl_pct']:.1f}%")
+        print(f"Peak PnL: {summary['median_peak_pnl_pct']:.1f}%")
     print()
 
     print(f"--- CALLER LEADERBOARD (min {args.min_trades} trades, top {args.top}) ---")
