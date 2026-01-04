@@ -28,11 +28,13 @@ import math
 import os
 import sys
 import hashlib
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from statistics import median
 from typing import Any, Dict, List, Optional, Set
+from threading import Lock
 
 import duckdb
 
@@ -317,6 +319,56 @@ HAVING candle_count >= {required_candles}
     return {row["token_address"]: int(row["candle_count"]) for row in rows}
 
 
+def query_coverage_detailed(
+    cfg: ClickHouseCfg,
+    chain: str,
+    mints: Set[str],
+    interval_seconds: int,
+    date_from: datetime,
+    date_to: datetime,
+) -> Dict[str, Dict[str, Any]]:
+    """
+    Query ClickHouse to get detailed coverage info per token including:
+    - candle_count
+    - first_timestamp
+    - last_timestamp
+    - missing_periods (gaps in data)
+    
+    Returns {mint: {candle_count, first_ts, last_ts, missing_periods}} for all tokens.
+    """
+    if not mints:
+        return {}
+
+    chain_q = safe_sql_string(chain)
+    mint_list = ", ".join(f"'{safe_sql_string(m)}'" for m in mints)
+
+    sql = f"""
+SELECT
+  token_address,
+  count() as candle_count,
+  min(timestamp) as first_timestamp,
+  max(timestamp) as last_timestamp
+FROM {cfg.database}.{cfg.table}
+WHERE chain = '{chain_q}'
+  AND token_address IN ({mint_list})
+  AND interval_seconds = {int(interval_seconds)}
+  AND timestamp >= toDateTime('{dt_to_ch(date_from)}')
+  AND timestamp <  toDateTime('{dt_to_ch(date_to + timedelta(days=1))}')
+GROUP BY token_address
+""".strip()
+
+    rows = ch_query_rows(cfg, sql)
+    result = {}
+    for row in rows:
+        mint = row["token_address"]
+        result[mint] = {
+            "candle_count": int(row["candle_count"]),
+            "first_timestamp": row["first_timestamp"],
+            "last_timestamp": row["last_timestamp"],
+        }
+    return result
+
+
 def export_slice_to_parquet(
     cfg: ClickHouseCfg,
     chain: str,
@@ -443,6 +495,34 @@ def load_candles_from_parquet(
 
 
 def compute_core_metrics(entry_price: float, candles: List[Candle]) -> Dict[str, Any]:
+    """
+    Compute comprehensive metrics for an alert:
+    - ATH multiple after alert
+    - Time to ATH
+    - Time to 2x
+    - Time to 3x
+    - Drawdown from alert
+    - Drawdown after 2x
+    - Drawdown after 3x
+    - Peak PNL
+    """
+    if not candles or entry_price <= 0:
+        return {
+            "ath_mult": float("nan"),
+            "time_to_ath_s": None,
+            "time_to_2x_s": None,
+            "time_to_3x_s": None,
+            "time_to_4x_s": None,
+            "dd_overall": float("nan"),
+            "dd_pre2x": None,
+            "dd_after_2x": None,
+            "dd_after_3x": None,
+            "dd_after_4x": None,
+            "dd_after_ath": None,
+            "peak_pnl_pct": float("nan"),
+            "ret_end": float("nan"),
+        }
+
     highs = [c.h for c in candles]
     lows = [c.l for c in candles]
     closes = [c.c for c in candles]
@@ -454,28 +534,105 @@ def compute_core_metrics(entry_price: float, candles: List[Candle]) -> Dict[str,
     ath_mult = max_high / entry_price if entry_price > 0 else float("nan")
     dd_overall = (min_low / entry_price) - 1.0 if entry_price > 0 else float("nan")
     ret_end = (end_close / entry_price) - 1.0 if entry_price > 0 else float("nan")
+    
+    # Peak PNL (maximum profit percentage)
+    peak_pnl_pct = (max_high / entry_price - 1.0) * 100.0 if entry_price > 0 else float("nan")
 
+    # Find time to ATH (first candle that reaches max_high)
+    time_to_ath_s: Optional[int] = None
+    ath_idx: Optional[int] = None
+    for i, c in enumerate(candles):
+        if c.h >= max_high - 1e-9:  # Account for floating point precision
+            ath_idx = i
+            time_to_ath_s = int((c.ts - candles[0].ts).total_seconds())
+            break
+
+    # Find time to 2x
     t2x_s: Optional[int] = None
     dd_pre2x: Optional[float] = None
-    hit_idx: Optional[int] = None
-    target = entry_price * 2.0
+    hit_2x_idx: Optional[int] = None
+    target_2x = entry_price * 2.0
 
     for i, c in enumerate(candles):
-        if c.h >= target:
-            hit_idx = i
+        if c.h >= target_2x:
+            hit_2x_idx = i
             t2x_s = int((c.ts - candles[0].ts).total_seconds())
             break
 
-    if hit_idx is not None:
-        pre_lows = [c.l for c in candles[: hit_idx + 1]]
+    if hit_2x_idx is not None:
+        pre_lows = [c.l for c in candles[: hit_2x_idx + 1]]
         dd_pre2x = (min(pre_lows) / entry_price) - 1.0
+
+    # Find time to 3x
+    t3x_s: Optional[int] = None
+    hit_3x_idx: Optional[int] = None
+    target_3x = entry_price * 3.0
+
+    for i, c in enumerate(candles):
+        if c.h >= target_3x:
+            hit_3x_idx = i
+            t3x_s = int((c.ts - candles[0].ts).total_seconds())
+            break
+
+    # Drawdown after 2x (if 2x was hit)
+    dd_after_2x: Optional[float] = None
+    if hit_2x_idx is not None and hit_2x_idx < len(candles) - 1:
+        post_2x_lows = [c.l for c in candles[hit_2x_idx + 1:]]
+        if post_2x_lows:
+            min_post_2x = min(post_2x_lows)
+            # Drawdown from 2x price level
+            dd_after_2x = (min_post_2x / target_2x) - 1.0
+
+    # Drawdown after 3x (if 3x was hit)
+    dd_after_3x: Optional[float] = None
+    if hit_3x_idx is not None and hit_3x_idx < len(candles) - 1:
+        post_3x_lows = [c.l for c in candles[hit_3x_idx + 1:]]
+        if post_3x_lows:
+            min_post_3x = min(post_3x_lows)
+            # Drawdown from 3x price level
+            dd_after_3x = (min_post_3x / target_3x) - 1.0
+
+    # Find time to 4x
+    t4x_s: Optional[int] = None
+    hit_4x_idx: Optional[int] = None
+    target_4x = entry_price * 4.0
+
+    for i, c in enumerate(candles):
+        if c.h >= target_4x:
+            hit_4x_idx = i
+            t4x_s = int((c.ts - candles[0].ts).total_seconds())
+            break
+
+    # Drawdown after 4x (if 4x was hit)
+    dd_after_4x: Optional[float] = None
+    if hit_4x_idx is not None and hit_4x_idx < len(candles) - 1:
+        post_4x_lows = [c.l for c in candles[hit_4x_idx + 1:]]
+        if post_4x_lows:
+            min_post_4x = min(post_4x_lows)
+            dd_after_4x = (min_post_4x / target_4x) - 1.0
+
+    # Drawdown after ATH (lowest point after reaching ATH)
+    dd_after_ath: Optional[float] = None
+    if ath_idx is not None and ath_idx < len(candles) - 1:
+        post_ath_lows = [c.l for c in candles[ath_idx + 1:]]
+        if post_ath_lows:
+            min_post_ath = min(post_ath_lows)
+            dd_after_ath = (min_post_ath / max_high) - 1.0
 
     return {
         "ath_mult": ath_mult,
-        "dd_overall": dd_overall,
-        "ret_end": ret_end,
+        "time_to_ath_s": time_to_ath_s,
         "time_to_2x_s": t2x_s,
+        "time_to_3x_s": t3x_s,
+        "time_to_4x_s": t4x_s,
+        "dd_overall": dd_overall,
         "dd_pre2x": dd_pre2x,
+        "dd_after_2x": dd_after_2x,
+        "dd_after_3x": dd_after_3x,
+        "dd_after_4x": dd_after_4x,
+        "dd_after_ath": dd_after_ath,
+        "peak_pnl_pct": peak_pnl_pct,
+        "ret_end": ret_end,
     }
 
 
@@ -589,13 +746,15 @@ class BacktestTUI:
 
         if status == "ok":
             self.ok_count += 1
-            if result.get("tp_sl_ret") is not None:
-                self.returns.append(result["tp_sl_ret"])
+            if result.get("peak_pnl_pct") is not None:
+                self.returns.append(result["peak_pnl_pct"] / 100.0)  # Store as ratio
             if result.get("ath_mult") is not None:
                 self.ath_mults.append(result["ath_mult"])
             if result.get("time_to_2x_s") is not None:
                 self.hit_2x_count += 1
-            self.log(f"✓ {result.get('caller', '?')[:12]:12} | {result.get('mint', '?')[:8]}... | ATH {result.get('ath_mult', 0):.2f}x | ret {result.get('tp_sl_ret', 0)*100:+.1f}%")
+            t2x_h = result.get("time_to_2x_s", 0) / 3600.0 if result.get("time_to_2x_s") else None
+            t2x_str = f"2x@{t2x_h:.1f}h" if t2x_h else "no 2x"
+            self.log(f"✓ {result.get('caller', '?')[:12]:12} | {result.get('mint', '?')[:8]}... | ATH {result.get('ath_mult', 0):.2f}x | {t2x_str}")
         elif status == "no_coverage":
             self.skip_count += 1
             self.log(f"○ {result.get('caller', '?')[:12]:12} | {result.get('mint', '?')[:8]}... | skipped (no coverage)")
@@ -702,8 +861,12 @@ def summarize(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
     ath = take("ath_mult")
     dd = take("dd_overall")
     ret_end = take("ret_end")
-    tp_sl = take("tp_sl_ret")
+    peak_pnl = take("peak_pnl_pct")
+    t_ath = [float(r["time_to_ath_s"]) for r in ok if r.get("time_to_ath_s") is not None]
     t2x = [float(r["time_to_2x_s"]) for r in ok if r.get("time_to_2x_s") is not None]
+    t3x = [float(r["time_to_3x_s"]) for r in ok if r.get("time_to_3x_s") is not None]
+    dd_after_2x = take("dd_after_2x")
+    dd_after_3x = take("dd_after_3x")
 
     def fmt_med(xs: List[float]) -> Optional[float]:
         return median(xs) if xs else None
@@ -719,11 +882,15 @@ def summarize(rows: List[Dict[str, Any]]) -> Dict[str, Any]:
         "alerts_ok": len(ok),
         "alerts_missing": len(missing),
         "median_ath_mult": fmt_med(ath),
-        "median_dd_overall": fmt_med(dd),
-        "median_ret_end": fmt_med(ret_end),
-        "median_tp_sl_ret": fmt_med(tp_sl),
-        "pct_hit_2x": fmt_pct_hit_2x(),
+        "median_time_to_ath_s": fmt_med(t_ath),
         "median_time_to_2x_s": fmt_med(t2x),
+        "median_time_to_3x_s": fmt_med(t3x),
+        "median_dd_overall": fmt_med(dd),
+        "median_dd_after_2x": fmt_med(dd_after_2x),
+        "median_dd_after_3x": fmt_med(dd_after_3x),
+        "median_peak_pnl_pct": fmt_med(peak_pnl),
+        "median_ret_end": fmt_med(ret_end),
+        "pct_hit_2x": fmt_pct_hit_2x(),
     }
 
 
@@ -797,14 +964,27 @@ def main() -> None:
         "--ch-timeout-s", type=int, default=int(os.getenv("CH_TIMEOUT_S", "300"))
     )
 
-    # Policy
-    ap.add_argument("--tp-mult", type=float, default=2.0)
-    ap.add_argument("--sl-mult", type=float, default=0.5)
+    # TP/SL policy parameters
     ap.add_argument(
-        "--intrabar-order", choices=["sl_first", "tp_first"], default="sl_first"
+        "--tp-mult", type=float, default=2.0,
+        help="Take profit multiplier (default: 2.0)"
     )
-    ap.add_argument("--fee-bps", type=float, default=30.0)
-    ap.add_argument("--slippage-bps", type=float, default=50.0)
+    ap.add_argument(
+        "--sl-mult", type=float, default=0.5,
+        help="Stop loss multiplier (default: 0.5)"
+    )
+    ap.add_argument(
+        "--intrabar-order", choices=["sl_first", "tp_first"], default="sl_first",
+        help="Intrabar order for TP/SL simulation (default: sl_first)"
+    )
+    ap.add_argument(
+        "--fee-bps", type=float, default=30.0,
+        help="Fee in basis points (default: 30)"
+    )
+    ap.add_argument(
+        "--slippage-bps", type=float, default=50.0,
+        help="Slippage in basis points (default: 50)"
+    )
 
     args = ap.parse_args()
 
@@ -979,15 +1159,106 @@ def main() -> None:
         "candles",
         "entry_price",
         "ath_mult",
-        "dd_overall",
-        "ret_end",
+        "time_to_ath_s",
         "time_to_2x_s",
+        "time_to_3x_s",
+        "time_to_4x_s",
+        "dd_overall",
         "dd_pre2x",
-        "tp_sl_exit_reason",
-        "tp_sl_ret",
+        "dd_after_2x",
+        "dd_after_3x",
+        "dd_after_4x",
+        "dd_after_ath",
+        "peak_pnl_pct",
+        "ret_end",
     ]
 
     rows_out: List[Dict[str, Any]] = []
+
+    # Generate worklist for missing OHLCV data
+    worklist_path = Path(args.out_dir) / f"worklist_missing_ohlcv_{datetime.now(UTC).strftime('%Y%m%d_%H%M%S')}.json"
+    worklist = []
+    
+    # Query detailed coverage for skipped alerts to generate worklist
+    if skipped_alerts:
+        log(f"[2.5/5] Generating worklist for {len(skipped_alerts)} alerts with missing OHLCV data...")
+        skipped_mints = set(a.mint for a in skipped_alerts)
+        try:
+            detailed_coverage = query_coverage_detailed(
+                cfg,
+                args.chain,
+                skipped_mints,
+                args.interval_seconds,
+                date_from,
+                date_to + horizon,
+            )
+            
+            # Group alerts by mint to identify missing periods
+            alerts_by_mint: Dict[str, List[Alert]] = {}
+            for a in skipped_alerts:
+                if a.mint not in alerts_by_mint:
+                    alerts_by_mint[a.mint] = []
+                alerts_by_mint[a.mint].append(a)
+            
+            for mint, mint_alerts in alerts_by_mint.items():
+                cov_info = detailed_coverage.get(mint, {})
+                candle_count = cov_info.get("candle_count", 0)
+                first_ts = cov_info.get("first_timestamp")
+                last_ts = cov_info.get("last_timestamp")
+                
+                # Calculate required time window for each alert
+                for alert in mint_alerts:
+                    alert_ts = alert.ts
+                    required_start = alert_ts
+                    required_end = alert_ts + horizon
+                    
+                    worklist_entry = {
+                        "mint": mint,
+                        "caller": alert.caller,
+                        "alert_ts_utc": dt_to_ch(alert_ts),
+                        "required_start_utc": dt_to_ch(required_start),
+                        "required_end_utc": dt_to_ch(required_end),
+                        "interval_seconds": args.interval_seconds,
+                        "horizon_hours": args.horizon_hours,
+                        "current_candle_count": candle_count,
+                        "has_data": candle_count > 0,
+                        "first_available_ts": dt_to_ch(first_ts) if first_ts else None,
+                        "last_available_ts": dt_to_ch(last_ts) if last_ts else None,
+                    }
+                    worklist.append(worklist_entry)
+        except Exception as e:
+            log(f"    Warning: Could not generate detailed worklist: {e}")
+            # Fallback: simple worklist
+            for a in skipped_alerts:
+                worklist.append({
+                    "mint": a.mint,
+                    "caller": a.caller,
+                    "alert_ts_utc": dt_to_ch(a.ts),
+                    "required_start_utc": dt_to_ch(a.ts),
+                    "required_end_utc": dt_to_ch(a.ts + horizon),
+                    "interval_seconds": args.interval_seconds,
+                    "horizon_hours": args.horizon_hours,
+                    "current_candle_count": 0,
+                    "has_data": False,
+                })
+    
+    # Write worklist to JSON file
+    if worklist:
+        os.makedirs(os.path.dirname(worklist_path) or ".", exist_ok=True)
+        with open(worklist_path, "w") as f:
+            json.dump({
+                "generated_at": datetime.now(UTC).isoformat(),
+                "date_range": {
+                    "from": date_from.strftime("%Y-%m-%d"),
+                    "to": date_to.strftime("%Y-%m-%d"),
+                },
+                "chain": args.chain,
+                "interval_seconds": args.interval_seconds,
+                "horizon_hours": args.horizon_hours,
+                "total_missing": len(worklist),
+                "entries": worklist,
+            }, f, indent=2)
+        log(f"    Worklist written: {worklist_path}")
 
     # Add skipped alerts as "no_coverage"
     for a in skipped_alerts:
@@ -1043,22 +1314,12 @@ def main() -> None:
                 }
 
             core = compute_core_metrics(entry_price, candles)
-            pol = simulate_tp_sl(
-                entry_price=entry_price,
-                candles=candles,
-                tp_mult=args.tp_mult,
-                sl_mult=args.sl_mult,
-                intrabar_order=args.intrabar_order,
-                fee_bps=args.fee_bps,
-                slippage_bps=args.slippage_bps,
-            )
             return {
                 **base,
                 "status": "ok",
                 "candles": len(candles),
                 "entry_price": entry_price,
                 **core,
-                **pol,
             }
         except Exception as e:
             return {**base, "status": "error", "error": str(e)}
@@ -1090,12 +1351,42 @@ def main() -> None:
             tui.update(row)
 
         try:
-            with Live(tui.render(), console=tui.console, refresh_per_second=4) as live:
-                for a in covered_alerts:
-                    result = process_alert(a)
+            # Process alerts in parallel batches for TUI mode
+            done_lock = Lock()
+            
+            def process_alert_with_tui(a: Alert) -> Dict[str, Any]:
+                result = process_alert(a)
+                with done_lock:
                     rows_out.append(result)
                     tui.update(result)
-                    live.update(tui.render())
+                return result
+            
+            with Live(tui.render(), console=tui.console, refresh_per_second=4) as live:
+                # Process in parallel batches
+                batch_size = args.threads
+                for i in range(0, len(covered_alerts), batch_size):
+                    batch = covered_alerts[i:i + batch_size]
+                    with ThreadPoolExecutor(max_workers=args.threads) as executor:
+                        futures = {executor.submit(process_alert_with_tui, a): a for a in batch}
+                        for future in as_completed(futures):
+                            try:
+                                future.result()
+                            except Exception as e:
+                                alert = futures[future]
+                                result = {
+                                    "mint": alert.mint,
+                                    "caller": alert.caller,
+                                    "alert_ts_utc": dt_to_ch(alert.ts),
+                                    "entry_ts_utc": "",
+                                    "interval_seconds": args.interval_seconds,
+                                    "horizon_hours": args.horizon_hours,
+                                    "status": "error",
+                                    "error": str(e),
+                                }
+                                with done_lock:
+                                    rows_out.append(result)
+                                    tui.update(result)
+                            live.update(tui.render())
 
             # Log completion
             logger.write(f"---")
@@ -1106,14 +1397,38 @@ def main() -> None:
 
         log(f"Activity log: {log_file_path}")
     else:
-        # Standard mode with periodic log updates
+        # Standard mode with parallelization
         done = 0
-        for a in covered_alerts:
+        done_lock = Lock()
+        
+        def process_alert_with_lock(a: Alert) -> Dict[str, Any]:
             result = process_alert(a)
-            rows_out.append(result)
-            done += 1
-            if done % 100 == 0:
-                log(f"    Progress: {done}/{len(covered_alerts)} alerts")
+            nonlocal done
+            with done_lock:
+                done += 1
+                if done % 100 == 0:
+                    log(f"    Progress: {done}/{len(covered_alerts)} alerts")
+            return result
+        
+        # Process alerts in parallel using ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=args.threads) as executor:
+            futures = {executor.submit(process_alert_with_lock, a): a for a in covered_alerts}
+            for future in as_completed(futures):
+                try:
+                    result = future.result()
+                    rows_out.append(result)
+                except Exception as e:
+                    alert = futures[future]
+                    rows_out.append({
+                        "mint": alert.mint,
+                        "caller": alert.caller,
+                        "alert_ts_utc": dt_to_ch(alert.ts),
+                        "entry_ts_utc": "",
+                        "interval_seconds": args.interval_seconds,
+                        "horizon_hours": args.horizon_hours,
+                        "status": "error",
+                        "error": str(e),
+                    })
 
     # Write CSV
     with open(out_csv, "w", newline="") as f:
@@ -1132,14 +1447,45 @@ def main() -> None:
             "csv_path": out_csv,
             "slice_path": str(slice_path),
             "log_path": str(log_file_path),
+            "worklist_path": str(worklist_path) if worklist else None,
             "summary": {
                 "alerts_total": s["alerts_total"],
                 "alerts_ok": s["alerts_ok"],
                 "alerts_missing": s["alerts_missing"],
                 "median_ath_mult": s["median_ath_mult"],
+                "median_time_to_ath_hours": (
+                    s["median_time_to_ath_s"] / 3600.0
+                    if s["median_time_to_ath_s"] is not None
+                    else None
+                ),
+                "median_time_to_2x_hours": (
+                    s["median_time_to_2x_s"] / 3600.0
+                    if s["median_time_to_2x_s"] is not None
+                    else None
+                ),
+                "median_time_to_3x_hours": (
+                    s["median_time_to_3x_s"] / 3600.0
+                    if s["median_time_to_3x_s"] is not None
+                    else None
+                ),
                 "median_dd_overall_pct": (
                     pct(s["median_dd_overall"])
                     if s["median_dd_overall"] is not None
+                    else None
+                ),
+                "median_dd_after_2x_pct": (
+                    pct(s["median_dd_after_2x"])
+                    if s["median_dd_after_2x"] is not None
+                    else None
+                ),
+                "median_dd_after_3x_pct": (
+                    pct(s["median_dd_after_3x"])
+                    if s["median_dd_after_3x"] is not None
+                    else None
+                ),
+                "median_peak_pnl_pct": (
+                    s["median_peak_pnl_pct"]
+                    if s["median_peak_pnl_pct"] is not None
                     else None
                 ),
                 "median_ret_end_pct": (
@@ -1148,16 +1494,7 @@ def main() -> None:
                     else None
                 ),
                 "pct_hit_2x": pct(s["pct_hit_2x"]),
-                "median_time_to_2x_hours": (
-                    s["median_time_to_2x_s"] / 3600.0
-                    if s["median_time_to_2x_s"] is not None
-                    else None
-                ),
-                "median_tp_sl_ret_pct": (
-                    pct(s["median_tp_sl_ret"])
-                    if s["median_tp_sl_ret"] is not None
-                    else None
-                ),
+                "median_peak_pnl_pct": s["median_peak_pnl_pct"],
             },
             "config": {
                 "date_from": date_from.strftime("%Y-%m-%d"),
@@ -1181,15 +1518,25 @@ def main() -> None:
         print(f"Alerts: {s['alerts_total']} total, {s['alerts_ok']} ok, {s['alerts_missing']} missing/skipped")
         if s["median_ath_mult"] is not None:
             print(f"Median ATH multiple: {s['median_ath_mult']:.3f}x")
+        if s["median_time_to_ath_s"] is not None:
+            print(f"Median time-to-ATH: {s['median_time_to_ath_s']/3600.0:.2f} hours")
+        if s["median_time_to_2x_s"] is not None:
+            print(f"Median time-to-2x: {s['median_time_to_2x_s']/3600.0:.2f} hours")
+        if s["median_time_to_3x_s"] is not None:
+            print(f"Median time-to-3x: {s['median_time_to_3x_s']/3600.0:.2f} hours")
         if s["median_dd_overall"] is not None:
             print(f"Median max drawdown: {pct(s['median_dd_overall']):.2f}%")
+        if s["median_dd_after_2x"] is not None:
+            print(f"Median drawdown after 2x: {pct(s['median_dd_after_2x']):.2f}%")
+        if s["median_dd_after_3x"] is not None:
+            print(f"Median drawdown after 3x: {pct(s['median_dd_after_3x']):.2f}%")
+        if s["median_peak_pnl_pct"] is not None:
+            print(f"Median peak PNL: {s['median_peak_pnl_pct']:.2f}%")
         if s["median_ret_end"] is not None:
             print(f"Median return (hold-to-horizon): {pct(s['median_ret_end']):.2f}%")
         print(f"% that hit 2x: {pct(s['pct_hit_2x']):.2f}%")
-        if s["median_time_to_2x_s"] is not None:
-            print(f"Median time-to-2x: {s['median_time_to_2x_s']/3600.0:.2f} hours")
-        if s["median_tp_sl_ret"] is not None:
-            print(f"Median return (TP/SL policy): {pct(s['median_tp_sl_ret']):.2f}%")
+        if s["median_peak_pnl_pct"] is not None:
+            print(f"Median peak PnL: {s['median_peak_pnl_pct']:.2f}%")
         print(f"\nResults: {out_csv}")
 
 
