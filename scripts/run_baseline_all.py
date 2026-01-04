@@ -876,6 +876,7 @@ def aggregate_by_caller(results: List[TokenResult], min_trades: int = 5) -> List
             "median_ath": med(ath),
             "p25_ath": percentile(ath, 0.25),
             "p75_ath": percentile(ath, 0.75),
+            "p95_ath": percentile(ath, 0.95),
             "hit2x_pct": pct_hit(rlist, "time_to_2x_s") * 100,
             "hit3x_pct": pct_hit(rlist, "time_to_3x_s") * 100,
             "hit4x_pct": pct_hit(rlist, "time_to_4x_s") * 100,
@@ -1183,8 +1184,11 @@ def print_caller_leaderboard(callers: List[Dict[str, Any]], limit: int = 30) -> 
         ("p25_ath", "x"),
         ("median_ath", "x"),
         ("p75_ath", "x"),
+        ("p95_ath", "x"),
         ("hit2x_pct", "pct"),
         ("hit3x_pct", "pct"),
+        ("hit4x_pct", "pct"),
+        ("hit5x_pct", "pct"),
         ("median_dd_initial_pct", "pct"),
         ("median_dd_pre2x_pct", "pct"),
         ("median_dd_pre2x_or_horizon_pct", "pct"),
@@ -1340,7 +1344,7 @@ def main() -> None:
     write_csv(args.out_alerts, alert_fields, out_rows)
 
     caller_fields = [
-        "rank", "caller", "n", "median_ath", "p25_ath", "p75_ath",
+        "rank", "caller", "n", "median_ath", "p25_ath", "p75_ath", "p95_ath",
         "hit2x_pct", "hit3x_pct", "hit4x_pct", "hit5x_pct", "hit10x_pct",
         "median_t2x_hrs",
         "median_dd_initial_pct", "median_dd_overall_pct", "median_dd_pre2x_pct", "median_dd_pre2x_or_horizon_pct",
