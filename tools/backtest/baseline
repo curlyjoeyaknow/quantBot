@@ -1,0 +1,458 @@
+#!/usr/bin/env python3
+"""
+Baseline CLI - Unified command for backtesting.
+
+Usage:
+    ./baseline run --from 2025-05-01 --to 2025-05-03 --entry next_open --score v2 --min-n 30
+
+Prints:
+    - Overall stats
+    - Leaderboard (raw)
+    - Leaderboard (scored)
+"""
+
+import argparse
+import hashlib
+import os
+import sys
+import time
+import uuid
+from datetime import datetime, timezone
+from pathlib import Path
+
+# Add lib to path
+sys.path.insert(0, str(Path(__file__).parent))
+
+import duckdb
+
+from lib.alerts import Alert, load_alerts
+from lib.helpers import parse_yyyy_mm_dd
+from lib.partitioner import detect_slice_type
+from lib.run_contract import (
+    RunIdentity,
+    RunRecord,
+    ensure_runs_schema,
+    store_run,
+    list_recent_runs,
+)
+from lib.scoring_views import (
+    CURRENT_SCORE_VERSION,
+    create_scoring_views,
+    ensure_baseline_trades_schema,
+    get_caller_leaderboard,
+    insert_trades_from_results,
+    print_leaderboard,
+)
+from lib.tp_sl_query import run_tp_sl_query
+from lib.summary import summarize_tp_sl, aggregate_by_caller
+from lib.risk_sizing import (
+    enrich_results_with_risk,
+    summarize_risk_adjusted,
+    DEFAULT_RISK_BUDGET,
+    DEFAULT_MAX_POSITION_PCT,
+    DEFAULT_MIN_STOP_DISTANCE,
+)
+
+UTC = timezone.utc
+
+
+def main():
+    ap = argparse.ArgumentParser(
+        prog="baseline",
+        description="Unified baseline backtesting CLI",
+    )
+    sub = ap.add_subparsers(dest="command", help="Command to run")
+    
+    # =========================================================================
+    # run command
+    # =========================================================================
+    run_p = sub.add_parser("run", help="Run a backtest")
+    
+    # Required time window
+    run_p.add_argument("--from", dest="from_date", required=True,
+                       help="Start date (YYYY-MM-DD)")
+    run_p.add_argument("--to", dest="to_date", required=True,
+                       help="End date (YYYY-MM-DD)")
+    
+    # Entry mode
+    run_p.add_argument("--entry", default="immediate",
+                       choices=["immediate", "next_open"],
+                       help="Entry mode (default: immediate)")
+    
+    # Scoring
+    run_p.add_argument("--score", default=CURRENT_SCORE_VERSION,
+                       help=f"Score version (default: {CURRENT_SCORE_VERSION})")
+    
+    # Filters
+    run_p.add_argument("--min-n", type=int, default=10,
+                       help="Minimum trades for leaderboard (default: 10)")
+    run_p.add_argument("--top", type=int, default=30,
+                       help="Number of top callers to show (default: 30)")
+    
+    # Data source
+    run_p.add_argument("--alerts-db", default="data/alerts.duckdb",
+                       help="Path to alerts DuckDB")
+    run_p.add_argument("--results-db", default="data/baseline_results.duckdb",
+                       help="Path to results DuckDB")
+    run_p.add_argument("--slice", type=str, default=None,
+                       help="Path to candle slice (parquet)")
+    
+    # Strategy (optional - if provided, applies TP/SL)
+    run_p.add_argument("--tp", type=float, default=None,
+                       help="Take profit multiplier (e.g., 2.0 = 2x)")
+    run_p.add_argument("--sl", type=float, default=None,
+                       help="Stop loss multiplier (e.g., 0.5 for 50pct loss)")
+    
+    # Risk
+    run_p.add_argument("--risk-per-trade", type=float, default=0.02,
+                       help="Max pct of portfolio to risk per trade (default: 0.02)")
+    run_p.add_argument("--max-position", type=float, default=1.0,
+                       help="Max position size as pct of portfolio (default: 1.0 = 100pct)")
+    run_p.add_argument("--min-stop", type=float, default=0.02,
+                       help="Min stop distance to use for sizing (default: 0.02 = 2pct)")
+    
+    # Candle params
+    run_p.add_argument("--interval", type=int, default=300,
+                       help="Candle interval in seconds (default: 300)")
+    run_p.add_argument("--horizon", type=int, default=24,
+                       help="Horizon in hours (default: 24)")
+    
+    # Run name
+    run_p.add_argument("--name", type=str, default=None,
+                       help="Human-readable run name")
+    
+    # Output
+    run_p.add_argument("--quiet", action="store_true",
+                       help="Suppress detailed output")
+    
+    # =========================================================================
+    # list command - show recent runs
+    # =========================================================================
+    list_p = sub.add_parser("list", help="List recent runs")
+    list_p.add_argument("--limit", type=int, default=20,
+                        help="Number of runs to show")
+    list_p.add_argument("--db", default="data/baseline_results.duckdb",
+                        help="Path to results DuckDB")
+    
+    # =========================================================================
+    # metrics command - show metric definitions
+    # =========================================================================
+    metrics_p = sub.add_parser("metrics", help="Show metric definitions")
+    
+    # Parse args
+    args = ap.parse_args()
+    
+    if args.command is None:
+        ap.print_help()
+        sys.exit(1)
+    
+    if args.command == "run":
+        cmd_run(args)
+    elif args.command == "list":
+        cmd_list(args)
+    elif args.command == "metrics":
+        cmd_metrics(args)
+
+
+def cmd_run(args):
+    """Execute a backtest run."""
+    start_time = time.perf_counter()
+    
+    # Parse dates
+    from_dt = parse_yyyy_mm_dd(args.from_date)
+    to_dt = parse_yyyy_mm_dd(args.to_date)
+    
+    if not args.quiet:
+        print()
+        print("=" * 70)
+        print("BASELINE BACKTEST RUN")
+        print("=" * 70)
+        print(f"Date range: {args.from_date} to {args.to_date}")
+        print(f"Entry mode: {args.entry}")
+        print(f"Score version: {args.score}")
+        if args.tp:
+            print(f"Take profit: {args.tp}x")
+        if args.sl:
+            print(f"Stop loss: {args.sl}x")
+        print()
+    
+    # Load alerts
+    if not args.quiet:
+        print("Loading alerts...")
+    
+    alerts_path = Path(args.alerts_db)
+    if not alerts_path.exists():
+        print(f"Error: Alerts DB not found: {alerts_path}")
+        sys.exit(1)
+    
+    alerts = load_alerts(
+        duckdb_path=str(alerts_path),
+        chain="solana",
+        date_from=from_dt,
+        date_to=to_dt,
+    )
+    
+    if not alerts:
+        print("No alerts found in the specified date range.")
+        sys.exit(0)
+    
+    if not args.quiet:
+        print(f"Loaded {len(alerts)} alerts")
+    
+    # Determine slice path
+    slice_path = Path(args.slice) if args.slice else None
+    
+    if slice_path is None:
+        # Look for default slice locations
+        default_slice = Path("slices/per_token")
+        if default_slice.exists():
+            slice_path = default_slice
+        else:
+            print("Error: No slice path provided and no default found.")
+            print("Use --slice <path> to specify candle data location.")
+            sys.exit(1)
+    
+    if not slice_path.exists():
+        print(f"Error: Slice path not found: {slice_path}")
+        sys.exit(1)
+    
+    slice_type = detect_slice_type(slice_path)
+    if not args.quiet:
+        print(f"Slice: {slice_path} (type: {slice_type})")
+    
+    # Compute slice fingerprint (simple hash of path + mtime)
+    import os
+    import stat
+    try:
+        st = os.stat(slice_path)
+        slice_fingerprint = hashlib.sha256(
+            f"{slice_path.resolve()}|{st.st_mtime}|{st.st_size}".encode()
+        ).hexdigest()[:16]
+    except Exception:
+        slice_fingerprint = hashlib.sha256(str(slice_path).encode()).hexdigest()[:16]
+    
+    # Create run identity
+    identity = RunIdentity(
+        date_from=args.from_date,
+        date_to=args.to_date,
+        interval_seconds=args.interval,
+        horizon_hours=args.horizon,
+        entry_mode=args.entry,
+        chain="solana",
+        slice_fingerprint=slice_fingerprint,
+        tp_mult=args.tp,
+        sl_mult=args.sl,
+    )
+    
+    # Generate run name if not provided
+    run_name = args.name
+    if run_name is None:
+        ts = datetime.now(UTC).strftime("%Y%m%d_%H%M")
+        run_name = f"baseline_{args.from_date}_{args.to_date}_{ts}"
+    
+    # Create run record
+    run_record = RunRecord.create(
+        run_name=run_name,
+        identity=identity,
+        alerts_total=len(alerts),
+    )
+    run_record.slice_path = str(slice_path)
+    run_record.score_version = args.score
+    
+    if not args.quiet:
+        print(f"Run ID: {run_record.run_id}")
+        print(f"Fingerprint: {run_record.fingerprint}")
+        print()
+    
+    # Run the query
+    if not args.quiet:
+        print("Running backtest query...")
+    
+    tp_mult = args.tp if args.tp else 999.0  # Very high = no TP
+    sl_mult = args.sl if args.sl else 0.0    # Very low = no SL
+    
+    results = run_tp_sl_query(
+        alerts=alerts,
+        slice_path=slice_path,
+        tp_mult=tp_mult,
+        sl_mult=sl_mult,
+        fee_bps=30.0,
+        slippage_bps=50.0,
+        interval_seconds=args.interval,
+        horizon_hours=args.horizon,
+        intrabar_order="sl_first",
+        slice_type=slice_type,
+    )
+    alerts_ok = len([r for r in results if r.get("entry_price")])
+    
+    alerts_missing = len(alerts) - alerts_ok
+    
+    if not args.quiet:
+        print(f"Processed: {alerts_ok}/{len(alerts)} alerts ({alerts_missing} missing data)")
+    
+    # Enrich results with risk sizing (proper position sizing + R-multiples)
+    if args.sl and args.sl > 0:
+        if not args.quiet:
+            print("Enriching with risk sizing...")
+        results = enrich_results_with_risk(
+            results=results,
+            stop_mult=sl_mult,
+            entry_mode=args.entry,
+            risk_budget=args.risk_per_trade,
+            max_position_pct=args.max_position,
+            min_stop_distance=args.min_stop,
+            fee_bps=30.0,
+            slippage_bps=50.0,
+        )
+    
+    if not args.quiet:
+        print()
+    
+    # Calculate token-based summary (old method)
+    summary = summarize_tp_sl(
+        results,
+        sl_mult=args.sl,
+        risk_per_trade=args.risk_per_trade,
+    )
+    summary["alerts_total"] = len(alerts)
+    summary["alerts_ok"] = alerts_ok
+    summary["alerts_missing"] = alerts_missing
+    
+    # Calculate risk-adjusted summary (new R-multiple method)
+    risk_summary = summarize_risk_adjusted(results, args.risk_per_trade)
+    summary.update({
+        "total_r": risk_summary.get("total_r", 0),
+        "avg_r": risk_summary.get("avg_r", 0),
+        "profit_factor_r": risk_summary.get("profit_factor_r", 0),
+        "expectancy_r": risk_summary.get("expectancy_r", 0),
+        "avg_winner_r": risk_summary.get("avg_winner_r", 0),
+        "avg_loser_r": risk_summary.get("avg_loser_r", 0),
+        "total_portfolio_pnl_pct": risk_summary.get("total_portfolio_pnl_pct", 0),
+        "avg_portfolio_pnl_pct": risk_summary.get("avg_portfolio_pnl_pct", 0),
+    })
+    
+    # Complete run record
+    run_record.complete(summary)
+    
+    # Store results
+    results_path = Path(args.results_db)
+    results_path.parent.mkdir(parents=True, exist_ok=True)
+    
+    con = duckdb.connect(str(results_path))
+    try:
+        # Store run record
+        store_run(con, run_record)
+        
+        # Store trades for scoring views (with risk fields)
+        n_inserted = insert_trades_from_results(
+            con, run_record.run_id, results, entry_mode=args.entry
+        )
+        if not args.quiet:
+            print(f"Stored {n_inserted} trades in baseline.trades_d")
+        
+        # Create scoring views
+        create_scoring_views(con)
+        
+        # Get leaderboard
+        leaderboard = get_caller_leaderboard(
+            con,
+            version=args.score,
+            min_trades=args.min_n,
+            limit=args.top,
+            run_id=run_record.run_id,
+        )
+    finally:
+        con.close()
+    
+    elapsed = time.perf_counter() - start_time
+    
+    # Print results
+    if not args.quiet:
+        print()
+        print("=" * 70)
+        print("TOKEN RETURNS (raw)")
+        print("=" * 70)
+        print(f"Alerts: {alerts_ok}/{len(alerts)} ({alerts_missing} missing)")
+        print(f"Win rate: {summary.get('tp_sl_win_rate', 0)*100:.1f}%")
+        print(f"Avg token return: {summary.get('tp_sl_avg_return_pct', 0):.2f}%")
+        print(f"Total token return: {summary.get('tp_sl_total_return_pct', 0):.1f}%")
+        print(f"Profit factor: {summary.get('tp_sl_profit_factor', 0):.2f}")
+        print()
+        
+        if args.sl:
+            stop_distance = 1.0 - args.sl
+            position_pct_theoretical = args.risk_per_trade / stop_distance if stop_distance > 0 else 1.0
+            position_pct_actual = min(position_pct_theoretical, args.max_position)
+            
+            print("=" * 70)
+            print(f"PORTFOLIO RETURNS ({args.risk_per_trade*100:.0f}% risk budget, {stop_distance*100:.0f}% stop)")
+            print("=" * 70)
+            print(f"Position sizing: {position_pct_actual*100:.1f}% of portfolio per trade")
+            if position_pct_theoretical > args.max_position:
+                print(f"  (capped from {position_pct_theoretical*100:.1f}%)")
+            print()
+            print(f"Total R: {summary.get('total_r', 0):+.1f}R")
+            print(f"Avg R per trade: {summary.get('avg_r', 0):+.3f}R")
+            print(f"Avg winner: {summary.get('avg_winner_r', 0):+.2f}R")
+            print(f"Avg loser: {summary.get('avg_loser_r', 0):.2f}R")
+            print(f"Profit factor (R): {summary.get('profit_factor_r', 0):.2f}")
+            print()
+            print(f"Total portfolio PnL: {summary.get('total_portfolio_pnl_pct', 0):+.1f}%")
+            print(f"Avg portfolio PnL: {summary.get('avg_portfolio_pnl_pct', 0):+.3f}%")
+            print()
+        
+        print_leaderboard(leaderboard, args.score, show_raw=True, show_scored=True)
+        
+        print("-" * 70)
+        print(f"Completed in {elapsed:.2f}s")
+        print(f"Run ID: {run_record.run_id}")
+        print(f"Results stored in: {results_path}")
+        print()
+
+
+def cmd_list(args):
+    """List recent runs."""
+    results_path = Path(args.db)
+    if not results_path.exists():
+        print(f"No results database found at {results_path}")
+        return
+    
+    con = duckdb.connect(str(results_path))
+    try:
+        ensure_runs_schema(con)
+        runs = list_recent_runs(con, limit=args.limit)
+    finally:
+        con.close()
+    
+    if not runs:
+        print("No runs found.")
+        return
+    
+    print()
+    print("=" * 90)
+    print("RECENT RUNS")
+    print("=" * 90)
+    print(f"{'ID':<12} {'Name':<25} {'From':<12} {'To':<12} {'Alerts':<10} {'Score':<8}")
+    print("-" * 90)
+    
+    for r in runs:
+        run_id = r.run_id[:10]
+        name = r.run_name[:24]
+        from_d = r.identity.date_from
+        to_d = r.identity.date_to
+        alerts = f"{r.alerts_ok}/{r.alerts_total}"
+        score = r.score_version or "-"
+        print(f"{run_id:<12} {name:<25} {from_d:<12} {to_d:<12} {alerts:<10} {score:<8}")
+    
+    print()
+
+
+def cmd_metrics(args):
+    """Show metric definitions."""
+    from lib.metrics_contract import print_metrics_doc
+    print_metrics_doc()
+
+
+if __name__ == "__main__":
+    main()
+

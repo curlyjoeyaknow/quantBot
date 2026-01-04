@@ -8,20 +8,23 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Literal, Tuple
 
 import duckdb
 
 from .alerts import Alert
 from .helpers import ceil_ms_to_interval_ts_ms, sql_escape
 
+# Slice type for backwards compatibility
+SliceType = Literal["file", "hive", "per_token"]
+
 
 def run_tp_sl_query(
     alerts: List[Alert],
     slice_path: Path,
-    is_partitioned: bool,
-    interval_seconds: int,
-    horizon_hours: int,
+    is_partitioned: bool = False,
+    interval_seconds: int = 60,
+    horizon_hours: int = 48,
     tp_mult: float = 2.0,
     sl_mult: float = 0.5,
     intrabar_order: str = "sl_first",
@@ -29,6 +32,7 @@ def run_tp_sl_query(
     slippage_bps: float = 50.0,
     threads: int = 8,
     verbose: bool = False,
+    slice_type: SliceType | None = None,
 ) -> List[Dict[str, Any]]:
     """
     Run TP/SL backtest query over alerts.
@@ -39,8 +43,8 @@ def run_tp_sl_query(
 
     Args:
         alerts: List of alerts to backtest
-        slice_path: Path to Parquet slice (file or partitioned directory)
-        is_partitioned: Whether slice is Hive-partitioned
+        slice_path: Path to Parquet slice (file, partitioned directory, or per-token directory)
+        is_partitioned: Whether slice is Hive-partitioned (legacy, use slice_type instead)
         interval_seconds: Candle interval
         horizon_hours: Lookforward window in hours
         tp_mult: Take-profit multiplier (e.g., 2.0 for 2x)
@@ -50,6 +54,7 @@ def run_tp_sl_query(
         slippage_bps: Slippage in basis points
         threads: Number of DuckDB threads
         verbose: Print progress
+        slice_type: Explicit slice type ('file', 'hive', 'per_token'). If None, inferred.
 
     Returns:
         List of result dicts, one per alert
@@ -80,20 +85,52 @@ def run_tp_sl_query(
         """)
         con.executemany("INSERT INTO alerts_tmp VALUES (?, ?, ?, ?, ?, ?)", alert_rows)
 
-        # Create candles view
-        if is_partitioned:
+        # Determine slice type
+        if slice_type is None:
+            # Infer from is_partitioned flag (legacy) or path structure
+            if is_partitioned:
+                slice_type = "hive"
+            elif slice_path.is_dir():
+                # Check if it's per-token style (flat dir with parquet files)
+                from .partitioner import is_hive_partitioned, is_per_token_directory
+                if is_hive_partitioned(slice_path):
+                    slice_type = "hive"
+                elif is_per_token_directory(slice_path):
+                    slice_type = "per_token"
+                else:
+                    slice_type = "hive"  # Default for directories
+            else:
+                slice_type = "file"
+
+        # Create candles view based on slice type
+        if slice_type == "hive":
             parquet_glob = f"{slice_path.as_posix()}/**/*.parquet"
             con.execute(f"""
                 CREATE VIEW candles AS
                 SELECT token_address, timestamp, open, high, low, close, volume
                 FROM parquet_scan('{parquet_glob}', hive_partitioning=true)
             """)
+            if verbose:
+                print(f"[tp_sl] using Hive-partitioned slice: {slice_path}", file=sys.stderr)
+        elif slice_type == "per_token":
+            # Per-token: flat directory with *.parquet files
+            parquet_glob = f"{slice_path.as_posix()}/*.parquet"
+            con.execute(f"""
+                CREATE VIEW candles AS
+                SELECT token_address, timestamp, open, high, low, close, volume
+                FROM parquet_scan('{parquet_glob}')
+            """)
+            if verbose:
+                print(f"[tp_sl] using per-token slice directory: {slice_path}", file=sys.stderr)
         else:
+            # Single file
             con.execute(f"""
                 CREATE VIEW candles AS
                 SELECT token_address, timestamp, open, high, low, close, volume
                 FROM parquet_scan('{sql_escape(slice_path.as_posix())}')
             """)
+            if verbose:
+                print(f"[tp_sl] using single-file slice: {slice_path}", file=sys.stderr)
 
         sql = _build_tp_sl_sql(
             interval_seconds=interval_seconds,

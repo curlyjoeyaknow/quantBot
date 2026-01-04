@@ -6,7 +6,12 @@ Reusable components for baseline and TP/SL backtesting pipelines.
 
 from .alerts import Alert, load_alerts
 from .slice_exporter import ClickHouseCfg, export_slice_streaming, query_coverage_batched
-from .partitioner import partition_slice, is_hive_partitioned
+from .partitioner import (
+    partition_slice,
+    is_hive_partitioned,
+    is_per_token_directory,
+    detect_slice_type,
+)
 from .baseline_query import run_baseline_query
 from .tp_sl_query import run_tp_sl_query
 from .storage import (
@@ -20,6 +25,7 @@ from .summary import (
     summarize_tp_sl,
     aggregate_by_caller,
     print_caller_leaderboard,
+    print_caller_returns_table,
 )
 from .helpers import (
     parse_yyyy_mm_dd,
@@ -27,6 +33,112 @@ from .helpers import (
     compute_slice_fingerprint,
     write_csv,
     pct,
+)
+from .strategy_config import (
+    StrategyConfig,
+    TakeProfitConfig,
+    TakeProfitLevel,
+    StopLossConfig,
+    TimeLimitConfig,
+    EntryConfig,
+    ReentryConfig,
+    CostConfig,
+)
+from .caller_groups import (
+    CallerGroup,
+    save_caller_group,
+    load_caller_group,
+    list_caller_groups,
+    delete_caller_group,
+    get_callers_from_duckdb,
+    create_group_from_top_callers,
+)
+from .optimizer_config import (
+    OptimizerConfig,
+    RangeSpec,
+    TpSlParamSpace,
+    LadderTpParamSpace,
+    TrailingStopParamSpace,
+    TimeLimitParamSpace,
+    DelayedEntryParamSpace,
+    ReentryParamSpace,
+    create_basic_optimizer_config,
+    create_grid_search_config,
+)
+from .optimizer import (
+    GridOptimizer,
+    OptimizationResult,
+    OptimizationRun,
+    run_optimization,
+)
+from .run_contract import (
+    RunIdentity,
+    RunRecord,
+    ensure_runs_schema,
+    store_run,
+    load_run,
+    find_run_by_fingerprint,
+    list_recent_runs,
+)
+from .metrics_contract import (
+    MetricCategory,
+    PathMetricDef,
+    PATH_METRICS,
+    StrategyMetricDef,
+    STRATEGY_METRICS,
+    ScoringMetricDef,
+    SCORING_METRICS,
+    ScoreVersion,
+    SCORE_VERSIONS,
+    get_score_version,
+    list_score_versions,
+    print_metrics_doc,
+)
+from .scoring_views import (
+    CURRENT_SCORE_VERSION,
+    VIEW_DEFINITIONS,
+    ensure_baseline_trades_schema,
+    create_scoring_views,
+    get_caller_leaderboard,
+    insert_trades_from_results,
+    print_leaderboard,
+)
+from .risk_sizing import (
+    DEFAULT_RISK_BUDGET,
+    DEFAULT_MAX_POSITION_PCT,
+    DEFAULT_MIN_STOP_DISTANCE,
+    compute_stop_distance,
+    compute_stop_distance_from_mult,
+    compute_effective_stop_distance,
+    compute_position_pct,
+    compute_portfolio_pnl,
+    compute_r_multiple,
+    TradeRisk,
+    compute_trade_risk,
+    enrich_results_with_risk,
+    summarize_risk_adjusted,
+)
+from .timing import (
+    TimingRecord,
+    TimingContext,
+    timed,
+    now_ms,
+    format_ms,
+    format_timing_parts,
+    timed_function,
+)
+from .scoring import (
+    ScoringConfig,
+    DEFAULT_SCORING_CONFIG,
+    compute_risk_penalty,
+    compute_timing_boost,
+    compute_discipline_bonus,
+    compute_tail_bonus,
+    compute_confidence,
+    score_caller_v2,
+    score_callers_v2,
+    print_scored_leaderboard,
+    generate_caller_scored_v2_sql,
 )
 
 __all__ = [
@@ -40,6 +152,8 @@ __all__ = [
     # Partitioning
     "partition_slice",
     "is_hive_partitioned",
+    "is_per_token_directory",
+    "detect_slice_type",
     # Queries
     "run_baseline_query",
     "run_tp_sl_query",
@@ -53,11 +167,108 @@ __all__ = [
     "summarize_tp_sl",
     "aggregate_by_caller",
     "print_caller_leaderboard",
+    "print_caller_returns_table",
     # Helpers
     "parse_yyyy_mm_dd",
     "ceil_ms_to_interval_ts_ms",
     "compute_slice_fingerprint",
     "write_csv",
     "pct",
+    # Strategy config
+    "StrategyConfig",
+    "TakeProfitConfig",
+    "TakeProfitLevel",
+    "StopLossConfig",
+    "TimeLimitConfig",
+    "EntryConfig",
+    "ReentryConfig",
+    "CostConfig",
+    # Caller groups
+    "CallerGroup",
+    "save_caller_group",
+    "load_caller_group",
+    "list_caller_groups",
+    "delete_caller_group",
+    "get_callers_from_duckdb",
+    "create_group_from_top_callers",
+    # Optimizer config
+    "OptimizerConfig",
+    "RangeSpec",
+    "TpSlParamSpace",
+    "LadderTpParamSpace",
+    "TrailingStopParamSpace",
+    "TimeLimitParamSpace",
+    "DelayedEntryParamSpace",
+    "ReentryParamSpace",
+    "create_basic_optimizer_config",
+    "create_grid_search_config",
+    # Optimizer
+    "GridOptimizer",
+    "OptimizationResult",
+    "OptimizationRun",
+    "run_optimization",
+    # Run contract
+    "RunIdentity",
+    "RunRecord",
+    "ensure_runs_schema",
+    "store_run",
+    "load_run",
+    "find_run_by_fingerprint",
+    "list_recent_runs",
+    # Metrics contract
+    "MetricCategory",
+    "PathMetricDef",
+    "PATH_METRICS",
+    "StrategyMetricDef",
+    "STRATEGY_METRICS",
+    "ScoringMetricDef",
+    "SCORING_METRICS",
+    "ScoreVersion",
+    "SCORE_VERSIONS",
+    "get_score_version",
+    "list_score_versions",
+    "print_metrics_doc",
+    # Scoring views
+    "CURRENT_SCORE_VERSION",
+    "VIEW_DEFINITIONS",
+    "ensure_baseline_trades_schema",
+    "create_scoring_views",
+    "get_caller_leaderboard",
+    "insert_trades_from_results",
+    "print_leaderboard",
+    # Risk sizing
+    "DEFAULT_RISK_BUDGET",
+    "DEFAULT_MAX_POSITION_PCT",
+    "DEFAULT_MIN_STOP_DISTANCE",
+    "compute_stop_distance",
+    "compute_stop_distance_from_mult",
+    "compute_effective_stop_distance",
+    "compute_position_pct",
+    "compute_portfolio_pnl",
+    "compute_r_multiple",
+    "TradeRisk",
+    "compute_trade_risk",
+    "enrich_results_with_risk",
+    "summarize_risk_adjusted",
+    # Timing
+    "TimingRecord",
+    "TimingContext",
+    "timed",
+    "now_ms",
+    "format_ms",
+    "format_timing_parts",
+    "timed_function",
+    # Scoring v2
+    "ScoringConfig",
+    "DEFAULT_SCORING_CONFIG",
+    "compute_risk_penalty",
+    "compute_timing_boost",
+    "compute_discipline_bonus",
+    "compute_tail_bonus",
+    "compute_confidence",
+    "score_caller_v2",
+    "score_callers_v2",
+    "print_scored_leaderboard",
+    "generate_caller_scored_v2_sql",
 ]
 

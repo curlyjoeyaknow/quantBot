@@ -3,16 +3,24 @@ Parquet slice partitioning.
 
 Converts a single Parquet file to a Hive-partitioned dataset by token_address.
 DuckDB can then use predicate pushdown to skip irrelevant partitions.
+
+Also supports detection and handling of per-token flat directories
+(individual parquet files per alert, not Hive-partitioned).
 """
 
 from __future__ import annotations
 
 import sys
 from pathlib import Path
+from typing import Literal, Tuple
 
 import duckdb
 
 from .helpers import sql_escape
+
+
+# Slice types
+SliceType = Literal["file", "hive", "per_token"]
 
 
 def is_hive_partitioned(path: Path) -> bool:
@@ -40,6 +48,66 @@ def is_hive_partitioned(path: Path) -> bool:
             return True
 
     return False
+
+
+def is_per_token_directory(path: Path) -> bool:
+    """
+    Check if a path is a per-token flat directory.
+
+    A per-token directory contains individual parquet files (not in subdirectories)
+    typically named like: {YYYYMMDD}_{HHMM}_{short_mint}.parquet
+
+    Args:
+        path: Path to check
+
+    Returns:
+        True if path is a per-token flat directory
+    """
+    if not path.exists():
+        return False
+
+    if not path.is_dir():
+        return False
+
+    # Check for parquet files directly in directory (not in subdirs)
+    parquet_files = list(path.glob("*.parquet"))
+    if not parquet_files:
+        return False
+
+    # Make sure there are no Hive-style subdirectories
+    for child in path.iterdir():
+        if child.is_dir() and "=" in child.name:
+            return False  # This is Hive-partitioned, not per-token
+
+    return True
+
+
+def detect_slice_type(path: Path) -> SliceType:
+    """
+    Detect the type of slice at the given path.
+
+    Args:
+        path: Path to slice (file or directory)
+
+    Returns:
+        'file' for single parquet file
+        'hive' for Hive-partitioned directory
+        'per_token' for flat directory with per-token parquet files
+    """
+    if not path.exists():
+        raise FileNotFoundError(f"Slice not found: {path}")
+
+    if path.is_file():
+        return "file"
+
+    if is_hive_partitioned(path):
+        return "hive"
+
+    if is_per_token_directory(path):
+        return "per_token"
+
+    # Default to treating as file if we can't determine
+    raise ValueError(f"Cannot determine slice type for: {path}")
 
 
 def partition_slice(
