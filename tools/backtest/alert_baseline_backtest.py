@@ -538,6 +538,29 @@ def compute_core_metrics(entry_price: float, candles: List[Candle]) -> Dict[str,
     # Peak PNL (maximum profit percentage)
     peak_pnl_pct = (max_high / entry_price - 1.0) * 100.0 if entry_price > 0 else float("nan")
 
+    # ---------------------------------------------------------
+    # Initial drawdown: max dip BEFORE price goes above entry
+    # This measures "how much pain before recovery"
+    # ---------------------------------------------------------
+    dd_initial: Optional[float] = None
+    recovery_idx: Optional[int] = None
+    
+    # First candle is at entry, skip it and find first candle where high > entry
+    for i, c in enumerate(candles[1:], start=1):
+        if c.h > entry_price:
+            recovery_idx = i
+            break
+    
+    if recovery_idx is not None and recovery_idx > 0:
+        # Get min low from candles BEFORE recovery (including first candle)
+        pre_recovery_lows = [c.l for c in candles[:recovery_idx]]
+        if pre_recovery_lows:
+            min_pre_recovery = min(pre_recovery_lows)
+            dd_initial = (min_pre_recovery / entry_price) - 1.0
+    elif recovery_idx is None:
+        # Price never recovered above entry - dd_initial = dd_overall
+        dd_initial = dd_overall
+
     # Find time to ATH (first candle that reaches max_high)
     time_to_ath_s: Optional[int] = None
     ath_idx: Optional[int] = None
@@ -777,17 +800,17 @@ class BacktestTUI:
             "OK / Skip / Err", f"{self.ok_count:,} / {self.skip_count:,} / {self.error_count:,}"
         )
 
-        # Row 2: Performance metrics
-        med_ret = median(self.returns) * 100 if self.returns else 0
+        # Row 2: Performance metrics (pure path metrics, no strategy)
+        med_peak_pnl = median(self.returns) * 100 if self.returns else 0  # returns stores peak_pnl as ratio
         med_ath = median(self.ath_mults) if self.ath_mults else 0
         hit_2x_pct = (self.hit_2x_count / self.ok_count * 100) if self.ok_count > 0 else 0
         table.add_row(
-            "Median Return", f"{med_ret:+.2f}%",
+            "Median Peak PnL", f"{med_peak_pnl:+.1f}%",
             "Median ATH", f"{med_ath:.2f}x"
         )
         table.add_row(
             "Hit 2x Rate", f"{hit_2x_pct:.1f}%",
-            "Win Rate", f"{sum(1 for r in self.returns if r > 0) / len(self.returns) * 100:.1f}%" if self.returns else "—"
+            "Processed", f"{self.ok_count:,} alerts"
         )
 
         return table
@@ -805,8 +828,7 @@ class BacktestTUI:
         cfg = self.config
         return Text(
             f"📅 {cfg.get('date_from', '?')} → {cfg.get('date_to', '?')} | "
-            f"⏱ {cfg.get('interval_seconds', 60)}s / {cfg.get('horizon_hours', 48)}h | "
-            f"🎯 TP {cfg.get('tp_mult', 2)}x SL {cfg.get('sl_mult', 0.5)}x",
+            f"⏱ {cfg.get('interval_seconds', 60)}s candles / {cfg.get('horizon_hours', 48)}h horizon",
             style="dim"
         )
 
@@ -1279,8 +1301,6 @@ def main() -> None:
         "date_to": date_to.strftime("%Y-%m-%d"),
         "interval_seconds": args.interval_seconds,
         "horizon_hours": args.horizon_hours,
-        "tp_mult": args.tp_mult,
-        "sl_mult": args.sl_mult,
     }
 
     def process_alert(a: Alert) -> Dict[str, Any]:

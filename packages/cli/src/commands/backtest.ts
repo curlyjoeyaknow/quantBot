@@ -270,12 +270,7 @@ export function registerBacktestCommands(program: Command): void {
     .option('--ch-pass <password>', 'ClickHouse password')
     .option('--ch-connect-timeout <seconds>', 'ClickHouse connect timeout')
     .option('--ch-timeout-s <seconds>', 'ClickHouse query timeout')
-    // TP/SL policy
-    .option('--tp-mult <mult>', 'Take profit multiplier', '2.0')
-    .option('--sl-mult <mult>', 'Stop loss multiplier', '0.5')
-    .option('--intrabar-order <order>', 'Intrabar order (sl_first or tp_first)', 'sl_first')
-    .option('--fee-bps <bps>', 'Fee in basis points', '30')
-    .option('--slippage-bps <bps>', 'Slippage in basis points', '50')
+    // (TP/SL policy removed - pure path metrics only)
     .option('--format <format>', 'Output format (json, table, csv)', 'table')
     .option('--tui', 'Enable live TUI dashboard (runs Python script directly)');
 
@@ -284,21 +279,24 @@ export function registerBacktestCommands(program: Command): void {
     packageName: 'backtest',
     coerce: (raw) => ({
       ...raw,
-      intervalSeconds: raw.intervalSeconds ? coerceNumber(raw.intervalSeconds, 'interval-seconds') : 60,
+      intervalSeconds: raw.intervalSeconds
+        ? coerceNumber(raw.intervalSeconds, 'interval-seconds')
+        : 60,
       horizonHours: raw.horizonHours ? coerceNumber(raw.horizonHours, 'horizon-hours') : 48,
       threads: raw.threads ? coerceNumber(raw.threads, 'threads') : 16,
       // Slice management
-      reuseSlice: raw.reuseSlice !== undefined ? coerceBoolean(raw.reuseSlice, 'reuse-slice') : false,
-      minCoveragePct: raw.minCoveragePct ? coerceNumber(raw.minCoveragePct, 'min-coverage-pct') : 0.8,
+      reuseSlice:
+        raw.reuseSlice !== undefined ? coerceBoolean(raw.reuseSlice, 'reuse-slice') : false,
+      minCoveragePct: raw.minCoveragePct
+        ? coerceNumber(raw.minCoveragePct, 'min-coverage-pct')
+        : 0.8,
       // ClickHouse (native protocol)
       chPort: raw.chPort ? coerceNumber(raw.chPort, 'ch-port') : undefined,
-      chConnectTimeout: raw.chConnectTimeout ? coerceNumber(raw.chConnectTimeout, 'ch-connect-timeout') : undefined,
+      chConnectTimeout: raw.chConnectTimeout
+        ? coerceNumber(raw.chConnectTimeout, 'ch-connect-timeout')
+        : undefined,
       chTimeoutS: raw.chTimeoutS ? coerceNumber(raw.chTimeoutS, 'ch-timeout-s') : undefined,
-      // TP/SL policy
-      tpMult: raw.tpMult ? coerceNumber(raw.tpMult, 'tp-mult') : 2.0,
-      slMult: raw.slMult ? coerceNumber(raw.slMult, 'sl-mult') : 0.5,
-      feeBps: raw.feeBps ? coerceNumber(raw.feeBps, 'fee-bps') : 30,
-      slippageBps: raw.slippageBps ? coerceNumber(raw.slippageBps, 'slippage-bps') : 50,
+      // (TP/SL policy removed - pure path metrics only)
     }),
     validate: (opts) => backtestBaselineSchema.parse(opts),
     onError: die,
@@ -1289,13 +1287,16 @@ const backtestModule: PackageCommandModule = {
       handler: async (args: unknown, ctx: unknown) => {
         const { baselineBacktestHandler } = await import('../handlers/backtest/baseline.js');
         const { CommandContext } = await import('../core/command-context.js');
-        return baselineBacktestHandler(args as BacktestBaselineArgs, ctx as InstanceType<typeof CommandContext>);
+        return baselineBacktestHandler(
+          args as BacktestBaselineArgs,
+          ctx as InstanceType<typeof CommandContext>
+        );
       },
       examples: [
         'quantbot backtest baseline',
         'quantbot backtest baseline --from 2025-05-01 --to 2025-05-31',
         'quantbot backtest baseline --horizon-hours 120',
-        'quantbot backtest baseline --tp-mult 3.0 --sl-mult 0.3',
+        'quantbot backtest baseline --tui',
       ],
     },
   ],

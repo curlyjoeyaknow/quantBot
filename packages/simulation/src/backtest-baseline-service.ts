@@ -25,10 +25,15 @@ export const BacktestSummarySchema = z.object({
   alerts_ok: z.number(),
   alerts_missing: z.number(),
   median_ath_mult: z.number().nullable(),
+  median_time_to_ath_hours: z.number().nullable(),
+  median_time_to_2x_hours: z.number().nullable(),
+  median_time_to_3x_hours: z.number().nullable(),
   median_dd_overall_pct: z.number().nullable(),
+  median_dd_after_2x_pct: z.number().nullable(),
+  median_dd_after_3x_pct: z.number().nullable(),
+  median_peak_pnl_pct: z.number().nullable(),
   median_ret_end_pct: z.number().nullable(),
   pct_hit_2x: z.number(),
-  median_time_to_2x_hours: z.number().nullable(),
   median_tp_sl_ret_pct: z.number().nullable(),
 });
 
@@ -60,6 +65,7 @@ export const BacktestBaselineResultSchema = z.object({
   csv_path: z.string().nullable(),
   slice_path: z.string().optional(),
   log_path: z.string().optional(),
+  worklist_path: z.string().nullable().optional(),
   summary: BacktestSummarySchema.nullable(),
   config: BacktestConfigSchema.optional(),
 });
@@ -116,16 +122,7 @@ export interface BacktestBaselineParams {
   chTimeoutS?: number;
 
   // TP/SL policy parameters
-  /** Take profit multiplier (default: 2.0) */
-  tpMult?: number;
-  /** Stop loss multiplier (default: 0.5) */
-  slMult?: number;
-  /** Intrabar order: 'sl_first' or 'tp_first' (default: sl_first) */
-  intrabarOrder?: 'sl_first' | 'tp_first';
-  /** Fee in basis points (default: 30) */
-  feeBps?: number;
-  /** Slippage in basis points (default: 50) */
-  slippageBps?: number;
+  // (TP/SL policy removed - pure path metrics only)
 
   /** Enable live TUI dashboard (default: false) */
   tui?: boolean;
@@ -203,12 +200,7 @@ export class BacktestBaselineService {
     if (params.chConnectTimeout) args['ch-connect-timeout'] = params.chConnectTimeout;
     if (params.chTimeoutS) args['ch-timeout-s'] = params.chTimeoutS;
 
-    // TP/SL policy parameters
-    if (params.tpMult) args['tp-mult'] = params.tpMult;
-    if (params.slMult) args['sl-mult'] = params.slMult;
-    if (params.intrabarOrder) args['intrabar-order'] = params.intrabarOrder;
-    if (params.feeBps) args['fee-bps'] = params.feeBps;
-    if (params.slippageBps) args['slippage-bps'] = params.slippageBps;
+    // (TP/SL policy removed - pure path metrics only)
 
     // TUI mode - only if NOT using JSON output (for CLI integration)
     if (params.tui) args['tui'] = true;
@@ -239,4 +231,3 @@ export class BacktestBaselineService {
     }
   }
 }
-

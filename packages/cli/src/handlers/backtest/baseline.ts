@@ -23,7 +23,9 @@ export type BacktestBaselineArgs = z.infer<typeof backtestBaselineSchema>;
 /**
  * Run baseline alert backtest in TUI mode (stdio passthrough)
  */
-async function runTuiMode(args: BacktestBaselineArgs): Promise<{ success: boolean; message: string }> {
+async function runTuiMode(
+  args: BacktestBaselineArgs
+): Promise<{ success: boolean; message: string }> {
   const workspaceRoot = findWorkspaceRoot();
   const scriptPath = join(workspaceRoot, 'tools/backtest/alert_baseline_backtest.py');
 
@@ -31,9 +33,7 @@ async function runTuiMode(args: BacktestBaselineArgs): Promise<{ success: boolea
   const cliArgs: string[] = [scriptPath, '--tui'];
 
   // Required args
-  const duckdbPath = args.duckdb.startsWith('/')
-    ? args.duckdb
-    : join(workspaceRoot, args.duckdb);
+  const duckdbPath = args.duckdb.startsWith('/') ? args.duckdb : join(workspaceRoot, args.duckdb);
   cliArgs.push('--duckdb', duckdbPath);
   cliArgs.push('--chain', args.chain);
 
@@ -52,7 +52,9 @@ async function runTuiMode(args: BacktestBaselineArgs): Promise<{ success: boolea
   if (args.outCsv) cliArgs.push('--out-csv', args.outCsv);
 
   // Slice management
-  const sliceDir = args.sliceDir.startsWith('/') ? args.sliceDir : join(workspaceRoot, args.sliceDir);
+  const sliceDir = args.sliceDir.startsWith('/')
+    ? args.sliceDir
+    : join(workspaceRoot, args.sliceDir);
   cliArgs.push('--slice-dir', sliceDir);
   if (args.reuseSlice) cliArgs.push('--reuse-slice');
   cliArgs.push('--min-coverage-pct', String(args.minCoveragePct));
@@ -67,12 +69,7 @@ async function runTuiMode(args: BacktestBaselineArgs): Promise<{ success: boolea
   if (args.chConnectTimeout) cliArgs.push('--ch-connect-timeout', String(args.chConnectTimeout));
   if (args.chTimeoutS) cliArgs.push('--ch-timeout-s', String(args.chTimeoutS));
 
-  // TP/SL policy
-  cliArgs.push('--tp-mult', String(args.tpMult));
-  cliArgs.push('--sl-mult', String(args.slMult));
-  cliArgs.push('--intrabar-order', args.intrabarOrder);
-  cliArgs.push('--fee-bps', String(args.feeBps));
-  cliArgs.push('--slippage-bps', String(args.slippageBps));
+  // (TP/SL policy removed - pure path metrics only)
 
   return new Promise((resolve, reject) => {
     const child = spawn('python3', cliArgs, {
@@ -138,12 +135,7 @@ export async function baselineBacktestHandler(args: BacktestBaselineArgs, ctx: C
     chConnectTimeout: args.chConnectTimeout,
     chTimeoutS: args.chTimeoutS,
 
-    // TP/SL policy
-    tpMult: args.tpMult,
-    slMult: args.slMult,
-    intrabarOrder: args.intrabarOrder as 'sl_first' | 'tp_first' | undefined,
-    feeBps: args.feeBps,
-    slippageBps: args.slippageBps,
+    // (TP/SL policy removed - pure path metrics only)
   });
 
   if (!result.success) {
@@ -164,28 +156,41 @@ export async function baselineBacktestHandler(args: BacktestBaselineArgs, ctx: C
     success: true,
     csvPath: result.csv_path,
     slicePath: result.slice_path,
+    worklistPath: result.worklist_path,
     config: result.config,
     summary: {
       alertsTotal: summary.alerts_total,
       alertsOk: summary.alerts_ok,
       alertsMissing: summary.alerts_missing,
-      medianAthMult: summary.median_ath_mult
-        ? `${summary.median_ath_mult.toFixed(3)}x`
+      medianAthMult: summary.median_ath_mult ? `${summary.median_ath_mult.toFixed(3)}x` : null,
+      medianTimeToAthHours: summary.median_time_to_ath_hours
+        ? `${summary.median_time_to_ath_hours.toFixed(2)}h`
+        : null,
+      medianTimeTo2xHours: summary.median_time_to_2x_hours
+        ? `${summary.median_time_to_2x_hours.toFixed(2)}h`
+        : null,
+      medianTimeTo3xHours: summary.median_time_to_3x_hours
+        ? `${summary.median_time_to_3x_hours.toFixed(2)}h`
         : null,
       medianDdOverallPct: summary.median_dd_overall_pct
         ? `${summary.median_dd_overall_pct.toFixed(2)}%`
+        : null,
+      medianDdAfter2xPct: summary.median_dd_after_2x_pct
+        ? `${summary.median_dd_after_2x_pct.toFixed(2)}%`
+        : null,
+      medianDdAfter3xPct: summary.median_dd_after_3x_pct
+        ? `${summary.median_dd_after_3x_pct.toFixed(2)}%`
+        : null,
+      medianPeakPnlPct: summary.median_peak_pnl_pct
+        ? `${summary.median_peak_pnl_pct.toFixed(2)}%`
         : null,
       medianRetEndPct: summary.median_ret_end_pct
         ? `${summary.median_ret_end_pct.toFixed(2)}%`
         : null,
       pctHit2x: `${summary.pct_hit_2x.toFixed(2)}%`,
-      medianTimeTo2xHours: summary.median_time_to_2x_hours
-        ? `${summary.median_time_to_2x_hours.toFixed(2)}h`
-        : null,
       medianTpSlRetPct: summary.median_tp_sl_ret_pct
         ? `${summary.median_tp_sl_ret_pct.toFixed(2)}%`
         : null,
     },
   };
 }
-
