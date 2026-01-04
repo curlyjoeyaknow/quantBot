@@ -237,11 +237,15 @@ class TokenResult:
     entry_price: Optional[float]
     ath_mult: Optional[float]
     time_to_ath_s: Optional[int]
+    time_to_recovery_s: Optional[int]  # time to first go above entry price
     time_to_2x_s: Optional[int]
     time_to_3x_s: Optional[int]
     time_to_4x_s: Optional[int]
     time_to_5x_s: Optional[int]
     time_to_10x_s: Optional[int]
+    time_to_dd_pre2x_s: Optional[int]  # time to min dd before 2x (or horizon end)
+    time_to_dd_after_2x_s: Optional[int]  # time to min dd after 2x
+    time_to_dd_after_3x_s: Optional[int]  # time to min dd after 3x
     dd_initial: Optional[float]
     dd_overall: Optional[float]
     dd_pre2x: Optional[float]  # NULL if no 2x hit (only for 2x-hitters)
@@ -295,9 +299,10 @@ def process_single_alert(
                     alert_id=alert_id, mint=alert.mint, caller=alert.caller,
                     alert_ts_ms=alert.ts_ms, entry_ts_ms=entry_ts_ms,
                     status="missing", candles=0, entry_price=None,
-                    ath_mult=None, time_to_ath_s=None,
+                    ath_mult=None, time_to_ath_s=None, time_to_recovery_s=None,
                     time_to_2x_s=None, time_to_3x_s=None, time_to_4x_s=None,
                     time_to_5x_s=None, time_to_10x_s=None,
+                    time_to_dd_pre2x_s=None, time_to_dd_after_2x_s=None, time_to_dd_after_3x_s=None,
                     dd_initial=None, dd_overall=None, dd_pre2x=None, dd_pre2x_or_horizon=None,
                     dd_after_2x=None, dd_after_3x=None, dd_after_4x=None,
                     dd_after_5x=None, dd_after_10x=None, dd_after_ath=None,
@@ -308,9 +313,10 @@ def process_single_alert(
                 alert_id=alert_id, mint=alert.mint, caller=alert.caller,
                 alert_ts_ms=alert.ts_ms, entry_ts_ms=entry_ts_ms,
                 status=f"error:{str(e)[:50]}", candles=0, entry_price=None,
-                ath_mult=None, time_to_ath_s=None,
+                ath_mult=None, time_to_ath_s=None, time_to_recovery_s=None,
                 time_to_2x_s=None, time_to_3x_s=None, time_to_4x_s=None,
                 time_to_5x_s=None, time_to_10x_s=None,
+                time_to_dd_pre2x_s=None, time_to_dd_after_2x_s=None, time_to_dd_after_3x_s=None,
                 dd_initial=None, dd_overall=None, dd_pre2x=None, dd_pre2x_or_horizon=None,
                 dd_after_2x=None, dd_after_3x=None, dd_after_4x=None,
                 dd_after_5x=None, dd_after_10x=None, dd_after_ath=None,
@@ -398,10 +404,11 @@ def run_single_token_backtest(
             alert_id=alert_id, mint=alert.mint, caller=alert.caller,
             alert_ts_ms=alert.ts_ms, entry_ts_ms=entry_ts_ms,
             status="missing", candles=0, entry_price=None,
-            ath_mult=None, time_to_ath_s=None,
+            ath_mult=None, time_to_ath_s=None, time_to_recovery_s=None,
             time_to_2x_s=None, time_to_3x_s=None, time_to_4x_s=None,
             time_to_5x_s=None, time_to_10x_s=None,
-            dd_initial=None, dd_overall=None, dd_pre2x=None,
+            time_to_dd_pre2x_s=None, time_to_dd_after_2x_s=None, time_to_dd_after_3x_s=None,
+            dd_initial=None, dd_overall=None, dd_pre2x=None, dd_pre2x_or_horizon=None,
             dd_after_2x=None, dd_after_3x=None, dd_after_4x=None,
             dd_after_5x=None, dd_after_10x=None, dd_after_ath=None,
             peak_pnl_pct=None, ret_end_pct=None,
@@ -471,17 +478,32 @@ mins AS (
     min(CASE WHEN ath.ath_ts IS NOT NULL AND c.ts > ath.ath_ts 
              THEN LEAST(c.l, a.max_high) END) AS min_postath
   FROM candles c, agg a, ath_cte ath
+),
+-- Timestamps when the min dd values occur (for time-to-dd metrics)
+min_times AS (
+  SELECT
+    -- Time to min dd before 2x (or horizon)
+    min(CASE WHEN c.l = m.min_pre2x_or_horizon THEN c.ts END) AS ts_min_pre2x_or_horizon,
+    -- Time to min dd after 2x
+    min(CASE WHEN a.ts_2x IS NOT NULL AND c.ts > a.ts_2x AND c.l = m.min_post2x THEN c.ts END) AS ts_min_post2x,
+    -- Time to min dd after 3x
+    min(CASE WHEN a.ts_3x IS NOT NULL AND c.ts > a.ts_3x AND c.l = m.min_post3x THEN c.ts END) AS ts_min_post3x
+  FROM candles c, agg a, mins m
 )
 SELECT
   a.candles,
   a.entry_price,
   (a.max_high / a.entry_price) AS ath_mult,
   EXTRACT(EPOCH FROM (ath.ath_ts - a.first_ts))::BIGINT AS time_to_ath_s,
+  EXTRACT(EPOCH FROM (a.recovery_ts - a.first_ts))::BIGINT AS time_to_recovery_s,
   EXTRACT(EPOCH FROM (a.ts_2x - a.first_ts))::BIGINT AS time_to_2x_s,
   EXTRACT(EPOCH FROM (a.ts_3x - a.first_ts))::BIGINT AS time_to_3x_s,
   EXTRACT(EPOCH FROM (a.ts_4x - a.first_ts))::BIGINT AS time_to_4x_s,
   EXTRACT(EPOCH FROM (a.ts_5x - a.first_ts))::BIGINT AS time_to_5x_s,
   EXTRACT(EPOCH FROM (a.ts_10x - a.first_ts))::BIGINT AS time_to_10x_s,
+  EXTRACT(EPOCH FROM (mt.ts_min_pre2x_or_horizon - a.first_ts))::BIGINT AS time_to_dd_pre2x_s,
+  EXTRACT(EPOCH FROM (mt.ts_min_post2x - a.first_ts))::BIGINT AS time_to_dd_after_2x_s,
+  EXTRACT(EPOCH FROM (mt.ts_min_post3x - a.first_ts))::BIGINT AS time_to_dd_after_3x_s,
   -- dd_initial: how far below entry before FIRST time price exceeds entry
   -- NULL if it never dipped before recovering (immediate recovery), 0 if never below entry
   CASE
@@ -512,7 +534,7 @@ SELECT
        ELSE (m.min_postath / a.max_high) - 1.0 END AS dd_after_ath,
   ((a.max_high / a.entry_price) - 1.0) * 100.0 AS peak_pnl_pct,
   ((a.end_close / a.entry_price) - 1.0) * 100.0 AS ret_end_pct
-FROM agg a, ath_cte ath, mins m
+FROM agg a, ath_cte ath, mins m, min_times mt
 """
         row = con.execute(sql).fetchone()
 
@@ -521,9 +543,10 @@ FROM agg a, ath_cte ath, mins m
                 alert_id=alert_id, mint=alert.mint, caller=alert.caller,
                 alert_ts_ms=alert.ts_ms, entry_ts_ms=entry_ts_ms,
                 status="missing", candles=int(row[0]) if row and row[0] else 0,
-                entry_price=None, ath_mult=None, time_to_ath_s=None,
+                entry_price=None, ath_mult=None, time_to_ath_s=None, time_to_recovery_s=None,
                 time_to_2x_s=None, time_to_3x_s=None, time_to_4x_s=None,
                 time_to_5x_s=None, time_to_10x_s=None,
+                time_to_dd_pre2x_s=None, time_to_dd_after_2x_s=None, time_to_dd_after_3x_s=None,
                 dd_initial=None, dd_overall=None, dd_pre2x=None, dd_pre2x_or_horizon=None,
                 dd_after_2x=None, dd_after_3x=None, dd_after_4x=None,
                 dd_after_5x=None, dd_after_10x=None, dd_after_ath=None,
@@ -536,9 +559,10 @@ FROM agg a, ath_cte ath, mins m
                 alert_id=alert_id, mint=alert.mint, caller=alert.caller,
                 alert_ts_ms=alert.ts_ms, entry_ts_ms=entry_ts_ms,
                 status="bad_entry", candles=int(row[0]),
-                entry_price=entry_price, ath_mult=None, time_to_ath_s=None,
+                entry_price=entry_price, ath_mult=None, time_to_ath_s=None, time_to_recovery_s=None,
                 time_to_2x_s=None, time_to_3x_s=None, time_to_4x_s=None,
                 time_to_5x_s=None, time_to_10x_s=None,
+                time_to_dd_pre2x_s=None, time_to_dd_after_2x_s=None, time_to_dd_after_3x_s=None,
                 dd_initial=None, dd_overall=None, dd_pre2x=None, dd_pre2x_or_horizon=None,
                 dd_after_2x=None, dd_after_3x=None, dd_after_4x=None,
                 dd_after_5x=None, dd_after_10x=None, dd_after_ath=None,
@@ -556,23 +580,27 @@ FROM agg a, ath_cte ath, mins m
             entry_price=float(row[1]) if row[1] else None,
             ath_mult=float(row[2]) if row[2] else None,
             time_to_ath_s=int(row[3]) if row[3] else None,
-            time_to_2x_s=int(row[4]) if row[4] else None,
-            time_to_3x_s=int(row[5]) if row[5] else None,
-            time_to_4x_s=int(row[6]) if row[6] else None,
-            time_to_5x_s=int(row[7]) if row[7] else None,
-            time_to_10x_s=int(row[8]) if row[8] else None,
-            dd_initial=float(row[9]) if row[9] else None,
-            dd_overall=float(row[10]) if row[10] else None,
-            dd_pre2x=float(row[11]) if row[11] else None,
-            dd_pre2x_or_horizon=float(row[12]) if row[12] else None,
-            dd_after_2x=float(row[13]) if row[13] else None,
-            dd_after_3x=float(row[14]) if row[14] else None,
-            dd_after_4x=float(row[15]) if row[15] else None,
-            dd_after_5x=float(row[16]) if row[16] else None,
-            dd_after_10x=float(row[17]) if row[17] else None,
-            dd_after_ath=float(row[18]) if row[18] else None,
-            peak_pnl_pct=float(row[19]) if row[19] else None,
-            ret_end_pct=float(row[20]) if row[20] else None,
+            time_to_recovery_s=int(row[4]) if row[4] else None,
+            time_to_2x_s=int(row[5]) if row[5] else None,
+            time_to_3x_s=int(row[6]) if row[6] else None,
+            time_to_4x_s=int(row[7]) if row[7] else None,
+            time_to_5x_s=int(row[8]) if row[8] else None,
+            time_to_10x_s=int(row[9]) if row[9] else None,
+            time_to_dd_pre2x_s=int(row[10]) if row[10] else None,
+            time_to_dd_after_2x_s=int(row[11]) if row[11] else None,
+            time_to_dd_after_3x_s=int(row[12]) if row[12] else None,
+            dd_initial=float(row[13]) if row[13] else None,
+            dd_overall=float(row[14]) if row[14] else None,
+            dd_pre2x=float(row[15]) if row[15] else None,
+            dd_pre2x_or_horizon=float(row[16]) if row[16] else None,
+            dd_after_2x=float(row[17]) if row[17] else None,
+            dd_after_3x=float(row[18]) if row[18] else None,
+            dd_after_4x=float(row[19]) if row[19] else None,
+            dd_after_5x=float(row[20]) if row[20] else None,
+            dd_after_10x=float(row[21]) if row[21] else None,
+            dd_after_ath=float(row[22]) if row[22] else None,
+            peak_pnl_pct=float(row[23]) if row[23] else None,
+            ret_end_pct=float(row[24]) if row[24] else None,
         )
     finally:
         con.close()
@@ -671,11 +699,15 @@ def results_to_dicts(results: List[TokenResult], interval_seconds: int, horizon_
             "entry_price": r.entry_price,
             "ath_mult": r.ath_mult,
             "time_to_ath_s": r.time_to_ath_s,
+            "time_to_recovery_s": r.time_to_recovery_s,
             "time_to_2x_s": r.time_to_2x_s,
             "time_to_3x_s": r.time_to_3x_s,
             "time_to_4x_s": r.time_to_4x_s,
             "time_to_5x_s": r.time_to_5x_s,
             "time_to_10x_s": r.time_to_10x_s,
+            "time_to_dd_pre2x_s": r.time_to_dd_pre2x_s,
+            "time_to_dd_after_2x_s": r.time_to_dd_after_2x_s,
+            "time_to_dd_after_3x_s": r.time_to_dd_after_3x_s,
             "dd_initial": r.dd_initial,
             "dd_overall": r.dd_overall,
             "dd_pre2x": r.dd_pre2x,
@@ -869,11 +901,15 @@ def ensure_baseline_schema(con: duckdb.DuckDBPyConnection) -> None:
             entry_price DOUBLE,
             ath_mult DOUBLE,
             time_to_ath_s BIGINT,
+            time_to_recovery_s BIGINT,
             time_to_2x_s BIGINT,
             time_to_3x_s BIGINT,
             time_to_4x_s BIGINT,
             time_to_5x_s BIGINT,
             time_to_10x_s BIGINT,
+            time_to_dd_pre2x_s BIGINT,
+            time_to_dd_after_2x_s BIGINT,
+            time_to_dd_after_3x_s BIGINT,
             dd_initial DOUBLE,
             dd_overall DOUBLE,
             dd_pre2x DOUBLE,
@@ -1008,11 +1044,15 @@ def store_baseline_to_duckdb(
                 r.entry_price,
                 r.ath_mult,
                 r.time_to_ath_s,
+                r.time_to_recovery_s,
                 r.time_to_2x_s,
                 r.time_to_3x_s,
                 r.time_to_4x_s,
                 r.time_to_5x_s,
                 r.time_to_10x_s,
+                r.time_to_dd_pre2x_s,
+                r.time_to_dd_after_2x_s,
+                r.time_to_dd_after_3x_s,
                 r.dd_initial,
                 r.dd_overall,
                 r.dd_pre2x,
@@ -1029,7 +1069,7 @@ def store_baseline_to_duckdb(
 
         con.executemany("""
             INSERT INTO baseline.alert_results_f VALUES (
-                ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?
+                ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?
             )
         """, out_rows)
 
@@ -1221,8 +1261,9 @@ def main() -> None:
     alert_fields = [
         "alert_id", "mint", "caller", "alert_ts_utc", "entry_ts_utc",
         "interval_seconds", "horizon_hours", "status", "candles", "entry_price",
-        "ath_mult", "time_to_ath_s", "time_to_2x_s", "time_to_3x_s", "time_to_4x_s",
+        "ath_mult", "time_to_ath_s", "time_to_recovery_s", "time_to_2x_s", "time_to_3x_s", "time_to_4x_s",
         "time_to_5x_s", "time_to_10x_s",
+        "time_to_dd_pre2x_s", "time_to_dd_after_2x_s", "time_to_dd_after_3x_s",
         "dd_initial", "dd_overall", "dd_pre2x", "dd_pre2x_or_horizon",
         "dd_after_2x", "dd_after_3x", "dd_after_4x", "dd_after_5x", "dd_after_10x", "dd_after_ath",
         "peak_pnl_pct", "ret_end_pct"
