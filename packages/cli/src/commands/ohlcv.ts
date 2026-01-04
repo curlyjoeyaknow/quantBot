@@ -30,10 +30,7 @@ import {
   coverageDashboardHandler,
   coverageDashboardSchema,
 } from '../handlers/ohlcv/coverage-dashboard.js';
-import {
-  tokenLifespanHandler,
-  tokenLifespanSchema,
-} from '../handlers/ohlcv/token-lifespan.js';
+import { tokenLifespanHandler, tokenLifespanSchema } from '../handlers/ohlcv/token-lifespan.js';
 
 /**
  * Fetch command schema (re-exported from handler)
@@ -379,6 +376,7 @@ export function registerOhlcvCommands(program: Command): void {
       '150000'
     )
     .option('--concurrency <n>', 'Number of concurrent Birdeye API calls (default: 5)', '5')
+    .option('--refresh-cache', 'Force re-fetch from Birdeye API (ignore cache)', false)
     .option('--format <format>', 'Output format', 'table');
 
   defineCommand(tokenLifespanCmd, {

@@ -12,13 +12,19 @@
  * - We have OHLCV data from alertTime to either:
  *   a) The full 150k sec horizon (normal full coverage), OR
  *   b) The token's last_trade_unix_time (token is dead/inactive)
+ *
+ * DuckDB Cache:
+ * - Stores fetched lifespan data in token_lifespan table
+ * - Skips API calls for tokens already in cache
+ * - Cache is stored alongside the alerts.duckdb file
  */
 
 import { z } from 'zod';
 import type { CommandContext } from '../../core/command-context.js';
-import { getDuckDBWorklistService } from '@quantbot/storage';
+import { getDuckDBWorklistService, openDuckDb, type DuckDbConnection } from '@quantbot/storage';
 import { getBirdeyeClient } from '@quantbot/api-clients';
 import { dt } from '@quantbot/utils';
+import path from 'node:path';
 
 export const tokenLifespanSchema = z.object({
   duckdb: z.string(),
@@ -27,18 +33,111 @@ export const tokenLifespanSchema = z.object({
   interval: z.enum(['1m', '5m']).default('1m'),
   minCoverageSeconds: z.coerce.number().int().default(150_000), // 150k sec for 1m
   concurrency: z.coerce.number().int().min(1).max(10).default(5), // API call concurrency
+  refreshCache: z.boolean().default(false), // Force re-fetch from Birdeye
 });
 
 export type TokenLifespanArgs = z.infer<typeof tokenLifespanSchema>;
 
 interface TokenInfo {
   mint: string;
+  chain: string;
+  name: string | null;
+  symbol: string | null;
   creationTime: string | null;
   creationTsMs: number | null;
   lastTradeUnixTime: number | null;
   lastTradeTsMs: number | null;
   liquidity: number | null;
   isActive: boolean; // True if last trade was within 24 hours
+}
+
+// ====== DuckDB Cache Functions ======
+
+const CREATE_TABLE_SQL = `
+CREATE TABLE IF NOT EXISTS token_lifespan (
+    mint VARCHAR PRIMARY KEY,
+    chain VARCHAR DEFAULT 'solana',
+    name VARCHAR,
+    symbol VARCHAR,
+    creation_time_iso VARCHAR,
+    creation_ts_ms BIGINT,
+    last_trade_unix INTEGER,
+    last_trade_ts_ms BIGINT,
+    liquidity DOUBLE,
+    is_active BOOLEAN,
+    fetched_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_token_lifespan_active ON token_lifespan(is_active);
+`;
+
+async function initCacheTable(db: DuckDbConnection): Promise<void> {
+  await db.run(CREATE_TABLE_SQL);
+}
+
+async function getCachedTokens(
+  db: DuckDbConnection,
+  mints: string[]
+): Promise<Map<string, TokenInfo>> {
+  if (mints.length === 0) return new Map();
+
+  const mintList = mints.map((m) => `'${m.replace(/'/g, "''")}'`).join(',');
+  const rows = await db.all<{
+    mint: string;
+    chain: string;
+    name: string | null;
+    symbol: string | null;
+    creation_time_iso: string | null;
+    creation_ts_ms: bigint | null;
+    last_trade_unix: number | null;
+    last_trade_ts_ms: bigint | null;
+    liquidity: number | null;
+    is_active: boolean;
+  }>(`SELECT * FROM token_lifespan WHERE mint IN (${mintList})`);
+
+  const cached = new Map<string, TokenInfo>();
+  for (const row of rows) {
+    cached.set(row.mint, {
+      mint: row.mint,
+      chain: row.chain,
+      name: row.name,
+      symbol: row.symbol,
+      creationTime: row.creation_time_iso,
+      creationTsMs: row.creation_ts_ms ? Number(row.creation_ts_ms) : null,
+      lastTradeUnixTime: row.last_trade_unix,
+      lastTradeTsMs: row.last_trade_ts_ms ? Number(row.last_trade_ts_ms) : null,
+      liquidity: row.liquidity,
+      isActive: row.is_active,
+    });
+  }
+  return cached;
+}
+
+async function cacheTokenInfo(db: DuckDbConnection, info: TokenInfo): Promise<void> {
+  // DuckDB uses $1, $2, ... style parameters
+  const sql = `
+    INSERT OR REPLACE INTO token_lifespan 
+    (mint, chain, name, symbol, creation_time_iso, creation_ts_ms, last_trade_unix, last_trade_ts_ms, liquidity, is_active, fetched_at)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, CURRENT_TIMESTAMP)
+  `;
+  await db.run(sql, [
+    info.mint,
+    info.chain,
+    info.name,
+    info.symbol,
+    info.creationTime,
+    info.creationTsMs,
+    info.lastTradeUnixTime,
+    info.lastTradeTsMs,
+    info.liquidity,
+    info.isActive,
+  ]);
+}
+
+async function getCacheStats(db: DuckDbConnection): Promise<{ total: number; active: number }> {
+  const rows = await db.all<{ total: number; active: number }>(
+    `SELECT COUNT(*) as total, SUM(CASE WHEN is_active THEN 1 ELSE 0 END) as active FROM token_lifespan`
+  );
+  return rows[0] || { total: 0, active: 0 };
 }
 
 interface AlertCoverage {
@@ -79,9 +178,18 @@ export async function tokenLifespanHandler(
   const client = ctx.services.clickHouseClient();
   const birdeyeClient = getBirdeyeClient();
   const database = process.env.CLICKHOUSE_DATABASE || 'quantbot';
-  const { duckdb, from, to, interval, minCoverageSeconds, concurrency } = args;
+  const { duckdb, from, to, interval, minCoverageSeconds, concurrency, refreshCache } = args;
 
   const intervalSeconds = interval === '1m' ? 60 : 300;
+
+  // Open cache database (same directory as alerts duckdb)
+  const cacheDbPath = path.join(path.dirname(duckdb), 'token_lifespan_cache.duckdb');
+  console.log(`Opening lifespan cache: ${cacheDbPath}`);
+  const cacheDb = await openDuckDb(cacheDbPath);
+  await initCacheTable(cacheDb);
+
+  const cacheStats = await getCacheStats(cacheDb);
+  console.log(`Cache has ${cacheStats.total} tokens (${cacheStats.active} active)`);
 
   console.log(`Loading alerts from DuckDB...`);
 
@@ -106,9 +214,6 @@ export async function tokenLifespanHandler(
   // Get unique mints
   const uniqueMints = [...new Set(alerts.map((a) => a.mint))];
   console.log(`${uniqueMints.length} unique tokens. Checking coverage...`);
-
-  // First, get coverage from ClickHouse for all alerts
-  const mintList = uniqueMints.map((m) => `'${m}'`).join(',');
 
   // Get candle counts per token from alertTime to alertTime + horizon
   const coverageMap = new Map<string, { candleCount: number; coverageSeconds: number }>();
@@ -170,18 +275,29 @@ export async function tokenLifespanHandler(
   }
 
   console.log(
-    `${tokensNeedingLookup.size} tokens have < ${minCoverageSeconds} sec coverage. Checking Birdeye for token lifespan...`
+    `${tokensNeedingLookup.size} tokens have < ${minCoverageSeconds} sec coverage. Checking for lifespan data...`
   );
 
-  // Fetch token info from Birdeye for tokens with insufficient coverage
-  const tokenInfoMap = new Map<string, TokenInfo>();
-  const tokensToLookup = Array.from(tokensNeedingLookup);
+  // Check cache for existing token info
+  const tokensToLookupList = Array.from(tokensNeedingLookup);
+  const cachedTokens = refreshCache
+    ? new Map<string, TokenInfo>()
+    : await getCachedTokens(cacheDb, tokensToLookupList);
+
+  const tokensToFetch = tokensToLookupList.filter((m) => !cachedTokens.has(m));
+  console.log(
+    `  Cache hit: ${cachedTokens.size} tokens, need to fetch: ${tokensToFetch.length} tokens`
+  );
+
+  // Fetch token info from Birdeye for tokens not in cache
+  const tokenInfoMap = new Map<string, TokenInfo>(cachedTokens);
 
   const nowMs = Date.now();
   const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
 
-  for (let i = 0; i < tokensToLookup.length; i += concurrency) {
-    const batch = tokensToLookup.slice(i, i + concurrency);
+  let fetchedCount = 0;
+  for (let i = 0; i < tokensToFetch.length; i += concurrency) {
+    const batch = tokensToFetch.slice(i, i + concurrency);
 
     const promises = batch.map(async (mint) => {
       try {
@@ -198,35 +314,53 @@ export async function tokenLifespanHandler(
           const lastTradeTsMs = info.lastTradeUnixTime ? info.lastTradeUnixTime * 1000 : null;
           const isActive = lastTradeTsMs ? nowMs - lastTradeTsMs < TWENTY_FOUR_HOURS_MS : false;
 
-          tokenInfoMap.set(mint, {
+          const tokenInfo: TokenInfo = {
             mint,
+            chain,
+            name: info.name || null,
+            symbol: info.symbol || null,
             creationTime: info.creationTime,
             creationTsMs,
             lastTradeUnixTime: info.lastTradeUnixTime,
             lastTradeTsMs,
             liquidity: info.liquidity,
             isActive,
-          });
+          };
+
+          tokenInfoMap.set(mint, tokenInfo);
+
+          // Cache the result
+          try {
+            await cacheTokenInfo(cacheDb, tokenInfo);
+            fetchedCount++;
+          } catch (cacheErr) {
+            console.error(`Failed to cache token ${mint}:`, cacheErr);
+          }
         }
-      } catch {
-        // Ignore errors for individual tokens
+      } catch (fetchErr) {
+        // Ignore fetch errors for individual tokens
+        // console.error(`Failed to fetch token ${mint}:`, fetchErr);
       }
     });
 
     await Promise.all(promises);
 
     // Progress and rate limiting
-    if ((i + concurrency) % 50 === 0 || i + concurrency >= tokensToLookup.length) {
-      console.log(`  Birdeye lookup: ${Math.min(i + concurrency, tokensToLookup.length)}/${tokensToLookup.length}`);
+    if ((i + concurrency) % 50 === 0 || i + concurrency >= tokensToFetch.length) {
+      console.log(
+        `  Birdeye fetch: ${Math.min(i + concurrency, tokensToFetch.length)}/${tokensToFetch.length}`
+      );
     }
 
     // Small delay between batches to respect rate limits
-    if (i + concurrency < tokensToLookup.length) {
+    if (i + concurrency < tokensToFetch.length) {
       await new Promise((resolve) => setTimeout(resolve, 200));
     }
   }
 
-  console.log(`Got Birdeye info for ${tokenInfoMap.size}/${tokensToLookup.length} tokens.`);
+  console.log(
+    `Got lifespan info for ${tokenInfoMap.size}/${tokensToLookupList.length} tokens (${fetchedCount} fetched, ${cachedTokens.size} from cache).`
+  );
 
   // Now analyze coverage with lifespan data
   let originalFullCount = 0;
@@ -319,8 +453,12 @@ export async function tokenLifespanHandler(
   console.log(`Token Lifespan Analysis - ${interval} Interval`);
   console.log('='.repeat(70));
   console.log(`Total alerts: ${alerts.length}`);
-  console.log(`Original full coverage (>= ${minCoverageSeconds} sec): ${originalFullCount} (${originalPct}%)`);
-  console.log(`Effective full coverage (incl. dead tokens): ${effectiveFullCount} (${effectivePct}%)`);
+  console.log(
+    `Original full coverage (>= ${minCoverageSeconds} sec): ${originalFullCount} (${originalPct}%)`
+  );
+  console.log(
+    `Effective full coverage (incl. dead tokens): ${effectiveFullCount} (${effectivePct}%)`
+  );
   console.log(`Improvement: +${improvementCount} alerts now considered fully covered`);
   console.log('');
   console.log('Breakdown:');
@@ -341,7 +479,9 @@ export async function tokenLifespanHandler(
       const lastTradeDate = ex.tokenLastTradeTsMs
         ? dt.fromTimestampMs(ex.tokenLastTradeTsMs).toFormat('yyyy-MM-dd')
         : 'N/A';
-      console.log(`  ${ex.mint.slice(0, 20)}... alert: ${alertDate}, died: ${lastTradeDate}, candles: ${ex.candleCount}`);
+      console.log(
+        `  ${ex.mint.slice(0, 20)}... alert: ${alertDate}, died: ${lastTradeDate}, candles: ${ex.candleCount}`
+      );
     }
   }
 
