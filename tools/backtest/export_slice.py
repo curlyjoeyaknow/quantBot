@@ -356,8 +356,8 @@ def main() -> None:
     ap.add_argument("--to", dest="date_to", required=True, help="End date (YYYY-MM-DD)")
 
     # Mint sources
-    ap.add_argument("--duckdb", default=os.getenv("DUCKDB_PATH", "data/alerts.duckdb"),
-                    help="DuckDB path to load alert mints from")
+    ap.add_argument("--duckdb", default=os.getenv("DUCKDB_PATH", "../../data/alerts.duckdb"),
+                    help="DuckDB path to load alert mints from (relative to script dir or absolute)")
     ap.add_argument("--mints-file", help="File with mints (one per line), overrides --duckdb")
     ap.add_argument("--chain", default="solana", help="Chain to filter by")
 
@@ -373,12 +373,12 @@ def main() -> None:
                     help="Also create partitioned version of the slice")
 
     # ClickHouse connection
-    ap.add_argument("--ch-host", default=os.getenv("CH_HOST", "localhost"))
-    ap.add_argument("--ch-port", type=int, default=int(os.getenv("CH_PORT", "9000")))
-    ap.add_argument("--ch-db", default=os.getenv("CH_DB", "ohlcv"))
-    ap.add_argument("--ch-table", default=os.getenv("CH_TABLE", "candles_1m"))
-    ap.add_argument("--ch-user", default=os.getenv("CH_USER", "default"))
-    ap.add_argument("--ch-pass", default=os.getenv("CH_PASS", ""))
+    ap.add_argument("--ch-host", default=os.getenv("CLICKHOUSE_HOST", os.getenv("CH_HOST", "localhost")))
+    ap.add_argument("--ch-port", type=int, default=int(os.getenv("CLICKHOUSE_PORT", os.getenv("CH_PORT", "19000"))))
+    ap.add_argument("--ch-db", default=os.getenv("CLICKHOUSE_DATABASE", os.getenv("CH_DB", "quantbot")))
+    ap.add_argument("--ch-table", default=os.getenv("CH_TABLE", "ohlcv_candles"))
+    ap.add_argument("--ch-user", default=os.getenv("CLICKHOUSE_USER", os.getenv("CH_USER", "default")))
+    ap.add_argument("--ch-pass", default=os.getenv("CLICKHOUSE_PASSWORD", os.getenv("CH_PASS", "")))
     ap.add_argument("--ch-connect-timeout", type=int, default=10)
     ap.add_argument("--ch-timeout-s", type=int, default=300)
 
