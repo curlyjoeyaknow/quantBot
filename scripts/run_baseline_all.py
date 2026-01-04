@@ -1198,50 +1198,51 @@ def print_caller_leaderboard(callers: List[Dict[str, Any]], limit: int = 30) -> 
         print("No callers with enough trades.", file=sys.stderr)
         return
 
+    # Map display names to data keys (shorter headers for readability)
     headers = [
-        ("rank", "int"),
-        ("caller", "str"),
-        ("n", "int"),
-        ("p25_ath", "x"),
-        ("median_ath", "x"),
-        ("p75_ath", "x"),
-        ("p95_ath", "x"),
-        ("hit2x_pct", "pct"),
-        ("hit3x_pct", "pct"),
-        ("hit4x_pct", "pct"),
-        ("hit5x_pct", "pct"),
-        ("median_t_recovery_m", "mins"),
-        ("median_t2x_m", "mins"),
-        ("median_t3x_m", "mins"),
-        ("median_t_ath_m", "mins"),
-        ("median_dd_initial_pct", "pct"),
-        ("median_dd_pre2x_pct", "pct"),
-        ("median_dd_pre2x_or_horizon_pct", "pct"),
+        ("rank", "rank", "int"),
+        ("caller", "caller", "str"),
+        ("n", "n", "int"),
+        ("p25", "p25_ath", "x"),
+        ("med_ath", "median_ath", "x"),
+        ("p75", "p75_ath", "x"),
+        ("p95", "p95_ath", "x"),
+        ("hit2x", "hit2x_pct", "pct"),
+        ("hit3x", "hit3x_pct", "pct"),
+        ("hit4x", "hit4x_pct", "pct"),
+        ("hit5x", "hit5x_pct", "pct"),
+        ("t_recv", "median_t_recovery_m", "mins"),
+        ("t_2x", "median_t2x_m", "mins"),
+        ("t_3x", "median_t3x_m", "mins"),
+        ("t_ath", "median_t_ath_m", "mins"),
+        ("dd_init", "median_dd_initial_pct", "pct"),
+        ("dd_pre2x", "median_dd_pre2x_pct", "pct"),
+        ("dd_all", "median_dd_pre2x_or_horizon_pct", "pct"),
     ]
 
-    col_widths: Dict[str, int] = {k: max(len(k), 8) for k, _ in headers}
+    col_widths: Dict[str, int] = {display: max(len(display), 6) for display, _, _ in headers}
     for r in callers[:limit]:
-        for key, kind in headers:
-            if key == "caller":
+        for display, data_key, kind in headers:
+            if data_key == "caller":
                 v = (r.get("caller") or "-").strip()
-                col_widths[key] = max(col_widths[key], min(24, len(v)))
+                col_widths[display] = max(col_widths[display], min(24, len(v)))
             else:
-                txt = _fmt(r.get(key), kind)
-                col_widths[key] = max(col_widths[key], len(txt))
+                txt = _fmt(r.get(data_key), kind)
+                col_widths[display] = max(col_widths[display], len(txt))
 
-    line = "  ".join(k.ljust(col_widths[k]) for k, _ in headers)
+    line = "  ".join(display.ljust(col_widths[display]) for display, _, _ in headers)
     print(line)
     print("-" * len(line))
 
     for r in callers[:limit]:
         parts = []
-        for key, kind in headers:
-            if key == "caller":
-                v = (r.get("caller") or "-").strip()[: col_widths[key]]
-                parts.append(v.ljust(col_widths[key]))
+        for display, data_key, kind in headers:
+            if data_key == "caller":
+                v = (r.get("caller") or "-").strip()[: col_widths[display]]
+                parts.append(v.ljust(col_widths[display]))
             else:
-                txt = _fmt(r.get(key), kind)
-                parts.append(txt.rjust(col_widths[key]))
+                txt = _fmt(r.get(data_key), kind)
+                parts.append(txt.rjust(col_widths[display]))
         print("  ".join(parts))
 
 
