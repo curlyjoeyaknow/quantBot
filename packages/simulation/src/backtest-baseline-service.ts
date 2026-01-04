@@ -28,13 +28,13 @@ export const BacktestSummarySchema = z.object({
   median_time_to_ath_hours: z.number().nullable(),
   median_time_to_2x_hours: z.number().nullable(),
   median_time_to_3x_hours: z.number().nullable(),
+  median_dd_initial_pct: z.number().nullable().optional(),  // Max dip before recovery
   median_dd_overall_pct: z.number().nullable(),
-  median_dd_after_2x_pct: z.number().nullable(),
-  median_dd_after_3x_pct: z.number().nullable(),
+  median_dd_after_2x_pct: z.number().nullable().optional(),
+  median_dd_after_3x_pct: z.number().nullable().optional(),
   median_peak_pnl_pct: z.number().nullable(),
   median_ret_end_pct: z.number().nullable(),
   pct_hit_2x: z.number(),
-  median_tp_sl_ret_pct: z.number().nullable(),
 });
 
 export type BacktestSummary = z.infer<typeof BacktestSummarySchema>;
