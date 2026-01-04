@@ -118,3 +118,56 @@ export const backtestOptimizeSchema = z.object({
 });
 
 export type BacktestOptimizeArgs = z.infer<typeof backtestOptimizeSchema>;
+
+/**
+ * Baseline backtest schema
+ *
+ * Per-alert backtest computing:
+ * - ATH multiple after alert
+ * - Max drawdown after alert
+ * - Max drawdown before first 2x
+ * - Time-to-2x
+ * - Simple TP/SL exit policy returns
+ */
+export const backtestBaselineSchema = z.object({
+  // Core parameters
+  duckdb: z.string().default('data/alerts.duckdb'),
+  chain: z.string().default('solana'),
+  from: z.string().optional(), // YYYY-MM-DD, defaults to 30 days ago
+  to: z.string().optional(), // YYYY-MM-DD, defaults to today
+  intervalSeconds: z.coerce.number().int().refine((v) => v === 60 || v === 300).default(60),
+  horizonHours: z.coerce.number().int().positive().default(48),
+  threads: z.coerce.number().int().positive().default(16),
+
+  // Slice management (offline backtest)
+  sliceDir: z.string().default('slices'),
+  reuseSlice: z.boolean().default(false),
+  minCoveragePct: z.coerce.number().min(0).max(1).default(0.8),
+
+  // Output
+  outDir: z.string().default('results'),
+  outCsv: z.string().optional(),
+  format: z.enum(['json', 'table', 'csv']).optional().default('table'),
+
+  // ClickHouse (native protocol)
+  chHost: z.string().optional(),
+  chPort: z.coerce.number().int().positive().optional(),
+  chDb: z.string().optional(),
+  chTable: z.string().optional(),
+  chUser: z.string().optional(),
+  chPass: z.string().optional(),
+  chConnectTimeout: z.coerce.number().int().positive().optional(),
+  chTimeoutS: z.coerce.number().int().positive().optional(),
+
+  // TP/SL policy
+  tpMult: z.coerce.number().positive().default(2.0),
+  slMult: z.coerce.number().positive().max(1).default(0.5),
+  intrabarOrder: z.enum(['sl_first', 'tp_first']).default('sl_first'),
+  feeBps: z.coerce.number().min(0).default(30),
+  slippageBps: z.coerce.number().min(0).default(50),
+
+  // TUI mode
+  tui: z.boolean().optional().default(false),
+});
+
+export type BacktestBaselineArgs = z.infer<typeof backtestBaselineSchema>;

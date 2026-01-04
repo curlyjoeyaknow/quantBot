@@ -59,24 +59,37 @@ export function handleSolanaError(error: unknown): string {
   if (error instanceof Error) {
     const message = error.message.toLowerCase();
 
-    // Mint address errors
-    if (message.includes('mint') || message.includes('address')) {
-      return 'Invalid mint address. Please ensure the address is 32-44 characters and correctly formatted.';
-    }
-
-    // API errors
+    // API errors (check first - more specific)
     if (message.includes('rate limit') || message.includes('429')) {
       return 'API rate limit exceeded. Please wait and try again.';
     }
 
-    // Network errors
-    if (message.includes('network') || message.includes('connection')) {
-      return 'Network error. Please check your connection and try again.';
+    // ClickHouse connection errors
+    if (message.includes('clickhouse') || message.includes('8123')) {
+      return 'ClickHouse connection error. Please check that ClickHouse is running and the --ch-url is correct.';
     }
 
-    // Generic Solana errors
-    if (message.includes('solana') || message.includes('rpc')) {
+    // Solana RPC errors (must mention solana explicitly or known RPC patterns)
+    if (
+      (message.includes('solana') && message.includes('rpc')) ||
+      message.includes('rpc endpoint') ||
+      message.includes('rpc error')
+    ) {
       return 'Solana RPC error. Please check your RPC endpoint and try again.';
+    }
+
+    // Generic network/connection errors
+    if (message.includes('econnrefused') || message.includes('network error')) {
+      return 'Connection refused. Please check that the target service is running.';
+    }
+
+    // Mint address validation errors (be more specific)
+    if (
+      message.includes('invalid mint') ||
+      message.includes('invalid address') ||
+      (message.includes('mint') && message.includes('format'))
+    ) {
+      return 'Invalid mint address. Please ensure the address is 32-44 characters and correctly formatted.';
     }
   }
 
