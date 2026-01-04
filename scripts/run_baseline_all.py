@@ -244,7 +244,8 @@ class TokenResult:
     time_to_10x_s: Optional[int]
     dd_initial: Optional[float]
     dd_overall: Optional[float]
-    dd_pre2x: Optional[float]
+    dd_pre2x: Optional[float]  # NULL if no 2x hit (only for 2x-hitters)
+    dd_pre2x_or_horizon: Optional[float]  # min dd up to 2x OR end of horizon (defined for all)
     dd_after_2x: Optional[float]
     dd_after_3x: Optional[float]
     dd_after_4x: Optional[float]
@@ -297,7 +298,7 @@ def process_single_alert(
                     ath_mult=None, time_to_ath_s=None,
                     time_to_2x_s=None, time_to_3x_s=None, time_to_4x_s=None,
                     time_to_5x_s=None, time_to_10x_s=None,
-                    dd_initial=None, dd_overall=None, dd_pre2x=None,
+                    dd_initial=None, dd_overall=None, dd_pre2x=None, dd_pre2x_or_horizon=None,
                     dd_after_2x=None, dd_after_3x=None, dd_after_4x=None,
                     dd_after_5x=None, dd_after_10x=None, dd_after_ath=None,
                     peak_pnl_pct=None, ret_end_pct=None,
@@ -310,7 +311,7 @@ def process_single_alert(
                 ath_mult=None, time_to_ath_s=None,
                 time_to_2x_s=None, time_to_3x_s=None, time_to_4x_s=None,
                 time_to_5x_s=None, time_to_10x_s=None,
-                dd_initial=None, dd_overall=None, dd_pre2x=None,
+                dd_initial=None, dd_overall=None, dd_pre2x=None, dd_pre2x_or_horizon=None,
                 dd_after_2x=None, dd_after_3x=None, dd_after_4x=None,
                 dd_after_5x=None, dd_after_10x=None, dd_after_ath=None,
                 peak_pnl_pct=None, ret_end_pct=None,
@@ -452,6 +453,10 @@ mins AS (
     -- Lowest low from entry UNTIL we hit 2x (measures dip on the way to 2x)
     min(CASE WHEN a.ts_2x IS NOT NULL AND c.ts < a.ts_2x 
              THEN LEAST(c.l, a.entry_price) END) AS min_pre2x,
+    -- Lowest low up to 2x OR end of horizon (defined for everyone)
+    min(CASE WHEN a.ts_2x IS NOT NULL AND c.ts < a.ts_2x THEN LEAST(c.l, a.entry_price)
+             WHEN a.ts_2x IS NULL THEN LEAST(c.l, a.entry_price)
+             END) AS min_pre2x_or_horizon,
     -- Lowest low AFTER hitting 2x (how far does it fall from 2x level)
     min(CASE WHEN a.ts_2x IS NOT NULL AND c.ts > a.ts_2x 
              THEN LEAST(c.l, a.entry_price * 2.0) END) AS min_post2x,
@@ -486,10 +491,13 @@ SELECT
   END AS dd_initial,
   LEAST(0.0, (a.min_low / a.entry_price) - 1.0) AS dd_overall,
   -- dd_pre2x: how far below entry on the journey to 2x (only for tokens that hit 2x)
-  -- 0 if never dipped below entry before hitting 2x
+  -- NULL if no 2x, 0 if never dipped below entry before hitting 2x
   CASE WHEN a.ts_2x IS NULL THEN NULL
        WHEN m.min_pre2x IS NULL THEN 0.0
        ELSE (m.min_pre2x / a.entry_price) - 1.0 END AS dd_pre2x,
+  -- dd_pre2x_or_horizon: min drawdown up to 2x OR end of horizon (defined for everyone)
+  CASE WHEN m.min_pre2x_or_horizon IS NULL THEN 0.0
+       ELSE (m.min_pre2x_or_horizon / a.entry_price) - 1.0 END AS dd_pre2x_or_horizon,
   CASE WHEN a.ts_2x IS NULL OR m.min_post2x IS NULL THEN NULL
        ELSE (m.min_post2x / (a.entry_price * 2.0)) - 1.0 END AS dd_after_2x,
   CASE WHEN a.ts_3x IS NULL OR m.min_post3x IS NULL THEN NULL
@@ -516,7 +524,7 @@ FROM agg a, ath_cte ath, mins m
                 entry_price=None, ath_mult=None, time_to_ath_s=None,
                 time_to_2x_s=None, time_to_3x_s=None, time_to_4x_s=None,
                 time_to_5x_s=None, time_to_10x_s=None,
-                dd_initial=None, dd_overall=None, dd_pre2x=None,
+                dd_initial=None, dd_overall=None, dd_pre2x=None, dd_pre2x_or_horizon=None,
                 dd_after_2x=None, dd_after_3x=None, dd_after_4x=None,
                 dd_after_5x=None, dd_after_10x=None, dd_after_ath=None,
                 peak_pnl_pct=None, ret_end_pct=None,
@@ -531,7 +539,7 @@ FROM agg a, ath_cte ath, mins m
                 entry_price=entry_price, ath_mult=None, time_to_ath_s=None,
                 time_to_2x_s=None, time_to_3x_s=None, time_to_4x_s=None,
                 time_to_5x_s=None, time_to_10x_s=None,
-                dd_initial=None, dd_overall=None, dd_pre2x=None,
+                dd_initial=None, dd_overall=None, dd_pre2x=None, dd_pre2x_or_horizon=None,
                 dd_after_2x=None, dd_after_3x=None, dd_after_4x=None,
                 dd_after_5x=None, dd_after_10x=None, dd_after_ath=None,
                 peak_pnl_pct=None, ret_end_pct=None,
@@ -556,14 +564,15 @@ FROM agg a, ath_cte ath, mins m
             dd_initial=float(row[9]) if row[9] else None,
             dd_overall=float(row[10]) if row[10] else None,
             dd_pre2x=float(row[11]) if row[11] else None,
-            dd_after_2x=float(row[12]) if row[12] else None,
-            dd_after_3x=float(row[13]) if row[13] else None,
-            dd_after_4x=float(row[14]) if row[14] else None,
-            dd_after_5x=float(row[15]) if row[15] else None,
-            dd_after_10x=float(row[16]) if row[16] else None,
-            dd_after_ath=float(row[17]) if row[17] else None,
-            peak_pnl_pct=float(row[18]) if row[18] else None,
-            ret_end_pct=float(row[19]) if row[19] else None,
+            dd_pre2x_or_horizon=float(row[12]) if row[12] else None,
+            dd_after_2x=float(row[13]) if row[13] else None,
+            dd_after_3x=float(row[14]) if row[14] else None,
+            dd_after_4x=float(row[15]) if row[15] else None,
+            dd_after_5x=float(row[16]) if row[16] else None,
+            dd_after_10x=float(row[17]) if row[17] else None,
+            dd_after_ath=float(row[18]) if row[18] else None,
+            peak_pnl_pct=float(row[19]) if row[19] else None,
+            ret_end_pct=float(row[20]) if row[20] else None,
         )
     finally:
         con.close()
@@ -615,7 +624,7 @@ def run_parallel_backtest(
                     ath_mult=None, time_to_ath_s=None,
                     time_to_2x_s=None, time_to_3x_s=None, time_to_4x_s=None,
                     time_to_5x_s=None, time_to_10x_s=None,
-                    dd_initial=None, dd_overall=None, dd_pre2x=None,
+                    dd_initial=None, dd_overall=None, dd_pre2x=None, dd_pre2x_or_horizon=None,
                     dd_after_2x=None, dd_after_3x=None, dd_after_4x=None,
                     dd_after_5x=None, dd_after_10x=None, dd_after_ath=None,
                     peak_pnl_pct=None, ret_end_pct=None,
@@ -670,6 +679,7 @@ def results_to_dicts(results: List[TokenResult], interval_seconds: int, horizon_
             "dd_initial": r.dd_initial,
             "dd_overall": r.dd_overall,
             "dd_pre2x": r.dd_pre2x,
+            "dd_pre2x_or_horizon": r.dd_pre2x_or_horizon,
             "dd_after_2x": r.dd_after_2x,
             "dd_after_3x": r.dd_after_3x,
             "dd_after_4x": r.dd_after_4x,
@@ -774,6 +784,7 @@ def aggregate_by_caller(results: List[TokenResult], min_trades: int = 5) -> List
         dd_initial = take(rlist, "dd_initial")
         dd_overall = take(rlist, "dd_overall")
         dd_pre2x = take(rlist, "dd_pre2x")
+        dd_pre2x_or_horizon = take(rlist, "dd_pre2x_or_horizon")
         dd_after_2x = take(rlist, "dd_after_2x")
         dd_after_3x = take(rlist, "dd_after_3x")
         dd_after_ath = take(rlist, "dd_after_ath")
@@ -796,6 +807,7 @@ def aggregate_by_caller(results: List[TokenResult], min_trades: int = 5) -> List
             "median_dd_initial_pct": (med(dd_initial) * 100.0) if med(dd_initial) else None,
             "median_dd_overall_pct": (med(dd_overall) * 100.0) if med(dd_overall) else None,
             "median_dd_pre2x_pct": (med(dd_pre2x) * 100.0) if med(dd_pre2x) else None,
+            "median_dd_pre2x_or_horizon_pct": (med(dd_pre2x_or_horizon) * 100.0) if med(dd_pre2x_or_horizon) else None,
             "median_dd_after_2x_pct": (med(dd_after_2x) * 100.0) if med(dd_after_2x) else None,
             "median_dd_after_3x_pct": (med(dd_after_3x) * 100.0) if med(dd_after_3x) else None,
             "median_dd_after_ath_pct": (med(dd_after_ath) * 100.0) if med(dd_after_ath) else None,
@@ -865,6 +877,7 @@ def ensure_baseline_schema(con: duckdb.DuckDBPyConnection) -> None:
             dd_initial DOUBLE,
             dd_overall DOUBLE,
             dd_pre2x DOUBLE,
+            dd_pre2x_or_horizon DOUBLE,
             dd_after_2x DOUBLE,
             dd_after_3x DOUBLE,
             dd_after_4x DOUBLE,
@@ -896,6 +909,7 @@ def ensure_baseline_schema(con: duckdb.DuckDBPyConnection) -> None:
             median_dd_initial_pct DOUBLE,
             median_dd_overall_pct DOUBLE,
             median_dd_pre2x_pct DOUBLE,
+            median_dd_pre2x_or_horizon_pct DOUBLE,
             median_dd_after_2x_pct DOUBLE,
             median_dd_after_3x_pct DOUBLE,
             median_dd_after_ath_pct DOUBLE,
@@ -1002,6 +1016,7 @@ def store_baseline_to_duckdb(
                 r.dd_initial,
                 r.dd_overall,
                 r.dd_pre2x,
+                r.dd_pre2x_or_horizon,
                 r.dd_after_2x,
                 r.dd_after_3x,
                 r.dd_after_4x,
@@ -1014,7 +1029,7 @@ def store_baseline_to_duckdb(
 
         con.executemany("""
             INSERT INTO baseline.alert_results_f VALUES (
-                ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?
+                ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?
             )
         """, out_rows)
 
@@ -1037,6 +1052,7 @@ def store_baseline_to_duckdb(
                 c.get("median_dd_initial_pct"),
                 c.get("median_dd_overall_pct"),
                 c.get("median_dd_pre2x_pct"),
+                c.get("median_dd_pre2x_or_horizon_pct"),
                 c.get("median_dd_after_2x_pct"),
                 c.get("median_dd_after_3x_pct"),
                 c.get("median_dd_after_ath_pct"),
@@ -1046,7 +1062,7 @@ def store_baseline_to_duckdb(
             ))
 
         con.executemany("""
-            INSERT INTO baseline.caller_stats_f VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            INSERT INTO baseline.caller_stats_f VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, caller_rows)
 
         con.execute("COMMIT;")
@@ -1073,8 +1089,8 @@ def print_caller_leaderboard(callers: List[Dict[str, Any]], limit: int = 30) -> 
         ("hit3x_pct", "pct"),
         ("median_dd_initial_pct", "pct"),
         ("median_dd_pre2x_pct", "pct"),
+        ("median_dd_pre2x_or_horizon_pct", "pct"),
         ("median_dd_after_2x_pct", "pct"),
-        ("median_dd_after_3x_pct", "pct"),
     ]
 
     col_widths: Dict[str, int] = {k: max(len(k), 8) for k, _ in headers}
@@ -1207,8 +1223,8 @@ def main() -> None:
         "interval_seconds", "horizon_hours", "status", "candles", "entry_price",
         "ath_mult", "time_to_ath_s", "time_to_2x_s", "time_to_3x_s", "time_to_4x_s",
         "time_to_5x_s", "time_to_10x_s",
-        "dd_initial", "dd_overall", "dd_pre2x", "dd_after_2x", "dd_after_3x",
-        "dd_after_4x", "dd_after_5x", "dd_after_10x", "dd_after_ath",
+        "dd_initial", "dd_overall", "dd_pre2x", "dd_pre2x_or_horizon",
+        "dd_after_2x", "dd_after_3x", "dd_after_4x", "dd_after_5x", "dd_after_10x", "dd_after_ath",
         "peak_pnl_pct", "ret_end_pct"
     ]
     write_csv(args.out_alerts, alert_fields, out_rows)
@@ -1217,7 +1233,7 @@ def main() -> None:
         "rank", "caller", "n", "median_ath", "p25_ath", "p75_ath",
         "hit2x_pct", "hit3x_pct", "hit4x_pct", "hit5x_pct", "hit10x_pct",
         "median_t2x_hrs",
-        "median_dd_initial_pct", "median_dd_overall_pct", "median_dd_pre2x_pct",
+        "median_dd_initial_pct", "median_dd_overall_pct", "median_dd_pre2x_pct", "median_dd_pre2x_or_horizon_pct",
         "median_dd_after_2x_pct", "median_dd_after_3x_pct", "median_dd_after_ath_pct",
         "worst_dd_pct", "median_peak_pnl_pct", "median_ret_end_pct"
     ]
