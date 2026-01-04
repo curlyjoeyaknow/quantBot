@@ -801,6 +801,7 @@ def summarize_overall(results: List[TokenResult]) -> Dict[str, Any]:
         "median_ath_mult": med(ath),
         "p25_ath_mult": percentile(ath, 0.25),
         "p75_ath_mult": percentile(ath, 0.75),
+        "p95_ath_mult": percentile(ath, 0.95),
         "pct_hit_2x": pct_hit("time_to_2x_s"),
         "pct_hit_3x": pct_hit("time_to_3x_s"),
         "pct_hit_4x": pct_hit("time_to_4x_s"),
@@ -1407,12 +1408,9 @@ def main() -> None:
     if summary["median_ath_mult"] is not None:
         p25 = summary.get("p25_ath_mult") or 0
         p75 = summary.get("p75_ath_mult") or 0
-        print(f"Median ATH: {summary['median_ath_mult']:.2f}x (p25={p25:.2f}x, p75={p75:.2f}x)")
-    print(f"% hit 2x: {pct(summary['pct_hit_2x']):.1f}%")
-    print(f"% hit 3x: {pct(summary['pct_hit_3x']):.1f}%")
-    print(f"% hit 4x: {pct(summary['pct_hit_4x']):.1f}%")
-    print(f"% hit 5x: {pct(summary['pct_hit_5x']):.1f}%")
-    print(f"% hit 10x: {pct(summary['pct_hit_10x']):.1f}%")
+        p95 = summary.get("p95_ath_mult") or 0
+        print(f"Median ATH: {summary['median_ath_mult']:.2f}x (p25={p25:.2f}x, p75={p75:.2f}x, p95={p95:.2f}x)")
+    print(f"% hit 2x: {pct(summary['pct_hit_2x']):.1f}%  |  3x: {pct(summary['pct_hit_3x']):.1f}%  |  4x: {pct(summary['pct_hit_4x']):.1f}%  |  5x: {pct(summary['pct_hit_5x']):.1f}%  |  10x: {pct(summary['pct_hit_10x']):.1f}%")
     
     # Timing metrics
     print()
