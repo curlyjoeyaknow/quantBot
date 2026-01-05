@@ -50,6 +50,16 @@ from lib.timing import TimingContext, format_ms
 from lib.tp_sl_query import run_tp_sl_query
 from lib.extended_exits import run_extended_exit_query, ExitConfig
 from lib.trial_ledger import ensure_trial_schema, store_optimizer_run
+from lib.robust_region_finder import (
+    FoldResult,
+    RobustObjectiveConfig,
+    DEFAULT_ROBUST_CONFIG,
+    compute_robust_objective,
+    cluster_parameters,
+    print_islands,
+    DDPenaltyConfig,
+    StressConfig,
+)
 
 UTC = timezone.utc
 
@@ -221,6 +231,21 @@ class RandomSearchConfig:
     use_tiered_sl: bool = False
     use_delayed_entry: bool = False
     
+    # ==========================================================================
+    # ROBUST MODE (new region finder)
+    # ==========================================================================
+    use_robust_mode: bool = False     # Enable robust region finder
+    top_n_candidates: int = 30        # Top N candidates to output/cluster
+    n_clusters: int = 3               # Number of parameter islands (2-4)
+    
+    # DD penalty config (gentle at 30%, brutal at 60%)
+    dd_gentle_threshold: float = 0.30
+    dd_brutal_threshold: float = 0.60
+    
+    # Stress lane config
+    stress_slippage_mult: float = 2.0   # 2x slippage
+    stress_stop_gap_prob: float = 0.15  # 15% stop gap probability
+    
     def to_dict(self) -> Dict[str, Any]:
         return {
             "date_from": self.date_from,
@@ -243,6 +268,14 @@ class RandomSearchConfig:
             "use_extended_exits": self.use_extended_exits,
             "use_tiered_sl": self.use_tiered_sl,
             "use_delayed_entry": self.use_delayed_entry,
+            # Robust mode
+            "use_robust_mode": self.use_robust_mode,
+            "top_n_candidates": self.top_n_candidates,
+            "n_clusters": self.n_clusters,
+            "dd_gentle_threshold": self.dd_gentle_threshold,
+            "dd_brutal_threshold": self.dd_brutal_threshold,
+            "stress_slippage_mult": self.stress_slippage_mult,
+            "stress_stop_gap_prob": self.stress_stop_gap_prob,
         }
 
 
@@ -535,8 +568,29 @@ def run_random_search(config: RandomSearchConfig, verbose: bool = True) -> List[
             print(f"Multi-fold: averaging across {len(folds)} folds", file=sys.stderr)
         print()
     
+    # Build robust config if in robust mode
+    robust_config = None
+    if config.use_robust_mode:
+        robust_config = RobustObjectiveConfig(
+            dd_penalty_config=DDPenaltyConfig(
+                gentle_threshold=config.dd_gentle_threshold,
+                brutal_threshold=config.dd_brutal_threshold,
+            ),
+            stress_config=StressConfig(
+                slippage_mult=config.stress_slippage_mult,
+                stop_gap_prob=config.stress_stop_gap_prob,
+            ),
+        )
+        if verbose:
+            print(f"ROBUST MODE enabled:", file=sys.stderr)
+            print(f"  DD penalty: gentle at {config.dd_gentle_threshold:.0%}, brutal at {config.dd_brutal_threshold:.0%}", file=sys.stderr)
+            print(f"  Stress lane: slippage x{config.stress_slippage_mult:.1f}, stop gap {config.stress_stop_gap_prob:.0%}", file=sys.stderr)
+            print(f"  Output: top {config.top_n_candidates} candidates, {config.n_clusters} parameter islands", file=sys.stderr)
+            print()
+    
     # Run trials
     results: List[TrialResult] = []
+    robust_candidates: List[Dict[str, Any]] = []  # For robust mode clustering
     
     with timing.phase("trials"):
         for i, params in enumerate(param_samples, 1):
@@ -544,10 +598,11 @@ def run_random_search(config: RandomSearchConfig, verbose: bool = True) -> List[
             trial_timing = TimingContext()
             trial_timing.start()
             
-            # Multi-fold: run on each fold and average results
+            # Multi-fold: run on each fold and collect results
             fold_train_rs: List[float] = []
             fold_test_rs: List[float] = []
             fold_summaries: List[Dict[str, Any]] = []
+            fold_results_for_robust: List[FoldResult] = []  # For robust mode
             
             for train_alerts, test_alerts, fold_name in folds:
                 # Run on training data
@@ -563,128 +618,208 @@ def run_random_search(config: RandomSearchConfig, verbose: bool = True) -> List[
                     )
                     fold_test_rs.append(test_summary.get("total_r", 0.0))
                     fold_summaries.append(test_summary)
+                    
+                    # Build FoldResult for robust mode
+                    if config.use_robust_mode:
+                        fold_results_for_robust.append(FoldResult(
+                            fold_name=fold_name,
+                            train_r=train_summary.get("total_r", 0.0),
+                            test_r=test_summary.get("total_r", 0.0),
+                            avg_r=test_summary.get("avg_r", 0.0),
+                            win_rate=test_summary.get("tp_sl_win_rate", 0.0),
+                            n_trades=test_summary.get("alerts_ok", 0),
+                            avg_r_loss=test_summary.get("avg_r_loss", -1.0),
+                            median_dd_pre2x=abs(test_summary.get("median_dd_pre2x") or test_summary.get("dd_pre2x_median") or 0.0),
+                            p75_dd_pre2x=abs(test_summary.get("p75_dd_pre2x") or test_summary.get("dd_pre2x_p75") or 0.0),
+                            hit2x_pct=test_summary.get("pct_hit_2x") or 0.0,
+                        ))
                 else:
                     fold_summaries.append(train_summary)
             
-            # Average across folds
-            train_r = sum(fold_train_rs) / len(fold_train_rs) if fold_train_rs else 0.0
-            test_r = sum(fold_test_rs) / len(fold_test_rs) if fold_test_rs else None
-            delta_r = (test_r - train_r) if test_r is not None else None
+            # ================================================================
+            # ROBUST MODE: Use median(TestR) and new penalties
+            # ================================================================
+            if config.use_robust_mode and fold_results_for_robust:
+                robust_result = compute_robust_objective(fold_results_for_robust, robust_config)
+                
+                trial_timing.end()
+                
+                # Store for clustering
+                robust_candidates.append({
+                    "params": params,
+                    "robust_result": robust_result.to_dict(),
+                })
+                
+                # Build TrialResult with robust metrics
+                result = TrialResult(
+                    trial_id=trial_id,
+                    params=params,
+                    summary=fold_summaries[-1] if fold_summaries else {},
+                    objective={
+                        "robust_score": robust_result.robust_score,
+                        "median_test_r": robust_result.median_test_r,
+                        "mean_test_r": robust_result.mean_test_r,
+                        "min_test_r": robust_result.min_test_r,
+                        "median_ratio": robust_result.median_ratio,
+                        "dd_penalty": robust_result.dd_penalty,
+                        "dd_category": robust_result.dd_category,
+                        "stress_penalty": robust_result.stress_penalty,
+                        "median_stressed_r": robust_result.median_stressed_r,
+                        "n_folds": len(fold_results_for_robust),
+                    },
+                    duration_ms=trial_timing.total_ms,
+                    alerts_ok=sum(f.n_trades for f in fold_results_for_robust),
+                    alerts_total=sum(len(test_a) for _, test_a, _ in folds),
+                    train_r=robust_result.median_train_r,
+                    test_r=robust_result.median_test_r,
+                    delta_r=robust_result.median_test_r - robust_result.median_train_r,
+                    ratio=robust_result.median_ratio,
+                    pessimistic_r=robust_result.pessimistic_r,
+                    median_dd_pre2x=robust_result.dd_breakdown.get("median_dd"),
+                    p75_dd_pre2x=robust_result.dd_breakdown.get("p75_dd"),
+                    hit2x_pct=None,
+                    median_t2x_min=None,
+                    passes_gates=robust_result.passes_gates,
+                )
+                results.append(result)
+                
+                if verbose:
+                    gate_str = "✓" if robust_result.passes_gates else "✗"
+                    dd_str = robust_result.dd_category[:4]
+                    stress_str = f" Str={robust_result.median_stressed_r:+.1f}" if robust_result.median_stressed_r else ""
+                    print(
+                        f"[{i:3d}/{config.n_trials}] "
+                        f"TP={params['tp_mult']:.2f}x SL={params['sl_mult']:.2f}x | "
+                        f"MedTeR={robust_result.median_test_r:+.1f} "
+                        f"Ratio={robust_result.median_ratio:.2f} "
+                        f"DD={dd_str} "
+                        f"Score={robust_result.robust_score:+.1f}{stress_str} {gate_str}",
+                        file=sys.stderr
+                    )
             
-            # Use last fold's summary for detailed metrics (or could average)
-            final_summary = fold_summaries[-1] if fold_summaries else {}
-            
-            # For multi-fold, compute average of key metrics
-            if len(fold_summaries) > 1:
-                avg_keys = ["avg_r", "win_rate", "pct_hit_2x"]
-                for key in avg_keys:
-                    vals = [s.get(key) for s in fold_summaries if s.get(key) is not None]
-                    if vals:
-                        final_summary[key] = sum(vals) / len(vals)
-                # Sum alerts across folds
-                final_summary["alerts_ok"] = sum(s.get("alerts_ok", 0) for s in fold_summaries)
-                final_summary["total_r"] = test_r if test_r is not None else train_r
-            
-            # Compute objective
-            obj = compute_objective(
-                avg_r=final_summary.get("avg_r", 0.0),
-                total_r=final_summary.get("total_r", 0.0),
-                n_trades=final_summary.get("alerts_ok", 0),
-                dd_magnitude=abs(final_summary.get("dd_pre2x_median", 0.0) or 0.0),
-                time_to_2x_min=final_summary.get("time_to_2x_median_min"),
-                hit2x_pct=final_summary.get("pct_hit_2x", 0.0) or 0.0,
-                median_ath=final_summary.get("median_ath_mult", 1.0) or 1.0,
-                p75_ath=final_summary.get("p75_ath"),
-                p95_ath=final_summary.get("p95_ath"),
-                config=DEFAULT_OBJECTIVE_CONFIG,
-            )
-            
-            trial_timing.end()
-            
-            # Extract DD metrics for gates
-            # Note: DD values are typically negative (drawdown), so we abs() them for gates
-            median_dd = abs(final_summary.get("median_dd_pre2x") or final_summary.get("dd_pre2x_median") or 0.0)
-            p75_dd = abs(final_summary.get("p75_dd_pre2x") or final_summary.get("dd_pre2x_p75") or 0.0)
-            hit2x = final_summary.get("pct_hit_2x") or 0.0
-            t2x_min = final_summary.get("time_to_2x_median_min") or final_summary.get("median_time_to_2x_min")
-            
-            # Compute anti-overfit metrics
-            if config.use_walk_forward and test_r is not None:
-                anti_overfit = compute_anti_overfit_metrics(
+            # ================================================================
+            # LEGACY MODE: Use mean and original anti-overfit metrics
+            # ================================================================
+            else:
+                # Average across folds (legacy behavior)
+                train_r = sum(fold_train_rs) / len(fold_train_rs) if fold_train_rs else 0.0
+                test_r = sum(fold_test_rs) / len(fold_test_rs) if fold_test_rs else None
+                delta_r = (test_r - train_r) if test_r is not None else None
+                
+                # Use last fold's summary for detailed metrics (or could average)
+                final_summary = fold_summaries[-1] if fold_summaries else {}
+                
+                # For multi-fold, compute average of key metrics
+                if len(fold_summaries) > 1:
+                    avg_keys = ["avg_r", "win_rate", "pct_hit_2x"]
+                    for key in avg_keys:
+                        vals = [s.get(key) for s in fold_summaries if s.get(key) is not None]
+                        if vals:
+                            final_summary[key] = sum(vals) / len(vals)
+                    # Sum alerts across folds
+                    final_summary["alerts_ok"] = sum(s.get("alerts_ok", 0) for s in fold_summaries)
+                    final_summary["total_r"] = test_r if test_r is not None else train_r
+                
+                # Compute objective
+                obj = compute_objective(
+                    avg_r=final_summary.get("avg_r", 0.0),
+                    total_r=final_summary.get("total_r", 0.0),
+                    n_trades=final_summary.get("alerts_ok", 0),
+                    dd_magnitude=abs(final_summary.get("dd_pre2x_median", 0.0) or 0.0),
+                    time_to_2x_min=final_summary.get("time_to_2x_median_min"),
+                    hit2x_pct=final_summary.get("pct_hit_2x", 0.0) or 0.0,
+                    median_ath=final_summary.get("median_ath_mult", 1.0) or 1.0,
+                    p75_ath=final_summary.get("p75_ath"),
+                    p95_ath=final_summary.get("p95_ath"),
+                    config=DEFAULT_OBJECTIVE_CONFIG,
+                )
+                
+                trial_timing.end()
+                
+                # Extract DD metrics for gates
+                # Note: DD values are typically negative (drawdown), so we abs() them for gates
+                median_dd = abs(final_summary.get("median_dd_pre2x") or final_summary.get("dd_pre2x_median") or 0.0)
+                p75_dd = abs(final_summary.get("p75_dd_pre2x") or final_summary.get("dd_pre2x_p75") or 0.0)
+                hit2x = final_summary.get("pct_hit_2x") or 0.0
+                t2x_min = final_summary.get("time_to_2x_median_min") or final_summary.get("median_time_to_2x_min")
+                
+                # Compute anti-overfit metrics
+                if config.use_walk_forward and test_r is not None:
+                    anti_overfit = compute_anti_overfit_metrics(
+                        train_r=train_r,
+                        test_r=test_r,
+                        median_dd_pre2x=median_dd,
+                        p75_dd_pre2x=p75_dd,
+                        hit2x_pct=hit2x,
+                        median_t2x_min=t2x_min,
+                    )
+                    ratio = anti_overfit["ratio"]
+                    pessimistic_r = anti_overfit["pessimistic_r"]
+                    passes_gates = anti_overfit["passes_gates"]
+                    
+                    # Compute robust score (the one you should rank by)
+                    robust_score = compute_robust_score(
+                        test_r=test_r,
+                        pessimistic_r=pessimistic_r,
+                        ratio=ratio,
+                        objective_score=obj.final_score,
+                        passes_gates=passes_gates,
+                    )
+                else:
+                    ratio = None
+                    pessimistic_r = None
+                    passes_gates = True
+                    robust_score = obj.final_score
+                
+                # Count total alerts across folds
+                total_test_alerts = sum(len(test_a) for _, test_a, _ in folds)
+                total_train_alerts = sum(len(train_a) for train_a, _, _ in folds)
+                
+                result = TrialResult(
+                    trial_id=trial_id,
+                    params=params,
+                    summary=final_summary,
+                    objective={**obj.to_dict(), "robust_score": robust_score, "n_folds": len(folds)},
+                    duration_ms=trial_timing.total_ms,
+                    alerts_ok=final_summary.get("alerts_ok", 0),
+                    alerts_total=total_test_alerts if config.use_walk_forward else total_train_alerts,
                     train_r=train_r,
                     test_r=test_r,
+                    delta_r=delta_r,
+                    ratio=ratio,
+                    pessimistic_r=pessimistic_r,
                     median_dd_pre2x=median_dd,
                     p75_dd_pre2x=p75_dd,
                     hit2x_pct=hit2x,
                     median_t2x_min=t2x_min,
-                )
-                ratio = anti_overfit["ratio"]
-                pessimistic_r = anti_overfit["pessimistic_r"]
-                passes_gates = anti_overfit["passes_gates"]
-                
-                # Compute robust score (the one you should rank by)
-                robust_score = compute_robust_score(
-                    test_r=test_r,
-                    pessimistic_r=pessimistic_r,
-                    ratio=ratio,
-                    objective_score=obj.final_score,
                     passes_gates=passes_gates,
                 )
-            else:
-                ratio = None
-                pessimistic_r = None
-                passes_gates = True
-                robust_score = obj.final_score
-            
-            # Count total alerts across folds
-            total_test_alerts = sum(len(test_a) for _, test_a, _ in folds)
-            total_train_alerts = sum(len(train_a) for train_a, _, _ in folds)
-            
-            result = TrialResult(
-                trial_id=trial_id,
-                params=params,
-                summary=final_summary,
-                objective={**obj.to_dict(), "robust_score": robust_score, "n_folds": len(folds)},
-                duration_ms=trial_timing.total_ms,
-                alerts_ok=final_summary.get("alerts_ok", 0),
-                alerts_total=total_test_alerts if config.use_walk_forward else total_train_alerts,
-                train_r=train_r,
-                test_r=test_r,
-                delta_r=delta_r,
-                ratio=ratio,
-                pessimistic_r=pessimistic_r,
-                median_dd_pre2x=median_dd,
-                p75_dd_pre2x=p75_dd,
-                hit2x_pct=hit2x,
-                median_t2x_min=t2x_min,
-                passes_gates=passes_gates,
-            )
-            results.append(result)
-            
-            if verbose:
-                wr = final_summary.get("tp_sl_win_rate", 0.0) * 100
-                avg_r = final_summary.get("avg_r", 0.0)
+                results.append(result)
                 
-                if config.use_walk_forward:
-                    # Show ratio and pessimistic_r - THE KEY metrics
-                    ratio_str = f"{ratio:.2f}" if ratio is not None else "N/A"
-                    pess_str = f"{pessimistic_r:+.1f}" if pessimistic_r is not None else "N/A"
-                    gate_str = "✓" if passes_gates else "✗"
-                    print(
-                        f"[{i:3d}/{config.n_trials}] "
-                        f"TP={params['tp_mult']:.2f}x SL={params['sl_mult']:.2f}x | "
-                        f"TrR={train_r:+.1f} TeR={test_r:+.1f} "
-                        f"Ratio={ratio_str} Pess={pess_str} {gate_str}",
-                        file=sys.stderr
-                    )
-                else:
-                    score = obj.final_score
-                    print(
-                        f"[{i:3d}/{config.n_trials}] "
-                        f"TP={params['tp_mult']:.2f}x SL={params['sl_mult']:.2f}x | "
-                        f"WR={wr:.0f}% AvgR={avg_r:+.2f} Score={score:+.3f}",
-                        file=sys.stderr
-                    )
+                if verbose:
+                    wr = final_summary.get("tp_sl_win_rate", 0.0) * 100
+                    avg_r = final_summary.get("avg_r", 0.0)
+                    
+                    if config.use_walk_forward:
+                        # Show ratio and pessimistic_r - THE KEY metrics
+                        ratio_str = f"{ratio:.2f}" if ratio is not None else "N/A"
+                        pess_str = f"{pessimistic_r:+.1f}" if pessimistic_r is not None else "N/A"
+                        gate_str = "✓" if passes_gates else "✗"
+                        print(
+                            f"[{i:3d}/{config.n_trials}] "
+                            f"TP={params['tp_mult']:.2f}x SL={params['sl_mult']:.2f}x | "
+                            f"TrR={train_r:+.1f} TeR={test_r:+.1f} "
+                            f"Ratio={ratio_str} Pess={pess_str} {gate_str}",
+                            file=sys.stderr
+                        )
+                    else:
+                        score = obj.final_score
+                        print(
+                            f"[{i:3d}/{config.n_trials}] "
+                            f"TP={params['tp_mult']:.2f}x SL={params['sl_mult']:.2f}x | "
+                            f"WR={wr:.0f}% AvgR={avg_r:+.2f} Score={score:+.3f}",
+                            file=sys.stderr
+                        )
     
     timing.end()
     
@@ -695,7 +830,67 @@ def run_random_search(config: RandomSearchConfig, verbose: bool = True) -> List[
         print(f"{'='*80}", file=sys.stderr)
         print(timing.summary_line(), file=sys.stderr)
         
-        if config.use_walk_forward:
+        # ====================================================================
+        # ROBUST MODE: Output top 30 + parameter islands
+        # ====================================================================
+        if config.use_robust_mode and robust_candidates:
+            # Sort by robust_score
+            sorted_robust = sorted(
+                robust_candidates,
+                key=lambda c: c.get("robust_result", {}).get("robust_score", -999),
+                reverse=True
+            )
+            
+            # Filter to tradeable only
+            tradeable_robust = [c for c in sorted_robust if c.get("robust_result", {}).get("passes_gates", False)]
+            
+            print(f"\nTradeable candidates: {len(tradeable_robust)}/{len(sorted_robust)}", file=sys.stderr)
+            
+            # Top 30 by robust score
+            print(f"\n{'─'*80}", file=sys.stderr)
+            print(f"TOP {config.top_n_candidates} BY ROBUST SCORE (median TestR - DD penalty - stress penalty):", file=sys.stderr)
+            print("  → Uses MEDIAN(TestR) not MEAN - robust to outlier folds", file=sys.stderr)
+            print("─" * 80, file=sys.stderr)
+            
+            for i, c in enumerate(sorted_robust[:config.top_n_candidates], 1):
+                r = c.get("robust_result", {})
+                params = c.get("params", {})
+                gate_str = "✓" if r.get("passes_gates") else "✗"
+                dd_cat = r.get("dd_category", "?")[:4]
+                stress_str = f"Str={r.get('median_stressed_r', 0):+.1f}" if r.get("median_stressed_r") else ""
+                print(
+                    f"  {i:2d}. TP={params.get('tp_mult', 0):.2f}x SL={params.get('sl_mult', 0):.2f}x | "
+                    f"Score={r.get('robust_score', 0):+6.1f} "
+                    f"MedTeR={r.get('median_test_r', 0):+5.1f} "
+                    f"Ratio={r.get('median_ratio', 0):.2f} "
+                    f"DD={dd_cat} {stress_str} {gate_str}",
+                    file=sys.stderr
+                )
+            
+            # Parameter island clustering
+            islands = cluster_parameters(
+                sorted_robust, 
+                n_clusters=config.n_clusters, 
+                top_n=config.top_n_candidates
+            )
+            
+            if islands:
+                print_islands(islands)
+            
+            # Robust mode summary
+            robust_scores = [c.get("robust_result", {}).get("robust_score", 0) for c in sorted_robust]
+            median_test_rs = [c.get("robust_result", {}).get("median_test_r", 0) for c in sorted_robust]
+            from statistics import median as stat_median
+            
+            print(f"\n{'='*80}", file=sys.stderr)
+            print("ROBUST MODE SUMMARY:", file=sys.stderr)
+            print(f"  Median of Robust Scores: {stat_median(robust_scores):+.2f}", file=sys.stderr)
+            print(f"  Median of Median TestR:  {stat_median(median_test_rs):+.2f}", file=sys.stderr)
+            print(f"  % Tradeable:             {len(tradeable_robust)/len(sorted_robust)*100:.0f}%", file=sys.stderr)
+            print(f"  Parameter Islands:       {len(islands)}", file=sys.stderr)
+            print(f"{'='*80}", file=sys.stderr)
+        
+        elif config.use_walk_forward:
             # ================================================================
             # MULTIPLE LEADERBOARDS - The key to not selecting train-window jackpots
             # ================================================================
@@ -874,6 +1069,22 @@ def main() -> None:
     ap.add_argument("--json", action="store_true", help="Output JSON")
     ap.add_argument("--quiet", "-q", action="store_true")
     
+    # Robust mode (new region finder)
+    ap.add_argument("--robust", action="store_true",
+                    help="Enable robust mode: median(TestR), exponential DD penalty, stress lane, clustering")
+    ap.add_argument("--top-n", type=int, default=30,
+                    help="Number of top candidates to output/cluster (default: 30)")
+    ap.add_argument("--n-clusters", type=int, default=3,
+                    help="Number of parameter islands (default: 3, range 2-4)")
+    ap.add_argument("--dd-gentle", type=float, default=0.30,
+                    help="DD penalty gentle threshold (default: 0.30 = 30%%)")
+    ap.add_argument("--dd-brutal", type=float, default=0.60,
+                    help="DD penalty brutal threshold (default: 0.60 = 60%%)")
+    ap.add_argument("--stress-slippage", type=float, default=2.0,
+                    help="Stress lane slippage multiplier (default: 2.0)")
+    ap.add_argument("--stress-stop-gap", type=float, default=0.15,
+                    help="Stress lane stop gap probability (default: 0.15 = 15%%)")
+    
     args = ap.parse_args()
     
     config = RandomSearchConfig(
@@ -903,6 +1114,14 @@ def main() -> None:
         use_extended_exits=args.extended_exits,
         use_tiered_sl=args.tiered_sl,
         use_delayed_entry=args.delayed_entry,
+        # Robust mode
+        use_robust_mode=args.robust,
+        top_n_candidates=args.top_n,
+        n_clusters=args.n_clusters,
+        dd_gentle_threshold=args.dd_gentle,
+        dd_brutal_threshold=args.dd_brutal,
+        stress_slippage_mult=args.stress_slippage,
+        stress_stop_gap_prob=args.stress_stop_gap,
     )
     
     # Run
@@ -920,6 +1139,28 @@ def main() -> None:
         "results": [r.to_dict() for r in results],
         "created_at": datetime.now(UTC).isoformat(),
     }
+    
+    # Add robust mode extras
+    if config.use_robust_mode:
+        # Sort candidates for output
+        sorted_robust = sorted(
+            [{"params": r.params, "robust_result": r.objective} for r in results],
+            key=lambda c: c.get("robust_result", {}).get("robust_score", -999),
+            reverse=True
+        )
+        
+        # Cluster top candidates
+        islands = cluster_parameters(
+            sorted_robust,
+            n_clusters=config.n_clusters,
+            top_n=config.top_n_candidates
+        )
+        
+        output_data["robust_mode"] = {
+            "top_candidates": sorted_robust[:config.top_n_candidates],
+            "islands": [i.to_dict() for i in islands],
+            "n_tradeable": sum(1 for c in sorted_robust if c.get("robust_result", {}).get("passes_gates", False)),
+        }
     
     with open(output_path, "w") as f:
         json.dump(output_data, f, indent=2, default=str)
