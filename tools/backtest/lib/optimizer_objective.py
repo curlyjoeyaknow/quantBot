@@ -866,11 +866,36 @@ def print_objective_breakdown(
     
     print(f"Objective Breakdown:")
     print(f"  Base (AvgR):       {result.base_score:+.3f}")
-    print(f"  DD Penalty:        {dd_contribution:+.3f} (DD={result.dd_magnitude:.1%})")
-    if result.time_to_2x_min is not None:
-        print(f"  Time Boost:        {time_contribution:+.3f} (t2x={result.time_to_2x_min:.0f}m)")
+    
+    # DD Penalty breakdown (tiered if available)
+    if result.dd_penalty_breakdown and len(result.dd_penalty_breakdown) > 1:
+        print(f"  DD Penalty:        {dd_contribution:+.3f} (tiered)")
+        for tier, penalty in result.dd_penalty_breakdown.items():
+            if tier == "pre_1_2x" and result.dd_pre_1_2x is not None:
+                print(f"    └ {tier}: {-penalty:.3f} (DD={result.dd_pre_1_2x:.1%})")
+            elif tier == "pre_1_5x" and result.dd_pre_1_5x is not None:
+                print(f"    └ {tier}: {-penalty:.3f} (DD={result.dd_pre_1_5x:.1%})")
+            elif tier == "pre_2x" and result.dd_pre_2x is not None:
+                print(f"    └ {tier}: {-penalty:.3f} (DD={result.dd_pre_2x:.1%})")
     else:
-        print(f"  Time Boost:        {time_contribution:+.3f} (no 2x)")
+        print(f"  DD Penalty:        {dd_contribution:+.3f} (DD={result.dd_magnitude:.1%})")
+    
+    # Time Boost breakdown (tiered if available)
+    if result.time_boost_breakdown and len(result.time_boost_breakdown) > 1:
+        print(f"  Time Boost:        {time_contribution:+.3f} (tiered)")
+        for tier, boost in result.time_boost_breakdown.items():
+            if tier == "1_2x" and result.time_to_1_2x_min is not None:
+                print(f"    └ t{tier}: +{boost:.3f} ({result.time_to_1_2x_min:.0f}m)")
+            elif tier == "1_5x" and result.time_to_1_5x_min is not None:
+                print(f"    └ t{tier}: +{boost:.3f} ({result.time_to_1_5x_min:.0f}m)")
+            elif tier == "2x" and result.time_to_2x_min is not None:
+                print(f"    └ t{tier}: +{boost:.3f} ({result.time_to_2x_min:.0f}m)")
+    else:
+        if result.time_to_2x_min is not None:
+            print(f"  Time Boost:        {time_contribution:+.3f} (t2x={result.time_to_2x_min:.0f}m)")
+        else:
+            print(f"  Time Boost:        {time_contribution:+.3f} (no 2x)")
+    
     print(f"  Discipline:        {result.discipline_bonus:+.3f}")
     print(f"  Tail Bonus:        {result.tail_bonus:+.3f}")
     print(f"  ─────────────────────")

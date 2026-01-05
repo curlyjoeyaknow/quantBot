@@ -25,7 +25,8 @@
   "references": [
     { "path": "../core" },
     { "path": "../utils" },
-    { "path": "../storage" }
+    { "path": "../storage" },
+    { "path": "../workflows" }
   ]
 }
 

@@ -163,7 +163,13 @@ from .optimizer_objective import (
     ObjectiveResult,
     ObjectiveComponents,  # Alias for ObjectiveResult
     DEFAULT_OBJECTIVE_CONFIG,
+    # Tiered DD penalty functions
+    compute_dd_penalty_single,
+    compute_dd_penalty_tiered,
     compute_dd_penalty,
+    # Tiered time boost functions
+    compute_time_boost_single,
+    compute_time_boost_tiered,
     compute_time_boost,
     compute_discipline_bonus,
     compute_tail_bonus,
@@ -338,7 +344,13 @@ __all__ = [
     "ObjectiveConfig",
     "ObjectiveResult",
     "DEFAULT_OBJECTIVE_CONFIG",
+    # Tiered DD penalty
+    "compute_dd_penalty_single",
+    "compute_dd_penalty_tiered",
     "compute_dd_penalty",
+    # Tiered time boost
+    "compute_time_boost_single",
+    "compute_time_boost_tiered",
     "compute_time_boost",
     "compute_discipline_bonus",
     "compute_tail_bonus",
