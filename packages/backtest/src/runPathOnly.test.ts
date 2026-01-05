@@ -124,14 +124,30 @@ vi.mock('fs/promises', () => ({
 }));
 
 // Mock @quantbot/utils
-vi.mock('@quantbot/utils', () => ({
-  logger: {
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-    debug: vi.fn(),
-  },
-}));
+vi.mock('@quantbot/utils', () => {
+  class MockTimingContext {
+    start = vi.fn();
+    end = vi.fn();
+    phaseSync = vi.fn((label: string, fn: () => unknown) => fn());
+    phase = vi.fn(async (label: string, fn: () => Promise<unknown>) => await fn());
+    toJSON = vi.fn().mockReturnValue({
+      totalMs: 0,
+      phases: [],
+      parts: {},
+    });
+    summaryLine = vi.fn().mockReturnValue('[timing] total=0ms');
+  }
+
+  return {
+    logger: {
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+      debug: vi.fn(),
+    },
+    TimingContext: MockTimingContext,
+  };
+});
 
 describe('runPathOnly', () => {
   beforeEach(() => {
