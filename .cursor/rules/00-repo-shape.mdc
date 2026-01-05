@@ -1,110 +1,70 @@
 ---
-name: Repo shape and boundaries (QuantBot)
-description: Enforce monorepo layout, keep runtime state out of git, and make entrypoints obvious (truth → policy → optimize).
+name: Backtest dependency direction & boundaries
+description: Prevent drift while building caller-centric backtesting (truth → policy → optimize).
 globs:
-  - "**/*"
+  - "packages/**/src/**"
 alwaysApply: true
 ---
 
-# Repo shape (non-negotiable)
+# Backtest dependency direction (must hold)
 
-QuantBot is a **caller-centric backtesting lab** (truth layer → policy layer → optimization layer). Structure is how we prevent architectural drift.
+## Core objective (context)
 
-## The only allowed top-level code directories
+QuantBot Backtest exists to learn the optimal post-alert trade management policy (stops + exits) that maximizes captured return under explicit downside constraints, **per caller**.
 
-- `apps/` = runnable entrypoints ONLY (CLI, daemons, web server, workers)
-- `packages/` = libraries ONLY (no process wiring, no direct I/O)
-- `docs/` = architecture + status notes (no trophy files in root)
-- `tools/` = developer-only tooling (scripts used by developers/CI)
+Stable layering:
 
-Nothing else at top-level is allowed to become a “soft app” or “mini repo”.
+1) **Truth layer** (path metrics after alert)
+2) **Policy layer** (simulate stops/exits on candle stream)
+3) **Optimization layer** (search policies per caller under constraints)
+4) **Adapters / Apps** (I/O, UI/CLI/API, persistence)
 
-## Apps vs Packages (hard boundary)
+## Dependency direction (must hold)
 
-### `apps/*` rules
+- `domain/*` depends on nothing outside `domain` (types + pure logic only)
+- `ports/*` defines interfaces/types only; depends on `domain/*`
+- `handlers/*` depends on `domain/*` and `ports/*` only
+- `adapters/*` depends on external libs/SDKs and implements `ports/*`
+- `apps/*` may depend on everything, but ONLY for wiring, validation at edges, and I/O orchestration
 
-Apps are composition roots and I/O boundaries:
+## Required separation (backtest-specific)
 
-- parse CLI args / HTTP requests
-- load env/config (at the edge)
-- wire ports/adapters into handlers
-- run the process lifecycle
-- emit logs/metrics/telemetry
+- Truth computations live in `domain`
+  - `computePathMetrics`, drawdown math, time-to-multiple logic, “tail capture” metrics
+- Policy execution logic lives in `domain`
+  - fixed stop, time stop, trailing stop, ladder fill simulation, indicator-trigger simulation
+- Optimization logic lives in `domain`
+  - grid search, constraint filtering, objective ranking, tie-break rules
 
-Apps MUST NOT contain business logic:
+- Persistence, slicing, ClickHouse/DuckDB, process spawning live in `adapters`
+- CLI/UI/API live in `apps`, and they call handlers
 
-- no path metrics math
-- no stop/exit evaluation logic
-- no optimization logic
+## Forbidden patterns
 
-### `packages/*` rules
+- Handlers importing SDK clients directly (ClickHouse, DuckDB, Redis, HTTP, filesystem, process env)
+- Domain importing anything from `apps/` or `adapters/`
+- UI/CLI re-implementing business logic (metrics/policy/optimization)
+- Hidden globals (singleton DB connections, “global config”, implicit caches inside handlers)
+- Implicit time/randomness in domain/handlers (`Date.now()`, `Math.random()`), outside ports
 
-Packages are libraries:
+## Time & units contract (non-negotiable)
 
-- pure domain logic
-- ports/interfaces
-- handlers/use-cases
-- adapters (if you keep adapters in packages)
+- Domain uses **milliseconds** for timestamps and durations.
+- Adapters normalize incoming data:
+  - `Candle.timestamp` seconds → convert to ms BEFORE passing into domain/handlers.
+- Any mixed-unit fields must be normalized at the boundary (adapter/app), never inside handlers.
 
-Packages MUST NOT:
+## Recommended structure (names flexible)
 
-- read env vars directly
-- own process lifecycle
-- act as a server/daemon entrypoint
-- spawn background loops
-- write runtime state into the repo
+Within `packages/backtest` (or equivalent):
 
-## Runtime state must not live in-repo
+- `src/domain/**` (metrics, policies, optimization, scoring, types)
+- `src/ports/**` (CallsSourcePort, CandlesSourcePort, ResultsSinkPort, RunStorePort, ClockPort, IdPort, RandomPort if needed)
+- `src/handlers/**` (runPathOnlyBacktest, runPolicyBacktest, optimizeCallerPolicies)
+- `src/adapters/**` (DuckDB repos, ClickHouse candle source, slicers, stores)
 
-Never create or rely on these folders **inside** the repo:
+Composition roots:
 
-- `logs/`, `data/`, `.pids/`, `backups/`, `cache/`, `tmp/`
-
-If persistence is required, implement:
-
-- configurable external paths (env var / CLI flag)
-- safe defaults that point OUTSIDE the repo (OS-appropriate state directories)
-
-### Required defaults (recommended)
-
-When no explicit path is provided:
-
-- Linux: `$XDG_STATE_HOME/quantbot` or `~/.local/state/quantbot`
-- macOS: `~/Library/Application Support/quantbot`
-- Windows: `%LOCALAPPDATA%\\quantbot`
-
-### Mandatory path knobs
-
-Any component that needs a file path MUST be configurable via:
-
-- env vars (for apps): e.g. `QUANTBOT_STATE_DIR`, `DUCKDB_PATH`
-- CLI flags (for CLI app): e.g. `--state-dir`, `--duckdb-path`
-
-> Repo-local paths may be used only in tests (temporary directories) and must never be a production default.
-
-## Entrypoints (must be obvious)
-
-Every runnable app must have a single obvious entrypoint:
-
-- `apps/<app-name>/src/main.ts` (or `main.rs` for Rust)
-
-No mystery root-level `src/`. No “server.ts” hiding in a package as an app.
-
-## Monorepo workspace hygiene
-
-- `packages/*` are importable units.
-- `apps/*` depend on packages; packages must not depend on apps.
-- Cross-cutting behavior goes into a package, not copy-pasted into multiple apps.
-
-## Worktrees (practical rule)
-
-Worktrees are expected. Therefore:
-
-- Never assume global-installed commands (`quantbot`) point to the correct checkout.
-- Apps should execute binaries via the workspace (`pnpm -C <root> exec -- ...`) or an explicit path override (`QUANTBOT_CLI`), not PATH roulette.
-
-## Transitional note (current repo reality)
-
-If runnable entrypoints still live under `packages/` (e.g. `packages/cli`, `packages/lab-ui`), treat them as **legacy**.
-New runnable services MUST start life in `apps/*`, and legacy ones should migrate there when touched.
-EOF
+- `apps/cli/src/main.ts`
+- `apps/lab-ui/src/main.ts`
+- `apps/api/src/main.ts` (later)

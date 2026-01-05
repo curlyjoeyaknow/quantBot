@@ -151,6 +151,34 @@ def summarize_tp_sl(
     dd_after_2x = take("dd_after_2x")
     dd_after_3x = take("dd_after_3x")
 
+    # =========================================================================
+    # PATH QUALITY METRICS
+    # =========================================================================
+    
+    # Time in bands (candle counts)
+    time_in_band_1_0_1_2 = take("candles_1_0_1_2")
+    time_in_band_1_2_1_5 = take("candles_1_2_1_5")
+    time_in_band_1_5_2_0 = take("candles_1_5_2_0")
+    time_in_band_2_0_plus = take("candles_2_0_plus")
+
+    # Time quality percentages
+    time_underwater_pct = take("time_underwater_pct")
+    time_in_profit_pct = take("time_in_profit_pct")
+    stall_score = take("stall_score")
+
+    # Retention metrics
+    retention_1_2x_above_1_1x = take("retention_1_2x_above_1_1x")
+    retention_1_5x_above_1_3x = take("retention_1_5x_above_1_3x")
+    floor_hold_after_1_2x = take("floor_hold_after_1_2x")
+    floor_hold_after_1_5x = take("floor_hold_after_1_5x")
+    giveback_after_1_5x = take("giveback_after_1_5x")
+    giveback_after_2x = take("giveback_after_2x")
+
+    # Headfake metrics
+    is_headfake = take("is_headfake")
+    headfake_depth = take("headfake_depth")
+    headfake_recovered = take("headfake_recovered")
+
     def fmt_pct_hit(field: str) -> float:
         if not ok:
             return 0.0
@@ -272,6 +300,52 @@ def summarize_tp_sl(
     time_to_1_5x_median_min = (fmt_med(t_1_5x) / 60.0) if t_1_5x and fmt_med(t_1_5x) else None
     time_to_2x_median_min = (fmt_med(t2x) / 60.0) if t2x and fmt_med(t2x) else None
     
+    # =========================================================================
+    # PATH QUALITY AGGREGATIONS
+    # =========================================================================
+    
+    def pct_with_value(xs: List[float], value: float) -> float:
+        """Percentage of list that equals value."""
+        if not xs:
+            return 0.0
+        return sum(1 for x in xs if x == value) / len(xs)
+    
+    # Time quality aggregations
+    median_time_underwater_pct = fmt_med(time_underwater_pct)
+    p75_time_underwater_pct = percentile(time_underwater_pct, 0.75)
+    median_time_in_profit_pct = fmt_med(time_in_profit_pct)
+    median_stall_score = fmt_med(stall_score)
+    pct_high_stall = sum(1 for s in stall_score if s and s > 0.25) / len(ok) if ok else 0.0
+    
+    # Time in band aggregations (median candle counts)
+    median_time_in_band_1_0_1_2 = fmt_med(time_in_band_1_0_1_2)
+    median_time_in_band_1_2_1_5 = fmt_med(time_in_band_1_2_1_5)
+    median_time_in_band_1_5_2_0 = fmt_med(time_in_band_1_5_2_0)
+    median_time_in_band_2_0_plus = fmt_med(time_in_band_2_0_plus)
+    
+    # Retention aggregations
+    median_retention_1_2x_above_1_1x = fmt_med(retention_1_2x_above_1_1x)
+    median_retention_1_5x_above_1_3x = fmt_med(retention_1_5x_above_1_3x)
+    pct_floor_hold_after_1_2x = pct_with_value(floor_hold_after_1_2x, 1.0)
+    pct_floor_hold_after_1_5x = pct_with_value(floor_hold_after_1_5x, 1.0)
+    median_giveback_after_1_5x = fmt_med(giveback_after_1_5x)
+    p75_giveback_after_1_5x = percentile(giveback_after_1_5x, 0.75)
+    median_giveback_after_2x = fmt_med(giveback_after_2x)
+    p75_giveback_after_2x = percentile(giveback_after_2x, 0.75)
+    
+    # Headfake aggregations
+    headfake_rate = pct_with_value(is_headfake, 1.0)
+    # Filter out None values for headfake depth
+    headfake_depths_valid = [d for d in headfake_depth if d is not None]
+    median_headfake_depth = fmt_med(headfake_depths_valid)
+    p50_headfake_depth = percentile(headfake_depths_valid, 0.50)
+    # Recovery rate: of trades that headfaked, what % eventually hit 1.5x?
+    headfake_trades = [(hf, rec) for hf, rec in zip(is_headfake, headfake_recovered) if hf == 1]
+    headfake_recovery_rate = (
+        sum(1 for _, rec in headfake_trades if rec == 1) / len(headfake_trades)
+        if headfake_trades else None
+    )
+    
     return {
         "alerts_total": len(rows),
         "alerts_ok": len(ok),
@@ -325,6 +399,34 @@ def summarize_tp_sl(
         "avg_r_win": avg_r_win,
         "avg_r_loss": avg_r_loss,
         "r_profit_factor": r_profit_factor,
+        # =====================================================================
+        # PATH QUALITY METRICS
+        # =====================================================================
+        # Time quality
+        "median_time_underwater_pct": median_time_underwater_pct,
+        "p75_time_underwater_pct": p75_time_underwater_pct,
+        "median_time_in_profit_pct": median_time_in_profit_pct,
+        "median_stall_score": median_stall_score,
+        "pct_high_stall": pct_high_stall,
+        # Time in bands
+        "median_time_in_band_1_0_1_2": median_time_in_band_1_0_1_2,
+        "median_time_in_band_1_2_1_5": median_time_in_band_1_2_1_5,
+        "median_time_in_band_1_5_2_0": median_time_in_band_1_5_2_0,
+        "median_time_in_band_2_0_plus": median_time_in_band_2_0_plus,
+        # Retention
+        "median_retention_1_2x_above_1_1x": median_retention_1_2x_above_1_1x,
+        "median_retention_1_5x_above_1_3x": median_retention_1_5x_above_1_3x,
+        "pct_floor_hold_after_1_2x": pct_floor_hold_after_1_2x,
+        "pct_floor_hold_after_1_5x": pct_floor_hold_after_1_5x,
+        "median_giveback_after_1_5x": median_giveback_after_1_5x,
+        "p75_giveback_after_1_5x": p75_giveback_after_1_5x,
+        "median_giveback_after_2x": median_giveback_after_2x,
+        "p75_giveback_after_2x": p75_giveback_after_2x,
+        # Headfake
+        "headfake_rate": headfake_rate,
+        "median_headfake_depth": median_headfake_depth,
+        "p50_headfake_depth": p50_headfake_depth,
+        "headfake_recovery_rate": headfake_recovery_rate,
     }
 
 
@@ -410,6 +512,22 @@ def aggregate_by_caller(
         t_1_5x = take(rlist, "time_to_1_5x_s")
         t2x = take(rlist, "time_to_2x_s")
 
+        # =====================================================================
+        # PATH QUALITY METRICS (per caller)
+        # =====================================================================
+        time_underwater_pct_list = take(rlist, "time_underwater_pct")
+        time_in_profit_pct_list = take(rlist, "time_in_profit_pct")
+        stall_score_list = take(rlist, "stall_score")
+        retention_1_2x_list = take(rlist, "retention_1_2x_above_1_1x")
+        retention_1_5x_list = take(rlist, "retention_1_5x_above_1_3x")
+        floor_hold_1_2x_list = take(rlist, "floor_hold_after_1_2x")
+        floor_hold_1_5x_list = take(rlist, "floor_hold_after_1_5x")
+        giveback_1_5x_list = take(rlist, "giveback_after_1_5x")
+        giveback_2x_list = take(rlist, "giveback_after_2x")
+        is_headfake_list = take(rlist, "is_headfake")
+        headfake_depth_list = take(rlist, "headfake_depth")
+        headfake_recovered_list = take(rlist, "headfake_recovered")
+
         # Compute dd_pre2x_or_horizon: for each alert, use dd_pre2x if 2x was hit,
         # otherwise use dd_overall (the horizon DD). This ensures all alerts contribute.
         dd_pre2x_or_horizon: List[float] = []
@@ -489,6 +607,30 @@ def aggregate_by_caller(
             # Risk-adjusted returns
             "risk_adj_total_return_pct": risk_adj_total * 100,
             "risk_adj_avg_return_pct": risk_adj_avg * 100,
+            # =====================================================================
+            # PATH QUALITY METRICS (per caller)
+            # =====================================================================
+            # Time quality
+            "median_time_underwater_pct": med(time_underwater_pct_list),
+            "median_time_in_profit_pct": med(time_in_profit_pct_list),
+            "median_stall_score": med(stall_score_list),
+            "pct_high_stall": (sum(1 for s in stall_score_list if s > 0.25) / len(rlist)) if rlist else 0.0,
+            # Retention
+            "median_retention_1_2x_above_1_1x": med(retention_1_2x_list),
+            "median_retention_1_5x_above_1_3x": med(retention_1_5x_list),
+            "pct_floor_hold_after_1_2x": (sum(1 for f in floor_hold_1_2x_list if f == 1.0) / len(floor_hold_1_2x_list)) if floor_hold_1_2x_list else 0.0,
+            "pct_floor_hold_after_1_5x": (sum(1 for f in floor_hold_1_5x_list if f == 1.0) / len(floor_hold_1_5x_list)) if floor_hold_1_5x_list else 0.0,
+            "median_giveback_after_1_5x": med(giveback_1_5x_list),
+            "p75_giveback_after_1_5x": percentile(giveback_1_5x_list, 0.75),
+            "median_giveback_after_2x": med(giveback_2x_list),
+            # Headfake
+            "headfake_rate": (sum(1 for h in is_headfake_list if h == 1.0) / len(is_headfake_list)) if is_headfake_list else 0.0,
+            "median_headfake_depth": med([d for d in headfake_depth_list if d is not None]) if headfake_depth_list else None,
+            "headfake_recovery_rate": (
+                sum(1 for hf, rec in zip(is_headfake_list, headfake_recovered_list) if hf == 1 and rec == 1) /
+                sum(1 for hf in is_headfake_list if hf == 1)
+                if sum(1 for hf in is_headfake_list if hf == 1) > 0 else None
+            ),
         })
 
     # Sort by risk-adjusted total return (most profitable callers first)

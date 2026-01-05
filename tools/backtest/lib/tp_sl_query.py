@@ -233,6 +233,111 @@ mins AS (
   LEFT JOIN ath_cte USING(alert_id)
   GROUP BY j.alert_id
 ),
+-- =====================================================================
+-- PATH QUALITY: Candle stats for time-in-band and underwater metrics
+-- =====================================================================
+candle_stats AS (
+  SELECT
+    j.alert_id,
+    -- Total candles in window
+    COUNT(*)::BIGINT AS total_candles,
+    
+    -- Candles by price band (using close price for classification)
+    COUNT(*) FILTER (WHERE j.cl < ag.entry_price)::BIGINT AS candles_below_entry,
+    COUNT(*) FILTER (WHERE j.cl >= ag.entry_price * 1.0 AND j.cl < ag.entry_price * 1.05)::BIGINT AS candles_1_00_1_05,
+    COUNT(*) FILTER (WHERE j.cl >= ag.entry_price * 1.05 AND j.cl < ag.entry_price * 1.15)::BIGINT AS candles_1_05_1_15,
+    COUNT(*) FILTER (WHERE j.cl >= ag.entry_price * 1.0 AND j.cl < ag.entry_price * 1.2)::BIGINT AS candles_1_0_1_2,
+    COUNT(*) FILTER (WHERE j.cl >= ag.entry_price * 1.2 AND j.cl < ag.entry_price * 1.5)::BIGINT AS candles_1_2_1_5,
+    COUNT(*) FILTER (WHERE j.cl >= ag.entry_price * 1.5 AND j.cl < ag.entry_price * 2.0)::BIGINT AS candles_1_5_2_0,
+    COUNT(*) FILTER (WHERE j.cl >= ag.entry_price * 2.0)::BIGINT AS candles_2_0_plus,
+    
+    -- Candles before recovery (underwater period)
+    COUNT(*) FILTER (WHERE ag.recovery_ts IS NULL OR j.ts < ag.recovery_ts)::BIGINT AS candles_pre_recovery,
+    COUNT(*) FILTER (WHERE j.l < ag.entry_price AND (ag.recovery_ts IS NULL OR j.ts < ag.recovery_ts))::BIGINT AS candles_underwater,
+    
+    -- Candles after recovery (in profit period)
+    COUNT(*) FILTER (WHERE ag.recovery_ts IS NOT NULL AND j.ts >= ag.recovery_ts)::BIGINT AS candles_post_recovery,
+    COUNT(*) FILTER (WHERE ag.recovery_ts IS NOT NULL AND j.ts >= ag.recovery_ts AND j.l >= ag.entry_price)::BIGINT AS candles_in_profit
+    
+  FROM j
+  JOIN agg ag USING(alert_id)
+  GROUP BY j.alert_id
+),
+-- =====================================================================
+-- PATH QUALITY: Retention stats for post-tier retention metrics
+-- =====================================================================
+retention_stats AS (
+  SELECT
+    j.alert_id,
+    
+    -- After hitting 1.2x: how many candles stayed >= 1.1x?
+    COUNT(*) FILTER (WHERE ag.ts_1_2x IS NOT NULL AND j.ts > ag.ts_1_2x)::BIGINT AS candles_post_1_2x,
+    COUNT(*) FILTER (WHERE ag.ts_1_2x IS NOT NULL AND j.ts > ag.ts_1_2x AND j.l >= ag.entry_price * 1.1)::BIGINT AS candles_post_1_2x_above_1_1x,
+    COUNT(*) FILTER (WHERE ag.ts_1_2x IS NOT NULL AND j.ts > ag.ts_1_2x AND j.l >= ag.entry_price * 1.0)::BIGINT AS candles_post_1_2x_above_entry,
+    
+    -- After hitting 1.5x: how many candles stayed >= 1.3x?
+    COUNT(*) FILTER (WHERE ag.ts_1_5x IS NOT NULL AND j.ts > ag.ts_1_5x)::BIGINT AS candles_post_1_5x,
+    COUNT(*) FILTER (WHERE ag.ts_1_5x IS NOT NULL AND j.ts > ag.ts_1_5x AND j.l >= ag.entry_price * 1.3)::BIGINT AS candles_post_1_5x_above_1_3x,
+    COUNT(*) FILTER (WHERE ag.ts_1_5x IS NOT NULL AND j.ts > ag.ts_1_5x AND j.l >= ag.entry_price * 1.0)::BIGINT AS candles_post_1_5x_above_entry,
+    
+    -- After hitting 2x: how many candles stayed >= 1.5x?
+    COUNT(*) FILTER (WHERE ag.ts_2x IS NOT NULL AND j.ts > ag.ts_2x)::BIGINT AS candles_post_2x,
+    COUNT(*) FILTER (WHERE ag.ts_2x IS NOT NULL AND j.ts > ag.ts_2x AND j.l >= ag.entry_price * 1.5)::BIGINT AS candles_post_2x_above_1_5x,
+    
+    -- Floor hold: min price after hitting each tier (to check if went below entry)
+    MIN(CASE WHEN ag.ts_1_2x IS NOT NULL AND j.ts > ag.ts_1_2x THEN j.l END) AS min_low_post_1_2x,
+    MIN(CASE WHEN ag.ts_1_5x IS NOT NULL AND j.ts > ag.ts_1_5x THEN j.l END) AS min_low_post_1_5x,
+    MIN(CASE WHEN ag.ts_2x IS NOT NULL AND j.ts > ag.ts_2x THEN j.l END) AS min_low_post_2x
+    
+  FROM j
+  JOIN agg ag USING(alert_id)
+  GROUP BY j.alert_id
+),
+-- =====================================================================
+-- PATH QUALITY: Headfake detection (hit tier, then dipped before next tier)
+-- =====================================================================
+headfake_stats AS (
+  SELECT
+    j.alert_id,
+    
+    -- Min low between 1.2x hit and 1.5x hit (or horizon if 1.5x not hit)
+    MIN(CASE 
+      WHEN ag.ts_1_2x IS NOT NULL 
+           AND j.ts > ag.ts_1_2x 
+           AND (ag.ts_1_5x IS NULL OR j.ts < ag.ts_1_5x)
+      THEN j.l 
+    END) AS min_low_1_2x_to_1_5x,
+    
+    -- Min low between 1.5x hit and 2x hit
+    MIN(CASE 
+      WHEN ag.ts_1_5x IS NOT NULL 
+           AND j.ts > ag.ts_1_5x 
+           AND (ag.ts_2x IS NULL OR j.ts < ag.ts_2x)
+      THEN j.l 
+    END) AS min_low_1_5x_to_2x,
+    
+    -- Did it ever go below entry after 1.2x but before 1.5x?
+    MAX(CASE 
+      WHEN ag.ts_1_2x IS NOT NULL 
+           AND j.ts > ag.ts_1_2x 
+           AND (ag.ts_1_5x IS NULL OR j.ts < ag.ts_1_5x)
+           AND j.l < ag.entry_price
+      THEN 1 ELSE 0 
+    END)::INT AS dipped_below_entry_1_2x_to_1_5x,
+    
+    -- Did it ever go below 1.05x after 1.2x but before 1.5x?
+    MAX(CASE 
+      WHEN ag.ts_1_2x IS NOT NULL 
+           AND j.ts > ag.ts_1_2x 
+           AND (ag.ts_1_5x IS NULL OR j.ts < ag.ts_1_5x)
+           AND j.l < ag.entry_price * 1.05
+      THEN 1 ELSE 0 
+    END)::INT AS dipped_below_1_05x_1_2x_to_1_5x
+    
+  FROM j
+  JOIN agg ag USING(alert_id)
+  GROUP BY j.alert_id
+),
 first_exit AS (
   SELECT j.alert_id,
     min(j.ts) FILTER (WHERE j.h >= (ag.entry_price*{tp}) OR j.l <= (ag.entry_price*{sl})) AS exit_ts
@@ -303,6 +408,74 @@ SELECT
   ((ag.max_high/ag.entry_price) - 1.0) * 100.0 AS peak_pnl_pct,
   (ag.end_close/ag.entry_price) - 1.0 AS ret_end,
 
+  -- =====================================================================
+  -- PATH QUALITY: Time in bands (from candle_stats)
+  -- =====================================================================
+  cs.total_candles,
+  cs.candles_1_0_1_2,
+  cs.candles_1_2_1_5,
+  cs.candles_1_5_2_0,
+  cs.candles_2_0_plus,
+
+  -- Time in profit / underwater (as percentages)
+  CASE WHEN cs.candles_pre_recovery > 0 
+       THEN cs.candles_underwater::FLOAT / cs.candles_pre_recovery 
+       ELSE 0 END AS time_underwater_pct,
+  CASE WHEN cs.candles_post_recovery > 0 
+       THEN cs.candles_in_profit::FLOAT / cs.candles_post_recovery 
+       ELSE NULL END AS time_in_profit_pct,
+
+  -- Stall score: % of time stuck in chop zone (1.05-1.15)
+  CASE WHEN cs.total_candles > 0 
+       THEN (cs.candles_1_05_1_15::FLOAT / cs.total_candles) 
+       ELSE 0 END AS stall_score,
+
+  -- =====================================================================
+  -- PATH QUALITY: Retention metrics (from retention_stats)
+  -- =====================================================================
+  -- Retention after 1.2x: % of candles that stayed >= 1.1x
+  CASE WHEN rs.candles_post_1_2x > 0 
+       THEN rs.candles_post_1_2x_above_1_1x::FLOAT / rs.candles_post_1_2x 
+       ELSE NULL END AS retention_1_2x_above_1_1x,
+
+  -- Retention after 1.5x: % of candles that stayed >= 1.3x
+  CASE WHEN rs.candles_post_1_5x > 0 
+       THEN rs.candles_post_1_5x_above_1_3x::FLOAT / rs.candles_post_1_5x 
+       ELSE NULL END AS retention_1_5x_above_1_3x,
+
+  -- Floor hold: 1 if price never went below entry after hitting tier
+  CASE WHEN ag.ts_1_2x IS NOT NULL AND rs.min_low_post_1_2x >= ag.entry_price 
+       THEN 1 ELSE 0 END AS floor_hold_after_1_2x,
+  CASE WHEN ag.ts_1_5x IS NOT NULL AND rs.min_low_post_1_5x >= ag.entry_price 
+       THEN 1 ELSE 0 END AS floor_hold_after_1_5x,
+
+  -- Giveback: max drawdown from tier level after hitting tier
+  CASE WHEN ag.ts_1_5x IS NOT NULL AND rs.min_low_post_1_5x IS NOT NULL 
+       THEN (rs.min_low_post_1_5x / (ag.entry_price * 1.5)) - 1.0 
+       ELSE NULL END AS giveback_after_1_5x,
+  CASE WHEN ag.ts_2x IS NOT NULL AND rs.min_low_post_2x IS NOT NULL 
+       THEN (rs.min_low_post_2x / (ag.entry_price * 2.0)) - 1.0 
+       ELSE NULL END AS giveback_after_2x,
+
+  -- =====================================================================
+  -- PATH QUALITY: Headfake metrics (from headfake_stats)
+  -- =====================================================================
+  -- Headfake: hit 1.2x, then dipped below entry before hitting 1.5x
+  CASE WHEN ag.ts_1_2x IS NOT NULL AND hs.dipped_below_entry_1_2x_to_1_5x = 1 
+       THEN 1 ELSE 0 END AS is_headfake,
+
+  -- Headfake depth: how far below entry did it go?
+  CASE WHEN ag.ts_1_2x IS NOT NULL AND hs.min_low_1_2x_to_1_5x IS NOT NULL 
+            AND hs.min_low_1_2x_to_1_5x < ag.entry_price
+       THEN (hs.min_low_1_2x_to_1_5x / ag.entry_price) - 1.0 
+       ELSE NULL END AS headfake_depth,
+
+  -- Headfake recovery: did it eventually hit 1.5x after headfaking?
+  CASE WHEN ag.ts_1_2x IS NOT NULL 
+            AND hs.dipped_below_entry_1_2x_to_1_5x = 1 
+            AND ag.ts_1_5x IS NOT NULL 
+       THEN 1 ELSE 0 END AS headfake_recovered,
+
   -- TP/SL exit logic
   CASE
     WHEN ec.exit_ts IS NULL THEN 'horizon'
@@ -327,6 +500,9 @@ FROM a
 LEFT JOIN agg ag ON ag.alert_id = a.alert_id
 LEFT JOIN ath_cte ON ath_cte.alert_id = a.alert_id
 LEFT JOIN mins mi ON mi.alert_id = a.alert_id
+LEFT JOIN candle_stats cs ON cs.alert_id = a.alert_id
+LEFT JOIN retention_stats rs ON rs.alert_id = a.alert_id
+LEFT JOIN headfake_stats hs ON hs.alert_id = a.alert_id
 LEFT JOIN exit_candle ec ON ec.alert_id = a.alert_id
 ORDER BY a.alert_id
 """
