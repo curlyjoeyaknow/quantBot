@@ -372,12 +372,20 @@ def aggregate_by_caller(
         ath = take(rlist, "ath_mult")
         dd_initial = take(rlist, "dd_initial")
         dd_overall = take(rlist, "dd_overall")
+        # Granular DD tier metrics
+        dd_pre_1_2x = take(rlist, "dd_pre_1_2x")
+        dd_pre_1_5x = take(rlist, "dd_pre_1_5x")
         dd_pre2x = take(rlist, "dd_pre2x")
+        dd_band_1_2x_to_1_5x = take(rlist, "dd_band_1_2x_to_1_5x")
+        dd_band_1_5x_to_2x = take(rlist, "dd_band_1_5x_to_2x")
         dd_after_2x = take(rlist, "dd_after_2x")
         dd_after_3x = take(rlist, "dd_after_3x")
         dd_after_ath = take(rlist, "dd_after_ath")
         peak_pnl = take(rlist, "peak_pnl_pct")
         ret_end = take(rlist, "ret_end_pct")
+        # Granular time to tier metrics
+        t_1_2x = take(rlist, "time_to_1_2x_s")
+        t_1_5x = take(rlist, "time_to_1_5x_s")
         t2x = take(rlist, "time_to_2x_s")
 
         # Compute dd_pre2x_or_horizon: for each alert, use dd_pre2x if 2x was hit,
@@ -425,11 +433,24 @@ def aggregate_by_caller(
             "hit4x_pct": pct_hit(rlist, "time_to_4x_s") * 100,
             "hit5x_pct": pct_hit(rlist, "time_to_5x_s") * 100,
             "hit10x_pct": pct_hit(rlist, "time_to_10x_s") * 100,
+            # Time to tier metrics (granular)
+            "median_t_1_2x_min": (med(t_1_2x) / 60.0) if med(t_1_2x) is not None else None,
+            "median_t_1_5x_min": (med(t_1_5x) / 60.0) if med(t_1_5x) is not None else None,
             "median_t2x_hrs": (med(t2x) / 3600.0) if med(t2x) is not None else None,
+            # Hit rates for granular tiers
+            "hit_1_2x_pct": pct_hit(rlist, "time_to_1_2x_s") * 100,
+            "hit_1_5x_pct": pct_hit(rlist, "time_to_1_5x_s") * 100,
+            # DD metrics (granular tiers)
             "median_dd_initial_pct": (med(dd_initial) * 100.0) if med(dd_initial) is not None else None,
             "median_dd_overall_pct": (med(dd_overall) * 100.0) if med(dd_overall) is not None else None,
+            # DD before each tier (from entry price)
+            "median_dd_pre_1_2x_pct": (med(dd_pre_1_2x) * 100.0) if med(dd_pre_1_2x) is not None else None,
+            "median_dd_pre_1_5x_pct": (med(dd_pre_1_5x) * 100.0) if med(dd_pre_1_5x) is not None else None,
             "median_dd_pre2x_pct": (med(dd_pre2x) * 100.0) if med(dd_pre2x) is not None else None,
             "median_dd_pre2x_or_horizon_pct": (med(dd_pre2x_or_horizon) * 100.0) if med(dd_pre2x_or_horizon) is not None else None,
+            # DD in tier bands (from tier's price level)
+            "median_dd_band_1_2x_to_1_5x_pct": (med(dd_band_1_2x_to_1_5x) * 100.0) if med(dd_band_1_2x_to_1_5x) is not None else None,
+            "median_dd_band_1_5x_to_2x_pct": (med(dd_band_1_5x_to_2x) * 100.0) if med(dd_band_1_5x_to_2x) is not None else None,
             "median_dd_after_2x_pct": (med(dd_after_2x) * 100.0) if med(dd_after_2x) is not None else None,
             "median_dd_after_3x_pct": (med(dd_after_3x) * 100.0) if med(dd_after_3x) is not None else None,
             "median_dd_after_ath_pct": (med(dd_after_ath) * 100.0) if med(dd_after_ath) is not None else None,

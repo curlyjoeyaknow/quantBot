@@ -130,6 +130,9 @@ agg AS (
     min(j.l) AS min_low,
     arg_max(j.cl, j.ts) AS end_close,
     min(j.ts) FILTER (WHERE j.h > e.entry_price) AS recovery_ts,
+    -- Granular tier timestamps (1.2x, 1.5x for finer DD analysis)
+    min(j.ts) FILTER (WHERE j.h >= e.entry_price * 1.2) AS ts_1_2x,
+    min(j.ts) FILTER (WHERE j.h >= e.entry_price * 1.5) AS ts_1_5x,
     min(j.ts) FILTER (WHERE j.h >= e.entry_price * 2.0) AS ts_2x,
     min(j.ts) FILTER (WHERE j.h >= e.entry_price * 3.0) AS ts_3x,
     min(j.ts) FILTER (WHERE j.h >= e.entry_price * 4.0) AS ts_4x,
@@ -147,7 +150,16 @@ mins AS (
   SELECT
     j.alert_id,
     min(CASE WHEN ag.recovery_ts IS NOT NULL AND j.ts < ag.recovery_ts THEN j.l END) AS min_pre_recovery,
+    -- Granular tier min prices (DD before each tier, measured from entry)
+    min(CASE WHEN ag.ts_1_2x IS NOT NULL AND j.ts <= ag.ts_1_2x THEN j.l END) AS min_pre_1_2x,
+    min(CASE WHEN ag.ts_1_5x IS NOT NULL AND j.ts <= ag.ts_1_5x THEN j.l END) AS min_pre_1_5x,
     min(CASE WHEN ag.ts_2x IS NOT NULL AND j.ts <= ag.ts_2x THEN j.l END) AS min_pre2x,
+    -- Min prices in tier bands (after 1.2x but before 1.5x, etc.)
+    min(CASE WHEN ag.ts_1_2x IS NOT NULL AND ag.ts_1_5x IS NOT NULL 
+             AND j.ts > ag.ts_1_2x AND j.ts <= ag.ts_1_5x THEN j.l END) AS min_band_1_2x_to_1_5x,
+    min(CASE WHEN ag.ts_1_5x IS NOT NULL AND ag.ts_2x IS NOT NULL 
+             AND j.ts > ag.ts_1_5x AND j.ts <= ag.ts_2x THEN j.l END) AS min_band_1_5x_to_2x,
+    -- Post-tier mins (existing)
     min(CASE WHEN ag.ts_2x IS NOT NULL AND j.ts > ag.ts_2x THEN j.l END) AS min_post2x,
     min(CASE WHEN ag.ts_3x IS NOT NULL AND j.ts > ag.ts_3x THEN j.l END) AS min_post3x,
     min(CASE WHEN ag.ts_4x IS NOT NULL AND j.ts > ag.ts_4x THEN j.l END) AS min_post4x,
@@ -180,6 +192,9 @@ SELECT
   (ag.max_high / ag.entry_price) AS ath_mult,
   datediff('second', a.entry_ts, ath_cte.ath_ts) AS time_to_ath_s,
 
+  -- Time to granular tiers
+  datediff('second', a.entry_ts, ag.ts_1_2x) AS time_to_1_2x_s,
+  datediff('second', a.entry_ts, ag.ts_1_5x) AS time_to_1_5x_s,
   datediff('second', a.entry_ts, ag.ts_2x) AS time_to_2x_s,
   datediff('second', a.entry_ts, ag.ts_3x) AS time_to_3x_s,
   datediff('second', a.entry_ts, ag.ts_4x) AS time_to_4x_s,
@@ -194,8 +209,20 @@ SELECT
 
   (ag.min_low / ag.entry_price) - 1.0 AS dd_overall,
 
+  -- DD before granular tiers (from entry price) - key metrics for tiered analysis
+  CASE WHEN ag.ts_1_2x IS NULL OR mi.min_pre_1_2x IS NULL THEN NULL
+       ELSE (mi.min_pre_1_2x / ag.entry_price) - 1.0 END AS dd_pre_1_2x,
+  CASE WHEN ag.ts_1_5x IS NULL OR mi.min_pre_1_5x IS NULL THEN NULL
+       ELSE (mi.min_pre_1_5x / ag.entry_price) - 1.0 END AS dd_pre_1_5x,
   CASE WHEN ag.ts_2x IS NULL OR mi.min_pre2x IS NULL THEN NULL
        ELSE (mi.min_pre2x / ag.entry_price) - 1.0 END AS dd_pre2x,
+       
+  -- DD in tier bands (after hitting tier X but before reaching tier Y)
+  -- Measured from the tier's own price level (e.g., DD from 1.2x price after 1.2x hit)
+  CASE WHEN ag.ts_1_2x IS NULL OR ag.ts_1_5x IS NULL OR mi.min_band_1_2x_to_1_5x IS NULL THEN NULL
+       ELSE (mi.min_band_1_2x_to_1_5x / (ag.entry_price * 1.2)) - 1.0 END AS dd_band_1_2x_to_1_5x,
+  CASE WHEN ag.ts_1_5x IS NULL OR ag.ts_2x IS NULL OR mi.min_band_1_5x_to_2x IS NULL THEN NULL
+       ELSE (mi.min_band_1_5x_to_2x / (ag.entry_price * 1.5)) - 1.0 END AS dd_band_1_5x_to_2x,
 
   CASE WHEN ag.ts_2x IS NULL OR mi.min_post2x IS NULL THEN NULL
        ELSE (mi.min_post2x / (ag.entry_price * 2.0)) - 1.0 END AS dd_after_2x,
