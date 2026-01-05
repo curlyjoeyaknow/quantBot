@@ -52,6 +52,11 @@ describe('DuckDB Storage Bridge Test', () => {
       { targets: [{ target: 2.0, percent: 0.5 }] }
     );
 
+    if (!result.success) {
+      expect.fail(
+        `Store strategy failed. Error: ${result.error ?? 'Unknown error'}. Full result: ${JSON.stringify(result, null, 2)}`
+      );
+    }
     expect(result.success).toBe(true);
     expect(result.strategy_id).toBe('PT2_SL25');
     expect(result.error === null).toBe(true);
@@ -78,6 +83,11 @@ describe('DuckDB Storage Bridge Test', () => {
       undefined // totalTrades
     );
 
+    if (!result.success) {
+      expect.fail(
+        `Store run failed. Error: ${result.error ?? 'Unknown error'}. Full result: ${JSON.stringify(result, null, 2)}`
+      );
+    }
     expect(result.success).toBe(true);
     expect(result.run_id).toBe('run_123');
     expect(result.error === null).toBe(true);
@@ -122,6 +132,11 @@ describe('DuckDB Storage Bridge Test', () => {
       100
     );
 
+    if (!result.success) {
+      expect.fail(
+        `Update OHLCV metadata failed. Error: ${result.error ?? 'Unknown error'}. Full result: ${JSON.stringify(result, null, 2)}`
+      );
+    }
     expect(result.success).toBe(true);
     expect(result.error === null).toBe(true);
   });
@@ -147,6 +162,11 @@ describe('DuckDB Storage Bridge Test', () => {
       '2024-01-02T10:00:00'
     );
 
+    if (!result.success) {
+      expect.fail(
+        `Query OHLCV metadata failed. Error: ${result.error ?? 'Unknown error'}. Full result: ${JSON.stringify(result, null, 2)}`
+      );
+    }
     expect(result.success).toBe(true);
     expect(typeof result.available).toBe('boolean');
     if (result.available) {
@@ -165,6 +185,11 @@ describe('DuckDB Storage Bridge Test', () => {
       'No data available'
     );
 
+    if (!result.success) {
+      expect.fail(
+        `Add OHLCV exclusion failed. Error: ${result.error ?? 'Unknown error'}. Full result: ${JSON.stringify(result, null, 2)}`
+      );
+    }
     expect(result.success).toBe(true);
     expect(result.error === null).toBe(true);
   });
@@ -185,6 +210,11 @@ describe('DuckDB Storage Bridge Test', () => {
       intervals: ['5m'],
     });
 
+    if (!result.success) {
+      expect.fail(
+        `Query OHLCV exclusions failed. Error: ${result.error ?? 'Unknown error'}. Full result: ${JSON.stringify(result, null, 2)}`
+      );
+    }
     expect(result.success).toBe(true);
     if (result.excluded) {
       expect(Array.isArray(result.excluded)).toBe(true);
@@ -222,6 +252,11 @@ describe('DuckDB Storage Bridge Test', () => {
 
     const result = await storageService.generateReport(testDbPath, 'summary');
 
+    if (!result.success) {
+      expect.fail(
+        `Generate report failed. Error: ${result.error ?? 'Unknown error'}. Full result: ${JSON.stringify(result, null, 2)}`
+      );
+    }
     expect(result.success).toBe(true);
     expect(result.report_type).toBe('summary');
     expect(result.data).toBeDefined();

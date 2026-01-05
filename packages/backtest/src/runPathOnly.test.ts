@@ -102,17 +102,19 @@ vi.mock('duckdb', () => {
     }),
   };
 
+  // Create a mock Database class
+  class MockDatabase {
+    connect() {
+      return mockDb;
+    }
+    close = vi.fn();
+  }
+
+  // duckdb exports Database on the default export object (CommonJS pattern)
   return {
     default: {
-      Database: vi.fn().mockImplementation(() => ({
-        connect: () => mockDb,
-        close: vi.fn(),
-      })),
+      Database: MockDatabase,
     },
-    Database: vi.fn().mockImplementation(() => ({
-      connect: () => mockDb,
-      close: vi.fn(),
-    })),
   };
 });
 

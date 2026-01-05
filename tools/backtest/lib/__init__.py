@@ -72,13 +72,17 @@ from .optimizer import (
     run_optimization,
 )
 from .run_contract import (
+    RunConfig,
     RunIdentity,
     RunRecord,
     ensure_runs_schema,
     store_run,
+    store_run_summary,
+    store_caller_scores,
     load_run,
     find_run_by_fingerprint,
     list_recent_runs,
+    get_caller_scores_for_run,
 )
 from .metrics_contract import (
     MetricCategory,
@@ -208,13 +212,17 @@ __all__ = [
     "OptimizationRun",
     "run_optimization",
     # Run contract
+    "RunConfig",
     "RunIdentity",
     "RunRecord",
     "ensure_runs_schema",
     "store_run",
+    "store_run_summary",
+    "store_caller_scores",
     "load_run",
     "find_run_by_fingerprint",
     "list_recent_runs",
+    "get_caller_scores_for_run",
     # Metrics contract
     "MetricCategory",
     "PathMetricDef",

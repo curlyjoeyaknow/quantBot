@@ -64,6 +64,23 @@ class OptimizationResult:
     def risk_adj_total_return_pct(self) -> float:
         return self.summary.get("risk_adj_total_return_pct", 0.0)
     
+    @property
+    def total_r(self) -> float:
+        return self.summary.get("total_r", 0.0)
+    
+    @property
+    def avg_r(self) -> float:
+        return self.summary.get("avg_r", 0.0)
+    
+    @property
+    def avg_r_win(self) -> float:
+        return self.summary.get("avg_r_win", 0.0)
+    
+    @property
+    def r_profit_factor(self) -> float:
+        pf = self.summary.get("r_profit_factor", 0.0)
+        return pf if pf != float("inf") else 999.99
+    
     def to_dict(self) -> Dict[str, Any]:
         return {
             "params": self.params,
@@ -432,8 +449,8 @@ class GridOptimizer:
                 
                 self._log(
                     f"         WR={result.win_rate*100:.1f}% "
-                    f"PF={result.profit_factor:.2f} "
-                    f"Exp={result.expectancy_pct:.2f}% "
+                    f"AvgR={result.avg_r:+.2f} "
+                    f"TotalR={result.total_r:+.1f} "
                     f"({result.duration_s:.1f}s)"
                 )
         
@@ -449,26 +466,36 @@ class GridOptimizer:
         self._log(f"Total runs: {len(opt_run.results)}")
         self._log(timing.summary_line())
         
-        # Print top 5 by profit factor
+        # Print top 5 by Total R (the key metric)
         self._log("")
-        self._log("TOP 5 BY PROFIT FACTOR:")
-        self._log("-" * 70)
-        for i, r in enumerate(opt_run.rank_by("profit_factor")[:5], 1):
+        self._log("TOP 5 BY TOTAL R (risk-adjusted):")
+        self._log("-" * 80)
+        for i, r in enumerate(opt_run.rank_by("total_r")[:5], 1):
             self._log(
                 f"  {i}. TP={r.params['tp_mult']:.2f}x SL={r.params['sl_mult']:.2f}x | "
-                f"WR={r.win_rate*100:.1f}% PF={r.profit_factor:.2f} "
-                f"Exp={r.expectancy_pct:.2f}% Total={r.total_return_pct:.1f}%"
+                f"WR={r.win_rate*100:.1f}% AvgR={r.avg_r:+.2f} "
+                f"TotalR={r.total_r:+.1f} RiskAdj={r.risk_adj_total_return_pct:.1f}%"
             )
         
-        # Print top 5 by win rate
+        # Print top 5 by Avg R per trade
+        self._log("")
+        self._log("TOP 5 BY AVG R PER TRADE:")
+        self._log("-" * 80)
+        for i, r in enumerate(opt_run.rank_by("avg_r")[:5], 1):
+            self._log(
+                f"  {i}. TP={r.params['tp_mult']:.2f}x SL={r.params['sl_mult']:.2f}x | "
+                f"WR={r.win_rate*100:.1f}% AvgR={r.avg_r:+.2f} "
+                f"AvgRWin={r.avg_r_win:+.2f} TotalR={r.total_r:+.1f}"
+            )
+        
+        # Print top 5 by win rate (for reference)
         self._log("")
         self._log("TOP 5 BY WIN RATE:")
-        self._log("-" * 70)
+        self._log("-" * 80)
         for i, r in enumerate(opt_run.rank_by("win_rate")[:5], 1):
             self._log(
                 f"  {i}. TP={r.params['tp_mult']:.2f}x SL={r.params['sl_mult']:.2f}x | "
-                f"WR={r.win_rate*100:.1f}% PF={r.profit_factor:.2f} "
-                f"Exp={r.expectancy_pct:.2f}% Total={r.total_return_pct:.1f}%"
+                f"WR={r.win_rate*100:.1f}% AvgR={r.avg_r:+.2f} TotalR={r.total_r:+.1f}"
             )
         
         # Save results
