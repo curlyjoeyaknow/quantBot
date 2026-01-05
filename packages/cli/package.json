@@ -34,7 +34,6 @@
     "@quantbot/jobs": "workspace:*",
     "@quantbot/observability": "workspace:*",
     "@quantbot/ohlcv": "workspace:*",
-    "@quantbot/simulation": "workspace:*",
     "@quantbot/storage": "workspace:*",
     "@quantbot/utils": "workspace:*",
     "@quantbot/workflows": "workspace:*",

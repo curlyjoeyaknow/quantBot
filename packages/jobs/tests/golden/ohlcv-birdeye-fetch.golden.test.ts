@@ -255,7 +255,8 @@ describe('OhlcvBirdeyeFetch - Golden Path', () => {
       expect(results.every((r) => r.candlesFetched === 1)).toBe(true);
 
       // Assert: Rate limiting applied (at least 2 delays for 3 items)
-      expect(duration).toBeGreaterThanOrEqual(rateLimitMs * 2);
+      // Use a more lenient check to account for timing variations
+      expect(duration).toBeGreaterThanOrEqual(rateLimitMs * 2 - 5); // Allow 5ms tolerance
 
       // Assert: All mints processed correctly
       expect(results[0].workItem.mint).toBe(workItems[0].mint);

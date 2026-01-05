@@ -141,7 +141,3 @@ export { exportSlicesForAlerts } from './slices/exportSlicesForAlerts.js';
 export type { ExportSlicesForAlertsSpec } from './slices/exportSlicesForAlerts.js';
 // Ports are also in core, but we keep local definitions for now
 export type { SliceExporter, SliceAnalyzer, SliceValidator } from './slices/ports.js';
-
-// Lab Simulation Presets
-export type { SimPresetV1, LabPorts, RunContext } from './lab/types.js';
-export { runLabPreset } from './lab/runLabPreset.js';

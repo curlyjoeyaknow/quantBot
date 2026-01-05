@@ -24,13 +24,13 @@ import type {
   CostModel,
   RiskFramework,
   LiveTradeRecord,
-} from '@quantbot/simulation/execution-models';
+} from '@quantbot/backtest/execution-models';
 import {
   createPumpfunExecutionModel,
   calibrateExecutionModel,
   checkCircuitBreaker,
   createCircuitBreakerState,
-} from '@quantbot/simulation/execution-models';
+} from '@quantbot/backtest/execution-models';
 import { createDeterministicRNG, seedFromString } from '@quantbot/core';
 import { DateTime } from 'luxon';
 // createPumpswapExecutionModel and convertExecutionModelToCostConfig are imported but not used

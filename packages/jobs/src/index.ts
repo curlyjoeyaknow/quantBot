@@ -13,7 +13,7 @@
  * - Access API keys
  *
  * This package MUST NOT be imported by:
- * - @quantbot/simulation
+ * - @quantbot/backtest
  * - @quantbot/ohlcv
  */
 

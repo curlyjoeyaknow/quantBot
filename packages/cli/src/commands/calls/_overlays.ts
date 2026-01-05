@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { ValidationError } from '@quantbot/utils';
-import type { ExitOverlay } from '@quantbot/simulation';
+import type { ExitOverlay } from '@quantbot/backtest';
 
 type Overlay = ExitOverlay;
 export type OverlaySet = { id: string; overlays: Overlay[] };

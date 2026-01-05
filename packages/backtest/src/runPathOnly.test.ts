@@ -138,14 +138,17 @@ vi.mock('@quantbot/utils', () => {
     summaryLine = vi.fn().mockReturnValue('[timing] total=0ms');
   }
 
+  const mockLogger = {
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+  };
+
   return {
-    logger: {
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
-      debug: vi.fn(),
-    },
+    logger: mockLogger,
     TimingContext: MockTimingContext,
+    createPackageLogger: vi.fn(() => mockLogger),
   };
 });
 

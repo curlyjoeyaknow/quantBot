@@ -80,7 +80,7 @@ export const DEFAULT_OBJECTIVE_CONFIG: ObjectiveConfig = {
   timingBoostMax: 0.5,
   minHit2xPct: 0.5,
   consistencyWeight: 0.3,
-  tailBonusWeight: 0.1,
+  tailBonusWeight: 0.3, // Increased from 0.1 to prioritize tail capture
 };
 
 // =============================================================================
@@ -97,6 +97,15 @@ export interface OptimizationConstraints {
   maxP95DrawdownBps: number;
   /** Maximum time exposed in ms (e.g., 3600000 = 1 hour) */
   maxTimeExposedMs: number;
+  /** Caller-specific: if caller regularly hits high multiples (20x, 30x), relax constraints */
+  callerHighMultipleProfile?: {
+    /** P95 peak multiple threshold to consider caller "high multiple" */
+    p95PeakMultipleThreshold: number;
+    /** Relaxation factor for drawdown constraints (0-1, where 1 = no relaxation) */
+    drawdownRelaxationFactor: number;
+    /** Relaxation factor for stop-out rate (0-1) */
+    stopOutRelaxationFactor: number;
+  };
 }
 
 /**
@@ -174,6 +183,11 @@ export interface PolicyScore {
     medianTimeToT2xMin?: number;
     /** Median drawdown pre-2x as decimal */
     medianDdPre2x?: number;
+    /** Caller high-multiple profile (if analyzed) */
+    callerHighMultipleProfile?: {
+      p95PeakMultiple: number | null;
+      p75PeakMultiple: number | null;
+    };
   };
 }
 
@@ -329,6 +343,80 @@ export function computeObjective(
 // =============================================================================
 
 /**
+ * Analyze caller profile to determine if they regularly hit high multiples
+ */
+export function analyzeCallerHighMultipleProfile(
+  results: PolicyResultRow[],
+  pathMetrics?: Array<{ peak_multiple?: number | null }>
+): {
+  isHighMultipleCaller: boolean;
+  p95PeakMultiple: number | null;
+  p75PeakMultiple: number | null;
+} {
+  // Extract peak multiples from path metrics if available
+  const peakMultiples: number[] = [];
+
+  if (pathMetrics) {
+    for (const pm of pathMetrics) {
+      if (pm.peak_multiple !== null && pm.peak_multiple !== undefined && pm.peak_multiple > 0) {
+        peakMultiples.push(pm.peak_multiple);
+      }
+    }
+  }
+
+  if (peakMultiples.length === 0) {
+    return {
+      isHighMultipleCaller: false,
+      p95PeakMultiple: null,
+      p75PeakMultiple: null,
+    };
+  }
+
+  peakMultiples.sort((a, b) => a - b);
+  const p95Idx = Math.floor(peakMultiples.length * 0.95);
+  const p75Idx = Math.floor(peakMultiples.length * 0.75);
+
+  const p95PeakMultiple = peakMultiples[p95Idx] ?? peakMultiples[peakMultiples.length - 1];
+  const p75PeakMultiple =
+    peakMultiples[p75Idx] ?? peakMultiples[Math.floor(peakMultiples.length / 2)];
+
+  // Consider caller "high multiple" if p95 regularly hits 20x+ or p75 hits 10x+
+  const isHighMultipleCaller = p95PeakMultiple >= 20 || p75PeakMultiple >= 10;
+
+  return {
+    isHighMultipleCaller,
+    p95PeakMultiple,
+    p75PeakMultiple,
+  };
+}
+
+/**
+ * Apply caller-specific constraint relaxation for high-multiple callers
+ */
+function applyCallerConstraintRelaxation(
+  constraints: OptimizationConstraints,
+  callerProfile: ReturnType<typeof analyzeCallerHighMultipleProfile>
+): OptimizationConstraints {
+  if (!constraints.callerHighMultipleProfile || !callerProfile.isHighMultipleCaller) {
+    return constraints;
+  }
+
+  const { drawdownRelaxationFactor, stopOutRelaxationFactor } =
+    constraints.callerHighMultipleProfile;
+
+  // Relax drawdown constraints for high-multiple callers
+  // e.g., if factor is 0.7, allow 30% more drawdown
+  const relaxedMaxP95DrawdownBps = constraints.maxP95DrawdownBps / drawdownRelaxationFactor;
+  const relaxedMaxStopOutRate = constraints.maxStopOutRate / stopOutRelaxationFactor;
+
+  return {
+    ...constraints,
+    maxP95DrawdownBps: relaxedMaxP95DrawdownBps,
+    maxStopOutRate: relaxedMaxStopOutRate,
+  };
+}
+
+/**
  * Score a set of policy results against constraints
  *
  * Returns score (higher = better) or -Infinity if constraints violated
@@ -336,11 +424,18 @@ export function computeObjective(
 export function scorePolicy(
   results: PolicyResultRow[],
   constraints: OptimizationConstraints = DEFAULT_CONSTRAINTS,
-  objectiveConfig: ObjectiveConfig = DEFAULT_OBJECTIVE_CONFIG
+  objectiveConfig: ObjectiveConfig = DEFAULT_OBJECTIVE_CONFIG,
+  pathMetrics?: Array<{ peak_multiple?: number | null }>
 ): PolicyScore {
   if (results.length === 0) {
     return createEmptyScore();
   }
+
+  // Analyze caller profile for high-multiple patterns
+  const callerProfile = analyzeCallerHighMultipleProfile(results, pathMetrics);
+
+  // Apply caller-specific constraint relaxation if applicable
+  const effectiveConstraints = applyCallerConstraintRelaxation(constraints, callerProfile);
 
   // Calculate metrics
   const returns = results.map((r) => r.realized_return_bps).sort((a, b) => a - b);
@@ -371,22 +466,22 @@ export function scorePolicy(
   // Average max adverse excursion
   const avgMaxAdverseExcursionBps = drawdowns.reduce((a, b) => a + b, 0) / count;
 
-  // Check constraints
+  // Check constraints (using effective constraints which may be relaxed for high-multiple callers)
   const violations: PolicyScore['violations'] = {};
   let constraintsSatisfied = true;
 
-  if (stopOutRate > constraints.maxStopOutRate) {
+  if (stopOutRate > effectiveConstraints.maxStopOutRate) {
     violations.stopOutRate = true;
     constraintsSatisfied = false;
   }
 
-  if (p95DrawdownBps < constraints.maxP95DrawdownBps) {
+  if (p95DrawdownBps < effectiveConstraints.maxP95DrawdownBps) {
     // More negative = worse, so p95 < max means violation
     violations.p95Drawdown = true;
     constraintsSatisfied = false;
   }
 
-  if (avgTimeExposedMs > constraints.maxTimeExposedMs) {
+  if (avgTimeExposedMs > effectiveConstraints.maxTimeExposedMs) {
     violations.timeExposed = true;
     constraintsSatisfied = false;
   }
@@ -407,10 +502,10 @@ export function scorePolicy(
     score = -Infinity;
   } else {
     // Primary: median return (in bps)
-    // Add tie-breakers as fractional components
-    // Tail capture: 0-1, multiply by 100 to make it 0-100
+    // Enhanced tail capture weighting: multiply by 200 instead of 100 to prioritize tail gain
+    // This rewards strategies that capture more of the peak profit
     // Median drawdown: negative, closer to 0 is better, divide by 100
-    score = medianReturnBps + avgTailCapture * 100 - medianDrawdownBps / 100;
+    score = medianReturnBps + avgTailCapture * 200 - medianDrawdownBps / 100;
   }
 
   return {
@@ -428,6 +523,13 @@ export function scorePolicy(
       avgTimeExposedMs,
       avgTailCapture,
       avgMaxAdverseExcursionBps,
+      // Add caller profile info for debugging
+      callerHighMultipleProfile: callerProfile.isHighMultipleCaller
+        ? {
+            p95PeakMultiple: callerProfile.p95PeakMultiple,
+            p75PeakMultiple: callerProfile.p75PeakMultiple,
+          }
+        : undefined,
     },
   };
 }

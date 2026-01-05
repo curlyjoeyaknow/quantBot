@@ -23,7 +23,8 @@ import { join } from 'path';
 import { mkdir } from 'fs/promises';
 import type { CallRecord, Interval, PolicyResultRow, TimingSummary } from './types.js';
 import type { RiskPolicy } from './policies/risk-policy.js';
-import { executePolicy } from './policies/policy-executor.js';
+import { executePolicy, type FeeConfig, type ExecutionConfig } from './policies/policy-executor.js';
+import { createExecutionConfig, type ExecutionModelVenue } from './execution/index.js';
 import { insertPolicyResults, type DuckDbConnection } from './reporting/backtest-results-duckdb.js';
 import { planBacktest } from './plan.js';
 import { checkCoverage } from './coverage.js';
@@ -48,11 +49,17 @@ export interface PolicyBacktestRequest {
   /** Date range */
   from: DateTime;
   to: DateTime;
-  /** Fee structure */
+  /** Fee structure (simple model) */
   fees?: {
     takerFeeBps: number;
     slippageBps: number;
   };
+  /**
+   * Execution model venue (pumpfun, pumpswap, raydium, minimal, simple).
+   * When set to a venue other than 'simple', uses realistic slippage/latency models.
+   * Falls back to simple fees if not specified.
+   */
+  executionModel?: ExecutionModelVenue;
   /** Optional existing run ID (if re-using path metrics run) */
   runId?: string;
   /** Path to existing DuckDB with path metrics (optional) */
@@ -92,7 +99,13 @@ export async function runPolicyBacktest(
   req: PolicyBacktestRequest
 ): Promise<PolicyBacktestSummary> {
   const runId = req.runId || randomUUID();
-  const fees = req.fees || { takerFeeBps: 30, slippageBps: 10 };
+  const simpleFees: FeeConfig = req.fees || { takerFeeBps: 30, slippageBps: 10 };
+
+  // Create execution config from venue or simple fees
+  const executionConfig: ExecutionConfig = createExecutionConfig(
+    req.executionModel || 'simple',
+    simpleFees
+  );
 
   // Wall-clock timing - when something regresses 15s → 40s, this screams
   const timing = new TimingContext();
@@ -112,7 +125,7 @@ export async function runPolicyBacktest(
         id: 'policy-backtest',
         name: 'policy-backtest',
         overlays: [],
-        fees,
+        fees: simpleFees, // Use simple fees for planning
         position: { notionalUsd: 1000 },
         indicatorWarmup: 0,
         entryDelay: 0,
@@ -196,7 +209,8 @@ export async function runPolicyBacktest(
       const alertTsMs = call.createdAt.toMillis();
 
       // Execute policy (Guardrail 3: replay candles)
-      const result = executePolicy(candles, alertTsMs, req.policy, fees);
+      // Uses execution config which may include venue-specific slippage model
+      const result = executePolicy(candles, alertTsMs, req.policy, executionConfig);
 
       // Skip if no entry
       if (result.exitReason === 'no_entry') continue;

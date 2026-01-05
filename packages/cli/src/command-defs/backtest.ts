@@ -1,6 +1,20 @@
 import { z } from 'zod';
 
 /**
+ * Execution model venues
+ * - pumpfun: PumpFun-specific slippage/latency model
+ * - pumpswap: PumpSwap-specific model
+ * - raydium: Raydium DEX model
+ * - minimal: Zero slippage/latency (for testing)
+ * - simple: Use simple --slippage-bps and --taker-fee-bps values (default)
+ */
+export const executionModelSchema = z
+  .enum(['pumpfun', 'pumpswap', 'raydium', 'minimal', 'simple'])
+  .default('simple');
+
+export type ExecutionModelVenue = z.infer<typeof executionModelSchema>;
+
+/**
  * Backtest run schema
  *
  * Strategy modes:
@@ -24,6 +38,8 @@ export const backtestRunSchema = z.object({
   includeReplay: z.boolean().default(false),
   // Path-only specific options
   activityMovePct: z.coerce.number().min(0).max(1).default(0.1), // Default 10%
+  // Execution model: venue-specific slippage/latency or simple fixed values
+  executionModel: executionModelSchema,
 });
 
 export type BacktestRunArgs = z.infer<typeof backtestRunSchema>;
@@ -89,6 +105,8 @@ export const backtestPolicySchema = z.object({
   slippageBps: z.coerce.number().int().min(0).max(10000).default(10),
   runId: z.string().optional(), // Optional existing run ID
   format: z.enum(['json', 'table', 'csv']).optional().default('json'),
+  // Execution model: venue-specific slippage/latency or simple fixed values
+  executionModel: executionModelSchema,
 });
 
 export type BacktestPolicyArgs = z.infer<typeof backtestPolicySchema>;
@@ -99,6 +117,7 @@ export type BacktestPolicyArgs = z.infer<typeof backtestPolicySchema>;
  */
 export const backtestOptimizeSchema = z.object({
   caller: z.string().optional(), // Optional caller filter (if not provided, optimize for all)
+  callerGroups: z.array(z.string()).optional(), // Optional caller groups to focus on
   interval: z.string().min(1),
   from: z.string(),
   to: z.string(),
@@ -110,9 +129,15 @@ export const backtestOptimizeSchema = z.object({
     .int()
     .positive()
     .default(4 * 60 * 60 * 1000),
+  // High-multiple caller relaxation (for callers that regularly hit 20x, 30x)
+  enableHighMultipleRelaxation: z.boolean().default(true), // Enable constraint relaxation for high-multiple callers
+  highMultipleDrawdownRelaxation: z.coerce.number().min(0.1).max(1).default(0.7), // Allow 30% more drawdown
+  highMultipleStopOutRelaxation: z.coerce.number().min(0.1).max(1).default(0.8), // Allow 20% more stop-outs
   // Fees
   takerFeeBps: z.coerce.number().int().min(0).max(10000).default(30),
   slippageBps: z.coerce.number().int().min(0).max(10000).default(10),
+  // Execution model: venue-specific slippage/latency or simple fixed values
+  executionModel: executionModelSchema,
   // Output
   format: z.enum(['json', 'table', 'csv']).optional().default('table'),
 });
