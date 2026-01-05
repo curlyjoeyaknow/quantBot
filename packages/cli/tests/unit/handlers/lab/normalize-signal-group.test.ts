@@ -10,7 +10,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import type { SignalGroup } from '@quantbot/simulation';
+import type { SignalGroup } from '@quantbot/backtest';
 
 // Import the normalizeSignalGroup function by testing it through the handler
 // Since it's not exported, we'll test it indirectly through runLabHandler

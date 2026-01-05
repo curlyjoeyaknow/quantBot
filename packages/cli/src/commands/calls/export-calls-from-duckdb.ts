@@ -54,7 +54,7 @@ export async function exportCallsFromDuckdbHandler(args: ExportCallsArgs, _ctx: 
 
   // Create context with duckdbStorage service
   const { PythonEngine } = await import('@quantbot/utils');
-  const { DuckDBStorageService } = await import('@quantbot/simulation');
+  const { DuckDBStorageService } = await import('@quantbot/backtest');
   const engine = new PythonEngine();
   const storage = new DuckDBStorageService(engine);
 

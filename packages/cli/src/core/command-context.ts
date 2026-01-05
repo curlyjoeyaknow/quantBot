@@ -28,7 +28,7 @@ import {
   ClickHouseService,
   SimulationService,
   BacktestBaselineService,
-} from '@quantbot/simulation';
+} from '@quantbot/backtest';
 import { TelegramPipelineService } from '@quantbot/ingestion';
 import { AnalyticsService } from '@quantbot/analytics';
 import { getClickHouseClient } from '@quantbot/storage';

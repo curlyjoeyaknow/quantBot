@@ -26,7 +26,7 @@ export async function listCallsHandler(
 
   // Create minimal context without StorageEngine (which requires Birdeye keys)
   const { PythonEngine } = await import('@quantbot/utils');
-  const { DuckDBStorageService } = await import('@quantbot/simulation');
+  const { DuckDBStorageService } = await import('@quantbot/backtest');
   const pythonEngine = new PythonEngine();
   const duckdbStorage = new DuckDBStorageService(pythonEngine);
 

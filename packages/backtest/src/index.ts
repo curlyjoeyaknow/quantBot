@@ -136,6 +136,48 @@ export * from './exits/default-exit-plans.js';
 // Indicator utilities
 export * from './indicators/series.js';
 
+// Path metrics (enhanced with ATH/ATL analysis)
+export {
+  computePathMetrics,
+  computeEnhancedPathMetrics,
+  type PathMetrics,
+  type PathMetricOptions,
+  type EnhancedPathMetrics,
+  // Re-exported from simulation
+  calculatePeriodAthAtlFromCandles,
+  type PeriodAthAtlResult,
+  type ReEntryOpportunity,
+} from './metrics/path-metrics.js';
+
+// Performance monitoring and caching (from simulation)
+export * from './performance/index.js';
+
+// Time/clock utilities (from simulation)
+export * from './time/index.js';
+
+// Execution models (from simulation, for realistic execution)
+export {
+  type ExecutionModel,
+  type LatencyDistribution,
+  type SlippageModel,
+  type CostModel,
+  type FailureModel,
+  createPumpfunExecutionModel,
+  createPumpswapExecutionModel,
+  createMinimalExecutionModel,
+  calculateSlippage,
+  sampleLatency,
+  type FeeConfig,
+  type ExecutionConfig,
+} from './policies/policy-executor.js';
+
+// Execution config factory (for CLI integration)
+export {
+  createExecutionConfig,
+  getVenueDescription,
+  type ExecutionModelVenue,
+} from './execution/index.js';
+
 // Exit-stack strategy system
 // Note: exit-plan-validate.js exports ExitPlanZ (Zod schema), not ExitPlan type
 export { ExitPlanZ, parseExitPlan } from './strategy/exit-plan-validate.js';
@@ -146,3 +188,94 @@ export * from './strategy/resolve-exit-plan.js';
 export { backtestExitStack } from './engine/backtest-exit-stack.js';
 // Note: run-exit-stack exports CallRecord which conflicts with types.js
 export { runExitStack, type ExitStackRunArgs } from './run/run-exit-stack.js';
+
+// =============================================================================
+// Simulation Engine - Selective re-exports from @quantbot/simulation
+// =============================================================================
+// Instead of re-exporting everything from local sim/, we selectively export
+// commonly needed simulation types and functions from @quantbot/simulation
+
+// Core simulation function
+export { simulateStrategy, simulateStrategyWithCausalAccessor } from '@quantbot/simulation';
+
+// Overlay simulation (recommended API)
+export {
+  runOverlaySimulation,
+  type OverlaySimulationRequest,
+  type OverlaySimulationResult,
+  type TradePoint,
+  type PnlBreakdown,
+  type SimulationDiagnostics,
+} from '@quantbot/simulation';
+
+// Strategy building
+export { buildStrategy, buildStopLossConfig } from '@quantbot/simulation';
+export { getPreset, listPresets, registerPreset } from '@quantbot/simulation';
+
+// Common types
+export type {
+  SimulationResult,
+  SimulationEvent,
+  StrategyConfig,
+  StrategyLeg,
+  StopLossConfig,
+  EntryConfig,
+  ReEntryConfig,
+  CostConfig,
+  SignalGroup as SimSignalGroup,
+  SignalCondition as SimSignalCondition,
+  LadderConfig,
+  LadderLeg,
+} from '@quantbot/simulation';
+
+// Indicator calculation
+export {
+  calculateIchimoku,
+  detectIchimokuSignals,
+  formatIchimokuData,
+  type IchimokuData,
+  type IchimokuSignal,
+} from '@quantbot/simulation';
+
+// Contract types for dual-run harness and simulation invariants
+export {
+  simulateFromInput,
+  type SimInput,
+  type SimResult,
+  type SimEvent,
+  type SimMetrics,
+  SimInputSchema,
+  SimResultSchema,
+} from '@quantbot/simulation';
+
+// Baseline service (from local sim, still needed)
+export { BacktestBaselineService } from './sim/backtest-baseline-service.js';
+
+// =============================================================================
+// Simulation Services - Re-export from sim/ subdirectory
+// =============================================================================
+export {
+  DuckDBStorageService,
+  ClickHouseService,
+  SimulationService,
+  type SimulationConfig,
+  type SimulationOutput,
+} from './sim/index.js';
+// Note: SimulationResult is exported from @quantbot/simulation above, not from sim/index.js
+
+// Causal candle accessor
+export type { CausalCandleAccessor } from './sim/types/causal-accessor.js';
+export {
+  CausalCandleWrapper,
+  filterCandlesByCloseTimeInterval,
+  getLastClosedCandleInterval,
+} from './sim/types/causal-accessor.js';
+
+// CandleInterval type (from candle types)
+export type { CandleInterval } from './sim/types/candle.js';
+
+// Execution utilities
+export { calculateTradeFee } from './sim/execution/index.js';
+
+// Legacy types
+export type { LegacySimulationEvent } from './sim/types/index.js';

@@ -10,8 +10,8 @@ import {
   type ReEntryConfig,
   type CostConfig,
   type SignalGroup,
-} from '@quantbot/simulation';
-import { DuckDBStorageService, ClickHouseService } from '@quantbot/simulation';
+} from '@quantbot/backtest';
+import { DuckDBStorageService, ClickHouseService } from '@quantbot/backtest';
 import { PythonEngine, getDuckDBPath } from '@quantbot/utils';
 import type { ClockPort } from '@quantbot/core';
 import type {
@@ -476,7 +476,7 @@ export function createProductionContext(config?: ProductionContextConfig): Workf
        * This is the lock that prevents accidental cheating in simulations.
        */
       async run(q: {
-        candleAccessor: import('@quantbot/simulation').CausalCandleAccessor;
+        candleAccessor: import('@quantbot/backtest').CausalCandleAccessor;
         mint: string;
         startTime: number;
         endTime: number;
@@ -502,7 +502,7 @@ export function createProductionContext(config?: ProductionContextConfig): Workf
 
         // Use causal accessor - this is the ONLY path.
         // Legacy { candles: Candle[] } signature removed - impossible to pass raw candles.
-        const { simulateStrategyWithCausalAccessor } = await import('@quantbot/simulation');
+        const { simulateStrategyWithCausalAccessor } = await import('@quantbot/backtest');
         const result = await simulateStrategyWithCausalAccessor(
           q.candleAccessor,
           q.mint,

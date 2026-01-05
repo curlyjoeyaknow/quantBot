@@ -1,17 +1,12 @@
 import type { LabPorts, RunContext, SimPresetV1 } from './types.js';
 import { runLabPreset } from './runLabPreset.js';
 
-// Lab types - defined locally to avoid circular dependency
-type ParameterSpaceDef = any;
-type OptimizationConfig = any;
-type ParameterConfig = any;
-
-// Lazy load OptimizationEngine to avoid circular dependency
-async function getOptimizationEngine(): Promise<any> {
-  const importLab = new Function('return import("@quantbot/lab")');
-  const labModule = await importLab();
-  return labModule.OptimizationEngine;
-}
+import { OptimizationEngine } from '../optimization/OptimizationEngine.js';
+import type {
+  ParameterSpaceDef,
+  OptimizationConfig,
+  ParameterConfig,
+} from '../optimization/types.js';
 
 /**
  * MVP optimization runner:
@@ -29,7 +24,6 @@ export async function runOptimization(args: {
   run: RunContext;
   artifactRootDir: string;
 }) {
-  const OptimizationEngine = await getOptimizationEngine();
   const engine = new OptimizationEngine();
 
   // Generate candidates using the optimization engine

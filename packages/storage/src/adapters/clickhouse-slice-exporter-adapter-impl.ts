@@ -258,9 +258,11 @@ export class ClickHouseSliceExporterAdapterImpl implements SliceExporter {
     // Chain
     conditions.push(`chain = '${spec.chain}'`);
 
-    // Interval (from dataset mapping)
+    // Interval (from dataset mapping) - escape backticks in WHERE clause
+    // Use backticks to escape reserved keyword 'interval' in ClickHouse
     const escapedInterval = interval.replace(/'/g, "''");
-    conditions.push(`\`interval\` = '${escapedInterval}'`);
+    // Build condition with backticks - use string concatenation to avoid template literal issues
+    conditions.push("`interval` = '" + escapedInterval + "'");
 
     // Token filter
     if (spec.tokenIds && spec.tokenIds.length > 0) {
