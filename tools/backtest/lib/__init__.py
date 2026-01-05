@@ -144,6 +144,15 @@ from .scoring import (
     print_scored_leaderboard,
     generate_caller_scored_v2_sql,
 )
+from .trial_ledger import (
+    ensure_trial_schema,
+    store_optimizer_run,
+    store_walk_forward_run,
+    list_runs,
+    get_best_trials,
+    get_walk_forward_summary,
+    print_recent_runs,
+)
 
 __all__ = [
     # Alerts
@@ -278,5 +287,13 @@ __all__ = [
     "score_callers_v2",
     "print_scored_leaderboard",
     "generate_caller_scored_v2_sql",
+    # Trial Ledger (experiment tracking)
+    "ensure_trial_schema",
+    "store_optimizer_run",
+    "store_walk_forward_run",
+    "list_runs",
+    "get_best_trials",
+    "get_walk_forward_summary",
+    "print_recent_runs",
 ]
 
