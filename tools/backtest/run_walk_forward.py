@@ -62,12 +62,18 @@ class WalkForwardResult:
     test_avg_r: float
     test_total_r: float
     
-    # Degradation (key overfit indicator)
-    avg_r_degradation: float  # (train - test) / train
-    total_r_degradation: float
+    # Delta R metrics (test - train, simple difference)
+    # Positive = test outperformed train, Negative = test underperformed
+    delta_avg_r: float
+    delta_total_r: float
     
     def to_dict(self) -> Dict[str, Any]:
         return self.__dict__
+    
+    @property
+    def test_improved(self) -> bool:
+        """Did test outperform train?"""
+        return self.delta_total_r > 0
 
 
 @dataclass
@@ -89,10 +95,33 @@ class WalkForwardRun:
         return sum(f.test_total_r for f in self.folds) / len(self.folds)
     
     @property
-    def avg_degradation(self) -> float:
+    def avg_delta_r(self) -> float:
+        """Average ΔR across folds (test - train)."""
         if not self.folds:
             return 0.0
-        return sum(f.avg_r_degradation for f in self.folds) / len(self.folds)
+        return sum(f.delta_total_r for f in self.folds) / len(self.folds)
+    
+    @property
+    def median_test_r(self) -> float:
+        if not self.folds:
+            return 0.0
+        sorted_r = sorted(f.test_total_r for f in self.folds)
+        mid = len(sorted_r) // 2
+        if len(sorted_r) % 2 == 0:
+            return (sorted_r[mid - 1] + sorted_r[mid]) / 2
+        return sorted_r[mid]
+    
+    @property
+    def pct_folds_profitable(self) -> float:
+        if not self.folds:
+            return 0.0
+        return sum(1 for f in self.folds if f.test_total_r > 0) / len(self.folds) * 100
+    
+    @property
+    def worst_fold_r(self) -> float:
+        if not self.folds:
+            return 0.0
+        return min(f.test_total_r for f in self.folds)
     
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -104,7 +133,10 @@ class WalkForwardRun:
             "summary": {
                 "n_folds": len(self.folds),
                 "avg_test_total_r": self.avg_test_total_r,
-                "avg_degradation": self.avg_degradation,
+                "median_test_r": self.median_test_r,
+                "pct_folds_profitable": self.pct_folds_profitable,
+                "worst_fold_r": self.worst_fold_r,
+                "avg_delta_r": self.avg_delta_r,
             }
         }
     
@@ -267,21 +299,24 @@ def run_walk_forward_fold(
     if verbose:
         print(f"Test: WR={test_summary['tp_sl_win_rate']*100:.1f}% AvgR={test_summary['avg_r']:+.2f} TotalR={test_summary['total_r']:+.1f}", file=sys.stderr)
     
-    # ========== CALCULATE DEGRADATION ==========
+    # ========== CALCULATE DELTA R (simple difference, handles negatives correctly) ==========
     train_avg_r = train_summary.get("avg_r", 0.0)
     test_avg_r = test_summary.get("avg_r", 0.0)
     train_total_r = train_summary.get("total_r", 0.0)
     test_total_r = test_summary.get("total_r", 0.0)
     
-    avg_r_degradation = (train_avg_r - test_avg_r) / train_avg_r if train_avg_r != 0 else 0.0
-    total_r_degradation = (train_total_r - test_total_r) / train_total_r if train_total_r != 0 else 0.0
+    # Delta R = Test - Train (positive means test outperformed)
+    delta_avg_r = test_avg_r - train_avg_r
+    delta_total_r = test_total_r - train_total_r
     
     if verbose:
-        print(f"\nDegradation: AvgR={avg_r_degradation*100:+.1f}% TotalR={total_r_degradation*100:+.1f}%", file=sys.stderr)
-        if avg_r_degradation > 0.5:
-            print("  ⚠️  WARNING: >50% degradation suggests overfitting!", file=sys.stderr)
-        elif avg_r_degradation < 0:
-            print("  ✓ Test performed BETTER than train (robust params)", file=sys.stderr)
+        print(f"\nΔR: AvgR={delta_avg_r:+.2f} TotalR={delta_total_r:+.1f}", file=sys.stderr)
+        if delta_total_r > 0:
+            print("  ✓ Test outperformed train", file=sys.stderr)
+        elif delta_total_r < 0 and test_total_r < 0:
+            print("  ✗ Both train and test negative (bad regime)", file=sys.stderr)
+        else:
+            print("  ✗ Test underperformed train", file=sys.stderr)
     
     return WalkForwardResult(
         fold_id=fold_id,
@@ -298,8 +333,8 @@ def run_walk_forward_fold(
         test_win_rate=test_summary.get("tp_sl_win_rate", 0.0),
         test_avg_r=test_avg_r,
         test_total_r=test_total_r,
-        avg_r_degradation=avg_r_degradation,
-        total_r_degradation=total_r_degradation,
+        delta_avg_r=delta_avg_r,
+        delta_total_r=delta_total_r,
     )
 
 
@@ -320,8 +355,10 @@ def main() -> None:
     ap.add_argument("--from", dest="date_from", help="Overall start date for rolling")
     ap.add_argument("--to", dest="date_to", help="Overall end date for rolling")
     ap.add_argument("--train-days", type=int, default=14, help="Training window in days")
-    ap.add_argument("--test-days", type=int, default=14, help="Test window in days")
-    ap.add_argument("--step-days", type=int, default=7, help="Step between folds in days")
+    ap.add_argument("--test-days", type=int, default=7, help="Test window in days")
+    ap.add_argument("--step-days", type=int, default=7, help="Step between folds in days (ignored if --non-overlapping)")
+    ap.add_argument("--non-overlapping", action="store_true", 
+                   help="No data reuse: step = train_days + test_days (clean validation)")
     
     # TP/SL parameters
     ap.add_argument("--tp-range", default="1.5:4.0:0.5", help="TP range as start:end:step")
@@ -389,10 +426,23 @@ def main() -> None:
         end = parse_yyyy_mm_dd(args.date_to)
         train_days = args.train_days
         test_days = args.test_days
-        step_days = args.step_days
+        
+        # --anchored: train window anchored at start, test slides forward (non-overlapping tests)
+        # --rolling: train window slides forward with step_days (may overlap with previous test)
+        # --non-overlapping: step = train + test (no data reuse at all)
+        if args.non_overlapping:
+            # Each fold uses completely fresh data
+            step_days = train_days + test_days
+        else:
+            step_days = args.step_days
         
         fold_num = 0
         current = start
+        
+        if verbose and args.non_overlapping:
+            print(f"Mode: Non-overlapping (step={step_days} days)", file=sys.stderr)
+        elif verbose:
+            print(f"Mode: Rolling (step={args.step_days} days)", file=sys.stderr)
         
         while current + timedelta(days=train_days + test_days) <= end + timedelta(days=1):
             fold_num += 1
@@ -441,24 +491,38 @@ def main() -> None:
     print(f"Folds: {len(wf_run.folds)}", file=sys.stderr)
     print(timing.summary_line(), file=sys.stderr)
     
-    print(f"\n{'Fold':<6} {'Train':>10} {'Test':>10} {'Best Params':<20} {'Train R':>10} {'Test R':>10} {'Degrad':>10}", file=sys.stderr)
-    print("-" * 80, file=sys.stderr)
+    # ΔR = Test - Train (positive = test outperformed, negative = test underperformed)
+    print(f"\n{'Fold':<6} {'Train':>10} {'Test':>10} {'Best Params':<20} {'TrainR':>8} {'TestR':>8} {'ΔR':>8} {'Status':<10}", file=sys.stderr)
+    print("-" * 90, file=sys.stderr)
     
     for i, f in enumerate(wf_run.folds, 1):
         params_str = f"TP={f.best_params['tp_mult']:.1f}x SL={f.best_params['sl_mult']:.1f}x"
-        degrad_str = f"{f.avg_r_degradation*100:+.0f}%"
-        if f.avg_r_degradation > 0.5:
-            degrad_str += " ⚠️"
-        elif f.avg_r_degradation < 0:
-            degrad_str += " ✓"
         
-        print(f"{i:<6} {f.train_from:>10} {f.test_from:>10} {params_str:<20} {f.train_total_r:>+10.1f} {f.test_total_r:>+10.1f} {degrad_str:>10}", file=sys.stderr)
+        # Status: test vs train and profitability
+        if f.test_total_r > 0 and f.delta_total_r > 0:
+            status = "✓ great"  # Profitable AND outperformed
+        elif f.test_total_r > 0:
+            status = "○ ok"     # Profitable but underperformed train
+        elif f.delta_total_r > 0:
+            status = "△ improved" # Lost money but less than train
+        else:
+            status = "✗ bad"    # Lost money and worse than train
+        
+        print(f"{i:<6} {f.train_from:>10} {f.test_from:>10} {params_str:<20} {f.train_total_r:>+8.1f} {f.test_total_r:>+8.1f} {f.delta_total_r:>+8.1f} {status:<10}", file=sys.stderr)
     
-    print("-" * 80, file=sys.stderr)
+    print("-" * 90, file=sys.stderr)
+    
+    # Aggregate stats
     avg_train = sum(f.train_total_r for f in wf_run.folds) / len(wf_run.folds) if wf_run.folds else 0
-    avg_test = sum(f.test_total_r for f in wf_run.folds) / len(wf_run.folds) if wf_run.folds else 0
-    avg_degrad = wf_run.avg_degradation
-    print(f"{'AVG':<6} {'':<10} {'':<10} {'':<20} {avg_train:>+10.1f} {avg_test:>+10.1f} {avg_degrad*100:>+9.0f}%", file=sys.stderr)
+    avg_test = wf_run.avg_test_total_r
+    avg_delta = wf_run.avg_delta_r
+    print(f"{'AVG':<6} {'':<10} {'':<10} {'':<20} {avg_train:>+8.1f} {avg_test:>+8.1f} {avg_delta:>+8.1f}", file=sys.stderr)
+    
+    # Summary stats
+    print(f"\n  Median Test R: {wf_run.median_test_r:+.1f}", file=sys.stderr)
+    print(f"  % Folds Profitable: {wf_run.pct_folds_profitable:.0f}%", file=sys.stderr)
+    print(f"  Worst Fold R: {wf_run.worst_fold_r:+.1f}", file=sys.stderr)
+    print(f"  Avg ΔR (test-train): {avg_delta:+.1f}", file=sys.stderr)
     
     # Save results (JSON file)
     output_path = wf_run.save(args.output_dir)

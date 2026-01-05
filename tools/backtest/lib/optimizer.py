@@ -20,6 +20,13 @@ from typing import Any, Dict, List, Optional, Tuple
 from .alerts import Alert, load_alerts
 from .caller_groups import CallerGroup, load_caller_group
 from .optimizer_config import OptimizerConfig
+from .optimizer_objective import (
+    ObjectiveConfig,
+    ObjectiveComponents,
+    DEFAULT_OBJECTIVE_CONFIG,
+    compute_objective,
+    print_objective_breakdown,
+)
 from .summary import summarize_tp_sl, aggregate_by_caller
 from .tp_sl_query import run_tp_sl_query
 from .timing import TimingContext, format_ms
@@ -38,6 +45,7 @@ class OptimizationResult:
     duration_s: float
     alerts_ok: int
     alerts_total: int
+    objective: Optional[ObjectiveComponents] = None  # Objective function breakdown
     
     @property
     def win_rate(self) -> float:
@@ -77,12 +85,32 @@ class OptimizationResult:
         return self.summary.get("avg_r_win", 0.0)
     
     @property
+    def avg_r_loss(self) -> float:
+        return self.summary.get("avg_r_loss", -1.0)
+    
+    @property
     def r_profit_factor(self) -> float:
         pf = self.summary.get("r_profit_factor", 0.0)
         return pf if pf != float("inf") else 999.99
     
+    @property
+    def objective_score(self) -> float:
+        """Final objective score (higher = better)."""
+        if self.objective:
+            return self.objective.final_score
+        return self.avg_r  # Fallback to avg_r
+    
+    @property
+    def implied_avg_loss_r(self) -> float:
+        """
+        Implied average loss in R.
+        
+        Should be close to -1R. If it drifts, stop gapping/execution issues.
+        """
+        return self.avg_r_loss
+    
     def to_dict(self) -> Dict[str, Any]:
-        return {
+        d = {
             "params": self.params,
             "summary": self.summary,
             "run_id": self.run_id,
@@ -90,9 +118,15 @@ class OptimizationResult:
             "alerts_ok": self.alerts_ok,
             "alerts_total": self.alerts_total,
         }
+        if self.objective:
+            d["objective"] = self.objective.to_dict()
+        return d
     
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "OptimizationResult":
+        obj = None
+        if "objective" in data:
+            obj = ObjectiveComponents(**data["objective"])
         return cls(
             params=data["params"],
             summary=data["summary"],
@@ -100,6 +134,7 @@ class OptimizationResult:
             duration_s=data["duration_s"],
             alerts_ok=data["alerts_ok"],
             alerts_total=data["alerts_total"],
+            objective=obj,
         )
 
 
@@ -131,20 +166,23 @@ class OptimizationRun:
     def mark_complete(self) -> None:
         self.completed_at = datetime.now(UTC)
     
-    def rank_by(self, metric: str = "profit_factor", ascending: bool = False) -> List[OptimizationResult]:
+    def rank_by(self, metric: str = "objective_score", ascending: bool = False) -> List[OptimizationResult]:
         """
         Rank results by a metric.
         
         Args:
-            metric: Metric to rank by (profit_factor, win_rate, total_return_pct, 
-                   avg_return_pct, expectancy_pct, risk_adj_total_return_pct)
+            metric: Metric to rank by (objective_score, profit_factor, win_rate, 
+                   total_return_pct, avg_return_pct, expectancy_pct, 
+                   risk_adj_total_return_pct, total_r, avg_r)
             ascending: Sort ascending (default: descending for "best first")
         
         Returns:
             Sorted list of results
         """
         def get_metric(r: OptimizationResult) -> float:
-            if metric == "profit_factor":
+            if metric == "objective_score":
+                return r.objective_score
+            elif metric == "profit_factor":
                 return r.profit_factor
             elif metric == "win_rate":
                 return r.win_rate
@@ -156,12 +194,16 @@ class OptimizationRun:
                 return r.expectancy_pct
             elif metric == "risk_adj_total_return_pct":
                 return r.risk_adj_total_return_pct
+            elif metric == "total_r":
+                return r.total_r
+            elif metric == "avg_r":
+                return r.avg_r
             else:
                 return r.summary.get(metric, 0.0)
         
         return sorted(self.results, key=get_metric, reverse=not ascending)
     
-    def get_best(self, metric: str = "profit_factor") -> Optional[OptimizationResult]:
+    def get_best(self, metric: str = "objective_score") -> Optional[OptimizationResult]:
         """Get the best result by metric."""
         ranked = self.rank_by(metric)
         return ranked[0] if ranked else None
@@ -204,14 +246,17 @@ class GridOptimizer:
     Grid search optimizer for TP/SL parameters.
     
     Runs backtests across all parameter combinations and collects results.
+    Uses the objective function to score each result for ranking.
     """
     
     def __init__(
         self,
         config: OptimizerConfig,
+        objective_config: Optional[ObjectiveConfig] = None,
         verbose: bool = True,
     ):
         self.config = config
+        self.objective_config = objective_config or DEFAULT_OBJECTIVE_CONFIG
         self.verbose = verbose
         self._alerts: Optional[List[Alert]] = None
         self._slice_path: Optional[Path] = None
@@ -400,6 +445,9 @@ class GridOptimizer:
             risk_per_trade=self.config.risk_per_trade,
         )
         
+        # Compute objective function
+        objective = compute_objective(summary, self.objective_config)
+        
         duration = time.time() - t0
         
         return OptimizationResult(
@@ -409,6 +457,7 @@ class GridOptimizer:
             duration_s=duration,
             alerts_ok=summary.get("alerts_ok", 0),
             alerts_total=summary.get("alerts_total", 0),
+            objective=objective,
         )
     
     def run(self) -> OptimizationRun:
@@ -450,7 +499,8 @@ class GridOptimizer:
                 self._log(
                     f"         WR={result.win_rate*100:.1f}% "
                     f"AvgR={result.avg_r:+.2f} "
-                    f"TotalR={result.total_r:+.1f} "
+                    f"Score={result.objective_score:+.3f} "
+                    f"LossR={result.implied_avg_loss_r:.2f} "
                     f"({result.duration_s:.1f}s)"
                 )
         
@@ -460,42 +510,51 @@ class GridOptimizer:
         
         # Print summary
         self._log("")
-        self._log("=" * 70)
+        self._log("=" * 80)
         self._log("OPTIMIZATION COMPLETE")
-        self._log("=" * 70)
+        self._log("=" * 80)
         self._log(f"Total runs: {len(opt_run.results)}")
         self._log(timing.summary_line())
         
-        # Print top 5 by Total R (the key metric)
+        # Print top 5 by OBJECTIVE SCORE (the key metric)
         self._log("")
-        self._log("TOP 5 BY TOTAL R (risk-adjusted):")
-        self._log("-" * 80)
+        self._log("TOP 5 BY OBJECTIVE SCORE:")
+        self._log("-" * 90)
+        for i, r in enumerate(opt_run.rank_by("objective_score")[:5], 1):
+            self._log(
+                f"  {i}. TP={r.params['tp_mult']:.2f}x SL={r.params['sl_mult']:.2f}x | "
+                f"Score={r.objective_score:+.3f} WR={r.win_rate*100:.1f}% "
+                f"AvgR={r.avg_r:+.2f} LossR={r.implied_avg_loss_r:.2f}"
+            )
+        
+        # Print objective breakdown for the best result
+        best = opt_run.get_best("objective_score")
+        if best and best.objective:
+            self._log("")
+            self._log(f"BEST RESULT BREAKDOWN (TP={best.params['tp_mult']:.2f}x SL={best.params['sl_mult']:.2f}x):")
+            self._log("-" * 50)
+            print_objective_breakdown(best.objective, self.objective_config)
+        
+        # Print top 5 by Total R (for reference)
+        self._log("")
+        self._log("TOP 5 BY TOTAL R:")
+        self._log("-" * 90)
         for i, r in enumerate(opt_run.rank_by("total_r")[:5], 1):
             self._log(
                 f"  {i}. TP={r.params['tp_mult']:.2f}x SL={r.params['sl_mult']:.2f}x | "
-                f"WR={r.win_rate*100:.1f}% AvgR={r.avg_r:+.2f} "
-                f"TotalR={r.total_r:+.1f} RiskAdj={r.risk_adj_total_return_pct:.1f}%"
+                f"TotalR={r.total_r:+.1f} AvgR={r.avg_r:+.2f} WR={r.win_rate*100:.1f}%"
             )
         
-        # Print top 5 by Avg R per trade
+        # Print implied loss R check (catches stop gapping)
         self._log("")
-        self._log("TOP 5 BY AVG R PER TRADE:")
-        self._log("-" * 80)
-        for i, r in enumerate(opt_run.rank_by("avg_r")[:5], 1):
+        self._log("IMPLIED LOSS R CHECK (should be ~-1.0R):")
+        self._log("-" * 50)
+        for r in opt_run.results[:10]:
+            drift = abs(r.implied_avg_loss_r - (-1.0))
+            flag = "⚠️" if drift > 0.3 else "✓"
             self._log(
-                f"  {i}. TP={r.params['tp_mult']:.2f}x SL={r.params['sl_mult']:.2f}x | "
-                f"WR={r.win_rate*100:.1f}% AvgR={r.avg_r:+.2f} "
-                f"AvgRWin={r.avg_r_win:+.2f} TotalR={r.total_r:+.1f}"
-            )
-        
-        # Print top 5 by win rate (for reference)
-        self._log("")
-        self._log("TOP 5 BY WIN RATE:")
-        self._log("-" * 80)
-        for i, r in enumerate(opt_run.rank_by("win_rate")[:5], 1):
-            self._log(
-                f"  {i}. TP={r.params['tp_mult']:.2f}x SL={r.params['sl_mult']:.2f}x | "
-                f"WR={r.win_rate*100:.1f}% AvgR={r.avg_r:+.2f} TotalR={r.total_r:+.1f}"
+                f"  TP={r.params['tp_mult']:.2f}x SL={r.params['sl_mult']:.2f}x | "
+                f"LossR={r.implied_avg_loss_r:.3f} {flag}"
             )
         
         # Save results
@@ -507,17 +566,22 @@ class GridOptimizer:
         return opt_run
 
 
-def run_optimization(config: OptimizerConfig, verbose: bool = True) -> OptimizationRun:
+def run_optimization(
+    config: OptimizerConfig,
+    objective_config: Optional[ObjectiveConfig] = None,
+    verbose: bool = True,
+) -> OptimizationRun:
     """
     Run optimization with given config.
     
     Args:
         config: Optimizer configuration
+        objective_config: Objective function configuration (default: DEFAULT_OBJECTIVE_CONFIG)
         verbose: Print progress
     
     Returns:
         OptimizationRun with all results
     """
-    optimizer = GridOptimizer(config, verbose=verbose)
+    optimizer = GridOptimizer(config, objective_config=objective_config, verbose=verbose)
     return optimizer.run()
 

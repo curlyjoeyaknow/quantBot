@@ -3,6 +3,7 @@
 ## Quick Recovery (Recommended)
 
 Run this command:
+
 ```bash
 sudo bash /tmp/recover_alerts.sh
 ```
@@ -10,23 +11,27 @@ sudo bash /tmp/recover_alerts.sh
 ## Manual Recovery Steps
 
 ### 1. Install recovery tools
+
 ```bash
 sudo apt-get update
 sudo apt-get install -y extundelete testdisk
 ```
 
 ### 2. Create recovery directory
+
 ```bash
 RECOVERY_DIR="/tmp/alerts_recovery_$(date +%Y%m%d_%H%M%S)"
 mkdir -p "$RECOVERY_DIR"
 ```
 
 ### 3. List deleted files (to find the inode)
+
 ```bash
 sudo extundelete /dev/nvme0n1p5 --list-deleted-files | grep -i alerts
 ```
 
 ### 4. Recover the specific file
+
 ```bash
 sudo extundelete /dev/nvme0n1p5 \
   --restore-file "/home/memez/backups/quantBot-abstraction-backtest-only/data/alerts.duckdb" \
@@ -34,11 +39,13 @@ sudo extundelete /dev/nvme0n1p5 \
 ```
 
 ### 5. Check recovered file
+
 ```bash
 find "$RECOVERY_DIR" -name "*alerts*" -exec ls -lh {} \;
 ```
 
 ### 6. If found, restore it
+
 ```bash
 # Verify the file size is correct (should be multiple GB)
 RECOVERED=$(find "$RECOVERY_DIR" -name "*alerts*.duckdb" -size +100M | head -1)
@@ -73,6 +80,7 @@ find "$RECOVERY_DIR" -name "*.duckdb" -size +100M
 ## Verification
 
 After recovery, verify the file:
+
 ```bash
 # Check file type
 file data/alerts.duckdb.recovered

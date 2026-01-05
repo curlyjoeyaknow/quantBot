@@ -100,13 +100,13 @@ quantBot/
 
 ### Package Layering
 
-| Layer          | Packages                                    | Rules                          |
-| -------------- | ------------------------------------------- | ------------------------------ |
-| Foundation     | `core`, `utils`                             | Zero external deps, pure types |
-| Infrastructure | `storage`, `api-clients`, `observability`   | Adapters, no business logic    |
-| Services       | `ohlcv`, `ingestion`, `simulation`, `jobs`  | Domain logic, offline/online   |
-| Orchestration  | `workflows`                                 | Coordinates I/O, returns data  |
-| Application    | `cli`, `api`, `lab`                         | Thin adapters, parse → format  |
+| Layer          | Packages                                   | Rules                          |
+| -------------- | ------------------------------------------ | ------------------------------ |
+| Foundation     | `core`, `utils`                            | Zero external deps, pure types |
+| Infrastructure | `storage`, `api-clients`, `observability`  | Adapters, no business logic    |
+| Services       | `ohlcv`, `ingestion`, `simulation`, `jobs` | Domain logic, offline/online   |
+| Orchestration  | `workflows`                                | Coordinates I/O, returns data  |
+| Application    | `cli`, `api`, `lab`                        | Thin adapters, parse → format  |
 
 ---
 
@@ -155,16 +155,16 @@ pnpm quality-gates:pr  # PR quality checks
 
 ## 📖 Documentation
 
-| Document                                                                   | Purpose                        |
-| -------------------------------------------------------------------------- | ------------------------------ |
-| [docs/architecture/ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md)     | System architecture            |
-| [docs/architecture/WORKFLOWS.md](docs/architecture/WORKFLOWS.md)           | Workflow reference             |
-| [docs/api/API.md](docs/api/API.md)                                         | REST API documentation         |
-| [docs/testing/](docs/testing/)                                             | Testing requirements & guides  |
-| [docs/guides/](docs/guides/)                                               | How-to guides                  |
-| [CHANGELOG.md](CHANGELOG.md)                                               | Version history                |
-| [TODO.md](TODO.md)                                                         | Roadmap and task tracking      |
-| [CONTRIBUTING.md](CONTRIBUTING.md)                                         | Contribution guidelines        |
+| Document                                                               | Purpose                       |
+| ---------------------------------------------------------------------- | ----------------------------- |
+| [docs/architecture/ARCHITECTURE.md](docs/architecture/ARCHITECTURE.md) | System architecture           |
+| [docs/architecture/WORKFLOWS.md](docs/architecture/WORKFLOWS.md)       | Workflow reference            |
+| [docs/api/API.md](docs/api/API.md)                                     | REST API documentation        |
+| [docs/testing/](docs/testing/)                                         | Testing requirements & guides |
+| [docs/guides/](docs/guides/)                                           | How-to guides                 |
+| [CHANGELOG.md](CHANGELOG.md)                                           | Version history               |
+| [TODO.md](TODO.md)                                                     | Roadmap and task tracking     |
+| [CONTRIBUTING.md](CONTRIBUTING.md)                                     | Contribution guidelines       |
 
 ### Architecture Rules
 
@@ -184,12 +184,14 @@ Enforced via `.cursor/rules/`:
 DuckDB and ClickHouse paths are configurable via:
 
 1. **`config.yaml`** (highest priority):
+
    ```yaml
    duckdb:
      path: /path/to/your/database.duckdb
    ```
 
 2. **Environment variables**:
+
    ```bash
    export DUCKDB_PATH=/path/to/database.duckdb
    export CLICKHOUSE_HOST=localhost
@@ -200,6 +202,7 @@ DuckDB and ClickHouse paths are configurable via:
 ### Default State Directory
 
 When no explicit path is provided, state lives outside the repo:
+
 - Linux: `$XDG_STATE_HOME/quantbot` or `~/.local/state/quantbot`
 - macOS: `~/Library/Application Support/quantbot`
 

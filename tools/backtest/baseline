@@ -155,6 +155,53 @@ def main():
     show_p.add_argument("--db", default="data/baseline_results.duckdb",
                         help="Path to results DuckDB")
     
+    # =========================================================================
+    # optimize command - grid search over TP/SL
+    # =========================================================================
+    opt_p = sub.add_parser("optimize", help="Grid search over TP/SL parameters")
+    opt_p.add_argument("--from", dest="from_date", required=True,
+                       help="Start date (YYYY-MM-DD)")
+    opt_p.add_argument("--to", dest="to_date", required=True,
+                       help="End date (YYYY-MM-DD)")
+    
+    # TP/SL grid
+    opt_p.add_argument("--tp", type=str, default="1.5,2.0,2.5,3.0",
+                       help="TP multipliers (comma-separated or start:end:step)")
+    opt_p.add_argument("--sl", type=str, default="0.4,0.5,0.6,0.7",
+                       help="SL multipliers (comma-separated or start:end:step)")
+    
+    # Data source
+    opt_p.add_argument("--alerts-db", default="data/alerts.duckdb",
+                       help="Path to alerts DuckDB")
+    opt_p.add_argument("--slice", type=str, default=None,
+                       help="Path to candle slice (parquet)")
+    
+    # Objective config
+    opt_p.add_argument("--objective", type=str, default="default",
+                       choices=["default", "conservative", "aggressive"],
+                       help="Objective function preset")
+    opt_p.add_argument("--primary", type=str, default="avg_r",
+                       choices=["avg_r", "total_r", "expectancy_r"],
+                       help="Primary metric to optimize")
+    
+    # Risk
+    opt_p.add_argument("--risk-per-trade", type=float, default=0.02,
+                       help="Max pct of portfolio to risk per trade")
+    
+    # Candle params
+    opt_p.add_argument("--interval", type=int, default=300,
+                       help="Candle interval in seconds")
+    opt_p.add_argument("--horizon", type=int, default=24,
+                       help="Horizon in hours")
+    
+    # Output
+    opt_p.add_argument("--name", type=str, default=None,
+                       help="Run name")
+    opt_p.add_argument("--output-dir", type=str, default="results/optimizer",
+                       help="Output directory for results")
+    opt_p.add_argument("--quiet", action="store_true",
+                       help="Suppress progress output")
+    
     # Parse args
     args = ap.parse_args()
     
@@ -170,6 +217,8 @@ def main():
         cmd_metrics(args)
     elif args.command == "show":
         cmd_show(args)
+    elif args.command == "optimize":
+        cmd_optimize(args)
 
 
 def cmd_run(args):
@@ -558,6 +607,80 @@ def cmd_metrics(args):
     """Show metric definitions."""
     from lib.metrics_contract import print_metrics_doc
     print_metrics_doc()
+
+
+def cmd_optimize(args):
+    """Grid search over TP/SL parameters."""
+    from lib.optimizer_config import OptimizerConfig, TpSlParamSpace, RangeSpec
+    from lib.optimizer import run_optimization
+    from lib.optimizer_objective import (
+        ObjectiveConfig,
+        DEFAULT_OBJECTIVE_CONFIG,
+        CONSERVATIVE_OBJECTIVE_CONFIG,
+        AGGRESSIVE_OBJECTIVE_CONFIG,
+    )
+    
+    # Parse TP/SL values
+    def parse_range(s: str) -> list:
+        """Parse comma-separated values or start:end:step range."""
+        if ":" in s:
+            parts = s.split(":")
+            if len(parts) == 3:
+                start, end, step = float(parts[0]), float(parts[1]), float(parts[2])
+                values = []
+                v = start
+                while v <= end + 1e-9:
+                    values.append(round(v, 4))
+                    v += step
+                return values
+        return [float(x.strip()) for x in s.split(",")]
+    
+    tp_values = parse_range(args.tp)
+    sl_values = parse_range(args.sl)
+    
+    print()
+    print("=" * 70)
+    print("OPTIMIZER GRID SEARCH")
+    print("=" * 70)
+    print(f"Date range: {args.from_date} to {args.to_date}")
+    print(f"TP values: {tp_values}")
+    print(f"SL values: {sl_values}")
+    print(f"Total combinations: {len(tp_values) * len(sl_values)}")
+    print(f"Objective: {args.objective} (primary: {args.primary})")
+    print()
+    
+    # Build optimizer config
+    run_name = args.name or f"optimize_{args.from_date}_{args.to_date}"
+    
+    opt_config = OptimizerConfig(
+        name=run_name,
+        date_from=args.from_date,
+        date_to=args.to_date,
+        duckdb_path=args.alerts_db,
+        slice_path=args.slice,
+        interval_seconds=args.interval,
+        horizon_hours=args.horizon,
+        risk_per_trade=args.risk_per_trade,
+        output_dir=args.output_dir,
+        tp_sl=TpSlParamSpace(
+            tp_mult=RangeSpec(values=tp_values),
+            sl_mult=RangeSpec(values=sl_values),
+        ),
+    )
+    
+    # Select objective config
+    if args.objective == "conservative":
+        obj_config = CONSERVATIVE_OBJECTIVE_CONFIG
+    elif args.objective == "aggressive":
+        obj_config = AGGRESSIVE_OBJECTIVE_CONFIG
+    else:
+        obj_config = ObjectiveConfig(primary_metric=args.primary)
+    
+    # Run optimization
+    result = run_optimization(opt_config, objective_config=obj_config, verbose=not args.quiet)
+    
+    print()
+    print(f"Results saved to: {args.output_dir}")
 
 
 def cmd_show(args):
