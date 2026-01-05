@@ -26,7 +26,7 @@ import {
   buildStrategy,
   buildStopLossConfig,
 } from '@quantbot/backtest';
-import type { ExecutionModel as SimExecutionModel } from '@quantbot/backtest/sim';
+import type { ExecutionModel as SimExecutionModel } from '@quantbot/simulation';
 import { DateTime } from 'luxon';
 import { logger, ValidationError } from '@quantbot/utils';
 

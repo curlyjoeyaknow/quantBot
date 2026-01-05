@@ -29,6 +29,7 @@
     "@quantbot/utils": "workspace:*",
     "@quantbot/storage": "workspace:*",
     "@quantbot/ohlcv": "workspace:*",
+    "@quantbot/simulation": "workspace:*",
     "@quantbot/backtest": "workspace:*",
     "@quantbot/ingestion": "workspace:*",
     "@quantbot/api-clients": "workspace:*",

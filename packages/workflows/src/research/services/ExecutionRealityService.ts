@@ -18,19 +18,20 @@ import {
   RiskModelSchema as ContractRiskModelSchema,
 } from '../contract.js';
 
-// Import Branch C execution models
+// Import Branch C execution models from @quantbot/simulation/execution-models subpath
+// to get the detailed venue-specific types, not the simpler simulation input types
 import type {
   ExecutionModel,
   CostModel,
   RiskFramework,
   LiveTradeRecord,
-} from '@quantbot/backtest/execution-models';
+} from '@quantbot/simulation/execution-models';
 import {
   createPumpfunExecutionModel,
   calibrateExecutionModel,
   checkCircuitBreaker,
   createCircuitBreakerState,
-} from '@quantbot/backtest/execution-models';
+} from '@quantbot/simulation/execution-models';
 import { createDeterministicRNG, seedFromString } from '@quantbot/core';
 import { DateTime } from 'luxon';
 // createPumpswapExecutionModel and convertExecutionModelToCostConfig are imported but not used

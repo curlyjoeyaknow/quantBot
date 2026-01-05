@@ -9,54 +9,6 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
-    },
-    "./sim": {
-      "types": "./dist/sim/index.d.ts",
-      "import": "./dist/sim/index.js"
-    },
-    "./sim/types": {
-      "types": "./dist/sim/types/index.d.ts",
-      "import": "./dist/sim/types/index.js"
-    },
-    "./sim/data": {
-      "types": "./dist/sim/data/index.d.ts",
-      "import": "./dist/sim/data/index.js"
-    },
-    "./sim/indicators": {
-      "types": "./dist/sim/indicators/index.d.ts",
-      "import": "./dist/sim/indicators/index.js"
-    },
-    "./sim/signals": {
-      "types": "./dist/sim/signals/index.d.ts",
-      "import": "./dist/sim/signals/index.js"
-    },
-    "./sim/position": {
-      "types": "./dist/sim/position/index.d.ts",
-      "import": "./dist/sim/position/index.js"
-    },
-    "./sim/execution": {
-      "types": "./dist/sim/execution/index.d.ts",
-      "import": "./dist/sim/execution/index.js"
-    },
-    "./sim/execution-models": {
-      "types": "./dist/sim/execution-models/index.d.ts",
-      "import": "./dist/sim/execution-models/index.js"
-    },
-    "./execution-models": {
-      "types": "./dist/sim/execution-models/index.d.ts",
-      "import": "./dist/sim/execution-models/index.js"
-    },
-    "./sim/core": {
-      "types": "./dist/sim/core/index.d.ts",
-      "import": "./dist/sim/core/index.js"
-    },
-    "./sim/engine": {
-      "types": "./dist/sim/engine/index.d.ts",
-      "import": "./dist/sim/engine/index.js"
-    },
-    "./sim/sinks": {
-      "types": "./dist/sim/sinks/index.d.ts",
-      "import": "./dist/sim/sinks/index.js"
     }
   },
   "scripts": {
