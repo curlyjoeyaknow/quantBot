@@ -71,21 +71,6 @@ from .optimizer import (
     OptimizationRun,
     run_optimization,
 )
-from .optimizer_objective import (
-    ObjectiveConfig,
-    ObjectiveComponents,
-    DEFAULT_OBJECTIVE_CONFIG,
-    CONSERVATIVE_OBJECTIVE_CONFIG,
-    AGGRESSIVE_OBJECTIVE_CONFIG,
-    compute_dd_penalty,
-    compute_timing_boost,
-    compute_tail_bonus,
-    compute_win_rate_penalty,
-    compute_loss_r_penalty,
-    compute_objective,
-    score_result,
-    print_objective_breakdown,
-)
 from .run_contract import (
     RunConfig,
     RunIdentity,
@@ -167,6 +152,22 @@ from .trial_ledger import (
     get_best_trials,
     get_walk_forward_summary,
     print_recent_runs,
+)
+from .optimizer_objective import (
+    ObjectiveConfig,
+    ObjectiveResult,
+    ObjectiveComponents,  # Alias for ObjectiveResult
+    DEFAULT_OBJECTIVE_CONFIG,
+    compute_dd_penalty,
+    compute_time_boost,
+    compute_discipline_bonus,
+    compute_tail_bonus,
+    compute_confidence,
+    compute_objective,
+    score_from_summary,
+    compute_implied_avg_loss_r,
+    check_loss_r_sanity,
+    print_objective_breakdown,
 )
 
 __all__ = [
@@ -324,5 +325,19 @@ __all__ = [
     "get_best_trials",
     "get_walk_forward_summary",
     "print_recent_runs",
+    # Optimizer Objective
+    "ObjectiveConfig",
+    "ObjectiveResult",
+    "DEFAULT_OBJECTIVE_CONFIG",
+    "compute_dd_penalty",
+    "compute_time_boost",
+    "compute_discipline_bonus",
+    "compute_tail_bonus",
+    "compute_confidence",
+    "compute_objective",
+    "score_from_summary",
+    "compute_implied_avg_loss_r",
+    "check_loss_r_sanity",
+    "print_objective_breakdown",
 ]
 

@@ -1,383 +1,501 @@
 """
-Optimizer Objective Function - R-space scoring with penalties and boosts.
+Optimizer Objective Functions
 
-The objective function converts raw backtest results into a single score
-that the optimizer maximizes. The score is designed to:
+The scoring system for parameter optimization. Designed to:
+1. Reward R-multiple performance (AvgR, TotalR)
+2. Penalize high drawdown (exponential pain after threshold)
+3. Boost fast time-to-2x
+4. Bonus for discipline (high hit rate + low DD)
+5. Bonus for fat right tail (p75/p95 upside)
 
-1. Anchor on AvgR / TotalR (risk-adjusted returns)
-2. Penalize things you hate (large DD_pre2x)
-3. Boost things you love (fast time_to_2x, fat tails)
-
-The key insight: because everything is in R-space, the optimizer can
-safely compare stops of different widths without lying to itself.
+Philosophy: "Find parameters that make money without psychological nightmares."
 """
 
 from __future__ import annotations
 
 import math
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 
 
 @dataclass
 class ObjectiveConfig:
     """
-    Configuration for the objective function.
+    Configuration for the optimizer objective function.
     
-    All penalties/boosts are tunable. The defaults match your instincts:
-    - Hard penalty on DD_pre2x > 30%
-    - Brutal penalty beyond 60%
-    - Strong boost for fast time_to_2x
-    - Bonus for fat right tail
+    Tunables are organized by category:
+    - DD penalty: exponential pain for high drawdown
+    - Time boost: reward for fast time-to-2x
+    - Discipline bonus: synergy for hit rate + low DD
+    - Tail bonus: reward for fat right tail
+    - R-weighting: how much to weight AvgR vs TotalR
     """
     
-    # === Primary objective ===
-    # What we're maximizing (before penalties/boosts)
-    primary_metric: str = "avg_r"  # "avg_r" | "total_r" | "expectancy_r"
+    # === DD Penalty (exponential) ===
+    # Penalty = exp(dd_rate * max(0, dd - dd_threshold)) - 1
+    # At dd_threshold: penalty = 0
+    # At dd_nuclear: penalty is massive (effectively disqualifies)
+    dd_threshold: float = 0.30      # Penalty starts here (30% DD)
+    dd_nuclear: float = 0.60        # "Abandon hope" zone (60% DD)
+    dd_rate: float = 8.0            # Exponential rate (tuned so nuclear ≈ 10x penalty)
+    dd_weight: float = 1.0          # Multiplier for DD penalty in final score
     
-    # === Drawdown penalty ===
-    # Penalty = exp(k * max(0, dd_pre2x - threshold)) - 1
-    dd_penalty_threshold: float = 0.30  # Start penalizing at 30% DD
-    dd_penalty_k: float = 5.0  # Steepness (higher = harsher)
-    dd_brutal_threshold: float = 0.60  # "Abandon hope" level
-    dd_brutal_multiplier: float = 10.0  # Extra multiplier beyond brutal
+    # === Time Boost (hyperbolic) ===
+    # Boost = time_max_boost / (1 + time_to_2x_min / time_halflife)
+    # Fast = big boost, slow = small boost, asymptotes to 0
+    time_max_boost: float = 0.50    # Max boost when instant (50% lift)
+    time_halflife_min: float = 30.0 # Minutes at which boost = max/2
+    time_weight: float = 1.0        # Multiplier for time boost
     
-    # === Timing boost ===
-    # Boost = a / (time_to_2x_minutes + b)
-    timing_boost_a: float = 60.0  # Numerator (higher = stronger boost)
-    timing_boost_b: float = 60.0  # Offset (prevents division by tiny values)
-    timing_boost_max: float = 0.5  # Cap the boost contribution
+    # === Discipline Bonus ===
+    # Awarded when hit2x >= threshold AND dd <= threshold
+    # "Low risk, high hit rate" synergy
+    discipline_hit2x_threshold: float = 0.50  # 50% hit rate
+    discipline_dd_threshold: float = 0.30     # 30% DD
+    discipline_bonus: float = 0.30            # Bonus amount
     
-    # === Tail bonus ===
-    # Bonus for asymmetric upside (p95 ATH >> p75 ATH)
-    tail_bonus_weight: float = 0.1  # Weight of tail bonus
-    tail_bonus_metric: str = "log_p95"  # "log_p95" | "p95_minus_p75" | "p95_ratio"
+    # === Tail Bonus ===
+    # Rewards fat right tail (p95 >> p75 >> median)
+    # tail_bonus = p75_weight * (p75 - median) + p95_weight * (p95 - p75)
+    tail_p75_weight: float = 0.10
+    tail_p95_weight: float = 0.05
     
-    # === Win rate floor ===
-    # Minimum win rate to be considered valid
-    min_win_rate: float = 0.20  # 20% minimum
-    win_rate_penalty_k: float = 5.0  # Steepness of penalty below threshold
+    # === R-weighting ===
+    # Final score base = avg_r_weight * AvgR + total_r_weight * TotalR / n_trades
+    # Usually just use AvgR (total_r_weight = 0)
+    avg_r_weight: float = 1.0
+    total_r_weight: float = 0.0  # Normalized by n_trades if used
     
-    # === Implied loss R check ===
-    # If avg loss R drifts away from -1R, penalize (catches stop gapping)
-    expected_loss_r: float = -1.0
-    loss_r_tolerance: float = 0.3  # Allow ±0.3R drift
-    loss_r_penalty_k: float = 2.0  # Penalty for exceeding tolerance
-    
-    # === Weights ===
-    # How to combine components into final score
-    primary_weight: float = 1.0
-    dd_penalty_weight: float = 1.0
-    timing_boost_weight: float = 0.3
-    tail_bonus_weight_final: float = 0.2
-    win_rate_penalty_weight: float = 0.5
-    loss_r_penalty_weight: float = 0.3
+    # === Sample size adjustment ===
+    # confidence = sqrt(n / (n + k))
+    # Shrinks scores for small samples
+    confidence_k: float = 30.0
     
     def to_dict(self) -> Dict[str, Any]:
         return {
-            "primary_metric": self.primary_metric,
-            "dd_penalty_threshold": self.dd_penalty_threshold,
-            "dd_penalty_k": self.dd_penalty_k,
-            "dd_brutal_threshold": self.dd_brutal_threshold,
-            "dd_brutal_multiplier": self.dd_brutal_multiplier,
-            "timing_boost_a": self.timing_boost_a,
-            "timing_boost_b": self.timing_boost_b,
-            "timing_boost_max": self.timing_boost_max,
-            "tail_bonus_weight": self.tail_bonus_weight,
-            "tail_bonus_metric": self.tail_bonus_metric,
-            "min_win_rate": self.min_win_rate,
-            "win_rate_penalty_k": self.win_rate_penalty_k,
-            "expected_loss_r": self.expected_loss_r,
-            "loss_r_tolerance": self.loss_r_tolerance,
-            "loss_r_penalty_k": self.loss_r_penalty_k,
-            "primary_weight": self.primary_weight,
-            "dd_penalty_weight": self.dd_penalty_weight,
-            "timing_boost_weight": self.timing_boost_weight,
-            "tail_bonus_weight_final": self.tail_bonus_weight_final,
-            "win_rate_penalty_weight": self.win_rate_penalty_weight,
-            "loss_r_penalty_weight": self.loss_r_penalty_weight,
+            "dd_threshold": self.dd_threshold,
+            "dd_nuclear": self.dd_nuclear,
+            "dd_rate": self.dd_rate,
+            "dd_weight": self.dd_weight,
+            "time_max_boost": self.time_max_boost,
+            "time_halflife_min": self.time_halflife_min,
+            "time_weight": self.time_weight,
+            "discipline_hit2x_threshold": self.discipline_hit2x_threshold,
+            "discipline_dd_threshold": self.discipline_dd_threshold,
+            "discipline_bonus": self.discipline_bonus,
+            "tail_p75_weight": self.tail_p75_weight,
+            "tail_p95_weight": self.tail_p95_weight,
+            "avg_r_weight": self.avg_r_weight,
+            "total_r_weight": self.total_r_weight,
+            "confidence_k": self.confidence_k,
         }
-    
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> "ObjectiveConfig":
-        return cls(**{k: v for k, v in data.items() if k in cls.__dataclass_fields__})
 
 
-# Default config matching your instincts
+# Default config (tuned for your use case)
 DEFAULT_OBJECTIVE_CONFIG = ObjectiveConfig()
-
-# Conservative config - prioritizes consistency over upside
-CONSERVATIVE_OBJECTIVE_CONFIG = ObjectiveConfig(
-    dd_penalty_threshold=0.20,
-    dd_penalty_k=8.0,
-    min_win_rate=0.30,
-    tail_bonus_weight=0.05,
-)
-
-# Aggressive config - accepts more DD for upside
-AGGRESSIVE_OBJECTIVE_CONFIG = ObjectiveConfig(
-    dd_penalty_threshold=0.40,
-    dd_penalty_k=3.0,
-    dd_brutal_threshold=0.70,
-    min_win_rate=0.15,
-    tail_bonus_weight=0.2,
-)
-
-
-@dataclass
-class ObjectiveComponents:
-    """
-    Breakdown of objective function components.
-    
-    Useful for understanding what's driving the score.
-    """
-    primary_value: float = 0.0
-    dd_penalty: float = 0.0
-    timing_boost: float = 0.0
-    tail_bonus: float = 0.0
-    win_rate_penalty: float = 0.0
-    loss_r_penalty: float = 0.0
-    
-    final_score: float = 0.0
-    
-    def to_dict(self) -> Dict[str, float]:
-        return {
-            "primary_value": self.primary_value,
-            "dd_penalty": self.dd_penalty,
-            "timing_boost": self.timing_boost,
-            "tail_bonus": self.tail_bonus,
-            "win_rate_penalty": self.win_rate_penalty,
-            "loss_r_penalty": self.loss_r_penalty,
-            "final_score": self.final_score,
-        }
 
 
 def compute_dd_penalty(
-    dd_pre2x_median: float,
-    config: ObjectiveConfig,
+    dd_magnitude: float,
+    config: ObjectiveConfig = DEFAULT_OBJECTIVE_CONFIG,
 ) -> float:
     """
-    Compute drawdown penalty.
+    Compute exponential drawdown penalty.
     
-    Penalty = exp(k * max(0, dd - threshold)) - 1
+    Args:
+        dd_magnitude: Drawdown as positive decimal (0.30 = 30% DD)
+        config: Objective configuration
     
-    Beyond brutal threshold, multiply by brutal_multiplier.
+    Returns:
+        Penalty value (0 if dd <= threshold, exponential growth after)
+    
+    Examples:
+        dd=0.20 → 0.0 (below threshold)
+        dd=0.35 → exp(8 * 0.05) - 1 ≈ 0.49
+        dd=0.50 → exp(8 * 0.20) - 1 ≈ 3.95
+        dd=0.60 → exp(8 * 0.30) - 1 ≈ 10.0 (nuclear)
     """
-    if dd_pre2x_median <= config.dd_penalty_threshold:
+    excess = max(0.0, dd_magnitude - config.dd_threshold)
+    if excess <= 0:
         return 0.0
-    
-    excess = dd_pre2x_median - config.dd_penalty_threshold
-    
-    # Base exponential penalty
-    penalty = math.exp(config.dd_penalty_k * excess) - 1
-    
-    # Brutal zone multiplier
-    if dd_pre2x_median > config.dd_brutal_threshold:
-        brutal_excess = dd_pre2x_median - config.dd_brutal_threshold
-        penalty *= (1 + config.dd_brutal_multiplier * brutal_excess)
-    
-    return penalty
+    return math.exp(config.dd_rate * excess) - 1.0
 
 
-def compute_timing_boost(
-    time_to_2x_median_minutes: float,
-    config: ObjectiveConfig,
+def compute_time_boost(
+    time_to_2x_min: Optional[float],
+    config: ObjectiveConfig = DEFAULT_OBJECTIVE_CONFIG,
 ) -> float:
     """
-    Compute timing boost.
+    Compute hyperbolic time-to-2x boost.
     
-    Boost = a / (time_to_2x + b)
+    Args:
+        time_to_2x_min: Time to 2x in minutes (None if never hit)
+        config: Objective configuration
     
-    Diminishing returns, but strongly rewards fast.
+    Returns:
+        Boost value (0 to max_boost)
+    
+    Examples:
+        t=0 → max_boost (instant)
+        t=halflife → max_boost / 2
+        t=inf → 0
     """
-    if time_to_2x_median_minutes <= 0 or math.isnan(time_to_2x_median_minutes):
+    if time_to_2x_min is None or time_to_2x_min < 0:
         return 0.0
+    return config.time_max_boost / (1.0 + time_to_2x_min / config.time_halflife_min)
+
+
+def compute_discipline_bonus(
+    hit2x_pct: float,
+    dd_magnitude: float,
+    config: ObjectiveConfig = DEFAULT_OBJECTIVE_CONFIG,
+) -> float:
+    """
+    Compute discipline bonus (low DD + high hit rate synergy).
     
-    boost = config.timing_boost_a / (time_to_2x_median_minutes + config.timing_boost_b)
-    return min(boost, config.timing_boost_max)
+    Args:
+        hit2x_pct: Hit 2x rate as decimal (0.50 = 50%)
+        dd_magnitude: Drawdown as positive decimal
+        config: Objective configuration
+    
+    Returns:
+        Bonus value (0 or discipline_bonus)
+    """
+    if hit2x_pct >= config.discipline_hit2x_threshold and dd_magnitude <= config.discipline_dd_threshold:
+        return config.discipline_bonus
+    return 0.0
 
 
 def compute_tail_bonus(
-    p75_ath: float,
-    p95_ath: float,
-    config: ObjectiveConfig,
+    median_ath: float,
+    p75_ath: Optional[float],
+    p95_ath: Optional[float],
+    config: ObjectiveConfig = DEFAULT_OBJECTIVE_CONFIG,
 ) -> float:
     """
-    Compute tail bonus for asymmetric upside.
+    Compute tail bonus (fat right tail reward).
     
-    Options:
-    - log_p95: log(p95_ath)
-    - p95_minus_p75: p95 - p75 (rewards spread)
-    - p95_ratio: p95 / p75 (rewards fat tail ratio)
+    Args:
+        median_ath: Median ATH multiple
+        p75_ath: 75th percentile ATH
+        p95_ath: 95th percentile ATH
+        config: Objective configuration
+    
+    Returns:
+        Bonus value
     """
-    if p95_ath <= 0 or math.isnan(p95_ath):
-        return 0.0
+    bonus = 0.0
     
-    if config.tail_bonus_metric == "log_p95":
-        # Higher p95 = bigger bonus
-        bonus = math.log(max(p95_ath, 1.0)) * config.tail_bonus_weight
-    elif config.tail_bonus_metric == "p95_minus_p75":
-        # Bigger spread between p95 and p75 = bigger bonus
-        spread = max(0, p95_ath - p75_ath)
-        bonus = spread * config.tail_bonus_weight
-    elif config.tail_bonus_metric == "p95_ratio":
-        # Higher ratio = fatter tail
-        if p75_ath > 0:
-            ratio = p95_ath / p75_ath
-            bonus = (ratio - 1) * config.tail_bonus_weight
-        else:
-            bonus = 0.0
-    else:
-        bonus = 0.0
+    if p75_ath is not None and p75_ath > median_ath:
+        bonus += config.tail_p75_weight * (p75_ath - median_ath)
+    
+    if p95_ath is not None and p75_ath is not None and p95_ath > p75_ath:
+        bonus += config.tail_p95_weight * (p95_ath - p75_ath)
     
     return bonus
 
 
-def compute_win_rate_penalty(
-    win_rate: float,
-    config: ObjectiveConfig,
+def compute_confidence(
+    n_trades: int,
+    config: ObjectiveConfig = DEFAULT_OBJECTIVE_CONFIG,
 ) -> float:
     """
-    Compute penalty for win rate below minimum.
+    Compute sample size confidence adjustment.
     
-    Exponential penalty below threshold.
+    Args:
+        n_trades: Number of trades
+        config: Objective configuration
+    
+    Returns:
+        Confidence multiplier (0 to 1)
     """
-    if win_rate >= config.min_win_rate:
+    if n_trades <= 0:
         return 0.0
-    
-    deficit = config.min_win_rate - win_rate
-    return math.exp(config.win_rate_penalty_k * deficit) - 1
+    return math.sqrt(n_trades / (n_trades + config.confidence_k))
 
 
-def compute_loss_r_penalty(
-    avg_loss_r: float,
-    config: ObjectiveConfig,
-) -> float:
-    """
-    Compute penalty for implied loss R drifting from -1R.
+@dataclass
+class ObjectiveResult:
+    """Result of computing the objective function (also aliased as ObjectiveComponents)."""
     
-    This catches stop gapping / execution weirdness.
-    If losses are averaging -1.5R instead of -1R, something's wrong.
-    """
-    if avg_loss_r == 0 or math.isnan(avg_loss_r):
-        return 0.0
+    # Inputs
+    avg_r: float
+    total_r: float
+    n_trades: int
+    dd_magnitude: float
+    time_to_2x_min: Optional[float]
+    hit2x_pct: float
+    median_ath: float
+    p75_ath: Optional[float]
+    p95_ath: Optional[float]
     
-    # Expected is -1R, so avg_loss_r should be close to -1
-    drift = abs(avg_loss_r - config.expected_loss_r)
+    # Components
+    base_score: float = 0.0
+    dd_penalty: float = 0.0
+    time_boost: float = 0.0
+    discipline_bonus: float = 0.0
+    tail_bonus: float = 0.0
+    confidence: float = 1.0
     
-    if drift <= config.loss_r_tolerance:
-        return 0.0
+    # Final
+    raw_score: float = 0.0
+    final_score: float = 0.0
     
-    excess = drift - config.loss_r_tolerance
-    return excess * config.loss_r_penalty_k
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "avg_r": self.avg_r,
+            "total_r": self.total_r,
+            "n_trades": self.n_trades,
+            "dd_magnitude": self.dd_magnitude,
+            "time_to_2x_min": self.time_to_2x_min,
+            "hit2x_pct": self.hit2x_pct,
+            "median_ath": self.median_ath,
+            "p75_ath": self.p75_ath,
+            "p95_ath": self.p95_ath,
+            "base_score": self.base_score,
+            "dd_penalty": self.dd_penalty,
+            "time_boost": self.time_boost,
+            "discipline_bonus": self.discipline_bonus,
+            "tail_bonus": self.tail_bonus,
+            "confidence": self.confidence,
+            "raw_score": self.raw_score,
+            "final_score": self.final_score,
+        }
 
 
 def compute_objective(
-    summary: Dict[str, Any],
-    config: Optional[ObjectiveConfig] = None,
-) -> ObjectiveComponents:
+    avg_r: float,
+    total_r: float,
+    n_trades: int,
+    dd_magnitude: float,
+    time_to_2x_min: Optional[float] = None,
+    hit2x_pct: float = 0.0,
+    median_ath: float = 1.0,
+    p75_ath: Optional[float] = None,
+    p95_ath: Optional[float] = None,
+    config: ObjectiveConfig = DEFAULT_OBJECTIVE_CONFIG,
+) -> ObjectiveResult:
     """
-    Compute the full objective function from backtest summary.
+    Compute the full objective function.
     
-    Args:
-        summary: Backtest summary dict with R-space metrics
-        config: Objective configuration (default: DEFAULT_OBJECTIVE_CONFIG)
-    
-    Returns:
-        ObjectiveComponents with breakdown and final score
-    """
-    if config is None:
-        config = DEFAULT_OBJECTIVE_CONFIG
-    
-    components = ObjectiveComponents()
-    
-    # === Primary metric ===
-    if config.primary_metric == "avg_r":
-        components.primary_value = summary.get("avg_r", 0.0)
-    elif config.primary_metric == "total_r":
-        components.primary_value = summary.get("total_r", 0.0)
-    elif config.primary_metric == "expectancy_r":
-        # Expectancy = (WR * AvgWinR) + ((1-WR) * AvgLossR)
-        wr = summary.get("tp_sl_win_rate", 0.0)
-        avg_win_r = summary.get("avg_r_win", 0.0)
-        avg_loss_r = summary.get("avg_r_loss", -1.0)
-        components.primary_value = (wr * avg_win_r) + ((1 - wr) * avg_loss_r)
-    else:
-        components.primary_value = summary.get(config.primary_metric, 0.0)
-    
-    # === Drawdown penalty ===
-    dd_pre2x_median = summary.get("dd_pre2x_median", 0.0)
-    if dd_pre2x_median is None:
-        dd_pre2x_median = 0.0
-    components.dd_penalty = compute_dd_penalty(dd_pre2x_median, config)
-    
-    # === Timing boost ===
-    time_to_2x_median = summary.get("time_to_2x_median_min", 0.0)
-    if time_to_2x_median is None:
-        time_to_2x_median = float("inf")
-    components.timing_boost = compute_timing_boost(time_to_2x_median, config)
-    
-    # === Tail bonus ===
-    p75_ath = summary.get("p75_ath", 1.0)
-    p95_ath = summary.get("p95_ath", 1.0)
-    if p75_ath is None:
-        p75_ath = 1.0
-    if p95_ath is None:
-        p95_ath = 1.0
-    components.tail_bonus = compute_tail_bonus(p75_ath, p95_ath, config)
-    
-    # === Win rate penalty ===
-    win_rate = summary.get("tp_sl_win_rate", 0.0)
-    if win_rate is None:
-        win_rate = 0.0
-    components.win_rate_penalty = compute_win_rate_penalty(win_rate, config)
-    
-    # === Loss R penalty ===
-    avg_loss_r = summary.get("avg_r_loss", -1.0)
-    if avg_loss_r is None:
-        avg_loss_r = -1.0
-    components.loss_r_penalty = compute_loss_r_penalty(avg_loss_r, config)
-    
-    # === Combine into final score ===
-    score = (
-        config.primary_weight * components.primary_value
-        - config.dd_penalty_weight * components.dd_penalty
-        + config.timing_boost_weight * components.timing_boost
-        + config.tail_bonus_weight_final * components.tail_bonus
-        - config.win_rate_penalty_weight * components.win_rate_penalty
-        - config.loss_r_penalty_weight * components.loss_r_penalty
+    Score = confidence * (
+        base_score
+        + time_boost * time_weight
+        + discipline_bonus
+        + tail_bonus
+        - dd_penalty * dd_weight
     )
     
-    components.final_score = score
-    return components
+    Args:
+        avg_r: Average R per trade
+        total_r: Total R
+        n_trades: Number of trades
+        dd_magnitude: Drawdown as positive decimal (0.30 = 30%)
+        time_to_2x_min: Median time to 2x in minutes
+        hit2x_pct: Hit 2x rate as decimal
+        median_ath: Median ATH multiple
+        p75_ath: 75th percentile ATH
+        p95_ath: 95th percentile ATH
+        config: Objective configuration
+    
+    Returns:
+        ObjectiveResult with all components
+    """
+    result = ObjectiveResult(
+        avg_r=avg_r,
+        total_r=total_r,
+        n_trades=n_trades,
+        dd_magnitude=dd_magnitude,
+        time_to_2x_min=time_to_2x_min,
+        hit2x_pct=hit2x_pct,
+        median_ath=median_ath,
+        p75_ath=p75_ath,
+        p95_ath=p95_ath,
+    )
+    
+    # Base score from R performance
+    result.base_score = config.avg_r_weight * avg_r
+    if config.total_r_weight > 0 and n_trades > 0:
+        result.base_score += config.total_r_weight * (total_r / n_trades)
+    
+    # Penalty for high drawdown
+    result.dd_penalty = compute_dd_penalty(dd_magnitude, config)
+    
+    # Boost for fast time-to-2x
+    result.time_boost = compute_time_boost(time_to_2x_min, config)
+    
+    # Discipline bonus
+    result.discipline_bonus = compute_discipline_bonus(hit2x_pct, dd_magnitude, config)
+    
+    # Tail bonus
+    result.tail_bonus = compute_tail_bonus(median_ath, p75_ath, p95_ath, config)
+    
+    # Confidence adjustment
+    result.confidence = compute_confidence(n_trades, config)
+    
+    # Raw score (before confidence)
+    result.raw_score = (
+        result.base_score
+        + result.time_boost * config.time_weight
+        + result.discipline_bonus
+        + result.tail_bonus
+        - result.dd_penalty * config.dd_weight
+    )
+    
+    # Final score
+    result.final_score = result.confidence * result.raw_score
+    
+    return result
 
 
-def score_result(
+def score_from_summary(
     summary: Dict[str, Any],
-    config: Optional[ObjectiveConfig] = None,
+    config: ObjectiveConfig = DEFAULT_OBJECTIVE_CONFIG,
+) -> ObjectiveResult:
+    """
+    Compute objective from a backtest summary dict.
+    
+    Args:
+        summary: Summary dict from summarize_tp_sl()
+        config: Objective configuration
+    
+    Returns:
+        ObjectiveResult
+    """
+    # Extract R metrics
+    avg_r = summary.get("avg_r", 0.0)
+    total_r = summary.get("total_r", 0.0)
+    n_trades = summary.get("alerts_ok", 0)
+    
+    # Extract DD (convert from pct to decimal magnitude)
+    dd_pct = summary.get("median_dd_initial", 0.0)
+    if dd_pct is None:
+        dd_pct = summary.get("median_dd_overall", 0.0) or 0.0
+    dd_magnitude = abs(dd_pct) / 100.0 if abs(dd_pct) > 1 else abs(dd_pct)
+    
+    # Extract time to 2x (convert from seconds to minutes if needed)
+    time_to_2x_s = summary.get("median_time_to_2x_s")
+    time_to_2x_min = time_to_2x_s / 60.0 if time_to_2x_s is not None else None
+    
+    # Extract hit rate
+    hit2x_pct = summary.get("pct_hit_2x", 0.0) or 0.0
+    
+    # Extract ATH metrics
+    median_ath = summary.get("median_ath_mult", 1.0) or 1.0
+    p75_ath = summary.get("p75_ath_mult")
+    p95_ath = summary.get("p95_ath_mult")
+    
+    return compute_objective(
+        avg_r=avg_r,
+        total_r=total_r,
+        n_trades=n_trades,
+        dd_magnitude=dd_magnitude,
+        time_to_2x_min=time_to_2x_min,
+        hit2x_pct=hit2x_pct,
+        median_ath=median_ath,
+        p75_ath=p75_ath,
+        p95_ath=p95_ath,
+        config=config,
+    )
+
+
+# =============================================================================
+# Implied AvgLossR Sanity Check
+# =============================================================================
+
+def compute_implied_avg_loss_r(
+    avg_r: float,
+    win_rate: float,
+    avg_r_win: float,
 ) -> float:
     """
-    Quick helper to get just the final score.
-    """
-    return compute_objective(summary, config).final_score
-
-
-def print_objective_breakdown(
-    components: ObjectiveComponents,
-    config: Optional[ObjectiveConfig] = None,
-) -> None:
-    """
-    Print a human-readable breakdown of the objective function.
-    """
-    if config is None:
-        config = DEFAULT_OBJECTIVE_CONFIG
+    Compute implied average loss R from the expectancy equation.
     
-    print(f"  Primary ({config.primary_metric}): {components.primary_value:+.4f} × {config.primary_weight}")
-    print(f"  DD penalty:        -{components.dd_penalty:.4f} × {config.dd_penalty_weight}")
-    print(f"  Timing boost:      +{components.timing_boost:.4f} × {config.timing_boost_weight}")
-    print(f"  Tail bonus:        +{components.tail_bonus:.4f} × {config.tail_bonus_weight_final}")
-    print(f"  Win rate penalty:  -{components.win_rate_penalty:.4f} × {config.win_rate_penalty_weight}")
-    print(f"  Loss R penalty:    -{components.loss_r_penalty:.4f} × {config.loss_r_penalty_weight}")
-    print(f"  ─────────────────────────────")
-    print(f"  FINAL SCORE:       {components.final_score:+.4f}")
+    AvgR = WinRate * AvgRWin + (1 - WinRate) * AvgRLoss
+    
+    Solving for AvgRLoss:
+    AvgRLoss = (AvgR - WinRate * AvgRWin) / (1 - WinRate)
+    
+    If this drifts significantly from -1R, it indicates:
+    - Stop gapping (gaps through stop = bigger losses)
+    - Execution slippage beyond modeled
+    - Fees eating into stop distance
+    
+    Args:
+        avg_r: Average R per trade
+        win_rate: Win rate as decimal (0.35 = 35%)
+        avg_r_win: Average R on winning trades
+    
+    Returns:
+        Implied average R on losing trades (should be close to -1R)
+    """
+    if win_rate >= 1.0:
+        return 0.0  # No losses
+    if win_rate <= 0.0:
+        return avg_r  # All losses, avg_r is avg_r_loss
+    
+    return (avg_r - win_rate * avg_r_win) / (1.0 - win_rate)
 
+
+def check_loss_r_sanity(
+    summary: Dict[str, Any],
+    expected_loss_r: float = -1.0,
+    tolerance: float = 0.15,
+) -> Dict[str, Any]:
+    """
+    Check if implied AvgLossR is close to expected.
+    
+    Args:
+        summary: Backtest summary dict
+        expected_loss_r: Expected loss R (usually -1.0)
+        tolerance: Allowed deviation (0.15 = 15%)
+    
+    Returns:
+        Dict with sanity check results
+    """
+    avg_r = summary.get("avg_r", 0.0)
+    win_rate = summary.get("tp_sl_win_rate", 0.0)
+    avg_r_win = summary.get("avg_r_win", 0.0)
+    avg_r_loss = summary.get("avg_r_loss", 0.0)
+    
+    implied_loss_r = compute_implied_avg_loss_r(avg_r, win_rate, avg_r_win)
+    deviation = abs(implied_loss_r - expected_loss_r)
+    is_sane = deviation <= tolerance
+    
+    return {
+        "avg_r": avg_r,
+        "win_rate": win_rate,
+        "avg_r_win": avg_r_win,
+        "avg_r_loss_actual": avg_r_loss,
+        "avg_r_loss_implied": implied_loss_r,
+        "expected_loss_r": expected_loss_r,
+        "deviation": deviation,
+        "is_sane": is_sane,
+        "warning": None if is_sane else f"Implied AvgLossR ({implied_loss_r:.2f}) deviates {deviation:.2f} from expected ({expected_loss_r:.2f})",
+    }
+
+
+# =============================================================================
+# Print helpers
+# =============================================================================
+
+def print_objective_breakdown(result: ObjectiveResult) -> None:
+    """Print a breakdown of the objective function components."""
+    print(f"Objective Breakdown:")
+    print(f"  Base (AvgR):       {result.base_score:+.3f}")
+    print(f"  - DD Penalty:      {result.dd_penalty:+.3f} (DD={result.dd_magnitude:.1%})")
+    print(f"  + Time Boost:      {result.time_boost:+.3f} (t2x={result.time_to_2x_min:.0f}m)" if result.time_to_2x_min else f"  + Time Boost:      {result.time_boost:+.3f} (no 2x)")
+    print(f"  + Discipline:      {result.discipline_bonus:+.3f}")
+    print(f"  + Tail Bonus:      {result.tail_bonus:+.3f}")
+    print(f"  × Confidence:      {result.confidence:.3f} (n={result.n_trades})")
+    print(f"  ─────────────────────")
+    print(f"  Raw Score:         {result.raw_score:+.3f}")
+    print(f"  Final Score:       {result.final_score:+.3f}")
+
+
+# =============================================================================
+# Backwards compatibility alias
+# =============================================================================
+
+# ObjectiveComponents is an alias for ObjectiveResult
+ObjectiveComponents = ObjectiveResult
