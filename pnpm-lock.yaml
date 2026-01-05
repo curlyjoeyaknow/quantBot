@@ -881,6 +881,9 @@ importers:
       '@quantbot/ohlcv':
         specifier: workspace:*
         version: link:../ohlcv
+      '@quantbot/simulation':
+        specifier: workspace:*
+        version: link:../simulation
       '@quantbot/storage':
         specifier: workspace:*
         version: link:../storage
