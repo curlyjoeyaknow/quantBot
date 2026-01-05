@@ -476,7 +476,7 @@ class OptimizerConfig:
     
     # Slice settings
     slice_dir: str = "slices"
-    slice_path: Optional[str] = None  # Use existing slice
+    slice_path: Optional[str] = "slices/per_token"  # Default to per_token slices
     reuse_slice: bool = True
     
     # Fixed settings
