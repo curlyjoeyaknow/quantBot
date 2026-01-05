@@ -33,6 +33,7 @@ from lib.optimizer_config import OptimizerConfig, RangeSpec, TpSlParamSpace
 from lib.summary import summarize_tp_sl
 from lib.timing import TimingContext, format_ms
 from lib.tp_sl_query import run_tp_sl_query
+from lib.trial_ledger import store_walk_forward_run
 
 UTC = timezone.utc
 
@@ -193,8 +194,12 @@ def run_walk_forward_fold(
         all_alerts = [a for a in all_alerts if a.caller.strip() in caller_set]
     
     # Split into train/test (Alert.ts is a datetime property)
-    train_alerts = [a for a in all_alerts if train_from_dt <= a.ts.date() <= train_to_dt]
-    test_alerts = [a for a in all_alerts if test_from_dt <= a.ts.date() <= test_to_dt]
+    # parse_yyyy_mm_dd returns datetime, so compare datetime to datetime
+    from datetime import timedelta
+    train_end = train_to_dt + timedelta(days=1)  # Make train_to inclusive
+    test_end = test_to_dt + timedelta(days=1)    # Make test_to inclusive
+    train_alerts = [a for a in all_alerts if train_from_dt <= a.ts < train_end]
+    test_alerts = [a for a in all_alerts if test_from_dt <= a.ts < test_end]
     
     if verbose:
         print(f"Train alerts: {len(train_alerts)}", file=sys.stderr)
@@ -219,8 +224,8 @@ def run_walk_forward_fold(
     best_total_r = float("-inf")
     
     # Grid search on training data
-    tp_values = config.tp_sl.tp_mult.to_list()
-    sl_values = config.tp_sl.sl_mult.to_list()
+    tp_values = config.tp_sl.tp_mult.expand()
+    sl_values = config.tp_sl.sl_mult.expand()
     intrabar_orders = config.tp_sl.intrabar_order
     
     total_combos = len(tp_values) * len(sl_values) * len(intrabar_orders)
@@ -455,9 +460,25 @@ def main() -> None:
     avg_degrad = wf_run.avg_degradation
     print(f"{'AVG':<6} {'':<10} {'':<10} {'':<20} {avg_train:>+10.1f} {avg_test:>+10.1f} {avg_degrad*100:>+9.0f}%", file=sys.stderr)
     
-    # Save results
+    # Save results (JSON file)
     output_path = wf_run.save(args.output_dir)
     print(f"\nResults saved to: {output_path}", file=sys.stderr)
+    
+    # ========== ALWAYS STORE TO DUCKDB ==========
+    # This is non-negotiable - every run must be recorded for experiment tracking
+    try:
+        store_walk_forward_run(
+            duckdb_path=args.duckdb,
+            run_id=wf_run.run_id,
+            name=f"walk_forward_{wf_run.created_at.strftime('%Y%m%d_%H%M%S')}",
+            config=wf_run.config,
+            folds=[f.to_dict() for f in wf_run.folds],
+            timing=wf_run.timing,
+            notes=f"tp_range={args.tp_range} sl_range={args.sl_range}",
+        )
+        print(f"✓ Run stored to DuckDB: {args.duckdb} (optimizer.runs_d / optimizer.walk_forward_f)", file=sys.stderr)
+    except Exception as e:
+        print(f"⚠️  Failed to store to DuckDB: {e}", file=sys.stderr)
 
 
 if __name__ == "__main__":
