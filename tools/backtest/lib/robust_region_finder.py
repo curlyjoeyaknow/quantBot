@@ -161,12 +161,14 @@ def compute_dd_penalty_robust(
 @dataclass
 class StressConfig:
     """
-    Configuration for stress lane testing.
+    Configuration for stress lane testing (legacy single-lane mode).
     
     Stress lane applies pessimistic assumptions:
     - slippage_mult: Multiply slippage (2x = double slippage)
     - stop_gap_prob: Probability of stop gapping through (missing stop)
     - stop_gap_mult: When gap occurs, loss multiplied by this
+    
+    For multi-lane stress testing, use stress_lanes.StressLane instead.
     """
     slippage_mult: float = 2.0       # 2x slippage (e.g., 50bps → 100bps)
     stop_gap_prob: float = 0.15      # 15% of stops gap through
@@ -182,10 +184,16 @@ def simulate_stress_r(
     win_rate: float,
     n_trades: int,
     avg_r_loss: float,
-    config: StressConfig = StressConfig(),
+    config: Optional["StressConfig"] = None,
+    lane: Optional[Any] = None,  # stress_lanes.StressLane
+    base_slippage_bps: float = 50.0,
 ) -> Tuple[float, Dict[str, Any]]:
     """
     Simulate stressed R given base metrics.
+    
+    Supports two modes:
+    1. Legacy: Use StressConfig (slippage multiplier approach)
+    2. Lane: Use StressLane from stress_lanes module (absolute bps approach)
     
     Applies:
     1. Extra slippage cost (reduces both wins and losses)
@@ -197,17 +205,43 @@ def simulate_stress_r(
         win_rate: Win rate (0-1)
         n_trades: Number of trades
         avg_r_loss: Average R on losing trades (negative)
-        config: Stress configuration
+        config: Legacy StressConfig (if lane is None)
+        lane: StressLane from stress_lanes module (takes precedence)
+        base_slippage_bps: Base slippage in bps (for lane mode)
     
     Returns:
         (stressed_r, breakdown)
     """
-    breakdown = {
-        "base_test_r": base_test_r,
-        "slippage_mult": config.slippage_mult,
-        "stop_gap_prob": config.stop_gap_prob,
-        "stop_gap_mult": config.stop_gap_mult,
-    }
+    # Import StressLane type check at runtime to avoid circular imports
+    from .stress_lanes import StressLane
+    
+    # Determine parameters based on config or lane
+    if lane is not None and isinstance(lane, StressLane):
+        # Lane mode: use absolute bps values
+        slippage_mult = lane.slippage_bps / base_slippage_bps if base_slippage_bps > 0 else 2.0
+        stop_gap_prob = lane.stop_gap_prob
+        stop_gap_mult = lane.stop_gap_mult
+        breakdown = {
+            "base_test_r": base_test_r,
+            "lane": lane.name,
+            "slippage_bps": lane.slippage_bps,
+            "base_slippage_bps": base_slippage_bps,
+            "stop_gap_prob": stop_gap_prob,
+            "stop_gap_mult": stop_gap_mult,
+        }
+    else:
+        # Legacy mode: use StressConfig
+        if config is None:
+            config = StressConfig()
+        slippage_mult = config.slippage_mult
+        stop_gap_prob = config.stop_gap_prob
+        stop_gap_mult = config.stop_gap_mult
+        breakdown = {
+            "base_test_r": base_test_r,
+            "slippage_mult": slippage_mult,
+            "stop_gap_prob": stop_gap_prob,
+            "stop_gap_mult": stop_gap_mult,
+        }
     
     if n_trades <= 0:
         return 0.0, breakdown
@@ -215,16 +249,16 @@ def simulate_stress_r(
     # Slippage hit: extra slippage reduces avg_r
     # Assume base slippage is ~50bps = 0.05R on avg
     base_slippage_r = 0.05
-    extra_slippage_r = base_slippage_r * (config.slippage_mult - 1.0)
+    extra_slippage_r = base_slippage_r * (slippage_mult - 1.0)
     slippage_hit = extra_slippage_r * n_trades
     
     # Stop gap hit: some losing trades lose more than expected
     n_losses = int(n_trades * (1.0 - win_rate))
-    n_gapped = int(n_losses * config.stop_gap_prob)
+    n_gapped = int(n_losses * stop_gap_prob)
     
     # Extra loss from gapped stops
     # If avg_r_loss = -1R and gap_mult = 1.5, gapped losses are -1.5R
-    extra_loss_per_gap = abs(avg_r_loss) * (config.stop_gap_mult - 1.0)
+    extra_loss_per_gap = abs(avg_r_loss) * (stop_gap_mult - 1.0)
     stop_gap_hit = extra_loss_per_gap * n_gapped
     
     # Total stress reduction
@@ -325,6 +359,206 @@ class RobustObjectiveResult:
         }
 
 
+# =============================================================================
+# EXPLICIT GATE CONFIGURATION
+# =============================================================================
+
+@dataclass
+class GateConfig:
+    """
+    Named gates with explicit thresholds.
+    
+    Gates are hard requirements that a strategy must pass to be considered "tradeable".
+    Each gate has:
+    - A clear name
+    - A threshold value
+    - A comparison operator (implicit in the check logic)
+    
+    This replaces the scattered gate checks with a single source of truth.
+    """
+    # Generalization gates (anti-overfit)
+    test_train_ratio_min: float = 0.20     # TestR >= 20% of TrainR (not total overfit)
+    
+    # Drawdown gates (risk management)
+    p75_dd_max: float = 0.60               # 75th percentile DD <= 60%
+    median_dd_max: float = 0.40            # Median DD <= 40%
+    
+    # Win rate gates (consistency)
+    hit2x_min: float = 0.30                # At least 30% hit 2x
+    win_rate_min: float = 0.35             # Win rate >= 35%
+    
+    # Profitability gates
+    test_r_min: float = 0.0                # TestR >= 0 (must be profitable OOS)
+    avg_r_min: float = 0.0                 # Average R >= 0
+    
+    # Loss sanity gates (catches execution issues)
+    avg_r_loss_min: float = -1.5           # Avg loss >= -1.5R (catches severe stop gaps)
+    avg_r_loss_max: float = -0.5           # Avg loss <= -0.5R (catches too tight stops)
+    
+    # Fold survival (robustness across time)
+    fold_survival_pct: float = 0.60        # At least 60% of folds profitable
+    
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "test_train_ratio_min": self.test_train_ratio_min,
+            "p75_dd_max": self.p75_dd_max,
+            "median_dd_max": self.median_dd_max,
+            "hit2x_min": self.hit2x_min,
+            "win_rate_min": self.win_rate_min,
+            "test_r_min": self.test_r_min,
+            "avg_r_min": self.avg_r_min,
+            "avg_r_loss_min": self.avg_r_loss_min,
+            "avg_r_loss_max": self.avg_r_loss_max,
+            "fold_survival_pct": self.fold_survival_pct,
+        }
+
+
+DEFAULT_GATE_CONFIG = GateConfig()
+
+
+@dataclass
+class GateCheckResult:
+    """Result of checking all gates."""
+    passes_all: bool
+    gate_results: Dict[str, Dict[str, Any]]  # gate_name -> {passed, value, threshold, message}
+    n_passed: int
+    n_total: int
+    failure_messages: List[str]
+    
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "passes_all": self.passes_all,
+            "n_passed": self.n_passed,
+            "n_total": self.n_total,
+            "gate_results": self.gate_results,
+            "failure_messages": self.failure_messages,
+        }
+
+
+def check_gates(
+    test_train_ratio: Optional[float],
+    p75_dd: Optional[float],
+    median_dd: Optional[float],
+    hit2x_pct: Optional[float],
+    win_rate: Optional[float],
+    test_r: Optional[float],
+    avg_r: Optional[float],
+    avg_r_loss: Optional[float],
+    fold_survival_pct: Optional[float],
+    config: GateConfig = DEFAULT_GATE_CONFIG,
+) -> GateCheckResult:
+    """
+    Check all gates and return detailed results.
+    
+    Args:
+        test_train_ratio: TestR / TrainR ratio
+        p75_dd: 75th percentile drawdown (as positive decimal, e.g., 0.40 = 40%)
+        median_dd: Median drawdown (as positive decimal)
+        hit2x_pct: Percentage that hit 2x (0-1)
+        win_rate: Win rate (0-1)
+        test_r: Test R total
+        avg_r: Average R per trade
+        avg_r_loss: Average R on losing trades (negative)
+        fold_survival_pct: Percentage of folds that were profitable (0-1)
+        config: Gate configuration
+    
+    Returns:
+        GateCheckResult with per-gate details
+    """
+    gate_results = {}
+    failures = []
+    
+    def check_min(name: str, value: Optional[float], threshold: float, fmt: str = ".2f") -> bool:
+        """Check value >= threshold."""
+        if value is None:
+            gate_results[name] = {
+                "passed": True,  # Skip if no data
+                "value": None,
+                "threshold": threshold,
+                "message": f"{name}: N/A (skipped)",
+            }
+            return True
+        
+        passed = value >= threshold
+        msg = f"{name}: {value:{fmt}} >= {threshold:{fmt}}"
+        if not passed:
+            msg = f"{name}: {value:{fmt}} < {threshold:{fmt}} (FAIL)"
+            failures.append(msg)
+        gate_results[name] = {
+            "passed": passed,
+            "value": value,
+            "threshold": threshold,
+            "message": msg,
+        }
+        return passed
+    
+    def check_max(name: str, value: Optional[float], threshold: float, fmt: str = ".2f") -> bool:
+        """Check value <= threshold."""
+        if value is None:
+            gate_results[name] = {
+                "passed": True,
+                "value": None,
+                "threshold": threshold,
+                "message": f"{name}: N/A (skipped)",
+            }
+            return True
+        
+        passed = value <= threshold
+        msg = f"{name}: {value:{fmt}} <= {threshold:{fmt}}"
+        if not passed:
+            msg = f"{name}: {value:{fmt}} > {threshold:{fmt}} (FAIL)"
+            failures.append(msg)
+        gate_results[name] = {
+            "passed": passed,
+            "value": value,
+            "threshold": threshold,
+            "message": msg,
+        }
+        return passed
+    
+    # Run all gate checks
+    check_min("test_train_ratio", test_train_ratio, config.test_train_ratio_min)
+    check_max("p75_dd", p75_dd, config.p75_dd_max, ".0%")
+    check_max("median_dd", median_dd, config.median_dd_max, ".0%")
+    check_min("hit2x", hit2x_pct, config.hit2x_min, ".0%")
+    check_min("win_rate", win_rate, config.win_rate_min, ".0%")
+    check_min("test_r", test_r, config.test_r_min, "+.1f")
+    check_min("avg_r", avg_r, config.avg_r_min, "+.2f")
+    check_min("avg_r_loss", avg_r_loss, config.avg_r_loss_min, ".2f")
+    check_max("avg_r_loss_upper", avg_r_loss, config.avg_r_loss_max, ".2f")
+    check_min("fold_survival", fold_survival_pct, config.fold_survival_pct, ".0%")
+    
+    n_passed = sum(1 for g in gate_results.values() if g["passed"])
+    n_total = len(gate_results)
+    
+    return GateCheckResult(
+        passes_all=len(failures) == 0,
+        gate_results=gate_results,
+        n_passed=n_passed,
+        n_total=n_total,
+        failure_messages=failures,
+    )
+
+
+def print_gate_check(result: GateCheckResult, indent: str = "  ") -> None:
+    """Print gate check results in a readable format."""
+    status = "PASS" if result.passes_all else "FAIL"
+    print(f"\nGATE CHECK: {status} ({result.n_passed}/{result.n_total})")
+    print("-" * 50)
+    
+    for gate_name, gate_info in result.gate_results.items():
+        passed = gate_info["passed"]
+        value = gate_info["value"]
+        threshold = gate_info["threshold"]
+        
+        if value is None:
+            print(f"{indent}[─] {gate_name}: N/A")
+        elif passed:
+            print(f"{indent}[✓] {gate_info['message']}")
+        else:
+            print(f"{indent}[✗] {gate_info['message']}")
+
+
 @dataclass
 class RobustObjectiveConfig:
     """Configuration for robust objective function."""
@@ -339,7 +573,10 @@ class RobustObjectiveConfig:
     stress_config: StressConfig = field(default_factory=StressConfig)
     stress_weight: float = 0.30       # How much stress results affect score
     
-    # Gates (hard requirements)
+    # Gate config (explicit named gates)
+    gate_config: GateConfig = field(default_factory=GateConfig)
+    
+    # Legacy gate fields (for backwards compatibility, use gate_config instead)
     gate_max_p75_dd: float = 0.60     # p75_dd must be <= 60%
     gate_max_median_dd: float = 0.40  # median_dd must be <= 40%
     gate_min_hit2x: float = 0.30      # hit2x >= 30%
@@ -706,6 +943,107 @@ def print_islands(islands: List[ParameterIsland]) -> None:
             gate_str = "✓" if m.get("passes_gates") else "✗"
             print(f"    TP={m['params']['tp_mult']:.2f}x SL={m['params']['sl_mult']:.2f}x | "
                   f"Score={m.get('robust_score', 0):+.2f} TestR={m.get('median_test_r', 0):+.2f} {gate_str}")
+
+
+# =============================================================================
+# ISLAND CHAMPION SELECTION
+# =============================================================================
+
+@dataclass
+class IslandChampion:
+    """
+    A single champion selected from an island for stress lane validation.
+    
+    This is the "representative" that will be tested under stress conditions.
+    """
+    island_id: int
+    params: Dict[str, Any]
+    discovery_score: float       # Robust score from discovery phase
+    median_test_r: float
+    passes_gates: bool
+    
+    # Island context
+    island_size: int             # How many candidates in the island
+    island_centroid: Dict[str, float]
+    
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "island_id": self.island_id,
+            "params": self.params,
+            "discovery_score": self.discovery_score,
+            "median_test_r": self.median_test_r,
+            "passes_gates": self.passes_gates,
+            "island_size": self.island_size,
+            "island_centroid": self.island_centroid,
+        }
+
+
+def extract_island_champions(
+    islands: List[ParameterIsland],
+    prefer_passing_gates: bool = True,
+) -> List[IslandChampion]:
+    """
+    Select one champion from each island for stress lane validation.
+    
+    The champion is the best representative of the island - the one most
+    likely to survive stress testing while representing the island's region.
+    
+    Selection criteria:
+    1. If prefer_passing_gates=True, prefer candidates that pass gates
+    2. Among those, select by highest robust_score
+    3. If none pass gates, still select the best (will fail validation gracefully)
+    
+    Args:
+        islands: List of ParameterIsland from cluster_parameters()
+        prefer_passing_gates: Whether to prefer gate-passing candidates
+    
+    Returns:
+        List of IslandChampion, one per island
+    """
+    champions = []
+    
+    for island in islands:
+        if not island.members:
+            continue
+        
+        # Filter to passing candidates if preferred
+        candidates = island.members
+        if prefer_passing_gates:
+            passing = [m for m in island.members if m.get("passes_gates", False)]
+            if passing:
+                candidates = passing
+        
+        # Select best by robust_score
+        best = max(candidates, key=lambda m: m.get("robust_score", -999))
+        
+        champion = IslandChampion(
+            island_id=island.island_id,
+            params=best.get("params", {}),
+            discovery_score=best.get("robust_score", 0.0),
+            median_test_r=best.get("median_test_r", 0.0),
+            passes_gates=best.get("passes_gates", False),
+            island_size=len(island.members),
+            island_centroid=island.centroid,
+        )
+        champions.append(champion)
+    
+    return champions
+
+
+def print_island_champions(champions: List[IslandChampion]) -> None:
+    """Print island champions summary."""
+    print(f"\n{'='*80}")
+    print(f"ISLAND CHAMPIONS ({len(champions)} selected for validation)")
+    print(f"{'='*80}")
+    
+    for champ in champions:
+        params = champ.params
+        gate_str = "✓" if champ.passes_gates else "✗"
+        print(f"\nIsland {champ.island_id} Champion:")
+        print(f"  Params:    TP={params.get('tp_mult', 0):.2f}x SL={params.get('sl_mult', 0):.2f}x")
+        print(f"  Centroid:  TP={champ.island_centroid.get('tp_mult', 0):.2f}x SL={champ.island_centroid.get('sl_mult', 0):.2f}x")
+        print(f"  Discovery: Score={champ.discovery_score:+.2f} TestR={champ.median_test_r:+.2f} {gate_str}")
+        print(f"  Island:    {champ.island_size} candidates")
 
 
 # =============================================================================

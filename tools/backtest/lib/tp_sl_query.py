@@ -33,6 +33,7 @@ def run_tp_sl_query(
     threads: int = 8,
     verbose: bool = False,
     slice_type: SliceType | None = None,
+    entry_delay_candles: int = 0,
 ) -> List[Dict[str, Any]]:
     """
     Run TP/SL backtest query over alerts.
@@ -55,16 +56,21 @@ def run_tp_sl_query(
         threads: Number of DuckDB threads
         verbose: Print progress
         slice_type: Explicit slice type ('file', 'hive', 'per_token'). If None, inferred.
+        entry_delay_candles: Number of candles to delay entry (0 = immediate, 1+ = latency simulation)
 
     Returns:
         List of result dicts, one per alert
     """
     horizon_s = int(horizon_hours) * 3600
+    entry_delay_ms = entry_delay_candles * interval_seconds * 1000
 
     # Build alert rows for temp table
+    # entry_ts_ms is adjusted by entry_delay_candles for latency simulation
     alert_rows: List[Tuple[int, str, str, int, int, int]] = []
     for i, a in enumerate(alerts, start=1):
-        entry_ts_ms = ceil_ms_to_interval_ts_ms(a.ts_ms, interval_seconds)
+        base_entry_ts_ms = ceil_ms_to_interval_ts_ms(a.ts_ms, interval_seconds)
+        # Apply entry delay: shift entry to Nth next candle's open
+        entry_ts_ms = base_entry_ts_ms + entry_delay_ms
         end_ts_ms = entry_ts_ms + (horizon_s * 1000)
         alert_rows.append((i, a.mint, a.caller, a.ts_ms, entry_ts_ms, end_ts_ms))
 
@@ -140,10 +146,12 @@ def run_tp_sl_query(
             intrabar_order=intrabar_order,
             fee_bps=fee_bps,
             slippage_bps=slippage_bps,
+            entry_delay_candles=entry_delay_candles,
         )
 
         if verbose:
-            print("[tp_sl] running vectorized query...", file=sys.stderr)
+            delay_str = f" (entry delay: {entry_delay_candles} candles)" if entry_delay_candles > 0 else ""
+            print(f"[tp_sl] running vectorized query...{delay_str}", file=sys.stderr)
 
         rows = con.execute(sql).fetchall()
         cols = [d[0] for d in con.description]
@@ -160,11 +168,24 @@ def _build_tp_sl_sql(
     intrabar_order: str,
     fee_bps: float,
     slippage_bps: float,
+    entry_delay_candles: int = 0,
 ) -> str:
-    """Build the TP/SL metrics SQL query."""
+    """Build the TP/SL metrics SQL query.
+    
+    Args:
+        interval_seconds: Candle interval in seconds
+        horizon_hours: Lookforward window in hours
+        tp_mult: Take-profit multiplier
+        sl_mult: Stop-loss multiplier
+        intrabar_order: Which exit to take if both hit in same candle
+        fee_bps: Trading fees in basis points
+        slippage_bps: Slippage in basis points
+        entry_delay_candles: Number of candles entry was delayed (for metadata only)
+    """
     tp = float(tp_mult)
     sl = float(sl_mult)
     intrabar = intrabar_order
+    entry_delay = int(entry_delay_candles)
 
     return f"""
 WITH
@@ -356,6 +377,7 @@ SELECT
   strftime(a.entry_ts, '%Y-%m-%d %H:%M:%S') AS entry_ts_utc,
   {int(interval_seconds)}::INT AS interval_seconds,
   {int(horizon_hours)}::INT AS horizon_hours,
+  {entry_delay}::INT AS entry_delay_candles,
 
   CASE
     WHEN ag.candles IS NULL OR ag.candles < 2 THEN 'missing'

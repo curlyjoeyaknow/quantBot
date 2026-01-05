@@ -157,6 +157,32 @@ from .trial_ledger import (
     get_best_trials,
     get_walk_forward_summary,
     print_recent_runs,
+    # Pipeline phases (audit trail)
+    PIPELINE_PHASES,
+    store_phase_start,
+    store_phase_complete,
+    store_phase_failed,
+    get_phase_status,
+    get_run_phases,
+    can_resume_from_phase,
+    get_last_completed_phase,
+    # Islands
+    store_islands,
+    load_islands,
+    # Island champions
+    store_island_champions,
+    load_island_champions,
+    # Stress lane validation
+    store_stress_lane_result,
+    get_completed_lanes_for_champion,
+    load_stress_lane_results,
+    # Champion validation
+    store_champion_validation,
+    load_champion_validations,
+    get_maximin_winner,
+    # Resume helpers
+    get_resumable_run_state,
+    print_run_state,
 )
 from .optimizer_objective import (
     ObjectiveConfig,
@@ -179,6 +205,84 @@ from .optimizer_objective import (
     compute_implied_avg_loss_r,
     check_loss_r_sanity,
     print_objective_breakdown,
+)
+from .robust_region_finder import (
+    # DD Penalty
+    DDPenaltyConfig,
+    DEFAULT_DD_PENALTY,
+    compute_dd_penalty_robust,
+    # Stress Config (legacy single-lane)
+    StressConfig,
+    simulate_stress_r,
+    # Gates
+    GateConfig,
+    DEFAULT_GATE_CONFIG,
+    GateCheckResult,
+    check_gates,
+    print_gate_check,
+    # Robust objective
+    FoldResult,
+    RobustObjectiveResult,
+    RobustObjectiveConfig,
+    DEFAULT_ROBUST_CONFIG,
+    compute_robust_objective,
+    # Parameter islands
+    ParameterIsland,
+    cluster_parameters,
+    print_islands,
+    # Island champions
+    IslandChampion,
+    extract_island_champions,
+    print_island_champions,
+    # Entry point
+    evaluate_candidate_robust,
+)
+from .stress_lanes import (
+    # Stress lane types
+    StressLane,
+    # Lane presets
+    STRESS_LANES_BASIC,
+    STRESS_LANES_FULL,
+    STRESS_LANES_EXTENDED,
+    STRESS_LANES_ADVERSARIAL,
+    STRESS_LANE_MATRIX,
+    get_stress_lanes,
+    # Analytical simulation
+    simulate_lane_stress_analytical,
+    simulate_all_lanes_analytical,
+    # Scoring
+    LaneScoreResult,
+    compute_lane_scores,
+    # Champion validation
+    ChampionValidationResult,
+    print_lane_matrix,
+)
+from .run_mode import (
+    # Types
+    ModeType,
+    LanePack,
+    # Sub-configs
+    GateThresholds,
+    ObjectiveWeights,
+    DataWindow,
+    SearchConfig,
+    StressTestConfig,
+    # Main contract
+    RunMode,
+    # Fingerprints
+    compute_data_fingerprint,
+    get_git_commit,
+    get_git_dirty,
+    # Presets
+    create_cheap_mode,
+    create_serious_mode,
+    create_war_room_mode,
+    create_mode,
+    # Lane packs
+    LANE_PACK_DEFINITIONS,
+    get_lane_pack,
+    # Utils
+    print_mode_summary,
 )
 
 __all__ = [
@@ -340,6 +444,32 @@ __all__ = [
     "get_best_trials",
     "get_walk_forward_summary",
     "print_recent_runs",
+    # Pipeline phases (audit trail + resume)
+    "PIPELINE_PHASES",
+    "store_phase_start",
+    "store_phase_complete",
+    "store_phase_failed",
+    "get_phase_status",
+    "get_run_phases",
+    "can_resume_from_phase",
+    "get_last_completed_phase",
+    # Islands storage
+    "store_islands",
+    "load_islands",
+    # Island champions storage
+    "store_island_champions",
+    "load_island_champions",
+    # Stress lane validation storage
+    "store_stress_lane_result",
+    "get_completed_lanes_for_champion",
+    "load_stress_lane_results",
+    # Champion validation storage
+    "store_champion_validation",
+    "load_champion_validations",
+    "get_maximin_winner",
+    # Resume helpers
+    "get_resumable_run_state",
+    "print_run_state",
     # Optimizer Objective
     "ObjectiveConfig",
     "ObjectiveResult",
@@ -360,5 +490,61 @@ __all__ = [
     "compute_implied_avg_loss_r",
     "check_loss_r_sanity",
     "print_objective_breakdown",
+    # Robust Region Finder
+    "DDPenaltyConfig",
+    "DEFAULT_DD_PENALTY",
+    "compute_dd_penalty_robust",
+    "StressConfig",
+    "simulate_stress_r",
+    "GateConfig",
+    "DEFAULT_GATE_CONFIG",
+    "GateCheckResult",
+    "check_gates",
+    "print_gate_check",
+    "FoldResult",
+    "RobustObjectiveResult",
+    "RobustObjectiveConfig",
+    "DEFAULT_ROBUST_CONFIG",
+    "compute_robust_objective",
+    "ParameterIsland",
+    "cluster_parameters",
+    "print_islands",
+    "IslandChampion",
+    "extract_island_champions",
+    "print_island_champions",
+    "evaluate_candidate_robust",
+    # Stress Lanes
+    "StressLane",
+    "STRESS_LANES_BASIC",
+    "STRESS_LANES_FULL",
+    "STRESS_LANES_EXTENDED",
+    "STRESS_LANES_ADVERSARIAL",
+    "STRESS_LANE_MATRIX",
+    "get_stress_lanes",
+    "simulate_lane_stress_analytical",
+    "simulate_all_lanes_analytical",
+    "LaneScoreResult",
+    "compute_lane_scores",
+    "ChampionValidationResult",
+    "print_lane_matrix",
+    # Run Mode Contract
+    "ModeType",
+    "LanePack",
+    "GateThresholds",
+    "ObjectiveWeights",
+    "DataWindow",
+    "SearchConfig",
+    "StressTestConfig",
+    "RunMode",
+    "compute_data_fingerprint",
+    "get_git_commit",
+    "get_git_dirty",
+    "create_cheap_mode",
+    "create_serious_mode",
+    "create_war_room_mode",
+    "create_mode",
+    "LANE_PACK_DEFINITIONS",
+    "get_lane_pack",
+    "print_mode_summary",
 ]
 
