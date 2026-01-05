@@ -49,7 +49,31 @@ from lib.summary import summarize_tp_sl
 from lib.timing import TimingContext, format_ms
 from lib.tp_sl_query import run_tp_sl_query
 from lib.extended_exits import run_extended_exit_query, ExitConfig
-from lib.trial_ledger import ensure_trial_schema, store_optimizer_run
+from lib.trial_ledger import (
+    ensure_trial_schema,
+    store_optimizer_run,
+    # Pipeline phases (audit trail + resume)
+    store_phase_start,
+    store_phase_complete,
+    store_phase_failed,
+    get_phase_status,
+    get_resumable_run_state,
+    print_run_state,
+    # Islands storage
+    store_islands,
+    load_islands,
+    # Champions storage
+    store_island_champions,
+    load_island_champions,
+    # Stress lane validation storage
+    store_stress_lane_result,
+    get_completed_lanes_for_champion,
+    load_stress_lane_results,
+    # Champion validation storage
+    store_champion_validation,
+    load_champion_validations,
+    get_maximin_winner,
+)
 from lib.robust_region_finder import (
     FoldResult,
     RobustObjectiveConfig,
@@ -59,6 +83,23 @@ from lib.robust_region_finder import (
     print_islands,
     DDPenaltyConfig,
     StressConfig,
+    extract_island_champions,
+    print_island_champions,
+    IslandChampion,
+)
+from lib.stress_lanes import (
+    StressLane,
+    get_stress_lanes,
+    compute_lane_scores,
+    ChampionValidationResult,
+    print_lane_matrix,
+)
+from lib.run_mode import (
+    ModeType,
+    LanePack,
+    RunMode,
+    create_mode,
+    print_mode_summary,
 )
 
 UTC = timezone.utc
@@ -242,9 +283,21 @@ class RandomSearchConfig:
     dd_gentle_threshold: float = 0.30
     dd_brutal_threshold: float = 0.60
     
-    # Stress lane config
+    # Stress lane config (legacy single-lane mode)
     stress_slippage_mult: float = 2.0   # 2x slippage
     stress_stop_gap_prob: float = 0.15  # 15% stop gap probability
+    
+    # ==========================================================================
+    # TWO-PASS VALIDATION (island champions + stress lanes)
+    # ==========================================================================
+    validate_champions: bool = False  # Run full stress lane validation on island champions
+    stress_lanes_preset: str = "full" # Stress lane preset: "basic", "full", "extended"
+    
+    # ==========================================================================
+    # RESUME & AUDIT TRAIL
+    # ==========================================================================
+    resume_run_id: Optional[str] = None  # Resume a previous run from last completed phase
+    run_id: Optional[str] = None         # Explicit run ID (for deterministic naming)
     
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -276,6 +329,12 @@ class RandomSearchConfig:
             "dd_brutal_threshold": self.dd_brutal_threshold,
             "stress_slippage_mult": self.stress_slippage_mult,
             "stress_stop_gap_prob": self.stress_stop_gap_prob,
+            # Two-pass validation
+            "validate_champions": self.validate_champions,
+            "stress_lanes_preset": self.stress_lanes_preset,
+            # Resume
+            "resume_run_id": self.resume_run_id,
+            "run_id": self.run_id,
         }
 
 
@@ -450,12 +509,25 @@ def run_single_backtest(
     return summarize_tp_sl(rows, sl_mult=params["sl_mult"], risk_per_trade=config.risk_per_trade)
 
 
-def run_random_search(config: RandomSearchConfig, verbose: bool = True) -> List[TrialResult]:
+def run_random_search(
+    config: RandomSearchConfig,
+    run_id: Optional[str] = None,
+    verbose: bool = True,
+) -> List[TrialResult]:
     """
-    Run random search optimization.
+    Run random search optimization with audit trail through DuckDB.
     
     If use_walk_forward=True, each trial is evaluated on out-of-sample data.
+    
+    Pipeline phases (all tracked in DuckDB for audit trail + resume):
+      1. discovery     - Random search sampling
+      2. clustering    - Parameter island formation
+      3. champion_selection - Pick one champion per island
+      4. stress_validation - Run stress lane matrix on champions
+      5. final_selection - Select maximin winner
     """
+    import uuid as uuid_mod
+    run_id = run_id or uuid_mod.uuid4().hex[:12]
     from lib.partitioner import is_hive_partitioned, is_per_token_directory
     
     timing = TimingContext()
@@ -588,9 +660,41 @@ def run_random_search(config: RandomSearchConfig, verbose: bool = True) -> List[
             print(f"  Output: top {config.top_n_candidates} candidates, {config.n_clusters} parameter islands", file=sys.stderr)
             print()
     
+    # ========================================================================
+    # PHASE 1: DISCOVERY (random search sampling)
+    # ========================================================================
+    # Check if we can skip discovery (resume mode)
+    skip_discovery = False
+    if config.resume_run_id:
+        discovery_status = get_phase_status(config.duckdb_path, run_id, "discovery")
+        if discovery_status and discovery_status.get("status") == "completed":
+            skip_discovery = True
+            if verbose:
+                print(f"⏭  Skipping discovery phase (already completed)", file=sys.stderr)
+    
     # Run trials
     results: List[TrialResult] = []
     robust_candidates: List[Dict[str, Any]] = []  # For robust mode clustering
+    
+    if skip_discovery:
+        # Load previous results from DuckDB
+        # For now, we'll need to load from the trials table
+        # This is a placeholder - you could also store robust_candidates as JSON
+        if verbose:
+            print(f"  Loading previous discovery results...", file=sys.stderr)
+        # TODO: Load from trials_f table
+    else:
+        # Record phase start
+        discovery_phase_id = store_phase_start(
+            duckdb_path=config.duckdb_path,
+            run_id=run_id,
+            phase_name="discovery",
+            config=config.to_dict(),
+            input_summary={"n_alerts": len(all_alerts), "n_folds": len(folds)},
+        )
+        
+        if verbose:
+            print(f"📝 Phase 1: Discovery (phase_id={discovery_phase_id})", file=sys.stderr)
     
     with timing.phase("trials"):
         for i, params in enumerate(param_samples, 1):
@@ -823,6 +927,20 @@ def run_random_search(config: RandomSearchConfig, verbose: bool = True) -> List[
     
     timing.end()
     
+    # Record discovery phase completion
+    if not skip_discovery:
+        store_phase_complete(
+            duckdb_path=config.duckdb_path,
+            phase_id=discovery_phase_id,
+            output_summary={
+                "n_trials": len(results),
+                "n_robust_candidates": len(robust_candidates),
+                "n_tradeable": sum(1 for r in results if r.passes_gates),
+            },
+        )
+        if verbose:
+            print(f"✓ Phase 1: Discovery complete ({len(results)} trials)", file=sys.stderr)
+    
     # Print summary
     if verbose:
         print(f"\n{'='*80}", file=sys.stderr)
@@ -867,15 +985,42 @@ def run_random_search(config: RandomSearchConfig, verbose: bool = True) -> List[
                     file=sys.stderr
                 )
             
-            # Parameter island clustering
+            # ================================================================
+            # PHASE 2: CLUSTERING (parameter island formation)
+            # ================================================================
+            clustering_phase_id = store_phase_start(
+                duckdb_path=config.duckdb_path,
+                run_id=run_id,
+                phase_name="clustering",
+                config={"n_clusters": config.n_clusters, "top_n": config.top_n_candidates},
+                input_phase_id=discovery_phase_id if not skip_discovery else f"{run_id}_discovery",
+                input_summary={"n_candidates": len(sorted_robust)},
+            )
+            
             islands = cluster_parameters(
                 sorted_robust, 
                 n_clusters=config.n_clusters, 
                 top_n=config.top_n_candidates
             )
             
+            # Store islands to DuckDB
             if islands:
+                island_dicts = [i.to_dict() for i in islands]
+                store_islands(
+                    duckdb_path=config.duckdb_path,
+                    run_id=run_id,
+                    phase_id=clustering_phase_id,
+                    islands=island_dicts,
+                )
                 print_islands(islands)
+            
+            store_phase_complete(
+                duckdb_path=config.duckdb_path,
+                phase_id=clustering_phase_id,
+                output_summary={"n_islands": len(islands)},
+            )
+            if verbose:
+                print(f"✓ Phase 2: Clustering complete ({len(islands)} islands)", file=sys.stderr)
             
             # Robust mode summary
             robust_scores = [c.get("robust_result", {}).get("robust_score", 0) for c in sorted_robust]
@@ -1085,6 +1230,26 @@ def main() -> None:
     ap.add_argument("--stress-stop-gap", type=float, default=0.15,
                     help="Stress lane stop gap probability (default: 0.15 = 15%%)")
     
+    # Two-pass validation (island champions + stress lanes)
+    ap.add_argument("--validate-champions", action="store_true",
+                    help="After clustering, run full stress lane validation on island champions (maximin selection)")
+    ap.add_argument("--stress-lanes", type=str, default="full",
+                    help="Stress lane preset: 'basic', 'full', 'extended', or comma-separated lane names (default: full)")
+    
+    # Resume & audit trail
+    ap.add_argument("--resume", dest="resume_run_id", type=str,
+                    help="Resume a previous run from last completed phase")
+    ap.add_argument("--run-id", type=str,
+                    help="Explicit run ID (for deterministic naming, defaults to random UUID)")
+    ap.add_argument("--show-state", action="store_true",
+                    help="Show the state of a run (use with --resume) and exit")
+    
+    # Mode presets (THE KEY to reproducibility)
+    ap.add_argument("--mode", type=str, choices=["cheap", "serious", "war_room", "custom"],
+                    help="Run mode preset: cheap (fast iteration), serious (weekly), war_room (pre-deploy)")
+    ap.add_argument("--show-mode", action="store_true",
+                    help="Show mode configuration details and exit")
+    
     args = ap.parse_args()
     
     config = RandomSearchConfig(
@@ -1122,11 +1287,86 @@ def main() -> None:
         dd_brutal_threshold=args.dd_brutal,
         stress_slippage_mult=args.stress_slippage,
         stress_stop_gap_prob=args.stress_stop_gap,
+        # Two-pass validation
+        validate_champions=args.validate_champions,
+        stress_lanes_preset=args.stress_lanes,
+        # Resume & audit trail
+        resume_run_id=args.resume_run_id,
+        run_id=args.run_id,
     )
     
+    # Handle --show-state early
+    if getattr(args, "show_state", False) and args.resume_run_id:
+        print_run_state(config.duckdb_path, args.resume_run_id)
+        return
+    
+    # =========================================================================
+    # RUN MODE CONTRACT
+    # =========================================================================
+    # If --mode is specified, override config with mode preset
+    run_mode: Optional[RunMode] = None
+    
+    if args.mode:
+        # Create mode with overrides from CLI
+        run_mode = create_mode(
+            mode=args.mode,
+            date_from=config.date_from,
+            date_to=config.date_to,
+            duckdb_path=config.duckdb_path,
+            slice_path=config.slice_path,
+            seed=config.seed,
+            caller_filter=config.caller,
+            caller_group=config.caller_group,
+        )
+        
+        # Override config with mode settings
+        config.n_trials = run_mode.search.n_trials
+        config.n_folds = run_mode.data_window.n_folds
+        config.train_days = run_mode.data_window.train_days
+        config.test_days = run_mode.data_window.test_days
+        config.fold_step_days = run_mode.data_window.fold_step_days
+        config.tp_min = run_mode.search.tp_min
+        config.tp_max = run_mode.search.tp_max
+        config.sl_min = run_mode.search.sl_min
+        config.sl_max = run_mode.search.sl_max
+        config.n_clusters = run_mode.search.n_clusters
+        config.top_n_candidates = run_mode.search.top_n_candidates
+        config.dd_gentle_threshold = run_mode.objective.dd_gentle_threshold
+        config.dd_brutal_threshold = run_mode.objective.dd_brutal_threshold
+        config.stress_lanes_preset = run_mode.stress.lane_pack.value
+        config.validate_champions = run_mode.stress.validate_champions
+        config.use_robust_mode = True  # Mode always uses robust mode
+        config.use_walk_forward = True  # Mode always uses walk-forward
+        
+        # Handle --show-mode
+        if getattr(args, "show_mode", False):
+            print_mode_summary(run_mode)
+            return
+        
+        # Print mode signature
+        print(f"\n{'─'*70}", file=sys.stderr)
+        print(f"  {run_mode.short_signature()}", file=sys.stderr)
+        print(f"{'─'*70}\n", file=sys.stderr)
+    
+    # Determine run_id
+    if config.resume_run_id:
+        run_id = config.resume_run_id
+        state = get_resumable_run_state(config.duckdb_path, run_id)
+        if not state["can_resume"]:
+            print(f"❌ Cannot resume run {run_id}: no completed phases found", file=sys.stderr)
+            return
+        print(f"Resuming run {run_id} from phase: {state['next_phase']}", file=sys.stderr)
+        print_run_state(config.duckdb_path, run_id)
+    elif config.run_id:
+        run_id = config.run_id
+    else:
+        run_id = uuid.uuid4().hex[:12]
+    
+    # Ensure schema
+    ensure_trial_schema(config.duckdb_path)
+    
     # Run
-    run_id = uuid.uuid4().hex[:12]
-    results = run_random_search(config, verbose=not args.quiet)
+    results = run_random_search(config, run_id=run_id, verbose=not args.quiet)
     
     # Save results
     output_dir = Path(args.output_dir)
@@ -1161,14 +1401,299 @@ def main() -> None:
             "islands": [i.to_dict() for i in islands],
             "n_tradeable": sum(1 for c in sorted_robust if c.get("robust_result", {}).get("passes_gates", False)),
         }
+        
+        # ====================================================================
+        # TWO-PASS VALIDATION: Run stress lane matrix on island champions
+        # ====================================================================
+        if config.validate_champions and islands:
+            from lib.partitioner import is_hive_partitioned, is_per_token_directory
+            
+            print(f"\n{'='*80}", file=sys.stderr)
+            print("PASS 2: STRESS LANE VALIDATION (island champions)", file=sys.stderr)
+            print(f"{'='*80}", file=sys.stderr)
+            
+            # ================================================================
+            # PHASE 3: CHAMPION SELECTION
+            # ================================================================
+            selection_phase_id = store_phase_start(
+                duckdb_path=config.duckdb_path,
+                run_id=run_id,
+                phase_name="champion_selection",
+                config={"prefer_passing_gates": True},
+                input_summary={"n_islands": len(islands)},
+            )
+            
+            # Extract champions
+            champions = extract_island_champions(islands, prefer_passing_gates=True)
+            print_island_champions(champions)
+            
+            # Store champions to DuckDB
+            champion_dicts = [c.to_dict() for c in champions]
+            store_island_champions(
+                duckdb_path=config.duckdb_path,
+                run_id=run_id,
+                phase_id=selection_phase_id,
+                champions=champion_dicts,
+            )
+            
+            store_phase_complete(
+                duckdb_path=config.duckdb_path,
+                phase_id=selection_phase_id,
+                output_summary={"n_champions": len(champions)},
+            )
+            print(f"✓ Phase 3: Champion Selection complete ({len(champions)} champions)", file=sys.stderr)
+            
+            # Get stress lanes
+            stress_lanes = get_stress_lanes(config.stress_lanes_preset)
+            print(f"\nStress lanes ({config.stress_lanes_preset}):", file=sys.stderr)
+            for lane in stress_lanes:
+                print(f"  - {lane.name}: {lane.description}", file=sys.stderr)
+            
+            # Reload alerts and slice for validation
+            from lib.helpers import parse_yyyy_mm_dd
+            date_from = parse_yyyy_mm_dd(config.date_from)
+            date_to = parse_yyyy_mm_dd(config.date_to)
+            all_alerts = load_alerts(config.duckdb_path, config.chain, date_from, date_to)
+            
+            # Filter alerts
+            if config.caller:
+                caller_lower = config.caller.lower()
+                all_alerts = [a for a in all_alerts if a.caller.lower() == caller_lower]
+            elif config.caller_group:
+                group = load_caller_group(config.caller_group)
+                if group:
+                    all_alerts = [a for a in all_alerts if group.matches(a.caller)]
+            
+            # Setup walk-forward test set (use same split as discovery)
+            if config.use_walk_forward:
+                train_end = date_to - timedelta(days=config.test_days)
+                test_alerts = [a for a in all_alerts if a.ts >= train_end]
+            else:
+                test_alerts = all_alerts
+            
+            slice_path = Path(config.slice_path)
+            is_partitioned = is_hive_partitioned(slice_path) or (slice_path.is_dir() and not slice_path.suffix)
+            
+            # ================================================================
+            # PHASE 4: STRESS VALIDATION
+            # ================================================================
+            validation_phase_id = store_phase_start(
+                duckdb_path=config.duckdb_path,
+                run_id=run_id,
+                phase_name="stress_validation",
+                config={"lanes": [l.name for l in stress_lanes]},
+                input_phase_id=selection_phase_id,
+                input_summary={"n_champions": len(champions), "n_lanes": len(stress_lanes)},
+            )
+            print(f"📝 Phase 4: Stress Validation (phase_id={validation_phase_id})", file=sys.stderr)
+            
+            # Validate each champion across all lanes
+            validated_champions: List[ChampionValidationResult] = []
+            
+            for champ in champions:
+                champion_id = f"{run_id}_champ_{champ.island_id}"
+                print(f"\nValidating Island {champ.island_id} Champion...", file=sys.stderr)
+                
+                # Check which lanes are already complete (for resume)
+                completed_lanes = get_completed_lanes_for_champion(
+                    config.duckdb_path, run_id, champion_id
+                )
+                if completed_lanes:
+                    print(f"  (Skipping {len(completed_lanes)} already-completed lanes)", file=sys.stderr)
+                
+                lane_results = {}
+                
+                # Load previously completed lane results
+                if completed_lanes:
+                    prev_results = load_stress_lane_results(
+                        config.duckdb_path, run_id, champion_id
+                    )
+                    for r in prev_results:
+                        lane_results[r["lane_name"]] = {
+                            "test_r": r.get("test_r", 0.0),
+                            "ratio": r.get("ratio", 1.0),
+                            "passes_gates": r.get("passes_gates", False),
+                            "summary": r.get("summary", {}),
+                        }
+                
+                for lane in stress_lanes:
+                    # Skip if already completed (resume mode)
+                    if lane.name in completed_lanes:
+                        continue
+                    print(f"  Running lane '{lane.name}'...", file=sys.stderr, end=" ")
+                    
+                    # Run backtest with lane parameters
+                    rows = run_tp_sl_query(
+                        alerts=test_alerts,
+                        slice_path=slice_path,
+                        is_partitioned=is_partitioned,
+                        interval_seconds=config.interval_seconds,
+                        horizon_hours=config.horizon_hours,
+                        tp_mult=champ.params.get("tp_mult", 2.0),
+                        sl_mult=champ.params.get("sl_mult", 0.5),
+                        intrabar_order=champ.params.get("intrabar_order", "sl_first"),
+                        fee_bps=lane.fee_bps,
+                        slippage_bps=lane.slippage_bps,
+                        entry_delay_candles=lane.latency_candles,
+                        threads=config.threads,
+                        verbose=False,
+                    )
+                    
+                    summary = summarize_tp_sl(
+                        rows, 
+                        sl_mult=champ.params.get("sl_mult", 0.5),
+                        risk_per_trade=config.risk_per_trade,
+                    )
+                    
+                    test_r = summary.get("total_r", 0.0)
+                    train_r = champ.discovery_score  # Use discovery score as proxy
+                    ratio = test_r / train_r if abs(train_r) > 0.01 else 1.0
+                    
+                    # Apply stop gap penalty analytically
+                    if lane.stop_gap_prob > 0.15:
+                        n_trades = summary.get("alerts_ok", 0)
+                        win_rate = summary.get("tp_sl_win_rate", 0.5)
+                        avg_r_loss = summary.get("avg_r_loss", -1.0)
+                        n_losses = int(n_trades * (1.0 - win_rate))
+                        n_gapped = int(n_losses * lane.stop_gap_prob)
+                        extra_loss = abs(avg_r_loss) * (lane.stop_gap_mult - 1.0) * n_gapped
+                        test_r -= extra_loss
+                    
+                    lane_result = {
+                        "test_r": test_r,
+                        "ratio": ratio,
+                        "passes_gates": test_r >= 0 and ratio >= 0.20,
+                        "summary": summary,
+                    }
+                    lane_results[lane.name] = lane_result
+                    
+                    # Store lane result to DuckDB (audit trail + resume)
+                    store_stress_lane_result(
+                        duckdb_path=config.duckdb_path,
+                        run_id=run_id,
+                        phase_id=validation_phase_id,
+                        champion_id=champion_id,
+                        lane_name=lane.name,
+                        lane_config={
+                            "fee_bps": lane.fee_bps,
+                            "slippage_bps": lane.slippage_bps,
+                            "latency_candles": lane.latency_candles,
+                            "stop_gap_prob": lane.stop_gap_prob,
+                            "stop_gap_mult": lane.stop_gap_mult,
+                        },
+                        result=lane_result,
+                    )
+                    
+                    print(f"TestR={test_r:+.1f}", file=sys.stderr)
+                
+                # Compute lane scores
+                lane_scores = {name: result["test_r"] for name, result in lane_results.items()}
+                lane_score_result = compute_lane_scores(lane_scores)
+                
+                validated_champ = ChampionValidationResult(
+                    island_id=champ.island_id,
+                    params=champ.params,
+                    discovery_score=champ.discovery_score,
+                    lane_results=lane_results,
+                    lane_score_result=lane_score_result,
+                    validation_score=lane_score_result.robust_score,
+                    score_delta=lane_score_result.robust_score - champ.discovery_score,
+                )
+                validated_champions.append(validated_champ)
+            
+            # Phase 4 complete
+            store_phase_complete(
+                duckdb_path=config.duckdb_path,
+                phase_id=validation_phase_id,
+                output_summary={
+                    "n_champions_validated": len(validated_champions),
+                    "n_lanes_per_champion": len(stress_lanes),
+                },
+            )
+            print(f"✓ Phase 4: Stress Validation complete", file=sys.stderr)
+            
+            # ================================================================
+            # PHASE 5: FINAL SELECTION (maximin winner)
+            # ================================================================
+            final_phase_id = store_phase_start(
+                duckdb_path=config.duckdb_path,
+                run_id=run_id,
+                phase_name="final_selection",
+                config={},
+                input_phase_id=validation_phase_id,
+                input_summary={"n_validated_champions": len(validated_champions)},
+            )
+            
+            # Print lane matrix
+            print_lane_matrix(validated_champions)
+            
+            # Store validation summaries and determine winner
+            if validated_champions:
+                # Rank champions by validation score (maximin)
+                sorted_champs = sorted(
+                    validated_champions,
+                    key=lambda c: c.validation_score,
+                    reverse=True
+                )
+                
+                for rank, champ in enumerate(sorted_champs, 1):
+                    island_id = f"{run_id}_island_{champ.island_id}"
+                    champion_id = f"{run_id}_champ_{champ.island_id}"
+                    lane_scores = {name: result["test_r"] for name, result in champ.lane_results.items()}
+                    
+                    store_champion_validation(
+                        duckdb_path=config.duckdb_path,
+                        run_id=run_id,
+                        phase_id=final_phase_id,
+                        champion_id=champion_id,
+                        island_id=island_id,
+                        lane_scores=lane_scores,
+                        validation_rank=rank,
+                        discovery_score=champ.discovery_score,
+                    )
+                
+                maximin_winner = sorted_champs[0]
+                print(f"\n🏆 MAXIMIN WINNER: Island {maximin_winner.island_id}", file=sys.stderr)
+                print(f"   Params: TP={maximin_winner.params.get('tp_mult'):.2f}x SL={maximin_winner.params.get('sl_mult'):.2f}x", file=sys.stderr)
+                print(f"   Validation Score: {maximin_winner.validation_score:+.1f}", file=sys.stderr)
+                print(f"   Discovery Score:  {maximin_winner.discovery_score:+.1f}", file=sys.stderr)
+                print(f"   Score Delta:      {maximin_winner.score_delta:+.1f}", file=sys.stderr)
+            
+            store_phase_complete(
+                duckdb_path=config.duckdb_path,
+                phase_id=final_phase_id,
+                output_summary={
+                    "maximin_winner_island": sorted_champs[0].island_id if sorted_champs else None,
+                    "winner_validation_score": sorted_champs[0].validation_score if sorted_champs else None,
+                },
+            )
+            print(f"✓ Phase 5: Final Selection complete", file=sys.stderr)
+            
+            # Print final run state
+            print_run_state(config.duckdb_path, run_id)
+            
+            # Add validation results to output
+            output_data["robust_mode"]["validation"] = {
+                "champions": [c.to_dict() for c in validated_champions],
+                "stress_lanes": [l.to_dict() for l in stress_lanes],
+                "maximin_winner": sorted_champs[0].to_dict() if sorted_champs else None,
+            }
     
     with open(output_path, "w") as f:
         json.dump(output_data, f, indent=2, default=str)
     
     print(f"\nResults saved to: {output_path}", file=sys.stderr)
     
-    # Store to DuckDB
+    # Store to DuckDB with Run Mode Contract
     try:
+        # Extract mode contract fields if available
+        mode_name = run_mode.mode.value if run_mode else None
+        config_hash = run_mode.config_hash if run_mode else None
+        data_fingerprint = run_mode.data_fingerprint if run_mode else None
+        code_fingerprint = run_mode.code_fingerprint if run_mode else None
+        code_dirty = run_mode.code_dirty if run_mode else False
+        signature = run_mode.signature() if run_mode else None
+        
         store_optimizer_run(
             duckdb_path=config.duckdb_path,
             run_id=run_id,
@@ -1180,8 +1705,19 @@ def main() -> None:
             results=[r.to_dict() for r in results],
             timing=None,
             notes=f"trials={args.trials} tp=[{config.tp_min},{config.tp_max}] sl=[{config.sl_min},{config.sl_max}]",
+            # Run Mode Contract
+            mode=mode_name,
+            config_hash=config_hash,
+            data_fingerprint=data_fingerprint,
+            code_fingerprint=code_fingerprint,
+            code_dirty=code_dirty,
+            signature=signature,
         )
         print(f"✓ Run stored to DuckDB: {config.duckdb_path}", file=sys.stderr)
+        
+        # Print final signature
+        if run_mode:
+            print(f"\n  {run_mode.short_signature()}\n", file=sys.stderr)
     except Exception as e:
         print(f"⚠️  Failed to store to DuckDB: {e}", file=sys.stderr)
     
