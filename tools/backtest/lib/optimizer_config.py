@@ -207,82 +207,155 @@ class LadderTpParamSpace:
 @dataclass
 class TrailingStopParamSpace:
     """
-    Parameter space for trailing stop optimization (future).
+    Parameter space for trailing stop optimization.
+    
+    Trailing stop activates after price rises by activation_pct,
+    then trails at trail_pct below the running high.
     """
     enabled: bool = False
-    activation_mult: Optional[RangeSpec] = None  # When to activate trailing
-    trail_percent: Optional[RangeSpec] = None    # Distance from peak
+    activation_pct: Optional[RangeSpec] = None  # When to activate (e.g., 0.30 = +30%)
+    trail_pct: Optional[RangeSpec] = None       # Distance from peak (e.g., 0.15 = 15%)
+    
+    # Legacy aliases
+    activation_mult: Optional[RangeSpec] = None
+    trail_percent: Optional[RangeSpec] = None
+    
+    def __post_init__(self):
+        # Support legacy names
+        if self.activation_mult and not self.activation_pct:
+            self.activation_pct = self.activation_mult
+        if self.trail_percent and not self.trail_pct:
+            self.trail_pct = self.trail_percent
     
     def iter_params(self) -> Iterator[Dict[str, Any]]:
         if not self.enabled:
             return
         
-        activations = self.activation_mult.expand() if self.activation_mult else [1.5]
-        trails = self.trail_percent.expand() if self.trail_percent else [0.25]
+        activations = self.activation_pct.expand() if self.activation_pct else [0.30]
+        trails = self.trail_pct.expand() if self.trail_pct else [0.15]
         
         for act in activations:
             for trail in trails:
                 yield {
-                    "trailing_activation": act,
-                    "trailing_percent": trail,
+                    "trail_activation_pct": act,
+                    "trail_distance_pct": trail,
                 }
     
     def count(self) -> int:
         if not self.enabled:
             return 0
-        act_count = len(self.activation_mult.expand()) if self.activation_mult else 1
-        trail_count = len(self.trail_percent.expand()) if self.trail_percent else 1
+        act_count = len(self.activation_pct.expand()) if self.activation_pct else 1
+        trail_count = len(self.trail_pct.expand()) if self.trail_pct else 1
         return act_count * trail_count
     
     def to_dict(self) -> Dict[str, Any]:
         d: Dict[str, Any] = {"enabled": self.enabled}
-        if self.activation_mult:
-            d["activation_mult"] = self.activation_mult.to_dict()
-        if self.trail_percent:
-            d["trail_percent"] = self.trail_percent.to_dict()
+        if self.activation_pct:
+            d["activation_pct"] = self.activation_pct.to_dict()
+        if self.trail_pct:
+            d["trail_pct"] = self.trail_pct.to_dict()
         return d
     
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "TrailingStopParamSpace":
         return cls(
             enabled=data.get("enabled", False),
-            activation_mult=RangeSpec.from_dict(data["activation_mult"]) if data.get("activation_mult") else None,
-            trail_percent=RangeSpec.from_dict(data["trail_percent"]) if data.get("trail_percent") else None,
+            activation_pct=RangeSpec.from_dict(data["activation_pct"]) if data.get("activation_pct") else None,
+            trail_pct=RangeSpec.from_dict(data["trail_pct"]) if data.get("trail_pct") else None,
+        )
+
+
+@dataclass
+class BreakevenParamSpace:
+    """
+    Parameter space for break-even stop optimization.
+    
+    After price rises by trigger_pct, move SL to entry (+ offset).
+    """
+    enabled: bool = False
+    trigger_pct: Optional[RangeSpec] = None  # When to trigger (e.g., 0.20 = +20%)
+    offset_pct: Optional[RangeSpec] = None   # Offset from entry (e.g., 0.0 = exact entry)
+    
+    def iter_params(self) -> Iterator[Dict[str, Any]]:
+        if not self.enabled:
+            return
+        
+        triggers = self.trigger_pct.expand() if self.trigger_pct else [0.20]
+        offsets = self.offset_pct.expand() if self.offset_pct else [0.0]
+        
+        for trig in triggers:
+            for off in offsets:
+                yield {
+                    "breakeven_trigger_pct": trig,
+                    "breakeven_offset_pct": off,
+                }
+    
+    def count(self) -> int:
+        if not self.enabled:
+            return 0
+        trig_count = len(self.trigger_pct.expand()) if self.trigger_pct else 1
+        off_count = len(self.offset_pct.expand()) if self.offset_pct else 1
+        return trig_count * off_count
+    
+    def to_dict(self) -> Dict[str, Any]:
+        d: Dict[str, Any] = {"enabled": self.enabled}
+        if self.trigger_pct:
+            d["trigger_pct"] = self.trigger_pct.to_dict()
+        if self.offset_pct:
+            d["offset_pct"] = self.offset_pct.to_dict()
+        return d
+    
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "BreakevenParamSpace":
+        return cls(
+            enabled=data.get("enabled", False),
+            trigger_pct=RangeSpec.from_dict(data["trigger_pct"]) if data.get("trigger_pct") else None,
+            offset_pct=RangeSpec.from_dict(data["offset_pct"]) if data.get("offset_pct") else None,
         )
 
 
 @dataclass
 class TimeLimitParamSpace:
     """
-    Parameter space for time limit optimization (future).
+    Parameter space for time stop optimization.
+    
+    Exit after time_stop_hours if TP/SL not hit.
+    Prevents zombie positions from dominating DD.
     """
     enabled: bool = False
+    time_stop_hours: Optional[RangeSpec] = None
+    
+    # Legacy alias
     max_hold_hours: Optional[RangeSpec] = None
+    
+    def __post_init__(self):
+        if self.max_hold_hours and not self.time_stop_hours:
+            self.time_stop_hours = self.max_hold_hours
     
     def iter_params(self) -> Iterator[Dict[str, Any]]:
         if not self.enabled:
             return
         
-        hours = self.max_hold_hours.expand() if self.max_hold_hours else [48]
+        hours = self.time_stop_hours.expand() if self.time_stop_hours else [24]
         for h in hours:
-            yield {"max_hold_hours": int(h)}
+            yield {"time_stop_hours": float(h)}
     
     def count(self) -> int:
         if not self.enabled:
             return 0
-        return len(self.max_hold_hours.expand()) if self.max_hold_hours else 1
+        return len(self.time_stop_hours.expand()) if self.time_stop_hours else 1
     
     def to_dict(self) -> Dict[str, Any]:
         d: Dict[str, Any] = {"enabled": self.enabled}
-        if self.max_hold_hours:
-            d["max_hold_hours"] = self.max_hold_hours.to_dict()
+        if self.time_stop_hours:
+            d["time_stop_hours"] = self.time_stop_hours.to_dict()
         return d
     
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "TimeLimitParamSpace":
         return cls(
             enabled=data.get("enabled", False),
-            max_hold_hours=RangeSpec.from_dict(data["max_hold_hours"]) if data.get("max_hold_hours") else None,
+            time_stop_hours=RangeSpec.from_dict(data["time_stop_hours"]) if data.get("time_stop_hours") else None,
         )
 
 
@@ -420,6 +493,7 @@ class OptimizerConfig:
     tp_sl: Optional[TpSlParamSpace] = None
     ladder_tp: Optional[LadderTpParamSpace] = None
     trailing_stop: Optional[TrailingStopParamSpace] = None
+    breakeven: Optional[BreakevenParamSpace] = None
     time_limit: Optional[TimeLimitParamSpace] = None
     delayed_entry: Optional[DelayedEntryParamSpace] = None
     reentry: Optional[ReentryParamSpace] = None
@@ -439,17 +513,23 @@ class OptimizerConfig:
         if self.tp_sl is None:
             return 0
         
-        base_count = self.tp_sl.count()
+        count = self.tp_sl.count()
         
-        # Future parameter spaces (multiplicative when enabled)
-        # For now, these are additive experiments, not combined
-        # In future, can make this more sophisticated
+        # Extended exit params are multiplicative when enabled
+        if self.time_limit and self.time_limit.enabled:
+            count *= max(1, self.time_limit.count())
+        if self.breakeven and self.breakeven.enabled:
+            count *= max(1, self.breakeven.count())
+        if self.trailing_stop and self.trailing_stop.enabled:
+            count *= max(1, self.trailing_stop.count())
         
-        return base_count
+        return count
     
     def iter_all_params(self) -> Iterator[Tuple[int, Dict[str, Any]]]:
         """
         Iterate over all parameter combinations with index.
+        
+        Combines TP/SL with extended exit types (time stop, breakeven, trailing).
         
         Yields:
             (index, params_dict)
@@ -457,10 +537,23 @@ class OptimizerConfig:
         if self.tp_sl is None:
             return
         
+        # Get base TP/SL params
+        tp_sl_list = list(self.tp_sl.iter_params())
+        
+        # Get extended exit params (or single empty dict if not enabled)
+        time_params = list(self.time_limit.iter_params()) if (self.time_limit and self.time_limit.enabled) else [{}]
+        be_params = list(self.breakeven.iter_params()) if (self.breakeven and self.breakeven.enabled) else [{}]
+        trail_params = list(self.trailing_stop.iter_params()) if (self.trailing_stop and self.trailing_stop.enabled) else [{}]
+        
+        # Combine all
         idx = 0
-        for tp_sl_params in self.tp_sl.iter_params():
-            yield idx, tp_sl_params
-            idx += 1
+        for tp_sl in tp_sl_list:
+            for time_p in time_params:
+                for be_p in be_params:
+                    for trail_p in trail_params:
+                        combined = {**tp_sl, **time_p, **be_p, **trail_p}
+                        yield idx, combined
+                        idx += 1
     
     def to_dict(self) -> Dict[str, Any]:
         d: Dict[str, Any] = {
@@ -495,6 +588,8 @@ class OptimizerConfig:
             d["ladder_tp"] = self.ladder_tp.to_dict()
         if self.trailing_stop:
             d["trailing_stop"] = self.trailing_stop.to_dict()
+        if self.breakeven:
+            d["breakeven"] = self.breakeven.to_dict()
         if self.time_limit:
             d["time_limit"] = self.time_limit.to_dict()
         if self.delayed_entry:
@@ -524,6 +619,7 @@ class OptimizerConfig:
             tp_sl=TpSlParamSpace.from_dict(data["tp_sl"]) if data.get("tp_sl") else None,
             ladder_tp=LadderTpParamSpace.from_dict(data["ladder_tp"]) if data.get("ladder_tp") else None,
             trailing_stop=TrailingStopParamSpace.from_dict(data["trailing_stop"]) if data.get("trailing_stop") else None,
+            breakeven=BreakevenParamSpace.from_dict(data["breakeven"]) if data.get("breakeven") else None,
             time_limit=TimeLimitParamSpace.from_dict(data["time_limit"]) if data.get("time_limit") else None,
             delayed_entry=DelayedEntryParamSpace.from_dict(data["delayed_entry"]) if data.get("delayed_entry") else None,
             reentry=ReentryParamSpace.from_dict(data["reentry"]) if data.get("reentry") else None,
