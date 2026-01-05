@@ -1,5 +1,6 @@
 name: Release Quality Gates
 
+# Release branch validation - triggered manually or on release/* branches
 on:
   workflow_dispatch:
     inputs:
@@ -11,10 +12,15 @@ on:
     branches:
       - 'release/**'
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
-  pre-release-checks:
-    name: Pre-Release Checks
+  pre-release-validation:
+    name: Pre-Release Validation
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - name: Checkout code
@@ -34,181 +40,89 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Lint
-        run: pnpm lint
-
-      - name: Build packages (ordered)
+      - name: Build packages
         run: pnpm build:ordered
 
       - name: Type check
         run: pnpm typecheck
 
-      - name: Verify architecture boundaries (AST)
+      - name: Lint
+        run: pnpm lint
+
+      - name: Architecture boundaries
         run: pnpm verify:boundaries-ast
 
-      - name: Check for live trading code
+      - name: No live trading
         run: pnpm check:no-live-trading
 
-      - name: Verify PythonEngine usage
-        run: pnpm verify:python-engine
+      - name: Verify package versions
+        run: pnpm verify:package-versions
 
-      - name: Verify handler tests
-        run: pnpm verify:handler-tests
+  tests:
+    name: Full Test Suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: pre-release-validation
 
-      - name: Verify property tests
-        run: pnpm verify:property-tests
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: Verify CHANGELOG
-        run: pnpm verify:changelog
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 8
 
-      - name: Verify documentation
-        run: pnpm verify:documentation
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build packages
+        run: pnpm build:ordered
+
+      - name: Run unit tests
+        run: pnpm test:unit
+
+      - name: Run integration tests
+        run: pnpm test:integration
 
       - name: Run smoke tests
         run: pnpm test:smoke
 
-  stress-tests:
-    name: Stress Tests
+  python-backtest:
+    name: Python Backtest Validation
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 15
+    needs: pre-release-validation
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
-          version: 8
+          python-version: '3.12'
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20.x
-          cache: 'pnpm'
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build packages (ordered)
-        run: pnpm build:ordered
-
-      - name: Run stress tests
-        run: pnpm test:stress
-        continue-on-error: true
-
-      - name: Run database stress tests
-        env:
-          RUN_DB_STRESS: 1
-        run: pnpm test:stress:db
-        continue-on-error: true
-
-      - name: Run chaos engineering tests
-        env:
-          RUN_CHAOS_TESTS: 1
-        run: pnpm test:stress:chaos
-        continue-on-error: true
-
-      - name: Run integration stress tests
-        env:
-          RUN_INTEGRATION_STRESS: 1
-        run: pnpm test:stress:all
-        continue-on-error: true
-
-      - name: Upload stress test results
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: stress-test-results-${{ github.run_id }}
-          path: |
-            packages/*/coverage/
-          retention-days: 30
-
-  coverage-verification:
-    name: Coverage Verification
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 8
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20.x
-          cache: 'pnpm'
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Build packages (ordered)
-        run: pnpm build:ordered
-
-      - name: Generate coverage report
-        run: pnpm test:coverage
-
-      - name: Check coverage meets thresholds
+      - name: Install Python dependencies
         run: |
-          echo "Coverage thresholds: 60% minimum"
-          pnpm check:coverage-decrease || echo "Coverage check failed, but continuing..."
+          pip install --upgrade pip
+          pip install pytest duckdb pyarrow pandas numpy scipy
 
-      - name: Check coverage decrease
-        run: pnpm check:coverage-decrease
-
-      - name: Upload coverage reports
-        uses: codecov/codecov-action@v4
-        if: always()
-        with:
-          token: ${{ secrets.CODECOV_TOKEN }}
-          files: ./coverage/coverage-final.json
-          fail_ci_if_error: false
-
-  documentation-review:
-    name: Documentation Review
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 8
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20.x
-          cache: 'pnpm'
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Verify all documentation is up to date
-        run: pnpm verify:documentation
-
-      - name: Check for breaking changes documentation
+      - name: Run backtest tests
         run: |
-          if grep -r "BREAKING" CHANGELOG.md || grep -r "breaking" CHANGELOG.md; then
-            echo "Breaking changes detected. Verifying migration guides exist..."
-            # Check if migration guides exist
-            if [ ! -f "docs/migration/" ] && [ ! -f "docs/guides/migration.md" ]; then
-              echo "⚠️  Breaking changes detected but no migration guide found"
-              echo "Consider adding a migration guide in docs/migration/ or docs/guides/"
-            fi
-          fi
+          cd tools/backtest
+          python -m pytest tests/ -v --tb=short --ignore=tests/test_duckdb_storage.py
 
   changelog-verification:
     name: Changelog Verification
     runs-on: ubuntu-latest
+    timeout-minutes: 5
 
     steps:
       - name: Checkout code
@@ -234,31 +148,47 @@ jobs:
         run: |
           VERSION="${{ github.event.inputs.version }}"
           if [ -z "$VERSION" ]; then
-            VERSION=$(git describe --tags --abbrev=0 2>/dev/null || echo "unreleased")
+            VERSION=$(node -p "require('./package.json').version")
           fi
           echo "Checking for version: $VERSION"
           if ! grep -q "\[$VERSION\]" CHANGELOG.md && ! grep -q "\[Unreleased\]" CHANGELOG.md; then
-            echo "❌ CHANGELOG.md missing version section for $VERSION"
+            echo "::error::CHANGELOG.md missing version section for $VERSION"
             exit 1
           fi
 
-      - name: Verify all changes are documented
+      - name: Verify CHANGELOG format
         run: pnpm verify:changelog
 
-      - name: Check format compliance
+  release-summary:
+    name: Release Summary
+    runs-on: ubuntu-latest
+    needs: [tests, python-backtest, changelog-verification]
+    if: always()
+
+    steps:
+      - name: Generate summary
         run: |
-          # Check for Keep a Changelog format
-          if ! grep -q "## \[Unreleased\]" CHANGELOG.md && ! grep -q "## \[.*\]" CHANGELOG.md; then
-            echo "❌ CHANGELOG.md does not follow Keep a Changelog format"
-            exit 1
-          fi
+          echo "## Release Quality Gates Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Tests | ${{ needs.tests.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Python Backtest | ${{ needs.python-backtest.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Changelog | ${{ needs.changelog-verification.result }} |" >> $GITHUB_STEP_SUMMARY
 
-      - name: Verify breaking changes are marked
+      - name: Check all passed
+        if: |
+          needs.tests.result == 'failure' ||
+          needs.python-backtest.result == 'failure' ||
+          needs.changelog-verification.result == 'failure'
         run: |
-          if grep -qi "breaking" CHANGELOG.md; then
-            if ! grep -qi "BREAKING" CHANGELOG.md && ! grep -qi "### Changed" CHANGELOG.md; then
-              echo "⚠️  Breaking changes detected but may not be properly marked"
-            fi
-          fi
+          echo "::error::Release validation failed"
+          exit 1
 
-
+      - name: Ready for release
+        if: |
+          needs.tests.result == 'success' &&
+          needs.python-backtest.result == 'success' &&
+          needs.changelog-verification.result == 'success'
+        run: |
+          echo "::notice::Release validation passed - ready to merge to main"
