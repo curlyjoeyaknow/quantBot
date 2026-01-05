@@ -24,6 +24,7 @@ from .optimizer_objective import (
     ObjectiveConfig,
     ObjectiveComponents,
     DEFAULT_OBJECTIVE_CONFIG,
+    QualityFilterConfig,
     score_from_summary,
     print_objective_breakdown,
 )
@@ -47,6 +48,8 @@ class OptimizationResult:
     alerts_ok: int
     alerts_total: int
     objective: Optional[ObjectiveComponents] = None  # Objective function breakdown
+    quality_passed: bool = True  # Whether quality filter passed
+    quality_fail_reasons: Optional[List[str]] = None  # Reasons for failing quality filter
     
     @property
     def win_rate(self) -> float:
@@ -167,7 +170,12 @@ class OptimizationRun:
     def mark_complete(self) -> None:
         self.completed_at = datetime.now(UTC)
     
-    def rank_by(self, metric: str = "objective_score", ascending: bool = False) -> List[OptimizationResult]:
+    def rank_by(
+        self, 
+        metric: str = "objective_score", 
+        ascending: bool = False,
+        quality_filter: bool = False,
+    ) -> List[OptimizationResult]:
         """
         Rank results by a metric.
         
@@ -176,6 +184,7 @@ class OptimizationRun:
                    total_return_pct, avg_return_pct, expectancy_pct, 
                    risk_adj_total_return_pct, total_r, avg_r)
             ascending: Sort ascending (default: descending for "best first")
+            quality_filter: If True, only include results that passed quality filter
         
         Returns:
             Sorted list of results
@@ -202,7 +211,39 @@ class OptimizationRun:
             else:
                 return r.summary.get(metric, 0.0)
         
-        return sorted(self.results, key=get_metric, reverse=not ascending)
+        # Filter results if quality_filter is enabled
+        results = self.results
+        if quality_filter:
+            results = [r for r in results if r.quality_passed]
+        
+        return sorted(results, key=get_metric, reverse=not ascending)
+    
+    def get_quality_stats(self) -> Dict[str, Any]:
+        """
+        Get statistics about quality filter results.
+        
+        Returns:
+            Dict with pass/fail counts and breakdown
+        """
+        passed = [r for r in self.results if r.quality_passed]
+        failed = [r for r in self.results if not r.quality_passed]
+        
+        # Aggregate failure reasons
+        reason_counts: Dict[str, int] = {}
+        for r in failed:
+            if r.quality_fail_reasons:
+                for reason in r.quality_fail_reasons:
+                    # Extract just the metric name from the reason
+                    metric = reason.split("=")[0] if "=" in reason else reason
+                    reason_counts[metric] = reason_counts.get(metric, 0) + 1
+        
+        return {
+            "total": len(self.results),
+            "passed": len(passed),
+            "failed": len(failed),
+            "pass_rate": len(passed) / len(self.results) if self.results else 0.0,
+            "failure_reasons": reason_counts,
+        }
     
     def get_best(self, metric: str = "objective_score") -> Optional[OptimizationResult]:
         """Get the best result by metric."""
@@ -499,6 +540,12 @@ class GridOptimizer:
         # Compute objective function
         objective = score_from_summary(summary, self.objective_config)
         
+        # Apply quality filter if configured
+        quality_passed = True
+        quality_fail_reasons = None
+        if self.config.quality_filter is not None:
+            quality_passed, quality_fail_reasons = self.config.quality_filter.check(summary)
+        
         duration = time.time() - t0
         
         return OptimizationResult(
@@ -509,6 +556,8 @@ class GridOptimizer:
             alerts_ok=summary.get("alerts_ok", 0),
             alerts_total=summary.get("alerts_total", 0),
             objective=objective,
+            quality_passed=quality_passed,
+            quality_fail_reasons=quality_fail_reasons if quality_fail_reasons else None,
         )
     
     def run(self) -> OptimizationRun:
@@ -574,6 +623,13 @@ class GridOptimizer:
         self._log("OPTIMIZATION COMPLETE")
         self._log("=" * 80)
         self._log(f"Total runs: {len(opt_run.results)}")
+        
+        # Print quality filter stats if enabled
+        if self.config.quality_filter is not None:
+            qstats = opt_run.get_quality_stats()
+            self._log(f"Quality filter: {qstats['passed']}/{qstats['total']} passed ({qstats['pass_rate']*100:.1f}%)")
+            if qstats['failure_reasons']:
+                self._log(f"  Failure reasons: {qstats['failure_reasons']}")
         self._log(timing.summary_line())
         
         # Print top 5 by OBJECTIVE SCORE (the key metric)

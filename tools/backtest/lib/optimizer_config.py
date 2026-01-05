@@ -12,9 +12,12 @@ import itertools
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, Iterator, List, Optional, Tuple, Union
+from typing import Any, Dict, Iterator, List, Optional, Tuple, TYPE_CHECKING, Union
 
 import yaml
+
+if TYPE_CHECKING:
+    from .optimizer_objective import QualityFilterConfig
 
 
 @dataclass
@@ -672,6 +675,9 @@ class OptimizerConfig:
     # Risk settings for summary metrics
     risk_per_trade: float = 0.02  # 2%
     
+    # Quality filter (optional - filters results post-scoring)
+    quality_filter: Optional["QualityFilterConfig"] = None
+    
     def count_combinations(self) -> int:
         """Count total parameter combinations."""
         # Start with TP/SL combinations (always required)
@@ -771,6 +777,8 @@ class OptimizerConfig:
             d["tiered_sl"] = self.tiered_sl.to_dict()
         if self.reentry:
             d["reentry"] = self.reentry.to_dict()
+        if self.quality_filter:
+            d["quality_filter"] = self.quality_filter.to_dict()
         
         return d
     
@@ -804,7 +812,25 @@ class OptimizerConfig:
             store_duckdb=data.get("store_duckdb", True),
             output_dir=data.get("output_dir", "results/optimizer"),
             risk_per_trade=data.get("risk_per_trade", 0.02),
+            quality_filter=_parse_quality_filter(data.get("quality_filter")),
         )
+
+
+def _parse_quality_filter(data: Optional[Dict[str, Any]]) -> Optional["QualityFilterConfig"]:
+    """Parse quality filter from dict (lazy import to avoid circular dependency)."""
+    if data is None:
+        return None
+    from .optimizer_objective import QualityFilterConfig
+    return QualityFilterConfig(
+        max_headfake_rate=data.get("max_headfake_rate"),
+        max_headfake_depth=data.get("max_headfake_depth"),
+        min_retention_1_2x=data.get("min_retention_1_2x"),
+        min_floor_hold_1_2x=data.get("min_floor_hold_1_2x"),
+        max_time_underwater_pct=data.get("max_time_underwater_pct"),
+        max_stall_score=data.get("max_stall_score"),
+        max_giveback_after_1_5x=data.get("max_giveback_after_1_5x"),
+        max_giveback_after_2x=data.get("max_giveback_after_2x"),
+    )
     
     @classmethod
     def from_yaml(cls, path: str) -> "OptimizerConfig":
