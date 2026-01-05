@@ -156,9 +156,9 @@ def main():
                         help="Path to results DuckDB")
     
     # =========================================================================
-    # optimize command - grid search over TP/SL
+    # optimize command - grid search over TP/SL and extended exits
     # =========================================================================
-    opt_p = sub.add_parser("optimize", help="Grid search over TP/SL parameters")
+    opt_p = sub.add_parser("optimize", help="Grid search over TP/SL and extended exit parameters")
     opt_p.add_argument("--from", dest="from_date", required=True,
                        help="Start date (YYYY-MM-DD)")
     opt_p.add_argument("--to", dest="to_date", required=True,
@@ -169,6 +169,23 @@ def main():
                        help="TP multipliers (comma-separated or start:end:step)")
     opt_p.add_argument("--sl", type=str, default="0.4,0.5,0.6,0.7",
                        help="SL multipliers (comma-separated or start:end:step)")
+    
+    # === Extended Exit Types ===
+    # Time stop
+    opt_p.add_argument("--time-stop", type=str, default=None,
+                       help="Time stop hours (comma-separated, e.g., '12,24,48')")
+    
+    # Break-even
+    opt_p.add_argument("--breakeven", type=str, default=None,
+                       help="Break-even trigger pct (comma-separated, e.g., '0.15,0.20,0.30')")
+    opt_p.add_argument("--breakeven-offset", type=float, default=0.0,
+                       help="Break-even offset from entry (default: 0.0)")
+    
+    # Trailing stop
+    opt_p.add_argument("--trail-activation", type=str, default=None,
+                       help="Trailing stop activation pct (comma-separated, e.g., '0.20,0.30,0.50')")
+    opt_p.add_argument("--trail-distance", type=str, default="0.15",
+                       help="Trailing stop distance pct (comma-separated, default: '0.15')")
     
     # Data source
     opt_p.add_argument("--alerts-db", default="data/alerts.duckdb",
@@ -610,19 +627,22 @@ def cmd_metrics(args):
 
 
 def cmd_optimize(args):
-    """Grid search over TP/SL parameters."""
-    from lib.optimizer_config import OptimizerConfig, TpSlParamSpace, RangeSpec
+    """Grid search over TP/SL and extended exit parameters."""
+    from lib.optimizer_config import (
+        OptimizerConfig, TpSlParamSpace, RangeSpec,
+        TimeLimitParamSpace, BreakevenParamSpace, TrailingStopParamSpace,
+    )
     from lib.optimizer import run_optimization
     from lib.optimizer_objective import (
         ObjectiveConfig,
         DEFAULT_OBJECTIVE_CONFIG,
-        CONSERVATIVE_OBJECTIVE_CONFIG,
-        AGGRESSIVE_OBJECTIVE_CONFIG,
     )
     
-    # Parse TP/SL values
+    # Parse range values
     def parse_range(s: str) -> list:
         """Parse comma-separated values or start:end:step range."""
+        if s is None:
+            return []
         if ":" in s:
             parts = s.split(":")
             if len(parts) == 3:
@@ -638,6 +658,21 @@ def cmd_optimize(args):
     tp_values = parse_range(args.tp)
     sl_values = parse_range(args.sl)
     
+    # Parse extended exit values
+    time_stop_values = parse_range(args.time_stop) if args.time_stop else None
+    breakeven_values = parse_range(args.breakeven) if args.breakeven else None
+    trail_act_values = parse_range(args.trail_activation) if args.trail_activation else None
+    trail_dist_values = parse_range(args.trail_distance) if args.trail_activation else None
+    
+    # Calculate total combinations
+    total_combos = len(tp_values) * len(sl_values)
+    if time_stop_values:
+        total_combos *= len(time_stop_values)
+    if breakeven_values:
+        total_combos *= len(breakeven_values)
+    if trail_act_values and trail_dist_values:
+        total_combos *= len(trail_act_values) * len(trail_dist_values)
+    
     print()
     print("=" * 70)
     print("OPTIMIZER GRID SEARCH")
@@ -645,12 +680,43 @@ def cmd_optimize(args):
     print(f"Date range: {args.from_date} to {args.to_date}")
     print(f"TP values: {tp_values}")
     print(f"SL values: {sl_values}")
-    print(f"Total combinations: {len(tp_values) * len(sl_values)}")
-    print(f"Objective: {args.objective} (primary: {args.primary})")
+    if time_stop_values:
+        print(f"Time stop (hours): {time_stop_values}")
+    if breakeven_values:
+        print(f"Break-even trigger: {breakeven_values}")
+    if trail_act_values:
+        print(f"Trailing activation: {trail_act_values}")
+        print(f"Trailing distance: {trail_dist_values}")
+    print(f"Total combinations: {total_combos}")
+    print(f"Objective: {args.objective}")
     print()
     
     # Build optimizer config
     run_name = args.name or f"optimize_{args.from_date}_{args.to_date}"
+    
+    # Build extended exit param spaces
+    time_limit = None
+    if time_stop_values:
+        time_limit = TimeLimitParamSpace(
+            enabled=True,
+            time_stop_hours=RangeSpec(values=time_stop_values),
+        )
+    
+    breakeven = None
+    if breakeven_values:
+        breakeven = BreakevenParamSpace(
+            enabled=True,
+            trigger_pct=RangeSpec(values=breakeven_values),
+            offset_pct=RangeSpec(values=[args.breakeven_offset]),
+        )
+    
+    trailing_stop = None
+    if trail_act_values:
+        trailing_stop = TrailingStopParamSpace(
+            enabled=True,
+            activation_pct=RangeSpec(values=trail_act_values),
+            trail_pct=RangeSpec(values=trail_dist_values),
+        )
     
     opt_config = OptimizerConfig(
         name=run_name,
@@ -666,15 +732,20 @@ def cmd_optimize(args):
             tp_mult=RangeSpec(values=tp_values),
             sl_mult=RangeSpec(values=sl_values),
         ),
+        time_limit=time_limit,
+        breakeven=breakeven,
+        trailing_stop=trailing_stop,
     )
     
     # Select objective config
     if args.objective == "conservative":
-        obj_config = CONSERVATIVE_OBJECTIVE_CONFIG
+        # Lower DD threshold, stricter penalties
+        obj_config = ObjectiveConfig(dd_threshold=0.20, dd_rate=10.0)
     elif args.objective == "aggressive":
-        obj_config = AGGRESSIVE_OBJECTIVE_CONFIG
+        # Higher DD tolerance
+        obj_config = ObjectiveConfig(dd_threshold=0.40, dd_rate=5.0)
     else:
-        obj_config = ObjectiveConfig(primary_metric=args.primary)
+        obj_config = DEFAULT_OBJECTIVE_CONFIG
     
     # Run optimization
     result = run_optimization(opt_config, objective_config=obj_config, verbose=not args.quiet)
