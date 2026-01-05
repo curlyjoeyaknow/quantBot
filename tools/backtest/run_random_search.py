@@ -52,6 +52,121 @@ from lib.trial_ledger import ensure_trial_schema, store_optimizer_run
 
 UTC = timezone.utc
 
+# ============================================================================
+# ANTI-OVERFIT GUARDRAILS
+# ============================================================================
+# These are THE KEY to not selecting "train-window jackpot exposure"
+
+# λ for pessimistic OOS: pess = TestR - λ * |TrainR - TestR|
+# λ=0.15 means: if you overfit by 100R, you lose 15R from your score
+PESSIMISTIC_LAMBDA = 0.15
+
+# Ratio penalty thresholds (TestR / TrainR)
+# Below 0.10 = smash it, 0.10-0.40 = moderate, >0.40 = little penalty
+RATIO_PENALTY_SEVERE = 0.10
+RATIO_PENALTY_MODERATE = 0.40
+
+# Feasibility gates (hard requirements for "tradeable")
+# These can be tuned based on your risk tolerance
+GATE_MAX_P75_DD = 0.60        # p75_dd_pre2x must be <= 60%
+GATE_MAX_MEDIAN_DD = 0.35     # median_dd_pre2x must be <= 35% for "preferred"
+GATE_MIN_HIT2X = 0.35         # hit2x_pct >= 35% (relaxed from 50% - adjust based on data)
+GATE_MAX_T2X_MIN = 120.0      # median_t2x <= 120 minutes (optional)
+
+
+def compute_anti_overfit_metrics(
+    train_r: float,
+    test_r: float,
+    median_dd_pre2x: Optional[float],
+    p75_dd_pre2x: Optional[float],
+    hit2x_pct: Optional[float],
+    median_t2x_min: Optional[float],
+    lamb: float = PESSIMISTIC_LAMBDA,
+) -> Dict[str, Any]:
+    """
+    Compute anti-overfit metrics that prevent selecting train-window jackpots.
+    
+    Returns:
+        ratio: TestR / TrainR (scale-free generalization measure)
+        pessimistic_r: TestR - λ * |TrainR - TestR| (penalizes large gaps)
+        passes_gates: True if setup is tradeable
+        gate_failures: List of which gates failed
+    """
+    # Ratio: TestR / TrainR (avoid div by zero)
+    eps = 1e-6
+    if train_r > eps:
+        ratio = test_r / train_r
+    elif train_r < -eps:
+        # Negative train_r: if test is also negative, ratio is positive (both bad)
+        ratio = test_r / train_r  
+    else:
+        # train_r ≈ 0
+        ratio = 1.0 if abs(test_r) < eps else (10.0 if test_r > 0 else -10.0)
+    
+    # Clamp ratio to reasonable range for display
+    ratio = max(-10.0, min(10.0, ratio))
+    
+    # Pessimistic OOS: TestR - λ * |TrainR - TestR|
+    gap = abs(train_r - test_r)
+    pessimistic_r = test_r - lamb * gap
+    
+    # Feasibility gates
+    gate_failures = []
+    
+    # Hard gate: p75_dd_pre2x must be <= 60%
+    if p75_dd_pre2x is not None and p75_dd_pre2x > GATE_MAX_P75_DD:
+        gate_failures.append(f"p75_dd={p75_dd_pre2x:.0%}>{GATE_MAX_P75_DD:.0%}")
+    
+    # Preferred: median_dd_pre2x <= 30%
+    if median_dd_pre2x is not None and median_dd_pre2x > GATE_MAX_MEDIAN_DD:
+        gate_failures.append(f"med_dd={median_dd_pre2x:.0%}>{GATE_MAX_MEDIAN_DD:.0%}")
+    
+    # Preferred: hit2x_pct >= 50%
+    if hit2x_pct is not None and hit2x_pct < GATE_MIN_HIT2X:
+        gate_failures.append(f"hit2x={hit2x_pct:.0%}<{GATE_MIN_HIT2X:.0%}")
+    
+    passes_gates = len(gate_failures) == 0
+    
+    return {
+        "ratio": ratio,
+        "pessimistic_r": pessimistic_r,
+        "passes_gates": passes_gates,
+        "gate_failures": gate_failures,
+    }
+
+
+def compute_robust_score(
+    test_r: float,
+    pessimistic_r: float,
+    ratio: float,
+    objective_score: float,
+    passes_gates: bool,
+) -> float:
+    """
+    Compute a robust score that can't be gamed by train-window overfitting.
+    
+    The robust score is pessimistic_r with a ratio penalty.
+    Setups that fail gates get a severe penalty.
+    """
+    # Start with pessimistic R
+    score = pessimistic_r
+    
+    # Ratio penalty (scale-free)
+    if ratio < RATIO_PENALTY_SEVERE:
+        # Severe: test is <10% of train - smash it
+        score *= 0.3
+    elif ratio < RATIO_PENALTY_MODERATE:
+        # Moderate: test is 10-40% of train
+        penalty = 1.0 - (RATIO_PENALTY_MODERATE - ratio) / (RATIO_PENALTY_MODERATE - RATIO_PENALTY_SEVERE) * 0.5
+        score *= penalty
+    # else: ratio >= 0.40, no penalty
+    
+    # Gate failure penalty
+    if not passes_gates:
+        score -= 50.0  # Heavy penalty for untradeable setups
+    
+    return score
+
 
 @dataclass
 class RandomSearchConfig:
@@ -63,16 +178,22 @@ class RandomSearchConfig:
     # Number of random trials
     n_trials: int = 200
     
-    # Parameter ranges (uniform sampling)
+    # Parameter ranges (uniform sampling) - TIGHTENED DEFAULTS
+    # Wider ranges = more overfitting; start conservative
     tp_min: float = 1.5
-    tp_max: float = 6.0
-    sl_min: float = 0.20
-    sl_max: float = 0.80
+    tp_max: float = 3.5   # Was 6.0 - too wide leads to overfitting
+    sl_min: float = 0.30  # Was 0.20 - very tight stops = noise
+    sl_max: float = 0.60  # Was 0.80 - very wide stops = poor R-multiple
     
     # Walk-forward validation
     train_days: int = 14
     test_days: int = 7
     use_walk_forward: bool = True
+    
+    # Multi-fold walk-forward (rolling windows)
+    # If n_folds > 1, uses rolling train/test windows
+    n_folds: int = 1      # 1 = single split, >1 = rolling folds
+    fold_step_days: int = 7  # Days to step forward between folds
     
     # Data sources
     duckdb_path: str = "data/alerts.duckdb"
@@ -89,6 +210,7 @@ class RandomSearchConfig:
     
     # Filtering
     caller_group: Optional[str] = None
+    caller: Optional[str] = None  # Single caller filter
     
     # Random seed for reproducibility
     seed: Optional[int] = None
@@ -103,10 +225,14 @@ class RandomSearchConfig:
             "train_days": self.train_days,
             "test_days": self.test_days,
             "use_walk_forward": self.use_walk_forward,
+            "n_folds": self.n_folds,
+            "fold_step_days": self.fold_step_days,
             "interval_seconds": self.interval_seconds,
             "horizon_hours": self.horizon_hours,
             "fee_bps": self.fee_bps,
             "slippage_bps": self.slippage_bps,
+            "caller_group": self.caller_group,
+            "caller": self.caller,
             "seed": self.seed,
         }
 
@@ -127,6 +253,17 @@ class TrialResult:
     test_r: Optional[float] = None
     delta_r: Optional[float] = None
     
+    # Anti-overfit metrics (THE KEY)
+    ratio: Optional[float] = None           # TestR / TrainR (scale-free)
+    pessimistic_r: Optional[float] = None   # TestR - λ * |TrainR - TestR|
+    
+    # Feasibility gates
+    median_dd_pre2x: Optional[float] = None
+    p75_dd_pre2x: Optional[float] = None
+    hit2x_pct: Optional[float] = None
+    median_t2x_min: Optional[float] = None
+    passes_gates: bool = False              # True if tradeable
+    
     def to_dict(self) -> Dict[str, Any]:
         return {
             "trial_id": self.trial_id,
@@ -139,6 +276,13 @@ class TrialResult:
             "train_r": self.train_r,
             "test_r": self.test_r,
             "delta_r": self.delta_r,
+            "ratio": self.ratio,
+            "pessimistic_r": self.pessimistic_r,
+            "median_dd_pre2x": self.median_dd_pre2x,
+            "p75_dd_pre2x": self.p75_dd_pre2x,
+            "hit2x_pct": self.hit2x_pct,
+            "median_t2x_min": self.median_t2x_min,
+            "passes_gates": self.passes_gates,
         }
 
 
@@ -202,14 +346,24 @@ def run_random_search(config: RandomSearchConfig, verbose: bool = True) -> List[
         if not all_alerts:
             raise ValueError(f"No alerts found for {config.date_from} to {config.date_to}")
         
-        # Filter by caller group
-        if config.caller_group:
+        # Filter by caller or caller group
+        filter_desc = None
+        if config.caller:
+            # Single caller filter (exact match, case-insensitive)
+            caller_lower = config.caller.lower()
+            all_alerts = [a for a in all_alerts if a.caller.lower() == caller_lower]
+            filter_desc = f"caller={config.caller}"
+        elif config.caller_group:
             group = load_caller_group(config.caller_group)
             if group:
                 all_alerts = [a for a in all_alerts if group.matches(a.caller)]
+                filter_desc = f"caller_group={config.caller_group}"
         
         if verbose:
-            print(f"Loaded {len(all_alerts)} alerts", file=sys.stderr)
+            if filter_desc:
+                print(f"Loaded {len(all_alerts)} alerts (filtered by {filter_desc})", file=sys.stderr)
+            else:
+                print(f"Loaded {len(all_alerts)} alerts", file=sys.stderr)
     
     # Setup slice
     slice_path = Path(config.slice_path)
@@ -217,22 +371,61 @@ def run_random_search(config: RandomSearchConfig, verbose: bool = True) -> List[
         raise ValueError(f"Slice not found: {slice_path}")
     is_partitioned = is_hive_partitioned(slice_path) or (slice_path.is_dir() and not slice_path.suffix)
     
-    # Split into train/test if walk-forward
+    # Generate walk-forward folds
+    folds: List[Tuple[List[Alert], List[Alert], str]] = []  # (train, test, fold_name)
+    
     if config.use_walk_forward:
-        train_end = date_to - timedelta(days=config.test_days)
-        train_alerts = [a for a in all_alerts if a.ts < train_end]
-        test_alerts = [a for a in all_alerts if a.ts >= train_end]
-        
-        if verbose:
-            print(f"Walk-forward split: {len(train_alerts)} train, {len(test_alerts)} test", file=sys.stderr)
-        
-        if len(train_alerts) < 10:
-            raise ValueError("Not enough training alerts")
-        if len(test_alerts) < 5:
-            raise ValueError("Not enough test alerts")
+        if config.n_folds > 1:
+            # Multi-fold rolling walk-forward
+            # Generates overlapping train/test windows
+            total_days = (date_to - date_from).days
+            window_days = config.train_days + config.test_days
+            
+            if window_days > total_days:
+                raise ValueError(f"train_days + test_days ({window_days}) > total_days ({total_days})")
+            
+            fold_idx = 0
+            fold_start = date_from
+            
+            while fold_start + timedelta(days=window_days) <= date_to and fold_idx < config.n_folds:
+                fold_train_end = fold_start + timedelta(days=config.train_days)
+                fold_test_end = fold_train_end + timedelta(days=config.test_days)
+                
+                train_alerts = [a for a in all_alerts if fold_start <= a.ts < fold_train_end]
+                test_alerts = [a for a in all_alerts if fold_train_end <= a.ts < fold_test_end]
+                
+                if len(train_alerts) >= 10 and len(test_alerts) >= 5:
+                    fold_name = f"fold_{fold_idx+1}_{fold_start.strftime('%m%d')}_{fold_test_end.strftime('%m%d')}"
+                    folds.append((train_alerts, test_alerts, fold_name))
+                
+                fold_start += timedelta(days=config.fold_step_days)
+                fold_idx += 1
+            
+            if not folds:
+                raise ValueError("No valid folds generated - check date range and fold settings")
+            
+            if verbose:
+                print(f"Multi-fold walk-forward: {len(folds)} folds", file=sys.stderr)
+                for train_a, test_a, name in folds:
+                    print(f"  {name}: {len(train_a)} train, {len(test_a)} test", file=sys.stderr)
+        else:
+            # Single train/test split (original behavior)
+            train_end = date_to - timedelta(days=config.test_days)
+            train_alerts = [a for a in all_alerts if a.ts < train_end]
+            test_alerts = [a for a in all_alerts if a.ts >= train_end]
+            
+            if verbose:
+                print(f"Walk-forward split: {len(train_alerts)} train, {len(test_alerts)} test", file=sys.stderr)
+            
+            if len(train_alerts) < 10:
+                raise ValueError("Not enough training alerts")
+            if len(test_alerts) < 5:
+                raise ValueError("Not enough test alerts")
+            
+            folds.append((train_alerts, test_alerts, "single"))
     else:
-        train_alerts = all_alerts
-        test_alerts = []
+        # No walk-forward - use all alerts
+        folds.append((all_alerts, [], "no_wf"))
     
     # Generate random parameter samples
     param_samples = [sample_params(config, rng) for _ in range(config.n_trials)]
@@ -241,6 +434,8 @@ def run_random_search(config: RandomSearchConfig, verbose: bool = True) -> List[
         print(f"\nRunning {config.n_trials} random trials...", file=sys.stderr)
         print(f"TP range: [{config.tp_min}, {config.tp_max}]", file=sys.stderr)
         print(f"SL range: [{config.sl_min}, {config.sl_max}]", file=sys.stderr)
+        if len(folds) > 1:
+            print(f"Multi-fold: averaging across {len(folds)} folds", file=sys.stderr)
         print()
     
     # Run trials
@@ -252,60 +447,141 @@ def run_random_search(config: RandomSearchConfig, verbose: bool = True) -> List[
             trial_timing = TimingContext()
             trial_timing.start()
             
-            # Run on training data
-            train_summary = run_single_backtest(
-                train_alerts, slice_path, is_partitioned, params, config
-            )
-            train_r = train_summary.get("total_r", 0.0)
+            # Multi-fold: run on each fold and average results
+            fold_train_rs: List[float] = []
+            fold_test_rs: List[float] = []
+            fold_summaries: List[Dict[str, Any]] = []
             
-            # Run on test data if walk-forward
-            test_r = None
-            delta_r = None
-            if config.use_walk_forward and test_alerts:
-                test_summary = run_single_backtest(
-                    test_alerts, slice_path, is_partitioned, params, config
+            for train_alerts, test_alerts, fold_name in folds:
+                # Run on training data
+                train_summary = run_single_backtest(
+                    train_alerts, slice_path, is_partitioned, params, config
                 )
-                test_r = test_summary.get("total_r", 0.0)
-                delta_r = test_r - train_r
+                fold_train_rs.append(train_summary.get("total_r", 0.0))
                 
-                # Use test performance for final summary
-                final_summary = test_summary
-            else:
-                final_summary = train_summary
+                # Run on test data if walk-forward
+                if config.use_walk_forward and test_alerts:
+                    test_summary = run_single_backtest(
+                        test_alerts, slice_path, is_partitioned, params, config
+                    )
+                    fold_test_rs.append(test_summary.get("total_r", 0.0))
+                    fold_summaries.append(test_summary)
+                else:
+                    fold_summaries.append(train_summary)
+            
+            # Average across folds
+            train_r = sum(fold_train_rs) / len(fold_train_rs) if fold_train_rs else 0.0
+            test_r = sum(fold_test_rs) / len(fold_test_rs) if fold_test_rs else None
+            delta_r = (test_r - train_r) if test_r is not None else None
+            
+            # Use last fold's summary for detailed metrics (or could average)
+            final_summary = fold_summaries[-1] if fold_summaries else {}
+            
+            # For multi-fold, compute average of key metrics
+            if len(fold_summaries) > 1:
+                avg_keys = ["avg_r", "win_rate", "pct_hit_2x"]
+                for key in avg_keys:
+                    vals = [s.get(key) for s in fold_summaries if s.get(key) is not None]
+                    if vals:
+                        final_summary[key] = sum(vals) / len(vals)
+                # Sum alerts across folds
+                final_summary["alerts_ok"] = sum(s.get("alerts_ok", 0) for s in fold_summaries)
+                final_summary["total_r"] = test_r if test_r is not None else train_r
             
             # Compute objective
-            obj = compute_objective(final_summary, DEFAULT_OBJECTIVE_CONFIG)
+            obj = compute_objective(
+                avg_r=final_summary.get("avg_r", 0.0),
+                total_r=final_summary.get("total_r", 0.0),
+                n_trades=final_summary.get("alerts_ok", 0),
+                dd_magnitude=abs(final_summary.get("dd_pre2x_median", 0.0) or 0.0),
+                time_to_2x_min=final_summary.get("time_to_2x_median_min"),
+                hit2x_pct=final_summary.get("pct_hit_2x", 0.0) or 0.0,
+                median_ath=final_summary.get("median_ath_mult", 1.0) or 1.0,
+                p75_ath=final_summary.get("p75_ath"),
+                p95_ath=final_summary.get("p95_ath"),
+                config=DEFAULT_OBJECTIVE_CONFIG,
+            )
             
             trial_timing.end()
+            
+            # Extract DD metrics for gates
+            # Note: DD values are typically negative (drawdown), so we abs() them for gates
+            median_dd = abs(final_summary.get("median_dd_pre2x") or final_summary.get("dd_pre2x_median") or 0.0)
+            p75_dd = abs(final_summary.get("p75_dd_pre2x") or final_summary.get("dd_pre2x_p75") or 0.0)
+            hit2x = final_summary.get("pct_hit_2x") or 0.0
+            t2x_min = final_summary.get("time_to_2x_median_min") or final_summary.get("median_time_to_2x_min")
+            
+            # Compute anti-overfit metrics
+            if config.use_walk_forward and test_r is not None:
+                anti_overfit = compute_anti_overfit_metrics(
+                    train_r=train_r,
+                    test_r=test_r,
+                    median_dd_pre2x=median_dd,
+                    p75_dd_pre2x=p75_dd,
+                    hit2x_pct=hit2x,
+                    median_t2x_min=t2x_min,
+                )
+                ratio = anti_overfit["ratio"]
+                pessimistic_r = anti_overfit["pessimistic_r"]
+                passes_gates = anti_overfit["passes_gates"]
+                
+                # Compute robust score (the one you should rank by)
+                robust_score = compute_robust_score(
+                    test_r=test_r,
+                    pessimistic_r=pessimistic_r,
+                    ratio=ratio,
+                    objective_score=obj.final_score,
+                    passes_gates=passes_gates,
+                )
+            else:
+                ratio = None
+                pessimistic_r = None
+                passes_gates = True
+                robust_score = obj.final_score
+            
+            # Count total alerts across folds
+            total_test_alerts = sum(len(test_a) for _, test_a, _ in folds)
+            total_train_alerts = sum(len(train_a) for train_a, _, _ in folds)
             
             result = TrialResult(
                 trial_id=trial_id,
                 params=params,
                 summary=final_summary,
-                objective=obj.to_dict(),
+                objective={**obj.to_dict(), "robust_score": robust_score, "n_folds": len(folds)},
                 duration_ms=trial_timing.total_ms,
                 alerts_ok=final_summary.get("alerts_ok", 0),
-                alerts_total=len(train_alerts) if not config.use_walk_forward else len(test_alerts),
+                alerts_total=total_test_alerts if config.use_walk_forward else total_train_alerts,
                 train_r=train_r,
                 test_r=test_r,
                 delta_r=delta_r,
+                ratio=ratio,
+                pessimistic_r=pessimistic_r,
+                median_dd_pre2x=median_dd,
+                p75_dd_pre2x=p75_dd,
+                hit2x_pct=hit2x,
+                median_t2x_min=t2x_min,
+                passes_gates=passes_gates,
             )
             results.append(result)
             
             if verbose:
                 wr = final_summary.get("tp_sl_win_rate", 0.0) * 100
                 avg_r = final_summary.get("avg_r", 0.0)
-                score = obj.final_score
                 
                 if config.use_walk_forward:
+                    # Show ratio and pessimistic_r - THE KEY metrics
+                    ratio_str = f"{ratio:.2f}" if ratio is not None else "N/A"
+                    pess_str = f"{pessimistic_r:+.1f}" if pessimistic_r is not None else "N/A"
+                    gate_str = "✓" if passes_gates else "✗"
                     print(
                         f"[{i:3d}/{config.n_trials}] "
                         f"TP={params['tp_mult']:.2f}x SL={params['sl_mult']:.2f}x | "
-                        f"TrainR={train_r:+.1f} TestR={test_r:+.1f} ΔR={delta_r:+.1f} "
-                        f"Score={score:+.3f}",
+                        f"TrR={train_r:+.1f} TeR={test_r:+.1f} "
+                        f"Ratio={ratio_str} Pess={pess_str} {gate_str}",
                         file=sys.stderr
                     )
                 else:
+                    score = obj.final_score
                     print(
                         f"[{i:3d}/{config.n_trials}] "
                         f"TP={params['tp_mult']:.2f}x SL={params['sl_mult']:.2f}x | "
@@ -317,25 +593,123 @@ def run_random_search(config: RandomSearchConfig, verbose: bool = True) -> List[
     
     # Print summary
     if verbose:
-        print(f"\n{'='*70}", file=sys.stderr)
+        print(f"\n{'='*80}", file=sys.stderr)
         print("RANDOM SEARCH COMPLETE", file=sys.stderr)
-        print(f"{'='*70}", file=sys.stderr)
+        print(f"{'='*80}", file=sys.stderr)
         print(timing.summary_line(), file=sys.stderr)
         
-        # Sort by objective score
-        sorted_results = sorted(results, key=lambda r: r.objective.get("final_score", 0), reverse=True)
-        
-        print(f"\nTOP 10 BY OBJECTIVE SCORE:", file=sys.stderr)
-        print("-" * 80, file=sys.stderr)
-        for i, r in enumerate(sorted_results[:10], 1):
-            score = r.objective.get("final_score", 0)
-            if config.use_walk_forward:
+        if config.use_walk_forward:
+            # ================================================================
+            # MULTIPLE LEADERBOARDS - The key to not selecting train-window jackpots
+            # ================================================================
+            
+            # Filter to only tradeable setups
+            tradeable = [r for r in results if r.passes_gates]
+            print(f"\nTradeable setups (pass DD gates): {len(tradeable)}/{len(results)}", file=sys.stderr)
+            
+            # 1. TOP BY TEST R (raw out-of-sample)
+            sorted_by_test_r = sorted(results, key=lambda r: r.test_r or 0, reverse=True)
+            print(f"\n{'─'*80}", file=sys.stderr)
+            print("TOP 10 BY TEST R (raw out-of-sample performance):", file=sys.stderr)
+            print("─" * 80, file=sys.stderr)
+            for i, r in enumerate(sorted_by_test_r[:10], 1):
+                ratio_str = f"{r.ratio:.2f}" if r.ratio is not None else "N/A"
+                gate_str = "✓" if r.passes_gates else "✗"
                 print(
                     f"  {i:2d}. TP={r.params['tp_mult']:.2f}x SL={r.params['sl_mult']:.2f}x | "
-                    f"TestR={r.test_r:+.1f} ΔR={r.delta_r:+.1f} Score={score:+.3f}",
+                    f"TeR={r.test_r:+6.1f} TrR={r.train_r:+6.1f} "
+                    f"Ratio={ratio_str:>5} {gate_str}",
                     file=sys.stderr
                 )
-            else:
+            
+            # 2. TOP BY PESSIMISTIC R (robust to overfitting)
+            sorted_by_pess = sorted(results, key=lambda r: r.pessimistic_r or -9999, reverse=True)
+            print(f"\n{'─'*80}", file=sys.stderr)
+            print("TOP 10 BY PESSIMISTIC R (TestR - 0.15*|TrainR-TestR|):", file=sys.stderr)
+            print("  → Penalizes large train/test gaps", file=sys.stderr)
+            print("─" * 80, file=sys.stderr)
+            for i, r in enumerate(sorted_by_pess[:10], 1):
+                pess_str = f"{r.pessimistic_r:+.1f}" if r.pessimistic_r is not None else "N/A"
+                ratio_str = f"{r.ratio:.2f}" if r.ratio is not None else "N/A"
+                gate_str = "✓" if r.passes_gates else "✗"
+                print(
+                    f"  {i:2d}. TP={r.params['tp_mult']:.2f}x SL={r.params['sl_mult']:.2f}x | "
+                    f"Pess={pess_str:>7} TeR={r.test_r:+6.1f} Ratio={ratio_str:>5} {gate_str}",
+                    file=sys.stderr
+                )
+            
+            # 3. TOP BY ROBUST SCORE (pessimistic + ratio penalty + gates)
+            sorted_by_robust = sorted(
+                results, 
+                key=lambda r: r.objective.get("robust_score", -9999), 
+                reverse=True
+            )
+            print(f"\n{'─'*80}", file=sys.stderr)
+            print("TOP 10 BY ROBUST SCORE (pessimistic + ratio penalty + gates):", file=sys.stderr)
+            print("  → THE ONE TO TRUST for parameter selection", file=sys.stderr)
+            print("─" * 80, file=sys.stderr)
+            for i, r in enumerate(sorted_by_robust[:10], 1):
+                robust = r.objective.get("robust_score", 0)
+                pess_str = f"{r.pessimistic_r:+.1f}" if r.pessimistic_r is not None else "N/A"
+                gate_str = "✓" if r.passes_gates else "✗"
+                dd_str = f"{r.median_dd_pre2x:.0%}" if r.median_dd_pre2x else "N/A"
+                hit_str = f"{r.hit2x_pct:.0%}" if r.hit2x_pct else "N/A"
+                print(
+                    f"  {i:2d}. TP={r.params['tp_mult']:.2f}x SL={r.params['sl_mult']:.2f}x | "
+                    f"Robust={robust:+6.1f} Pess={pess_str:>7} "
+                    f"DD={dd_str:>4} Hit2x={hit_str:>4} {gate_str}",
+                    file=sys.stderr
+                )
+            
+            # 4. TRADEABLE ONLY - Top by robust score
+            if tradeable:
+                sorted_tradeable = sorted(
+                    tradeable, 
+                    key=lambda r: r.objective.get("robust_score", -9999), 
+                    reverse=True
+                )
+                print(f"\n{'─'*80}", file=sys.stderr)
+                print("TOP 10 TRADEABLE (pass gates) BY ROBUST SCORE:", file=sys.stderr)
+                print("  → Parameters you can actually deploy", file=sys.stderr)
+                print("─" * 80, file=sys.stderr)
+                for i, r in enumerate(sorted_tradeable[:10], 1):
+                    robust = r.objective.get("robust_score", 0)
+                    dd_str = f"{r.median_dd_pre2x:.0%}" if r.median_dd_pre2x else "N/A"
+                    hit_str = f"{r.hit2x_pct:.0%}" if r.hit2x_pct else "N/A"
+                    print(
+                        f"  {i:2d}. TP={r.params['tp_mult']:.2f}x SL={r.params['sl_mult']:.2f}x | "
+                        f"Robust={robust:+6.1f} TeR={r.test_r:+6.1f} "
+                        f"DD={dd_str:>4} Hit2x={hit_str:>4}",
+                        file=sys.stderr
+                    )
+            
+            # Walk-forward summary stats
+            test_rs = [r.test_r for r in results if r.test_r is not None]
+            pess_rs = [r.pessimistic_r for r in results if r.pessimistic_r is not None]
+            ratios = [r.ratio for r in results if r.ratio is not None]
+            
+            avg_test_r = sum(test_rs) / len(test_rs) if test_rs else 0
+            avg_pess_r = sum(pess_rs) / len(pess_rs) if pess_rs else 0
+            avg_ratio = sum(ratios) / len(ratios) if ratios else 0
+            pct_profitable = sum(1 for r in test_rs if r > 0) / len(test_rs) * 100 if test_rs else 0
+            
+            print(f"\n{'='*80}", file=sys.stderr)
+            print("WALK-FORWARD SUMMARY:", file=sys.stderr)
+            print(f"  Avg Test R:        {avg_test_r:+.2f}", file=sys.stderr)
+            print(f"  Avg Pessimistic R: {avg_pess_r:+.2f}", file=sys.stderr)
+            print(f"  Avg Ratio:         {avg_ratio:.2f}", file=sys.stderr)
+            print(f"  % Profitable:      {pct_profitable:.0f}%", file=sys.stderr)
+            print(f"  % Tradeable:       {len(tradeable)/len(results)*100:.0f}%", file=sys.stderr)
+            print(f"{'='*80}", file=sys.stderr)
+            
+        else:
+            # Non walk-forward mode - simple leaderboard
+            sorted_results = sorted(results, key=lambda r: r.objective.get("final_score", 0), reverse=True)
+            
+            print(f"\nTOP 10 BY OBJECTIVE SCORE:", file=sys.stderr)
+            print("-" * 80, file=sys.stderr)
+            for i, r in enumerate(sorted_results[:10], 1):
+                score = r.objective.get("final_score", 0)
                 avg_r = r.summary.get("avg_r", 0.0)
                 wr = r.summary.get("tp_sl_win_rate", 0.0) * 100
                 print(
@@ -343,20 +717,6 @@ def run_random_search(config: RandomSearchConfig, verbose: bool = True) -> List[
                     f"WR={wr:.0f}% AvgR={avg_r:+.2f} Score={score:+.3f}",
                     file=sys.stderr
                 )
-        
-        # Walk-forward summary
-        if config.use_walk_forward:
-            test_rs = [r.test_r for r in results if r.test_r is not None]
-            delta_rs = [r.delta_r for r in results if r.delta_r is not None]
-            
-            avg_test_r = sum(test_rs) / len(test_rs) if test_rs else 0
-            avg_delta_r = sum(delta_rs) / len(delta_rs) if delta_rs else 0
-            pct_profitable = sum(1 for r in test_rs if r > 0) / len(test_rs) * 100 if test_rs else 0
-            
-            print(f"\nWALK-FORWARD SUMMARY:", file=sys.stderr)
-            print(f"  Avg Test R: {avg_test_r:+.2f}", file=sys.stderr)
-            print(f"  Avg ΔR (test-train): {avg_delta_r:+.2f}", file=sys.stderr)
-            print(f"  % Profitable (test): {pct_profitable:.0f}%", file=sys.stderr)
     
     return results
 
@@ -375,16 +735,18 @@ def main() -> None:
     ap.add_argument("--trials", type=int, default=200, help="Number of random trials (default: 200)")
     ap.add_argument("--seed", type=int, help="Random seed for reproducibility")
     
-    # Parameter ranges
-    ap.add_argument("--tp-min", type=float, default=1.5, help="Min TP multiplier")
-    ap.add_argument("--tp-max", type=float, default=6.0, help="Max TP multiplier")
-    ap.add_argument("--sl-min", type=float, default=0.20, help="Min SL multiplier")
-    ap.add_argument("--sl-max", type=float, default=0.80, help="Max SL multiplier")
+    # Parameter ranges (TIGHTENED defaults to reduce overfitting)
+    ap.add_argument("--tp-min", type=float, default=1.5, help="Min TP multiplier (default: 1.5)")
+    ap.add_argument("--tp-max", type=float, default=3.5, help="Max TP multiplier (default: 3.5, was 6.0)")
+    ap.add_argument("--sl-min", type=float, default=0.30, help="Min SL multiplier (default: 0.30, was 0.20)")
+    ap.add_argument("--sl-max", type=float, default=0.60, help="Max SL multiplier (default: 0.60, was 0.80)")
     
     # Walk-forward
     ap.add_argument("--train-days", type=int, default=14, help="Training window days")
     ap.add_argument("--test-days", type=int, default=7, help="Test window days")
     ap.add_argument("--no-walk-forward", action="store_true", help="Disable walk-forward validation")
+    ap.add_argument("--n-folds", type=int, default=1, help="Number of walk-forward folds (default: 1=single split, >1=rolling)")
+    ap.add_argument("--fold-step", type=int, default=7, help="Days to step forward between folds (default: 7)")
     
     # Data sources
     ap.add_argument("--duckdb", default="data/alerts.duckdb", help="DuckDB path")
@@ -399,7 +761,8 @@ def main() -> None:
     ap.add_argument("--threads", type=int, default=8)
     
     # Filtering
-    ap.add_argument("--caller-group", help="Filter by caller group")
+    ap.add_argument("--caller", help="Filter by single caller (exact match)")
+    ap.add_argument("--caller-group", help="Filter by caller group file")
     
     # Output
     ap.add_argument("--output-dir", default="results/random_search")
@@ -419,6 +782,8 @@ def main() -> None:
         train_days=args.train_days,
         test_days=args.test_days,
         use_walk_forward=not args.no_walk_forward,
+        n_folds=args.n_folds,
+        fold_step_days=args.fold_step,
         duckdb_path=args.duckdb,
         chain=args.chain,
         slice_path=args.slice_path,
@@ -427,6 +792,7 @@ def main() -> None:
         fee_bps=args.fee_bps,
         slippage_bps=args.slippage_bps,
         threads=args.threads,
+        caller=args.caller,
         caller_group=args.caller_group,
         seed=args.seed,
     )

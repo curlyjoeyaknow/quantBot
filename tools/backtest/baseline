@@ -164,11 +164,11 @@ def main():
     opt_p.add_argument("--to", dest="to_date", required=True,
                        help="End date (YYYY-MM-DD)")
     
-    # TP/SL grid
+    # TP/SL grid (TIGHTENED defaults to reduce overfitting)
     opt_p.add_argument("--tp", type=str, default="1.5,2.0,2.5,3.0",
-                       help="TP multipliers (comma-separated or start:end:step)")
-    opt_p.add_argument("--sl", type=str, default="0.4,0.5,0.6,0.7",
-                       help="SL multipliers (comma-separated or start:end:step)")
+                       help="TP multipliers (comma-separated or start:end:step). Default: 1.5,2.0,2.5,3.0")
+    opt_p.add_argument("--sl", type=str, default="0.35,0.45,0.55",
+                       help="SL multipliers (comma-separated or start:end:step). Default: 0.35,0.45,0.55 (tightened from 0.4-0.7)")
     
     # === Extended Exit Types ===
     # Time stop
@@ -190,8 +190,8 @@ def main():
     # Data source
     opt_p.add_argument("--alerts-db", default="data/alerts.duckdb",
                        help="Path to alerts DuckDB")
-    opt_p.add_argument("--slice", type=str, default=None,
-                       help="Path to candle slice (parquet)")
+    opt_p.add_argument("--slice", type=str, default="slices/per_token",
+                       help="Path to candle slice (parquet). Default: slices/per_token")
     
     # Objective config
     opt_p.add_argument("--objective", type=str, default="default",
