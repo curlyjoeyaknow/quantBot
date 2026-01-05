@@ -430,7 +430,10 @@ class GridOptimizer:
         has_extended = any(k in params for k in [
             "time_stop_hours", 
             "breakeven_trigger_pct", 
-            "trail_activation_pct"
+            "trail_activation_pct",
+            "tiered_sl_enabled",
+            "tier_1_2x_sl", "tier_1_5x_sl", "tier_2x_sl", "tier_3x_sl", "tier_4x_sl", "tier_5x_sl",
+            "entry_mode",
         ])
         
         if has_extended:
@@ -444,6 +447,20 @@ class GridOptimizer:
                 breakeven_offset_pct=params.get("breakeven_offset_pct", 0.0),
                 trail_activation_pct=params.get("trail_activation_pct"),
                 trail_distance_pct=params.get("trail_distance_pct", 0.15),
+                # Tiered SL
+                tiered_sl_enabled=params.get("tiered_sl_enabled", False),
+                tier_1_2x_sl=params.get("tier_1_2x_sl"),
+                tier_1_5x_sl=params.get("tier_1_5x_sl"),
+                tier_2x_sl=params.get("tier_2x_sl"),
+                tier_3x_sl=params.get("tier_3x_sl"),
+                tier_4x_sl=params.get("tier_4x_sl"),
+                tier_5x_sl=params.get("tier_5x_sl"),
+                # Entry timing
+                entry_mode=params.get("entry_mode", "immediate"),
+                dip_percent=params.get("dip_percent"),
+                max_wait_candles=params.get("max_wait_candles"),
+                confirm_candles=params.get("confirm_candles"),
+                # Cost
                 fee_bps=self.config.fee_bps,
                 slippage_bps=self.config.slippage_bps,
             )

@@ -187,6 +187,26 @@ def main():
     opt_p.add_argument("--trail-distance", type=str, default="0.15",
                        help="Trailing stop distance pct (comma-separated, default: '0.15')")
     
+    # === Tiered Stop Loss (move SL up as price hits milestones) ===
+    opt_p.add_argument("--tiered-sl", action="store_true",
+                       help="Enable tiered stop loss (move SL up at price milestones)")
+    opt_p.add_argument("--tier-1.2x-sl", type=str, default=None, dest="tier_1_2x_sl",
+                       help="SL after 1.2x hit (comma-separated, e.g., '0.95,1.0' = lock -5%% to 0%%)")
+    opt_p.add_argument("--tier-1.5x-sl", type=str, default=None, dest="tier_1_5x_sl",
+                       help="SL after 1.5x hit (comma-separated, e.g., '1.1,1.2' = lock +10%% to +20%%)")
+    opt_p.add_argument("--tier-2x-sl", type=str, default=None, dest="tier_2x_sl",
+                       help="SL after 2x hit (comma-separated, e.g., '1.4,1.5' = lock +40%% to +50%%)")
+    opt_p.add_argument("--tier-3x-sl", type=str, default=None, dest="tier_3x_sl",
+                       help="SL after 3x hit (comma-separated, e.g., '2.0,2.2')")
+    
+    # === Entry Timing Optimization ===
+    opt_p.add_argument("--entry-mode", type=str, default=None,
+                       help="Entry mode: immediate, wait_dip, wait_confirm, limit_better")
+    opt_p.add_argument("--dip-pct", type=str, default=None,
+                       help="Dip percentage to wait for (comma-separated, e.g., '0.05,0.10')")
+    opt_p.add_argument("--max-wait-candles", type=str, default=None,
+                       help="Max candles to wait for entry (comma-separated, e.g., '30,60')")
+    
     # Data source
     opt_p.add_argument("--alerts-db", default="data/alerts.duckdb",
                        help="Path to alerts DuckDB")
@@ -664,6 +684,19 @@ def cmd_optimize(args):
     trail_act_values = parse_range(args.trail_activation) if args.trail_activation else None
     trail_dist_values = parse_range(args.trail_distance) if args.trail_activation else None
     
+    # Parse tiered SL values
+    tier_1_2x_values = parse_range(args.tier_1_2x_sl) if args.tier_1_2x_sl else None
+    tier_1_5x_values = parse_range(args.tier_1_5x_sl) if args.tier_1_5x_sl else None
+    tier_2x_values = parse_range(args.tier_2x_sl) if args.tier_2x_sl else None
+    tier_3x_values = parse_range(args.tier_3x_sl) if args.tier_3x_sl else None
+    has_tiered_sl = args.tiered_sl or any([tier_1_2x_values, tier_1_5x_values, tier_2x_values, tier_3x_values])
+    
+    # Parse entry timing values
+    entry_modes = args.entry_mode.split(",") if args.entry_mode else None
+    dip_values = parse_range(args.dip_pct) if args.dip_pct else None
+    max_wait_values = [int(v) for v in parse_range(args.max_wait_candles)] if args.max_wait_candles else None
+    has_entry_timing = entry_modes and entry_modes != ["immediate"]
+    
     # Calculate total combinations
     total_combos = len(tp_values) * len(sl_values)
     if time_stop_values:
@@ -672,6 +705,16 @@ def cmd_optimize(args):
         total_combos *= len(breakeven_values)
     if trail_act_values and trail_dist_values:
         total_combos *= len(trail_act_values) * len(trail_dist_values)
+    if has_tiered_sl:
+        tier_combos = 1
+        if tier_1_2x_values: tier_combos *= len(tier_1_2x_values)
+        if tier_1_5x_values: tier_combos *= len(tier_1_5x_values)
+        if tier_2x_values: tier_combos *= len(tier_2x_values)
+        if tier_3x_values: tier_combos *= len(tier_3x_values)
+        total_combos *= tier_combos
+    if has_entry_timing:
+        entry_combos = len(entry_modes) * (len(dip_values) if dip_values else 1) * (len(max_wait_values) if max_wait_values else 1)
+        total_combos *= entry_combos
     
     print()
     print("=" * 70)
@@ -687,6 +730,16 @@ def cmd_optimize(args):
     if trail_act_values:
         print(f"Trailing activation: {trail_act_values}")
         print(f"Trailing distance: {trail_dist_values}")
+    if has_tiered_sl:
+        print("Tiered SL:")
+        if tier_1_2x_values: print(f"  1.2x → SL: {tier_1_2x_values}")
+        if tier_1_5x_values: print(f"  1.5x → SL: {tier_1_5x_values}")
+        if tier_2x_values: print(f"  2x → SL: {tier_2x_values}")
+        if tier_3x_values: print(f"  3x → SL: {tier_3x_values}")
+    if has_entry_timing:
+        print(f"Entry modes: {entry_modes}")
+        if dip_values: print(f"  Dip pct: {dip_values}")
+        if max_wait_values: print(f"  Max wait: {max_wait_values}")
     print(f"Total combinations: {total_combos}")
     print(f"Objective: {args.objective}")
     print()
@@ -718,6 +771,29 @@ def cmd_optimize(args):
             trail_pct=RangeSpec(values=trail_dist_values),
         )
     
+    # Build tiered SL param space
+    tiered_sl = None
+    if has_tiered_sl:
+        from lib.optimizer_config import TieredStopLossParamSpace
+        tiered_sl = TieredStopLossParamSpace(
+            enabled=True,
+            tier_1_2x_sl=RangeSpec(values=tier_1_2x_values) if tier_1_2x_values else None,
+            tier_1_5x_sl=RangeSpec(values=tier_1_5x_values) if tier_1_5x_values else None,
+            tier_2x_sl=RangeSpec(values=tier_2x_values) if tier_2x_values else None,
+            tier_3x_sl=RangeSpec(values=tier_3x_values) if tier_3x_values else None,
+        )
+    
+    # Build delayed entry param space
+    delayed_entry = None
+    if has_entry_timing:
+        from lib.optimizer_config import DelayedEntryParamSpace
+        delayed_entry = DelayedEntryParamSpace(
+            enabled=True,
+            entry_mode=entry_modes,
+            dip_percent=RangeSpec(values=dip_values) if dip_values else None,
+            max_wait_candles=RangeSpec(values=max_wait_values) if max_wait_values else None,
+        )
+    
     opt_config = OptimizerConfig(
         name=run_name,
         date_from=args.from_date,
@@ -735,6 +811,8 @@ def cmd_optimize(args):
         time_limit=time_limit,
         breakeven=breakeven,
         trailing_stop=trailing_stop,
+        tiered_sl=tiered_sl,
+        delayed_entry=delayed_entry,
     )
     
     # Select objective config
