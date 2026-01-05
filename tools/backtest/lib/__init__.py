@@ -14,6 +14,10 @@ from .partitioner import (
 )
 from .baseline_query import run_baseline_query
 from .tp_sl_query import run_tp_sl_query
+from .extended_exits import (
+    ExitConfig,
+    run_extended_exit_query,
+)
 from .storage import (
     store_baseline_run,
     store_tp_sl_run,
@@ -186,6 +190,9 @@ __all__ = [
     # Queries
     "run_baseline_query",
     "run_tp_sl_query",
+    # Extended exits
+    "ExitConfig",
+    "run_extended_exit_query",
     # Storage
     "store_baseline_run",
     "store_tp_sl_run",

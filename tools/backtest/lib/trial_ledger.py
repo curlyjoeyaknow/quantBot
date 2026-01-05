@@ -53,10 +53,14 @@ CREATE TABLE IF NOT EXISTS optimizer.runs_d (
 );
 
 -- Trials table - one row per parameter combination tested
+-- This is your "experiment brain" - every trial writes here
 CREATE TABLE IF NOT EXISTS optimizer.trials_f (
     trial_id TEXT PRIMARY KEY,
     run_id TEXT NOT NULL,
     created_at TIMESTAMP NOT NULL,
+    
+    -- Strategy identification
+    strategy_name TEXT,
     
     -- Parameters
     tp_mult DOUBLE,
@@ -67,6 +71,8 @@ CREATE TABLE IF NOT EXISTS optimizer.trials_f (
     -- Dataset info
     date_from DATE,
     date_to DATE,
+    entry_mode TEXT,  -- 'immediate', 'delayed', etc.
+    horizon_hours INTEGER,
     alerts_total INTEGER,
     alerts_ok INTEGER,
     
@@ -83,6 +89,29 @@ CREATE TABLE IF NOT EXISTS optimizer.trials_f (
     expectancy_pct DOUBLE,
     total_return_pct DOUBLE,
     risk_adj_total_return_pct DOUBLE,
+    
+    -- === NEW: Path metrics (for scoring function) ===
+    -- Hit rates
+    hit2x_pct DOUBLE,           -- % of alerts that hit 2x
+    hit3x_pct DOUBLE,           -- % of alerts that hit 3x
+    hit4x_pct DOUBLE,           -- % of alerts that hit 4x
+    
+    -- ATH metrics
+    median_ath_mult DOUBLE,     -- Median all-time-high multiple
+    p75_ath_mult DOUBLE,        -- 75th percentile ATH
+    p95_ath_mult DOUBLE,        -- 95th percentile ATH (fat tail check)
+    
+    -- Time-to-X metrics (minutes)
+    median_time_to_2x_min DOUBLE,
+    median_time_to_3x_min DOUBLE,
+    
+    -- Drawdown metrics (as decimals, e.g., 0.30 = 30%)
+    median_dd_pre2x DOUBLE,     -- Median drawdown before hitting 2x
+    p95_dd_pre2x DOUBLE,        -- 95th percentile DD pre-2x
+    median_dd_overall DOUBLE,   -- Median overall drawdown
+    
+    -- Objective function score (THE NUMBER TO OPTIMIZE)
+    objective_score DOUBLE,
     
     -- Timing
     duration_ms INTEGER,
@@ -160,15 +189,41 @@ CREATE OR REPLACE VIEW optimizer.best_trials_v AS
 SELECT
     t.run_id,
     t.trial_id,
+    t.strategy_name,
     t.tp_mult,
     t.sl_mult,
     t.total_r,
     t.avg_r,
     t.win_rate,
+    t.hit2x_pct,
+    t.median_ath_mult,
+    t.median_dd_pre2x,
+    t.median_time_to_2x_min,
+    t.objective_score,
     t.risk_adj_total_return_pct,
+    t.duration_ms,
+    row_number() OVER (PARTITION BY t.run_id ORDER BY t.objective_score DESC NULLS LAST) AS rank_by_objective,
     row_number() OVER (PARTITION BY t.run_id ORDER BY t.total_r DESC) AS rank_by_total_r
 FROM optimizer.trials_f t
-ORDER BY t.run_id, t.total_r DESC;
+ORDER BY t.run_id, t.objective_score DESC NULLS LAST;
+
+-- View for quick anti-overfit analysis: compare train vs test performance
+CREATE OR REPLACE VIEW optimizer.overfit_check_v AS
+SELECT
+    r.run_id,
+    r.run_type,
+    r.name,
+    COUNT(DISTINCT t.trial_id) AS n_trials,
+    AVG(t.objective_score) AS avg_objective,
+    MAX(t.objective_score) AS best_objective,
+    AVG(t.hit2x_pct) AS avg_hit2x,
+    AVG(t.median_dd_pre2x) AS avg_dd_pre2x,
+    AVG(t.median_time_to_2x_min) AS avg_time_to_2x,
+    r.created_at
+FROM optimizer.runs_d r
+LEFT JOIN optimizer.trials_f t ON t.run_id = r.run_id
+GROUP BY r.run_id, r.run_type, r.name, r.created_at
+ORDER BY r.created_at DESC;
 
 CREATE OR REPLACE VIEW optimizer.walk_forward_summary_v AS
 SELECT
@@ -271,27 +326,37 @@ def store_optimizer_run(
             trial_id = f"{run_id}_{i:04d}"
             params = r.get("params", {})
             s = r.get("summary", {})
+            obj = r.get("objective", {})
             
             con.execute("""
                 INSERT INTO optimizer.trials_f (
                     trial_id, run_id, created_at,
+                    strategy_name,
                     tp_mult, sl_mult, intrabar_order, params_json,
-                    date_from, date_to, alerts_total, alerts_ok,
+                    date_from, date_to, entry_mode, horizon_hours, alerts_total, alerts_ok,
                     total_r, avg_r, avg_r_win, avg_r_loss, r_profit_factor,
                     win_rate, profit_factor, expectancy_pct,
                     total_return_pct, risk_adj_total_return_pct,
+                    hit2x_pct, hit3x_pct, hit4x_pct,
+                    median_ath_mult, p75_ath_mult, p95_ath_mult,
+                    median_time_to_2x_min, median_time_to_3x_min,
+                    median_dd_pre2x, p95_dd_pre2x, median_dd_overall,
+                    objective_score,
                     duration_ms, summary_json
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, [
                 trial_id,
                 run_id,
                 created_at,
+                params.get("strategy_name") or config.get("name"),
                 params.get("tp_mult"),
                 params.get("sl_mult"),
                 params.get("intrabar_order", "sl_first"),
                 json.dumps(params, separators=(",", ":"), default=str),
                 date_from,
                 date_to,
+                config.get("entry_mode", "immediate"),
+                config.get("horizon_hours", 48),
                 r.get("alerts_total", 0),
                 r.get("alerts_ok", 0),
                 s.get("total_r"),
@@ -304,6 +369,20 @@ def store_optimizer_run(
                 s.get("tp_sl_expectancy_pct"),
                 s.get("tp_sl_total_return_pct"),
                 s.get("risk_adj_total_return_pct"),
+                # Path metrics
+                s.get("pct_hit_2x"),
+                s.get("pct_hit_3x"),
+                s.get("pct_hit_4x"),
+                s.get("median_ath_mult"),
+                s.get("p75_ath"),
+                s.get("p95_ath"),
+                s.get("time_to_2x_median_min"),
+                s.get("time_to_3x_median_min"),
+                s.get("dd_pre2x_median"),
+                s.get("dd_pre2x_p95"),
+                s.get("dd_overall_median"),
+                # Objective score
+                obj.get("final_score") if isinstance(obj, dict) else None,
                 int(r.get("duration_s", 0) * 1000),
                 json.dumps(s, separators=(",", ":"), default=str),
             ])
