@@ -335,8 +335,8 @@ def sample_params(config: RandomSearchConfig, rng: random.Random) -> Dict[str, A
     
     # Delayed entry
     if config.use_delayed_entry:
-        params["entry_mode"] = rng.choice(["next_open", "dip"])
-        if params["entry_mode"] == "dip":
+        params["entry_mode"] = rng.choice(["immediate", "wait_dip"])
+        if params["entry_mode"] == "wait_dip":
             params["dip_pct"] = round(rng.uniform(0.02, 0.10), 2)
             params["max_wait_candles"] = rng.choice([5, 10, 15, 30, 60])
     
@@ -362,6 +362,11 @@ def run_single_backtest(
     
     if has_extended:
         # Use extended exit query
+        # Check if tiered SL is enabled (any tier set)
+        has_tiered = any(params.get(k) for k in [
+            "tier_1_2x_sl", "tier_1_5x_sl", "tier_2x_sl", 
+            "tier_3x_sl", "tier_4x_sl", "tier_5x_sl"
+        ])
         exit_config = ExitConfig(
             tp_mult=params["tp_mult"],
             sl_mult=params["sl_mult"],
@@ -371,14 +376,15 @@ def run_single_backtest(
             breakeven_offset_pct=params.get("breakeven_offset_pct", 0.0),
             trail_activation_pct=params.get("trail_activation_pct"),
             trail_distance_pct=params.get("trail_distance_pct", 0.15),
+            tiered_sl_enabled=has_tiered,
             tier_1_2x_sl=params.get("tier_1_2x_sl"),
             tier_1_5x_sl=params.get("tier_1_5x_sl"),
             tier_2x_sl=params.get("tier_2x_sl"),
             tier_3x_sl=params.get("tier_3x_sl"),
             tier_4x_sl=params.get("tier_4x_sl"),
             tier_5x_sl=params.get("tier_5x_sl"),
-            entry_mode=params.get("entry_mode", "next_open"),
-            dip_pct=params.get("dip_pct"),
+            entry_mode=params.get("entry_mode", "immediate"),
+            dip_percent=params.get("dip_pct"),
             max_wait_candles=params.get("max_wait_candles"),
             fee_bps=config.fee_bps,
             slippage_bps=config.slippage_bps,
