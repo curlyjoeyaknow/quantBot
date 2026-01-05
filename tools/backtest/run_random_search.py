@@ -48,6 +48,7 @@ from lib.optimizer_objective import (
 from lib.summary import summarize_tp_sl
 from lib.timing import TimingContext, format_ms
 from lib.tp_sl_query import run_tp_sl_query
+from lib.extended_exits import run_extended_exit_query, ExitConfig
 from lib.trial_ledger import ensure_trial_schema, store_optimizer_run
 
 UTC = timezone.utc
@@ -215,6 +216,11 @@ class RandomSearchConfig:
     # Random seed for reproducibility
     seed: Optional[int] = None
     
+    # Extended exits (optional)
+    use_extended_exits: bool = False
+    use_tiered_sl: bool = False
+    use_delayed_entry: bool = False
+    
     def to_dict(self) -> Dict[str, Any]:
         return {
             "date_from": self.date_from,
@@ -234,6 +240,9 @@ class RandomSearchConfig:
             "caller_group": self.caller_group,
             "caller": self.caller,
             "seed": self.seed,
+            "use_extended_exits": self.use_extended_exits,
+            "use_tiered_sl": self.use_tiered_sl,
+            "use_delayed_entry": self.use_delayed_entry,
         }
 
 
@@ -288,11 +297,50 @@ class TrialResult:
 
 def sample_params(config: RandomSearchConfig, rng: random.Random) -> Dict[str, Any]:
     """Sample random parameters."""
-    return {
+    params = {
         "tp_mult": round(rng.uniform(config.tp_min, config.tp_max), 2),
         "sl_mult": round(rng.uniform(config.sl_min, config.sl_max), 2),
         "intrabar_order": rng.choice(["sl_first", "tp_first"]),
     }
+    
+    # Extended exits
+    if config.use_extended_exits:
+        # Time stop (50% chance)
+        if rng.random() < 0.5:
+            params["time_stop_hours"] = rng.choice([6, 12, 24, 36, 48])
+        
+        # Breakeven move (40% chance)
+        if rng.random() < 0.4:
+            params["breakeven_trigger_pct"] = round(rng.uniform(0.15, 0.40), 2)
+            params["breakeven_offset_pct"] = round(rng.uniform(0.0, 0.02), 3)
+        
+        # Trailing stop (40% chance)
+        if rng.random() < 0.4:
+            params["trail_activation_pct"] = round(rng.uniform(0.30, 0.80), 2)
+            params["trail_distance_pct"] = round(rng.uniform(0.10, 0.25), 2)
+    
+    # Tiered stop loss
+    if config.use_tiered_sl:
+        # Randomly enable some tiers (each tier 50% chance)
+        if rng.random() < 0.5:
+            params["tier_1_2x_sl"] = round(rng.uniform(0.92, 1.05), 2)  # -8% to +5% from entry
+        if rng.random() < 0.5:
+            params["tier_1_5x_sl"] = round(rng.uniform(1.05, 1.25), 2)  # +5% to +25%
+        if rng.random() < 0.6:
+            params["tier_2x_sl"] = round(rng.uniform(1.20, 1.60), 2)   # +20% to +60%
+        if rng.random() < 0.4:
+            params["tier_3x_sl"] = round(rng.uniform(1.60, 2.20), 2)   # +60% to +120%
+        if rng.random() < 0.3:
+            params["tier_4x_sl"] = round(rng.uniform(2.00, 3.00), 2)   # +100% to +200%
+    
+    # Delayed entry
+    if config.use_delayed_entry:
+        params["entry_mode"] = rng.choice(["next_open", "dip"])
+        if params["entry_mode"] == "dip":
+            params["dip_pct"] = round(rng.uniform(0.02, 0.10), 2)
+            params["max_wait_candles"] = rng.choice([5, 10, 15, 30, 60])
+    
+    return params
 
 
 def run_single_backtest(
@@ -303,20 +351,63 @@ def run_single_backtest(
     config: RandomSearchConfig,
 ) -> Dict[str, Any]:
     """Run a single backtest with given params."""
-    rows = run_tp_sl_query(
-        alerts=alerts,
-        slice_path=slice_path,
-        is_partitioned=is_partitioned,
-        interval_seconds=config.interval_seconds,
-        horizon_hours=config.horizon_hours,
-        tp_mult=params["tp_mult"],
-        sl_mult=params["sl_mult"],
-        intrabar_order=params.get("intrabar_order", "sl_first"),
-        fee_bps=config.fee_bps,
-        slippage_bps=config.slippage_bps,
-        threads=config.threads,
-        verbose=False,
+    # Check if we need extended exits
+    has_extended = any(
+        k in params for k in [
+            "time_stop_hours", "breakeven_trigger_pct", "trail_activation_pct",
+            "tier_1_2x_sl", "tier_1_5x_sl", "tier_2x_sl", "tier_3x_sl", "tier_4x_sl",
+            "entry_mode", "dip_pct"
+        ]
     )
+    
+    if has_extended:
+        # Use extended exit query
+        exit_config = ExitConfig(
+            tp_mult=params["tp_mult"],
+            sl_mult=params["sl_mult"],
+            intrabar_order=params.get("intrabar_order", "sl_first"),
+            time_stop_hours=params.get("time_stop_hours"),
+            breakeven_trigger_pct=params.get("breakeven_trigger_pct"),
+            breakeven_offset_pct=params.get("breakeven_offset_pct", 0.0),
+            trail_activation_pct=params.get("trail_activation_pct"),
+            trail_distance_pct=params.get("trail_distance_pct", 0.15),
+            tier_1_2x_sl=params.get("tier_1_2x_sl"),
+            tier_1_5x_sl=params.get("tier_1_5x_sl"),
+            tier_2x_sl=params.get("tier_2x_sl"),
+            tier_3x_sl=params.get("tier_3x_sl"),
+            tier_4x_sl=params.get("tier_4x_sl"),
+            tier_5x_sl=params.get("tier_5x_sl"),
+            entry_mode=params.get("entry_mode", "next_open"),
+            dip_pct=params.get("dip_pct"),
+            max_wait_candles=params.get("max_wait_candles"),
+            fee_bps=config.fee_bps,
+            slippage_bps=config.slippage_bps,
+        )
+        rows = run_extended_exit_query(
+            alerts=alerts,
+            slice_path=slice_path,
+            exit_config=exit_config,
+            interval_seconds=config.interval_seconds,
+            horizon_hours=config.horizon_hours,
+            threads=config.threads,
+            verbose=False,
+        )
+    else:
+        # Use basic TP/SL query
+        rows = run_tp_sl_query(
+            alerts=alerts,
+            slice_path=slice_path,
+            is_partitioned=is_partitioned,
+            interval_seconds=config.interval_seconds,
+            horizon_hours=config.horizon_hours,
+            tp_mult=params["tp_mult"],
+            sl_mult=params["sl_mult"],
+            intrabar_order=params.get("intrabar_order", "sl_first"),
+            fee_bps=config.fee_bps,
+            slippage_bps=config.slippage_bps,
+            threads=config.threads,
+            verbose=False,
+        )
     return summarize_tp_sl(rows, sl_mult=params["sl_mult"], risk_per_trade=config.risk_per_trade)
 
 
@@ -764,6 +855,14 @@ def main() -> None:
     ap.add_argument("--caller", help="Filter by single caller (exact match)")
     ap.add_argument("--caller-group", help="Filter by caller group file")
     
+    # Extended exits
+    ap.add_argument("--extended-exits", action="store_true", 
+                    help="Enable extended exits (time stop, breakeven, trailing)")
+    ap.add_argument("--tiered-sl", action="store_true",
+                    help="Enable tiered stop loss (moves SL up as price hits milestones)")
+    ap.add_argument("--delayed-entry", action="store_true",
+                    help="Enable delayed entry modes (dip entry)")
+    
     # Output
     ap.add_argument("--output-dir", default="results/random_search")
     ap.add_argument("--json", action="store_true", help="Output JSON")
@@ -795,6 +894,9 @@ def main() -> None:
         caller=args.caller,
         caller_group=args.caller_group,
         seed=args.seed,
+        use_extended_exits=args.extended_exits,
+        use_tiered_sl=args.tiered_sl,
+        use_delayed_entry=args.delayed_entry,
     )
     
     # Run
