@@ -2,7 +2,7 @@
 Caller scoring for risk-adjusted ranking.
 
 Implements caller_scored_v2 logic:
-- Exponential risk penalty after 30% drawdown magnitude
+- Exponential risk penalty after 50% drawdown magnitude
 - Speed boost for fast time-to-2x
 - Synergy bonus for high hit rate + low risk
 - Tail bonus for fat right tail (p75/p95)
@@ -13,8 +13,8 @@ Key design choices:
    Because dd_pre2x is undefined for non-2x alerts. If you only punish
    dd_pre2x, callers who rarely hit 2x dodge the risk penalty entirely.
 
-2. Penalty is exponential after 30% drawdown magnitude
-   So 31-35% hurts a bit, 40% hurts a lot, 60% is basically disqualification.
+2. Penalty is exponential after 50% drawdown magnitude (calibrated for crypto)
+   So 55% hurts a bit, 60% hurts, 75%+ is basically disqualification.
 """
 
 from __future__ import annotations
@@ -33,20 +33,20 @@ class ScoringConfig:
     """
     Configuration for caller scoring.
     
-    Tunables for the scoring formula.
+    Tunables for the scoring formula (calibrated for crypto caller data).
     """
     # Risk penalty parameters
-    risk_threshold: float = 0.30  # DD magnitude above this triggers penalty
-    risk_rate: float = 15.0       # Exponential rate (higher = steeper cliff)
+    risk_threshold: float = 0.50  # DD magnitude above this triggers penalty
+    risk_rate: float = 8.0        # Exponential rate (8 makes 75% very painful)
     risk_weight: float = 1.0      # Multiplier for risk penalty
     
     # Timing boost parameters  
     timing_max_boost: float = 0.80  # Max boost when ultra-fast (80% lift)
     timing_halflife_min: float = 60.0  # Halflife in minutes for decay
     
-    # Discipline bonus (synergy for hit2x >= 50% AND dd <= 30%)
-    discipline_hit2x_threshold: float = 50.0  # % threshold
-    discipline_dd_threshold: float = 0.30     # DD magnitude threshold
+    # Discipline bonus (synergy for hit2x >= 40% AND dd <= 55%)
+    discipline_hit2x_threshold: float = 40.0  # % threshold
+    discipline_dd_threshold: float = 0.55     # DD magnitude threshold
     discipline_bonus: float = 0.60            # Bonus amount
     
     # Tail bonus weights

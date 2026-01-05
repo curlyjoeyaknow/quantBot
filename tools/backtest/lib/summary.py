@@ -198,6 +198,50 @@ def summarize_tp_sl(
     risk_adj_avg_win_pct = (sum(risk_adj_wins) / len(risk_adj_wins) * 100) if risk_adj_wins else 0.0
     risk_adj_avg_loss_pct = (sum(risk_adj_losses) / len(risk_adj_losses) * 100) if risk_adj_losses else 0.0
 
+    # ==========================================================================
+    # R-Multiple calculations (the KEY metric for position sizing)
+    # ==========================================================================
+    #
+    # R = risk unit = what you risk per trade (e.g., 2% of portfolio)
+    #
+    # For TP/SL strategy:
+    #   R_per_win = (tp_mult - 1) / (1 - sl_mult)
+    #   R_per_loss = -1 (by definition)
+    #
+    # Example: TP=3x, SL=0.5x
+    #   R_per_win = (3-1) / (1-0.5) = 2 / 0.5 = 4R
+    #   R_per_loss = -1R
+    #
+    # Expectancy_R = (win_rate × R_per_win) + (loss_rate × -1)
+    # Total_R = expectancy_R × n_trades
+    # ==========================================================================
+
+    # We need tp_mult to calculate R - extract from the actual returns
+    # For wins: tp_sl_ret = tp_mult - 1 (minus fees)
+    # For losses: tp_sl_ret ≈ sl_mult - 1 (minus fees)
+    
+    # Calculate R multiples from actual returns
+    r_multiples = []
+    for ret in tp_sl_returns:
+        # Convert return to R-multiple
+        # R = return / max_loss_fraction
+        r_mult = ret / max_loss_fraction
+        r_multiples.append(r_mult)
+    
+    total_r = sum(r_multiples) if r_multiples else 0.0
+    avg_r = (total_r / len(r_multiples)) if r_multiples else 0.0
+    
+    # Separate winners and losers in R terms
+    r_wins = [r for r in r_multiples if r > 0]
+    r_losses = [r for r in r_multiples if r <= 0]
+    avg_r_win = (sum(r_wins) / len(r_wins)) if r_wins else 0.0
+    avg_r_loss = (sum(r_losses) / len(r_losses)) if r_losses else 0.0
+    
+    # R-based profit factor
+    sum_r_wins = sum(r_wins) if r_wins else 0.0
+    sum_r_losses = abs(sum(r_losses)) if r_losses else 0.0
+    r_profit_factor = sum_r_wins / sum_r_losses if sum_r_losses > 0 else (float("inf") if sum_r_wins > 0 else 0.0)
+
     return {
         "alerts_total": len(rows),
         "alerts_ok": len(ok),
@@ -228,6 +272,12 @@ def summarize_tp_sl(
         "risk_adj_avg_return_pct": risk_adj_avg_return_pct,
         "risk_adj_avg_win_pct": risk_adj_avg_win_pct,
         "risk_adj_avg_loss_pct": risk_adj_avg_loss_pct,
+        # R-multiple metrics (the KEY for position sizing)
+        "total_r": total_r,
+        "avg_r": avg_r,
+        "avg_r_win": avg_r_win,
+        "avg_r_loss": avg_r_loss,
+        "r_profit_factor": r_profit_factor,
     }
 
 

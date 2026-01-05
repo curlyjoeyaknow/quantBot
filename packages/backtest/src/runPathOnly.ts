@@ -203,8 +203,10 @@ export async function runPathOnly(req: PathOnlyRequest): Promise<PathOnlySummary
   await mkdir(artifactsDir, { recursive: true });
 
   const duckdbPath = join(artifactsDir, 'results.duckdb');
-  const duckdb = await import('duckdb');
-  const database = new duckdb.Database(duckdbPath);
+  const duckdbModule = await import('duckdb');
+  // duckdb exports Database on the default export object
+  const DuckDB = duckdbModule.default;
+  const database = new DuckDB.Database(duckdbPath);
   const db = database.connect();
 
   try {
