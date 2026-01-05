@@ -125,9 +125,9 @@ CREATE TABLE IF NOT EXISTS optimizer.walk_forward_f (
     test_avg_r DOUBLE,
     test_total_r DOUBLE,
     
-    -- Degradation (overfit detection)
-    avg_r_degradation DOUBLE,
-    total_r_degradation DOUBLE,
+    -- Delta R (test - train): positive = test outperformed, negative = test underperformed
+    delta_avg_r DOUBLE,
+    delta_total_r DOUBLE,
     
     notes TEXT,
     
@@ -176,9 +176,11 @@ SELECT
     COUNT(*) AS n_folds,
     AVG(train_total_r) AS avg_train_r,
     AVG(test_total_r) AS avg_test_r,
-    AVG(avg_r_degradation) AS avg_degradation,
-    SUM(CASE WHEN avg_r_degradation < 0 THEN 1 ELSE 0 END) AS folds_improved,
-    SUM(CASE WHEN avg_r_degradation > 0.5 THEN 1 ELSE 0 END) AS folds_overfit
+    MEDIAN(test_total_r) AS median_test_r,
+    AVG(delta_total_r) AS avg_delta_r,
+    SUM(CASE WHEN test_total_r > 0 THEN 1 ELSE 0 END) AS folds_profitable,
+    SUM(CASE WHEN delta_total_r > 0 THEN 1 ELSE 0 END) AS folds_improved,
+    MIN(test_total_r) AS worst_fold_r
 FROM optimizer.walk_forward_f
 GROUP BY run_id;
 """
@@ -343,11 +345,15 @@ def store_walk_forward_run(
             date_to = max(f.get("test_to", "") for f in folds)
             alerts_total = sum(f.get("train_alerts", 0) + f.get("test_alerts", 0) for f in folds)
             avg_test_r = sum(f.get("test_total_r", 0) for f in folds) / len(folds)
-            avg_degrad = sum(f.get("avg_r_degradation", 0) for f in folds) / len(folds)
+            avg_delta_r = sum(f.get("delta_total_r", 0) for f in folds) / len(folds)
+            pct_profitable = sum(1 for f in folds if f.get("test_total_r", 0) > 0) / len(folds) * 100
+            worst_fold = min(f.get("test_total_r", 0) for f in folds)
             summary = {
                 "n_folds": len(folds),
                 "avg_test_total_r": avg_test_r,
-                "avg_degradation": avg_degrad,
+                "avg_delta_r": avg_delta_r,
+                "pct_profitable": pct_profitable,
+                "worst_fold_r": worst_fold,
             }
         else:
             date_from = date_to = ""
@@ -391,7 +397,7 @@ def store_walk_forward_run(
                     best_tp_mult, best_sl_mult, best_params_json,
                     train_win_rate, train_avg_r, train_total_r,
                     test_win_rate, test_avg_r, test_total_r,
-                    avg_r_degradation, total_r_degradation, notes
+                    delta_avg_r, delta_total_r, notes
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, [
                 fold_id,
@@ -413,8 +419,8 @@ def store_walk_forward_run(
                 f.get("test_win_rate"),
                 f.get("test_avg_r"),
                 f.get("test_total_r"),
-                f.get("avg_r_degradation"),
-                f.get("total_r_degradation"),
+                f.get("delta_avg_r"),
+                f.get("delta_total_r"),
                 None,
             ])
         

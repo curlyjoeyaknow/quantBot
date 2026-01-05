@@ -242,6 +242,26 @@ def summarize_tp_sl(
     sum_r_losses = abs(sum(r_losses)) if r_losses else 0.0
     r_profit_factor = sum_r_wins / sum_r_losses if sum_r_losses > 0 else (float("inf") if sum_r_wins > 0 else 0.0)
 
+    # Percentiles for ATH (for objective function tail bonus)
+    def percentile(xs: List[float], p: float) -> Optional[float]:
+        if not xs:
+            return None
+        s = sorted(xs)
+        idx = int(len(s) * p)
+        return s[min(idx, len(s) - 1)]
+    
+    p75_ath = percentile(ath, 0.75)
+    p95_ath = percentile(ath, 0.95)
+    
+    # DD before 2x (for objective function penalty)
+    # dd_pre2x = drawdown from entry before hitting 2x
+    # We use dd_initial as proxy (drawdown from initial entry)
+    dd_pre2x = take("dd_pre2x") if any(r.get("dd_pre2x") is not None for r in ok) else dd_initial
+    dd_pre2x_median = fmt_med(dd_pre2x) if dd_pre2x else fmt_med(dd_initial)
+    
+    # Time to 2x in minutes (for objective function timing boost)
+    time_to_2x_median_min = (fmt_med(t2x) / 60.0) if t2x and fmt_med(t2x) else None
+    
     return {
         "alerts_total": len(rows),
         "alerts_ok": len(ok),
@@ -257,6 +277,11 @@ def summarize_tp_sl(
         "median_ret_end": fmt_med(ret_end),
         "pct_hit_2x": fmt_pct_hit("time_to_2x_s"),
         "pct_hit_4x": fmt_pct_hit("time_to_4x_s"),
+        # Objective function metrics
+        "dd_pre2x_median": dd_pre2x_median,
+        "time_to_2x_median_min": time_to_2x_median_min,
+        "p75_ath": p75_ath,
+        "p95_ath": p95_ath,
         # Raw returns (100% position size)
         "tp_sl_total_return_pct": total_return_pct,
         "tp_sl_avg_return_pct": avg_return_pct,

@@ -71,6 +71,21 @@ from .optimizer import (
     OptimizationRun,
     run_optimization,
 )
+from .optimizer_objective import (
+    ObjectiveConfig,
+    ObjectiveComponents,
+    DEFAULT_OBJECTIVE_CONFIG,
+    CONSERVATIVE_OBJECTIVE_CONFIG,
+    AGGRESSIVE_OBJECTIVE_CONFIG,
+    compute_dd_penalty,
+    compute_timing_boost,
+    compute_tail_bonus,
+    compute_win_rate_penalty,
+    compute_loss_r_penalty,
+    compute_objective,
+    score_result,
+    print_objective_breakdown,
+)
 from .run_contract import (
     RunConfig,
     RunIdentity,
@@ -220,6 +235,20 @@ __all__ = [
     "OptimizationResult",
     "OptimizationRun",
     "run_optimization",
+    # Optimizer objective
+    "ObjectiveConfig",
+    "ObjectiveComponents",
+    "DEFAULT_OBJECTIVE_CONFIG",
+    "CONSERVATIVE_OBJECTIVE_CONFIG",
+    "AGGRESSIVE_OBJECTIVE_CONFIG",
+    "compute_dd_penalty",
+    "compute_timing_boost",
+    "compute_tail_bonus",
+    "compute_win_rate_penalty",
+    "compute_loss_r_penalty",
+    "compute_objective",
+    "score_result",
+    "print_objective_breakdown",
     # Run contract
     "RunConfig",
     "RunIdentity",

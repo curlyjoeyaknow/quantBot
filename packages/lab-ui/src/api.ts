@@ -102,7 +102,7 @@ export function registerApi(app: express.Express, db: DuckDb) {
         `UPDATE backtest_runs
         SET status='error', finished_at=NOW(), error_text=?
         WHERE run_id=?`,
-        [err instanceof Error ? err.stack ?? err.message : String(err), run_id]
+        [err instanceof Error ? (err.stack ?? err.message) : String(err), run_id]
       );
     });
 
@@ -156,7 +156,7 @@ export function registerApi(app: express.Express, db: DuckDb) {
         `UPDATE backtest_runs
         SET status='error', finished_at=NOW(), error_text=?
         WHERE run_id=?`,
-        [err instanceof Error ? err.stack ?? err.message : String(err), run_id]
+        [err instanceof Error ? (err.stack ?? err.message) : String(err), run_id]
       );
     });
 
@@ -211,7 +211,7 @@ export function registerApi(app: express.Express, db: DuckDb) {
         `UPDATE backtest_runs
         SET status='error', finished_at=NOW(), error_text=?
         WHERE run_id=?`,
-        [err instanceof Error ? err.stack ?? err.message : String(err), run_id]
+        [err instanceof Error ? (err.stack ?? err.message) : String(err), run_id]
       );
     });
 
@@ -272,7 +272,7 @@ export function registerApi(app: express.Express, db: DuckDb) {
         `UPDATE backtest_runs
         SET status='error', finished_at=NOW(), error_text=?
         WHERE run_id=?`,
-        [err instanceof Error ? err.stack ?? err.message : String(err), run_id]
+        [err instanceof Error ? (err.stack ?? err.message) : String(err), run_id]
       );
     });
 
