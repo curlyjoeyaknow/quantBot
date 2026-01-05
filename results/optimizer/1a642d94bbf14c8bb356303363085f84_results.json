@@ -1,0 +1,147 @@
+{
+  "config": {
+    "name": "optimize_2025-05-01_2025-05-10",
+    "date_from": "2025-05-01",
+    "date_to": "2025-05-10",
+    "duckdb_path": "data/alerts.duckdb",
+    "chain": "solana",
+    "slice_dir": "slices",
+    "reuse_slice": true,
+    "interval_seconds": 300,
+    "horizon_hours": 24,
+    "fee_bps": 30.0,
+    "slippage_bps": 50.0,
+    "threads": 8,
+    "parallel_runs": 1,
+    "store_duckdb": true,
+    "output_dir": "results/optimizer",
+    "risk_per_trade": 0.02,
+    "slice_path": "slices/per_token/candles.parquet",
+    "tp_sl": {
+      "tp_mult": {
+        "values": [
+          2.0
+        ]
+      },
+      "sl_mult": {
+        "values": [
+          0.5
+        ]
+      },
+      "intrabar_order": [
+        "sl_first"
+      ]
+    }
+  },
+  "results": [
+    {
+      "params": {
+        "tp_mult": 2.0,
+        "sl_mult": 0.5,
+        "intrabar_order": "sl_first"
+      },
+      "summary": {
+        "alerts_total": 129,
+        "alerts_ok": 129,
+        "alerts_missing": 0,
+        "median_ath_mult": 1.8402846698820252,
+        "median_time_to_2x_s": 2370.0,
+        "median_time_to_4x_s": 3480.0,
+        "median_dd_initial": -0.8678865671524095,
+        "median_dd_overall": -0.8711759234072476,
+        "median_dd_pre_1_2x": -0.22216928450988305,
+        "median_dd_pre_1_5x": -0.29912050438121984,
+        "median_dd_pre2x": -0.36813710506012515,
+        "median_dd_band_1_2x_to_1_5x": -0.11761890333293862,
+        "median_dd_band_1_5x_to_2x": -0.2297519930313094,
+        "median_dd_after_2x": -0.9087923419101409,
+        "median_dd_after_3x": -0.9375169055346018,
+        "median_peak_pnl_pct": 84.02846698820252,
+        "median_ret_end": -0.8291662059160767,
+        "pct_hit_1_2x": 0.8527131782945736,
+        "pct_hit_1_5x": 0.6589147286821705,
+        "pct_hit_2x": 0.43410852713178294,
+        "pct_hit_4x": 0.1937984496124031,
+        "dd_pre2x_median": -0.36813710506012515,
+        "time_to_1_2x_median_min": 5.0,
+        "time_to_1_5x_median_min": 34.0,
+        "time_to_2x_median_min": 39.5,
+        "p75_ath": 2.687055911339868,
+        "p95_ath": 15.48835413139638,
+        "tp_sl_total_return_pct": -637.5870565576964,
+        "tp_sl_avg_return_pct": -4.942535322152685,
+        "tp_sl_win_rate": 0.3178294573643411,
+        "tp_sl_avg_win_pct": 88.39350274616878,
+        "tp_sl_avg_loss_pct": -48.42864396762064,
+        "tp_sl_profit_factor": 0.8503921054298543,
+        "tp_sl_expectancy_pct": -4.942535322152685,
+        "risk_per_trade_pct": 2.0,
+        "position_size_pct": 4.0,
+        "risk_adj_total_return_pct": -25.503482262307852,
+        "risk_adj_avg_return_pct": -0.19770141288610737,
+        "risk_adj_avg_win_pct": 3.535740109846751,
+        "risk_adj_avg_loss_pct": -1.9371457587048255,
+        "total_r": -12.751741131153928,
+        "avg_r": -0.0988507064430537,
+        "avg_r_win": 1.7678700549233757,
+        "avg_r_loss": -0.9685728793524128,
+        "r_profit_factor": 0.8503921054298543
+      },
+      "run_id": "9017dcae741e",
+      "duration_s": 0.16891884803771973,
+      "alerts_ok": 129,
+      "alerts_total": 129,
+      "objective": {
+        "avg_r": -0.0988507064430537,
+        "total_r": -12.751741131153928,
+        "n_trades": 129,
+        "dd_magnitude": 0.8678865671524095,
+        "dd_pre_1_2x": null,
+        "dd_pre_1_5x": null,
+        "dd_pre_2x": null,
+        "time_to_2x_min": 39.5,
+        "time_to_1_2x_min": null,
+        "time_to_1_5x_min": null,
+        "hit2x_pct": 0.43410852713178294,
+        "hit_1_2x_pct": 0.0,
+        "hit_1_5x_pct": 0.0,
+        "median_ath": 1.8402846698820252,
+        "p75_ath": null,
+        "p95_ath": null,
+        "base_score": -0.0988507064430537,
+        "dd_penalty": 8.091313551949264,
+        "dd_penalty_breakdown": null,
+        "time_boost": 0.21582733812949642,
+        "time_boost_breakdown": null,
+        "discipline_bonus": 0.0,
+        "tail_bonus": 0.0,
+        "confidence": 0.900733453756982,
+        "raw_score": -7.974336920262822,
+        "final_score": -7.182752035610147
+      }
+    }
+  ],
+  "run_id": "1a642d94bbf14c8bb356303363085f84",
+  "started_at": "2026-01-05T02:51:14.126778+00:00",
+  "completed_at": "2026-01-05T02:51:14.295819+00:00",
+  "timing": {
+    "total_ms": 389,
+    "phases": [
+      {
+        "label": "load_alerts",
+        "duration_ms": 219,
+        "timestamp_ms": 1767581473906
+      },
+      {
+        "label": "ensure_slice",
+        "duration_ms": 0,
+        "timestamp_ms": 1767581474126
+      },
+      {
+        "label": "backtest",
+        "duration_ms": 169,
+        "timestamp_ms": 1767581474126
+      }
+    ]
+  }
+}

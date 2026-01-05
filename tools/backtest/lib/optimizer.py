@@ -576,7 +576,7 @@ class GridOptimizer:
             self._log("")
             self._log(f"BEST RESULT BREAKDOWN (TP={best.params['tp_mult']:.2f}x SL={best.params['sl_mult']:.2f}x):")
             self._log("-" * 50)
-            print_objective_breakdown(best.objective)
+            print_objective_breakdown(best.objective, self.objective_config)
         
         # Print top 5 by Total R (for reference)
         self._log("")

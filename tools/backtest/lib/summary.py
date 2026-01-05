@@ -136,8 +136,18 @@ def summarize_tp_sl(
     dd = take("dd_overall")
     ret_end = take("ret_end")
     peak_pnl = take("peak_pnl_pct")
+    # Time to tier metrics (granular)
+    t_1_2x = [float(r["time_to_1_2x_s"]) for r in ok if r.get("time_to_1_2x_s") is not None]
+    t_1_5x = [float(r["time_to_1_5x_s"]) for r in ok if r.get("time_to_1_5x_s") is not None]
     t2x = [float(r["time_to_2x_s"]) for r in ok if r.get("time_to_2x_s") is not None]
     t4x = [float(r["time_to_4x_s"]) for r in ok if r.get("time_to_4x_s") is not None]
+    # Granular DD tier metrics (from entry price)
+    dd_pre_1_2x = take("dd_pre_1_2x")
+    dd_pre_1_5x = take("dd_pre_1_5x")
+    dd_pre2x = take("dd_pre2x")
+    # DD in tier bands (from tier's price level)
+    dd_band_1_2x_to_1_5x = take("dd_band_1_2x_to_1_5x")
+    dd_band_1_5x_to_2x = take("dd_band_1_5x_to_2x")
     dd_after_2x = take("dd_after_2x")
     dd_after_3x = take("dd_after_3x")
 
@@ -254,12 +264,12 @@ def summarize_tp_sl(
     p95_ath = percentile(ath, 0.95)
     
     # DD before 2x (for objective function penalty)
-    # dd_pre2x = drawdown from entry before hitting 2x
-    # We use dd_initial as proxy (drawdown from initial entry)
-    dd_pre2x = take("dd_pre2x") if any(r.get("dd_pre2x") is not None for r in ok) else dd_initial
+    # dd_pre2x already taken above - use that for median calculation
     dd_pre2x_median = fmt_med(dd_pre2x) if dd_pre2x else fmt_med(dd_initial)
     
-    # Time to 2x in minutes (for objective function timing boost)
+    # Time to tier in minutes (for objective function timing boost)
+    time_to_1_2x_median_min = (fmt_med(t_1_2x) / 60.0) if t_1_2x and fmt_med(t_1_2x) else None
+    time_to_1_5x_median_min = (fmt_med(t_1_5x) / 60.0) if t_1_5x and fmt_med(t_1_5x) else None
     time_to_2x_median_min = (fmt_med(t2x) / 60.0) if t2x and fmt_med(t2x) else None
     
     return {
@@ -271,14 +281,26 @@ def summarize_tp_sl(
         "median_time_to_4x_s": fmt_med(t4x),
         "median_dd_initial": fmt_med(dd_initial),
         "median_dd_overall": fmt_med(dd),
+        # Granular DD tier metrics (from entry price)
+        "median_dd_pre_1_2x": fmt_med(dd_pre_1_2x),
+        "median_dd_pre_1_5x": fmt_med(dd_pre_1_5x),
+        "median_dd_pre2x": fmt_med(dd_pre2x),
+        # DD in tier bands (from tier's price level)
+        "median_dd_band_1_2x_to_1_5x": fmt_med(dd_band_1_2x_to_1_5x),
+        "median_dd_band_1_5x_to_2x": fmt_med(dd_band_1_5x_to_2x),
         "median_dd_after_2x": fmt_med(dd_after_2x),
         "median_dd_after_3x": fmt_med(dd_after_3x),
         "median_peak_pnl_pct": fmt_med(peak_pnl),
         "median_ret_end": fmt_med(ret_end),
+        # Hit rates for granular tiers
+        "pct_hit_1_2x": fmt_pct_hit("time_to_1_2x_s"),
+        "pct_hit_1_5x": fmt_pct_hit("time_to_1_5x_s"),
         "pct_hit_2x": fmt_pct_hit("time_to_2x_s"),
         "pct_hit_4x": fmt_pct_hit("time_to_4x_s"),
         # Objective function metrics
         "dd_pre2x_median": dd_pre2x_median,
+        "time_to_1_2x_median_min": time_to_1_2x_median_min,
+        "time_to_1_5x_median_min": time_to_1_5x_median_min,
         "time_to_2x_median_min": time_to_2x_median_min,
         "p75_ath": p75_ath,
         "p95_ath": p95_ath,
