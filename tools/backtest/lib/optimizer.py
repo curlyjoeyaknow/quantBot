@@ -24,11 +24,12 @@ from .optimizer_objective import (
     ObjectiveConfig,
     ObjectiveComponents,
     DEFAULT_OBJECTIVE_CONFIG,
-    compute_objective,
+    score_from_summary,
     print_objective_breakdown,
 )
 from .summary import summarize_tp_sl, aggregate_by_caller
 from .tp_sl_query import run_tp_sl_query
+from .extended_exits import ExitConfig, run_extended_exit_query
 from .timing import TimingContext, format_ms
 
 UTC = timezone.utc
@@ -409,7 +410,8 @@ class GridOptimizer:
         Run a single backtest with given parameters.
         
         Args:
-            params: Parameter dict (tp_mult, sl_mult, intrabar_order, etc.)
+            params: Parameter dict (tp_mult, sl_mult, intrabar_order, 
+                   time_stop_hours, breakeven_trigger_pct, trail_activation_pct, etc.)
             alerts: Alerts to backtest
             slice_path: Path to slice
             is_partitioned: Whether slice is partitioned
@@ -424,20 +426,52 @@ class GridOptimizer:
         sl_mult = params.get("sl_mult", 0.5)
         intrabar_order = params.get("intrabar_order", "sl_first")
         
-        rows = run_tp_sl_query(
-            alerts=alerts,
-            slice_path=slice_path,
-            is_partitioned=is_partitioned,
-            interval_seconds=self.config.interval_seconds,
-            horizon_hours=self.config.horizon_hours,
-            tp_mult=tp_mult,
-            sl_mult=sl_mult,
-            intrabar_order=intrabar_order,
-            fee_bps=self.config.fee_bps,
-            slippage_bps=self.config.slippage_bps,
-            threads=self.config.threads,
-            verbose=False,
-        )
+        # Check if extended exits are being used
+        has_extended = any(k in params for k in [
+            "time_stop_hours", 
+            "breakeven_trigger_pct", 
+            "trail_activation_pct"
+        ])
+        
+        if has_extended:
+            # Use extended exit query
+            exit_config = ExitConfig(
+                tp_mult=tp_mult,
+                sl_mult=sl_mult,
+                intrabar_order=intrabar_order,
+                time_stop_hours=params.get("time_stop_hours"),
+                breakeven_trigger_pct=params.get("breakeven_trigger_pct"),
+                breakeven_offset_pct=params.get("breakeven_offset_pct", 0.0),
+                trail_activation_pct=params.get("trail_activation_pct"),
+                trail_distance_pct=params.get("trail_distance_pct", 0.15),
+                fee_bps=self.config.fee_bps,
+                slippage_bps=self.config.slippage_bps,
+            )
+            rows = run_extended_exit_query(
+                alerts=alerts,
+                slice_path=slice_path,
+                exit_config=exit_config,
+                interval_seconds=self.config.interval_seconds,
+                horizon_hours=self.config.horizon_hours,
+                threads=self.config.threads,
+                verbose=False,
+            )
+        else:
+            # Use basic TP/SL query
+            rows = run_tp_sl_query(
+                alerts=alerts,
+                slice_path=slice_path,
+                is_partitioned=is_partitioned,
+                interval_seconds=self.config.interval_seconds,
+                horizon_hours=self.config.horizon_hours,
+                tp_mult=tp_mult,
+                sl_mult=sl_mult,
+                intrabar_order=intrabar_order,
+                fee_bps=self.config.fee_bps,
+                slippage_bps=self.config.slippage_bps,
+                threads=self.config.threads,
+                verbose=False,
+            )
         
         summary = summarize_tp_sl(
             rows,
@@ -446,7 +480,7 @@ class GridOptimizer:
         )
         
         # Compute objective function
-        objective = compute_objective(summary, self.objective_config)
+        objective = score_from_summary(summary, self.objective_config)
         
         duration = time.time() - t0
         
@@ -491,7 +525,16 @@ class GridOptimizer:
         # Run all combinations
         with timing.phase("backtest"):
             for idx, params in self.config.iter_all_params():
-                self._log(f"[{idx+1}/{total_combos}] TP={params['tp_mult']:.2f}x SL={params['sl_mult']:.2f}x ...")
+                # Build progress string with extended params
+                progress_parts = [f"TP={params['tp_mult']:.2f}x", f"SL={params['sl_mult']:.2f}x"]
+                if params.get("time_stop_hours"):
+                    progress_parts.append(f"T={params['time_stop_hours']:.0f}h")
+                if params.get("breakeven_trigger_pct"):
+                    progress_parts.append(f"BE={params['breakeven_trigger_pct']*100:.0f}%")
+                if params.get("trail_activation_pct"):
+                    progress_parts.append(f"Trail={params['trail_activation_pct']*100:.0f}%")
+                
+                self._log(f"[{idx+1}/{total_combos}] {' '.join(progress_parts)} ...")
                 
                 result = self.run_single(params, alerts, slice_path, is_partitioned)
                 opt_run.add_result(result)
@@ -533,7 +576,7 @@ class GridOptimizer:
             self._log("")
             self._log(f"BEST RESULT BREAKDOWN (TP={best.params['tp_mult']:.2f}x SL={best.params['sl_mult']:.2f}x):")
             self._log("-" * 50)
-            print_objective_breakdown(best.objective, self.objective_config)
+            print_objective_breakdown(best.objective)
         
         # Print top 5 by Total R (for reference)
         self._log("")

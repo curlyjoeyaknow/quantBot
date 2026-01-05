@@ -8,6 +8,16 @@
  *
  * This is the TRUTH LAYER - the keel of the ship.
  * Everything else bolts onto it.
+ *
+ * Wall-clock timing per phase:
+ * - plan: planning step
+ * - coverage: coverage check
+ * - slice: slice materialisation
+ * - load: candle loading
+ * - compute: path metrics computation
+ * - store: DuckDB persistence
+ *
+ * When something regresses from 15s → 40s, the timing summary will scream.
  */
 
 import { randomUUID } from 'crypto';
@@ -20,7 +30,7 @@ import { materialiseSlice } from './slice.js';
 import { loadCandlesFromSlice } from './runBacktest.js';
 import { computePathMetrics } from './metrics/path-metrics.js';
 import { insertPathMetrics, type DuckDbConnection } from './reporting/backtest-results-duckdb.js';
-import { logger, type LogContext } from '@quantbot/utils';
+import { logger, TimingContext, type LogContext } from '@quantbot/utils';
 
 /**
  * Create a DuckDB connection adapter for use with insert functions
@@ -68,6 +78,10 @@ export async function runPathOnly(req: PathOnlyRequest): Promise<PathOnlySummary
   const runId = randomUUID();
   const activityMovePct = req.activityMovePct ?? 0.1;
 
+  // Wall-clock timing - when something regresses 15s → 40s, this screams
+  const timing = new TimingContext();
+  timing.start();
+
   logger.info('Starting path-only backtest', {
     runId,
     calls: req.calls.length,
@@ -75,33 +89,41 @@ export async function runPathOnly(req: PathOnlyRequest): Promise<PathOnlySummary
   });
 
   // Step 1: Plan (reuse existing)
-  // Create a minimal strategy for planning purposes (no overlays needed for path-only)
-  const planReq = {
-    strategy: {
-      id: 'path-only',
-      name: 'path-only',
-      overlays: [],
-      fees: { takerFeeBps: 0, slippageBps: 0 },
-      position: { notionalUsd: 0 },
-      indicatorWarmup: 0,
-      entryDelay: 0,
-      maxHold: 1440, // 24h default for path metrics window
-    },
-    calls: req.calls,
-    interval: req.interval,
-    from: req.from,
-    to: req.to,
-  };
+  let plan: BacktestPlan;
+  timing.phaseSync('plan', () => {
+    // Create a minimal strategy for planning purposes (no overlays needed for path-only)
+    const planReq = {
+      strategy: {
+        id: 'path-only',
+        name: 'path-only',
+        overlays: [],
+        fees: { takerFeeBps: 0, slippageBps: 0 },
+        position: { notionalUsd: 0 },
+        indicatorWarmup: 0,
+        entryDelay: 0,
+        maxHold: 1440, // 24h default for path metrics window
+      },
+      calls: req.calls,
+      interval: req.interval,
+      from: req.from,
+      to: req.to,
+    };
 
-  const plan: BacktestPlan = planBacktest(planReq);
+    plan = planBacktest(planReq);
+  });
+
   logger.info('Planning complete', {
-    totalRequiredCandles: plan.totalRequiredCandles,
+    totalRequiredCandles: plan!.totalRequiredCandles,
     calls: req.calls.length,
   });
 
   // Step 2: Coverage gate (reuse existing)
-  const coverage = await checkCoverage(plan);
+  const coverage = await timing.phase('coverage', async () => {
+    return checkCoverage(plan!);
+  });
+
   if (coverage.eligible.length === 0) {
+    timing.end();
     logger.warn('No eligible calls after coverage check', {
       runId,
       excluded: coverage.excluded.length,
@@ -112,6 +134,7 @@ export async function runPathOnly(req: PathOnlyRequest): Promise<PathOnlySummary
       callsProcessed: 0,
       callsExcluded: coverage.excluded.length,
       pathMetricsWritten: 0,
+      timing: timing.toJSON(),
     };
   }
 
@@ -121,77 +144,86 @@ export async function runPathOnly(req: PathOnlyRequest): Promise<PathOnlySummary
   });
 
   // Step 3: Slice materialisation (reuse existing)
-  const slice = await materialiseSlice(plan, coverage);
+  const slice = await timing.phase('slice', async () => {
+    return materialiseSlice(plan!, coverage);
+  });
+
   logger.info('Slice materialised', {
     path: slice.path,
     calls: slice.callIds.length,
   });
 
   // Step 4: Load candles from slice (reuse existing)
-  const candlesByCall = await loadCandlesFromSlice(slice.path);
+  const candlesByCall = await timing.phase('load', async () => {
+    return loadCandlesFromSlice(slice.path);
+  });
 
   // Create call lookup map
   const callsById = new Map(req.calls.map((call) => [call.id, call]));
 
   // Step 5: Compute path metrics for EVERY eligible call
-  const pathMetricsRows: PathMetricsRow[] = [];
+  const pathMetricsRows: PathMetricsRow[] = timing.phaseSync('compute', () => {
+    const rows: PathMetricsRow[] = [];
 
-  for (const eligible of coverage.eligible) {
-    const call = callsById.get(eligible.callId);
-    if (!call) {
-      logger.warn('Call not found in lookup', { callId: eligible.callId });
-      continue;
-    }
+    for (const eligible of coverage.eligible) {
+      const call = callsById.get(eligible.callId);
+      if (!call) {
+        logger.warn('Call not found in lookup', { callId: eligible.callId });
+        continue;
+      }
 
-    const candles = candlesByCall.get(eligible.callId) || [];
+      const candles = candlesByCall.get(eligible.callId) || [];
 
-    if (candles.length === 0) {
-      logger.warn('No candles found for call', { callId: eligible.callId });
-      continue;
-    }
+      if (candles.length === 0) {
+        logger.warn('No candles found for call', { callId: eligible.callId });
+        continue;
+      }
 
-    // Anchor time: ALERT timestamp (ms)
-    const t0_ms = call.createdAt.toMillis();
+      // Anchor time: ALERT timestamp (ms)
+      const t0_ms = call.createdAt.toMillis();
 
-    // Compute path metrics
-    const path = computePathMetrics(candles, t0_ms, {
-      activity_move_pct: activityMovePct,
-    });
-
-    // Skip if anchor price is invalid (no valid candles at/after alert)
-    if (!isFinite(path.p0) || path.p0 <= 0) {
-      logger.warn('Invalid anchor price for call', {
-        callId: eligible.callId,
-        p0: path.p0,
+      // Compute path metrics
+      const path = computePathMetrics(candles, t0_ms, {
+        activity_move_pct: activityMovePct,
       });
-      continue;
+
+      // Skip if anchor price is invalid (no valid candles at/after alert)
+      if (!isFinite(path.p0) || path.p0 <= 0) {
+        logger.warn('Invalid anchor price for call', {
+          callId: eligible.callId,
+          p0: path.p0,
+        });
+        continue;
+      }
+
+      // Build path metrics row - ALWAYS written (Guardrail 2)
+      rows.push({
+        run_id: runId,
+        call_id: eligible.callId,
+        caller_name: call.caller,
+        mint: call.mint,
+        chain: eligible.chain,
+        interval: req.interval,
+
+        alert_ts_ms: t0_ms,
+        p0: path.p0,
+
+        hit_2x: path.hit_2x,
+        t_2x_ms: path.t_2x_ms,
+        hit_3x: path.hit_3x,
+        t_3x_ms: path.t_3x_ms,
+        hit_4x: path.hit_4x,
+        t_4x_ms: path.t_4x_ms,
+
+        dd_bps: path.dd_bps,
+        dd_to_2x_bps: path.dd_to_2x_bps,
+        alert_to_activity_ms: path.alert_to_activity_ms,
+        peak_multiple: path.peak_multiple,
+      });
     }
 
-    // Build path metrics row - ALWAYS written (Guardrail 2)
-    pathMetricsRows.push({
-      run_id: runId,
-      call_id: eligible.callId,
-      caller_name: call.caller,
-      mint: call.mint,
-      chain: eligible.chain,
-      interval: req.interval,
-
-      alert_ts_ms: t0_ms,
-      p0: path.p0,
-
-      hit_2x: path.hit_2x,
-      t_2x_ms: path.t_2x_ms,
-      hit_3x: path.hit_3x,
-      t_3x_ms: path.t_3x_ms,
-      hit_4x: path.hit_4x,
-      t_4x_ms: path.t_4x_ms,
-
-      dd_bps: path.dd_bps,
-      dd_to_2x_bps: path.dd_to_2x_bps,
-      alert_to_activity_ms: path.alert_to_activity_ms,
-      peak_multiple: path.peak_multiple,
-    });
-  }
+    return rows;
+  });
 
   logger.info('Path metrics computed', {
     computed: pathMetricsRows.length,
@@ -199,39 +231,48 @@ export async function runPathOnly(req: PathOnlyRequest): Promise<PathOnlySummary
   });
 
   // Step 6: Persist to backtest_call_path_metrics table
-  const artifactsDir = join(process.cwd(), 'artifacts', 'backtest', runId);
-  await mkdir(artifactsDir, { recursive: true });
+  await timing.phase('store', async () => {
+    const artifactsDir = join(process.cwd(), 'artifacts', 'backtest', runId);
+    await mkdir(artifactsDir, { recursive: true });
 
-  const duckdbPath = join(artifactsDir, 'results.duckdb');
-  const duckdbModule = await import('duckdb');
-  // duckdb exports Database on the default export object
-  const DuckDB = duckdbModule.default;
-  const database = new DuckDB.Database(duckdbPath);
-  const db = database.connect();
+    const duckdbPath = join(artifactsDir, 'results.duckdb');
+    const duckdbModule = await import('duckdb');
+    // duckdb exports Database on the default export object
+    const DuckDB = duckdbModule.default;
+    const database = new DuckDB.Database(duckdbPath);
+    const db = database.connect();
 
-  try {
-    if (pathMetricsRows.length > 0) {
-      const adapter = createDuckDbAdapter(db as DuckDbConnection);
-      await insertPathMetrics(adapter as Parameters<typeof insertPathMetrics>[0], pathMetricsRows);
-      logger.info('Path metrics persisted', {
-        rows: pathMetricsRows.length,
-        duckdbPath,
-      });
+    try {
+      if (pathMetricsRows.length > 0) {
+        const adapter = createDuckDbAdapter(db as DuckDbConnection);
+        await insertPathMetrics(
+          adapter as Parameters<typeof insertPathMetrics>[0],
+          pathMetricsRows
+        );
+        logger.info('Path metrics persisted', {
+          rows: pathMetricsRows.length,
+          duckdbPath,
+        });
+      }
+    } finally {
+      database.close();
     }
-  } finally {
-    database.close();
-  }
+  });
 
   // Step 7: Stop (no trades, no policy execution)
   // That's it! Path-only mode is complete.
+  timing.end();
 
   const summary: PathOnlySummary = {
     runId,
     callsProcessed: coverage.eligible.length,
     callsExcluded: coverage.excluded.length,
     pathMetricsWritten: pathMetricsRows.length,
+    timing: timing.toJSON(),
   };
 
+  // Log the sacred timing line - when regressions happen, this screams
+  logger.info(timing.summaryLine());
   logger.info('Path-only backtest complete', summary as unknown as LogContext);
 
   return summary;

@@ -87,6 +87,18 @@ export {
 // Test helpers
 export { shouldRunDbStress, TEST_GATES } from './test-helpers/test-gating.js';
 
+// Timing utilities
+export {
+  TimingContext,
+  timed,
+  timedSync,
+  nowMs,
+  formatMs,
+  formatTimingParts,
+  timedFunction,
+} from './timing.js';
+export type { TimingRecord, TimingSummary } from './timing.js';
+
 // NOTE: Database utilities DEPRECATED - use @quantbot/storage instead
 //
 // ⚠️ DEPRECATION NOTICE:
