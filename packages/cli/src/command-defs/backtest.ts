@@ -195,3 +195,14 @@ export const backtestBaselineSchema = z.object({
 });
 
 export type BacktestBaselineArgs = z.infer<typeof backtestBaselineSchema>;
+
+/**
+ * Migrate results schema
+ * Import existing JSON/CSV files to central DuckDB
+ */
+export const backtestMigrateSchema = z.object({
+  resultsDir: z.string().optional(), // Directory to scan for results (default: results/)
+  dryRun: z.boolean().optional().default(false), // Don't actually migrate, just show what would be migrated
+});
+
+export type BacktestMigrateArgs = z.infer<typeof backtestMigrateSchema>;

@@ -72,6 +72,7 @@
     "@influxdata/influxdb-client": "^1.33.2",
     "@influxdata/influxdb-client-apis": "^1.33.2",
     "@quantbot/core": "workspace:*",
+    "@quantbot/labcatalog": "workspace:*",
     "@quantbot/utils": "workspace:*",
     "ajv": "^8.17.1",
     "ajv-formats": "^3.0.1",

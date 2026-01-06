@@ -23,10 +23,14 @@ async function main() {
 
   registerApi(app, db);
 
-  app.get('/', (_req, res) => res.redirect('/strategies'));
+  app.get('/', (_req, res) => res.redirect('/dashboard'));
+  app.get('/dashboard', (_req, res) => res.render('dashboard'));
   app.get('/strategies', (_req, res) => res.render('strategies'));
   app.get('/runs', (_req, res) => res.render('runs'));
   app.get('/leaderboard', (_req, res) => res.render('leaderboard'));
+  app.get('/scored', (_req, res) => res.render('scored'));
+  app.get('/caller', (_req, res) => res.render('caller'));
+  app.get('/compare', (_req, res) => res.render('compare'));
   // Phase 6 - Truth leaderboard and policies views
   app.get('/truth', (_req, res) => res.render('truth'));
   app.get('/policies', (_req, res) => res.render('policies'));

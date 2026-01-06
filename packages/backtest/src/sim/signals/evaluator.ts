@@ -237,8 +237,8 @@ function getIndicatorValue(
 
     case 'rsi':
       // RSI is not in LegacyIndicatorData yet, but we can add it if needed
-      // For now, return undefined - will need to update LegacyIndicatorData
-      return undefined;
+      // Throw error to prevent silent failures
+      throw new Error('RSI indicator is not yet supported in signal evaluation.');
 
     case 'macd':
       if (!indicators.macd) return undefined;

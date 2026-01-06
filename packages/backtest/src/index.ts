@@ -39,6 +39,19 @@ export {
   type CallResultRow,
 } from './reporting/backtest-results-duckdb.js';
 
+// Central DuckDB persistence (for auditability and replayability)
+export {
+  upsertRunMetadata,
+  persistCallResultsToCentral,
+  persistPathMetricsToCentral,
+  persistPolicyResultsToCentral,
+  getAllRunsFromCentral,
+  getCentralDuckDbPath,
+  openCentralDuckDb,
+  ensureCentralBacktestSchema,
+  type BacktestRunMetadata,
+} from './reporting/central-duckdb-persistence.js';
+
 // Path metrics query service (Phase 2-3)
 export {
   getPathMetricsByCaller,

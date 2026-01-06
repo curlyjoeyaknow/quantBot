@@ -147,14 +147,22 @@ export function getRunManifestPath(runId: string, basePath: string = './catalog'
 /**
  * Extract token ID and time range from a slice file path
  *
+ * Supports both date-partitioned and non-partitioned paths:
+ * - Date-partitioned: .../bars/<date>/<token>/<start>_<end>.parquet
+ * - Non-partitioned: .../bars/<token>/<start>_<end>.parquet
+ *
  * @param filePath - Path to slice file
  * @returns Parsed components or null if path is invalid
  */
 export function parseSliceFilePath(
   filePath: string
 ): { tokenId: string; startIso: string; endIso: string } | null {
-  // Expected pattern: .../bars/<token>/<start>_<end>.parquet
-  const match = filePath.match(/\/bars\/([^/]+)\/(\d{8}T\d{6})_(\d{8}T\d{6})\.parquet$/);
+  // Pattern supports both date-partitioned and non-partitioned paths
+  // Date-partitioned: .../bars/<date>/<token>/<start>_<end>.parquet
+  // Non-partitioned: .../bars/<token>/<start>_<end>.parquet
+  const pattern =
+    /[/\\]bars[/\\](?:\d{4}-\d{2}-\d{2}[/\\])?([^/\\]+)[/\\](\d{8}T\d{6})_(\d{8}T\d{6})\.parquet$/;
+  const match = filePath.match(pattern);
   if (!match) {
     return null;
   }

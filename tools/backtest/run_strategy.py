@@ -183,8 +183,10 @@ Examples:
                     help="Verbose output")
 
     # Storage
-    ap.add_argument("--store-duckdb", action="store_true",
-                    help="Store results to bt.* schema in DuckDB")
+    ap.add_argument("--store-duckdb", action="store_true", default=True,
+                    help="Store results to bt.* schema in DuckDB (default: True)")
+    ap.add_argument("--no-store-duckdb", action="store_false", dest="store_duckdb",
+                    help="Disable storing results to DuckDB")
     ap.add_argument("--run-name", default=None,
                     help="Custom run name for storage")
 
@@ -364,6 +366,7 @@ Examples:
             "slippage_bps": float(strategy.costs.slippage_bps),
             "strategy": strategy.to_dict(),
         }
+        # store_tp_sl_run handles queue fallback internally on lock conflicts
         store_tp_sl_run(
             args.duckdb,
             run_id,

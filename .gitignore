@@ -134,3 +134,6 @@ slices/*.parquet
 results/*.json
 results/**/*.json
 results/*.csv
+
+# Generated HTML documentation
+docs-html/

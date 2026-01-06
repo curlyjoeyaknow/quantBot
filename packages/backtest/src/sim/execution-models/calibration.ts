@@ -143,7 +143,8 @@ export function calibrateSlippageModel(
   const sumXY = slippages.reduce((sum, r) => sum + Math.sqrt(r.tradeSize) * r.slippageBps, 0);
   const sumX2 = slippages.reduce((sum, r) => sum + r.tradeSize, 0);
 
-  const sqrtCoefficient = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
+  const denom = n * sumX2 - sumX * sumX;
+  const sqrtCoefficient = denom !== 0 ? (n * sumXY - sumX * sumY) / denom : 0;
   const meanSlippage = sumY / n;
 
   return {

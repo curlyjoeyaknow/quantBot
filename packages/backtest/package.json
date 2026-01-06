@@ -62,7 +62,8 @@
   "scripts": {
     "build": "tsc --build",
     "test": "vitest --passWithNoTests",
-    "test:coverage": "vitest run --coverage --passWithNoTests"
+    "test:coverage": "vitest run --coverage --passWithNoTests",
+    "test:contract": "vitest run tests/contract --passWithNoTests"
   },
   "dependencies": {
     "@quantbot/core": "workspace:*",

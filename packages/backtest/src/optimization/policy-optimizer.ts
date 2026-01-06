@@ -103,7 +103,7 @@ export function optimizePolicy(req: OptimizeRequest): OptimizationResult {
       const pm = req.pathMetricsByCallId.get(call.id);
       if (pm) pathMetrics.push(pm);
     }
-    const profile = analyzeCallerHighMultipleProfile([], pathMetrics);
+    const profile = analyzeCallerHighMultipleProfile(callsToOptimize, pathMetrics);
     isHighMultipleCaller = profile.isHighMultipleCaller;
 
     logger.info('Caller profile analysis', {

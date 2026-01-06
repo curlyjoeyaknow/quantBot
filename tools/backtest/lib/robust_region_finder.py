@@ -32,23 +32,24 @@ class DDPenaltyConfig:
     """
     Exponential drawdown penalty configuration.
     
-    The penalty function:
-        penalty = 0                                   if dd <= gentle_threshold
-        penalty = scale * (exp(rate * excess) - 1)   otherwise
+    The penalty function uses a gentle-to-brutal exponential curve:
+        - 0 to gentle_threshold: No penalty
+        - gentle_threshold to brutal_threshold: Exponential growth
+        - brutal_threshold to nuclear_threshold: Heavy linear penalty
+        - Above nuclear_threshold: Max penalty
     
-    where:
-        excess = (dd - gentle_threshold) / (brutal_threshold - gentle_threshold)
-        rate increases as dd approaches brutal_threshold
-    
-    At brutal_threshold, penalty should effectively disqualify the candidate.
+    Design goals:
+        - At 30% DD: 0 penalty (normal for memecoins)
+        - At 45% DD: Small penalty (~1-2)
+        - At 60% DD: Significant penalty (~15-20, effectively disqualifies)
+        - At 70%+ DD: Nuclear (max penalty)
     """
     gentle_threshold: float = 0.30    # No penalty below 30%
     brutal_threshold: float = 0.60    # Effectively disqualified at 60%
     nuclear_threshold: float = 0.70   # Hard reject above 70%
     
-    # Penalty curve parameters
-    gentle_rate: float = 2.0          # Slow exponential growth
-    brutal_rate: float = 8.0          # Fast exponential growth near brutal
+    # Penalty at brutal threshold (before disqualified zone)
+    penalty_at_brutal: float = 20.0   # Penalty value at brutal_threshold
     max_penalty: float = 100.0        # Cap penalty (for numerical stability)
     
     def compute(self, dd_pct: float) -> Tuple[float, str]:
@@ -75,28 +76,31 @@ class DDPenaltyConfig:
             return self.max_penalty, "nuclear"
         
         if dd > self.brutal_threshold:
-            # Severe penalty but not max (for ranking among bad candidates)
+            # Disqualified zone: linear ramp from penalty_at_brutal to max_penalty
             excess = (dd - self.brutal_threshold) / (self.nuclear_threshold - self.brutal_threshold)
-            penalty = self.max_penalty * 0.8 * excess + 20.0
+            penalty = self.penalty_at_brutal + (self.max_penalty - self.penalty_at_brutal) * excess
             return min(penalty, self.max_penalty), "disqualified"
         
-        # Between gentle and brutal: progressive exponential
+        # Between gentle and brutal: exponential growth
         # Map dd to 0-1 range within the penalty zone
         normalized = (dd - self.gentle_threshold) / (self.brutal_threshold - self.gentle_threshold)
         
-        # Rate interpolation: starts at gentle_rate, approaches brutal_rate
-        rate = self.gentle_rate + (self.brutal_rate - self.gentle_rate) * normalized
+        # Exponential penalty: 0 at normalized=0, penalty_at_brutal at normalized=1
+        # Formula: penalty = penalty_at_brutal * (exp(rate * normalized) - 1) / (exp(rate) - 1)
+        # Choose rate such that curve is gentle initially, steep at end
+        rate = 3.0  # Tuned for good shape
         
-        # Exponential penalty
-        penalty = math.exp(rate * normalized) - 1.0
+        # Normalized exponential that reaches penalty_at_brutal at normalized=1
+        exp_factor = (math.exp(rate * normalized) - 1.0) / (math.exp(rate) - 1.0)
+        penalty = self.penalty_at_brutal * exp_factor
         
-        # Categorize
+        # Categorize based on DD level
         if dd <= 0.45:
             category = "acceptable"
         else:
             category = "risky"
         
-        return min(penalty, self.max_penalty), category
+        return penalty, category
 
 
 DEFAULT_DD_PENALTY = DDPenaltyConfig()

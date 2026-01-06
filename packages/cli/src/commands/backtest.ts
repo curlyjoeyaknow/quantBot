@@ -27,6 +27,8 @@ import {
   type BacktestOptimizeArgs,
   backtestBaselineSchema,
   type BacktestBaselineArgs,
+  backtestMigrateSchema,
+  type BacktestMigrateArgs,
 } from '../command-defs/backtest.js';
 import { join } from 'path';
 import { existsSync } from 'fs';
@@ -314,6 +316,24 @@ export function registerBacktestCommands(program: Command): void {
       // (TP/SL policy removed - pure path metrics only)
     }),
     validate: (opts) => backtestBaselineSchema.parse(opts),
+    onError: die,
+  });
+
+  // Migrate command - import existing JSON/CSV results to central DuckDB
+  const migrateCmd = backtestCmd
+    .command('migrate')
+    .description('Migrate existing JSON/CSV results to central DuckDB')
+    .option('--results-dir <dir>', 'Directory to scan for results', 'results')
+    .option('--dry-run', 'Show what would be migrated without actually migrating');
+
+  defineCommand(migrateCmd, {
+    name: 'migrate',
+    packageName: 'backtest',
+    coerce: (raw) => ({
+      ...raw,
+      dryRun: raw.dryRun !== undefined ? coerceBoolean(raw.dryRun, 'dry-run') : false,
+    }),
+    validate: (opts) => backtestMigrateSchema.parse(opts),
     onError: die,
   });
 }
@@ -1337,6 +1357,19 @@ const backtestModule: PackageCommandModule = {
         'quantbot backtest baseline --from 2025-05-01 --to 2025-05-31',
         'quantbot backtest baseline --horizon-hours 120',
         'quantbot backtest baseline --tui',
+      ],
+    },
+    {
+      name: 'migrate',
+      description: 'Migrate existing JSON/CSV results to central DuckDB',
+      schema: backtestMigrateSchema,
+      handler: async (args: unknown, _ctx: unknown) => {
+        const { migrateResultsHandler } = await import('../handlers/backtest/migrate-results.js');
+        return migrateResultsHandler(args as BacktestMigrateArgs, _ctx);
+      },
+      examples: [
+        'quantbot backtest migrate',
+        'quantbot backtest migrate --results-dir results --dry-run',
       ],
     },
   ],

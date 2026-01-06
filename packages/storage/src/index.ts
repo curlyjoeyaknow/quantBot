@@ -53,20 +53,15 @@ export type { OhlcvWorklistConfig, OhlcvWorklistResult } from './duckdb/duckdb-w
 // Artifact repository adapter
 export { ArtifactDuckDBAdapter } from './adapters/artifact-duckdb-adapter.js';
 export { ExperimentDuckDBAdapter } from './adapters/experiment-duckdb-adapter.js';
+export { RunEventDuckDBAdapter } from './adapters/run-event-duckdb-adapter.js';
 
 // Slice export and analysis adapters
 export {
   ClickHouseSliceExporterAdapterImpl,
   createClickHouseSliceExporterAdapterImpl,
 } from './adapters/clickhouse-slice-exporter-adapter-impl.js';
-export {
-  datasetRegistry,
-  initializeDefaultDatasets,
-} from './adapters/dataset-registry.js';
-export type {
-  DatasetType,
-  DatasetMetadata,
-} from './adapters/dataset-registry.js';
+export { datasetRegistry, initializeDefaultDatasets } from './adapters/dataset-registry.js';
+export type { DatasetType, DatasetMetadata } from './adapters/dataset-registry.js';
 export {
   insertSqlForParquet,
   type InsertMode,

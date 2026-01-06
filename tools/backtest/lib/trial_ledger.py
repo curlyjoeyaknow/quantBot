@@ -879,6 +879,45 @@ PIPELINE_PHASES = {
 }
 
 
+def create_run_record(
+    duckdb_path: str,
+    run_id: str,
+    run_type: str,
+    name: str = "",
+    date_from: str = "",
+    date_to: str = "",
+    config: Optional[Dict[str, Any]] = None,
+) -> None:
+    """
+    Create an initial run record for FK references.
+    
+    This should be called BEFORE any phase storage to satisfy FK constraints.
+    The run record can be updated later with full details.
+    """
+    ensure_trial_schema(duckdb_path)
+    
+    con = duckdb.connect(duckdb_path)
+    try:
+        now = datetime.now(UTC).replace(tzinfo=None)
+        
+        con.execute("""
+            INSERT OR IGNORE INTO optimizer.runs_d (
+                run_id, run_type, created_at, name, date_from, date_to,
+                alerts_total, alerts_ok, config_json, notes
+            ) VALUES (?, ?, ?, ?, ?, ?, 0, 0, ?, 'in_progress')
+        """, [
+            run_id,
+            run_type,
+            now,
+            name,
+            date_from,
+            date_to,
+            json.dumps(config or {}, separators=(",", ":"), default=str),
+        ])
+    finally:
+        con.close()
+
+
 def store_phase_start(
     duckdb_path: str,
     run_id: str,

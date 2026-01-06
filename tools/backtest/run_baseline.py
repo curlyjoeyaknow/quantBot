@@ -91,7 +91,10 @@ def main() -> None:
     ap.add_argument("--verbose", action="store_true")
 
     # Storage
-    ap.add_argument("--store-duckdb", action="store_true", help="Store to baseline.* schema")
+    ap.add_argument("--store-duckdb", action="store_true", default=True,
+                    help="Store to baseline.* schema (default: True)")
+    ap.add_argument("--no-store-duckdb", action="store_false", dest="store_duckdb",
+                    help="Disable storing to DuckDB")
     ap.add_argument("--run-name", default=None)
 
     args = ap.parse_args()

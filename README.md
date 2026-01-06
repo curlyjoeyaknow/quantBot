@@ -29,6 +29,7 @@ pnpm quantbot ingestion ohlcv --from 2024-01-01 --to 2024-02-01
 
 # 3. Run simulation/backtesting
 pnpm quantbot simulation run --strategy MyStrategy --from 2024-01-01
+# Note: `simulation run` is the backtesting runner (pure sim engine + backtest policies)
 
 # 4. Analyze results
 pnpm quantbot analytics performance --caller Brook
@@ -41,7 +42,8 @@ pnpm quantbot analytics performance --caller Brook
 ```
 quantBot/
 ├── apps/           # Runnable entrypoints only (CLI, daemons, servers)
-├── packages/       # Libraries only (no process wiring, no direct I/O)
+│                    # Currently, CLI/API live in packages/* for workspace packaging; apps/ is reserved for future composition roots
+├── packages/       # Libraries only; no process lifecycle wiring; I/O via ports/adapters only
 │   ├── core/           # Foundation types, port interfaces (zero deps)
 │   ├── utils/          # Shared utilities (logger, EventBus, PythonEngine)
 │   ├── storage/        # DuckDB, ClickHouse adapters
@@ -59,18 +61,20 @@ quantBot/
 │   ├── lab/            # Lab simulation presets and optimization
 │   └── ...
 ├── docs/           # Architecture + status notes
-├── tools/          # Developer-only tooling (Python scripts, analysis)
+├── tools/          # Python "apps" + analysis utilities (invoked by TS via PythonEngine)
+│                    # Note: DuckDB scripts are runtime infrastructure; some scripts are dev-only
+│                    # Boundary rule: tools/shared/* MUST NOT import from tools/storage/*
 ├── configs/        # Configuration files (sweep configs, presets)
 ├── strategies/     # Strategy definitions (JSON DSL)
 └── tests/          # Root test setup
 ```
 
-### Hard Rules
+### Repo Rules (Enforced)
 
 - **`apps/*`** = Composition roots and I/O boundaries only
 - **`packages/*`** = Pure libraries (no process lifecycle, no env vars)
 - **No runtime state in-repo** — no `logs/`, `data/`, `.pids/`, `backups/`
-- **No root trophy files** — status docs go in `docs/`
+- **No root scratch/status docs** — standard repo files (README/CHANGELOG/CONTRIBUTING/LICENSE) are allowed
 
 ---
 

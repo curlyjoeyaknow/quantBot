@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { DateTime } from 'luxon';
+import { DateTime } from 'luxon';
 import { ValidationError, NotFoundError } from '@quantbot/utils';
 import type {
   WorkflowContext,
@@ -8,6 +8,16 @@ import type {
   SimulationCallResult,
 } from '../types.js';
 import { createProductionContext } from '../context/createProductionContext.js';
+import { emitEvent } from '../events/event-emitter.js';
+import type { WorkflowContextWithEvents } from '../events/event-emitter.js';
+import {
+  createRunCreatedEvent,
+  createInputsResolvedEvent,
+  createSimulationStartedEvent,
+  createSimulationCompletedEvent,
+  createMetricsComputedEvent,
+  createRunFailedEvent,
+} from '@quantbot/core';
 
 const isLuxonDateTime = (v: unknown): v is DateTime => {
   if (typeof v !== 'object' || v === null) return false;
@@ -61,7 +71,7 @@ export function createDefaultRunSimulationContext(): WorkflowContext {
 
 export async function runSimulation(
   spec: SimulationRunSpec,
-  ctx: WorkflowContext = createDefaultRunSimulationContext()
+  ctx: WorkflowContext & WorkflowContextWithEvents = createDefaultRunSimulationContext()
 ): Promise<SimulationRunResult> {
   const parsed = SpecSchema.safeParse(spec);
   if (!parsed.success) {
@@ -86,9 +96,42 @@ export async function runSimulation(
   const postMin = spec.options?.postWindowMinutes ?? 0;
 
   const runId = ctx.ids.newRunId();
+  const now = DateTime.fromISO(ctx.clock.nowISO());
+
+  // Emit RunCreated event
+  await emitEvent(
+    ctx,
+    createRunCreatedEvent(
+      runId,
+      {
+        strategy_id: spec.strategyName, // Will be updated after strategy load
+        strategy_name: spec.strategyName,
+        params_json: JSON.stringify(spec),
+        from_iso: fromISO,
+        to_iso: toISO,
+        caller_name: spec.callerName,
+        interval_sec: 300, // Default 5m, could be parameterized
+        notes: dryRun ? 'Dry run' : undefined,
+      },
+      now
+    )
+  );
 
   const strategy = await ctx.repos.strategies.getByName(spec.strategyName);
   if (!strategy) {
+    // Emit RunFailed event before throwing
+    await emitEvent(
+      ctx,
+      createRunFailedEvent(
+        runId,
+        {
+          error_code: 'STRATEGY_NOT_FOUND',
+          error_message: `Strategy not found: ${spec.strategyName}`,
+          phase: 'strategy_load',
+        },
+        DateTime.fromISO(ctx.clock.nowISO())
+      )
+    );
     throw new NotFoundError('Strategy', spec.strategyName);
   }
 
@@ -105,6 +148,35 @@ export async function runSimulation(
   }
   const uniqueCalls = [...byId.values()].sort(
     (a, b) => a.createdAt.toMillis() - b.createdAt.toMillis()
+  );
+
+  // Emit InputsResolved event
+  await emitEvent(
+    ctx,
+    createInputsResolvedEvent(
+      runId,
+      {
+        code_version: process.env.GIT_SHA || 'unknown',
+        config_hash: 'TODO', // Could hash strategy config + spec
+        seed: Date.now() % 1000000, // Deterministic per-run seed from timestamp
+        strategy_config_hash: 'TODO', // Hash strategy config
+      },
+      DateTime.fromISO(ctx.clock.nowISO())
+    )
+  );
+
+  // Emit SimulationStarted event
+  const simulationStartTime = DateTime.fromISO(ctx.clock.nowISO());
+  await emitEvent(
+    ctx,
+    createSimulationStartedEvent(
+      runId,
+      {
+        phase: 'single',
+        call_count: uniqueCalls.length,
+      },
+      simulationStartTime
+    )
   );
 
   const results: SimulationCallResult[] = [];
@@ -200,6 +272,44 @@ export async function runSimulation(
   const pnlMax = pnlOk.length ? Math.max(...pnlOk) : undefined;
   const pnlMean = pnlOk.length ? pnlOk.reduce((a, b) => a + b, 0) / pnlOk.length : undefined;
   const pnlMedian = median(pnlOk);
+
+  const simulationEndTime = DateTime.fromISO(ctx.clock.nowISO());
+  const durationMs = simulationEndTime.diff(simulationStartTime).as('milliseconds');
+
+  // Emit SimulationCompleted event
+  await emitEvent(
+    ctx,
+    createSimulationCompletedEvent(
+      runId,
+      {
+        phase: 'single',
+        calls_attempted: callsAttempted,
+        calls_succeeded: callsSucceeded,
+        calls_failed: callsFailed,
+        trades_total: tradesTotal,
+        duration_ms: Math.round(durationMs),
+      },
+      simulationEndTime
+    )
+  );
+
+  // Emit MetricsComputed event
+  await emitEvent(
+    ctx,
+    createMetricsComputedEvent(
+      runId,
+      {
+        metrics_type: 'aggregate',
+        pnl_stats: {
+          min: pnlMin,
+          max: pnlMax,
+          mean: pnlMean,
+          median: pnlMedian,
+        },
+      },
+      simulationEndTime
+    )
+  );
 
   if (!dryRun) {
     await ctx.repos.simulationRuns.create({

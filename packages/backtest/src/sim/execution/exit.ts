@@ -273,10 +273,10 @@ export function checkTrailingStopActivation(
 export function calculateTrailingStopPrice(
   peakPrice: number,
   entryPrice: number,
-  _trailingPercent: number
+  trailingPercent: number
 ): number {
-  // Trailing stop at entry price (break-even)
-  return entryPrice;
+  // Trailing stop at X% below peak price
+  return peakPrice * (1 - trailingPercent);
 }
 
 /**

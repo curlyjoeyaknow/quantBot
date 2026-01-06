@@ -1,24 +1,71 @@
 """
 DuckDB storage for backtest results.
 
-Provides schema management and data insertion for:
-- baseline.* schema (pure path metrics)
-- bt.* schema (TP/SL strategy results)
+Architecture:
+    This module is an ADAPTER for persisting backtest results to DuckDB.
+    It provides schema management and data insertion for:
+    - baseline.* schema (pure path metrics)
+    - bt.* schema (TP/SL strategy results)
+    
+    Dependency direction:
+    - tools/backtest/*.py (apps) → lib/storage.py (adapter) → shared/duckdb_adapter (connection)
+
+On lock conflicts, operations are automatically queued for background processing.
+Run the queue worker with: python -m lib.write_queue work
 """
 
 from __future__ import annotations
 
 import json
 import math
+import sys
 import uuid
 from datetime import datetime, timezone
-from typing import Any, Dict, List
+from pathlib import Path
+from typing import Any, Callable, Dict, List, TypeVar
 
-import duckdb
+# Add tools to path for shared imports
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+from shared.duckdb_adapter import safe_connect, is_lock_error
 
 from .helpers import parse_utc_ts
 
 UTC = timezone.utc
+
+T = TypeVar("T")
+
+
+def _with_queue_fallback(
+    operation: str,
+    duckdb_path: str,
+    payload: Dict[str, Any],
+    direct_fn: Callable[[], T],
+) -> T:
+    """
+    Try direct write, queue on lock conflict.
+    
+    Args:
+        operation: Operation name for the queue
+        duckdb_path: Path to DuckDB file
+        payload: Data to pass to queue if needed
+        direct_fn: Function to call for direct write
+    
+    Returns:
+        Result from direct_fn if successful
+    
+    Raises:
+        Original exception if not a lock error
+    """
+    try:
+        return direct_fn()
+    except Exception as e:
+        if is_lock_error(e):
+            print(f"[storage] Lock conflict, queueing {operation} for background processing", file=sys.stderr)
+            from .write_queue import enqueue_write
+            job_id = enqueue_write(duckdb_path, operation, payload)
+            print(f"[storage] Queued as job {job_id}", file=sys.stderr)
+            return None  # type: ignore
+        raise
 
 
 # =============================================================================
@@ -225,6 +272,7 @@ def store_baseline_run(
     caller_agg: List[Dict[str, Any]],
     slice_path: str,
     partitioned: bool,
+    use_queue_fallback: bool = True,
 ) -> None:
     """
     Store a baseline backtest run to DuckDB.
@@ -239,8 +287,43 @@ def store_baseline_run(
         caller_agg: Caller aggregation stats
         slice_path: Path to slice used
         partitioned: Whether slice was partitioned
+        use_queue_fallback: If True, queue on lock conflict instead of raising
     """
-    con = duckdb.connect(duckdb_path)
+    def _do_store():
+        _store_baseline_run_impl(
+            duckdb_path, run_id, run_name, config, rows, summary,
+            caller_agg, slice_path, partitioned
+        )
+    
+    if use_queue_fallback:
+        payload = {
+            "run_id": run_id,
+            "run_name": run_name,
+            "config": config,
+            "rows": rows,
+            "summary": summary,
+            "caller_agg": caller_agg,
+            "slice_path": slice_path,
+            "partitioned": partitioned,
+        }
+        _with_queue_fallback("store_baseline_run", duckdb_path, payload, _do_store)
+    else:
+        _do_store()
+
+
+def _store_baseline_run_impl(
+    duckdb_path: str,
+    run_id: str,
+    run_name: str,
+    config: Dict[str, Any],
+    rows: List[Dict[str, Any]],
+    summary: Dict[str, Any],
+    caller_agg: List[Dict[str, Any]],
+    slice_path: str,
+    partitioned: bool,
+) -> None:
+    """Internal implementation of store_baseline_run."""
+    con = safe_connect(duckdb_path, read_only=False)
     try:
         con.execute("BEGIN;")
         ensure_baseline_schema(con)
@@ -439,6 +522,7 @@ def store_tp_sl_run(
     config: Dict[str, Any],
     rows: List[Dict[str, Any]],
     summary: Dict[str, Any],
+    use_queue_fallback: bool = True,
 ) -> None:
     """
     Store a TP/SL backtest run to DuckDB.
@@ -450,8 +534,34 @@ def store_tp_sl_run(
         config: Run configuration dict
         rows: Per-alert results
         summary: Overall summary metrics
+        use_queue_fallback: If True, queue on lock conflict instead of raising
     """
-    con = duckdb.connect(duckdb_path)
+    def _do_store():
+        _store_tp_sl_run_impl(duckdb_path, run_id, run_name, config, rows, summary)
+    
+    if use_queue_fallback:
+        payload = {
+            "run_id": run_id,
+            "run_name": run_name,
+            "config": config,
+            "rows": rows,
+            "summary": summary,
+        }
+        _with_queue_fallback("store_tp_sl_run", duckdb_path, payload, _do_store)
+    else:
+        _do_store()
+
+
+def _store_tp_sl_run_impl(
+    duckdb_path: str,
+    run_id: str,
+    run_name: str,
+    config: Dict[str, Any],
+    rows: List[Dict[str, Any]],
+    summary: Dict[str, Any],
+) -> None:
+    """Internal implementation of store_tp_sl_run."""
+    con = safe_connect(duckdb_path, read_only=False)
     try:
         con.execute("BEGIN;")
         ensure_bt_schema(con)
@@ -620,4 +730,3 @@ def store_tp_sl_run(
         raise
     finally:
         con.close()
-

@@ -1566,8 +1566,12 @@ def main() -> None:
     
     # DuckDB storage
     ap.add_argument(
-        "--store-duckdb", action="store_true",
-        help="Store results to bt.* schema in DuckDB (in addition to CSV)"
+        "--store-duckdb", action="store_true", default=True,
+        help="Store results to bt.* schema in DuckDB (default: True)"
+    )
+    ap.add_argument(
+        "--no-store-duckdb", action="store_false", dest="store_duckdb",
+        help="Disable storing to DuckDB"
     )
     ap.add_argument(
         "--run-name",

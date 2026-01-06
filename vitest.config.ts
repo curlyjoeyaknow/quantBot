@@ -47,11 +47,11 @@ export default defineConfig({
     testTimeout: 5000,
     // Ensure aliases take precedence over node_modules resolution
     deps: {
-      inline: ['@quantbot/backtest', '@quantbot/monitoring', '@quantbot/ingestion'],
+      inline: ['@quantbot/backtest', '@quantbot/monitoring', '@quantbot/ingestion', '@quantbot/labcatalog'],
     },
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'lcov', 'html'],
+      reporter: ['text', 'lcov', 'html', 'json-summary'],
       reportsDirectory: 'coverage',
       include: ['packages/**/src/**/*.ts'],
       exclude: [
@@ -90,6 +90,10 @@ export default defineConfig({
       '@quantbot/analytics/*': resolveFromRoot('packages/analytics/src/*'),
       '@quantbot/workflows': resolveFromRoot('packages/workflows/src'),
       '@quantbot/workflows/*': resolveFromRoot('packages/workflows/src/*'),
+      '@quantbot/simulation': resolveFromRoot('packages/simulation/src'),
+      '@quantbot/simulation/*': resolveFromRoot('packages/simulation/src/*'),
+      '@quantbot/labcatalog': resolveFromRoot('packages/labcatalog/src'),
+      '@quantbot/labcatalog/*': resolveFromRoot('packages/labcatalog/src/*'),
     },
   },
   optimizeDeps: {

@@ -303,9 +303,11 @@ def load_trades(con, trades_table: TableRef, run_id: Optional[str], since: Optio
     mapping: Dict[str, str] = {}
 
     run_col = find_col(cols, ["run_id", "backtest_run_id", "simulation_id"])
-    pnl_col = find_col(cols, ["pnl", "pnl_usd", "profit", "net_pnl", "pnl_after_fees"])
+    pnl_col = find_col(cols, ["pnl", "pnl_usd", "profit", "net_pnl", "pnl_after_fees", "realized_return_bps"])
     exit_ts_col = find_col(cols, ["exit_ts_ms", "exit_ts", "exit_time", "closed_at", "sold_ts_ms", "sell_ts_ms"])
     entry_ts_col = find_col(cols, ["entry_ts_ms", "entry_ts", "entry_time", "opened_at", "buy_ts_ms"])
+    entry_px_col = find_col(cols, ["entry_px", "entry_price", "buy_price"])
+    exit_px_col = find_col(cols, ["exit_px", "exit_price", "sell_price"])
 
     if pnl_col:
         mapping["pnl"] = pnl_col
@@ -315,6 +317,10 @@ def load_trades(con, trades_table: TableRef, run_id: Optional[str], since: Optio
         mapping["exit_ts"] = exit_ts_col
     if entry_ts_col:
         mapping["entry_ts"] = entry_ts_col
+    if entry_px_col:
+        mapping["entry_px"] = entry_px_col
+    if exit_px_col:
+        mapping["exit_px"] = exit_px_col
 
     where = []
     params: List[Any] = []
@@ -758,6 +764,8 @@ def build_report(duckdb_path: str,
 
     # common patterns in your repo/world
     runs_table = pick_first(tables, [
+        r"^main\.backtest_runs$",
+        r"^backtest_runs$",
         r"\bbacktest_runs_f\b",
         r"\bruns_f\b",
         r"\bbacktest_runs\b",
@@ -765,6 +773,10 @@ def build_report(duckdb_path: str,
     ])
 
     trades_table = pick_first(tables, [
+        r"^main\.backtest_policy_results$",
+        r"^backtest_policy_results$",
+        r"^main\.backtest_call_results$",
+        r"^backtest_call_results$",
         r"\bbacktest_trades_f\b",
         r"\btrades_f\b",
         r"\bbacktest_trades\b",

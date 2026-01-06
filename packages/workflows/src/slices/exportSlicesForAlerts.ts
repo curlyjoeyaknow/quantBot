@@ -8,6 +8,7 @@
 import { z } from 'zod';
 import { DateTime } from 'luxon';
 import { logger, getDuckDBPath } from '@quantbot/utils';
+import { sanitizeTokenId } from '@quantbot/labcatalog';
 import type {
   SliceExporter,
   SliceSpec,
@@ -230,9 +231,9 @@ export async function exportSlicesForAlerts(
       const windowEnd = alertTime.plus({ minutes: validated.postWindowMinutes });
 
       // Determine if we need to chunk within day
+      // Chunking is based on time duration only (not row count)
       const totalHours = windowEnd.diff(windowStart, 'hours').hours;
-      const needsChunking =
-        validated.maxRowsPerFile !== undefined && totalHours > validated.maxHoursPerChunk;
+      const needsChunking = totalHours > validated.maxHoursPerChunk;
 
       // If chunking is needed, split into time sub-windows
       const timeWindows: Array<{ start: DateTime; end: DateTime }> = [];
@@ -264,26 +265,18 @@ export async function exportSlicesForAlerts(
           granularity: validated.dataset === 'candles_1m' ? '1m' : '1s',
         };
 
-        // Generate catalog-compliant subdirTemplate
-        // Pattern with date partitioning: data/bars/{yyyy}-{mm}-{dd}/{token}
-        // Pattern without: data/bars/{token}
-        // The adapter will expand template variables and create the directory structure
-        const day = timeWindow.start.toFormat('yyyy-MM-dd');
-        const [yyyy, mm, dd] = day.split('-');
-
-        // Build subdirTemplate based on date partitioning preference
+        // Generate complete catalog-compliant subdirectory path
+        // The workflow constructs the full path including token, so the adapter
+        // can use it directly without modification
+        const sanitizedToken = sanitizeTokenId(call.mint);
         let subdirTemplate: string;
         if (validated.useDatePartitioning) {
-          // Date-based: data/bars/{yyyy}-{mm}-{dd}/token={token}
-          // Note: We can't use {token} directly in template since it's not a standard variable
-          // Instead, we'll use a pattern that the adapter can expand
-          // For now, use a simpler pattern: data/bars/{yyyy}-{mm}-{dd}
-          // The adapter will create the token subdirectory based on the tokenIds in spec
-          subdirTemplate = `data/bars/{yyyy}-{mm}-{dd}`;
+          // Date-based: data/bars/<date>/<token>
+          // Use template variables so the adapter can expand them consistently
+          subdirTemplate = `data/bars/{yyyy}-{mm}-{dd}/${sanitizedToken}`;
         } else {
-          // Original pattern: data/bars
-          // Token subdirectory will be handled by adapter based on tokenIds
-          subdirTemplate = 'data/bars';
+          // Original pattern: data/bars/<token>
+          subdirTemplate = `data/bars/${sanitizedToken}`;
         }
 
         // Create catalog layout spec with date-based partitioning if enabled
@@ -314,27 +307,50 @@ export async function exportSlicesForAlerts(
         chunkManifests.push(manifest);
       }
 
-      // Use the first manifest as primary (or merge if needed)
-      const manifest = chunkManifests[0];
+      // Aggregate chunk manifests into a single primary manifest
+      // chunkManifests is guaranteed to have at least one element (we just pushed manifests in the loop above)
+      if (chunkManifests.length === 0) {
+        throw new Error('Internal error: No chunk manifests to aggregate');
+      }
+
+      const baseManifest = chunkManifests[0]!;
+      const primaryManifest: SliceManifestV1 = {
+        version: 1,
+        manifestId: `${runId}-${call.id}`, // Create a deterministic ID for the aggregate
+        createdAtIso: baseManifest.createdAtIso,
+        run: baseManifest.run,
+        spec: baseManifest.spec,
+        layout: baseManifest.layout,
+        parquetFiles: [],
+        summary: {
+          totalFiles: 0,
+          totalRows: 0,
+          totalBytes: 0,
+        },
+        integrity: baseManifest.integrity,
+      };
+
+      // Aggregate all chunk data
+      for (const m of chunkManifests) {
+        primaryManifest.parquetFiles.push(...m.parquetFiles);
+        primaryManifest.summary.totalFiles += m.summary.totalFiles;
+        primaryManifest.summary.totalRows =
+          (primaryManifest.summary.totalRows || 0) + (m.summary.totalRows || 0);
+        primaryManifest.summary.totalBytes =
+          (primaryManifest.summary.totalBytes || 0) + (m.summary.totalBytes || 0);
+      }
 
       // Track success (aggregate across chunks if chunking was used)
       successfulExports++;
-      const totalChunkFiles = chunkManifests.reduce((sum, m) => sum + m.parquetFiles.length, 0);
-      const totalChunkRows = chunkManifests.reduce((sum, m) => sum + (m.summary.totalRows || 0), 0);
-      const totalChunkBytes = chunkManifests.reduce(
-        (sum, m) => sum + (m.summary.totalBytes || 0),
-        0
-      );
-
-      totalFiles += totalChunkFiles;
-      totalRows += totalChunkRows;
-      totalBytes += totalChunkBytes;
+      totalFiles += primaryManifest.summary.totalFiles;
+      totalRows += primaryManifest.summary.totalRows || 0;
+      totalBytes += primaryManifest.summary.totalBytes || 0;
 
       exports.push({
         callId: call.id,
         mint: call.mint,
         alertTimestamp: call.createdAt.toISO()!,
-        manifestId: manifest.manifestId,
+        manifestId: primaryManifest.manifestId,
         success: true,
       });
 
@@ -342,15 +358,25 @@ export async function exportSlicesForAlerts(
         runId,
         callId: call.id,
         mint: call.mint,
-        manifestId: manifest.manifestId,
-        files: totalChunkFiles,
-        rows: totalChunkRows,
+        manifestId: primaryManifest.manifestId,
+        files: primaryManifest.summary.totalFiles,
+        rows: primaryManifest.summary.totalRows || 0,
         chunks: chunkManifests.length,
         datePartitioning: validated.useDatePartitioning,
       });
     } catch (error) {
       failedExports++;
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      // Provide user-friendly error message without exposing internal details
+      const errorMessage =
+        error instanceof Error
+          ? error.message.includes('Query error')
+            ? 'Data export query failed. Please check your query parameters and data availability.'
+            : error.message.includes('Network error')
+              ? 'Network connection failed. Please check your ClickHouse connection.'
+              : error.message.includes('timed out')
+                ? 'Export operation timed out. The query may be too large.'
+                : 'Export operation failed. Please check logs for details.'
+          : 'Export operation failed with an unknown error.';
 
       exports.push({
         callId: call.id,
@@ -360,10 +386,13 @@ export async function exportSlicesForAlerts(
         error: errorMessage,
       });
 
+      // Log full error details internally (for debugging)
       logger.error('[exportSlicesForAlerts] Failed to export slice', error as Error, {
         runId,
         callId: call.id,
         mint: call.mint,
+        // Internal error details for debugging (not exposed to user)
+        internalError: error instanceof Error ? error.message : String(error),
       });
     }
   }

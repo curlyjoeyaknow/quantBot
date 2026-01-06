@@ -336,7 +336,7 @@ fastify.get('/runs', async (request: FastifyRequest, reply: FastifyReply) => {
     // If we need more results or no results from run_status, also query simulation_runs
     if (runs.length < limit) {
       const duckdbPath = process.env.DUCKDB_PATH || 'data/tele.duckdb';
-      const db = await openDuckDb(duckdbPath);
+      const db = await openDuckDb(duckdbPath, { readOnly: true });
 
       let sql = `
         SELECT 
@@ -451,7 +451,7 @@ fastify.get(
 
       // Fallback to simulation_runs table (for legacy runs)
       const duckdbPath = process.env.DUCKDB_PATH || 'data/tele.duckdb';
-      const db = await openDuckDb(duckdbPath);
+      const db = await openDuckDb(duckdbPath, { readOnly: true });
 
       const rows = await db.all<any>(`SELECT * FROM simulation_runs WHERE run_id = ? LIMIT 1`, [
         runId,
@@ -849,7 +849,7 @@ fastify.post(
 fastify.get('/statistics/overview', async (request: FastifyRequest, reply: FastifyReply) => {
   try {
     const duckdbPath = process.env.DUCKDB_PATH || 'data/tele.duckdb';
-    const db = await openDuckDb(duckdbPath);
+    const db = await openDuckDb(duckdbPath, { readOnly: true });
 
     // Query run_status table
     const statusStats = await db.all<{ count: number }>(`SELECT COUNT(*) as count FROM run_status`);
@@ -904,7 +904,7 @@ fastify.get('/statistics/pnl', async (request: FastifyRequest, reply: FastifyRep
     };
 
     const duckdbPath = process.env.DUCKDB_PATH || 'data/tele.duckdb';
-    const db = await openDuckDb(duckdbPath);
+    const db = await openDuckDb(duckdbPath, { readOnly: true });
     const groupBy = query.groupBy || 'day';
     let groupByClause = 'DATE(created_at)';
     if (groupBy === 'week') {
@@ -986,7 +986,7 @@ fastify.get('/statistics/pnl', async (request: FastifyRequest, reply: FastifyRep
 fastify.get('/statistics/distribution', async (request: FastifyRequest, reply: FastifyReply) => {
   try {
     const duckdbPath = process.env.DUCKDB_PATH || 'data/tele.duckdb';
-    const db = await openDuckDb(duckdbPath);
+    const db = await openDuckDb(duckdbPath, { readOnly: true });
     // Create PnL distribution histogram (buckets)
     const pnlHistogram = await db.all<{ bucket: string; count: number }>(`
       SELECT 
@@ -1051,7 +1051,7 @@ fastify.get('/statistics/distribution', async (request: FastifyRequest, reply: F
 fastify.get('/statistics/correlation', async (request: FastifyRequest, reply: FastifyReply) => {
   try {
     const duckdbPath = process.env.DUCKDB_PATH || 'data/tele.duckdb';
-    const db = await openDuckDb(duckdbPath);
+    const db = await openDuckDb(duckdbPath, { readOnly: true });
     // Calculate correlations between metrics
     const correlations = await db.all<{
       metric1: string;

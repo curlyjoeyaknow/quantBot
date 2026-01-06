@@ -405,9 +405,16 @@ function applyCallerConstraintRelaxation(
     constraints.callerHighMultipleProfile;
 
   // Relax drawdown constraints for high-multiple callers
-  // e.g., if factor is 0.7, allow 30% more drawdown
-  const relaxedMaxP95DrawdownBps = constraints.maxP95DrawdownBps / drawdownRelaxationFactor;
-  const relaxedMaxStopOutRate = constraints.maxStopOutRate / stopOutRelaxationFactor;
+  // e.g., if factor is 0.7, allow 30% more drawdown (original / 0.7)
+  // Prevent division by zero
+  const relaxedMaxP95DrawdownBps =
+    drawdownRelaxationFactor > 0
+      ? constraints.maxP95DrawdownBps / drawdownRelaxationFactor
+      : constraints.maxP95DrawdownBps;
+  const relaxedMaxStopOutRate =
+    stopOutRelaxationFactor > 0
+      ? constraints.maxStopOutRate / stopOutRelaxationFactor
+      : constraints.maxStopOutRate;
 
   return {
     ...constraints,

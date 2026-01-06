@@ -209,10 +209,11 @@ export class ClickHouseSliceExporterAdapterImpl implements SliceExporter {
     // Get dataset metadata from registry
     const datasetMetadata = datasetRegistry.get(spec.dataset);
     if (!datasetMetadata) {
-      const available = datasetRegistry.getAll().map((d) => d.datasetId).join(', ');
-      throw new Error(
-        `Unsupported dataset: ${spec.dataset}. Supported datasets: ${available}`
-      );
+      const available = datasetRegistry
+        .getAll()
+        .map((d) => d.datasetId)
+        .join(', ');
+      throw new Error(`Unsupported dataset: ${spec.dataset}. Supported datasets: ${available}`);
     }
 
     // Check if conditional dataset is available
@@ -228,7 +229,10 @@ export class ClickHouseSliceExporterAdapterImpl implements SliceExporter {
     const tableName = `${process.env.CLICKHOUSE_DATABASE || 'quantbot'}.${datasetMetadata.tableName}`;
     const interval = datasetMetadata.interval;
 
-    // Build output directory from template
+    // Build output directory from subdirTemplate
+    // The workflow now provides the complete subdirectory path (including token),
+    // so we just use it directly without modification
+    // Still support template expansion for backward compatibility (if template variables are present)
     const day = spec.timeRange.startIso.slice(0, 10);
     const vars: Record<string, string> = {
       dataset: spec.dataset,
@@ -240,19 +244,11 @@ export class ClickHouseSliceExporterAdapterImpl implements SliceExporter {
       dd: day.slice(8, 10),
     };
 
+    // Expand template variables if any are present (for backward compatibility)
+    // If no template variables, subdirTemplate is already the final path
     const subdir = expandTemplate(layout.subdirTemplate, vars);
     const base = layout.baseUri.replace(/^file:\/\//, '').replace(/\/+$/, '');
-    let outDir = join(base, subdir).replace(/\/+/g, '/');
-
-    // Add token subdirectory for catalog organization if tokenIds are specified
-    // This enables catalog-compliant paths: data/bars/<date>/<token>/<file>.parquet
-    if (spec.tokenIds && spec.tokenIds.length === 1) {
-      // Single token - add token subdirectory for catalog organization
-      // Sanitize token ID for filesystem (same as catalog layout)
-      const tokenId = spec.tokenIds[0];
-      const sanitizedToken = tokenId.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 100);
-      outDir = join(outDir, sanitizedToken);
-    }
+    const outDir = join(base, subdir).replace(/\/+/g, '/');
 
     // Ensure directory exists
     await fs.mkdir(outDir, { recursive: true });
@@ -295,15 +291,32 @@ export class ClickHouseSliceExporterAdapterImpl implements SliceExporter {
     const defaultColumns =
       datasetMetadata.defaultColumns ||
       (datasetMetadata.type === 'candles'
-        ? ['token_address', 'chain', 'timestamp', 'interval', 'open', 'high', 'low', 'close', 'volume']
+        ? [
+            'token_address',
+            'chain',
+            'timestamp',
+            'interval',
+            'open',
+            'high',
+            'low',
+            'close',
+            'volume',
+          ]
         : ['token_address', 'chain', 'timestamp', 'indicator_type', 'value_json', 'metadata_json']);
+
+    // Map column names to properly escaped identifiers for ClickHouse
+    // interval is a reserved keyword and must be wrapped in backticks
+    const escapeColumn = (col: string): string => {
+      if (col === 'interval') {
+        return '`interval`';
+      }
+      return col;
+    };
 
     const columns =
       spec.columns && spec.columns.length > 0
-        ? spec.columns
-            .map((col: string) => (col === 'interval' ? '`interval`' : col))
-            .join(', ')
-        : defaultColumns.map((col: string) => (col === 'interval' ? '`interval`' : col)).join(', ');
+        ? spec.columns.map(escapeColumn).join(', ')
+        : defaultColumns.map(escapeColumn).join(', ');
 
     // Query ClickHouse and export to CSV (ClickHouse doesn't support Parquet format)
     // We'll convert CSV to Parquet using DuckDB after export
@@ -424,7 +437,7 @@ export class ClickHouseSliceExporterAdapterImpl implements SliceExporter {
 
         // Create table with correct schema matching the dataset type
         let createTableSql = 'CREATE TABLE temp_empty (';
-        
+
         if (datasetMetadata.type === 'candles') {
           // Candle schema
           createTableSql += `
@@ -462,9 +475,9 @@ export class ClickHouseSliceExporterAdapterImpl implements SliceExporter {
             volume DOUBLE
           `;
         }
-        
+
         createTableSql += `); COPY temp_empty TO '${tempParquetPath.replace(/'/g, "''")}' (FORMAT PARQUET);`;
-        
+
         await duckdb.execute(createTableSql);
         await duckdb.close();
 

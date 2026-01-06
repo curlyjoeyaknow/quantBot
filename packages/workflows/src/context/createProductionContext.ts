@@ -108,7 +108,12 @@ export async function createProductionContextWithPorts(
      */
     duckdbPath?: string;
   }
-): Promise<WorkflowContext & { ports: import('./ports.js').ProductionPorts }> {
+): Promise<
+  WorkflowContext & {
+    ports: import('./ports.js').ProductionPorts;
+    events?: import('@quantbot/core').RunEventPort;
+  }
+> {
   const baseContext = createProductionContext(config);
   const { createProductionPorts } = await import('./createProductionPorts.js');
 
@@ -120,6 +125,7 @@ export async function createProductionContextWithPorts(
   return {
     ...baseContext,
     ports,
+    events: ports.events, // Expose events port directly for workflow use
   };
 }
 

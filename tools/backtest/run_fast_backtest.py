@@ -771,7 +771,10 @@ def main() -> None:
     ap.add_argument("--output-format", choices=["console", "json"], default="console")
     ap.add_argument("--verbose", action="store_true")
 
-    ap.add_argument("--store-duckdb", action="store_true", help="Write bt.* tables in DuckDB")
+    ap.add_argument("--store-duckdb", action="store_true", default=True,
+                    help="Write bt.* tables in DuckDB (default: True)")
+    ap.add_argument("--no-store-duckdb", action="store_false", dest="store_duckdb",
+                    help="Disable storing to DuckDB")
     ap.add_argument("--run-name", default=None, help="Optional run name (bt.runs_d)")
 
     args = ap.parse_args()

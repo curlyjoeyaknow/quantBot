@@ -140,8 +140,18 @@ export function registerSlicesCommands(program: Command): void {
     .requiredOption('--to <date>', 'End date (ISO 8601, e.g., 2025-12-02T00:00:00Z)')
     .option('--caller <name>', 'Filter by caller name')
     .option('--catalog-path <path>', 'Catalog base path', './catalog')
-    .option('--pre-window <minutes>', 'Pre-window minutes (before alert)', '260')
-    .option('--post-window <minutes>', 'Post-window minutes (after alert)', '1440')
+    .option(
+      '--pre-window <minutes>',
+      'Pre-window minutes (before alert)',
+      (value) => parseInt(value, 10),
+      260
+    )
+    .option(
+      '--post-window <minutes>',
+      'Post-window minutes (after alert)',
+      (value) => parseInt(value, 10),
+      1440
+    )
     .option(
       '--dataset <dataset>',
       'Dataset to export (candles_1s, candles_15s, candles_1m, candles_5m, indicators_1m)',
@@ -149,19 +159,26 @@ export function registerSlicesCommands(program: Command): void {
     )
     .option('--chain <chain>', 'Chain (sol, eth, base, bsc)', 'sol')
     .option('--duckdb <path>', 'DuckDB path')
-    .option('--max-alerts <number>', 'Maximum alerts to process', '1000')
+    .option(
+      '--max-alerts <number>',
+      'Maximum alerts to process',
+      (value) => parseInt(value, 10),
+      1000
+    )
     .option(
       '--use-date-partitioning',
       'Enable date-based partitioning (organize files by date for scalable catalog)'
     )
     .option(
       '--max-rows-per-file <number>',
-      'Maximum rows per file before chunking (for large daily exports)'
+      'Maximum rows per file before chunking (for large daily exports)',
+      (value) => parseInt(value, 10)
     )
     .option(
       '--max-hours-per-chunk <number>',
       'Maximum hours per chunk when chunking within day',
-      '6'
+      (value) => parseInt(value, 10),
+      6
     )
     .option('--format <format>', 'Output format', 'json')
     .action(async (options) => {

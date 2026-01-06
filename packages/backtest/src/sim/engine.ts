@@ -207,7 +207,8 @@ export class SimulationEngine {
           // Object property order affects JSON.stringify output, breaking reproducibility
           let candles: Candle[] | undefined;
           if (request.candlesMap instanceof Map) {
-            candles = request.candlesMap.get(target);
+            // Use mint as the key for consistency, as object identity is not reliable
+            candles = request.candlesMap.get(target.mint);
           } else {
             // Only use mint address as key - no fallback to JSON.stringify
             candles = request.candlesMap[target.mint];

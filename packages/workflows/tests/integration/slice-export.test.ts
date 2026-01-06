@@ -325,7 +325,50 @@ describe.skipIf(!shouldRun)('Slice Export Integration Tests', () => {
     ).rejects.toThrow(/exceeds maximum of 90 days/);
   });
 
-  it('should reject unsupported datasets', async () => {
+  it('should support candles_5m dataset', async () => {
+    const exporter = createClickHouseSliceExporterAdapterImpl();
+    const analyzer = createDuckDbSliceAnalyzerAdapterImpl();
+
+    const run: RunContext = {
+      runId: generateTestRunId('5m'),
+      createdAtIso: new Date().toISOString(),
+    };
+
+    const spec: SliceSpec = {
+      dataset: 'candles_5m',
+      chain: 'sol',
+      timeRange: {
+        startIso: '2025-12-01T00:00:00.000Z',
+        endIso: '2025-12-02T00:00:00.000Z',
+      },
+    };
+
+    const layout: ParquetLayoutSpec = {
+      baseUri: `file://${outputDir}`,
+      subdirTemplate: '{dataset}/chain={chain}/dt={yyyy}-{mm}-{dd}/run_id={runId}',
+    };
+
+    const analysis: AnalysisSpec = {
+      kind: 'sql',
+      sql: 'SELECT COUNT(*) as total_rows FROM slice',
+    };
+
+    const result = await exportAndAnalyzeSlice({
+      run,
+      spec,
+      layout,
+      analysis,
+      exporter,
+      analyzer,
+    });
+
+    // Verify manifest
+    expect(result.manifest).toBeDefined();
+    expect(result.manifest.spec.dataset).toBe('candles_5m');
+    expect(result.analysis.status).toBe('ok');
+  }, 60000);
+
+  it('should reject truly unsupported datasets', async () => {
     const exporter = createClickHouseSliceExporterAdapterImpl();
     const analyzer = createDuckDbSliceAnalyzerAdapterImpl();
 
@@ -335,7 +378,7 @@ describe.skipIf(!shouldRun)('Slice Export Integration Tests', () => {
     };
 
     const spec: SliceSpec = {
-      dataset: 'candles_5m', // Not yet supported
+      dataset: 'unknown_dataset', // Truly unsupported
       chain: 'sol',
       timeRange: {
         startIso: '2025-12-01T00:00:00.000Z',
@@ -362,7 +405,7 @@ describe.skipIf(!shouldRun)('Slice Export Integration Tests', () => {
         exporter,
         analyzer,
       })
-    ).rejects.toThrow(/Unsupported dataset.*candles_5m/);
+    ).rejects.toThrow(/Unsupported dataset.*unknown_dataset/);
   });
 
   it('should validate token address format', async () => {

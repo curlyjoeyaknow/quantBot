@@ -35,6 +35,7 @@
     "@quantbot/core": "workspace:*",
     "@quantbot/jobs": "workspace:*",
     "@quantbot/data-observatory": "workspace:*",
+    "@quantbot/labcatalog": "workspace:*",
     "duckdb": "^1.0.0",
     "luxon": "^3.5.0",
     "uuid": "^11.1.0",

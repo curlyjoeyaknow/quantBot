@@ -53,6 +53,7 @@ from lib.trial_ledger import (
     ensure_trial_schema,
     store_optimizer_run,
     # Pipeline phases (audit trail + resume)
+    create_run_record,
     store_phase_start,
     store_phase_complete,
     store_phase_failed,
@@ -86,6 +87,12 @@ from lib.robust_region_finder import (
     extract_island_champions,
     print_island_champions,
     IslandChampion,
+)
+from lib.terminal_colors import (
+    bold, dim, red, green, yellow, cyan,
+    color_value, color_ratio, color_pct, color_dd_category, gate_symbol,
+    colored_sparkline, histogram, mini_histogram,
+    print_results_summary, print_islands_summary, print_robust_summary,
 )
 from lib.stress_lanes import (
     StressLane,
@@ -529,6 +536,17 @@ def run_random_search(
     import uuid as uuid_mod
     run_id = run_id or uuid_mod.uuid4().hex[:12]
     from lib.partitioner import is_hive_partitioned, is_per_token_directory
+    
+    # Create initial run record for FK references (before any phase storage)
+    create_run_record(
+        duckdb_path=config.duckdb_path,
+        run_id=run_id,
+        run_type="random_search",
+        name=f"random_{config.n_trials}_{config.date_from}_{config.date_to}",
+        date_from=config.date_from,
+        date_to=config.date_to,
+        config=config.to_dict(),
+    )
     
     timing = TimingContext()
     timing.start()

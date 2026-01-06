@@ -222,6 +222,11 @@ export class DuckDBStorageService {
     costConfig?: Record<string, unknown>
   ): Promise<StrategyStorageResult> {
     try {
+      // Validate inputs to prevent injection attacks
+      this.validateDuckDbPath(duckdbPath);
+      this.validateStringInput(strategyId, 'strategyId');
+      this.validateStringInput(name, 'name');
+
       const result = await this.pythonEngine.runDuckDBStorage({
         duckdbPath,
         operation: 'store_strategy',
@@ -277,6 +282,15 @@ export class DuckDBStorageService {
     totalTrades?: number
   ): Promise<RunStorageResult> {
     try {
+      // Validate inputs
+      this.validateDuckDbPath(duckdbPath);
+      this.validateStringInput(runId, 'runId');
+      this.validateStringInput(strategyId, 'strategyId');
+      this.validateStringInput(strategyName, 'strategyName');
+      this.validateStringInput(mint, 'mint');
+      if (callerName) {
+        this.validateStringInput(callerName, 'callerName');
+      }
       const data: Record<string, unknown> = {
         run_id: runId,
         strategy_id: strategyId,
@@ -387,6 +401,11 @@ export class DuckDBStorageService {
     callerName?: string
   ): Promise<CallsQueryResult> {
     try {
+      // Validate inputs
+      this.validateDuckDbPath(duckdbPath);
+      if (callerName) {
+        this.validateStringInput(callerName, 'callerName');
+      }
       const result = await this.pythonEngine.runDuckDBStorage({
         duckdbPath,
         operation: 'query_calls',
@@ -657,6 +676,14 @@ export class DuckDBStorageService {
     dryRun: boolean = false
   ): Promise<MoveInvalidTokensResult> {
     try {
+      // Validate inputs
+      this.validateDuckDbPath(duckdbPath);
+      if (!Array.isArray(mints)) {
+        throw new Error('mints must be an array');
+      }
+      for (const mint of mints) {
+        this.validateStringInput(mint, 'mint');
+      }
       const result = await this.pythonEngine.runDuckDBStorage({
         duckdbPath,
         operation: 'move_invalid_tokens',
@@ -677,6 +704,52 @@ export class DuckDBStorageService {
         total_callers_affected: 0,
         error: error instanceof Error ? error.message : String(error),
       };
+    }
+  }
+
+  /**
+   * Validate DuckDB file path to prevent path traversal and injection
+   */
+  private validateDuckDbPath(path: string): void {
+    if (!path || typeof path !== 'string') {
+      throw new Error('DuckDB path must be a non-empty string');
+    }
+    // Prevent path traversal attempts
+    if (path.includes('..') || path.includes('//') || path.includes('\\\\')) {
+      throw new Error('Invalid DuckDB path: path traversal detected');
+    }
+    // Ensure path ends with .duckdb extension
+    if (!path.endsWith('.duckdb')) {
+      throw new Error('DuckDB path must end with .duckdb extension');
+    }
+  }
+
+  /**
+   * Validate string input to prevent injection attacks
+   */
+  private validateStringInput(value: string, fieldName: string): void {
+    if (typeof value !== 'string') {
+      throw new Error(`${fieldName} must be a string`);
+    }
+    // Prevent SQL injection patterns (basic check - Python script should also validate)
+    const dangerousPatterns = [
+      /;.*DROP/i,
+      /;.*DELETE/i,
+      /;.*INSERT/i,
+      /;.*UPDATE/i,
+      /;.*ALTER/i,
+      /;.*CREATE/i,
+      /UNION.*SELECT/i,
+      /'.*OR.*'/i,
+    ];
+    for (const pattern of dangerousPatterns) {
+      if (pattern.test(value)) {
+        throw new Error(`Invalid ${fieldName}: potentially dangerous pattern detected`);
+      }
+    }
+    // Limit length to prevent DoS
+    if (value.length > 1000) {
+      throw new Error(`${fieldName} exceeds maximum length of 1000 characters`);
     }
   }
 }

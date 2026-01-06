@@ -93,11 +93,11 @@ describe('OHLCV Work Planning', () => {
       // Verify time windows
       // Note: For '1m' interval, postWindow is automatically adjusted to 5000 - preWindow = 4740
       const alertTime = DateTime.fromISO('2024-01-01T12:00:00Z');
-      expect(workItems[0].startTime.toISO()).toBe(alertTime.minus({ minutes: 260 }).toISO());
-      const expectedPostWindow = 5000 - 260; // Auto-adjusted for 1m interval
-      expect(workItems[0].endTime.toISO()).toBe(
-        alertTime.plus({ minutes: expectedPostWindow }).toISO()
-      );
+      const expectedStartTime = alertTime.minus({ minutes: 260 });
+      const expectedEndTime = alertTime.plus({ minutes: 5000 - 260 }); // Auto-adjusted for 1m interval
+      // Compare as DateTime objects to avoid ISO format differences (Z vs +00:00)
+      expect(workItems[0].startTime.toMillis()).toBe(expectedStartTime.toMillis());
+      expect(workItems[0].endTime.toMillis()).toBe(expectedEndTime.toMillis());
     });
 
     it('should sort work items by priority (call count)', async () => {
@@ -166,12 +166,11 @@ describe('OHLCV Work Planning', () => {
 
       // Default windows: 260 pre, auto-adjusted post for 1m interval (5000 - 260 = 4740)
       const alertTime = DateTime.fromISO('2024-01-01T12:00:00Z');
-      expect(workItems[0].startTime.toISO()).toBe(alertTime.minus({ minutes: 260 }).toISO());
-      // Note: For '1m' interval, postWindow is automatically adjusted to 5000 - preWindow = 4740
-      const expectedPostWindow = 5000 - 260; // Auto-adjusted for 1m interval
-      expect(workItems[0].endTime.toISO()).toBe(
-        alertTime.plus({ minutes: expectedPostWindow }).toISO()
-      );
+      const expectedStartTime = alertTime.minus({ minutes: 260 });
+      const expectedEndTime = alertTime.plus({ minutes: 5000 - 260 }); // Auto-adjusted for 1m interval
+      // Compare as DateTime objects to avoid ISO format differences (Z vs +00:00)
+      expect(workItems[0].startTime.toMillis()).toBe(expectedStartTime.toMillis());
+      expect(workItems[0].endTime.toMillis()).toBe(expectedEndTime.toMillis());
     });
 
     it('should handle missing required fields gracefully', async () => {

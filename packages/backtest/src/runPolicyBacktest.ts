@@ -26,6 +26,10 @@ import type { RiskPolicy } from './policies/risk-policy.js';
 import { executePolicy, type FeeConfig, type ExecutionConfig } from './policies/policy-executor.js';
 import { createExecutionConfig, type ExecutionModelVenue } from './execution/index.js';
 import { insertPolicyResults, type DuckDbConnection } from './reporting/backtest-results-duckdb.js';
+import {
+  upsertRunMetadata,
+  persistPolicyResultsToCentral,
+} from './reporting/central-duckdb-persistence.js';
 import { planBacktest } from './plan.js';
 import { checkCoverage } from './coverage.js';
 import { materialiseSlice } from './slice.js';
@@ -99,6 +103,7 @@ export async function runPolicyBacktest(
   req: PolicyBacktestRequest
 ): Promise<PolicyBacktestSummary> {
   const runId = req.runId || randomUUID();
+  const startedAt = new Date();
   const simpleFees: FeeConfig = req.fees || { takerFeeBps: 30, slippageBps: 10 };
 
   // Create execution config from venue or simple fees
@@ -116,6 +121,26 @@ export async function runPolicyBacktest(
     policyId: req.policyId,
     policyKind: req.policy.kind,
     calls: req.calls.length,
+  });
+
+  // Persist run metadata to central DuckDB
+  await upsertRunMetadata({
+    run_id: runId,
+    run_mode: 'policy',
+    status: 'running',
+    params_json: JSON.stringify({
+      policyId: req.policyId,
+      policy: req.policy,
+      interval: req.interval,
+      from: req.from.toISO(),
+      to: req.to.toISO(),
+      fees: simpleFees,
+      executionModel: req.executionModel || 'simple',
+    }),
+    interval: req.interval,
+    time_from: req.from.toJSDate(),
+    time_to: req.to.toJSDate(),
+    started_at: startedAt,
   });
 
   // Step 1: Plan (reuse existing)
@@ -287,6 +312,9 @@ export async function runPolicyBacktest(
           rows: policyResults.length,
           duckdbPath,
         });
+
+        // Also persist to central DuckDB for auditability
+        await persistPolicyResultsToCentral(policyResults);
       }
     } finally {
       database.close();
@@ -336,6 +364,32 @@ export async function runPolicyBacktest(
     metrics: aggregateMetrics,
     timing: timing.toJSON(),
   };
+
+  // Update run metadata in central DuckDB with completion status
+  const finishedAt = new Date();
+  const avgReturnBps = aggregateMetrics.avgReturnBps;
+  await upsertRunMetadata({
+    run_id: runId,
+    run_mode: 'policy',
+    status: 'completed',
+    params_json: JSON.stringify({
+      policyId: req.policyId,
+      policy: req.policy,
+      interval: req.interval,
+      from: req.from.toISO(),
+      to: req.to.toISO(),
+      fees: simpleFees,
+      executionModel: req.executionModel || 'simple',
+    }),
+    interval: req.interval,
+    time_from: req.from.toJSDate(),
+    time_to: req.to.toJSDate(),
+    started_at: startedAt,
+    finished_at: finishedAt,
+    total_calls: coverage.eligible.length,
+    total_trades: policyResults.length,
+    avg_return_bps: avgReturnBps,
+  });
 
   // Log the sacred timing line - when regressions happen, this screams
   logger.info(timing.summaryLine());

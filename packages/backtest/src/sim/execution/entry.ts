@@ -137,7 +137,7 @@ function detectInitialDropEntry(
 ): EntryDetectionResult {
   const startCandle = candles[startIndex];
   const startPrice = startCandle.open;
-  const triggerPrice = startPrice * (1 + dropPercent); // dropPercent is negative
+  const triggerPrice = startPrice * (1 - Math.abs(dropPercent)); // dropPercent is negative, ensure we always calculate a drop
 
   for (let i = startIndex; i < candles.length; i++) {
     const candle = candles[i];
@@ -367,5 +367,5 @@ function getMinCandlesForIndicator(indicator: IndicatorName): number {
  * Calculate entry delay in minutes
  */
 export function calculateEntryDelay(startTimestamp: number, entryTimestamp: number): number {
-  return (entryTimestamp - startTimestamp) / 60;
+  return (entryTimestamp - startTimestamp) / (1000 * 60); // Convert milliseconds to minutes
 }

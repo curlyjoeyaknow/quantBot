@@ -2,7 +2,7 @@
 
 > **Project roadmap and task tracking**
 
-Last updated: 2025-01-24 (Recent: Slice Export & Analyze workflow implementation, aggregateCandles implementation, API package fixes)
+Last updated: 2026-01-06 (Recent: Event Sourcing & Plugin System implementation, OHLCV Horizon Coverage Matrix)
 
 ---
 
@@ -98,7 +98,69 @@ Last updated: 2025-01-24 (Recent: Slice Export & Analyze workflow implementation
   - [x] Update CHANGELOG.md with wiring improvements
   - [x] Add wiring examples to architecture docs
   - [x] Create wiring migration guide for future changes
-  - [x] Update README with wiring pattern references
+
+### Event Sourcing & Plugin System - Implementation Complete
+
+- [x] **Event Sourcing Infrastructure** ✅
+  - [x] Domain types for run events (RunCreated, InputsResolved, SliceGenerated, etc.)
+  - [x] RunEventPort interface for append-only event storage
+  - [x] DuckDB adapter for RunEventPort with Python script
+  - [x] RunState projection (materialized view from events)
+  - [x] Event helper functions for type-safe event creation
+  - [x] Workflow integration (event emission in runSimulation)
+  - [x] Wired into production context (createProductionContextWithPorts)
+  - [x] CLI handler updated to use event-enabled context
+
+- [x] **Plugin System Infrastructure** ✅
+  - [x] Plugin domain types (PluginMetadata, PluginType, factories)
+  - [x] PluginRegistry with static registration
+  - [x] Plugin port interfaces (StrategyPlugin, DataSourcePlugin, OutputPlugin)
+  - [x] API versioning support for plugins
+  - [x] Plugin registration helpers
+  - [x] CLI integration (plugin registration in composition root)
+  - [x] Example registration file for composition roots
+
+- [ ] **Event Sourcing - Next Steps**
+  - [ ] Add event emission to other workflows (optimization, slice generation, backtest)
+  - [ ] Add plugin version tracking to events (track which plugins were used)
+  - [ ] Create event replay functionality (replay run from events)
+  - [ ] Add event query API/CLI commands
+  - [ ] Create run comparison tool (compare two runs via events)
+  - [ ] Add event-based run state dashboard
+  - [ ] Implement event archiving/compaction strategy
+
+- [ ] **Plugin System - Next Steps**
+  - [ ] Create example plugin implementations (strategy, datasource, output)
+  - [ ] Add plugin discovery/loading from external directories (future)
+  - [ ] Create plugin validation and testing framework
+  - [ ] Add plugin version compatibility checks
+  - [ ] Document plugin development guide
+  - [ ] Add plugin marketplace/catalog (future)
+
+### OHLCV Horizon Coverage Matrix - Implementation Complete
+
+- [x] **Coverage Matrix Generation** ✅
+  - [x] Python script for matrix generation (ohlcv_horizon_coverage_matrix.py)
+  - [x] Monthly buckets from 2025-05-01 to 2026-01-05
+  - [x] Horizon times: -4hrs, 0hrs, +4hrs, +12hrs, +24hrs, +48hrs, +72hrs, +144hrs, +288hrs
+  - [x] Coverage calculation for 1m and 5m candles
+  - [x] DuckDB storage (ohlcv_horizon_coverage_1m, ohlcv_horizon_coverage_5m tables)
+  - [x] Histogram visualization with color coding
+  - [x] Query script for retrieving and visualizing stored matrices
+  - [x] Convenience wrapper script (generate-ohlcv-horizon-coverage.sh)
+  - [x] NPM scripts for easy execution
+  - [x] Documentation guide
+
+- [ ] **Coverage Matrix - Next Steps**
+  - [ ] Add automated matrix regeneration (scheduled job or CI)
+  - [ ] Create coverage trend analysis (coverage changes over time)
+  - [ ] Add coverage-based backtest feasibility checker
+  - [ ] Create targeted fetch recommendations based on gaps
+  - [ ] Add coverage alerts (notify when coverage drops below threshold)
+  - [ ] Extend to other intervals (15m, 1h, 4h)
+  - [ ] Add caller-specific coverage matrices
+  - [ ] Create coverage dashboard/visualization UI
+  - [ ] Add coverage-based run planning tool (suggest runs based on available data)
 
 ### Version Control Enforcement
 
@@ -232,6 +294,46 @@ Last updated: 2025-01-24 (Recent: Slice Export & Analyze workflow implementation
 
 ## ✅ Completed
 
+### 2026-01-06
+
+- [x] **Event Sourcing Infrastructure - Complete**
+  - [x] Domain types for run events (RunCreated, InputsResolved, SliceGenerated, SimulationStarted, SimulationCompleted, MetricsComputed, ArtifactWritten, RunFailed)
+  - [x] RunEventPort interface for append-only event storage
+  - [x] DuckDB adapter (RunEventDuckDBAdapter) with Python script (duckdb_run_events.py)
+  - [x] RunState projection (materialized view from events)
+  - [x] Event helper functions for type-safe event creation
+  - [x] Workflow integration (event emission in runSimulation workflow)
+  - [x] Wired into production context (createProductionContextWithPorts)
+  - [x] CLI handler updated to use event-enabled context
+  - [x] Safe event emission helpers (works with or without RunEventPort)
+
+- [x] **Plugin System Infrastructure - Complete**
+  - [x] Plugin domain types (PluginMetadata, PluginType: strategy/datasource/output)
+  - [x] PluginRegistry with static registration (no dynamic require scanning)
+  - [x] Plugin port interfaces (StrategyFactory, DataSourceFactory, OutputFactory)
+  - [x] API versioning support for plugins
+  - [x] Plugin registration helpers (registerStrategyPlugin, registerDataSourcePlugin, registerOutputPlugin)
+  - [x] CLI integration (plugin registration in composition root)
+  - [x] Example registration file for composition roots
+
+- [x] **OHLCV Horizon Coverage Matrix - Complete**
+  - [x] Python script for matrix generation (ohlcv_horizon_coverage_matrix.py)
+  - [x] Monthly buckets from 2025-05-01 to 2026-01-05
+  - [x] Horizon times: -4hrs, 0hrs, +4hrs, +12hrs, +24hrs, +48hrs, +72hrs, +144hrs, +288hrs
+  - [x] Coverage calculation for 1m and 5m candles
+  - [x] DuckDB storage (ohlcv_horizon_coverage_1m, ohlcv_horizon_coverage_5m tables)
+  - [x] Histogram visualization with color coding (Green/Yellow/Red)
+  - [x] Query script for retrieving and visualizing stored matrices
+  - [x] Convenience wrapper script (generate-ohlcv-horizon-coverage.sh)
+  - [x] NPM scripts for easy execution (coverage:ohlcv:horizon)
+  - [x] Comprehensive documentation guide
+
+- [x] **Coverage JSON Auto-Generation - Complete**
+  - [x] Updated Vitest config to include json-summary reporter
+  - [x] Created automation script (generate-coverage-json.ts)
+  - [x] Added NPM scripts (coverage:generate, coverage:generate:store)
+  - [x] Documentation for coverage JSON generation
+
 ### 2025-01-24
 
 - [x] **Slice Export & Analyze Workflow - Phase 0-2 Complete**
@@ -357,15 +459,29 @@ Last updated: 2025-01-24 (Recent: Slice Export & Analyze workflow implementation
 
 ### Future
 
-1. **Event Sourcing**
-   - All state changes as events
-   - Replay capability
-   - Audit trail
+1. **Event Sourcing Enhancements** (Foundation complete, enhancements needed)
+   - Event replay functionality (replay run from events)
+   - Run comparison tool (compare two runs via events)
+   - Event-based run state dashboard
+   - Event archiving/compaction strategy
+   - Event query API/CLI commands
 
-2. **Plugin System**
-   - Custom strategy plugins
-   - Data source plugins
-   - Output format plugins
+2. **Plugin System Enhancements** (Foundation complete, enhancements needed)
+   - Example plugin implementations (strategy, datasource, output)
+   - Plugin discovery/loading from external directories
+   - Plugin validation and testing framework
+   - Plugin version compatibility checks
+   - Plugin marketplace/catalog
+
+3. **Coverage Matrix Enhancements** (Foundation complete, enhancements needed)
+   - Automated matrix regeneration (scheduled job or CI)
+   - Coverage trend analysis (coverage changes over time)
+   - Coverage-based backtest feasibility checker
+   - Targeted fetch recommendations based on gaps
+   - Coverage alerts (notify when coverage drops below threshold)
+   - Extend to other intervals (15m, 1h, 4h)
+   - Caller-specific coverage matrices
+   - Coverage dashboard/visualization UI
 
 ---
 

@@ -41,6 +41,7 @@ import {
 } from '../execution/index.js';
 import type { ExecutionModel } from '../types/execution-model.js';
 import { createDeterministicRNG, type DeterministicRNG } from '@quantbot/core';
+import { logger } from '@quantbot/utils';
 import { logStep } from '../utils/progress.js';
 import { type SimulationClock, type ClockResolution, createClock } from './clock.js';
 import {
@@ -122,7 +123,7 @@ export async function simulateStrategy(
   const exitSignal = options?.exitSignal;
 
   // Create execution model if provided, otherwise use cost multipliers (backward compatibility)
-  const _executionModel: ExecutionModelInterface | undefined = options?.executionModel
+  const executionModel: ExecutionModelInterface | undefined = options?.executionModel
     ? createExecutionModel(options.executionModel)
     : undefined;
 
@@ -130,12 +131,21 @@ export async function simulateStrategy(
   // If seed is provided, use it; otherwise generate from first candle timestamp (deterministic fallback)
   // Note: For full determinism, always provide a seed. The candle timestamp fallback is deterministic
   // for the same candle data but may vary across different runs with different data.
-  const _rng =
+  const rng =
     options?.executionModel && options?.seed !== undefined
       ? createDeterministicRNG(options.seed)
       : options?.executionModel
         ? createDeterministicRNG(candles[0]?.timestamp ?? 0) // Deterministic fallback from candle data
         : undefined;
+
+  // Warn if execution model is configured but RNG is missing (should not happen, but fail fast if it does)
+  if (executionModel && !rng) {
+    logger.warn('Execution model configured but RNG is missing - this should not happen', {
+      hasExecutionModel: !!executionModel,
+      hasRng: !!rng,
+      hasSeed: options?.seed !== undefined,
+    });
+  }
 
   // Create simulation clock based on resolution
   const clockResolution: ClockResolution = options?.clockResolution ?? 'm'; // Default to minutes
@@ -167,14 +177,10 @@ export async function simulateStrategy(
   const events: LegacySimulationEvent[] = [];
 
   // Entry tracking
-  const _lowestPrice = initialPrice;
-  let _lowestPriceTimestamp = candles[0].timestamp;
-  const _lowestPriceTimeFromEntry = 0;
   let actualEntryPrice = initialPrice;
   let entryDelay = 0;
   let trailingEntryUsed = false;
   let hasEntered = entryCfg.initialEntry === 'none';
-  const _initialEntryTriggered = false;
 
   // Handle initial entry (wait for drop)
   if (entryCfg.initialEntry !== 'none') {
@@ -287,7 +293,10 @@ export async function simulateStrategy(
     exitCostMultiplier,
     exitSignal,
     events,
-    options?.candleProvider
+    options?.candleProvider,
+    executionModel,
+    rng,
+    clock
   );
 
   return {
@@ -483,11 +492,11 @@ function executeTrade(
     // Fallback to cost multiplier
     const costMultiplier = side === 'buy' ? entryCostMultiplier : exitCostMultiplier;
     const executedPrice = price * costMultiplier;
-    // Fees are included in the multiplier, so we return 0 here
-    // (fees are already baked into the price via multiplier)
+    // Calculate fees based on the difference between executed and requested price
+    const fees = Math.abs(executedPrice - price) * quantity;
     return {
       executedPrice,
-      fees: 0,
+      fees,
     };
   }
 }
@@ -610,7 +619,7 @@ async function runSimulationLoop(
             pnlSoFar: pnl,
           });
           waitingForReEntry = false;
-          break;
+          continue;
         }
       }
 
@@ -1250,53 +1259,51 @@ async function handleTrailingEntryWithCausalAccessor(
   let lowestPriceTimestamp = startTime;
   let currentTime = startTime;
 
-  // Find lowest price within wait period
+  // Find lowest price and look for rebound in a single pass (fixes lookahead bias)
   while (currentTime <= Math.min(maxWaitTimestamp, endTime)) {
     const candle = await candleAccessor.getLastClosedCandle(mint, currentTime, interval);
-    if (candle && candle.low < lowestPrice) {
-      lowestPrice = candle.low;
-      lowestPriceTimestamp = candle.timestamp;
-    }
-    currentTime += timeStep;
-  }
 
-  const trailingTrigger = lowestPrice * (1 + trailingPercent);
-  currentTime = startTime;
-
-  // Look for rebound
-  while (currentTime <= Math.min(maxWaitTimestamp, endTime)) {
-    const candle = await candleAccessor.getLastClosedCandle(mint, currentTime, interval);
-    if (candle && candle.high >= trailingTrigger) {
-      if (entrySignal) {
-        // Simplified signal check
-        const result = evaluateSignalGroup(entrySignal, {
-          candle,
-          indicators: indicators[indicators.length - 1] ?? indicators[0],
-          prevIndicators: indicators.length > 1 ? indicators[indicators.length - 2] : undefined,
-        });
-        if (!result.satisfied) {
-          currentTime += timeStep;
-          continue;
-        }
+    if (candle) {
+      // Update lowest price seen so far
+      if (candle.low < lowestPrice) {
+        lowestPrice = candle.low;
+        lowestPriceTimestamp = candle.timestamp;
       }
 
-      events.push({
-        type: 'trailing_entry_triggered',
-        timestamp: candle.timestamp,
-        price: trailingTrigger,
-        description: `Trailing entry at $${trailingTrigger.toFixed(8)} (${(trailingPercent * 100).toFixed(1)}% from low)`,
-        remainingPosition: 1,
-        pnlSoFar: 0,
-      });
+      // Check for rebound from the current lowest price
+      const trailingTrigger = lowestPrice * (1 + trailingPercent);
+      if (candle.high >= trailingTrigger) {
+        if (entrySignal) {
+          // Simplified signal check
+          const result = evaluateSignalGroup(entrySignal, {
+            candle,
+            indicators: indicators[indicators.length - 1] ?? indicators[0],
+            prevIndicators: indicators.length > 1 ? indicators[indicators.length - 2] : undefined,
+          });
+          if (!result.satisfied) {
+            currentTime += timeStep;
+            continue;
+          }
+        }
 
-      return {
-        triggered: true,
-        price: trailingTrigger,
-        entryDelay: clock.fromMilliseconds(candle.timestamp - startTime),
-        lowestPrice,
-        lowestPriceTimestamp,
-        currentTime: candle.timestamp,
-      };
+        events.push({
+          type: 'trailing_entry_triggered',
+          timestamp: candle.timestamp,
+          price: trailingTrigger,
+          description: `Trailing entry at $${trailingTrigger.toFixed(8)} (${(trailingPercent * 100).toFixed(1)}% from low)`,
+          remainingPosition: 1,
+          pnlSoFar: 0,
+        });
+
+        return {
+          triggered: true,
+          price: trailingTrigger,
+          entryDelay: clock.fromMilliseconds(candle.timestamp - startTime),
+          lowestPrice,
+          lowestPriceTimestamp,
+          currentTime: candle.timestamp,
+        };
+      }
     }
     currentTime += timeStep;
   }
@@ -1485,7 +1492,8 @@ async function runSimulationLoopWithCausalAccessor(
             pnlSoFar: pnl,
           });
           waitingForReEntry = false;
-          break;
+          currentTime += timeStep;
+          continue;
         }
       }
 

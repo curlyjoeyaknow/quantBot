@@ -16,7 +16,7 @@ export default defineConfig({
         '@quantbot/core',
         '@quantbot/utils',
         '@quantbot/storage',
-        '@quantbot/backtest',
+        '@quantbot/simulation',
         '@quantbot/backtest',
       ],
     },
@@ -34,7 +34,8 @@ export default defineConfig({
       '@quantbot/core': path.resolve(__dirname, '../core/src'),
       '@quantbot/utils': path.resolve(__dirname, '../utils/src'),
       '@quantbot/storage': path.resolve(__dirname, '../storage/src'),
-      '@quantbot/backtest': path.resolve(__dirname, '../simulation/src'),
+      '@quantbot/simulation': path.resolve(__dirname, '../simulation/src'),
+      '@quantbot/simulation/execution-models': path.resolve(__dirname, '../simulation/src/execution-models'),
     },
   },
 });

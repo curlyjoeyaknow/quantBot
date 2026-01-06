@@ -1,11 +1,12 @@
 import type { Candle } from '@quantbot/core';
-
-// Re-export simulation's ATH/ATL utilities for enhanced path analysis
-export {
+import {
   calculatePeriodAthAtlFromCandles,
   type PeriodAthAtlResult,
   type ReEntryOpportunity,
 } from '@quantbot/simulation';
+
+// Re-export simulation's ATH/ATL utilities for enhanced path analysis
+export { calculatePeriodAthAtlFromCandles, type PeriodAthAtlResult, type ReEntryOpportunity };
 
 export type PathMetrics = {
   // anchor
@@ -251,8 +252,6 @@ export function computeEnhancedPathMetrics(
   }
 
   // Use simulation's ATH/ATL calculation for enhanced metrics
-  const { calculatePeriodAthAtlFromCandles } = require('@quantbot/simulation/math');
-
   const athAtl = calculatePeriodAthAtlFromCandles(
     basic.p0,
     t0_ms / 1000, // Convert to seconds for simulation function

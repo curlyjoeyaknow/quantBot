@@ -25,6 +25,10 @@ import { logger } from '@quantbot/utils';
 import type { Candle } from '@quantbot/core';
 import { computePathMetrics } from './metrics/path-metrics.js';
 import { insertCallResults } from './reporting/backtest-results-duckdb.js';
+import {
+  upsertRunMetadata,
+  persistCallResultsToCentral,
+} from './reporting/central-duckdb-persistence.js';
 import { DateTime } from 'luxon';
 
 /**
@@ -230,7 +234,26 @@ export async function loadCandlesFromSlice(
  */
 export async function runBacktest(req: BacktestRequest): Promise<BacktestSummary> {
   const runId = randomUUID();
+  const startedAt = new Date();
   logger.info('Starting backtest', { runId, strategy: req.strategy.id, calls: req.calls.length });
+
+  // Persist run metadata to central DuckDB
+  await upsertRunMetadata({
+    run_id: runId,
+    strategy_id: req.strategy.id,
+    run_mode: 'exit-optimizer',
+    status: 'running',
+    params_json: JSON.stringify({
+      strategy: req.strategy,
+      interval: req.interval,
+      from: req.from.toISO(),
+      to: req.to.toISO(),
+    }),
+    interval: req.interval,
+    time_from: req.from.toJSDate(),
+    time_to: req.to.toJSDate(),
+    started_at: startedAt,
+  });
 
   // Step 1: Plan
   const plan = planBacktest(req);
@@ -310,9 +333,10 @@ export async function runBacktest(req: BacktestRequest): Promise<BacktestSummary
   const database = new duckdb.Database(duckdbPath);
   const db = database.connect();
 
+  // Compute path metrics per call and prepare rows for insertion
+  const rows: Array<import('./reporting/backtest-results-duckdb.js').CallResultRow> = [];
+
   try {
-    // Compute path metrics per call and prepare rows for insertion
-    const rows = [];
     const positionUsd = req.strategy.position.notionalUsd;
 
     for (const eligible of coverage.eligible) {
@@ -408,6 +432,9 @@ export async function runBacktest(req: BacktestRequest): Promise<BacktestSummary
         rows: rows.length,
         duckdbPath,
       });
+
+      // Also persist to central DuckDB for auditability
+      await persistCallResultsToCentral(rows);
     }
   } finally {
     // Connection cleanup handled by database close
@@ -416,6 +443,37 @@ export async function runBacktest(req: BacktestRequest): Promise<BacktestSummary
 
   // Step 7: Report (existing JSON artifacts)
   const summary = await emitReport(runId, allTrades, allEvents, coverage, req.strategy);
+
+  // Update run metadata in central DuckDB with completion status
+  const finishedAt = new Date();
+  const totalPnlUsd = allTrades.reduce(
+    (sum, t) => sum + (t.pnl.netReturnPct / 100) * req.strategy.position.notionalUsd,
+    0
+  );
+  const avgReturnBps =
+    rows.length > 0 ? rows.reduce((sum, r) => sum + r.return_bps, 0) / rows.length : 0;
+
+  await upsertRunMetadata({
+    run_id: runId,
+    strategy_id: req.strategy.id,
+    run_mode: 'exit-optimizer',
+    status: 'completed',
+    params_json: JSON.stringify({
+      strategy: req.strategy,
+      interval: req.interval,
+      from: req.from.toISO(),
+      to: req.to.toISO(),
+    }),
+    interval: req.interval,
+    time_from: req.from.toJSDate(),
+    time_to: req.to.toJSDate(),
+    started_at: startedAt,
+    finished_at: finishedAt,
+    total_calls: coverage.eligible.length,
+    total_trades: allTrades.length,
+    total_pnl_usd: totalPnlUsd,
+    avg_return_bps: avgReturnBps,
+  });
 
   return summary;
 }
