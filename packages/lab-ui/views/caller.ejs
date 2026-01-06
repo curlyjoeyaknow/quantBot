@@ -143,6 +143,48 @@
       margin-bottom: 1rem;
     }
     .back-link:hover { text-decoration: underline; }
+    
+    .pagination {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.75rem 0;
+      flex-wrap: wrap;
+    }
+    
+    .pagination button {
+      padding: 0.4rem 0.8rem;
+      background: var(--panel, #101826);
+      border: 1px solid var(--border, #1d2a44);
+      border-radius: 6px;
+      color: var(--text, #e6edf3);
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    
+    .pagination button:hover:not(:disabled) {
+      background: var(--border, #1d2a44);
+      border-color: var(--accent, #7aa2ff);
+    }
+    
+    .pagination button:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+    
+    .pagination button.active {
+      background: var(--accent, #7aa2ff);
+      border-color: var(--accent, #7aa2ff);
+      color: #000;
+    }
+    
+    .pagination .page-info {
+      font-size: 0.85rem;
+      color: var(--muted, #93a4c7);
+      padding: 0 0.5rem;
+    }
   </style>
 </head>
 <body>
@@ -152,6 +194,7 @@
     <a href="/runs">Runs</a>
     <a href="/leaderboard">Leaderboard</a>
     <a href="/scored">Scored</a>
+    <a href="/compare">Compare</a>
     <a href="/truth">Truth</a>
     <a href="/policies">Policies</a>
   </nav>
@@ -166,7 +209,9 @@
           <option value="">Loading runs...</option>
         </select>
         <label>Caller:</label>
-        <input type="text" id="callerInput" placeholder="Enter caller name" style="flex: 1; max-width: 300px;" />
+        <select id="callerSelect" style="flex: 1; max-width: 300px;">
+          <option value="">Select run first...</option>
+        </select>
         <button id="load">Load</button>
         <span id="msg"></span>
       </div>
@@ -250,12 +295,13 @@
 
       <!-- Individual Alerts Table -->
       <section class="card">
-        <h2>Individual Alerts (Last 500)</h2>
+        <h2>Individual Alerts (<span id="alertsShowing">0</span> of <span id="alertsTotal">0</span>)</h2>
+        <div class="pagination" id="paginationTop"></div>
         <div class="table-scroll">
           <table class="alerts-table" id="alertsTable">
             <thead>
               <tr>
-                <th>Alert ID</th>
+                <th>Token</th>
                 <th>Time</th>
                 <th>ATH</th>
                 <th>DD</th>
@@ -270,6 +316,7 @@
             <tbody></tbody>
           </table>
         </div>
+        <div class="pagination" id="paginationBottom"></div>
       </section>
     </div>
   </main>
@@ -277,6 +324,9 @@
   <script>
     const $ = id => document.getElementById(id);
     let charts = {};
+    let allAlerts = [];
+    let currentPage = 1;
+    const PAGE_SIZE = 50;
 
     const colors = {
       green: 'rgba(16, 185, 129, 0.8)',
@@ -307,25 +357,62 @@
         // Check URL params
         const params = new URLSearchParams(window.location.search);
         const runId = params.get('run');
-        const caller = params.get('caller');
         if (runId) {
           select.value = runId;
-          if (caller) {
-            $('callerInput').value = caller;
-            loadCallerData();
-          }
+          await loadCallers(); // This will also check for caller param and load data
         }
       } catch (e) {
         $('runSelect').innerHTML = '<option value="">Error loading runs</option>';
       }
     }
 
+    async function loadCallers() {
+      const runId = $('runSelect').value;
+      const callerSelect = $('callerSelect');
+      
+      if (!runId) {
+        callerSelect.innerHTML = '<option value="">Select run first...</option>';
+        return;
+      }
+
+      callerSelect.innerHTML = '<option value="">Loading callers...</option>';
+
+      try {
+        const res = await fetch(`/api/scored-leaderboard/${runId}?min_trades=1`);
+        const data = await res.json();
+
+        if (data.error) {
+          callerSelect.innerHTML = `<option value="">Error: ${data.error}</option>`;
+          return;
+        }
+
+        callerSelect.innerHTML = '<option value="">Select a caller...</option>';
+        data.forEach(c => {
+          const opt = document.createElement('option');
+          opt.value = c.caller;
+          const score = c.score_v2 != null ? ` (${c.score_v2 > 0 ? '+' : ''}${Number(c.score_v2).toFixed(2)})` : '';
+          opt.textContent = `${c.caller} — ${c.n} trades${score}`;
+          callerSelect.appendChild(opt);
+        });
+
+        // Check URL params for caller
+        const params = new URLSearchParams(window.location.search);
+        const callerParam = params.get('caller');
+        if (callerParam) {
+          callerSelect.value = callerParam;
+          loadCallerData();
+        }
+      } catch (e) {
+        callerSelect.innerHTML = `<option value="">Error: ${e.message}</option>`;
+      }
+    }
+
     async function loadCallerData() {
       const runId = $('runSelect').value;
-      const caller = $('callerInput').value.trim();
+      const caller = $('callerSelect').value;
 
       if (!runId || !caller) {
-        $('msg').textContent = 'Select run and enter caller name';
+        $('msg').textContent = 'Select run and caller';
         return;
       }
 
@@ -395,7 +482,9 @@
 
       // Charts
       renderCharts(dist, alerts);
-      renderAlertsTable(alerts);
+      allAlerts = alerts;
+      currentPage = 1;
+      renderAlertsTable();
     }
 
     function renderComparison(id, value, popValue, betterDirection) {
@@ -471,7 +560,8 @@
 
       // Timeline sparkline
       if (alerts.length) {
-        const sortedAlerts = [...alerts].sort((a, b) => new Date(a.alert_ts) - new Date(b.alert_ts));
+        // Use alert_ts_ms (epoch milliseconds) for sorting
+        const sortedAlerts = [...alerts].sort((a, b) => (a.alert_ts_ms || 0) - (b.alert_ts_ms || 0));
         const last50 = sortedAlerts.slice(-50);
         
         charts.timeline = new Chart($('timelineChart'), {
@@ -498,16 +588,49 @@
       }
     }
 
-    function renderAlertsTable(alerts) {
+    function parseAlertDate(ts) {
+      if (ts === null || ts === undefined || ts === 0) return '—';
+      // Handle various formats: ISO string, Unix timestamp (seconds or ms), DuckDB timestamp
+      let d;
+      if (typeof ts === 'number') {
+        // epoch_ms returns milliseconds directly
+        d = new Date(ts);
+      } else if (typeof ts === 'string') {
+        // Try parsing as-is first (ISO string)
+        d = new Date(ts);
+        // If invalid, try stripping timezone suffix or parsing as UTC
+        if (isNaN(d.getTime())) {
+          // DuckDB might return "2025-01-05 12:34:56" without T
+          d = new Date(ts.replace(' ', 'T') + 'Z');
+        }
+      } else {
+        return '—';
+      }
+      return isNaN(d.getTime()) ? '—' : d.toLocaleString();
+    }
+
+    function renderAlertsTable() {
       const tbody = $('alertsTable').querySelector('tbody');
       tbody.innerHTML = '';
 
-      alerts.forEach(a => {
+      const totalPages = Math.ceil(allAlerts.length / PAGE_SIZE);
+      const start = (currentPage - 1) * PAGE_SIZE;
+      const end = Math.min(start + PAGE_SIZE, allAlerts.length);
+      const pageAlerts = allAlerts.slice(start, end);
+
+      // Update counts
+      $('alertsTotal').textContent = allAlerts.length;
+      $('alertsShowing').textContent = pageAlerts.length;
+
+      pageAlerts.forEach(a => {
         const tr = document.createElement('tr');
-        const date = a.alert_ts ? new Date(a.alert_ts).toLocaleString() : '—';
+        const date = parseAlertDate(a.alert_ts_ms);
+        
+        const mintShort = a.mint ? `${a.mint.slice(0, 4)}…${a.mint.slice(-4)}` : '—';
+        const solscanUrl = a.mint ? `https://solscan.io/token/${a.mint}` : '#';
         
         tr.innerHTML = `
-          <td title="${a.alert_id}">${(a.alert_id || '').slice(0, 8)}…</td>
+          <td title="${a.mint || ''}"><a href="${solscanUrl}" target="_blank" rel="noopener" style="color: var(--accent); text-decoration: none;">${mintShort}</a></td>
           <td>${date}</td>
           <td>${fmt(a.ath_mult, 2)}x</td>
           <td>${fmt(a.dd_overall_pct, 1)}%</td>
@@ -520,6 +643,80 @@
         `;
         tbody.appendChild(tr);
       });
+
+      // Render pagination
+      renderPagination(totalPages);
+    }
+
+    function renderPagination(totalPages) {
+      if (totalPages <= 1) {
+        $('paginationTop').innerHTML = '';
+        $('paginationBottom').innerHTML = '';
+        return;
+      }
+
+      const html = buildPaginationHtml(totalPages);
+      $('paginationTop').innerHTML = html;
+      $('paginationBottom').innerHTML = html;
+
+      // Attach event listeners
+      document.querySelectorAll('.pagination button[data-page]').forEach(btn => {
+        btn.onclick = () => {
+          const page = btn.getAttribute('data-page');
+          if (page === 'prev') currentPage = Math.max(1, currentPage - 1);
+          else if (page === 'next') currentPage = Math.min(totalPages, currentPage + 1);
+          else currentPage = parseInt(page);
+          renderAlertsTable();
+          // Scroll to table if using bottom pagination
+          if (btn.closest('#paginationBottom')) {
+            $('alertsTable').scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }
+        };
+      });
+    }
+
+    function buildPaginationHtml(totalPages) {
+      let html = '';
+      
+      // Previous button
+      html += `<button data-page="prev" ${currentPage === 1 ? 'disabled' : ''}>← Prev</button>`;
+      
+      // Page buttons (show max 7 pages with ellipsis)
+      const maxVisible = 7;
+      let pages = [];
+      
+      if (totalPages <= maxVisible) {
+        pages = Array.from({ length: totalPages }, (_, i) => i + 1);
+      } else {
+        // Always show first, last, current, and neighbors
+        const left = Math.max(2, currentPage - 1);
+        const right = Math.min(totalPages - 1, currentPage + 1);
+        
+        pages.push(1);
+        if (left > 2) pages.push('...');
+        for (let i = left; i <= right; i++) pages.push(i);
+        if (right < totalPages - 1) pages.push('...');
+        pages.push(totalPages);
+      }
+      
+      for (const p of pages) {
+        if (p === '...') {
+          html += `<span class="page-info">…</span>`;
+        } else {
+          const active = p === currentPage ? 'active' : '';
+          html += `<button data-page="${p}" class="${active}">${p}</button>`;
+        }
+      }
+      
+      // Next button
+      html += `<button data-page="next" ${currentPage === totalPages ? 'disabled' : ''}>Next →</button>`;
+      
+      // Page info
+      const start = (currentPage - 1) * PAGE_SIZE + 1;
+      const end = Math.min(currentPage * PAGE_SIZE, allAlerts.length);
+      html += `<span class="page-info">${start}-${end} of ${allAlerts.length}</span>`;
+      
+      return html;
     }
 
     function hitBadge(hit) {
@@ -535,8 +732,9 @@
 
     // Init
     loadRuns();
+    $('runSelect').onchange = loadCallers;
+    $('callerSelect').onchange = loadCallerData;
     $('load').onclick = loadCallerData;
-    $('callerInput').onkeydown = e => { if (e.key === 'Enter') loadCallerData(); };
   </script>
 </body>
 </html>

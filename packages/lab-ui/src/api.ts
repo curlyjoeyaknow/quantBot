@@ -5,6 +5,54 @@ import { all, run } from './db.js';
 import { validateExitPlanJson } from './exit-plan-schema.js';
 import { spawnBacktest } from './runner.js';
 
+/**
+ * Convert BigInt values to regular numbers and handle DuckDB timestamp types.
+ * DuckDB returns BigInt for some numeric types and special objects for timestamps.
+ */
+function sanitizeForJson<T>(data: T): T {
+  if (data === null || data === undefined) return data;
+  if (typeof data === 'bigint') return Number(data) as T;
+  
+  // Handle Date objects
+  if (data instanceof Date) {
+    return data.toISOString() as T;
+  }
+  
+  if (Array.isArray(data)) return data.map(sanitizeForJson) as T;
+  
+  if (typeof data === 'object') {
+    // Check if it's a DuckDB timestamp (has specific internal properties)
+    // DuckDB timestamps may come as { days: number } or similar internal format
+    const obj = data as Record<string, unknown>;
+    
+    // If the object has a 'days' property but no other meaningful properties,
+    // it's likely a DuckDB date - convert days since epoch to ISO string
+    if (Object.keys(obj).length === 1 && typeof obj.days === 'number') {
+      const date = new Date(obj.days * 24 * 60 * 60 * 1000);
+      return date.toISOString() as T;
+    }
+    
+    // If the object has 'micros' property (DuckDB timestamp), convert it
+    if (Object.keys(obj).length === 1 && typeof obj.micros === 'number') {
+      const date = new Date(obj.micros / 1000); // micros to millis
+      return date.toISOString() as T;
+    }
+    
+    // If it's an empty object, check if the key suggests it's a timestamp
+    if (Object.keys(obj).length === 0) {
+      // Return null for empty objects (will be handled in client)
+      return null as T;
+    }
+    
+    const result: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(obj)) {
+      result[key] = sanitizeForJson(value);
+    }
+    return result as T;
+  }
+  return data;
+}
+
 export function registerApi(app: express.Express, db: DuckDb) {
   // -----------------------------
   // Strategies
@@ -410,7 +458,7 @@ export function registerApi(app: express.Express, db: DuckDb) {
           date_to,
           alerts_total,
           alerts_ok
-        FROM baseline.runs_d
+        FROM runs.runs_d
         ORDER BY created_at DESC
         LIMIT 1
       `;
@@ -465,7 +513,7 @@ export function registerApi(app: express.Express, db: DuckDb) {
           run_name,
           created_at,
           alerts_ok
-        FROM baseline.runs_d
+        FROM runs.runs_d
         ORDER BY created_at DESC
         LIMIT 5
       `;
@@ -732,7 +780,7 @@ export function registerApi(app: express.Express, db: DuckDb) {
         date_to,
         alerts_total,
         alerts_ok
-      FROM baseline.runs_d
+      FROM runs.runs_d
       ORDER BY created_at DESC
       LIMIT 50
     `;
@@ -984,21 +1032,21 @@ export function registerApi(app: express.Express, db: DuckDb) {
         SELECT
           alert_id,
           mint,
-          alert_ts,
+          epoch_ms(alert_ts_utc) AS alert_ts_ms,
           ROUND(ath_mult, 2) AS ath_mult,
-          ROUND(dd_overall * 100, 1) AS dd_overall_pct,
-          ROUND(dd_pre2x * 100, 1) AS dd_pre2x_pct,
-          COALESCE(hit_2x, false) AS hit_2x,
-          COALESCE(hit_3x, false) AS hit_3x,
-          COALESCE(hit_4x, false) AS hit_4x,
-          ROUND(time_to_2x_s / 60.0, 1) AS time_to_2x_min,
-          ROUND(time_to_3x_s / 60.0, 1) AS time_to_3x_min,
-          ROUND(time_to_4x_s / 60.0, 1) AS time_to_4x_min
+          ROUND(COALESCE(dd_overall, 0) * 100, 1) AS dd_overall_pct,
+          ROUND(COALESCE(dd_pre2x, 0) * 100, 1) AS dd_pre2x_pct,
+          (time_to_2x_s IS NOT NULL AND time_to_2x_s > 0) AS hit_2x,
+          (time_to_3x_s IS NOT NULL AND time_to_3x_s > 0) AS hit_3x,
+          (time_to_4x_s IS NOT NULL AND time_to_4x_s > 0) AS hit_4x,
+          ROUND(COALESCE(time_to_2x_s, 0) / 60.0, 1) AS time_to_2x_min,
+          ROUND(COALESCE(time_to_3x_s, 0) / 60.0, 1) AS time_to_3x_min,
+          ROUND(COALESCE(time_to_4x_s, 0) / 60.0, 1) AS time_to_4x_min
         FROM baseline.alert_results_f
         WHERE run_id = ?
           AND caller = ?
           AND status = 'ok'
-        ORDER BY alert_ts DESC
+        ORDER BY alert_ts_utc DESC
         LIMIT 500
       `;
 
@@ -1134,7 +1182,7 @@ export function registerApi(app: express.Express, db: DuckDb) {
         all(db, popStatsSql, [runId]),
       ]);
 
-      res.json({
+      res.json(sanitizeForJson({
         alerts,
         distributions: {
           ath: athDist,
@@ -1143,7 +1191,7 @@ export function registerApi(app: express.Express, db: DuckDb) {
         },
         callerStats: callerStats[0] || null,
         populationStats: popStats[0] || null,
-      });
+      }));
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       res.status(500).json({ error: msg });
