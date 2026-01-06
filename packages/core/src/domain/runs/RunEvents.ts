@@ -194,7 +194,7 @@ export const RunCreatedEventSchema = z.object({
   event_type: z.literal('RunCreated'),
   occurred_at: z.string(), // ISO string
   event_version: z.number(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
   payload: z.object({
     strategy_id: z.string(),
     strategy_name: z.string(),
@@ -214,7 +214,7 @@ export const InputsResolvedEventSchema = z.object({
   event_type: z.literal('InputsResolved'),
   occurred_at: z.string(),
   event_version: z.number(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
   payload: z.object({
     code_version: z.string(),
     config_hash: z.string(),
@@ -234,7 +234,7 @@ export const SliceGeneratedEventSchema = z.object({
   event_type: z.literal('SliceGenerated'),
   occurred_at: z.string(),
   event_version: z.number(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
   payload: z.object({
     slice_id: z.string(),
     slice_path: z.string(),
@@ -252,7 +252,7 @@ export const SimulationStartedEventSchema = z.object({
   event_type: z.literal('SimulationStarted'),
   occurred_at: z.string(),
   event_version: z.number(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
   payload: z.object({
     phase: z.string(),
     call_count: z.number().optional(),
@@ -266,7 +266,7 @@ export const SimulationCompletedEventSchema = z.object({
   event_type: z.literal('SimulationCompleted'),
   occurred_at: z.string(),
   event_version: z.number(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
   payload: z.object({
     phase: z.string(),
     calls_attempted: z.number(),
@@ -283,7 +283,7 @@ export const MetricsComputedEventSchema = z.object({
   event_type: z.literal('MetricsComputed'),
   occurred_at: z.string(),
   event_version: z.number(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
   payload: z.object({
     metrics_type: z.string(),
     pnl_stats: z
@@ -306,7 +306,7 @@ export const ArtifactWrittenEventSchema = z.object({
   event_type: z.literal('ArtifactWritten'),
   occurred_at: z.string(),
   event_version: z.number(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
   payload: z.object({
     artifact_type: z.string(),
     artifact_path: z.string(),
@@ -321,7 +321,7 @@ export const RunFailedEventSchema = z.object({
   event_type: z.literal('RunFailed'),
   occurred_at: z.string(),
   event_version: z.number(),
-  metadata: z.record(z.unknown()).optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
   payload: z.object({
     error_code: z.string().optional(),
     error_message: z.string(),
