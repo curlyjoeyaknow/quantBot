@@ -45,23 +45,25 @@ export function getCatalogPaths(basePath: string = './catalog'): CatalogPaths {
  * Generate path for a slice file
  *
  * Pattern: `data/bars/<token>/<start>_<end>.parquet`
+ * With date partitioning: `data/bars/<date>/<token>/<start>_<end>.parquet`
  *
  * @param tokenId - Token mint address
  * @param startIso - Start timestamp (ISO 8601)
  * @param endIso - End timestamp (ISO 8601)
  * @param basePath - Base catalog path
+ * @param useDatePartitioning - If true, organize by date (YYYY-MM-DD) then token (default: false)
  * @returns Path to slice file
  */
 export function getSliceFilePath(
   tokenId: string,
   startIso: string,
   endIso: string,
-  basePath: string = './catalog'
+  basePath: string = './catalog',
+  useDatePartitioning: boolean = false
 ): string {
   // Normalize token ID for filesystem (sanitize)
   const sanitizedToken = sanitizeTokenId(tokenId);
   const barsDir = getCatalogPaths(basePath).barsDir;
-  const tokenDir = join(barsDir, sanitizedToken);
 
   // Format dates as compact ISO (YYYYMMDDTHHMMSS)
   // Use UTC to avoid timezone issues
@@ -71,7 +73,19 @@ export function getSliceFilePath(
   const endStr = endDate.toFormat("yyyyMMdd'T'HHmmss");
 
   const filename = `${startStr}_${endStr}.parquet`;
-  return join(tokenDir, filename);
+
+  if (useDatePartitioning) {
+    // Date-based partitioning: data/bars/<date>/<token>/<start>_<end>.parquet
+    // Use the start date for partitioning (or alert date if available)
+    const datePartition = startDate.toFormat('yyyy-MM-dd');
+    const dateDir = join(barsDir, datePartition);
+    const tokenDir = join(dateDir, sanitizedToken);
+    return join(tokenDir, filename);
+  } else {
+    // Original pattern: data/bars/<token>/<start>_<end>.parquet
+    const tokenDir = join(barsDir, sanitizedToken);
+    return join(tokenDir, filename);
+  }
 }
 
 /**
@@ -230,10 +244,23 @@ function formatCompactToIso(compact: string): string | null {
  *
  * @param tokenId - Token mint address
  * @param basePath - Base catalog path
+ * @param datePartition - Optional date partition (YYYY-MM-DD) for date-based organization
  * @returns Path to token's slice directory
  */
-export function getTokenSliceDir(tokenId: string, basePath: string = './catalog'): string {
+export function getTokenSliceDir(
+  tokenId: string,
+  basePath: string = './catalog',
+  datePartition?: string
+): string {
   const sanitizedToken = sanitizeTokenId(tokenId);
   const barsDir = getCatalogPaths(basePath).barsDir;
-  return join(barsDir, sanitizedToken);
+
+  if (datePartition) {
+    // Date-based partitioning: data/bars/<date>/<token>/
+    const dateDir = join(barsDir, datePartition);
+    return join(dateDir, sanitizedToken);
+  } else {
+    // Original pattern: data/bars/<token>/
+    return join(barsDir, sanitizedToken);
+  }
 }
