@@ -11,9 +11,9 @@ Last updated: 2025-01-24 (Recent: Slice Export & Analyze workflow implementation
 ### Slice Export & Analyze Workflow - Remaining Phases
 
 - [ ] **Phase 4: Dataset Expansion**
-  - [ ] Dataset mapping registry for multiple datasets
-  - [ ] `candles_5m` dataset support
-  - [ ] Conditional `indicators_1m` support (if canonical in ClickHouse)
+  - [x] Dataset mapping registry for multiple datasets
+  - [x] `candles_5m` dataset support
+  - [x] Conditional `indicators_1m` support (if canonical in ClickHouse)
 
 - [ ] **Phase 5: Analysis Enhancements**
   - [ ] Analysis result storage (Parquet/CSV output)
