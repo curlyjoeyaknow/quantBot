@@ -47,7 +47,9 @@ export const ExportSlicesForAlertsSpecSchema = z.object({
   /**
    * Dataset to export (default: candles_1m)
    */
-  dataset: z.enum(['candles_1s', 'candles_15s', 'candles_1m']).default('candles_1m'),
+  dataset: z
+    .enum(['candles_1s', 'candles_15s', 'candles_1m', 'candles_5m', 'indicators_1m'])
+    .default('candles_1m'),
 
   /**
    * Chain (default: sol)
@@ -230,8 +232,7 @@ export async function exportSlicesForAlerts(
       // Determine if we need to chunk within day
       const totalHours = windowEnd.diff(windowStart, 'hours').hours;
       const needsChunking =
-        validated.maxRowsPerFile !== undefined &&
-        totalHours > validated.maxHoursPerChunk;
+        validated.maxRowsPerFile !== undefined && totalHours > validated.maxHoursPerChunk;
 
       // If chunking is needed, split into time sub-windows
       const timeWindows: Array<{ start: DateTime; end: DateTime }> = [];
@@ -239,10 +240,7 @@ export async function exportSlicesForAlerts(
         const chunkHours = validated.maxHoursPerChunk;
         let currentStart = windowStart;
         while (currentStart < windowEnd) {
-          const currentEnd = DateTime.min(
-            currentStart.plus({ hours: chunkHours }),
-            windowEnd
-          );
+          const currentEnd = DateTime.min(currentStart.plus({ hours: chunkHours }), windowEnd);
           timeWindows.push({ start: currentStart, end: currentEnd });
           currentStart = currentEnd;
         }
@@ -252,7 +250,7 @@ export async function exportSlicesForAlerts(
       }
 
       // Export each time window (chunk if needed)
-      let chunkManifests: SliceManifestV1[] = [];
+      const chunkManifests: SliceManifestV1[] = [];
       for (const timeWindow of timeWindows) {
         // Create slice spec for this window
         const sliceSpec: SliceSpec = {
@@ -272,7 +270,7 @@ export async function exportSlicesForAlerts(
         // The adapter will expand template variables and create the directory structure
         const day = timeWindow.start.toFormat('yyyy-MM-dd');
         const [yyyy, mm, dd] = day.split('-');
-        
+
         // Build subdirTemplate based on date partitioning preference
         let subdirTemplate: string;
         if (validated.useDatePartitioning) {
@@ -321,14 +319,8 @@ export async function exportSlicesForAlerts(
 
       // Track success (aggregate across chunks if chunking was used)
       successfulExports++;
-      const totalChunkFiles = chunkManifests.reduce(
-        (sum, m) => sum + m.parquetFiles.length,
-        0
-      );
-      const totalChunkRows = chunkManifests.reduce(
-        (sum, m) => sum + (m.summary.totalRows || 0),
-        0
-      );
+      const totalChunkFiles = chunkManifests.reduce((sum, m) => sum + m.parquetFiles.length, 0);
+      const totalChunkRows = chunkManifests.reduce((sum, m) => sum + (m.summary.totalRows || 0), 0);
       const totalChunkBytes = chunkManifests.reduce(
         (sum, m) => sum + (m.summary.totalBytes || 0),
         0

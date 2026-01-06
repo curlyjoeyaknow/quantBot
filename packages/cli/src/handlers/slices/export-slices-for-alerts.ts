@@ -23,7 +23,7 @@ export const exportSlicesForAlertsSchema = z.object({
   preWindow: z.number().int().min(0).optional().default(260).describe('Pre-window minutes'),
   postWindow: z.number().int().min(0).optional().default(1440).describe('Post-window minutes'),
   dataset: z
-    .enum(['candles_1s', 'candles_15s', 'candles_1m'])
+    .enum(['candles_1s', 'candles_15s', 'candles_1m', 'candles_5m', 'indicators_1m'])
     .optional()
     .default('candles_1m')
     .describe('Dataset to export'),
