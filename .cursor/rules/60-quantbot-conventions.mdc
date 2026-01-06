@@ -49,6 +49,25 @@ Native bindings (duckdb/sqlite/etc.) are brittle across Node versions:
 Don’t rely on a globally-installed `quantbot` command pointing at the right checkout.
 Prefer workspace execution (`pnpm -C <root> exec -- ...`) or explicit `QUANTBOT_CLI` overrides.
 
+## Commit & Push Workflow (hard rule)
+
+After implementing features or improvements, **commit and push as soon as the feature is stable**:
+
+- ✅ Feature/improvement is complete and working
+- ✅ Tests pass (or at minimum, no new failures introduced)
+- ✅ Build succeeds
+- ✅ Code is in a commit-worthy state
+
+**Do not accumulate multiple unrelated changes** - commit and push each stable feature/improvement incrementally.
+
+This ensures:
+- Work is preserved and backed up
+- Changes are traceable and reviewable
+- Collaboration is smoother (others can see progress)
+- Rollback is easier if issues arise
+
+**Exception**: If working on a multi-step refactor that requires multiple commits to maintain build/test stability, commit at logical checkpoints but still push frequently.
+
 ## Testing pointer
 
 Testing contracts (purity, replay, regression requirements) live in `40-testing-contracts.mdc`.
