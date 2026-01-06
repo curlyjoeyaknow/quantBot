@@ -75,7 +75,7 @@ class TestBaselineSchemaCreation:
             "chain": "solana",
         }
         
-        store_baseline_to_duckdb(storage_path, run_id, run_name, config, results, summary, caller_agg)
+        store_baseline_to_duckdb(storage_path, run_id, run_name, config, results, summary, caller_agg, "slices/test", False)
         
         # Verify schema and tables exist
         conn = duckdb.connect(storage_path, read_only=True)
@@ -142,7 +142,7 @@ class TestRunMetadataStorage:
             "chain": "solana",
         }
         
-        store_baseline_to_duckdb(storage_path, run_id, run_name, config, results, summary, caller_agg)
+        store_baseline_to_duckdb(storage_path, run_id, run_name, config, results, summary, caller_agg, "slices/test", False)
         
         conn = duckdb.connect(storage_path, read_only=True)
         
@@ -210,7 +210,7 @@ class TestAlertResultsStorage:
         storage_path = str(tmp_dir / "storage.duckdb")
         run_id = str(uuid.uuid4())
         
-        store_baseline_to_duckdb(storage_path, run_id, "test", {}, results, summary, caller_agg)
+        store_baseline_to_duckdb(storage_path, run_id, "test", {}, results, summary, caller_agg, "slices/test", False)
         
         conn = duckdb.connect(storage_path, read_only=True)
         
@@ -285,7 +285,7 @@ class TestCallerAggregationStorage:
         storage_path = str(tmp_dir / "storage.duckdb")
         run_id = str(uuid.uuid4())
         
-        store_baseline_to_duckdb(storage_path, run_id, "test", {}, results, summary, caller_agg)
+        store_baseline_to_duckdb(storage_path, run_id, "test", {}, results, summary, caller_agg, "slices/test", False)
         
         conn = duckdb.connect(storage_path, read_only=True)
         
@@ -420,8 +420,8 @@ class TestDataIntegrityChecks:
         run_id_1 = str(uuid.uuid4())
         run_id_2 = str(uuid.uuid4())
         
-        store_baseline_to_duckdb(storage_path, run_id_1, "run1", {}, results, summary, caller_agg)
-        store_baseline_to_duckdb(storage_path, run_id_2, "run2", {}, results, summary, caller_agg)
+        store_baseline_to_duckdb(storage_path, run_id_1, "run1", {}, results, summary, caller_agg, "slices/test", False)
+        store_baseline_to_duckdb(storage_path, run_id_2, "run2", {}, results, summary, caller_agg, "slices/test", False)
         
         conn = duckdb.connect(storage_path, read_only=True)
         count = conn.execute("SELECT COUNT(DISTINCT run_id) FROM baseline.runs_d").fetchone()[0]
@@ -450,7 +450,7 @@ class TestDataIntegrityChecks:
         storage_path = str(tmp_dir / "storage.duckdb")
         run_id = str(uuid.uuid4())
         
-        store_baseline_to_duckdb(storage_path, run_id, "test", {}, results, summary, caller_agg)
+        store_baseline_to_duckdb(storage_path, run_id, "test", {}, results, summary, caller_agg, "slices/test", False)
         
         conn = duckdb.connect(storage_path, read_only=True)
         
