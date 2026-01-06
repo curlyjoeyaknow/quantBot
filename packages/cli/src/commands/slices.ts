@@ -150,6 +150,19 @@ export function registerSlicesCommands(program: Command): void {
     .option('--chain <chain>', 'Chain (sol, eth, base, bsc)', 'sol')
     .option('--duckdb <path>', 'DuckDB path')
     .option('--max-alerts <number>', 'Maximum alerts to process', '1000')
+    .option(
+      '--use-date-partitioning',
+      'Enable date-based partitioning (organize files by date for scalable catalog)'
+    )
+    .option(
+      '--max-rows-per-file <number>',
+      'Maximum rows per file before chunking (for large daily exports)'
+    )
+    .option(
+      '--max-hours-per-chunk <number>',
+      'Maximum hours per chunk when chunking within day',
+      '6'
+    )
     .option('--format <format>', 'Output format', 'json')
     .action(async (options) => {
       const { execute } = await import('../core/execute.js');

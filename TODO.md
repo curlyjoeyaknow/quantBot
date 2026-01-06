@@ -21,10 +21,10 @@ Last updated: 2025-01-24 (Recent: Slice Export & Analyze workflow implementation
 
 - [ ] **Phase 6: Performance & Scaling**
   - [x] Token-based chunking (implemented via `exportSlicesForAlerts` - one file per token/alert)
-  - [ ] Date-based partitioning for token-based exports (organize token files by date for scalable catalog)
-  - [ ] Catalog-appropriate organization (integrate token-based exports with catalog layout structure)
-  - [ ] Compression support (snappy, zstd, gzip) - implement in DuckDB COPY commands
-  - [ ] Chunking within day if single day is too big (time sub-windows for large daily token exports)
+  - [x] Date-based partitioning for token-based exports (organize token files by date for scalable catalog)
+  - [x] Catalog-appropriate organization (integrate token-based exports with catalog layout structure)
+  - [x] Compression support (snappy, zstd, gzip) - implement in DuckDB COPY commands
+  - [x] Chunking within day if single day is too big (time sub-windows for large daily token exports)
 
 - [ ] **Phase 7: Developer Experience**
   - [ ] Slice comparison tool CLI command

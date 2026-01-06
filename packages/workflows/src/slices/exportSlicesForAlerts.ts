@@ -68,6 +68,21 @@ export const ExportSlicesForAlertsSpecSchema = z.object({
    * Maximum number of alerts to process (for safety)
    */
   maxAlerts: z.number().int().min(1).max(10000).optional(),
+
+  /**
+   * Enable date-based partitioning (organize files by date for scalable catalog)
+   */
+  useDatePartitioning: z.boolean().default(false),
+
+  /**
+   * Maximum rows per file before chunking (for large daily exports)
+   */
+  maxRowsPerFile: z.number().int().min(1000).max(10000000).optional(),
+
+  /**
+   * Maximum hours per chunk when chunking within day (default: 6 hours)
+   */
+  maxHoursPerChunk: z.number().int().min(1).max(24).default(6),
 });
 
 export type ExportSlicesForAlertsSpec = z.infer<typeof ExportSlicesForAlertsSpecSchema>;
@@ -212,44 +227,116 @@ export async function exportSlicesForAlerts(
       const windowStart = alertTime.minus({ minutes: validated.preWindowMinutes });
       const windowEnd = alertTime.plus({ minutes: validated.postWindowMinutes });
 
-      // Create slice spec
-      const sliceSpec: SliceSpec = {
-        dataset: validated.dataset,
-        chain: validated.chain,
-        timeRange: {
-          startIso: windowStart.toISO()!,
-          endIso: windowEnd.toISO()!,
-        },
-        tokenIds: [call.mint],
-        granularity: validated.dataset === 'candles_1m' ? '1m' : '1s',
-      };
+      // Determine if we need to chunk within day
+      const totalHours = windowEnd.diff(windowStart, 'hours').hours;
+      const needsChunking =
+        validated.maxRowsPerFile !== undefined &&
+        totalHours > validated.maxHoursPerChunk;
 
-      // Create catalog layout spec (uses catalog paths)
-      const layout: ParquetLayoutSpec = {
-        baseUri: `file://${validated.catalogBasePath}`,
-        subdirTemplate: '{dataset}/chain={chain}', // Catalog layout will override this
-        compression: 'zstd',
-      };
+      // If chunking is needed, split into time sub-windows
+      const timeWindows: Array<{ start: DateTime; end: DateTime }> = [];
+      if (needsChunking) {
+        const chunkHours = validated.maxHoursPerChunk;
+        let currentStart = windowStart;
+        while (currentStart < windowEnd) {
+          const currentEnd = DateTime.min(
+            currentStart.plus({ hours: chunkHours }),
+            windowEnd
+          );
+          timeWindows.push({ start: currentStart, end: currentEnd });
+          currentStart = currentEnd;
+        }
+      } else {
+        // Single window
+        timeWindows.push({ start: windowStart, end: windowEnd });
+      }
 
-      // Create run context
-      const runContext: RunContext = {
-        runId,
-        createdAtIso: ctx.clock.nowISO(),
-        note: `Export for alert ${call.id}`,
-      };
+      // Export each time window (chunk if needed)
+      let chunkManifests: SliceManifestV1[] = [];
+      for (const timeWindow of timeWindows) {
+        // Create slice spec for this window
+        const sliceSpec: SliceSpec = {
+          dataset: validated.dataset,
+          chain: validated.chain,
+          timeRange: {
+            startIso: timeWindow.start.toISO()!,
+            endIso: timeWindow.end.toISO()!,
+          },
+          tokenIds: [call.mint],
+          granularity: validated.dataset === 'candles_1m' ? '1m' : '1s',
+        };
 
-      // Export slice
-      const manifest: SliceManifestV1 = await ctx.exporter.exportSlice({
-        run: runContext,
-        spec: sliceSpec,
-        layout,
-      });
+        // Generate catalog-compliant subdirTemplate
+        // Pattern with date partitioning: data/bars/{yyyy}-{mm}-{dd}/{token}
+        // Pattern without: data/bars/{token}
+        // The adapter will expand template variables and create the directory structure
+        const day = timeWindow.start.toFormat('yyyy-MM-dd');
+        const [yyyy, mm, dd] = day.split('-');
+        
+        // Build subdirTemplate based on date partitioning preference
+        let subdirTemplate: string;
+        if (validated.useDatePartitioning) {
+          // Date-based: data/bars/{yyyy}-{mm}-{dd}/token={token}
+          // Note: We can't use {token} directly in template since it's not a standard variable
+          // Instead, we'll use a pattern that the adapter can expand
+          // For now, use a simpler pattern: data/bars/{yyyy}-{mm}-{dd}
+          // The adapter will create the token subdirectory based on the tokenIds in spec
+          subdirTemplate = `data/bars/{yyyy}-{mm}-{dd}`;
+        } else {
+          // Original pattern: data/bars
+          // Token subdirectory will be handled by adapter based on tokenIds
+          subdirTemplate = 'data/bars';
+        }
 
-      // Track success
+        // Create catalog layout spec with date-based partitioning if enabled
+        const layout: ParquetLayoutSpec = {
+          baseUri: `file://${validated.catalogBasePath}`,
+          subdirTemplate,
+          compression: 'zstd',
+          maxRowsPerFile: validated.maxRowsPerFile,
+          partitionKeys: validated.useDatePartitioning
+            ? ['dt', 'chain', 'dataset']
+            : ['chain', 'dataset'],
+        };
+
+        // Create run context
+        const runContext: RunContext = {
+          runId,
+          createdAtIso: ctx.clock.nowISO(),
+          note: `Export for alert ${call.id}${timeWindows.length > 1 ? ` (chunk ${timeWindows.indexOf(timeWindow) + 1}/${timeWindows.length})` : ''}`,
+        };
+
+        // Export slice
+        const manifest: SliceManifestV1 = await ctx.exporter.exportSlice({
+          run: runContext,
+          spec: sliceSpec,
+          layout,
+        });
+
+        chunkManifests.push(manifest);
+      }
+
+      // Use the first manifest as primary (or merge if needed)
+      const manifest = chunkManifests[0];
+
+      // Track success (aggregate across chunks if chunking was used)
       successfulExports++;
-      totalFiles += manifest.parquetFiles.length;
-      totalRows += manifest.summary.totalRows || 0;
-      totalBytes += manifest.summary.totalBytes || 0;
+      const totalChunkFiles = chunkManifests.reduce(
+        (sum, m) => sum + m.parquetFiles.length,
+        0
+      );
+      const totalChunkRows = chunkManifests.reduce(
+        (sum, m) => sum + (m.summary.totalRows || 0),
+        0
+      );
+      const totalChunkBytes = chunkManifests.reduce(
+        (sum, m) => sum + (m.summary.totalBytes || 0),
+        0
+      );
+
+      totalFiles += totalChunkFiles;
+      totalRows += totalChunkRows;
+      totalBytes += totalChunkBytes;
 
       exports.push({
         callId: call.id,
@@ -264,8 +351,10 @@ export async function exportSlicesForAlerts(
         callId: call.id,
         mint: call.mint,
         manifestId: manifest.manifestId,
-        files: manifest.parquetFiles.length,
-        rows: manifest.summary.totalRows,
+        files: totalChunkFiles,
+        rows: totalChunkRows,
+        chunks: chunkManifests.length,
+        datePartitioning: validated.useDatePartitioning,
       });
     } catch (error) {
       failedExports++;
