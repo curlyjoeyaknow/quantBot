@@ -30,20 +30,29 @@ export const exportSlicesForAlertsSchema = z.object({
   chain: z.enum(['sol', 'eth', 'base', 'bsc']).optional().default('sol').describe('Chain'),
   duckdb: z.string().optional().describe('DuckDB path'),
   maxAlerts: z.number().int().min(1).max(10000).optional().describe('Maximum alerts to process'),
+  useDatePartitioning: z
+    .boolean()
+    .optional()
+    .default(false)
+    .describe('Enable date-based partitioning (organize files by date for scalable catalog)'),
+  maxRowsPerFile: z
+    .number()
+    .int()
+    .min(1000)
+    .max(10000000)
+    .optional()
+    .describe('Maximum rows per file before chunking (for large daily exports)'),
+  maxHoursPerChunk: z
+    .number()
+    .int()
+    .min(1)
+    .max(24)
+    .optional()
+    .default(6)
+    .describe('Maximum hours per chunk when chunking within day'),
 });
 
-export type ExportSlicesForAlertsArgs = {
-  from: string;
-  to: string;
-  caller?: string;
-  catalogPath?: string;
-  preWindow?: number;
-  postWindow?: number;
-  dataset?: 'candles_1s' | 'candles_15s' | 'candles_1m';
-  chain?: 'sol' | 'eth' | 'base' | 'bsc';
-  duckdb?: string;
-  maxAlerts?: number;
-};
+export type ExportSlicesForAlertsArgs = z.infer<typeof exportSlicesForAlertsSchema>;
 
 /**
  * Export slices for alerts handler
@@ -80,6 +89,9 @@ export async function exportSlicesForAlertsHandler(
     chain: args.chain || 'sol',
     duckdbPath,
     maxAlerts: args.maxAlerts,
+    useDatePartitioning: args.useDatePartitioning ?? false,
+    maxRowsPerFile: args.maxRowsPerFile,
+    maxHoursPerChunk: args.maxHoursPerChunk ?? 6,
   };
 
   // Execute workflow
