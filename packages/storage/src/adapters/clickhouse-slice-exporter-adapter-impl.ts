@@ -236,7 +236,17 @@ export class ClickHouseSliceExporterAdapterImpl implements SliceExporter {
 
     const subdir = expandTemplate(layout.subdirTemplate, vars);
     const base = layout.baseUri.replace(/^file:\/\//, '').replace(/\/+$/, '');
-    const outDir = join(base, subdir).replace(/\/+/g, '/');
+    let outDir = join(base, subdir).replace(/\/+/g, '/');
+
+    // Add token subdirectory for catalog organization if tokenIds are specified
+    // This enables catalog-compliant paths: data/bars/<date>/<token>/<file>.parquet
+    if (spec.tokenIds && spec.tokenIds.length === 1) {
+      // Single token - add token subdirectory for catalog organization
+      // Sanitize token ID for filesystem (same as catalog layout)
+      const tokenId = spec.tokenIds[0];
+      const sanitizedToken = tokenId.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 100);
+      outDir = join(outDir, sanitizedToken);
+    }
 
     // Ensure directory exists
     await fs.mkdir(outDir, { recursive: true });
@@ -381,6 +391,16 @@ export class ClickHouseSliceExporterAdapterImpl implements SliceExporter {
 
       try {
         const duckdb = new DuckDBClient(':memory:');
+        
+        // Set compression if specified in layout
+        const compression = layout.compression || 'none';
+        if (compression !== 'none') {
+          const duckdbCompression = compression === 'gzip' ? 'gzip' :
+                                   compression === 'snappy' ? 'snappy' :
+                                   compression === 'zstd' ? 'zstd' : 'uncompressed';
+          await duckdb.execute(`SET parquet_compression = '${duckdbCompression}';`);
+        }
+        
         // Create table with correct schema matching the expected columns
         // Default columns: token_address, chain, timestamp, interval, open, high, low, close, volume
         await duckdb.execute(`
@@ -422,8 +442,21 @@ export class ClickHouseSliceExporterAdapterImpl implements SliceExporter {
       try {
         await fs.writeFile(tempCsvPath, csvData);
 
-        // Use DuckDB to convert CSV to Parquet
+        // Use DuckDB to convert CSV to Parquet with compression support
         const duckdb = new DuckDBClient(':memory:');
+        
+        // Set compression if specified in layout
+        const compression = layout.compression || 'none';
+        if (compression !== 'none') {
+          // Map compression types to DuckDB parquet_compression values
+          // DuckDB supports: 'uncompressed', 'snappy', 'gzip', 'zstd', 'lz4'
+          const duckdbCompression = compression === 'gzip' ? 'gzip' :
+                                   compression === 'snappy' ? 'snappy' :
+                                   compression === 'zstd' ? 'zstd' : 'uncompressed';
+          
+          await duckdb.execute(`SET parquet_compression = '${duckdbCompression}';`);
+        }
+        
         await duckdb.execute(`
           CREATE TABLE temp_csv AS SELECT * FROM read_csv_auto('${tempCsvPath.replace(/'/g, "''")}');
           COPY temp_csv TO '${tempParquetPath.replace(/'/g, "''")}' (FORMAT PARQUET);
