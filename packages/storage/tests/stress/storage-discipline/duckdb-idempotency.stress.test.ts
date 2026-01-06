@@ -17,12 +17,12 @@ import { mkdtempSync, rmSync, writeFileSync, readFileSync, chmodSync, existsSync
 import { join } from 'path';
 import { tmpdir } from 'os';
 import { shouldRunTest, TEST_GATES } from '@quantbot/utils/test-helpers/test-gating';
-import { DuckDBStorageService } from '@quantbot/simulation';
+import { DuckDBStorageService } from '@quantbot/backtest';
 import { getPythonEngine } from '@quantbot/utils';
 
 /**
  * Mock DuckDB storage service
- * Replace with actual implementation from @quantbot/simulation
+ * Replace with actual implementation from @quantbot/backtest
  */
 interface StorageResult {
   success: boolean;

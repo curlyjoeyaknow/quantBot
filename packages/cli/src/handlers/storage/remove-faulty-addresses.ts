@@ -7,7 +7,7 @@
 import path from 'node:path';
 import { ConfigurationError } from '@quantbot/utils';
 import { PythonEngine } from '@quantbot/utils';
-import { DuckDBStorageService } from '@quantbot/simulation';
+import { DuckDBStorageService } from '@quantbot/backtest';
 import type { CommandContext } from '../../core/command-context.js';
 import { removeFaultyAddressesSchema } from '../../commands/storage.js';
 import type { z } from 'zod';

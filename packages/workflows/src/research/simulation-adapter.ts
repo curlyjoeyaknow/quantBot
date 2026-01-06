@@ -22,11 +22,11 @@ import {
   type EntryConfig,
   type ReEntryConfig,
   type CostConfig,
-  type ExecutionModel as SimExecutionModel,
   calculateTradeFee,
   buildStrategy,
   buildStopLossConfig,
-} from '@quantbot/simulation';
+} from '@quantbot/backtest';
+import type { ExecutionModel as SimExecutionModel } from '@quantbot/backtest/sim';
 import { DateTime } from 'luxon';
 import { logger, ValidationError } from '@quantbot/utils';
 
@@ -96,7 +96,9 @@ export class ResearchSimulationAdapter {
       const strategyConfig = this.convertStrategyRefToConfig(request.strategy);
 
       // 4. Convert ExecutionModel, CostModel, RiskModel to simulation engine formats
-      const executionModelConfig = this.convertExecutionModel(request.executionModel);
+      const executionModelConfig: SimExecutionModel = this.convertExecutionModel(
+        request.executionModel
+      );
       const costConfig = this.convertCostModel(request.costModel);
       const entryConfig = this.extractEntryConfig(strategyConfig);
       const reEntryConfig = this.extractReEntryConfig(strategyConfig);
@@ -274,23 +276,24 @@ export class ResearchSimulationAdapter {
 
     // Ensure stdDev is non-negative (handle edge case where p99 < p50)
     const latencyStdDev = (contractModel.latency.p99 - contractModel.latency.p50) / 2.33;
+
     const simModel: SimExecutionModel = {
       latency: {
-        type: 'normal', // Use normal distribution from p50/p90/p99
+        type: 'normal' as const, // Use normal distribution from p50/p90/p99
         params: {
           mean: Number.isFinite(contractModel.latency.p50) ? contractModel.latency.p50 : 100,
           stdDev: Number.isFinite(latencyStdDev) && latencyStdDev >= 0 ? latencyStdDev : 50,
         },
       },
       slippage: {
-        type: 'fixed',
+        type: 'fixed' as const,
         params: {
           bps: Math.max(0, Math.round(contractModel.slippage.base * 10000)), // Ensure non-negative
         },
       },
       partialFills: contractModel.partialFills
         ? {
-            type: 'probabilistic',
+            type: 'probabilistic' as const,
             params: {
               fillProbability: contractModel.partialFills.probability,
             },

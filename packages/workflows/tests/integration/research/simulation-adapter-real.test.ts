@@ -14,7 +14,7 @@ import { ResearchSimulationAdapter } from '../../../src/research/simulation-adap
 import type { SimulationRequest } from '../../../src/research/contract.js';
 import type { WorkflowContext } from '../../../src/types.js';
 import { DateTime } from 'luxon';
-import type { StrategyConfig } from '@quantbot/simulation';
+import type { StrategyConfig } from '@quantbot/backtest';
 
 // Mock DataSnapshotService - we'll verify it's called
 const mockLoadSnapshot = vi.fn();
@@ -33,7 +33,7 @@ vi.mock('../../../src/research/services/DataSnapshotService.js', () => ({
 
 // CRITICAL: Do NOT mock simulateStrategy - we want to verify the real function is called
 // If we mock it, we can't verify the adapter is actually using the real engine
-import { simulateStrategy } from '@quantbot/simulation';
+import { simulateStrategy } from '@quantbot/backtest';
 
 describe('ResearchSimulationAdapter - Real Implementation Verification', () => {
   let adapter: ResearchSimulationAdapter;

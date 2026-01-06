@@ -1,5 +1,12 @@
 import type { Candle } from '@quantbot/core';
 
+// Re-export simulation's ATH/ATL utilities for enhanced path analysis
+export {
+  calculatePeriodAthAtlFromCandles,
+  type PeriodAthAtlResult,
+  type ReEntryOpportunity,
+} from '@quantbot/simulation';
+
 export type PathMetrics = {
   // anchor
   t0_ms: number;
@@ -186,5 +193,91 @@ export function computePathMetrics(
     dd_to_2x_bps,
     alert_to_activity_ms,
     peak_multiple,
+  };
+}
+
+/**
+ * Enhanced path metrics with additional ATH/ATL analysis.
+ * Combines basic path metrics with simulation's ATH/ATL utilities.
+ */
+export type EnhancedPathMetrics = PathMetrics & {
+  // ATH/ATL metrics from simulation
+  ath_price: number | null;
+  ath_timestamp_ms: number | null;
+  ath_multiple: number | null;
+  time_to_ath_minutes: number | null;
+
+  // Post-ATH drawdown
+  post_ath_dd_pct: number | null;
+  post_ath_dd_price: number | null;
+  post_ath_dd_timestamp_ms: number | null;
+
+  // Re-entry opportunities
+  reentry_opportunity_count: number;
+};
+
+/**
+ * Compute enhanced path metrics with ATH/ATL analysis.
+ * Adds post-peak drawdown tracking and re-entry opportunity detection.
+ */
+export function computeEnhancedPathMetrics(
+  candles: Candle[],
+  t0_ms: number,
+  opts: PathMetricOptions & {
+    /** Minimum drawdown percent for re-entry detection (default 20) */
+    minDrawdownPct?: number;
+    /** Minimum recovery percent for re-entry detection (default 10) */
+    minRecoveryPct?: number;
+    /** Period end timestamp (optional, defaults to last candle) */
+    periodEndTimestamp?: number;
+  } = {}
+): EnhancedPathMetrics {
+  // Compute basic metrics
+  const basic = computePathMetrics(candles, t0_ms, opts);
+
+  // If basic metrics failed, return null enhanced fields
+  if (!isFinite(basic.p0) || basic.p0 <= 0) {
+    return {
+      ...basic,
+      ath_price: null,
+      ath_timestamp_ms: null,
+      ath_multiple: null,
+      time_to_ath_minutes: null,
+      post_ath_dd_pct: null,
+      post_ath_dd_price: null,
+      post_ath_dd_timestamp_ms: null,
+      reentry_opportunity_count: 0,
+    };
+  }
+
+  // Use simulation's ATH/ATL calculation for enhanced metrics
+  const { calculatePeriodAthAtlFromCandles } = require('@quantbot/simulation/math');
+
+  const athAtl = calculatePeriodAthAtlFromCandles(
+    basic.p0,
+    t0_ms / 1000, // Convert to seconds for simulation function
+    candles,
+    opts.periodEndTimestamp ? opts.periodEndTimestamp / 1000 : undefined,
+    opts.minDrawdownPct ?? 20,
+    opts.minRecoveryPct ?? 10
+  );
+
+  return {
+    ...basic,
+    // ATH metrics
+    ath_price: athAtl.periodAthPrice,
+    ath_timestamp_ms: athAtl.periodAthTimestamp * 1000,
+    ath_multiple: athAtl.periodAthMultiple,
+    time_to_ath_minutes: athAtl.timeToPeriodAthMinutes,
+
+    // Post-ATH drawdown
+    post_ath_dd_pct: athAtl.postAthDrawdownPercent ?? null,
+    post_ath_dd_price: athAtl.postAthDrawdownPrice ?? null,
+    post_ath_dd_timestamp_ms: athAtl.postAthDrawdownTimestamp
+      ? athAtl.postAthDrawdownTimestamp * 1000
+      : null,
+
+    // Re-entry opportunities
+    reentry_opportunity_count: athAtl.reEntryOpportunities?.length ?? 0,
   };
 }

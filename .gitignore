@@ -128,3 +128,9 @@ __pycache__/
 # Research OS artifacts (test outputs)
 artifacts/run_*.json
 packages/workflows/artifacts/run_*.json
+
+# Large data files
+slices/*.parquet
+results/*.json
+results/**/*.json
+results/*.csv

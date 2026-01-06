@@ -11,7 +11,8 @@ from pathlib import Path
 import sys
 
 # Import simulation schema
-sys.path.insert(0, str(Path(__file__).parent.parent.parent.parent / 'telegram' / 'simulation'))
+# Path: tools/simulation/duckdb_storage/ops/store_strategy.py -> tools/simulation/sql_functions.py
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from sql_functions import create_strategy
 
 

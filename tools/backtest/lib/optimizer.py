@@ -20,8 +20,17 @@ from typing import Any, Dict, List, Optional, Tuple
 from .alerts import Alert, load_alerts
 from .caller_groups import CallerGroup, load_caller_group
 from .optimizer_config import OptimizerConfig
+from .optimizer_objective import (
+    ObjectiveConfig,
+    ObjectiveComponents,
+    DEFAULT_OBJECTIVE_CONFIG,
+    QualityFilterConfig,
+    score_from_summary,
+    print_objective_breakdown,
+)
 from .summary import summarize_tp_sl, aggregate_by_caller
 from .tp_sl_query import run_tp_sl_query
+from .extended_exits import ExitConfig, run_extended_exit_query
 from .timing import TimingContext, format_ms
 
 UTC = timezone.utc
@@ -38,6 +47,9 @@ class OptimizationResult:
     duration_s: float
     alerts_ok: int
     alerts_total: int
+    objective: Optional[ObjectiveComponents] = None  # Objective function breakdown
+    quality_passed: bool = True  # Whether quality filter passed
+    quality_fail_reasons: Optional[List[str]] = None  # Reasons for failing quality filter
     
     @property
     def win_rate(self) -> float:
@@ -64,8 +76,45 @@ class OptimizationResult:
     def risk_adj_total_return_pct(self) -> float:
         return self.summary.get("risk_adj_total_return_pct", 0.0)
     
+    @property
+    def total_r(self) -> float:
+        return self.summary.get("total_r", 0.0)
+    
+    @property
+    def avg_r(self) -> float:
+        return self.summary.get("avg_r", 0.0)
+    
+    @property
+    def avg_r_win(self) -> float:
+        return self.summary.get("avg_r_win", 0.0)
+    
+    @property
+    def avg_r_loss(self) -> float:
+        return self.summary.get("avg_r_loss", -1.0)
+    
+    @property
+    def r_profit_factor(self) -> float:
+        pf = self.summary.get("r_profit_factor", 0.0)
+        return pf if pf != float("inf") else 999.99
+    
+    @property
+    def objective_score(self) -> float:
+        """Final objective score (higher = better)."""
+        if self.objective:
+            return self.objective.final_score
+        return self.avg_r  # Fallback to avg_r
+    
+    @property
+    def implied_avg_loss_r(self) -> float:
+        """
+        Implied average loss in R.
+        
+        Should be close to -1R. If it drifts, stop gapping/execution issues.
+        """
+        return self.avg_r_loss
+    
     def to_dict(self) -> Dict[str, Any]:
-        return {
+        d = {
             "params": self.params,
             "summary": self.summary,
             "run_id": self.run_id,
@@ -73,9 +122,15 @@ class OptimizationResult:
             "alerts_ok": self.alerts_ok,
             "alerts_total": self.alerts_total,
         }
+        if self.objective:
+            d["objective"] = self.objective.to_dict()
+        return d
     
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "OptimizationResult":
+        obj = None
+        if "objective" in data:
+            obj = ObjectiveComponents(**data["objective"])
         return cls(
             params=data["params"],
             summary=data["summary"],
@@ -83,6 +138,7 @@ class OptimizationResult:
             duration_s=data["duration_s"],
             alerts_ok=data["alerts_ok"],
             alerts_total=data["alerts_total"],
+            objective=obj,
         )
 
 
@@ -114,20 +170,29 @@ class OptimizationRun:
     def mark_complete(self) -> None:
         self.completed_at = datetime.now(UTC)
     
-    def rank_by(self, metric: str = "profit_factor", ascending: bool = False) -> List[OptimizationResult]:
+    def rank_by(
+        self, 
+        metric: str = "objective_score", 
+        ascending: bool = False,
+        quality_filter: bool = False,
+    ) -> List[OptimizationResult]:
         """
         Rank results by a metric.
         
         Args:
-            metric: Metric to rank by (profit_factor, win_rate, total_return_pct, 
-                   avg_return_pct, expectancy_pct, risk_adj_total_return_pct)
+            metric: Metric to rank by (objective_score, profit_factor, win_rate, 
+                   total_return_pct, avg_return_pct, expectancy_pct, 
+                   risk_adj_total_return_pct, total_r, avg_r)
             ascending: Sort ascending (default: descending for "best first")
+            quality_filter: If True, only include results that passed quality filter
         
         Returns:
             Sorted list of results
         """
         def get_metric(r: OptimizationResult) -> float:
-            if metric == "profit_factor":
+            if metric == "objective_score":
+                return r.objective_score
+            elif metric == "profit_factor":
                 return r.profit_factor
             elif metric == "win_rate":
                 return r.win_rate
@@ -139,12 +204,48 @@ class OptimizationRun:
                 return r.expectancy_pct
             elif metric == "risk_adj_total_return_pct":
                 return r.risk_adj_total_return_pct
+            elif metric == "total_r":
+                return r.total_r
+            elif metric == "avg_r":
+                return r.avg_r
             else:
                 return r.summary.get(metric, 0.0)
         
-        return sorted(self.results, key=get_metric, reverse=not ascending)
+        # Filter results if quality_filter is enabled
+        results = self.results
+        if quality_filter:
+            results = [r for r in results if r.quality_passed]
+        
+        return sorted(results, key=get_metric, reverse=not ascending)
     
-    def get_best(self, metric: str = "profit_factor") -> Optional[OptimizationResult]:
+    def get_quality_stats(self) -> Dict[str, Any]:
+        """
+        Get statistics about quality filter results.
+        
+        Returns:
+            Dict with pass/fail counts and breakdown
+        """
+        passed = [r for r in self.results if r.quality_passed]
+        failed = [r for r in self.results if not r.quality_passed]
+        
+        # Aggregate failure reasons
+        reason_counts: Dict[str, int] = {}
+        for r in failed:
+            if r.quality_fail_reasons:
+                for reason in r.quality_fail_reasons:
+                    # Extract just the metric name from the reason
+                    metric = reason.split("=")[0] if "=" in reason else reason
+                    reason_counts[metric] = reason_counts.get(metric, 0) + 1
+        
+        return {
+            "total": len(self.results),
+            "passed": len(passed),
+            "failed": len(failed),
+            "pass_rate": len(passed) / len(self.results) if self.results else 0.0,
+            "failure_reasons": reason_counts,
+        }
+    
+    def get_best(self, metric: str = "objective_score") -> Optional[OptimizationResult]:
         """Get the best result by metric."""
         ranked = self.rank_by(metric)
         return ranked[0] if ranked else None
@@ -187,14 +288,17 @@ class GridOptimizer:
     Grid search optimizer for TP/SL parameters.
     
     Runs backtests across all parameter combinations and collects results.
+    Uses the objective function to score each result for ranking.
     """
     
     def __init__(
         self,
         config: OptimizerConfig,
+        objective_config: Optional[ObjectiveConfig] = None,
         verbose: bool = True,
     ):
         self.config = config
+        self.objective_config = objective_config or DEFAULT_OBJECTIVE_CONFIG
         self.verbose = verbose
         self._alerts: Optional[List[Alert]] = None
         self._slice_path: Optional[Path] = None
@@ -347,7 +451,8 @@ class GridOptimizer:
         Run a single backtest with given parameters.
         
         Args:
-            params: Parameter dict (tp_mult, sl_mult, intrabar_order, etc.)
+            params: Parameter dict (tp_mult, sl_mult, intrabar_order, 
+                   time_stop_hours, breakeven_trigger_pct, trail_activation_pct, etc.)
             alerts: Alerts to backtest
             slice_path: Path to slice
             is_partitioned: Whether slice is partitioned
@@ -362,26 +467,84 @@ class GridOptimizer:
         sl_mult = params.get("sl_mult", 0.5)
         intrabar_order = params.get("intrabar_order", "sl_first")
         
-        rows = run_tp_sl_query(
-            alerts=alerts,
-            slice_path=slice_path,
-            is_partitioned=is_partitioned,
-            interval_seconds=self.config.interval_seconds,
-            horizon_hours=self.config.horizon_hours,
-            tp_mult=tp_mult,
-            sl_mult=sl_mult,
-            intrabar_order=intrabar_order,
-            fee_bps=self.config.fee_bps,
-            slippage_bps=self.config.slippage_bps,
-            threads=self.config.threads,
-            verbose=False,
-        )
+        # Check if extended exits are being used
+        has_extended = any(k in params for k in [
+            "time_stop_hours", 
+            "breakeven_trigger_pct", 
+            "trail_activation_pct",
+            "tiered_sl_enabled",
+            "tier_1_2x_sl", "tier_1_5x_sl", "tier_2x_sl", "tier_3x_sl", "tier_4x_sl", "tier_5x_sl",
+            "entry_mode",
+        ])
+        
+        if has_extended:
+            # Use extended exit query
+            exit_config = ExitConfig(
+                tp_mult=tp_mult,
+                sl_mult=sl_mult,
+                intrabar_order=intrabar_order,
+                time_stop_hours=params.get("time_stop_hours"),
+                breakeven_trigger_pct=params.get("breakeven_trigger_pct"),
+                breakeven_offset_pct=params.get("breakeven_offset_pct", 0.0),
+                trail_activation_pct=params.get("trail_activation_pct"),
+                trail_distance_pct=params.get("trail_distance_pct", 0.15),
+                # Tiered SL
+                tiered_sl_enabled=params.get("tiered_sl_enabled", False),
+                tier_1_2x_sl=params.get("tier_1_2x_sl"),
+                tier_1_5x_sl=params.get("tier_1_5x_sl"),
+                tier_2x_sl=params.get("tier_2x_sl"),
+                tier_3x_sl=params.get("tier_3x_sl"),
+                tier_4x_sl=params.get("tier_4x_sl"),
+                tier_5x_sl=params.get("tier_5x_sl"),
+                # Entry timing
+                entry_mode=params.get("entry_mode", "immediate"),
+                dip_percent=params.get("dip_percent"),
+                max_wait_candles=params.get("max_wait_candles"),
+                confirm_candles=params.get("confirm_candles"),
+                # Cost
+                fee_bps=self.config.fee_bps,
+                slippage_bps=self.config.slippage_bps,
+            )
+            rows = run_extended_exit_query(
+                alerts=alerts,
+                slice_path=slice_path,
+                exit_config=exit_config,
+                interval_seconds=self.config.interval_seconds,
+                horizon_hours=self.config.horizon_hours,
+                threads=self.config.threads,
+                verbose=False,
+            )
+        else:
+            # Use basic TP/SL query
+            rows = run_tp_sl_query(
+                alerts=alerts,
+                slice_path=slice_path,
+                is_partitioned=is_partitioned,
+                interval_seconds=self.config.interval_seconds,
+                horizon_hours=self.config.horizon_hours,
+                tp_mult=tp_mult,
+                sl_mult=sl_mult,
+                intrabar_order=intrabar_order,
+                fee_bps=self.config.fee_bps,
+                slippage_bps=self.config.slippage_bps,
+                threads=self.config.threads,
+                verbose=False,
+            )
         
         summary = summarize_tp_sl(
             rows,
             sl_mult=sl_mult,
             risk_per_trade=self.config.risk_per_trade,
         )
+        
+        # Compute objective function
+        objective = score_from_summary(summary, self.objective_config)
+        
+        # Apply quality filter if configured
+        quality_passed = True
+        quality_fail_reasons = None
+        if self.config.quality_filter is not None:
+            quality_passed, quality_fail_reasons = self.config.quality_filter.check(summary)
         
         duration = time.time() - t0
         
@@ -392,6 +555,9 @@ class GridOptimizer:
             duration_s=duration,
             alerts_ok=summary.get("alerts_ok", 0),
             alerts_total=summary.get("alerts_total", 0),
+            objective=objective,
+            quality_passed=quality_passed,
+            quality_fail_reasons=quality_fail_reasons if quality_fail_reasons else None,
         )
     
     def run(self) -> OptimizationRun:
@@ -425,15 +591,25 @@ class GridOptimizer:
         # Run all combinations
         with timing.phase("backtest"):
             for idx, params in self.config.iter_all_params():
-                self._log(f"[{idx+1}/{total_combos}] TP={params['tp_mult']:.2f}x SL={params['sl_mult']:.2f}x ...")
+                # Build progress string with extended params
+                progress_parts = [f"TP={params['tp_mult']:.2f}x", f"SL={params['sl_mult']:.2f}x"]
+                if params.get("time_stop_hours"):
+                    progress_parts.append(f"T={params['time_stop_hours']:.0f}h")
+                if params.get("breakeven_trigger_pct"):
+                    progress_parts.append(f"BE={params['breakeven_trigger_pct']*100:.0f}%")
+                if params.get("trail_activation_pct"):
+                    progress_parts.append(f"Trail={params['trail_activation_pct']*100:.0f}%")
+                
+                self._log(f"[{idx+1}/{total_combos}] {' '.join(progress_parts)} ...")
                 
                 result = self.run_single(params, alerts, slice_path, is_partitioned)
                 opt_run.add_result(result)
                 
                 self._log(
                     f"         WR={result.win_rate*100:.1f}% "
-                    f"PF={result.profit_factor:.2f} "
-                    f"Exp={result.expectancy_pct:.2f}% "
+                    f"AvgR={result.avg_r:+.2f} "
+                    f"Score={result.objective_score:+.3f} "
+                    f"LossR={result.implied_avg_loss_r:.2f} "
                     f"({result.duration_s:.1f}s)"
                 )
         
@@ -443,32 +619,58 @@ class GridOptimizer:
         
         # Print summary
         self._log("")
-        self._log("=" * 70)
+        self._log("=" * 80)
         self._log("OPTIMIZATION COMPLETE")
-        self._log("=" * 70)
+        self._log("=" * 80)
         self._log(f"Total runs: {len(opt_run.results)}")
+        
+        # Print quality filter stats if enabled
+        if self.config.quality_filter is not None:
+            qstats = opt_run.get_quality_stats()
+            self._log(f"Quality filter: {qstats['passed']}/{qstats['total']} passed ({qstats['pass_rate']*100:.1f}%)")
+            if qstats['failure_reasons']:
+                self._log(f"  Failure reasons: {qstats['failure_reasons']}")
         self._log(timing.summary_line())
         
-        # Print top 5 by profit factor
+        # Print top 5 by OBJECTIVE SCORE (the key metric)
         self._log("")
-        self._log("TOP 5 BY PROFIT FACTOR:")
-        self._log("-" * 70)
-        for i, r in enumerate(opt_run.rank_by("profit_factor")[:5], 1):
+        self._log("TOP 5 BY OBJECTIVE SCORE:")
+        self._log("-" * 90)
+        for i, r in enumerate(opt_run.rank_by("objective_score")[:5], 1):
             self._log(
                 f"  {i}. TP={r.params['tp_mult']:.2f}x SL={r.params['sl_mult']:.2f}x | "
-                f"WR={r.win_rate*100:.1f}% PF={r.profit_factor:.2f} "
-                f"Exp={r.expectancy_pct:.2f}% Total={r.total_return_pct:.1f}%"
+                f"Score={r.objective_score:+.3f} WR={r.win_rate*100:.1f}% "
+                f"AvgR={r.avg_r:+.2f} LossR={r.implied_avg_loss_r:.2f}"
             )
         
-        # Print top 5 by win rate
+        # Print objective breakdown for the best result
+        best = opt_run.get_best("objective_score")
+        if best and best.objective:
+            self._log("")
+            self._log(f"BEST RESULT BREAKDOWN (TP={best.params['tp_mult']:.2f}x SL={best.params['sl_mult']:.2f}x):")
+            self._log("-" * 50)
+            print_objective_breakdown(best.objective, self.objective_config)
+        
+        # Print top 5 by Total R (for reference)
         self._log("")
-        self._log("TOP 5 BY WIN RATE:")
-        self._log("-" * 70)
-        for i, r in enumerate(opt_run.rank_by("win_rate")[:5], 1):
+        self._log("TOP 5 BY TOTAL R:")
+        self._log("-" * 90)
+        for i, r in enumerate(opt_run.rank_by("total_r")[:5], 1):
             self._log(
                 f"  {i}. TP={r.params['tp_mult']:.2f}x SL={r.params['sl_mult']:.2f}x | "
-                f"WR={r.win_rate*100:.1f}% PF={r.profit_factor:.2f} "
-                f"Exp={r.expectancy_pct:.2f}% Total={r.total_return_pct:.1f}%"
+                f"TotalR={r.total_r:+.1f} AvgR={r.avg_r:+.2f} WR={r.win_rate*100:.1f}%"
+            )
+        
+        # Print implied loss R check (catches stop gapping)
+        self._log("")
+        self._log("IMPLIED LOSS R CHECK (should be ~-1.0R):")
+        self._log("-" * 50)
+        for r in opt_run.results[:10]:
+            drift = abs(r.implied_avg_loss_r - (-1.0))
+            flag = "⚠️" if drift > 0.3 else "✓"
+            self._log(
+                f"  TP={r.params['tp_mult']:.2f}x SL={r.params['sl_mult']:.2f}x | "
+                f"LossR={r.implied_avg_loss_r:.3f} {flag}"
             )
         
         # Save results
@@ -480,17 +682,22 @@ class GridOptimizer:
         return opt_run
 
 
-def run_optimization(config: OptimizerConfig, verbose: bool = True) -> OptimizationRun:
+def run_optimization(
+    config: OptimizerConfig,
+    objective_config: Optional[ObjectiveConfig] = None,
+    verbose: bool = True,
+) -> OptimizationRun:
     """
     Run optimization with given config.
     
     Args:
         config: Optimizer configuration
+        objective_config: Objective function configuration (default: DEFAULT_OBJECTIVE_CONFIG)
         verbose: Print progress
     
     Returns:
         OptimizationRun with all results
     """
-    optimizer = GridOptimizer(config, verbose=verbose)
+    optimizer = GridOptimizer(config, objective_config=objective_config, verbose=verbose)
     return optimizer.run()
 

@@ -9,6 +9,12 @@
  * - p95 drawdown ≤ Y bps
  * - Time-exposed ≤ Z ms
  *
+ * Objective Function Shape (matches your intent):
+ * - Base: log(median_ath)
+ * - Speed boost: log(1 + (target_minutes / median_t2x_minutes)) - capped
+ * - Consistency boost: strong weight on hit2x_pct > 50%
+ * - Risk penalty: 0 up to 30% DD, exponential ramp to 60%, "untradeable" beyond
+ *
  * Tie-Breakers (in order):
  * 1. Better tail capture (realized vs peak multiple)
  * 2. Faster time-to-2x
@@ -16,6 +22,66 @@
  */
 
 import type { PolicyResultRow } from '../types.js';
+
+// =============================================================================
+// Objective Function Configuration
+// =============================================================================
+
+/**
+ * Configuration for the objective function.
+ *
+ * Matches the Python ObjectiveConfig for consistency.
+ */
+export interface ObjectiveConfig {
+  /** Primary metric: 'median_ath' | 'avg_r' | 'median_return' */
+  primaryMetric: 'median_ath' | 'avg_r' | 'median_return';
+
+  // === Drawdown penalty (the cliff) ===
+  /** Start penalizing at this DD (e.g., 0.30 = 30%) */
+  ddPenaltyThreshold: number;
+  /** Steepness of exponential penalty */
+  ddPenaltyK: number;
+  /** "Abandon hope" level - brutal penalty multiplier kicks in */
+  ddBrutalThreshold: number;
+  /** Extra multiplier beyond brutal threshold */
+  ddBrutalMultiplier: number;
+
+  // === Timing boost ===
+  /** Target time-to-2x in minutes for speed comparison */
+  targetTimeMinutes: number;
+  /** Maximum timing boost (cap) */
+  timingBoostMax: number;
+
+  // === Consistency boost ===
+  /** Minimum hit2x rate to get consistency bonus */
+  minHit2xPct: number;
+  /** Weight for consistency (hit2x) bonus */
+  consistencyWeight: number;
+
+  // === Tail bonus ===
+  /** Weight for fat tail bonus (p95/p75 spread) */
+  tailBonusWeight: number;
+}
+
+/**
+ * Default objective config matching your instincts:
+ * - Hard penalty on DD_pre2x > 30%
+ * - Brutal penalty beyond 60%
+ * - Strong boost for fast time_to_2x
+ * - Bonus for fat right tail
+ */
+export const DEFAULT_OBJECTIVE_CONFIG: ObjectiveConfig = {
+  primaryMetric: 'median_ath',
+  ddPenaltyThreshold: 0.3,
+  ddPenaltyK: 5.0,
+  ddBrutalThreshold: 0.6,
+  ddBrutalMultiplier: 10.0,
+  targetTimeMinutes: 60,
+  timingBoostMax: 0.5,
+  minHit2xPct: 0.5,
+  consistencyWeight: 0.3,
+  tailBonusWeight: 0.3, // Increased from 0.1 to prioritize tail capture
+};
 
 // =============================================================================
 // Constraint Types
@@ -31,6 +97,15 @@ export interface OptimizationConstraints {
   maxP95DrawdownBps: number;
   /** Maximum time exposed in ms (e.g., 3600000 = 1 hour) */
   maxTimeExposedMs: number;
+  /** Caller-specific: if caller regularly hits high multiples (20x, 30x), relax constraints */
+  callerHighMultipleProfile?: {
+    /** P95 peak multiple threshold to consider caller "high multiple" */
+    p95PeakMultipleThreshold: number;
+    /** Relaxation factor for drawdown constraints (0-1, where 1 = no relaxation) */
+    drawdownRelaxationFactor: number;
+    /** Relaxation factor for stop-out rate (0-1) */
+    stopOutRelaxationFactor: number;
+  };
 }
 
 /**
@@ -45,6 +120,25 @@ export const DEFAULT_CONSTRAINTS: OptimizationConstraints = {
 // =============================================================================
 // Scoring Result
 // =============================================================================
+
+/**
+ * Objective function component breakdown.
+ * Useful for understanding what's driving the score.
+ */
+export interface ObjectiveComponents {
+  /** Base value (log(median_ath) or primary metric) */
+  baseValue: number;
+  /** Drawdown penalty (exponential cliff) */
+  ddPenalty: number;
+  /** Speed/timing boost */
+  timingBoost: number;
+  /** Consistency boost (hit2x rate) */
+  consistencyBoost: number;
+  /** Tail bonus (p95/p75 spread) */
+  tailBonus: number;
+  /** Final objective score */
+  finalScore: number;
+}
 
 export interface PolicyScore {
   /** Overall score (higher = better, -Infinity if constraints violated) */
@@ -65,6 +159,8 @@ export interface PolicyScore {
     avgTimeToFirstMultipleBps: number;
     medianDrawdownBps: number;
   };
+  /** Objective function breakdown (optional) */
+  objectiveBreakdown?: ObjectiveComponents;
   /** Raw metrics for debugging */
   metrics: {
     count: number;
@@ -75,6 +171,170 @@ export interface PolicyScore {
     avgTimeExposedMs: number;
     avgTailCapture: number;
     avgMaxAdverseExcursionBps: number;
+    /** Hit 2x rate (0-1) */
+    hit2xRate?: number;
+    /** Median peak multiple (ATH) */
+    medianPeakMultiple?: number;
+    /** P75 peak multiple */
+    p75PeakMultiple?: number;
+    /** P95 peak multiple */
+    p95PeakMultiple?: number;
+    /** Median time to 2x in minutes */
+    medianTimeToT2xMin?: number;
+    /** Median drawdown pre-2x as decimal */
+    medianDdPre2x?: number;
+    /** Caller high-multiple profile (if analyzed) */
+    callerHighMultipleProfile?: {
+      p95PeakMultiple: number | null;
+      p75PeakMultiple: number | null;
+    };
+  };
+}
+
+// =============================================================================
+// Objective Function Helpers
+// =============================================================================
+
+/**
+ * Compute drawdown penalty with exponential cliff.
+ *
+ * - penalty = 0 if dd <= threshold
+ * - penalty = exp(k * (dd - threshold)) - 1 if dd > threshold
+ * - penalty *= brutal_multiplier if dd > brutal_threshold
+ *
+ * This creates a cliff the optimizer learns to avoid.
+ */
+export function computeDdPenalty(
+  ddPre2x: number,
+  config: ObjectiveConfig = DEFAULT_OBJECTIVE_CONFIG
+): number {
+  if (ddPre2x <= config.ddPenaltyThreshold) {
+    return 0;
+  }
+
+  const excess = ddPre2x - config.ddPenaltyThreshold;
+
+  // Base exponential penalty
+  let penalty = Math.exp(config.ddPenaltyK * excess) - 1;
+
+  // Brutal zone multiplier ("untradeable" territory)
+  if (ddPre2x > config.ddBrutalThreshold) {
+    const brutalExcess = ddPre2x - config.ddBrutalThreshold;
+    penalty *= 1 + config.ddBrutalMultiplier * brutalExcess;
+  }
+
+  return penalty;
+}
+
+/**
+ * Compute timing/speed boost.
+ *
+ * boost = log(1 + (target_minutes / actual_minutes))
+ *
+ * Rewards fast time-to-2x with diminishing returns.
+ */
+export function computeTimingBoost(
+  timeToT2xMinutes: number | null,
+  config: ObjectiveConfig = DEFAULT_OBJECTIVE_CONFIG
+): number {
+  if (timeToT2xMinutes === null || timeToT2xMinutes <= 0 || !isFinite(timeToT2xMinutes)) {
+    return 0;
+  }
+
+  const boost = Math.log(1 + config.targetTimeMinutes / timeToT2xMinutes);
+  return Math.min(boost, config.timingBoostMax);
+}
+
+/**
+ * Compute consistency boost based on hit2x rate.
+ *
+ * Strong linear weight above threshold.
+ */
+export function computeConsistencyBoost(
+  hit2xRate: number,
+  config: ObjectiveConfig = DEFAULT_OBJECTIVE_CONFIG
+): number {
+  if (hit2xRate < config.minHit2xPct) {
+    return 0;
+  }
+
+  // Linear boost above threshold
+  return (hit2xRate - config.minHit2xPct) * config.consistencyWeight;
+}
+
+/**
+ * Compute tail bonus for asymmetric upside.
+ *
+ * Bonus based on p95/p75 spread (fat right tail).
+ */
+export function computeTailBonus(
+  p75Multiple: number | null,
+  p95Multiple: number | null,
+  config: ObjectiveConfig = DEFAULT_OBJECTIVE_CONFIG
+): number {
+  if (p75Multiple === null || p95Multiple === null || p75Multiple <= 0) {
+    return 0;
+  }
+
+  // Ratio of p95 to p75 - higher = fatter tail
+  const ratio = p95Multiple / p75Multiple;
+  return (ratio - 1) * config.tailBonusWeight;
+}
+
+/**
+ * Compute full objective function.
+ *
+ * Shape:
+ * - base = log(median_ath)
+ * - speed_boost = log(1 + (target_minutes / median_t2x_minutes))
+ * - consistency_boost = linear above hit2x threshold
+ * - risk_penalty = exponential cliff at 30%, brutal at 60%
+ *
+ * final = base + speed_boost + consistency_boost + tail_bonus - dd_penalty
+ */
+export function computeObjective(
+  metrics: {
+    medianPeakMultiple?: number;
+    hit2xRate?: number;
+    medianTimeToT2xMin?: number;
+    medianDdPre2x?: number;
+    p75PeakMultiple?: number;
+    p95PeakMultiple?: number;
+  },
+  config: ObjectiveConfig = DEFAULT_OBJECTIVE_CONFIG
+): ObjectiveComponents {
+  // Base value
+  const baseValue =
+    metrics.medianPeakMultiple && metrics.medianPeakMultiple > 0
+      ? Math.log(metrics.medianPeakMultiple)
+      : 0;
+
+  // DD penalty
+  const ddPenalty = computeDdPenalty(metrics.medianDdPre2x ?? 0, config);
+
+  // Timing boost
+  const timingBoost = computeTimingBoost(metrics.medianTimeToT2xMin ?? null, config);
+
+  // Consistency boost
+  const consistencyBoost = computeConsistencyBoost(metrics.hit2xRate ?? 0, config);
+
+  // Tail bonus
+  const tailBonus = computeTailBonus(
+    metrics.p75PeakMultiple ?? null,
+    metrics.p95PeakMultiple ?? null,
+    config
+  );
+
+  // Final score
+  const finalScore = baseValue + timingBoost + consistencyBoost + tailBonus - ddPenalty;
+
+  return {
+    baseValue,
+    ddPenalty,
+    timingBoost,
+    consistencyBoost,
+    tailBonus,
+    finalScore,
   };
 }
 
@@ -83,17 +343,99 @@ export interface PolicyScore {
 // =============================================================================
 
 /**
+ * Analyze caller profile to determine if they regularly hit high multiples
+ */
+export function analyzeCallerHighMultipleProfile(
+  results: PolicyResultRow[],
+  pathMetrics?: Array<{ peak_multiple?: number | null }>
+): {
+  isHighMultipleCaller: boolean;
+  p95PeakMultiple: number | null;
+  p75PeakMultiple: number | null;
+} {
+  // Extract peak multiples from path metrics if available
+  const peakMultiples: number[] = [];
+
+  if (pathMetrics) {
+    for (const pm of pathMetrics) {
+      if (pm.peak_multiple !== null && pm.peak_multiple !== undefined && pm.peak_multiple > 0) {
+        peakMultiples.push(pm.peak_multiple);
+      }
+    }
+  }
+
+  if (peakMultiples.length === 0) {
+    return {
+      isHighMultipleCaller: false,
+      p95PeakMultiple: null,
+      p75PeakMultiple: null,
+    };
+  }
+
+  peakMultiples.sort((a, b) => a - b);
+  const p95Idx = Math.floor(peakMultiples.length * 0.95);
+  const p75Idx = Math.floor(peakMultiples.length * 0.75);
+
+  const p95PeakMultiple = peakMultiples[p95Idx] ?? peakMultiples[peakMultiples.length - 1];
+  const p75PeakMultiple =
+    peakMultiples[p75Idx] ?? peakMultiples[Math.floor(peakMultiples.length / 2)];
+
+  // Consider caller "high multiple" if p95 regularly hits 20x+ or p75 hits 10x+
+  const isHighMultipleCaller = p95PeakMultiple >= 20 || p75PeakMultiple >= 10;
+
+  return {
+    isHighMultipleCaller,
+    p95PeakMultiple,
+    p75PeakMultiple,
+  };
+}
+
+/**
+ * Apply caller-specific constraint relaxation for high-multiple callers
+ */
+function applyCallerConstraintRelaxation(
+  constraints: OptimizationConstraints,
+  callerProfile: ReturnType<typeof analyzeCallerHighMultipleProfile>
+): OptimizationConstraints {
+  if (!constraints.callerHighMultipleProfile || !callerProfile.isHighMultipleCaller) {
+    return constraints;
+  }
+
+  const { drawdownRelaxationFactor, stopOutRelaxationFactor } =
+    constraints.callerHighMultipleProfile;
+
+  // Relax drawdown constraints for high-multiple callers
+  // e.g., if factor is 0.7, allow 30% more drawdown
+  const relaxedMaxP95DrawdownBps = constraints.maxP95DrawdownBps / drawdownRelaxationFactor;
+  const relaxedMaxStopOutRate = constraints.maxStopOutRate / stopOutRelaxationFactor;
+
+  return {
+    ...constraints,
+    maxP95DrawdownBps: relaxedMaxP95DrawdownBps,
+    maxStopOutRate: relaxedMaxStopOutRate,
+  };
+}
+
+/**
  * Score a set of policy results against constraints
  *
  * Returns score (higher = better) or -Infinity if constraints violated
  */
 export function scorePolicy(
   results: PolicyResultRow[],
-  constraints: OptimizationConstraints = DEFAULT_CONSTRAINTS
+  constraints: OptimizationConstraints = DEFAULT_CONSTRAINTS,
+  objectiveConfig: ObjectiveConfig = DEFAULT_OBJECTIVE_CONFIG,
+  pathMetrics?: Array<{ peak_multiple?: number | null }>
 ): PolicyScore {
   if (results.length === 0) {
     return createEmptyScore();
   }
+
+  // Analyze caller profile for high-multiple patterns
+  const callerProfile = analyzeCallerHighMultipleProfile(results, pathMetrics);
+
+  // Apply caller-specific constraint relaxation if applicable
+  const effectiveConstraints = applyCallerConstraintRelaxation(constraints, callerProfile);
 
   // Calculate metrics
   const returns = results.map((r) => r.realized_return_bps).sort((a, b) => a - b);
@@ -124,22 +466,22 @@ export function scorePolicy(
   // Average max adverse excursion
   const avgMaxAdverseExcursionBps = drawdowns.reduce((a, b) => a + b, 0) / count;
 
-  // Check constraints
+  // Check constraints (using effective constraints which may be relaxed for high-multiple callers)
   const violations: PolicyScore['violations'] = {};
   let constraintsSatisfied = true;
 
-  if (stopOutRate > constraints.maxStopOutRate) {
+  if (stopOutRate > effectiveConstraints.maxStopOutRate) {
     violations.stopOutRate = true;
     constraintsSatisfied = false;
   }
 
-  if (p95DrawdownBps < constraints.maxP95DrawdownBps) {
+  if (p95DrawdownBps < effectiveConstraints.maxP95DrawdownBps) {
     // More negative = worse, so p95 < max means violation
     violations.p95Drawdown = true;
     constraintsSatisfied = false;
   }
 
-  if (avgTimeExposedMs > constraints.maxTimeExposedMs) {
+  if (avgTimeExposedMs > effectiveConstraints.maxTimeExposedMs) {
     violations.timeExposed = true;
     constraintsSatisfied = false;
   }
@@ -160,10 +502,10 @@ export function scorePolicy(
     score = -Infinity;
   } else {
     // Primary: median return (in bps)
-    // Add tie-breakers as fractional components
-    // Tail capture: 0-1, multiply by 100 to make it 0-100
+    // Enhanced tail capture weighting: multiply by 200 instead of 100 to prioritize tail gain
+    // This rewards strategies that capture more of the peak profit
     // Median drawdown: negative, closer to 0 is better, divide by 100
-    score = medianReturnBps + avgTailCapture * 100 - medianDrawdownBps / 100;
+    score = medianReturnBps + avgTailCapture * 200 - medianDrawdownBps / 100;
   }
 
   return {
@@ -181,6 +523,13 @@ export function scorePolicy(
       avgTimeExposedMs,
       avgTailCapture,
       avgMaxAdverseExcursionBps,
+      // Add caller profile info for debugging
+      callerHighMultipleProfile: callerProfile.isHighMultipleCaller
+        ? {
+            p95PeakMultiple: callerProfile.p95PeakMultiple,
+            p75PeakMultiple: callerProfile.p75PeakMultiple,
+          }
+        : undefined,
     },
   };
 }
@@ -230,6 +579,14 @@ function createEmptyScore(): PolicyScore {
       avgTimeToFirstMultipleBps: 0,
       medianDrawdownBps: 0,
     },
+    objectiveBreakdown: {
+      baseValue: 0,
+      ddPenalty: 0,
+      timingBoost: 0,
+      consistencyBoost: 0,
+      tailBonus: 0,
+      finalScore: -Infinity,
+    },
     metrics: {
       count: 0,
       avgReturnBps: 0,
@@ -239,6 +596,31 @@ function createEmptyScore(): PolicyScore {
       avgTimeExposedMs: 0,
       avgTailCapture: 0,
       avgMaxAdverseExcursionBps: 0,
+      hit2xRate: 0,
+      medianPeakMultiple: 0,
+      p75PeakMultiple: 0,
+      p95PeakMultiple: 0,
+      medianTimeToT2xMin: undefined,
+      medianDdPre2x: 0,
     },
   };
+}
+
+/**
+ * Format objective breakdown for display.
+ */
+export function formatObjectiveBreakdown(
+  breakdown: ObjectiveComponents,
+  config: ObjectiveConfig = DEFAULT_OBJECTIVE_CONFIG
+): string {
+  const lines = [
+    `Base (log median ATH):  ${breakdown.baseValue.toFixed(4)}`,
+    `DD penalty:            -${breakdown.ddPenalty.toFixed(4)} (threshold: ${(config.ddPenaltyThreshold * 100).toFixed(0)}%)`,
+    `Timing boost:          +${breakdown.timingBoost.toFixed(4)}`,
+    `Consistency boost:     +${breakdown.consistencyBoost.toFixed(4)}`,
+    `Tail bonus:            +${breakdown.tailBonus.toFixed(4)}`,
+    `─────────────────────────────`,
+    `FINAL SCORE:            ${breakdown.finalScore.toFixed(4)}`,
+  ];
+  return lines.join('\n');
 }

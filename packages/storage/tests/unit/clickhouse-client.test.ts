@@ -103,6 +103,9 @@ describe('ClickHouse Client', () => {
     });
 
     it('should use environment variables for configuration', async () => {
+      // Unset CLICKHOUSE_HTTP_PORT if it exists (it takes precedence over CLICKHOUSE_PORT)
+      // Use delete to ensure it's not set, then stub all the other env vars
+      delete process.env.CLICKHOUSE_HTTP_PORT;
       vi.stubEnv('CLICKHOUSE_HOST', 'test-host');
       vi.stubEnv('CLICKHOUSE_PORT', '9000');
       vi.stubEnv('CLICKHOUSE_USER', 'test-user');
@@ -121,6 +124,9 @@ describe('ClickHouse Client', () => {
           username: 'test-user',
           password: 'test-password',
           database: 'test-db',
+          // These are always included by the implementation
+          request_timeout: 60000,
+          max_open_connections: 10,
         })
       );
 

@@ -1,0 +1,107 @@
+{
+  "run_id": "9a2ac4443af6",
+  "created_at": "2026-01-05T02:31:50.973673+00:00",
+  "folds": [
+    {
+      "fold_id": "69437db4",
+      "train_from": "2025-12-01",
+      "train_to": "2025-12-10",
+      "test_from": "2025-12-11",
+      "test_to": "2025-12-14",
+      "best_params": {
+        "tp_mult": 2.0,
+        "sl_mult": 0.5,
+        "intrabar_order": "sl_first"
+      },
+      "train_alerts": 74,
+      "train_win_rate": 0.379746835443038,
+      "train_avg_r": -0.03657810575327764,
+      "train_total_r": -2.8896703545089335,
+      "test_alerts": 33,
+      "test_win_rate": 0.28205128205128205,
+      "test_avg_r": -0.2988970868976962,
+      "test_total_r": -11.65698638901015,
+      "delta_avg_r": -0.26231898114441854,
+      "delta_total_r": -8.767316034501217
+    },
+    {
+      "fold_id": "b9b8b333",
+      "train_from": "2025-12-15",
+      "train_to": "2025-12-24",
+      "test_from": "2025-12-25",
+      "test_to": "2025-12-28",
+      "best_params": {
+        "tp_mult": 4.0,
+        "sl_mult": 0.7,
+        "intrabar_order": "sl_first"
+      },
+      "train_alerts": 52,
+      "train_win_rate": 0.36538461538461536,
+      "train_avg_r": 2.679960449500261,
+      "train_total_r": 139.35794337401356,
+      "test_alerts": 17,
+      "test_win_rate": 0.0,
+      "test_avg_r": 0.0,
+      "test_total_r": 0.0,
+      "delta_avg_r": -2.679960449500261,
+      "delta_total_r": -139.35794337401356
+    }
+  ],
+  "config": {
+    "name": "walk_forward",
+    "date_from": "2025-12-01",
+    "date_to": "2025-12-28",
+    "duckdb_path": "data/alerts.duckdb",
+    "chain": "solana",
+    "slice_dir": "slices",
+    "reuse_slice": true,
+    "interval_seconds": 60,
+    "horizon_hours": 48,
+    "fee_bps": 30.0,
+    "slippage_bps": 50.0,
+    "threads": 8,
+    "parallel_runs": 1,
+    "store_duckdb": true,
+    "output_dir": "results/optimizer",
+    "risk_per_trade": 0.02,
+    "slice_path": "slices/per_token",
+    "tp_sl": {
+      "tp_mult": {
+        "start": 2.0,
+        "end": 4.0,
+        "step": 0.5
+      },
+      "sl_mult": {
+        "start": 0.5,
+        "end": 0.7,
+        "step": 0.1
+      },
+      "intrabar_order": [
+        "sl_first"
+      ]
+    }
+  },
+  "timing": {
+    "total_ms": 18824,
+    "phases": [
+      {
+        "label": "fold_1",
+        "duration_ms": 9712,
+        "timestamp_ms": 1767580310974
+      },
+      {
+        "label": "fold_2",
+        "duration_ms": 9110,
+        "timestamp_ms": 1767580320686
+      }
+    ]
+  },
+  "summary": {
+    "n_folds": 2,
+    "avg_test_total_r": -5.828493194505075,
+    "median_test_r": -5.828493194505075,
+    "pct_folds_profitable": 0.0,
+    "worst_fold_r": -11.65698638901015,
+    "avg_delta_r": -74.06262970425739
+  }
+}

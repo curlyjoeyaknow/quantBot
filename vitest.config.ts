@@ -47,7 +47,7 @@ export default defineConfig({
     testTimeout: 5000,
     // Ensure aliases take precedence over node_modules resolution
     deps: {
-      inline: ['@quantbot/simulation', '@quantbot/monitoring', '@quantbot/ingestion'],
+      inline: ['@quantbot/backtest', '@quantbot/monitoring', '@quantbot/ingestion'],
     },
     coverage: {
       provider: 'v8',
@@ -80,8 +80,8 @@ export default defineConfig({
       '@quantbot/storage/*': resolveFromRoot('packages/storage/src/*'),
       '@quantbot/monitoring': resolveFromRoot('packages/monitoring/src'),
       '@quantbot/monitoring/*': resolveFromRoot('packages/monitoring/src/*'),
-      '@quantbot/simulation': resolveFromRoot('packages/simulation/src'),
-      '@quantbot/simulation/*': resolveFromRoot('packages/simulation/src/*'),
+      '@quantbot/backtest': resolveFromRoot('packages/simulation/src'),
+      '@quantbot/backtest/*': resolveFromRoot('packages/simulation/src/*'),
       '@quantbot/ohlcv': resolveFromRoot('packages/ohlcv/src'),
       '@quantbot/ohlcv/*': resolveFromRoot('packages/ohlcv/src/*'),
       '@quantbot/ingestion': resolveFromRoot('packages/ingestion/src'),
@@ -93,7 +93,7 @@ export default defineConfig({
     },
   },
   optimizeDeps: {
-    include: ['@quantbot/simulation', '@quantbot/monitoring', '@quantbot/ingestion'],
+    include: ['@quantbot/backtest', '@quantbot/monitoring', '@quantbot/ingestion'],
     exclude: [],
   },
 });

@@ -6,17 +6,17 @@
 -- 1. Risk penalty uses median_dd_pre2x_or_horizon (not just dd_pre2x)
 --    Because dd_pre2x is undefined for non-2x alerts. If you only punish dd_pre2x,
 --    callers who rarely hit 2x dodge the risk penalty entirely.
--- 2. Penalty is exponential after 30% drawdown magnitude
---    31-35% hurts a bit, 40% hurts a lot, 60% is basically disqualification.
+-- 2. Penalty is exponential after 50% drawdown magnitude
+--    50-55% hurts a bit, 60% hurts, 75%+ is basically disqualification.
 --
--- === Tunables ===
+-- === Tunables (calibrated for real-world crypto caller data) ===
 -- Risk penalty:
---   - threshold at 30% DD magnitude
---   - exponential rate 15 makes 60% essentially impossible
+--   - threshold at 50% DD magnitude (typical best callers are 45-55%)
+--   - exponential rate 8 makes 75% very painful
 -- Timing boost:
 --   - exp(-t/60m) -> fast gets big boost, slow decays
 -- Synergy:
---   - big bump for hit2x >= 50% AND dd <= 30%
+--   - big bump for hit2x >= 40% AND dd <= 55%
 -- Tail:
 --   - rewards fat right tail without letting it dominate
 
@@ -95,17 +95,19 @@ feat AS (
 pen AS (
   SELECT
     *,
-    -- Exponential penalty once risk_mag exceeds 30%
-    -- At 40%: exp(15*(0.10)) - 1  ≈ 3.48
-    -- At 60%: exp(15*(0.30)) - 1  ≈ 89
+    -- Exponential penalty once risk_mag exceeds 50%
+    -- At 55%: exp(8*(0.05)) - 1  ≈ 0.49
+    -- At 60%: exp(8*(0.10)) - 1  ≈ 1.23
+    -- At 70%: exp(8*(0.20)) - 1  ≈ 3.95
+    -- At 75%: exp(8*(0.25)) - 1  ≈ 6.39
     CASE
-      WHEN risk_mag <= 0.30 THEN 0.0
-      ELSE exp(15.0 * (risk_mag - 0.30)) - 1.0
+      WHEN risk_mag <= 0.50 THEN 0.0
+      ELSE exp(8.0 * (risk_mag - 0.50)) - 1.0
     END AS risk_penalty,
 
-    -- Synergy bonus: your "obvious huge boost" condition
+    -- Synergy bonus: hit2x >= 40% AND dd <= 55%
     CASE
-      WHEN COALESCE(hit2x_pct, 0.0) >= 50.0 AND risk_mag <= 0.30 THEN 0.60
+      WHEN COALESCE(hit2x_pct, 0.0) >= 40.0 AND risk_mag <= 0.55 THEN 0.60
       ELSE 0.0
     END AS discipline_bonus
   FROM feat

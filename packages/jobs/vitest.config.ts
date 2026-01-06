@@ -15,7 +15,7 @@ export default defineConfig({
     },
     deps: {
       inline: [
-        '@quantbot/simulation',
+        '@quantbot/backtest',
         '@quantbot/storage',
         '@quantbot/utils',
         '@quantbot/core',

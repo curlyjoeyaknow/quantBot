@@ -203,7 +203,7 @@ export async function evaluateCallsWorkflow(
       // Find entry candle index
       const alignedWithIndex = findEntryCandleIndex(aligned, candles);
 
-      // Evaluate overlays using @quantbot/simulation
+      // Evaluate overlays using @quantbot/backtest
       const results = await evaluateCallOverlays(alignedWithIndex, candles, req.backtest);
       allResults.push(...results);
 

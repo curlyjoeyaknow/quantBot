@@ -1,0 +1,104 @@
+{
+  "run_id": "c2583d53ae30",
+  "created_at": "2026-01-05T02:12:20.834281+00:00",
+  "folds": [
+    {
+      "fold_id": "4e07b42f",
+      "train_from": "2025-12-01",
+      "train_to": "2025-12-10",
+      "test_from": "2025-12-11",
+      "test_to": "2025-12-17",
+      "best_params": {
+        "tp_mult": 2.0,
+        "sl_mult": 0.5,
+        "intrabar_order": "sl_first"
+      },
+      "train_alerts": 74,
+      "train_win_rate": 0.379746835443038,
+      "train_avg_r": -0.03657810575327764,
+      "train_total_r": -2.8896703545089335,
+      "test_alerts": 50,
+      "test_win_rate": 0.2631578947368421,
+      "test_avg_r": -0.2781011757626,
+      "test_total_r": -15.8517670184682,
+      "avg_r_degradation": -6.602940885961004,
+      "total_r_degradation": -4.48566620885794
+    },
+    {
+      "fold_id": "bbf62928",
+      "train_from": "2025-12-08",
+      "train_to": "2025-12-17",
+      "test_from": "2025-12-18",
+      "test_to": "2025-12-24",
+      "best_params": {
+        "tp_mult": 3.5,
+        "sl_mult": 0.7,
+        "intrabar_order": "sl_first"
+      },
+      "train_alerts": 73,
+      "train_win_rate": 0.17647058823529413,
+      "train_avg_r": 0.2709468153693443,
+      "train_total_r": 23.030479306394266,
+      "test_alerts": 35,
+      "test_win_rate": 0.5,
+      "test_avg_r": 3.4424540765200256,
+      "test_total_r": 117.04343860168086,
+      "avg_r_degradation": -11.705276021891619,
+      "total_r_degradation": -4.082110408756646
+    }
+  ],
+  "config": {
+    "name": "walk_forward",
+    "date_from": "2025-12-01",
+    "date_to": "2025-12-28",
+    "duckdb_path": "data/alerts.duckdb",
+    "chain": "solana",
+    "slice_dir": "slices",
+    "reuse_slice": true,
+    "interval_seconds": 60,
+    "horizon_hours": 48,
+    "fee_bps": 30.0,
+    "slippage_bps": 50.0,
+    "threads": 8,
+    "parallel_runs": 1,
+    "store_duckdb": true,
+    "output_dir": "results/optimizer",
+    "risk_per_trade": 0.02,
+    "slice_path": "slices/per_token",
+    "tp_sl": {
+      "tp_mult": {
+        "start": 2.0,
+        "end": 4.0,
+        "step": 0.5
+      },
+      "sl_mult": {
+        "start": 0.5,
+        "end": 0.7,
+        "step": 0.1
+      },
+      "intrabar_order": [
+        "sl_first"
+      ]
+    }
+  },
+  "timing": {
+    "total_ms": 19676,
+    "phases": [
+      {
+        "label": "fold_1",
+        "duration_ms": 10469,
+        "timestamp_ms": 1767579140834
+      },
+      {
+        "label": "fold_2",
+        "duration_ms": 9206,
+        "timestamp_ms": 1767579151304
+      }
+    ]
+  },
+  "summary": {
+    "n_folds": 2,
+    "avg_test_total_r": 50.59583579160633,
+    "avg_degradation": -9.154108453926312
+  }
+}

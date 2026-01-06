@@ -11,6 +11,7 @@ import { executePolicy } from '../policies/policy-executor.js';
 import {
   scorePolicy,
   comparePolicyScores,
+  analyzeCallerHighMultipleProfile,
   type OptimizationConstraints,
   type PolicyScore,
   DEFAULT_CONSTRAINTS,
@@ -34,6 +35,10 @@ export interface OptimizeRequest {
   fees?: { takerFeeBps: number; slippageBps: number };
   /** Policy types to search */
   policyTypes?: Array<'fixed_stop' | 'time_stop' | 'trailing_stop' | 'ladder'>;
+  /** Optional: filter to specific caller groups */
+  callerGroups?: string[];
+  /** Optional: path metrics for caller profile analysis */
+  pathMetricsByCallId?: Map<string, { peak_multiple?: number | null }>;
 }
 
 export interface OptimalPolicy {
@@ -69,7 +74,44 @@ export interface OptimizationResult {
 export function optimizePolicy(req: OptimizeRequest): OptimizationResult {
   const constraints = req.constraints || DEFAULT_CONSTRAINTS;
   const fees = req.fees || { takerFeeBps: 30, slippageBps: 10 };
-  const policyTypes = req.policyTypes || ['fixed_stop', 'time_stop', 'trailing_stop', 'ladder'];
+  // Default policy types - include combo for non-high-multiple callers
+  const policyTypes = req.policyTypes || [
+    'fixed_stop',
+    'time_stop',
+    'trailing_stop',
+    'ladder',
+    'combo',
+  ];
+
+  // Filter calls by caller groups if specified
+  let callsToOptimize = req.calls;
+  if (req.callerGroups && req.callerGroups.length > 0) {
+    callsToOptimize = req.calls.filter((call) => req.callerGroups!.includes(call.caller));
+    logger.info('Filtering calls by caller groups', {
+      callerGroups: req.callerGroups,
+      originalCount: req.calls.length,
+      filteredCount: callsToOptimize.length,
+    });
+  }
+
+  // Analyze caller profile to determine if they're high-multiple
+  // This affects which policies we generate
+  let isHighMultipleCaller = false;
+  if (req.pathMetricsByCallId && callsToOptimize.length > 0) {
+    const pathMetrics: Array<{ peak_multiple?: number | null }> = [];
+    for (const call of callsToOptimize) {
+      const pm = req.pathMetricsByCallId.get(call.id);
+      if (pm) pathMetrics.push(pm);
+    }
+    const profile = analyzeCallerHighMultipleProfile([], pathMetrics);
+    isHighMultipleCaller = profile.isHighMultipleCaller;
+
+    logger.info('Caller profile analysis', {
+      isHighMultipleCaller,
+      p95PeakMultiple: profile.p95PeakMultiple,
+      p75PeakMultiple: profile.p75PeakMultiple,
+    });
+  }
 
   // Generate policy grid
   const policies: RiskPolicy[] = [];
@@ -87,10 +129,26 @@ export function optimizePolicy(req: OptimizeRequest): OptimizationResult {
     policies.push(...generateLadderPolicies());
   }
 
+  // Generate combo policies optimized for non-high-multiple callers
+  // These vigilantly protect 2x/3x while allowing trailing stops to ride pumps
+  // For high-multiple callers, we rely on constraint relaxation instead
+  if (
+    !isHighMultipleCaller &&
+    (policyTypes.includes('combo') ||
+      policyTypes.includes('trailing_stop') ||
+      policyTypes.includes('ladder'))
+  ) {
+    policies.push(...generateComboPoliciesForNonHighMultipleCallers());
+    logger.info('Generated combo policies for non-high-multiple caller', {
+      comboPoliciesCount: policies.filter((p) => p.kind === 'combo').length,
+    });
+  }
+
   logger.info('Starting policy optimization', {
-    calls: req.calls.length,
+    calls: callsToOptimize.length,
     policies: policies.length,
     policyTypes,
+    callerGroups: req.callerGroups,
   });
 
   // Evaluate each policy
@@ -99,8 +157,9 @@ export function optimizePolicy(req: OptimizeRequest): OptimizationResult {
   for (const policy of policies) {
     // Execute policy on all calls
     const results: PolicyResultRow[] = [];
+    const pathMetrics: Array<{ peak_multiple?: number | null }> = [];
 
-    for (const call of req.calls) {
+    for (const call of callsToOptimize) {
       const candles = req.candlesByCallId.get(call.id);
       if (!candles || candles.length === 0) continue;
 
@@ -124,10 +183,18 @@ export function optimizePolicy(req: OptimizeRequest): OptimizationResult {
           exit_reason: result.exitReason,
         });
       }
+
+      // Collect path metrics for caller profile analysis
+      if (req.pathMetricsByCallId) {
+        const pathMetric = req.pathMetricsByCallId.get(call.id);
+        if (pathMetric) {
+          pathMetrics.push(pathMetric);
+        }
+      }
     }
 
-    // Score the policy
-    const score = scorePolicy(results, constraints);
+    // Score the policy (with path metrics for caller profile analysis)
+    const score = scorePolicy(results, constraints, undefined, pathMetrics);
     evaluatedPolicies.push({ policy, score });
   }
 
@@ -284,6 +351,150 @@ function generateLadderPolicies(): RiskPolicy[] {
         levels,
         stopPct,
       });
+    }
+  }
+
+  return policies;
+}
+
+/**
+ * Generate combo policies optimized for non-high-multiple callers.
+ *
+ * Strategy: Vigilantly protect 2x/3x from drawdowns while allowing trailing stops
+ * to ride pumps. Combines:
+ * - Trailing stops (10-20%) to ride pumps after activation
+ * - Ladder exits at 2x/3x to protect gains
+ * - Hard stop losses for downside protection
+ * - Optional time-based exits
+ */
+function generateComboPoliciesForNonHighMultipleCallers(): RiskPolicy[] {
+  const policies: RiskPolicy[] = [];
+
+  // Trailing stop configurations (10-20% trail to ride pumps)
+  const trailPcts = [0.1, 0.15, 0.2];
+  const activationPcts = [0.5, 1.0, 1.5, 2.0]; // Activate at 0.5x, 1x, 1.5x, or 2x gain
+
+  // Hard stop losses for downside protection
+  const hardStopPcts = [0.15, 0.2, 0.25];
+
+  // Ladder configurations to protect 2x/3x gains
+  const ladderConfigs = [
+    // Protect 2x with 50% exit, let rest ride
+    [{ multiple: 2.0, fraction: 0.5 }],
+    // Protect 2x with 50%, 3x with 30%
+    [
+      { multiple: 2.0, fraction: 0.5 },
+      { multiple: 3.0, fraction: 0.3 },
+    ],
+    // Protect 2x with 30%, 3x with 50%
+    [
+      { multiple: 2.0, fraction: 0.3 },
+      { multiple: 3.0, fraction: 0.5 },
+    ],
+  ];
+
+  // Time-based exits (optional, for risk management)
+  const timeStops = [
+    2 * 60 * 60 * 1000, // 2 hours
+    4 * 60 * 60 * 1000, // 4 hours
+  ];
+
+  // Generate combos: Trailing stop + Ladder + Hard stop
+  for (const trailPct of trailPcts) {
+    for (const activationPct of activationPcts) {
+      for (const hardStopPct of hardStopPcts) {
+        for (const ladderLevels of ladderConfigs) {
+          // Combo 1: Trailing stop + Ladder + Hard stop
+          policies.push({
+            kind: 'combo',
+            policies: [
+              {
+                kind: 'trailing_stop',
+                activationPct,
+                trailPct,
+                hardStopPct,
+              },
+              {
+                kind: 'ladder',
+                levels: ladderLevels,
+                stopPct: hardStopPct, // Same hard stop for remaining position
+              },
+            ],
+          });
+
+          // Combo 2: Trailing stop + Ladder + Hard stop + Time stop
+          for (const maxHoldMs of timeStops) {
+            policies.push({
+              kind: 'combo',
+              policies: [
+                {
+                  kind: 'trailing_stop',
+                  activationPct,
+                  trailPct,
+                  hardStopPct,
+                },
+                {
+                  kind: 'ladder',
+                  levels: ladderLevels,
+                  stopPct: hardStopPct,
+                },
+                {
+                  kind: 'time_stop',
+                  maxHoldMs,
+                },
+              ],
+            });
+          }
+        }
+      }
+    }
+  }
+
+  // Also generate simpler combos: Just trailing stop + hard stop (no ladder)
+  // These are for when we want to ride the wave but still protect downside
+  for (const trailPct of trailPcts) {
+    for (const activationPct of [0.5, 1.0, 1.5]) {
+      for (const hardStopPct of hardStopPcts) {
+        policies.push({
+          kind: 'combo',
+          policies: [
+            {
+              kind: 'trailing_stop',
+              activationPct,
+              trailPct,
+              hardStopPct,
+            },
+            {
+              kind: 'fixed_stop',
+              stopPct: hardStopPct,
+            },
+          ],
+        });
+      }
+    }
+  }
+
+  // Combo: Ladder at 2x/3x + Trailing stop (protect gains, then ride)
+  for (const ladderLevels of ladderConfigs) {
+    for (const trailPct of trailPcts) {
+      for (const hardStopPct of hardStopPcts) {
+        policies.push({
+          kind: 'combo',
+          policies: [
+            {
+              kind: 'ladder',
+              levels: ladderLevels,
+              stopPct: hardStopPct,
+            },
+            {
+              kind: 'trailing_stop',
+              activationPct: 1.5, // Activate trailing after 1.5x
+              trailPct,
+              hardStopPct,
+            },
+          ],
+        });
+      }
     }
   }
 

@@ -11,7 +11,7 @@
  * - tailCapture <= 1.0 (can't capture more than peak)
  */
 
-import type { Candle } from '@quantbot/core';
+import type { Candle, DeterministicRNG } from '@quantbot/core';
 import type {
   RiskPolicy,
   FixedStopPolicy,
@@ -24,6 +24,60 @@ import type {
 import { computePathMetrics } from '../metrics/path-metrics.js';
 
 // =============================================================================
+// Re-export execution models from simulation for convenience
+// =============================================================================
+export {
+  // Execution model types
+  type ExecutionModel,
+  type LatencyDistribution,
+  type SlippageModel,
+  type CostModel,
+  type FailureModel,
+  type PartialFillModel,
+  // Model factories
+  createPumpfunExecutionModel,
+  createPumpswapExecutionModel,
+  createMinimalExecutionModel,
+  // Slippage utilities
+  calculateSlippage,
+  calculateEntrySlippage,
+  calculateExitSlippage,
+  // Latency utilities
+  sampleLatency,
+  sampleTotalLatency,
+  // Cost utilities
+  calculateTotalTransactionCost,
+  calculateEffectiveCostPerTrade,
+  // Adapters
+  convertExecutionModelToCostConfig,
+  calculateEffectiveSlippageBps,
+} from '@quantbot/simulation/execution-models';
+
+/**
+ * Fee configuration (simple model)
+ */
+export interface FeeConfig {
+  takerFeeBps: number;
+  slippageBps: number;
+}
+
+/**
+ * Extended fee configuration with execution model
+ */
+export interface ExecutionConfig extends FeeConfig {
+  /**
+   * Optional execution model for realistic fills.
+   * If provided, overrides simple takerFeeBps/slippageBps with venue-specific models.
+   */
+  executionModel?: import('@quantbot/simulation/execution-models').ExecutionModel;
+  /**
+   * RNG for stochastic execution (latency, partial fills).
+   * Required if executionModel is provided.
+   */
+  rng?: DeterministicRNG;
+}
+
+// =============================================================================
 // Policy Executor
 // =============================================================================
 
@@ -33,14 +87,14 @@ import { computePathMetrics } from '../metrics/path-metrics.js';
  * @param candles Candle stream (chronological, timestamp in seconds)
  * @param alertTsMs Alert timestamp in milliseconds (entry point)
  * @param policy Risk policy to execute
- * @param fees Fee structure { takerFeeBps, slippageBps }
+ * @param fees Fee structure { takerFeeBps, slippageBps } or ExecutionConfig with execution model
  * @returns Policy execution result
  */
 export function executePolicy(
   candles: Candle[],
   alertTsMs: number,
   policy: RiskPolicy,
-  fees: { takerFeeBps: number; slippageBps: number } = { takerFeeBps: 30, slippageBps: 10 }
+  fees: FeeConfig | ExecutionConfig = { takerFeeBps: 30, slippageBps: 10 }
 ): PolicyExecutionResult {
   // Find entry candle (first candle at/after alert)
   let entryIdx = -1;
@@ -95,7 +149,7 @@ function executeFixedStop(
   entryPx: number,
   entryTsMs: number,
   policy: FixedStopPolicy,
-  fees: { takerFeeBps: number; slippageBps: number }
+  fees: FeeConfig | ExecutionConfig
 ): PolicyExecutionResult {
   const stopPrice = entryPx * (1 - policy.stopPct);
   const takeProfitPrice = policy.takeProfitPct
@@ -156,7 +210,7 @@ function executeTimeStop(
   entryPx: number,
   entryTsMs: number,
   policy: TimeStopPolicy,
-  fees: { takerFeeBps: number; slippageBps: number }
+  fees: FeeConfig | ExecutionConfig
 ): PolicyExecutionResult {
   const maxExitTsMs = entryTsMs + policy.maxHoldMs;
   const takeProfitPrice = policy.takeProfitPct
@@ -218,7 +272,7 @@ function executeTrailingStop(
   entryPx: number,
   entryTsMs: number,
   policy: TrailingStopPolicy,
-  fees: { takerFeeBps: number; slippageBps: number }
+  fees: FeeConfig | ExecutionConfig
 ): PolicyExecutionResult {
   const activationPrice = entryPx * (1 + policy.activationPct);
   const hardStopPrice = policy.hardStopPct ? entryPx * (1 - policy.hardStopPct) : 0;
@@ -298,7 +352,7 @@ function executeLadder(
   entryPx: number,
   entryTsMs: number,
   policy: LadderPolicy,
-  fees: { takerFeeBps: number; slippageBps: number }
+  fees: FeeConfig | ExecutionConfig
 ): PolicyExecutionResult {
   const stopPrice = policy.stopPct ? entryPx * (1 - policy.stopPct) : 0;
 
@@ -373,7 +427,7 @@ function executeLadder(
   const exitPx = stoppedOut ? stopPrice : lastCandle.close;
 
   // Apply fees
-  const totalFeeBps = fees.takerFeeBps + fees.slippageBps;
+  const totalFeeBps = getTotalFeeBps(fees);
   const netReturnBps = totalReturn - totalFeeBps * 2; // Entry + exit fees
 
   // Calculate tail capture
@@ -405,7 +459,7 @@ function executeCombo(
   entryPx: number,
   entryTsMs: number,
   policy: ComboPolicy,
-  fees: { takerFeeBps: number; slippageBps: number }
+  fees: FeeConfig | ExecutionConfig
 ): PolicyExecutionResult {
   // Execute all policies and take the one that exits first
   const results = policy.policies.map((p) =>
@@ -426,6 +480,24 @@ function executeCombo(
 // =============================================================================
 // Helper Functions
 // =============================================================================
+
+/**
+ * Extract total fee in basis points from fee config.
+ * If execution model is present, uses its cost model; otherwise uses simple takerFeeBps + slippageBps.
+ */
+function getTotalFeeBps(fees: FeeConfig | ExecutionConfig): number {
+  // If execution model is present, use its cost model
+  if ('executionModel' in fees && fees.executionModel) {
+    const model = fees.executionModel;
+    // Use cost model taker fee + average slippage estimate
+    const takerFee = model.costs.takerFeeBps;
+    // For slippage, use the fixed component from entry slippage model
+    const slippageFee = model.slippage.entrySlippage.fixedBps ?? 0;
+    return takerFee + slippageFee;
+  }
+  // Simple fee model
+  return fees.takerFeeBps + fees.slippageBps;
+}
 
 function createNoEntryResult(alertTsMs: number): PolicyExecutionResult {
   return {
@@ -451,7 +523,7 @@ function buildResult(
   exitReason: string,
   maxAdverseExcursionBps: number,
   peakHigh: number,
-  fees: { takerFeeBps: number; slippageBps: number },
+  fees: FeeConfig | ExecutionConfig,
   stoppedOut: boolean,
   stopExitPrice?: number,
   takeProfitExitPrice?: number
@@ -471,7 +543,7 @@ function buildResult(
 
   // Calculate return
   const grossReturnBps = (exitPx / entryPx - 1) * 10000;
-  const totalFeeBps = fees.takerFeeBps + fees.slippageBps;
+  const totalFeeBps = getTotalFeeBps(fees);
   const netReturnBps = grossReturnBps - totalFeeBps * 2; // Entry + exit fees
 
   // Calculate tail capture

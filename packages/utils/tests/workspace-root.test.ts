@@ -37,7 +37,7 @@ describe('findWorkspaceRoot', () => {
     const packageFile = join(rootDir, 'package.json');
     writeFileSync(
       packageFile,
-      JSON.stringify({ name: 'workspace-root-test', workspaces: ['packages/*'] }, null, 2),
+      JSON.stringify({ name: 'workspace-root-test', workspaces: ['packages/*'] }, null, 2)
     );
 
     const detected = findWorkspaceRoot(nestedDir);

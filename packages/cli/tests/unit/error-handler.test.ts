@@ -84,7 +84,7 @@ describe('ErrorHandler', () => {
     it('should handle network errors', () => {
       const error = new Error('Network connection failed');
       const result = handleSolanaError(error);
-      expect(result).toContain('Network error');
+      expect(result).toContain('Connection refused');
     });
 
     it('should handle RPC errors', () => {

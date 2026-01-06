@@ -14,6 +14,10 @@ from .partitioner import (
 )
 from .baseline_query import run_baseline_query
 from .tp_sl_query import run_tp_sl_query
+from .extended_exits import (
+    ExitConfig,
+    run_extended_exit_query,
+)
 from .storage import (
     store_baseline_run,
     store_tp_sl_run,
@@ -59,6 +63,7 @@ from .optimizer_config import (
     TpSlParamSpace,
     LadderTpParamSpace,
     TrailingStopParamSpace,
+    BreakevenParamSpace,
     TimeLimitParamSpace,
     DelayedEntryParamSpace,
     ReentryParamSpace,
@@ -72,13 +77,17 @@ from .optimizer import (
     run_optimization,
 )
 from .run_contract import (
+    RunConfig,
     RunIdentity,
     RunRecord,
     ensure_runs_schema,
     store_run,
+    store_run_summary,
+    store_caller_scores,
     load_run,
     find_run_by_fingerprint,
     list_recent_runs,
+    get_caller_scores_for_run,
 )
 from .metrics_contract import (
     MetricCategory,
@@ -140,6 +149,141 @@ from .scoring import (
     print_scored_leaderboard,
     generate_caller_scored_v2_sql,
 )
+from .trial_ledger import (
+    ensure_trial_schema,
+    store_optimizer_run,
+    store_walk_forward_run,
+    list_runs,
+    get_best_trials,
+    get_walk_forward_summary,
+    print_recent_runs,
+    # Pipeline phases (audit trail)
+    PIPELINE_PHASES,
+    store_phase_start,
+    store_phase_complete,
+    store_phase_failed,
+    get_phase_status,
+    get_run_phases,
+    can_resume_from_phase,
+    get_last_completed_phase,
+    # Islands
+    store_islands,
+    load_islands,
+    # Island champions
+    store_island_champions,
+    load_island_champions,
+    # Stress lane validation
+    store_stress_lane_result,
+    get_completed_lanes_for_champion,
+    load_stress_lane_results,
+    # Champion validation
+    store_champion_validation,
+    load_champion_validations,
+    get_maximin_winner,
+    # Resume helpers
+    get_resumable_run_state,
+    print_run_state,
+)
+from .optimizer_objective import (
+    ObjectiveConfig,
+    ObjectiveResult,
+    ObjectiveComponents,  # Alias for ObjectiveResult
+    DEFAULT_OBJECTIVE_CONFIG,
+    # Tiered DD penalty functions
+    compute_dd_penalty_single,
+    compute_dd_penalty_tiered,
+    compute_dd_penalty,
+    # Tiered time boost functions
+    compute_time_boost_single,
+    compute_time_boost_tiered,
+    compute_time_boost,
+    compute_discipline_bonus,
+    compute_tail_bonus,
+    compute_confidence,
+    compute_objective,
+    score_from_summary,
+    compute_implied_avg_loss_r,
+    check_loss_r_sanity,
+    print_objective_breakdown,
+)
+from .robust_region_finder import (
+    # DD Penalty
+    DDPenaltyConfig,
+    DEFAULT_DD_PENALTY,
+    compute_dd_penalty_robust,
+    # Stress Config (legacy single-lane)
+    StressConfig,
+    simulate_stress_r,
+    # Gates
+    GateConfig,
+    DEFAULT_GATE_CONFIG,
+    GateCheckResult,
+    check_gates,
+    print_gate_check,
+    # Robust objective
+    FoldResult,
+    RobustObjectiveResult,
+    RobustObjectiveConfig,
+    DEFAULT_ROBUST_CONFIG,
+    compute_robust_objective,
+    # Parameter islands
+    ParameterIsland,
+    cluster_parameters,
+    print_islands,
+    # Island champions
+    IslandChampion,
+    extract_island_champions,
+    print_island_champions,
+    # Entry point
+    evaluate_candidate_robust,
+)
+from .stress_lanes import (
+    # Stress lane types
+    StressLane,
+    # Lane presets
+    STRESS_LANES_BASIC,
+    STRESS_LANES_FULL,
+    STRESS_LANES_EXTENDED,
+    STRESS_LANES_ADVERSARIAL,
+    STRESS_LANE_MATRIX,
+    get_stress_lanes,
+    # Analytical simulation
+    simulate_lane_stress_analytical,
+    simulate_all_lanes_analytical,
+    # Scoring
+    LaneScoreResult,
+    compute_lane_scores,
+    # Champion validation
+    ChampionValidationResult,
+    print_lane_matrix,
+)
+from .run_mode import (
+    # Types
+    ModeType,
+    LanePack,
+    # Sub-configs
+    GateThresholds,
+    ObjectiveWeights,
+    DataWindow,
+    SearchConfig,
+    StressTestConfig,
+    # Main contract
+    RunMode,
+    # Fingerprints
+    compute_data_fingerprint,
+    get_git_commit,
+    get_git_dirty,
+    # Presets
+    create_cheap_mode,
+    create_serious_mode,
+    create_war_room_mode,
+    create_mode,
+    # Lane packs
+    LANE_PACK_DEFINITIONS,
+    get_lane_pack,
+    # Utils
+    print_mode_summary,
+)
 
 __all__ = [
     # Alerts
@@ -157,6 +301,9 @@ __all__ = [
     # Queries
     "run_baseline_query",
     "run_tp_sl_query",
+    # Extended exits
+    "ExitConfig",
+    "run_extended_exit_query",
     # Storage
     "store_baseline_run",
     "store_tp_sl_run",
@@ -197,6 +344,7 @@ __all__ = [
     "TpSlParamSpace",
     "LadderTpParamSpace",
     "TrailingStopParamSpace",
+    "BreakevenParamSpace",
     "TimeLimitParamSpace",
     "DelayedEntryParamSpace",
     "ReentryParamSpace",
@@ -207,14 +355,32 @@ __all__ = [
     "OptimizationResult",
     "OptimizationRun",
     "run_optimization",
+    # Optimizer objective
+    "ObjectiveConfig",
+    "ObjectiveComponents",
+    "DEFAULT_OBJECTIVE_CONFIG",
+    "CONSERVATIVE_OBJECTIVE_CONFIG",
+    "AGGRESSIVE_OBJECTIVE_CONFIG",
+    "compute_dd_penalty",
+    "compute_timing_boost",
+    "compute_tail_bonus",
+    "compute_win_rate_penalty",
+    "compute_loss_r_penalty",
+    "compute_objective",
+    "score_result",
+    "print_objective_breakdown",
     # Run contract
+    "RunConfig",
     "RunIdentity",
     "RunRecord",
     "ensure_runs_schema",
     "store_run",
+    "store_run_summary",
+    "store_caller_scores",
     "load_run",
     "find_run_by_fingerprint",
     "list_recent_runs",
+    "get_caller_scores_for_run",
     # Metrics contract
     "MetricCategory",
     "PathMetricDef",
@@ -270,5 +436,115 @@ __all__ = [
     "score_callers_v2",
     "print_scored_leaderboard",
     "generate_caller_scored_v2_sql",
+    # Trial Ledger (experiment tracking)
+    "ensure_trial_schema",
+    "store_optimizer_run",
+    "store_walk_forward_run",
+    "list_runs",
+    "get_best_trials",
+    "get_walk_forward_summary",
+    "print_recent_runs",
+    # Pipeline phases (audit trail + resume)
+    "PIPELINE_PHASES",
+    "store_phase_start",
+    "store_phase_complete",
+    "store_phase_failed",
+    "get_phase_status",
+    "get_run_phases",
+    "can_resume_from_phase",
+    "get_last_completed_phase",
+    # Islands storage
+    "store_islands",
+    "load_islands",
+    # Island champions storage
+    "store_island_champions",
+    "load_island_champions",
+    # Stress lane validation storage
+    "store_stress_lane_result",
+    "get_completed_lanes_for_champion",
+    "load_stress_lane_results",
+    # Champion validation storage
+    "store_champion_validation",
+    "load_champion_validations",
+    "get_maximin_winner",
+    # Resume helpers
+    "get_resumable_run_state",
+    "print_run_state",
+    # Optimizer Objective
+    "ObjectiveConfig",
+    "ObjectiveResult",
+    "DEFAULT_OBJECTIVE_CONFIG",
+    # Tiered DD penalty
+    "compute_dd_penalty_single",
+    "compute_dd_penalty_tiered",
+    "compute_dd_penalty",
+    # Tiered time boost
+    "compute_time_boost_single",
+    "compute_time_boost_tiered",
+    "compute_time_boost",
+    "compute_discipline_bonus",
+    "compute_tail_bonus",
+    "compute_confidence",
+    "compute_objective",
+    "score_from_summary",
+    "compute_implied_avg_loss_r",
+    "check_loss_r_sanity",
+    "print_objective_breakdown",
+    # Robust Region Finder
+    "DDPenaltyConfig",
+    "DEFAULT_DD_PENALTY",
+    "compute_dd_penalty_robust",
+    "StressConfig",
+    "simulate_stress_r",
+    "GateConfig",
+    "DEFAULT_GATE_CONFIG",
+    "GateCheckResult",
+    "check_gates",
+    "print_gate_check",
+    "FoldResult",
+    "RobustObjectiveResult",
+    "RobustObjectiveConfig",
+    "DEFAULT_ROBUST_CONFIG",
+    "compute_robust_objective",
+    "ParameterIsland",
+    "cluster_parameters",
+    "print_islands",
+    "IslandChampion",
+    "extract_island_champions",
+    "print_island_champions",
+    "evaluate_candidate_robust",
+    # Stress Lanes
+    "StressLane",
+    "STRESS_LANES_BASIC",
+    "STRESS_LANES_FULL",
+    "STRESS_LANES_EXTENDED",
+    "STRESS_LANES_ADVERSARIAL",
+    "STRESS_LANE_MATRIX",
+    "get_stress_lanes",
+    "simulate_lane_stress_analytical",
+    "simulate_all_lanes_analytical",
+    "LaneScoreResult",
+    "compute_lane_scores",
+    "ChampionValidationResult",
+    "print_lane_matrix",
+    # Run Mode Contract
+    "ModeType",
+    "LanePack",
+    "GateThresholds",
+    "ObjectiveWeights",
+    "DataWindow",
+    "SearchConfig",
+    "StressTestConfig",
+    "RunMode",
+    "compute_data_fingerprint",
+    "get_git_commit",
+    "get_git_dirty",
+    "create_cheap_mode",
+    "create_serious_mode",
+    "create_war_room_mode",
+    "create_mode",
+    "LANE_PACK_DEFINITIONS",
+    "get_lane_pack",
+    "print_mode_summary",
 ]
 

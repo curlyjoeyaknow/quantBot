@@ -102,17 +102,19 @@ vi.mock('duckdb', () => {
     }),
   };
 
+  // Create a mock Database class
+  class MockDatabase {
+    connect() {
+      return mockDb;
+    }
+    close = vi.fn();
+  }
+
+  // duckdb exports Database on the default export object (CommonJS pattern)
   return {
     default: {
-      Database: vi.fn().mockImplementation(() => ({
-        connect: () => mockDb,
-        close: vi.fn(),
-      })),
+      Database: MockDatabase,
     },
-    Database: vi.fn().mockImplementation(() => ({
-      connect: () => mockDb,
-      close: vi.fn(),
-    })),
   };
 });
 
@@ -122,14 +124,33 @@ vi.mock('fs/promises', () => ({
 }));
 
 // Mock @quantbot/utils
-vi.mock('@quantbot/utils', () => ({
-  logger: {
+vi.mock('@quantbot/utils', () => {
+  class MockTimingContext {
+    start = vi.fn();
+    end = vi.fn();
+    phaseSync = vi.fn((label: string, fn: () => unknown) => fn());
+    phase = vi.fn(async (label: string, fn: () => Promise<unknown>) => await fn());
+    toJSON = vi.fn().mockReturnValue({
+      totalMs: 0,
+      phases: [],
+      parts: {},
+    });
+    summaryLine = vi.fn().mockReturnValue('[timing] total=0ms');
+  }
+
+  const mockLogger = {
     info: vi.fn(),
     warn: vi.fn(),
     error: vi.fn(),
     debug: vi.fn(),
-  },
-}));
+  };
+
+  return {
+    logger: mockLogger,
+    TimingContext: MockTimingContext,
+    createPackageLogger: vi.fn(() => mockLogger),
+  };
+});
 
 describe('runPathOnly', () => {
   beforeEach(() => {

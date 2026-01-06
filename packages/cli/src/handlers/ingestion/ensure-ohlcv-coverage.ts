@@ -18,7 +18,7 @@ import type { CommandContext } from '../../core/command-context.js';
 import { ensureOhlcvCoverageSchema } from '../../commands/ingestion.js';
 import type { z } from 'zod';
 import { logger } from '@quantbot/utils';
-import { DuckDBStorageService } from '@quantbot/simulation';
+import { DuckDBStorageService } from '@quantbot/backtest';
 import { fetchMultiChainMetadata, getBirdeyeClient, heliusRestClient } from '@quantbot/api-clients';
 
 export type EnsureOhlcvCoverageArgs = z.infer<typeof ensureOhlcvCoverageSchema>;

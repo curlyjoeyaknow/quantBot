@@ -306,6 +306,12 @@ importers:
       luxon:
         specifier: ^3.7.2
         version: 3.7.2
+      uuid:
+        specifier: ^11.1.0
+        version: 11.1.0
+      zod:
+        specifier: ^4.1.13
+        version: 4.1.13
     devDependencies:
       '@types/luxon':
         specifier: ^3.7.1
@@ -355,9 +361,6 @@ importers:
       '@quantbot/ohlcv':
         specifier: workspace:*
         version: link:../ohlcv
-      '@quantbot/simulation':
-        specifier: workspace:*
-        version: link:../simulation
       '@quantbot/storage':
         specifier: workspace:*
         version: link:../storage
@@ -860,6 +863,9 @@ importers:
       '@quantbot/api-clients':
         specifier: workspace:*
         version: link:../api-clients
+      '@quantbot/backtest':
+        specifier: workspace:*
+        version: link:../backtest
       '@quantbot/core':
         specifier: workspace:*
         version: link:../core
@@ -872,18 +878,9 @@ importers:
       '@quantbot/jobs':
         specifier: workspace:*
         version: link:../jobs
-      '@quantbot/lab':
-        specifier: workspace:*
-        version: link:../lab
-      '@quantbot/labcatalog':
-        specifier: workspace:*
-        version: link:../labcatalog
       '@quantbot/ohlcv':
         specifier: workspace:*
         version: link:../ohlcv
-      '@quantbot/simulation':
-        specifier: workspace:*
-        version: link:../simulation
       '@quantbot/storage':
         specifier: workspace:*
         version: link:../storage
