@@ -18,6 +18,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import fc from 'fast-check';
 import { DateTime } from 'luxon';
+import type { DeepPartial } from 'type-fest';
 import { ResearchSimulationAdapter } from '../../src/research/simulation-adapter.js';
 import type {
   SimulationRequest,
@@ -76,7 +77,7 @@ function createMockWorkflowContext(overrides?: Partial<WorkflowContext>): Workfl
 /**
  * Create a mock snapshot data generator
  */
-function createMockSnapshotData(overrides?: Partial<SnapshotData>): SnapshotData {
+function createMockSnapshotData(overrides?: DeepPartial<SnapshotData>): SnapshotData {
   const baseTimestamp = 1704067200; // 2024-01-01T00:00:00Z
   const mint = 'So11111111111111111111111111111111111111112';
 
@@ -124,10 +125,12 @@ function createMockSnapshotData(overrides?: Partial<SnapshotData>): SnapshotData
   };
 }
 
+import type { DeepPartial } from 'type-fest';
+
 /**
  * Create a mock simulation request
  */
-function createMockSimulationRequest(overrides?: Partial<SimulationRequest>): SimulationRequest {
+function createMockSimulationRequest(overrides?: DeepPartial<SimulationRequest>): SimulationRequest {
   const baseTimestamp = 1704067200; // 2024-01-01T00:00:00Z
 
   const strategyConfig: StrategyConfig = {

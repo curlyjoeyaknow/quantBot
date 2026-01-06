@@ -74,6 +74,8 @@ from lib.trial_ledger import (
     store_champion_validation,
     load_champion_validations,
     get_maximin_winner,
+    # Write queue support
+    enable_write_queue,
 )
 from lib.robust_region_finder import (
     FoldResult,
@@ -806,16 +808,16 @@ def run_random_search(
                 results.append(result)
                 
                 if verbose:
-                    gate_str = "✓" if robust_result.passes_gates else "✗"
-                    dd_str = robust_result.dd_category[:4]
-                    stress_str = f" Str={robust_result.median_stressed_r:+.1f}" if robust_result.median_stressed_r else ""
+                    tp_str = f"{params['tp_mult']:.2f}"
+                    sl_str = f"{params['sl_mult']:.2f}"
+                    stress_str = f" Str={color_value(robust_result.median_stressed_r, '+.1f')}" if robust_result.median_stressed_r else ""
                     print(
                         f"[{i:3d}/{config.n_trials}] "
-                        f"TP={params['tp_mult']:.2f}x SL={params['sl_mult']:.2f}x | "
-                        f"MedTeR={robust_result.median_test_r:+.1f} "
-                        f"Ratio={robust_result.median_ratio:.2f} "
-                        f"DD={dd_str} "
-                        f"Score={robust_result.robust_score:+.1f}{stress_str} {gate_str}",
+                        f"TP={cyan(tp_str)}x SL={cyan(sl_str)}x │ "
+                        f"MedTeR={color_value(robust_result.median_test_r, '+.1f')} "
+                        f"Ratio={color_ratio(robust_result.median_ratio)} "
+                        f"DD={color_dd_category(robust_result.dd_category)} "
+                        f"Score={color_value(robust_result.robust_score, '+.1f')}{stress_str} {gate_symbol(robust_result.passes_gates)}",
                         file=sys.stderr
                     )
             
@@ -980,26 +982,61 @@ def run_random_search(
             # Filter to tradeable only
             tradeable_robust = [c for c in sorted_robust if c.get("robust_result", {}).get("passes_gates", False)]
             
-            print(f"\nTradeable candidates: {len(tradeable_robust)}/{len(sorted_robust)}", file=sys.stderr)
+            # Colored tradeable count
+            tradeable_pct = len(tradeable_robust)/len(sorted_robust) if sorted_robust else 0
+            print(f"\nTradeable: {color_value(len(tradeable_robust), 'd', 0)}/{len(sorted_robust)} " \
+                  f"({color_pct(tradeable_pct)})", file=sys.stderr)
             
-            # Top 30 by robust score
+            # TestR histogram
+            all_test_rs = [c.get("robust_result", {}).get("median_test_r", 0) for c in sorted_robust]
+            print(f"\n{bold('TestR Distribution:')}", file=sys.stderr)
+            print(histogram(all_test_rs, bins=15, width=45, height=4), file=sys.stderr)
+            print(f"  {mini_histogram(all_test_rs, width=45)}", file=sys.stderr)
+            
+            # Top N by robust score with colors
             print(f"\n{'─'*80}", file=sys.stderr)
-            print(f"TOP {config.top_n_candidates} BY ROBUST SCORE (median TestR - DD penalty - stress penalty):", file=sys.stderr)
-            print("  → Uses MEDIAN(TestR) not MEAN - robust to outlier folds", file=sys.stderr)
+            print(bold(f"TOP {config.top_n_candidates} BY ROBUST SCORE") + \
+                  dim(" (median TestR - DD penalty - stress penalty):"), file=sys.stderr)
+            print(dim("  → Uses MEDIAN(TestR) not MEAN - robust to outlier folds"), file=sys.stderr)
             print("─" * 80, file=sys.stderr)
             
             for i, c in enumerate(sorted_robust[:config.top_n_candidates], 1):
                 r = c.get("robust_result", {})
                 params = c.get("params", {})
-                gate_str = "✓" if r.get("passes_gates") else "✗"
-                dd_cat = r.get("dd_category", "?")[:4]
-                stress_str = f"Str={r.get('median_stressed_r', 0):+.1f}" if r.get("median_stressed_r") else ""
+                
+                # Get fold test Rs for sparkline
+                fold_test_rs = None
+                if "fold_results" in r:
+                    fold_test_rs = [f.get("test_r", 0) for f in r.get("fold_results", []) if isinstance(f, dict)]
+                
+                # Build colored line
+                tp = params.get("tp_mult", 0)
+                sl = params.get("sl_mult", 0)
+                robust_score = r.get("robust_score", 0)
+                median_test_r = r.get("median_test_r", 0)
+                ratio = r.get("median_ratio", 0)
+                dd_cat = r.get("dd_category", "?")
+                stressed_r = r.get("median_stressed_r")
+                passed = r.get("passes_gates", False)
+                
+                # Sparkline
+                spark = ""
+                if fold_test_rs and len(fold_test_rs) > 1:
+                    spark = " " + colored_sparkline(fold_test_rs, width=6)
+                
+                # Stressed R
+                stress_str = ""
+                if stressed_r is not None:
+                    stress_str = f" Str={color_value(stressed_r, '+.1f')}"
+                
+                tp_str = f"{tp:.2f}"
+                sl_str = f"{sl:.2f}"
                 print(
-                    f"  {i:2d}. TP={params.get('tp_mult', 0):.2f}x SL={params.get('sl_mult', 0):.2f}x | "
-                    f"Score={r.get('robust_score', 0):+6.1f} "
-                    f"MedTeR={r.get('median_test_r', 0):+5.1f} "
-                    f"Ratio={r.get('median_ratio', 0):.2f} "
-                    f"DD={dd_cat} {stress_str} {gate_str}",
+                    f"  {i:2d}. TP={cyan(tp_str)}x SL={cyan(sl_str)}x │ "
+                    f"Score={color_value(robust_score, '+6.1f')} "
+                    f"MedTeR={color_value(median_test_r, '+5.1f')} "
+                    f"Ratio={color_ratio(ratio)} "
+                    f"DD={color_dd_category(dd_cat)}{stress_str}{spark} {gate_symbol(passed)}",
                     file=sys.stderr
                 )
             
@@ -1040,18 +1077,22 @@ def run_random_search(
             if verbose:
                 print(f"✓ Phase 2: Clustering complete ({len(islands)} islands)", file=sys.stderr)
             
-            # Robust mode summary
+            # Colored robust mode summary
             robust_scores = [c.get("robust_result", {}).get("robust_score", 0) for c in sorted_robust]
             median_test_rs = [c.get("robust_result", {}).get("median_test_r", 0) for c in sorted_robust]
             from statistics import median as stat_median
             
+            med_score = stat_median(robust_scores) if robust_scores else 0
+            med_test_r = stat_median(median_test_rs) if median_test_rs else 0
+            pct_tradeable = len(tradeable_robust) / len(sorted_robust) if sorted_robust else 0
+            
             print(f"\n{'='*80}", file=sys.stderr)
-            print("ROBUST MODE SUMMARY:", file=sys.stderr)
-            print(f"  Median of Robust Scores: {stat_median(robust_scores):+.2f}", file=sys.stderr)
-            print(f"  Median of Median TestR:  {stat_median(median_test_rs):+.2f}", file=sys.stderr)
-            print(f"  % Tradeable:             {len(tradeable_robust)/len(sorted_robust)*100:.0f}%", file=sys.stderr)
-            print(f"  Parameter Islands:       {len(islands)}", file=sys.stderr)
-            print(f"{'='*80}", file=sys.stderr)
+            print(bold("ROBUST MODE SUMMARY:"), file=sys.stderr)
+            print(f"  Median of Robust Scores: {color_value(med_score, '+.2f')}", file=sys.stderr)
+            print(f"  Median of Median TestR:  {color_value(med_test_r, '+.2f')}", file=sys.stderr)
+            print(f"  % Tradeable:             {color_pct(pct_tradeable)}", file=sys.stderr)
+            print(f"  Parameter Islands:       {cyan(str(len(islands)))}", file=sys.stderr)
+            print("=" * 80, file=sys.stderr)
         
         elif config.use_walk_forward:
             # ================================================================
@@ -1268,6 +1309,10 @@ def main() -> None:
     ap.add_argument("--show-mode", action="store_true",
                     help="Show mode configuration details and exit")
     
+    # Write queue (for parallel read access)
+    ap.add_argument("--queue-writes", action="store_true",
+                    help="Queue database writes via background worker (enables parallel reads)")
+    
     args = ap.parse_args()
     
     config = RandomSearchConfig(
@@ -1365,6 +1410,10 @@ def main() -> None:
         print(f"\n{'─'*70}", file=sys.stderr)
         print(f"  {run_mode.short_signature()}", file=sys.stderr)
         print(f"{'─'*70}\n", file=sys.stderr)
+    
+    # Enable write queue if requested (for parallel read access)
+    if getattr(args, "queue_writes", False):
+        enable_write_queue(True)
     
     # Determine run_id
     if config.resume_run_id:

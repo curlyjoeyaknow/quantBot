@@ -116,10 +116,12 @@ class ConsoleLogger implements SimulationLogger {
   }
 }
 
+import type { DeepPartial } from 'type-fest';
+
 export interface SimulationEngineDeps {
   sinks?: SimulationResultSink[];
   logger?: SimulationLogger;
-  defaults?: Partial<ScenarioDefaults>;
+  defaults?: DeepPartial<ScenarioDefaults>;
 }
 
 export interface ScenarioDefaults {
@@ -162,7 +164,7 @@ export interface ScenarioRunRequest {
   /** Pre-fetched candles for each target. Keys should match target indices or mint addresses. */
   candlesMap: Map<SimulationTarget, Candle[]> | Record<string, Candle[]>;
   runOptions?: Partial<RunOptions>;
-  overrides?: Partial<ScenarioDefaults>;
+  overrides?: DeepPartial<ScenarioDefaults>;
 }
 
 export class SimulationEngine {
@@ -290,7 +292,7 @@ export class SimulationEngine {
 
   private mergeScenarioConfigs(
     scenario: SimulationScenarioConfig,
-    overrides?: Partial<ScenarioDefaults>
+    overrides?: DeepPartial<ScenarioDefaults>
   ): ScenarioDefaults {
     return {
       stopLoss:

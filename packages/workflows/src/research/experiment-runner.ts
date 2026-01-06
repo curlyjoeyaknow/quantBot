@@ -289,6 +289,8 @@ export async function runBatchSimulation(
     const promises = batchSlice.map(async (variation) => {
       try {
         // Merge base request with overrides
+        // Using type-level Merge would be ideal, but runtime deep merge is needed here
+        // The type system will still catch mismatches at compile time
         const request: SimulationRequest = {
           ...batch.baseRequest,
           ...variation.overrides,

@@ -7,38 +7,177 @@ import pandas as pd
 import numpy as np
 import json
 from datetime import datetime
-from pathlib import Path
 from glob import glob
 import sys
+from concurrent.futures import ProcessPoolExecutor, as_completed
 
 def load_ohlcv_for_mint(mint: str, parquet_dir: str = 'slices/per_token') -> list:
-    """Load OHLCV data for a specific mint from parquet files."""
+    """Load OHLCV data for a specific mint from parquet files.
+    
+    Handles multiple files for the same mint by merging and deduplicating.
+    """
     parquet_files = glob(f'{parquet_dir}/*.parquet')
+    all_candles = []
     
     for f in parquet_files:
         try:
             df = pd.read_parquet(f)
-            if len(df) > 0 and df.iloc[0]['token_address'] == mint:
-                # Convert to list of candles
-                candles = []
-                for _, row in df.iterrows():
-                    candles.append({
-                        'time': int(row['timestamp'].timestamp()),
-                        'open': round(row['open'], 10),
-                        'high': round(row['high'], 10),
-                        'low': round(row['low'], 10),
-                        'close': round(row['close'], 10),
-                        'volume': round(row['volume'], 2),
-                    })
-                return sorted(candles, key=lambda x: x['time'])
-        except Exception as e:
+            if len(df) == 0:
+                continue
+            
+            # Check if this file contains data for our mint
+            # Some files might have multiple tokens, so filter by mint
+            if 'token_address' in df.columns:
+                df_filtered = df[df['token_address'] == mint].copy()
+            elif len(df) > 0 and df.iloc[0].get('token_address') == mint:
+                # Single token per file case
+                df_filtered = df.copy()
+            else:
+                continue
+            
+            if len(df_filtered) == 0:
+                continue
+            
+            # Convert to list of candles
+            for _, row in df_filtered.iterrows():
+                all_candles.append({
+                    'time': int(row['timestamp'].timestamp()),
+                    'open': round(row['open'], 10),
+                    'high': round(row['high'], 10),
+                    'low': round(row['low'], 10),
+                    'close': round(row['close'], 10),
+                    'volume': round(row['volume'], 2),
+                })
+        except Exception:
             continue
-    return []
+    
+    if not all_candles:
+        return []
+    
+    # Deduplicate by timestamp (keep first occurrence if duplicates)
+    seen_times = set()
+    unique_candles = []
+    for candle in all_candles:
+        if candle['time'] not in seen_times:
+            seen_times.add(candle['time'])
+            unique_candles.append(candle)
+    
+    # Sort by time
+    return sorted(unique_candles, key=lambda x: x['time'])
+
+def get_token_metadata(mint: str, row: pd.Series) -> dict:
+    """Get token name and symbol from row data or return defaults."""
+    # Try to get from CSV columns first
+    token_name = None
+    token_symbol = None
+    
+    if 'token_name' in row.index and pd.notna(row.get('token_name')):
+        token_name = str(row['token_name']).strip()
+    if 'token_symbol' in row.index and pd.notna(row.get('token_symbol')):
+        token_symbol = str(row['token_symbol']).strip()
+    
+    # If not found, use defaults
+    if not token_name:
+        token_name = 'Unknown Token'
+    if not token_symbol:
+        token_symbol = mint[:4].upper() if len(mint) >= 4 else 'UNK'
+    
+    return {
+        'token_name': token_name,
+        'token_symbol': token_symbol,
+    }
+
+def process_single_trade(args):
+    """Process a single trade - designed for multiprocessing."""
+    row_dict, parquet_dir, risk_per_trade, default_tp_mult, default_sl_mult = args
+    
+    # Convert dict back to Series for compatibility
+    row = pd.Series(row_dict)
+    mint = row['mint']
+    
+    # Load OHLCV data
+    ohlcv = load_ohlcv_for_mint(mint, parquet_dir)
+    
+    if len(ohlcv) < 5:
+        return None
+    
+    # Parse alert timestamp
+    alert_ts = pd.to_datetime(row['alert_ts_utc']).timestamp()
+    
+    # Get horizon hours (default 48 if not specified)
+    horizon_hours = float(row.get('horizon_hours', 48)) if pd.notna(row.get('horizon_hours', None)) else 48.0
+    horizon_seconds = int(horizon_hours * 3600)
+    
+    # Filter OHLCV to only show horizon window (from alert to alert + horizon)
+    alert_ts_unix = int(alert_ts)
+    horizon_end_ts = alert_ts_unix + horizon_seconds
+    
+    # Filter candles to horizon window
+    horizon_ohlcv = [
+        c for c in ohlcv 
+        if alert_ts_unix <= c['time'] <= horizon_end_ts
+    ]
+    
+    if len(horizon_ohlcv) < 5:
+        # If not enough candles in horizon, try to include some pre-alert context
+        # Include 1 hour before alert and full horizon after
+        pre_alert_ts = alert_ts_unix - 3600
+        horizon_ohlcv = [
+            c for c in ohlcv 
+            if pre_alert_ts <= c['time'] <= horizon_end_ts
+        ]
+    
+    if len(horizon_ohlcv) < 5:
+        return None
+    
+    # Get token metadata
+    token_meta = get_token_metadata(mint, row)
+    
+    # Calculate trade events (use full ohlcv for event detection, but display only horizon)
+    event_data = calculate_trade_events(row, ohlcv, risk_per_trade, default_tp_mult, default_sl_mult)
+    
+    trade = {
+        'id': row['alert_id'],
+        'mint': mint,  # Full mint address - NEVER truncate
+        'token_name': token_meta['token_name'],
+        'token_symbol': token_meta['token_symbol'],
+        'display_name': f"{token_meta['token_name']} ({token_meta['token_symbol']})",
+        'alert_ts': row['alert_ts_utc'],
+        'alert_ts_unix': alert_ts_unix,
+        'horizon_end_ts': horizon_end_ts,
+        'ath_mult': round(row['ath_mult'], 2),
+        'time_to_2x': row['time_to_2x_s'] if pd.notna(row['time_to_2x_s']) else None,
+        'time_to_5x': row['time_to_5x_s'] if pd.notna(row['time_to_5x_s']) else None,
+        'time_to_10x': row['time_to_10x_s'] if pd.notna(row['time_to_10x_s']) else None,
+        'dd_overall': round(row['dd_overall'] * 100, 1),
+        'tp_sl_ret': round(row['tp_sl_ret'] * 100, 1),
+        'exit_reason': row['tp_sl_exit_reason'],
+        'entry_price': row['entry_price'],
+        'ohlcv': horizon_ohlcv,  # Only horizon window candles
+        **event_data,  # Add event data
+    }
+    
+    return trade
 
 def calculate_trade_events(row, ohlcv, risk_per_trade: float = 0.02, default_tp_mult: float = 80.0, default_sl_mult: float = 0.7):
     """Calculate trade events timeline from row data and OHLCV."""
     alert_ts = pd.to_datetime(row['alert_ts_utc']).timestamp()
     entry_price = float(row['entry_price'])
+    
+    # Get actual return from CSV (more accurate than calculating from exit price)
+    # tp_sl_ret is stored as (exit_price / entry_price - 1), so:
+    # For 80x: (80 - 1) = 79.0, multiply by 100 = 7900%
+    # For 48.76x: (48.76 - 1) = 47.76, multiply by 100 = 4776%
+    # We multiply by 100 to convert to percentage
+    tp_sl_ret_raw = row.get('tp_sl_ret', None)
+    if pd.notna(tp_sl_ret_raw):
+        try:
+            tp_sl_ret_val = float(tp_sl_ret_raw)
+            actual_return_pct = tp_sl_ret_val * 100
+        except (ValueError, TypeError):
+            actual_return_pct = None
+    else:
+        actual_return_pct = None
     
     # Try to get TP/SL from row, or use defaults
     tp_mult = float(row.get('tp_mult', default_tp_mult)) if pd.notna(row.get('tp_mult', None)) else default_tp_mult
@@ -75,6 +214,8 @@ def calculate_trade_events(row, ohlcv, risk_per_trade: float = 0.02, default_tp_
         'type': 'alert',
         'description': f'Alert received',
         'price': None,
+        'change_pct': None,
+        'portfolio_impact_pct': None,
     })
     
     # Add entry event
@@ -84,7 +225,9 @@ def calculate_trade_events(row, ohlcv, risk_per_trade: float = 0.02, default_tp_
         'type': 'entry',
         'description': f'Trade opened (executed at {entry_time})',
         'price': entry_price,
+        'change_pct': 0.0,
         'position_size_pct': round(position_size_pct * 100, 2),
+        'portfolio_impact_pct': None,
     })
     
     # Add stop loss set event
@@ -94,6 +237,8 @@ def calculate_trade_events(row, ohlcv, risk_per_trade: float = 0.02, default_tp_
         'type': 'stop_loss_set',
         'description': f'Stop loss set at ${sl_price:.8f} ({sl_mult*100:.0f}%)',
         'price': sl_price,
+        'change_pct': round((sl_mult - 1) * 100, 1),
+        'portfolio_impact_pct': None,  # No impact when setting
     })
     
     # Find exit event from OHLCV
@@ -104,13 +249,22 @@ def calculate_trade_events(row, ohlcv, risk_per_trade: float = 0.02, default_tp_
                 exit_ts = candle['time']
                 exit_price = sl_price
                 exit_time_str = datetime.fromtimestamp(exit_ts).strftime('%Y-%m-%d %H:%M:%S')
+                # Always use actual return from CSV for SL exits (accounts for fees, slippage)
+                if actual_return_pct is not None and pd.notna(actual_return_pct):
+                    ret_pct = actual_return_pct
+                else:
+                    # Fallback: calculate from SL multiplier if CSV return not available
+                    ret_pct = (sl_mult - 1) * 100
+                # Portfolio impact = position_size_pct * (return_pct / 100)
+                portfolio_impact_pct = position_size_pct * (ret_pct / 100)
                 events.append({
                     'time': exit_ts,
                     'time_str': exit_time_str,
                     'type': 'stop_loss_triggered',
-                    'description': f'Stop loss triggered - {sl_mult*100:.0f}%',
+                    'description': f'Stop loss triggered - {ret_pct:.1f}%',
                     'price': sl_price,
-                    'portfolio_impact_pct': round((sl_mult - 1) * position_size_pct * 100, 2),
+                    'change_pct': round(ret_pct, 1),
+                    'portfolio_impact_pct': round(portfolio_impact_pct * 100, 2),
                 })
                 break
     elif exit_reason == 'tp':
@@ -120,13 +274,24 @@ def calculate_trade_events(row, ohlcv, risk_per_trade: float = 0.02, default_tp_
                 exit_ts = candle['time']
                 exit_price = tp_price
                 exit_time_str = datetime.fromtimestamp(exit_ts).strftime('%Y-%m-%d %H:%M:%S')
+                # Always use actual return from CSV for TP exits (more accurate than TP multiplier)
+                # The actual return accounts for fees, slippage, and exact exit price
+                if actual_return_pct is not None and pd.notna(actual_return_pct):
+                    ret_pct = actual_return_pct
+                else:
+                    # Fallback: calculate from TP multiplier if CSV return not available
+                    ret_pct = (tp_mult - 1) * 100
+                # Portfolio impact = position_size_pct * (return_pct / 100)
+                # For 4776.2% return with 6.67% position: 6.67% * 47.762 = 318.7%
+                portfolio_impact_pct = position_size_pct * (ret_pct / 100)
                 events.append({
                     'time': exit_ts,
                     'time_str': exit_time_str,
                     'type': 'take_profit',
-                    'description': f'Take profit hit - {tp_mult*100:.0f}%',
+                    'description': f'Take profit hit - {ret_pct:.1f}%',
                     'price': tp_price,
-                    'portfolio_impact_pct': round((tp_mult - 1) * position_size_pct * 100, 2),
+                    'change_pct': round(ret_pct, 1),
+                    'portfolio_impact_pct': round(portfolio_impact_pct * 100, 2),
                 })
                 break
     else:
@@ -136,14 +301,22 @@ def calculate_trade_events(row, ohlcv, risk_per_trade: float = 0.02, default_tp_
             exit_ts = last_candle['time']
             exit_price = last_candle['close']
             exit_time_str = datetime.fromtimestamp(exit_ts).strftime('%Y-%m-%d %H:%M:%S')
-            ret_pct = (exit_price / entry_price - 1) * 100
+            # Use actual return from CSV if available, otherwise calculate from price
+            if actual_return_pct is not None and pd.notna(actual_return_pct):
+                ret_pct = actual_return_pct
+            else:
+                ret_pct = (exit_price / entry_price - 1) * 100
+            # Portfolio impact = position_size_pct * (return_pct / 100)
+            # For +111.7% return with 6.67% position: 6.67% * 1.117 = 7.45% portfolio impact
+            portfolio_impact_pct = position_size_pct * (ret_pct / 100)
             events.append({
                 'time': exit_ts,
                 'time_str': exit_time_str,
                 'type': 'horizon_exit',
                 'description': f'Horizon exit - {ret_pct:.1f}%',
                 'price': exit_price,
-                'portfolio_impact_pct': round(ret_pct * position_size_pct / 100, 2),
+                'change_pct': round(ret_pct, 1),
+                'portfolio_impact_pct': round(portfolio_impact_pct * 100, 2),
             })
     
     # Sort events by time
@@ -162,7 +335,7 @@ def calculate_trade_events(row, ohlcv, risk_per_trade: float = 0.02, default_tp_
         'exit_time_str': exit_time_str,
     }
 
-def generate_drilldown_report(csv_path: str, output_path: str = None, max_trades_per_caller: int = 50, risk_per_trade: float = 0.02, default_tp_mult: float = 80.0, default_sl_mult: float = 0.7):
+def generate_drilldown_report(csv_path: str, output_path: str = None, max_trades_per_caller: int = 50, risk_per_trade: float = 0.02, default_tp_mult: float = 80.0, default_sl_mult: float = 0.7, max_workers: int = None):
     """Generate interactive drill-down HTML report."""
     
     print("Loading results...")
@@ -187,51 +360,52 @@ def generate_drilldown_report(csv_path: str, output_path: str = None, max_trades
     # Build trades data with OHLCV
     trades_by_caller = {}
     
+    # Prepare all trades for parallel processing
+    all_trade_args = []
+    caller_trade_map = {}  # Map to track which caller each trade belongs to
+    
     for caller in callers[:30]:  # Limit to top 30 callers
         caller_trades = valid[valid['caller'] == caller].head(max_trades_per_caller)
-        trades = []
         
-        for _, row in caller_trades.iterrows():
-            mint = row['mint']
-            
-            # Load OHLCV data
-            ohlcv = load_ohlcv_for_mint(mint)
-            
-            if len(ohlcv) < 5:
-                continue
-            
-            # Parse alert timestamp
-            alert_ts = pd.to_datetime(row['alert_ts_utc']).timestamp()
-            
-            # Calculate trade events
-            event_data = calculate_trade_events(row, ohlcv, risk_per_trade, default_tp_mult, default_sl_mult)
-            
-            trade = {
-                'id': row['alert_id'],
-                'mint': mint,
-                'mint_short': mint[:8] + '...' + mint[-4:],
-                'alert_ts': row['alert_ts_utc'],
-                'alert_ts_unix': int(alert_ts),
-                'ath_mult': round(row['ath_mult'], 2),
-                'time_to_2x': row['time_to_2x_s'] if pd.notna(row['time_to_2x_s']) else None,
-                'time_to_5x': row['time_to_5x_s'] if pd.notna(row['time_to_5x_s']) else None,
-                'time_to_10x': row['time_to_10x_s'] if pd.notna(row['time_to_10x_s']) else None,
-                'dd_overall': round(row['dd_overall'] * 100, 1),
-                'tp_sl_ret': round(row['tp_sl_ret'] * 100, 1),
-                'exit_reason': row['tp_sl_exit_reason'],
-                'entry_price': row['entry_price'],
-                'ohlcv': ohlcv,
-                **event_data,  # Add event data
-            }
-            trades.append(trade)
-            
-        if trades:
-            trades_by_caller[caller] = {
-                'count': int(caller_counts[caller]),
-                'trades': trades
-            }
+        for idx, (_, row) in enumerate(caller_trades.iterrows()):
+            # Convert row to dict for pickling
+            row_dict = row.to_dict()
+            args = (row_dict, 'slices/per_token', risk_per_trade, default_tp_mult, default_sl_mult)
+            all_trade_args.append(args)
+            caller_trade_map[len(all_trade_args) - 1] = caller
+    
+    print(f"Processing {len(all_trade_args)} trades in parallel...")
+    
+    # Process trades in parallel
+    trades_by_caller = {}
+    completed_count = 0
+    
+    with ProcessPoolExecutor(max_workers=max_workers) as executor:
+        futures = {executor.submit(process_single_trade, args): idx for idx, args in enumerate(all_trade_args)}
         
-        print(f"  {caller}: {len(trades)} trades loaded")
+        for future in as_completed(futures):
+            idx = futures[future]
+            caller = caller_trade_map[idx]
+            
+            try:
+                trade = future.result()
+                if trade is not None:
+                    if caller not in trades_by_caller:
+                        trades_by_caller[caller] = {
+                            'count': int(caller_counts[caller]),
+                            'trades': []
+                        }
+                    trades_by_caller[caller]['trades'].append(trade)
+            except Exception as e:
+                print(f"  Error processing trade {idx}: {e}", file=sys.stderr)
+            
+            completed_count += 1
+            if completed_count % 10 == 0:
+                print(f"  Processed {completed_count}/{len(all_trade_args)} trades...")
+    
+    # Print summary
+    for caller, data in trades_by_caller.items():
+        print(f"  {caller}: {len(data['trades'])} trades loaded")
     
     # Calculate caller stats
     caller_stats = []
@@ -350,7 +524,7 @@ def generate_drilldown_report(csv_path: str, output_path: str = None, max_trades
             background: var(--bg-secondary);
             border-top: 1px solid var(--border-color);
             padding: 1rem 1.5rem;
-            max-height: 200px;
+            max-height: 300px;
             overflow-y: auto;
         }}
         
@@ -361,35 +535,35 @@ def generate_drilldown_report(csv_path: str, output_path: str = None, max_trades
             color: var(--text-secondary);
         }}
         
-        .event-item {{
-            display: flex;
-            gap: 0.75rem;
-            padding: 0.5rem 0;
-            border-bottom: 1px solid var(--border-color);
+        .event-table {{
+            width: 100%;
+            border-collapse: collapse;
             font-size: 0.8rem;
         }}
         
-        .event-item:last-child {{
-            border-bottom: none;
-        }}
-        
-        .event-time {{
-            font-family: 'JetBrains Mono', monospace;
-            color: var(--text-muted);
-            min-width: 140px;
-            flex-shrink: 0;
-        }}
-        
-        .event-description {{
-            flex: 1;
-            color: var(--text-primary);
-        }}
-        
-        .event-price {{
-            font-family: 'JetBrains Mono', monospace;
+        .event-table th {{
+            text-align: left;
+            padding: 0.5rem;
+            border-bottom: 2px solid var(--border-color);
             color: var(--text-secondary);
-            min-width: 100px;
-            text-align: right;
+            font-weight: 600;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+        }}
+        
+        .event-table td {{
+            padding: 0.5rem;
+            border-bottom: 1px solid var(--border-color);
+            font-family: 'JetBrains Mono', monospace;
+        }}
+        
+        .event-table tr:hover {{
+            background: var(--bg-hover);
+        }}
+        
+        .event-table .event-type {{
+            font-family: 'Space Grotesk', sans-serif;
+            color: var(--text-primary);
         }}
         
         .event-type-alert {{ color: var(--accent-amber); }}
@@ -398,6 +572,26 @@ def generate_drilldown_report(csv_path: str, output_path: str = None, max_trades
         .event-type-stop_loss_triggered {{ color: var(--accent-red); font-weight: 600; }}
         .event-type-take_profit {{ color: var(--accent-green); font-weight: 600; }}
         .event-type-horizon_exit {{ color: var(--text-secondary); }}
+        
+        .event-table .price {{
+            color: var(--text-primary);
+        }}
+        
+        .event-table .change-positive {{
+            color: var(--accent-green);
+        }}
+        
+        .event-table .change-negative {{
+            color: var(--accent-red);
+        }}
+        
+        .event-table .impact-positive {{
+            color: var(--accent-green);
+        }}
+        
+        .event-table .impact-negative {{
+            color: var(--accent-red);
+        }}
         
         .chart-section {{
             background: var(--bg-card);
@@ -712,7 +906,8 @@ def generate_drilldown_report(csv_path: str, output_path: str = None, max_trades
                 return `
                     <div class="trade-row ${{selected}}" onclick="selectTrade(${{idx}})">
                         <div>
-                            <div class="trade-mint">${{trade.mint_short}}</div>
+                            <div class="trade-mint">${{trade.display_name || (trade.token_name + ' (' + trade.token_symbol + ')')}}</div>
+                            <div class="trade-mint-address" style="font-size: 0.7rem; color: var(--text-muted); font-family: 'JetBrains Mono', monospace;">${{trade.mint}}</div>
                             <div class="trade-date">${{trade.alert_ts}}</div>
                         </div>
                         <div class="trade-ath ${{athClass}}">${{trade.ath_mult}}x</div>
@@ -749,7 +944,8 @@ def generate_drilldown_report(csv_path: str, output_path: str = None, max_trades
             }}
             
             // Update header
-            document.getElementById('chart-title').textContent = trade.mint_short;
+            const displayName = trade.display_name || (trade.token_name + ' (' + trade.token_symbol + ')');
+            document.getElementById('chart-title').textContent = displayName + ' - ' + trade.mint;
             document.getElementById('trade-info').style.display = 'flex';
             document.getElementById('info-ath').textContent = trade.ath_mult + 'x';
             
@@ -781,6 +977,26 @@ def generate_drilldown_report(csv_path: str, output_path: str = None, max_trades
                     timeVisible: true,
                     secondsVisible: false,
                 }},
+                rightPriceScale: {{
+                    visible: true,
+                    borderColor: '#2d3748',
+                    scaleMargins: {{
+                        top: 0.1,
+                        bottom: 0.1,
+                    }},
+                    entireTextOnly: false,
+                    ticksVisible: true,
+                    autoScale: true,
+                }},
+                leftPriceScale: {{
+                    visible: false,
+                }},
+                localization: {{
+                    priceFormatter: (price) => {{
+                        if (price === 0 || !isFinite(price)) return '0.00';
+                        return price.toFixed(8);
+                    }},
+                }},
             }});
             
             // Add candlestick series
@@ -791,9 +1007,20 @@ def generate_drilldown_report(csv_path: str, output_path: str = None, max_trades
                 borderDownColor: '#ef4444',
                 wickUpColor: '#10b981',
                 wickDownColor: '#ef4444',
+                priceFormat: {{
+                    type: 'price',
+                    precision: 8,
+                    minMove: 0.00000001,
+                }},
+                priceScaleId: 'right',
             }});
             
-            candleSeries.setData(trade.ohlcv);
+            // Filter and set candles (only horizon window)
+            const horizonCandles = trade.ohlcv.filter(c => {{
+                return c.time >= trade.alert_ts_unix && c.time <= (trade.horizon_end_ts || trade.alert_ts_unix + 48 * 3600);
+            }});
+            
+            candleSeries.setData(horizonCandles);
             
             // Collect markers for all events
             const markers = [];
@@ -817,13 +1044,32 @@ def generate_drilldown_report(csv_path: str, output_path: str = None, max_trades
                             shape: 'arrowUp',
                             text: 'ENTRY',
                         }});
-                    }} else if (event.type === 'stop_loss_triggered' || event.type === 'take_profit' || event.type === 'horizon_exit') {{
+                    }} else if (event.type === 'stop_loss_triggered') {{
                         markers.push({{
                             time: event.time,
                             position: 'aboveBar',
-                            color: event.type === 'stop_loss_triggered' ? '#ef4444' : '#10b981',
+                            color: '#ef4444',
                             shape: 'arrowDown',
-                            text: event.type === 'stop_loss_triggered' ? 'SL' : (event.type === 'take_profit' ? 'TP' : 'EXIT'),
+                            text: 'SL EXIT',
+                            size: 2,
+                        }});
+                    }} else if (event.type === 'take_profit') {{
+                        markers.push({{
+                            time: event.time,
+                            position: 'aboveBar',
+                            color: '#10b981',
+                            shape: 'arrowDown',
+                            text: 'TP EXIT',
+                            size: 2,
+                        }});
+                    }} else if (event.type === 'horizon_exit') {{
+                        markers.push({{
+                            time: event.time,
+                            position: 'aboveBar',
+                            color: '#94a3b8',
+                            shape: 'arrowDown',
+                            text: 'HORIZON EXIT',
+                            size: 2,
                         }});
                     }}
                 }});
@@ -899,19 +1145,42 @@ def generate_drilldown_report(csv_path: str, output_path: str = None, max_trades
             
             eventLog.style.display = 'block';
             
-            eventList.innerHTML = trade.events.map(event => {{
-                const priceStr = event.price ? '$' + event.price.toFixed(8) : '';
-                const impactStr = event.portfolio_impact_pct ? ` [${event.portfolio_impact_pct > 0 ? '+' : ''}${event.portfolio_impact_pct}% portfolio]` : '';
-                const positionStr = event.position_size_pct ? ` [${event.position_size_pct}% portfolio]` : '';
+            let html = '<table class="event-table">';
+            html += '<thead><tr>';
+            html += '<th>Event</th>';
+            html += '<th style="text-align: right;">Price ($)</th>';
+            html += '<th style="text-align: right;">Change (%)</th>';
+            html += '<th style="text-align: right;">Portfolio Impact (%)</th>';
+            html += '</tr></thead><tbody>';
+            
+            trade.events.forEach(event => {{
+                const priceStr = event.price ? '$' + event.price.toFixed(8) : '-';
+                const changePct = event.change_pct !== null && event.change_pct !== undefined 
+                    ? (event.change_pct > 0 ? '+' : '') + event.change_pct.toFixed(1) + '%'
+                    : '-';
+                const changeClass = event.change_pct > 0 ? 'change-positive' : (event.change_pct < 0 ? 'change-negative' : '');
+                const impactPct = event.portfolio_impact_pct !== null && event.portfolio_impact_pct !== undefined
+                    ? (event.portfolio_impact_pct > 0 ? '+' : '') + event.portfolio_impact_pct.toFixed(2) + '%'
+                    : '-';
+                const impactClass = event.portfolio_impact_pct > 0 ? 'impact-positive' : (event.portfolio_impact_pct < 0 ? 'impact-negative' : '');
                 
-                return `
-                    <div class="event-item">
-                        <div class="event-time">${{event.time_str}}</div>
-                        <div class="event-description event-type-${{event.type}}">${{event.description}}${{positionStr}}${{impactStr}}</div>
-                        <div class="event-price">${{priceStr}}</div>
-                    </div>
-                `;
-            }}).join('');
+                // Get event name from type
+                let eventName = event.type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                if (event.type === 'stop_loss_set') eventName = 'Stop Loss Set';
+                if (event.type === 'stop_loss_triggered') eventName = 'Stop Loss Triggered';
+                if (event.type === 'take_profit') eventName = 'Take Profit';
+                if (event.type === 'horizon_exit') eventName = 'Horizon Exit';
+                
+                html += '<tr>';
+                html += '<td class="event-type event-type-' + event.type + '">' + eventName + '</td>';
+                html += '<td class="price" style="text-align: right;">' + priceStr + '</td>';
+                html += '<td class="' + changeClass + '" style="text-align: right;">' + changePct + '</td>';
+                html += '<td class="' + impactClass + '" style="text-align: right;">' + impactPct + '</td>';
+                html += '</tr>';
+            }});
+            
+            html += '</tbody></table>';
+            eventList.innerHTML = html;
         }}
         
         // Initialize
@@ -943,7 +1212,8 @@ if __name__ == '__main__':
     parser.add_argument('--max-trades', type=int, default=50, help='Max trades per caller (default: 50)')
     parser.add_argument('--tp-mult', type=float, default=80.0, help='Default TP multiplier (default: 80.0)')
     parser.add_argument('--sl-mult', type=float, default=0.7, help='Default SL multiplier (default: 0.7)')
+    parser.add_argument('--workers', type=int, default=None, help='Number of worker processes (default: CPU count)')
     args = parser.parse_args()
     
-    generate_drilldown_report(args.csv_path, args.output, args.max_trades, args.risk_per_trade, args.tp_mult, args.sl_mult)
+    generate_drilldown_report(args.csv_path, args.output, args.max_trades, args.risk_per_trade, args.tp_mult, args.sl_mult, args.workers)
 

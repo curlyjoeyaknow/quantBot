@@ -26,6 +26,12 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple
 from collections import defaultdict
 
+# Add tools/shared to path for imports
+_shared_path = os.path.join(os.path.dirname(__file__), '..', 'shared')
+if _shared_path not in sys.path:
+    sys.path.insert(0, _shared_path)
+from progress_bar import ProgressBar
+
 # Suppress deprecation warnings
 warnings.filterwarnings('ignore', category=DeprecationWarning)
 
@@ -341,6 +347,8 @@ def check_coverage_at_horizon(
         return False
 
 
+
+
 def calculate_coverage_matrix(
     conn: duckdb.DuckDBPyConnection,
     ch_client: ClickHouseClient,
@@ -364,51 +372,52 @@ def calculate_coverage_matrix(
     completed_checks = 0
     
     # Pre-calculate total checks for progress
+    total_alerts_count = 0
     for month_key, month_start, month_end in month_buckets:
         alerts = get_alerts_by_month(conn, month_start, month_end)
+        total_alerts_count += len(alerts)
         total_checks += len(alerts) * len(HORIZONS)
     
-    print(f"Total coverage checks to perform: {total_checks}", file=sys.stderr)
+    print(f"Found {total_alerts_count:,} total alerts across all months", file=sys.stderr)
+    print(f"Total coverage checks to perform: {total_checks:,} (alerts × {len(HORIZONS)} horizons)", file=sys.stderr)
+    print("", file=sys.stderr)  # Empty line before progress bar
     
-    for month_key, month_start, month_end in month_buckets:
-        print(f"Processing month {month_key}...", file=sys.stderr)
-        alerts = get_alerts_by_month(conn, month_start, month_end)
-        
-        if not alerts:
-            print(f"  No alerts found for {month_key}", file=sys.stderr)
-            continue
-        
-        print(f"  Found {len(alerts)} alerts", file=sys.stderr)
-        total_alerts[month_key] = len(alerts)
-        
-        for alert_idx, alert in enumerate(alerts):
-            mint = alert['mint']
-            chain = alert['chain']
-            alert_ts_ms = alert['alert_timestamp']
+    # Use ProgressBar class for better control
+    with ProgressBar(total=total_checks, prefix="Processing", update_interval=10) as progress:
+        for month_key, month_start, month_end in month_buckets:
+            alerts = get_alerts_by_month(conn, month_start, month_end)
             
-            for horizon in HORIZONS:
-                has_coverage = check_coverage_at_horizon(
-                    ch_client,
-                    database,
-                    mint,
-                    chain,
-                    alert_ts_ms,
-                    horizon,
-                    interval
-                )
+            if not alerts:
+                continue
+            
+            total_alerts[month_key] = len(alerts)
+            
+            for alert_idx, alert in enumerate(alerts):
+                mint = alert['mint']
+                chain = alert['chain']
+                alert_ts_ms = alert['alert_timestamp']
                 
-                if has_coverage:
-                    matrix[month_key][horizon] += 1
-                
-                completed_checks += 1
-                
-                if progress_callback:
-                    progress_callback(completed_checks, total_checks)
-                
-                # Progress update every 100 checks
-                if completed_checks % 100 == 0:
-                    pct = (completed_checks / total_checks) * 100
-                    print(f"  Progress: {completed_checks}/{total_checks} ({pct:.1f}%)", file=sys.stderr)
+                for horizon in HORIZONS:
+                    has_coverage = check_coverage_at_horizon(
+                        ch_client,
+                        database,
+                        mint,
+                        chain,
+                        alert_ts_ms,
+                        horizon,
+                        interval
+                    )
+                    
+                    if has_coverage:
+                        matrix[month_key][horizon] += 1
+                    
+                    completed_checks += 1
+                    
+                    if progress_callback:
+                        progress_callback(completed_checks, total_checks)
+                    
+                    # Update progress bar with current month in prefix
+                    progress.update(completed_checks, prefix=f"Processing {month_key}")
     
     # Convert counts to percentages
     coverage_matrix = {}

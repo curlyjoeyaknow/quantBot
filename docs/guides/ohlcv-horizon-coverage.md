@@ -26,24 +26,27 @@ pnpm coverage:ohlcv:horizon
 # Generate with visualization
 pnpm coverage:ohlcv:horizon:visualize
 
-# Or use the script directly
-./scripts/generate-ohlcv-horizon-coverage.sh --duckdb data/tele.duckdb --visualize
+# Or use the script directly (defaults to data/alerts.duckdb)
+./scripts/generate-ohlcv-horizon-coverage.sh --visualize
+
+# Or specify a different database
+./scripts/generate-ohlcv-horizon-coverage.sh --duckdb data/alerts.duckdb --visualize
 ```
 
 ### Query Stored Matrix
 
 ```bash
-# Query 1m matrix
-python3 tools/storage/query_horizon_coverage.py --duckdb data/tele.duckdb --interval 1m
+# Query 1m matrix (defaults to data/alerts.duckdb)
+python3 tools/storage/query_horizon_coverage.py --duckdb data/alerts.duckdb --interval 1m
 
 # Query 5m matrix
-python3 tools/storage/query_horizon_coverage.py --duckdb data/tele.duckdb --interval 5m
+python3 tools/storage/query_horizon_coverage.py --duckdb data/alerts.duckdb --interval 5m
 
 # Filter to specific month
-python3 tools/storage/query_horizon_coverage.py --duckdb data/tele.duckdb --interval 1m --month 2025-05
+python3 tools/storage/query_horizon_coverage.py --duckdb data/alerts.duckdb --interval 1m --month 2025-05
 
 # List available months
-python3 tools/storage/query_horizon_coverage.py --duckdb data/tele.duckdb --interval 1m --list-months
+python3 tools/storage/query_horizon_coverage.py --duckdb data/alerts.duckdb --interval 1m --list-months
 ```
 
 ### Direct SQL Queries

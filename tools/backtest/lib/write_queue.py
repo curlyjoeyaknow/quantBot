@@ -165,6 +165,86 @@ def process_job(job_path: Path) -> bool:
                 duckdb_path,
                 payload["trial"],
             )
+        elif operation == "ensure_schema":
+            # Create optimizer schema
+            schema_sql = payload.get("schema_sql", "")
+            with get_write_connection(duckdb_path) as con:
+                for stmt in schema_sql.split(";"):
+                    stmt = stmt.strip()
+                    if stmt:
+                        con.execute(stmt)
+        elif operation == "create_run_record":
+            from .trial_ledger import create_run_record
+            create_run_record(
+                duckdb_path,
+                payload["run_id"],
+                payload["run_type"],
+                payload.get("name"),
+                payload.get("date_from"),
+                payload.get("date_to"),
+                payload.get("config"),
+                force_direct=True,  # We're already in the worker
+            )
+        elif operation == "store_phase_start":
+            from .trial_ledger import store_phase_start
+            store_phase_start(
+                duckdb_path,
+                payload["run_id"],
+                payload["phase_name"],
+                payload.get("phase_order", 0),
+                payload.get("input_summary"),
+                force_direct=True,
+            )
+        elif operation == "store_phase_complete":
+            from .trial_ledger import store_phase_complete
+            # Reconstruct phase_id from run_id and phase_name
+            phase_id = f"{payload['run_id']}_{payload['phase_name']}"
+            store_phase_complete(
+                duckdb_path,
+                phase_id,
+                payload.get("output_summary", {}),
+                force_direct=True,
+            )
+        elif operation == "store_islands":
+            from .trial_ledger import store_islands
+            store_islands(
+                duckdb_path,
+                payload["run_id"],
+                payload["islands"],
+                force_direct=True,
+            )
+        elif operation == "store_island_champions":
+            from .trial_ledger import store_island_champions
+            store_island_champions(
+                duckdb_path,
+                payload["run_id"],
+                payload["champions"],
+                force_direct=True,
+            )
+        elif operation == "store_stress_lane_result":
+            from .trial_ledger import store_stress_lane_result
+            store_stress_lane_result(
+                duckdb_path,
+                payload["run_id"],
+                payload["champion_id"],
+                payload["lane_name"],
+                payload["lane_config"],
+                payload["robust_result"],
+                force_direct=True,
+            )
+        elif operation == "store_champion_validation":
+            from .trial_ledger import store_champion_validation
+            store_champion_validation(
+                duckdb_path,
+                payload["run_id"],
+                payload["champion_id"],
+                payload["discovery_score"],
+                payload["robust_score"],
+                payload["stress_scores"],
+                payload["validation_passed"],
+                payload.get("notes"),
+                force_direct=True,
+            )
         elif operation == "raw_sql":
             # Execute raw SQL (for simple operations)
             with get_write_connection(duckdb_path) as con:

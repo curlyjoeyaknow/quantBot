@@ -165,12 +165,10 @@ describe('ClickHouse Slice Exporter - Compression', () => {
       compression: 'zstd',
     };
 
-    let exportError: Error | undefined;
     try {
       await adapter.exportSlice({ run, spec, layout });
-    } catch (error) {
+    } catch {
       // Expected to fail due to mocks, but we can check the compression setting
-      exportError = error instanceof Error ? error : new Error(String(error));
     }
 
     // Verify compression was set
@@ -178,41 +176,11 @@ describe('ClickHouse Slice Exporter - Compression', () => {
     // if the export got far enough to create the DuckDB client
     const executeCalls = mockExecute.mock.calls;
 
-    // Debug: log all execute calls to see what's being called
-    if (executeCalls.length > 0) {
-      console.log(
-        'Execute calls:',
-        executeCalls.map((call) => call[0]?.substring(0, 150))
-      );
-    }
-
     // Check if any execute call contains the compression setting
     const compressionCall = executeCalls.find((call) => {
       const sql = call[0];
       return typeof sql === 'string' && sql.includes("SET parquet_compression = 'zstd'");
     });
-
-    // If no compression call was made, check if any execute calls were made at all
-    // This helps diagnose if the export failed before reaching DuckDB
-    if (!compressionCall) {
-      if (executeCalls.length === 0) {
-        // Export likely failed before DuckDB operations - this is a test setup issue
-        const errorMsg = exportError
-          ? `Export failed with error: ${exportError.message}`
-          : 'Export failed before DuckDB operations. No execute calls were made.';
-        throw new Error(
-          `${errorMsg} ` +
-            'This suggests the export is failing earlier (ClickHouse query, CSV reading, etc.). ' +
-            'Check that all mocks are set up correctly.'
-        );
-      } else {
-        // Execute calls were made but compression wasn't set - this is the actual test failure
-        throw new Error(
-          `Compression setting not found in execute calls. ` +
-            `Made ${executeCalls.length} execute call(s): ${executeCalls.map((c) => c[0]?.substring(0, 100)).join('; ')}`
-        );
-      }
-    }
 
     expect(compressionCall).toBeDefined();
   });

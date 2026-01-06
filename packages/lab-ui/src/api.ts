@@ -1149,4 +1149,189 @@ export function registerApi(app: express.Express, db: DuckDb) {
       res.status(500).json({ error: msg });
     }
   });
+
+  // -----------------------------
+  // Trade Drill-down (individual trade with OHLCV data)
+  // This endpoint serves data for LightweightCharts candlestick visualization
+  // -----------------------------
+  app.get('/api/drilldown/:runId/:caller', async (req, res) => {
+    const runId = req.params.runId;
+    const caller = decodeURIComponent(req.params.caller);
+    const limit = Math.min(Number(req.query.limit) || 50, 100);
+
+    try {
+      // Get individual alerts with OHLCV data paths
+      // We need alert_id, mint, timestamps, and metrics
+      const alertsSql = `
+        SELECT
+          alert_id,
+          mint,
+          caller,
+          alert_ts,
+          ROUND(ath_mult, 4) AS ath_mult,
+          ROUND(dd_overall, 4) AS dd_overall,
+          ROUND(dd_pre2x, 4) AS dd_pre2x,
+          COALESCE(hit_2x, false) AS hit_2x,
+          COALESCE(hit_3x, false) AS hit_3x,
+          COALESCE(hit_4x, false) AS hit_4x,
+          COALESCE(hit_5x, false) AS hit_5x,
+          time_to_2x_s,
+          time_to_3x_s,
+          time_to_4x_s,
+          time_to_5x_s,
+          entry_price_usd,
+          horizon_hours,
+          status
+        FROM baseline.alert_results_f
+        WHERE run_id = ?
+          AND caller = ?
+          AND status = 'ok'
+        ORDER BY alert_ts DESC
+        LIMIT ?
+      `;
+
+      const alerts = await all(db, alertsSql, [runId, caller, limit]);
+
+      // Get caller summary stats
+      const statsSql = `
+        SELECT
+          caller,
+          n,
+          ROUND(score_v2, 3) AS score_v2,
+          ROUND(median_ath, 2) AS median_ath,
+          ROUND(p75_ath, 2) AS p75_ath,
+          ROUND(hit2x_pct, 1) AS hit2x_pct,
+          ROUND(hit3x_pct, 1) AS hit3x_pct,
+          ROUND(hit5x_pct, 1) AS hit5x_pct,
+          ROUND(median_t2x_hrs * 60, 1) AS median_t2x_min,
+          ROUND(risk_dd_pct, 1) AS risk_dd_pct,
+          ROUND(discipline_bonus, 2) AS discipline_bonus
+        FROM baseline.caller_scored_v2
+        WHERE run_id = ? AND caller = ?
+      `;
+
+      const stats = await all(db, statsSql, [runId, caller]);
+
+      // Format alerts for the drilldown view
+      const formattedAlerts = (
+        alerts as Array<{
+          alert_id: string;
+          mint: string;
+          caller: string;
+          alert_ts: string;
+          ath_mult: number;
+          dd_overall: number;
+          dd_pre2x: number | null;
+          hit_2x: boolean;
+          hit_3x: boolean;
+          hit_4x: boolean;
+          hit_5x: boolean;
+          time_to_2x_s: number | null;
+          time_to_3x_s: number | null;
+          time_to_4x_s: number | null;
+          time_to_5x_s: number | null;
+          entry_price_usd: number | null;
+          horizon_hours: number | null;
+          status: string;
+        }>
+      ).map((a) => ({
+        id: a.alert_id,
+        mint: a.mint,
+        alert_ts: a.alert_ts,
+        alert_ts_unix: a.alert_ts ? Math.floor(new Date(a.alert_ts).getTime() / 1000) : null,
+        ath_mult: a.ath_mult,
+        dd_overall_pct: a.dd_overall ? Math.round(a.dd_overall * 1000) / 10 : null,
+        dd_pre2x_pct: a.dd_pre2x ? Math.round(a.dd_pre2x * 1000) / 10 : null,
+        hit_2x: a.hit_2x,
+        hit_3x: a.hit_3x,
+        hit_4x: a.hit_4x,
+        hit_5x: a.hit_5x,
+        time_to_2x_min: a.time_to_2x_s ? Math.round(a.time_to_2x_s / 6) / 10 : null,
+        time_to_3x_min: a.time_to_3x_s ? Math.round(a.time_to_3x_s / 6) / 10 : null,
+        time_to_4x_min: a.time_to_4x_s ? Math.round(a.time_to_4x_s / 6) / 10 : null,
+        time_to_5x_min: a.time_to_5x_s ? Math.round(a.time_to_5x_s / 6) / 10 : null,
+        entry_price: a.entry_price_usd,
+        horizon_hours: a.horizon_hours || 48,
+      }));
+
+      res.json({
+        caller,
+        stats: stats[0] || null,
+        alerts: formattedAlerts,
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      res.status(500).json({ error: msg });
+    }
+  });
+
+  // -----------------------------
+  // OHLCV data for a specific trade (mint + time range)
+  // This fetches candle data from the slices for chart rendering
+  // -----------------------------
+  app.get('/api/ohlcv/:mint', async (req, res) => {
+    const mint = req.params.mint;
+    const from = Number(req.query.from) || 0;
+    const to = Number(req.query.to) || Math.floor(Date.now() / 1000);
+    const interval = String(req.query.interval || '5m');
+
+    try {
+      // Query OHLCV from storage
+      // This assumes we have a candles table or can query from slices
+      const sql = `
+        SELECT
+          timestamp_ms / 1000 AS time,
+          open,
+          high,
+          low,
+          close,
+          volume
+        FROM ohlcv_candles
+        WHERE token_address = ?
+          AND timestamp_ms >= ? * 1000
+          AND timestamp_ms <= ? * 1000
+          AND interval = ?
+        ORDER BY timestamp_ms ASC
+        LIMIT 2000
+      `;
+
+      const candles = await all(db, sql, [mint, from, to, interval]);
+
+      // If no candles found, return empty with helpful message
+      if (!candles || (candles as unknown[]).length === 0) {
+        res.json({
+          mint,
+          interval,
+          from,
+          to,
+          candles: [],
+          message: 'No OHLCV data found for this token in the specified range',
+        });
+        return;
+      }
+
+      res.json({
+        mint,
+        interval,
+        from,
+        to,
+        candles,
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      // If table doesn't exist, return empty array gracefully
+      if (msg.includes('does not exist') || msg.includes('no such table')) {
+        res.json({
+          mint,
+          interval,
+          from,
+          to,
+          candles: [],
+          message: 'OHLCV table not found - run OHLCV ingestion first',
+        });
+        return;
+      }
+      res.status(500).json({ error: msg });
+    }
+  });
 }

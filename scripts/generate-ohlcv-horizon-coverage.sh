@@ -9,7 +9,7 @@ set -euo pipefail
 # Usage:
 #   ./scripts/generate-ohlcv-horizon-coverage.sh [--duckdb <path>] [--visualize]
 
-DUCKDB_PATH="${DUCKDB_PATH:-data/tele.duckdb}"
+DUCKDB_PATH="${DUCKDB_PATH:-data/alerts.duckdb}"
 VISUALIZE="${VISUALIZE:-false}"
 
 # Parse arguments
@@ -33,6 +33,10 @@ done
 
 if [[ ! -f "$DUCKDB_PATH" ]]; then
   echo "❌ DuckDB file not found: $DUCKDB_PATH" >&2
+  echo "" >&2
+  echo "Tip: The coverage matrix requires a database with caller_links_d or user_calls_d tables." >&2
+  echo "These are typically in the ingestion database (e.g., data/alerts.duckdb)." >&2
+  echo "If you have a different database path, use: --duckdb <path>" >&2
   exit 1
 fi
 

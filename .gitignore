@@ -137,3 +137,4 @@ results/*.csv
 
 # Generated HTML documentation
 docs-html/
+results/*.html

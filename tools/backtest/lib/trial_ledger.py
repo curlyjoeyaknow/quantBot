@@ -6,11 +6,17 @@ EVERY run must be recorded. This is non-negotiable for:
 - Walk-forward validation history
 - Preventing re-running the same experiments
 - Building an "experiment brain" for meta-analysis
+
+Write Queue Support:
+- When _queue_writes is enabled, writes go to the background worker
+- This allows parallel read-only access while writes are serialized
+- Enable with: enable_write_queue()
 """
 
 from __future__ import annotations
 
 import json
+import sys
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
@@ -18,6 +24,57 @@ from typing import Any, Dict, List, Optional
 import duckdb
 
 UTC = timezone.utc
+
+# =============================================================================
+# Write Queue Support
+# =============================================================================
+
+_queue_writes: bool = False
+_schema_verified: Dict[str, bool] = {}  # Cache of verified schemas per path
+
+
+def enable_write_queue(enabled: bool = True) -> None:
+    """Enable/disable write queue mode for all operations."""
+    global _queue_writes
+    _queue_writes = enabled
+    if enabled:
+        print("[trial_ledger] Write queue enabled - writes will be queued", file=sys.stderr)
+
+
+def is_queue_enabled() -> bool:
+    """Check if write queue is enabled."""
+    return _queue_writes
+
+
+def _enqueue(duckdb_path: str, operation: str, payload: Dict[str, Any], priority: int = 5) -> str:
+    """Enqueue a write operation."""
+    from .write_queue import enqueue_write
+    return enqueue_write(duckdb_path, operation, payload, priority)
+
+
+def _schema_exists(duckdb_path: str) -> bool:
+    """Check if the optimizer schema exists (read-only)."""
+    global _schema_verified
+    
+    if duckdb_path in _schema_verified:
+        return _schema_verified[duckdb_path]
+    
+    try:
+        con = duckdb.connect(duckdb_path, read_only=True)
+        try:
+            # Check for a key table
+            result = con.execute("""
+                SELECT COUNT(*) 
+                FROM information_schema.tables 
+                WHERE table_schema = 'optimizer' AND table_name = 'runs_d'
+            """).fetchone()
+            exists = result[0] > 0 if result else False
+            _schema_verified[duckdb_path] = exists
+            return exists
+        finally:
+            con.close()
+    except Exception:
+        return False
 
 
 # =============================================================================
@@ -485,14 +542,35 @@ GROUP BY run_id;
 """
 
 
-def ensure_trial_schema(duckdb_path: str) -> None:
-    """Create the trial ledger schema if it doesn't exist."""
+def ensure_trial_schema(duckdb_path: str, force_direct: bool = False) -> None:
+    """
+    Create the trial ledger schema if it doesn't exist.
+    
+    Args:
+        duckdb_path: Path to DuckDB database
+        force_direct: If True, bypass queue and write directly (for worker use)
+    """
+    # Check read-only first - avoid write lock if schema exists
+    if _schema_exists(duckdb_path):
+        return
+    
+    # Schema doesn't exist - need to create
+    if _queue_writes and not force_direct:
+        # Queue the schema creation
+        _enqueue(duckdb_path, "ensure_schema", {"schema_sql": SCHEMA_SQL}, priority=1)
+        # Mark as verified (worker will create it)
+        _schema_verified[duckdb_path] = True
+        print(f"[trial_ledger] Queued schema creation for {duckdb_path}", file=sys.stderr)
+        return
+    
+    # Direct write
     con = duckdb.connect(duckdb_path)
     try:
         for stmt in SCHEMA_SQL.split(";"):
             stmt = stmt.strip()
             if stmt:
                 con.execute(stmt)
+        _schema_verified[duckdb_path] = True
     finally:
         con.close()
 
@@ -887,6 +965,7 @@ def create_run_record(
     date_from: str = "",
     date_to: str = "",
     config: Optional[Dict[str, Any]] = None,
+    force_direct: bool = False,
 ) -> None:
     """
     Create an initial run record for FK references.
@@ -894,7 +973,18 @@ def create_run_record(
     This should be called BEFORE any phase storage to satisfy FK constraints.
     The run record can be updated later with full details.
     """
-    ensure_trial_schema(duckdb_path)
+    ensure_trial_schema(duckdb_path, force_direct=force_direct)
+    
+    if _queue_writes and not force_direct:
+        _enqueue(duckdb_path, "create_run_record", {
+            "run_id": run_id,
+            "run_type": run_type,
+            "name": name,
+            "date_from": date_from,
+            "date_to": date_to,
+            "config": config,
+        }, priority=2)
+        return
     
     con = duckdb.connect(duckdb_path)
     try:
@@ -925,6 +1015,7 @@ def store_phase_start(
     config: Dict[str, Any],
     input_phase_id: Optional[str] = None,
     input_summary: Optional[Dict[str, Any]] = None,
+    force_direct: bool = False,
 ) -> str:
     """
     Record the start of a pipeline phase.
@@ -932,10 +1023,19 @@ def store_phase_start(
     Returns:
         phase_id for this phase
     """
-    ensure_trial_schema(duckdb_path)
+    ensure_trial_schema(duckdb_path, force_direct=force_direct)
     
     phase_order = PIPELINE_PHASES.get(phase_name, 99)
     phase_id = f"{run_id}_{phase_name}"
+    
+    if _queue_writes and not force_direct:
+        _enqueue(duckdb_path, "store_phase_start", {
+            "run_id": run_id,
+            "phase_name": phase_name,
+            "phase_order": phase_order,
+            "input_summary": input_summary,
+        }, priority=3)
+        return phase_id
     
     con = duckdb.connect(duckdb_path)
     try:
@@ -968,8 +1068,21 @@ def store_phase_complete(
     phase_id: str,
     output_summary: Dict[str, Any],
     notes: Optional[str] = None,
+    force_direct: bool = False,
 ) -> None:
     """Mark a pipeline phase as complete with output summary."""
+    if _queue_writes and not force_direct:
+        # Extract run_id and phase_name from phase_id (format: run_id_phase_name)
+        parts = phase_id.rsplit("_", 1)
+        run_id = parts[0] if len(parts) > 1 else phase_id
+        phase_name = parts[1] if len(parts) > 1 else "unknown"
+        _enqueue(duckdb_path, "store_phase_complete", {
+            "run_id": run_id,
+            "phase_name": phase_name,
+            "output_summary": output_summary,
+        }, priority=3)
+        return
+    
     con = duckdb.connect(duckdb_path)
     try:
         now = datetime.now(UTC).replace(tzinfo=None)

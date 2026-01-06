@@ -13,6 +13,7 @@
 
 import { z } from 'zod';
 import type { DateTime } from 'luxon';
+import type { Simplify } from 'type-fest';
 
 /**
  * DataSnapshotRef - Reference to a reproducible data snapshot
@@ -85,7 +86,7 @@ export const DataSnapshotRefSchema = z.object({
   sliceManifestIds: z.array(z.string()).optional(),
 });
 
-export type DataSnapshotRef = z.infer<typeof DataSnapshotRefSchema>;
+export type DataSnapshotRef = Simplify<z.infer<typeof DataSnapshotRefSchema>>;
 
 /**
  * StrategyRef - Reference to a strategy definition
@@ -122,7 +123,7 @@ export const StrategyRefSchema = z.object({
   schemaVersion: z.string().default('1.0.0'),
 });
 
-export type StrategyRef = z.infer<typeof StrategyRefSchema>;
+export type StrategyRef = Simplify<z.infer<typeof StrategyRefSchema>>;
 
 /**
  * ExecutionModel - How trades are executed in simulation
@@ -388,7 +389,7 @@ export const SimulationRequestSchema = z.object({
   runConfig: RunConfigSchema,
 });
 
-export type SimulationRequest = z.infer<typeof SimulationRequestSchema>;
+export type SimulationRequest = Simplify<z.infer<typeof SimulationRequestSchema>>;
 
 /**
  * Contract guarantees:

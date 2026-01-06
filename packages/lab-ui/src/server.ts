@@ -31,6 +31,7 @@ async function main() {
   app.get('/scored', (_req, res) => res.render('scored'));
   app.get('/caller', (_req, res) => res.render('caller'));
   app.get('/compare', (_req, res) => res.render('compare'));
+  app.get('/drilldown', (_req, res) => res.render('drilldown'));
   // Phase 6 - Truth leaderboard and policies views
   app.get('/truth', (_req, res) => res.render('truth'));
   app.get('/policies', (_req, res) => res.render('policies'));
