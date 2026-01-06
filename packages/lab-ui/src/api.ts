@@ -4,6 +4,7 @@ import type { DuckDb } from './db.js';
 import { all, run } from './db.js';
 import { validateExitPlanJson } from './exit-plan-schema.js';
 import { spawnBacktest } from './runner.js';
+import { seedDefaultStrategies } from './strategy-seeder.js';
 
 /**
  * Convert BigInt values to regular numbers and handle DuckDB timestamp types.
@@ -82,6 +83,18 @@ export function registerApi(app: express.Express, db: DuckDb) {
     );
 
     res.json({ strategy_id });
+  });
+
+  // Seed strategies from strategies/dsl/ folder
+  app.post('/api/strategies/seed', async (_req, res) => {
+    try {
+      const result = await seedDefaultStrategies(db);
+      res.json(result);
+    } catch (err) {
+      res.status(500).json({
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
   });
 
   // -----------------------------
@@ -458,7 +471,7 @@ export function registerApi(app: express.Express, db: DuckDb) {
           date_to,
           alerts_total,
           alerts_ok
-        FROM runs.runs_d
+        FROM baseline.runs_d
         ORDER BY created_at DESC
         LIMIT 1
       `;
@@ -513,7 +526,7 @@ export function registerApi(app: express.Express, db: DuckDb) {
           run_name,
           created_at,
           alerts_ok
-        FROM runs.runs_d
+        FROM baseline.runs_d
         ORDER BY created_at DESC
         LIMIT 5
       `;
@@ -780,7 +793,7 @@ export function registerApi(app: express.Express, db: DuckDb) {
         date_to,
         alerts_total,
         alerts_ok
-      FROM runs.runs_d
+      FROM baseline.runs_d
       ORDER BY created_at DESC
       LIMIT 50
     `;

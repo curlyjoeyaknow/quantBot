@@ -1,5 +1,20 @@
 const $ = (id) => document.getElementById(id);
 
+document.addEventListener('DOMContentLoaded', init);
+
+function init() {
+  const seedBtn = $('seed');
+  const saveBtn = $('save');
+  
+  if (seedBtn) seedBtn.onclick = () => {
+    $('config').value = JSON.stringify(seedPlan, null, 2);
+  };
+  
+  if (saveBtn) saveBtn.onclick = saveStrategy;
+  
+  refresh();
+}
+
 const seedPlan = {
   ladder: {
     enabled: true,
@@ -32,7 +47,9 @@ const seedPlan = {
 async function refresh() {
   const res = await fetch("/api/strategies");
   const rows = await res.json();
-  const tbody = $("#tbl").querySelector("tbody");
+  const tbl = $("tbl");
+  if (!tbl) return;
+  const tbody = tbl.querySelector("tbody");
   tbody.innerHTML = "";
   for (const r of rows) {
     const tr = document.createElement("tr");
@@ -41,18 +58,14 @@ async function refresh() {
   }
 }
 
-$("#seed").onclick = () => {
-  $("#config").value = JSON.stringify(seedPlan, null, 2);
-};
+async function saveStrategy() {
+  $("msg").textContent = "";
+  const name = $("name").value.trim();
+  const config_json = $("config").value.trim();
 
-$("#save").onclick = async () => {
-  $("#msg").textContent = "";
-  const name = $("#name").value.trim();
-  const config_json = $("#config").value.trim();
+  if (!name) { $("msg").textContent = "Name required."; return; }
 
-  if (!name) { $("#msg").textContent = "Name required."; return; }
-
-  try { JSON.parse(config_json); } catch { $("#msg").textContent = "Config JSON invalid."; return; }
+  try { JSON.parse(config_json); } catch { $("msg").textContent = "Config JSON invalid."; return; }
 
   const res = await fetch("/api/strategies", {
     method: "POST",
@@ -62,13 +75,11 @@ $("#save").onclick = async () => {
 
   const out = await res.json();
   if (!res.ok) {
-    $("#msg").textContent = out.error ?? "Save failed.";
+    $("msg").textContent = out.error ?? "Save failed.";
     return;
   }
 
-  $("#msg").textContent = `Saved: ${out.strategy_id}`;
+  $("msg").textContent = `Saved: ${out.strategy_id}`;
   await refresh();
-};
-
-refresh();
+}
 

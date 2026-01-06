@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { openDuckDb } from './db.js';
 import { ensureUiSchema } from './schema.js';
 import { registerApi } from './api.js';
+import { seedDefaultStrategies } from './strategy-seeder.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -11,6 +12,10 @@ const __dirname = path.dirname(__filename);
 async function main() {
   const db = await openDuckDb();
   await ensureUiSchema(db);
+
+  // Seed default strategies from strategies/dsl/ folder
+  const seedResult = await seedDefaultStrategies(db);
+  console.log(`[lab-ui] Strategies: ${seedResult.seeded} seeded, ${seedResult.skipped} already exist`);
 
   const app = express();
   app.set('view engine', 'ejs');
