@@ -144,7 +144,7 @@ export function registerSlicesCommands(program: Command): void {
     .option('--post-window <minutes>', 'Post-window minutes (after alert)', '1440')
     .option(
       '--dataset <dataset>',
-      'Dataset to export (candles_1s, candles_15s, candles_1m)',
+      'Dataset to export (candles_1s, candles_15s, candles_1m, candles_5m, indicators_1m)',
       'candles_1m'
     )
     .option('--chain <chain>', 'Chain (sol, eth, base, bsc)', 'sol')
