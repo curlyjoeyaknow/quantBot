@@ -248,34 +248,31 @@ export {
   SimResultSchema,
 } from '@quantbot/simulation';
 
-// Baseline service (from local sim, still needed)
-export { BacktestBaselineService } from './sim/backtest-baseline-service.js';
-
 // =============================================================================
-// Simulation Services - Re-export from sim/ subdirectory
+// Simulation Services - Re-export from @quantbot/simulation
 // =============================================================================
 export {
+  BacktestBaselineService,
   DuckDBStorageService,
   ClickHouseService,
   SimulationService,
   type SimulationConfig,
   type SimulationOutput,
-} from './sim/index.js';
-// Note: SimulationResult is exported from @quantbot/simulation above, not from sim/index.js
+} from '@quantbot/simulation';
 
 // Causal candle accessor
-export type { CausalCandleAccessor } from './sim/types/causal-accessor.js';
+export type { CausalCandleAccessor } from '@quantbot/simulation';
 export {
   CausalCandleWrapper,
   filterCandlesByCloseTimeInterval,
   getLastClosedCandleInterval,
-} from './sim/types/causal-accessor.js';
+} from '@quantbot/simulation';
 
 // CandleInterval type (from candle types)
-export type { CandleInterval } from './sim/types/candle.js';
+export type { CandleInterval } from '@quantbot/simulation';
 
 // Execution utilities
-export { calculateTradeFee } from './sim/execution/index.js';
+export { calculateTradeFee } from '@quantbot/simulation';
 
 // Legacy types
-export type { LegacySimulationEvent } from './sim/types/index.js';
+export type { LegacySimulationEvent } from '@quantbot/simulation';

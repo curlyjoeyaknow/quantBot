@@ -1,15 +1,13 @@
 /**
- * @quantbot/storage
+ * @quantbot/storage - DEPRECATED: Use @quantbot/infra/storage instead
  *
- * Unified storage engine for QuantBot data.
+ * This package is being consolidated into @quantbot/infra.
+ * All exports are re-exported from @quantbot/infra/storage for backwards compatibility.
  *
- * Provides a single interface for storing and retrieving:
- * - OHLCV candles (ClickHouse)
- * - Token calls (DuckDB)
- * - Strategies (DuckDB)
- * - Indicators (ClickHouse)
- * - Simulation results (ClickHouse)
+ * @deprecated Import from '@quantbot/infra/storage' instead
  */
+
+export * from '@quantbot/infra/storage';
 
 // Export the main storage engine
 export { StorageEngine, getStorageEngine } from './engine/StorageEngine.js';

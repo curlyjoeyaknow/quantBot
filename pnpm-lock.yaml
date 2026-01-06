@@ -263,6 +263,9 @@ importers:
       '@quantbot/core':
         specifier: workspace:*
         version: link:../core
+      '@quantbot/infra':
+        specifier: workspace:*
+        version: link:../infra
       '@quantbot/observability':
         specifier: workspace:*
         version: link:../observability
@@ -454,6 +457,40 @@ importers:
         specifier: ^4.0.15
         version: 4.0.15(@opentelemetry/api@1.9.0)(@types/node@24.10.1)(jiti@2.6.1)(jsdom@27.2.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)
 
+  packages/data:
+    dependencies:
+      '@quantbot/core':
+        specifier: workspace:*
+        version: link:../core
+      '@quantbot/infra':
+        specifier: workspace:*
+        version: link:../infra
+      '@solana/web3.js':
+        specifier: ^1.98.4
+        version: 1.98.4(bufferutil@4.0.9)(encoding@0.1.13)(typescript@5.9.3)(utf-8-validate@5.0.10)
+      execa:
+        specifier: ^8.0.1
+        version: 8.0.1
+      lru-cache:
+        specifier: ^11.0.0
+        version: 11.2.4
+      luxon:
+        specifier: ^3.4.4
+        version: 3.7.2
+    devDependencies:
+      '@types/node':
+        specifier: ^24.10.1
+        version: 24.10.1
+      '@vitest/coverage-v8':
+        specifier: ^4.0.15
+        version: 4.0.15(vitest@4.0.15(@opentelemetry/api@1.9.0)(@types/node@24.10.1)(jiti@2.6.1)(jsdom@27.2.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2))
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^4.0.15
+        version: 4.0.15(@opentelemetry/api@1.9.0)(@types/node@24.10.1)(jiti@2.6.1)(jsdom@27.2.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)
+
   packages/data-observatory:
     dependencies:
       '@quantbot/core':
@@ -478,6 +515,88 @@ importers:
       '@types/node':
         specifier: ^24.10.1
         version: 24.10.1
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^4.0.15
+        version: 4.0.15(@opentelemetry/api@1.9.0)(@types/node@24.10.1)(jiti@2.6.1)(jsdom@27.2.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)
+
+  packages/infra:
+    dependencies:
+      '@clickhouse/client':
+        specifier: ^1.14.0
+        version: 1.14.0
+      '@influxdata/influxdb-client':
+        specifier: ^1.33.2
+        version: 1.35.0
+      '@influxdata/influxdb-client-apis':
+        specifier: ^1.33.2
+        version: 1.35.0(@influxdata/influxdb-client@1.35.0)
+      '@quantbot/core':
+        specifier: workspace:*
+        version: link:../core
+      '@solana/web3.js':
+        specifier: ^1.98.4
+        version: 1.98.4(bufferutil@4.0.9)(encoding@0.1.13)(typescript@5.9.3)(utf-8-validate@5.0.10)
+      ajv:
+        specifier: ^8.17.1
+        version: 8.17.1
+      ajv-formats:
+        specifier: ^3.0.1
+        version: 3.0.1(ajv@8.17.1)
+      axios:
+        specifier: ^1.13.2
+        version: 1.13.2
+      bs58:
+        specifier: ^5.0.0
+        version: 5.0.0
+      dotenv:
+        specifier: ^17.2.3
+        version: 17.2.3
+      duckdb:
+        specifier: ^1.0.0
+        version: 1.4.3(encoding@0.1.13)
+      execa:
+        specifier: ^9.4.0
+        version: 9.4.1
+      js-yaml:
+        specifier: ^4.1.1
+        version: 4.1.1
+      lru-cache:
+        specifier: ^11.0.0
+        version: 11.2.4
+      luxon:
+        specifier: ^3.7.2
+        version: 3.7.2
+      prom-client:
+        specifier: ^15.1.0
+        version: 15.1.3
+      winston:
+        specifier: ^3.18.3
+        version: 3.18.3
+      winston-daily-rotate-file:
+        specifier: ^5.0.0
+        version: 5.0.0(winston@3.18.3)
+      zod:
+        specifier: ^4.1.13
+        version: 4.1.13
+    devDependencies:
+      '@types/js-yaml':
+        specifier: ^4.0.9
+        version: 4.0.9
+      '@types/luxon':
+        specifier: ^3.7.1
+        version: 3.7.1
+      '@types/node':
+        specifier: ^24.10.1
+        version: 24.10.1
+      '@vitest/coverage-v8':
+        specifier: ^4.0.15
+        version: 4.0.15(vitest@4.0.15(@opentelemetry/api@1.9.0)(@types/node@24.10.1)(jiti@2.6.1)(jsdom@27.2.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2))
+      fast-check:
+        specifier: ^4.4.0
+        version: 4.4.0
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
@@ -666,6 +785,9 @@ importers:
       '@quantbot/core':
         specifier: workspace:*
         version: link:../core
+      '@quantbot/infra':
+        specifier: workspace:*
+        version: link:../infra
       '@quantbot/storage':
         specifier: workspace:*
         version: link:../storage
@@ -771,6 +893,9 @@ importers:
       '@quantbot/core':
         specifier: workspace:*
         version: link:../core
+      '@quantbot/infra':
+        specifier: workspace:*
+        version: link:../infra
       '@quantbot/utils':
         specifier: workspace:*
         version: link:../utils
@@ -808,6 +933,9 @@ importers:
       '@quantbot/core':
         specifier: workspace:*
         version: link:../core
+      '@quantbot/infra':
+        specifier: workspace:*
+        version: link:../infra
       '@solana/web3.js':
         specifier: ^1.98.4
         version: 1.98.4(bufferutil@4.0.9)(encoding@0.1.13)(typescript@5.9.3)(utf-8-validate@5.0.10)
@@ -881,6 +1009,9 @@ importers:
       '@quantbot/ohlcv':
         specifier: workspace:*
         version: link:../ohlcv
+      '@quantbot/simulation':
+        specifier: workspace:*
+        version: link:../simulation
       '@quantbot/storage':
         specifier: workspace:*
         version: link:../storage
