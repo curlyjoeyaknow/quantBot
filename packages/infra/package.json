@@ -1,0 +1,110 @@
+{
+  "name": "@quantbot/infra",
+  "version": "1.0.0",
+  "description": "Infrastructure layer for QuantBot - utilities, storage, observability, and API clients",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./utils": {
+      "types": "./dist/utils/index.d.ts",
+      "import": "./dist/utils/index.js"
+    },
+    "./utils/test-helpers/test-gating": {
+      "types": "./dist/utils/test-helpers/test-gating.d.ts",
+      "import": "./dist/utils/test-helpers/test-gating.js"
+    },
+    "./storage": {
+      "types": "./dist/storage/index.d.ts",
+      "import": "./dist/storage/index.js"
+    },
+    "./storage/ports/CandleSlicePort": {
+      "types": "./dist/storage/ports/CandleSlicePort.d.ts",
+      "import": "./dist/storage/ports/CandleSlicePort.js"
+    },
+    "./storage/ports/FeatureComputePort": {
+      "types": "./dist/storage/ports/FeatureComputePort.d.ts",
+      "import": "./dist/storage/ports/FeatureComputePort.js"
+    },
+    "./storage/ports/SimulationPort": {
+      "types": "./dist/storage/ports/SimulationPort.d.ts",
+      "import": "./dist/storage/ports/SimulationPort.js"
+    },
+    "./storage/ports/LeaderboardPort": {
+      "types": "./dist/storage/ports/LeaderboardPort.d.ts",
+      "import": "./dist/storage/ports/LeaderboardPort.js"
+    },
+    "./storage/ports/CatalogPort": {
+      "types": "./dist/storage/ports/CatalogPort.d.ts",
+      "import": "./dist/storage/ports/CatalogPort.js"
+    },
+    "./storage/adapters/clickhouse/CandleSliceExporter": {
+      "types": "./dist/storage/adapters/clickhouse/CandleSliceExporter.d.ts",
+      "import": "./dist/storage/adapters/clickhouse/CandleSliceExporter.js"
+    },
+    "./storage/adapters/duckdb/FeatureComputer": {
+      "types": "./dist/storage/adapters/duckdb/FeatureComputer.d.ts",
+      "import": "./dist/storage/adapters/duckdb/FeatureComputer.js"
+    },
+    "./storage/adapters/duckdb/SimulationExecutor": {
+      "types": "./dist/storage/adapters/duckdb/SimulationExecutor.d.ts",
+      "import": "./dist/storage/adapters/duckdb/SimulationExecutor.js"
+    },
+    "./storage/adapters/duckdb/duckdbClient": {
+      "types": "./dist/storage/adapters/duckdb/duckdbClient.d.ts",
+      "import": "./dist/storage/adapters/duckdb/duckdbClient.js"
+    },
+    "./storage/adapters/duckdb/DuckDbCatalogAdapter": {
+      "types": "./dist/storage/adapters/duckdb/DuckDbCatalogAdapter.d.ts",
+      "import": "./dist/storage/adapters/duckdb/DuckDbCatalogAdapter.js"
+    },
+    "./observability": {
+      "types": "./dist/observability/index.d.ts",
+      "import": "./dist/observability/index.js"
+    },
+    "./api-clients": {
+      "types": "./dist/api-clients/index.d.ts",
+      "import": "./dist/api-clients/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "test": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@quantbot/core": "workspace:*",
+    "@clickhouse/client": "^1.14.0",
+    "@influxdata/influxdb-client": "^1.33.2",
+    "@influxdata/influxdb-client-apis": "^1.33.2",
+    "@solana/web3.js": "^1.98.4",
+    "ajv": "^8.17.1",
+    "ajv-formats": "^3.0.1",
+    "axios": "^1.13.2",
+    "bs58": "^5.0.0",
+    "dotenv": "^17.2.3",
+    "duckdb": "^1.0.0",
+    "execa": "^9.4.0",
+    "js-yaml": "^4.1.1",
+    "lru-cache": "^11.0.0",
+    "luxon": "^3.7.2",
+    "prom-client": "^15.1.0",
+    "winston": "^3.18.3",
+    "winston-daily-rotate-file": "^5.0.0",
+    "zod": "^4.1.13"
+  },
+  "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
+    "@types/luxon": "^3.7.1",
+    "@types/node": "^24.10.1",
+    "@vitest/coverage-v8": "^4.0.15",
+    "fast-check": "^4.4.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.15"
+  }
+}
+
