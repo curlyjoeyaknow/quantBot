@@ -1,0 +1,50 @@
+{
+  "name": "@quantbot/data",
+  "version": "1.0.0",
+  "description": "Data layer for QuantBot - OHLCV management, ingestion, and orchestration jobs",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./ohlcv": {
+      "types": "./dist/ohlcv/index.d.ts",
+      "import": "./dist/ohlcv/index.js"
+    },
+    "./ingestion": {
+      "types": "./dist/ingestion/index.d.ts",
+      "import": "./dist/ingestion/index.js"
+    },
+    "./ingestion/tests/helpers/createTestDuckDB": {
+      "types": "./dist/ingestion/tests/helpers/createTestDuckDB.d.ts",
+      "import": "./dist/ingestion/tests/helpers/createTestDuckDB.js"
+    },
+    "./jobs": {
+      "types": "./dist/jobs/index.d.ts",
+      "import": "./dist/jobs/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "test": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@quantbot/core": "workspace:*",
+    "@quantbot/infra": "workspace:*",
+    "@solana/web3.js": "^1.98.4",
+    "execa": "^8.0.1",
+    "lru-cache": "^11.0.0",
+    "luxon": "^3.4.4"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "@vitest/coverage-v8": "^4.0.15",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.15"
+  }
+}
+

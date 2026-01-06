@@ -457,6 +457,40 @@ importers:
         specifier: ^4.0.15
         version: 4.0.15(@opentelemetry/api@1.9.0)(@types/node@24.10.1)(jiti@2.6.1)(jsdom@27.2.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)
 
+  packages/data:
+    dependencies:
+      '@quantbot/core':
+        specifier: workspace:*
+        version: link:../core
+      '@quantbot/infra':
+        specifier: workspace:*
+        version: link:../infra
+      '@solana/web3.js':
+        specifier: ^1.98.4
+        version: 1.98.4(bufferutil@4.0.9)(encoding@0.1.13)(typescript@5.9.3)(utf-8-validate@5.0.10)
+      execa:
+        specifier: ^8.0.1
+        version: 8.0.1
+      lru-cache:
+        specifier: ^11.0.0
+        version: 11.2.4
+      luxon:
+        specifier: ^3.4.4
+        version: 3.7.2
+    devDependencies:
+      '@types/node':
+        specifier: ^24.10.1
+        version: 24.10.1
+      '@vitest/coverage-v8':
+        specifier: ^4.0.15
+        version: 4.0.15(vitest@4.0.15(@opentelemetry/api@1.9.0)(@types/node@24.10.1)(jiti@2.6.1)(jsdom@27.2.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2))
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
+      vitest:
+        specifier: ^4.0.15
+        version: 4.0.15(@opentelemetry/api@1.9.0)(@types/node@24.10.1)(jiti@2.6.1)(jsdom@27.2.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2)
+
   packages/data-observatory:
     dependencies:
       '@quantbot/core':
