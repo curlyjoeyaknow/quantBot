@@ -123,7 +123,7 @@ export class StorageEventCollector implements EventCollector {
 
     try {
       // Use PythonEngine directly to query calls from DuckDB
-      // This avoids dependency on @quantbot/simulation package
+      // This avoids dependency on @quantbot/backtest package
       const { getPythonEngine } = await import('@quantbot/utils');
       const pythonEngine = getPythonEngine();
 

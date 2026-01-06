@@ -7,7 +7,7 @@
 
 import type { Candle, TokenAddress, Chain } from '@quantbot/core';
 import type { StrategyV1, BacktestResult, Trade, BacktestEvent, CallRecord } from '../types.js';
-import { runOverlaySimulation } from '@quantbot/simulation';
+import { runOverlaySimulation } from '../sim/overlay-simulation.js';
 
 /**
  * Backtest a single call

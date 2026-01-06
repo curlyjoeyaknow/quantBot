@@ -12,9 +12,12 @@ import itertools
 import json
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict, Iterator, List, Optional, Tuple, Union
+from typing import Any, Dict, Iterator, List, Optional, Tuple, TYPE_CHECKING, Union
 
 import yaml
+
+if TYPE_CHECKING:
+    from .optimizer_objective import QualityFilterConfig
 
 
 @dataclass
@@ -207,121 +210,242 @@ class LadderTpParamSpace:
 @dataclass
 class TrailingStopParamSpace:
     """
-    Parameter space for trailing stop optimization (future).
+    Parameter space for trailing stop optimization.
+    
+    Trailing stop activates after price rises by activation_pct,
+    then trails at trail_pct below the running high.
     """
     enabled: bool = False
-    activation_mult: Optional[RangeSpec] = None  # When to activate trailing
-    trail_percent: Optional[RangeSpec] = None    # Distance from peak
+    activation_pct: Optional[RangeSpec] = None  # When to activate (e.g., 0.30 = +30%)
+    trail_pct: Optional[RangeSpec] = None       # Distance from peak (e.g., 0.15 = 15%)
+    
+    # Legacy aliases
+    activation_mult: Optional[RangeSpec] = None
+    trail_percent: Optional[RangeSpec] = None
+    
+    def __post_init__(self):
+        # Support legacy names
+        if self.activation_mult and not self.activation_pct:
+            self.activation_pct = self.activation_mult
+        if self.trail_percent and not self.trail_pct:
+            self.trail_pct = self.trail_percent
     
     def iter_params(self) -> Iterator[Dict[str, Any]]:
         if not self.enabled:
             return
         
-        activations = self.activation_mult.expand() if self.activation_mult else [1.5]
-        trails = self.trail_percent.expand() if self.trail_percent else [0.25]
+        activations = self.activation_pct.expand() if self.activation_pct else [0.30]
+        trails = self.trail_pct.expand() if self.trail_pct else [0.15]
         
         for act in activations:
             for trail in trails:
                 yield {
-                    "trailing_activation": act,
-                    "trailing_percent": trail,
+                    "trail_activation_pct": act,
+                    "trail_distance_pct": trail,
                 }
     
     def count(self) -> int:
         if not self.enabled:
             return 0
-        act_count = len(self.activation_mult.expand()) if self.activation_mult else 1
-        trail_count = len(self.trail_percent.expand()) if self.trail_percent else 1
+        act_count = len(self.activation_pct.expand()) if self.activation_pct else 1
+        trail_count = len(self.trail_pct.expand()) if self.trail_pct else 1
         return act_count * trail_count
     
     def to_dict(self) -> Dict[str, Any]:
         d: Dict[str, Any] = {"enabled": self.enabled}
-        if self.activation_mult:
-            d["activation_mult"] = self.activation_mult.to_dict()
-        if self.trail_percent:
-            d["trail_percent"] = self.trail_percent.to_dict()
+        if self.activation_pct:
+            d["activation_pct"] = self.activation_pct.to_dict()
+        if self.trail_pct:
+            d["trail_pct"] = self.trail_pct.to_dict()
         return d
     
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "TrailingStopParamSpace":
         return cls(
             enabled=data.get("enabled", False),
-            activation_mult=RangeSpec.from_dict(data["activation_mult"]) if data.get("activation_mult") else None,
-            trail_percent=RangeSpec.from_dict(data["trail_percent"]) if data.get("trail_percent") else None,
+            activation_pct=RangeSpec.from_dict(data["activation_pct"]) if data.get("activation_pct") else None,
+            trail_pct=RangeSpec.from_dict(data["trail_pct"]) if data.get("trail_pct") else None,
+        )
+
+
+@dataclass
+class BreakevenParamSpace:
+    """
+    Parameter space for break-even stop optimization.
+    
+    After price rises by trigger_pct, move SL to entry (+ offset).
+    """
+    enabled: bool = False
+    trigger_pct: Optional[RangeSpec] = None  # When to trigger (e.g., 0.20 = +20%)
+    offset_pct: Optional[RangeSpec] = None   # Offset from entry (e.g., 0.0 = exact entry)
+    
+    def iter_params(self) -> Iterator[Dict[str, Any]]:
+        if not self.enabled:
+            return
+        
+        triggers = self.trigger_pct.expand() if self.trigger_pct else [0.20]
+        offsets = self.offset_pct.expand() if self.offset_pct else [0.0]
+        
+        for trig in triggers:
+            for off in offsets:
+                yield {
+                    "breakeven_trigger_pct": trig,
+                    "breakeven_offset_pct": off,
+                }
+    
+    def count(self) -> int:
+        if not self.enabled:
+            return 0
+        trig_count = len(self.trigger_pct.expand()) if self.trigger_pct else 1
+        off_count = len(self.offset_pct.expand()) if self.offset_pct else 1
+        return trig_count * off_count
+    
+    def to_dict(self) -> Dict[str, Any]:
+        d: Dict[str, Any] = {"enabled": self.enabled}
+        if self.trigger_pct:
+            d["trigger_pct"] = self.trigger_pct.to_dict()
+        if self.offset_pct:
+            d["offset_pct"] = self.offset_pct.to_dict()
+        return d
+    
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "BreakevenParamSpace":
+        return cls(
+            enabled=data.get("enabled", False),
+            trigger_pct=RangeSpec.from_dict(data["trigger_pct"]) if data.get("trigger_pct") else None,
+            offset_pct=RangeSpec.from_dict(data["offset_pct"]) if data.get("offset_pct") else None,
         )
 
 
 @dataclass
 class TimeLimitParamSpace:
     """
-    Parameter space for time limit optimization (future).
+    Parameter space for time stop optimization.
+    
+    Exit after time_stop_hours if TP/SL not hit.
+    Prevents zombie positions from dominating DD.
     """
     enabled: bool = False
+    time_stop_hours: Optional[RangeSpec] = None
+    
+    # Legacy alias
     max_hold_hours: Optional[RangeSpec] = None
+    
+    def __post_init__(self):
+        if self.max_hold_hours and not self.time_stop_hours:
+            self.time_stop_hours = self.max_hold_hours
     
     def iter_params(self) -> Iterator[Dict[str, Any]]:
         if not self.enabled:
             return
         
-        hours = self.max_hold_hours.expand() if self.max_hold_hours else [48]
+        hours = self.time_stop_hours.expand() if self.time_stop_hours else [24]
         for h in hours:
-            yield {"max_hold_hours": int(h)}
+            yield {"time_stop_hours": float(h)}
     
     def count(self) -> int:
         if not self.enabled:
             return 0
-        return len(self.max_hold_hours.expand()) if self.max_hold_hours else 1
+        return len(self.time_stop_hours.expand()) if self.time_stop_hours else 1
     
     def to_dict(self) -> Dict[str, Any]:
         d: Dict[str, Any] = {"enabled": self.enabled}
-        if self.max_hold_hours:
-            d["max_hold_hours"] = self.max_hold_hours.to_dict()
+        if self.time_stop_hours:
+            d["time_stop_hours"] = self.time_stop_hours.to_dict()
         return d
     
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "TimeLimitParamSpace":
         return cls(
             enabled=data.get("enabled", False),
-            max_hold_hours=RangeSpec.from_dict(data["max_hold_hours"]) if data.get("max_hold_hours") else None,
+            time_stop_hours=RangeSpec.from_dict(data["time_stop_hours"]) if data.get("time_stop_hours") else None,
         )
 
 
 @dataclass
 class DelayedEntryParamSpace:
     """
-    Parameter space for delayed entry optimization (future).
+    Parameter space for delayed/improved entry timing.
+    
+    Entry timing strategies:
+    - wait_for_dip: Wait for price to dip X% before entering
+    - wait_for_confirmation: Wait N candles to confirm direction
+    - limit_entry: Enter only if price within X% of alert price after N candles
+    
+    The insight: Alert timing is often early. Waiting for a dip or confirmation
+    can improve entry prices and reduce stop distance.
     """
     enabled: bool = False
-    dip_percent: Optional[RangeSpec] = None  # Wait for dip before entry
-    max_wait_candles: Optional[RangeSpec] = None
+    
+    # Wait for dip before entry
+    dip_percent: Optional[RangeSpec] = None  # e.g., 0.05 = wait for 5% dip
+    max_wait_candles: Optional[RangeSpec] = None  # Max candles to wait for dip
+    
+    # Entry mode
+    entry_mode: List[str] = field(default_factory=lambda: ["immediate"])
+    # Options:
+    #   - "immediate": Enter at next candle open (default)
+    #   - "wait_dip": Wait for dip_percent pullback
+    #   - "wait_confirm": Wait for N green candles
+    #   - "limit_better": Only enter if price improves by dip_percent within wait
+    
+    # Confirmation candles (for wait_confirm mode)
+    confirm_candles: Optional[RangeSpec] = None  # e.g., 2 = wait for 2 green candles
     
     def iter_params(self) -> Iterator[Dict[str, Any]]:
         if not self.enabled:
             return
         
-        dips = self.dip_percent.expand() if self.dip_percent else [0.1]
-        waits = self.max_wait_candles.expand() if self.max_wait_candles else [60]
-        
-        for dip in dips:
-            for wait in waits:
-                yield {
-                    "dip_percent": dip,
-                    "max_wait_candles": int(wait),
-                }
+        for mode in self.entry_mode:
+            if mode == "immediate":
+                yield {"entry_mode": mode}
+            elif mode in ("wait_dip", "limit_better"):
+                dips = self.dip_percent.expand() if self.dip_percent else [0.05]
+                waits = self.max_wait_candles.expand() if self.max_wait_candles else [30]
+                for dip in dips:
+                    for wait in waits:
+                        yield {
+                            "entry_mode": mode,
+                            "dip_percent": dip,
+                            "max_wait_candles": int(wait),
+                        }
+            elif mode == "wait_confirm":
+                confirms = self.confirm_candles.expand() if self.confirm_candles else [2]
+                waits = self.max_wait_candles.expand() if self.max_wait_candles else [30]
+                for conf in confirms:
+                    for wait in waits:
+                        yield {
+                            "entry_mode": mode,
+                            "confirm_candles": int(conf),
+                            "max_wait_candles": int(wait),
+                        }
     
     def count(self) -> int:
         if not self.enabled:
             return 0
-        dip_count = len(self.dip_percent.expand()) if self.dip_percent else 1
-        wait_count = len(self.max_wait_candles.expand()) if self.max_wait_candles else 1
-        return dip_count * wait_count
+        
+        total = 0
+        for mode in self.entry_mode:
+            if mode == "immediate":
+                total += 1
+            elif mode in ("wait_dip", "limit_better"):
+                dip_count = len(self.dip_percent.expand()) if self.dip_percent else 1
+                wait_count = len(self.max_wait_candles.expand()) if self.max_wait_candles else 1
+                total += dip_count * wait_count
+            elif mode == "wait_confirm":
+                conf_count = len(self.confirm_candles.expand()) if self.confirm_candles else 1
+                wait_count = len(self.max_wait_candles.expand()) if self.max_wait_candles else 1
+                total += conf_count * wait_count
+        return total
     
     def to_dict(self) -> Dict[str, Any]:
-        d: Dict[str, Any] = {"enabled": self.enabled}
+        d: Dict[str, Any] = {"enabled": self.enabled, "entry_mode": self.entry_mode}
         if self.dip_percent:
             d["dip_percent"] = self.dip_percent.to_dict()
         if self.max_wait_candles:
             d["max_wait_candles"] = self.max_wait_candles.to_dict()
+        if self.confirm_candles:
+            d["confirm_candles"] = self.confirm_candles.to_dict()
         return d
     
     @classmethod
@@ -330,6 +454,122 @@ class DelayedEntryParamSpace:
             enabled=data.get("enabled", False),
             dip_percent=RangeSpec.from_dict(data["dip_percent"]) if data.get("dip_percent") else None,
             max_wait_candles=RangeSpec.from_dict(data["max_wait_candles"]) if data.get("max_wait_candles") else None,
+            entry_mode=data.get("entry_mode", ["immediate"]),
+            confirm_candles=RangeSpec.from_dict(data["confirm_candles"]) if data.get("confirm_candles") else None,
+        )
+
+
+@dataclass
+class TieredStopLossParamSpace:
+    """
+    Parameter space for tiered stop loss optimization.
+    
+    As price hits milestones (1.2x, 1.5x, 2x, etc.), move the stop loss up.
+    This locks in profits at each tier while allowing for further upside.
+    
+    Example configuration:
+        tier_1_2x_sl = 0.95  # At 1.2x, move SL to 0.95x (lock in -5%)
+        tier_1_5x_sl = 1.10  # At 1.5x, move SL to 1.10x (lock in +10%)
+        tier_2x_sl = 1.40    # At 2x, move SL to 1.40x (lock in +40%)
+        tier_3x_sl = 2.00    # At 3x, move SL to 2.00x (lock in +100%)
+    
+    Key insight: Tiered stops prevent giving back gains on strong moves
+    while still allowing winners to run.
+    """
+    enabled: bool = False
+    
+    # Stop level after hitting each tier (as multiple of entry)
+    # None = don't change stop at this tier
+    tier_1_2x_sl: Optional[RangeSpec] = None  # SL after 1.2x hit
+    tier_1_5x_sl: Optional[RangeSpec] = None  # SL after 1.5x hit
+    tier_2x_sl: Optional[RangeSpec] = None    # SL after 2x hit
+    tier_3x_sl: Optional[RangeSpec] = None    # SL after 3x hit
+    tier_4x_sl: Optional[RangeSpec] = None    # SL after 4x hit
+    tier_5x_sl: Optional[RangeSpec] = None    # SL after 5x hit
+    
+    def iter_params(self) -> Iterator[Dict[str, Any]]:
+        if not self.enabled:
+            return
+        
+        # Build product of all enabled tiers
+        tier_vals: Dict[str, List[Optional[float]]] = {}
+        
+        if self.tier_1_2x_sl:
+            tier_vals["tier_1_2x_sl"] = self.tier_1_2x_sl.expand()
+        if self.tier_1_5x_sl:
+            tier_vals["tier_1_5x_sl"] = self.tier_1_5x_sl.expand()
+        if self.tier_2x_sl:
+            tier_vals["tier_2x_sl"] = self.tier_2x_sl.expand()
+        if self.tier_3x_sl:
+            tier_vals["tier_3x_sl"] = self.tier_3x_sl.expand()
+        if self.tier_4x_sl:
+            tier_vals["tier_4x_sl"] = self.tier_4x_sl.expand()
+        if self.tier_5x_sl:
+            tier_vals["tier_5x_sl"] = self.tier_5x_sl.expand()
+        
+        if not tier_vals:
+            return
+        
+        # Cartesian product of all tier values
+        keys = list(tier_vals.keys())
+        value_lists = [tier_vals[k] for k in keys]
+        
+        import itertools
+        for combo in itertools.product(*value_lists):
+            params = {"tiered_sl_enabled": True}
+            for k, v in zip(keys, combo):
+                params[k] = v
+            yield params
+    
+    def count(self) -> int:
+        if not self.enabled:
+            return 0
+        
+        total = 1
+        if self.tier_1_2x_sl:
+            total *= len(self.tier_1_2x_sl.expand())
+        if self.tier_1_5x_sl:
+            total *= len(self.tier_1_5x_sl.expand())
+        if self.tier_2x_sl:
+            total *= len(self.tier_2x_sl.expand())
+        if self.tier_3x_sl:
+            total *= len(self.tier_3x_sl.expand())
+        if self.tier_4x_sl:
+            total *= len(self.tier_4x_sl.expand())
+        if self.tier_5x_sl:
+            total *= len(self.tier_5x_sl.expand())
+        
+        # If no tiers configured, return 0
+        if total == 1:
+            return 0
+        return total
+    
+    def to_dict(self) -> Dict[str, Any]:
+        d: Dict[str, Any] = {"enabled": self.enabled}
+        if self.tier_1_2x_sl:
+            d["tier_1_2x_sl"] = self.tier_1_2x_sl.to_dict()
+        if self.tier_1_5x_sl:
+            d["tier_1_5x_sl"] = self.tier_1_5x_sl.to_dict()
+        if self.tier_2x_sl:
+            d["tier_2x_sl"] = self.tier_2x_sl.to_dict()
+        if self.tier_3x_sl:
+            d["tier_3x_sl"] = self.tier_3x_sl.to_dict()
+        if self.tier_4x_sl:
+            d["tier_4x_sl"] = self.tier_4x_sl.to_dict()
+        if self.tier_5x_sl:
+            d["tier_5x_sl"] = self.tier_5x_sl.to_dict()
+        return d
+    
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "TieredStopLossParamSpace":
+        return cls(
+            enabled=data.get("enabled", False),
+            tier_1_2x_sl=RangeSpec.from_dict(data["tier_1_2x_sl"]) if data.get("tier_1_2x_sl") else None,
+            tier_1_5x_sl=RangeSpec.from_dict(data["tier_1_5x_sl"]) if data.get("tier_1_5x_sl") else None,
+            tier_2x_sl=RangeSpec.from_dict(data["tier_2x_sl"]) if data.get("tier_2x_sl") else None,
+            tier_3x_sl=RangeSpec.from_dict(data["tier_3x_sl"]) if data.get("tier_3x_sl") else None,
+            tier_4x_sl=RangeSpec.from_dict(data["tier_4x_sl"]) if data.get("tier_4x_sl") else None,
+            tier_5x_sl=RangeSpec.from_dict(data["tier_5x_sl"]) if data.get("tier_5x_sl") else None,
         )
 
 
@@ -403,7 +643,7 @@ class OptimizerConfig:
     
     # Slice settings
     slice_dir: str = "slices"
-    slice_path: Optional[str] = None  # Use existing slice
+    slice_path: Optional[str] = "slices/per_token"  # Default to per_token slices
     reuse_slice: bool = True
     
     # Fixed settings
@@ -420,8 +660,10 @@ class OptimizerConfig:
     tp_sl: Optional[TpSlParamSpace] = None
     ladder_tp: Optional[LadderTpParamSpace] = None
     trailing_stop: Optional[TrailingStopParamSpace] = None
+    breakeven: Optional[BreakevenParamSpace] = None
     time_limit: Optional[TimeLimitParamSpace] = None
     delayed_entry: Optional[DelayedEntryParamSpace] = None
+    tiered_sl: Optional[TieredStopLossParamSpace] = None  # NEW: Tiered stop loss
     reentry: Optional[ReentryParamSpace] = None
     
     # Execution settings
@@ -433,23 +675,36 @@ class OptimizerConfig:
     # Risk settings for summary metrics
     risk_per_trade: float = 0.02  # 2%
     
+    # Quality filter (optional - filters results post-scoring)
+    quality_filter: Optional["QualityFilterConfig"] = None
+    
     def count_combinations(self) -> int:
         """Count total parameter combinations."""
         # Start with TP/SL combinations (always required)
         if self.tp_sl is None:
             return 0
         
-        base_count = self.tp_sl.count()
+        count = self.tp_sl.count()
         
-        # Future parameter spaces (multiplicative when enabled)
-        # For now, these are additive experiments, not combined
-        # In future, can make this more sophisticated
+        # Extended exit params are multiplicative when enabled
+        if self.time_limit and self.time_limit.enabled:
+            count *= max(1, self.time_limit.count())
+        if self.breakeven and self.breakeven.enabled:
+            count *= max(1, self.breakeven.count())
+        if self.trailing_stop and self.trailing_stop.enabled:
+            count *= max(1, self.trailing_stop.count())
+        if self.tiered_sl and self.tiered_sl.enabled:
+            count *= max(1, self.tiered_sl.count())
+        if self.delayed_entry and self.delayed_entry.enabled:
+            count *= max(1, self.delayed_entry.count())
         
-        return base_count
+        return count
     
     def iter_all_params(self) -> Iterator[Tuple[int, Dict[str, Any]]]:
         """
         Iterate over all parameter combinations with index.
+        
+        Combines TP/SL with extended exit types and entry timing.
         
         Yields:
             (index, params_dict)
@@ -457,10 +712,27 @@ class OptimizerConfig:
         if self.tp_sl is None:
             return
         
+        # Get base TP/SL params
+        tp_sl_list = list(self.tp_sl.iter_params())
+        
+        # Get extended exit params (or single empty dict if not enabled)
+        time_params = list(self.time_limit.iter_params()) if (self.time_limit and self.time_limit.enabled) else [{}]
+        be_params = list(self.breakeven.iter_params()) if (self.breakeven and self.breakeven.enabled) else [{}]
+        trail_params = list(self.trailing_stop.iter_params()) if (self.trailing_stop and self.trailing_stop.enabled) else [{}]
+        tiered_params = list(self.tiered_sl.iter_params()) if (self.tiered_sl and self.tiered_sl.enabled) else [{}]
+        entry_params = list(self.delayed_entry.iter_params()) if (self.delayed_entry and self.delayed_entry.enabled) else [{}]
+        
+        # Combine all
         idx = 0
-        for tp_sl_params in self.tp_sl.iter_params():
-            yield idx, tp_sl_params
-            idx += 1
+        for tp_sl in tp_sl_list:
+            for time_p in time_params:
+                for be_p in be_params:
+                    for trail_p in trail_params:
+                        for tiered_p in tiered_params:
+                            for entry_p in entry_params:
+                                combined = {**tp_sl, **time_p, **be_p, **trail_p, **tiered_p, **entry_p}
+                                yield idx, combined
+                                idx += 1
     
     def to_dict(self) -> Dict[str, Any]:
         d: Dict[str, Any] = {
@@ -495,12 +767,18 @@ class OptimizerConfig:
             d["ladder_tp"] = self.ladder_tp.to_dict()
         if self.trailing_stop:
             d["trailing_stop"] = self.trailing_stop.to_dict()
+        if self.breakeven:
+            d["breakeven"] = self.breakeven.to_dict()
         if self.time_limit:
             d["time_limit"] = self.time_limit.to_dict()
         if self.delayed_entry:
             d["delayed_entry"] = self.delayed_entry.to_dict()
+        if self.tiered_sl:
+            d["tiered_sl"] = self.tiered_sl.to_dict()
         if self.reentry:
             d["reentry"] = self.reentry.to_dict()
+        if self.quality_filter:
+            d["quality_filter"] = self.quality_filter.to_dict()
         
         return d
     
@@ -524,15 +802,35 @@ class OptimizerConfig:
             tp_sl=TpSlParamSpace.from_dict(data["tp_sl"]) if data.get("tp_sl") else None,
             ladder_tp=LadderTpParamSpace.from_dict(data["ladder_tp"]) if data.get("ladder_tp") else None,
             trailing_stop=TrailingStopParamSpace.from_dict(data["trailing_stop"]) if data.get("trailing_stop") else None,
+            breakeven=BreakevenParamSpace.from_dict(data["breakeven"]) if data.get("breakeven") else None,
             time_limit=TimeLimitParamSpace.from_dict(data["time_limit"]) if data.get("time_limit") else None,
             delayed_entry=DelayedEntryParamSpace.from_dict(data["delayed_entry"]) if data.get("delayed_entry") else None,
+            tiered_sl=TieredStopLossParamSpace.from_dict(data["tiered_sl"]) if data.get("tiered_sl") else None,
             reentry=ReentryParamSpace.from_dict(data["reentry"]) if data.get("reentry") else None,
             threads=data.get("threads", 8),
             parallel_runs=data.get("parallel_runs", 1),
             store_duckdb=data.get("store_duckdb", True),
             output_dir=data.get("output_dir", "results/optimizer"),
             risk_per_trade=data.get("risk_per_trade", 0.02),
+            quality_filter=_parse_quality_filter(data.get("quality_filter")),
         )
+
+
+def _parse_quality_filter(data: Optional[Dict[str, Any]]) -> Optional["QualityFilterConfig"]:
+    """Parse quality filter from dict (lazy import to avoid circular dependency)."""
+    if data is None:
+        return None
+    from .optimizer_objective import QualityFilterConfig
+    return QualityFilterConfig(
+        max_headfake_rate=data.get("max_headfake_rate"),
+        max_headfake_depth=data.get("max_headfake_depth"),
+        min_retention_1_2x=data.get("min_retention_1_2x"),
+        min_floor_hold_1_2x=data.get("min_floor_hold_1_2x"),
+        max_time_underwater_pct=data.get("max_time_underwater_pct"),
+        max_stall_score=data.get("max_stall_score"),
+        max_giveback_after_1_5x=data.get("max_giveback_after_1_5x"),
+        max_giveback_after_2x=data.get("max_giveback_after_2x"),
+    )
     
     @classmethod
     def from_yaml(cls, path: str) -> "OptimizerConfig":

@@ -46,7 +46,7 @@ vi.mock('@quantbot/utils', async () => {
   };
 });
 
-// No need to mock @quantbot/jobs or @quantbot/simulation - workflow uses ports directly
+// No need to mock @quantbot/jobs or @quantbot/backtest - workflow uses ports directly
 
 // Now import after mocks are set up
 import { ingestOhlcv } from '../../src/ohlcv/ingestOhlcv.js';

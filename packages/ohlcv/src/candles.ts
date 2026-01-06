@@ -6,7 +6,7 @@
  *   - ClickHouse integration via StorageEngine
  *   - Token metadata fetching
  *
- * Moved from @quantbot/simulation to break circular dependency.
+ * Moved from @quantbot/backtest to break circular dependency.
  * Pure math operations (aggregation, etc.) remain in simulation.
  ******************************************************************************/
 

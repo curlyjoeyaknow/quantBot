@@ -81,7 +81,7 @@ export async function createQueryCallsDuckdbContext(
   duckdbPath?: string
 ): Promise<QueryCallsDuckdbContext> {
   const { createProductionContext } = await import('../context/createProductionContext.js');
-  const { DuckDBStorageService } = await import('@quantbot/simulation');
+  const { DuckDBStorageService } = await import('@quantbot/backtest');
   const { PythonEngine } = await import('@quantbot/utils');
 
   const baseContext = createProductionContext();

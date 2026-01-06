@@ -335,7 +335,7 @@ async function retryFailedMintsAcrossAllChains(
       });
 
       // Add exclusion for each chain that was tried
-      const { DuckDBStorageService } = await import('@quantbot/simulation');
+      const { DuckDBStorageService } = await import('@quantbot/backtest');
       const storageService = new DuckDBStorageService(ctx.pythonEngine);
 
       for (const chain of triedChains) {

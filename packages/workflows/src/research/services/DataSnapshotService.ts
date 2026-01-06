@@ -24,11 +24,17 @@ import { logger, ValidationError, ConfigurationError } from '@quantbot/utils';
 import type { DataSnapshotRef } from '../contract.js';
 import { DataSnapshotRefSchema } from '../contract.js';
 import type { SliceManifestV1 } from '@quantbot/core';
-import { Catalog, FileSystemCatalogAdapter } from '@quantbot/labcatalog';
 import { queryCallsDuckdb, createQueryCallsDuckdbContext } from '../../calls/queryCallsDuckdb.js';
 import { getStorageEngine } from '@quantbot/storage';
 import { exportSlicesForAlerts } from '../../slices/exportSlicesForAlerts.js';
 import type { WorkflowContext } from '../../types.js';
+
+/**
+ * Catalog port interface - abstracts catalog access to avoid direct dependency on @quantbot/labcatalog
+ */
+export interface CatalogPort {
+  getSlice(manifestId: string): Promise<SliceManifestV1 | null>;
+}
 
 /**
  * Snapshot creation parameters
@@ -88,16 +94,12 @@ export interface SnapshotData {
  * Uses slice manifests to reference parquet files instead of querying databases directly.
  */
 export class DataSnapshotService {
-  private catalog: Catalog;
-
   constructor(
     private readonly ctx?: WorkflowContext,
-    catalogBasePath: string = './catalog'
+    private readonly catalog?: CatalogPort
   ) {
-    // Initialize catalog for slice access
-    // NOTE: Direct instantiation is acceptable here - this is a service (composition root)
-    const adapter = new FileSystemCatalogAdapter(catalogBasePath);
-    this.catalog = new Catalog(adapter, catalogBasePath);
+    // Catalog is injected as a port to avoid direct dependency on @quantbot/labcatalog
+    // If not provided, slice loading will fail gracefully
   }
 
   /**
@@ -296,6 +298,11 @@ export class DataSnapshotService {
       });
 
       for (const manifestId of sliceManifestIds) {
+        if (!this.catalog) {
+          throw new ValidationError('Catalog port not provided - cannot load slices', {
+            manifestId,
+          });
+        }
         const manifest = await this.catalog.getSlice(manifestId);
         if (!manifest) {
           logger.warn('[DataSnapshotService] Slice manifest not found', { manifestId });
@@ -697,10 +704,13 @@ export class DataSnapshotService {
 
 /**
  * Create default DataSnapshotService instance
+ *
+ * Note: For full catalog support, provide a CatalogPort implementation.
+ * This factory function creates a service without catalog (slice loading will fail).
  */
 export function createDataSnapshotService(
   ctx?: WorkflowContext,
-  catalogBasePath?: string
+  catalog?: CatalogPort
 ): DataSnapshotService {
-  return new DataSnapshotService(ctx, catalogBasePath);
+  return new DataSnapshotService(ctx, catalog);
 }

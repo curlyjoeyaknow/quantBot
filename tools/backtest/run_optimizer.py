@@ -57,6 +57,7 @@ from lib.optimizer_config import (
     create_basic_optimizer_config,
     create_grid_search_config,
 )
+from lib.trial_ledger import store_optimizer_run
 
 
 def parse_values(s: str) -> list[float]:
@@ -166,6 +167,25 @@ def cmd_run(args: argparse.Namespace) -> None:
     
     # Run optimization
     opt_run = run_optimization(config, verbose=not args.quiet)
+    
+    # ========== ALWAYS STORE TO DUCKDB ==========
+    # This is non-negotiable - every run must be recorded for experiment tracking
+    try:
+        store_optimizer_run(
+            duckdb_path=config.duckdb_path,
+            run_id=opt_run.run_id,
+            run_type="grid_search",
+            name=config.name,
+            date_from=config.date_from,
+            date_to=config.date_to,
+            config=config.to_dict(),
+            results=[r.to_dict() for r in opt_run.results],
+            timing=opt_run.timing,
+            notes=f"TP:{config.tp_sl.tp_mult.expand() if config.tp_sl else []} SL:{config.tp_sl.sl_mult.expand() if config.tp_sl else []}",
+        )
+        print(f"✓ Run stored to DuckDB: {config.duckdb_path} (optimizer.runs_d / optimizer.trials_f)", file=sys.stderr)
+    except Exception as e:
+        print(f"⚠️  Failed to store to DuckDB: {e}", file=sys.stderr)
     
     # Output results
     if args.json:

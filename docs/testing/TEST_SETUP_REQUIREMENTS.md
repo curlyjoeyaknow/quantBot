@@ -53,10 +53,19 @@ This document describes the specific setup required to run all tests, including 
 - **Requirements**:
   - DuckDB file path (defaults to `data/tele.duckdb`)
   - Test data in DuckDB tables
+  - Python dependencies installed (see [Python Setup](#python-setup) below)
 - **Environment Variables**:
   ```bash
   DUCKDB_PATH=data/tele.duckdb  # or path to test database
   ```
+
+#### Python Bridge Integration Tests
+- **Location**: 
+  - `packages/utils/tests/integration/python-bridge.test.ts`
+  - `packages/utils/tests/integration/duckdb-storage-bridge.test.ts`
+- **Requirements**:
+  - Python 3.8+ with dependencies installed (see [Python Setup](#python-setup) below)
+  - These tests run Python scripts via PythonEngine and validate JSON output contracts
 
 ### 3. Property Tests (May Require Services)
 - **Location**: `packages/**/tests/properties/**/*.test.ts`
@@ -166,6 +175,45 @@ mkdir -p data
 # Set DuckDB path
 export DUCKDB_PATH=data/tele.duckdb
 ```
+
+#### Python Setup
+
+Integration tests that use Python scripts require Python dependencies:
+
+```bash
+# Create virtual environment (if not already created)
+python3 -m venv .venv
+
+# Activate virtual environment
+source .venv/bin/activate  # On Linux/macOS
+# or
+.venv\Scripts\activate  # On Windows
+
+# Install Python dependencies for telegram tools
+cd tools/telegram
+pip install -r requirements.txt
+
+# Install Python dependencies for simulation tools
+cd ../simulation
+pip install -r requirements.txt
+
+# Return to project root
+cd ../..
+```
+
+**Required Python packages**:
+
+For Telegram ingestion (`tools/telegram/requirements.txt`):
+- `ijson>=3.2.3` (for JSON streaming)
+- `duckdb>=0.9.0` (for DuckDB operations)
+- `numpy>=1.24.0`, `pandas>=2.0.0` (for data processing)
+- `scipy>=1.10.0`, `scikit-learn>=1.3.0` (for ML features, optional)
+
+For Simulation tools (`tools/simulation/requirements.txt`):
+- `pydantic>=2.0.0` (for data validation)
+- `duckdb>=0.9.0` (for DuckDB operations)
+
+**Note**: If Python dependencies are not installed, Python bridge integration tests will fail with `ModuleNotFoundError`. These tests can be skipped by not running the integration test suite.
 
 ## Environment Variables
 

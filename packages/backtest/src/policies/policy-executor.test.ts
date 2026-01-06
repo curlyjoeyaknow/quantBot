@@ -50,7 +50,7 @@ describe('executePolicy - Fixed Stop', () => {
     const startTs = 1704067200000; // 2024-01-01 00:00:00 UTC
     const candles = createCandles(startTs, [
       { open: 1.0, high: 1.1, low: 1.0, close: 1.0 }, // Entry at 1.0
-      { open: 1.0, high: 1.0, low: 0.85, close: 0.9 }, // Low 0.85 < 0.8 (stop)
+      { open: 1.0, high: 1.0, low: 0.75, close: 0.9 }, // Low 0.75 <= 0.8 (stop triggers)
       { open: 0.9, high: 1.0, low: 0.9, close: 1.0 }, // Should not reach
     ]);
 

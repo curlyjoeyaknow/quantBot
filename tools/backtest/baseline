@@ -29,10 +29,13 @@ from lib.alerts import Alert, load_alerts
 from lib.helpers import parse_yyyy_mm_dd
 from lib.partitioner import detect_slice_type
 from lib.run_contract import (
+    RunConfig,
     RunIdentity,
     RunRecord,
     ensure_runs_schema,
     store_run,
+    store_run_summary,
+    store_caller_scores,
     list_recent_runs,
 )
 from lib.scoring_views import (
@@ -52,6 +55,7 @@ from lib.risk_sizing import (
     DEFAULT_MAX_POSITION_PCT,
     DEFAULT_MIN_STOP_DISTANCE,
 )
+from lib.caller_groups import load_caller_group, CallerGroup
 
 UTC = timezone.utc
 
@@ -88,6 +92,10 @@ def main():
                        help="Minimum trades for leaderboard (default: 10)")
     run_p.add_argument("--top", type=int, default=30,
                        help="Number of top callers to show (default: 30)")
+    run_p.add_argument("--callers", type=str, default=None,
+                       help="Comma-separated list of caller names to filter")
+    run_p.add_argument("--caller-group", type=str, default=None,
+                       help="Name of caller group file (from caller_groups/)")
     
     # Data source
     run_p.add_argument("--alerts-db", default="data/alerts.duckdb",
@@ -139,6 +147,98 @@ def main():
     # =========================================================================
     metrics_p = sub.add_parser("metrics", help="Show metric definitions")
     
+    # =========================================================================
+    # show command - show run details and config
+    # =========================================================================
+    show_p = sub.add_parser("show", help="Show full configuration for a run")
+    show_p.add_argument("run_id", help="Run ID (or prefix)")
+    show_p.add_argument("--db", default="data/baseline_results.duckdb",
+                        help="Path to results DuckDB")
+    
+    # =========================================================================
+    # optimize command - grid search over TP/SL and extended exits
+    # =========================================================================
+    opt_p = sub.add_parser("optimize", help="Grid search over TP/SL and extended exit parameters")
+    opt_p.add_argument("--from", dest="from_date", required=True,
+                       help="Start date (YYYY-MM-DD)")
+    opt_p.add_argument("--to", dest="to_date", required=True,
+                       help="End date (YYYY-MM-DD)")
+    
+    # TP/SL grid (TIGHTENED defaults to reduce overfitting)
+    opt_p.add_argument("--tp", type=str, default="1.5,2.0,2.5,3.0",
+                       help="TP multipliers (comma-separated or start:end:step). Default: 1.5,2.0,2.5,3.0")
+    opt_p.add_argument("--sl", type=str, default="0.35,0.45,0.55",
+                       help="SL multipliers (comma-separated or start:end:step). Default: 0.35,0.45,0.55 (tightened from 0.4-0.7)")
+    
+    # === Extended Exit Types ===
+    # Time stop
+    opt_p.add_argument("--time-stop", type=str, default=None,
+                       help="Time stop hours (comma-separated, e.g., '12,24,48')")
+    
+    # Break-even
+    opt_p.add_argument("--breakeven", type=str, default=None,
+                       help="Break-even trigger pct (comma-separated, e.g., '0.15,0.20,0.30')")
+    opt_p.add_argument("--breakeven-offset", type=float, default=0.0,
+                       help="Break-even offset from entry (default: 0.0)")
+    
+    # Trailing stop
+    opt_p.add_argument("--trail-activation", type=str, default=None,
+                       help="Trailing stop activation pct (comma-separated, e.g., '0.20,0.30,0.50')")
+    opt_p.add_argument("--trail-distance", type=str, default="0.15",
+                       help="Trailing stop distance pct (comma-separated, default: '0.15')")
+    
+    # === Tiered Stop Loss (move SL up as price hits milestones) ===
+    opt_p.add_argument("--tiered-sl", action="store_true",
+                       help="Enable tiered stop loss (move SL up at price milestones)")
+    opt_p.add_argument("--tier-1.2x-sl", type=str, default=None, dest="tier_1_2x_sl",
+                       help="SL after 1.2x hit (comma-separated, e.g., '0.95,1.0' = lock -5%% to 0%%)")
+    opt_p.add_argument("--tier-1.5x-sl", type=str, default=None, dest="tier_1_5x_sl",
+                       help="SL after 1.5x hit (comma-separated, e.g., '1.1,1.2' = lock +10%% to +20%%)")
+    opt_p.add_argument("--tier-2x-sl", type=str, default=None, dest="tier_2x_sl",
+                       help="SL after 2x hit (comma-separated, e.g., '1.4,1.5' = lock +40%% to +50%%)")
+    opt_p.add_argument("--tier-3x-sl", type=str, default=None, dest="tier_3x_sl",
+                       help="SL after 3x hit (comma-separated, e.g., '2.0,2.2')")
+    
+    # === Entry Timing Optimization ===
+    opt_p.add_argument("--entry-mode", type=str, default=None,
+                       help="Entry mode: immediate, wait_dip, wait_confirm, limit_better")
+    opt_p.add_argument("--dip-pct", type=str, default=None,
+                       help="Dip percentage to wait for (comma-separated, e.g., '0.05,0.10')")
+    opt_p.add_argument("--max-wait-candles", type=str, default=None,
+                       help="Max candles to wait for entry (comma-separated, e.g., '30,60')")
+    
+    # Data source
+    opt_p.add_argument("--alerts-db", default="data/alerts.duckdb",
+                       help="Path to alerts DuckDB")
+    opt_p.add_argument("--slice", type=str, default="slices/per_token",
+                       help="Path to candle slice (parquet). Default: slices/per_token")
+    
+    # Objective config
+    opt_p.add_argument("--objective", type=str, default="default",
+                       choices=["default", "conservative", "aggressive"],
+                       help="Objective function preset")
+    opt_p.add_argument("--primary", type=str, default="avg_r",
+                       choices=["avg_r", "total_r", "expectancy_r"],
+                       help="Primary metric to optimize")
+    
+    # Risk
+    opt_p.add_argument("--risk-per-trade", type=float, default=0.02,
+                       help="Max pct of portfolio to risk per trade")
+    
+    # Candle params
+    opt_p.add_argument("--interval", type=int, default=300,
+                       help="Candle interval in seconds")
+    opt_p.add_argument("--horizon", type=int, default=24,
+                       help="Horizon in hours")
+    
+    # Output
+    opt_p.add_argument("--name", type=str, default=None,
+                       help="Run name")
+    opt_p.add_argument("--output-dir", type=str, default="results/optimizer",
+                       help="Output directory for results")
+    opt_p.add_argument("--quiet", action="store_true",
+                       help="Suppress progress output")
+    
     # Parse args
     args = ap.parse_args()
     
@@ -152,6 +252,10 @@ def main():
         cmd_list(args)
     elif args.command == "metrics":
         cmd_metrics(args)
+    elif args.command == "show":
+        cmd_show(args)
+    elif args.command == "optimize":
+        cmd_optimize(args)
 
 
 def cmd_run(args):
@@ -199,6 +303,30 @@ def cmd_run(args):
     if not args.quiet:
         print(f"Loaded {len(alerts)} alerts")
     
+    # Filter by callers if specified
+    caller_filter = None
+    if args.callers:
+        # Comma-separated list
+        caller_filter = set(c.strip() for c in args.callers.split(","))
+        if not args.quiet:
+            print(f"Filtering to {len(caller_filter)} callers: {', '.join(list(caller_filter)[:5])}...")
+    elif args.caller_group:
+        # Load from caller group file
+        try:
+            group = load_caller_group(args.caller_group)
+            caller_filter = group.caller_ids
+            if not args.quiet:
+                print(f"Using caller group '{group.name}' ({len(caller_filter)} callers)")
+        except FileNotFoundError:
+            print(f"Error: Caller group '{args.caller_group}' not found")
+            sys.exit(1)
+    
+    if caller_filter:
+        original_count = len(alerts)
+        alerts = [a for a in alerts if a.caller in caller_filter]
+        if not args.quiet:
+            print(f"Filtered: {len(alerts)}/{original_count} alerts match caller filter")
+    
     # Determine slice path
     slice_path = Path(args.slice) if args.slice else None
     
@@ -220,7 +348,7 @@ def cmd_run(args):
     if not args.quiet:
         print(f"Slice: {slice_path} (type: {slice_type})")
     
-    # Compute slice fingerprint (simple hash of path + mtime)
+    # Compute slice fingerprint (simple hash of path + mtime + size)
     import os
     import stat
     try:
@@ -231,7 +359,44 @@ def cmd_run(args):
     except Exception:
         slice_fingerprint = hashlib.sha256(str(slice_path).encode()).hexdigest()[:16]
     
-    # Create run identity
+    # Compute alerts fingerprint (hash of alert count + first/last timestamps)
+    alerts_fingerprint = ""
+    if alerts:
+        first_ts = min(a.ts_ms for a in alerts)
+        last_ts = max(a.ts_ms for a in alerts)
+        alerts_fingerprint = hashlib.sha256(
+            f"{len(alerts)}|{first_ts}|{last_ts}".encode()
+        ).hexdigest()[:16]
+    
+    # Create full run config (for reproducibility)
+    run_config = RunConfig(
+        date_from=args.from_date,
+        date_to=args.to_date,
+        interval_seconds=args.interval,
+        horizon_hours=args.horizon,
+        entry_mode=args.entry,
+        chain="solana",
+        slice_path=str(slice_path),
+        slice_fingerprint=slice_fingerprint,
+        alerts_db_path=str(alerts_path),
+        alerts_fingerprint=alerts_fingerprint,
+        tp_mult=args.tp,
+        sl_mult=args.sl,
+        fee_bps=30.0,
+        slippage_bps=50.0,
+        intrabar_order="sl_first",
+        risk_per_trade=args.risk_per_trade,
+        max_position_pct=args.max_position,
+        min_stop_distance=args.min_stop,
+        caller_filter=args.callers,
+        caller_group=args.caller_group,
+        score_version=args.score,
+    )
+    
+    # Compute reproducibility hash
+    config_hash = run_config.compute_short_hash()
+    
+    # Create run identity (legacy, for backwards compatibility)
     identity = RunIdentity(
         date_from=args.from_date,
         date_to=args.to_date,
@@ -261,6 +426,7 @@ def cmd_run(args):
     
     if not args.quiet:
         print(f"Run ID: {run_record.run_id}")
+        print(f"Config Hash: {config_hash}")
         print(f"Fingerprint: {run_record.fingerprint}")
         print()
     
@@ -340,8 +506,8 @@ def cmd_run(args):
     
     con = duckdb.connect(str(results_path))
     try:
-        # Store run record
-        store_run(con, run_record)
+        # Store run record with full config
+        store_run(con, run_record, run_config)
         
         # Store trades for scoring views (with risk fields)
         n_inserted = insert_trades_from_results(
@@ -353,18 +519,32 @@ def cmd_run(args):
         # Create scoring views
         create_scoring_views(con)
         
-        # Get leaderboard
-        leaderboard = get_caller_leaderboard(
+        # Get leaderboard (all callers, not just top N, for storage)
+        all_caller_stats = get_caller_leaderboard(
             con,
             version=args.score,
-            min_trades=args.min_n,
-            limit=args.top,
+            min_trades=1,  # Get all callers for storage
+            limit=1000,
             run_id=run_record.run_id,
         )
+        
+        # Get leaderboard for display (filtered)
+        leaderboard = [c for c in all_caller_stats if c.get("n_trades", 0) >= args.min_n][:args.top]
+        
+        elapsed = time.perf_counter() - start_time
+        
+        # Store run summary
+        store_run_summary(con, run_record.run_id, summary, elapsed)
+        if not args.quiet:
+            print(f"Stored run summary in runs.run_summary_d")
+        
+        # Store caller scores
+        n_callers = store_caller_scores(con, run_record.run_id, all_caller_stats, args.score)
+        if not args.quiet:
+            print(f"Stored {n_callers} caller scores in runs.caller_scores_d")
+        
     finally:
         con.close()
-    
-    elapsed = time.perf_counter() - start_time
     
     # Print results
     if not args.quiet:
@@ -417,40 +597,314 @@ def cmd_list(args):
         print(f"No results database found at {results_path}")
         return
     
-    con = duckdb.connect(str(results_path))
+    con = duckdb.connect(str(results_path), read_only=True)
     try:
-        ensure_runs_schema(con)
         runs = list_recent_runs(con, limit=args.limit)
+        
+        if not runs:
+            print("No runs found.")
+            return
+        
+        # Build config hash map
+        config_hashes = {}
+        for r in runs:
+            try:
+                row = con.execute(
+                    "SELECT config_hash FROM runs.runs_d WHERE run_id = ?", [r.run_id]
+                ).fetchone()
+                config_hashes[r.run_id] = row[0][:16] if row and row[0] else "-"
+            except:
+                config_hashes[r.run_id] = "-"
+        
+        print()
+        print("=" * 110)
+        print("RECENT RUNS")
+        print("=" * 110)
+        print(f"{'ID':<10} {'Config':<18} {'Name':<22} {'From':<12} {'To':<12} {'Alerts':<10} {'Score':<8}")
+        print("-" * 110)
+        
+        for r in runs:
+            run_id = r.run_id[:8]
+            config_hash = config_hashes.get(r.run_id, "-")
+            name = r.run_name[:21]
+            from_d = r.identity.date_from
+            to_d = r.identity.date_to
+            alerts = f"{r.alerts_ok}/{r.alerts_total}"
+            score = r.score_version or "-"
+            print(f"{run_id:<10} {config_hash:<18} {name:<22} {from_d:<12} {to_d:<12} {alerts:<10} {score:<8}")
+        
+        print()
+        print("Use './baseline show <run_id>' to see full reproducibility config.")
+        print()
     finally:
         con.close()
-    
-    if not runs:
-        print("No runs found.")
-        return
-    
-    print()
-    print("=" * 90)
-    print("RECENT RUNS")
-    print("=" * 90)
-    print(f"{'ID':<12} {'Name':<25} {'From':<12} {'To':<12} {'Alerts':<10} {'Score':<8}")
-    print("-" * 90)
-    
-    for r in runs:
-        run_id = r.run_id[:10]
-        name = r.run_name[:24]
-        from_d = r.identity.date_from
-        to_d = r.identity.date_to
-        alerts = f"{r.alerts_ok}/{r.alerts_total}"
-        score = r.score_version or "-"
-        print(f"{run_id:<12} {name:<25} {from_d:<12} {to_d:<12} {alerts:<10} {score:<8}")
-    
-    print()
 
 
 def cmd_metrics(args):
     """Show metric definitions."""
     from lib.metrics_contract import print_metrics_doc
     print_metrics_doc()
+
+
+def cmd_optimize(args):
+    """Grid search over TP/SL and extended exit parameters."""
+    from lib.optimizer_config import (
+        OptimizerConfig, TpSlParamSpace, RangeSpec,
+        TimeLimitParamSpace, BreakevenParamSpace, TrailingStopParamSpace,
+    )
+    from lib.optimizer import run_optimization
+    from lib.optimizer_objective import (
+        ObjectiveConfig,
+        DEFAULT_OBJECTIVE_CONFIG,
+    )
+    
+    # Parse range values
+    def parse_range(s: str) -> list:
+        """Parse comma-separated values or start:end:step range."""
+        if s is None:
+            return []
+        if ":" in s:
+            parts = s.split(":")
+            if len(parts) == 3:
+                start, end, step = float(parts[0]), float(parts[1]), float(parts[2])
+                values = []
+                v = start
+                while v <= end + 1e-9:
+                    values.append(round(v, 4))
+                    v += step
+                return values
+        return [float(x.strip()) for x in s.split(",")]
+    
+    tp_values = parse_range(args.tp)
+    sl_values = parse_range(args.sl)
+    
+    # Parse extended exit values
+    time_stop_values = parse_range(args.time_stop) if args.time_stop else None
+    breakeven_values = parse_range(args.breakeven) if args.breakeven else None
+    trail_act_values = parse_range(args.trail_activation) if args.trail_activation else None
+    trail_dist_values = parse_range(args.trail_distance) if args.trail_activation else None
+    
+    # Parse tiered SL values
+    tier_1_2x_values = parse_range(args.tier_1_2x_sl) if args.tier_1_2x_sl else None
+    tier_1_5x_values = parse_range(args.tier_1_5x_sl) if args.tier_1_5x_sl else None
+    tier_2x_values = parse_range(args.tier_2x_sl) if args.tier_2x_sl else None
+    tier_3x_values = parse_range(args.tier_3x_sl) if args.tier_3x_sl else None
+    has_tiered_sl = args.tiered_sl or any([tier_1_2x_values, tier_1_5x_values, tier_2x_values, tier_3x_values])
+    
+    # Parse entry timing values
+    entry_modes = args.entry_mode.split(",") if args.entry_mode else None
+    dip_values = parse_range(args.dip_pct) if args.dip_pct else None
+    max_wait_values = [int(v) for v in parse_range(args.max_wait_candles)] if args.max_wait_candles else None
+    has_entry_timing = entry_modes and entry_modes != ["immediate"]
+    
+    # Calculate total combinations
+    total_combos = len(tp_values) * len(sl_values)
+    if time_stop_values:
+        total_combos *= len(time_stop_values)
+    if breakeven_values:
+        total_combos *= len(breakeven_values)
+    if trail_act_values and trail_dist_values:
+        total_combos *= len(trail_act_values) * len(trail_dist_values)
+    if has_tiered_sl:
+        tier_combos = 1
+        if tier_1_2x_values: tier_combos *= len(tier_1_2x_values)
+        if tier_1_5x_values: tier_combos *= len(tier_1_5x_values)
+        if tier_2x_values: tier_combos *= len(tier_2x_values)
+        if tier_3x_values: tier_combos *= len(tier_3x_values)
+        total_combos *= tier_combos
+    if has_entry_timing:
+        entry_combos = len(entry_modes) * (len(dip_values) if dip_values else 1) * (len(max_wait_values) if max_wait_values else 1)
+        total_combos *= entry_combos
+    
+    print()
+    print("=" * 70)
+    print("OPTIMIZER GRID SEARCH")
+    print("=" * 70)
+    print(f"Date range: {args.from_date} to {args.to_date}")
+    print(f"TP values: {tp_values}")
+    print(f"SL values: {sl_values}")
+    if time_stop_values:
+        print(f"Time stop (hours): {time_stop_values}")
+    if breakeven_values:
+        print(f"Break-even trigger: {breakeven_values}")
+    if trail_act_values:
+        print(f"Trailing activation: {trail_act_values}")
+        print(f"Trailing distance: {trail_dist_values}")
+    if has_tiered_sl:
+        print("Tiered SL:")
+        if tier_1_2x_values: print(f"  1.2x → SL: {tier_1_2x_values}")
+        if tier_1_5x_values: print(f"  1.5x → SL: {tier_1_5x_values}")
+        if tier_2x_values: print(f"  2x → SL: {tier_2x_values}")
+        if tier_3x_values: print(f"  3x → SL: {tier_3x_values}")
+    if has_entry_timing:
+        print(f"Entry modes: {entry_modes}")
+        if dip_values: print(f"  Dip pct: {dip_values}")
+        if max_wait_values: print(f"  Max wait: {max_wait_values}")
+    print(f"Total combinations: {total_combos}")
+    print(f"Objective: {args.objective}")
+    print()
+    
+    # Build optimizer config
+    run_name = args.name or f"optimize_{args.from_date}_{args.to_date}"
+    
+    # Build extended exit param spaces
+    time_limit = None
+    if time_stop_values:
+        time_limit = TimeLimitParamSpace(
+            enabled=True,
+            time_stop_hours=RangeSpec(values=time_stop_values),
+        )
+    
+    breakeven = None
+    if breakeven_values:
+        breakeven = BreakevenParamSpace(
+            enabled=True,
+            trigger_pct=RangeSpec(values=breakeven_values),
+            offset_pct=RangeSpec(values=[args.breakeven_offset]),
+        )
+    
+    trailing_stop = None
+    if trail_act_values:
+        trailing_stop = TrailingStopParamSpace(
+            enabled=True,
+            activation_pct=RangeSpec(values=trail_act_values),
+            trail_pct=RangeSpec(values=trail_dist_values),
+        )
+    
+    # Build tiered SL param space
+    tiered_sl = None
+    if has_tiered_sl:
+        from lib.optimizer_config import TieredStopLossParamSpace
+        tiered_sl = TieredStopLossParamSpace(
+            enabled=True,
+            tier_1_2x_sl=RangeSpec(values=tier_1_2x_values) if tier_1_2x_values else None,
+            tier_1_5x_sl=RangeSpec(values=tier_1_5x_values) if tier_1_5x_values else None,
+            tier_2x_sl=RangeSpec(values=tier_2x_values) if tier_2x_values else None,
+            tier_3x_sl=RangeSpec(values=tier_3x_values) if tier_3x_values else None,
+        )
+    
+    # Build delayed entry param space
+    delayed_entry = None
+    if has_entry_timing:
+        from lib.optimizer_config import DelayedEntryParamSpace
+        delayed_entry = DelayedEntryParamSpace(
+            enabled=True,
+            entry_mode=entry_modes,
+            dip_percent=RangeSpec(values=dip_values) if dip_values else None,
+            max_wait_candles=RangeSpec(values=max_wait_values) if max_wait_values else None,
+        )
+    
+    opt_config = OptimizerConfig(
+        name=run_name,
+        date_from=args.from_date,
+        date_to=args.to_date,
+        duckdb_path=args.alerts_db,
+        slice_path=args.slice,
+        interval_seconds=args.interval,
+        horizon_hours=args.horizon,
+        risk_per_trade=args.risk_per_trade,
+        output_dir=args.output_dir,
+        tp_sl=TpSlParamSpace(
+            tp_mult=RangeSpec(values=tp_values),
+            sl_mult=RangeSpec(values=sl_values),
+        ),
+        time_limit=time_limit,
+        breakeven=breakeven,
+        trailing_stop=trailing_stop,
+        tiered_sl=tiered_sl,
+        delayed_entry=delayed_entry,
+    )
+    
+    # Select objective config
+    if args.objective == "conservative":
+        # Lower DD threshold, stricter penalties
+        obj_config = ObjectiveConfig(dd_threshold=0.20, dd_rate=10.0)
+    elif args.objective == "aggressive":
+        # Higher DD tolerance
+        obj_config = ObjectiveConfig(dd_threshold=0.40, dd_rate=5.0)
+    else:
+        obj_config = DEFAULT_OBJECTIVE_CONFIG
+    
+    # Run optimization
+    result = run_optimization(opt_config, objective_config=obj_config, verbose=not args.quiet)
+    
+    print()
+    print(f"Results saved to: {args.output_dir}")
+
+
+def cmd_show(args):
+    """Show full configuration for a run."""
+    results_path = Path(args.db)
+    if not results_path.exists():
+        print(f"No results database found at {results_path}")
+        return
+    
+    con = duckdb.connect(str(results_path), read_only=True)
+    try:
+        # Find run by ID prefix
+        row = con.execute("""
+            SELECT run_id, run_name, config_hash, fingerprint, config_json,
+                   date_from, date_to, alerts_total, alerts_ok,
+                   created_at
+            FROM runs.runs_d
+            WHERE run_id LIKE ?
+            ORDER BY created_at DESC
+            LIMIT 1
+        """, [f"{args.run_id}%"]).fetchone()
+        
+        if not row:
+            print(f"No run found matching ID: {args.run_id}")
+            return
+        
+        import json
+        
+        print()
+        print("=" * 70)
+        print("RUN DETAILS")
+        print("=" * 70)
+        print(f"Run ID:       {row[0]}")
+        print(f"Run Name:     {row[1]}")
+        print(f"Config Hash:  {row[2]}")
+        print(f"Fingerprint:  {row[3]}")
+        print(f"Date Range:   {row[5]} to {row[6]}")
+        print(f"Alerts:       {row[8]}/{row[7]}")
+        print(f"Created:      {row[9]}")
+        print()
+        
+        if row[4]:
+            config = json.loads(row[4])
+            print("=" * 70)
+            print("FULL CONFIG (for reproducibility)")
+            print("=" * 70)
+            
+            # Group by category
+            categories = {
+                "Time Window": ["date_from", "date_to"],
+                "Candle Params": ["interval_seconds", "horizon_hours"],
+                "Entry": ["entry_mode"],
+                "Data Source": ["chain", "slice_path", "slice_fingerprint", "alerts_db_path", "alerts_fingerprint"],
+                "Strategy": ["tp_mult", "sl_mult"],
+                "Cost Model": ["fee_bps", "slippage_bps", "intrabar_order"],
+                "Risk Sizing": ["risk_per_trade", "max_position_pct", "min_stop_distance"],
+                "Caller Filter": ["caller_filter", "caller_group"],
+                "Scoring": ["score_version"],
+            }
+            
+            for cat, keys in categories.items():
+                vals = [(k, config.get(k)) for k in keys if k in config]
+                if vals:
+                    print(f"\n{cat}:")
+                    for k, v in vals:
+                        print(f"  {k}: {v}")
+            
+            print()
+            print("-" * 70)
+            print(f"To reproduce: use config hash {row[2]}")
+            print()
+        else:
+            print("No config stored for this run.")
+    finally:
+        con.close()
 
 
 if __name__ == "__main__":

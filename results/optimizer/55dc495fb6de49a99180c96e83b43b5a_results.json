@@ -1,0 +1,261 @@
+{
+  "config": {
+    "name": "optimize_2025-05-01_2025-05-10",
+    "date_from": "2025-05-01",
+    "date_to": "2025-05-10",
+    "duckdb_path": "data/alerts.duckdb",
+    "chain": "solana",
+    "slice_dir": "slices",
+    "reuse_slice": true,
+    "interval_seconds": 300,
+    "horizon_hours": 24,
+    "fee_bps": 30.0,
+    "slippage_bps": 50.0,
+    "threads": 8,
+    "parallel_runs": 1,
+    "store_duckdb": true,
+    "output_dir": "results/optimizer",
+    "risk_per_trade": 0.02,
+    "slice_path": "slices/per_token",
+    "tp_sl": {
+      "tp_mult": {
+        "values": [
+          2.0
+        ]
+      },
+      "sl_mult": {
+        "values": [
+          0.5
+        ]
+      },
+      "intrabar_order": [
+        "sl_first"
+      ]
+    },
+    "tiered_sl": {
+      "enabled": true,
+      "tier_1_2x_sl": {
+        "values": [
+          0.95,
+          1.0
+        ]
+      },
+      "tier_2x_sl": {
+        "values": [
+          1.5
+        ]
+      }
+    }
+  },
+  "results": [
+    {
+      "params": {
+        "tp_mult": 2.0,
+        "sl_mult": 0.5,
+        "intrabar_order": "sl_first",
+        "tiered_sl_enabled": true,
+        "tier_1_2x_sl": 0.95,
+        "tier_2x_sl": 1.5
+      },
+      "summary": {
+        "alerts_total": 272,
+        "alerts_ok": 272,
+        "alerts_missing": 0,
+        "median_ath_mult": 1.8687259912665692,
+        "median_time_to_2x_s": 2460.0,
+        "median_time_to_4x_s": 3480.0,
+        "median_dd_initial": null,
+        "median_dd_overall": -0.888150359014831,
+        "median_dd_pre_1_2x": null,
+        "median_dd_pre_1_5x": null,
+        "median_dd_pre2x": null,
+        "median_dd_band_1_2x_to_1_5x": null,
+        "median_dd_band_1_5x_to_2x": null,
+        "median_dd_after_2x": null,
+        "median_dd_after_3x": null,
+        "median_peak_pnl_pct": 86.87259912665692,
+        "median_ret_end": -0.8416734065844461,
+        "pct_hit_1_2x": 0.0,
+        "pct_hit_1_5x": 0.0,
+        "pct_hit_2x": 0.4411764705882353,
+        "pct_hit_4x": 0.19852941176470587,
+        "dd_pre2x_median": null,
+        "time_to_1_2x_median_min": null,
+        "time_to_1_5x_median_min": null,
+        "time_to_2x_median_min": 41.0,
+        "p75_ath": 2.7712007712124422,
+        "p95_ath": 17.2190215821461,
+        "tp_sl_total_return_pct": -2947.404190469656,
+        "tp_sl_avg_return_pct": -10.836044817903147,
+        "tp_sl_win_rate": 0.14338235294117646,
+        "tp_sl_avg_win_pct": 68.48702900890314,
+        "tp_sl_avg_loss_pct": -24.11329751852737,
+        "tp_sl_profit_factor": 0.4754013472087675,
+        "tp_sl_expectancy_pct": -10.836044817903147,
+        "risk_per_trade_pct": 2.0,
+        "position_size_pct": 4.0,
+        "risk_adj_total_return_pct": -117.89616761878622,
+        "risk_adj_avg_return_pct": -0.4334417927161259,
+        "risk_adj_avg_win_pct": 2.7394811603561253,
+        "risk_adj_avg_loss_pct": -0.9645319007410948,
+        "total_r": -58.94808380939312,
+        "avg_r": -0.21672089635806294,
+        "avg_r_win": 1.3697405801780627,
+        "avg_r_loss": -0.4822659503705474,
+        "r_profit_factor": 0.4754013472087675
+      },
+      "run_id": "92382fced8cf",
+      "duration_s": 2.0175209045410156,
+      "alerts_ok": 272,
+      "alerts_total": 272,
+      "objective": {
+        "avg_r": -0.21672089635806294,
+        "total_r": -58.94808380939312,
+        "n_trades": 272,
+        "dd_magnitude": 0.888150359014831,
+        "dd_pre_1_2x": null,
+        "dd_pre_1_5x": null,
+        "dd_pre_2x": null,
+        "time_to_2x_min": 41.0,
+        "time_to_1_2x_min": null,
+        "time_to_1_5x_min": null,
+        "hit2x_pct": 0.4411764705882353,
+        "hit_1_2x_pct": 0.0,
+        "hit_1_5x_pct": 0.0,
+        "median_ath": 1.8687259912665692,
+        "p75_ath": 2.7712007712124422,
+        "p95_ath": 17.2190215821461,
+        "base_score": -0.21672089635806294,
+        "dd_penalty": 9.266664128516666,
+        "dd_penalty_breakdown": {
+          "legacy": 9.266664128516666
+        },
+        "time_boost": 0.2112676056338028,
+        "time_boost_breakdown": {
+          "2x": 0.2112676056338028
+        },
+        "discipline_bonus": 0.0,
+        "tail_bonus": 0.8126385185412703,
+        "confidence": 0.9490322711349858,
+        "raw_score": -8.459478900699656,
+        "final_score": -8.028318473749488
+      }
+    },
+    {
+      "params": {
+        "tp_mult": 2.0,
+        "sl_mult": 0.5,
+        "intrabar_order": "sl_first",
+        "tiered_sl_enabled": true,
+        "tier_1_2x_sl": 1.0,
+        "tier_2x_sl": 1.5
+      },
+      "summary": {
+        "alerts_total": 272,
+        "alerts_ok": 272,
+        "alerts_missing": 0,
+        "median_ath_mult": 1.8687259912665692,
+        "median_time_to_2x_s": 2460.0,
+        "median_time_to_4x_s": 3480.0,
+        "median_dd_initial": null,
+        "median_dd_overall": -0.888150359014831,
+        "median_dd_pre_1_2x": null,
+        "median_dd_pre_1_5x": null,
+        "median_dd_pre2x": null,
+        "median_dd_band_1_2x_to_1_5x": null,
+        "median_dd_band_1_5x_to_2x": null,
+        "median_dd_after_2x": null,
+        "median_dd_after_3x": null,
+        "median_peak_pnl_pct": 86.87259912665692,
+        "median_ret_end": -0.8416734065844461,
+        "pct_hit_1_2x": 0.0,
+        "pct_hit_1_5x": 0.0,
+        "pct_hit_2x": 0.4411764705882353,
+        "pct_hit_4x": 0.19852941176470587,
+        "dd_pre2x_median": null,
+        "time_to_1_2x_median_min": null,
+        "time_to_1_5x_median_min": null,
+        "time_to_2x_median_min": 41.0,
+        "p75_ath": 2.7712007712124422,
+        "p95_ath": 17.2190215821461,
+        "tp_sl_total_return_pct": -2759.8619019124408,
+        "tp_sl_avg_return_pct": -10.14655110997221,
+        "tp_sl_win_rate": 0.1213235294117647,
+        "tp_sl_avg_win_pct": 66.21887839601864,
+        "tp_sl_avg_loss_pct": -20.690731753058813,
+        "tp_sl_profit_factor": 0.4418979726592488,
+        "tp_sl_expectancy_pct": -10.14655110997221,
+        "risk_per_trade_pct": 2.0,
+        "position_size_pct": 4.0,
+        "risk_adj_total_return_pct": -110.39447607649764,
+        "risk_adj_avg_return_pct": -0.40586204439888834,
+        "risk_adj_avg_win_pct": 2.6487551358407457,
+        "risk_adj_avg_loss_pct": -0.8276292701223524,
+        "total_r": -55.19723803824882,
+        "avg_r": -0.2029310221994442,
+        "avg_r_win": 1.3243775679203729,
+        "avg_r_loss": -0.4138146350611763,
+        "r_profit_factor": 0.4418979726592488
+      },
+      "run_id": "fa434a0f94ca",
+      "duration_s": 2.0055317878723145,
+      "alerts_ok": 272,
+      "alerts_total": 272,
+      "objective": {
+        "avg_r": -0.2029310221994442,
+        "total_r": -55.19723803824882,
+        "n_trades": 272,
+        "dd_magnitude": 0.888150359014831,
+        "dd_pre_1_2x": null,
+        "dd_pre_1_5x": null,
+        "dd_pre_2x": null,
+        "time_to_2x_min": 41.0,
+        "time_to_1_2x_min": null,
+        "time_to_1_5x_min": null,
+        "hit2x_pct": 0.4411764705882353,
+        "hit_1_2x_pct": 0.0,
+        "hit_1_5x_pct": 0.0,
+        "median_ath": 1.8687259912665692,
+        "p75_ath": 2.7712007712124422,
+        "p95_ath": 17.2190215821461,
+        "base_score": -0.2029310221994442,
+        "dd_penalty": 9.266664128516666,
+        "dd_penalty_breakdown": {
+          "legacy": 9.266664128516666
+        },
+        "time_boost": 0.2112676056338028,
+        "time_boost_breakdown": {
+          "2x": 0.2112676056338028
+        },
+        "discipline_bonus": 0.0,
+        "tail_bonus": 0.8126385185412703,
+        "confidence": 0.9490322711349858,
+        "raw_score": -8.445689026541038,
+        "final_score": -8.015231438158068
+      }
+    }
+  ],
+  "run_id": "55dc495fb6de49a99180c96e83b43b5a",
+  "started_at": "2026-01-05T04:06:49.203311+00:00",
+  "completed_at": "2026-01-05T04:06:53.226972+00:00",
+  "timing": {
+    "total_ms": 4535,
+    "phases": [
+      {
+        "label": "load_alerts",
+        "duration_ms": 428,
+        "timestamp_ms": 1767586008691
+      },
+      {
+        "label": "ensure_slice",
+        "duration_ms": 82,
+        "timestamp_ms": 1767586009120
+      },
+      {
+        "label": "backtest",
+        "duration_ms": 4023,
+        "timestamp_ms": 1767586009203
+      }
+    ]
+  }
+}

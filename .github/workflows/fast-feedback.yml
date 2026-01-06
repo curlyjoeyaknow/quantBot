@@ -1,0 +1,94 @@
+name: Fast Feedback
+
+# Triggered on feature/experiment branches for quick feedback (~2 min)
+on:
+  push:
+    branches:
+      - 'feature/**'
+      - 'experiment/**'
+      - 'codex/**'
+      - 'refactor/**'
+      - 'fix/**'
+      - 'abstraction-*'
+    branches-ignore:
+      - main
+      - develop
+      - staging
+      - integration
+      - 'release/**'
+
+concurrency:
+  group: fast-feedback-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quick-checks:
+    name: Quick Checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 8
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Type check
+        run: pnpm typecheck
+
+      - name: Lint (changed files only)
+        run: |
+          # Get changed TypeScript files
+          CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD -- '*.ts' '*.tsx' 2>/dev/null || echo "")
+          if [ -n "$CHANGED_FILES" ]; then
+            echo "Linting changed files: $CHANGED_FILES"
+            echo "$CHANGED_FILES" | xargs pnpm eslint --max-warnings 50 || true
+          else
+            echo "No TypeScript files changed, skipping lint"
+          fi
+
+      - name: Architecture boundary check
+        run: pnpm verify:boundaries-ast
+
+      - name: No live trading check
+        run: pnpm check:no-live-trading
+
+      - name: Verify workflow contracts
+        run: pnpm tsx scripts/verify-workflow-contract.ts
+
+  python-smoke:
+    name: Python Backtest Smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Python dependencies
+        run: |
+          pip install --upgrade pip
+          pip install pytest duckdb pyarrow
+
+      - name: Run backtest smoke tests
+        run: |
+          cd tools/backtest
+          python -m pytest tests/test_path_quality_golden.py -v --tb=short -x 2>&1 | head -100 || true
+

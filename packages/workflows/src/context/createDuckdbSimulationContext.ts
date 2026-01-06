@@ -12,7 +12,7 @@ import {
 } from './createProductionContext.js';
 import type { RunSimulationDuckdbContext } from '../simulation/runSimulationDuckdb.js';
 import type { WorkflowContext } from '../types.js';
-import type { SimulationService, DuckDBStorageService } from '@quantbot/simulation';
+import type { SimulationService, DuckDBStorageService } from '@quantbot/backtest';
 import type { OhlcvIngestionService } from '@quantbot/ingestion';
 import { createOhlcvIngestionContext } from './createOhlcvIngestionContext.js';
 // Dynamic import type for OhlcvFetchJob (jobs package)

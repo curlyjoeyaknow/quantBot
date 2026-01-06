@@ -5,6 +5,8 @@
  */
 
 import { join } from 'path';
+import { tmpdir } from 'os';
+import { writeFileSync, unlinkSync } from 'fs';
 import { DuckDBClient } from '@quantbot/storage';
 import { logger, DatabaseError, findWorkspaceRoot } from '@quantbot/utils';
 import { z } from 'zod';
@@ -136,14 +138,43 @@ export class DuckDBSnapshotStorage implements SnapshotStorage {
     // Ensure database is initialized before storing
     await this.waitForInit();
 
+    // Use temporary file for large data to avoid E2BIG error (command line argument size limit)
+    // Threshold: 100KB (conservative limit, system limit is typically 128KB-2MB)
+    const dataString = JSON.stringify(events);
+    const dataSizeBytes = Buffer.byteLength(dataString, 'utf8');
+    const useTempFile = dataSizeBytes > 100 * 1024; // 100KB threshold
+
+    let tempFilePath: string | undefined;
+
     try {
+      const params: Record<string, unknown> = {
+        'snapshot-id': snapshotId,
+      };
+
+      if (useTempFile) {
+        // Write data to temporary file
+        tempFilePath = join(
+          tmpdir(),
+          `snapshot-events-${Date.now()}-${Math.random().toString(36).slice(2)}.json`
+        );
+        writeFileSync(tempFilePath, dataString, 'utf8');
+        params['data-file'] = tempFilePath;
+
+        logger.debug('Using temporary file for large event data', {
+          snapshotId,
+          eventCount: events.length,
+          dataSizeBytes,
+          tempFilePath,
+        });
+      } else {
+        // Use command line argument for small data
+        params.data = dataString;
+      }
+
       const result: { success: boolean; error?: string } = await this.client.execute(
         this.scriptPath,
         'store_events',
-        {
-          'snapshot-id': snapshotId,
-          data: JSON.stringify(events),
-        },
+        params,
         SnapshotRefResultSchema
       );
 
@@ -169,6 +200,18 @@ export class DuckDBSnapshotStorage implements SnapshotStorage {
         eventCount: events.length,
       });
       throw error;
+    } finally {
+      // Clean up temporary file if used
+      if (tempFilePath) {
+        try {
+          unlinkSync(tempFilePath);
+        } catch (cleanupError) {
+          logger.warn('Failed to clean up temporary file', {
+            tempFilePath,
+            error: cleanupError instanceof Error ? cleanupError.message : String(cleanupError),
+          });
+        }
+      }
     }
   }
 

@@ -263,6 +263,22 @@ export interface PathOnlyRequest {
 }
 
 /**
+ * Timing summary for wall-clock profiling
+ */
+export interface TimingSummary {
+  /** Total elapsed time in milliseconds */
+  totalMs: number;
+  /** Timing breakdown by phase */
+  phases: Array<{
+    label: string;
+    durationMs: number;
+    timestampMs: number;
+  }>;
+  /** Phases as a dict for quick lookup */
+  parts: Record<string, number>;
+}
+
+/**
  * Path-only backtest summary
  */
 export interface PathOnlySummary {
@@ -270,6 +286,8 @@ export interface PathOnlySummary {
   callsProcessed: number;
   callsExcluded: number;
   pathMetricsWritten: number;
+  /** Wall-clock timing breakdown by phase (optional for backwards compat) */
+  timing?: TimingSummary;
 }
 
 // =============================================================================
