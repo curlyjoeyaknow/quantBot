@@ -17,8 +17,8 @@ import { promises as fs } from 'fs';
 import { DateTime } from 'luxon';
 import { runSimulation, createProductionContext } from '@quantbot/workflows';
 import type { SimulationRunSpec } from '@quantbot/workflows';
-import { parseSimulationConfig } from '@quantbot/simulation';
-import type { SimulationEngineConfig } from '@quantbot/simulation';
+import { parseSimulationConfig } from '@quantbot/backtest';
+import type { SimulationEngineConfig } from '@quantbot/backtest';
 import { logger } from '@quantbot/utils';
 
 interface CliOptions {

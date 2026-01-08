@@ -8,6 +8,7 @@
 import { z } from 'zod';
 import { DateTime } from 'luxon';
 import { logger, getDuckDBPath } from '@quantbot/utils';
+import { sanitizeTokenId } from '@quantbot/labcatalog';
 import type {
   SliceExporter,
   SliceSpec,
@@ -47,7 +48,9 @@ export const ExportSlicesForAlertsSpecSchema = z.object({
   /**
    * Dataset to export (default: candles_1m)
    */
-  dataset: z.enum(['candles_1s', 'candles_15s', 'candles_1m']).default('candles_1m'),
+  dataset: z
+    .enum(['candles_1s', 'candles_15s', 'candles_1m', 'candles_5m', 'indicators_1m'])
+    .default('candles_1m'),
 
   /**
    * Chain (default: sol)
@@ -68,6 +71,21 @@ export const ExportSlicesForAlertsSpecSchema = z.object({
    * Maximum number of alerts to process (for safety)
    */
   maxAlerts: z.number().int().min(1).max(10000).optional(),
+
+  /**
+   * Enable date-based partitioning (organize files by date for scalable catalog)
+   */
+  useDatePartitioning: z.boolean().default(false),
+
+  /**
+   * Maximum rows per file before chunking (for large daily exports)
+   */
+  maxRowsPerFile: z.number().int().min(1000).max(10000000).optional(),
+
+  /**
+   * Maximum hours per chunk when chunking within day (default: 6 hours)
+   */
+  maxHoursPerChunk: z.number().int().min(1).max(24).default(6),
 });
 
 export type ExportSlicesForAlertsSpec = z.infer<typeof ExportSlicesForAlertsSpecSchema>;
@@ -212,50 +230,127 @@ export async function exportSlicesForAlerts(
       const windowStart = alertTime.minus({ minutes: validated.preWindowMinutes });
       const windowEnd = alertTime.plus({ minutes: validated.postWindowMinutes });
 
-      // Create slice spec
-      const sliceSpec: SliceSpec = {
-        dataset: validated.dataset,
-        chain: validated.chain,
-        timeRange: {
-          startIso: windowStart.toISO()!,
-          endIso: windowEnd.toISO()!,
+      // Determine if we need to chunk within day
+      // Chunking is based on time duration only (not row count)
+      const totalHours = windowEnd.diff(windowStart, 'hours').hours;
+      const needsChunking = totalHours > validated.maxHoursPerChunk;
+
+      // If chunking is needed, split into time sub-windows
+      const timeWindows: Array<{ start: DateTime; end: DateTime }> = [];
+      if (needsChunking) {
+        const chunkHours = validated.maxHoursPerChunk;
+        let currentStart = windowStart;
+        while (currentStart < windowEnd) {
+          const currentEnd = DateTime.min(currentStart.plus({ hours: chunkHours }), windowEnd);
+          timeWindows.push({ start: currentStart, end: currentEnd });
+          currentStart = currentEnd;
+        }
+      } else {
+        // Single window
+        timeWindows.push({ start: windowStart, end: windowEnd });
+      }
+
+      // Export each time window (chunk if needed)
+      const chunkManifests: SliceManifestV1[] = [];
+      for (const timeWindow of timeWindows) {
+        // Create slice spec for this window
+        const sliceSpec: SliceSpec = {
+          dataset: validated.dataset,
+          chain: validated.chain,
+          timeRange: {
+            startIso: timeWindow.start.toISO()!,
+            endIso: timeWindow.end.toISO()!,
+          },
+          tokenIds: [call.mint],
+          granularity: validated.dataset === 'candles_1m' ? '1m' : '1s',
+        };
+
+        // Generate complete catalog-compliant subdirectory path
+        // The workflow constructs the full path including token, so the adapter
+        // can use it directly without modification
+        const sanitizedToken = sanitizeTokenId(call.mint);
+        let subdirTemplate: string;
+        if (validated.useDatePartitioning) {
+          // Date-based: data/bars/<date>/<token>
+          // Use template variables so the adapter can expand them consistently
+          subdirTemplate = `data/bars/{yyyy}-{mm}-{dd}/${sanitizedToken}`;
+        } else {
+          // Original pattern: data/bars/<token>
+          subdirTemplate = `data/bars/${sanitizedToken}`;
+        }
+
+        // Create catalog layout spec with date-based partitioning if enabled
+        const layout: ParquetLayoutSpec = {
+          baseUri: `file://${validated.catalogBasePath}`,
+          subdirTemplate,
+          compression: 'zstd',
+          maxRowsPerFile: validated.maxRowsPerFile,
+          partitionKeys: validated.useDatePartitioning
+            ? ['dt', 'chain', 'dataset']
+            : ['chain', 'dataset'],
+        };
+
+        // Create run context
+        const runContext: RunContext = {
+          runId,
+          createdAtIso: ctx.clock.nowISO(),
+          note: `Export for alert ${call.id}${timeWindows.length > 1 ? ` (chunk ${timeWindows.indexOf(timeWindow) + 1}/${timeWindows.length})` : ''}`,
+        };
+
+        // Export slice
+        const manifest: SliceManifestV1 = await ctx.exporter.exportSlice({
+          run: runContext,
+          spec: sliceSpec,
+          layout,
+        });
+
+        chunkManifests.push(manifest);
+      }
+
+      // Aggregate chunk manifests into a single primary manifest
+      // chunkManifests is guaranteed to have at least one element (we just pushed manifests in the loop above)
+      if (chunkManifests.length === 0) {
+        throw new Error('Internal error: No chunk manifests to aggregate');
+      }
+
+      const baseManifest = chunkManifests[0]!;
+      const primaryManifest: SliceManifestV1 = {
+        version: 1,
+        manifestId: `${runId}-${call.id}`, // Create a deterministic ID for the aggregate
+        createdAtIso: baseManifest.createdAtIso,
+        run: baseManifest.run,
+        spec: baseManifest.spec,
+        layout: baseManifest.layout,
+        parquetFiles: [],
+        summary: {
+          totalFiles: 0,
+          totalRows: 0,
+          totalBytes: 0,
         },
-        tokenIds: [call.mint],
-        granularity: validated.dataset === 'candles_1m' ? '1m' : '1s',
+        integrity: baseManifest.integrity,
       };
 
-      // Create catalog layout spec (uses catalog paths)
-      const layout: ParquetLayoutSpec = {
-        baseUri: `file://${validated.catalogBasePath}`,
-        subdirTemplate: '{dataset}/chain={chain}', // Catalog layout will override this
-        compression: 'zstd',
-      };
+      // Aggregate all chunk data
+      for (const m of chunkManifests) {
+        primaryManifest.parquetFiles.push(...m.parquetFiles);
+        primaryManifest.summary.totalFiles += m.summary.totalFiles;
+        primaryManifest.summary.totalRows =
+          (primaryManifest.summary.totalRows || 0) + (m.summary.totalRows || 0);
+        primaryManifest.summary.totalBytes =
+          (primaryManifest.summary.totalBytes || 0) + (m.summary.totalBytes || 0);
+      }
 
-      // Create run context
-      const runContext: RunContext = {
-        runId,
-        createdAtIso: ctx.clock.nowISO(),
-        note: `Export for alert ${call.id}`,
-      };
-
-      // Export slice
-      const manifest: SliceManifestV1 = await ctx.exporter.exportSlice({
-        run: runContext,
-        spec: sliceSpec,
-        layout,
-      });
-
-      // Track success
+      // Track success (aggregate across chunks if chunking was used)
       successfulExports++;
-      totalFiles += manifest.parquetFiles.length;
-      totalRows += manifest.summary.totalRows || 0;
-      totalBytes += manifest.summary.totalBytes || 0;
+      totalFiles += primaryManifest.summary.totalFiles;
+      totalRows += primaryManifest.summary.totalRows || 0;
+      totalBytes += primaryManifest.summary.totalBytes || 0;
 
       exports.push({
         callId: call.id,
         mint: call.mint,
         alertTimestamp: call.createdAt.toISO()!,
-        manifestId: manifest.manifestId,
+        manifestId: primaryManifest.manifestId,
         success: true,
       });
 
@@ -263,13 +358,25 @@ export async function exportSlicesForAlerts(
         runId,
         callId: call.id,
         mint: call.mint,
-        manifestId: manifest.manifestId,
-        files: manifest.parquetFiles.length,
-        rows: manifest.summary.totalRows,
+        manifestId: primaryManifest.manifestId,
+        files: primaryManifest.summary.totalFiles,
+        rows: primaryManifest.summary.totalRows || 0,
+        chunks: chunkManifests.length,
+        datePartitioning: validated.useDatePartitioning,
       });
     } catch (error) {
       failedExports++;
-      const errorMessage = error instanceof Error ? error.message : String(error);
+      // Provide user-friendly error message without exposing internal details
+      const errorMessage =
+        error instanceof Error
+          ? error.message.includes('Query error')
+            ? 'Data export query failed. Please check your query parameters and data availability.'
+            : error.message.includes('Network error')
+              ? 'Network connection failed. Please check your ClickHouse connection.'
+              : error.message.includes('timed out')
+                ? 'Export operation timed out. The query may be too large.'
+                : 'Export operation failed. Please check logs for details.'
+          : 'Export operation failed with an unknown error.';
 
       exports.push({
         callId: call.id,
@@ -279,10 +386,13 @@ export async function exportSlicesForAlerts(
         error: errorMessage,
       });
 
+      // Log full error details internally (for debugging)
       logger.error('[exportSlicesForAlerts] Failed to export slice', error as Error, {
         runId,
         callId: call.id,
         mint: call.mint,
+        // Internal error details for debugging (not exposed to user)
+        internalError: error instanceof Error ? error.message : String(error),
       });
     }
   }

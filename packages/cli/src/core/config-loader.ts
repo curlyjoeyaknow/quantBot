@@ -14,6 +14,7 @@ import { readFileSync } from 'fs';
 import { extname } from 'path';
 import * as yaml from 'js-yaml';
 import type { z } from 'zod';
+import type { Merge } from 'type-fest';
 import { ValidationError } from '@quantbot/utils';
 
 /**
@@ -43,10 +44,10 @@ export function detectConfigFormat(path: string): 'yaml' | 'json' {
  * @param override - Override values from CLI
  * @returns Merged object
  */
-export function deepMerge(
-  base: Record<string, unknown>,
-  override: Record<string, unknown>
-): Record<string, unknown> {
+export function deepMerge<TBase extends Record<string, unknown>, TOverride extends Record<string, unknown>>(
+  base: TBase,
+  override: TOverride
+): Merge<TBase, TOverride> {
   const result: Record<string, unknown> = { ...base };
 
   for (const [key, value] of Object.entries(override)) {

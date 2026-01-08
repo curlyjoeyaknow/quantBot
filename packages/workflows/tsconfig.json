@@ -28,6 +28,7 @@
     { "path": "../api-clients" },
     { "path": "../jobs" },
     { "path": "../data-observatory" },
+    { "path": "../backtest" },
     { "path": "../labcatalog" }
   ]
 }

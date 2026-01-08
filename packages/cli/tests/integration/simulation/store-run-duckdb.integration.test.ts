@@ -14,7 +14,7 @@ import { existsSync, unlinkSync, mkdirSync } from 'fs';
 import { join, resolve } from 'path';
 import { storeRunDuckdbHandler } from '../../../src/commands/simulation/store-run-duckdb.js';
 import { getPythonEngine } from '@quantbot/utils';
-import { DuckDBStorageService } from '@quantbot/simulation';
+import { DuckDBStorageService } from '@quantbot/backtest';
 import { createCommandContext } from '../../../src/core/command-context.js';
 import type { PythonEngine } from '@quantbot/utils';
 import type { CommandContext } from '../../../src/core/command-context.js';

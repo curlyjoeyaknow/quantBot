@@ -2,12 +2,17 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { runSimulationHandler } from '../../../../src/commands/simulation/run-simulation.js';
 import type { CommandContext } from '../../../../src/core/command-context.js';
 import { DateTime } from 'luxon';
-import { runSimulation, createProductionContext } from '@quantbot/workflows';
+import {
+  runSimulation,
+  createProductionContext,
+  createProductionContextWithPorts,
+} from '@quantbot/workflows';
 import type { RunRepository } from '@quantbot/storage';
 
 vi.mock('@quantbot/workflows', () => ({
   runSimulation: vi.fn(),
   createProductionContext: vi.fn(),
+  createProductionContextWithPorts: vi.fn(),
 }));
 
 vi.mock('crypto', () => ({
@@ -43,6 +48,7 @@ describe('runSimulationHandler', () => {
       },
     } as unknown as CommandContext;
     vi.mocked(createProductionContext).mockReturnValue(mockWorkflowContext as any);
+    vi.mocked(createProductionContextWithPorts).mockResolvedValue(mockWorkflowContext as any);
   });
 
   it('happy path: generates run_id, creates run record, inserts metrics, marks success', async () => {

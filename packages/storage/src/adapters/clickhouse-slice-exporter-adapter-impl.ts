@@ -13,6 +13,7 @@ import { getClickHouseClient } from '../clickhouse-client.js';
 import { DuckDBClient } from '../duckdb/duckdb-client.js';
 import { logger } from '@quantbot/utils';
 import { readAllBytes } from '../utils/readAllBytes.js';
+import { datasetRegistry } from './dataset-registry.js';
 import type {
   SliceExporter,
   ParquetLayoutSpec,
@@ -186,19 +187,11 @@ async function executeQueryWithRetry<T>(
 }
 
 /**
- * Dataset to interval mapping
- */
-const DATASET_INTERVAL_MAP: Record<string, string> = {
-  candles_1s: '1s',
-  candles_15s: '15s',
-  candles_1m: '1m',
-};
-
-/**
  * ClickHouse Slice Exporter Adapter - Working Implementation
  *
- * Currently supports:
- * - Datasets: "candles_1s", "candles_15s", "candles_1m" (maps to ohlcv_candles table with corresponding interval)
+ * Supports:
+ * - Candle datasets: "candles_1s", "candles_15s", "candles_1m", "candles_5m" (maps to ohlcv_candles table)
+ * - Indicator datasets: "indicators_1m" (maps to indicator_values table, conditional)
  * - Simple filters: time range + optional tokenIds
  * - Single Parquet file output
  * - Retry logic for transient errors
@@ -213,16 +206,33 @@ export class ClickHouseSliceExporterAdapterImpl implements SliceExporter {
   }): Promise<SliceManifestV1> {
     const { run, spec, layout } = args;
 
-    // Validate dataset and get interval
-    const interval = DATASET_INTERVAL_MAP[spec.dataset];
-    if (!interval) {
-      const supportedDatasets = Object.keys(DATASET_INTERVAL_MAP).join(', ');
-      throw new Error(
-        `Unsupported dataset: ${spec.dataset}. Supported datasets: ${supportedDatasets}`
-      );
+    // Get dataset metadata from registry
+    const datasetMetadata = datasetRegistry.get(spec.dataset);
+    if (!datasetMetadata) {
+      const available = datasetRegistry
+        .getAll()
+        .map((d) => d.datasetId)
+        .join(', ');
+      throw new Error(`Unsupported dataset: ${spec.dataset}. Supported datasets: ${available}`);
     }
 
-    // Build output directory from template
+    // Check if conditional dataset is available
+    if (datasetMetadata.conditional) {
+      const isAvailable = await datasetRegistry.isAvailable(spec.dataset);
+      if (!isAvailable) {
+        throw new Error(
+          `Dataset ${spec.dataset} is not available in ClickHouse. Table ${datasetMetadata.tableName} does not exist.`
+        );
+      }
+    }
+
+    const tableName = `${process.env.CLICKHOUSE_DATABASE || 'quantbot'}.${datasetMetadata.tableName}`;
+    const interval = datasetMetadata.interval;
+
+    // Build output directory from subdirTemplate
+    // The workflow now provides the complete subdirectory path (including token),
+    // so we just use it directly without modification
+    // Still support template expansion for backward compatibility (if template variables are present)
     const day = spec.timeRange.startIso.slice(0, 10);
     const vars: Record<string, string> = {
       dataset: spec.dataset,
@@ -234,6 +244,8 @@ export class ClickHouseSliceExporterAdapterImpl implements SliceExporter {
       dd: day.slice(8, 10),
     };
 
+    // Expand template variables if any are present (for backward compatibility)
+    // If no template variables, subdirTemplate is already the final path
     const subdir = expandTemplate(layout.subdirTemplate, vars);
     const base = layout.baseUri.replace(/^file:\/\//, '').replace(/\/+$/, '');
     const outDir = join(base, subdir).replace(/\/+/g, '/');
@@ -245,9 +257,6 @@ export class ClickHouseSliceExporterAdapterImpl implements SliceExporter {
     const ch = getClickHouseClient();
     const CLICKHOUSE_DATABASE = process.env.CLICKHOUSE_DATABASE || 'quantbot';
 
-    // Map dataset to table
-    const tableName = `${CLICKHOUSE_DATABASE}.ohlcv_candles`;
-
     // Build WHERE clause
     const conditions: string[] = [];
 
@@ -258,9 +267,16 @@ export class ClickHouseSliceExporterAdapterImpl implements SliceExporter {
     // Chain
     conditions.push(`chain = '${spec.chain}'`);
 
-    // Interval (from dataset mapping)
-    const escapedInterval = interval.replace(/'/g, "''");
-    conditions.push(`\`interval\` = '${escapedInterval}'`);
+    // Dataset-specific filters
+    if (datasetMetadata.type === 'candles' && interval) {
+      // For candle datasets, filter by interval
+      // Use backticks to escape reserved keyword 'interval' in ClickHouse
+      const escapedInterval = interval.replace(/'/g, "''");
+      conditions.push("`interval` = '" + escapedInterval + "'");
+    } else if (datasetMetadata.type === 'indicators') {
+      // For indicator datasets, we might filter by indicator_type if specified
+      // Currently, we export all indicators (can be filtered later if needed)
+    }
 
     // Token filter
     if (spec.tokenIds && spec.tokenIds.length > 0) {
@@ -270,12 +286,37 @@ export class ClickHouseSliceExporterAdapterImpl implements SliceExporter {
 
     const whereClause = conditions.join(' AND ');
 
-    // Select columns (or all if not specified)
+    // Select columns (use dataset defaults or specified columns)
     // Note: interval is a reserved keyword in ClickHouse, must be escaped with backticks
+    const defaultColumns =
+      datasetMetadata.defaultColumns ||
+      (datasetMetadata.type === 'candles'
+        ? [
+            'token_address',
+            'chain',
+            'timestamp',
+            'interval',
+            'open',
+            'high',
+            'low',
+            'close',
+            'volume',
+          ]
+        : ['token_address', 'chain', 'timestamp', 'indicator_type', 'value_json', 'metadata_json']);
+
+    // Map column names to properly escaped identifiers for ClickHouse
+    // interval is a reserved keyword and must be wrapped in backticks
+    const escapeColumn = (col: string): string => {
+      if (col === 'interval') {
+        return '`interval`';
+      }
+      return col;
+    };
+
     const columns =
       spec.columns && spec.columns.length > 0
-        ? spec.columns.map((col: string) => (col === 'interval' ? '`interval`' : col)).join(', ')
-        : 'token_address, chain, timestamp, `interval`, open, high, low, close, volume';
+        ? spec.columns.map(escapeColumn).join(', ')
+        : defaultColumns.map(escapeColumn).join(', ');
 
     // Query ClickHouse and export to CSV (ClickHouse doesn't support Parquet format)
     // We'll convert CSV to Parquet using DuckDB after export
@@ -379,10 +420,27 @@ export class ClickHouseSliceExporterAdapterImpl implements SliceExporter {
 
       try {
         const duckdb = new DuckDBClient(':memory:');
-        // Create table with correct schema matching the expected columns
-        // Default columns: token_address, chain, timestamp, interval, open, high, low, close, volume
-        await duckdb.execute(`
-          CREATE TABLE temp_empty (
+
+        // Set compression if specified in layout
+        const compression = layout.compression || 'none';
+        if (compression !== 'none') {
+          const duckdbCompression =
+            compression === 'gzip'
+              ? 'gzip'
+              : compression === 'snappy'
+                ? 'snappy'
+                : compression === 'zstd'
+                  ? 'zstd'
+                  : 'uncompressed';
+          await duckdb.execute(`SET parquet_compression = '${duckdbCompression}';`);
+        }
+
+        // Create table with correct schema matching the dataset type
+        let createTableSql = 'CREATE TABLE temp_empty (';
+
+        if (datasetMetadata.type === 'candles') {
+          // Candle schema
+          createTableSql += `
             token_address VARCHAR,
             chain VARCHAR,
             timestamp TIMESTAMP,
@@ -392,9 +450,35 @@ export class ClickHouseSliceExporterAdapterImpl implements SliceExporter {
             low DOUBLE,
             close DOUBLE,
             volume DOUBLE
-          );
-          COPY temp_empty TO '${tempParquetPath.replace(/'/g, "''")}' (FORMAT PARQUET);
-        `);
+          `;
+        } else if (datasetMetadata.type === 'indicators') {
+          // Indicator schema
+          createTableSql += `
+            token_address VARCHAR,
+            chain VARCHAR,
+            timestamp TIMESTAMP,
+            indicator_type VARCHAR,
+            value_json VARCHAR,
+            metadata_json VARCHAR
+          `;
+        } else {
+          // Fallback to candle schema
+          createTableSql += `
+            token_address VARCHAR,
+            chain VARCHAR,
+            timestamp TIMESTAMP,
+            interval VARCHAR,
+            open DOUBLE,
+            high DOUBLE,
+            low DOUBLE,
+            close DOUBLE,
+            volume DOUBLE
+          `;
+        }
+
+        createTableSql += `); COPY temp_empty TO '${tempParquetPath.replace(/'/g, "''")}' (FORMAT PARQUET);`;
+
+        await duckdb.execute(createTableSql);
         await duckdb.close();
 
         // Read empty Parquet file
@@ -420,8 +504,26 @@ export class ClickHouseSliceExporterAdapterImpl implements SliceExporter {
       try {
         await fs.writeFile(tempCsvPath, csvData);
 
-        // Use DuckDB to convert CSV to Parquet
+        // Use DuckDB to convert CSV to Parquet with compression support
         const duckdb = new DuckDBClient(':memory:');
+
+        // Set compression if specified in layout
+        const compression = layout.compression || 'none';
+        if (compression !== 'none') {
+          // Map compression types to DuckDB parquet_compression values
+          // DuckDB supports: 'uncompressed', 'snappy', 'gzip', 'zstd', 'lz4'
+          const duckdbCompression =
+            compression === 'gzip'
+              ? 'gzip'
+              : compression === 'snappy'
+                ? 'snappy'
+                : compression === 'zstd'
+                  ? 'zstd'
+                  : 'uncompressed';
+
+          await duckdb.execute(`SET parquet_compression = '${duckdbCompression}';`);
+        }
+
         await duckdb.execute(`
           CREATE TABLE temp_csv AS SELECT * FROM read_csv_auto('${tempCsvPath.replace(/'/g, "''")}');
           COPY temp_csv TO '${tempParquetPath.replace(/'/g, "''")}' (FORMAT PARQUET);

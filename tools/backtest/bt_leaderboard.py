@@ -287,7 +287,7 @@ def main() -> None:
     ap.add_argument("--output-format", choices=["console", "json"], default="console")
     args = ap.parse_args()
 
-    con = duckdb.connect(args.duckdb)
+    con = duckdb.connect(args.duckdb, read_only=True)
     try:
         if args.csv:
             rows = leaderboard_from_csv(con, args.csv, args.min_trades, args.order_by)

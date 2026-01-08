@@ -9,31 +9,34 @@ import json
 import sys
 from pathlib import Path
 
-try:
-    import duckdb
-except ImportError:
-    print("ERROR: duckdb package not installed. Run: pip install duckdb", file=sys.stderr)
-    sys.exit(1)
+import duckdb
+
+# Add tools to path for shared imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from shared.duckdb_adapter import safe_connect
 
 # Global connection cache for in-memory databases
 _connection_cache: dict[str, duckdb.DuckDBPyConnection] = {}
 
 
-def get_connection(db_path: str) -> duckdb.DuckDBPyConnection:
-    """Get or create DuckDB connection, handling in-memory and file-based databases"""
-    # For in-memory databases, reuse connection
+def get_connection(db_path: str, read_only: bool = False) -> duckdb.DuckDBPyConnection:
+    """Get or create DuckDB connection, handling in-memory and file-based databases.
+    
+    Uses the centralized duckdb_adapter for file-based databases.
+    
+    Args:
+        db_path: Path to DuckDB file or ':memory:'
+        read_only: If True, open in read-only mode (default: False for backwards compat)
+    """
+    # For in-memory databases, reuse connection (can't be read-only)
     if db_path == ':memory:':
         if db_path not in _connection_cache:
             _connection_cache[db_path] = duckdb.connect(db_path)
         return _connection_cache[db_path]
     
-    # For file-based databases, create new connection each time
-    # (connections are closed after each operation)
-    db_file = Path(db_path)
-    if db_file.exists() and db_file.stat().st_size == 0:
-        db_file.unlink()  # Delete empty file
-    
-    return duckdb.connect(db_path)
+    # Use centralized adapter for file-based databases
+    return safe_connect(db_path, read_only=read_only)
 
 
 def execute_sql(db_path: str, sql: str) -> dict:

@@ -62,6 +62,9 @@ jobs:
       - name: Architecture boundary check
         run: pnpm verify:boundaries-ast
 
+      - name: Python boundary check
+        run: pnpm verify:python-boundaries
+
       - name: No live trading check
         run: pnpm check:no-live-trading
 

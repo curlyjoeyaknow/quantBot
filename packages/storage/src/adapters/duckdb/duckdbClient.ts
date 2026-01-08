@@ -1,18 +1,70 @@
+/**
+ * DuckDB Client Adapter
+ *
+ * This is an ADAPTER that wraps the duckdb SDK for use by handlers and apps.
+ *
+ * Architecture:
+ * - Adapters implement ports and depend on external SDKs
+ * - Handlers depend on ports, not adapters directly
+ * - Apps wire adapters to handlers
+ *
+ * Design:
+ * - READ-ONLY by default to prevent lock conflicts
+ * - Write connections require explicit opt-in via { readOnly: false }
+ * - Connections must be closed to prevent WAL files
+ *
+ * @module
+ */
+
 import fs from 'node:fs';
 import path from 'node:path';
 
 export type DuckDbConnection = {
   run(sql: string, params?: any[]): Promise<void>;
   all<T = any>(sql: string, params?: any[]): Promise<T[]>;
+  close(): Promise<void>;
 };
 
-export async function openDuckDb(dbPath: string): Promise<DuckDbConnection> {
+export interface OpenDuckDbOptions {
+  /** Open in read-only mode (default: true for safety) */
+  readOnly?: boolean;
+}
+
+/**
+ * Open a DuckDB connection.
+ *
+ * By default opens in read-only mode to prevent lock conflicts.
+ * Use { readOnly: false } explicitly when you need to write.
+ *
+ * @example
+ * // Read-only (default, safe for concurrent access)
+ * const db = await openDuckDb('data/alerts.duckdb');
+ * const rows = await db.all('SELECT * FROM table');
+ * await db.close();
+ *
+ * @example
+ * // Writable (use only at end of runs)
+ * const db = await openDuckDb('data/alerts.duckdb', { readOnly: false });
+ * await db.run('INSERT INTO table VALUES (?)', [value]);
+ * await db.close();
+ */
+export async function openDuckDb(
+  dbPath: string,
+  options: OpenDuckDbOptions = {}
+): Promise<DuckDbConnection> {
+  const { readOnly = true } = options;
+
   const duckdbModule = await import('duckdb');
   // Handle both ESM default export and CommonJS module.exports
   const duckdb = duckdbModule.default || duckdbModule;
-  fs.mkdirSync(path.dirname(dbPath), { recursive: true });
 
-  const db = new duckdb.Database(dbPath);
+  if (!readOnly) {
+    fs.mkdirSync(path.dirname(dbPath), { recursive: true });
+  }
+
+  // DuckDB access mode: DUCKDB_READONLY = 1
+  const accessMode = readOnly ? 1 : undefined;
+  const db = new duckdb.Database(dbPath, accessMode);
   const conn = db.connect();
 
   const run = (sql: string, params?: any[]) =>
@@ -58,7 +110,20 @@ export async function openDuckDb(dbPath: string): Promise<DuckDbConnection> {
       }
     });
 
-  return { run, all };
+  const close = () =>
+    new Promise<void>((resolve, reject) => {
+      try {
+        db.close((err: any) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      } catch {
+        // Sync close fallback
+        resolve();
+      }
+    });
+
+  return { run, all, close };
 }
 
 export async function runSqlFile(conn: DuckDbConnection, filePath: string): Promise<void> {

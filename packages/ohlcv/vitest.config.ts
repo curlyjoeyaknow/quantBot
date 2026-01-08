@@ -88,7 +88,7 @@ const forceSourceResolution = (): Plugin => {
         }
       }
       // Also handle absolute file paths that might be passed to resolveId
-      // This catches paths like /home/memez/quantBot/packages/ohlcv/node_modules/@quantbot/simulation/dist/candles.js
+      // This catches paths like /home/memez/quantBot/packages/ohlcv/node_modules/@quantbot/backtest/dist/candles.js
       if (typeof id === 'string' && id.includes('@quantbot') && (id.includes('/dist/') || id.includes('node_modules'))) {
         // Extract package name from @quantbot/packageName part
         const quantbotMatch = id.match(/@quantbot\/([^/]+)/);
@@ -136,7 +136,7 @@ export default defineConfig({
     // Force inline these packages to use source files, not dist
     deps: {
       inline: [
-        '@quantbot/simulation',
+        '@quantbot/backtest',
         '@quantbot/storage',
         '@quantbot/utils',
         '@quantbot/core',
@@ -158,8 +158,8 @@ export default defineConfig({
       '@quantbot/core/*': path.resolve(__dirname, '../core/src/*'),
       '@quantbot/utils': path.resolve(__dirname, '../utils/src'),
       '@quantbot/utils/*': path.resolve(__dirname, '../utils/src/*'),
-      '@quantbot/simulation': path.resolve(__dirname, '../simulation/src'),
-      '@quantbot/simulation/*': path.resolve(__dirname, '../simulation/src/*'),
+      '@quantbot/backtest': path.resolve(__dirname, '../simulation/src'),
+      '@quantbot/backtest/*': path.resolve(__dirname, '../simulation/src/*'),
       '@quantbot/ingestion': path.resolve(__dirname, '../ingestion/src'),
       '@quantbot/ingestion/*': path.resolve(__dirname, '../ingestion/src/*'),
       '@quantbot/jobs': path.resolve(__dirname, '../jobs/src'),

@@ -27,6 +27,8 @@ import {
   type BacktestOptimizeArgs,
   backtestBaselineSchema,
   type BacktestBaselineArgs,
+  backtestMigrateSchema,
+  type BacktestMigrateArgs,
 } from '../command-defs/backtest.js';
 import { join } from 'path';
 import { existsSync } from 'fs';
@@ -74,6 +76,11 @@ export function registerBacktestCommands(program: Command): void {
     .requiredOption('--to <date>', 'End date (ISO 8601)')
     .option('--taker-fee-bps <number>', 'Taker fee in basis points', '30')
     .option('--slippage-bps <number>', 'Slippage in basis points', '10')
+    .option(
+      '--execution-model <venue>',
+      'Execution model: pumpfun, pumpswap, raydium, minimal, simple',
+      'simple'
+    )
     .option('--position-usd <number>', 'Position size in USD', '1000')
     .option('--include-replay', 'Include replay frames')
     .option('--activity-move-pct <number>', 'Activity move threshold (default: 0.1 = 10%)', '0.1');
@@ -182,6 +189,11 @@ export function registerBacktestCommands(program: Command): void {
     .requiredOption('--to <date>', 'End date (ISO 8601)')
     .option('--taker-fee-bps <number>', 'Taker fee in basis points', '30')
     .option('--slippage-bps <number>', 'Slippage in basis points', '10')
+    .option(
+      '--execution-model <venue>',
+      'Execution model: pumpfun, pumpswap, raydium, minimal, simple',
+      'simple'
+    )
     .option('--run-id <id>', 'Existing run ID to use')
     .option('--format <format>', 'Output format (json, table, csv)', 'json');
 
@@ -219,6 +231,11 @@ export function registerBacktestCommands(program: Command): void {
     )
     .option('--taker-fee-bps <number>', 'Taker fee in basis points', '30')
     .option('--slippage-bps <number>', 'Slippage in basis points', '10')
+    .option(
+      '--execution-model <venue>',
+      'Execution model: pumpfun, pumpswap, raydium, minimal, simple',
+      'simple'
+    )
     .option('--format <format>', 'Output format (json, table, csv)', 'table');
 
   defineCommand(optimizeCmd, {
@@ -299,6 +316,24 @@ export function registerBacktestCommands(program: Command): void {
       // (TP/SL policy removed - pure path metrics only)
     }),
     validate: (opts) => backtestBaselineSchema.parse(opts),
+    onError: die,
+  });
+
+  // Migrate command - import existing JSON/CSV results to central DuckDB
+  const migrateCmd = backtestCmd
+    .command('migrate')
+    .description('Migrate existing JSON/CSV results to central DuckDB')
+    .option('--results-dir <dir>', 'Directory to scan for results', 'results')
+    .option('--dry-run', 'Show what would be migrated without actually migrating');
+
+  defineCommand(migrateCmd, {
+    name: 'migrate',
+    packageName: 'backtest',
+    coerce: (raw) => ({
+      ...raw,
+      dryRun: raw.dryRun !== undefined ? coerceBoolean(raw.dryRun, 'dry-run') : false,
+    }),
+    validate: (opts) => backtestMigrateSchema.parse(opts),
     onError: die,
   });
 }
@@ -1091,6 +1126,7 @@ const backtestModule: PackageCommandModule = {
             takerFeeBps: opts.takerFeeBps,
             slippageBps: opts.slippageBps,
           },
+          executionModel: opts.executionModel as import('@quantbot/backtest').ExecutionModelVenue,
           runId: opts.runId,
         });
 
@@ -1196,17 +1232,32 @@ const backtestModule: PackageCommandModule = {
         const slice = await materialiseSlice(plan, coverage);
         const candlesByCallId = await loadCandlesFromSlice(slice.path);
 
-        // Build constraints
+        // Build constraints with optional high-multiple caller relaxation
         const constraints = {
           maxStopOutRate: opts.maxStopOutRate,
           maxP95DrawdownBps: opts.maxP95DrawdownBps,
           maxTimeExposedMs: opts.maxTimeExposedMs,
+          ...(opts.enableHighMultipleRelaxation
+            ? {
+                callerHighMultipleProfile: {
+                  p95PeakMultipleThreshold: 20, // Consider caller high-multiple if p95 >= 20x
+                  drawdownRelaxationFactor: opts.highMultipleDrawdownRelaxation,
+                  stopOutRelaxationFactor: opts.highMultipleStopOutRelaxation,
+                },
+              }
+            : {}),
         };
 
         const fees = {
           takerFeeBps: opts.takerFeeBps,
           slippageBps: opts.slippageBps,
         };
+
+        // Collect path metrics for caller profile analysis
+        // Load path metrics from slice if available
+        const pathMetricsByCallId = new Map<string, { peak_multiple?: number | null }>();
+        // TODO: Load path metrics from truth layer if available
+        // For now, this will be empty and caller profile analysis will use policy results
 
         // Run optimization
         if (opts.caller) {
@@ -1216,6 +1267,8 @@ const backtestModule: PackageCommandModule = {
             candlesByCallId,
             constraints,
             fees,
+            callerGroups: opts.callerGroups,
+            pathMetricsByCallId,
           });
 
           if (!result.bestPolicy) {
@@ -1238,9 +1291,16 @@ const backtestModule: PackageCommandModule = {
             policyJson: JSON.stringify(result.bestPolicy.policy),
           };
         } else {
-          // Per-caller optimization
+          // Per-caller optimization (with optional caller group filtering)
+          let callsForOptimization = planReq.calls;
+          if (opts.callerGroups && opts.callerGroups.length > 0) {
+            callsForOptimization = planReq.calls.filter((call) =>
+              opts.callerGroups!.includes(call.caller)
+            );
+          }
+
           const perCallerResults = optimizePolicyPerCaller(
-            planReq.calls,
+            callsForOptimization,
             candlesByCallId,
             constraints,
             fees
@@ -1297,6 +1357,19 @@ const backtestModule: PackageCommandModule = {
         'quantbot backtest baseline --from 2025-05-01 --to 2025-05-31',
         'quantbot backtest baseline --horizon-hours 120',
         'quantbot backtest baseline --tui',
+      ],
+    },
+    {
+      name: 'migrate',
+      description: 'Migrate existing JSON/CSV results to central DuckDB',
+      schema: backtestMigrateSchema,
+      handler: async (args: unknown, _ctx: unknown) => {
+        const { migrateResultsHandler } = await import('../handlers/backtest/migrate-results.js');
+        return migrateResultsHandler(args as BacktestMigrateArgs, _ctx);
+      },
+      examples: [
+        'quantbot backtest migrate',
+        'quantbot backtest migrate --results-dir results --dry-run',
       ],
     },
   ],

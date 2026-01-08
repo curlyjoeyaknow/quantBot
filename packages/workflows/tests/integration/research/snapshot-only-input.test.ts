@@ -14,7 +14,7 @@ import type { SimulationRequest } from '../../../src/research/contract.js';
 import type { WorkflowContext } from '../../../src/types.js';
 import { DateTime } from 'luxon';
 import { ValidationError } from '@quantbot/utils';
-import type { StrategyConfig } from '@quantbot/simulation';
+import type { StrategyConfig } from '@quantbot/backtest';
 
 // Mock DataSnapshotService to verify it's called with snapshot ref
 const mockLoadSnapshot = vi.fn();

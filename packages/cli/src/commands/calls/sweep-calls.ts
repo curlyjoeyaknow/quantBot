@@ -25,7 +25,7 @@ import type { CommandContext } from '../../core/command-context.js';
 import { evaluateCallsWorkflow, createProductionContextWithPorts } from '@quantbot/workflows';
 import type { EvaluateCallsRequest, CallerSummary, CallBacktestResult } from '@quantbot/workflows';
 import type { CallSignal } from '@quantbot/core';
-import type { ExitOverlay } from '@quantbot/simulation';
+import type { ExitOverlay } from '@quantbot/backtest';
 import type { SweepCallsArgs } from '../../command-defs/calls.js';
 import { loadOverlaySetsFromFile, type OverlaySet } from './_overlays.js';
 import { sweepCallsSchema } from '../../command-defs/calls.js';

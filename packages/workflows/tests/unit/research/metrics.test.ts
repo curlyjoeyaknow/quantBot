@@ -21,31 +21,6 @@ describe('Metrics Calculator', () => {
     it('calculates PnL series from trade events', () => {
       const events: TradeEvent[] = [
         {
-          _timestampISO: '2024-01-01T00:00:00Z',
-          get timestampISO_1() {
-            return this._timestampISO;
-          },
-          set timestampISO_1(value) {
-            this._timestampISO = value;
-          },
-          get timestampISO() {
-            return this._timestampISO;
-          },
-          set timestampISO(value) {
-            this._timestampISO = value;
-          },
-          get timestampISO() {
-            return this._timestampISO;
-          },
-          set timestampISO(value) {
-            this._timestampISO = value;
-          },
-          type: 'entry',
-          asset: 'mint1',
-          price: 100,
-          quantity: 1,
-          value: 100,
-          fees: 1,
           timestampISO: '2024-01-01T00:00:00Z',
           type: 'entry',
           asset: 'mint1',

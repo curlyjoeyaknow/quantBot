@@ -6,16 +6,27 @@ import duckdb
 from pathlib import Path
 import sys
 
+# Add tools to path for shared imports
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+from shared.duckdb_adapter import safe_connect
+
 # Import simulation schema
-# Path: tools/simulation/duckdb_storage/utils.py -> tools/simulation/sql_functions.py
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from sql_functions import setup_simulation_schema
 
 
-def get_connection(duckdb_path: str) -> duckdb.DuckDBPyConnection:
-    """Get DuckDB connection and ensure schema is set up."""
-    con = duckdb.connect(duckdb_path)
-    setup_simulation_schema(con)
+def get_connection(duckdb_path: str, read_only: bool = False) -> duckdb.DuckDBPyConnection:
+    """Get DuckDB connection and optionally ensure schema is set up.
+    
+    Uses centralized duckdb_adapter for connection management.
+    
+    Args:
+        duckdb_path: Path to DuckDB file
+        read_only: If True, open in read-only mode (skips schema setup)
+    """
+    con = safe_connect(duckdb_path, read_only=read_only)
+    if not read_only:
+        setup_simulation_schema(con)
     return con
 
 

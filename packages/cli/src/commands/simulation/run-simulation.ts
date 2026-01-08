@@ -2,7 +2,7 @@ import { DateTime } from 'luxon';
 import { randomUUID } from 'crypto';
 import type { CommandContext } from '../../core/command-context.js';
 import { type RunSimulationArgs } from '../../command-defs/simulation.js';
-import { runSimulation, createProductionContext } from '@quantbot/workflows';
+import { runSimulation, createProductionContextWithPorts } from '@quantbot/workflows';
 import type { SimulationRunSpec, WorkflowContext } from '@quantbot/workflows';
 import type { Run } from '@quantbot/core';
 
@@ -63,13 +63,14 @@ export async function runSimulationHandler(args: RunSimulationArgs, ctx: Command
 
   await runRepo.createRun(run);
 
-  // Create production context with our runId
-  const baseCtx = createProductionContext();
-  const workflowCtx: WorkflowContext = {
-    ...baseCtx,
+  // Create production context with ports (includes event sourcing)
+  const workflowCtxWithPorts = await createProductionContextWithPorts();
+  const workflowCtx: WorkflowContext & { events?: import('@quantbot/core').RunEventPort } = {
+    ...workflowCtxWithPorts,
     ids: {
       newRunId: () => runId, // Override to use our runId
     },
+    events: workflowCtxWithPorts.events, // Include events port for event emission
   };
 
   // Run workflow

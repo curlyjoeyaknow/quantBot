@@ -19,7 +19,7 @@ import {
   createProductionContextWithPorts,
 } from '@quantbot/workflows';
 import type { EvaluateCallsRequest } from '@quantbot/workflows';
-import type { ExitOverlay } from '@quantbot/simulation';
+import type { ExitOverlay } from '@quantbot/backtest';
 import { formatCSV } from '../../core/output-formatter.js';
 
 /**
@@ -108,7 +108,7 @@ export async function exportCallsWithSimulationHandler(
   const workflowCtx = createProductionContext();
 
   const { PythonEngine } = await import('@quantbot/utils');
-  const { DuckDBStorageService } = await import('@quantbot/simulation');
+  const { DuckDBStorageService } = await import('@quantbot/backtest');
   const engine = new PythonEngine();
   const storage = new DuckDBStorageService(engine);
 

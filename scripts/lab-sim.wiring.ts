@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import crypto from 'node:crypto';
 import { execSync } from 'node:child_process';
 
-import type { SimPresetV1, LabPorts, RunContext } from '@quantbot/workflows';
+import type { SimPresetV1, LabPorts, RunContext } from '@quantbot/lab';
 import type {
   CandleSliceSpec,
   SliceExportResult,
@@ -18,7 +18,7 @@ import type {
   CatalogPort,
 } from '@quantbot/storage';
 
-import { runLabPreset } from '@quantbot/workflows';
+import { runLabPreset } from '@quantbot/lab';
 
 // Adapters - now exported from main package
 import {

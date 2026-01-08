@@ -1115,7 +1115,7 @@ def store_baseline_to_duckdb(
             ))
 
         con.executemany("""
-            INSERT INTO baseline.caller_stats_f VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            INSERT INTO baseline.caller_stats_f VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
         """, caller_rows)
 
         con.execute("COMMIT;")
@@ -1163,7 +1163,10 @@ def main() -> None:
     ap.add_argument("--output-format", choices=["console", "json"], default="console")
     ap.add_argument("--verbose", action="store_true")
 
-    ap.add_argument("--store-duckdb", action="store_true")
+    ap.add_argument("--store-duckdb", action="store_true", default=True,
+                    help="Store to DuckDB (default: True)")
+    ap.add_argument("--no-store-duckdb", action="store_false", dest="store_duckdb",
+                    help="Disable storing to DuckDB")
     ap.add_argument("--run-name", default=None)
 
     ap.add_argument("--ch-batch", type=int, default=1000, help="Max mints per ClickHouse IN() chunk")

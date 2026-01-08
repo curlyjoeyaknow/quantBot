@@ -7,6 +7,7 @@ import { createStateDuckdbAdapter } from '../adapters/stateDuckdbAdapter.js';
 import { createQueryClickhouseAdapter } from '../adapters/queryClickhouseAdapter.js';
 import { createExecutionStubAdapter } from '../adapters/executionStubAdapter.js';
 import { getBirdeyeClient } from '@quantbot/api-clients';
+import { RunEventDuckDBAdapter } from '@quantbot/storage';
 
 // Execution Port Migration:
 // - Current: ExecutionStubAdapter (safety-first, dry-run by default)
@@ -43,6 +44,15 @@ export async function createProductionPorts(duckdbPath?: string): Promise<Produc
     maxConsecutiveFailures: 5,
   });
 
+  // Wire RunEventPort adapter (DuckDB-backed for event sourcing)
+  // Use same DuckDB path as state port
+  const events = new RunEventDuckDBAdapter(stateDbPath);
+  // Initialize schema on first use
+  await events.initializeSchema().catch((error) => {
+    // Log but don't fail - event sourcing is optional
+    console.warn('Failed to initialize run_events schema:', error);
+  });
+
   const ports: ProductionPorts = {
     telemetry: createTelemetryConsoleAdapter({ prefix: 'quantbot', clock }),
     clock,
@@ -51,6 +61,7 @@ export async function createProductionPorts(duckdbPath?: string): Promise<Produc
     state,
     query,
     execution,
+    events, // Event sourcing port
   };
 
   return ports;

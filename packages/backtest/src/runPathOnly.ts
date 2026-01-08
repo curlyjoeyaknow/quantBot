@@ -30,6 +30,10 @@ import { materialiseSlice } from './slice.js';
 import { loadCandlesFromSlice } from './runBacktest.js';
 import { computePathMetrics } from './metrics/path-metrics.js';
 import { insertPathMetrics, type DuckDbConnection } from './reporting/backtest-results-duckdb.js';
+import {
+  upsertRunMetadata,
+  persistPathMetricsToCentral,
+} from './reporting/central-duckdb-persistence.js';
 import { logger, TimingContext, type LogContext } from '@quantbot/utils';
 
 /**
@@ -77,6 +81,7 @@ function createDuckDbAdapter(db: DuckDbConnection): DuckDbConnection {
 export async function runPathOnly(req: PathOnlyRequest): Promise<PathOnlySummary> {
   const runId = randomUUID();
   const activityMovePct = req.activityMovePct ?? 0.1;
+  const startedAt = new Date();
 
   // Wall-clock timing - when something regresses 15s → 40s, this screams
   const timing = new TimingContext();
@@ -88,9 +93,25 @@ export async function runPathOnly(req: PathOnlyRequest): Promise<PathOnlySummary
     interval: req.interval,
   });
 
+  // Persist run metadata to central DuckDB
+  await upsertRunMetadata({
+    run_id: runId,
+    run_mode: 'path-only',
+    status: 'running',
+    params_json: JSON.stringify({
+      interval: req.interval,
+      from: req.from.toISO(),
+      to: req.to.toISO(),
+      activityMovePct,
+    }),
+    interval: req.interval,
+    time_from: req.from.toJSDate(),
+    time_to: req.to.toJSDate(),
+    started_at: startedAt,
+  });
+
   // Step 1: Plan (reuse existing)
-  let plan: BacktestPlan;
-  timing.phaseSync('plan', () => {
+  const plan: BacktestPlan = timing.phaseSync('plan', () => {
     // Create a minimal strategy for planning purposes (no overlays needed for path-only)
     const planReq = {
       strategy: {
@@ -109,11 +130,11 @@ export async function runPathOnly(req: PathOnlyRequest): Promise<PathOnlySummary
       to: req.to,
     };
 
-    plan = planBacktest(planReq);
+    return planBacktest(planReq);
   });
 
   logger.info('Planning complete', {
-    totalRequiredCandles: plan!.totalRequiredCandles,
+    totalRequiredCandles: plan.totalRequiredCandles,
     calls: req.calls.length,
   });
 
@@ -237,9 +258,9 @@ export async function runPathOnly(req: PathOnlyRequest): Promise<PathOnlySummary
 
     const duckdbPath = join(artifactsDir, 'results.duckdb');
     const duckdbModule = await import('duckdb');
-    // duckdb exports Database on the default export object
-    const DuckDB = duckdbModule.default;
-    const database = new DuckDB.Database(duckdbPath);
+    // Support both ESM default and named exports
+    const duckdbLib = duckdbModule.default ?? duckdbModule;
+    const database = new duckdbLib.Database(duckdbPath);
     const db = database.connect();
 
     try {
@@ -253,10 +274,33 @@ export async function runPathOnly(req: PathOnlyRequest): Promise<PathOnlySummary
           rows: pathMetricsRows.length,
           duckdbPath,
         });
+
+        // Also persist to central DuckDB for auditability
+        await persistPathMetricsToCentral(pathMetricsRows);
       }
     } finally {
       database.close();
     }
+  });
+
+  // Update run metadata in central DuckDB with completion status
+  const finishedAt = new Date();
+  await upsertRunMetadata({
+    run_id: runId,
+    run_mode: 'path-only',
+    status: 'completed',
+    params_json: JSON.stringify({
+      interval: req.interval,
+      from: req.from.toISO(),
+      to: req.to.toISO(),
+      activityMovePct,
+    }),
+    interval: req.interval,
+    time_from: req.from.toJSDate(),
+    time_to: req.to.toJSDate(),
+    started_at: startedAt,
+    finished_at: finishedAt,
+    total_calls: coverage.eligible.length,
   });
 
   // Step 7: Stop (no trades, no policy execution)

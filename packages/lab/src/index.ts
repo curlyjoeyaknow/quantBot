@@ -28,3 +28,10 @@ export * from './optimization/GridSearch.js';
 export * from './optimization/RandomSearch.js';
 export * from './optimization/OptimizationEngine.js';
 export * from './catalog/ids.js';
+
+// Lab workflow orchestrators
+export * from './workflows/types.js';
+export { runLabPreset } from './workflows/runLabPreset.js';
+export { runOptimization } from './workflows/runOptimization.js';
+export { runRollingWindows } from './workflows/runRollingWindows.js';
+export type { RollingWindowV1 } from './workflows/runRollingWindows.js';

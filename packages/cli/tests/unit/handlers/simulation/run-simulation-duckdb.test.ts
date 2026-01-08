@@ -6,7 +6,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { runSimulationDuckdbHandler } from '../../../../src/commands/simulation/run-simulation-duckdb.js';
 import type { CommandContext } from '../../../../src/core/command-context.js';
 import { ValidationError, AppError } from '@quantbot/utils';
-import type { SimulationService } from '@quantbot/simulation';
+import type { SimulationService } from '@quantbot/backtest';
 
 // Mock workflows
 const mockRunSimulationDuckdb = vi.fn();

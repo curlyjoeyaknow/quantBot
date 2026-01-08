@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { openDuckDb } from './db.js';
 import { ensureUiSchema } from './schema.js';
 import { registerApi } from './api.js';
+import { seedDefaultStrategies } from './strategy-seeder.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -11,6 +12,10 @@ const __dirname = path.dirname(__filename);
 async function main() {
   const db = await openDuckDb();
   await ensureUiSchema(db);
+
+  // Seed default strategies from strategies/dsl/ folder
+  const seedResult = await seedDefaultStrategies(db);
+  console.log(`[lab-ui] Strategies: ${seedResult.seeded} seeded, ${seedResult.skipped} already exist`);
 
   const app = express();
   app.set('view engine', 'ejs');
@@ -23,10 +28,15 @@ async function main() {
 
   registerApi(app, db);
 
-  app.get('/', (_req, res) => res.redirect('/strategies'));
+  app.get('/', (_req, res) => res.redirect('/dashboard'));
+  app.get('/dashboard', (_req, res) => res.render('dashboard'));
   app.get('/strategies', (_req, res) => res.render('strategies'));
   app.get('/runs', (_req, res) => res.render('runs'));
   app.get('/leaderboard', (_req, res) => res.render('leaderboard'));
+  app.get('/scored', (_req, res) => res.render('scored'));
+  app.get('/caller', (_req, res) => res.render('caller'));
+  app.get('/compare', (_req, res) => res.render('compare'));
+  app.get('/drilldown', (_req, res) => res.render('drilldown'));
   // Phase 6 - Truth leaderboard and policies views
   app.get('/truth', (_req, res) => res.render('truth'));
   app.get('/policies', (_req, res) => res.render('policies'));

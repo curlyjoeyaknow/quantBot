@@ -12,6 +12,7 @@ import { program } from 'commander';
 import { ensureInitialized } from '../core/initialization-manager.js';
 import { handleError } from '../core/error-handler.js';
 import { logger } from '@quantbot/utils';
+import { registerCLIPlugins } from '../plugins/register-plugins.js';
 
 // Import command modules for side effects (they register themselves in commandRegistry)
 // These imports cause commandRegistry.registerPackage() to be called
@@ -89,6 +90,9 @@ program.configureOutput({
 // Main execution
 async function main() {
   try {
+    // Register plugins (must happen before command execution)
+    registerCLIPlugins();
+
     // Initialize storage connections
     await ensureInitialized();
 

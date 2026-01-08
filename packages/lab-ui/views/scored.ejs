@@ -1,0 +1,618 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Lab UI — Scored Leaderboard</title>
+  <link rel="stylesheet" href="/public/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    .score-positive { color: #10b981; font-weight: 600; }
+    .score-negative { color: #ef4444; font-weight: 600; }
+    .score-neutral { color: #94a3b8; }
+    
+    .discipline-badge {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .discipline-badge.active { background: rgba(16, 185, 129, 0.2); color: #10b981; }
+    .discipline-badge.inactive { background: rgba(100, 116, 139, 0.2); color: #64748b; }
+    
+    .penalty-high { color: #ef4444; }
+    .penalty-medium { color: #f59e0b; }
+    .penalty-low { color: #10b981; }
+    
+    .charts-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    
+    .chart-card {
+      background: var(--bg-card, #1a2234);
+      border: 1px solid var(--border-color, #2d3748);
+      border-radius: 8px;
+      padding: 1rem;
+    }
+    
+    .chart-card h3 {
+      margin: 0 0 0.5rem 0;
+      font-size: 0.9rem;
+      color: var(--text-secondary, #94a3b8);
+    }
+    
+    .chart-container {
+      position: relative;
+      height: 200px;
+    }
+    
+    .score-breakdown {
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-top: 0.5rem;
+    }
+    
+    .score-component {
+      flex: 1;
+      min-width: 120px;
+      padding: 0.75rem;
+      background: rgba(0,0,0,0.2);
+      border-radius: 6px;
+      text-align: center;
+    }
+    
+    .score-component .value {
+      font-size: 1.25rem;
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    
+    .score-component .label {
+      font-size: 0.7rem;
+      color: var(--text-muted, #64748b);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .run-selector {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    
+    .run-selector select {
+      flex: 1;
+      min-width: 200px;
+    }
+    
+    .stats-summary {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+    }
+    
+    .stat-box {
+      background: var(--bg-card, #1a2234);
+      border: 1px solid var(--border-color, #2d3748);
+      border-radius: 8px;
+      padding: 1rem;
+      text-align: center;
+    }
+    
+    .stat-box .value {
+      font-size: 1.5rem;
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    
+    .stat-box .label {
+      font-size: 0.75rem;
+      color: var(--text-muted, #64748b);
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <a href="/dashboard">Dashboard</a>
+    <a href="/strategies">Strategies</a>
+    <a href="/runs">Runs</a>
+    <a href="/leaderboard">Leaderboard</a>
+    <a href="/scored" class="active">Scored</a>
+    <a href="/truth">Truth</a>
+    <a href="/policies">Policies</a>
+  </nav>
+
+  <main>
+    <h1>📊 Risk-Adjusted Caller Scores</h1>
+    <p class="hint">
+      Score V2: rewards <strong>fast 2x</strong> with <strong>controlled pre-2x pain</strong>.
+      Exponential penalty after 30% drawdown. Discipline bonus for hit2x ≥50% AND DD ≤30%.
+    </p>
+
+    <section class="card">
+      <h2>Select Baseline Run</h2>
+      <div class="run-selector">
+        <select id="runSelect">
+          <option value="">Loading runs...</option>
+        </select>
+        <label>Min Trades: <input type="number" id="minTrades" value="30" min="1" max="1000" style="width: 60px;" /></label>
+        <button id="load">Load</button>
+        <span id="msg"></span>
+      </div>
+    </section>
+
+    <!-- Summary Stats -->
+    <section id="statsSection" class="stats-summary" style="display: none;">
+      <div class="stat-box">
+        <div class="value" id="totalCallers">-</div>
+        <div class="label">Callers</div>
+      </div>
+      <div class="stat-box">
+        <div class="value score-positive" id="positiveScores">-</div>
+        <div class="label">Score &gt; 0</div>
+      </div>
+      <div class="stat-box">
+        <div class="value score-negative" id="negativeScores">-</div>
+        <div class="label">Score &lt; 0</div>
+      </div>
+      <div class="stat-box">
+        <div class="value" id="avgScore">-</div>
+        <div class="label">Avg Score</div>
+      </div>
+      <div class="stat-box">
+        <div class="value" id="topScore">-</div>
+        <div class="label">Best Score</div>
+      </div>
+      <div class="stat-box">
+        <div class="value" id="disciplineCount">-</div>
+        <div class="label">Discipline Bonus</div>
+      </div>
+    </section>
+
+    <!-- Charts -->
+    <section id="chartsSection" class="charts-row" style="display: none;">
+      <div class="chart-card">
+        <h3>Score Distribution</h3>
+        <div class="chart-container">
+          <canvas id="scoreChart"></canvas>
+        </div>
+      </div>
+      <div class="chart-card">
+        <h3>ATH Distribution</h3>
+        <div class="chart-container">
+          <canvas id="athChart"></canvas>
+        </div>
+      </div>
+      <div class="chart-card">
+        <h3>Drawdown Distribution</h3>
+        <div class="chart-container">
+          <canvas id="ddChart"></canvas>
+        </div>
+      </div>
+      <div class="chart-card">
+        <h3>Time to 2x Distribution</h3>
+        <div class="chart-container">
+          <canvas id="timeChart"></canvas>
+        </div>
+      </div>
+    </section>
+
+    <!-- Caller Radar Comparison -->
+    <section id="radarSection" class="card" style="display: none;">
+      <h2>Caller Comparison (Top 5 by Score)</h2>
+      <div class="chart-container" style="height: 350px;">
+        <canvas id="radarChart"></canvas>
+      </div>
+      <p class="hint">
+        Metrics normalized to 0-1 scale. Higher = better for all axes.
+      </p>
+    </section>
+
+    <!-- Leaderboard Table -->
+    <section class="card">
+      <h2>Scored Leaderboard</h2>
+      <div class="table-scroll">
+        <table id="tbl">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Caller</th>
+              <th>N</th>
+              <th>Score</th>
+              <th>Med ATH</th>
+              <th>P75</th>
+              <th>P95</th>
+              <th>Hit2x%</th>
+              <th>T2x (min)</th>
+              <th>Risk DD%</th>
+              <th>Penalty</th>
+              <th>Base Up</th>
+              <th>Tail</th>
+              <th>Fast2x</th>
+              <th>Discipline</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="hint">
+        <strong>Score Formula:</strong> confidence × ((base_upside + tail_bonus) × timing_mult + discipline_bonus − risk_penalty)
+      </p>
+    </section>
+
+    <!-- Score Breakdown for selected caller -->
+    <section id="breakdownSection" class="card" style="display: none;">
+      <h2>Score Breakdown: <span id="selectedCaller">-</span></h2>
+      <div class="score-breakdown">
+        <div class="score-component">
+          <div class="value" id="bkBase">-</div>
+          <div class="label">Base Upside</div>
+        </div>
+        <div class="score-component">
+          <div class="value" id="bkTail">-</div>
+          <div class="label">Tail Bonus</div>
+        </div>
+        <div class="score-component">
+          <div class="value" id="bkFast">-</div>
+          <div class="label">Fast 2x Signal</div>
+        </div>
+        <div class="score-component">
+          <div class="value" id="bkDisc">-</div>
+          <div class="label">Discipline</div>
+        </div>
+        <div class="score-component">
+          <div class="value penalty-high" id="bkPenalty">-</div>
+          <div class="label">Risk Penalty</div>
+        </div>
+        <div class="score-component">
+          <div class="value" id="bkConf">-</div>
+          <div class="label">Confidence</div>
+        </div>
+        <div class="score-component">
+          <div class="value score-positive" id="bkFinal">-</div>
+          <div class="label">Final Score</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const $ = id => document.getElementById(id);
+    let charts = {};
+    let callerData = [];
+
+    // Chart color palette
+    const colors = {
+      green: 'rgba(16, 185, 129, 0.8)',
+      greenDim: 'rgba(16, 185, 129, 0.3)',
+      red: 'rgba(239, 68, 68, 0.8)',
+      redDim: 'rgba(239, 68, 68, 0.3)',
+      blue: 'rgba(59, 130, 246, 0.8)',
+      blueDim: 'rgba(59, 130, 246, 0.3)',
+      purple: 'rgba(139, 92, 246, 0.8)',
+      amber: 'rgba(245, 158, 11, 0.8)',
+      cyan: 'rgba(6, 182, 212, 0.8)',
+    };
+
+    // Load available runs on page load
+    async function loadRuns() {
+      try {
+        const res = await fetch('/api/baseline-runs');
+        const runs = await res.json();
+        
+        const select = $('runSelect');
+        select.innerHTML = '<option value="">Select a run...</option>';
+        
+        for (const r of runs) {
+          const opt = document.createElement('option');
+          opt.value = r.run_id;
+          const name = r.run_name || r.run_id.slice(0, 8);
+          const date = r.created_at ? new Date(r.created_at).toLocaleDateString() : '';
+          opt.textContent = `${name} (${r.alerts_ok || 0} alerts, ${date})`;
+          select.appendChild(opt);
+        }
+      } catch (e) {
+        $('runSelect').innerHTML = '<option value="">Error loading runs</option>';
+      }
+    }
+
+    // Load scored leaderboard
+    async function loadScored() {
+      const runId = $('runSelect').value;
+      const minTrades = Number($('minTrades').value) || 30;
+      
+      if (!runId) {
+        $('msg').textContent = 'Select a run first';
+        return;
+      }
+
+      $('msg').textContent = 'Loading...';
+
+      try {
+        // Load leaderboard
+        const res = await fetch(`/api/scored-leaderboard/${runId}?min_trades=${minTrades}`);
+        const data = await res.json();
+        
+        if (data.error) {
+          $('msg').textContent = 'Error: ' + data.error;
+          return;
+        }
+
+        callerData = data;
+        renderTable(data);
+        renderStats(data);
+        renderRadarChart(data);
+        
+        // Load distributions
+        const distRes = await fetch(`/api/distributions/${runId}`);
+        const dist = await distRes.json();
+        if (!dist.error) {
+          renderCharts(dist);
+        }
+        
+        $('msg').textContent = `${data.length} callers loaded`;
+        $('statsSection').style.display = 'grid';
+        $('chartsSection').style.display = 'grid';
+        $('radarSection').style.display = 'block';
+      } catch (e) {
+        $('msg').textContent = 'Error: ' + e.message;
+      }
+    }
+
+    function renderTable(data) {
+      const tbody = $('tbl').querySelector('tbody');
+      tbody.innerHTML = '';
+
+      data.forEach((r, i) => {
+        const tr = document.createElement('tr');
+        tr.style.cursor = 'pointer';
+        tr.onclick = () => showBreakdown(r);
+        
+        const scoreClass = r.score_v2 > 0 ? 'score-positive' : r.score_v2 < 0 ? 'score-negative' : 'score-neutral';
+        const penaltyClass = r.risk_penalty > 10 ? 'penalty-high' : r.risk_penalty > 2 ? 'penalty-medium' : 'penalty-low';
+        const discBadge = r.discipline_bonus > 0 
+          ? '<span class="discipline-badge active">✓</span>'
+          : '<span class="discipline-badge inactive">–</span>';
+
+        const runId = $('runSelect').value;
+        const callerLink = r.caller 
+          ? `<a href="/caller?run=${runId}&caller=${encodeURIComponent(r.caller)}" style="color: var(--accent); text-decoration: none;">${r.caller}</a>`
+          : '—';
+
+        tr.innerHTML = `
+          <td>${i + 1}</td>
+          <td>${callerLink}</td>
+          <td>${r.n}</td>
+          <td class="${scoreClass}">${fmt(r.score_v2, 3)}</td>
+          <td>${fmt(r.median_ath, 2)}x</td>
+          <td>${fmt(r.p75_ath, 2)}x</td>
+          <td>${fmt(r.p95_ath, 2)}x</td>
+          <td>${fmt(r.hit2x_pct, 1)}%</td>
+          <td>${fmt(r.median_t2x_min, 1)}</td>
+          <td>${fmt(r.risk_dd_pct, 1)}%</td>
+          <td class="${penaltyClass}">${fmt(r.risk_penalty, 2)}</td>
+          <td>${fmt(r.base_upside, 3)}</td>
+          <td>${fmt(r.tail_bonus, 3)}</td>
+          <td>${fmt(r.fast2x_signal, 2)}</td>
+          <td>${discBadge}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function renderStats(data) {
+      const positive = data.filter(r => r.score_v2 > 0).length;
+      const negative = data.filter(r => r.score_v2 < 0).length;
+      const avg = data.length ? data.reduce((s, r) => s + r.score_v2, 0) / data.length : 0;
+      const top = data.length ? Math.max(...data.map(r => r.score_v2)) : 0;
+      const disc = data.filter(r => r.discipline_bonus > 0).length;
+
+      $('totalCallers').textContent = data.length;
+      $('positiveScores').textContent = positive;
+      $('negativeScores').textContent = negative;
+      $('avgScore').textContent = fmt(avg, 3);
+      $('avgScore').className = 'value ' + (avg > 0 ? 'score-positive' : 'score-negative');
+      $('topScore').textContent = fmt(top, 3);
+      $('topScore').className = 'value ' + (top > 0 ? 'score-positive' : 'score-negative');
+      $('disciplineCount').textContent = disc;
+    }
+
+    function renderCharts(dist) {
+      // Destroy existing charts
+      Object.values(charts).forEach(c => c.destroy());
+      charts = {};
+
+      const chartOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+        },
+        scales: {
+          x: {
+            ticks: { color: '#94a3b8', font: { size: 10 } },
+            grid: { color: 'rgba(100, 116, 139, 0.1)' },
+          },
+          y: {
+            ticks: { color: '#94a3b8' },
+            grid: { color: 'rgba(100, 116, 139, 0.1)' },
+          },
+        },
+      };
+
+      // Score distribution
+      if (dist.score?.length) {
+        charts.score = new Chart($('scoreChart'), {
+          type: 'bar',
+          data: {
+            labels: dist.score.map(d => d.bucket),
+            datasets: [{
+              data: dist.score.map(d => d.count),
+              backgroundColor: dist.score.map(d => 
+                d.bucket.includes('>') || d.bucket.includes('0.5') || d.bucket.includes('1') 
+                  ? colors.green : colors.red
+              ),
+            }],
+          },
+          options: chartOptions,
+        });
+      }
+
+      // ATH distribution
+      if (dist.ath?.length) {
+        charts.ath = new Chart($('athChart'), {
+          type: 'bar',
+          data: {
+            labels: dist.ath.map(d => d.bucket),
+            datasets: [{
+              data: dist.ath.map(d => d.count),
+              backgroundColor: colors.blue,
+            }],
+          },
+          options: chartOptions,
+        });
+      }
+
+      // DD distribution
+      if (dist.drawdown?.length) {
+        charts.dd = new Chart($('ddChart'), {
+          type: 'bar',
+          data: {
+            labels: dist.drawdown.map(d => d.bucket),
+            datasets: [{
+              data: dist.drawdown.map(d => d.count),
+              backgroundColor: colors.red,
+            }],
+          },
+          options: chartOptions,
+        });
+      }
+
+      // Time to 2x distribution
+      if (dist.time_to_2x?.length) {
+        charts.time = new Chart($('timeChart'), {
+          type: 'bar',
+          data: {
+            labels: dist.time_to_2x.map(d => d.bucket),
+            datasets: [{
+              data: dist.time_to_2x.map(d => d.count),
+              backgroundColor: colors.cyan,
+            }],
+          },
+          options: chartOptions,
+        });
+      }
+    }
+
+    function renderRadarChart(data) {
+      if (charts.radar) charts.radar.destroy();
+      
+      // Take top 5 callers by score
+      const top5 = data.slice(0, 5);
+      if (top5.length === 0) return;
+
+      // Normalize metrics to 0-1 scale
+      // For each metric, compute min/max from all data, then normalize
+      const allN = data.map(r => r.n);
+      const allAth = data.map(r => r.median_ath);
+      const allHit2x = data.map(r => r.hit2x_pct);
+      const allSpeed = data.map(r => r.fast2x_signal);
+      const allRisk = data.map(r => -r.risk_dd_pct); // Invert: higher = better (lower dd)
+      const allScore = data.map(r => r.score_v2);
+
+      const normalize = (v, arr) => {
+        const min = Math.min(...arr);
+        const max = Math.max(...arr);
+        if (max === min) return 0.5;
+        return (v - min) / (max - min);
+      };
+
+      const radarColors = [
+        'rgba(16, 185, 129, 0.8)',   // green
+        'rgba(59, 130, 246, 0.8)',   // blue
+        'rgba(245, 158, 11, 0.8)',   // amber
+        'rgba(139, 92, 246, 0.8)',   // purple
+        'rgba(6, 182, 212, 0.8)',    // cyan
+      ];
+
+      const datasets = top5.map((r, i) => ({
+        label: r.caller?.slice(0, 20) || `#${i+1}`,
+        data: [
+          normalize(r.hit2x_pct, allHit2x),
+          normalize(r.fast2x_signal, allSpeed),
+          normalize(-r.risk_dd_pct, allRisk),
+          normalize(r.median_ath, allAth),
+          normalize(r.score_v2, allScore),
+        ],
+        fill: true,
+        backgroundColor: radarColors[i].replace('0.8', '0.2'),
+        borderColor: radarColors[i],
+        pointBackgroundColor: radarColors[i],
+        pointBorderColor: '#fff',
+        pointHoverBackgroundColor: '#fff',
+        pointHoverBorderColor: radarColors[i],
+      }));
+
+      charts.radar = new Chart($('radarChart'), {
+        type: 'radar',
+        data: {
+          labels: ['Hit 2x %', 'Speed', 'Risk Control', 'Median ATH', 'Score'],
+          datasets,
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'right',
+              labels: { color: '#94a3b8' },
+            },
+          },
+          scales: {
+            r: {
+              beginAtZero: true,
+              max: 1,
+              ticks: { display: false },
+              grid: { color: 'rgba(100, 116, 139, 0.2)' },
+              angleLines: { color: 'rgba(100, 116, 139, 0.2)' },
+              pointLabels: { color: '#94a3b8', font: { size: 11 } },
+            },
+          },
+        },
+      });
+    }
+
+    function showBreakdown(r) {
+      $('breakdownSection').style.display = 'block';
+      $('selectedCaller').textContent = r.caller || '—';
+      
+      $('bkBase').textContent = fmt(r.base_upside, 3);
+      $('bkTail').textContent = fmt(r.tail_bonus, 3);
+      $('bkFast').textContent = fmt(r.fast2x_signal, 3);
+      $('bkDisc').textContent = r.discipline_bonus > 0 ? '+0.60' : '0.00';
+      $('bkPenalty').textContent = '-' + fmt(r.risk_penalty, 2);
+      $('bkPenalty').className = 'value ' + (r.risk_penalty > 10 ? 'penalty-high' : r.risk_penalty > 2 ? 'penalty-medium' : 'penalty-low');
+      $('bkConf').textContent = fmt(r.confidence, 3);
+      $('bkFinal').textContent = fmt(r.score_v2, 3);
+      $('bkFinal').className = 'value ' + (r.score_v2 > 0 ? 'score-positive' : 'score-negative');
+    }
+
+    function fmt(v, decimals) {
+      if (v == null) return '–';
+      return Number(v).toFixed(decimals);
+    }
+
+    // Init
+    loadRuns();
+    $('load').onclick = loadScored;
+    $('runSelect').onchange = loadScored;
+  </script>
+</body>
+</html>
+

@@ -2,7 +2,7 @@
  * Integration tests for Branch C (Execution Reality) integration
  *
  * These tests verify that Branch A can work with Branch C's Execution/Cost/Risk models.
- * Branch C provides execution models from @quantbot/simulation/execution-models.
+ * Branch C provides execution models from @quantbot/backtest/execution-models.
  */
 
 import { describe, it, expect, beforeEach } from 'vitest';

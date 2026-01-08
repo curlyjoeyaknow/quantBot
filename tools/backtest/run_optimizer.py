@@ -276,7 +276,10 @@ Examples:
     
     # Execution
     ap.add_argument("--threads", type=int, default=8)
-    ap.add_argument("--store-duckdb", action="store_true", help="Store results to DuckDB")
+    ap.add_argument("--store-duckdb", action="store_true", default=True,
+                    help="Store results to DuckDB (default: True)")
+    ap.add_argument("--no-store-duckdb", action="store_false", dest="store_duckdb",
+                    help="Disable storing to DuckDB")
     ap.add_argument("--output-dir", default="results/optimizer", help="Output directory")
     ap.add_argument("--name", help="Optimizer run name")
     

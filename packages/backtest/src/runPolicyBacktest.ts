@@ -23,8 +23,13 @@ import { join } from 'path';
 import { mkdir } from 'fs/promises';
 import type { CallRecord, Interval, PolicyResultRow, TimingSummary } from './types.js';
 import type { RiskPolicy } from './policies/risk-policy.js';
-import { executePolicy } from './policies/policy-executor.js';
+import { executePolicy, type FeeConfig, type ExecutionConfig } from './policies/policy-executor.js';
+import { createExecutionConfig, type ExecutionModelVenue } from './execution/index.js';
 import { insertPolicyResults, type DuckDbConnection } from './reporting/backtest-results-duckdb.js';
+import {
+  upsertRunMetadata,
+  persistPolicyResultsToCentral,
+} from './reporting/central-duckdb-persistence.js';
 import { planBacktest } from './plan.js';
 import { checkCoverage } from './coverage.js';
 import { materialiseSlice } from './slice.js';
@@ -48,11 +53,17 @@ export interface PolicyBacktestRequest {
   /** Date range */
   from: DateTime;
   to: DateTime;
-  /** Fee structure */
+  /** Fee structure (simple model) */
   fees?: {
     takerFeeBps: number;
     slippageBps: number;
   };
+  /**
+   * Execution model venue (pumpfun, pumpswap, raydium, minimal, simple).
+   * When set to a venue other than 'simple', uses realistic slippage/latency models.
+   * Falls back to simple fees if not specified.
+   */
+  executionModel?: ExecutionModelVenue;
   /** Optional existing run ID (if re-using path metrics run) */
   runId?: string;
   /** Path to existing DuckDB with path metrics (optional) */
@@ -92,7 +103,14 @@ export async function runPolicyBacktest(
   req: PolicyBacktestRequest
 ): Promise<PolicyBacktestSummary> {
   const runId = req.runId || randomUUID();
-  const fees = req.fees || { takerFeeBps: 30, slippageBps: 10 };
+  const startedAt = new Date();
+  const simpleFees: FeeConfig = req.fees || { takerFeeBps: 30, slippageBps: 10 };
+
+  // Create execution config from venue or simple fees
+  const executionConfig: ExecutionConfig = createExecutionConfig(
+    req.executionModel || 'simple',
+    simpleFees
+  );
 
   // Wall-clock timing - when something regresses 15s → 40s, this screams
   const timing = new TimingContext();
@@ -105,6 +123,26 @@ export async function runPolicyBacktest(
     calls: req.calls.length,
   });
 
+  // Persist run metadata to central DuckDB
+  await upsertRunMetadata({
+    run_id: runId,
+    run_mode: 'policy',
+    status: 'running',
+    params_json: JSON.stringify({
+      policyId: req.policyId,
+      policy: req.policy,
+      interval: req.interval,
+      from: req.from.toISO(),
+      to: req.to.toISO(),
+      fees: simpleFees,
+      executionModel: req.executionModel || 'simple',
+    }),
+    interval: req.interval,
+    time_from: req.from.toJSDate(),
+    time_to: req.to.toJSDate(),
+    started_at: startedAt,
+  });
+
   // Step 1: Plan (reuse existing)
   const plan = timing.phaseSync('plan', () => {
     const planReq = {
@@ -112,7 +150,7 @@ export async function runPolicyBacktest(
         id: 'policy-backtest',
         name: 'policy-backtest',
         overlays: [],
-        fees,
+        fees: simpleFees, // Use simple fees for planning
         position: { notionalUsd: 1000 },
         indicatorWarmup: 0,
         entryDelay: 0,
@@ -196,7 +234,8 @@ export async function runPolicyBacktest(
       const alertTsMs = call.createdAt.toMillis();
 
       // Execute policy (Guardrail 3: replay candles)
-      const result = executePolicy(candles, alertTsMs, req.policy, fees);
+      // Uses execution config which may include venue-specific slippage model
+      const result = executePolicy(candles, alertTsMs, req.policy, executionConfig);
 
       // Skip if no entry
       if (result.exitReason === 'no_entry') continue;
@@ -273,6 +312,9 @@ export async function runPolicyBacktest(
           rows: policyResults.length,
           duckdbPath,
         });
+
+        // Also persist to central DuckDB for auditability
+        await persistPolicyResultsToCentral(policyResults);
       }
     } finally {
       database.close();
@@ -322,6 +364,32 @@ export async function runPolicyBacktest(
     metrics: aggregateMetrics,
     timing: timing.toJSON(),
   };
+
+  // Update run metadata in central DuckDB with completion status
+  const finishedAt = new Date();
+  const avgReturnBps = aggregateMetrics.avgReturnBps;
+  await upsertRunMetadata({
+    run_id: runId,
+    run_mode: 'policy',
+    status: 'completed',
+    params_json: JSON.stringify({
+      policyId: req.policyId,
+      policy: req.policy,
+      interval: req.interval,
+      from: req.from.toISO(),
+      to: req.to.toISO(),
+      fees: simpleFees,
+      executionModel: req.executionModel || 'simple',
+    }),
+    interval: req.interval,
+    time_from: req.from.toJSDate(),
+    time_to: req.to.toJSDate(),
+    started_at: startedAt,
+    finished_at: finishedAt,
+    total_calls: coverage.eligible.length,
+    total_trades: policyResults.length,
+    avg_return_bps: avgReturnBps,
+  });
 
   // Log the sacred timing line - when regressions happen, this screams
   logger.info(timing.summaryLine());

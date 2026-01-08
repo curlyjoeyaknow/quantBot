@@ -30,7 +30,7 @@ const EXPECTED_BUILD_ORDER = [
   '@quantbot/analytics',
   '@quantbot/jobs', // Online boundary - depends on api-clients, ohlcv, storage
   '@quantbot/ingestion', // Depends on jobs for OHLCV fetching
-  '@quantbot/simulation',
+  '@quantbot/backtest',
   '@quantbot/workflows',
 ] as const;
 

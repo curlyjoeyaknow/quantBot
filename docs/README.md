@@ -74,3 +74,23 @@ When adding new documentation:
 - Keep documentation up to date with code changes
 - Cross-reference related documents
 - Use proper markdown formatting
+
+## Generating HTML Documentation
+
+You can generate a complete HTML documentation site from the markdown files:
+
+```bash
+pnpm docs:generate
+# or
+pnpm docs:html
+```
+
+This will:
+- Scan all markdown files in the `docs/` directory
+- Convert them to styled HTML pages
+- Generate a navigation sidebar with the complete document structure
+- Output everything to `docs-html/` directory
+
+Open `docs-html/index.html` in your browser to view the generated documentation.
+
+**Note**: The `docs-html/` directory is git-ignored as it contains generated content.

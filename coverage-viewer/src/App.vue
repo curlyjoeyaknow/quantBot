@@ -125,7 +125,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 
 const fileInput = ref(null);
 const coverageData = ref(null);
@@ -297,6 +297,24 @@ function clearData() {
     fileInput.value.value = '';
   }
 }
+
+// Automatically load coverage JSON on mount
+onMounted(async () => {
+  try {
+    const response = await fetch('/coverage-summary.json');
+    if (response.ok) {
+      const json = await response.json();
+      coverageData.value = json;
+      console.log('✅ Coverage data loaded automatically');
+    } else {
+      console.log('ℹ️  No coverage file found at /coverage-summary.json');
+      console.log('   You can upload a coverage JSON file manually');
+    }
+  } catch (err) {
+    console.log('ℹ️  Could not load coverage automatically:', err.message);
+    console.log('   You can upload a coverage JSON file manually');
+  }
+});
 </script>
 
 <style scoped>

@@ -1,0 +1,445 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Lab UI — Compare Runs</title>
+  <link rel="stylesheet" href="/public/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    .score-positive { color: #10b981; font-weight: 600; }
+    .score-negative { color: #ef4444; font-weight: 600; }
+    .score-neutral { color: #94a3b8; }
+    
+    .diff-positive { color: #10b981; font-weight: 600; }
+    .diff-negative { color: #ef4444; font-weight: 600; }
+    .diff-neutral { color: #94a3b8; }
+    
+    .run-selectors {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: 1rem;
+      align-items: end;
+      margin-bottom: 1rem;
+    }
+    
+    .run-selector-box {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    
+    .run-selector-box label {
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+    
+    .vs-divider {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--muted, #93a4c7);
+      padding-bottom: 0.5rem;
+    }
+    
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+    }
+    
+    .summary-card {
+      background: var(--panel, #101826);
+      border: 1px solid var(--border, #1d2a44);
+      border-radius: 10px;
+      padding: 1rem;
+      text-align: center;
+    }
+    
+    .summary-card .value {
+      font-size: 1.5rem;
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    
+    .summary-card .label {
+      font-size: 0.7rem;
+      color: var(--muted, #93a4c7);
+      text-transform: uppercase;
+    }
+    
+    .chart-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    
+    @media (max-width: 700px) {
+      .chart-row { grid-template-columns: 1fr; }
+      .run-selectors { grid-template-columns: 1fr; }
+      .vs-divider { display: none; }
+    }
+    
+    .chart-card {
+      background: var(--panel, #101826);
+      border: 1px solid var(--border, #1d2a44);
+      border-radius: 10px;
+      padding: 1rem;
+    }
+    
+    .chart-card h3 {
+      margin: 0 0 0.75rem 0;
+      font-size: 0.9rem;
+      color: var(--muted, #93a4c7);
+    }
+    
+    .chart-container {
+      height: 200px;
+    }
+    
+    .status-badge {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-weight: 600;
+    }
+    .status-badge.both { background: rgba(122, 162, 255, 0.2); color: #7aa2ff; }
+    .status-badge.only-a { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
+    .status-badge.only-b { background: rgba(139, 92, 246, 0.2); color: #8b5cf6; }
+    
+    .compare-table th, .compare-table td {
+      padding: 8px 6px;
+      font-size: 0.8rem;
+    }
+    
+    .compare-table .col-a { background: rgba(245, 158, 11, 0.05); }
+    .compare-table .col-b { background: rgba(139, 92, 246, 0.05); }
+    .compare-table .col-diff { background: rgba(16, 185, 129, 0.05); }
+    
+    .arrow-up::before { content: '↑ '; }
+    .arrow-down::before { content: '↓ '; }
+  </style>
+</head>
+<body>
+  <nav>
+    <a href="/dashboard">Dashboard</a>
+    <a href="/strategies">Strategies</a>
+    <a href="/runs">Runs</a>
+    <a href="/leaderboard">Leaderboard</a>
+    <a href="/scored">Scored</a>
+    <a href="/truth">Truth</a>
+    <a href="/policies">Policies</a>
+  </nav>
+
+  <main>
+    <h1>🔄 Compare Runs</h1>
+    <p class="hint">Compare caller performance between two baseline runs.</p>
+
+    <section class="card">
+      <div class="run-selectors">
+        <div class="run-selector-box">
+          <label>Run A (Baseline)</label>
+          <select id="runA">
+            <option value="">Loading runs...</option>
+          </select>
+        </div>
+        <div class="vs-divider">vs</div>
+        <div class="run-selector-box">
+          <label>Run B (Comparison)</label>
+          <select id="runB">
+            <option value="">Loading runs...</option>
+          </select>
+        </div>
+      </div>
+      <div class="row">
+        <button id="compare">Compare</button>
+        <span id="msg"></span>
+      </div>
+    </section>
+
+    <div id="content" style="display: none;">
+      <!-- Summary -->
+      <section class="summary-grid">
+        <div class="summary-card">
+          <div class="value" id="totalCallers">—</div>
+          <div class="label">Total Callers</div>
+        </div>
+        <div class="summary-card">
+          <div class="value" id="inBoth">—</div>
+          <div class="label">In Both Runs</div>
+        </div>
+        <div class="summary-card">
+          <div class="value diff-positive" id="improved">—</div>
+          <div class="label">Improved</div>
+        </div>
+        <div class="summary-card">
+          <div class="value diff-negative" id="declined">—</div>
+          <div class="label">Declined</div>
+        </div>
+        <div class="summary-card">
+          <div class="value" id="onlyA">—</div>
+          <div class="label">Only in A</div>
+        </div>
+        <div class="summary-card">
+          <div class="value" id="onlyB">—</div>
+          <div class="label">Only in B</div>
+        </div>
+      </section>
+
+      <!-- Charts -->
+      <section class="chart-row">
+        <div class="chart-card">
+          <h3>Score Change Distribution</h3>
+          <div class="chart-container">
+            <canvas id="diffChart"></canvas>
+          </div>
+        </div>
+        <div class="chart-card">
+          <h3>Top Movers (Score Δ)</h3>
+          <div class="chart-container">
+            <canvas id="moversChart"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <!-- Comparison Table -->
+      <section class="card">
+        <h2>Detailed Comparison</h2>
+        <div class="table-scroll">
+          <table class="compare-table" id="compareTable">
+            <thead>
+              <tr>
+                <th>Caller</th>
+                <th>Status</th>
+                <th class="col-a">N (A)</th>
+                <th class="col-b">N (B)</th>
+                <th class="col-a">Score A</th>
+                <th class="col-b">Score B</th>
+                <th class="col-diff">Δ Score</th>
+                <th class="col-a">Hit2x% A</th>
+                <th class="col-b">Hit2x% B</th>
+                <th class="col-a">DD% A</th>
+                <th class="col-b">DD% B</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    const $ = id => document.getElementById(id);
+    let charts = {};
+
+    const colors = {
+      green: 'rgba(16, 185, 129, 0.8)',
+      red: 'rgba(239, 68, 68, 0.8)',
+      blue: 'rgba(59, 130, 246, 0.8)',
+      amber: 'rgba(245, 158, 11, 0.8)',
+      purple: 'rgba(139, 92, 246, 0.8)',
+    };
+
+    async function loadRuns() {
+      try {
+        const res = await fetch('/api/baseline-runs');
+        const runs = await res.json();
+        
+        const runA = $('runA');
+        const runB = $('runB');
+        
+        runA.innerHTML = '<option value="">Select Run A...</option>';
+        runB.innerHTML = '<option value="">Select Run B...</option>';
+        
+        for (const r of runs) {
+          const opt = (select) => {
+            const o = document.createElement('option');
+            o.value = r.run_id;
+            const name = r.run_name || r.run_id.slice(0, 8);
+            const date = r.created_at ? new Date(r.created_at).toLocaleDateString() : '';
+            o.textContent = `${name} (${r.alerts_ok || 0} alerts, ${date})`;
+            select.appendChild(o);
+          };
+          opt(runA);
+          opt(runB);
+        }
+
+        // Auto-select first two if available
+        if (runs.length >= 2) {
+          runB.value = runs[0].run_id;
+          runA.value = runs[1].run_id;
+        }
+      } catch (e) {
+        $('runA').innerHTML = '<option value="">Error loading runs</option>';
+        $('runB').innerHTML = '<option value="">Error loading runs</option>';
+      }
+    }
+
+    async function compareRuns() {
+      const runIdA = $('runA').value;
+      const runIdB = $('runB').value;
+
+      if (!runIdA || !runIdB) {
+        $('msg').textContent = 'Select both runs';
+        return;
+      }
+
+      if (runIdA === runIdB) {
+        $('msg').textContent = 'Select different runs';
+        return;
+      }
+
+      $('msg').textContent = 'Loading...';
+
+      try {
+        const res = await fetch(`/api/compare-runs/${runIdA}/${runIdB}`);
+        const data = await res.json();
+
+        if (data.error) {
+          $('msg').textContent = 'Error: ' + data.error;
+          return;
+        }
+
+        renderComparison(data);
+        $('content').style.display = 'block';
+        $('msg').textContent = `${data.comparison.length} callers compared`;
+      } catch (e) {
+        $('msg').textContent = 'Error: ' + e.message;
+      }
+    }
+
+    function renderComparison(data) {
+      const { comparison, summary } = data;
+
+      // Summary stats
+      $('totalCallers').textContent = summary.total_callers;
+      $('inBoth').textContent = summary.in_both;
+      $('improved').textContent = summary.improved;
+      $('declined').textContent = summary.declined;
+      $('onlyA').textContent = summary.only_in_a;
+      $('onlyB').textContent = summary.only_in_b;
+
+      // Table
+      const tbody = $('compareTable').querySelector('tbody');
+      tbody.innerHTML = '';
+
+      comparison.forEach(c => {
+        const tr = document.createElement('tr');
+        
+        const statusBadge = {
+          'both': '<span class="status-badge both">Both</span>',
+          'only_a': '<span class="status-badge only-a">A only</span>',
+          'only_b': '<span class="status-badge only-b">B only</span>',
+        }[c.status];
+
+        const diffClass = c.score_diff > 0 ? 'diff-positive' : c.score_diff < 0 ? 'diff-negative' : 'diff-neutral';
+        const diffArrow = c.score_diff > 0 ? 'arrow-up' : c.score_diff < 0 ? 'arrow-down' : '';
+
+        tr.innerHTML = `
+          <td>${c.caller || '—'}</td>
+          <td>${statusBadge}</td>
+          <td class="col-a">${c.n_a ?? '—'}</td>
+          <td class="col-b">${c.n_b ?? '—'}</td>
+          <td class="col-a ${c.score_a > 0 ? 'score-positive' : 'score-negative'}">${fmt(c.score_a, 3)}</td>
+          <td class="col-b ${c.score_b > 0 ? 'score-positive' : 'score-negative'}">${fmt(c.score_b, 3)}</td>
+          <td class="col-diff ${diffClass} ${diffArrow}">${fmt(c.score_diff, 3)}</td>
+          <td class="col-a">${fmt(c.hit2x_a, 1)}%</td>
+          <td class="col-b">${fmt(c.hit2x_b, 1)}%</td>
+          <td class="col-a">${fmt(c.dd_a, 1)}%</td>
+          <td class="col-b">${fmt(c.dd_b, 1)}%</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      // Charts
+      renderCharts(comparison);
+    }
+
+    function renderCharts(comparison) {
+      Object.values(charts).forEach(c => c.destroy());
+      charts = {};
+
+      // Score diff distribution
+      const diffs = comparison.filter(c => c.score_diff != null).map(c => c.score_diff);
+      const diffBuckets = {
+        '<-5': 0,
+        '-5 to -1': 0,
+        '-1 to 0': 0,
+        '0 to 1': 0,
+        '1 to 5': 0,
+        '>5': 0,
+      };
+
+      diffs.forEach(d => {
+        if (d < -5) diffBuckets['<-5']++;
+        else if (d < -1) diffBuckets['-5 to -1']++;
+        else if (d < 0) diffBuckets['-1 to 0']++;
+        else if (d < 1) diffBuckets['0 to 1']++;
+        else if (d < 5) diffBuckets['1 to 5']++;
+        else diffBuckets['>5']++;
+      });
+
+      charts.diff = new Chart($('diffChart'), {
+        type: 'bar',
+        data: {
+          labels: Object.keys(diffBuckets),
+          datasets: [{
+            data: Object.values(diffBuckets),
+            backgroundColor: Object.keys(diffBuckets).map(k => 
+              k.includes('>') || (k.includes('to') && !k.includes('-')) ? colors.green : colors.red
+            ),
+          }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { color: 'rgba(100, 116, 139, 0.1)' } },
+            y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(100, 116, 139, 0.1)' } },
+          },
+        },
+      });
+
+      // Top movers bar chart (top 10 by absolute diff)
+      const movers = comparison
+        .filter(c => c.score_diff != null)
+        .sort((a, b) => Math.abs(b.score_diff) - Math.abs(a.score_diff))
+        .slice(0, 10);
+
+      charts.movers = new Chart($('moversChart'), {
+        type: 'bar',
+        data: {
+          labels: movers.map(m => m.caller?.slice(0, 15) || '?'),
+          datasets: [{
+            data: movers.map(m => m.score_diff),
+            backgroundColor: movers.map(m => m.score_diff > 0 ? colors.green : colors.red),
+          }],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          indexAxis: 'y',
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(100, 116, 139, 0.1)' } },
+            y: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { display: false } },
+          },
+        },
+      });
+    }
+
+    function fmt(v, decimals) {
+      if (v == null) return '—';
+      return Number(v).toFixed(decimals);
+    }
+
+    // Init
+    loadRuns();
+    $('compare').onclick = compareRuns;
+  </script>
+</body>
+</html>
+

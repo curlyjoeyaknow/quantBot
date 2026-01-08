@@ -26,6 +26,7 @@ export default defineConfig({
       '@quantbot/storage': path.resolve(__dirname, './src'),
       '@quantbot/utils': path.resolve(__dirname, '../utils/src'),
       '@quantbot/core': path.resolve(__dirname, '../core/src'),
+      '@quantbot/labcatalog': path.resolve(__dirname, '../labcatalog/src'),
     },
   },
 });

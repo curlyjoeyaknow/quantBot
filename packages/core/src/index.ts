@@ -93,6 +93,12 @@ export * from './strategy/template-schema.js';
 export * from './strategy/template-instantiation.js';
 export * from './strategy/template-registry.js';
 
+// ============================================================================
+// Plugin System
+// ============================================================================
+
+export * from './plugins/index.js';
+
 // Re-export types for convenience
 export type {
   StrategyDSL,

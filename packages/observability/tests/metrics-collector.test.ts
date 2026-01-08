@@ -122,7 +122,8 @@ describe('MetricsCollector', () => {
   describe('manual timer API', () => {
     it('should start and stop a timer', async () => {
       const timer = collector.startTimer('test.operation', 'test-component');
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      // Use 20ms sleep to ensure we get at least 10ms duration even with timing variance
+      await new Promise((resolve) => setTimeout(resolve, 20));
       timer.stop({ success: true });
 
       // Wait for async write to complete

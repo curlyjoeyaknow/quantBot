@@ -66,3 +66,4 @@ export type {
   AnalysisResult,
   AnalysisResultMetadata,
 } from './slice-analyzer-port.js';
+export type { RunEventPort, RunEventQuery, RunEventQueryResult } from './run-event-port.js';

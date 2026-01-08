@@ -17,7 +17,7 @@ import { coerceNumber, coerceJson } from '../core/coerce.js';
 import type { CommandContext } from '../core/command-context.js';
 import { labRunSchema } from '../command-defs/lab.js';
 import { runLabHandler } from '../handlers/lab/run-lab.js';
-import type { ExitOverlay } from '@quantbot/simulation';
+import type { ExitOverlay } from '@quantbot/backtest';
 
 /**
  * Register lab commands

@@ -53,13 +53,13 @@ describe('OHLCV Work Planning', () => {
           {
             mint: '7pXs123456789012345678901234567890pump',
             chain: 'solana',
-            earliestAlertTime: '2024-01-01T12:00:00Z',
+            earliestAlertTsMs: DateTime.fromISO('2024-01-01T12:00:00Z', { zone: 'utc' }).toMillis(),
             callCount: 5,
           },
           {
             mint: '8pXs123456789012345678901234567890pump',
             chain: 'solana',
-            earliestAlertTime: '2024-01-01T14:00:00Z',
+            earliestAlertTsMs: DateTime.fromISO('2024-01-01T14:00:00Z', { zone: 'utc' }).toMillis(),
             callCount: 3,
           },
         ],
@@ -93,11 +93,11 @@ describe('OHLCV Work Planning', () => {
       // Verify time windows
       // Note: For '1m' interval, postWindow is automatically adjusted to 5000 - preWindow = 4740
       const alertTime = DateTime.fromISO('2024-01-01T12:00:00Z');
-      expect(workItems[0].startTime.toISO()).toBe(alertTime.minus({ minutes: 260 }).toISO());
-      const expectedPostWindow = 5000 - 260; // Auto-adjusted for 1m interval
-      expect(workItems[0].endTime.toISO()).toBe(
-        alertTime.plus({ minutes: expectedPostWindow }).toISO()
-      );
+      const expectedStartTime = alertTime.minus({ minutes: 260 });
+      const expectedEndTime = alertTime.plus({ minutes: 5000 - 260 }); // Auto-adjusted for 1m interval
+      // Compare as DateTime objects to avoid ISO format differences (Z vs +00:00)
+      expect(workItems[0].startTime.toMillis()).toBe(expectedStartTime.toMillis());
+      expect(workItems[0].endTime.toMillis()).toBe(expectedEndTime.toMillis());
     });
 
     it('should sort work items by priority (call count)', async () => {
@@ -106,19 +106,19 @@ describe('OHLCV Work Planning', () => {
           {
             mint: 'lowPriority',
             chain: 'solana',
-            earliestAlertTime: '2024-01-01T12:00:00Z',
+            earliestAlertTsMs: DateTime.fromISO('2024-01-01T12:00:00Z', { zone: 'utc' }).toMillis(),
             callCount: 1,
           },
           {
             mint: 'highPriority',
             chain: 'solana',
-            earliestAlertTime: '2024-01-01T12:00:00Z',
+            earliestAlertTsMs: DateTime.fromISO('2024-01-01T12:00:00Z', { zone: 'utc' }).toMillis(),
             callCount: 10,
           },
           {
             mint: 'mediumPriority',
             chain: 'solana',
-            earliestAlertTime: '2024-01-01T12:00:00Z',
+            earliestAlertTsMs: DateTime.fromISO('2024-01-01T12:00:00Z', { zone: 'utc' }).toMillis(),
             callCount: 5,
           },
         ],
@@ -149,7 +149,7 @@ describe('OHLCV Work Planning', () => {
           {
             mint: '7pXs123456789012345678901234567890pump',
             chain: 'solana',
-            earliestAlertTime: '2024-01-01T12:00:00Z',
+            earliestAlertTsMs: DateTime.fromISO('2024-01-01T12:00:00Z', { zone: 'utc' }).toMillis(),
             callCount: 1,
           },
         ],
@@ -166,12 +166,11 @@ describe('OHLCV Work Planning', () => {
 
       // Default windows: 260 pre, auto-adjusted post for 1m interval (5000 - 260 = 4740)
       const alertTime = DateTime.fromISO('2024-01-01T12:00:00Z');
-      expect(workItems[0].startTime.toISO()).toBe(alertTime.minus({ minutes: 260 }).toISO());
-      // Note: For '1m' interval, postWindow is automatically adjusted to 5000 - preWindow = 4740
-      const expectedPostWindow = 5000 - 260; // Auto-adjusted for 1m interval
-      expect(workItems[0].endTime.toISO()).toBe(
-        alertTime.plus({ minutes: expectedPostWindow }).toISO()
-      );
+      const expectedStartTime = alertTime.minus({ minutes: 260 });
+      const expectedEndTime = alertTime.plus({ minutes: 5000 - 260 }); // Auto-adjusted for 1m interval
+      // Compare as DateTime objects to avoid ISO format differences (Z vs +00:00)
+      expect(workItems[0].startTime.toMillis()).toBe(expectedStartTime.toMillis());
+      expect(workItems[0].endTime.toMillis()).toBe(expectedEndTime.toMillis());
     });
 
     it('should handle missing required fields gracefully', async () => {
@@ -180,19 +179,19 @@ describe('OHLCV Work Planning', () => {
           {
             mint: null, // Missing mint
             chain: 'solana',
-            earliestAlertTime: '2024-01-01T12:00:00Z',
+            earliestAlertTsMs: DateTime.fromISO('2024-01-01T12:00:00Z', { zone: 'utc' }).toMillis(),
             callCount: 1,
           },
           {
             mint: '7pXs123456789012345678901234567890pump',
             chain: 'solana',
-            // Missing earliestAlertTime
+            earliestAlertTsMs: null, // Missing earliestAlertTsMs
             callCount: 1,
           },
           {
             mint: '8pXs123456789012345678901234567890pump',
             chain: 'solana',
-            earliestAlertTime: '2024-01-01T12:00:00Z',
+            earliestAlertTsMs: DateTime.fromISO('2024-01-01T12:00:00Z', { zone: 'utc' }).toMillis(),
             callCount: 1,
           },
         ],
@@ -214,13 +213,13 @@ describe('OHLCV Work Planning', () => {
           {
             mint: '7pXs123456789012345678901234567890pump',
             chain: 'solana',
-            earliestAlertTime: 'invalid-date',
+            earliestAlertTsMs: null, // Invalid date
             callCount: 1,
           },
           {
             mint: '8pXs123456789012345678901234567890pump',
             chain: 'solana',
-            earliestAlertTime: '2024-01-01T12:00:00Z',
+            earliestAlertTsMs: DateTime.fromISO('2024-01-01T12:00:00Z', { zone: 'utc' }).toMillis(),
             callCount: 1,
           },
         ],
@@ -242,13 +241,13 @@ describe('OHLCV Work Planning', () => {
           {
             mint: '7pXs123456789012345678901234567890pump',
             chain: 'ethereum', // Token group has chain
-            earliestAlertTime: '2024-01-01T12:00:00Z',
+            earliestAlertTsMs: DateTime.fromISO('2024-01-01T12:00:00Z', { zone: 'utc' }).toMillis(),
             callCount: 1,
           },
           {
             mint: '8pXs123456789012345678901234567890pump',
             // No chain in token group
-            earliestAlertTime: '2024-01-01T12:00:00Z',
+            earliestAlertTsMs: DateTime.fromISO('2024-01-01T12:00:00Z', { zone: 'utc' }).toMillis(),
             callCount: 1,
           },
         ],
@@ -303,19 +302,19 @@ describe('OHLCV Work Planning', () => {
           {
             mint: targetMints[0],
             chain: 'solana',
-            earliestAlertTime: '2024-01-01T12:00:00Z',
+            earliestAlertTsMs: DateTime.fromISO('2024-01-01T12:00:00Z', { zone: 'utc' }).toMillis(),
             callCount: 5,
           },
           {
             mint: targetMints[1],
             chain: 'solana',
-            earliestAlertTime: '2024-01-01T14:00:00Z',
+            earliestAlertTsMs: DateTime.fromISO('2024-01-01T14:00:00Z', { zone: 'utc' }).toMillis(),
             callCount: 3,
           },
           {
             mint: otherMint, // Should be filtered out
             chain: 'solana',
-            earliestAlertTime: '2024-01-01T16:00:00Z',
+            earliestAlertTsMs: DateTime.fromISO('2024-01-01T16:00:00Z', { zone: 'utc' }).toMillis(),
             callCount: 2,
           },
         ],
@@ -350,13 +349,13 @@ describe('OHLCV Work Planning', () => {
           {
             mint: 'mint1',
             chain: 'solana',
-            earliestAlertTime: '2024-01-01T12:00:00Z',
+            earliestAlertTsMs: DateTime.fromISO('2024-01-01T12:00:00Z', { zone: 'utc' }).toMillis(),
             callCount: 1,
           },
           {
             mint: 'mint2',
             chain: 'solana',
-            earliestAlertTime: '2024-01-01T14:00:00Z',
+            earliestAlertTsMs: DateTime.fromISO('2024-01-01T14:00:00Z', { zone: 'utc' }).toMillis(),
             callCount: 1,
           },
         ],
@@ -388,7 +387,7 @@ describe('OHLCV Work Planning', () => {
           {
             mint: 'mint1',
             chain: 'solana',
-            earliestAlertTime: '2024-01-01T12:00:00Z',
+            earliestAlertTsMs: DateTime.fromISO('2024-01-01T12:00:00Z', { zone: 'utc' }).toMillis(),
             callCount: 1,
           },
         ],
@@ -422,7 +421,7 @@ describe('OHLCV Work Planning', () => {
           {
             mint: mixedCaseMint, // Mixed case
             chain: 'solana',
-            earliestAlertTime: '2024-01-01T12:00:00Z',
+            earliestAlertTsMs: DateTime.fromISO('2024-01-01T12:00:00Z', { zone: 'utc' }).toMillis(),
             callCount: 1,
           },
         ],

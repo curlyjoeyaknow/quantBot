@@ -7,36 +7,17 @@ Supports listing runs with filters and getting individual run details.
 """
 
 import argparse
+import duckdb
 import json
 import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-try:
-    import duckdb
-except ImportError:
-    print('Error: duckdb package not installed', file=sys.stderr)
-    sys.exit(1)
+# Add tools to path for shared imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
-
-def safe_connect(db_path: str):
-    """Safely connect to DuckDB, handling empty/invalid files"""
-    db_file = Path(db_path)
-    if db_file.exists():
-        # Check if file is empty (0 bytes)
-        if db_file.stat().st_size == 0:
-            db_file.unlink()  # Delete empty file
-        else:
-            # Try to connect to validate it's a valid DuckDB file
-            try:
-                test_con = duckdb.connect(db_path)
-                test_con.close()
-            except Exception:
-                # File exists but is invalid - delete it
-                db_file.unlink()
-    
-    return duckdb.connect(db_path)
+from shared.duckdb_adapter import safe_connect
 
 
 def table_exists(conn: duckdb.DuckDBPyConnection, table_name: str) -> bool:

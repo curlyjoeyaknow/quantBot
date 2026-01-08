@@ -10,35 +10,10 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-try:
-    import duckdb
-except ImportError:
-    print("ERROR: duckdb package not installed. Run: pip install duckdb", file=sys.stderr)
-    sys.exit(1)
+# Add tools to path for shared imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
-
-def safe_connect(db_path: str):
-    """
-    Safely connect to DuckDB, handling empty/invalid files.
-    
-    Args:
-        db_path: Path to DuckDB database file
-    """
-    db_file = Path(db_path)
-    if db_file.exists():
-        # Check if file is empty (0 bytes)
-        if db_file.stat().st_size == 0:
-            db_file.unlink()  # Delete empty file
-        else:
-            # Try to connect to validate it's a valid DuckDB file
-            try:
-                test_con = duckdb.connect(db_path)
-                test_con.close()
-            except Exception:
-                # File exists but is invalid - delete it
-                db_file.unlink()
-    
-    return duckdb.connect(db_path)
+from shared.duckdb_adapter import safe_connect
 
 
 def init_database(db_path: str) -> dict:
@@ -360,6 +335,7 @@ def main():
                        choices=["init", "store_ref", "get_ref", "store_events", "query_events", "list_refs"])
     parser.add_argument("--db-path", required=True, help="Path to DuckDB database file")
     parser.add_argument("--data", help="Data (JSON string)")
+    parser.add_argument("--data-file", help="Path to file containing data (JSON string)")
     parser.add_argument("--snapshot-id", help="Snapshot ID")
     parser.add_argument("--options", help="Query options (JSON string)")
     parser.add_argument("--limit", type=int, help="Limit results")
@@ -370,16 +346,27 @@ def main():
     db_path_obj = Path(args.db_path)
     db_path_obj.parent.mkdir(parents=True, exist_ok=True)
     
+    # Helper function to read data from either --data or --data-file
+    def read_data():
+        if args.data_file:
+            with open(args.data_file, 'r', encoding='utf-8') as f:
+                return f.read()
+        elif args.data:
+            return args.data
+        else:
+            return None
+    
     result = {}
     
     if args.operation == "init":
         result = init_database(args.db_path)
     elif args.operation == "store_ref":
-        if not args.data:
+        data_str = read_data()
+        if not data_str:
             result = {"success": False, "error": "Data required for store_ref operation"}
         else:
             try:
-                ref = json.loads(args.data)
+                ref = json.loads(data_str)
                 result = store_snapshot_ref(args.db_path, ref)
             except json.JSONDecodeError as e:
                 result = {"success": False, "error": f"Invalid JSON: {str(e)}"}
@@ -389,14 +376,18 @@ def main():
         else:
             result = get_snapshot_ref(args.db_path, args.snapshot_id)
     elif args.operation == "store_events":
-        if not args.snapshot_id or not args.data:
-            result = {"success": False, "error": "snapshot_id and data required"}
+        if not args.snapshot_id:
+            result = {"success": False, "error": "snapshot_id required"}
         else:
-            try:
-                events = json.loads(args.data)
-                result = store_snapshot_events(args.db_path, args.snapshot_id, events)
-            except json.JSONDecodeError as e:
-                result = {"success": False, "error": f"Invalid JSON: {str(e)}"}
+            data_str = read_data()
+            if not data_str:
+                result = {"success": False, "error": "data or data-file required"}
+            else:
+                try:
+                    events = json.loads(data_str)
+                    result = store_snapshot_events(args.db_path, args.snapshot_id, events)
+                except json.JSONDecodeError as e:
+                    result = {"success": False, "error": f"Invalid JSON: {str(e)}"}
     elif args.operation == "query_events":
         if not args.snapshot_id:
             result = {"error": "snapshot_id required"}

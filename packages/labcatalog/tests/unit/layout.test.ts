@@ -35,12 +35,13 @@ describe('Catalog Layout', () => {
   });
 
   describe('getSliceFilePath', () => {
-    it('should generate correct slice file path', () => {
+    it('should generate correct slice file path (without date partitioning)', () => {
       const path = getSliceFilePath(
         'So11111111111111111111111111111111111111112',
         '2024-01-01T00:00:00Z',
         '2024-01-02T00:00:00Z',
-        './catalog'
+        './catalog',
+        false
       );
 
       expect(path).toContain('catalog/data/bars');
@@ -48,6 +49,39 @@ describe('Catalog Layout', () => {
       expect(path).toContain('20240101'); // Date part
       expect(path).toContain('20240102'); // Date part
       expect(path).toContain('.parquet');
+      // Should NOT contain date partition directory
+      expect(path).not.toMatch(/\/2024-01-01\//);
+    });
+
+    it('should generate correct slice file path with date partitioning', () => {
+      const path = getSliceFilePath(
+        'So11111111111111111111111111111111111111112',
+        '2024-01-15T00:00:00Z',
+        '2024-01-15T23:59:59Z',
+        './catalog',
+        true
+      );
+
+      expect(path).toContain('catalog/data/bars');
+      expect(path).toContain('2024-01-15'); // Date partition directory
+      expect(path).toContain('So11111111111111111111111111111111111111112');
+      expect(path).toContain('.parquet');
+      // Should contain date partition in path structure
+      expect(path).toMatch(/\/2024-01-15\//);
+    });
+
+    it('should use start date for date partitioning', () => {
+      const path = getSliceFilePath(
+        'So11111111111111111111111111111111111111112',
+        '2024-01-15T00:00:00Z',
+        '2024-01-16T23:59:59Z', // Spans two days
+        './catalog',
+        true
+      );
+
+      // Should use start date (2024-01-15) for partitioning
+      expect(path).toContain('2024-01-15');
+      expect(path).not.toContain('2024-01-16');
     });
   });
 

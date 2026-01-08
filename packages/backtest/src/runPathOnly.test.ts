@@ -100,6 +100,9 @@ vi.mock('duckdb', () => {
       };
       callback(null, stmt);
     }),
+    close: vi.fn((callback?: (err: unknown) => void) => {
+      if (callback) callback(null);
+    }),
   };
 
   // Create a mock Database class
@@ -138,14 +141,18 @@ vi.mock('@quantbot/utils', () => {
     summaryLine = vi.fn().mockReturnValue('[timing] total=0ms');
   }
 
+  const mockLogger = {
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+    debug: vi.fn(),
+  };
+
   return {
-    logger: {
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
-      debug: vi.fn(),
-    },
+    logger: mockLogger,
     TimingContext: MockTimingContext,
+    createPackageLogger: vi.fn(() => mockLogger),
+    getDuckDBPath: vi.fn((defaultPath: string) => defaultPath),
   };
 });
 

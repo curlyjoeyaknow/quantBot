@@ -6,7 +6,7 @@
  */
 
 import { StrategiesRepository } from '@quantbot/storage';
-import { getPreset } from '@quantbot/simulation';
+import { getPreset } from '@quantbot/backtest';
 
 const STRATEGY_PRESETS = [
   'basic-6h-20pct-sl',
