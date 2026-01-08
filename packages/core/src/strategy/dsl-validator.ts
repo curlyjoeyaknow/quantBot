@@ -103,7 +103,7 @@ export function validateConsistency(dsl: StrategyDSL): ConsistencyCheck {
     }
 
     // Check if stop loss is more aggressive than max loss
-    const stopLossPercent = dsl.exit.find((e) => e.type === 'stop_loss')?.stopLossPercent;
+    const stopLossPercent = dsl.exit.find((e: { type: string }) => e.type === 'stop_loss')?.stopLossPercent;
     if (stopLossPercent && dsl.risk.maxLossPercent) {
       if (stopLossPercent < dsl.risk.maxLossPercent) {
         warnings.push(
@@ -115,8 +115,8 @@ export function validateConsistency(dsl: StrategyDSL): ConsistencyCheck {
 
   // Check exit percentages sum to <= 1
   const exitPercentSum = dsl.exit
-    .filter((e) => e.type === 'profit_target' && e.percentToExit)
-    .reduce((sum, e) => sum + (e.percentToExit || 0), 0);
+    .filter((e: { type: string; percentToExit?: number }) => e.type === 'profit_target' && e.percentToExit)
+    .reduce((sum: number, e: { percentToExit?: number }) => sum + (e.percentToExit || 0), 0);
 
   if (exitPercentSum > 1) {
     errors.push(`Exit percentages sum to ${exitPercentSum} (must be <= 1)`);
@@ -125,7 +125,7 @@ export function validateConsistency(dsl: StrategyDSL): ConsistencyCheck {
   // Check ladder exit percentages sum to <= 1
   for (const exit of dsl.exit) {
     if (exit.type === 'ladder' && exit.ladder) {
-      const ladderSum = exit.ladder.legs.reduce((sum, leg) => sum + leg.sizePercent, 0);
+      const ladderSum = exit.ladder.legs.reduce((sum: number, leg: { sizePercent: number }) => sum + leg.sizePercent, 0);
       if (ladderSum > 1) {
         errors.push(`Ladder exit percentages sum to ${ladderSum} (must be <= 1)`);
       }

@@ -27,7 +27,7 @@ export function registerTemplate(template: StrategyTemplate): void {
   const validation = StrategyTemplateSchema.safeParse(template);
   if (!validation.success) {
     throw new Error(
-      `Invalid template: ${validation.error.issues.map((e) => e.message).join(', ')}`
+      `Invalid template: ${validation.error.issues.map((e: z.ZodIssue) => e.message).join(', ')}`
     );
   }
 
@@ -113,7 +113,7 @@ export function loadTemplates(templates: unknown[]): void {
     const validation = StrategyTemplateSchema.safeParse(templateData);
     if (!validation.success) {
       console.warn(
-        `Skipping invalid template: ${validation.error.issues.map((e) => e.message).join(', ')}`
+        `Skipping invalid template: ${validation.error.issues.map((e: z.ZodIssue) => e.message).join(', ')}`
       );
       continue;
     }

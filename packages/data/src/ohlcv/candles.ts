@@ -35,9 +35,39 @@ declare const axios: {
     }
   ) => Promise<{
     status: number;
+    config?: {
+      url?: string;
+      method?: string;
+    };
     data?: {
       data?: {
         items?: unknown[];
+        name?: string;
+        symbol?: string;
+        marketCap?: number;
+        mc?: number;
+        marketCapUsd?: number;
+        price?: number;
+        priceUsd?: number;
+        decimals?: number;
+        volume24h?: number;
+        volume24hUsd?: number;
+        priceChange24h?: number;
+        logoURI?: string;
+        logo?: string;
+        socials?: {
+          twitter?: string;
+          telegram?: string;
+          discord?: string;
+          website?: string;
+        };
+        website?: string;
+        creator?: string;
+        creatorAddress?: string;
+        topWalletHoldings?: number;
+        top10Holdings?: number;
+        top20Holdings?: number;
+        [key: string]: unknown;
       };
       success?: boolean;
     };
@@ -262,7 +292,6 @@ async function fetchBirdeyeCandlesChunk(
 ): Promise<Candle[]> {
   try {
     // Fetch by date range (up to 5000 candles)
-    // @ts-expect-error - axios is declared but not imported (deprecated code)
     const response = await axios.get(BIRDEYE_ENDPOINT, {
       headers: {
         'X-API-KEY': apiKey,
@@ -324,7 +353,7 @@ async function fetchBirdeyeCandlesChunk(
       });
 
       if (limitResponse.status === 200) {
-        items = limitResponse.data?.data?.items ?? [];
+        items = (limitResponse.data?.data?.items ?? []) as Array<Record<string, unknown>>;
         if (items.length > 0) {
           logger.debug(`Fetched ${items.length} candles using limit approach for ${mint}...`);
           // Filter to only include candles within the requested time range
@@ -607,7 +636,7 @@ async function fetchTokenMetadata(
             }
           : undefined,
         creator: data.creator || data.creatorAddress,
-        topWalletHoldings: data.topWalletHoldings || data.top10Holdings || data.top20Holdings,
+        topWalletHoldings: (data.topWalletHoldings || data.top10Holdings || data.top20Holdings) as number | undefined,
       };
     }
   } catch (error: unknown) {
@@ -654,7 +683,7 @@ async function fetchTokenMetadata(
             }
           : undefined,
         creator: data.creator || data.creatorAddress,
-        topWalletHoldings: data.topWalletHoldings || data.top10Holdings,
+        topWalletHoldings: (data.topWalletHoldings || data.top10Holdings) as number | undefined,
       };
     }
   } catch (error: unknown) {

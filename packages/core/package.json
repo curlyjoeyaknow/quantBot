@@ -16,7 +16,8 @@
     "test": "vitest"
   },
   "dependencies": {
-    "luxon": "^3.7.2"
+    "luxon": "^3.7.2",
+    "zod": "^4.1.13"
   },
   "devDependencies": {
     "@types/luxon": "^3.7.1",
