@@ -507,7 +507,7 @@ const backtestModule: PackageCommandModule = {
           }));
 
           // Open main DuckDB (not artifacts directory)
-          const db = openDuckDbFromEnv();
+          const db = await openDuckDbFromEnv();
 
           try {
             // Run exit-stack

@@ -39,6 +39,12 @@ export {
   type CallResultRow,
 } from './reporting/backtest-results-duckdb.js';
 
+export {
+  getCentralDuckDbPath,
+  openCentralDuckDb,
+  upsertRunMetadata,
+} from './reporting/central-duckdb-persistence.js';
+
 // Path metrics query service (Phase 2-3)
 export {
   getPathMetricsByCaller,
