@@ -173,6 +173,19 @@ export async function queryCallsDuckdb(
 
   if (!result.success || !result.calls) {
     const errorMsg = result.error || 'Unknown error querying calls';
+    
+    // Check for table missing error and provide helpful guidance
+    if (errorMsg.includes("Table 'user_calls_d' not found") || errorMsg.includes('user_calls_d')) {
+      throw new ConfigurationError(
+        `Missing user_calls_d table in DuckDB. Please ingest Telegram data first:\n\n` +
+        `  quantbot ingestion telegram --file <telegram-export.json>\n\n` +
+        `Or create the table schema manually using the migration script.\n` +
+        `Database path: ${validated.duckdbPath}`,
+        'QueryCallsDuckdb',
+        { duckdbPath: validated.duckdbPath, error: errorMsg }
+      );
+    }
+    
     ctx.logger.warn('[workflows.queryCallsDuckdb] Failed to query calls', {
       error: errorMsg,
       duckdbPath: validated.duckdbPath,
