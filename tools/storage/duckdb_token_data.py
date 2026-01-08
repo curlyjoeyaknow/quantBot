@@ -18,22 +18,18 @@ except ImportError:
 
 
 def safe_connect(db_path: str):
-    """Safely connect to DuckDB, handling empty/invalid files"""
-    db_file = Path(db_path)
-    if db_file.exists():
-        # Check if file is empty (0 bytes)
-        if db_file.stat().st_size == 0:
-            db_file.unlink()  # Delete empty file
-        else:
-            # Try to connect to validate it's a valid DuckDB file
-            try:
-                test_con = duckdb.connect(db_path)
-                test_con.close()
-            except Exception:
-                # File exists but is invalid - delete it
-                db_file.unlink()
+    """
+    Safely connect to DuckDB, handling empty/invalid files.
     
-    return duckdb.connect(db_path)
+    DEPRECATED: Use get_write_connection() from tools.shared.duckdb_adapter instead.
+    This function is kept for backward compatibility but now uses the adapter internally.
+    """
+    from tools.shared.duckdb_adapter import get_connection
+    # Use adapter which handles empty/invalid files and sets busy_timeout
+    # Note: We manually enter the context manager to return the connection
+    # This is not ideal but maintains backward compatibility
+    ctx = get_connection(db_path, read_only=False)
+    return ctx.__enter__()
 
 
 def init_database(db_path: str) -> dict:

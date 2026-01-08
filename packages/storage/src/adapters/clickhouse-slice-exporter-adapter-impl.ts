@@ -209,10 +209,11 @@ export class ClickHouseSliceExporterAdapterImpl implements SliceExporter {
     // Get dataset metadata from registry
     const datasetMetadata = datasetRegistry.get(spec.dataset);
     if (!datasetMetadata) {
-      const available = datasetRegistry.getAll().map((d) => d.datasetId).join(', ');
-      throw new Error(
-        `Unsupported dataset: ${spec.dataset}. Supported datasets: ${available}`
-      );
+      const available = datasetRegistry
+        .getAll()
+        .map((d) => d.datasetId)
+        .join(', ');
+      throw new Error(`Unsupported dataset: ${spec.dataset}. Supported datasets: ${available}`);
     }
 
     // Check if conditional dataset is available
@@ -295,14 +296,22 @@ export class ClickHouseSliceExporterAdapterImpl implements SliceExporter {
     const defaultColumns =
       datasetMetadata.defaultColumns ||
       (datasetMetadata.type === 'candles'
-        ? ['token_address', 'chain', 'timestamp', 'interval', 'open', 'high', 'low', 'close', 'volume']
+        ? [
+            'token_address',
+            'chain',
+            'timestamp',
+            'interval',
+            'open',
+            'high',
+            'low',
+            'close',
+            'volume',
+          ]
         : ['token_address', 'chain', 'timestamp', 'indicator_type', 'value_json', 'metadata_json']);
 
     const columns =
       spec.columns && spec.columns.length > 0
-        ? spec.columns
-            .map((col: string) => (col === 'interval' ? '`interval`' : col))
-            .join(', ')
+        ? spec.columns.map((col: string) => (col === 'interval' ? '`interval`' : col)).join(', ')
         : defaultColumns.map((col: string) => (col === 'interval' ? '`interval`' : col)).join(', ');
 
     // Query ClickHouse and export to CSV (ClickHouse doesn't support Parquet format)
@@ -424,7 +433,7 @@ export class ClickHouseSliceExporterAdapterImpl implements SliceExporter {
 
         // Create table with correct schema matching the dataset type
         let createTableSql = 'CREATE TABLE temp_empty (';
-        
+
         if (datasetMetadata.type === 'candles') {
           // Candle schema
           createTableSql += `
@@ -462,9 +471,9 @@ export class ClickHouseSliceExporterAdapterImpl implements SliceExporter {
             volume DOUBLE
           `;
         }
-        
+
         createTableSql += `); COPY temp_empty TO '${tempParquetPath.replace(/'/g, "''")}' (FORMAT PARQUET);`;
-        
+
         await duckdb.execute(createTableSql);
         await duckdb.close();
 

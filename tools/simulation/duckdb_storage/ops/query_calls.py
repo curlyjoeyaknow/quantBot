@@ -2,6 +2,9 @@
 Query calls operation.
 
 Pure DuckDB logic: queries calls for batch simulation.
+
+Uses canon.alerts_std view (replaces user_calls_d).
+This is the canonical alert contract - one row per alert, stable columns forever.
 """
 
 from pydantic import BaseModel, Field
@@ -21,7 +24,7 @@ class CallItem(BaseModel):
     mint: str
     alert_timestamp: str
     caller_name: Optional[str] = None
-    price_usd: Optional[float] = None  # Entry price from user_calls_d
+    price_usd: Optional[float] = None  # Entry price (not available in alerts_std, kept for compatibility)
 
 
 class QueryCallsOutput(BaseModel):
@@ -31,16 +34,27 @@ class QueryCallsOutput(BaseModel):
 
 
 def run(con: duckdb.DuckDBPyConnection, input: QueryCallsInput) -> QueryCallsOutput:
-    """Query calls from DuckDB for batch simulation."""
+    """Query calls from DuckDB for batch simulation.
+    
+    Uses canon.alerts_std view (the canonical alert contract).
+    This replaces user_calls_d - one row per alert, stable columns forever.
+    """
     try:
-        # Check if user_calls_d table exists
-        tables = con.execute("SHOW TABLES").fetchall()
-        table_names = [t[0] for t in tables]
-        
-        if 'user_calls_d' not in table_names:
+        # Check if canon.alerts_std view exists
+        # Try to query the view to see if it exists
+        try:
+            con.execute("SELECT 1 FROM canon.alerts_std LIMIT 1").fetchone()
+        except Exception:
+            # Check what views/tables are available
+            try:
+                views = con.execute("SELECT table_name FROM information_schema.tables WHERE table_schema = 'canon'").fetchall()
+                view_names = [v[0] for v in views] if views else []
+            except Exception:
+                view_names = []
+            
             return QueryCallsOutput(
                 success=False,
-                error=f"Table 'user_calls_d' not found in database. Available tables: {', '.join(table_names)}. Please ingest Telegram data first using the ingestion pipeline."
+                error=f"View 'canon.alerts_std' not found in database. Available canon views: {', '.join(view_names) if view_names else 'none'}. Please ensure the canonical schema is set up."
             )
         
         # Setup exclusions schema if needed
@@ -56,44 +70,44 @@ def run(con: duckdb.DuckDBPyConnection, input: QueryCallsInput) -> QueryCallsOut
                 # If setup fails, skip exclusion check
                 can_exclude = False
 
-        # Query user_calls_d table for mint addresses, alert timestamps, caller names, and entry price
+        # Query canon.alerts_std view for mint addresses, alert timestamps, and caller names
+        # Schema: alert_id, alert_chat_id, alert_message_id, alert_ts_ms, alert_kind, mint, chain, 
+        #         mint_source, caller_raw_name, caller_id, caller_name_norm, caller_base, alert_text, run_id, ingested_at
         base_query = """
             SELECT DISTINCT
                 mint,
-                call_datetime,
-                caller_name,
-                price_usd
-            FROM user_calls_d
+                alert_ts_ms,
+                COALESCE(caller_name_norm, caller_raw_name) AS caller_name
+            FROM canon.alerts_std
             WHERE mint IS NOT NULL 
               AND TRIM(CAST(mint AS VARCHAR)) != ''
-              AND call_datetime IS NOT NULL
+              AND alert_ts_ms IS NOT NULL
         """
         
-        # Filter by caller_name if provided
+        # Filter by caller_name if provided (check both normalized and raw)
         if input.caller_name:
             base_query += """
-                AND caller_name = ?
+                AND (caller_name_norm = ? OR caller_raw_name = ?)
             """
 
         # Exclude unrecoverable tokens if requested and table has correct schema
-        # Note: ohlcv_exclusions_d uses token_address (not mint) and doesn't track alert_timestamp
-        # We exclude tokens that are in the exclusions table for any chain/interval
         if input.exclude_unrecoverable and can_exclude:
             base_query += """
                 AND NOT EXISTS (
                     SELECT 1 FROM ohlcv_exclusions_d
-                    WHERE ohlcv_exclusions_d.token_address = user_calls_d.mint
+                    WHERE ohlcv_exclusions_d.token_address = canon.alerts_std.mint
                 )
             """
 
         base_query += """
-            ORDER BY call_datetime DESC
+            ORDER BY alert_ts_ms DESC
             LIMIT ?
         """
 
-        # Build parameters list: caller_name (if provided) + limit
+        # Build parameters list: caller_name (if provided, twice for norm and raw) + limit
         params = []
         if input.caller_name:
+            params.append(input.caller_name)
             params.append(input.caller_name)
         params.append(input.limit)
 
@@ -102,9 +116,8 @@ def run(con: duckdb.DuckDBPyConnection, input: QueryCallsInput) -> QueryCallsOut
         calls = []
         for row in result:
             mint = row[0]
-            call_datetime = row[1]
+            alert_ts_ms = row[1]
             caller_name_raw = row[2] if len(row) > 2 else None
-            price_usd_raw = row[3] if len(row) > 3 else None
             
             # Normalize caller_name: convert None, empty string, or whitespace to None
             caller_name = None
@@ -113,35 +126,27 @@ def run(con: duckdb.DuckDBPyConnection, input: QueryCallsInput) -> QueryCallsOut
                 if caller_name_str:
                     caller_name = caller_name_str
 
-            # Normalize price_usd: convert to float or None
-            price_usd = None
-            if price_usd_raw is not None:
-                try:
-                    price_usd = float(price_usd_raw)
-                    # Validate price is positive and finite
-                    if price_usd <= 0 or not (price_usd > 0 and price_usd < 1e20):
-                        price_usd = None
-                except (ValueError, TypeError):
-                    price_usd = None
-
-            # Convert datetime to ISO format string
-            if isinstance(call_datetime, datetime):
-                alert_timestamp = call_datetime.isoformat()
-            elif isinstance(call_datetime, str):
-                alert_timestamp = call_datetime
-            else:
-                # Try to parse as timestamp
-                try:
-                    dt = datetime.fromtimestamp(call_datetime)
+            # Convert alert_ts_ms (milliseconds) to ISO format datetime string
+            try:
+                if isinstance(alert_ts_ms, (int, float)):
+                    dt = datetime.fromtimestamp(alert_ts_ms / 1000.0)
                     alert_timestamp = dt.isoformat()
-                except Exception:
+                elif isinstance(alert_ts_ms, datetime):
+                    alert_timestamp = alert_ts_ms.isoformat()
+                elif isinstance(alert_ts_ms, str):
+                    alert_timestamp = alert_ts_ms
+                else:
                     continue  # Skip invalid timestamps
+            except Exception:
+                continue  # Skip invalid timestamps
 
+            # price_usd is not available in canon.alerts_std (would need to join with bot_cards or other source)
+            # Keeping it as None for now - can be added later if needed
             calls.append(CallItem(
                 mint=str(mint),
                 alert_timestamp=alert_timestamp,
                 caller_name=caller_name,
-                price_usd=price_usd
+                price_usd=None  # Not available in alerts_std
             ))
 
         return QueryCallsOutput(success=True, calls=calls)

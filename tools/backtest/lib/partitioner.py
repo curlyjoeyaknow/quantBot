@@ -130,9 +130,10 @@ def partition_slice(
         compression: Parquet compression (zstd, snappy, etc.)
         verbose: Print progress
     """
+    from tools.shared.duckdb_adapter import get_connection
     out_dir.mkdir(parents=True, exist_ok=True)
-    con = duckdb.connect(":memory:")
-    con.execute(f"PRAGMA threads={max(1, int(threads))}")
+    with get_connection(":memory:", read_only=False) as con:
+        con.execute(f"PRAGMA threads={max(1, int(threads))}")
 
     sql = f"""
 COPY (
@@ -147,8 +148,7 @@ TO '{sql_escape(out_dir.as_posix())}'
     if verbose:
         print(f"[partition] {in_path} -> {out_dir}", file=sys.stderr)
 
-    con.execute(sql)
-    con.close()
+        con.execute(sql)
 
     if verbose:
         num_dirs = len([d for d in out_dir.iterdir() if d.is_dir()])

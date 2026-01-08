@@ -4,7 +4,7 @@
 
 Before running backtests, you need:
 
-1. **DuckDB database** with `user_calls_d` table (Telegram ingestion data)
+1. **DuckDB database** with `canon.alerts_std` view (canonical alert contract)
 2. **ClickHouse** (optional, for candle data - can use fixtures)
 3. **Database migrations** applied
 
@@ -12,13 +12,14 @@ Before running backtests, you need:
 
 ### 1. Ingest Telegram Data (Required)
 
-The backtest requires calls data from Telegram. Ingest data first:
+The backtest requires alerts data from Telegram. Ingest data first:
 
 ```bash
 # Ingest Telegram export JSON
 quantbot ingestion telegram --file <telegram-export.json>
 
-# This creates the user_calls_d table in data/tele.duckdb
+# This creates the canon.alerts_std view in data/tele.duckdb
+# Note: user_calls_d has been replaced with canon.alerts_std (the canonical alert contract)
 ```
 
 ### 2. Apply Database Migrations
@@ -43,13 +44,20 @@ python3 tools/storage/duckdb_direct_sql.py --query "SHOW TABLES"
 
 ## Common Issues
 
-### Error: "Table 'user_calls_d' not found"
+### Error: "View 'canon.alerts_std' not found"
 
-**Solution:** Ingest Telegram data first:
+**Solution:** Ensure the canonical schema is set up. Ingest Telegram data first:
 
 ```bash
 quantbot ingestion telegram --file <telegram-export.json>
 ```
+
+**Note:** `user_calls_d` has been replaced with `canon.alerts_std` (the canonical alert contract). This view provides:
+- One row per alert
+- Stable columns forever
+- Caller resolution when possible
+- Mint resolution when possible
+- Human + bot + raw fallback unified
 
 ### Error: "No calls found in the specified date range"
 
@@ -71,11 +79,13 @@ quantbot ingestion telegram --file <telegram-export.json>
 
 ## Database Schema
 
-### Required Tables
+### Required Views/Tables
 
-1. **`user_calls_d`** - Telegram calls (created by ingestion)
-   - Created by: `quantbot ingestion telegram`
-   - Location: `tools/telegram/duckdb_punch_pipeline.py`
+1. **`canon.alerts_std`** - Canonical alert contract (replaces user_calls_d)
+   - Created by: Ingestion pipeline (canonical schema setup)
+   - Location: View in `canon` schema
+   - **This is the functional successor to user_calls_d**
+   - Guarantees: One row per alert, stable columns forever, caller resolution when possible
 
 2. **`backtest_runs`** - Run metadata
    - Created by: Migration `006_create_backtest_tables.sql`
@@ -93,21 +103,30 @@ quantbot ingestion telegram --file <telegram-export.json>
 
 For testing/development, you can:
 
-1. **Create minimal test data:**
+1. **Create minimal test data in canonical schema:**
    ```sql
-   -- In DuckDB
-   CREATE TABLE IF NOT EXISTS user_calls_d (
-     chat_id TEXT,
-     message_id BIGINT,
-     call_ts_ms BIGINT,
-     call_datetime TIMESTAMP,
-     caller_name TEXT,
-     mint TEXT,
-     run_id TEXT DEFAULT 'legacy'
-   );
+   -- In DuckDB - ensure canonical schema exists
+   CREATE SCHEMA IF NOT EXISTS canon;
    
-   INSERT INTO user_calls_d VALUES
-     ('test-chat', 1, 1704067200000, '2024-01-01 00:00:00', 'TestCaller', 'test-mint-123', 'legacy');
+   -- Create minimal alerts_std view (simplified for testing)
+   -- Note: In production, this view is created by the ingestion pipeline
+   CREATE OR REPLACE VIEW canon.alerts_std AS
+   SELECT 
+     '1:1' AS alert_id,
+     1 AS alert_chat_id,
+     1 AS alert_message_id,
+     1704067200000 AS alert_ts_ms,
+     'human' AS alert_kind,
+     'test-mint-123' AS mint,
+     'solana' AS chain,
+     'alert_text' AS mint_source,
+     'TestCaller' AS caller_raw_name,
+     NULL AS caller_id,
+     'TestCaller' AS caller_name_norm,
+     NULL AS caller_base,
+     'Test alert' AS alert_text,
+     'legacy' AS run_id,
+     CURRENT_TIMESTAMP AS ingested_at;
    ```
 
 2. **Use synthetic candles** (if you have candle data in ClickHouse/DuckDB)

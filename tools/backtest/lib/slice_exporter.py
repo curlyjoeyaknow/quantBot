@@ -261,9 +261,9 @@ def _export_sequential(
     verbose: bool,
 ) -> int:
     """Sequential export for small datasets."""
+    from tools.shared.duckdb_adapter import get_connection
     client = cfg.get_client()
-    con = duckdb.connect(":memory:")
-    try:
+    with get_connection(":memory:", read_only=False) as con:
         con.execute("""
             CREATE TABLE candles (
                 token_address VARCHAR,
@@ -322,8 +322,6 @@ ORDER BY token_address, timestamp
             print(f"[clickhouse] exported {count:,} candles -> {output_path}", file=sys.stderr)
 
         return count
-    finally:
-        con.close()
 
 
 def _export_parallel(
@@ -371,8 +369,8 @@ def _export_parallel(
     producer_thread.start()
 
     # Consumer: insert into DuckDB
-    con = duckdb.connect(":memory:")
-    try:
+    from tools.shared.duckdb_adapter import get_connection
+    with get_connection(":memory:", read_only=False) as con:
         con.execute("""
             CREATE TABLE candles (
                 token_address VARCHAR,
@@ -412,5 +410,3 @@ def _export_parallel(
             print(f"[clickhouse] exported {count:,} candles (parallel) -> {output_path}", file=sys.stderr)
 
         return count
-    finally:
-        con.close()

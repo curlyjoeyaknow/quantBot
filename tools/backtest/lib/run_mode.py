@@ -313,9 +313,8 @@ def compute_data_fingerprint(
     """
     import duckdb
     
-    try:
-        con = duckdb.connect(duckdb_path, read_only=True)
-        
+    from tools.shared.duckdb_adapter import get_readonly_connection
+    with get_readonly_connection(duckdb_path) as con:
         # Count alerts in range
         if caller_filter:
             query = f"""
@@ -332,7 +331,6 @@ def compute_data_fingerprint(
             """
             row = con.execute(query, [chain, date_from, date_to]).fetchone()
         
-        con.close()
         
         n_alerts = row[0] if row else 0
         min_ts = str(row[1]) if row and row[1] else ""

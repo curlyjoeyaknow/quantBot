@@ -56,8 +56,8 @@ def run_baseline_query(
         end_ts_ms = entry_ts_ms + (horizon_s * 1000)
         alert_rows.append((i, a.mint, a.caller, a.ts_ms, entry_ts_ms, end_ts_ms))
 
-    con = duckdb.connect(":memory:")
-    try:
+    from tools.shared.duckdb_adapter import get_connection
+    with get_connection(":memory:", read_only=False) as con:
         con.execute(f"PRAGMA threads={max(1, int(threads))}")
 
         # Create alerts temp table
@@ -96,8 +96,6 @@ def run_baseline_query(
         rows = con.execute(sql).fetchall()
         cols = [d[0] for d in con.description]
         return [dict(zip(cols, r)) for r in rows]
-    finally:
-        con.close()
 
 
 def _build_baseline_sql(interval_seconds: int, horizon_hours: int) -> str:

@@ -753,92 +753,93 @@ def build_report(duckdb_path: str,
                  until: Optional[str]) -> Dict[str, Any]:
     warnings: List[str] = []
 
-    con = duckdb.connect(duckdb_path, read_only=True)
-    tables = list_tables(con)
+    from tools.shared.duckdb_adapter import get_readonly_connection
+    with get_readonly_connection(duckdb_path) as con:
+        tables = list_tables(con)
 
-    # common patterns in your repo/world
-    runs_table = pick_first(tables, [
-        r"\bbacktest_runs_f\b",
-        r"\bruns_f\b",
-        r"\bbacktest_runs\b",
-        r"\bruns\b",
-    ])
+        # common patterns in your repo/world
+        runs_table = pick_first(tables, [
+            r"\bbacktest_runs_f\b",
+            r"\bruns_f\b",
+            r"\bbacktest_runs\b",
+            r"\bruns\b",
+        ])
 
-    trades_table = pick_first(tables, [
-        r"\bbacktest_trades_f\b",
-        r"\btrades_f\b",
-        r"\bbacktest_trades\b",
-        r"\btrades\b",
-    ])
+        trades_table = pick_first(tables, [
+            r"\bbacktest_trades_f\b",
+            r"\btrades_f\b",
+            r"\bbacktest_trades\b",
+            r"\btrades\b",
+        ])
 
-    phases_table = pick_first(tables, [
-        r"\boptimizer\.pipeline_phases_f\b",
-        r"\bpipeline_phases_f\b",
-        r"\bphases_f\b",
-    ])
+        phases_table = pick_first(tables, [
+            r"\boptimizer\.pipeline_phases_f\b",
+            r"\bpipeline_phases_f\b",
+            r"\bphases_f\b",
+        ])
 
-    # If user wants latest and we can infer a run_id
-    if latest and not run_id:
-        inferred = load_latest_run_id(con, runs_table)
-        if inferred:
-            run_id = inferred
+        # If user wants latest and we can infer a run_id
+        if latest and not run_id:
+            inferred = load_latest_run_id(con, runs_table)
+            if inferred:
+                run_id = inferred
+            else:
+                warnings.append("Requested --latest but could not infer run_id (no runs table or missing run_id column).")
+
+        # Trades
+        portfolio: Dict[str, Any] = {}
+        equity_curve: Dict[str, Any] = {"points": [], "final_equity": None}
+        drawdown: Dict[str, Any] = {"max_drawdown": None, "max_drawdown_pct": None, "drawdown_series": []}
+
+        if trades_table:
+            trades, mapping = load_trades(con, trades_table, run_id, since, until)
+            pnl_col = mapping.get("pnl")
+            ts_col = mapping.get("exit_ts") or mapping.get("entry_ts")
+
+            if not pnl_col:
+                warnings.append(f"Trades table found ({trades_table.fq}) but could not find a pnl column (tried: pnl/pnl_usd/profit/net_pnl/...).")
+            else:
+                portfolio = compute_trade_stats(trades, pnl_col)
+                equity_curve = compute_equity_curve(trades, pnl_col, ts_col)
+                drawdown = compute_drawdown(equity_curve.get("points", []))
         else:
-            warnings.append("Requested --latest but could not infer run_id (no runs table or missing run_id column).")
+            warnings.append("No trades table found. Looked for backtest_trades_f / trades_f / trades / backtest_trades.")
 
-    # Trades
-    portfolio: Dict[str, Any] = {}
-    equity_curve: Dict[str, Any] = {"points": [], "final_equity": None}
-    drawdown: Dict[str, Any] = {"max_drawdown": None, "max_drawdown_pct": None, "drawdown_series": []}
-
-    if trades_table:
-        trades, mapping = load_trades(con, trades_table, run_id, since, until)
-        pnl_col = mapping.get("pnl")
-        ts_col = mapping.get("exit_ts") or mapping.get("entry_ts")
-
-        if not pnl_col:
-            warnings.append(f"Trades table found ({trades_table.fq}) but could not find a pnl column (tried: pnl/pnl_usd/profit/net_pnl/...).")
+        # Phases / events
+        phases = None
+        if phases_table:
+            try:
+                phases = load_phase_events(con, phases_table, run_id)
+            except Exception as e:
+                warnings.append(f"Found phases table ({phases_table.fq}) but failed to load: {e}")
         else:
-            portfolio = compute_trade_stats(trades, pnl_col)
-            equity_curve = compute_equity_curve(trades, pnl_col, ts_col)
-            drawdown = compute_drawdown(equity_curve.get("points", []))
-    else:
-        warnings.append("No trades table found. Looked for backtest_trades_f / trades_f / trades / backtest_trades.")
+            warnings.append("No pipeline phases/events table found (optional). Looked for optimizer.pipeline_phases_f / pipeline_phases_f / phases_f.")
 
-    # Phases / events
-    phases = None
-    if phases_table:
-        try:
-            phases = load_phase_events(con, phases_table, run_id)
-        except Exception as e:
-            warnings.append(f"Found phases table ({phases_table.fq}) but failed to load: {e}")
-    else:
-        warnings.append("No pipeline phases/events table found (optional). Looked for optimizer.pipeline_phases_f / pipeline_phases_f / phases_f.")
-
-    # Meta + caps for gauges
-    report = {
-        "meta": {
-            "generated_at": iso_now(),
-            "duckdb_path": duckdb_path,
-            "run_id": run_id,
-            "tables_detected": [t.fq for t in tables],
-            "tables_used": {
-                "runs": runs_table.fq if runs_table else None,
-                "trades": trades_table.fq if trades_table else None,
-                "phases": phases_table.fq if phases_table else None,
+        # Meta + caps for gauges
+        report = {
+            "meta": {
+                "generated_at": iso_now(),
+                "duckdb_path": duckdb_path,
+                "run_id": run_id,
+                "tables_detected": [t.fq for t in tables],
+                "tables_used": {
+                    "runs": runs_table.fq if runs_table else None,
+                    "trades": trades_table.fq if trades_table else None,
+                    "phases": phases_table.fq if phases_table else None,
+                },
+                "filters": {"since": since, "until": until},
             },
-            "filters": {"since": since, "until": until},
-        },
-        "portfolio": portfolio,
-        "equity_curve": equity_curve,
-        "drawdown": drawdown,
-        "phases": phases,
-        "gauges": {
-            "dd_cap": 10000.0
-        },
-        "warnings": warnings,
-    }
+            "portfolio": portfolio,
+            "equity_curve": equity_curve,
+            "drawdown": drawdown,
+            "phases": phases,
+            "gauges": {
+                "dd_cap": 10000.0
+            },
+            "warnings": warnings,
+        }
 
-    return report
+        return report
 
 
 def main() -> None:

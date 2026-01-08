@@ -57,14 +57,8 @@ export {
   ClickHouseSliceExporterAdapterImpl,
   createClickHouseSliceExporterAdapterImpl,
 } from './adapters/clickhouse-slice-exporter-adapter-impl.js';
-export {
-  datasetRegistry,
-  initializeDefaultDatasets,
-} from './adapters/dataset-registry.js';
-export type {
-  DatasetType,
-  DatasetMetadata,
-} from './adapters/dataset-registry.js';
+export { datasetRegistry, initializeDefaultDatasets } from './adapters/dataset-registry.js';
+export type { DatasetType, DatasetMetadata } from './adapters/dataset-registry.js';
 export {
   insertSqlForParquet,
   type InsertMode,

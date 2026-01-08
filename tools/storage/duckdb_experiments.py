@@ -263,10 +263,9 @@ def main() -> None:
     
     args = parser.parse_args()
     
-    # Connect to DuckDB
-    conn = duckdb.connect(str(args.db_path))
-    
-    try:
+    # Connect to DuckDB (reader - queries only)
+    from tools.shared.duckdb_adapter import get_readonly_connection
+    with get_readonly_connection(str(args.db_path)) as conn:
         if args.operation == 'get':
             data = json.loads(args.data or '{}')
             experiment_id = data.get('experiment_id')
@@ -288,13 +287,6 @@ def main() -> None:
             
             result = list_experiments(conn, filter_params, limit, offset)
             print(json.dumps({'success': True, **result}))
-    
-    except Exception as e:
-        print(json.dumps({'success': False, 'error': str(e)}), file=sys.stderr)
-        sys.exit(1)
-    finally:
-        conn.close()
-
 
 if __name__ == '__main__':
     main()

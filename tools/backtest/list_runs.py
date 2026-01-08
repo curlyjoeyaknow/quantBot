@@ -71,8 +71,8 @@ def main() -> None:
     
     elif args.walk_forward:
         # Show walk-forward summary
-        con = duckdb.connect(args.duckdb, read_only=True)
-        try:
+        from tools.shared.duckdb_adapter import get_readonly_connection
+        with get_readonly_connection(args.duckdb) as con:
             rows = con.execute("""
                 SELECT 
                     f.run_id,
@@ -107,8 +107,6 @@ def main() -> None:
                     )
             else:
                 print("No walk-forward results found.")
-        finally:
-            con.close()
     
     else:
         # List recent runs

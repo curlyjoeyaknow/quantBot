@@ -13,6 +13,7 @@ import duckdb
 import ijson
 import hashlib
 import os
+from tools.shared.duckdb_adapter import get_write_connection
 
 # Import address validation from extracted module
 try:
@@ -1335,22 +1336,9 @@ def get_script_version() -> str:
     # Fallback: use a version string (update this when making breaking changes)
     return "v1.0"
 
-def main():
-  ap = argparse.ArgumentParser()
-  ap.add_argument("--in", dest="in_path", required=True, help="Telegram single-chat JSON")
-  ap.add_argument("--duckdb", required=True, help="Output duckdb file, e.g. tele.duckdb")
-  ap.add_argument("--sqlite", default=None, help="Optional tele.db to compare against")
-  ap.add_argument("--rebuild", action="store_true")
-  ap.add_argument("--chat-id", default=None, help="Override/force chat_id")
-  ap.add_argument("--force", action="store_true", help="Force rerun even if input was already processed (useful when script extraction logic improved)")
-  ap.add_argument("--export-csv", default=None, help="Export alerts to CSV file")
-  ap.add_argument("--export-parquet", default=None, help="Export alerts to Parquet file")
-  ap.add_argument("--export-parquet-run", action="store_true", help="Export user_calls_d and caller_links_d to Parquet with run ID")
-  ap.add_argument("--run-id", default=None, help="Run ID for Parquet export (required with --export-parquet-run)")
-  ap.add_argument("--output-dir", default="./artifacts", help="Output directory for Parquet exports (default: ./artifacts)")
-  args = ap.parse_args()
-
-  con = duckdb.connect(args.duckdb)
+def _run_main_logic(args, con):
+  """Main ingestion logic - separated to use context manager properly"""
+  # Set performance PRAGMAs (these are in addition to busy_timeout)
   con.execute("PRAGMA threads=4;")
   con.execute("PRAGMA memory_limit='4GB';")
 
@@ -1424,8 +1412,7 @@ def main():
         if not args.force:
           print("Use --force to rerun even if already processed.", file=sys.stderr)
       # Return early - already processed
-      con.close()
-      return
+      return  # Connection will be closed by context manager
     elif existing_status == 'partial':
       print(f"Resuming partial run (run_id: {existing_run_id})...", file=sys.stderr)
       run_id = existing_run_id
@@ -2486,8 +2473,7 @@ def main():
   if args.export_parquet_run:
     if not args.run_id:
       print("Error: --run-id is required with --export-parquet-run")
-      con.close()
-      return
+      return  # Connection will be closed by context manager
     
     import os
     output_dir = args.output_dir
@@ -2530,11 +2516,9 @@ def main():
     else:
       print(f"✓ caller_links_d row count validated: {caller_links_count}")
 
-  # Mark run as completed (if not already done above)
-  if run_id:
-    complete_ingestion_run(con, run_id, row_counts)
-
-  con.close()
+    # Mark run as completed (if not already done above)
+    if run_id:
+      complete_ingestion_run(con, run_id, row_counts)
 
 if __name__ == "__main__":
   import sys

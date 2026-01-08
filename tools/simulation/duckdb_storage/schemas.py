@@ -60,7 +60,7 @@ class QueryCallsInput(BaseModel):
 class CallItem(BaseModel):
     mint: str
     alert_timestamp: str
-    price_usd: Optional[float] = None  # Entry price from user_calls_d
+    price_usd: Optional[float] = None  # Entry price (not available in canon.alerts_std, kept for compatibility)
 
 
 class QueryCallsOutput(BaseResponse):

@@ -1,6 +1,16 @@
-import duckdb from 'duckdb';
+// Lazy import to avoid loading native bindings at module load time
+let duckdbModule: typeof import('duckdb') | null = null;
 
-export type DuckDb = duckdb.Database;
+async function getDuckdbModule() {
+  if (!duckdbModule) {
+    duckdbModule = await import('duckdb');
+  }
+  // DuckDB module doesn't have default export, it's a namespace
+  return duckdbModule;
+}
+
+type DuckDbModule = Awaited<ReturnType<typeof getDuckdbModule>>;
+export type DuckDb = InstanceType<DuckDbModule['Database']>;
 
 function run(db: DuckDb, sql: string, params: any[] = []) {
   return new Promise<void>((resolve, reject) => {
@@ -22,10 +32,11 @@ function all<T>(db: DuckDb, sql: string, params: any[] = []) {
   });
 }
 
-export function openDuckDbFromEnv(): DuckDb {
+export async function openDuckDbFromEnv(): Promise<DuckDb> {
   const path = process.env.DUCKDB_PATH;
   if (!path) throw new Error('DUCKDB_PATH env var is required (same file used by calls + UI).');
-  return new duckdb.Database(path);
+  const duckdb = await getDuckdbModule();
+  return new duckdb.Database(path) as DuckDb;
 }
 
 export async function ensureBacktestStrategyTables(db: DuckDb) {

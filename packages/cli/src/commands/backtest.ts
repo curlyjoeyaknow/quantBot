@@ -362,17 +362,21 @@ const backtestModule: PackageCommandModule = {
             ctx
           );
         } catch (error) {
-          // Re-throw ConfigurationError (e.g., table missing) as-is
+          // Re-throw ConfigurationError (e.g., view missing) as-is
           if (error instanceof Error && error.name === 'ConfigurationError') {
             throw error;
           }
           const errorMsg = error instanceof Error ? error.message : String(error);
-          if (errorMsg.includes("Table 'user_calls_d' not found") || errorMsg.includes('user_calls_d')) {
+          if (
+            errorMsg.includes("canon.alerts_std") ||
+            errorMsg.includes('alerts_std') ||
+            errorMsg.includes("user_calls_d")
+          ) {
             throw new Error(
-              `Missing user_calls_d table in DuckDB. Please ingest Telegram data first:\n\n` +
-              `  quantbot ingestion telegram --file <telegram-export.json>\n\n` +
-              `Or create the table schema manually using the migration script.\n` +
-              `Database path: ${duckdbPath}`
+              `Missing canon.alerts_std view in DuckDB. This is the canonical alert contract.\n\n` +
+                `Please ensure the canonical schema is set up. The view should be created by the ingestion pipeline.\n` +
+                `Database path: ${duckdbPath}\n\n` +
+                `Note: user_calls_d has been replaced with canon.alerts_std (the canonical alert contract).`
             );
           }
           throw error;
@@ -381,12 +385,16 @@ const backtestModule: PackageCommandModule = {
         // Check for error in result (workflow returned error but didn't throw)
         if (callsResult.error) {
           const errorMsg = callsResult.error;
-          if (errorMsg.includes("Table 'user_calls_d' not found") || errorMsg.includes('user_calls_d')) {
+          if (
+            errorMsg.includes("canon.alerts_std") ||
+            errorMsg.includes('alerts_std') ||
+            errorMsg.includes("user_calls_d")
+          ) {
             throw new Error(
-              `Missing user_calls_d table in DuckDB. Please ingest Telegram data first:\n\n` +
-              `  quantbot ingestion telegram --file <telegram-export.json>\n\n` +
-              `Or create the table schema manually using the migration script.\n` +
-              `Database path: ${duckdbPath}`
+              `Missing canon.alerts_std view in DuckDB. This is the canonical alert contract.\n\n` +
+                `Please ensure the canonical schema is set up. The view should be created by the ingestion pipeline.\n` +
+                `Database path: ${duckdbPath}\n\n` +
+                `Note: user_calls_d has been replaced with canon.alerts_std (the canonical alert contract).`
             );
           }
           throw new Error(`Failed to query calls: ${errorMsg}`);
@@ -395,11 +403,11 @@ const backtestModule: PackageCommandModule = {
         if (callsResult.calls.length === 0) {
           throw new Error(
             `No calls found in the specified date range (${opts.from} to ${opts.to}).\n` +
-            `Database path: ${duckdbPath}\n` +
-            `Try:\n` +
-            `  1. Check the date range matches your ingested data\n` +
-            `  2. Verify calls exist: quantbot calls list --from ${opts.from} --to ${opts.to}\n` +
-            `  3. Ingest more data: quantbot ingestion telegram --file <telegram-export.json>`
+              `Database path: ${duckdbPath}\n` +
+              `Try:\n` +
+              `  1. Check the date range matches your ingested data\n` +
+              `  2. Verify calls exist: quantbot calls list --from ${opts.from} --to ${opts.to}\n` +
+              `  3. Ingest more data: quantbot ingestion telegram --file <telegram-export.json>`
           );
         }
 

@@ -39,9 +39,9 @@ def view_leaderboard(
     top_n: int = 10,
 ) -> None:
     """View optimizer leaderboard."""
-    con = duckdb.connect(duckdb_path, read_only=True)
-    
-    # Build query based on sort_by
+    from tools.shared.duckdb_adapter import get_readonly_connection
+    with get_readonly_connection(duckdb_path) as con:
+        # Build query based on sort_by
     sort_col_map = {
         "robust_score": "objective_score",
         "test_r": "total_r",
@@ -132,15 +132,13 @@ def view_leaderboard(
     
     if summary:
         print(f"Run Summary: {summary[0]} trials, Avg TotalR: {summary[1]:+.1f}, Avg WR: {summary[2]:.0f}%, Profitable: {summary[3]:.0f}%")
-    
-    con.close()
 
 
 def list_runs(duckdb_path: str = "data/alerts.duckdb", top_n: int = 10) -> None:
     """List recent optimizer runs."""
-    con = duckdb.connect(duckdb_path, read_only=True)
-    
-    rows = con.execute(f"""
+    from tools.shared.duckdb_adapter import get_readonly_connection
+    with get_readonly_connection(duckdb_path) as con:
+        rows = con.execute(f"""
         SELECT 
             run_id,
             run_type,

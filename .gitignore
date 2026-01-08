@@ -134,3 +134,15 @@ slices/*.parquet
 results/*.json
 results/**/*.json
 results/*.csv
+
+# generated reports / artifacts
+reports/
+results/
+docs-html/
+backups/
+
+# generated reports / artifacts
+reports/
+results/
+docs-html/
+backups/

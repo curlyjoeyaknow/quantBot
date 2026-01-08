@@ -487,14 +487,12 @@ GROUP BY run_id;
 
 def ensure_trial_schema(duckdb_path: str) -> None:
     """Create the trial ledger schema if it doesn't exist."""
-    con = duckdb.connect(duckdb_path)
-    try:
+    from tools.shared.duckdb_adapter import get_write_connection
+    with get_write_connection(duckdb_path) as con:
         for stmt in SCHEMA_SQL.split(";"):
             stmt = stmt.strip()
             if stmt:
                 con.execute(stmt)
-    finally:
-        con.close()
 
 
 # =============================================================================
@@ -540,10 +538,10 @@ def store_optimizer_run(
         code_dirty: True if uncommitted changes
         signature: Full reproducibility signature
     """
+    from tools.shared.duckdb_adapter import get_write_connection
     ensure_trial_schema(duckdb_path)
     
-    con = duckdb.connect(duckdb_path)
-    try:
+    with get_write_connection(duckdb_path) as con:
         created_at = datetime.now(UTC).replace(tzinfo=None)
         
         # Compute totals from results
@@ -673,8 +671,6 @@ def store_optimizer_run(
                 json.dumps(s, separators=(",", ":"), default=str),
             ])
         
-    finally:
-        con.close()
 
 
 def store_walk_forward_run(
@@ -698,10 +694,10 @@ def store_walk_forward_run(
         timing: Optional timing dict
         notes: Optional notes
     """
+    from tools.shared.duckdb_adapter import get_write_connection
     ensure_trial_schema(duckdb_path)
     
-    con = duckdb.connect(duckdb_path)
-    try:
+    with get_write_connection(duckdb_path) as con:
         created_at = datetime.now(UTC).replace(tzinfo=None)
         
         # Compute summary
@@ -789,8 +785,6 @@ def store_walk_forward_run(
                 None,
             ])
         
-    finally:
-        con.close()
 
 
 # =============================================================================
@@ -799,21 +793,19 @@ def store_walk_forward_run(
 
 def list_runs(duckdb_path: str, limit: int = 50) -> List[Dict[str, Any]]:
     """List recent optimization runs."""
+    from tools.shared.duckdb_adapter import get_readonly_connection
     ensure_trial_schema(duckdb_path)
-    con = duckdb.connect(duckdb_path, read_only=True)
-    try:
+    with get_readonly_connection(duckdb_path) as con:
         rows = con.execute(f"SELECT * FROM optimizer.recent_runs_v LIMIT {limit}").fetchall()
         cols = [d[0] for d in con.description]
         return [dict(zip(cols, r)) for r in rows]
-    finally:
-        con.close()
 
 
 def get_best_trials(duckdb_path: str, run_id: str, limit: int = 10) -> List[Dict[str, Any]]:
     """Get best trials from a run."""
+    from tools.shared.duckdb_adapter import get_readonly_connection
     ensure_trial_schema(duckdb_path)
-    con = duckdb.connect(duckdb_path, read_only=True)
-    try:
+    with get_readonly_connection(duckdb_path) as con:
         rows = con.execute("""
             SELECT * FROM optimizer.best_trials_v
             WHERE run_id = ?
@@ -821,15 +813,13 @@ def get_best_trials(duckdb_path: str, run_id: str, limit: int = 10) -> List[Dict
         """, [run_id, limit]).fetchall()
         cols = [d[0] for d in con.description]
         return [dict(zip(cols, r)) for r in rows]
-    finally:
-        con.close()
 
 
 def get_walk_forward_summary(duckdb_path: str, run_id: str) -> Optional[Dict[str, Any]]:
     """Get walk-forward summary for a run."""
+    from tools.shared.duckdb_adapter import get_readonly_connection
     ensure_trial_schema(duckdb_path)
-    con = duckdb.connect(duckdb_path, read_only=True)
-    try:
+    with get_readonly_connection(duckdb_path) as con:
         row = con.execute("""
             SELECT * FROM optimizer.walk_forward_summary_v
             WHERE run_id = ?
@@ -838,8 +828,6 @@ def get_walk_forward_summary(duckdb_path: str, run_id: str) -> Optional[Dict[str
             return None
         cols = [d[0] for d in con.description]
         return dict(zip(cols, row))
-    finally:
-        con.close()
 
 
 def print_recent_runs(duckdb_path: str, limit: int = 20) -> None:
@@ -895,11 +883,11 @@ def store_phase_start(
     """
     ensure_trial_schema(duckdb_path)
     
+    from tools.shared.duckdb_adapter import get_write_connection
     phase_order = PIPELINE_PHASES.get(phase_name, 99)
     phase_id = f"{run_id}_{phase_name}"
     
-    con = duckdb.connect(duckdb_path)
-    try:
+    with get_write_connection(duckdb_path) as con:
         now = datetime.now(UTC).replace(tzinfo=None)
         
         con.execute("""
@@ -920,8 +908,6 @@ def store_phase_start(
         ])
         
         return phase_id
-    finally:
-        con.close()
 
 
 def store_phase_complete(
@@ -931,8 +917,8 @@ def store_phase_complete(
     notes: Optional[str] = None,
 ) -> None:
     """Mark a pipeline phase as complete with output summary."""
-    con = duckdb.connect(duckdb_path)
-    try:
+    from tools.shared.duckdb_adapter import get_write_connection
+    with get_write_connection(duckdb_path) as con:
         now = datetime.now(UTC).replace(tzinfo=None)
         
         # Get start time to compute duration
@@ -961,8 +947,6 @@ def store_phase_complete(
             notes,
             phase_id,
         ])
-    finally:
-        con.close()
 
 
 def store_phase_failed(
@@ -971,8 +955,8 @@ def store_phase_failed(
     error_message: str,
 ) -> None:
     """Mark a pipeline phase as failed."""
-    con = duckdb.connect(duckdb_path)
-    try:
+    from tools.shared.duckdb_adapter import get_write_connection
+    with get_write_connection(duckdb_path) as con:
         now = datetime.now(UTC).replace(tzinfo=None)
         
         con.execute("""
@@ -983,15 +967,13 @@ def store_phase_failed(
                 retry_count = retry_count + 1
             WHERE phase_id = ?
         """, [now, error_message, phase_id])
-    finally:
-        con.close()
 
 
 def get_phase_status(duckdb_path: str, run_id: str, phase_name: str) -> Optional[Dict[str, Any]]:
     """Get status of a specific phase for a run."""
+    from tools.shared.duckdb_adapter import get_readonly_connection
     ensure_trial_schema(duckdb_path)
-    con = duckdb.connect(duckdb_path, read_only=True)
-    try:
+    with get_readonly_connection(duckdb_path) as con:
         phase_id = f"{run_id}_{phase_name}"
         row = con.execute(
             "SELECT * FROM optimizer.pipeline_phases_f WHERE phase_id = ?",
@@ -1003,15 +985,13 @@ def get_phase_status(duckdb_path: str, run_id: str, phase_name: str) -> Optional
         
         cols = [d[0] for d in con.description]
         return dict(zip(cols, row))
-    finally:
-        con.close()
 
 
 def get_run_phases(duckdb_path: str, run_id: str) -> List[Dict[str, Any]]:
     """Get all phases for a run, ordered by phase_order."""
+    from tools.shared.duckdb_adapter import get_readonly_connection
     ensure_trial_schema(duckdb_path)
-    con = duckdb.connect(duckdb_path, read_only=True)
-    try:
+    with get_readonly_connection(duckdb_path) as con:
         rows = con.execute("""
             SELECT * FROM optimizer.pipeline_phases_f
             WHERE run_id = ?
@@ -1020,8 +1000,6 @@ def get_run_phases(duckdb_path: str, run_id: str) -> List[Dict[str, Any]]:
         
         cols = [d[0] for d in con.description]
         return [dict(zip(cols, r)) for r in rows]
-    finally:
-        con.close()
 
 
 def can_resume_from_phase(duckdb_path: str, run_id: str, phase_name: str) -> bool:
@@ -1081,10 +1059,10 @@ def store_islands(
     Returns:
         List of island_ids
     """
+    from tools.shared.duckdb_adapter import get_write_connection
     ensure_trial_schema(duckdb_path)
     
-    con = duckdb.connect(duckdb_path)
-    try:
+    with get_write_connection(duckdb_path) as con:
         now = datetime.now(UTC).replace(tzinfo=None)
         island_ids = []
         
@@ -1128,15 +1106,13 @@ def store_islands(
             island_ids.append(island_id)
         
         return island_ids
-    finally:
-        con.close()
 
 
 def load_islands(duckdb_path: str, run_id: str) -> List[Dict[str, Any]]:
     """Load islands from a previous run."""
+    from tools.shared.duckdb_adapter import get_readonly_connection
     ensure_trial_schema(duckdb_path)
-    con = duckdb.connect(duckdb_path, read_only=True)
-    try:
+    with get_readonly_connection(duckdb_path) as con:
         rows = con.execute("""
             SELECT * FROM optimizer.islands_f
             WHERE run_id = ?
@@ -1155,8 +1131,6 @@ def load_islands(duckdb_path: str, run_id: str) -> List[Dict[str, Any]]:
             islands.append(island)
         
         return islands
-    finally:
-        con.close()
 
 
 # =============================================================================
@@ -1175,10 +1149,10 @@ def store_island_champions(
     Returns:
         List of champion_ids
     """
+    from tools.shared.duckdb_adapter import get_write_connection
     ensure_trial_schema(duckdb_path)
     
-    con = duckdb.connect(duckdb_path)
-    try:
+    with get_write_connection(duckdb_path) as con:
         now = datetime.now(UTC).replace(tzinfo=None)
         champion_ids = []
         
@@ -1217,15 +1191,13 @@ def store_island_champions(
             champion_ids.append(champion_id)
         
         return champion_ids
-    finally:
-        con.close()
 
 
 def load_island_champions(duckdb_path: str, run_id: str) -> List[Dict[str, Any]]:
     """Load island champions from a previous run."""
+    from tools.shared.duckdb_adapter import get_readonly_connection
     ensure_trial_schema(duckdb_path)
-    con = duckdb.connect(duckdb_path, read_only=True)
-    try:
+    with get_readonly_connection(duckdb_path) as con:
         rows = con.execute("""
             SELECT * FROM optimizer.island_champions_f
             WHERE run_id = ?
@@ -1243,8 +1215,6 @@ def load_island_champions(duckdb_path: str, run_id: str) -> List[Dict[str, Any]]
             champions.append(champ)
         
         return champions
-    finally:
-        con.close()
 
 
 # =============================================================================
@@ -1264,10 +1234,10 @@ def store_stress_lane_result(
     """Store a single stress lane validation result."""
     ensure_trial_schema(duckdb_path)
     
+    from tools.shared.duckdb_adapter import get_write_connection
     result_id = f"{champion_id}_{lane_name}"
     
-    con = duckdb.connect(duckdb_path)
-    try:
+    with get_write_connection(duckdb_path) as con:
         now = datetime.now(UTC).replace(tzinfo=None)
         
         con.execute("""
@@ -1299,8 +1269,6 @@ def store_stress_lane_result(
         ])
         
         return result_id
-    finally:
-        con.close()
 
 
 def get_completed_lanes_for_champion(
@@ -1309,17 +1277,15 @@ def get_completed_lanes_for_champion(
     champion_id: str,
 ) -> List[str]:
     """Get list of lane names already completed for a champion."""
+    from tools.shared.duckdb_adapter import get_readonly_connection
     ensure_trial_schema(duckdb_path)
-    con = duckdb.connect(duckdb_path, read_only=True)
-    try:
+    with get_readonly_connection(duckdb_path) as con:
         rows = con.execute("""
             SELECT lane_name FROM optimizer.stress_lane_results_f
             WHERE run_id = ? AND champion_id = ?
         """, [run_id, champion_id]).fetchall()
         
         return [r[0] for r in rows]
-    finally:
-        con.close()
 
 
 def load_stress_lane_results(
@@ -1328,9 +1294,9 @@ def load_stress_lane_results(
     champion_id: Optional[str] = None,
 ) -> List[Dict[str, Any]]:
     """Load stress lane results for a run or specific champion."""
+    from tools.shared.duckdb_adapter import get_readonly_connection
     ensure_trial_schema(duckdb_path)
-    con = duckdb.connect(duckdb_path, read_only=True)
-    try:
+    with get_readonly_connection(duckdb_path) as con:
         if champion_id:
             rows = con.execute("""
                 SELECT * FROM optimizer.stress_lane_results_f
@@ -1355,8 +1321,6 @@ def load_stress_lane_results(
             results.append(result)
         
         return results
-    finally:
-        con.close()
 
 
 # =============================================================================
@@ -1392,10 +1356,10 @@ def store_champion_validation(
     worst_lane_score = lane_scores.get(worst_lane, 0.0) if worst_lane else 0.0
     
     lanes_passing = sum(1 for s in scores if s >= 0)
+    from tools.shared.duckdb_adapter import get_write_connection
     score_delta = robust_score - discovery_score
     
-    con = duckdb.connect(duckdb_path)
-    try:
+    with get_write_connection(duckdb_path) as con:
         now = datetime.now(UTC).replace(tzinfo=None)
         
         con.execute("""
@@ -1434,15 +1398,13 @@ def store_champion_validation(
         """, [champion_id])
         
         return validation_id
-    finally:
-        con.close()
 
 
 def load_champion_validations(duckdb_path: str, run_id: str) -> List[Dict[str, Any]]:
     """Load champion validation summaries for a run."""
+    from tools.shared.duckdb_adapter import get_readonly_connection
     ensure_trial_schema(duckdb_path)
-    con = duckdb.connect(duckdb_path, read_only=True)
-    try:
+    with get_readonly_connection(duckdb_path) as con:
         rows = con.execute("""
             SELECT * FROM optimizer.champion_validation_f
             WHERE run_id = ?
@@ -1458,8 +1420,6 @@ def load_champion_validations(duckdb_path: str, run_id: str) -> List[Dict[str, A
             results.append(result)
         
         return results
-    finally:
-        con.close()
 
 
 def get_maximin_winner(duckdb_path: str, run_id: str) -> Optional[Dict[str, Any]]:
@@ -1506,8 +1466,8 @@ def get_resumable_run_state(duckdb_path: str, run_id: str) -> Dict[str, Any]:
                 break
     
     # Count stored objects
-    con = duckdb.connect(duckdb_path, read_only=True)
-    try:
+    from tools.shared.duckdb_adapter import get_readonly_connection
+    with get_readonly_connection(duckdb_path) as con:
         islands_count = con.execute(
             "SELECT COUNT(*) FROM optimizer.islands_f WHERE run_id = ?", [run_id]
         ).fetchone()[0]
@@ -1519,8 +1479,6 @@ def get_resumable_run_state(duckdb_path: str, run_id: str) -> Dict[str, Any]:
         lane_results_count = con.execute(
             "SELECT COUNT(*) FROM optimizer.stress_lane_results_f WHERE run_id = ?", [run_id]
         ).fetchone()[0]
-    finally:
-        con.close()
     
     can_resume = next_phase is None or can_resume_from_phase(duckdb_path, run_id, next_phase)
     

@@ -240,15 +240,16 @@ def store_baseline_run(
         slice_path: Path to slice used
         partitioned: Whether slice was partitioned
     """
-    con = duckdb.connect(duckdb_path)
-    try:
-        con.execute("BEGIN;")
-        ensure_baseline_schema(con)
+    from tools.shared.duckdb_adapter import get_write_connection
+    with get_write_connection(duckdb_path) as con:
+        try:
+            con.execute("BEGIN;")
+            ensure_baseline_schema(con)
 
-        # Convert created_at to naive datetime (DuckDB prefers this)
-        created_at = datetime.now(tz=UTC).replace(tzinfo=None)
+            # Convert created_at to naive datetime (DuckDB prefers this)
+            created_at = datetime.now(tz=UTC).replace(tzinfo=None)
 
-        con.execute("""
+            con.execute("""
             INSERT OR REPLACE INTO baseline.runs_d
             (run_id, created_at, run_name, date_from, date_to, interval_seconds, horizon_hours, chain,
              alerts_total, alerts_ok, config_json, summary_json, slice_path, partitioned)
@@ -268,96 +269,94 @@ def store_baseline_run(
             json.dumps(summary, separators=(",", ":"), sort_keys=True),
             slice_path,
             bool(partitioned),
-        ])
+            ])
 
-        # Replace existing facts for this run_id (if rerun with same run_id)
-        con.execute("DELETE FROM baseline.alert_results_f WHERE run_id = ?", [run_id])
-        con.execute("DELETE FROM baseline.caller_stats_f WHERE run_id = ?", [run_id])
+            # Replace existing facts for this run_id (if rerun with same run_id)
+            con.execute("DELETE FROM baseline.alert_results_f WHERE run_id = ?", [run_id])
+            con.execute("DELETE FROM baseline.caller_stats_f WHERE run_id = ?", [run_id])
 
-        # Build rows with proper datetime conversion
-        out_rows = []
-        for r in rows:
-            alert_ts = parse_utc_ts(r.get("alert_ts_utc", ""))
-            entry_ts = parse_utc_ts(r.get("entry_ts_utc", ""))
-            # Remove tzinfo for DuckDB
-            alert_ts_naive = alert_ts.replace(tzinfo=None) if alert_ts else None
-            entry_ts_naive = entry_ts.replace(tzinfo=None) if entry_ts else None
+            # Build rows with proper datetime conversion
+            out_rows = []
+            for r in rows:
+                alert_ts = parse_utc_ts(r.get("alert_ts_utc", ""))
+                entry_ts = parse_utc_ts(r.get("entry_ts_utc", ""))
+                # Remove tzinfo for DuckDB
+                alert_ts_naive = alert_ts.replace(tzinfo=None) if alert_ts else None
+                entry_ts_naive = entry_ts.replace(tzinfo=None) if entry_ts else None
 
-            out_rows.append((
-                run_id,
-                int(r.get("alert_id", 0)),
-                r.get("mint"),
-                r.get("caller"),
-                alert_ts_naive,
-                entry_ts_naive,
-                r.get("status"),
-                int(r.get("candles") or 0),
-                r.get("entry_price"),
-                r.get("ath_mult"),
-                r.get("time_to_ath_s"),
-                r.get("time_to_2x_s"),
-                r.get("time_to_3x_s"),
-                r.get("time_to_4x_s"),
-                r.get("time_to_5x_s"),
-                r.get("time_to_10x_s"),
-                r.get("dd_initial"),
-                r.get("dd_overall"),
-                r.get("dd_pre2x"),
-                r.get("dd_after_2x"),
-                r.get("dd_after_3x"),
-                r.get("dd_after_4x"),
-                r.get("dd_after_5x"),
-                r.get("dd_after_10x"),
-                r.get("dd_after_ath"),
-                r.get("peak_pnl_pct"),
-                r.get("ret_end_pct"),
-            ))
+                out_rows.append((
+                    run_id,
+                    int(r.get("alert_id", 0)),
+                    r.get("mint"),
+                    r.get("caller"),
+                    alert_ts_naive,
+                    entry_ts_naive,
+                    r.get("status"),
+                    int(r.get("candles") or 0),
+                    r.get("entry_price"),
+                    r.get("ath_mult"),
+                    r.get("time_to_ath_s"),
+                    r.get("time_to_2x_s"),
+                    r.get("time_to_3x_s"),
+                    r.get("time_to_4x_s"),
+                    r.get("time_to_5x_s"),
+                    r.get("time_to_10x_s"),
+                    r.get("dd_initial"),
+                    r.get("dd_overall"),
+                    r.get("dd_pre2x"),
+                    r.get("dd_after_2x"),
+                    r.get("dd_after_3x"),
+                    r.get("dd_after_4x"),
+                    r.get("dd_after_5x"),
+                    r.get("dd_after_10x"),
+                    r.get("dd_after_ath"),
+                    r.get("peak_pnl_pct"),
+                    r.get("ret_end_pct"),
+                ))
 
-        # Use executemany for speed
-        con.executemany("""
-            INSERT INTO baseline.alert_results_f VALUES (
-                ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?
-            )
-        """, out_rows)
+            # Use executemany for speed
+            con.executemany("""
+                INSERT INTO baseline.alert_results_f VALUES (
+                    ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?
+                )
+            """, out_rows)
 
-        caller_rows = []
-        for c in caller_agg:
-            caller_rows.append((
-                run_id,
-                c.get("caller"),
-                int(c.get("n") or 0),
-                c.get("median_ath"),
-                c.get("p25_ath"),
-                c.get("p75_ath"),
-                c.get("p95_ath"),
-                c.get("hit2x_pct"),
-                c.get("hit3x_pct"),
-                c.get("hit4x_pct"),
-                c.get("hit5x_pct"),
-                c.get("hit10x_pct"),
-                c.get("median_t2x_hrs"),
-                c.get("median_dd_initial_pct"),
-                c.get("median_dd_overall_pct"),
-                c.get("median_dd_pre2x_pct"),
-                c.get("median_dd_pre2x_or_horizon_pct"),
-                c.get("median_dd_after_2x_pct"),
-                c.get("median_dd_after_3x_pct"),
-                c.get("median_dd_after_ath_pct"),
-                c.get("worst_dd_pct"),
-                c.get("median_peak_pnl_pct"),
-                c.get("median_ret_end_pct"),
-            ))
+            caller_rows = []
+            for c in caller_agg:
+                caller_rows.append((
+                    run_id,
+                    c.get("caller"),
+                    int(c.get("n") or 0),
+                    c.get("median_ath"),
+                    c.get("p25_ath"),
+                    c.get("p75_ath"),
+                    c.get("p95_ath"),
+                    c.get("hit2x_pct"),
+                    c.get("hit3x_pct"),
+                    c.get("hit4x_pct"),
+                    c.get("hit5x_pct"),
+                    c.get("hit10x_pct"),
+                    c.get("median_t2x_hrs"),
+                    c.get("median_dd_initial_pct"),
+                    c.get("median_dd_overall_pct"),
+                    c.get("median_dd_pre2x_pct"),
+                    c.get("median_dd_pre2x_or_horizon_pct"),
+                    c.get("median_dd_after_2x_pct"),
+                    c.get("median_dd_after_3x_pct"),
+                    c.get("median_dd_after_ath_pct"),
+                    c.get("worst_dd_pct"),
+                    c.get("median_peak_pnl_pct"),
+                    c.get("median_ret_end_pct"),
+                ))
 
-        con.executemany("""
-            INSERT INTO baseline.caller_stats_f VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-        """, caller_rows)
+            con.executemany("""
+                INSERT INTO baseline.caller_stats_f VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            """, caller_rows)
 
-        con.execute("COMMIT;")
-    except Exception:
-        con.execute("ROLLBACK;")
-        raise
-    finally:
-        con.close()
+            con.execute("COMMIT;")
+        except Exception:
+            con.execute("ROLLBACK;")
+            raise
 
 
 # =============================================================================
@@ -451,26 +450,27 @@ def store_tp_sl_run(
         rows: Per-alert results
         summary: Overall summary metrics
     """
-    con = duckdb.connect(duckdb_path)
-    try:
-        con.execute("BEGIN;")
-        ensure_bt_schema(con)
+    from tools.shared.duckdb_adapter import get_write_connection
+    with get_write_connection(duckdb_path) as con:
+        try:
+            con.execute("BEGIN;")
+            ensure_bt_schema(con)
 
-        created_at = datetime.now(tz=UTC).replace(tzinfo=None)
-        date_from = config.get("date_from")
-        date_to = config.get("date_to")
+            created_at = datetime.now(tz=UTC).replace(tzinfo=None)
+            date_from = config.get("date_from")
+            date_to = config.get("date_to")
 
-        # Convert dates to timestamps
-        window_from_ms = None
-        window_to_ms = None
-        if date_from:
-            from .helpers import parse_yyyy_mm_dd
-            window_from_ms = int(parse_yyyy_mm_dd(date_from).timestamp() * 1000)
-        if date_to:
-            from .helpers import parse_yyyy_mm_dd
-            window_to_ms = int(parse_yyyy_mm_dd(date_to).timestamp() * 1000)
+            # Convert dates to timestamps
+            window_from_ms = None
+            window_to_ms = None
+            if date_from:
+                from .helpers import parse_yyyy_mm_dd
+                window_from_ms = int(parse_yyyy_mm_dd(date_from).timestamp() * 1000)
+            if date_to:
+                from .helpers import parse_yyyy_mm_dd
+                window_to_ms = int(parse_yyyy_mm_dd(date_to).timestamp() * 1000)
 
-        con.execute("""
+            con.execute("""
             INSERT OR REPLACE INTO bt.runs_d (
                 run_id, created_at, run_name, strategy_name, strategy_version,
                 candle_interval_s, window_from_ts_ms, window_to_ts_ms,
@@ -489,22 +489,22 @@ def store_tp_sl_run(
             f"sl={config.get('sl_mult', 0.5)}x",
             json.dumps(config, separators=(",", ":"), sort_keys=True),
             f"TP/SL backtest: {date_from} to {date_to}",
-        ])
+            ])
 
-        horizon_hours = int(config.get("horizon_hours", 48))
-        eval_window_s = horizon_hours * 3600
+            horizon_hours = int(config.get("horizon_hours", 48))
+            eval_window_s = horizon_hours * 3600
 
-        # Delete existing data for this run
-        con.execute("DELETE FROM bt.alert_scenarios_d WHERE run_id = ?", [run_id])
-        con.execute("DELETE FROM bt.alert_outcomes_f WHERE scenario_id IN (SELECT scenario_id FROM bt.alert_scenarios_d WHERE run_id = ?)", [run_id])
-        con.execute("DELETE FROM bt.metrics_f WHERE run_id = ?", [run_id])
+            # Delete existing data for this run
+            con.execute("DELETE FROM bt.alert_scenarios_d WHERE run_id = ?", [run_id])
+            con.execute("DELETE FROM bt.alert_outcomes_f WHERE scenario_id IN (SELECT scenario_id FROM bt.alert_scenarios_d WHERE run_id = ?)", [run_id])
+            con.execute("DELETE FROM bt.metrics_f WHERE run_id = ?", [run_id])
 
-        # Insert scenarios and outcomes
-        scenario_rows = []
-        outcome_rows = []
+            # Insert scenarios and outcomes
+            scenario_rows = []
+            outcome_rows = []
 
-        for r in rows:
-            scenario_id = str(uuid.uuid4())
+            for r in rows:
+                scenario_id = str(uuid.uuid4())
 
             # Reconstruct ms from strings
             alert_ts_utc = r.get("alert_ts_utc") or ""
@@ -565,23 +565,23 @@ def store_tp_sl_run(
                     json.dumps(details, separators=(",", ":"), default=str),
                 ))
 
-        con.executemany("""
-            INSERT INTO bt.alert_scenarios_d (
-                scenario_id, created_at, run_id, alert_id, mint, alert_ts_ms, entry_ts_ms, end_ts_ms,
-                interval_seconds, eval_window_s, caller_name, scenario_json
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, scenario_rows)
+            con.executemany("""
+                INSERT INTO bt.alert_scenarios_d (
+                    scenario_id, created_at, run_id, alert_id, mint, alert_ts_ms, entry_ts_ms, end_ts_ms,
+                    interval_seconds, eval_window_s, caller_name, scenario_json
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, scenario_rows)
 
-        con.executemany("""
-            INSERT INTO bt.alert_outcomes_f (
-                scenario_id, computed_at, entry_price_usd, entry_ts_ms, ath_multiple,
-                time_to_2x_s, time_to_3x_s, time_to_4x_s,
-                max_drawdown_pct, hit_2x, candles_seen, tp_sl_exit_reason, tp_sl_ret, details_json
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, outcome_rows)
+            con.executemany("""
+                INSERT INTO bt.alert_outcomes_f (
+                    scenario_id, computed_at, entry_price_usd, entry_ts_ms, ath_multiple,
+                    time_to_2x_s, time_to_3x_s, time_to_4x_s,
+                    max_drawdown_pct, hit_2x, candles_seen, tp_sl_exit_reason, tp_sl_ret, details_json
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, outcome_rows)
 
-        # Insert metrics
-        metric_pairs = [
+            # Insert metrics
+            metric_pairs = [
             ("alerts_total", summary.get("alerts_total")),
             ("alerts_ok", summary.get("alerts_ok")),
             ("alerts_missing", summary.get("alerts_missing")),
@@ -600,24 +600,22 @@ def store_tp_sl_run(
             ("tp_sl_expectancy_pct", summary.get("tp_sl_expectancy_pct")),
         ]
 
-        metric_rows = []
-        for name, val in metric_pairs:
-            if val is None:
-                continue
-            fv = float(val)
-            if math.isnan(fv) or math.isinf(fv):
-                continue
-            metric_rows.append((run_id, name, fv, created_at))
+            metric_rows = []
+            for name, val in metric_pairs:
+                if val is None:
+                    continue
+                fv = float(val)
+                if math.isnan(fv) or math.isinf(fv):
+                    continue
+                metric_rows.append((run_id, name, fv, created_at))
 
-        con.executemany(
-            "INSERT INTO bt.metrics_f(run_id, metric_name, metric_value, computed_at) VALUES (?, ?, ?, ?)",
-            metric_rows,
-        )
+            con.executemany(
+                "INSERT INTO bt.metrics_f(run_id, metric_name, metric_value, computed_at) VALUES (?, ?, ?, ?)",
+                metric_rows,
+            )
 
-        con.execute("COMMIT;")
-    except Exception:
-        con.execute("ROLLBACK;")
-        raise
-    finally:
-        con.close()
+            con.execute("COMMIT;")
+        except Exception:
+            con.execute("ROLLBACK;")
+            raise
 

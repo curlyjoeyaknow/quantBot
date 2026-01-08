@@ -184,9 +184,9 @@ def main():
     
     args = parser.parse_args()
     
-    con = duckdb.connect(args.db_path)
-    
-    try:
+    # Connect to DuckDB (writer - this is the only writer process)
+    from tools.shared.duckdb_adapter import get_write_connection
+    with get_write_connection(args.db_path) as con:
         if args.operation == 'init':
             init_schema(con)
             print(json.dumps({"success": True}))
@@ -221,9 +221,6 @@ def main():
             filter_data = json.loads(args.data) if args.data else {}
             artifacts = query_artifacts(con, filter_data)
             print(json.dumps(artifacts))
-    
-    finally:
-        con.close()
 
 
 if __name__ == '__main__':

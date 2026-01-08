@@ -19,12 +19,23 @@ except ImportError:
 _connection_cache: dict[str, duckdb.DuckDBPyConnection] = {}
 
 
-def get_connection(db_path: str) -> duckdb.DuckDBPyConnection:
-    """Get or create DuckDB connection, handling in-memory and file-based databases"""
+def get_connection(db_path: str, read_only: bool = False) -> duckdb.DuckDBPyConnection:
+    """
+    Get or create DuckDB connection, handling in-memory and file-based databases.
+    
+    Args:
+        db_path: Path to DuckDB file or ':memory:'
+        read_only: If True, open in read-only mode (prevents locks)
+    
+    Returns:
+        DuckDB connection (caller must close for file-based databases)
+    """
     # For in-memory databases, reuse connection
     if db_path == ':memory:':
         if db_path not in _connection_cache:
-            _connection_cache[db_path] = duckdb.connect(db_path)
+            con = duckdb.connect(db_path)
+            con.execute("PRAGMA busy_timeout=10000")
+            _connection_cache[db_path] = con
         return _connection_cache[db_path]
     
     # For file-based databases, create new connection each time
@@ -33,13 +44,24 @@ def get_connection(db_path: str) -> duckdb.DuckDBPyConnection:
     if db_file.exists() and db_file.stat().st_size == 0:
         db_file.unlink()  # Delete empty file
     
-    return duckdb.connect(db_path)
+    con = duckdb.connect(db_path, read_only=read_only)
+    # Set busy_timeout to handle transient locks (10 seconds)
+    # This allows connections to wait for locks to clear instead of failing immediately
+    con.execute("PRAGMA busy_timeout=10000")
+    return con
 
 
-def execute_sql(db_path: str, sql: str) -> dict:
-    """Execute SQL statement (no return value)"""
+def execute_sql(db_path: str, sql: str, read_only: bool = False) -> dict:
+    """
+    Execute SQL statement (no return value).
+    
+    Args:
+        db_path: Path to DuckDB file
+        sql: SQL statement to execute
+        read_only: If True, use read-only connection (for safety, but write operations will fail)
+    """
     try:
-        con = get_connection(db_path)
+        con = get_connection(db_path, read_only=read_only)
         con.execute(sql)
         
         # For file-based databases, commit and close
@@ -52,9 +74,14 @@ def execute_sql(db_path: str, sql: str) -> dict:
 
 
 def query_sql(db_path: str, sql: str) -> dict:
-    """Execute SQL query and return results"""
+    """
+    Execute SQL query and return results.
+    
+    Always uses read-only mode to prevent lock conflicts.
+    """
     try:
-        con = get_connection(db_path)
+        # Queries should always be read-only to prevent lock conflicts
+        con = get_connection(db_path, read_only=True)
         result = con.execute(sql)
         
         # Get column information

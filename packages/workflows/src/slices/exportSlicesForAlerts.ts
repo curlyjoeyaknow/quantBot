@@ -317,6 +317,10 @@ export async function exportSlicesForAlerts(
       // Use the first manifest as primary (or merge if needed)
       const manifest = chunkManifests[0];
 
+      if (!manifest) {
+        throw new Error('Missing manifest for slice export');
+      }
+
       // Track success (aggregate across chunks if chunking was used)
       successfulExports++;
       const totalChunkFiles = chunkManifests.reduce((sum, m) => sum + m.parquetFiles.length, 0);

@@ -7,7 +7,13 @@ import { join, extname } from 'path';
 import { upsertRunMetadata } from '@quantbot/backtest';
 import { logger } from '@quantbot/utils';
 
-type BacktestRunMode = 'path-only' | 'exit-optimizer' | 'exit-stack' | 'policy' | 'optimize' | 'baseline';
+type BacktestRunMode =
+  | 'path-only'
+  | 'exit-optimizer'
+  | 'exit-stack'
+  | 'policy'
+  | 'optimize'
+  | 'baseline';
 const allowedRunModes = new Set<BacktestRunMode>([
   'path-only',
   'exit-optimizer',
@@ -40,10 +46,7 @@ function extractRunId(filename: string): string | null {
 /**
  * Determine run mode from filename or content
  */
-function determineRunMode(
-  filename: string,
-  _content?: unknown
-): BacktestRunMode {
+function determineRunMode(filename: string, _content?: unknown): BacktestRunMode {
   if (filename.includes('random_search')) return 'optimize';
   if (filename.includes('optimizer')) return 'optimize';
   if (filename.includes('baseline')) return 'baseline';
@@ -86,7 +89,9 @@ async function parseResultFile(filePath: string): Promise<{
     // Extract metrics from results/summary
     const totalCalls = summary.alerts_total || summary.alerts_ok || results.length || undefined;
     const totalTrades =
-      summary.trades_total || results.filter((r: { trades?: unknown }) => r.trades).length || undefined;
+      summary.trades_total ||
+      results.filter((r: { trades?: unknown }) => r.trades).length ||
+      undefined;
     const totalPnlUsd = summary.total_pnl_usd || summary.pnl_quote || undefined;
     const avgReturnBps =
       summary.avg_return_bps || summary.median_return_bps

@@ -22,18 +22,21 @@ Goals:
 ### Layer Responsibilities
 
 **Workflows = Orchestration (Application Layer)**
+
 - Use cases that glue together storage + acquisition + simulation
 - Coordinate I/O operations
 - Handle error collection and aggregation
 - Return structured, serializable results
 
 **Simulation = Pure Compute**
+
 - No I/O, no clocks, no global config
 - Given inputs → deterministic outputs
 - Testable without I/O chaos contaminating results
 - Critical for sniping/latency-sensitive strategies
 
 **CLI/TUI = Adapters**
+
 - Translate human intent → spec
 - Translate result → presentation
 - No orchestration logic
@@ -307,15 +310,66 @@ export function createMockWorkflowContext(overrides?: Partial<WorkflowContext>):
 
 To keep the architecture enforced (not just declared), use these three mechanisms:
 
-### 1. ESLint Boundaries
+### 1. ESLint Architectural Boundaries
 
-**Forbidden imports, forbidden deps**
+> **Requirement:** Enforce clean architectural boundaries between workflows (application/orchestration), adapters/CLI, and infrastructure implementations using ESLint and dependency rules.
 
-Configure ESLint rules to enforce:
-- ❌ Workflows cannot import from `@quantbot/cli` or `@quantbot/tui`
-- ❌ Workflows cannot import implementation classes (only interfaces/types)
-- ❌ CLI handlers cannot import workflow internals (only public API)
-- ❌ Workflows cannot import storage implementations (PostgresRunRepo, ClickHouseClient, etc.)
+#### ESLint Dependency Boundaries (2026)
+
+Configure or extend your ESLint setup with these rulesets:
+
+- `@quantbot/workflows`:
+  - 🚫 **MUST NOT** import from any CLI or TUI packages  
+    → `@quantbot/cli`, `@quantbot/tui` are forbidden import sources.
+  - 🚫 **MUST NOT** import from any infrastructure implementation classes or files  
+    → Only depend on *interfaces* (ports), never concrete types (e.g., `PostgresRunRepo`, `ClickHouseClient`, etc).
+  - 🚫 **MUST NOT** depend on test helpers or CLI-specific internals.
+
+- CLI/Adapter layers:
+  - 🚫 **MUST NOT** import private/internal workflow utilities  
+    → Only import stable/public workflow entry points.
+
+- All layers:
+  - 🟩 **SHOULD** enforce import restriction patterns in ESLint configuration, e.g.:
+    ```json
+    {
+      "no-restricted-imports": [
+        "error",
+        {
+          "patterns": [
+            {
+              "group": [
+                "**/src/implementation/**",
+                "@quantbot/cli",
+                "@quantbot/tui",
+                "**/src/postgres/**",
+                "**/src/clickhouse/**"
+              ],
+              "message": "Do not import adapters, CLI, or infrastructure implementation types in workflows."
+            }
+          ]
+        }
+      ]
+    }
+    ```
+  - 🟩 **SHOULD** use `eslint-plugin-boundaries` or equivalent for package-level protections.
+
+#### Recap: Forbidden Imports
+
+| Layer            | Forbidden Import                     | Guidance                                                         |
+|------------------|-------------------------------------|------------------------------------------------------------------|
+| workflows        | `@quantbot/cli`, `@quantbot/tui`    | Use only interfaces, not CLI/adapters                            |
+| workflows        | infra implementations, e.g.         | Use context-provided interfaces; never concrete classes          |
+|                  | `PostgresRunRepo`, `ClickHouseClient` |                                                                  |
+| cli-handlers     | workflow internals (private/utils)  | Import only public API of workflows                              |
+
+**Why:**  
+These rules prevent architectural drift, ensure workflows remain adapter- and infrastructure-agnostic, and keep CLI/adapters free from orchestration logic.
+
+**Reference:**  
+[eslint-plugin-boundaries](https://github.com/javierbrea/eslint-plugin-boundaries)  
+[Node.js import restrictions (ESLint docs)](https://eslint.org/docs/latest/rules/no-restricted-imports)
+
 
 ### 2. Unit Test Harness for WorkflowContext
 

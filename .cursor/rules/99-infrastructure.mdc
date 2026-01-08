@@ -42,10 +42,12 @@ The `@clickhouse/client` package uses HTTP, so code must read `CLICKHOUSE_HTTP_P
 ## DuckDB
 
 **Paths**:
+
 - Project: `/home/memez/backups/quantBot-abstraction-backtest-only/data/alerts.duckdb`
 - Global: `/home/memez/data/alerts.duckdb`
 
 Key tables:
+
 - `caller_links_d` - Preferred alerts/calls table
 - `user_calls_d` - Legacy alerts table
 

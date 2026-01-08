@@ -6,7 +6,29 @@ export type DuckDbConnection = {
   all<T = any>(sql: string, params?: any[]): Promise<T[]>;
 };
 
-export async function openDuckDb(dbPath: string): Promise<DuckDbConnection> {
+export interface OpenDuckDbOptions {
+  /**
+   * If true, open in read-only mode (prevents locks).
+   * Note: Node.js DuckDB bindings may not support read-only mode directly.
+   * For true read-only access, prefer using Python adapter via DuckDBClient.
+   */
+  readOnly?: boolean;
+}
+
+/**
+ * Open a DuckDB connection with busy_timeout configured.
+ *
+ * Rule: Only ONE writer process should open the DB in write mode.
+ * Everyone else should use READ_ONLY connections or query Parquet.
+ *
+ * @param dbPath - Path to DuckDB file
+ * @param options - Connection options
+ * @returns DuckDB connection with busy_timeout set to 10s
+ */
+export async function openDuckDb(
+  dbPath: string,
+  _options?: OpenDuckDbOptions
+): Promise<DuckDbConnection> {
   const duckdbModule = await import('duckdb');
   // Handle both ESM default export and CommonJS module.exports
   const duckdb = duckdbModule.default || duckdbModule;
@@ -14,6 +36,15 @@ export async function openDuckDb(dbPath: string): Promise<DuckDbConnection> {
 
   const db = new duckdb.Database(dbPath);
   const conn = db.connect();
+
+  // Set busy_timeout to handle transient locks (10 seconds)
+  // This allows connections to wait for locks to clear instead of failing immediately
+  await new Promise<void>((resolve, reject) => {
+    conn.run('PRAGMA busy_timeout=10000', (err: any) => {
+      if (err) reject(err);
+      else resolve();
+    });
+  });
 
   const run = (sql: string, params?: any[]) =>
     new Promise<void>((resolve, reject) => {

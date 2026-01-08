@@ -1,0 +1,413 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Lab UI — Dashboard</title>
+  <link rel="stylesheet" href="/public/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    .score-positive { color: #10b981; font-weight: 600; }
+    .score-negative { color: #ef4444; font-weight: 600; }
+    
+    .dashboard-hero {
+      background: linear-gradient(135deg, rgba(122, 162, 255, 0.15) 0%, rgba(16, 185, 129, 0.1) 100%);
+      border: 1px solid var(--border, #1d2a44);
+      border-radius: 16px;
+      padding: 2rem;
+      margin-bottom: 1.5rem;
+      text-align: center;
+    }
+    
+    .dashboard-hero h1 {
+      margin: 0 0 0.5rem 0;
+      font-size: 2rem;
+      background: linear-gradient(135deg, #7aa2ff, #10b981);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    
+    .dashboard-hero .subtitle {
+      color: var(--muted, #93a4c7);
+      margin: 0;
+    }
+    
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    
+    .stat-card {
+      background: var(--panel, #101826);
+      border: 1px solid var(--border, #1d2a44);
+      border-radius: 12px;
+      padding: 1.25rem;
+      text-align: center;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    
+    .stat-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+    }
+    
+    .stat-card .value {
+      font-size: 2rem;
+      font-weight: 700;
+      font-family: 'JetBrains Mono', ui-monospace, monospace;
+      line-height: 1.2;
+    }
+    
+    .stat-card .label {
+      font-size: 0.75rem;
+      color: var(--muted, #93a4c7);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-top: 0.25rem;
+    }
+    
+    .stat-card.accent {
+      background: linear-gradient(135deg, rgba(122, 162, 255, 0.1) 0%, rgba(16, 185, 129, 0.1) 100%);
+      border-color: rgba(122, 162, 255, 0.3);
+    }
+    
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    
+    @media (max-width: 800px) {
+      .grid-2 { grid-template-columns: 1fr; }
+    }
+    
+    .section-card {
+      background: var(--panel, #101826);
+      border: 1px solid var(--border, #1d2a44);
+      border-radius: 12px;
+      padding: 1.25rem;
+    }
+    
+    .section-card h2 {
+      margin: 0 0 1rem 0;
+      font-size: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .chart-container {
+      position: relative;
+      height: 220px;
+    }
+    
+    .mini-table {
+      width: 100%;
+      font-size: 0.85rem;
+    }
+    
+    .mini-table th, .mini-table td {
+      padding: 8px 6px;
+    }
+    
+    .mini-table tr:hover {
+      background: rgba(122, 162, 255, 0.05);
+    }
+    
+    .runs-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    
+    .runs-list li {
+      padding: 0.75rem 0;
+      border-bottom: 1px solid var(--border, #1d2a44);
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    
+    .runs-list li:last-child { border-bottom: none; }
+    
+    .run-name {
+      flex: 1;
+      font-weight: 500;
+    }
+    
+    .run-meta {
+      font-size: 0.8rem;
+      color: var(--muted, #93a4c7);
+    }
+    
+    .run-alerts {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      padding: 2px 8px;
+      background: rgba(122, 162, 255, 0.1);
+      border-radius: 4px;
+      color: var(--accent, #7aa2ff);
+    }
+    
+    .discipline-badge {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-weight: 600;
+    }
+    .discipline-badge.yes { background: rgba(16, 185, 129, 0.2); color: #10b981; }
+    .discipline-badge.no { background: rgba(100, 116, 139, 0.2); color: #64748b; }
+    
+    .quick-actions {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-top: 1rem;
+    }
+    
+    .action-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      background: rgba(122, 162, 255, 0.1);
+      border: 1px solid rgba(122, 162, 255, 0.2);
+      border-radius: 8px;
+      color: var(--text, #dbe7ff);
+      text-decoration: none;
+      font-size: 0.85rem;
+      transition: background 0.2s;
+    }
+    
+    .action-btn:hover {
+      background: rgba(122, 162, 255, 0.2);
+    }
+    
+    .loading {
+      text-align: center;
+      padding: 3rem;
+      color: var(--muted, #93a4c7);
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <a href="/dashboard" class="active">Dashboard</a>
+    <a href="/strategies">Strategies</a>
+    <a href="/runs">Runs</a>
+    <a href="/leaderboard">Leaderboard</a>
+    <a href="/scored">Scored</a>
+    <a href="/truth">Truth</a>
+    <a href="/policies">Policies</a>
+  </nav>
+
+  <main>
+    <div id="loading" class="loading">Loading dashboard...</div>
+
+    <div id="content" style="display: none;">
+      <div class="dashboard-hero">
+        <h1>📊 QuantBot Lab</h1>
+        <p class="subtitle">Risk-Adjusted Caller Scoring & Analysis</p>
+        <div class="quick-actions">
+          <a href="/scored" class="action-btn">📈 View Scored Leaderboard</a>
+          <a href="/runs" class="action-btn">🔄 Manage Runs</a>
+          <a href="/strategies" class="action-btn">⚙️ Build Strategy</a>
+        </div>
+      </div>
+
+      <div id="runBanner" class="card" style="display: none;">
+        <strong>Latest Run:</strong> <span id="runName">—</span>
+        <span class="run-meta" id="runMeta">—</span>
+      </div>
+
+      <section class="stats-row">
+        <div class="stat-card accent">
+          <div class="value" id="totalCallers">—</div>
+          <div class="label">Total Callers</div>
+        </div>
+        <div class="stat-card">
+          <div class="value score-positive" id="positiveScores">—</div>
+          <div class="label">Positive Scores</div>
+        </div>
+        <div class="stat-card">
+          <div class="value" id="disciplineCount">—</div>
+          <div class="label">Discipline Bonus</div>
+        </div>
+        <div class="stat-card">
+          <div class="value" id="avgScore">—</div>
+          <div class="label">Avg Score</div>
+        </div>
+        <div class="stat-card">
+          <div class="value score-positive" id="maxScore">—</div>
+          <div class="label">Best Score</div>
+        </div>
+        <div class="stat-card">
+          <div class="value" id="avgHit2x">—</div>
+          <div class="label">Avg Hit 2x %</div>
+        </div>
+      </section>
+
+      <div class="grid-2">
+        <section class="section-card">
+          <h2>🏆 Top 5 Callers by Score</h2>
+          <table class="mini-table" id="top5Table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Caller</th>
+                <th>Score</th>
+                <th>ATH</th>
+                <th>Hit2x%</th>
+                <th>Disc</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </section>
+
+        <section class="section-card">
+          <h2>📊 Score Distribution</h2>
+          <div class="chart-container">
+            <canvas id="scoreChart"></canvas>
+          </div>
+        </section>
+      </div>
+
+      <section class="section-card">
+        <h2>🕐 Recent Runs</h2>
+        <ul class="runs-list" id="runsList"></ul>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    const $ = id => document.getElementById(id);
+    let charts = {};
+
+    const colors = {
+      green: 'rgba(16, 185, 129, 0.8)',
+      red: 'rgba(239, 68, 68, 0.8)',
+      blue: 'rgba(59, 130, 246, 0.8)',
+    };
+
+    async function loadDashboard() {
+      try {
+        const res = await fetch('/api/dashboard-summary');
+        const data = await res.json();
+
+        if (data.error) {
+          $('loading').textContent = 'Error: ' + data.error;
+          return;
+        }
+
+        renderDashboard(data);
+        $('loading').style.display = 'none';
+        $('content').style.display = 'block';
+      } catch (e) {
+        $('loading').textContent = 'Error loading dashboard: ' + e.message;
+      }
+    }
+
+    function renderDashboard(data) {
+      const { latestRun, summary, top5, recentRuns, scoreDistribution } = data;
+
+      // Run banner
+      if (latestRun) {
+        $('runBanner').style.display = 'block';
+        $('runName').textContent = latestRun.run_name || latestRun.run_id.slice(0, 12);
+        const date = latestRun.created_at ? new Date(latestRun.created_at).toLocaleDateString() : '';
+        $('runMeta').textContent = `(${latestRun.alerts_ok || 0} alerts, ${date})`;
+      }
+
+      // Stats
+      if (summary) {
+        $('totalCallers').textContent = summary.total_callers || 0;
+        $('positiveScores').textContent = summary.positive_scores || 0;
+        $('disciplineCount').textContent = summary.discipline_count || 0;
+        $('avgScore').textContent = fmt(summary.avg_score, 3);
+        $('avgScore').className = 'value ' + (summary.avg_score > 0 ? 'score-positive' : 'score-negative');
+        $('maxScore').textContent = fmt(summary.max_score, 3);
+        $('avgHit2x').textContent = fmt(summary.avg_hit2x_pct, 1) + '%';
+      }
+
+      // Top 5 table
+      const tbody = $('top5Table').querySelector('tbody');
+      tbody.innerHTML = '';
+      top5.forEach((r, i) => {
+        const tr = document.createElement('tr');
+        const runId = latestRun?.run_id || '';
+        const scoreClass = r.score_v2 > 0 ? 'score-positive' : 'score-negative';
+        const discBadge = r.has_discipline 
+          ? '<span class="discipline-badge yes">✓</span>'
+          : '<span class="discipline-badge no">—</span>';
+        
+        tr.innerHTML = `
+          <td>${i + 1}</td>
+          <td><a href="/caller?run=${runId}&caller=${encodeURIComponent(r.caller)}" style="color: var(--accent);">${r.caller?.slice(0, 20) || '—'}</a></td>
+          <td class="${scoreClass}">${fmt(r.score_v2, 3)}</td>
+          <td>${fmt(r.median_ath, 2)}x</td>
+          <td>${fmt(r.hit2x_pct, 1)}%</td>
+          <td>${discBadge}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+
+      // Recent runs
+      const runsList = $('runsList');
+      runsList.innerHTML = '';
+      recentRuns.forEach(r => {
+        const li = document.createElement('li');
+        const date = r.created_at ? new Date(r.created_at).toLocaleDateString() : '';
+        li.innerHTML = `
+          <span class="run-name">${r.run_name || r.run_id.slice(0, 12)}</span>
+          <span class="run-meta">${date}</span>
+          <span class="run-alerts">${r.alerts_ok || 0} alerts</span>
+          <a href="/scored?run=${r.run_id}" class="action-btn" style="padding: 4px 8px; font-size: 0.75rem;">View →</a>
+        `;
+        runsList.appendChild(li);
+      });
+
+      // Score distribution chart
+      if (scoreDistribution?.length) {
+        if (charts.score) charts.score.destroy();
+        
+        charts.score = new Chart($('scoreChart'), {
+          type: 'bar',
+          data: {
+            labels: scoreDistribution.map(d => d.bucket),
+            datasets: [{
+              data: scoreDistribution.map(d => d.count),
+              backgroundColor: scoreDistribution.map(d => 
+                d.bucket.includes('>') || d.bucket.includes('0.5') || d.bucket.includes('1') && !d.bucket.includes('-')
+                  ? colors.green : colors.red
+              ),
+            }],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+              x: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { color: 'rgba(100, 116, 139, 0.1)' } },
+              y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(100, 116, 139, 0.1)' } },
+            },
+          },
+        });
+      }
+    }
+
+    function fmt(v, decimals) {
+      if (v == null) return '—';
+      return Number(v).toFixed(decimals);
+    }
+
+    // Init
+    loadDashboard();
+  </script>
+</body>
+</html>
+
