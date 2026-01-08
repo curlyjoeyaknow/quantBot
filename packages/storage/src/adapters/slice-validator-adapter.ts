@@ -12,15 +12,15 @@ import { fileURLToPath } from 'url';
 import AjvClass from 'ajv';
 import addFormats from 'ajv-formats';
 import { logger } from '@quantbot/utils';
+import { findWorkspaceRoot } from '@quantbot/infra/utils';
 import { DuckDBClient } from '../duckdb/duckdb-client.js';
 import type { SliceValidator, SliceManifestV1 } from '@quantbot/core';
 
 // Load manifest schema from workflows package
-// Using import.meta.url to get current file location, then navigate to workspace root
+// Use findWorkspaceRoot to correctly resolve workspace root regardless of dist/src structure
 const __filename = fileURLToPath(import.meta.url);
-// From packages/storage/src/adapters/slice-validator-adapter.ts
-// Go up to workspace root: ../../../
-const workspaceRoot = join(__filename, '..', '..', '..', '..', '..');
+const __dirname = join(__filename, '..');
+const workspaceRoot = findWorkspaceRoot(__dirname);
 const manifestSchemaPath = join(
   workspaceRoot,
   'packages',
