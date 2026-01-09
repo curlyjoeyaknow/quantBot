@@ -301,3 +301,8 @@ export { calculateTradeFee } from '@quantbot/simulation';
 
 // Legacy types
 export type { LegacySimulationEvent } from '@quantbot/simulation';
+
+// =============================================================================
+// Structured Artifacts System
+// =============================================================================
+export * from './artifacts/index.js';

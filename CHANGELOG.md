@@ -6,6 +6,20 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Structured Artifacts System** - Research-lab architecture for backtest runs
+  - Multiple Parquets per run by artifact type (alerts, paths, trades, summary, frontier, errors)
+  - JSON manifests (`run.json`) with metadata, provenance, and artifact inventory
+  - Month-based partitioning (`runs/YYYY-MM/run_id=<uuid>/`)
+  - Completion markers (`_SUCCESS`) to prevent incomplete runs from polluting catalog
+  - DuckDB catalog for cross-run queries (`backtest_runs_catalog`, `backtest_artifacts_catalog`)
+  - Daemon pattern for gradual catalog registration (non-blocking)
+  - Git provenance capture (commit, branch, dirty flag)
+  - Integrated into `runPathOnly` and `runPolicyBacktest` flows
+  - CLI commands: `catalog-sync`, `catalog-query`
+  - Location: `packages/backtest/src/artifacts/`, `packages/cli/src/handlers/backtest/catalog-*.ts`
+  - Documentation: `docs/architecture/structured-artifacts.md`, `docs/guides/structured-artifacts-quickstart.md`
+  - ~2600 lines of code + documentation across 9 new files, 3 modified files
+
 - **Wiring Improvements & Verification** - Comprehensive wiring pattern implementation and verification
   - Verified `StrategiesRepository` through `CommandContext` in list-strategies command
   - Created verification tests: `command-context-wiring.test.ts` (5 tests passing)

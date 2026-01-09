@@ -32,6 +32,8 @@ import { materialiseSlice } from './slice.js';
 import { loadCandlesFromSlice } from './runBacktest.js';
 import { logger, TimingContext, type LogContext } from '@quantbot/utils';
 import { DateTime } from 'luxon';
+import { createRunDirectory, getGitProvenance } from './artifacts/index.js';
+import type { AlertArtifact, TradeArtifact, SummaryArtifact } from './artifacts/index.js';
 
 // =============================================================================
 // Types
@@ -116,6 +118,28 @@ export async function runPolicyBacktest(
     policyId: req.policyId,
     policyKind: req.policy.kind,
     calls: req.calls.length,
+  });
+
+  // Initialize structured artifact directory
+  const runDir = await createRunDirectory(runId, 'policy');
+  
+  // Get git provenance
+  const gitInfo = await getGitProvenance();
+  runDir.updateManifest({
+    git_commit: gitInfo.commit,
+    git_branch: gitInfo.branch,
+    git_dirty: gitInfo.dirty,
+    dataset: {
+      from: req.from?.toISOString(),
+      to: req.to?.toISOString(),
+      interval: req.interval,
+      calls_count: req.calls.length,
+    },
+    parameters: {
+      policy_id: req.policyId,
+      policy_kind: req.policy.kind,
+      execution_model: req.executionModel || 'simple',
+    },
   });
 
   // Step 1: Plan (reuse existing)
@@ -266,40 +290,49 @@ export async function runPolicyBacktest(
     stopOuts: stopOutCount,
   });
 
-  // Step 6: Write Parquet directly and submit to bus (no DuckDB intermediate)
+  // Step 6: Write structured artifacts
   await timing.phase('store', async () => {
-    const artifactsDir = join(process.cwd(), 'artifacts', 'backtest', runId);
-    await mkdir(artifactsDir, { recursive: true });
+    try {
+      // Write alerts (inputs)
+      const alertArtifacts: AlertArtifact[] = req.calls.map((call) => ({
+        call_id: call.id,
+        mint: call.mint,
+        caller_name: call.caller,
+        chain: 'solana',
+        alert_ts_ms: call.createdAt.toMillis(),
+        created_at: call.createdAt.toISO(),
+      }));
+      await runDir.writeArtifact('alerts', alertArtifacts as unknown as Array<Record<string, unknown>>);
 
-    if (policyResults.length > 0) {
-      try {
-        const { writeBacktestResults } = await import('./bus-integration.js');
-        await writeBacktestResults({
-          runId,
-          artifactsDir,
-          backtestType: 'policy',
-          data: policyResults as unknown as Array<Record<string, unknown>>,
-          tableName: 'backtest_policy_results',
-          metadata: {
-            policyId: req.policyId,
-            interval: req.interval,
-            callsProcessed: coverage.eligible.length,
-            rowsWritten: policyResults.length,
-            callsExcluded: coverage.excluded.length,
-            stopOutCount,
-          },
-        });
-        logger.info('Policy results written to Parquet and submitted to bus', {
-          rows: policyResults.length,
-          artifactsDir,
-        });
-      } catch (error) {
-        // Don't fail if bus submission fails
-        logger.warn('Failed to write policy backtest results to bus', {
-          runId,
-          error: error instanceof Error ? error.message : String(error),
-        });
+      // Write trades (policy simulation)
+      if (policyResults.length > 0) {
+        const tradeArtifacts: TradeArtifact[] = policyResults.map((row) => ({
+          run_id: row.run_id,
+          policy_id: row.policy_id,
+          call_id: row.call_id,
+          entry_ts_ms: row.entry_ts_ms,
+          entry_px: row.entry_px,
+          exit_ts_ms: row.exit_ts_ms,
+          exit_px: row.exit_px,
+          exit_reason: row.exit_reason,
+          realized_return_bps: row.realized_return_bps,
+          stop_out: row.stop_out,
+          max_adverse_excursion_bps: row.max_adverse_excursion_bps,
+          time_exposed_ms: row.time_exposed_ms,
+          tail_capture: row.tail_capture,
+        }));
+        await runDir.writeArtifact('trades', tradeArtifacts as unknown as Array<Record<string, unknown>>);
       }
+
+      logger.info('Artifacts written', {
+        runId,
+        runDir: runDir.getRunDir(),
+        alerts: alertArtifacts.length,
+        trades: policyResults.length,
+      });
+    } catch (error) {
+      await runDir.markFailure(error as Error);
+      throw error;
     }
   });
 
@@ -335,6 +368,34 @@ export async function runPolicyBacktest(
     };
   });
 
+  // Step 8: Write summary artifact
+  const summaryArtifact: SummaryArtifact = {
+    run_id: runId,
+    calls_processed: coverage.eligible.length,
+    calls_excluded: coverage.excluded.length,
+    trades_count: policyResults.length,
+    avg_return_bps: aggregateMetrics.avgReturnBps,
+    median_return_bps: aggregateMetrics.medianReturnBps,
+    stop_out_rate: aggregateMetrics.stopOutRate,
+    avg_max_adverse_excursion_bps: aggregateMetrics.avgMaxAdverseExcursionBps,
+    avg_time_exposed_ms: aggregateMetrics.avgTimeExposedMs,
+    avg_tail_capture: aggregateMetrics.avgTailCapture,
+    median_tail_capture: null, // TODO: calculate if needed
+  };
+  await runDir.writeArtifact('summary', [summaryArtifact] as unknown as Array<Record<string, unknown>>);
+
+  // Update timing in manifest and mark success
+  runDir.updateManifest({
+    timing: {
+      plan_ms: timing.phases.plan?.durationMs,
+      coverage_ms: timing.phases.coverage?.durationMs,
+      slice_ms: timing.phases.slice?.durationMs,
+      execution_ms: (timing.phases.load?.durationMs ?? 0) + (timing.phases.execute?.durationMs ?? 0),
+      total_ms: timing.totalMs,
+    },
+  });
+  await runDir.markSuccess();
+
   timing.end();
 
   const summary: PolicyBacktestSummary = {
@@ -357,4 +418,3 @@ export async function runPolicyBacktest(
 // =============================================================================
 // Helpers
 // =============================================================================
-

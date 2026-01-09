@@ -30,7 +30,8 @@ import { materialiseSlice } from './slice.js';
 import { loadCandlesFromSlice } from './runBacktest.js';
 import { computePathMetrics } from './metrics/path-metrics.js';
 import { logger, TimingContext, type LogContext } from '@quantbot/utils';
-
+import { createRunDirectory, getGitProvenance } from './artifacts/index.js';
+import type { AlertArtifact, PathArtifact } from './artifacts/index.js';
 
 /**
  * Run path-only backtest
@@ -59,6 +60,23 @@ export async function runPathOnly(req: PathOnlyRequest): Promise<PathOnlySummary
     runId,
     calls: req.calls.length,
     interval: req.interval,
+  });
+
+  // Initialize structured artifact directory
+  const runDir = await createRunDirectory(runId, 'path-only');
+  
+  // Get git provenance
+  const gitInfo = await getGitProvenance();
+  runDir.updateManifest({
+    git_commit: gitInfo.commit,
+    git_branch: gitInfo.branch,
+    git_dirty: gitInfo.dirty,
+    dataset: {
+      from: req.from?.toISOString(),
+      to: req.to?.toISOString(),
+      interval: req.interval,
+      calls_count: req.calls.length,
+    },
   });
 
   // Step 1: Plan (reuse existing)
@@ -203,38 +221,68 @@ export async function runPathOnly(req: PathOnlyRequest): Promise<PathOnlySummary
     eligible: coverage.eligible.length,
   });
 
-  // Step 6: Write Parquet directly and submit to bus (no DuckDB intermediate)
+  // Step 6: Write structured artifacts
   await timing.phase('store', async () => {
-    const artifactsDir = join(process.cwd(), 'artifacts', 'backtest', runId);
-    await mkdir(artifactsDir, { recursive: true });
+    try {
+      // Write alerts (inputs)
+      const alertArtifacts: AlertArtifact[] = req.calls.map((call) => ({
+        call_id: call.id,
+        mint: call.mint,
+        caller_name: call.caller,
+        chain: 'solana', // TODO: derive from call data
+        alert_ts_ms: call.createdAt.toMillis(),
+        created_at: call.createdAt.toISO(),
+      }));
+      await runDir.writeArtifact('alerts', alertArtifacts as unknown as Array<Record<string, unknown>>);
 
-    if (pathMetricsRows.length > 0) {
-      try {
-        const { writeBacktestResults } = await import('./bus-integration.js');
-        await writeBacktestResults({
-          runId,
-          artifactsDir,
-          backtestType: 'path-only',
-          data: pathMetricsRows as unknown as Array<Record<string, unknown>>,
-          tableName: 'backtest_call_path_metrics',
-          metadata: {
-            interval: req.interval,
-            callsProcessed: coverage.eligible.length,
-            rowsWritten: pathMetricsRows.length,
-            callsExcluded: coverage.excluded.length,
-          },
-        });
-        logger.info('Path metrics written to Parquet and submitted to bus', {
-          rows: pathMetricsRows.length,
-          artifactsDir,
-        });
-      } catch (error) {
-        // Don't fail if bus submission fails
-        logger.warn('Failed to write path-only results to bus', {
-          runId,
-          error: error instanceof Error ? error.message : String(error),
-        });
+      // Write paths (truth layer)
+      if (pathMetricsRows.length > 0) {
+        const pathArtifacts: PathArtifact[] = pathMetricsRows.map((row) => ({
+          run_id: row.run_id,
+          call_id: row.call_id,
+          caller_name: row.caller_name,
+          mint: row.mint,
+          chain: row.chain,
+          interval: row.interval,
+          alert_ts_ms: row.alert_ts_ms,
+          p0: row.p0,
+          hit_2x: row.hit_2x,
+          t_2x_ms: row.t_2x_ms,
+          hit_3x: row.hit_3x,
+          t_3x_ms: row.t_3x_ms,
+          hit_4x: row.hit_4x,
+          t_4x_ms: row.t_4x_ms,
+          dd_bps: row.dd_bps,
+          dd_to_2x_bps: row.dd_to_2x_bps,
+          alert_to_activity_ms: row.alert_to_activity_ms,
+          peak_multiple: row.peak_multiple,
+        }));
+        await runDir.writeArtifact('paths', pathArtifacts as unknown as Array<Record<string, unknown>>);
       }
+
+      // Update timing in manifest
+      runDir.updateManifest({
+        timing: {
+          plan_ms: timing.phases.plan?.durationMs,
+          coverage_ms: timing.phases.coverage?.durationMs,
+          slice_ms: timing.phases.slice?.durationMs,
+          execution_ms: (timing.phases.load?.durationMs ?? 0) + (timing.phases.compute?.durationMs ?? 0),
+          total_ms: timing.totalMs,
+        },
+      });
+
+      // Mark as successful
+      await runDir.markSuccess();
+
+      logger.info('Artifacts written', {
+        runId,
+        runDir: runDir.getRunDir(),
+        alerts: alertArtifacts.length,
+        paths: pathMetricsRows.length,
+      });
+    } catch (error) {
+      await runDir.markFailure(error as Error);
+      throw error;
     }
   });
 
