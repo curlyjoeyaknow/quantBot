@@ -63,6 +63,7 @@ export function getPostgresConfig(): PostgresConfig {
 export function getClickHouseConfig(): ClickHouseConfig {
   const {
     CLICKHOUSE_HOST,
+    CLICKHOUSE_HTTP_PORT,
     CLICKHOUSE_PORT,
     CLICKHOUSE_USER,
     CLICKHOUSE_PASSWORD,
@@ -71,7 +72,12 @@ export function getClickHouseConfig(): ClickHouseConfig {
 
   return {
     host: CLICKHOUSE_HOST || 'localhost',
-    port: CLICKHOUSE_PORT ? Number(CLICKHOUSE_PORT) : 8123,
+    // Prefer CLICKHOUSE_HTTP_PORT (explicit HTTP) over CLICKHOUSE_PORT (may be native TCP)
+    port: CLICKHOUSE_HTTP_PORT
+      ? Number(CLICKHOUSE_HTTP_PORT)
+      : CLICKHOUSE_PORT
+        ? Number(CLICKHOUSE_PORT)
+        : 8123,
     user: CLICKHOUSE_USER || 'default',
     password: CLICKHOUSE_PASSWORD || '',
     database: CLICKHOUSE_DATABASE || 'quantbot',

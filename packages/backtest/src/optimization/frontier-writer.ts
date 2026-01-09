@@ -55,7 +55,7 @@ export async function writePolicyFrontier(
 
 /**
  * Write V1 baseline optimization frontier to artifacts
- * 
+ *
  * TODO: Implement once V1Baseline result structure is finalized
  */
 export async function writeV1BaselineFrontier(
@@ -70,7 +70,7 @@ export async function writeV1BaselineFrontier(
 
 /**
  * Write per-caller V1 baseline frontiers to artifacts
- * 
+ *
  * TODO: Implement once V1Baseline result structure is finalized
  */
 export async function writeV1BaselinePerCallerFrontiers(
