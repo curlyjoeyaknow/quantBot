@@ -14,6 +14,7 @@ import { promises as fs } from 'fs';
 import { join } from 'path';
 import { DuckDBClient } from '@quantbot/storage';
 import { logger } from '@quantbot/utils';
+import { submitArtifact } from '@quantbot/infra/utils';
 import type { SimulationEvent, FillEvent, PositionSnapshot, SimulationState } from './types.js';
 
 export interface WriteArtifactsOptions {
@@ -66,6 +67,90 @@ export class SimulationArtifactWriter {
       events: events.length,
       positions: positions.length,
     });
+
+    // Submit artifacts to bus (Phase 2: Bus migration)
+    // This allows the daemon to catalog and manage these artifacts
+    try {
+      const busResults = await Promise.allSettled([
+        submitArtifact({
+          runId,
+          producer: 'simulation',
+          kind: 'fills',
+          artifactId: 'fills',
+          parquetPath: fillsPath,
+          schemaHint: 'simulation.fills',
+          rows: fills.length,
+          meta: {
+            presetName,
+            totalFills: fills.length,
+            outputDir,
+          },
+        }),
+        submitArtifact({
+          runId,
+          producer: 'simulation',
+          kind: 'positions',
+          artifactId: 'positions',
+          parquetPath: positionsPath,
+          schemaHint: 'simulation.positions',
+          rows: positions.length,
+          meta: {
+            presetName,
+            totalPositions: positions.length,
+            outputDir,
+          },
+        }),
+        submitArtifact({
+          runId,
+          producer: 'simulation',
+          kind: 'events',
+          artifactId: 'events',
+          parquetPath: eventsPath,
+          schemaHint: 'simulation.events',
+          rows: events.length,
+          meta: {
+            presetName,
+            totalEvents: events.length,
+            outputDir,
+          },
+        }),
+      ]);
+
+      // Log results (but don't fail if bus submission fails - artifacts are still written locally)
+      const successful = busResults.filter((r) => r.status === 'fulfilled' && r.value.success).length;
+      const failed = busResults.filter(
+        (r) => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.success)
+      ).length;
+
+      if (successful > 0) {
+        logger.info('Simulation artifacts submitted to bus', {
+          runId,
+          successful,
+          failed,
+        });
+      }
+
+      if (failed > 0) {
+        logger.warn('Some artifacts failed to submit to bus (artifacts still written locally)', {
+          runId,
+          successful,
+          failed,
+          errors: busResults
+            .filter((r) => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.success))
+            .map((r) =>
+              r.status === 'rejected'
+                ? r.reason?.message || String(r.reason)
+                : r.value.error || 'Unknown error'
+            ),
+        });
+      }
+    } catch (error) {
+      // Don't fail the entire operation if bus submission fails
+      logger.warn('Failed to submit artifacts to bus (artifacts still written locally)', {
+        runId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
 
     return {
       fillsPath,

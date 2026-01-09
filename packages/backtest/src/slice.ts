@@ -12,6 +12,7 @@ import { DateTime } from 'luxon';
 import type { BacktestPlan, CoverageResult, Slice, Interval } from './types.js';
 import { OhlcvRepository } from '@quantbot/storage';
 import { logger } from '@quantbot/utils';
+import { submitArtifact } from '@quantbot/infra/utils';
 
 /**
  * Materialise slice - extract candles for eligible calls
@@ -171,6 +172,34 @@ export async function materialiseSlice(
     calls: coverage.eligible.length,
     candles: allCandles.length,
   });
+
+  // Optionally submit to bus if we have a runId (Phase 2: Bus migration)
+  // Note: materialiseSlice generates its own runId, so bus submission is optional
+  // Future: Consider passing runId from caller if available
+  try {
+    await submitArtifact({
+      runId,
+      producer: 'backtest',
+      kind: 'slice',
+      artifactId: `slice_${interval}`,
+      parquetPath: slicePath,
+      schemaHint: 'backtest.slice',
+      rows: allCandles.length,
+      meta: {
+        interval,
+        eligibleCalls: coverage.eligible.length,
+        totalCandles: allCandles.length,
+      },
+    });
+    logger.info('Slice submitted to bus', { runId, path: slicePath });
+  } catch (error) {
+    // Don't fail if bus submission fails - slice is still written locally
+    logger.warn('Failed to submit slice to bus (slice still written locally)', {
+      runId,
+      path: slicePath,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
 
   return {
     path: slicePath,

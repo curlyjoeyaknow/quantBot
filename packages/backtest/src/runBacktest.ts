@@ -24,7 +24,6 @@ import { emitReport } from './report.js';
 import { logger } from '@quantbot/utils';
 import type { Candle } from '@quantbot/core';
 import { computePathMetrics } from './metrics/path-metrics.js';
-import { insertCallResults } from './reporting/backtest-results-duckdb.js';
 import { DateTime } from 'luxon';
 
 /**
@@ -301,117 +300,112 @@ export async function runBacktest(req: BacktestRequest): Promise<BacktestSummary
     totalEvents: allEvents.length,
   });
 
-  // Step 6: Compute path metrics and persist to DuckDB
+  // Step 6: Compute path metrics and write directly to Parquet (no DuckDB intermediate)
   const artifactsDir = join(process.cwd(), 'artifacts', 'backtest', runId);
   await mkdir(artifactsDir, { recursive: true });
 
-  const duckdbPath = join(artifactsDir, 'results.duckdb');
-  const duckdb = await import('duckdb');
-  const database = new duckdb.Database(duckdbPath);
-  const db = database.connect();
+  // Compute path metrics per call and prepare rows
+  const rows: Array<Record<string, unknown>> = [];
+  const positionUsd = req.strategy.position.notionalUsd;
 
-  try {
-    // Compute path metrics per call and prepare rows for insertion
-    const rows = [];
-    const positionUsd = req.strategy.position.notionalUsd;
+  for (const eligible of coverage.eligible) {
+    const call = callsById.get(eligible.callId);
+    if (!call) continue;
 
-    for (const eligible of coverage.eligible) {
-      const call = callsById.get(eligible.callId);
-      if (!call) continue;
+    const callId = eligible.callId;
+    const candles = candlesByCall.get(callId) || [];
 
-      const callId = eligible.callId;
-      const candles = candlesByCall.get(callId) || [];
+    if (candles.length === 0) continue;
 
-      if (candles.length === 0) continue;
+    // Anchor time: ALERT timestamp (ms)
+    const t0_ms = call.createdAt.toMillis();
 
-      // Anchor time: ALERT timestamp (ms)
-      const t0_ms = call.createdAt.toMillis();
+    // Compute path metrics
+    const path = computePathMetrics(candles, t0_ms, {
+      activity_move_pct: 0.1, // 10% move threshold for activity
+    });
 
-      // Compute path metrics
-      const path = computePathMetrics(candles, t0_ms, {
-        activity_move_pct: 0.1, // 10% move threshold for activity
-      });
+    // Get trades for this call (use first trade if multiple)
+    const trades = tradesByCallId.get(callId) || [];
 
-      // Get trades for this call (use first trade if multiple)
-      const trades = tradesByCallId.get(callId) || [];
-
-      // If no trade happened, skip (or store path metrics only - user's choice)
-      if (trades.length === 0) {
-        continue;
-      }
-
-      // Use first trade (per call)
-      const trade = trades[0];
-
-      // Calculate return and PnL
-      const return_bps = trade.pnl.netReturnPct * 100; // pct -> bps
-      const pnl_usd = (trade.pnl.netReturnPct / 100) * positionUsd;
-
-      rows.push({
-        run_id: runId,
-        call_id: callId,
-        caller_name: trade.caller,
-        mint: trade.tokenAddress,
-        interval: req.interval,
-
-        entry_ts_ms: trade.entry.tsMs,
-        exit_ts_ms: trade.exit.tsMs,
-        entry_px: trade.entry.px,
-        exit_px: trade.exit.px,
-
-        return_bps,
-        pnl_usd,
-
-        hold_ms: trade.exit.tsMs - trade.entry.tsMs,
-        exit_reason: trade.exit.reason ?? null,
-
-        // Path metrics
-        t0_ms: path.t0_ms,
-        p0: isFinite(path.p0) ? path.p0 : null,
-
-        hit_2x: path.hit_2x,
-        t_2x_ms: path.t_2x_ms,
-        hit_3x: path.hit_3x,
-        t_3x_ms: path.t_3x_ms,
-        hit_4x: path.hit_4x,
-        t_4x_ms: path.t_4x_ms,
-
-        dd_bps: path.dd_bps,
-        dd_to_2x_bps: path.dd_to_2x_bps,
-        alert_to_activity_ms: path.alert_to_activity_ms,
-        peak_multiple: path.peak_multiple,
-      });
+    // If no trade happened, skip (or store path metrics only - user's choice)
+    if (trades.length === 0) {
+      continue;
     }
 
-    // Insert results into DuckDB
-    if (rows.length > 0) {
-      // Create adapter for DuckDB Connection
-      const adapter = {
-        run(sql: string, params: any[], callback: (err: any) => void): void {
-          db.run(sql, params, callback);
+    // Use first trade (per call)
+    const trade = trades[0];
+
+    // Calculate return and PnL
+    const return_bps = trade.pnl.netReturnPct * 100; // pct -> bps
+    const pnl_usd = (trade.pnl.netReturnPct / 100) * positionUsd;
+
+    rows.push({
+      run_id: runId,
+      call_id: callId,
+      caller_name: trade.caller,
+      mint: trade.tokenAddress,
+      interval: req.interval,
+
+      entry_ts_ms: trade.entry.tsMs,
+      exit_ts_ms: trade.exit.tsMs,
+      entry_px: trade.entry.px,
+      exit_px: trade.exit.px,
+
+      return_bps,
+      pnl_usd,
+
+      hold_ms: trade.exit.tsMs - trade.entry.tsMs,
+      exit_reason: trade.exit.reason ?? null,
+
+      // Path metrics
+      t0_ms: path.t0_ms,
+      p0: isFinite(path.p0) ? path.p0 : null,
+
+      hit_2x: path.hit_2x,
+      t_2x_ms: path.t_2x_ms,
+      hit_3x: path.hit_3x,
+      t_3x_ms: path.t_3x_ms,
+      hit_4x: path.hit_4x,
+      t_4x_ms: path.t_4x_ms,
+
+      dd_bps: path.dd_bps,
+      dd_to_2x_bps: path.dd_to_2x_bps,
+      alert_to_activity_ms: path.alert_to_activity_ms,
+      peak_multiple: path.peak_multiple,
+    });
+  }
+
+  // Write directly to Parquet and submit to bus (no DuckDB intermediate)
+  if (rows.length > 0) {
+    try {
+      const { writeBacktestResults } = await import('./bus-integration.js');
+      await writeBacktestResults({
+        runId,
+        artifactsDir,
+        backtestType: 'full',
+        data: rows,
+        tableName: 'backtest_call_results',
+        metadata: {
+          interval: req.interval,
+          strategy: req.strategy.name || 'unknown',
+          callsProcessed: coverage.eligible.length,
+          rowsWritten: rows.length,
+          totalTrades: allTrades.length,
+          totalEvents: allEvents.length,
         },
-        all<T = any>(sql: string, params: any[], callback: (err: any, rows: T[]) => void): void {
-          (db.all as any)(sql, params, (err: any, rows: any) => {
-            if (err) {
-              callback(err, []);
-            } else {
-              callback(null, rows as T[]);
-            }
-          });
-        },
-        prepare(sql: string, callback: (err: any, stmt: any) => void): void {
-          db.prepare(sql, callback);
-        },
-      };
-      await insertCallResults(adapter, rows);
-      logger.info('Path metrics computed and persisted', {
+      });
+      logger.info('Backtest results written to Parquet and submitted to bus', {
         rows: rows.length,
-        duckdbPath,
+        artifactsDir,
+      });
+    } catch (error) {
+      // Don't fail if bus submission fails
+      logger.warn('Failed to write backtest results to bus', {
+        runId,
+        error: error instanceof Error ? error.message : String(error),
       });
     }
-  } finally {
-    // Connection cleanup handled by database close
-    database.close();
   }
 
   // Step 7: Report (existing JSON artifacts)

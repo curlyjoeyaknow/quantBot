@@ -29,35 +29,8 @@ import { checkCoverage } from './coverage.js';
 import { materialiseSlice } from './slice.js';
 import { loadCandlesFromSlice } from './runBacktest.js';
 import { computePathMetrics } from './metrics/path-metrics.js';
-import { insertPathMetrics, type DuckDbConnection } from './reporting/backtest-results-duckdb.js';
 import { logger, TimingContext, type LogContext } from '@quantbot/utils';
 
-/**
- * Create a DuckDB connection adapter for use with insert functions
- */
-function createDuckDbAdapter(db: DuckDbConnection): DuckDbConnection {
-  return {
-    run(sql: string, params: any[], callback: (err: any) => void): void {
-      db.run(sql, params, callback);
-    },
-    all<T = any>(sql: string, params: any[], callback: (err: any, rows: T[]) => void): void {
-      (db.all as (sql: string, params: any[], cb: (err: any, rows: any) => void) => void)(
-        sql,
-        params,
-        (err: any, rows: any) => {
-          if (err) {
-            callback(err, []);
-          } else {
-            callback(null, rows as T[]);
-          }
-        }
-      );
-    },
-    prepare(sql: string, callback: (err: any, stmt: any) => void): void {
-      db.prepare(sql, callback);
-    },
-  };
-}
 
 /**
  * Run path-only backtest
@@ -230,32 +203,38 @@ export async function runPathOnly(req: PathOnlyRequest): Promise<PathOnlySummary
     eligible: coverage.eligible.length,
   });
 
-  // Step 6: Persist to backtest_call_path_metrics table
+  // Step 6: Write Parquet directly and submit to bus (no DuckDB intermediate)
   await timing.phase('store', async () => {
     const artifactsDir = join(process.cwd(), 'artifacts', 'backtest', runId);
     await mkdir(artifactsDir, { recursive: true });
 
-    const duckdbPath = join(artifactsDir, 'results.duckdb');
-    const duckdbModule = await import('duckdb');
-    // duckdb exports Database on the default export object
-    const DuckDB = duckdbModule.default;
-    const database = new DuckDB.Database(duckdbPath);
-    const db = database.connect();
-
-    try {
-      if (pathMetricsRows.length > 0) {
-        const adapter = createDuckDbAdapter(db as DuckDbConnection);
-        await insertPathMetrics(
-          adapter as Parameters<typeof insertPathMetrics>[0],
-          pathMetricsRows
-        );
-        logger.info('Path metrics persisted', {
+    if (pathMetricsRows.length > 0) {
+      try {
+        const { writeBacktestResults } = await import('./bus-integration.js');
+        await writeBacktestResults({
+          runId,
+          artifactsDir,
+          backtestType: 'path-only',
+          data: pathMetricsRows as unknown as Array<Record<string, unknown>>,
+          tableName: 'backtest_call_path_metrics',
+          metadata: {
+            interval: req.interval,
+            callsProcessed: coverage.eligible.length,
+            rowsWritten: pathMetricsRows.length,
+            callsExcluded: coverage.excluded.length,
+          },
+        });
+        logger.info('Path metrics written to Parquet and submitted to bus', {
           rows: pathMetricsRows.length,
-          duckdbPath,
+          artifactsDir,
+        });
+      } catch (error) {
+        // Don't fail if bus submission fails
+        logger.warn('Failed to write path-only results to bus', {
+          runId,
+          error: error instanceof Error ? error.message : String(error),
         });
       }
-    } finally {
-      database.close();
     }
   });
 

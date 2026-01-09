@@ -24,9 +24,9 @@ def query_evm_tokens(db_path: str) -> dict:
         return {"error": f"Database not found: {db_path}", "tokens": []}
     
     try:
-        conn = duckdb.connect(db_path, read_only=True)
-        
-        # Check if caller_links_d exists
+        from tools.shared.duckdb_adapter import get_readonly_connection
+        with get_readonly_connection(db_path) as conn:
+            # Check if caller_links_d exists
         tables = conn.execute("SHOW TABLES").fetchall()
         table_names = [t[0] for t in tables]
         

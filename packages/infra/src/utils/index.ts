@@ -84,6 +84,14 @@ export {
   type ClickHouseEngineConfig,
 } from './python/python-engine.js';
 
+// Artifact Bus
+export {
+  submitArtifact,
+  submitArtifacts,
+  type SubmitArtifactOptions,
+  type SubmitArtifactResult,
+} from './bus/index.js';
+
 // Test helpers
 export { shouldRunDbStress, TEST_GATES } from './test-helpers/test-gating.js';
 

@@ -328,73 +328,70 @@ def main():
     args = parser.parse_args()
     
     # Connect to DuckDB
+    from tools.shared.duckdb_adapter import get_write_connection
     try:
-        con = duckdb.connect(args.duckdb)
-    except Exception as e:
-        print(f"Error connecting to DuckDB: {e}")
-        sys.exit(1)
-    
-    # Add ATH columns if needed
-    add_ath_columns(con)
-    
-    # Get alerts to process
-    print("\nQuerying alerts to process...")
-    alerts = get_alerts_to_process(con, skip_computed=args.skip_computed, limit=args.limit)
-    total = len(alerts)
-    
-    if total == 0:
-        print("No alerts to process")
-        return
-    
-    print(f"Found {total} alerts to process\n")
-    
-    # Process each alert
-    processed = 0
-    updated = 0
-    skipped = 0
-    errors = 0
-    
-    for idx, (chat_id, message_id, run_id, call_ts_ms, price_usd, mint) in enumerate(alerts, 1):
-        # Convert call_ts_ms to seconds (if it's in milliseconds)
-        if call_ts_ms > 1e12:
-            call_ts_seconds = call_ts_ms // 1000
-        else:
-            call_ts_seconds = call_ts_ms
-        
-        print(f"[{idx}/{total}] Processing {mint[:8]}... (call_ts={call_ts_seconds})")
-        
-        # Fetch candles
-        candles = fetch_candles(con, mint, call_ts_seconds, args.lookforward_hours)
-        
-        if not candles:
-            print(f"    No candles found, skipping")
-            skipped += 1
-            continue
-        
-        # Calculate metrics
-        metrics = calculate_ath_metrics(price_usd, call_ts_seconds, candles)
-        
-        # Update database
-        if update_alert_metrics(con, chat_id, message_id, run_id, metrics):
-            print(f"    Updated: ATH={metrics['ath_multiple']:.2f}x, ATL={metrics['atl_multiple']:.2f}x, Time to ATH={metrics['time_to_ath_minutes']:.1f}min")
-            updated += 1
-        else:
-            errors += 1
-        
-        processed += 1
-        
-        # Progress update every 100 records
-        if processed % 100 == 0:
-            print(f"\n  Progress: {processed}/{total} processed, {updated} updated, {skipped} skipped, {errors} errors\n")
-    
-    print(f"\n{'='*60}")
-    print(f"Summary:")
-    print(f"  Total alerts: {total}")
-    print(f"  Processed: {processed}")
-    print(f"  Updated: {updated}")
-    print(f"  Skipped (no candles): {skipped}")
-    print(f"  Errors: {errors}")
-    print(f"{'='*60}")
+        with get_write_connection(args.duckdb) as con:
+            # Add ATH columns if needed
+            add_ath_columns(con)
+            
+            # Get alerts to process
+            print("\nQuerying alerts to process...")
+            alerts = get_alerts_to_process(con, skip_computed=args.skip_computed, limit=args.limit)
+            total = len(alerts)
+            
+            if total == 0:
+                print("No alerts to process")
+                return
+            
+            print(f"Found {total} alerts to process\n")
+            
+            # Process each alert
+            processed = 0
+            updated = 0
+            skipped = 0
+            errors = 0
+            
+            for idx, (chat_id, message_id, run_id, call_ts_ms, price_usd, mint) in enumerate(alerts, 1):
+                # Convert call_ts_ms to seconds (if it's in milliseconds)
+                if call_ts_ms > 1e12:
+                    call_ts_seconds = call_ts_ms // 1000
+                else:
+                    call_ts_seconds = call_ts_ms
+                
+                print(f"[{idx}/{total}] Processing {mint[:8]}... (call_ts={call_ts_seconds})")
+                
+                # Fetch candles
+                candles = fetch_candles(con, mint, call_ts_seconds, args.lookforward_hours)
+                
+                if not candles:
+                    print(f"    No candles found, skipping")
+                    skipped += 1
+                    continue
+                
+                # Calculate metrics
+                metrics = calculate_ath_metrics(price_usd, call_ts_seconds, candles)
+                
+                # Update database
+                if update_alert_metrics(con, chat_id, message_id, run_id, metrics):
+                    print(f"    Updated: ATH={metrics['ath_multiple']:.2f}x, ATL={metrics['atl_multiple']:.2f}x, Time to ATH={metrics['time_to_ath_minutes']:.1f}min")
+                    updated += 1
+                else:
+                    errors += 1
+                
+                processed += 1
+                
+                # Progress update every 100 records
+                if processed % 100 == 0:
+                    print(f"\n  Progress: {processed}/{total} processed, {updated} updated, {skipped} skipped, {errors} errors\n")
+            
+            print(f"\n{'='*60}")
+            print(f"Summary:")
+            print(f"  Total alerts: {total}")
+            print(f"  Processed: {processed}")
+            print(f"  Updated: {updated}")
+            print(f"  Skipped (no candles): {skipped}")
+            print(f"  Errors: {errors}")
+            print(f"{'='*60}")
 
 
 if __name__ == "__main__":

@@ -92,9 +92,18 @@ def get_clickhouse_client() -> Tuple[ClickHouseClient, str]:
 
 
 def get_duckdb_connection(db_path: str) -> duckdb.DuckDBPyConnection:
-    """Get DuckDB connection and ensure schema exists."""
-    conn = duckdb.connect(db_path)
-    return conn
+    """
+    Get DuckDB connection and ensure schema exists.
+    
+    DEPRECATED: Use get_write_connection() from tools.shared.duckdb_adapter instead.
+    This function is kept for backward compatibility but now uses the adapter internally.
+    """
+    from tools.shared.duckdb_adapter import get_connection as adapter_get_connection
+    # Use adapter which handles empty/invalid files and sets busy_timeout
+    # Note: We manually enter the context manager to return the connection
+    # This is not ideal but maintains backward compatibility
+    ctx = adapter_get_connection(db_path, read_only=False)
+    return ctx.__enter__()
 
 
 def check_table_exists(conn: duckdb.DuckDBPyConnection, table_name: str) -> bool:

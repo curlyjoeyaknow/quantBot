@@ -22,9 +22,9 @@ except ImportError:
 def init_database(db_path: str) -> dict:
     """Initialize DuckDB database and schema"""
     try:
-        con = duckdb.connect(db_path)
-        
-        con.execute("""
+        from tools.shared.duckdb_adapter import get_write_connection
+        with get_write_connection(db_path) as con:
+            con.execute("""
             CREATE TABLE IF NOT EXISTS api_event_log (
                 id TEXT PRIMARY KEY,
                 timestamp TIMESTAMP NOT NULL,
@@ -62,8 +62,6 @@ def init_database(db_path: str) -> dict:
             ON api_event_log(success);
         """)
         
-        con.close()
-        
         return {"success": True}
     except Exception as e:
         return {"success": False, "error": str(e)}
@@ -72,43 +70,41 @@ def init_database(db_path: str) -> dict:
 def log_event(db_path: str, event: dict) -> dict:
     """Log an API call event"""
     try:
-        con = duckdb.connect(db_path)
-        
-        event_id = event.get("id") or str(uuid.uuid4())
-        timestamp = event.get("timestamp")
-        api_name = event.get("api_name")
-        endpoint = event.get("endpoint")
-        method = event.get("method", "GET")
-        status_code = event.get("status_code")
-        success = event.get("success", False)
-        latency_ms = event.get("latency_ms", 0.0)
-        credits_cost = event.get("credits_cost", 0.0)
-        run_id = event.get("run_id")
-        error_message = event.get("error_message")
-        metadata = event.get("metadata")
-        metadata_json = json.dumps(metadata) if metadata else None
-        
-        con.execute("""
-            INSERT INTO api_event_log (
-                id, timestamp, api_name, endpoint, method, status_code,
-                success, latency_ms, credits_cost, run_id, error_message, metadata_json
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            event_id,
-            timestamp,
-            api_name,
-            endpoint,
-            method,
-            status_code,
-            success,
-            latency_ms,
-            credits_cost,
-            run_id,
-            error_message,
-            metadata_json,
-        ))
-        
-        con.close()
+        from tools.shared.duckdb_adapter import get_write_connection
+        with get_write_connection(db_path) as con:
+            event_id = event.get("id") or str(uuid.uuid4())
+            timestamp = event.get("timestamp")
+            api_name = event.get("api_name")
+            endpoint = event.get("endpoint")
+            method = event.get("method", "GET")
+            status_code = event.get("status_code")
+            success = event.get("success", False)
+            latency_ms = event.get("latency_ms", 0.0)
+            credits_cost = event.get("credits_cost", 0.0)
+            run_id = event.get("run_id")
+            error_message = event.get("error_message")
+            metadata = event.get("metadata")
+            metadata_json = json.dumps(metadata) if metadata else None
+            
+            con.execute("""
+                INSERT INTO api_event_log (
+                    id, timestamp, api_name, endpoint, method, status_code,
+                    success, latency_ms, credits_cost, run_id, error_message, metadata_json
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                event_id,
+                timestamp,
+                api_name,
+                endpoint,
+                method,
+                status_code,
+                success,
+                latency_ms,
+                credits_cost,
+                run_id,
+                error_message,
+                metadata_json,
+            ))
         
         return {"success": True}
     except Exception as e:
@@ -118,17 +114,15 @@ def log_event(db_path: str, event: dict) -> dict:
 def get_credits_in_window(db_path: str, window_start: str) -> dict:
     """Get credits spent in time window"""
     try:
-        con = duckdb.connect(db_path)
-        
-        result = con.execute("""
-            SELECT COALESCE(SUM(credits_cost), 0) as total_credits
-            FROM api_event_log
-            WHERE timestamp >= ? AND success = true
-        """, (window_start,)).fetchone()
-        
-        total_credits = float(result[0]) if result else 0.0
-        
-        con.close()
+        from tools.shared.duckdb_adapter import get_readonly_connection
+        with get_readonly_connection(db_path) as con:
+            result = con.execute("""
+                SELECT COALESCE(SUM(credits_cost), 0) as total_credits
+                FROM api_event_log
+                WHERE timestamp >= ? AND success = true
+            """, (window_start,)).fetchone()
+            
+            total_credits = float(result[0]) if result else 0.0
         
         return {"total_credits": total_credits}
     except Exception as e:
@@ -137,43 +131,41 @@ def get_credits_in_window(db_path: str, window_start: str) -> dict:
 
 def get_stats(db_path: str, api_name: str = None, start_date: str = None, end_date: str = None) -> dict:
     """Get event log statistics"""
+    from tools.shared.duckdb_adapter import get_readonly_connection
     try:
-        con = duckdb.connect(db_path)
-        
-        query = """
-            SELECT
-                COUNT(*) as total_events,
-                COALESCE(SUM(credits_cost), 0) as total_credits,
-                COALESCE(AVG(CASE WHEN success = true THEN 1.0 ELSE 0.0 END), 0) as success_rate,
-                COALESCE(AVG(latency_ms), 0) as avg_latency,
-                SUM(CASE WHEN success = false THEN 1 ELSE 0 END) as error_count
-            FROM api_event_log
-            WHERE 1=1
-        """
-        
-        params = []
-        
-        if api_name:
-            query += " AND api_name = ?"
-            params.append(api_name)
-        
-        if start_date:
-            query += " AND timestamp >= ?"
-            params.append(start_date)
-        
-        if end_date:
-            query += " AND timestamp <= ?"
-            params.append(end_date)
-        
-        result = con.execute(query, params).fetchone()
-        
-        con.close()
-        
-        return {
-            "total_events": int(result[0]) if result else 0,
-            "total_credits": float(result[1]) if result else 0.0,
-            "success_rate": float(result[2]) if result else 0.0,
-            "avg_latency": float(result[3]) if result else 0.0,
+        with get_readonly_connection(db_path) as con:
+            query = """
+                SELECT
+                    COUNT(*) as total_events,
+                    COALESCE(SUM(credits_cost), 0) as total_credits,
+                    COALESCE(AVG(CASE WHEN success = true THEN 1.0 ELSE 0.0 END), 0) as success_rate,
+                    COALESCE(AVG(latency_ms), 0) as avg_latency,
+                    SUM(CASE WHEN success = false THEN 1 ELSE 0 END) as error_count
+                FROM api_event_log
+                WHERE 1=1
+            """
+            
+            params = []
+            
+            if api_name:
+                query += " AND api_name = ?"
+                params.append(api_name)
+            
+            if start_date:
+                query += " AND timestamp >= ?"
+                params.append(start_date)
+            
+            if end_date:
+                query += " AND timestamp <= ?"
+                params.append(end_date)
+            
+            result = con.execute(query, params).fetchone()
+            
+            return {
+                "total_events": int(result[0]) if result else 0,
+                "total_credits": float(result[1]) if result else 0.0,
+                "success_rate": float(result[2]) if result else 0.0,
+                "avg_latency": float(result[3]) if result else 0.0,
             "error_count": int(result[4]) if result else 0,
         }
     except Exception as e:

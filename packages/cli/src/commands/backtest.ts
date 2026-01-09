@@ -368,9 +368,9 @@ const backtestModule: PackageCommandModule = {
           }
           const errorMsg = error instanceof Error ? error.message : String(error);
           if (
-            errorMsg.includes("canon.alerts_std") ||
+            errorMsg.includes('canon.alerts_std') ||
             errorMsg.includes('alerts_std') ||
-            errorMsg.includes("user_calls_d")
+            errorMsg.includes('user_calls_d')
           ) {
             throw new Error(
               `Missing canon.alerts_std view in DuckDB. This is the canonical alert contract.\n\n` +
@@ -386,9 +386,9 @@ const backtestModule: PackageCommandModule = {
         if (callsResult.error) {
           const errorMsg = callsResult.error;
           if (
-            errorMsg.includes("canon.alerts_std") ||
+            errorMsg.includes('canon.alerts_std') ||
             errorMsg.includes('alerts_std') ||
-            errorMsg.includes("user_calls_d")
+            errorMsg.includes('user_calls_d')
           ) {
             throw new Error(
               `Missing canon.alerts_std view in DuckDB. This is the canonical alert contract.\n\n` +

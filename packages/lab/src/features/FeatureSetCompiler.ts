@@ -10,6 +10,7 @@
 import { createHash } from 'crypto';
 import { DuckDBClient } from '@quantbot/storage';
 import { logger } from '@quantbot/utils';
+import { submitArtifact } from '@quantbot/infra/utils';
 import type { FeaturesSpec } from './types.js';
 import { FeaturesSpecSchema } from './types.js';
 import { getIndicatorRegistry } from './IndicatorRegistry.js';
@@ -194,6 +195,33 @@ export class FeatureSetCompiler {
         rowCount,
         byteSize,
       });
+
+      // Submit to bus (Phase 2: Bus migration)
+      try {
+        await submitArtifact({
+          runId,
+          producer: 'features',
+          kind: 'features',
+          artifactId: `features_${featureSetId}`,
+          parquetPath: featuresParquetPath,
+          schemaHint: 'features.computed',
+          rows: rowCount,
+          meta: {
+            featureSetId,
+            indicators: indicators.length,
+            byteSize,
+            schemaHash,
+          },
+        });
+        logger.info('Features submitted to bus', { runId, featureSetId });
+      } catch (error) {
+        // Don't fail if bus submission fails - features are still written locally
+        logger.warn('Failed to submit features to bus (features still written locally)', {
+          runId,
+          featureSetId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
 
       return {
         featureSetId,

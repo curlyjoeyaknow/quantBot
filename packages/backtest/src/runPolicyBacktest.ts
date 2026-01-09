@@ -266,30 +266,40 @@ export async function runPolicyBacktest(
     stopOuts: stopOutCount,
   });
 
-  // Step 6: Persist results
+  // Step 6: Write Parquet directly and submit to bus (no DuckDB intermediate)
   await timing.phase('store', async () => {
     const artifactsDir = join(process.cwd(), 'artifacts', 'backtest', runId);
     await mkdir(artifactsDir, { recursive: true });
 
-    const duckdbPath = req.existingDuckdbPath || join(artifactsDir, 'results.duckdb');
-    const duckdb = await import('duckdb');
-    const database = new duckdb.Database(duckdbPath);
-    const db = database.connect();
-
-    try {
-      if (policyResults.length > 0) {
-        const adapter = createDuckDbAdapter(db as DuckDbConnection);
-        await insertPolicyResults(
-          adapter as Parameters<typeof insertPolicyResults>[0],
-          policyResults
-        );
-        logger.info('Policy results persisted', {
+    if (policyResults.length > 0) {
+      try {
+        const { writeBacktestResults } = await import('./bus-integration.js');
+        await writeBacktestResults({
+          runId,
+          artifactsDir,
+          backtestType: 'policy',
+          data: policyResults as unknown as Array<Record<string, unknown>>,
+          tableName: 'backtest_policy_results',
+          metadata: {
+            policyId: req.policyId,
+            interval: req.interval,
+            callsProcessed: coverage.eligible.length,
+            rowsWritten: policyResults.length,
+            callsExcluded: coverage.excluded.length,
+            stopOutCount,
+          },
+        });
+        logger.info('Policy results written to Parquet and submitted to bus', {
           rows: policyResults.length,
-          duckdbPath,
+          artifactsDir,
+        });
+      } catch (error) {
+        // Don't fail if bus submission fails
+        logger.warn('Failed to write policy backtest results to bus', {
+          runId,
+          error: error instanceof Error ? error.message : String(error),
         });
       }
-    } finally {
-      database.close();
     }
   });
 
@@ -348,26 +358,3 @@ export async function runPolicyBacktest(
 // Helpers
 // =============================================================================
 
-function createDuckDbAdapter(db: DuckDbConnection): DuckDbConnection {
-  return {
-    run(sql: string, params: any[], callback: (err: any) => void): void {
-      db.run(sql, params, callback);
-    },
-    all<T = any>(sql: string, params: any[], callback: (err: any, rows: T[]) => void): void {
-      (db.all as (sql: string, params: any[], cb: (err: any, rows: any) => void) => void)(
-        sql,
-        params,
-        (err: any, rows: any) => {
-          if (err) {
-            callback(err, []);
-          } else {
-            callback(null, rows as T[]);
-          }
-        }
-      );
-    },
-    prepare(sql: string, callback: (err: any, stmt: any) => void): void {
-      db.prepare(sql, callback);
-    },
-  };
-}

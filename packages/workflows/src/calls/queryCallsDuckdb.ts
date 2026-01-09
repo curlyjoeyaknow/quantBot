@@ -178,13 +178,16 @@ export async function queryCallsDuckdb(
     const errorMsg = result.error || 'Unknown error querying calls';
 
     // Check for view missing error and provide helpful guidance
-    if (errorMsg.includes("canon.alerts_std") || errorMsg.includes('alerts_std') || 
-        errorMsg.includes("user_calls_d")) {
+    if (
+      errorMsg.includes('canon.alerts_std') ||
+      errorMsg.includes('alerts_std') ||
+      errorMsg.includes('user_calls_d')
+    ) {
       throw new ConfigurationError(
         `Missing canon.alerts_std view in DuckDB. This is the canonical alert contract.\n\n` +
-        `Please ensure the canonical schema is set up. The view should be created by the ingestion pipeline.\n` +
-        `Database path: ${validated.duckdbPath}\n\n` +
-        `Note: user_calls_d has been replaced with canon.alerts_std (the canonical alert contract).`,
+          `Please ensure the canonical schema is set up. The view should be created by the ingestion pipeline.\n` +
+          `Database path: ${validated.duckdbPath}\n\n` +
+          `Note: user_calls_d has been replaced with canon.alerts_std (the canonical alert contract).`,
         'QueryCallsDuckdb',
         { duckdbPath: validated.duckdbPath, error: errorMsg }
       );
