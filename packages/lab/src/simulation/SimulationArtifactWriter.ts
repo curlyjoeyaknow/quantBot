@@ -117,7 +117,9 @@ export class SimulationArtifactWriter {
       ]);
 
       // Log results (but don't fail if bus submission fails - artifacts are still written locally)
-      const successful = busResults.filter((r) => r.status === 'fulfilled' && r.value.success).length;
+      const successful = busResults.filter(
+        (r) => r.status === 'fulfilled' && r.value.success
+      ).length;
       const failed = busResults.filter(
         (r) => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.success)
       ).length;
@@ -136,7 +138,9 @@ export class SimulationArtifactWriter {
           successful,
           failed,
           errors: busResults
-            .filter((r) => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.success))
+            .filter(
+              (r) => r.status === 'rejected' || (r.status === 'fulfilled' && !r.value.success)
+            )
             .map((r) =>
               r.status === 'rejected'
                 ? r.reason?.message || String(r.reason)

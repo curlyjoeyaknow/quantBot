@@ -306,3 +306,10 @@ export type { LegacySimulationEvent } from '@quantbot/simulation';
 // Structured Artifacts System
 // =============================================================================
 export * from './artifacts/index.js';
+
+// Frontier writer for optimization results
+export {
+  writePolicyFrontier,
+  writeV1BaselineFrontier,
+  writeV1BaselinePerCallerFrontiers,
+} from './optimization/frontier-writer.js';

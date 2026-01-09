@@ -122,7 +122,7 @@ export async function runPolicyBacktest(
 
   // Initialize structured artifact directory
   const runDir = await createRunDirectory(runId, 'policy');
-  
+
   // Get git provenance
   const gitInfo = await getGitProvenance();
   runDir.updateManifest({
@@ -302,7 +302,10 @@ export async function runPolicyBacktest(
         alert_ts_ms: call.createdAt.toMillis(),
         created_at: call.createdAt.toISO(),
       }));
-      await runDir.writeArtifact('alerts', alertArtifacts as unknown as Array<Record<string, unknown>>);
+      await runDir.writeArtifact(
+        'alerts',
+        alertArtifacts as unknown as Array<Record<string, unknown>>
+      );
 
       // Write trades (policy simulation)
       if (policyResults.length > 0) {
@@ -321,7 +324,10 @@ export async function runPolicyBacktest(
           time_exposed_ms: row.time_exposed_ms,
           tail_capture: row.tail_capture,
         }));
-        await runDir.writeArtifact('trades', tradeArtifacts as unknown as Array<Record<string, unknown>>);
+        await runDir.writeArtifact(
+          'trades',
+          tradeArtifacts as unknown as Array<Record<string, unknown>>
+        );
       }
 
       logger.info('Artifacts written', {
@@ -382,7 +388,9 @@ export async function runPolicyBacktest(
     avg_tail_capture: aggregateMetrics.avgTailCapture,
     median_tail_capture: null, // TODO: calculate if needed
   };
-  await runDir.writeArtifact('summary', [summaryArtifact] as unknown as Array<Record<string, unknown>>);
+  await runDir.writeArtifact('summary', [summaryArtifact] as unknown as Array<
+    Record<string, unknown>
+  >);
 
   // Update timing in manifest and mark success
   runDir.updateManifest({
@@ -390,7 +398,8 @@ export async function runPolicyBacktest(
       plan_ms: timing.phases.plan?.durationMs,
       coverage_ms: timing.phases.coverage?.durationMs,
       slice_ms: timing.phases.slice?.durationMs,
-      execution_ms: (timing.phases.load?.durationMs ?? 0) + (timing.phases.execute?.durationMs ?? 0),
+      execution_ms:
+        (timing.phases.load?.durationMs ?? 0) + (timing.phases.execute?.durationMs ?? 0),
       total_ms: timing.totalMs,
     },
   });

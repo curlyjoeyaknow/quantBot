@@ -301,14 +301,14 @@ graph TD
 
 1. **Create `packages/infra/` structure**:
    ```javascript
-               packages/infra/
-               ├── src/
-               │   ├── utils/          # From @quantbot/utils
-               │   ├── storage/        # From @quantbot/storage
-               │   ├── observability/  # From @quantbot/observability
-               │   └── clients/        # From @quantbot/api-clients
-               ├── package.json
-               └── tsconfig.json
+                  packages/infra/
+                  ├── src/
+                  │   ├── utils/          # From @quantbot/utils
+                  │   ├── storage/        # From @quantbot/storage
+                  │   ├── observability/  # From @quantbot/observability
+                  │   └── clients/        # From @quantbot/api-clients
+                  ├── package.json
+                  └── tsconfig.json
    ```
 
 
@@ -317,15 +317,15 @@ graph TD
 2. **Move files** from source packages to infra
 3. **Create subpath exports** for backward compatibility:
    ```json
-               {
-                 "exports": {
-                   ".": { "import": "./dist/index.js" },
-                   "./utils": { "import": "./dist/utils/index.js" },
-                   "./storage": { "import": "./dist/storage/index.js" },
-                   "./observability": { "import": "./dist/observability/index.js" },
-                   "./clients": { "import": "./dist/clients/index.js" }
-                 }
-               }
+                  {
+                    "exports": {
+                      ".": { "import": "./dist/index.js" },
+                      "./utils": { "import": "./dist/utils/index.js" },
+                      "./storage": { "import": "./dist/storage/index.js" },
+                      "./observability": { "import": "./dist/observability/index.js" },
+                      "./clients": { "import": "./dist/clients/index.js" }
+                    }
+                  }
    ```
 
 
@@ -333,8 +333,8 @@ graph TD
 
 4. **Create compatibility shims** in old package locations (temporary):
    ```typescript
-               // packages/utils/src/index.ts
-               export * from '@quantbot/infra/utils';
+                  // packages/utils/src/index.ts
+                  export * from '@quantbot/infra/utils';
    ```
 
 
@@ -357,12 +357,12 @@ graph TD
 
 1. **Create `packages/data/` structure**:
    ```javascript
-               packages/data/
-               ├── src/
-               │   ├── ohlcv/       # Candle queries
-               │   ├── ingestion/   # Telegram parsing, alerts
-               │   ├── jobs/        # Online fetch orchestration
-               │   └── index.ts
+                  packages/data/
+                  ├── src/
+                  │   ├── ohlcv/       # Candle queries
+                  │   ├── ingestion/   # Telegram parsing, alerts
+                  │   ├── jobs/        # Online fetch orchestration
+                  │   └── index.ts
    ```
 
 
@@ -371,14 +371,14 @@ graph TD
 2. **Move files** preserving internal organization
 3. **Create subpath exports**:
    ```json
-               {
-                 "exports": {
-                   ".": { "import": "./dist/index.js" },
-                   "./ohlcv": { "import": "./dist/ohlcv/index.js" },
-                   "./ingestion": { "import": "./dist/ingestion/index.js" },
-                   "./jobs": { "import": "./dist/jobs/index.js" }
-                 }
-               }
+                  {
+                    "exports": {
+                      ".": { "import": "./dist/index.js" },
+                      "./ohlcv": { "import": "./dist/ohlcv/index.js" },
+                      "./ingestion": { "import": "./dist/ingestion/index.js" },
+                      "./jobs": { "import": "./dist/jobs/index.js" }
+                    }
+                  }
    ```
 
 
@@ -415,14 +415,14 @@ graph TD
 
 3. **Create subpath exports**:
    ```json
-               {
-                 "exports": {
-                   ".": { "import": "./dist/index.js" },
-                   "./backtest": { "import": "./dist/backtest/index.js" },
-                   "./analytics": { "import": "./dist/analytics/index.js" },
-                   "./policies": { "import": "./dist/policies/index.js" }
-                 }
-               }
+                  {
+                    "exports": {
+                      ".": { "import": "./dist/index.js" },
+                      "./backtest": { "import": "./dist/backtest/index.js" },
+                      "./analytics": { "import": "./dist/analytics/index.js" },
+                      "./policies": { "import": "./dist/policies/index.js" }
+                    }
+                  }
    ```
 
 
@@ -451,13 +451,13 @@ graph TD
 
 3. **Create subpath exports**:
    ```json
-               {
-                 "exports": {
-                   ".": { "import": "./dist/index.js" },
-                   "./catalog": { "import": "./dist/catalog/index.js" },
-                   "./observatory": { "import": "./dist/observatory/index.js" }
-                 }
-               }
+                  {
+                    "exports": {
+                      ".": { "import": "./dist/index.js" },
+                      "./catalog": { "import": "./dist/catalog/index.js" },
+                      "./observatory": { "import": "./dist/observatory/index.js" }
+                    }
+                  }
    ```
 
 
@@ -588,5 +588,3 @@ Each phase is independent and can be rolled back:
 - Git branch per phase
 - Shims allow gradual migration
 - Old package.json files preserved in git history
-
----

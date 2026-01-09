@@ -206,6 +206,62 @@ export class Catalog {
   }
 
   /**
+   * Find slices matching token and time range
+   *
+   * Searches catalog for existing slices that cover the requested time range for a token.
+   * Returns slice manifests that can be reused.
+   *
+   * @param tokenId - Token mint address
+   * @param timeRange - Time range to search for
+   * @param dataset - Dataset name (e.g., 'candles_1m')
+   * @param chain - Chain (e.g., 'sol')
+   * @returns Array of matching slice manifests
+   */
+  async findSlices(
+    tokenId: string,
+    timeRange: { startIso: string; endIso: string },
+    dataset: string,
+    chain: string
+  ): Promise<SliceManifestV1[]> {
+    const root = await this.getRootManifest();
+    const matches: SliceManifestV1[] = [];
+    const requestStart = DateTime.fromISO(timeRange.startIso);
+    const requestEnd = DateTime.fromISO(timeRange.endIso);
+
+    // Search through all slices in the catalog
+    for (const [manifestId, sliceMeta] of Object.entries(root.slices)) {
+      // Check if slice matches criteria
+      if (
+        sliceMeta.tokenId === tokenId &&
+        sliceMeta.dataset === dataset &&
+        sliceMeta.chain === chain
+      ) {
+        // Check if slice time range covers or overlaps requested range
+        const sliceStart = DateTime.fromISO(sliceMeta.timeRange.startIso);
+        const sliceEnd = DateTime.fromISO(sliceMeta.timeRange.endIso);
+
+        // Slice covers request if: sliceStart <= requestStart && sliceEnd >= requestEnd
+        // Or if there's any overlap (for partial reuse)
+        if (sliceStart <= requestEnd && sliceEnd >= requestStart) {
+          const manifest = await this.getSlice(manifestId);
+          if (manifest) {
+            matches.push(manifest);
+          }
+        }
+      }
+    }
+
+    // Sort by start time (earliest first)
+    matches.sort((a, b) => {
+      const aStart = DateTime.fromISO(a.spec.timeRange.startIso).toMillis();
+      const bStart = DateTime.fromISO(b.spec.timeRange.startIso).toMillis();
+      return aStart - bStart;
+    });
+
+    return matches;
+  }
+
+  /**
    * List runs with optional filtering
    *
    * @param options - Filter options

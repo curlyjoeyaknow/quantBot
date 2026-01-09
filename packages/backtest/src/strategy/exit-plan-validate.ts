@@ -62,10 +62,16 @@ const IndicatorExitSpec = z.object({
   mode: z.enum(['ANY', 'ALL']).optional(),
 });
 
+const BreakEvenBailoutSpec = z.object({
+  enabled: z.boolean(),
+  be_armed_dd_pct: z.number().min(0).max(1), // 0.10 = 10%, 0.15 = 15%, etc.
+});
+
 export const ExitPlanZ = z.object({
   ladder: LadderExitSpec.optional(),
   trailing: TrailingStopSpec.optional(),
   indicator: IndicatorExitSpec.optional(),
+  break_even_bailout: BreakEvenBailoutSpec.optional(),
   max_hold_ms: z.number().int().positive().optional(),
   min_hold_candles_for_indicator: z.number().int().min(0).optional(),
 });

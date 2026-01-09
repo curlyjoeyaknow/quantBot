@@ -67,4 +67,3 @@ export async function catalogSyncHandler(
     await db.close();
   }
 }
-

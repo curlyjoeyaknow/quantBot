@@ -53,6 +53,7 @@ export interface DuckDBStorageConfig {
     | 'validate_addresses'
     | 'remove_faulty_addresses'
     | 'move_invalid_tokens'
+    | 'store_token_creation_info'
     | 'get_state'
     | 'set_state'
     | 'delete_state'
@@ -505,7 +506,7 @@ export class PythonEngine {
     const cwd = options?.cwd ?? join(workspaceRoot, 'tools/telegram');
     const env = {
       ...options?.env,
-      PYTHONPATH: join(workspaceRoot, 'tools/telegram'),
+      PYTHONPATH: workspaceRoot,
     };
 
     return this.runScript(scriptPath, args, PythonManifestSchema, {
@@ -544,7 +545,7 @@ export class PythonEngine {
     const cwd = options?.cwd ?? join(workspaceRoot, 'tools/simulation');
     const env = {
       ...options?.env,
-      PYTHONPATH: join(workspaceRoot, 'tools/simulation'),
+      PYTHONPATH: workspaceRoot,
     };
 
     const resultSchema = z
@@ -589,7 +590,7 @@ export class PythonEngine {
     const cwd = options?.cwd ?? join(workspaceRoot, 'tools/simulation');
     const env = {
       ...options?.env,
-      PYTHONPATH: join(workspaceRoot, 'tools/simulation'),
+      PYTHONPATH: workspaceRoot,
     };
 
     const resultSchema = z
@@ -665,7 +666,7 @@ export class PythonEngine {
     const cwd = options?.cwd ?? join(workspaceRoot, 'tools/ingestion');
     const env = {
       ...options?.env,
-      PYTHONPATH: join(workspaceRoot, 'tools/ingestion'),
+      PYTHONPATH: workspaceRoot,
     };
 
     const tokenGroupSchema = z.object({

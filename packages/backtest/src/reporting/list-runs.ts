@@ -80,7 +80,8 @@ async function getSummaryFromMetadata(
   }
 
   // For full/policy backtests, try to read from Parquet
-  const parquetPath = metadata.parquet_path || join(baseDir, runId, `${metadata.table_name}.parquet`);
+  const parquetPath =
+    metadata.parquet_path || join(baseDir, runId, `${metadata.table_name}.parquet`);
 
   if (!existsSync(parquetPath)) {
     // Fallback to basic metadata
@@ -110,7 +111,9 @@ async function getSummaryFromMetadata(
       const tableName = metadata.table_name || 'backtest_call_results';
 
       // Create a view from Parquet
-      await db.execute(`CREATE VIEW data AS SELECT * FROM read_parquet('${parquetPath.replace(/'/g, "''")}')`);
+      await db.execute(
+        `CREATE VIEW data AS SELECT * FROM read_parquet('${parquetPath.replace(/'/g, "''")}')`
+      );
 
       // Query for summary (adapt based on table structure)
       let summarySql: string;
@@ -187,7 +190,9 @@ async function getSummaryFromMetadata(
     }
   } catch (error) {
     // If Parquet query fails, return basic summary from metadata
-    console.warn(`Warning: Could not query Parquet for run ${runId}: ${error instanceof Error ? error.message : String(error)}`);
+    console.warn(
+      `Warning: Could not query Parquet for run ${runId}: ${error instanceof Error ? error.message : String(error)}`
+    );
   }
 
   // Fallback to metadata-only summary
@@ -234,7 +239,8 @@ export async function getAllRunSummaries(
         if (summary) {
           summaries.push({
             ...summary,
-            parquet_path: metadata.parquet_path || join(baseDir, runId, `${metadata.table_name}.parquet`),
+            parquet_path:
+              metadata.parquet_path || join(baseDir, runId, `${metadata.table_name}.parquet`),
           });
         }
       } else if (existsSync(legacyDuckdbPath)) {
@@ -249,7 +255,11 @@ export async function getAllRunSummaries(
             all<T = any>(sql: string, params: any[], callback: (err: any, rows: T[]) => void): void;
           };
           const adapter: DuckDbConnection = {
-            all<T = any>(sql: string, params: any[], callback: (err: any, rows: T[]) => void): void {
+            all<T = any>(
+              sql: string,
+              params: any[],
+              callback: (err: any, rows: T[]) => void
+            ): void {
               (db.all as any)(sql, params, (err: any, rows: any) => {
                 if (err) {
                   callback(err, []);

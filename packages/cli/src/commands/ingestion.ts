@@ -22,6 +22,7 @@ import { processTelegramPythonHandler } from './ingestion/process-telegram-pytho
 import { validateAddressesHandler } from './ingestion/validate-addresses.js';
 import { surgicalOhlcvFetchHandler } from './ingestion/surgical-ohlcv-fetch.js';
 import { ensureOhlcvCoverageHandler } from '../handlers/ingestion/ensure-ohlcv-coverage.js';
+import { fetchTokenCreationInfoHandler } from '../handlers/ingestion/fetch-token-creation-info.js';
 
 /**
  * Telegram ingestion schema
@@ -103,6 +104,14 @@ export const ensureOhlcvCoverageSchema = z.object({
   duckdb: z.string().optional(), // Path to DuckDB database file
   maxAgeDays: z.number().int().positive().default(90), // Maximum age in days (default 3 months)
   limit: z.number().int().positive().optional(), // Limit number of tokens to process (default: 200)
+  format: z.enum(['json', 'table', 'csv']).default('table'),
+});
+
+/**
+ * Fetch token creation info schema
+ */
+export const fetchTokenCreationInfoSchema = z.object({
+  duckdb: z.string().optional(), // Path to DuckDB database file
   format: z.enum(['json', 'table', 'csv']).default('table'),
 });
 
@@ -256,6 +265,22 @@ export function registerIngestionCommands(program: Command): void {
     validate: (opts) => ensureOhlcvCoverageSchema.parse(opts),
     onError: die,
   });
+
+  // Fetch token creation info
+  const fetchCreationInfoCmd = ingestionCmd
+    .command('fetch-token-creation-info')
+    .description(
+      'Fetch token creation info from Birdeye API for all Solana tokens we have alerts for'
+    )
+    .option('--duckdb <path>', 'Path to DuckDB database file (or set DUCKDB_PATH env var)')
+    .option('--format <format>', 'Output format', 'table');
+
+  defineCommand(fetchCreationInfoCmd, {
+    name: 'fetch-token-creation-info',
+    packageName: 'ingestion',
+    validate: (opts) => fetchTokenCreationInfoSchema.parse(opts),
+    onError: die,
+  });
 }
 
 /**
@@ -344,6 +369,17 @@ const ingestionModule: PackageCommandModule = {
         'quantbot ingestion ensure-coverage --max-age-days 60',
         'quantbot ingestion ensure-coverage --duckdb data/tele.duckdb',
       ],
+    },
+    {
+      name: 'fetch-token-creation-info',
+      description: 'Fetch token creation info from Birdeye API for all Solana tokens',
+      schema: fetchTokenCreationInfoSchema,
+      handler: async (args: unknown, ctx: unknown) => {
+        const typedCtx = ctx as CommandContext;
+        const typedArgs = args as z.infer<typeof fetchTokenCreationInfoSchema>;
+        return await fetchTokenCreationInfoHandler(typedArgs, typedCtx);
+      },
+      examples: ['quantbot ingestion fetch-token-creation-info --duckdb data/alerts.duckdb'],
     },
   ],
 };

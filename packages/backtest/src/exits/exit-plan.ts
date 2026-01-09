@@ -66,10 +66,17 @@ export type LadderExitSpec = {
   levels: LadderLevel[];
 };
 
+export type BreakEvenBailoutSpec = {
+  enabled: boolean;
+  /** Drawdown percentage (as decimal, e.g., 0.10 = 10%) that arms break-even protection */
+  be_armed_dd_pct: number; // e.g., 0.10 = 10%, 0.15 = 15%, etc.
+};
+
 export type ExitPlan = {
   ladder?: LadderExitSpec;
   trailing?: TrailingStopSpec;
   indicator?: IndicatorExitSpec;
+  break_even_bailout?: BreakEvenBailoutSpec;
 
   /** max hold after entry (ms). if exceeded, exit remainder at close */
   max_hold_ms?: number;

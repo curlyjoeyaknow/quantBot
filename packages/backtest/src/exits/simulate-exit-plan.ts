@@ -73,6 +73,7 @@ export function simulateExitPlan(params: ExitSimParams): ExitSimResult {
   const ladder = plan.ladder?.enabled ? plan.ladder : undefined;
   const trailing = plan.trailing?.enabled ? plan.trailing : undefined;
   const indicator = plan.indicator?.enabled ? plan.indicator : undefined;
+  const beBailout = plan.break_even_bailout?.enabled ? plan.break_even_bailout : undefined;
 
   const intrabar: IntrabarPolicy = trailing?.intrabar_policy ?? 'STOP_FIRST';
 
@@ -122,6 +123,10 @@ export function simulateExitPlan(params: ExitSimParams): ExitSimResult {
 
   // ladder cursor
   let ladderCursor = 0;
+
+  // Break-even bailout state
+  let beArmed = false;
+  let maxDrawdown = 0; // Track max drawdown from entry (negative value)
 
   const activateTrailingIfNeeded = (high: number) => {
     if (!trailing) return;
@@ -206,6 +211,31 @@ export function simulateExitPlan(params: ExitSimParams): ExitSimResult {
     return false;
   };
 
+  const checkBreakEvenBailout = (c: Candle, tsMs: number): boolean => {
+    if (!beBailout || remaining <= 0) return false;
+
+    // Track max drawdown from entry
+    // dd_max = min(dd_max, (price - entry_price) / entry_price)
+    const currentDrawdown = (c.low - entryPx) / entryPx;
+    if (currentDrawdown < maxDrawdown) {
+      maxDrawdown = currentDrawdown;
+    }
+
+    // Arm break-even protection when dd_max <= -be_armed_dd_pct
+    if (!beArmed && maxDrawdown <= -beBailout.be_armed_dd_pct) {
+      beArmed = true;
+    }
+
+    // If BE-armed and price returns to entry_price, exit at entry_price
+    if (beArmed && c.low <= entryPx && c.high >= entryPx) {
+      // Price crossed entry - exit at entry price
+      tryFill(tsMs, entryPx, remaining, 'break_even_bailout');
+      return remaining <= 0;
+    }
+
+    return false;
+  };
+
   // Main loop: after entry
   for (let i = entryIdx; i < candles.length; i++) {
     if (remaining <= 0) break;
@@ -218,6 +248,9 @@ export function simulateExitPlan(params: ExitSimParams): ExitSimResult {
       tryFill(tsMs, c.close, remaining, 'timeout');
       break;
     }
+
+    // Break-even bailout check (before other exits, but after timeout)
+    if (checkBreakEvenBailout(c, tsMs)) break;
 
     // Trailing activation and intrabar policy
     if (trailing) {

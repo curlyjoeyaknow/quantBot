@@ -131,6 +131,17 @@ export const TokensQueryResultSchema = z.object({
 export type TokensQueryResult = z.infer<typeof TokensQueryResultSchema>;
 
 /**
+ * Schema for token creation info storage result
+ */
+export const TokenCreationInfoStorageResultSchema = z.object({
+  success: z.boolean(),
+  stored_count: z.number().optional(),
+  error: z.string().nullable().optional(),
+});
+
+export type TokenCreationInfoStorageResult = z.infer<typeof TokenCreationInfoStorageResultSchema>;
+
+/**
  * Schema for address validation result
  */
 export const ValidateAddressesResultSchema = z.object({
@@ -675,6 +686,43 @@ export class DuckDBStorageService {
         total_calls_moved: 0,
         total_links_moved: 0,
         total_callers_affected: 0,
+        error: error instanceof Error ? error.message : String(error),
+      };
+    }
+  }
+
+  /**
+   * Store token creation info from Birdeye API
+   * Stores creation data (txHash, slot, decimals, owner, creation time) for Solana tokens
+   */
+  async storeTokenCreationInfo(
+    duckdbPath: string,
+    tokens: Array<{
+      token_address: string;
+      tx_hash: string;
+      slot: number;
+      decimals: number;
+      owner: string;
+      block_unix_time: number;
+      block_human_time: string;
+    }>
+  ): Promise<TokenCreationInfoStorageResult> {
+    try {
+      // @ts-expect-error - 'store_token_creation_info' operation exists but TypeScript type may not be updated yet
+      const result = await this.pythonEngine.runDuckDBStorage({
+        duckdbPath,
+        operation: 'store_token_creation_info',
+        data: {
+          tokens,
+        },
+      });
+
+      return TokenCreationInfoStorageResultSchema.parse(result);
+    } catch (error) {
+      logger.error('Failed to store token creation info in DuckDB', error as Error);
+      return {
+        success: false,
+        stored_count: 0,
         error: error instanceof Error ? error.message : String(error),
       };
     }

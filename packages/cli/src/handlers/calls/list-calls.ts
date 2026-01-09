@@ -24,11 +24,8 @@ export async function listCallsHandler(
   const fromISO = args.fromIso || '2000-01-01';
   const toISO = args.toIso || '2100-12-31';
 
-  // Create minimal context without StorageEngine (which requires Birdeye keys)
-  const { PythonEngine } = await import('@quantbot/utils');
-  const { DuckDBStorageService } = await import('@quantbot/backtest');
-  const pythonEngine = new PythonEngine();
-  const duckdbStorage = new DuckDBStorageService(pythonEngine);
+  // Get duckdbStorage from context
+  const duckdbStorage = _ctx.services.duckdbStorage();
 
   // Create minimal workflow context (no StorageEngine, no Birdeye dependencies)
   // Stub out unused parts of WorkflowContext that queryCallsDuckdb doesn't need

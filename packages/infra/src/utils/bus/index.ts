@@ -8,4 +8,3 @@ export {
   type SubmitArtifactOptions,
   type SubmitArtifactResult,
 } from './artifact-bus.js';
-

@@ -35,7 +35,9 @@ describe('Artifact Bus Integration', () => {
           ('token3', 3000, 3.5, 30.0)
         ) AS t(token_id, timestamp, price, volume)
       `);
-      await db.execute(`COPY test_data TO '${testParquetPath.replace(/'/g, "''")}' (FORMAT PARQUET)`);
+      await db.execute(
+        `COPY test_data TO '${testParquetPath.replace(/'/g, "''")}' (FORMAT PARQUET)`
+      );
     } finally {
       await db.close();
     }
@@ -98,4 +100,3 @@ describe('Artifact Bus Integration', () => {
     expect(result.error).toBeDefined();
   });
 });
-

@@ -407,20 +407,36 @@ def generate_drilldown_report(csv_path: str, output_path: str = None, max_trades
     for caller, data in trades_by_caller.items():
         print(f"  {caller}: {len(data['trades'])} trades loaded")
     
-    # Calculate caller stats
+    # Calculate comprehensive caller stats for leaderboard
     caller_stats = []
     for caller, data in trades_by_caller.items():
         trades = data['trades']
         if not trades:
             continue
+        
+        # Calculate returns
+        returns = [t['tp_sl_ret'] for t in trades]
+        wins = [r for r in returns if r > 0]
+        losses = [r for r in returns if r < 0]
+        win_rate = (len(wins) / len(returns) * 100) if returns else 0
+        
+        # Calculate median ATH
+        ath_values = [t['ath_mult'] for t in trades if t['ath_mult'] is not None and t['ath_mult'] > 0]
+        median_ath = round(np.median(ath_values), 2) if ath_values else 0
+        
         caller_stats.append({
             'name': caller,
             'total_calls': data['count'],
             'loaded_trades': len(trades),
-            'avg_ath': round(np.mean([t['ath_mult'] for t in trades]), 2),
+            'avg_ath': round(np.mean([t['ath_mult'] for t in trades]), 2) if trades else 0,
+            'median_ath': median_ath,
             'hit_2x': sum(1 for t in trades if t['time_to_2x'] is not None),
             'hit_5x': sum(1 for t in trades if t['time_to_5x'] is not None),
-            'avg_return': round(np.mean([t['tp_sl_ret'] for t in trades]), 1),
+            'avg_return': round(np.mean(returns), 1) if returns else 0,
+            'median_return': round(np.median(returns), 1) if returns else 0,
+            'win_rate': round(win_rate, 1),
+            'total_wins': len(wins),
+            'total_losses': len(losses),
         })
     
     print(f"\nGenerating HTML report...")
@@ -466,7 +482,7 @@ def generate_drilldown_report(csv_path: str, output_path: str = None, max_trades
             padding: 1.5rem;
         }}
         
-        header {{
+        .nav-bar {{
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -477,10 +493,128 @@ def generate_drilldown_report(csv_path: str, output_path: str = None, max_trades
             border: 1px solid var(--border-color);
         }}
         
+        .nav-title {{
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }}
+        
         h1 {{
             font-size: 1.5rem;
             font-weight: 700;
             color: var(--accent-green);
+            margin: 0;
+        }}
+        
+        .nav-buttons {{
+            display: flex;
+            gap: 0.75rem;
+        }}
+        
+        .nav-btn {{
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-family: inherit;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }}
+        
+        .nav-btn:hover {{
+            background: var(--bg-hover);
+            border-color: var(--accent-blue);
+        }}
+        
+        .nav-btn.active {{
+            background: var(--accent-blue);
+            border-color: var(--accent-blue);
+            color: white;
+        }}
+        
+        .page {{
+            display: none;
+        }}
+        
+        .page.active {{
+            display: block;
+        }}
+        
+        .leaderboard-container {{
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+        }}
+        
+        .leaderboard-header {{
+            padding: 1.5rem;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+        }}
+        
+        .leaderboard-header h2 {{
+            font-size: 1.25rem;
+            font-weight: 600;
+            margin: 0;
+        }}
+        
+        .leaderboard-table {{
+            width: 100%;
+            border-collapse: collapse;
+        }}
+        
+        .leaderboard-table th {{
+            text-align: left;
+            padding: 1rem 1.5rem;
+            border-bottom: 2px solid var(--border-color);
+            color: var(--text-secondary);
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            background: var(--bg-secondary);
+        }}
+        
+        .leaderboard-table td {{
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.9rem;
+        }}
+        
+        .leaderboard-table tr {{
+            cursor: pointer;
+            transition: background 0.2s;
+        }}
+        
+        .leaderboard-table tr:hover {{
+            background: var(--bg-hover);
+        }}
+        
+        .leaderboard-table .rank {{
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 600;
+            color: var(--text-muted);
+            width: 60px;
+        }}
+        
+        .leaderboard-table .caller-name {{
+            font-weight: 600;
+            color: var(--accent-blue);
+        }}
+        
+        .leaderboard-table .stat-value {{
+            font-family: 'JetBrains Mono', monospace;
+            text-align: right;
+        }}
+        
+        .leaderboard-table .stat-positive {{
+            color: var(--accent-green);
+        }}
+        
+        .leaderboard-table .stat-negative {{
+            color: var(--accent-red);
         }}
         
         .caller-select {{
@@ -782,30 +916,75 @@ def generate_drilldown_report(csv_path: str, output_path: str = None, max_trades
         }}
     </style>
 </head>
-<body>
+    <body>
     <div class="container">
-        <header>
-            <h1>⚡ Trade Drill-Down</h1>
-            <div class="caller-select">
-                <label>Select Caller:</label>
-                <select id="caller-dropdown" onchange="onCallerChange()">
-                    <option value="">-- Choose a caller --</option>
-                    {' '.join([f'<option value="{c["name"]}">{c["name"]} ({c["total_calls"]} calls, {c["avg_ath"]}x avg)</option>' for c in sorted(caller_stats, key=lambda x: -x['total_calls'])])}
-                </select>
+        <nav class="nav-bar">
+            <div class="nav-title">
+                <h1>⚡ QuantBot Backtest Report</h1>
             </div>
-        </header>
+            <div class="nav-buttons">
+                <button class="nav-btn active" onclick="showPage('leaderboard', this)">Leaderboard</button>
+                <button class="nav-btn" onclick="showPage('caller-detail', this)" id="caller-detail-btn" style="display: none;">Caller Detail</button>
+            </div>
+        </nav>
         
-        <div id="caller-info" style="display: none; margin-bottom: 1rem; padding: 1rem; background: var(--bg-card); border-radius: 8px; border: 1px solid var(--border-color);">
-            <div class="caller-stats">
-                <div class="caller-stat">Total Calls: <span class="caller-stat-value" id="stat-total"></span></div>
-                <div class="caller-stat">Avg ATH: <span class="caller-stat-value" id="stat-ath"></span></div>
-                <div class="caller-stat">2x Rate: <span class="caller-stat-value" id="stat-2x"></span></div>
-                <div class="caller-stat">5x Rate: <span class="caller-stat-value" id="stat-5x"></span></div>
-                <div class="caller-stat">Avg Return: <span class="caller-stat-value" id="stat-return"></span></div>
+        <!-- Leaderboard Page -->
+        <div id="leaderboard-page" class="page active">
+            <div class="leaderboard-container">
+                <div class="leaderboard-header">
+                    <h2>Caller Leaderboard</h2>
+                    <p style="margin-top: 0.5rem; color: var(--text-secondary); font-size: 0.9rem;">
+                        Click on a caller to view their alerts and trades
+                    </p>
+                </div>
+                <table class="leaderboard-table">
+                    <thead>
+                        <tr>
+                            <th class="rank">#</th>
+                            <th>Caller</th>
+                            <th style="text-align: right;">Total Calls</th>
+                            <th style="text-align: right;">Avg ATH</th>
+                            <th style="text-align: right;">Median ATH</th>
+                            <th style="text-align: right;">2x Rate</th>
+                            <th style="text-align: right;">5x Rate</th>
+                            <th style="text-align: right;">Avg Return</th>
+                            <th style="text-align: right;">Win Rate</th>
+                        </tr>
+                    </thead>
+                    <tbody id="leaderboard-body">
+                    </tbody>
+                </table>
             </div>
         </div>
         
-        <div class="main-grid">
+        <!-- Caller Detail Page -->
+        <div id="caller-detail-page" class="page">
+            <div class="nav-bar" style="margin-bottom: 1rem;">
+                <div class="nav-title">
+                    <h2 id="caller-detail-title" style="font-size: 1.25rem; margin: 0;">Caller: <span id="caller-name-display"></span></h2>
+                </div>
+                <div class="caller-select">
+                    <label>View Alerts:</label>
+                    <select id="caller-dropdown" onchange="onCallerChange()">
+                        <option value="">-- Choose a caller --</option>
+                        {' '.join([f'<option value="{c["name"]}">{c["name"]} ({c["total_calls"]} calls)</option>' for c in sorted(caller_stats, key=lambda x: -x['total_calls'])])}
+                    </select>
+                </div>
+            </div>
+            
+            <div id="caller-info" style="display: none; margin-bottom: 1.5rem; padding: 1rem 1.5rem; background: var(--bg-card); border-radius: 8px; border: 1px solid var(--border-color);">
+                <div class="caller-stats">
+                    <div class="caller-stat">Total Calls: <span class="caller-stat-value" id="stat-total"></span></div>
+                    <div class="caller-stat">Avg ATH: <span class="caller-stat-value" id="stat-ath"></span></div>
+                    <div class="caller-stat">Median ATH: <span class="caller-stat-value" id="stat-median-ath"></span></div>
+                    <div class="caller-stat">2x Rate: <span class="caller-stat-value" id="stat-2x"></span></div>
+                    <div class="caller-stat">5x Rate: <span class="caller-stat-value" id="stat-5x"></span></div>
+                    <div class="caller-stat">Avg Return: <span class="caller-stat-value" id="stat-return"></span></div>
+                    <div class="caller-stat">Win Rate: <span class="caller-stat-value" id="stat-winrate"></span></div>
+                </div>
+            </div>
+            
+            <div class="main-grid">
             <div class="chart-section">
                 <div class="chart-header">
                     <div class="chart-title" id="chart-title">Select a trade to view chart</div>
@@ -857,6 +1036,116 @@ def generate_drilldown_report(csv_path: str, output_path: str = None, max_trades
         let candleSeries = null;
         let currentTrades = [];
         let selectedTradeIndex = -1;
+        let currentPage = 'leaderboard';
+        
+        // Initialize on page load
+        window.addEventListener('DOMContentLoaded', () => {{
+            // Always render leaderboard first
+            renderLeaderboard();
+            
+            // If we're on the caller detail page, auto-select first caller
+            const callerDetailPage = document.getElementById('caller-detail-page');
+            if (callerDetailPage && callerDetailPage.classList.contains('active')) {{
+                const dropdown = document.getElementById('caller-dropdown');
+                if (dropdown && dropdown.options.length > 1) {{
+                    dropdown.selectedIndex = 1;
+                    onCallerChange();
+                }}
+            }}
+        }});
+        
+        // Render leaderboard table
+        function renderLeaderboard() {{
+            const tbody = document.getElementById('leaderboard-body');
+            const sortedStats = [...callerStats].sort((a, b) => {{
+                // Sort by total calls first, then by avg ATH
+                if (b.total_calls !== a.total_calls) return b.total_calls - a.total_calls;
+                return b.avg_ath - a.avg_ath;
+            }});
+            
+            tbody.innerHTML = sortedStats.map((stat, idx) => {{
+                const rank = idx + 1;
+                const medianAth = stat.median_ath || stat.avg_ath;
+                const winRate = stat.win_rate || 0;
+                const returnClass = stat.avg_return >= 0 ? 'stat-positive' : 'stat-negative';
+                const winRateClass = winRate >= 50 ? 'stat-positive' : 'stat-negative';
+                const hit2xRate = Math.round(100 * stat.hit_2x / stat.loaded_trades);
+                const hit5xRate = Math.round(100 * stat.hit_5x / stat.loaded_trades);
+                
+                return `
+                    <tr onclick="viewCaller('${{stat.name}}')" style="cursor: pointer;">
+                        <td class="rank">${{rank}}</td>
+                        <td class="caller-name">${{stat.name}}</td>
+                        <td class="stat-value">${{stat.total_calls}}</td>
+                        <td class="stat-value">${{stat.avg_ath}}x</td>
+                        <td class="stat-value">${{medianAth}}x</td>
+                        <td class="stat-value">${{hit2xRate}}%</td>
+                        <td class="stat-value">${{hit5xRate}}%</td>
+                        <td class="stat-value ${{returnClass}}">${{stat.avg_return > 0 ? '+' : ''}}${{stat.avg_return}}%</td>
+                        <td class="stat-value ${{winRateClass}}">${{winRate.toFixed(1)}}%</td>
+                    </tr>
+                `;
+            }}).join('');
+        }}
+        
+        // Navigate to caller detail view
+        function viewCaller(callerName) {{
+            // Find the caller detail button and activate it
+            const callerDetailBtn = document.getElementById('caller-detail-btn');
+            if (callerDetailBtn) {{
+                callerDetailBtn.style.display = 'block';
+            }}
+            showPage('caller-detail', callerDetailBtn);
+            document.getElementById('caller-name-display').textContent = callerName;
+            document.getElementById('caller-dropdown').value = callerName;
+            onCallerChange();
+        }}
+        
+        // Page navigation
+        function showPage(pageName, buttonElement) {{
+            // Hide all pages
+            document.querySelectorAll('.page').forEach(page => {{
+                page.classList.remove('active');
+            }});
+            
+            // Show selected page
+            const pageElement = document.getElementById(pageName + '-page');
+            if (pageElement) {{
+                pageElement.classList.add('active');
+            }}
+            
+            // Update nav buttons
+            document.querySelectorAll('.nav-btn').forEach(btn => {{
+                btn.classList.remove('active');
+            }});
+            
+            // Activate the correct button
+            if (buttonElement) {{
+                buttonElement.classList.add('active');
+            }} else {{
+                // If called programmatically without button, find it by page name
+                document.querySelectorAll('.nav-btn').forEach(btn => {{
+                    const btnText = btn.textContent.toLowerCase().trim();
+                    const pageMatch = (pageName === 'leaderboard' && btnText === 'leaderboard') ||
+                                     (pageName === 'caller-detail' && btnText === 'caller detail');
+                    if (pageMatch) {{
+                        btn.classList.add('active');
+                    }}
+                }});
+            }}
+            
+            // Show/hide caller detail button based on page
+            const callerDetailBtn = document.getElementById('caller-detail-btn');
+            if (callerDetailBtn) {{
+                if (pageName === 'caller-detail') {{
+                    callerDetailBtn.style.display = 'block';
+                }} else {{
+                    callerDetailBtn.style.display = 'none';
+                }}
+            }}
+            
+            currentPage = pageName;
+        }}
         
         function onCallerChange() {{
             const caller = document.getElementById('caller-dropdown').value;
@@ -865,9 +1154,13 @@ def generate_drilldown_report(csv_path: str, output_path: str = None, max_trades
                 document.getElementById('trades-list').innerHTML = '<div class="no-data">Select a caller to view trades</div>';
                 document.getElementById('trades-count').textContent = '0';
                 document.getElementById('caller-info').style.display = 'none';
+                document.getElementById('caller-name-display').textContent = '';
                 clearChart();
                 return;
             }}
+            
+            // Update caller name display
+            document.getElementById('caller-name-display').textContent = caller;
             
             // Update caller stats
             const stats = callerStats.find(s => s.name === caller);
@@ -875,9 +1168,13 @@ def generate_drilldown_report(csv_path: str, output_path: str = None, max_trades
                 document.getElementById('caller-info').style.display = 'block';
                 document.getElementById('stat-total').textContent = stats.total_calls;
                 document.getElementById('stat-ath').textContent = stats.avg_ath + 'x';
+                const medianAth = stats.median_ath || stats.avg_ath;
+                document.getElementById('stat-median-ath').textContent = medianAth + 'x';
                 document.getElementById('stat-2x').textContent = Math.round(100 * stats.hit_2x / stats.loaded_trades) + '%';
                 document.getElementById('stat-5x').textContent = Math.round(100 * stats.hit_5x / stats.loaded_trades) + '%';
                 document.getElementById('stat-return').textContent = stats.avg_return + '%';
+                const winRate = stats.win_rate || 0;
+                document.getElementById('stat-winrate').textContent = winRate.toFixed(1) + '%';
             }}
             
             currentTrades = tradeData[caller].trades;
@@ -1183,15 +1480,6 @@ def generate_drilldown_report(csv_path: str, output_path: str = None, max_trades
             eventList.innerHTML = html;
         }}
         
-        // Initialize
-        document.addEventListener('DOMContentLoaded', () => {{
-            // Auto-select first caller if available
-            const dropdown = document.getElementById('caller-dropdown');
-            if (dropdown.options.length > 1) {{
-                dropdown.selectedIndex = 1;
-                onCallerChange();
-            }}
-        }});
     </script>
 </body>
 </html>

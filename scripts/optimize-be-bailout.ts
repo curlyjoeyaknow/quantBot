@@ -24,7 +24,7 @@ const TP_MULTIPLES = [5.2, 5.45, 5.7]; // TP band to explore
 const SL_BPS_VALUES = [2000, 2500, 3000]; // SL band: 20%, 25%, 30% stop
 
 // Parameter space to explore
-const BE_ARMED_DD_PCT_VALUES = [0.10, 0.15, 0.20, 0.25, 0.30]; // 10%, 15%, 20%, 25%, 30%
+const BE_ARMED_DD_PCT_VALUES = [0.1, 0.15, 0.2, 0.25, 0.3]; // 10%, 15%, 20%, 25%, 30%
 
 // Time-based rules (max hold in milliseconds)
 const MAX_HOLD_MS_VALUES = [
@@ -38,7 +38,9 @@ const MAX_HOLD_MS_VALUES = [
 
 // Partial exit (ladder) configurations
 // Note: Ladder levels use the TP multiple from the current TP/SL pair
-function generateLadderConfigs(tpMultiple: number): Array<Array<{ kind: 'multiple'; multiple: number; fraction: number }>> {
+function generateLadderConfigs(
+  tpMultiple: number
+): Array<Array<{ kind: 'multiple'; multiple: number; fraction: number }>> {
   return [
     // No ladder (full exit at TP)
     [],
@@ -162,16 +164,20 @@ async function main() {
   console.log(`Generated ${configs.length} parameter combinations`);
   console.log('\nFixed TP/SL bands (explored):');
   console.log(`- TP multiples: ${TP_MULTIPLES.join('x, ')}x`);
-  console.log(`- SL values: ${SL_BPS_VALUES.map((v) => `${v} bps (${(v / 100).toFixed(1)}%)`).join(', ')}`);
+  console.log(
+    `- SL values: ${SL_BPS_VALUES.map((v) => `${v} bps (${(v / 100).toFixed(1)}%)`).join(', ')}`
+  );
   console.log(`- TP/SL combinations: ${tpSlCombinations}`);
   console.log('\nOptimized parameters (explored per TP/SL pair):');
   console.log(`- BE armed DD%: ${BE_ARMED_DD_PCT_VALUES.map((v) => `${v * 100}%`).join(', ')}`);
-  console.log(`- Max hold: ${MAX_HOLD_MS_VALUES.map((v) => {
-    if (v === null) return 'none';
-    const hours = v / (60 * 60 * 1000);
-    if (hours >= 1) return `${hours}h`;
-    return `${v / (60 * 1000)}min`;
-  }).join(', ')}`);
+  console.log(
+    `- Max hold: ${MAX_HOLD_MS_VALUES.map((v) => {
+      if (v === null) return 'none';
+      const hours = v / (60 * 60 * 1000);
+      if (hours >= 1) return `${hours}h`;
+      return `${v / (60 * 1000)}min`;
+    }).join(', ')}`
+  );
   console.log(`- Ladder configs: 4 variants per TP`);
   console.log(`- Other param combinations per TP/SL: ${otherParamCombinations}`);
   console.log(`\nTotal configurations: ${totalConfigs}`);
@@ -199,17 +205,16 @@ async function main() {
 
   console.log(`\nWriting ${configs.length} configs to optimize-be-bailout-configs.json`);
   const fs = await import('fs/promises');
-  await fs.writeFile(
-    'optimize-be-bailout-configs.json',
-    JSON.stringify(output, null, 2)
-  );
+  await fs.writeFile('optimize-be-bailout-configs.json', JSON.stringify(output, null, 2));
 
   console.log('\nTo run optimization:');
   console.log('1. Use the generated configs with your backtest runner');
   console.log('2. Each config should be tested against your call dataset');
   console.log('3. Rank by final capital (total R)');
   console.log('4. Analyze which TP/SL bands perform best');
-  console.log('5. Analyze which other parameters (BE DD%, max hold, ladder) work best per TP/SL band');
+  console.log(
+    '5. Analyze which other parameters (BE DD%, max hold, ladder) work best per TP/SL band'
+  );
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
@@ -217,4 +222,3 @@ if (import.meta.url === `file://${process.argv[1]}`) {
 }
 
 export { generateExitPlan, generateParameterSpace, TP_MULTIPLES, SL_BPS_VALUES };
-

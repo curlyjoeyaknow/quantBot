@@ -54,4 +54,3 @@ export async function catalogQueryHandler(
     await db.close();
   }
 }
-

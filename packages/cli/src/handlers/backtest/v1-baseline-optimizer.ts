@@ -60,7 +60,44 @@ export async function v1BaselineOptimizerHandler(
   );
 
   if (callsResult.calls.length === 0) {
-    throw new Error('No calls found in the specified date range');
+    // Try to get min/max dates from database for helpful error message
+    let dateRangeHint = '';
+    try {
+      const { openDuckDb } = await import('@quantbot/storage');
+      const conn = await openDuckDb(duckdbPath, { readOnly: true });
+      const dateRange = await conn.all<{
+        min_ts: number;
+        max_ts: number;
+        total_calls: number;
+      }>(`
+        SELECT 
+          MIN(alert_ts_ms) as min_ts,
+          MAX(alert_ts_ms) as max_ts,
+          COUNT(*) as total_calls
+        FROM canon.alerts_std
+      `);
+
+      if (dateRange.length > 0 && dateRange[0].min_ts && dateRange[0].max_ts) {
+        const minDate = DateTime.fromMillis(dateRange[0].min_ts).toISO() || 'unknown';
+        const maxDate = DateTime.fromMillis(dateRange[0].max_ts).toISO() || 'unknown';
+        dateRangeHint = `\n\nAvailable date range in database: ${minDate} to ${maxDate} (${dateRange[0].total_calls} total calls)`;
+      } else if (dateRange.length > 0 && dateRange[0].total_calls === 0) {
+        dateRangeHint = '\n\nDatabase is empty - no calls found in canon.alerts_std table.';
+      }
+    } catch (error) {
+      // If query fails, just provide generic hint
+      dateRangeHint = '\n\nNote: Could not query available date range from database.';
+    }
+
+    throw new Error(
+      `No calls found in the specified date range (${args.from} to ${args.to}).` +
+        `\nDatabase path: ${duckdbPath}` +
+        dateRangeHint +
+        `\n\nTo check for calls, try:` +
+        `\n  1. Check date range: quantbot calls list --from ${args.from} --to ${args.to}` +
+        `\n  2. List all calls: quantbot calls list` +
+        `\n  3. If database is empty, ingest data: quantbot ingestion telegram --file <telegram-export.json>`
+    );
   }
 
   // Convert to CallRecord format
@@ -99,11 +136,30 @@ export async function v1BaselineOptimizerHandler(
   const coverage = await checkCoverage(plan);
 
   if (coverage.eligible.length === 0) {
-    throw new Error('No eligible calls after coverage check');
+    // Group excluded calls by reason for better error message
+    const excludedByReason = new Map<string, number>();
+    for (const excluded of coverage.excluded) {
+      const reason = excluded.reason || 'unknown';
+      excludedByReason.set(reason, (excludedByReason.get(reason) || 0) + 1);
+    }
+
+    const reasonSummary = Array.from(excludedByReason.entries())
+      .map(([reason, count]) => `${reason}: ${count}`)
+      .join(', ');
+
+    throw new Error(
+      `No eligible calls after coverage check. ${coverage.excluded.length} calls excluded (${reasonSummary}). ` +
+        `This usually means candle data is missing in ClickHouse for the date range/interval. ` +
+        `Try: 1) Check if candles exist for this range, 2) Use a different interval (e.g., 5m instead of 1m), ` +
+        `3) Ensure OHLCV data has been ingested for this period.`
+    );
   }
 
-  // Materialize slice and load candles
-  const slice = await materialiseSlice(plan, coverage);
+  // Materialize slice and load candles (with optional catalog reuse)
+  const slice = await materialiseSlice(plan, coverage, {
+    catalogPath: args.catalogPath,
+    catalogResult: false, // Don't catalog the final result for now (can be enabled later)
+  });
   const candlesByCallId = await loadCandlesFromSlice(slice.path);
 
   // Filter calls to only eligible ones

@@ -1296,6 +1296,97 @@ export class BirdeyeClient extends BaseApiClient {
   }
 
   /**
+   * Fetch token creation info (txHash, slot, decimals, owner, creation time)
+   * Only available for Solana tokens
+   */
+  async fetchTokenCreationInfo(
+    tokenAddress: string,
+    chain: string = 'solana'
+  ): Promise<{
+    txHash: string;
+    slot: number;
+    tokenAddress: string;
+    decimals: number;
+    owner: string;
+    blockUnixTime: number;
+    blockHumanTime: string;
+  } | null> {
+    if (chain !== 'solana') {
+      logger.warn('Token creation info is only available for Solana tokens', {
+        tokenAddress,
+        chain,
+      });
+      return null;
+    }
+
+    try {
+      const result = await this.requestWithKeyRotation<{
+        success: boolean;
+        data?: {
+          txHash: string;
+          slot: number;
+          tokenAddress: string;
+          decimals: number;
+          owner: string;
+          blockUnixTime: number;
+          blockHumanTime: string;
+        };
+      }>(
+        {
+          method: 'GET',
+          url: '/defi/token_creation_info',
+          params: {
+            address: tokenAddress,
+          },
+          headers: {
+            'x-chain': 'solana',
+          },
+        },
+        3
+      );
+
+      if (!result) {
+        return null;
+      }
+
+      const { response, apiKey } = result;
+
+      if (response.status === 200 && response.data?.success && response.data?.data) {
+        this.updateKeyUsage(apiKey);
+
+        // Record API usage (minimal credit cost for non-OHLCV endpoints)
+        recordApiUsage('birdeye', 1);
+
+        const data = response.data.data;
+        return {
+          txHash: data.txHash,
+          slot: data.slot,
+          tokenAddress: data.tokenAddress,
+          decimals: data.decimals,
+          owner: data.owner,
+          blockUnixTime: data.blockUnixTime,
+          blockHumanTime: data.blockHumanTime,
+        };
+      }
+
+      if (response.status === 404) {
+        logger.debug('Token creation info not found in Birdeye', {
+          tokenAddress: tokenAddress,
+        });
+        return null;
+      }
+
+      return null;
+    } catch (error: unknown) {
+      logger.error('Failed to fetch token creation info', {
+        error: error instanceof Error ? error.message : String(error),
+        tokenAddress: tokenAddress,
+      });
+      return null;
+    }
+  }
+
+  /**
    * Calculate credits for Birdeye API call
    * Overrides base class method to use Birdeye-specific credit calculation
    */

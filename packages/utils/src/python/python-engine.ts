@@ -53,6 +53,7 @@ export interface DuckDBStorageConfig {
     | 'validate_addresses'
     | 'remove_faulty_addresses'
     | 'move_invalid_tokens'
+    | 'store_token_creation_info'
     | 'get_state'
     | 'set_state'
     | 'delete_state'

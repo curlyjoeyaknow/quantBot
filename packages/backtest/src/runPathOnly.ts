@@ -64,7 +64,7 @@ export async function runPathOnly(req: PathOnlyRequest): Promise<PathOnlySummary
 
   // Initialize structured artifact directory
   const runDir = await createRunDirectory(runId, 'path-only');
-  
+
   // Get git provenance
   const gitInfo = await getGitProvenance();
   runDir.updateManifest({
@@ -233,7 +233,10 @@ export async function runPathOnly(req: PathOnlyRequest): Promise<PathOnlySummary
         alert_ts_ms: call.createdAt.toMillis(),
         created_at: call.createdAt.toISO(),
       }));
-      await runDir.writeArtifact('alerts', alertArtifacts as unknown as Array<Record<string, unknown>>);
+      await runDir.writeArtifact(
+        'alerts',
+        alertArtifacts as unknown as Array<Record<string, unknown>>
+      );
 
       // Write paths (truth layer)
       if (pathMetricsRows.length > 0) {
@@ -257,7 +260,10 @@ export async function runPathOnly(req: PathOnlyRequest): Promise<PathOnlySummary
           alert_to_activity_ms: row.alert_to_activity_ms,
           peak_multiple: row.peak_multiple,
         }));
-        await runDir.writeArtifact('paths', pathArtifacts as unknown as Array<Record<string, unknown>>);
+        await runDir.writeArtifact(
+          'paths',
+          pathArtifacts as unknown as Array<Record<string, unknown>>
+        );
       }
 
       // Update timing in manifest
@@ -266,7 +272,8 @@ export async function runPathOnly(req: PathOnlyRequest): Promise<PathOnlySummary
           plan_ms: timing.phases.plan?.durationMs,
           coverage_ms: timing.phases.coverage?.durationMs,
           slice_ms: timing.phases.slice?.durationMs,
-          execution_ms: (timing.phases.load?.durationMs ?? 0) + (timing.phases.compute?.durationMs ?? 0),
+          execution_ms:
+            (timing.phases.load?.durationMs ?? 0) + (timing.phases.compute?.durationMs ?? 0),
           total_ms: timing.totalMs,
         },
       });

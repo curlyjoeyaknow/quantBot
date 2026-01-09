@@ -5,19 +5,16 @@
  */
 
 import path from 'node:path';
-import { ConfigurationError } from '@quantbot/utils';
-import { PythonEngine } from '@quantbot/utils';
-import { DuckDBStorageService } from '@quantbot/backtest';
+import { ConfigurationError, logger } from '@quantbot/utils';
 import type { CommandContext } from '../../core/command-context.js';
 import { removeFaultyAddressesSchema } from '../../commands/storage.js';
 import type { z } from 'zod';
-import { logger } from '@quantbot/utils';
 
 export type RemoveFaultyAddressesArgs = z.infer<typeof removeFaultyAddressesSchema>;
 
 export async function removeFaultyAddressesHandler(
   args: RemoveFaultyAddressesArgs,
-  _ctx: CommandContext
+  ctx: CommandContext
 ) {
   const duckdbPathRaw = args.duckdb || process.env.DUCKDB_PATH;
   if (!duckdbPathRaw) {
@@ -37,8 +34,7 @@ export async function removeFaultyAddressesHandler(
     logger.warn('Removing faulty addresses from DuckDB database', { duckdbPath });
   }
 
-  const pythonEngine = new PythonEngine();
-  const duckdbStorage = new DuckDBStorageService(pythonEngine);
+  const duckdbStorage = ctx.services.duckdbStorage();
 
   const result = await duckdbStorage.removeFaultyAddresses(duckdbPath, dryRun);
 

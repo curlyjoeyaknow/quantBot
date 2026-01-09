@@ -225,8 +225,39 @@ export const backtestV1BaselineSchema = z.object({
   minCalls: z.coerce.number().int().min(0).default(0), // Minimum number of calls per caller
   filterCollapsed: z.boolean().default(true), // Filter out callers that collapsed capital
   filterExtreme: z.boolean().default(true), // Filter out callers requiring extreme parameters
+  // Catalog integration (optional, much faster if slices already exist)
+  catalogPath: z.string().optional(), // Path to catalog for slice reuse
   // Output
   format: z.enum(['json', 'table', 'csv']).optional().default('table'),
 });
 
 export type BacktestV1BaselineArgs = z.infer<typeof backtestV1BaselineSchema>;
+
+/**
+ * Catalog sync schema
+ */
+export const catalogSyncSchema = z.object({
+  baseDir: z.string().optional().default('runs'),
+  duckdb: z.string().optional().default('data/backtest_catalog.duckdb'),
+  stats: z.boolean().optional().default(false),
+});
+
+export type CatalogSyncArgs = z.infer<typeof catalogSyncSchema>;
+
+/**
+ * Catalog query schema
+ */
+export const catalogQuerySchema = z.object({
+  duckdb: z.string().optional().default('data/backtest_catalog.duckdb'),
+  runType: z.string().optional(),
+  status: z.string().optional(),
+  gitBranch: z.string().optional(),
+  fromDate: z.string().optional(),
+  toDate: z.string().optional(),
+  limit: z.coerce.number().int().positive().optional().default(10),
+  runId: z.string().optional(),
+  artifactType: z.string().optional(),
+  format: z.enum(['json', 'table', 'csv']).optional().default('table'),
+});
+
+export type CatalogQueryArgs = z.infer<typeof catalogQuerySchema>;

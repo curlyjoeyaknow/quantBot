@@ -37,7 +37,7 @@ async function storeStrategy(
 async function main() {
   // Check for DUCKDB_PATH or use default
   const duckdbPath = process.env.DUCKDB_PATH || 'data/alerts.duckdb';
-  
+
   if (!duckdbPath) {
     console.error('❌ DUCKDB_PATH environment variable is required');
     console.error('   Set it with: export DUCKDB_PATH=data/alerts.duckdb');
@@ -45,11 +45,10 @@ async function main() {
   }
 
   // Dynamic imports
-  const { ensureBacktestStrategyTables } = await import(
-    '../packages/backtest/src/strategy/duckdb-strategy-store.js'
-  );
+  const { ensureBacktestStrategyTables } =
+    await import('../packages/backtest/src/strategy/duckdb-strategy-store.js');
   const duckdbModule = await import('duckdb');
-  
+
   // Load configs
   const configsPath = resolve(process.cwd(), 'optimize-be-bailout-configs.json');
   if (!existsSync(configsPath)) {
@@ -70,7 +69,7 @@ async function main() {
   for (const config of configsData.configs) {
     const strategyId = `be_bailout_${config.configId}`;
     const name = `BE Bailout: ${config.configId.replace(/_/g, ' ')}`;
-    
+
     await storeStrategy(db, strategyId, name, config.exitPlan);
     console.log(`✓ Stored: ${strategyId}`);
   }
@@ -84,7 +83,7 @@ async function main() {
   console.log('    --from 2024-01-01 \\');
   console.log('    --to 2024-12-31 \\');
   console.log('    --run-id <your-run-id>');
-  
+
   // Close database
   db.close();
 }
@@ -92,4 +91,3 @@ async function main() {
 if (import.meta.url === `file://${process.argv[1]}`) {
   main().catch(console.error);
 }
-

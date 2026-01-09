@@ -135,14 +135,14 @@ export async function writeBacktestResults(
               return String(val);
             }
           });
-          await db.execute(`INSERT INTO temp_data (${columns.join(', ')}) VALUES (${values.join(', ')})`);
+          await db.execute(
+            `INSERT INTO temp_data (${columns.join(', ')}) VALUES (${values.join(', ')})`
+          );
         }
       }
 
       // Export to Parquet
-      await db.execute(
-        `COPY temp_data TO '${parquetPath.replace(/'/g, "''")}' (FORMAT PARQUET)`
-      );
+      await db.execute(`COPY temp_data TO '${parquetPath.replace(/'/g, "''")}' (FORMAT PARQUET)`);
     } finally {
       await db.close();
     }

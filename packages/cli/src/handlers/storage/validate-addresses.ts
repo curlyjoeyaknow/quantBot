@@ -5,17 +5,14 @@
  */
 
 import path from 'node:path';
-import { ConfigurationError } from '@quantbot/utils';
-import { PythonEngine } from '@quantbot/utils';
-import { DuckDBStorageService } from '@quantbot/backtest';
+import { ConfigurationError, logger } from '@quantbot/utils';
 import type { CommandContext } from '../../core/command-context.js';
 import { validateAddressesSchema } from '../../commands/storage.js';
 import type { z } from 'zod';
-import { logger } from '@quantbot/utils';
 
 export type ValidateAddressesArgs = z.infer<typeof validateAddressesSchema>;
 
-export async function validateAddressesHandler(args: ValidateAddressesArgs, _ctx: CommandContext) {
+export async function validateAddressesHandler(args: ValidateAddressesArgs, ctx: CommandContext) {
   const duckdbPathRaw = args.duckdb || process.env.DUCKDB_PATH;
   if (!duckdbPathRaw) {
     throw new ConfigurationError(
@@ -28,8 +25,7 @@ export async function validateAddressesHandler(args: ValidateAddressesArgs, _ctx
 
   logger.info('Validating addresses in DuckDB database', { duckdbPath });
 
-  const pythonEngine = new PythonEngine();
-  const duckdbStorage = new DuckDBStorageService(pythonEngine);
+  const duckdbStorage = ctx.services.duckdbStorage();
 
   const result = await duckdbStorage.validateAddresses(duckdbPath);
 

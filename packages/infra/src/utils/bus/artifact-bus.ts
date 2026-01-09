@@ -155,8 +155,7 @@ export async function submitArtifact(
       jobId,
     };
   } catch (error) {
-    const errorMessage =
-      error instanceof Error ? error.message : String(error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
     logger.error('[artifact-bus] Failed to submit artifact', {
       runId,
       producer,
@@ -206,4 +205,3 @@ export async function submitArtifacts(
 
   return results;
 }
-

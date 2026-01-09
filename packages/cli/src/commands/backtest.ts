@@ -34,6 +34,10 @@ import {
   type BacktestBaselineArgs,
   backtestV1BaselineSchema,
   type BacktestV1BaselineArgs,
+  catalogSyncSchema,
+  type CatalogSyncArgs,
+  catalogQuerySchema,
+  type CatalogQueryArgs,
 } from '../command-defs/backtest.js';
 import { join } from 'path';
 import { existsSync } from 'fs';
@@ -362,6 +366,10 @@ export function registerBacktestCommands(program: Command): void {
     )
     .option('--min-calls <number>', 'Minimum number of calls per caller (default: 0)', '0')
     .option('--filter-collapsed', 'Filter out callers that collapsed capital (default: true)', true)
+    .option(
+      '--catalog-path <path>',
+      'Path to catalog for slice reuse (much faster if slices already exist)'
+    )
     .option(
       '--filter-extreme',
       'Filter out callers requiring extreme parameters (default: true)',
@@ -1495,6 +1503,43 @@ const backtestModule: PackageCommandModule = {
         'quantbot backtest v1-baseline --from 2025-05-01 --to 2025-05-31 --interval 5m',
         'quantbot backtest v1-baseline --from 2025-05-01 --to 2025-05-31 --interval 5m --mode per-caller --min-calls 50',
         'quantbot backtest v1-baseline --from 2025-05-01 --to 2025-05-31 --interval 5m --mode grouped --min-calls 50',
+      ],
+    },
+    {
+      name: 'catalog-sync',
+      description: 'Sync completed backtest runs to catalog (daemon operation)',
+      schema: catalogSyncSchema,
+      handler: async (args: unknown, ctx: unknown) => {
+        const { catalogSyncHandler } = await import('../handlers/backtest/catalog-sync.js');
+        const { CommandContext } = await import('../core/command-context.js');
+        return catalogSyncHandler(
+          args as CatalogSyncArgs,
+          ctx as InstanceType<typeof CommandContext>
+        );
+      },
+      examples: [
+        'quantbot backtest catalog-sync',
+        'quantbot backtest catalog-sync --base-dir runs --duckdb data/backtest_catalog.duckdb',
+        'quantbot backtest catalog-sync --stats',
+      ],
+    },
+    {
+      name: 'catalog-query',
+      description: 'Query the backtest catalog for runs matching criteria',
+      schema: catalogQuerySchema,
+      handler: async (args: unknown, ctx: unknown) => {
+        const { catalogQueryHandler } = await import('../handlers/backtest/catalog-query.js');
+        const { CommandContext } = await import('../core/command-context.js');
+        return catalogQueryHandler(
+          args as CatalogQueryArgs,
+          ctx as InstanceType<typeof CommandContext>
+        );
+      },
+      examples: [
+        'quantbot backtest catalog-query --limit 10',
+        'quantbot backtest catalog-query --run-type path-only --status completed',
+        'quantbot backtest catalog-query --git-branch main --limit 20',
+        'quantbot backtest catalog-query --run-id <uuid> --artifact-type paths',
       ],
     },
   ],
