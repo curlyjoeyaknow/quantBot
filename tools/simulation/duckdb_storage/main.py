@@ -21,6 +21,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from duckdb_storage.utils import get_connection
+from tools.shared.duckdb_adapter import get_readonly_connection, get_write_connection
 from duckdb_storage.ops import (
     StoreStrategyInput,
     StoreStrategyOutput,
@@ -70,6 +71,9 @@ from duckdb_storage.ops import (
     InitStateTableInput,
     InitStateTableOutput,
     init_state_table_run,
+    StoreTokenCreationInfoInput,
+    StoreTokenCreationInfoOutput,
+    store_token_creation_info_run,
 )
 
 
@@ -120,6 +124,7 @@ OP_MAP = {
         move_invalid_tokens_run,
     ),
     "generate_report": (GenerateReportInput, GenerateReportOutput, generate_report_run),
+    "store_token_creation_info": (StoreTokenCreationInfoInput, StoreTokenCreationInfoOutput, store_token_creation_info_run),
     # State operations
     "get_state": (GetStateInput, GetStateOutput, get_state_run),
     "set_state": (SetStateInput, SetStateOutput, set_state_run),
@@ -157,24 +162,52 @@ def main():
         input_model, output_model, run_func = OP_MAP[args.operation]
         input_data = input_model.model_validate_json(data_str)
 
-        # Get connection
-        con = get_connection(args.duckdb)
+        # Determine if this is a read-only operation
+        # Query operations are read-only, store operations are write
+        read_only_ops = {
+            'query_calls',
+            'query_ohlcv_metadata',
+            'query_ohlcv_exclusions',
+            'query_tokens_recent',
+            'get_state',
+            'generate_report',
+        }
 
-        # Execute operation
-        result = run_func(con, input_data)
+        # Get connection (read-only for queries, write for stores)
+        if args.operation in read_only_ops:
+            # Use read-only connection for query operations
+            with get_readonly_connection(args.duckdb) as con:
+                # Execute operation
+                result = run_func(con, input_data)
 
-        # Validate output (ensures contract)
-        output = output_model.model_validate(result.model_dump())
+                # Validate output (ensures contract)
+                output = output_model.model_validate(result.model_dump())
 
-        # Output JSON to stdout (single object)
-        # Use exclude_none=False to ensure None values are included as null in JSON
-        # This is important for TypeScript Zod schemas that expect nullable optional fields
-        print(json.dumps(output.model_dump(exclude_none=False), default=str))
+                # Output JSON to stdout (single object)
+                # Use exclude_none=False to ensure None values are included as null in JSON
+                # This is important for TypeScript Zod schemas that expect nullable optional fields
+                print(json.dumps(output.model_dump(exclude_none=False), default=str))
+        else:
+            # Use write connection for store operations
+            # Note: get_connection from utils still sets up schema, so we use it for write ops
+            con = get_connection(args.duckdb)
 
-        # Close connection
-        con.close()
+            try:
+                # Execute operation
+                result = run_func(con, input_data)
 
-        # Exit with appropriate code
+                # Validate output (ensures contract)
+                output = output_model.model_validate(result.model_dump())
+
+                # Output JSON to stdout (single object)
+                # Use exclude_none=False to ensure None values are included as null in JSON
+                # This is important for TypeScript Zod schemas that expect nullable optional fields
+                print(json.dumps(output.model_dump(exclude_none=False), default=str))
+            finally:
+                # Close connection
+                con.close()
+
+        # Exit with appropriate code (use output from the appropriate branch)
         sys.exit(0 if output.success else 1)
 
     except Exception as e:
