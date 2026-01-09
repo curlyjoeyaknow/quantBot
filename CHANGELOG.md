@@ -19,6 +19,26 @@ All notable changes to this project will be documented in this file.
   - Enables sorting tokens by most recent candle ingestion aligned with alert times
   - Identifies and removes duplicate candles while preserving data integrity
 
+- **Candle Quality Analysis System** - Comprehensive data quality analysis and re-ingestion worklist
+  - Detects multiple quality issues: duplicates, gaps, price distortions, volume anomalies
+  - Quality scoring system (0-100) with priority levels (critical/high/medium/low)
+  - Python analyzer: `tools/storage/analyze_candle_quality.py`
+    - Analyzes duplicates (identical vs different values)
+    - Detects data gaps (missing candles in time series)
+    - Identifies price distortions (OHLC inconsistencies, extreme jumps, zero/negative values)
+    - Calculates quality scores and priorities
+  - CLI command: `quantbot storage analyze-quality`
+  - Re-ingestion automation: `tools/storage/process_reingest_worklist.sh`
+    - Processes worklist by priority
+    - Deduplicates and re-ingests automatically
+    - Dry-run mode for safety
+  - Handler: `analyzeCandleQualityHandler`
+  - Generates JSON and CSV worklists for batch processing
+  - Documentation: `docs/guides/candle-quality-analysis.md`
+  - Location: `packages/cli/src/handlers/storage/`, `tools/storage/`
+  - Enables identification of tokens with erroneous data similar to chart anomalies
+  - Prioritized re-ingestion workflow for data quality improvement
+
 - **Structured Artifacts System** - Research-lab architecture for backtest runs
   - Multiple Parquets per run by artifact type (alerts, paths, trades, summary, frontier, errors)
   - JSON manifests (`run.json`) with metadata, provenance, and artifact inventory
