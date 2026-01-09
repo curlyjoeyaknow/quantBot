@@ -708,7 +708,6 @@ export class DuckDBStorageService {
     }>
   ): Promise<TokenCreationInfoStorageResult> {
     try {
-      // @ts-expect-error - 'store_token_creation_info' operation exists but TypeScript type may not be updated yet
       const result = await this.pythonEngine.runDuckDBStorage({
         duckdbPath,
         operation: 'store_token_creation_info',
