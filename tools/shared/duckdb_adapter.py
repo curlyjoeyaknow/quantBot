@@ -106,9 +106,7 @@ def get_connection(
                         db_file.unlink()  # Delete invalid file
 
         con = duckdb.connect(db_path, read_only=read_only)
-        # Set busy_timeout to handle transient locks (10 seconds)
-        # This allows connections to wait for locks to clear instead of failing immediately
-        con.execute("PRAGMA busy_timeout=10000")
+        # Note: DuckDB handles locking automatically and doesn't support SQLite's busy_timeout pragma
 
     try:
         yield con
@@ -197,8 +195,7 @@ def safe_connect(db_path: str, read_only: bool = False) -> duckdb.DuckDBPyConnec
                         db_file.unlink()
 
         con = duckdb.connect(db_path, read_only=read_only)
-        # Set busy_timeout to handle transient locks (10 seconds)
-        con.execute("PRAGMA busy_timeout=10000")
+        # Note: DuckDB handles locking automatically and doesn't support SQLite's busy_timeout pragma
 
     return con
 

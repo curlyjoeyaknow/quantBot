@@ -34,7 +34,7 @@ def get_connection(db_path: str, read_only: bool = False) -> duckdb.DuckDBPyConn
     if db_path == ':memory:':
         if db_path not in _connection_cache:
             con = duckdb.connect(db_path)
-            con.execute("PRAGMA busy_timeout=10000")
+            # Note: DuckDB handles locking automatically and doesn't support SQLite's busy_timeout pragma
             _connection_cache[db_path] = con
         return _connection_cache[db_path]
     
@@ -45,9 +45,7 @@ def get_connection(db_path: str, read_only: bool = False) -> duckdb.DuckDBPyConn
         db_file.unlink()  # Delete empty file
     
     con = duckdb.connect(db_path, read_only=read_only)
-    # Set busy_timeout to handle transient locks (10 seconds)
-    # This allows connections to wait for locks to clear instead of failing immediately
-    con.execute("PRAGMA busy_timeout=10000")
+    # Note: DuckDB handles locking automatically and doesn't support SQLite's busy_timeout pragma
     return con
 
 
