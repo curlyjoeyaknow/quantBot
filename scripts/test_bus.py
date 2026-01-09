@@ -93,12 +93,12 @@ def main():
             con = duckdb.connect("data/alerts.duckdb", read_only=True)
             try:
                 catalog_runs = con.execute(
-                    "SELECT run_id, producer, kind FROM catalog.runs_d WHERE run_id = ?",
+                    "SELECT run_id, producer, created_at_utc FROM catalog.runs_d WHERE run_id = ?",
                     [run_id]
                 ).fetchall()
                 
                 if catalog_runs:
-                    print(f"[test_bus] ✓ Run recorded in catalog: {catalog_runs[0]}")
+                    print(f"[test_bus] ✓ Run recorded in catalog: run_id={catalog_runs[0][0]}, producer={catalog_runs[0][1]}, created_at={catalog_runs[0][2]}")
                 else:
                     print(f"[test_bus] ⚠ Run not found in catalog (daemon may not have run)")
                 

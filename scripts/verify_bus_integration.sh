@@ -104,7 +104,7 @@ try:
     # Check if catalog.runs_d exists
     try:
         runs = con.execute("""
-            SELECT run_id, producer, kind, created_at_utc, last_seen_at
+            SELECT run_id, producer, created_at_utc, last_seen_at
             FROM catalog.runs_d
             ORDER BY last_seen_at DESC
             LIMIT 5
@@ -113,7 +113,7 @@ try:
         if runs:
             print(f"   ✓ Found {len(runs)} recent runs:")
             for run in runs:
-                print(f"     - {run[0][:8]}... ({run[1]}/{run[2]}) - {run[4]}")
+                print(f"     - {run[0][:8]}... ({run[1]}) - {run[3]}")
         else:
             print("   ⚠ No runs found in catalog yet")
             print("   Run a simulation to generate artifacts")

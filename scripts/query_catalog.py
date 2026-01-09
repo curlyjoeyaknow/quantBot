@@ -25,7 +25,6 @@ def query_runs(con: duckdb.DuckDBPyConnection, limit: int = 10):
             SELECT 
                 run_id,
                 producer,
-                kind,
                 created_at_utc,
                 last_seen_at,
                 meta_json
@@ -43,11 +42,12 @@ def query_runs(con: duckdb.DuckDBPyConnection, limit: int = 10):
         print(f"\n📊 Recent Runs (last {limit}):")
         print("=" * 80)
         for run in runs:
-            run_id, producer, kind, created_at, last_seen, meta_json = run
+            run_id, producer, created_at, last_seen, meta_json = run
             meta = json.loads(meta_json) if meta_json else {}
             print(f"\nRun ID: {run_id}")
             print(f"  Producer: {producer}")
-            print(f"  Kind: {kind}")
+            if 'backtest_type' in meta:
+                print(f"  Backtest Type: {meta.get('backtest_type')}")
             print(f"  Created: {created_at}")
             print(f"  Last Seen: {last_seen}")
             if meta:
