@@ -14,7 +14,12 @@ import {
   runV1BaselineGroupedEvaluation,
   type V1BaselineParams,
 } from '@quantbot/backtest';
-import { planBacktest, checkCoverage, materialiseSlice, loadCandlesFromSlice } from '@quantbot/backtest';
+import {
+  planBacktest,
+  checkCoverage,
+  materialiseSlice,
+  loadCandlesFromSlice,
+} from '@quantbot/backtest';
 import type { CallRecord } from '@quantbot/backtest';
 
 export type V1BaselineOptimizerArgs = z.infer<typeof backtestV1BaselineSchema>;
@@ -125,9 +130,7 @@ export async function v1BaselineOptimizerHandler(
     eligibleCalls = eligibleCalls.filter((call) => validCallers.has(call.caller));
 
     if (eligibleCalls.length === 0) {
-      throw new Error(
-        `No callers found with at least ${args.minCalls} calls after filtering`
-      );
+      throw new Error(`No callers found with at least ${args.minCalls} calls after filtering`);
     }
   }
 
@@ -181,14 +184,16 @@ export async function v1BaselineOptimizerHandler(
 
     return {
       mode: 'grouped',
-      perCallerResults: Array.from(groupedResult.perCallerResults.entries()).map(([caller, result]) => ({
-        caller,
-        bestParams: result.bestParams,
-        bestFinalCapital: result.bestFinalCapital,
-        bestTotalReturn: (result.bestTotalReturn * 100).toFixed(2) + '%',
-        collapsedCapital: result.collapsedCapital,
-        requiresExtremeParams: result.requiresExtremeParams,
-      })),
+      perCallerResults: Array.from(groupedResult.perCallerResults.entries()).map(
+        ([caller, result]) => ({
+          caller,
+          bestParams: result.bestParams,
+          bestFinalCapital: result.bestFinalCapital,
+          bestTotalReturn: (result.bestTotalReturn * 100).toFixed(2) + '%',
+          collapsedCapital: result.collapsedCapital,
+          requiresExtremeParams: result.requiresExtremeParams,
+        })
+      ),
       selectedCallers: groupedResult.selectedCallers,
       groupedResult: groupedResult.groupedResult
         ? {
@@ -241,4 +246,3 @@ export async function v1BaselineOptimizerHandler(
     };
   }
 }
-

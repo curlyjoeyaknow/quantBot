@@ -109,6 +109,25 @@ export {
   type OptimizationResult,
 } from './optimization/policy-optimizer.js';
 
+// V1 Baseline Optimizer (capital-aware)
+export {
+  optimizeV1Baseline,
+  optimizeV1BaselinePerCaller,
+  runV1BaselineGroupedEvaluation,
+  type V1BaselineOptimizationResult,
+  type V1BaselineOptimizeRequest,
+  type V1BaselinePerCallerResult,
+} from './optimization/v1-baseline-optimizer.js';
+export {
+  simulateCapitalAware,
+  type V1BaselineParams,
+  type CapitalSimulationResult,
+  type CapitalSimulatorConfig,
+  type Position,
+  type TradeExecution,
+  type CapitalState,
+} from './optimization/capital-simulator.js';
+
 export {
   generateCallerFollowPlan,
   generateCallerFollowPlanReport,

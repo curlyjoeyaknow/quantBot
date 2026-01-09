@@ -251,8 +251,12 @@ export function simulateCapitalAware(
 
   // Calculate final metrics
   const totalReturn = (state.totalCapital - cfg.initialCapital) / cfg.initialCapital;
-  const tradesExecuted = state.completedTrades.filter((t) => t.exitReason !== 'no_entry' && t.exitReason !== 'insufficient_capital').length;
-  const tradesSkipped = state.completedTrades.filter((t) => t.exitReason === 'insufficient_capital').length;
+  const tradesExecuted = state.completedTrades.filter(
+    (t) => t.exitReason !== 'no_entry' && t.exitReason !== 'insufficient_capital'
+  ).length;
+  const tradesSkipped = state.completedTrades.filter(
+    (t) => t.exitReason === 'insufficient_capital'
+  ).length;
 
   return {
     finalCapital: state.totalCapital,
@@ -464,7 +468,10 @@ function checkAndExecuteExits(
   currentTime: number,
   config: Required<CapitalSimulatorConfig>
 ): void {
-  const positionsToExit: Array<{ position: Position; exitResult: ReturnType<typeof findExitInCandles> }> = [];
+  const positionsToExit: Array<{
+    position: Position;
+    exitResult: ReturnType<typeof findExitInCandles>;
+  }> = [];
 
   for (const [callId, position] of state.positions) {
     const candles = candlesByCallId.get(callId);
@@ -492,7 +499,14 @@ function checkAndExecuteExits(
 
   // Execute exits
   for (const { position, exitResult } of positionsToExit) {
-    executeExit(state, position, exitResult.exitPrice, exitResult.exitReason, exitResult.exitTsMs, config);
+    executeExit(
+      state,
+      position,
+      exitResult.exitPrice,
+      exitResult.exitReason,
+      exitResult.exitTsMs,
+      config
+    );
     state.positions.delete(position.callId);
   }
 }
@@ -516,7 +530,7 @@ function executeExit(
 
   // Apply fees
   const totalFeeBps = config.fees.takerFeeBps + config.fees.slippageBps;
-  const feeAmount = (position.size * totalFeeBps) / 10000 * 2; // Entry + exit
+  const feeAmount = ((position.size * totalFeeBps) / 10000) * 2; // Entry + exit
   const netPnl = grossPnl - feeAmount;
 
   // Update capital: free_cash += size + pnl
@@ -547,4 +561,3 @@ function executeExit(
 
   state.completedTrades.push(trade);
 }
-

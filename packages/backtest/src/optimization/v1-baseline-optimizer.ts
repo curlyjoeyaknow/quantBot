@@ -95,7 +95,7 @@ const DEFAULT_TP_MULTS = [1.5, 2.0, 2.5, 3.0, 4.0, 5.0];
 /**
  * Default stop-loss multiples (e.g., 0.85 = -15%, 0.90 = -10%)
  */
-const DEFAULT_SL_MULTS = [0.85, 0.88, 0.90, 0.92, 0.95];
+const DEFAULT_SL_MULTS = [0.85, 0.88, 0.9, 0.92, 0.95];
 
 /**
  * Default max hold hours (defaults to 48, but can test shorter)
@@ -149,7 +149,12 @@ export function optimizeV1Baseline(req: V1BaselineOptimizeRequest): V1BaselineOp
         };
 
         // Run capital simulation
-        const result = simulateCapitalAware(callsToOptimize, req.candlesByCallId, params, req.simulatorConfig);
+        const result = simulateCapitalAware(
+          callsToOptimize,
+          req.candlesByCallId,
+          params,
+          req.simulatorConfig
+        );
 
         results.push({ params, result });
       }
@@ -213,7 +218,8 @@ export function optimizeV1BaselinePerCaller(
     });
 
     // Check if caller collapsed capital
-    const collapsedCapital = optimizeResult.bestFinalCapital < (simulatorConfig?.initialCapital ?? 10_000);
+    const collapsedCapital =
+      optimizeResult.bestFinalCapital < (simulatorConfig?.initialCapital ?? 10_000);
 
     // Check if requires extreme parameters (heuristic: very tight SL < 0.88 or very high TP > 4.0)
     const requiresExtremeParams =
@@ -336,4 +342,3 @@ export function runV1BaselineGroupedEvaluation(
     groupedParams,
   };
 }
-

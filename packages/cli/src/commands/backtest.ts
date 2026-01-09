@@ -6,7 +6,12 @@ import type { Command } from 'commander';
 import type { PackageCommandModule } from '../types/index.js';
 import { defineCommand } from '../core/defineCommand.js';
 import { die } from '../core/cliErrors.js';
-import { coerceNumber, coerceBoolean, coerceStringArray, coerceNumberArray } from '../core/coerce.js';
+import {
+  coerceNumber,
+  coerceBoolean,
+  coerceStringArray,
+  coerceNumberArray,
+} from '../core/coerce.js';
 import { commandRegistry } from '../core/command-registry.js';
 import { DateTime } from 'luxon';
 import { runBacktest } from '@quantbot/backtest';
@@ -215,7 +220,10 @@ export function registerBacktestCommands(program: Command): void {
     .command('optimize')
     .description('Grid search to find optimal policy for callers')
     .option('--caller <name>', 'Caller name to optimize for (if omitted, optimizes for all)')
-    .option('--caller-groups <json>', 'JSON array of caller names to optimize for: ["caller1","caller2"]')
+    .option(
+      '--caller-groups <json>',
+      'JSON array of caller names to optimize for: ["caller1","caller2"]'
+    )
     .requiredOption('--interval <interval>', 'Candle interval (1m, 5m, etc.)')
     .requiredOption('--from <date>', 'Start date (ISO 8601)')
     .requiredOption('--to <date>', 'End date (ISO 8601)')
@@ -326,7 +334,9 @@ export function registerBacktestCommands(program: Command): void {
   // V1 Baseline Optimizer command (capital-aware optimization)
   const v1BaselineCmd = backtestCmd
     .command('v1-baseline')
-    .description('V1 Baseline Optimizer: capital-aware optimization with finite capital and position constraints')
+    .description(
+      'V1 Baseline Optimizer: capital-aware optimization with finite capital and position constraints'
+    )
     .option('--caller-groups <json>', 'JSON array of caller names: ["caller1","caller2"]')
     .requiredOption('--interval <interval>', 'Candle interval (1m, 5m, etc.)')
     .requiredOption('--from <date>', 'Start date (ISO 8601)')
@@ -335,7 +345,11 @@ export function registerBacktestCommands(program: Command): void {
     .option('--sl-mults <json>', 'JSON array of stop-loss multiples: [0.85,0.90,0.95]')
     .option('--max-hold-hrs <json>', 'JSON array of max hold hours: [48]')
     .option('--initial-capital <number>', 'Initial capital (default: 10000)', '10000')
-    .option('--max-allocation-pct <number>', 'Max allocation per trade (default: 0.04 = 4%)', '0.04')
+    .option(
+      '--max-allocation-pct <number>',
+      'Max allocation per trade (default: 0.04 = 4%)',
+      '0.04'
+    )
     .option('--max-risk-per-trade <number>', 'Max risk per trade in USD (default: 200)', '200')
     .option('--max-concurrent-positions <number>', 'Max concurrent positions (default: 25)', '25')
     .option('--min-executable-size <number>', 'Minimum executable size in USD (default: 10)', '10')
@@ -348,7 +362,11 @@ export function registerBacktestCommands(program: Command): void {
     )
     .option('--min-calls <number>', 'Minimum number of calls per caller (default: 0)', '0')
     .option('--filter-collapsed', 'Filter out callers that collapsed capital (default: true)', true)
-    .option('--filter-extreme', 'Filter out callers requiring extreme parameters (default: true)', true)
+    .option(
+      '--filter-extreme',
+      'Filter out callers requiring extreme parameters (default: true)',
+      true
+    )
     .option('--format <format>', 'Output format (json, table, csv)', 'table');
 
   defineCommand(v1BaselineCmd, {
@@ -1465,7 +1483,8 @@ const backtestModule: PackageCommandModule = {
       description: 'V1 Baseline Optimizer: capital-aware optimization with finite capital',
       schema: backtestV1BaselineSchema,
       handler: async (args: unknown, ctx: unknown) => {
-        const { v1BaselineOptimizerHandler } = await import('../handlers/backtest/v1-baseline-optimizer.js');
+        const { v1BaselineOptimizerHandler } =
+          await import('../handlers/backtest/v1-baseline-optimizer.js');
         const { CommandContext } = await import('../core/command-context.js');
         return v1BaselineOptimizerHandler(
           args as BacktestV1BaselineArgs,
