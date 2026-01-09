@@ -404,8 +404,18 @@ def generate_drilldown_report(csv_path: str, output_path: str = None, max_trades
                 print(f"  Processed {completed_count}/{len(all_trade_args)} trades...")
     
     # Print summary
+    total_trades_loaded = 0
     for caller, data in trades_by_caller.items():
-        print(f"  {caller}: {len(data['trades'])} trades loaded")
+        trade_count = len(data['trades'])
+        total_trades_loaded += trade_count
+        print(f"  {caller}: {trade_count} trades loaded")
+    
+    if total_trades_loaded == 0:
+        print("WARNING: No trades were successfully loaded! HTML will be empty.", file=sys.stderr)
+        print("This might be due to:", file=sys.stderr)
+        print("  1. Pickle errors (multiprocessing issues)", file=sys.stderr)
+        print("  2. Missing OHLCV data", file=sys.stderr)
+        print("  3. All trades filtered out", file=sys.stderr)
     
     # Calculate comprehensive caller stats for leaderboard
     caller_stats = []
@@ -440,6 +450,7 @@ def generate_drilldown_report(csv_path: str, output_path: str = None, max_trades
         })
     
     print(f"\nGenerating HTML report...")
+    print(f"Summary: {len(all_trade_args)} trades processed, {total_trades_loaded} trades loaded, {len(caller_stats)} callers with stats")
     
     # Generate HTML
     html = f'''<!DOCTYPE html>
@@ -1032,6 +1043,11 @@ def generate_drilldown_report(csv_path: str, output_path: str = None, max_trades
         const tradeData = {json.dumps(trades_by_caller)};
         const callerStats = {json.dumps(caller_stats)};
         
+        // Check if we have any data
+        const hasData = Object.keys(tradeData).length > 0 && callerStats.length > 0;
+        const totalTradesProcessed = {len(all_trade_args)};
+        const totalTradesLoaded = {total_trades_loaded};
+        
         let chart = null;
         let candleSeries = null;
         let currentTrades = [];
@@ -1040,6 +1056,36 @@ def generate_drilldown_report(csv_path: str, output_path: str = None, max_trades
         
         // Initialize on page load
         window.addEventListener('DOMContentLoaded', () => {{
+            if (!hasData) {{
+                // Show error message if no data
+                const leaderboardBody = document.getElementById('leaderboard-body');
+                if (leaderboardBody) {{
+                    leaderboardBody.innerHTML = `
+                        <tr>
+                            <td colspan="9" style="text-align: center; padding: 3rem; color: var(--text-muted);">
+                                <h3 style="color: var(--accent-red); margin-bottom: 1rem;">⚠️ No Trade Data Available</h3>
+                                <p>No trades were successfully loaded for this run.</p>
+                                <p style="margin-top: 1rem;"><strong>Statistics:</strong></p>
+                                <ul style="text-align: left; display: inline-block; margin-top: 0.5rem;">
+                                    <li>Trades processed: ${{totalTradesProcessed}}</li>
+                                    <li>Trades loaded: ${{totalTradesLoaded}}</li>
+                                </ul>
+                                <p style="margin-top: 1rem;"><strong>Possible causes:</strong></p>
+                                <ul style="text-align: left; display: inline-block; margin-top: 0.5rem;">
+                                    <li>Multiprocessing/pickle errors during generation</li>
+                                    <li>Missing OHLCV data in slices/per_token/ directory</li>
+                                    <li>All trades were filtered out or failed validation</li>
+                                </ul>
+                                <p style="margin-top: 1rem; color: var(--text-secondary); font-size: 0.9rem;">
+                                    Check server logs (stderr) for detailed error messages.
+                                </p>
+                            </td>
+                        </tr>
+                    `;
+                }}
+                return;
+            }}
+            
             // Always render leaderboard first
             renderLeaderboard();
             
@@ -1056,6 +1102,11 @@ def generate_drilldown_report(csv_path: str, output_path: str = None, max_trades
         
         // Render leaderboard table
         function renderLeaderboard() {{
+            if (!hasData) {{
+                console.warn('No data available for leaderboard');
+                return;
+            }}
+            
             const tbody = document.getElementById('leaderboard-body');
             const sortedStats = [...callerStats].sort((a, b) => {{
                 // Sort by total calls first, then by avg ATH

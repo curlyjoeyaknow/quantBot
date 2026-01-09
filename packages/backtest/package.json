@@ -19,6 +19,7 @@
   "dependencies": {
     "@quantbot/core": "workspace:*",
     "@quantbot/infra": "workspace:*",
+    "@quantbot/labcatalog": "workspace:*",
     "@quantbot/simulation": "workspace:*",
     "@quantbot/storage": "workspace:*",
     "@quantbot/utils": "workspace:*",

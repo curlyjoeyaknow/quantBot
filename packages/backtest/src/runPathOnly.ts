@@ -72,8 +72,8 @@ export async function runPathOnly(req: PathOnlyRequest): Promise<PathOnlySummary
     git_branch: gitInfo.branch,
     git_dirty: gitInfo.dirty,
     dataset: {
-      from: req.from?.toISOString(),
-      to: req.to?.toISOString(),
+      from: req.from?.toISO() || undefined,
+      to: req.to?.toISO() || undefined,
       interval: req.interval,
       calls_count: req.calls.length,
     },
@@ -227,11 +227,11 @@ export async function runPathOnly(req: PathOnlyRequest): Promise<PathOnlySummary
       // Write alerts (inputs)
       const alertArtifacts: AlertArtifact[] = req.calls.map((call) => ({
         call_id: call.id,
-        mint: call.mint,
+        mint: call.mint as string,
         caller_name: call.caller,
         chain: 'solana', // TODO: derive from call data
         alert_ts_ms: call.createdAt.toMillis(),
-        created_at: call.createdAt.toISO(),
+        created_at: call.createdAt.toISO() || '',
       }));
       await runDir.writeArtifact(
         'alerts',
@@ -255,10 +255,10 @@ export async function runPathOnly(req: PathOnlyRequest): Promise<PathOnlySummary
           t_3x_ms: row.t_3x_ms,
           hit_4x: row.hit_4x,
           t_4x_ms: row.t_4x_ms,
-          dd_bps: row.dd_bps,
+          dd_bps: row.dd_bps ?? 0,
           dd_to_2x_bps: row.dd_to_2x_bps,
           alert_to_activity_ms: row.alert_to_activity_ms,
-          peak_multiple: row.peak_multiple,
+          peak_multiple: row.peak_multiple ?? 0,
         }));
         await runDir.writeArtifact(
           'paths',
@@ -267,13 +267,13 @@ export async function runPathOnly(req: PathOnlyRequest): Promise<PathOnlySummary
       }
 
       // Update timing in manifest
+      const timingParts = timing.parts;
       runDir.updateManifest({
         timing: {
-          plan_ms: timing.phases.plan?.durationMs,
-          coverage_ms: timing.phases.coverage?.durationMs,
-          slice_ms: timing.phases.slice?.durationMs,
-          execution_ms:
-            (timing.phases.load?.durationMs ?? 0) + (timing.phases.compute?.durationMs ?? 0),
+          plan_ms: timingParts.plan,
+          coverage_ms: timingParts.coverage,
+          slice_ms: timingParts.slice,
+          execution_ms: (timingParts.load ?? 0) + (timingParts.compute ?? 0),
           total_ms: timing.totalMs,
         },
       });

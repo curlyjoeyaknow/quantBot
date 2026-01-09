@@ -105,7 +105,7 @@ export const FeatureArtifactSchema = z.object({
   // caller_historical_accuracy: z.number().optional(),
   
   // Placeholder for now
-  features: z.record(z.unknown()).optional(),
+  features: z.record(z.string(), z.unknown()).optional(),
 });
 
 export type FeatureArtifact = z.infer<typeof FeatureArtifactSchema>;
@@ -125,7 +125,7 @@ export const TradeArtifactSchema = z.object({
   // Exit
   exit_ts_ms: z.number(),
   exit_px: z.number(),
-  exit_reason: z.string(),
+  exit_reason: z.string().nullable(),
   
   // Performance
   realized_return_bps: z.number(),

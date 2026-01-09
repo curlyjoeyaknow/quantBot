@@ -130,8 +130,8 @@ export async function runPolicyBacktest(
     git_branch: gitInfo.branch,
     git_dirty: gitInfo.dirty,
     dataset: {
-      from: req.from?.toISOString(),
-      to: req.to?.toISOString(),
+      from: req.from?.toISO() || undefined,
+      to: req.to?.toISO() || undefined,
       interval: req.interval,
       calls_count: req.calls.length,
     },
@@ -296,11 +296,11 @@ export async function runPolicyBacktest(
       // Write alerts (inputs)
       const alertArtifacts: AlertArtifact[] = req.calls.map((call) => ({
         call_id: call.id,
-        mint: call.mint,
+        mint: call.mint as string,
         caller_name: call.caller,
         chain: 'solana',
         alert_ts_ms: call.createdAt.toMillis(),
-        created_at: call.createdAt.toISO(),
+        created_at: call.createdAt.toISO() || '',
       }));
       await runDir.writeArtifact(
         'alerts',
@@ -393,13 +393,13 @@ export async function runPolicyBacktest(
   >);
 
   // Update timing in manifest and mark success
+  const timingParts = timing.parts;
   runDir.updateManifest({
     timing: {
-      plan_ms: timing.phases.plan?.durationMs,
-      coverage_ms: timing.phases.coverage?.durationMs,
-      slice_ms: timing.phases.slice?.durationMs,
-      execution_ms:
-        (timing.phases.load?.durationMs ?? 0) + (timing.phases.execute?.durationMs ?? 0),
+      plan_ms: timingParts.plan,
+      coverage_ms: timingParts.coverage,
+      slice_ms: timingParts.slice,
+      execution_ms: (timingParts.load ?? 0) + (timingParts.execute ?? 0),
       total_ms: timing.totalMs,
     },
   });

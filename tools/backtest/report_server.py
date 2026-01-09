@@ -26,32 +26,49 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
 # Import generate_drilldown_report function
-# We need to import it properly so functions inside can be pickled for multiprocessing
-# The issue: process_single_trade inside generate-drilldown-report.py needs to be picklable
-# Solution: Import the module in a way that Python's pickle can find it
+# CRITICAL FIX for multiprocessing pickle error:
+# When process_single_trade is pickled for ProcessPoolExecutor, Python needs to
+# be able to import the module in worker processes. Since the source file has
+# hyphens in the name (generate-drilldown-report.py), we can't import it normally.
+#
+# Solution: Create a copy/symlink with a valid Python module name that can be
+# imported normally, so pickle works correctly.
 
-# Create a temporary importable module name
 import importlib.util
-import types
+import shutil
+import tempfile
 
-# Load the module
 module_file = Path(__file__).parent / "generate-drilldown-report.py"
-module_name = "generate_drilldown_report_internal"
+module_abs_path = str(module_file.resolve())
 
-# Use a proper module name that Python can track
-spec = importlib.util.spec_from_file_location(
-    "tools.backtest.generate_drilldown_report",  # Use full path-like name
-    module_file
-)
-generate_drilldown_module = importlib.util.module_from_spec(spec)
-# Register with a proper module name
-sys.modules["tools.backtest.generate_drilldown_report"] = generate_drilldown_module
-spec.loader.exec_module(generate_drilldown_module)
+# Create a temporary directory with the module as a valid Python module name
+# This allows pickle to import it in worker processes
+temp_module_dir = Path(tempfile.gettempdir()) / "quantbot_backtest"
+temp_module_dir.mkdir(parents=True, exist_ok=True)
+temp_module_file = temp_module_dir / "generate_drilldown_report.py"
 
-# Also register with a simpler name for direct access
-sys.modules[module_name] = generate_drilldown_module
+# Copy the file with a valid Python module name (no hyphens)
+# Update if source file is newer
+if not temp_module_file.exists() or temp_module_file.stat().st_mtime < module_file.stat().st_mtime:
+    shutil.copy2(module_file, temp_module_file)
+    print(f"Copied module to {temp_module_file} for multiprocessing compatibility", file=sys.stderr)
 
-generate_drilldown_report = generate_drilldown_module.generate_drilldown_report
+# Add temp dir to Python path so it can be imported
+if str(temp_module_dir) not in sys.path:
+    sys.path.insert(0, str(temp_module_dir))
+
+# Now import normally - this works with pickle!
+try:
+    import generate_drilldown_report as generate_drilldown_module
+    generate_drilldown_report = generate_drilldown_module.generate_drilldown_report
+except ImportError as e:
+    # Fallback: use importlib if normal import fails
+    print(f"Warning: Could not import normally, using importlib fallback: {e}", file=sys.stderr)
+    spec = importlib.util.spec_from_file_location("generate_drilldown_report", temp_module_file)
+    generate_drilldown_module = importlib.util.module_from_spec(spec)
+    sys.modules["generate_drilldown_report"] = generate_drilldown_module
+    spec.loader.exec_module(generate_drilldown_module)
+    generate_drilldown_report = generate_drilldown_module.generate_drilldown_report
 
 
 class ReportHandler(BaseHTTPRequestHandler):
@@ -68,22 +85,35 @@ class ReportHandler(BaseHTTPRequestHandler):
     
     def do_GET(self):
         """Handle GET requests."""
-        path = unquote(self.path)
-        
-        if path == '/' or path == '/index.html':
-            self.send_index()
-        elif path.startswith('/run/'):
-            run_id = path.split('/run/')[1].split('?')[0]
-            run_type = self.get_query_param('type', 'baseline')
-            self.send_run_report(run_id, run_type)
-        elif path.startswith('/api/runs'):
-            self.send_runs_api()
-        elif path.startswith('/api/run/'):
-            run_id = path.split('/api/run/')[1].split('?')[0]
-            run_type = self.get_query_param('type', 'baseline')
-            self.send_run_data_api(run_id, run_type)
-        else:
-            self.send_error(404, "Not found")
+        try:
+            path = unquote(self.path)
+            
+            if path == '/' or path == '/index.html':
+                self.send_index()
+            elif path.startswith('/run/'):
+                run_id = path.split('/run/')[1].split('?')[0]
+                run_type = self.get_query_param('type', 'baseline')
+                self.send_run_report(run_id, run_type)
+            elif path.startswith('/api/runs'):
+                self.send_runs_api()
+            elif path.startswith('/api/run/'):
+                run_id = path.split('/api/run/')[1].split('?')[0]
+                run_type = self.get_query_param('type', 'baseline')
+                self.send_run_data_api(run_id, run_type)
+            else:
+                self.send_error(404, "Not found")
+        except (BrokenPipeError, ConnectionResetError, OSError) as e:
+            # Client disconnected - not an error, just log it
+            print(f"Client disconnected: {e}", file=sys.stderr)
+            return
+        except Exception as e:
+            print(f"Unexpected error in do_GET: {e}", file=sys.stderr)
+            import traceback
+            traceback.print_exc()
+            try:
+                self.send_error(500, f"Internal server error: {str(e)}")
+            except:
+                pass  # Connection might be broken
     
     def get_query_param(self, key: str, default: str = None) -> Optional[str]:
         """Extract query parameter from URL."""
@@ -469,8 +499,8 @@ class ReportHandler(BaseHTTPRequestHandler):
             print(f"Error connecting to DuckDB: {e}", file=sys.stderr)
             return None
         
-        csv_path = f"results/tmp_{run_id}.csv"
-        os.makedirs('results', exist_ok=True)
+        csv_path = os.path.abspath(f"results/tmp_{run_id}.csv")
+        os.makedirs(os.path.dirname(csv_path), exist_ok=True)
         
         try:
             if run_type == 'baseline':
@@ -575,8 +605,19 @@ class ReportHandler(BaseHTTPRequestHandler):
         """Generate and send report for a specific run."""
         # Export to CSV first
         csv_path = self.export_run_to_csv(run_id, run_type)
-        if not csv_path or not os.path.exists(csv_path):
-            self.send_error(404, f"Run {run_id} not found or has no data")
+        if not csv_path:
+            self.send_error(404, f"Run {run_id} not found or export failed")
+            return
+        
+        if not os.path.exists(csv_path):
+            self.send_error(404, f"CSV file was not created: {csv_path}")
+            return
+        
+        csv_size = os.path.getsize(csv_path)
+        print(f"CSV exported: {csv_path} ({csv_size} bytes)", file=sys.stderr)
+        
+        if csv_size == 0:
+            self.send_error(500, f"CSV file is empty: {csv_path}")
             return
         
         # Generate report
@@ -615,38 +656,101 @@ class ReportHandler(BaseHTTPRequestHandler):
             sl_mult = config.get('sl_mult', 0.7)
             risk_per_trade = config.get('risk_per_trade', 0.02)
             
-            # Generate HTML report
-            html_path = f"results/tmp_{run_id}_report.html"
-            generate_drilldown_report(
-                csv_path=csv_path,
-                output_path=html_path,
-                max_trades_per_caller=50,
-                risk_per_trade=risk_per_trade,
-                default_tp_mult=tp_mult,
-                default_sl_mult=sl_mult,
-                max_workers=None
-            )
+            # Generate HTML report - use absolute paths
+            html_path = os.path.abspath(f"results/tmp_{run_id}_report.html")
+            csv_path_abs = os.path.abspath(csv_path)
+            
+            print(f"Generating report from CSV: {csv_path_abs}", file=sys.stderr)
+            print(f"Output HTML path: {html_path}", file=sys.stderr)
+            
+            # Ensure results directory exists
+            os.makedirs(os.path.dirname(html_path), exist_ok=True)
+            
+            try:
+                generate_drilldown_report(
+                    csv_path=csv_path_abs,
+                    output_path=html_path,
+                    max_trades_per_caller=50,
+                    risk_per_trade=risk_per_trade,
+                    default_tp_mult=tp_mult,
+                    default_sl_mult=sl_mult,
+                    max_workers=None
+                )
+            except Exception as gen_error:
+                print(f"Error in generate_drilldown_report: {gen_error}", file=sys.stderr)
+                import traceback
+                traceback.print_exc()
+                raise
+            
+            # Verify file was created
+            if not os.path.exists(html_path):
+                raise FileNotFoundError(f"Report file was not created at: {html_path}")
+            
+            file_size = os.path.getsize(html_path)
+            print(f"Report file created: {html_path} ({file_size} bytes)", file=sys.stderr)
+            
+            if file_size == 0:
+                raise ValueError(f"Report file is empty: {html_path}")
             
             # Read and send HTML
-            with open(html_path, 'r') as f:
+            with open(html_path, 'r', encoding='utf-8') as f:
                 html = f.read()
             
-            self.send_response(200)
-            self.send_header('Content-type', 'text/html')
-            self.end_headers()
-            self.wfile.write(html.encode())
+            if not html or len(html.strip()) == 0:
+                raise ValueError(f"Report HTML is empty after reading from {html_path}")
             
-            # Clean up temp files
+            # Validate HTML structure - should contain JavaScript data
+            if 'tradeData' not in html or 'callerStats' not in html:
+                print(f"WARNING: HTML file may be missing JavaScript data. File size: {len(html)} bytes", file=sys.stderr)
+                # Check first 1000 chars
+                print(f"First 500 chars: {html[:500]}", file=sys.stderr)
+                # Don't fail - might still be valid, just warn
+            
+            print(f"Read {len(html)} bytes of HTML from {html_path}", file=sys.stderr)
+            
+            # Check if connection is still alive before sending
             try:
-                os.remove(csv_path)
-                os.remove(html_path)
-            except:
-                pass
+                self.send_response(200)
+                self.send_header('Content-type', 'text/html')
+                self.send_header('Content-Length', str(len(html.encode())))
+                self.end_headers()
+                
+                # Write in chunks to avoid overwhelming the connection
+                html_bytes = html.encode()
+                chunk_size = 1024 * 1024  # 1MB chunks
+                for i in range(0, len(html_bytes), chunk_size):
+                    chunk = html_bytes[i:i + chunk_size]
+                    try:
+                        self.wfile.write(chunk)
+                        self.wfile.flush()
+                    except (BrokenPipeError, ConnectionResetError, OSError):
+                        # Client disconnected - not an error, just stop sending
+                        print(f"Client disconnected while sending report for {run_id}", file=sys.stderr)
+                        return
+            except (BrokenPipeError, ConnectionResetError, OSError) as e:
+                # Client disconnected - not an error, just log and return
+                print(f"Client disconnected before/during report send for {run_id}: {e}", file=sys.stderr)
+                return
+            
+            # DON'T clean up files immediately - keep them for debugging
+            # Clean up temp files only after successful send
+            # (They'll be cleaned up on next request or by a cleanup job)
+            print(f"Report sent successfully. Files kept for debugging: {csv_path}, {html_path}", file=sys.stderr)
+        except (BrokenPipeError, ConnectionResetError, OSError) as e:
+            # Client disconnected - not a real error, just log it
+            print(f"Client disconnected during report generation for {run_id}: {e}", file=sys.stderr)
+            return
         except Exception as e:
             print(f"Error generating report: {e}", file=sys.stderr)
             import traceback
             traceback.print_exc()
-            self.send_error(500, f"Error generating report: {str(e)}")
+            try:
+                # Only send error if connection is still alive
+                self.send_error(500, f"Error generating report: {str(e)}")
+            except (BrokenPipeError, ConnectionResetError, OSError):
+                # Client already disconnected, can't send error
+                print(f"Client disconnected before error response could be sent", file=sys.stderr)
+                return
     
     def send_json_response(self, data):
         """Send JSON response."""

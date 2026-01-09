@@ -300,6 +300,9 @@ importers:
       '@quantbot/infra':
         specifier: workspace:*
         version: link:../infra
+      '@quantbot/labcatalog':
+        specifier: workspace:*
+        version: link:../labcatalog
       '@quantbot/simulation':
         specifier: workspace:*
         version: link:../simulation
