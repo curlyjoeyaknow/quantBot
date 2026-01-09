@@ -114,7 +114,7 @@ export interface OptimizationConstraints {
 export const DEFAULT_CONSTRAINTS: OptimizationConstraints = {
   maxStopOutRate: 0.3, // 30% max stop-out rate
   maxP95DrawdownBps: -3000, // -30% max p95 drawdown
-  maxTimeExposedMs: 4 * 60 * 60 * 1000, // 4 hours max exposure
+  maxTimeExposedMs: 48 * 60 * 60 * 1000, // 48 hours max exposure (full horizon)
 };
 
 // =============================================================================

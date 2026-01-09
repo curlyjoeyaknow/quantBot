@@ -297,6 +297,9 @@ importers:
       '@quantbot/core':
         specifier: workspace:*
         version: link:../core
+      '@quantbot/infra':
+        specifier: workspace:*
+        version: link:../infra
       '@quantbot/simulation':
         specifier: workspace:*
         version: link:../simulation

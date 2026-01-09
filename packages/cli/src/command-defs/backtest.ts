@@ -128,7 +128,7 @@ export const backtestOptimizeSchema = z.object({
     .number()
     .int()
     .positive()
-    .default(4 * 60 * 60 * 1000),
+    .default(48 * 60 * 60 * 1000),
   // High-multiple caller relaxation (for callers that regularly hit 20x, 30x)
   enableHighMultipleRelaxation: z.boolean().default(true), // Enable constraint relaxation for high-multiple callers
   highMultipleDrawdownRelaxation: z.coerce.number().min(0.1).max(1).default(0.7), // Allow 30% more drawdown
@@ -195,3 +195,38 @@ export const backtestBaselineSchema = z.object({
 });
 
 export type BacktestBaselineArgs = z.infer<typeof backtestBaselineSchema>;
+
+/**
+ * V1 Baseline Optimizer schema
+ *
+ * Capital-aware optimizer with finite capital, position constraints, and path-dependent capital management.
+ */
+export const backtestV1BaselineSchema = z.object({
+  // Core parameters
+  callerGroups: z.array(z.string()).optional(), // Optional caller groups to optimize for
+  interval: z.string().min(1),
+  from: z.string(),
+  to: z.string(),
+  // Parameter grid (optional, uses defaults if not provided)
+  tpMults: z.array(z.coerce.number().positive()).optional(), // e.g., [1.5, 2.0, 2.5, 3.0]
+  slMults: z.array(z.coerce.number().min(0).max(1)).optional(), // e.g., [0.85, 0.90, 0.95]
+  maxHoldHrs: z.array(z.coerce.number().int().positive().max(48)).optional(), // e.g., [48]
+  // Capital simulator configuration
+  initialCapital: z.coerce.number().positive().default(10000),
+  maxAllocationPct: z.coerce.number().min(0).max(1).default(0.04), // 4% max per trade
+  maxRiskPerTrade: z.coerce.number().positive().default(200), // $200 max risk
+  maxConcurrentPositions: z.coerce.number().int().positive().default(25),
+  minExecutableSize: z.coerce.number().positive().default(10), // $10 minimum
+  // Fees
+  takerFeeBps: z.coerce.number().int().min(0).max(10000).default(30),
+  slippageBps: z.coerce.number().int().min(0).max(10000).default(10),
+  // Evaluation mode
+  mode: z.enum(['per-caller', 'grouped', 'both']).default('both'), // Per-caller, grouped, or both
+  minCalls: z.coerce.number().int().min(0).default(0), // Minimum number of calls per caller
+  filterCollapsed: z.boolean().default(true), // Filter out callers that collapsed capital
+  filterExtreme: z.boolean().default(true), // Filter out callers requiring extreme parameters
+  // Output
+  format: z.enum(['json', 'table', 'csv']).optional().default('table'),
+});
+
+export type BacktestV1BaselineArgs = z.infer<typeof backtestV1BaselineSchema>;

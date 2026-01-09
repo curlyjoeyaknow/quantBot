@@ -397,6 +397,7 @@ function generateComboPoliciesForNonHighMultipleCallers(): RiskPolicy[] {
   const timeStops = [
     2 * 60 * 60 * 1000, // 2 hours
     4 * 60 * 60 * 1000, // 4 hours
+    48 * 60 * 60 * 1000, // 48 hours (full horizon)
   ];
 
   // Generate combos: Trailing stop + Ladder + Hard stop
