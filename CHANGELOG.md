@@ -6,6 +6,19 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Candle Deduplication System** - Track and remove duplicate candles in ClickHouse
+  - Added `ingested_at` and `ingestion_run_id` columns to `ohlcv_candles` table
+  - Migration script: `tools/storage/migrate_add_ingestion_metadata.py`
+  - CLI commands: `quantbot storage analyze-duplicates`, `quantbot storage deduplicate`
+  - Report generator: `tools/storage/generate_candle_ingestion_report.py`
+  - Deduplication view: `ohlcv_candles_deduplicated` (keeps most recent ingestion)
+  - Updated `OhlcvRepository.upsertCandles()` to accept optional ingestion metadata
+  - Handlers: `analyzeDuplicateCandlesHandler`, `deduplicateCandlesHandler`
+  - Documentation: `docs/guides/candle-deduplication.md`
+  - Location: `packages/storage/src/`, `packages/cli/src/handlers/storage/`, `tools/storage/`
+  - Enables sorting tokens by most recent candle ingestion aligned with alert times
+  - Identifies and removes duplicate candles while preserving data integrity
+
 - **Structured Artifacts System** - Research-lab architecture for backtest runs
   - Multiple Parquets per run by artifact type (alerts, paths, trades, summary, frontier, errors)
   - JSON manifests (`run.json`) with metadata, provenance, and artifact inventory

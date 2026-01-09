@@ -125,7 +125,9 @@ async function ensureOhlcvTable(ch: ClickHouseClient): Promise<void> {
         high Float64,
         low Float64,
         close Float64,
-        volume Float64
+        volume Float64,
+        ingested_at DateTime DEFAULT now(),
+        ingestion_run_id String DEFAULT ''
       )
       ENGINE = MergeTree()
       PARTITION BY (chain, toYYYYMM(timestamp))

@@ -27,7 +27,11 @@ export class OhlcvRepository {
     token: string, // Full mint address, case-preserved
     chain: string,
     interval: string,
-    candles: Candle[]
+    candles: Candle[],
+    options?: {
+      ingestionRunId?: string;
+      ingestionTimestamp?: DateTime;
+    }
   ): Promise<void> {
     if (candles.length === 0) {
       return;
@@ -42,6 +46,10 @@ export class OhlcvRepository {
     // Convert interval string to seconds (UInt32) for storage
     const intervalSeconds = intervalToSeconds(interval);
 
+    // Generate ingestion metadata
+    const ingestionRunId = options?.ingestionRunId || '';
+    const ingestionTimestamp = options?.ingestionTimestamp || DateTime.utc();
+
     // Convert all candles to row format
     const allRows = candles.map((candle) => ({
       token_address: token, // Full address, case-preserved
@@ -53,6 +61,8 @@ export class OhlcvRepository {
       low: candle.low,
       close: candle.close,
       volume: candle.volume,
+      ingested_at: ingestionTimestamp.toFormat('yyyy-MM-dd HH:mm:ss'),
+      ingestion_run_id: ingestionRunId,
     }));
 
     // Batch inserts to prevent EPIPE errors from oversized payloads
