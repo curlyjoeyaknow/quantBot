@@ -3,6 +3,7 @@
 ## Problem Statement
 
 You have duplicate candles in ClickHouse from multiple ingestion runs. You need to:
+
 1. Identify which tokens have duplicates
 2. Sort tokens by their most recent ingestion aligned with alert times
 3. Remove duplicates while keeping the most recent data
@@ -17,6 +18,7 @@ python tools/storage/migrate_add_ingestion_metadata.py
 ```
 
 **Expected output:**
+
 ```
 Connected to ClickHouse version: 24.x.x.x
 Current table size: 1,234,567 rows
@@ -38,6 +40,7 @@ quantbot storage analyze-duplicates --limit 20
 ```
 
 **Expected output:**
+
 ```
 ⚠ Found 15 duplicate candle groups:
 
@@ -69,6 +72,7 @@ python tools/storage/generate_candle_ingestion_report.py \
 ```
 
 **Expected output:**
+
 ```
 Connecting to databases...
 Fetching alerts from DuckDB...
@@ -121,11 +125,13 @@ quantbot storage deduplicate --no-dry-run
 ```
 
 **Expected output (dry run):**
+
 ```
 [DRY RUN] Deduplication would delete rows: 1,234
 ```
 
 **Expected output (actual deletion):**
+
 ```
 Executing deduplication query...
 Deduplication complete
@@ -140,6 +146,7 @@ quantbot storage analyze-duplicates
 ```
 
 **Expected output:**
+
 ```
 ✓ No duplicate candles found!
 ```
@@ -306,4 +313,3 @@ quantbot storage deduplicate --help
 python tools/storage/migrate_add_ingestion_metadata.py --help
 python tools/storage/generate_candle_ingestion_report.py --help
 ```
-

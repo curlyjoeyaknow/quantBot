@@ -11,6 +11,7 @@ Implemented a comprehensive solution to identify, analyze, and remove duplicate 
 **File:** `packages/storage/src/clickhouse-client.ts`
 
 Added two new columns to `ohlcv_candles` table:
+
 - `ingested_at DateTime DEFAULT now()` - Tracks when candle was inserted
 - `ingestion_run_id String DEFAULT ''` - Optional identifier for ingestion runs
 
@@ -19,12 +20,14 @@ Added two new columns to `ohlcv_candles` table:
 **File:** `tools/storage/migrate_add_ingestion_metadata.py`
 
 Python script to:
+
 - Add ingestion metadata columns to existing tables
 - Analyze duplicate candles
 - Create deduplication view (`ohlcv_candles_deduplicated`)
 - Support dry-run mode
 
 **Usage:**
+
 ```bash
 python tools/storage/migrate_add_ingestion_metadata.py [--dry-run] [--analyze] [--create-view]
 ```
@@ -51,6 +54,7 @@ async upsertCandles(
 ### 4. CLI Commands
 
 **Files:**
+
 - `packages/cli/src/handlers/storage/analyze-duplicate-candles.ts`
 - `packages/cli/src/handlers/storage/deduplicate-candles.ts`
 - `packages/cli/src/commands/storage.ts`
@@ -58,12 +62,14 @@ async upsertCandles(
 #### Command: `quantbot storage analyze-duplicates`
 
 Analyzes duplicate candles and provides:
+
 - Total duplicate groups
 - Total extra rows
 - Per-token duplicate summaries
 - Ingestion timestamps for each duplicate
 
 **Options:**
+
 - `--limit <number>` - Max duplicate groups to show (default: 100)
 - `--token <address>` - Filter by token
 - `--chain <chain>` - Filter by chain (solana, ethereum, bsc, base)
@@ -72,6 +78,7 @@ Analyzes duplicate candles and provides:
 - `--format <format>` - Output format (json, table, csv)
 
 **Example:**
+
 ```bash
 quantbot storage analyze-duplicates --chain solana --interval 5m --limit 50
 ```
@@ -81,6 +88,7 @@ quantbot storage analyze-duplicates --chain solana --interval 5m --limit 50
 Removes duplicate candles, keeping most recent ingestion:
 
 **Options:**
+
 - `--token <address>` - Filter by token
 - `--chain <chain>` - Filter by chain
 - `--interval <interval>` - Filter by interval
@@ -88,6 +96,7 @@ Removes duplicate candles, keeping most recent ingestion:
 - `--batch-size <size>` - Batch size for deletion (default: 10000)
 
 **Example:**
+
 ```bash
 # Dry run first
 quantbot storage deduplicate --chain solana
@@ -101,6 +110,7 @@ quantbot storage deduplicate --chain solana --no-dry-run
 **File:** `tools/storage/generate_candle_ingestion_report.py`
 
 Generates comprehensive report showing:
+
 - Tokens sorted by most recent ingestion
 - Alert time alignment
 - Coverage analysis (tokens with/without data)
@@ -108,6 +118,7 @@ Generates comprehensive report showing:
 - Per-token candle counts and ingestion times
 
 **Usage:**
+
 ```bash
 python tools/storage/generate_candle_ingestion_report.py \
   --duckdb data/alerts.duckdb \
@@ -117,6 +128,7 @@ python tools/storage/generate_candle_ingestion_report.py \
 ```
 
 **Output includes:**
+
 - Summary statistics (coverage rate, duplicate counts)
 - Top tokens by most recent ingestion
 - Per-token analysis with alert alignment
@@ -154,6 +166,7 @@ WHERE rn = 1
 ### 7. Documentation
 
 **Files:**
+
 - `docs/guides/candle-deduplication.md` - Comprehensive guide
 - `docs/guides/candle-deduplication-quickstart.md` - Quick start guide
 - `CHANGELOG.md` - Updated with changes
@@ -287,6 +300,7 @@ describe('analyzeDuplicateCandlesHandler', () => {
 ## Files Changed/Created
 
 ### Created Files (8)
+
 1. `tools/storage/migrate_add_ingestion_metadata.py` (migration script)
 2. `tools/storage/generate_candle_ingestion_report.py` (report generator)
 3. `packages/cli/src/handlers/storage/analyze-duplicate-candles.ts` (handler)
@@ -296,6 +310,7 @@ describe('analyzeDuplicateCandlesHandler', () => {
 7. `docs/guides/CANDLE_DEDUPLICATION_SUMMARY.md` (this file)
 
 ### Modified Files (3)
+
 1. `packages/storage/src/clickhouse-client.ts` (schema update)
 2. `packages/storage/src/clickhouse/repositories/OhlcvRepository.ts` (ingestion metadata)
 3. `packages/cli/src/commands/storage.ts` (command registration)
@@ -330,6 +345,7 @@ python tools/storage/generate_candle_ingestion_report.py --help
 ## Conclusion
 
 This implementation provides a complete solution for:
+
 1. ✅ Tracking candle ingestion metadata
 2. ✅ Identifying duplicate candles
 3. ✅ Sorting tokens by most recent ingestion aligned with alert times
@@ -338,4 +354,3 @@ This implementation provides a complete solution for:
 6. ✅ Following project architecture rules
 
 The solution is production-ready, well-documented, and follows all project conventions.
-

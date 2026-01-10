@@ -1,12 +1,12 @@
 /**
  * Handler: Analyze candle data quality
- * 
+ *
  * Identifies tokens with data quality issues:
  * - Duplicate candles
  * - Gaps in data
  * - Price distortions
  * - Volume anomalies
- * 
+ *
  * Generates a prioritized re-ingestion worklist.
  */
 
@@ -30,8 +30,8 @@ const CandleQualityResultSchema = z.object({
     total_tokens_analyzed: z.number(),
     tokens_needing_reingest: z.number(),
     reingest_rate: z.string(),
-    by_priority: z.record(z.number()),
-    by_issue_type: z.record(z.number()),
+    by_priority: z.record(z.string(), z.number()),
+    by_issue_type: z.record(z.string(), z.number()),
   }),
   worklist: z.array(
     z.object({
@@ -71,25 +71,22 @@ export async function analyzeCandleQualityHandler(
     const pythonEngine = new PythonEngine();
 
     // Build Python script arguments
-    const scriptArgs = [
-      '--duckdb',
-      duckdbPath,
-      '--output',
-      outputPath,
-      '--interval',
-      interval,
-    ];
+    const scriptArgs: Record<string, unknown> = {
+      duckdb: duckdbPath,
+      output: outputPath,
+      interval: interval,
+    };
 
     if (args.csv) {
-      scriptArgs.push('--csv', args.csv);
+      scriptArgs.csv = args.csv;
     }
 
     if (args.limit) {
-      scriptArgs.push('--limit', String(args.limit));
+      scriptArgs.limit = args.limit;
     }
 
     if (args.minQualityScore !== undefined) {
-      scriptArgs.push('--min-quality-score', String(args.minQualityScore));
+      scriptArgs['min-quality-score'] = args.minQualityScore;
     }
 
     logger.info('Running candle quality analysis', {
@@ -131,4 +128,3 @@ export async function analyzeCandleQualityHandler(
     };
   }
 }
-

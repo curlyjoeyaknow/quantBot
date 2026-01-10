@@ -1,6 +1,6 @@
 /**
  * Handler: Deduplicate candles in ClickHouse
- * 
+ *
  * Removes duplicate candles, keeping only the most recent ingestion
  * for each (token_address, chain, timestamp, interval) combination.
  */
@@ -158,4 +158,3 @@ export async function deduplicateCandlesHandler(
     };
   }
 }
-

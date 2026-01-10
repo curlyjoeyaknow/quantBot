@@ -1,6 +1,6 @@
 /**
  * Handler: Analyze duplicate candles in ClickHouse
- * 
+ *
  * Identifies tokens with duplicate candles (same token, timestamp, interval)
  * and provides options to deduplicate based on most recent ingestion.
  */
@@ -192,4 +192,3 @@ export async function analyzeDuplicateCandlesHandler(
     };
   }
 }
-

@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "Handlers/backtest/v1-baseline-optimizer.md",
+                "file": "Handlers/ohlcv/coverage-dashboard.md",
                 "mode": "source",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "v1-baseline-optimizer"
+              "title": "coverage-dashboard"
             }
           }
         ]
@@ -94,7 +94,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "Handlers/backtest/v1-baseline-optimizer.md",
+                "file": "Handlers/ohlcv/coverage-dashboard.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -104,7 +104,7 @@
                 "unlinkedCollapsed": true
               },
               "icon": "links-coming-in",
-              "title": "Backlinks for v1-baseline-optimizer"
+              "title": "Backlinks for coverage-dashboard"
             }
           },
           {
@@ -113,12 +113,12 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "Handlers/backtest/v1-baseline-optimizer.md",
+                "file": "Handlers/ohlcv/coverage-dashboard.md",
                 "linksCollapsed": false,
                 "unlinkedCollapsed": true
               },
               "icon": "links-going-out",
-              "title": "Outgoing links from v1-baseline-optimizer"
+              "title": "Outgoing links from coverage-dashboard"
             }
           },
           {
@@ -156,13 +156,13 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "Handlers/backtest/v1-baseline-optimizer.md",
+                "file": "Handlers/ohlcv/coverage-dashboard.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
               },
               "icon": "lucide-list",
-              "title": "Outline of v1-baseline-optimizer"
+              "title": "Outline of coverage-dashboard"
             }
           }
         ]
@@ -185,6 +185,9 @@
   },
   "active": "84ac041c3697c800",
   "lastOpenFiles": [
+    "Handlers/ohlcv/analyze-detailed-coverage.md",
+    "Handlers/ohlcv/alert-coverage-map.md",
+    "Handlers/backtest/v1-baseline-optimizer.md",
     "Main Commands/Backtesting Workflows.md",
     "Handlers/backtest/baseline.md",
     "Handlers/artifacts/tag-artifact.md",

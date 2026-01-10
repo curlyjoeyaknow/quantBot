@@ -107,7 +107,7 @@ export const analyzeDuplicateCandlesSchema = z.object({
   chain: z.enum(['solana', 'ethereum', 'bsc', 'base', 'evm']).optional(),
   interval: z.enum(['1s', '15s', '1m', '5m', '15m', '1h', '4h', '1d']).optional(),
   showDetails: z.boolean().default(false),
-  format: z.enum(['json', 'table', 'csv']).default('table'),
+  format: z.enum(['json', 'table']).default('table'),
 });
 
 /**

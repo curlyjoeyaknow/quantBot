@@ -182,12 +182,9 @@ export class RunDirectory {
     const filepath = join(artifactDir, filename);
     
     try {
-      // Write Parquet using DuckDB
+      // Write Parquet using DuckDB - execute all SQL in one batch to maintain connection
       const db = new DuckDBClient(':memory:');
       try {
-        await db.execute('INSTALL parquet;');
-        await db.execute('LOAD parquet;');
-        
         // Infer schema from first row
         const firstRow = data[0];
         const columns = Object.keys(firstRow);
@@ -206,33 +203,38 @@ export class RunDirectory {
           })
           .join(', ');
         
-        await db.execute(`CREATE TABLE temp_data (${columnDefs})`);
+        // Build all SQL statements
+        const sqlStatements: string[] = [
+          'INSTALL parquet;',
+          'LOAD parquet;',
+          `CREATE TABLE temp_data (${columnDefs});`,
+        ];
         
-        // Insert data in batches
-        const batchSize = 1000;
-        for (let i = 0; i < data.length; i += batchSize) {
-          const batch = data.slice(i, i + batchSize);
-          for (const row of batch) {
-            const values = columns.map((col) => {
-              const val = row[col];
-              if (val === null || val === undefined) {
-                return 'NULL';
-              } else if (typeof val === 'string') {
-                return `'${String(val).replace(/'/g, "''")}'`;
-              } else if (typeof val === 'boolean') {
-                return val ? 'TRUE' : 'FALSE';
-              } else {
-                return String(val);
-              }
-            });
-            await db.execute(
-              `INSERT INTO temp_data (${columns.join(', ')}) VALUES (${values.join(', ')})`
-            );
-          }
+        // Add INSERT statements
+        for (const row of data) {
+          const values = columns.map((col) => {
+            const val = row[col];
+            if (val === null || val === undefined) {
+              return 'NULL';
+            } else if (typeof val === 'string') {
+              return `'${String(val).replace(/'/g, "''")}'`;
+            } else if (typeof val === 'boolean') {
+              return val ? 'TRUE' : 'FALSE';
+            } else {
+              return String(val);
+            }
+          });
+          sqlStatements.push(
+            `INSERT INTO temp_data (${columns.join(', ')}) VALUES (${values.join(', ')});`
+          );
         }
         
-        // Export to Parquet
-        await db.execute(`COPY temp_data TO '${filepath.replace(/'/g, "''")}' (FORMAT PARQUET)`);
+        // Add COPY statement
+        sqlStatements.push(`COPY temp_data TO '${filepath.replace(/'/g, "''")}' (FORMAT PARQUET);`);
+        
+        // Execute all statements as one batch
+        const batchSql = sqlStatements.join('\n');
+        await db.execute(batchSql);
       } finally {
         await db.close();
       }
