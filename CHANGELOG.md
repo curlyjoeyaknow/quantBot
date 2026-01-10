@@ -6,7 +6,7 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- **Python V1 Baseline Optimizer** - Complete Python implementation of capital-aware optimization
+- **Python V1 Baseline Optimizer with TypeScript Orchestration** - Complete Python implementation with TypeScript integration
   - Core simulator: `tools/backtest/lib/v1_baseline_simulator.py` (564 lines ported from TypeScript)
     - Capital-aware simulation with finite capital and position constraints
     - Position sizing: `min(size_risk, size_alloc, free_cash)`
@@ -17,16 +17,25 @@ All notable changes to this project will be documented in this file.
     - Per-caller optimization with collapsed/extreme parameter detection
     - Grouped evaluation with filtering
     - Default grids: TP=[1.5,2.0,2.5,3.0,4.0,5.0], SL=[0.85,0.88,0.9,0.92,0.95]
+    - **Threading support enabled** (configurable via `V1_OPTIMIZER_THREADS` env var)
+    - Parallel grid search using `ThreadPoolExecutor`
   - CLI script: `tools/backtest/run_v1_baseline_optimizer.py`
     - Follows pattern from existing `run_optimizer.py`
     - Supports per-caller, grouped, and both modes
     - Configurable parameter grids and capital constraints
-  - Comprehensive test suite (27 tests, all passing):
+  - **TypeScript Orchestration Layer** (Phase 2 complete):
+    - `V1BaselinePythonService` wraps PythonEngine calls
+    - Zod schemas for Python input/output validation
+    - Updated `v1-baseline-optimizer` handler to use Python service
+    - Added `v1BaselinePythonService` to `CommandContext`
+    - Stdin wrapper for TypeScript → Python integration
+    - Integration tests (4 tests, all passing)
+  - Comprehensive test suite (31 tests total, all passing):
     - Unit tests: `test_v1_baseline_simulator.py` (13 tests)
     - Optimizer tests: `test_v1_baseline_optimizer.py` (8 tests)
     - Golden tests: `test_v1_baseline_golden.py` (6 deterministic scenarios)
-  - Adheres to architectural policy: **Python bears the brunt of data science workload**
-  - Ready for TypeScript orchestration layer integration (Phase 2)
+    - Integration tests: `v1-baseline-python-service.integration.test.ts` (4 tests)
+  - Adheres to architectural policy: **Python bears the brunt of data science workload, TypeScript orchestrates**
 
 - **Candle Deduplication System** - Track and remove duplicate candles in ClickHouse
   - Added `ingested_at` and `ingestion_run_id` columns to `ohlcv_candles` table
