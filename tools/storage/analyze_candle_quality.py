@@ -58,7 +58,7 @@ def get_tokens_with_alerts(duck_conn: duckdb.DuckDBPyConnection, limit: Optional
             COUNT(DISTINCT alert_ts_ms) as alert_count,
             MIN(alert_ts_ms) as first_alert_ms,
             MAX(alert_ts_ms) as last_alert_ms,
-            array_agg(DISTINCT caller_name_norm) as callers
+            list(DISTINCT caller_name_norm) FILTER (WHERE caller_name_norm IS NOT NULL) as callers
         FROM canon.alerts_std
         WHERE mint IS NOT NULL
           AND alert_ts_ms IS NOT NULL
@@ -551,6 +551,12 @@ def export_worklist_csv(worklist: List[Dict[str, Any]], output_path: str) -> Non
         writer.writeheader()
         
         for item in worklist:
+            # Handle callers field - filter out None values
+            callers = item.get('callers', [])
+            if callers is None:
+                callers = []
+            callers_str = ','.join(str(c) for c in callers if c is not None)
+            
             writer.writerow({
                 'priority': item['priority'],
                 'quality_score': f"{item['quality_score']:.1f}",
@@ -563,7 +569,7 @@ def export_worklist_csv(worklist: List[Dict[str, Any]], output_path: str) -> Non
                 'gap_count': item['gaps'].get('gap_count', 0),
                 'has_distortions': item['distortions'].get('has_distortions', False),
                 'distortion_count': item['distortions'].get('total_distortions', 0),
-                'callers': ','.join(item.get('callers', []))
+                'callers': callers_str
             })
 
 def main():

@@ -6,6 +6,28 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Python V1 Baseline Optimizer** - Complete Python implementation of capital-aware optimization
+  - Core simulator: `tools/backtest/lib/v1_baseline_simulator.py` (564 lines ported from TypeScript)
+    - Capital-aware simulation with finite capital and position constraints
+    - Position sizing: `min(size_risk, size_alloc, free_cash)`
+    - Trade lifecycle: TP/SL/Time exits with fee calculation
+    - Concurrent position limits (max 25)
+    - Path-dependent capital management
+  - Grid search optimizer: `tools/backtest/lib/v1_baseline_optimizer.py`
+    - Per-caller optimization with collapsed/extreme parameter detection
+    - Grouped evaluation with filtering
+    - Default grids: TP=[1.5,2.0,2.5,3.0,4.0,5.0], SL=[0.85,0.88,0.9,0.92,0.95]
+  - CLI script: `tools/backtest/run_v1_baseline_optimizer.py`
+    - Follows pattern from existing `run_optimizer.py`
+    - Supports per-caller, grouped, and both modes
+    - Configurable parameter grids and capital constraints
+  - Comprehensive test suite (27 tests, all passing):
+    - Unit tests: `test_v1_baseline_simulator.py` (13 tests)
+    - Optimizer tests: `test_v1_baseline_optimizer.py` (8 tests)
+    - Golden tests: `test_v1_baseline_golden.py` (6 deterministic scenarios)
+  - Adheres to architectural policy: **Python bears the brunt of data science workload**
+  - Ready for TypeScript orchestration layer integration (Phase 2)
+
 - **Candle Deduplication System** - Track and remove duplicate candles in ClickHouse
   - Added `ingested_at` and `ingestion_run_id` columns to `ohlcv_candles` table
   - Migration script: `tools/storage/migrate_add_ingestion_metadata.py`
@@ -27,6 +49,8 @@ All notable changes to this project will be documented in this file.
     - Detects data gaps (missing candles in time series)
     - Identifies price distortions (OHLC inconsistencies, extreme jumps, zero/negative values)
     - Calculates quality scores and priorities
+    - Fixed CSV export to handle NULL callers (filters out None values)
+    - Fixed DuckDB query to use `list()` with `FILTER` clause for NULL-safe aggregation
   - CLI command: `quantbot storage analyze-quality`
   - Re-ingestion automation: `tools/storage/process_reingest_worklist.sh`
     - Processes worklist by priority
@@ -38,6 +62,7 @@ All notable changes to this project will be documented in this file.
   - Location: `packages/cli/src/handlers/storage/`, `tools/storage/`
   - Enables identification of tokens with erroneous data similar to chart anomalies
   - Prioritized re-ingestion workflow for data quality improvement
+  - **Verified working**: Analyzed 1000 tokens, generated 735-item worklist (73.5% need re-ingestion)
 
 - **Structured Artifacts System** - Research-lab architecture for backtest runs
   - Multiple Parquets per run by artifact type (alerts, paths, trades, summary, frontier, errors)

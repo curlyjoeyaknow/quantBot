@@ -313,43 +313,44 @@ def compute_data_fingerprint(
     """
     import duckdb
     
-    from tools.shared.duckdb_adapter import get_readonly_connection
-    with get_readonly_connection(duckdb_path) as con:
-        # Count alerts in range
-        if caller_filter:
-            query = f"""
-                SELECT COUNT(*), MIN(ts), MAX(ts)
-                FROM alerts
-                WHERE chain = ? AND ts >= ? AND ts < ? AND caller = ?
-            """
-            row = con.execute(query, [chain, date_from, date_to, caller_filter]).fetchone()
-        else:
-            query = f"""
-                SELECT COUNT(*), MIN(ts), MAX(ts)
-                FROM alerts
-                WHERE chain = ? AND ts >= ? AND ts < ?
-            """
-            row = con.execute(query, [chain, date_from, date_to]).fetchone()
-        
-        
-        n_alerts = row[0] if row else 0
-        min_ts = str(row[1]) if row and row[1] else ""
-        max_ts = str(row[2]) if row and row[2] else ""
-        
-        # Build fingerprint
-        fingerprint_data = {
-            "duckdb_path": os.path.basename(duckdb_path),
-            "chain": chain,
-            "date_from": date_from,
-            "date_to": date_to,
-            "caller_filter": caller_filter,
-            "n_alerts": n_alerts,
-            "min_ts": min_ts,
-            "max_ts": max_ts,
-        }
-        
-        canonical = json.dumps(fingerprint_data, sort_keys=True, separators=(",", ":"))
-        return hashlib.sha256(canonical.encode()).hexdigest()[:16]
+    try:
+        from tools.shared.duckdb_adapter import get_readonly_connection
+        with get_readonly_connection(duckdb_path) as con:
+            # Count alerts in range
+            if caller_filter:
+                query = f"""
+                    SELECT COUNT(*), MIN(ts), MAX(ts)
+                    FROM alerts
+                    WHERE chain = ? AND ts >= ? AND ts < ? AND caller = ?
+                """
+                row = con.execute(query, [chain, date_from, date_to, caller_filter]).fetchone()
+            else:
+                query = f"""
+                    SELECT COUNT(*), MIN(ts), MAX(ts)
+                    FROM alerts
+                    WHERE chain = ? AND ts >= ? AND ts < ?
+                """
+                row = con.execute(query, [chain, date_from, date_to]).fetchone()
+            
+            
+            n_alerts = row[0] if row else 0
+            min_ts = str(row[1]) if row and row[1] else ""
+            max_ts = str(row[2]) if row and row[2] else ""
+            
+            # Build fingerprint
+            fingerprint_data = {
+                "duckdb_path": os.path.basename(duckdb_path),
+                "chain": chain,
+                "date_from": date_from,
+                "date_to": date_to,
+                "caller_filter": caller_filter,
+                "n_alerts": n_alerts,
+                "min_ts": min_ts,
+                "max_ts": max_ts,
+            }
+            
+            canonical = json.dumps(fingerprint_data, sort_keys=True, separators=(",", ":"))
+            return hashlib.sha256(canonical.encode()).hexdigest()[:16]
         
     except Exception as e:
         # Fallback: hash the inputs
