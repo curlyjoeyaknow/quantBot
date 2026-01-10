@@ -88,15 +88,20 @@ export async function initializeCatalog(db: DuckDBClient): Promise<void> {
  * Register a completed run into the catalog
  */
 export async function registerRun(db: DuckDBClient, runDir: string): Promise<void> {
-  // Check if run is complete
-  const isComplete = await RunDirectory.isComplete(runDir);
-  if (!isComplete) {
-    logger.debug('Skipping incomplete run', { runDir });
+  // Read manifest first to check status
+  let manifest: RunManifest;
+  try {
+    manifest = await RunDirectory.readManifest(runDir);
+  } catch (error) {
+    logger.debug('Skipping run - manifest not found', { runDir });
     return;
   }
   
-  // Read manifest
-  const manifest = await RunDirectory.readManifest(runDir);
+  // Check if run is complete (completed or failed - not pending or running)
+  if (manifest.status !== 'completed' && manifest.status !== 'failed') {
+    logger.debug('Skipping incomplete run', { runDir, status: manifest.status });
+    return;
+  }
   
   // Check if already registered
   const existing = await db.query(
@@ -112,11 +117,11 @@ export async function registerRun(db: DuckDBClient, runDir: string): Promise<voi
   const parametersJson = manifest.parameters ? JSON.stringify(manifest.parameters) : null;
   const artifactsJson = JSON.stringify(manifest.artifacts);
   
-  // Build INSERT statements
-  const sqlStatements: string[] = [];
+  // Escape SQL strings
+  const escapeSql = (str: string): string => str.replace(/'/g, "''");
   
-  // Insert run
-  sqlStatements.push(`
+  // Insert run (execute first)
+  const runInsertSql = `
     INSERT INTO backtest_runs_catalog (
       run_id, run_type, status, created_at, started_at, completed_at,
       git_commit, git_branch, git_dirty,
@@ -126,49 +131,49 @@ export async function registerRun(db: DuckDBClient, runDir: string): Promise<voi
       artifacts_json,
       run_dir, manifest_path
     ) VALUES (
-      '${manifest.run_id}',
-      '${manifest.run_type}',
-      '${manifest.status}',
-      '${manifest.created_at}',
-      ${manifest.started_at ? `'${manifest.started_at}'` : 'NULL'},
-      ${manifest.completed_at ? `'${manifest.completed_at}'` : 'NULL'},
-      ${manifest.git_commit ? `'${manifest.git_commit}'` : 'NULL'},
-      ${manifest.git_branch ? `'${manifest.git_branch}'` : 'NULL'},
-      ${manifest.git_dirty !== undefined ? manifest.git_dirty : 'NULL'},
-      ${manifest.dataset?.from ? `'${manifest.dataset.from}'` : 'NULL'},
-      ${manifest.dataset?.to ? `'${manifest.dataset.to}'` : 'NULL'},
-      ${manifest.dataset?.interval ? `'${manifest.dataset.interval}'` : 'NULL'},
+      '${escapeSql(manifest.run_id)}',
+      '${escapeSql(manifest.run_type)}',
+      '${escapeSql(manifest.status)}',
+      '${escapeSql(manifest.created_at)}',
+      ${manifest.started_at ? `'${escapeSql(manifest.started_at)}'` : 'NULL'},
+      ${manifest.completed_at ? `'${escapeSql(manifest.completed_at)}'` : 'NULL'},
+      ${manifest.git_commit ? `'${escapeSql(manifest.git_commit)}'` : 'NULL'},
+      ${manifest.git_branch ? `'${escapeSql(manifest.git_branch)}'` : 'NULL'},
+      ${manifest.git_dirty !== undefined ? (manifest.git_dirty ? 'TRUE' : 'FALSE') : 'NULL'},
+      ${manifest.dataset?.from ? `'${escapeSql(manifest.dataset.from)}'` : 'NULL'},
+      ${manifest.dataset?.to ? `'${escapeSql(manifest.dataset.to)}'` : 'NULL'},
+      ${manifest.dataset?.interval ? `'${escapeSql(manifest.dataset.interval)}'` : 'NULL'},
       ${manifest.dataset?.calls_count ?? 'NULL'},
-      ${parametersJson ? `'${parametersJson.replace(/'/g, "''")}'` : 'NULL'},
+      ${parametersJson ? `'${escapeSql(parametersJson)}'` : 'NULL'},
       ${manifest.timing?.plan_ms ?? 'NULL'},
       ${manifest.timing?.coverage_ms ?? 'NULL'},
       ${manifest.timing?.slice_ms ?? 'NULL'},
       ${manifest.timing?.execution_ms ?? 'NULL'},
       ${manifest.timing?.optimization_ms ?? 'NULL'},
       ${manifest.timing?.total_ms ?? 'NULL'},
-      '${artifactsJson.replace(/'/g, "''")}',
-      '${runDir.replace(/'/g, "''")}',
-      '${manifestPath.replace(/'/g, "''")}'
-    );
-  `);
+      '${escapeSql(artifactsJson)}',
+      '${escapeSql(runDir)}',
+      '${escapeSql(manifestPath)}'
+    )
+  `;
   
-  // Insert artifacts
+  await db.execute(runInsertSql);
+  
+  // Insert artifacts (execute separately)
   for (const [artifactType, artifactInfo] of Object.entries(manifest.artifacts)) {
     const artifactPath = join(runDir, artifactInfo.path);
-    sqlStatements.push(`
+    const artifactInsertSql = `
       INSERT INTO backtest_artifacts_catalog (
         run_id, artifact_type, artifact_path, rows
       ) VALUES (
-        '${manifest.run_id}',
-        '${artifactType}',
-        '${artifactPath.replace(/'/g, "''")}',
+        '${escapeSql(manifest.run_id)}',
+        '${escapeSql(artifactType)}',
+        '${escapeSql(artifactPath)}',
         ${artifactInfo.rows}
-      );
-    `);
+      )
+    `;
+    await db.execute(artifactInsertSql);
   }
-  
-  // Execute all as batch
-  await db.execute(sqlStatements.join('\n'));
   
   logger.info('Registered run to catalog', {
     runId: manifest.run_id,
@@ -183,7 +188,8 @@ export async function catalogAllRuns(
   db: DuckDBClient,
   baseDir: string = 'runs'
 ): Promise<{ registered: number; skipped: number }> {
-  const runDirs = await listRunDirectories(baseDir, true); // Only complete runs
+  // List all runs (not just those with _SUCCESS) - we'll filter by manifest status
+  const runDirs = await listRunDirectories(baseDir, false); // All runs
   
   let registered = 0;
   let skipped = 0;
@@ -244,8 +250,23 @@ export async function queryRuns(
   const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
   const limitClause = criteria.limit ? `LIMIT ${criteria.limit}` : '';
   
+  // Cast datetime columns to strings to avoid JSON serialization issues
   const sql = `
-    SELECT * FROM backtest_runs_catalog
+    SELECT 
+      run_id, run_type, status,
+      CAST(created_at AS TEXT) as created_at,
+      CAST(started_at AS TEXT) as started_at,
+      CAST(completed_at AS TEXT) as completed_at,
+      git_commit, git_branch, git_dirty,
+      CAST(dataset_from AS TEXT) as dataset_from,
+      CAST(dataset_to AS TEXT) as dataset_to,
+      dataset_interval, dataset_calls_count,
+      parameters_json,
+      timing_plan_ms, timing_coverage_ms, timing_slice_ms, timing_execution_ms, timing_optimization_ms, timing_total_ms,
+      artifacts_json,
+      run_dir, manifest_path,
+      CAST(cataloged_at AS TEXT) as cataloged_at
+    FROM backtest_runs_catalog
     ${whereClause}
     ORDER BY created_at DESC
     ${limitClause}
@@ -255,10 +276,14 @@ export async function queryRuns(
   
   // Convert rows to RunManifest objects
   const manifests: RunManifest[] = [];
+  const manifestPathIdx = result.columns.findIndex((c) => c.name === 'manifest_path');
+  
   for (const row of result.rows) {
-    const manifestPath = row[result.columns.findIndex((c) => c.name === 'manifest_path')] as string;
+    const manifestPath = row[manifestPathIdx] as string;
     try {
-      const manifest = await RunDirectory.readManifest(manifestPath.replace('/run.json', ''));
+      // manifest_path is the full path to run.json, we need the directory
+      const runDir = manifestPath.replace(/\/run\.json$/, '');
+      const manifest = await RunDirectory.readManifest(runDir);
       manifests.push(manifest);
     } catch (error) {
       logger.warn('Failed to read manifest', { manifestPath, error });
@@ -303,19 +328,19 @@ export async function getCatalogStats(db: DuckDBClient): Promise<{
 }> {
   // Total runs
   const totalRunsResult = await db.query('SELECT COUNT(*) as count FROM backtest_runs_catalog');
-  const totalRuns = totalRunsResult.rows[0][0] as number;
+  const totalRuns = totalRunsResult.rows.length > 0 ? (totalRunsResult.rows[0][0] as number) : 0;
   
   // Completed runs
   const completedRunsResult = await db.query(
     "SELECT COUNT(*) as count FROM backtest_runs_catalog WHERE status = 'completed'"
   );
-  const completedRuns = completedRunsResult.rows[0][0] as number;
+  const completedRuns = completedRunsResult.rows.length > 0 ? (completedRunsResult.rows[0][0] as number) : 0;
   
   // Failed runs
   const failedRunsResult = await db.query(
     "SELECT COUNT(*) as count FROM backtest_runs_catalog WHERE status = 'failed'"
   );
-  const failedRuns = failedRunsResult.rows[0][0] as number;
+  const failedRuns = failedRunsResult.rows.length > 0 ? (failedRunsResult.rows[0][0] as number) : 0;
   
   // Runs by type
   const runsByTypeResult = await db.query(
@@ -330,7 +355,7 @@ export async function getCatalogStats(db: DuckDBClient): Promise<{
   const totalArtifactsResult = await db.query(
     'SELECT COUNT(*) as count FROM backtest_artifacts_catalog'
   );
-  const totalArtifacts = totalArtifactsResult.rows[0][0] as number;
+  const totalArtifacts = totalArtifactsResult.rows.length > 0 ? (totalArtifactsResult.rows[0][0] as number) : 0;
   
   // Artifacts by type
   const artifactsByTypeResult = await db.query(
