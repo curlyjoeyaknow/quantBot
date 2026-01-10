@@ -15,9 +15,7 @@
       "alert_count": 22,
       "first_alert": "2025-08-05T09:09:46",
       "last_alert": "2025-09-11T19:20:55",
-      "callers": [
-        null
-      ],
+      "callers": [null],
       "duplicates": {
         "has_duplicates": false,
         "duplicate_count": 0,
@@ -42,9 +40,7 @@
       "alert_count": 20,
       "first_alert": "2025-05-11T14:13:16",
       "last_alert": "2025-11-22T21:13:56",
-      "callers": [
-        null
-      ],
+      "callers": [null],
       "duplicates": {
         "has_duplicates": false,
         "duplicate_count": 0,
@@ -69,9 +65,7 @@
       "alert_count": 19,
       "first_alert": "2025-07-01T20:25:09",
       "last_alert": "2025-08-29T00:22:55",
-      "callers": [
-        null
-      ],
+      "callers": [null],
       "duplicates": {
         "has_duplicates": false,
         "duplicate_count": 0,
@@ -96,9 +90,7 @@
       "alert_count": 15,
       "first_alert": "2025-10-01T10:30:48",
       "last_alert": "2025-11-05T13:00:31",
-      "callers": [
-        null
-      ],
+      "callers": [null],
       "duplicates": {
         "has_duplicates": false,
         "duplicate_count": 0,
@@ -123,9 +115,7 @@
       "alert_count": 14,
       "first_alert": "2025-07-14T11:47:09",
       "last_alert": "2025-07-21T11:37:16",
-      "callers": [
-        null
-      ],
+      "callers": [null],
       "duplicates": {
         "has_duplicates": false,
         "duplicate_count": 0,
@@ -150,9 +140,7 @@
       "alert_count": 13,
       "first_alert": "2025-06-18T23:54:11",
       "last_alert": "2025-07-29T11:38:18",
-      "callers": [
-        null
-      ],
+      "callers": [null],
       "duplicates": {
         "has_duplicates": false,
         "duplicate_count": 0,
@@ -177,9 +165,7 @@
       "alert_count": 10,
       "first_alert": "2025-11-17T18:29:22",
       "last_alert": "2025-11-21T01:56:16",
-      "callers": [
-        null
-      ],
+      "callers": [null],
       "duplicates": {
         "has_duplicates": false,
         "duplicate_count": 0,
@@ -204,9 +190,7 @@
       "alert_count": 9,
       "first_alert": "2025-09-21T18:09:12",
       "last_alert": "2025-11-05T12:56:59",
-      "callers": [
-        null
-      ],
+      "callers": [null],
       "duplicates": {
         "has_duplicates": false,
         "duplicate_count": 0,
@@ -231,9 +215,7 @@
       "alert_count": 9,
       "first_alert": "2025-07-05T09:20:19",
       "last_alert": "2025-09-01T13:24:23",
-      "callers": [
-        null
-      ],
+      "callers": [null],
       "duplicates": {
         "has_duplicates": false,
         "duplicate_count": 0,
@@ -258,9 +240,7 @@
       "alert_count": 9,
       "first_alert": "2025-05-15T18:16:45",
       "last_alert": "2025-07-17T20:33:54",
-      "callers": [
-        null
-      ],
+      "callers": [null],
       "duplicates": {
         "has_duplicates": false,
         "duplicate_count": 0,
