@@ -33,6 +33,8 @@ def get_clickhouse_client() -> Client:
     password = os.getenv('CLICKHOUSE_PASSWORD', '')
     database = os.getenv('CLICKHOUSE_DATABASE', 'quantbot')
     
+    print(f"Connecting to ClickHouse: {host}:{port} as {user} (database: {database})")
+    
     return Client(
         host=host,
         port=port,
@@ -85,23 +87,49 @@ def analyze_token_duplicates(ch_client: Client, mint: str, chain: str) -> Dict[s
     """Analyze duplicate candles for a token."""
     database = os.getenv('CLICKHOUSE_DATABASE', 'quantbot')
     
-    query = f"""
-        SELECT 
-            timestamp,
-            interval,
-            count() as duplicate_count,
-            groupArray(ingested_at) as ingestion_times,
-            groupArray(open) as opens,
-            groupArray(close) as closes,
-            groupArray(volume) as volumes
-        FROM {database}.ohlcv_candles
-        WHERE token_address = %(mint)s
-          AND chain = %(chain)s
-        GROUP BY timestamp, interval
-        HAVING duplicate_count > 1
-        ORDER BY duplicate_count DESC, timestamp DESC
-        LIMIT 100
-    """
+    # Check if ingested_at column exists
+    try:
+        ch_client.execute(f"SELECT ingested_at FROM {database}.ohlcv_candles LIMIT 1")
+        has_ingested_at = True
+    except Exception:
+        has_ingested_at = False
+    
+    if has_ingested_at:
+        query = f"""
+            SELECT 
+                timestamp,
+                interval_seconds,
+                count() as duplicate_count,
+                groupArray(ingested_at) as ingestion_times,
+                groupArray(open) as opens,
+                groupArray(close) as closes,
+                groupArray(volume) as volumes
+            FROM {database}.ohlcv_candles
+            WHERE token_address = %(mint)s
+              AND chain = %(chain)s
+            GROUP BY timestamp, interval_seconds
+            HAVING duplicate_count > 1
+            ORDER BY duplicate_count DESC, timestamp DESC
+            LIMIT 100
+        """
+    else:
+        # Fallback: no ingestion metadata, just check for duplicates
+        query = f"""
+            SELECT 
+                timestamp,
+                interval_seconds,
+                count() as duplicate_count,
+                groupArray(open) as opens,
+                groupArray(close) as closes,
+                groupArray(volume) as volumes
+            FROM {database}.ohlcv_candles
+            WHERE token_address = %(mint)s
+              AND chain = %(chain)s
+            GROUP BY timestamp, interval_seconds
+            HAVING duplicate_count > 1
+            ORDER BY duplicate_count DESC, timestamp DESC
+            LIMIT 100
+        """
     
     try:
         result = ch_client.execute(query, {'mint': mint, 'chain': chain})
@@ -120,7 +148,15 @@ def analyze_token_duplicates(ch_client: Client, mint: str, chain: str) -> Dict[s
     
     duplicates = []
     for row in result:
-        ts, interval, dup_count, ing_times, opens, closes, volumes = row
+        if has_ingested_at:
+            ts, interval_sec, dup_count, ing_times, opens, closes, volumes = row
+        else:
+            ts, interval_sec, dup_count, opens, closes, volumes = row
+            ing_times = []
+        
+        # Convert interval_seconds to string format
+        interval_map = {1: '1s', 15: '15s', 60: '1m', 300: '5m', 900: '15m', 3600: '1h', 14400: '4h', 86400: '1d'}
+        interval_str = interval_map.get(interval_sec, f'{interval_sec}s')
         
         # Check if values differ (true duplicates vs. re-ingestion of same data)
         values_differ = (
@@ -131,10 +167,10 @@ def analyze_token_duplicates(ch_client: Client, mint: str, chain: str) -> Dict[s
         
         duplicates.append({
             'timestamp': ts.isoformat() if hasattr(ts, 'isoformat') else str(ts),
-            'interval': interval,
+            'interval': interval_str,
             'duplicate_count': dup_count,
             'values_differ': values_differ,
-            'ingestion_times': [t.isoformat() if hasattr(t, 'isoformat') else str(t) for t in ing_times],
+            'ingestion_times': [t.isoformat() if hasattr(t, 'isoformat') else str(t) for t in ing_times] if ing_times else [],
             'price_range': f"{min(opens):.10f} - {max(closes):.10f}" if opens and closes else None
         })
     
@@ -150,6 +186,18 @@ def analyze_token_gaps(ch_client: Client, mint: str, chain: str, interval: str =
     """Analyze gaps in candle data."""
     database = os.getenv('CLICKHOUSE_DATABASE', 'quantbot')
     
+    # Convert interval string to seconds
+    interval_seconds = {
+        '1s': 1,
+        '15s': 15,
+        '1m': 60,
+        '5m': 300,
+        '15m': 900,
+        '1h': 3600,
+        '4h': 14400,
+        '1d': 86400
+    }.get(interval, 300)
+    
     # Get all candles for this token/interval
     query = f"""
         SELECT 
@@ -162,7 +210,7 @@ def analyze_token_gaps(ch_client: Client, mint: str, chain: str, interval: str =
         FROM {database}.ohlcv_candles
         WHERE token_address = %(mint)s
           AND chain = %(chain)s
-          AND interval = %(interval)s
+          AND interval_seconds = %(interval_seconds)s
         ORDER BY timestamp ASC
     """
     
@@ -237,6 +285,18 @@ def analyze_token_price_distortions(ch_client: Client, mint: str, chain: str, in
     """Analyze price distortions and anomalies."""
     database = os.getenv('CLICKHOUSE_DATABASE', 'quantbot')
     
+    # Convert interval string to seconds
+    interval_seconds = {
+        '1s': 1,
+        '15s': 15,
+        '1m': 60,
+        '5m': 300,
+        '15m': 900,
+        '1h': 3600,
+        '4h': 14400,
+        '1d': 86400
+    }.get(interval, 300)
+    
     query = f"""
         SELECT 
             timestamp,
@@ -248,12 +308,12 @@ def analyze_token_price_distortions(ch_client: Client, mint: str, chain: str, in
         FROM {database}.ohlcv_candles
         WHERE token_address = %(mint)s
           AND chain = %(chain)s
-          AND interval = %(interval)s
+          AND interval_seconds = %(interval_seconds)s
         ORDER BY timestamp ASC
     """
     
     try:
-        result = ch_client.execute(query, {'mint': mint, 'chain': chain, 'interval': interval})
+        result = ch_client.execute(query, {'mint': mint, 'chain': chain, 'interval_seconds': interval_seconds})
     except Exception as e:
         return {
             'has_distortions': False,
