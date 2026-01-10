@@ -1,0 +1,271 @@
+---
+name: Testing contracts (QuantBot Backtest)
+description: Tests must prove architecture guarantees: handler purity, adapter contracts, replayability, and policy optimization correctness.
+globs:
+  - "tests/**"
+  - "packages/**/src/**"
+  - "apps/**/src/**"
+---
+
+# Testing contracts (QuantBot Backtest)
+
+These tests exist to enforce the core objective:
+**learn optimal post-alert trade management policies under explicit downside constraints, per caller** —
+without nondeterminism, silent drift, or I/O leakage into handlers.
+
+## Handler unit tests (required)
+
+For every handler (truth, policy execution, optimization):
+
+- run with in-memory ports (stubs/fakes that implement `ports/*`)
+- no network
+- no filesystem
+- no real clock (`ClockPort` stub required)
+- no implicit randomness (`RandomPort` stub if used)
+- no process spawning (use an `RunQueuePort` or return events instead)
+
+Assert:
+
+- deterministic output (same inputs ⇒ same output)
+- emitted `events` (data-only)
+- `metrics` shape (counters/timings as data)
+- structured `warnings` (especially per-call skip/coverage reasons)
+- invariants:
+  - truth layer: **one persisted metrics record per eligible call**
+  - policy layer: realized return <= peak capture unless explicit model allows otherwise
+  - optimization layer: returned policy satisfies constraints (or reports “no feasible policy”)
+
+## Domain golden tests (required for tricky math)
+
+For pure domain logic with meaningful edge cases, use golden tests with small synthetic candle streams:
+
+- `computePathMetrics`:
+  - monotonic up, monotonic down, spike then dump, chop, late breakout
+  - unit correctness (ms timestamps)
+  - correctness of: peak multiple, drawdown, dd-to-2x, time-to-2x/3x/4x, alert→activity
+- policy execution (candle replay):
+  - fixed stop triggers
+  - time stop triggers
+  - trailing activation and trail updates
+  - ladder fill accounting
+  - tail capture (realized vs peak multiple)
+- scoring:
+  - constraint enforcement
+  - tie-break ordering
+
+Golden tests must be stable and human-reviewable.
+
+## Adapter contract tests (required)
+
+For each adapter implementing a port:
+
+- define a port-level contract test suite per adapter
+- use recorded fixtures or mock servers (no live dependencies in CI)
+- verify:
+  - request formation (SQL, HTTP, RPC calls)
+  - response parsing and normalization (especially timestamp unit conversion)
+  - pagination/chunking logic (if applicable)
+  - retry/timeout policy (adapter-level)
+  - error classification (recoverable vs terminal)
+
+### Backtest-specific adapter requirements
+
+- Candle source adapters MUST normalize timestamps to ms before returning to handlers/domain.
+- DuckDB/ClickHouse adapters MUST be deterministic for the same inputs (ordering, rounding, filtering).
+- Adapters MAY log, but logs must be structured and include correlation/run id when available.
+
+## Replay tests (strongly recommended)
+
+Purpose: prove refactors don’t silently change decision logic.
+
+- same `command` + same recorded adapter outputs ⇒ same handler outputs
+- replay should cover:
+  - truth layer runs (path metrics)
+  - policy execution runs (stops/exits)
+  - optimization runs (selected policy per caller)
+
+Recommended approach:
+
+- record a small deterministic fixture dataset:
+  - calls list
+  - candles slices per call window
+  - expected outputs for truth + at least one policy config
+
+Replay tests should fail loudly if:
+
+- any metric changes unexpectedly
+- per-call eligibility changes unexpectedly
+- policy outcomes change unexpectedly
+
+## Integration smoke tests (recommended)
+
+Lightweight end-to-end tests for composition roots:
+
+- CLI smoke: run `path-only` mode against a tiny fixture DB and confirm it completes
+- Lab UI smoke: create a run record, trigger execution (mocked), verify UI endpoints return expected shape
+
+Keep these minimal: composition roots are wiring, not logic.
+
+## What NOT to test
+
+- don’t heavily unit test composition roots (smoke tests are enough)
+- don’t unit test adapters by hitting live external services in CI
+- don’t test internal private helpers unless they encode tricky edge cases
+- don’t duplicate domain math tests inside handler tests (handler tests focus on orchestration + contracts)
+
+## Required test naming conventions (recommended)
+
+- `*.handler.test.ts` for handler purity tests
+- `*.golden.test.ts` for domain golden tests
+- `*.adapter.contract.test.ts` for adapter contract suites
+- `*.replay.test.ts` for recorded replay tests
+
+## Minimum gates per phase (enforced)
+
+- Phase Truth Layer:
+  - golden tests for path metrics
+  - handler purity tests for truth handler
+  - adapter contract tests for candle + results persistence ports
+- Phase Policy Layer:
+  - golden tests for stop/exit replay logic
+  - handler purity tests for policy run handler
+- Phase Optimizer:
+  - scoring contract tests (constraints, tie-breakers)
+  - optimizer property test: never returns invalid policy; returns “no feasible” when appropriate
+
+cat > .cursor/rules/40-testing-contracts.mdc <<'EOF'
+---
+name: Testing contracts (QuantBot Backtest)
+description: Tests must prove architecture guarantees: handler purity, adapter contracts, replayability, and policy optimization correctness.
+globs:
+  - "tests/**"
+  - "packages/**/src/**"
+  - "apps/**/src/**"
+---
+
+# Testing contracts (QuantBot Backtest)
+
+These tests exist to enforce the core objective:
+**learn optimal post-alert trade management policies under explicit downside constraints, per caller** —
+without nondeterminism, silent drift, or I/O leakage into handlers.
+
+## Handler unit tests (required)
+
+For every handler (truth, policy execution, optimization):
+
+- run with in-memory ports (stubs/fakes that implement `ports/*`)
+- no network
+- no filesystem
+- no real clock (`ClockPort` stub required)
+- no implicit randomness (`RandomPort` stub if used)
+- no process spawning (use an `RunQueuePort` or return events instead)
+
+Assert:
+
+- deterministic output (same inputs ⇒ same output)
+- emitted `events` (data-only)
+- `metrics` shape (counters/timings as data)
+- structured `warnings` (especially per-call skip/coverage reasons)
+- invariants:
+  - truth layer: **one persisted metrics record per eligible call**
+  - policy layer: realized return <= peak capture unless explicit model allows otherwise
+  - optimization layer: returned policy satisfies constraints (or reports “no feasible policy”)
+
+## Domain golden tests (required for tricky math)
+
+For pure domain logic with meaningful edge cases, use golden tests with small synthetic candle streams:
+
+- `computePathMetrics`:
+  - monotonic up, monotonic down, spike then dump, chop, late breakout
+  - unit correctness (ms timestamps)
+  - correctness of: peak multiple, drawdown, dd-to-2x, time-to-2x/3x/4x, alert→activity
+- policy execution (candle replay):
+  - fixed stop triggers
+  - time stop triggers
+  - trailing activation and trail updates
+  - ladder fill accounting
+  - tail capture (realized vs peak multiple)
+- scoring:
+  - constraint enforcement
+  - tie-break ordering
+
+Golden tests must be stable and human-reviewable.
+
+## Adapter contract tests (required)
+
+For each adapter implementing a port:
+
+- define a port-level contract test suite per adapter
+- use recorded fixtures or mock servers (no live dependencies in CI)
+- verify:
+  - request formation (SQL, HTTP, RPC calls)
+  - response parsing and normalization (especially timestamp unit conversion)
+  - pagination/chunking logic (if applicable)
+  - retry/timeout policy (adapter-level)
+  - error classification (recoverable vs terminal)
+
+### Backtest-specific adapter requirements
+
+- Candle source adapters MUST normalize timestamps to ms before returning to handlers/domain.
+- DuckDB/ClickHouse adapters MUST be deterministic for the same inputs (ordering, rounding, filtering).
+- Adapters MAY log, but logs must be structured and include correlation/run id when available.
+
+## Replay tests (strongly recommended)
+
+Purpose: prove refactors don’t silently change decision logic.
+
+- same `command` + same recorded adapter outputs ⇒ same handler outputs
+- replay should cover:
+  - truth layer runs (path metrics)
+  - policy execution runs (stops/exits)
+  - optimization runs (selected policy per caller)
+
+Recommended approach:
+
+- record a small deterministic fixture dataset:
+  - calls list
+  - candles slices per call window
+  - expected outputs for truth + at least one policy config
+
+Replay tests should fail loudly if:
+
+- any metric changes unexpectedly
+- per-call eligibility changes unexpectedly
+- policy outcomes change unexpectedly
+
+## Integration smoke tests (recommended)
+
+Lightweight end-to-end tests for composition roots:
+
+- CLI smoke: run `path-only` mode against a tiny fixture DB and confirm it completes
+- Lab UI smoke: create a run record, trigger execution (mocked), verify UI endpoints return expected shape
+
+Keep these minimal: composition roots are wiring, not logic.
+
+## What NOT to test
+
+- don’t heavily unit test composition roots (smoke tests are enough)
+- don’t unit test adapters by hitting live external services in CI
+- don’t test internal private helpers unless they encode tricky edge cases
+- don’t duplicate domain math tests inside handler tests (handler tests focus on orchestration + contracts)
+
+## Required test naming conventions (recommended)
+
+- `*.handler.test.ts` for handler purity tests
+- `*.golden.test.ts` for domain golden tests
+- `*.adapter.contract.test.ts` for adapter contract suites
+- `*.replay.test.ts` for recorded replay tests
+
+## Minimum gates per phase (enforced)
+
+- Phase Truth Layer:
+  - golden tests for path metrics
+  - handler purity tests for truth handler
+  - adapter contract tests for candle + results persistence ports
+- Phase Policy Layer:
+  - golden tests for stop/exit replay logic
+  - handler purity tests for policy run handler
+- Phase Optimizer:
+  - scoring contract tests (constraints, tie-breakers)
+  - optimizer property test: never returns invalid policy; returns “no feasible” when appropriate
+EOF

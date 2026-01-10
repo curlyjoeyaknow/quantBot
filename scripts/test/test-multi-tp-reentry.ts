@@ -1,0 +1,129 @@
+import { DateTime } from 'luxon';
+import { fetchHybridCandles } from '@quantbot/ohlcv';
+import { simulateStrategy } from '@quantbot/backtest';
+import * as fs from 'fs';
+import * as path from 'path';
+import { parse } from 'csv-parse';
+
+const BROOK_CALLS_CSV = path.join(__dirname, '../data/exports/csv/all_brook_channels_calls.csv');
+
+async function testMultiTPReentry() {
+  console.log('🧪 Testing Multi-Level Profit Targets with Re-entry...\n');
+
+  // Read Brook calls
+  const csv = fs.readFileSync(BROOK_CALLS_CSV, 'utf8');
+  const records = await new Promise((resolve, reject) => {
+    parse(csv, { columns: true, skip_empty_lines: true }, (err, records) => {
+      if (err) reject(err);
+      else resolve(records);
+    });
+  });
+
+  const brookOnly = (records as any[]).filter(
+    (r: any) =>
+      r.sender &&
+      (r.sender.includes('Brook') ||
+        r.sender.includes('brook') ||
+        r.sender.includes('Brook Giga')) &&
+      !r.tokenAddress.includes('bonk') &&
+      r.tokenAddress.length > 20
+  );
+
+  console.log(`📊 Testing ${brookOnly.length} Brook calls\n`);
+
+  const strategies = [
+    {
+      name: '50% @ 2x, 50% @ 10x',
+      strategy: [
+        { percent: 0.5, target: 2 },
+        { percent: 0.5, target: 10 },
+      ],
+    },
+    {
+      name: '20% @ 5x, 20% @ 10x, 10% @ 20x',
+      strategy: [
+        { percent: 0.2, target: 5 },
+        { percent: 0.2, target: 10 },
+        { percent: 0.1, target: 20 },
+      ],
+    },
+  ];
+
+  const results: any = {};
+
+  for (const strat of strategies) {
+    results[strat.name] = { winners: 0, losers: 0, netPnl: 0, total: 0 };
+  }
+
+  let processed = 0;
+  const maxCalls = 100;
+
+  for (let i = 0; i < Math.min(brookOnly.length, maxCalls); i++) {
+    const call = brookOnly[i];
+
+    try {
+      const alertDate = DateTime.fromISO(call.timestamp);
+      if (!alertDate.isValid) continue;
+
+      const endDate = alertDate.plus({ days: 60 });
+      const candles = await fetchHybridCandles(call.tokenAddress, alertDate, endDate, call.chain);
+      if (!candles || candles.length === 0) continue;
+
+      for (const strat of strategies) {
+        // Configure stop loss: -30%
+        const stopLossConfig = {
+          initial: -0.3,
+          trailing: 'none' as const,
+        };
+
+        // Configure re-entry at alert bounce (70% retrace = back to alert price)
+        const reEntryConfig = {
+          trailingReEntry: 0.7,
+          maxReEntries: 1,
+          sizePercent: 0.5,
+        };
+
+        const result = simulateStrategy(
+          candles,
+          strat.strategy,
+          stopLossConfig,
+          undefined,
+          reEntryConfig
+        );
+
+        const pnl = result.finalPnl;
+
+        if (pnl > 1) {
+          results[strat.name].winners++;
+          results[strat.name].netPnl += pnl - 1;
+        } else {
+          results[strat.name].losers++;
+          results[strat.name].netPnl += pnl - 1;
+        }
+        results[strat.name].total++;
+      }
+
+      processed++;
+      if (processed % 10 === 0) {
+        console.log(`Processed ${processed}/${Math.min(brookOnly.length, maxCalls)}...`);
+      }
+    } catch (error) {
+      continue;
+    }
+  }
+
+  console.log('\n📊 RESULTS:\n');
+  console.log('Strategy                      | Winners | Losers | Net PNL');
+  console.log('-----------------------------|---------|--------|---------');
+
+  for (const strat of strategies) {
+    const r = results[strat.name];
+    const netPnl = r.netPnl.toFixed(2);
+    const label = strat.name.padEnd(28);
+    console.log(
+      `${label} | ${String(r.winners).padStart(7)} | ${String(r.losers).padStart(6)} | ${netPnl.padStart(7)}x`
+    );
+  }
+}
+
+testMultiTPReentry().catch(console.error);

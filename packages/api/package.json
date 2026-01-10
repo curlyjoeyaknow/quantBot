@@ -1,0 +1,42 @@
+{
+  "name": "@quantbot/api",
+  "version": "1.0.0",
+  "description": "REST API for QuantBot (Fastify-based)",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "start": "node dist/index.js",
+    "dev": "tsx watch src/index.ts",
+    "test": "vitest",
+    "test:coverage": "vitest run --coverage"
+  },
+  "dependencies": {
+    "@fastify/cors": "^10.0.1",
+    "@fastify/swagger": "^9.1.0",
+    "@fastify/swagger-ui": "^5.1.0",
+    "@quantbot/core": "workspace:*",
+    "@quantbot/observability": "workspace:*",
+    "@quantbot/utils": "workspace:*",
+    "@quantbot/workflows": "workspace:*",
+    "@quantbot/storage": "workspace:*",
+    "fastify": "^5.1.0",
+    "zod": "^3.24.1",
+    "zod-to-json-schema": "^3.24.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "@vitest/coverage-v8": "^4.0.15",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.15"
+  }
+}
+

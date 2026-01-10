@@ -1,0 +1,73 @@
+---
+description: QuantBot global invariants (caller-centric backtesting) — mint safety, time units, determinism, native-dep sanity.
+globs:
+  - "**/*"
+alwaysApply: true
+---
+
+# QuantBot conventions (global)
+
+QuantBot is a **caller-centric backtesting lab**:
+- quantify which callers are worth following
+- learn optimal post-alert trade management (stops + exits) under explicit downside constraints
+- produce reproducible results (truth → policy → optimize)
+
+**No live trading package lives in this repo.**
+
+## Mint address handling (hard rule)
+
+⚠️ NEVER MODIFY MINT ADDRESSES
+- no truncation, case changes, or string manipulation
+- store/pass full 32–44 char addresses, preserve exact case
+- truncate ONLY for display/logging, never for storage/API calls
+
+## Time & units (hard rule)
+
+- Domain logic uses **milliseconds** for timestamps/durations.
+- Normalize upstream inputs at the boundary (adapters/apps):
+  - `Candle.timestamp` seconds → convert to ms BEFORE domain/handlers.
+- Commands must not contain JS `Date` objects.
+
+## Determinism (hard rule)
+
+Given identical `(command, ports stubs, clock, id generator, random source)`, outputs must match.
+
+- no `Date.now()` outside ClockPort
+- no `Math.random()` outside RandomPort
+- no hidden globals/singletons inside domain/handlers
+
+## Node + native deps (practical rule)
+
+Native bindings (duckdb/sqlite/etc.) are brittle across Node versions:
+- prefer Node LTS for dev/CI (pin in toolchain)
+- don’t export native-binding modules from package index barrels
+- use lazy initialization for native deps
+- mock native deps in test setup for unit tests
+
+## Worktrees (practical rule)
+
+Don’t rely on a globally-installed `quantbot` command pointing at the right checkout.
+Prefer workspace execution (`pnpm -C <root> exec -- ...`) or explicit `QUANTBOT_CLI` overrides.
+
+## Commit & Push Workflow (hard rule)
+
+After implementing features or improvements, **commit and push as soon as the feature is stable**:
+
+- ✅ Feature/improvement is complete and working
+- ✅ Tests pass (or at minimum, no new failures introduced)
+- ✅ Build succeeds
+- ✅ Code is in a commit-worthy state
+
+**Do not accumulate multiple unrelated changes** - commit and push each stable feature/improvement incrementally.
+
+This ensures:
+- Work is preserved and backed up
+- Changes are traceable and reviewable
+- Collaboration is smoother (others can see progress)
+- Rollback is easier if issues arise
+
+**Exception**: If working on a multi-step refactor that requires multiple commits to maintain build/test stability, commit at logical checkpoints but still push frequently.
+
+## Testing pointer
+
+Testing contracts (purity, replay, regression requirements) live in `40-testing-contracts.mdc`.

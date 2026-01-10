@@ -1,0 +1,34 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "dist",
+    "rootDir": "src",
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "composite": true,
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "types": ["node"],
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "skipLibCheck": true
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["dist", "node_modules", "tests", "**/*.d.ts", "../jobs/dist"],
+  "references": [
+    { "path": "../core" },
+    { "path": "../utils" },
+    { "path": "../storage" },
+    { "path": "../ohlcv" },
+    { "path": "../simulation" },
+    { "path": "../ingestion" },
+    { "path": "../api-clients" },
+    { "path": "../jobs" },
+    { "path": "../data-observatory" },
+    { "path": "../backtest" },
+    { "path": "../labcatalog" }
+  ]
+}

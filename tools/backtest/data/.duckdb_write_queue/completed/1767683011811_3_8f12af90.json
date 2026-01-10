@@ -1,0 +1,21 @@
+{
+  "job_id": "1767683011811_3_8f12af90",
+  "duckdb_path": "/home/memez/backups/quantBot-abstraction-backtest-only/data/alerts.duckdb",
+  "operation": "store_phase_start",
+  "payload": {
+    "run_id": "a3e6875d0624",
+    "phase_name": "discovery",
+    "phase_order": 1,
+    "input_summary": {
+      "n_alerts": 1409,
+      "n_folds": 1
+    }
+  },
+  "priority": 3,
+  "created_at": "2026-01-06T07:03:31.811669+00:00",
+  "attempts": 1,
+  "max_attempts": 5,
+  "last_attempt_at": "2026-01-06T07:03:33.208732+00:00",
+  "completed_at": "2026-01-06T07:03:33.279758+00:00",
+  "status": "completed"
+}

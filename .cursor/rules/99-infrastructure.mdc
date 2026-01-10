@@ -1,0 +1,68 @@
+# Infrastructure Configuration (NEVER GUESS THESE)
+
+## ClickHouse Connection
+
+**Docker container**: `quantbot-clickhouse`
+
+| Setting | Value |
+|---------|-------|
+| Host | `127.0.0.1` |
+| HTTP Port | `18123` (use this for Node.js client) |
+| Native TCP Port | `19000` (use this for clickhouse-client CLI) |
+| Database | `quantbot` |
+| User | `quantbot_app` |
+| Password | `00995598009P` |
+
+### Environment Variables (.env)
+
+```bash
+CLICKHOUSE_HOST=127.0.0.1
+CLICKHOUSE_HTTP_PORT=18123      # <-- Node.js HTTP client uses THIS
+CLICKHOUSE_PORT=19000           # <-- Native TCP (clickhouse-client CLI)
+CLICKHOUSE_DATABASE=quantbot
+CLICKHOUSE_USER=quantbot_app
+CLICKHOUSE_PASSWORD=00995598009P
+USE_CLICKHOUSE=true
+```
+
+### Connecting via Docker
+
+```bash
+# Interactive shell
+docker exec -it quantbot-clickhouse clickhouse-client
+
+# One-off query
+docker exec quantbot-clickhouse clickhouse-client --query "SELECT 1"
+```
+
+### Node.js Client Port
+
+The `@clickhouse/client` package uses HTTP, so code must read `CLICKHOUSE_HTTP_PORT` (18123), NOT `CLICKHOUSE_PORT` (19000).
+
+## DuckDB
+
+**Paths**:
+
+- Project: `/home/memez/backups/quantBot-abstraction-backtest-only/data/alerts.duckdb`
+- Global: `/home/memez/data/alerts.duckdb`
+
+Key tables:
+
+- `caller_links_d` - Preferred alerts/calls table
+- `user_calls_d` - Legacy alerts table
+
+## Running CLI Commands
+
+```bash
+# From repo root
+cd /home/memez/backups/quantBot-abstraction-backtest-only
+source .env
+LOG_LEVEL=error node packages/cli/dist/bin/quantbot.js <command>
+```
+
+Or with exported env vars:
+
+```bash
+export $(grep -v '^#' .env | grep -v '^$' | xargs)
+node packages/cli/dist/bin/quantbot.js <command>
+```

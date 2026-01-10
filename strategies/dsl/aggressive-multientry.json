@@ -1,0 +1,36 @@
+{
+  "version": "1.0.0",
+  "name": "Aggressive_MultiEntry",
+  "description": "Aggressive strategy with multiple entries",
+  "tags": ["aggressive", "multi-entry"],
+  "entry": {
+    "type": "trailing_rebound",
+    "priceDropPercent": -0.3,
+    "reboundPercent": 0.1,
+    "maxWaitMinutes": 180
+  },
+  "exit": [
+    {
+      "type": "profit_target",
+      "profitTarget": 5.0,
+      "percentToExit": 0.3
+    },
+    {
+      "type": "profit_target",
+      "profitTarget": 10.0,
+      "percentToExit": 0.7
+    },
+    {
+      "type": "stop_loss",
+      "stopLossPercent": -0.4
+    }
+  ],
+  "reEntry": {
+    "enabled": true,
+    "type": "trailing_retrace",
+    "retracePercent": 0.5,
+    "maxReEntries": 3,
+    "sizePercent": 0.6
+  }
+}
+

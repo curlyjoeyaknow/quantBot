@@ -1,0 +1,48 @@
+---
+description: Ingestion package rules - mint address handling, data extraction, Telegram parsing
+globs:
+  - "packages/ingestion/**/*.ts"
+  - "packages/ingestion/**/*.js"
+alwaysApply: false
+---
+
+# Ingestion Package Rules
+
+## Mint Address Handling - CRITICAL
+
+⚠️ **NEVER MODIFY MINT ADDRESSES**
+
+### Rules
+
+1. **No truncation**: Store/pass full 32-44 char addresses
+2. **No case changes**: Preserve exact case from source
+3. **No string manipulation**: Keep mint as single unmodified string
+4. **Display only**: Truncate for logs/UI, never for storage/API
+
+### Correct Patterns
+
+```typescript
+// ✅ Logging with truncation, passing full mint
+logger.info('Processing', { mint: mint.substring(0, 20) + '...' });
+await processToken(mint); // Full mint
+
+// ✅ Case-insensitive comparison, preserve original
+const isDup = existing.some(m => m.toLowerCase() === mint.toLowerCase());
+if (!isDup) saveMint(mint); // Original case
+
+// ✅ Database storage
+await db.run('INSERT INTO tokens (mint) VALUES (?)', [mint]);
+```
+
+### Why
+
+- Solana addresses are case-sensitive Base58 (32-44 chars)
+- API calls require exact, full addresses
+- Database queries must match exact case
+
+## Extraction
+
+- Extract mint addresses with exact case from messages
+- Preserve timestamps in ISO format with timezone
+- Filter bot responses (Phanes, Rick, etc.)
+- Deduplicate within 5-minute window per caller

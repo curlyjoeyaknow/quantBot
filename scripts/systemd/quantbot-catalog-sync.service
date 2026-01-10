@@ -1,0 +1,15 @@
+[Unit]
+Description=QuantBot Catalog Sync
+After=network.target
+
+[Service]
+Type=oneshot
+User=%USER%
+WorkingDirectory=%PROJECT_ROOT%
+ExecStart=%PROJECT_ROOT%/node_modules/.bin/quantbot backtest catalog-sync --base-dir runs --duckdb data/backtest_catalog.duckdb --stats
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+

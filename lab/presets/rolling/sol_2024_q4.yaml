@@ -1,0 +1,9 @@
+kind: rolling_windows_v1
+name: sol_2024_q4
+description: 7d train, 2d test rolling through Q4 sample (example)
+
+windows:
+  - train: { start: 2024-10-01T00:00:00Z, end: 2024-10-08T00:00:00Z }
+    test:  { start: 2024-10-08T00:00:00Z, end: 2024-10-10T00:00:00Z }
+  - train: { start: 2024-10-03T00:00:00Z, end: 2024-10-10T00:00:00Z }
+    test:  { start: 2024-10-10T00:00:00Z, end: 2024-10-12T00:00:00Z }

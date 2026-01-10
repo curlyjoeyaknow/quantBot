@@ -1,0 +1,59 @@
+{
+  "job_id": "1767682890676_2_dc14d85c",
+  "duckdb_path": "/home/memez/backups/quantBot-abstraction-backtest-only/data/alerts.duckdb",
+  "operation": "create_run_record",
+  "payload": {
+    "run_id": "0d5824f30321",
+    "run_type": "random_search",
+    "name": "random_3_2025-05-01_2025-06-30",
+    "date_from": "2025-05-01",
+    "date_to": "2025-06-30",
+    "config": {
+      "date_from": "2025-05-01",
+      "date_to": "2025-06-30",
+      "n_trials": 3,
+      "tp_range": [
+        1.5,
+        3.5
+      ],
+      "sl_range": [
+        0.3,
+        0.6
+      ],
+      "train_days": 14,
+      "test_days": 7,
+      "use_walk_forward": true,
+      "n_folds": 1,
+      "fold_step_days": 7,
+      "interval_seconds": 60,
+      "horizon_hours": 48,
+      "fee_bps": 30.0,
+      "slippage_bps": 50.0,
+      "caller_group": null,
+      "caller": null,
+      "seed": null,
+      "use_extended_exits": false,
+      "use_tiered_sl": false,
+      "use_delayed_entry": false,
+      "use_robust_mode": false,
+      "top_n_candidates": 30,
+      "n_clusters": 3,
+      "dd_gentle_threshold": 0.3,
+      "dd_brutal_threshold": 0.6,
+      "stress_slippage_mult": 2.0,
+      "stress_stop_gap_prob": 0.15,
+      "validate_champions": false,
+      "stress_lanes_preset": "full",
+      "resume_run_id": null,
+      "run_id": null
+    }
+  },
+  "priority": 2,
+  "created_at": "2026-01-06T07:01:30.676492+00:00",
+  "attempts": 1,
+  "max_attempts": 5,
+  "last_attempt_at": "2026-01-06T07:01:30.901465+00:00",
+  "last_error": "Unknown operation: create_run_record",
+  "status": "failed",
+  "failed_at": "2026-01-06T07:01:30.903866+00:00"
+}

@@ -1,0 +1,380 @@
+name: CI Staging
+
+# Full validation for staging branch (~30 min)
+on:
+  push:
+    branches: [staging]
+  pull_request:
+    branches: [staging]
+
+concurrency:
+  group: ci-staging-${{ github.ref }}
+  cancel-in-progress: false  # Don't cancel staging runs
+
+jobs:
+  build-and-validate:
+    name: Build and Validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 8
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build packages (ordered)
+        run: pnpm build:ordered
+
+      - name: Type check
+        run: pnpm typecheck
+
+      - name: Lint (strict)
+        run: pnpm lint
+
+      - name: Architecture boundaries
+        run: pnpm verify:boundaries-ast
+
+      - name: Workflow contracts
+        run: pnpm tsx scripts/verify-workflow-contract.ts
+
+      - name: Build order verification
+        run: pnpm tsx scripts/verify-build-order.ts
+
+      - name: No live trading
+        run: pnpm check:no-live-trading
+
+      - name: Python engine usage
+        run: pnpm verify:python-engine
+
+      - name: CI hygiene
+        run: pnpm check:hygiene
+
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: build-and-validate
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 8
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build packages
+        run: pnpm build:ordered
+
+      - name: Run unit tests
+        run: pnpm test:unit
+
+      - name: Run smoke tests
+        run: pnpm test:smoke
+
+  integration-tests:
+    name: Integration Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: build-and-validate
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 8
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build packages
+        run: pnpm build:ordered
+
+      - name: Run integration tests
+        run: pnpm test:integration
+
+  property-and-fuzz:
+    name: Property and Fuzz Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: build-and-validate
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 8
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build packages
+        run: pnpm build:ordered
+
+      - name: Run property tests
+        run: pnpm test:properties
+
+      - name: Run fuzzing tests
+        run: pnpm test:fuzzing
+
+  python-backtest-full:
+    name: Python Backtest (Full)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: build-and-validate
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Python dependencies
+        run: |
+          pip install --upgrade pip
+          pip install pytest duckdb pyarrow pandas numpy scipy tqdm
+
+      - name: Run full backtest suite
+        run: |
+          cd tools/backtest
+          python -m pytest tests/ -v --tb=long --ignore=tests/test_duckdb_storage.py 2>&1 | tee backtest-results.txt
+
+      - name: Verify path quality metrics
+        run: |
+          cd tools/backtest
+          python -m pytest tests/test_path_quality_golden.py tests/test_existing_metric_stability.py -v --tb=long
+
+      - name: Upload backtest results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: staging-backtest-results-${{ github.run_id }}
+          path: tools/backtest/backtest-results.txt
+          retention-days: 30
+
+  stress-tests:
+    name: Stress Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    needs: [unit-tests, integration-tests]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 8
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build packages
+        run: pnpm build:ordered
+
+      - name: Run stress tests
+        run: pnpm test:stress
+
+      - name: Run database stress tests
+        env:
+          RUN_DB_STRESS: 1
+        run: pnpm test:stress:db
+        continue-on-error: true
+
+      - name: Run chaos engineering tests
+        env:
+          RUN_CHAOS_TESTS: 1
+        run: pnpm test:stress:chaos
+        continue-on-error: true
+
+      - name: Upload stress test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: staging-stress-results-${{ github.run_id }}
+          path: packages/*/coverage/
+          retention-days: 30
+
+  coverage-full:
+    name: Coverage (Full)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [unit-tests, integration-tests]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 8
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build packages
+        run: pnpm build:ordered
+
+      - name: Generate coverage
+        run: pnpm test:coverage
+
+      - name: Check coverage thresholds
+        run: |
+          echo "Checking coverage meets staging thresholds..."
+          pnpm check:coverage-decrease
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage/coverage-final.json
+          flags: staging
+          fail_ci_if_error: false
+
+  documentation-strict:
+    name: Documentation (Strict)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: build-and-validate
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 8
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify CHANGELOG (strict)
+        run: pnpm verify:changelog
+
+      - name: Verify documentation
+        run: pnpm verify:documentation
+
+      - name: Verify handler tests
+        run: pnpm verify:handler-tests
+
+      - name: Verify property tests
+        run: pnpm verify:property-tests
+
+      - name: Check for breaking changes
+        run: |
+          if grep -ri "breaking" CHANGELOG.md; then
+            echo "Breaking changes detected - verify migration docs exist"
+            if [ ! -d "docs/migrations" ] && [ ! -f "docs/guides/migration.md" ]; then
+              echo "::warning::Breaking changes without migration guide"
+            fi
+          fi
+
+  staging-summary:
+    name: Staging Summary
+    runs-on: ubuntu-latest
+    needs: [unit-tests, integration-tests, property-and-fuzz, python-backtest-full, stress-tests, coverage-full, documentation-strict]
+    if: always()
+
+    steps:
+      - name: Generate summary
+        run: |
+          echo "## Staging Branch CI Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Date:** $(date -u '+%Y-%m-%d %H:%M UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Unit Tests | ${{ needs.unit-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Integration Tests | ${{ needs.integration-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Property & Fuzz | ${{ needs.property-and-fuzz.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Python Backtest | ${{ needs.python-backtest-full.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Stress Tests | ${{ needs.stress-tests.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Coverage | ${{ needs.coverage-full.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Documentation | ${{ needs.documentation-strict.result }} |" >> $GITHUB_STEP_SUMMARY
+
+      - name: Require all critical jobs pass
+        if: |
+          needs.unit-tests.result == 'failure' ||
+          needs.integration-tests.result == 'failure' ||
+          needs.python-backtest-full.result == 'failure' ||
+          needs.documentation-strict.result == 'failure'
+        run: |
+          echo "::error::Staging validation failed - cannot promote to main"
+          exit 1
+
+      - name: Ready for production
+        if: |
+          needs.unit-tests.result == 'success' &&
+          needs.integration-tests.result == 'success' &&
+          needs.python-backtest-full.result == 'success'
+        run: |
+          echo "::notice::Staging validation passed - ready for production"
+

@@ -1,0 +1,194 @@
+name: Release Quality Gates
+
+# Release branch validation - triggered manually or on release/* branches
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version'
+        required: true
+        type: string
+  push:
+    branches:
+      - 'release/**'
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  pre-release-validation:
+    name: Pre-Release Validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 8
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build packages
+        run: pnpm build:ordered
+
+      - name: Type check
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Architecture boundaries
+        run: pnpm verify:boundaries-ast
+
+      - name: No live trading
+        run: pnpm check:no-live-trading
+
+      - name: Verify package versions
+        run: pnpm verify:package-versions
+
+  tests:
+    name: Full Test Suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: pre-release-validation
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 8
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build packages
+        run: pnpm build:ordered
+
+      - name: Run unit tests
+        run: pnpm test:unit
+
+      - name: Run integration tests
+        run: pnpm test:integration
+
+      - name: Run smoke tests
+        run: pnpm test:smoke
+
+  python-backtest:
+    name: Python Backtest Validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: pre-release-validation
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Python dependencies
+        run: |
+          pip install --upgrade pip
+          pip install pytest duckdb pyarrow pandas numpy scipy
+
+      - name: Run backtest tests
+        run: |
+          cd tools/backtest
+          python -m pytest tests/ -v --tb=short --ignore=tests/test_duckdb_storage.py
+
+  changelog-verification:
+    name: Changelog Verification
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 8
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify CHANGELOG has version section
+        run: |
+          VERSION="${{ github.event.inputs.version }}"
+          if [ -z "$VERSION" ]; then
+            VERSION=$(node -p "require('./package.json').version")
+          fi
+          echo "Checking for version: $VERSION"
+          if ! grep -q "\[$VERSION\]" CHANGELOG.md && ! grep -q "\[Unreleased\]" CHANGELOG.md; then
+            echo "::error::CHANGELOG.md missing version section for $VERSION"
+            exit 1
+          fi
+
+      - name: Verify CHANGELOG format
+        run: pnpm verify:changelog
+
+  release-summary:
+    name: Release Summary
+    runs-on: ubuntu-latest
+    needs: [tests, python-backtest, changelog-verification]
+    if: always()
+
+    steps:
+      - name: Generate summary
+        run: |
+          echo "## Release Quality Gates Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Check | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Tests | ${{ needs.tests.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Python Backtest | ${{ needs.python-backtest.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Changelog | ${{ needs.changelog-verification.result }} |" >> $GITHUB_STEP_SUMMARY
+
+      - name: Check all passed
+        if: |
+          needs.tests.result == 'failure' ||
+          needs.python-backtest.result == 'failure' ||
+          needs.changelog-verification.result == 'failure'
+        run: |
+          echo "::error::Release validation failed"
+          exit 1
+
+      - name: Ready for release
+        if: |
+          needs.tests.result == 'success' &&
+          needs.python-backtest.result == 'success' &&
+          needs.changelog-verification.result == 'success'
+        run: |
+          echo "::notice::Release validation passed - ready to merge to main"
