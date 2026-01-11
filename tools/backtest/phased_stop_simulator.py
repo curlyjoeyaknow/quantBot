@@ -14,22 +14,29 @@ This answers: "Do I need tighter stops pre-2x and looser stops post-2x, or does 
 
 Features:
 - Parquet output with run_id for auditability
-- Resume functionality (--resume)
-- Intelligent caching (--use-cache) for overlapping date ranges
+- Resume functionality (--resume) - for interrupted runs
+- Intelligent caching (--use-cache) - reuses results from previous runs
 - Multithreaded processing
 
 Usage:
     # Basic run
     python3 phased_stop_simulator.py --duckdb data/alerts.duckdb --slice slices/per_token --chain solana
     
-    # With caching (reuses results for overlapping dates)
+    # With caching (reuses results from previous runs with overlapping dates)
     python3 phased_stop_simulator.py ... --use-cache --output-dir output/my_backtest
     
-    # Extend date range (only computes new dates)
+    # If interrupted, resume same run (skips already-processed mints)
+    python3 phased_stop_simulator.py ... --resume --output-dir output/my_backtest
+    
+    # Extend date range with caching (only computes new dates, reuses old)
     python3 phased_stop_simulator.py ... --use-cache --date-from 2025-01-01 --date-to 2025-06-01
     
-    # Lower min_calls (recomputes for newly included callers)
+    # Lower min_calls with caching (recomputes for newly included callers)
     python3 phased_stop_simulator.py ... --use-cache --min-calls 10
+    
+Key difference:
+    --resume: For continuing an interrupted run (same run_id, same date range)
+    --use-cache: For reusing results from previous completed runs (different run_ids, overlapping dates)
 """
 
 from __future__ import annotations
@@ -945,8 +952,8 @@ def main():
     parser.add_argument("--threads", type=int, default=4, help="Number of threads")
     parser.add_argument("--output", choices=["table", "json"], default="table", help="Output format")
     parser.add_argument("--output-dir", type=str, default="output/phased_stop_results", help="Output directory for parquet files")
-    parser.add_argument("--resume", action="store_true", help="Resume from existing results")
-    parser.add_argument("--use-cache", action="store_true", help="Use cached results for overlapping date ranges")
+    parser.add_argument("--resume", action="store_true", help="Resume interrupted run (skip already-processed mints in current run_id)")
+    parser.add_argument("--use-cache", action="store_true", help="Reuse results from previous runs with overlapping date ranges (different run_ids)")
     parser.add_argument("--csv-output", type=str, help="Export summary results to CSV file (e.g., results/run.csv)")
     parser.add_argument("--verbose", action="store_true", help="Verbose output")
     
@@ -1044,6 +1051,12 @@ def main():
         # No caching, load all alerts
         if args.verbose:
             print(f"Loading alerts from {args.duckdb}...", file=sys.stderr)
+        
+        # Check if cache exists and warn user
+        cache_meta_file = output_dir / "cache_metadata.json"
+        if cache_meta_file.exists() and args.verbose:
+            print(f"\n⚠️  Cache exists but --use-cache not specified. Will recompute all data.", file=sys.stderr)
+            print(f"   Tip: Add --use-cache to reuse results from previous runs", file=sys.stderr)
         
         alerts_to_process = load_alerts_from_duckdb(
             Path(args.duckdb),
