@@ -17,6 +17,7 @@
 ## What is Pydantic?
 
 **Pydantic** is a data validation library that uses Python type hints to:
+
 1. **Validate data at runtime** - Catches errors when data is created
 2. **Coerce types** - Automatically converts `"60"` to `60`
 3. **Provide clear errors** - Tells you exactly what's wrong
@@ -80,6 +81,7 @@ except ValidationError as e:
 5. **Lightweight** - Don't want extra dependencies
 
 **Example:**
+
 ```python
 from packages.backtest.python.types.baseline_backtest import BaselineBacktestConfig
 
@@ -101,6 +103,7 @@ def process_config(config: BaselineBacktestConfig) -> None:
 6. **Default values** - Elegant handling of defaults
 
 **Example:**
+
 ```python
 from packages.backtest.python.types.pydantic_models import BaselineBacktestConfig
 import json
@@ -115,7 +118,7 @@ config = BaselineBacktestConfig(**json_data)
 process_config(config.model_dump())
 ```
 
-## Best Practice: Use Both!
+## Best Practice: Use Both
 
 **Recommended pattern:**
 
@@ -230,8 +233,8 @@ Already using TypedDict? Add Pydantic gradually:
 - **Performance**: Pydantic overhead is negligible (~10 µs)
 
 Choose based on your needs:
+
 - Need runtime validation? → **Pydantic**
 - Internal function? → **TypedDict**
 - Parsing user input? → **Pydantic**
 - Performance critical? → **TypedDict**
-
