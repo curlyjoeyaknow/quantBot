@@ -79,6 +79,10 @@ class PhasedTradeResult:
     hit_3x: bool
     hit_4x: bool
     hit_5x: bool
+    hit_10x: bool
+    
+    # ATH tracking
+    ath_multiple: float  # Highest multiple achieved (exit_price / entry_price or peak / entry_price)
     
     # Phase transition
     phase2_entry_price: Optional[float]  # Price when entering phase 2 (at 2x)
@@ -121,6 +125,13 @@ class StrategyPerformance:
     pct_captured_3x: float  # % of 2x runners that reached 3x
     pct_captured_4x: float
     pct_captured_5x: float
+    pct_captured_10x: float
+    
+    # ATH metrics
+    avg_ath_multiple: float  # Average ATH multiple across all trades
+    median_ath_multiple: float
+    p75_ath_multiple: float
+    p90_ath_multiple: float
     
     # Expected value
     expected_value_per_trade: float  # avg_return_pct
@@ -134,22 +145,23 @@ def simulate_phased_trade(
     phase1_stop_pct: float,
     phase2_stop_pct: float,
     ladder_steps: float = 0.5,
-) -> Tuple[float, int, str, int, bool, bool, bool, bool, Optional[float], Optional[int]]:
+) -> Tuple[float, int, str, int, bool, bool, bool, bool, bool, float, Optional[float], Optional[int]]:
     """
     Simulate a trade with phased stop strategy.
     
     Returns:
-        (exit_price, exit_ts_ms, exit_reason, exit_phase, hit_2x, hit_3x, hit_4x, hit_5x,
-         phase2_entry_price, phase2_entry_ts_ms)
+        (exit_price, exit_ts_ms, exit_reason, exit_phase, hit_2x, hit_3x, hit_4x, hit_5x, hit_10x,
+         ath_multiple, phase2_entry_price, phase2_entry_ts_ms)
     """
     if not candles:
-        return (entry_price, entry_ts_ms, "end_of_data", 1, False, False, False, False, None, None)
+        return (entry_price, entry_ts_ms, "end_of_data", 1, False, False, False, False, False, 1.0, None, None)
     
     # Target prices
     target_2x = entry_price * 2.0
     target_3x = entry_price * 3.0
     target_4x = entry_price * 4.0
     target_5x = entry_price * 5.0
+    target_10x = entry_price * 10.0
     
     # Phase tracking
     current_phase = 1
@@ -161,6 +173,11 @@ def simulate_phased_trade(
     hit_3x = False
     hit_4x = False
     hit_5x = False
+    hit_10x = False
+    
+    # ATH tracking
+    ath_price = entry_price
+    ath_multiple = 1.0
     
     # Phase 1 tracking (1x→2x)
     phase1_peak = entry_price
@@ -218,6 +235,13 @@ def simulate_phased_trade(
             hit_4x = True
         if not hit_5x and high >= target_5x:
             hit_5x = True
+        if not hit_10x and high >= target_10x:
+            hit_10x = True
+        
+        # Track ATH
+        if high > ath_price:
+            ath_price = high
+            ath_multiple = ath_price / entry_price
         
         # Phase 1: 1x→2x
         if current_phase == 1:
@@ -239,8 +263,8 @@ def simulate_phased_trade(
             # Check stop
             if low <= phase1_stop_price:
                 exit_price = phase1_stop_price
-                return (exit_price, ts_ms, "stopped_phase1", 1, hit_2x, hit_3x, hit_4x, hit_5x, 
-                       phase2_entry_price, phase2_entry_ts_ms)
+                return (exit_price, ts_ms, "stopped_phase1", 1, hit_2x, hit_3x, hit_4x, hit_5x, hit_10x,
+                       ath_multiple, phase2_entry_price, phase2_entry_ts_ms)
         
         # Phase 2: 2x+
         elif current_phase == 2:
@@ -264,8 +288,8 @@ def simulate_phased_trade(
             # Check stop
             if low <= phase2_stop_price:
                 exit_price = phase2_stop_price
-                return (exit_price, ts_ms, "stopped_phase2", 2, hit_2x, hit_3x, hit_4x, hit_5x,
-                       phase2_entry_price, phase2_entry_ts_ms)
+                return (exit_price, ts_ms, "stopped_phase2", 2, hit_2x, hit_3x, hit_4x, hit_5x, hit_10x,
+                       ath_multiple, phase2_entry_price, phase2_entry_ts_ms)
     
     # End of data
     last_candle = candles[-1]
@@ -280,8 +304,8 @@ def simulate_phased_trade(
     else:
         exit_ts_ms = int(float(ts_val) * 1000 if float(ts_val) < 4102444800 else float(ts_val))
     
-    return (exit_price, exit_ts_ms, "end_of_data", current_phase, hit_2x, hit_3x, hit_4x, hit_5x,
-           phase2_entry_price, phase2_entry_ts_ms)
+    return (exit_price, exit_ts_ms, "end_of_data", current_phase, hit_2x, hit_3x, hit_4x, hit_5x, hit_10x,
+           ath_multiple, phase2_entry_price, phase2_entry_ts_ms)
 
 
 def load_candles_from_parquet(
@@ -426,6 +450,14 @@ def aggregate_performance(trades: List[PhasedTradeResult]) -> StrategyPerformanc
     pct_captured_3x = (sum(1 for t in trades_hit_2x if t.hit_3x) / len(trades_hit_2x) * 100.0) if trades_hit_2x else 0.0
     pct_captured_4x = (sum(1 for t in trades_hit_2x if t.hit_4x) / len(trades_hit_2x) * 100.0) if trades_hit_2x else 0.0
     pct_captured_5x = (sum(1 for t in trades_hit_2x if t.hit_5x) / len(trades_hit_2x) * 100.0) if trades_hit_2x else 0.0
+    pct_captured_10x = (sum(1 for t in trades_hit_2x if t.hit_10x) / len(trades_hit_2x) * 100.0) if trades_hit_2x else 0.0
+    
+    # ATH metrics
+    ath_multiples = [t.ath_multiple for t in trades]
+    avg_ath_multiple = np.mean(ath_multiples)
+    median_ath_multiple = np.median(ath_multiples)
+    p75_ath_multiple = np.percentile(ath_multiples, 75)
+    p90_ath_multiple = np.percentile(ath_multiples, 90)
     
     return StrategyPerformance(
         caller=caller,
@@ -451,6 +483,11 @@ def aggregate_performance(trades: List[PhasedTradeResult]) -> StrategyPerformanc
         pct_captured_3x=pct_captured_3x,
         pct_captured_4x=pct_captured_4x,
         pct_captured_5x=pct_captured_5x,
+        pct_captured_10x=pct_captured_10x,
+        avg_ath_multiple=avg_ath_multiple,
+        median_ath_multiple=median_ath_multiple,
+        p75_ath_multiple=p75_ath_multiple,
+        p90_ath_multiple=p90_ath_multiple,
         expected_value_per_trade=avg_return_pct,
     )
 
@@ -494,8 +531,8 @@ def print_results(performances: List[StrategyPerformance], output_format: str):
             print("-" * 180)
             print(f"{'P1%':<6} {'P2%':<6} {'Mode':<10} {'N':>5} {'Hit2x':>6} {'Stop1':>6} {'Stop2':>6} "
                   f"{'AvgRet%':>8} {'MedRet%':>8} {'WinRate%':>9} {'EV/Trade%':>10} "
-                  f"{'Cap2x%':>7} {'Cap3x%':>7} {'Cap4x%':>7}")
-            print("-" * 180)
+                  f"{'Cap2x%':>7} {'Cap3x%':>7} {'Cap5x%':>7} {'Cap10x%':>8} {'ATH_p50':>8} {'ATH_p90':>8}")
+            print("-" * 200)
             
             for perf in sorted(perfs, key=lambda p: p.expected_value_per_trade, reverse=True):
                 mode_str = perf.stop_mode
@@ -508,9 +545,10 @@ def print_results(performances: List[StrategyPerformance], output_format: str):
                       f"{perf.avg_return_pct:>7.1f}% {perf.median_return_pct:>7.1f}% "
                       f"{perf.win_rate:>8.1f}% {perf.expected_value_per_trade:>9.1f}% "
                       f"{perf.pct_captured_2x:>6.1f}% {perf.pct_captured_3x:>6.1f}% "
-                      f"{perf.pct_captured_4x:>6.1f}%")
+                      f"{perf.pct_captured_5x:>6.1f}% {perf.pct_captured_10x:>7.1f}% "
+                      f"{perf.median_ath_multiple:>7.2f}x {perf.p90_ath_multiple:>7.2f}x")
         
-        print("\n" + "=" * 180)
+        print("\n" + "=" * 200)
         print("\nLegend:")
         print("  P1% = Phase 1 stop % (1x→2x)")
         print("  P2% = Phase 2 stop % (2x+)")
@@ -525,7 +563,10 @@ def print_results(performances: List[StrategyPerformance], output_format: str):
         print("  EV/Trade% = Expected value per trade (avg return)")
         print("  Cap2x% = % that captured 2x")
         print("  Cap3x% = % of 2x runners that captured 3x")
-        print("  Cap4x% = % of 2x runners that captured 4x")
+        print("  Cap5x% = % of 2x runners that captured 5x")
+        print("  Cap10x% = % of 2x runners that captured 10x")
+        print("  ATH_p50 = Median ATH multiple (peak / entry)")
+        print("  ATH_p90 = 90th percentile ATH multiple")
         print("\nInterpretation:")
         print("  - Compare universal stops (P1%=P2%) vs phased stops (P1%≠P2%)")
         print("  - Higher EV/Trade% = better strategy")
@@ -645,7 +686,7 @@ def main():
             
             # Test each strategy
             for stop_mode, phase1_stop, phase2_stop, ladder_steps in strategies:
-                exit_price, exit_ts_ms, exit_reason, exit_phase, hit_2x, hit_3x, hit_4x, hit_5x, phase2_entry_price, phase2_entry_ts_ms = simulate_phased_trade(
+                exit_price, exit_ts_ms, exit_reason, exit_phase, hit_2x, hit_3x, hit_4x, hit_5x, hit_10x, ath_multiple, phase2_entry_price, phase2_entry_ts_ms = simulate_phased_trade(
                     candles,
                     entry_price,
                     entry_ts_ms,
@@ -680,6 +721,8 @@ def main():
                     hit_3x=hit_3x,
                     hit_4x=hit_4x,
                     hit_5x=hit_5x,
+                    hit_10x=hit_10x,
+                    ath_multiple=ath_multiple,
                     phase2_entry_price=phase2_entry_price,
                     phase2_entry_ts_ms=phase2_entry_ts_ms,
                 )
