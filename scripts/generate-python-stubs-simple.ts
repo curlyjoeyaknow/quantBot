@@ -36,7 +36,12 @@ const schemas = [
           { name: 'min_trades', type: 'int', required: false, default: '10' },
           { name: 'store_duckdb', type: 'bool', required: false, default: 'False' },
           { name: 'run_name', type: 'Optional[str]', required: false },
-          { name: 'entry_mode', type: 'Literal["next_open", "close", "worst_high"]', required: false, default: '"next_open"' },
+          {
+            name: 'entry_mode',
+            type: 'Literal["next_open", "close", "worst_high"]',
+            required: false,
+            default: '"next_open"',
+          },
           { name: 'slippage_bps', type: 'float', required: false, default: '0' },
         ],
       },
@@ -113,6 +118,148 @@ const schemas = [
           { name: 'out_callers', type: 'str', required: true },
           { name: 'summary', type: 'BaselineBacktestSummary', required: true },
           { name: 'callers_count', type: 'int', required: true },
+        ],
+      },
+    ],
+  },
+  {
+    file: 'packages/backtest/python/types/token_slicer.pyi',
+    types: [
+      {
+        name: 'TokenSliceExportConfig',
+        fields: [
+          { name: 'mint', type: 'str', required: true },
+          { name: 'chain', type: 'str', required: false, default: "'solana'" },
+          { name: 'alert_ts_ms', type: 'int', required: true },
+          { name: 'interval_seconds', type: 'int', required: false, default: '60' },
+          { name: 'horizon_hours', type: 'int', required: false, default: '48' },
+          { name: 'pre_window_minutes', type: 'int', required: false, default: '5' },
+          { name: 'output_dir', type: 'str', required: true },
+          { name: 'duckdb', type: 'Optional[str]', required: false },
+        ],
+      },
+      {
+        name: 'BatchSliceExportConfig',
+        fields: [
+          { name: 'duckdb', type: 'str', required: true },
+          { name: 'from_', type: 'str', required: true, comment: '# from in TypeScript' },
+          { name: 'to', type: 'str', required: true },
+          { name: 'chain', type: 'str', required: false, default: "'solana'" },
+          { name: 'interval_seconds', type: 'int', required: false, default: '60' },
+          { name: 'horizon_hours', type: 'int', required: false, default: '48' },
+          { name: 'pre_window_minutes', type: 'int', required: false, default: '5' },
+          { name: 'output_dir', type: 'str', required: true },
+          { name: 'threads', type: 'int', required: false, default: '16' },
+          { name: 'reuse_slice', type: 'bool', required: false, default: 'False' },
+        ],
+      },
+      {
+        name: 'SliceExportResult',
+        fields: [
+          { name: 'success', type: 'bool', required: true },
+          { name: 'mint', type: 'str', required: true },
+          { name: 'slice_path', type: 'str', required: true },
+          { name: 'candles', type: 'int', required: true },
+          { name: 'error', type: 'Optional[str]', required: false },
+        ],
+      },
+      {
+        name: 'BatchSliceExportResult',
+        fields: [
+          { name: 'success', type: 'bool', required: true },
+          { name: 'total_slices', type: 'int', required: true },
+          { name: 'successful', type: 'int', required: true },
+          { name: 'failed', type: 'int', required: true },
+          { name: 'output_dir', type: 'str', required: true },
+          { name: 'slices', type: 'List[SliceExportResult]', required: true },
+        ],
+      },
+    ],
+  },
+  {
+    file: 'packages/backtest/python/types/caller_analysis.pyi',
+    types: [
+      {
+        name: 'CallerAnalysisConfig',
+        fields: [
+          { name: 'duckdb', type: 'str', required: true },
+          { name: 'run_id', type: 'Optional[str]', required: false },
+          { name: 'from_', type: 'Optional[str]', required: false, comment: '# from in TypeScript' },
+          { name: 'to', type: 'Optional[str]', required: false },
+          { name: 'min_trades', type: 'int', required: false, default: '10' },
+          { name: 'top', type: 'int', required: false, default: '50' },
+          { name: 'format', type: 'Literal["json", "table", "csv"]', required: false, default: '"json"' },
+        ],
+      },
+      {
+        name: 'CallerStats',
+        fields: [
+          { name: 'rank', type: 'int', required: true },
+          { name: 'caller', type: 'str', required: true },
+          { name: 'n', type: 'int', required: true },
+          { name: 'median_ath', type: 'Optional[float]', required: true },
+          { name: 'p25_ath', type: 'Optional[float]', required: true },
+          { name: 'p75_ath', type: 'Optional[float]', required: true },
+          { name: 'p95_ath', type: 'Optional[float]', required: true },
+          { name: 'hit2x_pct', type: 'float', required: true },
+          { name: 'hit3x_pct', type: 'float', required: true },
+          { name: 'hit4x_pct', type: 'float', required: true },
+          { name: 'hit5x_pct', type: 'float', required: true },
+          { name: 'hit10x_pct', type: 'float', required: true },
+          { name: 'median_t_recovery_m', type: 'Optional[float]', required: true },
+          { name: 'median_t2x_m', type: 'Optional[float]', required: true },
+          { name: 'median_t3x_m', type: 'Optional[float]', required: true },
+          { name: 'median_t_ath_m', type: 'Optional[float]', required: true },
+          { name: 'median_t_dd_pre2x_m', type: 'Optional[float]', required: true },
+          { name: 'median_t2x_hrs', type: 'Optional[float]', required: true },
+          { name: 'median_dd_initial_pct', type: 'Optional[float]', required: true },
+          { name: 'median_dd_overall_pct', type: 'Optional[float]', required: true },
+          { name: 'median_dd_pre2x_pct', type: 'Optional[float]', required: true },
+          { name: 'median_dd_pre2x_or_horizon_pct', type: 'Optional[float]', required: true },
+          { name: 'median_dd_after_2x_pct', type: 'Optional[float]', required: true },
+          { name: 'median_dd_after_3x_pct', type: 'Optional[float]', required: true },
+          { name: 'median_dd_after_ath_pct', type: 'Optional[float]', required: true },
+          { name: 'worst_dd_pct', type: 'Optional[float]', required: true },
+          { name: 'median_peak_pnl_pct', type: 'Optional[float]', required: true },
+          { name: 'median_ret_end_pct', type: 'Optional[float]', required: true },
+        ],
+      },
+      {
+        name: 'CallerScoring',
+        fields: [
+          { name: 'rank', type: 'int', required: true },
+          { name: 'caller', type: 'str', required: true },
+          { name: 'n', type: 'int', required: true },
+          { name: 'median_ath', type: 'Optional[float]', required: true },
+          { name: 'p75_ath', type: 'Optional[float]', required: true },
+          { name: 'p95_ath', type: 'Optional[float]', required: true },
+          { name: 'hit2x_pct', type: 'float', required: true },
+          { name: 'hit3x_pct', type: 'float', required: true },
+          { name: 'hit4x_pct', type: 'float', required: true },
+          { name: 'hit5x_pct', type: 'float', required: true },
+          { name: 'median_t2x_hrs', type: 'Optional[float]', required: true },
+          { name: 'median_t2x_min', type: 'Optional[float]', required: true },
+          { name: 'median_dd_pre2x_pct', type: 'Optional[float]', required: true },
+          { name: 'median_dd_pre2x_or_horizon_pct', type: 'Optional[float]', required: true },
+          { name: 'risk_dd_pct', type: 'Optional[float]', required: true },
+          { name: 'risk_mag', type: 'float', required: true },
+          { name: 'base_upside', type: 'float', required: true },
+          { name: 'tail_bonus', type: 'float', required: true },
+          { name: 'fast2x_signal', type: 'float', required: true },
+          { name: 'discipline_bonus', type: 'float', required: true },
+          { name: 'risk_penalty', type: 'float', required: true },
+          { name: 'confidence', type: 'float', required: true },
+          { name: 'score_v2', type: 'float', required: true },
+        ],
+      },
+      {
+        name: 'CallerAnalysisResult',
+        fields: [
+          { name: 'success', type: 'bool', required: true },
+          { name: 'run_id', type: 'Optional[str]', required: false },
+          { name: 'callers', type: 'List[CallerStats]', required: true },
+          { name: 'scored_callers', type: 'Optional[List[CallerScoring]]', required: false },
+          { name: 'total_callers', type: 'int', required: true },
         ],
       },
     ],
@@ -221,10 +368,13 @@ function main() {
 
   console.log(`\n✨ Generated ${totalGenerated} type stubs in ${schemas.length} files`);
   console.log('\n💡 Usage in Python:');
-  console.log('   from packages.backtest.python.types.baseline_backtest import BaselineBacktestConfig');
-  console.log('   \n   def run_baseline(config: BaselineBacktestConfig) -> BaselineBacktestResult:');
+  console.log(
+    '   from packages.backtest.python.types.baseline_backtest import BaselineBacktestConfig'
+  );
+  console.log(
+    '   \n   def run_baseline(config: BaselineBacktestConfig) -> BaselineBacktestResult:'
+  );
   console.log('       ...');
 }
 
 main();
-

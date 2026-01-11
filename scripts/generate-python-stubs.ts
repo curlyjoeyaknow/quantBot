@@ -306,10 +306,13 @@ function main() {
 
   console.log(`\n✨ Generated ${totalGenerated} type stubs in ${fileGroups.size} files`);
   console.log('\n💡 Usage in Python:');
-  console.log('   from packages.backtest.python.types.baseline_backtest import BaselineBacktestConfig');
-  console.log('   \n   def run_baseline(config: BaselineBacktestConfig) -> BaselineBacktestResult:');
+  console.log(
+    '   from packages.backtest.python.types.baseline_backtest import BaselineBacktestConfig'
+  );
+  console.log(
+    '   \n   def run_baseline(config: BaselineBacktestConfig) -> BaselineBacktestResult:'
+  );
   console.log('       ...');
 }
 
 main();
-
