@@ -4,6 +4,39 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Changed
+
+- **Python-TypeScript Architecture Refactor** - Complete migration to package-based Python organization
+  - **Migrated all Python tools to package directories**:
+    - `tools/backtest/` → `packages/backtest/python/` (lib, scripts, shared, analysis)
+    - `tools/storage/` → `packages/storage/python/`
+    - `tools/ingestion/` → `packages/ingestion/python/`
+    - `tools/telegram/` → `packages/ingestion/python/telegram/`
+    - `tools/analysis/` → `packages/backtest/python/analysis/`
+    - `tools/simulation/` → `packages/storage/python/`
+  - **New TypeScript services for Python integration**:
+    - `BaselineBacktestService` - Wraps `run_baseline.py` and `run_fast_backtest.py`
+    - `TokenSlicerService` - Wraps `token_slicer.py` for candle slice export
+    - `CallerAnalysisService` - Wraps `run_caller_analysis.py` for caller scoring
+  - **CLI handlers following pure handler pattern**:
+    - `baseline-python.ts` - Baseline backtest handler
+    - `token-slicer.ts` - Token slice export handler
+    - `caller-analysis.ts` - Caller analysis handler
+  - **Updated all Python script paths** across the codebase (82 files updated)
+  - **Deleted `tools/` directory** - All Python code now lives in package directories
+  - **Architecture enforcement**:
+    - Python scripts in `packages/*/python/` (not `tools/`)
+    - TypeScript services wrap PythonEngine calls
+    - Handlers are pure orchestration (no business logic)
+    - Zod validation for all Python outputs
+  - **Documentation**: Added `docs/architecture/python-typescript-integration.md`
+  - **Integration tests** for all new Python services
+  - **Benefits**:
+    - Clear package boundaries (Python code lives with TypeScript code)
+    - Easier to find and maintain Python tools
+    - Better dependency management (PYTHONPATH per package)
+    - Enforces TypeScript-for-orchestration, Python-for-heavy-lifting pattern
+
 ### Added
 
 - **Python V1 Baseline Optimizer with TypeScript Orchestration** - Complete Python implementation with TypeScript integration
