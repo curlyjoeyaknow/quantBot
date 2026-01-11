@@ -204,4 +204,3 @@ describe('V1BaselinePythonService Integration', () => {
     expect(Array.isArray(result.selected_callers)).toBe(true);
   }, 60000);
 });
-
