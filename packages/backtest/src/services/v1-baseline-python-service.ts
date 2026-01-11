@@ -50,7 +50,13 @@ export const TradeExecutionSchema = z.object({
   exit_px: z.number(),
   size: z.number(),
   pnl: z.number(),
-  exit_reason: z.enum(['take_profit', 'stop_loss', 'time_exit', 'no_entry', 'insufficient_capital']),
+  exit_reason: z.enum([
+    'take_profit',
+    'stop_loss',
+    'time_exit',
+    'no_entry',
+    'insufficient_capital',
+  ]),
   exit_mult: z.number(),
 });
 
@@ -73,10 +79,14 @@ export const V1BaselineOptimizationResultSchema = z.object({
   best_final_capital: z.number(),
   best_total_return: z.number(),
   params_evaluated: z.number(),
-  all_results: z.array(z.object({
-    params: V1BaselineParamsSchema,
-    result: CapitalSimulationResultSchema,
-  })).optional(),
+  all_results: z
+    .array(
+      z.object({
+        params: V1BaselineParamsSchema,
+        result: CapitalSimulationResultSchema,
+      })
+    )
+    .optional(),
 });
 
 /**
@@ -129,14 +139,17 @@ export interface SimulateCapitalAwareConfig {
     ts_ms: number;
   }>;
   /** Candles by call ID (as JSON) */
-  candles_by_call_id: Record<string, Array<{
-    timestamp: number;
-    open: number;
-    high: number;
-    low: number;
-    close: number;
-    volume: number;
-  }>>;
+  candles_by_call_id: Record<
+    string,
+    Array<{
+      timestamp: number;
+      open: number;
+      high: number;
+      low: number;
+      close: number;
+      volume: number;
+    }>
+  >;
   /** V1 baseline parameters */
   params: V1BaselineParams;
   /** Optional simulator config */
@@ -155,14 +168,17 @@ export interface OptimizeV1BaselineConfig {
     ts_ms: number;
   }>;
   /** Candles by call ID (as JSON) */
-  candles_by_call_id: Record<string, Array<{
-    timestamp: number;
-    open: number;
-    high: number;
-    low: number;
-    close: number;
-    volume: number;
-  }>>;
+  candles_by_call_id: Record<
+    string,
+    Array<{
+      timestamp: number;
+      open: number;
+      high: number;
+      low: number;
+      close: number;
+      volume: number;
+    }>
+  >;
   /** Optional parameter grid */
   param_grid?: {
     tp_mults?: number[];
@@ -189,14 +205,17 @@ export interface OptimizeV1BaselinePerCallerConfig {
     ts_ms: number;
   }>;
   /** Candles by call ID (as JSON) */
-  candles_by_call_id: Record<string, Array<{
-    timestamp: number;
-    open: number;
-    high: number;
-    low: number;
-    close: number;
-    volume: number;
-  }>>;
+  candles_by_call_id: Record<
+    string,
+    Array<{
+      timestamp: number;
+      open: number;
+      high: number;
+      low: number;
+      close: number;
+      volume: number;
+    }>
+  >;
   /** Optional parameter grid */
   param_grid?: {
     tp_mults?: number[];
@@ -221,14 +240,17 @@ export interface RunV1BaselineGroupedEvaluationConfig {
     ts_ms: number;
   }>;
   /** Candles by call ID (as JSON) */
-  candles_by_call_id: Record<string, Array<{
-    timestamp: number;
-    open: number;
-    high: number;
-    low: number;
-    close: number;
-    volume: number;
-  }>>;
+  candles_by_call_id: Record<
+    string,
+    Array<{
+      timestamp: number;
+      open: number;
+      high: number;
+      low: number;
+      close: number;
+      volume: number;
+    }>
+  >;
   /** Optional parameter grid */
   param_grid?: {
     tp_mults?: number[];
@@ -265,7 +287,7 @@ export class V1BaselinePythonService {
    * @returns Validated simulation result
    */
   async simulateCapitalAware(config: SimulateCapitalAwareConfig): Promise<CapitalSimulationResult> {
-    const scriptPath = 'tools/backtest/lib/v1_baseline_simulator.py';
+    const scriptPath = 'packages/backtest/python/lib/v1_baseline_simulator.py';
     const workspaceRoot = findWorkspaceRoot();
 
     try {
@@ -279,9 +301,9 @@ export class V1BaselinePythonService {
         CapitalSimulationResultSchema,
         {
           timeout: 300000, // 5 minute timeout
-          cwd: join(workspaceRoot, 'tools/backtest'),
+          cwd: join(workspaceRoot, 'packages/backtest/python'),
           env: {
-            PYTHONPATH: join(workspaceRoot, 'tools/backtest'),
+            PYTHONPATH: join(workspaceRoot, 'packages/backtest/python'),
           },
         }
       );
@@ -311,8 +333,10 @@ export class V1BaselinePythonService {
    * @param config - Optimization configuration
    * @returns Validated optimization result
    */
-  async optimizeV1Baseline(config: OptimizeV1BaselineConfig): Promise<V1BaselineOptimizationResult> {
-    const scriptPath = 'tools/backtest/lib/v1_baseline_optimizer.py';
+  async optimizeV1Baseline(
+    config: OptimizeV1BaselineConfig
+  ): Promise<V1BaselineOptimizationResult> {
+    const scriptPath = 'packages/backtest/python/lib/v1_baseline_optimizer.py';
     const workspaceRoot = findWorkspaceRoot();
 
     try {
@@ -325,9 +349,9 @@ export class V1BaselinePythonService {
         V1BaselineOptimizationResultSchema,
         {
           timeout: 600000, // 10 minute timeout (grid search can be slow)
-          cwd: join(workspaceRoot, 'tools/backtest'),
+          cwd: join(workspaceRoot, 'packages/backtest/python'),
           env: {
-            PYTHONPATH: join(workspaceRoot, 'tools/backtest'),
+            PYTHONPATH: join(workspaceRoot, 'packages/backtest/python'),
           },
         }
       );
@@ -358,7 +382,7 @@ export class V1BaselinePythonService {
   async optimizeV1BaselinePerCaller(
     config: OptimizeV1BaselinePerCallerConfig
   ): Promise<Record<string, V1BaselinePerCallerResult>> {
-    const scriptPath = 'tools/backtest/lib/v1_baseline_optimizer.py';
+    const scriptPath = 'packages/backtest/python/lib/v1_baseline_optimizer.py';
     const workspaceRoot = findWorkspaceRoot();
 
     try {
@@ -371,9 +395,9 @@ export class V1BaselinePythonService {
         z.record(z.string(), V1BaselinePerCallerResultSchema),
         {
           timeout: 600000, // 10 minute timeout
-          cwd: join(workspaceRoot, 'tools/backtest'),
+          cwd: join(workspaceRoot, 'packages/backtest/python'),
           env: {
-            PYTHONPATH: join(workspaceRoot, 'tools/backtest'),
+            PYTHONPATH: join(workspaceRoot, 'packages/backtest/python'),
           },
         }
       );
@@ -404,7 +428,7 @@ export class V1BaselinePythonService {
   async runV1BaselineGroupedEvaluation(
     config: RunV1BaselineGroupedEvaluationConfig
   ): Promise<V1BaselineGroupedResult> {
-    const scriptPath = 'tools/backtest/lib/v1_baseline_optimizer.py';
+    const scriptPath = 'packages/backtest/python/lib/v1_baseline_optimizer.py';
     const workspaceRoot = findWorkspaceRoot();
 
     try {
@@ -417,9 +441,9 @@ export class V1BaselinePythonService {
         V1BaselineGroupedResultSchema,
         {
           timeout: 600000, // 10 minute timeout
-          cwd: join(workspaceRoot, 'tools/backtest'),
+          cwd: join(workspaceRoot, 'packages/backtest/python'),
           env: {
-            PYTHONPATH: join(workspaceRoot, 'tools/backtest'),
+            PYTHONPATH: join(workspaceRoot, 'packages/backtest/python'),
           },
         }
       );
@@ -441,5 +465,3 @@ export class V1BaselinePythonService {
     }
   }
 }
-
-
