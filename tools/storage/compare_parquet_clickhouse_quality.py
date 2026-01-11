@@ -688,7 +688,12 @@ def compare_quality_for_alert(
     }
 
 
-def generate_summary(comparisons: List[Dict[str, Any]], horizon_hours: int = DEFAULT_HORIZON_HOURS) -> Dict[str, Any]:
+def generate_summary(
+    comparisons: List[Dict[str, Any]], 
+    horizon_hours: int = DEFAULT_HORIZON_HOURS,
+    min_coverage_pct: float = 80.0,
+    max_zero_volume_pct: float = 20.0
+) -> Dict[str, Any]:
     """Generate summary statistics from all comparisons."""
     if not comparisons:
         return {'error': 'No comparisons available'}
@@ -700,6 +705,7 @@ def generate_summary(comparisons: List[Dict[str, Any]], horizon_hours: int = DEF
     
     # Aggregate statistics
     total_tokens = len(valid_comparisons)
+    expected_candles = (horizon_hours * 3600) // 60  # 1440 for 24h, 2880 for 48h
     
     parquet_better_count = sum(1 for c in valid_comparisons if c['comparison']['inside_horizon']['parquet_better'])
     
@@ -718,9 +724,67 @@ def generate_summary(comparisons: List[Dict[str, Any]], horizon_hours: int = DEF
     else:
         pct_bad_outside = 0.0
     
+    # === NEW: Separate quality breakdown scores ===
+    
+    # 1. Tokens with gaps
+    pq_tokens_with_gaps = 0
+    ch_tokens_with_gaps = 0
+    
+    # 2. Tokens with low coverage (below min_coverage_pct threshold)
+    pq_tokens_low_coverage = 0
+    ch_tokens_low_coverage = 0
+    
+    # 3. Tokens with excessive zero volume (above max_zero_volume_pct threshold)
+    pq_tokens_high_zero_volume = 0
+    ch_tokens_high_zero_volume = 0
+    
+    for c in valid_comparisons:
+        pq_inside = c['parquet']['inside_horizon']
+        
+        # Parquet gaps
+        if pq_inside['gaps'] > 0:
+            pq_tokens_with_gaps += 1
+        
+        # Parquet coverage
+        pq_candles = c['comparison']['inside_horizon']['parquet_candles']
+        pq_coverage_pct = (pq_candles / expected_candles) * 100 if expected_candles > 0 else 0
+        if pq_coverage_pct < min_coverage_pct:
+            pq_tokens_low_coverage += 1
+        
+        # Parquet zero volume
+        if pq_candles > 0:
+            pq_zero_vol_pct = (pq_inside['zero_volume'] / pq_candles) * 100
+            if pq_zero_vol_pct > max_zero_volume_pct:
+                pq_tokens_high_zero_volume += 1
+        
+        # ClickHouse (if available)
+        if c.get('clickhouse') and c['clickhouse'].get('inside_horizon'):
+            ch_inside = c['clickhouse']['inside_horizon']
+            
+            # ClickHouse gaps
+            if ch_inside['gaps'] > 0:
+                ch_tokens_with_gaps += 1
+            
+            # ClickHouse coverage (subtract duplicates for unique count)
+            ch_candles = c['comparison']['inside_horizon']['clickhouse_candles']
+            ch_unique = ch_candles - ch_inside.get('duplicates', 0)
+            ch_coverage_pct = (ch_unique / expected_candles) * 100 if expected_candles > 0 else 0
+            if ch_coverage_pct < min_coverage_pct:
+                ch_tokens_low_coverage += 1
+            
+            # ClickHouse zero volume
+            if ch_candles > 0:
+                ch_zero_vol_pct = (ch_inside['zero_volume'] / ch_candles) * 100
+                if ch_zero_vol_pct > max_zero_volume_pct:
+                    ch_tokens_high_zero_volume += 1
+    
     return {
         'total_tokens_compared': total_tokens,
         'horizon_hours': horizon_hours,
+        'thresholds': {
+            'min_coverage_pct': min_coverage_pct,
+            'max_zero_volume_pct': max_zero_volume_pct,
+        },
         'quality_comparison': {
             'parquet_better_inside_horizon_pct': (parquet_better_count / total_tokens) * 100,
             'avg_parquet_quality_inside': avg_parquet_quality_inside,
@@ -730,13 +794,36 @@ def generate_summary(comparisons: List[Dict[str, Any]], horizon_hours: int = DEF
         'coverage_comparison': {
             'avg_parquet_candles_in_horizon': avg_parquet_coverage,
             'avg_clickhouse_candles_in_horizon': avg_ch_coverage,
-            'expected_candles_in_horizon': (horizon_hours * 3600) // 60,  # 1440 for 24h, 2880 for 48h
-            'avg_parquet_coverage_pct': (avg_parquet_coverage / ((horizon_hours * 3600) // 60)) * 100 if horizon_hours > 0 else 0,
-            'avg_clickhouse_coverage_pct': (avg_ch_coverage / ((horizon_hours * 3600) // 60)) * 100 if horizon_hours > 0 else 0,
+            'expected_candles_in_horizon': expected_candles,
+            'avg_parquet_coverage_pct': (avg_parquet_coverage / expected_candles) * 100 if expected_candles > 0 else 0,
+            'avg_clickhouse_coverage_pct': (avg_ch_coverage / expected_candles) * 100 if expected_candles > 0 else 0,
         },
         'duplicates': {
             'avg_parquet_duplicates': sum(c['parquet']['inside_horizon']['duplicates'] for c in valid_comparisons) / len(valid_comparisons) if valid_comparisons else 0,
             'avg_clickhouse_duplicates': sum(c['clickhouse']['inside_horizon']['duplicates'] for c in valid_comparisons if c.get('clickhouse')) / len(valid_comparisons) if valid_comparisons else 0,
+        },
+        # === NEW: Separate quality breakdown ===
+        'quality_breakdown': {
+            'tokens_with_gaps': {
+                'parquet': pq_tokens_with_gaps,
+                'parquet_pct': (pq_tokens_with_gaps / total_tokens) * 100,
+                'clickhouse': ch_tokens_with_gaps,
+                'clickhouse_pct': (ch_tokens_with_gaps / total_tokens) * 100,
+            },
+            'tokens_low_coverage': {
+                'threshold_pct': min_coverage_pct,
+                'parquet': pq_tokens_low_coverage,
+                'parquet_pct': (pq_tokens_low_coverage / total_tokens) * 100,
+                'clickhouse': ch_tokens_low_coverage,
+                'clickhouse_pct': (ch_tokens_low_coverage / total_tokens) * 100,
+            },
+            'tokens_high_zero_volume': {
+                'threshold_pct': max_zero_volume_pct,
+                'parquet': pq_tokens_high_zero_volume,
+                'parquet_pct': (pq_tokens_high_zero_volume / total_tokens) * 100,
+                'clickhouse': ch_tokens_high_zero_volume,
+                'clickhouse_pct': (ch_tokens_high_zero_volume / total_tokens) * 100,
+            },
         },
         'clickhouse_issues': {
             'total_issues_inside_horizon': total_ch_issues_inside,
@@ -780,6 +867,31 @@ def visualize_results(summary: Dict[str, Any], comparisons: List[Dict[str, Any]]
         d = summary['duplicates']
         if d['avg_clickhouse_duplicates'] > 0:
             print(f"  ⚠️  Avg ClickHouse DUPLICATES: {d['avg_clickhouse_duplicates']:.0f} (inflates count!)")
+    
+    # NEW: Quality breakdown by issue type
+    if 'quality_breakdown' in summary:
+        qb = summary['quality_breakdown']
+        print("\n" + "-" * 40)
+        print("QUALITY BREAKDOWN BY ISSUE TYPE")
+        print("-" * 40)
+        
+        # Gaps
+        gaps = qb['tokens_with_gaps']
+        print(f"\n  1. TOKENS WITH GAPS:")
+        print(f"     Parquet:    {gaps['parquet']:3} / {summary['total_tokens_compared']} ({gaps['parquet_pct']:.1f}%)")
+        print(f"     ClickHouse: {gaps['clickhouse']:3} / {summary['total_tokens_compared']} ({gaps['clickhouse_pct']:.1f}%)")
+        
+        # Low coverage
+        cov = qb['tokens_low_coverage']
+        print(f"\n  2. TOKENS WITH LOW COVERAGE (<{cov['threshold_pct']:.0f}%):")
+        print(f"     Parquet:    {cov['parquet']:3} / {summary['total_tokens_compared']} ({cov['parquet_pct']:.1f}%)")
+        print(f"     ClickHouse: {cov['clickhouse']:3} / {summary['total_tokens_compared']} ({cov['clickhouse_pct']:.1f}%)")
+        
+        # High zero volume
+        zvol = qb['tokens_high_zero_volume']
+        print(f"\n  3. TOKENS WITH HIGH ZERO VOLUME (>{zvol['threshold_pct']:.0f}%):")
+        print(f"     Parquet:    {zvol['parquet']:3} / {summary['total_tokens_compared']} ({zvol['parquet_pct']:.1f}%)")
+        print(f"     ClickHouse: {zvol['clickhouse']:3} / {summary['total_tokens_compared']} ({zvol['clickhouse_pct']:.1f}%)")
     
     print("\n" + "-" * 40)
     print("CLICKHOUSE DATA QUALITY ISSUES LOCATION")
@@ -872,6 +984,18 @@ def main():
         default=DEFAULT_HORIZON_HOURS,
         help=f'Event horizon in hours (default: {DEFAULT_HORIZON_HOURS})'
     )
+    parser.add_argument(
+        '--min-coverage',
+        type=float,
+        default=80.0,
+        help='Minimum coverage %% threshold to be considered "good" (default: 80.0)'
+    )
+    parser.add_argument(
+        '--max-zero-volume-pct',
+        type=float,
+        default=20.0,
+        help='Maximum zero volume %% threshold before flagging (default: 20.0)'
+    )
     
     args = parser.parse_args()
     
@@ -921,7 +1045,7 @@ def main():
     
     # Generate summary
     print("\nGenerating summary...", file=sys.stderr)
-    summary = generate_summary(comparisons, args.horizon)
+    summary = generate_summary(comparisons, args.horizon, args.min_coverage, args.max_zero_volume_pct)
     
     # Build report
     report = {
