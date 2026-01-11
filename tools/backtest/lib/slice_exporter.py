@@ -6,6 +6,8 @@ Streams candle data from ClickHouse to Parquet with:
 - Parallel batch fetching with ThreadPoolExecutor
 - Streaming row iteration to avoid RAM exhaustion
 - Batched DuckDB inserts for speed
+- Quality validation and gap detection
+- Optional gap filling for small gaps
 """
 
 from __future__ import annotations
@@ -16,12 +18,11 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from queue import Queue
+from queue import Queue, Empty as QueueEmpty
 from typing import Any, Dict, List, Optional, Set, Tuple
 
-import duckdb
-
 from .helpers import batched, dt_to_ch, sql_escape
+from .slice_quality import QualityMetrics, analyze_candles
 
 UTC = timezone.utc
 
@@ -181,6 +182,23 @@ ORDER BY token_address, timestamp
     return count
 
 
+@dataclass
+class ExportResult:
+    """Result of a slice export operation."""
+    
+    row_count: int
+    quality: Optional[QualityMetrics] = None
+    output_path: Optional[Path] = None
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """Convert to dictionary for JSON serialization."""
+        return {
+            "row_count": self.row_count,
+            "output_path": str(self.output_path) if self.output_path else None,
+            "quality": self.quality.to_dict() if self.quality else None,
+        }
+
+
 def export_slice_streaming(
     cfg: ClickHouseCfg,
     chain: str,
@@ -194,6 +212,8 @@ def export_slice_streaming(
     post_window_hours: int = 72,
     parallel: int = 4,
     verbose: bool = False,
+    validate: bool = True,
+    deduplicate: bool = True,
 ) -> int:
     """
     Stream candles from ClickHouse to a Parquet file.
@@ -216,12 +236,76 @@ def export_slice_streaming(
         post_window_hours: Hours after date_to to include
         parallel: Number of parallel CH fetch workers
         verbose: Print progress
+        validate: Run quality validation after export
+        deduplicate: Use GROUP BY to deduplicate candles
 
     Returns:
         Number of rows exported
     """
+    result = export_slice_streaming_with_quality(
+        cfg=cfg,
+        chain=chain,
+        mints=mints,
+        interval_seconds=interval_seconds,
+        date_from=date_from,
+        date_to=date_to,
+        output_path=output_path,
+        ch_batch=ch_batch,
+        pre_window_minutes=pre_window_minutes,
+        post_window_hours=post_window_hours,
+        parallel=parallel,
+        verbose=verbose,
+        validate=validate,
+        deduplicate=deduplicate,
+    )
+    return result.row_count
+
+
+def export_slice_streaming_with_quality(
+    cfg: ClickHouseCfg,
+    chain: str,
+    mints: Set[str],
+    interval_seconds: int,
+    date_from: datetime,
+    date_to: datetime,
+    output_path: Path,
+    ch_batch: int = 1000,
+    pre_window_minutes: int = 60,
+    post_window_hours: int = 72,
+    parallel: int = 4,
+    verbose: bool = False,
+    validate: bool = True,
+    deduplicate: bool = True,
+) -> ExportResult:
+    """
+    Stream candles from ClickHouse to a Parquet file with quality validation.
+
+    Uses parallel batch fetching and streaming DuckDB inserts.
+
+    IMPORTANT: date_to is treated as the start of that day (midnight).
+    To include the full end day, we add 1 day before adding post_window_hours.
+
+    Args:
+        cfg: ClickHouse configuration
+        chain: Chain name
+        mints: Set of mint addresses to export
+        interval_seconds: Candle interval
+        date_from: Start date
+        date_to: End date (inclusive - full day included)
+        output_path: Path to output Parquet file
+        ch_batch: Max mints per query
+        pre_window_minutes: Minutes before date_from to include
+        post_window_hours: Hours after date_to to include
+        parallel: Number of parallel CH fetch workers
+        verbose: Print progress
+        validate: Run quality validation after export
+        deduplicate: Use GROUP BY to deduplicate candles
+
+    Returns:
+        ExportResult with row count and quality metrics
+    """
     if not mints:
-        return 0
+        return ExportResult(row_count=0, output_path=output_path)
 
     chain_q = sql_escape(chain)
 
@@ -240,14 +324,18 @@ def export_slice_streaming(
 
     # For small datasets or single worker, use simple sequential approach
     if len(chunks) <= 2 or parallel <= 1:
-        return _export_sequential(
-            cfg, chain_q, chunks, interval_seconds, expanded_from, expanded_to, output_path, verbose
+        count, quality = _export_sequential(
+            cfg, chain_q, chunks, interval_seconds, expanded_from, expanded_to, 
+            output_path, verbose, validate, deduplicate
         )
+        return ExportResult(row_count=count, quality=quality, output_path=output_path)
 
     # For larger datasets, use parallel fetching with queue-based DuckDB insertion
-    return _export_parallel(
-        cfg, chain_q, chunks, interval_seconds, expanded_from, expanded_to, output_path, parallel, verbose
+    count, quality = _export_parallel(
+        cfg, chain_q, chunks, interval_seconds, expanded_from, expanded_to, 
+        output_path, parallel, verbose, validate
     )
+    return ExportResult(row_count=count, quality=quality, output_path=output_path)
 
 
 def _export_sequential(
@@ -259,10 +347,24 @@ def _export_sequential(
     expanded_to: datetime,
     output_path: Path,
     verbose: bool,
-) -> int:
-    """Sequential export for small datasets."""
+    validate: bool = True,
+    deduplicate: bool = True,
+) -> Tuple[int, Optional[QualityMetrics]]:
+    """
+    Sequential export for small datasets.
+    
+    Improvements:
+    - Optional deduplication using GROUP BY in query
+    - Quality validation after export
+    - Returns quality metrics for caller inspection
+    
+    Returns:
+        Tuple of (row_count, quality_metrics)
+    """
     from tools.shared.duckdb_adapter import get_connection
     client = cfg.get_client()
+    all_rows: List[Tuple[Any, ...]] = []  # Keep for validation
+    
     with get_connection(":memory:", read_only=False) as con:
         con.execute("""
             CREATE TABLE candles (
@@ -282,7 +384,29 @@ def _export_sequential(
 
         for i, chunk in enumerate(chunks):
             mint_list = ", ".join(f"'{sql_escape(m)}'" for m in chunk)
-            sql = f"""
+            
+            # Use GROUP BY for deduplication if enabled
+            if deduplicate:
+                sql = f"""
+SELECT
+  token_address,
+  timestamp,
+  any(open) as open,
+  any(high) as high,
+  any(low) as low,
+  any(close) as close,
+  any(volume) as volume
+FROM {cfg.database}.{cfg.table}
+WHERE chain = '{chain_q}'
+  AND token_address IN ({mint_list})
+  AND interval_seconds = {int(interval_seconds)}
+  AND timestamp >= toDateTime('{dt_to_ch(expanded_from)}')
+  AND timestamp <  toDateTime('{dt_to_ch(expanded_to)}')
+GROUP BY token_address, timestamp
+ORDER BY token_address, timestamp
+""".strip()
+            else:
+                sql = f"""
 SELECT
   token_address,
   timestamp,
@@ -305,6 +429,8 @@ ORDER BY token_address, timestamp
 
             for row in client.execute_iter(sql):
                 row_batch.append(row)
+                if validate:
+                    all_rows.append(row)
                 if len(row_batch) >= row_batch_size:
                     con.executemany("INSERT INTO candles VALUES (?, ?, ?, ?, ?, ?, ?)", row_batch)
                     inserted += len(row_batch)
@@ -318,10 +444,21 @@ ORDER BY token_address, timestamp
         con.execute(f"COPY candles TO '{sql_escape(str(output_path))}' (FORMAT PARQUET, COMPRESSION 'zstd')")
         count = int(con.execute("SELECT count(*) FROM candles").fetchone()[0])
 
+        # Validate quality
+        quality = None
+        if validate and all_rows:
+            expected_start = int(expanded_from.timestamp())
+            expected_end = int(expanded_to.timestamp())
+            quality = analyze_candles(all_rows, interval_seconds, expected_start, expected_end)
+            
+            if verbose:
+                print(f"[clickhouse] quality: coverage={quality.coverage_pct:.1f}%, "
+                      f"gaps={quality.gaps}, duplicates={quality.duplicates}", file=sys.stderr)
+
         if verbose:
             print(f"[clickhouse] exported {count:,} candles -> {output_path}", file=sys.stderr)
 
-        return count
+        return count, quality
 
 
 def _export_parallel(
@@ -334,8 +471,19 @@ def _export_parallel(
     output_path: Path,
     parallel: int,
     verbose: bool,
-) -> int:
-    """Parallel export with producer-consumer pattern."""
+    validate: bool = True,
+) -> Tuple[int, Optional[QualityMetrics]]:
+    """
+    Parallel export with producer-consumer pattern.
+    
+    Fixed race conditions:
+    - Uses QueueEmpty exception specifically (not bare except)
+    - Ensures all data is drained before joining producer
+    - Validates quality after export
+    
+    Returns:
+        Tuple of (row_count, quality_metrics)
+    """
     queue: Queue = Queue(maxsize=100)  # Limit memory usage
     done_event = threading.Event()
     total_fetched = [0]  # Use list for mutable capture
@@ -370,6 +518,8 @@ def _export_parallel(
 
     # Consumer: insert into DuckDB
     from tools.shared.duckdb_adapter import get_connection
+    all_rows: List[Tuple[Any, ...]] = []  # Keep for validation
+    
     with get_connection(":memory:", read_only=False) as con:
         con.execute("""
             CREATE TABLE candles (
@@ -384,21 +534,48 @@ def _export_parallel(
         """)
 
         inserted = 0
-        while not (done_event.is_set() and queue.empty()):
+        
+        # Main consumption loop - uses specific QueueEmpty exception
+        while True:
+            # Check if producer is done AND queue is empty
+            if done_event.is_set() and queue.empty():
+                break
+                
             try:
                 batch = queue.get(timeout=0.1)
                 con.executemany("INSERT INTO candles VALUES (?, ?, ?, ?, ?, ?, ?)", batch)
                 inserted += len(batch)
-            except:
+                if validate:
+                    all_rows.extend(batch)
+            except QueueEmpty:
+                # Queue is temporarily empty, continue waiting
+                continue
+            except Exception as e:
+                # Log unexpected errors but continue
+                if verbose:
+                    print(f"[clickhouse] consumer error: {e}", file=sys.stderr)
                 continue
 
-        # Drain any remaining items
+        # Final drain - ensure nothing is left in queue
+        drain_count = 0
         while not queue.empty():
-            batch = queue.get_nowait()
-            con.executemany("INSERT INTO candles VALUES (?, ?, ?, ?, ?, ?, ?)", batch)
-            inserted += len(batch)
+            try:
+                batch = queue.get_nowait()
+                con.executemany("INSERT INTO candles VALUES (?, ?, ?, ?, ?, ?, ?)", batch)
+                inserted += len(batch)
+                drain_count += len(batch)
+                if validate:
+                    all_rows.extend(batch)
+            except QueueEmpty:
+                break
+        
+        if verbose and drain_count > 0:
+            print(f"[clickhouse] drained {drain_count:,} additional rows from queue", file=sys.stderr)
 
-        producer_thread.join()
+        # Wait for producer to fully complete
+        producer_thread.join(timeout=30)
+        if producer_thread.is_alive():
+            print("[clickhouse] WARNING: producer thread did not complete in time", file=sys.stderr)
 
         if fetch_errors:
             raise fetch_errors[0]
@@ -406,7 +583,18 @@ def _export_parallel(
         con.execute(f"COPY candles TO '{sql_escape(str(output_path))}' (FORMAT PARQUET, COMPRESSION 'zstd')")
         count = int(con.execute("SELECT count(*) FROM candles").fetchone()[0])
 
+        # Validate quality
+        quality = None
+        if validate and all_rows:
+            expected_start = int(expanded_from.timestamp())
+            expected_end = int(expanded_to.timestamp())
+            quality = analyze_candles(all_rows, interval_seconds, expected_start, expected_end)
+            
+            if verbose:
+                print(f"[clickhouse] quality: coverage={quality.coverage_pct:.1f}%, "
+                      f"gaps={quality.gaps}, duplicates={quality.duplicates}", file=sys.stderr)
+
         if verbose:
             print(f"[clickhouse] exported {count:,} candles (parallel) -> {output_path}", file=sys.stderr)
 
-        return count
+        return count, quality

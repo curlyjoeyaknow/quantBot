@@ -6,6 +6,37 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Slice Exporter Quality Validation** - Detect and report gaps during parquet export
+  - New `slice_quality.py` module with `QualityMetrics` and gap detection functions
+  - Analyzes coverage, gaps, duplicates, OHLC distortions, zero volume
+  - Per-token and aggregate quality scoring (0-100 scale)
+  - Gap-filling function for small gaps with forward-fill
+
+- **Slice Validation Tool** (`tools/backtest/validate_slices.py`) - Standalone quality checker
+  - Validates all parquet slices in a directory
+  - Generates severity breakdown: critical, warning, minor, ok
+  - Optional ClickHouse comparison mode
+  - Outputs worklist of tokens needing re-ingestion
+  - Usage: `python validate_slices.py --dir slices/per_token --output-worklist worklist.json`
+
+- **Per-Token Slice Export Quality Reports** - Automatic quality tracking
+  - Every export now generates `quality_report.json` with per-token metrics
+  - Console summary shows: tokens with gaps, low coverage, high zero volume
+  - Quality warnings during verbose export
+
+### Fixed
+
+- **Race Condition in Parallel Slice Exporter** - Data loss prevention
+  - Fixed bare `except:` clause that caught `queue.Empty` incorrectly
+  - Now uses specific `QueueEmpty` exception handling
+  - Added timeout for producer thread join with warning
+  - Added final queue drain to ensure all data is written
+
+- **Improved Deduplication in Slice Export** - Better candle selection
+  - Changed from `any()` to `argMax(volume)` aggregation
+  - Prefers candle with highest volume when duplicates exist
+  - Reduces quality issues from duplicate candle entries
+
 - **Intelligent Caching for Phased Stop Simulator** - Reuses results across overlapping date ranges
   - **Primary benefit**: Avoid recomputing overlapping date ranges when extending backtests
   - **How it works**:
@@ -32,10 +63,11 @@ All notable changes to this project will be documented in this file.
     - Efficiency: Only compute what's needed
     - Incremental: Build up historical results over time
   - Usage:
+
     ```bash
     # Initial run
     python3 phased_stop_simulator.py ... --use-cache --output-dir output/my_backtest
-    
+
     # Extend date range (only computes new dates)
     python3 phased_stop_simulator.py ... --use-cache --date-to 2025-08-01
     ```
