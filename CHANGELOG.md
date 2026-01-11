@@ -37,6 +37,13 @@ All notable changes to this project will be documented in this file.
   - Prefers candle with highest volume when duplicates exist
   - Reduces quality issues from duplicate candle entries
 
+- **CSV Export for Phased Stop Simulator** - Export summary results to CSV
+  - New `--csv-output` option exports console summary table to CSV file
+  - One row per (caller, strategy) combination
+  - All performance metrics included: returns, win rate, capture rates, ATH
+  - Easy integration with spreadsheets, pandas, R
+  - Usage: `python3 phased_stop_simulator.py ... --csv-output results/run.csv`
+
 - **Intelligent Caching for Phased Stop Simulator** - Reuses results across overlapping date ranges
   - **Primary benefit**: Avoid recomputing overlapping date ranges when extending backtests
   - **How it works**:
