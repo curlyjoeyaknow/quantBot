@@ -479,7 +479,7 @@ export class PythonEngine {
     options?: PythonScriptOptions
   ): Promise<PythonManifest> {
     const workspaceRoot = findWorkspaceRoot();
-    const scriptPath = join(workspaceRoot, 'tools/telegram/duckdb_punch_pipeline.py');
+    const scriptPath = join(workspaceRoot, 'packages/ingestion/python/telegram/duckdb_punch_pipeline.py');
 
     // Resolve paths to absolute paths to avoid issues with working directory
     const inputFile = config.inputFile.startsWith('/')
@@ -528,7 +528,7 @@ export class PythonEngine {
     options?: PythonScriptOptions
   ): Promise<Record<string, unknown>> {
     const workspaceRoot = findWorkspaceRoot();
-    const scriptPath = join(workspaceRoot, 'tools/simulation/duckdb_storage/main.py');
+    const scriptPath = join(workspaceRoot, 'packages/storage/python/duckdb_storage/main.py');
 
     // Resolve duckdbPath to absolute path relative to workspace root
     // If path is already absolute, use as-is; otherwise resolve from workspace root
@@ -574,7 +574,7 @@ export class PythonEngine {
     options?: PythonScriptOptions
   ): Promise<Record<string, unknown>> {
     const workspaceRoot = findWorkspaceRoot();
-    const scriptPath = join(workspaceRoot, 'tools/simulation/clickhouse_engine.py');
+    const scriptPath = join(workspaceRoot, 'packages/storage/python/clickhouse_engine.py');
 
     const args: Record<string, unknown> = {
       operation: config.operation,
@@ -638,7 +638,7 @@ export class PythonEngine {
     }>;
   }> {
     const workspaceRoot = findWorkspaceRoot();
-    const scriptPath = join(workspaceRoot, 'tools/ingestion/ohlcv_worklist.py');
+    const scriptPath = join(workspaceRoot, 'packages/ingestion/python/ohlcv_worklist.py');
 
     // Resolve duckdbPath to absolute path relative to workspace root
     // If path is already absolute, use as-is; otherwise resolve from workspace root

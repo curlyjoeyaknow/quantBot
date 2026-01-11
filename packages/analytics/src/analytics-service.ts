@@ -73,7 +73,7 @@ export class AnalyticsService {
    * @returns Validated analysis results
    */
   async runAnalysis(config: AnalyticsConfig): Promise<AnalyticsResult> {
-    const scriptPath = 'tools/telegram/cli/analyze.py';
+    const scriptPath = 'packages/ingestion/python/telegram/cli/analyze.py';
 
     // Build command arguments
     const args: Record<string, unknown> = {

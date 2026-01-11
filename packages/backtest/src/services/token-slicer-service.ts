@@ -123,18 +123,13 @@ export class TokenSlicerService {
         args.duckdb = config.duckdb;
       }
 
-      const result = await this.pythonEngine.runScript(
-        scriptPath,
-        args,
-        SliceExportResultSchema,
-        {
-          timeout: 300000, // 5 minute timeout
-          cwd: join(workspaceRoot, 'packages/backtest/python'),
-          env: {
-            PYTHONPATH: join(workspaceRoot, 'packages/backtest/python'),
-          },
-        }
-      );
+      const result = await this.pythonEngine.runScript(scriptPath, args, SliceExportResultSchema, {
+        timeout: 300000, // 5 minute timeout
+        cwd: join(workspaceRoot, 'packages/backtest/python'),
+        env: {
+          PYTHONPATH: join(workspaceRoot, 'packages/backtest/python'),
+        },
+      });
 
       logger.info('[TokenSlicerService] Slice export completed', {
         mint: config.mint,
@@ -231,4 +226,3 @@ export class TokenSlicerService {
     }
   }
 }
-

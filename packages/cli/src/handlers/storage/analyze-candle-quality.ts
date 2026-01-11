@@ -98,7 +98,7 @@ export async function analyzeCandleQualityHandler(
 
     // Run Python script
     const result = await pythonEngine.runScript(
-      'tools/storage/analyze_candle_quality.py',
+      'packages/storage/python/analyze_candle_quality.py',
       scriptArgs,
       CandleQualityResultSchema
     );

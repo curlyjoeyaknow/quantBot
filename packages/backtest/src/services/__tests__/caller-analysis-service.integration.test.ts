@@ -32,4 +32,3 @@ describe('CallerAnalysisService Integration', () => {
   // Note: Full end-to-end tests require DuckDB fixture with backtest results
   // These are smoke tests to verify service wiring
 });
-

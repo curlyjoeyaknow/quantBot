@@ -123,4 +123,3 @@ export async function baselinePythonHandler(args: BaselinePythonArgs, ctx: Comma
     callers_count: result.callers_count,
   };
 }
-

@@ -32,4 +32,3 @@ describe('TokenSlicerService Integration', () => {
   // Note: Full end-to-end tests require ClickHouse connection
   // These are smoke tests to verify service wiring
 });
-

@@ -69,7 +69,7 @@ export class ExperimentDuckDBAdapter implements ExperimentRepository {
   constructor(dbPath: string, client?: DuckDBClient) {
     this.client = client || new DuckDBClient(dbPath);
     const workspaceRoot = findWorkspaceRoot();
-    this.scriptPath = join(workspaceRoot, 'tools/storage/duckdb_experiments.py');
+    this.scriptPath = join(workspaceRoot, 'packages/storage/python/duckdb_experiments.py');
   }
 
   /**

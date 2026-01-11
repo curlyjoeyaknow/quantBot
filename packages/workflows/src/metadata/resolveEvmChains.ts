@@ -131,7 +131,7 @@ async function getEvmTokensFromDuckDB(duckdbPath: string): Promise<EvmToken[]> {
   const engine = new PythonEngine();
 
   const result = await engine.runScript(
-    'tools/storage/query_evm_tokens.py',
+    'packages/storage/python/query_evm_tokens.py',
     { 'db-path': duckdbPath },
     z.object({
       tokens: z.array(z.string()),
@@ -254,7 +254,7 @@ async function updateChainInDuckDB(
   const engine = new PythonEngine();
 
   await engine.runScript(
-    'tools/storage/update_chain_duckdb.py',
+    'packages/storage/python/update_chain_duckdb.py',
     {
       'db-path': duckdbPath,
       address,

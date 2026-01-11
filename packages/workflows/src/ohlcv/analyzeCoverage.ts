@@ -186,7 +186,7 @@ async function analyzeOverallCoverage(
   });
 
   const workspaceRoot = findWorkspaceRoot();
-  const scriptPath = join(workspaceRoot, 'tools/analysis/ohlcv_coverage_map.py');
+  const scriptPath = join(workspaceRoot, 'packages/backtest/python/analysis/ohlcv_coverage_map.py');
 
   // Allow callers to extend the Python coverage timeout via spec, env, or default to 15 minutes
   const coverageTimeoutMs = getCoverageTimeoutMs(spec.timeoutMs);
@@ -268,7 +268,7 @@ async function analyzeCallerCoverage(
     .passthrough();
 
   const workspaceRoot = findWorkspaceRoot();
-  const scriptPath = join(workspaceRoot, 'tools/analysis/ohlcv_caller_coverage.py');
+  const scriptPath = join(workspaceRoot, 'packages/backtest/python/analysis/ohlcv_caller_coverage.py');
 
   // Allow callers to extend the Python coverage timeout via spec, env, or default to 15 minutes
   const coverageTimeoutMs = getCoverageTimeoutMs(spec.timeoutMs);

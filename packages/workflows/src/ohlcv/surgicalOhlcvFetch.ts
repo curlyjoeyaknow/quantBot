@@ -206,7 +206,7 @@ async function getCoverageData(
   });
 
   const workspaceRoot = findWorkspaceRoot();
-  const scriptPath = join(workspaceRoot, 'tools/analysis/ohlcv_caller_coverage.py');
+  const scriptPath = join(workspaceRoot, 'packages/backtest/python/analysis/ohlcv_caller_coverage.py');
 
   const result = await pythonEngine.runScript(scriptPath, args, resultSchema, {
     timeout: coverageTimeoutMs,

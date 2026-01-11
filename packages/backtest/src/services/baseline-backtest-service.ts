@@ -287,4 +287,3 @@ export class BaselineBacktestService {
     }
   }
 }
-

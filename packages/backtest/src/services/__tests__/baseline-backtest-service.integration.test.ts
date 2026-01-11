@@ -36,10 +36,7 @@ describe('BaselineBacktestService Integration', () => {
 
   it('should have shared utilities in correct location', () => {
     const workspaceRoot = process.cwd();
-    const duckdbAdapter = join(
-      workspaceRoot,
-      'packages/backtest/python/shared/duckdb_adapter.py'
-    );
+    const duckdbAdapter = join(workspaceRoot, 'packages/backtest/python/shared/duckdb_adapter.py');
 
     expect(existsSync(duckdbAdapter)).toBe(true);
   });
@@ -57,4 +54,3 @@ describe('BaselineBacktestService Integration', () => {
   // Note: Full end-to-end tests require DuckDB fixture and ClickHouse
   // These are smoke tests to verify service wiring
 });
-

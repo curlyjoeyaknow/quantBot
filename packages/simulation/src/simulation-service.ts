@@ -73,7 +73,7 @@ export class SimulationService {
    */
   async runSimulation(config: SimulationConfig): Promise<SimulationOutput> {
     // Use relative path - PythonEngine will resolve it from workspace root
-    const scriptPath = 'tools/simulation/run_simulation.py';
+    const scriptPath = 'packages/storage/python/run_simulation.py';
     const workspaceRoot = findWorkspaceRoot();
 
     try {

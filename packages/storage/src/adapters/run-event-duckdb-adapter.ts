@@ -68,7 +68,7 @@ export class RunEventDuckDBAdapter implements RunEventPort {
     this.dbPath = dbPath;
     this.client = client || new DuckDBClient(dbPath);
     const workspaceRoot = findWorkspaceRoot();
-    this.scriptPath = join(workspaceRoot, 'tools/storage/duckdb_run_events.py');
+    this.scriptPath = join(workspaceRoot, 'packages/storage/python/duckdb_run_events.py');
   }
 
   /**

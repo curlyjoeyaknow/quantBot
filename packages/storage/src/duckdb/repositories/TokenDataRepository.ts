@@ -41,7 +41,7 @@ export class TokenDataRepository {
 
   constructor(dbPath: string, client?: DuckDBClient) {
     this.client = client || new DuckDBClient(dbPath);
-    this.scriptPath = join(process.cwd(), 'tools/storage/duckdb_token_data.py');
+    this.scriptPath = join(process.cwd(), 'packages/storage/python/duckdb_token_data.py');
     this.initializeDatabase();
   }
 
