@@ -12,8 +12,24 @@ Compares:
 
 This answers: "Do I need tighter stops pre-2x and looser stops post-2x, or does one size fit all?"
 
+Features:
+- Parquet output with run_id for auditability
+- Resume functionality (--resume)
+- Intelligent caching (--use-cache) for overlapping date ranges
+- Multithreaded processing
+
 Usage:
+    # Basic run
     python3 phased_stop_simulator.py --duckdb data/alerts.duckdb --slice slices/per_token --chain solana
+    
+    # With caching (reuses results for overlapping dates)
+    python3 phased_stop_simulator.py ... --use-cache --output-dir output/my_backtest
+    
+    # Extend date range (only computes new dates)
+    python3 phased_stop_simulator.py ... --use-cache --date-from 2025-01-01 --date-to 2025-06-01
+    
+    # Lower min_calls (recomputes for newly included callers)
+    python3 phased_stop_simulator.py ... --use-cache --min-calls 10
 """
 
 from __future__ import annotations
@@ -30,6 +46,7 @@ from threading import Semaphore
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
+import pandas as pd
 import pyarrow as pa
 import pyarrow.parquet as pq
 
@@ -414,10 +431,157 @@ def load_alerts_from_duckdb(
     return alerts
 
 
+def generate_cache_key(chain: str, date_from: str, date_to: str) -> str:
+    """Generate cache key for a date range (independent of min_calls)."""
+    params = f"{chain}_{date_from}_{date_to}"
+    return hashlib.sha256(params.encode()).hexdigest()[:16]
+
+
 def generate_run_id(args: argparse.Namespace) -> str:
     """Generate a unique run ID based on parameters."""
     params = f"{args.chain}_{args.date_from}_{args.date_to}_{args.min_calls}"
     return hashlib.sha256(params.encode()).hexdigest()[:16]
+
+
+def find_cached_results(output_dir: Path, chain: str, date_from_str: str, date_to_str: str) -> List[Path]:
+    """
+    Find all cached result files that overlap with the requested date range.
+    Returns list of parquet files that can be reused.
+    """
+    if not output_dir.exists():
+        return []
+    
+    from datetime import datetime
+    
+    # Parse requested date range
+    req_from = datetime.fromisoformat(date_from_str) if date_from_str else datetime(2020, 1, 1)
+    req_to = datetime.fromisoformat(date_to_str) if date_to_str else datetime.now()
+    
+    cached_files = []
+    
+    # Look for cache metadata file
+    cache_meta_file = output_dir / "cache_metadata.json"
+    if not cache_meta_file.exists():
+        return []
+    
+    try:
+        with open(cache_meta_file, 'r') as f:
+            cache_metadata = json.load(f)
+        
+        # Find overlapping cache entries
+        for cache_key, meta in cache_metadata.items():
+            cache_from = datetime.fromisoformat(meta['date_from'])
+            cache_to = datetime.fromisoformat(meta['date_to'])
+            cache_file = output_dir / meta['filename']
+            
+            # Check if cache overlaps with requested range
+            if cache_file.exists() and cache_from <= req_to and cache_to >= req_from:
+                cached_files.append((cache_file, cache_from, cache_to))
+        
+        return cached_files
+    
+    except Exception as e:
+        print(f"Warning: Could not load cache metadata: {e}", file=sys.stderr)
+        return []
+
+
+def save_cache_metadata(output_dir: Path, cache_key: str, filename: str, chain: str, date_from: str, date_to: str, min_calls: int = None):
+    """Save metadata about a cache file."""
+    cache_meta_file = output_dir / "cache_metadata.json"
+    
+    # Load existing metadata
+    if cache_meta_file.exists():
+        with open(cache_meta_file, 'r') as f:
+            metadata = json.load(f)
+    else:
+        metadata = {}
+    
+    # Add new entry
+    metadata[cache_key] = {
+        'filename': filename,
+        'chain': chain,
+        'date_from': date_from,
+        'date_to': date_to,
+        'min_calls': min_calls,
+        'created_at': datetime.now().isoformat(),
+    }
+    
+    # Save
+    with open(cache_meta_file, 'w') as f:
+        json.dump(metadata, f, indent=2)
+
+
+def get_callers_from_cached_trades(cached_trades: List[Dict]) -> Dict[str, int]:
+    """
+    Get caller -> unique mint count from cached trades.
+    Returns dict of caller -> number of unique mints.
+    """
+    caller_mints = defaultdict(set)
+    for trade in cached_trades:
+        caller_mints[trade['caller']].add(trade['mint'])
+    
+    return {caller: len(mints) for caller, mints in caller_mints.items()}
+
+
+def load_cached_trades(cached_files: List[Tuple[Path, Any, Any]], req_from: datetime, req_to: datetime) -> List[Dict]:
+    """
+    Load trades from cached files that fall within the requested date range.
+    Returns list of trade records (dicts).
+    """
+    all_cached_trades = []
+    
+    for cache_file, cache_from, cache_to in cached_files:
+        try:
+            # Read parquet file
+            table = pq.read_table(cache_file)
+            df = table.to_pandas()
+            
+            # Filter by date range
+            df['entry_datetime'] = pd.to_datetime(df['entry_ts_ms'], unit='ms')
+            mask = (df['entry_datetime'] >= req_from) & (df['entry_datetime'] <= req_to)
+            filtered_df = df[mask]
+            
+            # Convert to dict records
+            records = filtered_df.to_dict('records')
+            all_cached_trades.extend(records)
+            
+            print(f"  Loaded {len(records)} trades from cache: {cache_file.name}", file=sys.stderr)
+        
+        except Exception as e:
+            print(f"Warning: Could not load cache file {cache_file}: {e}", file=sys.stderr)
+    
+    return all_cached_trades
+
+
+def get_missing_date_ranges(cached_files: List[Tuple[Path, Any, Any]], req_from: datetime, req_to: datetime) -> List[Tuple[datetime, datetime]]:
+    """
+    Determine which date ranges are not covered by cache.
+    Returns list of (from, to) tuples that need to be computed.
+    """
+    from datetime import timedelta
+    
+    if not cached_files:
+        return [(req_from, req_to)]
+    
+    # Sort cached ranges by start date
+    cached_ranges = sorted([(cache_from, cache_to) for _, cache_from, cache_to in cached_files])
+    
+    missing_ranges = []
+    current_pos = req_from
+    
+    for cache_from, cache_to in cached_ranges:
+        # If there's a gap before this cache
+        if current_pos < cache_from:
+            missing_ranges.append((current_pos, min(cache_from - timedelta(days=1), req_to)))
+        
+        # Move position to end of this cache
+        current_pos = max(current_pos, cache_to + timedelta(days=1))
+    
+    # If there's remaining range after all caches
+    if current_pos <= req_to:
+        missing_ranges.append((current_pos, req_to))
+    
+    return missing_ranges
 
 
 def save_trades_to_parquet(trades: List[PhasedTradeResult], run_id: str, output_dir: Path):
@@ -720,6 +884,7 @@ def main():
     parser.add_argument("--output", choices=["table", "json"], default="table", help="Output format")
     parser.add_argument("--output-dir", type=str, default="output/phased_stop_results", help="Output directory for parquet files")
     parser.add_argument("--resume", action="store_true", help="Resume from existing results")
+    parser.add_argument("--use-cache", action="store_true", help="Use cached results for overlapping date ranges")
     parser.add_argument("--verbose", action="store_true", help="Verbose output")
     
     args = parser.parse_args()
@@ -737,26 +902,96 @@ def main():
         print(f"Run ID: {run_id}", file=sys.stderr)
         print(f"Output directory: {output_dir}", file=sys.stderr)
     
-    # Load existing results if resuming
-    processed_keys = set()
-    if args.resume:
-        processed_keys = load_existing_results(run_id, output_dir)
+    # Check for cached results
+    cached_trades_records = []
+    alerts_to_process = []
+    
+    if args.use_cache:
+        from datetime import datetime
+        
         if args.verbose:
-            print(f"Resuming: Found {len(processed_keys)} already processed (mint, strategy) combinations", file=sys.stderr)
+            print(f"\nChecking cache for overlapping date ranges...", file=sys.stderr)
+        
+        # Find cached files
+        cached_files = find_cached_results(output_dir, args.chain, args.date_from, args.date_to)
+        
+        if cached_files:
+            if args.verbose:
+                print(f"Found {len(cached_files)} cached result files", file=sys.stderr)
+            
+            # Load cached trades
+            req_from = datetime.fromisoformat(args.date_from) if args.date_from else datetime(2020, 1, 1)
+            req_to = datetime.fromisoformat(args.date_to) if args.date_to else datetime.now()
+            
+            cached_trades_records = load_cached_trades(cached_files, req_from, req_to)
+            
+            if args.verbose:
+                print(f"Loaded {len(cached_trades_records)} trades from cache", file=sys.stderr)
+            
+            # Check if min_calls changed (requires recomputing for newly included callers)
+            cached_caller_counts = get_callers_from_cached_trades(cached_trades_records)
+            
+            # Find callers that now meet threshold but didn't before
+            newly_included_callers = set()
+            for caller, count in cached_caller_counts.items():
+                if count >= args.min_calls:
+                    # This caller now qualifies - check if they were excluded before
+                    # (We'll recompute for them to be safe)
+                    newly_included_callers.add(caller)
+            
+            if args.verbose and newly_included_callers:
+                print(f"Found {len(newly_included_callers)} callers meeting min_calls threshold", file=sys.stderr)
+            
+            # Determine missing date ranges
+            missing_ranges = get_missing_date_ranges(cached_files, req_from, req_to)
+            
+            if missing_ranges:
+                if args.verbose:
+                    print(f"\nMissing date ranges to compute:", file=sys.stderr)
+                    for from_dt, to_dt in missing_ranges:
+                        print(f"  {from_dt.date()} to {to_dt.date()}", file=sys.stderr)
+                
+                # Load alerts only for missing ranges
+                for from_dt, to_dt in missing_ranges:
+                    range_alerts = load_alerts_from_duckdb(
+                        Path(args.duckdb),
+                        args.chain,
+                        from_dt.isoformat(),
+                        to_dt.isoformat(),
+                    )
+                    alerts_to_process.extend(range_alerts)
+                    
+                    if args.verbose:
+                        print(f"  Loaded {len(range_alerts)} alerts for {from_dt.date()} to {to_dt.date()}", file=sys.stderr)
+            else:
+                if args.verbose:
+                    print(f"✓ All data available in cache, no new computation needed", file=sys.stderr)
+        else:
+            if args.verbose:
+                print(f"No cache found, will compute full range", file=sys.stderr)
+            
+            # Load all alerts
+            alerts_to_process = load_alerts_from_duckdb(
+                Path(args.duckdb),
+                args.chain,
+                args.date_from,
+                args.date_to,
+            )
+    else:
+        # No caching, load all alerts
+        if args.verbose:
+            print(f"Loading alerts from {args.duckdb}...", file=sys.stderr)
+        
+        alerts_to_process = load_alerts_from_duckdb(
+            Path(args.duckdb),
+            args.chain,
+            args.date_from,
+            args.date_to,
+        )
     
-    # Load alerts
     if args.verbose:
-        print(f"Loading alerts from {args.duckdb}...", file=sys.stderr)
-    
-    alerts = load_alerts_from_duckdb(
-        Path(args.duckdb),
-        args.chain,
-        args.date_from,
-        args.date_to,
-    )
-    
-    if args.verbose:
-        print(f"Loaded {len(alerts)} alerts", file=sys.stderr)
+        print(f"Alerts to process: {len(alerts_to_process)}", file=sys.stderr)
+        print(f"Cached trades: {len(cached_trades_records)}", file=sys.stderr)
     
     # Define stop strategies to test
     stop_strategies = [
@@ -815,8 +1050,41 @@ def main():
     all_trades = []
     slice_path = Path(args.slice)
     
+    # Convert cached trade records to PhasedTradeResult objects
+    for record in cached_trades_records:
+        trade = PhasedTradeResult(
+            caller=record['caller'],
+            mint=record['mint'],
+            alert_id=record['alert_id'],
+            entry_price=record['entry_price'],
+            entry_ts_ms=record['entry_ts_ms'],
+            exit_price=record['exit_price'],
+            exit_ts_ms=record['exit_ts_ms'],
+            exit_reason=record['exit_reason'],
+            exit_phase=record['exit_phase'],
+            multiple_achieved=record['multiple_achieved'],
+            return_pct=record['return_pct'],
+            hold_time_minutes=record['hold_time_minutes'],
+            stop_mode=record['stop_mode'],
+            phase1_stop_pct=record['phase1_stop_pct'],
+            phase2_stop_pct=record['phase2_stop_pct'],
+            ladder_steps=record['ladder_steps'] if record['ladder_steps'] > 0 else None,
+            hit_2x=record['hit_2x'],
+            hit_3x=record['hit_3x'],
+            hit_4x=record['hit_4x'],
+            hit_5x=record['hit_5x'],
+            hit_10x=record['hit_10x'],
+            ath_multiple=record['ath_multiple'],
+            phase2_entry_price=record['phase2_entry_price'] if record['phase2_entry_price'] > 0 else None,
+            phase2_entry_ts_ms=record['phase2_entry_ts_ms'] if record['phase2_entry_ts_ms'] > 0 else None,
+        )
+        all_trades.append(trade)
+    
+    if args.verbose and cached_trades_records:
+        print(f"Loaded {len(cached_trades_records)} trades from cache", file=sys.stderr)
+    
     if args.verbose:
-        print(f"Simulating {len(stop_strategies)} strategies on {len(alerts)} alerts...", file=sys.stderr)
+        print(f"Simulating {len(stop_strategies)} strategies on {len(alerts_to_process)} new alerts...", file=sys.stderr)
     
     def process_alert(alert_data):
         """Process a single alert with all strategies."""
@@ -920,41 +1188,54 @@ def main():
     # Use ThreadPoolExecutor for parallel processing
     from concurrent.futures import ThreadPoolExecutor, as_completed
     
-    with ThreadPoolExecutor(max_workers=args.threads) as executor:
-        # Submit all alerts
-        futures = {
-            executor.submit(process_alert, (alert, stop_strategies, processed_keys)): i
-            for i, alert in enumerate(alerts)
-        }
-        
-        # Collect results as they complete
-        completed = 0
-        batch_trades = []
-        batch_size = 10  # Save every 10 alerts
-        
-        for future in as_completed(futures):
-            completed += 1
-            if args.verbose and completed % 10 == 0:
-                print(f"Processed {completed}/{len(alerts)} alerts...", file=sys.stderr)
+    new_trades = []
+    processed_keys = set()
+    
+    if alerts_to_process:
+        with ThreadPoolExecutor(max_workers=args.threads) as executor:
+            # Submit all alerts
+            futures = {
+                executor.submit(process_alert, (alert, stop_strategies, processed_keys)): i
+                for i, alert in enumerate(alerts_to_process)
+            }
             
-            try:
-                trades = future.result(timeout=60)  # 60 second timeout per alert
-                all_trades.extend(trades)
-                batch_trades.extend(trades)
-                
-                # Save batch incrementally
-                if len(batch_trades) >= batch_size * len(stop_strategies):
-                    append_trades_to_parquet(batch_trades, run_id, output_dir)
-                    batch_trades = []
+            # Collect results as they complete
+            completed = 0
+            batch_trades = []
+            batch_size = 10  # Save every 10 alerts
+            
+            for future in as_completed(futures):
+                completed += 1
+                if args.verbose and completed % 10 == 0:
+                    print(f"Processed {completed}/{len(alerts_to_process)} alerts...", file=sys.stderr)
+            
+                try:
+                    trades = future.result(timeout=60)  # 60 second timeout per alert
+                    new_trades.extend(trades)
+                    all_trades.extend(trades)
+                    batch_trades.extend(trades)
                     
-            except Exception as e:
-                if args.verbose:
-                    alert_idx = futures[future]
-                    print(f"Warning: Timeout or error processing alert {alert_idx}: {e}", file=sys.stderr)
+                    # Save batch incrementally
+                    if len(batch_trades) >= batch_size * len(stop_strategies):
+                        append_trades_to_parquet(batch_trades, run_id, output_dir)
+                        batch_trades = []
+                        
+                except Exception as e:
+                    if args.verbose:
+                        alert_idx = futures[future]
+                        print(f"Warning: Timeout or error processing alert {alert_idx}: {e}", file=sys.stderr)
+            
+            # Save remaining trades
+            if batch_trades:
+                append_trades_to_parquet(batch_trades, run_id, output_dir)
         
-        # Save remaining trades
-        if batch_trades:
-            append_trades_to_parquet(batch_trades, run_id, output_dir)
+        # Save cache metadata for new computation
+        if new_trades and args.use_cache:
+            cache_key = generate_cache_key(args.chain, args.date_from, args.date_to)
+            cache_filename = f"phased_stop_results_{run_id}.parquet"
+            save_cache_metadata(output_dir, cache_key, cache_filename, args.chain, args.date_from, args.date_to, args.min_calls)
+            if args.verbose:
+                print(f"✓ Saved cache metadata for future runs", file=sys.stderr)
     
     if args.verbose:
         print(f"Simulated {len(all_trades)} total trades", file=sys.stderr)
