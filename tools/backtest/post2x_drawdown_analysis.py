@@ -91,6 +91,9 @@ class Post2xMetrics:
     # Entry price
     entry_price: float
     
+    # Pre-2x drawdown (1x→2x)
+    dd_entry_to2x_pct: Optional[float]  # Drawdown from entry to 2x (if hit 2x)
+    
     # Post-2x drawdowns (as decimal, e.g., 0.20 = 20% drawdown from 2x price)
     dd_post2x_to3x_pct: Optional[float]  # Only if hit 2x AND hit 3x
     dd_post2x_to4x_pct: Optional[float]  # Only if hit 2x AND hit 4x
@@ -116,6 +119,20 @@ class CallerDistribution:
     n_hit_2x_not_3x: int  # Hit 2x but NOT 3x (saved from nuke)
     n_hit_3x_not_4x: int  # Hit 3x but NOT 4x
     n_hit_4x_not_5x: int  # Hit 4x but NOT 5x
+    
+    # DD_entry_to2x distribution (1x→2x)
+    dd_entry_to2x_p50: Optional[float]
+    dd_entry_to2x_p75: Optional[float]
+    dd_entry_to2x_p90: Optional[float]
+    
+    # 1x→2x capture rates (Keep@X%)
+    pct_dd_entry_to2x_gt_5pct: Optional[float]
+    pct_dd_entry_to2x_gt_10pct: Optional[float]
+    pct_dd_entry_to2x_gt_15pct: Optional[float]
+    pct_dd_entry_to2x_gt_20pct: Optional[float]
+    pct_dd_entry_to2x_gt_25pct: Optional[float]
+    pct_dd_entry_to2x_gt_30pct: Optional[float]
+    pct_dd_entry_to2x_gt_40pct: Optional[float]
     
     # DD_post2x_to3x distribution
     dd_post2x_to3x_p50: Optional[float]
@@ -277,6 +294,11 @@ def compute_post2x_dd(
     # Price at 2x (use the 2x price itself)
     price_at_2x = target_2x
     
+    # Track minimum low in 1x→2x window (entry to 2x)
+    min_low_entry_to2x: Optional[float] = None
+    peak_entry_to2x: Optional[float] = None  # For trailing mode
+    ladder_anchor_entry_to2x: Optional[float] = None  # For ladder mode
+    
     # Track minimum low in each window
     # For winners: track in [t2x, tNx] window
     min_low_post2x_to3x: Optional[float] = None
@@ -327,6 +349,21 @@ def compute_post2x_dd(
         
         high = float(candle['high'])
         low = float(candle['low'])
+        
+        # Track 1x→2x window (before hitting 2x)
+        if t_2x_ms is None:
+            # Track minimum low from entry to 2x
+            if min_low_entry_to2x is None or low < min_low_entry_to2x:
+                min_low_entry_to2x = low
+            
+            # Track peak for trailing mode
+            if stop_mode == "trailing":
+                if peak_entry_to2x is None or high > peak_entry_to2x:
+                    peak_entry_to2x = high
+            
+            # Track ladder anchor for ladder mode
+            if stop_mode == "ladder":
+                ladder_anchor_entry_to2x = _get_ladder_anchor_price(high, entry_price, ladder_steps)
         
         # Detect first hits (using high)
         if t_2x_ms is None and high >= target_2x:
@@ -418,6 +455,20 @@ def compute_post2x_dd(
     # Trailing mode: DD = 1 - (min_low / peak_price) where peak moves with highs
     # Ladder mode: DD = 1 - (min_low / ladder_anchor) where anchor moves at fixed intervals
     
+    # For 1x→2x (entry to 2x)
+    dd_entry_to2x_pct = None
+    if t_2x_ms is not None and min_low_entry_to2x is not None:
+        if stop_mode == "trailing" and peak_entry_to2x is not None:
+            # Trailing: drawdown from peak in 1x→2x window
+            dd_raw = 1.0 - (min_low_entry_to2x / peak_entry_to2x)
+        elif stop_mode == "ladder" and ladder_anchor_entry_to2x is not None:
+            # Ladder: drawdown from highest ladder level reached in 1x→2x
+            dd_raw = 1.0 - (min_low_entry_to2x / ladder_anchor_entry_to2x)
+        else:
+            # Static: drawdown from entry price
+            dd_raw = 1.0 - (min_low_entry_to2x / entry_price)
+        dd_entry_to2x_pct = max(0.0, dd_raw)
+    
     # For WINNERS (reached next milestone)
     dd_post2x_to3x_pct = None
     if t_2x_ms is not None and t_3x_ms is not None and min_low_post2x_to3x is not None:
@@ -501,6 +552,7 @@ def compute_post2x_dd(
         t_4x_ms=t_4x_ms,
         t_5x_ms=t_5x_ms,
         entry_price=entry_price,
+        dd_entry_to2x_pct=dd_entry_to2x_pct,
         dd_post2x_to3x_pct=dd_post2x_to3x_pct,
         dd_post2x_to4x_pct=dd_post2x_to4x_pct,
         dd_post2x_to5x_pct=dd_post2x_to5x_pct,
@@ -621,6 +673,9 @@ def aggregate_by_caller(
         n_hit_3x_not_4x = sum(1 for m in metrics if m.hit_3x and not m.hit_4x)
         n_hit_4x_not_5x = sum(1 for m in metrics if m.hit_4x and not m.hit_5x)
         
+        # Collect drawdown values for 1x→2x (entry to 2x)
+        dd_entry_to2x = [m.dd_entry_to2x_pct for m in metrics if m.dd_entry_to2x_pct is not None]
+        
         # Collect drawdown values for WINNERS (reach next milestone)
         dd_2x_to3x = [m.dd_post2x_to3x_pct for m in metrics if m.dd_post2x_to3x_pct is not None]
         dd_2x_to4x = [m.dd_post2x_to4x_pct for m in metrics if m.dd_post2x_to4x_pct is not None]
@@ -630,6 +685,9 @@ def aggregate_by_caller(
         dd_2x_no3x = [m.dd_post2x_no3x_pct for m in metrics if m.dd_post2x_no3x_pct is not None]
         dd_3x_no4x = [m.dd_post3x_no4x_pct for m in metrics if m.dd_post3x_no4x_pct is not None]
         dd_4x_no5x = [m.dd_post4x_no5x_pct for m in metrics if m.dd_post4x_no5x_pct is not None]
+        
+        # Distribution stats for 1x→2x
+        p50_entry_to2x, p75_entry_to2x, p90_entry_to2x = compute_distribution_stats(dd_entry_to2x)
         
         # Distribution stats for winners
         p50_3x, p75_3x, p90_3x = compute_distribution_stats(dd_2x_to3x)
@@ -666,6 +724,17 @@ def aggregate_by_caller(
             n_hit_2x_not_3x=n_hit_2x_not_3x,
             n_hit_3x_not_4x=n_hit_3x_not_4x,
             n_hit_4x_not_5x=n_hit_4x_not_5x,
+            # 1x→2x (entry to 2x)
+            dd_entry_to2x_p50=p50_entry_to2x,
+            dd_entry_to2x_p75=p75_entry_to2x,
+            dd_entry_to2x_p90=p90_entry_to2x,
+            pct_dd_entry_to2x_gt_5pct=pct_lte(dd_entry_to2x, 0.05),
+            pct_dd_entry_to2x_gt_10pct=pct_lte(dd_entry_to2x, 0.10),
+            pct_dd_entry_to2x_gt_15pct=pct_lte(dd_entry_to2x, 0.15),
+            pct_dd_entry_to2x_gt_20pct=pct_lte(dd_entry_to2x, 0.20),
+            pct_dd_entry_to2x_gt_25pct=pct_lte(dd_entry_to2x, 0.25),
+            pct_dd_entry_to2x_gt_30pct=pct_lte(dd_entry_to2x, 0.30),
+            pct_dd_entry_to2x_gt_40pct=pct_lte(dd_entry_to2x, 0.40),
             # Winners (reach next milestone)
             dd_post2x_to3x_p50=p50_3x,
             dd_post2x_to3x_p75=p75_3x,
@@ -1009,6 +1078,35 @@ def main():
             stop_mode_desc = f"LADDER (stop moves at {args.ladder_steps}x intervals: 2.0x, {2.0+args.ladder_steps:.1f}x, {2.0+2*args.ladder_steps:.1f}x, ...)"
         print(f"POST-2X DRAWDOWN ANALYSIS BY CALLER - {stop_mode_desc}")
         print("=" * 160)
+        
+        # 1x→2x table (entry to 2x)
+        print("\nDD_1x→2x (tokens that reached 2x)")
+        print("-" * 160)
+        print(f"{'Caller':<25} {'N':>4} {'Hit2x%':>7} {'1x→2x':>6} {'p50':>6} {'p75':>6} {'p90':>6} ", end="")
+        print(f"{'Keep@5%':>8} {'Keep@10%':>9} {'Keep@15%':>9} {'Keep@20%':>9} {'Keep@25%':>9} {'Keep@30%':>9} {'Keep@40%':>9}")
+        print("-" * 160)
+        
+        for dist in distributions:
+            if dist.n_hit_2x == 0:
+                continue
+            
+            hit_2x_pct = (dist.n_hit_2x / dist.n_calls * 100.0) if dist.n_calls > 0 else 0.0
+            p50 = f"{dist.dd_entry_to2x_p50*100:.1f}%" if dist.dd_entry_to2x_p50 is not None else "N/A"
+            p75 = f"{dist.dd_entry_to2x_p75*100:.1f}%" if dist.dd_entry_to2x_p75 is not None else "N/A"
+            p90 = f"{dist.dd_entry_to2x_p90*100:.1f}%" if dist.dd_entry_to2x_p90 is not None else "N/A"
+            
+            print(f"{dist.caller:<25} {dist.n_calls:>4} {hit_2x_pct:>6.1f}% {dist.n_hit_2x:>6} {p50:>6} {p75:>6} {p90:>6} ", end="")
+            
+            # Keep@X% rates
+            print(f"{dist.pct_dd_entry_to2x_gt_5pct:>7.1f}%" if dist.pct_dd_entry_to2x_gt_5pct is not None else "     N/A", end=" ")
+            print(f"{dist.pct_dd_entry_to2x_gt_10pct:>8.1f}%" if dist.pct_dd_entry_to2x_gt_10pct is not None else "      N/A", end=" ")
+            print(f"{dist.pct_dd_entry_to2x_gt_15pct:>8.1f}%" if dist.pct_dd_entry_to2x_gt_15pct is not None else "      N/A", end=" ")
+            print(f"{dist.pct_dd_entry_to2x_gt_20pct:>8.1f}%" if dist.pct_dd_entry_to2x_gt_20pct is not None else "      N/A", end=" ")
+            print(f"{dist.pct_dd_entry_to2x_gt_25pct:>8.1f}%" if dist.pct_dd_entry_to2x_gt_25pct is not None else "      N/A", end=" ")
+            print(f"{dist.pct_dd_entry_to2x_gt_30pct:>8.1f}%" if dist.pct_dd_entry_to2x_gt_30pct is not None else "      N/A", end=" ")
+            print(f"{dist.pct_dd_entry_to2x_gt_40pct:>8.1f}%" if dist.pct_dd_entry_to2x_gt_40pct is not None else "      N/A")
+        
+        print("\n" + "-" * 160)
         print("\nDD_2x→3x (tokens that reached 3x)")
         print("-" * 160)
         print(f"{'Caller':<25} {'N':>4} {'Hit2x%':>7} {'2x→3x':>6} {'p50':>6} {'p75':>6} {'p90':>6} ", end="")
