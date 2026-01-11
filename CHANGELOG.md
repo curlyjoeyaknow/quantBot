@@ -37,6 +37,33 @@ All notable changes to this project will be documented in this file.
   - Prefers candle with highest volume when duplicates exist
   - Reduces quality issues from duplicate candle entries
 
+### Added (Tests)
+
+- **Slice Quality Unit Tests** (`test_slice_quality_unit.py`) - 33 tests
+  - Gap detection: continuous, single gap, multiple gaps, large gaps, tolerance
+  - Duplicate detection: single, multiple, counting accuracy
+  - Coverage calculation: full, half, low coverage thresholds
+  - OHLC distortion detection: h<l, o>h, negative values
+  - Zero volume detection and percentage calculation
+  - Quality score calculation and threshold validation
+  - Gap filling with forward fill behavior
+
+- **Slice Quality Golden Tests** (`test_slice_quality_golden.py`) - 13 tests
+  - Perfect 24h data: verifies 100% coverage, 0 gaps, high quality score
+  - Gappy data: verifies gap detection accuracy for various patterns
+  - Duplicated data: verifies duplicate counting and quality impact
+  - Distorted data: verifies OHLC constraint violation detection
+  - Zero volume data: verifies zero volume percentage tracking
+  - Realistic degraded data: simulates 86% gap / 43% low coverage issue
+  - Precision tests for exact formula verification
+
+- **Slice Exporter Regression Tests** (`test_slice_exporter_regression.py`) - 14 tests
+  - Data integrity: all candles written, large datasets, multi-token
+  - Quality preservation: no gaps/duplicates introduced, quality score preserved
+  - Edge cases: empty input, single candle, timestamp precision, large gaps
+  - Deduplication: duplicates removed, multi-token preserved
+  - Race condition guards: queue draining, exception handling
+
 - **Cohort-Based EV Metrics** - Proper Expected Value calculations with exit multiple distributions
   - **The missing brick**: Added `entry_mult`, `peak_mult`, `exit_mult`, `giveback_from_peak_pct` to every trade
   - **Cohort A (Base Rates)**: P(reach 2x), P(3x | 2x), P(2x but not 3x)
