@@ -479,7 +479,10 @@ export class PythonEngine {
     options?: PythonScriptOptions
   ): Promise<PythonManifest> {
     const workspaceRoot = findWorkspaceRoot();
-    const scriptPath = join(workspaceRoot, 'packages/ingestion/python/telegram/duckdb_punch_pipeline.py');
+    const scriptPath = join(
+      workspaceRoot,
+      'packages/ingestion/python/telegram/duckdb_punch_pipeline.py'
+    );
 
     // Resolve paths to absolute paths to avoid issues with working directory
     const inputFile = config.inputFile.startsWith('/')

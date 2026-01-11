@@ -244,7 +244,10 @@ export async function analyzeDetailedCoverage(
     });
 
     const workspaceRoot = findWorkspaceRoot();
-    const scriptPath = join(workspaceRoot, 'packages/backtest/python/analysis/ohlcv_detailed_coverage.py');
+    const scriptPath = join(
+      workspaceRoot,
+      'packages/backtest/python/analysis/ohlcv_detailed_coverage.py'
+    );
 
     // Allow callers to extend the Python coverage timeout via spec, env, or default to 30 minutes
     // Detailed coverage analysis can take longer due to per-call queries

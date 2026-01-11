@@ -70,7 +70,10 @@ describe('DuckDB Ingestion Idempotency', () => {
     engine = new PythonEngine('python3');
     // Resolve to absolute path to ensure it exists
     const { resolve } = await import('path');
-    pythonToolPath = resolve(process.cwd(), 'packages/ingestion/python/telegram/duckdb_punch_pipeline.py');
+    pythonToolPath = resolve(
+      process.cwd(),
+      'packages/ingestion/python/telegram/duckdb_punch_pipeline.py'
+    );
 
     // Create test directory
     if (!existsSync(TEST_DIR)) {

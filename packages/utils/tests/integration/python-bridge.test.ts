@@ -19,9 +19,18 @@ import { findWorkspaceRoot } from '../../src/fs/workspace-root';
 
 describe('Python Bridge Test - Telegram Ingestion', () => {
   const workspaceRoot = findWorkspaceRoot();
-  const pythonToolPath = join(workspaceRoot, 'packages/ingestion/python/telegram/duckdb_punch_pipeline.py');
-  const testFixturePath = join(workspaceRoot, 'packages/ingestion/python/telegram/tests/fixtures/sample_telegram.json');
-  const outputDbPath = join(workspaceRoot, 'packages/ingestion/python/telegram/tests/fixtures/test_output.duckdb');
+  const pythonToolPath = join(
+    workspaceRoot,
+    'packages/ingestion/python/telegram/duckdb_punch_pipeline.py'
+  );
+  const testFixturePath = join(
+    workspaceRoot,
+    'packages/ingestion/python/telegram/tests/fixtures/sample_telegram.json'
+  );
+  const outputDbPath = join(
+    workspaceRoot,
+    'packages/ingestion/python/telegram/tests/fixtures/test_output.duckdb'
+  );
 
   it('runs Python tool on tiny fixture and validates output schema', async () => {
     // Skip if Python tool doesn't exist
@@ -101,7 +110,10 @@ describe('Python Bridge Test - Telegram Ingestion', () => {
 
     const invalidFixture = { invalid: 'data' };
     const fs = require('fs');
-    const invalidPath = join(workspaceRoot, 'packages/ingestion/python/telegram/tests/fixtures/invalid.json');
+    const invalidPath = join(
+      workspaceRoot,
+      'packages/ingestion/python/telegram/tests/fixtures/invalid.json'
+    );
     fs.writeFileSync(invalidPath, JSON.stringify(invalidFixture));
 
     try {
