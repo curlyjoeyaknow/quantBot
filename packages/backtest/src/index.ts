@@ -286,8 +286,10 @@ export {
 } from '@quantbot/simulation';
 
 // =============================================================================
-// V1 Baseline Python Service (TypeScript orchestration for Python optimizer)
+// Python Services (TypeScript orchestration for Python backtesting)
 // =============================================================================
+
+// V1 Baseline Python Service
 export {
   V1BaselinePythonService,
   type V1BaselineParams as V1BaselineParamsPython,
@@ -305,6 +307,43 @@ export {
   V1BaselinePerCallerResultSchema,
   V1BaselineGroupedResultSchema,
 } from './services/v1-baseline-python-service.js';
+
+// Baseline Backtest Service
+export {
+  BaselineBacktestService,
+  type BaselineBacktestConfig,
+  type TokenResult,
+  type BaselineBacktestResult,
+  BaselineBacktestConfigSchema,
+  TokenResultSchema,
+  BaselineBacktestResultSchema,
+} from './services/baseline-backtest-service.js';
+
+// Token Slicer Service
+export {
+  TokenSlicerService,
+  type TokenSliceExportConfig,
+  type BatchSliceExportConfig,
+  type SliceExportResult,
+  type BatchSliceExportResult,
+  TokenSliceExportConfigSchema,
+  BatchSliceExportConfigSchema,
+  SliceExportResultSchema,
+  BatchSliceExportResultSchema,
+} from './services/token-slicer-service.js';
+
+// Caller Analysis Service
+export {
+  CallerAnalysisService,
+  type CallerAnalysisConfig,
+  type CallerStats,
+  type CallerScoring,
+  type CallerAnalysisResult,
+  CallerAnalysisConfigSchema,
+  CallerStatsSchema,
+  CallerScoringSchema,
+  CallerAnalysisResultSchema,
+} from './services/caller-analysis-service.js';
 
 // Causal candle accessor
 export type { CausalCandleAccessor } from '@quantbot/simulation';
