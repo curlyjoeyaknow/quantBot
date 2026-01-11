@@ -29,6 +29,9 @@ import {
   SimulationService,
   BacktestBaselineService,
   V1BaselinePythonService,
+  BaselineBacktestService,
+  TokenSlicerService,
+  CallerAnalysisService,
 } from '@quantbot/backtest';
 import { TelegramPipelineService } from '@quantbot/ingestion';
 import { AnalyticsService } from '@quantbot/analytics';
@@ -53,7 +56,10 @@ export interface CommandServices {
   telegramPipeline(): TelegramPipelineService;
   simulation(): SimulationService;
   analytics(): AnalyticsService;
-  backtestBaseline(): BacktestBaselineService; // Baseline alert backtest
+  backtestBaseline(): BacktestBaselineService; // Baseline alert backtest (legacy)
+  baselineBacktest(): BaselineBacktestService; // New Python baseline backtest
+  tokenSlicer(): TokenSlicerService; // Token slice export
+  callerAnalysis(): CallerAnalysisService; // Caller analysis and scoring
   v1BaselinePython(): V1BaselinePythonService; // V1 baseline optimizer (Python)
   // simulationRunsRepository(): SimulationRunsRepository; // PostgreSQL removed
   callersRepository(): CallersRepository; // DuckDB version
@@ -178,6 +184,15 @@ export class CommandContext {
       },
       backtestBaseline: () => {
         return new BacktestBaselineService(pythonEngine);
+      },
+      baselineBacktest: () => {
+        return new BaselineBacktestService(pythonEngine);
+      },
+      tokenSlicer: () => {
+        return new TokenSlicerService(pythonEngine);
+      },
+      callerAnalysis: () => {
+        return new CallerAnalysisService(pythonEngine);
       },
       v1BaselinePython: () => {
         return new V1BaselinePythonService(pythonEngine);
