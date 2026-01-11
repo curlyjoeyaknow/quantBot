@@ -39,6 +39,157 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Slice Exporter Quality Validation** - Detect and report gaps during parquet export
+  - New `slice_quality.py` module with `QualityMetrics` and gap detection functions
+  - Analyzes coverage, gaps, duplicates, OHLC distortions, zero volume
+  - Per-token and aggregate quality scoring (0-100 scale)
+  - Gap-filling function for small gaps with forward-fill
+
+- **Slice Validation Tool** (`tools/backtest/validate_slices.py`) - Standalone quality checker
+  - Validates all parquet slices in a directory
+  - Generates severity breakdown: critical, warning, minor, ok
+  - Optional ClickHouse comparison mode
+  - Outputs worklist of tokens needing re-ingestion
+  - Usage: `python validate_slices.py --dir slices/per_token --output-worklist worklist.json`
+
+- **Per-Token Slice Export Quality Reports** - Automatic quality tracking
+  - Every export now generates `quality_report.json` with per-token metrics
+  - Console summary shows: tokens with gaps, low coverage, high zero volume
+  - Quality warnings during verbose export
+
+### Fixed
+
+- **Race Condition in Parallel Slice Exporter** - Data loss prevention
+  - Fixed bare `except:` clause that caught `queue.Empty` incorrectly
+  - Now uses specific `QueueEmpty` exception handling
+  - Added timeout for producer thread join with warning
+  - Added final queue drain to ensure all data is written
+
+- **Improved Deduplication in Slice Export** - Better candle selection
+  - Changed from `any()` to `argMax(volume)` aggregation
+  - Prefers candle with highest volume when duplicates exist
+  - Reduces quality issues from duplicate candle entries
+
+- **Intelligent Caching for Phased Stop Simulator** - Reuses results across overlapping date ranges
+  - **Primary benefit**: Avoid recomputing overlapping date ranges when extending backtests
+  - **How it works**:
+    - Tracks cached results in `cache_metadata.json` with date ranges
+    - Detects overlapping date ranges and loads cached trades
+    - Only computes missing date ranges
+    - Combines cached + new results seamlessly
+  - **Example**: Run 2025-05-01 to 2025-07-01, then extend to 2025-08-01
+    - Second run only computes 2025-07-01 to 2025-08-01
+    - Loads 2025-05-01 to 2025-07-01 from cache
+    - Total speedup: ~66% less computation
+  - **Parameter handling**:
+    - Cache key based on chain + date range (NOT min_calls)
+    - Lowering min_calls identifies newly included callers
+    - Future: Can recompute for specific callers if needed
+  - **New CLI option**: `--use-cache` (default: off)
+  - **Cache structure**:
+    - `cache_metadata.json`: Tracks all cached runs
+    - One parquet file per run with run_id
+    - Each entry stores: filename, chain, date_from, date_to, min_calls, created_at
+  - **Benefits**:
+    - Speed: Avoid redundant computation
+    - Flexibility: Easily extend date ranges
+    - Efficiency: Only compute what's needed
+    - Incremental: Build up historical results over time
+  - Usage:
+
+    ```bash
+    # Initial run
+    python3 phased_stop_simulator.py ... --use-cache --output-dir output/my_backtest
+
+    # Extend date range (only computes new dates)
+    python3 phased_stop_simulator.py ... --use-cache --date-to 2025-08-01
+    ```
+
+- **Parquet Output & Resume for Phased Stop Simulator** - Full audit trail and crash recovery
+  - Every trade saved to parquet with run_id
+  - Incremental saves (every 10 alerts) prevent data loss
+  - Resume functionality skips already processed (mint, strategy) combinations
+  - New CLI options: `--output-dir`, `--resume`
+  - Parquet schema includes: caller, mint, strategy params, milestones, performance metrics
+
+- **Parquet vs ClickHouse OHLCV Quality Comparison Tool** - Compares data quality between parquet slice files and ClickHouse
+  - Script: `tools/storage/compare_parquet_clickhouse_quality.py`
+  - **Primary question answered**: Is bad ClickHouse data mostly OUTSIDE the 48-hour event horizon window?
+  - For each alert with a matching parquet file:
+    - Loads candles from parquet (per-token slices)
+    - Loads candles from ClickHouse for the same time range
+    - Analyzes quality metrics: duplicates, gaps, distortions, zero volume
+    - Compares quality INSIDE vs OUTSIDE the 48-hour horizon (alert → alert + 48h)
+  - **Key metrics**:
+    - Quality score (0-100) per source
+    - Coverage (candle count) per source
+    - % of ClickHouse issues inside vs outside horizon
+    - Which source has better data for backtesting
+  - Features:
+    - Auto-matches parquet files to alerts by mint prefix and timestamp
+    - Graceful fallback to parquet-only mode when ClickHouse unavailable
+    - Supports 1m and 5m intervals
+    - JSON report output with detailed per-token comparisons
+    - Console visualization with color-coded results
+  - Usage:
+    ```bash
+    python tools/storage/compare_parquet_clickhouse_quality.py \
+        --duckdb data/alerts.duckdb \
+        --parquet-dir slices/per_token \
+        --limit 100 \
+        --visualize
+    ```
+
+- **Phased Stop Strategy Simulator** - Comprehensive simulator testing universal vs phased stop strategies
+  - Script: `tools/backtest/phased_stop_simulator.py`
+  - Tests whether different stop percentages are needed for different phases:
+    - **Phase 1 (1x→2x)**: Entry to first profit target (2x)
+    - **Phase 2 (2x+)**: After hitting 2x, trail until stopped out
+  - **Universal stops**: Same % for both phases (e.g., 20%/20%)
+  - **Phased stops**: Different % per phase (e.g., 10%/20% - tighter pre-2x, looser post-2x)
+  - Supports all stop modes: static, trailing, ladder (with configurable steps)
+  - Real P&L simulation with actual trade outcomes per caller
+  - Key metrics:
+    - **EV/Trade%**: Expected value per trade (primary optimization target)
+    - **Cap2x%/Cap3x%/Cap4x%**: Milestone capture rates
+    - **Stop1/Stop2**: Count of stops in each phase
+    - **WinRate%**: % of trades with positive return
+  - Answers: "Do I need tighter stops pre-2x and looser post-2x, or does one size fit all?"
+  - Example findings:
+    - Brook 💀l: 10% trailing (universal) = 73.2% avg return ✅
+    - Brook 💀🧲: 10%/20% ladder (phased) = 11.7% avg return ✅
+  - Multithreaded processing with configurable date ranges and minimum call thresholds
+
+- **1x→2x Drawdown Analysis** - Extended drawdown analysis to include pre-2x phase
+  - Added to `tools/backtest/post2x_drawdown_analysis.py`
+  - New DD_1x→2x table showing drawdown from entry to 2x
+  - Distribution stats (p50, p75, p90) for entry-to-2x phase
+  - Keep@X% capture rates for 1x→2x window
+  - Supports all stop modes (static, trailing, ladder)
+  - Shows which callers require tight vs loose stops pre-2x
+  - Hit2x% column added to all tables (% of alerts that reached 2x)
+
+- **Post-2x Drawdown Analysis with +EV Metrics** - Python script for analyzing trailing stop effectiveness
+  - Script: `tools/backtest/post2x_drawdown_analysis.py`
+  - Computes drawdown distributions for tokens reaching 2x, 3x, 4x, 5x milestones
+  - **Winner analysis**: Drawdown from 2x→3x, 2x→4x, 2x→5x for tokens that reach next milestone
+    - Distribution stats (p50, p75, p90) per caller
+    - Keep@X% rates: % of winners captured with X% stop (5%, 10%, 15%, 20%, 25%, 30%, 40%)
+  - **Non-winner analysis**: Drawdown for tokens that DON'T reach next milestone (saved from nuke)
+    - 2x-but-not-3x: How often would a stop save you from full round-trip?
+    - 3x-but-not-4x: Post-3x nuke protection
+    - 4x-but-not-5x: Post-4x nuke protection
+  - **+EV decision framework**: Compare Keep@X% (winners captured) vs Save@X% (losers saved)
+    - If Keep@X% is high (>80%) AND Save@X% is high (>70%), the stop is +EV
+    - Example: Keep@20% = 85% and Save@20% = 80% → highly +EV (capture 85% of winners, save 80% of losers)
+  - **Two stop modes** (`--stop-mode`):
+    - `static` (default): Stop anchored at 2x/3x/4x price (measures max drawdown tolerance)
+    - `trailing`: Stop moves up with peak price (realistic trailing stop simulation)
+  - Multithreaded processing with progress bar (configurable threads)
+  - Resource limits and timeouts to prevent hanging on large datasets
+  - Drawdown sign convention: Always positive magnitude (0-100%)
+  - Per-caller aggregation with configurable date ranges and minimum call thresholds
+
 - **Python V1 Baseline Optimizer with TypeScript Orchestration** - Complete Python implementation with TypeScript integration
   - Core simulator: `tools/backtest/lib/v1_baseline_simulator.py` (564 lines ported from TypeScript)
     - Capital-aware simulation with finite capital and position constraints

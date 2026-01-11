@@ -5,7 +5,20 @@ Reusable components for baseline and TP/SL backtesting pipelines.
 """
 
 from .alerts import Alert, load_alerts
-from .slice_exporter import ClickHouseCfg, export_slice_streaming, query_coverage_batched
+from .slice_exporter import (
+    ClickHouseCfg, 
+    export_slice_streaming, 
+    export_slice_streaming_with_quality,
+    ExportResult,
+    query_coverage_batched,
+)
+from .slice_quality import (
+    QualityMetrics,
+    QualityThresholds,
+    analyze_candles,
+    analyze_parquet_quality,
+    fill_gaps_with_forward_fill,
+)
 from .partitioner import (
     partition_slice,
     is_hive_partitioned,

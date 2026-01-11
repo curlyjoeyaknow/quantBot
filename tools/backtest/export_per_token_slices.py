@@ -22,12 +22,13 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import sys
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Dict, List, NamedTuple, Optional, Set
+from typing import Any, Dict, List, NamedTuple, Optional
 
 import duckdb
 
@@ -107,6 +108,120 @@ class ClickHouseCfg:
         )
 
 
+@dataclass
+class TokenExportResult:
+    """Result of exporting candles for a single token."""
+    
+    count: int
+    gaps: int = 0
+    duplicates: int = 0
+    coverage_pct: float = 0.0
+    quality_score: float = 100.0
+    zero_volume: int = 0
+    
+    @property
+    def has_gaps(self) -> bool:
+        return self.gaps > 0
+    
+    @property
+    def is_low_coverage(self) -> bool:
+        return self.coverage_pct < 80.0
+    
+    @property
+    def is_high_zero_volume(self) -> bool:
+        return self.count > 0 and (self.zero_volume / self.count) * 100 > 20.0
+
+
+def analyze_token_candles(
+    rows: List[Any],
+    interval_seconds: int,
+    expected_start_ts: int,
+    expected_end_ts: int,
+) -> TokenExportResult:
+    """
+    Analyze quality of candles for a single token.
+    
+    Returns TokenExportResult with quality metrics.
+    """
+    if not rows:
+        return TokenExportResult(count=0)
+    
+    count = len(rows)
+    
+    # Extract timestamps
+    timestamps: List[int] = []
+    for row in rows:
+        ts = row[1]
+        if isinstance(ts, datetime):
+            timestamps.append(int(ts.timestamp()))
+        else:
+            timestamps.append(int(ts))
+    
+    timestamps.sort()
+    
+    # Detect duplicates
+    seen: set = set()
+    duplicates = 0
+    unique_ts: List[int] = []
+    for ts in timestamps:
+        if ts in seen:
+            duplicates += 1
+        else:
+            seen.add(ts)
+            unique_ts.append(ts)
+    
+    # Calculate expected candles
+    time_span = max(0, expected_end_ts - expected_start_ts)
+    expected_candles = max(1, time_span // interval_seconds)
+    
+    # Detect gaps
+    gaps = 0
+    for i in range(1, len(unique_ts)):
+        diff = unique_ts[i] - unique_ts[i - 1]
+        if diff > interval_seconds * 1.5:
+            missing = (diff // interval_seconds) - 1
+            gaps += missing
+    
+    # Also check for gaps at start and end
+    if unique_ts:
+        # Gap at start
+        start_gap = (unique_ts[0] - expected_start_ts) // interval_seconds
+        if start_gap > 0:
+            gaps += start_gap
+        
+        # Gap at end
+        end_gap = (expected_end_ts - unique_ts[-1]) // interval_seconds
+        if end_gap > 1:  # Allow 1 candle margin
+            gaps += end_gap - 1
+    
+    # Calculate coverage
+    unique_count = len(unique_ts)
+    coverage_pct = (unique_count / expected_candles) * 100 if expected_candles > 0 else 0
+    
+    # Count zero volume
+    zero_volume = 0
+    for row in rows:
+        if len(row) >= 7 and (row[6] is None or row[6] == 0):
+            zero_volume += 1
+    
+    # Calculate quality score
+    score = 100.0
+    score -= min(30, duplicates * 0.5)
+    score -= min(30, gaps * 0.1)
+    score -= min(10, zero_volume * 0.05)
+    if coverage_pct < 80:
+        score -= (80 - coverage_pct) * 0.5
+    
+    return TokenExportResult(
+        count=count,
+        gaps=gaps,
+        duplicates=duplicates,
+        coverage_pct=coverage_pct,
+        quality_score=max(0, score),
+        zero_volume=zero_volume,
+    )
+
+
 def export_token_candles(
     cfg: ClickHouseCfg,
     chain: str,
@@ -115,26 +230,33 @@ def export_token_candles(
     start_time: datetime,
     end_time: datetime,
     output_path: Path,
-) -> int:
+    validate: bool = True,
+) -> TokenExportResult:
     """
     Export candles for a single token to a Parquet file.
-    Returns number of rows exported.
+    
+    Returns TokenExportResult with count and quality metrics.
     Deduplicates by timestamp (takes any row per timestamp).
+    
+    Improvements:
+    - Uses argmax(volume) instead of any() to prefer candles with higher volume
+    - Returns quality metrics for gap/coverage tracking
+    - Validates data before writing
     """
     chain_q = _sql_escape(chain)
     mint_q = _sql_escape(mint)
 
-    # Use GROUP BY to deduplicate - takes any value per timestamp
-    # (ClickHouse may have duplicate candles from multiple ingestion runs)
+    # Use GROUP BY to deduplicate - prefer candle with highest volume
+    # This is better than any() because it picks the "most complete" candle
     sql = f"""
 SELECT
   token_address,
   timestamp,
-  any(open) as open,
-  any(high) as high,
-  any(low) as low,
-  any(close) as close,
-  any(volume) as volume
+  argMax(open, volume) as open,
+  argMax(high, volume) as high,
+  argMax(low, volume) as low,
+  argMax(close, volume) as close,
+  max(volume) as volume
 FROM {cfg.database}.{cfg.table}
 WHERE chain = '{chain_q}'
   AND token_address = '{mint_q}'
@@ -150,9 +272,17 @@ ORDER BY timestamp
     rows_data, columns = result
 
     if not rows_data:
-        return 0
+        return TokenExportResult(count=0)
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Analyze quality before writing
+    expected_start_ts = int(start_time.timestamp())
+    expected_end_ts = int(end_time.timestamp())
+    
+    quality = analyze_token_candles(
+        rows_data, interval_seconds, expected_start_ts, expected_end_ts
+    )
 
     # Write to Parquet using DuckDB
     conn = duckdb.connect(":memory:")
@@ -172,7 +302,8 @@ ORDER BY timestamp
     count = conn.execute("SELECT count(*) FROM candles").fetchone()[0]
     conn.close()
 
-    return count
+    quality.count = count
+    return quality
 
 
 # =============================================================================
@@ -362,7 +493,7 @@ Examples:
     pre_window_td = timedelta(minutes=args.pre_window)
 
     if verbose:
-        print(f"[2/3] Export settings:", file=sys.stderr)
+        print("[2/3] Export settings:", file=sys.stderr)
         print(f"      Horizon: {args.horizon}h after alert", file=sys.stderr)
         if args.pre_window > 0:
             print(f"      Pre-window: {args.pre_window}m before alert", file=sys.stderr)
@@ -390,6 +521,13 @@ Examples:
     skipped = 0
     no_data = 0
     total_candles = 0
+    
+    # Quality tracking
+    quality_results: List[Dict[str, Any]] = []
+    tokens_with_gaps = 0
+    tokens_low_coverage = 0
+    tokens_high_zero_volume = 0
+    total_gaps = 0
 
     for i, alert in enumerate(unique_alerts):
         alert_dt = ms_to_dt(alert.trigger_ts_ms)
@@ -405,7 +543,7 @@ Examples:
             skipped += 1
             continue
 
-        count = export_token_candles(
+        result = export_token_candles(
             cfg=ch_cfg,
             chain=args.chain,
             mint=alert.mint,
@@ -413,16 +551,59 @@ Examples:
             start_time=start_time,
             end_time=end_time,
             output_path=output_path,
+            validate=True,
         )
 
-        if count > 0:
+        if result.count > 0:
             exported += 1
-            total_candles += count
+            total_candles += result.count
+            total_gaps += result.gaps
+            
+            # Track quality issues
+            if result.has_gaps:
+                tokens_with_gaps += 1
+            if result.is_low_coverage:
+                tokens_low_coverage += 1
+            if result.is_high_zero_volume:
+                tokens_high_zero_volume += 1
+            
+            # Record for quality report
+            quality_results.append({
+                "mint": alert.mint,
+                "filename": filename,
+                "alert_ts": alert_dt.isoformat(),
+                "caller": alert.caller_name or "unknown",
+                "count": result.count,
+                "gaps": result.gaps,
+                "duplicates": result.duplicates,
+                "coverage_pct": round(result.coverage_pct, 1),
+                "quality_score": round(result.quality_score, 1),
+                "zero_volume": result.zero_volume,
+            })
+            
             if verbose:
                 progress = f"[{i+1}/{len(unique_alerts)}]"
-                print(f"  {progress} {alert.mint[:12]}... -> {count:,} candles", file=sys.stderr)
+                quality_indicator = ""
+                if result.has_gaps:
+                    quality_indicator = f" ⚠️ gaps={result.gaps}"
+                elif result.is_low_coverage:
+                    quality_indicator = f" ⚠️ cov={result.coverage_pct:.0f}%"
+                print(f"  {progress} {alert.mint[:12]}... -> {result.count:,} candles{quality_indicator}", file=sys.stderr)
         else:
             no_data += 1
+            quality_results.append({
+                "mint": alert.mint,
+                "filename": filename,
+                "alert_ts": alert_dt.isoformat(),
+                "caller": alert.caller_name or "unknown",
+                "count": 0,
+                "gaps": 0,
+                "duplicates": 0,
+                "coverage_pct": 0,
+                "quality_score": 0,
+                "zero_volume": 0,
+                "error": "no_data",
+            })
             if verbose:
                 progress = f"[{i+1}/{len(unique_alerts)}]"
                 print(f"  {progress} {alert.mint[:12]}... -> NO DATA", file=sys.stderr)
@@ -441,6 +622,26 @@ Examples:
     if no_data:
         print(f"No data:        {no_data} tokens (missing in ClickHouse)")
     print(f"Output dir:     {out_dir.absolute()}")
+    
+    # Quality summary
+    print()
+    print("-" * 40)
+    print("QUALITY SUMMARY")
+    print("-" * 40)
+    if exported > 0:
+        print(f"Tokens with GAPS:        {tokens_with_gaps:3} / {exported} ({tokens_with_gaps / exported * 100:.1f}%)")
+        print(f"Tokens low coverage:     {tokens_low_coverage:3} / {exported} ({tokens_low_coverage / exported * 100:.1f}%)")
+        print(f"Tokens high zero volume: {tokens_high_zero_volume:3} / {exported} ({tokens_high_zero_volume / exported * 100:.1f}%)")
+        print(f"Total gaps:              {total_gaps:,}")
+        
+        # Quality assessment
+        gap_rate = tokens_with_gaps / exported * 100
+        if gap_rate > 50:
+            print(f"\n⚠️  HIGH GAP RATE ({gap_rate:.1f}%) - check ClickHouse data quality")
+        elif gap_rate > 20:
+            print(f"\n⚠️  MODERATE GAP RATE ({gap_rate:.1f}%) - some tokens may need re-ingestion")
+        else:
+            print(f"\n✅ LOW GAP RATE ({gap_rate:.1f}%) - data quality is acceptable")
     print()
 
     # Write manifest
@@ -451,6 +652,7 @@ Examples:
         f.write(f"# Horizon: {args.horizon}h, Pre-window: {args.pre_window}m\n")
         f.write(f"# Interval: {args.interval_seconds}s\n")
         f.write(f"# Tokens: {exported}\n")
+        f.write(f"# Quality: gaps={tokens_with_gaps}, low_coverage={tokens_low_coverage}\n")
         f.write("#\n")
         for alert in sorted(unique_alerts, key=lambda a: a.trigger_ts_ms):
             alert_dt = ms_to_dt(alert.trigger_ts_ms)
@@ -460,6 +662,37 @@ Examples:
             f.write(f"{alert.mint}\t{alert_dt.isoformat()}\t{caller}\t{filename}\n")
 
     print(f"Manifest:       {manifest_path}")
+    
+    # Write quality report
+    quality_report_path = out_dir / "quality_report.json"
+    quality_report = {
+        "generated_at": datetime.now(UTC).isoformat(),
+        "parameters": {
+            "date_from": date_from.strftime('%Y-%m-%d'),
+            "date_to": date_to.strftime('%Y-%m-%d'),
+            "horizon_hours": args.horizon,
+            "pre_window_minutes": args.pre_window,
+            "interval_seconds": args.interval_seconds,
+        },
+        "summary": {
+            "total_alerts": len(unique_alerts),
+            "exported": exported,
+            "skipped": skipped,
+            "no_data": no_data,
+            "total_candles": total_candles,
+            "total_gaps": total_gaps,
+            "tokens_with_gaps": tokens_with_gaps,
+            "tokens_low_coverage": tokens_low_coverage,
+            "tokens_high_zero_volume": tokens_high_zero_volume,
+            "gap_rate_pct": round(tokens_with_gaps / exported * 100, 1) if exported > 0 else 0,
+            "low_coverage_rate_pct": round(tokens_low_coverage / exported * 100, 1) if exported > 0 else 0,
+        },
+        "tokens": quality_results,
+    }
+    with open(quality_report_path, "w") as f:
+        json.dump(quality_report, f, indent=2)
+    
+    print(f"Quality report: {quality_report_path}")
 
 
 if __name__ == "__main__":
