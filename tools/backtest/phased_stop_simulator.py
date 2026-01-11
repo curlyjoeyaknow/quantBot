@@ -19,10 +19,10 @@ Features:
 - Multithreaded processing
 
 Usage:
-    # Basic run
+    # Basic run (cache metadata saved automatically for future use)
     python3 phased_stop_simulator.py --duckdb data/alerts.duckdb --slice slices/per_token --chain solana
     
-    # With caching (reuses results from previous runs with overlapping dates)
+    # Reuse results from previous runs (only computes missing data)
     python3 phased_stop_simulator.py ... --use-cache --output-dir output/my_backtest
     
     # If interrupted, resume same run (skips already-processed mints)
@@ -37,6 +37,9 @@ Usage:
 Key difference:
     --resume: For continuing an interrupted run (same run_id, same date range)
     --use-cache: For reusing results from previous completed runs (different run_ids, overlapping dates)
+    
+Note: Cache metadata is ALWAYS saved, so you can add --use-cache to any future run,
+      even if your first run didn't use it!
 """
 
 from __future__ import annotations
