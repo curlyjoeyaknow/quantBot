@@ -1,0 +1,5 @@
+# QuantBot Storage Python Dependencies
+duckdb>=0.9.0
+clickhouse-driver>=0.2.6
+pyarrow>=14.0.0
+

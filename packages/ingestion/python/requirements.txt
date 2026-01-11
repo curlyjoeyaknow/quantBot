@@ -1,0 +1,3 @@
+# QuantBot Ingestion Python Dependencies
+duckdb>=0.9.0
+

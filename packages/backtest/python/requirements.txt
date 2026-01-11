@@ -1,0 +1,6 @@
+# QuantBot Backtest Python Dependencies
+numpy>=1.24.0
+pandas>=2.0.0
+duckdb>=0.9.0
+clickhouse-driver>=0.2.6
+
