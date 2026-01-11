@@ -201,6 +201,7 @@ def compute_post2x_dd(
     entry_price: float,
     t0_ms: int,
     interval_seconds: int = 300,
+    stop_mode: str = "static",
 ) -> Post2xMetrics:
     """
     Compute post-2x drawdown metrics from candle data.
@@ -210,6 +211,7 @@ def compute_post2x_dd(
         entry_price: Entry price (p0)
         t0_ms: Alert timestamp in milliseconds
         interval_seconds: Candle interval in seconds
+        stop_mode: 'static' (stop anchored at 2x/3x/4x) or 'trailing' (stop moves with peak)
         
     Returns:
         Post2xMetrics object
@@ -262,6 +264,14 @@ def compute_post2x_dd(
     min_low_post3x_all: Optional[float] = None
     min_low_post4x_all: Optional[float] = None
     
+    # For trailing mode: track peak prices in each window
+    peak_post2x_to3x: Optional[float] = None
+    peak_post2x_to4x: Optional[float] = None
+    peak_post2x_to5x: Optional[float] = None
+    peak_post2x_all: Optional[float] = None
+    peak_post3x_all: Optional[float] = None
+    peak_post4x_all: Optional[float] = None
+    
     for candle in candles:
         # Convert timestamp to ms
         ts_val = candle['timestamp']
@@ -300,74 +310,112 @@ def compute_post2x_dd(
         if t_5x_ms is None and high >= target_5x:
             t_5x_ms = ts_ms
         
-        # Track minimum low in windows
+        # Track minimum low and peak high in windows
         if t_2x_ms is not None and ts_ms >= t_2x_ms:
             # For WINNERS: track in specific windows [t2x, tNx]
             if t_3x_ms is not None and ts_ms <= t_3x_ms:
                 if min_low_post2x_to3x is None or low < min_low_post2x_to3x:
                     min_low_post2x_to3x = low
+                if stop_mode == "trailing":
+                    if peak_post2x_to3x is None or high > peak_post2x_to3x:
+                        peak_post2x_to3x = high
             
             if t_4x_ms is not None and ts_ms <= t_4x_ms:
                 if min_low_post2x_to4x is None or low < min_low_post2x_to4x:
                     min_low_post2x_to4x = low
+                if stop_mode == "trailing":
+                    if peak_post2x_to4x is None or high > peak_post2x_to4x:
+                        peak_post2x_to4x = high
             
             if t_5x_ms is not None and ts_ms <= t_5x_ms:
                 if min_low_post2x_to5x is None or low < min_low_post2x_to5x:
                     min_low_post2x_to5x = low
+                if stop_mode == "trailing":
+                    if peak_post2x_to5x is None or high > peak_post2x_to5x:
+                        peak_post2x_to5x = high
             
             # For ALL post-2x candles (used for non-winners)
             if min_low_post2x_all is None or low < min_low_post2x_all:
                 min_low_post2x_all = low
+            if stop_mode == "trailing":
+                if peak_post2x_all is None or high > peak_post2x_all:
+                    peak_post2x_all = high
         
         # Track post-3x for 3x-but-not-4x
         if t_3x_ms is not None and ts_ms >= t_3x_ms:
             if min_low_post3x_all is None or low < min_low_post3x_all:
                 min_low_post3x_all = low
+            if stop_mode == "trailing":
+                if peak_post3x_all is None or high > peak_post3x_all:
+                    peak_post3x_all = high
         
         # Track post-4x for 4x-but-not-5x
         if t_4x_ms is not None and ts_ms >= t_4x_ms:
             if min_low_post4x_all is None or low < min_low_post4x_all:
                 min_low_post4x_all = low
+            if stop_mode == "trailing":
+                if peak_post4x_all is None or high > peak_post4x_all:
+                    peak_post4x_all = high
     
     # Compute drawdowns (positive magnitude: 0% to 100%)
-    # DD = 1 - (min_price / price_at_2x)
-    # If min_price > price_at_2x, DD is negative (price went up), clamp to 0
+    # Static mode: DD = 1 - (min_low / anchor_price) where anchor = 2x/3x/4x price
+    # Trailing mode: DD = 1 - (min_low / peak_price) where peak moves with highs
     
     # For WINNERS (reached next milestone)
     dd_post2x_to3x_pct = None
     if t_2x_ms is not None and t_3x_ms is not None and min_low_post2x_to3x is not None:
-        dd_raw = 1.0 - (min_low_post2x_to3x / price_at_2x)
-        dd_post2x_to3x_pct = max(0.0, dd_raw)  # Clamp to 0 if price went up
+        if stop_mode == "trailing" and peak_post2x_to3x is not None:
+            # Trailing: drawdown from peak in window
+            dd_raw = 1.0 - (min_low_post2x_to3x / peak_post2x_to3x)
+        else:
+            # Static: drawdown from 2x price
+            dd_raw = 1.0 - (min_low_post2x_to3x / price_at_2x)
+        dd_post2x_to3x_pct = max(0.0, dd_raw)
     
     dd_post2x_to4x_pct = None
     if t_2x_ms is not None and t_4x_ms is not None and min_low_post2x_to4x is not None:
-        dd_raw = 1.0 - (min_low_post2x_to4x / price_at_2x)
+        if stop_mode == "trailing" and peak_post2x_to4x is not None:
+            dd_raw = 1.0 - (min_low_post2x_to4x / peak_post2x_to4x)
+        else:
+            dd_raw = 1.0 - (min_low_post2x_to4x / price_at_2x)
         dd_post2x_to4x_pct = max(0.0, dd_raw)
     
     dd_post2x_to5x_pct = None
     if t_2x_ms is not None and t_5x_ms is not None and min_low_post2x_to5x is not None:
-        dd_raw = 1.0 - (min_low_post2x_to5x / price_at_2x)
+        if stop_mode == "trailing" and peak_post2x_to5x is not None:
+            dd_raw = 1.0 - (min_low_post2x_to5x / peak_post2x_to5x)
+        else:
+            dd_raw = 1.0 - (min_low_post2x_to5x / price_at_2x)
         dd_post2x_to5x_pct = max(0.0, dd_raw)
     
     # For NON-WINNERS (saved from nuke)
     dd_post2x_no3x_pct = None
     if t_2x_ms is not None and t_3x_ms is None and min_low_post2x_all is not None:
         # Hit 2x but NOT 3x - use entire post-2x window
-        dd_raw = 1.0 - (min_low_post2x_all / price_at_2x)
+        if stop_mode == "trailing" and peak_post2x_all is not None:
+            dd_raw = 1.0 - (min_low_post2x_all / peak_post2x_all)
+        else:
+            dd_raw = 1.0 - (min_low_post2x_all / price_at_2x)
         dd_post2x_no3x_pct = max(0.0, dd_raw)
     
     dd_post3x_no4x_pct = None
     if t_3x_ms is not None and t_4x_ms is None and min_low_post3x_all is not None:
         # Hit 3x but NOT 4x - use entire post-3x window
         price_at_3x = entry_price * 3.0
-        dd_raw = 1.0 - (min_low_post3x_all / price_at_3x)
+        if stop_mode == "trailing" and peak_post3x_all is not None:
+            dd_raw = 1.0 - (min_low_post3x_all / peak_post3x_all)
+        else:
+            dd_raw = 1.0 - (min_low_post3x_all / price_at_3x)
         dd_post3x_no4x_pct = max(0.0, dd_raw)
     
     dd_post4x_no5x_pct = None
     if t_4x_ms is not None and t_5x_ms is None and min_low_post4x_all is not None:
         # Hit 4x but NOT 5x - use entire post-4x window
         price_at_4x = entry_price * 4.0
-        dd_raw = 1.0 - (min_low_post4x_all / price_at_4x)
+        if stop_mode == "trailing" and peak_post4x_all is not None:
+            dd_raw = 1.0 - (min_low_post4x_all / peak_post4x_all)
+        else:
+            dd_raw = 1.0 - (min_low_post4x_all / price_at_4x)
         dd_post4x_no5x_pct = max(0.0, dd_raw)
     
     return Post2xMetrics(
@@ -684,6 +732,13 @@ def main():
         default=8,
         help="Number of parallel threads for processing (default: 8)",
     )
+    parser.add_argument(
+        "--stop-mode",
+        type=str,
+        choices=["static", "trailing"],
+        default="static",
+        help="Stop calculation mode: 'static' = stop anchored at 2x/3x/4x price (measures max drawdown tolerance), 'trailing' = stop moves up with peak price (realistic trailing stop)",
+    )
     
     args = parser.parse_args()
     
@@ -770,6 +825,7 @@ def main():
             entry_price,
             alert.ts_ms,
             args.interval_seconds,
+            args.stop_mode,
         )
         metrics.caller = alert.caller
         metrics.mint = alert.mint
@@ -868,7 +924,8 @@ def main():
     else:
         # Table output - show all three metrics (2x→3x, 2x→4x, 2x→5x)
         print("\n" + "=" * 160)
-        print("POST-2X DRAWDOWN ANALYSIS BY CALLER")
+        stop_mode_desc = "STATIC (stop anchored at 2x/3x/4x)" if args.stop_mode == "static" else "TRAILING (stop moves with peak)"
+        print(f"POST-2X DRAWDOWN ANALYSIS BY CALLER - {stop_mode_desc}")
         print("=" * 160)
         print("\nDD_2x→3x (tokens that reached 3x)")
         print("-" * 160)
