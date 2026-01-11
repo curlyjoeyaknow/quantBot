@@ -6,6 +6,35 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Phased Stop Strategy Simulator** - Comprehensive simulator testing universal vs phased stop strategies
+  - Script: `tools/backtest/phased_stop_simulator.py`
+  - Tests whether different stop percentages are needed for different phases:
+    - **Phase 1 (1x→2x)**: Entry to first profit target (2x)
+    - **Phase 2 (2x+)**: After hitting 2x, trail until stopped out
+  - **Universal stops**: Same % for both phases (e.g., 20%/20%)
+  - **Phased stops**: Different % per phase (e.g., 10%/20% - tighter pre-2x, looser post-2x)
+  - Supports all stop modes: static, trailing, ladder (with configurable steps)
+  - Real P&L simulation with actual trade outcomes per caller
+  - Key metrics:
+    - **EV/Trade%**: Expected value per trade (primary optimization target)
+    - **Cap2x%/Cap3x%/Cap4x%**: Milestone capture rates
+    - **Stop1/Stop2**: Count of stops in each phase
+    - **WinRate%**: % of trades with positive return
+  - Answers: "Do I need tighter stops pre-2x and looser post-2x, or does one size fit all?"
+  - Example findings:
+    - Brook 💀l: 10% trailing (universal) = 73.2% avg return ✅
+    - Brook 💀🧲: 10%/20% ladder (phased) = 11.7% avg return ✅
+  - Multithreaded processing with configurable date ranges and minimum call thresholds
+
+- **1x→2x Drawdown Analysis** - Extended drawdown analysis to include pre-2x phase
+  - Added to `tools/backtest/post2x_drawdown_analysis.py`
+  - New DD_1x→2x table showing drawdown from entry to 2x
+  - Distribution stats (p50, p75, p90) for entry-to-2x phase
+  - Keep@X% capture rates for 1x→2x window
+  - Supports all stop modes (static, trailing, ladder)
+  - Shows which callers require tight vs loose stops pre-2x
+  - Hit2x% column added to all tables (% of alerts that reached 2x)
+
 - **Post-2x Drawdown Analysis with +EV Metrics** - Python script for analyzing trailing stop effectiveness
   - Script: `tools/backtest/post2x_drawdown_analysis.py`
   - Computes drawdown distributions for tokens reaching 2x, 3x, 4x, 5x milestones
