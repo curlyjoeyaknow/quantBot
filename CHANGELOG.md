@@ -6,6 +6,23 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Post-2x Drawdown Analysis with +EV Metrics** - Python script for analyzing trailing stop effectiveness
+  - Script: `tools/backtest/post2x_drawdown_analysis.py`
+  - Computes drawdown distributions for tokens reaching 2x, 3x, 4x, 5x milestones
+  - **Winner analysis**: Drawdown from 2x→3x, 2x→4x, 2x→5x for tokens that reach next milestone
+    - Distribution stats (p50, p75, p90) per caller
+    - Stopout rates at 5%, 10%, 15%, 20%, 25%, 30%, 40% trailing stops
+  - **Non-winner analysis**: Drawdown for tokens that DON'T reach next milestone (saved from nuke)
+    - 2x-but-not-3x: How often would a stop save you from full round-trip?
+    - 3x-but-not-4x: Post-3x nuke protection
+    - 4x-but-not-5x: Post-4x nuke protection
+  - **+EV decision framework**: Compare Stop@X% (winners killed) vs Save@X% (losers saved)
+    - If Save@X% >> Stop@X%, the trailing stop is +EV
+    - Example: Stop@20% = 15% and Save@20% = 80% → highly +EV (save 80% of losers, miss 15% of winners)
+  - Multithreaded processing with progress bar (configurable threads)
+  - Drawdown sign convention: Always positive magnitude (0-100%)
+  - Per-caller aggregation with configurable date ranges and minimum call thresholds
+
 - **Python V1 Baseline Optimizer with TypeScript Orchestration** - Complete Python implementation with TypeScript integration
   - Core simulator: `tools/backtest/lib/v1_baseline_simulator.py` (564 lines ported from TypeScript)
     - Capital-aware simulation with finite capital and position constraints

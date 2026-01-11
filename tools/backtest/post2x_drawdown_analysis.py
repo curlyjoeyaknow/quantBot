@@ -91,6 +91,11 @@ class Post2xMetrics:
     dd_post2x_to3x_pct: Optional[float]  # Only if hit 2x AND hit 3x
     dd_post2x_to4x_pct: Optional[float]  # Only if hit 2x AND hit 4x
     dd_post2x_to5x_pct: Optional[float]  # Only if hit 2x AND hit 5x
+    
+    # Drawdowns for NON-WINNERS (saved from nuke)
+    dd_post2x_no3x_pct: Optional[float]  # 2x but NOT 3x
+    dd_post3x_no4x_pct: Optional[float]  # 3x but NOT 4x
+    dd_post4x_no5x_pct: Optional[float]  # 4x but NOT 5x
 
 
 @dataclass
@@ -104,6 +109,9 @@ class CallerDistribution:
     n_hit_2x_and_3x: int  # Eligible for dd_post2x_to3x
     n_hit_2x_and_4x: int  # Eligible for dd_post2x_to4x
     n_hit_2x_and_5x: int  # Eligible for dd_post2x_to5x
+    n_hit_2x_not_3x: int  # Hit 2x but NOT 3x (saved from nuke)
+    n_hit_3x_not_4x: int  # Hit 3x but NOT 4x
+    n_hit_4x_not_5x: int  # Hit 4x but NOT 5x
     
     # DD_post2x_to3x distribution
     dd_post2x_to3x_p50: Optional[float]
@@ -120,18 +128,68 @@ class CallerDistribution:
     dd_post2x_to5x_p75: Optional[float]
     dd_post2x_to5x_p90: Optional[float]
     
-    # Percentage requiring >X% drawdown (e.g., >20% = 0.20)
+    # DD for tokens that DON'T reach next milestone (saved from nuke)
+    dd_post2x_no3x_p50: Optional[float]  # 2x but NOT 3x
+    dd_post2x_no3x_p75: Optional[float]
+    dd_post2x_no3x_p90: Optional[float]
+    
+    dd_post3x_no4x_p50: Optional[float]  # 3x but NOT 4x
+    dd_post3x_no4x_p75: Optional[float]
+    dd_post3x_no4x_p90: Optional[float]
+    
+    dd_post4x_no5x_p50: Optional[float]  # 4x but NOT 5x
+    dd_post4x_no5x_p75: Optional[float]
+    dd_post4x_no5x_p90: Optional[float]
+    
+    # Percentage requiring >X% drawdown (stopout rates for winners)
+    pct_dd_post2x_to3x_gt_5pct: Optional[float]
     pct_dd_post2x_to3x_gt_10pct: Optional[float]
+    pct_dd_post2x_to3x_gt_15pct: Optional[float]
     pct_dd_post2x_to3x_gt_20pct: Optional[float]
+    pct_dd_post2x_to3x_gt_25pct: Optional[float]
     pct_dd_post2x_to3x_gt_30pct: Optional[float]
+    pct_dd_post2x_to3x_gt_40pct: Optional[float]
     
+    pct_dd_post2x_to4x_gt_5pct: Optional[float]
     pct_dd_post2x_to4x_gt_10pct: Optional[float]
+    pct_dd_post2x_to4x_gt_15pct: Optional[float]
     pct_dd_post2x_to4x_gt_20pct: Optional[float]
+    pct_dd_post2x_to4x_gt_25pct: Optional[float]
     pct_dd_post2x_to4x_gt_30pct: Optional[float]
+    pct_dd_post2x_to4x_gt_40pct: Optional[float]
     
+    pct_dd_post2x_to5x_gt_5pct: Optional[float]
     pct_dd_post2x_to5x_gt_10pct: Optional[float]
+    pct_dd_post2x_to5x_gt_15pct: Optional[float]
     pct_dd_post2x_to5x_gt_20pct: Optional[float]
+    pct_dd_post2x_to5x_gt_25pct: Optional[float]
     pct_dd_post2x_to5x_gt_30pct: Optional[float]
+    pct_dd_post2x_to5x_gt_40pct: Optional[float]
+    
+    # Stopout rates for NON-winners (saved from nuke)
+    pct_dd_post2x_no3x_gt_5pct: Optional[float]
+    pct_dd_post2x_no3x_gt_10pct: Optional[float]
+    pct_dd_post2x_no3x_gt_15pct: Optional[float]
+    pct_dd_post2x_no3x_gt_20pct: Optional[float]
+    pct_dd_post2x_no3x_gt_25pct: Optional[float]
+    pct_dd_post2x_no3x_gt_30pct: Optional[float]
+    pct_dd_post2x_no3x_gt_40pct: Optional[float]
+    
+    pct_dd_post3x_no4x_gt_5pct: Optional[float]
+    pct_dd_post3x_no4x_gt_10pct: Optional[float]
+    pct_dd_post3x_no4x_gt_15pct: Optional[float]
+    pct_dd_post3x_no4x_gt_20pct: Optional[float]
+    pct_dd_post3x_no4x_gt_25pct: Optional[float]
+    pct_dd_post3x_no4x_gt_30pct: Optional[float]
+    pct_dd_post3x_no4x_gt_40pct: Optional[float]
+    
+    pct_dd_post4x_no5x_gt_5pct: Optional[float]
+    pct_dd_post4x_no5x_gt_10pct: Optional[float]
+    pct_dd_post4x_no5x_gt_15pct: Optional[float]
+    pct_dd_post4x_no5x_gt_20pct: Optional[float]
+    pct_dd_post4x_no5x_gt_25pct: Optional[float]
+    pct_dd_post4x_no5x_gt_30pct: Optional[float]
+    pct_dd_post4x_no5x_gt_40pct: Optional[float]
 
 
 def compute_post2x_dd(
@@ -169,6 +227,9 @@ def compute_post2x_dd(
             dd_post2x_to3x_pct=None,
             dd_post2x_to4x_pct=None,
             dd_post2x_to5x_pct=None,
+            dd_post2x_no3x_pct=None,
+            dd_post3x_no4x_pct=None,
+            dd_post4x_no5x_pct=None,
         )
     
     # Targets
@@ -187,9 +248,15 @@ def compute_post2x_dd(
     price_at_2x = target_2x
     
     # Track minimum low in each window
+    # For winners: track in [t2x, tNx] window
     min_low_post2x_to3x: Optional[float] = None
     min_low_post2x_to4x: Optional[float] = None
     min_low_post2x_to5x: Optional[float] = None
+    
+    # For non-winners: track in [t2x, end_of_data] window
+    min_low_post2x_all: Optional[float] = None
+    min_low_post3x_all: Optional[float] = None
+    min_low_post4x_all: Optional[float] = None
     
     for candle in candles:
         # Convert timestamp to ms
@@ -230,35 +297,74 @@ def compute_post2x_dd(
             t_5x_ms = ts_ms
         
         # Track minimum low in windows
-        if t_2x_ms is not None:
-            # Window [t2x, t3x] for dd_post2x_to3x
-            if t_3x_ms is not None and ts_ms >= t_2x_ms and ts_ms <= t_3x_ms:
+        if t_2x_ms is not None and ts_ms >= t_2x_ms:
+            # For WINNERS: track in specific windows [t2x, tNx]
+            if t_3x_ms is not None and ts_ms <= t_3x_ms:
                 if min_low_post2x_to3x is None or low < min_low_post2x_to3x:
                     min_low_post2x_to3x = low
             
-            # Window [t2x, t4x] for dd_post2x_to4x
-            if t_4x_ms is not None and ts_ms >= t_2x_ms and ts_ms <= t_4x_ms:
+            if t_4x_ms is not None and ts_ms <= t_4x_ms:
                 if min_low_post2x_to4x is None or low < min_low_post2x_to4x:
                     min_low_post2x_to4x = low
             
-            # Window [t2x, t5x] for dd_post2x_to5x
-            if t_5x_ms is not None and ts_ms >= t_2x_ms and ts_ms <= t_5x_ms:
+            if t_5x_ms is not None and ts_ms <= t_5x_ms:
                 if min_low_post2x_to5x is None or low < min_low_post2x_to5x:
                     min_low_post2x_to5x = low
+            
+            # For ALL post-2x candles (used for non-winners)
+            if min_low_post2x_all is None or low < min_low_post2x_all:
+                min_low_post2x_all = low
+        
+        # Track post-3x for 3x-but-not-4x
+        if t_3x_ms is not None and ts_ms >= t_3x_ms:
+            if min_low_post3x_all is None or low < min_low_post3x_all:
+                min_low_post3x_all = low
+        
+        # Track post-4x for 4x-but-not-5x
+        if t_4x_ms is not None and ts_ms >= t_4x_ms:
+            if min_low_post4x_all is None or low < min_low_post4x_all:
+                min_low_post4x_all = low
     
-    # Compute drawdowns
+    # Compute drawdowns (positive magnitude: 0% to 100%)
     # DD = 1 - (min_price / price_at_2x)
+    # If min_price > price_at_2x, DD is negative (price went up), clamp to 0
+    
+    # For WINNERS (reached next milestone)
     dd_post2x_to3x_pct = None
     if t_2x_ms is not None and t_3x_ms is not None and min_low_post2x_to3x is not None:
-        dd_post2x_to3x_pct = 1.0 - (min_low_post2x_to3x / price_at_2x)
+        dd_raw = 1.0 - (min_low_post2x_to3x / price_at_2x)
+        dd_post2x_to3x_pct = max(0.0, dd_raw)  # Clamp to 0 if price went up
     
     dd_post2x_to4x_pct = None
     if t_2x_ms is not None and t_4x_ms is not None and min_low_post2x_to4x is not None:
-        dd_post2x_to4x_pct = 1.0 - (min_low_post2x_to4x / price_at_2x)
+        dd_raw = 1.0 - (min_low_post2x_to4x / price_at_2x)
+        dd_post2x_to4x_pct = max(0.0, dd_raw)
     
     dd_post2x_to5x_pct = None
     if t_2x_ms is not None and t_5x_ms is not None and min_low_post2x_to5x is not None:
-        dd_post2x_to5x_pct = 1.0 - (min_low_post2x_to5x / price_at_2x)
+        dd_raw = 1.0 - (min_low_post2x_to5x / price_at_2x)
+        dd_post2x_to5x_pct = max(0.0, dd_raw)
+    
+    # For NON-WINNERS (saved from nuke)
+    dd_post2x_no3x_pct = None
+    if t_2x_ms is not None and t_3x_ms is None and min_low_post2x_all is not None:
+        # Hit 2x but NOT 3x - use entire post-2x window
+        dd_raw = 1.0 - (min_low_post2x_all / price_at_2x)
+        dd_post2x_no3x_pct = max(0.0, dd_raw)
+    
+    dd_post3x_no4x_pct = None
+    if t_3x_ms is not None and t_4x_ms is None and min_low_post3x_all is not None:
+        # Hit 3x but NOT 4x - use entire post-3x window
+        price_at_3x = entry_price * 3.0
+        dd_raw = 1.0 - (min_low_post3x_all / price_at_3x)
+        dd_post3x_no4x_pct = max(0.0, dd_raw)
+    
+    dd_post4x_no5x_pct = None
+    if t_4x_ms is not None and t_5x_ms is None and min_low_post4x_all is not None:
+        # Hit 4x but NOT 5x - use entire post-4x window
+        price_at_4x = entry_price * 4.0
+        dd_raw = 1.0 - (min_low_post4x_all / price_at_4x)
+        dd_post4x_no5x_pct = max(0.0, dd_raw)
     
     return Post2xMetrics(
         caller="",  # Will be filled by caller
@@ -276,6 +382,9 @@ def compute_post2x_dd(
         dd_post2x_to3x_pct=dd_post2x_to3x_pct,
         dd_post2x_to4x_pct=dd_post2x_to4x_pct,
         dd_post2x_to5x_pct=dd_post2x_to5x_pct,
+        dd_post2x_no3x_pct=dd_post2x_no3x_pct,
+        dd_post3x_no4x_pct=dd_post3x_no4x_pct,
+        dd_post4x_no5x_pct=dd_post4x_no5x_pct,
     )
 
 
@@ -362,17 +471,32 @@ def aggregate_by_caller(
         n_hit_2x_and_4x = sum(1 for m in metrics if m.hit_2x and m.hit_4x)
         n_hit_2x_and_5x = sum(1 for m in metrics if m.hit_2x and m.hit_5x)
         
-        # Collect drawdown values
+        # NON-winners (saved from nuke)
+        n_hit_2x_not_3x = sum(1 for m in metrics if m.hit_2x and not m.hit_3x)
+        n_hit_3x_not_4x = sum(1 for m in metrics if m.hit_3x and not m.hit_4x)
+        n_hit_4x_not_5x = sum(1 for m in metrics if m.hit_4x and not m.hit_5x)
+        
+        # Collect drawdown values for WINNERS (reach next milestone)
         dd_2x_to3x = [m.dd_post2x_to3x_pct for m in metrics if m.dd_post2x_to3x_pct is not None]
         dd_2x_to4x = [m.dd_post2x_to4x_pct for m in metrics if m.dd_post2x_to4x_pct is not None]
         dd_2x_to5x = [m.dd_post2x_to5x_pct for m in metrics if m.dd_post2x_to5x_pct is not None]
         
-        # Distribution stats
+        # Collect drawdown values for NON-WINNERS (saved from nuke)
+        dd_2x_no3x = [m.dd_post2x_no3x_pct for m in metrics if m.dd_post2x_no3x_pct is not None]
+        dd_3x_no4x = [m.dd_post3x_no4x_pct for m in metrics if m.dd_post3x_no4x_pct is not None]
+        dd_4x_no5x = [m.dd_post4x_no5x_pct for m in metrics if m.dd_post4x_no5x_pct is not None]
+        
+        # Distribution stats for winners
         p50_3x, p75_3x, p90_3x = compute_distribution_stats(dd_2x_to3x)
         p50_4x, p75_4x, p90_4x = compute_distribution_stats(dd_2x_to4x)
         p50_5x, p75_5x, p90_5x = compute_distribution_stats(dd_2x_to5x)
         
-        # Percentage thresholds
+        # Distribution stats for non-winners
+        p50_2x_no3x, p75_2x_no3x, p90_2x_no3x = compute_distribution_stats(dd_2x_no3x)
+        p50_3x_no4x, p75_3x_no4x, p90_3x_no4x = compute_distribution_stats(dd_3x_no4x)
+        p50_4x_no5x, p75_4x_no5x, p90_4x_no5x = compute_distribution_stats(dd_4x_no5x)
+        
+        # Percentage thresholds (stopout rates)
         def pct_gt(values: List[float], threshold: float) -> Optional[float]:
             if not values:
                 return None
@@ -386,6 +510,10 @@ def aggregate_by_caller(
             n_hit_2x_and_3x=n_hit_2x_and_3x,
             n_hit_2x_and_4x=n_hit_2x_and_4x,
             n_hit_2x_and_5x=n_hit_2x_and_5x,
+            n_hit_2x_not_3x=n_hit_2x_not_3x,
+            n_hit_3x_not_4x=n_hit_3x_not_4x,
+            n_hit_4x_not_5x=n_hit_4x_not_5x,
+            # Winners (reach next milestone)
             dd_post2x_to3x_p50=p50_3x,
             dd_post2x_to3x_p75=p75_3x,
             dd_post2x_to3x_p90=p90_3x,
@@ -395,15 +523,62 @@ def aggregate_by_caller(
             dd_post2x_to5x_p50=p50_5x,
             dd_post2x_to5x_p75=p75_5x,
             dd_post2x_to5x_p90=p90_5x,
+            # Non-winners (saved from nuke)
+            dd_post2x_no3x_p50=p50_2x_no3x,
+            dd_post2x_no3x_p75=p75_2x_no3x,
+            dd_post2x_no3x_p90=p90_2x_no3x,
+            dd_post3x_no4x_p50=p50_3x_no4x,
+            dd_post3x_no4x_p75=p75_3x_no4x,
+            dd_post3x_no4x_p90=p90_3x_no4x,
+            dd_post4x_no5x_p50=p50_4x_no5x,
+            dd_post4x_no5x_p75=p75_4x_no5x,
+            dd_post4x_no5x_p90=p90_4x_no5x,
+            # 2x→3x stopout rates
+            pct_dd_post2x_to3x_gt_5pct=pct_gt(dd_2x_to3x, 0.05),
             pct_dd_post2x_to3x_gt_10pct=pct_gt(dd_2x_to3x, 0.10),
+            pct_dd_post2x_to3x_gt_15pct=pct_gt(dd_2x_to3x, 0.15),
             pct_dd_post2x_to3x_gt_20pct=pct_gt(dd_2x_to3x, 0.20),
+            pct_dd_post2x_to3x_gt_25pct=pct_gt(dd_2x_to3x, 0.25),
             pct_dd_post2x_to3x_gt_30pct=pct_gt(dd_2x_to3x, 0.30),
+            pct_dd_post2x_to3x_gt_40pct=pct_gt(dd_2x_to3x, 0.40),
+            # 2x→4x stopout rates
+            pct_dd_post2x_to4x_gt_5pct=pct_gt(dd_2x_to4x, 0.05),
             pct_dd_post2x_to4x_gt_10pct=pct_gt(dd_2x_to4x, 0.10),
+            pct_dd_post2x_to4x_gt_15pct=pct_gt(dd_2x_to4x, 0.15),
             pct_dd_post2x_to4x_gt_20pct=pct_gt(dd_2x_to4x, 0.20),
+            pct_dd_post2x_to4x_gt_25pct=pct_gt(dd_2x_to4x, 0.25),
             pct_dd_post2x_to4x_gt_30pct=pct_gt(dd_2x_to4x, 0.30),
+            pct_dd_post2x_to4x_gt_40pct=pct_gt(dd_2x_to4x, 0.40),
+            # 2x→5x stopout rates
+            pct_dd_post2x_to5x_gt_5pct=pct_gt(dd_2x_to5x, 0.05),
             pct_dd_post2x_to5x_gt_10pct=pct_gt(dd_2x_to5x, 0.10),
+            pct_dd_post2x_to5x_gt_15pct=pct_gt(dd_2x_to5x, 0.15),
             pct_dd_post2x_to5x_gt_20pct=pct_gt(dd_2x_to5x, 0.20),
+            pct_dd_post2x_to5x_gt_25pct=pct_gt(dd_2x_to5x, 0.25),
             pct_dd_post2x_to5x_gt_30pct=pct_gt(dd_2x_to5x, 0.30),
+            pct_dd_post2x_to5x_gt_40pct=pct_gt(dd_2x_to5x, 0.40),
+            # Non-winners stopout rates (saved from nuke)
+            pct_dd_post2x_no3x_gt_5pct=pct_gt(dd_2x_no3x, 0.05),
+            pct_dd_post2x_no3x_gt_10pct=pct_gt(dd_2x_no3x, 0.10),
+            pct_dd_post2x_no3x_gt_15pct=pct_gt(dd_2x_no3x, 0.15),
+            pct_dd_post2x_no3x_gt_20pct=pct_gt(dd_2x_no3x, 0.20),
+            pct_dd_post2x_no3x_gt_25pct=pct_gt(dd_2x_no3x, 0.25),
+            pct_dd_post2x_no3x_gt_30pct=pct_gt(dd_2x_no3x, 0.30),
+            pct_dd_post2x_no3x_gt_40pct=pct_gt(dd_2x_no3x, 0.40),
+            pct_dd_post3x_no4x_gt_5pct=pct_gt(dd_3x_no4x, 0.05),
+            pct_dd_post3x_no4x_gt_10pct=pct_gt(dd_3x_no4x, 0.10),
+            pct_dd_post3x_no4x_gt_15pct=pct_gt(dd_3x_no4x, 0.15),
+            pct_dd_post3x_no4x_gt_20pct=pct_gt(dd_3x_no4x, 0.20),
+            pct_dd_post3x_no4x_gt_25pct=pct_gt(dd_3x_no4x, 0.25),
+            pct_dd_post3x_no4x_gt_30pct=pct_gt(dd_3x_no4x, 0.30),
+            pct_dd_post3x_no4x_gt_40pct=pct_gt(dd_3x_no4x, 0.40),
+            pct_dd_post4x_no5x_gt_5pct=pct_gt(dd_4x_no5x, 0.05),
+            pct_dd_post4x_no5x_gt_10pct=pct_gt(dd_4x_no5x, 0.10),
+            pct_dd_post4x_no5x_gt_15pct=pct_gt(dd_4x_no5x, 0.15),
+            pct_dd_post4x_no5x_gt_20pct=pct_gt(dd_4x_no5x, 0.20),
+            pct_dd_post4x_no5x_gt_25pct=pct_gt(dd_4x_no5x, 0.25),
+            pct_dd_post4x_no5x_gt_30pct=pct_gt(dd_4x_no5x, 0.30),
+            pct_dd_post4x_no5x_gt_40pct=pct_gt(dd_4x_no5x, 0.40),
         )
         distributions.append(dist)
     
@@ -602,62 +777,152 @@ def main():
                     "p50_pct": dist.dd_post2x_to3x_p50 * 100.0 if dist.dd_post2x_to3x_p50 is not None else None,
                     "p75_pct": dist.dd_post2x_to3x_p75 * 100.0 if dist.dd_post2x_to3x_p75 is not None else None,
                     "p90_pct": dist.dd_post2x_to3x_p90 * 100.0 if dist.dd_post2x_to3x_p90 is not None else None,
-                    "pct_gt_10pct": dist.pct_dd_post2x_to3x_gt_10pct,
-                    "pct_gt_20pct": dist.pct_dd_post2x_to3x_gt_20pct,
-                    "pct_gt_30pct": dist.pct_dd_post2x_to3x_gt_30pct,
+                    "stopout_5pct": dist.pct_dd_post2x_to3x_gt_5pct,
+                    "stopout_10pct": dist.pct_dd_post2x_to3x_gt_10pct,
+                    "stopout_15pct": dist.pct_dd_post2x_to3x_gt_15pct,
+                    "stopout_20pct": dist.pct_dd_post2x_to3x_gt_20pct,
+                    "stopout_25pct": dist.pct_dd_post2x_to3x_gt_25pct,
+                    "stopout_30pct": dist.pct_dd_post2x_to3x_gt_30pct,
+                    "stopout_40pct": dist.pct_dd_post2x_to3x_gt_40pct,
                 },
                 "dd_post2x_to4x": {
                     "p50_pct": dist.dd_post2x_to4x_p50 * 100.0 if dist.dd_post2x_to4x_p50 is not None else None,
                     "p75_pct": dist.dd_post2x_to4x_p75 * 100.0 if dist.dd_post2x_to4x_p75 is not None else None,
                     "p90_pct": dist.dd_post2x_to4x_p90 * 100.0 if dist.dd_post2x_to4x_p90 is not None else None,
-                    "pct_gt_10pct": dist.pct_dd_post2x_to4x_gt_10pct,
-                    "pct_gt_20pct": dist.pct_dd_post2x_to4x_gt_20pct,
-                    "pct_gt_30pct": dist.pct_dd_post2x_to4x_gt_30pct,
+                    "stopout_5pct": dist.pct_dd_post2x_to4x_gt_5pct,
+                    "stopout_10pct": dist.pct_dd_post2x_to4x_gt_10pct,
+                    "stopout_15pct": dist.pct_dd_post2x_to4x_gt_15pct,
+                    "stopout_20pct": dist.pct_dd_post2x_to4x_gt_20pct,
+                    "stopout_25pct": dist.pct_dd_post2x_to4x_gt_25pct,
+                    "stopout_30pct": dist.pct_dd_post2x_to4x_gt_30pct,
+                    "stopout_40pct": dist.pct_dd_post2x_to4x_gt_40pct,
                 },
                 "dd_post2x_to5x": {
                     "p50_pct": dist.dd_post2x_to5x_p50 * 100.0 if dist.dd_post2x_to5x_p50 is not None else None,
                     "p75_pct": dist.dd_post2x_to5x_p75 * 100.0 if dist.dd_post2x_to5x_p75 is not None else None,
                     "p90_pct": dist.dd_post2x_to5x_p90 * 100.0 if dist.dd_post2x_to5x_p90 is not None else None,
-                    "pct_gt_10pct": dist.pct_dd_post2x_to5x_gt_10pct,
-                    "pct_gt_20pct": dist.pct_dd_post2x_to5x_gt_20pct,
-                    "pct_gt_30pct": dist.pct_dd_post2x_to5x_gt_30pct,
+                    "stopout_5pct": dist.pct_dd_post2x_to5x_gt_5pct,
+                    "stopout_10pct": dist.pct_dd_post2x_to5x_gt_10pct,
+                    "stopout_15pct": dist.pct_dd_post2x_to5x_gt_15pct,
+                    "stopout_20pct": dist.pct_dd_post2x_to5x_gt_20pct,
+                    "stopout_25pct": dist.pct_dd_post2x_to5x_gt_25pct,
+                    "stopout_30pct": dist.pct_dd_post2x_to5x_gt_30pct,
+                    "stopout_40pct": dist.pct_dd_post2x_to5x_gt_40pct,
                 },
             })
         print(json.dumps(output, indent=2))
     else:
-        # Table output
-        print("\nPost-2x Drawdown Analysis by Caller")
-        print("=" * 120)
-        print(f"{'Caller':<20} {'Calls':>6} {'Hit2x':>6} {'2x→3x':>6} {'2x→4x':>6} {'2x→5x':>6} ", end="")
-        print(f"{'DD_2x→3x (p50/p75/p90 %)':<25} {'%>10%':>7} {'%>20%':>7} {'%>30%':>7}")
-        print("-" * 120)
+        # Table output - show all three metrics (2x→3x, 2x→4x, 2x→5x)
+        print("\n" + "=" * 160)
+        print("POST-2X DRAWDOWN ANALYSIS BY CALLER")
+        print("=" * 160)
+        print("\nDD_2x→3x (tokens that reached 3x)")
+        print("-" * 160)
+        print(f"{'Caller':<25} {'N':>4} {'2x→3x':>6} {'p50':>6} {'p75':>6} {'p90':>6} ", end="")
+        print(f"{'Stop@5%':>8} {'Stop@10%':>9} {'Stop@15%':>9} {'Stop@20%':>9} {'Stop@25%':>9} {'Stop@30%':>9} {'Stop@40%':>9}")
+        print("-" * 160)
         
         for dist in distributions:
             if dist.n_hit_2x_and_3x == 0:
-                continue  # Skip callers with no 2x→3x data
+                continue
             
-            dd_3x_str = "N/A"
-            if dist.dd_post2x_to3x_p50 is not None:
-                p50 = dist.dd_post2x_to3x_p50 * 100.0
-                p75 = dist.dd_post2x_to3x_p75 * 100.0 if dist.dd_post2x_to3x_p75 is not None else None
-                p90 = dist.dd_post2x_to3x_p90 * 100.0 if dist.dd_post2x_to3x_p90 is not None else None
-                dd_3x_str = f"{p50:.1f}/{p75:.1f}/{p90:.1f}" if p75 and p90 else f"{p50:.1f}"
+            p50 = f"{dist.dd_post2x_to3x_p50*100:.1f}%" if dist.dd_post2x_to3x_p50 is not None else "N/A"
+            p75 = f"{dist.dd_post2x_to3x_p75*100:.1f}%" if dist.dd_post2x_to3x_p75 is not None else "N/A"
+            p90 = f"{dist.dd_post2x_to3x_p90*100:.1f}%" if dist.dd_post2x_to3x_p90 is not None else "N/A"
             
-            pct_gt_10 = dist.pct_dd_post2x_to3x_gt_10pct
-            pct_gt_20 = dist.pct_dd_post2x_to3x_gt_20pct
-            pct_gt_30 = dist.pct_dd_post2x_to3x_gt_30pct
-            
-            print(f"{dist.caller:<20} {dist.n_calls:>6} {dist.n_hit_2x:>6} {dist.n_hit_2x_and_3x:>6} "
-                  f"{dist.n_hit_2x_and_4x:>6} {dist.n_hit_2x_and_5x:>6} {dd_3x_str:<25} ", end="")
-            print(f"{pct_gt_10:.1f}%" if pct_gt_10 is not None else "N/A", end="  ")
-            print(f"{pct_gt_20:.1f}%" if pct_gt_20 is not None else "N/A", end="  ")
-            print(f"{pct_gt_30:.1f}%" if pct_gt_30 is not None else "N/A")
+            print(f"{dist.caller:<25} {dist.n_calls:>4} {dist.n_hit_2x_and_3x:>6} {p50:>6} {p75:>6} {p90:>6} ", end="")
+            print(f"{dist.pct_dd_post2x_to3x_gt_5pct:>7.1f}%" if dist.pct_dd_post2x_to3x_gt_5pct is not None else "     N/A", end=" ")
+            print(f"{dist.pct_dd_post2x_to3x_gt_10pct:>8.1f}%" if dist.pct_dd_post2x_to3x_gt_10pct is not None else "      N/A", end=" ")
+            print(f"{dist.pct_dd_post2x_to3x_gt_15pct:>8.1f}%" if dist.pct_dd_post2x_to3x_gt_15pct is not None else "      N/A", end=" ")
+            print(f"{dist.pct_dd_post2x_to3x_gt_20pct:>8.1f}%" if dist.pct_dd_post2x_to3x_gt_20pct is not None else "      N/A", end=" ")
+            print(f"{dist.pct_dd_post2x_to3x_gt_25pct:>8.1f}%" if dist.pct_dd_post2x_to3x_gt_25pct is not None else "      N/A", end=" ")
+            print(f"{dist.pct_dd_post2x_to3x_gt_30pct:>8.1f}%" if dist.pct_dd_post2x_to3x_gt_30pct is not None else "      N/A", end=" ")
+            print(f"{dist.pct_dd_post2x_to3x_gt_40pct:>8.1f}%" if dist.pct_dd_post2x_to3x_gt_40pct is not None else "      N/A")
         
-        print("\n" + "=" * 120)
-        print("\nInterpretation:")
-        print("- DD_2x→3x: Worst drawdown from 2x price between hitting 2x and hitting 3x")
-        print("- p50/p75/p90: Median, 75th percentile, 90th percentile of drawdowns")
-        print("- %>X%: Percentage of tokens requiring more than X% drawdown to reach 3x")
+        print("\n" + "-" * 160)
+        print("\nDD_2x→4x (tokens that reached 4x)")
+        print("-" * 160)
+        print(f"{'Caller':<25} {'N':>4} {'2x→4x':>6} {'p50':>6} {'p75':>6} {'p90':>6} ", end="")
+        print(f"{'Stop@5%':>8} {'Stop@10%':>9} {'Stop@15%':>9} {'Stop@20%':>9} {'Stop@25%':>9} {'Stop@30%':>9} {'Stop@40%':>9}")
+        print("-" * 160)
+        
+        for dist in distributions:
+            if dist.n_hit_2x_and_4x == 0:
+                continue
+            
+            p50 = f"{dist.dd_post2x_to4x_p50*100:.1f}%" if dist.dd_post2x_to4x_p50 is not None else "N/A"
+            p75 = f"{dist.dd_post2x_to4x_p75*100:.1f}%" if dist.dd_post2x_to4x_p75 is not None else "N/A"
+            p90 = f"{dist.dd_post2x_to4x_p90*100:.1f}%" if dist.dd_post2x_to4x_p90 is not None else "N/A"
+            
+            print(f"{dist.caller:<25} {dist.n_calls:>4} {dist.n_hit_2x_and_4x:>6} {p50:>6} {p75:>6} {p90:>6} ", end="")
+            print(f"{dist.pct_dd_post2x_to4x_gt_5pct:>7.1f}%" if dist.pct_dd_post2x_to4x_gt_5pct is not None else "     N/A", end=" ")
+            print(f"{dist.pct_dd_post2x_to4x_gt_10pct:>8.1f}%" if dist.pct_dd_post2x_to4x_gt_10pct is not None else "      N/A", end=" ")
+            print(f"{dist.pct_dd_post2x_to4x_gt_15pct:>8.1f}%" if dist.pct_dd_post2x_to4x_gt_15pct is not None else "      N/A", end=" ")
+            print(f"{dist.pct_dd_post2x_to4x_gt_20pct:>8.1f}%" if dist.pct_dd_post2x_to4x_gt_20pct is not None else "      N/A", end=" ")
+            print(f"{dist.pct_dd_post2x_to4x_gt_25pct:>8.1f}%" if dist.pct_dd_post2x_to4x_gt_25pct is not None else "      N/A", end=" ")
+            print(f"{dist.pct_dd_post2x_to4x_gt_30pct:>8.1f}%" if dist.pct_dd_post2x_to4x_gt_30pct is not None else "      N/A", end=" ")
+            print(f"{dist.pct_dd_post2x_to4x_gt_40pct:>8.1f}%" if dist.pct_dd_post2x_to4x_gt_40pct is not None else "      N/A")
+        
+        print("\n" + "-" * 160)
+        print("\nDD_2x→5x (tokens that reached 5x)")
+        print("-" * 160)
+        print(f"{'Caller':<25} {'N':>4} {'2x→5x':>6} {'p50':>6} {'p75':>6} {'p90':>6} ", end="")
+        print(f"{'Stop@5%':>8} {'Stop@10%':>9} {'Stop@15%':>9} {'Stop@20%':>9} {'Stop@25%':>9} {'Stop@30%':>9} {'Stop@40%':>9}")
+        print("-" * 160)
+        
+        for dist in distributions:
+            if dist.n_hit_2x_and_5x == 0:
+                continue
+            
+            p50 = f"{dist.dd_post2x_to5x_p50*100:.1f}%" if dist.dd_post2x_to5x_p50 is not None else "N/A"
+            p75 = f"{dist.dd_post2x_to5x_p75*100:.1f}%" if dist.dd_post2x_to5x_p75 is not None else "N/A"
+            p90 = f"{dist.dd_post2x_to5x_p90*100:.1f}%" if dist.dd_post2x_to5x_p90 is not None else "N/A"
+            
+            print(f"{dist.caller:<25} {dist.n_calls:>4} {dist.n_hit_2x_and_5x:>6} {p50:>6} {p75:>6} {p90:>6} ", end="")
+            print(f"{dist.pct_dd_post2x_to5x_gt_5pct:>7.1f}%" if dist.pct_dd_post2x_to5x_gt_5pct is not None else "     N/A", end=" ")
+            print(f"{dist.pct_dd_post2x_to5x_gt_10pct:>8.1f}%" if dist.pct_dd_post2x_to5x_gt_10pct is not None else "      N/A", end=" ")
+            print(f"{dist.pct_dd_post2x_to5x_gt_15pct:>8.1f}%" if dist.pct_dd_post2x_to5x_gt_15pct is not None else "      N/A", end=" ")
+            print(f"{dist.pct_dd_post2x_to5x_gt_20pct:>8.1f}%" if dist.pct_dd_post2x_to5x_gt_20pct is not None else "      N/A", end=" ")
+            print(f"{dist.pct_dd_post2x_to5x_gt_25pct:>8.1f}%" if dist.pct_dd_post2x_to5x_gt_25pct is not None else "      N/A", end=" ")
+            print(f"{dist.pct_dd_post2x_to5x_gt_30pct:>8.1f}%" if dist.pct_dd_post2x_to5x_gt_30pct is not None else "      N/A", end=" ")
+            print(f"{dist.pct_dd_post2x_to5x_gt_40pct:>8.1f}%" if dist.pct_dd_post2x_to5x_gt_40pct is not None else "      N/A")
+        
+        # Add NON-WINNERS table (saved from nuke)
+        print("\n" + "-" * 160)
+        print("\nDD_2x_NO3x (tokens that hit 2x but NEVER hit 3x - saved from nuke)")
+        print("-" * 160)
+        print(f"{'Caller':<25} {'N':>4} {'2x¬3x':>6} {'p50':>6} {'p75':>6} {'p90':>6} ", end="")
+        print(f"{'Save@5%':>8} {'Save@10%':>9} {'Save@15%':>9} {'Save@20%':>9} {'Save@25%':>9} {'Save@30%':>9} {'Save@40%':>9}")
+        print("-" * 160)
+        
+        for dist in distributions:
+            if dist.n_hit_2x_not_3x == 0:
+                continue
+            
+            p50 = f"{dist.dd_post2x_no3x_p50*100:.1f}%" if dist.dd_post2x_no3x_p50 is not None else "N/A"
+            p75 = f"{dist.dd_post2x_no3x_p75*100:.1f}%" if dist.dd_post2x_no3x_p75 is not None else "N/A"
+            p90 = f"{dist.dd_post2x_no3x_p90*100:.1f}%" if dist.dd_post2x_no3x_p90 is not None else "N/A"
+            
+            print(f"{dist.caller:<25} {dist.n_calls:>4} {dist.n_hit_2x_not_3x:>6} {p50:>6} {p75:>6} {p90:>6} ", end="")
+            print(f"{dist.pct_dd_post2x_no3x_gt_5pct:>7.1f}%" if dist.pct_dd_post2x_no3x_gt_5pct is not None else "     N/A", end=" ")
+            print(f"{dist.pct_dd_post2x_no3x_gt_10pct:>8.1f}%" if dist.pct_dd_post2x_no3x_gt_10pct is not None else "      N/A", end=" ")
+            print(f"{dist.pct_dd_post2x_no3x_gt_15pct:>8.1f}%" if dist.pct_dd_post2x_no3x_gt_15pct is not None else "      N/A", end=" ")
+            print(f"{dist.pct_dd_post2x_no3x_gt_20pct:>8.1f}%" if dist.pct_dd_post2x_no3x_gt_20pct is not None else "      N/A", end=" ")
+            print(f"{dist.pct_dd_post2x_no3x_gt_25pct:>8.1f}%" if dist.pct_dd_post2x_no3x_gt_25pct is not None else "      N/A", end=" ")
+            print(f"{dist.pct_dd_post2x_no3x_gt_30pct:>8.1f}%" if dist.pct_dd_post2x_no3x_gt_30pct is not None else "      N/A", end=" ")
+            print(f"{dist.pct_dd_post2x_no3x_gt_40pct:>8.1f}%" if dist.pct_dd_post2x_no3x_gt_40pct is not None else "      N/A")
+        
+        print("\n" + "=" * 160)
+        print("\n+EV ANALYSIS:")
+        print("- Stop@X% on WINNERS: % of 3x runners you'd miss")
+        print("- Save@X% on NON-WINNERS: % of nukes you'd exit before full round-trip")
+        print("\nIf Save@X% >> Stop@X%, the stop is +EV (saves more losers than it kills winners)")
+        print("\nExample: If Stop@20% = 15% and Save@20% = 80%, a 20% trail is highly +EV")
+        print("         (You miss 15% of winners but save 80% of losers from full nuke)")
+        print("\nLadder Design:")
+        print("- After 2x: Choose X% where Save@X% >> Stop@X% (maximize +EV)")
+        print("- After 3x: Tighten (continuation is stronger, fewer nukes)")
+        print("- After 4x: Tighten more (rare territory, protect gains)")
 
 
 if __name__ == "__main__":
