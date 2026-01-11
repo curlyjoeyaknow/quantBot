@@ -19,15 +19,19 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import sys
 from collections import defaultdict
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
+from datetime import datetime
 from pathlib import Path
 from threading import Semaphore
 from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
+import pyarrow as pa
+import pyarrow.parquet as pq
 
 # Add project root to path for tools.shared imports
 project_root = Path(__file__).resolve().parents[2]
@@ -410,6 +414,137 @@ def load_alerts_from_duckdb(
     return alerts
 
 
+def generate_run_id(args: argparse.Namespace) -> str:
+    """Generate a unique run ID based on parameters."""
+    params = f"{args.chain}_{args.date_from}_{args.date_to}_{args.min_calls}"
+    return hashlib.sha256(params.encode()).hexdigest()[:16]
+
+
+def save_trades_to_parquet(trades: List[PhasedTradeResult], run_id: str, output_dir: Path):
+    """Save trade results to parquet file."""
+    if not trades:
+        return
+    
+    output_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Convert trades to records
+    records = []
+    for trade in trades:
+        record = {
+            'run_id': run_id,
+            'caller': trade.caller,
+            'mint': trade.mint,
+            'alert_id': trade.alert_id,
+            'entry_price': trade.entry_price,
+            'entry_ts_ms': trade.entry_ts_ms,
+            'exit_price': trade.exit_price,
+            'exit_ts_ms': trade.exit_ts_ms,
+            'exit_reason': trade.exit_reason,
+            'exit_phase': trade.exit_phase,
+            'multiple_achieved': trade.multiple_achieved,
+            'return_pct': trade.return_pct,
+            'hold_time_minutes': trade.hold_time_minutes,
+            'stop_mode': trade.stop_mode,
+            'phase1_stop_pct': trade.phase1_stop_pct,
+            'phase2_stop_pct': trade.phase2_stop_pct,
+            'ladder_steps': trade.ladder_steps if trade.ladder_steps else 0.0,
+            'hit_2x': trade.hit_2x,
+            'hit_3x': trade.hit_3x,
+            'hit_4x': trade.hit_4x,
+            'hit_5x': trade.hit_5x,
+            'hit_10x': trade.hit_10x,
+            'ath_multiple': trade.ath_multiple,
+            'phase2_entry_price': trade.phase2_entry_price if trade.phase2_entry_price else 0.0,
+            'phase2_entry_ts_ms': trade.phase2_entry_ts_ms if trade.phase2_entry_ts_ms else 0,
+        }
+        records.append(record)
+    
+    # Create Arrow table
+    table = pa.Table.from_pylist(records)
+    
+    # Write to parquet
+    output_file = output_dir / f"phased_stop_results_{run_id}.parquet"
+    pq.write_table(table, output_file, compression='snappy')
+    
+    return output_file
+
+
+def load_existing_results(run_id: str, output_dir: Path) -> set:
+    """Load already processed mints from existing parquet file."""
+    output_file = output_dir / f"phased_stop_results_{run_id}.parquet"
+    
+    if not output_file.exists():
+        return set()
+    
+    try:
+        table = pq.read_table(output_file, columns=['mint', 'stop_mode', 'phase1_stop_pct', 'phase2_stop_pct'])
+        df = table.to_pandas()
+        
+        # Create set of (mint, strategy) tuples that have been processed
+        processed = set()
+        for _, row in df.iterrows():
+            key = (row['mint'], row['stop_mode'], row['phase1_stop_pct'], row['phase2_stop_pct'])
+            processed.add(key)
+        
+        return processed
+    except Exception as e:
+        print(f"Warning: Could not load existing results: {e}", file=sys.stderr)
+        return set()
+
+
+def append_trades_to_parquet(trades: List[PhasedTradeResult], run_id: str, output_dir: Path):
+    """Append new trades to existing parquet file."""
+    if not trades:
+        return
+    
+    output_file = output_dir / f"phased_stop_results_{run_id}.parquet"
+    
+    # Convert trades to records
+    records = []
+    for trade in trades:
+        record = {
+            'run_id': run_id,
+            'caller': trade.caller,
+            'mint': trade.mint,
+            'alert_id': trade.alert_id,
+            'entry_price': trade.entry_price,
+            'entry_ts_ms': trade.entry_ts_ms,
+            'exit_price': trade.exit_price,
+            'exit_ts_ms': trade.exit_ts_ms,
+            'exit_reason': trade.exit_reason,
+            'exit_phase': trade.exit_phase,
+            'multiple_achieved': trade.multiple_achieved,
+            'return_pct': trade.return_pct,
+            'hold_time_minutes': trade.hold_time_minutes,
+            'stop_mode': trade.stop_mode,
+            'phase1_stop_pct': trade.phase1_stop_pct,
+            'phase2_stop_pct': trade.phase2_stop_pct,
+            'ladder_steps': trade.ladder_steps if trade.ladder_steps else 0.0,
+            'hit_2x': trade.hit_2x,
+            'hit_3x': trade.hit_3x,
+            'hit_4x': trade.hit_4x,
+            'hit_5x': trade.hit_5x,
+            'hit_10x': trade.hit_10x,
+            'ath_multiple': trade.ath_multiple,
+            'phase2_entry_price': trade.phase2_entry_price if trade.phase2_entry_price else 0.0,
+            'phase2_entry_ts_ms': trade.phase2_entry_ts_ms if trade.phase2_entry_ts_ms else 0,
+        }
+        records.append(record)
+    
+    # Create new table
+    new_table = pa.Table.from_pylist(records)
+    
+    # If file exists, read and concatenate
+    if output_file.exists():
+        existing_table = pq.read_table(output_file)
+        combined_table = pa.concat_tables([existing_table, new_table])
+    else:
+        combined_table = new_table
+    
+    # Write combined table
+    pq.write_table(combined_table, output_file, compression='snappy')
+
+
 def aggregate_performance(trades: List[PhasedTradeResult]) -> StrategyPerformance:
     """Aggregate trade results into performance metrics."""
     if not trades:
@@ -583,6 +718,8 @@ def main():
     parser.add_argument("--min-calls", type=int, default=10, help="Minimum calls per caller")
     parser.add_argument("--threads", type=int, default=4, help="Number of threads")
     parser.add_argument("--output", choices=["table", "json"], default="table", help="Output format")
+    parser.add_argument("--output-dir", type=str, default="output/phased_stop_results", help="Output directory for parquet files")
+    parser.add_argument("--resume", action="store_true", help="Resume from existing results")
     parser.add_argument("--verbose", action="store_true", help="Verbose output")
     
     args = parser.parse_args()
@@ -590,6 +727,22 @@ def main():
     # Initialize semaphore
     global _duckdb_semaphore
     _duckdb_semaphore = Semaphore(args.threads)
+    
+    # Generate run ID and setup output directory
+    run_id = generate_run_id(args)
+    output_dir = Path(args.output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    
+    if args.verbose:
+        print(f"Run ID: {run_id}", file=sys.stderr)
+        print(f"Output directory: {output_dir}", file=sys.stderr)
+    
+    # Load existing results if resuming
+    processed_keys = set()
+    if args.resume:
+        processed_keys = load_existing_results(run_id, output_dir)
+        if args.verbose:
+            print(f"Resuming: Found {len(processed_keys)} already processed (mint, strategy) combinations", file=sys.stderr)
     
     # Load alerts
     if args.verbose:
@@ -667,17 +820,18 @@ def main():
     
     def process_alert(alert_data):
         """Process a single alert with all strategies."""
-        alert, strategies = alert_data
+        alert, strategies, processed_keys = alert_data
         trades = []
         
         try:
             entry_ts_ms = alert['timestamp_ms']
             end_ts_ms = entry_ts_ms + (7 * 24 * 60 * 60 * 1000)  # 7 days
+            mint = alert['mint']
             
             # Load candles once per alert
             candles = load_candles_from_parquet(
                 slice_path,
-                alert['mint'],
+                mint,
                 entry_ts_ms,
                 end_ts_ms,
             )
@@ -710,6 +864,10 @@ def main():
             
             # Test each strategy
             for stop_mode, phase1_stop, phase2_stop, ladder_steps in strategies:
+                # Skip if already processed
+                key = (mint, stop_mode, phase1_stop, phase2_stop)
+                if key in processed_keys:
+                    continue
                 exit_price, exit_ts_ms, exit_reason, exit_phase, hit_2x, hit_3x, hit_4x, hit_5x, hit_10x, ath_multiple, phase2_entry_price, phase2_entry_ts_ms = simulate_phased_trade(
                     candles,
                     entry_price,
@@ -765,12 +923,15 @@ def main():
     with ThreadPoolExecutor(max_workers=args.threads) as executor:
         # Submit all alerts
         futures = {
-            executor.submit(process_alert, (alert, stop_strategies)): i
+            executor.submit(process_alert, (alert, stop_strategies, processed_keys)): i
             for i, alert in enumerate(alerts)
         }
         
         # Collect results as they complete
         completed = 0
+        batch_trades = []
+        batch_size = 10  # Save every 10 alerts
+        
         for future in as_completed(futures):
             completed += 1
             if args.verbose and completed % 10 == 0:
@@ -779,10 +940,21 @@ def main():
             try:
                 trades = future.result(timeout=60)  # 60 second timeout per alert
                 all_trades.extend(trades)
+                batch_trades.extend(trades)
+                
+                # Save batch incrementally
+                if len(batch_trades) >= batch_size * len(stop_strategies):
+                    append_trades_to_parquet(batch_trades, run_id, output_dir)
+                    batch_trades = []
+                    
             except Exception as e:
                 if args.verbose:
                     alert_idx = futures[future]
                     print(f"Warning: Timeout or error processing alert {alert_idx}: {e}", file=sys.stderr)
+        
+        # Save remaining trades
+        if batch_trades:
+            append_trades_to_parquet(batch_trades, run_id, output_dir)
     
     if args.verbose:
         print(f"Simulated {len(all_trades)} total trades", file=sys.stderr)
@@ -815,6 +987,14 @@ def main():
     
     # Print results
     print_results(performances, args.output)
+    
+    # Print output file location
+    output_file = output_dir / f"phased_stop_results_{run_id}.parquet"
+    if output_file.exists():
+        print(f"\n✓ Results saved to: {output_file}", file=sys.stderr)
+        print(f"  Run ID: {run_id}", file=sys.stderr)
+        print(f"  Total trades: {len(all_trades)}", file=sys.stderr)
+        print(f"\nTo resume this run later, use: --resume --output-dir {output_dir}", file=sys.stderr)
 
 
 if __name__ == "__main__":
