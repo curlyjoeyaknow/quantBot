@@ -6,6 +6,34 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Parquet vs ClickHouse OHLCV Quality Comparison Tool** - Compares data quality between parquet slice files and ClickHouse
+  - Script: `tools/storage/compare_parquet_clickhouse_quality.py`
+  - **Primary question answered**: Is bad ClickHouse data mostly OUTSIDE the 48-hour event horizon window?
+  - For each alert with a matching parquet file:
+    - Loads candles from parquet (per-token slices)
+    - Loads candles from ClickHouse for the same time range
+    - Analyzes quality metrics: duplicates, gaps, distortions, zero volume
+    - Compares quality INSIDE vs OUTSIDE the 48-hour horizon (alert → alert + 48h)
+  - **Key metrics**:
+    - Quality score (0-100) per source
+    - Coverage (candle count) per source
+    - % of ClickHouse issues inside vs outside horizon
+    - Which source has better data for backtesting
+  - Features:
+    - Auto-matches parquet files to alerts by mint prefix and timestamp
+    - Graceful fallback to parquet-only mode when ClickHouse unavailable
+    - Supports 1m and 5m intervals
+    - JSON report output with detailed per-token comparisons
+    - Console visualization with color-coded results
+  - Usage:
+    ```bash
+    python tools/storage/compare_parquet_clickhouse_quality.py \
+        --duckdb data/alerts.duckdb \
+        --parquet-dir slices/per_token \
+        --limit 100 \
+        --visualize
+    ```
+
 - **Phased Stop Strategy Simulator** - Comprehensive simulator testing universal vs phased stop strategies
   - Script: `tools/backtest/phased_stop_simulator.py`
   - Tests whether different stop percentages are needed for different phases:
