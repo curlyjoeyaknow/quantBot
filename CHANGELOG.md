@@ -6,6 +6,47 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Intelligent Caching for Phased Stop Simulator** - Reuses results across overlapping date ranges
+  - **Primary benefit**: Avoid recomputing overlapping date ranges when extending backtests
+  - **How it works**:
+    - Tracks cached results in `cache_metadata.json` with date ranges
+    - Detects overlapping date ranges and loads cached trades
+    - Only computes missing date ranges
+    - Combines cached + new results seamlessly
+  - **Example**: Run 2025-05-01 to 2025-07-01, then extend to 2025-08-01
+    - Second run only computes 2025-07-01 to 2025-08-01
+    - Loads 2025-05-01 to 2025-07-01 from cache
+    - Total speedup: ~66% less computation
+  - **Parameter handling**:
+    - Cache key based on chain + date range (NOT min_calls)
+    - Lowering min_calls identifies newly included callers
+    - Future: Can recompute for specific callers if needed
+  - **New CLI option**: `--use-cache` (default: off)
+  - **Cache structure**:
+    - `cache_metadata.json`: Tracks all cached runs
+    - One parquet file per run with run_id
+    - Each entry stores: filename, chain, date_from, date_to, min_calls, created_at
+  - **Benefits**:
+    - Speed: Avoid redundant computation
+    - Flexibility: Easily extend date ranges
+    - Efficiency: Only compute what's needed
+    - Incremental: Build up historical results over time
+  - Usage:
+    ```bash
+    # Initial run
+    python3 phased_stop_simulator.py ... --use-cache --output-dir output/my_backtest
+    
+    # Extend date range (only computes new dates)
+    python3 phased_stop_simulator.py ... --use-cache --date-to 2025-08-01
+    ```
+
+- **Parquet Output & Resume for Phased Stop Simulator** - Full audit trail and crash recovery
+  - Every trade saved to parquet with run_id
+  - Incremental saves (every 10 alerts) prevent data loss
+  - Resume functionality skips already processed (mint, strategy) combinations
+  - New CLI options: `--output-dir`, `--resume`
+  - Parquet schema includes: caller, mint, strategy params, milestones, performance metrics
+
 - **Parquet vs ClickHouse OHLCV Quality Comparison Tool** - Compares data quality between parquet slice files and ClickHouse
   - Script: `tools/storage/compare_parquet_clickhouse_quality.py`
   - **Primary question answered**: Is bad ClickHouse data mostly OUTSIDE the 48-hour event horizon window?
