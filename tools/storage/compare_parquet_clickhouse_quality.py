@@ -56,9 +56,8 @@ _shared_path = os.path.join(os.path.dirname(__file__), '..', 'shared')
 if _shared_path not in sys.path:
     sys.path.insert(0, _shared_path)
 
-# 48-hour event horizon in milliseconds
-HORIZON_HOURS = 48
-HORIZON_MS = HORIZON_HOURS * 60 * 60 * 1000
+# Default event horizon in hours (can be overridden via --horizon)
+DEFAULT_HORIZON_HOURS = 48
 
 # Candle interval (1m = 60 seconds, 5m = 300 seconds)
 INTERVAL_1M_SECONDS = 60
@@ -473,7 +472,7 @@ def get_alerts_with_parquet(
     return alerts
 
 
-def analyze_parquet_only(alert: Dict[str, Any], interval: str = '1m') -> Dict[str, Any]:
+def analyze_parquet_only(alert: Dict[str, Any], interval: str = '1m', horizon_hours: int = DEFAULT_HORIZON_HOURS) -> Dict[str, Any]:
     """
     Analyze parquet file quality only (no ClickHouse comparison).
     Useful for testing or when ClickHouse is not available.
@@ -485,7 +484,7 @@ def analyze_parquet_only(alert: Dict[str, Any], interval: str = '1m') -> Dict[st
     
     # Calculate horizon window
     alert_ts_sec = alert_ts_ms // 1000
-    horizon_end_ts_sec = alert_ts_sec + (HORIZON_HOURS * 3600)
+    horizon_end_ts_sec = alert_ts_sec + (horizon_hours * 3600)
     
     interval_seconds = INTERVAL_1M_SECONDS if interval == '1m' else INTERVAL_5M_SECONDS
     
@@ -520,7 +519,7 @@ def analyze_parquet_only(alert: Dict[str, Any], interval: str = '1m') -> Dict[st
     parquet_quality_total = analyze_candle_quality(parquet_candles, interval_seconds)
     
     # Calculate expected candles in horizon
-    expected_horizon_candles = (HORIZON_HOURS * 3600) // interval_seconds
+    expected_horizon_candles = (horizon_hours * 3600) // interval_seconds
     
     return {
         'mint': mint,
@@ -530,7 +529,7 @@ def analyze_parquet_only(alert: Dict[str, Any], interval: str = '1m') -> Dict[st
         'horizon_window': {
             'start': datetime.fromtimestamp(alert_ts_sec).isoformat(),
             'end': datetime.fromtimestamp(horizon_end_ts_sec).isoformat(),
-            'hours': HORIZON_HOURS,
+            'hours': horizon_hours,
             'expected_candles': expected_horizon_candles
         },
         'parquet': {
@@ -568,7 +567,8 @@ def compare_quality_for_alert(
     alert: Dict[str, Any],
     ch_client: ClickHouseClient,
     database: str,
-    interval: str = '1m'
+    interval: str = '1m',
+    horizon_hours: int = DEFAULT_HORIZON_HOURS
 ) -> Dict[str, Any]:
     """
     Compare parquet vs ClickHouse quality for a single alert.
@@ -584,7 +584,7 @@ def compare_quality_for_alert(
     
     # Calculate horizon window
     alert_ts_sec = alert_ts_ms // 1000
-    horizon_end_ts_sec = alert_ts_sec + (HORIZON_HOURS * 3600)
+    horizon_end_ts_sec = alert_ts_sec + (horizon_hours * 3600)
     
     # Also check some time before alert (for warmup data)
     warmup_hours = 4
@@ -635,7 +635,7 @@ def compare_quality_for_alert(
     ch_quality_total = analyze_candle_quality(ch_candles, interval_seconds)
     
     # Calculate expected candles in horizon
-    expected_horizon_candles = (HORIZON_HOURS * 3600) // interval_seconds  # 2880 for 1m
+    expected_horizon_candles = (horizon_hours * 3600) // interval_seconds
     
     return {
         'mint': mint,
@@ -644,7 +644,7 @@ def compare_quality_for_alert(
         'horizon_window': {
             'start': datetime.fromtimestamp(alert_ts_sec).isoformat(),
             'end': datetime.fromtimestamp(horizon_end_ts_sec).isoformat(),
-            'hours': HORIZON_HOURS,
+            'hours': horizon_hours,
             'expected_candles': expected_horizon_candles
         },
         'parquet': {
@@ -688,7 +688,7 @@ def compare_quality_for_alert(
     }
 
 
-def generate_summary(comparisons: List[Dict[str, Any]]) -> Dict[str, Any]:
+def generate_summary(comparisons: List[Dict[str, Any]], horizon_hours: int = DEFAULT_HORIZON_HOURS) -> Dict[str, Any]:
     """Generate summary statistics from all comparisons."""
     if not comparisons:
         return {'error': 'No comparisons available'}
@@ -720,7 +720,7 @@ def generate_summary(comparisons: List[Dict[str, Any]]) -> Dict[str, Any]:
     
     return {
         'total_tokens_compared': total_tokens,
-        'horizon_hours': HORIZON_HOURS,
+        'horizon_hours': horizon_hours,
         'quality_comparison': {
             'parquet_better_inside_horizon_pct': (parquet_better_count / total_tokens) * 100,
             'avg_parquet_quality_inside': avg_parquet_quality_inside,
@@ -730,7 +730,13 @@ def generate_summary(comparisons: List[Dict[str, Any]]) -> Dict[str, Any]:
         'coverage_comparison': {
             'avg_parquet_candles_in_horizon': avg_parquet_coverage,
             'avg_clickhouse_candles_in_horizon': avg_ch_coverage,
-            'expected_candles_in_horizon': (HORIZON_HOURS * 3600) // 60  # 2880 for 1m
+            'expected_candles_in_horizon': (horizon_hours * 3600) // 60,  # 1440 for 24h, 2880 for 48h
+            'avg_parquet_coverage_pct': (avg_parquet_coverage / ((horizon_hours * 3600) // 60)) * 100 if horizon_hours > 0 else 0,
+            'avg_clickhouse_coverage_pct': (avg_ch_coverage / ((horizon_hours * 3600) // 60)) * 100 if horizon_hours > 0 else 0,
+        },
+        'duplicates': {
+            'avg_parquet_duplicates': sum(c['parquet']['inside_horizon']['duplicates'] for c in valid_comparisons) / len(valid_comparisons) if valid_comparisons else 0,
+            'avg_clickhouse_duplicates': sum(c['clickhouse']['inside_horizon']['duplicates'] for c in valid_comparisons if c.get('clickhouse')) / len(valid_comparisons) if valid_comparisons else 0,
         },
         'clickhouse_issues': {
             'total_issues_inside_horizon': total_ch_issues_inside,
@@ -738,7 +744,7 @@ def generate_summary(comparisons: List[Dict[str, Any]]) -> Dict[str, Any]:
             'pct_issues_outside_horizon': pct_bad_outside,
             'conclusion': (
                 f"{'Most' if pct_bad_outside > 50 else 'Less than half'} of ClickHouse data quality issues "
-                f"({pct_bad_outside:.1f}%) are OUTSIDE the 48-hour event horizon window."
+                f"({pct_bad_outside:.1f}%) are OUTSIDE the {horizon_hours}-hour event horizon window."
             )
         }
     }
@@ -766,9 +772,14 @@ def visualize_results(summary: Dict[str, Any], comparisons: List[Dict[str, Any]]
     print("COVERAGE INSIDE HORIZON")
     print("-" * 40)
     c = summary['coverage_comparison']
-    print(f"  Expected candles (48h @ 1m): {c['expected_candles_in_horizon']:,}")
-    print(f"  Avg parquet candles:         {c['avg_parquet_candles_in_horizon']:.0f}")
-    print(f"  Avg ClickHouse candles:      {c['avg_clickhouse_candles_in_horizon']:.0f}")
+    print(f"  Expected candles ({summary['horizon_hours']}h @ 1m): {c['expected_candles_in_horizon']:,}")
+    print(f"  Avg parquet candles:         {c['avg_parquet_candles_in_horizon']:.0f} ({c['avg_parquet_coverage_pct']:.1f}%)")
+    print(f"  Avg ClickHouse candles:      {c['avg_clickhouse_candles_in_horizon']:.0f} ({c['avg_clickhouse_coverage_pct']:.1f}%)")
+    
+    if 'duplicates' in summary:
+        d = summary['duplicates']
+        if d['avg_clickhouse_duplicates'] > 0:
+            print(f"  ⚠️  Avg ClickHouse DUPLICATES: {d['avg_clickhouse_duplicates']:.0f} (inflates count!)")
     
     print("\n" + "-" * 40)
     print("CLICKHOUSE DATA QUALITY ISSUES LOCATION")
@@ -855,6 +866,12 @@ def main():
         action='store_true',
         help='Only analyze parquet files (skip ClickHouse comparison)'
     )
+    parser.add_argument(
+        '--horizon',
+        type=int,
+        default=DEFAULT_HORIZON_HOURS,
+        help=f'Event horizon in hours (default: {DEFAULT_HORIZON_HOURS})'
+    )
     
     args = parser.parse_args()
     
@@ -897,14 +914,14 @@ def main():
             print(f"  Progress: {i}/{len(alerts)} alerts...", file=sys.stderr)
         
         if args.parquet_only:
-            result = analyze_parquet_only(alert, args.interval)
+            result = analyze_parquet_only(alert, args.interval, args.horizon)
         else:
-            result = compare_quality_for_alert(alert, ch_client, ch_database, args.interval)
+            result = compare_quality_for_alert(alert, ch_client, ch_database, args.interval, args.horizon)
         comparisons.append(result)
     
     # Generate summary
     print("\nGenerating summary...", file=sys.stderr)
-    summary = generate_summary(comparisons)
+    summary = generate_summary(comparisons, args.horizon)
     
     # Build report
     report = {
@@ -913,7 +930,7 @@ def main():
             'duckdb_path': args.duckdb,
             'parquet_dir': args.parquet_dir,
             'interval': args.interval,
-            'horizon_hours': HORIZON_HOURS,
+            'horizon_hours': args.horizon,
             'limit': args.limit
         },
         'summary': summary,
