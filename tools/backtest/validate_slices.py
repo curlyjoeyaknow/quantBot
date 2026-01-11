@@ -212,9 +212,12 @@ def analyze_parquet_slice(
     quality.unique_candles = len(unique_ts)
     
     # Calculate expected candles
+    # WARNING: If expected_hours is not provided, we use the data's actual time span
+    # This can OVERESTIMATE coverage if there are gaps at the start/end of the data!
     if expected_hours:
         quality.expected_candles = int((expected_hours * 3600) // interval_seconds)
     elif unique_ts:
+        # Fallback: use actual data span (may overestimate coverage!)
         time_span = unique_ts[-1] - unique_ts[0]
         quality.expected_candles = max(1, (time_span // interval_seconds) + 1)
     
@@ -501,12 +504,25 @@ def _get_issue_reasons(r: SliceQuality) -> List[str]:
     return reasons
 
 
-def print_summary(summary: Dict[str, Any], results: List[SliceQuality]) -> None:
+def print_summary(
+    summary: Dict[str, Any], 
+    results: List[SliceQuality],
+    expected_hours_provided: bool = True,
+) -> None:
     """Print human-readable summary."""
     print()
     print("=" * 70)
     print("SLICE VALIDATION SUMMARY")
     print("=" * 70)
+    
+    # WARNING if expected_hours not provided
+    if not expected_hours_provided:
+        yellow = "\033[33m"
+        reset = "\033[0m"
+        print(f"\n{yellow}⚠️  WARNING: --expected-hours not provided!{reset}")
+        print(f"{yellow}   Coverage is calculated from data's actual time range,{reset}")
+        print(f"{yellow}   which may OVERESTIMATE coverage if gaps exist at start/end.{reset}")
+        print(f"{yellow}   For accurate coverage, run with: --expected-hours 24 (or 48){reset}")
     
     print(f"\nTotal files:    {summary['total_files']}")
     print(f"Total candles:  {summary['total_candles']:,}")
@@ -582,7 +598,8 @@ def main() -> None:
     parser.add_argument("--interval-seconds", type=int, default=60,
                         help="Expected candle interval (default: 60)")
     parser.add_argument("--expected-hours", type=float, default=None,
-                        help="Expected time span in hours (for coverage calculation)")
+                        help="Expected time span in hours (REQUIRED for accurate coverage! "
+                             "e.g., 24 or 48 for horizon-based exports)")
     
     # ClickHouse comparison
     parser.add_argument("--compare-clickhouse", action="store_true",
@@ -643,8 +660,9 @@ def main() -> None:
     # Generate summary
     summary = generate_summary(results)
     
-    # Print summary
-    print_summary(summary, results)
+    # Print summary - warn if expected-hours not provided
+    expected_hours_provided = args.expected_hours is not None
+    print_summary(summary, results, expected_hours_provided=expected_hours_provided)
     
     # Write outputs
     if args.output:
