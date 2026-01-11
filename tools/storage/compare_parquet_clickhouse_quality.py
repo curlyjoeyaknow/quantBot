@@ -293,6 +293,19 @@ def load_clickhouse_candles(
     interval: str = '1m'
 ) -> List[Dict[str, Any]]:
     """Load candles from ClickHouse for a time range."""
+    # Map interval string to seconds
+    interval_seconds_map = {
+        '1s': 1,
+        '15s': 15,
+        '1m': 60,
+        '5m': 300,
+        '15m': 900,
+        '1h': 3600,
+        '4h': 14400,
+        '1d': 86400
+    }
+    interval_sec = interval_seconds_map.get(interval, 60)
+    
     try:
         query = f"""
             SELECT 
@@ -306,7 +319,7 @@ def load_clickhouse_candles(
             FROM {database}.ohlcv_candles
             WHERE token_address = %(mint)s
               AND lower(chain) = lower(%(chain)s)
-              AND `interval` = %(interval)s
+              AND interval_seconds = %(interval_sec)s
               AND timestamp >= toDateTime(%(from_ts)s)
               AND timestamp <= toDateTime(%(to_ts)s)
             ORDER BY timestamp
@@ -315,7 +328,7 @@ def load_clickhouse_candles(
         rows = ch_client.execute(query, {
             'mint': mint,
             'chain': chain,
-            'interval': interval,
+            'interval_sec': interval_sec,
             'from_ts': from_ts,
             'to_ts': to_ts
         })
