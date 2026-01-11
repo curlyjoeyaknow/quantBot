@@ -357,6 +357,24 @@ def compare_with_clickhouse(
     return quality
 
 
+def parse_parquet_filename_date(filename: str) -> Optional[datetime]:
+    """
+    Parse date from parquet filename.
+    Format: YYYYMMDD_HHMM_mintPrefix.parquet
+    Example: 20251201_0007_BL22Me3x.parquet -> 2025-12-01 00:07
+    """
+    try:
+        base = filename.replace('.parquet', '')
+        parts = base.split('_')
+        if len(parts) >= 2:
+            date_str = parts[0]  # YYYYMMDD
+            time_str = parts[1]  # HHMM
+            return datetime.strptime(f"{date_str}{time_str}", "%Y%m%d%H%M").replace(tzinfo=UTC)
+    except Exception:
+        pass
+    return None
+
+
 def validate_directory(
     directory: Path,
     interval_seconds: int = 60,
@@ -366,16 +384,40 @@ def validate_directory(
     ch_database: str = "quantbot",
     chain: str = "solana",
     verbose: bool = False,
+    date_from: Optional[datetime] = None,
+    date_to: Optional[datetime] = None,
 ) -> List[SliceQuality]:
     """
     Validate all parquet files in a directory.
     
+    Args:
+        date_from: Optional start date filter (inclusive)
+        date_to: Optional end date filter (inclusive)
+    
     Returns list of SliceQuality objects.
     """
-    parquet_files = list(directory.glob("*.parquet"))
+    all_parquet_files = list(directory.glob("*.parquet"))
+    
+    # Filter by date range if provided
+    parquet_files = []
+    for f in all_parquet_files:
+        if date_from or date_to:
+            file_date = parse_parquet_filename_date(f.name)
+            if file_date:
+                if date_from and file_date < date_from:
+                    continue
+                if date_to and file_date > date_to:
+                    continue
+        parquet_files.append(f)
     
     if verbose:
-        print(f"Found {len(parquet_files)} parquet files in {directory}", file=sys.stderr)
+        if date_from or date_to:
+            date_range = f" (filtered: {date_from.strftime('%Y-%m-%d') if date_from else 'any'} to {date_to.strftime('%Y-%m-%d') if date_to else 'any'})"
+        else:
+            date_range = ""
+        print(f"Found {len(parquet_files)} parquet files in {directory}{date_range}", file=sys.stderr)
+        if len(parquet_files) < len(all_parquet_files):
+            print(f"  (filtered from {len(all_parquet_files)} total files)", file=sys.stderr)
     
     results: List[SliceQuality] = []
     
@@ -594,6 +636,12 @@ def main() -> None:
     group.add_argument("--dir", type=Path, help="Directory containing parquet files")
     group.add_argument("--file", type=Path, help="Single parquet file to validate")
     
+    # Date range filtering (for directory validation)
+    parser.add_argument("--from", dest="date_from", 
+                        help="Start date filter (YYYY-MM-DD), inclusive")
+    parser.add_argument("--to", dest="date_to",
+                        help="End date filter (YYYY-MM-DD), inclusive")
+    
     # Candle settings
     parser.add_argument("--interval-seconds", type=int, default=60,
                         help="Expected candle interval (default: 60)")
@@ -622,6 +670,24 @@ def main() -> None:
     parser.add_argument("-v", "--verbose", action="store_true")
     
     args = parser.parse_args()
+    
+    # Parse date range
+    date_from = None
+    date_to = None
+    if args.date_from:
+        try:
+            date_from = datetime.strptime(args.date_from, "%Y-%m-%d").replace(tzinfo=UTC)
+        except ValueError:
+            print(f"ERROR: Invalid date format for --from: {args.date_from}. Use YYYY-MM-DD", file=sys.stderr)
+            sys.exit(1)
+    if args.date_to:
+        try:
+            # Add 1 day minus 1 second to include the whole end day
+            date_to = datetime.strptime(args.date_to, "%Y-%m-%d").replace(tzinfo=UTC)
+            date_to = date_to.replace(hour=23, minute=59, second=59)
+        except ValueError:
+            print(f"ERROR: Invalid date format for --to: {args.date_to}. Use YYYY-MM-DD", file=sys.stderr)
+            sys.exit(1)
     
     # ClickHouse connection
     ch_client = None
@@ -655,6 +721,8 @@ def main() -> None:
             ch_database=args.ch_db,
             chain=args.chain,
             verbose=args.verbose,
+            date_from=date_from,
+            date_to=date_to,
         )
     
     # Generate summary
