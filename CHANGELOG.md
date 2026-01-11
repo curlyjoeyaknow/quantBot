@@ -37,6 +37,21 @@ All notable changes to this project will be documented in this file.
   - Prefers candle with highest volume when duplicates exist
   - Reduces quality issues from duplicate candle entries
 
+- **Cohort-Based EV Metrics** - Proper Expected Value calculations with exit multiple distributions
+  - **The missing brick**: Added `entry_mult`, `peak_mult`, `exit_mult`, `giveback_from_peak_pct` to every trade
+  - **Cohort A (Base Rates)**: P(reach 2x), P(3x | 2x), P(2x but not 3x)
+  - **Cohort B1 (Winners ≥3x)**: Exit multiple distributions (mean, p50, p75), giveback from peak
+  - **Cohort B2 (Losers 2x but not 3x)**: Exit multiple distributions, min multiple after 2x (how ugly it gets)
+  - **Cohort B3 (Never 2x)**: Exit multiple distributions for stopped-out trades
+  - **Proper EV**: `EV% = E[(exit_mult - 1) × 100]` for all trades and conditional on hitting 2x
+  - **EV Formula**: `E[exit_mult | 2x] = P(3x|2x)·μ_winners + (1-P(3x|2x))·μ_losers`
+  - **Why it matters**:
+    - Before: Only capture rates → can't compute true EV
+    - After: Exact exit distributions → can compute EV for any stop strategy
+    - Enables: Tail-capture curves, optimal ladder tightening, risk/variance knobs
+  - **CSV Export**: All cohort metrics included (24 new columns)
+  - **Parquet**: Full audit trail with backward compatibility
+
 - **CSV Export for Phased Stop Simulator** - Export summary results to CSV
   - New `--csv-output` option exports console summary table to CSV file
   - One row per (caller, strategy) combination
