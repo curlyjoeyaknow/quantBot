@@ -196,12 +196,35 @@ class CallerDistribution:
     pct_dd_post4x_no5x_gt_40pct: Optional[float]
 
 
+def get_ladder_anchor(current_price: float, entry_price: float, ladder_steps: float) -> float:
+    """
+    Get the ladder anchor price for the current price level.
+    
+    For ladder_steps=0.5: anchors at 2.0x, 2.5x, 3.0x, 3.5x, 4.0x, etc.
+    For ladder_steps=1.0: anchors at 2.0x, 3.0x, 4.0x, 5.0x, etc.
+    
+    Returns the highest ladder level at or below current price.
+    """
+    if current_price < entry_price * 2.0:
+        return entry_price * 2.0  # Below 2x, anchor at 2x
+    
+    # Calculate which ladder step we're at
+    multiple = current_price / entry_price
+    # Round down to nearest ladder step
+    ladder_level = int(multiple / ladder_steps) * ladder_steps
+    # Ensure we're at least at 2.0x
+    ladder_level = max(2.0, ladder_level)
+    
+    return entry_price * ladder_level
+
+
 def compute_post2x_dd(
     candles: List[Dict],
     entry_price: float,
     t0_ms: int,
     interval_seconds: int = 300,
     stop_mode: str = "static",
+    ladder_steps: float = 1.0,
 ) -> Post2xMetrics:
     """
     Compute post-2x drawdown metrics from candle data.
@@ -211,7 +234,8 @@ def compute_post2x_dd(
         entry_price: Entry price (p0)
         t0_ms: Alert timestamp in milliseconds
         interval_seconds: Candle interval in seconds
-        stop_mode: 'static' (stop anchored at 2x/3x/4x) or 'trailing' (stop moves with peak)
+        stop_mode: 'static' (stop anchored at 2x/3x/4x), 'trailing' (stop moves with peak), 'ladder' (stop moves at intervals)
+        ladder_steps: For ladder mode, step size in multiples (e.g., 0.5 = 2.0x, 2.5x, 3.0x, 3.5x)
         
     Returns:
         Post2xMetrics object
@@ -272,6 +296,14 @@ def compute_post2x_dd(
     peak_post3x_all: Optional[float] = None
     peak_post4x_all: Optional[float] = None
     
+    # For ladder mode: track current ladder anchor in each window
+    ladder_anchor_post2x_to3x: Optional[float] = None
+    ladder_anchor_post2x_to4x: Optional[float] = None
+    ladder_anchor_post2x_to5x: Optional[float] = None
+    ladder_anchor_post2x_all: Optional[float] = None
+    ladder_anchor_post3x_all: Optional[float] = None
+    ladder_anchor_post4x_all: Optional[float] = None
+    
     for candle in candles:
         # Convert timestamp to ms
         ts_val = candle['timestamp']
@@ -319,6 +351,10 @@ def compute_post2x_dd(
                 if stop_mode == "trailing":
                     if peak_post2x_to3x is None or high > peak_post2x_to3x:
                         peak_post2x_to3x = high
+                elif stop_mode == "ladder":
+                    current_anchor = get_ladder_anchor(high, entry_price, ladder_steps)
+                    if ladder_anchor_post2x_to3x is None or current_anchor > ladder_anchor_post2x_to3x:
+                        ladder_anchor_post2x_to3x = current_anchor
             
             if t_4x_ms is not None and ts_ms <= t_4x_ms:
                 if min_low_post2x_to4x is None or low < min_low_post2x_to4x:
@@ -326,6 +362,10 @@ def compute_post2x_dd(
                 if stop_mode == "trailing":
                     if peak_post2x_to4x is None or high > peak_post2x_to4x:
                         peak_post2x_to4x = high
+                elif stop_mode == "ladder":
+                    current_anchor = get_ladder_anchor(high, entry_price, ladder_steps)
+                    if ladder_anchor_post2x_to4x is None or current_anchor > ladder_anchor_post2x_to4x:
+                        ladder_anchor_post2x_to4x = current_anchor
             
             if t_5x_ms is not None and ts_ms <= t_5x_ms:
                 if min_low_post2x_to5x is None or low < min_low_post2x_to5x:
@@ -333,6 +373,10 @@ def compute_post2x_dd(
                 if stop_mode == "trailing":
                     if peak_post2x_to5x is None or high > peak_post2x_to5x:
                         peak_post2x_to5x = high
+                elif stop_mode == "ladder":
+                    current_anchor = get_ladder_anchor(high, entry_price, ladder_steps)
+                    if ladder_anchor_post2x_to5x is None or current_anchor > ladder_anchor_post2x_to5x:
+                        ladder_anchor_post2x_to5x = current_anchor
             
             # For ALL post-2x candles (used for non-winners)
             if min_low_post2x_all is None or low < min_low_post2x_all:
@@ -340,6 +384,10 @@ def compute_post2x_dd(
             if stop_mode == "trailing":
                 if peak_post2x_all is None or high > peak_post2x_all:
                     peak_post2x_all = high
+            elif stop_mode == "ladder":
+                current_anchor = get_ladder_anchor(high, entry_price, ladder_steps)
+                if ladder_anchor_post2x_all is None or current_anchor > ladder_anchor_post2x_all:
+                    ladder_anchor_post2x_all = current_anchor
         
         # Track post-3x for 3x-but-not-4x
         if t_3x_ms is not None and ts_ms >= t_3x_ms:
@@ -348,6 +396,10 @@ def compute_post2x_dd(
             if stop_mode == "trailing":
                 if peak_post3x_all is None or high > peak_post3x_all:
                     peak_post3x_all = high
+            elif stop_mode == "ladder":
+                current_anchor = get_ladder_anchor(high, entry_price, ladder_steps)
+                if ladder_anchor_post3x_all is None or current_anchor > ladder_anchor_post3x_all:
+                    ladder_anchor_post3x_all = current_anchor
         
         # Track post-4x for 4x-but-not-5x
         if t_4x_ms is not None and ts_ms >= t_4x_ms:
@@ -356,10 +408,15 @@ def compute_post2x_dd(
             if stop_mode == "trailing":
                 if peak_post4x_all is None or high > peak_post4x_all:
                     peak_post4x_all = high
+            elif stop_mode == "ladder":
+                current_anchor = get_ladder_anchor(high, entry_price, ladder_steps)
+                if ladder_anchor_post4x_all is None or current_anchor > ladder_anchor_post4x_all:
+                    ladder_anchor_post4x_all = current_anchor
     
     # Compute drawdowns (positive magnitude: 0% to 100%)
     # Static mode: DD = 1 - (min_low / anchor_price) where anchor = 2x/3x/4x price
     # Trailing mode: DD = 1 - (min_low / peak_price) where peak moves with highs
+    # Ladder mode: DD = 1 - (min_low / ladder_anchor) where anchor moves at fixed intervals
     
     # For WINNERS (reached next milestone)
     dd_post2x_to3x_pct = None
@@ -367,6 +424,9 @@ def compute_post2x_dd(
         if stop_mode == "trailing" and peak_post2x_to3x is not None:
             # Trailing: drawdown from peak in window
             dd_raw = 1.0 - (min_low_post2x_to3x / peak_post2x_to3x)
+        elif stop_mode == "ladder" and ladder_anchor_post2x_to3x is not None:
+            # Ladder: drawdown from highest ladder level reached
+            dd_raw = 1.0 - (min_low_post2x_to3x / ladder_anchor_post2x_to3x)
         else:
             # Static: drawdown from 2x price
             dd_raw = 1.0 - (min_low_post2x_to3x / price_at_2x)
@@ -376,6 +436,8 @@ def compute_post2x_dd(
     if t_2x_ms is not None and t_4x_ms is not None and min_low_post2x_to4x is not None:
         if stop_mode == "trailing" and peak_post2x_to4x is not None:
             dd_raw = 1.0 - (min_low_post2x_to4x / peak_post2x_to4x)
+        elif stop_mode == "ladder" and ladder_anchor_post2x_to4x is not None:
+            dd_raw = 1.0 - (min_low_post2x_to4x / ladder_anchor_post2x_to4x)
         else:
             dd_raw = 1.0 - (min_low_post2x_to4x / price_at_2x)
         dd_post2x_to4x_pct = max(0.0, dd_raw)
@@ -384,6 +446,8 @@ def compute_post2x_dd(
     if t_2x_ms is not None and t_5x_ms is not None and min_low_post2x_to5x is not None:
         if stop_mode == "trailing" and peak_post2x_to5x is not None:
             dd_raw = 1.0 - (min_low_post2x_to5x / peak_post2x_to5x)
+        elif stop_mode == "ladder" and ladder_anchor_post2x_to5x is not None:
+            dd_raw = 1.0 - (min_low_post2x_to5x / ladder_anchor_post2x_to5x)
         else:
             dd_raw = 1.0 - (min_low_post2x_to5x / price_at_2x)
         dd_post2x_to5x_pct = max(0.0, dd_raw)
@@ -394,6 +458,8 @@ def compute_post2x_dd(
         # Hit 2x but NOT 3x - use entire post-2x window
         if stop_mode == "trailing" and peak_post2x_all is not None:
             dd_raw = 1.0 - (min_low_post2x_all / peak_post2x_all)
+        elif stop_mode == "ladder" and ladder_anchor_post2x_all is not None:
+            dd_raw = 1.0 - (min_low_post2x_all / ladder_anchor_post2x_all)
         else:
             dd_raw = 1.0 - (min_low_post2x_all / price_at_2x)
         dd_post2x_no3x_pct = max(0.0, dd_raw)
@@ -404,6 +470,8 @@ def compute_post2x_dd(
         price_at_3x = entry_price * 3.0
         if stop_mode == "trailing" and peak_post3x_all is not None:
             dd_raw = 1.0 - (min_low_post3x_all / peak_post3x_all)
+        elif stop_mode == "ladder" and ladder_anchor_post3x_all is not None:
+            dd_raw = 1.0 - (min_low_post3x_all / ladder_anchor_post3x_all)
         else:
             dd_raw = 1.0 - (min_low_post3x_all / price_at_3x)
         dd_post3x_no4x_pct = max(0.0, dd_raw)
@@ -414,6 +482,8 @@ def compute_post2x_dd(
         price_at_4x = entry_price * 4.0
         if stop_mode == "trailing" and peak_post4x_all is not None:
             dd_raw = 1.0 - (min_low_post4x_all / peak_post4x_all)
+        elif stop_mode == "ladder" and ladder_anchor_post4x_all is not None:
+            dd_raw = 1.0 - (min_low_post4x_all / ladder_anchor_post4x_all)
         else:
             dd_raw = 1.0 - (min_low_post4x_all / price_at_4x)
         dd_post4x_no5x_pct = max(0.0, dd_raw)
@@ -735,9 +805,15 @@ def main():
     parser.add_argument(
         "--stop-mode",
         type=str,
-        choices=["static", "trailing"],
+        choices=["static", "trailing", "ladder"],
         default="static",
-        help="Stop calculation mode: 'static' = stop anchored at 2x/3x/4x price (measures max drawdown tolerance), 'trailing' = stop moves up with peak price (realistic trailing stop)",
+        help="Stop calculation mode: 'static' = stop anchored at 2x/3x/4x price (measures max drawdown tolerance), 'trailing' = stop moves up with peak price continuously, 'ladder' = stop moves at fixed intervals (e.g., 2.5x, 3.0x, 3.5x)",
+    )
+    parser.add_argument(
+        "--ladder-steps",
+        type=float,
+        default=1.0,
+        help="For ladder mode: step size in multiples (e.g., 0.5 = move stop at 2.0x, 2.5x, 3.0x, 3.5x, etc.; 1.0 = move at 2.0x, 3.0x, 4.0x, etc.)",
     )
     
     args = parser.parse_args()
@@ -826,6 +902,7 @@ def main():
             alert.ts_ms,
             args.interval_seconds,
             args.stop_mode,
+            args.ladder_steps,
         )
         metrics.caller = alert.caller
         metrics.mint = alert.mint
@@ -924,7 +1001,12 @@ def main():
     else:
         # Table output - show all three metrics (2x→3x, 2x→4x, 2x→5x)
         print("\n" + "=" * 160)
-        stop_mode_desc = "STATIC (stop anchored at 2x/3x/4x)" if args.stop_mode == "static" else "TRAILING (stop moves with peak)"
+        if args.stop_mode == "static":
+            stop_mode_desc = "STATIC (stop anchored at 2x/3x/4x)"
+        elif args.stop_mode == "trailing":
+            stop_mode_desc = "TRAILING (stop moves with peak)"
+        else:  # ladder
+            stop_mode_desc = f"LADDER (stop moves at {args.ladder_steps}x intervals: 2.0x, {2.0+args.ladder_steps:.1f}x, {2.0+2*args.ladder_steps:.1f}x, ...)"
         print(f"POST-2X DRAWDOWN ANALYSIS BY CALLER - {stop_mode_desc}")
         print("=" * 160)
         print("\nDD_2x→3x (tokens that reached 3x)")
