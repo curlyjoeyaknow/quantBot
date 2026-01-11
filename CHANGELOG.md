@@ -11,15 +11,19 @@ All notable changes to this project will be documented in this file.
   - Computes drawdown distributions for tokens reaching 2x, 3x, 4x, 5x milestones
   - **Winner analysis**: Drawdown from 2x→3x, 2x→4x, 2x→5x for tokens that reach next milestone
     - Distribution stats (p50, p75, p90) per caller
-    - Stopout rates at 5%, 10%, 15%, 20%, 25%, 30%, 40% trailing stops
+    - Keep@X% rates: % of winners captured with X% stop (5%, 10%, 15%, 20%, 25%, 30%, 40%)
   - **Non-winner analysis**: Drawdown for tokens that DON'T reach next milestone (saved from nuke)
     - 2x-but-not-3x: How often would a stop save you from full round-trip?
     - 3x-but-not-4x: Post-3x nuke protection
     - 4x-but-not-5x: Post-4x nuke protection
-  - **+EV decision framework**: Compare Stop@X% (winners killed) vs Save@X% (losers saved)
-    - If Save@X% >> Stop@X%, the trailing stop is +EV
-    - Example: Stop@20% = 15% and Save@20% = 80% → highly +EV (save 80% of losers, miss 15% of winners)
+  - **+EV decision framework**: Compare Keep@X% (winners captured) vs Save@X% (losers saved)
+    - If Keep@X% is high (>80%) AND Save@X% is high (>70%), the stop is +EV
+    - Example: Keep@20% = 85% and Save@20% = 80% → highly +EV (capture 85% of winners, save 80% of losers)
+  - **Two stop modes** (`--stop-mode`):
+    - `static` (default): Stop anchored at 2x/3x/4x price (measures max drawdown tolerance)
+    - `trailing`: Stop moves up with peak price (realistic trailing stop simulation)
   - Multithreaded processing with progress bar (configurable threads)
+  - Resource limits and timeouts to prevent hanging on large datasets
   - Drawdown sign convention: Always positive magnitude (0-100%)
   - Per-caller aggregation with configurable date ranges and minimum call thresholds
 
