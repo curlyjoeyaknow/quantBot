@@ -184,11 +184,21 @@ const schemas = [
         fields: [
           { name: 'duckdb', type: 'str', required: true },
           { name: 'run_id', type: 'Optional[str]', required: false },
-          { name: 'from_', type: 'Optional[str]', required: false, comment: '# from in TypeScript' },
+          {
+            name: 'from_',
+            type: 'Optional[str]',
+            required: false,
+            comment: '# from in TypeScript',
+          },
           { name: 'to', type: 'Optional[str]', required: false },
           { name: 'min_trades', type: 'int', required: false, default: '10' },
           { name: 'top', type: 'int', required: false, default: '50' },
-          { name: 'format', type: 'Literal["json", "table", "csv"]', required: false, default: '"json"' },
+          {
+            name: 'format',
+            type: 'Literal["json", "table", "csv"]',
+            required: false,
+            default: '"json"',
+          },
         ],
       },
       {
