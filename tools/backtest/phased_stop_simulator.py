@@ -374,6 +374,194 @@ def simulate_phased_trade(
            ath_multiple, phase2_entry_price, phase2_entry_ts_ms)
 
 
+def simulate_phased_trade_with_reference(
+    candles: List[Dict],
+    entry_price: float,
+    entry_ts_ms: int,
+    reference_price: float,
+    stop_mode: str,
+    phase1_stop_pct: float,
+    phase2_stop_pct: float,
+    ladder_steps: float = 0.5,
+) -> Tuple[float, int, str, int, bool, bool, bool, bool, bool, float, Optional[float], Optional[int]]:
+    """
+    Simulate a trade with phased stop strategy using a reference price for stop calculations.
+    
+    This allows delayed entry strategies where stops are calculated from alert price
+    rather than actual entry price.
+    
+    Args:
+        candles: Candle data after entry
+        entry_price: Actual entry price (may differ from reference if delayed entry)
+        entry_ts_ms: Entry timestamp
+        reference_price: Price to use for stop calculations (alert price or entry price)
+        stop_mode: "static", "trailing", or "ladder"
+        phase1_stop_pct: Phase 1 stop percentage
+        phase2_stop_pct: Phase 2 stop percentage
+        ladder_steps: Ladder step size (for ladder mode)
+    
+    Returns:
+        Same as simulate_phased_trade
+    """
+    if not candles:
+        return (entry_price, entry_ts_ms, "end_of_data", 1, False, False, False, False, False, 1.0, None, None)
+    
+    # Target prices (based on actual entry price)
+    target_2x = entry_price * 2.0
+    target_3x = entry_price * 3.0
+    target_4x = entry_price * 4.0
+    target_5x = entry_price * 5.0
+    target_10x = entry_price * 10.0
+    
+    # Phase tracking
+    current_phase = 1
+    phase2_entry_price = None
+    phase2_entry_ts_ms = None
+    
+    # Milestone tracking
+    hit_2x = False
+    hit_3x = False
+    hit_4x = False
+    hit_5x = False
+    hit_10x = False
+    
+    # ATH tracking
+    ath_price = entry_price
+    ath_multiple = 1.0
+    
+    # Phase 1 tracking (1x→2x)
+    # Stops calculated from reference price
+    phase1_peak = reference_price
+    phase1_stop_price = reference_price * (1.0 - phase1_stop_pct)
+    phase1_ladder_anchor = reference_price
+    
+    # Phase 2 tracking (2x+)
+    phase2_peak = None
+    phase2_stop_price = None
+    phase2_ladder_anchor = None
+    
+    from datetime import datetime as dt_class
+    
+    for candle in candles:
+        # Parse timestamp
+        ts_val = candle['timestamp']
+        
+        if isinstance(ts_val, dt_class):
+            ts_ms = int(ts_val.timestamp() * 1000)
+        elif isinstance(ts_val, str):
+            ts = dt_class.fromisoformat(ts_val.replace('Z', '+00:00'))
+            ts_ms = int(ts.timestamp() * 1000)
+        elif isinstance(ts_val, (int, float)):
+            ts_float = float(ts_val)
+            if ts_float < 4102444800:
+                ts_ms = int(ts_float * 1000)
+            else:
+                ts_ms = int(ts_float)
+        else:
+            continue
+        
+        high = float(candle['high'])
+        low = float(candle['low'])
+        close = float(candle['close'])
+        
+        # Check milestone hits (based on entry price)
+        if not hit_2x and high >= target_2x:
+            hit_2x = True
+            current_phase = 2
+            phase2_entry_price = target_2x
+            phase2_entry_ts_ms = ts_ms
+            
+            # Initialize phase 2 stop (based on reference price * 2)
+            phase2_reference = reference_price * 2.0
+            if stop_mode == "static":
+                phase2_stop_price = phase2_reference * (1.0 - phase2_stop_pct)
+                phase2_peak = phase2_reference
+            elif stop_mode == "trailing":
+                phase2_peak = phase2_reference
+                phase2_stop_price = phase2_reference * (1.0 - phase2_stop_pct)
+            elif stop_mode == "ladder":
+                phase2_ladder_anchor = phase2_reference
+                phase2_stop_price = phase2_reference * (1.0 - phase2_stop_pct)
+        
+        if not hit_3x and high >= target_3x:
+            hit_3x = True
+        if not hit_4x and high >= target_4x:
+            hit_4x = True
+        if not hit_5x and high >= target_5x:
+            hit_5x = True
+        if not hit_10x and high >= target_10x:
+            hit_10x = True
+        
+        # Track ATH
+        if high > ath_price:
+            ath_price = high
+            ath_multiple = ath_price / entry_price
+        
+        # Phase 1: 1x→2x
+        if current_phase == 1:
+            # Update peak and stop
+            if stop_mode == "trailing":
+                if high > phase1_peak:
+                    phase1_peak = high
+                    phase1_stop_price = phase1_peak * (1.0 - phase1_stop_pct)
+            elif stop_mode == "ladder":
+                # Calculate ladder anchor from reference price
+                current_multiple = high / reference_price
+                if current_multiple >= 1.0:
+                    anchor_multiple = max(1.0, int(current_multiple / ladder_steps) * ladder_steps)
+                    new_anchor = reference_price * anchor_multiple
+                    if new_anchor > phase1_ladder_anchor:
+                        phase1_ladder_anchor = new_anchor
+                        phase1_stop_price = phase1_ladder_anchor * (1.0 - phase1_stop_pct)
+            
+            # Check stop
+            if low <= phase1_stop_price:
+                exit_price = phase1_stop_price
+                return (exit_price, ts_ms, "stopped_phase1", 1, hit_2x, hit_3x, hit_4x, hit_5x, hit_10x,
+                       ath_multiple, phase2_entry_price, phase2_entry_ts_ms)
+        
+        # Phase 2: 2x+
+        elif current_phase == 2:
+            # Update peak and stop
+            if stop_mode == "static":
+                # Stop stays at phase2_reference level
+                pass
+            elif stop_mode == "trailing":
+                if high > phase2_peak:
+                    phase2_peak = high
+                    phase2_stop_price = phase2_peak * (1.0 - phase2_stop_pct)
+            elif stop_mode == "ladder":
+                # Calculate ladder anchor from reference price
+                current_multiple = high / reference_price
+                anchor_multiple = max(2.0, int(current_multiple / ladder_steps) * ladder_steps)
+                new_anchor = reference_price * anchor_multiple
+                if new_anchor > phase2_ladder_anchor:
+                    phase2_ladder_anchor = new_anchor
+                    phase2_stop_price = phase2_ladder_anchor * (1.0 - phase2_stop_pct)
+            
+            # Check stop
+            if low <= phase2_stop_price:
+                exit_price = phase2_stop_price
+                return (exit_price, ts_ms, "stopped_phase2", 2, hit_2x, hit_3x, hit_4x, hit_5x, hit_10x,
+                       ath_multiple, phase2_entry_price, phase2_entry_ts_ms)
+    
+    # End of data
+    last_candle = candles[-1]
+    exit_price = float(last_candle['close'])
+    
+    ts_val = last_candle['timestamp']
+    if isinstance(ts_val, dt_class):
+        exit_ts_ms = int(ts_val.timestamp() * 1000)
+    elif isinstance(ts_val, str):
+        ts = dt_class.fromisoformat(ts_val.replace('Z', '+00:00'))
+        exit_ts_ms = int(ts.timestamp() * 1000)
+    else:
+        exit_ts_ms = int(float(ts_val) * 1000 if float(ts_val) < 4102444800 else float(ts_val))
+    
+    return (exit_price, exit_ts_ms, "end_of_data", current_phase, hit_2x, hit_3x, hit_4x, hit_5x, hit_10x,
+           ath_multiple, phase2_entry_price, phase2_entry_ts_ms)
+
+
 def load_candles_from_parquet(
     slice_path: Path,
     mint: str,
@@ -1107,6 +1295,9 @@ def main():
     parser.add_argument("--resume", action="store_true", help="Resume interrupted run (skip already-processed mints in current run_id)")
     parser.add_argument("--use-cache", action="store_true", help="Reuse results from previous runs with overlapping date ranges (different run_ids)")
     parser.add_argument("--csv-output", type=str, help="Export summary results to CSV file (e.g., results/run.csv)")
+    parser.add_argument("--delayed-entry", type=float, default=0.0, help="Wait for X%% dip before entering (e.g., -10 for -10%%, 0 for immediate)")
+    parser.add_argument("--entry-max-wait", type=float, help="Maximum hours to wait for delayed entry (default: no limit)")
+    parser.add_argument("--stop-from", choices=["alert", "entry"], default="alert", help="Calculate stops from alert price or actual entry price")
     parser.add_argument("--verbose", action="store_true", help="Verbose output")
     
     args = parser.parse_args()
@@ -1346,8 +1537,8 @@ def main():
             if not candles:
                 return trades
             
-            # Get entry price from first candle
-            entry_price = None
+            # Get alert price from first candle
+            alert_price = None
             from datetime import datetime as dt_class
             for candle in candles:
                 ts = candle['timestamp']
@@ -1363,11 +1554,65 @@ def main():
                     continue
                 
                 if ts_ms >= entry_ts_ms:
-                    entry_price = float(candle['close'])
+                    alert_price = float(candle['close'])
                     break
             
-            if entry_price is None or entry_price <= 0:
+            if alert_price is None or alert_price <= 0:
                 return trades
+            
+            # Handle delayed entry
+            actual_entry_price = alert_price
+            actual_entry_ts_ms = entry_ts_ms
+            entry_candles = candles
+            entry_occurred = True
+            
+            if args.delayed_entry < 0:
+                # Wait for dip
+                dip_pct = args.delayed_entry / 100.0  # Convert -10 to -0.10
+                target_entry_price = alert_price * (1.0 + dip_pct)
+                max_wait_ms = int(args.entry_max_wait * 3600 * 1000) if args.entry_max_wait else None
+                
+                # Search for dip
+                dip_found = False
+                for i, candle in enumerate(candles):
+                    ts = candle['timestamp']
+                    if isinstance(ts, dt_class):
+                        ts_ms = int(ts.timestamp() * 1000)
+                    elif isinstance(ts, str):
+                        ts_dt = dt_class.fromisoformat(ts.replace('Z', '+00:00'))
+                        ts_ms = int(ts_dt.timestamp() * 1000)
+                    elif isinstance(ts, (int, float)):
+                        ts_float = float(ts)
+                        ts_ms = int(ts_float * 1000) if ts_float < 4102444800 else int(ts_float)
+                    else:
+                        continue
+                    
+                    # Check max wait time
+                    if max_wait_ms and (ts_ms - entry_ts_ms) > max_wait_ms:
+                        break
+                    
+                    low = float(candle['low'])
+                    
+                    # Check if dip occurred
+                    if low <= target_entry_price:
+                        dip_found = True
+                        actual_entry_price = target_entry_price
+                        actual_entry_ts_ms = ts_ms
+                        entry_candles = candles[i:]  # Remaining candles after entry
+                        break
+                
+                if not dip_found:
+                    # Dip never occurred - skip this trade
+                    entry_occurred = False
+            
+            if not entry_occurred:
+                return trades
+            
+            # Determine reference price for stops
+            if args.stop_from == "alert":
+                reference_price = alert_price
+            else:  # "entry"
+                reference_price = actual_entry_price
             
             # Test each strategy
             for stop_mode, phase1_stop, phase2_stop, ladder_steps in strategies:
@@ -1375,10 +1620,13 @@ def main():
                 key = (mint, stop_mode, phase1_stop, phase2_stop)
                 if key in processed_keys:
                     continue
-                exit_price, exit_ts_ms, exit_reason, exit_phase, hit_2x, hit_3x, hit_4x, hit_5x, hit_10x, ath_multiple, phase2_entry_price, phase2_entry_ts_ms = simulate_phased_trade(
-                    candles,
-                    entry_price,
-                    entry_ts_ms,
+                
+                # Simulate trade with delayed entry
+                exit_price, exit_ts_ms, exit_reason, exit_phase, hit_2x, hit_3x, hit_4x, hit_5x, hit_10x, ath_multiple, phase2_entry_price, phase2_entry_ts_ms = simulate_phased_trade_with_reference(
+                    entry_candles,
+                    actual_entry_price,
+                    actual_entry_ts_ms,
+                    reference_price,
                     stop_mode,
                     phase1_stop,
                     phase2_stop,
@@ -1388,19 +1636,19 @@ def main():
                 # Calculate metrics
                 entry_mult = 1.0
                 peak_mult = ath_multiple  # Peak multiple while in trade
-                exit_mult = exit_price / entry_price
+                exit_mult = exit_price / actual_entry_price
                 giveback_from_peak_pct = ((peak_mult - exit_mult) / peak_mult * 100.0) if peak_mult > 0 else 0.0
                 
                 multiple = exit_mult  # For compatibility
                 return_pct = (exit_mult - 1.0) * 100.0
-                hold_time_minutes = (exit_ts_ms - entry_ts_ms) // (1000 * 60)
+                hold_time_minutes = (exit_ts_ms - actual_entry_ts_ms) // (1000 * 60)
                 
                 trade = PhasedTradeResult(
                     caller=alert['caller'],
                     mint=alert['mint'],
                     alert_id=alert['id'],
-                    entry_price=entry_price,
-                    entry_ts_ms=entry_ts_ms,
+                    entry_price=actual_entry_price,
+                    entry_ts_ms=actual_entry_ts_ms,
                     exit_price=exit_price,
                     exit_ts_ms=exit_ts_ms,
                     exit_reason=exit_reason,

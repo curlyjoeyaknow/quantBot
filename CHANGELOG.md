@@ -6,15 +6,23 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
-- **Modular Trade Simulation Library** - Reusable components for entry and stop strategies
+- **Delayed Entry Support in Phased Stop Simulator** - Test waiting for dips after alert
+  - **`--delayed-entry`**: Wait for X% dip before entering (e.g., `-10` for -10%, `0` for immediate)
+  - **`--entry-max-wait`**: Maximum hours to wait for delayed entry (optional)
+  - **`--stop-from`**: Calculate stops from `alert` price or actual `entry` price
+  - **New function**: `simulate_phased_trade_with_reference()` - supports reference price for stop calculations
+  - **Integrated**: Delayed entry works with all existing features (caching, resume, parquet output, EV metrics)
+  - **Tests**: Should we wait for a dip? If so, how much? Compare immediate vs delayed entry strategies
+
+- **Modular Trade Simulation Library** - Reusable components for future tools
   - **`lib/entry_strategies.py`**: Modular entry strategies (immediate, delayed dip, time-delayed, limit order)
   - **`lib/stop_strategies.py`**: Modular stop strategies (static, trailing, with phased configuration)
   - **`lib/trade_simulator.py`**: Combines entry + stop strategies for complete trade simulation
-  - **`delayed_entry_simulator.py`**: Test waiting for dips after alert (-5% to -50%)
   - **`DELAYED_ENTRY_PLAN.md`**: Comprehensive plan and expected results
-  - **Key feature**: All strategies are composable and reusable across different simulators
+  - **`MODULAR_LIBRARY_USAGE.md`**: Complete usage guide with examples
+  - **`test_modular_library.py`**: Verification tests (all passing ✅)
   - **Architecture**: Clean separation between entry logic, stop logic, and simulation orchestration
-  - Tests: Should we wait for a dip? If so, how much? Answers with dip occurrence rates and opportunity-adjusted EV
+  - **Purpose**: Reusable components for analysis scripts, quick tests, and future simulators
 
 - **Time-Based Exit Analysis** - Game-changing discovery: trailing stops + time windows
   - **`time_based_analysis.py`**: Analyze time-to-peak and optimal hold times with granular cohorts

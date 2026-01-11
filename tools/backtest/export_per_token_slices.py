@@ -30,6 +30,18 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Dict, List, NamedTuple, Optional
 
+# Load .env file for environment variables (ClickHouse credentials, etc.)
+try:
+    from dotenv import load_dotenv
+    # Try to load from repo root first, then current directory
+    env_path = Path(__file__).resolve().parent.parent.parent / ".env"
+    if env_path.exists():
+        load_dotenv(env_path)
+    else:
+        load_dotenv()  # Try current directory
+except ImportError:
+    pass  # dotenv not installed, use existing env vars
+
 import duckdb
 
 try:
