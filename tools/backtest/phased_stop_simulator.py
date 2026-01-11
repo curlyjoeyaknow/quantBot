@@ -45,6 +45,7 @@ from pathlib import Path
 from threading import Semaphore
 from typing import Any, Dict, List, Optional, Tuple
 
+import csv
 import numpy as np
 import pandas as pd
 import pyarrow as pa
@@ -791,6 +792,67 @@ def aggregate_performance(trades: List[PhasedTradeResult]) -> StrategyPerformanc
     )
 
 
+def export_results_to_csv(performances: List[StrategyPerformance], output_file: Path):
+    """Export performance results to CSV file."""
+    if not performances:
+        return
+    
+    # Ensure output directory exists
+    output_file.parent.mkdir(parents=True, exist_ok=True)
+    
+    with open(output_file, 'w', newline='') as f:
+        writer = csv.writer(f)
+        
+        # Write header
+        writer.writerow([
+            'Caller',
+            'Phase1_Stop_%',
+            'Phase2_Stop_%',
+            'Mode',
+            'N_Trades',
+            'Hit_2x',
+            'Stop_Phase1',
+            'Stop_Phase2',
+            'Avg_Return_%',
+            'Median_Return_%',
+            'Win_Rate_%',
+            'EV_Per_Trade_%',
+            'Capture_2x_%',
+            'Capture_3x_%',
+            'Capture_5x_%',
+            'Capture_10x_%',
+            'ATH_p50_Multiple',
+            'ATH_p90_Multiple',
+        ])
+        
+        # Write data rows
+        for perf in performances:
+            mode_str = perf.stop_mode
+            if perf.stop_mode == "ladder":
+                mode_str = f"ladder{perf.ladder_steps:.1f}"
+            
+            writer.writerow([
+                perf.caller,
+                f"{perf.phase1_stop_pct * 100:.0f}",
+                f"{perf.phase2_stop_pct * 100:.0f}",
+                mode_str,
+                perf.n_trades,
+                perf.n_hit_2x,
+                perf.n_stopped_phase1,
+                perf.n_stopped_phase2,
+                f"{perf.avg_return_pct:.2f}",
+                f"{perf.median_return_pct:.2f}",
+                f"{perf.win_rate:.2f}",
+                f"{perf.expected_value_per_trade:.2f}",
+                f"{perf.pct_captured_2x:.2f}",
+                f"{perf.pct_captured_3x:.2f}",
+                f"{perf.pct_captured_5x:.2f}",
+                f"{perf.pct_captured_10x:.2f}",
+                f"{perf.median_ath_multiple:.3f}",
+                f"{perf.p90_ath_multiple:.3f}",
+            ])
+
+
 def print_results(performances: List[StrategyPerformance], output_format: str):
     """Print performance results."""
     if output_format == "json":
@@ -885,6 +947,7 @@ def main():
     parser.add_argument("--output-dir", type=str, default="output/phased_stop_results", help="Output directory for parquet files")
     parser.add_argument("--resume", action="store_true", help="Resume from existing results")
     parser.add_argument("--use-cache", action="store_true", help="Use cached results for overlapping date ranges")
+    parser.add_argument("--csv-output", type=str, help="Export summary results to CSV file (e.g., results/run.csv)")
     parser.add_argument("--verbose", action="store_true", help="Verbose output")
     
     args = parser.parse_args()
@@ -1268,6 +1331,12 @@ def main():
     
     # Print results
     print_results(performances, args.output)
+    
+    # Export to CSV if requested
+    if args.csv_output:
+        csv_path = Path(args.csv_output)
+        export_results_to_csv(performances, csv_path)
+        print(f"\n✓ Summary exported to CSV: {csv_path}", file=sys.stderr)
     
     # Print output file location
     output_file = output_dir / f"phased_stop_results_{run_id}.parquet"
