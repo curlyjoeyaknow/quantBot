@@ -6,6 +6,36 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Modular Trade Simulation Library** - Reusable components for entry and stop strategies
+  - **`lib/entry_strategies.py`**: Modular entry strategies (immediate, delayed dip, time-delayed, limit order)
+  - **`lib/stop_strategies.py`**: Modular stop strategies (static, trailing, with phased configuration)
+  - **`lib/trade_simulator.py`**: Combines entry + stop strategies for complete trade simulation
+  - **`delayed_entry_simulator.py`**: Test waiting for dips after alert (-5% to -50%)
+  - **`DELAYED_ENTRY_PLAN.md`**: Comprehensive plan and expected results
+  - **Key feature**: All strategies are composable and reusable across different simulators
+  - **Architecture**: Clean separation between entry logic, stop logic, and simulation orchestration
+  - Tests: Should we wait for a dip? If so, how much? Answers with dip occurrence rates and opportunity-adjusted EV
+
+- **Time-Based Exit Analysis** - Game-changing discovery: trailing stops + time windows
+  - **`time_based_analysis.py`**: Analyze time-to-peak and optimal hold times with granular cohorts
+  - **`time_exit_simulator.py`**: Framework for pure time-based exit strategies
+  - **`TIME_BASED_EXITS_ANALYSIS.md`**: Comprehensive analysis and recommendations
+  - **`WIDE_STOP_ANALYSIS.md`**: Comparison of static vs trailing stops with wide parameters
+  - **Key finding 1**: Time-based exits (48h) have **2275% EV** vs **-6.4% EV** for stop-based exits (static 10%/30%)
+  - **Key finding 2**: Trailing 15%/50% has **+3.7% EV** vs **-12.5% EV** for static 15%/50% (16.2% difference!)
+  - **Insight**: 84% of winners exit within 12 hours, time windows don't matter much for trailing stops
+  - **Recommendation**: Use trailing stops (not static) with 2-6h time windows for fast turnover
+  - Granular cohort analysis: ≥10x, 5x-10x, 4x-5x, 3x-4x, 2x-3x, <2x
+  - Granular time windows: 2h, 4h, 6h, 9h, 12h, 18h, 24h, 36h, 48h
+  - Per-caller hold time optimization
+
+- **Stop Modes Documentation** (`tools/backtest/STOP_MODES_EXPLAINED.md`) - Comprehensive guide
+  - Explains `end_of_data` exit behavior (48-hour observation window)
+  - Why mean ≠ median for static stops (outliers from `end_of_data` exits)
+  - Detailed comparison of static, trailing, and ladder stop modes
+  - How to interpret dashboard metrics and optimize stop percentages
+  - **Key insight**: `end_of_data` exits at current price are correct behavior, not a bug
+
 - **Interactive EV Dashboard** (`tools/backtest/dashboard.py`) - Web-based visualization for phased stop results
   - Built with Streamlit and Plotly for interactive data exploration
   - **Auto-discovery**: Dropdown selector automatically finds all parquet files in output directories

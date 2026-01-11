@@ -1,0 +1,2463 @@
+{
+  "fixedParams": {
+    "tpMultiple": 5.45,
+    "slBps": 2500
+  },
+  "configs": [
+    {
+      "configId": "be_10pct_hold_30min_ladder_none",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.1
+        },
+        "max_hold_ms": 1800000
+      }
+    },
+    {
+      "configId": "be_10pct_hold_30min_ladder_5.45x0.5",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.1
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.5
+            }
+          ]
+        },
+        "max_hold_ms": 1800000
+      }
+    },
+    {
+      "configId": "be_10pct_hold_30min_ladder_5.45x0.3",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.1
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.3
+            }
+          ]
+        },
+        "max_hold_ms": 1800000
+      }
+    },
+    {
+      "configId": "be_10pct_hold_30min_ladder_5.45x0.25_6x0.25",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.1
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.25
+            },
+            {
+              "kind": "multiple",
+              "multiple": 6,
+              "fraction": 0.25
+            }
+          ]
+        },
+        "max_hold_ms": 1800000
+      }
+    },
+    {
+      "configId": "be_10pct_hold_60min_ladder_none",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.1
+        },
+        "max_hold_ms": 3600000
+      }
+    },
+    {
+      "configId": "be_10pct_hold_60min_ladder_5.45x0.5",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.1
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.5
+            }
+          ]
+        },
+        "max_hold_ms": 3600000
+      }
+    },
+    {
+      "configId": "be_10pct_hold_60min_ladder_5.45x0.3",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.1
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.3
+            }
+          ]
+        },
+        "max_hold_ms": 3600000
+      }
+    },
+    {
+      "configId": "be_10pct_hold_60min_ladder_5.45x0.25_6x0.25",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.1
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.25
+            },
+            {
+              "kind": "multiple",
+              "multiple": 6,
+              "fraction": 0.25
+            }
+          ]
+        },
+        "max_hold_ms": 3600000
+      }
+    },
+    {
+      "configId": "be_10pct_hold_120min_ladder_none",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.1
+        },
+        "max_hold_ms": 7200000
+      }
+    },
+    {
+      "configId": "be_10pct_hold_120min_ladder_5.45x0.5",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.1
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.5
+            }
+          ]
+        },
+        "max_hold_ms": 7200000
+      }
+    },
+    {
+      "configId": "be_10pct_hold_120min_ladder_5.45x0.3",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.1
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.3
+            }
+          ]
+        },
+        "max_hold_ms": 7200000
+      }
+    },
+    {
+      "configId": "be_10pct_hold_120min_ladder_5.45x0.25_6x0.25",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.1
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.25
+            },
+            {
+              "kind": "multiple",
+              "multiple": 6,
+              "fraction": 0.25
+            }
+          ]
+        },
+        "max_hold_ms": 7200000
+      }
+    },
+    {
+      "configId": "be_10pct_hold_240min_ladder_none",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.1
+        },
+        "max_hold_ms": 14400000
+      }
+    },
+    {
+      "configId": "be_10pct_hold_240min_ladder_5.45x0.5",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.1
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.5
+            }
+          ]
+        },
+        "max_hold_ms": 14400000
+      }
+    },
+    {
+      "configId": "be_10pct_hold_240min_ladder_5.45x0.3",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.1
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.3
+            }
+          ]
+        },
+        "max_hold_ms": 14400000
+      }
+    },
+    {
+      "configId": "be_10pct_hold_240min_ladder_5.45x0.25_6x0.25",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.1
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.25
+            },
+            {
+              "kind": "multiple",
+              "multiple": 6,
+              "fraction": 0.25
+            }
+          ]
+        },
+        "max_hold_ms": 14400000
+      }
+    },
+    {
+      "configId": "be_10pct_hold_none_ladder_none",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.1
+        }
+      }
+    },
+    {
+      "configId": "be_10pct_hold_none_ladder_5.45x0.5",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.1
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.5
+            }
+          ]
+        }
+      }
+    },
+    {
+      "configId": "be_10pct_hold_none_ladder_5.45x0.3",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.1
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "configId": "be_10pct_hold_none_ladder_5.45x0.25_6x0.25",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.1
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.25
+            },
+            {
+              "kind": "multiple",
+              "multiple": 6,
+              "fraction": 0.25
+            }
+          ]
+        }
+      }
+    },
+    {
+      "configId": "be_15pct_hold_30min_ladder_none",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.15
+        },
+        "max_hold_ms": 1800000
+      }
+    },
+    {
+      "configId": "be_15pct_hold_30min_ladder_5.45x0.5",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.15
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.5
+            }
+          ]
+        },
+        "max_hold_ms": 1800000
+      }
+    },
+    {
+      "configId": "be_15pct_hold_30min_ladder_5.45x0.3",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.15
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.3
+            }
+          ]
+        },
+        "max_hold_ms": 1800000
+      }
+    },
+    {
+      "configId": "be_15pct_hold_30min_ladder_5.45x0.25_6x0.25",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.15
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.25
+            },
+            {
+              "kind": "multiple",
+              "multiple": 6,
+              "fraction": 0.25
+            }
+          ]
+        },
+        "max_hold_ms": 1800000
+      }
+    },
+    {
+      "configId": "be_15pct_hold_60min_ladder_none",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.15
+        },
+        "max_hold_ms": 3600000
+      }
+    },
+    {
+      "configId": "be_15pct_hold_60min_ladder_5.45x0.5",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.15
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.5
+            }
+          ]
+        },
+        "max_hold_ms": 3600000
+      }
+    },
+    {
+      "configId": "be_15pct_hold_60min_ladder_5.45x0.3",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.15
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.3
+            }
+          ]
+        },
+        "max_hold_ms": 3600000
+      }
+    },
+    {
+      "configId": "be_15pct_hold_60min_ladder_5.45x0.25_6x0.25",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.15
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.25
+            },
+            {
+              "kind": "multiple",
+              "multiple": 6,
+              "fraction": 0.25
+            }
+          ]
+        },
+        "max_hold_ms": 3600000
+      }
+    },
+    {
+      "configId": "be_15pct_hold_120min_ladder_none",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.15
+        },
+        "max_hold_ms": 7200000
+      }
+    },
+    {
+      "configId": "be_15pct_hold_120min_ladder_5.45x0.5",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.15
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.5
+            }
+          ]
+        },
+        "max_hold_ms": 7200000
+      }
+    },
+    {
+      "configId": "be_15pct_hold_120min_ladder_5.45x0.3",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.15
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.3
+            }
+          ]
+        },
+        "max_hold_ms": 7200000
+      }
+    },
+    {
+      "configId": "be_15pct_hold_120min_ladder_5.45x0.25_6x0.25",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.15
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.25
+            },
+            {
+              "kind": "multiple",
+              "multiple": 6,
+              "fraction": 0.25
+            }
+          ]
+        },
+        "max_hold_ms": 7200000
+      }
+    },
+    {
+      "configId": "be_15pct_hold_240min_ladder_none",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.15
+        },
+        "max_hold_ms": 14400000
+      }
+    },
+    {
+      "configId": "be_15pct_hold_240min_ladder_5.45x0.5",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.15
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.5
+            }
+          ]
+        },
+        "max_hold_ms": 14400000
+      }
+    },
+    {
+      "configId": "be_15pct_hold_240min_ladder_5.45x0.3",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.15
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.3
+            }
+          ]
+        },
+        "max_hold_ms": 14400000
+      }
+    },
+    {
+      "configId": "be_15pct_hold_240min_ladder_5.45x0.25_6x0.25",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.15
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.25
+            },
+            {
+              "kind": "multiple",
+              "multiple": 6,
+              "fraction": 0.25
+            }
+          ]
+        },
+        "max_hold_ms": 14400000
+      }
+    },
+    {
+      "configId": "be_15pct_hold_none_ladder_none",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.15
+        }
+      }
+    },
+    {
+      "configId": "be_15pct_hold_none_ladder_5.45x0.5",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.15
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.5
+            }
+          ]
+        }
+      }
+    },
+    {
+      "configId": "be_15pct_hold_none_ladder_5.45x0.3",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.15
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "configId": "be_15pct_hold_none_ladder_5.45x0.25_6x0.25",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.15
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.25
+            },
+            {
+              "kind": "multiple",
+              "multiple": 6,
+              "fraction": 0.25
+            }
+          ]
+        }
+      }
+    },
+    {
+      "configId": "be_20pct_hold_30min_ladder_none",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.2
+        },
+        "max_hold_ms": 1800000
+      }
+    },
+    {
+      "configId": "be_20pct_hold_30min_ladder_5.45x0.5",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.2
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.5
+            }
+          ]
+        },
+        "max_hold_ms": 1800000
+      }
+    },
+    {
+      "configId": "be_20pct_hold_30min_ladder_5.45x0.3",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.2
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.3
+            }
+          ]
+        },
+        "max_hold_ms": 1800000
+      }
+    },
+    {
+      "configId": "be_20pct_hold_30min_ladder_5.45x0.25_6x0.25",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.2
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.25
+            },
+            {
+              "kind": "multiple",
+              "multiple": 6,
+              "fraction": 0.25
+            }
+          ]
+        },
+        "max_hold_ms": 1800000
+      }
+    },
+    {
+      "configId": "be_20pct_hold_60min_ladder_none",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.2
+        },
+        "max_hold_ms": 3600000
+      }
+    },
+    {
+      "configId": "be_20pct_hold_60min_ladder_5.45x0.5",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.2
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.5
+            }
+          ]
+        },
+        "max_hold_ms": 3600000
+      }
+    },
+    {
+      "configId": "be_20pct_hold_60min_ladder_5.45x0.3",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.2
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.3
+            }
+          ]
+        },
+        "max_hold_ms": 3600000
+      }
+    },
+    {
+      "configId": "be_20pct_hold_60min_ladder_5.45x0.25_6x0.25",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.2
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.25
+            },
+            {
+              "kind": "multiple",
+              "multiple": 6,
+              "fraction": 0.25
+            }
+          ]
+        },
+        "max_hold_ms": 3600000
+      }
+    },
+    {
+      "configId": "be_20pct_hold_120min_ladder_none",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.2
+        },
+        "max_hold_ms": 7200000
+      }
+    },
+    {
+      "configId": "be_20pct_hold_120min_ladder_5.45x0.5",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.2
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.5
+            }
+          ]
+        },
+        "max_hold_ms": 7200000
+      }
+    },
+    {
+      "configId": "be_20pct_hold_120min_ladder_5.45x0.3",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.2
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.3
+            }
+          ]
+        },
+        "max_hold_ms": 7200000
+      }
+    },
+    {
+      "configId": "be_20pct_hold_120min_ladder_5.45x0.25_6x0.25",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.2
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.25
+            },
+            {
+              "kind": "multiple",
+              "multiple": 6,
+              "fraction": 0.25
+            }
+          ]
+        },
+        "max_hold_ms": 7200000
+      }
+    },
+    {
+      "configId": "be_20pct_hold_240min_ladder_none",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.2
+        },
+        "max_hold_ms": 14400000
+      }
+    },
+    {
+      "configId": "be_20pct_hold_240min_ladder_5.45x0.5",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.2
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.5
+            }
+          ]
+        },
+        "max_hold_ms": 14400000
+      }
+    },
+    {
+      "configId": "be_20pct_hold_240min_ladder_5.45x0.3",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.2
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.3
+            }
+          ]
+        },
+        "max_hold_ms": 14400000
+      }
+    },
+    {
+      "configId": "be_20pct_hold_240min_ladder_5.45x0.25_6x0.25",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.2
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.25
+            },
+            {
+              "kind": "multiple",
+              "multiple": 6,
+              "fraction": 0.25
+            }
+          ]
+        },
+        "max_hold_ms": 14400000
+      }
+    },
+    {
+      "configId": "be_20pct_hold_none_ladder_none",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.2
+        }
+      }
+    },
+    {
+      "configId": "be_20pct_hold_none_ladder_5.45x0.5",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.2
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.5
+            }
+          ]
+        }
+      }
+    },
+    {
+      "configId": "be_20pct_hold_none_ladder_5.45x0.3",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.2
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "configId": "be_20pct_hold_none_ladder_5.45x0.25_6x0.25",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.2
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.25
+            },
+            {
+              "kind": "multiple",
+              "multiple": 6,
+              "fraction": 0.25
+            }
+          ]
+        }
+      }
+    },
+    {
+      "configId": "be_25pct_hold_30min_ladder_none",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.25
+        },
+        "max_hold_ms": 1800000
+      }
+    },
+    {
+      "configId": "be_25pct_hold_30min_ladder_5.45x0.5",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.25
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.5
+            }
+          ]
+        },
+        "max_hold_ms": 1800000
+      }
+    },
+    {
+      "configId": "be_25pct_hold_30min_ladder_5.45x0.3",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.25
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.3
+            }
+          ]
+        },
+        "max_hold_ms": 1800000
+      }
+    },
+    {
+      "configId": "be_25pct_hold_30min_ladder_5.45x0.25_6x0.25",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.25
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.25
+            },
+            {
+              "kind": "multiple",
+              "multiple": 6,
+              "fraction": 0.25
+            }
+          ]
+        },
+        "max_hold_ms": 1800000
+      }
+    },
+    {
+      "configId": "be_25pct_hold_60min_ladder_none",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.25
+        },
+        "max_hold_ms": 3600000
+      }
+    },
+    {
+      "configId": "be_25pct_hold_60min_ladder_5.45x0.5",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.25
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.5
+            }
+          ]
+        },
+        "max_hold_ms": 3600000
+      }
+    },
+    {
+      "configId": "be_25pct_hold_60min_ladder_5.45x0.3",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.25
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.3
+            }
+          ]
+        },
+        "max_hold_ms": 3600000
+      }
+    },
+    {
+      "configId": "be_25pct_hold_60min_ladder_5.45x0.25_6x0.25",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.25
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.25
+            },
+            {
+              "kind": "multiple",
+              "multiple": 6,
+              "fraction": 0.25
+            }
+          ]
+        },
+        "max_hold_ms": 3600000
+      }
+    },
+    {
+      "configId": "be_25pct_hold_120min_ladder_none",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.25
+        },
+        "max_hold_ms": 7200000
+      }
+    },
+    {
+      "configId": "be_25pct_hold_120min_ladder_5.45x0.5",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.25
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.5
+            }
+          ]
+        },
+        "max_hold_ms": 7200000
+      }
+    },
+    {
+      "configId": "be_25pct_hold_120min_ladder_5.45x0.3",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.25
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.3
+            }
+          ]
+        },
+        "max_hold_ms": 7200000
+      }
+    },
+    {
+      "configId": "be_25pct_hold_120min_ladder_5.45x0.25_6x0.25",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.25
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.25
+            },
+            {
+              "kind": "multiple",
+              "multiple": 6,
+              "fraction": 0.25
+            }
+          ]
+        },
+        "max_hold_ms": 7200000
+      }
+    },
+    {
+      "configId": "be_25pct_hold_240min_ladder_none",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.25
+        },
+        "max_hold_ms": 14400000
+      }
+    },
+    {
+      "configId": "be_25pct_hold_240min_ladder_5.45x0.5",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.25
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.5
+            }
+          ]
+        },
+        "max_hold_ms": 14400000
+      }
+    },
+    {
+      "configId": "be_25pct_hold_240min_ladder_5.45x0.3",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.25
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.3
+            }
+          ]
+        },
+        "max_hold_ms": 14400000
+      }
+    },
+    {
+      "configId": "be_25pct_hold_240min_ladder_5.45x0.25_6x0.25",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.25
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.25
+            },
+            {
+              "kind": "multiple",
+              "multiple": 6,
+              "fraction": 0.25
+            }
+          ]
+        },
+        "max_hold_ms": 14400000
+      }
+    },
+    {
+      "configId": "be_25pct_hold_none_ladder_none",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.25
+        }
+      }
+    },
+    {
+      "configId": "be_25pct_hold_none_ladder_5.45x0.5",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.25
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.5
+            }
+          ]
+        }
+      }
+    },
+    {
+      "configId": "be_25pct_hold_none_ladder_5.45x0.3",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.25
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "configId": "be_25pct_hold_none_ladder_5.45x0.25_6x0.25",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.25
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.25
+            },
+            {
+              "kind": "multiple",
+              "multiple": 6,
+              "fraction": 0.25
+            }
+          ]
+        }
+      }
+    },
+    {
+      "configId": "be_30pct_hold_30min_ladder_none",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.3
+        },
+        "max_hold_ms": 1800000
+      }
+    },
+    {
+      "configId": "be_30pct_hold_30min_ladder_5.45x0.5",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.3
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.5
+            }
+          ]
+        },
+        "max_hold_ms": 1800000
+      }
+    },
+    {
+      "configId": "be_30pct_hold_30min_ladder_5.45x0.3",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.3
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.3
+            }
+          ]
+        },
+        "max_hold_ms": 1800000
+      }
+    },
+    {
+      "configId": "be_30pct_hold_30min_ladder_5.45x0.25_6x0.25",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.3
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.25
+            },
+            {
+              "kind": "multiple",
+              "multiple": 6,
+              "fraction": 0.25
+            }
+          ]
+        },
+        "max_hold_ms": 1800000
+      }
+    },
+    {
+      "configId": "be_30pct_hold_60min_ladder_none",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.3
+        },
+        "max_hold_ms": 3600000
+      }
+    },
+    {
+      "configId": "be_30pct_hold_60min_ladder_5.45x0.5",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.3
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.5
+            }
+          ]
+        },
+        "max_hold_ms": 3600000
+      }
+    },
+    {
+      "configId": "be_30pct_hold_60min_ladder_5.45x0.3",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.3
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.3
+            }
+          ]
+        },
+        "max_hold_ms": 3600000
+      }
+    },
+    {
+      "configId": "be_30pct_hold_60min_ladder_5.45x0.25_6x0.25",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.3
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.25
+            },
+            {
+              "kind": "multiple",
+              "multiple": 6,
+              "fraction": 0.25
+            }
+          ]
+        },
+        "max_hold_ms": 3600000
+      }
+    },
+    {
+      "configId": "be_30pct_hold_120min_ladder_none",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.3
+        },
+        "max_hold_ms": 7200000
+      }
+    },
+    {
+      "configId": "be_30pct_hold_120min_ladder_5.45x0.5",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.3
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.5
+            }
+          ]
+        },
+        "max_hold_ms": 7200000
+      }
+    },
+    {
+      "configId": "be_30pct_hold_120min_ladder_5.45x0.3",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.3
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.3
+            }
+          ]
+        },
+        "max_hold_ms": 7200000
+      }
+    },
+    {
+      "configId": "be_30pct_hold_120min_ladder_5.45x0.25_6x0.25",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.3
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.25
+            },
+            {
+              "kind": "multiple",
+              "multiple": 6,
+              "fraction": 0.25
+            }
+          ]
+        },
+        "max_hold_ms": 7200000
+      }
+    },
+    {
+      "configId": "be_30pct_hold_240min_ladder_none",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.3
+        },
+        "max_hold_ms": 14400000
+      }
+    },
+    {
+      "configId": "be_30pct_hold_240min_ladder_5.45x0.5",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.3
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.5
+            }
+          ]
+        },
+        "max_hold_ms": 14400000
+      }
+    },
+    {
+      "configId": "be_30pct_hold_240min_ladder_5.45x0.3",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.3
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.3
+            }
+          ]
+        },
+        "max_hold_ms": 14400000
+      }
+    },
+    {
+      "configId": "be_30pct_hold_240min_ladder_5.45x0.25_6x0.25",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.3
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.25
+            },
+            {
+              "kind": "multiple",
+              "multiple": 6,
+              "fraction": 0.25
+            }
+          ]
+        },
+        "max_hold_ms": 14400000
+      }
+    },
+    {
+      "configId": "be_30pct_hold_none_ladder_none",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.3
+        }
+      }
+    },
+    {
+      "configId": "be_30pct_hold_none_ladder_5.45x0.5",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.3
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.5
+            }
+          ]
+        }
+      }
+    },
+    {
+      "configId": "be_30pct_hold_none_ladder_5.45x0.3",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.3
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "configId": "be_30pct_hold_none_ladder_5.45x0.25_6x0.25",
+      "exitPlan": {
+        "trailing": {
+          "enabled": true,
+          "trail_bps": 0,
+          "hard_stop_bps": 2500,
+          "intrabar_policy": "STOP_FIRST"
+        },
+        "break_even_bailout": {
+          "enabled": true,
+          "be_armed_dd_pct": 0.3
+        },
+        "ladder": {
+          "enabled": true,
+          "levels": [
+            {
+              "kind": "multiple",
+              "multiple": 5.45,
+              "fraction": 0.25
+            },
+            {
+              "kind": "multiple",
+              "multiple": 6,
+              "fraction": 0.25
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

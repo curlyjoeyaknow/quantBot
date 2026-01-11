@@ -1,0 +1,28 @@
+{
+  "version": "1.0.0",
+  "name": "Mean_Reversion",
+  "description": "Mean reversion strategy - buy dips, sell rallies",
+  "tags": ["mean-reversion", "dip-buying"],
+  "entry": {
+    "type": "price_drop",
+    "priceDropPercent": -0.2,
+    "maxWaitMinutes": 120
+  },
+  "exit": [
+    {
+      "type": "profit_target",
+      "profitTarget": 1.5,
+      "percentToExit": 0.6
+    },
+    {
+      "type": "profit_target",
+      "profitTarget": 2.0,
+      "percentToExit": 0.4
+    },
+    {
+      "type": "stop_loss",
+      "stopLossPercent": -0.15
+    }
+  ]
+}
+

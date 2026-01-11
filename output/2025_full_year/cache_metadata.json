@@ -1,0 +1,10 @@
+{
+  "8f4d9ce514fbd3d9": {
+    "filename": "phased_stop_results_04b3472174503f89.parquet",
+    "chain": "solana",
+    "date_from": "2025-05-01",
+    "date_to": "2025-08-01",
+    "min_calls": 5,
+    "created_at": "2026-01-11T07:48:12.972135"
+  }
+}

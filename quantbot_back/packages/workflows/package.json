@@ -1,0 +1,50 @@
+{
+  "name": "@quantbot/workflows",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
+    },
+    "./research": {
+      "types": "./dist/research/index.d.ts",
+      "import": "./dist/research/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc --build",
+    "clean": "rm -rf dist .vitest coverage",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:ci": "vitest run --coverage --reporter=default",
+    "typecheck": "tsc -p tsconfig.test.json"
+  },
+  "dependencies": {
+    "@quantbot/utils": "workspace:*",
+    "@quantbot/storage": "workspace:*",
+    "@quantbot/ohlcv": "workspace:*",
+    "@quantbot/simulation": "workspace:*",
+    "@quantbot/backtest": "workspace:*",
+    "@quantbot/ingestion": "workspace:*",
+    "@quantbot/api-clients": "workspace:*",
+    "@quantbot/core": "workspace:*",
+    "@quantbot/jobs": "workspace:*",
+    "@quantbot/data-observatory": "workspace:*",
+    "duckdb": "^1.0.0",
+    "luxon": "^3.5.0",
+    "uuid": "^11.1.0",
+    "zod": "^4.1.13"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^2.1.9",
+    "fast-check": "^4.4.0",
+    "typescript": "^5.9.2",
+    "vitest": "^2.1.9"
+  }
+}

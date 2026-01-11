@@ -1,0 +1,70 @@
+---
+name: Backtest dependency direction & boundaries
+description: Prevent drift while building caller-centric backtesting (truth → policy → optimize).
+globs:
+  - "packages/**/src/**"
+alwaysApply: true
+---
+
+# Backtest dependency direction (must hold)
+
+## Core objective (context)
+
+QuantBot Backtest exists to learn the optimal post-alert trade management policy (stops + exits) that maximizes captured return under explicit downside constraints, **per caller**.
+
+Stable layering:
+
+1) **Truth layer** (path metrics after alert)
+2) **Policy layer** (simulate stops/exits on candle stream)
+3) **Optimization layer** (search policies per caller under constraints)
+4) **Adapters / Apps** (I/O, UI/CLI/API, persistence)
+
+## Dependency direction (must hold)
+
+- `domain/*` depends on nothing outside `domain` (types + pure logic only)
+- `ports/*` defines interfaces/types only; depends on `domain/*`
+- `handlers/*` depends on `domain/*` and `ports/*` only
+- `adapters/*` depends on external libs/SDKs and implements `ports/*`
+- `apps/*` may depend on everything, but ONLY for wiring, validation at edges, and I/O orchestration
+
+## Required separation (backtest-specific)
+
+- Truth computations live in `domain`
+  - `computePathMetrics`, drawdown math, time-to-multiple logic, “tail capture” metrics
+- Policy execution logic lives in `domain`
+  - fixed stop, time stop, trailing stop, ladder fill simulation, indicator-trigger simulation
+- Optimization logic lives in `domain`
+  - grid search, constraint filtering, objective ranking, tie-break rules
+
+- Persistence, slicing, ClickHouse/DuckDB, process spawning live in `adapters`
+- CLI/UI/API live in `apps`, and they call handlers
+
+## Forbidden patterns
+
+- Handlers importing SDK clients directly (ClickHouse, DuckDB, Redis, HTTP, filesystem, process env)
+- Domain importing anything from `apps/` or `adapters/`
+- UI/CLI re-implementing business logic (metrics/policy/optimization)
+- Hidden globals (singleton DB connections, “global config”, implicit caches inside handlers)
+- Implicit time/randomness in domain/handlers (`Date.now()`, `Math.random()`), outside ports
+
+## Time & units contract (non-negotiable)
+
+- Domain uses **milliseconds** for timestamps and durations.
+- Adapters normalize incoming data:
+  - `Candle.timestamp` seconds → convert to ms BEFORE passing into domain/handlers.
+- Any mixed-unit fields must be normalized at the boundary (adapter/app), never inside handlers.
+
+## Recommended structure (names flexible)
+
+Within `packages/backtest` (or equivalent):
+
+- `src/domain/**` (metrics, policies, optimization, scoring, types)
+- `src/ports/**` (CallsSourcePort, CandlesSourcePort, ResultsSinkPort, RunStorePort, ClockPort, IdPort, RandomPort if needed)
+- `src/handlers/**` (runPathOnlyBacktest, runPolicyBacktest, optimizeCallerPolicies)
+- `src/adapters/**` (DuckDB repos, ClickHouse candle source, slicers, stores)
+
+Composition roots:
+
+- `apps/cli/src/main.ts`
+- `apps/lab-ui/src/main.ts`
+- `apps/api/src/main.ts` (later)

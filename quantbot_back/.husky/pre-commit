@@ -1,0 +1,49 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+echo "🔍 Running lightweight pre-commit checks..."
+
+# 1. Auto-fix formatting (fast)
+echo "📝 Auto-fixing formatting..."
+npm run format
+
+# 2. Auto-fix linting (fast)
+echo "🔍 Auto-fixing linting..."
+npm run lint:fix
+
+# 3. Type check (fast)
+echo "🔍 Type checking..."
+npm run typecheck || {
+  echo "❌ Type check failed"
+  exit 1
+}
+
+# 4. Verify workflow contracts (fast)
+echo "🔍 Verifying workflow contracts..."
+pnpm tsx scripts/verify-workflow-contract.ts || {
+  echo "❌ Workflow contract verification failed"
+  exit 1
+}
+
+# 5. Verify dependency boundaries (fast)
+echo "🔍 Verifying dependency boundaries..."
+pnpm vitest packages/simulation/tests/architectural/import-rules.test.ts packages/ingestion/tests/unit/dependency-boundaries.test.ts packages/ohlcv/tests/unit/dependency-boundaries.test.ts --run || {
+  echo "❌ Dependency boundary checks failed"
+  exit 1
+}
+
+# 6. Check CHANGELOG (warn only, not blocking)
+echo "🔍 Checking CHANGELOG (warning only)..."
+pnpm verify:changelog || {
+  echo "⚠️  CHANGELOG check failed (warning only, not blocking commit)"
+}
+
+# 7. Check handler tests (warn only, not blocking)
+echo "🔍 Checking handler tests (warning only)..."
+pnpm verify:handler-tests || {
+  echo "⚠️  Handler test check failed (warning only, not blocking commit)"
+}
+
+echo "✅ Pre-commit checks passed!"
+echo "💡 Note: Full test suite runs in CI"
+

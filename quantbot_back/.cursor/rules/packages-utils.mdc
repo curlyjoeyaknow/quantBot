@@ -1,0 +1,91 @@
+---
+description: Utils package rules - shared utilities, event system, Zod validation, PythonEngine
+globs:
+  - "packages/utils/**/*.ts"
+  - "packages/utils/**/*.js"
+alwaysApply: false
+---
+
+# Utils Package Rules
+
+## Shared Utilities
+
+- Event system: `@quantbot/utils/events`
+- Common helpers for all packages
+- Zero dependencies where possible
+
+## Code Style
+
+- Pure functions preferred
+- Type-safe utilities
+- Well-documented with JSDoc
+
+## Testing
+
+- Unit tests for all utilities
+- Test edge cases
+- Mock external dependencies
+
+## EventBus Patterns
+
+- **Async handlers**: Use `Promise.all()` with `listeners()` to await all async handlers
+- Don't rely on EventEmitter's synchronous emit - explicitly await handlers
+- Wrap handlers in try/catch to prevent one failure from breaking others
+
+## Database Utilities (Deprecated)
+
+- ⚠️ Database functions are deprecated - use `@quantbot/storage` instead
+- Tests mock validation to focus on database operations
+- Use proper Zod schema structure in test data (type, percent, etc. for strategies)
+
+## Zod Validation
+
+- For Zod 4.x: access errors via `result.error.issues` (not `.errors`)
+- Handle both `issues` and legacy `errors` for compatibility
+
+## PythonEngine
+
+**Location**: `packages/utils/src/python/python-engine.ts`
+
+**Purpose**: Boundary layer between TypeScript and Python tools. Handles subprocess execution, JSON I/O, and schema validation.
+
+**Responsibilities**:
+
+- ✅ Execute Python scripts as subprocesses
+- ✅ Validate JSON output with Zod schemas
+- ✅ Handle subprocess errors (timeouts, exit codes, stderr)
+- ✅ Manage Python environment (PYTHONPATH, cwd, env vars)
+- ✅ Parse JSON from stdout (last line or full output)
+- ❌ NO business logic
+- ❌ NO domain-specific validation (delegate to services)
+- ❌ NO output formatting
+- ❌ NO error message formatting (return raw errors)
+
+**Method Pattern**:
+
+```typescript
+async runScript<T>(
+  scriptPath: string,
+  args: Record<string, unknown>,
+  schema: z.ZodSchema<T>,  // ✅ Zod schema for validation
+  options?: PythonScriptOptions
+): Promise<T>
+```
+
+**Domain-Specific Methods**:
+
+- `runDuckDBStorage()` - DuckDB operations
+- `runClickHouseEngine()` - ClickHouse operations
+
+**Error Handling**:
+
+- Catch subprocess errors (timeouts, exit codes)
+- Parse JSON errors from Python output
+- Throw descriptive errors with context
+- Log subprocess execution details
+
+**Usage Pattern**:
+
+- PythonEngine is used by services, not handlers
+- Services wrap PythonEngine calls with Zod validation
+- Handlers call services (not PythonEngine directly)

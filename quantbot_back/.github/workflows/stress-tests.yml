@@ -1,0 +1,182 @@
+name: Stress Tests
+
+# Stress tests - run weekly and on-demand
+on:
+  schedule:
+    # Run weekly on Sundays at 3 AM UTC
+    - cron: '0 3 * * 0'
+  workflow_dispatch:
+    inputs:
+      run_db_stress:
+        description: 'Run database stress tests'
+        required: false
+        default: true
+        type: boolean
+      run_chaos_tests:
+        description: 'Run chaos engineering tests'
+        required: false
+        default: true
+        type: boolean
+      run_backtest_stress:
+        description: 'Run backtest stress tests'
+        required: false
+        default: true
+        type: boolean
+
+jobs:
+  typescript-stress:
+    name: TypeScript Stress Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 8
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build packages
+        run: pnpm build:ordered
+
+      - name: Run offline stress tests
+        run: pnpm test:stress
+
+      - name: Run database stress tests
+        if: ${{ github.event.inputs.run_db_stress == 'true' || github.event_name == 'schedule' }}
+        env:
+          RUN_DB_STRESS: 1
+        run: pnpm test:stress:db
+        continue-on-error: true
+
+      - name: Run chaos engineering tests
+        if: ${{ github.event.inputs.run_chaos_tests == 'true' || github.event_name == 'schedule' }}
+        env:
+          RUN_CHAOS_TESTS: 1
+        run: pnpm test:stress:chaos
+        continue-on-error: true
+
+      - name: Upload stress test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stress-test-results-ts-${{ github.run_id }}
+          path: packages/*/coverage/
+          retention-days: 30
+
+  python-backtest-stress:
+    name: Python Backtest Stress
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    if: ${{ github.event.inputs.run_backtest_stress == 'true' || github.event_name == 'schedule' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Python dependencies
+        run: |
+          pip install --upgrade pip
+          pip install pytest duckdb pyarrow pandas numpy scipy tqdm
+
+      - name: Run full backtest suite
+        run: |
+          cd tools/backtest
+          python -m pytest tests/ -v --tb=short --ignore=tests/test_duckdb_storage.py 2>&1 | tee stress-results.txt
+
+      - name: Run extended path quality tests
+        run: |
+          cd tools/backtest
+          python -m pytest tests/test_path_quality_golden.py tests/test_existing_metric_stability.py -v --tb=long
+
+      - name: Verify optimizer under load
+        run: |
+          cd tools/backtest
+          python -c "
+          import time
+          from lib.optimizer_objective import ObjectiveConfig, score_from_summary
+          
+          # Simulate many scoring calls
+          start = time.time()
+          cfg = ObjectiveConfig()
+          
+          # Mock summary with all required fields
+          mock_summary = {
+              'alerts_ok': 100,
+              'alerts_total': 100,
+              'tp_sl_win_rate': 0.6,
+              'median_ath_mult': 2.5,
+              'p75_ath': 3.0,
+              'p95_ath': 5.0,
+              'median_dd_pre2x': -0.15,
+              'median_dd_pre_1_2x': -0.08,
+              'median_dd_pre_1_5x': -0.12,
+              'time_to_2x_median_min': 30,
+              'time_to_1_2x_median_min': 10,
+              'time_to_1_5x_median_min': 20,
+              'pct_hit_2x': 0.7,
+              'pct_hit_4x': 0.3,
+              'median_retention_1_2x_above_1_1x': 0.8,
+              'pct_floor_hold_after_1_2x': 0.75,
+              'median_giveback_after_1_5x': -0.1,
+              'median_time_underwater_pct': 0.15,
+              'median_stall_score': 0.1,
+              'headfake_rate': 0.1,
+              'median_headfake_depth': -0.05,
+          }
+          
+          # Run 1000 scoring iterations
+          for _ in range(1000):
+              result = score_from_summary(mock_summary, cfg)
+          
+          elapsed = time.time() - start
+          print(f'1000 scoring iterations in {elapsed:.2f}s ({1000/elapsed:.0f} ops/sec)')
+          assert elapsed < 5.0, f'Scoring too slow: {elapsed}s'
+          "
+
+      - name: Upload stress results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stress-test-results-python-${{ github.run_id }}
+          path: tools/backtest/stress-results.txt
+          retention-days: 30
+
+  stress-summary:
+    name: Stress Test Summary
+    runs-on: ubuntu-latest
+    needs: [typescript-stress, python-backtest-stress]
+    if: always()
+
+    steps:
+      - name: Generate summary
+        run: |
+          echo "## Weekly Stress Test Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Run Date:** $(date -u '+%Y-%m-%d %H:%M UTC')" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Test Suite | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|------------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| TypeScript Stress | ${{ needs.typescript-stress.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Python Backtest | ${{ needs.python-backtest-stress.result }} |" >> $GITHUB_STEP_SUMMARY
+
+      - name: Check for failures
+        if: needs.typescript-stress.result == 'failure'
+        run: |
+          echo "::warning::Stress tests had failures - review artifacts"

@@ -1,0 +1,3842 @@
+{
+  "generated_at": "2026-01-11T09:52:00.919120+00:00",
+  "min_severity": "warning",
+  "count": 295,
+  "tokens": [
+    {
+      "token_address": "ArkmLDH65ao6NWbQdP58CiE7zzrCyp5DzDpTkZ3aDPdS",
+      "filepath": "slices/per_token/20250712_1953_ArkmLDH6_DPdS.parquet",
+      "severity": "critical",
+      "gaps": 1011,
+      "coverage_pct": 30.1,
+      "quality_score": 35.1,
+      "time_range": {
+        "start": "2025-07-12T19:49:00+00:00",
+        "end": "2025-07-13T19:53:00+00:00"
+      },
+      "reasons": ["1011 gaps", "low coverage (30%)", "high zero volume (64%)"]
+    },
+    {
+      "token_address": "AuRK3tsrbjTNasc7EJ4HSLAJUZqFYLH3Q8A4BsHnbonk",
+      "filepath": "slices/per_token/20250730_1338_AuRK3tsr_bonk.parquet",
+      "severity": "critical",
+      "gaps": 249,
+      "coverage_pct": 83.1,
+      "quality_score": 66.5,
+      "time_range": {
+        "start": "2025-07-30T13:34:00+00:00",
+        "end": "2025-07-31T13:38:00+00:00"
+      },
+      "reasons": ["249 gaps"]
+    },
+    {
+      "token_address": "99ZQZGshzW48zJB3MhWX7wUFKznMWpJ1C4uhXkNqbonk",
+      "filepath": "slices/per_token/20250707_1001_99ZQZGsh_bonk.parquet",
+      "severity": "critical",
+      "gaps": 247,
+      "coverage_pct": 83.2,
+      "quality_score": 66.3,
+      "time_range": {
+        "start": "2025-07-07T09:57:00+00:00",
+        "end": "2025-07-08T10:01:00+00:00"
+      },
+      "reasons": ["247 gaps"]
+    },
+    {
+      "token_address": "FEe5ZQoy25NTFL5LAFRFko2gj7fwmw4gr6swBfMkpump",
+      "filepath": "slices/per_token/20250716_0855_FEe5ZQoy_pump.parquet",
+      "severity": "critical",
+      "gaps": 244,
+      "coverage_pct": 83.4,
+      "quality_score": 65.6,
+      "time_range": {
+        "start": "2025-07-16T08:51:00+00:00",
+        "end": "2025-07-17T08:55:00+00:00"
+      },
+      "reasons": ["244 gaps", "high zero volume (22%)"]
+    },
+    {
+      "token_address": "89Tuwzs88VNFHnR5wiZxP12uNPT89tGFAzCLfBL4bonk",
+      "filepath": "slices/per_token/20250708_1717_89Tuwzs8_bonk.parquet",
+      "severity": "critical",
+      "gaps": 242,
+      "coverage_pct": 83.5,
+      "quality_score": 65.8,
+      "time_range": {
+        "start": "2025-07-08T17:13:00+00:00",
+        "end": "2025-07-09T17:17:00+00:00"
+      },
+      "reasons": ["242 gaps"]
+    },
+    {
+      "token_address": "82KE946ifcZKs5dwTtpX6Mp8bXHCHVncRmKVxmQZbonk",
+      "filepath": "slices/per_token/20250723_2156_82KE946i_bonk.parquet",
+      "severity": "critical",
+      "gaps": 241,
+      "coverage_pct": 83.6,
+      "quality_score": 67.2,
+      "time_range": {
+        "start": "2025-07-23T21:52:00+00:00",
+        "end": "2025-07-24T21:56:00+00:00"
+      },
+      "reasons": ["241 gaps"]
+    },
+    {
+      "token_address": "4pfeei8PAepBcWiLeSPmJwSaSdikgSRhCvk1RDKxbonk",
+      "filepath": "slices/per_token/20250723_1113_4pfeei8P_bonk.parquet",
+      "severity": "critical",
+      "gaps": 235,
+      "coverage_pct": 84.0,
+      "quality_score": 66.5,
+      "time_range": {
+        "start": "2025-07-23T11:09:00+00:00",
+        "end": "2025-07-24T11:13:00+00:00"
+      },
+      "reasons": ["235 gaps"]
+    },
+    {
+      "token_address": "GxzvWxCzNN3MTEZzTRx7RnP3yg4dmD8Ez8Ssu8wSbonk",
+      "filepath": "slices/per_token/20250723_0125_GxzvWxCz_bonk.parquet",
+      "severity": "critical",
+      "gaps": 235,
+      "coverage_pct": 84.0,
+      "quality_score": 70.2,
+      "time_range": {
+        "start": "2025-07-23T01:21:00+00:00",
+        "end": "2025-07-24T01:25:00+00:00"
+      },
+      "reasons": ["235 gaps"]
+    },
+    {
+      "token_address": "5AHZaWqfCVRnnCcE5jzSuAmMYSzBZQ4RgzsnRcZebonk",
+      "filepath": "slices/per_token/20250718_0819_5AHZaWqf_bonk.parquet",
+      "severity": "critical",
+      "gaps": 236,
+      "coverage_pct": 84.0,
+      "quality_score": 66.4,
+      "time_range": {
+        "start": "2025-07-18T08:15:00+00:00",
+        "end": "2025-07-19T08:19:00+00:00"
+      },
+      "reasons": ["236 gaps"]
+    },
+    {
+      "token_address": "3TTxEJeJJTpGUMaMAgZChXDkEbMwV9hhmQKaxgMobonk",
+      "filepath": "slices/per_token/20250706_1339_3TTxEJeJ_bonk.parquet",
+      "severity": "critical",
+      "gaps": 236,
+      "coverage_pct": 84.0,
+      "quality_score": 71.9,
+      "time_range": {
+        "start": "2025-07-06T13:35:00+00:00",
+        "end": "2025-07-07T13:39:00+00:00"
+      },
+      "reasons": ["236 gaps"]
+    },
+    {
+      "token_address": "CNQf3F7QLgWZ8367V9Pbw9hALutmvB23ZqxK7bsGbonk",
+      "filepath": "slices/per_token/20250723_1707_CNQf3F7Q_bonk.parquet",
+      "severity": "critical",
+      "gaps": 231,
+      "coverage_pct": 84.3,
+      "quality_score": 68.2,
+      "time_range": {
+        "start": "2025-07-23T17:03:00+00:00",
+        "end": "2025-07-24T17:07:00+00:00"
+      },
+      "reasons": ["231 gaps"]
+    },
+    {
+      "token_address": "fwxWQcdmf9N3QC7et9nwyKao4qjZmH9rpwvFsW9jups",
+      "filepath": "slices/per_token/20250729_1850_fwxWQcdm_jups.parquet",
+      "severity": "critical",
+      "gaps": 229,
+      "coverage_pct": 84.4,
+      "quality_score": 70.2,
+      "time_range": {
+        "start": "2025-07-29T18:46:00+00:00",
+        "end": "2025-07-30T18:50:00+00:00"
+      },
+      "reasons": ["229 gaps"]
+    },
+    {
+      "token_address": "3iiWMQY1URsjnkkGsPdMnM11p2STrFHpc1whSviKbonk",
+      "filepath": "slices/per_token/20250724_2326_3iiWMQY1_bonk.parquet",
+      "severity": "critical",
+      "gaps": 222,
+      "coverage_pct": 84.4,
+      "quality_score": 74.9,
+      "time_range": {
+        "start": "2025-07-24T23:29:00+00:00",
+        "end": "2025-07-25T23:26:00+00:00"
+      },
+      "reasons": ["222 gaps"]
+    },
+    {
+      "token_address": "mmo7KbUXZJCL8VHoQxnYtJnSX59Tq4HJ4iS9Tfybonk",
+      "filepath": "slices/per_token/20250704_1511_mmo7KbUX_bonk.parquet",
+      "severity": "critical",
+      "gaps": 228,
+      "coverage_pct": 84.5,
+      "quality_score": 73.0,
+      "time_range": {
+        "start": "2025-07-04T15:07:00+00:00",
+        "end": "2025-07-05T15:11:00+00:00"
+      },
+      "reasons": ["228 gaps"]
+    },
+    {
+      "token_address": "AuRK3tsrbjTNasc7EJ4HSLAJUZqFYLH3Q8A4BsHnbonk",
+      "filepath": "slices/per_token/20250730_1449_AuRK3tsr_bonk.parquet",
+      "severity": "critical",
+      "gaps": 225,
+      "coverage_pct": 84.7,
+      "quality_score": 67.5,
+      "time_range": {
+        "start": "2025-07-30T14:45:00+00:00",
+        "end": "2025-07-31T14:49:00+00:00"
+      },
+      "reasons": ["225 gaps"]
+    },
+    {
+      "token_address": "Ey59PH7Z4BFU4HjyKnyMdWt5GGN76KazTAwQihoUXRnk",
+      "filepath": "slices/per_token/20250512_2153_Ey59PH7Z_XRnk.parquet",
+      "severity": "critical",
+      "gaps": 223,
+      "coverage_pct": 84.9,
+      "quality_score": 75.9,
+      "time_range": {
+        "start": "2025-05-12T21:49:00+00:00",
+        "end": "2025-05-13T21:53:00+00:00"
+      },
+      "reasons": ["223 gaps"]
+    },
+    {
+      "token_address": "3ffUQ1yDyr3MdVNb5hyumwj9WK5GPXLJDpvGRAypbonk",
+      "filepath": "slices/per_token/20250718_1300_3ffUQ1yD_bonk.parquet",
+      "severity": "critical",
+      "gaps": 223,
+      "coverage_pct": 84.9,
+      "quality_score": 69.4,
+      "time_range": {
+        "start": "2025-07-18T12:56:00+00:00",
+        "end": "2025-07-19T13:00:00+00:00"
+      },
+      "reasons": ["223 gaps"]
+    },
+    {
+      "token_address": "3ffUQ1yDyr3MdVNb5hyumwj9WK5GPXLJDpvGRAypbonk",
+      "filepath": "slices/per_token/20250718_1336_3ffUQ1yD_bonk.parquet",
+      "severity": "critical",
+      "gaps": 223,
+      "coverage_pct": 84.9,
+      "quality_score": 68.2,
+      "time_range": {
+        "start": "2025-07-18T13:32:00+00:00",
+        "end": "2025-07-19T13:36:00+00:00"
+      },
+      "reasons": ["223 gaps"]
+    },
+    {
+      "token_address": "AXZgXEcJAjwFJgPUUGCWjpFjq6Y97euzD7v6Nqg1moon",
+      "filepath": "slices/per_token/20250731_1412_AXZgXEcJ_moon.parquet",
+      "severity": "critical",
+      "gaps": 223,
+      "coverage_pct": 84.9,
+      "quality_score": 67.7,
+      "time_range": {
+        "start": "2025-07-31T14:08:00+00:00",
+        "end": "2025-08-01T14:12:00+00:00"
+      },
+      "reasons": ["223 gaps"]
+    },
+    {
+      "token_address": "3ffUQ1yDyr3MdVNb5hyumwj9WK5GPXLJDpvGRAypbonk",
+      "filepath": "slices/per_token/20250718_1333_3ffUQ1yD_bonk.parquet",
+      "severity": "critical",
+      "gaps": 223,
+      "coverage_pct": 84.9,
+      "quality_score": 68.3,
+      "time_range": {
+        "start": "2025-07-18T13:29:00+00:00",
+        "end": "2025-07-19T13:33:00+00:00"
+      },
+      "reasons": ["223 gaps"]
+    },
+    {
+      "token_address": "BSojgEsXyvHfjZM9Uc4KuELrDqXauHZzrw8oeaZHbonk",
+      "filepath": "slices/per_token/20250729_1327_BSojgEsX_bonk.parquet",
+      "severity": "critical",
+      "gaps": 221,
+      "coverage_pct": 85.0,
+      "quality_score": 67.9,
+      "time_range": {
+        "start": "2025-07-29T13:23:00+00:00",
+        "end": "2025-07-30T13:27:00+00:00"
+      },
+      "reasons": ["221 gaps"]
+    },
+    {
+      "token_address": "j5Gc6gYZiNSaw1YHhbfDu6V2QTt8f4dyJ5EuRcrbonk",
+      "filepath": "slices/per_token/20250727_1434_j5Gc6gYZ_bonk.parquet",
+      "severity": "critical",
+      "gaps": 216,
+      "coverage_pct": 85.3,
+      "quality_score": 68.5,
+      "time_range": {
+        "start": "2025-07-27T14:30:00+00:00",
+        "end": "2025-07-28T14:34:00+00:00"
+      },
+      "reasons": ["216 gaps"]
+    },
+    {
+      "token_address": "8gGKz8YpXzjzjD5FeUrDFMWEQcbZgVpXFzGcC4oapump",
+      "filepath": "slices/per_token/20250716_0552_8gGKz8Yp_pump.parquet",
+      "severity": "critical",
+      "gaps": 215,
+      "coverage_pct": 85.4,
+      "quality_score": 68.5,
+      "time_range": {
+        "start": "2025-07-16T05:48:00+00:00",
+        "end": "2025-07-17T05:52:00+00:00"
+      },
+      "reasons": ["215 gaps"]
+    },
+    {
+      "token_address": "Bzx6NPUUSukdSy9jCwsTJFeHwpuZtuh4ffgasb69bonk",
+      "filepath": "slices/per_token/20250721_1602_Bzx6NPUU_bonk.parquet",
+      "severity": "critical",
+      "gaps": 212,
+      "coverage_pct": 85.6,
+      "quality_score": 68.8,
+      "time_range": {
+        "start": "2025-07-21T15:58:00+00:00",
+        "end": "2025-07-22T16:02:00+00:00"
+      },
+      "reasons": ["212 gaps"]
+    },
+    {
+      "token_address": "Bzx6NPUUSukdSy9jCwsTJFeHwpuZtuh4ffgasb69bonk",
+      "filepath": "slices/per_token/20250721_1634_Bzx6NPUU_bonk.parquet",
+      "severity": "critical",
+      "gaps": 212,
+      "coverage_pct": 85.6,
+      "quality_score": 68.8,
+      "time_range": {
+        "start": "2025-07-21T16:30:00+00:00",
+        "end": "2025-07-22T16:34:00+00:00"
+      },
+      "reasons": ["212 gaps"]
+    },
+    {
+      "token_address": "CffTf8NJJ6NNthsGrBDBQ9cZJ21DBenFQXwFs9Mtbonk",
+      "filepath": "slices/per_token/20250714_1820_CffTf8NJ_bonk.parquet",
+      "severity": "critical",
+      "gaps": 212,
+      "coverage_pct": 85.6,
+      "quality_score": 74.8,
+      "time_range": {
+        "start": "2025-07-14T18:16:00+00:00",
+        "end": "2025-07-15T18:20:00+00:00"
+      },
+      "reasons": ["212 gaps"]
+    },
+    {
+      "token_address": "8iir2ruyzj74DdxpgqS2rHn2YcP7TFySdPKs7TVbonk",
+      "filepath": "slices/per_token/20250716_1801_8iir2ruy_bonk.parquet",
+      "severity": "critical",
+      "gaps": 209,
+      "coverage_pct": 85.8,
+      "quality_score": 75.6,
+      "time_range": {
+        "start": "2025-07-16T17:57:00+00:00",
+        "end": "2025-07-17T18:01:00+00:00"
+      },
+      "reasons": ["209 gaps"]
+    },
+    {
+      "token_address": "Arz4FEoHgmYFGqkpQYhTUGjvHGoahJbtzTUqFeJLbonk",
+      "filepath": "slices/per_token/20250731_1919_Arz4FEoH_bonk.parquet",
+      "severity": "critical",
+      "gaps": 210,
+      "coverage_pct": 85.8,
+      "quality_score": 75.6,
+      "time_range": {
+        "start": "2025-07-31T19:15:00+00:00",
+        "end": "2025-08-01T19:19:00+00:00"
+      },
+      "reasons": ["210 gaps"]
+    },
+    {
+      "token_address": "8Ur3v57AXV9xf3qQH2zS27KBp3fq9uYbS4QTYGS3pump",
+      "filepath": "slices/per_token/20250701_1726_8Ur3v57A_pump.parquet",
+      "severity": "critical",
+      "gaps": 205,
+      "coverage_pct": 86.1,
+      "quality_score": 72.5,
+      "time_range": {
+        "start": "2025-07-01T17:22:00+00:00",
+        "end": "2025-07-02T17:26:00+00:00"
+      },
+      "reasons": ["205 gaps"]
+    },
+    {
+      "token_address": "9NW7fiBu4uHpLx3rxiMccucyKwADwuptTpb8z2YYj9SH",
+      "filepath": "slices/per_token/20250524_1629_9NW7fiBu_j9SH.parquet",
+      "severity": "critical",
+      "gaps": 204,
+      "coverage_pct": 86.2,
+      "quality_score": 69.6,
+      "time_range": {
+        "start": "2025-05-24T16:25:00+00:00",
+        "end": "2025-05-25T16:29:00+00:00"
+      },
+      "reasons": ["204 gaps", "high zero volume (41%)"]
+    },
+    {
+      "token_address": "8RrJfSy8Cj3k3JyXdqgkpipefhfAm4FLahqWJLdNbonk",
+      "filepath": "slices/per_token/20250705_1936_8RrJfSy8_bonk.parquet",
+      "severity": "critical",
+      "gaps": 199,
+      "coverage_pct": 86.5,
+      "quality_score": 71.3,
+      "time_range": {
+        "start": "2025-07-05T19:32:00+00:00",
+        "end": "2025-07-06T19:36:00+00:00"
+      },
+      "reasons": ["199 gaps"]
+    },
+    {
+      "token_address": "BFXSpfFWpShi8gcvca4qQh14CKDzVLV3bGga1HLXbonk",
+      "filepath": "slices/per_token/20250702_0915_BFXSpfFW_bonk.parquet",
+      "severity": "critical",
+      "gaps": 199,
+      "coverage_pct": 86.5,
+      "quality_score": 70.1,
+      "time_range": {
+        "start": "2025-07-02T09:11:00+00:00",
+        "end": "2025-07-03T09:15:00+00:00"
+      },
+      "reasons": ["199 gaps"]
+    },
+    {
+      "token_address": "A5r6E4tj2rXREkBQdLCmv8sRNdinSyKeBumCwjFxjups",
+      "filepath": "slices/per_token/20250726_1429_A5r6E4tj_jups.parquet",
+      "severity": "critical",
+      "gaps": 200,
+      "coverage_pct": 86.5,
+      "quality_score": 80.0,
+      "time_range": {
+        "start": "2025-07-26T14:25:00+00:00",
+        "end": "2025-07-27T14:29:00+00:00"
+      },
+      "reasons": ["200 gaps"]
+    },
+    {
+      "token_address": "DRQgixoqPCDW71H97VXS14pH6ZCBwwpxJ8gvoWUKbonk",
+      "filepath": "slices/per_token/20250708_0210_DRQgixoq_bonk.parquet",
+      "severity": "critical",
+      "gaps": 196,
+      "coverage_pct": 86.7,
+      "quality_score": 75.7,
+      "time_range": {
+        "start": "2025-07-08T02:06:00+00:00",
+        "end": "2025-07-09T02:10:00+00:00"
+      },
+      "reasons": ["196 gaps"]
+    },
+    {
+      "token_address": "E3mpHb37hnmZk2JB3uRXAesUNTmCZcg33mjT5zLSbonk",
+      "filepath": "slices/per_token/20250724_0215_E3mpHb37_bonk.parquet",
+      "severity": "critical",
+      "gaps": 196,
+      "coverage_pct": 86.7,
+      "quality_score": 72.5,
+      "time_range": {
+        "start": "2025-07-24T02:11:00+00:00",
+        "end": "2025-07-25T02:15:00+00:00"
+      },
+      "reasons": ["196 gaps"]
+    },
+    {
+      "token_address": "Dz9mQ9NzkBcCsuGPFJ3r1bS4wgqKMHBPiVuniW8Mbonk",
+      "filepath": "slices/per_token/20250712_1423_Dz9mQ9Nz_bonk.parquet",
+      "severity": "critical",
+      "gaps": 195,
+      "coverage_pct": 86.8,
+      "quality_score": 80.0,
+      "time_range": {
+        "start": "2025-07-12T14:19:00+00:00",
+        "end": "2025-07-13T14:23:00+00:00"
+      },
+      "reasons": ["195 gaps"]
+    },
+    {
+      "token_address": "Dz9mQ9NzkBcCsuGPFJ3r1bS4wgqKMHBPiVuniW8Mbonk",
+      "filepath": "slices/per_token/20250712_1737_Dz9mQ9Nz_bonk.parquet",
+      "severity": "critical",
+      "gaps": 195,
+      "coverage_pct": 86.8,
+      "quality_score": 79.4,
+      "time_range": {
+        "start": "2025-07-12T17:33:00+00:00",
+        "end": "2025-07-13T17:37:00+00:00"
+      },
+      "reasons": ["195 gaps"]
+    },
+    {
+      "token_address": "Gi7oE7pF93vGwsib6WqZg5UTHyvzE2svKZx14DTHbonk",
+      "filepath": "slices/per_token/20250725_1245_Gi7oE7pF_bonk.parquet",
+      "severity": "critical",
+      "gaps": 194,
+      "coverage_pct": 86.9,
+      "quality_score": 70.6,
+      "time_range": {
+        "start": "2025-07-25T12:41:00+00:00",
+        "end": "2025-07-26T12:45:00+00:00"
+      },
+      "reasons": ["194 gaps"]
+    },
+    {
+      "token_address": "yFtG6tU4mZqiUnrBC4gF9eXTdWyzj7ZSKb92wv3bonk",
+      "filepath": "slices/per_token/20250708_1015_yFtG6tU4_bonk.parquet",
+      "severity": "critical",
+      "gaps": 191,
+      "coverage_pct": 87.1,
+      "quality_score": 75.2,
+      "time_range": {
+        "start": "2025-07-08T10:11:00+00:00",
+        "end": "2025-07-09T10:15:00+00:00"
+      },
+      "reasons": ["191 gaps"]
+    },
+    {
+      "token_address": "yFtG6tU4mZqiUnrBC4gF9eXTdWyzj7ZSKb92wv3bonk",
+      "filepath": "slices/per_token/20250708_1016_yFtG6tU4_bonk.parquet",
+      "severity": "critical",
+      "gaps": 191,
+      "coverage_pct": 87.1,
+      "quality_score": 75.2,
+      "time_range": {
+        "start": "2025-07-08T10:12:00+00:00",
+        "end": "2025-07-09T10:16:00+00:00"
+      },
+      "reasons": ["191 gaps"]
+    },
+    {
+      "token_address": "8EDf71fRSK4XGH34HpA3s2GwNFf3iMzRuhzm1L8Zbonk",
+      "filepath": "slices/per_token/20250706_0045_8EDf71fR_bonk.parquet",
+      "severity": "critical",
+      "gaps": 189,
+      "coverage_pct": 87.2,
+      "quality_score": 71.1,
+      "time_range": {
+        "start": "2025-07-06T00:41:00+00:00",
+        "end": "2025-07-07T00:45:00+00:00"
+      },
+      "reasons": ["189 gaps"]
+    },
+    {
+      "token_address": "Ha5fMUGdobEASCpGZ2kLniw5MAHcL2L5Q8xxUq5Xpump",
+      "filepath": "slices/per_token/20250702_1106_Ha5fMUGd_pump.parquet",
+      "severity": "critical",
+      "gaps": 186,
+      "coverage_pct": 87.4,
+      "quality_score": 72.4,
+      "time_range": {
+        "start": "2025-07-02T11:02:00+00:00",
+        "end": "2025-07-03T11:06:00+00:00"
+      },
+      "reasons": ["186 gaps"]
+    },
+    {
+      "token_address": "7nVqEn9XabTLVs8q1xrZ2nC9bUEtAkSnGomkoNvdpump",
+      "filepath": "slices/per_token/20250729_1446_7nVqEn9X_pump.parquet",
+      "severity": "critical",
+      "gaps": 185,
+      "coverage_pct": 87.5,
+      "quality_score": 72.1,
+      "time_range": {
+        "start": "2025-07-29T14:42:00+00:00",
+        "end": "2025-07-30T14:46:00+00:00"
+      },
+      "reasons": ["185 gaps"]
+    },
+    {
+      "token_address": "CpP7Jq67B3z8w3RwmGVhqkVrSaivsy2VML8K1xLvbonk",
+      "filepath": "slices/per_token/20250722_0811_CpP7Jq67_bonk.parquet",
+      "severity": "critical",
+      "gaps": 184,
+      "coverage_pct": 87.6,
+      "quality_score": 71.6,
+      "time_range": {
+        "start": "2025-07-22T08:07:00+00:00",
+        "end": "2025-07-23T08:11:00+00:00"
+      },
+      "reasons": ["184 gaps"]
+    },
+    {
+      "token_address": "7FpjuY392qjjY68uJ8mcnFSEWN4E4t58hJmQiveTpump",
+      "filepath": "slices/per_token/20250702_1107_7FpjuY39_pump.parquet",
+      "severity": "critical",
+      "gaps": 182,
+      "coverage_pct": 87.7,
+      "quality_score": 72.4,
+      "time_range": {
+        "start": "2025-07-02T11:03:00+00:00",
+        "end": "2025-07-03T11:07:00+00:00"
+      },
+      "reasons": ["182 gaps"]
+    },
+    {
+      "token_address": "5v53VHEG8ouJ7FSEFFDtc61weHCU1n1QmxsDfStEbonk",
+      "filepath": "slices/per_token/20250705_1730_5v53VHEG_bonk.parquet",
+      "severity": "critical",
+      "gaps": 180,
+      "coverage_pct": 87.8,
+      "quality_score": 76.5,
+      "time_range": {
+        "start": "2025-07-05T17:26:00+00:00",
+        "end": "2025-07-06T17:30:00+00:00"
+      },
+      "reasons": ["180 gaps"]
+    },
+    {
+      "token_address": "BZh7oYyHZ7dPgjsFT7C9CUbYxJtZ4YoRpp7Z6Vj6pump",
+      "filepath": "slices/per_token/20250702_2105_BZh7oYyH_pump.parquet",
+      "severity": "critical",
+      "gaps": 181,
+      "coverage_pct": 87.8,
+      "quality_score": 71.9,
+      "time_range": {
+        "start": "2025-07-02T21:01:00+00:00",
+        "end": "2025-07-03T21:05:00+00:00"
+      },
+      "reasons": ["181 gaps"]
+    },
+    {
+      "token_address": "vDjZX8CtnoqHo4kE2FJFE8WkCKrHaZcv66crccWbonk",
+      "filepath": "slices/per_token/20250704_1353_vDjZX8Ct_bonk.parquet",
+      "severity": "critical",
+      "gaps": 179,
+      "coverage_pct": 87.9,
+      "quality_score": 73.3,
+      "time_range": {
+        "start": "2025-07-04T13:49:00+00:00",
+        "end": "2025-07-05T13:53:00+00:00"
+      },
+      "reasons": ["179 gaps"]
+    },
+    {
+      "token_address": "2B56n4oJvzj2D485MPYWNCBnVHvTaLPBah96CuU8bonk",
+      "filepath": "slices/per_token/20250721_1201_2B56n4oJ_bonk.parquet",
+      "severity": "critical",
+      "gaps": 179,
+      "coverage_pct": 87.9,
+      "quality_score": 72.1,
+      "time_range": {
+        "start": "2025-07-21T11:57:00+00:00",
+        "end": "2025-07-22T12:01:00+00:00"
+      },
+      "reasons": ["179 gaps"]
+    },
+    {
+      "token_address": "4jdueqt3MWuNLZP1xzTVk4FfFGDBe9iCf7RKTUGhDrbu",
+      "filepath": "slices/per_token/20250710_0820_4jdueqt3_Drbu.parquet",
+      "severity": "critical",
+      "gaps": 178,
+      "coverage_pct": 88.0,
+      "quality_score": 74.8,
+      "time_range": {
+        "start": "2025-07-10T08:16:00+00:00",
+        "end": "2025-07-11T08:20:00+00:00"
+      },
+      "reasons": ["178 gaps"]
+    },
+    {
+      "token_address": "4GudzK6GstbS7rphjxQPhudaSL9fJohwM1joyXpmbonk",
+      "filepath": "slices/per_token/20250724_1241_4GudzK6G_bonk.parquet",
+      "severity": "critical",
+      "gaps": 176,
+      "coverage_pct": 88.1,
+      "quality_score": 75.7,
+      "time_range": {
+        "start": "2025-07-24T12:37:00+00:00",
+        "end": "2025-07-25T12:41:00+00:00"
+      },
+      "reasons": ["176 gaps"]
+    },
+    {
+      "token_address": "6rCs8m2xWPFQd2wFTD77Z91UK3H2WRN2cNsvg5W8pump",
+      "filepath": "slices/per_token/20250715_1837_6rCs8m2x_pump.parquet",
+      "severity": "critical",
+      "gaps": 177,
+      "coverage_pct": 88.1,
+      "quality_score": 72.5,
+      "time_range": {
+        "start": "2025-07-15T18:33:00+00:00",
+        "end": "2025-07-16T18:37:00+00:00"
+      },
+      "reasons": ["177 gaps"]
+    },
+    {
+      "token_address": "8CfpCvRiXsSvFXgrasmzuiYnNFjWSSpCC1PQ1j9abonk",
+      "filepath": "slices/per_token/20250714_2229_8CfpCvRi_bonk.parquet",
+      "severity": "critical",
+      "gaps": 177,
+      "coverage_pct": 88.1,
+      "quality_score": 78.6,
+      "time_range": {
+        "start": "2025-07-14T22:25:00+00:00",
+        "end": "2025-07-15T22:29:00+00:00"
+      },
+      "reasons": ["177 gaps"]
+    },
+    {
+      "token_address": "Cnj5xWjidDVvMFGTjEnATV7ULAaeZy86PUQTAacv9No8",
+      "filepath": "slices/per_token/20250703_1340_Cnj5xWji_9No8.parquet",
+      "severity": "critical",
+      "gaps": 176,
+      "coverage_pct": 88.1,
+      "quality_score": 72.4,
+      "time_range": {
+        "start": "2025-07-03T13:36:00+00:00",
+        "end": "2025-07-04T13:40:00+00:00"
+      },
+      "reasons": ["176 gaps", "high zero volume (39%)"]
+    },
+    {
+      "token_address": "4GudzK6GstbS7rphjxQPhudaSL9fJohwM1joyXpmbonk",
+      "filepath": "slices/per_token/20250724_1236_4GudzK6G_bonk.parquet",
+      "severity": "critical",
+      "gaps": 176,
+      "coverage_pct": 88.1,
+      "quality_score": 75.7,
+      "time_range": {
+        "start": "2025-07-24T12:32:00+00:00",
+        "end": "2025-07-25T12:36:00+00:00"
+      },
+      "reasons": ["176 gaps"]
+    },
+    {
+      "token_address": "wq4n4P5XM8zzHLW12r7Q7oLHzWBFo5x1vtatHoYbonk",
+      "filepath": "slices/per_token/20250723_1011_wq4n4P5X_bonk.parquet",
+      "severity": "critical",
+      "gaps": 172,
+      "coverage_pct": 88.4,
+      "quality_score": 72.8,
+      "time_range": {
+        "start": "2025-07-23T10:07:00+00:00",
+        "end": "2025-07-24T10:11:00+00:00"
+      },
+      "reasons": ["172 gaps"]
+    },
+    {
+      "token_address": "EjFdwRGWP95Z8B3vcbJdMgX7g1nD5g61w8AfY6tzbonk",
+      "filepath": "slices/per_token/20250704_0635_EjFdwRGW_bonk.parquet",
+      "severity": "critical",
+      "gaps": 170,
+      "coverage_pct": 88.5,
+      "quality_score": 75.8,
+      "time_range": {
+        "start": "2025-07-04T06:32:00+00:00",
+        "end": "2025-07-05T06:35:00+00:00"
+      },
+      "reasons": ["170 gaps"]
+    },
+    {
+      "token_address": "7h55NnMGS2GNFaTwd7kaprajBb6vZk5737TPBMbmbonk",
+      "filepath": "slices/per_token/20250712_2059_7h55NnMG_bonk.parquet",
+      "severity": "critical",
+      "gaps": 166,
+      "coverage_pct": 88.8,
+      "quality_score": 74.8,
+      "time_range": {
+        "start": "2025-07-12T20:55:00+00:00",
+        "end": "2025-07-13T20:59:00+00:00"
+      },
+      "reasons": ["166 gaps"]
+    },
+    {
+      "token_address": "67xkS3KGdbiqjvPfb9QpeKxL2tmRebn36bVwby9mpump",
+      "filepath": "slices/per_token/20250701_1347_67xkS3KG_pump.parquet",
+      "severity": "critical",
+      "gaps": 163,
+      "coverage_pct": 89.0,
+      "quality_score": 76.4,
+      "time_range": {
+        "start": "2025-07-01T13:43:00+00:00",
+        "end": "2025-07-02T13:47:00+00:00"
+      },
+      "reasons": ["163 gaps"]
+    },
+    {
+      "token_address": "t2eYe2Av7YZgaYY3H2DgGrKnh9TRTqMjuTD9deJbonk",
+      "filepath": "slices/per_token/20250730_1256_t2eYe2Av_bonk.parquet",
+      "severity": "critical",
+      "gaps": 157,
+      "coverage_pct": 89.4,
+      "quality_score": 76.8,
+      "time_range": {
+        "start": "2025-07-30T12:52:00+00:00",
+        "end": "2025-07-31T12:56:00+00:00"
+      },
+      "reasons": ["157 gaps"]
+    },
+    {
+      "token_address": "HQtGjp135TNUdC4p5ciDDY8wzoBatn1w7zUo3hs9bonk",
+      "filepath": "slices/per_token/20250722_2203_HQtGjp13_bonk.parquet",
+      "severity": "critical",
+      "gaps": 156,
+      "coverage_pct": 89.5,
+      "quality_score": 81.4,
+      "time_range": {
+        "start": "2025-07-22T21:59:00+00:00",
+        "end": "2025-07-23T22:03:00+00:00"
+      },
+      "reasons": ["156 gaps"]
+    },
+    {
+      "token_address": "4VFUDyXgoV9cK4Br7BkuLuP9uJMT7SxySY7zvx3Cbonk",
+      "filepath": "slices/per_token/20250728_1408_4VFUDyXg_bonk.parquet",
+      "severity": "critical",
+      "gaps": 155,
+      "coverage_pct": 89.6,
+      "quality_score": 80.7,
+      "time_range": {
+        "start": "2025-07-28T14:04:00+00:00",
+        "end": "2025-07-29T14:08:00+00:00"
+      },
+      "reasons": ["155 gaps"]
+    },
+    {
+      "token_address": "6c12RE77u5w1Ps16tFWBCZ8FAhY9JmZTToPs2Rcrbonk",
+      "filepath": "slices/per_token/20250710_1204_6c12RE77_bonk.parquet",
+      "severity": "critical",
+      "gaps": 154,
+      "coverage_pct": 89.7,
+      "quality_score": 77.1,
+      "time_range": {
+        "start": "2025-07-10T12:00:00+00:00",
+        "end": "2025-07-11T12:04:00+00:00"
+      },
+      "reasons": ["154 gaps"]
+    },
+    {
+      "token_address": "2DSFvQtdoqv7DjPgXL5tjTYJ3ABBnoBeTfAJTXNdbonk",
+      "filepath": "slices/per_token/20250728_2027_2DSFvQtd_bonk.parquet",
+      "severity": "critical",
+      "gaps": 152,
+      "coverage_pct": 89.8,
+      "quality_score": 77.2,
+      "time_range": {
+        "start": "2025-07-28T20:23:00+00:00",
+        "end": "2025-07-29T20:27:00+00:00"
+      },
+      "reasons": ["152 gaps"]
+    },
+    {
+      "token_address": "7FpjuY392qjjY68uJ8mcnFSEWN4E4t58hJmQiveTpump",
+      "filepath": "slices/per_token/20250702_1511_7FpjuY39_pump.parquet",
+      "severity": "critical",
+      "gaps": 152,
+      "coverage_pct": 89.8,
+      "quality_score": 74.8,
+      "time_range": {
+        "start": "2025-07-02T15:07:00+00:00",
+        "end": "2025-07-03T15:11:00+00:00"
+      },
+      "reasons": ["152 gaps", "high zero volume (25%)"]
+    },
+    {
+      "token_address": "2RKZuckB4kwvKEFhSCBa57DU9oWdtRcF5dgyb6N9jups",
+      "filepath": "slices/per_token/20250727_1328_2RKZuckB_jups.parquet",
+      "severity": "critical",
+      "gaps": 151,
+      "coverage_pct": 89.9,
+      "quality_score": 79.0,
+      "time_range": {
+        "start": "2025-07-27T13:24:00+00:00",
+        "end": "2025-07-28T13:28:00+00:00"
+      },
+      "reasons": ["151 gaps"]
+    },
+    {
+      "token_address": "7joFYehCAHc1Rvc3QmckDaivzEEsCPYVup4C48jspump",
+      "filepath": "slices/per_token/20250710_1907_7joFYehC_pump.parquet",
+      "severity": "critical",
+      "gaps": 149,
+      "coverage_pct": 90.0,
+      "quality_score": 78.6,
+      "time_range": {
+        "start": "2025-07-10T19:03:00+00:00",
+        "end": "2025-07-11T19:07:00+00:00"
+      },
+      "reasons": ["149 gaps"]
+    },
+    {
+      "token_address": "GxzvWxCzNN3MTEZzTRx7RnP3yg4dmD8Ez8Ssu8wSbonk",
+      "filepath": "slices/per_token/20250730_1815_GxzvWxCz_bonk.parquet",
+      "severity": "critical",
+      "gaps": 149,
+      "coverage_pct": 90.0,
+      "quality_score": 83.8,
+      "time_range": {
+        "start": "2025-07-30T18:11:00+00:00",
+        "end": "2025-07-31T18:15:00+00:00"
+      },
+      "reasons": ["149 gaps"]
+    },
+    {
+      "token_address": "Ei3DQbew9B26dFmp3NiMqfew9YajVj7g2FEPXXtcbonk",
+      "filepath": "slices/per_token/20250710_0802_Ei3DQbew_bonk.parquet",
+      "severity": "critical",
+      "gaps": 142,
+      "coverage_pct": 90.5,
+      "quality_score": 76.1,
+      "time_range": {
+        "start": "2025-07-10T07:58:00+00:00",
+        "end": "2025-07-11T08:02:00+00:00"
+      },
+      "reasons": ["142 gaps"]
+    },
+    {
+      "token_address": "Ei3DQbew9B26dFmp3NiMqfew9YajVj7g2FEPXXtcbonk",
+      "filepath": "slices/per_token/20250710_0813_Ei3DQbew_bonk.parquet",
+      "severity": "critical",
+      "gaps": 142,
+      "coverage_pct": 90.5,
+      "quality_score": 75.8,
+      "time_range": {
+        "start": "2025-07-10T08:09:00+00:00",
+        "end": "2025-07-11T08:13:00+00:00"
+      },
+      "reasons": ["142 gaps"]
+    },
+    {
+      "token_address": "7cPo1mKkNna8mkhmp3TnpKsK9Zt3gZMDXHwERxjzbonk",
+      "filepath": "slices/per_token/20250709_2315_7cPo1mKk_bonk.parquet",
+      "severity": "critical",
+      "gaps": 138,
+      "coverage_pct": 90.8,
+      "quality_score": 85.1,
+      "time_range": {
+        "start": "2025-07-09T23:11:00+00:00",
+        "end": "2025-07-10T23:15:00+00:00"
+      },
+      "reasons": ["138 gaps"]
+    },
+    {
+      "token_address": "GS29biiyFF9Su88XaK2F1Sn1EHqtJh9CP5xoKV3Tbonk",
+      "filepath": "slices/per_token/20250718_1304_GS29biiy_bonk.parquet",
+      "severity": "critical",
+      "gaps": 137,
+      "coverage_pct": 90.8,
+      "quality_score": 77.0,
+      "time_range": {
+        "start": "2025-07-18T13:00:00+00:00",
+        "end": "2025-07-19T13:04:00+00:00"
+      },
+      "reasons": ["137 gaps"]
+    },
+    {
+      "token_address": "96hxhKLnHuJSseVFX4mpxQJ1TAQScAAT7tFHZVzBbonk",
+      "filepath": "slices/per_token/20250721_0157_96hxhKLn_bonk.parquet",
+      "severity": "critical",
+      "gaps": 138,
+      "coverage_pct": 90.8,
+      "quality_score": 77.8,
+      "time_range": {
+        "start": "2025-07-21T01:53:00+00:00",
+        "end": "2025-07-22T01:57:00+00:00"
+      },
+      "reasons": ["138 gaps"]
+    },
+    {
+      "token_address": "AJ6s6V3cNePmj5sYZVVF6u2UrMSrMi3rVEphikhcbonk",
+      "filepath": "slices/per_token/20250717_1931_AJ6s6V3c_bonk.parquet",
+      "severity": "critical",
+      "gaps": 136,
+      "coverage_pct": 90.9,
+      "quality_score": 80.4,
+      "time_range": {
+        "start": "2025-07-17T19:27:00+00:00",
+        "end": "2025-07-18T19:31:00+00:00"
+      },
+      "reasons": ["136 gaps"]
+    },
+    {
+      "token_address": "6m6GYqjDKH4WFg4f93mmoDJxAgHoQoBUZ1yNRc8Ebonk",
+      "filepath": "slices/per_token/20250730_1826_6m6GYqjD_bonk.parquet",
+      "severity": "critical",
+      "gaps": 134,
+      "coverage_pct": 91.0,
+      "quality_score": 85.0,
+      "time_range": {
+        "start": "2025-07-30T18:22:00+00:00",
+        "end": "2025-07-31T18:26:00+00:00"
+      },
+      "reasons": ["134 gaps"]
+    },
+    {
+      "token_address": "GCf9uJPrLSqRy1gzaquoH5rxgPkaXA5jVK6axCcsbonk",
+      "filepath": "slices/per_token/20250716_1359_GCf9uJPr_bonk.parquet",
+      "severity": "critical",
+      "gaps": 135,
+      "coverage_pct": 91.0,
+      "quality_score": 80.8,
+      "time_range": {
+        "start": "2025-07-16T13:55:00+00:00",
+        "end": "2025-07-17T13:59:00+00:00"
+      },
+      "reasons": ["135 gaps"]
+    },
+    {
+      "token_address": "4avLyx8E2NZQDGENgeKQYTwCiNQFUZh5LYVycm31pump",
+      "filepath": "slices/per_token/20250712_1433_4avLyx8E_pump.parquet",
+      "severity": "critical",
+      "gaps": 132,
+      "coverage_pct": 91.2,
+      "quality_score": 77.1,
+      "time_range": {
+        "start": "2025-07-12T14:29:00+00:00",
+        "end": "2025-07-13T14:33:00+00:00"
+      },
+      "reasons": ["132 gaps"]
+    },
+    {
+      "token_address": "6pcSWu35Dw4qZjtcn1sdeSHXzxNaY3JVege6xn59DEpQ",
+      "filepath": "slices/per_token/20250731_1809_6pcSWu35_DEpQ.parquet",
+      "severity": "critical",
+      "gaps": 130,
+      "coverage_pct": 91.3,
+      "quality_score": 82.0,
+      "time_range": {
+        "start": "2025-07-31T18:05:00+00:00",
+        "end": "2025-08-01T18:09:00+00:00"
+      },
+      "reasons": ["130 gaps"]
+    },
+    {
+      "token_address": "AK9yVoXKK1Cjww7HDyjYNyW5FujD3FJ2xbjMUStspump",
+      "filepath": "slices/per_token/20250702_1521_AK9yVoXK_pump.parquet",
+      "severity": "critical",
+      "gaps": 126,
+      "coverage_pct": 91.6,
+      "quality_score": 78.3,
+      "time_range": {
+        "start": "2025-07-02T15:17:00+00:00",
+        "end": "2025-07-03T15:21:00+00:00"
+      },
+      "reasons": ["126 gaps"]
+    },
+    {
+      "token_address": "FjoHttjKHeuycYZA38xCBeYLyLxuf1tTY72RLackpump",
+      "filepath": "slices/per_token/20250711_1322_FjoHttjK_pump.parquet",
+      "severity": "critical",
+      "gaps": 125,
+      "coverage_pct": 91.7,
+      "quality_score": 77.5,
+      "time_range": {
+        "start": "2025-07-11T13:18:00+00:00",
+        "end": "2025-07-12T13:22:00+00:00"
+      },
+      "reasons": ["125 gaps"]
+    },
+    {
+      "token_address": "FjoHttjKHeuycYZA38xCBeYLyLxuf1tTY72RLackpump",
+      "filepath": "slices/per_token/20250711_1639_FjoHttjK_pump.parquet",
+      "severity": "critical",
+      "gaps": 125,
+      "coverage_pct": 91.7,
+      "quality_score": 77.5,
+      "time_range": {
+        "start": "2025-07-11T16:34:00+00:00",
+        "end": "2025-07-12T16:38:00+00:00"
+      },
+      "reasons": ["125 gaps", "high zero volume (27%)"]
+    },
+    {
+      "token_address": "FjoHttjKHeuycYZA38xCBeYLyLxuf1tTY72RLackpump",
+      "filepath": "slices/per_token/20250711_1845_FjoHttjK_pump.parquet",
+      "severity": "critical",
+      "gaps": 125,
+      "coverage_pct": 91.7,
+      "quality_score": 77.5,
+      "time_range": {
+        "start": "2025-07-11T18:41:00+00:00",
+        "end": "2025-07-12T18:45:00+00:00"
+      },
+      "reasons": ["125 gaps", "high zero volume (34%)"]
+    },
+    {
+      "token_address": "C31nWuyWExqvcSyZ6Fieb1SvZPXnSGLdNS44jSzycook",
+      "filepath": "slices/per_token/20250702_1625_C31nWuyW_cook.parquet",
+      "severity": "critical",
+      "gaps": 119,
+      "coverage_pct": 92.1,
+      "quality_score": 82.5,
+      "time_range": {
+        "start": "2025-07-02T16:21:00+00:00",
+        "end": "2025-07-03T16:25:00+00:00"
+      },
+      "reasons": ["119 gaps"]
+    },
+    {
+      "token_address": "4USqPFQrnjyw7Q9BTLszyPi3w5DKAH8xbHfH6K7njups",
+      "filepath": "slices/per_token/20250703_0708_4USqPFQr_jups.parquet",
+      "severity": "critical",
+      "gaps": 119,
+      "coverage_pct": 92.1,
+      "quality_score": 83.2,
+      "time_range": {
+        "start": "2025-07-03T07:04:00+00:00",
+        "end": "2025-07-04T07:08:00+00:00"
+      },
+      "reasons": ["119 gaps"]
+    },
+    {
+      "token_address": "7Fpps8uivN4fwKrAxMidQ4gZYrG2yv4WRqUKamEdbonk",
+      "filepath": "slices/per_token/20250718_0815_7Fpps8ui_bonk.parquet",
+      "severity": "critical",
+      "gaps": 119,
+      "coverage_pct": 92.1,
+      "quality_score": 78.5,
+      "time_range": {
+        "start": "2025-07-18T08:11:00+00:00",
+        "end": "2025-07-19T08:15:00+00:00"
+      },
+      "reasons": ["119 gaps"]
+    },
+    {
+      "token_address": "FRXw31mfSPiFhU1R72SkXdDPemJHFirt99wUgvzobonk",
+      "filepath": "slices/per_token/20250710_2132_FRXw31mf_bonk.parquet",
+      "severity": "critical",
+      "gaps": 118,
+      "coverage_pct": 92.2,
+      "quality_score": 79.2,
+      "time_range": {
+        "start": "2025-07-10T21:28:00+00:00",
+        "end": "2025-07-11T21:32:00+00:00"
+      },
+      "reasons": ["118 gaps"]
+    },
+    {
+      "token_address": "5MU4Fm65xmn19D5a1bmTruzvKZbeX9EQsU2EeEEFbonk",
+      "filepath": "slices/per_token/20250724_2304_5MU4Fm65_bonk.parquet",
+      "severity": "critical",
+      "gaps": 117,
+      "coverage_pct": 92.2,
+      "quality_score": 81.8,
+      "time_range": {
+        "start": "2025-07-24T23:00:00+00:00",
+        "end": "2025-07-25T23:04:00+00:00"
+      },
+      "reasons": ["117 gaps"]
+    },
+    {
+      "token_address": "9tqjeRS1swj36Ee5C1iGiwAxjQJNGAVCzaTLwFY8bonk",
+      "filepath": "slices/per_token/20250721_1037_9tqjeRS1_bonk.parquet",
+      "severity": "critical",
+      "gaps": 117,
+      "coverage_pct": 92.2,
+      "quality_score": 88.1,
+      "time_range": {
+        "start": "2025-07-21T10:33:00+00:00",
+        "end": "2025-07-22T10:37:00+00:00"
+      },
+      "reasons": ["117 gaps"]
+    },
+    {
+      "token_address": "F3fCeo9wYRENiFSRpL8uvi2m1XWsdrKpwD3dBgQpbonk",
+      "filepath": "slices/per_token/20250727_0055_F3fCeo9w_bonk.parquet",
+      "severity": "critical",
+      "gaps": 116,
+      "coverage_pct": 92.3,
+      "quality_score": 78.4,
+      "time_range": {
+        "start": "2025-07-27T00:51:00+00:00",
+        "end": "2025-07-28T00:55:00+00:00"
+      },
+      "reasons": ["116 gaps"]
+    },
+    {
+      "token_address": "HKZQxDqqw1U7MmzEcjc4JocEnZJ75nBKudcKs8xgbonk",
+      "filepath": "slices/per_token/20250720_2026_HKZQxDqq_bonk.parquet",
+      "severity": "critical",
+      "gaps": 113,
+      "coverage_pct": 92.5,
+      "quality_score": 78.7,
+      "time_range": {
+        "start": "2025-07-20T20:22:00+00:00",
+        "end": "2025-07-21T20:26:00+00:00"
+      },
+      "reasons": ["113 gaps"]
+    },
+    {
+      "token_address": "HKZQxDqqw1U7MmzEcjc4JocEnZJ75nBKudcKs8xgbonk",
+      "filepath": "slices/per_token/20250720_2008_HKZQxDqq_bonk.parquet",
+      "severity": "critical",
+      "gaps": 113,
+      "coverage_pct": 92.5,
+      "quality_score": 79.2,
+      "time_range": {
+        "start": "2025-07-20T20:04:00+00:00",
+        "end": "2025-07-21T20:08:00+00:00"
+      },
+      "reasons": ["113 gaps"]
+    },
+    {
+      "token_address": "5XQzW9C64c9vXHe9fSTU9bG4nUvhisNePRGDPgmHbonk",
+      "filepath": "slices/per_token/20250707_1031_5XQzW9C6_bonk.parquet",
+      "severity": "critical",
+      "gaps": 111,
+      "coverage_pct": 92.6,
+      "quality_score": 78.9,
+      "time_range": {
+        "start": "2025-07-07T10:27:00+00:00",
+        "end": "2025-07-08T10:31:00+00:00"
+      },
+      "reasons": ["111 gaps"]
+    },
+    {
+      "token_address": "5XQzW9C64c9vXHe9fSTU9bG4nUvhisNePRGDPgmHbonk",
+      "filepath": "slices/per_token/20250707_0954_5XQzW9C6_bonk.parquet",
+      "severity": "critical",
+      "gaps": 111,
+      "coverage_pct": 92.6,
+      "quality_score": 78.9,
+      "time_range": {
+        "start": "2025-07-07T09:50:00+00:00",
+        "end": "2025-07-08T09:54:00+00:00"
+      },
+      "reasons": ["111 gaps"]
+    },
+    {
+      "token_address": "GBZ9knZmAsCSPzxPqrFEKCXX5JBx1Yr3LKDxnKNqpump",
+      "filepath": "slices/per_token/20250718_2014_GBZ9knZm_pump.parquet",
+      "severity": "critical",
+      "gaps": 111,
+      "coverage_pct": 92.6,
+      "quality_score": 81.0,
+      "time_range": {
+        "start": "2025-07-18T20:10:00+00:00",
+        "end": "2025-07-19T20:14:00+00:00"
+      },
+      "reasons": ["111 gaps"]
+    },
+    {
+      "token_address": "597vZbUGXN7Qvnxys4WaMBM9qS1bFpbbB1ch9Cchpump",
+      "filepath": "slices/per_token/20250704_0619_597vZbUG_pump.parquet",
+      "severity": "critical",
+      "gaps": 110,
+      "coverage_pct": 92.7,
+      "quality_score": 80.2,
+      "time_range": {
+        "start": "2025-07-04T06:15:00+00:00",
+        "end": "2025-07-05T06:19:00+00:00"
+      },
+      "reasons": ["110 gaps"]
+    },
+    {
+      "token_address": "597vZbUGXN7Qvnxys4WaMBM9qS1bFpbbB1ch9Cchpump",
+      "filepath": "slices/per_token/20250704_0647_597vZbUG_pump.parquet",
+      "severity": "critical",
+      "gaps": 110,
+      "coverage_pct": 92.7,
+      "quality_score": 79.1,
+      "time_range": {
+        "start": "2025-07-04T06:43:00+00:00",
+        "end": "2025-07-05T06:47:00+00:00"
+      },
+      "reasons": ["110 gaps"]
+    },
+    {
+      "token_address": "4PhWdUdHCfw3XJBAaEDCDQkM2fFfQEt6igcLqi7abonk",
+      "filepath": "slices/per_token/20250720_1305_4PhWdUdH_bonk.parquet",
+      "severity": "critical",
+      "gaps": 110,
+      "coverage_pct": 92.7,
+      "quality_score": 79.0,
+      "time_range": {
+        "start": "2025-07-20T13:01:00+00:00",
+        "end": "2025-07-21T13:05:00+00:00"
+      },
+      "reasons": ["110 gaps"]
+    },
+    {
+      "token_address": "ArX6f4uWJdEV4Zo45ZsCBnuWXFoMoAq9bKaR4q2tpump",
+      "filepath": "slices/per_token/20250713_0805_ArX6f4uW_pump.parquet",
+      "severity": "critical",
+      "gaps": 110,
+      "coverage_pct": 92.7,
+      "quality_score": 79.0,
+      "time_range": {
+        "start": "2025-07-13T08:01:00+00:00",
+        "end": "2025-07-14T08:05:00+00:00"
+      },
+      "reasons": ["110 gaps"]
+    },
+    {
+      "token_address": "597vZbUGXN7Qvnxys4WaMBM9qS1bFpbbB1ch9Cchpump",
+      "filepath": "slices/per_token/20250704_0640_597vZbUG_pump.parquet",
+      "severity": "critical",
+      "gaps": 110,
+      "coverage_pct": 92.7,
+      "quality_score": 79.4,
+      "time_range": {
+        "start": "2025-07-04T06:36:00+00:00",
+        "end": "2025-07-05T06:40:00+00:00"
+      },
+      "reasons": ["110 gaps"]
+    },
+    {
+      "token_address": "7ahuzVDuyb5tTkTqmgBj2iKt9UYaUghLqjzUv2DJbonk",
+      "filepath": "slices/per_token/20250716_2042_7ahuzVDu_bonk.parquet",
+      "severity": "critical",
+      "gaps": 104,
+      "coverage_pct": 93.1,
+      "quality_score": 83.5,
+      "time_range": {
+        "start": "2025-07-16T20:38:00+00:00",
+        "end": "2025-07-17T20:42:00+00:00"
+      },
+      "reasons": ["104 gaps"]
+    },
+    {
+      "token_address": "9Ertjp8ZpBwuEt1xoqz8gAPe6tvLCTkXvJYNqK35bonk",
+      "filepath": "slices/per_token/20250708_0218_9Ertjp8Z_bonk.parquet",
+      "severity": "critical",
+      "gaps": 103,
+      "coverage_pct": 93.2,
+      "quality_score": 83.9,
+      "time_range": {
+        "start": "2025-07-08T02:14:00+00:00",
+        "end": "2025-07-09T02:18:00+00:00"
+      },
+      "reasons": ["103 gaps"]
+    },
+    {
+      "token_address": "9Ertjp8ZpBwuEt1xoqz8gAPe6tvLCTkXvJYNqK35bonk",
+      "filepath": "slices/per_token/20250708_0219_9Ertjp8Z_bonk.parquet",
+      "severity": "critical",
+      "gaps": 103,
+      "coverage_pct": 93.2,
+      "quality_score": 83.9,
+      "time_range": {
+        "start": "2025-07-08T02:15:00+00:00",
+        "end": "2025-07-09T02:19:00+00:00"
+      },
+      "reasons": ["103 gaps"]
+    },
+    {
+      "token_address": "EoLW32eUjN9XibMLEb53CMzLtg9XxnHFU6fbpSukjups",
+      "filepath": "slices/per_token/20250703_1455_EoLW32eU_jups.parquet",
+      "severity": "warning",
+      "gaps": 59,
+      "coverage_pct": 85.3,
+      "quality_score": 94.0,
+      "time_range": {
+        "start": "2025-07-03T17:29:00+00:00",
+        "end": "2025-07-04T14:55:00+00:00"
+      },
+      "reasons": ["59 gaps"]
+    },
+    {
+      "token_address": "BoRYhYtgSTHNQnmVABBs8tEKwRtFjVjY1GEoyBSyfUWm",
+      "filepath": "slices/per_token/20250630_1044_BoRYhYtg_fUWm.parquet",
+      "severity": "warning",
+      "gaps": 33,
+      "coverage_pct": 87.2,
+      "quality_score": 94.9,
+      "time_range": {
+        "start": "2025-06-30T13:16:00+00:00",
+        "end": "2025-07-01T10:44:00+00:00"
+      },
+      "reasons": ["33 gaps"]
+    },
+    {
+      "token_address": "BoRYhYtgSTHNQnmVABBs8tEKwRtFjVjY1GEoyBSyfUWm",
+      "filepath": "slices/per_token/20250630_1114_BoRYhYtg_fUWm.parquet",
+      "severity": "warning",
+      "gaps": 33,
+      "coverage_pct": 89.3,
+      "quality_score": 94.1,
+      "time_range": {
+        "start": "2025-06-30T13:16:00+00:00",
+        "end": "2025-07-01T11:14:00+00:00"
+      },
+      "reasons": ["33 gaps"]
+    },
+    {
+      "token_address": "F386mAUqQgqdMcFkwr4d5n6CzAVFTihcHgGbe3Vm4M9G",
+      "filepath": "slices/per_token/20250703_0212_F386mAUq_4M9G.parquet",
+      "severity": "warning",
+      "gaps": 99,
+      "coverage_pct": 93.5,
+      "quality_score": 84.6,
+      "time_range": {
+        "start": "2025-07-03T02:08:00+00:00",
+        "end": "2025-07-04T02:12:00+00:00"
+      },
+      "reasons": ["99 gaps"]
+    },
+    {
+      "token_address": "4F4255849Gav9pvnA3ByuoD1we7McYDSG8BusHWhbonk",
+      "filepath": "slices/per_token/20250705_0641_4F425584_bonk.parquet",
+      "severity": "warning",
+      "gaps": 95,
+      "coverage_pct": 93.8,
+      "quality_score": 85.3,
+      "time_range": {
+        "start": "2025-07-05T06:37:00+00:00",
+        "end": "2025-07-06T06:41:00+00:00"
+      },
+      "reasons": ["95 gaps"]
+    },
+    {
+      "token_address": "CFJprPF8BeT1n1hBMfup1oXVeUD1NfokBucrmJu7pump",
+      "filepath": "slices/per_token/20250702_0009_CFJprPF8_pump.parquet",
+      "severity": "warning",
+      "gaps": 90,
+      "coverage_pct": 94.1,
+      "quality_score": 84.5,
+      "time_range": {
+        "start": "2025-07-02T00:05:00+00:00",
+        "end": "2025-07-03T00:09:00+00:00"
+      },
+      "reasons": ["90 gaps"]
+    },
+    {
+      "token_address": "yNdBHZXkU6R3dBXE7q5DFoDx5gBwnPDtbEFMSJsbonk",
+      "filepath": "slices/per_token/20250731_2110_yNdBHZXk_bonk.parquet",
+      "severity": "warning",
+      "gaps": 88,
+      "coverage_pct": 94.2,
+      "quality_score": 89.0,
+      "time_range": {
+        "start": "2025-07-31T21:06:00+00:00",
+        "end": "2025-08-01T21:10:00+00:00"
+      },
+      "reasons": ["88 gaps"]
+    },
+    {
+      "token_address": "BoRYhYtgSTHNQnmVABBs8tEKwRtFjVjY1GEoyBSyfUWm",
+      "filepath": "slices/per_token/20250630_1224_BoRYhYtg_fUWm.parquet",
+      "severity": "warning",
+      "gaps": 33,
+      "coverage_pct": 94.2,
+      "quality_score": 92.0,
+      "time_range": {
+        "start": "2025-06-30T13:16:00+00:00",
+        "end": "2025-07-01T12:24:00+00:00"
+      },
+      "reasons": ["33 gaps"]
+    },
+    {
+      "token_address": "GUp6rv5emMKS2mSYrYSEVUDSebbNU7Ab6bUFpvuf48nc",
+      "filepath": "slices/per_token/20250708_1518_GUp6rv5e_48nc.parquet",
+      "severity": "warning",
+      "gaps": 88,
+      "coverage_pct": 94.2,
+      "quality_score": 83.5,
+      "time_range": {
+        "start": "2025-07-08T15:14:00+00:00",
+        "end": "2025-07-09T15:18:00+00:00"
+      },
+      "reasons": ["88 gaps"]
+    },
+    {
+      "token_address": "9E1TrvTBSwfJvHSzgyZJCipQC3v1abPN76panRg2bonk",
+      "filepath": "slices/per_token/20250707_1743_9E1TrvTB_bonk.parquet",
+      "severity": "warning",
+      "gaps": 87,
+      "coverage_pct": 94.3,
+      "quality_score": 90.3,
+      "time_range": {
+        "start": "2025-07-07T17:39:00+00:00",
+        "end": "2025-07-08T17:43:00+00:00"
+      },
+      "reasons": ["87 gaps"]
+    },
+    {
+      "token_address": "8F6imbKhrxbDNwreDpJmVahE13LvARzBm4tqadnZpump",
+      "filepath": "slices/per_token/20250630_2227_8F6imbKh_pump.parquet",
+      "severity": "warning",
+      "gaps": 84,
+      "coverage_pct": 94.5,
+      "quality_score": 86.1,
+      "time_range": {
+        "start": "2025-06-30T22:23:00+00:00",
+        "end": "2025-07-01T22:27:00+00:00"
+      },
+      "reasons": ["84 gaps"]
+    },
+    {
+      "token_address": "DFVaagHRZxopT1LXpewsXYUA3zDLSMunKk56mjewbonk",
+      "filepath": "slices/per_token/20250731_2202_DFVaagHR_bonk.parquet",
+      "severity": "warning",
+      "gaps": 84,
+      "coverage_pct": 94.5,
+      "quality_score": 83.0,
+      "time_range": {
+        "start": "2025-07-31T21:58:00+00:00",
+        "end": "2025-08-01T22:02:00+00:00"
+      },
+      "reasons": ["84 gaps"]
+    },
+    {
+      "token_address": "HjsZ73QxNbXoUnyXXffoXn6kHUKQqdy6GXd4J1N4shot",
+      "filepath": "slices/per_token/20250720_2146_HjsZ73Qx_shot.parquet",
+      "severity": "warning",
+      "gaps": 84,
+      "coverage_pct": 94.5,
+      "quality_score": 88.6,
+      "time_range": {
+        "start": "2025-07-20T21:42:00+00:00",
+        "end": "2025-07-21T21:46:00+00:00"
+      },
+      "reasons": ["84 gaps"]
+    },
+    {
+      "token_address": "HjsZ73QxNbXoUnyXXffoXn6kHUKQqdy6GXd4J1N4shot",
+      "filepath": "slices/per_token/20250720_2108_HjsZ73Qx_shot.parquet",
+      "severity": "warning",
+      "gaps": 84,
+      "coverage_pct": 94.5,
+      "quality_score": 88.9,
+      "time_range": {
+        "start": "2025-07-20T21:04:00+00:00",
+        "end": "2025-07-21T21:08:00+00:00"
+      },
+      "reasons": ["84 gaps"]
+    },
+    {
+      "token_address": "BoRYhYtgSTHNQnmVABBs8tEKwRtFjVjY1GEoyBSyfUWm",
+      "filepath": "slices/per_token/20250630_1232_BoRYhYtg_fUWm.parquet",
+      "severity": "warning",
+      "gaps": 33,
+      "coverage_pct": 94.7,
+      "quality_score": 91.8,
+      "time_range": {
+        "start": "2025-06-30T13:16:00+00:00",
+        "end": "2025-07-01T12:32:00+00:00"
+      },
+      "reasons": ["33 gaps"]
+    },
+    {
+      "token_address": "EZnKmc92jKNw1QKpLgMWdP2BP2NqFyz7B2VAzvnzbonk",
+      "filepath": "slices/per_token/20250702_0430_EZnKmc92_bonk.parquet",
+      "severity": "warning",
+      "gaps": 80,
+      "coverage_pct": 94.8,
+      "quality_score": 87.8,
+      "time_range": {
+        "start": "2025-07-02T04:26:00+00:00",
+        "end": "2025-07-03T04:30:00+00:00"
+      },
+      "reasons": ["80 gaps"]
+    },
+    {
+      "token_address": "BQFtfX5CJfpSrDM6X19Kj6vaiuLikW3vM6PibFWsbonk",
+      "filepath": "slices/per_token/20250711_1532_BQFtfX5C_bonk.parquet",
+      "severity": "warning",
+      "gaps": 78,
+      "coverage_pct": 94.9,
+      "quality_score": 87.3,
+      "time_range": {
+        "start": "2025-07-11T15:28:00+00:00",
+        "end": "2025-07-12T15:32:00+00:00"
+      },
+      "reasons": ["78 gaps"]
+    },
+    {
+      "token_address": "G9SJ8zKzp5XwWvVGmYeBkp4ky3rpJ2xkXDqAbtvUbonk",
+      "filepath": "slices/per_token/20250724_1715_G9SJ8zKz_bonk.parquet",
+      "severity": "warning",
+      "gaps": 77,
+      "coverage_pct": 95.0,
+      "quality_score": 91.5,
+      "time_range": {
+        "start": "2025-07-24T17:11:00+00:00",
+        "end": "2025-07-25T17:15:00+00:00"
+      },
+      "reasons": ["77 gaps"]
+    },
+    {
+      "token_address": "GNVj2agH8TC2xdnKQSraaRnARdmKAVb7p1etkdTMjups",
+      "filepath": "slices/per_token/20250727_1902_GNVj2agH_jups.parquet",
+      "severity": "warning",
+      "gaps": 74,
+      "coverage_pct": 95.2,
+      "quality_score": 92.1,
+      "time_range": {
+        "start": "2025-07-27T18:58:00+00:00",
+        "end": "2025-07-28T19:02:00+00:00"
+      },
+      "reasons": ["74 gaps"]
+    },
+    {
+      "token_address": "Gn4CxKzRUQ7tu4o7YzVEsSdzr5Mfn6CcrGSCeywqwave",
+      "filepath": "slices/per_token/20250729_2341_Gn4CxKzR_wave.parquet",
+      "severity": "warning",
+      "gaps": 74,
+      "coverage_pct": 95.2,
+      "quality_score": 94.4,
+      "time_range": {
+        "start": "2025-07-29T23:37:00+00:00",
+        "end": "2025-07-30T23:41:00+00:00"
+      },
+      "reasons": ["74 gaps"]
+    },
+    {
+      "token_address": "FWj3yi1x2ZHaZZsB1mteximPVZJ3LtGjNzasknTpbonk",
+      "filepath": "slices/per_token/20250716_0446_FWj3yi1x_bonk.parquet",
+      "severity": "warning",
+      "gaps": 72,
+      "coverage_pct": 95.3,
+      "quality_score": 92.8,
+      "time_range": {
+        "start": "2025-07-16T04:42:00+00:00",
+        "end": "2025-07-17T04:46:00+00:00"
+      },
+      "reasons": ["72 gaps"]
+    },
+    {
+      "token_address": "7xrbYU1jd3Vb8JzVFw1qjyK6kTnx6ePyoVL6c54Ujups",
+      "filepath": "slices/per_token/20250704_1227_7xrbYU1j_jups.parquet",
+      "severity": "warning",
+      "gaps": 72,
+      "coverage_pct": 95.3,
+      "quality_score": 91.2,
+      "time_range": {
+        "start": "2025-07-04T12:23:00+00:00",
+        "end": "2025-07-05T12:27:00+00:00"
+      },
+      "reasons": ["72 gaps"]
+    },
+    {
+      "token_address": "2PbmLfEEEYpcWMVgyKVdtEavJPRDUjXhtXfePepsbonk",
+      "filepath": "slices/per_token/20250708_1501_2PbmLfEE_bonk.parquet",
+      "severity": "warning",
+      "gaps": 70,
+      "coverage_pct": 95.5,
+      "quality_score": 94.4,
+      "time_range": {
+        "start": "2025-07-08T14:57:00+00:00",
+        "end": "2025-07-09T15:01:00+00:00"
+      },
+      "reasons": ["70 gaps"]
+    },
+    {
+      "token_address": "3LBDmVsUMY4XF82kVruJxrZqLnhUBFqanMdn5ifCbonk",
+      "filepath": "slices/per_token/20250721_0743_3LBDmVsU_bonk.parquet",
+      "severity": "warning",
+      "gaps": 69,
+      "coverage_pct": 95.6,
+      "quality_score": 88.1,
+      "time_range": {
+        "start": "2025-07-21T07:38:00+00:00",
+        "end": "2025-07-22T07:42:00+00:00"
+      },
+      "reasons": ["69 gaps"]
+    },
+    {
+      "token_address": "EmHug88n8fxALLd45xpMqZHheU8rCqc3rw6xjy8bonk",
+      "filepath": "slices/per_token/20250716_1757_EmHug88n_bonk.parquet",
+      "severity": "warning",
+      "gaps": 69,
+      "coverage_pct": 95.6,
+      "quality_score": 97.1,
+      "time_range": {
+        "start": "2025-07-16T17:53:00+00:00",
+        "end": "2025-07-17T17:57:00+00:00"
+      },
+      "reasons": ["69 gaps"]
+    },
+    {
+      "token_address": "FP2XnGpqP5opNZujB6KPpXYWSAwq7BbTUVUnRij1bonk",
+      "filepath": "slices/per_token/20250703_2034_FP2XnGpq_bonk.parquet",
+      "severity": "warning",
+      "gaps": 67,
+      "coverage_pct": 95.7,
+      "quality_score": 94.2,
+      "time_range": {
+        "start": "2025-07-03T20:30:00+00:00",
+        "end": "2025-07-04T20:34:00+00:00"
+      },
+      "reasons": ["67 gaps"]
+    },
+    {
+      "token_address": "ARiT6wn8okizSb2K9jtGAUMxKJS4ismj3FyswCDcbonk",
+      "filepath": "slices/per_token/20250703_1047_ARiT6wn8_bonk.parquet",
+      "severity": "warning",
+      "gaps": 66,
+      "coverage_pct": 95.8,
+      "quality_score": 94.6,
+      "time_range": {
+        "start": "2025-07-03T10:43:00+00:00",
+        "end": "2025-07-04T10:47:00+00:00"
+      },
+      "reasons": ["66 gaps"]
+    },
+    {
+      "token_address": "ARiT6wn8okizSb2K9jtGAUMxKJS4ismj3FyswCDcbonk",
+      "filepath": "slices/per_token/20250703_1145_ARiT6wn8_bonk.parquet",
+      "severity": "warning",
+      "gaps": 66,
+      "coverage_pct": 95.8,
+      "quality_score": 93.0,
+      "time_range": {
+        "start": "2025-07-03T11:41:00+00:00",
+        "end": "2025-07-04T11:45:00+00:00"
+      },
+      "reasons": ["66 gaps"]
+    },
+    {
+      "token_address": "1marrFjuQnTAwJNdEY59Gqf6ntc1MXWrGLxYKHDbonk",
+      "filepath": "slices/per_token/20250716_1305_1marrFju_bonk.parquet",
+      "severity": "warning",
+      "gaps": 66,
+      "coverage_pct": 95.8,
+      "quality_score": 93.9,
+      "time_range": {
+        "start": "2025-07-16T13:01:00+00:00",
+        "end": "2025-07-17T13:05:00+00:00"
+      },
+      "reasons": ["66 gaps"]
+    },
+    {
+      "token_address": "1marrFjuQnTAwJNdEY59Gqf6ntc1MXWrGLxYKHDbonk",
+      "filepath": "slices/per_token/20250716_1307_1marrFju_bonk.parquet",
+      "severity": "warning",
+      "gaps": 66,
+      "coverage_pct": 95.8,
+      "quality_score": 93.9,
+      "time_range": {
+        "start": "2025-07-16T13:03:00+00:00",
+        "end": "2025-07-17T13:07:00+00:00"
+      },
+      "reasons": ["66 gaps"]
+    },
+    {
+      "token_address": "HV662cjQsr9YBSGayNEwCYacNRnWvPKtkJzzFnnobonk",
+      "filepath": "slices/per_token/20250714_2213_HV662cjQ_bonk.parquet",
+      "severity": "warning",
+      "gaps": 64,
+      "coverage_pct": 95.9,
+      "quality_score": 93.0,
+      "time_range": {
+        "start": "2025-07-14T22:09:00+00:00",
+        "end": "2025-07-15T22:13:00+00:00"
+      },
+      "reasons": ["64 gaps"]
+    },
+    {
+      "token_address": "F9hjA9g69uaB2r8yBARGn32tE8nNXm6B1fy6vtSKbonk",
+      "filepath": "slices/per_token/20250726_1531_F9hjA9g6_bonk.parquet",
+      "severity": "warning",
+      "gaps": 63,
+      "coverage_pct": 95.9,
+      "quality_score": 93.2,
+      "time_range": {
+        "start": "2025-07-26T15:28:00+00:00",
+        "end": "2025-07-27T15:31:00+00:00"
+      },
+      "reasons": ["63 gaps"]
+    },
+    {
+      "token_address": "3MrwYcAvGNNtMcHwscSqFQJ3qhMpKwxZCbprYrz1RYWi",
+      "filepath": "slices/per_token/20250722_1635_3MrwYcAv_RYWi.parquet",
+      "severity": "warning",
+      "gaps": 50,
+      "coverage_pct": 95.9,
+      "quality_score": 100,
+      "time_range": {
+        "start": "2025-07-22T16:45:00+00:00",
+        "end": "2025-07-23T16:35:00+00:00"
+      },
+      "reasons": ["50 gaps"]
+    },
+    {
+      "token_address": "F2JLbzaA8tavGNpJSYGinXth3JEB8xrPXDwJ78sTpump",
+      "filepath": "slices/per_token/20250708_1102_F2JLbzaA_pump.parquet",
+      "severity": "warning",
+      "gaps": 24,
+      "coverage_pct": 95.9,
+      "quality_score": 92.6,
+      "time_range": {
+        "start": "2025-07-08T11:38:00+00:00",
+        "end": "2025-07-09T11:02:00+00:00"
+      },
+      "reasons": ["24 gaps", "high zero volume (94%)"]
+    },
+    {
+      "token_address": "tvjLrv5DSz1sST9urxf5Bwm3PmUwAeeeMSJEaGNbonk",
+      "filepath": "slices/per_token/20250704_0842_tvjLrv5D_bonk.parquet",
+      "severity": "warning",
+      "gaps": 41,
+      "coverage_pct": 96.0,
+      "quality_score": 90.9,
+      "time_range": {
+        "start": "2025-07-04T09:00:00+00:00",
+        "end": "2025-07-05T08:42:00+00:00"
+      },
+      "reasons": ["41 gaps", "high zero volume (21%)"]
+    },
+    {
+      "token_address": "HxptKywiNbHobJD4XMMBn1czMUGkdMrUkeUErQLKbonk",
+      "filepath": "slices/per_token/20250704_0642_HxptKywi_bonk.parquet",
+      "severity": "warning",
+      "gaps": 33,
+      "coverage_pct": 96.0,
+      "quality_score": 91.7,
+      "time_range": {
+        "start": "2025-07-04T07:07:00+00:00",
+        "end": "2025-07-05T06:42:00+00:00"
+      },
+      "reasons": ["33 gaps", "high zero volume (94%)"]
+    },
+    {
+      "token_address": "BN9V6HAjn7g5MQwLevGmYYqdTJBxgacqycysy3TWpump",
+      "filepath": "slices/per_token/20250712_1952_BN9V6HAj_pump.parquet",
+      "severity": "warning",
+      "gaps": 34,
+      "coverage_pct": 96.0,
+      "quality_score": 91.6,
+      "time_range": {
+        "start": "2025-07-12T20:16:00+00:00",
+        "end": "2025-07-13T19:52:00+00:00"
+      },
+      "reasons": ["34 gaps", "high zero volume (97%)"]
+    },
+    {
+      "token_address": "9UqvpBQHXTtHdfGuXJBuHNfzDoP43Sid3tpHPABFbonk",
+      "filepath": "slices/per_token/20250730_1816_9UqvpBQH_bonk.parquet",
+      "severity": "warning",
+      "gaps": 62,
+      "coverage_pct": 96.0,
+      "quality_score": 93.5,
+      "time_range": {
+        "start": "2025-07-30T18:12:00+00:00",
+        "end": "2025-07-31T18:16:00+00:00"
+      },
+      "reasons": ["62 gaps"]
+    },
+    {
+      "token_address": "A9QF5VgaPbes7VY5ET3iMPDRL4rD3cJYAMZUczPzbonk",
+      "filepath": "slices/per_token/20250710_1711_A9QF5Vga_bonk.parquet",
+      "severity": "warning",
+      "gaps": 61,
+      "coverage_pct": 96.0,
+      "quality_score": 95.8,
+      "time_range": {
+        "start": "2025-07-10T17:09:00+00:00",
+        "end": "2025-07-11T17:11:00+00:00"
+      },
+      "reasons": ["61 gaps"]
+    },
+    {
+      "token_address": "9Zmgzw27pXksFBQBCAhDfVkNB4adHPEcvo51q8Rnbonk",
+      "filepath": "slices/per_token/20250703_0122_9Zmgzw27_bonk.parquet",
+      "severity": "warning",
+      "gaps": 62,
+      "coverage_pct": 96.0,
+      "quality_score": 97.5,
+      "time_range": {
+        "start": "2025-07-03T01:18:00+00:00",
+        "end": "2025-07-04T01:22:00+00:00"
+      },
+      "reasons": ["62 gaps"]
+    },
+    {
+      "token_address": "A22yoVDPTMLe5B1pdSAVaPkzuwjvA9YHqfGEFDcTbonk",
+      "filepath": "slices/per_token/20250731_2124_A22yoVDP_bonk.parquet",
+      "severity": "warning",
+      "gaps": 63,
+      "coverage_pct": 96.0,
+      "quality_score": 95.0,
+      "time_range": {
+        "start": "2025-07-31T21:20:00+00:00",
+        "end": "2025-08-01T21:24:00+00:00"
+      },
+      "reasons": ["63 gaps"]
+    },
+    {
+      "token_address": "9Zmgzw27pXksFBQBCAhDfVkNB4adHPEcvo51q8Rnbonk",
+      "filepath": "slices/per_token/20250703_0126_9Zmgzw27_bonk.parquet",
+      "severity": "warning",
+      "gaps": 62,
+      "coverage_pct": 96.0,
+      "quality_score": 97.5,
+      "time_range": {
+        "start": "2025-07-03T01:22:00+00:00",
+        "end": "2025-07-04T01:26:00+00:00"
+      },
+      "reasons": ["62 gaps"]
+    },
+    {
+      "token_address": "ECesgiZHYtJuGjTib64CdEhWfNr9qKUrkFT6MNsfbonk",
+      "filepath": "slices/per_token/20250723_1941_ECesgiZH_bonk.parquet",
+      "severity": "warning",
+      "gaps": 61,
+      "coverage_pct": 96.1,
+      "quality_score": 93.0,
+      "time_range": {
+        "start": "2025-07-23T19:37:00+00:00",
+        "end": "2025-07-24T19:41:00+00:00"
+      },
+      "reasons": ["61 gaps"]
+    },
+    {
+      "token_address": "9Cxrz5LUHewAfsqSukVWyRzGiCkmVHURftxQqNbfpump",
+      "filepath": "slices/per_token/20250703_0825_9Cxrz5LU_pump.parquet",
+      "severity": "warning",
+      "gaps": 61,
+      "coverage_pct": 96.1,
+      "quality_score": 88.9,
+      "time_range": {
+        "start": "2025-07-03T08:21:00+00:00",
+        "end": "2025-07-04T08:25:00+00:00"
+      },
+      "reasons": ["61 gaps", "high zero volume (100%)"]
+    },
+    {
+      "token_address": "CRAPMypPLMARfHB4E9YhNb4ReniDXWjB7Jxzs2J2pump",
+      "filepath": "slices/per_token/20250704_0629_CRAPMypP_pump.parquet",
+      "severity": "warning",
+      "gaps": 58,
+      "coverage_pct": 96.1,
+      "quality_score": 89.2,
+      "time_range": {
+        "start": "2025-07-04T06:28:00+00:00",
+        "end": "2025-07-05T06:29:00+00:00"
+      },
+      "reasons": ["58 gaps", "high zero volume (64%)"]
+    },
+    {
+      "token_address": "4Qtz3GigvxHYpHCMVAo4mYpWJYk8jfBr8RPVcysAbonk",
+      "filepath": "slices/per_token/20250719_1927_4Qtz3Gig_bonk.parquet",
+      "severity": "warning",
+      "gaps": 61,
+      "coverage_pct": 96.1,
+      "quality_score": 93.5,
+      "time_range": {
+        "start": "2025-07-19T19:23:00+00:00",
+        "end": "2025-07-20T19:27:00+00:00"
+      },
+      "reasons": ["61 gaps"]
+    },
+    {
+      "token_address": "ECrRBCSorvbhEYWitrGCzrcY1gqqMeV14DgBAtFbBAGS",
+      "filepath": "slices/per_token/20250731_0842_ECrRBCSo_BAGS.parquet",
+      "severity": "warning",
+      "gaps": 56,
+      "coverage_pct": 96.2,
+      "quality_score": 89.4,
+      "time_range": {
+        "start": "2025-07-31T08:41:00+00:00",
+        "end": "2025-08-01T08:42:00+00:00"
+      },
+      "reasons": ["56 gaps", "high zero volume (92%)"]
+    },
+    {
+      "token_address": "DrMzBb9eCEMA1Z4sZYdPstixwb3yeTSuwBkfYNYcMKYk",
+      "filepath": "slices/per_token/20250702_0017_DrMzBb9e_MKYk.parquet",
+      "severity": "warning",
+      "gaps": 27,
+      "coverage_pct": 96.2,
+      "quality_score": 92.3,
+      "time_range": {
+        "start": "2025-07-02T00:46:00+00:00",
+        "end": "2025-07-03T00:17:00+00:00"
+      },
+      "reasons": ["27 gaps", "high zero volume (96%)"]
+    },
+    {
+      "token_address": "6nXtQPrsw7miRFX6wgsCvx8dNAQtWfpydetac2Libonk",
+      "filepath": "slices/per_token/20250714_0959_6nXtQPrs_bonk.parquet",
+      "severity": "warning",
+      "gaps": 59,
+      "coverage_pct": 96.2,
+      "quality_score": 90.5,
+      "time_range": {
+        "start": "2025-07-14T09:55:00+00:00",
+        "end": "2025-07-15T09:59:00+00:00"
+      },
+      "reasons": ["59 gaps"]
+    },
+    {
+      "token_address": "t5xgMrnnqYNQFZZkSJNGU9xghPi9Y3p1kj5AhtYpump",
+      "filepath": "slices/per_token/20250720_0836_t5xgMrnn_pump.parquet",
+      "severity": "warning",
+      "gaps": 59,
+      "coverage_pct": 96.2,
+      "quality_score": 89.1,
+      "time_range": {
+        "start": "2025-07-20T08:32:00+00:00",
+        "end": "2025-07-21T08:36:00+00:00"
+      },
+      "reasons": ["59 gaps", "high zero volume (98%)"]
+    },
+    {
+      "token_address": "556zuz4L55BZ2r7hxLQ9TCAh2mTHXHr3o35oai5P8FvZ",
+      "filepath": "slices/per_token/20250710_1531_556zuz4L_8FvZ.parquet",
+      "severity": "warning",
+      "gaps": 58,
+      "coverage_pct": 96.3,
+      "quality_score": 89.2,
+      "time_range": {
+        "start": "2025-07-10T15:27:00+00:00",
+        "end": "2025-07-11T15:31:00+00:00"
+      },
+      "reasons": ["58 gaps", "high zero volume (97%)"]
+    },
+    {
+      "token_address": "CqDLYNy7ZqhSH9dnrFFAKqdHBEs9azwg6YQix8wKbonk",
+      "filepath": "slices/per_token/20250708_0109_CqDLYNy7_bonk.parquet",
+      "severity": "warning",
+      "gaps": 46,
+      "coverage_pct": 96.3,
+      "quality_score": 90.4,
+      "time_range": {
+        "start": "2025-07-08T01:17:00+00:00",
+        "end": "2025-07-09T01:09:00+00:00"
+      },
+      "reasons": ["46 gaps", "high zero volume (41%)"]
+    },
+    {
+      "token_address": "7zGtXzCPUXpwnnjSqW5sAndR6uPnsw4PTp4uP8rrbonk",
+      "filepath": "slices/per_token/20250722_0244_7zGtXzCP_bonk.parquet",
+      "severity": "warning",
+      "gaps": 58,
+      "coverage_pct": 96.3,
+      "quality_score": 89.2,
+      "time_range": {
+        "start": "2025-07-22T02:40:00+00:00",
+        "end": "2025-07-23T02:44:00+00:00"
+      },
+      "reasons": ["58 gaps", "high zero volume (99%)"]
+    },
+    {
+      "token_address": "JD6xTq3Rn63VxvtJ2xza76SEXTj1CzwUSuAaKAWvmLYr",
+      "filepath": "slices/per_token/20250729_1330_JD6xTq3R_mLYr.parquet",
+      "severity": "warning",
+      "gaps": 58,
+      "coverage_pct": 96.3,
+      "quality_score": 97.2,
+      "time_range": {
+        "start": "2025-07-29T13:26:00+00:00",
+        "end": "2025-07-30T13:30:00+00:00"
+      },
+      "reasons": ["58 gaps"]
+    },
+    {
+      "token_address": "2Wj8nszSUesAjKrr2PsXRmTKbHVjbyTPiD2wQaM7bonk",
+      "filepath": "slices/per_token/20250711_0926_2Wj8nszS_bonk.parquet",
+      "severity": "warning",
+      "gaps": 57,
+      "coverage_pct": 96.4,
+      "quality_score": 94.3,
+      "time_range": {
+        "start": "2025-07-11T09:22:00+00:00",
+        "end": "2025-07-12T09:26:00+00:00"
+      },
+      "reasons": ["57 gaps"]
+    },
+    {
+      "token_address": "6NWctRoMdzNjEwNqHmQv5b1nEi5XURek63wDdrawsBLV",
+      "filepath": "slices/per_token/20250701_1709_6NWctRoM_sBLV.parquet",
+      "severity": "warning",
+      "gaps": 43,
+      "coverage_pct": 96.4,
+      "quality_score": 90.7,
+      "time_range": {
+        "start": "2025-07-01T17:19:00+00:00",
+        "end": "2025-07-02T17:09:00+00:00"
+      },
+      "reasons": ["43 gaps", "high zero volume (74%)"]
+    },
+    {
+      "token_address": "3nLYbu1vGUbyRrPEyexCu42HZtYJPENYZutKQvZBuT3V",
+      "filepath": "slices/per_token/20250706_2325_3nLYbu1v_uT3V.parquet",
+      "severity": "warning",
+      "gaps": 57,
+      "coverage_pct": 96.4,
+      "quality_score": 89.3,
+      "time_range": {
+        "start": "2025-07-06T23:21:00+00:00",
+        "end": "2025-07-07T23:25:00+00:00"
+      },
+      "reasons": ["57 gaps", "high zero volume (95%)"]
+    },
+    {
+      "token_address": "6z9yKUdcrpTUfHic4CcGNkJMwnMaYdpMHM1fUz6wbonk",
+      "filepath": "slices/per_token/20250719_2107_6z9yKUdc_bonk.parquet",
+      "severity": "warning",
+      "gaps": 54,
+      "coverage_pct": 96.5,
+      "quality_score": 89.6,
+      "time_range": {
+        "start": "2025-07-19T21:04:00+00:00",
+        "end": "2025-07-20T21:07:00+00:00"
+      },
+      "reasons": ["54 gaps", "high zero volume (98%)"]
+    },
+    {
+      "token_address": "8ZRV3V6KXzUdvpX9LNnsVtZpWWhDEMGPBNQdWxz8bonk",
+      "filepath": "slices/per_token/20250717_0030_8ZRV3V6K_bonk.parquet",
+      "severity": "warning",
+      "gaps": 56,
+      "coverage_pct": 96.5,
+      "quality_score": 96.2,
+      "time_range": {
+        "start": "2025-07-17T00:26:00+00:00",
+        "end": "2025-07-18T00:30:00+00:00"
+      },
+      "reasons": ["56 gaps"]
+    },
+    {
+      "token_address": "HQXeqQw6TupL9jb5a85L42Esh99ZGitV8nuWoVk7PUMP",
+      "filepath": "slices/per_token/20250707_1540_HQXeqQw6_PUMP.parquet",
+      "severity": "warning",
+      "gaps": 55,
+      "coverage_pct": 96.5,
+      "quality_score": 89.5,
+      "time_range": {
+        "start": "2025-07-07T15:37:00+00:00",
+        "end": "2025-07-08T15:40:00+00:00"
+      },
+      "reasons": ["55 gaps", "high zero volume (97%)"]
+    },
+    {
+      "token_address": "CS7LmjtuugEUWtFgfyto79nrksKigv7Fdcp9qPuigdLs",
+      "filepath": "slices/per_token/20250707_1309_CS7Lmjtu_gdLs.parquet",
+      "severity": "warning",
+      "gaps": 55,
+      "coverage_pct": 96.5,
+      "quality_score": 89.5,
+      "time_range": {
+        "start": "2025-07-07T13:05:00+00:00",
+        "end": "2025-07-08T13:09:00+00:00"
+      },
+      "reasons": ["55 gaps", "high zero volume (52%)"]
+    },
+    {
+      "token_address": "5XzTn8toHEo5t5CtaLihq5knVAr965Rt8umvkcgaPump",
+      "filepath": "slices/per_token/20250702_1025_5XzTn8to_Pump.parquet",
+      "severity": "warning",
+      "gaps": 56,
+      "coverage_pct": 96.5,
+      "quality_score": 89.4,
+      "time_range": {
+        "start": "2025-07-02T10:21:00+00:00",
+        "end": "2025-07-03T10:25:00+00:00"
+      },
+      "reasons": ["56 gaps", "high zero volume (99%)"]
+    },
+    {
+      "token_address": "2cioKaRXPpt9svFcjSPPXjfVCZe3WD5vPcbYSheccTTR",
+      "filepath": "slices/per_token/20250719_2339_2cioKaRX_cTTR.parquet",
+      "severity": "warning",
+      "gaps": 54,
+      "coverage_pct": 96.5,
+      "quality_score": 89.6,
+      "time_range": {
+        "start": "2025-07-19T23:37:00+00:00",
+        "end": "2025-07-20T23:39:00+00:00"
+      },
+      "reasons": ["54 gaps", "high zero volume (99%)"]
+    },
+    {
+      "token_address": "HtTYHz1Kf3rrQo6AqDLmss7gq5WrkWAaXn3tupUZbonk",
+      "filepath": "slices/per_token/20250529_1712_HtTYHz1K_bonk.parquet",
+      "severity": "warning",
+      "gaps": 54,
+      "coverage_pct": 96.6,
+      "quality_score": 96.1,
+      "time_range": {
+        "start": "2025-05-29T17:08:00+00:00",
+        "end": "2025-05-30T17:12:00+00:00"
+      },
+      "reasons": ["54 gaps"]
+    },
+    {
+      "token_address": "BJWNpWxarrNAWzQK6RMUoPcZkg7JDGAR42GXtwVjbonk",
+      "filepath": "slices/per_token/20250724_0905_BJWNpWxa_bonk.parquet",
+      "severity": "warning",
+      "gaps": 54,
+      "coverage_pct": 96.6,
+      "quality_score": 89.6,
+      "time_range": {
+        "start": "2025-07-24T09:01:00+00:00",
+        "end": "2025-07-25T09:05:00+00:00"
+      },
+      "reasons": ["54 gaps", "high zero volume (97%)"]
+    },
+    {
+      "token_address": "7b2JcU6vsVkjXEZoJZD1VGn7gNL3Z1QKXF6Yb9B8NkXQ",
+      "filepath": "slices/per_token/20250720_1114_7b2JcU6v_NkXQ.parquet",
+      "severity": "warning",
+      "gaps": 53,
+      "coverage_pct": 96.7,
+      "quality_score": 89.7,
+      "time_range": {
+        "start": "2025-07-20T11:10:00+00:00",
+        "end": "2025-07-21T11:14:00+00:00"
+      },
+      "reasons": ["53 gaps", "high zero volume (97%)"]
+    },
+    {
+      "token_address": "HGoodUrCQcmSuLn7bWbQvbmkiRy1Jr3TyUCe84Vfpump",
+      "filepath": "slices/per_token/20250710_2300_HGoodUrC_pump.parquet",
+      "severity": "warning",
+      "gaps": 52,
+      "coverage_pct": 96.7,
+      "quality_score": 97.4,
+      "time_range": {
+        "start": "2025-07-10T22:56:00+00:00",
+        "end": "2025-07-11T23:00:00+00:00"
+      },
+      "reasons": ["52 gaps"]
+    },
+    {
+      "token_address": "ARLYsWnz3eafecasuzCVghccgo9qRF8DnJ3St1dwbonk",
+      "filepath": "slices/per_token/20250722_1325_ARLYsWnz_bonk.parquet",
+      "severity": "warning",
+      "gaps": 51,
+      "coverage_pct": 96.7,
+      "quality_score": 98.2,
+      "time_range": {
+        "start": "2025-07-22T13:23:00+00:00",
+        "end": "2025-07-23T13:25:00+00:00"
+      },
+      "reasons": ["51 gaps"]
+    },
+    {
+      "token_address": "2nRAqKFMdGsEVPxpz1jx1Hx3DWkAPKWcCr9q7v9Lpe9f",
+      "filepath": "slices/per_token/20250719_2340_2nRAqKFM_pe9f.parquet",
+      "severity": "warning",
+      "gaps": 53,
+      "coverage_pct": 96.7,
+      "quality_score": 89.7,
+      "time_range": {
+        "start": "2025-07-19T23:36:00+00:00",
+        "end": "2025-07-20T23:40:00+00:00"
+      },
+      "reasons": ["53 gaps", "high zero volume (97%)"]
+    },
+    {
+      "token_address": "4Uf883orBx89VQZiV4EoRpNqUWYN5ZuEvC4PCpQ9moon",
+      "filepath": "slices/per_token/20250703_0126_4Uf883or_moon.parquet",
+      "severity": "warning",
+      "gaps": 48,
+      "coverage_pct": 96.7,
+      "quality_score": 90.2,
+      "time_range": {
+        "start": "2025-07-03T01:26:00+00:00",
+        "end": "2025-07-04T01:26:00+00:00"
+      },
+      "reasons": ["48 gaps", "high zero volume (88%)"]
+    },
+    {
+      "token_address": "5Jy5jNLE8wvKWLfoHyPE5DGcRgfCLmXtJE1Mrm4wxzsS",
+      "filepath": "slices/per_token/20250719_1305_5Jy5jNLE_xzsS.parquet",
+      "severity": "warning",
+      "gaps": 53,
+      "coverage_pct": 96.7,
+      "quality_score": 89.7,
+      "time_range": {
+        "start": "2025-07-19T13:01:00+00:00",
+        "end": "2025-07-20T13:05:00+00:00"
+      },
+      "reasons": ["53 gaps", "high zero volume (97%)"]
+    },
+    {
+      "token_address": "5EL3ZL6y59Wqw6H3DzMWCbF4gfaY1JcHBC8T96XSbonk",
+      "filepath": "slices/per_token/20250719_0056_5EL3ZL6y_bonk.parquet",
+      "severity": "warning",
+      "gaps": 52,
+      "coverage_pct": 96.7,
+      "quality_score": 89.8,
+      "time_range": {
+        "start": "2025-07-19T00:52:00+00:00",
+        "end": "2025-07-20T00:56:00+00:00"
+      },
+      "reasons": ["52 gaps", "high zero volume (98%)"]
+    },
+    {
+      "token_address": "8kZ8uKe4kjDJ16NpTHLZoc15XkEFiwyD6XaKYN27f7uV",
+      "filepath": "slices/per_token/20250718_0958_8kZ8uKe4_f7uV.parquet",
+      "severity": "warning",
+      "gaps": 52,
+      "coverage_pct": 96.7,
+      "quality_score": 89.8,
+      "time_range": {
+        "start": "2025-07-18T09:54:00+00:00",
+        "end": "2025-07-19T09:58:00+00:00"
+      },
+      "reasons": ["52 gaps", "high zero volume (98%)"]
+    },
+    {
+      "token_address": "MtCJMNfa98DNNk2zvsH8t34Xq6VVdpoDY94qY3spump",
+      "filepath": "slices/per_token/20250630_1850_MtCJMNfa_pump.parquet",
+      "severity": "warning",
+      "gaps": 52,
+      "coverage_pct": 96.7,
+      "quality_score": 93.6,
+      "time_range": {
+        "start": "2025-06-30T18:46:00+00:00",
+        "end": "2025-07-01T18:50:00+00:00"
+      },
+      "reasons": ["52 gaps"]
+    },
+    {
+      "token_address": "8fycP3TopzAqrtDJwYuwKf2SHXBz2eyW5ntC4Y7sbonk",
+      "filepath": "slices/per_token/20250702_1530_8fycP3To_bonk.parquet",
+      "severity": "warning",
+      "gaps": 51,
+      "coverage_pct": 96.8,
+      "quality_score": 98.2,
+      "time_range": {
+        "start": "2025-07-02T15:26:00+00:00",
+        "end": "2025-07-03T15:30:00+00:00"
+      },
+      "reasons": ["51 gaps"]
+    },
+    {
+      "token_address": "tUBioVs3PESoFdwWU1mCZsC2FJGKZ7BWXKqwTF8bonk",
+      "filepath": "slices/per_token/20250719_2235_tUBioVs3_bonk.parquet",
+      "severity": "warning",
+      "gaps": 51,
+      "coverage_pct": 96.8,
+      "quality_score": 89.9,
+      "time_range": {
+        "start": "2025-07-19T22:31:00+00:00",
+        "end": "2025-07-20T22:35:00+00:00"
+      },
+      "reasons": ["51 gaps", "high zero volume (98%)"]
+    },
+    {
+      "token_address": "97D2776TB4rfJYyZMvejTemWu5qckoViLYerSaXzbonk",
+      "filepath": "slices/per_token/20250716_1324_97D2776T_bonk.parquet",
+      "severity": "warning",
+      "gaps": 51,
+      "coverage_pct": 96.8,
+      "quality_score": 89.9,
+      "time_range": {
+        "start": "2025-07-16T13:20:00+00:00",
+        "end": "2025-07-17T13:24:00+00:00"
+      },
+      "reasons": ["51 gaps", "high zero volume (98%)"]
+    },
+    {
+      "token_address": "B4G5shxukCDRMLsZue6NDAVMbSzViPn9SFieZG1Ucook",
+      "filepath": "slices/per_token/20250704_1352_B4G5shxu_cook.parquet",
+      "severity": "warning",
+      "gaps": 51,
+      "coverage_pct": 96.8,
+      "quality_score": 92.6,
+      "time_range": {
+        "start": "2025-07-04T13:48:00+00:00",
+        "end": "2025-07-05T13:52:00+00:00"
+      },
+      "reasons": ["51 gaps"]
+    },
+    {
+      "token_address": "3MKsT74QD3jD3LJXBwJ5TZhJgv19GJCRqBGhLEhgco7d",
+      "filepath": "slices/per_token/20250730_1807_3MKsT74Q_co7d.parquet",
+      "severity": "warning",
+      "gaps": 51,
+      "coverage_pct": 96.8,
+      "quality_score": 89.9,
+      "time_range": {
+        "start": "2025-07-30T18:03:00+00:00",
+        "end": "2025-07-31T18:07:00+00:00"
+      },
+      "reasons": ["51 gaps", "high zero volume (98%)"]
+    },
+    {
+      "token_address": "9trQ1SnizWo585dHyTTk3fS62NfBku5piNm1Rd1ybonk",
+      "filepath": "slices/per_token/20250713_2317_9trQ1Sni_bonk.parquet",
+      "severity": "warning",
+      "gaps": 51,
+      "coverage_pct": 96.8,
+      "quality_score": 89.9,
+      "time_range": {
+        "start": "2025-07-13T23:12:00+00:00",
+        "end": "2025-07-14T23:16:00+00:00"
+      },
+      "reasons": ["51 gaps", "high zero volume (94%)"]
+    },
+    {
+      "token_address": "BoRYhYtgSTHNQnmVABBs8tEKwRtFjVjY1GEoyBSyfUWm",
+      "filepath": "slices/per_token/20250630_1302_BoRYhYtg_fUWm.parquet",
+      "severity": "warning",
+      "gaps": 33,
+      "coverage_pct": 96.8,
+      "quality_score": 96.0,
+      "time_range": {
+        "start": "2025-06-30T13:16:00+00:00",
+        "end": "2025-07-01T13:02:00+00:00"
+      },
+      "reasons": ["33 gaps"]
+    },
+    {
+      "token_address": "DGuZUaFDjzLC3XgUF1NtVzbtasJ58xMwpHfzH7Z9ibpk",
+      "filepath": "slices/per_token/20250719_1304_DGuZUaFD_ibpk.parquet",
+      "severity": "warning",
+      "gaps": 51,
+      "coverage_pct": 96.8,
+      "quality_score": 89.9,
+      "time_range": {
+        "start": "2025-07-19T13:00:00+00:00",
+        "end": "2025-07-20T13:04:00+00:00"
+      },
+      "reasons": ["51 gaps", "high zero volume (97%)"]
+    },
+    {
+      "token_address": "2zMMhcVQEXDtdE6vsFS7S7D5oUodfJHE8vd1gnBouauv",
+      "filepath": "slices/per_token/20250713_1514_2zMMhcVQ_uauv.parquet",
+      "severity": "warning",
+      "gaps": 51,
+      "coverage_pct": 96.8,
+      "quality_score": 97.4,
+      "time_range": {
+        "start": "2025-07-13T15:10:00+00:00",
+        "end": "2025-07-14T15:14:00+00:00"
+      },
+      "reasons": ["51 gaps"]
+    },
+    {
+      "token_address": "D4oCXHmPdrAPjeSMC36kSaTxBX2WaaDrRHAGCm2tbonk",
+      "filepath": "slices/per_token/20250707_0056_D4oCXHmP_bonk.parquet",
+      "severity": "warning",
+      "gaps": 49,
+      "coverage_pct": 96.9,
+      "quality_score": 90.1,
+      "time_range": {
+        "start": "2025-07-07T00:52:00+00:00",
+        "end": "2025-07-08T00:56:00+00:00"
+      },
+      "reasons": ["49 gaps", "high zero volume (98%)"]
+    },
+    {
+      "token_address": "8GsNFHpeSEECPv25d9V4pZPN37KqhctDPLvASWKApump",
+      "filepath": "slices/per_token/20250716_1426_8GsNFHpe_pump.parquet",
+      "severity": "warning",
+      "gaps": 49,
+      "coverage_pct": 96.9,
+      "quality_score": 90.1,
+      "time_range": {
+        "start": "2025-07-16T14:22:00+00:00",
+        "end": "2025-07-17T14:26:00+00:00"
+      },
+      "reasons": ["49 gaps", "high zero volume (98%)"]
+    },
+    {
+      "token_address": "GBACdpChk9HrrGX9wLbD2VBgRLsNgSa41AW6mepPbonk",
+      "filepath": "slices/per_token/20250717_0017_GBACdpCh_bonk.parquet",
+      "severity": "warning",
+      "gaps": 49,
+      "coverage_pct": 96.9,
+      "quality_score": 90.1,
+      "time_range": {
+        "start": "2025-07-17T00:13:00+00:00",
+        "end": "2025-07-18T00:17:00+00:00"
+      },
+      "reasons": ["49 gaps", "high zero volume (98%)"]
+    },
+    {
+      "token_address": "CF3isVMhtLh5PP9n3WiCtnXYsPJXxcoKmNniiQtppump",
+      "filepath": "slices/per_token/20250705_1712_CF3isVMh_pump.parquet",
+      "severity": "warning",
+      "gaps": 49,
+      "coverage_pct": 96.9,
+      "quality_score": 90.1,
+      "time_range": {
+        "start": "2025-07-05T17:08:00+00:00",
+        "end": "2025-07-06T17:12:00+00:00"
+      },
+      "reasons": ["49 gaps", "high zero volume (63%)"]
+    },
+    {
+      "token_address": "9Zmgzw27pXksFBQBCAhDfVkNB4adHPEcvo51q8Rnbonk",
+      "filepath": "slices/per_token/20250703_0645_9Zmgzw27_bonk.parquet",
+      "severity": "warning",
+      "gaps": 49,
+      "coverage_pct": 96.9,
+      "quality_score": 97.8,
+      "time_range": {
+        "start": "2025-07-03T06:41:00+00:00",
+        "end": "2025-07-04T06:45:00+00:00"
+      },
+      "reasons": ["49 gaps"]
+    },
+    {
+      "token_address": "Fso97GC3pzP3Mu9o1UgMGMQcuNnPeszaqCFCFcmebonk",
+      "filepath": "slices/per_token/20250706_1726_Fso97GC3_bonk.parquet",
+      "severity": "warning",
+      "gaps": 45,
+      "coverage_pct": 96.9,
+      "quality_score": 92.6,
+      "time_range": {
+        "start": "2025-07-06T17:27:00+00:00",
+        "end": "2025-07-07T17:26:00+00:00"
+      },
+      "reasons": ["45 gaps"]
+    },
+    {
+      "token_address": "YbmGAxyUUg9A1Zs4epFXnuAXvFHQJXHFfapcwMvbonk",
+      "filepath": "slices/per_token/20250728_1739_YbmGAxyU_bonk.parquet",
+      "severity": "warning",
+      "gaps": 45,
+      "coverage_pct": 97.0,
+      "quality_score": 90.5,
+      "time_range": {
+        "start": "2025-07-28T17:38:00+00:00",
+        "end": "2025-07-29T17:39:00+00:00"
+      },
+      "reasons": ["45 gaps", "high zero volume (97%)"]
+    },
+    {
+      "token_address": "FBQZyWrCs4LJPb1HL6XiE3HVaEE9oszeNJPBa6sLbonk",
+      "filepath": "slices/per_token/20250730_0852_FBQZyWrC_bonk.parquet",
+      "severity": "warning",
+      "gaps": 47,
+      "coverage_pct": 97.1,
+      "quality_score": 93.6,
+      "time_range": {
+        "start": "2025-07-30T08:48:00+00:00",
+        "end": "2025-07-31T08:52:00+00:00"
+      },
+      "reasons": ["47 gaps"]
+    },
+    {
+      "token_address": "F8YiEaC9qyKPEtLQK1Yi5QZazsYgNWn8JD83Dh4Mbonk",
+      "filepath": "slices/per_token/20250727_0212_F8YiEaC9_bonk.parquet",
+      "severity": "warning",
+      "gaps": 47,
+      "coverage_pct": 97.1,
+      "quality_score": 97.5,
+      "time_range": {
+        "start": "2025-07-27T02:08:00+00:00",
+        "end": "2025-07-28T02:12:00+00:00"
+      },
+      "reasons": ["47 gaps"]
+    },
+    {
+      "token_address": "9JErKCoJX7nmMsYvicoZfEdTdW1qiF9oeocHWyKLmoon",
+      "filepath": "slices/per_token/20250706_1023_9JErKCoJ_moon.parquet",
+      "severity": "warning",
+      "gaps": 47,
+      "coverage_pct": 97.1,
+      "quality_score": 94.5,
+      "time_range": {
+        "start": "2025-07-06T10:19:00+00:00",
+        "end": "2025-07-07T10:23:00+00:00"
+      },
+      "reasons": ["47 gaps"]
+    },
+    {
+      "token_address": "78v9xbViYsmwLg2UQnJtGxysCXP99PsxtGwpunHy28VS",
+      "filepath": "slices/per_token/20250721_1457_78v9xbVi_28VS.parquet",
+      "severity": "warning",
+      "gaps": 45,
+      "coverage_pct": 97.2,
+      "quality_score": 90.5,
+      "time_range": {
+        "start": "2025-07-21T14:53:00+00:00",
+        "end": "2025-07-22T14:57:00+00:00"
+      },
+      "reasons": ["45 gaps", "high zero volume (97%)"]
+    },
+    {
+      "token_address": "Fso97GC3pzP3Mu9o1UgMGMQcuNnPeszaqCFCFcmebonk",
+      "filepath": "slices/per_token/20250706_1737_Fso97GC3_bonk.parquet",
+      "severity": "warning",
+      "gaps": 44,
+      "coverage_pct": 97.2,
+      "quality_score": 92.7,
+      "time_range": {
+        "start": "2025-07-06T17:34:00+00:00",
+        "end": "2025-07-07T17:37:00+00:00"
+      },
+      "reasons": ["44 gaps"]
+    },
+    {
+      "token_address": "8BMWG24WUuT3WgeYJAoazWqYscLyi4gB5WdxE1vubonk",
+      "filepath": "slices/per_token/20250724_1222_8BMWG24W_bonk.parquet",
+      "severity": "warning",
+      "gaps": 46,
+      "coverage_pct": 97.2,
+      "quality_score": 90.4,
+      "time_range": {
+        "start": "2025-07-24T12:18:00+00:00",
+        "end": "2025-07-25T12:22:00+00:00"
+      },
+      "reasons": ["46 gaps", "high zero volume (97%)"]
+    },
+    {
+      "token_address": "GzP1Yes5coaA9C9ywJYVp3jjH9LEPGgtHhPQXiAJbonk",
+      "filepath": "slices/per_token/20250702_2306_GzP1Yes5_bonk.parquet",
+      "severity": "warning",
+      "gaps": 46,
+      "coverage_pct": 97.2,
+      "quality_score": 90.4,
+      "time_range": {
+        "start": "2025-07-02T23:02:00+00:00",
+        "end": "2025-07-03T23:06:00+00:00"
+      },
+      "reasons": ["46 gaps", "high zero volume (94%)"]
+    },
+    {
+      "token_address": "4ZD4aFTKD28sY9DiRho13agXqQZj4DMP3kcNG4Wpbonk",
+      "filepath": "slices/per_token/20250729_2213_4ZD4aFTK_bonk.parquet",
+      "severity": "warning",
+      "gaps": 46,
+      "coverage_pct": 97.2,
+      "quality_score": 90.4,
+      "time_range": {
+        "start": "2025-07-29T22:09:00+00:00",
+        "end": "2025-07-30T22:13:00+00:00"
+      },
+      "reasons": ["46 gaps", "high zero volume (97%)"]
+    },
+    {
+      "token_address": "ufxNwEGJWEz4f8Lf9xqx32J75i3QsMUwAWLeDsK8Lc7",
+      "filepath": "slices/per_token/20250720_1059_ufxNwEGJ_8Lc7.parquet",
+      "severity": "warning",
+      "gaps": 45,
+      "coverage_pct": 97.2,
+      "quality_score": 90.5,
+      "time_range": {
+        "start": "2025-07-20T10:55:00+00:00",
+        "end": "2025-07-21T10:59:00+00:00"
+      },
+      "reasons": ["45 gaps", "high zero volume (97%)"]
+    },
+    {
+      "token_address": "8BMWG24WUuT3WgeYJAoazWqYscLyi4gB5WdxE1vubonk",
+      "filepath": "slices/per_token/20250724_1229_8BMWG24W_bonk.parquet",
+      "severity": "warning",
+      "gaps": 46,
+      "coverage_pct": 97.2,
+      "quality_score": 90.4,
+      "time_range": {
+        "start": "2025-07-24T12:25:00+00:00",
+        "end": "2025-07-25T12:29:00+00:00"
+      },
+      "reasons": ["46 gaps", "high zero volume (98%)"]
+    },
+    {
+      "token_address": "A7wjXY1NRsUDzBWN4XTua8aKTN1uQkZUo1SWFpWdZjiK",
+      "filepath": "slices/per_token/20250707_0018_A7wjXY1N_ZjiK.parquet",
+      "severity": "warning",
+      "gaps": 44,
+      "coverage_pct": 97.3,
+      "quality_score": 90.6,
+      "time_range": {
+        "start": "2025-07-07T00:14:00+00:00",
+        "end": "2025-07-08T00:18:00+00:00"
+      },
+      "reasons": ["44 gaps", "high zero volume (94%)"]
+    },
+    {
+      "token_address": "4jfKoJNBSzq9eDzeE66tZE5pHkvjsUQd7BwAsJ3pLEtp",
+      "filepath": "slices/per_token/20250701_2147_4jfKoJNB_LEtp.parquet",
+      "severity": "warning",
+      "gaps": 42,
+      "coverage_pct": 97.4,
+      "quality_score": 90.8,
+      "time_range": {
+        "start": "2025-07-01T21:43:00+00:00",
+        "end": "2025-07-02T21:47:00+00:00"
+      },
+      "reasons": ["42 gaps", "high zero volume (95%)"]
+    },
+    {
+      "token_address": "FVJQQhFe5XGnyv7opU7G3w6znsxX8Hj9SCvpXT8Jbonk",
+      "filepath": "slices/per_token/20250731_1107_FVJQQhFe_bonk.parquet",
+      "severity": "warning",
+      "gaps": 42,
+      "coverage_pct": 97.4,
+      "quality_score": 99.0,
+      "time_range": {
+        "start": "2025-07-31T11:03:00+00:00",
+        "end": "2025-08-01T11:07:00+00:00"
+      },
+      "reasons": ["42 gaps"]
+    },
+    {
+      "token_address": "AY5zNp5SceY8sSJdJQ3NcEb6usFy53UVAb1rG6Ncbonk",
+      "filepath": "slices/per_token/20250718_0844_AY5zNp5S_bonk.parquet",
+      "severity": "warning",
+      "gaps": 42,
+      "coverage_pct": 97.4,
+      "quality_score": 90.8,
+      "time_range": {
+        "start": "2025-07-18T08:40:00+00:00",
+        "end": "2025-07-19T08:44:00+00:00"
+      },
+      "reasons": ["42 gaps", "high zero volume (90%)"]
+    },
+    {
+      "token_address": "FDmKhsPNJDvbhuxmYpXh95TofERZUAaMMdeHgn1pbonk",
+      "filepath": "slices/per_token/20250729_1330_FDmKhsPN_bonk.parquet",
+      "severity": "warning",
+      "gaps": 43,
+      "coverage_pct": 97.4,
+      "quality_score": 97.7,
+      "time_range": {
+        "start": "2025-07-29T13:26:00+00:00",
+        "end": "2025-07-30T13:30:00+00:00"
+      },
+      "reasons": ["43 gaps"]
+    },
+    {
+      "token_address": "92ZcT2413ZboNzdZFzq2mrqXZeu99wc5kx2fgjMgpump",
+      "filepath": "slices/per_token/20250719_0939_92ZcT241_pump.parquet",
+      "severity": "warning",
+      "gaps": 42,
+      "coverage_pct": 97.4,
+      "quality_score": 90.8,
+      "time_range": {
+        "start": "2025-07-19T09:36:00+00:00",
+        "end": "2025-07-20T09:39:00+00:00"
+      },
+      "reasons": ["42 gaps", "high zero volume (79%)"]
+    },
+    {
+      "token_address": "G48A1YcFvPRCvZoMh6zdM2kas6pCsfbGmjQwJvBSpump",
+      "filepath": "slices/per_token/20250706_1737_G48A1YcF_pump.parquet",
+      "severity": "warning",
+      "gaps": 43,
+      "coverage_pct": 97.4,
+      "quality_score": 95.5,
+      "time_range": {
+        "start": "2025-07-06T17:32:00+00:00",
+        "end": "2025-07-07T17:36:00+00:00"
+      },
+      "reasons": ["43 gaps"]
+    },
+    {
+      "token_address": "6GTBQj1w2AH7xTLrCGijFTHFyjBUZL1Zq2jX1AdSpump",
+      "filepath": "slices/per_token/20250726_0419_6GTBQj1w_pump.parquet",
+      "severity": "warning",
+      "gaps": 41,
+      "coverage_pct": 97.4,
+      "quality_score": 90.9,
+      "time_range": {
+        "start": "2025-07-26T04:16:00+00:00",
+        "end": "2025-07-27T04:19:00+00:00"
+      },
+      "reasons": ["41 gaps", "high zero volume (90%)"]
+    },
+    {
+      "token_address": "HbDbUz6msWssvGQ1wc4cyEmdd61cKpg7GFp9KYX1bonk",
+      "filepath": "slices/per_token/20250711_1947_HbDbUz6m_bonk.parquet",
+      "severity": "warning",
+      "gaps": 39,
+      "coverage_pct": 97.5,
+      "quality_score": 91.1,
+      "time_range": {
+        "start": "2025-07-11T19:45:00+00:00",
+        "end": "2025-07-12T19:47:00+00:00"
+      },
+      "reasons": ["39 gaps", "high zero volume (97%)"]
+    },
+    {
+      "token_address": "5oEvz32agtuQoh5n2JtVbPPmRcN3zHWvX5WW85bebonk",
+      "filepath": "slices/per_token/20250719_1316_5oEvz32a_bonk.parquet",
+      "severity": "warning",
+      "gaps": 36,
+      "coverage_pct": 97.6,
+      "quality_score": 91.4,
+      "time_range": {
+        "start": "2025-07-19T13:15:00+00:00",
+        "end": "2025-07-20T13:16:00+00:00"
+      },
+      "reasons": ["36 gaps", "high zero volume (95%)"]
+    },
+    {
+      "token_address": "5KpPVwUFNtwQwMNTtekQXcQDQTvSgbfgt2teFHWDpump",
+      "filepath": "slices/per_token/20250703_1849_5KpPVwUF_pump.parquet",
+      "severity": "warning",
+      "gaps": 40,
+      "coverage_pct": 97.6,
+      "quality_score": 94.0,
+      "time_range": {
+        "start": "2025-07-03T18:45:00+00:00",
+        "end": "2025-07-04T18:49:00+00:00"
+      },
+      "reasons": ["40 gaps"]
+    },
+    {
+      "token_address": "4eoYSW6EW15knpb8PUJ43c4UP5iyWXB6h61EzMMvbonk",
+      "filepath": "slices/per_token/20250709_0105_4eoYSW6E_bonk.parquet",
+      "severity": "warning",
+      "gaps": 39,
+      "coverage_pct": 97.6,
+      "quality_score": 99.6,
+      "time_range": {
+        "start": "2025-07-09T01:01:00+00:00",
+        "end": "2025-07-10T01:05:00+00:00"
+      },
+      "reasons": ["39 gaps"]
+    },
+    {
+      "token_address": "HyU6PuA4oDPxnEpP7E3MGc4u6MQ4m31LZihTF7RPbonk",
+      "filepath": "slices/per_token/20250701_1355_HyU6PuA4_bonk.parquet",
+      "severity": "warning",
+      "gaps": 40,
+      "coverage_pct": 97.6,
+      "quality_score": 97.6,
+      "time_range": {
+        "start": "2025-07-01T13:51:00+00:00",
+        "end": "2025-07-02T13:55:00+00:00"
+      },
+      "reasons": ["40 gaps"]
+    },
+    {
+      "token_address": "ATvV475xNu3qZe6ZFcuHeieftruYxHbvnGbZPqoPjups",
+      "filepath": "slices/per_token/20250703_0742_ATvV475x_jups.parquet",
+      "severity": "warning",
+      "gaps": 39,
+      "coverage_pct": 97.6,
+      "quality_score": 96.8,
+      "time_range": {
+        "start": "2025-07-03T07:38:00+00:00",
+        "end": "2025-07-04T07:42:00+00:00"
+      },
+      "reasons": ["39 gaps"]
+    },
+    {
+      "token_address": "ATvV475xNu3qZe6ZFcuHeieftruYxHbvnGbZPqoPjups",
+      "filepath": "slices/per_token/20250703_0715_ATvV475x_jups.parquet",
+      "severity": "warning",
+      "gaps": 39,
+      "coverage_pct": 97.6,
+      "quality_score": 97.1,
+      "time_range": {
+        "start": "2025-07-03T07:11:00+00:00",
+        "end": "2025-07-04T07:15:00+00:00"
+      },
+      "reasons": ["39 gaps"]
+    },
+    {
+      "token_address": "ATvV475xNu3qZe6ZFcuHeieftruYxHbvnGbZPqoPjups",
+      "filepath": "slices/per_token/20250703_0646_ATvV475x_jups.parquet",
+      "severity": "warning",
+      "gaps": 39,
+      "coverage_pct": 97.6,
+      "quality_score": 97.8,
+      "time_range": {
+        "start": "2025-07-03T06:42:00+00:00",
+        "end": "2025-07-04T06:46:00+00:00"
+      },
+      "reasons": ["39 gaps"]
+    },
+    {
+      "token_address": "5rSQGNYoTKGgUqFcGRt42ikoXfiL4R4diMNQP8Lhbonk",
+      "filepath": "slices/per_token/20250708_1208_5rSQGNYo_bonk.parquet",
+      "severity": "warning",
+      "gaps": 40,
+      "coverage_pct": 97.6,
+      "quality_score": 91.0,
+      "time_range": {
+        "start": "2025-07-08T12:04:00+00:00",
+        "end": "2025-07-09T12:08:00+00:00"
+      },
+      "reasons": ["40 gaps", "high zero volume (96%)"]
+    },
+    {
+      "token_address": "DjfNgq972J3BxmZT5Vm7u4WGEqjHPuGa9YcBzz3bpump",
+      "filepath": "slices/per_token/20250703_1558_DjfNgq97_pump.parquet",
+      "severity": "warning",
+      "gaps": 35,
+      "coverage_pct": 97.6,
+      "quality_score": 91.5,
+      "time_range": {
+        "start": "2025-07-03T15:58:00+00:00",
+        "end": "2025-07-04T15:58:00+00:00"
+      },
+      "reasons": ["35 gaps", "high zero volume (75%)"]
+    },
+    {
+      "token_address": "AiAPCxBGK2itygjGtYLWenxfiyJachrbw2ec2XJ4pump",
+      "filepath": "slices/per_token/20250703_1818_AiAPCxBG_pump.parquet",
+      "severity": "warning",
+      "gaps": 38,
+      "coverage_pct": 97.6,
+      "quality_score": 91.2,
+      "time_range": {
+        "start": "2025-07-03T18:16:00+00:00",
+        "end": "2025-07-04T18:18:00+00:00"
+      },
+      "reasons": ["38 gaps", "high zero volume (96%)"]
+    },
+    {
+      "token_address": "ATvV475xNu3qZe6ZFcuHeieftruYxHbvnGbZPqoPjups",
+      "filepath": "slices/per_token/20250703_0825_ATvV475x_jups.parquet",
+      "severity": "warning",
+      "gaps": 39,
+      "coverage_pct": 97.6,
+      "quality_score": 95.8,
+      "time_range": {
+        "start": "2025-07-03T08:21:00+00:00",
+        "end": "2025-07-04T08:25:00+00:00"
+      },
+      "reasons": ["39 gaps"]
+    },
+    {
+      "token_address": "5YDhV9kvUuu52kL9sbW5NZVDCFPwL1r6agN8gKNRpump",
+      "filepath": "slices/per_token/20250703_0818_5YDhV9kv_pump.parquet",
+      "severity": "warning",
+      "gaps": 39,
+      "coverage_pct": 97.6,
+      "quality_score": 93.5,
+      "time_range": {
+        "start": "2025-07-03T08:14:00+00:00",
+        "end": "2025-07-04T08:18:00+00:00"
+      },
+      "reasons": ["39 gaps"]
+    },
+    {
+      "token_address": "FWNFAyoLxZAoQdB1XWiGvioeqA8c2fWLwuwynoCmpump",
+      "filepath": "slices/per_token/20250708_0342_FWNFAyoL_pump.parquet",
+      "severity": "warning",
+      "gaps": 36,
+      "coverage_pct": 97.8,
+      "quality_score": 91.4,
+      "time_range": {
+        "start": "2025-07-08T03:38:00+00:00",
+        "end": "2025-07-09T03:42:00+00:00"
+      },
+      "reasons": ["36 gaps", "high zero volume (94%)"]
+    },
+    {
+      "token_address": "BcDmwq9cm8RoYEFTGTbAy2cwgSGx2sineiEFpyUvbonk",
+      "filepath": "slices/per_token/20250730_0045_BcDmwq9c_bonk.parquet",
+      "severity": "warning",
+      "gaps": 37,
+      "coverage_pct": 97.8,
+      "quality_score": 100,
+      "time_range": {
+        "start": "2025-07-30T00:41:00+00:00",
+        "end": "2025-07-31T00:45:00+00:00"
+      },
+      "reasons": ["37 gaps"]
+    },
+    {
+      "token_address": "Zpfordmuv63pF88jmvKGZ3whsCEX2FJYj22yxsPbonk",
+      "filepath": "slices/per_token/20250724_1645_Zpfordmu_bonk.parquet",
+      "severity": "warning",
+      "gaps": 34,
+      "coverage_pct": 97.8,
+      "quality_score": 91.6,
+      "time_range": {
+        "start": "2025-07-24T16:43:00+00:00",
+        "end": "2025-07-25T16:45:00+00:00"
+      },
+      "reasons": ["34 gaps", "high zero volume (92%)"]
+    },
+    {
+      "token_address": "PkenZCezy2CkCU2MzQ8PzqVD39SWpssZhiipCrJpfun",
+      "filepath": "slices/per_token/20250716_0814_PkenZCez_pfun.parquet",
+      "severity": "warning",
+      "gaps": 37,
+      "coverage_pct": 97.8,
+      "quality_score": 95.0,
+      "time_range": {
+        "start": "2025-07-16T08:10:00+00:00",
+        "end": "2025-07-17T08:14:00+00:00"
+      },
+      "reasons": ["37 gaps"]
+    },
+    {
+      "token_address": "HHM5XfhBa3Arm6xvRqH2jHVJCFWmVBTYjUbf9wKJbonk",
+      "filepath": "slices/per_token/20250719_1042_HHM5XfhB_bonk.parquet",
+      "severity": "warning",
+      "gaps": 37,
+      "coverage_pct": 97.8,
+      "quality_score": 97.9,
+      "time_range": {
+        "start": "2025-07-19T10:37:00+00:00",
+        "end": "2025-07-20T10:41:00+00:00"
+      },
+      "reasons": ["37 gaps"]
+    },
+    {
+      "token_address": "BW8ejBnHKPGBZsQN6aoGdR83Vccrw41KD34ph3nfbonk",
+      "filepath": "slices/per_token/20250727_1904_BW8ejBnH_bonk.parquet",
+      "severity": "warning",
+      "gaps": 33,
+      "coverage_pct": 97.8,
+      "quality_score": 91.7,
+      "time_range": {
+        "start": "2025-07-27T19:03:00+00:00",
+        "end": "2025-07-28T19:04:00+00:00"
+      },
+      "reasons": ["33 gaps", "high zero volume (43%)"]
+    },
+    {
+      "token_address": "GZcGneiDq6L6PsEPBjPJuDcEezc3NRNE5F47XqcZpump",
+      "filepath": "slices/per_token/20250705_1626_GZcGneiD_pump.parquet",
+      "severity": "warning",
+      "gaps": 37,
+      "coverage_pct": 97.8,
+      "quality_score": 96.8,
+      "time_range": {
+        "start": "2025-07-05T16:22:00+00:00",
+        "end": "2025-07-06T16:26:00+00:00"
+      },
+      "reasons": ["37 gaps"]
+    },
+    {
+      "token_address": "9o5v3SHMxgYF9q4XkSCpoE5X2BFg72eKYVPGCR5yjDaV",
+      "filepath": "slices/per_token/20250705_1910_9o5v3SHM_jDaV.parquet",
+      "severity": "warning",
+      "gaps": 36,
+      "coverage_pct": 97.8,
+      "quality_score": 91.4,
+      "time_range": {
+        "start": "2025-07-05T19:05:00+00:00",
+        "end": "2025-07-06T19:09:00+00:00"
+      },
+      "reasons": ["36 gaps", "high zero volume (96%)"]
+    },
+    {
+      "token_address": "6VeYmjXxjtaw47JTuXuYkUPL5bFvNaFyz6RXHP6Gbonk",
+      "filepath": "slices/per_token/20250705_1340_6VeYmjXx_bonk.parquet",
+      "severity": "warning",
+      "gaps": 37,
+      "coverage_pct": 97.8,
+      "quality_score": 94.7,
+      "time_range": {
+        "start": "2025-07-05T13:36:00+00:00",
+        "end": "2025-07-06T13:40:00+00:00"
+      },
+      "reasons": ["37 gaps"]
+    },
+    {
+      "token_address": "6jTQCFZR8JwvvenVGa3RzGM3a5YEagk9kQXDpHHdpump",
+      "filepath": "slices/per_token/20250710_1531_6jTQCFZR_pump.parquet",
+      "severity": "warning",
+      "gaps": 37,
+      "coverage_pct": 97.8,
+      "quality_score": 96.1,
+      "time_range": {
+        "start": "2025-07-10T15:27:00+00:00",
+        "end": "2025-07-11T15:31:00+00:00"
+      },
+      "reasons": ["37 gaps"]
+    },
+    {
+      "token_address": "CfVs3waH2Z9TM397qSkaipTDhA9wWgtt8UchZKfwkYiu",
+      "filepath": "slices/per_token/20250718_2020_CfVs3waH_kYiu.parquet",
+      "severity": "warning",
+      "gaps": 32,
+      "coverage_pct": 97.9,
+      "quality_score": 91.8,
+      "time_range": {
+        "start": "2025-07-18T20:19:00+00:00",
+        "end": "2025-07-19T20:20:00+00:00"
+      },
+      "reasons": ["32 gaps", "high zero volume (83%)"]
+    },
+    {
+      "token_address": "14HxFS6yxquojf7q2fg8fuSzDeLtLi9wD9bXRuDAbonk",
+      "filepath": "slices/per_token/20250723_1223_14HxFS6y_bonk.parquet",
+      "severity": "warning",
+      "gaps": 32,
+      "coverage_pct": 97.9,
+      "quality_score": 91.8,
+      "time_range": {
+        "start": "2025-07-23T12:22:00+00:00",
+        "end": "2025-07-24T12:23:00+00:00"
+      },
+      "reasons": ["32 gaps", "high zero volume (24%)"]
+    },
+    {
+      "token_address": "YwU1edFFQ6Z9zrJPzxSZEqXCJF9UorXX2SbTMbbbonk",
+      "filepath": "slices/per_token/20250710_1658_YwU1edFF_bonk.parquet",
+      "severity": "warning",
+      "gaps": 35,
+      "coverage_pct": 97.9,
+      "quality_score": 98.2,
+      "time_range": {
+        "start": "2025-07-10T16:54:00+00:00",
+        "end": "2025-07-11T16:58:00+00:00"
+      },
+      "reasons": ["35 gaps"]
+    },
+    {
+      "token_address": "9toLtQ9fHYi2ijnXW5gWErSBeR7pyvd1cjhFwHoFbonk",
+      "filepath": "slices/per_token/20250711_0309_9toLtQ9f_bonk.parquet",
+      "severity": "warning",
+      "gaps": 34,
+      "coverage_pct": 98.0,
+      "quality_score": 91.6,
+      "time_range": {
+        "start": "2025-07-11T03:05:00+00:00",
+        "end": "2025-07-12T03:09:00+00:00"
+      },
+      "reasons": ["34 gaps", "high zero volume (94%)"]
+    },
+    {
+      "token_address": "9hW6tmpuP8Tdx9XuNaoztVUSgygYr9FfA3xKWbdgbonk",
+      "filepath": "slices/per_token/20250722_1946_9hW6tmpu_bonk.parquet",
+      "severity": "warning",
+      "gaps": 34,
+      "coverage_pct": 98.0,
+      "quality_score": 91.6,
+      "time_range": {
+        "start": "2025-07-22T19:42:00+00:00",
+        "end": "2025-07-23T19:46:00+00:00"
+      },
+      "reasons": ["34 gaps", "high zero volume (96%)"]
+    },
+    {
+      "token_address": "647ZKwBb6uxnGMEhW1xH8Nb2NwMJAXdvRSDysdwgbonk",
+      "filepath": "slices/per_token/20250720_0333_647ZKwBb_bonk.parquet",
+      "severity": "warning",
+      "gaps": 34,
+      "coverage_pct": 98.0,
+      "quality_score": 91.6,
+      "time_range": {
+        "start": "2025-07-20T03:29:00+00:00",
+        "end": "2025-07-21T03:33:00+00:00"
+      },
+      "reasons": ["34 gaps", "high zero volume (96%)"]
+    },
+    {
+      "token_address": "CTGvWcBAf42ktXtrLC4CZxA4GpjjtfTYzpePqbDupump",
+      "filepath": "slices/per_token/20250710_0820_CTGvWcBA_pump.parquet",
+      "severity": "warning",
+      "gaps": 34,
+      "coverage_pct": 98.0,
+      "quality_score": 94.6,
+      "time_range": {
+        "start": "2025-07-10T08:16:00+00:00",
+        "end": "2025-07-11T08:20:00+00:00"
+      },
+      "reasons": ["34 gaps"]
+    },
+    {
+      "token_address": "8NX5G6xxnsazS8wvG5qyU64jCZadnVy6zwM4SHf1bonk",
+      "filepath": "slices/per_token/20250729_1102_8NX5G6xx_bonk.parquet",
+      "severity": "warning",
+      "gaps": 34,
+      "coverage_pct": 98.0,
+      "quality_score": 91.6,
+      "time_range": {
+        "start": "2025-07-29T10:58:00+00:00",
+        "end": "2025-07-30T11:02:00+00:00"
+      },
+      "reasons": ["34 gaps", "high zero volume (95%)"]
+    },
+    {
+      "token_address": "GU9N1vyN5djCmpsr8MyRSwAaDDjMGiyQ5Syy6H66wbTx",
+      "filepath": "slices/per_token/20250717_1530_GU9N1vyN_wbTx.parquet",
+      "severity": "warning",
+      "gaps": 34,
+      "coverage_pct": 98.0,
+      "quality_score": 91.6,
+      "time_range": {
+        "start": "2025-07-17T15:26:00+00:00",
+        "end": "2025-07-18T15:30:00+00:00"
+      },
+      "reasons": ["34 gaps", "high zero volume (90%)"]
+    },
+    {
+      "token_address": "DkfEC2Fw9aFjFJkgoQsWWab4WvAwFJUmV5RMu8FQpump",
+      "filepath": "slices/per_token/20250727_1229_DkfEC2Fw_pump.parquet",
+      "severity": "warning",
+      "gaps": 32,
+      "coverage_pct": 98.1,
+      "quality_score": 91.8,
+      "time_range": {
+        "start": "2025-07-27T12:25:00+00:00",
+        "end": "2025-07-28T12:29:00+00:00"
+      },
+      "reasons": ["32 gaps", "high zero volume (89%)"]
+    },
+    {
+      "token_address": "BoRYhYtgSTHNQnmVABBs8tEKwRtFjVjY1GEoyBSyfUWm",
+      "filepath": "slices/per_token/20250630_1407_BoRYhYtg_fUWm.parquet",
+      "severity": "warning",
+      "gaps": 33,
+      "coverage_pct": 98.1,
+      "quality_score": 94.0,
+      "time_range": {
+        "start": "2025-06-30T14:03:00+00:00",
+        "end": "2025-07-01T14:07:00+00:00"
+      },
+      "reasons": ["33 gaps"]
+    },
+    {
+      "token_address": "bD74wrvZ9ocvQPv58Jq5mNc6EagFSuCJyxBkoeobonk",
+      "filepath": "slices/per_token/20250719_1104_bD74wrvZ_bonk.parquet",
+      "severity": "warning",
+      "gaps": 29,
+      "coverage_pct": 98.1,
+      "quality_score": 92.1,
+      "time_range": {
+        "start": "2025-07-19T11:03:00+00:00",
+        "end": "2025-07-20T11:04:00+00:00"
+      },
+      "reasons": ["29 gaps", "high zero volume (91%)"]
+    },
+    {
+      "token_address": "4YWy8JNjB4CLjG71hxGwzFXWd4DtpdvsAY2GqQ1Fbonk",
+      "filepath": "slices/per_token/20250727_1736_4YWy8JNj_bonk.parquet",
+      "severity": "warning",
+      "gaps": 32,
+      "coverage_pct": 98.1,
+      "quality_score": 91.8,
+      "time_range": {
+        "start": "2025-07-27T17:32:00+00:00",
+        "end": "2025-07-28T17:36:00+00:00"
+      },
+      "reasons": ["32 gaps", "high zero volume (69%)"]
+    },
+    {
+      "token_address": "8Be7CKXSkqJTcw2vhTuyo5TpjSksp1UAWGgUiGEQbonk",
+      "filepath": "slices/per_token/20250711_1846_8Be7CKXS_bonk.parquet",
+      "severity": "warning",
+      "gaps": 32,
+      "coverage_pct": 98.1,
+      "quality_score": 91.8,
+      "time_range": {
+        "start": "2025-07-11T18:42:00+00:00",
+        "end": "2025-07-12T18:46:00+00:00"
+      },
+      "reasons": ["32 gaps", "high zero volume (95%)"]
+    },
+    {
+      "token_address": "783fPvZavMne1Q3SLZVVxuXWQfdHzxQJHW6dfhZwbonk",
+      "filepath": "slices/per_token/20250706_0557_783fPvZa_bonk.parquet",
+      "severity": "warning",
+      "gaps": 30,
+      "coverage_pct": 98.1,
+      "quality_score": 92.0,
+      "time_range": {
+        "start": "2025-07-06T05:56:00+00:00",
+        "end": "2025-07-07T05:57:00+00:00"
+      },
+      "reasons": ["30 gaps", "high zero volume (94%)"]
+    },
+    {
+      "token_address": "G6Nrz5YzBiLatyDERTBdDz86LxYCvvMoeNqcHyVdYEik",
+      "filepath": "slices/per_token/20250705_1301_G6Nrz5Yz_YEik.parquet",
+      "severity": "warning",
+      "gaps": 31,
+      "coverage_pct": 98.2,
+      "quality_score": 91.9,
+      "time_range": {
+        "start": "2025-07-05T12:57:00+00:00",
+        "end": "2025-07-06T13:01:00+00:00"
+      },
+      "reasons": ["31 gaps", "high zero volume (84%)"]
+    },
+    {
+      "token_address": "CB9dDufT3ZuQXqqSfa1c5kY935TEreyBw9XJXxHKpump",
+      "filepath": "slices/per_token/20250719_1500_CB9dDufT_pump.parquet",
+      "severity": "warning",
+      "gaps": 31,
+      "coverage_pct": 98.2,
+      "quality_score": 100,
+      "time_range": {
+        "start": "2025-07-19T14:56:00+00:00",
+        "end": "2025-07-20T15:00:00+00:00"
+      },
+      "reasons": ["31 gaps"]
+    },
+    {
+      "token_address": "qA8LjfUxmi8GhQ2upCtNTWbYz7nP4rP5BKCQUGcbonk",
+      "filepath": "slices/per_token/20250729_1436_qA8LjfUx_bonk.parquet",
+      "severity": "warning",
+      "gaps": 31,
+      "coverage_pct": 98.2,
+      "quality_score": 97.5,
+      "time_range": {
+        "start": "2025-07-29T14:32:00+00:00",
+        "end": "2025-07-30T14:36:00+00:00"
+      },
+      "reasons": ["31 gaps"]
+    },
+    {
+      "token_address": "3oQwNvAfZMuPWjVPC12ukY7RPA9JiGwLod6Pr4Lkpump",
+      "filepath": "slices/per_token/20250709_0105_3oQwNvAf_pump.parquet",
+      "severity": "warning",
+      "gaps": 28,
+      "coverage_pct": 98.2,
+      "quality_score": 92.2,
+      "time_range": {
+        "start": "2025-07-09T01:04:00+00:00",
+        "end": "2025-07-10T01:05:00+00:00"
+      },
+      "reasons": ["28 gaps", "high zero volume (47%)"]
+    },
+    {
+      "token_address": "7spZBRGiGxhAsTG1FjZs75gEbfPzT3L6teAQY31bbonk",
+      "filepath": "slices/per_token/20250718_0107_7spZBRGi_bonk.parquet",
+      "severity": "warning",
+      "gaps": 31,
+      "coverage_pct": 98.2,
+      "quality_score": 91.9,
+      "time_range": {
+        "start": "2025-07-18T01:03:00+00:00",
+        "end": "2025-07-19T01:07:00+00:00"
+      },
+      "reasons": ["31 gaps", "high zero volume (95%)"]
+    },
+    {
+      "token_address": "71zMNmZ9EMvgyKtoafAxgqALKjdmM8qzTJGHB4EEbonk",
+      "filepath": "slices/per_token/20250720_1250_71zMNmZ9_bonk.parquet",
+      "severity": "warning",
+      "gaps": 29,
+      "coverage_pct": 98.2,
+      "quality_score": 92.1,
+      "time_range": {
+        "start": "2025-07-20T12:48:00+00:00",
+        "end": "2025-07-21T12:50:00+00:00"
+      },
+      "reasons": ["29 gaps", "high zero volume (92%)"]
+    },
+    {
+      "token_address": "4MEACAFXVPTHm6VLcJoNUoyNffrPDH8VWCUa7eKebonk",
+      "filepath": "slices/per_token/20250710_1514_4MEACAFX_bonk.parquet",
+      "severity": "warning",
+      "gaps": 29,
+      "coverage_pct": 98.3,
+      "quality_score": 92.1,
+      "time_range": {
+        "start": "2025-07-10T15:09:00+00:00",
+        "end": "2025-07-11T15:13:00+00:00"
+      },
+      "reasons": ["29 gaps", "high zero volume (93%)"]
+    },
+    {
+      "token_address": "E4UpNxFEPghcMaVJvpZrEZBLGietafZW2a3ARbSobonk",
+      "filepath": "slices/per_token/20250731_0841_E4UpNxFE_bonk.parquet",
+      "severity": "warning",
+      "gaps": 29,
+      "coverage_pct": 98.3,
+      "quality_score": 97.9,
+      "time_range": {
+        "start": "2025-07-31T08:37:00+00:00",
+        "end": "2025-08-01T08:41:00+00:00"
+      },
+      "reasons": ["29 gaps"]
+    },
+    {
+      "token_address": "BZm4wyFmLpybP6wCD5LE6aq6zXF4LbcyrbqpzXCUbonk",
+      "filepath": "slices/per_token/20250712_2352_BZm4wyFm_bonk.parquet",
+      "severity": "warning",
+      "gaps": 30,
+      "coverage_pct": 98.3,
+      "quality_score": 92.0,
+      "time_range": {
+        "start": "2025-07-12T23:48:00+00:00",
+        "end": "2025-07-13T23:52:00+00:00"
+      },
+      "reasons": ["30 gaps", "high zero volume (91%)"]
+    },
+    {
+      "token_address": "935zJVrrhH5j2fBjq9zSj9mrSKhDuLGQfhp1QNRBbonk",
+      "filepath": "slices/per_token/20250719_0826_935zJVrr_bonk.parquet",
+      "severity": "warning",
+      "gaps": 29,
+      "coverage_pct": 98.3,
+      "quality_score": 92.1,
+      "time_range": {
+        "start": "2025-07-19T08:22:00+00:00",
+        "end": "2025-07-20T08:26:00+00:00"
+      },
+      "reasons": ["29 gaps", "high zero volume (62%)"]
+    },
+    {
+      "token_address": "2kF2HajsPX2m1FHGMfdVxvKtbokFLxeDhZNmhMY3ayHC",
+      "filepath": "slices/per_token/20250701_0019_2kF2Hajs_ayHC.parquet",
+      "severity": "warning",
+      "gaps": 30,
+      "coverage_pct": 98.3,
+      "quality_score": 92.0,
+      "time_range": {
+        "start": "2025-07-01T00:15:00+00:00",
+        "end": "2025-07-02T00:19:00+00:00"
+      },
+      "reasons": ["30 gaps", "high zero volume (91%)"]
+    },
+    {
+      "token_address": "4F6ELbjNxSHF7e23i9iKM9YcaPF4HuvFGhGPrQwWEUse",
+      "filepath": "slices/per_token/20250719_1600_4F6ELbjN_EUse.parquet",
+      "severity": "warning",
+      "gaps": 29,
+      "coverage_pct": 98.3,
+      "quality_score": 92.1,
+      "time_range": {
+        "start": "2025-07-19T15:56:00+00:00",
+        "end": "2025-07-20T16:00:00+00:00"
+      },
+      "reasons": ["29 gaps", "high zero volume (84%)"]
+    },
+    {
+      "token_address": "Dz9mQ9NzkBcCsuGPFJ3r1bS4wgqKMHBPiVuniW8Mbonk",
+      "filepath": "slices/per_token/20250629_1645_Dz9mQ9Nz_bonk.parquet",
+      "severity": "warning",
+      "gaps": 30,
+      "coverage_pct": 98.3,
+      "quality_score": 100,
+      "time_range": {
+        "start": "2025-06-29T16:41:00+00:00",
+        "end": "2025-06-30T16:45:00+00:00"
+      },
+      "reasons": ["30 gaps"]
+    },
+    {
+      "token_address": "BRYt1CnDkbrRNtWuBsciA9dvvZApQbwQubcfMZCpyPrb",
+      "filepath": "slices/per_token/20250710_2350_BRYt1CnD_yPrb.parquet",
+      "severity": "warning",
+      "gaps": 29,
+      "coverage_pct": 98.3,
+      "quality_score": 99.9,
+      "time_range": {
+        "start": "2025-07-10T23:46:00+00:00",
+        "end": "2025-07-11T23:50:00+00:00"
+      },
+      "reasons": ["29 gaps"]
+    },
+    {
+      "token_address": "2qeULaabji5whJKn89P34hAKZGcB1iQ6W5PszyfCbonk",
+      "filepath": "slices/per_token/20250712_0019_2qeULaab_bonk.parquet",
+      "severity": "warning",
+      "gaps": 30,
+      "coverage_pct": 98.3,
+      "quality_score": 92.0,
+      "time_range": {
+        "start": "2025-07-12T00:15:00+00:00",
+        "end": "2025-07-13T00:19:00+00:00"
+      },
+      "reasons": ["30 gaps", "high zero volume (95%)"]
+    },
+    {
+      "token_address": "E9CQ3uCuhZdTisD9FcjmTcG6TB4Zf7peatowA3NMbonk",
+      "filepath": "slices/per_token/20250717_2144_E9CQ3uCu_bonk.parquet",
+      "severity": "warning",
+      "gaps": 29,
+      "coverage_pct": 98.3,
+      "quality_score": 92.1,
+      "time_range": {
+        "start": "2025-07-17T21:40:00+00:00",
+        "end": "2025-07-18T21:44:00+00:00"
+      },
+      "reasons": ["29 gaps", "high zero volume (80%)"]
+    },
+    {
+      "token_address": "HvsyeyUm2jh5zjTPrjTuJo9TowteET5ZYRpmAm57b885",
+      "filepath": "slices/per_token/20250726_2030_HvsyeyUm_b885.parquet",
+      "severity": "warning",
+      "gaps": 28,
+      "coverage_pct": 98.4,
+      "quality_score": 92.2,
+      "time_range": {
+        "start": "2025-07-26T20:26:00+00:00",
+        "end": "2025-07-27T20:30:00+00:00"
+      },
+      "reasons": ["28 gaps", "high zero volume (95%)"]
+    },
+    {
+      "token_address": "9SAk6uN4exQipBpQtyqPN9Whm3pqYqjmEWTHMH2wKmT4",
+      "filepath": "slices/per_token/20250704_1842_9SAk6uN4_KmT4.parquet",
+      "severity": "warning",
+      "gaps": 25,
+      "coverage_pct": 98.4,
+      "quality_score": 92.5,
+      "time_range": {
+        "start": "2025-07-04T18:41:00+00:00",
+        "end": "2025-07-05T18:42:00+00:00"
+      },
+      "reasons": ["25 gaps", "high zero volume (87%)"]
+    },
+    {
+      "token_address": "8LjXUBxxfZxExshHmA1vJTqigibBBtcKU8tJAvq5pump",
+      "filepath": "slices/per_token/20250704_1133_8LjXUBxx_pump.parquet",
+      "severity": "warning",
+      "gaps": 28,
+      "coverage_pct": 98.4,
+      "quality_score": 92.2,
+      "time_range": {
+        "start": "2025-07-04T11:29:00+00:00",
+        "end": "2025-07-05T11:33:00+00:00"
+      },
+      "reasons": ["28 gaps", "high zero volume (94%)"]
+    },
+    {
+      "token_address": "9oRotoLST2BTttG3AybA6W9jocZ83pUYJFtoRYtmbonk",
+      "filepath": "slices/per_token/20250728_1051_9oRotoLS_bonk.parquet",
+      "severity": "warning",
+      "gaps": 28,
+      "coverage_pct": 98.4,
+      "quality_score": 96.9,
+      "time_range": {
+        "start": "2025-07-28T10:47:00+00:00",
+        "end": "2025-07-29T10:51:00+00:00"
+      },
+      "reasons": ["28 gaps"]
+    },
+    {
+      "token_address": "6sXJzvWoMzQzrRARLUjVoiweAWeSy5jSctiUUry7bonk",
+      "filepath": "slices/per_token/20250718_1252_6sXJzvWo_bonk.parquet",
+      "severity": "warning",
+      "gaps": 28,
+      "coverage_pct": 98.4,
+      "quality_score": 99.1,
+      "time_range": {
+        "start": "2025-07-18T12:48:00+00:00",
+        "end": "2025-07-19T12:52:00+00:00"
+      },
+      "reasons": ["28 gaps"]
+    },
+    {
+      "token_address": "8i51XNNpGaKaj4G4nDdmQh95v4FKAxw8mhtaRoKd9tE8",
+      "filepath": "slices/per_token/20250712_2030_8i51XNNp_9tE8.parquet",
+      "severity": "warning",
+      "gaps": 26,
+      "coverage_pct": 98.5,
+      "quality_score": 92.4,
+      "time_range": {
+        "start": "2025-07-12T20:26:00+00:00",
+        "end": "2025-07-13T20:30:00+00:00"
+      },
+      "reasons": ["26 gaps", "high zero volume (31%)"]
+    },
+    {
+      "token_address": "FvdnfXrVsLUVEayWAEEd7rHc6fdfCogXHhnAxuZRpump",
+      "filepath": "slices/per_token/20250701_2105_FvdnfXrV_pump.parquet",
+      "severity": "warning",
+      "gaps": 27,
+      "coverage_pct": 98.5,
+      "quality_score": 92.3,
+      "time_range": {
+        "start": "2025-07-01T21:01:00+00:00",
+        "end": "2025-07-02T21:05:00+00:00"
+      },
+      "reasons": ["27 gaps", "high zero volume (91%)"]
+    },
+    {
+      "token_address": "6UhHJ7oBHvFeU55nNRNV9QxeK9SiQdLR1YhHsep9bonk",
+      "filepath": "slices/per_token/20250726_2347_6UhHJ7oB_bonk.parquet",
+      "severity": "warning",
+      "gaps": 26,
+      "coverage_pct": 98.5,
+      "quality_score": 92.4,
+      "time_range": {
+        "start": "2025-07-26T23:43:00+00:00",
+        "end": "2025-07-27T23:47:00+00:00"
+      },
+      "reasons": ["26 gaps", "high zero volume (82%)"]
+    },
+    {
+      "token_address": "23Aavqk1mBCfW4UAQi64q3gkkgL5UB8EDMPr9pH1pump",
+      "filepath": "slices/per_token/20250701_0820_23Aavqk1_pump.parquet",
+      "severity": "warning",
+      "gaps": 27,
+      "coverage_pct": 98.5,
+      "quality_score": 97.1,
+      "time_range": {
+        "start": "2025-07-01T08:16:00+00:00",
+        "end": "2025-07-02T08:20:00+00:00"
+      },
+      "reasons": ["27 gaps"]
+    },
+    {
+      "token_address": "35Wfh9AtZoFvj1P7dqrM8S2Fp3vxH161Yw7jHKmtbonk",
+      "filepath": "slices/per_token/20250731_1644_35Wfh9At_bonk.parquet",
+      "severity": "warning",
+      "gaps": 27,
+      "coverage_pct": 98.5,
+      "quality_score": 97.0,
+      "time_range": {
+        "start": "2025-07-31T16:40:00+00:00",
+        "end": "2025-08-01T16:44:00+00:00"
+      },
+      "reasons": ["27 gaps"]
+    },
+    {
+      "token_address": "7Tx8qTXSakpfaSFjdztPGQ9n2uyT1eUkYz7gYxxopump",
+      "filepath": "slices/per_token/20250709_1034_7Tx8qTXS_pump.parquet",
+      "severity": "warning",
+      "gaps": 27,
+      "coverage_pct": 98.5,
+      "quality_score": 98.7,
+      "time_range": {
+        "start": "2025-07-09T10:30:00+00:00",
+        "end": "2025-07-10T10:34:00+00:00"
+      },
+      "reasons": ["27 gaps"]
+    },
+    {
+      "token_address": "Bg422kWRLrArkAMnGDZv3GTmYDrFKhuC2MGzSoxxjups",
+      "filepath": "slices/per_token/20250730_0949_Bg422kWR_jups.parquet",
+      "severity": "warning",
+      "gaps": 27,
+      "coverage_pct": 98.5,
+      "quality_score": 98.2,
+      "time_range": {
+        "start": "2025-07-30T09:45:00+00:00",
+        "end": "2025-07-31T09:49:00+00:00"
+      },
+      "reasons": ["27 gaps"]
+    },
+    {
+      "token_address": "yaFH5SUG6XTY2UAXSvGXfRPphNXbLjHR6QSad7Tbonk",
+      "filepath": "slices/per_token/20250728_0720_yaFH5SUG_bonk.parquet",
+      "severity": "warning",
+      "gaps": 26,
+      "coverage_pct": 98.5,
+      "quality_score": 96.4,
+      "time_range": {
+        "start": "2025-07-28T07:16:00+00:00",
+        "end": "2025-07-29T07:20:00+00:00"
+      },
+      "reasons": ["26 gaps"]
+    },
+    {
+      "token_address": "CzX4E1RoHZeyYBkPGTz78VU1rJ4ECH9tfZi5ZL9nbonk",
+      "filepath": "slices/per_token/20250707_0417_CzX4E1Ro_bonk.parquet",
+      "severity": "warning",
+      "gaps": 27,
+      "coverage_pct": 98.5,
+      "quality_score": 92.3,
+      "time_range": {
+        "start": "2025-07-07T04:13:00+00:00",
+        "end": "2025-07-08T04:17:00+00:00"
+      },
+      "reasons": ["27 gaps", "high zero volume (90%)"]
+    },
+    {
+      "token_address": "Bt767NEqgctKzQiwrqo9BdSboSZnECKJzU9c9Cu7bonk",
+      "filepath": "slices/per_token/20250712_1950_Bt767NEq_bonk.parquet",
+      "severity": "warning",
+      "gaps": 26,
+      "coverage_pct": 98.5,
+      "quality_score": 92.4,
+      "time_range": {
+        "start": "2025-07-12T19:47:00+00:00",
+        "end": "2025-07-13T19:50:00+00:00"
+      },
+      "reasons": ["26 gaps", "high zero volume (45%)"]
+    },
+    {
+      "token_address": "BGMoZua5YgdHPGY9TRQtHsNVfifRrEyKk2AUrFyMbonk",
+      "filepath": "slices/per_token/20250704_1530_BGMoZua5_bonk.parquet",
+      "severity": "warning",
+      "gaps": 27,
+      "coverage_pct": 98.5,
+      "quality_score": 92.3,
+      "time_range": {
+        "start": "2025-07-04T15:26:00+00:00",
+        "end": "2025-07-05T15:30:00+00:00"
+      },
+      "reasons": ["27 gaps", "high zero volume (51%)"]
+    },
+    {
+      "token_address": "9isJBF9KGWNGga6D4Hbz6H2Gj99ra9JYNxD6Csxppump",
+      "filepath": "slices/per_token/20250703_1343_9isJBF9K_pump.parquet",
+      "severity": "warning",
+      "gaps": 26,
+      "coverage_pct": 98.5,
+      "quality_score": 98.5,
+      "time_range": {
+        "start": "2025-07-03T13:39:00+00:00",
+        "end": "2025-07-04T13:43:00+00:00"
+      },
+      "reasons": ["26 gaps"]
+    },
+    {
+      "token_address": "D25bi7oHQjqkVrzbfuM6k2gzVNHTSpBLhtakDCzCCDUB",
+      "filepath": "slices/per_token/20250704_2035_D25bi7oH_CDUB.parquet",
+      "severity": "warning",
+      "gaps": 25,
+      "coverage_pct": 98.5,
+      "quality_score": 92.5,
+      "time_range": {
+        "start": "2025-07-04T20:32:00+00:00",
+        "end": "2025-07-05T20:35:00+00:00"
+      },
+      "reasons": ["25 gaps", "high zero volume (78%)"]
+    },
+    {
+      "token_address": "6BzKiNvWbmmg6R8gJyjGeMNkcypwTo3NSpPa1nrEbonk",
+      "filepath": "slices/per_token/20250709_1220_6BzKiNvW_bonk.parquet",
+      "severity": "warning",
+      "gaps": 27,
+      "coverage_pct": 98.5,
+      "quality_score": 92.3,
+      "time_range": {
+        "start": "2025-07-09T12:16:00+00:00",
+        "end": "2025-07-10T12:20:00+00:00"
+      },
+      "reasons": ["27 gaps", "high zero volume (88%)"]
+    },
+    {
+      "token_address": "J9ZQoNAiepAQguwoon5AGv3ZZznw9tkT1q7iZgg7bonk",
+      "filepath": "slices/per_token/20250716_0457_J9ZQoNAi_bonk.parquet",
+      "severity": "warning",
+      "gaps": 25,
+      "coverage_pct": 98.6,
+      "quality_score": 98.5,
+      "time_range": {
+        "start": "2025-07-16T04:53:00+00:00",
+        "end": "2025-07-17T04:57:00+00:00"
+      },
+      "reasons": ["25 gaps"]
+    },
+    {
+      "token_address": "HgYLyCewdSQUJWqTrbL5bVHTinJxWwDoDFcA2WbTbonk",
+      "filepath": "slices/per_token/20250720_1416_HgYLyCew_bonk.parquet",
+      "severity": "warning",
+      "gaps": 25,
+      "coverage_pct": 98.6,
+      "quality_score": 97.0,
+      "time_range": {
+        "start": "2025-07-20T14:12:00+00:00",
+        "end": "2025-07-21T14:16:00+00:00"
+      },
+      "reasons": ["25 gaps"]
+    },
+    {
+      "token_address": "83iBDw3ZpxqJ3pEzrbttr9fGA57tttehDAxoFyR1moon",
+      "filepath": "slices/per_token/20250710_2114_83iBDw3Z_moon.parquet",
+      "severity": "warning",
+      "gaps": 24,
+      "coverage_pct": 98.7,
+      "quality_score": 92.6,
+      "time_range": {
+        "start": "2025-07-10T21:10:00+00:00",
+        "end": "2025-07-11T21:14:00+00:00"
+      },
+      "reasons": ["24 gaps", "high zero volume (59%)"]
+    },
+    {
+      "token_address": "7RmK9RfZ3wjaC6ufNgWSqE87pjiWHqnY4weq6g3BWP58",
+      "filepath": "slices/per_token/20250708_2016_7RmK9RfZ_WP58.parquet",
+      "severity": "warning",
+      "gaps": 24,
+      "coverage_pct": 98.7,
+      "quality_score": 92.6,
+      "time_range": {
+        "start": "2025-07-08T20:12:00+00:00",
+        "end": "2025-07-09T20:16:00+00:00"
+      },
+      "reasons": ["24 gaps", "high zero volume (80%)"]
+    },
+    {
+      "token_address": "HhfyQNANe8DNAgSaMNRAW5GAs6J15PpTNMUpzBbbonk",
+      "filepath": "slices/per_token/20250709_1212_HhfyQNAN_bonk.parquet",
+      "severity": "warning",
+      "gaps": 23,
+      "coverage_pct": 98.8,
+      "quality_score": 100,
+      "time_range": {
+        "start": "2025-07-09T12:08:00+00:00",
+        "end": "2025-07-10T12:12:00+00:00"
+      },
+      "reasons": ["23 gaps"]
+    },
+    {
+      "token_address": "Dz9mQ9NzkBcCsuGPFJ3r1bS4wgqKMHBPiVuniW8Mbonk",
+      "filepath": "slices/per_token/20250629_2308_Dz9mQ9Nz_bonk.parquet",
+      "severity": "warning",
+      "gaps": 22,
+      "coverage_pct": 98.8,
+      "quality_score": 100,
+      "time_range": {
+        "start": "2025-06-29T23:04:00+00:00",
+        "end": "2025-06-30T23:08:00+00:00"
+      },
+      "reasons": ["22 gaps"]
+    },
+    {
+      "token_address": "C6LfmjwSeYMSUcKpY7o4zs9JPwyj9ssEv17v8TjYjups",
+      "filepath": "slices/per_token/20250731_1147_C6LfmjwS_jups.parquet",
+      "severity": "warning",
+      "gaps": 23,
+      "coverage_pct": 98.8,
+      "quality_score": 100,
+      "time_range": {
+        "start": "2025-07-31T11:43:00+00:00",
+        "end": "2025-08-01T11:47:00+00:00"
+      },
+      "reasons": ["23 gaps"]
+    },
+    {
+      "token_address": "2Eum1vuyeAeXnbYNwkG2tgm2gJgMf6TRyuur1P2Rbonk",
+      "filepath": "slices/per_token/20250729_1647_2Eum1vuy_bonk.parquet",
+      "severity": "warning",
+      "gaps": 22,
+      "coverage_pct": 98.8,
+      "quality_score": 100.0,
+      "time_range": {
+        "start": "2025-07-29T16:43:00+00:00",
+        "end": "2025-07-30T16:47:00+00:00"
+      },
+      "reasons": ["22 gaps"]
+    },
+    {
+      "token_address": "pumpCmXqMfrsAkQ5r49WcJnRayYRqmXz6ae8H7H9Dfn",
+      "filepath": "slices/per_token/20250718_1939_pumpCmXq_9Dfn.parquet",
+      "severity": "warning",
+      "gaps": 23,
+      "coverage_pct": 98.8,
+      "quality_score": 98.7,
+      "time_range": {
+        "start": "2025-07-18T19:35:00+00:00",
+        "end": "2025-07-19T19:39:00+00:00"
+      },
+      "reasons": ["23 gaps"]
+    },
+    {
+      "token_address": "mvKXAM1ZMSTRS3t4xUEjvxv2k4j8UMpbquUa3qebonk",
+      "filepath": "slices/per_token/20250720_1302_mvKXAM1Z_bonk.parquet",
+      "severity": "warning",
+      "gaps": 21,
+      "coverage_pct": 98.9,
+      "quality_score": 100,
+      "time_range": {
+        "start": "2025-07-20T12:58:00+00:00",
+        "end": "2025-07-21T13:02:00+00:00"
+      },
+      "reasons": ["21 gaps"]
+    },
+    {
+      "token_address": "21rd9E1rdzPb4L1mbHgB3T98aAWYHjCyKXfGQhV5bonk",
+      "filepath": "slices/per_token/20250704_0637_21rd9E1r_bonk.parquet",
+      "severity": "warning",
+      "gaps": 21,
+      "coverage_pct": 98.9,
+      "quality_score": 97.7,
+      "time_range": {
+        "start": "2025-07-04T06:33:00+00:00",
+        "end": "2025-07-05T06:37:00+00:00"
+      },
+      "reasons": ["21 gaps"]
+    },
+    {
+      "token_address": "Csihz8BwGMXsYYpQj9kHCFjcxrv72ExiXYG15H7kpump",
+      "filepath": "slices/per_token/20250630_1906_Csihz8Bw_pump.parquet",
+      "severity": "warning",
+      "gaps": 21,
+      "coverage_pct": 98.9,
+      "quality_score": 92.9,
+      "time_range": {
+        "start": "2025-06-30T19:02:00+00:00",
+        "end": "2025-07-01T19:06:00+00:00"
+      },
+      "reasons": ["21 gaps", "high zero volume (87%)"]
+    }
+  ]
+}

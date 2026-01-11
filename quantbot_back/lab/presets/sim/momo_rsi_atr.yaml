@@ -1,0 +1,56 @@
+kind: sim_preset_v1
+name: momo_rsi_atr
+description: EMA cross + RSI filter; ATR stop; RR target.
+
+data:
+  dataset: candles_1m
+  chain: sol
+  interval: 1m
+  time_range:
+    start: 2024-10-01T00:00:00Z
+    end:   2024-10-08T00:00:00Z
+  tokens_file: lab/token_sets/watchlist.txt
+
+features:
+  timeframe: 1m
+  groups:
+    - name: trend
+      indicators:
+        - ema: { period: 9, source: close }
+        - ema: { period: 21, source: close }
+    - name: filter
+      indicators:
+        - rsi: { period: 14, source: close }
+    - name: risk
+      indicators:
+        - atr: { period: 14 }
+
+strategy:
+  entries:
+    - name: ema_cross_up
+      when:
+        all:
+          - cross_up: { a: ema_9, b: ema_21 }
+          - gt: { a: rsi_14, b: 52 }
+  exits:
+    - name: ema_cross_down
+      when:
+        any:
+          - cross_down: { a: ema_9, b: ema_21 }
+
+risk:
+  position_size:
+    mode: fixed_quote
+    quote: 50
+
+  stop_loss:
+    mode: atr_multiple
+    atr: atr_14
+    multiple: 2.0
+
+  take_profit:
+    mode: rr_multiple
+    rr: 2.0
+
+  max_hold_minutes: 180
+  allow_reentry: false

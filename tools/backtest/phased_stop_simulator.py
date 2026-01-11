@@ -356,7 +356,8 @@ def simulate_phased_trade(
                 return (exit_price, ts_ms, "stopped_phase2", 2, hit_2x, hit_3x, hit_4x, hit_5x, hit_10x,
                        ath_multiple, phase2_entry_price, phase2_entry_ts_ms)
     
-    # End of data
+    # End of data (48 hours after entry)
+    # Exit at last close price - this represents the actual market price at the end of the observation window
     last_candle = candles[-1]
     exit_price = float(last_candle['close'])
     

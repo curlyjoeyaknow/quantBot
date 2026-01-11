@@ -1,0 +1,84 @@
+---
+title: Architecture Layers
+description: Three-layer architecture showing Pure Compute, Orchestration, and Adapters
+---
+
+# Architecture Layers
+
+## Overview
+
+QuantBot follows a strict three-layer architecture that separates pure computation from orchestration and I/O operations. This separation ensures testability, determinism, and maintainability.
+
+## Key Concepts
+
+- **Pure Compute Layer**: Simulation engine with no I/O, clocks, or global config
+- **Orchestration Layer**: Workflows coordinate storage, services, and I/O operations
+- **Adapter Layer**: CLI/TUI/API translate user intent to workflow specs
+
+## Diagram
+
+```mermaid
+graph TB
+    subgraph adapters[Adapter Layer - Thin Adapters]
+        cli[CLI<br/>Parse args → call workflow → format output]
+        tui[TUI<br/>Interactive UI → workflow → display]
+        api[API<br/>HTTP requests → workflow → JSON response]
+        telegramBot[Telegram Bot<br/>Commands → workflow → messages]
+    end
+
+    subgraph orchestration[Orchestration Layer - Workflows]
+        workflows[Workflows<br/>Coordinate I/O operations<br/>Use WorkflowContext<br/>Return JSON-serializable results]
+    end
+
+    subgraph compute[Pure Compute Layer]
+        simulation[Simulation Engine<br/>NO I/O<br/>NO clocks<br/>NO global config<br/>Deterministic inputs → outputs]
+    end
+
+    subgraph services[Service Layer]
+        ohlcv[OHLCV Service<br/>Offline-only queries]
+        ingestion[Ingestion Service<br/>Offline parsing]
+        analytics[Analytics Engine<br/>Data analysis]
+        jobs[Jobs Service<br/>Online orchestration<br/>API calls, rate limiting]
+    end
+
+    subgraph infrastructure[Infrastructure Layer]
+        storage[Storage<br/>DuckDB, ClickHouse]
+        apiClients[API Clients<br/>Birdeye, Helius]
+        observability[Observability<br/>Logging, metrics]
+    end
+
+    cli --> workflows
+    tui --> workflows
+    api --> workflows
+    telegramBot --> workflows
+
+    workflows --> simulation
+    workflows --> ohlcv
+    workflows --> ingestion
+    workflows --> analytics
+    workflows --> jobs
+
+    ohlcv --> storage
+    ingestion --> storage
+    analytics --> storage
+    jobs --> apiClients
+    jobs --> storage
+
+    apiClients --> observability
+    storage --> observability
+```
+
+## Dependency Rules
+
+- **Adapters** → **Workflows**: Adapters call workflows, never services directly
+- **Workflows** → **Services**: Workflows orchestrate services
+- **Workflows** → **Simulation**: Workflows provide data to pure simulation
+- **Services** → **Infrastructure**: Services use infrastructure for I/O
+- **Simulation** → **Nothing**: Simulation is pure compute, no dependencies
+
+## Related Documentation
+
+- [WORKFLOW_ARCHITECTURE.md](../WORKFLOW_ARCHITECTURE.md)
+- [SIMULATION_CONTRACT.md](../SIMULATION_CONTRACT.md)
+- [ARCHITECTURE.md](../ARCHITECTURE.md)
+

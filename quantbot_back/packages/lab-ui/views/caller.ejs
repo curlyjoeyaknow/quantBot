@@ -1,0 +1,543 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Lab UI — Caller Details</title>
+  <link rel="stylesheet" href="/public/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    .score-positive { color: #10b981; font-weight: 600; }
+    .score-negative { color: #ef4444; font-weight: 600; }
+    .score-neutral { color: #94a3b8; }
+    
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    
+    .stat-card {
+      background: var(--panel, #101826);
+      border: 1px solid var(--border, #1d2a44);
+      border-radius: 10px;
+      padding: 1.25rem;
+      text-align: center;
+    }
+    
+    .stat-card .value {
+      font-size: 2rem;
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+      line-height: 1.2;
+    }
+    
+    .stat-card .label {
+      font-size: 0.8rem;
+      color: var(--muted, #93a4c7);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-top: 0.25rem;
+    }
+    
+    .stat-card .comparison {
+      font-size: 0.75rem;
+      margin-top: 0.5rem;
+      padding-top: 0.5rem;
+      border-top: 1px solid var(--border, #1d2a44);
+    }
+    
+    .stat-card .comparison.better { color: #10b981; }
+    .stat-card .comparison.worse { color: #ef4444; }
+    .stat-card .comparison.same { color: #94a3b8; }
+    
+    .charts-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    
+    .chart-card {
+      background: var(--panel, #101826);
+      border: 1px solid var(--border, #1d2a44);
+      border-radius: 10px;
+      padding: 1rem;
+    }
+    
+    .chart-card h3 {
+      margin: 0 0 0.75rem 0;
+      font-size: 0.9rem;
+      color: var(--muted, #93a4c7);
+    }
+    
+    .chart-container {
+      position: relative;
+      height: 200px;
+    }
+    
+    .timeline-container {
+      position: relative;
+      height: 120px;
+      margin-bottom: 1rem;
+    }
+    
+    .caller-header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+    
+    .caller-header h1 {
+      margin: 0;
+      flex: 1;
+    }
+    
+    .caller-header .score-badge {
+      font-size: 1.5rem;
+      font-weight: 700;
+      padding: 0.5rem 1rem;
+      border-radius: 8px;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    
+    .score-badge.positive { background: rgba(16, 185, 129, 0.2); color: #10b981; }
+    .score-badge.negative { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+    
+    .discipline-indicator {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.4rem 0.8rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+    .discipline-indicator.active { background: rgba(16, 185, 129, 0.15); color: #10b981; }
+    .discipline-indicator.inactive { background: rgba(100, 116, 139, 0.15); color: #64748b; }
+    
+    .alerts-table th, .alerts-table td {
+      padding: 8px 6px;
+      font-size: 0.85rem;
+    }
+    
+    .hit-badge {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.7rem;
+      font-weight: 600;
+    }
+    .hit-badge.yes { background: rgba(16, 185, 129, 0.2); color: #10b981; }
+    .hit-badge.no { background: rgba(100, 116, 139, 0.2); color: #64748b; }
+    
+    .back-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--accent, #7aa2ff);
+      text-decoration: none;
+      font-size: 0.9rem;
+      margin-bottom: 1rem;
+    }
+    .back-link:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <nav>
+    <a href="/dashboard">Dashboard</a>
+    <a href="/strategies">Strategies</a>
+    <a href="/runs">Runs</a>
+    <a href="/leaderboard">Leaderboard</a>
+    <a href="/scored">Scored</a>
+    <a href="/truth">Truth</a>
+    <a href="/policies">Policies</a>
+  </nav>
+
+  <main>
+    <a href="/scored" class="back-link">← Back to Scored Leaderboard</a>
+
+    <section class="card">
+      <div class="row">
+        <label>Run:</label>
+        <select id="runSelect" style="flex: 1; max-width: 400px;">
+          <option value="">Loading runs...</option>
+        </select>
+        <label>Caller:</label>
+        <input type="text" id="callerInput" placeholder="Enter caller name" style="flex: 1; max-width: 300px;" />
+        <button id="load">Load</button>
+        <span id="msg"></span>
+      </div>
+    </section>
+
+    <div id="content" style="display: none;">
+      <!-- Caller Header -->
+      <div class="caller-header">
+        <h1 id="callerName">—</h1>
+        <div id="scoreBadge" class="score-badge positive">—</div>
+        <div id="disciplineIndicator" class="discipline-indicator inactive">—</div>
+      </div>
+
+      <!-- Stats Summary -->
+      <section class="stat-grid" id="statsGrid">
+        <div class="stat-card">
+          <div class="value" id="statN">—</div>
+          <div class="label">Alerts</div>
+        </div>
+        <div class="stat-card">
+          <div class="value" id="statAth">—</div>
+          <div class="label">Median ATH</div>
+          <div class="comparison" id="cmpAth">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="value" id="statHit2x">—</div>
+          <div class="label">Hit 2x Rate</div>
+          <div class="comparison" id="cmpHit2x">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="value" id="statTime">—</div>
+          <div class="label">Median T2x</div>
+          <div class="comparison" id="cmpTime">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="value score-negative" id="statDD">—</div>
+          <div class="label">Risk DD</div>
+          <div class="comparison" id="cmpDD">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="value" id="statP75">—</div>
+          <div class="label">P75 ATH</div>
+        </div>
+        <div class="stat-card">
+          <div class="value" id="statP95">—</div>
+          <div class="label">P95 ATH</div>
+        </div>
+        <div class="stat-card">
+          <div class="value" id="statHit3x">—</div>
+          <div class="label">Hit 3x Rate</div>
+        </div>
+      </section>
+
+      <!-- Charts -->
+      <section class="charts-grid">
+        <div class="chart-card">
+          <h3>ATH Distribution</h3>
+          <div class="chart-container">
+            <canvas id="athChart"></canvas>
+          </div>
+        </div>
+        <div class="chart-card">
+          <h3>Drawdown Distribution</h3>
+          <div class="chart-container">
+            <canvas id="ddChart"></canvas>
+          </div>
+        </div>
+        <div class="chart-card">
+          <h3>Time to 2x Distribution</h3>
+          <div class="chart-container">
+            <canvas id="timeChart"></canvas>
+          </div>
+        </div>
+        <div class="chart-card">
+          <h3>Alert ATH Timeline</h3>
+          <div class="chart-container">
+            <canvas id="timelineChart"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <!-- Individual Alerts Table -->
+      <section class="card">
+        <h2>Individual Alerts (Last 500)</h2>
+        <div class="table-scroll">
+          <table class="alerts-table" id="alertsTable">
+            <thead>
+              <tr>
+                <th>Alert ID</th>
+                <th>Time</th>
+                <th>ATH</th>
+                <th>DD</th>
+                <th>DD Pre2x</th>
+                <th>2x</th>
+                <th>3x</th>
+                <th>4x</th>
+                <th>T2x (min)</th>
+                <th>T3x (min)</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    const $ = id => document.getElementById(id);
+    let charts = {};
+
+    const colors = {
+      green: 'rgba(16, 185, 129, 0.8)',
+      red: 'rgba(239, 68, 68, 0.8)',
+      blue: 'rgba(59, 130, 246, 0.8)',
+      cyan: 'rgba(6, 182, 212, 0.8)',
+      amber: 'rgba(245, 158, 11, 0.8)',
+    };
+
+    // Load available runs
+    async function loadRuns() {
+      try {
+        const res = await fetch('/api/baseline-runs');
+        const runs = await res.json();
+        
+        const select = $('runSelect');
+        select.innerHTML = '<option value="">Select a run...</option>';
+        
+        for (const r of runs) {
+          const opt = document.createElement('option');
+          opt.value = r.run_id;
+          const name = r.run_name || r.run_id.slice(0, 8);
+          const date = r.created_at ? new Date(r.created_at).toLocaleDateString() : '';
+          opt.textContent = `${name} (${r.alerts_ok || 0} alerts, ${date})`;
+          select.appendChild(opt);
+        }
+
+        // Check URL params
+        const params = new URLSearchParams(window.location.search);
+        const runId = params.get('run');
+        const caller = params.get('caller');
+        if (runId) {
+          select.value = runId;
+          if (caller) {
+            $('callerInput').value = caller;
+            loadCallerData();
+          }
+        }
+      } catch (e) {
+        $('runSelect').innerHTML = '<option value="">Error loading runs</option>';
+      }
+    }
+
+    async function loadCallerData() {
+      const runId = $('runSelect').value;
+      const caller = $('callerInput').value.trim();
+
+      if (!runId || !caller) {
+        $('msg').textContent = 'Select run and enter caller name';
+        return;
+      }
+
+      $('msg').textContent = 'Loading...';
+
+      try {
+        const res = await fetch(`/api/caller-alerts/${runId}/${encodeURIComponent(caller)}`);
+        const data = await res.json();
+
+        if (data.error) {
+          $('msg').textContent = 'Error: ' + data.error;
+          return;
+        }
+
+        if (!data.callerStats) {
+          $('msg').textContent = 'Caller not found in this run';
+          return;
+        }
+
+        renderCallerData(data);
+        $('content').style.display = 'block';
+        $('msg').textContent = `${data.alerts.length} alerts loaded`;
+
+        // Update URL for sharing
+        const url = new URL(window.location);
+        url.searchParams.set('run', runId);
+        url.searchParams.set('caller', caller);
+        window.history.replaceState({}, '', url);
+      } catch (e) {
+        $('msg').textContent = 'Error: ' + e.message;
+      }
+    }
+
+    function renderCallerData(data) {
+      const { callerStats: s, populationStats: pop, distributions: dist, alerts } = data;
+
+      // Header
+      $('callerName').textContent = s.caller || '—';
+      $('scoreBadge').textContent = fmt(s.score_v2, 3);
+      $('scoreBadge').className = 'score-badge ' + (s.score_v2 > 0 ? 'positive' : 'negative');
+      
+      if (s.discipline_bonus > 0) {
+        $('disciplineIndicator').textContent = '✓ Discipline Bonus Active';
+        $('disciplineIndicator').className = 'discipline-indicator active';
+      } else {
+        $('disciplineIndicator').textContent = '✗ No Discipline Bonus';
+        $('disciplineIndicator').className = 'discipline-indicator inactive';
+      }
+
+      // Stats
+      $('statN').textContent = s.n;
+      $('statAth').textContent = fmt(s.median_ath, 2) + 'x';
+      $('statHit2x').textContent = fmt(s.hit2x_pct, 1) + '%';
+      $('statTime').textContent = s.median_t2x_min ? fmt(s.median_t2x_min, 0) + 'm' : '—';
+      $('statDD').textContent = fmt(s.risk_dd_pct, 1) + '%';
+      $('statP75').textContent = fmt(s.p75_ath, 2) + 'x';
+      $('statP95').textContent = fmt(s.p95_ath, 2) + 'x';
+      $('statHit3x').textContent = fmt(s.hit3x_pct, 1) + '%';
+
+      // Comparisons to population
+      if (pop) {
+        renderComparison('cmpAth', s.median_ath, pop.pop_median_ath, 'higher');
+        renderComparison('cmpHit2x', s.hit2x_pct, pop.pop_hit2x_pct, 'higher');
+        renderComparison('cmpTime', s.median_t2x_min, pop.pop_median_t2x_min, 'lower');
+        renderComparison('cmpDD', s.risk_dd_pct, pop.pop_risk_dd_pct, 'higher'); // Less negative is better
+      }
+
+      // Charts
+      renderCharts(dist, alerts);
+      renderAlertsTable(alerts);
+    }
+
+    function renderComparison(id, value, popValue, betterDirection) {
+      if (value == null || popValue == null) {
+        $(id).textContent = 'vs pop: —';
+        $(id).className = 'comparison same';
+        return;
+      }
+
+      const diff = value - popValue;
+      const diffStr = diff >= 0 ? '+' + fmt(diff, 1) : fmt(diff, 1);
+      
+      let isBetter;
+      if (betterDirection === 'higher') {
+        isBetter = diff > 0;
+      } else {
+        isBetter = diff < 0;
+      }
+
+      $(id).textContent = `vs pop: ${diffStr}`;
+      $(id).className = 'comparison ' + (isBetter ? 'better' : diff === 0 ? 'same' : 'worse');
+    }
+
+    function renderCharts(dist, alerts) {
+      Object.values(charts).forEach(c => c.destroy());
+      charts = {};
+
+      const chartOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: '#94a3b8', font: { size: 10 } }, grid: { color: 'rgba(100, 116, 139, 0.1)' } },
+          y: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(100, 116, 139, 0.1)' } },
+        },
+      };
+
+      // ATH
+      if (dist.ath?.length) {
+        charts.ath = new Chart($('athChart'), {
+          type: 'bar',
+          data: {
+            labels: dist.ath.map(d => d.bucket),
+            datasets: [{ data: dist.ath.map(d => d.count), backgroundColor: colors.blue }],
+          },
+          options: chartOptions,
+        });
+      }
+
+      // DD
+      if (dist.drawdown?.length) {
+        charts.dd = new Chart($('ddChart'), {
+          type: 'bar',
+          data: {
+            labels: dist.drawdown.map(d => d.bucket),
+            datasets: [{ data: dist.drawdown.map(d => d.count), backgroundColor: colors.red }],
+          },
+          options: chartOptions,
+        });
+      }
+
+      // Time to 2x
+      if (dist.time_to_2x?.length) {
+        charts.time = new Chart($('timeChart'), {
+          type: 'bar',
+          data: {
+            labels: dist.time_to_2x.map(d => d.bucket),
+            datasets: [{ data: dist.time_to_2x.map(d => d.count), backgroundColor: colors.cyan }],
+          },
+          options: chartOptions,
+        });
+      }
+
+      // Timeline sparkline
+      if (alerts.length) {
+        const sortedAlerts = [...alerts].sort((a, b) => new Date(a.alert_ts) - new Date(b.alert_ts));
+        const last50 = sortedAlerts.slice(-50);
+        
+        charts.timeline = new Chart($('timelineChart'), {
+          type: 'line',
+          data: {
+            labels: last50.map((a, i) => i + 1),
+            datasets: [{
+              data: last50.map(a => a.ath_mult || 1),
+              borderColor: colors.green,
+              backgroundColor: 'rgba(16, 185, 129, 0.1)',
+              fill: true,
+              tension: 0.3,
+              pointRadius: 2,
+            }],
+          },
+          options: {
+            ...chartOptions,
+            scales: {
+              ...chartOptions.scales,
+              y: { ...chartOptions.scales.y, min: 0 },
+            },
+          },
+        });
+      }
+    }
+
+    function renderAlertsTable(alerts) {
+      const tbody = $('alertsTable').querySelector('tbody');
+      tbody.innerHTML = '';
+
+      alerts.forEach(a => {
+        const tr = document.createElement('tr');
+        const date = a.alert_ts ? new Date(a.alert_ts).toLocaleString() : '—';
+        
+        tr.innerHTML = `
+          <td title="${a.alert_id}">${(a.alert_id || '').slice(0, 8)}…</td>
+          <td>${date}</td>
+          <td>${fmt(a.ath_mult, 2)}x</td>
+          <td>${fmt(a.dd_overall_pct, 1)}%</td>
+          <td>${fmt(a.dd_pre2x_pct, 1) || '—'}%</td>
+          <td>${hitBadge(a.hit_2x)}</td>
+          <td>${hitBadge(a.hit_3x)}</td>
+          <td>${hitBadge(a.hit_4x)}</td>
+          <td>${fmt(a.time_to_2x_min, 1) || '—'}</td>
+          <td>${fmt(a.time_to_3x_min, 1) || '—'}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function hitBadge(hit) {
+      return hit 
+        ? '<span class="hit-badge yes">✓</span>'
+        : '<span class="hit-badge no">✗</span>';
+    }
+
+    function fmt(v, decimals) {
+      if (v == null) return '—';
+      return Number(v).toFixed(decimals);
+    }
+
+    // Init
+    loadRuns();
+    $('load').onclick = loadCallerData;
+    $('callerInput').onkeydown = e => { if (e.key === 'Enter') loadCallerData(); };
+  </script>
+</body>
+</html>
+

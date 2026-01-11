@@ -1,0 +1,22 @@
+{
+  "run_id": "test-debug",
+  "run_type": "path-only",
+  "created_at": "2026-01-10T02:46:22.685Z",
+  "started_at": "2026-01-10T02:46:22.688Z",
+  "status": "running",
+  "dataset": {
+    "interval": "",
+    "calls_count": 0
+  },
+  "parameters": {},
+  "schema_version": {
+    "manifest": "1.0.0",
+    "artifacts": "1.0.0"
+  },
+  "artifacts": {
+    "alerts": {
+      "rows": 1,
+      "path": "inputs/alerts.parquet"
+    }
+  }
+}

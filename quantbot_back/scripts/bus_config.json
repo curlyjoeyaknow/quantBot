@@ -1,0 +1,49 @@
+{
+  "duckdb_path": "data/alerts.duckdb",
+  "bus_root": "data/bus",
+  "poll_interval_s": 1.0,
+  "lock_timeout_s": 120,
+  "export": {
+    "enabled": true,
+    "export_dir": "data/exports",
+    "jobs": [
+      {
+        "name": "alerts_std",
+        "type": "parquet",
+        "path": "alerts_std.parquet",
+        "sql": "SELECT * FROM canon.alerts_std"
+      },
+      {
+        "name": "alerts_std_tradable",
+        "type": "parquet",
+        "path": "alerts_std_tradable.parquet",
+        "sql": "SELECT * FROM canon.alerts_std WHERE mint IS NOT NULL AND trim(mint) <> ''"
+      },
+      {
+        "name": "schema_schemas",
+        "type": "parquet",
+        "path": "schema_schemas.parquet",
+        "sql": "SELECT schema_name FROM information_schema.schemata ORDER BY schema_name"
+      },
+      {
+        "name": "schema_objects",
+        "type": "parquet",
+        "path": "schema_objects.parquet",
+        "sql": "SELECT table_schema, table_name, table_type FROM information_schema.tables ORDER BY table_schema, table_type, table_name"
+      },
+      {
+        "name": "schema_columns",
+        "type": "parquet",
+        "path": "schema_columns.parquet",
+        "sql": "SELECT table_schema, table_name, column_name, data_type, is_nullable, ordinal_position FROM information_schema.columns ORDER BY table_schema, table_name, ordinal_position"
+      },
+      {
+        "name": "schema_views",
+        "type": "parquet",
+        "path": "schema_views.parquet",
+        "sql": "SELECT table_schema, table_name, view_definition FROM information_schema.views ORDER BY table_schema, table_name"
+      }
+    ]
+  }
+}
+

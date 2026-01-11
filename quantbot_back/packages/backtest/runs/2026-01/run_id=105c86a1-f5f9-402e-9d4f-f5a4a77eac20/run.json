@@ -1,0 +1,23 @@
+{
+  "run_id": "105c86a1-f5f9-402e-9d4f-f5a4a77eac20",
+  "run_type": "path-only",
+  "created_at": "2026-01-10T12:26:56.926Z",
+  "started_at": "2026-01-10T12:26:56.926Z",
+  "completed_at": "2026-01-10T12:26:56.934Z",
+  "status": "failed",
+  "dataset": {
+    "from": "2024-01-01T00:00:00.000+00:00",
+    "to": "2024-01-02T00:00:00.000+00:00",
+    "interval": "1m",
+    "calls_count": 1
+  },
+  "parameters": {},
+  "schema_version": {
+    "manifest": "1.0.0",
+    "artifacts": "1.0.0"
+  },
+  "artifacts": {},
+  "logs": {
+    "stderr": "logs/stderr.txt"
+  }
+}

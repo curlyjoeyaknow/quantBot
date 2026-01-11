@@ -1,0 +1,10 @@
+[Unit]
+Description=QuantBot Catalog Sync Timer
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=5min
+
+[Install]
+WantedBy=timers.target
+

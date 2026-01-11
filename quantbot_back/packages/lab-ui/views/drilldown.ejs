@@ -1,0 +1,802 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lab UI — Trade Drill-Down</title>
+  <link rel="stylesheet" href="/public/style.css" />
+  <script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script>
+  <style>
+    :root {
+      --accent-green: #10b981;
+      --accent-red: #ef4444;
+      --accent-blue: #3b82f6;
+      --accent-purple: #8b5cf6;
+      --accent-amber: #f59e0b;
+      --accent-cyan: #06b6d4;
+    }
+    
+    .drilldown-grid {
+      display: grid;
+      grid-template-columns: 1fr 380px;
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+    
+    @media (max-width: 1100px) {
+      .drilldown-grid { grid-template-columns: 1fr; }
+    }
+    
+    .chart-section {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    
+    .chart-header {
+      padding: 1rem 1.25rem;
+      background: rgba(0,0,0,0.2);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+    
+    .chart-title {
+      font-size: 1rem;
+      font-weight: 600;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    
+    .chart-title .mint {
+      font-size: 0.75rem;
+      color: var(--muted);
+      font-weight: 400;
+    }
+    
+    .trade-badges {
+      display: flex;
+      gap: 0.5rem;
+      flex-wrap: wrap;
+    }
+    
+    .trade-badge {
+      padding: 0.25rem 0.6rem;
+      border-radius: 6px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      font-family: 'JetBrains Mono', monospace;
+    }
+    
+    .trade-badge.ath { background: rgba(16, 185, 129, 0.2); color: var(--accent-green); }
+    .trade-badge.dd { background: rgba(239, 68, 68, 0.2); color: var(--accent-red); }
+    .trade-badge.time { background: rgba(59, 130, 246, 0.2); color: var(--accent-blue); }
+    .trade-badge.hit { background: rgba(139, 92, 246, 0.2); color: var(--accent-purple); }
+    
+    #chart-container {
+      height: 450px;
+      width: 100%;
+    }
+    
+    .chart-legend {
+      display: flex;
+      justify-content: center;
+      gap: 1.5rem;
+      padding: 0.6rem;
+      background: rgba(0,0,0,0.2);
+      border-top: 1px solid var(--border);
+      font-size: 0.75rem;
+    }
+    
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    
+    .legend-marker {
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+    }
+    
+    .legend-marker.alert { background: var(--accent-amber); }
+    .legend-marker.entry { background: var(--accent-blue); }
+    .legend-marker.exit { background: var(--accent-purple); }
+    .legend-marker.ath { background: var(--accent-green); }
+    
+    .event-log {
+      background: rgba(0,0,0,0.15);
+      border-top: 1px solid var(--border);
+      padding: 0.75rem 1rem;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    
+    .event-log-title {
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: var(--muted);
+    }
+    
+    .event-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.75rem;
+    }
+    
+    .event-table th {
+      text-align: left;
+      padding: 0.4rem 0.5rem;
+      border-bottom: 2px solid var(--border);
+      color: var(--muted);
+      font-weight: 600;
+      font-size: 0.7rem;
+      text-transform: uppercase;
+    }
+    
+    .event-table td {
+      padding: 0.4rem 0.5rem;
+      border-bottom: 1px solid var(--border);
+      font-family: 'JetBrains Mono', monospace;
+    }
+    
+    .event-table tr:hover { background: rgba(122, 162, 255, 0.05); }
+    
+    .event-type { font-weight: 600; }
+    .event-type-alert { color: var(--accent-amber); }
+    .event-type-entry { color: var(--accent-blue); }
+    .event-type-sl { color: var(--accent-red); }
+    .event-type-tp { color: var(--accent-green); }
+    .event-type-horizon { color: var(--muted); }
+    
+    .change-positive { color: var(--accent-green); }
+    .change-negative { color: var(--accent-red); }
+    
+    .trades-panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      max-height: 700px;
+    }
+    
+    .trades-header {
+      padding: 0.75rem 1rem;
+      background: rgba(0,0,0,0.2);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .trades-header h3 {
+      margin: 0;
+      font-size: 0.9rem;
+    }
+    
+    .trades-list {
+      flex: 1;
+      overflow-y: auto;
+      min-height: 0;
+    }
+    
+    .trade-row {
+      padding: 0.6rem 0.75rem;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      transition: background 0.15s;
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 0.5rem;
+      align-items: center;
+    }
+    
+    .trade-row:hover { background: rgba(122, 162, 255, 0.08); }
+    .trade-row.selected {
+      background: rgba(122, 162, 255, 0.12);
+      border-left: 3px solid var(--accent);
+    }
+    
+    .trade-mint {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem;
+      color: var(--muted);
+      word-break: break-all;
+    }
+    
+    .trade-date {
+      font-size: 0.7rem;
+      color: var(--muted);
+    }
+    
+    .trade-ath {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 600;
+      font-size: 0.85rem;
+    }
+    
+    .trade-ath.high { color: var(--accent-green); }
+    .trade-ath.medium { color: var(--accent-amber); }
+    .trade-ath.low { color: var(--muted); }
+    
+    .trade-indicator {
+      font-size: 0.7rem;
+      padding: 2px 5px;
+      border-radius: 3px;
+    }
+    
+    .trade-indicator.hit2x { background: rgba(16, 185, 129, 0.2); color: var(--accent-green); }
+    .trade-indicator.miss { background: rgba(100, 116, 139, 0.2); color: var(--muted); }
+    
+    .caller-stats-bar {
+      display: flex;
+      gap: 1rem;
+      padding: 0.75rem 1rem;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+    }
+    
+    .caller-stat {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.8rem;
+    }
+    
+    .caller-stat-label { color: var(--muted); }
+    .caller-stat-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-weight: 600;
+    }
+    
+    .caller-stat-value.positive { color: var(--accent-green); }
+    .caller-stat-value.negative { color: var(--accent-red); }
+    
+    .no-chart-msg {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 450px;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+    
+    .select-row {
+      display: flex;
+      gap: 0.75rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    
+    .select-row select {
+      flex: 1;
+      min-width: 180px;
+      max-width: 350px;
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <a href="/dashboard">Dashboard</a>
+    <a href="/strategies">Strategies</a>
+    <a href="/runs">Runs</a>
+    <a href="/leaderboard">Leaderboard</a>
+    <a href="/scored">Scored</a>
+    <a href="/truth">Truth</a>
+    <a href="/policies">Policies</a>
+  </nav>
+
+  <main>
+    <h1>⚡ Trade Drill-Down</h1>
+    <p class="hint">Interactive candlestick charts with trade events, entry/exit markers, and price levels.</p>
+
+    <section class="card">
+      <div class="select-row">
+        <label>Run:</label>
+        <select id="runSelect">
+          <option value="">Loading runs...</option>
+        </select>
+        <label>Caller:</label>
+        <select id="callerSelect">
+          <option value="">Select run first...</option>
+        </select>
+        <button id="load">Load Trades</button>
+        <span id="msg"></span>
+      </div>
+    </section>
+
+    <!-- Caller Stats -->
+    <section id="callerStatsBar" class="caller-stats-bar" style="display: none;">
+      <div class="caller-stat">
+        <span class="caller-stat-label">Score:</span>
+        <span class="caller-stat-value" id="statScore">—</span>
+      </div>
+      <div class="caller-stat">
+        <span class="caller-stat-label">Trades:</span>
+        <span class="caller-stat-value" id="statN">—</span>
+      </div>
+      <div class="caller-stat">
+        <span class="caller-stat-label">Median ATH:</span>
+        <span class="caller-stat-value" id="statAth">—</span>
+      </div>
+      <div class="caller-stat">
+        <span class="caller-stat-label">Hit 2x:</span>
+        <span class="caller-stat-value" id="statHit2x">—</span>
+      </div>
+      <div class="caller-stat">
+        <span class="caller-stat-label">Hit 5x:</span>
+        <span class="caller-stat-value" id="statHit5x">—</span>
+      </div>
+      <div class="caller-stat">
+        <span class="caller-stat-label">Med T2x:</span>
+        <span class="caller-stat-value" id="statT2x">—</span>
+      </div>
+      <div class="caller-stat">
+        <span class="caller-stat-label">Risk DD:</span>
+        <span class="caller-stat-value negative" id="statDD">—</span>
+      </div>
+    </section>
+
+    <!-- Main Grid -->
+    <div class="drilldown-grid">
+      <!-- Chart Section -->
+      <div class="chart-section">
+        <div class="chart-header">
+          <div class="chart-title" id="chartTitle">Select a trade to view chart</div>
+          <div class="trade-badges" id="tradeBadges" style="display: none;">
+            <span class="trade-badge ath" id="badgeAth">—</span>
+            <span class="trade-badge dd" id="badgeDD">—</span>
+            <span class="trade-badge time" id="badgeTime">—</span>
+            <span class="trade-badge hit" id="badgeHit">—</span>
+          </div>
+        </div>
+        <div id="chart-container">
+          <div class="no-chart-msg">Select a trade from the list to view its chart</div>
+        </div>
+        <div class="chart-legend">
+          <div class="legend-item"><div class="legend-marker alert"></div> Alert</div>
+          <div class="legend-item"><div class="legend-marker entry"></div> Entry</div>
+          <div class="legend-item"><div class="legend-marker exit"></div> Exit</div>
+          <div class="legend-item"><div class="legend-marker ath"></div> ATH</div>
+        </div>
+        <div class="event-log" id="eventLog" style="display: none;">
+          <div class="event-log-title">Trade Timeline</div>
+          <div id="eventList"></div>
+        </div>
+      </div>
+
+      <!-- Trades List -->
+      <div class="trades-panel">
+        <div class="trades-header">
+          <h3>Trades (<span id="tradeCount">0</span>)</h3>
+        </div>
+        <div class="trades-list" id="tradesList">
+          <div style="padding: 2rem; text-align: center; color: var(--muted);">
+            Select a caller to view trades
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    const $ = id => document.getElementById(id);
+    let chart = null;
+    let candleSeries = null;
+    let currentTrades = [];
+    let selectedIndex = -1;
+    let currentRunId = '';
+
+    // Load runs
+    async function loadRuns() {
+      try {
+        const res = await fetch('/api/baseline-runs');
+        const runs = await res.json();
+        
+        const select = $('runSelect');
+        select.innerHTML = '<option value="">Select a run...</option>';
+        
+        for (const r of runs) {
+          const opt = document.createElement('option');
+          opt.value = r.run_id;
+          const name = r.run_name || r.run_id.slice(0, 8);
+          const date = r.created_at ? new Date(r.created_at).toLocaleDateString() : '';
+          opt.textContent = `${name} (${r.alerts_ok || 0} alerts, ${date})`;
+          select.appendChild(opt);
+        }
+
+        // Check URL params
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('run')) {
+          select.value = params.get('run');
+          await loadCallers();
+          if (params.get('caller')) {
+            $('callerSelect').value = params.get('caller');
+            await loadTrades();
+          }
+        }
+      } catch (e) {
+        $('runSelect').innerHTML = '<option value="">Error loading runs</option>';
+      }
+    }
+
+    // Load callers for selected run
+    async function loadCallers() {
+      const runId = $('runSelect').value;
+      const callerSelect = $('callerSelect');
+      
+      if (!runId) {
+        callerSelect.innerHTML = '<option value="">Select run first...</option>';
+        return;
+      }
+
+      currentRunId = runId;
+      callerSelect.innerHTML = '<option value="">Loading callers...</option>';
+
+      try {
+        const res = await fetch(`/api/scored-leaderboard/${runId}?min_trades=10`);
+        const data = await res.json();
+
+        if (data.error) {
+          callerSelect.innerHTML = `<option value="">Error: ${data.error}</option>`;
+          return;
+        }
+
+        callerSelect.innerHTML = '<option value="">Select a caller...</option>';
+        data.forEach(c => {
+          const opt = document.createElement('option');
+          opt.value = c.caller;
+          opt.textContent = `${c.caller} (${c.n} trades, ${c.score_v2} score)`;
+          callerSelect.appendChild(opt);
+        });
+      } catch (e) {
+        callerSelect.innerHTML = `<option value="">Error: ${e.message}</option>`;
+      }
+    }
+
+    // Load trades for selected caller
+    async function loadTrades() {
+      const runId = $('runSelect').value;
+      const caller = $('callerSelect').value;
+
+      if (!runId || !caller) {
+        $('msg').textContent = 'Select run and caller';
+        return;
+      }
+
+      $('msg').textContent = 'Loading...';
+
+      try {
+        const res = await fetch(`/api/drilldown/${runId}/${encodeURIComponent(caller)}`);
+        const data = await res.json();
+
+        if (data.error) {
+          $('msg').textContent = 'Error: ' + data.error;
+          return;
+        }
+
+        // Update caller stats
+        if (data.stats) {
+          $('callerStatsBar').style.display = 'flex';
+          const s = data.stats;
+          $('statScore').textContent = s.score_v2;
+          $('statScore').className = 'caller-stat-value ' + (s.score_v2 > 0 ? 'positive' : 'negative');
+          $('statN').textContent = s.n;
+          $('statAth').textContent = s.median_ath + 'x';
+          $('statHit2x').textContent = s.hit2x_pct + '%';
+          $('statHit5x').textContent = (s.hit5x_pct || 0) + '%';
+          $('statT2x').textContent = s.median_t2x_min ? s.median_t2x_min + 'm' : '—';
+          $('statDD').textContent = s.risk_dd_pct + '%';
+        }
+
+        currentTrades = data.alerts || [];
+        renderTradesList();
+        
+        if (currentTrades.length > 0) {
+          selectTrade(0);
+        }
+
+        $('msg').textContent = `${currentTrades.length} trades loaded`;
+
+        // Update URL
+        const url = new URL(window.location);
+        url.searchParams.set('run', runId);
+        url.searchParams.set('caller', caller);
+        window.history.replaceState({}, '', url);
+      } catch (e) {
+        $('msg').textContent = 'Error: ' + e.message;
+      }
+    }
+
+    function renderTradesList() {
+      const container = $('tradesList');
+      $('tradeCount').textContent = currentTrades.length;
+
+      if (currentTrades.length === 0) {
+        container.innerHTML = '<div style="padding: 2rem; text-align: center; color: var(--muted);">No trades found</div>';
+        return;
+      }
+
+      container.innerHTML = currentTrades.map((t, idx) => {
+        const athClass = t.ath_mult >= 5 ? 'high' : t.ath_mult >= 2 ? 'medium' : 'low';
+        const selected = idx === selectedIndex ? 'selected' : '';
+        const hitBadge = t.hit_2x 
+          ? '<span class="trade-indicator hit2x">2x✓</span>'
+          : '<span class="trade-indicator miss">—</span>';
+        const date = t.alert_ts ? new Date(t.alert_ts).toLocaleString() : '—';
+
+        return `
+          <div class="trade-row ${selected}" onclick="selectTrade(${idx})">
+            <div>
+              <div class="trade-mint">${t.mint}</div>
+              <div class="trade-date">${date}</div>
+            </div>
+            <div class="trade-ath ${athClass}">${t.ath_mult}x</div>
+            ${hitBadge}
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function selectTrade(idx) {
+      selectedIndex = idx;
+      renderTradesList();
+
+      const trade = currentTrades[idx];
+      await renderChart(trade);
+    }
+
+    async function renderChart(trade) {
+      const container = $('chart-container');
+
+      // Update header
+      $('chartTitle').innerHTML = `
+        <span>${trade.mint.slice(0, 6)}...${trade.mint.slice(-4)}</span>
+        <span class="mint">${trade.mint}</span>
+      `;
+
+      // Update badges
+      $('tradeBadges').style.display = 'flex';
+      $('badgeAth').textContent = trade.ath_mult + 'x ATH';
+      $('badgeDD').textContent = (trade.dd_overall_pct || 0) + '% DD';
+      $('badgeTime').textContent = trade.time_to_2x_min ? trade.time_to_2x_min + 'm to 2x' : 'No 2x';
+      $('badgeHit').textContent = trade.hit_5x ? '5x✓' : trade.hit_3x ? '3x✓' : trade.hit_2x ? '2x✓' : '—';
+
+      // Try to load OHLCV data
+      const alertTs = trade.alert_ts_unix || Math.floor(new Date(trade.alert_ts).getTime() / 1000);
+      const horizonEnd = alertTs + (trade.horizon_hours || 48) * 3600;
+
+      try {
+        const ohlcvRes = await fetch(`/api/ohlcv/${trade.mint}?from=${alertTs}&to=${horizonEnd}&interval=5m`);
+        const ohlcvData = await ohlcvRes.json();
+
+        if (ohlcvData.candles && ohlcvData.candles.length >= 5) {
+          renderCandlestickChart(container, trade, ohlcvData.candles);
+        } else {
+          renderPlaceholderChart(container, trade);
+        }
+      } catch (e) {
+        renderPlaceholderChart(container, trade);
+      }
+
+      // Render event log
+      renderEventLog(trade);
+    }
+
+    function renderCandlestickChart(container, trade, candles) {
+      // Remove existing chart
+      if (chart) {
+        chart.remove();
+        chart = null;
+      }
+
+      container.innerHTML = '';
+
+      chart = LightweightCharts.createChart(container, {
+        width: container.clientWidth,
+        height: 450,
+        layout: {
+          background: { type: 'solid', color: '#101826' },
+          textColor: '#94a3b8',
+        },
+        grid: {
+          vertLines: { color: '#1d2a44' },
+          horzLines: { color: '#1d2a44' },
+        },
+        crosshair: {
+          mode: LightweightCharts.CrosshairMode.Normal,
+        },
+        timeScale: {
+          timeVisible: true,
+          secondsVisible: false,
+        },
+        rightPriceScale: {
+          visible: true,
+          borderColor: '#1d2a44',
+          scaleMargins: { top: 0.1, bottom: 0.1 },
+        },
+        localization: {
+          priceFormatter: (price) => price.toFixed(8),
+        },
+      });
+
+      candleSeries = chart.addCandlestickSeries({
+        upColor: '#10b981',
+        downColor: '#ef4444',
+        borderUpColor: '#10b981',
+        borderDownColor: '#ef4444',
+        wickUpColor: '#10b981',
+        wickDownColor: '#ef4444',
+        priceFormat: {
+          type: 'price',
+          precision: 8,
+          minMove: 0.00000001,
+        },
+      });
+
+      candleSeries.setData(candles);
+
+      // Add markers
+      const markers = [];
+      const alertTs = trade.alert_ts_unix || Math.floor(new Date(trade.alert_ts).getTime() / 1000);
+
+      // Alert marker
+      markers.push({
+        time: alertTs,
+        position: 'belowBar',
+        color: '#f59e0b',
+        shape: 'arrowUp',
+        text: 'ALERT',
+      });
+
+      // Entry marker (30s after alert)
+      if (trade.entry_price) {
+        markers.push({
+          time: alertTs + 30,
+          position: 'belowBar',
+          color: '#3b82f6',
+          shape: 'arrowUp',
+          text: 'ENTRY',
+        });
+      }
+
+      candleSeries.setMarkers(markers);
+
+      // Add price lines
+      if (trade.entry_price && isFinite(trade.entry_price)) {
+        candleSeries.createPriceLine({
+          price: trade.entry_price,
+          color: '#3b82f6',
+          lineWidth: 2,
+          lineStyle: LightweightCharts.LineStyle.Solid,
+          axisLabelVisible: true,
+          title: 'Entry',
+        });
+
+        // ATH price line
+        const athPrice = trade.entry_price * trade.ath_mult;
+        if (isFinite(athPrice)) {
+          candleSeries.createPriceLine({
+            price: athPrice,
+            color: '#10b981',
+            lineWidth: 1,
+            lineStyle: LightweightCharts.LineStyle.Dotted,
+            axisLabelVisible: true,
+            title: `ATH ${trade.ath_mult}x`,
+          });
+        }
+      }
+
+      chart.timeScale().fitContent();
+
+      // Handle resize
+      const resizeHandler = () => {
+        if (chart) chart.applyOptions({ width: container.clientWidth });
+      };
+      window.addEventListener('resize', resizeHandler);
+    }
+
+    function renderPlaceholderChart(container, trade) {
+      if (chart) {
+        chart.remove();
+        chart = null;
+      }
+
+      container.innerHTML = `
+        <div class="no-chart-msg" style="flex-direction: column; gap: 0.5rem;">
+          <div>📊 No OHLCV data available for this token</div>
+          <div style="font-size: 0.8rem;">Mint: ${trade.mint}</div>
+          <div style="font-size: 0.75rem; color: var(--muted);">
+            ATH: ${trade.ath_mult}x | DD: ${trade.dd_overall_pct || 0}% | T2x: ${trade.time_to_2x_min || '—'}m
+          </div>
+        </div>
+      `;
+    }
+
+    function renderEventLog(trade) {
+      const eventLog = $('eventLog');
+      const eventList = $('eventList');
+
+      const alertTs = trade.alert_ts_unix || Math.floor(new Date(trade.alert_ts).getTime() / 1000);
+      const alertDate = new Date(alertTs * 1000).toLocaleString();
+
+      // Build events
+      const events = [
+        { type: 'alert', time: alertDate, desc: 'Alert received', price: null, change: null },
+        { type: 'entry', time: new Date((alertTs + 30) * 1000).toLocaleString(), desc: 'Position opened', price: trade.entry_price, change: 0 },
+      ];
+
+      if (trade.hit_2x && trade.time_to_2x_min) {
+        const t2xTs = alertTs + trade.time_to_2x_min * 60;
+        events.push({
+          type: 'tp',
+          time: new Date(t2xTs * 1000).toLocaleString(),
+          desc: '2x milestone',
+          price: trade.entry_price ? trade.entry_price * 2 : null,
+          change: 100,
+        });
+      }
+
+      if (trade.hit_5x && trade.time_to_5x_min) {
+        const t5xTs = alertTs + trade.time_to_5x_min * 60;
+        events.push({
+          type: 'tp',
+          time: new Date(t5xTs * 1000).toLocaleString(),
+          desc: '5x milestone',
+          price: trade.entry_price ? trade.entry_price * 5 : null,
+          change: 400,
+        });
+      }
+
+      // Final ATH
+      events.push({
+        type: trade.ath_mult >= 2 ? 'tp' : 'horizon',
+        time: '—',
+        desc: `Peak ATH: ${trade.ath_mult}x`,
+        price: trade.entry_price ? trade.entry_price * trade.ath_mult : null,
+        change: (trade.ath_mult - 1) * 100,
+      });
+
+      eventLog.style.display = 'block';
+
+      let html = '<table class="event-table"><thead><tr><th>Event</th><th>Time</th><th style="text-align:right;">Change</th></tr></thead><tbody>';
+
+      events.forEach(e => {
+        const typeClass = e.type === 'alert' ? 'event-type-alert' 
+          : e.type === 'entry' ? 'event-type-entry'
+          : e.type === 'tp' ? 'event-type-tp'
+          : e.type === 'sl' ? 'event-type-sl'
+          : 'event-type-horizon';
+        
+        const changeClass = e.change > 0 ? 'change-positive' : e.change < 0 ? 'change-negative' : '';
+        const changeStr = e.change != null ? (e.change >= 0 ? '+' : '') + e.change.toFixed(0) + '%' : '—';
+
+        html += `<tr>
+          <td class="event-type ${typeClass}">${e.desc}</td>
+          <td>${e.time}</td>
+          <td class="${changeClass}" style="text-align:right;">${changeStr}</td>
+        </tr>`;
+      });
+
+      html += '</tbody></table>';
+      eventList.innerHTML = html;
+    }
+
+    // Init
+    loadRuns();
+    $('runSelect').onchange = loadCallers;
+    $('callerSelect').onchange = () => {};
+    $('load').onclick = loadTrades;
+  </script>
+</body>
+</html>
+

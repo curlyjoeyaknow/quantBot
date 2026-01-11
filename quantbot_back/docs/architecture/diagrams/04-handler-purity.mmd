@@ -1,0 +1,95 @@
+---
+title: Handler Purity Contract
+description: Shows what handlers CAN and CANNOT do, and where side effects live
+---
+
+# Handler Purity Contract
+
+## Overview
+
+Handlers must be pure, deterministic, and testable. They cannot perform side effects directly - all I/O, environment access, and side effects happen in adapters and composition roots.
+
+## Key Concepts
+
+- **Pure Logic**: Handlers contain only business logic
+- **Port Dependencies**: Handlers depend on ports (interfaces), not implementations
+- **No Side Effects**: Handlers cannot perform I/O, read env, or access global state
+- **Side Effects Location**: All side effects live in adapters and composition roots
+
+## Diagram
+
+```mermaid
+graph TB
+    subgraph handler[Handler - Pure Logic]
+        handlerCode[Handler Code<br/>✅ Pure transformation<br/>✅ Port dependencies<br/>✅ Deterministic<br/>✅ Testable]
+    end
+
+    subgraph allowed[✅ ALLOWED in Handlers]
+        allowed1[Use ports ClockPort.nowMs]
+        allowed2[Call port methods]
+        allowed3[Pure business logic]
+        allowed4[Return structured results]
+        allowed5[Import from @quantbot/core]
+    end
+
+    subgraph forbidden[❌ FORBIDDEN in Handlers]
+        forbidden1[process.env]
+        forbidden2[Date.now or new Date]
+        forbidden3[fs, path, os modules]
+        forbidden4[console.log or logger]
+        forbidden5[Network I/O directly]
+        forbidden6[Database connections]
+        forbidden7[Global state access]
+    end
+
+    subgraph adapters[Adapters - Side Effects]
+        adapterCode[Adapter Code<br/>✅ Can read process.env<br/>✅ Can use Date.now<br/>✅ Can access filesystem<br/>✅ Can perform I/O<br/>✅ Can log to console]
+    end
+
+    subgraph composition[Composition Roots - Wiring]
+        compositionCode[CLI Commands<br/>✅ Read environment<br/>✅ Resolve paths<br/>✅ Wire adapters<br/>✅ Format output<br/>✅ Handle errors]
+    end
+
+    handlerCode -->|can use| allowed1
+    handlerCode -->|can use| allowed2
+    handlerCode -->|can use| allowed3
+    handlerCode -->|can use| allowed4
+    handlerCode -->|can use| allowed5
+
+    handlerCode -.->|cannot use| forbidden1
+    handlerCode -.->|cannot use| forbidden2
+    handlerCode -.->|cannot use| forbidden3
+    handlerCode -.->|cannot use| forbidden4
+    handlerCode -.->|cannot use| forbidden5
+    handlerCode -.->|cannot use| forbidden6
+    handlerCode -.->|cannot use| forbidden7
+
+    adapterCode -->|implements| handlerCode
+    compositionCode -->|wires| adapterCode
+    compositionCode -->|calls| handlerCode
+```
+
+## Handler Contract
+
+```typescript
+// ✅ CORRECT Handler
+export async function myHandler(
+  cmd: MyCommand,
+  ports: MyPorts,
+  ctx: HandlerContext
+): Promise<MyOutput> {
+  // Uses ports.clock.nowMs() instead of Date.now()
+  const now = ports.clock.nowMs();
+  // Pure business logic
+  const result = processCommand(cmd, now);
+  // Returns structured result
+  return { success: true, data: result };
+}
+```
+
+## Related Documentation
+
+- [Handler Contract Rules](../../.cursor/rules/20-command-handler-contract.mdc)
+- [ARCHITECTURE.md](../ARCHITECTURE.md)
+- [DETERMINISM.md](../DETERMINISM.md)
+
