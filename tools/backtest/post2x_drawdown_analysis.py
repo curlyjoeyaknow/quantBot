@@ -28,9 +28,13 @@ from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from threading import Semaphore
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
+
+# Global semaphore to limit concurrent DuckDB connections (prevent resource exhaustion)
+_duckdb_semaphore = None
 
 # Add project root and lib to path so imports work correctly
 project_root = Path(__file__).parent.parent.parent
@@ -398,8 +402,19 @@ def load_candles_from_parquet(
     """Load candles from parquet slice for a specific mint and time window."""
     import duckdb
     
-    con = duckdb.connect(":memory:")
+    global _duckdb_semaphore
+    
+    # Acquire semaphore to limit concurrent DuckDB connections
+    if _duckdb_semaphore is not None:
+        _duckdb_semaphore.acquire()
+    
+    con = None
     try:
+        con = duckdb.connect(":memory:")
+        # Limit resources per connection to prevent exhaustion
+        con.execute("SET temp_directory='/tmp/duckdb_temp'")
+        con.execute("SET max_memory='512MB'")
+        con.execute("SET threads=1")
         # Check if slice is partitioned or single file
         is_partitioned = slice_path.is_dir()
         
@@ -434,8 +449,20 @@ def load_candles_from_parquet(
         
         cols = ['timestamp', 'open', 'high', 'low', 'close', 'volume']
         return [dict(zip(cols, r)) for r in rows]
+    except Exception as e:
+        # Log error but don't crash the whole process
+        import sys
+        print(f"Warning: Failed to load candles for {mint}: {e}", file=sys.stderr)
+        return []
     finally:
-        con.close()
+        if con is not None:
+            try:
+                con.close()
+            except:
+                pass
+        # Release semaphore
+        if _duckdb_semaphore is not None:
+            _duckdb_semaphore.release()
 
 
 def compute_distribution_stats(
@@ -651,6 +678,11 @@ def main():
     
     args = parser.parse_args()
     
+    # Initialize global semaphore to limit concurrent DuckDB connections
+    # Limit to 4 concurrent connections regardless of thread count to prevent resource exhaustion
+    global _duckdb_semaphore
+    _duckdb_semaphore = Semaphore(min(4, args.threads))
+    
     # Load alerts
     from datetime import datetime
     date_from = datetime.fromisoformat(args.date_from) if args.date_from else datetime(2024, 1, 1)
@@ -670,24 +702,31 @@ def main():
     
     def process_alert(alert_data):
         """Process a single alert (for parallel execution)."""
-        i, alert = alert_data
-        
-        # Calculate entry and end timestamps
-        entry_ts_ms = ceil_ms_to_interval_ts_ms(alert.ts_ms, args.interval_seconds)
-        end_ts_ms = entry_ts_ms + horizon_ms
-        
-        # Load candles
         try:
-            candles = load_candles_from_parquet(
-                args.slice,
-                alert.mint,
-                entry_ts_ms,
-                end_ts_ms,
-                args.interval_seconds,
-            )
+            i, alert = alert_data
+            
+            # Calculate entry and end timestamps
+            entry_ts_ms = ceil_ms_to_interval_ts_ms(alert.ts_ms, args.interval_seconds)
+            end_ts_ms = entry_ts_ms + horizon_ms
+            
+            # Load candles
+            try:
+                candles = load_candles_from_parquet(
+                    args.slice,
+                    alert.mint,
+                    entry_ts_ms,
+                    end_ts_ms,
+                    args.interval_seconds,
+                )
+            except Exception as e:
+                if args.verbose:
+                    print(f"Warning: Failed to load candles for {alert.mint}: {e}", file=sys.stderr)
+                return None
+        except KeyboardInterrupt:
+            raise
         except Exception as e:
             if args.verbose:
-                print(f"Warning: Failed to load candles for {alert.mint}: {e}", file=sys.stderr)
+                print(f"Error in process_alert: {e}", file=sys.stderr)
             return None
         
         if not candles:
@@ -746,9 +785,15 @@ def main():
             if args.verbose and completed % 100 == 0:
                 print(f"Processed {completed}/{len(alerts)} alerts...", file=sys.stderr)
             
-            result = future.result()
-            if result is not None:
-                metrics_list.append(result)
+            try:
+                result = future.result(timeout=30)  # 30 second timeout per alert
+                if result is not None:
+                    metrics_list.append(result)
+            except Exception as e:
+                if args.verbose:
+                    alert_idx = futures[future]
+                    alert = alerts[alert_idx]
+                    print(f"Warning: Timeout or error processing alert {alert_idx} (mint: {alert.mint}): {e}", file=sys.stderr)
     
     if args.verbose:
         print(f"Computed metrics for {len(metrics_list)} calls", file=sys.stderr)
