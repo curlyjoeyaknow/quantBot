@@ -39,6 +39,13 @@ from threading import Lock
 
 import duckdb
 
+# Import from consolidated lib for deduplication + quality validation
+from lib.slice_exporter import (
+    ClickHouseCfg,
+    export_slice_streaming,
+)
+from lib.helpers import dt_to_ch, sql_escape as safe_sql_string
+
 try:
     from clickhouse_driver import Client as ClickHouseClient  # type: ignore[import-untyped]
 except ImportError:
@@ -71,9 +78,7 @@ def parse_yyyy_mm_dd(s: str) -> datetime:
     return datetime.strptime(s, "%Y-%m-%d").replace(tzinfo=UTC)
 
 
-def dt_to_ch(dt: datetime) -> str:
-    """Format datetime for ClickHouse (YYYY-MM-DD HH:MM:SS)"""
-    return dt.astimezone(UTC).strftime("%Y-%m-%d %H:%M:%S")
+# dt_to_ch imported from lib.helpers
 
 
 def ceil_to_interval(dt: datetime, interval_seconds: int) -> datetime:
@@ -88,9 +93,7 @@ def pct(x: float) -> float:
     return 100.0 * x
 
 
-def safe_sql_string(s: str) -> str:
-    """Escape single quotes for SQL"""
-    return s.replace("'", "''")
+# safe_sql_string imported from lib.helpers (aliased as sql_escape)
 
 
 @dataclass(frozen=True)
@@ -262,31 +265,8 @@ def load_alerts(
 
 # -----------------------------
 # ClickHouse: coverage check and slice export
+# ClickHouseCfg imported from lib.slice_exporter
 # -----------------------------
-
-
-@dataclass(frozen=True)
-class ClickHouseCfg:
-    host: str
-    port: int
-    database: str
-    table: str
-    user: str
-    password: str
-    connect_timeout: int
-    send_receive_timeout: int
-
-    def get_client(self) -> ClickHouseClient:
-        """Create a ClickHouse client connection."""
-        return ClickHouseClient(
-            host=self.host,
-            port=self.port,
-            database=self.database,
-            user=self.user,
-            password=self.password,
-            connect_timeout=self.connect_timeout,
-            send_receive_timeout=self.send_receive_timeout,
-        )
 
 
 def ch_query_rows(cfg: ClickHouseCfg, sql: str) -> List[Dict[str, Any]]:
@@ -460,73 +440,25 @@ def export_slice_to_parquet(
 ) -> int:
     """
     Export candles for specified mints to Parquet file.
+    Uses consolidated lib/slice_exporter for deduplication + quality validation.
     Returns number of rows exported.
     """
-    if not mints:
-        return 0
-
-    chain_q = safe_sql_string(chain)
-    mint_list = ", ".join(f"'{safe_sql_string(m)}'" for m in mints)
-
-    # Query all candles for covered mints
-    sql = f"""
-SELECT
-  token_address,
-  timestamp,
-  open,
-  high,
-  low,
-  close,
-  volume
-FROM {cfg.database}.{cfg.table}
-WHERE chain = '{chain_q}'
-  AND token_address IN ({mint_list})
-  AND interval_seconds = {int(interval_seconds)}
-  AND timestamp >= toDateTime('{dt_to_ch(date_from)}')
-  AND timestamp <  toDateTime('{dt_to_ch(date_to + timedelta(days=1))}')
-ORDER BY token_address, timestamp
-""".strip()
-
-    client = cfg.get_client()
-    result = client.execute(sql, with_column_types=True)
-    rows_data, columns = result
-    col_names = [col[0] for col in columns]
-
-    if not rows_data:
-        return 0
-
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-
-    # Write to Parquet using DuckDB (avoids pandas dependency)
-    conn = duckdb.connect(":memory:")
-
-    # Create table with schema
-    conn.execute("""
-        CREATE TABLE candles (
-            token_address VARCHAR,
-            timestamp TIMESTAMP,
-            open DOUBLE,
-            high DOUBLE,
-            low DOUBLE,
-            close DOUBLE,
-            volume DOUBLE
-        )
-    """)
-
-    # Insert data in batches
-    batch_size = 10000
-    for i in range(0, len(rows_data), batch_size):
-        batch = rows_data[i : i + batch_size]
-        conn.executemany(
-            "INSERT INTO candles VALUES (?, ?, ?, ?, ?, ?, ?)", batch
-        )
-
-    # Export to Parquet
-    conn.execute(f"COPY candles TO '{output_path}' (FORMAT PARQUET)")
-    count = conn.execute("SELECT count(*) FROM candles").fetchone()[0]
-    conn.close()
-
-    return count
+    # Use consolidated exporter with deduplication and quality validation
+    # Note: date range is passed directly since caller already calculated it
+    # Setting pre_window_minutes=0 and post_window_hours=0 since dates are explicit
+    return export_slice_streaming(
+        cfg=cfg,
+        chain=chain,
+        mints=mints,
+        interval_seconds=interval_seconds,
+        date_from=date_from,
+        date_to=date_to,
+        output_path=output_path,
+        pre_window_minutes=0,  # Caller already calculated the time range
+        post_window_hours=0,   # Caller already calculated the time range
+        validate=True,
+        deduplicate=True,
+    )
 
 
 def load_candles_from_parquet(

@@ -386,16 +386,18 @@ def _export_sequential(
             mint_list = ", ".join(f"'{sql_escape(m)}'" for m in chunk)
             
             # Use GROUP BY for deduplication if enabled
+            # Using argMax(volume) selects values from the row with highest volume,
+            # which is typically the most complete/accurate candle when duplicates exist
             if deduplicate:
                 sql = f"""
 SELECT
   token_address,
   timestamp,
-  any(open) as open,
-  any(high) as high,
-  any(low) as low,
-  any(close) as close,
-  any(volume) as volume
+  argMax(open, volume) as open,
+  argMax(high, volume) as high,
+  argMax(low, volume) as low,
+  argMax(close, volume) as close,
+  max(volume) as volume
 FROM {cfg.database}.{cfg.table}
 WHERE chain = '{chain_q}'
   AND token_address IN ({mint_list})

@@ -6,6 +6,21 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Interactive EV Dashboard** (`tools/backtest/dashboard.py`) - Web-based visualization for phased stop results
+  - Built with Streamlit and Plotly for interactive data exploration
+  - **Auto-discovery**: Dropdown selector automatically finds all parquet files in output directories
+  - **Smart combo selector**: Single dropdown showing only valid Phase1/Phase2 combinations that exist in data
+  - **Dark theme**: Optimized for readability with proper contrast
+  - Real-time filtering by stop mode, stop configuration, and caller
+  - Cohort breakdown: Winners (≥3x), Losers (2x no 3x), Never 2x
+  - Key metrics: EV from entry, EV given 2x, P(reach 2x), P(3x | 2x)
+  - Interactive charts: exit multiple distributions, peak vs exit scatter, giveback analysis, exit reasons
+  - Top trades table with configurable size
+  - Strategy comparison mode to evaluate all strategies side-by-side
+  - Wildcard pattern support for loading multiple parquet files
+  - Usage: `streamlit run tools/backtest/dashboard.py` (no args needed!)
+  - Dependencies: `pip install -r tools/backtest/requirements-dashboard.txt`
+
 - **Slice Exporter Quality Validation** - Detect and report gaps during parquet export
   - New `slice_quality.py` module with `QualityMetrics` and gap detection functions
   - Analyzes coverage, gaps, duplicates, OHLC distortions, zero volume
@@ -36,6 +51,12 @@ All notable changes to this project will be documented in this file.
   - Changed from `any()` to `argMax(volume)` aggregation
   - Prefers candle with highest volume when duplicates exist
   - Reduces quality issues from duplicate candle entries
+
+- **Consolidated Slice Exporters** - Single source of truth
+  - Unified 3 duplicate exporters into `lib/slice_exporter.py`
+  - `run_baseline_all.py` now uses consolidated exporter with quality validation
+  - `alert_baseline_backtest.py` now uses consolidated exporter with deduplication
+  - All exports now use `argMax(volume)` deduplication and quality validation
 
 ### Added (Tests)
 

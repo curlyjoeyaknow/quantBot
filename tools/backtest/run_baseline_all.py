@@ -36,9 +36,17 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from statistics import median
-from typing import Any, Dict, Iterator, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 import duckdb
+
+# Import from consolidated lib instead of duplicating
+from lib.slice_exporter import (
+    ClickHouseCfg,
+    export_slice_streaming,
+    query_coverage_batched,
+)
+from lib.helpers import sql_escape
 
 try:
     from clickhouse_driver import Client as ClickHouseClient
@@ -62,11 +70,7 @@ def ceil_ms_to_interval_ts_ms(ts_ms: int, interval_seconds: int) -> int:
 def pct(x: float) -> float:
     return 100.0 * x
 
-def _sql_escape(s: str) -> str:
-    return s.replace("'", "''")
-
-def dt_to_ch(dt: datetime) -> str:
-    return dt.astimezone(UTC).strftime("%Y-%m-%d %H:%M:%S")
+# sql_escape imported from lib.helpers
 
 def _fmt(x: Any, kind: str = "num") -> str:
     if x is None:
@@ -84,11 +88,6 @@ def _fmt(x: Any, kind: str = "num") -> str:
     if kind == "num":
         return f"{x:8.4f}"
     return str(x)
-
-def batched(xs: List[str], n: int) -> Iterator[List[str]]:
-    """Yield successive n-sized chunks from xs."""
-    for i in range(0, len(xs), n):
-        yield xs[i:i+n]
 
 def parse_utc_ts(s: str) -> datetime:
     """Parse stored output format '%Y-%m-%d %H:%M:%S' as UTC datetime."""
@@ -221,167 +220,9 @@ def load_alerts(duckdb_path: str, chain: str, date_from: datetime, date_to: date
 
 
 # =============================================================================
-# ClickHouse: Coverage Check & Slice Export (batched + streaming)
+# ClickHouse: Coverage Check & Slice Export
+# Uses consolidated lib/slice_exporter.py for deduplication + quality validation
 # =============================================================================
-
-@dataclass(frozen=True)
-class ClickHouseCfg:
-    host: str
-    port: int
-    database: str
-    table: str
-    user: str
-    password: str
-    connect_timeout: int = 10
-    send_receive_timeout: int = 300
-
-    def get_client(self):
-        if ClickHouseClient is None:
-            raise SystemExit("clickhouse-driver not installed. Run: pip install clickhouse-driver")
-        return ClickHouseClient(
-            host=self.host,
-            port=self.port,
-            database=self.database,
-            user=self.user,
-            password=self.password,
-            connect_timeout=self.connect_timeout,
-            send_receive_timeout=self.send_receive_timeout,
-        )
-
-def query_coverage_batched(
-    cfg: ClickHouseCfg,
-    chain: str,
-    mints: Set[str],
-    interval_seconds: int,
-    date_from: datetime,
-    date_to: datetime,
-    ch_batch: int,
-) -> Dict[str, int]:
-    """Candle counts per token (batched IN lists to avoid query explosions)."""
-    if not mints:
-        return {}
-
-    chain_q = _sql_escape(chain)
-    mints_list = sorted(mints)
-    out: Dict[str, int] = {}
-
-    client = cfg.get_client()
-    for chunk in batched(mints_list, ch_batch):
-        mint_list = ", ".join(f"'{_sql_escape(m)}'" for m in chunk)
-        sql = f"""
-SELECT
-  token_address,
-  count() as candle_count
-FROM {cfg.database}.{cfg.table}
-WHERE chain = '{chain_q}'
-  AND token_address IN ({mint_list})
-  AND interval_seconds = {int(interval_seconds)}
-  AND timestamp >= toDateTime('{dt_to_ch(date_from)}')
-  AND timestamp <  toDateTime('{dt_to_ch(date_to + timedelta(days=1))}')
-GROUP BY token_address
-""".strip()
-        rows = client.execute(sql)
-        for token_address, candle_count in rows:
-            out[str(token_address)] = int(candle_count)
-
-    return out
-
-def export_slice_to_parquet_streaming(
-    cfg: ClickHouseCfg,
-    chain: str,
-    mints: Set[str],
-    interval_seconds: int,
-    date_from: datetime,
-    date_to: datetime,
-    output_path: Path,
-    ch_batch: int,
-    pre_window_minutes: int = 60,
-    post_window_hours: int = 72,
-    verbose: bool = False,
-) -> int:
-    """
-    Stream candles from ClickHouse in mint-batches, insert into DuckDB table in row-batches,
-    then COPY to Parquet. Avoids holding the full result set in RAM.
-    
-    FIX: date_to is midnight-start of that day. We want to include the full end day,
-    then add post_window_hours. So: (date_to + 1 day) + post_window_hours.
-    """
-    if not mints:
-        return 0
-
-    chain_q = _sql_escape(chain)
-
-    expanded_from = date_from - timedelta(minutes=pre_window_minutes)
-    # IMPORTANT FIX: date_to is midnight-start; include the whole end day, then post window
-    expanded_to = (date_to + timedelta(days=1)) + timedelta(hours=post_window_hours)
-
-    client = cfg.get_client()
-
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    con = duckdb.connect(":memory:")
-    try:
-        con.execute("""
-            CREATE TABLE candles (
-                token_address VARCHAR,
-                timestamp TIMESTAMP,
-                open DOUBLE,
-                high DOUBLE,
-                low DOUBLE,
-                close DOUBLE,
-                volume DOUBLE
-            )
-        """)
-
-        inserted = 0
-        row_batch: List[Tuple[Any, ...]] = []
-        row_batch_size = 50_000
-
-        mints_list = sorted(mints)
-        for chunk in batched(mints_list, ch_batch):
-            mint_list = ", ".join(f"'{_sql_escape(m)}'" for m in chunk)
-            sql = f"""
-SELECT
-  token_address,
-  timestamp,
-  open,
-  high,
-  low,
-  close,
-  volume
-FROM {cfg.database}.{cfg.table}
-WHERE chain = '{chain_q}'
-  AND token_address IN ({mint_list})
-  AND interval_seconds = {int(interval_seconds)}
-  AND timestamp >= toDateTime('{dt_to_ch(expanded_from)}')
-  AND timestamp <  toDateTime('{dt_to_ch(expanded_to)}')
-ORDER BY token_address, timestamp
-""".strip()
-
-            if verbose:
-                print(f"[clickhouse] stream chunk tokens={len(chunk)} ...", file=sys.stderr)
-
-            # execute_iter streams rows without collecting everything in memory
-            for row in client.execute_iter(sql):
-                row_batch.append(row)
-                if len(row_batch) >= row_batch_size:
-                    con.executemany("INSERT INTO candles VALUES (?, ?, ?, ?, ?, ?, ?)", row_batch)
-                    inserted += len(row_batch)
-                    row_batch.clear()
-
-        if row_batch:
-            con.executemany("INSERT INTO candles VALUES (?, ?, ?, ?, ?, ?, ?)", row_batch)
-            inserted += len(row_batch)
-            row_batch.clear()
-
-        con.execute(f"COPY candles TO '{_sql_escape(str(output_path))}' (FORMAT PARQUET, COMPRESSION 'zstd')")
-        count = int(con.execute("SELECT count(*) FROM candles").fetchone()[0])
-
-        if verbose:
-            print(f"[clickhouse] inserted={inserted:,} parquet_rows={count:,} -> {output_path}", file=sys.stderr)
-
-        return count
-    finally:
-        con.close()
 
 
 # =============================================================================
@@ -402,11 +243,11 @@ def partition_slice(
     sql = f"""
 COPY (
   SELECT token_address, timestamp, open, high, low, close, volume
-  FROM parquet_scan('{_sql_escape(in_path.as_posix())}')
+  FROM parquet_scan('{sql_escape(in_path.as_posix())}')
   ORDER BY token_address, timestamp
 )
-TO '{_sql_escape(out_dir.as_posix())}'
-(FORMAT PARQUET, PARTITION_BY (token_address), COMPRESSION '{_sql_escape(compression)}');
+TO '{sql_escape(out_dir.as_posix())}'
+(FORMAT PARQUET, PARTITION_BY (token_address), COMPRESSION '{sql_escape(compression)}');
 """.strip()
 
     if verbose:
@@ -1224,20 +1065,23 @@ def main() -> None:
                 raise SystemExit("No tokens have candle data in ClickHouse for this period.")
 
             if verbose:
-                print("[3/5] Exporting slice to Parquet (streaming)...", file=sys.stderr)
+                print("[3/5] Exporting slice to Parquet (streaming with quality validation)...", file=sys.stderr)
             t0 = time.time()
-            row_count = export_slice_to_parquet_streaming(
-                ch_cfg,
-                args.chain,
-                covered_mints,
-                args.interval_seconds,
-                date_from,
-                date_to,
-                slice_path,
+            # Use consolidated exporter with deduplication and quality validation
+            row_count = export_slice_streaming(
+                cfg=ch_cfg,
+                chain=args.chain,
+                mints=covered_mints,
+                interval_seconds=args.interval_seconds,
+                date_from=date_from,
+                date_to=date_to,
+                output_path=slice_path,
                 ch_batch=args.ch_batch,
                 pre_window_minutes=60,
                 post_window_hours=int(args.horizon_hours) + 24,
                 verbose=verbose,
+                validate=True,
+                deduplicate=True,
             )
             if verbose:
                 print(f"      Exported {row_count:,} candles in {time.time()-t0:.1f}s", file=sys.stderr)
