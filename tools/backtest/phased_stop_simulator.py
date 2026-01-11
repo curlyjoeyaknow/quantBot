@@ -14,22 +14,32 @@ This answers: "Do I need tighter stops pre-2x and looser stops post-2x, or does 
 
 Features:
 - Parquet output with run_id for auditability
-- Resume functionality (--resume)
-- Intelligent caching (--use-cache) for overlapping date ranges
+- Resume functionality (--resume) - for interrupted runs
+- Intelligent caching (--use-cache) - reuses results from previous runs
 - Multithreaded processing
 
 Usage:
-    # Basic run
+    # Basic run (cache metadata saved automatically for future use)
     python3 phased_stop_simulator.py --duckdb data/alerts.duckdb --slice slices/per_token --chain solana
     
-    # With caching (reuses results for overlapping dates)
+    # Reuse results from previous runs (only computes missing data)
     python3 phased_stop_simulator.py ... --use-cache --output-dir output/my_backtest
     
-    # Extend date range (only computes new dates)
+    # If interrupted, resume same run (skips already-processed mints)
+    python3 phased_stop_simulator.py ... --resume --output-dir output/my_backtest
+    
+    # Extend date range with caching (only computes new dates, reuses old)
     python3 phased_stop_simulator.py ... --use-cache --date-from 2025-01-01 --date-to 2025-06-01
     
-    # Lower min_calls (recomputes for newly included callers)
+    # Lower min_calls with caching (recomputes for newly included callers)
     python3 phased_stop_simulator.py ... --use-cache --min-calls 10
+    
+Key difference:
+    --resume: For continuing an interrupted run (same run_id, same date range)
+    --use-cache: For reusing results from previous completed runs (different run_ids, overlapping dates)
+    
+Note: Cache metadata is ALWAYS saved, so you can add --use-cache to any future run,
+      even if your first run didn't use it!
 """
 
 from __future__ import annotations
@@ -45,6 +55,7 @@ from pathlib import Path
 from threading import Semaphore
 from typing import Any, Dict, List, Optional, Tuple
 
+import csv
 import numpy as np
 import pandas as pd
 import pyarrow as pa
@@ -85,9 +96,15 @@ class PhasedTradeResult:
     exit_phase: int  # 1 or 2
     
     # Performance
-    multiple_achieved: float  # exit_price / entry_price
+    multiple_achieved: float  # exit_price / entry_price (DEPRECATED - use exit_mult)
     return_pct: float  # (exit_price - entry_price) / entry_price
     hold_time_minutes: int
+    
+    # EV-critical metrics
+    entry_mult: float  # Always 1.0 (for clarity)
+    peak_mult: float  # Highest multiple achieved while in trade (peak_price / entry_price)
+    exit_mult: float  # Final exit multiple (exit_price / entry_price)
+    giveback_from_peak_pct: float  # (peak_mult - exit_mult) / peak_mult * 100
     
     # Strategy details
     stop_mode: str  # "static", "trailing", "ladder"
@@ -102,8 +119,8 @@ class PhasedTradeResult:
     hit_5x: bool
     hit_10x: bool
     
-    # ATH tracking
-    ath_multiple: float  # Highest multiple achieved (exit_price / entry_price or peak / entry_price)
+    # ATH tracking (DEPRECATED - use peak_mult)
+    ath_multiple: float  # Highest multiple achieved (same as peak_mult, kept for compatibility)
     
     # Phase transition
     phase2_entry_price: Optional[float]  # Price when entering phase 2 (at 2x)
@@ -148,14 +165,41 @@ class StrategyPerformance:
     pct_captured_5x: float
     pct_captured_10x: float
     
-    # ATH metrics
+    # ATH metrics (DEPRECATED - use cohort metrics below)
     avg_ath_multiple: float  # Average ATH multiple across all trades
     median_ath_multiple: float
     p75_ath_multiple: float
     p90_ath_multiple: float
     
-    # Expected value
-    expected_value_per_trade: float  # avg_return_pct
+    # Cohort A: Base rates
+    p_reach_2x: float  # P(hit 2x)
+    p_reach_3x: float  # P(hit 3x)
+    p_3x_given_2x: float  # P(3x | 2x)
+    p_2x_no3x: float  # P(hit 2x but not 3x)
+    
+    # Cohort B1: Winners (hit ≥3x) - exit multiple distributions
+    n_winners: int  # Count of trades that hit 3x
+    exit_mult_winners_mean: float
+    exit_mult_winners_p50: float
+    exit_mult_winners_p75: float
+    giveback_winners_mean_pct: float  # Mean giveback from peak for winners
+    
+    # Cohort B2: Losers (hit 2x but not 3x) - exit multiple distributions
+    n_losers_2x_no3x: int  # Count of trades that hit 2x but not 3x
+    exit_mult_losers_mean: float
+    exit_mult_losers_p50: float
+    exit_mult_losers_p75: float
+    min_mult_after_2x_p10: float  # 10th percentile of minimum multiple after hitting 2x (how ugly it gets)
+    
+    # Cohort B3: Never reached 2x
+    n_never_2x: int
+    exit_mult_never_2x_mean: float
+    exit_mult_never_2x_p50: float
+    
+    # Expected value (proper EV calculation)
+    ev_pct_from_entry: float  # E[(exit_mult - 1) * 100] across all trades
+    ev_pct_given_2x: float  # E[(exit_mult - 1) * 100 | hit 2x]
+    expected_value_per_trade: float  # avg_return_pct (kept for compatibility)
 
 
 def simulate_phased_trade(
@@ -608,6 +652,10 @@ def save_trades_to_parquet(trades: List[PhasedTradeResult], run_id: str, output_
             'multiple_achieved': trade.multiple_achieved,
             'return_pct': trade.return_pct,
             'hold_time_minutes': trade.hold_time_minutes,
+            'entry_mult': trade.entry_mult,
+            'peak_mult': trade.peak_mult,
+            'exit_mult': trade.exit_mult,
+            'giveback_from_peak_pct': trade.giveback_from_peak_pct,
             'stop_mode': trade.stop_mode,
             'phase1_stop_pct': trade.phase1_stop_pct,
             'phase2_stop_pct': trade.phase2_stop_pct,
@@ -680,6 +728,10 @@ def append_trades_to_parquet(trades: List[PhasedTradeResult], run_id: str, outpu
             'multiple_achieved': trade.multiple_achieved,
             'return_pct': trade.return_pct,
             'hold_time_minutes': trade.hold_time_minutes,
+            'entry_mult': trade.entry_mult,
+            'peak_mult': trade.peak_mult,
+            'exit_mult': trade.exit_mult,
+            'giveback_from_peak_pct': trade.giveback_from_peak_pct,
             'stop_mode': trade.stop_mode,
             'phase1_stop_pct': trade.phase1_stop_pct,
             'phase2_stop_pct': trade.phase2_stop_pct,
@@ -758,6 +810,70 @@ def aggregate_performance(trades: List[PhasedTradeResult]) -> StrategyPerformanc
     p75_ath_multiple = np.percentile(ath_multiples, 75)
     p90_ath_multiple = np.percentile(ath_multiples, 90)
     
+    # Cohort A: Base rates
+    n_reach_2x = sum(1 for t in trades if t.hit_2x)
+    n_reach_3x = sum(1 for t in trades if t.hit_3x)
+    p_reach_2x = (n_reach_2x / n_trades * 100.0) if n_trades > 0 else 0.0
+    p_reach_3x = (n_reach_3x / n_trades * 100.0) if n_trades > 0 else 0.0
+    p_3x_given_2x = (n_reach_3x / n_reach_2x * 100.0) if n_reach_2x > 0 else 0.0
+    p_2x_no3x = p_reach_2x - p_reach_3x
+    
+    # Cohort B1: Winners (hit ≥3x)
+    winners = [t for t in trades if t.hit_3x]
+    n_winners = len(winners)
+    if winners:
+        exit_mult_winners = [t.exit_mult for t in winners]
+        exit_mult_winners_mean = np.mean(exit_mult_winners)
+        exit_mult_winners_p50 = np.median(exit_mult_winners)
+        exit_mult_winners_p75 = np.percentile(exit_mult_winners, 75)
+        giveback_winners = [t.giveback_from_peak_pct for t in winners]
+        giveback_winners_mean_pct = np.mean(giveback_winners)
+    else:
+        exit_mult_winners_mean = 0.0
+        exit_mult_winners_p50 = 0.0
+        exit_mult_winners_p75 = 0.0
+        giveback_winners_mean_pct = 0.0
+    
+    # Cohort B2: Losers (hit 2x but not 3x)
+    losers_2x_no3x = [t for t in trades if t.hit_2x and not t.hit_3x]
+    n_losers_2x_no3x = len(losers_2x_no3x)
+    if losers_2x_no3x:
+        exit_mult_losers = [t.exit_mult for t in losers_2x_no3x]
+        exit_mult_losers_mean = np.mean(exit_mult_losers)
+        exit_mult_losers_p50 = np.median(exit_mult_losers)
+        exit_mult_losers_p75 = np.percentile(exit_mult_losers, 75)
+        # min_mult_after_2x: track minimum multiple after hitting 2x (how ugly it gets)
+        # For now, use exit_mult as proxy (would need to track min in simulation for exact value)
+        min_mult_after_2x_p10 = np.percentile(exit_mult_losers, 10)
+    else:
+        exit_mult_losers_mean = 0.0
+        exit_mult_losers_p50 = 0.0
+        exit_mult_losers_p75 = 0.0
+        min_mult_after_2x_p10 = 0.0
+    
+    # Cohort B3: Never reached 2x
+    never_2x = [t for t in trades if not t.hit_2x]
+    n_never_2x = len(never_2x)
+    if never_2x:
+        exit_mult_never_2x = [t.exit_mult for t in never_2x]
+        exit_mult_never_2x_mean = np.mean(exit_mult_never_2x)
+        exit_mult_never_2x_p50 = np.median(exit_mult_never_2x)
+    else:
+        exit_mult_never_2x_mean = 0.0
+        exit_mult_never_2x_p50 = 0.0
+    
+    # Expected value (proper EV calculation)
+    # EV from entry = E[(exit_mult - 1) * 100]
+    exit_mults_all = [t.exit_mult for t in trades]
+    ev_pct_from_entry = np.mean([(em - 1.0) * 100.0 for em in exit_mults_all])
+    
+    # EV given hit 2x = E[(exit_mult - 1) * 100 | hit 2x]
+    if trades_hit_2x:
+        exit_mults_2x = [t.exit_mult for t in trades_hit_2x]
+        ev_pct_given_2x = np.mean([(em - 1.0) * 100.0 for em in exit_mults_2x])
+    else:
+        ev_pct_given_2x = 0.0
+    
     return StrategyPerformance(
         caller=caller,
         stop_mode=stop_mode,
@@ -787,8 +903,112 @@ def aggregate_performance(trades: List[PhasedTradeResult]) -> StrategyPerformanc
         median_ath_multiple=median_ath_multiple,
         p75_ath_multiple=p75_ath_multiple,
         p90_ath_multiple=p90_ath_multiple,
-        expected_value_per_trade=avg_return_pct,
+        p_reach_2x=p_reach_2x,
+        p_reach_3x=p_reach_3x,
+        p_3x_given_2x=p_3x_given_2x,
+        p_2x_no3x=p_2x_no3x,
+        n_winners=n_winners,
+        exit_mult_winners_mean=exit_mult_winners_mean,
+        exit_mult_winners_p50=exit_mult_winners_p50,
+        exit_mult_winners_p75=exit_mult_winners_p75,
+        giveback_winners_mean_pct=giveback_winners_mean_pct,
+        n_losers_2x_no3x=n_losers_2x_no3x,
+        exit_mult_losers_mean=exit_mult_losers_mean,
+        exit_mult_losers_p50=exit_mult_losers_p50,
+        exit_mult_losers_p75=exit_mult_losers_p75,
+        min_mult_after_2x_p10=min_mult_after_2x_p10,
+        n_never_2x=n_never_2x,
+        exit_mult_never_2x_mean=exit_mult_never_2x_mean,
+        exit_mult_never_2x_p50=exit_mult_never_2x_p50,
+        ev_pct_from_entry=ev_pct_from_entry,
+        ev_pct_given_2x=ev_pct_given_2x,
+        expected_value_per_trade=ev_pct_from_entry,  # Use proper EV
     )
+
+
+def export_results_to_csv(performances: List[StrategyPerformance], output_file: Path):
+    """Export performance results to CSV file."""
+    if not performances:
+        return
+    
+    # Ensure output directory exists
+    output_file.parent.mkdir(parents=True, exist_ok=True)
+    
+    with open(output_file, 'w', newline='') as f:
+        writer = csv.writer(f)
+        
+        # Write header
+        writer.writerow([
+            'Caller',
+            'Phase1_Stop_%',
+            'Phase2_Stop_%',
+            'Mode',
+            'N_Trades',
+            'Hit_2x',
+            'Stop_Phase1',
+            'Stop_Phase2',
+            'Avg_Return_%',
+            'Median_Return_%',
+            'Win_Rate_%',
+            'EV_From_Entry_%',
+            'EV_Given_2x_%',
+            'P_Reach_2x_%',
+            'P_3x_Given_2x_%',
+            'N_Winners',
+            'Exit_Mult_Winners_Mean',
+            'Exit_Mult_Winners_p50',
+            'Giveback_Winners_Mean_%',
+            'N_Losers_2x_No3x',
+            'Exit_Mult_Losers_Mean',
+            'Exit_Mult_Losers_p50',
+            'N_Never_2x',
+            'Exit_Mult_Never_2x_Mean',
+            'Capture_2x_%',
+            'Capture_3x_%',
+            'Capture_5x_%',
+            'Capture_10x_%',
+            'ATH_p50_Multiple',
+            'ATH_p90_Multiple',
+        ])
+        
+        # Write data rows
+        for perf in performances:
+            mode_str = perf.stop_mode
+            if perf.stop_mode == "ladder":
+                mode_str = f"ladder{perf.ladder_steps:.1f}"
+            
+            writer.writerow([
+                perf.caller,
+                f"{perf.phase1_stop_pct * 100:.0f}",
+                f"{perf.phase2_stop_pct * 100:.0f}",
+                mode_str,
+                perf.n_trades,
+                perf.n_hit_2x,
+                perf.n_stopped_phase1,
+                perf.n_stopped_phase2,
+                f"{perf.avg_return_pct:.2f}",
+                f"{perf.median_return_pct:.2f}",
+                f"{perf.win_rate:.2f}",
+                f"{perf.ev_pct_from_entry:.2f}",
+                f"{perf.ev_pct_given_2x:.2f}",
+                f"{perf.p_reach_2x:.2f}",
+                f"{perf.p_3x_given_2x:.2f}",
+                perf.n_winners,
+                f"{perf.exit_mult_winners_mean:.3f}",
+                f"{perf.exit_mult_winners_p50:.3f}",
+                f"{perf.giveback_winners_mean_pct:.2f}",
+                perf.n_losers_2x_no3x,
+                f"{perf.exit_mult_losers_mean:.3f}",
+                f"{perf.exit_mult_losers_p50:.3f}",
+                perf.n_never_2x,
+                f"{perf.exit_mult_never_2x_mean:.3f}",
+                f"{perf.pct_captured_2x:.2f}",
+                f"{perf.pct_captured_3x:.2f}",
+                f"{perf.pct_captured_5x:.2f}",
+                f"{perf.pct_captured_10x:.2f}",
+                f"{perf.median_ath_multiple:.3f}",
+                f"{perf.p90_ath_multiple:.3f}",
+            ])
 
 
 def print_results(performances: List[StrategyPerformance], output_format: str):
@@ -883,8 +1103,9 @@ def main():
     parser.add_argument("--threads", type=int, default=4, help="Number of threads")
     parser.add_argument("--output", choices=["table", "json"], default="table", help="Output format")
     parser.add_argument("--output-dir", type=str, default="output/phased_stop_results", help="Output directory for parquet files")
-    parser.add_argument("--resume", action="store_true", help="Resume from existing results")
-    parser.add_argument("--use-cache", action="store_true", help="Use cached results for overlapping date ranges")
+    parser.add_argument("--resume", action="store_true", help="Resume interrupted run (skip already-processed mints in current run_id)")
+    parser.add_argument("--use-cache", action="store_true", help="Reuse results from previous runs with overlapping date ranges (different run_ids)")
+    parser.add_argument("--csv-output", type=str, help="Export summary results to CSV file (e.g., results/run.csv)")
     parser.add_argument("--verbose", action="store_true", help="Verbose output")
     
     args = parser.parse_args()
@@ -982,6 +1203,12 @@ def main():
         if args.verbose:
             print(f"Loading alerts from {args.duckdb}...", file=sys.stderr)
         
+        # Check if cache exists and warn user
+        cache_meta_file = output_dir / "cache_metadata.json"
+        if cache_meta_file.exists() and args.verbose:
+            print(f"\n⚠️  Cache exists but --use-cache not specified. Will recompute all data.", file=sys.stderr)
+            print(f"   Tip: Add --use-cache to reuse results from previous runs", file=sys.stderr)
+        
         alerts_to_process = load_alerts_from_duckdb(
             Path(args.duckdb),
             args.chain,
@@ -1052,6 +1279,13 @@ def main():
     
     # Convert cached trade records to PhasedTradeResult objects
     for record in cached_trades_records:
+        # Handle both old and new formats
+        entry_mult = record.get('entry_mult', 1.0)
+        peak_mult = record.get('peak_mult', record.get('ath_multiple', record['multiple_achieved']))
+        exit_mult = record.get('exit_mult', record['multiple_achieved'])
+        giveback_from_peak_pct = record.get('giveback_from_peak_pct', 
+                                             ((peak_mult - exit_mult) / peak_mult * 100.0) if peak_mult > 0 else 0.0)
+        
         trade = PhasedTradeResult(
             caller=record['caller'],
             mint=record['mint'],
@@ -1065,6 +1299,10 @@ def main():
             multiple_achieved=record['multiple_achieved'],
             return_pct=record['return_pct'],
             hold_time_minutes=record['hold_time_minutes'],
+            entry_mult=entry_mult,
+            peak_mult=peak_mult,
+            exit_mult=exit_mult,
+            giveback_from_peak_pct=giveback_from_peak_pct,
             stop_mode=record['stop_mode'],
             phase1_stop_pct=record['phase1_stop_pct'],
             phase2_stop_pct=record['phase2_stop_pct'],
@@ -1146,8 +1384,14 @@ def main():
                     ladder_steps,
                 )
                 
-                multiple = exit_price / entry_price
-                return_pct = (exit_price - entry_price) / entry_price * 100.0
+                # Calculate metrics
+                entry_mult = 1.0
+                peak_mult = ath_multiple  # Peak multiple while in trade
+                exit_mult = exit_price / entry_price
+                giveback_from_peak_pct = ((peak_mult - exit_mult) / peak_mult * 100.0) if peak_mult > 0 else 0.0
+                
+                multiple = exit_mult  # For compatibility
+                return_pct = (exit_mult - 1.0) * 100.0
                 hold_time_minutes = (exit_ts_ms - entry_ts_ms) // (1000 * 60)
                 
                 trade = PhasedTradeResult(
@@ -1163,6 +1407,10 @@ def main():
                     multiple_achieved=multiple,
                     return_pct=return_pct,
                     hold_time_minutes=hold_time_minutes,
+                    entry_mult=entry_mult,
+                    peak_mult=peak_mult,
+                    exit_mult=exit_mult,
+                    giveback_from_peak_pct=giveback_from_peak_pct,
                     stop_mode=stop_mode,
                     phase1_stop_pct=phase1_stop,
                     phase2_stop_pct=phase2_stop,
@@ -1229,13 +1477,14 @@ def main():
             if batch_trades:
                 append_trades_to_parquet(batch_trades, run_id, output_dir)
         
-        # Save cache metadata for new computation
-        if new_trades and args.use_cache:
+        # Save cache metadata for new computation (always save, even if --use-cache not specified)
+        # This allows future runs to use --use-cache even if the first run didn't
+        if new_trades:
             cache_key = generate_cache_key(args.chain, args.date_from, args.date_to)
             cache_filename = f"phased_stop_results_{run_id}.parquet"
             save_cache_metadata(output_dir, cache_key, cache_filename, args.chain, args.date_from, args.date_to, args.min_calls)
             if args.verbose:
-                print(f"✓ Saved cache metadata for future runs", file=sys.stderr)
+                print(f"✓ Saved cache metadata (use --use-cache in future runs to reuse results)", file=sys.stderr)
     
     if args.verbose:
         print(f"Simulated {len(all_trades)} total trades", file=sys.stderr)
@@ -1268,6 +1517,12 @@ def main():
     
     # Print results
     print_results(performances, args.output)
+    
+    # Export to CSV if requested
+    if args.csv_output:
+        csv_path = Path(args.csv_output)
+        export_results_to_csv(performances, csv_path)
+        print(f"\n✓ Summary exported to CSV: {csv_path}", file=sys.stderr)
     
     # Print output file location
     output_file = output_dir / f"phased_stop_results_{run_id}.parquet"

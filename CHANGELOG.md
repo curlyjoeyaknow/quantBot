@@ -39,6 +39,21 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Interactive EV Dashboard** (`tools/backtest/dashboard.py`) - Web-based visualization for phased stop results
+  - Built with Streamlit and Plotly for interactive data exploration
+  - **Auto-discovery**: Dropdown selector automatically finds all parquet files in output directories
+  - **Smart combo selector**: Single dropdown showing only valid Phase1/Phase2 combinations that exist in data
+  - **Dark theme**: Optimized for readability with proper contrast
+  - Real-time filtering by stop mode, stop configuration, and caller
+  - Cohort breakdown: Winners (≥3x), Losers (2x no 3x), Never 2x
+  - Key metrics: EV from entry, EV given 2x, P(reach 2x), P(3x | 2x)
+  - Interactive charts: exit multiple distributions, peak vs exit scatter, giveback analysis, exit reasons
+  - Top trades table with configurable size
+  - Strategy comparison mode to evaluate all strategies side-by-side
+  - Wildcard pattern support for loading multiple parquet files
+  - Usage: `streamlit run tools/backtest/dashboard.py` (no args needed!)
+  - Dependencies: `pip install -r tools/backtest/requirements-dashboard.txt`
+
 - **Slice Exporter Quality Validation** - Detect and report gaps during parquet export
   - New `slice_quality.py` module with `QualityMetrics` and gap detection functions
   - Analyzes coverage, gaps, duplicates, OHLC distortions, zero volume
@@ -69,6 +84,61 @@ All notable changes to this project will be documented in this file.
   - Changed from `any()` to `argMax(volume)` aggregation
   - Prefers candle with highest volume when duplicates exist
   - Reduces quality issues from duplicate candle entries
+
+- **Consolidated Slice Exporters** - Single source of truth
+  - Unified 3 duplicate exporters into `lib/slice_exporter.py`
+  - `run_baseline_all.py` now uses consolidated exporter with quality validation
+  - `alert_baseline_backtest.py` now uses consolidated exporter with deduplication
+  - All exports now use `argMax(volume)` deduplication and quality validation
+
+### Added (Tests)
+
+- **Slice Quality Unit Tests** (`test_slice_quality_unit.py`) - 33 tests
+  - Gap detection: continuous, single gap, multiple gaps, large gaps, tolerance
+  - Duplicate detection: single, multiple, counting accuracy
+  - Coverage calculation: full, half, low coverage thresholds
+  - OHLC distortion detection: h<l, o>h, negative values
+  - Zero volume detection and percentage calculation
+  - Quality score calculation and threshold validation
+  - Gap filling with forward fill behavior
+
+- **Slice Quality Golden Tests** (`test_slice_quality_golden.py`) - 13 tests
+  - Perfect 24h data: verifies 100% coverage, 0 gaps, high quality score
+  - Gappy data: verifies gap detection accuracy for various patterns
+  - Duplicated data: verifies duplicate counting and quality impact
+  - Distorted data: verifies OHLC constraint violation detection
+  - Zero volume data: verifies zero volume percentage tracking
+  - Realistic degraded data: simulates 86% gap / 43% low coverage issue
+  - Precision tests for exact formula verification
+
+- **Slice Exporter Regression Tests** (`test_slice_exporter_regression.py`) - 14 tests
+  - Data integrity: all candles written, large datasets, multi-token
+  - Quality preservation: no gaps/duplicates introduced, quality score preserved
+  - Edge cases: empty input, single candle, timestamp precision, large gaps
+  - Deduplication: duplicates removed, multi-token preserved
+  - Race condition guards: queue draining, exception handling
+
+- **Cohort-Based EV Metrics** - Proper Expected Value calculations with exit multiple distributions
+  - **The missing brick**: Added `entry_mult`, `peak_mult`, `exit_mult`, `giveback_from_peak_pct` to every trade
+  - **Cohort A (Base Rates)**: P(reach 2x), P(3x | 2x), P(2x but not 3x)
+  - **Cohort B1 (Winners ≥3x)**: Exit multiple distributions (mean, p50, p75), giveback from peak
+  - **Cohort B2 (Losers 2x but not 3x)**: Exit multiple distributions, min multiple after 2x (how ugly it gets)
+  - **Cohort B3 (Never 2x)**: Exit multiple distributions for stopped-out trades
+  - **Proper EV**: `EV% = E[(exit_mult - 1) × 100]` for all trades and conditional on hitting 2x
+  - **EV Formula**: `E[exit_mult | 2x] = P(3x|2x)·μ_winners + (1-P(3x|2x))·μ_losers`
+  - **Why it matters**:
+    - Before: Only capture rates → can't compute true EV
+    - After: Exact exit distributions → can compute EV for any stop strategy
+    - Enables: Tail-capture curves, optimal ladder tightening, risk/variance knobs
+  - **CSV Export**: All cohort metrics included (24 new columns)
+  - **Parquet**: Full audit trail with backward compatibility
+
+- **CSV Export for Phased Stop Simulator** - Export summary results to CSV
+  - New `--csv-output` option exports console summary table to CSV file
+  - One row per (caller, strategy) combination
+  - All performance metrics included: returns, win rate, capture rates, ATH
+  - Easy integration with spreadsheets, pandas, R
+  - Usage: `python3 phased_stop_simulator.py ... --csv-output results/run.csv`
 
 - **Intelligent Caching for Phased Stop Simulator** - Reuses results across overlapping date ranges
   - **Primary benefit**: Avoid recomputing overlapping date ranges when extending backtests
