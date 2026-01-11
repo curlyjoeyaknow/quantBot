@@ -30,8 +30,8 @@ Usage:
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional
 
-from .entry_strategies import EntryResult, immediate_entry
-from .stop_strategies import ExitResult, PhaseConfig, trailing_stop
+from entry_strategies import EntryResult, immediate_entry
+from stop_strategies import ExitResult, PhaseConfig, trailing_stop
 
 
 @dataclass
@@ -136,13 +136,24 @@ def simulate_trade(
     reference_price = alert_price if stop_reference == 'alert' else entry_result.entry_price
     
     # Execute stop strategy on remaining candles
-    exit_result: ExitResult = stop_strategy(
-        candles=entry_result.candles_after_entry,
-        entry_price=entry_result.entry_price,
-        entry_ts_ms=entry_result.entry_ts_ms,
-        reference_price=reference_price,
-        **stop_params
-    )
+    # Check if stop strategy needs reference_price (static_stop does, trailing_stop doesn't)
+    import inspect
+    sig = inspect.signature(stop_strategy)
+    if 'reference_price' in sig.parameters:
+        exit_result: ExitResult = stop_strategy(
+            candles=entry_result.candles_after_entry,
+            entry_price=entry_result.entry_price,
+            entry_ts_ms=entry_result.entry_ts_ms,
+            reference_price=reference_price,
+            **stop_params
+        )
+    else:
+        exit_result: ExitResult = stop_strategy(
+            candles=entry_result.candles_after_entry,
+            entry_price=entry_result.entry_price,
+            entry_ts_ms=entry_result.entry_ts_ms,
+            **stop_params
+        )
     
     # Calculate performance metrics
     exit_mult = exit_result.exit_price / entry_result.entry_price
