@@ -1011,7 +1011,7 @@ def main():
         print("=" * 160)
         print("\nDD_2x→3x (tokens that reached 3x)")
         print("-" * 160)
-        print(f"{'Caller':<25} {'N':>4} {'2x→3x':>6} {'p50':>6} {'p75':>6} {'p90':>6} ", end="")
+        print(f"{'Caller':<25} {'N':>4} {'Hit2x%':>7} {'2x→3x':>6} {'p50':>6} {'p75':>6} {'p90':>6} ", end="")
         print(f"{'Keep@5%':>8} {'Keep@10%':>9} {'Keep@15%':>9} {'Keep@20%':>9} {'Keep@25%':>9} {'Keep@30%':>9} {'Keep@40%':>9}")
         print("-" * 160)
         
@@ -1019,11 +1019,12 @@ def main():
             if dist.n_hit_2x_and_3x == 0:
                 continue
             
+            hit_2x_pct = (dist.n_hit_2x / dist.n_calls * 100.0) if dist.n_calls > 0 else 0.0
             p50 = f"{dist.dd_post2x_to3x_p50*100:.1f}%" if dist.dd_post2x_to3x_p50 is not None else "N/A"
             p75 = f"{dist.dd_post2x_to3x_p75*100:.1f}%" if dist.dd_post2x_to3x_p75 is not None else "N/A"
             p90 = f"{dist.dd_post2x_to3x_p90*100:.1f}%" if dist.dd_post2x_to3x_p90 is not None else "N/A"
             
-            print(f"{dist.caller:<25} {dist.n_calls:>4} {dist.n_hit_2x_and_3x:>6} {p50:>6} {p75:>6} {p90:>6} ", end="")
+            print(f"{dist.caller:<25} {dist.n_calls:>4} {hit_2x_pct:>6.1f}% {dist.n_hit_2x_and_3x:>6} {p50:>6} {p75:>6} {p90:>6} ", end="")
             print(f"{dist.pct_dd_post2x_to3x_gt_5pct:>7.1f}%" if dist.pct_dd_post2x_to3x_gt_5pct is not None else "     N/A", end=" ")
             print(f"{dist.pct_dd_post2x_to3x_gt_10pct:>8.1f}%" if dist.pct_dd_post2x_to3x_gt_10pct is not None else "      N/A", end=" ")
             print(f"{dist.pct_dd_post2x_to3x_gt_15pct:>8.1f}%" if dist.pct_dd_post2x_to3x_gt_15pct is not None else "      N/A", end=" ")
@@ -1035,7 +1036,7 @@ def main():
         print("\n" + "-" * 160)
         print("\nDD_2x→4x (tokens that reached 4x)")
         print("-" * 160)
-        print(f"{'Caller':<25} {'N':>4} {'2x→4x':>6} {'p50':>6} {'p75':>6} {'p90':>6} ", end="")
+        print(f"{'Caller':<25} {'N':>4} {'Hit2x%':>7} {'2x→4x':>6} {'p50':>6} {'p75':>6} {'p90':>6} ", end="")
         print(f"{'Keep@5%':>8} {'Keep@10%':>9} {'Keep@15%':>9} {'Keep@20%':>9} {'Keep@25%':>9} {'Keep@30%':>9} {'Keep@40%':>9}")
         print("-" * 160)
         
@@ -1043,11 +1044,12 @@ def main():
             if dist.n_hit_2x_and_4x == 0:
                 continue
             
+            hit_2x_pct = (dist.n_hit_2x / dist.n_calls * 100.0) if dist.n_calls > 0 else 0.0
             p50 = f"{dist.dd_post2x_to4x_p50*100:.1f}%" if dist.dd_post2x_to4x_p50 is not None else "N/A"
             p75 = f"{dist.dd_post2x_to4x_p75*100:.1f}%" if dist.dd_post2x_to4x_p75 is not None else "N/A"
             p90 = f"{dist.dd_post2x_to4x_p90*100:.1f}%" if dist.dd_post2x_to4x_p90 is not None else "N/A"
             
-            print(f"{dist.caller:<25} {dist.n_calls:>4} {dist.n_hit_2x_and_4x:>6} {p50:>6} {p75:>6} {p90:>6} ", end="")
+            print(f"{dist.caller:<25} {dist.n_calls:>4} {hit_2x_pct:>6.1f}% {dist.n_hit_2x_and_4x:>6} {p50:>6} {p75:>6} {p90:>6} ", end="")
             print(f"{dist.pct_dd_post2x_to4x_gt_5pct:>7.1f}%" if dist.pct_dd_post2x_to4x_gt_5pct is not None else "     N/A", end=" ")
             print(f"{dist.pct_dd_post2x_to4x_gt_10pct:>8.1f}%" if dist.pct_dd_post2x_to4x_gt_10pct is not None else "      N/A", end=" ")
             print(f"{dist.pct_dd_post2x_to4x_gt_15pct:>8.1f}%" if dist.pct_dd_post2x_to4x_gt_15pct is not None else "      N/A", end=" ")
@@ -1059,7 +1061,7 @@ def main():
         print("\n" + "-" * 160)
         print("\nDD_2x→5x (tokens that reached 5x)")
         print("-" * 160)
-        print(f"{'Caller':<25} {'N':>4} {'2x→5x':>6} {'p50':>6} {'p75':>6} {'p90':>6} ", end="")
+        print(f"{'Caller':<25} {'N':>4} {'Hit2x%':>7} {'2x→5x':>6} {'p50':>6} {'p75':>6} {'p90':>6} ", end="")
         print(f"{'Keep@5%':>8} {'Keep@10%':>9} {'Keep@15%':>9} {'Keep@20%':>9} {'Keep@25%':>9} {'Keep@30%':>9} {'Keep@40%':>9}")
         print("-" * 160)
         
@@ -1067,11 +1069,12 @@ def main():
             if dist.n_hit_2x_and_5x == 0:
                 continue
             
+            hit_2x_pct = (dist.n_hit_2x / dist.n_calls * 100.0) if dist.n_calls > 0 else 0.0
             p50 = f"{dist.dd_post2x_to5x_p50*100:.1f}%" if dist.dd_post2x_to5x_p50 is not None else "N/A"
             p75 = f"{dist.dd_post2x_to5x_p75*100:.1f}%" if dist.dd_post2x_to5x_p75 is not None else "N/A"
             p90 = f"{dist.dd_post2x_to5x_p90*100:.1f}%" if dist.dd_post2x_to5x_p90 is not None else "N/A"
             
-            print(f"{dist.caller:<25} {dist.n_calls:>4} {dist.n_hit_2x_and_5x:>6} {p50:>6} {p75:>6} {p90:>6} ", end="")
+            print(f"{dist.caller:<25} {dist.n_calls:>4} {hit_2x_pct:>6.1f}% {dist.n_hit_2x_and_5x:>6} {p50:>6} {p75:>6} {p90:>6} ", end="")
             print(f"{dist.pct_dd_post2x_to5x_gt_5pct:>7.1f}%" if dist.pct_dd_post2x_to5x_gt_5pct is not None else "     N/A", end=" ")
             print(f"{dist.pct_dd_post2x_to5x_gt_10pct:>8.1f}%" if dist.pct_dd_post2x_to5x_gt_10pct is not None else "      N/A", end=" ")
             print(f"{dist.pct_dd_post2x_to5x_gt_15pct:>8.1f}%" if dist.pct_dd_post2x_to5x_gt_15pct is not None else "      N/A", end=" ")
