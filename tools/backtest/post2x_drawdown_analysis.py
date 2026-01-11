@@ -523,8 +523,16 @@ def aggregate_by_caller(
         p50_3x_no4x, p75_3x_no4x, p90_3x_no4x = compute_distribution_stats(dd_3x_no4x)
         p50_4x_no5x, p75_4x_no5x, p90_4x_no5x = compute_distribution_stats(dd_4x_no5x)
         
-        # Percentage thresholds (stopout rates)
+        # Percentage thresholds (capture/save rates)
+        def pct_lte(values: List[float], threshold: float) -> Optional[float]:
+            """Percentage of values <= threshold (capture rate for winners)."""
+            if not values:
+                return None
+            count = sum(1 for v in values if v <= threshold)
+            return (count / len(values)) * 100.0
+        
         def pct_gt(values: List[float], threshold: float) -> Optional[float]:
+            """Percentage of values > threshold (save rate for losers)."""
             if not values:
                 return None
             count = sum(1 for v in values if v > threshold)
@@ -561,29 +569,30 @@ def aggregate_by_caller(
             dd_post4x_no5x_p75=p75_4x_no5x,
             dd_post4x_no5x_p90=p90_4x_no5x,
             # 2x→3x stopout rates
-            pct_dd_post2x_to3x_gt_5pct=pct_gt(dd_2x_to3x, 0.05),
-            pct_dd_post2x_to3x_gt_10pct=pct_gt(dd_2x_to3x, 0.10),
-            pct_dd_post2x_to3x_gt_15pct=pct_gt(dd_2x_to3x, 0.15),
-            pct_dd_post2x_to3x_gt_20pct=pct_gt(dd_2x_to3x, 0.20),
-            pct_dd_post2x_to3x_gt_25pct=pct_gt(dd_2x_to3x, 0.25),
-            pct_dd_post2x_to3x_gt_30pct=pct_gt(dd_2x_to3x, 0.30),
-            pct_dd_post2x_to3x_gt_40pct=pct_gt(dd_2x_to3x, 0.40),
-            # 2x→4x stopout rates
-            pct_dd_post2x_to4x_gt_5pct=pct_gt(dd_2x_to4x, 0.05),
-            pct_dd_post2x_to4x_gt_10pct=pct_gt(dd_2x_to4x, 0.10),
-            pct_dd_post2x_to4x_gt_15pct=pct_gt(dd_2x_to4x, 0.15),
-            pct_dd_post2x_to4x_gt_20pct=pct_gt(dd_2x_to4x, 0.20),
-            pct_dd_post2x_to4x_gt_25pct=pct_gt(dd_2x_to4x, 0.25),
-            pct_dd_post2x_to4x_gt_30pct=pct_gt(dd_2x_to4x, 0.30),
-            pct_dd_post2x_to4x_gt_40pct=pct_gt(dd_2x_to4x, 0.40),
-            # 2x→5x stopout rates
-            pct_dd_post2x_to5x_gt_5pct=pct_gt(dd_2x_to5x, 0.05),
-            pct_dd_post2x_to5x_gt_10pct=pct_gt(dd_2x_to5x, 0.10),
-            pct_dd_post2x_to5x_gt_15pct=pct_gt(dd_2x_to5x, 0.15),
-            pct_dd_post2x_to5x_gt_20pct=pct_gt(dd_2x_to5x, 0.20),
-            pct_dd_post2x_to5x_gt_25pct=pct_gt(dd_2x_to5x, 0.25),
-            pct_dd_post2x_to5x_gt_30pct=pct_gt(dd_2x_to5x, 0.30),
-            pct_dd_post2x_to5x_gt_40pct=pct_gt(dd_2x_to5x, 0.40),
+            # Capture rates for winners (Keep@X% = % of winners captured with X% trail)
+            pct_dd_post2x_to3x_gt_5pct=pct_lte(dd_2x_to3x, 0.05),
+            pct_dd_post2x_to3x_gt_10pct=pct_lte(dd_2x_to3x, 0.10),
+            pct_dd_post2x_to3x_gt_15pct=pct_lte(dd_2x_to3x, 0.15),
+            pct_dd_post2x_to3x_gt_20pct=pct_lte(dd_2x_to3x, 0.20),
+            pct_dd_post2x_to3x_gt_25pct=pct_lte(dd_2x_to3x, 0.25),
+            pct_dd_post2x_to3x_gt_30pct=pct_lte(dd_2x_to3x, 0.30),
+            pct_dd_post2x_to3x_gt_40pct=pct_lte(dd_2x_to3x, 0.40),
+            # 2x→4x capture rates
+            pct_dd_post2x_to4x_gt_5pct=pct_lte(dd_2x_to4x, 0.05),
+            pct_dd_post2x_to4x_gt_10pct=pct_lte(dd_2x_to4x, 0.10),
+            pct_dd_post2x_to4x_gt_15pct=pct_lte(dd_2x_to4x, 0.15),
+            pct_dd_post2x_to4x_gt_20pct=pct_lte(dd_2x_to4x, 0.20),
+            pct_dd_post2x_to4x_gt_25pct=pct_lte(dd_2x_to4x, 0.25),
+            pct_dd_post2x_to4x_gt_30pct=pct_lte(dd_2x_to4x, 0.30),
+            pct_dd_post2x_to4x_gt_40pct=pct_lte(dd_2x_to4x, 0.40),
+            # 2x→5x capture rates
+            pct_dd_post2x_to5x_gt_5pct=pct_lte(dd_2x_to5x, 0.05),
+            pct_dd_post2x_to5x_gt_10pct=pct_lte(dd_2x_to5x, 0.10),
+            pct_dd_post2x_to5x_gt_15pct=pct_lte(dd_2x_to5x, 0.15),
+            pct_dd_post2x_to5x_gt_20pct=pct_lte(dd_2x_to5x, 0.20),
+            pct_dd_post2x_to5x_gt_25pct=pct_lte(dd_2x_to5x, 0.25),
+            pct_dd_post2x_to5x_gt_30pct=pct_lte(dd_2x_to5x, 0.30),
+            pct_dd_post2x_to5x_gt_40pct=pct_lte(dd_2x_to5x, 0.40),
             # Non-winners stopout rates (saved from nuke)
             pct_dd_post2x_no3x_gt_5pct=pct_gt(dd_2x_no3x, 0.05),
             pct_dd_post2x_no3x_gt_10pct=pct_gt(dd_2x_no3x, 0.10),
@@ -864,7 +873,7 @@ def main():
         print("\nDD_2x→3x (tokens that reached 3x)")
         print("-" * 160)
         print(f"{'Caller':<25} {'N':>4} {'2x→3x':>6} {'p50':>6} {'p75':>6} {'p90':>6} ", end="")
-        print(f"{'Stop@5%':>8} {'Stop@10%':>9} {'Stop@15%':>9} {'Stop@20%':>9} {'Stop@25%':>9} {'Stop@30%':>9} {'Stop@40%':>9}")
+        print(f"{'Keep@5%':>8} {'Keep@10%':>9} {'Keep@15%':>9} {'Keep@20%':>9} {'Keep@25%':>9} {'Keep@30%':>9} {'Keep@40%':>9}")
         print("-" * 160)
         
         for dist in distributions:
@@ -888,7 +897,7 @@ def main():
         print("\nDD_2x→4x (tokens that reached 4x)")
         print("-" * 160)
         print(f"{'Caller':<25} {'N':>4} {'2x→4x':>6} {'p50':>6} {'p75':>6} {'p90':>6} ", end="")
-        print(f"{'Stop@5%':>8} {'Stop@10%':>9} {'Stop@15%':>9} {'Stop@20%':>9} {'Stop@25%':>9} {'Stop@30%':>9} {'Stop@40%':>9}")
+        print(f"{'Keep@5%':>8} {'Keep@10%':>9} {'Keep@15%':>9} {'Keep@20%':>9} {'Keep@25%':>9} {'Keep@30%':>9} {'Keep@40%':>9}")
         print("-" * 160)
         
         for dist in distributions:
@@ -912,7 +921,7 @@ def main():
         print("\nDD_2x→5x (tokens that reached 5x)")
         print("-" * 160)
         print(f"{'Caller':<25} {'N':>4} {'2x→5x':>6} {'p50':>6} {'p75':>6} {'p90':>6} ", end="")
-        print(f"{'Stop@5%':>8} {'Stop@10%':>9} {'Stop@15%':>9} {'Stop@20%':>9} {'Stop@25%':>9} {'Stop@30%':>9} {'Stop@40%':>9}")
+        print(f"{'Keep@5%':>8} {'Keep@10%':>9} {'Keep@15%':>9} {'Keep@20%':>9} {'Keep@25%':>9} {'Keep@30%':>9} {'Keep@40%':>9}")
         print("-" * 160)
         
         for dist in distributions:
@@ -959,13 +968,13 @@ def main():
         
         print("\n" + "=" * 160)
         print("\n+EV ANALYSIS:")
-        print("- Stop@X% on WINNERS: % of 3x runners you'd miss")
+        print("- Keep@X% on WINNERS: % of 3x/4x/5x runners you'd CAPTURE with X% trailing stop")
         print("- Save@X% on NON-WINNERS: % of nukes you'd exit before full round-trip")
-        print("\nIf Save@X% >> Stop@X%, the stop is +EV (saves more losers than it kills winners)")
-        print("\nExample: If Stop@20% = 15% and Save@20% = 80%, a 20% trail is highly +EV")
-        print("         (You miss 15% of winners but save 80% of losers from full nuke)")
+        print("\nIf Save@X% is high AND Keep@X% is high, the stop is +EV")
+        print("\nExample: If Keep@20% = 85% and Save@20% = 80%, a 20% trail is highly +EV")
+        print("         (You capture 85% of winners AND save 80% of losers from full nuke)")
         print("\nLadder Design:")
-        print("- After 2x: Choose X% where Save@X% >> Stop@X% (maximize +EV)")
+        print("- After 2x: Choose X% where Keep@X% is high (>80%) AND Save@X% is high (>70%)")
         print("- After 3x: Tighten (continuation is stronger, fewer nukes)")
         print("- After 4x: Tighten more (rare territory, protect gains)")
 
