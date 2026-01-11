@@ -593,93 +593,129 @@ def main():
         ("ladder", 0.15, 0.25, 0.5),
     ]
     
-    # Simulate trades
+    # Simulate trades with multithreading
     all_trades = []
     slice_path = Path(args.slice)
     
     if args.verbose:
         print(f"Simulating {len(stop_strategies)} strategies on {len(alerts)} alerts...", file=sys.stderr)
     
-    for alert in alerts:
-        entry_ts_ms = alert['timestamp_ms']
-        end_ts_ms = entry_ts_ms + (7 * 24 * 60 * 60 * 1000)  # 7 days
+    def process_alert(alert_data):
+        """Process a single alert with all strategies."""
+        alert, strategies = alert_data
+        trades = []
         
-        # Load candles once per alert
-        candles = load_candles_from_parquet(
-            slice_path,
-            alert['mint'],
-            entry_ts_ms,
-            end_ts_ms,
-        )
-        
-        if not candles:
-            continue
-        
-        # Get entry price from first candle
-        entry_price = None
-        from datetime import datetime as dt_class
-        for candle in candles:
-            ts = candle['timestamp']
-            if isinstance(ts, dt_class):
-                ts_ms = int(ts.timestamp() * 1000)
-            elif isinstance(ts, str):
-                ts_dt = dt_class.fromisoformat(ts.replace('Z', '+00:00'))
-                ts_ms = int(ts_dt.timestamp() * 1000)
-            elif isinstance(ts, (int, float)):
-                ts_float = float(ts)
-                ts_ms = int(ts_float * 1000) if ts_float < 4102444800 else int(ts_float)
-            else:
-                continue
+        try:
+            entry_ts_ms = alert['timestamp_ms']
+            end_ts_ms = entry_ts_ms + (7 * 24 * 60 * 60 * 1000)  # 7 days
             
-            if ts_ms >= entry_ts_ms:
-                entry_price = float(candle['close'])
-                break
-        
-        if entry_price is None or entry_price <= 0:
-            continue
-        
-        # Test each strategy
-        for stop_mode, phase1_stop, phase2_stop, ladder_steps in stop_strategies:
-            exit_price, exit_ts_ms, exit_reason, exit_phase, hit_2x, hit_3x, hit_4x, hit_5x, phase2_entry_price, phase2_entry_ts_ms = simulate_phased_trade(
-                candles,
-                entry_price,
+            # Load candles once per alert
+            candles = load_candles_from_parquet(
+                slice_path,
+                alert['mint'],
                 entry_ts_ms,
-                stop_mode,
-                phase1_stop,
-                phase2_stop,
-                ladder_steps,
+                end_ts_ms,
             )
             
-            multiple = exit_price / entry_price
-            return_pct = (exit_price - entry_price) / entry_price * 100.0
-            hold_time_minutes = (exit_ts_ms - entry_ts_ms) // (1000 * 60)
+            if not candles:
+                return trades
             
-            trade = PhasedTradeResult(
-                caller=alert['caller'],
-                mint=alert['mint'],
-                alert_id=alert['id'],
-                entry_price=entry_price,
-                entry_ts_ms=entry_ts_ms,
-                exit_price=exit_price,
-                exit_ts_ms=exit_ts_ms,
-                exit_reason=exit_reason,
-                exit_phase=exit_phase,
-                multiple_achieved=multiple,
-                return_pct=return_pct,
-                hold_time_minutes=hold_time_minutes,
-                stop_mode=stop_mode,
-                phase1_stop_pct=phase1_stop,
-                phase2_stop_pct=phase2_stop,
-                ladder_steps=ladder_steps,
-                hit_2x=hit_2x,
-                hit_3x=hit_3x,
-                hit_4x=hit_4x,
-                hit_5x=hit_5x,
-                phase2_entry_price=phase2_entry_price,
-                phase2_entry_ts_ms=phase2_entry_ts_ms,
-            )
+            # Get entry price from first candle
+            entry_price = None
+            from datetime import datetime as dt_class
+            for candle in candles:
+                ts = candle['timestamp']
+                if isinstance(ts, dt_class):
+                    ts_ms = int(ts.timestamp() * 1000)
+                elif isinstance(ts, str):
+                    ts_dt = dt_class.fromisoformat(ts.replace('Z', '+00:00'))
+                    ts_ms = int(ts_dt.timestamp() * 1000)
+                elif isinstance(ts, (int, float)):
+                    ts_float = float(ts)
+                    ts_ms = int(ts_float * 1000) if ts_float < 4102444800 else int(ts_float)
+                else:
+                    continue
+                
+                if ts_ms >= entry_ts_ms:
+                    entry_price = float(candle['close'])
+                    break
             
-            all_trades.append(trade)
+            if entry_price is None or entry_price <= 0:
+                return trades
+            
+            # Test each strategy
+            for stop_mode, phase1_stop, phase2_stop, ladder_steps in strategies:
+                exit_price, exit_ts_ms, exit_reason, exit_phase, hit_2x, hit_3x, hit_4x, hit_5x, phase2_entry_price, phase2_entry_ts_ms = simulate_phased_trade(
+                    candles,
+                    entry_price,
+                    entry_ts_ms,
+                    stop_mode,
+                    phase1_stop,
+                    phase2_stop,
+                    ladder_steps,
+                )
+                
+                multiple = exit_price / entry_price
+                return_pct = (exit_price - entry_price) / entry_price * 100.0
+                hold_time_minutes = (exit_ts_ms - entry_ts_ms) // (1000 * 60)
+                
+                trade = PhasedTradeResult(
+                    caller=alert['caller'],
+                    mint=alert['mint'],
+                    alert_id=alert['id'],
+                    entry_price=entry_price,
+                    entry_ts_ms=entry_ts_ms,
+                    exit_price=exit_price,
+                    exit_ts_ms=exit_ts_ms,
+                    exit_reason=exit_reason,
+                    exit_phase=exit_phase,
+                    multiple_achieved=multiple,
+                    return_pct=return_pct,
+                    hold_time_minutes=hold_time_minutes,
+                    stop_mode=stop_mode,
+                    phase1_stop_pct=phase1_stop,
+                    phase2_stop_pct=phase2_stop,
+                    ladder_steps=ladder_steps,
+                    hit_2x=hit_2x,
+                    hit_3x=hit_3x,
+                    hit_4x=hit_4x,
+                    hit_5x=hit_5x,
+                    phase2_entry_price=phase2_entry_price,
+                    phase2_entry_ts_ms=phase2_entry_ts_ms,
+                )
+                
+                trades.append(trade)
+        
+        except Exception as e:
+            if args.verbose:
+                print(f"Warning: Error processing alert {alert.get('mint', 'unknown')}: {e}", file=sys.stderr)
+        
+        return trades
+    
+    # Use ThreadPoolExecutor for parallel processing
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+    
+    with ThreadPoolExecutor(max_workers=args.threads) as executor:
+        # Submit all alerts
+        futures = {
+            executor.submit(process_alert, (alert, stop_strategies)): i
+            for i, alert in enumerate(alerts)
+        }
+        
+        # Collect results as they complete
+        completed = 0
+        for future in as_completed(futures):
+            completed += 1
+            if args.verbose and completed % 10 == 0:
+                print(f"Processed {completed}/{len(alerts)} alerts...", file=sys.stderr)
+            
+            try:
+                trades = future.result(timeout=60)  # 60 second timeout per alert
+                all_trades.extend(trades)
+            except Exception as e:
+                if args.verbose:
+                    alert_idx = futures[future]
+                    print(f"Warning: Timeout or error processing alert {alert_idx}: {e}", file=sys.stderr)
     
     if args.verbose:
         print(f"Simulated {len(all_trades)} total trades", file=sys.stderr)
