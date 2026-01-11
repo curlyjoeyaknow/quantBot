@@ -1305,13 +1305,14 @@ def main():
             if batch_trades:
                 append_trades_to_parquet(batch_trades, run_id, output_dir)
         
-        # Save cache metadata for new computation
-        if new_trades and args.use_cache:
+        # Save cache metadata for new computation (always save, even if --use-cache not specified)
+        # This allows future runs to use --use-cache even if the first run didn't
+        if new_trades:
             cache_key = generate_cache_key(args.chain, args.date_from, args.date_to)
             cache_filename = f"phased_stop_results_{run_id}.parquet"
             save_cache_metadata(output_dir, cache_key, cache_filename, args.chain, args.date_from, args.date_to, args.min_calls)
             if args.verbose:
-                print(f"✓ Saved cache metadata for future runs", file=sys.stderr)
+                print(f"✓ Saved cache metadata (use --use-cache in future runs to reuse results)", file=sys.stderr)
     
     if args.verbose:
         print(f"Simulated {len(all_trades)} total trades", file=sys.stderr)
