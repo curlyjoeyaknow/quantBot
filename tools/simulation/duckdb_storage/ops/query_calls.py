@@ -18,6 +18,8 @@ class QueryCallsInput(BaseModel):
     limit: int = Field(default=1000, ge=1, le=10000)
     exclude_unrecoverable: bool = Field(default=True)
     caller_name: Optional[str] = Field(default=None)
+    from_ts_ms: Optional[int] = Field(default=None)
+    to_ts_ms: Optional[int] = Field(default=None)
 
 
 class CallItem(BaseModel):
@@ -84,6 +86,17 @@ def run(con: duckdb.DuckDBPyConnection, input: QueryCallsInput) -> QueryCallsOut
               AND alert_ts_ms IS NOT NULL
         """
         
+        # Filter by date range if provided
+        if input.from_ts_ms is not None:
+            base_query += """
+                AND alert_ts_ms >= ?
+            """
+        
+        if input.to_ts_ms is not None:
+            base_query += """
+                AND alert_ts_ms <= ?
+            """
+        
         # Filter by caller_name if provided (check both normalized and raw)
         if input.caller_name:
             base_query += """
@@ -104,8 +117,12 @@ def run(con: duckdb.DuckDBPyConnection, input: QueryCallsInput) -> QueryCallsOut
             LIMIT ?
         """
 
-        # Build parameters list: caller_name (if provided, twice for norm and raw) + limit
+        # Build parameters list: date range (if provided) + caller_name (if provided, twice for norm and raw) + limit
         params = []
+        if input.from_ts_ms is not None:
+            params.append(input.from_ts_ms)
+        if input.to_ts_ms is not None:
+            params.append(input.to_ts_ms)
         if input.caller_name:
             params.append(input.caller_name)
             params.append(input.caller_name)

@@ -7,7 +7,7 @@
 ```bash
 cd /home/memez/backups/quantBot-abstraction-backtest-only
 
-# Immediate entry (baseline)
+# Immediate entry (baseline) → Creates output/immediate_entry/
 python3 tools/backtest/phased_stop_simulator.py \
     --duckdb data/alerts.duckdb \
     --slice slices/per_token \
@@ -16,9 +16,9 @@ python3 tools/backtest/phased_stop_simulator.py \
     --date-to 2025-07-31 \
     --delayed-entry 0 \
     --threads 12 \
-    --output-dir output/immediate
+    --output-dir output
 
-# -10% dip
+# -10% dip → Creates output/dip_-10pct/
 python3 tools/backtest/phased_stop_simulator.py \
     --duckdb data/alerts.duckdb \
     --slice slices/per_token \
@@ -27,9 +27,9 @@ python3 tools/backtest/phased_stop_simulator.py \
     --date-to 2025-07-31 \
     --delayed-entry -10 \
     --threads 12 \
-    --output-dir output/dip_10pct
+    --output-dir output
 
-# -20% dip
+# -20% dip → Creates output/dip_-20pct/
 python3 tools/backtest/phased_stop_simulator.py \
     --duckdb data/alerts.duckdb \
     --slice slices/per_token \
@@ -38,7 +38,7 @@ python3 tools/backtest/phased_stop_simulator.py \
     --date-to 2025-07-31 \
     --delayed-entry -20 \
     --threads 12 \
-    --output-dir output/dip_20pct
+    --output-dir output
 ```
 
 ### Step 2: Launch Dashboard

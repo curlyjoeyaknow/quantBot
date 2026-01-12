@@ -199,6 +199,7 @@ with ThreadPoolExecutor(max_workers=max_workers) as executor:
 ```
 
 **Configuration**:
+
 - Set `V1_OPTIMIZER_THREADS` environment variable to control thread count
 - Default: `os.cpu_count()` or 4
 - Example: `V1_OPTIMIZER_THREADS=8 quantbot backtest v1-baseline ...`
@@ -212,12 +213,14 @@ with ThreadPoolExecutor(max_workers=max_workers) as executor:
 **Location**: `packages/backtest/src/services/__tests__/v1-baseline-python-service.integration.test.ts`
 
 **Tests** (4 tests, all passing):
+
 1. ✅ `should simulate capital-aware trade with Python`
 2. ✅ `should optimize V1 baseline parameters with Python`
 3. ✅ `should optimize per caller with Python`
 4. ✅ `should run grouped evaluation with Python`
 
 **Run tests**:
+
 ```bash
 pnpm --filter @quantbot/backtest test -- src/services/__tests__/v1-baseline-python-service.integration.test.ts
 ```
@@ -227,11 +230,13 @@ pnpm --filter @quantbot/backtest test -- src/services/__tests__/v1-baseline-pyth
 **Location**: `tools/backtest/tests/`
 
 **Tests** (27 tests, all passing):
+
 - Unit tests: `test_v1_baseline_simulator.py` (13 tests)
 - Optimizer tests: `test_v1_baseline_optimizer.py` (8 tests)
 - Golden tests: `test_v1_baseline_golden.py` (6 tests)
 
 **Run tests**:
+
 ```bash
 cd tools/backtest
 python -m pytest tests/test_v1_baseline*.py -v
@@ -296,26 +301,31 @@ console.log(result.best_final_capital);
 ## Benefits
 
 ### 1. **Performance**
+
 - Python handles computationally intensive grid search
 - Threading support for parallel evaluation
 - TypeScript only handles I/O and orchestration
 
 ### 2. **Type Safety**
+
 - Zod schemas validate Python output
 - TypeScript types ensure correctness
 - Compile-time checks for service calls
 
 ### 3. **Maintainability**
+
 - Clear separation of concerns
 - Python for data science, TypeScript for orchestration
 - Single source of truth for optimization logic (Python)
 
 ### 4. **Testability**
+
 - Integration tests verify TypeScript ↔ Python flow
 - Python unit tests verify simulation correctness
 - Golden tests ensure deterministic behavior
 
 ### 5. **Flexibility**
+
 - Easy to add new optimization modes
 - Simple to adjust parameter grids
 - Configurable threading for performance tuning
@@ -344,5 +354,3 @@ console.log(result.best_final_capital);
 ## Conclusion
 
 The TypeScript orchestration layer is now complete and fully integrated with the Python V1 Baseline Optimizer. The system adheres to the architectural policy: **Python bears the brunt of data science workload, TypeScript orchestrates**. All tests pass, and the system is ready for production use.
-
-

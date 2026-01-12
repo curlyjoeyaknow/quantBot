@@ -1308,12 +1308,23 @@ def main():
     
     # Generate run ID and setup output directory
     run_id = generate_run_id(args)
-    output_dir = Path(args.output_dir)
+    
+    # Auto-append delayed entry info to output directory
+    base_output_dir = Path(args.output_dir)
+    if args.delayed_entry == 0:
+        output_dir = base_output_dir / "immediate_entry"
+    else:
+        # Format: dip_-10pct, dip_-20pct, etc.
+        dip_str = f"dip_{int(args.delayed_entry)}pct"
+        output_dir = base_output_dir / dip_str
+    
     output_dir.mkdir(parents=True, exist_ok=True)
     
     if args.verbose:
         print(f"Run ID: {run_id}", file=sys.stderr)
         print(f"Output directory: {output_dir}", file=sys.stderr)
+        if args.delayed_entry != 0:
+            print(f"Delayed entry: {args.delayed_entry}% dip", file=sys.stderr)
     
     # Check for cached results
     cached_trades_records = []

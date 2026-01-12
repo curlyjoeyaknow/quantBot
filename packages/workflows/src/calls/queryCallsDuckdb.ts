@@ -64,7 +64,9 @@ export type QueryCallsDuckdbContext = WorkflowContext & {
         path: string,
         limit: number,
         excludeUnrecoverable?: boolean,
-        callerName?: string
+        callerName?: string,
+        fromTsMs?: number,
+        toTsMs?: number
       ) => Promise<{
         success: boolean;
         calls?: Array<{ mint: string; alert_timestamp: string; caller_name?: string | null }>;
@@ -99,13 +101,17 @@ export async function createQueryCallsDuckdbContext(
           path: string,
           limit: number,
           excludeUnrecoverable?: boolean,
-          callerName?: string
+          callerName?: string,
+          fromTsMs?: number,
+          toTsMs?: number
         ) => {
           const result = await duckdbStorage.queryCalls(
             path,
             limit,
             excludeUnrecoverable,
-            callerName
+            callerName,
+            fromTsMs,
+            toTsMs
           );
           // Convert null to undefined for error field to match expected type
           return {
@@ -166,12 +172,18 @@ export async function queryCallsDuckdb(
     limit: validated.limit,
   });
 
-  // Query calls from DuckDB (pass callerName if provided)
+  // Convert ISO dates to milliseconds for Python query
+  const fromTsMs = fromDate.toMillis();
+  const toTsMs = toDate.toMillis();
+
+  // Query calls from DuckDB (pass callerName and date range if provided)
   const result = await ctx.services.duckdbStorage.queryCalls(
     validated.duckdbPath,
     validated.limit,
     true, // excludeUnrecoverable
-    validated.callerName
+    validated.callerName,
+    fromTsMs,
+    toTsMs
   );
 
   if (!result.success || !result.calls) {

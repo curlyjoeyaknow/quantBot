@@ -45,6 +45,11 @@ Calculate stops from alert price or actual entry price.
 
 **Note**: The simulator automatically tests **all stop strategies** (static, trailing, phased combinations). You don't specify individual strategies - it tests them all and outputs results for each.
 
+**Note**: The simulator automatically creates subdirectories based on `--delayed-entry`:
+- `--delayed-entry 0` → `output/immediate_entry/`
+- `--delayed-entry -10` → `output/dip_-10pct/`
+- `--delayed-entry -20` → `output/dip_-20pct/`
+
 ### Example 1: Immediate Entry (Baseline)
 
 Tests all stop strategies with immediate entry:
@@ -59,7 +64,8 @@ python3 tools/backtest/phased_stop_simulator.py \
     --delayed-entry 0 \
     --stop-from alert \
     --threads 12 \
-    --output-dir output/immediate_entry
+    --output-dir output
+# Creates: output/immediate_entry/
 ```
 
 ### Example 2: Wait for -10% Dip
@@ -76,7 +82,8 @@ python3 tools/backtest/phased_stop_simulator.py \
     --delayed-entry -10 \
     --stop-from alert \
     --threads 12 \
-    --output-dir output/dip_10pct
+    --output-dir output
+# Creates: output/dip_-10pct/
 ```
 
 ### Example 3: Wait for -20% Dip (Max 1 Hour)
@@ -94,7 +101,8 @@ python3 tools/backtest/phased_stop_simulator.py \
     --entry-max-wait 1.0 \
     --stop-from alert \
     --threads 12 \
-    --output-dir output/dip_20pct_1h
+    --output-dir output
+# Creates: output/dip_-20pct/
 ```
 
 ### Example 4: Stops from Entry Price
@@ -111,7 +119,8 @@ python3 tools/backtest/phased_stop_simulator.py \
     --delayed-entry -15 \
     --stop-from entry \
     --threads 12 \
-    --output-dir output/dip_15pct_entry_stops
+    --output-dir output
+# Creates: output/dip_-15pct/
 ```
 
 **Strategies Tested Automatically:**
@@ -137,11 +146,12 @@ for DIP in 0 -5 -10 -15 -20 -25 -30 -40 -50; do
         --delayed-entry ${DIP} \
         --stop-from alert \
         --threads 12 \
-        --output-dir output/dip_${DIP}pct \
+        --output-dir output \
         --csv-output results/dip_${DIP}pct.csv
 done
 
 # Note: Each run tests ALL stop strategies automatically
+# Directories are auto-created: output/immediate_entry/, output/dip_-10pct/, etc.
 ```
 
 ## Analyzing Results
