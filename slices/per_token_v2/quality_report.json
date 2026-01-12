@@ -1,0 +1,83 @@
+{
+  "output_path": "slices/per_token_v2/slice_20250501_20251230_v2.parquet",
+  "row_count": 68298439,
+  "tokens": 3605,
+  "date_from": "2025-05-01",
+  "date_to": "2025-12-30",
+  "quality": {
+    "total_candles": 68298439,
+    "expected_candles": 354301,
+    "duplicates": 67949567,
+    "gaps": 99,
+    "gap_segments": 23,
+    "distortions": 0,
+    "zero_volume": 55433515,
+    "negative_values": 0,
+    "coverage_pct": 98.47,
+    "quality_score": 55.1,
+    "gap_pct": 0.03,
+    "zero_volume_pct": 81.16,
+    "gap_details": [
+      {
+        "start": 1746050700,
+        "end": 1746050820,
+        "missing_candles": 1,
+        "gap_seconds": 120
+      },
+      {
+        "start": 1746050820,
+        "end": 1746051000,
+        "missing_candles": 2,
+        "gap_seconds": 180
+      },
+      {
+        "start": 1746051120,
+        "end": 1746051240,
+        "missing_candles": 1,
+        "gap_seconds": 120
+      },
+      {
+        "start": 1746051300,
+        "end": 1746051420,
+        "missing_candles": 1,
+        "gap_seconds": 120
+      },
+      {
+        "start": 1746051480,
+        "end": 1746051600,
+        "missing_candles": 1,
+        "gap_seconds": 120
+      },
+      {
+        "start": 1746051600,
+        "end": 1746051720,
+        "missing_candles": 1,
+        "gap_seconds": 120
+      },
+      {
+        "start": 1746051720,
+        "end": 1746051960,
+        "missing_candles": 3,
+        "gap_seconds": 240
+      },
+      {
+        "start": 1746051960,
+        "end": 1746052080,
+        "missing_candles": 1,
+        "gap_seconds": 120
+      },
+      {
+        "start": 1746052380,
+        "end": 1746052560,
+        "missing_candles": 2,
+        "gap_seconds": 180
+      },
+      {
+        "start": 1746052740,
+        "end": 1746052860,
+        "missing_candles": 1,
+        "gap_seconds": 120
+      }
+    ]
+  }
+}

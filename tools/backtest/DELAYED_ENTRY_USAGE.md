@@ -43,7 +43,11 @@ Calculate stops from alert price or actual entry price.
 
 ## Usage Examples
 
+**Note**: The simulator automatically tests **all stop strategies** (static, trailing, phased combinations). You don't specify individual strategies - it tests them all and outputs results for each.
+
 ### Example 1: Immediate Entry (Baseline)
+
+Tests all stop strategies with immediate entry:
 
 ```bash
 python3 tools/backtest/phased_stop_simulator.py \
@@ -52,9 +56,6 @@ python3 tools/backtest/phased_stop_simulator.py \
     --chain solana \
     --date-from 2025-05-01 \
     --date-to 2025-07-31 \
-    --stop-mode trailing \
-    --phase1-stop 0.15 \
-    --phase2-stop 0.50 \
     --delayed-entry 0 \
     --stop-from alert \
     --threads 12 \
@@ -63,6 +64,8 @@ python3 tools/backtest/phased_stop_simulator.py \
 
 ### Example 2: Wait for -10% Dip
 
+Tests all stop strategies with -10% delayed entry:
+
 ```bash
 python3 tools/backtest/phased_stop_simulator.py \
     --duckdb data/alerts.duckdb \
@@ -70,9 +73,6 @@ python3 tools/backtest/phased_stop_simulator.py \
     --chain solana \
     --date-from 2025-05-01 \
     --date-to 2025-07-31 \
-    --stop-mode trailing \
-    --phase1-stop 0.15 \
-    --phase2-stop 0.50 \
     --delayed-entry -10 \
     --stop-from alert \
     --threads 12 \
@@ -81,6 +81,8 @@ python3 tools/backtest/phased_stop_simulator.py \
 
 ### Example 3: Wait for -20% Dip (Max 1 Hour)
 
+Tests all stop strategies with -20% delayed entry, max 1 hour wait:
+
 ```bash
 python3 tools/backtest/phased_stop_simulator.py \
     --duckdb data/alerts.duckdb \
@@ -88,9 +90,6 @@ python3 tools/backtest/phased_stop_simulator.py \
     --chain solana \
     --date-from 2025-05-01 \
     --date-to 2025-07-31 \
-    --stop-mode trailing \
-    --phase1-stop 0.15 \
-    --phase2-stop 0.50 \
     --delayed-entry -20 \
     --entry-max-wait 1.0 \
     --stop-from alert \
@@ -100,6 +99,8 @@ python3 tools/backtest/phased_stop_simulator.py \
 
 ### Example 4: Stops from Entry Price
 
+Tests all stop strategies with -15% delayed entry, stops from entry price:
+
 ```bash
 python3 tools/backtest/phased_stop_simulator.py \
     --duckdb data/alerts.duckdb \
@@ -107,14 +108,16 @@ python3 tools/backtest/phased_stop_simulator.py \
     --chain solana \
     --date-from 2025-05-01 \
     --date-to 2025-07-31 \
-    --stop-mode trailing \
-    --phase1-stop 0.15 \
-    --phase2-stop 0.50 \
     --delayed-entry -15 \
     --stop-from entry \
     --threads 12 \
     --output-dir output/dip_15pct_entry_stops
 ```
+
+**Strategies Tested Automatically:**
+- Static: 10%, 15%, 20%, 25%, 30%, 35%, 40%, 50%, 60%
+- Trailing: 10%, 15%, 20%, 25%, 30%, 35%, 40%, 50%, 60%
+- Phased combinations (e.g., 15% phase1, 50% phase2)
 
 ## Batch Testing Multiple Dip Percentages
 
@@ -131,15 +134,14 @@ for DIP in 0 -5 -10 -15 -20 -25 -30 -40 -50; do
         --chain solana \
         --date-from 2025-05-01 \
         --date-to 2025-07-31 \
-        --stop-mode trailing \
-        --phase1-stop 0.15 \
-        --phase2-stop 0.50 \
         --delayed-entry ${DIP} \
         --stop-from alert \
         --threads 12 \
         --output-dir output/dip_${DIP}pct \
         --csv-output results/dip_${DIP}pct.csv
 done
+
+# Note: Each run tests ALL stop strategies automatically
 ```
 
 ## Analyzing Results
@@ -180,9 +182,9 @@ Then compare:
 Query parquet files directly:
 
 ```sql
--- Compare immediate vs -10% dip
+-- Compare immediate vs -10% dip for trailing 15%/50% strategy
 SELECT 
-    'Immediate' as strategy,
+    'Immediate' as entry_strategy,
     COUNT(*) as total_trades,
     AVG(exit_mult) as avg_exit_mult,
     (AVG(exit_mult) - 1.0) * 100 as ev_pct,
@@ -195,7 +197,7 @@ WHERE stop_mode = 'trailing'
 UNION ALL
 
 SELECT 
-    '-10% dip' as strategy,
+    '-10% dip' as entry_strategy,
     COUNT(*) as total_trades,
     AVG(exit_mult) as avg_exit_mult,
     (AVG(exit_mult) - 1.0) * 100 as ev_pct,
@@ -204,6 +206,19 @@ FROM 'output/dip_10pct/phased_stop_results_*.parquet'
 WHERE stop_mode = 'trailing' 
   AND phase1_stop_pct = 0.15 
   AND phase2_stop_pct = 0.50;
+
+-- Or compare across ALL strategies
+SELECT 
+    'Immediate' as entry_strategy,
+    stop_mode,
+    phase1_stop_pct,
+    phase2_stop_pct,
+    COUNT(*) as total_trades,
+    (AVG(exit_mult) - 1.0) * 100 as ev_pct
+FROM 'output/immediate_entry/phased_stop_results_*.parquet'
+GROUP BY stop_mode, phase1_stop_pct, phase2_stop_pct
+ORDER BY ev_pct DESC
+LIMIT 10;
 ```
 
 ## Expected Results

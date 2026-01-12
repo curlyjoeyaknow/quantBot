@@ -21,6 +21,11 @@ from pathlib import Path
 from queue import Queue, Empty as QueueEmpty
 from typing import Any, Dict, List, Optional, Set, Tuple
 
+# Add tools directory to path for shared imports (needed for tools.shared.duckdb_adapter)
+_tools_dir = Path(__file__).resolve().parent.parent.parent.parent
+if str(_tools_dir) not in sys.path:
+    sys.path.insert(0, str(_tools_dir))
+
 from .helpers import batched, dt_to_ch, sql_escape
 from .slice_quality import QualityMetrics, analyze_candles
 
