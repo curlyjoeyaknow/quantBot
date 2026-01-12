@@ -46,10 +46,24 @@ vi.mock('@quantbot/api-clients', () => {
   };
 });
 
-vi.mock('@quantbot/storage', () => ({
-  getStorageEngine: vi.fn(() => mockStorageEngine),
-  initClickHouse: vi.fn(),
-}));
+vi.mock('@quantbot/storage', () => {
+  class MockIngestionRunRepository {
+    createRun = vi.fn();
+    updateRun = vi.fn();
+    finishRun = vi.fn();
+    getRun = vi.fn();
+    listRuns = vi.fn();
+    startRun = vi.fn().mockResolvedValue(undefined);
+    completeRun = vi.fn().mockResolvedValue(undefined);
+    failRun = vi.fn().mockResolvedValue(undefined);
+    updateRunStats = vi.fn();
+  }
+  return {
+    getStorageEngine: vi.fn(() => mockStorageEngine),
+    initClickHouse: vi.fn(),
+    IngestionRunRepository: MockIngestionRunRepository,
+  };
+});
 
 vi.mock('@quantbot/ohlcv', () => ({
   storeCandles: vi.fn(),
