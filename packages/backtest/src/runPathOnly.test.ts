@@ -126,14 +126,26 @@ vi.mock('fs/promises', () => ({
 // Mock @quantbot/utils
 vi.mock('@quantbot/utils', () => {
   class MockTimingContext {
+    private partsMap: Record<string, number> = {};
     start = vi.fn();
     end = vi.fn();
-    phaseSync = vi.fn((label: string, fn: () => unknown) => fn());
-    phase = vi.fn(async (label: string, fn: () => Promise<unknown>) => await fn());
-    toJSON = vi.fn().mockReturnValue({
-      totalMs: 0,
-      phases: [],
-      parts: {},
+    phaseSync = vi.fn((label: string, fn: () => unknown) => {
+      this.partsMap[label] = 1; // Track phase
+      return fn();
+    });
+    phase = vi.fn(async (label: string, fn: () => Promise<unknown>) => {
+      this.partsMap[label] = 1; // Track phase
+      return await fn();
+    });
+    get parts(): Record<string, number> {
+      return { ...this.partsMap };
+    }
+    toJSON = vi.fn(function (this: MockTimingContext) {
+      return {
+        totalMs: 0,
+        phases: [],
+        parts: this.parts,
+      };
     });
     summaryLine = vi.fn().mockReturnValue('[timing] total=0ms');
   }

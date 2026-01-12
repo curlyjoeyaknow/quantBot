@@ -11,19 +11,47 @@
  * - Integration boundary works
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
 import { existsSync } from 'fs';
 import { join } from 'path';
 import { PythonEngine, PythonManifestSchema } from '../../src/python/python-engine';
 import { findWorkspaceRoot } from '../../src/fs/workspace-root';
+import {
+  setupPythonEnvironment,
+  checkPythonEnvironment,
+  type TestEnvironmentStatus,
+} from '../../src/test-helpers/test-environment-setup.js';
 
 describe('Python Bridge Test - Telegram Ingestion', () => {
+  let envStatus: TestEnvironmentStatus | null = null;
+
+  beforeAll(async () => {
+    // Setup Python environment automatically
+    try {
+      await setupPythonEnvironment();
+      envStatus = {
+        python: checkPythonEnvironment(),
+        duckdb: { duckdbAvailable: false, testDbPath: '', writeable: false },
+        clickhouse: { clickhouseAvailable: false, host: '', port: 0, database: '' },
+        allReady: false,
+      };
+    } catch (error) {
+      console.warn('[test-setup] Python environment setup failed:', error);
+      envStatus = null;
+    }
+  });
   const workspaceRoot = findWorkspaceRoot();
   const pythonToolPath = join(workspaceRoot, 'tools/telegram/duckdb_punch_pipeline.py');
   const testFixturePath = join(workspaceRoot, 'tools/telegram/tests/fixtures/sample_telegram.json');
   const outputDbPath = join(workspaceRoot, 'tools/telegram/tests/fixtures/test_output.duckdb');
 
   it('runs Python tool on tiny fixture and validates output schema', async () => {
+    // Skip if Python environment is not available
+    if (!envStatus?.python.python3Available || !envStatus.python.dependenciesInstalled) {
+      console.warn('[test-setup] Python 3 or dependencies not available, skipping test');
+      return;
+    }
+
     // Skip if Python tool doesn't exist
     if (!existsSync(pythonToolPath)) {
       console.warn(`Python tool not found at ${pythonToolPath}, skipping bridge test`);
@@ -94,6 +122,12 @@ describe('Python Bridge Test - Telegram Ingestion', () => {
   });
 
   it('validates Python tool handles invalid input gracefully', async () => {
+    // Skip if Python environment is not available
+    if (!envStatus?.python.python3Available || !envStatus.python.dependenciesInstalled) {
+      console.warn('[test-setup] Python 3 or dependencies not available, skipping test');
+      return;
+    }
+
     if (!existsSync(pythonToolPath)) {
       console.warn(`Python tool not found at ${pythonToolPath}, skipping test`);
       return;

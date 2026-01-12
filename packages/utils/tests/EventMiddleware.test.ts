@@ -10,7 +10,10 @@ import {
   PerformanceMiddleware,
 } from '../src/events/EventMiddleware';
 import { EventFactory } from '../src/events/EventBus';
-vi.mock('../src/logger', () => {
+
+// Mock the logger module that the middleware imports from (via index.js -> @quantbot/infra/utils)
+vi.mock('@quantbot/infra/utils', async () => {
+  const actual = await vi.importActual('@quantbot/infra/utils');
   const mockLogger = {
     info: vi.fn(),
     warn: vi.fn(),
@@ -18,9 +21,13 @@ vi.mock('../src/logger', () => {
     debug: vi.fn(),
   };
   return {
+    ...actual,
     logger: mockLogger,
   };
 });
+
+// Import logger after mock to get the mocked version
+import { logger } from '@quantbot/infra/utils';
 
 describe('Event Middleware', () => {
   beforeEach(() => {
@@ -43,7 +50,7 @@ describe('Event Middleware', () => {
       await loggingMiddleware(event, next);
 
       // The middleware uses logger[logLevel] which could be 'info' or 'warn' depending on priority
-      expect(mockLogger.info).toHaveBeenCalled();
+      expect(logger.info).toHaveBeenCalled();
       expect(next).toHaveBeenCalled();
     });
   });
@@ -111,7 +118,7 @@ describe('Event Middleware', () => {
       const next = vi.fn().mockRejectedValue(error);
 
       await expect(errorHandlingMiddleware(event, next)).rejects.toThrow('Test error');
-      expect(mockLogger.error).toHaveBeenCalled();
+      expect(logger.error).toHaveBeenCalled();
     });
 
     it('should pass through successful events', async () => {

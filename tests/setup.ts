@@ -42,3 +42,17 @@ global.console = {
 // Run `pnpm test:setup` before tests, or use `RUN_DB_STRESS=1 pnpm test:coverage`
 // which will automatically run the setup script
 
+// Auto-setup test environments if enabled
+if (process.env.AUTO_SETUP_ENV === '1') {
+  import('../packages/utils/src/test-helpers/test-environment-setup.js')
+    .then(({ setupAllEnvironments }) => {
+      setupAllEnvironments().catch((error) => {
+        console.warn('[test-setup] Auto-setup failed:', error);
+        // Don't fail tests if auto-setup fails - tests will skip gracefully
+      });
+    })
+    .catch(() => {
+      // Ignore import errors - test helpers may not be built yet
+    });
+}
+

@@ -89,7 +89,8 @@ def write_candles(client: ClickHouseClient, database: str, mint: str, chain: str
             "high": candle["high"],
             "low": candle["low"],
             "close": candle["close"],
-            "volume": candle["volume"]
+            "volume": candle["volume"],
+            "ingested_at": datetime.now(UTC)  # Required for ReplacingMergeTree
         })
     
     # Insert

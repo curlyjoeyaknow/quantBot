@@ -15,6 +15,16 @@
       "types": "./dist/test-helpers/test-gating.d.ts",
       "import": "./dist/test-helpers/test-gating.js",
       "default": "./dist/test-helpers/test-gating.js"
+    },
+    "./test-helpers/test-environment-setup": {
+      "types": "./dist/test-helpers/test-environment-setup.d.ts",
+      "import": "./dist/test-helpers/test-environment-setup.js",
+      "default": "./dist/test-helpers/test-environment-setup.js"
+    },
+    "./test-helpers": {
+      "types": "./dist/test-helpers/index.d.ts",
+      "import": "./dist/test-helpers/index.js",
+      "default": "./dist/test-helpers/index.js"
     }
   },
   "scripts": {

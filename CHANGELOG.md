@@ -6,6 +6,20 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **OHLCV Run Tracking Integration** - Integrated audit trail system into ingestion workflows
+  - **Automatic run tracking**: Every `ingestForCalls()` now creates a run manifest with full audit trail
+  - **Run manifest generation**: Captures git commit, script version, CLI args, environment vars, input hash
+  - **Lifecycle tracking**: Runs are tracked from start to completion/failure with detailed statistics
+  - **Error resilience**: Run tracking failures don't stop ingestion (graceful degradation)
+  - **Statistics tracking**: Tracks candles fetched/inserted/rejected, tokens processed, error counts
+  - **Components**:
+    - `OhlcvIngestionEngine.startRun()`: Start tracked run with manifest
+    - `OhlcvIngestionEngine.completeRun()`: Complete run with final stats
+    - `OhlcvIngestionEngine.failRun()`: Mark run as failed with error details
+    - `OhlcvIngestionService.createRunManifest()`: Generate manifest from ingestion params
+  - **Purpose**: Enable full reproducibility, debugging, and rollback of ingestion runs
+  - **Documentation**: `docs/implementation/ohlcv-run-tracking-integration.md`
+
 - **OHLCV Deduplication and Audit Trail Module** - Complete system for quality-based deduplication and run tracking
   - **Quality-based deduplication**: Data-derived quality scoring (volume-weighted, 0-125 points) ensures candles with volume ALWAYS beat zero-volume candles
   - **Per-interval tables**: Separate tables for 1m and 5m candles (`ohlcv_candles_1m`, `ohlcv_candles_5m`) prevent interval-mixing bugs

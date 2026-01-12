@@ -20,6 +20,10 @@ import { existsSync, unlinkSync, writeFileSync, mkdirSync } from 'fs';
 import { PythonEngine } from '@quantbot/utils';
 import { execSync } from 'child_process';
 import { tmpdir } from 'os';
+import {
+  setupPythonEnvironment,
+  checkPythonEnvironment,
+} from '@quantbot/utils/test-helpers/test-environment-setup.js';
 
 const TEST_DIR = join(tmpdir(), 'quantbot-duckdb-idempotency-tests');
 const TEST_DB = join(TEST_DIR, 'test.duckdb');
@@ -65,8 +69,19 @@ const MINIMAL_TELEGRAM_JSON = {
 describe('DuckDB Ingestion Idempotency', () => {
   let engine: PythonEngine;
   let pythonToolPath: string;
+  let pythonReady = false;
 
   beforeAll(async () => {
+    // Setup Python environment automatically
+    try {
+      await setupPythonEnvironment();
+      const pythonEnv = checkPythonEnvironment();
+      pythonReady = pythonEnv.python3Available && pythonEnv.dependenciesInstalled;
+    } catch (error) {
+      console.warn('[test-setup] Python environment setup failed:', error);
+      pythonReady = false;
+    }
+
     engine = new PythonEngine('python3');
     // Resolve to absolute path to ensure it exists
     const { resolve } = await import('path');
@@ -106,6 +121,11 @@ describe('DuckDB Ingestion Idempotency', () => {
     // Increase timeout for DuckDB/Python operations
     const TIMEOUT_MS = 30000;
     it('first run creates rows', async () => {
+      if (!pythonReady) {
+        console.warn('[test-setup] Python environment not ready, skipping test');
+        return;
+      }
+
       if (!existsSync(pythonToolPath)) {
         console.warn('Python tool not found, skipping test');
         return;
@@ -121,7 +141,7 @@ describe('DuckDB Ingestion Idempotency', () => {
         },
         {
           cwd: join(process.cwd(), 'tools/telegram'),
-          env: { PYTHONPATH: join(process.cwd(), 'tools/telegram') },
+          env: { PYTHONPATH: process.cwd() },
         }
       );
 
@@ -154,7 +174,7 @@ describe('DuckDB Ingestion Idempotency', () => {
         },
         {
           cwd: join(process.cwd(), 'tools/telegram'),
-          env: { PYTHONPATH: join(process.cwd(), 'tools/telegram') },
+          env: { PYTHONPATH: process.cwd() },
         }
       );
 
@@ -175,7 +195,7 @@ describe('DuckDB Ingestion Idempotency', () => {
         },
         {
           cwd: join(process.cwd(), 'tools/telegram'),
-          env: { PYTHONPATH: join(process.cwd(), 'tools/telegram') },
+          env: { PYTHONPATH: process.cwd() },
         }
       );
 
@@ -208,7 +228,7 @@ describe('DuckDB Ingestion Idempotency', () => {
         },
         {
           cwd: join(process.cwd(), 'tools/telegram'),
-          env: { PYTHONPATH: join(process.cwd(), 'tools/telegram') },
+          env: { PYTHONPATH: process.cwd() },
         }
       );
 
@@ -231,7 +251,7 @@ describe('DuckDB Ingestion Idempotency', () => {
         },
         {
           cwd: join(process.cwd(), 'tools/telegram'),
-          env: { PYTHONPATH: join(process.cwd(), 'tools/telegram') },
+          env: { PYTHONPATH: process.cwd() },
         }
       );
 
@@ -334,7 +354,7 @@ describe('DuckDB Ingestion Idempotency', () => {
         },
         {
           cwd: join(process.cwd(), 'tools/telegram'),
-          env: { PYTHONPATH: join(process.cwd(), 'tools/telegram') },
+          env: { PYTHONPATH: process.cwd() },
         }
       );
 

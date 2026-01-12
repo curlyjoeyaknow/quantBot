@@ -504,9 +504,15 @@ export class PythonEngine {
     }
 
     const cwd = options?.cwd ?? join(workspaceRoot, 'tools/telegram');
+    // PYTHONPATH needs to include workspace root so imports like "from tools.shared" work
+    const existingPythonPath = options?.env?.PYTHONPATH || process.env.PYTHONPATH || '';
+    const pythonPath = existingPythonPath
+      ? `${workspaceRoot}:${existingPythonPath}`
+      : workspaceRoot;
     const env = {
+      ...process.env,
       ...options?.env,
-      PYTHONPATH: join(workspaceRoot, 'tools/telegram'),
+      PYTHONPATH: pythonPath,
     };
 
     return this.runScript(scriptPath, args, PythonManifestSchema, {
@@ -543,9 +549,15 @@ export class PythonEngine {
     };
 
     const cwd = options?.cwd ?? join(workspaceRoot, 'tools/simulation');
+    // PYTHONPATH needs to include workspace root so imports like "from tools.shared" work
+    const existingPythonPath = options?.env?.PYTHONPATH || process.env.PYTHONPATH || '';
+    const pythonPath = existingPythonPath
+      ? `${workspaceRoot}:${existingPythonPath}`
+      : workspaceRoot;
     const env = {
+      ...process.env,
       ...options?.env,
-      PYTHONPATH: join(workspaceRoot, 'tools/simulation'),
+      PYTHONPATH: pythonPath,
     };
 
     const resultSchema = z
@@ -588,9 +600,15 @@ export class PythonEngine {
     if (config.password) args.password = config.password;
 
     const cwd = options?.cwd ?? join(workspaceRoot, 'tools/simulation');
+    // PYTHONPATH needs to include workspace root so imports like "from tools.shared" work
+    const existingPythonPath = options?.env?.PYTHONPATH || process.env.PYTHONPATH || '';
+    const pythonPath = existingPythonPath
+      ? `${workspaceRoot}:${existingPythonPath}`
+      : workspaceRoot;
     const env = {
+      ...process.env,
       ...options?.env,
-      PYTHONPATH: join(workspaceRoot, 'tools/simulation'),
+      PYTHONPATH: pythonPath,
     };
 
     const resultSchema = z
@@ -664,9 +682,15 @@ export class PythonEngine {
     }
 
     const cwd = options?.cwd ?? join(workspaceRoot, 'tools/ingestion');
+    // PYTHONPATH needs to include workspace root so imports like "from tools.shared" work
+    const existingPythonPath = options?.env?.PYTHONPATH || process.env.PYTHONPATH || '';
+    const pythonPath = existingPythonPath
+      ? `${workspaceRoot}:${existingPythonPath}`
+      : workspaceRoot;
     const env = {
+      ...process.env,
       ...options?.env,
-      PYTHONPATH: join(workspaceRoot, 'tools/ingestion'),
+      PYTHONPATH: pythonPath,
     };
 
     const tokenGroupSchema = z.object({

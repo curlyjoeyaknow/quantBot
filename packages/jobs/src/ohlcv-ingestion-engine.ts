@@ -21,7 +21,7 @@
 import { DateTime } from 'luxon';
 import { getBirdeyeClient, fetchMultiChainMetadata } from '@quantbot/api-clients';
 import { fetchBirdeyeCandles } from '@quantbot/api-clients';
-import { getStorageEngine, initClickHouse } from '@quantbot/storage';
+import { getStorageEngine, initClickHouse, IngestionRunRepository, type IngestionRunManifest } from '@quantbot/storage';
 // TokensRepository removed (PostgreSQL) - metadata storage not critical for OHLCV ingestion
 import type { Candle, Chain } from '@quantbot/core';
 import { logger, ValidationError } from '@quantbot/utils';
@@ -131,9 +131,13 @@ function getStartOffsetTime(
 export class OhlcvIngestionEngine {
   private clickhouseInitialized = false;
   private storageEngine = getStorageEngine();
+  private runRepository = new IngestionRunRepository();
   // TokensRepository removed (PostgreSQL) - metadata storage not critical
   // Chain detection cache: mint -> actual chain
   private chainCache = new LRUCache<string, Chain>({ max: 1000, ttl: 1000 * 60 * 60 }); // 1 hour TTL
+  
+  // Current run manifest (set when starting a tracked ingestion)
+  private currentRunManifest: IngestionRunManifest | null = null;
 
   /**
    * Initialize the engine (ensure ClickHouse is ready)
@@ -149,6 +153,68 @@ export class OhlcvIngestionEngine {
         throw error;
       }
     }
+  }
+
+  /**
+   * Start a tracked ingestion run with full audit trail.
+   * Call this before starting a batch ingestion to enable run tracking.
+   */
+  async startRun(manifest: IngestionRunManifest): Promise<void> {
+    this.currentRunManifest = manifest;
+    await this.runRepository.startRun(manifest);
+    logger.info('[OhlcvIngestionEngine] Started tracked run', {
+      runId: manifest.runId,
+      sourceTier: manifest.sourceTier,
+      dedupMode: manifest.dedupMode,
+    });
+  }
+
+  /**
+   * Complete the current tracked run with final stats.
+   */
+  async completeRun(stats: {
+    candlesFetched: number;
+    candlesInserted: number;
+    candlesRejected: number;
+    candlesDeduplicated: number;
+    tokensProcessed: number;
+    errorsCount: number;
+    zeroVolumeCount: number;
+  }): Promise<void> {
+    if (!this.currentRunManifest) {
+      logger.warn('[OhlcvIngestionEngine] No current run to complete');
+      return;
+    }
+
+    await this.runRepository.completeRun(this.currentRunManifest.runId, stats);
+    logger.info('[OhlcvIngestionEngine] Completed tracked run', {
+      runId: this.currentRunManifest.runId,
+      stats,
+    });
+    this.currentRunManifest = null;
+  }
+
+  /**
+   * Fail the current tracked run with error details.
+   */
+  async failRun(error: Error): Promise<void> {
+    if (!this.currentRunManifest) {
+      logger.warn('[OhlcvIngestionEngine] No current run to fail');
+      return;
+    }
+
+    await this.runRepository.failRun(this.currentRunManifest.runId, error);
+    logger.error('[OhlcvIngestionEngine] Failed tracked run', error, {
+      runId: this.currentRunManifest.runId,
+    });
+    this.currentRunManifest = null;
+  }
+
+  /**
+   * Get the current run manifest (if a tracked run is active).
+   */
+  getCurrentRunManifest(): IngestionRunManifest | null {
+    return this.currentRunManifest;
   }
 
   /**

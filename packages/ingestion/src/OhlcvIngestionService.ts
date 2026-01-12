@@ -9,7 +9,9 @@
 import { DateTime } from 'luxon';
 import { logger, ConfigurationError } from '@quantbot/utils';
 import type { Chain } from '@quantbot/core';
-import { getStorageEngine, type StorageEngine, getDuckDBWorklistService } from '@quantbot/storage';
+import { getStorageEngine, type StorageEngine, getDuckDBWorklistService, getGitInfoSync, getVersionInfo, type IngestionRunManifest, SourceTier } from '@quantbot/storage';
+import { randomUUID } from 'crypto';
+import { createHash } from 'crypto';
 // Types imported dynamically to break circular dependency
 type OhlcvIngestionOptions = {
   useCache?: boolean;
@@ -40,6 +42,15 @@ type FetchCandlesResult = {
   };
   [key: string]: unknown;
 };
+type RunStats = {
+  candlesFetched: number;
+  candlesInserted: number;
+  candlesRejected: number;
+  candlesDeduplicated: number;
+  tokensProcessed: number;
+  errorsCount: number;
+  zeroVolumeCount: number;
+};
 type OhlcvIngestionEngine = {
   initialize(): Promise<void>;
   fetchCandles(
@@ -49,6 +60,11 @@ type OhlcvIngestionEngine = {
     options?: OhlcvIngestionOptions
   ): Promise<FetchCandlesResult>;
   [key: string]: unknown;
+};
+type OhlcvIngestionEngineWithTracking = OhlcvIngestionEngine & {
+  startRun: (manifest: IngestionRunManifest) => Promise<void>;
+  completeRun: (stats: RunStats) => Promise<void>;
+  failRun: (error: Error) => Promise<void>;
 };
 
 export interface IngestForCallsParams {
@@ -88,6 +104,52 @@ export interface IngestForCallsResult {
 export class OhlcvIngestionService {
   private _ingestionEngine: OhlcvIngestionEngine | null = null;
   private ingestionEnginePromise: Promise<OhlcvIngestionEngine> | null = null;
+
+  /**
+   * Create a run manifest for audit trail.
+   */
+  private createRunManifest(params: IngestForCallsParams): IngestionRunManifest {
+    const runId = randomUUID();
+    const gitInfo = getGitInfoSync();
+    const versionInfo = getVersionInfo();
+
+    // Create input hash from params
+    const inputString = JSON.stringify({
+      from: params.from?.toISOString(),
+      to: params.to?.toISOString(),
+      chain: params.chain,
+      interval: params.interval,
+      duckdbPath: params.duckdbPath,
+    });
+    const inputHash = createHash('sha256').update(inputString).digest('hex').substring(0, 16);
+
+    // Extract relevant env vars
+    const envInfo: Record<string, string> = {};
+    if (process.env.CLICKHOUSE_HOST) envInfo.CLICKHOUSE_HOST = process.env.CLICKHOUSE_HOST;
+    if (process.env.CLICKHOUSE_DATABASE) envInfo.CLICKHOUSE_DATABASE = process.env.CLICKHOUSE_DATABASE;
+    if (process.env.BIRDEYE_API_KEY) envInfo.BIRDEYE_API_KEY = '***'; // Redact sensitive
+
+    return {
+      runId,
+      scriptVersion: versionInfo.packageVersion,
+      gitCommitHash: gitInfo.commitHash,
+      gitBranch: gitInfo.branch,
+      gitDirty: gitInfo.dirty,
+      cliArgs: {
+        from: params.from?.toISOString(),
+        to: params.to?.toISOString(),
+        chain: params.chain,
+        interval: params.interval,
+        preWindowMinutes: params.preWindowMinutes,
+        postWindowMinutes: params.postWindowMinutes,
+        resume: params.resume,
+      },
+      envInfo,
+      inputHash,
+      dedupMode: 'none', // Default to none, can be configured later
+      sourceTier: SourceTier.BACKFILL_API, // Birdeye API backfill
+    };
+  }
 
   constructor(
     ingestionEngine?: OhlcvIngestionEngine,
@@ -156,17 +218,32 @@ export class OhlcvIngestionService {
       queueItemsCount: queueItems.length,
     });
 
+    // Create run manifest for audit trail
+    const runManifest = this.createRunManifest(params);
+    
     // Ensure engine is initialized (ClickHouse)
     const engine = await this.getIngestionEngine();
     await engine.initialize();
 
-    // Determine DuckDB path (from params or environment)
-    const duckdbPath = params.duckdbPath || process.env.DUCKDB_PATH;
-    if (!duckdbPath) {
-      throw new ConfigurationError(
-        'DuckDB path is required. Provide duckdbPath in params or set DUCKDB_PATH environment variable.'
-      );
+    // Start tracked run
+    try {
+      // Type assertion needed because engine type doesn't include run tracking methods yet
+      const engineWithTracking = engine as OhlcvIngestionEngineWithTracking;
+      await engineWithTracking.startRun(runManifest);
+    } catch (error) {
+      logger.warn('Failed to start run tracking (continuing without tracking)', {
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
+
+    try {
+      // Determine DuckDB path (from params or environment)
+      const duckdbPath = params.duckdbPath || process.env.DUCKDB_PATH;
+      if (!duckdbPath) {
+        throw new ConfigurationError(
+          'DuckDB path is required. Provide duckdbPath in params or set DUCKDB_PATH environment variable.'
+        );
+      }
 
     // 1. Query DuckDB for worklist (calls + tokens with resolved mints)
     logger.info('Querying DuckDB for OHLCV worklist', {
@@ -476,7 +553,38 @@ export class OhlcvIngestionService {
       chunksFromAPI: summary.chunksFromAPI,
       errorCount: summary.errors.length,
     });
-    return summary;
+
+      // Complete tracked run
+      try {
+        const engineWithTracking = engine as OhlcvIngestionEngineWithTracking;
+        await engineWithTracking.completeRun({
+          candlesFetched: summary.candlesFetched1m + summary.candlesFetched5m,
+          candlesInserted: summary.candlesFetched1m + summary.candlesFetched5m, // Approximate
+          candlesRejected: 0, // Not tracked yet
+          candlesDeduplicated: 0, // Not tracked yet
+          tokensProcessed: summary.tokensProcessed,
+          errorsCount: summary.errors.length,
+          zeroVolumeCount: 0, // Not tracked yet
+        });
+      } catch (error) {
+        logger.warn('Failed to complete run tracking', {
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+
+      return summary;
+    } catch (error) {
+      // Fail tracked run on error
+      try {
+        const engineWithTracking = engine as OhlcvIngestionEngineWithTracking;
+        await engineWithTracking.failRun(error as Error);
+      } catch (failError) {
+        logger.warn('Failed to mark run as failed', {
+          error: failError instanceof Error ? failError.message : String(failError),
+        });
+      }
+      throw error;
+    }
   }
 
   /**

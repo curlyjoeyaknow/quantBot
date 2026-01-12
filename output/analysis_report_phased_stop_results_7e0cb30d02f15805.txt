@@ -1,0 +1,2951 @@
+================================================================================
+PHASED STOP RESULTS ANALYSIS
+================================================================================
+
+CALLER PERFORMANCE SUMMARY
+--------------------------------------------------------------------------------
+Caller                    Trades   Avg Return % Win Rate %   Hit 3x %     Best Score  
+--------------------------------------------------------------------------------
+meta maxist               5704        1541.03       25.0       10.5    57642.5
+Brook Giga I verify @BrookCalls 17618         30.20       26.9       11.5     3485.3
+Austic                    11362         16.46      100.0        0.4     1243.6
+davinch                   5290          33.49        7.8       23.5     1169.8
+Croz                      3910          33.04      100.0        1.2      870.3
+Brook 💀l verify @BrookCalls 10534         12.11      100.0        0.0      855.3
+Brook 💀🧲                  9522          12.52      100.0        0.0      800.8
+God Everything            276          375.67       33.3       33.3      764.6
+Marsel Ellada             46          1069.56      100.0      100.0      681.7
+rastaland.TV              6256          16.18       25.0       13.2      672.5
+JK -Whale                 6348          14.07      100.0        0.0      606.0
+Mistor                    4508          19.80       34.7        6.1      596.0
+Whale 🐳 x                 4968          16.33      100.0        0.0      553.1
+Brook                     2070          24.59       33.3       31.1      350.7
+TY/ACC NO INFO            2070          18.63       22.2       11.1      263.7
+Gidion                    2116          14.04      100.0        0.0      217.4
+OverDegen                 46           271.14      100.0      100.0      202.7
+Rayn (2026 will be recoup Yr ) 2990           8.67      100.0        0.0      191.4
+Cobalt                    1288          18.71      100.0        0.0      181.9
+Mac                       1288          17.58       25.0        7.1      160.8
+Min Min                   230           84.21       60.0       20.0      159.4
+Benjamin BORU (check bio) 46           167.58      100.0      100.0      140.5
+                          690           22.77       20.0       20.0      115.2
+RektBigHustla | @OurCryptoHood Owner 184           59.51      100.0       25.0      109.0
+Pakmo                     552           19.59      100.0        0.0       96.0
+Salvatore ✞ |Genius|      828           12.53      100.0        0.0       90.8
+YELLOWSTONE               276           33.33       33.3       16.7       81.1
+Degens                    506           13.29      100.0        0.0       67.1
+kōsen                     184           32.97       50.0        0.0       64.8
+Joe                       414           17.77       22.2       11.1       60.3
+KungFuDOOM (DOOM arc)     184           25.22      100.0        0.0       56.8
+₿igMouth                  368           10.73      100.0        0.0       48.5
+Techpack                  230           14.52      100.0        0.0       45.5
+meme world order          46            38.38      100.0        0.0       43.0
+Философ                   46            17.65      100.0        0.0       40.6
+Smoke                     46            33.38      100.0        0.0       40.0
+Monad Malik               184           13.01      100.0        0.0       38.9
+Mr Scarface               276            7.67      100.0        0.0       35.9
+MR.KWETATI 🦴              46            25.23      100.0        0.0       35.1
+BlockBard @Mrcrypt100xcalls 46            23.92      100.0        0.0       34.4
+Simple | MAXI             184            9.78      100.0        0.0       34.3
+MITCHI | RDGN             138           11.79      100.0        0.0       33.9
+soru                      184            8.89      100.0        0.0       33.2
+Zephyr (No Arc)           276            6.05      100.0        0.0       32.7
+Cryptoboyz🥤               138           10.36      100.0        0.0       32.0
+Phillip (PhillipsCalls)🇦🇪 92            14.71       50.0        0.0       28.8
+AnnaGems️ (multi-chain)   138            6.84      100.0        0.0       28.1
+Khing👑 | @khingcallsgem   46            13.55      100.0        0.0       28.1
+terrør                    92             8.66      100.0        0.0       27.7
+Donia                     138            5.88      100.0        0.0       27.1
+Stefan                    138            5.88      100.0        0.0       27.1
+Samm Yii                  92             5.88      100.0        0.0       25.3
+Badass [ WON’T DM FIRST ] 92             5.88      100.0        0.0       25.3
+Davidtoshi                46             5.88      100.0        0.0       23.5
+Goons🧲 𓃵                  46             5.88      100.0        0.0       23.5
+Devon                     46             5.88      100.0        0.0       23.5
+Felix                     46             5.88      100.0        0.0       23.5
+Saske                     46             5.88      100.0        0.0       23.5
+S"atoshis'sun Sa          46             5.88      100.0        0.0       23.5
+Pigoshi 🐽 🦴️              46             5.88      100.0        0.0       23.5
+Jewel.Sol                 46             5.88      100.0        0.0       23.5
+
+DETAILED RECOMMENDATIONS BY CALLER
+================================================================================
+
+Caller: meta maxist
+--------------------------------------------------------------------------------
+Recommended Strategy:
+  Mode: static
+  Phase 1 Stop: 50.0%
+  Phase 2 Stop: 50.0%
+  Ladder Steps: 0.5
+
+Expected Performance:
+  Avg Return: 1541.03%
+  Win Rate: 25.0%
+  Hit 2x Rate: 24.2%
+  Hit 3x Rate: 10.5%
+  Median Exit Multiple: 0.59x
+
+Rationale:
+  • Low win rate (25.0%) but strong average returns suggest asymmetric payoff structure
+  • Risk management: max loss of -41.2% observed
+
+Confidence: HIGH
+
+Further Testing Suggestions:
+  • High Phase 1 stop rate (68.5%) - consider testing looser Phase 1 stops around 60.0%
+  • High giveback from peak (54.1%) - consider tighter trailing stops or ladder exits
+
+Additional Exit Strategy Ideas:
+  • tighter_trailing_stops: Large giveback from peak (54.1%) - tighter trailing stops could lock in more gains
+    Config: {
+      "type": "trailing_stop",
+      "trail_pct": 0.35,
+      "activation_multiple": 2.0
+}
+  • time_based_exits: Long hold times (432 min) with giveback - time-based exits after hitting targets could preserve gains
+    Config: {
+      "type": "time_exit",
+      "max_hold_after_target_minutes": 60,
+      "target_multiple": 2.0
+}
+  • indicator_based_exits: Test indicator-based exits (RSI overbought, volume divergence, etc.) to capture exits at better prices
+    Config: {
+      "type": "indicator_exit",
+      "indicators": [
+            "rsi_overbought",
+            "volume_divergence"
+      ],
+      "priority": "volume_divergence"
+}
+
+Caller: Marsel Ellada
+--------------------------------------------------------------------------------
+Recommended Strategy:
+  Mode: trailing
+  Phase 1 Stop: 60.0%
+  Phase 2 Stop: 60.0%
+  Ladder Steps: 0.5
+
+Expected Performance:
+  Avg Return: 1069.56%
+  Win Rate: 100.0%
+  Hit 2x Rate: 100.0%
+  Hit 3x Rate: 100.0%
+  Median Exit Multiple: 11.70x
+
+Rationale:
+  • High win rate (100.0%)
+  • Strong 3x+ capture rate (100.0%) indicates good tail capture
+
+Confidence: LOW
+
+Further Testing Suggestions:
+  • Good 3x+ rates but high Phase 2 stops - consider tighter Phase 2 stops around 48.0% to capture more tail
+  • High giveback from peak (60.0%) - consider tighter trailing stops or ladder exits
+
+Additional Exit Strategy Ideas:
+  • tighter_trailing_stops: Large giveback from peak (60.0%) - tighter trailing stops could lock in more gains
+    Config: {
+      "type": "trailing_stop",
+      "trail_pct": 0.42,
+      "activation_multiple": 2.0
+}
+  • time_based_exits: Long hold times (139 min) with giveback - time-based exits after hitting targets could preserve gains
+    Config: {
+      "type": "time_exit",
+      "max_hold_after_target_minutes": 60,
+      "target_multiple": 2.0
+}
+  • indicator_based_exits: Test indicator-based exits (RSI overbought, volume divergence, etc.) to capture exits at better prices
+    Config: {
+      "type": "indicator_exit",
+      "indicators": [
+            "rsi_overbought",
+            "volume_divergence"
+      ],
+      "priority": "volume_divergence"
+}
+
+Caller: God Everything
+--------------------------------------------------------------------------------
+Recommended Strategy:
+  Mode: trailing
+  Phase 1 Stop: 60.0%
+  Phase 2 Stop: 60.0%
+  Ladder Steps: 0.5
+
+Expected Performance:
+  Avg Return: 375.67%
+  Win Rate: 33.3%
+  Hit 2x Rate: 33.3%
+  Hit 3x Rate: 33.3%
+  Median Exit Multiple: 0.82x
+
+Rationale:
+  • Low win rate (33.3%) but strong average returns suggest asymmetric payoff structure
+  • Strong 3x+ capture rate (33.3%) indicates good tail capture
+  • Risk management: max loss of -52.9% observed
+
+Confidence: LOW
+
+Further Testing Suggestions:
+  • Good 3x+ rates but high Phase 2 stops - consider tighter Phase 2 stops around 48.0% to capture more tail
+  • High giveback from peak (51.4%) - consider tighter trailing stops or ladder exits
+
+Additional Exit Strategy Ideas:
+  • tighter_trailing_stops: Large giveback from peak (51.4%) - tighter trailing stops could lock in more gains
+    Config: {
+      "type": "trailing_stop",
+      "trail_pct": 0.42,
+      "activation_multiple": 2.0
+}
+  • time_based_exits: Long hold times (1179 min) with giveback - time-based exits after hitting targets could preserve gains
+    Config: {
+      "type": "time_exit",
+      "max_hold_after_target_minutes": 60,
+      "target_multiple": 2.0
+}
+  • indicator_based_exits: Test indicator-based exits (RSI overbought, volume divergence, etc.) to capture exits at better prices
+    Config: {
+      "type": "indicator_exit",
+      "indicators": [
+            "rsi_overbought",
+            "volume_divergence"
+      ],
+      "priority": "volume_divergence"
+}
+
+Caller: OverDegen
+--------------------------------------------------------------------------------
+Recommended Strategy:
+  Mode: static
+  Phase 1 Stop: 60.0%
+  Phase 2 Stop: 60.0%
+  Ladder Steps: 0.5
+
+Expected Performance:
+  Avg Return: 271.14%
+  Win Rate: 100.0%
+  Hit 2x Rate: 100.0%
+  Hit 3x Rate: 100.0%
+  Median Exit Multiple: 3.71x
+
+Rationale:
+  • High win rate (100.0%)
+  • Strong 3x+ capture rate (100.0%) indicates good tail capture
+
+Confidence: LOW
+
+Additional Exit Strategy Ideas:
+  • tighter_trailing_stops: Large giveback from peak (26.9%) - tighter trailing stops could lock in more gains
+    Config: {
+      "type": "trailing_stop",
+      "trail_pct": 0.42,
+      "activation_multiple": 2.0
+}
+  • time_based_exits: Long hold times (6120 min) with giveback - time-based exits after hitting targets could preserve gains
+    Config: {
+      "type": "time_exit",
+      "max_hold_after_target_minutes": 60,
+      "target_multiple": 2.0
+}
+  • indicator_based_exits: Test indicator-based exits (RSI overbought, volume divergence, etc.) to capture exits at better prices
+    Config: {
+      "type": "indicator_exit",
+      "indicators": [
+            "rsi_overbought",
+            "volume_divergence"
+      ],
+      "priority": "volume_divergence"
+}
+
+Caller: Benjamin BORU (check bio)
+--------------------------------------------------------------------------------
+Recommended Strategy:
+  Mode: static
+  Phase 1 Stop: 50.0%
+  Phase 2 Stop: 50.0%
+  Ladder Steps: 0.5
+
+Expected Performance:
+  Avg Return: 167.58%
+  Win Rate: 100.0%
+  Hit 2x Rate: 100.0%
+  Hit 3x Rate: 100.0%
+  Median Exit Multiple: 2.68x
+
+Rationale:
+  • High win rate (100.0%)
+  • Strong 3x+ capture rate (100.0%) indicates good tail capture
+
+Confidence: LOW
+
+Further Testing Suggestions:
+  • High 2x rate but low 5x+ capture - test ladder exits to capture more tail multiples
+  • High giveback from peak (42.0%) - consider tighter trailing stops or ladder exits
+
+Additional Exit Strategy Ideas:
+  • tighter_trailing_stops: Large giveback from peak (42.0%) - tighter trailing stops could lock in more gains
+    Config: {
+      "type": "trailing_stop",
+      "trail_pct": 0.35,
+      "activation_multiple": 2.0
+}
+  • time_based_exits: Long hold times (5979 min) with giveback - time-based exits after hitting targets could preserve gains
+    Config: {
+      "type": "time_exit",
+      "max_hold_after_target_minutes": 60,
+      "target_multiple": 2.0
+}
+  • indicator_based_exits: Test indicator-based exits (RSI overbought, volume divergence, etc.) to capture exits at better prices
+    Config: {
+      "type": "indicator_exit",
+      "indicators": [
+            "rsi_overbought",
+            "volume_divergence"
+      ],
+      "priority": "volume_divergence"
+}
+
+Caller: Min Min
+--------------------------------------------------------------------------------
+Recommended Strategy:
+  Mode: static
+  Phase 1 Stop: 50.0%
+  Phase 2 Stop: 50.0%
+  Ladder Steps: 0.5
+
+Expected Performance:
+  Avg Return: 84.21%
+  Win Rate: 60.0%
+  Hit 2x Rate: 20.0%
+  Hit 3x Rate: 20.0%
+  Median Exit Multiple: 1.07x
+
+Rationale:
+  • Risk management: max loss of -41.2% observed
+
+Confidence: LOW
+
+Further Testing Suggestions:
+  • High giveback from peak (37.7%) - consider tighter trailing stops or ladder exits
+
+Additional Exit Strategy Ideas:
+  • tighter_trailing_stops: Large giveback from peak (37.7%) - tighter trailing stops could lock in more gains
+    Config: {
+      "type": "trailing_stop",
+      "trail_pct": 0.35,
+      "activation_multiple": 2.0
+}
+  • time_based_exits: Long hold times (2565 min) with giveback - time-based exits after hitting targets could preserve gains
+    Config: {
+      "type": "time_exit",
+      "max_hold_after_target_minutes": 60,
+      "target_multiple": 2.0
+}
+  • indicator_based_exits: Test indicator-based exits (RSI overbought, volume divergence, etc.) to capture exits at better prices
+    Config: {
+      "type": "indicator_exit",
+      "indicators": [
+            "rsi_overbought",
+            "volume_divergence"
+      ],
+      "priority": "volume_divergence"
+}
+
+Caller: RektBigHustla | @OurCryptoHood Owner
+--------------------------------------------------------------------------------
+Recommended Strategy:
+  Mode: trailing
+  Phase 1 Stop: 10.0%
+  Phase 2 Stop: 10.0%
+  Ladder Steps: 0.5
+
+Expected Performance:
+  Avg Return: 59.51%
+  Win Rate: 100.0%
+  Hit 2x Rate: 25.0%
+  Hit 3x Rate: 25.0%
+  Median Exit Multiple: 1.09x
+
+Rationale:
+  • High win rate (100.0%)
+
+Confidence: LOW
+
+Further Testing Suggestions:
+  • High Phase 1 stop rate (75.0%) - consider testing looser Phase 1 stops around 12.0%
+
+Additional Exit Strategy Ideas:
+  • indicator_based_exits: Test indicator-based exits (RSI overbought, volume divergence, etc.) to capture exits at better prices
+    Config: {
+      "type": "indicator_exit",
+      "indicators": [
+            "rsi_overbought",
+            "volume_divergence"
+      ],
+      "priority": "volume_divergence"
+}
+
+Caller: meme world order
+--------------------------------------------------------------------------------
+Recommended Strategy:
+  Mode: trailing
+  Phase 1 Stop: 30.0%
+  Phase 2 Stop: 30.0%
+  Ladder Steps: 0.5
+
+Expected Performance:
+  Avg Return: 38.38%
+  Win Rate: 100.0%
+  Hit 2x Rate: 0.0%
+  Hit 3x Rate: 0.0%
+  Median Exit Multiple: 1.38x
+
+Rationale:
+  • High win rate (100.0%)
+
+Confidence: LOW
+
+Further Testing Suggestions:
+  • High Phase 1 stop rate (100.0%) - consider testing looser Phase 1 stops around 36.0%
+  • High giveback from peak (30.0%) - consider tighter trailing stops or ladder exits
+
+Additional Exit Strategy Ideas:
+  • tighter_trailing_stops: Large giveback from peak (30.0%) - tighter trailing stops could lock in more gains
+    Config: {
+      "type": "trailing_stop",
+      "trail_pct": 0.21,
+      "activation_multiple": 2.0
+}
+  • higher_take_profit_targets: High win rate (100.0%) but modest returns - consider higher TP targets (3x, 4x, 5x) to capture more upside
+    Config: {
+      "type": "take_profit",
+      "targets": [
+            3.0,
+            4.0,
+            5.0
+      ],
+      "percentages": [
+            33,
+            33,
+            34
+      ]
+}
+  • indicator_based_exits: Test indicator-based exits (RSI overbought, volume divergence, etc.) to capture exits at better prices
+    Config: {
+      "type": "indicator_exit",
+      "indicators": [
+            "rsi_overbought",
+            "volume_divergence"
+      ],
+      "priority": "volume_divergence"
+}
+
+Caller: davinch
+--------------------------------------------------------------------------------
+Recommended Strategy:
+  Mode: static
+  Phase 1 Stop: 60.0%
+  Phase 2 Stop: 60.0%
+  Ladder Steps: 0.5
+
+Expected Performance:
+  Avg Return: 33.49%
+  Win Rate: 7.8%
+  Hit 2x Rate: 43.5%
+  Hit 3x Rate: 23.5%
+  Median Exit Multiple: 0.47x
+
+Rationale:
+  • Low win rate (7.8%) but strong average returns suggest asymmetric payoff structure
+  • Risk management: max loss of -52.9% observed
+
+Confidence: HIGH
+
+Further Testing Suggestions:
+  • High Phase 1 stop rate (52.2%) - consider testing looser Phase 1 stops around 72.0%
+  • High giveback from peak (65.3%) - consider tighter trailing stops or ladder exits
+
+Additional Exit Strategy Ideas:
+  • tighter_trailing_stops: Large giveback from peak (65.3%) - tighter trailing stops could lock in more gains
+    Config: {
+      "type": "trailing_stop",
+      "trail_pct": 0.42,
+      "activation_multiple": 2.0
+}
+  • time_based_exits: Long hold times (423 min) with giveback - time-based exits after hitting targets could preserve gains
+    Config: {
+      "type": "time_exit",
+      "max_hold_after_target_minutes": 60,
+      "target_multiple": 2.0
+}
+  • indicator_based_exits: Test indicator-based exits (RSI overbought, volume divergence, etc.) to capture exits at better prices
+    Config: {
+      "type": "indicator_exit",
+      "indicators": [
+            "rsi_overbought",
+            "volume_divergence"
+      ],
+      "priority": "volume_divergence"
+}
+
+Caller: Smoke
+--------------------------------------------------------------------------------
+Recommended Strategy:
+  Mode: trailing
+  Phase 1 Stop: 20.0%
+  Phase 2 Stop: 20.0%
+  Ladder Steps: 0.5
+
+Expected Performance:
+  Avg Return: 33.38%
+  Win Rate: 100.0%
+  Hit 2x Rate: 0.0%
+  Hit 3x Rate: 0.0%
+  Median Exit Multiple: 1.33x
+
+Rationale:
+  • High win rate (100.0%)
+
+Confidence: LOW
+
+Further Testing Suggestions:
+  • High Phase 1 stop rate (100.0%) - consider testing looser Phase 1 stops around 24.0%
+
+Additional Exit Strategy Ideas:
+  • higher_take_profit_targets: High win rate (100.0%) but modest returns - consider higher TP targets (3x, 4x, 5x) to capture more upside
+    Config: {
+      "type": "take_profit",
+      "targets": [
+            3.0,
+            4.0,
+            5.0
+      ],
+      "percentages": [
+            33,
+            33,
+            34
+      ]
+}
+  • indicator_based_exits: Test indicator-based exits (RSI overbought, volume divergence, etc.) to capture exits at better prices
+    Config: {
+      "type": "indicator_exit",
+      "indicators": [
+            "rsi_overbought",
+            "volume_divergence"
+      ],
+      "priority": "volume_divergence"
+}
+
+Caller: YELLOWSTONE
+--------------------------------------------------------------------------------
+Recommended Strategy:
+  Mode: ladder
+  Phase 1 Stop: 20.0%
+  Phase 2 Stop: 20.0%
+  Ladder Steps: 0.5
+
+Expected Performance:
+  Avg Return: 33.33%
+  Win Rate: 33.3%
+  Hit 2x Rate: 33.3%
+  Hit 3x Rate: 16.7%
+  Median Exit Multiple: 0.94x
+
+Rationale:
+  • Low win rate (33.3%) but strong average returns suggest asymmetric payoff structure
+
+Confidence: LOW
+
+Further Testing Suggestions:
+  • High Phase 1 stop rate (66.7%) - consider testing looser Phase 1 stops around 24.0%
+
+Additional Exit Strategy Ideas:
+  • indicator_based_exits: Test indicator-based exits (RSI overbought, volume divergence, etc.) to capture exits at better prices
+    Config: {
+      "type": "indicator_exit",
+      "indicators": [
+            "rsi_overbought",
+            "volume_divergence"
+      ],
+      "priority": "volume_divergence"
+}
+
+Caller: Croz
+--------------------------------------------------------------------------------
+Recommended Strategy:
+  Mode: trailing
+  Phase 1 Stop: 10.0%
+  Phase 2 Stop: 10.0%
+  Ladder Steps: 0.5
+
+Expected Performance:
+  Avg Return: 33.04%
+  Win Rate: 100.0%
+  Hit 2x Rate: 4.7%
+  Hit 3x Rate: 1.2%
+  Median Exit Multiple: 1.07x
+
+Rationale:
+  • High win rate (100.0%)
+
+Confidence: MEDIUM
+
+Further Testing Suggestions:
+  • High Phase 1 stop rate (95.3%) - consider testing looser Phase 1 stops around 12.0%
+
+Additional Exit Strategy Ideas:
+  • higher_take_profit_targets: High win rate (100.0%) but modest returns - consider higher TP targets (3x, 4x, 5x) to capture more upside
+    Config: {
+      "type": "take_profit",
+      "targets": [
+            3.0,
+            4.0,
+            5.0
+      ],
+      "percentages": [
+            33,
+            33,
+            34
+      ]
+}
+  • indicator_based_exits: Test indicator-based exits (RSI overbought, volume divergence, etc.) to capture exits at better prices
+    Config: {
+      "type": "indicator_exit",
+      "indicators": [
+            "rsi_overbought",
+            "volume_divergence"
+      ],
+      "priority": "volume_divergence"
+}
+
+Caller: kōsen
+--------------------------------------------------------------------------------
+Recommended Strategy:
+  Mode: trailing
+  Phase 1 Stop: 25.0%
+  Phase 2 Stop: 25.0%
+  Ladder Steps: 0.5
+
+Expected Performance:
+  Avg Return: 32.97%
+  Win Rate: 50.0%
+  Hit 2x Rate: 50.0%
+  Hit 3x Rate: 0.0%
+  Median Exit Multiple: 1.34x
+
+Rationale:
+
+Confidence: LOW
+
+Further Testing Suggestions:
+  • High Phase 1 stop rate (50.0%) - consider testing looser Phase 1 stops around 30.0%
+
+Additional Exit Strategy Ideas:
+  • indicator_based_exits: Test indicator-based exits (RSI overbought, volume divergence, etc.) to capture exits at better prices
+    Config: {
+      "type": "indicator_exit",
+      "indicators": [
+            "rsi_overbought",
+            "volume_divergence"
+      ],
+      "priority": "volume_divergence"
+}
+
+Caller: Brook Giga I verify @BrookCalls
+--------------------------------------------------------------------------------
+Recommended Strategy:
+  Mode: trailing
+  Phase 1 Stop: 60.0%
+  Phase 2 Stop: 60.0%
+  Ladder Steps: 0.5
+
+Expected Performance:
+  Avg Return: 30.20%
+  Win Rate: 26.9%
+  Hit 2x Rate: 29.0%
+  Hit 3x Rate: 11.5%
+  Median Exit Multiple: 0.74x
+
+Rationale:
+  • Low win rate (26.9%) but strong average returns suggest asymmetric payoff structure
+  • Risk management: max loss of -52.9% observed
+
+Confidence: HIGH
+
+Further Testing Suggestions:
+  • High Phase 1 stop rate (54.6%) - consider testing looser Phase 1 stops around 72.0%
+  • High giveback from peak (53.0%) - consider tighter trailing stops or ladder exits
+
+Additional Exit Strategy Ideas:
+  • tighter_trailing_stops: Large giveback from peak (53.0%) - tighter trailing stops could lock in more gains
+    Config: {
+      "type": "trailing_stop",
+      "trail_pct": 0.42,
+      "activation_multiple": 2.0
+}
+  • time_based_exits: Long hold times (834 min) with giveback - time-based exits after hitting targets could preserve gains
+    Config: {
+      "type": "time_exit",
+      "max_hold_after_target_minutes": 60,
+      "target_multiple": 2.0
+}
+  • indicator_based_exits: Test indicator-based exits (RSI overbought, volume divergence, etc.) to capture exits at better prices
+    Config: {
+      "type": "indicator_exit",
+      "indicators": [
+            "rsi_overbought",
+            "volume_divergence"
+      ],
+      "priority": "volume_divergence"
+}
+
+Caller: MR.KWETATI 🦴
+--------------------------------------------------------------------------------
+Recommended Strategy:
+  Mode: trailing
+  Phase 1 Stop: 10.0%
+  Phase 2 Stop: 10.0%
+  Ladder Steps: 0.5
+
+Expected Performance:
+  Avg Return: 25.23%
+  Win Rate: 100.0%
+  Hit 2x Rate: 0.0%
+  Hit 3x Rate: 0.0%
+  Median Exit Multiple: 1.25x
+
+Rationale:
+  • High win rate (100.0%)
+
+Confidence: LOW
+
+Further Testing Suggestions:
+  • High Phase 1 stop rate (100.0%) - consider testing looser Phase 1 stops around 12.0%
+
+Additional Exit Strategy Ideas:
+  • higher_take_profit_targets: High win rate (100.0%) but modest returns - consider higher TP targets (3x, 4x, 5x) to capture more upside
+    Config: {
+      "type": "take_profit",
+      "targets": [
+            3.0,
+            4.0,
+            5.0
+      ],
+      "percentages": [
+            33,
+            33,
+            34
+      ]
+}
+  • indicator_based_exits: Test indicator-based exits (RSI overbought, volume divergence, etc.) to capture exits at better prices
+    Config: {
+      "type": "indicator_exit",
+      "indicators": [
+            "rsi_overbought",
+            "volume_divergence"
+      ],
+      "priority": "volume_divergence"
+}
+
+Caller: KungFuDOOM (DOOM arc)
+--------------------------------------------------------------------------------
+Recommended Strategy:
+  Mode: trailing
+  Phase 1 Stop: 10.0%
+  Phase 2 Stop: 10.0%
+  Ladder Steps: 0.5
+
+Expected Performance:
+  Avg Return: 25.22%
+  Win Rate: 100.0%
+  Hit 2x Rate: 0.0%
+  Hit 3x Rate: 0.0%
+  Median Exit Multiple: 1.24x
+
+Rationale:
+  • High win rate (100.0%)
+
+Confidence: LOW
+
+Further Testing Suggestions:
+  • High Phase 1 stop rate (100.0%) - consider testing looser Phase 1 stops around 12.0%
+
+Additional Exit Strategy Ideas:
+  • higher_take_profit_targets: High win rate (100.0%) but modest returns - consider higher TP targets (3x, 4x, 5x) to capture more upside
+    Config: {
+      "type": "take_profit",
+      "targets": [
+            3.0,
+            4.0,
+            5.0
+      ],
+      "percentages": [
+            33,
+            33,
+            34
+      ]
+}
+  • indicator_based_exits: Test indicator-based exits (RSI overbought, volume divergence, etc.) to capture exits at better prices
+    Config: {
+      "type": "indicator_exit",
+      "indicators": [
+            "rsi_overbought",
+            "volume_divergence"
+      ],
+      "priority": "volume_divergence"
+}
+
+Caller: Brook
+--------------------------------------------------------------------------------
+Recommended Strategy:
+  Mode: trailing
+  Phase 1 Stop: 60.0%
+  Phase 2 Stop: 60.0%
+  Ladder Steps: 0.5
+
+Expected Performance:
+  Avg Return: 24.59%
+  Win Rate: 33.3%
+  Hit 2x Rate: 44.4%
+  Hit 3x Rate: 31.1%
+  Median Exit Multiple: 0.76x
+
+Rationale:
+  • Low win rate (33.3%) but strong average returns suggest asymmetric payoff structure
+  • Strong 3x+ capture rate (31.1%) indicates good tail capture
+  • Risk management: max loss of -52.9% observed
+
+Confidence: LOW
+
+Further Testing Suggestions:
+  • High Phase 1 stop rate (55.6%) - consider testing looser Phase 1 stops around 72.0%
+  • Good 3x+ rates but high Phase 2 stops - consider tighter Phase 2 stops around 48.0% to capture more tail
+  • High giveback from peak (58.7%) - consider tighter trailing stops or ladder exits
+
+Additional Exit Strategy Ideas:
+  • tighter_trailing_stops: Large giveback from peak (58.7%) - tighter trailing stops could lock in more gains
+    Config: {
+      "type": "trailing_stop",
+      "trail_pct": 0.42,
+      "activation_multiple": 2.0
+}
+  • time_based_exits: Long hold times (389 min) with giveback - time-based exits after hitting targets could preserve gains
+    Config: {
+      "type": "time_exit",
+      "max_hold_after_target_minutes": 60,
+      "target_multiple": 2.0
+}
+  • indicator_based_exits: Test indicator-based exits (RSI overbought, volume divergence, etc.) to capture exits at better prices
+    Config: {
+      "type": "indicator_exit",
+      "indicators": [
+            "rsi_overbought",
+            "volume_divergence"
+      ],
+      "priority": "volume_divergence"
+}
+
+Caller: BlockBard @Mrcrypt100xcalls
+--------------------------------------------------------------------------------
+Recommended Strategy:
+  Mode: trailing
+  Phase 1 Stop: 35.0%
+  Phase 2 Stop: 35.0%
+  Ladder Steps: 0.5
+
+Expected Performance:
+  Avg Return: 23.92%
+  Win Rate: 100.0%
+  Hit 2x Rate: 0.0%
+  Hit 3x Rate: 0.0%
+  Median Exit Multiple: 1.24x
+
+Rationale:
+  • High win rate (100.0%)
+
+Confidence: LOW
+
+Further Testing Suggestions:
+  • High Phase 1 stop rate (100.0%) - consider testing looser Phase 1 stops around 42.0%
+  • High giveback from peak (35.0%) - consider tighter trailing stops or ladder exits
+
+Additional Exit Strategy Ideas:
+  • tighter_trailing_stops: Large giveback from peak (35.0%) - tighter trailing stops could lock in more gains
+    Config: {
+      "type": "trailing_stop",
+      "trail_pct": 0.24499999999999997,
+      "activation_multiple": 2.0
+}
+  • higher_take_profit_targets: High win rate (100.0%) but modest returns - consider higher TP targets (3x, 4x, 5x) to capture more upside
+    Config: {
+      "type": "take_profit",
+      "targets": [
+            3.0,
+            4.0,
+            5.0
+      ],
+      "percentages": [
+            33,
+            33,
+            34
+      ]
+}
+  • time_based_exits: Long hold times (141 min) with giveback - time-based exits after hitting targets could preserve gains
+    Config: {
+      "type": "time_exit",
+      "max_hold_after_target_minutes": 60,
+      "target_multiple": 2.0
+}
+  • indicator_based_exits: Test indicator-based exits (RSI overbought, volume divergence, etc.) to capture exits at better prices
+    Config: {
+      "type": "indicator_exit",
+      "indicators": [
+            "rsi_overbought",
+            "volume_divergence"
+      ],
+      "priority": "volume_divergence"
+}
+
+Caller: 
+--------------------------------------------------------------------------------
+Recommended Strategy:
+  Mode: trailing
+  Phase 1 Stop: 50.0%
+  Phase 2 Stop: 50.0%
+  Ladder Steps: 0.5
+
+Expected Performance:
+  Avg Return: 22.77%
+  Win Rate: 20.0%
+  Hit 2x Rate: 20.0%
+  Hit 3x Rate: 20.0%
+  Median Exit Multiple: 0.65x
+
+Rationale:
+  • Low win rate (20.0%) but strong average returns suggest asymmetric payoff structure
+  • Risk management: max loss of -41.2% observed
+
+Confidence: LOW
+
+Further Testing Suggestions:
+  • High Phase 1 stop rate (66.7%) - consider testing looser Phase 1 stops around 60.0%
+  • High giveback from peak (47.0%) - consider tighter trailing stops or ladder exits
+
+Additional Exit Strategy Ideas:
+  • tighter_trailing_stops: Large giveback from peak (47.0%) - tighter trailing stops could lock in more gains
+    Config: {
+      "type": "trailing_stop",
+      "trail_pct": 0.35,
+      "activation_multiple": 2.0
+}
+  • time_based_exits: Long hold times (294 min) with giveback - time-based exits after hitting targets could preserve gains
+    Config: {
+      "type": "time_exit",
+      "max_hold_after_target_minutes": 60,
+      "target_multiple": 2.0
+}
+  • indicator_based_exits: Test indicator-based exits (RSI overbought, volume divergence, etc.) to capture exits at better prices
+    Config: {
+      "type": "indicator_exit",
+      "indicators": [
+            "rsi_overbought",
+            "volume_divergence"
+      ],
+      "priority": "volume_divergence"
+}
+
+Caller: Mistor
+--------------------------------------------------------------------------------
+Recommended Strategy:
+  Mode: ladder
+  Phase 1 Stop: 40.0%
+  Phase 2 Stop: 40.0%
+  Ladder Steps: 0.5
+
+Expected Performance:
+  Avg Return: 19.80%
+  Win Rate: 34.7%
+  Hit 2x Rate: 19.4%
+  Hit 3x Rate: 6.1%
+  Median Exit Multiple: 0.71x
+
+Rationale:
+  • Low win rate (34.7%) but strong average returns suggest asymmetric payoff structure
+
+Confidence: MEDIUM
+
+Further Testing Suggestions:
+  • High Phase 1 stop rate (73.5%) - consider testing looser Phase 1 stops around 48.0%
+  • High giveback from peak (39.2%) - consider tighter trailing stops or ladder exits
+
+Additional Exit Strategy Ideas:
+  • tighter_trailing_stops: Large giveback from peak (39.2%) - tighter trailing stops could lock in more gains
+    Config: {
+      "type": "trailing_stop",
+      "trail_pct": 0.27999999999999997,
+      "activation_multiple": 2.0
+}
+  • time_based_exits: Long hold times (164 min) with giveback - time-based exits after hitting targets could preserve gains
+    Config: {
+      "type": "time_exit",
+      "max_hold_after_target_minutes": 60,
+      "target_multiple": 2.0
+}
+  • indicator_based_exits: Test indicator-based exits (RSI overbought, volume divergence, etc.) to capture exits at better prices
+    Config: {
+      "type": "indicator_exit",
+      "indicators": [
+            "rsi_overbought",
+            "volume_divergence"
+      ],
+      "priority": "volume_divergence"
+}
+
+Caller: Pakmo
+--------------------------------------------------------------------------------
+Recommended Strategy:
+  Mode: trailing
+  Phase 1 Stop: 10.0%
+  Phase 2 Stop: 10.0%
+  Ladder Steps: 0.5
+
+Expected Performance:
+  Avg Return: 19.59%
+  Win Rate: 100.0%
+  Hit 2x Rate: 8.3%
+  Hit 3x Rate: 0.0%
+  Median Exit Multiple: 1.08x
+
+Rationale:
+  • High win rate (100.0%)
+
+Confidence: LOW
+
+Further Testing Suggestions:
+  • High Phase 1 stop rate (91.7%) - consider testing looser Phase 1 stops around 12.0%
+
+Additional Exit Strategy Ideas:
+  • higher_take_profit_targets: High win rate (100.0%) but modest returns - consider higher TP targets (3x, 4x, 5x) to capture more upside
+    Config: {
+      "type": "take_profit",
+      "targets": [
+            3.0,
+            4.0,
+            5.0
+      ],
+      "percentages": [
+            33,
+            33,
+            34
+      ]
+}
+  • indicator_based_exits: Test indicator-based exits (RSI overbought, volume divergence, etc.) to capture exits at better prices
+    Config: {
+      "type": "indicator_exit",
+      "indicators": [
+            "rsi_overbought",
+            "volume_divergence"
+      ],
+      "priority": "volume_divergence"
+}
+
+Caller: Cobalt
+--------------------------------------------------------------------------------
+Recommended Strategy:
+  Mode: trailing
+  Phase 1 Stop: 10.0%
+  Phase 2 Stop: 10.0%
+  Ladder Steps: 0.5
+
+Expected Performance:
+  Avg Return: 18.71%
+  Win Rate: 100.0%
+  Hit 2x Rate: 0.0%
+  Hit 3x Rate: 0.0%
+  Median Exit Multiple: 1.14x
+
+Rationale:
+  • High win rate (100.0%)
+
+Confidence: LOW
+
+Further Testing Suggestions:
+  • High Phase 1 stop rate (100.0%) - consider testing looser Phase 1 stops around 12.0%
+
+Additional Exit Strategy Ideas:
+  • higher_take_profit_targets: High win rate (100.0%) but modest returns - consider higher TP targets (3x, 4x, 5x) to capture more upside
+    Config: {
+      "type": "take_profit",
+      "targets": [
+            3.0,
+            4.0,
+            5.0
+      ],
+      "percentages": [
+            33,
+            33,
+            34
+      ]
+}
+  • indicator_based_exits: Test indicator-based exits (RSI overbought, volume divergence, etc.) to capture exits at better prices
+    Config: {
+      "type": "indicator_exit",
+      "indicators": [
+            "rsi_overbought",
+            "volume_divergence"
+      ],
+      "priority": "volume_divergence"
+}
+
+Caller: TY/ACC NO INFO
+--------------------------------------------------------------------------------
+Recommended Strategy:
+  Mode: trailing
+  Phase 1 Stop: 50.0%
+  Phase 2 Stop: 50.0%
+  Ladder Steps: 0.5
+
+Expected Performance:
+  Avg Return: 18.63%
+  Win Rate: 22.2%
+  Hit 2x Rate: 22.2%
+  Hit 3x Rate: 11.1%
+  Median Exit Multiple: 0.77x
+
+Rationale:
+  • Low win rate (22.2%) but strong average returns suggest asymmetric payoff structure
+  • Risk management: max loss of -41.2% observed
+
+Confidence: LOW
+
+Further Testing Suggestions:
+  • High Phase 1 stop rate (73.3%) - consider testing looser Phase 1 stops around 60.0%
+  • High giveback from peak (48.8%) - consider tighter trailing stops or ladder exits
+
+Additional Exit Strategy Ideas:
+  • tighter_trailing_stops: Large giveback from peak (48.8%) - tighter trailing stops could lock in more gains
+    Config: {
+      "type": "trailing_stop",
+      "trail_pct": 0.35,
+      "activation_multiple": 2.0
+}
+  • indicator_based_exits: Test indicator-based exits (RSI overbought, volume divergence, etc.) to capture exits at better prices
+    Config: {
+      "type": "indicator_exit",
+      "indicators": [
+            "rsi_overbought",
+            "volume_divergence"
+      ],
+      "priority": "volume_divergence"
+}
+
+Caller: Joe
+--------------------------------------------------------------------------------
+Recommended Strategy:
+  Mode: trailing
+  Phase 1 Stop: 35.0%
+  Phase 2 Stop: 35.0%
+  Ladder Steps: 0.5
+
+Expected Performance:
+  Avg Return: 17.77%
+  Win Rate: 22.2%
+  Hit 2x Rate: 11.1%
+  Hit 3x Rate: 11.1%
+  Median Exit Multiple: 0.88x
+
+Rationale:
+  • Low win rate (22.2%) but strong average returns suggest asymmetric payoff structure
+
+Confidence: LOW
+
+Further Testing Suggestions:
+  • High Phase 1 stop rate (77.8%) - consider testing looser Phase 1 stops around 42.0%
+  • High giveback from peak (30.8%) - consider tighter trailing stops or ladder exits
+
+Additional Exit Strategy Ideas:
+  • tighter_trailing_stops: Large giveback from peak (30.8%) - tighter trailing stops could lock in more gains
+    Config: {
+      "type": "trailing_stop",
+      "trail_pct": 0.24499999999999997,
+      "activation_multiple": 2.0
+}
+  • time_based_exits: Long hold times (173 min) with giveback - time-based exits after hitting targets could preserve gains
+    Config: {
+      "type": "time_exit",
+      "max_hold_after_target_minutes": 60,
+      "target_multiple": 2.0
+}
+  • indicator_based_exits: Test indicator-based exits (RSI overbought, volume divergence, etc.) to capture exits at better prices
+    Config: {
+      "type": "indicator_exit",
+      "indicators": [
+            "rsi_overbought",
+            "volume_divergence"
+      ],
+      "priority": "volume_divergence"
+}
+
+Caller: Философ
+--------------------------------------------------------------------------------
+Recommended Strategy:
+  Mode: static
+  Phase 1 Stop: 50.0%
+  Phase 2 Stop: 50.0%
+  Ladder Steps: 0.5
+
+Expected Performance:
+  Avg Return: 17.65%
+  Win Rate: 100.0%
+  Hit 2x Rate: 100.0%
+  Hit 3x Rate: 0.0%
+  Median Exit Multiple: 1.18x
+
+Rationale:
+  • High win rate (100.0%)
+
+Confidence: LOW
+
+Further Testing Suggestions:
+  • High 2x rate but low 5x+ capture - test ladder exits to capture more tail multiples
+  • High giveback from peak (41.9%) - consider tighter trailing stops or ladder exits
+
+Additional Exit Strategy Ideas:
+  • tighter_trailing_stops: Large giveback from peak (41.9%) - tighter trailing stops could lock in more gains
+    Config: {
+      "type": "trailing_stop",
+      "trail_pct": 0.35,
+      "activation_multiple": 2.0
+}
+  • higher_take_profit_targets: High win rate (100.0%) but modest returns - consider higher TP targets (3x, 4x, 5x) to capture more upside
+    Config: {
+      "type": "take_profit",
+      "targets": [
+            3.0,
+            4.0,
+            5.0
+      ],
+      "percentages": [
+            33,
+            33,
+            34
+      ]
+}
+  • indicator_based_exits: Test indicator-based exits (RSI overbought, volume divergence, etc.) to capture exits at better prices
+    Config: {
+      "type": "indicator_exit",
+      "indicators": [
+            "rsi_overbought",
+            "volume_divergence"
+      ],
+      "priority": "volume_divergence"
+}
+
+Caller: Mac
+--------------------------------------------------------------------------------
+Recommended Strategy:
+  Mode: trailing
+  Phase 1 Stop: 20.0%
+  Phase 2 Stop: 20.0%
+  Ladder Steps: 0.5
+
+Expected Performance:
+  Avg Return: 17.58%
+  Win Rate: 25.0%
+  Hit 2x Rate: 7.1%
+  Hit 3x Rate: 7.1%
+  Median Exit Multiple: 0.95x
+
+Rationale:
+  • Low win rate (25.0%) but strong average returns suggest asymmetric payoff structure
+
+Confidence: LOW
+
+Further Testing Suggestions:
+  • High Phase 1 stop rate (92.9%) - consider testing looser Phase 1 stops around 24.0%
+
+Additional Exit Strategy Ideas:
+  • indicator_based_exits: Test indicator-based exits (RSI overbought, volume divergence, etc.) to capture exits at better prices
+    Config: {
+      "type": "indicator_exit",
+      "indicators": [
+            "rsi_overbought",
+            "volume_divergence"
+      ],
+      "priority": "volume_divergence"
+}
+
+Caller: Austic
+--------------------------------------------------------------------------------
+Recommended Strategy:
+  Mode: trailing
+  Phase 1 Stop: 10.0%
+  Phase 2 Stop: 10.0%
+  Ladder Steps: 0.5
+
+Expected Performance:
+  Avg Return: 16.46%
+  Win Rate: 100.0%
+  Hit 2x Rate: 2.4%
+  Hit 3x Rate: 0.4%
+  Median Exit Multiple: 1.06x
+
+Rationale:
+  • High win rate (100.0%)
+
+Confidence: HIGH
+
+Further Testing Suggestions:
+  • High Phase 1 stop rate (97.6%) - consider testing looser Phase 1 stops around 12.0%
+
+Additional Exit Strategy Ideas:
+  • higher_take_profit_targets: High win rate (100.0%) but modest returns - consider higher TP targets (3x, 4x, 5x) to capture more upside
+    Config: {
+      "type": "take_profit",
+      "targets": [
+            3.0,
+            4.0,
+            5.0
+      ],
+      "percentages": [
+            33,
+            33,
+            34
+      ]
+}
+  • indicator_based_exits: Test indicator-based exits (RSI overbought, volume divergence, etc.) to capture exits at better prices
+    Config: {
+      "type": "indicator_exit",
+      "indicators": [
+            "rsi_overbought",
+            "volume_divergence"
+      ],
+      "priority": "volume_divergence"
+}
+
+Caller: Whale 🐳 x
+--------------------------------------------------------------------------------
+Recommended Strategy:
+  Mode: trailing
+  Phase 1 Stop: 10.0%
+  Phase 2 Stop: 10.0%
+  Ladder Steps: 0.5
+
+Expected Performance:
+  Avg Return: 16.33%
+  Win Rate: 100.0%
+  Hit 2x Rate: 2.8%
+  Hit 3x Rate: 0.0%
+  Median Exit Multiple: 1.06x
+
+Rationale:
+  • High win rate (100.0%)
+
+Confidence: HIGH
+
+Further Testing Suggestions:
+  • High Phase 1 stop rate (97.2%) - consider testing looser Phase 1 stops around 12.0%
+
+Additional Exit Strategy Ideas:
+  • higher_take_profit_targets: High win rate (100.0%) but modest returns - consider higher TP targets (3x, 4x, 5x) to capture more upside
+    Config: {
+      "type": "take_profit",
+      "targets": [
+            3.0,
+            4.0,
+            5.0
+      ],
+      "percentages": [
+            33,
+            33,
+            34
+      ]
+}
+  • indicator_based_exits: Test indicator-based exits (RSI overbought, volume divergence, etc.) to capture exits at better prices
+    Config: {
+      "type": "indicator_exit",
+      "indicators": [
+            "rsi_overbought",
+            "volume_divergence"
+      ],
+      "priority": "volume_divergence"
+}
+
+Caller: rastaland.TV
+--------------------------------------------------------------------------------
+Recommended Strategy:
+  Mode: trailing
+  Phase 1 Stop: 50.0%
+  Phase 2 Stop: 50.0%
+  Ladder Steps: 0.5
+
+Expected Performance:
+  Avg Return: 16.18%
+  Win Rate: 25.0%
+  Hit 2x Rate: 24.3%
+  Hit 3x Rate: 13.2%
+  Median Exit Multiple: 0.76x
+
+Rationale:
+  • Low win rate (25.0%) but strong average returns suggest asymmetric payoff structure
+  • Risk management: max loss of -41.2% observed
+
+Confidence: HIGH
+
+Further Testing Suggestions:
+  • High Phase 1 stop rate (72.1%) - consider testing looser Phase 1 stops around 60.0%
+  • High giveback from peak (47.5%) - consider tighter trailing stops or ladder exits
+
+Additional Exit Strategy Ideas:
+  • tighter_trailing_stops: Large giveback from peak (47.5%) - tighter trailing stops could lock in more gains
+    Config: {
+      "type": "trailing_stop",
+      "trail_pct": 0.35,
+      "activation_multiple": 2.0
+}
+  • time_based_exits: Long hold times (244 min) with giveback - time-based exits after hitting targets could preserve gains
+    Config: {
+      "type": "time_exit",
+      "max_hold_after_target_minutes": 60,
+      "target_multiple": 2.0
+}
+  • indicator_based_exits: Test indicator-based exits (RSI overbought, volume divergence, etc.) to capture exits at better prices
+    Config: {
+      "type": "indicator_exit",
+      "indicators": [
+            "rsi_overbought",
+            "volume_divergence"
+      ],
+      "priority": "volume_divergence"
+}
+
+Caller: Phillip (PhillipsCalls)🇦🇪
+--------------------------------------------------------------------------------
+Recommended Strategy:
+  Mode: static
+  Phase 1 Stop: 35.0%
+  Phase 2 Stop: 35.0%
+  Ladder Steps: 0.5
+
+Expected Performance:
+  Avg Return: 14.71%
+  Win Rate: 50.0%
+  Hit 2x Rate: 50.0%
+  Hit 3x Rate: 0.0%
+  Median Exit Multiple: 1.15x
+
+Rationale:
+
+Confidence: LOW
+
+Further Testing Suggestions:
+  • High Phase 1 stop rate (50.0%) - consider testing looser Phase 1 stops around 42.0%
+
+Additional Exit Strategy Ideas:
+  • indicator_based_exits: Test indicator-based exits (RSI overbought, volume divergence, etc.) to capture exits at better prices
+    Config: {
+      "type": "indicator_exit",
+      "indicators": [
+            "rsi_overbought",
+            "volume_divergence"
+      ],
+      "priority": "volume_divergence"
+}
+
+Caller: Techpack
+--------------------------------------------------------------------------------
+Recommended Strategy:
+  Mode: trailing
+  Phase 1 Stop: 10.0%
+  Phase 2 Stop: 10.0%
+  Ladder Steps: 0.5
+
+Expected Performance:
+  Avg Return: 14.52%
+  Win Rate: 100.0%
+  Hit 2x Rate: 0.0%
+  Hit 3x Rate: 0.0%
+  Median Exit Multiple: 1.09x
+
+Rationale:
+  • High win rate (100.0%)
+
+Confidence: LOW
+
+Further Testing Suggestions:
+  • High Phase 1 stop rate (100.0%) - consider testing looser Phase 1 stops around 12.0%
+
+Additional Exit Strategy Ideas:
+  • higher_take_profit_targets: High win rate (100.0%) but modest returns - consider higher TP targets (3x, 4x, 5x) to capture more upside
+    Config: {
+      "type": "take_profit",
+      "targets": [
+            3.0,
+            4.0,
+            5.0
+      ],
+      "percentages": [
+            33,
+            33,
+            34
+      ]
+}
+  • indicator_based_exits: Test indicator-based exits (RSI overbought, volume divergence, etc.) to capture exits at better prices
+    Config: {
+      "type": "indicator_exit",
+      "indicators": [
+            "rsi_overbought",
+            "volume_divergence"
+      ],
+      "priority": "volume_divergence"
+}
+
+Caller: JK -Whale
+--------------------------------------------------------------------------------
+Recommended Strategy:
+  Mode: trailing
+  Phase 1 Stop: 10.0%
+  Phase 2 Stop: 10.0%
+  Ladder Steps: 0.5
+
+Expected Performance:
+  Avg Return: 14.07%
+  Win Rate: 100.0%
+  Hit 2x Rate: 1.4%
+  Hit 3x Rate: 0.0%
+  Median Exit Multiple: 1.06x
+
+Rationale:
+  • High win rate (100.0%)
+
+Confidence: HIGH
+
+Further Testing Suggestions:
+  • High Phase 1 stop rate (98.6%) - consider testing looser Phase 1 stops around 12.0%
+
+Additional Exit Strategy Ideas:
+  • higher_take_profit_targets: High win rate (100.0%) but modest returns - consider higher TP targets (3x, 4x, 5x) to capture more upside
+    Config: {
+      "type": "take_profit",
+      "targets": [
+            3.0,
+            4.0,
+            5.0
+      ],
+      "percentages": [
+            33,
+            33,
+            34
+      ]
+}
+  • indicator_based_exits: Test indicator-based exits (RSI overbought, volume divergence, etc.) to capture exits at better prices
+    Config: {
+      "type": "indicator_exit",
+      "indicators": [
+            "rsi_overbought",
+            "volume_divergence"
+      ],
+      "priority": "volume_divergence"
+}
+
+Caller: Gidion
+--------------------------------------------------------------------------------
+Recommended Strategy:
+  Mode: trailing
+  Phase 1 Stop: 10.0%
+  Phase 2 Stop: 10.0%
+  Ladder Steps: 0.5
+
+Expected Performance:
+  Avg Return: 14.04%
+  Win Rate: 100.0%
+  Hit 2x Rate: 2.2%
+  Hit 3x Rate: 0.0%
+  Median Exit Multiple: 1.06x
+
+Rationale:
+  • High win rate (100.0%)
+
+Confidence: LOW
+
+Further Testing Suggestions:
+  • High Phase 1 stop rate (97.8%) - consider testing looser Phase 1 stops around 12.0%
+
+Additional Exit Strategy Ideas:
+  • higher_take_profit_targets: High win rate (100.0%) but modest returns - consider higher TP targets (3x, 4x, 5x) to capture more upside
+    Config: {
+      "type": "take_profit",
+      "targets": [
+            3.0,
+            4.0,
+            5.0
+      ],
+      "percentages": [
+            33,
+            33,
+            34
+      ]
+}
+  • indicator_based_exits: Test indicator-based exits (RSI overbought, volume divergence, etc.) to capture exits at better prices
+    Config: {
+      "type": "indicator_exit",
+      "indicators": [
+            "rsi_overbought",
+            "volume_divergence"
+      ],
+      "priority": "volume_divergence"
+}
+
+Caller: Khing👑 | @khingcallsgem
+--------------------------------------------------------------------------------
+Recommended Strategy:
+  Mode: trailing
+  Phase 1 Stop: 35.0%
+  Phase 2 Stop: 35.0%
+  Ladder Steps: 0.5
+
+Expected Performance:
+  Avg Return: 13.55%
+  Win Rate: 100.0%
+  Hit 2x Rate: 0.0%
+  Hit 3x Rate: 0.0%
+  Median Exit Multiple: 1.14x
+
+Rationale:
+  • High win rate (100.0%)
+
+Confidence: LOW
+
+Further Testing Suggestions:
+  • High Phase 1 stop rate (100.0%) - consider testing looser Phase 1 stops around 42.0%
+  • High giveback from peak (35.0%) - consider tighter trailing stops or ladder exits
+
+Additional Exit Strategy Ideas:
+  • tighter_trailing_stops: Large giveback from peak (35.0%) - tighter trailing stops could lock in more gains
+    Config: {
+      "type": "trailing_stop",
+      "trail_pct": 0.24499999999999997,
+      "activation_multiple": 2.0
+}
+  • higher_take_profit_targets: High win rate (100.0%) but modest returns - consider higher TP targets (3x, 4x, 5x) to capture more upside
+    Config: {
+      "type": "take_profit",
+      "targets": [
+            3.0,
+            4.0,
+            5.0
+      ],
+      "percentages": [
+            33,
+            33,
+            34
+      ]
+}
+  • indicator_based_exits: Test indicator-based exits (RSI overbought, volume divergence, etc.) to capture exits at better prices
+    Config: {
+      "type": "indicator_exit",
+      "indicators": [
+            "rsi_overbought",
+            "volume_divergence"
+      ],
+      "priority": "volume_divergence"
+}
+
+Caller: Degens
+--------------------------------------------------------------------------------
+Recommended Strategy:
+  Mode: trailing
+  Phase 1 Stop: 10.0%
+  Phase 2 Stop: 10.0%
+  Ladder Steps: 0.5
+
+Expected Performance:
+  Avg Return: 13.29%
+  Win Rate: 100.0%
+  Hit 2x Rate: 0.0%
+  Hit 3x Rate: 0.0%
+  Median Exit Multiple: 1.06x
+
+Rationale:
+  • High win rate (100.0%)
+
+Confidence: LOW
+
+Further Testing Suggestions:
+  • High Phase 1 stop rate (100.0%) - consider testing looser Phase 1 stops around 12.0%
+
+Additional Exit Strategy Ideas:
+  • higher_take_profit_targets: High win rate (100.0%) but modest returns - consider higher TP targets (3x, 4x, 5x) to capture more upside
+    Config: {
+      "type": "take_profit",
+      "targets": [
+            3.0,
+            4.0,
+            5.0
+      ],
+      "percentages": [
+            33,
+            33,
+            34
+      ]
+}
+  • indicator_based_exits: Test indicator-based exits (RSI overbought, volume divergence, etc.) to capture exits at better prices
+    Config: {
+      "type": "indicator_exit",
+      "indicators": [
+            "rsi_overbought",
+            "volume_divergence"
+      ],
+      "priority": "volume_divergence"
+}
+
+Caller: Monad Malik
+--------------------------------------------------------------------------------
+Recommended Strategy:
+  Mode: trailing
+  Phase 1 Stop: 10.0%
+  Phase 2 Stop: 10.0%
+  Ladder Steps: 0.5
+
+Expected Performance:
+  Avg Return: 13.01%
+  Win Rate: 100.0%
+  Hit 2x Rate: 0.0%
+  Hit 3x Rate: 0.0%
+  Median Exit Multiple: 1.08x
+
+Rationale:
+  • High win rate (100.0%)
+
+Confidence: LOW
+
+Further Testing Suggestions:
+  • High Phase 1 stop rate (100.0%) - consider testing looser Phase 1 stops around 12.0%
+
+Additional Exit Strategy Ideas:
+  • higher_take_profit_targets: High win rate (100.0%) but modest returns - consider higher TP targets (3x, 4x, 5x) to capture more upside
+    Config: {
+      "type": "take_profit",
+      "targets": [
+            3.0,
+            4.0,
+            5.0
+      ],
+      "percentages": [
+            33,
+            33,
+            34
+      ]
+}
+  • indicator_based_exits: Test indicator-based exits (RSI overbought, volume divergence, etc.) to capture exits at better prices
+    Config: {
+      "type": "indicator_exit",
+      "indicators": [
+            "rsi_overbought",
+            "volume_divergence"
+      ],
+      "priority": "volume_divergence"
+}
+
+Caller: Salvatore ✞ |Genius|
+--------------------------------------------------------------------------------
+Recommended Strategy:
+  Mode: trailing
+  Phase 1 Stop: 10.0%
+  Phase 2 Stop: 10.0%
+  Ladder Steps: 0.5
+
+Expected Performance:
+  Avg Return: 12.53%
+  Win Rate: 100.0%
+  Hit 2x Rate: 0.0%
+  Hit 3x Rate: 0.0%
+  Median Exit Multiple: 1.06x
+
+Rationale:
+  • High win rate (100.0%)
+
+Confidence: LOW
+
+Further Testing Suggestions:
+  • High Phase 1 stop rate (100.0%) - consider testing looser Phase 1 stops around 12.0%
+
+Additional Exit Strategy Ideas:
+  • higher_take_profit_targets: High win rate (100.0%) but modest returns - consider higher TP targets (3x, 4x, 5x) to capture more upside
+    Config: {
+      "type": "take_profit",
+      "targets": [
+            3.0,
+            4.0,
+            5.0
+      ],
+      "percentages": [
+            33,
+            33,
+            34
+      ]
+}
+  • indicator_based_exits: Test indicator-based exits (RSI overbought, volume divergence, etc.) to capture exits at better prices
+    Config: {
+      "type": "indicator_exit",
+      "indicators": [
+            "rsi_overbought",
+            "volume_divergence"
+      ],
+      "priority": "volume_divergence"
+}
+
+Caller: Brook 💀🧲
+--------------------------------------------------------------------------------
+Recommended Strategy:
+  Mode: trailing
+  Phase 1 Stop: 10.0%
+  Phase 2 Stop: 10.0%
+  Ladder Steps: 0.5
+
+Expected Performance:
+  Avg Return: 12.52%
+  Win Rate: 100.0%
+  Hit 2x Rate: 0.5%
+  Hit 3x Rate: 0.0%
+  Median Exit Multiple: 1.06x
+
+Rationale:
+  • High win rate (100.0%)
+
+Confidence: HIGH
+
+Further Testing Suggestions:
+  • High Phase 1 stop rate (99.5%) - consider testing looser Phase 1 stops around 12.0%
+
+Additional Exit Strategy Ideas:
+  • higher_take_profit_targets: High win rate (100.0%) but modest returns - consider higher TP targets (3x, 4x, 5x) to capture more upside
+    Config: {
+      "type": "take_profit",
+      "targets": [
+            3.0,
+            4.0,
+            5.0
+      ],
+      "percentages": [
+            33,
+            33,
+            34
+      ]
+}
+  • indicator_based_exits: Test indicator-based exits (RSI overbought, volume divergence, etc.) to capture exits at better prices
+    Config: {
+      "type": "indicator_exit",
+      "indicators": [
+            "rsi_overbought",
+            "volume_divergence"
+      ],
+      "priority": "volume_divergence"
+}
+
+Caller: Brook 💀l verify @BrookCalls
+--------------------------------------------------------------------------------
+Recommended Strategy:
+  Mode: trailing
+  Phase 1 Stop: 10.0%
+  Phase 2 Stop: 10.0%
+  Ladder Steps: 0.5
+
+Expected Performance:
+  Avg Return: 12.11%
+  Win Rate: 100.0%
+  Hit 2x Rate: 1.7%
+  Hit 3x Rate: 0.0%
+  Median Exit Multiple: 1.06x
+
+Rationale:
+  • High win rate (100.0%)
+
+Confidence: HIGH
+
+Further Testing Suggestions:
+  • High Phase 1 stop rate (98.3%) - consider testing looser Phase 1 stops around 12.0%
+
+Additional Exit Strategy Ideas:
+  • higher_take_profit_targets: High win rate (100.0%) but modest returns - consider higher TP targets (3x, 4x, 5x) to capture more upside
+    Config: {
+      "type": "take_profit",
+      "targets": [
+            3.0,
+            4.0,
+            5.0
+      ],
+      "percentages": [
+            33,
+            33,
+            34
+      ]
+}
+  • indicator_based_exits: Test indicator-based exits (RSI overbought, volume divergence, etc.) to capture exits at better prices
+    Config: {
+      "type": "indicator_exit",
+      "indicators": [
+            "rsi_overbought",
+            "volume_divergence"
+      ],
+      "priority": "volume_divergence"
+}
+
+Caller: MITCHI | RDGN
+--------------------------------------------------------------------------------
+Recommended Strategy:
+  Mode: trailing
+  Phase 1 Stop: 10.0%
+  Phase 2 Stop: 10.0%
+  Ladder Steps: 0.5
+
+Expected Performance:
+  Avg Return: 11.79%
+  Win Rate: 100.0%
+  Hit 2x Rate: 0.0%
+  Hit 3x Rate: 0.0%
+  Median Exit Multiple: 1.13x
+
+Rationale:
+  • High win rate (100.0%)
+
+Confidence: LOW
+
+Further Testing Suggestions:
+  • High Phase 1 stop rate (100.0%) - consider testing looser Phase 1 stops around 12.0%
+
+Additional Exit Strategy Ideas:
+  • higher_take_profit_targets: High win rate (100.0%) but modest returns - consider higher TP targets (3x, 4x, 5x) to capture more upside
+    Config: {
+      "type": "take_profit",
+      "targets": [
+            3.0,
+            4.0,
+            5.0
+      ],
+      "percentages": [
+            33,
+            33,
+            34
+      ]
+}
+  • indicator_based_exits: Test indicator-based exits (RSI overbought, volume divergence, etc.) to capture exits at better prices
+    Config: {
+      "type": "indicator_exit",
+      "indicators": [
+            "rsi_overbought",
+            "volume_divergence"
+      ],
+      "priority": "volume_divergence"
+}
+
+Caller: ₿igMouth
+--------------------------------------------------------------------------------
+Recommended Strategy:
+  Mode: trailing
+  Phase 1 Stop: 10.0%
+  Phase 2 Stop: 10.0%
+  Ladder Steps: 0.5
+
+Expected Performance:
+  Avg Return: 10.73%
+  Win Rate: 100.0%
+  Hit 2x Rate: 0.0%
+  Hit 3x Rate: 0.0%
+  Median Exit Multiple: 1.06x
+
+Rationale:
+  • High win rate (100.0%)
+
+Confidence: LOW
+
+Further Testing Suggestions:
+  • High Phase 1 stop rate (100.0%) - consider testing looser Phase 1 stops around 12.0%
+
+Additional Exit Strategy Ideas:
+  • higher_take_profit_targets: High win rate (100.0%) but modest returns - consider higher TP targets (3x, 4x, 5x) to capture more upside
+    Config: {
+      "type": "take_profit",
+      "targets": [
+            3.0,
+            4.0,
+            5.0
+      ],
+      "percentages": [
+            33,
+            33,
+            34
+      ]
+}
+  • indicator_based_exits: Test indicator-based exits (RSI overbought, volume divergence, etc.) to capture exits at better prices
+    Config: {
+      "type": "indicator_exit",
+      "indicators": [
+            "rsi_overbought",
+            "volume_divergence"
+      ],
+      "priority": "volume_divergence"
+}
+
+Caller: Cryptoboyz🥤
+--------------------------------------------------------------------------------
+Recommended Strategy:
+  Mode: trailing
+  Phase 1 Stop: 10.0%
+  Phase 2 Stop: 10.0%
+  Ladder Steps: 0.5
+
+Expected Performance:
+  Avg Return: 10.36%
+  Win Rate: 100.0%
+  Hit 2x Rate: 0.0%
+  Hit 3x Rate: 0.0%
+  Median Exit Multiple: 1.06x
+
+Rationale:
+  • High win rate (100.0%)
+
+Confidence: LOW
+
+Further Testing Suggestions:
+  • High Phase 1 stop rate (100.0%) - consider testing looser Phase 1 stops around 12.0%
+
+Additional Exit Strategy Ideas:
+  • higher_take_profit_targets: High win rate (100.0%) but modest returns - consider higher TP targets (3x, 4x, 5x) to capture more upside
+    Config: {
+      "type": "take_profit",
+      "targets": [
+            3.0,
+            4.0,
+            5.0
+      ],
+      "percentages": [
+            33,
+            33,
+            34
+      ]
+}
+  • indicator_based_exits: Test indicator-based exits (RSI overbought, volume divergence, etc.) to capture exits at better prices
+    Config: {
+      "type": "indicator_exit",
+      "indicators": [
+            "rsi_overbought",
+            "volume_divergence"
+      ],
+      "priority": "volume_divergence"
+}
+
+Caller: Simple | MAXI
+--------------------------------------------------------------------------------
+Recommended Strategy:
+  Mode: trailing
+  Phase 1 Stop: 10.0%
+  Phase 2 Stop: 10.0%
+  Ladder Steps: 0.5
+
+Expected Performance:
+  Avg Return: 9.78%
+  Win Rate: 100.0%
+  Hit 2x Rate: 0.0%
+  Hit 3x Rate: 0.0%
+  Median Exit Multiple: 1.07x
+
+Rationale:
+  • High win rate (100.0%)
+
+Confidence: LOW
+
+Further Testing Suggestions:
+  • High Phase 1 stop rate (100.0%) - consider testing looser Phase 1 stops around 12.0%
+
+Additional Exit Strategy Ideas:
+  • higher_take_profit_targets: High win rate (100.0%) but modest returns - consider higher TP targets (3x, 4x, 5x) to capture more upside
+    Config: {
+      "type": "take_profit",
+      "targets": [
+            3.0,
+            4.0,
+            5.0
+      ],
+      "percentages": [
+            33,
+            33,
+            34
+      ]
+}
+  • indicator_based_exits: Test indicator-based exits (RSI overbought, volume divergence, etc.) to capture exits at better prices
+    Config: {
+      "type": "indicator_exit",
+      "indicators": [
+            "rsi_overbought",
+            "volume_divergence"
+      ],
+      "priority": "volume_divergence"
+}
+
+Caller: soru
+--------------------------------------------------------------------------------
+Recommended Strategy:
+  Mode: trailing
+  Phase 1 Stop: 10.0%
+  Phase 2 Stop: 10.0%
+  Ladder Steps: 0.5
+
+Expected Performance:
+  Avg Return: 8.89%
+  Win Rate: 100.0%
+  Hit 2x Rate: 0.0%
+  Hit 3x Rate: 0.0%
+  Median Exit Multiple: 1.09x
+
+Rationale:
+  • High win rate (100.0%)
+
+Confidence: LOW
+
+Further Testing Suggestions:
+  • High Phase 1 stop rate (100.0%) - consider testing looser Phase 1 stops around 12.0%
+
+Additional Exit Strategy Ideas:
+  • higher_take_profit_targets: High win rate (100.0%) but modest returns - consider higher TP targets (3x, 4x, 5x) to capture more upside
+    Config: {
+      "type": "take_profit",
+      "targets": [
+            3.0,
+            4.0,
+            5.0
+      ],
+      "percentages": [
+            33,
+            33,
+            34
+      ]
+}
+  • indicator_based_exits: Test indicator-based exits (RSI overbought, volume divergence, etc.) to capture exits at better prices
+    Config: {
+      "type": "indicator_exit",
+      "indicators": [
+            "rsi_overbought",
+            "volume_divergence"
+      ],
+      "priority": "volume_divergence"
+}
+
+Caller: Rayn (2026 will be recoup Yr )
+--------------------------------------------------------------------------------
+Recommended Strategy:
+  Mode: trailing
+  Phase 1 Stop: 10.0%
+  Phase 2 Stop: 10.0%
+  Ladder Steps: 0.5
+
+Expected Performance:
+  Avg Return: 8.67%
+  Win Rate: 100.0%
+  Hit 2x Rate: 0.0%
+  Hit 3x Rate: 0.0%
+  Median Exit Multiple: 1.06x
+
+Rationale:
+  • High win rate (100.0%)
+
+Confidence: MEDIUM
+
+Further Testing Suggestions:
+  • High Phase 1 stop rate (100.0%) - consider testing looser Phase 1 stops around 12.0%
+
+Additional Exit Strategy Ideas:
+  • higher_take_profit_targets: High win rate (100.0%) but modest returns - consider higher TP targets (3x, 4x, 5x) to capture more upside
+    Config: {
+      "type": "take_profit",
+      "targets": [
+            3.0,
+            4.0,
+            5.0
+      ],
+      "percentages": [
+            33,
+            33,
+            34
+      ]
+}
+  • indicator_based_exits: Test indicator-based exits (RSI overbought, volume divergence, etc.) to capture exits at better prices
+    Config: {
+      "type": "indicator_exit",
+      "indicators": [
+            "rsi_overbought",
+            "volume_divergence"
+      ],
+      "priority": "volume_divergence"
+}
+
+Caller: terrør
+--------------------------------------------------------------------------------
+Recommended Strategy:
+  Mode: trailing
+  Phase 1 Stop: 10.0%
+  Phase 2 Stop: 10.0%
+  Ladder Steps: 0.5
+
+Expected Performance:
+  Avg Return: 8.66%
+  Win Rate: 100.0%
+  Hit 2x Rate: 0.0%
+  Hit 3x Rate: 0.0%
+  Median Exit Multiple: 1.09x
+
+Rationale:
+  • High win rate (100.0%)
+
+Confidence: LOW
+
+Further Testing Suggestions:
+  • High Phase 1 stop rate (100.0%) - consider testing looser Phase 1 stops around 12.0%
+
+Additional Exit Strategy Ideas:
+  • higher_take_profit_targets: High win rate (100.0%) but modest returns - consider higher TP targets (3x, 4x, 5x) to capture more upside
+    Config: {
+      "type": "take_profit",
+      "targets": [
+            3.0,
+            4.0,
+            5.0
+      ],
+      "percentages": [
+            33,
+            33,
+            34
+      ]
+}
+  • indicator_based_exits: Test indicator-based exits (RSI overbought, volume divergence, etc.) to capture exits at better prices
+    Config: {
+      "type": "indicator_exit",
+      "indicators": [
+            "rsi_overbought",
+            "volume_divergence"
+      ],
+      "priority": "volume_divergence"
+}
+
+Caller: Mr Scarface
+--------------------------------------------------------------------------------
+Recommended Strategy:
+  Mode: trailing
+  Phase 1 Stop: 10.0%
+  Phase 2 Stop: 10.0%
+  Ladder Steps: 0.5
+
+Expected Performance:
+  Avg Return: 7.67%
+  Win Rate: 100.0%
+  Hit 2x Rate: 0.0%
+  Hit 3x Rate: 0.0%
+  Median Exit Multiple: 1.06x
+
+Rationale:
+  • High win rate (100.0%)
+
+Confidence: LOW
+
+Further Testing Suggestions:
+  • High Phase 1 stop rate (100.0%) - consider testing looser Phase 1 stops around 12.0%
+
+Additional Exit Strategy Ideas:
+  • higher_take_profit_targets: High win rate (100.0%) but modest returns - consider higher TP targets (3x, 4x, 5x) to capture more upside
+    Config: {
+      "type": "take_profit",
+      "targets": [
+            3.0,
+            4.0,
+            5.0
+      ],
+      "percentages": [
+            33,
+            33,
+            34
+      ]
+}
+  • indicator_based_exits: Test indicator-based exits (RSI overbought, volume divergence, etc.) to capture exits at better prices
+    Config: {
+      "type": "indicator_exit",
+      "indicators": [
+            "rsi_overbought",
+            "volume_divergence"
+      ],
+      "priority": "volume_divergence"
+}
+
+Caller: AnnaGems️ (multi-chain)
+--------------------------------------------------------------------------------
+Recommended Strategy:
+  Mode: trailing
+  Phase 1 Stop: 10.0%
+  Phase 2 Stop: 10.0%
+  Ladder Steps: 0.5
+
+Expected Performance:
+  Avg Return: 6.84%
+  Win Rate: 100.0%
+  Hit 2x Rate: 0.0%
+  Hit 3x Rate: 0.0%
+  Median Exit Multiple: 1.07x
+
+Rationale:
+  • High win rate (100.0%)
+
+Confidence: LOW
+
+Further Testing Suggestions:
+  • High Phase 1 stop rate (100.0%) - consider testing looser Phase 1 stops around 12.0%
+
+Additional Exit Strategy Ideas:
+  • higher_take_profit_targets: High win rate (100.0%) but modest returns - consider higher TP targets (3x, 4x, 5x) to capture more upside
+    Config: {
+      "type": "take_profit",
+      "targets": [
+            3.0,
+            4.0,
+            5.0
+      ],
+      "percentages": [
+            33,
+            33,
+            34
+      ]
+}
+  • indicator_based_exits: Test indicator-based exits (RSI overbought, volume divergence, etc.) to capture exits at better prices
+    Config: {
+      "type": "indicator_exit",
+      "indicators": [
+            "rsi_overbought",
+            "volume_divergence"
+      ],
+      "priority": "volume_divergence"
+}
+
+Caller: Zephyr (No Arc)
+--------------------------------------------------------------------------------
+Recommended Strategy:
+  Mode: trailing
+  Phase 1 Stop: 10.0%
+  Phase 2 Stop: 10.0%
+  Ladder Steps: 0.5
+
+Expected Performance:
+  Avg Return: 6.05%
+  Win Rate: 100.0%
+  Hit 2x Rate: 0.0%
+  Hit 3x Rate: 0.0%
+  Median Exit Multiple: 1.06x
+
+Rationale:
+  • High win rate (100.0%)
+
+Confidence: LOW
+
+Further Testing Suggestions:
+  • High Phase 1 stop rate (100.0%) - consider testing looser Phase 1 stops around 12.0%
+
+Additional Exit Strategy Ideas:
+  • higher_take_profit_targets: High win rate (100.0%) but modest returns - consider higher TP targets (3x, 4x, 5x) to capture more upside
+    Config: {
+      "type": "take_profit",
+      "targets": [
+            3.0,
+            4.0,
+            5.0
+      ],
+      "percentages": [
+            33,
+            33,
+            34
+      ]
+}
+  • indicator_based_exits: Test indicator-based exits (RSI overbought, volume divergence, etc.) to capture exits at better prices
+    Config: {
+      "type": "indicator_exit",
+      "indicators": [
+            "rsi_overbought",
+            "volume_divergence"
+      ],
+      "priority": "volume_divergence"
+}
+
+Caller: Davidtoshi
+--------------------------------------------------------------------------------
+Recommended Strategy:
+  Mode: ladder
+  Phase 1 Stop: 10.0%
+  Phase 2 Stop: 30.0%
+  Ladder Steps: 0.5
+
+Expected Performance:
+  Avg Return: 5.88%
+  Win Rate: 100.0%
+  Hit 2x Rate: 0.0%
+  Hit 3x Rate: 0.0%
+  Median Exit Multiple: 1.06x
+
+Rationale:
+  • High win rate (100.0%)
+
+Confidence: LOW
+
+Further Testing Suggestions:
+  • High Phase 1 stop rate (100.0%) - consider testing looser Phase 1 stops around 12.0%
+
+Additional Exit Strategy Ideas:
+  • higher_take_profit_targets: High win rate (100.0%) but modest returns - consider higher TP targets (3x, 4x, 5x) to capture more upside
+    Config: {
+      "type": "take_profit",
+      "targets": [
+            3.0,
+            4.0,
+            5.0
+      ],
+      "percentages": [
+            33,
+            33,
+            34
+      ]
+}
+  • indicator_based_exits: Test indicator-based exits (RSI overbought, volume divergence, etc.) to capture exits at better prices
+    Config: {
+      "type": "indicator_exit",
+      "indicators": [
+            "rsi_overbought",
+            "volume_divergence"
+      ],
+      "priority": "volume_divergence"
+}
+
+Caller: Goons🧲 𓃵
+--------------------------------------------------------------------------------
+Recommended Strategy:
+  Mode: ladder
+  Phase 1 Stop: 10.0%
+  Phase 2 Stop: 30.0%
+  Ladder Steps: 0.5
+
+Expected Performance:
+  Avg Return: 5.88%
+  Win Rate: 100.0%
+  Hit 2x Rate: 0.0%
+  Hit 3x Rate: 0.0%
+  Median Exit Multiple: 1.06x
+
+Rationale:
+  • High win rate (100.0%)
+
+Confidence: LOW
+
+Further Testing Suggestions:
+  • High Phase 1 stop rate (100.0%) - consider testing looser Phase 1 stops around 12.0%
+
+Additional Exit Strategy Ideas:
+  • higher_take_profit_targets: High win rate (100.0%) but modest returns - consider higher TP targets (3x, 4x, 5x) to capture more upside
+    Config: {
+      "type": "take_profit",
+      "targets": [
+            3.0,
+            4.0,
+            5.0
+      ],
+      "percentages": [
+            33,
+            33,
+            34
+      ]
+}
+  • indicator_based_exits: Test indicator-based exits (RSI overbought, volume divergence, etc.) to capture exits at better prices
+    Config: {
+      "type": "indicator_exit",
+      "indicators": [
+            "rsi_overbought",
+            "volume_divergence"
+      ],
+      "priority": "volume_divergence"
+}
+
+Caller: Samm Yii
+--------------------------------------------------------------------------------
+Recommended Strategy:
+  Mode: ladder
+  Phase 1 Stop: 10.0%
+  Phase 2 Stop: 30.0%
+  Ladder Steps: 0.5
+
+Expected Performance:
+  Avg Return: 5.88%
+  Win Rate: 100.0%
+  Hit 2x Rate: 0.0%
+  Hit 3x Rate: 0.0%
+  Median Exit Multiple: 1.06x
+
+Rationale:
+  • High win rate (100.0%)
+
+Confidence: LOW
+
+Further Testing Suggestions:
+  • High Phase 1 stop rate (100.0%) - consider testing looser Phase 1 stops around 12.0%
+
+Additional Exit Strategy Ideas:
+  • higher_take_profit_targets: High win rate (100.0%) but modest returns - consider higher TP targets (3x, 4x, 5x) to capture more upside
+    Config: {
+      "type": "take_profit",
+      "targets": [
+            3.0,
+            4.0,
+            5.0
+      ],
+      "percentages": [
+            33,
+            33,
+            34
+      ]
+}
+  • indicator_based_exits: Test indicator-based exits (RSI overbought, volume divergence, etc.) to capture exits at better prices
+    Config: {
+      "type": "indicator_exit",
+      "indicators": [
+            "rsi_overbought",
+            "volume_divergence"
+      ],
+      "priority": "volume_divergence"
+}
+
+Caller: Badass [ WON’T DM FIRST ]
+--------------------------------------------------------------------------------
+Recommended Strategy:
+  Mode: ladder
+  Phase 1 Stop: 10.0%
+  Phase 2 Stop: 30.0%
+  Ladder Steps: 0.5
+
+Expected Performance:
+  Avg Return: 5.88%
+  Win Rate: 100.0%
+  Hit 2x Rate: 0.0%
+  Hit 3x Rate: 0.0%
+  Median Exit Multiple: 1.06x
+
+Rationale:
+  • High win rate (100.0%)
+
+Confidence: LOW
+
+Further Testing Suggestions:
+  • High Phase 1 stop rate (100.0%) - consider testing looser Phase 1 stops around 12.0%
+
+Additional Exit Strategy Ideas:
+  • higher_take_profit_targets: High win rate (100.0%) but modest returns - consider higher TP targets (3x, 4x, 5x) to capture more upside
+    Config: {
+      "type": "take_profit",
+      "targets": [
+            3.0,
+            4.0,
+            5.0
+      ],
+      "percentages": [
+            33,
+            33,
+            34
+      ]
+}
+  • indicator_based_exits: Test indicator-based exits (RSI overbought, volume divergence, etc.) to capture exits at better prices
+    Config: {
+      "type": "indicator_exit",
+      "indicators": [
+            "rsi_overbought",
+            "volume_divergence"
+      ],
+      "priority": "volume_divergence"
+}
+
+Caller: Donia
+--------------------------------------------------------------------------------
+Recommended Strategy:
+  Mode: ladder
+  Phase 1 Stop: 10.0%
+  Phase 2 Stop: 30.0%
+  Ladder Steps: 0.5
+
+Expected Performance:
+  Avg Return: 5.88%
+  Win Rate: 100.0%
+  Hit 2x Rate: 0.0%
+  Hit 3x Rate: 0.0%
+  Median Exit Multiple: 1.06x
+
+Rationale:
+  • High win rate (100.0%)
+
+Confidence: LOW
+
+Further Testing Suggestions:
+  • High Phase 1 stop rate (100.0%) - consider testing looser Phase 1 stops around 12.0%
+
+Additional Exit Strategy Ideas:
+  • higher_take_profit_targets: High win rate (100.0%) but modest returns - consider higher TP targets (3x, 4x, 5x) to capture more upside
+    Config: {
+      "type": "take_profit",
+      "targets": [
+            3.0,
+            4.0,
+            5.0
+      ],
+      "percentages": [
+            33,
+            33,
+            34
+      ]
+}
+  • indicator_based_exits: Test indicator-based exits (RSI overbought, volume divergence, etc.) to capture exits at better prices
+    Config: {
+      "type": "indicator_exit",
+      "indicators": [
+            "rsi_overbought",
+            "volume_divergence"
+      ],
+      "priority": "volume_divergence"
+}
+
+Caller: Stefan
+--------------------------------------------------------------------------------
+Recommended Strategy:
+  Mode: ladder
+  Phase 1 Stop: 10.0%
+  Phase 2 Stop: 30.0%
+  Ladder Steps: 0.5
+
+Expected Performance:
+  Avg Return: 5.88%
+  Win Rate: 100.0%
+  Hit 2x Rate: 0.0%
+  Hit 3x Rate: 0.0%
+  Median Exit Multiple: 1.06x
+
+Rationale:
+  • High win rate (100.0%)
+
+Confidence: LOW
+
+Further Testing Suggestions:
+  • High Phase 1 stop rate (100.0%) - consider testing looser Phase 1 stops around 12.0%
+
+Additional Exit Strategy Ideas:
+  • higher_take_profit_targets: High win rate (100.0%) but modest returns - consider higher TP targets (3x, 4x, 5x) to capture more upside
+    Config: {
+      "type": "take_profit",
+      "targets": [
+            3.0,
+            4.0,
+            5.0
+      ],
+      "percentages": [
+            33,
+            33,
+            34
+      ]
+}
+  • indicator_based_exits: Test indicator-based exits (RSI overbought, volume divergence, etc.) to capture exits at better prices
+    Config: {
+      "type": "indicator_exit",
+      "indicators": [
+            "rsi_overbought",
+            "volume_divergence"
+      ],
+      "priority": "volume_divergence"
+}
+
+Caller: Devon
+--------------------------------------------------------------------------------
+Recommended Strategy:
+  Mode: ladder
+  Phase 1 Stop: 10.0%
+  Phase 2 Stop: 30.0%
+  Ladder Steps: 0.5
+
+Expected Performance:
+  Avg Return: 5.88%
+  Win Rate: 100.0%
+  Hit 2x Rate: 0.0%
+  Hit 3x Rate: 0.0%
+  Median Exit Multiple: 1.06x
+
+Rationale:
+  • High win rate (100.0%)
+
+Confidence: LOW
+
+Further Testing Suggestions:
+  • High Phase 1 stop rate (100.0%) - consider testing looser Phase 1 stops around 12.0%
+
+Additional Exit Strategy Ideas:
+  • higher_take_profit_targets: High win rate (100.0%) but modest returns - consider higher TP targets (3x, 4x, 5x) to capture more upside
+    Config: {
+      "type": "take_profit",
+      "targets": [
+            3.0,
+            4.0,
+            5.0
+      ],
+      "percentages": [
+            33,
+            33,
+            34
+      ]
+}
+  • indicator_based_exits: Test indicator-based exits (RSI overbought, volume divergence, etc.) to capture exits at better prices
+    Config: {
+      "type": "indicator_exit",
+      "indicators": [
+            "rsi_overbought",
+            "volume_divergence"
+      ],
+      "priority": "volume_divergence"
+}
+
+Caller: Felix
+--------------------------------------------------------------------------------
+Recommended Strategy:
+  Mode: ladder
+  Phase 1 Stop: 10.0%
+  Phase 2 Stop: 30.0%
+  Ladder Steps: 0.5
+
+Expected Performance:
+  Avg Return: 5.88%
+  Win Rate: 100.0%
+  Hit 2x Rate: 0.0%
+  Hit 3x Rate: 0.0%
+  Median Exit Multiple: 1.06x
+
+Rationale:
+  • High win rate (100.0%)
+
+Confidence: LOW
+
+Further Testing Suggestions:
+  • High Phase 1 stop rate (100.0%) - consider testing looser Phase 1 stops around 12.0%
+
+Additional Exit Strategy Ideas:
+  • higher_take_profit_targets: High win rate (100.0%) but modest returns - consider higher TP targets (3x, 4x, 5x) to capture more upside
+    Config: {
+      "type": "take_profit",
+      "targets": [
+            3.0,
+            4.0,
+            5.0
+      ],
+      "percentages": [
+            33,
+            33,
+            34
+      ]
+}
+  • indicator_based_exits: Test indicator-based exits (RSI overbought, volume divergence, etc.) to capture exits at better prices
+    Config: {
+      "type": "indicator_exit",
+      "indicators": [
+            "rsi_overbought",
+            "volume_divergence"
+      ],
+      "priority": "volume_divergence"
+}
+
+Caller: Saske
+--------------------------------------------------------------------------------
+Recommended Strategy:
+  Mode: ladder
+  Phase 1 Stop: 10.0%
+  Phase 2 Stop: 30.0%
+  Ladder Steps: 0.5
+
+Expected Performance:
+  Avg Return: 5.88%
+  Win Rate: 100.0%
+  Hit 2x Rate: 0.0%
+  Hit 3x Rate: 0.0%
+  Median Exit Multiple: 1.06x
+
+Rationale:
+  • High win rate (100.0%)
+
+Confidence: LOW
+
+Further Testing Suggestions:
+  • High Phase 1 stop rate (100.0%) - consider testing looser Phase 1 stops around 12.0%
+
+Additional Exit Strategy Ideas:
+  • higher_take_profit_targets: High win rate (100.0%) but modest returns - consider higher TP targets (3x, 4x, 5x) to capture more upside
+    Config: {
+      "type": "take_profit",
+      "targets": [
+            3.0,
+            4.0,
+            5.0
+      ],
+      "percentages": [
+            33,
+            33,
+            34
+      ]
+}
+  • indicator_based_exits: Test indicator-based exits (RSI overbought, volume divergence, etc.) to capture exits at better prices
+    Config: {
+      "type": "indicator_exit",
+      "indicators": [
+            "rsi_overbought",
+            "volume_divergence"
+      ],
+      "priority": "volume_divergence"
+}
+
+Caller: S"atoshis'sun Sa
+--------------------------------------------------------------------------------
+Recommended Strategy:
+  Mode: ladder
+  Phase 1 Stop: 10.0%
+  Phase 2 Stop: 30.0%
+  Ladder Steps: 0.5
+
+Expected Performance:
+  Avg Return: 5.88%
+  Win Rate: 100.0%
+  Hit 2x Rate: 0.0%
+  Hit 3x Rate: 0.0%
+  Median Exit Multiple: 1.06x
+
+Rationale:
+  • High win rate (100.0%)
+
+Confidence: LOW
+
+Further Testing Suggestions:
+  • High Phase 1 stop rate (100.0%) - consider testing looser Phase 1 stops around 12.0%
+
+Additional Exit Strategy Ideas:
+  • higher_take_profit_targets: High win rate (100.0%) but modest returns - consider higher TP targets (3x, 4x, 5x) to capture more upside
+    Config: {
+      "type": "take_profit",
+      "targets": [
+            3.0,
+            4.0,
+            5.0
+      ],
+      "percentages": [
+            33,
+            33,
+            34
+      ]
+}
+  • indicator_based_exits: Test indicator-based exits (RSI overbought, volume divergence, etc.) to capture exits at better prices
+    Config: {
+      "type": "indicator_exit",
+      "indicators": [
+            "rsi_overbought",
+            "volume_divergence"
+      ],
+      "priority": "volume_divergence"
+}
+
+Caller: Pigoshi 🐽 🦴️
+--------------------------------------------------------------------------------
+Recommended Strategy:
+  Mode: ladder
+  Phase 1 Stop: 10.0%
+  Phase 2 Stop: 30.0%
+  Ladder Steps: 0.5
+
+Expected Performance:
+  Avg Return: 5.88%
+  Win Rate: 100.0%
+  Hit 2x Rate: 0.0%
+  Hit 3x Rate: 0.0%
+  Median Exit Multiple: 1.06x
+
+Rationale:
+  • High win rate (100.0%)
+
+Confidence: LOW
+
+Further Testing Suggestions:
+  • High Phase 1 stop rate (100.0%) - consider testing looser Phase 1 stops around 12.0%
+
+Additional Exit Strategy Ideas:
+  • higher_take_profit_targets: High win rate (100.0%) but modest returns - consider higher TP targets (3x, 4x, 5x) to capture more upside
+    Config: {
+      "type": "take_profit",
+      "targets": [
+            3.0,
+            4.0,
+            5.0
+      ],
+      "percentages": [
+            33,
+            33,
+            34
+      ]
+}
+  • indicator_based_exits: Test indicator-based exits (RSI overbought, volume divergence, etc.) to capture exits at better prices
+    Config: {
+      "type": "indicator_exit",
+      "indicators": [
+            "rsi_overbought",
+            "volume_divergence"
+      ],
+      "priority": "volume_divergence"
+}
+
+Caller: Jewel.Sol
+--------------------------------------------------------------------------------
+Recommended Strategy:
+  Mode: ladder
+  Phase 1 Stop: 10.0%
+  Phase 2 Stop: 30.0%
+  Ladder Steps: 0.5
+
+Expected Performance:
+  Avg Return: 5.88%
+  Win Rate: 100.0%
+  Hit 2x Rate: 0.0%
+  Hit 3x Rate: 0.0%
+  Median Exit Multiple: 1.06x
+
+Rationale:
+  • High win rate (100.0%)
+
+Confidence: LOW
+
+Further Testing Suggestions:
+  • High Phase 1 stop rate (100.0%) - consider testing looser Phase 1 stops around 12.0%
+
+Additional Exit Strategy Ideas:
+  • higher_take_profit_targets: High win rate (100.0%) but modest returns - consider higher TP targets (3x, 4x, 5x) to capture more upside
+    Config: {
+      "type": "take_profit",
+      "targets": [
+            3.0,
+            4.0,
+            5.0
+      ],
+      "percentages": [
+            33,
+            33,
+            34
+      ]
+}
+  • indicator_based_exits: Test indicator-based exits (RSI overbought, volume divergence, etc.) to capture exits at better prices
+    Config: {
+      "type": "indicator_exit",
+      "indicators": [
+            "rsi_overbought",
+            "volume_divergence"
+      ],
+      "priority": "volume_divergence"
+}

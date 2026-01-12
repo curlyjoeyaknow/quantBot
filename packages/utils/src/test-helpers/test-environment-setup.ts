@@ -87,9 +87,7 @@ export async function setupPythonEnvironment(): Promise<PythonEnvironment> {
   }
 
   if (!env.dependenciesInstalled) {
-    console.warn(
-      '[test-setup] Python dependencies not found. Attempting to install...'
-    );
+    console.warn('[test-setup] Python dependencies not found. Attempting to install...');
     const workspaceRoot = findWorkspaceRoot();
 
     try {
@@ -189,7 +187,9 @@ export async function setupClickHouseEnvironment(): Promise<ClickHouseEnvironmen
     const dockerComposePath = join(workspaceRoot, 'docker-compose.yml');
 
     if (existsSync(dockerComposePath)) {
-      console.warn('[test-setup] ClickHouse not available. Attempting to start via Docker Compose...');
+      console.warn(
+        '[test-setup] ClickHouse not available. Attempting to start via Docker Compose...'
+      );
       try {
         execSync('docker-compose up -d clickhouse', {
           encoding: 'utf-8',
@@ -283,10 +283,7 @@ export async function setupAllEnvironments(): Promise<TestEnvironmentStatus> {
 /**
  * Skip test if environment is not available (for use in test files)
  */
-export function skipIfEnvironmentNotReady(
-  env: TestEnvironmentStatus,
-  reason?: string
-): void {
+export function skipIfEnvironmentNotReady(env: TestEnvironmentStatus, reason?: string): void {
   if (!env.allReady) {
     const missing: string[] = [];
     if (!env.python.python3Available || !env.python.dependenciesInstalled) {
@@ -313,4 +310,3 @@ export function skipIfEnvironmentNotReady(
     }
   }
 }
-

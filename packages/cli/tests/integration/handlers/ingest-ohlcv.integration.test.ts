@@ -31,7 +31,6 @@ import {
 } from '../../../../ingestion/tests/helpers/createTestDuckDB.js';
 import type { TestCall } from '../../../../ingestion/tests/helpers/createTestDuckDB.js';
 import { initClickHouse, closeClickHouse } from '@quantbot/storage';
-import { vi } from 'vitest';
 
 describe('ingestOhlcvHandler - Integration Tests (Real Implementations)', () => {
   let testDuckDBPath: string;
@@ -168,18 +167,19 @@ describe('ingestOhlcvHandler - Integration Tests (Real Implementations)', () => 
     // Call handler twice with same inputs (with timeout protection)
     const handlerCall = async () => ingestOhlcvHandler(args as IngestOhlcvArgs, ctx);
 
-    // Increase timeout for integration tests that actually run workflows (30 seconds per call)
+    // Increase timeout for integration tests that actually run workflows (60 seconds per call)
+    // Integration tests can be slow due to real database operations
     const result1 = await Promise.race([
       handlerCall(),
       new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Handler call 1 timeout')), 30000)
+        setTimeout(() => reject(new Error('Handler call 1 timeout')), 60000)
       ),
     ]);
 
     const result2 = await Promise.race([
       handlerCall(),
       new Promise((_, reject) =>
-        setTimeout(() => reject(new Error('Handler call 2 timeout')), 30000)
+        setTimeout(() => reject(new Error('Handler call 2 timeout')), 60000)
       ),
     ]);
 

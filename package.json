@@ -21,6 +21,7 @@
     "test": "vitest",
     "test:watch": "vitest --watch",
     "test:setup": "tsx scripts/test/setup-clickhouse.ts",
+    "test:setup:all": "tsx scripts/test/setup-test-environments.ts",
     "test:coverage": "vitest run --coverage",
     "test:cov": "vitest run --coverage",
     "test:coverage:with-db": "pnpm test:setup && RUN_DB_STRESS=1 pnpm test:coverage",

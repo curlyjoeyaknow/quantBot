@@ -94,7 +94,9 @@ describe('OHLCV Work Planning', () => {
       // Note: For '1m' interval, postWindow is automatically adjusted to 5000 - preWindow = 4740
       const alertTime = DateTime.fromISO('2024-01-01T12:00:00Z');
       // Normalize ISO strings for comparison (Z vs +00:00 are equivalent)
-      expect(workItems[0].startTime.toISO()?.replace('Z', '+00:00')).toBe(alertTime.minus({ minutes: 260 }).toISO()?.replace('Z', '+00:00'));
+      expect(workItems[0].startTime.toISO()?.replace('Z', '+00:00')).toBe(
+        alertTime.minus({ minutes: 260 }).toISO()?.replace('Z', '+00:00')
+      );
       const expectedPostWindow = 5000 - 260; // Auto-adjusted for 1m interval
       const expectedEndTime = alertTime.plus({ minutes: expectedPostWindow }).toISO();
       const actualEndTime = workItems[0].endTime.toISO();
@@ -169,7 +171,9 @@ describe('OHLCV Work Planning', () => {
       // Default windows: 260 pre, auto-adjusted post for 1m interval (5000 - 260 = 4740)
       const alertTime = DateTime.fromISO('2024-01-01T12:00:00Z');
       // Normalize ISO strings for comparison (Z vs +00:00 are equivalent)
-      expect(workItems[0].startTime.toISO()?.replace('Z', '+00:00')).toBe(alertTime.minus({ minutes: 260 }).toISO()?.replace('Z', '+00:00'));
+      expect(workItems[0].startTime.toISO()?.replace('Z', '+00:00')).toBe(
+        alertTime.minus({ minutes: 260 }).toISO()?.replace('Z', '+00:00')
+      );
       // Note: For '1m' interval, postWindow is automatically adjusted to 5000 - preWindow = 4740
       const expectedPostWindow = 5000 - 260; // Auto-adjusted for 1m interval
       // Normalize ISO strings for comparison (Z vs +00:00 are equivalent)
