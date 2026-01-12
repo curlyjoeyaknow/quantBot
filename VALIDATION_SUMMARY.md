@@ -18,6 +18,7 @@ We systematically validated each component of the OHLCV data pipeline to diagnos
 **DUPLICATE CANDLES IN CLICKHOUSE**
 
 The `ohlcv_candles` table allows duplicate rows for the same (token, chain, timestamp, interval) combination. This is because:
+
 - No PRIMARY KEY constraint
 - Using basic MergeTree instead of ReplacingMergeTree
 - Every ingestion run adds new rows instead of updating
@@ -27,6 +28,7 @@ The `ohlcv_candles` table allows duplicate rows for the same (token, chain, time
 ## Root Cause of 95.6% Gap Rate
 
 The gap rate is NOT because data is missing. It's because:
+
 1. Duplicates confuse gap detection logic
 2. Slice exporters may skip or miscount candles
 3. Query results include multiple rows per timestamp
@@ -35,7 +37,7 @@ The gap rate is NOT because data is missing. It's because:
 
 - ❌ Data integrity compromised
 - ❌ Query results incorrect
-- ❌ Backtest accuracy questionable  
+- ❌ Backtest accuracy questionable
 - ❌ Storage waste (4x for some tokens)
 - ❌ All downstream analysis affected
 
@@ -62,6 +64,7 @@ ORDER BY (token_address, chain, timestamp, interval_seconds);
 ```
 
 This will:
+
 - Automatically deduplicate at merge time
 - Keep most recent data (by `ingested_at`)
 - Fix all downstream issues
@@ -70,6 +73,7 @@ This will:
 ## Action Items
 
 ### Immediate (Critical)
+
 1. ✅ Validate duplicate issue (DONE)
 2. Create migration script for ReplacingMergeTree
 3. Test migration on small dataset
@@ -77,11 +81,13 @@ This will:
 5. Update ingestion code to add `ingested_at` timestamp
 
 ### After Migration
+
 6. Re-export slices from clean data
 7. Re-validate slice quality (should be >99% coverage)
 8. Re-run backtests with deduplicated data
 
 ### Secondary Fixes
+
 9. Update tools to use `interval_seconds` consistently
 10. Fix CLI hanging issue (infrastructure, not data)
 
@@ -95,15 +101,15 @@ This will:
 
 ## Validation Status
 
-| Component | Status | Notes |
-|-----------|--------|-------|
-| ClickHouse Schema | ✅ | Correct structure, wrong engine |
-| Birdeye API | ✅ | Returns complete data |
-| Storage Write | ✅ | Writes succeed |
-| Storage Read | ❌ | Returns duplicates |
-| Deduplication | ❌ | Missing PRIMARY KEY |
-| Slice Export | ⏸️ | Blocked by duplicates |
-| OHLCV Ingestion | ⏸️ | Works but creates duplicates |
+| Component         | Status | Notes                           |
+| ----------------- | ------ | ------------------------------- |
+| ClickHouse Schema | ✅     | Correct structure, wrong engine |
+| Birdeye API       | ✅     | Returns complete data           |
+| Storage Write     | ✅     | Writes succeed                  |
+| Storage Read      | ❌     | Returns duplicates              |
+| Deduplication     | ❌     | Missing PRIMARY KEY             |
+| Slice Export      | ⏸️     | Blocked by duplicates           |
+| OHLCV Ingestion   | ⏸️     | Works but creates duplicates    |
 
 ## Conclusion
 
@@ -112,4 +118,3 @@ This will:
 **Priority**: CRITICAL - Migrate to ReplacingMergeTree before any further analysis or backtesting.
 
 **Good News**: This is fixable with a schema migration. Once fixed, the pipeline will work correctly end-to-end.
-

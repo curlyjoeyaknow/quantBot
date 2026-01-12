@@ -3,9 +3,11 @@
 ## 🚨 CRITICAL: Duplicate Candles in ClickHouse
 
 ### Problem
+
 The `ohlcv_candles` table allows duplicate rows for the same (token_address, chain, timestamp, interval_seconds) combination.
 
 ### Evidence
+
 ```sql
 SELECT token_address, chain, timestamp, interval_seconds, count() as cnt
 FROM quantbot.ohlcv_candles
@@ -18,6 +20,7 @@ LIMIT 10;
 **Results**: Wrapped SOL has 4x duplicates for recent timestamps (from our test runs).
 
 ### Root Cause
+
 The table schema lacks a PRIMARY KEY or UNIQUE constraint:
 
 ```sql
@@ -50,6 +53,7 @@ ORDER BY (token_address, chain, timestamp)
 ### Solution Options
 
 #### Option A: Add ReplacingMergeTree (Recommended)
+
 ```sql
 -- Create new table with deduplication
 CREATE TABLE quantbot.ohlcv_candles_v2 (
@@ -70,7 +74,7 @@ ORDER BY (token_address, chain, timestamp, interval_seconds);
 
 -- Migrate data (deduplicating)
 INSERT INTO quantbot.ohlcv_candles_v2
-SELECT 
+SELECT
     token_address,
     chain,
     timestamp,
@@ -90,7 +94,9 @@ RENAME TABLE quantbot.ohlcv_candles_v2 TO quantbot.ohlcv_candles;
 ```
 
 #### Option B: Use FINAL in Queries
+
 Add `FINAL` keyword to all queries to deduplicate at read time:
+
 ```sql
 SELECT * FROM quantbot.ohlcv_candles FINAL
 WHERE ...
@@ -99,6 +105,7 @@ WHERE ...
 **Downside**: Performance penalty on every query.
 
 #### Option C: Deduplicate Before Insert
+
 Modify ingestion code to check for existing data and skip duplicates.
 
 **Downside**: Requires network round-trip for every insert.
@@ -106,6 +113,7 @@ Modify ingestion code to check for existing data and skip duplicates.
 ### Recommendation
 
 **Implement Option A (ReplacingMergeTree)** because:
+
 1. Automatic deduplication at merge time
 2. No query performance penalty
 3. Keeps most recent data (by `ingested_at`)
@@ -126,6 +134,7 @@ Modify ingestion code to check for existing data and skip duplicates.
 Many tools reference `interval` (String like "1m", "5m") but ClickHouse uses `interval_seconds` (UInt32 like 60, 300).
 
 **Affected Tools**:
+
 - `tools/analysis/ohlcv_caller_coverage.py`
 - `tools/analysis/ohlcv_detailed_coverage.py`
 - Previous worklist generation scripts
@@ -134,17 +143,16 @@ Many tools reference `interval` (String like "1m", "5m") but ClickHouse uses `in
 
 ## 📊 Validation Summary
 
-| Phase | Status | Finding |
-|-------|--------|---------|
-| ClickHouse Connectivity | ✅ PASSED | 126M candles, schema correct |
-| Birdeye API Fetch | ✅ PASSED | Returns valid, complete data |
-| Storage Write | ✅ PASSED | Writes succeed |
-| Storage Read | ❌ FAILED | Returns duplicates |
-| Deduplication | ❌ MISSING | No PRIMARY KEY constraint |
+| Phase                   | Status     | Finding                      |
+| ----------------------- | ---------- | ---------------------------- |
+| ClickHouse Connectivity | ✅ PASSED  | 126M candles, schema correct |
+| Birdeye API Fetch       | ✅ PASSED  | Returns valid, complete data |
+| Storage Write           | ✅ PASSED  | Writes succeed               |
+| Storage Read            | ❌ FAILED  | Returns duplicates           |
+| Deduplication           | ❌ MISSING | No PRIMARY KEY constraint    |
 
 ## Conclusion
 
 The OHLCV pipeline components (Birdeye API, storage writes) work correctly. The issue is **architectural**: the database schema allows duplicates, which corrupts all downstream analysis.
 
 **Priority**: CRITICAL - Fix before any further backtesting or analysis.
-

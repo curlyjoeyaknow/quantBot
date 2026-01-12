@@ -19,7 +19,10 @@ export const verifyOhlcvFetchSchema = z.object({
   fromDate: z.string().optional().describe('Start date (ISO 8601)'),
   toDate: z.string().optional().describe('End date (ISO 8601)'),
   hours: z.number().optional().describe('Hours back from now (if dates not specified)'),
-  interval: z.enum(['1s', '15s', '1m', '5m', '15m', '1h']).default('1m').describe('Candle interval'),
+  interval: z
+    .enum(['1s', '15s', '1m', '5m', '15m', '1h'])
+    .default('1m')
+    .describe('Candle interval'),
   chain: z.string().default('solana').describe('Blockchain'),
   format: z.enum(['json', 'table']).default('table').describe('Output format'),
 });
@@ -80,4 +83,3 @@ export function registerValidationCommands(program: Command): void {
       await execute(commandDef, options);
     });
 }
-

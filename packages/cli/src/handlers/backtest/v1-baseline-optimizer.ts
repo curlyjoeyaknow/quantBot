@@ -24,15 +24,24 @@ export type V1BaselineOptimizerArgs = z.infer<typeof backtestV1BaselineSchema>;
  */
 function intervalToSeconds(interval: string): number {
   switch (interval) {
-    case '1s': return 1;
-    case '15s': return 15;
-    case '1m': return 60;
-    case '5m': return 300;
-    case '15m': return 900;
-    case '1h': return 3600;
-    case '4h': return 14400;
-    case '1d': return 86400;
-    default: throw new Error(`Unsupported interval: ${interval}`);
+    case '1s':
+      return 1;
+    case '15s':
+      return 15;
+    case '1m':
+      return 60;
+    case '5m':
+      return 300;
+    case '15m':
+      return 900;
+    case '1h':
+      return 3600;
+    case '4h':
+      return 14400;
+    case '1d':
+      return 86400;
+    default:
+      throw new Error(`Unsupported interval: ${interval}`);
   }
 }
 
@@ -153,7 +162,7 @@ export async function v1BaselineOptimizerHandler(
   console.log(`Total calls queried: ${callsToUse.length}`);
   console.log(`Eligible calls (have sufficient data): ${coverage.eligible.length}`);
   console.log(`Excluded calls (missing data): ${coverage.excluded.length}`);
-  
+
   // Group excluded calls by reason
   const excludedByReason = new Map<string, number>();
   for (const excluded of coverage.excluded) {
@@ -163,7 +172,9 @@ export async function v1BaselineOptimizerHandler(
 
   if (excludedByReason.size > 0) {
     console.log('\n=== EXCLUSION REASONS ===');
-    for (const [reason, count] of Array.from(excludedByReason.entries()).sort((a, b) => b[1] - a[1])) {
+    for (const [reason, count] of Array.from(excludedByReason.entries()).sort(
+      (a, b) => b[1] - a[1]
+    )) {
       console.log(`  ${reason}: ${count} calls`);
     }
   }
@@ -173,7 +184,7 @@ export async function v1BaselineOptimizerHandler(
     console.log('\n=== SAMPLE EXCLUDED CALLS (first 5) ===');
     for (let i = 0; i < Math.min(5, coverage.excluded.length); i++) {
       const excluded = coverage.excluded[i];
-      const call = callsToUse.find(c => c.id === excluded.callId);
+      const call = callsToUse.find((c) => c.id === excluded.callId);
       console.log(`  Call ${i + 1}:`);
       console.log(`    ID: ${excluded.callId}`);
       console.log(`    Mint: ${call?.mint.substring(0, 20)}...`);
@@ -191,7 +202,9 @@ export async function v1BaselineOptimizerHandler(
   console.log(`Entry delay: ${plan.entryDelayCandles} candles`);
   console.log(`Max hold: ${plan.maxHoldCandles} candles`);
   console.log(`Total required candles per call: ${plan.totalRequiredCandles}`);
-  console.log(`Time window per call: ${plan.indicatorWarmupCandles * intervalToSeconds(args.interval as any) / 60} min before → ${plan.maxHoldCandles * intervalToSeconds(args.interval as any) / 60} min after`);
+  console.log(
+    `Time window per call: ${(plan.indicatorWarmupCandles * intervalToSeconds(args.interval as any)) / 60} min before → ${(plan.maxHoldCandles * intervalToSeconds(args.interval as any)) / 60} min after`
+  );
   console.log('==============================\n');
 
   if (coverage.eligible.length === 0) {

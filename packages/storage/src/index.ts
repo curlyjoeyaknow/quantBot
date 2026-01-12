@@ -21,6 +21,7 @@ export type {
 
 // Export repositories (for advanced usage)
 export { OhlcvRepository } from './clickhouse/repositories/OhlcvRepository.js';
+export type { UpsertResult } from './clickhouse/repositories/OhlcvRepository.js';
 export { IndicatorsRepository } from './clickhouse/repositories/IndicatorsRepository.js';
 export { TokenMetadataRepository } from './clickhouse/repositories/TokenMetadataRepository.js';
 export { SimulationEventsRepository } from './clickhouse/repositories/SimulationEventsRepository.js';
@@ -30,6 +31,8 @@ export { RunLogRepository } from './clickhouse/repositories/RunLogRepository.js'
 export type { RunLog, RunLogInsertData } from './clickhouse/repositories/RunLogRepository.js';
 export { RunRepository } from './clickhouse/repositories/RunRepository.js';
 export type { RunRepository as IRunRepository } from './ports/RunRepositoryPort.js';
+export { IngestionRunRepository } from './clickhouse/repositories/IngestionRunRepository.js';
+export type { IngestionRun, RunStats } from './clickhouse/repositories/IngestionRunRepository.js';
 
 // PostgreSQL repositories removed - use DuckDB repositories instead
 
@@ -138,6 +141,32 @@ export {
   type CacheEntry,
   type CacheStats,
 } from './cache/ohlcv-cache.js';
+
+// Export OHLCV deduplication and quality scoring
+export { OhlcvDedupService } from './clickhouse/services/OhlcvDedupService.js';
+export type { DedupResult, RollbackResult, FaultyRunReport } from './clickhouse/services/OhlcvDedupService.js';
+export {
+  SourceTier,
+  computeQualityScore,
+  computeQualityScoreWithBreakdown,
+  type IngestionRunManifest,
+  type QualityScoreBreakdown,
+} from './clickhouse/types/quality-score.js';
+export {
+  ValidationSeverity,
+  validateCandle,
+  validateCandleBatch,
+  STRICT_VALIDATION,
+  LENIENT_VALIDATION,
+  DEFAULT_HALT_POLICY,
+  type ValidationIssue,
+  type CandleValidationResult,
+  type QualityValidationOptions,
+  type TokenFlag,
+  type RunHaltPolicy,
+} from './clickhouse/validation/candle-validator.js';
+export { getGitInfo, getGitInfoSync, type GitInfo } from './utils/git-info.js';
+export { getVersionInfo, type VersionInfo } from './utils/version-info.js';
 
 // Legacy exports (temporary - will be deprecated)
 // Note: SQLite CallerDatabase removed - use DuckDB CallersRepository instead

@@ -31,6 +31,11 @@ import {
   coverageDashboardSchema,
 } from '../handlers/ohlcv/coverage-dashboard.js';
 import { tokenLifespanHandler, tokenLifespanSchema } from '../handlers/ohlcv/token-lifespan.js';
+import { dedupSweepHandler } from '../handlers/ohlcv/dedup-sweep.js';
+import { runsListHandler } from '../handlers/ohlcv/runs-list.js';
+import { runsRollbackHandler } from '../handlers/ohlcv/runs-rollback.js';
+import { runsDetailsHandler } from '../handlers/ohlcv/runs-details.js';
+import { validateDuplicatesHandler } from '../handlers/ohlcv/validate-duplicates.js';
 
 /**
  * Fetch command schema (re-exported from handler)
@@ -153,6 +158,52 @@ export const analyzeDetailedCoverageSchema = z.object({
   limit: z.number().int().positive().optional(),
   summaryOnly: z.boolean().default(false),
   timeout: z.number().int().positive().optional(), // Timeout in milliseconds
+});
+
+/**
+ * Dedup sweep command schema
+ */
+export const dedupSweepSchema = z.object({
+  intervals: z.array(z.enum(['1m', '5m'])).optional(),
+  olderThan: z.string().optional(),
+  dryRun: z.boolean().default(false),
+  format: z.enum(['json', 'table']).default('table'),
+});
+
+/**
+ * Runs list command schema
+ */
+export const runsListSchema = z.object({
+  status: z.enum(['running', 'completed', 'failed', 'rolled_back']).optional(),
+  since: z.string().optional(),
+  limit: z.number().int().positive().default(100),
+  format: z.enum(['json', 'table']).default('table'),
+});
+
+/**
+ * Runs rollback command schema
+ */
+export const runsRollbackSchema = z.object({
+  runId: z.string(),
+  format: z.enum(['json', 'table']).default('table'),
+});
+
+/**
+ * Runs details command schema
+ */
+export const runsDetailsSchema = z.object({
+  runId: z.string(),
+  format: z.enum(['json', 'table']).default('table'),
+});
+
+/**
+ * Validate duplicates command schema
+ */
+export const validateDuplicatesSchema = z.object({
+  minErrorRate: z.number().min(0).max(1).default(0.1),
+  minZeroVolumeRate: z.number().min(0).max(1).default(0.5),
+  checkConsistency: z.boolean().default(true),
+  format: z.enum(['json', 'table']).default('table'),
 });
 
 /**
@@ -554,6 +605,73 @@ const ohlcvModule: PackageCommandModule = {
         'quantbot ohlcv token-lifespan --duckdb ~/alerts.duckdb --interval 1m',
         'quantbot ohlcv token-lifespan --duckdb ~/alerts.duckdb --from 2025-05-01 --interval 1m',
         'quantbot ohlcv token-lifespan --duckdb ~/alerts.duckdb --min-coverage-seconds 150000',
+      ],
+    },
+    {
+      name: 'dedup-sweep',
+      description: 'Run deduplication sweep across all interval tables',
+      schema: dedupSweepSchema,
+      handler: async (args: unknown, ctx: unknown) => {
+        const typedCtx = ctx as CommandContext;
+        const typedArgs = args as z.infer<typeof dedupSweepSchema>;
+        return await dedupSweepHandler(typedArgs, typedCtx);
+      },
+      examples: [
+        'quantbot ohlcv dedup-sweep',
+        'quantbot ohlcv dedup-sweep --intervals 1m 5m',
+        'quantbot ohlcv dedup-sweep --dry-run',
+      ],
+    },
+    {
+      name: 'runs-list',
+      description: 'List ingestion runs with optional filtering',
+      schema: runsListSchema,
+      handler: async (args: unknown, ctx: unknown) => {
+        const typedCtx = ctx as CommandContext;
+        const typedArgs = args as z.infer<typeof runsListSchema>;
+        return await runsListHandler(typedArgs, typedCtx);
+      },
+      examples: [
+        'quantbot ohlcv runs-list',
+        'quantbot ohlcv runs-list --status failed',
+        'quantbot ohlcv runs-list --since 2025-01-01 --limit 50',
+      ],
+    },
+    {
+      name: 'runs-rollback',
+      description: 'Rollback (delete) all candles from a specific run',
+      schema: runsRollbackSchema,
+      handler: async (args: unknown, ctx: unknown) => {
+        const typedCtx = ctx as CommandContext;
+        const typedArgs = args as z.infer<typeof runsRollbackSchema>;
+        return await runsRollbackHandler(typedArgs, typedCtx);
+      },
+      examples: ['quantbot ohlcv runs-rollback --run-id abc123-def456-ghi789'],
+    },
+    {
+      name: 'runs-details',
+      description: 'Get detailed information about a specific run',
+      schema: runsDetailsSchema,
+      handler: async (args: unknown, ctx: unknown) => {
+        const typedCtx = ctx as CommandContext;
+        const typedArgs = args as z.infer<typeof runsDetailsSchema>;
+        return await runsDetailsHandler(typedArgs, typedCtx);
+      },
+      examples: ['quantbot ohlcv runs-details --run-id abc123-def456-ghi789'],
+    },
+    {
+      name: 'validate-duplicates',
+      description: 'Check for faulty runs with high error/corruption rates',
+      schema: validateDuplicatesSchema,
+      handler: async (args: unknown, ctx: unknown) => {
+        const typedCtx = ctx as CommandContext;
+        const typedArgs = args as z.infer<typeof validateDuplicatesSchema>;
+        return await validateDuplicatesHandler(typedArgs, typedCtx);
+      },
+      examples: [
+        'quantbot ohlcv validate-duplicates',
+        'quantbot ohlcv validate-duplicates --min-error-rate 0.05',
+        'quantbot ohlcv validate-duplicates --min-zero-volume-rate 0.3',
       ],
     },
   ],

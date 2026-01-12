@@ -11,6 +11,9 @@ import {
   StrategiesRepository,
   ExperimentDuckDBAdapter,
   RunRepository,
+  // New: Deduplication and audit services
+  IngestionRunRepository,
+  OhlcvDedupService,
   // PostgreSQL repositories removed - use DuckDB equivalents
   // CallsRepository, TokensRepository, AlertsRepository, SimulationRunsRepository
 } from '@quantbot/storage';
@@ -44,6 +47,8 @@ export interface CommandServices {
   // telegramIngestion(): TelegramAlertIngestionService; // Temporarily disabled - needs repository refactoring
   // ohlcvFetchJob(): OhlcvFetchJob; // Temporarily disabled - jobs package not fully resolved
   ohlcvRepository(): OhlcvRepository;
+  ohlcvDedup(): OhlcvDedupService;
+  ingestionRunRepository(): IngestionRunRepository;
   analyticsEngine(): AnalyticsEngineType;
   pythonEngine(): PythonEngineType;
   storageEngine(): StorageEngine;
@@ -146,6 +151,12 @@ export class CommandContext {
       // },
       ohlcvRepository: () => {
         return new OhlcvRepository();
+      },
+      ohlcvDedup: () => {
+        return new OhlcvDedupService();
+      },
+      ingestionRunRepository: () => {
+        return new IngestionRunRepository();
       },
       analyticsEngine: () => {
         return analyticsEngine;

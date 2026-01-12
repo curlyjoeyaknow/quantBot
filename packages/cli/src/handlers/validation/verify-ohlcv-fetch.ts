@@ -1,6 +1,6 @@
 /**
  * Handler: Verify OHLCV Fetch
- * 
+ *
  * Tests Birdeye API fetch for a single token and validates the results.
  */
 
@@ -12,9 +12,9 @@ import { logger } from '@quantbot/utils';
 
 export interface VerifyOhlcvFetchArgs {
   mint: string;
-  fromDate?: string;  // ISO date string
-  toDate?: string;    // ISO date string
-  hours?: number;     // Or specify hours back from now
+  fromDate?: string; // ISO date string
+  toDate?: string; // ISO date string
+  hours?: number; // Or specify hours back from now
   interval?: '1s' | '15s' | '1m' | '5m' | '15m' | '1h';
   chain?: string;
 }
@@ -50,11 +50,11 @@ export async function verifyOhlcvFetchHandler(
 ): Promise<VerifyOhlcvFetchResult> {
   const interval = args.interval || '1m';
   const chain = args.chain || 'solana';
-  
+
   // Determine time range
   let fromTime: DateTime;
   let toTime: DateTime;
-  
+
   if (args.fromDate && args.toDate) {
     fromTime = DateTime.fromISO(args.fromDate);
     toTime = DateTime.fromISO(args.toDate);
@@ -66,32 +66,34 @@ export async function verifyOhlcvFetchHandler(
     toTime = DateTime.now();
     fromTime = toTime.minus({ hours: 1 });
   }
-  
+
   const fromUnix = Math.floor(fromTime.toSeconds());
   const toUnix = Math.floor(toTime.toSeconds());
-  
+
   logger.info('Verifying OHLCV fetch', {
     mint: args.mint,
     interval,
     from: fromTime.toISO(),
     to: toTime.toISO(),
   });
-  
+
   try {
     const pythonEngine = new PythonEngine();
-    
+
     // Define schema for Python script output
     const outputSchema = z.object({
       success: z.boolean(),
       count: z.number(),
-      candles: z.array(z.object({
-        timestamp: z.number(),
-        open: z.number(),
-        high: z.number(),
-        low: z.number(),
-        close: z.number(),
-        volume: z.number(),
-      })),
+      candles: z.array(
+        z.object({
+          timestamp: z.number(),
+          open: z.number(),
+          high: z.number(),
+          low: z.number(),
+          close: z.number(),
+          volume: z.number(),
+        })
+      ),
       validation: z.object({
         valid: z.boolean(),
         errors: z.array(z.string()),
@@ -99,7 +101,7 @@ export async function verifyOhlcvFetchHandler(
       }),
       error: z.string().optional(),
     });
-    
+
     const result = await pythonEngine.runScript(
       'tools/validation/verify_ohlcv_fetch.py',
       {
@@ -110,15 +112,15 @@ export async function verifyOhlcvFetchHandler(
         chain,
       },
       outputSchema,
-      { 
+      {
         timeout: 60000,
         env: {
           ...process.env,
           BIRDEYE_API_KEY: process.env.BIRDEYE_API_KEY || '',
-        }
+        },
       }
     );
-    
+
     return {
       success: result.success,
       mint: args.mint,
@@ -138,7 +140,7 @@ export async function verifyOhlcvFetchHandler(
     };
   } catch (error) {
     logger.error('Failed to verify OHLCV fetch', error as Error);
-    
+
     return {
       success: false,
       mint: args.mint,
@@ -157,4 +159,3 @@ export async function verifyOhlcvFetchHandler(
     };
   }
 }
-

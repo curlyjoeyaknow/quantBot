@@ -168,3 +168,4 @@ python3 tools/validation/verify_storage_write_read.py \
 
 Expected: `candles_fetched = candles_written = candles_read`
 
+

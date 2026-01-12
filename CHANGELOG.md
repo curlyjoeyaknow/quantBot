@@ -4,6 +4,28 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Added
+
+- **OHLCV Deduplication and Audit Trail Module** - Complete system for quality-based deduplication and run tracking
+  - **Quality-based deduplication**: Data-derived quality scoring (volume-weighted, 0-125 points) ensures candles with volume ALWAYS beat zero-volume candles
+  - **Per-interval tables**: Separate tables for 1m and 5m candles (`ohlcv_candles_1m`, `ohlcv_candles_5m`) prevent interval-mixing bugs
+  - **ReplacingMergeTree**: Uses `quality_score` and `ingested_at` as deduplication keys; highest quality wins
+  - **Validation before insertion**: Corruption checks (ALWAYS enforced) and quality checks (configurable: STRICT/LENIENT)
+  - **Full audit trail**: Every run tracked with version, git hash, CLI args, results (run_id enables rollback)
+  - **CLI commands**: `dedup-sweep`, `runs-list`, `runs-rollback`, `runs-details`, `validate-duplicates`
+  - **Migration script**: Python script to migrate existing data with deduplication (`tools/migration/migrate_ohlcv_to_interval_tables.py`)
+  - **Tests**: Comprehensive unit tests for quality scoring and validation (32 tests covering edge cases)
+  - **Schema migrations**: SQL migrations for new tables (`ohlcv_ingestion_runs`, per-interval candle tables)
+  - **Components**:
+    - `SourceTier` enum (0-5): Source tier as tie-breaker only (not primary quality indicator)
+    - `computeQualityScore()`: Volume (100) + range (10) + OHLC consistency (10) + source tier (0-5)
+    - `validateCandle()`: Corruption checks (INVALID_RANGE, OPEN/CLOSE_OUTSIDE_RANGE, NEGATIVE_VALUES) + quality checks (ZERO_VOLUME, ZERO_PRICE, FUTURE_TIMESTAMP)
+    - `IngestionRunRepository`: Run lifecycle tracking (start, complete, fail, rollback)
+    - `OhlcvDedupService`: Inline, post-batch, and sweep deduplication modes
+    - `OhlcvRepository.upsertCandles()`: Now validates, scores, and routes to correct interval table
+    - `OhlcvRepository.getCandles()`: Uses `GROUP BY` + `argMax()` for guaranteed query-time deduplication
+  - **Purpose**: Eliminate duplicate candles, ensure data quality, provide full audit trail for faulty run identification and rollback
+
 ### Fixed
 
 - **OHLCV Pipeline Schema and Deduplication** - Fixed schema mismatch and duplicate data issues
