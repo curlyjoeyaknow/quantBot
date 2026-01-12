@@ -14,4 +14,3 @@ export async function runsRollbackHandler(args: RunsRollbackArgs, ctx: CommandCo
 
   return await service.rollbackRun(args.runId);
 }
-

@@ -140,4 +140,3 @@ export interface IngestionRunManifest {
   dedupMode: 'inline' | 'post-batch' | 'none';
   sourceTier: SourceTier; // Used for quality score calculation
 }
-

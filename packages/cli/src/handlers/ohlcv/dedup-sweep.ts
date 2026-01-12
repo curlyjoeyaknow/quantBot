@@ -20,4 +20,3 @@ export async function dedupSweepHandler(args: DedupSweepArgs, ctx: CommandContex
 
   return await service.deduplicateSweep(options);
 }
-

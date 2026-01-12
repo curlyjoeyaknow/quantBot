@@ -93,7 +93,11 @@ describe('computeQualityScore', () => {
     const validScore = computeQualityScore(validRangeCandle, SourceTier.UNKNOWN);
     const invalidScore = computeQualityScore(invalidRangeCandle, SourceTier.UNKNOWN);
 
-    expect(validScore).toBe(invalidScore + 10);
+    // Valid: 100 (volume) + 10 (range) + 5 (open) + 5 (close) + 0 (tier) = 120
+    // Invalid: 100 (volume) + 0 (range) + 0 (open outside inverted range) + 0 (close outside inverted range) + 0 (tier) = 100
+    expect(validScore).toBe(120);
+    expect(invalidScore).toBe(100);
+    expect(validScore).toBe(invalidScore + 20); // 10 for range + 10 for consistent OHLC
   });
 
   it('should add +5 points for consistent open (within range)', () => {
@@ -233,4 +237,3 @@ describe('computeQualityScoreWithBreakdown', () => {
     expect(breakdown.totalScore).toBe(0);
   });
 });
-

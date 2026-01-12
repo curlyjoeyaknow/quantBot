@@ -324,4 +324,3 @@ export class IngestionRunRepository {
     return runs[0];
   }
 }
-

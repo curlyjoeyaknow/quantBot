@@ -32,4 +32,3 @@ export function getVersionInfo(packageJsonPath?: string): VersionInfo {
     platform: process.platform,
   };
 }
-

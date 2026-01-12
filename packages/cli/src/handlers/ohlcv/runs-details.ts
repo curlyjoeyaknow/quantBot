@@ -14,4 +14,3 @@ export async function runsDetailsHandler(args: RunsDetailsArgs, ctx: CommandCont
 
   return await repository.getRunDetails(args.runId);
 }
-

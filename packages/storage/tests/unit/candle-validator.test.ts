@@ -341,7 +341,11 @@ describe('validateCandleBatch', () => {
     expect(result.valid).toHaveLength(2);
     expect(result.rejected).toHaveLength(1);
     expect(result.rejected[0].candle.timestamp).toBe(2000);
-    expect(result.rejected[0].errors).toContain(expect.stringContaining('INVALID_RANGE'));
+    // Errors are formatted as "CODE: message"
+    const hasInvalidRangeError = result.rejected[0].errors.some((err) =>
+      err.includes('INVALID_RANGE')
+    );
+    expect(hasInvalidRangeError).toBe(true);
   });
 
   it('should count warnings', () => {
@@ -373,4 +377,3 @@ describe('validateCandleBatch', () => {
     expect(result.warningCount).toBe(1); // One candle has zero volume warning
   });
 });
-

@@ -274,4 +274,3 @@ export const DEFAULT_HALT_POLICY: RunHaltPolicy = {
   maxCorruptedTokens: 3, // Third flagged token halts the run
   maxCorruptionRatePercent: 0.1, // 0.1% corruption rate = halt
 };
-

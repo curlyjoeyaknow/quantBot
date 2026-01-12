@@ -206,10 +206,13 @@ export class OhlcvRepository {
 
     const table = mapping[interval];
     if (!table) {
-      throw new ValidationError(`Unknown interval: ${interval}. Supported: ${Object.keys(mapping).join(', ')}`, {
-        interval,
-        validIntervals: Object.keys(mapping),
-      });
+      throw new ValidationError(
+        `Unknown interval: ${interval}. Supported: ${Object.keys(mapping).join(', ')}`,
+        {
+          interval,
+          validIntervals: Object.keys(mapping),
+        }
+      );
     }
 
     return table;

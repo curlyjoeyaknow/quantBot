@@ -20,4 +20,3 @@ export async function runsListHandler(args: RunsListArgs, ctx: CommandContext) {
 
   return await repository.getRunHistory(options);
 }
-

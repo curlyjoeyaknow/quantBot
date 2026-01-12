@@ -20,4 +20,3 @@ export async function validateDuplicatesHandler(args: ValidateDuplicatesArgs, ct
 
   return await service.identifyFaultyRuns(options);
 }
-

@@ -40,4 +40,3 @@ export function getGitInfoSync(): GitInfo {
     return { commitHash: 'unknown', branch: 'unknown', dirty: false };
   }
 }
-

@@ -216,7 +216,23 @@ export class StorageEngine {
     if (candles.length === 0) return;
 
     try {
-      await this.ohlcvRepo.upsertCandles(tokenAddress, chain, interval, candles);
+      // Create a default run manifest for backward compatibility
+      const runManifest = {
+        runId: `storage-engine-${Date.now()}`,
+        scriptVersion: 'storage-engine',
+        gitCommitHash: 'unknown',
+        gitBranch: 'unknown',
+        gitDirty: false,
+        cliArgs: {},
+        envInfo: {},
+        inputHash: '',
+        dedupMode: 'none' as const,
+        sourceTier: 1, // BACKFILL_RAW
+      };
+
+      await this.ohlcvRepo.upsertCandles(tokenAddress, chain, interval, candles, {
+        runManifest,
+      });
 
       // Invalidate cache for this token/interval
       if (this.config.enableCache) {

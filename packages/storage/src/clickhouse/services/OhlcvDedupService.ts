@@ -361,7 +361,9 @@ export class OhlcvDedupService {
 
     const table = mapping[interval];
     if (!table) {
-      throw new Error(`Unknown interval: ${interval}. Supported: ${Object.keys(mapping).join(', ')}`);
+      throw new Error(
+        `Unknown interval: ${interval}. Supported: ${Object.keys(mapping).join(', ')}`
+      );
     }
 
     return table;
@@ -376,4 +378,3 @@ export class OhlcvDedupService {
     return `${year}${month}`;
   }
 }
-

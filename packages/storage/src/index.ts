@@ -144,7 +144,11 @@ export {
 
 // Export OHLCV deduplication and quality scoring
 export { OhlcvDedupService } from './clickhouse/services/OhlcvDedupService.js';
-export type { DedupResult, RollbackResult, FaultyRunReport } from './clickhouse/services/OhlcvDedupService.js';
+export type {
+  DedupResult,
+  RollbackResult,
+  FaultyRunReport,
+} from './clickhouse/services/OhlcvDedupService.js';
 export {
   SourceTier,
   computeQualityScore,
