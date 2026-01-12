@@ -105,4 +105,5 @@ quantbot backtest v1-baseline \
   --from 2025-05-01 --to 2025-08-01 \
   --mode grouped --interval 1m
 
+
 ```

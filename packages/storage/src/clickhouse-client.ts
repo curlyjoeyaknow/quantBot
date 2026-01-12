@@ -135,7 +135,7 @@ async function ensureOhlcvTable(ch: ClickHouseClient): Promise<void> {
         token_address String,
         chain String,
         timestamp DateTime,
-        interval String,
+        interval_seconds UInt32,
         open Float64,
         high Float64,
         low Float64,

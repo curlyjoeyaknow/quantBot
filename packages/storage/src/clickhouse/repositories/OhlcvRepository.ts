@@ -168,11 +168,11 @@ export class OhlcvRepository {
     const query = `
       SELECT 
         toUnixTimestamp(timestamp) as timestamp,
-        open,
-        high,
-        low,
-        close,
-        volume
+        any(open) as open,
+        any(high) as high,
+        any(low) as low,
+        any(close) as close,
+        any(volume) as volume
       FROM ${CLICKHOUSE_DATABASE}.ohlcv_candles
       WHERE (token_address = '${escapedToken}'
              OR lower(token_address) = lower('${escapedToken}')
@@ -184,6 +184,7 @@ export class OhlcvRepository {
         AND interval_seconds = ${intervalSeconds}
         AND timestamp >= toDateTime(${startUnix})
         AND timestamp <= toDateTime(${endUnix})
+      GROUP BY token_address, chain, timestamp, interval_seconds
       ORDER BY timestamp ASC
     `;
 

@@ -6,6 +6,15 @@ All notable changes to this project will be documented in this file.
 
 ### Fixed
 
+- **OHLCV Pipeline Schema and Deduplication** - Fixed schema mismatch and duplicate data issues
+  - **Schema fix**: Updated `clickhouse-client.ts` to create tables with `interval_seconds UInt32` instead of `interval String`
+  - **Deduplication in reads**: Updated `OhlcvRepository.getCandles()` to use `GROUP BY` with `any()` aggregation to deduplicate on read
+  - **Historical data cleanup**: Ran deduplication script on existing data, removing 379,891 duplicate rows (0.3%)
+  - **Validation**: Updated `verify_storage_write_read.py` to use deduplication queries
+  - **Impact**: Write 13 candles → Read 13 candles (previously would return 38+ due to duplicates)
+  - **Root cause**: MergeTree engine allows multiple rows with same key; queries didn't deduplicate
+  - **Verified**: Validation script now passes with exact count matching (fetched=written=read)
+
 - **Date Range Query Bug in V1 Baseline Optimizer** - Queries for older date ranges now work correctly
   - Fixed issue where `query_calls` operation fetched 1000 most recent calls and then filtered by date
   - Date filtering now happens in SQL BEFORE the LIMIT clause
