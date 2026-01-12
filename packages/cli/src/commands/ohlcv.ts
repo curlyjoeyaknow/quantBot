@@ -442,6 +442,92 @@ export function registerOhlcvCommands(program: Command): void {
     packageName: 'ohlcv',
     onError: die,
   });
+
+  // Dedup sweep command
+  const dedupSweepCmd = ohlcvCmd
+    .command('dedup-sweep')
+    .description('Run deduplication sweep across all interval tables')
+    .option('--intervals <intervals...>', 'Intervals to process (1m, 5m)', ['1m', '5m'])
+    .option('--older-than <date>', 'Only process candles older than this date (ISO 8601)')
+    .option('--dry-run', 'Show what would be deduplicated without making changes', false)
+    .option('--format <format>', 'Output format', 'table');
+
+  defineCommand(dedupSweepCmd, {
+    name: 'dedup-sweep',
+    packageName: 'ohlcv',
+    coerce: (opts) => ({
+      ...opts,
+      intervals: Array.isArray(opts.intervals) ? opts.intervals : [opts.intervals].filter(Boolean),
+      dryRun: coerceBoolean(opts.dryRun, 'dry-run') ?? false,
+    }),
+    onError: die,
+  });
+
+  // Runs list command
+  const runsListCmd = ohlcvCmd
+    .command('runs-list')
+    .description('List ingestion runs with optional filtering')
+    .option('--status <status>', 'Filter by status (running, completed, failed, rolled_back)')
+    .option('--since <date>', 'Filter runs since this date (ISO 8601)')
+    .option('--limit <n>', 'Maximum number of runs to return', '100')
+    .option('--format <format>', 'Output format', 'table');
+
+  defineCommand(runsListCmd, {
+    name: 'runs-list',
+    packageName: 'ohlcv',
+    coerce: (opts) => ({
+      ...opts,
+      limit: coerceNumber(opts.limit, 'limit') ?? 100,
+    }),
+    onError: die,
+  });
+
+  // Runs rollback command
+  const runsRollbackCmd = ohlcvCmd
+    .command('runs-rollback')
+    .description('Rollback (delete) all candles from a specific run')
+    .requiredOption('--runId <id>', 'Run ID to rollback')
+    .option('--format <format>', 'Output format', 'table');
+
+  defineCommand(runsRollbackCmd, {
+    name: 'runs-rollback',
+    packageName: 'ohlcv',
+    onError: die,
+  });
+
+  // Runs details command
+  const runsDetailsCmd = ohlcvCmd
+    .command('runs-details')
+    .description('Get detailed information about a specific run')
+    .requiredOption('--runId <id>', 'Run ID to get details for')
+    .option('--format <format>', 'Output format', 'table');
+
+  defineCommand(runsDetailsCmd, {
+    name: 'runs-details',
+    packageName: 'ohlcv',
+    onError: die,
+  });
+
+  // Validate duplicates command
+  const validateDuplicatesCmd = ohlcvCmd
+    .command('validate-duplicates')
+    .description('Check for faulty runs with high error/corruption rates')
+    .option('--min-error-rate <rate>', 'Minimum error rate threshold (0-1)', '0.1')
+    .option('--min-zero-volume-rate <rate>', 'Minimum zero-volume rate threshold (0-1)', '0.5')
+    .option('--check-consistency', 'Check data consistency', true)
+    .option('--format <format>', 'Output format', 'table');
+
+  defineCommand(validateDuplicatesCmd, {
+    name: 'validate-duplicates',
+    packageName: 'ohlcv',
+    coerce: (opts) => ({
+      ...opts,
+      minErrorRate: coerceNumber(opts.minErrorRate, 'min-error-rate') ?? 0.1,
+      minZeroVolumeRate: coerceNumber(opts.minZeroVolumeRate, 'min-zero-volume-rate') ?? 0.5,
+      checkConsistency: coerceBoolean(opts.checkConsistency, 'check-consistency') ?? true,
+    }),
+    onError: die,
+  });
 }
 
 /**
