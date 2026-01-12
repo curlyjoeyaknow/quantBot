@@ -564,17 +564,14 @@ export class OhlcvIngestionService {
         errorCount: summary.errors.length,
       });
 
-      // Complete tracked run
+      // Complete tracked run (engine automatically tracks stats from upsertCandles calls)
       try {
         const engineWithTracking = engine as OhlcvIngestionEngineWithTracking;
         await engineWithTracking.completeRun({
-          candlesFetched: summary.candlesFetched1m + summary.candlesFetched5m,
-          candlesInserted: summary.candlesFetched1m + summary.candlesFetched5m, // Approximate
-          candlesRejected: 0, // Not tracked yet
-          candlesDeduplicated: 0, // Not tracked yet
           tokensProcessed: summary.tokensProcessed,
           errorsCount: summary.errors.length,
-          zeroVolumeCount: 0, // Not tracked yet
+          // Other stats (candlesFetched, candlesInserted, candlesRejected, zeroVolumeCount)
+          // are automatically tracked by the engine from upsertCandles() calls
         });
       } catch (error) {
         logger.warn('Failed to complete run tracking', {

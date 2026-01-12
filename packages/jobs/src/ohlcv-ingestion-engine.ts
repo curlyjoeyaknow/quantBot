@@ -147,6 +147,16 @@ export class OhlcvIngestionEngine {
   // Current run manifest (set when starting a tracked ingestion)
   private currentRunManifest: IngestionRunManifest | null = null;
 
+  // Stats accumulator for current run
+  private runStats = {
+    candlesFetched: 0,
+    candlesInserted: 0,
+    candlesRejected: 0,
+    candlesDeduplicated: 0,
+    warnings: 0,
+    zeroVolumeCount: 0,
+  };
+
   /**
    * Initialize the engine (ensure ClickHouse is ready)
    */
@@ -169,6 +179,15 @@ export class OhlcvIngestionEngine {
    */
   async startRun(manifest: IngestionRunManifest): Promise<void> {
     this.currentRunManifest = manifest;
+    // Reset stats for new run
+    this.runStats = {
+      candlesFetched: 0,
+      candlesInserted: 0,
+      candlesRejected: 0,
+      candlesDeduplicated: 0,
+      warnings: 0,
+      zeroVolumeCount: 0,
+    };
     await this.runRepository.startRun(manifest);
     logger.info('[OhlcvIngestionEngine] Started tracked run', {
       runId: manifest.runId,
@@ -180,26 +199,46 @@ export class OhlcvIngestionEngine {
   /**
    * Complete the current tracked run with final stats.
    */
-  async completeRun(stats: {
-    candlesFetched: number;
-    candlesInserted: number;
-    candlesRejected: number;
-    candlesDeduplicated: number;
+  async completeRun(stats?: {
+    candlesFetched?: number;
+    candlesInserted?: number;
+    candlesRejected?: number;
+    candlesDeduplicated?: number;
     tokensProcessed: number;
     errorsCount: number;
-    zeroVolumeCount: number;
+    zeroVolumeCount?: number;
   }): Promise<void> {
     if (!this.currentRunManifest) {
       logger.warn('[OhlcvIngestionEngine] No current run to complete');
       return;
     }
 
-    await this.runRepository.completeRun(this.currentRunManifest.runId, stats);
+    // Merge provided stats with accumulated stats
+    const finalStats = {
+      candlesFetched: stats?.candlesFetched ?? this.runStats.candlesFetched,
+      candlesInserted: stats?.candlesInserted ?? this.runStats.candlesInserted,
+      candlesRejected: stats?.candlesRejected ?? this.runStats.candlesRejected,
+      candlesDeduplicated: stats?.candlesDeduplicated ?? this.runStats.candlesDeduplicated,
+      tokensProcessed: stats?.tokensProcessed ?? 0,
+      errorsCount: stats?.errorsCount ?? 0,
+      zeroVolumeCount: stats?.zeroVolumeCount ?? this.runStats.zeroVolumeCount,
+    };
+
+    await this.runRepository.completeRun(this.currentRunManifest.runId, finalStats);
     logger.info('[OhlcvIngestionEngine] Completed tracked run', {
       runId: this.currentRunManifest.runId,
-      stats,
+      stats: finalStats,
     });
     this.currentRunManifest = null;
+    // Reset stats
+    this.runStats = {
+      candlesFetched: 0,
+      candlesInserted: 0,
+      candlesRejected: 0,
+      candlesDeduplicated: 0,
+      warnings: 0,
+      zeroVolumeCount: 0,
+    };
   }
 
   /**
@@ -1317,9 +1356,14 @@ export class OhlcvIngestionEngine {
       // Step 4: Store immediately to prevent data loss on script failure
       // CRITICAL: Store to ClickHouse using OhlcvRepository with run manifest tracking
       try {
+        // Track fetched candles
+        if (this.currentRunManifest) {
+          this.runStats.candlesFetched += candles.length;
+        }
+
         // Get current run manifest if available (for audit trail)
         const runManifest = this.currentRunManifest;
-        
+
         if (runManifest) {
           // Use new upsertCandles with run manifest and validation
           const result = await this.ohlcvRepository.upsertCandles(mint, chain, interval, candles, {
@@ -1327,7 +1371,18 @@ export class OhlcvIngestionEngine {
             sourceTier: runManifest.sourceTier,
             validation: LENIENT_VALIDATION, // Allow zero-volume but log warnings
           });
-          
+
+          // Accumulate stats for run completion
+          this.runStats.candlesInserted += result.inserted;
+          this.runStats.candlesRejected += result.rejected;
+          this.runStats.warnings += result.warnings;
+
+          // Count zero-volume candles from rejection details
+          const zeroVolumeRejected = result.rejectionDetails.filter((detail) =>
+            detail.errors.some((err) => err.includes('ZERO_VOLUME') || err.includes('zero volume'))
+          ).length;
+          this.runStats.zeroVolumeCount += zeroVolumeRejected;
+
           logger.debug(
             `[OhlcvIngestionEngine] Stored ${result.inserted} ${interval} candles to ClickHouse for ${mint}... (${result.rejected} rejected, ${result.warnings} warnings)`
           );
