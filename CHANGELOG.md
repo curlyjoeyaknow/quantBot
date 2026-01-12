@@ -6,6 +6,16 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Dashboard Comparison Mode** - Compare multiple entry strategies side-by-side
+  - **New mode**: "Compare Entry Strategies" in dashboard sidebar
+  - **Multi-dataset selection**: Select 2+ datasets to compare (immediate, -5%, -10%, etc.)
+  - **Visual comparisons**: EV chart, trade count vs EV scatter, winner capture rate, cohort breakdown
+  - **Key insights**: Automatic calculation of deltas vs immediate entry
+  - **Best strategy highlighting**: Green highlight for optimal strategy
+  - **Trade-off analysis**: Shows EV improvement vs missed opportunities
+  - **`DASHBOARD_COMPARISON_MODE.md`**: Complete guide with examples and interpretation
+  - **Purpose**: Answer "Should we wait for a dip, and if so, how much?" in one interface
+
 - **Delayed Entry Support in Phased Stop Simulator** - Test waiting for dips after alert
   - **`--delayed-entry`**: Wait for X% dip before entering (e.g., `-10` for -10%, `0` for immediate)
   - **`--entry-max-wait`**: Maximum hours to wait for delayed entry (optional)

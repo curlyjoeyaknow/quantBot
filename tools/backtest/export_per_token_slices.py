@@ -258,16 +258,16 @@ def export_token_candles(
     chain_q = _sql_escape(chain)
     mint_q = _sql_escape(mint)
 
-    # Use GROUP BY to deduplicate - prefer candle with highest volume
-    # This is better than any() because it picks the "most complete" candle
+    # Use GROUP BY to deduplicate - any() picks one value per group
+    # Note: argMax(col, volume) would be better but some CH versions don't support it
     sql = f"""
 SELECT
   token_address,
   timestamp,
-  argMax(open, volume) as open,
-  argMax(high, volume) as high,
-  argMax(low, volume) as low,
-  argMax(close, volume) as close,
+  any(open) as open,
+  any(high) as high,
+  any(low) as low,
+  any(close) as close,
   max(volume) as volume
 FROM {cfg.database}.{cfg.table}
 WHERE chain = '{chain_q}'

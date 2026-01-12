@@ -153,6 +153,22 @@ def calculate_cohort_stats(df: pd.DataFrame) -> dict:
 
 def main():
     st.title("📊 QuantBot EV Dashboard")
+    
+    # Mode selector
+    mode = st.sidebar.radio(
+        "📊 Dashboard Mode",
+        ["Single Strategy Analysis", "Compare Entry Strategies"],
+        help="Single: Analyze one dataset. Compare: Compare multiple entry strategies side-by-side"
+    )
+    
+    if mode == "Single Strategy Analysis":
+        single_strategy_dashboard()
+    else:
+        comparison_dashboard()
+
+
+def single_strategy_dashboard():
+    """Original single-strategy analysis dashboard."""
     st.markdown("### Phased Stop Strategy Analysis")
     
     # Sidebar - File selection
@@ -571,6 +587,347 @@ def main():
     # Footer
     st.markdown("---")
     st.markdown("**QuantBot EV Dashboard** | Data source: `{}`".format(parquet_pattern))
+
+
+def comparison_dashboard():
+    """Compare multiple entry strategies side-by-side."""
+    st.markdown("### Compare Entry Strategies")
+    st.markdown("Compare immediate entry vs delayed entry strategies across all stop configurations")
+    
+    # Sidebar - Select multiple datasets
+    st.sidebar.header("📁 Select Datasets to Compare")
+    
+    # Discover available parquet files
+    from glob import glob
+    from pathlib import Path
+    
+    search_patterns = [
+        "output/*/phased_stop_results_*.parquet",
+        "output/*/*/phased_stop_results_*.parquet",
+        "results/*/phased_stop_results_*.parquet",
+    ]
+    
+    all_files = []
+    for pattern in search_patterns:
+        all_files.extend(glob(pattern))
+    
+    # Group files by directory
+    file_groups = {}
+    for file in all_files:
+        dir_name = str(Path(file).parent)
+        if dir_name not in file_groups:
+            file_groups[dir_name] = []
+        file_groups[dir_name].append(file)
+    
+    if not file_groups:
+        st.error("No parquet files found in output/ or results/ directories")
+        return
+    
+    # Create multiselect for datasets
+    dataset_options = {}
+    for dir_name in sorted(file_groups.keys()):
+        files = file_groups[dir_name]
+        pattern = f"{dir_name}/phased_stop_results_*.parquet"
+        
+        # Extract entry strategy from directory name
+        dir_basename = Path(dir_name).name
+        if 'immediate' in dir_basename.lower():
+            label = "Immediate (0%)"
+        elif 'dip_' in dir_basename:
+            # Extract dip percentage
+            parts = dir_basename.split('_')
+            for part in parts:
+                if part.startswith('-') or part.startswith('dip'):
+                    dip_val = part.replace('dip', '').replace('pct', '')
+                    label = f"{dip_val}% dip"
+                    break
+            else:
+                label = dir_basename
+        else:
+            label = dir_basename
+        
+        dataset_options[label] = pattern
+    
+    selected_datasets = st.sidebar.multiselect(
+        "Select datasets to compare:",
+        options=list(dataset_options.keys()),
+        default=list(dataset_options.keys())[:min(3, len(dataset_options))],
+        help="Select 2 or more datasets to compare"
+    )
+    
+    if len(selected_datasets) < 2:
+        st.warning("⚠️ Please select at least 2 datasets to compare")
+        return
+    
+    # Load all selected datasets
+    datasets = {}
+    for label in selected_datasets:
+        pattern = dataset_options[label]
+        df = load_data(pattern)
+        if not df.empty:
+            datasets[label] = df
+    
+    if len(datasets) < 2:
+        st.error("Failed to load datasets")
+        return
+    
+    st.sidebar.success(f"✅ Loaded {len(datasets)} datasets")
+    
+    # Strategy filter
+    st.sidebar.header("🎯 Strategy Filter")
+    
+    # Get all unique stop modes
+    all_stop_modes = set()
+    for df in datasets.values():
+        all_stop_modes.update(df['stop_mode'].unique())
+    
+    selected_stop_mode = st.sidebar.selectbox(
+        "Stop Mode:",
+        options=sorted(all_stop_modes),
+        help="Filter by stop mode"
+    )
+    
+    # Get available stop configurations for selected mode
+    stop_configs = set()
+    for df in datasets.values():
+        mode_df = df[df['stop_mode'] == selected_stop_mode]
+        for _, row in mode_df[['phase1_stop_pct', 'phase2_stop_pct']].drop_duplicates().iterrows():
+            stop_configs.add((row['phase1_stop_pct'], row['phase2_stop_pct']))
+    
+    stop_config_options = [
+        f"{int(p1*100)}% / {int(p2*100)}%"
+        for p1, p2 in sorted(stop_configs)
+    ]
+    
+    selected_stop_config = st.sidebar.selectbox(
+        "Stop Configuration:",
+        options=stop_config_options,
+        help="Phase1 % / Phase2 %"
+    )
+    
+    # Parse selected config
+    phase1_pct = float(selected_stop_config.split('%')[0]) / 100
+    phase2_pct = float(selected_stop_config.split('/')[1].strip().split('%')[0]) / 100
+    
+    # Filter all datasets
+    filtered_datasets = {}
+    for label, df in datasets.items():
+        filtered_df = df[
+            (df['stop_mode'] == selected_stop_mode) &
+            (df['phase1_stop_pct'] == phase1_pct) &
+            (df['phase2_stop_pct'] == phase2_pct)
+        ]
+        if not filtered_df.empty:
+            filtered_datasets[label] = filtered_df
+    
+    if not filtered_datasets:
+        st.error("No data found for selected strategy")
+        return
+    
+    # Comparison metrics
+    st.markdown("---")
+    st.markdown(f"### 📊 Comparison: {selected_stop_mode.title()} {selected_stop_config}")
+    
+    # Calculate stats for each dataset
+    comparison_stats = []
+    for label, df in filtered_datasets.items():
+        stats = calculate_cohort_stats(df)
+        comparison_stats.append({
+            'Entry Strategy': label,
+            'Total Trades': stats['total'],
+            'EV from Entry': f"{stats['ev_from_entry']:.1f}%",
+            'EV given 2x': f"{stats['ev_given_2x']:.1f}%",
+            'P(reach 2x)': f"{stats['p_reach_2x']:.1f}%",
+            'P(reach 3x)': f"{stats['p_reach_3x']:.1f}%",
+            'Winners (≥3x)': stats['winners'],
+            'Winners %': f"{(stats['winners']/stats['total']*100) if stats['total'] > 0 else 0:.1f}%",
+            'Losers (2x, no 3x)': stats['losers'],
+            'Never 2x': stats['never_2x'],
+        })
+    
+    comparison_df = pd.DataFrame(comparison_stats)
+    
+    # Sort by EV from Entry
+    comparison_df['EV_sort'] = comparison_df['EV from Entry'].str.rstrip('%').astype(float)
+    comparison_df = comparison_df.sort_values('EV_sort', ascending=False).drop('EV_sort', axis=1)
+    
+    # Highlight best strategy
+    best_strategy = comparison_df.iloc[0]['Entry Strategy']
+    best_ev = comparison_df.iloc[0]['EV from Entry']
+    
+    st.success(f"🎯 **Best Entry Strategy**: {best_strategy} with {best_ev} EV from entry")
+    
+    # Display comparison table
+    st.dataframe(comparison_df, use_container_width=True, height=min(400, len(comparison_df) * 40 + 50))
+    
+    # Visualizations
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        # EV comparison chart
+        fig_ev = go.Figure()
+        
+        ev_values = [float(row['EV from Entry'].rstrip('%')) for _, row in comparison_df.iterrows()]
+        colors = ['#00cc96' if i == 0 else '#636efa' for i in range(len(ev_values))]
+        
+        fig_ev.add_trace(go.Bar(
+            x=comparison_df['Entry Strategy'],
+            y=ev_values,
+            marker_color=colors,
+            text=[f"{v:.1f}%" for v in ev_values],
+            textposition='outside',
+        ))
+        
+        fig_ev.update_layout(
+            title="EV from Entry Comparison",
+            xaxis_title="Entry Strategy",
+            yaxis_title="EV from Entry (%)",
+            height=400,
+            showlegend=False
+        )
+        
+        st.plotly_chart(fig_ev, use_container_width=True)
+    
+    with col2:
+        # Trade count vs EV scatter
+        fig_scatter = go.Figure()
+        
+        trade_counts = comparison_df['Total Trades'].values
+        ev_values = [float(row['EV from Entry'].rstrip('%')) for _, row in comparison_df.iterrows()]
+        
+        fig_scatter.add_trace(go.Scatter(
+            x=trade_counts,
+            y=ev_values,
+            mode='markers+text',
+            marker=dict(size=15, color=colors),
+            text=comparison_df['Entry Strategy'],
+            textposition='top center',
+        ))
+        
+        fig_scatter.update_layout(
+            title="Trade Count vs EV",
+            xaxis_title="Total Trades",
+            yaxis_title="EV from Entry (%)",
+            height=400,
+            showlegend=False
+        )
+        
+        st.plotly_chart(fig_scatter, use_container_width=True)
+    
+    # Winner capture rate comparison
+    st.markdown("### 🏆 Winner Capture Rate")
+    
+    fig_winners = go.Figure()
+    
+    winner_pcts = [float(row['Winners %'].rstrip('%')) for _, row in comparison_df.iterrows()]
+    
+    fig_winners.add_trace(go.Bar(
+        x=comparison_df['Entry Strategy'],
+        y=winner_pcts,
+        marker_color='#ff4b4b',
+        text=[f"{v:.1f}%" for v in winner_pcts],
+        textposition='outside',
+    ))
+    
+    fig_winners.update_layout(
+        title="Winner Rate (≥3x) by Entry Strategy",
+        xaxis_title="Entry Strategy",
+        yaxis_title="Winner Rate (%)",
+        height=400,
+        showlegend=False
+    )
+    
+    st.plotly_chart(fig_winners, use_container_width=True)
+    
+    # Detailed cohort breakdown
+    st.markdown("### 📈 Cohort Breakdown")
+    
+    cohort_data = []
+    for label, df in filtered_datasets.items():
+        stats = calculate_cohort_stats(df)
+        cohort_data.append({
+            'Entry Strategy': label,
+            'Winners (≥3x)': stats['winners'],
+            'Losers (2x, no 3x)': stats['losers'],
+            'Never 2x': stats['never_2x'],
+        })
+    
+    cohort_df = pd.DataFrame(cohort_data)
+    
+    fig_cohort = go.Figure()
+    
+    fig_cohort.add_trace(go.Bar(
+        name='Winners (≥3x)',
+        x=cohort_df['Entry Strategy'],
+        y=cohort_df['Winners (≥3x)'],
+        marker_color='#00cc96'
+    ))
+    
+    fig_cohort.add_trace(go.Bar(
+        name='Losers (2x, no 3x)',
+        x=cohort_df['Entry Strategy'],
+        y=cohort_df['Losers (2x, no 3x)'],
+        marker_color='#ffa500'
+    ))
+    
+    fig_cohort.add_trace(go.Bar(
+        name='Never 2x',
+        x=cohort_df['Entry Strategy'],
+        y=cohort_df['Never 2x'],
+        marker_color='#ff4b4b'
+    ))
+    
+    fig_cohort.update_layout(
+        title="Trade Distribution by Cohort",
+        xaxis_title="Entry Strategy",
+        yaxis_title="Number of Trades",
+        barmode='stack',
+        height=400
+    )
+    
+    st.plotly_chart(fig_cohort, use_container_width=True)
+    
+    # Key insights
+    st.markdown("### 💡 Key Insights")
+    
+    # Calculate deltas from immediate entry
+    immediate_label = None
+    for label in comparison_df['Entry Strategy']:
+        if 'immediate' in label.lower() or label == 'Immediate (0%)':
+            immediate_label = label
+            break
+    
+    if immediate_label:
+        immediate_row = comparison_df[comparison_df['Entry Strategy'] == immediate_label].iloc[0]
+        immediate_ev = float(immediate_row['EV from Entry'].rstrip('%'))
+        immediate_trades = immediate_row['Total Trades']
+        
+        st.markdown(f"**Baseline (Immediate Entry)**: {immediate_ev:.1f}% EV, {immediate_trades:,} trades")
+        st.markdown("")
+        
+        for _, row in comparison_df.iterrows():
+            if row['Entry Strategy'] == immediate_label:
+                continue
+            
+            ev = float(row['EV from Entry'].rstrip('%'))
+            trades = row['Total Trades']
+            
+            ev_delta = ev - immediate_ev
+            trade_delta = trades - immediate_trades
+            trade_delta_pct = (trade_delta / immediate_trades * 100) if immediate_trades > 0 else 0
+            
+            delta_symbol = "📈" if ev_delta > 0 else "📉" if ev_delta < 0 else "➡️"
+            trade_symbol = "⬇️" if trade_delta < 0 else "⬆️" if trade_delta > 0 else "➡️"
+            
+            st.markdown(
+                f"{delta_symbol} **{row['Entry Strategy']}**: "
+                f"{ev:+.1f}% EV ({ev_delta:+.1f}% vs immediate), "
+                f"{trades:,} trades {trade_symbol} ({trade_delta_pct:+.1f}%)"
+            )
+    
+    # Footer
+    st.markdown("---")
+    st.markdown(f"**QuantBot Comparison Dashboard** | Comparing {len(filtered_datasets)} entry strategies")
 
 
 if __name__ == "__main__":

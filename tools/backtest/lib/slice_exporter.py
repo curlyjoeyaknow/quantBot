@@ -391,17 +391,17 @@ def _export_sequential(
             mint_list = ", ".join(f"'{sql_escape(m)}'" for m in chunk)
             
             # Use GROUP BY for deduplication if enabled
-            # Using argMax(volume) selects values from the row with highest volume,
-            # which is typically the most complete/accurate candle when duplicates exist
+            # Using any() picks one value per group, max(volume) keeps highest volume
+            # Note: argMax would be better but some ClickHouse versions don't support it
             if deduplicate:
                 sql = f"""
 SELECT
   token_address,
   timestamp,
-  argMax(open, volume) as open,
-  argMax(high, volume) as high,
-  argMax(low, volume) as low,
-  argMax(close, volume) as close,
+  any(open) as open,
+  any(high) as high,
+  any(low) as low,
+  any(close) as close,
   max(volume) as volume
 FROM {cfg.database}.{cfg.table}
 WHERE chain = '{chain_q}'
