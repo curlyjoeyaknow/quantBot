@@ -10,8 +10,13 @@ import sys
 import json
 from typing import cast
 
+# Add parent directory to path for imports
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 # Import generated type stubs
-from packages.backtest.python.types.baseline_backtest import (
+from typedefs import (
     BaselineBacktestConfig,
     BaselineBacktestResult,
     BaselineBacktestSummary,

@@ -9,15 +9,16 @@ and Pydantic (runtime validation).
 import json
 from typing import cast
 
+# Add parent directory to path for imports
+import sys
+from pathlib import Path
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
 # TypedDict approach (static types only)
-from packages.backtest.python.types.baseline_backtest import (
-    BaselineBacktestConfig as TypedDictConfig,
-)
+from typedefs import BaselineBacktestConfig as TypedDictConfig
 
 # Pydantic approach (runtime validation)
-from packages.backtest.python.types.pydantic_models import (
-    BaselineBacktestConfig as PydanticConfig,
-)
+from typedefs.pydantic_models import BaselineBacktestConfig as PydanticConfig
 
 
 def example_typeddict():

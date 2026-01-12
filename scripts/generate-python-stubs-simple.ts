@@ -18,7 +18,7 @@ import { join, dirname } from 'path';
 
 const schemas = [
   {
-    file: 'packages/backtest/python/types/baseline_backtest.pyi',
+    file: 'packages/backtest/python/typedefs/baseline_backtest.py',
     types: [
       {
         name: 'BaselineBacktestConfig',
@@ -123,7 +123,7 @@ const schemas = [
     ],
   },
   {
-    file: 'packages/backtest/python/types/token_slicer.pyi',
+    file: 'packages/backtest/python/typedefs/token_slicer.py',
     types: [
       {
         name: 'TokenSliceExportConfig',
@@ -177,7 +177,7 @@ const schemas = [
     ],
   },
   {
-    file: 'packages/backtest/python/types/caller_analysis.pyi',
+    file: 'packages/backtest/python/typedefs/caller_analysis.py',
     types: [
       {
         name: 'CallerAnalysisConfig',
@@ -379,7 +379,7 @@ function main() {
   console.log(`\n✨ Generated ${totalGenerated} type stubs in ${schemas.length} files`);
   console.log('\n💡 Usage in Python:');
   console.log(
-    '   from packages.backtest.python.types.baseline_backtest import BaselineBacktestConfig'
+    '   from typedefs import BaselineBacktestConfig'
   );
   console.log(
     '   \n   def run_baseline(config: BaselineBacktestConfig) -> BaselineBacktestResult:'
