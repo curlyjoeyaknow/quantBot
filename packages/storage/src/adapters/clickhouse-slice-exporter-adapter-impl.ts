@@ -14,6 +14,7 @@ import { DuckDBClient } from '../duckdb/duckdb-client.js';
 import { logger } from '@quantbot/utils';
 import { readAllBytes } from '../utils/readAllBytes.js';
 import { datasetRegistry } from './dataset-registry.js';
+import { intervalToSeconds } from '../utils/interval-converter.js';
 import type {
   SliceExporter,
   ParquetLayoutSpec,
@@ -260,7 +261,6 @@ export class ClickHouseSliceExporterAdapterImpl implements SliceExporter {
 
     // Build ClickHouse query
     const ch = getClickHouseClient();
-    const CLICKHOUSE_DATABASE = process.env.CLICKHOUSE_DATABASE || 'quantbot';
 
     // Build WHERE clause
     const conditions: string[] = [];
@@ -274,10 +274,10 @@ export class ClickHouseSliceExporterAdapterImpl implements SliceExporter {
 
     // Dataset-specific filters
     if (datasetMetadata.type === 'candles' && interval) {
-      // For candle datasets, filter by interval
-      // Use backticks to escape reserved keyword 'interval' in ClickHouse
-      const escapedInterval = interval.replace(/'/g, "''");
-      conditions.push("`interval` = '" + escapedInterval + "'");
+      // For candle datasets, filter by interval_seconds
+      // Convert interval string (e.g., '1m') to seconds (e.g., 60)
+      const intervalSeconds = intervalToSeconds(interval);
+      conditions.push(`interval_seconds = ${intervalSeconds}`);
     } else if (datasetMetadata.type === 'indicators') {
       // For indicator datasets, we might filter by indicator_type if specified
       // Currently, we export all indicators (can be filtered later if needed)
@@ -292,7 +292,19 @@ export class ClickHouseSliceExporterAdapterImpl implements SliceExporter {
     const whereClause = conditions.join(' AND ');
 
     // Select columns (use dataset defaults or specified columns)
-    // Note: interval is a reserved keyword in ClickHouse, must be escaped with backticks
+    // Note: Table has interval_seconds (UInt32), we compute interval (String) from it for output compatibility
+    const intervalCaseExpr = `CASE 
+      WHEN interval_seconds = 1 THEN '1s'
+      WHEN interval_seconds = 15 THEN '15s'
+      WHEN interval_seconds = 60 THEN '1m'
+      WHEN interval_seconds = 300 THEN '5m'
+      WHEN interval_seconds = 900 THEN '15m'
+      WHEN interval_seconds = 3600 THEN '1h'
+      WHEN interval_seconds = 14400 THEN '4h'
+      WHEN interval_seconds = 86400 THEN '1d'
+      ELSE concat(toString(interval_seconds), 's')
+    END AS interval`;
+
     const defaultColumns =
       datasetMetadata.defaultColumns ||
       (datasetMetadata.type === 'candles'
@@ -300,7 +312,7 @@ export class ClickHouseSliceExporterAdapterImpl implements SliceExporter {
             'token_address',
             'chain',
             'timestamp',
-            'interval',
+            'interval_seconds',
             'open',
             'high',
             'low',
@@ -311,8 +323,25 @@ export class ClickHouseSliceExporterAdapterImpl implements SliceExporter {
 
     const columns =
       spec.columns && spec.columns.length > 0
-        ? spec.columns.map((col: string) => (col === 'interval' ? '`interval`' : col)).join(', ')
-        : defaultColumns.map((col: string) => (col === 'interval' ? '`interval`' : col)).join(', ');
+        ? spec.columns
+            .map((col: string) => {
+              if (col === 'interval') {
+                return intervalCaseExpr;
+              }
+              if (col === 'interval_seconds') {
+                return intervalCaseExpr;
+              }
+              return col;
+            })
+            .join(', ')
+        : defaultColumns
+            .map((col: string) => {
+              if (col === 'interval_seconds') {
+                return intervalCaseExpr;
+              }
+              return col;
+            })
+            .join(', ');
 
     // Query ClickHouse and export to CSV (ClickHouse doesn't support Parquet format)
     // We'll convert CSV to Parquet using DuckDB after export

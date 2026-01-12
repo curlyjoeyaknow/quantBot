@@ -23,6 +23,7 @@
   },
   "dependencies": {
     "@quantbot/core": "workspace:*",
+    "@quantbot/infra": "workspace:*",
     "@quantbot/storage": "workspace:*",
     "@quantbot/utils": "workspace:*",
     "@quantbot/workflows": "workspace:*",

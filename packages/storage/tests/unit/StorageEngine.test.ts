@@ -220,7 +220,13 @@ describe('StorageEngine', () => {
         FULL_MINT, // CRITICAL: Full address, exact case
         'solana',
         '5m',
-        mockCandles
+        mockCandles,
+        expect.objectContaining({
+          runManifest: expect.objectContaining({
+            runId: expect.any(String),
+            scriptVersion: 'storage-engine',
+          }),
+        })
       );
     });
 
@@ -230,7 +236,13 @@ describe('StorageEngine', () => {
         FULL_MINT_LOWERCASE, // Exact case preserved
         'solana',
         '5m',
-        mockCandles
+        mockCandles,
+        expect.objectContaining({
+          runManifest: expect.objectContaining({
+            runId: expect.any(String),
+            scriptVersion: 'storage-engine',
+          }),
+        })
       );
 
       await engine.storeCandles(FULL_MINT_UPPERCASE, 'solana', mockCandles, '5m');
@@ -238,7 +250,13 @@ describe('StorageEngine', () => {
         FULL_MINT_UPPERCASE, // Exact case preserved
         'solana',
         '5m',
-        mockCandles
+        mockCandles,
+        expect.objectContaining({
+          runManifest: expect.objectContaining({
+            runId: expect.any(String),
+            scriptVersion: 'storage-engine',
+          }),
+        })
       );
     });
 

@@ -112,7 +112,7 @@ describe('OhlcvRepository Security', () => {
       // Repository validates interval against whitelist, so malicious input should throw
       await expect(
         repository.getCandles(tokenAddress, chain, maliciousInterval, range)
-      ).rejects.toThrow('Invalid interval');
+      ).rejects.toThrow('Unknown interval');
 
       // Query should not be called with malicious input
       expect(mockClickHouseClient.query).not.toHaveBeenCalled();

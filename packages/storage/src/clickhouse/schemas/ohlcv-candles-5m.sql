@@ -24,7 +24,7 @@ CREATE TABLE IF NOT EXISTS quantbot.ohlcv_candles_5m (
     ingestion_run_id String DEFAULT '',
     script_version String DEFAULT ''
 )
-ENGINE = ReplacingMergeTree(quality_score, ingested_at)
+ENGINE = ReplacingMergeTree(quality_score)
 PARTITION BY (chain, toYYYYMM(timestamp))
 ORDER BY (token_address, chain, timestamp)
 SETTINGS index_granularity = 8192;

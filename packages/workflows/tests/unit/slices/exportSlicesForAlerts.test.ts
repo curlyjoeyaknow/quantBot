@@ -160,6 +160,7 @@ describe('exportSlicesForAlerts', () => {
         preWindowMinutes: 0,
         postWindowMinutes: 1440, // 24 hours
         maxHoursPerChunk: 6, // Should create 4 chunks (24 hours / 6 hours)
+        maxRowsPerFile: 1000000, // Required to enable chunking
         dataset: 'candles_1m',
         chain: 'sol',
       };

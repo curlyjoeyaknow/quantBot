@@ -145,10 +145,19 @@ vi.mock('@quantbot/utils', () => {
     debug: vi.fn(),
   };
 
+  class MockPythonEngine {
+    runScript = vi.fn();
+    runScriptWithArtifacts = vi.fn();
+    runTelegramPipeline = vi.fn();
+    runDuckDBStorage = vi.fn();
+  }
+
   return {
     logger: mockLogger,
     TimingContext: MockTimingContext,
     createPackageLogger: vi.fn(() => mockLogger),
+    getPythonEngine: vi.fn(() => new MockPythonEngine()),
+    findWorkspaceRoot: vi.fn(() => process.cwd()),
   };
 });
 

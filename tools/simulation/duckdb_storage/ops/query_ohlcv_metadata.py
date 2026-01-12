@@ -31,7 +31,12 @@ class QueryOhlcvMetadataOutput(BaseModel):
 def run(con: duckdb.DuckDBPyConnection, input: QueryOhlcvMetadataInput) -> QueryOhlcvMetadataOutput:
     """Query OHLCV metadata to check availability."""
     try:
-        setup_ohlcv_metadata_schema(con)
+        # Check if table exists before querying (read-only connections can't CREATE)
+        try:
+            con.execute("SELECT 1 FROM ohlcv_metadata_d LIMIT 1")
+        except Exception:
+            # Table doesn't exist - return not available
+            return QueryOhlcvMetadataOutput(success=True, available=False)
 
         query = """
             SELECT time_range_start, time_range_end, candle_count

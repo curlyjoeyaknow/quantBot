@@ -10,16 +10,17 @@ import {
   PerformanceMiddleware,
 } from '../src/events/EventMiddleware';
 import { EventFactory } from '../src/events/EventBus';
-import { logger } from '../src/logger';
-
-vi.mock('../src/logger', () => ({
-  logger: {
+vi.mock('../src/logger', () => {
+  const mockLogger = {
     info: vi.fn(),
     warn: vi.fn(),
     error: vi.fn(),
     debug: vi.fn(),
-  },
-}));
+  };
+  return {
+    logger: mockLogger,
+  };
+});
 
 describe('Event Middleware', () => {
   beforeEach(() => {
@@ -41,7 +42,8 @@ describe('Event Middleware', () => {
 
       await loggingMiddleware(event, next);
 
-      expect(logger.info).toHaveBeenCalled();
+      // The middleware uses logger[logLevel] which could be 'info' or 'warn' depending on priority
+      expect(mockLogger.info).toHaveBeenCalled();
       expect(next).toHaveBeenCalled();
     });
   });
@@ -109,7 +111,7 @@ describe('Event Middleware', () => {
       const next = vi.fn().mockRejectedValue(error);
 
       await expect(errorHandlingMiddleware(event, next)).rejects.toThrow('Test error');
-      expect(logger.error).toHaveBeenCalled();
+      expect(mockLogger.error).toHaveBeenCalled();
     });
 
     it('should pass through successful events', async () => {

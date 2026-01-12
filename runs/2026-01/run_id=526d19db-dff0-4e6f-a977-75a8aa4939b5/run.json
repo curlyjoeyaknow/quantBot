@@ -1,0 +1,26 @@
+{
+  "run_id": "526d19db-dff0-4e6f-a977-75a8aa4939b5",
+  "run_type": "path-only",
+  "created_at": "2026-01-12T10:39:14.831Z",
+  "started_at": "2026-01-12T10:39:14.834Z",
+  "completed_at": "2026-01-12T10:39:15.033Z",
+  "status": "failed",
+  "git_commit": "22e9b256d98858afa49d4ceb6e4f34e4e22a729e",
+  "git_branch": "master",
+  "git_dirty": true,
+  "dataset": {
+    "from": "2024-01-01T00:00:00.000+00:00",
+    "to": "2024-01-02T00:00:00.000+00:00",
+    "interval": "1m",
+    "calls_count": 1
+  },
+  "parameters": {},
+  "schema_version": {
+    "manifest": "1.0.0",
+    "artifacts": "1.0.0"
+  },
+  "artifacts": {},
+  "logs": {
+    "stderr": "logs/stderr.txt"
+  }
+}

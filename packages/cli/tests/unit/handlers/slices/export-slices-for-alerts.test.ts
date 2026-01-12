@@ -1,41 +1,43 @@
 /**
- * Validate Slice Handler
- *
- * Pure handler that validates a slice manifest.
+ * Unit tests for export-slices-for-alerts handler
  */
 
-import type { CommandContext } from '../../core/command-context.js';
-import { createSliceValidatorAdapter } from '@quantbot/storage';
-import { promises as fs } from 'fs';
-import type { z } from 'zod';
-import { validateSliceSchema } from '../../commands/slices.js';
-import type { SliceManifestV1 } from '@quantbot/workflows';
+import { describe, it, expect, vi } from 'vitest';
+import { exportSlicesForAlertsHandler } from '../../../../src/handlers/slices/export-slices-for-alerts.js';
+import type { CommandContext } from '../../../../src/core/command-context.js';
 
-export type ValidateSliceArgs = z.infer<typeof validateSliceSchema>;
+describe('exportSlicesForAlertsHandler', () => {
+  it('should call exportSlicesForAlerts service with correct parameters', async () => {
+    const mockExportSlicesForAlerts = vi.fn().mockResolvedValue({
+      exported: 5,
+      failed: 0,
+    });
 
-/**
- * Validate slice handler
- */
-export async function validateSliceHandler(
-  args: ValidateSliceArgs,
-  ctx: CommandContext
-): Promise<unknown> {
-  await ctx.ensureInitialized();
+    const mockCtx = {
+      services: {
+        sliceExport: () => ({
+          exportSlicesForAlerts: mockExportSlicesForAlerts,
+        }),
+      },
+    } as unknown as CommandContext;
 
-  // Read manifest from file
-  const manifestContent = await fs.readFile(args.manifest, 'utf-8');
-  const manifest = JSON.parse(manifestContent) as SliceManifestV1;
+    const args = {
+      from: '2024-01-01T00:00:00Z',
+      to: '2024-01-02T00:00:00Z',
+      dataset: 'candles_5m' as const,
+      chain: 'sol' as const,
+      catalogPath: './catalog',
+      preWindow: 260,
+      postWindow: 1440,
+      useDatePartitioning: false,
+      maxHoursPerChunk: 6,
+    };
 
-  // Create validator
-  const validator = createSliceValidatorAdapter();
+    const result = await exportSlicesForAlertsHandler(args, mockCtx);
 
-  // Validate
-  const result = await validator.validate(manifest);
-
-  return {
-    ok: result.ok,
-    errors: result.errors,
-    warnings: result.warnings,
-    manifestId: manifest.manifestId,
-  };
-}
+    // Handler doesn't use ctx services, so ensureInitialized is not called
+    // It directly creates dependencies (composition root pattern)
+    expect(mockExportSlicesForAlerts).toHaveBeenCalled();
+    expect(result).toBeDefined();
+  });
+});

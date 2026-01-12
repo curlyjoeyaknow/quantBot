@@ -22,6 +22,18 @@
       "types": "./dist/indicators/index.d.ts",
       "import": "./dist/indicators/index.js"
     },
+    "./indicators/rsi.js": {
+      "types": "./dist/indicators/rsi.d.ts",
+      "import": "./dist/indicators/rsi.js"
+    },
+    "./indicators/ichimoku.js": {
+      "types": "./dist/indicators/ichimoku.d.ts",
+      "import": "./dist/indicators/ichimoku.js"
+    },
+    "./indicators/macd.js": {
+      "types": "./dist/indicators/macd.d.ts",
+      "import": "./dist/indicators/macd.js"
+    },
     "./signals": {
       "types": "./dist/signals/index.d.ts",
       "import": "./dist/signals/index.js"

@@ -34,7 +34,12 @@ class QueryOhlcvExclusionsOutput(BaseModel):
 def run(con: duckdb.DuckDBPyConnection, input: QueryOhlcvExclusionsInput) -> QueryOhlcvExclusionsOutput:
     """Query OHLCV exclusions - matches ClickHouse ohlcv_candles structure."""
     try:
-        setup_ohlcv_exclusions_schema(con)
+        # Check if table exists before querying (read-only connections can't CREATE)
+        try:
+            con.execute("SELECT 1 FROM ohlcv_exclusions_d LIMIT 1")
+        except Exception:
+            # Table doesn't exist - return empty list
+            return QueryOhlcvExclusionsOutput(success=True, excluded=[])
 
         # Build query with optional filters
         conditions = []

@@ -7,10 +7,12 @@ Fixed critical schema mismatch and deduplication issues in the OHLCV pipeline th
 ## Problems Identified
 
 ### 1. Schema Mismatch
+
 - **Issue**: TypeScript code created tables with `interval String`, but actual schema used `interval_seconds UInt32`
 - **Impact**: Potential query failures and data inconsistency
 
 ### 2. Duplicate Data
+
 - **Issue**: ClickHouse MergeTree allows multiple rows with same key; queries didn't deduplicate
 - **Impact**: Writing 10 candles resulted in reading 38+ candles back
 - **Data**: 379,891 duplicate rows found (0.3% of 126M total rows)
@@ -18,22 +20,27 @@ Fixed critical schema mismatch and deduplication issues in the OHLCV pipeline th
 ## Fixes Applied
 
 ### Fix 1: Schema Update
+
 **File**: `packages/storage/src/clickhouse-client.ts`
 
 Changed table creation schema from:
+
 ```typescript
 interval String,
 ```
 
 To:
+
 ```typescript
 interval_seconds UInt32,
 ```
 
 ### Fix 2: Read Query Deduplication
+
 **File**: `packages/storage/src/clickhouse/repositories/OhlcvRepository.ts`
 
 Added deduplication using `GROUP BY` with `any()` aggregation:
+
 ```sql
 SELECT 
   toUnixTimestamp(timestamp) as timestamp,
@@ -51,19 +58,23 @@ ORDER BY timestamp ASC
 **Note**: Using `any()` instead of `argMax(value, ingested_at)` because the deduplicated table doesn't have `ingested_at` column.
 
 ### Fix 3: Historical Data Cleanup
+
 **Script**: `tools/backtest/dedupe_clickhouse_ohlcv.py`
 
 Ran deduplication on existing data:
+
 - **Before**: 126,254,079 rows
 - **After**: 125,874,188 rows
 - **Removed**: 379,891 duplicates (0.3%)
 - **Backup**: `quantbot.ohlcv_candles_backup_20260112_064532`
 
 Most duplicates were in:
+
 - December 2025: 379,872 duplicates
 - January 2026: 19 duplicates
 
 ### Fix 4: Validation Script Update
+
 **File**: `tools/validation/verify_storage_write_read.py`
 
 Updated read query to use same deduplication strategy as repository.
@@ -118,11 +129,13 @@ flowchart TD
 ## Impact
 
 ### Before Fix
+
 - Unreliable data retrieval (10 writes → 38+ reads)
 - Schema inconsistency between code and database
 - 379,891 duplicate rows consuming storage
 
 ### After Fix
+
 - Reliable data retrieval (N writes → N reads)
 - Schema consistency
 - Clean deduplicated data
@@ -138,11 +151,13 @@ flowchart TD
 ## Backup Information
 
 A backup table was created during deduplication:
+
 - **Table**: `quantbot.ohlcv_candles_backup_20260112_064532`
 - **Rows**: 126,254,079 (original with duplicates)
 - **Purpose**: Rollback safety
 
 To drop after verification:
+
 ```sql
 DROP TABLE quantbot.ohlcv_candles_backup_20260112_064532
 ```
@@ -157,6 +172,7 @@ DROP TABLE quantbot.ohlcv_candles_backup_20260112_064532
 ## Testing
 
 Run validation anytime:
+
 ```bash
 python3 tools/validation/verify_storage_write_read.py \
   --mint "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN" \
@@ -167,5 +183,3 @@ python3 tools/validation/verify_storage_write_read.py \
 ```
 
 Expected: `candles_fetched = candles_written = candles_read`
-
-

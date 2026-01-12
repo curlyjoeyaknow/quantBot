@@ -20,7 +20,6 @@ from pathlib import Path
 # Add parent directory to path to allow imports when run as script
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from duckdb_storage.utils import get_connection
 from tools.shared.duckdb_adapter import get_readonly_connection, get_write_connection
 from duckdb_storage.ops import (
     StoreStrategyInput,
@@ -164,12 +163,12 @@ def main():
 
         # Determine if this is a read-only operation
         # Query operations are read-only, store operations are write
+        # Note: get_state needs write access because it may need to setup schema and delete expired entries
         read_only_ops = {
             'query_calls',
             'query_ohlcv_metadata',
             'query_ohlcv_exclusions',
             'query_tokens_recent',
-            'get_state',
             'generate_report',
         }
 
@@ -188,11 +187,12 @@ def main():
                 # This is important for TypeScript Zod schemas that expect nullable optional fields
                 print(json.dumps(output.model_dump(exclude_none=False), default=str))
         else:
-            # Use write connection for store operations
-            # Note: get_connection from utils still sets up schema, so we use it for write ops
-            con = get_connection(args.duckdb)
-
-            try:
+            # Use write connection for store operations and operations that need schema setup
+            with get_write_connection(args.duckdb) as con:
+                # Setup simulation schema for write operations
+                from duckdb_storage.utils import setup_simulation_schema
+                setup_simulation_schema(con)
+                
                 # Execute operation
                 result = run_func(con, input_data)
 
@@ -203,9 +203,6 @@ def main():
                 # Use exclude_none=False to ensure None values are included as null in JSON
                 # This is important for TypeScript Zod schemas that expect nullable optional fields
                 print(json.dumps(output.model_dump(exclude_none=False), default=str))
-            finally:
-                # Close connection
-                con.close()
 
         # Exit with appropriate code (use output from the appropriate branch)
         sys.exit(0 if output.success else 1)

@@ -2324,7 +2324,7 @@ def _run_main_logic(args, con):
   # --- v_alerts_summary_d already created above ---
 
   # --- optional comparison against SQLite tele.db ---
-  if args.sqlite:
+  if args.compare_sqlite:
     con.execute("INSTALL sqlite;")
     con.execute("LOAD sqlite;")
     # Summary counts
@@ -2340,7 +2340,7 @@ def _run_main_logic(args, con):
         WHERE chat_id = ?
       )
       SELECT * FROM s CROSS JOIN d
-    """, [args.sqlite, chat_id, chat_id]).fetchone()
+    """, [args.compare_sqlite, chat_id, chat_id]).fetchone()
 
     # Mismatch report (ids + core fields)
     mismatches = con.execute("""
@@ -2396,13 +2396,13 @@ def _run_main_logic(args, con):
         OR (s.price_usd IS NOT NULL AND d.price_usd IS NOT NULL AND abs(s.price_usd - d.price_usd) > 1e-12)
       ORDER BY message_id
       LIMIT 200
-    """, [args.sqlite, chat_id, chat_id]).fetchall()
+    """, [args.compare_sqlite, chat_id, chat_id]).fetchall()
 
     print(json.dumps({
       "chat_id": chat_id,
       "chat_name": chat_name,
       "duckdb_file": args.duckdb,
-      "sqlite_file": args.sqlite,
+      "sqlite_file": args.compare_sqlite,
       "counts": {"sqlite_user_calls": int(summary[0]), "duck_user_calls": int(summary[1])},
       "mismatch_rows_sample": len(mismatches)
     }))
@@ -2519,6 +2519,27 @@ def _run_main_logic(args, con):
     # Mark run as completed (if not already done above)
     if run_id:
       complete_ingestion_run(con, run_id, row_counts)
+
+def main():
+  """Main entry point - parses arguments and runs ingestion logic"""
+  parser = argparse.ArgumentParser(description='Telegram DuckDB Punch Pipeline')
+  parser.add_argument('--in', dest='in_path', required=True, help='Input JSON file path')
+  parser.add_argument('--duckdb', required=True, help='Output DuckDB file path')
+  parser.add_argument('--chat-id', dest='chat_id', help='Override chat ID from file')
+  parser.add_argument('--rebuild', action='store_true', help='Rebuild tables from scratch')
+  parser.add_argument('--force', action='store_true', help='Force rerun even if already processed')
+  parser.add_argument('--run-id', dest='run_id', help='Specific run ID to use')
+  parser.add_argument('--export-csv', dest='export_csv', help='Export alerts to CSV file')
+  parser.add_argument('--export-parquet', dest='export_parquet', help='Export alerts to Parquet file')
+  parser.add_argument('--export-parquet-run', dest='export_parquet_run', action='store_true', help='Export run data to Parquet')
+  parser.add_argument('--output-dir', dest='output_dir', default='.', help='Output directory for exports')
+  parser.add_argument('--compare-sqlite', dest='compare_sqlite', help='Compare with SQLite database')
+  
+  args = parser.parse_args()
+  
+  # Use context manager for database connection
+  with get_write_connection(args.duckdb) as con:
+    _run_main_logic(args, con)
 
 if __name__ == "__main__":
   import sys

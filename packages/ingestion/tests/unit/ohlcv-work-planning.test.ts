@@ -93,11 +93,13 @@ describe('OHLCV Work Planning', () => {
       // Verify time windows
       // Note: For '1m' interval, postWindow is automatically adjusted to 5000 - preWindow = 4740
       const alertTime = DateTime.fromISO('2024-01-01T12:00:00Z');
-      expect(workItems[0].startTime.toISO()).toBe(alertTime.minus({ minutes: 260 }).toISO());
+      // Normalize ISO strings for comparison (Z vs +00:00 are equivalent)
+      expect(workItems[0].startTime.toISO()?.replace('Z', '+00:00')).toBe(alertTime.minus({ minutes: 260 }).toISO()?.replace('Z', '+00:00'));
       const expectedPostWindow = 5000 - 260; // Auto-adjusted for 1m interval
-      expect(workItems[0].endTime.toISO()).toBe(
-        alertTime.plus({ minutes: expectedPostWindow }).toISO()
-      );
+      const expectedEndTime = alertTime.plus({ minutes: expectedPostWindow }).toISO();
+      const actualEndTime = workItems[0].endTime.toISO();
+      // Normalize both to handle Z vs +00:00 format differences
+      expect(actualEndTime?.replace('Z', '+00:00')).toBe(expectedEndTime?.replace('Z', '+00:00'));
     });
 
     it('should sort work items by priority (call count)', async () => {
@@ -166,11 +168,13 @@ describe('OHLCV Work Planning', () => {
 
       // Default windows: 260 pre, auto-adjusted post for 1m interval (5000 - 260 = 4740)
       const alertTime = DateTime.fromISO('2024-01-01T12:00:00Z');
-      expect(workItems[0].startTime.toISO()).toBe(alertTime.minus({ minutes: 260 }).toISO());
+      // Normalize ISO strings for comparison (Z vs +00:00 are equivalent)
+      expect(workItems[0].startTime.toISO()?.replace('Z', '+00:00')).toBe(alertTime.minus({ minutes: 260 }).toISO()?.replace('Z', '+00:00'));
       // Note: For '1m' interval, postWindow is automatically adjusted to 5000 - preWindow = 4740
       const expectedPostWindow = 5000 - 260; // Auto-adjusted for 1m interval
-      expect(workItems[0].endTime.toISO()).toBe(
-        alertTime.plus({ minutes: expectedPostWindow }).toISO()
+      // Normalize ISO strings for comparison (Z vs +00:00 are equivalent)
+      expect(workItems[0].endTime.toISO()?.replace('Z', '+00:00')).toBe(
+        alertTime.plus({ minutes: expectedPostWindow }).toISO()?.replace('Z', '+00:00')
       );
     });
 

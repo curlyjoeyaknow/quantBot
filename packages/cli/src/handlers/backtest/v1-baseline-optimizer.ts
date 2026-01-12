@@ -146,7 +146,7 @@ export async function v1BaselineOptimizerHandler(
       position: { notionalUsd: args.initialCapital },
       indicatorWarmup: 0,
       entryDelay: 0,
-      maxHold: 2880, // 48 hours at 1m intervals
+      maxHold: 1400, // ~23.3 hours at 1m intervals
     },
     calls: callsToUse,
     interval: args.interval as import('@quantbot/backtest').Interval,

@@ -65,12 +65,12 @@ def get_state_run(con: duckdb.DuckDBPyConnection, input: GetStateInput) -> GetSt
         
         # Check expiration
         if expires_at and expires_at < now:
-            # Delete expired entry
+            # Delete expired entry (requires write access, which we have)
             con.execute("""
                 DELETE FROM workflow_state_d
                 WHERE key = ? AND namespace = ?
             """, [input.key, namespace])
-            con.commit()
+            # Note: DuckDB doesn't use explicit commits, but we keep this for clarity
             return GetStateOutput(success=True, found=False)
         
         return GetStateOutput(success=True, found=True, value=value)
@@ -124,7 +124,7 @@ def set_state_run(con: duckdb.DuckDBPyConnection, input: SetStateInput) -> SetSt
             created_at,
             now,
         ])
-        con.commit()
+        # Note: DuckDB doesn't use explicit commits, but we keep this for clarity
         return SetStateOutput(success=True)
     except Exception as e:
         return SetStateOutput(success=False, error=str(e))
@@ -152,7 +152,7 @@ def delete_state_run(con: duckdb.DuckDBPyConnection, input: DeleteStateInput) ->
             DELETE FROM workflow_state_d
             WHERE key = ? AND namespace = ?
         """, [input.key, namespace])
-        con.commit()
+        # Note: DuckDB doesn't use explicit commits, but we keep this for clarity
         return DeleteStateOutput(success=True)
     except Exception as e:
         return DeleteStateOutput(success=False, error=str(e))
@@ -172,7 +172,7 @@ def init_state_table_run(con: duckdb.DuckDBPyConnection, input: InitStateTableIn
     """Initialize state table schema."""
     try:
         setup_state_schema(con)
-        con.commit()
+        # Note: DuckDB doesn't use explicit commits, but we keep this for clarity
         return InitStateTableOutput(success=True)
     except Exception as e:
         return InitStateTableOutput(success=False, error=str(e))

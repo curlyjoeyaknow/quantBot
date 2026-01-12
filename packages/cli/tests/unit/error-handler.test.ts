@@ -9,16 +9,21 @@ import {
   logError,
   handleError,
 } from '../../src/core/error-handler';
-import { logger } from '@quantbot/utils';
 
-vi.mock('@quantbot/utils', () => ({
-  logger: {
+vi.mock('@quantbot/utils', () => {
+  const mockLogger = {
     error: vi.fn(),
     warn: vi.fn(),
     info: vi.fn(),
     debug: vi.fn(),
-  },
-}));
+  };
+  return {
+    logger: mockLogger,
+  };
+});
+
+// Import logger after mock is set up
+import { logger } from '@quantbot/utils';
 
 describe('ErrorHandler', () => {
   beforeEach(() => {
@@ -82,7 +87,7 @@ describe('ErrorHandler', () => {
     });
 
     it('should handle network errors', () => {
-      const error = new Error('Network connection failed');
+      const error = new Error('ECONNREFUSED: Network connection failed');
       const result = handleSolanaError(error);
       expect(result).toContain('Connection refused');
     });
