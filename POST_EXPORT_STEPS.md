@@ -98,15 +98,15 @@ git commit -m "feat: re-export slices May-Dec 2025 with improved quality
 ## Expected Results
 
 Based on improvements:
-- ✅ **Deduplication**: Using `GROUP BY` with `max(volume)` 
+
+- ✅ **Deduplication**: Using `GROUP BY` with `max(volume)`
 - ✅ **Quality Validation**: Every slice validated for gaps/coverage
 - ✅ **Better Coverage**: Should see improvement vs old slices (46.4% → ~60%+ target)
 
 ## Key Metrics to Watch
 
-| Metric | Old (slices/per_token) | Target (v2) |
-|--------|------------------------|-------------|
-| Avg Coverage | 46.4% | >60% |
-| Tokens with Gaps | 42.4% | <30% |
-| Critical Severity | 66.4% | <50% |
-
+| Metric            | Old (slices/per_token) | Target (v2) |
+| ----------------- | ---------------------- | ----------- |
+| Avg Coverage      | 46.4%                  | >60%        |
+| Tokens with Gaps  | 42.4%                  | <30%        |
+| Critical Severity | 66.4%                  | <50%        |
