@@ -58,7 +58,7 @@ describe('Artifact Bus Integration', () => {
     // Skip if bus_submit.py doesn't exist (test environment might not have it)
     const workspaceRoot = findWorkspaceRoot();
     const scriptPath = join(workspaceRoot, 'scripts', 'bus_submit.py');
-    
+
     if (!existsSync(scriptPath)) {
       console.warn(`bus_submit.py not found at ${scriptPath}, skipping test`);
       return;
