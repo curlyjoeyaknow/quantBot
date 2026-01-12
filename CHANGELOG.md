@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Date Range Query Bug in V1 Baseline Optimizer** - Queries for older date ranges now work correctly
+  - Fixed issue where `query_calls` operation fetched 1000 most recent calls and then filtered by date
+  - Date filtering now happens in SQL BEFORE the LIMIT clause
+  - Added `from_ts_ms` and `to_ts_ms` parameters to Python `query_calls` operation
+  - Updated `DuckDBStorageService.queryCalls()` to pass date range parameters
+  - Updated `queryCallsDuckdb` workflow to convert ISO dates to milliseconds
+  - **Impact**: Queries like `--from 2025-05-01 --to 2025-08-01` now correctly find calls in that range instead of returning "No calls found"
+  - **Root cause**: Python query was `ORDER BY alert_ts_ms DESC LIMIT 1000` without date filtering, returning newest 1000 calls (e.g., 2025-11 to 2026-01), then TypeScript filtered by date, missing older calls entirely
+  - **Verified**: Database has 3,152 calls in 2025-05-01 to 2025-08-01 range, system now correctly finds 21 eligible calls after coverage checks
+
 ### Added
 
 - **Dashboard Comparison Mode** - Compare multiple entry strategies side-by-side
