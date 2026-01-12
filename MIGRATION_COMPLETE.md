@@ -11,7 +11,7 @@ Migrated `ohlcv_candles` table from `MergeTree` to `ReplacingMergeTree` engine, 
 ### Migration Results
 
 - **Original rows**: 125,874,214
-- **Migrated rows**: 125,874,201  
+- **Migrated rows**: 125,874,201
 - **Duplicates removed**: 13 rows
 - **Partitions processed**: 96/96
 - **New duplicates**: 0 ✅
@@ -76,19 +76,33 @@ All code that inserts into `ohlcv_candles` must now include `ingested_at`:
 
 ```typescript
 client.insert({
-  token_address, chain, timestamp, interval_seconds,
-  open, high, low, close, volume
-})
+  token_address,
+  chain,
+  timestamp,
+  interval_seconds,
+  open,
+  high,
+  low,
+  close,
+  volume,
+});
 ```
 
 **After:**
 
 ```typescript
 client.insert({
-  token_address, chain, timestamp, interval_seconds,
-  open, high, low, close, volume,
-  ingested_at: new Date()  // REQUIRED
-})
+  token_address,
+  chain,
+  timestamp,
+  interval_seconds,
+  open,
+  high,
+  low,
+  close,
+  volume,
+  ingested_at: new Date(), // REQUIRED
+});
 ```
 
 ### 2. Files to Update

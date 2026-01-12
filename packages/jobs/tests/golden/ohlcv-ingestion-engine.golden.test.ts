@@ -50,10 +50,26 @@ vi.mock('@quantbot/storage', () => {
     failRun = vi.fn().mockResolvedValue(undefined);
     updateRunStats = vi.fn();
   }
+  class MockOhlcvRepository {
+    upsertCandles = vi.fn().mockResolvedValue({
+      inserted: 0,
+      rejected: 0,
+      warnings: 0,
+      rejectionDetails: [],
+    });
+  }
   return {
     getStorageEngine: vi.fn(),
     initClickHouse: vi.fn(),
     IngestionRunRepository: MockIngestionRunRepository,
+    OhlcvRepository: MockOhlcvRepository,
+    LENIENT_VALIDATION: {
+      rejectZeroVolume: false,
+      rejectZeroPrice: true,
+      rejectFutureTimestamps: true,
+      futureTolerance: 300,
+      minSourceTier: 0,
+    },
   };
 });
 

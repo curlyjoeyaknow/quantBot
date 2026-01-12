@@ -251,7 +251,8 @@ describe('ResultsWriter', () => {
         completedScenarioIds: [],
       });
 
-      expect(meta.durationMs).toBeGreaterThan(0);
+      // Duration can be 0ms in very fast tests, so use >= 0
+      expect(meta.durationMs).toBeGreaterThanOrEqual(0);
     });
 
     it('includes diagnostics if provided', async () => {

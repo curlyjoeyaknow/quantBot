@@ -190,7 +190,7 @@ describe('ingestOhlcvHandler - Integration Tests (Real Implementations)', () => 
     const spec1 = workflowSpy.mock.calls[0][0];
     const spec2 = workflowSpy.mock.calls[1][0];
     expect(spec1).toEqual(spec2);
-  }, 60000); // 60 second timeout for integration test with real DuckDB
+  }, 130000); // 130 second timeout (60s per call + overhead for integration test with real DuckDB)
 
   it('INTEGRATION: handler propagates workflow errors (no try/catch)', async () => {
     // Skip if ClickHouse wasn't initialized

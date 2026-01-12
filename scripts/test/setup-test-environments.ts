@@ -24,10 +24,16 @@ async function main() {
     // Check current status
     const status = checkAllEnvironments();
     console.log('[test-setup] Current environment status:');
-    console.log(`  Python 3: ${status.python.python3Available ? '✓' : '✗'} ${status.python.python3Version || 'not available'}`);
+    console.log(
+      `  Python 3: ${status.python.python3Available ? '✓' : '✗'} ${status.python.python3Version || 'not available'}`
+    );
     console.log(`  Python deps: ${status.python.dependenciesInstalled ? '✓' : '✗'}`);
-    console.log(`  DuckDB: ${status.duckdb.duckdbAvailable ? '✓' : '✗'} (writeable: ${status.duckdb.writeable ? '✓' : '✗'})`);
-    console.log(`  ClickHouse: ${status.clickhouse.clickhouseAvailable ? '✓' : '✗'} (${status.clickhouse.host}:${status.clickhouse.port})`);
+    console.log(
+      `  DuckDB: ${status.duckdb.duckdbAvailable ? '✓' : '✗'} (writeable: ${status.duckdb.writeable ? '✓' : '✗'})`
+    );
+    console.log(
+      `  ClickHouse: ${status.clickhouse.clickhouseAvailable ? '✓' : '✗'} (${status.clickhouse.host}:${status.clickhouse.port})`
+    );
     console.log(`  All ready: ${status.allReady ? '✓' : '✗'}\n`);
 
     if (status.allReady) {
@@ -57,7 +63,9 @@ async function main() {
         console.log('[test-setup] ✓ ClickHouse ready\n');
       } catch (error) {
         console.error('[test-setup] ✗ Failed to setup ClickHouse:', error);
-        console.error('[test-setup] Please start ClickHouse manually: docker-compose up -d clickhouse\n');
+        console.error(
+          '[test-setup] Please start ClickHouse manually: docker-compose up -d clickhouse\n'
+        );
       }
     }
 
@@ -84,4 +92,3 @@ async function main() {
 }
 
 main();
-

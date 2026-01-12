@@ -273,8 +273,15 @@ async function analyzeCallerCoverage(
   // Allow callers to extend the Python coverage timeout via spec, env, or default to 15 minutes
   const coverageTimeoutMs = getCoverageTimeoutMs(spec.timeoutMs);
 
+  // PYTHONPATH needs to include workspace root so imports like "from tools.shared" work
+  const existingPythonPath = process.env.PYTHONPATH || '';
+  const pythonPath = existingPythonPath ? `${workspaceRoot}:${existingPythonPath}` : workspaceRoot;
+
   const result = await pythonEngine.runScript(scriptPath, args, resultSchema, {
     timeout: coverageTimeoutMs,
+    env: {
+      PYTHONPATH: pythonPath,
+    },
   });
 
   return {

@@ -58,9 +58,13 @@ describe.skipIf(!shouldRun)(
       expect(workflowSpy).toHaveBeenCalledTimes(1);
 
       // Assert: Handler returns workflow result (pure function)
-      expect(Array.isArray(result)).toBe(true);
-      const rows = result as Array<Record<string, unknown>>;
-      expect(rows.length).toBeGreaterThan(0);
+      // When format is 'json', handler returns GetStorageStatsResult object, not array
+      expect(result).toBeDefined();
+      expect(typeof result).toBe('object');
+      // Verify it has the expected structure
+      const statsResult = result as Record<string, unknown>;
+      expect(statsResult.source).toBeDefined();
+      expect(statsResult.summary).toBeDefined();
     });
 
     it('INTEGRATION: handler is pure function (no side effects)', async () => {
@@ -81,7 +85,12 @@ describe.skipIf(!shouldRun)(
       expect(workflowSpy).toHaveBeenCalledTimes(2);
 
       // Assert: Both calls produced same results (deterministic)
-      expect(result1).toEqual(result2);
+      // Exclude timestamp from comparison as it's non-deterministic
+      const result1WithoutTimestamp = { ...result1 };
+      const result2WithoutTimestamp = { ...result2 };
+      delete (result1WithoutTimestamp as Record<string, unknown>).timestamp;
+      delete (result2WithoutTimestamp as Record<string, unknown>).timestamp;
+      expect(result1WithoutTimestamp).toEqual(result2WithoutTimestamp);
     });
   }
 );

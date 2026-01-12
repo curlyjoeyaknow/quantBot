@@ -12,6 +12,7 @@ The OHLCV deduplication and audit trail module has been fully integrated into th
 ### 1. OhlcvIngestionEngine (packages/jobs)
 
 **Added**:
+
 - `IngestionRunRepository` instance for run tracking
 - `currentRunManifest` field to track active run
 - `startRun(manifest)` - Start a tracked ingestion run
@@ -20,6 +21,7 @@ The OHLCV deduplication and audit trail module has been fully integrated into th
 - `getCurrentRunManifest()` - Get current run manifest
 
 **Flow**:
+
 ```typescript
 // Start run
 await engine.startRun(manifest);
@@ -41,6 +43,7 @@ await engine.completeRun({
 ### 2. OhlcvIngestionService (packages/ingestion)
 
 **Added**:
+
 - `createRunManifest(params)` - Generate run manifest with full audit trail
 - Automatic run tracking in `ingestForCalls()`:
   - Creates manifest at start
@@ -49,6 +52,7 @@ await engine.completeRun({
   - Fails run on error
 
 **Run Manifest Contents**:
+
 ```typescript
 {
   runId: UUID,
@@ -118,22 +122,26 @@ const result = await service.ingestForCalls({
 ### CLI Commands
 
 View run history:
+
 ```bash
 quantbot ohlcv runs-list --status=completed --limit=20
 quantbot ohlcv runs-list --status=failed
 ```
 
 View run details:
+
 ```bash
 quantbot ohlcv runs-details <run-id>
 ```
 
 Rollback a faulty run:
+
 ```bash
 quantbot ohlcv runs-rollback <run-id>
 ```
 
 Identify faulty runs:
+
 ```bash
 quantbot ohlcv validate-duplicates
 ```
@@ -197,4 +205,3 @@ quantbot ohlcv runs-details <run-id-from-above>
 - Original implementation: commit `0946a77`
 - Integration: commit `<this-commit>`
 - Plan: `.cursor/plans/ohlcv_deduplication_module_9f3b07c9.plan.md`
-

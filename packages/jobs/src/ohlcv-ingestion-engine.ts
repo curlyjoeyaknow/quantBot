@@ -21,13 +21,20 @@
 import { DateTime } from 'luxon';
 import { getBirdeyeClient, fetchMultiChainMetadata } from '@quantbot/api-clients';
 import { fetchBirdeyeCandles } from '@quantbot/api-clients';
-import { getStorageEngine, initClickHouse, IngestionRunRepository, type IngestionRunManifest } from '@quantbot/storage';
+import {
+  getStorageEngine,
+  initClickHouse,
+  IngestionRunRepository,
+  OhlcvRepository,
+  LENIENT_VALIDATION,
+  type IngestionRunManifest,
+} from '@quantbot/storage';
 // TokensRepository removed (PostgreSQL) - metadata storage not critical for OHLCV ingestion
 import type { Candle, Chain } from '@quantbot/core';
 import { logger, ValidationError } from '@quantbot/utils';
 import { LRUCache } from 'lru-cache';
 import { isEvmAddress } from '@quantbot/utils';
-import { storeCandles } from '@quantbot/ohlcv';
+// storeCandles removed - using OhlcvRepository.upsertCandles() with run manifest instead
 
 const birdeyeClient = getBirdeyeClient();
 
@@ -131,11 +138,12 @@ function getStartOffsetTime(
 export class OhlcvIngestionEngine {
   private clickhouseInitialized = false;
   private storageEngine = getStorageEngine();
+  private ohlcvRepository = new OhlcvRepository();
   private runRepository = new IngestionRunRepository();
   // TokensRepository removed (PostgreSQL) - metadata storage not critical
   // Chain detection cache: mint -> actual chain
   private chainCache = new LRUCache<string, Chain>({ max: 1000, ttl: 1000 * 60 * 60 }); // 1 hour TTL
-  
+
   // Current run manifest (set when starting a tracked ingestion)
   private currentRunManifest: IngestionRunManifest | null = null;
 
@@ -1307,16 +1315,29 @@ export class OhlcvIngestionEngine {
       }
 
       // Step 4: Store immediately to prevent data loss on script failure
-      // CRITICAL: Store to ClickHouse using ohlcv storage service (offline operation)
+      // CRITICAL: Store to ClickHouse using OhlcvRepository with run manifest tracking
       try {
-        // Map interval to storeCandles format (accepts '1s' | '15s' | '1m' | '5m' | '15m' | '1h' | '1H')
-        // Note: interval is typed as '1m' | '5m' | '15s' | '1H', so '1s' is not possible here
-        const storeInterval: '1s' | '15s' | '1m' | '5m' | '15m' | '1h' | '1H' =
-          interval === '1H' ? '1H' : interval === '15s' ? '15s' : interval === '1m' ? '1m' : '5m';
-        await storeCandles(mint, chain, candles, storeInterval);
-        logger.debug(
-          `[OhlcvIngestionEngine] Stored ${candles.length} ${interval} candles to ClickHouse for ${mint}...`
-        );
+        // Get current run manifest if available (for audit trail)
+        const runManifest = this.currentRunManifest;
+        
+        if (runManifest) {
+          // Use new upsertCandles with run manifest and validation
+          const result = await this.ohlcvRepository.upsertCandles(mint, chain, interval, candles, {
+            runManifest,
+            sourceTier: runManifest.sourceTier,
+            validation: LENIENT_VALIDATION, // Allow zero-volume but log warnings
+          });
+          
+          logger.debug(
+            `[OhlcvIngestionEngine] Stored ${result.inserted} ${interval} candles to ClickHouse for ${mint}... (${result.rejected} rejected, ${result.warnings} warnings)`
+          );
+        } else {
+          // Fallback: use storage engine if no run manifest (backward compatibility)
+          await this.storageEngine.storeCandles(mint, chain, candles, interval);
+          logger.debug(
+            `[OhlcvIngestionEngine] Stored ${candles.length} ${interval} candles to ClickHouse for ${mint}... (no run manifest)`
+          );
+        }
       } catch (error) {
         logger.error(
           `[OhlcvIngestionEngine] Failed to store candles to ClickHouse`,

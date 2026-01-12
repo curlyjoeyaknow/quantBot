@@ -9,7 +9,15 @@
 import { DateTime } from 'luxon';
 import { logger, ConfigurationError } from '@quantbot/utils';
 import type { Chain } from '@quantbot/core';
-import { getStorageEngine, type StorageEngine, getDuckDBWorklistService, getGitInfoSync, getVersionInfo, type IngestionRunManifest, SourceTier } from '@quantbot/storage';
+import {
+  getStorageEngine,
+  type StorageEngine,
+  getDuckDBWorklistService,
+  getGitInfoSync,
+  getVersionInfo,
+  type IngestionRunManifest,
+  SourceTier,
+} from '@quantbot/storage';
 import { randomUUID } from 'crypto';
 import { createHash } from 'crypto';
 // Types imported dynamically to break circular dependency
@@ -126,7 +134,8 @@ export class OhlcvIngestionService {
     // Extract relevant env vars
     const envInfo: Record<string, string> = {};
     if (process.env.CLICKHOUSE_HOST) envInfo.CLICKHOUSE_HOST = process.env.CLICKHOUSE_HOST;
-    if (process.env.CLICKHOUSE_DATABASE) envInfo.CLICKHOUSE_DATABASE = process.env.CLICKHOUSE_DATABASE;
+    if (process.env.CLICKHOUSE_DATABASE)
+      envInfo.CLICKHOUSE_DATABASE = process.env.CLICKHOUSE_DATABASE;
     if (process.env.BIRDEYE_API_KEY) envInfo.BIRDEYE_API_KEY = '***'; // Redact sensitive
 
     return {
@@ -220,7 +229,7 @@ export class OhlcvIngestionService {
 
     // Create run manifest for audit trail
     const runManifest = this.createRunManifest(params);
-    
+
     // Ensure engine is initialized (ClickHouse)
     const engine = await this.getIngestionEngine();
     await engine.initialize();
@@ -245,314 +254,315 @@ export class OhlcvIngestionService {
         );
       }
 
-    // 1. Query DuckDB for worklist (calls + tokens with resolved mints)
-    logger.info('Querying DuckDB for OHLCV worklist', {
-      duckdbPath,
-      from: from?.toISOString(),
-      to: to?.toISOString(),
-    });
+      // 1. Query DuckDB for worklist (calls + tokens with resolved mints)
+      logger.info('Querying DuckDB for OHLCV worklist', {
+        duckdbPath,
+        from: from?.toISOString(),
+        to: to?.toISOString(),
+      });
 
-    const worklistService = getDuckDBWorklistService();
-    const worklist = await worklistService.queryWorklist({
-      duckdbPath,
-      from: from?.toISOString(),
-      to: to?.toISOString(),
-      side: 'buy',
-    });
+      const worklistService = getDuckDBWorklistService();
+      const worklist = await worklistService.queryWorklist({
+        duckdbPath,
+        from: from?.toISOString(),
+        to: to?.toISOString(),
+        side: 'buy',
+      });
 
-    logger.info('Found worklist', {
-      tokenGroups: worklist.tokenGroups.length,
-      calls: worklist.calls.length,
-      queueItems: queueItems.length,
-    });
+      logger.info('Found worklist', {
+        tokenGroups: worklist.tokenGroups.length,
+        calls: worklist.calls.length,
+        queueItems: queueItems.length,
+      });
 
-    // 1.5. Merge queue items with worklist (prioritize queue items)
-    // Convert queue items to worklist format (normalize to milliseconds)
-    const queueTokenGroups: Array<{
-      mint: string;
-      chain: string;
-      earliestAlertTsMs: number;
-      isFromQueue: boolean; // Flag to track queue items
-    }> = queueItems.map((item) => ({
-      mint: item.mint,
-      chain: chain, // Default chain, will be resolved during processing
-      // Queue items use ISO string, convert to milliseconds
-      earliestAlertTsMs: DateTime.fromISO(item.alertTimestamp, { zone: 'utc' }).toMillis(),
-      isFromQueue: true,
-    }));
+      // 1.5. Merge queue items with worklist (prioritize queue items)
+      // Convert queue items to worklist format (normalize to milliseconds)
+      const queueTokenGroups: Array<{
+        mint: string;
+        chain: string;
+        earliestAlertTsMs: number;
+        isFromQueue: boolean; // Flag to track queue items
+      }> = queueItems.map((item) => ({
+        mint: item.mint,
+        chain: chain, // Default chain, will be resolved during processing
+        // Queue items use ISO string, convert to milliseconds
+        earliestAlertTsMs: DateTime.fromISO(item.alertTimestamp, { zone: 'utc' }).toMillis(),
+        isFromQueue: true,
+      }));
 
-    // Merge: queue items first (priority), then worklist items
-    // Deduplicate: if a mint+timestamp exists in both, prefer queue item
-    const worklistMap = new Map<string, (typeof worklist.tokenGroups)[0]>();
-    for (const group of worklist.tokenGroups) {
-      const key = `${group.mint}:${group.earliestAlertTsMs}`;
-      worklistMap.set(key, group);
-    }
-
-    // Remove worklist items that are in queue (queue takes priority)
-    for (const queueItem of queueTokenGroups) {
-      const key = `${queueItem.mint}:${queueItem.earliestAlertTsMs}`;
-      worklistMap.delete(key);
-    }
-
-    // Combine: queue items first, then remaining worklist items
-    const prioritizedTokenGroups = [
-      ...queueTokenGroups.map((q) => ({ ...q, isFromQueue: true })),
-      ...Array.from(worklistMap.values()).map((w) => ({ ...w, isFromQueue: false })),
-    ];
-
-    logger.info('Prioritized token groups', {
-      queueItems: queueTokenGroups.length,
-      worklistItems: worklistMap.size,
-      total: prioritizedTokenGroups.length,
-    });
-
-    if (prioritizedTokenGroups.length === 0) {
-      logger.info('No token groups found (worklist + queue), nothing to ingest');
-      return {
-        tokensProcessed: 0,
-        tokensSucceeded: 0,
-        tokensFailed: 0,
-        tokensSkipped: 0,
-        tokensNoData: 0,
-        candlesFetched1m: 0,
-        candlesFetched5m: 0,
-        chunksFromCache: 0,
-        chunksFromAPI: 0,
-        errors: [],
-        queueItemsProcessed: [],
-      };
-    }
-
-    // 2. Group calls by mint for efficient processing
-    const callsByMint = new Map<string, typeof worklist.calls>();
-    for (const call of worklist.calls) {
-      if (!callsByMint.has(call.mint)) {
-        callsByMint.set(call.mint, []);
+      // Merge: queue items first (priority), then worklist items
+      // Deduplicate: if a mint+timestamp exists in both, prefer queue item
+      const worklistMap = new Map<string, (typeof worklist.tokenGroups)[0]>();
+      for (const group of worklist.tokenGroups) {
+        const key = `${group.mint}:${group.earliestAlertTsMs}`;
+        worklistMap.set(key, group);
       }
-      callsByMint.get(call.mint)!.push(call);
-    }
 
-    const totalCalls = worklist.calls.length;
-    logger.info('Grouped calls by token', {
-      totalCalls,
-      uniqueTokens: prioritizedTokenGroups.length,
-      avgCallsPerToken:
-        worklist.calls.length > 0 ? (totalCalls / prioritizedTokenGroups.length).toFixed(2) : '0',
-      estimatedApiCallsSaved: (totalCalls - prioritizedTokenGroups.length) * 10,
-    });
+      // Remove worklist items that are in queue (queue takes priority)
+      for (const queueItem of queueTokenGroups) {
+        const key = `${queueItem.mint}:${queueItem.earliestAlertTsMs}`;
+        worklistMap.delete(key);
+      }
 
-    // 3. Process each unique token (fetch candles once per token, not per call)
-    // Process in parallel batches - rate limiter will handle 50 RPS throttling
-    // Very conservative concurrency to stay well under 50 RPS:
-    // - Each token makes ~3-4 API calls on average (1m probe + early exit, or full fetch)
-    // - 50 RPS / 4 calls per token = ~12 tokens/sec max
-    // - Use 2 concurrent tokens to leave quota for other endpoints (metadata, price)
-    // - This ensures ~40% of rate limit (1200 req/min) is available for non-OHLCV calls
-    const CONCURRENT_TOKENS = 2;
-    let tokensProcessed = 0;
-    let tokensSucceeded = 0;
-    let tokensFailed = 0;
-    let tokensSkipped = 0;
-    let tokensNoData = 0;
-    let candlesFetched1m = 0;
-    let candlesFetched5m = 0;
-    let chunksFromCache = 0;
-    let chunksFromAPI = 0;
-    const errors: Array<{ tokenId: number; error: string }> = [];
-    const queueItemsProcessed: Array<{ mint: string; alertTimestamp: string }> = [];
-    const tokensUnrecoverable: Array<{
-      mint: string;
-      alertTimestamp: string;
-      reason: string;
-    }> = [];
+      // Combine: queue items first, then remaining worklist items
+      const prioritizedTokenGroups = [
+        ...queueTokenGroups.map((q) => ({ ...q, isFromQueue: true })),
+        ...Array.from(worklistMap.values()).map((w) => ({ ...w, isFromQueue: false })),
+      ];
 
-    // Process tokens in parallel batches
-    for (let i = 0; i < prioritizedTokenGroups.length; i += CONCURRENT_TOKENS) {
-      const batch = prioritizedTokenGroups.slice(i, i + CONCURRENT_TOKENS);
+      logger.info('Prioritized token groups', {
+        queueItems: queueTokenGroups.length,
+        worklistItems: worklistMap.size,
+        total: prioritizedTokenGroups.length,
+      });
 
-      const batchResults = await Promise.all(
-        batch.map(async (tokenGroup, batchIndex) => {
-          const tokenId = i + batchIndex + 1;
-          tokensProcessed++;
-          const isFromQueue = (tokenGroup as { isFromQueue?: boolean }).isFromQueue ?? false;
+      if (prioritizedTokenGroups.length === 0) {
+        logger.info('No token groups found (worklist + queue), nothing to ingest');
+        return {
+          tokensProcessed: 0,
+          tokensSucceeded: 0,
+          tokensFailed: 0,
+          tokensSkipped: 0,
+          tokensNoData: 0,
+          candlesFetched1m: 0,
+          candlesFetched5m: 0,
+          chunksFromCache: 0,
+          chunksFromAPI: 0,
+          errors: [],
+          queueItemsProcessed: [],
+        };
+      }
 
-          try {
-            const { mint, chain: tokenChain, earliestAlertTsMs } = tokenGroup;
+      // 2. Group calls by mint for efficient processing
+      const callsByMint = new Map<string, typeof worklist.calls>();
+      for (const call of worklist.calls) {
+        if (!callsByMint.has(call.mint)) {
+          callsByMint.set(call.mint, []);
+        }
+        callsByMint.get(call.mint)!.push(call);
+      }
 
-            if (!mint || earliestAlertTsMs === null || earliestAlertTsMs === undefined) {
-              logger.warn('Token group missing required fields', {
-                mint: mint,
-                hasEarliestAlertTsMs: earliestAlertTsMs !== null && earliestAlertTsMs !== undefined,
-              });
-              tokensFailed++;
-              errors.push({
-                tokenId,
-                error: 'Missing mint or earliestAlertTsMs',
-              });
-              return null;
-            }
+      const totalCalls = worklist.calls.length;
+      logger.info('Grouped calls by token', {
+        totalCalls,
+        uniqueTokens: prioritizedTokenGroups.length,
+        avgCallsPerToken:
+          worklist.calls.length > 0 ? (totalCalls / prioritizedTokenGroups.length).toFixed(2) : '0',
+        estimatedApiCallsSaved: (totalCalls - prioritizedTokenGroups.length) * 10,
+      });
 
-            // Get all calls for this mint
-            const callsForToken = callsByMint.get(mint) || [];
+      // 3. Process each unique token (fetch candles once per token, not per call)
+      // Process in parallel batches - rate limiter will handle 50 RPS throttling
+      // Very conservative concurrency to stay well under 50 RPS:
+      // - Each token makes ~3-4 API calls on average (1m probe + early exit, or full fetch)
+      // - 50 RPS / 4 calls per token = ~12 tokens/sec max
+      // - Use 2 concurrent tokens to leave quota for other endpoints (metadata, price)
+      // - This ensures ~40% of rate limit (1200 req/min) is available for non-OHLCV calls
+      const CONCURRENT_TOKENS = 2;
+      let tokensProcessed = 0;
+      let tokensSucceeded = 0;
+      let tokensFailed = 0;
+      let tokensSkipped = 0;
+      let tokensNoData = 0;
+      let candlesFetched1m = 0;
+      let candlesFetched5m = 0;
+      let chunksFromCache = 0;
+      let chunksFromAPI = 0;
+      const errors: Array<{ tokenId: number; error: string }> = [];
+      const queueItemsProcessed: Array<{ mint: string; alertTimestamp: string }> = [];
+      const tokensUnrecoverable: Array<{
+        mint: string;
+        alertTimestamp: string;
+        reason: string;
+      }> = [];
 
-            // Use raw milliseconds directly
-            const alertTime = DateTime.fromMillis(earliestAlertTsMs, { zone: 'utc' });
+      // Process tokens in parallel batches
+      for (let i = 0; i < prioritizedTokenGroups.length; i += CONCURRENT_TOKENS) {
+        const batch = prioritizedTokenGroups.slice(i, i + CONCURRENT_TOKENS);
 
-            // Resume mode: Check if token already has sufficient data
-            if (resume) {
-              const storedChain = (tokenChain as Chain) || chain;
-              const alreadyProcessed = await this._isTokenAlreadyProcessed(
-                mint,
-                storedChain,
-                alertTime,
-                preWindowMinutes,
-                postWindowMinutes
-              );
+        const batchResults = await Promise.all(
+          batch.map(async (tokenGroup, batchIndex) => {
+            const tokenId = i + batchIndex + 1;
+            tokensProcessed++;
+            const isFromQueue = (tokenGroup as { isFromQueue?: boolean }).isFromQueue ?? false;
 
-              if (alreadyProcessed) {
-                logger.debug('Token already processed, skipping (resume mode)', {
+            try {
+              const { mint, chain: tokenChain, earliestAlertTsMs } = tokenGroup;
+
+              if (!mint || earliestAlertTsMs === null || earliestAlertTsMs === undefined) {
+                logger.warn('Token group missing required fields', {
                   mint: mint,
-                  alertTime: alertTime.toISO(),
-                  chain: storedChain,
+                  hasEarliestAlertTsMs:
+                    earliestAlertTsMs !== null && earliestAlertTsMs !== undefined,
                 });
-                tokensSkipped++;
+                tokensFailed++;
+                errors.push({
+                  tokenId,
+                  error: 'Missing mint or earliestAlertTsMs',
+                });
                 return null;
               }
-            }
 
-            logger.debug('Fetching candles for token', {
-              mint: mint,
-              callsForToken: callsForToken.length,
-              earliestCallTime: alertTime.toISO(),
-              chain: tokenChain || chain,
-            });
+              // Get all calls for this mint
+              const callsForToken = callsByMint.get(mint) || [];
 
-            // Fetch candles once per token (not per call) - candles are token-specific
-            // Use user-specified parameters for interval, candles, and start offset
-            const fetchOptions: OhlcvIngestionOptions = {
-              ...options,
-              interval: interval || '1m',
-              candles: candles || 5000,
-              startOffsetMinutes: startOffsetMinutes ?? -52,
-            };
+              // Use raw milliseconds directly
+              const alertTime = DateTime.fromMillis(earliestAlertTsMs, { zone: 'utc' });
 
-            const engine = await this.getIngestionEngine();
-            const result = await engine.fetchCandles(
-              mint,
-              (tokenChain as Chain) || chain,
-              alertTime,
-              fetchOptions
-            );
-
-            // NOTE: ATH/ATL calculation is now handled by simulation layer
-            // Simulation will query OHLCV offline and calculate ATH/ATL for its specific time range
-
-            // Only count as succeeded if we actually fetched candles
-            // Early exit optimization may return 0 candles if API has no data
-            const totalCandles = result['1m'].length + result['5m'].length;
-            if (totalCandles > 0) {
-              tokensSucceeded++;
-
-              // Track queue items that were successfully processed
-              if (isFromQueue) {
-                queueItemsProcessed.push({
+              // Resume mode: Check if token already has sufficient data
+              if (resume) {
+                const storedChain = (tokenChain as Chain) || chain;
+                const alreadyProcessed = await this._isTokenAlreadyProcessed(
                   mint,
-                  alertTimestamp: alertTime.toISO()!,
-                });
+                  storedChain,
+                  alertTime,
+                  preWindowMinutes,
+                  postWindowMinutes
+                );
+
+                if (alreadyProcessed) {
+                  logger.debug('Token already processed, skipping (resume mode)', {
+                    mint: mint,
+                    alertTime: alertTime.toISO(),
+                    chain: storedChain,
+                  });
+                  tokensSkipped++;
+                  return null;
+                }
               }
-            } else {
-              // No data available from API - count separately
-              // This is different from an error (which would be counted as failed)
-              tokensNoData++;
-              logger.debug('Token processed but no candles available (early exit)', {
+
+              logger.debug('Fetching candles for token', {
                 mint: mint,
+                callsForToken: callsForToken.length,
+                earliestCallTime: alertTime.toISO(),
+                chain: tokenChain || chain,
+              });
+
+              // Fetch candles once per token (not per call) - candles are token-specific
+              // Use user-specified parameters for interval, candles, and start offset
+              const fetchOptions: OhlcvIngestionOptions = {
+                ...options,
+                interval: interval || '1m',
+                candles: candles || 5000,
+                startOffsetMinutes: startOffsetMinutes ?? -52,
+              };
+
+              const engine = await this.getIngestionEngine();
+              const result = await engine.fetchCandles(
+                mint,
+                (tokenChain as Chain) || chain,
+                alertTime,
+                fetchOptions
+              );
+
+              // NOTE: ATH/ATL calculation is now handled by simulation layer
+              // Simulation will query OHLCV offline and calculate ATH/ATL for its specific time range
+
+              // Only count as succeeded if we actually fetched candles
+              // Early exit optimization may return 0 candles if API has no data
+              const totalCandles = result['1m'].length + result['5m'].length;
+              if (totalCandles > 0) {
+                tokensSucceeded++;
+
+                // Track queue items that were successfully processed
+                if (isFromQueue) {
+                  queueItemsProcessed.push({
+                    mint,
+                    alertTimestamp: alertTime.toISO()!,
+                  });
+                }
+              } else {
+                // No data available from API - count separately
+                // This is different from an error (which would be counted as failed)
+                tokensNoData++;
+                logger.debug('Token processed but no candles available (early exit)', {
+                  mint: mint,
+                });
+
+                // If this was from queue (simulation failure), mark as unrecoverable
+                if (isFromQueue) {
+                  tokensUnrecoverable.push({
+                    mint,
+                    alertTimestamp: alertTime.toISO()!,
+                    reason: 'No OHLCV data available from API after all retries',
+                  });
+                }
+              }
+
+              return {
+                '1m': result['1m'].length,
+                '5m': result['5m'].length,
+                chunksFromCache: result.metadata.chunksFromCache,
+                chunksFromAPI: result.metadata.chunksFromAPI,
+              };
+            } catch (error: unknown) {
+              tokensFailed++;
+              const errorMessage = error instanceof Error ? error.message : String(error);
+              errors.push({
+                tokenId,
+                error: errorMessage,
+              });
+              logger.error('Failed to ingest OHLCV for token', error as Error, {
+                mint: tokenGroup.mint,
               });
 
               // If this was from queue (simulation failure), mark as unrecoverable
               if (isFromQueue) {
+                const tsMs = tokenGroup.earliestAlertTsMs;
                 tokensUnrecoverable.push({
-                  mint,
-                  alertTimestamp: alertTime.toISO()!,
-                  reason: 'No OHLCV data available from API after all retries',
+                  mint: tokenGroup.mint || '',
+                  alertTimestamp:
+                    tsMs !== null && tsMs !== undefined
+                      ? DateTime.fromMillis(tsMs, { zone: 'utc' }).toISO()!
+                      : '',
+                  reason: `Persistent error: ${errorMessage}`,
                 });
               }
+
+              return null;
             }
+          })
+        );
 
-            return {
-              '1m': result['1m'].length,
-              '5m': result['5m'].length,
-              chunksFromCache: result.metadata.chunksFromCache,
-              chunksFromAPI: result.metadata.chunksFromAPI,
-            };
-          } catch (error: unknown) {
-            tokensFailed++;
-            const errorMessage = error instanceof Error ? error.message : String(error);
-            errors.push({
-              tokenId,
-              error: errorMessage,
-            });
-            logger.error('Failed to ingest OHLCV for token', error as Error, {
-              mint: tokenGroup.mint,
-            });
-
-            // If this was from queue (simulation failure), mark as unrecoverable
-            if (isFromQueue) {
-              const tsMs = tokenGroup.earliestAlertTsMs;
-              tokensUnrecoverable.push({
-                mint: tokenGroup.mint || '',
-                alertTimestamp:
-                  tsMs !== null && tsMs !== undefined
-                    ? DateTime.fromMillis(tsMs, { zone: 'utc' }).toISO()!
-                    : '',
-                reason: `Persistent error: ${errorMessage}`,
-              });
-            }
-
-            return null;
+        // Aggregate results from batch
+        for (const result of batchResults) {
+          if (result) {
+            candlesFetched1m += result['1m'];
+            candlesFetched5m += result['5m'];
+            chunksFromCache += result.chunksFromCache;
+            chunksFromAPI += result.chunksFromAPI;
           }
-        })
-      );
-
-      // Aggregate results from batch
-      for (const result of batchResults) {
-        if (result) {
-          candlesFetched1m += result['1m'];
-          candlesFetched5m += result['5m'];
-          chunksFromCache += result.chunksFromCache;
-          chunksFromAPI += result.chunksFromAPI;
         }
       }
-    }
 
-    const summary: IngestForCallsResult = {
-      tokensProcessed,
-      tokensSucceeded,
-      tokensFailed,
-      tokensSkipped,
-      tokensNoData,
-      tokensUnrecoverable: tokensUnrecoverable.length > 0 ? tokensUnrecoverable : undefined,
-      candlesFetched1m,
-      candlesFetched5m,
-      chunksFromCache,
-      chunksFromAPI,
-      errors,
-      queueItemsProcessed,
-    };
+      const summary: IngestForCallsResult = {
+        tokensProcessed,
+        tokensSucceeded,
+        tokensFailed,
+        tokensSkipped,
+        tokensNoData,
+        tokensUnrecoverable: tokensUnrecoverable.length > 0 ? tokensUnrecoverable : undefined,
+        candlesFetched1m,
+        candlesFetched5m,
+        chunksFromCache,
+        chunksFromAPI,
+        errors,
+        queueItemsProcessed,
+      };
 
-    logger.info('Completed OHLCV ingestion for calls', {
-      tokensProcessed: summary.tokensProcessed,
-      tokensSucceeded: summary.tokensSucceeded,
-      tokensFailed: summary.tokensFailed,
-      tokensSkipped: summary.tokensSkipped,
-      tokensNoData: summary.tokensNoData,
-      tokensUnrecoverable: summary.tokensUnrecoverable?.length || 0,
-      candlesFetched1m: summary.candlesFetched1m,
-      candlesFetched5m: summary.candlesFetched5m,
-      chunksFromCache: summary.chunksFromCache,
-      chunksFromAPI: summary.chunksFromAPI,
-      errorCount: summary.errors.length,
-    });
+      logger.info('Completed OHLCV ingestion for calls', {
+        tokensProcessed: summary.tokensProcessed,
+        tokensSucceeded: summary.tokensSucceeded,
+        tokensFailed: summary.tokensFailed,
+        tokensSkipped: summary.tokensSkipped,
+        tokensNoData: summary.tokensNoData,
+        tokensUnrecoverable: summary.tokensUnrecoverable?.length || 0,
+        candlesFetched1m: summary.candlesFetched1m,
+        candlesFetched5m: summary.candlesFetched5m,
+        chunksFromCache: summary.chunksFromCache,
+        chunksFromAPI: summary.chunksFromAPI,
+        errorCount: summary.errors.length,
+      });
 
       // Complete tracked run
       try {

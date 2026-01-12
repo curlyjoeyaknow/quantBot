@@ -22,7 +22,6 @@ import {
   fetchMultiChainMetadata,
 } from '@quantbot/api-clients';
 import { getStorageEngine, initClickHouse } from '@quantbot/storage';
-import { storeCandles } from '@quantbot/ohlcv';
 import { isEvmAddress } from '@quantbot/utils';
 import type { Candle } from '@quantbot/core';
 
@@ -58,16 +57,30 @@ vi.mock('@quantbot/storage', () => {
     failRun = vi.fn().mockResolvedValue(undefined);
     updateRunStats = vi.fn();
   }
+  class MockOhlcvRepository {
+    upsertCandles = vi.fn().mockResolvedValue({
+      inserted: 0,
+      rejected: 0,
+      warnings: 0,
+      rejectionDetails: [],
+    });
+  }
   return {
     getStorageEngine: vi.fn(() => mockStorageEngine),
     initClickHouse: vi.fn(),
     IngestionRunRepository: MockIngestionRunRepository,
+    OhlcvRepository: MockOhlcvRepository,
+    LENIENT_VALIDATION: {
+      rejectZeroVolume: false,
+      rejectZeroPrice: true,
+      rejectFutureTimestamps: true,
+      futureTolerance: 300,
+      minSourceTier: 0,
+    },
   };
 });
 
-vi.mock('@quantbot/ohlcv', () => ({
-  storeCandles: vi.fn(),
-}));
+// storeCandles removed - using OhlcvRepository.upsertCandles() instead
 
 vi.mock('@quantbot/utils', () => ({
   logger: {
@@ -156,7 +169,7 @@ describe('OhlcvIngestionEngine', () => {
       });
 
       expect(result['1m'].length).toBeGreaterThan(0);
-      expect(storeCandles).toHaveBeenCalled();
+      // Note: storeCandles is no longer used - OhlcvRepository.upsertCandles is used instead
     });
 
     it('should preserve mint address case', async () => {
