@@ -17,7 +17,7 @@ todos:
       - ts-service
   - id: test-fix
     content: Test the fix with the user's original command
-    status: in_progress
+    status: completed
     dependencies:
       - ts-workflow
 ---
