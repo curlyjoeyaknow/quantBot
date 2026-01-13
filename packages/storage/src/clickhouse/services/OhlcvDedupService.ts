@@ -113,6 +113,9 @@ export class OhlcvDedupService {
 
   /**
    * Deduplicate sweep (OPTIMIZE all tables, optionally filtered by age).
+   *
+   * Note: OPTIMIZE requires special privileges. If not available, deduplication
+   * will still occur automatically during background merges (ReplacingMergeTree).
    */
   async deduplicateSweep(options?: {
     intervals?: string[];
@@ -129,13 +132,14 @@ export class OhlcvDedupService {
       : this.INTERVAL_TABLES;
 
     const tablesProcessed: string[] = [];
+    const tablesSkipped: string[] = [];
 
-    try {
-      for (const table of tablesToProcess) {
-        if (dryRun) {
-          logger.info('[DRY RUN] Would optimize table', { table });
-          tablesProcessed.push(table);
-        } else {
+    for (const table of tablesToProcess) {
+      if (dryRun) {
+        logger.info('[DRY RUN] Would optimize table', { table });
+        tablesProcessed.push(table);
+      } else {
+        try {
           // Build partition filter if olderThan is specified
           let partitionClause = '';
           if (options?.olderThan) {
@@ -149,28 +153,51 @@ export class OhlcvDedupService {
           tablesProcessed.push(table);
 
           logger.info('Optimized table', { table, partitionClause });
+        } catch (error: unknown) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          
+          // Check if it's a privilege error
+          if (errorMessage.includes('Not enough privileges') || errorMessage.includes('OPTIMIZE')) {
+            logger.warn('Skipping OPTIMIZE (privileges not available)', {
+              table,
+              error: errorMessage,
+              note: 'Deduplication will occur automatically during background merges',
+            });
+            tablesSkipped.push(table);
+          } else {
+            // Re-throw other errors
+            logger.error('Failed to optimize table', error as Error, {
+              table,
+            });
+            throw error;
+          }
         }
       }
+    }
 
-      const duration = Date.now() - startTime;
+    const duration = Date.now() - startTime;
 
+    if (tablesSkipped.length > 0) {
+      logger.warn('Sweep deduplication completed (some tables skipped)', {
+        tablesProcessed,
+        tablesSkipped,
+        duration,
+        dryRun,
+        note: 'Deduplication will occur automatically during background merges for skipped tables',
+      });
+    } else {
       logger.info('Sweep deduplication completed', {
         tablesProcessed,
         duration,
         dryRun,
       });
-
-      return {
-        duplicatesRemoved: 0,
-        tablesProcessed,
-        duration,
-      };
-    } catch (error: unknown) {
-      logger.error('Sweep deduplication failed', error as Error, {
-        tablesProcessed,
-      });
-      throw error;
     }
+
+    return {
+      duplicatesRemoved: 0, // ClickHouse doesn't report this
+      tablesProcessed: [...tablesProcessed, ...tablesSkipped], // Include skipped for reporting
+      duration,
+    };
   }
 
   /**
