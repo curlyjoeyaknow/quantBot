@@ -146,3 +146,6 @@ reports/
 results/
 docs-html/
 backups/
+
+quantbot_back.zip
+slices/per_token_v2/slice_20250501_20251230_v2.parquet
