@@ -506,10 +506,10 @@ export class PythonEngine {
       args.rebuild = true;
     }
 
-    const cwd = options?.cwd ?? join(workspaceRoot, 'tools/telegram');
+    const cwd = options?.cwd ?? join(workspaceRoot, 'packages/ingestion/python/telegram');
     const env = {
       ...options?.env,
-      PYTHONPATH: join(workspaceRoot, 'tools/telegram'),
+      PYTHONPATH: join(workspaceRoot, 'packages/ingestion/python/telegram'),
     };
 
     return this.runScript(scriptPath, args, PythonManifestSchema, {
@@ -545,10 +545,10 @@ export class PythonEngine {
       data: JSON.stringify(config.data),
     };
 
-    const cwd = options?.cwd ?? join(workspaceRoot, 'tools/simulation');
+    const cwd = options?.cwd ?? join(workspaceRoot, 'packages/storage/python');
     const env = {
       ...options?.env,
-      PYTHONPATH: join(workspaceRoot, 'tools/simulation'),
+      PYTHONPATH: join(workspaceRoot, 'packages/storage/python'),
     };
 
     const resultSchema = z
@@ -590,10 +590,10 @@ export class PythonEngine {
     if (config.username) args.username = config.username;
     if (config.password) args.password = config.password;
 
-    const cwd = options?.cwd ?? join(workspaceRoot, 'tools/simulation');
+    const cwd = options?.cwd ?? join(workspaceRoot, 'packages/storage/python');
     const env = {
       ...options?.env,
-      PYTHONPATH: join(workspaceRoot, 'tools/simulation'),
+      PYTHONPATH: join(workspaceRoot, 'packages/storage/python'),
     };
 
     const resultSchema = z
@@ -666,10 +666,10 @@ export class PythonEngine {
       args.mints = config.mints;
     }
 
-    const cwd = options?.cwd ?? join(workspaceRoot, 'tools/ingestion');
+    const cwd = options?.cwd ?? join(workspaceRoot, 'packages/ingestion/python');
     const env = {
       ...options?.env,
-      PYTHONPATH: join(workspaceRoot, 'tools/ingestion'),
+      PYTHONPATH: join(workspaceRoot, 'packages/ingestion/python'),
     };
 
     const tokenGroupSchema = z.object({

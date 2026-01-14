@@ -123,8 +123,8 @@ describe('DuckDB Ingestion Idempotency', () => {
           rebuild: true,
         },
         {
-          cwd: join(process.cwd(), 'tools/telegram'),
-          env: { PYTHONPATH: join(process.cwd(), 'tools/telegram') },
+          cwd: join(process.cwd(), 'packages/ingestion/python/telegram'),
+          env: { PYTHONPATH: join(process.cwd(), 'packages/ingestion/python/telegram') },
         }
       );
 
@@ -156,8 +156,8 @@ describe('DuckDB Ingestion Idempotency', () => {
           rebuild: true,
         },
         {
-          cwd: join(process.cwd(), 'tools/telegram'),
-          env: { PYTHONPATH: join(process.cwd(), 'tools/telegram') },
+          cwd: join(process.cwd(), 'packages/ingestion/python/telegram'),
+          env: { PYTHONPATH: join(process.cwd(), 'packages/ingestion/python/telegram') },
         }
       );
 
@@ -177,8 +177,8 @@ describe('DuckDB Ingestion Idempotency', () => {
           rebuild: false, // Don't rebuild - test idempotency
         },
         {
-          cwd: join(process.cwd(), 'tools/telegram'),
-          env: { PYTHONPATH: join(process.cwd(), 'tools/telegram') },
+          cwd: join(process.cwd(), 'packages/ingestion/python/telegram'),
+          env: { PYTHONPATH: join(process.cwd(), 'packages/ingestion/python/telegram') },
         }
       );
 
@@ -210,8 +210,8 @@ describe('DuckDB Ingestion Idempotency', () => {
           rebuild: true,
         },
         {
-          cwd: join(process.cwd(), 'tools/telegram'),
-          env: { PYTHONPATH: join(process.cwd(), 'tools/telegram') },
+          cwd: join(process.cwd(), 'packages/ingestion/python/telegram'),
+          env: { PYTHONPATH: join(process.cwd(), 'packages/ingestion/python/telegram') },
         }
       );
 
@@ -233,8 +233,8 @@ describe('DuckDB Ingestion Idempotency', () => {
           rebuild: false,
         },
         {
-          cwd: join(process.cwd(), 'tools/telegram'),
-          env: { PYTHONPATH: join(process.cwd(), 'tools/telegram') },
+          cwd: join(process.cwd(), 'packages/ingestion/python/telegram'),
+          env: { PYTHONPATH: join(process.cwd(), 'packages/ingestion/python/telegram') },
         }
       );
 
@@ -336,8 +336,8 @@ describe('DuckDB Ingestion Idempotency', () => {
           rebuild: true,
         },
         {
-          cwd: join(process.cwd(), 'tools/telegram'),
-          env: { PYTHONPATH: join(process.cwd(), 'tools/telegram') },
+          cwd: join(process.cwd(), 'packages/ingestion/python/telegram'),
+          env: { PYTHONPATH: join(process.cwd(), 'packages/ingestion/python/telegram') },
         }
       );
 

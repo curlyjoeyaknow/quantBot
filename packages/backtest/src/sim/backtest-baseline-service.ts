@@ -2,7 +2,7 @@
  * Backtest Baseline Service
  *
  * Service layer for running baseline alert backtests.
- * Wraps the Python script (tools/backtest/alert_baseline_backtest.py) via PythonEngine.
+ * Wraps the Python script (packages/backtest/python/scripts/run_baseline.py) via PythonEngine.
  *
  * Computes per-alert metrics:
  * - ATH multiple after alert
@@ -147,7 +147,7 @@ export class BacktestBaselineService {
    */
   async runBaseline(params: BacktestBaselineParams): Promise<BacktestBaselineResult> {
     const workspaceRoot = findWorkspaceRoot();
-    const scriptPath = join(workspaceRoot, 'tools/backtest/alert_baseline_backtest.py');
+    const scriptPath = join(workspaceRoot, 'packages/backtest/python/scripts/run_baseline.py');
 
     // Resolve duckdb path to absolute
     const absoluteDuckdbPath = params.duckdbPath.startsWith('/')
@@ -212,9 +212,9 @@ export class BacktestBaselineService {
         BacktestBaselineResultSchema,
         {
           timeout: 30 * 60 * 1000, // 30 minutes (backtests can be long)
-          cwd: join(workspaceRoot, 'tools/backtest'),
+          cwd: join(workspaceRoot, 'packages/backtest/python'),
           env: {
-            PYTHONPATH: join(workspaceRoot, 'tools/backtest'),
+            PYTHONPATH: join(workspaceRoot, 'packages/backtest/python'),
           },
         }
       );

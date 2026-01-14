@@ -58,7 +58,7 @@ export async function runDualSimulation(input: SimInput): Promise<DualRunResult>
   // Run Python simulation
   const pythonScript = path.resolve(
     __dirname,
-    '../../../../tools/telegram/simulation/run_simulation_contract.py'
+    '../../../../packages/ingestion/python/telegram/simulation/run_simulation_contract.py'
   );
 
   try {

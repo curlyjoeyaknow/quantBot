@@ -83,9 +83,9 @@ export class SimulationService {
         SimulationOutputSchema,
         {
           timeout: 300000, // 5 minute timeout
-          cwd: join(workspaceRoot, 'tools/simulation'),
+          cwd: join(workspaceRoot, 'packages/storage/python'),
           env: {
-            PYTHONPATH: join(workspaceRoot, 'tools/simulation'),
+            PYTHONPATH: join(workspaceRoot, 'packages/storage/python'),
           },
         }
       );

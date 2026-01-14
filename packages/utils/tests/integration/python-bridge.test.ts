@@ -76,8 +76,8 @@ describe('Python Bridge Test - Telegram Ingestion', () => {
           rebuild: true,
         },
         {
-          cwd: join(workspaceRoot, 'tools/telegram'),
-          env: { PYTHONPATH: join(workspaceRoot, 'tools/telegram') },
+          cwd: join(workspaceRoot, 'packages/ingestion/python/telegram'),
+          env: { PYTHONPATH: join(workspaceRoot, 'packages/ingestion/python/telegram') },
         }
       );
 
@@ -127,8 +127,8 @@ describe('Python Bridge Test - Telegram Ingestion', () => {
           rebuild: true,
         },
         {
-          cwd: join(workspaceRoot, 'tools/telegram'),
-          env: { PYTHONPATH: join(workspaceRoot, 'tools/telegram') },
+          cwd: join(workspaceRoot, 'packages/ingestion/python/telegram'),
+          env: { PYTHONPATH: join(workspaceRoot, 'packages/ingestion/python/telegram') },
         }
       );
 

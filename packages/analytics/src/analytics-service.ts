@@ -91,9 +91,9 @@ export class AnalyticsService {
     try {
       const result = await this.pythonEngine.runScript(scriptPath, args, AnalyticsResultSchema, {
         timeout: 60000, // 1 minute timeout
-        cwd: join(process.cwd(), 'tools/telegram'),
+        cwd: join(process.cwd(), 'packages/ingestion/python/telegram'),
         env: {
-          PYTHONPATH: join(process.cwd(), 'tools/telegram'),
+          PYTHONPATH: join(process.cwd(), 'packages/ingestion/python/telegram'),
         },
       });
 

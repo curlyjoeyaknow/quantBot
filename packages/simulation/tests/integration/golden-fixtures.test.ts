@@ -16,7 +16,7 @@ import type { SimInput, SimResult } from '../../src/types/contracts';
 // CommonJS __dirname equivalent
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const fixturesDir = join(__dirname, '../../../../tools/telegram/tests/fixtures');
+const fixturesDir = join(__dirname, '../../../../packages/ingestion/python/telegram/tests/fixtures');
 
 describe('Golden Fixtures', () => {
   const inputs = JSON.parse(readFileSync(join(fixturesDir, 'golden_sim_inputs.json'), 'utf8'));

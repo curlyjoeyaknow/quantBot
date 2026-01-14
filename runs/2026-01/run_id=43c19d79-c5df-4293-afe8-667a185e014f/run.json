@@ -1,0 +1,17 @@
+{
+  "run_id": "43c19d79-c5df-4293-afe8-667a185e014f",
+  "run_type": "path-only",
+  "created_at": "2026-01-14T20:02:36.733Z",
+  "started_at": "2026-01-14T20:02:36.734Z",
+  "status": "running",
+  "dataset": {
+    "interval": "",
+    "calls_count": 0
+  },
+  "parameters": {},
+  "schema_version": {
+    "manifest": "1.0.0",
+    "artifacts": "1.0.0"
+  },
+  "artifacts": {}
+}

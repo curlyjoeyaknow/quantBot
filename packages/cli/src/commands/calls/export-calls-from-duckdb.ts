@@ -58,7 +58,7 @@ export async function exportCallsFromDuckdbHandler(args: ExportCallsArgs, _ctx: 
   const engine = new PythonEngine();
   const storage = new DuckDBStorageService(engine);
 
-  // Resolve path to absolute - Python script runs from tools/simulation, so relative paths break
+  // Resolve path to absolute - Python script runs from packages/storage/python, so relative paths break
   const duckdbPathRaw = args.duckdbPath;
   const duckdbPath = resolve(process.cwd(), duckdbPathRaw);
   const fromISO = args.fromIso;

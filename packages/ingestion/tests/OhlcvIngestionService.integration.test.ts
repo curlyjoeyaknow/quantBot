@@ -194,7 +194,7 @@ describe.skip('OhlcvIngestionService (integration)', () => {
           absoluteDuckDBPath,
         ],
         {
-          cwd: join(workspaceRoot, 'tools/ingestion'),
+          cwd: join(workspaceRoot, 'packages/ingestion/python'),
         }
       );
       console.log('Direct Python script stdout:', directResult.stdout);
