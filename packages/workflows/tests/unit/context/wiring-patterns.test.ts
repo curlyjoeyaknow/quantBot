@@ -20,6 +20,15 @@ vi.mock('@quantbot/api-clients', () => ({
 }));
 
 describe('Workflow Context Wiring Patterns', () => {
+  // Set mock API key for tests that create production contexts with ports
+  beforeEach(() => {
+    process.env.BIRDEYE_API_KEY = 'test-api-key';
+  });
+
+  afterEach(() => {
+    delete process.env.BIRDEYE_API_KEY;
+  });
+
   describe('createProductionContext', () => {
     it('should create context with all required properties', () => {
       const ctx = createProductionContext();

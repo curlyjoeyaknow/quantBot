@@ -20,6 +20,15 @@ vi.mock('@quantbot/api-clients', () => ({
 }));
 
 describe('Context Factory Integration', () => {
+  // Set mock API key for tests that create production contexts
+  beforeEach(() => {
+    process.env.BIRDEYE_API_KEY = 'test-api-key';
+  });
+
+  afterEach(() => {
+    delete process.env.BIRDEYE_API_KEY;
+  });
+
   describe('createProductionContext', () => {
     it('should create fully functional context', () => {
       const ctx = createProductionContext();
