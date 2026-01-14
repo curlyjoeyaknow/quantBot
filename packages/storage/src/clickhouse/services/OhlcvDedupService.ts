@@ -155,7 +155,7 @@ export class OhlcvDedupService {
           logger.info('Optimized table', { table, partitionClause });
         } catch (error: unknown) {
           const errorMessage = error instanceof Error ? error.message : String(error);
-          
+
           // Check if it's a privilege error
           if (errorMessage.includes('Not enough privileges') || errorMessage.includes('OPTIMIZE')) {
             logger.warn('Skipping OPTIMIZE (privileges not available)', {
