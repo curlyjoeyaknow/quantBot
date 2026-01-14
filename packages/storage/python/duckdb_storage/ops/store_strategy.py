@@ -13,7 +13,7 @@ import sys
 # Import simulation schema
 # Path: tools/simulation/duckdb_storage/ops/store_strategy.py -> tools/simulation/sql_functions.py
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
-from sql_functions import create_strategy
+from sql_functions import create_strategy, setup_simulation_schema
 
 
 class StoreStrategyInput(BaseModel):
@@ -34,6 +34,8 @@ class StoreStrategyOutput(BaseModel):
 def run(con: duckdb.DuckDBPyConnection, input: StoreStrategyInput) -> StoreStrategyOutput:
     """Store a strategy in DuckDB."""
     try:
+        # Ensure schema is set up (idempotent)
+        setup_simulation_schema(con)
         create_strategy(
             con,
             strategy_id=input.strategy_id,

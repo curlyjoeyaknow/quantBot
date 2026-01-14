@@ -9,6 +9,12 @@ from typing import Optional, Dict, Any
 import duckdb
 import json
 import hashlib
+from pathlib import Path
+import sys
+
+# Import simulation schema
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
+from sql_functions import setup_simulation_schema
 
 
 class StoreRunInput(BaseModel):
@@ -74,6 +80,8 @@ def _generate_strategy_config_id(
 def run(con: duckdb.DuckDBPyConnection, input: StoreRunInput) -> StoreRunOutput:
     """Store a simulation run in DuckDB with strategy configuration."""
     try:
+        # Ensure schema is set up (idempotent)
+        setup_simulation_schema(con)
         # Insert into simulation_runs table
         con.execute("""
             INSERT OR REPLACE INTO simulation_runs
