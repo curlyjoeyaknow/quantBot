@@ -38,6 +38,20 @@ if [ ! -f "$WORKLIST_FILE" ]; then
   exit 1
 fi
 
+# Check if file is CSV and suggest JSON version
+if [[ "$WORKLIST_FILE" == *.csv ]]; then
+  JSON_FILE="${WORKLIST_FILE%.csv}.json"
+  if [ -f "$JSON_FILE" ]; then
+    echo "Error: CSV file detected. Please use the JSON version instead:"
+    echo "  $0 $JSON_FILE [--priority critical|high|medium|low] [--dry-run]"
+    exit 1
+  else
+    echo "Error: CSV file detected. This script requires a JSON file."
+    echo "Please convert $WORKLIST_FILE to JSON format first."
+    exit 1
+  fi
+fi
+
 echo "Processing re-ingestion worklist: $WORKLIST_FILE"
 echo "Priority filter: $PRIORITY"
 echo "Dry run: $DRY_RUN"

@@ -59,7 +59,7 @@ def compute_quality_score(candle: dict, source_tier: int) -> int:
     
     return score
 
-def migrate_interval_table(ch_client, interval, interval_seconds, source_tier=0):
+def migrate_interval_table(ch_client, interval, interval_seconds, source_tier=0, dry_run=False):
     """
     Migrate candles from ohlcv_candles to interval-specific table.
     Deduplicates during migration using GROUP BY.
@@ -72,7 +72,7 @@ def migrate_interval_table(ch_client, interval, interval_seconds, source_tier=0)
     count_query = f"""
         SELECT count() as count
         FROM quantbot.ohlcv_candles
-        WHERE interval = '{interval}'
+        WHERE interval_seconds = {interval_seconds}
     """
     
     result = ch_client.command(count_query)
@@ -83,6 +83,10 @@ def migrate_interval_table(ch_client, interval, interval_seconds, source_tier=0)
         return
     
     print(f"  Found {count:,} candles to migrate")
+    
+    if dry_run:
+        print(f"  [DRY RUN] Would migrate {count:,} candles to {table_name}")
+        return
     
     # Migrate with deduplication
     # Use argMax to pick values from row with latest ingested_at
@@ -104,12 +108,12 @@ def migrate_interval_table(ch_client, interval, interval_seconds, source_tier=0)
             argMax(close, ingested_at) AS close,
             argMax(volume, ingested_at) AS volume,
             0 AS quality_score,  -- Will be recomputed, but start at 0
-            max(ingested_at) AS ingested_at,
+            now() AS ingested_at,  -- Migration timestamp
             {source_tier} AS source_tier,
             'migration-run-001' AS ingestion_run_id,
             'migration-1.0.0' AS script_version
         FROM quantbot.ohlcv_candles
-        WHERE interval = '{interval}'
+        WHERE interval_seconds = {interval_seconds}
         GROUP BY token_address, chain, timestamp
     """
     
@@ -219,6 +223,12 @@ def create_tables(ch_client):
 def main():
     """Main migration script."""
     import clickhouse_connect
+    import argparse
+    
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description='Migrate OHLCV candles to interval-specific tables')
+    parser.add_argument('--dry-run', action='store_true', help='Show what would be migrated without actually migrating')
+    args = parser.parse_args()
     
     # ClickHouse connection
     ch_client = clickhouse_connect.get_client(
@@ -230,6 +240,8 @@ def main():
     )
     
     print("OHLCV Interval Table Migration")
+    if args.dry_run:
+        print("[DRY RUN MODE]")
     print("=" * 80)
     print()
     
@@ -249,7 +261,7 @@ def main():
     ]
     
     for interval, interval_seconds in intervals:
-        migrate_interval_table(ch_client, interval, interval_seconds, source_tier=0)
+        migrate_interval_table(ch_client, interval, interval_seconds, source_tier=0, dry_run=args.dry_run)
         print()
     
     print("=" * 80)

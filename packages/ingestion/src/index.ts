@@ -47,6 +47,7 @@ export {
   type IngestForCallsParams,
   type IngestForCallsResult,
 } from './OhlcvIngestionService.js';
+// MarketDataIngestionService moved to @quantbot/jobs (makes network calls)
 export {
   generateOhlcvWorklist,
   type OhlcvWorkItem,

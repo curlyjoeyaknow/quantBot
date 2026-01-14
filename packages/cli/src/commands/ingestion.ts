@@ -23,6 +23,7 @@ import { validateAddressesHandler } from './ingestion/validate-addresses.js';
 import { surgicalOhlcvFetchHandler } from './ingestion/surgical-ohlcv-fetch.js';
 import { ensureOhlcvCoverageHandler } from '../handlers/ingestion/ensure-ohlcv-coverage.js';
 import { fetchTokenCreationInfoHandler } from '../handlers/ingestion/fetch-token-creation-info.js';
+import { ingestMarketDataHandler } from '../handlers/ingestion/ingest-market-data.js';
 
 /**
  * Telegram ingestion schema
@@ -112,6 +113,16 @@ export const ensureOhlcvCoverageSchema = z.object({
  */
 export const fetchTokenCreationInfoSchema = z.object({
   duckdb: z.string().optional(), // Path to DuckDB database file
+  format: z.enum(['json', 'table', 'csv']).default('table'),
+});
+
+/**
+ * Ingest market data schema
+ */
+export const ingestMarketDataSchema = z.object({
+  chain: z.string().default('solana'),
+  limit: z.number().int().positive().optional(), // Limit number of tokens to process (for testing)
+  skipExisting: z.boolean().default(false), // Skip tokens that already have market data
   format: z.enum(['json', 'table', 'csv']).default('table'),
 });
 
@@ -281,6 +292,30 @@ export function registerIngestionCommands(program: Command): void {
     validate: (opts) => fetchTokenCreationInfoSchema.parse(opts),
     onError: die,
   });
+
+  // Ingest market data
+  const ingestMarketDataCmd = ingestionCmd
+    .command('market-data')
+    .description(
+      'Fetch market creation data and token creation info from Birdeye API for all tokens in database'
+    )
+    .option('--chain <chain>', 'Blockchain (default: solana)', 'solana')
+    .option('--limit <number>', 'Limit number of tokens to process (for testing)')
+    .option('--skip-existing', 'Skip tokens that already have market data')
+    .option('--format <format>', 'Output format', 'table');
+
+  defineCommand(ingestMarketDataCmd, {
+    name: 'market-data',
+    packageName: 'ingestion',
+    coerce: (raw) => ({
+      ...raw,
+      limit: raw.limit ? coerceNumber(raw.limit, 'limit') : undefined,
+      skipExisting:
+        raw.skipExisting !== undefined ? coerceBoolean(raw.skipExisting, 'skip-existing') : false,
+    }),
+    validate: (opts) => ingestMarketDataSchema.parse(opts),
+    onError: die,
+  });
 }
 
 /**
@@ -380,6 +415,21 @@ const ingestionModule: PackageCommandModule = {
         return await fetchTokenCreationInfoHandler(typedArgs, typedCtx);
       },
       examples: ['quantbot ingestion fetch-token-creation-info --duckdb data/alerts.duckdb'],
+    },
+    {
+      name: 'market-data',
+      description: 'Fetch market creation data and token creation info from Birdeye API',
+      schema: ingestMarketDataSchema,
+      handler: async (args: unknown, ctx: unknown) => {
+        const typedCtx = ctx as CommandContext;
+        const typedArgs = args as z.infer<typeof ingestMarketDataSchema>;
+        return await ingestMarketDataHandler(typedArgs, typedCtx);
+      },
+      examples: [
+        'quantbot ingestion market-data',
+        'quantbot ingestion market-data --chain solana --limit 100',
+        'quantbot ingestion market-data --skip-existing',
+      ],
     },
   ],
 };

@@ -1,0 +1,7 @@
+priority,quality_score,mint,chain,alert_count,has_duplicates,duplicate_count,has_gaps,gap_count,has_distortions,distortion_count,callers
+medium,70.0,9MLZegMaTpitzP3ps9eGUC4GwMLYv8pxTkMFuKhvpump,solana,10,False,0,False,0,True,5375,
+low,97.9,4daoTLufDmV3ods48Zh8rymaZKBLtgEvuH9qALYLbonk,solana,9,False,0,False,0,True,375,
+low,99.6,HtTYHz1Kf3rrQo6AqDLmss7gq5WrkWAaXn3tupUZbonk,solana,9,False,0,False,0,True,102,
+low,99.8,71Jvq4Epe2FCJ7JFSF7jLXdNk1Wy4Bhqd9iL6bEFELvg,solana,13,False,0,False,0,True,27,
+low,100.0,5zCETicUCJqJ5Z3wbfFPZqtSpHPYqnggs1wX7ZRpump,solana,22,False,0,False,0,True,10,
+low,100.0,Dz9mQ9NzkBcCsuGPFJ3r1bS4wgqKMHBPiVuniW8Mbonk,solana,20,False,0,False,0,True,3,

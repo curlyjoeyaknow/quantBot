@@ -119,6 +119,8 @@ export async function initClickHouse(): Promise<void> {
     await ensureSimulationTables(ch);
     await ensureIndicatorsTable(ch);
     await ensureTokenMetadataTable(ch);
+    await ensureMarketCreationTable(ch);
+    await ensureTokenCreationInfoTable(ch);
 
     logger.info('ClickHouse database and tables initialized');
   } catch (error: unknown) {
@@ -270,6 +272,65 @@ async function ensureTokenMetadataTable(ch: ClickHouseClient): Promise<void> {
       ENGINE = MergeTree()
       PARTITION BY (chain, toYYYYMM(timestamp))
       ORDER BY (token_address, chain, timestamp)
+      SETTINGS index_granularity = 8192
+    `,
+  });
+}
+
+async function ensureMarketCreationTable(ch: ClickHouseClient): Promise<void> {
+  await ch.exec({
+    query: `
+      CREATE TABLE IF NOT EXISTS ${getClickHouseDatabase()}.market_creation (
+        base_mint String,
+        quote_mint String,
+        market_address String,
+        chain String DEFAULT 'solana',
+        name String,
+        source String,
+        liquidity Float64,
+        unique_wallet_24h UInt32,
+        trade_24h UInt32,
+        trade_24h_change_percent Nullable(Float64),
+        volume_24h_usd Float64,
+        amount_base Float64,
+        amount_quote Float64,
+        creation_time DateTime,
+        last_trade_unix_time UInt64,
+        last_trade_human_time DateTime,
+        is_scaled_ui_token_base UInt8 DEFAULT 0,
+        multiplier_base Nullable(Float64),
+        is_scaled_ui_token_quote UInt8 DEFAULT 0,
+        multiplier_quote Nullable(Float64),
+        ingested_at DateTime DEFAULT now(),
+        ingestion_run_id String DEFAULT ''
+      )
+      ENGINE = MergeTree()
+      PARTITION BY (chain, toYYYYMM(creation_time))
+      ORDER BY (base_mint, chain, creation_time, market_address)
+      SETTINGS index_granularity = 8192
+    `,
+  });
+}
+
+async function ensureTokenCreationInfoTable(ch: ClickHouseClient): Promise<void> {
+  await ch.exec({
+    query: `
+      CREATE TABLE IF NOT EXISTS ${getClickHouseDatabase()}.token_creation_info (
+        token_address String,
+        chain String DEFAULT 'solana',
+        tx_hash String,
+        slot UInt64,
+        decimals UInt8,
+        owner String,
+        creator Nullable(String),
+        block_unix_time UInt64,
+        block_human_time DateTime,
+        ingested_at DateTime DEFAULT now(),
+        ingestion_run_id String DEFAULT ''
+      )
+      ENGINE = ReplacingMergeTree(ingested_at)
+      PARTITION BY (chain, toYYYYMM(block_human_time))
+      ORDER BY (token_address, chain)
       SETTINGS index_granularity = 8192
     `,
   });

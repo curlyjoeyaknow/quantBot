@@ -302,7 +302,7 @@ export function skipIfEnvironmentNotReady(env: TestEnvironmentStatus, reason?: s
         'Run setupAllEnvironments() or set up manually.';
 
     // Use vitest's skip functionality
-    if (typeof globalThis.describe !== 'undefined') {
+    if (typeof (globalThis as { describe?: unknown }).describe !== 'undefined') {
       // In test context
       throw new Error(`SKIP: ${skipReason}`);
     } else {

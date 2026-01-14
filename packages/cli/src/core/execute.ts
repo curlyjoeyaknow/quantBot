@@ -374,6 +374,10 @@ export async function executeValidated(
     const output = formatOutput(result, format);
     progress.stop(); // Stop spinner before printing output
     console.log(output);
+
+    // Explicitly exit on success to ensure process terminates
+    // This is necessary because some connections/handles may keep the event loop alive
+    process.exit(0);
   } catch (error) {
     progress.fail('Error occurred');
     // Log error contract to artifacts (if applicable)
@@ -590,6 +594,10 @@ export async function execute(
     } else {
       console.log(output);
     }
+
+    // Explicitly exit on success to ensure process terminates
+    // This is necessary because some connections/handles may keep the event loop alive
+    process.exit(0);
   } catch (error) {
     progress.fail('Error occurred');
     // 9. Log error contract to artifacts (if applicable)

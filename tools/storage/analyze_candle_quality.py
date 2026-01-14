@@ -33,7 +33,7 @@ def get_clickhouse_client() -> Client:
     password = os.getenv('CLICKHOUSE_PASSWORD', '')
     database = os.getenv('CLICKHOUSE_DATABASE', 'quantbot')
     
-    print(f"Connecting to ClickHouse: {host}:{port} as {user} (database: {database})")
+    print(f"Connecting to ClickHouse: {host}:{port} as {user} (database: {database})", file=sys.stderr)
     
     return Client(
         host=host,
@@ -451,15 +451,15 @@ def analyze_all_tokens(
 ) -> List[Dict[str, Any]]:
     """Analyze all tokens and generate quality report."""
     
-    print("Fetching tokens with alerts...")
+    print("Fetching tokens with alerts...", file=sys.stderr)
     tokens = get_tokens_with_alerts(duck_conn, limit)
-    print(f"Found {len(tokens)} tokens to analyze")
+    print(f"Found {len(tokens)} tokens to analyze", file=sys.stderr)
     
     results = []
     
     for i, token in enumerate(tokens):
         if i % 10 == 0:
-            print(f"  Progress: {i}/{len(tokens)} tokens analyzed...")
+            print(f"  Progress: {i}/{len(tokens)} tokens analyzed...", file=sys.stderr)
         
         mint = token['mint']
         chain = token['chain']
@@ -496,7 +496,7 @@ def analyze_all_tokens(
         
         results.append(analysis)
     
-    print(f"Completed analysis of {len(results)} tokens")
+    print(f"Completed analysis of {len(results)} tokens", file=sys.stderr)
     
     return results
 
@@ -612,19 +612,19 @@ def main():
     args = parser.parse_args()
     
     try:
-        print("Connecting to databases...")
+        print("Connecting to databases...", file=sys.stderr)
         ch_client = get_clickhouse_client()
         duck_conn = get_duckdb_connection(args.duckdb)
         
         # Test connections
         ch_version = ch_client.execute("SELECT version()")[0][0]
-        print(f"Connected to ClickHouse version: {ch_version}")
+        print(f"Connected to ClickHouse version: {ch_version}", file=sys.stderr)
         
         # Analyze all tokens
         results = analyze_all_tokens(ch_client, duck_conn, args.limit, args.interval)
         
         # Generate worklist
-        print("\nGenerating worklist...")
+        print("\nGenerating worklist...", file=sys.stderr)
         report = generate_worklist(results)
         
         # Filter by quality score if specified
@@ -634,54 +634,57 @@ def main():
                 item for item in report['worklist']
                 if item['quality_score'] < args.min_quality_score
             ]
-            print(f"Filtered worklist: {len(report['worklist'])}/{original_count} tokens below quality score {args.min_quality_score}")
+            print(f"Filtered worklist: {len(report['worklist'])}/{original_count} tokens below quality score {args.min_quality_score}", file=sys.stderr)
         
         # Save JSON report
         with open(args.output, 'w') as f:
             json.dump(report, f, indent=2)
-        print(f"\n✓ Report saved to {args.output}")
+        print(f"\n✓ Report saved to {args.output}", file=sys.stderr)
         
         # Save CSV if requested
         if args.csv:
             export_worklist_csv(report['worklist'], args.csv)
-            print(f"✓ CSV worklist saved to {args.csv}")
+            print(f"✓ CSV worklist saved to {args.csv}", file=sys.stderr)
         
-        # Print summary
-        print("\n" + "="*80)
-        print("CANDLE QUALITY ANALYSIS SUMMARY")
-        print("="*80)
-        print(f"Total tokens analyzed: {report['summary']['total_tokens_analyzed']}")
-        print(f"Tokens needing re-ingestion: {report['summary']['tokens_needing_reingest']}")
-        print(f"Re-ingestion rate: {report['summary']['reingest_rate']}")
+        # Print summary to stderr (so JSON can go to stdout for TypeScript integration)
+        print("\n" + "="*80, file=sys.stderr)
+        print("CANDLE QUALITY ANALYSIS SUMMARY", file=sys.stderr)
+        print("="*80, file=sys.stderr)
+        print(f"Total tokens analyzed: {report['summary']['total_tokens_analyzed']}", file=sys.stderr)
+        print(f"Tokens needing re-ingestion: {report['summary']['tokens_needing_reingest']}", file=sys.stderr)
+        print(f"Re-ingestion rate: {report['summary']['reingest_rate']}", file=sys.stderr)
         
-        print("\nBy Priority:")
+        print("\nBy Priority:", file=sys.stderr)
         for priority in ['critical', 'high', 'medium', 'low']:
             count = report['summary']['by_priority'].get(priority, 0)
             if count > 0:
-                print(f"  {priority.upper()}: {count} tokens")
+                print(f"  {priority.upper()}: {count} tokens", file=sys.stderr)
         
-        print("\nBy Issue Type:")
+        print("\nBy Issue Type:", file=sys.stderr)
         for issue_type, count in report['summary']['by_issue_type'].items():
-            print(f"  {issue_type}: {count} tokens")
+            print(f"  {issue_type}: {count} tokens", file=sys.stderr)
         
         # Show top 10 critical tokens
         critical_tokens = [t for t in report['worklist'] if t['priority'] == 'critical']
         if critical_tokens:
-            print("\n" + "="*80)
-            print("TOP 10 CRITICAL TOKENS (LOWEST QUALITY SCORES)")
-            print("="*80)
+            print("\n" + "="*80, file=sys.stderr)
+            print("TOP 10 CRITICAL TOKENS (LOWEST QUALITY SCORES)", file=sys.stderr)
+            print("="*80, file=sys.stderr)
             for i, token in enumerate(critical_tokens[:10], 1):
                 mint_short = token['mint'][:8] + "..." if len(token['mint']) > 12 else token['mint']
-                print(f"\n{i}. {mint_short} ({token['chain']})")
-                print(f"   Quality Score: {token['quality_score']:.1f}/100")
-                print(f"   Alerts: {token['alert_count']}")
-                print(f"   Issues:")
+                print(f"\n{i}. {mint_short} ({token['chain']})", file=sys.stderr)
+                print(f"   Quality Score: {token['quality_score']:.1f}/100", file=sys.stderr)
+                print(f"   Alerts: {token['alert_count']}", file=sys.stderr)
+                print(f"   Issues:", file=sys.stderr)
                 if token['duplicates'].get('has_duplicates'):
-                    print(f"     - Duplicates: {token['duplicates']['duplicate_count']} timestamps")
+                    print(f"     - Duplicates: {token['duplicates']['duplicate_count']} timestamps", file=sys.stderr)
                 if token['gaps'].get('has_gaps'):
-                    print(f"     - Gaps: {token['gaps']['gap_count']} gaps, {token['gaps']['total_missing_candles']} missing candles")
+                    print(f"     - Gaps: {token['gaps']['gap_count']} gaps, {token['gaps']['total_missing_candles']} missing candles", file=sys.stderr)
                 if token['distortions'].get('has_distortions'):
-                    print(f"     - Distortions: {token['distortions']['total_distortions']} candles ({token['distortions']['distortion_rate']*100:.1f}%)")
+                    print(f"     - Distortions: {token['distortions']['total_distortions']} candles ({token['distortions']['distortion_rate']*100:.1f}%)", file=sys.stderr)
+        
+        # Output JSON to stdout for TypeScript integration
+        print(json.dumps(report))
         
     except Exception as e:
         print(f"\n✗ Error: {e}", file=sys.stderr)

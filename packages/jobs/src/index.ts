@@ -25,5 +25,6 @@ export * from './ohlcv-fetch-job.js';
 
 export * from './ohlcv-ingestion-engine.js';
 export * from './ohlcv-backfill-service.js';
+export * from './market-data-ingestion-service.js';
 // Re-export OhlcvWorkItem from core (moved from ingestion to break circular dependency)
 export type { OhlcvWorkItem } from '@quantbot/core';

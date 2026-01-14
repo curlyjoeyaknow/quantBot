@@ -97,6 +97,13 @@ async function main() {
 
     // Parse arguments
     program.parse();
+
+    // If we reach here and no command was executed, exit successfully
+    // (Commands that execute will call process.exit(0) themselves via execute())
+    // This handles the case where --help or --version is used, or no command matches
+    if (!process.exitCode) {
+      process.exit(0);
+    }
   } catch (error) {
     const message = handleError(error);
     console.error(`Error: ${message}`);

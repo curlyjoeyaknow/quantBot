@@ -1296,6 +1296,132 @@ export class BirdeyeClient extends BaseApiClient {
   }
 
   /**
+   * Search for markets for a given token address
+   * Returns all markets (pairs) where this token is traded
+   */
+  async searchMarkets(
+    tokenAddress: string,
+    chain: string = 'all'
+  ): Promise<Array<{
+    name: string;
+    address: string;
+    network: string;
+    liquidity: number;
+    unique_wallet_24h: number;
+    trade_24h: number;
+    trade_24h_change_percent: number | null;
+    volume_24h_usd: number;
+    last_trade_unix_time: number;
+    last_trade_human_time: string;
+    amount_base: number;
+    amount_quote: number;
+    base_mint: string;
+    quote_mint: string;
+    source: string;
+    creation_time: string;
+    is_scaled_ui_token_base: boolean;
+    multiplier_base: number | null;
+    is_scaled_ui_token_quote: boolean;
+    multiplier_quote: number | null;
+  }> | null> {
+    try {
+      const result = await this.requestWithKeyRotation<{
+        success: boolean;
+        data?: {
+          items?: Array<{
+            type: string;
+            result: Array<{
+              name: string;
+              address: string;
+              network: string;
+              liquidity: number;
+              unique_wallet_24h: number;
+              trade_24h: number;
+              trade_24h_change_percent: number | null;
+              volume_24h_usd: number;
+              last_trade_unix_time: number;
+              last_trade_human_time: string;
+              amount_base: number;
+              amount_quote: number;
+              base_mint: string;
+              quote_mint: string;
+              source: string;
+              creation_time: string;
+              is_scaled_ui_token_base: boolean;
+              multiplier_base: number | null;
+              is_scaled_ui_token_quote: boolean;
+              multiplier_quote: number | null;
+            }>;
+          }>;
+        };
+      }>(
+        {
+          method: 'GET',
+          url: '/defi/v3/search',
+          params: {
+            chain: chain,
+            keyword: tokenAddress,
+            target: 'market',
+            search_mode: 'exact',
+            search_by: 'address',
+            sort_by: 'volume_24h_usd',
+            sort_type: 'desc',
+            offset: 0,
+            limit: 20,
+            ui_amount_mode: 'scaled',
+          },
+          headers: {
+            accept: 'application/json',
+          },
+        },
+        3
+      );
+
+      if (!result) {
+        return null;
+      }
+
+      const { response, apiKey } = result;
+
+      if (response.status === 200 && response.data?.success && response.data?.data?.items) {
+        this.updateKeyUsage(apiKey);
+
+        // Record API usage (minimal credit cost for search endpoints)
+        recordApiUsage('birdeye', 1, {
+          endpoint: '/defi/v3/search',
+          chain,
+          itemCount: response.data.data.items.length,
+        }).catch((error: unknown) => {
+          logger.warn('Failed to record API usage', {
+            error: error instanceof Error ? error.message : String(error),
+          });
+        });
+
+        // Find the market result
+        const marketItem = response.data.data.items.find((item) => item.type === 'market');
+        if (!marketItem || !marketItem.result || marketItem.result.length === 0) {
+          return [];
+        }
+
+        return marketItem.result;
+      }
+
+      if (response.status === 404) {
+        logger.debug('No markets found for token', { tokenAddress: tokenAddress });
+        return [];
+      }
+
+      return null;
+    } catch (error: unknown) {
+      logger.warn('Failed to search markets', {
+        token: tokenAddress,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return null;
+    }
+  }
+
+  /**
    * Fetch token creation info (transaction hash, slot, decimals, owner, block time)
    * Only available for Solana tokens
    */
@@ -1310,6 +1436,7 @@ export class BirdeyeClient extends BaseApiClient {
     owner: string;
     blockUnixTime: number;
     blockHumanTime: string;
+    creator?: string;
   } | null> {
     if (chain !== 'solana') {
       logger.warn('Token creation info is only available for Solana tokens', {
@@ -1330,6 +1457,7 @@ export class BirdeyeClient extends BaseApiClient {
           owner: string;
           blockUnixTime: number;
           blockHumanTime: string;
+          creator?: string;
         };
       }>(
         {
@@ -1366,6 +1494,7 @@ export class BirdeyeClient extends BaseApiClient {
           owner: data.owner,
           blockUnixTime: data.blockUnixTime,
           blockHumanTime: data.blockHumanTime,
+          creator: data.creator,
         };
       }
 

@@ -19,6 +19,7 @@ import {
 } from '@quantbot/storage';
 import type { ExperimentRepository } from '@quantbot/core';
 import { OhlcvIngestionService } from '@quantbot/ingestion';
+import { MarketDataIngestionService } from '@quantbot/jobs';
 // TelegramAlertIngestionService temporarily commented out - needs repository refactoring
 // import { TelegramAlertIngestionService } from '@quantbot/ingestion';
 // import { OhlcvFetchJob } from '@quantbot/jobs';
@@ -44,6 +45,7 @@ import { ensureInitialized } from './initialization-manager.js';
  */
 export interface CommandServices {
   ohlcvIngestion(): OhlcvIngestionService;
+  marketDataIngestion(): MarketDataIngestionService;
   // telegramIngestion(): TelegramAlertIngestionService; // Temporarily disabled - needs repository refactoring
   // ohlcvFetchJob(): OhlcvFetchJob; // Temporarily disabled - jobs package not fully resolved
   ohlcvRepository(): OhlcvRepository;
@@ -135,6 +137,9 @@ export class CommandContext {
       ohlcvIngestion: () => {
         // AlertsRepository removed - service updated to not require it
         return new OhlcvIngestionService();
+      },
+      marketDataIngestion: () => {
+        return new MarketDataIngestionService();
       },
       // ohlcvFetchJob: () => {
       //   // Deprecated: Use OhlcvBirdeyeFetch directly or via workflow
