@@ -70,7 +70,12 @@ def get_state_run(con: duckdb.DuckDBPyConnection, input: GetStateInput) -> GetSt
                 DELETE FROM workflow_state_d
                 WHERE key = ? AND namespace = ?
             """, [input.key, namespace])
-            con.commit()
+            # DuckDB auto-commits, but explicit commit ensures consistency
+            try:
+                con.commit()
+            except AttributeError:
+                # DuckDB connections may not have commit() method in all versions
+                pass
             return GetStateOutput(success=True, found=False)
         
         return GetStateOutput(success=True, found=True, value=value)
@@ -124,7 +129,12 @@ def set_state_run(con: duckdb.DuckDBPyConnection, input: SetStateInput) -> SetSt
             created_at,
             now,
         ])
-        con.commit()
+        # DuckDB auto-commits, but explicit commit ensures consistency
+        try:
+            con.commit()
+        except AttributeError:
+            # DuckDB connections may not have commit() method in all versions
+            pass
         return SetStateOutput(success=True)
     except Exception as e:
         return SetStateOutput(success=False, error=str(e))
@@ -152,7 +162,12 @@ def delete_state_run(con: duckdb.DuckDBPyConnection, input: DeleteStateInput) ->
             DELETE FROM workflow_state_d
             WHERE key = ? AND namespace = ?
         """, [input.key, namespace])
-        con.commit()
+        # DuckDB auto-commits, but explicit commit ensures consistency
+        try:
+            con.commit()
+        except AttributeError:
+            # DuckDB connections may not have commit() method in all versions
+            pass
         return DeleteStateOutput(success=True)
     except Exception as e:
         return DeleteStateOutput(success=False, error=str(e))
@@ -172,7 +187,12 @@ def init_state_table_run(con: duckdb.DuckDBPyConnection, input: InitStateTableIn
     """Initialize state table schema."""
     try:
         setup_state_schema(con)
-        con.commit()
+        # DuckDB auto-commits, but explicit commit ensures consistency
+        try:
+            con.commit()
+        except AttributeError:
+            # DuckDB connections may not have commit() method in all versions
+            pass
         return InitStateTableOutput(success=True)
     except Exception as e:
         return InitStateTableOutput(success=False, error=str(e))

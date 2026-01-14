@@ -10,6 +10,15 @@ import { createProductionContext } from '../../../src/context/createProductionCo
 import { createProductionContextWithPorts } from '../../../src/context/createProductionContext.js';
 import type { WorkflowContext } from '../../../src/types.js';
 
+// Mock Birdeye client to avoid API key requirement in tests
+vi.mock('@quantbot/api-clients', () => ({
+  getBirdeyeClient: vi.fn(() => ({
+    fetchOHLCVData: vi.fn(),
+    getTokenMetadata: vi.fn(),
+    fetchHistoricalPriceAtUnixTime: vi.fn(),
+  })),
+}));
+
 describe('Workflow Context Wiring Patterns', () => {
   describe('createProductionContext', () => {
     it('should create context with all required properties', () => {

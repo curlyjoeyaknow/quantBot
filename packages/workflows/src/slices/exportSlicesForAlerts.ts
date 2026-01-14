@@ -231,8 +231,7 @@ export async function exportSlicesForAlerts(
 
       // Determine if we need to chunk within day
       const totalHours = windowEnd.diff(windowStart, 'hours').hours;
-      const needsChunking =
-        validated.maxRowsPerFile !== undefined && totalHours > validated.maxHoursPerChunk;
+      const needsChunking = totalHours > validated.maxHoursPerChunk;
 
       // If chunking is needed, split into time sub-windows
       const timeWindows: Array<{ start: DateTime; end: DateTime }> = [];

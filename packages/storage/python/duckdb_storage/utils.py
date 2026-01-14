@@ -16,15 +16,10 @@ def get_connection(duckdb_path: str) -> duckdb.DuckDBPyConnection:
     """
     Get DuckDB connection and ensure schema is set up.
     
-    DEPRECATED: Use get_write_connection() from tools.shared.duckdb_adapter instead.
-    This function is kept for backward compatibility but now uses the adapter internally.
+    Returns a connection that the caller is responsible for closing.
     """
-    from tools.shared.duckdb_adapter import get_connection as adapter_get_connection
-    # Use adapter which handles empty/invalid files and sets busy_timeout
-    # Note: We manually enter the context manager to return the connection
-    # This is not ideal but maintains backward compatibility
-    ctx = adapter_get_connection(duckdb_path, read_only=False)
-    con = ctx.__enter__()
+    # Create connection directly (don't use context manager pattern)
+    con = duckdb.connect(duckdb_path)
     setup_simulation_schema(con)
     return con
 

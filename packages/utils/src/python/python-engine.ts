@@ -548,7 +548,7 @@ export class PythonEngine {
     const cwd = options?.cwd ?? join(workspaceRoot, 'packages/storage/python');
     const env = {
       ...options?.env,
-      PYTHONPATH: join(workspaceRoot, 'packages/storage/python'),
+      PYTHONPATH: `${workspaceRoot}:${join(workspaceRoot, 'packages/storage/python')}`,
     };
 
     const resultSchema = z
@@ -593,7 +593,7 @@ export class PythonEngine {
     const cwd = options?.cwd ?? join(workspaceRoot, 'packages/storage/python');
     const env = {
       ...options?.env,
-      PYTHONPATH: join(workspaceRoot, 'packages/storage/python'),
+      PYTHONPATH: `${workspaceRoot}:${join(workspaceRoot, 'packages/storage/python')}`,
     };
 
     const resultSchema = z

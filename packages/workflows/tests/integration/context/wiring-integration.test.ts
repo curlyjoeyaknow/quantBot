@@ -4,11 +4,20 @@
  * Tests that verify wiring paths work end-to-end
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createProductionContext } from '../../../src/context/createProductionContext.js';
 import { createProductionContextWithPorts } from '../../../src/context/createProductionContext.js';
 import { createDuckdbSimulationContext } from '../../../src/context/createDuckdbSimulationContext.js';
 import type { WorkflowContext } from '../../../src/types.js';
+
+// Mock Birdeye client to avoid API key requirement in tests
+vi.mock('@quantbot/api-clients', () => ({
+  getBirdeyeClient: vi.fn(() => ({
+    fetchOHLCVData: vi.fn(),
+    getTokenMetadata: vi.fn(),
+    fetchHistoricalPriceAtUnixTime: vi.fn(),
+  })),
+}));
 
 describe('Context Factory Integration', () => {
   describe('createProductionContext', () => {
