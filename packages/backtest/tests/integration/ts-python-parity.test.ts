@@ -52,7 +52,17 @@ function makeCall(id: string, mint: string, caller: string, tsMs: number): CallR
  */
 async function runPythonSimulator(
   calls: Array<{ id: string; mint: string; caller: string; ts_ms: number }>,
-  candlesByCallId: Record<string, Array<{ timestamp: number; open: number; high: number; low: number; close: number; volume: number }>>,
+  candlesByCallId: Record<
+    string,
+    Array<{
+      timestamp: number;
+      open: number;
+      high: number;
+      low: number;
+      close: number;
+      volume: number;
+    }>
+  >,
   params: V1BaselineParams,
   config?: CapitalSimulatorConfig
 ): Promise<CapitalSimulationResult> {
@@ -155,7 +165,9 @@ describe('TypeScript-Python Parity Tests', () => {
       const tsResult = simulateCapitalAware(tsCalls, tsCandlesByCallId, params, config);
 
       // Run Python simulation
-      const pyCalls = [{ id: call.id, mint: call.mint, caller: call.caller, ts_ms: call.createdAt.toMillis() }];
+      const pyCalls = [
+        { id: call.id, mint: call.mint, caller: call.caller, ts_ms: call.createdAt.toMillis() },
+      ];
       const pyCandlesByCallId: Record<string, Candle[]> = {};
       pyCandlesByCallId[call.id] = candles;
       const pyResult = await runPythonSimulator(pyCalls, pyCandlesByCallId, params, config);
@@ -239,8 +251,12 @@ describe('TypeScript-Python Parity Tests', () => {
       expect(pyResult.totalReturn).toBeCloseTo(tsResult.totalReturn, 6);
 
       // Compare individual trades
-      const sortedTsTrades = [...tsResult.completedTrades].sort((a, b) => a.entryTsMs - b.entryTsMs);
-      const sortedPyTrades = [...pyResult.completedTrades].sort((a, b) => a.entryTsMs - b.entryTsMs);
+      const sortedTsTrades = [...tsResult.completedTrades].sort(
+        (a, b) => a.entryTsMs - b.entryTsMs
+      );
+      const sortedPyTrades = [...pyResult.completedTrades].sort(
+        (a, b) => a.entryTsMs - b.entryTsMs
+      );
 
       expect(sortedPyTrades.length).toBe(sortedTsTrades.length);
 
@@ -283,7 +299,9 @@ describe('TypeScript-Python Parity Tests', () => {
       const tsResult = simulateCapitalAware([call], tsCandlesByCallId, params, config);
 
       // Run Python simulation
-      const pyCalls = [{ id: call.id, mint: call.mint, caller: call.caller, ts_ms: call.createdAt.toMillis() }];
+      const pyCalls = [
+        { id: call.id, mint: call.mint, caller: call.caller, ts_ms: call.createdAt.toMillis() },
+      ];
       const pyCandlesByCallId: Record<string, Candle[]> = {};
       pyCandlesByCallId[call.id] = candles;
       const pyResult = await runPythonSimulator(pyCalls, pyCandlesByCallId, params, config);
@@ -335,7 +353,9 @@ describe('TypeScript-Python Parity Tests', () => {
       const tsResult = simulateCapitalAware([call], tsCandlesByCallId, params, config);
 
       // Run Python simulation
-      const pyCalls = [{ id: call.id, mint: call.mint, caller: call.caller, ts_ms: call.createdAt.toMillis() }];
+      const pyCalls = [
+        { id: call.id, mint: call.mint, caller: call.caller, ts_ms: call.createdAt.toMillis() },
+      ];
       const pyCandlesByCallId: Record<string, Candle[]> = {};
       pyCandlesByCallId[call.id] = candles;
       const pyResult = await runPythonSimulator(pyCalls, pyCandlesByCallId, params, config);
@@ -358,4 +378,3 @@ describe('TypeScript-Python Parity Tests', () => {
     });
   });
 });
-

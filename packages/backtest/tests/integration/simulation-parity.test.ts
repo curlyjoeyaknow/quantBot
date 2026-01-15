@@ -1,9 +1,9 @@
 /**
  * Simulation Parity Test
- * 
+ *
  * Verifies that Python simulation produces deterministic results
  * using real data from ClickHouse (candles) and DuckDB (calls).
- * 
+ *
  * This is a critical test for ensuring:
  * 1. Correctness of Python simulation
  * 2. Determinism (same seed → same results)
@@ -45,7 +45,7 @@ describe('Python Simulation with Real Data', () => {
    */
   async function fetchSampleCall(): Promise<Call | null> {
     const db = getDuckDBClient(duckdbPath);
-    
+
     const rows = await db.all<Call>(
       `SELECT 
         call_id,
@@ -91,7 +91,7 @@ describe('Python Simulation with Real Data', () => {
   it('should run Python simulation with real ClickHouse + DuckDB data', async () => {
     // Fetch sample call
     const call = await fetchSampleCall();
-    
+
     if (!call) {
       console.warn('No calls found in DuckDB for test period, skipping');
       return;
@@ -102,9 +102,9 @@ describe('Python Simulation with Real Data', () => {
     // Fetch candles for 4 hours after alert
     const startMs = call.alert_timestamp_ms - 60 * 60 * 1000; // 1 hour before
     const endMs = call.alert_timestamp_ms + 4 * 60 * 60 * 1000; // 4 hours after
-    
+
     const candles = await fetchCandles(call.mint, startMs, endMs);
-    
+
     if (candles.length === 0) {
       console.warn(`No candles found for ${call.mint}, skipping`);
       return;
@@ -183,7 +183,7 @@ describe('Python Simulation with Real Data', () => {
   it('should produce deterministic results with same seed', async () => {
     // Fetch sample call
     const call = await fetchSampleCall();
-    
+
     if (!call) {
       console.warn('No calls found, skipping determinism test');
       return;
@@ -193,7 +193,7 @@ describe('Python Simulation with Real Data', () => {
     const startMs = call.alert_timestamp_ms - 60 * 60 * 1000;
     const endMs = call.alert_timestamp_ms + 4 * 60 * 60 * 1000;
     const candles = await fetchCandles(call.mint, startMs, endMs);
-    
+
     if (candles.length === 0) {
       console.warn('No candles found, skipping determinism test');
       return;
@@ -255,14 +255,14 @@ describe('Python Simulation with Real Data', () => {
 
     // Results should be identical (determinism)
     expect(output1).toEqual(output2);
-    
+
     console.log('✅ Determinism verified: same seed → same results');
   }, 120000); // 120 second timeout
 
   it('should verify seed independence (different seeds can produce different results)', async () => {
     // Fetch sample call
     const call = await fetchSampleCall();
-    
+
     if (!call) {
       console.warn('No calls found, skipping seed test');
       return;
@@ -272,7 +272,7 @@ describe('Python Simulation with Real Data', () => {
     const startMs = call.alert_timestamp_ms - 60 * 60 * 1000;
     const endMs = call.alert_timestamp_ms + 4 * 60 * 60 * 1000;
     const candles = await fetchCandles(call.mint, startMs, endMs);
-    
+
     if (candles.length === 0) {
       console.warn('No candles found, skipping seed test');
       return;
@@ -336,8 +336,10 @@ describe('Python Simulation with Real Data', () => {
     // Both should succeed
     expect(output1).toHaveProperty('final_capital');
     expect(output2).toHaveProperty('final_capital');
-    
-    console.log(`Seed 111 result: ${output1.final_capital}, Seed 222 result: ${output2.final_capital}`);
+
+    console.log(
+      `Seed 111 result: ${output1.final_capital}, Seed 222 result: ${output2.final_capital}`
+    );
     console.log('✅ Seed independence verified: simulation accepts different seeds');
   }, 120000);
 });
@@ -355,7 +357,7 @@ describe('Python Simulation Performance', () => {
    */
   async function fetchSampleCall(): Promise<Call | null> {
     const db = getDuckDBClient(duckdbPath);
-    
+
     const rows = await db.all<Call>(
       `SELECT 
         call_id,
@@ -401,7 +403,7 @@ describe('Python Simulation Performance', () => {
   it('should benchmark Python simulation performance', async () => {
     // Fetch sample call
     const call = await fetchSampleCall();
-    
+
     if (!call) {
       console.warn('No calls found, skipping benchmark');
       return;
@@ -411,7 +413,7 @@ describe('Python Simulation Performance', () => {
     const startMs = call.alert_timestamp_ms - 60 * 60 * 1000;
     const endMs = call.alert_timestamp_ms + 4 * 60 * 60 * 1000;
     const candles = await fetchCandles(call.mint, startMs, endMs);
-    
+
     if (candles.length === 0) {
       console.warn('No candles found, skipping benchmark');
       return;
@@ -450,7 +452,7 @@ describe('Python Simulation Performance', () => {
     );
 
     const startTime = Date.now();
-    
+
     const result = await pythonEngine.runScriptWithStdin(
       pythonScriptPath,
       JSON.stringify(simInput),
@@ -464,7 +466,7 @@ describe('Python Simulation Performance', () => {
     const duration = endTime - startTime;
 
     const output = JSON.parse(result.stdout);
-    
+
     console.log(`\n📊 Performance Benchmark:`);
     console.log(`  Duration: ${duration}ms`);
     console.log(`  Candles processed: ${candles.length}`);
