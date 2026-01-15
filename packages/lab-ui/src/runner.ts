@@ -242,25 +242,43 @@ export async function spawnBacktest(db: DuckDb, p: RunParams) {
   if (process.env.LAB_UI_DEBUG_SPAWN) {
     console.log('[spawnBacktest] Command:', cmd);
     console.log('[spawnBacktest] Args:', JSON.stringify(finalArgs, null, 2));
+    console.log('[spawnBacktest] Full command:', [cmd, ...finalArgs].join(' '));
   }
 
   return new Promise<void>((resolve) => {
     const child = spawn(cmd, finalArgs, { 
       stdio: ['ignore', 'pipe', 'pipe'],
       shell: false, // Explicitly disable shell to prevent argument splitting
+      cwd: repoRoot, // Set working directory to repo root
     });
 
+    let stdout = '';
     let stderr = '';
-    child.stderr.on('data', (d) => (stderr += String(d)));
+    child.stdout.on('data', (d) => {
+      stdout += String(d);
+      if (process.env.LAB_UI_DEBUG_SPAWN) {
+        console.log('[spawnBacktest] stdout:', String(d));
+      }
+    });
+    child.stderr.on('data', (d) => {
+      stderr += String(d);
+      if (process.env.LAB_UI_DEBUG_SPAWN) {
+        console.log('[spawnBacktest] stderr:', String(d));
+      }
+    });
 
-    // keep stdout muted to avoid buffer issues
-    child.stdout.on('data', () => {});
+    child.on('error', async (err) => {
+      const errorMsg = `spawn error: ${err.message}\nstdout: ${stdout}\nstderr: ${stderr}`;
+      await markRunError(db, p.run_id, errorMsg);
+      resolve();
+    });
 
     child.on('close', async (code) => {
       if (code === 0) {
         await markRunDone(db, p.run_id);
       } else {
-        await markRunError(db, p.run_id, `exit_code=${code}\n${stderr}`);
+        const errorMsg = `exit_code=${code}\nstdout: ${stdout}\nstderr: ${stderr}`;
+        await markRunError(db, p.run_id, errorMsg);
       }
       resolve();
     });
