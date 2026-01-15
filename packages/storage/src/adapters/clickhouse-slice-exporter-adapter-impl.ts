@@ -305,7 +305,7 @@ export class ClickHouseSliceExporterAdapterImpl implements SliceExporter {
       WHEN interval_seconds = 86400 THEN '1d'
       ELSE concat(toString(interval_seconds), 's')
     END AS interval`;
-    
+
     const defaultColumns =
       datasetMetadata.defaultColumns ||
       (datasetMetadata.type === 'candles'
@@ -324,7 +324,9 @@ export class ClickHouseSliceExporterAdapterImpl implements SliceExporter {
 
     const columns =
       spec.columns && spec.columns.length > 0
-        ? spec.columns.map((col: string) => (col === 'interval' ? intervalCaseExpr : col)).join(', ')
+        ? spec.columns
+            .map((col: string) => (col === 'interval' ? intervalCaseExpr : col))
+            .join(', ')
         : defaultColumns.join(', ');
 
     // Query ClickHouse and export to CSV (ClickHouse doesn't support Parquet format)
