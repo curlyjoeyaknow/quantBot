@@ -22,182 +22,225 @@
     </p>
 
     <section class="card">
-      <h2>
-        <span>Available Options & Commands</span>
-        <button id="toggleHelp" style="float: right; font-size: 0.8em;">Show Help</button>
-      </h2>
-      <div id="helpSection" style="display: none;">
-        <h3>Policy Types</h3>
-        <div style="margin-left: 20px;">
-          <h4>1. Fixed Stop (<code>fixed_stop</code>)</h4>
-          <pre><code>{
-  "kind": "fixed_stop",
-  "stopPct": 0.20,        // Stop loss % (0.20 = 20% loss)
-  "takeProfitPct": 1.0    // Optional: Take profit % (1.0 = 100% gain)
-}</code></pre>
-
-          <h4>2. Time Stop (<code>time_stop</code>)</h4>
-          <pre><code>{
-  "kind": "time_stop",
-  "maxHoldMs": 3600000,   // Max hold time in milliseconds (1 hour)
-  "takeProfitPct": 1.0    // Optional: Take profit %
-}</code></pre>
-
-          <h4>3. Trailing Stop (<code>trailing_stop</code>)</h4>
-          <pre><code>{
-  "kind": "trailing_stop",
-  "activationPct": 0.20,  // Activate after 20% gain
-  "trailPct": 0.10,       // Exit if drops 10% from peak
-  "hardStopPct": 0.15     // Optional: Hard stop at 15% loss
-}</code></pre>
-
-          <h4>4. Ladder (<code>ladder</code>)</h4>
-          <pre><code>{
-  "kind": "ladder",
-  "levels": [
-    { "multiple": 2.0, "fraction": 0.5 },  // Exit 50% at 2x
-    { "multiple": 3.0, "fraction": 0.3 },  // Exit 30% at 3x
-    { "multiple": 5.0, "fraction": 0.2 }   // Exit 20% at 5x
-  ],
-  "stopPct": 0.20         // Optional: Stop loss for remaining position
-}</code></pre>
-
-          <h4>5. Combo (<code>combo</code>)</h4>
-          <pre><code>{
-  "kind": "combo",
-  "policies": [
-    { "kind": "fixed_stop", "stopPct": 0.15 },
-    { "kind": "time_stop", "maxHoldMs": 7200000 }
-  ]
-}</code></pre>
-        </div>
-
-        <h3>Optimizer Constraints</h3>
-        <div style="margin-left: 20px;">
-          <pre><code>{
-  "maxStopOutRate": 0.25,           // Max stop-out rate (0.25 = 25%)
-  "maxP95DrawdownBps": -2000,       // Max 95th percentile drawdown in bps (-2000 = -20%)
-  "maxTimeExposedMs": 3600000       // Max median time exposed in ms (1 hour)
-}</code></pre>
-        </div>
-
-        <h3>CLI Command Options</h3>
-        <div style="margin-left: 20px;">
-          <h4>Optimize Command:</h4>
-          <pre><code>quantbot backtest optimize \
-  --caller "TY/ACC" \                    # Optional: caller name (optimizes all if omitted)
-  --caller-groups '["caller1","caller2"]' \  # Optional: JSON array of callers
-  --interval "5m" \                     # Required: Candle interval (1m, 5m, 15m, 1h)
-  --from "2024-01-01T00:00:00Z" \      # Required: Start date (ISO 8601)
-  --to "2024-01-31T23:59:59Z" \        # Required: End date (ISO 8601)
-  --max-stop-out-rate 0.3 \            # Optional: Max stop-out rate (default: 0.3)
-  --max-p95-drawdown-bps -3000 \       # Optional: Max p95 drawdown bps (default: -3000)
-  --max-time-exposed-ms 172800000 \    # Optional: Max time exposed ms (default: 48h)
-  --taker-fee-bps 30 \                 # Optional: Taker fee bps (default: 30)
-  --slippage-bps 10 \                  # Optional: Slippage bps (default: 10)
-  --execution-model simple \           # Optional: pumpfun, pumpswap, raydium, minimal, simple (default: simple)
-  --format table                        # Optional: json, table, csv (default: table)</code></pre>
-
-          <h4>Policy Command:</h4>
-          <pre><code>quantbot backtest policy \
-  --policy-json '{"kind":"fixed_stop","stopPct":0.20}' \  # Required: Policy JSON
-  --policy-id "my-policy-id" \         # Optional: Policy ID (auto-generated if not provided)
-  --filter "TY/ACC" \                  # Optional: Filter by caller name
-  --interval "5m" \                    # Required: Candle interval
-  --from "2024-01-01T00:00:00Z" \     # Required: Start date
-  --to "2024-01-31T23:59:59Z" \       # Required: End date
-  --taker-fee-bps 30 \                # Optional: Taker fee bps (default: 30)
-  --slippage-bps 10 \                 # Optional: Slippage bps (default: 10)
-  --execution-model simple \          # Optional: Execution model (default: simple)
-  --run-id "existing-run-id" \        # Optional: Existing run ID to use
-  --format json                        # Optional: json, table, csv (default: json)</code></pre>
-        </div>
-
-        <h3>Execution Models</h3>
-        <div style="margin-left: 20px;">
-          <ul>
-            <li><code>simple</code> - Use simple --slippage-bps and --taker-fee-bps values (default)</li>
-            <li><code>pumpfun</code> - PumpFun-specific slippage/latency model</li>
-            <li><code>pumpswap</code> - PumpSwap-specific model</li>
-            <li><code>raydium</code> - Raydium DEX model</li>
-            <li><code>minimal</code> - Zero slippage/latency (for testing)</li>
-          </ul>
-        </div>
-
-        <h3>Scoring Function</h3>
-        <div style="margin-left: 20px;">
-          <p><strong>Primary:</strong> Maximize median net return</p>
-          <p><strong>Subject to:</strong></p>
-          <ul>
-            <li>Stop-out rate ≤ maxStopOutRate</li>
-            <li>p95 drawdown ≤ maxP95DrawdownBps</li>
-            <li>Median time-exposed ≤ maxTimeExposedMs</li>
-          </ul>
-          <p><strong>Tie-breakers:</strong></p>
-          <ul>
-            <li>Better tail capture</li>
-            <li>Faster time-to-2x</li>
-            <li>Lower median drawdown</li>
-          </ul>
-        </div>
-      </div>
-    </section>
-
-    <section class="card">
       <h2>Run Policy Backtest</h2>
-      <div class="row">
-        <label>Path-Only Run ID&nbsp;<input id="pathOnlyRunId" placeholder="run_id from path-only" /></label>
-        <label>Caller&nbsp;<input id="callerPolicy" placeholder="caller name" /></label>
+      
+      <div class="form-group">
+        <label>Path-Only Run ID <span class="required">*</span></label>
+        <input id="pathOnlyRunId" type="text" placeholder="run_id from path-only run" />
       </div>
-      <div class="row">
-        <label>Policy Type&nbsp;<select id="policyType">
-          <option value="fixed-stop">Fixed Stop</option>
-          <option value="time-stop">Time Stop</option>
-          <option value="trailing-stop">Trailing Stop</option>
+
+      <div class="form-group">
+        <label>Caller (optional)</label>
+        <input id="callerPolicy" type="text" placeholder="Filter by caller name" />
+      </div>
+
+      <div class="form-group">
+        <label>Policy Type <span class="required">*</span></label>
+        <select id="policyType" class="policy-type-select">
+          <option value="fixed_stop">Fixed Stop</option>
+          <option value="time_stop">Time Stop</option>
+          <option value="trailing_stop">Trailing Stop</option>
           <option value="ladder">Ladder</option>
-        </select></label>
-        <label>Policy JSON&nbsp;<textarea id="policyJson" rows="4" cols="50">{
-  "type": "fixed-stop",
-  "stopLossBps": -500,
-  "takeProfitBps": 10000
-}</textarea></label>
+        </select>
       </div>
-      <div class="row">
-        <button id="runPolicy">Run Policy Backtest</button>
-        <span id="policyMsg"></span>
+
+      <!-- Fixed Stop Parameters -->
+      <div id="fixedStopParams" class="policy-params">
+        <div class="form-group">
+          <label>Stop Loss % <span class="required">*</span></label>
+          <div class="slider-container">
+            <input type="range" id="fixedStopPct" min="1" max="50" value="20" step="1" class="slider" />
+            <span class="slider-value" id="fixedStopPctValue">20%</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Take Profit % (optional)</label>
+          <div class="slider-container">
+            <input type="range" id="fixedTakeProfitPct" min="0" max="500" value="100" step="5" class="slider" />
+            <span class="slider-value" id="fixedTakeProfitPctValue">100%</span>
+          </div>
+          <label class="checkbox-label">
+            <input type="checkbox" id="fixedEnableTakeProfit" /> Enable take profit
+          </label>
+        </div>
+      </div>
+
+      <!-- Time Stop Parameters -->
+      <div id="timeStopParams" class="policy-params" style="display: none;">
+        <div class="form-group">
+          <label>Max Hold Time <span class="required">*</span></label>
+          <div class="slider-container">
+            <input type="range" id="timeStopHours" min="0.5" max="48" value="1" step="0.5" class="slider" />
+            <span class="slider-value" id="timeStopHoursValue">1 hour</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Take Profit % (optional)</label>
+          <div class="slider-container">
+            <input type="range" id="timeTakeProfitPct" min="0" max="500" value="100" step="5" class="slider" />
+            <span class="slider-value" id="timeTakeProfitPctValue">100%</span>
+          </div>
+          <label class="checkbox-label">
+            <input type="checkbox" id="timeEnableTakeProfit" /> Enable take profit
+          </label>
+        </div>
+      </div>
+
+      <!-- Trailing Stop Parameters -->
+      <div id="trailingStopParams" class="policy-params" style="display: none;">
+        <div class="form-group">
+          <label>Activation % <span class="required">*</span></label>
+          <div class="slider-container">
+            <input type="range" id="trailActivationPct" min="5" max="100" value="20" step="1" class="slider" />
+            <span class="slider-value" id="trailActivationPctValue">20%</span>
+          </div>
+          <small>Activate trailing stop after this gain</small>
+        </div>
+        <div class="form-group">
+          <label>Trail % <span class="required">*</span></label>
+          <div class="slider-container">
+            <input type="range" id="trailPct" min="1" max="50" value="10" step="1" class="slider" />
+            <span class="slider-value" id="trailPctValue">10%</span>
+          </div>
+          <small>Exit if price drops this % from peak</small>
+        </div>
+        <div class="form-group">
+          <label>Hard Stop % (optional)</label>
+          <div class="slider-container">
+            <input type="range" id="trailHardStopPct" min="1" max="50" value="15" step="1" class="slider" />
+            <span class="slider-value" id="trailHardStopPctValue">15%</span>
+          </div>
+          <label class="checkbox-label">
+            <input type="checkbox" id="trailEnableHardStop" /> Enable hard stop
+          </label>
+          <small>Always active stop loss, independent of trailing</small>
+        </div>
+      </div>
+
+      <!-- Ladder Parameters -->
+      <div id="ladderParams" class="policy-params" style="display: none;">
+        <div class="form-group">
+          <label>Ladder Levels <span class="required">*</span></label>
+          <div id="ladderLevels">
+            <!-- Levels will be dynamically added -->
+          </div>
+          <button type="button" id="addLadderLevel" class="btn-secondary">+ Add Level</button>
+        </div>
+        <div class="form-group">
+          <label>Stop Loss % (optional)</label>
+          <div class="slider-container">
+            <input type="range" id="ladderStopPct" min="1" max="50" value="20" step="1" class="slider" />
+            <span class="slider-value" id="ladderStopPctValue">20%</span>
+          </div>
+          <label class="checkbox-label">
+            <input type="checkbox" id="ladderEnableStop" /> Enable stop loss
+          </label>
+          <small>Stop loss for remaining position</small>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button id="runPolicy" class="btn-primary">Run Policy Backtest</button>
+        <span id="policyMsg" class="message"></span>
       </div>
     </section>
 
     <section class="card">
       <h2>Run Optimizer</h2>
-      <div class="row">
-        <label>Path-Only Run ID&nbsp;<input id="optRunId" placeholder="run_id from path-only" /></label>
-        <label>Caller&nbsp;<input id="optCaller" placeholder="caller name" /></label>
-        <label>Policy Type&nbsp;<select id="optPolicyType">
-          <option value="fixed-stop">Fixed Stop</option>
-          <option value="time-stop">Time Stop</option>
-          <option value="trailing-stop">Trailing Stop</option>
-        </select></label>
+      
+      <div class="form-group">
+        <label>Path-Only Run ID <span class="required">*</span></label>
+        <input id="optRunId" type="text" placeholder="run_id from path-only run" />
       </div>
-      <div class="row">
-        <label>Constraints&nbsp;<textarea id="constraintsJson" rows="3" cols="50">{
-  "maxStopOutRate": 0.25,
-  "maxP95DrawdownBps": 2000,
-  "maxTimeExposedMs": 3600000
-}</textarea></label>
+
+      <div class="form-group">
+        <label>Caller <span class="required">*</span></label>
+        <input id="optCaller" type="text" placeholder="Caller name to optimize for" />
       </div>
-      <div class="row">
-        <button id="runOptimize">Run Optimizer</button>
-        <span id="optMsg"></span>
+
+      <div class="form-group">
+        <label>Policy Type <span class="required">*</span></label>
+        <select id="optPolicyType" class="policy-type-select">
+          <option value="fixed_stop">Fixed Stop</option>
+          <option value="time_stop">Time Stop</option>
+          <option value="trailing_stop">Trailing Stop</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label>Optimizer Constraints</label>
+        
+        <div class="constraint-group">
+          <label>Max Stop-Out Rate</label>
+          <div class="slider-container">
+            <input type="range" id="maxStopOutRate" min="0" max="100" value="25" step="1" class="slider" />
+            <span class="slider-value" id="maxStopOutRateValue">25%</span>
+          </div>
+          <small>Maximum acceptable stop-out rate (0-100%)</small>
+        </div>
+
+        <div class="constraint-group">
+          <label>Max P95 Drawdown (bps)</label>
+          <div class="slider-container">
+            <input type="range" id="maxP95DrawdownBps" min="-5000" max="0" value="-2000" step="50" class="slider" />
+            <span class="slider-value" id="maxP95DrawdownBpsValue">-2000 bps</span>
+          </div>
+          <small>Maximum 95th percentile drawdown in basis points</small>
+        </div>
+
+        <div class="constraint-group">
+          <label>Max Time Exposed (hours)</label>
+          <div class="slider-container">
+            <input type="range" id="maxTimeExposedHours" min="1" max="72" value="24" step="1" class="slider" />
+            <span class="slider-value" id="maxTimeExposedHoursValue">24 hours</span>
+          </div>
+          <small>Maximum median time exposed</small>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Execution Settings</label>
+        
+        <div class="form-row">
+          <div class="form-col">
+            <label>Taker Fee (bps)</label>
+            <input type="number" id="takerFeeBps" min="0" max="10000" value="30" step="1" />
+          </div>
+          <div class="form-col">
+            <label>Slippage (bps)</label>
+            <input type="number" id="slippageBps" min="0" max="10000" value="10" step="1" />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-col">
+            <label>Execution Model</label>
+            <select id="executionModel">
+              <option value="simple">Simple</option>
+              <option value="pumpfun">PumpFun</option>
+              <option value="pumpswap">PumpSwap</option>
+              <option value="raydium">Raydium</option>
+              <option value="minimal">Minimal</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button id="runOptimize" class="btn-primary">Run Optimizer</button>
+        <span id="optMsg" class="message"></span>
       </div>
     </section>
 
     <section class="card">
       <h2>Best Policies by Caller</h2>
-      <div class="row">
-        <label>Caller&nbsp;<input id="lookupCaller" placeholder="caller name" /></label>
-        <button id="lookupPolicies">Lookup</button>
-        <span id="lookupMsg"></span>
+      <div class="form-group">
+        <label>Caller</label>
+        <div class="form-row">
+          <input id="lookupCaller" type="text" placeholder="Caller name" />
+          <button id="lookupPolicies" class="btn-secondary">Lookup</button>
+        </div>
+        <span id="lookupMsg" class="message"></span>
       </div>
       <div class="table-scroll">
         <table id="policiesTable">
@@ -219,76 +262,221 @@
   <script>
     const $ = (id) => document.getElementById(id);
 
-    // Toggle help section
-    $("toggleHelp").onclick = () => {
-      const helpSection = $("helpSection");
-      const isVisible = helpSection.style.display !== "none";
-      helpSection.style.display = isVisible ? "none" : "block";
-      $("toggleHelp").textContent = isVisible ? "Show Help" : "Hide Help";
-    };
+    // Update slider value displays
+    function setupSlider(sliderId, valueId, formatter) {
+      const slider = $(sliderId);
+      const value = $(valueId);
+      if (slider && value) {
+        slider.addEventListener('input', () => {
+          value.textContent = formatter(slider.value);
+        });
+      }
+    }
+
+    // Policy type switcher
+    $("policyType").addEventListener('change', (e) => {
+      const type = e.target.value;
+      document.querySelectorAll('.policy-params').forEach(el => el.style.display = 'none');
+      
+      if (type === 'fixed_stop') {
+        $("fixedStopParams").style.display = 'block';
+      } else if (type === 'time_stop') {
+        $("timeStopParams").style.display = 'block';
+      } else if (type === 'trailing_stop') {
+        $("trailingStopParams").style.display = 'block';
+      } else if (type === 'ladder') {
+        $("ladderParams").style.display = 'block';
+      }
+    });
+
+    // Setup sliders
+    setupSlider('fixedStopPct', 'fixedStopPctValue', v => v + '%');
+    setupSlider('fixedTakeProfitPct', 'fixedTakeProfitPctValue', v => v + '%');
+    setupSlider('timeStopHours', 'timeStopHoursValue', v => v + ' hour' + (v != 1 ? 's' : ''));
+    setupSlider('timeTakeProfitPct', 'timeTakeProfitPctValue', v => v + '%');
+    setupSlider('trailActivationPct', 'trailActivationPctValue', v => v + '%');
+    setupSlider('trailPct', 'trailPctValue', v => v + '%');
+    setupSlider('trailHardStopPct', 'trailHardStopPctValue', v => v + '%');
+    setupSlider('ladderStopPct', 'ladderStopPctValue', v => v + '%');
+    setupSlider('maxStopOutRate', 'maxStopOutRateValue', v => v + '%');
+    setupSlider('maxP95DrawdownBps', 'maxP95DrawdownBpsValue', v => v + ' bps');
+    setupSlider('maxTimeExposedHours', 'maxTimeExposedHoursValue', v => v + ' hour' + (v != 1 ? 's' : ''));
+
+    // Build policy JSON from form
+    function buildPolicyJson() {
+      const type = $("policyType").value;
+      
+      if (type === 'fixed_stop') {
+        const policy = {
+          kind: 'fixed_stop',
+          stopPct: parseFloat($("fixedStopPct").value) / 100
+        };
+        if ($("fixedEnableTakeProfit").checked) {
+          policy.takeProfitPct = parseFloat($("fixedTakeProfitPct").value) / 100;
+        }
+        return JSON.stringify(policy);
+      } else if (type === 'time_stop') {
+        const policy = {
+          kind: 'time_stop',
+          maxHoldMs: parseFloat($("timeStopHours").value) * 60 * 60 * 1000
+        };
+        if ($("timeEnableTakeProfit").checked) {
+          policy.takeProfitPct = parseFloat($("timeTakeProfitPct").value) / 100;
+        }
+        return JSON.stringify(policy);
+      } else if (type === 'trailing_stop') {
+        const policy = {
+          kind: 'trailing_stop',
+          activationPct: parseFloat($("trailActivationPct").value) / 100,
+          trailPct: parseFloat($("trailPct").value) / 100
+        };
+        if ($("trailEnableHardStop").checked) {
+          policy.hardStopPct = parseFloat($("trailHardStopPct").value) / 100;
+        }
+        return JSON.stringify(policy);
+      } else if (type === 'ladder') {
+        const levels = [];
+        const levelElements = document.querySelectorAll('.ladder-level');
+        levelElements.forEach(el => {
+          const multiple = parseFloat(el.querySelector('.ladder-multiple').value);
+          const fraction = parseFloat(el.querySelector('.ladder-fraction').value) / 100;
+          levels.push({ multiple, fraction });
+        });
+        
+        const policy = {
+          kind: 'ladder',
+          levels: levels.sort((a, b) => a.multiple - b.multiple)
+        };
+        if ($("ladderEnableStop").checked) {
+          policy.stopPct = parseFloat($("ladderStopPct").value) / 100;
+        }
+        return JSON.stringify(policy);
+      }
+      
+      return '{}';
+    }
+
+    // Ladder level management
+    let ladderLevelCount = 0;
+    function addLadderLevel(multiple = 2.0, fraction = 50) {
+      const container = $("ladderLevels");
+      const div = document.createElement('div');
+      div.className = 'ladder-level form-row';
+      div.innerHTML = `
+        <div class="form-col">
+          <label>Multiple (x)</label>
+          <input type="number" class="ladder-multiple" min="1" max="100" step="0.1" value="${multiple}" />
+        </div>
+        <div class="form-col">
+          <label>Exit %</label>
+          <input type="number" class="ladder-fraction" min="1" max="100" step="1" value="${fraction}" />
+        </div>
+        <div class="form-col">
+          <button type="button" class="btn-remove" onclick="this.parentElement.parentElement.remove()">Remove</button>
+        </div>
+      `;
+      container.appendChild(div);
+      ladderLevelCount++;
+    }
+    
+    $("addLadderLevel").addEventListener('click', () => {
+      addLadderLevel(2.0 + ladderLevelCount, 50);
+    });
+    
+    // Initialize with one ladder level
+    addLadderLevel(2.0, 50);
 
     // Run policy backtest
     $("runPolicy").onclick = async () => {
       const path_only_run_id = $("pathOnlyRunId").value.trim();
       const caller_filter = $("callerPolicy").value.trim();
-      const policy_json = $("policyJson").value.trim();
+      const policy_json = buildPolicyJson();
 
       if (!path_only_run_id) {
-        $("policyMsg").textContent = "path_only_run_id required";
+        $("policyMsg").textContent = "Path-only run ID required";
+        $("policyMsg").style.color = 'var(--error)';
         return;
       }
-      if (!policy_json) {
-        $("policyMsg").textContent = "policy_json required";
-        return;
-      }
+
+      $("policyMsg").textContent = "Creating run...";
+      $("policyMsg").style.color = 'var(--muted)';
 
       try {
         const res = await fetch("/api/runs/policy", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ path_only_run_id, policy_json, caller_filter })
+          body: JSON.stringify({ 
+            path_only_run_id, 
+            policy_json, 
+            caller_filter: caller_filter || undefined 
+          })
         });
         const data = await res.json();
         if (data.error) {
           $("policyMsg").textContent = "Error: " + data.error;
+          $("policyMsg").style.color = 'var(--error)';
         } else {
-          $("policyMsg").textContent = "Created policy run: " + data.run_id;
+          $("policyMsg").textContent = "✓ Created policy run: " + data.run_id;
+          $("policyMsg").style.color = 'var(--success)';
         }
       } catch (e) {
         $("policyMsg").textContent = "Error: " + e.message;
+        $("policyMsg").style.color = 'var(--error)';
       }
     };
+
+    // Build constraints JSON
+    function buildConstraintsJson() {
+      return JSON.stringify({
+        maxStopOutRate: parseFloat($("maxStopOutRate").value) / 100,
+        maxP95DrawdownBps: parseFloat($("maxP95DrawdownBps").value),
+        maxTimeExposedMs: parseFloat($("maxTimeExposedHours").value) * 60 * 60 * 1000
+      });
+    }
 
     // Run optimizer
     $("runOptimize").onclick = async () => {
       const path_only_run_id = $("optRunId").value.trim();
       const caller = $("optCaller").value.trim();
       const policy_type = $("optPolicyType").value;
-      const constraints_json = $("constraintsJson").value.trim();
+      const constraints_json = buildConstraintsJson();
 
       if (!path_only_run_id) {
-        $("optMsg").textContent = "path_only_run_id required";
+        $("optMsg").textContent = "Path-only run ID required";
+        $("optMsg").style.color = 'var(--error)';
         return;
       }
       if (!caller) {
-        $("optMsg").textContent = "caller required";
+        $("optMsg").textContent = "Caller required";
+        $("optMsg").style.color = 'var(--error)';
         return;
       }
+
+      $("optMsg").textContent = "Creating optimizer run...";
+      $("optMsg").style.color = 'var(--muted)';
 
       try {
         const res = await fetch("/api/runs/optimize", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ path_only_run_id, caller, policy_type, constraints_json })
+          body: JSON.stringify({ 
+            path_only_run_id, 
+            caller, 
+            policy_type, 
+            constraints_json 
+          })
         });
         const data = await res.json();
         if (data.error) {
           $("optMsg").textContent = "Error: " + data.error;
+          $("optMsg").style.color = 'var(--error)';
         } else {
-          $("optMsg").textContent = "Created optimize run: " + data.run_id;
+          $("optMsg").textContent = "✓ Created optimizer run: " + data.run_id;
+          $("optMsg").style.color = 'var(--success)';
         }
       } catch (e) {
         $("optMsg").textContent = "Error: " + e.message;
+        $("optMsg").style.color = 'var(--error)';
       }
     };
 
@@ -296,9 +484,13 @@
     $("lookupPolicies").onclick = async () => {
       const caller = $("lookupCaller").value.trim();
       if (!caller) {
-        $("lookupMsg").textContent = "enter caller name";
+        $("lookupMsg").textContent = "Enter caller name";
+        $("lookupMsg").style.color = 'var(--error)';
         return;
       }
+
+      $("lookupMsg").textContent = "Loading...";
+      $("lookupMsg").style.color = 'var(--muted)';
 
       try {
         const res = await fetch("/api/policies/" + encodeURIComponent(caller));
@@ -308,7 +500,8 @@
         tbody.innerHTML = "";
 
         if (!rows.length) {
-          $("lookupMsg").textContent = "no policies found";
+          $("lookupMsg").textContent = "No policies found";
+          $("lookupMsg").style.color = 'var(--muted)';
           return;
         }
 
@@ -324,16 +517,20 @@
           tbody.appendChild(tr);
         }
 
-        $("lookupMsg").textContent = rows.length + " policies";
+        $("lookupMsg").textContent = "✓ Found " + rows.length + " policies";
+        $("lookupMsg").style.color = 'var(--success)';
       } catch (e) {
         $("lookupMsg").textContent = "Error: " + e.message;
+        $("lookupMsg").style.color = 'var(--error)';
       }
     };
 
     function escapeHtml(str) {
-      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+      return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     }
+
+    // Trigger initial policy type display
+    $("policyType").dispatchEvent(new Event('change'));
   </script>
 </body>
 </html>
-
