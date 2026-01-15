@@ -9,6 +9,10 @@
  */
 
 import { vi } from 'vitest';
+import { config } from 'dotenv';
+
+// Load environment variables from .env file
+config();
 
 // Mock native bindings that cause issues in test environments
 vi.mock('@quantbot/utils', async () => {

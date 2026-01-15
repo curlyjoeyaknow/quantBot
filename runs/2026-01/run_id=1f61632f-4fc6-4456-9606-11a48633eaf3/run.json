@@ -1,0 +1,26 @@
+{
+  "run_id": "1f61632f-4fc6-4456-9606-11a48633eaf3",
+  "run_type": "path-only",
+  "created_at": "2026-01-15T00:14:40.996Z",
+  "started_at": "2026-01-15T00:14:41.005Z",
+  "completed_at": "2026-01-15T00:14:41.107Z",
+  "status": "failed",
+  "git_commit": "507524a5e41441ef19ae100b6083bf23de9d367d",
+  "git_branch": "refactor/python-ts-architecture",
+  "git_dirty": true,
+  "dataset": {
+    "from": "2024-01-01T00:00:00.000+00:00",
+    "to": "2024-01-02T00:00:00.000+00:00",
+    "interval": "1m",
+    "calls_count": 1
+  },
+  "parameters": {},
+  "schema_version": {
+    "manifest": "1.0.0",
+    "artifacts": "1.0.0"
+  },
+  "artifacts": {},
+  "logs": {
+    "stderr": "logs/stderr.txt"
+  }
+}
