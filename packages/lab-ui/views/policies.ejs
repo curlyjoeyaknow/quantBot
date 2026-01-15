@@ -139,6 +139,34 @@
         </div>
       </div>
 
+      <div class="form-group">
+        <label>Execution Settings</label>
+        
+        <div class="form-row">
+          <div class="form-col">
+            <label>Taker Fee (bps)</label>
+            <input type="number" id="policyTakerFeeBps" min="0" max="10000" value="30" step="1" />
+          </div>
+          <div class="form-col">
+            <label>Slippage (bps)</label>
+            <input type="number" id="policySlippageBps" min="0" max="10000" value="10" step="1" />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-col">
+            <label>Execution Model</label>
+            <select id="policyExecutionModel">
+              <option value="simple">Simple</option>
+              <option value="pumpfun">PumpFun</option>
+              <option value="pumpswap">PumpSwap</option>
+              <option value="raydium">Raydium</option>
+              <option value="minimal">Minimal</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
       <div class="form-actions">
         <button id="runPolicy" class="btn-primary">Run Policy Backtest</button>
         <span id="policyMsg" class="message"></span>
@@ -387,6 +415,15 @@
     // Initialize with one ladder level
     addLadderLevel(2.0, 50);
 
+    // Get execution settings for policy
+    function getPolicyExecutionSettings() {
+      return {
+        taker_fee_bps: parseInt($("policyTakerFeeBps").value) || 30,
+        slippage_bps: parseInt($("policySlippageBps").value) || 10,
+        execution_model: $("policyExecutionModel").value || 'simple'
+      };
+    }
+
     // Run policy backtest
     $("runPolicy").onclick = async () => {
       const path_only_run_id = $("pathOnlyRunId").value.trim();
@@ -402,7 +439,7 @@
       $("policyMsg").textContent = "Creating run...";
       $("policyMsg").style.color = 'var(--muted)';
 
-      const execSettings = getExecutionSettings();
+      const execSettings = getPolicyExecutionSettings();
 
       try {
         const res = await fetch("/api/runs/policy", {
