@@ -229,16 +229,16 @@ export async function spawnBacktest(db: DuckDb, p: RunParams) {
   const args = buildCliArgs(p);
 
   // Prefer the worktree-local CLI. If QUANTBOT_CLI isn't set, we run:
-  //   pnpm -C <repoRoot> cli ...
+  //   node packages/cli/dist/bin/quantbot.js ...
   // This avoids accidentally calling a globally-installed `quantbot` from a different checkout.
   const envCmd = process.env.QUANTBOT_CLI;
   const here = fileURLToPath(new URL('.', import.meta.url));
   const repoRoot = path.resolve(here, '..', '..', '..');
 
-  const cmd = envCmd ?? 'pnpm';
+  const cmd = envCmd ?? 'node';
   const finalArgs = envCmd 
     ? args 
-    : ['-C', repoRoot, 'cli', ...args];
+    : [path.join(repoRoot, 'packages', 'cli', 'dist', 'bin', 'quantbot.js'), ...args];
 
   // Debug logging
   if (process.env.LAB_UI_DEBUG_SPAWN) {
