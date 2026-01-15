@@ -1,0 +1,14 @@
+{
+  "results": [
+    {
+      "error": "Failed to execute Python script: Command failed with ENOENT: python3 /home/memez/quantBot/packages/cli/tools/simulation/run_simulation.py\nThe \"cwd\" option is invalid: /home/memez/quantBot/packages/cli/tools/simulation.\nENOENT: no such file or directory, stat '/home/memez/quantBot/packages/cli/tools/simulation'\nspawn python3 ENOENT",
+      "mint": "So11111111111111111111111111111111111111112",
+      "alert_timestamp": "2025-12-20T00:43:48.695Z"
+    }
+  ],
+  "summary": {
+    "total_runs": 1,
+    "successful": 0,
+    "failed": 1
+  }
+}

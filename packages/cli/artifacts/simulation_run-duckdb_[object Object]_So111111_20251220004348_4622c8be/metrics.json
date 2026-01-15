@@ -1,0 +1,7 @@
+{
+  "runId": "simulation_run-duckdb_[object Object]_So111111_20251220004348_4622c8be",
+  "timestamp": "2025-12-20T00:43:48.707Z",
+  "command": "simulation.run-duckdb",
+  "packageName": "simulation",
+  "commandName": "run-duckdb"
+}

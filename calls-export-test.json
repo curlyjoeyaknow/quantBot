@@ -1,0 +1,97 @@
+[
+  {
+    "kind": "token_call",
+    "tsMs": 1755034519000,
+    "token": {
+      "address": "9hStzhJie5w3NqGDFRz59kRnw4Psf2mWSkYhe5eapump",
+      "chain": "bsc"
+    },
+    "caller": {
+      "displayName": "Unknown",
+      "fromId": "caller_0"
+    },
+    "source": {
+      "callerMessageId": 0
+    },
+    "parse": {
+      "confidence": 0.8,
+      "reasons": ["duckdb_import"]
+    }
+  },
+  {
+    "kind": "token_call",
+    "tsMs": 1755033666000,
+    "token": {
+      "address": "7Am9zxtsCAvVeQvHCodT9LG3daMKRNg4rsUrFfvLpump",
+      "chain": "bsc"
+    },
+    "caller": {
+      "displayName": "Unknown",
+      "fromId": "caller_1"
+    },
+    "source": {
+      "callerMessageId": 1
+    },
+    "parse": {
+      "confidence": 0.8,
+      "reasons": ["duckdb_import"]
+    }
+  },
+  {
+    "kind": "token_call",
+    "tsMs": 1755033628000,
+    "token": {
+      "address": "C6TSrLYAqL8RRMU9hrSZAzY49bCiyXH1TGVYpAF4LpaQ",
+      "chain": "bsc"
+    },
+    "caller": {
+      "displayName": "Unknown",
+      "fromId": "caller_2"
+    },
+    "source": {
+      "callerMessageId": 2
+    },
+    "parse": {
+      "confidence": 0.8,
+      "reasons": ["duckdb_import"]
+    }
+  },
+  {
+    "kind": "token_call",
+    "tsMs": 1755033142000,
+    "token": {
+      "address": "CCzUwEWVA3rxVb5gPCa2A3nLhujyoARH9jD7GKyLbonk",
+      "chain": "bsc"
+    },
+    "caller": {
+      "displayName": "Unknown",
+      "fromId": "caller_3"
+    },
+    "source": {
+      "callerMessageId": 3
+    },
+    "parse": {
+      "confidence": 0.8,
+      "reasons": ["duckdb_import"]
+    }
+  },
+  {
+    "kind": "token_call",
+    "tsMs": 1755032931000,
+    "token": {
+      "address": "2JkrPtJYxYoQZy9uzykpk1tpLTJqV9fwxbz3HwHnpump",
+      "chain": "bsc"
+    },
+    "caller": {
+      "displayName": "Unknown",
+      "fromId": "caller_4"
+    },
+    "source": {
+      "callerMessageId": 4
+    },
+    "parse": {
+      "confidence": 0.8,
+      "reasons": ["duckdb_import"]
+    }
+  }
+]

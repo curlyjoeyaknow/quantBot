@@ -1,0 +1,14 @@
+{
+  "results": [
+    {
+      "error": "Python script exited with code 2: /usr/bin/python3: can't open file '/home/memez/quantBot/packages/cli/home/memez/quantBot/tools/simulation/run_simulation.py': [Errno 2] No such file or directory",
+      "mint": "So11111111111111111111111111111111111111112",
+      "alert_timestamp": "2025-12-20T00:45:16.018Z"
+    }
+  ],
+  "summary": {
+    "total_runs": 1,
+    "successful": 0,
+    "failed": 1
+  }
+}

@@ -1,0 +1,17 @@
+*** Begin Patch
+*** Update File: packages/lab/src/server.ts
+@@
+ fastify.get('/api/strategies', async (request: FastifyRequest, reply: FastifyReply) => {
+   try {
+-    const { StrategiesRepository, getDuckDBClient } = await import('@quantbot/storage');
++    const { StrategiesRepository } = await import('@quantbot/storage');
+     const duckdbPath = process.env.DUCKDB_PATH || 'data/tele.duckdb';
+-    const client = getDuckDBClient(duckdbPath);
+-    const repo = new StrategiesRepository(client);
++    const repo = new StrategiesRepository(duckdbPath);
+     
+     const strategies = await repo.list();
+     return { strategies };
+   } catch (error) {
+     fastify.log.error(error);
+*** End Patch
