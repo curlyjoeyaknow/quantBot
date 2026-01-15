@@ -34,6 +34,7 @@ export type RunParams = {
   policy_type?: string;
   constraints_json?: string;
   grid_json?: string;
+  execution_model?: string;
 };
 
 export async function markRunRunning(db: DuckDb, runId: string) {
@@ -146,18 +147,53 @@ function buildPolicyArgs(p: RunParams): string[] {
 function buildOptimizeArgs(p: RunParams): string[] {
   const args: string[] = ['backtest', 'optimize', '--run-id', p.run_id];
 
-  if (p.path_only_run_id) {
-    args.push('--path-only-run-id', p.path_only_run_id);
+  // Required options
+  if (p.interval) {
+    args.push('--interval', p.interval);
   }
+  if (p.from) {
+    args.push('--from', p.from);
+  }
+  if (p.to) {
+    args.push('--to', p.to);
+  }
+
+  // Optional options
   if (p.caller) {
     args.push('--caller', p.caller);
   }
   if (p.policy_type) {
     args.push('--policy-type', p.policy_type);
   }
+  
+  // Parse constraints JSON to extract individual constraint options
   if (p.constraints_json) {
-    args.push('--constraints-json', p.constraints_json);
+    try {
+      const constraints = JSON.parse(p.constraints_json);
+      if (constraints.maxStopOutRate !== undefined) {
+        args.push('--max-stop-out-rate', String(constraints.maxStopOutRate));
+      }
+      if (constraints.maxP95DrawdownBps !== undefined) {
+        args.push('--max-p95-drawdown-bps', String(constraints.maxP95DrawdownBps));
+      }
+      if (constraints.maxTimeExposedMs !== undefined) {
+        args.push('--max-time-exposed-ms', String(constraints.maxTimeExposedMs));
+      }
+    } catch {
+      // If JSON parsing fails, skip constraint options
+    }
   }
+
+  if (p.taker_fee_bps !== undefined) {
+    args.push('--taker-fee-bps', String(p.taker_fee_bps));
+  }
+  if (p.slippage_bps !== undefined) {
+    args.push('--slippage-bps', String(p.slippage_bps));
+  }
+  if (p.execution_model) {
+    args.push('--execution-model', p.execution_model);
+  }
+
   if (p.grid_json) {
     args.push('--grid-json', p.grid_json);
   }

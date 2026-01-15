@@ -224,18 +224,52 @@ export function registerApi(app: express.Express, db: DuckDb) {
   app.post('/api/runs/optimize', express.json(), async (req, res) => {
     const pathOnlyRunId = String(req.body?.path_only_run_id ?? '').trim();
     const caller = String(req.body?.caller ?? '').trim();
-    const policy_type = String(req.body?.policy_type ?? 'fixed-stop').trim();
+    const policy_type = String(req.body?.policy_type ?? 'fixed_stop').trim();
     const constraints_json = String(req.body?.constraints_json ?? '{}').trim();
-    const grid_json = String(req.body?.grid_json ?? '').trim();
+    const taker_fee_bps = Number(req.body?.taker_fee_bps ?? 30);
+    const slippage_bps = Number(req.body?.slippage_bps ?? 10);
+    const execution_model = String(req.body?.execution_model ?? 'simple').trim();
 
     if (!pathOnlyRunId) return res.status(400).json({ error: 'path_only_run_id required' });
     if (!caller) return res.status(400).json({ error: 'caller required' });
 
     // Validate constraints JSON
+    let constraints;
     try {
-      JSON.parse(constraints_json);
+      constraints = JSON.parse(constraints_json);
     } catch {
       return res.status(400).json({ error: 'invalid constraints_json' });
+    }
+
+    // Fetch path-only run to get interval, from, to
+    const pathOnlyRun = await get<{
+      interval: string;
+      time_from: string;
+      time_to: string;
+      params_json: string;
+    }>(
+      db,
+      `SELECT interval, time_from, time_to, params_json FROM backtest_runs WHERE run_id = ?`,
+      [pathOnlyRunId]
+    );
+
+    if (!pathOnlyRun) {
+      return res.status(400).json({ error: 'path-only run not found' });
+    }
+
+    // Parse date range - convert from TIMESTAMP to ISO string if needed
+    const from = pathOnlyRun.time_from
+      ? new Date(pathOnlyRun.time_from).toISOString()
+      : JSON.parse(pathOnlyRun.params_json || '{}').from;
+    const to = pathOnlyRun.time_to
+      ? new Date(pathOnlyRun.time_to).toISOString()
+      : JSON.parse(pathOnlyRun.params_json || '{}').to;
+    const interval = pathOnlyRun.interval || JSON.parse(pathOnlyRun.params_json || '{}').interval;
+
+    if (!interval || !from || !to) {
+      return res.status(400).json({
+        error: 'path-only run missing interval/from/to. Run may be incomplete.',
+      });
     }
 
     const run_id = nanoid(12);
@@ -245,15 +279,20 @@ export function registerApi(app: express.Express, db: DuckDb) {
       path_only_run_id: pathOnlyRunId,
       caller,
       policy_type,
-      constraints_json,
-      grid_json: grid_json || undefined,
+      constraints_json: constraints,
+      interval,
+      from,
+      to,
+      taker_fee_bps,
+      slippage_bps,
+      execution_model,
     });
 
     await run(
       db,
-      `INSERT INTO backtest_runs(run_id, strategy_id, status, params_json, run_mode, created_at)
-      VALUES (?, NULL, 'queued', ?, 'optimize', NOW())`,
-      [run_id, params_json]
+      `INSERT INTO backtest_runs(run_id, strategy_id, status, params_json, run_mode, interval, time_from, time_to, created_at)
+      VALUES (?, NULL, 'queued', ?, 'optimize', ?, ?, ?, NOW())`,
+      [run_id, params_json, interval, from, to]
     );
 
     // Spawn CLI optimize
@@ -261,11 +300,15 @@ export function registerApi(app: express.Express, db: DuckDb) {
       run_id,
       strategy_id: undefined,
       run_mode: 'optimize',
-      path_only_run_id: pathOnlyRunId,
+      interval,
+      from,
+      to,
       caller,
       policy_type,
-      constraints_json,
-      grid_json: grid_json || undefined,
+      constraints_json: JSON.stringify(constraints),
+      taker_fee_bps,
+      slippage_bps,
+      execution_model: execution_model as any,
     }).catch(async (err) => {
       await run(
         db,

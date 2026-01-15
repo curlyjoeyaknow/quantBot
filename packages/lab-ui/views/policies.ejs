@@ -164,6 +164,7 @@
           <option value="fixed_stop">Fixed Stop</option>
           <option value="time_stop">Time Stop</option>
           <option value="trailing_stop">Trailing Stop</option>
+          <option value="ladder">Ladder</option>
         </select>
       </div>
 
@@ -434,6 +435,15 @@
       });
     }
 
+    // Get execution settings
+    function getExecutionSettings() {
+      return {
+        taker_fee_bps: parseInt($("takerFeeBps").value) || 30,
+        slippage_bps: parseInt($("slippageBps").value) || 10,
+        execution_model: $("executionModel").value || 'simple'
+      };
+    }
+
     // Run optimizer
     $("runOptimize").onclick = async () => {
       const path_only_run_id = $("optRunId").value.trim();
@@ -455,6 +465,8 @@
       $("optMsg").textContent = "Creating optimizer run...";
       $("optMsg").style.color = 'var(--muted)';
 
+      const execSettings = getExecutionSettings();
+
       try {
         const res = await fetch("/api/runs/optimize", {
           method: "POST",
@@ -463,7 +475,10 @@
             path_only_run_id, 
             caller, 
             policy_type, 
-            constraints_json 
+            constraints_json,
+            taker_fee_bps: execSettings.taker_fee_bps,
+            slippage_bps: execSettings.slippage_bps,
+            execution_model: execSettings.execution_model
           })
         });
         const data = await res.json();
@@ -534,3 +549,4 @@
   </script>
 </body>
 </html>
+
