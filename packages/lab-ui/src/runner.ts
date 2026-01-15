@@ -238,8 +238,17 @@ export async function spawnBacktest(db: DuckDb, p: RunParams) {
   const cmd = envCmd ?? 'pnpm';
   const finalArgs = envCmd ? args : ['-C', repoRoot, 'exec', '--', 'quantbot', ...args];
 
+  // Debug logging
+  if (process.env.LAB_UI_DEBUG_SPAWN) {
+    console.log('[spawnBacktest] Command:', cmd);
+    console.log('[spawnBacktest] Args:', JSON.stringify(finalArgs, null, 2));
+  }
+
   return new Promise<void>((resolve) => {
-    const child = spawn(cmd, finalArgs, { stdio: ['ignore', 'pipe', 'pipe'] });
+    const child = spawn(cmd, finalArgs, { 
+      stdio: ['ignore', 'pipe', 'pipe'],
+      shell: false, // Explicitly disable shell to prevent argument splitting
+    });
 
     let stderr = '';
     child.stderr.on('data', (d) => (stderr += String(d)));
