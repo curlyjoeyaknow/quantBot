@@ -6,11 +6,25 @@ Stores computed features in DuckDB for model training.
 import duckdb
 import json
 import uuid
+import subprocess
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 import logging
 
 logger = logging.getLogger(__name__)
+
+def get_git_commit_hash() -> str:
+    """Get current git commit hash"""
+    try:
+        result = subprocess.run(
+            ['git', 'rev-parse', 'HEAD'],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        return result.stdout.strip()
+    except (subprocess.CalledProcessError, FileNotFoundError):
+        return 'unknown'
 
 class FeatureStore:
     """Store and retrieve features for ML models"""
@@ -20,7 +34,7 @@ class FeatureStore:
         self._setup_feature_tables()
     
     def _setup_feature_tables(self):
-        """Create feature storage tables"""
+        """Create feature storage tables with versioning"""
         self.con.execute("""
             CREATE TABLE IF NOT EXISTS alert_features (
                 feature_id TEXT PRIMARY KEY,
@@ -28,6 +42,10 @@ class FeatureStore:
                 alert_timestamp TIMESTAMP NOT NULL,
                 caller_name TEXT,
                 features JSON,
+                feature_set_version TEXT DEFAULT '1.0.0',
+                feature_spec_version TEXT DEFAULT '1.0.0',
+                computed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                computed_by TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
             
@@ -36,6 +54,10 @@ class FeatureStore:
                 mint TEXT NOT NULL,
                 candle_timestamp TIMESTAMP NOT NULL,
                 features JSON,
+                feature_set_version TEXT DEFAULT '1.0.0',
+                feature_spec_version TEXT DEFAULT '1.0.0',
+                computed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                computed_by TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
             
@@ -45,6 +67,10 @@ class FeatureStore:
                 start_timestamp TIMESTAMP NOT NULL,
                 end_timestamp TIMESTAMP NOT NULL,
                 features_array JSON,
+                feature_set_version TEXT DEFAULT '1.0.0',
+                feature_spec_version TEXT DEFAULT '1.0.0',
+                computed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                computed_by TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
             
@@ -58,23 +84,31 @@ class FeatureStore:
         mint: str,
         alert_timestamp: datetime,
         caller_name: Optional[str],
-        features: Dict[str, Any]
+        features: Dict[str, Any],
+        feature_set_version: str = '1.0.0',
+        feature_spec_version: str = '1.0.0'
     ) -> str:
-        """Store features for an alert"""
+        """Store features for an alert with versioning"""
         feature_id = f"{mint}_{int(alert_timestamp.timestamp())}"
+        computed_at = datetime.now()
+        computed_by = get_git_commit_hash()
         
         try:
             self.con.execute("""
                 INSERT OR REPLACE INTO alert_features
-                (feature_id, mint, alert_timestamp, caller_name, features, created_at)
-                VALUES (?, ?, ?, ?, ?, ?)
+                (feature_id, mint, alert_timestamp, caller_name, features, feature_set_version, feature_spec_version, computed_at, computed_by, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, [
                 feature_id,
                 mint,
                 alert_timestamp,
                 caller_name,
                 json.dumps(features),
-                datetime.now()
+                feature_set_version,
+                feature_spec_version,
+                computed_at,
+                computed_by,
+                computed_at
             ])
             self.con.commit()
             return feature_id

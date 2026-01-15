@@ -28,21 +28,28 @@ CREATE TABLE IF NOT EXISTS slices (
 
 CREATE INDEX IF NOT EXISTS idx_slices_lookup ON slices(dataset, chain, interval, start_iso, end_iso, token_set_id, schema_hash);
 
--- Feature sets: feature spec hashes
+-- Feature sets: feature spec hashes with versioning
 CREATE TABLE IF NOT EXISTS feature_sets (
   feature_set_id TEXT PRIMARY KEY,
   feature_spec_hash TEXT NOT NULL,
   feature_spec_json TEXT NOT NULL,
+  feature_set_version TEXT NOT NULL DEFAULT '1.0.0',
+  feature_spec_version TEXT NOT NULL DEFAULT '1.0.0',
+  computed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  computed_by TEXT, -- Git commit hash
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- Features: slice + feature set combinations
+-- Features: slice + feature set combinations with versioning
 CREATE TABLE IF NOT EXISTS features (
   features_id TEXT PRIMARY KEY,
   slice_id TEXT NOT NULL,
   feature_set_id TEXT NOT NULL,
   manifest_path TEXT NOT NULL,
   parquet_path TEXT NOT NULL,
+  feature_set_version TEXT NOT NULL DEFAULT '1.0.0',
+  computed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  computed_by TEXT, -- Git commit hash
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (slice_id) REFERENCES slices(slice_id),
   FOREIGN KEY (feature_set_id) REFERENCES feature_sets(feature_set_id)

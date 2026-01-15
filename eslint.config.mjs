@@ -164,7 +164,95 @@ export default tseslint.config(
    *
    * CRITICAL: Simulation must be deterministic. No Date.now(), new Date(), or Math.random() allowed.
    * Gate 1: Hard ban on nondeterminism - all time access must use SimulationClock, all randomness must use DeterministicRNG.
+   *
+   * NOTE: Simulation code is migrating to Python in backtest package. TypeScript backtest package
+   * contains orchestration layer only, which must remain pure (no I/O).
    */
+  {
+    files: ['packages/backtest/src/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: '@quantbot/storage',
+              message:
+                'Backtest (Strategy Logic layer) cannot import Storage (Infrastructure layer). Backtest orchestration must remain pure (no I/O). Use ports/interfaces from @quantbot/core instead.',
+            },
+            {
+              name: '@quantbot/api-clients',
+              message:
+                'Backtest (Strategy Logic layer) cannot import API Clients (Data Ingestion layer). Backtest orchestration must remain pure (no network I/O). Use ports/interfaces from @quantbot/core instead.',
+            },
+            {
+              name: '@quantbot/ohlcv',
+              message:
+                'Backtest (Strategy Logic layer) cannot directly import OHLCV (Feature Engineering layer). Use candle data via ports/interfaces from @quantbot/core instead.',
+            },
+            {
+              name: '@quantbot/ingestion',
+              message:
+                'Backtest (Strategy Logic layer) cannot import Ingestion (Data Ingestion layer). Backtest orchestration must remain pure (no I/O).',
+            },
+            {
+              name: '@quantbot/jobs',
+              message:
+                'Backtest (Strategy Logic layer) cannot import Jobs (Data Ingestion layer). Backtest orchestration must remain pure (no I/O).',
+            },
+            {
+              name: '@quantbot/analytics',
+              message:
+                'Backtest (Strategy Logic layer) cannot import Analytics (Feature Engineering layer). Features feed backtest, not vice versa.',
+            },
+          ],
+          patterns: [
+            {
+              group: [
+                '@quantbot/storage*',
+                '@quantbot/api-clients*',
+                '@quantbot/ohlcv*',
+                '@quantbot/ingestion*',
+                '@quantbot/jobs*',
+                '@quantbot/analytics*',
+              ],
+              message:
+                'Backtest orchestration must remain pure (no I/O, no feature engineering imports). Use ports/interfaces from @quantbot/core instead.',
+            },
+            {
+              group: ['**/axios', 'axios', 'node-fetch', '**/node-fetch'],
+              message: 'Backtest orchestration must remain pure (no network I/O). Use ports/interfaces instead.',
+            },
+          ],
+        },
+      ],
+      // Gate 1: Determinism enforcement - ban all non-deterministic time and randomness
+      'no-restricted-properties': [
+        'error',
+        {
+          object: 'Date',
+          property: 'now',
+          message:
+            'Backtest orchestration must not use Date.now(). Use injected clock for deterministic time.',
+        },
+        {
+          object: 'Math',
+          property: 'random',
+          message:
+            'Backtest orchestration must not use Math.random(). Use DeterministicRNG from @quantbot/core for seeded randomness.',
+        },
+      ],
+      // Ban new Date() constructor (non-deterministic)
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'NewExpression[callee.name="Date"]',
+          message:
+            'Backtest orchestration must not use new Date(). Use injected clock for deterministic time.',
+        },
+      ],
+    },
+  },
   {
     files: ['packages/simulation/src/**/*.ts'],
     rules: {
@@ -592,14 +680,10 @@ export default tseslint.config(
     files: ['packages/cli/src/handlers/**/*.ts'],
     rules: {
       // Forbid console.log/error in handlers (use logger from context or return structured data)
-      // Note: console.warn/error are allowed for critical errors, but prefer logger
-      'no-console': [
-        'warn', // Warning, not error, to allow gradual migration
-        {
-          allow: ['warn', 'error'], // Allow console.warn/error for critical errors only
-        },
-      ],
+      // Handlers must be pure - no console output, no process.exit, no process.env
+      'no-console': 'error', // Error - handlers must be pure, no console methods allowed
       // Forbid process.exit in handlers (let errors bubble up to executor)
+      // Forbid process.env in handlers (use CommandContext for config)
       'no-restricted-properties': [
         'error',
         {
@@ -607,6 +691,12 @@ export default tseslint.config(
           property: 'exit',
           message:
             'Handlers must not call process.exit(). Let errors bubble up to the executor. The executor handles process.exit.',
+        },
+        {
+          object: 'process',
+          property: 'env',
+          message:
+            'Handlers must not read process.env. Use CommandContext for configuration and services.',
         },
       ],
       // Note: We cannot easily detect direct service instantiation with ESLint syntax selectors

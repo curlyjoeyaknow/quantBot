@@ -1,6 +1,6 @@
 /**
  * Kill switches for strategy governance
- * 
+ *
  * Provides emergency controls to pause/stop strategies when risk limits are breached.
  */
 
@@ -99,7 +99,7 @@ export class KillSwitchManager {
    * Check if strategy kill switch is active
    */
   isStrategyKillSwitchActive(strategyId: string): boolean {
-    const strategySwitch = this.config.strategies.find(s => s.strategyId === strategyId);
+    const strategySwitch = this.config.strategies.find((s) => s.strategyId === strategyId);
     return strategySwitch?.state.enabled ?? false;
   }
 
@@ -129,7 +129,7 @@ export class KillSwitchManager {
     }
 
     if (this.isStrategyKillSwitchActive(strategyId)) {
-      const strategySwitch = this.config.strategies.find(s => s.strategyId === strategyId);
+      const strategySwitch = this.config.strategies.find((s) => s.strategyId === strategyId);
       return {
         allowed: false,
         reason: `Strategy kill switch active: ${strategySwitch?.state.reason ?? 'Manual override'}`,
@@ -178,7 +178,7 @@ export class KillSwitchManager {
    * Activate strategy kill switch
    */
   activateStrategyKillSwitch(strategyId: string, reason: string, triggeredBy: string): void {
-    const existing = this.config.strategies.find(s => s.strategyId === strategyId);
+    const existing = this.config.strategies.find((s) => s.strategyId === strategyId);
     if (existing) {
       existing.state = {
         enabled: true,
@@ -204,7 +204,7 @@ export class KillSwitchManager {
    * Deactivate strategy kill switch
    */
   deactivateStrategyKillSwitch(strategyId: string): void {
-    const existing = this.config.strategies.find(s => s.strategyId === strategyId);
+    const existing = this.config.strategies.find((s) => s.strategyId === strategyId);
     if (existing) {
       existing.state = {
         enabled: false,
@@ -219,7 +219,9 @@ export class KillSwitchManager {
     this.config.dailyLossLimit.currentDailyLossUsd += lossUsd;
 
     // Check if limit breached
-    if (this.config.dailyLossLimit.currentDailyLossUsd >= this.config.dailyLossLimit.maxDailyLossUsd) {
+    if (
+      this.config.dailyLossLimit.currentDailyLossUsd >= this.config.dailyLossLimit.maxDailyLossUsd
+    ) {
       this.config.dailyLossLimit.state = {
         enabled: true,
         reason: 'Daily loss limit breached',
@@ -274,4 +276,3 @@ export class KillSwitchManager {
     return this.config;
   }
 }
-

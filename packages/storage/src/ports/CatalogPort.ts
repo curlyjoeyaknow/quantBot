@@ -35,6 +35,10 @@ export interface FeatureSetRecord {
   featureSetId: string;
   featureSpecHash: string;
   featureSpecJson: string;
+  featureSetVersion?: string; // Version of the feature set (default: '1.0.0')
+  featureSpecVersion?: string; // DSL version of the feature spec (default: '1.0.0')
+  computedAtIso?: string; // When features were computed (default: createdAtIso)
+  computedBy?: string; // Git commit hash that computed these features
   createdAtIso: string;
 }
 
@@ -44,6 +48,9 @@ export interface FeaturesRecord {
   featureSetId: string;
   manifestPath: string;
   parquetPath: string;
+  featureSetVersion?: string; // Version of the feature set (default: '1.0.0')
+  computedAtIso?: string; // When features were computed (default: createdAtIso)
+  computedBy?: string; // Git commit hash that computed these features
   createdAtIso: string;
 }
 

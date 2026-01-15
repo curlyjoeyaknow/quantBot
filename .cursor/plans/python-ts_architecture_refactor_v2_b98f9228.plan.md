@@ -663,4 +663,3 @@ packages/
 
 - [ ] All Python tools live in `packages/*/python/`
 - [ ] `tools/` directory deleted
-- [ ] `packages/simulation/` deleted (merged into backtest)

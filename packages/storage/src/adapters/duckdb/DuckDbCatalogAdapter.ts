@@ -114,14 +114,30 @@ export class DuckDbCatalogAdapter implements CatalogPort {
 
   // Feature sets
   async upsertFeatureSet(r: FeatureSetRecord): Promise<void> {
+    const featureSetVersion = r.featureSetVersion || '1.0.0';
+    const featureSpecVersion = r.featureSpecVersion || '1.0.0';
+    const computedAtIso = r.computedAtIso || r.createdAtIso;
     await this.db.run(
-      `INSERT INTO feature_sets(feature_set_id, feature_spec_hash, feature_spec_json, created_at)
-       VALUES (?, ?, ?, ?)
+      `INSERT INTO feature_sets(feature_set_id, feature_spec_hash, feature_spec_json, feature_set_version, feature_spec_version, computed_at, computed_by, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(feature_set_id) DO UPDATE SET
          feature_spec_hash=excluded.feature_spec_hash,
          feature_spec_json=excluded.feature_spec_json,
+         feature_set_version=excluded.feature_set_version,
+         feature_spec_version=excluded.feature_spec_version,
+         computed_at=excluded.computed_at,
+         computed_by=excluded.computed_by,
          created_at=excluded.created_at`,
-      [r.featureSetId, r.featureSpecHash, r.featureSpecJson, r.createdAtIso]
+      [
+        r.featureSetId,
+        r.featureSpecHash,
+        r.featureSpecJson,
+        featureSetVersion,
+        featureSpecVersion,
+        computedAtIso,
+        r.computedBy || null,
+        r.createdAtIso,
+      ]
     );
   }
 
@@ -136,22 +152,41 @@ export class DuckDbCatalogAdapter implements CatalogPort {
       featureSetId: x.feature_set_id,
       featureSpecHash: x.feature_spec_hash,
       featureSpecJson: x.feature_spec_json,
+      featureSetVersion: x.feature_set_version || '1.0.0',
+      featureSpecVersion: x.feature_spec_version || '1.0.0',
+      computedAtIso: x.computed_at ? new Date(x.computed_at).toISOString() : new Date(x.created_at).toISOString(),
+      computedBy: x.computed_by || undefined,
       createdAtIso: new Date(x.created_at).toISOString(),
     };
   }
 
   // Features (slice + feature set)
   async upsertFeatures(r: FeaturesRecord): Promise<void> {
+    const featureSetVersion = r.featureSetVersion || '1.0.0';
+    const computedAtIso = r.computedAtIso || r.createdAtIso;
     await this.db.run(
-      `INSERT INTO features(features_id, slice_id, feature_set_id, manifest_path, parquet_path, created_at)
-       VALUES (?, ?, ?, ?, ?, ?)
+      `INSERT INTO features(features_id, slice_id, feature_set_id, manifest_path, parquet_path, feature_set_version, computed_at, computed_by, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(features_id) DO UPDATE SET
          slice_id=excluded.slice_id,
          feature_set_id=excluded.feature_set_id,
          manifest_path=excluded.manifest_path,
          parquet_path=excluded.parquet_path,
+         feature_set_version=excluded.feature_set_version,
+         computed_at=excluded.computed_at,
+         computed_by=excluded.computed_by,
          created_at=excluded.created_at`,
-      [r.featuresId, r.sliceId, r.featureSetId, r.manifestPath, r.parquetPath, r.createdAtIso]
+      [
+        r.featuresId,
+        r.sliceId,
+        r.featureSetId,
+        r.manifestPath,
+        r.parquetPath,
+        featureSetVersion,
+        computedAtIso,
+        r.computedBy || null,
+        r.createdAtIso,
+      ]
     );
   }
 
@@ -171,6 +206,9 @@ export class DuckDbCatalogAdapter implements CatalogPort {
       featureSetId: x.feature_set_id,
       manifestPath: x.manifest_path,
       parquetPath: x.parquet_path,
+      featureSetVersion: x.feature_set_version || '1.0.0',
+      computedAtIso: x.computed_at ? new Date(x.computed_at).toISOString() : new Date(x.created_at).toISOString(),
+      computedBy: x.computed_by || undefined,
       createdAtIso: new Date(x.created_at).toISOString(),
     };
   }

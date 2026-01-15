@@ -1,6 +1,6 @@
 /**
  * Telemetry schemas for live execution monitoring
- * 
+ *
  * Captures slippage deltas, latency drift, and unexpected failures
  * to calibrate execution models.
  */
@@ -52,7 +52,13 @@ export const FailureEventSchema = z.object({
   runId: z.string(),
   strategyId: z.string(),
   mint: z.string(),
-  failureType: z.enum(['transaction_failed', 'insufficient_liquidity', 'timeout', 'network_error', 'other']),
+  failureType: z.enum([
+    'transaction_failed',
+    'insufficient_liquidity',
+    'timeout',
+    'network_error',
+    'other',
+  ]),
   errorMessage: z.string(),
   expectedSuccessProbability: z.number(),
   retryAttempts: z.number(),
@@ -69,7 +75,7 @@ export const TelemetrySummarySchema = z.object({
   strategyId: z.string(),
   windowStart: z.number(),
   windowEnd: z.number(),
-  
+
   // Slippage metrics
   slippage: z.object({
     avgExpectedBps: z.number(),
@@ -79,7 +85,7 @@ export const TelemetrySummarySchema = z.object({
     maxDeltaBps: z.number(),
     eventCount: z.number(),
   }),
-  
+
   // Latency metrics
   latency: z.object({
     avgExpectedMs: z.number(),
@@ -89,7 +95,7 @@ export const TelemetrySummarySchema = z.object({
     maxDeltaMs: z.number(),
     eventCount: z.number(),
   }),
-  
+
   // Failure metrics
   failures: z.object({
     totalFailures: z.number(),
@@ -108,29 +114,34 @@ export const CalibrationRecommendationSchema = z.object({
   runId: z.string(),
   strategyId: z.string(),
   timestamp: z.number(),
-  
+
   // Recommended adjustments
-  slippageAdjustment: z.object({
-    currentBps: z.number(),
-    recommendedBps: z.number(),
-    confidence: z.number(),
-    reason: z.string(),
-  }).optional(),
-  
-  latencyAdjustment: z.object({
-    currentMs: z.number(),
-    recommendedMs: z.number(),
-    confidence: z.number(),
-    reason: z.string(),
-  }).optional(),
-  
-  failureProbabilityAdjustment: z.object({
-    currentProbability: z.number(),
-    recommendedProbability: z.number(),
-    confidence: z.number(),
-    reason: z.string(),
-  }).optional(),
+  slippageAdjustment: z
+    .object({
+      currentBps: z.number(),
+      recommendedBps: z.number(),
+      confidence: z.number(),
+      reason: z.string(),
+    })
+    .optional(),
+
+  latencyAdjustment: z
+    .object({
+      currentMs: z.number(),
+      recommendedMs: z.number(),
+      confidence: z.number(),
+      reason: z.string(),
+    })
+    .optional(),
+
+  failureProbabilityAdjustment: z
+    .object({
+      currentProbability: z.number(),
+      recommendedProbability: z.number(),
+      confidence: z.number(),
+      reason: z.string(),
+    })
+    .optional(),
 });
 
 export type CalibrationRecommendation = z.infer<typeof CalibrationRecommendationSchema>;
-

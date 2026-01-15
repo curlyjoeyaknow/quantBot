@@ -185,10 +185,17 @@ class CatalogedFeatureComputePort {
       artifactDir: args.artifactDir,
     });
 
+    // Get git commit hash for versioning
+    const gitCommitHash = codeVersion();
+
     await this.catalog.upsertFeatureSet({
       featureSetId: fSetId,
       featureSpecHash: fSetId,
       featureSpecJson: JSON.stringify(args.featureSpec),
+      featureSetVersion: '1.0.0', // Default version, can be overridden
+      featureSpecVersion: '1.0.0', // DSL version
+      computedAtIso: args.run.createdAtIso,
+      computedBy: gitCommitHash,
       createdAtIso: args.run.createdAtIso,
     });
 
@@ -198,6 +205,9 @@ class CatalogedFeatureComputePort {
       featureSetId: fSetId,
       manifestPath: res.manifestPath,
       parquetPath: res.featuresParquetPath,
+      featureSetVersion: '1.0.0', // Default version, matches feature set version
+      computedAtIso: args.run.createdAtIso,
+      computedBy: gitCommitHash,
       createdAtIso: args.run.createdAtIso,
     });
 

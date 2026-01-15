@@ -33,6 +33,7 @@ import '../commands/slices.js';
 import '../commands/lab.js';
 import '../commands/backtest.js';
 import '../commands/validation.js';
+import '../commands/architecture.js';
 
 // Import register functions to add Commander options
 import { registerObservabilityCommands } from '../commands/observability.js';
@@ -53,6 +54,7 @@ import { registerSlicesCommands } from '../commands/slices.js';
 import { registerLabCommands } from '../commands/lab.js';
 import { registerBacktestCommands } from '../commands/backtest.js';
 import { registerValidationCommands } from '../commands/validation.js';
+import { registerArchitectureCommands } from '../commands/architecture.js';
 
 // Set up program
 program
@@ -81,6 +83,7 @@ registerSlicesCommands(program);
 registerLabCommands(program);
 registerBacktestCommands(program);
 registerValidationCommands(program);
+registerArchitectureCommands(program);
 
 // Global error handler
 program.configureOutput({

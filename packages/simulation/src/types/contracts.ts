@@ -86,6 +86,16 @@ export const CostConfigSchema = z
 export type CostConfig = z.infer<typeof CostConfigSchema>;
 
 /**
+ * Current contract version
+ */
+export const CURRENT_CONTRACT_VERSION = '1.0.0';
+
+/**
+ * Supported contract versions (for backward compatibility)
+ */
+export const SUPPORTED_CONTRACT_VERSIONS = ['1.0.0'];
+
+/**
  * Simulation input contract (canonical)
  *
  * Includes determinism contract fields for replayability:

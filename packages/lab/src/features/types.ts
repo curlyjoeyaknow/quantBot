@@ -44,7 +44,7 @@ export const FeaturesSpecSchema = z.object({
 export type FeaturesSpec = z.infer<typeof FeaturesSpecSchema>;
 
 /**
- * Feature manifest
+ * Feature manifest with versioning
  */
 export interface FeatureManifest {
   version: 1;
@@ -60,6 +60,11 @@ export interface FeatureManifest {
     type: IndicatorType;
     params: Record<string, number>;
   }>;
+  // Versioning fields
+  featureSetVersion?: string; // Version of the feature set
+  featureSpecVersion?: string; // DSL version of the feature spec
+  computedAtIso?: string; // When features were computed
+  computedBy?: string; // Git commit hash that computed these features
 }
 
 /**

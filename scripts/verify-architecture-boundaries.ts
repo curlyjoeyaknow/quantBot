@@ -155,7 +155,9 @@ function testLayerBoundaries(): void {
   const featurePackages = ['analytics', 'ohlcv'];
 
   // Layer 3: Strategy Logic packages
-  const strategyPackages = ['simulation'];
+  // Note: Simulation code is migrating to Python in backtest package
+  // TypeScript backtest package contains orchestration layer only
+  const strategyPackages = ['simulation', 'backtest'];
 
   // Check: Simulation (Strategy Logic) cannot import from any I/O packages
   for (const pkg of strategyPackages) {
