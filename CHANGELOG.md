@@ -6,6 +6,110 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Web Lab UI - Complete Implementation** - Full-featured web interface for backtesting, optimization, and strategy management
+  - **Strategy Management UI** (Phase VIII Task 8.1):
+    - Strategy list with filtering by type (ladder, trailing, indicator)
+    - Search functionality across strategy names and IDs
+    - Strategy editor with live JSON validation and preview
+    - Strategy comparison view (side-by-side diff of up to 3 strategies)
+    - Strategy CRUD operations (create, read, update, delete)
+    - Visual badges for strategy types
+  - **Optimization UI** (Phase VIII Task 8.2):
+    - Grid search and random search configuration interface
+    - Parameter grid builder (TP/SL multiples, time stops, trail activation)
+    - Constraint configuration (min win rate, max drawdown, min avg R, min trades)
+    - Active optimization runs tracker with real-time progress
+    - Optimization results table (sortable by objective score, avg R, win rate, profit factor)
+    - Export results to CSV/JSON
+    - Parameter heatmap visualization (coming soon)
+  - **Equity Curve & Capital-Aware Simulation** (Phase VIII Task 8.3):
+    - Python equity curve computation (`tools/backtest/lib/equity_curve.py`)
+    - Capital-aware backtesting with position sizing (fixed USD or % of equity)
+    - Interactive equity curve chart (Chart.js with zoom/pan)
+    - Drawdown chart with period highlighting
+    - Portfolio metrics dashboard (final capital, total PnL, max DD, Sharpe, win rate)
+    - Trade log table with entry/exit details
+    - Drawdown periods table with recovery tracking
+  - **Profitable Strategy Finder** (Phase VIII Task 8.4):
+    - Enhanced leaderboard with objective score sorting
+    - Caller-strategy performance matrix (cross-tabulation view)
+    - Python robustness scorer (`tools/backtest/lib/robustness_scorer.py`)
+    - Walk-forward validation metrics
+    - Degradation analysis (in-sample vs out-of-sample)
+    - Consistency scoring across time periods
+  - **Navigation**: Unified navigation bar across all views (Strategies, Runs, Leaderboard, Truth, Policies, Optimize, Governance, Journal)
+  - **Styling**: Dark theme with consistent color scheme, metric cards, badges, and responsive layouts
+
+- **Python/TypeScript Separation Rules** - Mandatory architectural pattern for data science work
+  - **Rule document**: `.cursor/rules/50-python-typescript-separation.mdc`
+  - **Python responsibilities**: Optimization algorithms, trade simulation, metrics calculation, equity curves, visualization, data export, quality scoring
+  - **TypeScript responsibilities**: CLI parsing, HTTP routing, subprocess orchestration, Zod validation, database schema, UI rendering, WebSocket updates
+  - **Boundary contract**: TypeScript calls Python via `PythonEngine`, Python outputs JSON to stdout, TypeScript validates with Zod
+  - **Forbidden patterns**: No data science in TypeScript, no HTTP servers in Python, no logic duplication
+  - **Testing requirements**: Python unit tests (pytest), TypeScript handler tests (mock PythonEngine), integration tests
+  - **Code review checklist**: Enforce separation in all new code
+
+- **Live Telemetry Collection** (Phase VII Task 7.3) - Execution monitoring and model calibration
+  - **Telemetry schemas** (`packages/core/src/telemetry/schemas.ts`):
+    - `SlippageEvent`: Expected vs actual slippage tracking
+    - `LatencyEvent`: Expected vs actual execution latency
+    - `FailureEvent`: Unexpected execution failures
+    - `TelemetrySummary`: Aggregated metrics over time windows
+    - `CalibrationRecommendation`: Model adjustment suggestions
+  - **Python telemetry collector** (`tools/execution/telemetry_collector.py`):
+    - Compute telemetry summary from events
+    - Generate calibration recommendations (slippage, latency, failure probability)
+    - Confidence-based adjustment thresholds
+  - **API endpoints**:
+    - `/api/telemetry/slippage-drift/:runId`
+    - `/api/telemetry/latency-drift/:runId`
+    - `/api/telemetry/calibration/:runId`
+  - **Purpose**: Feed live execution data back to calibrate execution models (slippage, latency, failure rates)
+
+- **Strategy Governance** (Phase IX) - Approval workflow and kill switches
+  - **Kill switches** (`packages/core/src/governance/kill-switches.ts`):
+    - Global kill switch (pause all strategies)
+    - Per-strategy kill switches
+    - Daily loss limit (auto-pause when exceeded)
+    - Drawdown limit (auto-pause when breached)
+    - `KillSwitchManager` class for centralized control
+  - **Strategy approval workflow**:
+    - Strategy states: draft → approved → live → deprecated
+    - Approval checklist (min trades, min win rate, max drawdown, positive expectancy, profit factor, walk-forward validation)
+    - Approval tracking (approved_by, approved_at)
+  - **Governance UI** (`/governance`):
+    - Kill switch dashboard with status indicators
+    - Strategy approval table with state management
+    - Approval checklist viewer
+    - One-click approve/go-live/deprecate actions
+  - **Database schema**: Extended `backtest_strategies` table with `status`, `approval_checklist_json`, `approved_at`, `approved_by`
+  - **API endpoints**:
+    - `/api/governance/kill-switches` (GET)
+    - `/api/governance/kill-switches/global` (POST)
+    - `/api/strategies/:strategyId/approve` (POST)
+    - `/api/strategies/:strategyId/go-live` (POST)
+    - `/api/strategies/:strategyId/deprecate` (POST)
+
+- **Knowledge Retention** (Phase X) - Run notes and learning journal
+  - **Run notes**:
+    - Attach notes to specific backtest runs
+    - Tag notes for categorization
+    - API endpoints: `/api/runs/:runId/notes` (GET/POST/DELETE)
+  - **Learning journal** (`/journal`):
+    - Markdown-style journal entries
+    - Link entries to multiple runs
+    - Tag-based organization
+    - Full-text search across entries
+    - Filter by tags
+    - Edit/delete entries
+  - **Database schema**:
+    - `backtest_run_notes` table (note_id, run_id, note_text, tags, created_at, updated_at)
+    - `backtest_journal_entries` table (entry_id, title, content, tags, linked_runs, created_at, updated_at)
+  - **API endpoints**:
+    - `/api/journal` (GET/POST)
+    - `/api/journal/:entryId` (DELETE)
+  - **Purpose**: Capture learnings, track what worked/failed, build institutional knowledge
+
 - **OHLCV Run Tracking Integration** - Integrated audit trail system into ingestion workflows
   - **Automatic run tracking**: Every `ingestForCalls()` now creates a run manifest with full audit trail
   - **Run manifest generation**: Captures git commit, script version, CLI args, environment vars, input hash

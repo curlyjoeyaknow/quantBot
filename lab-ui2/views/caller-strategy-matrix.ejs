@@ -1,0 +1,118 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Lab UI — Caller-Strategy Matrix</title>
+  <link rel="stylesheet" href="/public/style.css" />
+  <style>
+    .matrix-container {
+      overflow-x: auto;
+      margin-top: 1rem;
+    }
+    .matrix-table {
+      border-collapse: separate;
+      border-spacing: 0;
+      min-width: 100%;
+    }
+    .matrix-table th,
+    .matrix-table td {
+      padding: 8px;
+      text-align: center;
+      min-width: 80px;
+      border: 1px solid var(--border);
+    }
+    .matrix-table th {
+      background: rgba(16, 24, 38, 0.8);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .matrix-table th:first-child,
+    .matrix-table td:first-child {
+      position: sticky;
+      left: 0;
+      background: var(--panel);
+      z-index: 5;
+      text-align: left;
+    }
+    .matrix-table th:first-child {
+      z-index: 15;
+    }
+    .cell-positive {
+      background: rgba(34, 197, 94, 0.2);
+      color: #4ade80;
+    }
+    .cell-negative {
+      background: rgba(239, 68, 68, 0.2);
+      color: #f87171;
+    }
+    .cell-neutral {
+      background: rgba(100, 116, 139, 0.1);
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <nav>
+    <a href="/strategies">Strategies</a>
+    <a href="/runs">Runs</a>
+    <a href="/leaderboard">Leaderboard</a>
+    <a href="/truth">Truth</a>
+    <a href="/policies">Policies</a>
+    <a href="/optimize">Optimize</a>
+  </nav>
+
+  <main>
+    <div class="row" style="align-items: center; margin-bottom: 1rem;">
+      <h1>Caller-Strategy Performance Matrix</h1>
+      <button onclick="window.location.href='/leaderboard'" style="margin-left: auto;">← Back</button>
+    </div>
+
+    <section class="card">
+      <h2>Configuration</h2>
+      <div class="grid">
+        <label>Run ID<br/>
+          <input id="runId" placeholder="run_xyz123" />
+        </label>
+        <label>Metric<br/>
+          <select id="metric">
+            <option value="avg_r">Avg R</option>
+            <option value="win_rate">Win Rate</option>
+            <option value="profit_factor">Profit Factor</option>
+            <option value="total_return">Total Return</option>
+          </select>
+        </label>
+      </div>
+      <div class="row">
+        <button id="load" class="btn-primary">Load Matrix</button>
+        <span id="msg"></span>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Performance Matrix</h2>
+      <p class="hint">Shows which callers perform best with which strategies. Green = good, Red = bad.</p>
+      <div class="matrix-container">
+        <table id="matrix" class="matrix-table">
+          <thead>
+            <tr>
+              <th>Caller</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Insights</h2>
+      <div id="insights" style="background: #f9f9f9; padding: 1rem; border-radius: 4px;">
+        <p style="color: #999;">Load matrix to see insights</p>
+      </div>
+    </section>
+  </main>
+
+  <script src="/public/caller-strategy-matrix.js"></script>
+</body>
+</html>
+

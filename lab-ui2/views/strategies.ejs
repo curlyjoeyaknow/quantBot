@@ -28,16 +28,39 @@
       <div class="row">
         <button id="seed">Seed example</button>
         <button id="save">Save strategy</button>
+        <button id="validate">Validate JSON</button>
         <span id="msg"></span>
       </div>
     </section>
 
     <section class="card">
       <h2>Saved Strategies</h2>
-      <table id="tbl">
-        <thead><tr><th>ID</th><th>Name</th><th>Created</th></tr></thead>
-        <tbody></tbody>
-      </table>
+      <div class="row" style="margin-bottom: 1rem;">
+        <input id="search" placeholder="Search strategies..." style="flex: 1; margin-right: 0.5rem;" />
+        <select id="filterType">
+          <option value="">All Types</option>
+          <option value="ladder">Ladder</option>
+          <option value="trailing">Trailing</option>
+          <option value="indicator">Indicator</option>
+        </select>
+        <button id="compare">Compare Selected</button>
+      </div>
+      <div class="table-scroll">
+        <table id="tbl">
+          <thead>
+            <tr>
+              <th><input type="checkbox" id="selectAll" /></th>
+              <th>ID</th>
+              <th>Name</th>
+              <th>Type</th>
+              <th>Created</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="hint"><span id="count">0</span> strategies (<span id="selected">0</span> selected)</p>
     </section>
   </main>
 

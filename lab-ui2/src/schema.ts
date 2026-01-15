@@ -10,11 +10,15 @@ export async function ensureUiSchema(db: DuckDb) {
   // Use exec(): it can execute multiple DDL statements in one call (no params).
   await exec(
     db,
-    `-- Strategies table
+    `    -- Strategies table
     CREATE TABLE IF NOT EXISTS backtest_strategies (
       strategy_id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
       config_json TEXT NOT NULL,
+      status TEXT DEFAULT 'draft', -- draft, approved, live, deprecated
+      approval_checklist_json TEXT,
+      approved_at TIMESTAMP,
+      approved_by TEXT,
       created_at TIMESTAMP DEFAULT now()
     );
 
@@ -107,6 +111,31 @@ export async function ensureUiSchema(db: DuckDb) {
     );
 
     CREATE INDEX IF NOT EXISTS idx_policy_results_run ON backtest_policy_results(run_id);
-    CREATE INDEX IF NOT EXISTS idx_policy_results_policy ON backtest_policy_results(policy_id);`
+    CREATE INDEX IF NOT EXISTS idx_policy_results_policy ON backtest_policy_results(policy_id);
+
+    -- Run notes table (Phase X - Knowledge Retention)
+    CREATE TABLE IF NOT EXISTS backtest_run_notes (
+      note_id TEXT PRIMARY KEY,
+      run_id TEXT NOT NULL,
+      note_text TEXT NOT NULL,
+      tags TEXT, -- comma-separated tags
+      created_at TIMESTAMP DEFAULT now(),
+      updated_at TIMESTAMP DEFAULT now()
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_run_notes_run ON backtest_run_notes(run_id);
+
+    -- Learning journal table (Phase X - Knowledge Retention)
+    CREATE TABLE IF NOT EXISTS backtest_journal_entries (
+      entry_id TEXT PRIMARY KEY,
+      title TEXT NOT NULL,
+      content TEXT NOT NULL,
+      tags TEXT, -- comma-separated tags
+      linked_runs TEXT, -- comma-separated run IDs
+      created_at TIMESTAMP DEFAULT now(),
+      updated_at TIMESTAMP DEFAULT now()
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_journal_created ON backtest_journal_entries(created_at);`
   );
 }

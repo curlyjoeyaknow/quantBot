@@ -1,0 +1,304 @@
+# Python/TypeScript Separation (MANDATORY)
+
+## Core Principle
+
+**Python does the heavy lifting. TypeScript orchestrates.**
+
+This separation ensures:
+- Data science work stays in Python (where libraries are mature)
+- TypeScript focuses on orchestration, validation, and UI
+- No logic duplication between languages
+- Clear boundaries and testability
+
+## Python Responsibilities (Heavy Computation)
+
+Python handles all computationally intensive and data science tasks:
+
+- **Optimization algorithms**
+  - Grid search, random search, Bayesian optimization
+  - Parameter space exploration
+  - Objective function computation
+  
+- **Trade simulation**
+  - TP/SL execution, trailing stops, exit strategies
+  - Entry timing strategies (delayed, dip-buy, confirmation)
+  - Position sizing and risk management
+  - Intrabar order execution
+  
+- **Metrics calculation**
+  - Sharpe ratio, Sortino ratio, Calmar ratio
+  - Drawdown analysis (max DD, DD-to-2x, recovery time)
+  - Win rate, profit factor, expectancy
+  - R-multiples and risk-adjusted returns
+  
+- **Equity curve generation**
+  - Capital-aware backtesting
+  - Position sizing (fixed USD, % of equity)
+  - Compound returns tracking
+  - Drawdown period identification
+  
+- **Visualization**
+  - Matplotlib/Plotly for heatmaps
+  - Parameter space visualizations
+  - Distribution plots
+  
+- **Data export**
+  - ClickHouse → Parquet slicing
+  - Batch data processing
+  - Coverage analysis
+  
+- **Quality scoring**
+  - Objective function evaluation
+  - Quality filter application
+  - Robustness scoring
+
+## TypeScript Responsibilities (Orchestration)
+
+TypeScript handles orchestration, validation, and user interfaces:
+
+- **CLI command parsing**
+  - Argument validation with Zod
+  - Command routing to handlers
+  - Help text and examples
+  
+- **HTTP API routing**
+  - Express route handlers
+  - Request validation
+  - Response formatting
+  
+- **Subprocess orchestration**
+  - PythonEngine calls to Python scripts
+  - Argument serialization (JSON/CLI args)
+  - Timeout management
+  - Error handling
+  
+- **Zod schema validation**
+  - Validate Python script outputs
+  - Ensure type safety at boundaries
+  - Catch malformed responses early
+  
+- **Database schema management**
+  - DuckDB table creation
+  - Schema migrations
+  - Query building (simple queries only)
+  
+- **UI rendering**
+  - EJS template rendering
+  - Static file serving
+  - Client-side JavaScript (minimal logic)
+  
+- **WebSocket for real-time updates**
+  - Progress tracking
+  - Live status updates
+  - Event streaming
+
+## Boundary Contract
+
+### TypeScript → Python
+
+TypeScript calls Python via `PythonEngine`:
+
+```typescript
+import { PythonEngine } from '@quantbot/utils';
+
+const engine = new PythonEngine();
+
+// Call Python script with validated args
+const result = await engine.runScript(
+  'tools/backtest/lib/optimizer.py',
+  {
+    duckdb: '/path/to/db.duckdb',
+    tp_mult: [2.0, 3.0, 4.0],
+    sl_mult: [0.5, 0.7, 1.0],
+    min_win_rate: 0.4,
+  },
+  OptimizerResultSchema, // Zod schema
+  { timeout: 600000 } // 10 minutes
+);
+```
+
+**Rules:**
+- All args must be JSON-serializable (no functions, no classes)
+- Python script outputs JSON to stdout (last line)
+- TypeScript validates output with Zod schema
+- No business logic in TypeScript handler
+
+### Python → TypeScript
+
+Python scripts output JSON:
+
+```python
+import json
+import sys
+
+def main():
+    # ... computation ...
+    
+    result = {
+        'results': [...],
+        'metrics': {...},
+        'quality_stats': {...},
+    }
+    
+    # Output JSON to stdout (last line)
+    print(json.dumps(result))
+
+if __name__ == '__main__':
+    main()
+```
+
+**Rules:**
+- Output JSON on last line of stdout
+- Use stderr for progress/logging (not stdout)
+- Exit with non-zero code on error
+- Include error message in JSON if recoverable
+
+## Forbidden Patterns
+
+### ❌ TypeScript Implementing Data Science
+
+```typescript
+// ❌ NO - Sharpe ratio calculation in TypeScript
+function calculateSharpeRatio(returns: number[]): number {
+  const mean = returns.reduce((a, b) => a + b) / returns.length;
+  const std = Math.sqrt(
+    returns.map(r => (r - mean) ** 2).reduce((a, b) => a + b) / returns.length
+  );
+  return (mean / std) * Math.sqrt(252);
+}
+```
+
+**Why forbidden:** Python has mature libraries (numpy, pandas) for this. TypeScript implementation will be slower and error-prone.
+
+**Correct approach:** Call Python script that uses numpy/pandas.
+
+### ❌ TypeScript Implementing Trade Simulation
+
+```typescript
+// ❌ NO - Trade simulation logic in TypeScript
+function simulateTrade(candles: Candle[], tpMult: number, slMult: number) {
+  let position = null;
+  for (const candle of candles) {
+    // ... complex simulation logic ...
+  }
+  return pnl;
+}
+```
+
+**Why forbidden:** Trade simulation has many edge cases (intrabar order, partial fills, slippage). Python implementation is battle-tested.
+
+**Correct approach:** Call `tools/backtest/lib/trade_simulator.py`.
+
+### ❌ Python Handling HTTP Requests
+
+```python
+# ❌ NO - Python script starting web server
+from flask import Flask
+app = Flask(__name__)
+
+@app.route('/api/optimize')
+def optimize():
+    # ...
+```
+
+**Why forbidden:** TypeScript Express server handles all HTTP. Python scripts are called as subprocesses.
+
+**Correct approach:** TypeScript Express route calls Python script via PythonEngine.
+
+### ❌ Duplicating Logic Between Languages
+
+```typescript
+// ❌ NO - Same logic in both TypeScript and Python
+function calculateWinRate(trades: Trade[]): number {
+  const wins = trades.filter(t => t.pnl > 0).length;
+  return wins / trades.length;
+}
+```
+
+```python
+# ❌ NO - Duplicate of TypeScript version
+def calculate_win_rate(trades):
+    wins = sum(1 for t in trades if t['pnl'] > 0)
+    return wins / len(trades)
+```
+
+**Why forbidden:** Duplication leads to drift and bugs. Pick one language (Python for metrics).
+
+**Correct approach:** Implement once in Python, call from TypeScript.
+
+## Testing Requirements
+
+### Python Tests
+
+- Unit tests for all computation functions
+- Use pytest
+- Mock file I/O and database access
+- Test edge cases (empty data, NaN, inf)
+
+```python
+def test_equity_curve_empty_events():
+    result = compute_equity_curve([], initial_capital=10000)
+    assert result['metrics']['final_capital'] == 10000
+    assert len(result['equity_curve']) == 0
+```
+
+### TypeScript Tests
+
+- Unit tests for handlers (mock PythonEngine)
+- Integration tests for PythonEngine (real subprocess)
+- Validate Zod schemas catch malformed Python output
+
+```typescript
+it('calls Python optimizer with correct args', async () => {
+  const mockEngine = {
+    runScript: vi.fn().mockResolvedValue({ results: [] }),
+  };
+  
+  await optimizeHandler(args, { pythonEngine: mockEngine });
+  
+  expect(mockEngine.runScript).toHaveBeenCalledWith(
+    'tools/backtest/lib/optimizer.py',
+    expect.objectContaining({ tp_mult: [2.0, 3.0] }),
+    expect.any(Object),
+    expect.any(Object)
+  );
+});
+```
+
+## Migration Checklist
+
+When refactoring existing code to follow this pattern:
+
+1. ✅ Identify data science logic in TypeScript
+2. ✅ Move to Python script in `tools/`
+3. ✅ Add JSON output to Python script
+4. ✅ Create Zod schema for Python output
+5. ✅ Replace TypeScript logic with PythonEngine call
+6. ✅ Add unit tests for Python function
+7. ✅ Add integration test for TypeScript handler
+8. ✅ Remove old TypeScript implementation
+9. ✅ Update documentation
+
+## Code Review Checklist
+
+When reviewing code, check:
+
+- [ ] No Sharpe/drawdown/metrics calculation in TypeScript
+- [ ] No trade simulation logic in TypeScript
+- [ ] No optimization algorithms in TypeScript
+- [ ] All PythonEngine calls have Zod validation
+- [ ] Python scripts output JSON on stdout
+- [ ] Python scripts use stderr for logging
+- [ ] No HTTP servers in Python
+- [ ] No duplicate logic between languages
+- [ ] Tests exist for both layers
+
+## Exceptions
+
+Rare cases where TypeScript may contain simple calculations:
+
+- **UI formatting** (e.g., `formatPercent`, `formatCurrency`)
+- **Simple aggregations** for UI display (e.g., `sum`, `average` of already-computed metrics)
+- **Client-side interactivity** (e.g., chart zoom, table sorting)
+
+**Rule of thumb:** If it requires more than 5 lines of logic, move to Python.

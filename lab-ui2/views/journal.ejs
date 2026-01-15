@@ -1,0 +1,68 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Lab UI — Learning Journal</title>
+  <link rel="stylesheet" href="/public/style.css" />
+</head>
+<body>
+  <nav>
+    <a href="/strategies">Strategies</a>
+    <a href="/runs">Runs</a>
+    <a href="/leaderboard">Leaderboard</a>
+    <a href="/truth">Truth</a>
+    <a href="/policies">Policies</a>
+    <a href="/optimize">Optimize</a>
+    <a href="/governance">Governance</a>
+    <a href="/journal" class="active">Journal</a>
+  </nav>
+
+  <main>
+    <h1>Learning Journal</h1>
+
+    <section class="card">
+      <h2>New Entry</h2>
+      <label>Title<br/>
+        <input id="title" placeholder="What did you learn?" />
+      </label>
+      <label>Content<br/>
+        <textarea id="content" rows="10" placeholder="Describe your findings, insights, and lessons learned..."></textarea>
+      </label>
+      <div class="grid">
+        <label>Tags (comma-separated)<br/>
+          <input id="tags" placeholder="optimization, strategy, risk-management" />
+        </label>
+        <label>Linked Runs (comma-separated IDs)<br/>
+          <input id="linkedRuns" placeholder="run_abc123, run_xyz456" />
+        </label>
+      </div>
+      <div class="row">
+        <button id="save" class="btn-primary">Save Entry</button>
+        <button id="clear">Clear</button>
+        <span id="msg"></span>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Search Journal</h2>
+      <div class="row">
+        <input id="search" placeholder="Search entries..." style="flex: 1; margin-right: 0.5rem;" />
+        <select id="filterTag">
+          <option value="">All Tags</option>
+        </select>
+        <button id="searchBtn">Search</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Journal Entries</h2>
+      <div id="entries">
+        <p style="color: #999;">No entries yet</p>
+      </div>
+    </section>
+  </main>
+
+  <script src="/public/journal.js"></script>
+</body>
+</html>
+

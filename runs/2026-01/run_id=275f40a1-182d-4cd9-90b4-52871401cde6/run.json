@@ -1,0 +1,39 @@
+{
+  "run_id": "275f40a1-182d-4cd9-90b4-52871401cde6",
+  "run_type": "path-only",
+  "created_at": "2026-01-14T22:35:31.434Z",
+  "started_at": "2026-01-14T22:35:31.442Z",
+  "completed_at": "2026-01-14T22:35:31.652Z",
+  "status": "completed",
+  "git_commit": "04794c9f7be3d4fdb259abcbf4a8ce6376f77cea",
+  "git_branch": "master",
+  "git_dirty": true,
+  "dataset": {
+    "from": "2024-01-01T00:00:00.000+00:00",
+    "to": "2024-01-02T00:00:00.000+00:00",
+    "interval": "1m",
+    "calls_count": 1
+  },
+  "parameters": {},
+  "schema_version": {
+    "manifest": "1.0.0",
+    "artifacts": "1.0.0"
+  },
+  "artifacts": {
+    "alerts": {
+      "rows": 1,
+      "path": "inputs/alerts.parquet"
+    },
+    "paths": {
+      "rows": 1,
+      "path": "truth/paths.parquet"
+    }
+  },
+  "timing": {
+    "plan_ms": 1,
+    "coverage_ms": 1,
+    "slice_ms": 1,
+    "execution_ms": 2,
+    "total_ms": 5
+  }
+}

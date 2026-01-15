@@ -1,0 +1,136 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Lab UI — Optimize Strategy</title>
+  <link rel="stylesheet" href="/public/style.css" />
+</head>
+<body>
+  <nav>
+    <a href="/strategies">Strategies</a>
+    <a href="/runs">Runs</a>
+    <a href="/leaderboard">Leaderboard</a>
+    <a href="/truth">Truth</a>
+    <a href="/policies">Policies</a>
+    <a href="/optimize" class="active">Optimize</a>
+  </nav>
+
+  <main>
+    <h1>Strategy Optimization</h1>
+
+    <section class="card">
+      <h2>Launch Optimization Run</h2>
+      
+      <div class="grid">
+        <label>Path-Only Run ID<br/>
+          <input id="pathOnlyRunId" placeholder="run_xyz123" />
+        </label>
+        <label>Caller Filter<br/>
+          <input id="caller" placeholder="caller_name or leave empty for all" />
+        </label>
+      </div>
+
+      <div class="grid">
+        <label>Policy Type<br/>
+          <select id="policyType">
+            <option value="fixed-stop">Fixed Stop</option>
+            <option value="trailing-stop">Trailing Stop</option>
+            <option value="time-stop">Time Stop</option>
+            <option value="combined">Combined</option>
+          </select>
+        </label>
+        <label>Search Algorithm<br/>
+          <select id="searchAlgo">
+            <option value="grid">Grid Search</option>
+            <option value="random">Random Search</option>
+          </select>
+        </label>
+      </div>
+
+      <h3>Parameter Grid</h3>
+      <div class="grid">
+        <div>
+          <label>TP Multiples (comma-separated)<br/>
+            <input id="tpMults" value="2.0, 3.0, 4.0, 5.0" />
+          </label>
+        </div>
+        <div>
+          <label>SL Multiples (comma-separated)<br/>
+            <input id="slMults" value="0.3, 0.5, 0.7, 1.0" />
+          </label>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div>
+          <label>Time Stop Hours (comma-separated, optional)<br/>
+            <input id="timeStopHours" placeholder="1, 2, 4, 8" />
+          </label>
+        </div>
+        <div>
+          <label>Trail Activation % (comma-separated, optional)<br/>
+            <input id="trailActivation" placeholder="1.5, 2.0, 2.5" />
+          </label>
+        </div>
+      </div>
+
+      <h3>Constraints</h3>
+      <div class="grid">
+        <div>
+          <label>Min Win Rate (%)<br/>
+            <input type="number" id="minWinRate" value="40" min="0" max="100" />
+          </label>
+        </div>
+        <div>
+          <label>Max Drawdown (bps)<br/>
+            <input type="number" id="maxDrawdown" value="5000" min="0" />
+          </label>
+        </div>
+      </div>
+
+      <div class="grid">
+        <div>
+          <label>Min Avg R<br/>
+            <input type="number" id="minAvgR" value="0.5" step="0.1" />
+          </label>
+        </div>
+        <div>
+          <label>Min Trades<br/>
+            <input type="number" id="minTrades" value="10" min="1" />
+          </label>
+        </div>
+      </div>
+
+      <div class="row">
+        <button id="launch" class="btn-primary">Launch Optimization</button>
+        <button id="loadExample">Load Example</button>
+        <span id="msg"></span>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Active Optimization Runs</h2>
+      <div class="table-scroll">
+        <table id="tblRuns">
+          <thead>
+            <tr>
+              <th>Run ID</th>
+              <th>Caller</th>
+              <th>Status</th>
+              <th>Progress</th>
+              <th>Best Score</th>
+              <th>Started</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <p class="hint"><span id="runCount">0</span> optimization runs</p>
+    </section>
+  </main>
+
+  <script src="/public/optimize.js"></script>
+</body>
+</html>
+

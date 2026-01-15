@@ -25,6 +25,14 @@ async function main() {
 
   app.get('/', (_req, res) => res.redirect('/strategies'));
   app.get('/strategies', (_req, res) => res.render('strategies'));
+  app.get('/strategy-editor', (_req, res) => res.render('strategy-editor'));
+  app.get('/strategy-compare', (_req, res) => res.render('strategy-compare'));
+  app.get('/optimize', (_req, res) => res.render('optimize'));
+  app.get('/optimize-results', (_req, res) => res.render('optimize-results'));
+  app.get('/equity', (_req, res) => res.render('equity'));
+  app.get('/caller-strategy-matrix', (_req, res) => res.render('caller-strategy-matrix'));
+  app.get('/governance', (_req, res) => res.render('governance'));
+  app.get('/journal', (_req, res) => res.render('journal'));
   app.get('/runs', (_req, res) => res.render('runs'));
   app.get('/leaderboard', (_req, res) => res.render('leaderboard'));
   // Phase 6 - Truth leaderboard and policies views
