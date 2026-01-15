@@ -22,6 +22,128 @@
     </p>
 
     <section class="card">
+      <h2>
+        <span>Available Options & Commands</span>
+        <button id="toggleHelp" style="float: right; font-size: 0.8em;">Show Help</button>
+      </h2>
+      <div id="helpSection" style="display: none;">
+        <h3>Policy Types</h3>
+        <div style="margin-left: 20px;">
+          <h4>1. Fixed Stop (<code>fixed_stop</code>)</h4>
+          <pre><code>{
+  "kind": "fixed_stop",
+  "stopPct": 0.20,        // Stop loss % (0.20 = 20% loss)
+  "takeProfitPct": 1.0    // Optional: Take profit % (1.0 = 100% gain)
+}</code></pre>
+
+          <h4>2. Time Stop (<code>time_stop</code>)</h4>
+          <pre><code>{
+  "kind": "time_stop",
+  "maxHoldMs": 3600000,   // Max hold time in milliseconds (1 hour)
+  "takeProfitPct": 1.0    // Optional: Take profit %
+}</code></pre>
+
+          <h4>3. Trailing Stop (<code>trailing_stop</code>)</h4>
+          <pre><code>{
+  "kind": "trailing_stop",
+  "activationPct": 0.20,  // Activate after 20% gain
+  "trailPct": 0.10,       // Exit if drops 10% from peak
+  "hardStopPct": 0.15     // Optional: Hard stop at 15% loss
+}</code></pre>
+
+          <h4>4. Ladder (<code>ladder</code>)</h4>
+          <pre><code>{
+  "kind": "ladder",
+  "levels": [
+    { "multiple": 2.0, "fraction": 0.5 },  // Exit 50% at 2x
+    { "multiple": 3.0, "fraction": 0.3 },  // Exit 30% at 3x
+    { "multiple": 5.0, "fraction": 0.2 }   // Exit 20% at 5x
+  ],
+  "stopPct": 0.20         // Optional: Stop loss for remaining position
+}</code></pre>
+
+          <h4>5. Combo (<code>combo</code>)</h4>
+          <pre><code>{
+  "kind": "combo",
+  "policies": [
+    { "kind": "fixed_stop", "stopPct": 0.15 },
+    { "kind": "time_stop", "maxHoldMs": 7200000 }
+  ]
+}</code></pre>
+        </div>
+
+        <h3>Optimizer Constraints</h3>
+        <div style="margin-left: 20px;">
+          <pre><code>{
+  "maxStopOutRate": 0.25,           // Max stop-out rate (0.25 = 25%)
+  "maxP95DrawdownBps": -2000,       // Max 95th percentile drawdown in bps (-2000 = -20%)
+  "maxTimeExposedMs": 3600000       // Max median time exposed in ms (1 hour)
+}</code></pre>
+        </div>
+
+        <h3>CLI Command Options</h3>
+        <div style="margin-left: 20px;">
+          <h4>Optimize Command:</h4>
+          <pre><code>quantbot backtest optimize \
+  --caller "TY/ACC" \                    # Optional: caller name (optimizes all if omitted)
+  --caller-groups '["caller1","caller2"]' \  # Optional: JSON array of callers
+  --interval "5m" \                     # Required: Candle interval (1m, 5m, 15m, 1h)
+  --from "2024-01-01T00:00:00Z" \      # Required: Start date (ISO 8601)
+  --to "2024-01-31T23:59:59Z" \        # Required: End date (ISO 8601)
+  --max-stop-out-rate 0.3 \            # Optional: Max stop-out rate (default: 0.3)
+  --max-p95-drawdown-bps -3000 \       # Optional: Max p95 drawdown bps (default: -3000)
+  --max-time-exposed-ms 172800000 \    # Optional: Max time exposed ms (default: 48h)
+  --taker-fee-bps 30 \                 # Optional: Taker fee bps (default: 30)
+  --slippage-bps 10 \                  # Optional: Slippage bps (default: 10)
+  --execution-model simple \           # Optional: pumpfun, pumpswap, raydium, minimal, simple (default: simple)
+  --format table                        # Optional: json, table, csv (default: table)</code></pre>
+
+          <h4>Policy Command:</h4>
+          <pre><code>quantbot backtest policy \
+  --policy-json '{"kind":"fixed_stop","stopPct":0.20}' \  # Required: Policy JSON
+  --policy-id "my-policy-id" \         # Optional: Policy ID (auto-generated if not provided)
+  --filter "TY/ACC" \                  # Optional: Filter by caller name
+  --interval "5m" \                    # Required: Candle interval
+  --from "2024-01-01T00:00:00Z" \     # Required: Start date
+  --to "2024-01-31T23:59:59Z" \       # Required: End date
+  --taker-fee-bps 30 \                # Optional: Taker fee bps (default: 30)
+  --slippage-bps 10 \                 # Optional: Slippage bps (default: 10)
+  --execution-model simple \          # Optional: Execution model (default: simple)
+  --run-id "existing-run-id" \        # Optional: Existing run ID to use
+  --format json                        # Optional: json, table, csv (default: json)</code></pre>
+        </div>
+
+        <h3>Execution Models</h3>
+        <div style="margin-left: 20px;">
+          <ul>
+            <li><code>simple</code> - Use simple --slippage-bps and --taker-fee-bps values (default)</li>
+            <li><code>pumpfun</code> - PumpFun-specific slippage/latency model</li>
+            <li><code>pumpswap</code> - PumpSwap-specific model</li>
+            <li><code>raydium</code> - Raydium DEX model</li>
+            <li><code>minimal</code> - Zero slippage/latency (for testing)</li>
+          </ul>
+        </div>
+
+        <h3>Scoring Function</h3>
+        <div style="margin-left: 20px;">
+          <p><strong>Primary:</strong> Maximize median net return</p>
+          <p><strong>Subject to:</strong></p>
+          <ul>
+            <li>Stop-out rate ≤ maxStopOutRate</li>
+            <li>p95 drawdown ≤ maxP95DrawdownBps</li>
+            <li>Median time-exposed ≤ maxTimeExposedMs</li>
+          </ul>
+          <p><strong>Tie-breakers:</strong></p>
+          <ul>
+            <li>Better tail capture</li>
+            <li>Faster time-to-2x</li>
+            <li>Lower median drawdown</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
       <h2>Run Policy Backtest</h2>
       <div class="row">
         <label>Path-Only Run ID&nbsp;<input id="pathOnlyRunId" placeholder="run_id from path-only" /></label>
@@ -96,6 +218,14 @@
 
   <script>
     const $ = (id) => document.getElementById(id);
+
+    // Toggle help section
+    $("toggleHelp").onclick = () => {
+      const helpSection = $("helpSection");
+      const isVisible = helpSection.style.display !== "none";
+      helpSection.style.display = isVisible ? "none" : "block";
+      $("toggleHelp").textContent = isVisible ? "Show Help" : "Hide Help";
+    };
 
     // Run policy backtest
     $("runPolicy").onclick = async () => {
