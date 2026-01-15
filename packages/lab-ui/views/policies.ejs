@@ -402,6 +402,8 @@
       $("policyMsg").textContent = "Creating run...";
       $("policyMsg").style.color = 'var(--muted)';
 
+      const execSettings = getExecutionSettings();
+
       try {
         const res = await fetch("/api/runs/policy", {
           method: "POST",
@@ -409,7 +411,10 @@
           body: JSON.stringify({ 
             path_only_run_id, 
             policy_json, 
-            caller_filter: caller_filter || undefined 
+            caller_filter: caller_filter || undefined,
+            taker_fee_bps: execSettings.taker_fee_bps,
+            slippage_bps: execSettings.slippage_bps,
+            execution_model: execSettings.execution_model
           })
         });
         const data = await res.json();

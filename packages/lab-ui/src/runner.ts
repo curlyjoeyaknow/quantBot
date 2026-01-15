@@ -131,14 +131,36 @@ function buildPathOnlyArgs(p: RunParams): string[] {
 function buildPolicyArgs(p: RunParams): string[] {
   const args: string[] = ['backtest', 'policy', '--run-id', p.run_id];
 
-  if (p.path_only_run_id) {
-    args.push('--path-only-run-id', p.path_only_run_id);
+  // Required options
+  if (p.interval) {
+    args.push('--interval', p.interval);
   }
+  if (p.from) {
+    args.push('--from', p.from);
+  }
+  if (p.to) {
+    args.push('--to', p.to);
+  }
+
+  // Policy JSON
   if (p.policy_json) {
     args.push('--policy-json', p.policy_json);
   }
+
+  // Optional filter (note: CLI uses --filter, not --caller)
   if (p.caller_filter?.trim()) {
-    args.push('--caller', p.caller_filter.trim());
+    args.push('--filter', p.caller_filter.trim());
+  }
+
+  // Execution settings
+  if (p.taker_fee_bps !== undefined) {
+    args.push('--taker-fee-bps', String(p.taker_fee_bps));
+  }
+  if (p.slippage_bps !== undefined) {
+    args.push('--slippage-bps', String(p.slippage_bps));
+  }
+  if (p.execution_model) {
+    args.push('--execution-model', p.execution_model);
   }
 
   return args;
