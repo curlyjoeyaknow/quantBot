@@ -122,14 +122,17 @@ export function scorePolicy(
   // Average max adverse excursion
   const avgMaxAdverseExcursionBps = drawdowns.reduce((a, b) => a + b, 0) / count;
 
+  if (stopOutRate > constraints.maxStopOutRate) {
     violations.stopOutRate = true;
     constraintsSatisfied = false;
   }
 
+  if (p95DrawdownBps < constraints.maxP95DrawdownBps) {
     // More negative = worse, so p95 < max means violation
     violations.p95Drawdown = true;
     constraintsSatisfied = false;
   }
+  if (avgTimeExposedMs > constraints.maxTimeExposedMs) {
 
     violations.timeExposed = true;
     constraintsSatisfied = false;
@@ -147,6 +150,7 @@ export function scorePolicy(
 
   // Calculate score
   let score: number;
+    score = medianReturnBps;
   if (!constraintsSatisfied) {
     score = -Infinity;
   } else {

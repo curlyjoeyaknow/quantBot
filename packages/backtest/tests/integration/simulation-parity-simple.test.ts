@@ -6,7 +6,36 @@
 
 import { describe, it, expect, beforeAll } from 'vitest';
 import { PythonEngine } from '@quantbot/utils';
+import { z } from 'zod';
 import { join } from 'path';
+
+const SchemaInfoResponseSchema = z
+  .object({
+    success: z.boolean(),
+    schema_info: z.unknown().optional(),
+  })
+  .passthrough(); // Allow additional fields
+
+const TestDataResponseSchema = z.object({
+  success: z.boolean(),
+  call: z.object({
+    call_id: z.string(),
+    mint: z.string(),
+    alert_timestamp_ms: z.number(),
+    entry_price: z.number(),
+    caller_name: z.string().optional(),
+  }).optional(),
+  candles: z.array(z.object({
+    timestamp_ms: z.number(),
+    open: z.number(),
+    high: z.number(),
+    low: z.number(),
+    close: z.number(),
+    volume: z.number(),
+  })).optional(),
+  error: z.string().optional(),
+  schema_info: z.unknown().optional(),
+});
 
 describe('Python Simulation with Real Data (Simplified)', () => {
   let pythonEngine: PythonEngine;
@@ -26,17 +55,17 @@ describe('Python Simulation with Real Data (Simplified)', () => {
     const fetchResult = await pythonEngine.runScriptWithStdin(
       fetchDataScript,
       JSON.stringify({ duckdb_path: duckdbPath, show_schema: true }),
+      SchemaInfoResponseSchema,
       {
         cwd: join(process.cwd(), 'packages/backtest/python'),
         env: { PYTHONPATH: process.cwd() },
       }
     );
 
-    const schemaInfo = JSON.parse(fetchResult.stdout);
     console.log('\n📊 Database Schema Info:');
-    console.log(JSON.stringify(schemaInfo, null, 2));
+    console.log(JSON.stringify(fetchResult, null, 2));
 
-    expect(schemaInfo.success).toBe(true);
+    expect(fetchResult.success).toBe(true);
   });
 
   it('should run Python simulation with real ClickHouse + DuckDB data', async () => {
@@ -46,22 +75,26 @@ describe('Python Simulation with Real Data (Simplified)', () => {
       'packages/backtest/python/scripts/fetch_test_data.py'
     );
 
-    const fetchResult = await pythonEngine.runScriptWithStdin(
+    const testData = await pythonEngine.runScriptWithStdin(
       fetchDataScript,
       JSON.stringify({ duckdb_path: duckdbPath }),
+      TestDataResponseSchema,
       {
         cwd: join(process.cwd(), 'packages/backtest/python'),
         env: { PYTHONPATH: process.cwd() },
       }
     );
 
-    const testData = JSON.parse(fetchResult.stdout);
-
     if (!testData.success) {
       console.warn(`Failed to fetch test data: ${testData.error}`);
       if (testData.schema_info) {
         console.warn('Database schema info:', JSON.stringify(testData.schema_info, null, 2));
       }
+      return;
+    }
+
+    if (!testData.call || !testData.candles) {
+      console.warn('No call or candles data returned');
       return;
     }
 
@@ -131,18 +164,17 @@ describe('Python Simulation with Real Data (Simplified)', () => {
       'packages/backtest/python/scripts/fetch_test_data.py'
     );
 
-    const fetchResult = await pythonEngine.runScriptWithStdin(
+    const testData = await pythonEngine.runScriptWithStdin(
       fetchDataScript,
       JSON.stringify({ duckdb_path: duckdbPath }),
+      TestDataResponseSchema,
       {
         cwd: join(process.cwd(), 'packages/backtest/python'),
         env: { PYTHONPATH: process.cwd() },
       }
     );
 
-    const testData = JSON.parse(fetchResult.stdout);
-
-    if (!testData.success) {
+    if (!testData.success || !testData.call || !testData.candles) {
       console.warn('Failed to fetch test data, skipping determinism test');
       return;
     }

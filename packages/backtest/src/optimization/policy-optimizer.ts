@@ -86,7 +86,6 @@ export function optimizePolicy(req: OptimizeRequest): OptimizationResult {
     policies.push(...generateLadderPolicies());
   }
 
-  });
 
   // Evaluate each policy
   const evaluatedPolicies: Array<{ policy: RiskPolicy; score: PolicyScore }> = [];

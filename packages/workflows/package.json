@@ -30,20 +30,11 @@
     "@quantbot/storage": "workspace:*",
     "@quantbot/ohlcv": "workspace:*",
     "@quantbot/simulation": "workspace:*",
-<<<<<<< HEAD
-    "@quantbot/backtest": "workspace:*",
-=======
->>>>>>> origin/main
     "@quantbot/ingestion": "workspace:*",
     "@quantbot/api-clients": "workspace:*",
     "@quantbot/core": "workspace:*",
     "@quantbot/jobs": "workspace:*",
     "@quantbot/data-observatory": "workspace:*",
-<<<<<<< HEAD
-=======
-    "@quantbot/lab": "workspace:*",
-    "@quantbot/labcatalog": "workspace:*",
->>>>>>> origin/main
     "duckdb": "^1.0.0",
     "luxon": "^3.5.0",
     "uuid": "^11.1.0",

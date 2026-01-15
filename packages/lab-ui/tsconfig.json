@@ -1,31 +1,3 @@
 {
-<<<<<<< HEAD
-  "extends": "../../tsconfig.base.json",
-  "compilerOptions": {
-    "outDir": "dist",
-    "rootDir": "src",
-    "skipLibCheck": true,
-    "types": ["node"],
-    "composite": true
-  },
-  "include": ["src/**/*.ts"],
-  "references": [
-    { "path": "../storage" }
-  ]
-=======
-  "compilerOptions": {
-    "target": "ES2022",
-    "lib": ["ES2022"],
-    "module": "ES2022",
-    "moduleResolution": "Bundler",
-    "outDir": "dist",
-    "rootDir": "src",
-    "strict": true,
-    "esModuleInterop": true,
-    "skipLibCheck": true,
-    "types": ["node"]
-  },
-  "include": ["src/**/*.ts"]
->>>>>>> origin/main
 }
 

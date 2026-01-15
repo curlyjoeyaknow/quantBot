@@ -267,6 +267,12 @@ async function analyzeCallerCoverage(
 
   const workspaceRoot = findWorkspaceRoot();
 
+  const workspaceRoot = findWorkspaceRoot();
+  const scriptPath = join(
+    workspaceRoot,
+    'packages/backtest/python/analysis/ohlcv_caller_coverage.py'
+  );
+
   // Allow callers to extend the Python coverage timeout via spec, env, or default to 15 minutes
   const coverageTimeoutMs = getCoverageTimeoutMs(spec.timeoutMs);
 

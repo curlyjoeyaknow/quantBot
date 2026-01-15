@@ -16,10 +16,6 @@
     "test": "vitest"
   },
   "dependencies": {
-<<<<<<< HEAD
-    "@quantbot/infra": "workspace:*",
-=======
->>>>>>> origin/main
     "@quantbot/core": "workspace:*",
     "@quantbot/utils": "workspace:*",
     "@quantbot/storage": "workspace:*",

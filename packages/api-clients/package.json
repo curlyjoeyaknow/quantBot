@@ -17,10 +17,6 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-<<<<<<< HEAD
-    "@quantbot/infra": "workspace:*",
-=======
->>>>>>> origin/main
     "@quantbot/core": "workspace:*",
     "@quantbot/observability": "workspace:*",
     "@quantbot/utils": "workspace:*",
