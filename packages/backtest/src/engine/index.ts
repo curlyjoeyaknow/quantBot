@@ -7,7 +7,8 @@
 
 import type { Candle, TokenAddress, Chain } from '@quantbot/core';
 import type { StrategyV1, BacktestResult, Trade, BacktestEvent, CallRecord } from '../types.js';
-import { runOverlaySimulation } from '@quantbot/simulation';
+import { PythonEngine } from '@quantbot/utils';
+import { PythonOverlayService } from '../services/python-overlay-service.js';
 
 /**
  * Backtest a single call
@@ -69,9 +70,23 @@ export async function backtestCall(
   const maxHold = strategy.maxHold || executionCandles.length;
   const executionSlice = executionCandles.slice(entryCandleIndex, entryCandleIndex + maxHold);
 
-  // Run overlay simulation (pure)
-  const simResults = await runOverlaySimulation({
-    candles: executionSlice,
+  // Run overlay simulation via Python
+  const pythonEngine = new PythonEngine();
+  const overlayService = new PythonOverlayService(pythonEngine);
+  
+  // Convert candles to Python format (timestamp in seconds)
+  const pythonCandles = executionSlice.map((c) => ({
+    timestamp: c.timestamp,
+    open: c.open,
+    high: c.high,
+    low: c.low,
+    close: c.close,
+    volume: c.volume,
+  }));
+  
+  // Run overlay simulation via Python
+  const simResults = await overlayService.runOverlaySimulation({
+    candles: pythonCandles,
     entry: entryPoint,
     overlays: strategy.overlays,
     fees: strategy.fees,

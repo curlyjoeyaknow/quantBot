@@ -1,6 +1,6 @@
 /**
  * Simplified Simulation Parity Test
- * 
+ *
  * Uses Python for both data fetching and simulation to avoid TypeScript/DuckDB binding issues.
  */
 
@@ -39,7 +39,9 @@ describe('Python Simulation with Real Data (Simplified)', () => {
       return;
     }
 
-    console.log(`✅ Fetched test data: ${testData.candles.length} candles for ${testData.call.mint}`);
+    console.log(
+      `✅ Fetched test data: ${testData.candles.length} candles for ${testData.call.mint}`
+    );
 
     // Prepare simulation input
     const simInput = {
@@ -62,19 +64,12 @@ describe('Python Simulation with Real Data (Simplified)', () => {
     };
 
     // Run Python simulation
-    const simScript = join(
-      process.cwd(),
-      'packages/backtest/python/lib/v1_baseline_simulator.py'
-    );
+    const simScript = join(process.cwd(), 'packages/backtest/python/lib/v1_baseline_simulator.py');
 
-    const simResult = await pythonEngine.runScriptWithStdin(
-      simScript,
-      JSON.stringify(simInput),
-      {
-        cwd: join(process.cwd(), 'packages/backtest/python'),
-        env: { PYTHONPATH: process.cwd() },
-      }
-    );
+    const simResult = await pythonEngine.runScriptWithStdin(simScript, JSON.stringify(simInput), {
+      cwd: join(process.cwd(), 'packages/backtest/python'),
+      env: { PYTHONPATH: process.cwd() },
+    });
 
     const output = JSON.parse(simResult.stdout);
 
@@ -146,29 +141,18 @@ describe('Python Simulation with Real Data (Simplified)', () => {
       random_seed: 12345, // Fixed seed
     };
 
-    const simScript = join(
-      process.cwd(),
-      'packages/backtest/python/lib/v1_baseline_simulator.py'
-    );
+    const simScript = join(process.cwd(), 'packages/backtest/python/lib/v1_baseline_simulator.py');
 
     // Run simulation twice with same seed
-    const result1 = await pythonEngine.runScriptWithStdin(
-      simScript,
-      JSON.stringify(simInput),
-      {
-        cwd: join(process.cwd(), 'packages/backtest/python'),
-        env: { PYTHONPATH: process.cwd() },
-      }
-    );
+    const result1 = await pythonEngine.runScriptWithStdin(simScript, JSON.stringify(simInput), {
+      cwd: join(process.cwd(), 'packages/backtest/python'),
+      env: { PYTHONPATH: process.cwd() },
+    });
 
-    const result2 = await pythonEngine.runScriptWithStdin(
-      simScript,
-      JSON.stringify(simInput),
-      {
-        cwd: join(process.cwd(), 'packages/backtest/python'),
-        env: { PYTHONPATH: process.cwd() },
-      }
-    );
+    const result2 = await pythonEngine.runScriptWithStdin(simScript, JSON.stringify(simInput), {
+      cwd: join(process.cwd(), 'packages/backtest/python'),
+      env: { PYTHONPATH: process.cwd() },
+    });
 
     const output1 = JSON.parse(result1.stdout);
     const output2 = JSON.parse(result2.stdout);
@@ -179,4 +163,3 @@ describe('Python Simulation with Real Data (Simplified)', () => {
     console.log('✅ Determinism verified: same seed → same results');
   }, 120000);
 });
-
