@@ -107,6 +107,51 @@ export async function ensureUiSchema(db: DuckDb) {
     );
 
     CREATE INDEX IF NOT EXISTS idx_policy_results_run ON backtest_policy_results(run_id);
-    CREATE INDEX IF NOT EXISTS idx_policy_results_policy ON backtest_policy_results(policy_id);`
+    CREATE INDEX IF NOT EXISTS idx_policy_results_policy ON backtest_policy_results(policy_id);
+
+    -- Call results table (backtest outcomes)
+    CREATE TABLE IF NOT EXISTS backtest_call_results (
+      run_id TEXT NOT NULL,
+      call_id TEXT NOT NULL,
+      caller_name TEXT NOT NULL,
+      mint TEXT NOT NULL,
+      interval TEXT NOT NULL,
+
+      entry_ts_ms BIGINT NOT NULL,
+      exit_ts_ms BIGINT NOT NULL,
+      entry_px DOUBLE NOT NULL,
+      exit_px DOUBLE NOT NULL,
+
+      return_bps DOUBLE NOT NULL,
+      pnl_usd DOUBLE NOT NULL,
+
+      hold_ms BIGINT NOT NULL,
+      max_favorable_bps DOUBLE,
+      max_adverse_bps DOUBLE,
+      exit_reason TEXT,
+
+      -- Path metrics
+      t0_ms BIGINT,
+      p0 DOUBLE,
+
+      hit_2x BOOLEAN,
+      t_2x_ms BIGINT,
+      hit_3x BOOLEAN,
+      t_3x_ms BIGINT,
+      hit_4x BOOLEAN,
+      t_4x_ms BIGINT,
+
+      dd_bps DOUBLE,
+      dd_to_2x_bps DOUBLE,
+      alert_to_activity_ms BIGINT,
+      peak_multiple DOUBLE,
+
+      created_at TIMESTAMP DEFAULT now(),
+      PRIMARY KEY (run_id, call_id)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_call_results_run ON backtest_call_results(run_id);
+    CREATE INDEX IF NOT EXISTS idx_call_results_caller ON backtest_call_results(caller_name);
+    CREATE INDEX IF NOT EXISTS idx_call_results_mint ON backtest_call_results(mint);`
   );
 }
