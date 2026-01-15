@@ -149,22 +149,12 @@ export const datasetRegistry = new DatasetRegistry();
  */
 export function initializeDefaultDatasets(): void {
   // Candle datasets
+  // Note: defaultColumns removed - computed dynamically in adapter to handle interval_seconds -> interval conversion
   datasetRegistry.register({
     datasetId: 'candles_1s',
     type: 'candles',
     tableName: 'ohlcv_candles',
     interval: '1s',
-    defaultColumns: [
-      'token_address',
-      'chain',
-      'timestamp',
-      'interval',
-      'open',
-      'high',
-      'low',
-      'close',
-      'volume',
-    ],
   });
 
   datasetRegistry.register({
@@ -172,17 +162,6 @@ export function initializeDefaultDatasets(): void {
     type: 'candles',
     tableName: 'ohlcv_candles',
     interval: '15s',
-    defaultColumns: [
-      'token_address',
-      'chain',
-      'timestamp',
-      'interval',
-      'open',
-      'high',
-      'low',
-      'close',
-      'volume',
-    ],
   });
 
   datasetRegistry.register({
@@ -190,17 +169,6 @@ export function initializeDefaultDatasets(): void {
     type: 'candles',
     tableName: 'ohlcv_candles',
     interval: '1m',
-    defaultColumns: [
-      'token_address',
-      'chain',
-      'timestamp',
-      'interval',
-      'open',
-      'high',
-      'low',
-      'close',
-      'volume',
-    ],
   });
 
   datasetRegistry.register({
@@ -208,17 +176,6 @@ export function initializeDefaultDatasets(): void {
     type: 'candles',
     tableName: 'ohlcv_candles',
     interval: '5m',
-    defaultColumns: [
-      'token_address',
-      'chain',
-      'timestamp',
-      'interval',
-      'open',
-      'high',
-      'low',
-      'close',
-      'volume',
-    ],
   });
 
   // Indicator datasets (conditional - only if table exists)

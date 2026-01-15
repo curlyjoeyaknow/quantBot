@@ -23,13 +23,15 @@ import os
 import sys
 import warnings
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 from collections import defaultdict
 
-# Add tools/shared to path for imports
-_shared_path = os.path.join(os.path.dirname(__file__), '..', 'shared')
-if _shared_path not in sys.path:
-    sys.path.insert(0, _shared_path)
+# Add packages/backtest/python/shared to path for imports
+_workspace_root = Path(__file__).parent.parent.parent.parent
+_shared_path = _workspace_root / 'packages' / 'backtest' / 'python' / 'shared'
+if str(_shared_path) not in sys.path:
+    sys.path.insert(0, str(_shared_path))
 from progress_bar import ProgressBar
 
 # Suppress deprecation warnings

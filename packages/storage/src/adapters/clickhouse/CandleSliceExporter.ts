@@ -9,6 +9,7 @@ import type {
   RunContext,
 } from '../../ports/CandleSlicePort.js';
 import { readAllBytes } from '../../utils/readAllBytes.js';
+import { intervalToSeconds } from '../../utils/interval-converter.js';
 
 function sha(s: string): string {
   return crypto.createHash('sha256').update(s).digest('hex');
