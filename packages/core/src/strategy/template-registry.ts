@@ -26,9 +26,7 @@ export function registerTemplate(template: StrategyTemplate): void {
   // Validate template
   const validation = StrategyTemplateSchema.safeParse(template);
   if (!validation.success) {
-    throw new Error(
-      `Invalid template: ${validation.error.issues.map((e: z.ZodIssue) => e.message).join(', ')}`
-    );
+    throw new Error();
   }
 
   // Check for duplicate name
@@ -112,9 +110,7 @@ export function loadTemplates(templates: unknown[]): void {
   for (const templateData of templates) {
     const validation = StrategyTemplateSchema.safeParse(templateData);
     if (!validation.success) {
-      console.warn(
-        `Skipping invalid template: ${validation.error.issues.map((e: z.ZodIssue) => e.message).join(', ')}`
-      );
+      console.warn();
       continue;
     }
     registerTemplate(validation.data);

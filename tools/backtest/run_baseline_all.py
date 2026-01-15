@@ -36,18 +36,6 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from statistics import median
-from typing import Any, Dict, List, Optional, Set, Tuple
-
-import duckdb
-
-# Import from consolidated lib instead of duplicating
-from lib.slice_exporter import (
-    ClickHouseCfg,
-    export_slice_streaming,
-    query_coverage_batched,
-)
-from lib.helpers import sql_escape
-
 try:
     from clickhouse_driver import Client as ClickHouseClient
 except ImportError:
@@ -70,7 +58,6 @@ def ceil_ms_to_interval_ts_ms(ts_ms: int, interval_seconds: int) -> int:
 def pct(x: float) -> float:
     return 100.0 * x
 
-# sql_escape imported from lib.helpers
 
 def _fmt(x: Any, kind: str = "num") -> str:
     if x is None:
@@ -220,10 +207,6 @@ def load_alerts(duckdb_path: str, chain: str, date_from: datetime, date_to: date
 
 
 # =============================================================================
-# ClickHouse: Coverage Check & Slice Export
-# Uses consolidated lib/slice_exporter.py for deduplication + quality validation
-# =============================================================================
-
 
 # =============================================================================
 # Partitioning
@@ -243,11 +226,6 @@ def partition_slice(
     sql = f"""
 COPY (
   SELECT token_address, timestamp, open, high, low, close, volume
-  FROM parquet_scan('{sql_escape(in_path.as_posix())}')
-  ORDER BY token_address, timestamp
-)
-TO '{sql_escape(out_dir.as_posix())}'
-(FORMAT PARQUET, PARTITION_BY (token_address), COMPRESSION '{sql_escape(compression)}');
 """.strip()
 
     if verbose:
@@ -1065,23 +1043,10 @@ def main() -> None:
                 raise SystemExit("No tokens have candle data in ClickHouse for this period.")
 
             if verbose:
-                print("[3/5] Exporting slice to Parquet (streaming with quality validation)...", file=sys.stderr)
-            t0 = time.time()
-            # Use consolidated exporter with deduplication and quality validation
-            row_count = export_slice_streaming(
-                cfg=ch_cfg,
-                chain=args.chain,
-                mints=covered_mints,
-                interval_seconds=args.interval_seconds,
-                date_from=date_from,
-                date_to=date_to,
-                output_path=slice_path,
                 ch_batch=args.ch_batch,
                 pre_window_minutes=60,
                 post_window_hours=int(args.horizon_hours) + 24,
                 verbose=verbose,
-                validate=True,
-                deduplicate=True,
             )
             if verbose:
                 print(f"      Exported {row_count:,} candles in {time.time()-t0:.1f}s", file=sys.stderr)

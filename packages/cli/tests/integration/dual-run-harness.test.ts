@@ -7,8 +7,6 @@
 
 import { describe, it, expect } from 'vitest';
 import { runDualSimulation } from '../../src/core/dual-run-harness.js';
-import type { SimInput } from '@quantbot/backtest';
-import { SimInputSchema } from '@quantbot/backtest';
 
 describe('Dual-Run Harness', () => {
   const testInput: SimInput = {

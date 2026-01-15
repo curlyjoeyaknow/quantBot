@@ -31,7 +31,6 @@ export class StrategiesRepository {
     this.client = client || new DuckDBClient(dbPath);
     // Resolve script path relative to workspace root (find root by looking for tools/ directory)
     const workspaceRoot = findWorkspaceRoot();
-    this.scriptPath = join(workspaceRoot, 'packages/storage/python/duckdb_strategies.py');
     // NOTE: Do NOT call initializeDatabase() here - it holds a database lock
     // The Python script uses CREATE TABLE IF NOT EXISTS, so initialization happens on first use
   }
@@ -117,7 +116,6 @@ export class StrategiesRepository {
    */
   async findByName(name: string, version?: string): Promise<StrategyConfig | null> {
     try {
-      const _scriptPath = join(process.cwd(), 'packages/storage/python/duckdb_strategies.py');
       const resultSchema = z
         .object({
           id: z.number(),

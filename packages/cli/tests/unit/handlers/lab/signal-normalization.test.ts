@@ -6,8 +6,6 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { getSignalPreset, combineSignalPresets } from '@quantbot/backtest';
-import type { SignalGroup } from '@quantbot/backtest';
 
 /**
  * Test helper: Normalize SignalGroup (mirrors the implementation in run-lab.ts)

@@ -2,7 +2,6 @@
  * Backtest Baseline Service
  *
  * Service layer for running baseline alert backtests.
- * Wraps the Python script (packages/backtest/python/scripts/run_baseline.py) via PythonEngine.
  *
  * Computes per-alert metrics:
  * - ATH multiple after alert
@@ -28,7 +27,6 @@ export const BacktestSummarySchema = z.object({
   median_time_to_ath_hours: z.number().nullable(),
   median_time_to_2x_hours: z.number().nullable(),
   median_time_to_3x_hours: z.number().nullable(),
-  median_dd_initial_pct: z.number().nullable().optional(), // Max dip before recovery
   median_dd_overall_pct: z.number().nullable(),
   median_dd_after_2x_pct: z.number().nullable().optional(),
   median_dd_after_3x_pct: z.number().nullable().optional(),
@@ -147,7 +145,6 @@ export class BacktestBaselineService {
    */
   async runBaseline(params: BacktestBaselineParams): Promise<BacktestBaselineResult> {
     const workspaceRoot = findWorkspaceRoot();
-    const scriptPath = join(workspaceRoot, 'packages/backtest/python/scripts/run_baseline.py');
 
     // Resolve duckdb path to absolute
     const absoluteDuckdbPath = params.duckdbPath.startsWith('/')
@@ -212,9 +209,6 @@ export class BacktestBaselineService {
         BacktestBaselineResultSchema,
         {
           timeout: 30 * 60 * 1000, // 30 minutes (backtests can be long)
-          cwd: join(workspaceRoot, 'packages/backtest/python'),
-          env: {
-            PYTHONPATH: join(workspaceRoot, 'packages/backtest/python'),
           },
         }
       );

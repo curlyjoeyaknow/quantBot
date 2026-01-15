@@ -5,17 +5,10 @@
  */
 
 import path from 'node:path';
-import { ConfigurationError, logger } from '@quantbot/utils';
-import type { CommandContext } from '../../core/command-context.js';
-import { removeFaultyAddressesSchema } from '../../commands/storage.js';
-import type { z } from 'zod';
 
 export type RemoveFaultyAddressesArgs = z.infer<typeof removeFaultyAddressesSchema>;
 
-export async function removeFaultyAddressesHandler(
-  args: RemoveFaultyAddressesArgs,
-  ctx: CommandContext
-) {
+export async function removeFaultyAddressesHandler(args: RemoveFaultyAddressesArgs) {
   const duckdbPathRaw = args.duckdb || process.env.DUCKDB_PATH;
   if (!duckdbPathRaw) {
     throw new ConfigurationError(
@@ -33,8 +26,6 @@ export async function removeFaultyAddressesHandler(
   } else {
     logger.warn('Removing faulty addresses from DuckDB database', { duckdbPath });
   }
-
-  const duckdbStorage = ctx.services.duckdbStorage();
 
   const result = await duckdbStorage.removeFaultyAddresses(duckdbPath, dryRun);
 

@@ -1,8 +1,6 @@
 import { spawn } from 'node:child_process';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { DuckDb } from './db.js';
-import { run } from './db.js';
 
 /**
  * Parameters for spawning backtest runs

@@ -43,7 +43,6 @@ const violations: Violation[] = [];
  * - Workflows cannot import from CLI/TUI
  */
 const PACKAGE_BOUNDARIES: Record<string, { forbidden: string[]; allowed?: string[] }> = {
-  '@quantbot/backtest': {
     forbidden: [
       '@quantbot/storage',
       '@quantbot/api-clients',
@@ -55,7 +54,6 @@ const PACKAGE_BOUNDARIES: Record<string, { forbidden: string[]; allowed?: string
     forbidden: ['@quantbot/cli', '@quantbot/tui'],
   },
   '@quantbot/ohlcv': {
-    forbidden: ['@quantbot/api-clients', '@quantbot/ingestion', '@quantbot/backtest'],
   },
   '@quantbot/analytics': {
     forbidden: ['@quantbot/api-clients', '@quantbot/ingestion'],
@@ -244,7 +242,6 @@ function checkPackageBoundaries(
     }
 
     // Check network imports (for simulation package)
-    if (packageName === '@quantbot/backtest') {
       for (const networkImport of NETWORK_IMPORTS) {
         if (moduleSpecifier === networkImport || moduleSpecifier.startsWith(`${networkImport}/`)) {
           violations.push({

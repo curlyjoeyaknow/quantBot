@@ -8,7 +8,6 @@ import type {
   SimulationEngineResult,
   SimulationCallResult,
 } from '../../src/types.js';
-import { CausalCandleWrapper, type CausalCandleAccessor } from '@quantbot/backtest';
 
 export function candleSeries(): Candle[] {
   return [

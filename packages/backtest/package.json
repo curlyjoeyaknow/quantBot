@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "@quantbot/core": "workspace:*",
+<<<<<<< HEAD
     "@quantbot/infra": "workspace:*",
     "@quantbot/labcatalog": "workspace:*",
     "@quantbot/simulation": "workspace:*",
@@ -26,13 +27,22 @@
     "luxon": "^3.7.2",
     "uuid": "^11.1.0",
     "zod": "^4.1.13"
+=======
+    "@quantbot/simulation": "workspace:*",
+    "@quantbot/storage": "workspace:*",
+    "@quantbot/utils": "workspace:*",
+    "luxon": "^3.7.2"
+>>>>>>> origin/main
   },
   "devDependencies": {
     "@types/luxon": "^3.7.1",
     "@types/node": "^24.10.1",
     "@vitest/coverage-v8": "^4.0.15",
     "duckdb": "^1.4.3",
+<<<<<<< HEAD
     "type-fest": "^5.3.1",
+=======
+>>>>>>> origin/main
     "typescript": "^5.9.3",
     "vitest": "^4.0.15"
   }

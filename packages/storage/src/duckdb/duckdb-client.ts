@@ -268,7 +268,6 @@ export class DuckDBClient {
    */
   private getDirectSqlScriptPath(): string {
     const workspaceRoot = findWorkspaceRoot();
-    return join(workspaceRoot, 'packages/storage/python/duckdb_direct_sql.py');
   }
 
   /**

@@ -53,7 +53,6 @@ export interface DuckDBStorageConfig {
     | 'validate_addresses'
     | 'remove_faulty_addresses'
     | 'move_invalid_tokens'
-    | 'store_token_creation_info'
     | 'get_state'
     | 'set_state'
     | 'delete_state'
@@ -531,7 +530,6 @@ export class PythonEngine {
     options?: PythonScriptOptions
   ): Promise<Record<string, unknown>> {
     const workspaceRoot = findWorkspaceRoot();
-    const scriptPath = join(workspaceRoot, 'packages/storage/python/duckdb_storage/main.py');
 
     // Resolve duckdbPath to absolute path relative to workspace root
     // If path is already absolute, use as-is; otherwise resolve from workspace root
@@ -545,10 +543,6 @@ export class PythonEngine {
       data: JSON.stringify(config.data),
     };
 
-    const cwd = options?.cwd ?? join(workspaceRoot, 'packages/storage/python');
-    const env = {
-      ...options?.env,
-      PYTHONPATH: `${workspaceRoot}:${join(workspaceRoot, 'packages/storage/python')}`,
     };
 
     const resultSchema = z
@@ -577,7 +571,6 @@ export class PythonEngine {
     options?: PythonScriptOptions
   ): Promise<Record<string, unknown>> {
     const workspaceRoot = findWorkspaceRoot();
-    const scriptPath = join(workspaceRoot, 'packages/storage/python/clickhouse_engine.py');
 
     const args: Record<string, unknown> = {
       operation: config.operation,
@@ -590,10 +583,6 @@ export class PythonEngine {
     if (config.username) args.username = config.username;
     if (config.password) args.password = config.password;
 
-    const cwd = options?.cwd ?? join(workspaceRoot, 'packages/storage/python');
-    const env = {
-      ...options?.env,
-      PYTHONPATH: `${workspaceRoot}:${join(workspaceRoot, 'packages/storage/python')}`,
     };
 
     const resultSchema = z
@@ -666,10 +655,6 @@ export class PythonEngine {
       args.mints = config.mints;
     }
 
-    const cwd = options?.cwd ?? join(workspaceRoot, 'packages/ingestion/python');
-    const env = {
-      ...options?.env,
-      PYTHONPATH: join(workspaceRoot, 'packages/ingestion/python'),
     };
 
     const tokenGroupSchema = z.object({

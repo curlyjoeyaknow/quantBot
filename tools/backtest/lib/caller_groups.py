@@ -186,8 +186,6 @@ def get_callers_from_duckdb(
     Returns:
         List of dicts with caller info: {caller, count, first_seen, last_seen}
     """
-    from tools.shared.duckdb_adapter import get_readonly_connection
-    with get_readonly_connection(duckdb_path) as conn:
         # Check which table exists
         tables = conn.execute("""
             SELECT table_name FROM information_schema.tables 

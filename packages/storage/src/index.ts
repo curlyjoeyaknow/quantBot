@@ -1,14 +1,4 @@
 /**
- * @quantbot/storage - DEPRECATED: Use @quantbot/infra/storage instead
- *
- * This package is being consolidated into @quantbot/infra.
- * All exports are re-exported from @quantbot/infra/storage for backwards compatibility.
- *
- * @deprecated Import from '@quantbot/infra/storage' instead
- */
-
-export * from '@quantbot/infra/storage';
-
 // Export the main storage engine
 export { StorageEngine, getStorageEngine } from './engine/StorageEngine.js';
 export type {
@@ -57,8 +47,6 @@ export {
   ClickHouseSliceExporterAdapterImpl,
   createClickHouseSliceExporterAdapterImpl,
 } from './adapters/clickhouse-slice-exporter-adapter-impl.js';
-export { datasetRegistry, initializeDefaultDatasets } from './adapters/dataset-registry.js';
-export type { DatasetType, DatasetMetadata } from './adapters/dataset-registry.js';
 export {
   insertSqlForParquet,
   type InsertMode,

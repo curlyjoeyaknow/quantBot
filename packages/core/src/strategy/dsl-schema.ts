@@ -246,8 +246,6 @@ export function validateStrategyDSL(dsl: unknown): { valid: boolean; errors: str
     return { valid: true, errors: [] };
   }
 
-  const errors = result.error.issues.map((issue: z.ZodIssue) => {
-    const path = issue.path.map(String).join('.');
     return `${path}: ${issue.message}`;
   });
 

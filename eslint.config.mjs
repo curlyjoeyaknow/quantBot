@@ -273,7 +273,6 @@ export default tseslint.config(
                 'Analytics (Feature Engineering layer) cannot import Ingestion (Data Ingestion layer). Feature engineering works on existing data, not ingest new data.',
             },
             {
-              name: '@quantbot/backtest',
               message:
                 'Analytics (Feature Engineering layer) cannot import Simulation (Strategy Logic layer). Analytics feeds simulation, not vice versa. Only import result types if needed.',
             },
@@ -285,9 +284,6 @@ export default tseslint.config(
                 'Feature Engineering layer cannot import Data Ingestion layer. Feature engineering works on existing data, not fetch/ingest new data.',
             },
             {
-              group: ['@quantbot/backtest/src/**'],
-              message:
-                'Analytics cannot import simulation internals. Only import result types from @quantbot/backtest public API if needed.',
             },
           ],
         },
@@ -302,7 +298,6 @@ export default tseslint.config(
         {
           paths: [
             {
-              name: '@quantbot/backtest',
               message:
                 'OHLCV (Feature Engineering layer) cannot import Simulation (Strategy Logic layer). OHLCV feeds simulation, not vice versa.',
             },
@@ -319,7 +314,6 @@ export default tseslint.config(
           ],
           patterns: [
             {
-              group: ['@quantbot/backtest*'],
               message:
                 'OHLCV (Feature Engineering layer) cannot import Simulation (Strategy Logic layer). OHLCV feeds simulation, not vice versa.',
             },
@@ -428,10 +422,6 @@ export default tseslint.config(
             },
             {
               group: [
-                '@quantbot/backtest/src/**',
-              ],
-              message:
-                'Workflows must use @quantbot/backtest public API (runOverlaySimulation), not deep imports. Do not bypass overlay-simulation.ts by calling simulateStrategy directly.',
             },
             {
               group: ['fs', 'node:fs'],

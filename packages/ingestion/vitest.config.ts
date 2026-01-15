@@ -84,7 +84,6 @@ export default defineConfig({
     // Force inline these packages to use source files, not dist
     deps: {
       inline: [
-        '@quantbot/backtest',
         '@quantbot/storage',
         '@quantbot/utils',
         '@quantbot/core',

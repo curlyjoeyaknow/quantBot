@@ -5,13 +5,6 @@
  * Uses DuckDB for efficient storage and querying via Python engine.
  */
 
-import {
-  logger,
-  PythonEngine,
-  AppError,
-  ConfigurationError,
-  findWorkspaceRoot,
-} from '@quantbot/utils';
 import { z } from 'zod';
 import { DateTime } from 'luxon';
 import { join } from 'path';
@@ -106,7 +99,6 @@ export class EventLogService {
    */
   private async initializeDatabase(): Promise<void> {
     try {
-      const scriptPath = join(findWorkspaceRoot(), 'packages/observability/python/event_log.py');
       const resultSchema = z.object({
         success: z.boolean(),
         error: z.string().optional(),
@@ -160,7 +152,6 @@ export class EventLogService {
       const id = crypto.randomUUID();
       const validated = EventLogEntrySchema.parse({ ...entry, id });
 
-      const scriptPath = join(findWorkspaceRoot(), 'packages/observability/python/event_log.py');
       const resultSchema = z.object({
         success: z.boolean(),
         error: z.string().optional(),
@@ -216,7 +207,6 @@ export class EventLogService {
         .minus({ minutes: this.circuitBreaker.windowMinutes })
         .toJSDate();
 
-      const scriptPath = join(findWorkspaceRoot(), 'packages/observability/python/event_log.py');
       const resultSchema = z.object({
         total_credits: z.number(),
       });
@@ -270,7 +260,6 @@ export class EventLogService {
     try {
       const windowStart = DateTime.now().minus({ minutes }).toJSDate();
 
-      const scriptPath = join(findWorkspaceRoot(), 'packages/observability/python/event_log.py');
       const resultSchema = z.object({
         total_credits: z.number(),
       });
@@ -307,7 +296,6 @@ export class EventLogService {
     errorCount: number;
   }> {
     try {
-      const scriptPath = join(findWorkspaceRoot(), 'packages/observability/python/event_log.py');
       const resultSchema = z.object({
         total_events: z.number(),
         total_credits: z.number(),

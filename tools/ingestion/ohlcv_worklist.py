@@ -78,8 +78,6 @@ def get_ohlcv_worklist(
     if not Path(duckdb_path).exists():
         raise FileNotFoundError(f"DuckDB file not found: {duckdb_path}")
     
-    from tools.shared.duckdb_adapter import get_readonly_connection
-    with get_readonly_connection(duckdb_path) as con:
         # Check which tables exist - support both normalized and legacy schemas
         tables = con.execute("SHOW TABLES").fetchall()
         table_names = [t[0] for t in tables]

@@ -242,7 +242,6 @@ export const POLICY_GRID = {
       60 * 60 * 1000, // 1 hour
       2 * 60 * 60 * 1000, // 2 hours
       4 * 60 * 60 * 1000, // 4 hours
-      48 * 60 * 60 * 1000, // 48 hours (full horizon)
     ],
   },
   trailingStop: {

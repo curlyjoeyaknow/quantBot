@@ -73,7 +73,6 @@ export class SimulationService {
    */
   async runSimulation(config: SimulationConfig): Promise<SimulationOutput> {
     // Use relative path - PythonEngine will resolve it from workspace root
-    const scriptPath = 'packages/storage/python/run_simulation.py';
     const workspaceRoot = findWorkspaceRoot();
 
     try {
@@ -83,9 +82,6 @@ export class SimulationService {
         SimulationOutputSchema,
         {
           timeout: 300000, // 5 minute timeout
-          cwd: join(workspaceRoot, 'packages/storage/python'),
-          env: {
-            PYTHONPATH: join(workspaceRoot, 'packages/storage/python'),
           },
         }
       );

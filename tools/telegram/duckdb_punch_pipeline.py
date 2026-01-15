@@ -13,7 +13,6 @@ import duckdb
 import ijson
 import hashlib
 import os
-from tools.shared.duckdb_adapter import get_write_connection
 
 # Import address validation from extracted module
 try:
@@ -1336,9 +1335,6 @@ def get_script_version() -> str:
     # Fallback: use a version string (update this when making breaking changes)
     return "v1.0"
 
-def _run_main_logic(args, con):
-  """Main ingestion logic - separated to use context manager properly"""
-  # Set performance PRAGMAs (these are in addition to busy_timeout)
   con.execute("PRAGMA threads=4;")
   con.execute("PRAGMA memory_limit='4GB';")
 
@@ -1412,7 +1408,6 @@ def _run_main_logic(args, con):
         if not args.force:
           print("Use --force to rerun even if already processed.", file=sys.stderr)
       # Return early - already processed
-      return  # Connection will be closed by context manager
     elif existing_status == 'partial':
       print(f"Resuming partial run (run_id: {existing_run_id})...", file=sys.stderr)
       run_id = existing_run_id
@@ -2473,7 +2468,6 @@ def _run_main_logic(args, con):
   if args.export_parquet_run:
     if not args.run_id:
       print("Error: --run-id is required with --export-parquet-run")
-      return  # Connection will be closed by context manager
     
     import os
     output_dir = args.output_dir
@@ -2516,9 +2510,6 @@ def _run_main_logic(args, con):
     else:
       print(f"✓ caller_links_d row count validated: {caller_links_count}")
 
-    # Mark run as completed (if not already done above)
-    if run_id:
-      complete_ingestion_run(con, run_id, row_counts)
 
 if __name__ == "__main__":
   import sys

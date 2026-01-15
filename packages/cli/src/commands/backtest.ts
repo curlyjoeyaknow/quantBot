@@ -6,12 +6,6 @@ import type { Command } from 'commander';
 import type { PackageCommandModule } from '../types/index.js';
 import { defineCommand } from '../core/defineCommand.js';
 import { die } from '../core/cliErrors.js';
-import {
-  coerceNumber,
-  coerceBoolean,
-  coerceStringArray,
-  coerceNumberArray,
-} from '../core/coerce.js';
 import { commandRegistry } from '../core/command-registry.js';
 import { DateTime } from 'luxon';
 import { runBacktest } from '@quantbot/backtest';
@@ -32,12 +26,6 @@ import {
   type BacktestOptimizeArgs,
   backtestBaselineSchema,
   type BacktestBaselineArgs,
-  backtestV1BaselineSchema,
-  type BacktestV1BaselineArgs,
-  catalogSyncSchema,
-  type CatalogSyncArgs,
-  catalogQuerySchema,
-  type CatalogQueryArgs,
 } from '../command-defs/backtest.js';
 import { join } from 'path';
 import { existsSync } from 'fs';
@@ -85,11 +73,6 @@ export function registerBacktestCommands(program: Command): void {
     .requiredOption('--to <date>', 'End date (ISO 8601)')
     .option('--taker-fee-bps <number>', 'Taker fee in basis points', '30')
     .option('--slippage-bps <number>', 'Slippage in basis points', '10')
-    .option(
-      '--execution-model <venue>',
-      'Execution model: pumpfun, pumpswap, raydium, minimal, simple',
-      'simple'
-    )
     .option('--position-usd <number>', 'Position size in USD', '1000')
     .option('--include-replay', 'Include replay frames')
     .option('--activity-move-pct <number>', 'Activity move threshold (default: 0.1 = 10%)', '0.1');
@@ -198,11 +181,6 @@ export function registerBacktestCommands(program: Command): void {
     .requiredOption('--to <date>', 'End date (ISO 8601)')
     .option('--taker-fee-bps <number>', 'Taker fee in basis points', '30')
     .option('--slippage-bps <number>', 'Slippage in basis points', '10')
-    .option(
-      '--execution-model <venue>',
-      'Execution model: pumpfun, pumpswap, raydium, minimal, simple',
-      'simple'
-    )
     .option('--run-id <id>', 'Existing run ID to use')
     .option('--format <format>', 'Output format (json, table, csv)', 'json');
 
@@ -224,10 +202,6 @@ export function registerBacktestCommands(program: Command): void {
     .command('optimize')
     .description('Grid search to find optimal policy for callers')
     .option('--caller <name>', 'Caller name to optimize for (if omitted, optimizes for all)')
-    .option(
-      '--caller-groups <json>',
-      'JSON array of caller names to optimize for: ["caller1","caller2"]'
-    )
     .requiredOption('--interval <interval>', 'Candle interval (1m, 5m, etc.)')
     .requiredOption('--from <date>', 'Start date (ISO 8601)')
     .requiredOption('--to <date>', 'End date (ISO 8601)')
@@ -239,16 +213,6 @@ export function registerBacktestCommands(program: Command): void {
     )
     .option(
       '--max-time-exposed-ms <ms>',
-      'Max time exposed constraint in ms (default: 48h)',
-      String(48 * 60 * 60 * 1000)
-    )
-    .option('--taker-fee-bps <number>', 'Taker fee in basis points', '30')
-    .option('--slippage-bps <number>', 'Slippage in basis points', '10')
-    .option(
-      '--execution-model <venue>',
-      'Execution model: pumpfun, pumpswap, raydium, minimal, simple',
-      'simple'
-    )
     .option('--format <format>', 'Output format (json, table, csv)', 'table');
 
   defineCommand(optimizeCmd, {
@@ -257,9 +221,6 @@ export function registerBacktestCommands(program: Command): void {
     coerce: (raw) => ({
       ...raw,
       caller: raw.caller || undefined,
-      callerGroups: raw.callerGroups
-        ? coerceStringArray(raw.callerGroups, 'caller-groups')
-        : undefined,
       maxStopOutRate: raw.maxStopOutRate
         ? coerceNumber(raw.maxStopOutRate, 'max-stop-out-rate')
         : 0.3,
@@ -268,7 +229,6 @@ export function registerBacktestCommands(program: Command): void {
         : -3000,
       maxTimeExposedMs: raw.maxTimeExposedMs
         ? coerceNumber(raw.maxTimeExposedMs, 'max-time-exposed-ms')
-        : 48 * 60 * 60 * 1000,
       takerFeeBps: raw.takerFeeBps ? coerceNumber(raw.takerFeeBps, 'taker-fee-bps') : 30,
       slippageBps: raw.slippageBps ? coerceNumber(raw.slippageBps, 'slippage-bps') : 10,
     }),
@@ -334,88 +294,6 @@ export function registerBacktestCommands(program: Command): void {
     validate: (opts) => backtestBaselineSchema.parse(opts),
     onError: die,
   });
-
-  // V1 Baseline Optimizer command (capital-aware optimization)
-  const v1BaselineCmd = backtestCmd
-    .command('v1-baseline')
-    .description(
-      'V1 Baseline Optimizer: capital-aware optimization with finite capital and position constraints'
-    )
-    .option('--caller-groups <json>', 'JSON array of caller names: ["caller1","caller2"]')
-    .requiredOption('--interval <interval>', 'Candle interval (1m, 5m, etc.)')
-    .requiredOption('--from <date>', 'Start date (ISO 8601)')
-    .requiredOption('--to <date>', 'End date (ISO 8601)')
-    .option('--tp-mults <json>', 'JSON array of take-profit multiples: [1.5,2.0,2.5,3.0]')
-    .option('--sl-mults <json>', 'JSON array of stop-loss multiples: [0.85,0.90,0.95]')
-    .option('--max-hold-hrs <json>', 'JSON array of max hold hours: [48]')
-    .option('--initial-capital <number>', 'Initial capital (default: 10000)', '10000')
-    .option(
-      '--max-allocation-pct <number>',
-      'Max allocation per trade (default: 0.04 = 4%)',
-      '0.04'
-    )
-    .option('--max-risk-per-trade <number>', 'Max risk per trade in USD (default: 200)', '200')
-    .option('--max-concurrent-positions <number>', 'Max concurrent positions (default: 25)', '25')
-    .option('--min-executable-size <number>', 'Minimum executable size in USD (default: 10)', '10')
-    .option('--taker-fee-bps <number>', 'Taker fee in basis points', '30')
-    .option('--slippage-bps <number>', 'Slippage in basis points', '10')
-    .option(
-      '--mode <mode>',
-      'Evaluation mode: per-caller, grouped, or both (default: both)',
-      'both'
-    )
-    .option('--min-calls <number>', 'Minimum number of calls per caller (default: 0)', '0')
-    .option('--filter-collapsed', 'Filter out callers that collapsed capital (default: true)', true)
-    .option(
-      '--catalog-path <path>',
-      'Path to catalog for slice reuse (much faster if slices already exist)'
-    )
-    .option(
-      '--filter-extreme',
-      'Filter out callers requiring extreme parameters (default: true)',
-      true
-    )
-    .option('--format <format>', 'Output format (json, table, csv)', 'table');
-
-  defineCommand(v1BaselineCmd, {
-    name: 'v1-baseline',
-    packageName: 'backtest',
-    coerce: (raw) => ({
-      ...raw,
-      callerGroups: raw.callerGroups
-        ? coerceStringArray(raw.callerGroups, 'caller-groups')
-        : undefined,
-      tpMults: raw.tpMults ? coerceNumberArray(raw.tpMults, 'tp-mults') : undefined,
-      slMults: raw.slMults ? coerceNumberArray(raw.slMults, 'sl-mults') : undefined,
-      maxHoldHrs: raw.maxHoldHrs ? coerceNumberArray(raw.maxHoldHrs, 'max-hold-hrs') : undefined,
-      initialCapital: raw.initialCapital
-        ? coerceNumber(raw.initialCapital, 'initial-capital')
-        : 10000,
-      maxAllocationPct: raw.maxAllocationPct
-        ? coerceNumber(raw.maxAllocationPct, 'max-allocation-pct')
-        : 0.04,
-      maxRiskPerTrade: raw.maxRiskPerTrade
-        ? coerceNumber(raw.maxRiskPerTrade, 'max-risk-per-trade')
-        : 200,
-      maxConcurrentPositions: raw.maxConcurrentPositions
-        ? coerceNumber(raw.maxConcurrentPositions, 'max-concurrent-positions')
-        : 25,
-      minExecutableSize: raw.minExecutableSize
-        ? coerceNumber(raw.minExecutableSize, 'min-executable-size')
-        : 10,
-      takerFeeBps: raw.takerFeeBps ? coerceNumber(raw.takerFeeBps, 'taker-fee-bps') : 30,
-      slippageBps: raw.slippageBps ? coerceNumber(raw.slippageBps, 'slippage-bps') : 10,
-      minCalls: raw.minCalls ? coerceNumber(raw.minCalls, 'min-calls') : 0,
-      filterCollapsed:
-        raw.filterCollapsed !== undefined
-          ? coerceBoolean(raw.filterCollapsed, 'filter-collapsed')
-          : true,
-      filterExtreme:
-        raw.filterExtreme !== undefined ? coerceBoolean(raw.filterExtreme, 'filter-extreme') : true,
-    }),
-    validate: (opts) => backtestV1BaselineSchema.parse(opts),
-    onError: die,
-  });
 }
 
 // Register command module (side effect)
@@ -445,70 +323,6 @@ const backtestModule: PackageCommandModule = {
           await import('@quantbot/workflows');
         const { getDuckDBPath } = await import('@quantbot/utils');
 
-        const duckdbPath = getDuckDBPath('data/alerts.duckdb');
-        const ctx = await createQueryCallsDuckdbContext(duckdbPath);
-
-        // Query calls in date range
-        let callsResult: Awaited<ReturnType<typeof queryCallsDuckdb>>;
-        try {
-          callsResult = await queryCallsDuckdb(
-            {
-              duckdbPath,
-              fromISO: opts.from,
-              toISO: opts.to,
-              callerName: opts.filter, // Use filter as caller name if provided
-              limit: 1000,
-            },
-            ctx
-          );
-        } catch (error) {
-          // Re-throw ConfigurationError (e.g., view missing) as-is
-          if (error instanceof Error && error.name === 'ConfigurationError') {
-            throw error;
-          }
-          const errorMsg = error instanceof Error ? error.message : String(error);
-          if (
-            errorMsg.includes('canon.alerts_std') ||
-            errorMsg.includes('alerts_std') ||
-            errorMsg.includes('user_calls_d')
-          ) {
-            throw new Error(
-              `Missing canon.alerts_std view in DuckDB. This is the canonical alert contract.\n\n` +
-                `Please ensure the canonical schema is set up. The view should be created by the ingestion pipeline.\n` +
-                `Database path: ${duckdbPath}\n\n` +
-                `Note: user_calls_d has been replaced with canon.alerts_std (the canonical alert contract).`
-            );
-          }
-          throw error;
-        }
-
-        // Check for error in result (workflow returned error but didn't throw)
-        if (callsResult.error) {
-          const errorMsg = callsResult.error;
-          if (
-            errorMsg.includes('canon.alerts_std') ||
-            errorMsg.includes('alerts_std') ||
-            errorMsg.includes('user_calls_d')
-          ) {
-            throw new Error(
-              `Missing canon.alerts_std view in DuckDB. This is the canonical alert contract.\n\n` +
-                `Please ensure the canonical schema is set up. The view should be created by the ingestion pipeline.\n` +
-                `Database path: ${duckdbPath}\n\n` +
-                `Note: user_calls_d has been replaced with canon.alerts_std (the canonical alert contract).`
-            );
-          }
-          throw new Error(`Failed to query calls: ${errorMsg}`);
-        }
-
-        if (callsResult.calls.length === 0) {
-          throw new Error(
-            `No calls found in the specified date range (${opts.from} to ${opts.to}).\n` +
-              `Database path: ${duckdbPath}\n` +
-              `Try:\n` +
-              `  1. Check the date range matches your ingested data\n` +
-              `  2. Verify calls exist: quantbot calls list --from ${opts.from} --to ${opts.to}\n` +
-              `  3. Ingest more data: quantbot ingestion telegram --file <telegram-export.json>`
-          );
         }
 
         // Route based on strategy mode
@@ -654,7 +468,6 @@ const backtestModule: PackageCommandModule = {
           }));
 
           // Open main DuckDB (not artifacts directory)
-          const db = await openDuckDbFromEnv();
 
           try {
             // Run exit-stack
@@ -1216,7 +1029,6 @@ const backtestModule: PackageCommandModule = {
           await import('@quantbot/workflows');
         const { getDuckDBPath } = await import('@quantbot/utils');
 
-        const duckdbPath = getDuckDBPath('data/alerts.duckdb');
         const ctx = await createQueryCallsDuckdbContext(duckdbPath);
 
         const callsResult = await queryCallsDuckdb(
@@ -1253,7 +1065,6 @@ const backtestModule: PackageCommandModule = {
             takerFeeBps: opts.takerFeeBps,
             slippageBps: opts.slippageBps,
           },
-          executionModel: opts.executionModel as import('@quantbot/backtest').ExecutionModelVenue,
           runId: opts.runId,
         });
 
@@ -1298,7 +1109,6 @@ const backtestModule: PackageCommandModule = {
           await import('@quantbot/workflows');
         const { getDuckDBPath } = await import('@quantbot/utils');
 
-        const duckdbPath = getDuckDBPath('data/alerts.duckdb');
         const ctx = await createQueryCallsDuckdbContext(duckdbPath);
 
         const callsResult = await queryCallsDuckdb(
@@ -1359,32 +1169,16 @@ const backtestModule: PackageCommandModule = {
         const slice = await materialiseSlice(plan, coverage);
         const candlesByCallId = await loadCandlesFromSlice(slice.path);
 
-        // Build constraints with optional high-multiple caller relaxation
         const constraints = {
           maxStopOutRate: opts.maxStopOutRate,
           maxP95DrawdownBps: opts.maxP95DrawdownBps,
           maxTimeExposedMs: opts.maxTimeExposedMs,
-          ...(opts.enableHighMultipleRelaxation
-            ? {
-                callerHighMultipleProfile: {
-                  p95PeakMultipleThreshold: 20, // Consider caller high-multiple if p95 >= 20x
-                  drawdownRelaxationFactor: opts.highMultipleDrawdownRelaxation,
-                  stopOutRelaxationFactor: opts.highMultipleStopOutRelaxation,
-                },
-              }
-            : {}),
         };
 
         const fees = {
           takerFeeBps: opts.takerFeeBps,
           slippageBps: opts.slippageBps,
         };
-
-        // Collect path metrics for caller profile analysis
-        // Load path metrics from slice if available
-        const pathMetricsByCallId = new Map<string, { peak_multiple?: number | null }>();
-        // TODO: Load path metrics from truth layer if available
-        // For now, this will be empty and caller profile analysis will use policy results
 
         // Run optimization
         if (opts.caller) {
@@ -1394,8 +1188,6 @@ const backtestModule: PackageCommandModule = {
             candlesByCallId,
             constraints,
             fees,
-            callerGroups: opts.callerGroups,
-            pathMetricsByCallId,
           });
 
           if (!result.bestPolicy) {
@@ -1418,16 +1210,6 @@ const backtestModule: PackageCommandModule = {
             policyJson: JSON.stringify(result.bestPolicy.policy),
           };
         } else {
-          // Per-caller optimization (with optional caller group filtering)
-          let callsForOptimization = planReq.calls;
-          if (opts.callerGroups && opts.callerGroups.length > 0) {
-            callsForOptimization = planReq.calls.filter((call) =>
-              opts.callerGroups!.includes(call.caller)
-            );
-          }
-
-          const perCallerResults = optimizePolicyPerCaller(
-            callsForOptimization,
             candlesByCallId,
             constraints,
             fees
@@ -1484,62 +1266,6 @@ const backtestModule: PackageCommandModule = {
         'quantbot backtest baseline --from 2025-05-01 --to 2025-05-31',
         'quantbot backtest baseline --horizon-hours 120',
         'quantbot backtest baseline --tui',
-      ],
-    },
-    {
-      name: 'v1-baseline',
-      description: 'V1 Baseline Optimizer: capital-aware optimization with finite capital',
-      schema: backtestV1BaselineSchema,
-      handler: async (args: unknown, ctx: unknown) => {
-        const { v1BaselineOptimizerHandler } =
-          await import('../handlers/backtest/v1-baseline-optimizer.js');
-        const { CommandContext } = await import('../core/command-context.js');
-        return v1BaselineOptimizerHandler(
-          args as BacktestV1BaselineArgs,
-          ctx as InstanceType<typeof CommandContext>
-        );
-      },
-      examples: [
-        'quantbot backtest v1-baseline --from 2025-05-01 --to 2025-05-31 --interval 5m',
-        'quantbot backtest v1-baseline --from 2025-05-01 --to 2025-05-31 --interval 5m --mode per-caller --min-calls 50',
-        'quantbot backtest v1-baseline --from 2025-05-01 --to 2025-05-31 --interval 5m --mode grouped --min-calls 50',
-      ],
-    },
-    {
-      name: 'catalog-sync',
-      description: 'Sync completed backtest runs to catalog (daemon operation)',
-      schema: catalogSyncSchema,
-      handler: async (args: unknown, ctx: unknown) => {
-        const { catalogSyncHandler } = await import('../handlers/backtest/catalog-sync.js');
-        const { CommandContext } = await import('../core/command-context.js');
-        return catalogSyncHandler(
-          args as CatalogSyncArgs,
-          ctx as InstanceType<typeof CommandContext>
-        );
-      },
-      examples: [
-        'quantbot backtest catalog-sync',
-        'quantbot backtest catalog-sync --base-dir runs --duckdb data/backtest_catalog.duckdb',
-        'quantbot backtest catalog-sync --stats',
-      ],
-    },
-    {
-      name: 'catalog-query',
-      description: 'Query the backtest catalog for runs matching criteria',
-      schema: catalogQuerySchema,
-      handler: async (args: unknown, ctx: unknown) => {
-        const { catalogQueryHandler } = await import('../handlers/backtest/catalog-query.js');
-        const { CommandContext } = await import('../core/command-context.js');
-        return catalogQueryHandler(
-          args as CatalogQueryArgs,
-          ctx as InstanceType<typeof CommandContext>
-        );
-      },
-      examples: [
-        'quantbot backtest catalog-query --limit 10',
-        'quantbot backtest catalog-query --run-type path-only --status completed',
-        'quantbot backtest catalog-query --git-branch main --limit 20',
-        'quantbot backtest catalog-query --run-id <uuid> --artifact-type paths',
       ],
     },
   ],

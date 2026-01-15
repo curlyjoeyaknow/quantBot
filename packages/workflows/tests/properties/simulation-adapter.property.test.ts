@@ -25,7 +25,6 @@ import type {
   StrategyRef,
 } from '../../src/research/contract.js';
 import type { WorkflowContext } from '../../src/types.js';
-import type { StrategyConfig } from '@quantbot/backtest';
 import { DataSnapshotService } from '../../src/research/services/DataSnapshotService.js';
 import type { SnapshotData } from '../../src/research/services/DataSnapshotService.js';
 
@@ -41,8 +40,6 @@ vi.mock('../../src/research/services/DataSnapshotService.js', () => ({
 
 // Mock simulateStrategy - must be hoisted
 const mockSimulateStrategy = vi.fn();
-vi.mock('@quantbot/backtest', async () => {
-  const actual = await vi.importActual('@quantbot/backtest');
   return {
     ...actual,
     simulateStrategy: (...args: any[]) => mockSimulateStrategy(...args),

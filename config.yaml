@@ -5,7 +5,13 @@
 
 # DuckDB Database Configuration
 duckdb:
+<<<<<<< HEAD
   # Path to DuckDB database file (default: data/alerts.duckdb)
   # This is the primary database containing canon.alerts_std view
   path: data/alerts.duckdb
+=======
+  # Path to DuckDB database file (default: data/tele.duckdb)
+  # This is the primary database containing user_calls_d table
+  path: data/tele.duckdb
+>>>>>>> origin/main
 

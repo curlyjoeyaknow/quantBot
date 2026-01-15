@@ -10,32 +10,6 @@ import { DateTime } from 'luxon';
 import { getClickHouseDatabaseName, logger } from '@quantbot/utils';
 import type { Candle } from '@quantbot/core';
 
-// ClickHouse connection configuration (lazy evaluation to ensure .env is loaded)
-function getClickHouseHost(): string {
-  return process.env.CLICKHOUSE_HOST || 'localhost';
-}
-
-function getClickHousePort(): number {
-  // Prefer CLICKHOUSE_HTTP_PORT (explicit HTTP) over CLICKHOUSE_PORT (may be native TCP)
-  return process.env.CLICKHOUSE_HTTP_PORT
-    ? parseInt(process.env.CLICKHOUSE_HTTP_PORT)
-    : process.env.CLICKHOUSE_PORT
-      ? parseInt(process.env.CLICKHOUSE_PORT)
-      : 8123;
-}
-
-function getClickHouseUser(): string {
-  return process.env.CLICKHOUSE_USER || 'default';
-}
-
-function getClickHousePassword(): string {
-  return process.env.CLICKHOUSE_PASSWORD || '';
-}
-
-function getClickHouseDatabase(): string {
-  return process.env.CLICKHOUSE_DATABASE || 'quantbot';
-}
-
 // Singleton client instance
 let client: ClickHouseClient | null = null;
 
@@ -58,7 +32,6 @@ export function getClickHouseClient(): ClickHouseClient {
   }
 
   // Create new client only if it doesn't exist
-  const url = `http://${getClickHouseHost()}:${getClickHousePort()}`;
   const config: {
     url: string;
     username: string;
@@ -68,15 +41,12 @@ export function getClickHouseClient(): ClickHouseClient {
     password?: string;
   } = {
     url: url,
-    username: getClickHouseUser(),
-    database: getClickHouseDatabase(),
     // Connection settings to prevent socket hang ups
     request_timeout: 60000, // 60 seconds
     max_open_connections: 10, // Limit concurrent connections
   };
   // Use password only if explicitly set and not empty
   // Default ClickHouse user often has no password
-  const password = getClickHousePassword();
   if (password && password.trim() !== '') {
     config.password = password;
   }
@@ -89,27 +59,18 @@ export function getClickHouseClient(): ClickHouseClient {
  * Initialize ClickHouse database and create tables
  */
 export async function initClickHouse(): Promise<void> {
-  const url = `http://${getClickHouseHost()}:${getClickHousePort()}`;
   const tempConfig: {
     url: string;
     username: string;
     password?: string;
   } = {
     url,
-    username: getClickHouseUser(),
   };
-
-  const password = getClickHousePassword();
-  if (password !== undefined && password !== '') {
-    tempConfig.password = password;
-  }
 
   const tempClient = createClient(tempConfig);
 
   try {
-    await tempClient.exec({
-      query: `CREATE DATABASE IF NOT EXISTS ${getClickHouseDatabase()}`,
-    });
+    await tempClient.exec({});
 
     await tempClient.close();
 
@@ -131,7 +92,6 @@ export async function initClickHouse(): Promise<void> {
 async function ensureOhlcvTable(ch: ClickHouseClient): Promise<void> {
   await ch.exec({
     query: `
-      CREATE TABLE IF NOT EXISTS ${getClickHouseDatabase()}.ohlcv_candles (
         token_address String,
         chain String,
         timestamp DateTime,
@@ -140,9 +100,6 @@ async function ensureOhlcvTable(ch: ClickHouseClient): Promise<void> {
         high Float64,
         low Float64,
         close Float64,
-        volume Float64,
-        ingested_at DateTime DEFAULT now(),
-        ingestion_run_id String DEFAULT ''
       )
       ENGINE = MergeTree()
       PARTITION BY (chain, toYYYYMM(timestamp))
@@ -155,7 +112,6 @@ async function ensureOhlcvTable(ch: ClickHouseClient): Promise<void> {
 async function ensureTickTable(ch: ClickHouseClient): Promise<void> {
   await ch.exec({
     query: `
-      CREATE TABLE IF NOT EXISTS ${getClickHouseDatabase()}.tick_events (
         token_address String,
         chain String,
         timestamp DateTime,
@@ -176,7 +132,6 @@ async function ensureTickTable(ch: ClickHouseClient): Promise<void> {
 async function ensureSimulationTables(ch: ClickHouseClient): Promise<void> {
   await ch.exec({
     query: `
-      CREATE TABLE IF NOT EXISTS ${getClickHouseDatabase()}.simulation_events (
         simulation_run_id UInt64,
         token_address String,
         chain String,
@@ -200,7 +155,6 @@ async function ensureSimulationTables(ch: ClickHouseClient): Promise<void> {
 
   await ch.exec({
     query: `
-      CREATE TABLE IF NOT EXISTS ${getClickHouseDatabase()}.simulation_aggregates (
         simulation_run_id UInt64,
         token_address String,
         chain String,
@@ -229,7 +183,6 @@ async function ensureIndicatorsTable(ch: ClickHouseClient): Promise<void> {
 
   await ch.exec({
     query: `
-      CREATE TABLE IF NOT EXISTS ${getClickHouseDatabase()}.indicator_values (
         token_address String,
         chain String,
         timestamp DateTime,
@@ -250,7 +203,6 @@ async function ensureTokenMetadataTable(ch: ClickHouseClient): Promise<void> {
 
   await ch.exec({
     query: `
-      CREATE TABLE IF NOT EXISTS ${getClickHouseDatabase()}.token_metadata (
         token_address String,
         chain String,
         timestamp DateTime,
@@ -305,7 +257,6 @@ export async function insertCandles(
 
   try {
     await ch.insert({
-      table: `${getClickHouseDatabase()}.ohlcv_candles`,
       values: rows,
       format: 'JSONEachRow',
     });
@@ -347,7 +298,6 @@ export async function insertTicks(
 
   try {
     await ch.insert({
-      table: `${getClickHouseDatabase()}.tick_events`,
       values,
       format: 'JSONEachRow',
     });
@@ -396,7 +346,6 @@ export async function queryCandles(
       low,
       close,
       volume
-    FROM ${getClickHouseDatabase()}.ohlcv_candles
     WHERE (token_address = '${escapedTokenAddress}'
            OR lower(token_address) = lower('${escapedTokenAddress}')
            OR token_address LIKE '${escapedTokenPattern}'

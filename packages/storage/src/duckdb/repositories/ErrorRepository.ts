@@ -63,7 +63,6 @@ export class ErrorRepository {
 
   constructor(dbPath: string, client?: DuckDBClient) {
     this.client = client || new DuckDBClient(dbPath);
-    this.scriptPath = join(process.cwd(), 'packages/storage/python/duckdb_errors.py');
     this.initializeDatabase();
   }
 

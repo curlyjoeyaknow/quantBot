@@ -56,7 +56,11 @@ Environment variables:
 
 When `NODE_ENV !== 'production'`, Swagger UI is available at:
 
+<<<<<<< HEAD
 ```text
+=======
+```
+>>>>>>> origin/main
 http://localhost:3000/docs
 ```
 
@@ -81,6 +85,7 @@ const server = await createApiServer({
 await server.start();
 ```
 
+<<<<<<< HEAD
 ## Next Steps
 
 ### Phase 1: API Foundation
@@ -327,3 +332,5 @@ Upgrade to web UI that utilizes the API for mode-aware optimization runs.
   - Search runs by fingerprint components
   - View run lineage (which configs led to which results)
   - Reproduce any historical run with one click
+=======
+>>>>>>> origin/main

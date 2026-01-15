@@ -1,6 +1,3 @@
-import type { DuckDb } from './db.js';
-import { exec } from './db.js';
-
 /**
  * Ensure UI schema exists
  *

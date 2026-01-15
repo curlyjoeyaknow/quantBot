@@ -24,9 +24,6 @@ export async function listCallsHandler(
   const fromISO = args.fromIso || '2000-01-01';
   const toISO = args.toIso || '2100-12-31';
 
-  // Get duckdbStorage from context
-  const duckdbStorage = _ctx.services.duckdbStorage();
-
   // Create minimal workflow context (no StorageEngine, no Birdeye dependencies)
   // Stub out unused parts of WorkflowContext that queryCallsDuckdb doesn't need
   const systemClock = new SystemClockAdapter();

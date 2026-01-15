@@ -84,8 +84,6 @@ def load_alerts(
     Returns:
         List of Alert objects sorted by (ts_ms, mint)
     """
-    from tools.shared.duckdb_adapter import get_readonly_connection
-    with get_readonly_connection(duckdb_path) as conn:
         from_ms = int(date_from.timestamp() * 1000)
         to_ms_excl = int((date_to + timedelta(days=1)).timestamp() * 1000)
 

@@ -17,7 +17,6 @@ export default defineConfig({
         '@quantbot/utils',
         '@quantbot/storage',
         '@quantbot/backtest',
-        '@quantbot/backtest',
       ],
     },
     coverage: {
@@ -34,7 +33,6 @@ export default defineConfig({
       '@quantbot/core': path.resolve(__dirname, '../core/src'),
       '@quantbot/utils': path.resolve(__dirname, '../utils/src'),
       '@quantbot/storage': path.resolve(__dirname, '../storage/src'),
-      '@quantbot/backtest': path.resolve(__dirname, '../simulation/src'),
     },
   },
 });

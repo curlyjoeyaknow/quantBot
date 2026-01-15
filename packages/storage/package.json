@@ -68,7 +68,10 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
+<<<<<<< HEAD
     "@quantbot/infra": "workspace:*",
+=======
+>>>>>>> origin/main
     "@clickhouse/client": "^1.14.0",
     "@influxdata/influxdb-client": "^1.33.2",
     "@influxdata/influxdb-client-apis": "^1.33.2",

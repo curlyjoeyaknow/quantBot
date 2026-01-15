@@ -128,6 +128,7 @@ __pycache__/
 # Research OS artifacts (test outputs)
 artifacts/run_*.json
 packages/workflows/artifacts/run_*.json
+<<<<<<< HEAD
 
 # Large data files
 slices/*.parquet
@@ -146,3 +147,5 @@ reports/
 results/
 docs-html/
 backups/
+=======
+>>>>>>> origin/main

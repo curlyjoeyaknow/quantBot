@@ -18,8 +18,6 @@ import {
   RiskModelSchema as ContractRiskModelSchema,
 } from '../contract.js';
 
-// Import Branch C execution models from @quantbot/simulation/execution-models subpath
-// to get the detailed venue-specific types, not the simpler simulation input types
 import type {
   ExecutionModel,
   CostModel,

@@ -53,12 +53,16 @@ This document describes the specific setup required to run all tests, including 
 - **Requirements**:
   - DuckDB file path (defaults to `data/tele.duckdb`)
   - Test data in DuckDB tables
+<<<<<<< HEAD
   - Python dependencies installed (see [Python Setup](#python-setup) below)
+=======
+>>>>>>> origin/main
 - **Environment Variables**:
   ```bash
   DUCKDB_PATH=data/tele.duckdb  # or path to test database
   ```
 
+<<<<<<< HEAD
 #### Python Bridge Integration Tests
 - **Location**: 
   - `packages/utils/tests/integration/python-bridge.test.ts`
@@ -67,6 +71,8 @@ This document describes the specific setup required to run all tests, including 
   - Python 3.8+ with dependencies installed (see [Python Setup](#python-setup) below)
   - These tests run Python scripts via PythonEngine and validate JSON output contracts
 
+=======
+>>>>>>> origin/main
 ### 3. Property Tests (May Require Services)
 - **Location**: `packages/**/tests/properties/**/*.test.ts`
 - **Requirements**: Usually none (pure property-based tests)
@@ -176,6 +182,7 @@ mkdir -p data
 export DUCKDB_PATH=data/tele.duckdb
 ```
 
+<<<<<<< HEAD
 #### Python Setup
 
 Integration tests that use Python scripts require Python dependencies:
@@ -215,6 +222,8 @@ For Simulation tools (`tools/simulation/requirements.txt`):
 
 **Note**: If Python dependencies are not installed, Python bridge integration tests will fail with `ModuleNotFoundError`. These tests can be skipped by not running the integration test suite.
 
+=======
+>>>>>>> origin/main
 ## Environment Variables
 
 Create a `.env` file (or export variables) with:

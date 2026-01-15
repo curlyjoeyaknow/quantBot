@@ -42,7 +42,6 @@ vi.mock('@quantbot/utils', async () => {
   };
 });
 
-vi.mock('@quantbot/backtest', () => ({
   DuckDBStorageService: vi.fn().mockImplementation(() => ({
     queryCalls: vi.fn(),
     checkOhlcvAvailability: vi.fn(),
@@ -55,7 +54,6 @@ vi.mock('@quantbot/backtest', () => ({
 import { runSimulationDuckdb } from '../../src/simulation/runSimulationDuckdb.js';
 import type { RunSimulationDuckdbContext } from '../../src/simulation/runSimulationDuckdb.js';
 import type { WorkflowContext } from '../../src/types.js';
-import type { SimulationOutput } from '@quantbot/backtest';
 
 describe('runSimulationDuckdb Workflow - Golden Path', () => {
   let mockContext: RunSimulationDuckdbContext;

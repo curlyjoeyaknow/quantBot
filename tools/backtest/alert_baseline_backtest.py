@@ -39,13 +39,6 @@ from threading import Lock
 
 import duckdb
 
-# Import from consolidated lib for deduplication + quality validation
-from lib.slice_exporter import (
-    ClickHouseCfg,
-    export_slice_streaming,
-)
-from lib.helpers import dt_to_ch, sql_escape as safe_sql_string
-
 try:
     from clickhouse_driver import Client as ClickHouseClient  # type: ignore[import-untyped]
 except ImportError:
@@ -78,7 +71,6 @@ def parse_yyyy_mm_dd(s: str) -> datetime:
     return datetime.strptime(s, "%Y-%m-%d").replace(tzinfo=UTC)
 
 
-# dt_to_ch imported from lib.helpers
 
 
 def ceil_to_interval(dt: datetime, interval_seconds: int) -> datetime:
@@ -93,7 +85,6 @@ def pct(x: float) -> float:
     return 100.0 * x
 
 
-# safe_sql_string imported from lib.helpers (aliased as sql_escape)
 
 
 @dataclass(frozen=True)
@@ -265,10 +256,6 @@ def load_alerts(
 
 # -----------------------------
 # ClickHouse: coverage check and slice export
-# ClickHouseCfg imported from lib.slice_exporter
-# -----------------------------
-
-
 def ch_query_rows(cfg: ClickHouseCfg, sql: str) -> List[Dict[str, Any]]:
     """Execute ClickHouse query and return rows as dicts."""
     client = cfg.get_client()
@@ -440,25 +427,6 @@ def export_slice_to_parquet(
 ) -> int:
     """
     Export candles for specified mints to Parquet file.
-    Uses consolidated lib/slice_exporter for deduplication + quality validation.
-    Returns number of rows exported.
-    """
-    # Use consolidated exporter with deduplication and quality validation
-    # Note: date range is passed directly since caller already calculated it
-    # Setting pre_window_minutes=0 and post_window_hours=0 since dates are explicit
-    return export_slice_streaming(
-        cfg=cfg,
-        chain=chain,
-        mints=mints,
-        interval_seconds=interval_seconds,
-        date_from=date_from,
-        date_to=date_to,
-        output_path=output_path,
-        pre_window_minutes=0,  # Caller already calculated the time range
-        post_window_hours=0,   # Caller already calculated the time range
-        validate=True,
-        deduplicate=True,
-    )
 
 
 def load_candles_from_parquet(

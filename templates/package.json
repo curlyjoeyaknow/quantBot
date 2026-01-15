@@ -47,7 +47,11 @@
     "fs": "latest",
     "input-otp": "1.4.1",
     "lucide-react": "^0.454.0",
+<<<<<<< HEAD
     "next": "16.0.10",
+=======
+    "next": "16.0.7",
+>>>>>>> origin/main
     "next-themes": "^0.4.6",
     "path": "latest",
     "react": "19.2.0",

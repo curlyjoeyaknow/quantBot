@@ -7,7 +7,6 @@
 
 import { writeFileSync, mkdirSync } from 'fs';
 import { join } from 'path';
-import { getPreset, listPresets } from '@quantbot/backtest';
 import type {
   StrategyConfig,
   StrategyLeg,
@@ -16,7 +15,6 @@ import type {
   ReEntryConfig,
   SignalGroup,
   LadderConfig,
-} from '@quantbot/backtest';
 import type { StrategyDSL } from '@quantbot/core';
 import { validateFull } from '@quantbot/core';
 

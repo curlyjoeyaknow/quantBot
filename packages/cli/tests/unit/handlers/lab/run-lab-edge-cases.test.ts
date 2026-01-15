@@ -19,11 +19,6 @@ import {
   combineSignalPresets,
   getPreset,
   simulateStrategy,
-} from '@quantbot/backtest';
-
-// Mock the simulation package
-vi.mock('@quantbot/backtest', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@quantbot/backtest')>();
   return {
     ...actual,
     getSignalPreset: vi.fn(),

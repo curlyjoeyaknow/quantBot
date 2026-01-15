@@ -4,7 +4,6 @@
 
 import { describe, it, expect } from 'vitest';
 import { checkInvariants, passesInvariants } from '../../src/core/simulation-invariants.js';
-import type { SimResult } from '@quantbot/backtest';
 
 describe('Simulation Invariants', () => {
   const validResult: SimResult = {

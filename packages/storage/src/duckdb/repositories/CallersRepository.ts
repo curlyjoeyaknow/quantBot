@@ -28,7 +28,6 @@ export class CallersRepository {
 
   constructor(dbPath: string, client?: DuckDBClient) {
     this.client = client || new DuckDBClient(dbPath);
-    this.scriptPath = join(process.cwd(), 'packages/storage/python/duckdb_callers.py');
     this.initializeDatabase();
   }
 
@@ -192,7 +191,6 @@ export class CallersRepository {
    */
   async list(): Promise<Caller[]> {
     try {
-      const _scriptPath = join(process.cwd(), 'packages/storage/python/duckdb_callers.py');
       const resultSchema = z.array(
         z.object({
           id: z.number(),

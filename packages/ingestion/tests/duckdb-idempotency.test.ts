@@ -70,10 +70,6 @@ describe('DuckDB Ingestion Idempotency', () => {
     engine = new PythonEngine('python3');
     // Resolve to absolute path to ensure it exists
     const { resolve } = await import('path');
-    pythonToolPath = resolve(
-      process.cwd(),
-      'packages/ingestion/python/telegram/duckdb_punch_pipeline.py'
-    );
 
     // Create test directory
     if (!existsSync(TEST_DIR)) {
@@ -122,10 +118,7 @@ describe('DuckDB Ingestion Idempotency', () => {
           chatId: 'test_chat_123',
           rebuild: true,
         },
-        {
-          cwd: join(process.cwd(), 'packages/ingestion/python/telegram'),
-          env: { PYTHONPATH: join(process.cwd(), 'packages/ingestion/python/telegram') },
-        }
+        {}
       );
 
       // Query row counts
@@ -155,10 +148,7 @@ describe('DuckDB Ingestion Idempotency', () => {
           chatId: 'test_chat_123',
           rebuild: true,
         },
-        {
-          cwd: join(process.cwd(), 'packages/ingestion/python/telegram'),
-          env: { PYTHONPATH: join(process.cwd(), 'packages/ingestion/python/telegram') },
-        }
+        {}
       );
 
       const result1 = execSync(
@@ -176,10 +166,7 @@ describe('DuckDB Ingestion Idempotency', () => {
           chatId: 'test_chat_123',
           rebuild: false, // Don't rebuild - test idempotency
         },
-        {
-          cwd: join(process.cwd(), 'packages/ingestion/python/telegram'),
-          env: { PYTHONPATH: join(process.cwd(), 'packages/ingestion/python/telegram') },
-        }
+        {}
       );
 
       const result2 = execSync(
@@ -209,10 +196,7 @@ describe('DuckDB Ingestion Idempotency', () => {
           chatId: 'test_chat_123',
           rebuild: true,
         },
-        {
-          cwd: join(process.cwd(), 'packages/ingestion/python/telegram'),
-          env: { PYTHONPATH: join(process.cwd(), 'packages/ingestion/python/telegram') },
-        }
+        {}
       );
 
       const result1 = execSync(
@@ -232,10 +216,7 @@ describe('DuckDB Ingestion Idempotency', () => {
           chatId: 'test_chat_123',
           rebuild: false,
         },
-        {
-          cwd: join(process.cwd(), 'packages/ingestion/python/telegram'),
-          env: { PYTHONPATH: join(process.cwd(), 'packages/ingestion/python/telegram') },
-        }
+        {}
       );
 
       const result2 = execSync(
@@ -335,10 +316,7 @@ describe('DuckDB Ingestion Idempotency', () => {
           chatId: 'test_chat_123',
           rebuild: true,
         },
-        {
-          cwd: join(process.cwd(), 'packages/ingestion/python/telegram'),
-          env: { PYTHONPATH: join(process.cwd(), 'packages/ingestion/python/telegram') },
-        }
+        {}
       );
 
       // Check schema

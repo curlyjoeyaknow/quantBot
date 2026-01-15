@@ -54,11 +54,6 @@ export async function exportCallsFromDuckdbHandler(args: ExportCallsArgs, _ctx: 
 
   // Create context with duckdbStorage service
   const { PythonEngine } = await import('@quantbot/utils');
-  const { DuckDBStorageService } = await import('@quantbot/backtest');
-  const engine = new PythonEngine();
-  const storage = new DuckDBStorageService(engine);
-
-  // Resolve path to absolute - Python script runs from packages/storage/python, so relative paths break
   const duckdbPathRaw = args.duckdbPath;
   const duckdbPath = resolve(process.cwd(), duckdbPathRaw);
   const fromISO = args.fromIso;

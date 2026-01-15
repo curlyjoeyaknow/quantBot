@@ -28,7 +28,10 @@
     { "path": "../api-clients" },
     { "path": "../jobs" },
     { "path": "../data-observatory" },
+<<<<<<< HEAD
     { "path": "../backtest" },
+=======
+>>>>>>> origin/main
     { "path": "../labcatalog" }
   ]
 }

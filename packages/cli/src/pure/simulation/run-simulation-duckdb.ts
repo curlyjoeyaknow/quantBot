@@ -17,7 +17,6 @@ import {
   type RunSimulationDuckdbSpec,
   type RunSimulationDuckdbContext,
 } from '@quantbot/workflows';
-import type { SimulationOutput } from '@quantbot/backtest';
 
 export type RunSimulationDuckdbHandlerArgs = {
   duckdb: string;

@@ -17,18 +17,6 @@ except ImportError:
 
 
 def safe_connect(db_path: str):
-    """
-    Safely connect to DuckDB, handling empty/invalid files.
-    
-    DEPRECATED: Use get_write_connection() from tools.shared.duckdb_adapter instead.
-    This function is kept for backward compatibility.
-    """
-    from tools.shared.duckdb_adapter import get_write_connection
-    # Use adapter which handles empty/invalid files and sets busy_timeout
-    with get_write_connection(db_path) as con:
-        # Return the connection (caller must close it)
-        # Note: This breaks the context manager pattern, but kept for compatibility
-        return con
 
 
 def init_database(db_path: str) -> dict:

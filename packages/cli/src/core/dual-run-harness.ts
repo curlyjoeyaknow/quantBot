@@ -5,8 +5,6 @@
  * Used to verify parity between implementations.
  */
 
-import type { SimInput, SimResult } from '@quantbot/backtest';
-import { simulateFromInput } from '@quantbot/backtest';
 import { execa } from 'execa';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -56,10 +54,7 @@ export async function runDualSimulation(input: SimInput): Promise<DualRunResult>
   const tsResult = await simulateFromInput(input);
 
   // Run Python simulation
-  const pythonScript = path.resolve(
-    __dirname,
-    '../../../../packages/ingestion/python/telegram/simulation/run_simulation_contract.py'
-  );
+  const pythonScript = path.resolve(__dirname);
 
   try {
     const { stdout } = await execa('python3', [pythonScript], {

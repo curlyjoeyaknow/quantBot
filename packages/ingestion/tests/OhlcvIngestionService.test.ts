@@ -5,7 +5,6 @@ import type { Chain } from '@quantbot/core';
 
 // Mock logger is handled in tests/setup.ts
 
-// Mock storage for worklist service
 vi.mock('@quantbot/storage', async () => {
   const actual = await vi.importActual('@quantbot/storage');
   return {
@@ -58,10 +57,6 @@ describe('OhlcvIngestionService', () => {
     };
     vi.mocked(getDuckDBWorklistService).mockReturnValue(mockWorklistService as any);
 
-    // Pass ingestion engine to constructor (pythonEngine is not a constructor parameter)
-    service = new OhlcvIngestionService(
-      ingestionEngine as any,
-      undefined // storageEngine (will use default)
     );
   });
 
@@ -74,48 +69,16 @@ describe('OhlcvIngestionService', () => {
       tokenGroups: [
         {
           mint: 'Mint1',
-          earliestAlertTsMs: now.minus({ minutes: 10 }).toMillis(),
           chain: 'solana',
           callCount: 2,
         },
         {
           mint: 'Mint2',
-          earliestAlertTsMs: now.minus({ minutes: 20 }).toMillis(),
           chain: 'solana',
           callCount: 1,
         },
       ],
       calls: [
-        {
-          mint: 'Mint1',
-          chain: 'solana',
-          alertTsMs: now.minus({ minutes: 10 }).toMillis(),
-          chatId: null,
-          messageId: null,
-          priceUsd: null,
-          mcapUsd: null,
-          botTsMs: null,
-        },
-        {
-          mint: 'Mint1',
-          chain: 'solana',
-          alertTsMs: now.minus({ minutes: 5 }).toMillis(),
-          chatId: null,
-          messageId: null,
-          priceUsd: null,
-          mcapUsd: null,
-          botTsMs: null,
-        },
-        {
-          mint: 'Mint2',
-          chain: 'solana',
-          alertTsMs: now.minus({ minutes: 20 }).toMillis(),
-          chatId: null,
-          messageId: null,
-          priceUsd: null,
-          mcapUsd: null,
-          botTsMs: null,
-        },
       ],
     });
 
@@ -125,7 +88,6 @@ describe('OhlcvIngestionService', () => {
       metadata: { chunksFromAPI: 1, chunksFromCache: 0 },
     });
 
-    const result = await service.ingestForCalls({ duckdbPath: '/tmp/test.duckdb', resume: false });
 
     expect(ingestionEngine.initialize).toHaveBeenCalled();
     expect(mockWorklistService.queryWorklist).toHaveBeenCalled();
@@ -144,26 +106,10 @@ describe('OhlcvIngestionService', () => {
       tokenGroups: [
         {
           mint: '', // Empty mint - should fail
-          earliestAlertTsMs: now.toMillis(),
           chain: 'solana',
           callCount: 1,
         },
       ],
-      calls: [
-        {
-          mint: '',
-          chain: 'solana',
-          alertTsMs: now.toMillis(),
-          chatId: null,
-          messageId: null,
-          priceUsd: null,
-          mcapUsd: null,
-          botTsMs: null,
-        },
-      ],
-    });
-
-    const result = await service.ingestForCalls({ duckdbPath: '/tmp/test.duckdb', resume: false });
 
     expect(result.tokensFailed).toBeGreaterThanOrEqual(0); // May fail or skip
     expect(ingestionEngine.fetchCandles).not.toHaveBeenCalled();
@@ -176,28 +122,14 @@ describe('OhlcvIngestionService', () => {
       tokenGroups: [
         {
           mint: 'Mint1',
-          earliestAlertTsMs: now.toMillis(),
           chain: 'solana',
           callCount: 1,
-        },
-      ],
-      calls: [
-        {
-          mint: 'Mint1',
-          chain: 'solana',
-          alertTsMs: now.toMillis(),
-          chatId: null,
-          messageId: null,
-          priceUsd: null,
-          mcapUsd: null,
-          botTsMs: null,
         },
       ],
     });
 
     ingestionEngine.fetchCandles.mockRejectedValue(new Error('engine failed'));
 
-    const result = await service.ingestForCalls({ duckdbPath: '/tmp/test.duckdb', resume: false });
 
     expect(result.tokensProcessed).toBe(1);
     expect(result.tokensFailed).toBe(1);
@@ -205,8 +137,6 @@ describe('OhlcvIngestionService', () => {
   });
 
   it('calculates and stores ATH/ATL metrics for alerts', async () => {
-    // NOTE: ATH/ATL calculation is now handled by simulation layer, not ingestion
-    // This test verifies that ingestion still processes tokens correctly
     const chain: Chain = 'solana';
     const now = DateTime.utc();
     const entryTimestamp = Math.floor(now.minus({ minutes: 5 }).toSeconds());
@@ -243,21 +173,12 @@ describe('OhlcvIngestionService', () => {
       tokenGroups: [
         {
           mint: 'Mint1',
-          earliestAlertTsMs: now.minus({ minutes: 5 }).toMillis(),
           chain: 'solana',
           callCount: 1,
         },
       ],
       calls: [
         {
-          mint: 'Mint1',
-          chain: 'solana',
-          alertTsMs: now.minus({ minutes: 5 }).toMillis(),
-          chatId: null,
-          messageId: null,
-          priceUsd: null,
-          mcapUsd: null,
-          botTsMs: null,
         },
       ],
     });
@@ -268,7 +189,6 @@ describe('OhlcvIngestionService', () => {
       metadata: { chunksFromAPI: 1, chunksFromCache: 0 },
     });
 
-    const result = await service.ingestForCalls({ duckdbPath: '/tmp/test.duckdb', resume: false });
 
     expect(result.tokensSucceeded).toBe(1);
     expect(result.candlesFetched5m).toBe(3);

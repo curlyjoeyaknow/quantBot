@@ -29,13 +29,19 @@ from lib.alerts import Alert, load_alerts
 from lib.helpers import parse_yyyy_mm_dd
 from lib.partitioner import detect_slice_type
 from lib.run_contract import (
+<<<<<<< HEAD
     RunConfig,
+=======
+>>>>>>> origin/main
     RunIdentity,
     RunRecord,
     ensure_runs_schema,
     store_run,
+<<<<<<< HEAD
     store_run_summary,
     store_caller_scores,
+=======
+>>>>>>> origin/main
     list_recent_runs,
 )
 from lib.scoring_views import (
@@ -55,7 +61,10 @@ from lib.risk_sizing import (
     DEFAULT_MAX_POSITION_PCT,
     DEFAULT_MIN_STOP_DISTANCE,
 )
+<<<<<<< HEAD
 from lib.caller_groups import load_caller_group, CallerGroup
+=======
+>>>>>>> origin/main
 
 UTC = timezone.utc
 
@@ -92,10 +101,13 @@ def main():
                        help="Minimum trades for leaderboard (default: 10)")
     run_p.add_argument("--top", type=int, default=30,
                        help="Number of top callers to show (default: 30)")
+<<<<<<< HEAD
     run_p.add_argument("--callers", type=str, default=None,
                        help="Comma-separated list of caller names to filter")
     run_p.add_argument("--caller-group", type=str, default=None,
                        help="Name of caller group file (from caller_groups/)")
+=======
+>>>>>>> origin/main
     
     # Data source
     run_p.add_argument("--alerts-db", default="data/alerts.duckdb",
@@ -147,6 +159,7 @@ def main():
     # =========================================================================
     metrics_p = sub.add_parser("metrics", help="Show metric definitions")
     
+<<<<<<< HEAD
     # =========================================================================
     # show command - show run details and config
     # =========================================================================
@@ -239,6 +252,8 @@ def main():
     opt_p.add_argument("--quiet", action="store_true",
                        help="Suppress progress output")
     
+=======
+>>>>>>> origin/main
     # Parse args
     args = ap.parse_args()
     
@@ -252,10 +267,13 @@ def main():
         cmd_list(args)
     elif args.command == "metrics":
         cmd_metrics(args)
+<<<<<<< HEAD
     elif args.command == "show":
         cmd_show(args)
     elif args.command == "optimize":
         cmd_optimize(args)
+=======
+>>>>>>> origin/main
 
 
 def cmd_run(args):
@@ -303,6 +321,7 @@ def cmd_run(args):
     if not args.quiet:
         print(f"Loaded {len(alerts)} alerts")
     
+<<<<<<< HEAD
     # Filter by callers if specified
     caller_filter = None
     if args.callers:
@@ -327,6 +346,8 @@ def cmd_run(args):
         if not args.quiet:
             print(f"Filtered: {len(alerts)}/{original_count} alerts match caller filter")
     
+=======
+>>>>>>> origin/main
     # Determine slice path
     slice_path = Path(args.slice) if args.slice else None
     
@@ -348,7 +369,11 @@ def cmd_run(args):
     if not args.quiet:
         print(f"Slice: {slice_path} (type: {slice_type})")
     
+<<<<<<< HEAD
     # Compute slice fingerprint (simple hash of path + mtime + size)
+=======
+    # Compute slice fingerprint (simple hash of path + mtime)
+>>>>>>> origin/main
     import os
     import stat
     try:
@@ -359,6 +384,7 @@ def cmd_run(args):
     except Exception:
         slice_fingerprint = hashlib.sha256(str(slice_path).encode()).hexdigest()[:16]
     
+<<<<<<< HEAD
     # Compute alerts fingerprint (hash of alert count + first/last timestamps)
     alerts_fingerprint = ""
     if alerts:
@@ -397,6 +423,9 @@ def cmd_run(args):
     config_hash = run_config.compute_short_hash()
     
     # Create run identity (legacy, for backwards compatibility)
+=======
+    # Create run identity
+>>>>>>> origin/main
     identity = RunIdentity(
         date_from=args.from_date,
         date_to=args.to_date,
@@ -426,7 +455,10 @@ def cmd_run(args):
     
     if not args.quiet:
         print(f"Run ID: {run_record.run_id}")
+<<<<<<< HEAD
         print(f"Config Hash: {config_hash}")
+=======
+>>>>>>> origin/main
         print(f"Fingerprint: {run_record.fingerprint}")
         print()
     
@@ -506,8 +538,13 @@ def cmd_run(args):
     
     con = duckdb.connect(str(results_path))
     try:
+<<<<<<< HEAD
         # Store run record with full config
         store_run(con, run_record, run_config)
+=======
+        # Store run record
+        store_run(con, run_record)
+>>>>>>> origin/main
         
         # Store trades for scoring views (with risk fields)
         n_inserted = insert_trades_from_results(
@@ -519,6 +556,7 @@ def cmd_run(args):
         # Create scoring views
         create_scoring_views(con)
         
+<<<<<<< HEAD
         # Get leaderboard (all callers, not just top N, for storage)
         all_caller_stats = get_caller_leaderboard(
             con,
@@ -546,6 +584,21 @@ def cmd_run(args):
     finally:
         con.close()
     
+=======
+        # Get leaderboard
+        leaderboard = get_caller_leaderboard(
+            con,
+            version=args.score,
+            min_trades=args.min_n,
+            limit=args.top,
+            run_id=run_record.run_id,
+        )
+    finally:
+        con.close()
+    
+    elapsed = time.perf_counter() - start_time
+    
+>>>>>>> origin/main
     # Print results
     if not args.quiet:
         print()
@@ -597,6 +650,7 @@ def cmd_list(args):
         print(f"No results database found at {results_path}")
         return
     
+<<<<<<< HEAD
     con = duckdb.connect(str(results_path), read_only=True)
     try:
         runs = list_recent_runs(con, limit=args.limit)
@@ -638,6 +692,36 @@ def cmd_list(args):
         print()
     finally:
         con.close()
+=======
+    con = duckdb.connect(str(results_path))
+    try:
+        ensure_runs_schema(con)
+        runs = list_recent_runs(con, limit=args.limit)
+    finally:
+        con.close()
+    
+    if not runs:
+        print("No runs found.")
+        return
+    
+    print()
+    print("=" * 90)
+    print("RECENT RUNS")
+    print("=" * 90)
+    print(f"{'ID':<12} {'Name':<25} {'From':<12} {'To':<12} {'Alerts':<10} {'Score':<8}")
+    print("-" * 90)
+    
+    for r in runs:
+        run_id = r.run_id[:10]
+        name = r.run_name[:24]
+        from_d = r.identity.date_from
+        to_d = r.identity.date_to
+        alerts = f"{r.alerts_ok}/{r.alerts_total}"
+        score = r.score_version or "-"
+        print(f"{run_id:<12} {name:<25} {from_d:<12} {to_d:<12} {alerts:<10} {score:<8}")
+    
+    print()
+>>>>>>> origin/main
 
 
 def cmd_metrics(args):
@@ -646,6 +730,7 @@ def cmd_metrics(args):
     print_metrics_doc()
 
 
+<<<<<<< HEAD
 def cmd_optimize(args):
     """Grid search over TP/SL and extended exit parameters."""
     from lib.optimizer_config import (
@@ -907,6 +992,8 @@ def cmd_show(args):
         con.close()
 
 
+=======
+>>>>>>> origin/main
 if __name__ == "__main__":
     main()
 

@@ -660,5 +660,3 @@ export interface OhlcvWorkItem {
   alertTime?: DateTime; // Original alert time for context
   callCount?: number; // Number of calls for this mint
 }
-export * from './plugins/registry.js';
-export type { StrategyFactory, DataSourceFactory, OutputFactory } from './plugins/types.js';

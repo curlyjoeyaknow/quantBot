@@ -25,8 +25,12 @@
   "references": [
     { "path": "../core" },
     { "path": "../utils" },
+<<<<<<< HEAD
     { "path": "../storage" },
     { "path": "../workflows" }
+=======
+    { "path": "../storage" }
+>>>>>>> origin/main
   ]
 }
 

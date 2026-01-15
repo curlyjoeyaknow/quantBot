@@ -5,14 +5,6 @@
  */
 
 import path from 'node:path';
-import { ConfigurationError, logger } from '@quantbot/utils';
-import type { CommandContext } from '../../core/command-context.js';
-import { validateAddressesSchema } from '../../commands/storage.js';
-import type { z } from 'zod';
-
-export type ValidateAddressesArgs = z.infer<typeof validateAddressesSchema>;
-
-export async function validateAddressesHandler(args: ValidateAddressesArgs, ctx: CommandContext) {
   const duckdbPathRaw = args.duckdb || process.env.DUCKDB_PATH;
   if (!duckdbPathRaw) {
     throw new ConfigurationError(
@@ -25,7 +17,6 @@ export async function validateAddressesHandler(args: ValidateAddressesArgs, ctx:
 
   logger.info('Validating addresses in DuckDB database', { duckdbPath });
 
-  const duckdbStorage = ctx.services.duckdbStorage();
 
   const result = await duckdbStorage.validateAddresses(duckdbPath);
 

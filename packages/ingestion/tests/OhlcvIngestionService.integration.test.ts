@@ -188,13 +188,6 @@ describe.skip('OhlcvIngestionService (integration)', () => {
     try {
       const directResult = await execa(
         'python3',
-        [
-          join(workspaceRoot, 'packages/ingestion/python/ohlcv_worklist.py'),
-          '--duckdb',
-          absoluteDuckDBPath,
-        ],
-        {
-          cwd: join(workspaceRoot, 'packages/ingestion/python'),
         }
       );
       console.log('Direct Python script stdout:', directResult.stdout);

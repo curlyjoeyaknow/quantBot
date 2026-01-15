@@ -22,7 +22,6 @@ import {
   exportCallsWithSimulationSchema,
   listCallsSchema,
 } from '../command-defs/calls.js';
-import type { ExitOverlay } from '@quantbot/backtest';
 
 /**
  * Register calls commands

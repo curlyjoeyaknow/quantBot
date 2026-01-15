@@ -98,28 +98,11 @@ export function createStateDuckdbAdapter(duckdbPath: string): StatePort {
 
         const validated = StateOperationResultSchema.parse(result);
 
-        // Log error details for debugging
-        if (!validated.success && validated.error) {
-          const { logger } = await import('@quantbot/utils');
-          logger.debug('StatePort set operation failed', {
-            key: request.key,
-            namespace: request.namespace,
-            error: validated.error,
-            duckdbPath,
-          });
-        }
-
         return {
           success: validated.success,
           error: validated.error ?? undefined,
         };
       } catch (error) {
-        const { logger } = await import('@quantbot/utils');
-        logger.error('StatePort set operation exception', error as Error, {
-          key: request.key,
-          namespace: request.namespace,
-          duckdbPath,
-        });
         return {
           success: false,
           error: error instanceof Error ? error.message : String(error),

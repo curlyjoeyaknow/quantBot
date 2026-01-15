@@ -70,7 +70,6 @@ export default defineConfig({
       '@quantbot/utils': path.resolve(__dirname, './packages/utils/src'),
       '@quantbot/core': path.resolve(__dirname, './packages/core/src'),
       '@quantbot/analytics': path.resolve(__dirname, './packages/analytics/src'),
-      '@quantbot/backtest': path.resolve(__dirname, './packages/simulation/src'),
       '@quantbot/workflows': path.resolve(__dirname, './packages/workflows/src'),
     },
     dedupe: ['@quantbot/core', '@quantbot/utils', '@quantbot/storage'],

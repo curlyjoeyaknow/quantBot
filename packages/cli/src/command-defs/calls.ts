@@ -1,5 +1,4 @@
 import { z } from 'zod';
-import type { ExitOverlay } from '@quantbot/backtest';
 
 /**
  * Exit overlay schema (supports all overlay kinds)

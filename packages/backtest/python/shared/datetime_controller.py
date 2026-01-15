@@ -268,7 +268,7 @@ def _deprecated_fromtimestamp(*args, **kwargs):
     raise NotImplementedError(
         "datetime.fromtimestamp() is BANNED in this codebase! "
         "Use DateTimeController.from_timestamp_ms() or from_timestamp_s() instead. "
-        "See tools/shared/datetime_controller.py for details."
+        "See packages/backtest/python/shared/datetime_controller.py for details."
     )
 
 
@@ -276,7 +276,7 @@ def _deprecated_now(*args, **kwargs):
     raise NotImplementedError(
         "datetime.now() without timezone is BANNED in this codebase! "
         "Use DateTimeController.now() instead. "
-        "See tools/shared/datetime_controller.py for details."
+        "See packages/backtest/python/shared/datetime_controller.py for details."
     )
 
 

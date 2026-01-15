@@ -263,9 +263,6 @@ def main() -> None:
     
     args = parser.parse_args()
     
-    # Connect to DuckDB (reader - queries only)
-    from tools.shared.duckdb_adapter import get_readonly_connection
-    with get_readonly_connection(str(args.db_path)) as conn:
         if args.operation == 'get':
             data = json.loads(args.data or '{}')
             experiment_id = data.get('experiment_id')

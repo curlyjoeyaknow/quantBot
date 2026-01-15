@@ -47,8 +47,6 @@ describe('Import Smoke Test', () => {
     expect(workflows).toBeDefined();
   });
 
-  it('should import @quantbot/backtest', async () => {
-    const simulation = await import('@quantbot/backtest');
     expect(simulation).toBeDefined();
   });
 

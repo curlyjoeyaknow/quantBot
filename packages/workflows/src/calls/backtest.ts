@@ -2,20 +2,10 @@
  * Call Overlay Evaluation - Thin adapter for overlay-based simulation
  *
  * This is a thin adapter that:
- * - Calls runOverlaySimulation() from @quantbot/backtest
- * - Maps OverlaySimulationResult to CallBacktestResult
- *
- * No math, no trade mechanics, no simulation logic.
- * All of that lives in @quantbot/backtest.
  */
 
 import type { AlignedCall } from './align.js';
 import type { Candle } from '@quantbot/core';
-import { runOverlaySimulation } from '@quantbot/backtest';
-import type { ExitOverlay, FeeModel, PositionModel } from '@quantbot/backtest';
-
-// Re-export types from @quantbot/backtest for convenience
-export type { ExitOverlay, FeeModel, PositionModel } from '@quantbot/backtest';
 
 /**
  * Backtest parameters
@@ -51,14 +41,6 @@ export type CallBacktestResult = {
 };
 
 /**
- * Evaluate call overlays using @quantbot/backtest
- *
- * Thin adapter that:
- * 1. Slices candles from entry point
- * 2. Calls runOverlaySimulation() from @quantbot/backtest
- * 3. Maps OverlaySimulationResult to CallBacktestResult
- *
- * No math, no trade mechanics - all of that is in @quantbot/backtest.
  *
  * @param aligned - Aligned call (must have entry.candleIndex set)
  * @param candles - Array of candles (must be sorted by timestamp ascending)

@@ -28,7 +28,6 @@ export class ArtifactDuckDBAdapter implements ArtifactRepository {
   constructor(dbPath: string, client?: DuckDBClient) {
     this.client = client || new DuckDBClient(dbPath);
     const workspaceRoot = findWorkspaceRoot();
-    this.scriptPath = join(workspaceRoot, 'packages/storage/python/duckdb_artifacts.py');
   }
 
   async store(artifact: Artifact): Promise<void> {

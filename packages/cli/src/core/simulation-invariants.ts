@@ -5,8 +5,6 @@
  * These invariants are checked to ensure simulation correctness.
  */
 
-import type { SimResult } from '@quantbot/backtest';
-
 /**
  * Invariant violation
  */

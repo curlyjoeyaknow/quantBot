@@ -43,8 +43,6 @@ def get_runs_by_date_range(
     
     Returns list of run metadata with summary metrics.
     """
-    from tools.shared.duckdb_adapter import get_readonly_connection
-    with get_readonly_connection(duckdb_path) as conn:
         # Check if bt schema exists
         schemas = conn.execute("SELECT schema_name FROM information_schema.schemata WHERE schema_name = 'bt'").fetchall()
         if not schemas:
@@ -113,8 +111,6 @@ def get_run_outcomes(
     
     Returns list of per-alert outcomes with path metrics.
     """
-    from tools.shared.duckdb_adapter import get_readonly_connection
-    with get_readonly_connection(duckdb_path) as conn:
         where_clauses = ["s.run_id = ?"]
         params = [run_id]
         
@@ -171,8 +167,6 @@ def get_caller_performance(
     
     Returns caller statistics including hit rates and average metrics.
     """
-    from tools.shared.duckdb_adapter import get_readonly_connection
-    with get_readonly_connection(duckdb_path) as conn:
         where_clauses = ["o.ath_multiple IS NOT NULL"]  # Only count alerts with outcomes
         params = []
         
@@ -228,8 +222,6 @@ def compare_runs(
     
     Returns side-by-side comparison of run metrics.
     """
-    from tools.shared.duckdb_adapter import get_readonly_connection
-    with get_readonly_connection(duckdb_path) as conn:
         comparisons = []
         
         for run_id in run_ids:
@@ -276,8 +268,6 @@ def get_run_metrics(
     """
     Get all metrics for a specific run from bt.metrics_f.
     """
-    from tools.shared.duckdb_adapter import get_readonly_connection
-    with get_readonly_connection(duckdb_path) as conn:
         sql = """
         SELECT 
             metric_name,

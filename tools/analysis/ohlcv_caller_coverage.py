@@ -181,9 +181,6 @@ def kill_hanging_processes(script_path: str, current_pid: int, verbose: bool = F
 
 def get_duckdb_connection(db_path: str):
     """Get DuckDB connection"""
-    from tools.shared.duckdb_adapter import get_readonly_connection
-    # Return context manager - caller should use 'with'
-    return get_readonly_connection(db_path)
 
 
 def _check_docker_container_running(container_name: str) -> bool:

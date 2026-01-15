@@ -22,9 +22,6 @@ import { tokenStatsWorkflowHandler } from './storage/token-stats-workflow.js';
 import { validateAddressesHandler } from '../handlers/storage/validate-addresses.js';
 import { removeFaultyAddressesHandler } from '../handlers/storage/remove-faulty-addresses.js';
 import { migrateDuckdbHandler, migrateDuckdbSchema } from '../handlers/storage/migrate-duckdb.js';
-import { analyzeDuplicateCandlesHandler } from '../handlers/storage/analyze-duplicate-candles.js';
-import { deduplicateCandlesHandler } from '../handlers/storage/deduplicate-candles.js';
-import { analyzeCandleQualityHandler } from '../handlers/storage/analyze-candle-quality.js';
 
 /**
  * Query command schema - Only allow safe queries
@@ -96,41 +93,6 @@ export const tokenStatsWorkflowSchema = z.object({
   duckdbPath: z.string().optional(),
   limit: z.number().int().positive().optional(),
   format: z.enum(['json', 'table', 'csv']).default('table'),
-});
-
-/**
- * Analyze duplicate candles schema
- */
-export const analyzeDuplicateCandlesSchema = z.object({
-  limit: z.number().int().positive().max(10000).default(100),
-  token: z.string().optional(),
-  chain: z.enum(['solana', 'ethereum', 'bsc', 'base', 'evm']).optional(),
-  interval: z.enum(['1s', '15s', '1m', '5m', '15m', '1h', '4h', '1d']).optional(),
-  showDetails: z.boolean().default(false),
-  format: z.enum(['json', 'table']).default('table'),
-});
-
-/**
- * Deduplicate candles schema
- */
-export const deduplicateCandlesSchema = z.object({
-  token: z.string().optional(),
-  chain: z.enum(['solana', 'ethereum', 'bsc', 'base', 'evm']).optional(),
-  interval: z.enum(['1s', '15s', '1m', '5m', '15m', '1h', '4h', '1d']).optional(),
-  dryRun: z.boolean().default(true),
-  batchSize: z.number().int().positive().default(10000),
-});
-
-/**
- * Analyze candle quality schema
- */
-export const analyzeCandleQualitySchema = z.object({
-  duckdb: z.string().optional(),
-  output: z.string().optional(),
-  csv: z.string().optional(),
-  limit: z.number().int().positive().optional(),
-  interval: z.enum(['1s', '15s', '1m', '5m', '15m', '1h', '4h', '1d']).default('5m'),
-  minQualityScore: z.number().min(0).max(100).optional(),
 });
 
 /**
@@ -368,77 +330,6 @@ export function registerStorageCommands(program: Command): void {
     validate: (opts) => migrateDuckdbSchema.parse(opts),
     onError: die,
   });
-
-  // Analyze duplicate candles command
-  const analyzeDuplicatesCmd = storageCmd
-    .command('analyze-duplicates')
-    .description('Analyze duplicate candles in ClickHouse (same token, timestamp, interval)')
-    .option('--limit <limit>', 'Maximum duplicate groups to show', '100')
-    .option('--token <address>', 'Filter by token address')
-    .option('--chain <chain>', 'Filter by chain (solana, ethereum, bsc, base)')
-    .option('--interval <interval>', 'Filter by interval (1s, 15s, 1m, 5m, 15m, 1h, 4h, 1d)')
-    .option('--show-details', 'Show detailed ingestion timestamps')
-    .option('--format <format>', 'Output format', 'table');
-
-  defineCommand(analyzeDuplicatesCmd, {
-    name: 'analyze-duplicates',
-    packageName: 'storage',
-    coerce: (raw) => ({
-      ...raw,
-      limit: raw.limit ? coerceNumber(raw.limit, 'limit') : 100,
-      showDetails:
-        raw.showDetails !== undefined ? coerceBoolean(raw.showDetails, 'showDetails') : false,
-    }),
-    validate: (opts) => analyzeDuplicateCandlesSchema.parse(opts),
-    onError: die,
-  });
-
-  // Deduplicate candles command
-  const deduplicateCmd = storageCmd
-    .command('deduplicate')
-    .description('Remove duplicate candles (keeps most recent ingestion)')
-    .option('--token <address>', 'Filter by token address')
-    .option('--chain <chain>', 'Filter by chain (solana, ethereum, bsc, base)')
-    .option('--interval <interval>', 'Filter by interval (1s, 15s, 1m, 5m, 15m, 1h, 4h, 1d)')
-    .option('--no-dry-run', 'Actually delete duplicates (default is dry-run)')
-    .option('--batch-size <size>', 'Batch size for deletion', '10000');
-
-  defineCommand(deduplicateCmd, {
-    name: 'deduplicate',
-    packageName: 'storage',
-    coerce: (raw) => ({
-      ...raw,
-      dryRun: raw.dryRun !== false, // Default to true unless --no-dry-run
-      batchSize: raw.batchSize ? coerceNumber(raw.batchSize, 'batchSize') : 10000,
-    }),
-    validate: (opts) => deduplicateCandlesSchema.parse(opts),
-    onError: die,
-  });
-
-  // Analyze candle quality command
-  const analyzeQualityCmd = storageCmd
-    .command('analyze-quality')
-    .description('Analyze candle data quality and generate re-ingestion worklist')
-    .option('--duckdb <path>', 'DuckDB database path')
-    .option('--output <path>', 'Output JSON file path', 'candle_quality_worklist.json')
-    .option('--csv <path>', 'Also export worklist as CSV')
-    .option('--limit <number>', 'Maximum tokens to analyze')
-    .option('--interval <interval>', 'Candle interval to analyze', '5m')
-    .option('--min-quality-score <score>', 'Only include tokens below this quality score');
-
-  defineCommand(analyzeQualityCmd, {
-    name: 'analyze-quality',
-    packageName: 'storage',
-    coerce: (raw) => ({
-      ...raw,
-      limit: raw.limit ? coerceNumber(raw.limit, 'limit') : undefined,
-      minQualityScore: raw.minQualityScore
-        ? coerceNumber(raw.minQualityScore, 'minQualityScore')
-        : undefined,
-    }),
-    validate: (opts) => analyzeCandleQualitySchema.parse(opts),
-    onError: die,
-  });
 }
 
 /**
@@ -580,53 +471,6 @@ const storageModule: PackageCommandModule = {
       examples: [
         'quantbot storage remove-faulty-addresses --duckdb data/tele.duckdb --dry-run',
         'quantbot storage remove-faulty-addresses --duckdb data/tele.duckdb',
-      ],
-    },
-    {
-      name: 'analyze-duplicates',
-      description: 'Analyze duplicate candles in ClickHouse (same token, timestamp, interval)',
-      schema: analyzeDuplicateCandlesSchema,
-      handler: async (args: unknown, ctx: unknown) => {
-        const typedCtx = ctx as CommandContext;
-        const typedArgs = args as z.infer<typeof analyzeDuplicateCandlesSchema>;
-        return await analyzeDuplicateCandlesHandler(typedArgs, typedCtx);
-      },
-      examples: [
-        'quantbot storage analyze-duplicates',
-        'quantbot storage analyze-duplicates --limit 50 --show-details',
-        'quantbot storage analyze-duplicates --token So11111111111111111111111111111111111111112',
-        'quantbot storage analyze-duplicates --chain solana --interval 5m --format json',
-      ],
-    },
-    {
-      name: 'deduplicate',
-      description: 'Remove duplicate candles (keeps most recent ingestion)',
-      schema: deduplicateCandlesSchema,
-      handler: async (args: unknown, ctx: unknown) => {
-        const typedCtx = ctx as CommandContext;
-        const typedArgs = args as z.infer<typeof deduplicateCandlesSchema>;
-        return await deduplicateCandlesHandler(typedArgs, typedCtx);
-      },
-      examples: [
-        'quantbot storage deduplicate --dry-run',
-        'quantbot storage deduplicate --token So11111111111111111111111111111111111111112 --no-dry-run',
-        'quantbot storage deduplicate --chain solana --interval 5m --no-dry-run',
-      ],
-    },
-    {
-      name: 'analyze-quality',
-      description: 'Analyze candle data quality and generate re-ingestion worklist',
-      schema: analyzeCandleQualitySchema,
-      handler: async (args: unknown, ctx: unknown) => {
-        const typedCtx = ctx as CommandContext;
-        const typedArgs = args as z.infer<typeof analyzeCandleQualitySchema>;
-        return await analyzeCandleQualityHandler(typedArgs, typedCtx);
-      },
-      examples: [
-        'quantbot storage analyze-quality',
-        'quantbot storage analyze-quality --limit 100 --csv worklist.csv',
-        'quantbot storage analyze-quality --interval 5m --min-quality-score 70',
-        'quantbot storage analyze-quality --duckdb data/alerts.duckdb --output quality_report.json',
       ],
     },
   ],

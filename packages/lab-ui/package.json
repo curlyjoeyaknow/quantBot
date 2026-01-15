@@ -4,9 +4,13 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/server.ts",
+<<<<<<< HEAD
     "build": "tsc --build",
     "build:deps": "pnpm --filter @quantbot/core build && pnpm --filter @quantbot/utils build && pnpm --filter @quantbot/storage build",
     "prebuild": "pnpm build:deps",
+=======
+    "build": "tsc -p tsconfig.json",
+>>>>>>> origin/main
     "start": "node --enable-source-maps dist/server.js"
   },
   "dependencies": {

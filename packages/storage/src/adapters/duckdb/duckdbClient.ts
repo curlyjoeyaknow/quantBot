@@ -6,46 +6,6 @@ export type DuckDbConnection = {
   all<T = any>(sql: string, params?: any[]): Promise<T[]>;
 };
 
-export interface OpenDuckDbOptions {
-  /**
-   * If true, open in read-only mode (prevents locks).
-   * Note: Node.js DuckDB bindings may not support read-only mode directly.
-   * For true read-only access, prefer using Python adapter via DuckDBClient.
-   */
-  readOnly?: boolean;
-}
-
-/**
- * Open a DuckDB connection.
- *
- * Rule: Only ONE writer process should open the DB in write mode.
- * Everyone else should use READ_ONLY connections or query Parquet.
- * DuckDB handles locking automatically (no SQLite-style busy_timeout needed).
- *
- * @param dbPath - Path to DuckDB file
- * @param options - Connection options
- * @returns DuckDB connection
- */
-export async function openDuckDb(
-  dbPath: string,
-  options?: OpenDuckDbOptions
-): Promise<DuckDbConnection> {
-  const duckdbModule = await import('duckdb');
-  // Handle both ESM default export and CommonJS module.exports
-  const duckdb = duckdbModule.default || duckdbModule;
-
-  // Only create directory if not read-only and not in-memory
-  const isReadOnly = options?.readOnly === true;
-  const isInMemory = dbPath === ':memory:' || dbPath === '';
-
-  if (!isReadOnly && !isInMemory) {
-    fs.mkdirSync(path.dirname(dbPath), { recursive: true });
-  }
-
-  // Note: DuckDB Node.js bindings may not support read-only mode in constructor options.
-  // For read-only access, we avoid creating directories and rely on DuckDB's automatic locking.
-  // DuckDB handles locking automatically - no need for busy_timeout (SQLite-specific pragma)
-  // If read-only is requested and file doesn't exist, this will fail gracefully.
   const db = new duckdb.Database(dbPath);
   const conn = db.connect();
 

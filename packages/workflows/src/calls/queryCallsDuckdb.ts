@@ -2,12 +2,6 @@
  * Query Calls from DuckDB Workflow
  * ==================================
  *
- * Queries calls from DuckDB canon.alerts_std view with filtering options.
- * Returns CallRecord[] format for use in workflows.
- *
- * Uses the canonical alert contract (canon.alerts_std) - one row per alert,
- * stable columns forever, caller resolution when possible.
- *
  * This workflow follows the workflow contract:
  * - Validates spec with Zod
  * - Uses WorkflowContext for all dependencies
@@ -84,7 +78,6 @@ export async function createQueryCallsDuckdbContext(
   duckdbPath?: string
 ): Promise<QueryCallsDuckdbContext> {
   const { createProductionContext } = await import('../context/createProductionContext.js');
-  const { DuckDBStorageService } = await import('@quantbot/backtest');
   const { PythonEngine } = await import('@quantbot/utils');
 
   const baseContext = createProductionContext();
@@ -176,23 +169,6 @@ export async function queryCallsDuckdb(
 
   if (!result.success || !result.calls) {
     const errorMsg = result.error || 'Unknown error querying calls';
-
-    // Check for view missing error and provide helpful guidance
-    if (
-      errorMsg.includes('canon.alerts_std') ||
-      errorMsg.includes('alerts_std') ||
-      errorMsg.includes('user_calls_d')
-    ) {
-      throw new ConfigurationError(
-        `Missing canon.alerts_std view in DuckDB. This is the canonical alert contract.\n\n` +
-          `Please ensure the canonical schema is set up. The view should be created by the ingestion pipeline.\n` +
-          `Database path: ${validated.duckdbPath}\n\n` +
-          `Note: user_calls_d has been replaced with canon.alerts_std (the canonical alert contract).`,
-        'QueryCallsDuckdb',
-        { duckdbPath: validated.duckdbPath, error: errorMsg }
-      );
-    }
-
     ctx.logger.warn('[workflows.queryCallsDuckdb] Failed to query calls', {
       error: errorMsg,
       duckdbPath: validated.duckdbPath,

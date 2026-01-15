@@ -1,41 +1,3 @@
-/**
- * Indicator Series Utilities
- *
- * Array-based indicator calculations for exit plan evaluation.
- * Leverages @quantbot/simulation where possible, with array adapters.
- */
-
-import type { Candle } from '@quantbot/core';
-
-// Re-export simulation's candle-based calculators for advanced use
-export {
-  calculateEMA as calculateEMAAtIndex,
-  calculateSMA as calculateSMAAtIndex,
-  calculateMovingAverages,
-  isGoldenCross,
-  isDeathCross,
-} from '@quantbot/simulation/indicators';
-
-export { calculateRSI as calculateRSIAtIndex } from '@quantbot/simulation/indicators';
-
-export { calculateIchimoku, type IchimokuData } from '@quantbot/simulation/indicators';
-
-export { calculateMACD, type MACDData, type MACDState } from '@quantbot/simulation/indicators';
-
-export {
-  calculateIndicators,
-  calculateIndicatorSeries,
-  getBullishSignals,
-  getBearishSignals,
-  type LegacyIndicatorData,
-  type IndicatorData,
-} from '@quantbot/simulation/indicators';
-
-// =============================================================================
-// Array-based indicator functions (for exit plan evaluation)
-// These operate on value arrays rather than candle indices.
-// =============================================================================
-
 export function closeSeries(candles: Candle[]): number[] {
   return candles.map((c) => c.close);
 }
@@ -44,21 +6,6 @@ export function hl2Series(candles: Candle[]): number[] {
   return candles.map((c) => (c.high + c.low) / 2);
 }
 
-export function highSeries(candles: Candle[]): number[] {
-  return candles.map((c) => c.high);
-}
-
-export function lowSeries(candles: Candle[]): number[] {
-  return candles.map((c) => c.low);
-}
-
-export function volumeSeries(candles: Candle[]): number[] {
-  return candles.map((c) => c.volume);
-}
-
-/**
- * Exponential Moving Average over a value array
- */
 export function ema(values: number[], period: number): Array<number | null> {
   if (period <= 0) throw new Error('EMA period must be > 0');
   const out: Array<number | null> = new Array(values.length).fill(null);
@@ -90,27 +37,6 @@ export function ema(values: number[], period: number): Array<number | null> {
   return out;
 }
 
-/**
- * Simple Moving Average over a value array
- */
-export function sma(values: number[], period: number): Array<number | null> {
-  if (period <= 0) throw new Error('SMA period must be > 0');
-  const out: Array<number | null> = new Array(values.length).fill(null);
-
-  for (let i = period - 1; i < values.length; i++) {
-    let sum = 0;
-    for (let j = i - period + 1; j <= i; j++) {
-      sum += values[j];
-    }
-    out[i] = sum / period;
-  }
-
-  return out;
-}
-
-/**
- * RSI over a value array (Wilder's smoothed RSI)
- */
 export function rsi(values: number[], period: number): Array<number | null> {
   if (period <= 0) throw new Error('RSI period must be > 0');
   const out: Array<number | null> = new Array(values.length).fill(null);
@@ -146,9 +72,6 @@ export function rsi(values: number[], period: number): Array<number | null> {
   return out;
 }
 
-/**
- * Ichimoku Tenkan/Kijun lines
- */
 export function ichimokuTenkanKijun(
   candles: Candle[],
   tenkanPeriod: number,
@@ -176,9 +99,6 @@ export function ichimokuTenkanKijun(
   return { tenkan, kijun };
 }
 
-/**
- * Volume Z-Score (deviation from rolling mean)
- */
 export function volumeZScore(candles: Candle[], window: number): Array<number | null> {
   const out: Array<number | null> = new Array(candles.length).fill(null);
   const vols = candles.map((c) => c.volume);
@@ -202,9 +122,6 @@ export function volumeZScore(candles: Candle[], window: number): Array<number | 
   return out;
 }
 
-/**
- * Detect cross between two series
- */
 export function crossed(
   prevA: number | null,
   prevB: number | null,
@@ -218,9 +135,6 @@ export function crossed(
   return direction === 'bearish' ? prev > 0 && curr <= 0 : prev < 0 && curr >= 0;
 }
 
-/**
- * Detect cross through a level
- */
 export function crossedLevel(
   prevV: number | null,
   currV: number | null,
@@ -229,20 +143,4 @@ export function crossedLevel(
 ): boolean {
   if (prevV === null || currV === null) return false;
   return direction === 'down' ? prevV > level && currV <= level : prevV < level && currV >= level;
-}
-
-// =============================================================================
-// Helpers
-// =============================================================================
-
-function rollingMax(arr: number[], window: number, i: number): number {
-  let m = -Infinity;
-  for (let j = Math.max(0, i - window + 1); j <= i; j++) m = Math.max(m, arr[j]);
-  return m;
-}
-
-function rollingMin(arr: number[], window: number, i: number): number {
-  let m = Infinity;
-  for (let j = Math.max(0, i - window + 1); j <= i; j++) m = Math.min(m, arr[j]);
-  return m;
 }

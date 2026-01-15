@@ -6,6 +6,8 @@ Last updated: 2025-01-24 (Recent: Slice Export & Analyze workflow implementation
 
 ---
 
+<<<<<<< HEAD
+
 ## 🎯 Next Steps & Incomplete Items
 
 ### Slice Export & Analyze Workflow - Remaining Phases
@@ -53,6 +55,10 @@ Last updated: 2025-01-24 (Recent: Slice Export & Analyze workflow implementation
   - [ ] Simulation from chat
 
 ---
+
+=======
+
+> > > > > > > origin/main
 
 ## 🔥 Active Development
 
@@ -138,6 +144,28 @@ Last updated: 2025-01-24 (Recent: Slice Export & Analyze workflow implementation
   - [x] End-to-end test for full export+analyze pipeline
   - [x] Empty result set handling improvements
 
+# <<<<<<< HEAD
+
+- [ ] **Phase 4: Dataset Expansion**
+  - [ ] Dataset mapping registry for multiple datasets
+  - [ ] `candles_5m` dataset support
+  - [ ] Conditional `indicators_1m` support (if canonical in ClickHouse)
+
+- [ ] **Phase 5: Analysis Enhancements**
+  - [ ] Analysis result storage (Parquet/CSV output)
+  - [ ] Named analysis plans registry
+
+- [ ] **Phase 6: Performance & Scaling**
+  - [ ] Date-based partitioning (one Parquet file per day)
+  - [ ] Chunking within day if single day is too big (token buckets or time sub-windows)
+  - [ ] Compression support (snappy, zstd, gzip) - after file splitting proven
+
+- [ ] **Phase 7: Developer Experience**
+  - [ ] Slice comparison tool CLI command
+  - [ ] Comprehensive documentation (README, guides, architecture)
+
+> > > > > > > origin/main
+
 ### Architecture Enforcement
 
 - [x] Resolve circular dependencies (api-clients ↔ observability, ohlcv ↔ ingestion)
@@ -211,7 +239,11 @@ Last updated: 2025-01-24 (Recent: Slice Export & Analyze workflow implementation
   - Alert system for targets/stops
   - Ichimoku cloud analysis
 
-- [x] **Strategy Optimization**
+<<<<<<< HEAD
+
+- [x] # **Strategy Optimization**
+- [ ] **Strategy Optimization**
+  > > > > > > > origin/main
   - ML-based strategy finder
   - Parameter sweep automation
   - Backtest result comparison

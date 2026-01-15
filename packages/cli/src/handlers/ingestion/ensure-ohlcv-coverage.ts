@@ -5,19 +5,16 @@
  * Ensures minimum coverage:
  * - 5000 15s candles
  * - 10,000 1m candles
- * - 20,000 5m candles
  */
 
 import path from 'node:path';
 import { DateTime } from 'luxon';
-import { ConfigurationError, isSolanaAddress, isEvmAddress, logger } from '@quantbot/utils';
 import { ingestOhlcv, createOhlcvIngestionContext } from '@quantbot/workflows';
 import type { IngestOhlcvSpec } from '@quantbot/workflows';
 import { getCoverage } from '@quantbot/ohlcv';
 import type { CommandContext } from '../../core/command-context.js';
 import { ensureOhlcvCoverageSchema } from '../../commands/ingestion.js';
 import type { z } from 'zod';
-import type { DuckDBStorageService } from '@quantbot/backtest';
 import { fetchMultiChainMetadata, getBirdeyeClient, heliusRestClient } from '@quantbot/api-clients';
 
 export type EnsureOhlcvCoverageArgs = z.infer<typeof ensureOhlcvCoverageSchema>;
@@ -42,9 +39,6 @@ interface ValidatedTokenInfo {
  */
 async function queryRecentTokens(
   duckdbPath: string,
-  duckdbStorage: DuckDBStorageService,
-  maxAgeDays: number = 90
-): Promise<TokenInfo[]> {
   const result = await duckdbStorage.queryTokensRecent(duckdbPath, maxAgeDays);
 
   if (!result.success || !result.tokens) {
@@ -322,7 +316,6 @@ async function checkTokenCoverage(
   // Calculate time range based on interval requirements
   // For 15s: 5000 candles = ~20.8 hours, check from 1 day before alert to now
   // For 1m: 10,000 candles = ~6.94 days, check from 1 week before alert to now
-  // For 5m: 20,000 candles = ~69.4 days, check from ~35 days before alert to now
   let daysBefore: number;
   if (interval === '15s') {
     daysBefore = 1; // 1 day
@@ -330,7 +323,6 @@ async function checkTokenCoverage(
     daysBefore = 7; // 1 week
   } else {
     // 5m
-    daysBefore = 35; // ~35 days for 20,000 candles
   }
 
   const fromTime = alertTime.minus({ days: daysBefore });
@@ -373,7 +365,6 @@ async function fetchCandlesForToken(
   // Calculate time range to ensure we get enough candles
   // For 15s: 5000 candles = ~20.8 hours, fetch 1 day before alert to 1 day after
   // For 1m: 10,000 candles = ~6.94 days, fetch 1 week before alert to 1 week after
-  // For 5m: 20,000 candles = ~69.4 days, fetch ~35 days before alert to ~35 days after
   let preWindow: number;
   let postWindow: number;
 
@@ -384,10 +375,6 @@ async function fetchCandlesForToken(
     preWindow = 10080; // 1 week
     postWindow = 10080; // 1 week
   } else {
-    // 5m: 20,000 candles * 5 minutes = 100,000 minutes total
-    // Split evenly: 50,000 minutes before and after = ~34.7 days each
-    preWindow = 50000; // ~34.7 days before alert
-    postWindow = 50000; // ~34.7 days after alert
   }
 
   // Calculate from/to dates based on alert time and windows
@@ -434,7 +421,6 @@ async function fetchCandlesForToken(
  */
 export async function ensureOhlcvCoverageHandler(
   args: EnsureOhlcvCoverageArgs,
-  ctx: CommandContext
 ) {
   const duckdbPathRaw = args.duckdb || process.env.DUCKDB_PATH;
   if (!duckdbPathRaw) {
@@ -453,11 +439,6 @@ export async function ensureOhlcvCoverageHandler(
     maxAgeDays,
   });
 
-  // Get duckdbStorage from context
-  const duckdbStorage = ctx.services.duckdbStorage();
-
-  // Query all tokens <3 months old
-  const allTokens = await queryRecentTokens(duckdbPath, duckdbStorage, maxAgeDays);
 
   // Limit to first N tokens for this run (default: 200)
   const limit = args.limit || 200;
@@ -561,7 +542,6 @@ export async function ensureOhlcvCoverageHandler(
     const intervals: Array<{ interval: '15s' | '1m' | '5m'; minCandles: number }> = [
       { interval: '15s', minCandles: 5000 },
       { interval: '1m', minCandles: 10000 },
-      { interval: '5m', minCandles: 20000 },
     ];
 
     for (const { interval, minCandles } of intervals) {

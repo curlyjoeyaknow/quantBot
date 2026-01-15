@@ -16,6 +16,29 @@ describe('Python Simulation with Real Data (Simplified)', () => {
     pythonEngine = new PythonEngine();
   });
 
+  it('should print database schema info', async () => {
+    // Helper test to inspect database schema
+    const fetchDataScript = join(
+      process.cwd(),
+      'packages/backtest/python/scripts/fetch_test_data.py'
+    );
+
+    const fetchResult = await pythonEngine.runScriptWithStdin(
+      fetchDataScript,
+      JSON.stringify({ duckdb_path: duckdbPath, show_schema: true }),
+      {
+        cwd: join(process.cwd(), 'packages/backtest/python'),
+        env: { PYTHONPATH: process.cwd() },
+      }
+    );
+
+    const schemaInfo = JSON.parse(fetchResult.stdout);
+    console.log('\n📊 Database Schema Info:');
+    console.log(JSON.stringify(schemaInfo, null, 2));
+
+    expect(schemaInfo.success).toBe(true);
+  });
+
   it('should run Python simulation with real ClickHouse + DuckDB data', async () => {
     // Fetch test data using Python script
     const fetchDataScript = join(
@@ -36,6 +59,9 @@ describe('Python Simulation with Real Data (Simplified)', () => {
 
     if (!testData.success) {
       console.warn(`Failed to fetch test data: ${testData.error}`);
+      if (testData.schema_info) {
+        console.warn('Database schema info:', JSON.stringify(testData.schema_info, null, 2));
+      }
       return;
     }
 

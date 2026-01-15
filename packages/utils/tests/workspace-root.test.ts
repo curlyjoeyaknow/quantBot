@@ -35,10 +35,7 @@ describe('findWorkspaceRoot', () => {
 
   it('detects the workspace root using package.json workspaces and caches the result', () => {
     const packageFile = join(rootDir, 'package.json');
-    writeFileSync(
-      packageFile,
-      JSON.stringify({ name: 'workspace-root-test', workspaces: ['packages/*'] }, null, 2)
-    );
+    writeFileSync(packageFile);
 
     const detected = findWorkspaceRoot(nestedDir);
     expect(detected).toBe(rootDir);

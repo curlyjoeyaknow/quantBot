@@ -27,7 +27,6 @@ async function runTuiMode(
   args: BacktestBaselineArgs
 ): Promise<{ success: boolean; message: string }> {
   const workspaceRoot = findWorkspaceRoot();
-  const scriptPath = join(workspaceRoot, 'packages/backtest/python/scripts/run_baseline.py');
 
   // Build CLI args for Python script
   const cliArgs: string[] = [scriptPath, '--tui'];
@@ -73,7 +72,6 @@ async function runTuiMode(
 
   return new Promise((resolve, reject) => {
     const child = spawn('python3', cliArgs, {
-      cwd: join(workspaceRoot, 'packages/backtest/python'),
       stdio: 'inherit', // Pass through to terminal
       env: { ...process.env },
     });

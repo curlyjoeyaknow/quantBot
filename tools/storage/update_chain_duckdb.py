@@ -24,9 +24,6 @@ def update_chain(db_path: str, address: str, new_chain: str) -> dict:
         return {"error": f"Database not found: {db_path}", "success": False}
     
     try:
-        from tools.shared.duckdb_adapter import get_write_connection
-        with get_write_connection(db_path) as conn:
-            # Check if caller_links_d exists
         tables = conn.execute("SHOW TABLES").fetchall()
         table_names = [t[0] for t in tables]
         

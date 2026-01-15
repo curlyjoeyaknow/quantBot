@@ -1,20 +1,32 @@
 name: Stress Tests
 
+<<<<<<< HEAD
 # Stress tests - run weekly and on-demand
 on:
   schedule:
     # Run weekly on Sundays at 3 AM UTC
     - cron: '0 3 * * 0'
+=======
+on:
+  schedule:
+    # Run stress tests weekly on Sundays at 2 AM UTC
+    - cron: '0 2 * * 0'
+>>>>>>> origin/main
   workflow_dispatch:
     inputs:
       run_db_stress:
         description: 'Run database stress tests'
         required: false
+<<<<<<< HEAD
         default: true
+=======
+        default: false
+>>>>>>> origin/main
         type: boolean
       run_chaos_tests:
         description: 'Run chaos engineering tests'
         required: false
+<<<<<<< HEAD
         default: true
         type: boolean
       run_backtest_stress:
@@ -28,6 +40,24 @@ jobs:
     name: TypeScript Stress Tests
     runs-on: ubuntu-latest
     timeout-minutes: 45
+=======
+        type: boolean
+      run_integration_stress:
+        description: 'Run integration stress tests'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  stress-tests:
+    name: Run Stress Tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    strategy:
+      matrix:
+        node-version: [20.x]
+>>>>>>> origin/main
 
     steps:
       - name: Checkout code
@@ -38,20 +68,36 @@ jobs:
         with:
           version: 8
 
+<<<<<<< HEAD
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20.x
+=======
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+>>>>>>> origin/main
           cache: 'pnpm'
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+<<<<<<< HEAD
       - name: Build packages
         run: pnpm build:ordered
 
       - name: Run offline stress tests
         run: pnpm test:stress
+=======
+      - name: Build packages (ordered)
+        run: pnpm build:ordered
+
+      - name: Run stress tests (offline)
+        run: pnpm test:stress
+        continue-on-error: true
+>>>>>>> origin/main
 
       - name: Run database stress tests
         if: ${{ github.event.inputs.run_db_stress == 'true' || github.event_name == 'schedule' }}
@@ -71,6 +117,7 @@ jobs:
         uses: actions/upload-artifact@v4
         if: always()
         with:
+<<<<<<< HEAD
           name: stress-test-results-ts-${{ github.run_id }}
           path: packages/*/coverage/
           retention-days: 30
@@ -180,3 +227,10 @@ jobs:
         if: needs.typescript-stress.result == 'failure'
         run: |
           echo "::warning::Stress tests had failures - review artifacts"
+=======
+          name: stress-test-results-${{ github.run_id }}
+          path: |
+            packages/*/coverage/
+          retention-days: 30
+
+>>>>>>> origin/main

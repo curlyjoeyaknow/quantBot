@@ -188,7 +188,6 @@ export function validateTemplateParameters(
 
   // Check parameter types and constraints
   for (const [paramName, paramValue] of Object.entries(parameters)) {
-    const paramDef = template.parameters.find((p: { name: string }) => p.name === paramName);
     if (!paramDef) {
       errors.push(`Unknown parameter: ${paramName}`);
       continue;
@@ -219,7 +218,6 @@ export function validateTemplateParameters(
       } else if (paramDef.type === 'choice' && paramDef.constraints.choices) {
         // Check if paramValue matches any choice (type-safe comparison)
         const valueStr = String(paramValue);
-        const choicesStr = paramDef.constraints.choices.map((c: unknown) => String(c));
         if (!choicesStr.includes(valueStr)) {
           errors.push(
             `Parameter ${paramName} must be one of ${choicesStr.join(', ')}, got ${paramValue}`
