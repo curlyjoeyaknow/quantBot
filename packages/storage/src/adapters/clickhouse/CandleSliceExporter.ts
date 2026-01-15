@@ -95,6 +95,8 @@ export class CandleSliceExporter implements CandleSlicePort {
 
     // Query ClickHouse ohlcv_candles table and output as Parquet
     // Map token_address -> token_id, timestamp -> ts for output schema
+    // Convert interval string (e.g., '1m') to seconds (e.g., 60) for interval_seconds column
+    const intervalSeconds = intervalToSeconds(spec.interval);
     const query = `
       SELECT
         '${spec.chain}' AS chain,
@@ -108,7 +110,7 @@ export class CandleSliceExporter implements CandleSlicePort {
         volume
       FROM ${CLICKHOUSE_DATABASE}.ohlcv_candles
       WHERE chain = '${spec.chain}'
-        AND interval = '${spec.interval}'
+        AND interval_seconds = ${intervalSeconds}
         AND timestamp >= parseDateTimeBestEffort('${spec.startIso}')
         AND timestamp < parseDateTimeBestEffort('${spec.endIso}')
         AND token_address IN (${tokenListSql})

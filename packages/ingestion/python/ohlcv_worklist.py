@@ -12,8 +12,10 @@ import sys
 from pathlib import Path
 from typing import Dict, Any, Optional
 
-# Add tools/shared to path for datetime_controller
-sys.path.insert(0, str(Path(__file__).parent.parent / 'shared'))
+# Add packages/backtest/python/shared to path for datetime_controller
+_workspace_root = Path(__file__).parent.parent.parent.parent
+_shared_path = _workspace_root / 'packages' / 'backtest' / 'python' / 'shared'
+sys.path.insert(0, str(_shared_path))
 from datetime_controller import dt
 
 try:

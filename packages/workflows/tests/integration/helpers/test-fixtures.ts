@@ -15,7 +15,10 @@ export function generateTestRunId(prefix = 'test'): string {
  * Environment helpers
  */
 export function getClickHouseUrl(): string {
-  return process.env.CLICKHOUSE_URL || 'http://localhost:8123';
+  // Use CLICKHOUSE_HTTP_PORT if set, otherwise CLICKHOUSE_PORT, otherwise default to 18123
+  const port = process.env.CLICKHOUSE_HTTP_PORT || process.env.CLICKHOUSE_PORT || '18123';
+  const host = process.env.CLICKHOUSE_HOST || 'localhost';
+  return process.env.CLICKHOUSE_URL || `http://${host}:${port}`;
 }
 
 /**
