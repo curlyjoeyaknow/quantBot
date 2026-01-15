@@ -73,7 +73,7 @@ export async function backtestCall(
   // Run overlay simulation via Python
   const pythonEngine = new PythonEngine();
   const overlayService = new PythonOverlayService(pythonEngine);
-  
+
   // Convert candles to Python format (timestamp in seconds)
   const pythonCandles = executionSlice.map((c) => ({
     timestamp: c.timestamp,
@@ -83,7 +83,7 @@ export async function backtestCall(
     close: c.close,
     volume: c.volume,
   }));
-  
+
   // Run overlay simulation via Python
   const simResults = await overlayService.runOverlaySimulation({
     candles: pythonCandles,
