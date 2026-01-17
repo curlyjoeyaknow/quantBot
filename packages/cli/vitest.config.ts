@@ -17,6 +17,12 @@ export default defineConfig({
       include: ['src/**/*.ts'],
       exclude: ['src/**/*.d.ts', 'src/**/index.ts', 'src/**/*.test.ts'],
     },
+    server: {
+      deps: {
+        // Inline @quantbot/backtest to avoid SSR module resolution issues with re-exported classes
+        inline: ['@quantbot/backtest'],
+      },
+    },
   },
   resolve: {
     alias: {
@@ -26,6 +32,10 @@ export default defineConfig({
       '@quantbot/core': path.resolve(__dirname, '../core/src'),
       '@quantbot/observability': path.resolve(__dirname, '../observability/src'),
       '@quantbot/workflows': path.resolve(__dirname, '../workflows/src'),
+      '@quantbot/backtest': path.resolve(__dirname, '../backtest/src'),
+      // Support subpath imports for direct source imports
+      '@quantbot/backtest/sim': path.resolve(__dirname, '../backtest/src/sim'),
+      '@quantbot/backtest/services': path.resolve(__dirname, '../backtest/src/services'),
     },
   },
 });

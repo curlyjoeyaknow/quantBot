@@ -14,7 +14,8 @@ import { existsSync, unlinkSync, mkdirSync } from 'fs';
 import { join, resolve } from 'path';
 import { storeStrategyDuckdbHandler } from '../../../src/commands/simulation/store-strategy-duckdb.js';
 import { getPythonEngine } from '@quantbot/infra/utils';
-import { DuckDBStorageService } from '@quantbot/backtest';
+// Import directly from source to avoid Vitest SSR module resolution issues
+import { DuckDBStorageService } from '../../../../backtest/src/sim/duckdb-storage-service.js';
 import { createCommandContext } from '../../../src/core/command-context.js';
 import type { PythonEngine } from '@quantbot/infra/utils';
 import type { CommandContext } from '../../../src/core/command-context.js';

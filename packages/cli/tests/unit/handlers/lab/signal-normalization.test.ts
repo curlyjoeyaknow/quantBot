@@ -6,8 +6,12 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { getSignalPreset, combineSignalPresets } from '@quantbot/backtest';
-import type { SignalGroup } from '@quantbot/backtest';
+// Import directly from source to avoid Vitest SSR module resolution issues
+import {
+  getSignalPreset,
+  combineSignalPresets,
+} from '../../../../../backtest/src/sim/signals/presets.js';
+import type { SignalGroup } from '../../../../../backtest/src/sim/types/index.js';
 
 /**
  * Test helper: Normalize SignalGroup (mirrors the implementation in run-lab.ts)
