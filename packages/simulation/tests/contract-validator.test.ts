@@ -53,7 +53,15 @@ describe('validateSimInput', () => {
         exposureLimits: { maxTotalExposureUsd: 50000, maxConcentrationPercent: 50 },
       },
       dataSnapshotHash: 'abc123',
-      clockResolution: 'candle',
+      clockResolution: 'm',
+      reentry_config: {
+        enabled: false,
+      },
+      cost_config: {
+        takerFeeBps: 10,
+        makerFeeBps: 5,
+        slippageBps: 0,
+      },
     };
 
     const result = validateSimInput(input);
@@ -92,7 +100,15 @@ describe('validateSimInput', () => {
         exposureLimits: { maxTotalExposureUsd: 50000, maxConcentrationPercent: 50 },
       },
       dataSnapshotHash: 'abc123',
-      clockResolution: 'candle',
+      clockResolution: 'm',
+      reentry_config: {
+        enabled: false,
+      },
+      cost_config: {
+        takerFeeBps: 10,
+        makerFeeBps: 5,
+        slippageBps: 0,
+      },
     };
 
     expect(() => validateSimInput(input)).toThrow(ContractVersionError);
