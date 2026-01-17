@@ -11,7 +11,7 @@
 import { program } from 'commander';
 import { ensureInitialized } from '../core/initialization-manager.js';
 import { handleError } from '../core/error-handler.js';
-import { logger } from '@quantbot/utils';
+import { logger } from '@quantbot/infra/utils';
 
 // Import command modules for side effects (they register themselves in commandRegistry)
 // These imports cause commandRegistry.registerPackage() to be called
@@ -34,6 +34,8 @@ import '../commands/lab.js';
 import '../commands/backtest.js';
 import '../commands/validation.js';
 import '../commands/architecture.js';
+import '../commands/server.js';
+import '../commands/lab-ui.js';
 
 // Import register functions to add Commander options
 import { registerObservabilityCommands } from '../commands/observability.js';
@@ -55,6 +57,8 @@ import { registerLabCommands } from '../commands/lab.js';
 import { registerBacktestCommands } from '../commands/backtest.js';
 import { registerValidationCommands } from '../commands/validation.js';
 import { registerArchitectureCommands } from '../commands/architecture.js';
+import { registerServerCommands } from '../commands/server.js';
+import { registerLabUiCommands } from '../commands/lab-ui.js';
 
 // Set up program
 program
@@ -84,6 +88,8 @@ registerLabCommands(program);
 registerBacktestCommands(program);
 registerValidationCommands(program);
 registerArchitectureCommands(program);
+registerServerCommands(program);
+registerLabUiCommands(program);
 
 // Global error handler
 program.configureOutput({

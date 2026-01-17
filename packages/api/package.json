@@ -19,17 +19,7 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
-    "@fastify/cors": "^10.0.1",
-    "@fastify/swagger": "^9.1.0",
-    "@fastify/swagger-ui": "^5.1.0",
-    "@quantbot/core": "workspace:*",
-    "@quantbot/observability": "workspace:*",
-    "@quantbot/utils": "workspace:*",
-    "@quantbot/workflows": "workspace:*",
-    "@quantbot/storage": "workspace:*",
-    "fastify": "^5.1.0",
-    "zod": "^3.24.1",
-    "zod-to-json-schema": "^3.24.0"
+    "@quantbot/cli": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^24.10.1",

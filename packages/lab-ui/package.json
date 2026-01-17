@@ -10,12 +10,7 @@
     "start": "node --enable-source-maps dist/server.js"
   },
   "dependencies": {
-    "@quantbot/storage": "workspace:*",
-    "duckdb": "^1.4.3",
-    "ejs": "^3.1.10",
-    "express": "^4.19.2",
-    "nanoid": "^5.0.7",
-    "zod": "^3.24.1"
+    "@quantbot/cli": "workspace:*"
   },
   "devDependencies": {
     "@types/ejs": "^3.1.5",

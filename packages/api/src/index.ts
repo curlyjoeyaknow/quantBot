@@ -1,15 +1,14 @@
 /**
  * @quantbot/api
  *
- * REST API for QuantBot using Fastify
- *
- * Endpoints:
- * - GET /health - Health check
- * - GET /api/v1/ohlcv/stats - OHLCV statistics
- * - GET /api/v1/simulation/runs - List simulation runs
- * - POST /api/v1/simulation/runs - Create simulation run
- * - GET /api/v1/simulation/runs/:runId - Get simulation run details
+ * This file acts as a backward compatibility shim.
+ * The API package has been merged into @quantbot/cli.
+ * 
+ * To start the API server, use: `quantbot serve`
+ * 
+ * API functionality is available via @quantbot/cli/server
  */
 
-export { createApiServer } from './server.js';
-export type { ApiServerConfig } from './server.js';
+// Re-export server functionality from CLI
+export { createApiServer } from '@quantbot/cli/server';
+export type { ApiServerConfig } from '@quantbot/cli/server';
