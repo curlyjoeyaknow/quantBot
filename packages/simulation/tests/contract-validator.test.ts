@@ -55,7 +55,9 @@ describe('validateSimInput', () => {
       dataSnapshotHash: 'abc123',
       clockResolution: 'm',
       reentry_config: {
-        enabled: false,
+        trailingReEntry: 'none',
+        maxReEntries: 0,
+        sizePercent: 1.0,
       },
       cost_config: {
         takerFeeBps: 10,
@@ -102,7 +104,9 @@ describe('validateSimInput', () => {
       dataSnapshotHash: 'abc123',
       clockResolution: 'm',
       reentry_config: {
-        enabled: false,
+        trailingReEntry: 'none',
+        maxReEntries: 0,
+        sizePercent: 1.0,
       },
       cost_config: {
         takerFeeBps: 10,
