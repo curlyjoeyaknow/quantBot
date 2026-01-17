@@ -5,7 +5,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { analyzeDuckdbHandler } from '../../../../src/commands/analytics/analyze-duckdb.js';
 import type { CommandContext } from '../../../../src/core/command-context.js';
-import { ValidationError, AppError } from '@quantbot/utils';
+import { ValidationError, AppError } from '@quantbot/infra/utils';
 import type { AnalyticsService } from '@quantbot/analytics';
 
 describe('analyzeDuckdbHandler', () => {

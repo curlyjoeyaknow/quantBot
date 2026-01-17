@@ -7,7 +7,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { z } from 'zod';
 import { DateTime } from 'luxon';
-import { OhlcvRepository } from '@quantbot/storage';
+import { OhlcvRepository } from '@quantbot/infra/storage';
 import { parseArguments, validateMintAddress } from '../../../src/core/argument-parser';
 import { formatOutput } from '../../../src/core/output-formatter';
 
@@ -31,7 +31,7 @@ const querySchema = z.object({
   chain: z.enum(['solana', 'ethereum', 'bsc', 'base']).default('solana'),
 });
 
-vi.mock('@quantbot/storage', () => ({
+vi.mock('@quantbot/infra/storage', () => ({
   OhlcvRepository: vi.fn().mockImplementation(() => ({
     getCandles: vi.fn(),
   })),

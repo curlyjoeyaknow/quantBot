@@ -13,7 +13,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { validateSliceHandler } from '../../../../src/handlers/slices/validate-slice.js';
 import type { CommandContext } from '../../../../src/core/command-context.js';
 import { promises as fs } from 'fs';
-import { createSliceValidatorAdapter } from '@quantbot/storage';
+import { createSliceValidatorAdapter } from '@quantbot/infra/storage';
 
 vi.mock('fs', () => ({
   promises: {
@@ -21,7 +21,7 @@ vi.mock('fs', () => ({
   },
 }));
 
-vi.mock('@quantbot/storage', () => ({
+vi.mock('@quantbot/infra/storage', () => ({
   createSliceValidatorAdapter: vi.fn(),
 }));
 

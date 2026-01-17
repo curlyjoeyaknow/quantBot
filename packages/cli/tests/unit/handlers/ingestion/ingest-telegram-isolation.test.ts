@@ -24,7 +24,7 @@ vi.mock('@quantbot/workflows', () => ({
 }));
 
 // Mock storage repositories
-vi.mock('@quantbot/storage', () => ({
+vi.mock('@quantbot/infra/storage', () => ({
   CallersRepository: class {
     constructor(_dbPath: string) {
       // Mock constructor

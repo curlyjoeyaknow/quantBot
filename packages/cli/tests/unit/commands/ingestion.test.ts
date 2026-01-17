@@ -12,7 +12,7 @@ import {
   TokensRepository,
   AlertsRepository,
   CallsRepository,
-} from '@quantbot/storage';
+} from '@quantbot/infra/storage';
 import { parseArguments } from '../../../src/core/argument-parser';
 import { formatOutput } from '../../../src/core/output-formatter';
 
@@ -34,7 +34,7 @@ vi.mock('@quantbot/ingestion', () => ({
 }));
 
 // Mock storage repositories
-vi.mock('@quantbot/storage', () => ({
+vi.mock('@quantbot/infra/storage', () => ({
   CallersRepository: class {},
   TokensRepository: class {},
   AlertsRepository: class {},

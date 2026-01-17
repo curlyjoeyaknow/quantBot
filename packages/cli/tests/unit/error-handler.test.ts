@@ -10,7 +10,7 @@ import {
   handleError,
 } from '../../src/core/error-handler';
 
-vi.mock('@quantbot/utils', () => {
+vi.mock('@quantbot/infra/utils', () => {
   const mockLogger = {
     error: vi.fn(),
     warn: vi.fn(),
@@ -23,7 +23,7 @@ vi.mock('@quantbot/utils', () => {
 });
 
 // Import logger after mock is set up
-import { logger } from '@quantbot/utils';
+import { logger } from '@quantbot/infra/utils';
 
 describe('ErrorHandler', () => {
   beforeEach(() => {

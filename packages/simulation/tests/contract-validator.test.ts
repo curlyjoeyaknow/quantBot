@@ -26,7 +26,7 @@ describe('validateSimInput', () => {
       run_id: 'test-run',
       strategy_id: 'test-strategy',
       mint: 'test-mint',
-      alert_timestamp: 1000,
+      alert_timestamp: '2024-01-01T12:00:00Z',
       candles: [],
       entry_config: {
         initialEntry: 'none',
@@ -65,7 +65,7 @@ describe('validateSimInput', () => {
       run_id: 'test-run',
       strategy_id: 'test-strategy',
       mint: 'test-mint',
-      alert_timestamp: 1000,
+      alert_timestamp: '2024-01-01T12:00:00Z',
       candles: [],
       entry_config: {
         initialEntry: 'none',

@@ -7,10 +7,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { z } from 'zod';
 import { CommandRegistry } from '../../src/core/command-registry';
-import { getPostgresPool, getClickHouseClient } from '@quantbot/storage';
+import { getPostgresPool, getClickHouseClient } from '@quantbot/infra/storage';
 
 // Mock storage package
-vi.mock('@quantbot/storage', () => ({
+vi.mock('@quantbot/infra/storage', () => ({
   getPostgresPool: vi.fn(),
   getClickHouseClient: vi.fn(),
   ohlcvCache: {

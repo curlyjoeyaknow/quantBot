@@ -18,8 +18,8 @@ vi.mock('@quantbot/workflows', async (importOriginal) => {
   };
 });
 
-vi.mock('@quantbot/storage', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@quantbot/storage')>();
+vi.mock('@quantbot/infra/storage', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@quantbot/infra/storage')>();
   class MockClickHouseSliceExporterAdapterImpl {
     exportSlice = vi.fn();
   }
@@ -29,8 +29,8 @@ vi.mock('@quantbot/storage', async (importOriginal) => {
   };
 });
 
-vi.mock('@quantbot/utils', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@quantbot/utils')>();
+vi.mock('@quantbot/infra/utils', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@quantbot/infra/utils')>();
   return {
     ...actual,
     getDuckDBPath: vi.fn(() => '/tmp/test.duckdb'),

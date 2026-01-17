@@ -12,8 +12,8 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { storageStatsWorkflowHandler } from '../../../src/commands/storage/stats-workflow.js';
 import { createCommandContext } from '../../../src/core/command-context.js';
-import { initClickHouse, closeClickHouse } from '@quantbot/storage';
-import { shouldRunDbStress } from '@quantbot/utils/test-helpers/test-gating';
+import { initClickHouse, closeClickHouse } from '@quantbot/infra/storage';
+import { shouldRunDbStress } from '@quantbot/infra/utils/test-helpers/test-gating';
 import { getStorageStats } from '@quantbot/workflows';
 import { vi } from 'vitest';
 

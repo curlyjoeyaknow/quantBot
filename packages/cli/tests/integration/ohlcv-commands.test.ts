@@ -6,7 +6,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { CommandRegistry } from '../../src/core/command-registry';
-import { OhlcvRepository } from '@quantbot/storage';
+import { OhlcvRepository } from '@quantbot/infra/storage';
 import { DateTime } from 'luxon';
 import { z } from 'zod';
 import { validateMintAddress } from '../../src/core/argument-parser';
@@ -14,7 +14,7 @@ import { validateMintAddress } from '../../src/core/argument-parser';
 // Mock storage
 let mockGetCandles: ReturnType<typeof vi.fn>;
 
-vi.mock('@quantbot/storage', () => {
+vi.mock('@quantbot/infra/storage', () => {
   return {
     OhlcvRepository: class {
       getCandles = mockGetCandles;

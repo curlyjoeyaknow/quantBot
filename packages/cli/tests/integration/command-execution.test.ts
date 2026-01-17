@@ -17,7 +17,7 @@ import type { PackageCommandModule } from '../../src/types';
 import { z } from 'zod';
 
 // Mock storage dependencies
-vi.mock('@quantbot/storage', () => ({
+vi.mock('@quantbot/infra/storage', () => ({
   OhlcvRepository: vi.fn().mockImplementation(() => ({
     getCandles: vi.fn().mockResolvedValue([]),
   })),
@@ -29,8 +29,8 @@ vi.mock('@quantbot/storage', () => ({
   })),
 }));
 
-vi.mock('@quantbot/utils', async () => {
-  const actual = await vi.importActual<typeof import('@quantbot/utils')>('@quantbot/utils');
+vi.mock('@quantbot/infra/utils', async () => {
+  const actual = await vi.importActual<typeof import('@quantbot/infra/utils')>('@quantbot/infra/utils');
   return {
     ...actual,
     logger: {

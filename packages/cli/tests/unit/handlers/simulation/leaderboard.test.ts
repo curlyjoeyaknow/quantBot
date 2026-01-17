@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { leaderboardHandler } from '../../../../src/commands/simulation/leaderboard.js';
 import type { CommandContext } from '../../../../src/core/command-context.js';
 import { DateTime } from 'luxon';
-import type { RunRepository } from '@quantbot/storage';
+import type { RunRepository } from '@quantbot/infra/storage';
 import type { LeaderboardEntry } from '@quantbot/core';
 
 describe('leaderboardHandler', () => {

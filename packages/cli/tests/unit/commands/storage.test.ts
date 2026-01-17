@@ -6,12 +6,12 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { z } from 'zod';
-import { getPostgresPool, getClickHouseClient } from '@quantbot/storage';
+import { getPostgresPool, getClickHouseClient } from '@quantbot/infra/storage';
 import { parseArguments } from '../../../src/core/argument-parser';
 import { formatOutput } from '../../../src/core/output-formatter';
 
 // Mock storage package
-vi.mock('@quantbot/storage', () => ({
+vi.mock('@quantbot/infra/storage', () => ({
   getPostgresPool: vi.fn(),
   getClickHouseClient: vi.fn(),
   ohlcvCache: {

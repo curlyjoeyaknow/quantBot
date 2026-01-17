@@ -15,7 +15,7 @@ import {
   NotFoundError,
   ApiError,
   DatabaseError,
-} from '@quantbot/utils';
+} from '@quantbot/infra/utils';
 
 describe('Error Contracts', () => {
   describe('errorToContract', () => {

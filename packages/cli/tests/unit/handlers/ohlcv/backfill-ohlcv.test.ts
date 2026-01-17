@@ -5,7 +5,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { CommandContext } from '../../../../src/core/command-context.js';
 import { DateTime } from 'luxon';
-import { ValidationError } from '@quantbot/utils';
+import { ValidationError } from '@quantbot/infra/utils';
 
 // Mock the ingestion engine before importing the handler
 const mockFetchCandles = vi.fn();

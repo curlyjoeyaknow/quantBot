@@ -13,10 +13,10 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { existsSync, unlinkSync, mkdirSync } from 'fs';
 import { join, resolve } from 'path';
 import { storeStrategyDuckdbHandler } from '../../../src/commands/simulation/store-strategy-duckdb.js';
-import { getPythonEngine } from '@quantbot/utils';
+import { getPythonEngine } from '@quantbot/infra/utils';
 import { DuckDBStorageService } from '@quantbot/backtest';
 import { createCommandContext } from '../../../src/core/command-context.js';
-import type { PythonEngine } from '@quantbot/utils';
+import type { PythonEngine } from '@quantbot/infra/utils';
 import type { CommandContext } from '../../../src/core/command-context.js';
 import { tmpdir } from 'os';
 

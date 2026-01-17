@@ -8,10 +8,10 @@ import {
   checkStorageHealth,
   ensureInitialized,
 } from '../../src/core/initialization-manager';
-import { initClickHouse, getClickHouseClient } from '@quantbot/storage';
-import { logger } from '@quantbot/utils';
+import { initClickHouse, getClickHouseClient } from '@quantbot/infra/storage';
+import { logger } from '@quantbot/infra/utils';
 
-vi.mock('@quantbot/storage', () => ({
+vi.mock('@quantbot/infra/storage', () => ({
   initClickHouse: vi.fn(),
   getClickHouseClient: vi.fn(),
   ohlcvCache: {
@@ -22,7 +22,7 @@ vi.mock('@quantbot/storage', () => ({
   },
 }));
 
-vi.mock('@quantbot/utils', () => ({
+vi.mock('@quantbot/infra/utils', () => ({
   logger: {
     info: vi.fn(),
     warn: vi.fn(),

@@ -13,8 +13,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { queryStorageHandler } from '../../../../src/commands/storage/query-storage.js';
 import * as storageCommands from '../../../../src/commands/storage.js';
 
-vi.mock('@quantbot/utils', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@quantbot/utils')>();
+vi.mock('@quantbot/infra/utils', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@quantbot/infra/utils')>();
   return {
     ...actual,
     getClickHouseDatabaseName: () => 'test_db',

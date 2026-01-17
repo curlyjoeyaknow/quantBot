@@ -19,7 +19,7 @@ vi.mock('@quantbot/workflows', () => ({
   exportAndAnalyzeSlice: vi.fn(),
 }));
 
-vi.mock('@quantbot/storage', () => ({
+vi.mock('@quantbot/infra/storage', () => ({
   createClickHouseSliceExporterAdapterImpl: vi.fn().mockReturnValue({}),
   createDuckDbSliceAnalyzerAdapterImpl: vi.fn().mockReturnValue({}),
 }));

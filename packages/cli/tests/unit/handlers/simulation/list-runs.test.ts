@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { listRunsHandler } from '../../../../src/commands/simulation/list-runs.js';
 import type { CommandContext } from '../../../../src/core/command-context.js';
 import { DateTime } from 'luxon';
-import type { RunRepository } from '@quantbot/storage';
+import type { RunRepository } from '@quantbot/infra/storage';
 import type { RunWithStatus } from '@quantbot/core';
 
 describe('listRunsHandler', () => {

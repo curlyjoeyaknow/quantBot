@@ -19,7 +19,7 @@ vi.mock('@quantbot/workflows', () => ({
   exportAndAnalyzeSlice: vi.fn().mockResolvedValue({ success: true }),
 }));
 
-vi.mock('@quantbot/storage', () => ({
+vi.mock('@quantbot/infra/storage', () => ({
   createClickHouseSliceExporterAdapterImpl: vi.fn().mockReturnValue({}),
   createDuckDbSliceAnalyzerAdapterImpl: vi.fn().mockReturnValue({}),
   createSliceValidatorAdapter: vi.fn().mockReturnValue({

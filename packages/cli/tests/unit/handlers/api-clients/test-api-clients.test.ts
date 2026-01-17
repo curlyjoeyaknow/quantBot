@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { testApiClientsHandler } from '../../../../src/commands/api-clients/test-api-clients.js';
 import type { CommandContext } from '../../../../src/core/command-context.js';
 import { BirdeyeClient, HeliusClient } from '@quantbot/api-clients';
-import { ValidationError } from '@quantbot/utils';
+import { ValidationError } from '@quantbot/infra/utils';
 
 vi.mock('@quantbot/api-clients', () => ({
   BirdeyeClient: vi.fn(),

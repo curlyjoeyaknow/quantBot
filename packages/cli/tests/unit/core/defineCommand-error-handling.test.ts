@@ -15,7 +15,7 @@ import { die } from '../../../src/core/cliErrors.js';
 import { coerceJson, coerceNumber } from '../../../src/core/coerce.js';
 import { z } from 'zod';
 import { commandRegistry } from '../../../src/core/command-registry.js';
-import { NotFoundError } from '@quantbot/utils';
+import { NotFoundError } from '@quantbot/infra/utils';
 
 // Mock execute to avoid full integration
 vi.mock('../../../src/core/execute.js', () => ({

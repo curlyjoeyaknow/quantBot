@@ -5,7 +5,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { clickHouseQueryHandler } from '../../../../src/commands/simulation/clickhouse-query.js';
 import type { CommandContext } from '../../../../src/core/command-context.js';
-import { ValidationError } from '@quantbot/utils';
+import { ValidationError } from '@quantbot/infra/utils';
 
 describe('clickHouseQueryHandler', () => {
   let mockClickHouseService: any;

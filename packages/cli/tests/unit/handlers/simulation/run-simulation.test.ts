@@ -3,7 +3,7 @@ import { runSimulationHandler } from '../../../../src/commands/simulation/run-si
 import type { CommandContext } from '../../../../src/core/command-context.js';
 import { DateTime } from 'luxon';
 import { runSimulation, createProductionContext } from '@quantbot/workflows';
-import type { RunRepository } from '@quantbot/storage';
+import type { RunRepository } from '@quantbot/infra/storage';
 
 vi.mock('@quantbot/workflows', () => ({
   runSimulation: vi.fn(),
