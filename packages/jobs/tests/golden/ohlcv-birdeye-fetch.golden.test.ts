@@ -16,21 +16,21 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { DateTime } from 'luxon';
 import { OhlcvBirdeyeFetch } from '../../src/ohlcv-birdeye-fetch.js';
-import { fetchBirdeyeCandles } from '@quantbot/api-clients';
+import { fetchBirdeyeCandles } from '@quantbot/infra/clients';
 import { getCoverage } from '@quantbot/data/ohlcv';
 import type { OhlcvWorkItem } from '@quantbot/data/ingestion';
 import type { Candle } from '@quantbot/core';
 
 // Mock dependencies
-vi.mock('@quantbot/api-clients', () => ({
+vi.mock('@quantbot/infra/clients', () => ({
   fetchBirdeyeCandles: vi.fn(),
 }));
 
-vi.mock('@quantbot/ohlcv', () => ({
+vi.mock('@quantbot/data/ohlcv', () => ({
   getCoverage: vi.fn(),
 }));
 
-vi.mock('@quantbot/utils', () => ({
+vi.mock('@quantbot/infra/utils', () => ({
   logger: {
     debug: vi.fn(),
     info: vi.fn(),

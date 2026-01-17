@@ -8,7 +8,7 @@
  * - Metrics emission
  *
  * IMPORTANT: This is the ONLY package allowed to:
- * - Import @quantbot/api-clients
+ * - Import @quantbot/infra/clients
  * - Make HTTP requests
  * - Access API keys
  *
