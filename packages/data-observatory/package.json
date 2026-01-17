@@ -17,11 +17,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@quantbot/core": "workspace:*",
-    "@quantbot/storage": "workspace:*",
-    "@quantbot/utils": "workspace:*",
-    "luxon": "^3.7.2",
-    "zod": "^4.1.13"
+    "@quantbot/lab": "workspace:*"
   },
   "devDependencies": {
     "@types/luxon": "^3.7.1",

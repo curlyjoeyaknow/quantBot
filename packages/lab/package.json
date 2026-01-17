@@ -9,6 +9,14 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./catalog": {
+      "types": "./dist/catalog/index.d.ts",
+      "import": "./dist/catalog/index.js"
+    },
+    "./observatory": {
+      "types": "./dist/observatory/index.d.ts",
+      "import": "./dist/observatory/index.js"
     }
   },
   "scripts": {
@@ -24,8 +32,6 @@
   "dependencies": {
     "@quantbot/core": "workspace:*",
     "@quantbot/infra": "workspace:*",
-    "@quantbot/storage": "workspace:*",
-    "@quantbot/utils": "workspace:*",
     "@quantbot/workflows": "workspace:*",
     "fastify": "^5.6.2",
     "luxon": "^3.5.0",

@@ -1,20 +1,12 @@
 /**
  * @quantbot/data-observatory
  *
- * Data observatory for canonical data models, snapshots, and quality checks.
+ * This file acts as a backward compatibility shim.
+ * All exports are now from @quantbot/lab/observatory.
+ * 
+ * The data-observatory package has been merged into @quantbot/lab.
+ * All functionality is available via @quantbot/lab/observatory.
  */
 
-// Canonical data model
-export * from './canonical/index.js';
-
-// Snapshot system
-export * from './snapshots/index.js';
-export * from './snapshots/event-collector.js';
-export * from './snapshots/duckdb-storage.js';
-export * from './snapshots/deterministic-reader.js';
-
-// Quality tools
-export * from './quality/index.js';
-
-// Factory functions
-export * from './factory.js';
+// Re-export all from @quantbot/lab/observatory
+export * from '@quantbot/lab/observatory';

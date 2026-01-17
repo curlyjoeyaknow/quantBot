@@ -16,9 +16,7 @@
     "test": "vitest"
   },
   "dependencies": {
-    "@quantbot/core": "workspace:*",
-    "luxon": "^3.7.2",
-    "zod": "^3.24.1"
+    "@quantbot/lab": "workspace:*"
   },
   "devDependencies": {
     "@types/luxon": "^3.7.1",

@@ -29,6 +29,12 @@ export * from './optimization/RandomSearch.js';
 export * from './optimization/OptimizationEngine.js';
 export * from './catalog/ids.js';
 
+// Catalog system (from labcatalog package)
+export * from './catalog/index.js';
+
+// Observatory system (from data-observatory package)
+export * from './observatory/index.js';
+
 // Lab workflow orchestrators
 export * from './workflows/types.js';
 export { runLabPreset } from './workflows/runLabPreset.js';
