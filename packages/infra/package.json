@@ -69,6 +69,10 @@
     "./api-clients": {
       "types": "./dist/api-clients/index.d.ts",
       "import": "./dist/api-clients/index.js"
+    },
+    "./clients": {
+      "types": "./dist/api-clients/index.d.ts",
+      "import": "./dist/api-clients/index.js"
     }
   },
   "scripts": {

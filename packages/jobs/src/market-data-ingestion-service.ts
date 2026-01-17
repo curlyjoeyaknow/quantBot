@@ -7,7 +7,7 @@
 
 import { DateTime } from 'luxon';
 import { logger, getClickHouseDatabaseName, isSolanaAddress } from '@quantbot/infra/utils';
-import { BirdeyeClient } from '@quantbot/infra/clients';
+import { BirdeyeClient } from '@quantbot/infra/api-clients';
 import { getClickHouseClient } from '@quantbot/storage';
 import { randomUUID } from 'crypto';
 

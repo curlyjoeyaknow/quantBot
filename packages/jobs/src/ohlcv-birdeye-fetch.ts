@@ -12,7 +12,7 @@
  * This is the ONLY place where Birdeye API calls for OHLCV data are allowed.
  *
  * Responsibilities:
- * - Call @quantbot/infra/clients to fetch from Birdeye
+ * - Call @quantbot/infra/api-clients to fetch from Birdeye
  * - Enforce rate limits and circuit breakers
  * - Return raw candles (no storage)
  *
@@ -20,7 +20,7 @@
  */
 
 import { logger } from '@quantbot/infra/utils';
-import { fetchBirdeyeCandles } from '@quantbot/infra/clients';
+import { fetchBirdeyeCandles } from '@quantbot/infra/api-clients';
 import { getCoverage } from '@quantbot/data/ohlcv';
 import type { OhlcvWorkItem } from '@quantbot/core';
 import type { Candle } from '@quantbot/core';
@@ -330,7 +330,7 @@ export class OhlcvBirdeyeFetch {
    *
    * This is the main entry point for fetching from Birdeye:
    * 1. Optionally check coverage from @quantbot/ohlcv (read-only)
-   * 2. Fetch candles from @quantbot/infra/clients (Birdeye API)
+   * 2. Fetch candles from @quantbot/infra/api-clients (Birdeye API)
    * 3. Return raw candles (no storage)
    *
    * NOTE: Storage is handled by the ingestion workflow, not this fetch job.

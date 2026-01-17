@@ -10,21 +10,21 @@
  * Happy Path Flow:
  * 1. Get worklist from @quantbot/ingestion (offline work planning)
  * 2. Optionally check coverage from @quantbot/ohlcv (read-only, to avoid refetch)
- * 3. Fetch candles from @quantbot/infra/clients (Birdeye API)
+ * 3. Fetch candles from @quantbot/infra/api-clients (Birdeye API)
  * 4. Store candles in ClickHouse via @quantbot/storage
  * 5. Optionally update metadata via @quantbot/ingestion (offline bookkeeping)
  *
  * Responsibilities:
  * - Take worklist items from ingestion
  * - Optionally check coverage from ohlcv (read-only)
- * - Call @quantbot/infra/clients to fetch from Birdeye
+ * - Call @quantbot/infra/api-clients to fetch from Birdeye
  * - Enforce rate limits and circuit breakers
  * - Write candles to ClickHouse (idempotent upsert)
  * - Emit metrics
  */
 
 import { logger } from '@quantbot/infra/utils';
-import { fetchBirdeyeCandles } from '@quantbot/infra/clients';
+import { fetchBirdeyeCandles } from '@quantbot/infra/api-clients';
 import { storeCandles, getCoverage } from '@quantbot/data/ohlcv';
 import type { OhlcvWorkItem } from '@quantbot/core';
 // Candle type is returned by fetchBirdeyeCandles - infer from return type
@@ -196,7 +196,7 @@ export class OhlcvFetchJob {
 
       if (workItem.interval === '1s') {
         // Call Birdeye client directly for 1s intervals
-        const { getBirdeyeClient } = await import('@quantbot/infra/clients');
+        const { getBirdeyeClient } = await import('@quantbot/infra/api-clients');
         const birdeyeClient = getBirdeyeClient();
 
         logger.debug('Fetching 1s OHLCV from Birdeye (direct call)', {
@@ -319,7 +319,7 @@ export class OhlcvFetchJob {
    * This is the main entry point following the happy path:
    * 1. Worklist comes from @quantbot/ingestion (offline work planning)
    * 2. Optionally check coverage from @quantbot/ohlcv (read-only)
-   * 3. Fetch candles from @quantbot/infra/clients (Birdeye API)
+   * 3. Fetch candles from @quantbot/infra/api-clients (Birdeye API)
    * 4. Store candles in ClickHouse via @quantbot/storage
    *
    * @param workItems - Work items from ingestion work planning

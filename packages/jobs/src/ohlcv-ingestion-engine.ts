@@ -19,8 +19,8 @@
  */
 
 import { DateTime } from 'luxon';
-import { getBirdeyeClient, fetchMultiChainMetadata } from '@quantbot/infra/clients';
-import { fetchBirdeyeCandles } from '@quantbot/infra/clients';
+import { getBirdeyeClient, fetchMultiChainMetadata } from '@quantbot/infra/api-clients';
+import { fetchBirdeyeCandles } from '@quantbot/infra/api-clients';
 import {
   getStorageEngine,
   initClickHouse,
