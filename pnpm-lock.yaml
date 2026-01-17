@@ -174,24 +174,9 @@ importers:
 
   packages/analytics:
     dependencies:
-      '@quantbot/api-clients':
+      '@quantbot/simulation':
         specifier: workspace:*
-        version: link:../api-clients
-      '@quantbot/core':
-        specifier: workspace:*
-        version: link:../core
-      '@quantbot/storage':
-        specifier: workspace:*
-        version: link:../storage
-      '@quantbot/utils':
-        specifier: workspace:*
-        version: link:../utils
-      '@quantbot/workflows':
-        specifier: workspace:*
-        version: link:../workflows
-      luxon:
-        specifier: ^3.6.1
-        version: 3.7.2
+        version: link:../simulation
     devDependencies:
       '@types/node':
         specifier: ^24.10.1
@@ -208,39 +193,9 @@ importers:
 
   packages/api:
     dependencies:
-      '@fastify/cors':
-        specifier: ^10.0.1
-        version: 10.1.0
-      '@fastify/swagger':
-        specifier: ^9.1.0
-        version: 9.6.1
-      '@fastify/swagger-ui':
-        specifier: ^5.1.0
-        version: 5.2.3
-      '@quantbot/core':
+      '@quantbot/cli':
         specifier: workspace:*
-        version: link:../core
-      '@quantbot/observability':
-        specifier: workspace:*
-        version: link:../observability
-      '@quantbot/storage':
-        specifier: workspace:*
-        version: link:../storage
-      '@quantbot/utils':
-        specifier: workspace:*
-        version: link:../utils
-      '@quantbot/workflows':
-        specifier: workspace:*
-        version: link:../workflows
-      fastify:
-        specifier: ^5.1.0
-        version: 5.6.2
-      zod:
-        specifier: ^3.24.1
-        version: 3.25.76
-      zod-to-json-schema:
-        specifier: ^3.24.0
-        version: 3.25.0(zod@3.25.76)
+        version: link:../cli
     devDependencies:
       '@types/node':
         specifier: ^24.10.1
@@ -294,33 +249,9 @@ importers:
 
   packages/backtest:
     dependencies:
-      '@quantbot/core':
-        specifier: workspace:*
-        version: link:../core
-      '@quantbot/infra':
-        specifier: workspace:*
-        version: link:../infra
-      '@quantbot/labcatalog':
-        specifier: workspace:*
-        version: link:../labcatalog
       '@quantbot/simulation':
         specifier: workspace:*
         version: link:../simulation
-      '@quantbot/storage':
-        specifier: workspace:*
-        version: link:../storage
-      '@quantbot/utils':
-        specifier: workspace:*
-        version: link:../utils
-      luxon:
-        specifier: ^3.7.2
-        version: 3.7.2
-      uuid:
-        specifier: ^11.1.0
-        version: 11.1.0
-      zod:
-        specifier: ^4.1.13
-        version: 4.1.13
     devDependencies:
       '@types/luxon':
         specifier: ^3.7.1
@@ -346,6 +277,15 @@ importers:
 
   packages/cli:
     dependencies:
+      '@fastify/cors':
+        specifier: ^10.0.1
+        version: 10.1.0
+      '@fastify/swagger':
+        specifier: ^9.1.0
+        version: 9.6.1
+      '@fastify/swagger-ui':
+        specifier: ^5.1.0
+        version: 5.2.3
       '@quantbot/analytics':
         specifier: workspace:*
         version: link:../analytics
@@ -397,9 +337,18 @@ importers:
       duckdb:
         specifier: ^1.0.0
         version: 1.4.3(encoding@0.1.13)
+      ejs:
+        specifier: ^3.1.10
+        version: 3.1.10
       execa:
         specifier: ^9.0.0
         version: 9.4.1
+      express:
+        specifier: ^4.19.2
+        version: 4.22.1
+      fastify:
+        specifier: ^5.1.0
+        version: 5.6.2
       ink:
         specifier: ^6.5.1
         version: 6.5.1(@types/react@19.2.7)(bufferutil@4.0.9)(react@19.2.3)(utf-8-validate@5.0.10)
@@ -415,12 +364,18 @@ importers:
       luxon:
         specifier: ^3.4.4
         version: 3.7.2
+      nanoid:
+        specifier: ^5.0.7
+        version: 5.1.6
       react:
         specifier: ^19.2.3
         version: 19.2.3
       zod:
         specifier: ^4.1.13
         version: 4.1.13
+      zod-to-json-schema:
+        specifier: ^3.24.0
+        version: 3.25.0(zod@4.1.13)
     devDependencies:
       '@stryker-mutator/core':
         specifier: ^8.0.0
@@ -428,6 +383,12 @@ importers:
       '@stryker-mutator/vitest-runner':
         specifier: ^8.0.0
         version: 8.7.1(@stryker-mutator/core@8.7.1)(vitest@4.0.15(@opentelemetry/api@1.9.0)(@types/node@24.10.1)(jiti@2.6.1)(jsdom@27.2.0(bufferutil@4.0.9)(utf-8-validate@5.0.10))(lightningcss@1.30.2)(tsx@4.21.0)(yaml@2.8.2))
+      '@types/ejs':
+        specifier: ^3.1.5
+        version: 3.1.5
+      '@types/express':
+        specifier: ^4.17.21
+        version: 4.17.25
       '@types/js-yaml':
         specifier: ^4.0.9
         version: 4.0.9
@@ -505,21 +466,9 @@ importers:
 
   packages/data-observatory:
     dependencies:
-      '@quantbot/core':
+      '@quantbot/lab':
         specifier: workspace:*
-        version: link:../core
-      '@quantbot/storage':
-        specifier: workspace:*
-        version: link:../storage
-      '@quantbot/utils':
-        specifier: workspace:*
-        version: link:../utils
-      luxon:
-        specifier: ^3.7.2
-        version: 3.7.2
-      zod:
-        specifier: ^4.1.13
-        version: 4.1.13
+        version: link:../lab
     devDependencies:
       '@types/luxon':
         specifier: ^3.7.1
@@ -698,12 +647,6 @@ importers:
       '@quantbot/infra':
         specifier: workspace:*
         version: link:../infra
-      '@quantbot/storage':
-        specifier: workspace:*
-        version: link:../storage
-      '@quantbot/utils':
-        specifier: workspace:*
-        version: link:../utils
       '@quantbot/workflows':
         specifier: workspace:*
         version: link:../workflows
@@ -735,24 +678,9 @@ importers:
 
   packages/lab-ui:
     dependencies:
-      '@quantbot/storage':
+      '@quantbot/cli':
         specifier: workspace:*
-        version: link:../storage
-      duckdb:
-        specifier: ^1.4.3
-        version: 1.4.3(encoding@0.1.13)
-      ejs:
-        specifier: ^3.1.10
-        version: 3.1.10
-      express:
-        specifier: ^4.19.2
-        version: 4.22.1
-      nanoid:
-        specifier: ^5.0.7
-        version: 5.1.6
-      zod:
-        specifier: ^3.24.1
-        version: 3.25.76
+        version: link:../cli
     devDependencies:
       '@types/ejs':
         specifier: ^3.1.5
@@ -772,15 +700,9 @@ importers:
 
   packages/labcatalog:
     dependencies:
-      '@quantbot/core':
+      '@quantbot/lab':
         specifier: workspace:*
-        version: link:../core
-      luxon:
-        specifier: ^3.7.2
-        version: 3.7.2
-      zod:
-        specifier: ^3.24.1
-        version: 3.25.76
+        version: link:../lab
     devDependencies:
       '@types/luxon':
         specifier: ^3.7.1
@@ -862,9 +784,15 @@ importers:
       '@quantbot/core':
         specifier: workspace:*
         version: link:../core
-      '@quantbot/utils':
+      '@quantbot/infra':
         specifier: workspace:*
-        version: link:../utils
+        version: link:../infra
+      '@quantbot/workflows':
+        specifier: workspace:*
+        version: link:../workflows
+      fast-check:
+        specifier: ^4.4.0
+        version: 4.4.0
       luxon:
         specifier: ^3.7.2
         version: 3.7.2
@@ -6073,9 +6001,6 @@ packages:
     resolution: {integrity: sha512-HvWtU2UG41LALjajJrML6uQejQhNJx+JBO9IflpSja4R03iNWfKXrj6W2h7ljuLyc1nKS+9yDyL/9tD1U/yBnQ==}
     peerDependencies:
       zod: ^3.25 || ^4
-
-  zod@3.25.76:
-    resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
 
   zod@4.1.13:
     resolution: {integrity: sha512-AvvthqfqrAhNH9dnfmrfKzX5upOdjUVJYFqNSlkmGf64gRaTzlPwz99IHYnVs28qYAybvAlBV+H7pn0saFY4Ig==}
@@ -11487,10 +11412,8 @@ snapshots:
 
   yoga-layout@3.2.1: {}
 
-  zod-to-json-schema@3.25.0(zod@3.25.76):
+  zod-to-json-schema@3.25.0(zod@4.1.13):
     dependencies:
-      zod: 3.25.76
-
-  zod@3.25.76: {}
+      zod: 4.1.13
 
   zod@4.1.13: {}

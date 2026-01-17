@@ -13,8 +13,8 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { MetricsAggregator } from '../../src/aggregators/MetricsAggregator.js';
-import type { CallPerformance } from '../../src/types.js';
+import { MetricsAggregator } from '../../../src/analytics/aggregators/MetricsAggregator.js';
+import type { CallPerformance } from '../../../src/analytics/types.js';
 
 describe('MetricsAggregator - Golden Tests', () => {
   const aggregator = new MetricsAggregator();
