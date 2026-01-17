@@ -36,7 +36,7 @@ export async function loadCandlesFromExistingParquet(
   to: DateTime,
   interval: string
 ): Promise<Map<string, Candle[]>> {
-  const { openDuckDb } = await import('@quantbot/storage');
+  const { openDuckDb } = await import('@quantbot/infra/storage');
   const conn = await openDuckDb(':memory:');
   const candlesByCall = new Map<string, Candle[]>();
 
@@ -139,7 +139,7 @@ export async function loadCandlesFromSlice(
   slicePath: string | string[]
 ): Promise<Map<string, Candle[]>> {
   // Use DuckDBClient (Python) for heavy data lifting
-  const { DuckDBClient } = await import('@quantbot/storage');
+  const { DuckDBClient } = await import('@quantbot/infra/storage');
   const client = new DuckDBClient(':memory:');
   const candlesByCall = new Map<string, Candle[]>();
 

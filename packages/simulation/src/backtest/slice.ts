@@ -16,7 +16,7 @@ import { join } from 'path';
 import { randomUUID } from 'crypto';
 import { DateTime } from 'luxon';
 import type { BacktestPlan, CoverageResult, Slice, Interval } from './types.js';
-import { OhlcvRepository } from '@quantbot/storage';
+import { OhlcvRepository } from '@quantbot/infra/storage';
 import { logger } from '@quantbot/utils';
 import { submitArtifact } from '@quantbot/infra/utils';
 import type { SliceManifestV1 } from '@quantbot/core';
@@ -138,7 +138,7 @@ export async function materialiseSlice(
 
     try {
       // Use DuckDBClient (Python) for heavy data lifting
-      const { DuckDBClient } = await import('@quantbot/storage');
+      const { DuckDBClient } = await import('@quantbot/infra/storage');
       const client = new DuckDBClient(':memory:');
 
       try {
@@ -401,7 +401,7 @@ export async function materialiseSlice(
   // Write to parquet via DuckDB (Python handles heavy data lifting)
   if (allCandles.length > 0) {
     // Use DuckDBClient (Python) for heavy data lifting
-    const { DuckDBClient } = await import('@quantbot/storage');
+    const { DuckDBClient } = await import('@quantbot/infra/storage');
     const client = new DuckDBClient(':memory:');
 
     try {

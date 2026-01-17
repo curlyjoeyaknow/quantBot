@@ -49,7 +49,6 @@ export * from './seed-manager.js';
 // ============================================================================
 
 export * from './artifacts.js'; // Legacy artifact system
-export * from './artifacts/index.js'; // Run manifest and hashing
 export { getArtifactsDir } from './paths/artifactsPath.js';
 export { NdjsonLogger } from './logging/ndjsonLogger.js';
 

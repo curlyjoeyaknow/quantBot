@@ -6,7 +6,7 @@
 
 import type { DateTime } from 'luxon';
 import type { BacktestPlan, CoverageResult, TokenAddress, Chain } from './types.js';
-import { OhlcvRepository } from '@quantbot/storage';
+import { OhlcvRepository } from '@quantbot/infra/storage';
 import { logger } from '@quantbot/utils';
 
 /**
