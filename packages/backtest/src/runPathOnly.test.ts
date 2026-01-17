@@ -121,6 +121,8 @@ vi.mock('duckdb', () => {
 // Mock fs
 vi.mock('fs/promises', () => ({
   mkdir: vi.fn().mockResolvedValue(undefined),
+  writeFile: vi.fn().mockResolvedValue(undefined),
+  readFile: vi.fn().mockResolvedValue('{}'),
 }));
 
 // Mock @quantbot/utils

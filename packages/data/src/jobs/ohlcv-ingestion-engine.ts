@@ -29,7 +29,14 @@ import { LRUCache } from 'lru-cache';
 import { isEvmAddress } from '@quantbot/infra/utils';
 import { storeCandles } from '../ohlcv/index.js';
 
-const birdeyeClient = getBirdeyeClient();
+// Lazy initialization to avoid requiring API keys at module load time
+let birdeyeClientInstance: ReturnType<typeof getBirdeyeClient> | null = null;
+function getBirdeyeClientInstance() {
+  if (!birdeyeClientInstance) {
+    birdeyeClientInstance = getBirdeyeClient();
+  }
+  return birdeyeClientInstance;
+}
 
 // --- Interfaces ---
 
@@ -492,7 +499,7 @@ export class OhlcvIngestionEngine {
     // Check if price exists at alert time - if price exists, data exists
     const alertUnixTime = Math.floor(alertTime.toSeconds());
     try {
-      const historicalPrice = await birdeyeClient.fetchHistoricalPriceAtUnixTime(
+      const historicalPrice = await getBirdeyeClientInstance().fetchHistoricalPriceAtUnixTime(
         mint,
         alertUnixTime,
         chain
@@ -561,7 +568,7 @@ export class OhlcvIngestionEngine {
     // Check if price exists at alert time - if price exists, data exists
     const alertUnixTime = Math.floor(alertTime.toSeconds());
     try {
-      const historicalPrice = await birdeyeClient.fetchHistoricalPriceAtUnixTime(
+      const historicalPrice = await getBirdeyeClientInstance().fetchHistoricalPriceAtUnixTime(
         mint,
         alertUnixTime,
         chain
@@ -633,7 +640,7 @@ export class OhlcvIngestionEngine {
       }
 
       // Solana: use existing logic
-      const metadata = await birdeyeClient.getTokenMetadata(mint, chain);
+      const metadata = await getBirdeyeClientInstance().getTokenMetadata(mint, chain);
       if (metadata) {
         // TokensRepository removed (PostgreSQL) - metadata storage not critical for OHLCV ingestion
         // Metadata is still fetched and used, just not persisted to database
@@ -1369,7 +1376,7 @@ export class OhlcvIngestionEngine {
 
     for (const timestamp of timestampsToFix) {
       try {
-        const historicalPrice = await birdeyeClient.fetchHistoricalPriceAtUnixTime(
+        const historicalPrice = await getBirdeyeClientInstance().fetchHistoricalPriceAtUnixTime(
           mint,
           timestamp,
           chain
