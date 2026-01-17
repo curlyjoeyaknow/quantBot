@@ -5,8 +5,8 @@
  * Used to verify parity between implementations.
  */
 
-import type { SimInput, SimResult } from '@quantbot/backtest';
-import { simulateFromInput } from '@quantbot/backtest';
+import type { SimInput, SimResult } from '@quantbot/simulation';
+import { simulateFromInput } from '@quantbot/simulation';
 import { execa } from 'execa';
 import path from 'path';
 import { fileURLToPath } from 'url';

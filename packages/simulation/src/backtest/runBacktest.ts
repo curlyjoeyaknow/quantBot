@@ -21,7 +21,7 @@ import { checkCoverage } from './coverage.js';
 import { materialiseSlice } from './slice.js';
 import { backtestCall } from './engine/index.js';
 import { emitReport } from './report.js';
-import { logger } from '@quantbot/utils';
+import { logger } from '@quantbot/infra/utils';
 import type { Candle } from '@quantbot/core';
 import { computePathMetrics } from './metrics/path-metrics.js';
 import { DateTime } from 'luxon';

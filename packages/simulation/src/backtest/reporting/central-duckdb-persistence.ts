@@ -17,7 +17,7 @@ async function getDuckdbModule() {
   return duckdbModule;
 }
 
-import { getDuckDBPath } from '@quantbot/utils';
+import { getDuckDBPath } from '@quantbot/infra/utils';
 import type { DuckDbConnection, CallResultRow } from './backtest-results-duckdb.js';
 
 type DuckDbModule = Awaited<ReturnType<typeof getDuckdbModule>>;
@@ -32,7 +32,7 @@ import {
   insertPathMetrics,
   insertPolicyResults,
 } from './backtest-results-duckdb.js';
-import { logger } from '@quantbot/utils';
+import { logger } from '@quantbot/infra/utils';
 
 export interface BacktestRunMetadata {
   run_id: string;
