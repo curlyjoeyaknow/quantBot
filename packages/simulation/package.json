@@ -65,6 +65,10 @@
     "./analytics": {
       "types": "./dist/analytics/index.d.ts",
       "import": "./dist/analytics/index.js"
+    },
+    "./backtest": {
+      "types": "./dist/backtest/index.d.ts",
+      "import": "./dist/backtest/index.js"
     }
   },
   "scripts": {

@@ -17,15 +17,7 @@
     "test:coverage": "vitest run --coverage --passWithNoTests"
   },
   "dependencies": {
-    "@quantbot/core": "workspace:*",
-    "@quantbot/infra": "workspace:*",
-    "@quantbot/labcatalog": "workspace:*",
-    "@quantbot/simulation": "workspace:*",
-    "@quantbot/storage": "workspace:*",
-    "@quantbot/utils": "workspace:*",
-    "luxon": "^3.7.2",
-    "uuid": "^11.1.0",
-    "zod": "^4.1.13"
+    "@quantbot/simulation": "workspace:*"
   },
   "devDependencies": {
     "@types/luxon": "^3.7.1",
