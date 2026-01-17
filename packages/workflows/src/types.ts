@@ -114,6 +114,8 @@ export type WorkflowContext = {
           mean?: number;
           median?: number;
         };
+        // Experiment tracking fields (Phase IV)
+        gitCommitHash?: string;
       }) => Promise<void>;
     };
     simulationResults: {

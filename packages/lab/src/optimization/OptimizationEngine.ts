@@ -19,7 +19,7 @@ import type {
 import { GridSearch } from './GridSearch.js';
 import { RandomSearch } from './RandomSearch.js';
 import { logger } from '@quantbot/utils';
-import type { OptimizationResult } from './GridSearch.js';
+import type { GridSearchResult } from './GridSearch.js';
 
 /**
  * OptimizationEngine
@@ -32,8 +32,8 @@ export class OptimizationEngine {
     space: ParameterSpaceDef,
     evaluateFn: (config: ParameterConfig) => Promise<unknown>,
     config: OptimizationConfig
-  ): Promise<OptimizationResult[]> {
-    const strategy = config.strategy;
+  ): Promise<GridSearchResult[]> {
+    const strategy = config.strategy || 'grid';
 
     logger.info('Starting optimization', {
       strategy,
@@ -41,11 +41,12 @@ export class OptimizationEngine {
     });
 
     switch (strategy) {
-      case 'grid_search': {
+      case 'grid': {
         const gridSearch = new GridSearch();
         return await gridSearch.search(space, evaluateFn, config);
       }
 
+      case 'random':
       case 'random_search': {
         const randomSearch = new RandomSearch();
         return await randomSearch.search(space, evaluateFn, config);
@@ -68,7 +69,7 @@ export class OptimizationEngine {
   /**
    * Get best config from results
    */
-  getBestConfig(results: OptimizationResult[]): ParameterConfig | undefined {
+  getBestConfig(results: GridSearchResult[]): ParameterConfig | undefined {
     if (results.length === 0) {
       return undefined;
     }
@@ -80,7 +81,7 @@ export class OptimizationEngine {
   /**
    * Get top N configs
    */
-  getTopConfigs(results: OptimizationResult[], n: number): ParameterConfig[] {
+  getTopConfigs(results: GridSearchResult[], n: number): ParameterConfig[] {
     return results.slice(0, n).map((r) => r.config);
   }
 }

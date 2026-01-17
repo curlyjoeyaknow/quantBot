@@ -6,16 +6,17 @@
  */
 
 import type { ExecutionModelInterface, TradeRequest, ExecutionResult } from '../execution-model.js';
-import type { ExecutionModel } from '../../types/execution-model.js';
+import type { ExecutionModel } from '../../execution-models/types.js';
 import type { DeterministicRNG } from '@quantbot/core';
-import { ExecutionModelSchema } from '../../types/execution-model.js';
+import { ExecutionModelSchema } from '../../execution-models/types.js';
+import { createMinimalExecutionModel } from '../../execution-models/models.js';
 
 export class PerfectFillModel implements ExecutionModelInterface {
   private readonly config: ExecutionModel;
 
-  constructor(config: ExecutionModel = {}) {
-    // Validate and store config
-    this.config = ExecutionModelSchema.parse(config);
+  constructor(config?: ExecutionModel) {
+    // Validate and store config, or use minimal default
+    this.config = config ? ExecutionModelSchema.parse(config) : createMinimalExecutionModel();
   }
 
   execute(trade: TradeRequest, _rng: DeterministicRNG): ExecutionResult {

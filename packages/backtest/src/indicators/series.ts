@@ -14,13 +14,13 @@ export {
   calculateMovingAverages,
   isGoldenCross,
   isDeathCross,
-} from '@quantbot/simulation/indicators';
+} from '../sim/indicators/index.js';
 
-export { calculateRSI as calculateRSIAtIndex } from '@quantbot/simulation/indicators';
+export { calculateRSI as calculateRSIAtIndex } from '../sim/indicators/rsi.js';
 
-export { calculateIchimoku, type IchimokuData } from '@quantbot/simulation/indicators';
+export { calculateIchimoku, type IchimokuData } from '../sim/indicators/ichimoku.js';
 
-export { calculateMACD, type MACDData, type MACDState } from '@quantbot/simulation/indicators';
+export { calculateMACD, type MACDData, type MACDState } from '../sim/indicators/macd.js';
 
 export {
   calculateIndicators,
@@ -29,7 +29,7 @@ export {
   getBearishSignals,
   type LegacyIndicatorData,
   type IndicatorData,
-} from '@quantbot/simulation/indicators';
+} from '../sim/indicators/registry.js';
 
 // =============================================================================
 // Array-based indicator functions (for exit plan evaluation)

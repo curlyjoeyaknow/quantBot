@@ -27,3 +27,16 @@ vi.mock('@quantbot/observability', async () => {
     getErrorStats: vi.fn(),
   };
 });
+
+// Mock @quantbot/backtest to preserve actual classes for instantiation
+// This fixes Vitest SSR module resolution issues with re-exported classes
+vi.mock('@quantbot/backtest', async () => {
+  const actual = await vi.importActual<typeof import('@quantbot/backtest')>('@quantbot/backtest');
+  return {
+    ...actual,
+    // Explicitly preserve classes to ensure they're constructors
+    DuckDBStorageService: actual?.DuckDBStorageService,
+    ClickHouseService: actual?.ClickHouseService,
+    SimulationService: actual?.SimulationService,
+  };
+});

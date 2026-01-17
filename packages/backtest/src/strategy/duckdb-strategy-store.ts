@@ -1,48 +1,27 @@
-// Lazy import to avoid loading native bindings at module load time
-let duckdbModule: typeof import('duckdb') | null = null;
+/**
+ * DuckDB Strategy Store
+ *
+ * Stores and retrieves backtest strategy configurations from DuckDB.
+ * Uses Python via DuckDBClient for all database operations.
+ */
 
-async function getDuckdbModule() {
-  if (!duckdbModule) {
-    duckdbModule = await import('duckdb');
-  }
-  // DuckDB module doesn't have default export, it's a namespace
-  return duckdbModule;
-}
+import { DuckDBClient, getDuckDBClient } from '@quantbot/storage';
+import { getDuckDBPath } from '@quantbot/utils';
 
-type DuckDbModule = Awaited<ReturnType<typeof getDuckdbModule>>;
-export type DuckDb = InstanceType<DuckDbModule['Database']>;
-
-function run(db: DuckDb, sql: string, params: any[] = []) {
-  return new Promise<void>((resolve, reject) => {
-    const conn = db.connect();
-    conn.run(sql, params, (err: any) => (err ? reject(err) : resolve()));
-  });
-}
-
-function all<T>(db: DuckDb, sql: string, params: any[] = []) {
-  return new Promise<T[]>((resolve, reject) => {
-    const conn = db.connect();
-    (conn.all as any)(sql, params, (err: any, rows: any) => {
-      if (err) {
-        reject(err);
-      } else {
-        resolve(rows as T[]);
-      }
-    });
-  });
-}
-
-export async function openDuckDbFromEnv(): Promise<DuckDb> {
+/**
+ * Get DuckDB client for strategy storage
+ */
+function getStrategyDbClient(): DuckDBClient {
   const path = process.env.DUCKDB_PATH;
   if (!path) throw new Error('DUCKDB_PATH env var is required (same file used by calls + UI).');
-  const duckdb = await getDuckdbModule();
-  return new duckdb.Database(path) as DuckDb;
+  return getDuckDBClient(path);
 }
 
-export async function ensureBacktestStrategyTables(db: DuckDb) {
-  await run(
-    db,
-    `
+/**
+ * Ensure backtest strategy tables exist
+ */
+export async function ensureBacktestStrategyTables(client: DuckDBClient): Promise<void> {
+  await client.execute(`
     CREATE TABLE IF NOT EXISTS backtest_strategies (
       strategy_id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
@@ -60,17 +39,41 @@ export async function ensureBacktestStrategyTables(db: DuckDb) {
       finished_at TIMESTAMP,
       error_text TEXT
     );
-    `
-  );
+  `);
 }
 
-export async function loadStrategyConfigJson(db: DuckDb, strategyId: string): Promise<string> {
-  await ensureBacktestStrategyTables(db);
-  const rows = await all<{ config_json: string }>(
-    db,
-    `SELECT config_json FROM backtest_strategies WHERE strategy_id=$1`,
-    [strategyId]
+/**
+ * Load strategy configuration JSON from DuckDB
+ */
+export async function loadStrategyConfigJson(strategyId: string): Promise<string> {
+  const client = getStrategyDbClient();
+  await ensureBacktestStrategyTables(client);
+
+  const result = await client.query(
+    `SELECT config_json FROM backtest_strategies WHERE strategy_id = '${strategyId.replace(/'/g, "''")}'`
   );
-  if (rows.length === 0) throw new Error(`Strategy not found: ${strategyId}`);
-  return rows[0].config_json;
+
+  if (result.error) {
+    throw new Error(`Failed to query strategy: ${result.error}`);
+  }
+
+  if (result.rows.length === 0) {
+    throw new Error(`Strategy not found: ${strategyId}`);
+  }
+
+  // Extract config_json from first row, first column
+  const configJson = result.rows[0]?.[0];
+  if (typeof configJson !== 'string') {
+    throw new Error(`Invalid config_json format for strategy: ${strategyId}`);
+  }
+
+  return configJson;
+}
+
+/**
+ * Open DuckDB from environment (for backward compatibility)
+ * Returns a DuckDBClient instance
+ */
+export async function openDuckDbFromEnv(): Promise<DuckDBClient> {
+  return getStrategyDbClient();
 }

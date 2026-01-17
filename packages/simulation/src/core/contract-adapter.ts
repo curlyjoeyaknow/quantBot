@@ -151,6 +151,7 @@ export async function simulateFromInput(input: SimInput): Promise<SimResult> {
       total_trades: result.events.filter((e) => e.type === 'target_hit' || e.type === 'stop_loss')
         .length,
     },
+    contractVersion: validatedInput.contractVersion || '1.0.0',
   };
 
   // Validate result

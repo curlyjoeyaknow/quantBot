@@ -1,6 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { BayesianOptimizer } from '../src/optimization/BayesianOptimizer.js';
-import type { BayesianOptimizerConfig, BayesianResult } from '../src/optimization/BayesianOptimizer.js';
+import type {
+  BayesianOptimizerConfig,
+  BayesianResult,
+} from '../src/optimization/BayesianOptimizer.js';
 
 describe('BayesianOptimizer', () => {
   let optimizer: BayesianOptimizer;
@@ -52,9 +55,7 @@ describe('BayesianOptimizer', () => {
 
   it('should throw on optimization failure', async () => {
     const config: BayesianOptimizerConfig = {
-      parameterSpace: [
-        { name: 'stop_loss', type: 'real', low: 0.01, high: 0.1 },
-      ],
+      parameterSpace: [{ name: 'stop_loss', type: 'real', low: 0.01, high: 0.1 }],
     };
 
     const mockResult: BayesianResult = {
@@ -106,4 +107,3 @@ describe('BayesianOptimizer', () => {
     expect(() => optimizer.validateParameterSpace(invalidSpace3)).toThrow();
   });
 });
-

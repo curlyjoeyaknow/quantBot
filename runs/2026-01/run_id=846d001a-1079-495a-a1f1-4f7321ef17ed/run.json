@@ -1,0 +1,17 @@
+{
+  "run_id": "846d001a-1079-495a-a1f1-4f7321ef17ed",
+  "run_type": "policy",
+  "created_at": "2026-01-15T07:20:55.755Z",
+  "started_at": "2026-01-15T07:20:55.755Z",
+  "status": "running",
+  "dataset": {
+    "interval": "",
+    "calls_count": 0
+  },
+  "parameters": {},
+  "schema_version": {
+    "manifest": "1.0.0",
+    "artifacts": "1.0.0"
+  },
+  "artifacts": {}
+}

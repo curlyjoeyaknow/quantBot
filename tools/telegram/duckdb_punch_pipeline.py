@@ -1004,7 +1004,7 @@ def check_existing_run(con: duckdb.DuckDBPyConnection, input_file_path: str, cha
     return None
 
 def start_ingestion_run(con: duckdb.DuckDBPyConnection, run_id: str, chat_id: str, input_file_path: str, script_version: str) -> None:
-  """Record start of ingestion run"""
+  """Record start of ingestion run and store hash in raw_data_hashes"""
   try:
     file_hash = get_input_file_hash(input_file_path)
     # Check if script_version column exists
@@ -1032,6 +1032,21 @@ def start_ingestion_run(con: duckdb.DuckDBPyConnection, run_id: str, chat_id: st
           (run_id, chat_id, input_file_path, input_file_hash, status, started_at)
           VALUES (?, ?, ?, ?, 'running', CURRENT_TIMESTAMP)
         """, [run_id, chat_id, input_file_path, file_hash])
+    
+    # Also record hash in raw_data_hashes table for general hash tracking
+    metadata = json.dumps({
+      "chat_id": chat_id,
+      "script_version": script_version
+    })
+    try:
+      con.execute("""
+        INSERT OR IGNORE INTO raw_data_hashes 
+          (hash, source_type, source_path, run_id, metadata_json)
+        VALUES (?, 'telegram', ?, ?, ?)
+      """, [file_hash, input_file_path, run_id, metadata])
+    except Exception as e:
+      # If raw_data_hashes insert fails, log but don't fail the run
+      print(f"Warning: Could not insert into raw_data_hashes: {e}", file=sys.stderr)
   except Exception:
     # If table doesn't exist, silently continue (old schema)
     pass
@@ -1085,7 +1100,22 @@ def resume_partial_run(con: duckdb.DuckDBPyConnection, run_id: str) -> None:
     pass
 
 def ensure_idempotent_schema(con: duckdb.DuckDBPyConnection) -> None:
-  """Ensure schema has idempotency support (run_id columns, ingestion_runs table)"""
+  """Ensure schema has idempotency support (run_id columns, ingestion_runs table, raw_data_hashes table)"""
+  # Create raw_data_hashes table for general hash tracking
+  con.execute("""
+    CREATE TABLE IF NOT EXISTS raw_data_hashes (
+      hash TEXT PRIMARY KEY,
+      source_type TEXT NOT NULL,
+      source_path TEXT,
+      ingested_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      run_id TEXT,
+      metadata_json TEXT
+    )
+  """)
+  con.execute("CREATE INDEX IF NOT EXISTS idx_raw_data_hashes_source_type ON raw_data_hashes(source_type)")
+  con.execute("CREATE INDEX IF NOT EXISTS idx_raw_data_hashes_ingested_at ON raw_data_hashes(ingested_at)")
+  con.execute("CREATE INDEX IF NOT EXISTS idx_raw_data_hashes_run_id ON raw_data_hashes(run_id)")
+  
   # Create ingestion_runs table if it doesn't exist
   con.execute("""
     CREATE TABLE IF NOT EXISTS ingestion_runs (
@@ -1245,6 +1275,7 @@ CREATE TABLE IF NOT EXISTS tg_norm_d (
   text TEXT,
   links_json TEXT,
   norm_json TEXT,
+  raw_data_hash TEXT,
   run_id TEXT NOT NULL DEFAULT 'legacy',
   inserted_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (chat_id, message_id, run_id)
@@ -1432,27 +1463,51 @@ def _run_main_logic(args, con):
   print(f"Starting ingestion for chat_id={chat_id}, run_id={run_id}", file=sys.stderr, flush=True)
   print(f"Processing messages from {args.in_path}...", file=sys.stderr, flush=True)
 
-  # Ensure run_id column exists before inserting (ensure_idempotent_schema might have failed silently)
+  # Ensure run_id and raw_data_hash columns exist before inserting (ensure_idempotent_schema might have failed silently)
   try:
-    con.execute("SELECT run_id FROM tg_norm_d LIMIT 1")
+    con.execute("SELECT run_id, raw_data_hash FROM tg_norm_d LIMIT 1")
     has_run_id = True
+    has_raw_data_hash = True
   except Exception:
-    # Column doesn't exist, add it
+    # Columns don't exist, add them
     try:
       con.execute("ALTER TABLE tg_norm_d ADD COLUMN run_id TEXT NOT NULL DEFAULT 'legacy'")
       con.execute("ALTER TABLE tg_norm_d ADD COLUMN inserted_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP")
+      con.execute("ALTER TABLE tg_norm_d ADD COLUMN raw_data_hash TEXT")
       has_run_id = True
+      has_raw_data_hash = True
     except Exception:
       has_run_id = False
+      has_raw_data_hash = False
 
   # --- ingest messages streaming ---
   batch = []
   BATCH_N = 5000
+  # Pre-load existing hashes into memory for faster duplicate detection
+  existing_hashes = set()
+  try:
+    existing_hash_rows = con.execute("SELECT DISTINCT raw_data_hash FROM tg_norm_d WHERE raw_data_hash IS NOT NULL").fetchall()
+    existing_hashes = {row[0] for row in existing_hash_rows if row[0]}
+  except Exception:
+    # Column might not exist yet, that's OK
+    pass
+  
   with open(args.in_path, "rb") as f:
     for m in ijson.items(f, "messages.item"):
       mid = m.get("id")
       if mid is None:
         continue
+      # Compute hash of raw message JSON before parsing (for idempotency)
+      raw_message_json = json.dumps(m, sort_keys=True, ensure_ascii=False)
+      raw_data_hash = hashlib.sha256(raw_message_json.encode('utf-8')).hexdigest()
+      
+      # Check if hash already exists (skip duplicate messages)
+      if raw_data_hash in existing_hashes:
+        continue  # Skip duplicate message
+      
+      # Add to set for subsequent messages in this batch
+      existing_hashes.add(raw_data_hash)
+      
       ts_ms = ts_ms_from_obj(m)
       from_name = m.get("from")
       from_id = m.get("from_id")
@@ -1477,6 +1532,7 @@ def _run_main_logic(args, con):
         text,
         links_json,
         norm_json,
+        raw_data_hash,  # Add raw_data_hash
         run_id  # Add run_id
       ))
 
@@ -1486,25 +1542,33 @@ def _run_main_logic(args, con):
             result = con.executemany("""
               INSERT OR IGNORE INTO tg_norm_d 
               (chat_id, chat_name, message_id, ts_ms, from_name, from_id, type, is_service, 
-               reply_to_message_id, text, links_json, norm_json, run_id)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+               reply_to_message_id, text, links_json, norm_json, raw_data_hash, run_id)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, batch)
           except Exception:
             # If INSERT OR IGNORE fails (no PRIMARY KEYs), use regular INSERT
             result = con.executemany("""
               INSERT INTO tg_norm_d 
               (chat_id, chat_name, message_id, ts_ms, from_name, from_id, type, is_service, 
-               reply_to_message_id, text, links_json, norm_json, run_id)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+               reply_to_message_id, text, links_json, norm_json, raw_data_hash, run_id)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, batch)
-        else:
-          # Legacy schema without run_id
-          result = con.executemany("""
-            INSERT INTO tg_norm_d 
-            (chat_id, chat_name, message_id, ts_ms, from_name, from_id, type, is_service, 
-             reply_to_message_id, text, links_json, norm_json)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-          """, [row[:12] for row in batch])  # Remove run_id from batch
+    else:
+      # Legacy schema without run_id or raw_data_hash
+      if has_raw_data_hash:
+        result = con.executemany("""
+          INSERT INTO tg_norm_d 
+          (chat_id, chat_name, message_id, ts_ms, from_name, from_id, type, is_service, 
+           reply_to_message_id, text, links_json, norm_json, raw_data_hash)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, [row[:13] for row in batch])  # Remove run_id from batch, keep raw_data_hash
+      else:
+        result = con.executemany("""
+          INSERT INTO tg_norm_d 
+          (chat_id, chat_name, message_id, ts_ms, from_name, from_id, type, is_service, 
+           reply_to_message_id, text, links_json, norm_json)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, [row[:12] for row in batch])  # Remove run_id and raw_data_hash from batch
         row_counts['tg_norm'] += len(batch)
         batch.clear()
 
@@ -1514,25 +1578,33 @@ def _run_main_logic(args, con):
         result = con.executemany("""
           INSERT OR IGNORE INTO tg_norm_d 
           (chat_id, chat_name, message_id, ts_ms, from_name, from_id, type, is_service, 
-           reply_to_message_id, text, links_json, norm_json, run_id)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+           reply_to_message_id, text, links_json, norm_json, raw_data_hash, run_id)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, batch)
       except Exception:
         # If INSERT OR IGNORE fails (no PRIMARY KEYs), use regular INSERT
         result = con.executemany("""
           INSERT INTO tg_norm_d 
           (chat_id, chat_name, message_id, ts_ms, from_name, from_id, type, is_service, 
-           reply_to_message_id, text, links_json, norm_json, run_id)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+           reply_to_message_id, text, links_json, norm_json, raw_data_hash, run_id)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, batch)
     else:
-      # Legacy schema without run_id
-      result = con.executemany("""
-        INSERT INTO tg_norm_d 
-        (chat_id, chat_name, message_id, ts_ms, from_name, from_id, type, is_service, 
-         reply_to_message_id, text, links_json, norm_json)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      """, [row[:12] for row in batch])  # Remove run_id from batch
+      # Legacy schema without run_id or raw_data_hash
+      if has_raw_data_hash:
+        result = con.executemany("""
+          INSERT INTO tg_norm_d 
+          (chat_id, chat_name, message_id, ts_ms, from_name, from_id, type, is_service, 
+           reply_to_message_id, text, links_json, norm_json, raw_data_hash)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, [row[:13] for row in batch])  # Remove run_id from batch, keep raw_data_hash
+      else:
+        result = con.executemany("""
+          INSERT INTO tg_norm_d 
+          (chat_id, chat_name, message_id, ts_ms, from_name, from_id, type, is_service, 
+           reply_to_message_id, text, links_json, norm_json)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, [row[:12] for row in batch])  # Remove run_id and raw_data_hash from batch
     row_counts['tg_norm'] += len(batch)
     batch.clear()
 
@@ -2436,6 +2508,357 @@ def _run_main_logic(args, con):
     
     # Mark run as completed
     complete_ingestion_run(con, run_id, row_counts)
+    
+    # --- Setup canon schema (new schema) ---
+    print("Setting up canon schema...", file=sys.stderr, flush=True)
+    
+    # Create schemas
+    con.execute("CREATE SCHEMA IF NOT EXISTS canon")
+    con.execute("CREATE SCHEMA IF NOT EXISTS core")
+    con.execute("CREATE SCHEMA IF NOT EXISTS raw")
+    
+    # Populate raw.messages_f from tg_norm_d
+    con.execute("""
+      CREATE TABLE IF NOT EXISTS raw.messages_f (
+        chat_id BIGINT NOT NULL,
+        message_id BIGINT NOT NULL,
+        ts_ms BIGINT,
+        from_name VARCHAR,
+        text VARCHAR,
+        reply_to_message_id BIGINT,
+        raw_json VARCHAR,
+        parse_run_id VARCHAR,
+        ingested_at TIMESTAMP,
+        PRIMARY KEY (chat_id, message_id)
+      )
+    """)
+    
+    # Insert from tg_norm_d (only for this chat_id and run_id)
+    if has_run_id:
+      con.execute("""
+        INSERT OR IGNORE INTO raw.messages_f 
+        SELECT 
+          CAST(chat_id AS BIGINT) AS chat_id,
+          CAST(message_id AS BIGINT) AS message_id,
+          ts_ms,
+          from_name,
+          text,
+          reply_to_message_id,
+          norm_json AS raw_json,
+          run_id AS parse_run_id,
+          CURRENT_TIMESTAMP AS ingested_at
+        FROM tg_norm_d
+        WHERE chat_id = ? AND run_id = ?
+      """, [chat_id, run_id])
+    else:
+      con.execute("""
+        INSERT OR IGNORE INTO raw.messages_f 
+        SELECT 
+          CAST(chat_id AS BIGINT) AS chat_id,
+          CAST(message_id AS BIGINT) AS message_id,
+          ts_ms,
+          from_name,
+          text,
+          reply_to_message_id,
+          norm_json AS raw_json,
+          'legacy' AS parse_run_id,
+          CURRENT_TIMESTAMP AS ingested_at
+        FROM tg_norm_d
+        WHERE chat_id = ?
+      """, [chat_id])
+    
+    # Populate core.alerts_d from user_calls_d
+    con.execute("""
+      CREATE TABLE IF NOT EXISTS core.alerts_d (
+        chat_id BIGINT NOT NULL,
+        message_id BIGINT NOT NULL,
+        alert_ts_ms BIGINT,
+        from_name VARCHAR,
+        text VARCHAR,
+        parse_run_id VARCHAR,
+        ingested_at TIMESTAMP,
+        PRIMARY KEY (chat_id, message_id)
+      )
+    """)
+    
+    # Insert from user_calls_d (only for this chat_id and run_id)
+    if has_run_id_calls:
+      con.execute("""
+        INSERT OR IGNORE INTO core.alerts_d
+        SELECT 
+          CAST(chat_id AS BIGINT) AS chat_id,
+          CAST(message_id AS BIGINT) AS message_id,
+          call_ts_ms AS alert_ts_ms,
+          caller_name AS from_name,
+          trigger_text AS text,
+          run_id AS parse_run_id,
+          CURRENT_TIMESTAMP AS ingested_at
+        FROM user_calls_d
+        WHERE chat_id = ? AND run_id = ?
+      """, [chat_id, run_id])
+    else:
+      con.execute("""
+        INSERT OR IGNORE INTO core.alerts_d
+        SELECT 
+          CAST(chat_id AS BIGINT) AS chat_id,
+          CAST(message_id AS BIGINT) AS message_id,
+          call_ts_ms AS alert_ts_ms,
+          caller_name AS from_name,
+          trigger_text AS text,
+          'legacy' AS parse_run_id,
+          CURRENT_TIMESTAMP AS ingested_at
+        FROM user_calls_d
+        WHERE chat_id = ?
+      """, [chat_id])
+    
+    # Populate canon.callers_d from unique caller names
+    con.execute("""
+      CREATE TABLE IF NOT EXISTS canon.callers_d (
+        caller_id VARCHAR NOT NULL PRIMARY KEY,
+        caller_raw_name VARCHAR NOT NULL,
+        caller_base VARCHAR NOT NULL,
+        caller_name VARCHAR NOT NULL,
+        first_seen_ts_ms BIGINT,
+        last_seen_ts_ms BIGINT,
+        created_at TIMESTAMP
+      )
+    """)
+    
+    # Insert unique callers from user_calls_d (use INSERT OR IGNORE with PRIMARY KEY)
+    con.execute("""
+      INSERT OR IGNORE INTO canon.callers_d (caller_id, caller_raw_name, caller_base, caller_name, first_seen_ts_ms, last_seen_ts_ms, created_at)
+      SELECT 
+        LOWER(REPLACE(REPLACE(caller_name, ' ', '_'), '-', '_')) AS caller_id,
+        caller_name AS caller_raw_name,
+        LOWER(TRIM(caller_name)) AS caller_base,
+        caller_name AS caller_name,
+        MIN(call_ts_ms) AS first_seen_ts_ms,
+        MAX(call_ts_ms) AS last_seen_ts_ms,
+        CURRENT_TIMESTAMP AS created_at
+      FROM user_calls_d
+      WHERE chat_id = ? AND caller_name IS NOT NULL AND TRIM(caller_name) != ''
+      GROUP BY caller_name
+    """, [chat_id])
+    
+    # Create canon views (from restore_database_complete.sql)
+    # Create canon.alerts view
+    con.execute("""
+      CREATE OR REPLACE VIEW canon.alerts AS 
+      SELECT 
+        CAST(chat_id AS BIGINT) AS alert_chat_id,
+        CAST(message_id AS BIGINT) AS alert_message_id,
+        (CAST(chat_id AS VARCHAR) || ':' || CAST(message_id AS VARCHAR)) AS alert_id,
+        CAST(alert_ts_ms AS BIGINT) AS alert_ts_ms,
+        NULLIF(TRIM(from_name), '') AS caller_name,
+        text AS alert_text,
+        parse_run_id AS run_id,
+        ingested_at
+      FROM core.alerts_d
+    """)
+    
+    # Create canon.messages view
+    con.execute("""
+      CREATE OR REPLACE VIEW canon.messages AS 
+      SELECT 
+        CAST(chat_id AS BIGINT) AS chat_id,
+        CAST(message_id AS BIGINT) AS message_id,
+        CAST(ts_ms AS BIGINT) AS ts_ms,
+        from_name,
+        text,
+        CAST(reply_to_message_id AS BIGINT) AS reply_to_message_id,
+        parse_run_id AS run_id,
+        ingested_at,
+        raw_json
+      FROM raw.messages_f
+    """)
+    
+    # Create canon.alerts_clean view
+    con.execute("""
+      CREATE OR REPLACE VIEW canon.alerts_clean AS 
+      SELECT 
+        a.*,
+        NULLIF(TRIM(a.caller_name), '') AS caller_raw_name_clean,
+        c.caller_id,
+        c.caller_name AS caller_name_norm,
+        c.caller_base
+      FROM canon.alerts AS a
+      LEFT JOIN canon.callers_d AS c ON (c.caller_raw_name = NULLIF(TRIM(a.caller_name), ''))
+    """)
+    
+    # Create intermediate views needed for canon.alerts_std
+    # Create canon.bot_cards view from caller_links_d
+    con.execute("""
+      CREATE OR REPLACE VIEW canon.bot_cards AS
+      SELECT 
+        CAST(trigger_chat_id AS BIGINT) AS chat_id,
+        CAST(bot_message_id AS BIGINT) AS message_id,
+        bot_ts_ms AS ts_ms,
+        bot_from_name AS bot_name,
+        CAST(NULL AS VARCHAR) AS bot_text,
+        CAST(trigger_message_id AS BIGINT) AS reply_to_message_id,
+        run_id,
+        CURRENT_TIMESTAMP AS ingested_at
+      FROM caller_links_d
+      WHERE bot_message_id IS NOT NULL
+    """)
+    
+    # Create canon.alert_bot_links view
+    con.execute("""
+      CREATE OR REPLACE VIEW canon.alert_bot_links AS
+      SELECT 
+        CAST(trigger_chat_id AS BIGINT) AS alert_chat_id,
+        CAST(trigger_message_id AS BIGINT) AS alert_message_id,
+        CAST(bot_message_id AS BIGINT) AS bot_message_id,
+        bot_ts_ms AS bot_ts_ms,
+        bot_from_name AS bot_name,
+        run_id,
+        CURRENT_TIMESTAMP AS ingested_at
+      FROM caller_links_d
+      WHERE bot_message_id IS NOT NULL
+    """)
+    
+    # Create canon.alert_mints view from caller_links_d (mints already extracted)
+    con.execute("""
+      CREATE OR REPLACE VIEW canon.alert_mints AS
+      SELECT DISTINCT
+        CAST(trigger_chat_id AS BIGINT) AS alert_chat_id,
+        CAST(trigger_message_id AS BIGINT) AS alert_message_id,
+        trigger_ts_ms AS alert_ts_ms,
+        trigger_from_name AS caller_name,
+        chain,
+        mint,
+        CASE 
+          WHEN mint IS NOT NULL AND mint != '' THEN 'bot_card'
+          ELSE 'alert_text'
+        END AS source,
+        run_id,
+        CURRENT_TIMESTAMP AS ingested_at
+      FROM caller_links_d
+      WHERE mint IS NOT NULL AND TRIM(mint) != ''
+    """)
+    
+    # Create canon.alert_mint_best view (simplified - just pick first mint per alert)
+    con.execute("""
+      CREATE OR REPLACE VIEW canon.alert_mint_best AS
+      SELECT 
+        alert_chat_id,
+        alert_message_id,
+        alert_ts_ms,
+        caller_name,
+        chain,
+        mint,
+        source,
+        run_id,
+        ingested_at
+      FROM (
+        SELECT *,
+          ROW_NUMBER() OVER (
+            PARTITION BY alert_chat_id, alert_message_id 
+            ORDER BY 
+              CASE WHEN source = 'bot_card' THEN 0 ELSE 1 END,
+              ingested_at DESC
+          ) AS rn
+        FROM canon.alert_mints
+      )
+      WHERE rn = 1
+    """)
+    
+    # Create canon.alerts_universe view
+    con.execute("""
+      CREATE OR REPLACE VIEW canon.alerts_universe AS
+      SELECT 
+        alert_chat_id,
+        alert_message_id,
+        alert_ts_ms,
+        run_id,
+        ingested_at,
+        caller_name,
+        caller_id,
+        caller_name_norm,
+        caller_base,
+        alert_text,
+        'human' AS alert_kind
+      FROM canon.alerts_clean
+    """)
+    
+    # Create canon.alerts_canon view
+    con.execute("""
+      CREATE OR REPLACE VIEW canon.alerts_canon AS
+      SELECT 
+        (CAST(u.alert_chat_id AS VARCHAR) || ':' || CAST(u.alert_message_id AS VARCHAR)) AS alert_id,
+        u.alert_chat_id,
+        u.alert_message_id,
+        u.alert_ts_ms,
+        u.alert_kind,
+        mb.chain,
+        mb.mint,
+        mb.source AS mint_source,
+        u.caller_name,
+        u.caller_id,
+        u.caller_name_norm,
+        u.caller_base,
+        u.run_id,
+        u.ingested_at,
+        u.alert_text
+      FROM canon.alerts_universe AS u
+      LEFT JOIN canon.alert_mint_best AS mb ON (
+        mb.alert_chat_id = u.alert_chat_id 
+        AND mb.alert_message_id = u.alert_message_id
+      )
+    """)
+    
+    # Create canon.alerts_std view (the main canonical view)
+    con.execute("""
+      CREATE OR REPLACE VIEW canon.alerts_std AS
+      WITH a AS (
+        SELECT 
+          c.alert_id,
+          c.alert_chat_id,
+          c.alert_message_id,
+          c.alert_ts_ms,
+          c.alert_kind,
+          c.mint,
+          c.chain,
+          c.mint_source,
+          NULLIF(TRIM(c.caller_name), '') AS canon_caller_raw_name,
+          NULLIF(TRIM(m.from_name), '') AS raw_caller_raw_name,
+          NULLIF(TRIM(m.text), '') AS raw_alert_text,
+          m.ts_ms AS raw_ts_ms,
+          c.run_id,
+          c.ingested_at,
+          NULLIF(TRIM(c.alert_text), '') AS canon_alert_text
+        FROM canon.alerts_canon AS c
+        LEFT JOIN raw.messages_f AS m ON (
+          m.chat_id = c.alert_chat_id 
+          AND m.message_id = c.alert_message_id
+        )
+      ),
+      picked AS (
+        SELECT 
+          alert_id,
+          alert_chat_id,
+          alert_message_id,
+          COALESCE(alert_ts_ms, raw_ts_ms) AS alert_ts_ms,
+          alert_kind,
+          mint,
+          chain,
+          mint_source,
+          COALESCE(canon_caller_raw_name, raw_caller_raw_name) AS caller_raw_name,
+          COALESCE(canon_alert_text, raw_alert_text) AS alert_text,
+          run_id,
+          ingested_at
+        FROM a
+      )
+      SELECT 
+        p.*,
+        cd.caller_id,
+        cd.caller_name AS caller_name_norm,
+        cd.caller_base
+      FROM picked AS p
+      LEFT JOIN canon.callers_d AS cd ON (cd.caller_raw_name = p.caller_raw_name)
+    """)
+    
+    print("Canon schema setup complete", file=sys.stderr, flush=True)
     
     print(json.dumps({
       "chat_id": chat_id,

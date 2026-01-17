@@ -39,7 +39,7 @@ import {
   createExecutionModel,
   type TradeRequest,
 } from '../execution/index.js';
-import type { ExecutionModel } from '../types/execution-model.js';
+import type { ExecutionModel } from '../execution-models/types.js';
 import { createDeterministicRNG, type DeterministicRNG } from '@quantbot/core';
 import { logger } from '@quantbot/utils';
 import { logStep } from '../utils/progress.js';

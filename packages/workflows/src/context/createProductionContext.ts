@@ -4,21 +4,19 @@ import { logger as utilsLogger, ValidationError } from '@quantbot/utils';
 import { StrategiesRepository, StorageEngine } from '@quantbot/storage';
 // PostgreSQL repositories removed - use DuckDB services/workflows instead
 import {
-  simulateStrategy,
   type StopLossConfig,
   type EntryConfig,
   type ReEntryConfig,
   type CostConfig,
   type SignalGroup,
 } from '@quantbot/backtest';
-import { DuckDBStorageService, ClickHouseService } from '@quantbot/backtest';
+import { DuckDBStorageService } from '@quantbot/backtest';
 import { PythonEngine, getDuckDBPath } from '@quantbot/utils';
 import type { ClockPort } from '@quantbot/core';
 import type {
   WorkflowContext,
   StrategyRecord,
   CallRecord,
-  Candle,
   SimulationEngineResult,
   SimulationCallResult,
 } from '../types.js';
@@ -137,7 +135,8 @@ export function createProductionContext(config?: ProductionContextConfig): Workf
   // Create services for DuckDB and ClickHouse operations (NO SINGLETONS - created fresh per context)
   const pythonEngine = new PythonEngine();
   const duckdbStorage = new DuckDBStorageService(pythonEngine);
-  const clickHouse = new ClickHouseService(pythonEngine);
+  // ClickHouse no longer used - all data goes to parquet
+  // const clickHouse = new ClickHouseService(pythonEngine);
 
   // Use LogHub logger adapter if LogHub is provided, otherwise use default logger
   const logger = config?.logHub
@@ -370,72 +369,121 @@ export function createProductionContext(config?: ProductionContextConfig): Workf
 
       simulationResults: {
         async insertMany(runId: string, rows: SimulationCallResult[]): Promise<void> {
-          // Store simulation results in ClickHouse as events
-          // Convert SimulationCallResult[] to SimulationEvent[] format
+          // Store simulation results directly to parquet (not ClickHouse)
+          // DuckDB only holds metadata catalogue
           try {
-            const events = rows.flatMap((result) => {
-              const events: Array<{
-                event_type: string;
-                timestamp: number;
-                price: number;
-                quantity?: number;
-                value_usd?: number;
-                pnl_usd?: number;
-                metadata?: Record<string, unknown>;
-              }> = [];
+            const { getArtifactsDir } = await import('@quantbot/core');
+            const { join } = await import('path');
+            const { promises: fs } = await import('fs');
+            const { DuckDBClient } = await import('@quantbot/storage');
 
-              if (result.ok && result.pnlMultiplier !== undefined) {
-                // Create a summary event for successful simulation
-                const createdAt = DateTime.fromISO(result.createdAtISO, { zone: 'utc' });
-                events.push({
-                  event_type: 'simulation_complete',
-                  timestamp: Math.floor(createdAt.toSeconds()),
-                  price: 0, // Not applicable for summary
-                  quantity: result.trades || 0,
-                  pnl_usd: result.pnlMultiplier,
-                  metadata: {
-                    callId: result.callId,
-                    mint: result.mint,
-                    pnlMultiplier: result.pnlMultiplier,
-                    trades: result.trades,
-                  },
-                });
-              } else {
-                // Create an error event for failed simulation
-                const createdAt = DateTime.fromISO(result.createdAtISO, { zone: 'utc' });
-                events.push({
-                  event_type: 'simulation_error',
-                  timestamp: Math.floor(createdAt.toSeconds()),
-                  price: 0,
-                  pnl_usd: 0,
-                  metadata: {
-                    callId: result.callId,
-                    mint: result.mint,
-                    errorCode: result.errorCode,
-                    errorMessage: result.errorMessage,
-                  },
-                });
-              }
+            const artifactsDir = getArtifactsDir();
+            const runDir = join(artifactsDir, runId);
+            await fs.mkdir(runDir, { recursive: true });
 
-              return events;
+            if (rows.length === 0) {
+              utilsLogger.debug('[workflows.context] No simulation results to write', { runId });
+              return;
+            }
+
+            // Convert SimulationCallResult[] to parquet-friendly format
+            type ParquetRow = {
+              run_id: string;
+              call_id: string;
+              mint: string;
+              created_at_iso: string;
+              created_at_ts: number;
+              ok: boolean;
+              pnl_multiplier: number | null;
+              trades: number | null;
+              error_code: string | null;
+              error_message: string | null;
+            };
+
+            const parquetRows: ParquetRow[] = rows.map((result) => {
+              const createdAt = DateTime.fromISO(result.createdAtISO, { zone: 'utc' });
+              return {
+                run_id: runId,
+                call_id: result.callId,
+                mint: result.mint,
+                created_at_iso: result.createdAtISO,
+                created_at_ts: Math.floor(createdAt.toSeconds()),
+                ok: result.ok,
+                pnl_multiplier: result.ok && result.pnlMultiplier !== undefined ? result.pnlMultiplier : null,
+                trades: result.ok && result.trades !== undefined ? result.trades : null,
+                error_code: result.ok ? null : (result.errorCode || null),
+                error_message: result.ok ? null : (result.errorMessage || null),
+              };
             });
 
-            const result = await clickHouse.storeEvents(runId, events);
-            if (!result.success) {
-              logger.error('[workflows.context] Failed to store simulation results in ClickHouse', {
+            // Write to parquet using DuckDB
+            const db = new DuckDBClient(':memory:');
+            try {
+              await db.execute('INSTALL parquet;');
+              await db.execute('LOAD parquet;');
+
+              // Infer schema from first row
+              const firstRow = parquetRows[0];
+              if (!firstRow) {
+                utilsLogger.debug('[workflows.context] No rows to write to parquet', { runId });
+                return;
+              }
+
+              const columns: Array<keyof ParquetRow> = Object.keys(firstRow) as Array<keyof ParquetRow>;
+              const columnDefs = columns
+                .map((col) => {
+                  const value = firstRow[col];
+                  if (value === null || value === undefined) {
+                    return `${String(col)} TEXT`;
+                  } else if (typeof value === 'number') {
+                    return Number.isInteger(value) ? `${String(col)} BIGINT` : `${String(col)} DOUBLE`;
+                  } else if (typeof value === 'boolean') {
+                    return `${String(col)} BOOLEAN`;
+                  } else {
+                    return `${String(col)} TEXT`;
+                  }
+                })
+                .join(', ');
+
+              await db.execute(`CREATE TABLE temp_simulation_results (${columnDefs})`);
+
+              // Insert data in batches
+              const batchSize = 1000;
+              for (let i = 0; i < parquetRows.length; i += batchSize) {
+                const batch = parquetRows.slice(i, i + batchSize);
+                for (const row of batch) {
+                  const values = columns.map((col) => {
+                    const val = row[col];
+                    if (val === null || val === undefined) {
+                      return 'NULL';
+                    } else if (typeof val === 'string') {
+                      return `'${String(val).replace(/'/g, "''")}'`;
+                    } else if (typeof val === 'boolean') {
+                      return val ? 'TRUE' : 'FALSE';
+                    } else {
+                      return String(val);
+                    }
+                  });
+                  await db.execute(
+                    `INSERT INTO temp_simulation_results (${columns.join(', ')}) VALUES (${values.join(', ')})`
+                  );
+                }
+              }
+
+              // Export to Parquet
+              const parquetPath = join(runDir, 'simulation_results.parquet');
+              await db.execute(`COPY temp_simulation_results TO '${parquetPath.replace(/'/g, "''")}' (FORMAT PARQUET)`);
+
+              logger.info('[workflows.context] Stored simulation results to parquet', {
                 runId,
                 count: rows.length,
-                error: result.error,
+                parquetPath,
               });
-            } else {
-              logger.info('[workflows.context] Stored simulation results in ClickHouse', {
-                runId,
-                count: rows.length,
-                eventsStored: events.length,
-              });
+            } finally {
+              await db.close();
             }
           } catch (error) {
-            logger.error('[workflows.context] Error storing simulation results', {
+            logger.error('[workflows.context] Error storing simulation results to parquet', {
               error: error instanceof Error ? error.message : String(error),
               runId,
               count: rows.length,
@@ -482,7 +530,13 @@ export function createProductionContext(config?: ProductionContextConfig): Workf
         endTime: number;
         strategy: StrategyRecord;
         call: CallRecord;
-      }): Promise<SimulationEngineResult> {
+      }): Promise<SimulationEngineResult & { events?: Array<{
+        type: string;
+        timestamp: number;
+        price: number;
+        remainingPosition?: number;
+        pnlSoFar?: number;
+      }> }> {
         // Extract strategy legs from config
         const config = q.strategy.config as Record<string, unknown>;
         const strategyLegs = (
@@ -520,11 +574,25 @@ export function createProductionContext(config?: ProductionContextConfig): Workf
           }
         );
 
+        // Map events to a simpler format for storage
+        // LegacySimulationEvent has: type, timestamp, price, remainingPosition?, pnlSoFar?
+        const events = result.events.map((e) => ({
+          type: e.type || 'unknown',
+          timestamp: e.timestamp || 0,
+          price: e.price || 0,
+          remainingPosition: 'remainingPosition' in e ? e.remainingPosition : undefined,
+          pnlSoFar: 'pnlSoFar' in e ? e.pnlSoFar : undefined,
+        }));
+
         return {
           pnlMultiplier: result.finalPnl,
-          trades: result.events.filter((e: { type?: string }) => {
-            return e.type === 'entry' || e.type === 'exit';
+          trades: result.events.filter((e) => {
+            // Count entry and exit events (exit events include: final_exit, stop_loss, target_hit, etc.)
+            const isEntry = e.type === 'entry' || e.type === 'trailing_entry_triggered' || e.type === 're_entry' || e.type === 'ladder_entry';
+            const isExit = e.type === 'final_exit' || e.type === 'stop_loss' || e.type === 'target_hit' || e.type === 'ladder_exit';
+            return isEntry || isExit;
           }).length,
+          events, // Include events for writing to parquet
         };
       },
     },

@@ -20,8 +20,16 @@ import '../../src/commands/observability.js';
 import '../../src/commands/api-clients.js';
 
 describe('defineCommand End-to-End Integration', () => {
+  const originalExit = process.exit;
+  
   beforeEach(() => {
     vi.clearAllMocks();
+    // Mock process.exit to prevent actual exit in tests
+    process.exit = vi.fn() as typeof process.exit;
+  });
+
+  afterEach(() => {
+    process.exit = originalExit;
   });
 
   describe('Simple Command (observability.health)', () => {

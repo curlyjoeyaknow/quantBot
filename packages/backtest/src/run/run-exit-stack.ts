@@ -1,9 +1,10 @@
 import type { Candle } from '@quantbot/core';
-import type duckdb from 'duckdb';
+import type { DuckDBClient } from '@quantbot/storage';
 import { resolveExitPlanFromDuckDb } from '../strategy/resolve-exit-plan.js';
 import { backtestExitStack } from '../engine/backtest-exit-stack.js';
 import { insertCallResults } from '../reporting/backtest-results-duckdb.js';
 import { computePathMetrics } from '../metrics/path-metrics.js';
+import { createDuckDbConnectionAdapter } from '../reporting/duckdb-connection-adapter.js';
 
 export type CallRecord = {
   callId: string;
@@ -29,7 +30,7 @@ export type ExitStackRunArgs = {
   candlesByCallId: Map<string, Candle[]>;
 };
 
-export async function runExitStack(db: duckdb.Database, args: ExitStackRunArgs) {
+export async function runExitStack(db: DuckDBClient, args: ExitStackRunArgs) {
   const plan = await resolveExitPlanFromDuckDb(db, args.strategyId);
 
   const rows: any[] = [];
@@ -99,6 +100,7 @@ export async function runExitStack(db: duckdb.Database, args: ExitStackRunArgs) 
     });
   }
 
-  await insertCallResults(db as any, rows);
+  const adapter = createDuckDbConnectionAdapter(db);
+  await insertCallResults(adapter, rows);
   return { inserted: rows.length };
 }

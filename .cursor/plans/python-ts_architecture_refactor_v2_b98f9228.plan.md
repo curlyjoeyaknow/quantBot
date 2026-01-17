@@ -119,7 +119,7 @@ todos:
       - p4-analysis
   - id: p4-paths
     content: Update all PythonEngine script paths
-    status: in_progress
+    status: completed
     dependencies:
       - p4-simulation
   - id: p5-delete-tools
@@ -658,8 +658,3 @@ packages/
 4. **Frequent commits**: Easy to bisect and rollback if issues arise
 
 ---
-
-## Success Criteria
-
-- [ ] All Python tools live in `packages/*/python/`
-- [ ] `tools/` directory deleted

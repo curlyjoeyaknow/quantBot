@@ -41,7 +41,6 @@ export {
 
 export {
   getCentralDuckDbPath,
-  openCentralDuckDb,
   upsertRunMetadata,
 } from './reporting/central-duckdb-persistence.js';
 
@@ -215,13 +214,12 @@ export { backtestExitStack } from './engine/backtest-exit-stack.js';
 export { runExitStack, type ExitStackRunArgs } from './run/run-exit-stack.js';
 
 // =============================================================================
-// Simulation Engine - Selective re-exports from @quantbot/simulation
+// Simulation Engine - Exports from local sim/ directory
 // =============================================================================
-// Instead of re-exporting everything from local sim/, we selectively export
-// commonly needed simulation types and functions from @quantbot/simulation
+// All simulation functionality is now consolidated in @quantbot/backtest
 
 // Core simulation function
-export { simulateStrategy, simulateStrategyWithCausalAccessor } from '@quantbot/simulation';
+export { simulateStrategy, simulateStrategyWithCausalAccessor } from './sim/core/simulator.js';
 
 // Overlay simulation (recommended API)
 export {
@@ -231,11 +229,11 @@ export {
   type TradePoint,
   type PnlBreakdown,
   type SimulationDiagnostics,
-} from '@quantbot/simulation';
+} from './sim/overlay-simulation.js';
 
 // Strategy building
-export { buildStrategy, buildStopLossConfig } from '@quantbot/simulation';
-export { getPreset, listPresets, registerPreset } from '@quantbot/simulation';
+export { buildStrategy, buildStopLossConfig } from './sim/strategies/builder.js';
+export { getPreset, listPresets, registerPreset } from './sim/strategies/presets.js';
 
 // Common types
 export type {
@@ -251,7 +249,7 @@ export type {
   SignalCondition as SimSignalCondition,
   LadderConfig,
   LadderLeg,
-} from '@quantbot/simulation';
+} from './sim/types/index.js';
 
 // Indicator calculation
 export {
@@ -260,30 +258,46 @@ export {
   formatIchimokuData,
   type IchimokuData,
   type IchimokuSignal,
-} from '@quantbot/simulation';
+} from './sim/ichimoku.js';
+
+// Signal evaluation and presets
+export {
+  evaluateSignalGroup,
+  evaluateLadderLegs,
+  getSignalPreset,
+  listSignalPresets,
+  getSignalPresetsByCategory,
+  registerSignalPreset,
+  combineSignalPresets,
+  getPerformanceMonitor,
+  PerformanceMonitor,
+  parseSimulationConfig,
+  type PerformanceMetrics,
+  type SimulationEngineConfig,
+  type SimulationScenarioConfig,
+  type PeriodMetricsConfig,
+} from './sim/index.js';
 
 // Contract types for dual-run harness and simulation invariants
+export { simulateFromInput } from './sim/core/contract-adapter.js';
 export {
-  simulateFromInput,
   type SimInput,
   type SimResult,
   type SimEvent,
   type SimMetrics,
   SimInputSchema,
   SimResultSchema,
-} from '@quantbot/simulation';
+} from './sim/types/contracts.js';
 
 // =============================================================================
-// Simulation Services - Re-export from @quantbot/simulation
+// Simulation Services - Exports from local sim/ directory
 // =============================================================================
-export {
-  BacktestBaselineService,
-  DuckDBStorageService,
-  ClickHouseService,
-  SimulationService,
-  type SimulationConfig,
-  type SimulationOutput,
-} from '@quantbot/simulation';
+// Direct exports to avoid Vitest SSR module resolution issues with re-exports
+export { DuckDBStorageService } from './sim/duckdb-storage-service.js';
+export { ClickHouseService } from './sim/clickhouse-service.js';
+export { SimulationService } from './sim/simulation-service.js';
+export { BacktestBaselineService } from './sim/backtest-baseline-service.js';
+export type { SimulationConfig, SimulationOutput } from './sim/simulation-service.js';
 
 // =============================================================================
 // V1 Baseline Python Service (TypeScript orchestration for Python optimizer)
@@ -305,23 +319,24 @@ export {
   V1BaselinePerCallerResultSchema,
   V1BaselineGroupedResultSchema,
 } from './services/v1-baseline-python-service.js';
+export { PythonSimulationService } from './services/python-simulation-service.js';
 
 // Causal candle accessor
-export type { CausalCandleAccessor } from '@quantbot/simulation';
+export type { CausalCandleAccessor } from './sim/types/causal-accessor.js';
 export {
   CausalCandleWrapper,
   filterCandlesByCloseTimeInterval,
   getLastClosedCandleInterval,
-} from '@quantbot/simulation';
+} from './sim/types/causal-accessor.js';
 
 // CandleInterval type (from candle types)
-export type { CandleInterval } from '@quantbot/simulation';
+export type { CandleInterval } from './sim/types/candle.js';
 
 // Execution utilities
-export { calculateTradeFee } from '@quantbot/simulation';
+export { calculateTradeFee } from './sim/execution/fees.js';
 
 // Legacy types
-export type { LegacySimulationEvent } from '@quantbot/simulation';
+export type { LegacySimulationEvent } from './sim/types/events.js';
 
 // =============================================================================
 // Structured Artifacts System

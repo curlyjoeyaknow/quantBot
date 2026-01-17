@@ -92,6 +92,9 @@ export * from './strategy/dsl-to-sim-input.js';
 export * from './strategy/template-schema.js';
 export * from './strategy/template-instantiation.js';
 export * from './strategy/template-registry.js';
+export * from './strategy/diff-types.js';
+export * from './strategy/strategy-diff.js';
+export * from './strategy/strategy-comparison.js';
 
 // Re-export types for convenience
 export type {

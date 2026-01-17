@@ -180,6 +180,8 @@ export const SimResultSchema = z.object({
   final_price: z.number(),
   total_candles: z.number(),
   metrics: SimMetricsSchema,
+  // Determinism contract field
+  contractVersion: z.string().default('1.0.0'),
 });
 
 export type SimResult = z.infer<typeof SimResultSchema>;

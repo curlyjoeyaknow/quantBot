@@ -5,21 +5,23 @@
  */
 
 import type { ExecutionModelInterface, TradeRequest, ExecutionResult } from '../execution-model.js';
-import type { ExecutionModel } from '../../types/execution-model.js';
+import type { ExecutionModel } from '../../execution-models/types.js';
 import type { DeterministicRNG } from '@quantbot/core';
-import { ExecutionModelSchema } from '../../types/execution-model.js';
+import { ExecutionModelSchema } from '../../execution-models/types.js';
+import { createMinimalExecutionModel } from '../../execution-models/models.js';
 
 export class FixedSlippageModel implements ExecutionModelInterface {
   private readonly config: ExecutionModel;
   private slippageBps: number;
 
-  constructor(config: ExecutionModel = {}, slippageBps?: number) {
-    // Validate and store config
-    this.config = ExecutionModelSchema.parse(config);
+  constructor(config?: ExecutionModel, slippageBps?: number) {
+    // Validate and store config, or use minimal default
+    this.config = config ? ExecutionModelSchema.parse(config) : createMinimalExecutionModel();
 
     // Extract slippage from config or use provided value or default
-    const slippageParams = this.config.slippage?.params;
-    this.slippageBps = slippageBps ?? (slippageParams?.bps as number) ?? 10; // Default 0.1%
+    const entrySlippage = this.config.slippage?.entrySlippage;
+    this.slippageBps =
+      slippageBps ?? (entrySlippage?.type === 'fixed' ? entrySlippage.fixedBps : 0) ?? 10; // Default 0.1%
   }
 
   execute(trade: TradeRequest, _rng: DeterministicRNG): ExecutionResult {
@@ -31,7 +33,7 @@ export class FixedSlippageModel implements ExecutionModelInterface {
         : trade.price / slippageMultiplier; // Receive less when selling
 
     // Calculate fees from config
-    const feeBps = this.config.fees?.takerFeeBps ?? 30; // Default 0.3%
+    const feeBps = this.config.costs?.takerFeeBps ?? 30; // Default 0.3%
     const fees = (executedPrice * trade.quantity * feeBps) / 10000;
 
     return {

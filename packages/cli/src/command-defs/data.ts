@@ -14,7 +14,6 @@ export type DataFeatureStoreVersionArgs = z.infer<typeof dataFeatureStoreVersion
  * Schema for data feature-store list-versions command
  */
 export const dataFeatureStoreListVersionsSchema = z.object({
-  featureSetId: z.string().min(1),
   format: z.enum(['json', 'table']).default('table'),
 });
 
@@ -29,4 +28,3 @@ export const dataCheckHashSchema = z.object({
 });
 
 export type DataCheckHashArgs = z.infer<typeof dataCheckHashSchema>;
-

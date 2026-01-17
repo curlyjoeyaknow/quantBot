@@ -34,6 +34,8 @@ import '../commands/lab.js';
 import '../commands/backtest.js';
 import '../commands/validation.js';
 import '../commands/architecture.js';
+import '../commands/data.js';
+import '../commands/strategy.js';
 
 // Import register functions to add Commander options
 import { registerObservabilityCommands } from '../commands/observability.js';
@@ -55,6 +57,8 @@ import { registerLabCommands } from '../commands/lab.js';
 import { registerBacktestCommands } from '../commands/backtest.js';
 import { registerValidationCommands } from '../commands/validation.js';
 import { registerArchitectureCommands } from '../commands/architecture.js';
+import { registerDataCommands } from '../commands/data.js';
+import { registerStrategyCommands } from '../commands/strategy.js';
 
 // Set up program
 program
@@ -84,6 +88,8 @@ registerLabCommands(program);
 registerBacktestCommands(program);
 registerValidationCommands(program);
 registerArchitectureCommands(program);
+registerDataCommands(program);
+registerStrategyCommands(program);
 
 // Global error handler
 program.configureOutput({
@@ -98,15 +104,10 @@ async function main() {
     // Initialize storage connections
     await ensureInitialized();
 
-    // Parse arguments
-    program.parse();
-
-    // If we reach here and no command was executed, exit successfully
-    // (Commands that execute will call process.exit(0) themselves via execute())
-    // This handles the case where --help or --version is used, or no command matches
-    if (!process.exitCode) {
-      process.exit(0);
-    }
+    // Parse arguments - this will execute the command handler asynchronously
+    // Don't call process.exit() here - let async operations complete naturally
+    // The process will exit when the event loop is empty and all async work is done
+    await program.parseAsync();
   } catch (error) {
     const message = handleError(error);
     console.error(`Error: ${message}`);

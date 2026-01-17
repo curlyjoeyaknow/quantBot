@@ -122,6 +122,52 @@ fastify.get('/', async (request: FastifyRequest, reply: FastifyReply) => {
   }
 });
 
+// GET /strategy-compare - Strategy comparison UI
+fastify.get('/strategy-compare', async (request: FastifyRequest, reply: FastifyReply) => {
+  try {
+    let htmlPath = join(__dirname, 'ui', 'strategy-compare.html');
+    try {
+      await readFile(htmlPath, 'utf-8');
+    } catch {
+      const srcPath = join(process.cwd(), 'packages', 'lab', 'src', 'ui', 'strategy-compare.html');
+      htmlPath = srcPath;
+    }
+    const html = await readFile(htmlPath, 'utf-8');
+    reply.type('text/html').send(html);
+  } catch (error) {
+    fastify.log.warn({ error }, 'Strategy comparison UI file not found, serving fallback');
+    reply.type('text/html').send(`
+      <!DOCTYPE html>
+      <html>
+      <head><title>Strategy Comparison - QuantBot Lab</title></head>
+      <body>
+        <h1>Strategy Comparison</h1>
+        <p>UI file not found. Please build the package first.</p>
+        <p><a href="/">Back to Lab</a></p>
+      </body>
+      </html>
+    `);
+  }
+});
+
+// GET /public/strategy-compare.js - Serve strategy comparison JavaScript
+fastify.get('/public/strategy-compare.js', async (request: FastifyRequest, reply: FastifyReply) => {
+  try {
+    let jsPath = join(__dirname, 'ui', 'public', 'strategy-compare.js');
+    try {
+      await readFile(jsPath, 'utf-8');
+    } catch {
+      const srcPath = join(process.cwd(), 'packages', 'lab', 'src', 'ui', 'public', 'strategy-compare.js');
+      jsPath = srcPath;
+    }
+    const js = await readFile(jsPath, 'utf-8');
+    reply.type('application/javascript').send(js);
+  } catch (error) {
+    fastify.log.warn({ error }, 'Strategy comparison JS file not found');
+    reply.code(404).send('// Strategy comparison JS not found');
+  }
+});
+
 // ============================================================================
 // Backtest Endpoints
 // ============================================================================
@@ -1135,6 +1181,45 @@ fastify.get('/api/strategies', async (request: FastifyRequest, reply: FastifyRep
   reply.code(response.statusCode).send(response.json());
 });
 
+// GET /api/strategies/:id - Get strategy by ID (for strategy comparison UI)
+fastify.get(
+  '/api/strategies/:id',
+  async (request: FastifyRequest<{ Params: { id: string } }>, reply: FastifyReply) => {
+    try {
+      const { id } = request.params;
+      const query = request.query as { version?: string };
+      const version = query.version || '1';
+
+      const { StrategiesRepository } = await import('@quantbot/storage');
+      const duckdbPath = process.env.DUCKDB_PATH || 'data/tele.duckdb';
+      const repo = new StrategiesRepository(duckdbPath);
+
+      const strategies = await repo.list();
+      const strategy = strategies.find((s) => s.name === id && s.version === version);
+
+      if (!strategy) {
+        reply.code(404);
+        return { error: `Strategy ${id} v${version} not found` };
+      }
+
+      // Transform to match original lab-ui2 format (return object directly, not wrapped)
+      reply.code(200);
+      return {
+        strategy_id: `${strategy.name}-v${strategy.version}`,
+        name: strategy.name,
+        config_json: JSON.stringify(strategy.config),
+        created_at: strategy.createdAt.toISO(),
+      };
+    } catch (error) {
+      fastify.log.error(error);
+      reply.code(500);
+      return {
+        error: error instanceof Error ? error.message : 'Failed to fetch strategy',
+      };
+    }
+  }
+);
+
 fastify.get('/api/simulation-runs', async (request: FastifyRequest, reply: FastifyReply) => {
   const query = request.query as { limit?: string; strategy?: string };
   const limit = query.limit || '50';
@@ -1147,6 +1232,122 @@ fastify.get('/api/simulation-runs', async (request: FastifyRequest, reply: Fasti
   });
 
   reply.code(response.statusCode).send(response.json());
+});
+
+// GET /api/strategy-compare/runs - Get runs grouped by strategy for comparison
+fastify.get('/api/strategy-compare/runs', async (request: FastifyRequest, reply: FastifyReply) => {
+  try {
+    const query = request.query as {
+      limit?: string;
+      strategyId?: string;
+      from?: string;
+      to?: string;
+    };
+
+    const limit = Math.min(parseInt(query.limit || '100', 10), 500);
+    const duckdbPath = process.env.DUCKDB_PATH || 'data/tele.duckdb';
+    const db = await openDuckDb(duckdbPath);
+
+    let sql = `
+      SELECT 
+        run_id,
+        strategy_id,
+        caller_name,
+        total_return_pct,
+        max_drawdown_pct,
+        sharpe_ratio,
+        win_rate,
+        total_trades,
+        created_at,
+        start_time,
+        end_time
+      FROM simulation_runs
+      WHERE 1=1
+    `;
+    const params: unknown[] = [];
+
+    if (query.strategyId) {
+      sql += ` AND strategy_id LIKE ?`;
+      params.push(`%${query.strategyId}%`);
+    }
+
+    if (query.from) {
+      sql += ` AND created_at >= ?`;
+      params.push(query.from);
+    }
+
+    if (query.to) {
+      sql += ` AND created_at <= ?`;
+      params.push(query.to);
+    }
+
+    sql += ` ORDER BY created_at DESC LIMIT ?`;
+    params.push(limit);
+
+    const rows = await db.all<any>(sql, params as any[]);
+
+    // Group runs by strategy
+    const runsByStrategy = new Map<
+      string,
+      Array<{
+        runId: string;
+        strategyId: string;
+        strategyName: string;
+        callerName: string | null;
+        totalReturnPct: number | null;
+        maxDrawdownPct: number | null;
+        sharpeRatio: number | null;
+        winRate: number | null;
+        totalTrades: number | null;
+        createdAt: string | null;
+        startTime: string | null;
+        endTime: string | null;
+      }>
+    >();
+
+    for (const row of rows) {
+      const strategyKey = row.strategy_id || 'unknown';
+      if (!runsByStrategy.has(strategyKey)) {
+        runsByStrategy.set(strategyKey, []);
+      }
+      runsByStrategy.get(strategyKey)!.push({
+        runId: row.run_id,
+        strategyId: row.strategy_id || '',
+        strategyName: row.strategy_id || '',
+        callerName: row.caller_name || null,
+        totalReturnPct: row.total_return_pct || null,
+        maxDrawdownPct: row.max_drawdown_pct || null,
+        sharpeRatio: row.sharpe_ratio || null,
+        winRate: row.win_rate || null,
+        totalTrades: row.total_trades || null,
+        createdAt: row.created_at ? new Date(row.created_at).toISOString() : null,
+        startTime: row.start_time ? new Date(row.start_time).toISOString() : null,
+        endTime: row.end_time ? new Date(row.end_time).toISOString() : null,
+      });
+    }
+
+    // Convert to array format
+    const strategies = Array.from(runsByStrategy.entries()).map(([strategyId, runs]) => ({
+      strategyId,
+      strategyName: runs[0]?.strategyName || strategyId,
+      runs: runs.sort((a, b) => {
+        // Sort by total return descending
+        const aReturn = a.totalReturnPct || -Infinity;
+        const bReturn = b.totalReturnPct || -Infinity;
+        return bReturn - aReturn;
+      }),
+      bestRun: runs[0] || null,
+    }));
+
+    return { strategies };
+  } catch (error) {
+    fastify.log.error(error);
+    reply.code(500);
+    return {
+      error: error instanceof Error ? error.message : 'Failed to fetch strategy comparison runs',
+      strategies: [],
+    };
+  }
 });
 
 // ============================================================================

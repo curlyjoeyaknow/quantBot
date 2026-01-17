@@ -72,4 +72,3 @@ export async function verifyBoundariesHandler(
     passed: violations.length === 0,
   };
 }
-

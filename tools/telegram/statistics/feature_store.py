@@ -116,6 +116,78 @@ class FeatureStore:
             logger.error(f"Failed to store alert features: {e}")
             raise
     
+    def store_candle_features(
+        self,
+        mint: str,
+        candle_timestamp: datetime,
+        features: Dict[str, Any],
+        feature_set_version: str = '1.0.0',
+        feature_spec_version: str = '1.0.0'
+    ) -> str:
+        """Store features for a candle with versioning"""
+        feature_id = f"{mint}_{int(candle_timestamp.timestamp())}"
+        computed_at = datetime.now()
+        computed_by = get_git_commit_hash()
+        
+        try:
+            self.con.execute("""
+                INSERT OR REPLACE INTO candle_features
+                (feature_id, mint, candle_timestamp, features, feature_set_version, feature_spec_version, computed_at, computed_by, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, [
+                feature_id,
+                mint,
+                candle_timestamp,
+                json.dumps(features),
+                feature_set_version,
+                feature_spec_version,
+                computed_at,
+                computed_by,
+                computed_at
+            ])
+            self.con.commit()
+            return feature_id
+        except Exception as e:
+            logger.error(f"Failed to store candle features: {e}")
+            raise
+    
+    def store_sequence_features(
+        self,
+        mint: str,
+        start_timestamp: datetime,
+        end_timestamp: datetime,
+        features_array: List[Dict[str, Any]],
+        feature_set_version: str = '1.0.0',
+        feature_spec_version: str = '1.0.0'
+    ) -> str:
+        """Store sequence features with versioning"""
+        sequence_id = f"{mint}_{int(start_timestamp.timestamp())}_{int(end_timestamp.timestamp())}"
+        computed_at = datetime.now()
+        computed_by = get_git_commit_hash()
+        
+        try:
+            self.con.execute("""
+                INSERT OR REPLACE INTO sequence_features
+                (sequence_id, mint, start_timestamp, end_timestamp, features_array, feature_set_version, feature_spec_version, computed_at, computed_by, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, [
+                sequence_id,
+                mint,
+                start_timestamp,
+                end_timestamp,
+                json.dumps(features_array),
+                feature_set_version,
+                feature_spec_version,
+                computed_at,
+                computed_by,
+                computed_at
+            ])
+            self.con.commit()
+            return sequence_id
+        except Exception as e:
+            logger.error(f"Failed to store sequence features: {e}")
+            raise
+    
     def get_features_for_training(
         self,
         target_col: str = 'ath_multiple',

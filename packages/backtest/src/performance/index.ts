@@ -9,10 +9,10 @@ export {
   getPerformanceMonitor,
   PerformanceMonitor,
   type PerformanceMetrics,
-} from '@quantbot/simulation';
+} from '../sim/performance/monitor.js';
 
 // Indicator calculation optimization
-export { calculateIndicatorSeriesOptimized } from '@quantbot/simulation';
+export { calculateIndicatorSeriesOptimized } from '../sim/performance/optimizations.js';
 
 // Result caching
 export {
@@ -20,4 +20,4 @@ export {
   getResultCache,
   resetResultCache,
   type ResultCacheOptions,
-} from '@quantbot/simulation';
+} from '../sim/performance/result-cache.js';

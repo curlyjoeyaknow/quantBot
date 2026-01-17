@@ -145,4 +145,3 @@ describe('getContractVersion', () => {
     expect(getContractVersion({ other: 'data' })).toBeNull();
   });
 });
-

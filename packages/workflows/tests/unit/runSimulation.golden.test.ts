@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { DateTime } from 'luxon';
 import { runSimulation } from '../../src/simulation/runSimulation.js';
-import { createMockContext, mkCall, mkStrategy } from '../helpers/mockContext.js';
+import { createMockContext, mkCall, mkStrategy, candleSeries } from '../helpers/mockContext.js';
 import { baseSpec } from '../fixtures/runSimulation.golden.js';
 
 describe('workflows.runSimulation - golden suite', () => {
@@ -13,6 +13,10 @@ describe('workflows.runSimulation - golden suite', () => {
     ];
     const ctx = createMockContext({
       calls,
+      candlesByMint: {
+        MintA: candleSeries(),
+        MintB: candleSeries(),
+      },
       simByCallId: {
         c1: { pnlMultiplier: 1.1, trades: 3 },
         c2: { pnlMultiplier: 0.9, trades: 1 },
@@ -46,6 +50,9 @@ describe('workflows.runSimulation - golden suite', () => {
     const calls = [mkCall('c1', 'Brook', 'MintA', '2025-11-01T00:00:00.000Z')];
     const ctx = createMockContext({
       calls,
+      candlesByMint: {
+        MintA: candleSeries(),
+      },
       simByCallId: { c1: { pnlMultiplier: 1.25, trades: 5 } },
     });
 
@@ -118,6 +125,11 @@ describe('workflows.runSimulation - golden suite', () => {
     ];
     const ctx = createMockContext({
       calls,
+      candlesByMint: {
+        MintA: candleSeries(),
+        MintB: candleSeries(),
+        MintC: candleSeries(),
+      },
       simByCallId: {
         c1: { pnlMultiplier: 1.1, trades: 2 },
         c2: new Error('boom'),
@@ -150,6 +162,7 @@ describe('workflows.runSimulation - golden suite', () => {
     ];
     const ctx = createMockContext({
       calls,
+      candlesByMint: { MintA: candleSeries() },
       simByCallId: { dup: { pnlMultiplier: 1.2, trades: 4 } },
     });
 

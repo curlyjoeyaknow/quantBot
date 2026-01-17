@@ -1,13 +1,13 @@
 /**
  * Parameter vector hashing for deduplication
- * 
+ *
  * Prevents duplicate experiment runs with identical parameters.
  */
 
 import { createHash } from 'crypto';
 import { z } from 'zod';
 
-export const ParameterVectorSchema = z.record(z.unknown());
+export const ParameterVectorSchema = z.record(z.string(), z.unknown());
 
 export type ParameterVector = z.infer<typeof ParameterVectorSchema>;
 
@@ -132,8 +132,7 @@ export class InMemoryParameterHashRepository implements ParameterHashRepository 
     return {
       totalHashes: this.hashes.size,
       totalExperiments,
-      avgExperimentsPerHash:
-        this.hashes.size > 0 ? totalExperiments / this.hashes.size : 0,
+      avgExperimentsPerHash: this.hashes.size > 0 ? totalExperiments / this.hashes.size : 0,
     };
   }
 }
@@ -257,4 +256,3 @@ export function compareParameters(
 
   return { identical, added, removed, changed };
 }
-

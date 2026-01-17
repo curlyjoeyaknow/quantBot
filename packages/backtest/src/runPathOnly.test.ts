@@ -123,6 +123,22 @@ vi.mock('fs/promises', () => ({
   mkdir: vi.fn().mockResolvedValue(undefined),
 }));
 
+// Mock artifacts module
+vi.mock('./artifacts/index.js', () => ({
+  createRunDirectory: vi.fn().mockResolvedValue({
+    writeArtifact: vi.fn().mockResolvedValue(''),
+    updateManifest: vi.fn(),
+    markSuccess: vi.fn().mockResolvedValue(undefined),
+    markFailure: vi.fn().mockResolvedValue(undefined),
+    getRunDir: vi.fn().mockReturnValue('/tmp/test-run-dir'),
+  }),
+  getGitProvenance: vi.fn().mockResolvedValue({
+    commit: 'test-commit',
+    branch: 'test-branch',
+    dirty: false,
+  }),
+}));
+
 // Mock @quantbot/utils
 vi.mock('@quantbot/utils', () => {
   class MockTimingContext {

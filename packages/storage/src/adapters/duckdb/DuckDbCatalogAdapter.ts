@@ -154,7 +154,9 @@ export class DuckDbCatalogAdapter implements CatalogPort {
       featureSpecJson: x.feature_spec_json,
       featureSetVersion: x.feature_set_version || '1.0.0',
       featureSpecVersion: x.feature_spec_version || '1.0.0',
-      computedAtIso: x.computed_at ? new Date(x.computed_at).toISOString() : new Date(x.created_at).toISOString(),
+      computedAtIso: x.computed_at
+        ? new Date(x.computed_at).toISOString()
+        : new Date(x.created_at).toISOString(),
       computedBy: x.computed_by || undefined,
       createdAtIso: new Date(x.created_at).toISOString(),
     };
@@ -207,7 +209,9 @@ export class DuckDbCatalogAdapter implements CatalogPort {
       manifestPath: x.manifest_path,
       parquetPath: x.parquet_path,
       featureSetVersion: x.feature_set_version || '1.0.0',
-      computedAtIso: x.computed_at ? new Date(x.computed_at).toISOString() : new Date(x.created_at).toISOString(),
+      computedAtIso: x.computed_at
+        ? new Date(x.computed_at).toISOString()
+        : new Date(x.created_at).toISOString(),
       computedBy: x.computed_by || undefined,
       createdAtIso: new Date(x.created_at).toISOString(),
     };

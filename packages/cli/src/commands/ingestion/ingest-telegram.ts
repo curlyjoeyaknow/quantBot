@@ -30,7 +30,7 @@ export type IngestTelegramArgs = z.infer<typeof telegramSchema>;
  */
 export async function ingestTelegramHandler(args: IngestTelegramArgs, _ctx: CommandContext) {
   // ENV + ADAPTER WIRING LIVE HERE (composition root)
-  const dbPath = process.env.DUCKDB_PATH || 'data/tele.duckdb';
+  const dbPath = process.env.DUCKDB_PATH || 'data/alerts.duckdb';
   const workflowContext = await createProductionContextWithPorts({ duckdbPath: dbPath });
 
   // Add DuckDB repositories to context

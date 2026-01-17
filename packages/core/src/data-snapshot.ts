@@ -1,6 +1,6 @@
 /**
  * Data snapshot hash storage for experiment tracking
- * 
+ *
  * Tracks data snapshots used in experiments for reproducibility.
  */
 
@@ -12,13 +12,15 @@ export const DataSnapshotSchema = z.object({
   snapshotHash: z.string(),
   source: z.string(),
   createdAt: z.number(),
-  metadata: z.object({
-    rowCount: z.number().optional(),
-    startTimestamp: z.number().optional(),
-    endTimestamp: z.number().optional(),
-    columns: z.array(z.string()).optional(),
-    description: z.string().optional(),
-  }).optional(),
+  metadata: z
+    .object({
+      rowCount: z.number().optional(),
+      startTimestamp: z.number().optional(),
+      endTimestamp: z.number().optional(),
+      columns: z.array(z.string()).optional(),
+      description: z.string().optional(),
+    })
+    .optional(),
 });
 
 export type DataSnapshot = z.infer<typeof DataSnapshotSchema>;
@@ -201,4 +203,3 @@ export class DataSnapshotService {
     await this.repository.delete(snapshotId);
   }
 }
-

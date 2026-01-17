@@ -19,9 +19,9 @@ import type {
   TrailingStopPolicy,
   LadderPolicy,
   ComboPolicy,
+  WashReboundPolicy,
   PolicyExecutionResult,
 } from './risk-policy.js';
-import { computePathMetrics } from '../metrics/path-metrics.js';
 
 // =============================================================================
 // Re-export execution models from simulation for convenience
@@ -51,7 +51,7 @@ export {
   // Adapters
   convertExecutionModelToCostConfig,
   calculateEffectiveSlippageBps,
-} from '@quantbot/simulation/execution-models';
+} from '../sim/execution-models/index.js';
 
 /**
  * Fee configuration (simple model)
@@ -69,7 +69,7 @@ export interface ExecutionConfig extends FeeConfig {
    * Optional execution model for realistic fills.
    * If provided, overrides simple takerFeeBps/slippageBps with venue-specific models.
    */
-  executionModel?: import('@quantbot/simulation/execution-models').ExecutionModel;
+  executionModel?: import('../sim/execution-models/types.js').ExecutionModel;
   /**
    * RNG for stochastic execution (latency, partial fills).
    * Required if executionModel is provided.
@@ -132,10 +132,14 @@ export function executePolicy(
       return executeLadder(candles, entryIdx, entryPx, entryTsMs, policy, fees);
     case 'combo':
       return executeCombo(candles, entryIdx, entryPx, entryTsMs, policy, fees);
-    default:
+    case 'wash_rebound': {
+      return executeWashRebound(candles, entryIdx, entryPx, entryTsMs, policy, fees);
+    }
+    default: {
       // Type guard - should never reach here
       const _exhaustive: never = policy;
       throw new Error(`Unknown policy kind: ${(_exhaustive as RiskPolicy).kind}`);
+    }
   }
 }
 
@@ -477,6 +481,184 @@ function executeCombo(
   return earliest;
 }
 
+function executeWashRebound(
+  candles: Candle[],
+  entryIdx: number,
+  entryPx: number,
+  entryTsMs: number,
+  policy: WashReboundPolicy,
+  fees: FeeConfig | ExecutionConfig
+): PolicyExecutionResult {
+  type State = 'IN_POSITION' | 'WAIT_FOR_WASH' | 'WAIT_FOR_REBOUND';
+
+  const maxReentries = policy.maxReentries ?? 3;
+  const cooldownCandles = policy.cooldownCandles ?? 1;
+
+  // State machine state
+  let state: State = 'IN_POSITION';
+  let peak = entryPx;
+  let peakAtExit: number | null = null;
+  let washLow: number | null = null;
+  let washLowCandleIdx: number | null = null; // Track which candle established wash_low to avoid same-candle rebound
+
+  // Trade tracking
+  let reentryCount = 0;
+  let currentEntryPx = entryPx;
+  let cooldownUntilIdx: number | null = null;
+
+  // Aggregate metrics
+  // Track cumulative return as a multiplier (1.0 = no change, 1.2 = +20%)
+  let cumulativeMultiplier = 1.0;
+  let maxAdverseExcursionBps = 0;
+  let lastExitTsMs = entryTsMs;
+  let lastExitPx = entryPx;
+  let exitReason = 'end_of_data';
+  let stoppedOut = false;
+
+  // Track overall peak for tail capture calculation
+  let overallPeakHigh = entryPx;
+
+  for (let i = entryIdx; i < candles.length; i++) {
+    const c = candles[i];
+    const tsMs = c.timestamp * 1000;
+
+    // Track overall peak
+    if (c.high > overallPeakHigh) overallPeakHigh = c.high;
+
+    // Track max adverse excursion (worst drawdown from any entry)
+    const lowReturn = (c.low / currentEntryPx - 1) * 10000;
+    if (lowReturn < maxAdverseExcursionBps) {
+      maxAdverseExcursionBps = lowReturn;
+    }
+
+    if (state === 'IN_POSITION') {
+      // Update peak since entry
+      if (c.high > peak) {
+        peak = c.high;
+      }
+
+      // Check trailing stop exit: if candle.low <= peak * (1 - trailPct)
+      const trailingStopPrice = peak * (1 - policy.trailPct);
+      if (c.low <= trailingStopPrice) {
+        // Exit at stop price (deterministic fill)
+        const exitPx = trailingStopPrice;
+        // Apply fees to this trade: entry fee increases effective entry, exit fee decreases effective exit
+        const totalFeeBps = getTotalFeeBps(fees);
+        const entryFeeFactor = 1 + totalFeeBps / 10000;
+        const exitFeeFactor = 1 - totalFeeBps / 10000;
+        const netEntryPx = currentEntryPx * entryFeeFactor;
+        const netExitPx = exitPx * exitFeeFactor;
+        // Compound return: multiply by net return for this trade
+        const tradeReturn = netExitPx / netEntryPx;
+        cumulativeMultiplier *= tradeReturn;
+        lastExitTsMs = tsMs;
+        lastExitPx = exitPx;
+        exitReason = 'trailing_stop';
+        stoppedOut = true;
+
+        // Record peak_at_exit and transition to WAIT_FOR_WASH
+        peakAtExit = peak;
+        state = 'WAIT_FOR_WASH';
+        washLow = null;
+        washLowCandleIdx = null;
+        cooldownUntilIdx = i + cooldownCandles;
+
+        // Check if we can re-enter (haven't hit max reentries)
+        if (reentryCount >= maxReentries) {
+          // No more re-entries allowed, we're done
+          break;
+        }
+        continue;
+      }
+    } else if (state === 'WAIT_FOR_WASH') {
+      // Check if cooldown is still active
+      if (cooldownUntilIdx !== null && i < cooldownUntilIdx) {
+        continue;
+      }
+
+      // Wash condition: if candle.low <= peak_at_exit * (1 - washPct)
+      if (peakAtExit !== null) {
+        const washThreshold = peakAtExit * (1 - policy.washPct);
+        if (c.low <= washThreshold) {
+          // Wash triggered - set wash_low and transition to WAIT_FOR_REBOUND
+          washLow = c.low;
+          washLowCandleIdx = i;
+          state = 'WAIT_FOR_REBOUND';
+          continue;
+        }
+      }
+    } else if (state === 'WAIT_FOR_REBOUND') {
+      // Update wash_low if price dips further
+      if (washLow !== null && c.low < washLow) {
+        washLow = c.low;
+        washLowCandleIdx = i;
+      }
+
+      // Re-entry rule: if candle.high >= wash_low * (1 + reboundPct)
+      // BUT: avoid same-candle rebound (must be after the candle that established wash_low)
+      if (washLow !== null && washLowCandleIdx !== null && i > washLowCandleIdx) {
+        const reboundThreshold = washLow * (1 + policy.reboundPct);
+        if (c.high >= reboundThreshold) {
+          // Re-enter at trigger price (deterministic fill)
+          const reentryPx = reboundThreshold;
+          currentEntryPx = reentryPx;
+          reentryCount++;
+
+          // Reset state for new position
+          state = 'IN_POSITION';
+          peak = Math.max(reentryPx, c.high); // Start tracking peak from re-entry
+          peakAtExit = null;
+          washLow = null;
+          washLowCandleIdx = null;
+          cooldownUntilIdx = null;
+          continue;
+        }
+      }
+    }
+  }
+
+  // If still in position at end, close at last candle
+  if (state === 'IN_POSITION') {
+    const lastCandle = candles[candles.length - 1];
+    const exitPx = lastCandle.close;
+    // Apply fees to final trade
+    const totalFeeBps = getTotalFeeBps(fees);
+    const entryFeeFactor = 1 + totalFeeBps / 10000;
+    const exitFeeFactor = 1 - totalFeeBps / 10000;
+    const netEntryPx = currentEntryPx * entryFeeFactor;
+    const netExitPx = exitPx * exitFeeFactor;
+    // Compound return for final trade
+    const tradeReturn = netExitPx / netEntryPx;
+    cumulativeMultiplier *= tradeReturn;
+    lastExitTsMs = lastCandle.timestamp * 1000;
+    lastExitPx = exitPx;
+    exitReason = 'end_of_data';
+  }
+
+  // Convert cumulative multiplier (already has fees applied) to basis points
+  const netReturnBps = (cumulativeMultiplier - 1) * 10000;
+
+  // Calculate tail capture (based on overall peak from first entry)
+  // Use gross return (before fees) for tail capture calculation
+  const grossReturnBps = (cumulativeMultiplier - 1) * 10000;
+  const peakMultiple = overallPeakHigh / entryPx;
+  const peakReturnBps = (peakMultiple - 1) * 10000;
+  const tailCapture = peakReturnBps > 0 ? Math.min(grossReturnBps / peakReturnBps, 1.0) : null;
+
+  return {
+    realizedReturnBps: netReturnBps,
+    stopOut: stoppedOut,
+    maxAdverseExcursionBps,
+    timeExposedMs: lastExitTsMs - entryTsMs,
+    tailCapture,
+    entryTsMs,
+    exitTsMs: lastExitTsMs,
+    entryPx,
+    exitPx: lastExitPx,
+    exitReason,
+  };
+}
+
 // =============================================================================
 // Helper Functions
 // =============================================================================
@@ -490,9 +672,12 @@ function getTotalFeeBps(fees: FeeConfig | ExecutionConfig): number {
   if ('executionModel' in fees && fees.executionModel) {
     const model = fees.executionModel;
     // Use cost model taker fee + average slippage estimate
-    const takerFee = model.costs.takerFeeBps;
+    // The new ExecutionModel structure has costs directly
+    const takerFee = model.costs?.takerFeeBps ?? 25; // Default 0.25%
     // For slippage, use the fixed component from entry slippage model
-    const slippageFee = model.slippage.entrySlippage.fixedBps ?? 0;
+    // The new structure has slippage.entrySlippage with fixedBps
+    const entrySlippage = model.slippage?.entrySlippage;
+    const slippageFee = entrySlippage?.fixedBps ?? entrySlippage?.minBps ?? 0;
     return takerFee + slippageFee;
   }
   // Simple fee model

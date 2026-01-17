@@ -1,6 +1,6 @@
 /**
  * Contract version validation at runtime
- * 
+ *
  * Ensures simulation inputs/outputs conform to expected contract versions.
  */
 
@@ -156,4 +156,3 @@ export class ContractValidator {
     return [...SUPPORTED_CONTRACT_VERSIONS];
   }
 }
-

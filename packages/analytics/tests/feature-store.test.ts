@@ -214,4 +214,3 @@ describe('createFeatureVersionHash', () => {
     expect(hash1).not.toBe(hash2);
   });
 });
-

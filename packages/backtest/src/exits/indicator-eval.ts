@@ -12,9 +12,8 @@ import {
 } from '../indicators/series.js';
 
 // Re-export simulation's signal evaluator for advanced signal-based exits
-// Note: These are re-exported from simulation for use in backtest contexts
-export { evaluateSignalGroup } from '@quantbot/simulation';
-export type { SignalCondition, SignalGroup, IndicatorName } from '@quantbot/simulation';
+export { evaluateSignalGroup } from '../sim/signals/evaluator.js';
+export type { SignalCondition, SignalGroup, IndicatorName } from '../sim/types/signals.js';
 
 // Re-export signal presets
 export {
@@ -23,7 +22,7 @@ export {
   getSignalPresetsByCategory,
   registerSignalPreset,
   combineSignalPresets,
-} from '@quantbot/simulation';
+} from '../sim/signals/presets.js';
 
 export function buildIndicatorExitSignal(candles: Candle[], spec: IndicatorExitSpec): boolean[] {
   const mode = spec.mode ?? 'ANY';

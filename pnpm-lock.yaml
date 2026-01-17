@@ -367,6 +367,9 @@ importers:
       '@quantbot/jobs':
         specifier: workspace:*
         version: link:../jobs
+      '@quantbot/lab':
+        specifier: workspace:*
+        version: link:../lab
       '@quantbot/observability':
         specifier: workspace:*
         version: link:../observability
@@ -859,6 +862,9 @@ importers:
 
   packages/simulation:
     dependencies:
+      '@quantbot/backtest':
+        specifier: workspace:*
+        version: link:../backtest
       '@quantbot/core':
         specifier: workspace:*
         version: link:../core

@@ -32,6 +32,7 @@
     "@quantbot/data-observatory": "workspace:*",
     "@quantbot/ingestion": "workspace:*",
     "@quantbot/jobs": "workspace:*",
+    "@quantbot/lab": "workspace:*",
     "@quantbot/observability": "workspace:*",
     "@quantbot/ohlcv": "workspace:*",
     "@quantbot/storage": "workspace:*",

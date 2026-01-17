@@ -20,7 +20,7 @@ import { createHash } from 'crypto';
 import { DateTime } from 'luxon';
 import { promises as fs } from 'fs';
 import { join } from 'path';
-import { logger, ValidationError, ConfigurationError } from '@quantbot/utils';
+import { logger, ValidationError, ConfigurationError, findWorkspaceRoot } from '@quantbot/utils';
 import type { DataSnapshotRef } from '../contract.js';
 import { DataSnapshotRefSchema } from '../contract.js';
 import type { SliceManifestV1 } from '@quantbot/core';
@@ -28,6 +28,8 @@ import { queryCallsDuckdb, createQueryCallsDuckdbContext } from '../../calls/que
 import { getStorageEngine } from '@quantbot/storage';
 import { exportSlicesForAlerts } from '../../slices/exportSlicesForAlerts.js';
 import type { WorkflowContext } from '../../types.js';
+import type { PythonEngine } from '@quantbot/utils';
+import { z } from 'zod';
 
 /**
  * Catalog port interface - abstracts catalog access to avoid direct dependency on @quantbot/labcatalog
@@ -96,10 +98,13 @@ export interface SnapshotData {
 export class DataSnapshotService {
   constructor(
     private readonly ctx?: WorkflowContext,
-    private readonly catalog?: CatalogPort
+    private readonly catalog?: CatalogPort,
+    private readonly pythonEngine?: PythonEngine
   ) {
     // Catalog is injected as a port to avoid direct dependency on @quantbot/labcatalog
     // If not provided, slice loading will fail gracefully
+    // PythonEngine is injected for hash computation (Phase IV: Python computes, TypeScript orchestrates)
+    // If not provided, falls back to TypeScript computation (backward compatibility)
   }
 
   /**
@@ -157,8 +162,8 @@ export class DataSnapshotService {
       }
     }
 
-    // Create content hash from actual data
-    const contentHash = this.computeContentHash(data, params);
+    // Create content hash from actual data (Python computes, TypeScript orchestrates)
+    const contentHash = await this.computeContentHash(data, params);
 
     // Generate snapshot ID (use clock if available, otherwise use DateTime for determinism)
     const timestamp = this.ctx?.clock
@@ -271,8 +276,8 @@ export class DataSnapshotService {
       data = await this.loadDataFromDatabase(params);
     }
 
-    // Re-compute hash
-    const computedHash = this.computeContentHash(data, params);
+    // Re-compute hash (Python computes, TypeScript orchestrates)
+    const computedHash = await this.computeContentHash(data, params);
 
     return computedHash === snapshot.contentHash;
   }
@@ -658,9 +663,64 @@ export class DataSnapshotService {
 
   /**
    * Computes content hash from data and parameters
+   * 
+   * Phase IV: Python computes hash, TypeScript orchestrates via PythonEngine
+   * Falls back to TypeScript computation if PythonEngine not available (backward compatibility)
    */
-  private computeContentHash(data: SnapshotData, params: CreateSnapshotParams): string {
-    // Create deterministic representation of data
+  private async computeContentHash(
+    data: SnapshotData,
+    params: CreateSnapshotParams
+  ): Promise<string> {
+    // Use Python for hash computation if PythonEngine is available (Phase IV)
+    if (this.pythonEngine) {
+      try {
+        const workspaceRoot = findWorkspaceRoot();
+        const scriptPath = join(workspaceRoot, 'tools/backtest/lib/experiments/hash_snapshot.py');
+
+        const inputJson = JSON.stringify({
+          data: {
+            candles: data.candles,
+            calls: data.calls,
+          },
+          params: {
+            timeRange: params.timeRange,
+            sources: params.sources,
+            filters: params.filters,
+          },
+        });
+
+        const resultSchema = z.object({
+          hash: z.string().regex(/^[a-f0-9]{64}$/),
+        });
+
+        const result = await this.pythonEngine.runScriptWithStdin(
+          scriptPath,
+          inputJson,
+          resultSchema,
+          {
+            timeout: 30 * 1000, // 30 seconds
+            expectJsonOutput: true,
+            cwd: workspaceRoot,
+            env: {
+              ...process.env,
+              PYTHONPATH: workspaceRoot,
+            },
+          }
+        );
+
+        return result.hash;
+      } catch (error) {
+        logger.warn(
+          '[DataSnapshotService] Failed to compute hash via Python, falling back to TypeScript',
+          {
+            error: error instanceof Error ? error.message : String(error),
+          }
+        );
+        // Fall through to TypeScript computation
+      }
+    }
+
+    // Fallback: TypeScript computation (backward compatibility)
     const dataRepr = {
       params: {
         timeRange: params.timeRange,
@@ -710,7 +770,8 @@ export class DataSnapshotService {
  */
 export function createDataSnapshotService(
   ctx?: WorkflowContext,
-  catalog?: CatalogPort
+  catalog?: CatalogPort,
+  pythonEngine?: PythonEngine
 ): DataSnapshotService {
-  return new DataSnapshotService(ctx, catalog);
+  return new DataSnapshotService(ctx, catalog, pythonEngine);
 }

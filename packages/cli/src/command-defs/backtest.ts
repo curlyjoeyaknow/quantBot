@@ -261,3 +261,26 @@ export const catalogQuerySchema = z.object({
 });
 
 export type CatalogQueryArgs = z.infer<typeof catalogQuerySchema>;
+
+/**
+ * Validate simulation setup schema
+ */
+export const validateSimulationSchema = z.object({});
+
+export type ValidateSimulationArgs = z.infer<typeof validateSimulationSchema>;
+
+/**
+ * Validate contract version schema
+ */
+export const validateContractSchema = z.object({
+  version: z.string().min(1, 'Version is required'),
+});
+
+export type ValidateContractArgs = z.infer<typeof validateContractSchema>;
+
+/**
+ * Check version schema
+ */
+export const checkVersionSchema = z.object({});
+
+export type CheckVersionArgs = z.infer<typeof checkVersionSchema>;

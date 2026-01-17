@@ -9,7 +9,7 @@
  * - Fee regimes
  */
 
-import type { ExecutionModel } from '../types/execution-model.js';
+import type { ExecutionModel } from '../execution-models/types.js';
 import type { DeterministicRNG } from '@quantbot/core';
 
 /**

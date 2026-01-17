@@ -7,7 +7,7 @@
  */
 
 import { z } from 'zod';
-import type { ExecutionModel } from './execution-model.js';
+import type { ExecutionModel } from '../execution-models/types.js';
 import type { RiskModel } from './risk-model.js';
 
 /**

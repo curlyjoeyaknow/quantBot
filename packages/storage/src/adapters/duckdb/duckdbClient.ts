@@ -4,6 +4,7 @@ import path from 'node:path';
 export type DuckDbConnection = {
   run(sql: string, params?: any[]): Promise<void>;
   all<T = any>(sql: string, params?: any[]): Promise<T[]>;
+  close(): Promise<void>;
 };
 
 export interface OpenDuckDbOptions {
@@ -92,7 +93,15 @@ export async function openDuckDb(
       }
     });
 
-  return { run, all };
+  const close = (): Promise<void> =>
+    new Promise<void>((resolve, reject) => {
+      conn.close((err: any) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
+
+  return { run, all, close };
 }
 
 export async function runSqlFile(conn: DuckDbConnection, filePath: string): Promise<void> {

@@ -52,47 +52,47 @@ todos:
       - p1-3
   - id: p2-2
     content: Move ohlcv, ingestion, jobs to data package
-    status: pending
+    status: completed
     dependencies:
       - p2-1
   - id: p2-3
     content: Update all codebase imports for data
-    status: pending
+    status: completed
     dependencies:
       - p2-2
   - id: p3-1
     content: Move analytics into simulation package
-    status: pending
+    status: completed
     dependencies:
       - p2-3
   - id: p3-2
     content: Move remaining backtest code into simulation
-    status: pending
+    status: completed
     dependencies:
       - p3-1
   - id: p3-3
     content: Update simulation package exports
-    status: pending
+    status: completed
     dependencies:
       - p3-2
   - id: p4-1
     content: Move labcatalog and data-observatory into lab
-    status: pending
+    status: completed
     dependencies:
       - p3-3
   - id: p4-2
     content: Update lab package exports
-    status: pending
+    status: completed
     dependencies:
       - p4-1
   - id: p5-1
     content: Move api and lab-ui into cli package
-    status: pending
+    status: completed
     dependencies:
       - p4-2
   - id: p5-2
     content: Add serve and lab-ui commands to CLI
-    status: pending
+    status: completed
     dependencies:
       - p5-1
   - id: cl-1
@@ -107,7 +107,7 @@ todos:
       - cl-1
   - id: cl-3
     content: Final test suite run and cleanup
-    status: pending
+    status: in_progress
     dependencies:
       - cl-2
 ---
@@ -301,14 +301,14 @@ graph TD
 
 1. **Create `packages/infra/` structure**:
    ```javascript
-                                 packages/infra/
-                                 ├── src/
-                                 │   ├── utils/          # From @quantbot/utils
-                                 │   ├── storage/        # From @quantbot/storage
-                                 │   ├── observability/  # From @quantbot/observability
-                                 │   └── clients/        # From @quantbot/api-clients
-                                 ├── package.json
-                                 └── tsconfig.json
+                                          packages/infra/
+                                          ├── src/
+                                          │   ├── utils/          # From @quantbot/utils
+                                          │   ├── storage/        # From @quantbot/storage
+                                          │   ├── observability/  # From @quantbot/observability
+                                          │   └── clients/        # From @quantbot/api-clients
+                                          ├── package.json
+                                          └── tsconfig.json
    ```
 
 
@@ -317,15 +317,15 @@ graph TD
 2. **Move files** from source packages to infra
 3. **Create subpath exports** for backward compatibility:
    ```json
-                                 {
-                                   "exports": {
-                                     ".": { "import": "./dist/index.js" },
-                                     "./utils": { "import": "./dist/utils/index.js" },
-                                     "./storage": { "import": "./dist/storage/index.js" },
-                                     "./observability": { "import": "./dist/observability/index.js" },
-                                     "./clients": { "import": "./dist/clients/index.js" }
-                                   }
-                                 }
+                                          {
+                                            "exports": {
+                                              ".": { "import": "./dist/index.js" },
+                                              "./utils": { "import": "./dist/utils/index.js" },
+                                              "./storage": { "import": "./dist/storage/index.js" },
+                                              "./observability": { "import": "./dist/observability/index.js" },
+                                              "./clients": { "import": "./dist/clients/index.js" }
+                                            }
+                                          }
    ```
 
 
@@ -333,8 +333,8 @@ graph TD
 
 4. **Create compatibility shims** in old package locations (temporary):
    ```typescript
-                                 // packages/utils/src/index.ts
-                                 export * from '@quantbot/infra/utils';
+                                          // packages/utils/src/index.ts
+                                          export * from '@quantbot/infra/utils';
    ```
 
 
@@ -357,12 +357,12 @@ graph TD
 
 1. **Create `packages/data/` structure**:
    ```javascript
-                                 packages/data/
-                                 ├── src/
-                                 │   ├── ohlcv/       # Candle queries
-                                 │   ├── ingestion/   # Telegram parsing, alerts
-                                 │   ├── jobs/        # Online fetch orchestration
-                                 │   └── index.ts
+                                          packages/data/
+                                          ├── src/
+                                          │   ├── ohlcv/       # Candle queries
+                                          │   ├── ingestion/   # Telegram parsing, alerts
+                                          │   ├── jobs/        # Online fetch orchestration
+                                          │   └── index.ts
    ```
 
 
@@ -371,14 +371,14 @@ graph TD
 2. **Move files** preserving internal organization
 3. **Create subpath exports**:
    ```json
-                                 {
-                                   "exports": {
-                                     ".": { "import": "./dist/index.js" },
-                                     "./ohlcv": { "import": "./dist/ohlcv/index.js" },
-                                     "./ingestion": { "import": "./dist/ingestion/index.js" },
-                                     "./jobs": { "import": "./dist/jobs/index.js" }
-                                   }
-                                 }
+                                          {
+                                            "exports": {
+                                              ".": { "import": "./dist/index.js" },
+                                              "./ohlcv": { "import": "./dist/ohlcv/index.js" },
+                                              "./ingestion": { "import": "./dist/ingestion/index.js" },
+                                              "./jobs": { "import": "./dist/jobs/index.js" }
+                                            }
+                                          }
    ```
 
 
@@ -415,14 +415,14 @@ graph TD
 
 3. **Create subpath exports**:
    ```json
-                                 {
-                                   "exports": {
-                                     ".": { "import": "./dist/index.js" },
-                                     "./backtest": { "import": "./dist/backtest/index.js" },
-                                     "./analytics": { "import": "./dist/analytics/index.js" },
-                                     "./policies": { "import": "./dist/policies/index.js" }
-                                   }
-                                 }
+                                          {
+                                            "exports": {
+                                              ".": { "import": "./dist/index.js" },
+                                              "./backtest": { "import": "./dist/backtest/index.js" },
+                                              "./analytics": { "import": "./dist/analytics/index.js" },
+                                              "./policies": { "import": "./dist/policies/index.js" }
+                                            }
+                                          }
    ```
 
 
@@ -451,13 +451,13 @@ graph TD
 
 3. **Create subpath exports**:
    ```json
-                                 {
-                                   "exports": {
-                                     ".": { "import": "./dist/index.js" },
-                                     "./catalog": { "import": "./dist/catalog/index.js" },
-                                     "./observatory": { "import": "./dist/observatory/index.js" }
-                                   }
-                                 }
+                                          {
+                                            "exports": {
+                                              ".": { "import": "./dist/index.js" },
+                                              "./catalog": { "import": "./dist/catalog/index.js" },
+                                              "./observatory": { "import": "./dist/observatory/index.js" }
+                                            }
+                                          }
    ```
 
 
@@ -576,7 +576,3 @@ Each phase will:
 4. Only delete old packages after full verification
 
 ### Testing Strategy
-
-- Run full test suite after each phase
-- Keep old packages with shims until all tests pass
-- Use `pnpm build` to verify no circular dependencies

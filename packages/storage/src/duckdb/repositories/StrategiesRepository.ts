@@ -205,26 +205,36 @@ export class StrategiesRepository {
    */
   async list(): Promise<StrategyConfig[]> {
     try {
-      const resultSchema = z.array(
+      // Use a more flexible schema that can handle both arrays and error objects
+      const flexibleSchema = z.union([
+        z.array(
+          z.object({
+            id: z.number(),
+            name: z.string(),
+            version: z.string(),
+            category: z.string().nullable(),
+            description: z.string().nullable(),
+            config_json: z.record(z.string(), z.unknown()),
+            is_active: z.boolean(),
+            created_at: z.string(),
+            updated_at: z.string(),
+          })
+        ),
         z.object({
-          id: z.number(),
-          name: z.string(),
-          version: z.string(),
-          category: z.string().nullable(),
-          description: z.string().nullable(),
-          config_json: z.record(z.string(), z.unknown()),
-          is_active: z.boolean(),
-          created_at: z.string(),
-          updated_at: z.string(),
-        })
-      );
+          error: z.string(),
+        }),
+      ]);
 
-      const result = await this.client.execute(this.scriptPath, 'list', {}, resultSchema);
+      const rawResult = await this.client.execute(this.scriptPath, 'list', {}, flexibleSchema);
 
-      // Ensure we always return an array, even if result is null/undefined
-      if (!result || !Array.isArray(result)) {
+      // Handle error object from Python script
+      if (rawResult && typeof rawResult === 'object' && 'error' in rawResult) {
+        logger.warn('Python script returned error', { error: (rawResult as { error: string }).error });
         return [];
       }
+
+      // Ensure we have an array
+      const result = Array.isArray(rawResult) ? rawResult : [];
 
       return result.map((row) => ({
         name: row.name,
@@ -237,8 +247,17 @@ export class StrategiesRepository {
         updatedAt: DateTime.fromISO(row.updated_at),
       }));
     } catch (error) {
+      // If validation fails (e.g., Python returned unexpected format), log and return empty array
+      if (error instanceof z.ZodError) {
+        logger.warn('Strategy list validation failed, returning empty array', {
+          error: error.message,
+          issues: error.issues,
+        });
+        return [];
+      }
       logger.error('Failed to list strategies', error as Error);
-      throw error;
+      // Return empty array instead of throwing to allow graceful degradation
+      return [];
     }
   }
 }

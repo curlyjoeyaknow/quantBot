@@ -1,6 +1,6 @@
 /**
  * Feature Store with versioning
- * 
+ *
  * Provides versioned feature storage with immutability guarantees.
  * Features are computed once and cached with version tracking.
  */
@@ -21,7 +21,7 @@ export const FeatureMetadataSchema = z.object({
   featureType: z.enum(['indicator', 'pattern', 'metric', 'signal']),
   version: FeatureVersionSchema,
   dependencies: z.array(z.string()),
-  parameters: z.record(z.unknown()),
+  parameters: z.record(z.string(), z.unknown()),
 });
 
 export type FeatureMetadata = z.infer<typeof FeatureMetadataSchema>;
@@ -51,11 +51,7 @@ export interface FeatureStore {
   /**
    * Get a feature value for a specific timestamp and version
    */
-  get(
-    featureName: string,
-    timestamp: number,
-    version?: string
-  ): Promise<FeatureValue | null>;
+  get(featureName: string, timestamp: number, version?: string): Promise<FeatureValue | null>;
 
   /**
    * Get all versions of a feature
@@ -131,9 +127,7 @@ export class InMemoryFeatureStore implements FeatureStore {
     }
 
     const versionList = this.versions.get(featureName)!;
-    const versionExists = versionList.some(
-      (v) => v.version === metadata.version.version
-    );
+    const versionExists = versionList.some((v) => v.version === metadata.version.version);
 
     if (!versionExists) {
       versionList.push(metadata.version);
@@ -155,9 +149,7 @@ export class InMemoryFeatureStore implements FeatureStore {
 
     if (version) {
       // Get specific version
-      const value = values.find(
-        (v) => v.metadata.version.version === version
-      );
+      const value = values.find((v) => v.metadata.version.version === version);
       if (!value) return null;
 
       // Check if invalidated
@@ -252,4 +244,3 @@ export function createFeatureVersionHash(parameters: Record<string, unknown>): s
 
   return `v${Math.abs(hash).toString(36)}`;
 }
-

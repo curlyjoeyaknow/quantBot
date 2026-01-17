@@ -187,4 +187,3 @@ describe('IdempotentIngestion', () => {
     expect(stats.newestIngestedAt!).toBeGreaterThanOrEqual(stats.oldestIngestedAt!);
   });
 });
-

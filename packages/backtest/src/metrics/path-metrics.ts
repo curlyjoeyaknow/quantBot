@@ -5,7 +5,7 @@ export {
   calculatePeriodAthAtlFromCandles,
   type PeriodAthAtlResult,
   type ReEntryOpportunity,
-} from '@quantbot/simulation';
+} from '../sim/math/ath-atl.js';
 
 export type PathMetrics = {
   // anchor

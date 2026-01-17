@@ -6,6 +6,39 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Quant Research Lab - Complete Phase I-VI Implementation** - Full research lab infrastructure for reproducible experiments
+  - **Phase I: Architectural Invariants**:
+    - ESLint rules enforcing layer boundaries (handlers → ports, adapters implement ports)
+    - Architecture tests in CI (no `Date.now()`, `Math.random()` in simulation code)
+    - Determinism enforcement across backtest and simulation packages
+  - **Phase II: Data Layer**:
+    - Feature store with versioning (`packages/analytics/src/feature-store.ts`)
+    - Raw data hash tracking for idempotency (`packages/core/src/data-hash.ts`)
+    - Disposable feature computation with version invalidation
+    - Content-based deduplication for ingestion
+  - **Phase III: Simulation Contract**:
+    - Contract version validation at runtime (`packages/simulation/src/contract-validator.ts`)
+    - Version compatibility checking (current: 1.0.0)
+    - Upgrade path for future contract versions
+    - SimInput/SimResult schema validation with version enforcement
+  - **Phase IV: Experiment Tracking**:
+    - Git commit hash auto-capture (`packages/core/src/git-metadata.ts`)
+    - Data snapshot hash storage (`packages/core/src/data-snapshot.ts`)
+    - Parameter vector hashing for deduplication (`packages/core/src/parameter-hash.ts`)
+    - Experiment reproducibility metadata (git commit, data hash, parameter hash)
+    - Clean state enforcement (prevent experiments with uncommitted changes)
+  - **Phase V: Strategy DSL**:
+    - Strategy comparison/diff tooling (already implemented in Web Lab UI)
+    - Side-by-side strategy comparison with visual diff
+    - Parameter mutation tracking
+  - **Phase VI: Optimization Engine**:
+    - Bayesian optimization with Gaussian Processes (`tools/optimization/bayesian_optimizer.py`)
+    - Multi-objective Pareto frontier computation (`tools/optimization/pareto_frontier.py`)
+    - Hypervolume indicator for Pareto front quality
+    - Trade-off analysis between competing objectives
+    - TypeScript orchestration (`packages/lab/src/optimization/BayesianOptimizer.ts`, `ParetoFrontier.ts`)
+    - Weighted ranking of Pareto-optimal solutions
+
 - **Web Lab UI - Complete Implementation** - Full-featured web interface for backtesting, optimization, and strategy management
   - **Strategy Management UI** (Phase VIII Task 8.1):
     - Strategy list with filtering by type (ladder, trailing, indicator)

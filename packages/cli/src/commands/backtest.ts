@@ -38,6 +38,12 @@ import {
   type CatalogSyncArgs,
   catalogQuerySchema,
   type CatalogQueryArgs,
+  validateSimulationSchema,
+  type ValidateSimulationArgs,
+  validateContractSchema,
+  type ValidateContractArgs,
+  checkVersionSchema,
+  type CheckVersionArgs,
 } from '../command-defs/backtest.js';
 import { join } from 'path';
 import { existsSync } from 'fs';
@@ -1201,10 +1207,16 @@ const backtestModule: PackageCommandModule = {
         let policy: import('@quantbot/backtest').RiskPolicy;
         try {
           const { parseRiskPolicy } = await import('@quantbot/backtest');
+          // Debug: log the received value
+          if (process.env.DEBUG_POLICY_JSON) {
+            console.error('[DEBUG] Received policyJson:', JSON.stringify(opts.policyJson));
+            console.error('[DEBUG] Type:', typeof opts.policyJson);
+            console.error('[DEBUG] Length:', opts.policyJson?.length);
+          }
           policy = parseRiskPolicy(JSON.parse(opts.policyJson));
         } catch (err) {
           throw new Error(
-            `Invalid policy JSON: ${err instanceof Error ? err.message : String(err)}`
+            `Invalid policy JSON: ${err instanceof Error ? err.message : String(err)}. Received value: ${JSON.stringify(opts.policyJson)}`
           );
         }
 
@@ -1541,6 +1553,53 @@ const backtestModule: PackageCommandModule = {
         'quantbot backtest catalog-query --git-branch main --limit 20',
         'quantbot backtest catalog-query --run-id <uuid> --artifact-type paths',
       ],
+    },
+    {
+      name: 'validate-simulation',
+      description: 'Validate Python simulation setup',
+      schema: validateSimulationSchema,
+      handler: async (args: unknown, ctx: unknown) => {
+        const { validateSimulationHandler } =
+          await import('../handlers/backtest/validate-simulation.js');
+        const { CommandContext } = await import('../core/command-context.js');
+        return await validateSimulationHandler(
+          args as ValidateSimulationArgs,
+          ctx as InstanceType<typeof CommandContext>
+        );
+      },
+      examples: ['quantbot backtest validate-simulation'],
+    },
+    {
+      name: 'validate-contract',
+      description: 'Validate simulation contract version',
+      schema: validateContractSchema,
+      handler: async (args: unknown, ctx: unknown) => {
+        const { validateContractHandler } =
+          await import('../handlers/backtest/validate-contract.js');
+        const { CommandContext } = await import('../core/command-context.js');
+        return await validateContractHandler(
+          args as ValidateContractArgs,
+          ctx as InstanceType<typeof CommandContext>
+        );
+      },
+      examples: [
+        'quantbot backtest validate-contract --version 1.0.0',
+        'quantbot backtest validate-contract --version 2.0.0',
+      ],
+    },
+    {
+      name: 'check-version',
+      description: 'Check current and supported contract versions',
+      schema: checkVersionSchema,
+      handler: async (args: unknown, ctx: unknown) => {
+        const { checkVersionHandler } = await import('../handlers/backtest/check-version.js');
+        const { CommandContext } = await import('../core/command-context.js');
+        return await checkVersionHandler(
+          args as CheckVersionArgs,
+          ctx as InstanceType<typeof CommandContext>
+        );
+      },
+      examples: ['quantbot backtest check-version'],
     },
   ],
 };

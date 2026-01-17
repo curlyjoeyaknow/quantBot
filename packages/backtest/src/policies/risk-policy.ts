@@ -85,6 +85,33 @@ export interface ComboPolicy {
 }
 
 /**
+ * Wash-and-rebound policy
+ * 
+ * 3-state machine:
+ * - IN_POSITION: Track peak, exit on 20% trailing stop from peak
+ * - WAIT_FOR_WASH: Wait for 50% drop from peak_at_exit
+ * - WAIT_FOR_REBOUND: Wait for 20% rebound from wash_low, then re-enter
+ * 
+ * Deterministic 1m execution:
+ * - Exit fill = peak * 0.80 (stop price)
+ * - Re-entry fill = wash_low * 1.20 (trigger price)
+ * - Wick-aware (uses candle.high and candle.low)
+ */
+export interface WashReboundPolicy {
+  kind: 'wash_rebound';
+  /** Trail percentage from peak (e.g., 0.20 = exit if drops 20% from peak) */
+  trailPct: number;
+  /** Wash threshold (e.g., 0.50 = 50% drop from peak_at_exit triggers wash state) */
+  washPct: number;
+  /** Rebound threshold (e.g., 0.20 = 20% rebound from wash_low triggers re-entry) */
+  reboundPct: number;
+  /** Maximum re-entries per token (prevents infinite churn) */
+  maxReentries?: number;
+  /** Cooldown candles after exit before allowing re-entry (reduces whipsaw) */
+  cooldownCandles?: number;
+}
+
+/**
  * Union type for all risk policies
  */
 export type RiskPolicy =
@@ -92,7 +119,8 @@ export type RiskPolicy =
   | TimeStopPolicy
   | TrailingStopPolicy
   | LadderPolicy
-  | ComboPolicy;
+  | ComboPolicy
+  | WashReboundPolicy;
 
 // =============================================================================
 // Zod Schemas for Validation
@@ -128,6 +156,15 @@ const ladderSchema = z.object({
   stopPct: z.number().min(0).max(1).optional(),
 });
 
+const washReboundSchema = z.object({
+  kind: z.literal('wash_rebound'),
+  trailPct: z.number().min(0).max(1),
+  washPct: z.number().min(0).max(1),
+  reboundPct: z.number().min(0).max(1),
+  maxReentries: z.number().int().nonnegative().optional(),
+  cooldownCandles: z.number().int().nonnegative().optional(),
+});
+
 // Forward declaration for recursive type
 const basePolicySchema: z.ZodType<RiskPolicy> = z.lazy(() =>
   z.discriminatedUnion('kind', [
@@ -135,6 +172,7 @@ const basePolicySchema: z.ZodType<RiskPolicy> = z.lazy(() =>
     timeStopSchema,
     trailingStopSchema,
     ladderSchema,
+    washReboundSchema,
     z.object({
       kind: z.literal('combo'),
       policies: z.array(basePolicySchema).min(1),

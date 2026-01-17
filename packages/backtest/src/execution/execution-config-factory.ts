@@ -10,7 +10,7 @@ import {
   createPumpfunExecutionModel,
   createPumpswapExecutionModel,
   createMinimalExecutionModel,
-} from '@quantbot/simulation/execution-models';
+} from '../sim/execution-models/index.js';
 
 /**
  * Supported execution model venues

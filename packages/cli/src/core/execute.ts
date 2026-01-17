@@ -143,7 +143,6 @@ function extractSeedFromResult(result: unknown): number | null {
 }
 import { commandRegistry } from './command-registry.js';
 import { getProgressIndicator, resetProgressIndicator } from './progress-indicator.js';
-import { closeClickHouse } from '@quantbot/storage';
 import { logger } from '@quantbot/utils';
 
 /**
@@ -375,9 +374,8 @@ export async function executeValidated(
     progress.stop(); // Stop spinner before printing output
     console.log(output);
 
-    // Explicitly exit on success to ensure process terminates
-    // This is necessary because some connections/handles may keep the event loop alive
-    process.exit(0);
+    // Don't call process.exit(0) - let the process exit naturally after all async operations complete
+    // This ensures that long-running operations (like Python scripts) can complete
   } catch (error) {
     progress.fail('Error occurred');
     // Log error contract to artifacts (if applicable)
@@ -394,11 +392,7 @@ export async function executeValidated(
     console.error(`Error: ${message}`);
     process.exit(1);
   } finally {
-    // Always clean up connections and progress indicator to allow process to exit
-    await closeClickHouse().catch((err) => {
-      // Ignore errors during cleanup - we're exiting anyway
-      logger.debug('Error closing ClickHouse during cleanup', { error: err });
-    });
+    // Always clean up progress indicator
     resetProgressIndicator();
   }
 }
@@ -595,9 +589,8 @@ export async function execute(
       console.log(output);
     }
 
-    // Explicitly exit on success to ensure process terminates
-    // This is necessary because some connections/handles may keep the event loop alive
-    process.exit(0);
+    // Don't call process.exit(0) - let the process exit naturally after all async operations complete
+    // This ensures that long-running operations (like Python scripts) can complete
   } catch (error) {
     progress.fail('Error occurred');
     // 9. Log error contract to artifacts (if applicable)
@@ -614,11 +607,7 @@ export async function execute(
     console.error(`Error: ${message}`);
     process.exit(1);
   } finally {
-    // Always clean up connections and progress indicator to allow process to exit
-    await closeClickHouse().catch((err) => {
-      // Ignore errors during cleanup - we're exiting anyway
-      logger.debug('Error closing ClickHouse during cleanup', { error: err });
-    });
+    // Always clean up progress indicator
     resetProgressIndicator();
   }
 }

@@ -14,6 +14,7 @@ import { calculateMetrics, calculatePnLSeries } from './metrics.js';
 import { getGitSha, getGitBranch, hashValue } from './experiment-runner.js';
 import type { WorkflowContext } from '../types.js';
 import { DataSnapshotService } from './services/DataSnapshotService.js';
+import { PythonEngine } from '@quantbot/utils';
 import {
   simulateStrategy,
   type StrategyConfig,
@@ -26,7 +27,7 @@ import {
   buildStrategy,
   buildStopLossConfig,
 } from '@quantbot/backtest';
-import type { ExecutionModel as SimExecutionModel } from '@quantbot/simulation';
+import type { ExecutionModel as SimExecutionModel } from '@quantbot/backtest';
 import { DateTime } from 'luxon';
 import { logger, ValidationError } from '@quantbot/utils';
 
@@ -37,7 +38,9 @@ export class ResearchSimulationAdapter {
   private readonly snapshotService: DataSnapshotService;
 
   constructor(private readonly workflowContext: WorkflowContext) {
-    this.snapshotService = new DataSnapshotService(workflowContext);
+    // Create PythonEngine for hash computation (Phase IV: Python computes, TypeScript orchestrates)
+    const pythonEngine = new PythonEngine();
+    this.snapshotService = new DataSnapshotService(workflowContext, undefined, pythonEngine);
   }
 
   /**
@@ -96,9 +99,10 @@ export class ResearchSimulationAdapter {
       const strategyConfig = this.convertStrategyRefToConfig(request.strategy);
 
       // 4. Convert ExecutionModel, CostModel, RiskModel to simulation engine formats
-      const executionModelConfig: SimExecutionModel = this.convertExecutionModel(
-        request.executionModel
-      );
+      // TODO: Re-enable executionModel conversion once execution model factory is updated for new consolidated format
+      // const executionModelConfig: SimExecutionModel = this.convertExecutionModel(
+      //   request.executionModel
+      // );
       const costConfig = this.convertCostModel(request.costModel);
       const entryConfig = this.extractEntryConfig(strategyConfig);
       const reEntryConfig = this.extractReEntryConfig(strategyConfig);
@@ -143,7 +147,8 @@ export class ResearchSimulationAdapter {
             reEntryConfig,
             costConfig,
             {
-              executionModel: executionModelConfig,
+              // TODO: Re-enable executionModel once execution model factory is updated for new consolidated format
+              // executionModel: executionModelConfig,
               seed: request.runConfig.seed,
               clockResolution: 'm', // Default to minutes
             }
@@ -272,44 +277,82 @@ export class ResearchSimulationAdapter {
   ): SimExecutionModel {
     // Convert contract ExecutionModel to simulation engine ExecutionModel format
     // Contract model has: latency {p50, p90, p99, jitter}, slippage {base, volumeImpact, max}, failures, partialFills
-    // Simulation engine model has: latency {type, params}, slippage {type, params}, partialFills {type, params}, failures {failureProbability, retry}, fees
+    // New ExecutionModel has: latency (VenueLatencyConfig), slippage (VenueSlippageConfig), failures (FailureModel), partialFills (PartialFillModel), costs (CostModel)
 
-    // Ensure stdDev is non-negative (handle edge case where p99 < p50)
-    const latencyStdDev = (contractModel.latency.p99 - contractModel.latency.p50) / 2.33;
+    // Calculate latency stdDev for normal distribution
+    const latencyStdDev = Math.max(0, (contractModel.latency.p99 - contractModel.latency.p50) / 2.33);
 
+    // Default venue (contract doesn't have venue, so use default)
+    const venue = 'unknown';
+
+    // Build ExecutionModel matching the new consolidated schema
     const simModel: SimExecutionModel = {
+      venue,
       latency: {
-        type: 'normal' as const, // Use normal distribution from p50/p90/p99
-        params: {
-          mean: Number.isFinite(contractModel.latency.p50) ? contractModel.latency.p50 : 100,
-          stdDev: Number.isFinite(latencyStdDev) && latencyStdDev >= 0 ? latencyStdDev : 50,
+        venue,
+        networkLatency: {
+          p50: Number.isFinite(contractModel.latency.p50) ? contractModel.latency.p50 : 100,
+          p90: Number.isFinite(contractModel.latency.p90) ? contractModel.latency.p90 : 200,
+          p99: Number.isFinite(contractModel.latency.p99) ? contractModel.latency.p99 : 500,
+          jitterMs: contractModel.latency.jitter || 0,
+          distribution: 'percentile' as const,
+          meanMs: Number.isFinite(contractModel.latency.p50) ? contractModel.latency.p50 : 100,
+          stddevMs: latencyStdDev,
         },
+        confirmationLatency: {
+          p50: Number.isFinite(contractModel.latency.p50) ? contractModel.latency.p50 : 100,
+          p90: Number.isFinite(contractModel.latency.p90) ? contractModel.latency.p90 : 200,
+          p99: Number.isFinite(contractModel.latency.p99) ? contractModel.latency.p99 : 500,
+          jitterMs: contractModel.latency.jitter || 0,
+          distribution: 'percentile' as const,
+        },
+        congestionMultiplier: 1,
       },
       slippage: {
-        type: 'fixed' as const,
-        params: {
-          bps: Math.max(0, Math.round(contractModel.slippage.base * 10000)), // Ensure non-negative
+        venue,
+        entrySlippage: {
+          type: 'fixed' as const,
+          fixedBps: Math.max(0, Math.round(contractModel.slippage.base * 10000)),
+          linearCoefficient: 0,
+          sqrtCoefficient: 0,
+          volumeImpactBps: Math.max(0, Math.round((contractModel.slippage.volumeImpact || 0) * 10000)),
+          minBps: 0,
+          maxBps: Math.max(0, Math.round((contractModel.slippage.max || 100) * 10000)),
         },
+        exitSlippage: {
+          type: 'fixed' as const,
+          fixedBps: Math.max(0, Math.round(contractModel.slippage.base * 10000)),
+          linearCoefficient: 0,
+          sqrtCoefficient: 0,
+          volumeImpactBps: Math.max(0, Math.round((contractModel.slippage.volumeImpact || 0) * 10000)),
+          minBps: 0,
+          maxBps: Math.max(0, Math.round((contractModel.slippage.max || 100) * 10000)),
+        },
+        volatilityMultiplier: 1,
       },
-      partialFills: contractModel.partialFills
-        ? {
-            type: 'probabilistic' as const,
-            params: {
-              fillProbability: contractModel.partialFills.probability,
-            },
-          }
-        : undefined,
       failures: contractModel.failures
         ? {
-            failureProbability: contractModel.failures.baseRate,
-            retry: {
-              // Retry configuration not available in contract ExecutionModel
-              // Default to no retries for now (can be extended if contract adds retry config)
-              maxRetries: 0,
-              backoffMs: 1000,
+            baseFailureRate: contractModel.failures.baseRate || 0,
+            congestionFailureRate: 0,
+            feeShortfallFailureRate: 0,
+            maxFailureRate: 0.5,
+          }
+        : undefined,
+      partialFills: contractModel.partialFills
+        ? {
+            probability: contractModel.partialFills.probability || 0,
+            fillDistribution: {
+              type: 'uniform' as const,
+              minFill: contractModel.partialFills.fillRange[0],
+              maxFill: contractModel.partialFills.fillRange[1],
             },
           }
         : undefined,
+      costs: {
+        takerFeeBps: 25, // Default taker fee
+        makerFeeBps: 0,
+        borrowAprBps: 0,
+      },
     };
 
     return simModel;

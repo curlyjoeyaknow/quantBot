@@ -1,6 +1,6 @@
 import { z } from 'zod';
 import type { DateTime } from 'luxon';
-import { ValidationError, NotFoundError } from '@quantbot/utils';
+import { ValidationError, NotFoundError, getCurrentGitCommitHash } from '@quantbot/utils';
 import type {
   WorkflowContext,
   SimulationRunSpec,
@@ -110,6 +110,20 @@ export async function runSimulation(
   const results: SimulationCallResult[] = [];
   const pnlOk: number[] = [];
   let tradesTotal = 0;
+  // Collect all events from all calls for writing to parquet
+  const allEvents: Array<{
+    run_id: string;
+    call_id: string;
+    token_id: string;
+    type: string;
+    ts: number;
+    price: number;
+    size?: number;
+    pnl?: number;
+    pnl_so_far?: number;
+    remaining_position?: number;
+    reason?: string;
+  }> = [];
 
   // Emit structured event instead of verbose debug log
   ctx.logger.info('Simulation run started', {
@@ -158,10 +172,47 @@ export async function runSimulation(
         endTime,
         strategy,
         call,
-      });
+      }) as { pnlMultiplier: number; trades: number; events?: Array<{
+        type: string;
+        timestamp: number;
+        price: number;
+        remainingPosition?: number;
+        pnlSoFar?: number;
+      }> };
 
       pnlOk.push(sim.pnlMultiplier);
       tradesTotal += sim.trades;
+
+      // Collect events if available
+      if (sim.events && sim.events.length > 0) {
+        if (ctx.logger.debug) {
+          ctx.logger.debug('Collecting events from simulation', {
+            runId,
+            callId: call.id,
+            eventCount: sim.events.length,
+          });
+        }
+        for (const event of sim.events) {
+          allEvents.push({
+            run_id: runId,
+            call_id: call.id,
+            token_id: call.mint,
+            type: event.type,
+            ts: event.timestamp * 1000, // Convert to milliseconds
+            price: event.price,
+            pnl_so_far: event.pnlSoFar,
+            remaining_position: event.remainingPosition,
+          });
+        }
+      } else {
+        if (ctx.logger.debug) {
+          ctx.logger.debug('No events returned from simulation', {
+            runId,
+            callId: call.id,
+            hasEvents: !!sim.events,
+          });
+        }
+      }
 
       results.push({
         callId: call.id,
@@ -202,6 +253,9 @@ export async function runSimulation(
   const pnlMedian = median(pnlOk);
 
   if (!dryRun) {
+    // Capture git commit hash for experiment tracking (Phase IV)
+    const gitCommitHash = getCurrentGitCommitHash();
+
     await ctx.repos.simulationRuns.create({
       runId,
       strategyId: strategy.id,
@@ -220,9 +274,104 @@ export async function runSimulation(
         mean: pnlMean,
         median: pnlMedian,
       },
+      gitCommitHash,
     });
 
     await ctx.repos.simulationResults.insertMany(runId, results);
+
+    // Write events to parquet if we have any
+    ctx.logger.info('Writing simulation events to parquet', {
+      runId,
+      eventCount: allEvents.length,
+      callsSucceeded,
+    });
+
+    if (allEvents.length > 0) {
+      try {
+        const { getArtifactsDir } = await import('@quantbot/core');
+        const { join } = await import('path');
+        const { promises: fs } = await import('fs');
+        const { DuckDBClient } = await import('@quantbot/storage');
+
+        const artifactsDir = getArtifactsDir();
+        const runDir = join(artifactsDir, runId);
+        await fs.mkdir(runDir, { recursive: true });
+
+        if (ctx.logger.debug) {
+          ctx.logger.debug('Artifacts directory', {
+            runId,
+            artifactsDir,
+            runDir,
+          });
+        }
+
+        const db = new DuckDBClient(':memory:');
+        try {
+          await db.execute('INSTALL parquet;');
+          await db.execute('LOAD parquet;');
+
+          // Create table for events
+          await db.execute(`
+            CREATE TABLE temp_events (
+              run_id TEXT,
+              call_id TEXT,
+              token_id TEXT,
+              type TEXT,
+              ts BIGINT,
+              price DOUBLE,
+              size DOUBLE,
+              pnl DOUBLE,
+              pnl_so_far DOUBLE,
+              remaining_position DOUBLE,
+              reason TEXT
+            )
+          `);
+
+          // Insert events in batches
+          const batchSize = 1000;
+          for (let i = 0; i < allEvents.length; i += batchSize) {
+            const batch = allEvents.slice(i, i + batchSize);
+            for (const event of batch) {
+              const values = [
+                `'${event.run_id.replace(/'/g, "''")}'`,
+                `'${event.call_id.replace(/'/g, "''")}'`,
+                `'${event.token_id.replace(/'/g, "''")}'`,
+                `'${event.type.replace(/'/g, "''")}'`,
+                String(event.ts),
+                String(event.price || 0),
+                event.size !== undefined ? String(event.size) : 'NULL',
+                event.pnl !== undefined ? String(event.pnl) : 'NULL',
+                event.pnl_so_far !== undefined ? String(event.pnl_so_far) : 'NULL',
+                event.remaining_position !== undefined ? String(event.remaining_position) : 'NULL',
+                event.reason ? `'${event.reason.replace(/'/g, "''")}'` : 'NULL',
+              ];
+              await db.execute(
+                `INSERT INTO temp_events (run_id, call_id, token_id, type, ts, price, size, pnl, pnl_so_far, remaining_position, reason) VALUES (${values.join(', ')})`
+              );
+            }
+          }
+
+          // Export to Parquet
+          const parquetPath = join(runDir, 'events.parquet');
+          await db.execute(`COPY temp_events TO '${parquetPath.replace(/'/g, "''")}' (FORMAT PARQUET)`);
+
+          ctx.logger.info('Stored simulation events to parquet', {
+            runId,
+            eventCount: allEvents.length,
+            parquetPath,
+          });
+        } finally {
+          await db.close();
+        }
+      } catch (error) {
+        ctx.logger.error('Error storing simulation events to parquet', {
+          error: error instanceof Error ? error.message : String(error),
+          runId,
+          eventCount: allEvents.length,
+        });
+        // Don't throw - workflow should continue even if event storage fails
+      }
+    }
   }
 
   // Emit structured completion event

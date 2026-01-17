@@ -1,6 +1,6 @@
 /**
  * Bayesian Optimization (TypeScript orchestration)
- * 
+ *
  * Orchestrates Python-based Bayesian optimization using Gaussian Processes.
  */
 
@@ -30,9 +30,9 @@ export type BayesianOptimizerConfig = z.infer<typeof BayesianOptimizerConfigSche
 
 export const BayesianResultSchema = z.object({
   success: z.boolean(),
-  best_params: z.record(z.unknown()).optional(),
+  best_params: z.record(z.string(), z.unknown()).optional(),
   best_score: z.number().optional(),
-  all_params: z.array(z.record(z.unknown())).optional(),
+  all_params: z.array(z.record(z.string(), z.unknown())).optional(),
   all_scores: z.array(z.number()).optional(),
   n_iterations: z.number().optional(),
   error: z.string().optional(),
@@ -48,7 +48,7 @@ export class BayesianOptimizer {
 
   /**
    * Run Bayesian optimization
-   * 
+   *
    * @param config - Optimization configuration
    * @param objectiveScores - Pre-computed objective scores for parameter combinations
    * @returns Optimization result
@@ -75,7 +75,8 @@ export class BayesianOptimizer {
     const result = await this.pythonEngine.runScript<BayesianResult>(
       'tools/optimization/bayesian_optimizer.py',
       input,
-      BayesianResultSchema
+      BayesianResultSchema,
+      {}
     );
 
     if (!result.success || !result.best_params) {
@@ -118,12 +119,9 @@ export class BayesianOptimizer {
         }
       } else if (param.type === 'categorical') {
         if (!param.categories || param.categories.length === 0) {
-          throw new Error(
-            `Parameter ${param.name} of type categorical must have categories`
-          );
+          throw new Error(`Parameter ${param.name} of type categorical must have categories`);
         }
       }
     }
   }
 }
-

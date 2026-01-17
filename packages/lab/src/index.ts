@@ -24,7 +24,8 @@ export * from './windows/types.js';
 export * from './windows/RollingWindowExecutor.js';
 export * from './optimization/types.js';
 export * from './optimization/ParameterSpace.js';
-export * from './optimization/GridSearch.js';
+export type { GridSearchResult } from './optimization/GridSearch.js';
+export { GridSearch } from './optimization/GridSearch.js';
 export * from './optimization/RandomSearch.js';
 export * from './optimization/OptimizationEngine.js';
 export * from './catalog/ids.js';
@@ -35,3 +36,6 @@ export { runLabPreset } from './workflows/runLabPreset.js';
 export { runOptimization } from './workflows/runOptimization.js';
 export { runRollingWindows } from './workflows/runRollingWindows.js';
 export type { RollingWindowV1 } from './workflows/runRollingWindows.js';
+
+// Lab server
+export { startServer } from './server.js';

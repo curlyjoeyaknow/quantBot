@@ -1,6 +1,6 @@
 /**
  * Git metadata capture for experiment tracking
- * 
+ *
  * Automatically captures git commit hash, branch, and status for reproducibility.
  */
 
@@ -26,19 +26,13 @@ export function captureGitMetadata(cwd?: string): GitMetadata {
 
   try {
     // Get commit hash
-    const commitHash = execSync('git rev-parse HEAD', options)
-      .toString()
-      .trim();
+    const commitHash = execSync('git rev-parse HEAD', options).toString().trim();
 
     // Get branch name
-    const branch = execSync('git rev-parse --abbrev-ref HEAD', options)
-      .toString()
-      .trim();
+    const branch = execSync('git rev-parse --abbrev-ref HEAD', options).toString().trim();
 
     // Check if working directory is dirty
-    const status = execSync('git status --porcelain', options)
-      .toString()
-      .trim();
+    const status = execSync('git status --porcelain', options).toString().trim();
     const isDirty = status.length > 0;
 
     // Get uncommitted changes (if dirty)
@@ -50,9 +44,7 @@ export function captureGitMetadata(cwd?: string): GitMetadata {
     // Get remote URL (optional)
     let remoteUrl: string | undefined;
     try {
-      remoteUrl = execSync('git config --get remote.origin.url', options)
-        .toString()
-        .trim();
+      remoteUrl = execSync('git config --get remote.origin.url', options).toString().trim();
     } catch {
       // No remote configured
     }
@@ -60,9 +52,7 @@ export function captureGitMetadata(cwd?: string): GitMetadata {
     // Get tags pointing to current commit (optional)
     let tags: string[] | undefined;
     try {
-      const tagsOutput = execSync('git tag --points-at HEAD', options)
-        .toString()
-        .trim();
+      const tagsOutput = execSync('git tag --points-at HEAD', options).toString().trim();
       if (tagsOutput) {
         tags = tagsOutput.split('\n');
       }
@@ -168,4 +158,3 @@ export class MockGitMetadata implements GitMetadataPort {
     requireCleanState(this.metadata);
   }
 }
-

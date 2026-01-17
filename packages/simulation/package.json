@@ -69,6 +69,7 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "@quantbot/backtest": "workspace:*",
     "@quantbot/core": "workspace:*",
     "@quantbot/utils": "workspace:*",
     "luxon": "^3.7.2",

@@ -16,7 +16,8 @@ import type {
   ReEntryConfig,
   CostConfig,
 } from '../types/index.js';
-import type { ExecutionModel } from '../types/execution-model.js';
+import type { ExecutionModel } from '../execution-models/types.js';
+import { ExecutionModelSchema } from '../execution-models/types.js';
 import { seedFromString } from '@quantbot/core';
 import { simulateStrategy } from './simulator.js';
 
@@ -92,8 +93,9 @@ export async function simulateFromInput(input: SimInput): Promise<SimResult> {
     : undefined;
 
   // Extract execution model from input if provided
+  // Parse and validate executionModel from the generic record
   const executionModel: ExecutionModel | undefined = validatedInput.executionModel
-    ? (validatedInput.executionModel as ExecutionModel)
+    ? ExecutionModelSchema.parse(validatedInput.executionModel)
     : undefined;
 
   // Extract seed from input if provided, otherwise generate from run_id for determinism

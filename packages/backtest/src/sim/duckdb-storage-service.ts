@@ -384,7 +384,9 @@ export class DuckDBStorageService {
     duckdbPath: string,
     limit?: number,
     excludeUnrecoverable?: boolean,
-    callerName?: string
+    callerName?: string,
+    fromTsMs?: number,
+    toTsMs?: number
   ): Promise<CallsQueryResult> {
     try {
       const result = await this.pythonEngine.runDuckDBStorage({
@@ -394,6 +396,8 @@ export class DuckDBStorageService {
           limit: limit || 1000, // Default limit
           exclude_unrecoverable: excludeUnrecoverable !== false, // Default to true
           caller_name: callerName || undefined, // Pass caller_name if provided
+          from_ts_ms: fromTsMs || undefined, // Pass from_ts_ms if provided
+          to_ts_ms: toTsMs || undefined, // Pass to_ts_ms if provided
         },
       });
 

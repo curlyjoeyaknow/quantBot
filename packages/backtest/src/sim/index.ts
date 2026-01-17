@@ -44,9 +44,36 @@
 // Types - Core type definitions
 // =============================================================================
 export * from './types/index.js';
-export * from './duckdb-storage-service.js';
-export * from './clickhouse-service.js';
-export * from './simulation-service.js';
+// Use named exports for classes to avoid Vitest SSR module resolution issues
+export { DuckDBStorageService } from './duckdb-storage-service.js';
+export type {
+  StrategyStorageResult,
+  RunStorageResult,
+  ReportResult,
+  AlertsStorageResult,
+  CallsQueryResult,
+  OhlcvMetadataResult,
+  OhlcvExclusionResult,
+  TokensQueryResult,
+  ValidateAddressesResult,
+  RemoveFaultyAddressesResult,
+  MoveInvalidTokensResult,
+} from './duckdb-storage-service.js';
+export {
+  StrategyStorageResultSchema,
+  RunStorageResultSchema,
+  ReportResultSchema,
+  AlertsStorageResultSchema,
+  CallsQueryResultSchema,
+  OhlcvMetadataResultSchema,
+  OhlcvExclusionResultSchema,
+  TokensQueryResultSchema,
+  ValidateAddressesResultSchema,
+  RemoveFaultyAddressesResultSchema,
+  MoveInvalidTokensResultSchema,
+} from './duckdb-storage-service.js';
+export { ClickHouseService } from './clickhouse-service.js';
+export { SimulationService } from './simulation-service.js';
 export * from './backtest-baseline-service.js';
 
 // =============================================================================

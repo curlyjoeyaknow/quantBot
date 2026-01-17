@@ -5,11 +5,14 @@
  * Generates all combinations and evaluates each.
  */
 
-import type { ParameterSpaceDef, ParameterConfig, OptimizationConfig } from './types.js';
+import type { ParameterSpaceDef, ParameterConfig, OptimizationConfig, OptimizationResult } from './types.js';
 import { ParameterSpace } from './ParameterSpace.js';
 import { logger } from '@quantbot/utils';
 
-export interface OptimizationResult {
+/**
+ * GridSearch-specific optimization result
+ */
+export interface GridSearchResult {
   config: ParameterConfig;
   metrics: unknown; // Simulation metrics
   score: number; // Combined score for ranking
@@ -31,8 +34,8 @@ export class GridSearch {
   async search(
     space: ParameterSpaceDef,
     evaluateFn: (config: ParameterConfig) => Promise<unknown>,
-    config: OptimizationConfig = { strategy: 'grid_search' }
-  ): Promise<OptimizationResult[]> {
+    config: OptimizationConfig = {}
+  ): Promise<GridSearchResult[]> {
     // Validate space
     const validation = this.paramSpace.validate(space);
     if (!validation.valid) {
@@ -47,7 +50,7 @@ export class GridSearch {
     });
 
     // Evaluate each config
-    const results: OptimizationResult[] = [];
+    const results: GridSearchResult[] = [];
     for (let i = 0; i < configs.length; i++) {
       const paramConfig = configs[i]!;
 
@@ -119,7 +122,7 @@ export class GridSearch {
    * Check if early stopping should trigger
    */
   private shouldStopEarly(
-    results: OptimizationResult[],
+    results: GridSearchResult[],
     earlyStopping: { minConfigs?: number; patience?: number }
   ): boolean {
     if (results.length < (earlyStopping.minConfigs ?? 10)) {
