@@ -38,7 +38,7 @@ vi.mock('@quantbot/jobs', async () => {
   }
 });
 
-import { getOhlcvIngestionEngine } from '@quantbot/jobs';
+import { getOhlcvIngestionEngine } from '@quantbot/data/jobs';
 import {
   createTestDuckDB,
   cleanupTestDuckDB,

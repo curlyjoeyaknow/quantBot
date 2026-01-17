@@ -50,11 +50,11 @@ vi.mock('@quantbot/utils', async () => {
 
 // Now import after mocks are set up
 import { ingestOhlcv } from '../../src/ohlcv/ingestOhlcv.js';
-import { generateOhlcvWorklist } from '@quantbot/ingestion';
-import { storeCandles, getCoverage } from '@quantbot/ohlcv';
+import { generateOhlcvWorklist } from '@quantbot/data/ingestion';
+import { storeCandles, getCoverage } from '@quantbot/data/ohlcv';
 import type { IngestOhlcvContext } from '../../src/ohlcv/ingestOhlcv.js';
 import type { WorkflowContext } from '../../src/types.js';
-import type { OhlcvWorkItem } from '@quantbot/ingestion';
+import type { OhlcvWorkItem } from '@quantbot/data/ingestion';
 import type { Candle } from '@quantbot/core';
 import { createOhlcvIngestionContext } from '../../src/context/createOhlcvIngestionContext.js';
 import { tmpdir } from 'os';

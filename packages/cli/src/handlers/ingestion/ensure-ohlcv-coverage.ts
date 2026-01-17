@@ -13,7 +13,7 @@ import { DateTime } from 'luxon';
 import { ConfigurationError, isSolanaAddress, isEvmAddress, logger } from '@quantbot/utils';
 import { ingestOhlcv, createOhlcvIngestionContext } from '@quantbot/workflows';
 import type { IngestOhlcvSpec } from '@quantbot/workflows';
-import { getCoverage } from '@quantbot/ohlcv';
+import { getCoverage } from '@quantbot/data/ohlcv';
 import type { CommandContext } from '../../core/command-context.js';
 import { ensureOhlcvCoverageSchema } from '../../commands/ingestion.js';
 import type { z } from 'zod';

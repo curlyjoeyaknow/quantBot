@@ -28,7 +28,7 @@ import { DateTime } from 'luxon';
 import { OhlcvIngestionService } from '../../src/OhlcvIngestionService';
 import { getPythonEngine } from '@quantbot/utils';
 import { PythonEngine } from '@quantbot/utils';
-import { OhlcvIngestionEngine, getOhlcvIngestionEngine } from '@quantbot/jobs';
+import { OhlcvIngestionEngine, getOhlcvIngestionEngine } from '@quantbot/data/jobs';
 import { getStorageEngine } from '@quantbot/storage';
 import {
   createTestDuckDB,

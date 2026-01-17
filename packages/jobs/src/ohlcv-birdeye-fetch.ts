@@ -21,7 +21,7 @@
 
 import { logger } from '@quantbot/utils';
 import { fetchBirdeyeCandles } from '@quantbot/api-clients';
-import { getCoverage } from '@quantbot/ohlcv';
+import { getCoverage } from '@quantbot/data/ohlcv';
 import type { OhlcvWorkItem } from '@quantbot/core';
 import type { Candle } from '@quantbot/core';
 

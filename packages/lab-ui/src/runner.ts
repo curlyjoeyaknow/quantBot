@@ -187,7 +187,7 @@ function buildOptimizeArgs(p: RunParams): string[] {
   if (p.policy_type) {
     args.push('--policy-type', p.policy_type);
   }
-  
+
   // Parse constraints JSON to extract individual constraint options
   if (p.constraints_json) {
     try {
@@ -236,8 +236,8 @@ export async function spawnBacktest(db: DuckDb, p: RunParams) {
   const repoRoot = path.resolve(here, '..', '..', '..');
 
   const cmd = envCmd ?? 'node';
-  const finalArgs = envCmd 
-    ? args 
+  const finalArgs = envCmd
+    ? args
     : [path.join(repoRoot, 'packages', 'cli', 'dist', 'bin', 'quantbot.js'), ...args];
 
   // Debug logging
@@ -248,7 +248,7 @@ export async function spawnBacktest(db: DuckDb, p: RunParams) {
   }
 
   return new Promise<void>((resolve) => {
-    const child = spawn(cmd, finalArgs, { 
+    const child = spawn(cmd, finalArgs, {
       stdio: ['ignore', 'pipe', 'pipe'],
       shell: false, // Explicitly disable shell to prevent argument splitting
       cwd: repoRoot, // Set working directory to repo root

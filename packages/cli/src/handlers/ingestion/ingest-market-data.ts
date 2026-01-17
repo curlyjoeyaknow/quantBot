@@ -8,7 +8,7 @@
 import type { CommandContext } from '../../core/command-context.js';
 import type { z } from 'zod';
 import { ingestMarketDataSchema } from '../../commands/ingestion.js';
-import { MarketDataIngestionService } from '@quantbot/jobs';
+import { MarketDataIngestionService } from '@quantbot/data/jobs';
 
 export type IngestMarketDataArgs = z.infer<typeof ingestMarketDataSchema>;
 

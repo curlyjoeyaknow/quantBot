@@ -8,7 +8,7 @@
 import type { CommandContext } from '../../core/command-context.js';
 import { telegramProcessSchema } from '../../commands/ingestion.js';
 import type { z } from 'zod';
-import type { TelegramPipelineResult } from '@quantbot/ingestion';
+import type { TelegramPipelineResult } from '@quantbot/data/ingestion';
 
 export type ProcessTelegramPythonArgs = z.infer<typeof telegramProcessSchema>;
 

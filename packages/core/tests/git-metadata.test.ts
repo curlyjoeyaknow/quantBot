@@ -121,4 +121,3 @@ describe('MockGitMetadata', () => {
     expect(dirtyMock.isClean()).toBe(false);
   });
 });
-

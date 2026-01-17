@@ -31,14 +31,14 @@ import {
   createTestDuckDB,
   cleanupTestDuckDB,
   createTempDuckDBPath,
-} from '@quantbot/ingestion/tests/helpers/createTestDuckDB.js';
-import type { TestCall } from '@quantbot/ingestion/tests/helpers/createTestDuckDB.js';
+} from '@quantbot/data/ingestion/tests/helpers/createTestDuckDB.js';
+import type { TestCall } from '@quantbot/data/ingestion/tests/helpers/createTestDuckDB.js';
 import { initClickHouse, closeClickHouse } from '@quantbot/storage';
 import { shouldRunDbStress } from '../../../utils/src/test-helpers/test-gating.js';
 import { vi } from 'vitest';
 import type { Candle } from '@quantbot/core';
-import { generateOhlcvWorklist } from '@quantbot/ingestion';
-import { storeCandles, getCoverage } from '@quantbot/ohlcv';
+import { generateOhlcvWorklist } from '@quantbot/data/ingestion';
+import { storeCandles, getCoverage } from '@quantbot/data/ohlcv';
 
 // Gate this test suite behind RUN_DB_STRESS=1
 // These tests require real database connections (ClickHouse, DuckDB)

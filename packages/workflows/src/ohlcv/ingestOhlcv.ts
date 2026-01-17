@@ -45,10 +45,10 @@ import { z } from 'zod';
 import { DateTime } from 'luxon';
 import { ValidationError, AppError } from '@quantbot/utils';
 import type { WorkflowContextWithPorts } from '../context/workflowContextWithPorts.js';
-import { generateOhlcvWorklist } from '@quantbot/ingestion';
+import { generateOhlcvWorklist } from '@quantbot/data/ingestion';
 import type { OhlcvWorkItem } from '@quantbot/core';
-import { storeCandles } from '@quantbot/ohlcv';
-import { getCoverage } from '@quantbot/ohlcv';
+import { storeCandles } from '@quantbot/data/ohlcv';
+import { getCoverage } from '@quantbot/data/ohlcv';
 import { createOhlcvIngestionContext } from '../context/createOhlcvIngestionContext.js';
 import { Candle, createTokenAddress } from '@quantbot/core';
 

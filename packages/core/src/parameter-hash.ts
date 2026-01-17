@@ -1,6 +1,6 @@
 /**
  * Parameter vector hashing for deduplication
- * 
+ *
  * Prevents duplicate experiment runs with identical parameters.
  */
 
@@ -132,8 +132,7 @@ export class InMemoryParameterHashRepository implements ParameterHashRepository 
     return {
       totalHashes: this.hashes.size,
       totalExperiments,
-      avgExperimentsPerHash:
-        this.hashes.size > 0 ? totalExperiments / this.hashes.size : 0,
+      avgExperimentsPerHash: this.hashes.size > 0 ? totalExperiments / this.hashes.size : 0,
     };
   }
 }
@@ -257,4 +256,3 @@ export function compareParameters(
 
   return { identical, added, removed, changed };
 }
-

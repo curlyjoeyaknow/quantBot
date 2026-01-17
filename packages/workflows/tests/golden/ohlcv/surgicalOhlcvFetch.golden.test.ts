@@ -19,7 +19,7 @@ import { createOhlcvIngestionContext } from '../../../src/context/createOhlcvIng
 import { DateTime } from 'luxon';
 import { PythonEngine, logger } from '@quantbot/utils';
 import { shouldRunDbStress } from '@quantbot/utils/test-helpers/test-gating';
-import { OhlcvBirdeyeFetch } from '@quantbot/jobs';
+import { OhlcvBirdeyeFetch } from '@quantbot/data/jobs';
 import { existsSync, mkdirSync, rmSync } from 'fs';
 import { join } from 'path';
 import { execSync } from 'child_process';

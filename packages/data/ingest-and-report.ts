@@ -8,7 +8,7 @@
  * If no backtest results exist, it will query calls and provide a summary based on calls only.
  */
 
-import { TelegramPipelineService } from '@quantbot/ingestion';
+import { TelegramPipelineService } from '@quantbot/data/ingestion';
 import { PythonEngine } from '@quantbot/utils';
 import * as duckdb from 'duckdb';
 import * as path from 'path';

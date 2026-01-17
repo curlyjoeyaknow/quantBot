@@ -1,6 +1,6 @@
 /**
  * Bayesian Optimization (TypeScript orchestration)
- * 
+ *
  * Orchestrates Python-based Bayesian optimization using Gaussian Processes.
  */
 
@@ -48,7 +48,7 @@ export class BayesianOptimizer {
 
   /**
    * Run Bayesian optimization
-   * 
+   *
    * @param config - Optimization configuration
    * @param objectiveScores - Pre-computed objective scores for parameter combinations
    * @returns Optimization result
@@ -118,12 +118,9 @@ export class BayesianOptimizer {
         }
       } else if (param.type === 'categorical') {
         if (!param.categories || param.categories.length === 0) {
-          throw new Error(
-            `Parameter ${param.name} of type categorical must have categories`
-          );
+          throw new Error(`Parameter ${param.name} of type categorical must have categories`);
         }
       }
     }
   }
 }
-

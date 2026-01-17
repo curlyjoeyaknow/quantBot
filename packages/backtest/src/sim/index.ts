@@ -21,7 +21,7 @@
  *
  * ```typescript
  * import { simulateStrategy } from '@quantbot/backtest';
- * import { fetchHybridCandles } from '@quantbot/ohlcv';
+ * import { fetchHybridCandles } from '@quantbot/data/ohlcv';
  * import { runSimulation } from '@quantbot/workflows';
  *
  * // Simple simulation on candle data

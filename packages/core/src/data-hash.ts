@@ -1,6 +1,6 @@
 /**
  * Raw data hash tracking for idempotency
- * 
+ *
  * Ensures data ingestion is idempotent by tracking content hashes.
  */
 
@@ -187,4 +187,3 @@ export class IdempotentIngestion<T> {
     };
   }
 }
-

@@ -14,8 +14,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { DateTime } from 'luxon';
 import { OhlcvBirdeyeFetch } from '../../src/ohlcv-birdeye-fetch.js';
 import { fetchBirdeyeCandles } from '@quantbot/api-clients';
-import { getCoverage } from '@quantbot/ohlcv';
-import type { OhlcvWorkItem } from '@quantbot/ingestion';
+import { getCoverage } from '@quantbot/data/ohlcv';
+import type { OhlcvWorkItem } from '@quantbot/data/ingestion';
 import type { Candle } from '@quantbot/core';
 
 // Mock dependencies

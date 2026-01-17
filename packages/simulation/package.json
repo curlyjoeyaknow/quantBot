@@ -61,6 +61,10 @@
     "./sinks": {
       "types": "./dist/sinks/index.d.ts",
       "import": "./dist/sinks/index.js"
+    },
+    "./analytics": {
+      "types": "./dist/analytics/index.d.ts",
+      "import": "./dist/analytics/index.js"
     }
   },
   "scripts": {
@@ -70,7 +74,9 @@
   },
   "dependencies": {
     "@quantbot/core": "workspace:*",
-    "@quantbot/utils": "workspace:*",
+    "@quantbot/infra": "workspace:*",
+    "@quantbot/workflows": "workspace:*",
+    "fast-check": "^4.4.0",
     "luxon": "^3.7.2",
     "uuid": "^11.1.0",
     "zod": "^4.1.13"

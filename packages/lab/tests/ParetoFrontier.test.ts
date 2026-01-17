@@ -1,6 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ParetoFrontier } from '../src/optimization/ParetoFrontier.js';
-import type { ParetoConfig, ParetoResult, ParetoSolution } from '../src/optimization/ParetoFrontier.js';
+import type {
+  ParetoConfig,
+  ParetoResult,
+  ParetoSolution,
+} from '../src/optimization/ParetoFrontier.js';
 
 describe('ParetoFrontier', () => {
   let pareto: ParetoFrontier;
@@ -83,10 +87,7 @@ describe('ParetoFrontier', () => {
 
     mockPythonEngine.runScript.mockResolvedValue(mockResult);
 
-    const best = await pareto.selectBest(
-      solutions,
-      { profit: 1.0, risk: -1.0 }
-    );
+    const best = await pareto.selectBest(solutions, { profit: 1.0, risk: -1.0 });
 
     expect(best).toBeTruthy();
     expect(best?.params).toEqual({ a: 2 });
@@ -113,18 +114,14 @@ describe('ParetoFrontier', () => {
 
     mockPythonEngine.runScript.mockResolvedValue(mockResult);
 
-    const tradeoffs = await pareto.findTradeoffs(
-      solutions,
-      'profit',
-      'risk',
-      { profit: true, risk: false }
-    );
+    const tradeoffs = await pareto.findTradeoffs(solutions, 'profit', 'risk', {
+      profit: true,
+      risk: false,
+    });
 
     expect(tradeoffs).toHaveLength(3);
     // Should be sorted by profit descending
-    expect(tradeoffs[0].objectives.profit).toBeGreaterThanOrEqual(
-      tradeoffs[1].objectives.profit
-    );
+    expect(tradeoffs[0].objectives.profit).toBeGreaterThanOrEqual(tradeoffs[1].objectives.profit);
   });
 
   it('should validate solutions', () => {
@@ -158,4 +155,3 @@ describe('ParetoFrontier', () => {
     );
   });
 });
-

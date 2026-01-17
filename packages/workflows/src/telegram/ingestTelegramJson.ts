@@ -23,7 +23,7 @@ import {
   ChunkValidator,
   type ExtractedBotData,
   type ResolvedCaller,
-} from '@quantbot/ingestion';
+} from '@quantbot/data/ingestion';
 import { isEvmAddress } from '@quantbot/utils';
 import { CallersRepository } from '@quantbot/storage';
 import { TokenDataRepository } from '@quantbot/storage';
@@ -163,7 +163,7 @@ export async function ingestTelegramJson(
   // 3. Write streams if requested (for debugging)
   let streamResult: { normalizedPath?: string; quarantinePath?: string } | undefined;
   if (validated.writeStreams) {
-    const { ingestJsonExport } = await import('@quantbot/ingestion');
+    const { ingestJsonExport } = await import('@quantbot/data/ingestion');
     const ingestResult = await ingestJsonExport({
       filePath: validated.filePath,
       chatId: validated.chatId,

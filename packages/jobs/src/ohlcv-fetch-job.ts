@@ -25,7 +25,7 @@
 
 import { logger } from '@quantbot/utils';
 import { fetchBirdeyeCandles } from '@quantbot/api-clients';
-import { storeCandles, getCoverage } from '@quantbot/ohlcv';
+import { storeCandles, getCoverage } from '@quantbot/data/ohlcv';
 import type { OhlcvWorkItem } from '@quantbot/core';
 // Candle type is returned by fetchBirdeyeCandles - infer from return type
 type Candle = Awaited<ReturnType<typeof fetchBirdeyeCandles>>[number];

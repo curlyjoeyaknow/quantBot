@@ -6,7 +6,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { CommandContext } from '../../src/core/command-context.js';
-import type { TelegramPipelineService } from '@quantbot/ingestion';
+import type { TelegramPipelineService } from '@quantbot/data/ingestion';
 import { PythonManifestSchema } from '@quantbot/utils';
 import { processTelegramPythonHandler } from '../../src/commands/ingestion/process-telegram-python.js';
 

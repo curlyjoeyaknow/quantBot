@@ -21,7 +21,7 @@
  *
  * ```typescript
  * import { simulateStrategy } from '@quantbot/simulation';
- * import { fetchHybridCandles } from '@quantbot/ohlcv';
+ * import { fetchHybridCandles } from '@quantbot/data/ohlcv';
  * import { runSimulation } from '@quantbot/workflows';
  *
  * // Simple simulation on candle data
@@ -196,6 +196,11 @@ export * from './math/index.js';
 // Sinks - Output handlers
 // =============================================================================
 export * from './sinks.js';
+
+// =============================================================================
+// Analytics - Historical analytics and performance metrics
+// =============================================================================
+export * from './analytics/index.js';
 
 // =============================================================================
 // Backwards Compatibility Exports

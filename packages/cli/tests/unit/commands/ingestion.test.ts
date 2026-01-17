@@ -6,7 +6,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { z } from 'zod';
-import { TelegramAlertIngestionService, OhlcvIngestionService } from '@quantbot/ingestion';
+import { TelegramAlertIngestionService, OhlcvIngestionService } from '@quantbot/data/ingestion';
 import {
   CallersRepository,
   TokensRepository,

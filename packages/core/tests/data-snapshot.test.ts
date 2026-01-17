@@ -141,4 +141,3 @@ describe('DataSnapshotService', () => {
     expect(sourceA.length).toBeGreaterThanOrEqual(2);
   });
 });
-

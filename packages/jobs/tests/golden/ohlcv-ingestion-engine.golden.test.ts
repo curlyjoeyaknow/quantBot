@@ -20,7 +20,7 @@ import { DateTime } from 'luxon';
 import { OhlcvIngestionEngine } from '../../src/ohlcv-ingestion-engine.js';
 import { fetchBirdeyeCandles, getBirdeyeClient } from '@quantbot/api-clients';
 import { getStorageEngine, initClickHouse } from '@quantbot/storage';
-import { storeCandles } from '@quantbot/ohlcv';
+import { storeCandles } from '@quantbot/data/ohlcv';
 import type { Candle } from '@quantbot/core';
 
 // Mock dependencies

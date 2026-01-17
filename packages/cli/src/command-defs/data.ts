@@ -29,4 +29,3 @@ export const dataCheckHashSchema = z.object({
 });
 
 export type DataCheckHashArgs = z.infer<typeof dataCheckHashSchema>;
-

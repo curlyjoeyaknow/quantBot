@@ -18,11 +18,11 @@ import {
   // CallsRepository, TokensRepository, AlertsRepository, SimulationRunsRepository
 } from '@quantbot/storage';
 import type { ExperimentRepository } from '@quantbot/core';
-import { OhlcvIngestionService } from '@quantbot/ingestion';
-import { MarketDataIngestionService } from '@quantbot/jobs';
+import { OhlcvIngestionService } from '@quantbot/data/ingestion';
+import { MarketDataIngestionService } from '@quantbot/data/jobs';
 // TelegramAlertIngestionService temporarily commented out - needs repository refactoring
-// import { TelegramAlertIngestionService } from '@quantbot/ingestion';
-// import { OhlcvFetchJob } from '@quantbot/jobs';
+// import { TelegramAlertIngestionService } from '@quantbot/data/ingestion';
+// import { OhlcvFetchJob } from '@quantbot/data/jobs';
 import { AnalyticsEngine } from '@quantbot/analytics';
 import type { AnalyticsEngine as AnalyticsEngineType } from '@quantbot/analytics';
 import { PythonEngine, type PythonEngine as PythonEngineType } from '@quantbot/utils';
@@ -34,7 +34,7 @@ import {
   BacktestBaselineService,
   V1BaselinePythonService,
 } from '@quantbot/backtest';
-import { TelegramPipelineService } from '@quantbot/ingestion';
+import { TelegramPipelineService } from '@quantbot/data/ingestion';
 import { AnalyticsService } from '@quantbot/analytics';
 import { getClickHouseClient } from '@quantbot/storage';
 import type { ClickHouseClient } from '@clickhouse/client';

@@ -1,6 +1,6 @@
 /**
  * Multi-Objective Pareto Frontier (TypeScript orchestration)
- * 
+ *
  * Orchestrates Python-based Pareto frontier computation for multi-objective optimization.
  */
 
@@ -51,7 +51,7 @@ export class ParetoFrontier {
 
   /**
    * Compute Pareto frontier from solutions
-   * 
+   *
    * @param config - Pareto configuration
    * @returns Pareto-optimal solutions
    */
@@ -93,7 +93,7 @@ export class ParetoFrontier {
 
   /**
    * Find trade-offs between objectives
-   * 
+   *
    * Returns solutions that represent different trade-off points
    */
   async findTradeoffs(
@@ -144,7 +144,7 @@ export class ParetoFrontier {
 
   /**
    * Compute hypervolume indicator
-   * 
+   *
    * Measures quality of Pareto front
    */
   async computeHypervolume(
@@ -183,4 +183,3 @@ export class ParetoFrontier {
     }
   }
 }
-
