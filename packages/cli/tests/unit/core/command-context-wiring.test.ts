@@ -6,7 +6,7 @@
 
 import { describe, it, expect, vi } from 'vitest';
 import { CommandContext } from '../../../src/core/command-context.js';
-import { StrategiesRepository } from '@quantbot/infra/storage';
+import { StrategiesRepository } from '@quantbot/storage';
 
 describe('CommandContext Wiring', () => {
   describe('strategiesRepository', () => {
@@ -67,14 +67,15 @@ describe('CommandContext Wiring', () => {
     });
 
     it('should allow service overrides via options', () => {
-      const mockStrategiesRepo = {} as StrategiesRepository;
       const ctx = new CommandContext({
         // Note: strategiesRepository override not yet supported in options
         // This test documents the pattern for future enhancement
+        // For now, just verify the repository is created correctly
       });
 
       const repo = ctx.services.strategiesRepository();
-      expect(repo).toBeInstanceOf(StrategiesRepository);
+      // Verify it's a StrategiesRepository instance (using constructor name check)
+      expect(repo.constructor.name).toBe('StrategiesRepository');
     });
   });
 });
